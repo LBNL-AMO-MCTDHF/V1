@@ -14,7 +14,7 @@ LAPACK = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}
 
 LOADFLAGS =
 
-MYINCLUDE=
+MYINCLUDE=/global/software/sl-6.x86_64/modules/intel/2013_sp1.4.211/fftw/3.3.4-intel/include/
 
 FFLAGS = -C -check all,noarg_temp_created -warn all -gen_interfaces -traceback
 F77FLAGS =  -C -check all,noarg_temp_created  -traceback -warn error,alignments,ignore_loc,general,usage,nodec

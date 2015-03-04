@@ -788,7 +788,7 @@ endif
      OFLWR "NUMSPINBLOCKS, MAXSPINBLOCKSIZE FASTCONFIG",nss,maxssize;CFL
   endif
 
-  if (alreadycounted.and.iprintconfiglist) then
+  if (alreadycounted.and.iprintconfiglist.ne.0) then
      OFLWR "CONFIGLIST"
      do ii=1,numconfig
 !        write(mpifileptr,'(A12,I12,A4)',advance='no') "  Config ", ii," is "
