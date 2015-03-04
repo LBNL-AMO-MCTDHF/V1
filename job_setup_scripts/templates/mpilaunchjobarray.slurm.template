@@ -1,0 +1,27 @@
+#!/bin/bash -l
+#Job name:
+#SBATCH --job-name=#jobname#
+#SBATCH --error=#jobname#.$SLURM_JOB_ID.err
+#SBATCH --output=#jobname#.$SLURM_JOB_ID.out
+
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=#corespernode#
+#SBATCH --array 0-#nnodesm1#
+
+#SBATCH --partition=lr3
+#SBATCH --account=lr_axl
+#SBATCH --qos=condo_axl
+#SBATCH --nice=1000
+
+
+#Wall clock limit:
+#SBATCH --time=#walltime#
+
+
+
+cd $SLURM_SUBMIT_DIR
+echo $SLURM_JOB_NODELIST
+echo $SLURM_TASKS_PER_NODE
+echo $LD_LIBRARY_PATH
+echo $PATH
+bash runcalcs.sh $SLURM_ARRAY_TASK_ID

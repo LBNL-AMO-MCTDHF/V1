@@ -1,0 +1,5 @@
+
+ for ext in doub quart; do for sym in sig pi; do for ger in u g; do mpirun -n 1 chmctdhf_diatom.seq Inp=Input.Inp.Cation.$ext.${sym}_${ger} |tee Outs/Out.cation.$ext.${sym}_${ger} & done; done; done
+
+ wait
+

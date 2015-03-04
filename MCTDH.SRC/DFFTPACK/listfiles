@@ -1,0 +1,10 @@
+#!/bin/bash
+
+	echo -n "DFFTFILES=\"" > Dfftfiles.Inc
+	files=`ls *.o`
+	mypwd="DFFTPACK/"
+	for file in $files
+	do
+		echo -n "$mypwd$file " >> Dfftfiles.Inc
+	done
+	echo "\"">> Dfftfiles.Inc

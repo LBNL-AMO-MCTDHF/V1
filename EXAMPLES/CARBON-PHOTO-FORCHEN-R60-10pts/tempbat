@@ -1,0 +1,7 @@
+
+export OMP_NUM_THREADS=2
+
+mpirun -n 7 chmctdhf_atom Inp=Input.Inp.Pulse |tee Outs/Out.pulse
+
+mpirun -n 7 chmctdhf_atom Inp=Input.Inp.Corr |tee Outs/Out.corr
+

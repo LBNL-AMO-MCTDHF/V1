@@ -1,0 +1,11 @@
+touch WALKS/savewalks.BIN
+chmctdhf_atom Inp=#inpfilename# >& #outfilename#
+
+rm -r "`readlink -f WALKS`"
+rm -r WALKS
+rm -r Bin
+rm -r Flux
+rm -r timing
+
+rm spfs*
+rm avector*

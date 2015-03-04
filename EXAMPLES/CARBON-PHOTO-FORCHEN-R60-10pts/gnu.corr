@@ -1,0 +1,97 @@
+
+
+
+	ylow="*"
+	yhigh="*"
+	xlow="*"
+	xhigh="*"
+
+pwd=`pwd |cut -f 7 -d /`
+
+if [[ -e "corrsave.h" ]]
+then
+
+	source ./corrsave.h
+
+fi
+
+
+
+if [[ "$4 " != " " ]]
+then
+	ylow=$3
+	yhigh=$4
+fi
+
+if [[ "$2 " != " " ]]
+then
+	xlow=$1
+	xhigh=$2
+fi
+
+
+line=`grep --text "T=" Outs/Out.corr |grep -v "aving"`
+
+line2=`grep --text "T=" Outs/Out.corr.vel |grep -v "aving"`
+
+
+line="set term x11
+set format y \"%11.6f\"
+set style data lines
+
+
+#set title \" $pwd \" 
+
+
+load \"title.h\"
+
+set xrange [$xlow:$xhigh]
+set yrange [$ylow:$yhigh]
+set xlabel \"time\"
+set ylabel \"expect of energy\"
+
+
+plot \"-\" using 2:4 every 2 pt 6 lw 5 ps 0.7 
+$line
+e
+
+
+replot \"-\" using 2:4 every 2 pt 6 lw 5 ps 0.7 
+$line2
+e
+
+
+set out \"corr.ps\"
+set term post enhanced color solid 20
+plot \"-\" using 2:4 every 2 pt 6 ps 0.7 
+$line
+e
+
+
+" 
+
+
+
+echo "$line" | gnuplot -persist &
+
+
+
+
+
+
+if [[ "$5 " == "s " ]]
+then
+	echo "xlow=$xlow" > corrsave.h
+	echo "xhigh=$xhigh" >> corrsave.h
+
+	echo "ylow=$ylow" >> corrsave.h
+	echo "yhigh=$yhigh" >> corrsave.h
+fi
+
+
+if [[ "$3 " == "s " ]]
+then
+	echo "xlow=$xlow" > corrsave.h
+	echo "xhigh=$xhigh" >> corrsave.h
+
+fi

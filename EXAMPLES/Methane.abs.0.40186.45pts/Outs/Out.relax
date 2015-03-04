@@ -1,0 +1,137 @@
+Fri Feb  6 18:26:52 PST 2015
+Fri Feb  6 18:26:52 PST 2015
+Fri Feb  6 18:26:52 PST 2015
+Fri Feb  6 18:26:52 PST 2015
+Fri Feb  6 18:26:52 PST 2015
+Fri Feb  6 18:26:52 PST 2015
+Fri Feb  6 18:26:52 PST 2015
+Fri Feb  6 18:26:52 PST 2015
+Fri Feb  6 18:26:52 PST 2015
+Fri Feb  6 18:26:52 PST 2015
+Fri Feb  6 18:26:52 PST 2015
+Fri Feb  6 18:26:52 PST 2015
+Fri Feb  6 18:26:52 PST 2015
+Fri Feb  6 18:26:52 PST 2015
+Fri Feb  6 18:26:52 PST 2015
+  ****************************************************************************
+  **********************  BEGIN LBNL AMO MCTDHF ******************************
+  ****************************************************************************
+
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory, 2015
+      DJ Haxton, C W McCurdy, T N Rescigno, K Lawler, B Abeln, X Li..
+    VERSION 1.0 
+
+    PROCESSOR            1  OF           15
+
+    This is CHMCTDH: HERM-normed ECS version.
+ Inpfile is Input.Inp.Relax  
+
+  *************************  COMMAND LINE OPTIONS  ***************************
+
+ Reading Input.Inp.Relax                                                                                                                                                                                         
+  ****************************************************************************
+
+ Enforcing CMF defaults for Verlet or EXPO.
+ Enforcing CMF defaults for improved relaxation
+
+  ****************************************************************************
+ *****************************************************************************
+
+ Number of states in propagation=           1
+
+  Parameters: electronic
+
+                    Number of electrons    10
+ Nuclear KE flag (nonuc_checkflag):         1
+
+ ********  SINC DVR PARAMS ******** 
+ griddim,spacing           3  0.40185999999999999     
+ numpoints          45          45           3
+ numcenters           5
+ nuccharge   6.0000000000000000     
+ centershift   0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ nuccharge   1.0000000000000000     
+ centershift   3.0000000000000000        3.0000000000000000        3.0000000000000000     
+ nuccharge   1.0000000000000000     
+ centershift  -3.0000000000000000       -3.0000000000000000        3.0000000000000000     
+ nuccharge   1.0000000000000000     
+ centershift  -3.0000000000000000        3.0000000000000000       -3.0000000000000000     
+ nuccharge   1.0000000000000000     
+ centershift   3.0000000000000000       -3.0000000000000000       -3.0000000000000000     
+ orblanorder,orblanthresh         500   10.000000000000000     
+ notwoflag,coulflag,runtoothflag           0           1           0
+ toepflag,nonucrepflag           1           0
+ toothnbig, toothnsmall, toothngrid          57          19          19
+ orbparflag T
+   -----  
+ NBOX            1           1          15
+ totpoints        6075
+ **********************************
+
+ ************************   Parameters: config/spf    ************************   
+
+ Doing full CI: numshells=1.  Shells:
+ Shell            1
+   1a    1b    2a    2b    3a    3b    4a    4b    5a    5b    6a    6b 
+   7a    7b    8a    8b    9a    9b 
+  Final shell occupancy level vexcite=          99
+
+    Number of unfrozen spfs:      9
+    Number of frozen spfs:        0
+            Spfs start in m=     0   0   0   0   0   0   0   0   0
+
+ Configurations will be restricted to spin projection           0 /2
+  Configurations will be restricted to spin            0
+
+ ***********************    Initial state      ***********************   
+
+ Spfs will be one-electron eigfuncts.
+
+ Sfp Quad flag is OFF.
+ Improvednatflag is ON.
+
+ Avector Quad flag is OFF.
+ Avector will be obtained from diagonalization.
+
+ ***********************    Parameters: propagation    ***********************   
+
+  PAR_TIMESTEP IS   0.50000000000000000       LITTLESTEPS IS            1
+
+ Calculation will be stopped with threshold    9.9999999999999995E-008 ; timestep is   0.50000000000000000     
+
+
+ *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   *******  
+
+     Will use sparse configuration routines.
+           Lanczosorder is          200
+           Lanthresh is       1.0000000000000001E-009
+           Aorder is                300
+           Maxaorder is            1000
+           Aerror is          1.0000000000000001E-009
+  Using EXPONENTIAL integration.
+     Expotol    =   1.0000000000000001E-009
+     Maxexpodim=          30
+     Jacprojorth=           0
+     Jacsymflag=           0
+     Jacunitflag=           0
+
+ Density matrix regularized with denreg= 0.100E-29
+
+
+ ****************************************************************************
+
+ Autosteps is            2  Autosize is        40001  Numpropsteps is        80000
+ Fluxsteps is            1  Fluxtimestep is   0.50000000000000000     
+
+ *****************************************************************************
+
+
+
+
+ NEWCONFIG: NUMBER OF CONFIGURATIONS        15876
+
+ Counting walks. Singles
+ Counting walks. Doubles
+        1000  out of         1061

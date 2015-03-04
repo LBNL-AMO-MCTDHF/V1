@@ -1,0 +1,37 @@
+#!/bin/bash
+
+modules=`cat modules.list`
+for mod in $modules
+do
+	line=`grep -i "module $mod" *.f90 |grep -i -v end` 
+	location=`expr "$line" : '\(.*\.\)'`
+	fortfile=${location}f90
+	location=${location}o
+	echo "MODULE $mod is in $location"
+	echo
+	for file in *.f90
+	do
+
+		object=`expr "$file" : '\(.*\.\)'`
+		object=${object}o
+
+		line=`grep -i "use $mod" $file`
+		if [[ ${#line} -gt 0 ]]
+		then
+			echo "$file uses $mod"
+			grep -i "$object:" Makefile 
+			xline=`grep -i "$object:" Makefile |grep -i $location`
+			if [[ ${#xline} -lt 2 ]]
+			then
+			    echo "   -->>> LOOKS BAD!!! $fortfile"
+			else
+			    echo "looks good."
+			fi
+			echo		
+		fi
+
+
+	done
+	echo
+	read var
+done

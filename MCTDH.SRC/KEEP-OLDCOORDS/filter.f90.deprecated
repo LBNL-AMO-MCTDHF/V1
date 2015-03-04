@@ -1,0 +1,730 @@
+
+!!! EXPERIMENTAL FILTER BERKELEY SOLVE STUFF !!!
+
+#include "Definitions.INC"
+
+
+ 
+subroutine filter(alg)
+!! actually compute the flux in a post processing kind of manner
+!! input :
+!! alg - determines how the memory management algorithm for loading up previous wavefunctions
+  use parameters
+
+#ifndef NEWWALKS
+  use configmod
+  use walkmod
+  use biosubmod
+#endif
+  use mpimod
+  implicit none
+
+  logical, parameter :: filteron=.false.  !! use energy filter or just time basis?
+
+!! FluxOpType:
+!! 0       = use one-e potential and two-e contribution routines
+!! 1       = use halfnium one-e potential  (recommended)
+!! 2       = use full one-e potential
+!! other   = use no one-e potential
+!! nonzero = don't use two-e contribution
+  integer :: alg,curtime,oldtime,tau,k,nt,i,molength,alength
+  integer :: BatchSize,NBat,brabat,brareadsize,bratime,ketbat,ketreadsize,kettime 
+  integer :: atime,btime,itime,jtime,times(1:7)=0
+  real*8 :: MemTot,MemVal,Energy,dt,wfi
+  real*8, allocatable :: bintimes(:),xsec(:)
+  complex*16 ::  sum, sums(100)
+  DATATYPE :: dot,fluxeval,sumtau
+
+  complex*16, allocatable :: keop2(:,:), peop2(:,:), V22(:,:,:,:), ke2(:,:), pe2(:,:),  timevect(:), timevect2(:),  singularvector(:), singularvector2(:), filterovl(:,:)
+
+  complex*16, allocatable :: singularvects(:,:), singulareigvects(:,:), filtereigvects(:,:), filtertemp(:,:)
+  CNORMTYPE, allocatable ::   timeeigvals(:),filtereigvals(:)   !! overlap
+  DATAECS, allocatable :: singulareigvals(:) !! hamiltonian matrix eig
+  integer, allocatable :: ipiv(:)
+  complex*16, allocatable, target ::  TimeFlux(:,:), singularham(:,:),  singularham2(:,:), singularflux(:,:), timetemp(:,:), TimeOvl(:,:), singularovl(:,:), TimeHam(:,:), hamtemp(:,:), fluxtemp(:,:), ovltemp(:,:)
+
+  complex*16, pointer :: thistimemat(:,:), thissingularmat(:,:)
+
+  complex*16, allocatable :: filtervects(:,:)  !! 0:nt, numfiltertot
+  complex*16, allocatable :: singulartemp(:,:)  !! 0:nt, rank
+
+  DATATYPE, allocatable, target :: bramo(:,:,:),braavec(:,:,:)
+  DATATYPE, allocatable, target :: ketmo(:,:,:),ketavec(:,:,:)
+  DATATYPE, pointer :: moket(:,:),mobra(:,:),aket(:,:),abra(:,:)
+
+  DATATYPE, allocatable :: mobio(:,:),abio(:,:) !! bi-orthonormalization 
+  DATATYPE, allocatable :: ke(:,:),pe(:,:),V2(:,:,:,:) !! for flux matrix elements
+  DATATYPE, allocatable :: keop(:,:),peop(:,:)
+
+!!  complex*16 :: ttt(3,3), sss(3,3), xxx(3,3)
+!!  real*8 :: nextran
+
+  real*8, allocatable :: sing(:), timearray(:), filterenergies(:)
+  real*8 ::  rsum, dde, maxovlerr,logfac
+  integer :: info, rank, j, maxovli, maxovlj, flag
+
+  logfac=log(filterdecay)
+  print *, "Filterdecay is ", filterdecay, "logfac ", logfac
+
+print *, "subroutine filter: include nuclear flux terms -- subroutine fluxeval"
+stop
+
+!! initial setup
+
+  if (filtertimeread) then
+
+     dt=real(FluxInterval,8)*par_timestep*fluxskipmult
+     nt=floor(finaltime/dt)
+     dt=real(FluxInterval,8)*par_timestep*fluxskipmult*filterreadskip
+
+     print *, "Reading timeham etc."
+     open(1234,file="timeham.bin",status="old", form="unformatted")
+     read(1234) curtime
+     if (curtime.lt.nt) then
+        print *, "Given nt= ", nt, "nt on file =", curtime, " setting to file value."
+     else
+        print *, "keeping lower input finaltime, ", finaltime, " but first will read all nt=", curtime," vectors."
+     endif
+     allocate(hamtemp(0:curtime,0:curtime),ovltemp(0:curtime,0:curtime),fluxtemp(0:curtime,0:curtime))
+     read(1234) hamtemp
+     read(1234) fluxtemp
+     read(1234) ovltemp
+     close(1234)
+     
+     nt=min(curtime/filterreadskip,nt/filterreadskip)
+     allocate(timeham(0:nt,0:nt), timeovl(0:nt,0:nt), timeflux(0:nt,0:nt))     
+     timeham=0.d0; timeflux=0.d0; timeovl=0.d0
+     do i=0,nt
+        do j=0,nt
+           timeham(i,j)=hamtemp(i*filterreadskip,j*filterreadskip)
+        enddo
+     enddo
+     do i=0,nt
+        do j=0,nt
+           timeovl(i,j)=ovltemp(i*filterreadskip,j*filterreadskip)
+        enddo
+     enddo
+     do i=0,nt
+        do j=0,nt
+           timeflux(i,j)=fluxtemp(i*filterreadskip,j*filterreadskip)
+        enddo
+     enddo
+     deallocate(fluxtemp,ovltemp,hamtemp)
+     finaltime=nt*dt
+  else
+     dt=real(FluxInterval,8)*par_timestep*fluxskipmult
+     nt=floor(finaltime/dt)
+     
+     allocate(timeham(0:nt,0:nt), timeovl(0:nt,0:nt), timeflux(0:nt,0:nt))
+     timeham=0.d0; timeflux=0.d0; timeovl=0.d0
+  endif
+
+  print *
+  print *, "Filter params:"
+  print *, "--------------"
+  print *, "  par_timestep", par_timestep
+  print *, " fluxinterval ", fluxinterval
+  print *, " fluxskipmult ", fluxskipmult
+  if (filtertimeread) print *, " filterreadskip  ", filterreadskip
+  print *, "  finaltime  ", finaltime
+  print *, "  nt          ", nt
+  print *, "  dt         ", dt
+  print *
+
+  numfiltertot=numfilter1+numfilter2+1
+  print *, "NUMBER OF TIMES = ", nt+1
+  if (filteron) then
+     print *, "NUMBER OF FILTER FUNCTS = ", numfiltertot
+  else
+     print *, "NOT USING ENERGY FILTER."
+  endif
+
+  allocate(filterenergies(numfiltertot))
+
+  allocate(filtervects(0:nt, numfiltertot), &    !! time to energy
+       filterovl(numfiltertot, numfiltertot), &  !! their overlap matrix
+       filtereigvects(numfiltertot, numfiltertot), &  !! their overlap matrix eigvects
+       filtereigvals(numfiltertot), &  !! their overlap matrix eigvects
+       filtertemp(numfiltertot,0:nt))   !! used for singularvects^C x timemat     x singularvects -> singularmat
+
+  allocate( sing(1:nt+1), timetemp(0:nt,0:nt), timevect(0:nt), timevect2(0:nt), timearray(0:nt), singularvector(numfiltertot), singularvector2(numfiltertot))
+
+  allocate( timeeigvals(1:nt+1),    singularvects(0:nt, nt+1))    !! overlap matrix eigvects transformed to time representation
+  allocate(ke2(nspf,nspf),pe2(nspf,nspf),V22(nspf,nspf,nspf,nspf))
+  allocate(ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),bintimes(FluxNBins),xsec(nEFlux))
+   bintimes=0d0; xsec=0d0
+  allocate(mobio(spfsize,nspf),abio(numconfig,numr),keop(spfsize,nspf),peop(spfsize,nspf))
+  allocate(keop2(spfsize,nspf),peop2(spfsize,nspf))
+
+  call getftpulse(xsec)
+!! determine if we should do batching or not
+!! 250,000 words/MB, real*8 2words/#, complex*16 4words/#
+#ifdef REALGO
+  MemVal = 1.25d5
+#else
+  MemVal = 6.25d4
+#endif
+  call openfile()
+  write(mpifileptr,'(A30,F9.3,A3)') " Guess at necessary memory is ",2d0*real((nt+1)*(numconfig*numr+spfsize*nspf),8)/MemVal," MB"
+  if(alg.eq.0) then
+    write(mpifileptr,*) "g(tau) will be computed with all of psi in core"
+    BatchSize=nt+1
+  else
+    MemTot=real(alg,8)    
+    write(mpifileptr,*) "g(tau) will be computed with all psi being read in batches"
+    write(mpifileptr,'(A33,F9.3,A3)') " Desired amount of memory to use ",MemTot," MB"
+    BatchSize=floor(MemTot * MemVal / (2d0*real(numconfig*numr+spfsize*nspf,8)))
+    if(BatchSize.lt.1) then
+      write(mpifileptr,*) "Tiny amount of memory or huge wavefunction, Batchsize is 1" 
+      BatchSize=1
+    else if(BatchSize.ge.nt+1) then
+      write(mpifileptr,*) "Hooray, there is enough memory, switching to in core algorithm" 
+      BatchSize=nt+1
+    else
+      write(mpifileptr,*) "Batchsize is ",BatchSize,"/",(nt+1)
+    endif
+  endif
+  call closefile()
+  allocate(ketmo(spfsize,nspf,BatchSize),ketavec(numconfig,numr,BatchSize))
+  allocate(bramo(spfsize,nspf,BatchSize),braavec(numconfig,numr,BatchSize))
+  NBat=ceiling(real(nt+1)/real(BatchSize))
+
+
+if (.not.filtertimeread) then
+
+  ketreadsize=0
+  brareadsize=0
+  inquire(iolength=molength) ketmo(:,:,1)
+  inquire(iolength=alength) ketavec(:,:,1)
+  sumtau=0d0
+  open(454, file="KVLsum.dat", status="unknown")
+  write(454,*) "#KVL flux sum: itime, time, flux sum"
+  write(454,*)
+  close(454)
+
+
+
+!! begin the ket batch read loop
+  do ketbat=1,NBat
+    call system_clock(atime)
+    call openfile
+    write(mpifileptr,*) "Reading ket batch ", ketbat, " of ", NBat
+    call closefile
+    ketreadsize=min(BatchSize,nt+1-(ketbat-1)*BatchSize)
+    if(myrank.eq.1) then
+      open(1001,file=fluxmofile,status="old",form="unformatted",access="direct",recl=molength)
+      open(1002,file=fluxafile,status="old",form="unformatted",access="direct",recl=alength)
+      do i=1,ketreadsize
+        k=FluxSkipMult*((ketbat-1)*BatchSize+i-1)+1
+        read(1001,rec=k) ketmo(:,:,i) 
+        read(1002,rec=k) ketavec(:,:,i) 
+      enddo
+      close(1001)
+      close(1002)
+    endif
+    call system_clock(btime)
+    times(1)=times(1)+btime-atime
+    times(2)=times(2)+btime-atime
+
+!! begin the bra batch read loop
+    do brabat=1,NBat
+      call system_clock(atime)
+      call openfile
+      write(mpifileptr,*) "Reading bra batch ", brabat, " of ", nbat
+      call closefile
+      open(222,file="stop",status="old",iostat=i)
+      if(i==0) then
+        close(222)
+        call openfile();        write(mpifileptr, *) "Stopping flux due to stopfile!"
+        call closefile();        call mpistop()
+      endif
+      brareadsize=min(BatchSize,nt+1-(brabat-1)*BatchSize)
+      if(brabat.eq.ketbat) then
+        bramo=ketmo
+        braavec=ketavec
+      else 
+         if(myrank.eq.1) then
+            open(1001,file=fluxmofile,status="old",form="unformatted",access="direct",recl=molength)
+            open(1002,file=fluxafile,status="old",form="unformatted",access="direct",recl=alength)
+            do i=1,brareadsize
+               k=FluxSkipMult*((brabat-1)*BatchSize+i-1)+1
+               read(1001,rec=k) bramo(:,:,i) 
+               read(1002,rec=k) braavec(:,:,i) 
+            enddo
+            close(1001)
+            close(1002)
+         endif
+      endif
+      call system_clock(btime)
+      times(1)=times(1)+btime-atime
+      times(2)=times(2)+btime-atime
+
+!! loop over all time for the ket of the flux integral
+      do kettime=1,ketreadsize
+!! get the one-e half transformed matrix elements for this ket time
+          call system_clock(atime)
+          call system_clock(itime)
+          curtime=(ketbat-1)*BatchSize+kettime-1 
+          bintimes(1) = real(curtime,8) * dt
+
+          moket=>ketmo(:,:,kettime)
+          aket=>ketavec(:,:,kettime)
+ !! 0d0=time should not be relevant if not trying flux with
+ !!  pulse on
+print *, "use  call for flux_op_onee, program me."
+stop
+
+!!PROGRAM ME          call flux_op_onee(moket,keop2,peop2,0,0d0)  !! ham
+!!PROGRAM ME          call flux_op_onee(moket,keop,peop,1,0d0)  !! flux
+
+          call system_clock(jtime)
+          times(4)=times(4)+jtime-itime
+!! loop over all previous time for the bra of the flux integral
+
+          do bratime=1,brareadsize
+!! biortho this pair of times!        
+              call system_clock(itime)
+              mobra=>bramo(:,:,bratime)
+              abra=>braavec(:,:,bratime)
+              oldtime=(brabat-1)*BatchSize+bratime-1
+              tau=curtime-oldtime
+              abio=abra
+#ifndef NEWWALKS
+              call biortho(mobra,moket,mobio,abio,sparseconfigflag,0, &
+                numelec,numconfig,nspf,spfsize,numr,maxsinglewalks,configlist, &
+                numsinglewalks,singlewalk,singlewalkopspf,singlewalkdirphase)
+#else
+OFLWR "PROGME FILTERRR"; CFLST
+#endif
+              
+              flag=0
+              do i=1,nspf
+                 do j=i,nspf
+                    sum=dot(mobio(:,j),moket(:,i),spfsize)
+                    if (i==j) sum=sum-1
+                    if (abs(sum).gt.1.d-9) then
+                       print *, "ORB OVL ERR", sum, i, j, curtime, oldtime
+                       flag=1
+                    endif
+                 enddo
+              enddo
+
+              if (flag==1) then
+                 print *
+                 do i=1,nspf
+                    do j=i,nspf
+                       sums(j)=dot(mobra(:,j),moket(:,i),spfsize)
+                       if (i==j) sums(j)=sums(j)-1
+                    enddo
+                    print *, sums(1:nspf)
+                 enddo
+                 print *;                 stop
+              endif
+
+              call system_clock(jtime)
+              times(3)=times(3)+jtime-itime
+!! complete the one-e potential and kinetic energy matrix elements           
+              call system_clock(itime)
+              do i=1,nspf
+                do k=1,nspf
+                  ke(k,i) = dot(mobio(:,k),keop(:,i),spfsize)
+                  pe(k,i) = dot(mobio(:,k),peop(:,i),spfsize)
+                  ke2(k,i) = dot(mobio(:,k),keop2(:,i),spfsize)
+                  pe2(k,i) = dot(mobio(:,k),peop2(:,i),spfsize)
+                enddo
+              enddo
+
+              call system_clock(jtime)
+              times(4)=times(4)+jtime-itime
+!! get the two-e contribution, boo this is slow and we don't like it!           
+              call system_clock(itime)
+              if(onee_checkflag/=1) call flux_op_twoe(mobio,moket,V22,0)  !! ham
+              if(FluxOpType.eq.0.and.onee_checkflag/=1) call flux_op_twoe(mobio,moket,V2,1)  !! flux
+              call system_clock(jtime)
+              times(5)=times(5)+jtime-itime
+!! evaluate the actual g(tau) expression           
+              call system_clock(itime)
+
+              timeflux(oldtime,curtime) = fluxeval(abio,aket,ke,pe,V2,1) 
+              timeham(oldtime,curtime) = fluxeval(abio,aket,ke2,pe2,V22,0) 
+              timeovl(oldtime,curtime) = dot(abio,aket,totadim)
+
+              if(tau.eq.0) sumtau=sumtau+timeflux(curtime,oldtime)
+              nullify(mobra,abra)
+              call system_clock(jtime)
+              times(6)=times(6)+jtime-itime
+
+!! write out times        
+
+              if((tau.eq.0).and.mod(curtime,1).eq.0) then
+                 open(454, file="KVLsum.dat", status="old", position="append")
+                 write(454,'(I5,100F18.12)') curtime, curtime*dt, sumtau
+                 close(454)
+                 call openfile
+                 write(mpifileptr,'(100A10)') "Times: ", "All", "Read","Biorth", "One-e", "Two-e", "Fluxeval", "FT gtau"
+                 write(mpifileptr,'(A10,100I10)') " ", times(1:7)/100;                 call closefile
+              endif
+           enddo  ! bratime
+
+          call system_clock(btime);          times(1)=times(1)+btime-atime
+
+          enddo ! kettim
+          nullify(moket,aket)
+
+          if (brabat.eq.ketbat) then
+             if (filtertimeread) then
+                print *, "won't overwrite timeham.bin"  !um yeah won't happen
+                print *, "what!"
+                stop
+             else
+                print *, "Writing timeham.bin, curtime,nt= ", curtime,nt
+                open(1234,file="timeham.bin",status="unknown", form="unformatted")
+                write(1234) curtime
+                write(1234) timeham(0:curtime,0:curtime)
+                write(1234) timeflux(0:curtime,0:curtime)
+                write(1234) timeovl(0:curtime,0:curtime)
+                close(1234)
+             endif
+          endif
+
+        enddo ! brabat
+     enddo !ketbat
+
+  endif  !! filtertimeread
+
+  deallocate(bramo,braavec,ketmo,ketavec,mobio,abio,keop,peop,ke,pe,V2,bintimes)
+
+
+
+  do i=0,nt
+
+if (1==0) then  !! NOOO doesn't work
+     timeham(:,i) = timeham(:,i) * sin((i+1)/real(nt+2,8)*pi)
+     timeovl(:,i) = timeovl(:,i) * sin((i+1)/real(nt+2,8)*pi)
+     timeflux(:,i) = timeflux(:,i) * sin((i+1)/real(nt+2,8)*pi)
+
+     timeham(i,:) = timeham(i,:) * sin((i+1)/real(nt+2,8)*pi)
+     timeovl(i,:) = timeovl(i,:) * sin((i+1)/real(nt+2,8)*pi)
+     timeflux(i,:) = timeflux(i,:) * sin((i+1)/real(nt+2,8)*pi)
+
+  else if (1==0) then
+     timeham(:,i) = timeham(:,i) * cos((i+1)/real(nt+2,8)*pi/2.d0)
+     timeovl(:,i) = timeovl(:,i) * cos((i+1)/real(nt+2,8)*pi/2.d0)
+     timeflux(:,i) = timeflux(:,i) * cos((i+1)/real(nt+2,8)*pi/2.d0)
+
+     timeham(i,:) = timeham(i,:) * cos((i+1)/real(nt+2,8)*pi/2.d0)
+     timeovl(i,:) = timeovl(i,:) * cos((i+1)/real(nt+2,8)*pi/2.d0)
+     timeflux(i,:) = timeflux(i,:) * cos((i+1)/real(nt+2,8)*pi/2.d0)
+
+endif
+
+if (filterdecay.ne.1.d0) then
+
+     timeham(:,i) = timeham(:,i) * exp(-(i+1)/real(nt+2,8)*logfac)
+     timeovl(:,i) = timeovl(:,i) * exp(-(i+1)/real(nt+2,8)*logfac)
+     timeflux(:,i) = timeflux(:,i) * exp(-(i+1)/real(nt+2,8)*logfac)
+
+     timeham(i,:) = timeham(i,:) * exp(-(i+1)/real(nt+2,8)*logfac)
+     timeovl(i,:) = timeovl(i,:) * exp(-(i+1)/real(nt+2,8)*logfac)
+     timeflux(i,:) = timeflux(i,:) * exp(-(i+1)/real(nt+2,8)*logfac)
+
+endif
+
+enddo
+
+print *, "last fac was ", exp(-(nt+1)/real(nt+2,8)*logfac)
+
+  do i=0,nt
+     do j=0,i
+        if (abs(timeflux(i,j)-CONJUGATE(timeflux(j,i))).gt.1.d-7) then
+           print *, "herm err flux", timeflux(i,j), timeflux(j,i), i,j
+!           stop
+        endif
+     enddo
+  enddo
+
+  do i=0,nt
+     do j=0,i
+        if (abs(timeovl(i,j)-CONJUGATE(timeovl(j,i))).gt.1.d-7) then
+           print *, "herm err ovl", timeovl(i,j), timeovl(j,i), i,j
+           stop
+        endif
+     enddo
+  enddo
+
+!!  check for anything but ECS with chmctdh
+
+#ifdef ECSFLAG
+#ifndef CNORMFLAG
+  if (1==0) then
+#endif
+#endif
+     do i=0,nt
+        do j=0,i
+           if (abs(timeham(i,j)-CONJUGATE(timeham(j,i))).gt.1.d-7) then
+              print *, "herm err ham", timeham(i,j), timeham(j,i), i,j
+           endif
+        enddo
+     enddo
+#ifdef ECSFLAG
+#ifndef CNORMFLAG
+  endif
+#endif
+#endif
+
+
+  print *, "Go energy loop"
+
+  if(myrank.eq.1) then
+     open(1004,file="xsec.filter.dat",status="replace",position="rewind")
+     write(1004,*)
+     write(1004,*) "# Omega; pulse ft; flux at t= ... "
+     write(1004,'(A8, A8, 100F36.5)') "#  ", " ", bintimes(1:FluxNBins)
+     write(1004,*)
+  endif
+
+  do k=1,nEFlux
+
+     wfi=EFluxLo+(k-1)*dEFlux
+     Energy=wfi+real(ceground,8)
+
+     if (mod(k,10).eq.1) then
+        print *, "Energy  ", k, energy
+     endif
+
+     timevect=timeovl(:,0)
+
+!! fast index on energy filter is time; that's the bra and energy is ket, 
+!!   so have exp(-iEt) in transformation.
+!!    filtervects transforms from energy to time (via matmul(filtervects,x)
+!!    for instance)
+
+     if (.not.filteron) then
+        if (k.eq.1) then
+           timeovl=(-1) * timeovl
+           call EIGEN(timeovl, nt+1,nt+1, singularvects, timeeigvals)
+           timeovl=timeovl*(-1)
+           timeeigvals=timeeigvals*(-1)
+           
+           
+           rank=nt+1
+           do i=1,nt+1
+              if (abs(timeeigvals(i)).le.filtersingular*abs(timeeigvals(1))) then
+                 rank=i-1
+                 exit
+              endif
+           enddo
+
+           print *
+           print *, "SINGULAR RANK is ", rank , " OF ", nt+1
+           print *
+
+           do i=1,rank
+              singularvects(:,i) = singularvects(:,i) /sqrt(timeeigvals(i))
+           enddo
+           
+           print *, "Time function OVERLAP eigvals KEPT"
+           if (rank.gt.6) then
+              write(*,'(6E20.5)') timeeigvals(1:3)
+              write(*,'(A5, 6E20.5)')  " ... ", timeeigvals(rank-2:rank)
+           else
+              write(*,'(6E20.5)') timeeigvals(1:rank) 
+           endif
+           print *, "    ..next :", timeeigvals(rank+1:min(rank+3,nt+1))
+           print *
+           
+        endif
+
+     else   !! use energy filter
+
+        dde = 0.3d0/finaltime
+        
+        do i=1,numfilter2   !! basis functions for eground to window.
+           
+           rsum=real(ceground,8) + (i-1)*(wfi - dde*numfilter1/2.d0)/real(numfilter2,8)
+           
+           filtervects(:,i) = exp((0.d0,-1.d0) * rsum * timearray)
+           filterenergies(i) = rsum
+        enddo
+        
+        do i=0,numfilter1-1
+           rsum = real(ceground) + wfi - dde*numfilter1/2.d0 + i*dde
+           filtervects(:,i+numfilter2+1) = exp((0.d0,-1.d0) * rsum * timearray)
+           filterenergies(i+numfilter2+1) = rsum
+        enddo
+        
+        print *, "Filter energies are "
+        print *, "    ", filterenergies(1:numfilter2)
+        print *, "    ", filterenergies(numfilter2+1:numfilter2+numfilter1)
+
+        call MYGEMM(CNORMCHAR, 'N', numfiltertot, nt+1, nt+1, (1.d0,0.d0), &
+             filtervects, nt+1, timeovl, nt+1, (0.d0, 0.d0), filtertemp, numfiltertot)
+        
+        call MYGEMM('N','N', numfiltertot, numfiltertot, nt+1, (1.d0,0.d0), &
+             filtertemp, numfiltertot, filtervects, nt+1, (0.d0,0.d0), filterovl, numfiltertot)
+
+        filterovl=(-1) * filterovl
+        call EIGEN(filterovl, numfiltertot, numfiltertot, filtereigvects, filtereigvals)
+        filterovl=filterovl*(-1)
+        filtereigvals=filtereigvals*(-1)
+
+        rank=numfiltertot
+        do i=1,numfiltertot
+!! no, make it the absolute value. that denotes how big coefs will be.           if (filtereigvals(i).le.filtereigvals(1)*filtersingular) then
+           if (abs(filtereigvals(i)).le.filtersingular) then
+              rank=i-1
+              exit
+           endif
+        enddo
+        print *, "Rank is ", rank 
+        print *, "Filter function OVERLAP eigvals KEPT"
+
+        if (rank.gt.6) then
+           write(*,'(3E20.5, A5, 3E20.5)') filtereigvals(1:3), " ... ", filtereigvals(rank-2:rank)
+        else
+           write(*,'(6E20.5)') filtereigvals(1:rank) 
+        endif
+        print *, "    ..next :", filtereigvals(rank+1:min(rank+3,numfiltertot))
+
+        print *
+
+        do i=1,rank
+           filtereigvects(:,i)=filtereigvects(:,i)/sqrt(filtereigvals(i))
+        enddo
+        singularvects=0d0
+        do i=1,rank
+           do j=1,numfiltertot
+              singularvects(:,i) = singularvects(:,i) + filtervects(:,j) * filtereigvects(j,i)
+           enddo
+        enddo
+     endif
+
+     if (rank.eq.0) then
+        print *, "Rank is zero, exiting";        stop
+     endif
+
+     if ((filteron).or.((.not.filteron).and.(k.eq.1))) then
+
+        allocate( &
+             singularovl(rank, rank), &  !! their overlap matrix (just to check)
+             singulartemp(rank,0:nt), &  !! used for singularvects^C x timemat     x singularvects -> singularmat
+             singularham(rank, rank), &
+             ipiv(rank), &
+             singularham2(rank, rank), &
+             singularflux(rank, rank), singulareigvals(rank), singulareigvects(rank,rank))
+        
+        call MYGEMM(CNORMCHAR, 'N', rank, nt+1, nt+1, (1.d0,0.d0), &
+             singularvects, nt+1, timeovl, nt+1, (0.d0, 0.d0), singulartemp, rank)
+        
+        call MYGEMM('N','N', rank, rank, nt+1, (1.d0,0.d0), &
+             singulartemp, rank, singularvects, nt+1, (0.d0,0.d0), singularovl, rank)
+        
+        do i=1,rank
+           singularovl(i,i) = singularovl(i,i) - 1.d0
+        enddo
+        maxovlerr=0.d0
+        do i=1,rank
+           do j=1,rank
+              if (maxovlerr.lt.abs(singularovl(i,j))) then
+                 maxovlerr=abs(singularovl(i,j))
+                 maxovli=i
+                 maxovlj=j
+              endif
+              if (abs(singularovl(i,j)).gt.1.d-3) then   !! 1d-4 arbitrary.  better?
+                 print *, "***********  WARNING imperfect ovl **********"
+                 print *, "Singular ovl error :", i,j,singularovl(i,j)
+                 print *, " Filtersingular is ", filtersingular
+
+              endif
+           enddo
+        enddo
+        
+        print *, "Max singular ovl error :", maxovli,maxovlj,maxovlerr
+        print *, " Filtersingular is ", filtersingular,"   All ok."
+     
+        
+        do i=1,2
+           select case (i)
+           case (1)
+              thistimemat => timeham
+              thissingularmat => singularham
+           case (2)
+              thistimemat => timeflux
+              thissingularmat => singularflux
+           case default
+              print *, "WHAT!"
+              stop
+           end select
+           
+           call MYGEMM(CNORMCHAR, 'N', rank, nt+1, nt+1, (1.d0,0.d0), &
+                singularvects, nt+1, thistimemat, nt+1, (0.d0, 0.d0), singulartemp, rank)
+           
+           call MYGEMM('N','N', rank, rank, nt+1, (1.d0,0.d0), &
+                singulartemp, rank, singularvects, nt+1, (0.d0,0.d0), thissingularmat, rank)
+           
+           
+        enddo
+     
+     !! temp eigen. no big deal.
+     
+        call CONFIGEIG(singularham, rank, rank, singulareigvects, singulareigvals)
+        print *, "Singular ham eigvals written to SingularEigs.Dat."
+        open(444,file="SingularEigs.Dat", status="unknown")
+        do i=1,rank
+           write(444,'(100(I5,F10.5,2F18.12))') k, energy, singulareigvals(i)
+        enddo
+        write(444,*) 
+        close(444)
+
+        print *, "They are:"
+        do i=1,min(30,rank)
+           write(*,'(100F18.12)') singulareigvals(i)
+        enddo
+        print *
+
+        if (tdflag.eq.1) then
+           call openfile()
+           write(mpifileptr,*) "Stopping at eigs; tdflag is on"
+           call closefile();           call mpistop()
+        endif
+        
+     endif
+
+     singularham2(1:rank,1:rank)=singularham(1:rank,1:rank)
+
+     do i=1,rank
+        singularham2(i,i)=singularham2(i,i)-energy
+     enddo
+
+     call MYGEMM(CNORMCHAR, 'N', rank, 1, nt+1, (1.d0,0.d0), &
+          singularvects, nt+1, timevect, nt+1, (0.d0, 0.d0), singularvector, rank)
+
+     call MYGESV(rank, 1, singularham2, rank, ipiv, singularvector, rank, info)
+     if (info/=0) then
+        print *, "  zgesv info ", info
+        stop
+     endif
+     
+     call MYGEMV('N', rank, rank, DATAONE, singularflux, rank, singularvector, 1, DATAZERO, singularvector2, 1)
+     
+     
+     if(myrank.eq.1) write(1004,'(F8.4,100E18.6)') wfi, xsec(k), xsec(k)*dot(singularvector, singularvector2, rank)
+     
+     
+     if (filteron) then
+        deallocate( &
+             singularovl, &
+             singulartemp, &
+             ipiv, &
+             singularham, &
+             singularham2, &
+             singularflux, singulareigvals, singulareigvects)
+     endif
+  enddo
+  deallocate(xsec)
+  if(myrank.eq.1) then
+    close(1001)
+    close(1002)
+  endif
+end subroutine filter
+

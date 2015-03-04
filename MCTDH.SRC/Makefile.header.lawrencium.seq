@@ -1,0 +1,21 @@
+
+MPIFLAG = -D MPIFLAG
+FFTFLAG = -D FFTWFLAG -D MPIFLAG
+PGFFLAG =
+
+ARGO=arg.o
+
+AR=xiar
+CC = mpicc
+FC = mpif90
+F90 = mpif90 -cpp
+
+LAPACK = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a -Wl,--end-group -lpthread -lm
+
+LOADFLAGS =  -opt-matmul
+
+MYINCLUDE=
+
+FFLAGS = -O2 -xHost
+F77FLAGS = -O2 -xHost
+

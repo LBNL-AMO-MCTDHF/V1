@@ -1,0 +1,3 @@
+chmctdhf_atom Inp=#inpfilename# >& #outfilename#
+mv WALKS/walks.BIN WALKS/savewalks.BIN
+

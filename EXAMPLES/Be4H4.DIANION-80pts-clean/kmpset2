@@ -1,0 +1,2 @@
+
+export KMP_AFFINITY="granularity=fine,balanced"

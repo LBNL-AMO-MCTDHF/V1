@@ -1,0 +1,129 @@
+
+
+	ylow="*"
+	yhigh="*"
+	xlow="*"
+	xhigh="*"
+
+
+if [[ -e "xsec.h" ]]
+then
+
+	source ./xsec.h
+
+fi
+
+
+line=`pwd`
+title=${line:48:1000}
+
+
+
+title=`pwd | cut -d / -f 8`
+if [[ "$title " == " " ]]
+then
+	echo "blah"
+   title=`pwd | cut -d / -f 7`
+fi
+
+
+if [[ -e "title.h" ]]
+then
+	source ./title.h
+fi
+
+
+labelline="set title \"$title trip\""
+
+
+if [[ "$4 " != " " ]]
+then
+	ylow=$3
+	yhigh=$4
+fi
+if [[ "$2 " != " " ]]
+then
+	xlow=$1
+	xhigh=$2
+fi
+
+echo "
+
+$labelline
+
+set term unknown
+#set ytics 100
+#set format y \"10^{%L}\"
+set xlabel \"Photon Energy (hartree)\"
+set ylabel \"Cross Section (MBarns)\"
+set yrange [$ylow:$yhigh]
+set xrange [$xlow:$xhigh]
+
+A=27.2114
+
+
+set logscale y
+
+plot \
+\"Dat/xsec.spi.dat\" using (A*\$1):(\$3) with lines lt -1 lw 4 title \"tot\", \
+\"Dat/xsec.proj.001_001.spi.dat.trip\" every 8 using (\$1*A):(\$3) with lines lw 12 title \"1\", \
+\"Dat/xsec.proj.002_001.spi.dat.trip\" every 8 using (\$1*A):(\$3) with lines lw 10 title \"2\", \
+\"Dat/xsec.proj.003_001.spi.dat.trip\" every 8 using (\$1*A):(\$3) with lines lw 8 title \"3\", \
+\"Dat/xsec.proj.004_001.spi.dat.trip\" every 8 using (\$1*A):(\$3) with lines lw 10 title \"4\", \
+\"Dat/xsec.proj.005_001.spi.dat.trip\" every 8 using (\$1*A):(\$3) with lines lw 6 title \"5\", \
+\"Dat/xsec.proj.006_001.spi.dat.trip\" every 8 using (\$1*A):(\$3) with lines lw 5 title \"6\", \
+\"Dat/xsec.proj.001_001.spi.dat.sing\" every 8 using (\$1*A):(\$3) with lines lw 2 title \"s1\", \
+\"Dat/xsec.proj.002_001.spi.dat.sing\" every 8 using (\$1*A):(\$3) with points lw 2 title \"s2\", \
+\"Dat/xsec.proj.003_001.spi.dat.sing\" every 8 using (\$1*A):(\$3) with points lw 2 title \"s3\", \
+\"Dat/xsec.proj.004_001.spi.dat.sing\" every 8 using (\$1*A):(\$3) with points lw 2 title \"s4\", \
+\"Dat/xsec.proj.005_001.spi.dat.sing\" every 8 using (\$1*A):(\$3) with lines lw 2 title \"s5\", \
+\"Dat/xsec.proj.006_001.spi.dat.sing\" every 8 using (\$1*A):(\$3) with lines lw 2 title \"s6\", \
+\"Dat/xsec.proj.007_001.spi.dat.sing\" every 8 using (\$1*A):(\$3) with lines lw 2 title \"s7\", \
+\"Dat/xsec.proj.008_001.spi.dat.sing\" every 8 using (\$1*A):(\$3) with lines lw 2 title \"s8\", \
+\"Dat/xsec.proj.009_001.spi.dat.sing\" every 8 using (\$1*A):(\$3) with lines lw 2 title \"s9\", \
+\"Dat/xsec.proj.010_001.spi.dat.sing\" every 8 using (\$1*A):(\$3) with lines lt -1 lw 2 title \"s10\", \
+\"Dat/xsec.proj.ALL_001.spi.dat.both\" every 8 using (\$1*A):( \
+\$3 + \$4 + \$5 + \$6 + \$7 + \$8 + \$9 + \$10 + \$11 + \$12 \
++\$13 + \$14 + \$15 + \$16 + \$17 + \$18 \
+) with points pt 7 lt 2 lw 1 title \"ALL\"
+
+
+
+# \"Dat/xsec.proj.001_001.spi.dat.quint3\" every 8 using (\$1*A):(\$3) with points pt 7 ps 2 lt -1 lw 3 title \"q1\", \
+
+
+# \"Dat/xsec.proj.ALL_001.spi.dat.trip3\" every 8 using (\$1*A):(\$3 + \$4 + \$5 ) with linespoints pt 3 lt -1 lw 1 title \"ALL\", \
+
+
+
+
+
+set term post enhanced 20 color solid
+set out \"full.projxsec.$title.ps\"
+replot
+
+set term x11
+set out
+replot
+
+exit" | gnuplot -persist &
+
+
+
+
+if [[ "$5 " == "s " ]]
+then
+	echo "xlow=$xlow" > xsec.h
+	echo "xhigh=$xhigh" >> xsec.h
+
+	echo "ylow=$ylow" >> xsec.h
+	echo "yhigh=$yhigh" >> xsec.h
+fi
+
+
+if [[ "$3 " == "s " ]]
+then
+	echo "xlow=$xlow" > xsec.h
+	echo "xhigh=$xhigh" >> xsec.h
+
+fi

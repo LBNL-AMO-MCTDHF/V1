@@ -1,0 +1,28 @@
+  Exponential propagator output.  expotol=   1.0000000000000001E-009
+
+ Go Oribtal Expoprop.  Tinit=   0.0000000000000000       thisexpodim=          30  step   0.50000000000000000     
+       ...REJECTED  0.5000E+00  0.7145E-09  0.1000E-08
+    End expo. Orthog error, steps, stepsize, iterations   2.3314683517128287E-015           2  0.45000000000000001               64
+
+    End expo. Orthog error, steps, stepsize, iterations   2.3314683517128287E-015           2  0.45000000000000001               64
+
+    End expo. Orthog error, steps, stepsize, iterations   2.3314683517128287E-015           2  0.45000000000000001               64
+
+ Go Oribtal Expoprop.  Tinit=  0.50000000000000000       thisexpodim=          30  step   0.49500001072883609     
+ Go Oribtal Expoprop.  Tinit=  0.50000000000000000       thisexpodim=          30  step   0.49500001072883609     
+ Go Oribtal Expoprop.  Tinit=  0.50000000000000000       thisexpodim=          30  step   0.49500001072883609     
+    End expo. Orthog error, steps, stepsize, iterations   2.6645352591003757E-015           2  0.49500001072883609               64
+
+    End expo. Orthog error, steps, stepsize, iterations   2.6645352591003757E-015           2  0.49500001072883609               64
+
+    End expo. Orthog error, steps, stepsize, iterations   2.6645352591003757E-015           2  0.49500001072883609               64
+
+ Go Oribtal Expoprop.  Tinit=   1.0000000000000000       thisexpodim=          30  step   0.50000000000000000     
+ Go Oribtal Expoprop.  Tinit=   1.0000000000000000       thisexpodim=          30  step   0.50000000000000000     
+ Go Oribtal Expoprop.  Tinit=   1.0000000000000000       thisexpodim=          30  step   0.50000000000000000     
+    End expo. Orthog error, steps, stepsize, iterations   1.5543122344752192E-015           1  0.50000000000000000               32
+
+    End expo. Orthog error, steps, stepsize, iterations   1.5543122344752192E-015           1  0.50000000000000000               32
+
+    End expo. Orthog error, steps, stepsize, iterations   1.5543122344752192E-015           1  0.50000000000000000               32
+

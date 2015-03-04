@@ -1,0 +1,109 @@
+
+
+# 25eV  
+# 780nm = 0.05841455 hartree 12 fs FWHM = 480au
+
+15 omega = pi/2   omega=0.1047
+
+480 omega = pi/2  omega=0.0032725d0
+
+$pulse
+
+ numpulses=5
+
+ pulsetype=2,2,2,2,2
+
+ omega2(1)=0.91873d0
+ omega(1)=0.1151386d0
+
+ omega2(2)= 0.0569542d0,  0.0569542d0,  0.0569542d0,  0.0569542d0
+ omega(2)=  0.00345416d0, 0.00345416d0, 0.00345416d0, 0.00345416d0
+
+ pulsestrength(1)=1.837208916d-4
+ pulsestrength(2)=0.0081161734d0,0.0081161734d0
+ pulsestrength(4)=(0d0,-0.0081161734d0),(0d0,0.0081161734d0)
+
+ pulsestrength(2)=0.0243485202d0, 0.0243485202d0
+ pulsestrength(4)=(0d0,-0.0243485202d0),(0d0, 0.0243485202d0)
+
+ pulsestart(1)=1000d0
+ pulsestart(2)=QQQd0
+ pulsestart(3)=QQQd0
+ pulsestart(4)=QQQd0
+ pulsestart(5)=QQQd0
+
+ minpulsetime=5000d0
+
+ phaseshift(2) = RR1,RR2
+ phaseshift(4) = II3,II4
+
+ velflag=0
+
+/
+
+
+
+$parinp
+
+sparseconfigflag=0
+
+efluxlo=0.01d0
+efluxhi=2d0
+
+zdipfile="Dips/ZDipoleexpect.Dat.EEE_"
+zdftfile="Dips/ZDipoleft.Dat.EEE_"
+
+autotimestep=0.5d0
+
+loadavectorflag=1
+avectorfile="Bin/avector.bin.relax"
+loadspfflag=1
+spffile="Bin/spfs.bin.relax"
+
+diptime = 1000
+dipmodtime=2000
+
+numactions=1
+actions=21
+
+numelec=2
+
+tdflag=1
+
+nspf = 5
+
+spfrestrictflag=1
+
+spfmvals = 0,  0,  0, 1,-1,   0,  0, 1,-1,   0,1,-1,2,-2
+
+restrictflag=1
+restrictms=0   
+
+mrestrictflag=1
+mrestrictval=0
+
+par_timestep=0.5d0
+littlesteps=10
+
+/
+
+
+!! was 12 elements celement 9 with first element 2d0 lbig 6
+
+$heparinp
+
+NucCharge1=2.d0
+LBIG=4, MBIG=1
+
+henumpoints=10
+henumelements=7
+hecelement=5
+heecstheta= 0.4d0
+heelementsizes =  6d0, 6d0, 6d0, 6d0, 6d0, 6d0, 6d0, 6d0, 6d0, 6d0,  6d0, 6d0,  6d0, 6d0, 
+
+
+/
+
+
+
+

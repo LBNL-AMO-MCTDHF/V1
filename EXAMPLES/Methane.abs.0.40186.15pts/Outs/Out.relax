@@ -1,0 +1,663 @@
+Fri Feb  6 19:48:19 PST 2015
+Fri Feb  6 19:48:19 PST 2015
+Fri Feb  6 19:48:19 PST 2015
+  ****************************************************************************
+  **********************  BEGIN LBNL AMO MCTDHF ******************************
+  ****************************************************************************
+
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory, 2015
+      DJ Haxton, C W McCurdy, T N Rescigno, K Lawler, B Abeln, X Li..
+    VERSION 1.0 
+
+    PROCESSOR            1  OF            1
+
+    This is CHMCTDH: HERM-normed ECS version.
+ Inpfile is Input.Inp.Relax  
+
+  *************************  COMMAND LINE OPTIONS  ***************************
+
+ Reading Input.Inp.Relax                                                                                                                                                                                         
+  ****************************************************************************
+
+ Enforcing CMF defaults for Verlet or EXPO.
+ Enforcing CMF defaults for improved relaxation
+
+  ****************************************************************************
+ *****************************************************************************
+
+ Number of states in propagation=           1
+
+  Parameters: electronic
+
+                    Number of electrons    10
+ Nuclear KE flag (nonuc_checkflag):         1
+
+ ********  SINC DVR PARAMS ******** 
+ griddim,spacing           3  0.40185999999999999     
+ numpoints          15          15          15
+ numcenters           5
+ nuccharge   6.0000000000000000     
+ centershift   0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ nuccharge   1.0000000000000000     
+ centershift   3.0000000000000000        3.0000000000000000        3.0000000000000000     
+ nuccharge   1.0000000000000000     
+ centershift  -3.0000000000000000       -3.0000000000000000        3.0000000000000000     
+ nuccharge   1.0000000000000000     
+  ****************************************************************************
+  **********************  BEGIN LBNL AMO MCTDHF ******************************
+  ****************************************************************************
+
+ centershift  -3.0000000000000000        3.0000000000000000       -3.0000000000000000     
+ nuccharge   1.0000000000000000     
+ centershift   3.0000000000000000       -3.0000000000000000       -3.0000000000000000     
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory, 2015
+      DJ Haxton, C W McCurdy, T N Rescigno, K Lawler, B Abeln, X Li..
+    VERSION 1.0 
+
+ orblanorder,orblanthresh         500   10.000000000000000     
+ notwoflag,coulflag,runtoothflag           0           1           0
+ toepflag,nonucrepflag           1           0
+ toothnbig, toothnsmall, toothngrid          57          19          19
+ orbparflag T
+   -----  
+ NBOX            1           1           1
+ totpoints        3375
+    PROCESSOR            1  OF            1
+
+    This is CHMCTDH: HERM-normed ECS version.
+ **********************************
+
+ ************************   Parameters: config/spf    ************************   
+
+ Doing full CI: numshells=1.  Shells:
+ Shell            1
+ Inpfile is Input.Inp.Relax  
+   1a    1b    2a    2b    3a    3b    4a    4b    5a    5b    6a    6b 
+   7a    7b 
+  Final shell occupancy level vexcite=          99
+
+    Number of unfrozen spfs:      7
+    Number of frozen spfs:        0
+            Spfs start in m=     0   0   0   0   0   0   0
+
+ Configurations will be restricted to spin projection           0 /2
+  Configurations will be restricted to spin            0
+
+ ***********************    Initial state      ***********************   
+
+ Spfs will be one-electron eigfuncts.
+
+ Sfp Quad flag is OFF.
+ Improvednatflag is ON.
+
+ Avector Quad flag is OFF.
+ Avector will be obtained from diagonalization.
+
+ ***********************    Parameters: propagation    ***********************   
+
+  PAR_TIMESTEP IS   0.50000000000000000       LITTLESTEPS IS            1
+
+ Calculation will be stopped with threshold    9.9999999999999995E-008 ; timestep is   0.50000000000000000     
+
+
+ *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   *******  
+
+     Will use sparse configuration routines.
+           Lanczosorder is          200
+           Lanthresh is       1.0000000000000001E-009
+           Aorder is                300
+           Maxaorder is            1000
+           Aerror is          1.0000000000000001E-009
+  Using EXPONENTIAL integration.
+     Expotol    =   1.0000000000000001E-009
+     Maxexpodim=          30
+     Jacprojorth=           0
+     Jacsymflag=           0
+     Jacunitflag=           0
+
+ Density matrix regularized with denreg= 0.100E-29
+
+
+ ****************************************************************************
+
+ Autosteps is            2  Autosize is        40001  Numpropsteps is        80000
+ Fluxsteps is            1  Fluxtimestep is   0.50000000000000000     
+
+ *****************************************************************************
+
+
+
+
+  *************************  COMMAND LINE OPTIONS  ***************************
+
+ Reading Input.Inp.Relax                                                                                                                                                                                         
+  ****************************************************************************
+  **********************  BEGIN LBNL AMO MCTDHF ******************************
+  ****************************************************************************
+
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory, 2015
+      DJ Haxton, C W McCurdy, T N Rescigno, K Lawler, B Abeln, X Li..
+    VERSION 1.0 
+
+    PROCESSOR            1  OF            1
+
+    This is CHMCTDH: HERM-normed ECS version.
+ Inpfile is Input.Inp.Relax  
+
+  *************************  COMMAND LINE OPTIONS  ***************************
+
+ Reading Input.Inp.Relax                                                                                                                                                                                         
+  ****************************************************************************
+
+ Enforcing CMF defaults for Verlet or EXPO.
+ Enforcing CMF defaults for improved relaxation
+
+  ****************************************************************************
+ *****************************************************************************
+
+ Number of states in propagation=           1
+
+  Parameters: electronic
+
+                    Number of electrons    10
+ Nuclear KE flag (nonuc_checkflag):         1
+
+ ********  SINC DVR PARAMS ******** 
+ griddim,spacing           3  0.40185999999999999     
+ numpoints          15          15          15
+ numcenters           5
+ nuccharge   6.0000000000000000     
+ centershift   0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ nuccharge   1.0000000000000000     
+ centershift   3.0000000000000000        3.0000000000000000        3.0000000000000000     
+ nuccharge   1.0000000000000000     
+ centershift  -3.0000000000000000       -3.0000000000000000        3.0000000000000000     
+ nuccharge   1.0000000000000000     
+ centershift  -3.0000000000000000        3.0000000000000000       -3.0000000000000000     
+ nuccharge   1.0000000000000000     
+ centershift   3.0000000000000000       -3.0000000000000000       -3.0000000000000000     
+ orblanorder,orblanthresh         500   10.000000000000000     
+ notwoflag,coulflag,runtoothflag           0           1           0
+ toepflag,nonucrepflag           1           0
+ toothnbig, toothnsmall, toothngrid          57          19          19
+ orbparflag T
+   -----  
+ NBOX            1           1           1
+ totpoints        3375
+ **********************************
+
+ ************************   Parameters: config/spf    ************************   
+
+ Doing full CI: numshells=1.  Shells:
+ Shell            1
+   1a    1b    2a    2b    3a    3b    4a    4b    5a    5b    6a    6b 
+   7a    7b 
+  Final shell occupancy level vexcite=          99
+
+    Number of unfrozen spfs:      7
+    Number of frozen spfs:        0
+            Spfs start in m=     0   0   0   0   0   0   0
+
+ Configurations will be restricted to spin projection           0 /2
+  Configurations will be restricted to spin            0
+
+ ***********************    Initial state      ***********************   
+
+ Spfs will be one-electron eigfuncts.
+
+ Sfp Quad flag is OFF.
+ Improvednatflag is ON.
+
+ Avector Quad flag is OFF.
+ Avector will be obtained from diagonalization.
+
+ ***********************    Parameters: propagation    ***********************   
+
+  PAR_TIMESTEP IS   0.50000000000000000       LITTLESTEPS IS            1
+
+ Calculation will be stopped with threshold    9.9999999999999995E-008 ; timestep is   0.50000000000000000     
+
+
+ *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   *******  
+
+     Will use sparse configuration routines.
+           Lanczosorder is          200
+           Lanthresh is       1.0000000000000001E-009
+           Aorder is                300
+           Maxaorder is            1000
+           Aerror is          1.0000000000000001E-009
+  Using EXPONENTIAL integration.
+     Expotol    =   1.0000000000000001E-009
+     Maxexpodim=          30
+     Jacprojorth=           0
+     Jacsymflag=           0
+     Jacunitflag=           0
+
+ Density matrix regularized with denreg= 0.100E-29
+
+
+ ****************************************************************************
+
+ Autosteps is            2  Autosize is        40001  Numpropsteps is        80000
+ Fluxsteps is            1  Fluxtimestep is   0.50000000000000000     
+
+ *****************************************************************************
+
+
+
+  ****************************************************************************
+
+ Enforcing CMF defaults for Verlet or EXPO.
+ Enforcing CMF defaults for improved relaxation
+
+  ****************************************************************************
+ *****************************************************************************
+
+ Number of states in propagation=           1
+
+  Parameters: electronic
+
+                    Number of electrons    10
+ Nuclear KE flag (nonuc_checkflag):         1
+
+ ********  SINC DVR PARAMS ******** 
+ griddim,spacing           3  0.40185999999999999     
+ numpoints          15          15          15
+ numcenters           5
+ nuccharge   6.0000000000000000     
+ centershift   0.0000000000000000        0.0000000000000000        0.0000000000000000     
+ nuccharge   1.0000000000000000     
+ centershift   3.0000000000000000        3.0000000000000000        3.0000000000000000     
+ nuccharge   1.0000000000000000     
+ centershift  -3.0000000000000000       -3.0000000000000000        3.0000000000000000     
+ nuccharge   1.0000000000000000     
+ centershift  -3.0000000000000000        3.0000000000000000       -3.0000000000000000     
+ nuccharge   1.0000000000000000     
+ centershift   3.0000000000000000       -3.0000000000000000       -3.0000000000000000     
+ orblanorder,orblanthresh         500   10.000000000000000     
+ notwoflag,coulflag,runtoothflag           0           1           0
+ toepflag,nonucrepflag           1           0
+ toothnbig, toothnsmall, toothngrid          57          19          19
+ orbparflag T
+   -----  
+ NBOX            1           1           1
+ totpoints        3375
+ **********************************
+
+ ************************   Parameters: config/spf    ************************   
+
+ Doing full CI: numshells=1.  Shells:
+ Shell            1
+   1a    1b    2a    2b    3a    3b    4a    4b    5a    5b    6a    6b 
+   7a    7b 
+  Final shell occupancy level vexcite=          99
+
+    Number of unfrozen spfs:      7
+    Number of frozen spfs:        0
+            Spfs start in m=     0   0   0   0   0   0   0
+
+ Configurations will be restricted to spin projection           0 /2
+  Configurations will be restricted to spin            0
+
+ ***********************    Initial state      ***********************   
+
+ Spfs will be one-electron eigfuncts.
+
+ Sfp Quad flag is OFF.
+ Improvednatflag is ON.
+
+ Avector Quad flag is OFF.
+ Avector will be obtained from diagonalization.
+
+ ***********************    Parameters: propagation    ***********************   
+
+  PAR_TIMESTEP IS   0.50000000000000000       LITTLESTEPS IS            1
+
+ Calculation will be stopped with threshold    9.9999999999999995E-008 ; timestep is   0.50000000000000000     
+
+
+ *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   *******  
+
+     Will use sparse configuration routines.
+           Lanczosorder is          200
+           Lanthresh is       1.0000000000000001E-009
+           Aorder is                300
+           Maxaorder is            1000
+           Aerror is          1.0000000000000001E-009
+  Using EXPONENTIAL integration.
+     Expotol    =   1.0000000000000001E-009
+     Maxexpodim=          30
+     Jacprojorth=           0
+     Jacsymflag=           0
+     Jacunitflag=           0
+
+ Density matrix regularized with denreg= 0.100E-29
+
+
+ ****************************************************************************
+
+ Autosteps is            2  Autosize is        40001  Numpropsteps is        80000
+ Fluxsteps is            1  Fluxtimestep is   0.50000000000000000     
+
+ *****************************************************************************
+
+
+
+  Get ORbsets.  Fewer procs than orbitals.
+  Get ORbsets.  Fewer procs than orbitals.
+  Get ORbsets.  Fewer procs than orbitals.
+
+ NEWCONFIG: NUMBER OF CONFIGURATIONS          441
+
+
+ NEWCONFIG: NUMBER OF CONFIGURATIONS          441
+
+
+ NEWCONFIG: NUMBER OF CONFIGURATIONS          441
+
+ Counting walks. Singles
+ Counting walks. Singles
+ Counting walks. Singles
+ Counting walks. Doubles
+ Counting walks. Doubles
+ Counting walks. Doubles
+
+ Maximum number of
+            single walks=           30
+            double walks=          465
+   TOTAL walks:      218295 maxdoublewalks*numconfig      205065
+
+ Allocating singlewalks
+ Allocating doublewalks
+
+ Maximum number of
+            single walks=           30
+            double walks=          465
+   TOTAL walks:      218295 maxdoublewalks*numconfig      205065
+
+ Allocating singlewalks
+ Allocating doublewalks
+
+ Maximum number of
+            single walks=           30
+            double walks=          465
+   TOTAL walks:      218295 maxdoublewalks*numconfig      205065
+
+ Allocating singlewalks
+ Allocating doublewalks
+      ..done walkalloc.
+ Calculating walks. Singles
+ No savewalks.BIN found. 
+      ..done walkalloc.
+ Calculating walks. Singles
+ No savewalks.BIN found. 
+      ..done walkalloc.
+ Calculating walks. Singles
+ No savewalks.BIN found. 
+ Calculating walks. Doubles
+ Calculating walks. Doubles
+ Calculating walks. Doubles
+ WRITING WALKS
+ DONE WRITING WALKS
+ Go spinwalks. 
+ Doing spin projector.
+ Maximum number of spin walks=            4
+ Avg number of spin walks=    2.3809523809523809     
+ Calculating spin walks.
+ Numspinsets is          161   maxspinset size is            6
+ Getting SPARSE spinset projector.  Numspinsets is          161  maxspinsetsize is            6
+ Getting spin set projectors...
+ WRITING WALKS
+ WRITING WALKS
+ ...done.  Eliminated            0  sets with total rank            0
+ Number of spin sets is now          161
+ Total # of spinvects with S^2 =    0.0000000000000000       is          196  out of          441
+ TOTAL (all processors) rank         196  out of          441
+      Spin DF rank is          196    all processors          196
+    This proc:  spinstart :            1
+
+ Closing walks.BIN
+ Calling init_project                54000
+ GO GET TWOCOULOMB. Gridpoints here, on file=          15          15          15          37
+ filling in....
+     ...filled.
+ CALL BLOCK LAN FOR ORBS,            7  VECTORS
+ DONE WRITING WALKS
+ Go spinwalks. 
+ Doing spin projector.
+ DONE WRITING WALKS
+ Go spinwalks. 
+ Doing spin projector.
+ Maximum number of spin walks=            4
+ Avg number of spin walks=    2.3809523809523809     
+ Calculating spin walks.
+ Maximum number of spin walks=            4
+ Avg number of spin walks=    2.3809523809523809     
+ Calculating spin walks.
+ Numspinsets is          161   maxspinset size is            6
+ Getting SPARSE spinset projector.  Numspinsets is          161  maxspinsetsize is            6
+ Getting spin set projectors...
+ Numspinsets is          161   maxspinset size is            6
+ Getting SPARSE spinset projector.  Numspinsets is          161  maxspinsetsize is            6
+ Getting spin set projectors...
+ ...done.  Eliminated            0  sets with total rank            0
+ Number of spin sets is now          161
+ Total # of spinvects with S^2 =    0.0000000000000000       is          196  out of          441
+ TOTAL (all processors) rank         196  out of          441
+      Spin DF rank is          196    all processors          196
+    This proc:  spinstart :            1
+
+ Closing walks.BIN
+ ...done.  Eliminated            0  sets with total rank            0
+ Number of spin sets is now          161
+ Total # of spinvects with S^2 =    0.0000000000000000       is          196  out of          441
+ TOTAL (all processors) rank         196  out of          441
+      Spin DF rank is          196    all processors          196
+    This proc:  spinstart :            1
+
+ Closing walks.BIN
+ Calling init_project                54000
+ Calling init_project                54000
+ GO GET TWOCOULOMB. Gridpoints here, on file=          15          15          15          37
+ GO GET TWOCOULOMB. Gridpoints here, on file=          15          15          15          37
+ filling in....
+     ...filled.
+ filling in....
+     ...filled.
+ CALL BLOCK LAN FOR ORBS,            7  VECTORS
+ CALL BLOCK LAN FOR ORBS,            7  VECTORS
+ FIRST ALPHA  (  27.182055627003752     ,  1.2923689896027213E-016)
+ FIRST ERR 0.2E+03 0.2E+03 0.2E+03 0.1E+04 0.1E+04 0.1E+04 0.1E+04
+ FIRST ALPHA  (  27.182055627003752     ,  1.2923689896027213E-016)
+ FIRST ERR 0.2E+03 0.2E+03 0.2E+03 0.1E+04 0.1E+04 0.1E+04 0.1E+04
+ FIRST ALPHA  (  27.182055627003752     ,  1.2923689896027213E-016)
+ FIRST ERR 0.2E+03 0.2E+03 0.2E+03 0.1E+04 0.1E+04 0.1E+04 0.1E+04
+ ENERIGES    -17.897145684986     0.000000000000    -5.354967375630     0.000000000000    -4.937799896257     0.000000000000    -2.133079307876    -0.000000000000     0.387433378253    -0.000000000000     0.962554057904     0.000000000000     4.885515058253    -0.000000000000
+ ENERIGES    -17.897145684986     0.000000000000    -5.354967375630     0.000000000000    -4.937799896257     0.000000000000    -2.133079307876    -0.000000000000     0.387433378253    -0.000000000000     0.962554057904     0.000000000000     4.885515058253    -0.000000000000
+ ENERIGES    -17.897145684986     0.000000000000    -5.354967375630     0.000000000000    -4.937799896257     0.000000000000    -2.133079307876    -0.000000000000     0.387433378253    -0.000000000000     0.962554057904     0.000000000000     4.885515058253    -0.000000000000
+ ENERIGES    -17.908741183850     0.000000000000    -6.349943741981     0.000000000000    -6.267108290209     0.000000000000    -6.225186987156     0.000000000000    -3.643084156205    -0.000000000000    -3.599288779393    -0.000000000000    -3.043679446452    -0.000000000000
+ ENERIGES    -17.908741183850     0.000000000000    -6.349943741981     0.000000000000    -6.267108290209     0.000000000000    -6.225186987156     0.000000000000    -3.643084156205    -0.000000000000    -3.599288779393    -0.000000000000    -3.043679446452    -0.000000000000
+ ENERIGES    -17.908741183850     0.000000000000    -6.349943741981     0.000000000000    -6.267108290209     0.000000000000    -6.225186987156     0.000000000000    -3.643084156205    -0.000000000000    -3.599288779393    -0.000000000000    -3.043679446452    -0.000000000000
+ ENERIGES    -17.908741186563     0.000000000000    -6.375309623913    -0.000000000000    -6.268840196498     0.000000000000    -6.268801705754     0.000000000000    -6.170089665296     0.000000000000    -4.033241389799    -0.000000000000    -3.806369733393     0.000000000000
+ ENERIGES    -17.908741186563     0.000000000000    -6.375309623913    -0.000000000000    -6.268840196498     0.000000000000    -6.268801705754     0.000000000000    -6.170089665296     0.000000000000    -4.033241389799    -0.000000000000    -3.806369733393     0.000000000000
+ ENERIGES    -17.908741186563     0.000000000000    -6.375309623913    -0.000000000000    -6.268840196498     0.000000000000    -6.268801705754     0.000000000000    -6.170089665296     0.000000000000    -4.033241389799    -0.000000000000    -3.806369733393     0.000000000000
+ ENERIGES    -17.908741186563     0.000000000000    -6.385959510105     0.000000000000    -6.268841730441     0.000000000000    -6.268841708420     0.000000000000    -6.268744073045     0.000000000000    -4.075717943246    -0.000000000000    -4.036037277599    -0.000000000000
+    checking convergence. 0.22967E+00 0.10000E+01       120
+   ERRORS  0.6E-12 0.3E-03 0.2E-07 0.4E-06 0.1E-02 0.1E-01 0.2E+00
+ Converged.   0.23929471296640159        10.000000000000000     
+ ENERIGES    -17.908741186563     0.000000000000    -6.385959510105     0.000000000000    -6.268841730441     0.000000000000    -6.268841708420     0.000000000000    -6.268744073045     0.000000000000    -4.075717943246    -0.000000000000    -4.036037277599    -0.000000000000
+    checking convergence. 0.22967E+00 0.10000E+01       120
+ ENERIGES    -17.908741186563     0.000000000000    -6.385959510105     0.000000000000    -6.268841730441     0.000000000000    -6.268841708420     0.000000000000    -6.268744073045     0.000000000000    -4.075717943246    -0.000000000000    -4.036037277599    -0.000000000000
+    checking convergence. 0.22967E+00 0.10000E+01       120
+   ERRORS  0.6E-12 0.3E-03 0.2E-07 0.4E-06 0.1E-02 0.1E-01 0.2E+00
+ Converged.   0.23929471296640159        10.000000000000000     
+ BL CALLED. ENERGIES: 
+           1 ( -17.908741186563173     ,  3.3202369538728170E-015)
+           2 ( -6.3859595101047795     ,  1.6965438929376973E-015)
+           3 ( -6.2688417304405846     ,  4.1931542939601795E-015)
+           4 ( -6.2688417084196466     ,  5.4688080833932136E-015)
+           5 ( -6.2687440730447257     ,  2.8574701712900518E-016)
+           6 ( -4.0757179432463175     , -2.0134247160116895E-015)
+           7 ( -4.0360372775990765     , -9.6958193934625175E-016)
+
+    ....Called init_project.
+ Not enough avectors loaded! will diagonalize.
+   ERRORS  0.6E-12 0.3E-03 0.2E-07 0.4E-06 0.1E-02 0.1E-01 0.2E+00
+ Converged.   0.23929471296640159        10.000000000000000     
+ BL CALLED. ENERGIES: 
+           1 ( -17.908741186563173     ,  3.3202369538728170E-015)
+           2 ( -6.3859595101047795     ,  1.6965438929376973E-015)
+           3 ( -6.2688417304405846     ,  4.1931542939601795E-015)
+           4 ( -6.2688417084196466     ,  5.4688080833932136E-015)
+           5 ( -6.2687440730447257     ,  2.8574701712900518E-016)
+           6 ( -4.0757179432463175     , -2.0134247160116895E-015)
+           7 ( -4.0360372775990765     , -9.6958193934625175E-016)
+
+    ....Called init_project.
+ Not enough avectors loaded! will diagonalize.
+ BL CALLED. ENERGIES: 
+           1 ( -17.908741186563173     ,  3.3202369538728170E-015)
+           2 ( -6.3859595101047795     ,  1.6965438929376973E-015)
+           3 ( -6.2688417304405846     ,  4.1931542939601795E-015)
+           4 ( -6.2688417084196466     ,  5.4688080833932136E-015)
+           5 ( -6.2687440730447257     ,  2.8574701712900518E-016)
+           6 ( -4.0757179432463175     , -2.0134247160116895E-015)
+           7 ( -4.0360372775990765     , -9.6958193934625175E-016)
+
+    ....Called init_project.
+ Not enough avectors loaded! will diagonalize.
+ FIRST ALPHA  ( -21.177532913438259     ,  4.9127368839663177E-015)
+ FIRST ERR 0.3E+02
+ MAX ERROR :    29.211736051384548        1.0000000000000001E-009
+ ENERIGES    -28.696739609266     0.000000000000
+ FIRST ALPHA  ( -21.177532913438259     ,  4.9127368839663177E-015)
+ FIRST ERR 0.3E+02
+ MAX ERROR :    29.211736051384548        1.0000000000000001E-009
+ ENERIGES    -28.697058167025     0.000000000000
+ FIRST ALPHA  ( -21.177532913438259     ,  4.9127368839663177E-015)
+ FIRST ERR 0.3E+02
+ MAX ERROR :    29.211736051384548        1.0000000000000001E-009
+ ENERIGES    -28.696739609266     0.000000000000
+ ENERIGES    -28.696739609266     0.000000000000
+ ENERIGES    -28.697058167153     0.000000000000
+    checking convergence. 0.12734E-09 0.10000E-09        60
+   ERRORS  0.2E-12
+ Converged.    1.6322403939350906E-013   1.0000000000000001E-009
+ ENERIGES    -28.697058167025     0.000000000000
+ ENERIGES    -28.697058167025     0.000000000000
+ ENERIGES    -28.697058167153     0.000000000000
+    checking convergence. 0.12734E-09 0.10000E-09        60
+   ERRORS  0.2E-12
+ Converged.    1.6322403939350906E-013   1.0000000000000001E-009
+ ENERIGES    -28.697058167153     0.000000000000
+    checking convergence. 0.12734E-09 0.10000E-09        60
+   ERRORS  0.2E-12
+ Converged.    1.6322403939350906E-013   1.0000000000000001E-009
+ IN PROP: VECTOR NORM  (  1.0000000000000000     ,  0.0000000000000000     )
+          ENERGY  ( -28.697058167152825     ,  8.9380965253917610E-016)
+ IN PROP: VECTOR NORM  (  1.0000000000000000     ,  0.0000000000000000     )
+          ENERGY  ( -28.697058167152825     ,  8.9380965253917610E-016)
+ IN PROP: VECTOR NORM  (  1.0000000000000000     ,  0.0000000000000000     )
+          ENERGY  ( -28.697058167152825     ,  8.9380965253917610E-016)
+ REPLACING SPFS - DENMAT EIGS
+         0.1999958107E+01
+         0.1999421403E+01
+         0.1999354258E+01
+         0.1993661921E+01
+         0.1987673648E+01
+         0.1077812780E-01
+         0.9152535210E-02
+
+ REPLACING SPFS - DENMAT EIGS
+         0.1999958107E+01
+         0.1999421403E+01
+         0.1999354258E+01
+         0.1993661921E+01
+         0.1987673648E+01
+         0.1077812780E-01
+         0.9152535210E-02
+
+ REPLACING SPFS - DENMAT EIGS
+         0.1999958107E+01
+         0.1999421403E+01
+         0.1999354258E+01
+         0.1993661921E+01
+         0.1987673648E+01
+         0.1077812780E-01
+         0.9152535210E-02
+
+ Writing psi stats.
+T=          0.50000  Energy:  -0.3482047080E+02  0.7438820038E-14    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.20E+01  0.10E-06  AVECTOR   0.21E+04  0.10E+01
+ Writing psi stats.
+T=          0.50000  Energy:  -0.3482047080E+02  0.7438820038E-14    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.20E+01  0.10E-06  AVECTOR   0.21E+04  0.10E+01
+ Writing psi stats.
+T=          0.50000  Energy:  -0.3482047080E+02  0.7438820038E-14    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.20E+01  0.10E-06  AVECTOR   0.21E+04  0.10E+01
+ REPLACING SPFS - DENMAT EIGS
+         0.1999995992E+01
+         0.1998629110E+01
+         0.1997340596E+01
+         0.1993251616E+01
+         0.1990373679E+01
+         0.1106300772E-01
+         0.9345997788E-02
+
+ REPLACING SPFS - DENMAT EIGS
+         0.1999995992E+01
+         0.1998629110E+01
+         0.1997340596E+01
+         0.1993251616E+01
+         0.1990373679E+01
+         0.1106300772E-01
+         0.9345997788E-02
+
+ REPLACING SPFS - DENMAT EIGS
+         0.1999995992E+01
+         0.1998629110E+01
+         0.1997340596E+01
+         0.1993251616E+01
+         0.1990373679E+01
+         0.1106300772E-01
+         0.9345997788E-02
+
+T=          1.00000  Energy:  -0.3565177400E+02  0.7054825526E-14    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.88E+00  0.10E-06  AVECTOR   0.17E+01  0.10E+01
+T=          1.00000  Energy:  -0.3565177400E+02  0.7054825526E-14    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.88E+00  0.10E-06  AVECTOR   0.17E+01  0.10E+01
+T=          1.00000  Energy:  -0.3565177400E+02  0.7054825526E-14    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.88E+00  0.10E-06  AVECTOR   0.17E+01  0.10E+01
+ REPLACING SPFS - DENMAT EIGS
+         0.1999994360E+01
+         0.1999079611E+01
+         0.1998409812E+01
+         0.1989637627E+01
+         0.1985217040E+01
+         0.1486656555E-01
+         0.1279498379E-01
+
+ REPLACING SPFS - DENMAT EIGS
+         0.1999994360E+01
+         0.1999079611E+01
+         0.1998409812E+01
+         0.1989637627E+01
+         0.1985217040E+01
+         0.1486656555E-01
+         0.1279498379E-01
+
+ REPLACING SPFS - DENMAT EIGS
+         0.1999994360E+01
+         0.1999079611E+01
+         0.1998409812E+01
+         0.1989637627E+01
+         0.1985217040E+01
+         0.1486656555E-01
+         0.1279498379E-01
+

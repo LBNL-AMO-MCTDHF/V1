@@ -1,0 +1,13 @@
+#!/bin/bash -l
+#PBS -q lr_condo
+#PBS -l nodes=#nnodes#:ppn=#corespernode#,qos=lr3_axl
+#PBS -A lr_axl
+#PBS -l walltime=#walltime#
+#PBS -N #jobname#
+#PBS -e #jobname#.$PBS_JOBID.err
+#PBS -o #jobname#.$PBS_JOBID.out
+
+cd $PBS_O_WORKDIR
+cat $PBS_NODEFILE
+python mpilaunchscript.py
+qstat -f $PBS_JOBID

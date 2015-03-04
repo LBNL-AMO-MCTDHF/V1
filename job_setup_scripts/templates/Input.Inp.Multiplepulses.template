@@ -1,0 +1,50 @@
+
+$pulse
+ velflag=#velflag#
+ numpulses=#numpulses#
+ pulsetype=#pulsetypelist#
+ omega2=#omega2list#
+ omega=#omegalist#
+ pulsestrength=#pulsestrengthlist#
+ phaseshift=#CEPlist#
+ pulsestart=#pulsestartlist#
+ pulsetheta=#pulsethetalist#
+ minpulsetime=#tfinal#
+/
+
+
+
+$parinp
+
+notiming=2
+
+
+loadavectorflag=1
+avectorfile="avector.bin.#inpstr#"
+loadspfflag=1
+spffile="spfs.bin.#inpstr#"
+
+avectoroutfile="avector.bin.#outstr#"
+spfoutfile="spfs.bin.#outstr#"
+
+
+
+tdflag=1
+
+par_timestep=#timestep#
+
+
+numactions=1
+actions=21
+autotimestep=#measurementtimestep#
+
+  
+#atomstr#
+/
+
+#gridstr#
+
+
+
+
+

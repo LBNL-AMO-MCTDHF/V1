@@ -1,0 +1,61 @@
+$parinp
+
+mcscfnum=2
+
+configlistfile="WALKS/cation.configlist.BIN.doub.sig_g"
+
+avectoroutfile="Bin/avector.bin.cation.doub.sig_g"
+spfoutfile="Bin/spfs.bin.cation.doub.sig_g"
+
+messflag=1
+messamount=1d-4
+
+numelec=15
+
+sparseconfigflag=1
+
+nspf = 10
+
+spfrestrictflag=1
+spfugrestrict=1
+
+spfmvals =  0, 0, 0, 0, 1,-1, 0, 1,-1,    0, 1,-1
+spfugvals=  1, 1,-1,-1,-1,-1, 1, 1, 1,   -1,-1,-1
+
+restrictflag=1
+restrictms=1
+
+mrestrictflag=1
+mrestrictval=0
+
+ugrestrictflag=1
+ugrestrictval=1
+
+improvedrelaxflag=1
+improvednatflag=1
+
+par_timestep=1.0d0
+
+stopthresh =  1.d-8
+
+/
+
+
+
+$h2parinp
+
+
+NucCharge1=8d0
+NucCharge2=8d0
+
+LBIG=10,MBIG=1
+
+xinumpoints=12
+xinumelements=7
+xicelement=6
+xiecstheta=0.4d0
+xielementsizes=5d0,5d0,5d0,5d0,5d0,  5d0,10d0
+
+rstart=2.282d0
+
+/

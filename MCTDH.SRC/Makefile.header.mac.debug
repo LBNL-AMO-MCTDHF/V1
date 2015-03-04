@@ -1,0 +1,22 @@
+  
+MPIFLAG = 
+FFTFLAG =
+PGFFLAG = 
+
+ARGO=arg.o
+
+AR=ar
+CC = gcc 
+FC = gfortran -ffree-line-length-none -mtune=native   
+F90 = gfortran -ffree-line-length-none -mtune=native  
+
+LAPACK = -framework Accelerate  
+
+LOADFLAGS = 
+
+MYINCLUDE=.
+	
+FFLAGS = -O2 -x f95-cpp-input -Wall -ffast-math -fbounds-check
+F77FLAGS = -O2  -ffast-math 
+
+

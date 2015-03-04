@@ -1,0 +1,23 @@
+#!/bin/bash -l
+#Job name:
+#SBATCH --job-name=#jobname#
+
+#SBATCH --nodes=#nnodes#
+#SBATCH --ntasks-per-node=#corespernode#
+
+#SBATCH --partition=lr3
+#SBATCH --account=lr_axl
+#SBATCH --qos=condo_axl
+
+
+#Wall clock limit:
+#SBATCH --time=#walltime#
+
+
+
+cd $SLURM_SUBMIT_DIR
+echo $SLURM_JOB_NODELIST
+echo $SLURM_TASKS_PER_NODE
+echo $LD_LIBRARY_PATH
+echo $PATH
+ht_helper.sh -t taskfile.txt -n1 -s1 -dvk

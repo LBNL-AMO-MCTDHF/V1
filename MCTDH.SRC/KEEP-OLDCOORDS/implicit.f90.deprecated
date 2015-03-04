@@ -1,0 +1,689 @@
+
+!! EXPERIMENTAL IMPLICIT PROPAGATION ROUTINES (ORBITALS)
+
+#include "Definitions.INC"
+
+
+module iispfmod
+  implicit none
+  DATATYPE, allocatable :: vector(:), error(:), cn_one(:) 
+end module
+
+module iijacmod
+  implicit none
+  DATATYPE, allocatable :: jacvect(:,:)     !! orbitals used to construct jacobian
+  DATATYPE, allocatable :: jacvectout(:,:)  !! rho^-1 W jacvect = Q jacvect
+  DATATYPE, allocatable :: jacvectconjg(:,:)     !! orbitals used to construct jacobian
+  DATATYPE, allocatable :: jacvectoutconjg(:,:)  !! rho^-1 W jacvect = Q jacvect
+  DATATYPE, allocatable :: jactemp2(:,:)  !! internal to jacoperate
+  DATATYPE, allocatable :: jactemp3(:,:)  !! internal to jacoperate
+  DATATYPE, allocatable :: hessvect(:,:)  !! internal to hessian
+  integer, allocatable :: ipiv(:)
+  real*8, allocatable :: gvec(:)
+  real*8 :: jactime, jacstep
+  complex*16 :: hessfact=0.d0
+end module iijacmod
+
+
+subroutine iijacmodalloc()
+  use iijacmod
+  use iispfmod
+  use parameters
+  implicit none
+  allocate(hessvect(spfsize,nspf), jacvect(spfsize,nspf), jacvectout(spfsize,nspf), jacvectconjg(spfsize,nspf), jacvectoutconjg(spfsize,nspf), jactemp2(spfsize,nspf), jactemp3(spfsize,nspf))
+  allocate(vector(totspfdim), error(totspfdim), cn_one(totspfdim) )
+end subroutine iijacmodalloc
+
+
+subroutine iijacmoddealloc()
+  use iijacmod
+  use iispfmod
+  implicit none
+  deallocate( hessvect, jacvect, jacvectout, jacvectconjg, jacvectoutconjg, jactemp2, jactemp3 )
+  deallocate(vector, error, cn_one)
+end subroutine iijacmoddealloc
+
+module iispftimes
+  implicit none
+  integer :: ytimes(20)=0
+end module
+
+subroutine implicit_prop_wfn(tin, tout)
+  use propagatemod  !! totsteps
+  use parameters
+  use yyymod
+  use iglobalmod
+  use iispftimes
+  use mpimod
+  implicit none
+
+  integer ::  itime,jtime,times(0:20)=0, i,xtimes(10)=0
+  real*8, external ::   spf_linear_derivs , gbs_linear_derivs , dummysub, ksderivs
+  real*8 :: tout, tin, dev, nulldouble(2)  !!$  orbchange, achange,
+  real*8, save :: cmftimes(0:20,20)=-99
+  integer ::  numiters, convflag, numcalledhere=0, totnumiters, numcycles, ss
+
+  numcalledhere=numcalledhere+1
+  call system_clock(itime)
+  call iijacmodalloc()
+  call precon2init(tout-tin)
+  call system_clock(jtime)
+  times(0)=times(0)+jtime-itime    !! TIME 0 = startup
+
+  cmfonflag=1
+  totsteps(iglobalprop)=totsteps(iglobalprop)+1
+  cmftimes(0,iglobalprop)=tin
+
+  call system_clock(itime)
+  do i=1,1
+     yyy%invdenmat(:,:,i) = yyy%invdenmat(:,:,i-1)
+     yyy%denmat(:,:,i) = yyy%denmat(:,:,i-1)
+     yyy%reducedinvrsq(:,:,i)=yyy%reducedinvrsq(:,:,i-1)
+     yyy%reducedinvr(:,:,i)=yyy%reducedinvr(:,:,i-1)
+     yyy%reducedr(:,:,i)=yyy%reducedr(:,:,i-1)
+     if (nonuc_checkflag/=1) then
+        yyy%reducedproderiv(:,:,i)=yyy%reducedproderiv(:,:,i-1)
+     endif
+     yyy%reducedpot(:,:,:,:,:,i) = yyy%reducedpot(:,:,:,:,:,i-1)
+     if (constraintflag/=0) then
+        yyy%conmatels(:,:,i) = yyy%conmatels(:,:, i-1)
+     endif
+  enddo
+#ifndef NEWWALKS
+  do i = (-1),(-1)
+     yyy%configopmatel(:,:,-i) = yyy%configopmatel(:,:, -i-1)
+     yyy%configpotmatel(:,:,-i) = yyy%configpotmatel(:,:, -i-1)
+     if (tdflag.eq.1) then
+        yyy%configpulsematel(:,:,-i) = yyy%configpulsematel(:,:, -i-1)
+     endif
+     if (nonuc_checkflag/=1) then
+        yyy%configymatel(:,:,-i) = yyy%configymatel(:,:, -i-1)
+     endif
+     if (constraintflag/=0) then
+        yyy%configconmatel(:,:,-i) = yyy%configconmatel(:,:, -i-1)
+     endif
+  enddo
+#endif
+
+!! hardwire for implicit in xarr.f90  do i=-1,-1
+  do i=-2,-1,1
+     yyy%cmfpsivec(:,-i)= yyy%cmfpsivec(:,-i-1)
+  enddo
+
+  do i=2,1,-1
+     cmftimes(i,iglobalprop) =  cmftimes(i-1,iglobalprop)
+  enddo
+
+  cmftimes(0,iglobalprop)=tout
+
+  call system_clock(jtime)
+  times(6)=times(6)+jtime-itime    !! TIME 6 = advance
+
+  convflag=0
+
+  totnumiters=0; ss=0
+  do while (convflag.eq.0)
+     ss=ss+1
+
+!!!   **************************************
+!!!  **********    AVECTOR PROP    ***********
+!!!   **************************************
+
+     call system_clock(itime)
+     call cmf_prop_avector(yyy%cmfpsivec(astart,1), yyy%cmfpsivec(astart,0), xtimes, 0)
+     call system_clock(jtime);     times(5)=times(5)+jtime-itime   !! TIME 5 = avector
+
+#define EXMATS
+#ifdef EXMATS
+     call system_clock(itime)
+     call getdenmat(yyy%cmfpsivec(astart,0))
+     call inv_denmat()
+     call system_clock(jtime);  times(2)=times(2)+jtime-itime   !! TIME 2 = denmat
+     
+     call system_clock(itime)
+     call all_matel(yyy%cmfpsivec(spfstart,0),1, tout)
+     call system_clock(jtime);  times(1)=times(1)+jtime-itime   !! TIME 1 = matel
+
+     if (constraintflag.ne.0) then
+        call system_clock(itime)
+        call get_constraint()
+#ifndef NEWWALKS
+        call configcon_matel()
+#endif
+        call system_clock(jtime);        times(9)=times(9)+jtime-itime  !! TIME 9 = constr
+     endif
+     
+     call system_clock(itime)
+     call get_reducedham(yyy%cmfpsivec(astart,0),1,tout)  
+     call system_clock(jtime);  times(3)=times(3)+jtime-itime   !! TIME 3 = reduced
+
+#endif
+
+!!!   **************************************
+!!!  **********       SPF PROP    ***********
+!!!   **************************************
+
+     call system_clock(itime)     
+
+     dev=myrelerr
+     call implicitspfs(yyy%cmfpsivec(spfstart,1), yyy%cmfpsivec(spfstart,0), tin, tout, numiters, dev, numcycles)
+     totnumiters=totnumiters+numiters
+     call system_clock(jtime);  times(4)=times(4)+jtime-itime   !! TIME 4 = spfs
+
+!  in implicitspfs- no
+     call system_clock(itime)
+     if (spfrestrictflag==1) then
+        call restrict_spfs(yyy%cmfpsivec(spfstart,0))   
+        if (spfugrestrict.ne.0) then
+           call ugrestrict_spfs(yyy%cmfpsivec(spfstart,0))   
+        endif
+     endif
+
+     call spf_orthogit(yyy%cmfpsivec(spfstart,0), nspf, nulldouble)
+     call system_clock(jtime);  times(8)=times(8)+jtime-itime   !! TIME 8 = orthog
+
+!     call spf_orthog_error(yyy%cmfpsivec(spfstart,0), nspf, nulldouble)
+!     print *, "           after implicitspfs, orthog err ", nulldouble
+
+     call system_clock(itime)
+     call getdenmat(yyy%cmfpsivec(astart,0))
+     call inv_denmat()
+     call system_clock(jtime);  times(2)=times(2)+jtime-itime   !! TIME 2 = denmat
+     
+     call system_clock(itime)
+     call all_matel(yyy%cmfpsivec(spfstart,0),1, tout)
+     call system_clock(jtime);  times(1)=times(1)+jtime-itime   !! TIME 1 = matel
+
+     if (constraintflag.ne.0) then
+        call system_clock(itime)
+        call get_constraint()
+#ifndef NEWWALKS
+        call configcon_matel()
+#endif
+        call system_clock(jtime);        times(9)=times(9)+jtime-itime  !! TIME 9 = constr
+     endif
+
+     call system_clock(itime)
+     call get_reducedham(yyy%cmfpsivec(astart,0),1,tout)  
+     call system_clock(jtime);  times(3)=times(3)+jtime-itime   !! TIME 3 = reduced
+     call system_clock(itime)
+
+!! check convergence
+     call openfile()
+     if ((numcycles.eq.1).and.(dev.lt.myrelerr)) then
+        write(mpifileptr,*) " IMPLICIT conv : ", numcycles, totnumiters, dev
+        convflag=1
+     else
+        write(mpifileptr,*) " IMP not conv  : ", numcycles, totnumiters, dev
+     endif
+     call closefile()
+
+  end do
+
+  call output_denmat(1,tout)
+
+  if ((myrank.eq.1).and.(iglobalprop.eq.1)) then  !!.and.(notiming.eq.0)) then
+     if (cmfcalledflag(iglobalprop)==0) then
+        open(853, file="implicit_prop.time.dat", status="unknown")
+!!                                              0         1        2            3          4        5          6           8             9
+        write(853,'(A15,100A11)')  "Time",  "startup", "matel", "denmat", "reduced", "spfprop", "aprop",  "advance", "spforthog", "denconstrain", "numiters"
+        close(853)
+
+        open(853, file="implicit_aprop.time.dat", status="unknown")
+        write(853,'(A15,100A11)')  "Time", "Init", "Setup", "Eigsolve", "Lancross", "LC solve", "Read/wr", "MPI", "Korders"
+        close(853)
+
+        open(853, file="implicit_sprop.time.dat", status="unknown")
+        write(853,'(A15,100A11)')  "Time", "Init", "Tot dgm", "Jacoper", "Precon", "PBcast"
+        close(853)
+
+     endif
+  endif
+  if ((myrank.eq.1).and.(mod(numcalledhere,timingout).eq.0)) then !!.and.(notiming.eq.0)) then
+        open(853, file="implicit_prop.time.dat", status="unknown", position="append")
+        write(853,'(A3,F12.3,T16, 100I11)')  "T=", tout, times(0:6)/1000, times(8:9)/1000, numiters
+        close(853)
+        open(853, file="implicit_aprop.time.dat", status="unknown", position="append")
+        write(853,'(A3,F12.3,T16, 100I11)')  "T=", tout, xtimes(1:7)/1000, xtimes(8)
+        close(853)
+        open(853, file="implicit_sprop.time.dat", status="unknown", position="append")
+        write(853,'(A3,F12.3,T16, 100I11)')  "T=", tout, ytimes(1:5)/1000
+        close(853)
+  endif
+
+
+  cmfcalledflag(iglobalprop)=cmfcalledflag(iglobalprop)+1
+
+!!  deallocate(prevwfn)
+
+  call iijacmoddealloc()
+  call system_clock(jtime)
+  times(0)=times(0)+jtime-itime    !! TIME 0 = startup
+
+
+end subroutine implicit_prop_wfn
+
+
+
+#include "Definitions.INC"
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! implicit SUBROUTINES !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+!! assume we are all ready with operators in time 1 and 0 slots.
+!!  solve equation for nextspfs (time 0) given inspfs (time 1)
+!!  initial guess for nextspfs is used if on input jjcalls.ne.(-1).
+!!  All quantities ready and constant in slots 0 and 1.
+
+!! nextspfs is guess, on input; next spfs, on output.
+
+!! dev is now input:
+!! if error is above dev exit; otherwise set dev to error; do solve; find new error; repeat
+
+subroutine implicitspfs(inspfs,nextspfs, tin,tout, totcalls, inerr, numcycles)
+  use parameters
+  use iispftimes
+  use iijacmod !! just for hessvect
+  use iispfmod
+  implicit none
+  EXTERNAL :: iijacoperate, iihessian, iihessian2
+  real*8 :: nulldouble, tin, tout, dev, inerr
+  integer :: jjcalls, itime, jtime, totcalls, numcycles,nullint,i   !!, jj, kk
+  DATATYPE :: inspfs(totspfdim), nextspfs(totspfdim)
+  DATATYPE :: hermdot !!, dot
+  
+  external :: precon2
+
+  vector=inspfs
+  totcalls=0
+
+!!  call spf_orthogit(vector,nspf,nulldouble)
+
+  call system_clock(itime)
+
+  call actreduced(tin,vector,vector,cn_one,1)
+
+  call system_clock(jtime)
+  ytimes(1)=ytimes(1)+jtime-itime
+
+!! half of error term from initial (trapezoidal rule)   actreduced has timefac (-i)
+
+  cn_one= 0.5d0*(tout-tin)*cn_one + vector
+
+  numcycles=0
+
+  hessfact=(0.d0,1.d-3)
+  hessfact=0.d0
+
+  333 continue
+  numcycles=numcycles+1
+
+  call system_clock(itime)
+
+  call iijacinit(nextspfs,tin,tout)
+  call actreduced(tout,nextspfs,nextspfs,error,0)
+
+  call system_clock(jtime)
+  ytimes(1)=ytimes(1)+jtime-itime
+
+  error= (-0.5d0)*(tout-tin)*error + nextspfs
+  error=cn_one - error
+  dev=abs(sqrt(hermdot(error,error,totspfdim)/nspf))
+
+  if (dev.lt.inerr) then
+     call openfile();     write(mpifileptr,'(a,E10.1,$)')  " CONV! : ", dev;     call closefile()
+  else
+     call system_clock(itime)
+     if (hessflag.ne.0) then
+        if (hessflag.eq.2) then
+           call actreduced(tout,nextspfs,nextspfs,hessvect,0)
+           call iijacoperateconjg0(nullint, hessvect, error,0)
+           error=error*(tout-tin)**2/4d0 + nextspfs
+           call iijacoperateconjg0(nullint, cn_one, hessvect,0)
+           error=error + ( reshape(hessvect,(/totspfdim/))*(tout-tin)/2.d0 - cn_one )
+           call dgsolve( error, vector, jjcalls, iihessian2, 0, precon2, quadtol,totspfdim)
+        else
+           call iijacoperateconjg(nullint, error, hessvect)
+           error=reshape(hessvect,(/totspfdim/)) 
+           call dgsolve( error, vector, jjcalls, iihessian, 0, precon2, quadtol,totspfdim)
+        endif
+     else
+        call dgsolve( error, vector, jjcalls, iijacoperate, 0, precon2, quadtol,totspfdim)
+     endif
+
+     call openfile();     write(mpifileptr,'(a,E10.1,I6,$)')  " IMPCALLD: ", dev,jjcalls;     call closefile()
+
+     totcalls=totcalls+jjcalls
+     call system_clock(jtime)
+     ytimes(2)=ytimes(2)+jtime-itime
+     call system_clock (itime)
+
+     nextspfs=nextspfs+ vector
+     if (spfrestrictflag==1) then
+        call restrict_spfs(nextspfs)   
+        if (spfugrestrict.ne.0) then
+           call ugrestrict_spfs(nextspfs)
+        endif
+     endif
+if (hessflag.ne.0) then
+     call spf_orthogit(nextspfs,nspf,nulldouble)
+endif
+     call system_clock(jtime)
+     ytimes(1)=ytimes(1)+jtime-itime
+
+     go to 333
+
+  endif
+!  call spf_orthogit(nextspfs,nspf,nulldouble)
+
+  call openfile(); write(mpifileptr,*); call closefile()
+  inerr=dev
+
+end subroutine implicitspfs
+
+
+subroutine iihessian(nullint, inspfs,outspfs)
+  use parameters
+  use iijacmod
+  implicit none
+  integer ::  nullint
+  DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf)  
+  call iijacoperate(nullint,inspfs,hessvect)
+  call iijacoperateconjg(nullint,hessvect,outspfs)
+  outspfs=outspfs+ hessfact * inspfs
+end subroutine iihessian
+
+
+subroutine iihessian2(nullint, inspfs,outspfs)
+  use parameters
+  use iijacmod
+  implicit none
+  integer ::  nullint
+  DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf)  
+  call iijacoperate0(nullint,inspfs,hessvect,0)
+  call iijacoperateconjg0(nullint,hessvect,outspfs,0)
+  outspfs = (-1) * jacstep**2/4d0 * outspfs + (-1) * inspfs
+  outspfs=outspfs
+end subroutine iihessian2
+
+
+subroutine iijacoperate(nullint, inspfs,outspfs)
+  use parameters
+  implicit none
+  integer :: nullint
+  DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf)
+  call iijacoperate0(nullint, inspfs,outspfs,1)
+end subroutine iijacoperate
+
+!! mode=1: 1-0.5*J   mode=2: J
+subroutine iijacoperate0(nullint, inspfs,outspfs,inmode)
+  use parameters
+  use iijacmod
+  use iispftimes
+  implicit none
+  integer :: i, nullint, itime, jtime, inmode
+  DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf), nulldouble(2)
+
+  call system_clock(itime)
+  outspfs=0.d0
+  call actreduced0(jactime, inspfs,nulldouble, jactemp3,0,0)
+  outspfs=outspfs+jactemp3
+  call project(jactemp3,jactemp2,jacvect,i)
+  outspfs=outspfs-jactemp2
+
+!! terms from projector
+
+  call derproject(jacvectout,jactemp2,jacvect,inspfs)
+  outspfs=outspfs-jactemp2
+
+!! that's the jacobian.  We want 1 + i/2 delta-t times jacobian.   timefac (-i) is already in actreduced.
+  if (inmode.eq.1) then
+     outspfs=outspfs * (-0.5d0) * jacstep + inspfs
+  endif
+  call system_clock(jtime)
+  ytimes(3)=ytimes(3)+jtime-itime
+end subroutine iijacoperate0
+
+subroutine iijacoperateconjg(nullint, inspfs,outspfs)
+  use parameters
+  implicit none
+  integer :: nullint
+  DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf)
+  call iijacoperateconjg0(nullint, inspfs,outspfs,1)
+end subroutine iijacoperateconjg
+
+
+subroutine iijacoperateconjg0(nullint, inspfs,outspfs,inmode)
+  use parameters
+  use iijacmod
+  use iispftimes
+  implicit none
+  integer :: i, nullint, itime, jtime, inmode
+  DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf), nulldouble(2)
+
+  call system_clock(itime)
+  call actreducedconjg0(jactime, inspfs,nulldouble, outspfs,0,0)
+#ifdef CNORMFLAG  
+  call project(inspfs,jactemp2,jacvectconjg,i)
+#else
+  call project(inspfs,jactemp2,jacvect,i)
+#endif
+  call actreducedconjg0(jactime, jactemp2,nulldouble, jactemp3,0,0)
+  outspfs=outspfs-jactemp3
+
+!! terms from projector (copying old_expo)
+
+  call derprojectconjg(jacvect,jactemp2,jacvectout,inspfs)
+  outspfs=outspfs-jactemp2
+
+!! that's the jacobian.  We want 1 + i/2 delta-t times jacobian.   timefac (-i) is already in actreduced.
+
+  if (inmode.eq.1) then
+     outspfs=outspfs * (-0.5d0) * jacstep + inspfs
+  endif
+  call system_clock(jtime)
+  ytimes(3)=ytimes(3)+jtime-itime
+
+end subroutine iijacoperateconjg0
+
+
+subroutine iijacinit(inspfs, t1, t2) 
+  use parameters
+  use iijacmod
+  implicit none
+  DATATYPE :: inspfs(spfsize,nspf) 
+  DATATYPE :: nulldouble(2) !! AUTOMATIC
+  real*8 :: t1,t2
+  jactime=t2;  jacvect=inspfs;  jacstep=t2-t1
+  call spf_orthogit(jacvect,nspf,nulldouble)
+  call actreduced0(jactime,jacvect,nulldouble,jacvectout,0,0)
+end subroutine iijacinit
+
+
+!! if nullint=(-1) (never on dgsolve call) then initialize: timestep is input timestep else timestep is not referenced
+!! if nullint= -2 (never) then deallocate
+!!  in either case in and out not referenced
+
+module precon2mod
+  implicit none
+  DATATYPE, allocatable :: premat(:,:,:), xwork(:), pretemp(:,:), intemp(:,:,:)
+  integer, allocatable :: xipiv(:)
+  integer :: xlwork=-99
+  real*8 :: preconstep
+end module
+
+
+subroutine precon2(nullint1, in,out)
+  use parameters
+  use precon2mod
+  implicit none
+  integer :: nullint1
+  DATATYPE :: in(edim,-mbig:mbig,nspf), out(edim,-mbig:mbig,nspf)
+  DATATYPE, allocatable, save :: prehess(:,:,:)
+  integer, save :: presize=(-1)
+  if (hessflag.ne.0.and.1==0) then
+     if (presize.eq.(-1)) then
+        allocate(prehess(edim,edim,0:mbig))
+        presize=nullint1
+     else if (presize.ne.nullint1) then
+        deallocate(prehess)
+        allocate(prehess(edim,edim,0:mbig))
+     endif
+     presize=nullint1
+     call precon2x0(nullint1, in,prehess,0)
+     call precon2x0(nullint1, prehess,out,1)
+  else
+     call precon2x0(nullint1, in,out,0)
+  endif
+end subroutine precon2
+
+
+
+subroutine precon2dealloc()
+  use parameters
+  use precon2mod
+  implicit none
+  call openfile();      write(mpifileptr,*) "Dealloc precon.";     call closefile()
+  deallocate(xipiv, xwork,  premat, pretemp, intemp)
+  xlwork=(-99)
+end subroutine precon2dealloc
+
+
+subroutine precon2init(timestep)
+  use parameters
+  use h2projectmod
+  use precon2mod
+  implicit none
+  real*8 :: timestep
+  integer ::  imval, ierr, iii, ixi, il
+
+  if (xlwork.ne.(-99)) then !! is allocated...
+     if (preconstep.ne.timestep) then
+        call precon2dealloc()
+     else
+        return
+     endif
+  endif
+
+  preconstep=timestep
+  call openfile();        write(mpifileptr,*) "Getting preconditioner, timestep", timestep
+  call closefile()
+  xlwork=edim*10
+  allocate(xipiv(edim), xwork(xlwork))
+  allocate(premat(edim,edim,0:mbig), pretemp(edim,edim))
+  allocate(intemp(edim,-mbig:mbig,nspf))
+  premat=0.d0
+
+  do imval=0,mbig
+
+     premat(:,:,imval) = (RESHAPE(proham(:,:,:,:,abs(imval)+1), (/ edim, edim /)))
+     iii=0
+     do il=1,lbig+1
+        do ixi=1,numerad
+           iii=iii+1
+!!orig           premat(iii,iii,imval)=premat(iii,iii,imval) + 1.d0 - pot(ixi,il) * (-1.d0) * timestep*timefac
+
+           premat(iii,iii,imval)=premat(iii,iii,imval) + 1.d0 
+
+        enddo
+     enddo
+  enddo
+
+  do imval=0,mbig
+     call MYGETRF(edim,edim,premat(:,:,imval), edim,xipiv,ierr)
+     if (ierr/=0) then
+        call openfile();    write(mpifileptr,*) "Precon err mygetrf ", ierr
+        call closefile();           call mpistop()
+     endif
+     call MYGETRI(edim,premat(:,:,imval), edim,xipiv,xwork,xlwork,ierr)
+     if (ierr/=0) then
+        call openfile();   write(mpifileptr,*) "Precon err mygetrf ", ierr
+        call closefile();           call mpistop()
+     endif
+  enddo
+
+  call openfile();     write(mpifileptr,*) "Done.";     call closefile()
+        
+end subroutine precon2init
+
+
+
+
+subroutine precon2x0(nullint1, in,out, inconjgflag)
+  use parameters
+  use iispftimes
+  use mpimod
+  use precon2mod
+  implicit none
+
+  integer :: nullint1,  imval, ii,  itime, jtime, inconjgflag
+  DATATYPE :: in(edim,-mbig:mbig,nspf), out(edim,-mbig:mbig,nspf)
+
+     call system_clock(itime)
+
+     intemp=in
+     do ii=1,nspf
+        if (mod(ii-1,nprocs)+1.eq.myrank) then
+           
+           do imval = -mbig,mbig
+              if (inconjgflag.ne.0) then
+                 call MYGEMV('C',edim,edim,DATAONE,premat(:,:,abs(imval)),edim,intemp(:,imval,ii),1,DATAZERO,out(:,imval,ii),1)
+              else
+                 call MYGEMV('N',edim,edim,DATAONE,premat(:,:,abs(imval)),edim,intemp(:,imval,ii),1,DATAZERO,out(:,imval,ii),1)
+              endif
+           enddo
+        endif
+     enddo
+     call system_clock(jtime)
+     ytimes(4)=ytimes(4)+jtime-itime
+     call system_clock(itime)
+     do ii=1,nspf
+        call mympibcast(out(:,:,ii),mod(ii-1,nprocs)+1,spfsize)
+     enddo
+     call system_clock(jtime)
+     ytimes(5)=ytimes(5)+jtime-itime
+
+end subroutine precon2x0
+
+
+
+
+
+subroutine second_derivs0(thistime,inspfs,sdspfs)
+  use parameters
+  use mpimod
+  implicit none
+
+  DATATYPE :: inspfs(spfsize,nspf), sdspfs(spfsize,nspf)
+  DATATYPE, save, allocatable :: derspfs0(:,:), workoutspfs0(:,:), workspfs0(:,:)
+  real*8 :: thistime
+  DATATYPE :: nullspfs(1)
+  integer :: allocated=0, inull
+
+  if (allocated==0) then
+     allocate(workoutspfs0(spfsize,nspf))
+     allocate(workspfs0(spfsize,nspf))
+     allocate(derspfs0(spfsize,nspf))
+     allocated=1
+  endif
+
+  call actreduced0(thistime, inspfs, nullspfs, workspfs0, 1, 0)
+  call oneminusproject(workspfs0, derspfs0, inspfs, inull)
+
+ !! second term
+
+  call actreduced0(thistime, derspfs0, nullspfs, workoutspfs0, 1, 0) 
+  call oneminusproject(workoutspfs0, sdspfs, inspfs, inull)
+
+!! first term.
+
+  !!   Projector is just sum_i |phi_i><phi_i| without regard to orthonorm (consistent with noorthogflag=1)
+
+  call derproject(workspfs0, workoutspfs0, derspfs0, inspfs)
+  sdspfs=sdspfs-workoutspfs0
+
+end subroutine second_derivs0
+

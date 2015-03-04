@@ -1,0 +1,56 @@
+
+MPIFLAG = -D MPIFLAG
+FFTFLAG = -D INTELFFT -D MPIFFTFLAG
+PGFFLAG =
+
+ARGO=arg.o
+
+AR=xiar
+
+CC = mpicc -fast 
+
+FC = mpif90 -parallel -threads -automatic
+F90 = mpif90 -cpp -parallel -threads -automatic
+
+LAPACK = -L$(FFTW_DIR)/lib -L$(MKL_DIR)/lib/em64t -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lfftw3_threads
+LAPACK = -L$(MKL_DIR)/lib/em64t -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core
+
+LOADFLAGS =  -opt-matmul
+# -I$(INCLUDE)
+
+MYINCLUDE=/global/software/sl-6.x86_64/modules/intel/2013_sp1.4.211/fftw/3.3.4-intel/include
+MYINCLUDE=/global/software/sl-6.x86_64/modules/intel/2013_sp1.4.211/mkl/include/fftw
+
+
+## WTF !! COMPILER BUG (HIGH/LOWSPINORDER FUNCTIONS) WITH XHOST!!
+## this is -xAVX
+
+FFLAGS = -ipo-c -O3 -no-prec-div -xHost -static -vec_report 
+F77FLAGS = -ipo-c -O3 -no-prec-div -xHost -static -vec_report
+
+FFLAGS = -ipo-c -O3 -no-prec-div -xSSE4.2 -static -vec_report 
+F77FLAGS = -ipo-c -O3 -no-prec-div -xSSE4.2 -static -vec_report
+
+FFLAGS = -ipo-c -O3 -no-prec-div -xSSSE3 -static -vec_report 
+F77FLAGS = -ipo-c -O3 -no-prec-div -xSSSE3 -static -vec_report
+
+FFLAGS = -ipo-c -O3 -xHost -static -gen_interfaces
+F77FLAGS = -ipo-c -O3 -xHost -static 
+
+
+FFLAGS = -ipo -O3 -xHost -static -gen_interfaces
+F77FLAGS = -ipo -O3 -xHost -static 
+
+FFLAGS = -ipo -O3 -xHost -gen_interfaces
+F77FLAGS = -ipo -O3 -xHost 
+
+FFLAGS = -O2 -xHost -static 
+F77FLAGS = -O2 -xHost -static 
+
+
+
+
+
+
+
+

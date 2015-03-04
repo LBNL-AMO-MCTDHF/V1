@@ -1,0 +1,153 @@
+
+!!YYSNIPYY
+!!
+!! SET THREE FLAGS, REALGO, CNORMFLAG, ECSFLAG.
+!! careful, ECSFLAG should only be defined if REALGO isn't
+!! ECSFLAG is whether ECS scaling is on
+!! REALGO is real arithmetic.
+!! CNORMFLAG is dot product.
+
+!! chmctdh :: ECSFLAG             
+!! cmctdh :: ECSFLAG, CNORMFLAG
+!! pmctdh ::
+!! mctdh :: REALGO
+!!
+!!                              routine       eigvalue    data
+!! hamilt matrix eig:     CONFIGEIG      DATAECS     DATATYPE   with ECS: eigen_c; should return herm or c-norm vector depending on CNORMFLAG
+!! overlap matrix eig:      EIGEN        CNORMTYPE   DATATYPE   with ECS:    eigen_c or herm; should return cnorm or herm depending on CNORMFLAG
+!!                        CONFIGEIG2                            with ECS: eigen_c2; but needs 2 versions: chmctdh, 
+!!                                                                           left/right herm biorth; cmctdh, c-norm orthog L=R
+!! primitive basis:        ECSEIG        CNORMTYPE   CNORMTYPE  with ECS: should c-norm coefficient vector ALWAYS.  eigen_cnorm
+!! always hermitian:      CONFIGHERM      real*8     DATATYPE   should very rarely use this; I do when I get eigval of real 
+!!                                                                        spin array put into complex.
+!! Expectation value of ECS operator is DATAECS
+!! Expectation value of real operator (e.g. a norm) is CNORMTYPE
+
+!!  REALGO     determines DATATYPE - type of most of data in calculation - and CONFIGHERM 
+!!  DATAECS is type of CONFIGEIG eigvals of matrices of scaled operators in config basis.
+!!  DATAECS used in myprojectmod/TWOE.f90/PSC.f90, and for those eigvals.
+!! CNORMFLAG  determines CONJUGATE, determines dot product.  goes into mean fields and denmat, and dot, and gramschmidt
+!! CNORMFLAG/REALGO determines  EIGEN (for denmat)  
+!! CNORMFLAG/REALGO define CNORMTYPE
+!! CNORMFLAG determines ECSEIG for spfs.
+!! ECSFLAG determines CONFIGEIG; 
+!! ECSFLAG define DATAECS.
+
+!!XXSNIPXX
+
+#define OFL call openfile()
+#define OFLWR call openfile(); write(mpifileptr,*)
+#define WRFL write(mpifileptr,*)
+#define CFL call closefile()
+#define CFLST call closefile(); call mpistop
+
+#ifdef REALGO
+
+#define CONFIGHERM get_eigen_two
+#define DATATYPE real*8
+#define DATANEGONE (-1.d0)
+#define DATAZERO (0.d0)
+#define DATAONE (1.d0)
+#define ALLCON 
+#define MPIDATATYPE MPI_DOUBLE_PRECISION
+#define MYGEMM DGEMM
+#define MYGEMV DGEMV
+#define MYGESV DGESV
+#define MYGBMV DGBMV
+!! Always general, no hermitian for MYGEXPV; overlaps of orbitals at different t
+#define MYGEXPV DGEXPV
+#define MYGPADM DGPADM
+
+
+#define DATAECS real*8
+!! expsparse/expfull for configuration matrices, like EIGEN
+#define EXPFULL DSCHBV
+#define EXPSPARSE DSEXPV
+#define CONFIGEIG get_eigen_two
+#define ECSEIG get_eigen_two
+#define MYGETRF dgetrf
+#define MYGETRI dgetri
+
+#define CONJUGATE
+#define ANTICON
+#define EIGEN get_eigen_two
+#define CNORMTYPE real*8
+#define CNORMCHAR 'C'
+#define CNORMZERO 0.d0
+
+#else
+
+#define CONFIGHERM get_eigen_herm
+#define DATATYPE complex*16
+#define DATANEGONE (-1.d0,0.d0)
+#define DATAZERO (0.d0,0.d0)
+#define DATAONE (1.d0,0.d0)
+#define ALLCON conjg
+#define MPIDATATYPE MPI_DOUBLE_COMPLEX
+#define MYGEMM ZGEMM
+#define MYGEMV ZGEMV
+#define MYGESV ZGESV
+#define MYGBMV ZGBMV
+!! Always general, no hermitian for MYGEXPV; overlaps of orbitals at different t
+#define MYGEXPV ZGEXPV
+#define MYGPADM ZGPADM
+
+
+#ifdef ECSFLAG
+
+#define DATAECS complex*16
+#define ECSGEMM ZGEMM
+!! expsparse/expfull for configuration matrices, like EIGEN
+#define EXPFULL ZGCHBV
+#define EXPSPARSE ZGEXPV
+#define CONFIGEIG get_eigen_c
+#define ECSEIG get_eigen_cnorm
+#define MYGETRF zgetrf
+#define MYGETRI zgetri
+
+#ifdef CNORMFLAG
+
+#define CONJUGATE 
+#define ANTICON conjg
+#define EIGEN get_eigen_c
+#define CNORMTYPE complex*16
+#define CNORMCHAR 'T'
+#define CNORMZERO (0.d0,0.d0)
+
+#else
+
+#define CONJUGATE conjg
+#define ANTICON 
+#define EIGEN get_eigen_herm
+#define CNORMTYPE real*8
+#define CNORMCHAR 'C'
+#define CNORMZERO 0.d0
+
+#endif
+
+#else
+
+#define DATAECS real*8
+#define ECSGEMM DGEMM
+!! expsparse/expfull for configuration matrices, like EIGEN
+#define EXPFULL ZGCHBV
+#define EXPSPARSE ZHEXPV
+#define CONFIGEIG get_eigen_herm
+#define ECSEIG get_eigen_two
+#define MYGETRF dgetrf
+#define MYGETRI dgetri
+
+#define CONJUGATE conjg
+#define ANTICON 
+#define EIGEN get_eigen_herm
+#define CNORMTYPE real*8
+#define CNORMCHAR 'C'
+#define CNORMZERO 0.d0
+
+#endif
+
+
+
+#endif
+
+

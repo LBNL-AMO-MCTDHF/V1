@@ -1,0 +1,37 @@
+
+FIRST DISTRIBUTION VERSION.  MPI FFT for mean fields.
+
+Velocity gauge sinc DVR just implemented, not debugged nor checked for factors.
+
+TOTAL ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3.
+  set both parorbsplit=3 in &parinp and orbparflag=.true. in &sinc_params
+
+On Mac: minimal demonstration of FFT making polyatomic SINC DVR a reality
+1)   mv MCTDHF.VERSION1.0BETA.020616-MPIFFT-SINCDVR-MAC.tar.gz ~/myprogs/MCTDHF
+     cd ~/myprogs/MCTDHF
+     tar -xvf MCTDHF.VERSION1.0BETA.020616-MPIFFT-SINCDVR-MAC.tar.gz
+     cd MCTDHF.VERSION1.0BETA.020616-MPIFFT-SINCDVR-MAC
+     mv COMPDIRS/*mac* .
+     rm -r COMPDIRS
+2A)  cd BIN.ecs.hermorm.mac
+2B)  cd BIN.ecs.hermorm.mac.mpi
+     ./Makeme
+3A)  cd ../EXAMPLES/METHANE.abs.0.40186.45pts
+3B)  cd ../EXAMPLES/METHANE.abs.0.40186.45pts
+     ln -s ../../BIN.ecs.hermnorm.mpi/chmctdhf_sinc ./chmctdhf_sinc.mpi
+     mpirun -n 15 ./chmctdhf_sinc.mpi Inp=Input.Inp.Relax | tee Outs/Out.relax
+     mpirun -n 15 ./chmctdhf_sinc.mpi Inp=Input.Inp.Pulse | tee Outs/Out.pulse
+     ./gnu.abs.here
+
+
+
+
+
+
+
+  DJH 02-06-2015
+
+
+
+
+

@@ -1,0 +1,30 @@
+
+if [[ "$2 " == " " ]]
+then
+	xlow="*"
+	xhigh="*"
+else
+	xlow=$1
+	xhigh=$2
+fi
+
+
+#set ylabel \"A(t) or V(t)\"
+
+echo "set term x11
+set style data lines
+set xrange [$xlow:$xhigh]
+set xlabel \"Energy (eV)\"
+set ylabel \"A(t) \"
+plot \"Dat/Pulseft.Dat\" using (27.2114*\$1):2 lw 4 notitle
+
+set out \"pulseft.ps\"
+set term post enhanced color solid 20
+replot
+" | gnuplot -persist &
+
+
+
+
+
+

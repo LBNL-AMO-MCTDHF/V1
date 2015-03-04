@@ -1,0 +1,17 @@
+#!/bin/bash -l
+#PBS -q regular
+#PBS -l nodes=1:ppn=8
+#PBS -l walltime=#wallhours#:00:00
+#PBS -N MCTDHF.#nodeid#
+#PBS -e MCTDHF.#nodeid#.$PBS_JOBID.err
+#PBS -o MCTDHF.#nodeid#.$PBS_JOBID.out
+
+csh
+module switch pgi gcc
+module switch openmpi openmpi-gcc
+module load mkl
+module load python mpi4py
+module list
+cd $PBS_O_WORKDIR
+cat $PBS_NODEFILE
+python multiprocessingscript.py #nmin# #nmax#

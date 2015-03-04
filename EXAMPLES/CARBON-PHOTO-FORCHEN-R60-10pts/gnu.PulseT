@@ -1,0 +1,98 @@
+
+	ylow="*"
+	yhigh="*"
+	xlow="*"
+	xhigh="*"
+
+
+#set xtics 50
+#set ytics 0.01
+
+
+if [[ -e "pulset.h" ]]
+then
+
+	source ./pulset.h
+
+fi
+
+
+skip=0
+ext=""
+
+if [[ "$1 " == "ext " ]]
+then
+	ext=$2
+	skip=1
+else
+
+if [[ "$4 " != " " ]]
+then
+	ylow=$3
+	yhigh=$4
+fi
+
+if [[ "$2 " != " " ]]
+then
+	xlow=$1
+	xhigh=$2
+fi
+
+fi
+
+line=`grep --text "T=" Outs/Out.pulse`
+
+line2="set term x11
+
+set xrange [$xlow:$xhigh]
+set yrange [$ylow:$yhigh]
+
+set format y \"%12.5f\"
+
+set xlabel \"Time (au)\"
+set ylabel \"Expectation value of energy (hartree)\" 2,0
+set style data points
+plot \"-\" using 2:4 lw 6 notitle" 
+
+line="$line2
+$line
+e
+
+
+set out \"Pulse.energy.ps\"
+set term post enhanced color solid 20
+set border 31 lw 4
+set nokey
+replot
+$line
+e
+"
+
+echo "$line"|gnuplot -persist &
+
+
+if [[ $skip == 0 ]]
+then
+
+
+if [[ "$5 " == "s " ]]
+then
+	echo "xlow=$xlow" > pulset.h
+	echo "xhigh=$xhigh" >> pulset.h
+
+	echo "ylow=$ylow" >> pulset.h
+	echo "yhigh=$yhigh" >> pulset.h
+fi
+
+
+if [[ "$3 " == "s " ]]
+then
+	echo "xlow=$xlow" > pulset.h
+	echo "xhigh=$xhigh" >> pulset.h
+
+fi
+
+fi
+
+
+

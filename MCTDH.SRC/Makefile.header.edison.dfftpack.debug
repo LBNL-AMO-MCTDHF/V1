@@ -1,0 +1,22 @@
+  
+MPIFLAG = -D MPIFLAG
+FFTFLAG = -D MPIFLAG
+PGFFLAG = 
+
+ARGO=arg.o
+
+AR=xiar
+CC = cc
+FC = ftn -openmp
+F90 = ftn -openmp
+
+LAPACK =  -mkl
+
+LOADFLAGS = 
+
+MYINCLUDE=
+
+FFLAGS =  -C -check all,noarg_temp_created -warn all -gen_interfaces -traceback -static 
+F77FLAGS =  -C -check all,noarg_temp_created  -traceback -warn error,alignments,ignore_loc,general,usage,nodec -static
+
+

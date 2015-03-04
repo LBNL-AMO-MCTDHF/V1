@@ -1,0 +1,33 @@
+#!/bin/bash
+#
+#SBATCH --job-name=O2-ONE
+#
+#SBATCH --qos=condo_axl  --account=lr_axl --partition=lr3 --constraint=lr3_c20
+#
+#SBATCH --nodes=1
+#
+#SBATCH -t 504:00:00
+#
+#SBATCH 
+#
+#
+
+export OMP_NUM_THREADS=8
+
+chmctdhf_diatom Inp=Input.Inp.Pulse.perp.vel > Outs/Out.pulse.perp.vel &
+
+chmctdhf_diatom Inp=Input.Inp.Pulse.perp > Outs/Out.pulse.perp &
+
+wait
+
+
+
+
+
+
+
+
+
+
+
+

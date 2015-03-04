@@ -1,0 +1,51 @@
+
+
+$parinp
+
+sparseconfigflag=0
+
+numelec=2
+
+improvedrelaxflag=1
+improvednatflag=1
+
+spfoutfile="Bin/spfs.bin.relax"
+avectoroutfile="Bin/avector.bin.relax"
+
+nspf = 5
+
+spfrestrictflag=1
+
+spfmvals = 0,  0,  0, 1,-1,   0,  0, 1,-1,   0,1,-1,2,-2
+
+restrictflag=1
+restrictms=0   
+
+mrestrictflag=1
+mrestrictval=0
+
+par_timestep=1.0d0
+
+stopthresh =  1.d-8
+
+/
+
+
+!! was lbig 6
+
+$heparinp
+
+NucCharge1=2.d0
+LBIG=4, MBIG=1
+
+henumpoints=10
+henumelements=4
+hecelement=5
+heecstheta= 0.4d0
+heelementsizes =  6d0, 6d0, 6d0, 6d0, 6d0, 6d0, 6d0, 6d0, 6d0, 6d0, 
+
+
+/
+
+
+

@@ -1,0 +1,22 @@
+  
+MPIFLAG = -D MPIFLAG
+FFTFLAG = -D MPIFLAG
+PGFFLAG = 
+
+ARGO=arg.o
+
+AR=ar
+CC = gcc
+FC = mpif90 -ffree-line-length-none -mtune=native   
+F90 = mpif90 -ffree-line-length-none -mtune=native  
+
+LAPACK = -framework Accelerate  
+
+LOADFLAGS = -I/usr/local/mpich/include
+
+MYINCLUDE=.
+
+FFLAGS = -O2 -x f95-cpp-input -Wall -ffast-math -fbounds-check
+F77FLAGS = -O2  -ffast-math 
+
+

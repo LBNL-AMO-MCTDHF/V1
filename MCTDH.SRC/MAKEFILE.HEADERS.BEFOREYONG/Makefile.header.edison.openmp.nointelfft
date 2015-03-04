@@ -1,0 +1,22 @@
+  
+MPIFLAG = -D MPIFLAG
+FFTFLAG = -D MPIFFTFLAG
+PGFFLAG = 
+
+AR=xiar
+
+ARGO=arg.o
+
+CC = cc -openmp -parallel
+FC = ftn -openmp -parallel
+F90 = ftn -openmp -parallel
+
+LOADFLAGS = 
+
+MYINCLUDE=
+
+LAPACK =  -mkl
+	
+FFLAGS = -fast 
+F77FLAGS = -fast 
+

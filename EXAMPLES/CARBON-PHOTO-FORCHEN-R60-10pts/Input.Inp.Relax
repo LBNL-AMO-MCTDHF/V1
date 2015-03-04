@@ -1,0 +1,59 @@
+
+
+$parinp
+
+messflag=1
+messamount=2d-2
+
+spfoutfile="Bin/spfs.bin.relax"
+avectoroutfile="Bin/avector.bin.relax"
+
+numelec=6
+
+stopthresh=1d-7
+
+improvedrelaxflag=1
+improvednatflag=1
+
+spfrestrictflag=1
+spfugrestrict=1
+
+sparseconfigflag=1
+
+
+nspf= 14
+
+spfmvals=  0, 0, 0, 1,-1,  0,  0, 1,-1, 2,-2   0, 1,-1,
+spfugvals= 1, 1,-1,-1,-1,  1,  1, 1, 1, 1, 1  -1,-1,-1, 
+
+restrictflag=1
+restrictms=2
+
+ugrestrictflag=1
+ugrestrictval=1
+
+mrestrictflag=1
+mrestrictval=0
+
+par_timestep=0.5d0
+
+/
+
+
+
+
+$heparinp
+
+
+NucCharge1=6
+LBIG=5, MBIG=2
+
+henumpoints=10
+henumelements=5
+hecelement=6
+heecstheta= 0.4d0
+heelementsizes =   6d0,6d0,6d0,6d0,6d0,   6d0,12d0, 24d0
+/
+
+
+

@@ -1,0 +1,87 @@
+
+taskfile=$1
+
+if [[ "$taskfile " == " " ]]
+then
+	echo "Need task file"
+	exit
+fi
+
+nodelist=`echo $SLURM_NODELIST | tr , ' '`
+
+ncpu=`echo $SLURM_JOB_CPUS_PER_NODE |cut -f 1 -d \(`
+
+qq=""
+for node in $nodelist
+do
+	ii=0
+	while [[ $ii -lt $ncpu ]]
+	do
+		(( ii++ ))
+		qq="$qq $node"
+	done
+done
+
+# bash has c indexing; I'm using fortran indexing starting at 1.  0 not used put xx's there
+
+hostlist=( xx $qq )
+
+lines=`echo $qq |wc |tr -s ' ' |cut -f 3 -d ' '`
+
+ntasks=`cat $taskfile |wc |tr -s ' ' |cut -f 2 -d ' '`
+
+echo
+echo "NODELIST $nodelist"
+echo "CPUS AVAILABLE $lines"
+echo "TASKS $ntasks"
+echo
+
+if [[ $ntasks -gt $lines ]]
+then
+	echo "TASKS GT NCPU AVAIL! I will have to wait."
+fi
+
+
+itask=0
+iproc=0
+
+while [[ $itask -lt $ntasks ]]
+do
+	(( itask++ ))
+	(( iproc++ ))
+
+	task=`head -n $itask $taskfile|tail -n 1`
+
+	echo "RUNNING mpirun -H ${hostlist[iproc]} -n 1 $task"
+
+        echo "mpirun -H ${hostlist[iproc]} -n 1 $task &" > blah.bat
+	source ./blah.bat
+
+	sleep 1
+
+	if [[ $iproc -eq $lines ]]
+	then
+		echo "WAITING!!!!"
+		wait
+		iproc=0
+	fi
+
+done
+
+echo "WAITING AT END!!!"
+wait
+echo "OK DONE RUN.TASKS !!!"
+
+
+
+
+
+
+
+
+
+
+
+
+
+

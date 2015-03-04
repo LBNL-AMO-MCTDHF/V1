@@ -1,0 +1,22 @@
+#PBS -V
+#PBS -N Zbas5now3state
+#PBS -q lr_condo
+#PBS -l nodes=4:ppn=20:lr3-c20,qos=lr3_axl
+#PBS -A lr_axl
+#PBS -l walltime=504:00:00
+#PBS -j oe
+
+cd /global/home/users/djhaxton
+
+dir=$PBS_O_WORKDIR
+echo "$dir PBSDIR"
+cd $dir
+
+module load mkl
+module load openmpi
+
+mpirun -n 8 -bynode chmctdhf.nodebug Inp=Input.Inp.Corr |tee Outs/Out.corr.spf_flag0
+
+
+
+

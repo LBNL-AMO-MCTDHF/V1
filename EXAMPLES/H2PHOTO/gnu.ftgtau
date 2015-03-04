@@ -1,0 +1,7 @@
+#!/global/software/sl-6.x86_64/modules/tools/gnuplot/4.6.0/bin/gnuplot -persist
+
+set style data lines
+set xrange [0:4]
+plot "Dat/FTGtau.Dat" using 1:2
+
+

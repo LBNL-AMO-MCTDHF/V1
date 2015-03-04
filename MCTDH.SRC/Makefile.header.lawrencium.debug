@@ -1,0 +1,21 @@
+
+MPIFLAG = -D MPIFLAG
+FFTFLAG = -D FFTWFLAG -D MPIFLAG
+PGFFLAG =
+
+ARGO=arg.o
+
+AR=xiar
+CC = mpicc
+FC = mpif90 -openmp
+F90 = mpif90 -cpp -openmp
+
+LAPACK = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a -Wl,--end-group -lpthread -lm
+
+LOADFLAGS =
+
+MYINCLUDE=
+
+FFLAGS = -C -check all,noarg_temp_created -warn all -gen_interfaces -traceback
+F77FLAGS =  -C -check all,noarg_temp_created  -traceback -warn error,alignments,ignore_loc,general,usage,nodec
+

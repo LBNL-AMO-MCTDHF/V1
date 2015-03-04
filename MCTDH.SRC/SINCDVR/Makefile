@@ -1,0 +1,49 @@
+
+
+include ../Makefile.header
+
+HTWO= init_sinc_new.o    sinc_extraproject.o  sinc_params.o sincproject.o SineDVR.o coreproject.o readit.o tooth.o toeplitz_subs.o
+
+DEPEND= ../Definitions.INC  ../Definitions.ALL 
+
+default: sincprojectar.a
+
+clean:
+	rm *.o *.a *genmod* *.mod
+
+sincprojectar.a:  $(HTWO) 
+	$(AR) -r sincprojectar.a    $(HTWO) 
+
+
+sinc_params.o: $(DEPEND) sinc_params.F90
+	$(F90) $(FFLAGS)  -c sinc_params.F90
+
+toeplitz_subs.o:  toeplitz_subs.F90
+	$(F90) $(FFLAGS) $(FFTFLAG)  -c toeplitz_subs.F90 -I$(MYINCLUDE)
+
+
+readit.o: $(DEPEND) sinc_params.o sincproject.o tooth.o readit.F90
+	$(F90) $(FFLAGS)  -c readit.F90 
+
+#runtooth.o: $(DEPEND) sinc_params.o sincproject.o tooth.o runtooth.F90
+#	$(F90) $(FFLAGS)  -c runtooth.F90 
+
+tooth.o: $(DEPEND) tooth.f90
+	$(F90) $(FFLAGS)  -c tooth.f90 
+
+sincproject.o: $(DEPEND) sincproject.F90 sinc_params.o
+	$(F90) $(FFLAGS)  $(FFTFLAG) -c sincproject.F90
+
+init_sinc_new.o: $(DEPEND)  sinc_params.o sincproject.o init_sinc_new.F90
+	$(F90) $(FFLAGS)  -c init_sinc_new.F90
+
+coreproject.o: $(DEPEND)  sinc_params.o sincproject.o coreproject.F90
+	$(F90) $(FFLAGS)  $(FFTFLAG) -c coreproject.F90
+
+sinc_extraproject.o: $(DEPEND) sinc_params.o sincproject.o sinc_extraproject.F90
+	$(F90) $(FFLAGS) $(FFTFLAG) $(PGFFLAG) -c sinc_extraproject.F90 -o sinc_extraproject.o
+
+
+SineDVR.o: SineDVR.F90 
+	$(F90) $(FFLAGS) -c SineDVR.F90 
+

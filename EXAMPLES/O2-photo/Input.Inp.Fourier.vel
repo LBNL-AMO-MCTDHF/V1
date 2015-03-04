@@ -1,0 +1,90 @@
+
+#  now - 29 ev to account for 5eV shift
+# omega=1.0657
+
+
+$pulse
+
+ numpulses=1
+ pulsetype=2
+
+ omega2(1)=1.0657
+ omega(1)=0.07853981633974d0
+ omega(1)=0.10657
+ omega2(1)=1.25
+ omega(1)=0.125
+
+ intensity=1d-5
+
+ velflag=1
+
+/
+
+
+
+$parinp
+
+finaltime=1000
+
+numactions=1
+actions=15
+
+fluxmofile="Flux/flux.mo.bin.vel"
+fluxafile="Flux/flux.avec.bin.vel"
+projfluxfile="Flux/projflux.wfn.bin.vel"
+fluxskipmult=1
+fluxinterval=1
+
+spifile="Dat/xsec.spi.dat.vel"
+
+efluxlo=0.01d0
+efluxhi=2d0
+
+sparseconfigflag=1
+
+autotimestep=0.5d0
+
+loadavectorflag=1
+avectorfile="Bin/avector.bin.Pulse.vel"
+loadspfflag=1
+spffile="Bin/spfs.bin.Pulse.vel"
+
+numelec=16
+
+tdflag=0
+
+nspf = 10
+
+spfrestrictflag=1
+
+spfmvals =  0, 0, 0, 0, 1,-1, 0, 1,-1,    0, 1,-1
+spfugvals=  1, 1,-1,-1,-1,-1, 1, 1, 1,   -1,-1,-1
+
+restrictflag=1
+restrictms=2
+
+mrestrictflag=1
+mrestrictval=0
+
+par_timestep=0.5d0
+littlesteps=5
+
+/
+
+$h2parinp
+
+
+NucCharge1=8d0
+NucCharge2=8d0
+LBIG=10,MBIG=1
+
+xinumpoints=12
+xinumelements=7
+xicelement=6
+xiecstheta=0.4d0
+xielementsizes=5d0,5d0,5d0,5d0,5d0,  5d0,10d0
+
+rstart=2.282d0
+
+/
+

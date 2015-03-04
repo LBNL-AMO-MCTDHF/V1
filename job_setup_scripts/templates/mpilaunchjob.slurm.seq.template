@@ -1,0 +1,21 @@
+#!/bin/bash -l
+#Job name:
+#SBATCH --job-name=#jobname#
+
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+
+#SBATCH --partition=berkelium
+#SBATCH --account=ac_axl
+#SBATCH --qos=br_serial
+#SBATCH --constraint=br
+
+#Wall clock limit:
+#SBATCH --time=#walltime#
+
+
+module load bash
+cd $SLURM_SUBMIT_DIR
+echo $SLURM_JOB_NODELIST
+echo $SLURM_TASKS_PER_NODE
+bash fullcalculation.sh

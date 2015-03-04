@@ -1,0 +1,25 @@
+
+# geometries in Angstrom
+# C  (0.7893 0.7893 0.7893)
+# H  (1.4248 1.4248 1.4248)
+#
+# and reflections
+# as per NIST cccbdb CCD/cc-pVDZ
+
+# ratio 1.805144
+# geometric average 1.060469
+
+# 1.060469 * sqrt(1.8) = 1.4227686
+# 1.060469 / sqrt(1.8) = 0.7904270
+
+# / 0.5291772 =
+# C 1.493691096
+# H 2.688643973
+
+# spacing 0.2987382
+# centershift 9 and 5
+# even gridpoints
+
+
+
+
