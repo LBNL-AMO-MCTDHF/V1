@@ -67,7 +67,8 @@ subroutine mpiorbsets()
         process_ranks(jproc,iset)=iproc
         if (iproc.eq.myrank) then
            myorbset=iset
-           firstmpiorb=real(jproc-1)*orbsperproc+1
+!!???           firstmpiorb=real(jproc-1)*orbsperproc+1
+           firstmpiorb=(jproc-1)*orbsperproc+1
         endif
      enddo
 
@@ -147,7 +148,7 @@ subroutine mpistart()
   use mpimod
   use parameters
   implicit none
-  integer :: ierr,  iilen,provided,required
+  integer :: ierr,  iilen !!,provided,required
   character(len=40) :: format
   integer :: nargs, i, flag
 #ifdef PGFFLAG
@@ -268,24 +269,6 @@ subroutine mpistop()
 end subroutine mpistop
 
 
-
-subroutine mympialltoall(input, output, count)
-  use fileptrmod
-  use mpimod
-  implicit none
-  integer :: ierr, count
-  DATATYPE :: input(count,nprocs), output(count,nprocs)
-
-#ifdef REALGO
-  call mpi_alltoall(input(:,:),count,MPI_DOUBLE_PRECISION,output(:,:),count,MPI_DOUBLE_PRECISION,MPI_COMM_WORLD,ierr)
-#else
-  call mpi_alltoall(input(:,:),count,MPI_DOUBLE_COMPLEX,output(:,:),count,MPI_DOUBLE_COMPLEX,MPI_COMM_WORLD,ierr)
-#endif
-  if (ierr.ne.0) then
-     OFLWR "ERROR ALLTOALL ", ierr; CFLST
-  endif
-
-end subroutine mympialltoall
 
 
 subroutine mympireduce(input, isize)
@@ -1157,6 +1140,30 @@ endif
 #endif
 
 end subroutine mpiallgather_complex
+
+
+subroutine mympialltoall(input, output, count)
+  use fileptrmod
+  use mpimod
+  implicit none
+  integer :: ierr, count
+  DATATYPE :: input(count,nprocs), output(count,nprocs)
+
+#ifndef MPIFLAG
+  output(:,:)=input(:,:)
+#else
+#ifdef REALGO
+  call mpi_alltoall(input(:,:),count,MPI_DOUBLE_PRECISION,output(:,:),count,MPI_DOUBLE_PRECISION,MPI_COMM_WORLD,ierr)
+#else
+  call mpi_alltoall(input(:,:),count,MPI_DOUBLE_COMPLEX,output(:,:),count,MPI_DOUBLE_COMPLEX,MPI_COMM_WORLD,ierr)
+#endif
+  if (ierr.ne.0) then
+     OFLWR "ERROR ALLTOALL ", ierr; CFLST
+  endif
+#endif
+
+end subroutine mympialltoall
+
 
 !! probably just the same -- transferred above from boxes
 !!subroutine mpiallgather(inout,totsize,blocksizes,maxblocksize)
