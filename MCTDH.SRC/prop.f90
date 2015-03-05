@@ -276,6 +276,12 @@ subroutine prop_loop( starttime)
            lastenergy(qq)=thisenergy(qq)
         enddo
         lastenergyavg=thisenergyavg
+        
+        par_timestep=par_timestep*timestepfac
+        if (par_timestep.gt.max_timestep) then
+           par_timestep=max_timestep
+        endif
+
      endif
   enddo
   do imc=1,mcscfnum

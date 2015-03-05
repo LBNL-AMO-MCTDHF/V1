@@ -14,6 +14,9 @@ module parameters
 
 !! recently added, otherwise notable. 
 
+real*8 :: timestepfac=1d0                        !! accelerate relax
+real*8 :: max_timestep=1d10                      !!
+
 integer :: multmanyflag=0                        !!  experimental
 integer :: parorbsplit=1                         !!  Parallelize orbital calculation.  Might speed up, might
                                                  !!   slow down; check timing.
