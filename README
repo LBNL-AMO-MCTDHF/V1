@@ -9,7 +9,7 @@ MPI ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3
 On Mac: minimal demonstration
 
 1)   cd ~/myprogs/LBNL-AMO-MCTDHF
-     git clone https://github.com/V1.0BETA.030315.INTELFFT
+     git clone https://github.com/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT
      cd V1.0BETA.030315.INTELFFT
      mv COMPDIRS/*mac* .
      rm -r COMPDIRS
