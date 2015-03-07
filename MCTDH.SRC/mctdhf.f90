@@ -25,30 +25,32 @@ program mctdhf
   
   call openfile()
   write(mpifileptr, *) " ****************************************************************************"     
-  write(mpifileptr, *) " **********************  BEGIN LBNL AMO MCTDHF ******************************"
+  write(mpifileptr, *) " **********************  BEGIN LBNL-AMO-MCTDHF ******************************"
   write(mpifileptr, *) " ****************************************************************************"     
   write(mpifileptr, *) 
   write(mpifileptr, *) "   Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code"
   write(mpifileptr, *) "     for ultrafast electronic and nuclear dynamics in strong laser fields"
-  write(mpifileptr, *) "   AMO Theory Group, Lawrence Berkeley Laboratory, 2015"
-  write(mpifileptr, *) "     DJ Haxton, C W McCurdy, T N Rescigno, K Lawler, B Abeln, X Li.."
-  write(mpifileptr, *) "   VERSION 1.0 "
-  write(mpifileptr, *) 
-  write(mpifileptr, *) "   PROCESSOR ",myrank," OF ",nprocs
+  write(mpifileptr, *) "   AMO Theory Group, Lawrence Berkeley Laboratory"
+  write(mpifileptr, *) "     DJ Haxton, C W McCurdy, T N Rescigno, K Lawler, B Abeln, X Li..."
+  write(mpifileptr, *) "                             VERSION 1.0 "
+  write(mpifileptr, *) "       Copyright 2015 the regents of the University of California"
   write(mpifileptr, *)
 #ifdef REALGO
-  write(mpifileptr, *) "   This is MCTDH: Real-valued version."
+  write(mpifileptr, *) "               This is MCTDH: Real-valued version."
 #else
 #ifdef CNORMFLAG
-  write(mpifileptr, *) "   This is CMCTDH: C-NORMed ECS version."
+  write(mpifileptr, *) "               This is CMCTDH: C-NORMed ECS version."
 #else
 #ifdef ECSFLAG
-  write(mpifileptr, *) "   This is CHMCTDH: HERM-normed ECS version."
+  write(mpifileptr, *) "               This is CHMCTDH: HERM-normed ECS version."
 #else
-  write(mpifileptr, *) "   This is PMCTDH: HERM-normed non-ECS version."
+  write(mpifileptr, *) "               This is PMCTDH: HERM-normed non-ECS version."
 #endif
 #endif
 #endif
+  write(mpifileptr, *) 
+  write(mpifileptr, *) "               PROCESSOR ",myrank," OF ",nprocs
+  write(mpifileptr, *) 
   call closefile()
 
 !! inpfile input; others output
