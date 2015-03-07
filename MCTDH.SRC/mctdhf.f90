@@ -285,8 +285,6 @@ subroutine getclasses()
      endif
   enddo
 
-!  OFLWR "ORBCLASS", orbclass(:); CFL
-
   numclasses=iclass
   allocate(classorb(nspf,numclasses),nperclass(numclasses))
   

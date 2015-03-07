@@ -1,4 +1,6 @@
 
+  ** LBNL-AMO-MCTDHF VERSION 1.0 **
+
 FIRST DISTRIBUTION VERSION.  MPI FFT for mean fields.
 
 Velocity gauge sinc DVR just implemented, not debugged nor checked for factors.
