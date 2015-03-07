@@ -13,10 +13,12 @@ On Mac: minimal demonstration
      cd V1.0BETA.030315.INTELFFT
      mv COMPDIRS/*mac* .
      rm -r COMPDIRS
+
 2A)  cd BIN.ecs.hermorm.mac
      ./Makeme
 2B)  cd BIN.ecs.hermorm.mac.mpi
      ./Makeme
+
 3A)  cd ../EXAMPLES/METHANE.abs.0.40186.45pts
      ln -s ../../BIN.ecs.hermnorm/chmctdhf_sinc ./chmctdhf_sinc
      ./chmctdhf_sinc Inp=Input.Inp.Relax | tee Outs/Out.relax
