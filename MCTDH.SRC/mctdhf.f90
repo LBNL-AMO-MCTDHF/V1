@@ -1,5 +1,6 @@
 
 #include "Definitions.INC"
+
   
 program mctdhf
   use mpimod
@@ -78,8 +79,6 @@ program mctdhf
   if (spfsmallsize.gt.spfsize) then
      OFLWR "WTF."; CFLST
   endif
-!  print *, "OK CHECKME TRANSFERPARMS (MOVED UP WAS TWOEALLOC)"; stop
-
 
   call getclasses()
 
@@ -159,16 +158,6 @@ program mctdhf
   call init_project(bigspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
        bondpoints,bondweights,elecweights,elecradii,numelec)
   OFLWR "   ....Called init_project."; CFL
-
-!  print *, bigspfs
-!  print *, "THAT WAS BIGSPSFS"; stop
-
-!  NOW TRANSFERPARAMS
-!  call twoealloc(nspf,spfrestrictflag,spfmvals,spfugrestrict,spfugvals,spfsmallsize);
-!  if (spfsmallsize.gt.spfsize) then
-!     OFLWR "WTF."; CFLST
-!  endif
-
 
   if (skipflag.lt.2) then
    
