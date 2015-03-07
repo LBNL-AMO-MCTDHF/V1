@@ -1,7 +1,5 @@
 
-  
 #include "Definitions.INC"
-  
   
 program mctdhf
   use mpimod
