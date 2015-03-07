@@ -23,15 +23,5 @@ On Mac: minimal demonstration of FFT making polyatomic SINC DVR a reality
      mpirun -n 15 ./chmctdhf_sinc.mpi Inp=Input.Inp.Pulse | tee Outs/Out.pulse
      ./gnu.abs.here
 
-
-
-
-
-
-
   DJH 02-06-2015
-
-
-
-
 
