@@ -10,12 +10,17 @@ CC = cc
 FC = ftn -openmp
 F90 = ftn -openmp
 
-LAPACK =  -mkl
-
+LAPACK =   -mkl
+	
 LOADFLAGS = 
 
 MYINCLUDE=
-	
+MYINCLUDE=/global/homes/d/djhaxton/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT/MCTDH.SRC/FFTW-INCLUDE
+MYINCLUDE=/project/projectdirs/mp74/git/V1.0BETA.030315.INTELFFT.git/MCTDH.SRC/FFTW-INCLUDE
+
+FFLAGS = -fast
+F77FLAGS = -fast
+
 FFLAGS = -O2
 F77FLAGS = -O2
 
