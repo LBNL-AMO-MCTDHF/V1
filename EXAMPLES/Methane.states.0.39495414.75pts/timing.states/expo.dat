@@ -1,0 +1,509 @@
+  Exponential propagator output.  expotol=  1.000000000000000E-009
+ 
+ Go Oribtal Expoprop.  Tinit=  0.000000000000000E+000  thisexpodim=          40 
+  step   0.500000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  5.329070518200751E-015
+           1  0.500000000000000               42
+ 
+ Go Oribtal Expoprop.  Tinit=  0.500000000000000       thisexpodim=          38 
+  step   0.525000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  3.124968445123163E-015
+           1  0.525000000000000               40
+ 
+ Go Oribtal Expoprop.  Tinit=   1.02500000000000       thisexpodim=          36 
+  step   0.551250000000000     
+    End expo. Orthog error, steps, stepsize, iterations  6.328271240363392E-015
+           1  0.551250000000000               38
+ 
+ Go Oribtal Expoprop.  Tinit=   1.57625000000000       thisexpodim=          34 
+  step   0.578812500000000     
+    End expo. Orthog error, steps, stepsize, iterations  4.440892098500626E-015
+           1  0.578812500000000               36
+ 
+ Go Oribtal Expoprop.  Tinit=   2.15506250000000       thisexpodim=          32 
+  step   0.607753125000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.553512956637860E-015
+           1  0.607753125000000               34
+ 
+ Go Oribtal Expoprop.  Tinit=   2.76281562500000       thisexpodim=          30 
+  step   0.638140781250000     
+    End expo. Orthog error, steps, stepsize, iterations  5.440092820663267E-015
+           1  0.638140781250000               32
+ 
+ Go Oribtal Expoprop.  Tinit=   3.40095640625000       thisexpodim=          28 
+  step   0.670047820312500     
+       ...REJECTED  0.6700E+00  0.3660E-08  0.1000E-08
+    End expo. Orthog error, steps, stepsize, iterations  2.553512956637860E-015
+           2  0.570000000000000               60
+ 
+ Go Oribtal Expoprop.  Tinit=   4.07100422656250       thisexpodim=          34 
+  step   0.703550211328125     
+    End expo. Orthog error, steps, stepsize, iterations  3.552713678800501E-015
+           1  0.703550211328126               36
+ 
+ Go Oribtal Expoprop.  Tinit=   4.77455443789063       thisexpodim=          34 
+  step   0.738727721894532     
+    End expo. Orthog error, steps, stepsize, iterations  4.107825191113079E-015
+           1  0.738727721894532               36
+ 
+ Go Oribtal Expoprop.  Tinit=   5.51328215978516       thisexpodim=          34 
+  step   0.775664107989258     
+    End expo. Orthog error, steps, stepsize, iterations  3.552713678800501E-015
+           1  0.775664107989258               36
+ 
+ Go Oribtal Expoprop.  Tinit=   6.28894626777442       thisexpodim=          34 
+  step   0.814447313388721     
+    End expo. Orthog error, steps, stepsize, iterations  3.663735981263017E-015
+           1  0.814447313388721               36
+ 
+ Go Oribtal Expoprop.  Tinit=   7.10339358116314       thisexpodim=          34 
+  step   0.855169679058157     
+    End expo. Orthog error, steps, stepsize, iterations  3.552713678800501E-015
+           1  0.855169679058157               36
+ 
+ Go Oribtal Expoprop.  Tinit=   7.95856326022129       thisexpodim=          32 
+  step   0.897928163011065     
+       ...REJECTED  0.8979E+00  0.3719E-08  0.1000E-08
+    End expo. Orthog error, steps, stepsize, iterations  3.996802888650564E-015
+           2  0.800000000000000               68
+ 
+ Go Oribtal Expoprop.  Tinit=   8.85649142323236       thisexpodim=          39 
+  step   0.942824571161618     
+    End expo. Orthog error, steps, stepsize, iterations  4.884981308350689E-015
+           1  0.942824571161619               41
+ 
+ Go Oribtal Expoprop.  Tinit=   9.79931599439398       thisexpodim=          39 
+  step   0.989965799719699     
+    End expo. Orthog error, steps, stepsize, iterations  3.108624468950438E-015
+           1  0.989965799719700               41
+ 
+ Go Oribtal Expoprop.  Tinit=   10.7892817941137       thisexpodim=          39 
+  step    1.03946408970568     
+    End expo. Orthog error, steps, stepsize, iterations  3.663735981263017E-015
+           1   1.03946408970568               41
+ 
+ Go Oribtal Expoprop.  Tinit=   11.8287458838194       thisexpodim=          39 
+  step    1.09143729419097     
+    End expo. Orthog error, steps, stepsize, iterations  3.191408453629441E-015
+           1   1.09143729419097               41
+ 
+ Go Oribtal Expoprop.  Tinit=   12.9201831780103       thisexpodim=          39 
+  step    1.14600915890052     
+    End expo. Orthog error, steps, stepsize, iterations  5.995204332975845E-015
+           1   1.14600915890052               41
+ 
+ Go Oribtal Expoprop.  Tinit=   14.0661923369108       thisexpodim=          39 
+  step    1.20330961684554     
+    End expo. Orthog error, steps, stepsize, iterations  4.218847493575595E-015
+           1   1.20330961684554               41
+ 
+ Go Oribtal Expoprop.  Tinit=   15.2695019537564       thisexpodim=          39 
+  step    1.26347509768782     
+    End expo. Orthog error, steps, stepsize, iterations  2.664535259100376E-015
+           1   1.26347509768782               41
+ 
+ Go Oribtal Expoprop.  Tinit=   16.5329770514442       thisexpodim=          39 
+  step    1.32664885257221     
+       ...REJECTED  0.1327E+01  0.2741E-08  0.1000E-08
+    End expo. Orthog error, steps, stepsize, iterations  2.997602166487923E-015
+           2   1.20000000000000               82
+ 
+ Go Oribtal Expoprop.  Tinit=   17.8596259040164       thisexpodim=          47 
+  step    1.39298129520082     
+    End expo. Orthog error, steps, stepsize, iterations  2.664535259100376E-015
+           1   1.39298129520082               49
+ 
+ Go Oribtal Expoprop.  Tinit=   19.2526071992172       thisexpodim=          47 
+  step    1.46263035996086     
+    End expo. Orthog error, steps, stepsize, iterations  3.774758283725532E-015
+           1   1.46263035996086               49
+ 
+ Go Oribtal Expoprop.  Tinit=   20.7152375591781       thisexpodim=          47 
+  step    1.53576187795891     
+    End expo. Orthog error, steps, stepsize, iterations  4.107825191113079E-015
+           1   1.53576187795891               49
+ 
+ Go Oribtal Expoprop.  Tinit=   22.2509994371370       thisexpodim=          44 
+  step    1.61254997185685     
+    End expo. Orthog error, steps, stepsize, iterations  6.661338147750939E-015
+           1   1.61254997185685               46
+ 
+ Go Oribtal Expoprop.  Tinit=   23.8635494089939       thisexpodim=          41 
+  step    1.69317747044969     
+       ...REJECTED  0.1693E+01  0.1422E-07  0.1000E-08
+       ...REJECTED  0.1500E+01  0.2847E-08  0.1000E-08
+    End expo. Orthog error, steps, stepsize, iterations  4.884981308350689E-015
+           2   1.30000000000000               86
+ 
+ Go Oribtal Expoprop.  Tinit=   25.5567268794436       thisexpodim=          50 
+  step    1.77783634397218     
+    End expo. Orthog error, steps, stepsize, iterations  3.330669073875470E-015
+           1   1.77783634397218               52
+ 
+ Go Oribtal Expoprop.  Tinit=   27.3345632234157       thisexpodim=          50 
+  step    1.86672816117079     
+    End expo. Orthog error, steps, stepsize, iterations  4.329869796038111E-015
+           1   1.86672816117079               52
+ 
+ Go Oribtal Expoprop.  Tinit=   29.2012913845865       thisexpodim=          50 
+  step    1.96006456922933     
+    End expo. Orthog error, steps, stepsize, iterations  6.217248937900877E-015
+           1   1.96006456922933               52
+ 
+ Go Oribtal Expoprop.  Tinit=   31.1613559538159       thisexpodim=          50 
+  step    2.05806779769079     
+    End expo. Orthog error, steps, stepsize, iterations  5.329070518200751E-015
+           1   2.05806779769080               52
+ 
+ Go Oribtal Expoprop.  Tinit=   33.2194237515067       thisexpodim=          50 
+  step    2.16097118757533     
+    End expo. Orthog error, steps, stepsize, iterations  1.887379141862766E-015
+           1   2.16097118757533               52
+ 
+ Go Oribtal Expoprop.  Tinit=   35.3803949390820       thisexpodim=          50 
+  step    2.26901974695410     
+       ...REJECTED  0.2269E+01  0.3369E-08  0.1000E-08
+    End expo. Orthog error, steps, stepsize, iterations  4.234485230820366E-015
+           2   2.00000000000000              104
+ 
+ Go Oribtal Expoprop.  Tinit=   37.6494146860361       thisexpodim=          61 
+  step    2.38247073430181     
+    End expo. Orthog error, steps, stepsize, iterations  5.329070518200751E-015
+           1   2.38247073430180               63
+ 
+ Go Oribtal Expoprop.  Tinit=   40.0318854203379       thisexpodim=          61 
+  step    2.50159427101690     
+    End expo. Orthog error, steps, stepsize, iterations  2.602215314973465E-015
+           1   2.50159427101690               63
+ 
+ Go Oribtal Expoprop.  Tinit=   42.5334796913548       thisexpodim=          61 
+  step    2.62667398456774     
+    End expo. Orthog error, steps, stepsize, iterations  3.254067520386672E-015
+           1   2.62667398456774               63
+ 
+ Go Oribtal Expoprop.  Tinit=   45.1601536759225       thisexpodim=          61 
+  step    2.75800768379613     
+    End expo. Orthog error, steps, stepsize, iterations  4.440892098500626E-015
+           1   2.75800768379613               63
+ 
+ Go Oribtal Expoprop.  Tinit=   47.9181613597187       thisexpodim=          57 
+  step    2.89590806798594     
+    End expo. Orthog error, steps, stepsize, iterations  3.880905352768564E-015
+           1   2.89590806798594               59
+ 
+ Go Oribtal Expoprop.  Tinit=   50.8140694277046       thisexpodim=          54 
+  step    3.04070347138523     
+       ...REJECTED  0.3041E+01  0.1371E-07  0.1000E-08
+    End expo. Orthog error, steps, stepsize, iterations  2.664535259100376E-015
+           2   2.70000000000000              112
+ 
+ Go Oribtal Expoprop.  Tinit=   53.8547728990898       thisexpodim=          65 
+  step    3.19273864495449     
+    End expo. Orthog error, steps, stepsize, iterations  3.108624468950438E-015
+           1   3.19273864495450               67
+ 
+ Go Oribtal Expoprop.  Tinit=   57.0475115440443       thisexpodim=          65 
+  step    3.35237557720222     
+    End expo. Orthog error, steps, stepsize, iterations  1.554312234475219E-015
+           1   3.35237557720222               67
+ 
+ Go Oribtal Expoprop.  Tinit=   60.3998871212465       thisexpodim=          65 
+  step    3.51999435606233     
+    End expo. Orthog error, steps, stepsize, iterations  2.664535259100376E-015
+           1   3.51999435606233               67
+ 
+ Go Oribtal Expoprop.  Tinit=   63.9198814773089       thisexpodim=          65 
+  step    3.69599407386545     
+    End expo. Orthog error, steps, stepsize, iterations  2.553512956637860E-015
+           1   3.69599407386544               67
+ 
+ Go Oribtal Expoprop.  Tinit=   67.6158755511743       thisexpodim=          65 
+  step    3.88079377755872     
+    End expo. Orthog error, steps, stepsize, iterations  3.774758283725532E-015
+           1   3.88079377755872               67
+ 
+ Go Oribtal Expoprop.  Tinit=   71.4966693287330       thisexpodim=          65 
+  step    4.07483346643666     
+    End expo. Orthog error, steps, stepsize, iterations  4.440892098500626E-015
+           1   4.07483346643666               67
+ 
+ Go Oribtal Expoprop.  Tinit=   75.5715027951697       thisexpodim=          65 
+  step    4.27857513975849     
+       ...REJECTED  0.4279E+01  0.7578E-08  0.1000E-08
+    End expo. Orthog error, steps, stepsize, iterations  2.664535259100376E-015
+           2   3.80000000000000              134
+ 
+ Go Oribtal Expoprop.  Tinit=   79.8500779349282       thisexpodim=          78 
+  step    4.49250389674641     
+    End expo. Orthog error, steps, stepsize, iterations  1.908314293625193E-015
+           1   4.49250389674641               80
+ 
+ Go Oribtal Expoprop.  Tinit=   84.3425818316746       thisexpodim=          78 
+  step    4.71712909158373     
+    End expo. Orthog error, steps, stepsize, iterations  2.442490654175344E-015
+           1   4.71712909158373               80
+ 
+ Go Oribtal Expoprop.  Tinit=   89.0597109232583       thisexpodim=          78 
+  step    4.95298554616292     
+    End expo. Orthog error, steps, stepsize, iterations  2.442490654175344E-015
+           1   4.95298554616292               80
+ 
+ Go Oribtal Expoprop.  Tinit=   94.0126964694212       thisexpodim=          74 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  5.218048215738236E-015
+           1   5.00000000000000               76
+ 
+ Go Oribtal Expoprop.  Tinit=   99.0126964694212       thisexpodim=          70 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.664535259100376E-015
+           1   5.00000000000000               72
+ 
+ Go Oribtal Expoprop.  Tinit=   104.012696469421       thisexpodim=          66 
+  step    5.00000000000000     
+       ...REJECTED  0.5000E+01  0.1770E-07  0.1000E-08
+    End expo. Orthog error, steps, stepsize, iterations  2.475972464112064E-015
+           2   4.40000000000000              136
+ 
+ Go Oribtal Expoprop.  Tinit=   109.012696469421       thisexpodim=          80 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.886579864025407E-015
+           1   5.00000000000000               82
+ 
+ Go Oribtal Expoprop.  Tinit=   114.012696469421       thisexpodim=          80 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  4.662936703425657E-015
+           1   5.00000000000000               82
+ 
+ Go Oribtal Expoprop.  Tinit=   119.012696469421       thisexpodim=          80 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  4.440892098500626E-015
+           1   5.00000000000000               82
+ 
+ Go Oribtal Expoprop.  Tinit=   124.012696469421       thisexpodim=          80 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  4.107825191113079E-015
+           1   5.00000000000001               82
+ 
+ Go Oribtal Expoprop.  Tinit=   129.012696469421       thisexpodim=          80 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  3.330669073875470E-015
+           1   5.00000000000000               82
+ 
+ Go Oribtal Expoprop.  Tinit=   134.012696469421       thisexpodim=          80 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  4.662936703425657E-015
+           1   5.00000000000000               82
+ 
+ Go Oribtal Expoprop.  Tinit=   139.012696469421       thisexpodim=          80 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  3.996802888650564E-015
+           1   5.00000000000000               82
+ 
+ Go Oribtal Expoprop.  Tinit=   144.012696469421       thisexpodim=          80 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  4.440892098500626E-015
+           1   5.00000000000000               82
+ 
+ Go Oribtal Expoprop.  Tinit=   149.012696469421       thisexpodim=          80 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  3.200748622771470E-015
+           1   5.00000000000000               82
+ 
+ Go Oribtal Expoprop.  Tinit=   154.012696469421       thisexpodim=          76 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  3.108624468950438E-015
+           1   5.00000000000000               78
+ 
+ Go Oribtal Expoprop.  Tinit=   159.012696469421       thisexpodim=          72 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  1.554312234475219E-015
+           1   5.00000000000000               74
+ 
+ Go Oribtal Expoprop.  Tinit=   164.012696469421       thisexpodim=          68 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.576446359621861E-015
+           1   5.00000000000000               70
+ 
+ Go Oribtal Expoprop.  Tinit=   169.012696469421       thisexpodim=          64 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  3.618837739398236E-015
+           1   5.00000000000000               66
+ 
+ Go Oribtal Expoprop.  Tinit=   174.012696469421       thisexpodim=          60 
+  step    5.00000000000000     
+       ...REJECTED  0.5000E+01  0.1522E-07  0.1000E-08
+    End expo. Orthog error, steps, stepsize, iterations  4.662936703425657E-015
+           2   4.40000000000000              124
+ 
+ Go Oribtal Expoprop.  Tinit=   179.012696469421       thisexpodim=          72 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  3.027364342694432E-015
+           1   5.00000000000000               74
+ 
+ Go Oribtal Expoprop.  Tinit=   184.012696469421       thisexpodim=          72 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.775557561562891E-015
+           1   5.00000000000000               74
+ 
+ Go Oribtal Expoprop.  Tinit=   189.012696469421       thisexpodim=          72 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  3.108624468950438E-015
+           1   5.00000000000000               74
+ 
+ Go Oribtal Expoprop.  Tinit=   194.012696469421       thisexpodim=          72 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  3.774758283725532E-015
+           1   5.00000000000000               74
+ 
+ Go Oribtal Expoprop.  Tinit=   199.012696469421       thisexpodim=          72 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.266803234077489E-015
+           1   5.00000000000000               74
+ 
+ Go Oribtal Expoprop.  Tinit=   204.012696469421       thisexpodim=          72 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.331468351712829E-015
+           1   5.00000000000000               74
+ 
+ Go Oribtal Expoprop.  Tinit=   209.012696469421       thisexpodim=          72 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  4.773959005888173E-015
+           1   5.00000000000000               74
+ 
+ Go Oribtal Expoprop.  Tinit=   214.012696469421       thisexpodim=          68 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.442490654175344E-015
+           1   5.00000000000000               70
+ 
+ Go Oribtal Expoprop.  Tinit=   219.012696469421       thisexpodim=          64 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  1.776356839400250E-015
+           1   5.00000000000000               66
+ 
+ Go Oribtal Expoprop.  Tinit=   224.012696469421       thisexpodim=          60 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.664535259100376E-015
+           1   5.00000000000000               62
+ 
+ Go Oribtal Expoprop.  Tinit=   229.012696469421       thisexpodim=          57 
+  step    5.00000000000000     
+       ...REJECTED  0.5000E+01  0.8440E-08  0.1000E-08
+    End expo. Orthog error, steps, stepsize, iterations  2.798605249387938E-015
+           2   4.50000000000000              118
+ 
+ Go Oribtal Expoprop.  Tinit=   234.012696469421       thisexpodim=          69 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  3.500236977187912E-015
+           1   5.00000000000000               71
+ 
+ Go Oribtal Expoprop.  Tinit=   239.012696469421       thisexpodim=          69 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  3.663735981263017E-015
+           1   5.00000000000000               71
+ 
+ Go Oribtal Expoprop.  Tinit=   244.012696469421       thisexpodim=          69 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  3.219646771412954E-015
+           1   5.00000000000000               71
+ 
+ Go Oribtal Expoprop.  Tinit=   249.012696469421       thisexpodim=          69 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.220446049250313E-015
+           1   5.00000000000000               71
+ 
+ Go Oribtal Expoprop.  Tinit=   254.012696469421       thisexpodim=          69 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  3.774758283725532E-015
+           1   5.00000000000000               71
+ 
+ Go Oribtal Expoprop.  Tinit=   259.012696469421       thisexpodim=          69 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  1.776356839400250E-015
+           1   5.00000000000000               71
+ 
+ Go Oribtal Expoprop.  Tinit=   264.012696469421       thisexpodim=          69 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.331468351712829E-015
+           1   5.00000000000000               71
+ 
+ Go Oribtal Expoprop.  Tinit=   269.012696469421       thisexpodim=          69 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.220446049250313E-015
+           1   5.00000000000000               71
+ 
+ Go Oribtal Expoprop.  Tinit=   274.012696469421       thisexpodim=          65 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.442490654175344E-015
+           1   5.00000000000000               67
+ 
+ Go Oribtal Expoprop.  Tinit=   279.012696469421       thisexpodim=          61 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  1.998401444325282E-015
+           1   5.00000000000000               63
+ 
+ Go Oribtal Expoprop.  Tinit=   284.012696469421       thisexpodim=          57 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.331468351712829E-015
+           1   5.00000000000000               59
+ 
+ Go Oribtal Expoprop.  Tinit=   289.012696469421       thisexpodim=          54 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  1.776356839400250E-015
+           1   5.00000000000000               56
+ 
+ Go Oribtal Expoprop.  Tinit=   294.012696469421       thisexpodim=          51 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.644365035709173E-015
+           1   5.00000000000000               53
+ 
+ Go Oribtal Expoprop.  Tinit=   299.012696469421       thisexpodim=          48 
+  step    5.00000000000000     
+       ...REJECTED  0.5000E+01  0.9434E-08  0.1000E-08
+    End expo. Orthog error, steps, stepsize, iterations  2.331468351712829E-015
+           2   4.40000000000000              100
+ 
+ Go Oribtal Expoprop.  Tinit=   304.012696469421       thisexpodim=          58 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.840686892678721E-015
+           1   5.00000000000000               60
+ 
+ Go Oribtal Expoprop.  Tinit=   309.012696469421       thisexpodim=          58 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  1.998401444325282E-015
+           1   5.00000000000000               60
+ 
+ Go Oribtal Expoprop.  Tinit=   314.012696469421       thisexpodim=          58 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  1.776356839400250E-015
+           1   5.00000000000000               60
+ 
+ Go Oribtal Expoprop.  Tinit=   319.012696469421       thisexpodim=          58 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  1.110223024625157E-015
+           1   5.00000000000000               60
+ 
+ Go Oribtal Expoprop.  Tinit=   324.012696469421       thisexpodim=          58 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  1.168704204047982E-015
+           1   5.00000000000000               60
+ 
+ Go Oribtal Expoprop.  Tinit=   329.012696469421       thisexpodim=          58 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  3.330669073875470E-015
+           1   5.00000000000000               60
+ 
+ Go Oribtal Expoprop.  Tinit=   334.012696469421       thisexpodim=          55 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  3.330669073875470E-015
+           1   5.00000000000000               57
+ 
+ Go Oribtal Expoprop.  Tinit=   339.012696469421       thisexpodim=          52 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  1.998401444325282E-015
+           1   5.00000000000000               54
+ 
+ Go Oribtal Expoprop.  Tinit=   344.012696469421       thisexpodim=          49 
+  step    5.00000000000000     
+    End expo. Orthog error, steps, stepsize, iterations  2.109423746787797E-015
+           1   5.00000000000000               51
+ 

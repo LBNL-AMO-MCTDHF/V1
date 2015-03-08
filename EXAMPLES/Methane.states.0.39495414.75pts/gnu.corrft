@@ -1,0 +1,72 @@
+
+
+line=`pwd`
+
+labelline="
+set label \"${line:40:1000}\" at graph 0.05,0.95 font \"TimesRoman,12\"
+set title \"autocorrelation (convergence with time)\"" 
+
+
+
+
+echo "
+load \"title.h\"
+
+set term x11
+set style data lines
+
+set nokey
+
+#set ytics 100
+
+set format y \"10^{%L}\"
+
+
+set xlabel \"Energy (hartree)\"
+set ylabel \"Absorption\"
+
+
+set yrange [1e-6:*]
+#set xrange [$xlow:$xhigh]
+
+set xrange [-1:1]
+
+set logscale y
+
+#plot \"Dat/Corrft.Dat\" using 1:(\$2**2+\$3**2) lt 2 lw 2 
+
+
+plot  \"Dat/Corrft.Dat\" using 1:((\$2>0)*\$2) lt -1 lw 2 , \"Dat/Corrft.Dat\" using 1:3 lt 2 lw 2 
+
+
+
+
+set term post enhanced 20 color solid
+set out \"Corrft.ps\"
+replot
+
+exit" | gnuplot -persist &
+
+
+if [[ "$5 " == "s " ]]
+then
+	echo "xlow=$xlow" > corrft.h
+	echo "xhigh=$xhigh" >> corrft.h
+
+	echo "ylow=$ylow" >> corrft.h
+	echo "yhigh=$yhigh" >> corrft.h
+fi
+
+
+if [[ "$3 " == "s " ]]
+then
+	echo "xlow=$xlow" > corrft.h
+	echo "xhigh=$xhigh" >> corrft.h
+
+fi
+
+
+
+
+
+
