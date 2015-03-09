@@ -1,9 +1,0 @@
-for i in `seq 0 #nprocsminus1#`
-do
-	b=$(($1*#nprocs#+$i))
-	cd $b
-	pwd
-       	srun  -n 1 --share bash fullcalculation.sh &
-       	cd ../
-done
-wait
