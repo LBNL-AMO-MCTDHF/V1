@@ -209,6 +209,14 @@ program mctdhf
   spfsloaded=0
   pi=4.d0*atan(1.d0)
 
+  !specify directory in which calculation is to be performed (default is ./)
+  call getworkingdirectory()
+  write(*,*) "workingdirectory is ", TRIM(workingdirectory)
+!  write(mpifileptr, *) "workingdirectory read to be ", workingdirectory
+  call chdir(TRIM(workingdirectory))
+
+
+
   call system("date")
   call system("mkdir Dat"); call system("mkdir Bin"); call system("mkdir Flux")
   call system("mkdir WALKS");  
