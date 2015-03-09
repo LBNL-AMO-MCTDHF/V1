@@ -1,0 +1,27 @@
+  
+MPIFLAG = -D MPIFLAG
+FFTFLAG = -D FFTWFLAG -D MPIFLAG
+PGFFLAG = 
+
+ARGO=arg.o
+
+AR=xiar
+CC = mpicc
+FC = mpif90 -openmp
+F90 = mpif90 -openmp
+
+LAPACK =   -mkl
+	
+LOADFLAGS = 
+
+MYINCLUDE=/usr/common/usg/intel/13.0.028/composer_xe_2013.1.117/mkl/include/fftw/
+MYINCLUDE=/global/homes/d/djhaxton/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT/MCTDH.SRC/FFTW-INCLUDE
+MYINCLUDE=/project/projectdirs/mp74/git/V1.0BETA.030315.INTELFFT.git/MCTDH.SRC/FFTW-INCLUDE
+
+
+FFLAGS = -C -check all,noarg_temp_created -warn all -gen_interfaces -traceback
+F77FLAGS =  -C -check all,noarg_temp_created  -traceback -warn error,alignments,ignore_loc,general,usage,nodec
+
+
+
+
