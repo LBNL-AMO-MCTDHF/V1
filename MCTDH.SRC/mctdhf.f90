@@ -209,9 +209,15 @@ program mctdhf
   spfsloaded=0
   pi=4.d0*atan(1.d0)
 
-!! Zach can I have a comment for this please?
-!! why is this done?
-!! thanks -djh
+
+
+! Added capability to specify working directory on command line using
+! string "workdir=", in the same way that "Inp=" specifies input file.
+! The program will then change to workdir before reading in input files.
+! Default value is workdir="./" ie, the default directory to run the
+! program in is the launch directory.  The subroutine
+! getworkingdirectory() is a close copy of getinpfile().
+!  -Zach 030915
 
   !specify directory in which calculation is to be performed (default is ./)
   call getworkingdirectory()
