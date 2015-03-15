@@ -1,9 +1,0 @@
-  Exponential propagator output.  expotol=  1.000000000000000E-009
- 
- Go Oribtal Expoprop.  Tinit=  0.000000000000000E+000  thisexpodim=          40 
-  step   0.500000000000000     
-    End expo. Orthog error, steps, stepsize, iterations  5.329070518200751E-015
-           1  0.500000000000000               42
- 
- Go Oribtal Expoprop.  Tinit=  0.500000000000000       thisexpodim=          38 
-  step   0.525000000000000     
