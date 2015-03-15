@@ -41,38 +41,6 @@ subroutine getinpfile()
   enddo
 end subroutine getinpfile
 
-
-!!$  !! As of tuesday 12:19am the variable workingdirectory does not
-!!$  !! occur in parameters.f90.  What the heck happened here???
-!!$  
-!!$  subroutine getworkingdirectory()
-!!$    use parameters
-!!$    use mpimod
-!!$    implicit none
-!!$  
-!!$    integer :: nargs, getlen, i, len
-!!$  #ifdef PGFFLAG
-!!$    integer :: myiargc
-!!$  #endif
-!!$    character (len=200) :: buffer
-!!$  
-!!$  #ifdef PGFFLAG
-!!$    nargs=myiargc()
-!!$  #else
-!!$    nargs=iargc()
-!!$  #endif
-!!$    do i=1,nargs
-!!$       buffer=nullbuff;     call getarg(i,buffer);     len=getlen(buffer)
-!!$       if (buffer(1:8) .eq. 'workdir=') then
-!!$          workingdirectory=nullbuff;        workingdirectory(1:len-8)=buffer(9:len)
-!!$          !write(*,*) "workingdirectory is ", workingdirectory(1:len-8)
-!!$          !OFLWR "workingdirectory is ", workingdirectory(1:len-8+1); CFL
-!!$       endif
-!!$    enddo
-!!$  end subroutine getworkingdirectory
-
-
-
 subroutine getparams()
   use parameters
   use mpimod
