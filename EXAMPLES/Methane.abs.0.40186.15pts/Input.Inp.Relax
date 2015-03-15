@@ -44,7 +44,7 @@ toepflag=1
 
 runtoothflag=0
 
-orblanthresh=1d1
+orblanthresh=1d0
 
 coulflag=1
 
