@@ -30,7 +30,7 @@ numelec=10
 
 par_timestep=0.1d0
 timestepfac=1.05d0
-maxtimestep=5d0
+max_timestep=5d0
 
 nspf=9
 
