@@ -42,5 +42,37 @@ working directory,
 
 4)   git pull https://github.com/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT
 
+
+----------    MODULES TO LOAD    ----------
+---------- ON NERSC & LAWRENCIUM ----------
+
+  COMPDIRS/BIN.ecs.hermnorm.law, 
+  COMPDIRS/BIN.ecs.hermnorm.edison, etc.
+
+LAWRENCIUM:
+
+module load mkl
+
+CARVER:
+
+module unload pgi openmpi
+module load intel openmpi-intel mkl
+module unload torque
+module load torque
+
+HOPPER:
+
+module swap PrgEnv-pgi PrgEnv-intel
+module load PrgEnv-intel
+module unload cray-libsci
+
+EDISON:
+
+module unload cray-libsci
+module unload PrgEnv-intel
+module load PrgEnv-intel
+module load intel
+module load mkl
+
   DJH 03-15-2015
 
