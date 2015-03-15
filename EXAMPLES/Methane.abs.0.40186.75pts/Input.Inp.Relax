@@ -3,6 +3,8 @@
 
 &parinp
 
+walkwriteflag=1
+
 notiming=0
 timingdir="timing.relax"
 

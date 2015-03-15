@@ -13,6 +13,8 @@ minpulsetime=5000
 
 &parinp
 
+walkwriteflag=1
+
 eground = -32.660611662905d0
 
 notiming=0
