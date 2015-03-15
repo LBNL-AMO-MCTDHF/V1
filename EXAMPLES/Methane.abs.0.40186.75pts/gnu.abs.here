@@ -1,0 +1,33 @@
+#!/global/software/sl-6.x86_64/modules/tools/gnuplot/4.6.0/bin/gnuplot -persist
+
+
+
+#unset ytics
+
+set xlabel "Energy (eV)"
+set ylabel "emission/absorption"
+
+set term unknown
+set style data lines
+
+set xrange [1:15]
+
+
+#plot "Dat/ZDipoleft.Dat001000" using (27.2114*$1):7 lt 3 lw 10 notitle
+
+plot "Dat/ZDipoleft.Dat000200" using (27.2114*$1):($7/($4**2+$5**2)) lt 3 lw 10 title "T=200"
+
+replot "Dat/ZDipoleft.Dat000600" using (27.2114*$1):($7/($4**2+$5**2)) lt 5 lw 6 title "T=600"
+
+replot "Dat/ZDipoleft.Dat001000" using (27.2114*$1):($7/($4**2+$5**2)) lt -1 lw 1 title "T=1000"
+
+
+
+set term x11
+replot
+
+set out "Absorption.eps"
+set term post enhanced eps solid color 20
+replot
+
+
