@@ -197,9 +197,7 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
        tempden03(numpoints(1),numpoints(2),numpoints(3))
   DATATYPE,allocatable :: twoeden03huge(:,:,:,:,:,:,:)
   DATATYPE :: twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3))
-!! TRYING ZDOTU !! BUGGY IN THEPAST
-  complex*16 :: ZDOTU
-  real*8 :: DDOT
+  DATATYPE :: cdot
 !!  DATATYPE ::  myden(totpoints), myreduced(totpoints)  !! I GET SEGFAULTS THIS WAY
   DATATYPE,allocatable ::  myden(:), myreduced(:)
 
@@ -239,7 +237,7 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
         endif
      enddo
   endif
-  
+
   if (notwoflag.ne.0) then
      return
   endif
@@ -274,7 +272,7 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
               OFLWR "WOOTTTFFFF"; CFLST
            endif
            if (.not.localflag) then
-              
+
               call myclock(itime)
               
 !!$                 allocate(twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3)))              
@@ -407,6 +405,7 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   enddo
   enddo
 
+
 !! If orbparflag=.false., toepflag.ne.0, then distribute effort and allgather.
 !! If orbparflag=.true., toepflag .ne.0, and MPIFLAG is set, then only have local block; no communication afterwards is needed
 !! If orbparflag=.true., toepflag .eq.0, then allocate big grid and reduce (need more memory with toepflag 0)
@@ -433,10 +432,6 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   enddo
   enddo
 
-!  call mpibarrier()
-!  OFLWR "***  005"; CFL
-!  call mpibarrier()
-
   call myclock(jtime); times(1)=times(1)+jtime-itime; itime=jtime
 
 
@@ -450,14 +445,8 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   twoematel(:,:,:,:)=0
 !$OMP END MASTER
 
-!  call mpibarrier()
-!  OFLWR "***  006"; CFL
-!  call mpibarrier()
-
 !! (YONG FYI)
 !! I GET SEGFAULTS IF MYDEN AND MYREDUCED ARE AUTOMATIC VARIABLES NOT ALLOCATABLE.
-
-!$OxxxxMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,spf2b,myreduced,myden)
 
   allocate(myden(totpoints), myreduced(totpoints))
 
@@ -469,13 +458,15 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   do spf2a=1,numspf
      myreduced(:)=twoereduced(:,spf2a,spf2b)
 
-!! TRYING ZDOTU !! BUGGY IN THE PAST !!
+!! TRYING ZDOTU !! BUGGY IN THE PAST !! YES STILL BUGGY (gfortran 4.6 not 4.9 on mac?)
+!#ifdef REALGO
+!     twoematel(spf2a,spf2b,spf1a,spf1b) = DDOT(totpoints,myden,1,myreduced,1)
+!#else
+!     twoematel(spf2a,spf2b,spf1a,spf1b) = ZDOTU(totpoints,myden,1,myreduced,1)
+!#endif
 
-#ifdef REALGO
-     twoematel(spf2a,spf2b,spf1a,spf1b) = DDOT(totpoints,myden,1,myreduced,1)
-#else
-     twoematel(spf2a,spf2b,spf1a,spf1b) = ZDOTU(totpoints,myden,1,myreduced,1)
-#endif
+     twoematel=cdot(myden,myreduced,totpoints)
+
      enddo
      enddo
 !$OMP END DO
@@ -483,11 +474,6 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   enddo
   deallocate(myden,myreduced)
 !$OMP END PARALLEL
-
-!  call mpibarrier()
-!  OFLWR "***  007"; CFL
-!  call mpibarrier()
-
 
   call myclock(jtime); times(6)=times(6)+jtime-itime;  
   lasttime=jtime
