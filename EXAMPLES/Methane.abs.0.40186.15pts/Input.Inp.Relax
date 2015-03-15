@@ -28,7 +28,7 @@ numelec=10
 
 par_timestep=0.5d0
 
-nspf=7
+nspf=9
 
 parorbsplit=3
 
