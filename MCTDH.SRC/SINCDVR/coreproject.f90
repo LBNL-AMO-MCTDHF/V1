@@ -810,7 +810,7 @@ subroutine mult_xderiv(in, out,howmany)
   use myparams
   implicit none
   integer :: howmany
-  character :: timingdir="booga"
+  character (len=200) :: timingdir="booga"
   DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
   call mult_allpar(in,out,2,howmany,timingdir,2)
 end subroutine mult_xderiv
@@ -819,7 +819,7 @@ subroutine mult_yderiv(in, out,howmany)
   use myparams
   implicit none
   integer :: howmany
-  character :: timingdir="booga"
+  character (len=200) :: timingdir="booga"
   DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
   call mult_allpar(in,out,3,howmany,timingdir,2)
 end subroutine mult_yderiv
@@ -828,7 +828,7 @@ subroutine mult_zderiv(in, out,howmany)
   use myparams
   implicit none
   integer :: howmany
-  character :: timingdir="booga"
+  character (len=200) :: timingdir="booga"
   DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
   call mult_allpar(in,out,4,howmany,timingdir,2)
 end subroutine mult_zderiv

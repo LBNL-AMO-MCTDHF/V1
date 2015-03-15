@@ -211,18 +211,18 @@ COMPLEX *16 :: T1,T2,T3,T(-NB:NB)
 PI = 4D0*ATAN(1D0)
 
 DO J = -NB,NB
-	T(J) = ((-1D0)**J)/J**2
-	IF(J == 0) T(J) = PI**2/6D0
+   T(J) = ((-1D0)**J)/J**2
+   IF(J == 0) T(J) = PI**2/6D0
 END DO
 
 DO K = -NB,NB
 DO J = -NB,NB
 DO I = -NB,NB
-	T1 = 0; T2 = 0; T3 = 0
-	IF(J == 0 .AND. K == 0) T1 = T(I)
-	IF(I == 0 .AND. K == 0) T2 = T(J)
-	IF(I == 0 .AND. J == 0) T3 = T(K)
-	X(I,J,K) = T1+T2+T3
+   T1 = 0; T2 = 0; T3 = 0
+   IF(J == 0 .AND. K == 0) T1 = T(I)
+   IF(I == 0 .AND. K == 0) T2 = T(J)
+   IF(I == 0 .AND. J == 0) T3 = T(K)
+   X(I,J,K) = T1+T2+T3
 END DO
 END DO
 END DO
@@ -250,9 +250,9 @@ PI = 4D0*ATAN(1D0)
 A = -2D0*PI*DCMPLX(0D0,1D0)/NN
 
 DO K = -N,N
-	Y(K) = 0
-	DO J = -N,N
-		Y(K) = Y(K) + X(J)*EXP(A*J*K)
+   Y(K) = 0
+   DO J = -N,N
+      Y(K) = Y(K) + X(J)*EXP(A*J*K)
    END DO
 END DO
 
@@ -274,9 +274,9 @@ PI = 4D0*ATAN(1D0)
 A = 2D0*PI*DCMPLX(0D0,1D0)/NN
 
 DO K = -N,N
-	Y(K) = 0
-	DO J = -N,N
-		Y(K) = Y(K) + X(J)*EXP(A*J*K)/NN
+   Y(K) = 0
+   DO J = -N,N
+      Y(K) = Y(K) + X(J)*EXP(A*J*K)/NN
    END DO
 END DO
 
@@ -295,19 +295,19 @@ INTEGER :: I,J
 
 DO J = -N,N
 DO I = -N,N
-	CALL DFT1(X(:,I,J),Y(:,I,J),N)
+   CALL DFT1(X(:,I,J),Y(:,I,J),N)
 END DO
 END DO
 
 DO J = -N,N
 DO I = -N,N
-	CALL DFT1(Y(I,:,J),Y1(I,:,J),N)
+   CALL DFT1(Y(I,:,J),Y1(I,:,J),N)
 END DO
 END DO
 
 DO J = -N,N
 DO I = -N,N
-	CALL DFT1(Y1(I,J,:),Y(I,J,:),N)
+   CALL DFT1(Y1(I,J,:),Y(I,J,:),N)
 END DO
 END DO
 
@@ -326,19 +326,19 @@ INTEGER :: I,J
 
 DO J = -N,N
 DO I = -N,N
-	CALL IDFT1(X(:,I,J),Y(:,I,J),N)
+   CALL IDFT1(X(:,I,J),Y(:,I,J),N)
 END DO
 END DO
 
 DO J = -N,N
 DO I = -N,N
-	CALL IDFT1(Y(I,:,J),Y1(I,:,J),N)
+   CALL IDFT1(Y(I,:,J),Y1(I,:,J),N)
 END DO
 END DO
 
 DO J = -N,N
 DO I = -N,N
-	CALL IDFT1(Y1(I,J,:),Y(I,J,:),N)
+   CALL IDFT1(Y1(I,J,:),Y(I,J,:),N)
 END DO
 END DO
 
