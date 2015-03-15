@@ -17,6 +17,7 @@ LOADFLAGS =
 MYINCLUDE=.
 	
 FFLAGS = -O2 -x f95-cpp-input -Wall -ffast-math -fbounds-check
+FFLAGS = -O2 -x f95-cpp-input -Wall -Wno-unused -Wno-unused-dummy-argument -ffast-math -fbounds-check
 F77FLAGS = -O2  -ffast-math 
 
 
