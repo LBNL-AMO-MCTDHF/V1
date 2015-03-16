@@ -15,7 +15,7 @@ You may also of course create new subdirectories within the .git working
    directory (V1.0BETA.030315.INTELFFT, renamed V1.0 in the example workflow
    for mac below)
 The idea is that you can work entirely within the directory that you clone and to
-   which you pull, not copy the git distribution elsewhere for compilation for,
+   which you pull, not copy the git distribution elsewhere for compilation, for
    instance, and this is described below for mac.  You may or may not wish to do 
    this.
 
