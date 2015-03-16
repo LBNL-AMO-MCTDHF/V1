@@ -4,7 +4,7 @@ include ../Makefile.header
 
 HTWO= init_HE_new.o    he_extraproject.o  He_params.o heproject.o GetJacobiKE.o GetLobatto.o coreproject.o 
 
-DEPEND= ../Definitions.INC  ../Definitions.ALL 
+DEPEND= ../Definitions.INC  ../Definitions.ALL  ../Makefile.header
 
 default: heprojectar.a
 

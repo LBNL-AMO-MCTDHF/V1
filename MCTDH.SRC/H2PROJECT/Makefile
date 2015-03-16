@@ -4,7 +4,7 @@ include ../Makefile.header
 
 HTWO= init_H2_new.o  mclpmn.o mclqmn.o  h2_extraproject.o PSC-newest.o H2_params.o h2project.o lpm.o coreproject.o 
 
-DEPEND= ../Definitions.INC  ../Definitions.ALL 
+DEPEND= ../Definitions.INC  ../Definitions.ALL ../Makefile.header
 
 default: h2projectar.a
 

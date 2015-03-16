@@ -4,7 +4,7 @@ include ../Makefile.header
 
 HTWO= init_sinc_new.o    sinc_extraproject.o  sinc_params.o sincproject.o SineDVR.o coreproject.o readit.o tooth.o toeplitz_subs.o
 
-DEPEND= ../Definitions.INC  ../Definitions.ALL 
+DEPEND= ../Definitions.INC  ../Definitions.ALL ../Makefile.header
 
 default: sincprojectar.a
 
