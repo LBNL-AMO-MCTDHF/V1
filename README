@@ -3,6 +3,9 @@
 
 FIRST DISTRIBUTION VERSION.  MPI FFT for mean fields.
 
+For the moment, please watch the commits to stay notified about bug fixes:
+     https://github.com/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT/commits/master
+
 Velocity gauge sinc DVR just implemented, not debugged nor checked for factors.
 
 MPI ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3.
