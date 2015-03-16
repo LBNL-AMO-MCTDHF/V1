@@ -10,8 +10,6 @@ loadavectorflag=1
 avectorfile="Bin/avector.bin.relax2"
 avecloadskip=2
 
-multmanyflag=1
-
 mcscfnum=1
 
 notiming=0

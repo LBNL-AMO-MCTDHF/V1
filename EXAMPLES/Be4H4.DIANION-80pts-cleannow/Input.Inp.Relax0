@@ -2,8 +2,6 @@
 
 &parinp
 
-multmanyflag=1
-
 mcscfnum=4
 
 expodim=30

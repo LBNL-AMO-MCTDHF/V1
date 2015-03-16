@@ -87,7 +87,7 @@ subroutine getparams()
        sortwalks,  debugflag, drivingflag,drivingproportion, drivingmethod, spineigflag,eigprintflag, &
        avecloadskip,nonsparsepropmode,sparseopt,lanprintflag,dipmodtime,conprop,connormflag, &
        orbcompact,spinrestrictval,mshift,numskiporbs,orbskip,debugfac,denmatfciflag,&
-       multmanyflag,walkwriteflag,iprintconfiglist,timestepfac,max_timestep
+       walkwriteflag,iprintconfiglist,timestepfac,max_timestep
 
 
 
@@ -181,10 +181,6 @@ subroutine getparams()
   do i=1,nargs
      buffer=nullbuff;     call getarg(i,buffer);     len=getlen(buffer)
 
-     if (buffer(1:4) .eq. 'Many') then
-        multmanyflag=1
-        write(mpifileptr, *) "multmanyflag turned on"
-     endif
      if (buffer(1:4) .eq. 'Rel=') then
         read(buffer(5:len),*) relerr
         write(mpifileptr, *) "Relative error for spf prop set to ", relerr, " by command line option."

@@ -15,13 +15,15 @@ module twoemod
 
 end module twoemod
 
-subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,logorbpar)
+subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,logorbpar,multmanyflag)
   use twoemod
   use myparams
   implicit none
   integer :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,inspfugvals(innumspf), &
-       outspfsmallsize,ii
+       outspfsmallsize,ii,multmanyflag
   logical, intent(out) :: logorbpar
+
+  multmanyflag=0
 
   logorbpar=.false.
 

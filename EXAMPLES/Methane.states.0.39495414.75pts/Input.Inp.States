@@ -8,8 +8,6 @@ timingout=30
 
 mcscfnum=12
 
-multmanyflag=1
-
 expodim=40
 maxexpodim=100
 

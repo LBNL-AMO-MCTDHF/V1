@@ -7,8 +7,6 @@ walkwriteflag=1
 loadspfflag=1
 spffile="Bin/spfs.bin.relax1"
 
-multmanyflag=1
-
 mcscfnum=3
 
 notiming=0

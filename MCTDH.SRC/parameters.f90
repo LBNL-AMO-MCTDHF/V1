@@ -17,7 +17,6 @@ module parameters
 real*8 :: timestepfac=1d0                        !! accelerate relax
 real*8 :: max_timestep=1d10                      !!
 
-integer :: multmanyflag=0                        !!  experimental
 integer :: parorbsplit=1                         !!  Parallelize orbital calculation.  Might speed up, might
                                                  !!   slow down; check timing.
 !! FOR TOTAL ORBITAL PARALLELIZATION with SINC DVR, SET PARORBSPLIT=3
@@ -399,6 +398,7 @@ integer :: nonuc_checkflag=1     !!              !! Turn off deriv operators in 
 
 !! INTERNAL
 
+integer :: multmanyflag=0                     
 
 integer :: reducedpotsize = -1
 

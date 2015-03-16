@@ -3,14 +3,18 @@
 
 
 
-subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,outorbparflag) ! ok unused
+subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,outorbparflag,multmanyflag) ! ok unused
   use myparams
   implicit none
-  integer :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,inspfugvals(innumspf), outspfsmallsize
+  integer :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,inspfugvals(innumspf), outspfsmallsize,multmanyflag
   logical, intent(out) :: outorbparflag
   numspf=innumspf;  
   outspfsmallsize=totpoints
   outorbparflag=orbparflag
+  multmanyflag=0
+  if (orbparflag) then
+     multmanyflag=1
+  endif
 end subroutine transferparams
 
 subroutine twoedealloc()
