@@ -24,6 +24,3 @@ F77FLAGS = -fast
 FFLAGS = -O2 -xHost
 F77FLAGS = -O2 -xHost
 
-
-
-
