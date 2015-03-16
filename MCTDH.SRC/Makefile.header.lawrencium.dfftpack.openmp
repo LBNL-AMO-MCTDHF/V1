@@ -1,22 +1,28 @@
 
 MPIFLAG = -D MPIFLAG
-FFTFLAG = -D FFTWFLAG -D MPIFLAG -D MPIFFTW
+FFTFLAG = -D MPIFLAG
 PGFFLAG =
 
 ARGO=arg.o
 
 AR=xiar
+
 CC = mpicc
-FC = mpif90 -parallel -threads
-F90 = mpif90 -cpp -parallel -threads
+FC = mpif90 -openmp
+F90 = mpif90 -cpp -openmp
 
 LAPACK = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a -Wl,--end-group -lpthread -lm
 
 LOADFLAGS = -opt-matmul
 
-MYINCLUDE=/global/software/sl-6.x86_64/modules/intel/2013_sp1.4.211/fftw/3.3.4-intel/include/
+MYINCLUDE=
 
 FFLAGS = -O2 -xHost
 F77FLAGS = -O2 -xHost
+
+
+
+
+
 
 

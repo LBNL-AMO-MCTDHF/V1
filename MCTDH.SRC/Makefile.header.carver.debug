@@ -7,8 +7,8 @@ ARGO=arg.o
 
 AR=xiar
 CC = mpicc
-FC = mpif90 -openmp
-F90 = mpif90 -openmp
+FC = mpif90 -parallel -threads
+F90 = mpif90 -parallel -threads
 
 LAPACK =   -mkl
 	
