@@ -6,6 +6,21 @@ FIRST DISTRIBUTION VERSION.  MPI FFT for mean fields.
 For the moment, please watch the commits to stay notified about bug fixes:
      https://github.com/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT/commits/master
 
+Possible workflow described below for mac.
+Example subdirectories now all renamed with -clean extensions.
+So you may proceed as described for mac; when you perform a git pull, the -clean
+   subdirectories will be updated, and you can carry the updates to any new
+   subdirectories you have created within EXAMPLES.
+You may also of course create new subdirectories within the .git working
+   directory (V1.0BETA.030315.INTELFFT, renamed V1.0 in the example workflow
+   for mac below)
+The idea is that you can work entirely within the directory that you clone and to
+   which you pull, not copy the git distribution elsewhere for compilation for,
+   instance, and this is described below for mac.  You may or may not wish to do 
+   this.
+
+ ----------------------------------------------------
+
 OpenMP has been removed from most Makefile.headers, FYI
 
 Velocity gauge sinc DVR just implemented, not debugged nor checked for factors.
@@ -13,12 +28,15 @@ Velocity gauge sinc DVR just implemented, not debugged nor checked for factors.
 MPI ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3.
   set both parorbsplit=3 in &parinp and orbparflag=.true. in &sinc_params
 
+ ----------------------------------------------------
+
 On Mac: minimal demonstration
 
 FIRST:
      git clone https://github.com/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT
      mv V1.0BETA.030315.INTELFFT V1.0
-     cd V1.0
+
+     mkdir MYRUNS         ...if you want, for instance
 
 THEN perform each step in this working directory
 
@@ -27,29 +45,38 @@ THEN perform each step in this working directory
      mv *BIN*mac* COMPDIRS
 
 2A)  cd COMPDIRS/BIN.ecs.hermorm.mac
-     ./Makeme
+               or
 2B)  cd COMPDIRS/BIN.ecs.hermorm.mac.mpi
+              then
+     export PATH=.:$PWD:$PATH
+               or
+     export PATH=$PWD:$PATH
+               or 
+     export PATH=$PATH:$PWD
+                          ...or however you do it.  Maybe in your .bashrc
      ./Makeme
-
-3A)  cd EXAMPLES/METHANE.abs.0.40186.45pts
-     ln -s ../../COMPDIRS/BIN.ecs.hermnorm/chmctdhf_sinc ./chmctdhf_sinc
-     ./chmctdhf_sinc Inp=Input.Inp.Relax | tee Outs/Out.relax
-     ./chmctdhf_sinc Inp=Input.Inp.Pulse | tee Outs/Out.pulse
+3)   cd EXAMPLES
+              then
+A)   cp -R -p METHANE.abs.0.40186.45pts-clean METHANE.abs.0.40186.45pts
+     cd METHANE.abs.0.40186.45pts
+     chmctdhf_sinc Inp=Input.Inp.Relax | tee Outs/Out.relax
+     chmctdhf_sinc Inp=Input.Inp.Pulse | tee Outs/Out.pulse
+               or
+B)   cp -R -p METHANE.abs.0.40186.75pts-clean METHANE.abs.0.40186.75pts
+     cd METHANE.abs.0.40186.75pts
+     mpirun -n 15 chmctdhf_sinc Inp=Input.Inp.Relax | tee Outs/Out.relax
+     mpirun -n 15 chmctdhf_sinc Inp=Input.Inp.Pulse | tee Outs/Out.pulse
+              then
      ./gnu.abs.here
-3B)  cd EXAMPLES/METHANE.abs.0.40186.135pts
-     ln -s ../../COMPDIRS/BIN.ecs.hermnorm.mpi/chmctdhf_sinc ./chmctdhf_sinc.mpi
-     mpirun -n 15 ./chmctdhf_sinc.mpi Inp=Input.Inp.Relax | tee Outs/Out.relax
-     mpirun -n 15 ./chmctdhf_sinc.mpi Inp=Input.Inp.Pulse | tee Outs/Out.pulse
-     ./gnu.abs.here
 
-If you want to update the code then perform step 4, like steps 1-3, in the V1.0
-working directory,
+If you want to update the code and -clean examples subdirectories then perform 
+step 4, like steps 1-3, in the V1.0 working directory,
 
 4)   git pull https://github.com/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT
 
 
-----------    MODULES TO LOAD    ----------
----------- ON NERSC & LAWRENCIUM ----------
+-------------------    MODULES TO LOAD    --------------------
+------------------- ON NERSC & LAWRENCIUM --------------------
 
   COMPDIRS/BIN.ecs.hermnorm.law, 
   COMPDIRS/BIN.ecs.hermnorm.edison, etc.
