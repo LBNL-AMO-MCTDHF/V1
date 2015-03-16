@@ -35,9 +35,10 @@ On Mac: minimal demonstration
 FIRST:
      git clone https://github.com/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT
      mv V1.0BETA.030315.INTELFFT V1.0     ...if you want
+     cd V1.0
      mkdir MYRUNS         ...if you want, for instance
-
-THEN perform each step in this working directory
+ 
+THEN perform each step in this V1.0 working directory
 
 1)   mv COMPDIRS/*mac* .
      rm -r COMPDIRS/*
