@@ -63,15 +63,12 @@ module load torque
 HOPPER:
 
 module swap PrgEnv-pgi PrgEnv-intel
-module load PrgEnv-intel
+#yes last
 module unload cray-libsci
 
 EDISON:
 
 module unload cray-libsci
-module unload PrgEnv-intel
-module load PrgEnv-intel
-module load intel
 module load mkl
 
   DJH 03-15-2015
