@@ -469,7 +469,7 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
 !     twoematel(spf2a,spf2b,spf1a,spf1b) = ZDOTU(totpoints,myden,1,myreduced,1)
 !#endif
 
-     twoematel=cdot(myden,myreduced,totpoints)
+     twoematel(spf2a,spf2b,spf1a,spf1b)=cdot(myden,myreduced,totpoints)
 
      enddo
      enddo
