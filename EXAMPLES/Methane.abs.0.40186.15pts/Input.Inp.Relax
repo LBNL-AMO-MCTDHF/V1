@@ -28,7 +28,7 @@ astoptol=1d0
 
 numelec=10
 
-par_timestep=0.1d0
+par_timestep=0.5d0
 timestepfac=1.05d0
 max_timestep=5d0
 
