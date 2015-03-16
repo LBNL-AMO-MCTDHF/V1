@@ -34,7 +34,7 @@ On Mac: minimal demonstration
 
 FIRST:
      git clone https://github.com/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT
-     mv V1.0BETA.030315.INTELFFT V1.0
+     mv V1.0BETA.030315.INTELFFT V1.0     ...if you want
      mkdir MYRUNS         ...if you want, for instance
 
 THEN perform each step in this working directory
