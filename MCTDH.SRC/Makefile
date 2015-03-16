@@ -22,8 +22,8 @@ bessrcso = bessel/d1mach.o bessel/d9lgmc.o bessel/dasyjy.o bessel/dbesj.o bessel
 SRCS= parameters.o  gaussq.o  eigen.o jacobi.o  spin.o rkf45.o   spfs.o  main_modules.o spinwalks.o ovlsub.o autocall.o utils.o odex.o   getparams.o MPI.o   actions.o   readactions.o povactions.o saveactions.o natprojaction.o orbvectoractions.o   expokit.o  expo_driver.o quad.o   dipolecall.o    dipolesub.o  proputils.o autosub.o  derivs.o prop.o matel.o  projeflux.o loadstuff.o configload.o blocklanczos.o psistats.o second_derivs.o keprojector.o opfunctions.o electronflux.o walks.o walkmult.o  newconfig.o configstuff.o biortho.o    dfconstrain.o denmat.o mean.o driving.o $(ARGO) 
 
 
-DEPEND= Definitions.INC main_modules.o parameters.o Definitions.ALL Makefile.header 
 DEPEND=  main_modules.o parameters.o 
+DEPEND= Definitions.INC main_modules.o parameters.o Definitions.ALL Makefile.header 
 
 default: $(MYDEFAULT)
 

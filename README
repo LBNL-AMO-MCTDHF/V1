@@ -73,6 +73,9 @@ If you want to update the code and -clean examples subdirectories then perform
 step 4, like steps 1-3, in the V1.0 working directory,
 
 4)   git pull https://github.com/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT
+     ... then ./Makeme should be sufficient, in the BIN directories,
+         but ./Makeme clean; ./Makeme would certainly be fail safe
+         after updating the code with git pull.
 
 
 -------------------    MODULES TO LOAD    --------------------
