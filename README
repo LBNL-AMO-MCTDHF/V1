@@ -54,7 +54,7 @@ THEN perform each step in this V1.0 working directory
                or 
      export PATH=$PATH:$PWD
                           ...or however you do it.  Maybe in your .bashrc
-              then
+              and
      ./Makeme
 3)   cd EXAMPLES
               then
