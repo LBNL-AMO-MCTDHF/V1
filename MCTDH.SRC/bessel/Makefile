@@ -26,9 +26,10 @@ clean:
 go: $(bessrcso)
 
 
+%.o : %.f ../Makefile.header ; $(FC) $(F77FLAGS) -c $<
 
-.f.o: 
-	$(FC) $(F77FLAGS) -c $<
+#.f.o: 
+#	$(FC) $(F77FLAGS) -c $<
 
 
 

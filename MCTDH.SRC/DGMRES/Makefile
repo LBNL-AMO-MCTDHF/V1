@@ -20,9 +20,10 @@ clean:
 go: $(dgmrcso)
 
 
+%.o : %.f ../Makefile.header ; $(FC) $(F77FLAGS) -c $<
 
-.f.o: 
-	$(FC) $(F77FLAGS) -c $<
+#.f.o: 
+#	$(FC) $(F77FLAGS) -c $<
 
 
 

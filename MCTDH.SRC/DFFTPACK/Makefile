@@ -68,8 +68,11 @@ dsint.o\
 sint1.o\
 dsinti.o
 
-.f.o: 
-	$(FC) $(F77FLAGS) -c $<
+
+%.o : %.f ../Makefile.header ; $(FC) $(F77FLAGS) -c $<
+
+#.f.o: 
+#	$(FC) $(F77FLAGS) -c $<
 
 
 default: $(OBJ)
