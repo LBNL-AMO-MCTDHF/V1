@@ -1,0 +1,27 @@
+#!/bin/bash
+#
+#SBATCH --job-name=M09_165
+#
+#SBATCH --qos=condo_axl  --account=lr_axl --partition=lr3 --constraint=lr3_c20
+#
+#SBATCH --nodes=17
+#
+#SBATCH -t 504:00:00
+#
+#SBATCH 
+#
+#
+
+./RUNME.BAT.HUGE
+
+
+
+
+
+
+
+
+
+
+
+

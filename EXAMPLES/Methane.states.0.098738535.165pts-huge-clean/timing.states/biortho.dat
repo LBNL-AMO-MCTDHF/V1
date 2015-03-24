@@ -1,0 +1,48 @@
+ 
+ 
+ STEP REJECTED   1.00000000000000       2.764638154827366E-002
+  1.000000000000000E-006
+ STEP REJECTED  0.290000000000000       1.481996614939282E-006
+  1.000000000000000E-006
+  Bio: steps, iter, stepsize           5          55  0.220000000000000     
+ Warning - biorthogonalization restarting. Ddim, tol:           10
+  1.000000000000000E-006
+ STEP REJECTED  0.880000000000000       3.767240339544461E-003
+  1.000000000000000E-006
+ STEP REJECTED  0.370000000000000       4.968837477948696E-007
+  1.000000000000000E-006
+  Bio: steps, iter, stepsize           4          52  0.320000000000000     
+ Warning - biorthogonalization restarting. Ddim, tol:           12
+  1.000000000000000E-006
+ STEP REJECTED   1.00000000000000       2.777004912574910E-003
+  1.000000000000000E-006
+ STEP REJECTED  0.490000000000000       6.048039422281113E-007
+  1.000000000000000E-006
+  Bio: steps, iter, stepsize           3          45  0.430000000000000     
+ Warning - biorthogonalization restarting. Ddim, tol:           14
+  1.000000000000000E-006
+ STEP REJECTED   1.00000000000000       3.044284341095356E-004
+  1.000000000000000E-006
+  Bio: steps, iter, stepsize           2          34  0.620000000000000     
+ Warning - biorthogonalization restarting. Ddim, tol:           16
+  1.000000000000000E-006
+ STEP REJECTED   1.00000000000000       3.866589150010310E-005
+  1.000000000000000E-006
+  Bio: steps, iter, stepsize           2          38  0.700000000000000     
+ Warning - biorthogonalization restarting. Ddim, tol:           18
+  1.000000000000000E-006
+ STEP REJECTED   1.00000000000000       1.635800744114539E-005
+  1.000000000000000E-006
+  Bio: steps, iter, stepsize           2          42  0.800000000000000     
+ Warning - biorthogonalization restarting. Ddim, tol:           20
+  1.000000000000000E-006
+ STEP REJECTED   1.00000000000000       1.669309215579874E-006
+  1.000000000000000E-006
+  Bio: steps, iter, stepsize           2          46  0.900000000000000     
+ Warning - biorthogonalization restarting. Ddim, tol:           22
+  1.000000000000000E-006
+  Bio: steps, iter, stepsize           1          25   1.00000000000000     
+  Bio: steps, iter, stepsize           1          25   1.00000000000000     
+  Bio: steps, iter, stepsize           1          25   1.00000000000000     
+  Bio: steps, iter, stepsize           1          25   1.00000000000000     
+  Bio: steps, iter, stepsize           1          25   1.00000000000000     
