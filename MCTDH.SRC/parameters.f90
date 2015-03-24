@@ -134,6 +134,7 @@ real*8 :: astoptol=1d-7                          !! Avector error tolerance for 
 integer :: littlesteps=1         !!              !! Sub intervals of mean field time step for avector prop
 integer :: maxexpodim=100        !!              !! Expokit maximum kry dimension
 integer :: expodim=10            !!              !! Expokit starting krylov size
+real*8  :: expostepfac=1.2d0     !!              !! 
 real*8 :: expotol=1d-8           !!              !! Expokit krylov convergence 
 real*8 :: denreg=1d-10           !! Denreg=      !! density matrix regularization parameter.
 real*8 :: invtol=1d-12

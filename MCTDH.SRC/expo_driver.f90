@@ -98,12 +98,13 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   if (thisexpodim.lt.maxexpodim) then
      tempstepsize=tempstepsize*4
   else
-     tempstepsize=tempstepsize*1.1
+!!     tempstepsize=tempstepsize*1.1
+     tempstepsize=tempstepsize*expostepfac
   endif
 
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="old", position="append")
-     write(expofileptr,*) "Go Oribtal Expoprop.  Tinit=", time1, " thisexpodim=",thisexpodim, " step ", min(par_timestep/littlesteps,tempstepsize)
+     write(expofileptr,*) "Go Orbital Expoprop.  Tinit=", time1, " thisexpodim=",thisexpodim, " step ", min(par_timestep/littlesteps,tempstepsize)
      close(expofileptr)
   endif
 

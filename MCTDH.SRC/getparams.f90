@@ -87,7 +87,7 @@ subroutine getparams()
        sortwalks,  debugflag, drivingflag,drivingproportion, drivingmethod, spineigflag,eigprintflag, &
        avecloadskip,nonsparsepropmode,sparseopt,lanprintflag,dipmodtime,conprop,connormflag, &
        orbcompact,spinrestrictval,mshift,numskiporbs,orbskip,debugfac,denmatfciflag,&
-       walkwriteflag,iprintconfiglist,timestepfac,max_timestep
+       walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac
 
 
 
