@@ -396,8 +396,8 @@ subroutine mympibcast(input, source, isize)
   use mpimod
   use parameters
   implicit none
-  DATATYPE :: input(isize)
   integer :: ierr, isize, source, isource
+  DATATYPE :: input(isize)
 
   isource=source-1
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
@@ -414,8 +414,8 @@ subroutine mympisend(input, dest, tag, isize)
   use mpimod
   use parameters
   implicit none
-  DATATYPE :: input(isize)
   integer :: ierr, isize, dest, idest,tag
+  DATATYPE :: input(isize)
 
   idest=dest-1
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
@@ -427,12 +427,36 @@ subroutine mympisend(input, dest, tag, isize)
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympisend
 
+
+
+subroutine mympi_isend(input, dest, tag, isize,request)
+  use mpimod
+  use parameters
+  implicit none
+  integer :: ierr, isize, dest, idest,tag,request
+  DATATYPE :: input(isize)
+
+  idest=dest-1
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+
+!!  call mpi_isend(input,isize,MPIDATATYPE,idest,tag,MPI_COMM_WORLD,MPI_REQUEST_NULL,ierr)
+
+  call mpi_isend(input,isize,MPIDATATYPE,idest,tag,MPI_COMM_WORLD,request,ierr)
+
+  if (ierr/=0) then
+     OFLWR "ERR mympisend"; CFLST
+  endif
+
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+end subroutine mympi_isend
+
+
 subroutine mympirecv(input, source, tag, isize)
   use mpimod
   use parameters
   implicit none
-  DATATYPE :: input(isize)
   integer :: ierr, isize, source, isource,tag
+  DATATYPE :: input(isize)
 
   isource=source-1
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
@@ -444,6 +468,40 @@ subroutine mympirecv(input, source, tag, isize)
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympirecv
 
+
+subroutine mympi_irecv(input, source, tag, isize,request)
+  use mpimod
+  use parameters
+  implicit none
+  integer :: ierr, isize, source, isource,tag,request
+  DATATYPE :: input(isize)
+
+  isource=source-1
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+
+!!  call mpi_irecv(input,isize,MPIDATATYPE,isource,tag,MPI_COMM_WORLD,MPI_REQUEST_NULL,ierr)
+
+  call mpi_irecv(input,isize,MPIDATATYPE,isource,tag,MPI_COMM_WORLD,request,ierr)
+
+  if (ierr/=0) then
+     OFLWR "ERR mympi_irecv"; CFLST
+  endif
+
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+end subroutine mympi_irecv
+
+
+
+subroutine mympiwait(request)
+  use mpimod
+  use parameters
+  implicit none
+  integer :: request,ierr
+  call mpi_wait(request,MPI_STATUS_IGNORE,ierr)
+  if (ierr.ne.0) then
+     OFLWR "IERR ", ierr, " on MPI_WAIT"; CFLST
+  endif
+end subroutine mympiwait
 
 
 

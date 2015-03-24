@@ -872,12 +872,7 @@ recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
      enddo
      idim=3
      if (dodim(idim)) then
-        if (keparopt.eq.0) then
-           call mult_alltoall_z(in,temp,option,howmany,timingdir,notiming)
-        else
-           call mult_roundrobin_z(in,temp,option,howmany,timingdir,notiming)
-        endif
-
+        call mult_alltoall_z(in,temp,option,howmany,timingdir,notiming)
         out(:,:)=out(:,:)+temp(:,:)
 
 !!$        do ibox=1,nprocs
@@ -943,7 +938,7 @@ recursive subroutine mult_alltoall_z(in, out,option,howmany,timingdir,notiming)
 !$OMP BARRIER
 
 !$OMP MASTER
-  call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
 !$OMP END MASTER
 
 !$OMP DO SCHEDULE(STATIC)
@@ -953,7 +948,6 @@ recursive subroutine mult_alltoall_z(in, out,option,howmany,timingdir,notiming)
 !$OMP END DO
 
 !$OMP BARRIER
-
 
 !$OMP MASTER
   call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
@@ -972,7 +966,7 @@ call myclock(btime); times(3)=times(3)+btime-atime; atime=btime
 
   call myclock(btime); times(4)=times(4)+btime-atime
 
-  if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
+  if (debugflag.eq.42.and.myrank.eq.1) then
      xcount=xcount+1
      if (xcount==1) then
         open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke.time.dat", status="unknown")
@@ -983,138 +977,6 @@ call myclock(btime); times(3)=times(3)+btime-atime; atime=btime
      write(2853,'(100I11)')  times(1:4);        close(2853)
   endif
 end subroutine mult_alltoall_z
-
-
-
-
-
-
-
-recursive subroutine mult_roundrobin_z(in, out,option,howmany,timingdir,notiming)
-  use myparams
-  use myprojectmod  
-  implicit none
-  integer :: nnn,option,ii,howmany
-  DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       out(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       work(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs)
-  integer :: times(10),atime,btime,notiming,getlen,ibox,iibox,sendrequest(nprocs),recvrequest(nprocs)
-  character :: timingdir*(*)
-  integer, save :: xcount=0
-
-  times(:)=0
-
-  if (nprocs.ne.nbox(3)) then
-     OFLWR "EEGNOT STOP",nprocs,nbox(3); CFLST
-  endif
-  if (totpoints.ne.numpoints(1)*numpoints(2)*numpoints(3)) then
-     OFLWR "WHAAAAAZZZZ?",totpoints,numpoints(1),numpoints(2),numpoints(3); CFLST
-  endif
-
-!!TEMP (not needed)
-  work3(:,:,:,:)=0d0
-
-  nnn=numpoints(1)*numpoints(2)
-
-
-
-  do ibox=1,nbox(3)
-     iibox=mod(myrank-1+ibox-1,nbox(3))+1
-
-     call myclock(atime)
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,atime,btime)
-     select case(option)
-     case(1)  !! KE
-!$OMP DO SCHEDULE(STATIC)
-        do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,ketot(3)%mat(1,iibox,1,myrank),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
-        enddo
-!$OMP END DO
-     case(2) 
-!$OMP DO SCHEDULE(STATIC)
-        do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,fdtot(3)%mat(1,iibox,1,myrank),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
-        enddo
-!$OMP END DO
-     case default 
-        OFLWR "WHAAAAT"; CFLST
-     end select
-
-!$OMP BARRIER
-
-     call myclock(btime); times(1)=times(1)+btime-atime
-
-     if (iibox.eq.myrank) then
-
-!! training wheels
-        if (ibox.ne.1) then
-           OFLWR "DOOGSNATCH"; CFLST
-        endif
-
-!! (not counted in time)
-        work3(:,:,:,myrank)=work(:,:,:)
-
-     else
-        call myclock(atime)
-        call mympi_isend(work(:,:,:),iibox,999,totpoints*howmany,sendrequest(iibox))
-        call myclock(btime); times(2)=times(2)+btime-atime
-
-     endif
-
-!$OMP END PARALLEL
-     
-  enddo
-
-  call myclock(atime)
-
-  do ibox=1,nbox(3)
-     iibox=mod(myrank-1+ibox-1,nbox(3))+1
-     if (iibox.ne.myrank) then
-!!TEMP 
-!        OFLWR "GO iRECV",iibox,myrank; CFL
-       call mympi_irecv(work3(:,:,:,iibox),iibox,999,totpoints*howmany,recvrequest(iibox))
-!       OFLWR "DONE iRECV",iibox,myrank; CFL
-     endif
-  enddo
-
-  call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
-
-  do iibox=1,nprocs
-     if (myrank.ne.iibox) then
-        call mympiwait(recvrequest(iibox))
-     endif
-     if (myrank.ne.iibox) then
-        call mympiwait(sendrequest(iibox))
-     endif
-  enddo
-
-  call myclock(btime); times(3)=times(3)+btime-atime; atime=btime
-
-
-
-  out(:,:,:)=0d0
-  do ii=1,nprocs
-     out(:,:,:)=out(:,:,:)+work3(:,:,:,ii)
-  enddo
-
-  call myclock(btime); times(4)=times(4)+btime-atime
-
-  if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
-     xcount=xcount+1
-     if (xcount==1) then
-        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown")
-        write(2853,'(100A11)')   "mult", "mpi","wait","reduce"
-        close(2853) 
-     endif
-     open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown", position="append")
-     write(2853,'(100I11)')  times(1:4);        close(2853)
-  endif
-end subroutine mult_roundrobin_z
-
-
-
 
 
 
