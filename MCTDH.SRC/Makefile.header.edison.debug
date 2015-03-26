@@ -6,9 +6,9 @@ PGFFLAG =
 ARGO=arg.o
 
 AR=xiar
-CC = mpicc
-FC = mpif90 -parallel -threads
-F90 = mpif90 -parallel -threads
+CC = cc
+FC = ftn -parallel -threads
+F90 = ftn -parallel -threads
 
 LAPACK =   -mkl
 	

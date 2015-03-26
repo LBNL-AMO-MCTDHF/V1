@@ -6,9 +6,9 @@ PGFFLAG =
 ARGO=arg.o
 
 AR=xiar
-CC = mpicc
-FC = mpif90 -parallel -threads
-F90 = mpif90 -parallel -threads
+CC = cc
+FC = ftn -parallel -threads
+F90 = ftn -parallel -threads
 
 LAPACK =   -mkl
 	
@@ -19,4 +19,3 @@ MYINCLUDE=/project/projectdirs/mp74/git/V1.0BETA.030315.INTELFFT.git/MCTDH.SRC/F
 
 FFLAGS = -C -check all,noarg_temp_created -warn all -gen_interfaces -traceback -static
 F77FLAGS = -C -check all,noarg_temp_created -traceback -warn error,alignments,ignore_loc,general,usage,nodec -static
-
