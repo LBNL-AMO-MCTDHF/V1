@@ -966,6 +966,24 @@ end subroutine mympiireduceone
 subroutine mpiorbgather(orbvector,insize)
 end subroutine mpiorbgather
 
+subroutine mympi_isend()
+  use fileptrmod
+  implicit none
+  OFLWR "SHOULDN'T BE CALLING ISEND IF MPIFLAG WASN'T DEFINED ON COMPLIATION>>>ERROR"; CFLST
+end subroutine mympi_isend
+
+subroutine mympi_irecv()
+  use fileptrmod
+  implicit none
+  OFLWR "SHOULDN'T BE CALLING IRECV IF MPIFLAG WASN'T DEFINED ON COMPLIATION>>>ERROR"; CFLST
+end subroutine mympi_irecv
+
+subroutine mympiwait()
+  use fileptrmod
+  implicit none
+  OFLWR "SHOULDN'T BE CALLING MPIWAIT IF MPIFLAG WASN'T DEFINED ON COMPLIATION>>>ERROR"; CFLST
+end subroutine mympiwait
+
 
 
 
