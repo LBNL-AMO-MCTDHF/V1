@@ -1,1 +1,0 @@
-../MCTDH.SRC/getparams.f90
