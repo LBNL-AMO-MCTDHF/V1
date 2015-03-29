@@ -18,7 +18,7 @@ sincprojectar.a:  $(HTWO)
 sinc_params.o: $(DEPEND) sinc_params.F90
 	$(F90) $(FFLAGS)  -c sinc_params.F90
 
-toeplitz_subs.o:  toeplitz_subs.F90
+toeplitz_subs.o: $(DEPEND) toeplitz_subs.F90
 	$(F90) $(FFLAGS) $(FFTFLAG)  -c toeplitz_subs.F90 -I$(MYINCLUDE)
 
 
