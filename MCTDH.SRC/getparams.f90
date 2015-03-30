@@ -134,6 +134,10 @@ subroutine getparams()
         expotol=min(1d-9,expotol)
      endif
 
+     if (improvedrelaxflag.ne.0) then
+        expotol=min(expotol,1d-9)
+     endif
+
      if (spinrestrictval.lt.abs(restrictms)) then
         spinrestrictval=abs(restrictms)
      endif
@@ -593,17 +597,9 @@ subroutine getparams()
      OFLWR "Error, stopthresh cannot be less than 1d-12"; CFLST  !! then would send hgram 1d-14
   endif
 
-  if (improvedrelaxflag.ne.0) then
-     expotol=min(expotol,1d-9)
-
-     OFLWR "Enforcing CMF defaults for improved relaxation"
-     if (constraintflag.eq.1) then 
-        write(mpifileptr,*) " and removing denmat constraint."
-        constraintflag=0
-     else if (constraintflag.eq.2) then
-        write(mpifileptr,*) " but keeping DF constraint."
-     endif
-     call closefile()
+  if (constraintflag.eq.1.and.improvedrelaxflag.ne.0) then 
+     OFLWR " Removing denmat constraint for relaxation. Not allowed."; CFL
+     constraintflag=0
   endif
   if (spfrestrictflag.eq.0) then
      mrestrictflag=0
