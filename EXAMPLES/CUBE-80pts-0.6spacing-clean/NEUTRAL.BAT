@@ -1,0 +1,7 @@
+
+
+export OMP_NUM_THREADS=5
+mpirun  -n 8 -npernode 2 --bind-to-core --bysocket --cpus-per-proc 5 --report-bindings chmctdhf_sinc Inp=Input.Inp.Neutral |tee Outs/Out.neutral
+
+
+
