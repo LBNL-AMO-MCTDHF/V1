@@ -376,15 +376,11 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
   DATATYPE, intent(out) :: outvalues(numout)  
   real*8 :: error(numout),lanthresh
   DATATYPE :: alpha(lanblocknum,lanblocknum),beta(lanblocknum,lanblocknum), &
+       initvectors(maxlansize,lanblocknum),  invector(maxlansize), multvectors(maxlansize,lanblocknum), &
        lanham(lanblocknum,order,lanblocknum,order),&
-       laneigvects(lanblocknum,order,order*lanblocknum),csum
-
-!! made these allocatable to fix carver segfault djh 03-30-15
-  DATATYPE, allocatable :: &   
-       initvectors(:,:),  invector(:), multvectors(:,:), &
-       lanvects(:,:,:), tempvectors(:,:), &
-       lanmultvects(:,:,:), tempvectors2(:,:)
-
+       laneigvects(lanblocknum,order,order*lanblocknum),&
+       lanvects(maxlansize,lanblocknum,order), tempvectors(maxlansize,numout), &
+       lanmultvects(maxlansize,lanblocknum,order), tempvectors2(maxlansize,numout),csum
   DATATYPE, allocatable :: betas(:,:,:),betastr(:,:,:)
   DATATYPE :: outvectors(outvectorlda,numout), hdot
   DATATYPE :: lastvalue(numout), thisvalue(numout), valdot(numout),normsq(numout)
@@ -394,11 +390,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
 
   DATATYPE :: templanham(lanblocknum*order,lanblocknum*order)
 
-  allocate(&
-       initvectors(maxlansize,lanblocknum),  invector(maxlansize), multvectors(maxlansize,lanblocknum), &
-       lanvects(maxlansize,lanblocknum,order), tempvectors(maxlansize,numout), &
-       lanmultvects(maxlansize,lanblocknum,order), tempvectors2(maxlansize,numout))
-
   if (numout.lt.lanblocknum) then
      OFLWR "numout >= lanblocknum please",numout,lanblocknum; CFLST
   endif
@@ -406,7 +397,11 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
      OFLWR "numout gt order*lanblocknum is impossible.",numout,order,lanblocknum; CFLST
   endif
 
+  
+
+
   printflag=inprintflag
+
 
   alpha=0; beta=0;  values=0
   initvectors=0; invector=0; multvectors=0; 
@@ -417,7 +412,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
   call rand_init(1731.d0) 
 
   if (guessflag==0) then
-
      initvectors(:,:)=0.0d0
      do k=1,lanblocknum
 
@@ -688,9 +682,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
      initvectors(1:lansize,1:lanblocknum)=outvectors(1:lansize,1:lanblocknum)
 
   enddo
-
-  deallocate(  initvectors,invector,multvectors, lanvects, tempvectors, lanmultvects,tempvectors2)
-
   call mpibarrier()
 end subroutine blocklanczos0
 
