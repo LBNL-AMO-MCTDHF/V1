@@ -349,7 +349,7 @@ subroutine fast_newconfiglist(alreadycounted)
   integer, target :: jjj(max_numelec)  !! no, it is set.
   integer :: alltopwalks(nprocs),allbotwalks(nprocs)
   integer :: idof, ii , lowerarr(max_numelec),upperarr(max_numelec),  thisconfig(ndof),&
-       reorder,nullint,kk,iconfig,mm, single(max_numelec),ishell,jj,maxssize=0,sss,nss,ssflag,numdoubly
+       reorder,nullint,kk,iconfig,mm, single(max_numelec),ishell,jj,maxssize=0,sss,nss,ssflag
   logical :: allowedconfig
 
   if (numelec.gt.max_numelec) then
@@ -427,29 +427,10 @@ subroutine fast_newconfiglist(alreadycounted)
 
   lowerarr(:)=1000000
   upperarr(:)=1000000
-
-  numdoubly=numelec-abs(restrictms)
-
-  if (mod(numdoubly,2).ne.0) then
-     OFLWR "OOGA NO!!"; CFLST
-  endif
-
-  do ii=1,numdoubly
-     lowerarr(ii)=(ii+1)/2
-  enddo
-  do ii=1,abs(restrictms)
-     lowerarr(ii+numdoubly)=numdoubly/2+ii
-  enddo
-
   do ii=1,numelec
-     upperarr(ii)=nspf+1-lowerarr(numelec+1-ii)
+     lowerarr(ii)=(ii+1)/2
+     upperarr(ii)=nspf-(numelec-ii)/2
   enddo
-
-
-!  do ii=1,numelec
-!     lowerarr(ii)=(ii+1)/2
-!     upperarr(ii)=nspf-(numelec-ii)/2
-!  enddo
 
   do ii=numelec+3,max_numelec
      upperarr(ii)=1000000+ii-numelec+2
@@ -473,11 +454,7 @@ subroutine fast_newconfiglist(alreadycounted)
   do ishell=1,numshells
      mm=2*allshelltop(ishell)-min(numexcite(ishell),2*nspf-numelec)
      do jj=kk+1,mm
-
-!!        upperarr(jj)=allshelltop(ishell)-(mm-jj)/2
-
-        upperarr(jj)=min(upperarr(jj),allshelltop(ishell)-(mm-jj)/2)
-
+        upperarr(jj)=allshelltop(ishell)-(mm-jj)/2
      enddo
      kk=max(0,mm)
   enddo
