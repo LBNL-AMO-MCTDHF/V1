@@ -203,7 +203,7 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   DATATYPE :: twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3))
   DATATYPE :: cdot
 !!  DATATYPE ::  myden(totpoints), myreduced(totpoints)  !! I GET SEGFAULTS THIS WAY
-  DATATYPE,allocatable ::  myden(:), myreduced(:)
+  DATATYPE,allocatable ::  myden(:)
 
 
 !! ZEROING TIMES... not cumulative
@@ -443,7 +443,7 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
 !!!!! reduction is performed in main MCTDHF routines NOT HERE !!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,spf2b,myreduced,myden)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,spf2b,myden)   !! myreduced
 
 !$OMP MASTER
   twoematel(:,:,:,:)=0
@@ -452,31 +452,44 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
 !! (YONG FYI)
 !! I GET SEGFAULTS IF MYDEN AND MYREDUCED ARE AUTOMATIC VARIABLES NOT ALLOCATABLE.
 
-  allocate(myden(totpoints), myreduced(totpoints))
+!!$    allocate(myden(totpoints), myreduced(totpoints))
+!!$    do spf1b=1,numspf
+!!$    do spf1a=1,numspf
+!!$       myden(:)=CONJUGATE(inspfs10(:,spf1a)) * inspfs20(:,spf1b)
+!!$  !$OMP DO
+!!$    do spf2b=1,numspf
+!!$    do spf2a=1,numspf
+!!$       myreduced(:)=twoereduced(:,spf2a,spf2b)
+!!$  
+!!$  !! TRYING ZDOTU !! BUGGY IN THE PAST !! YES STILL BUGGY (gfortran 4.6 not 4.9 on mac?)
+!!$  !#ifdef REALGO
+!!$  !     twoematel(spf2a,spf2b,spf1a,spf1b) = DDOT(totpoints,myden,1,myreduced,1)
+!!$  !#else
+!!$  !     twoematel(spf2a,spf2b,spf1a,spf1b) = ZDOTU(totpoints,myden,1,myreduced,1)
+!!$  !#endif
+!!$  
+!!$       twoematel(spf2a,spf2b,spf1a,spf1b)=cdot(myden,myreduced,totpoints)
+!!$  
+!!$       enddo
+!!$       enddo
+!!$  !$OMP END DO
+!!$    enddo
+!!$    enddo
+!!$    deallocate(myden,myreduced)
 
+  allocate(myden(totpoints))
+!$OMP DO
   do spf1b=1,numspf
   do spf1a=1,numspf
      myden(:)=CONJUGATE(inspfs10(:,spf1a)) * inspfs20(:,spf1b)
-!$OMP DO
-  do spf2b=1,numspf
-  do spf2a=1,numspf
-     myreduced(:)=twoereduced(:,spf2a,spf2b)
 
-!! TRYING ZDOTU !! BUGGY IN THE PAST !! YES STILL BUGGY (gfortran 4.6 not 4.9 on mac?)
-!#ifdef REALGO
-!     twoematel(spf2a,spf2b,spf1a,spf1b) = DDOT(totpoints,myden,1,myreduced,1)
-!#else
-!     twoematel(spf2a,spf2b,spf1a,spf1b) = ZDOTU(totpoints,myden,1,myreduced,1)
-!#endif
+     call MYGEMV('T',totpoints,numspf**2,DATAONE,twoereduced,totpoints,myden,1,DATAZERO,twoematel(:,:,spf1a,spf1b),1)
 
-     twoematel(spf2a,spf2b,spf1a,spf1b)=cdot(myden,myreduced,totpoints)
-
-     enddo
-     enddo
+  enddo
+  enddo
 !$OMP END DO
-  enddo
-  enddo
-  deallocate(myden,myreduced)
+  deallocate(myden)
+
 !$OMP END PARALLEL
 
   call myclock(jtime); times(6)=times(6)+jtime-itime;  
