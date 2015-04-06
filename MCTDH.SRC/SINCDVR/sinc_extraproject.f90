@@ -18,7 +18,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   character (len=200) :: buffer
   character (len=200) :: nullbuff="                                                                                "
   NAMELIST /sincparinp/        numpoints,spacing,griddim,notwoflag,coulflag,nuccharges,orblanthresh, &
-       numcenters,centershift,orblanorder,toepflag,nonucrepflag,invke2file,debugflag, &
+       numcenters,centershift,orblanorder,toepflag,nonucrepflag,debugflag, &
        toothnbig, toothnsmall, orbparflag,num_skip_orbs,orb_skip,orblancheckmod,keparopt
 #ifdef PGFFLAG
   integer :: myiargc
