@@ -189,21 +189,27 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   character :: timingdir*(*)
   DATATYPE :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf), &
        twoematel(numspf,numspf,numspf,numspf),twoereduced(totpoints,numspf,numspf)
-!!$  DATATYPE, allocatable :: reducedwork2d(:,:,:,:),reducedwork1d(:,:,:),reducedwork3d(:,:,:,:,:),&
-!!$       reducedhuge(:,:,:,:,:,:,:),reducedtemp(:,:,:)
-  DATATYPE :: reducedwork3d(gridsize(1),gridsize(2),gridsize(3),numspf,numspf), &
-       reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),1,2),&
-       reducedtemp(numpoints(1),numpoints(2),numpoints(3))
-  integer :: pointsperproc(nprocs),procstart(nprocs),procend(nprocs),firsttime,lasttime
+
+  DATATYPE, allocatable :: reducedwork3d(:,:,:,:,:), &
+       reducedhuge(:,:,:,:,:,:,:),&
+       reducedtemp(:,:,:,:),&
+       twoeden03(:,:,:), tempden03(:,:,:),&
+       twoeden03huge(:,:,:,:,:,:,:),&
+       twoeden03big(:,:,:,:)
+
+!  DATATYPE :: reducedwork3d(gridsize(1),gridsize(2),gridsize(3),numspf,numspf), &
+!       reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),1,2,numspf),&
+!       reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf), &
+!       twoeden03(numpoints(1),numpoints(2),numpoints(3)), tempden03(numpoints(1),numpoints(2),numpoints(3))
+!  DATATYPE :: twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3))
+
+  integer :: pointsperproc(nprocs),procstart(nprocs),procend(nprocs),firsttime,lasttime,ilow,ihigh
   integer, save :: maxpointsperproc
-  DATATYPE :: & !!$ twoeden01(numpoints(1)),twoeden02(numpoints(1),numpoints(2)),&
-       twoeden03(numpoints(1),numpoints(2),numpoints(3)),&
-       tempden03(numpoints(1),numpoints(2),numpoints(3))
-  DATATYPE,allocatable :: twoeden03huge(:,:,:,:,:,:,:)
-  DATATYPE :: twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3))
-  DATATYPE :: cdot
+
 !!  DATATYPE ::  myden(totpoints), myreduced(totpoints)  !! I GET SEGFAULTS THIS WAY
   DATATYPE,allocatable ::  myden(:)
+
+!! OFLWR "STARTMATEL"; CFL
 
 
 !! ZEROING TIMES... not cumulative
@@ -246,6 +252,10 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
      return
   endif
 
+  allocate( reducedwork3d(gridsize(1),gridsize(2),gridsize(3),numspf,numspf), &
+       twoeden03(numpoints(1),numpoints(2),numpoints(3)), tempden03(numpoints(1),numpoints(2),numpoints(3)))
+  
+
 !$OMP PARALLEL
 !$OMP MASTER
   twoereduced(:,:,:)=0d0
@@ -255,16 +265,61 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
 
   call myclock(jtime); times(1)=times(1)+jtime-itime;  
 
-  do spf2b=1,numspf
-  do spf2a=1,numspf
 
- ! integrating over electron 2
+
+  if (toepflag.ne.0) then
+
      call myclock(itime)
+     
+!!     allocate(reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),1,2,numspf),&
+     allocate(reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf),&
+       reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf),&
+       twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3)))
+
+#ifdef MPIFLAG  
+     if (.not.orbparflag) then
+#endif
+        if ( nbox(3).ne.1) then
+           OFLWR "WHAT? NBOX=1 only.  Parallel options not set."; CFLST
+        endif
+!!        allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),1,2,numspf))  
+        allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf))  
+#ifdef MPIFLAG  
+     else
+        if (.not.localflag) then
+!!           allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),nbox(3),2,numspf))  
+           allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),nbox(3)*2,numspf))  
+        else
+#endif
+!!           allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),1,2,numspf))  
+           allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf))  
+#ifdef MPIFLAG
+        endif
+     endif
+#endif
+     
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP MASTER
+     twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf)=0;twoeden03huge(1,1,1,1,1,1,1)=0
+     reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf)=0;reducedhuge(1,1,1,1,1,1,1)=0
+     reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf)=0;reducedtemp(1,1,1,1)=0
+!$OMP END MASTER
+!$OMP BARRIER
+!$OMP END PARALLEL
+
+     call myclock(jtime); times(1)=times(1)+jtime-itime;  
+  
+
+     do spf2b=1,numspf
+     do spf2a=1,numspf
+           
+ ! integrating over electron 2
+        call myclock(itime)
         twoeden03(:,:,:)=RESHAPE(CONJUGATE(inspfs10(:,spf2a)) * inspfs20(:,spf2b),&
              (/numpoints(1),numpoints(2),numpoints(3)/))
-     call myclock(jtime); times(2)=times(2)+jtime-itime;
+        call myclock(jtime); times(2)=times(2)+jtime-itime;
+        
 
-     if (toepflag.ne.0) then
         do ii=2,griddim
            if (gridpoints(ii).ne.gridpoints(1)) then
               OFLWR "DOME NONCUBE",gridpoints(:); CFLST
@@ -279,7 +334,6 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
 
               call myclock(itime)
               
-!!$                 allocate(twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3)))              
               qqblocks(:)=totpoints
               do ii=1,nprocs
                  qqend(ii)=ii*totpoints; qqstart(ii)=(ii-1)*totpoints+1; 
@@ -289,26 +343,32 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
 #else
               call mygatherv_complex(twoeden03,twoeden03big,totpoints*nprocs,qqstart(myrank),qqend(myrank),qqblocks(:),qqstart(:),.true.)
 #endif
-              allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),nbox(3),2))  
-              twoeden03huge(:,:,:,:,:,:,:)=0d0; 
-              twoeden03huge(:,1,:,1,:,:,1)=twoeden03big(:,:,:,:)
-!!$                 deallocate(twoeden03big)
-              
+
+
+
+              twoeden03huge(:,:,:,:,:,:,spf2a)=0d0; 
+
+!              twoeden03huge(:,1,:,1,:,:,1,spf2a)=twoeden03big(:,:,:,:)
+              do ii=1,nbox(3)
+                 twoeden03huge(:,1,:,1,:,ii*2-1,spf2a)=twoeden03big(:,:,:,ii)
+              enddo
               call myclock(jtime); times(3)=times(3)+jtime-itime;
               
            else
               call myclock(itime)
-              allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),1,2))  
-              twoeden03huge(:,:,:,:,:,:,:)=0d0; 
+              twoeden03huge(:,:,:,:,:,:,spf2a)=0d0; 
+
               do ibox=1,nbox(3)  !! processor sending
                  jproc=(ibox+1)/2
                  if (ibox.eq.myrank.and.jproc.eq.myrank) then
-                    twoeden03huge(:,1,:,1,:,1,mod(ibox-1,2)+1)=twoeden03(:,:,:)
+!!                    twoeden03huge(:,1,:,1,:,1,mod(ibox-1,2)+1,spf2a)=twoeden03(:,:,:)
+                    twoeden03huge(:,1,:,1,:,mod(ibox-1,2)+1,spf2a)=twoeden03(:,:,:)
                  else if (ibox.eq.myrank) then
                     call mympisend(twoeden03,jproc,999,totpoints)
                  else if (jproc.eq.myrank) then
                     call mympirecv(tempden03,ibox,999,totpoints)
-                    twoeden03huge(:,1,:,1,:,1,mod(ibox-1,2)+1)=tempden03(:,:,:)
+!!                    twoeden03huge(:,1,:,1,:,1,mod(ibox-1,2)+1,spf2a)=tempden03(:,:,:)
+                    twoeden03huge(:,1,:,1,:,mod(ibox-1,2)+1,spf2a)=tempden03(:,:,:)
                  endif
               enddo
               call myclock(jtime); times(3)=times(3)+jtime-itime;
@@ -317,75 +377,84 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
 #endif
 
            call myclock(itime)
-           allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),1,2))  
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP MASTER
-           twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),1,2)=0;twoeden03huge(1,1,1,1,1,1,1)=0
-!$OMP END MASTER
-!$OMP BARRIER
-!$OMP END PARALLEL
-
-           twoeden03huge(:,:,:,:,:,:,:)=0d0; 
-           twoeden03huge(:,1,:,1,:,1,1)=twoeden03(:,:,:)
+           twoeden03huge(:,:,:,:,:,:,spf2a)=0d0; 
+!!           twoeden03huge(:,1,:,1,:,1,1,spf2a)=twoeden03(:,:,:)
+           twoeden03huge(:,1,:,1,:,1,spf2a)=twoeden03(:,:,:)
            call myclock(jtime); times(1)=times(1)+jtime-itime;
            
 #ifdef MPIFLAG
         endif  !! orbparflag
-        if (localflag) then
-           call myclock(itime)
-!!$              allocate(reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),1,2),&
-!!$                   reducedtemp(numpoints(1),numpoints(2),numpoints(3)))
+#endif
 
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP MASTER
-           reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),1,2)=0;reducedhuge(1,1,1,1,1,1,1)=0
-           reducedtemp(numpoints(1),numpoints(2),numpoints(3))=0;reducedtemp(1,1,1)=0
-!$OMP END MASTER
-!$OMP BARRIER
-!$OMP END PARALLEL
+     enddo  !! spf2a
 
-           call myclock(jtime); times(1)=times(1)+jtime-itime; itime=jtime
+
+#ifdef MPIFLAG
+     if (localflag) then
+        call myclock(itime); 
+
 #ifdef REALGO
-           call circ3d_sub_real_mpi(threed_two,twoeden03huge,reducedhuge,gridpoints(3),numpoints(3),fttimes)
+        call circ3d_sub_real_mpi(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numpoints(3),fttimes,numspf)
 #else
-           call circ3d_sub_mpi(threed_two,twoeden03huge,reducedhuge,gridpoints(3),numpoints(3),fttimes)
+        call circ3d_sub_mpi(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numpoints(3),fttimes,numspf)
 #endif
-           call myclock(jtime); times(4)=times(4)+jtime-itime; itime=jtime
-           
-           do ibox=1,nbox(3)  !! processor receiving
-              jproc=(ibox+nbox(3)+1)/2
-              if (ibox.eq.myrank.and.jproc.eq.myrank) then
-                 reducedwork3d(:,:,:,spf2a,spf2b)=RESHAPE(reducedhuge(:,2,:,2,:,1,mod(ibox+nbox(3)-1,2)+1),&
-                      (/gridsize(1),gridsize(2),gridsize(3)/))
-              else if (ibox.eq.myrank) then
-                 call mympirecv(reducedwork3d(:,:,:,spf2a,spf2b),jproc,999,totpoints)
-              else if (jproc.eq.myrank) then
-                 reducedtemp(:,:,:)=reducedhuge(:,2,:,2,:,1,mod(ibox+nbox(3)-1,2)+1)
-                 call mympisend(reducedtemp,ibox,999,totpoints)
-              endif
-           enddo
-!!$              deallocate(reducedtemp)
-           call myclock(jtime); times(5)=times(5)+jtime-itime
-        else
+
+        call myclock(jtime); times(4)=times(4)+jtime-itime; itime=jtime
+
+        do ibox=1,nbox(3)  !! processor receiving
+           jproc=(ibox+nbox(3)+1)/2
+           if (ibox.eq.myrank.and.jproc.eq.myrank) then
+!!              reducedwork3d(:,:,:,:,spf2b)=RESHAPE(reducedhuge(:,2,:,2,:,1,mod(ibox+nbox(3)-1,2)+1,:),&
+              reducedwork3d(:,:,:,:,spf2b)=RESHAPE(reducedhuge(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:),&
+                   (/gridsize(1),gridsize(2),gridsize(3),numspf/))
+           else if (ibox.eq.myrank) then
+              call mympirecv(reducedwork3d(:,:,:,:,spf2b),jproc,999,totpoints*numspf)
+           else if (jproc.eq.myrank) then
+!!              reducedtemp(:,:,:,:)=reducedhuge(:,2,:,2,:,1,mod(ibox+nbox(3)-1,2)+1,:)
+              reducedtemp(:,:,:,:)=reducedhuge(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:)
+              call mympisend(reducedtemp(:,:,:,:),ibox,999,totpoints*numspf)
+           endif
+        enddo
+
+        call myclock(jtime); times(5)=times(5)+jtime-itime
+     else
 #endif
-           call myclock(itime)
-!!$              allocate(reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),nbox(3),2))
-           call myclock(jtime); times(1)=times(1)+jtime-itime; itime=jtime
+        call myclock(itime)
+
 #ifdef REALGO
-           call circ3d_sub_real(threed_two,twoeden03huge,reducedhuge,gridpoints(3))
+        call circ3d_sub_real(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numspf)
 #else
-           call circ3d_sub(threed_two,twoeden03huge,reducedhuge,gridpoints(3))
+        call circ3d_sub(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numspf)
 #endif
-           reducedwork3d(:,:,:,spf2a,spf2b)=RESHAPE(reducedhuge(:,2,:,2,:,:,2),&
-                (/gridsize(1),gridsize(2),gridsize(3)/))
-           call myclock(jtime); times(4)=times(4)+jtime-itime
+
+!!        reducedwork3d(:,:,:,:,spf2b)=RESHAPE(reducedhuge(:,2,:,2,:,:,2,:),&
+!!             (/gridsize(1),gridsize(2),gridsize(3),numspf/))
+
+        do ii=1,nbox(3)
+           ilow=(ii-1)*numpoints(3)+1; ihigh=ii*numpoints(3)
+           reducedwork3d(:,:,ilow:ihigh,:,spf2b)=RESHAPE(reducedhuge(:,2,:,2,:, 2*ii ,:),&
+             (/numpoints(1),numpoints(2),numpoints(3),numspf/))
+        enddo
+
+        call myclock(jtime); times(4)=times(4)+jtime-itime
 #ifdef MPIFLAG
         endif
 #endif
-!!$           deallocate(reducedhuge,twoeden03huge)
-        deallocate(twoeden03huge)
-     else
+
+     enddo
+
+     deallocate(twoeden03huge,     reducedhuge,       reducedtemp,twoeden03big)
+
+  else
+     do spf2b=1,numspf
+     do spf2a=1,numspf
+
+ ! integrating over electron 2
         call myclock(itime)
+        twoeden03(:,:,:)=RESHAPE(CONJUGATE(inspfs10(:,spf2a)) * inspfs20(:,spf2b),&
+             (/numpoints(1),numpoints(2),numpoints(3)/))
+        call myclock(jtime); times(2)=times(2)+jtime-itime; itime=jtime
+
         do ii23=procstart(myrank),procend(myrank)
         do kk23=1,numpoints(3)                    
         do kk22=1,numpoints(2)                 
@@ -404,10 +473,10 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
         enddo
 
         call myclock(jtime); times(4)=times(4)+jtime-itime
-     endif !!TOEPLITZ
+     enddo
+     enddo
 
-  enddo
-  enddo
+  endif !!TOEPLITZ
 
 
 !! If orbparflag=.false., toepflag.ne.0, then distribute effort and allgather.
@@ -478,7 +547,7 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
 !!$    deallocate(myden,myreduced)
 
   allocate(myden(totpoints))
-!$OMP DO
+!$OMP DO SCHEDULE(STATIC)
   do spf1b=1,numspf
   do spf1a=1,numspf
      myden(:)=CONJUGATE(inspfs10(:,spf1a)) * inspfs20(:,spf1b)
@@ -495,6 +564,8 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   call myclock(jtime); times(6)=times(6)+jtime-itime;  
   lasttime=jtime
   times(7)=times(7)+lasttime-firsttime
+
+  deallocate( reducedwork3d, twoeden03, tempden03)
 
 !!$  if (getpot.ne.0) then
 !!$     jj=numspf**2;     ii=totpoints
@@ -678,22 +749,21 @@ subroutine mult_ke(in, out,howmany,timingdir,notiming)
   DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
   character :: timingdir*(*)
   if (toepflag.gt.1) then
-     do ii=1,howmany
-        call mult_ke_toep(in(:,ii),out(:,ii))    !! slower for grids tried (up to 249)
-     enddo
+     call mult_ke_toep(in,out,howmany)     !! FASTER NOW MAYBE FOR BIG GRIDS?
   else
      call mult_ke_old(in,out,howmany,timingdir,notiming)
   endif
 end subroutine mult_ke
 
 
-subroutine mult_ke_toep(in, out)
+subroutine mult_ke_toep(in, out,howmany)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE :: in(totpoints), out(totpoints),mywork(totpoints)
+  integer :: howmany
+  DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
   integer :: qstart(nprocs),qblocks(nprocs),qend(nprocs),ibox,jproc,nulltimes(10)
-  DATATYPE, allocatable :: bigin(:,:,:,:,:,:),bigout(:,:,:,:,:,:)
+  DATATYPE, allocatable :: bigin(:,:,:,:,:,:,:),bigout(:,:,:,:,:,:,:),mywork(:,:)
   DATATYPE, allocatable, save :: bigke(:,:,:), hugeke(:,:,:)
   integer, save :: allocated=0
 
@@ -706,26 +776,26 @@ subroutine mult_ke_toep(in, out)
      OFLWR "WOOOOOD"; CFLST
   endif
 
-  allocate(bigin(gridsize(1),2,gridsize(2),2,gridsize(3),2),&
-       bigout(gridsize(1),2,gridsize(2),2,gridsize(3),2))
-  bigin(:,:,:,:,:,:)=0d0
+  allocate(bigin(gridsize(1),2,gridsize(2),2,gridsize(3),2,howmany),&
+       bigout(gridsize(1),2,gridsize(2),2,gridsize(3),2,howmany),mywork(totpoints,howmany))
+  bigin(:,:,:,:,:,:,:)=0d0
 
 #ifdef MPIFLAG
   if (orbparflag) then
      do ibox=1,nbox(3)  !! processor sending
         jproc=(ibox+1)/2
         if (ibox.eq.myrank.and.jproc.eq.myrank) then
-           bigin(:,1,:,1,:,mod(ibox-1,2)+1)=RESHAPE(in,(/numpoints(1),numpoints(2),numpoints(3)/))
+           bigin(:,1,:,1,:,mod(ibox-1,2)+1,:)=RESHAPE(in,(/numpoints(1),numpoints(2),numpoints(3),howmany/))
         else if (ibox.eq.myrank) then
-           call mympisend(in,jproc,999,totpoints)
+           call mympisend(in,jproc,999,totpoints*howmany)
         else if (jproc.eq.myrank) then
-           call mympirecv(mywork,ibox,999,totpoints)
-           bigin(:,1,:,1,:,mod(ibox-1,2)+1)=RESHAPE(mywork(:),(/numpoints(1),numpoints(2),numpoints(3)/))
+           call mympirecv(mywork,ibox,999,totpoints*howmany)
+           bigin(:,1,:,1,:,mod(ibox-1,2)+1,:)=RESHAPE(mywork(:,:),(/numpoints(1),numpoints(2),numpoints(3),howmany/))
         endif
      enddo
   else
 #endif
-  bigin(:,1,:,1,:,1)=RESHAPE(in,(/numpoints(1),numpoints(2),numpoints(3)/))
+  bigin(:,1,:,1,:,1,:)=RESHAPE(in,(/numpoints(1),numpoints(2),numpoints(3),howmany/))
 #ifdef MPIFLAG
   endif
 #endif
@@ -771,32 +841,35 @@ subroutine mult_ke_toep(in, out)
 #ifdef MPIFLAG 
   if (orbparflag) then
 #ifdef REALGO
-     call circ3d_sub_real_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes)
+     call circ3d_sub_real_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany)
 #else
-     call circ3d_sub_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes)
+     call circ3d_sub_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany)
 #endif
      do ibox=1,nbox(3)  !! processor receiving
         jproc=(ibox+nbox(3)+1)/2
         if (ibox.eq.myrank.and.jproc.eq.myrank) then
-           out(:)=RESHAPE(bigout(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1),(/totpoints/))
+           out(:,:)=RESHAPE(bigout(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:),(/totpoints,howmany/))
         else if (ibox.eq.myrank) then
-           call mympirecv(out,jproc,999,totpoints)
+           call mympirecv(out,jproc,999,totpoints*howmany)
         else if (jproc.eq.myrank) then
-           mywork(:)=RESHAPE(bigout(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1),(/totpoints/))
-           call mympisend(mywork,ibox,999,totpoints)
+           mywork(:,:)=RESHAPE(bigout(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:),(/totpoints,howmany/))
+           call mympisend(mywork,ibox,999,totpoints*howmany)
         endif
      enddo
   else
 #endif
 #ifdef REALGO
-     call circ3d_sub_real(bigke,bigin,bigout,gridpoints(3))
+     call circ3d_sub_real(bigke,bigin,bigout,gridpoints(3),howmany)
 #else
-     call circ3d_sub(bigke,bigin,bigout,gridpoints(3))
+     call circ3d_sub(bigke,bigin,bigout,gridpoints(3),howmany)
 #endif
-     out(:)=RESHAPE(bigout(:,2,:,2,:,2),(/totpoints/))
+     out(:,:)=RESHAPE(bigout(:,2,:,2,:,2,:),(/totpoints,howmany/))
 #ifdef MPIFLAG
   endif
 #endif
+
+  deallocate(bigin,bigout,mywork)
+
 end subroutine mult_ke_toep
 
 
@@ -841,9 +914,12 @@ recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
   use myparams
   implicit none
   integer :: idim,inoption,option,howmany,notiming
-  DATATYPE :: in(totpoints,howmany), out(totpoints,howmany), temp(totpoints,howmany)
+  DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
+  DATATYPE, allocatable :: temp(:,:)
   logical :: dodim(3)
   character :: timingdir*(*)
+
+  allocate(temp(totpoints,howmany))
 
   if (griddim.ne.3) then
      OFLWR "ERWRESTOPPP"; CFLST
@@ -904,6 +980,9 @@ recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
         
      endif
   endif
+
+  deallocate(temp)
+
 end subroutine mult_allpar
 
 
@@ -914,10 +993,9 @@ recursive subroutine mult_alltoall_z(in, out,option,howmany,timingdir,notiming)
   implicit none
   integer :: nnn,option,ii,howmany
   DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       out(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       work(numpoints(1)*numpoints(2),numpoints(3),nprocs,howmany),&
-       work2(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs),&
-       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs)
+       out(numpoints(1)*numpoints(2),numpoints(3),howmany)
+  DATATYPE, allocatable :: &
+       work(:,:,:,:),    work2(:,:,:,:),    work3(:,:,:,:)
   integer :: times(10),atime,btime,notiming,getlen
   character :: timingdir*(*)
   integer, save :: xcount=0
@@ -930,6 +1008,10 @@ recursive subroutine mult_alltoall_z(in, out,option,howmany,timingdir,notiming)
   if (totpoints.ne.numpoints(1)*numpoints(2)*numpoints(3)) then
      OFLWR "WHAAAAAZZZZ?",totpoints,numpoints(1),numpoints(2),numpoints(3); CFLST
   endif
+
+  allocate(work(numpoints(1)*numpoints(2),numpoints(3),nprocs,howmany),&
+       work2(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs),&
+       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs))
 
   call myclock(atime)
 
@@ -985,6 +1067,8 @@ call myclock(btime); times(3)=times(3)+btime-atime; atime=btime
 
   call myclock(btime); times(4)=times(4)+btime-atime
 
+  deallocate(work,work2,work3)
+
   if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
      xcount=xcount+1
      if (xcount==1) then
@@ -1009,9 +1093,9 @@ recursive subroutine mult_roundrobin_z(in, out,option,howmany,timingdir,notiming
   implicit none
   integer :: nnn,option,ii,howmany
   DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       out(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       work(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs)
+       out(numpoints(1)*numpoints(2),numpoints(3),howmany)
+  DATATYPE, allocatable :: &
+       work(:,:,:),       work3(:,:,:,:)
   integer :: times(10),atime,btime,notiming,getlen,ibox,iibox,sendrequest(nprocs),recvrequest(nprocs)
   character :: timingdir*(*)
   integer, save :: xcount=0
@@ -1024,6 +1108,10 @@ recursive subroutine mult_roundrobin_z(in, out,option,howmany,timingdir,notiming
   if (totpoints.ne.numpoints(1)*numpoints(2)*numpoints(3)) then
      OFLWR "WHAAAAAZZZZ?",totpoints,numpoints(1),numpoints(2),numpoints(3); CFLST
   endif
+
+  allocate(       work(numpoints(1)*numpoints(2),numpoints(3),howmany),&
+       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs))
+
 
 !!TEMP (not needed)
   work3(:,:,:,:)=0d0
@@ -1113,6 +1201,8 @@ recursive subroutine mult_roundrobin_z(in, out,option,howmany,timingdir,notiming
   enddo
 
   call myclock(btime); times(4)=times(4)+btime-atime
+
+  deallocate(work,work3)
 
   if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
      xcount=xcount+1

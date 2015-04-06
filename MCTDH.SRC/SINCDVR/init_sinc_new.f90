@@ -81,10 +81,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   spfsloaded=numspf   !! for mcscf... really just for BO curve to skip eigen
 
-  if (skipflag.ne.0) then
-     return
-  endif
-
 end subroutine init_project
 
 
@@ -92,13 +88,17 @@ end subroutine init_project
 subroutine mult_bigspf(inbigspf,outbigspf)
   use myparams
   implicit none
-  DATATYPE :: inbigspf(totpoints),outbigspf(totpoints),tempspf(totpoints)
+  DATATYPE :: inbigspf(totpoints),outbigspf(totpoints)
+  DATATYPE, allocatable :: tempspf(:)
 
+  allocate(tempspf(totpoints))
   call mult_ke(inbigspf(:),outbigspf(:),1,"booga",2)
 
   call mult_pot(inbigspf(:),tempspf(:))
   outbigspf(:)=outbigspf(:)+tempspf(:)
   
+  deallocatE(tempspf)
+
 end subroutine mult_bigspf
 
 
@@ -107,8 +107,8 @@ end subroutine mult_bigspf
 subroutine init_spfs(inspfs,numloaded)
   use myparams
   implicit none
-  DATATYPE :: inspfs(totpoints,numspf)
-  DATATYPE :: lanspfs(totpoints,numspf+num_skip_orbs), energies(numspf+num_skip_orbs)
+  DATATYPE :: inspfs(totpoints,numspf), energies(numspf+num_skip_orbs)
+  DATATYPE,allocatable :: lanspfs(:,:)
   integer :: ibig,iorder,ispf,numloaded,ppfac,ii,jj,kk,olist(numspf),flag
   external :: mult_bigspf
 
@@ -152,6 +152,7 @@ subroutine init_spfs(inspfs,numloaded)
   endif
 
 
+  allocate(lanspfs(totpoints,numspf+num_skip_orbs))
 
 
   ibig=totpoints
@@ -181,6 +182,7 @@ subroutine init_spfs(inspfs,numloaded)
 
   enddo
 
+  deallocate(lanspfs)
 
 end subroutine init_spfs
 

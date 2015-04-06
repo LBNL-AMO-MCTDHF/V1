@@ -277,69 +277,74 @@ end subroutine all3transpose
 
 
 
-subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim)
+subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany)
   implicit none
-  integer :: totdim
-  complex*16 :: multvector(2*totdim,2*totdim,2*totdim), ffback(2*totdim,2*totdim,2*totdim),&
+  integer :: totdim,howmany
+  complex*16 :: multvector(2*totdim,2*totdim,2*totdim,howmany), ffback(2*totdim,2*totdim,2*totdim,howmany),&
        bigcirc(2*totdim,2*totdim,2*totdim)
-  real*8 :: rmultvector(2*totdim,2*totdim,2*totdim), rffback(2*totdim,2*totdim,2*totdim),&
+  real*8 :: rmultvector(2*totdim,2*totdim,2*totdim,howmany), rffback(2*totdim,2*totdim,2*totdim,howmany),&
        rbigcirc(2*totdim,2*totdim,2*totdim)
 
   bigcirc(:,:,:)=rbigcirc(:,:,:)
-  multvector(:,:,:)=rmultvector(:,:,:)
-  call circ3d_sub(bigcirc,multvector,ffback,totdim)
-  rffback(:,:,:)=real(ffback(:,:,:),8)
+  multvector(:,:,:,:)=rmultvector(:,:,:,:)
+  call circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
+  rffback(:,:,:,:)=real(ffback(:,:,:,:),8)
 end subroutine circ3d_sub_real
 
 
 
-subroutine circ3d_sub(bigcirc,multvector,ffback,totdim)
+subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
   implicit none
-  integer :: totdim
-  complex*16 :: multvector(2*totdim,2*totdim,2*totdim), ffmat(2*totdim,2*totdim,2*totdim),ffvec(2*totdim,2*totdim,2*totdim),&
-       ffprod(2*totdim,2*totdim,2*totdim),ffback(2*totdim,2*totdim,2*totdim), ffwork(2*totdim,2*totdim,2*totdim)
+  integer :: totdim,howmany,ii
+  complex*16 :: multvector(2*totdim,2*totdim,2*totdim,howmany), ffmat(2*totdim,2*totdim,2*totdim),ffvec(2*totdim,2*totdim,2*totdim,howmany),&
+       ffprod(2*totdim,2*totdim,2*totdim,howmany),ffback(2*totdim,2*totdim,2*totdim,howmany), ffwork(2*totdim,2*totdim,2*totdim,howmany)
   complex*16 ::        bigcirc(2*totdim,2*totdim,2*totdim,1,1,1)
 
 #ifdef MPIFLAG
-  call myzfft3d_mpiwrap(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim)
-  call myzfft3d_mpiwrap(multvector(:,:,:),ffvec(:,:,:),2*totdim)
-  
-  ffprod(:,:,:)=ffvec(:,:,:)*ffmat(:,:,:)/(2*totdim)**3
-  
-  ffwork(:,:,:)=CONJG(ffprod(:,:,:))
-  call myzfft3d_mpiwrap(ffwork(:,:,:),ffback(:,:,:),2*totdim)
-  ffback(:,:,:)=CONJG(ffback(:,:,:))
+  call myzfft3d_mpiwrap(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,1)
+  call myzfft3d_mpiwrap(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,howmany)
 #else
-  call myzfft3d(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim)
-  call myzfft3d(multvector(:,:,:),ffvec(:,:,:),2*totdim)
-  
-  ffprod(:,:,:)=ffvec(:,:,:)*ffmat(:,:,:)/(2*totdim)**3
-  
-  ffwork(:,:,:)=CONJG(ffprod(:,:,:))
-  call myzfft3d(ffwork(:,:,:),ffback(:,:,:),2*totdim)
-  ffback(:,:,:)=CONJG(ffback(:,:,:))
+  call myzfft3d(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,1)
+  call myzfft3d(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,howmany)
 #endif
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)  
+!$OMP DO SCHEDULE(STATIC)
+  do ii=1,howmany
+     ffprod(:,:,:,ii)=ffvec(:,:,:,ii)*ffmat(:,:,:)/(2*totdim)**3
+  enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
+  ffwork(:,:,:,:)=CONJG(ffprod(:,:,:,:))
+#ifdef MPIFLAG
+  call myzfft3d_mpiwrap(ffwork(:,:,:,:),ffback(:,:,:,:),2*totdim,howmany)
+#else
+  call myzfft3d(ffwork(:,:,:,:),ffback(:,:,:,:),2*totdim,howmany)
+#endif
+  ffback(:,:,:,:)=CONJG(ffback(:,:,:,:))
+
 end subroutine circ3d_sub
 
 
 
-subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,totdim,blocksize,times)
+subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,totdim,blocksize,times,howmany)
   implicit none
-  integer :: totdim,blocksize,times(*),atime,btime
-  complex*16 :: multvector(2*totdim,2*totdim,2*blocksize), ffback(2*totdim,2*totdim,2*blocksize),&
+  integer :: totdim,blocksize,times(*),atime,btime,howmany
+  complex*16 :: multvector(2*totdim,2*totdim,2*blocksize,howmany), ffback(2*totdim,2*totdim,2*blocksize,howmany),&
        bigcirc(2*totdim,2*totdim,2*blocksize)
-  real*8 :: rmultvector(2*totdim,2*totdim,2*blocksize), rffback(2*totdim,2*totdim,2*blocksize),&
+  real*8 :: rmultvector(2*totdim,2*totdim,2*blocksize,howmany), rffback(2*totdim,2*totdim,2*blocksize,howmany),&
        rbigcirc(2*totdim,2*totdim,2*blocksize)
 
   call myclock(atime)
   bigcirc(:,:,:)=rbigcirc(:,:,:)
-  multvector(:,:,:)=rmultvector(:,:,:)
+  multvector(:,:,:,:)=rmultvector(:,:,:,:)
   call myclock(btime); times(6)=times(6)+btime-atime
 
-  call circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,times)
+  call circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,times,howmany)
 
   call myclock(atime)
-  rffback(:,:,:)=real(ffback(:,:,:),8)
+  rffback(:,:,:,:)=real(ffback(:,:,:,:),8)
   call myclock(btime); times(6)=times(6)+btime-atime
 
 end subroutine circ3d_sub_real_mpi
@@ -349,40 +354,48 @@ end subroutine circ3d_sub_real_mpi
 !!! times(1) = zero   times(2)=fourier
 !!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
 
-recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,times)
+recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,times,howmany)
   implicit none
-  integer :: totdim,blocksize,times(*),atime,btime
-  complex*16 :: multvector(2*totdim,2*totdim,2*blocksize), ffmat(2*totdim,2*totdim,2*blocksize),&
-       ffvec(2*totdim,2*totdim,2*blocksize),  ffprod(2*totdim,2*totdim,2*blocksize),&
-       ffback(2*totdim,2*totdim,2*blocksize), ffwork(2*totdim,2*totdim,2*blocksize)
+  integer :: totdim,blocksize,times(*),atime,btime,howmany,ii
+  complex*16 :: multvector(2*totdim,2*totdim,2*blocksize,howmany), ffmat(2*totdim,2*totdim,2*blocksize),&
+       ffvec(2*totdim,2*totdim,2*blocksize,howmany),  ffprod(2*totdim,2*totdim,2*blocksize,howmany),&
+       ffback(2*totdim,2*totdim,2*blocksize,howmany), ffwork(2*totdim,2*totdim,2*blocksize,howmany)
   complex*16 ::        bigcirc(2*totdim,2*totdim,2*blocksize,1,1,1)
 
 !$OMP PARALLEL
 !$OMP MASTER
-  multvector(1,1,1)=0; multvector(2*totdim,2*totdim,2*blocksize)=0
+  multvector(1,1,1,1)=0; multvector(2*totdim,2*totdim,2*blocksize,howmany)=0
   ffmat(1,1,1)=0; ffmat(2*totdim,2*totdim,2*blocksize)=0
-  ffvec(1,1,1)=0; ffvec(2*totdim,2*totdim,2*blocksize)=0
-  ffback(1,1,1)=0; ffback(2*totdim,2*totdim,2*blocksize)=0
-  ffwork(1,1,1)=0; ffwork(2*totdim,2*totdim,2*blocksize)=0
-  ffprod(1,1,1)=0; ffprod(2*totdim,2*totdim,2*blocksize)=0
+  ffvec(1,1,1,1)=0; ffvec(2*totdim,2*totdim,2*blocksize,howmany)=0
+  ffback(1,1,1,1)=0; ffback(2*totdim,2*totdim,2*blocksize,howmany)=0
+  ffwork(1,1,1,1)=0; ffwork(2*totdim,2*totdim,2*blocksize,howmany)=0
+  ffprod(1,1,1,1)=0; ffprod(2*totdim,2*totdim,2*blocksize,howmany)=0
 !$OMP END MASTER
 !$OMP BARRIER
 !$OMP END PARALLEL
 
 #ifdef MPIFLAG
 
-  call myzfft3d_par(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,2*blocksize,times)
-  call myzfft3d_par(multvector(:,:,:),ffvec(:,:,:),2*totdim,2*blocksize,times)
+  call myzfft3d_par(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,2*blocksize,times,1)
+  call myzfft3d_par(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,2*blocksize,times,howmany)
 
   call myclock(atime)
-  ffprod(:,:,:)=ffvec(:,:,:)*ffmat(:,:,:)/(2*totdim)**3
-  ffwork(:,:,:)=CONJG(ffprod(:,:,:))
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
+!$OMP DO SCHEDULE(STATIC)
+  do ii=1,howmany
+     ffprod(:,:,:,ii)=ffvec(:,:,:,ii)*ffmat(:,:,:)/(2*totdim)**3
+  enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
+  ffwork(:,:,:,:)=CONJG(ffprod(:,:,:,:))
   call myclock(btime); times(6)=times(6)+btime-atime
 
-  call myzfft3d_par(ffwork(:,:,:),ffback(:,:,:),2*totdim,2*blocksize,times)
+  call myzfft3d_par(ffwork(:,:,:,:),ffback(:,:,:,:),2*totdim,2*blocksize,times,howmany)
 
   call myclock(atime)
-  ffback(:,:,:)=CONJG(ffback(:,:,:))
+  ffback(:,:,:,:)=CONJG(ffback(:,:,:,:))
   call myclock(btime); times(6)=times(6)+btime-atime
 
 #else
@@ -488,18 +501,18 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
 end subroutine myzfft1d
 
 
-subroutine myzfft3d(in,out,indim)
+subroutine myzfft3d(in,out,indim,howmany)
   use bothblockmod
   implicit none
-  complex*16, intent(in) :: in(dim,dim,dim)
-  complex*16, intent(out) :: out(dim,dim,dim)
-  integer :: indim
+  integer :: indim,howmany
+  complex*16, intent(in) :: in(dim,dim,dim,howmany)
+  complex*16, intent(out) :: out(dim,dim,dim,howmany)
 
   if (dim.ne.indim) then
      print *, "WRONG INIT FFTW3D",dim,indim;stop
   endif
 
-  call fftw3dfftsub(in,out)
+  call fftw3dfftsub(in,out,howmany)
 
 end subroutine myzfft3d
 
@@ -521,7 +534,7 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
   out(:,:)=in(:,:)
 
 !$OMP PARALLEL DEFAULT(PRIVATE) SHARED(in,out,dim,howmany,wsave)
-!$OMP DO
+!$OMP DO SCHEDULE(STATIC)
   do k=1,howmany
 !!???     wsave(1,k)=0; wsave(4*dim+15,k)=0
      call zffti(dim,wsave(:,k))
@@ -533,28 +546,28 @@ end subroutine myzfft1d
 
 
 
-subroutine myzfft3d(in,out,indim)
+subroutine myzfft3d(in,out,indim,howmany)
   use bothblockmod
   implicit none
-  complex*16, intent(in) :: in(dim,dim,dim)
-  complex*16, intent(out) :: out(dim,dim,dim)
-  integer :: indim
-  complex*16 :: work(dim,dim,dim)
+  integer :: indim,howmany
+  complex*16, intent(in) :: in(dim,dim,dim,howmany)
+  complex*16, intent(out) :: out(dim,dim,dim,howmany)
+  complex*16 :: work(dim,dim,dim,howmany)
   integer :: ii,i
 
   if (dim.ne.indim) then
      print *, "WRONG INIT",dim,indim;stop
   endif
 
-  out(:,:,:)=in(:,:,:)
+  out(:,:,:,:)=in(:,:,:,:)
 
   do ii=1,3
-     call myzfft3d_oneblock(out,work,dim)
+     call myzfft3d_oneblock(out,work,dim,howmany)
      do i=1,dim
-        out(:,:,i)=work(i,:,:)
+        out(:,:,i,:)=work(i,:,:,:)
      enddo
   enddo
-
+  
 end subroutine myzfft3d
 
 #endif
@@ -625,18 +638,18 @@ end subroutine unsetblock
 
 
 
-recursive subroutine myzfft3d_oneblock(in,out,insize)
+recursive subroutine myzfft3d_oneblock(in,out,insize,howmany)
   use bothblockmod
   implicit none
-  integer :: insize
-  complex*16, intent(in) :: in(dim,dim,insize)
-  complex*16, intent(out) :: out(dim,dim,insize)
+  integer :: insize,howmany
+  complex*16, intent(in) :: in(dim,dim,insize,howmany)
+  complex*16, intent(out) :: out(dim,dim,insize,howmany)
 
   if (dim.eq.-1) then
      print *, "NEED TO INITIALIZE FFTBLOCK";stop
   endif
 
-  call myzfft1d(in(:,:,:),out(:,:,:),dim,insize*dim)
+  call myzfft1d(in(:,:,:,:),out(:,:,:,:),dim,insize*dim*howmany)
 
 end subroutine myzfft3d_oneblock
 
@@ -645,23 +658,24 @@ end subroutine myzfft3d_oneblock
 #ifdef FFTWFLAG
 
 
-recursive subroutine fftw3dfftsub(in,out)
+recursive subroutine fftw3dfftsub(in,out,howmany)
   use, intrinsic :: iso_c_binding
   use bothblockmod
   implicit none
   include "fftw3.f03"
-
+  integer :: howmany,ii
   type(C_PTR),save :: plan
   integer,save :: icalled=0
-  complex*16 :: in(dim,dim,dim),out(dim,dim,dim)
+  complex*16 :: in(dim,dim,dim,howmany),out(dim,dim,dim,howmany)
 
   if (icalled.eq.0) then
-     plan=fftw_plan_dft_3d(dim,dim,dim,in,out,FFTW_FORWARD,FFTW_EXHAUSTIVE) 
+     plan=fftw_plan_dft_3d(dim,dim,dim,in(:,:,:,1),out(:,:,:,1),FFTW_FORWARD,FFTW_EXHAUSTIVE) 
   endif
   icalled=1
 
-  call fftw_execute_dft(plan, in,out)
-
+  do ii=1,howmany
+     call fftw_execute_dft(plan, in(:,:,:,ii),out(:,:,:,ii))
+  enddo
 !!$  call fftw_destroy_plan(plan)
 
 end subroutine fftw3dfftsub
@@ -669,18 +683,20 @@ end subroutine fftw3dfftsub
 
 #ifdef MPIFFTW
 
-subroutine fftw3dfftsub_mpi(in,out,indim,insize)
+ not finished with howmany!  
+
+subroutine fftw3dfftsub_mpi(in,out,indim,insize,howmany)
   use, intrinsic :: iso_c_binding
   use mpi
   use bothblockmod
   use littlestartmod
   include 'fftw3-mpi.f03'
 
-  integer :: indim,insize
+  integer :: indim,insize,howmany
   integer, save :: icalled=0
   integer(C_INTPTR_T) :: alloc_local,LL,MM,SS
-  complex*16,intent(in) :: in(dim,dim,mysize/dim**2)
-  complex*16,intent(out) :: out(dim,dim,mysize/dim**2)
+  complex*16,intent(in) :: in(dim,dim,mysize/dim**2,howmany)
+  complex*16,intent(out) :: out(dim,dim,mysize/dim**2,howmany)
   type(C_PTR),save :: plan, cdata
   complex(C_DOUBLE_COMPLEX), pointer :: data(:,:,:)
 
@@ -739,19 +755,45 @@ subroutine fftw1dfftsub(in,out,dim,howmany)
   include "fftw3.f03"
 
   integer, intent(in) :: dim,howmany
-  type(C_PTR),save :: plan
-  integer,save :: icalled=0
+  integer, parameter :: maxplans=3
+  type(C_PTR),save :: plans(maxplans)
+  integer, save :: plandims(maxplans)=-999, planhowmany(maxplans)=-999
+  integer,save :: icalleds(maxplans)=0, numplans=0
   complex*16 :: in(dim,howmany),out(dim,howmany)
-  integer :: ostride,istride,onembed(1),inembed(1),idist,odist, dims(1)
+  integer :: ostride,istride,onembed(1),inembed(1),idist,odist, dims(1),iplan,thisplan
 
   inembed(1)=dim; onembed(1)=dim; idist=dim; odist=dim; istride=1; ostride=1; dims(1)=dim
 
-  if (icalled.eq.0) then
-     plan = fftw_plan_many_dft(1,dims,howmany,in,inembed,istride,idist,out,onembed,ostride,odist,FFTW_FORWARD,FFTW_EXHAUSTIVE) 
+  if (numplans.eq.0) then
+     numplans=1
+     thisplan=1
+     plandims(thisplan)=dim; planhowmany(thisplan)=howmany
+  else
+     thisplan= -99
+     do iplan=1,numplans
+        if (plandims(iplan).eq.dim.and.planhowmany(iplan).eq.howmany) then
+           if (icalleds(iplan).eq.0) then
+              print *, "ERROR, plan not done ",iplan,dim,howmany; call mpistop()
+           endif
+           thisplan=iplan
+           exit
+        endif
+     enddo
+     if (thisplan.eq.-99) then
+        if (numplans.eq.maxplans) then
+           print *,  "all plans taken!", maxplans; call mpistop()
+        endif
+        numplans=numplans+1
+        thisplan=numplans
+        plandims(thisplan)=dim; planhowmany(thisplan)=howmany
+     endif
   endif
-  icalled=1    
+  if (icalleds(thisplan).eq.0) then
+     plans(thisplan) = fftw_plan_many_dft(1,dims,howmany,in,inembed,istride,idist,out,onembed,ostride,odist,FFTW_FORWARD,FFTW_EXHAUSTIVE) 
+  endif
+  icalleds(thisplan)=1    
 
-  call fftw_execute_dft(plan, in,out)
+  call fftw_execute_dft(plans(thisplan), in,out)
 
 !!$  call fftw_destroy_plan(plan)
 end subroutine fftw1dfftsub
@@ -796,17 +838,18 @@ contains
 !! times(1) = transpose   times(2) = mpi  times(3) = copy
 
 
-recursive subroutine mytranspose(in,out,blockistart,blocksizes,blockdim,xmiddledim,myblocksize,xmaxblocksize,myrank,nprocs,times)
+recursive subroutine mytranspose(in,out,blockistart,blocksizes,blockdim,xmiddledim,myblocksize,xmaxblocksize,myrank,nprocs,times,howmany)
   use mpi
   implicit none
-  integer,intent(in) :: myrank,nprocs,blocksizes(nprocs),blockistart(nprocs),myblocksize,xmaxblocksize,blockdim,xmiddledim
+  integer,intent(in) :: myrank,nprocs,blocksizes(nprocs),blockistart(nprocs),myblocksize,xmaxblocksize,blockdim,xmiddledim,howmany
   integer,intent(inout) :: times(3)
        
-  complex*16,intent(in) :: in(blockdim,blockdim,myblocksize)
-  complex*16 :: intranspose(blockdim,myblocksize,blockdim) ,outtemp(blockdim,myblocksize,myblocksize,nprocs)
-  complex*16,intent(out) :: out(blockdim,blockdim,myblocksize)
+  complex*16,intent(in) :: in(blockdim,blockdim,myblocksize,howmany)
+  complex*16 :: intranspose(blockdim,myblocksize,myblocksize,howmany,nprocs)
+  complex*16 :: outtemp(blockdim,myblocksize,myblocksize,howmany,nprocs)
+  complex*16,intent(out) :: out(blockdim,blockdim,myblocksize,howmany)
   integer :: ierr=0,atime,btime
-  integer :: i,count
+  integer :: i,count,ii
 
   if (xmiddledim.ne.blockdim) then
      print *, "ONLY ALL SAME PLEASE middle",xmiddledim,blockdim;stop
@@ -824,67 +867,61 @@ recursive subroutine mytranspose(in,out,blockistart,blocksizes,blockdim,xmiddled
    
   call myclock(atime)
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,count,ierr)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,count,ierr,ii)
 !$OMP MASTER
-intranspose(blockdim,myblocksize,blockdim)=0;  intranspose(1,1,1)=0
-outtemp(blockdim,myblocksize,myblocksize,nprocs)=0; outtemp(1,1,1,1)=0
+  intranspose(blockdim,myblocksize,myblocksize,howmany,nprocs)=0;  intranspose(1,1,1,1,1)=0
+  outtemp(blockdim,myblocksize,myblocksize,howmany,nprocs)=0; outtemp(1,1,1,1,1)=0
 !$OMP END MASTER
 !$OMP BARRIER
 
 !! YEAH THIS OMP HELPS BIGTIME
 !$OMP DO SCHEDULE(STATIC)
-  do i=1,myblocksize
-     intranspose(:,i,:)=transpose(in(:,:,i))
+  do ii=1,howmany
+     do i=1,myblocksize
+        intranspose(:,i,:,ii,:)=RESHAPE(transpose(in(:,:,i,ii)),(/blockdim,myblocksize,nprocs/))
+     enddo
   enddo
 !$OMP END DO
-!$OMP BARRIER
-  call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
 
 !$OMP MASTER
-  count=myblocksize**2 * blockdim
-  call mpi_alltoall(intranspose,count,MPI_DOUBLE_COMPLEX,outtemp,count,MPI_DOUBLE_COMPLEX,MPI_COMM_WORLD,ierr)
+  call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+
+  count=myblocksize**2 * blockdim * howmany
+  call mpi_alltoall(intranspose(:,:,:,:,:),count,MPI_DOUBLE_COMPLEX,outtemp(:,:,:,:,:),count,MPI_DOUBLE_COMPLEX,MPI_COMM_WORLD,ierr)
   if (ierr.ne.0) then
      print *, "ALLTOALL ERR ", ierr,myrank,nprocs;     stop
   endif
   call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
-  do i=1,nprocs
-     out(:,(i-1)*myblocksize+1:i*myblocksize,:)=outtemp(:,:,:,i)
-  enddo
-
-  call myclock(btime); times(3)=times(3)+btime-atime;
 !$OMP END MASTER
+!$OMP BARRIER
+
+!$OMP DO SCHEDULE(STATIC)
+  do ii=1,howmany
+     do i=1,nprocs
+        out(:,(i-1)*myblocksize+1:i*myblocksize,:,ii)=outtemp(:,:,:,ii,i)
+     enddo
+  enddo
+!$OMP END DO
 !$OMP BARRIER
 !$OMP END PARALLEL
 
-
-
-!!$ !! HELPS TOO, JUST A LITTLE BIT
-!!$ !$OMP DO SCHEDULE(STATIC)
-!!$   do i=1,nprocs
-!!$      out(:,(i-1)*myblocksize+1:i*myblocksize,:)=outtemp(:,:,:,i)
-!!$   enddo
-!!$ !$OMP END DO
-!!$ !$OMP BARRIER
-!!$ !$OMP END PARALLEL
-!!$   deallocate(intranspose,outtemp)
-!!$   call myclock(btime); times(3)=times(3)+btime-atime;
-
+  call myclock(btime); times(3)=times(3)+btime-atime;
 
 end subroutine mytranspose
 
 end module  
 
 
-subroutine myzfft3d_mpiwrap(in,out,indim)
+subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
   use littlestartmod
   use bothblockmod
   implicit none
-  integer :: indim,nulltimes(10)
-  complex*16, intent(in) :: in(dim**3)
-  complex*16, intent(out) :: out(dim**3)
+  integer :: indim,nulltimes(10),howmany,ii
+  complex*16, intent(in) :: in(dim**3,howmany)
+  complex*16, intent(out) :: out(dim**3,howmany)
 
 #ifdef MPIFFTW
-  call fftw3dfftsub_mpi(in(mystart),out(mystart),indim,mysize/dim**2)
+  call fftw3dfftsub_mpi(in(mystart,ii),out(mystart,ii),indim,mysize/dim**2,howmany)
   return
 #else
 
@@ -896,7 +933,7 @@ subroutine myzfft3d_mpiwrap(in,out,indim)
 !     print *, "WRONG INIT",dims,indim1,indim2,indim3;stop
 !  endif
 
-  call myzfft3d_par(in(mystart),out(mystart),indim,mysize/dim**2,nulltimes)
+  call myzfft3d_par(in(mystart,ii),out(mystart,ii),indim,mysize/dim**2,nulltimes,howmany)
 
 #define TENxxTEST
 #ifdef TENTEST
@@ -917,32 +954,18 @@ subroutine myzfft3d_mpiwrap(in,out,indim)
 !!$       mpiblocks(:)*dim**2,&
 !!$       (mpiblockstart(:)-1)*dim**2+1,nprocs,myrank)
 
-  call mygatherv_complex(out(mpiblockstart(myrank)),out,dim**3,&
-       mpiblockstart(myrank),&
-       mpiblockend(myrank),&
-       mpiblocks(:),&
-       mpiblockstart(:),.true.)
+  do ii=1,howmany
+     call mygatherv_complex(out(mpiblockstart(myrank),ii),out,dim**3,&
+          mpiblockstart(myrank),&
+          mpiblockend(myrank),&
+          mpiblocks(:),&
+          mpiblockstart(:),.true.)
+  enddo
 
 #endif
-
+  
 end subroutine myzfft3d_mpiwrap
 
-
-subroutine mygatherv_wrap(in,out)
-  use bothblockmod
-  implicit none
-  complex*16, intent(in) :: in(dim**3)
-  complex*16, intent(out) :: out(dim**3)
-
-  out(:)=in(:) 
-
-  call mygatherv_complex(out(mpiblockstart(myrank)),out,dim**3,&
-       mpiblockstart(myrank),&
-       mpiblockend(myrank),&
-       mpiblocks(:),&
-       mpiblockstart(:),.true.)
-
-end subroutine mygatherv_wrap
 
 
 !! adds to times
@@ -950,22 +973,17 @@ end subroutine mygatherv_wrap
 !!! times(1) = zero   times(2)=fourier
 !!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
   
-recursive subroutine myzfft3d_par(in,out,indim,inblockdim,times)
+recursive subroutine myzfft3d_par(in,out,indim,inblockdim,times,howmany)
   use transposemod
   use bothblockmod
   use littlestartmod
   implicit none
-!  complex*16, intent(in) :: in(dims(1),dims(2),mysize/dims(1)/dims(2))
-!  complex*16, intent(out) :: out(dims(1),dims(2),mysize/dims(1)/dims(2))
-
-  complex*16, intent(in) :: in(dim,dim,mysize/dim**2)
-  complex*16, intent(out) :: out(dim,dim,mysize/dim**2)
-
+  integer, intent(in) :: indim,inblockdim,howmany
+  complex*16, intent(in) :: in(dim,dim,mysize/dim**2,howmany)
+  complex*16, intent(out) :: out(dim,dim,mysize/dim**2,howmany)
   integer, intent(inout) :: times(8)
-
-  integer :: indim,inblockdim,atime,btime
-  complex*16 :: mywork(dim,dim,mysize/dim**2),tempout(dim,dim,mysize/dim**2)
-  integer :: ii
+  complex*16 :: mywork(dim,dim,mysize/dim**2,howmany),tempout(dim,dim,mysize/dim**2,howmany)
+  integer :: ii,atime,btime,jj
 
   call myclock(atime)
 
@@ -987,19 +1005,19 @@ recursive subroutine myzfft3d_par(in,out,indim,inblockdim,times)
   endif
 
 #ifdef MPIFFTW
-  call fftw3dfftsub_mpi(in,out,indim,mysize/dim**2)
+  call fftw3dfftsub_mpi(in,out,indim,mysize/dim**2,howmany)
   return
 #else
 
 !$OMP PARALLEL
 !$OMP MASTER
-mywork(1,1,1)=0; tempout(1,1,1)=0
-mywork(dim,dim,mysize/dim**2)=0; tempout(dim,dim,mysize/dim**2)=0
+mywork(1,1,1,1)=0; tempout(1,1,1,1)=0
+mywork(dim,dim,mysize/dim**2,howmany)=0; tempout(dim,dim,mysize/dim**2,howmany)=0
 !$OMP END MASTER
 !$OMP BARRIER
 !$OMP END PARALLEL
 
-  tempout(:,:,:)=in(:,:,:)
+  tempout(:,:,:,:)=in(:,:,:,:)
 
   call myclock(btime); times(1)=times(1)+btime-atime;
 
@@ -1008,43 +1026,30 @@ mywork(dim,dim,mysize/dim**2)=0; tempout(dim,dim,mysize/dim**2)=0
      call myclock(atime)
 
 #ifndef TENTEST
-     call myzfft3d_oneblock( tempout, mywork, mysize/dim**2)
+     call myzfft3d_oneblock( tempout, mywork, mysize/dim**2,howmany)
 #else
-     mywork(:,:,:)=tempout(:,:,:)*10
+     mywork(:,:,:,:)=tempout(:,:,:,:)*10
 #endif
 
   call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
 
-!!$     call mytranspose(&
-!!$         mywork,  &
-!!$         out,  &
-!!$         mpiblockstart,&
-!!$         mpiblocks,  &
-!!$         dim,  &
-!!$         dim,  &
-!!$         mpiblocks(myrank),  &
-!!$         maxblocksize,  &
-!!$         myrank,  &
-!!$         nprocs)
-
 !!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
-     call mytranspose(&
-         mywork,  &
-         tempout,  &
-         (mpiblockstart-1)/dim**2+1,&
-         mpiblocks/dim**2,  &
-         dim,  &
-         dim,  &
-         mpiblocks(myrank)/dim**2,  &
-         maxblocksize/dim**2,  &
-         myrank,  &
-         nprocs,times(3))
 
-!!     call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
-
+   call mytranspose(&
+        mywork,  &
+        tempout,  &
+        (mpiblockstart-1)/dim**2+1,&
+        mpiblocks/dim**2,  &
+        dim,  &
+        dim,  &
+        mpiblocks(myrank)/dim**2,  &
+        maxblocksize/dim**2,  &
+        myrank,  &
+        nprocs,times(3),howmany)
+   
   enddo
 
-  out(:,:,:)=tempout(:,:,:)
+  out(:,:,:,:)=tempout(:,:,:,:)
 
 #endif
 

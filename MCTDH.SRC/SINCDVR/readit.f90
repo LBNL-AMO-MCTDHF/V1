@@ -35,7 +35,7 @@ subroutine get_3dpoisson(pot)
      endif
      call mympiibcastone(ngrid,1)
      call mympirealbcastone(inspacing,1)
-     OFLWR "GO GET TWOCOULOMB. Gridpoints here, on file=",gridpoints(1:3),ngrid*2+1; CFL
+     OFLWR "GO get_3dpoisson. Gridpoints here, on file=",gridpoints(1:3),ngrid*2+1; CFL
      if (abs(inspacing-spacing).gt.1d-7) then
         OFLWR "Spacing does not agree for Invke2.Bin file.  Here, on file=", spacing,inspacing; 
         WRFL "   File = ", invke2file; CFLST
@@ -128,6 +128,8 @@ subroutine get_3dpoisson(pot)
      OFLWR "DOODODFODxxx",myrank,nbox(3); CFLST
   endif
 
+  OFLWR "     ...getting potential..."; CFL
+
   allocate(xcoulomb(numpoints(1),nbox(1),numpoints(2),nbox(2),numpoints(3),nbox(3)))
   xcoulomb=0d0
 
@@ -146,6 +148,8 @@ subroutine get_3dpoisson(pot)
   pot(:)=RESHAPE(xcoulomb(:,1,:,1,:,qbox(3)),(/totpoints/))
 
   deallocate(xcoulomb,threed_two_big)
+
+  OFLWR "    ... done get_3dpoisson."; CFL
 
 end subroutine get_3dpoisson
 
