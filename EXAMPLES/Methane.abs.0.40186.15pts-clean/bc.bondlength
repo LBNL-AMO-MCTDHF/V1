@@ -1,4 +1,0 @@
-#!/usr/bin/bc -l
-
-# after JCP 106, 2612 (1997) mebel lin chang bond length = 1.105 angstrom
-1.105/0.529177 /sqrt(3.0)/0.40186 * 2
