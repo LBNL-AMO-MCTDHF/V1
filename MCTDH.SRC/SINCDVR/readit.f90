@@ -19,43 +19,48 @@ subroutine get_3dpoisson(pot)
      OFLWR "WTF! should not happen."; CFLST
   endif
 
-  if (runtoothflag.ne.0) then
-     ngrid=toothngrid
+
+!!$    if (runtoothflag.eq.0) then
+!!$       if (myrank.eq.1) then
+!!$          open(5679,file=invke2file, form="unformatted", status="old",iostat=myiostat)
+!!$          if (myiostat.ne.0) then  
+!!$             OFLWR "Invke2.Bin file couldn't be read.  ";
+!!$             WRFL "   File=", invke2file; CFLST
+!!$          endif
+!!$          read(5679) ngrid,inspacing  
+!!$       endif
+!!$       call mympiibcastone(ngrid,1)
+!!$       call mympirealbcastone(inspacing,1)
+!!$       OFLWR "GO get_3dpoisson. Gridpoints here, on file=",gridpoints(1:3),ngrid*2+1; CFL
+!!$       if (abs(inspacing-spacing).gt.1d-7) then
+!!$          OFLWR "Spacing does not agree for Invke2.Bin file.  Here, on file=", spacing,inspacing; 
+!!$          WRFL "   File = ", invke2file; CFLST
+!!$       endif
+!!$    else
+
+     ngrid=toothnsmall
      inspacing=spacing
 
      OFLWR "GO GET TWOCOULOMB. calling tooth.";CFL
-  else
-     if (myrank.eq.1) then
-        open(5679,file=invke2file, form="unformatted", status="old",iostat=myiostat)
-        if (myiostat.ne.0) then  
-           OFLWR "Invke2.Bin file couldn't be read.  ";
-           WRFL "   File=", invke2file; CFLST
-        endif
-        read(5679) ngrid,inspacing  
-     endif
-     call mympiibcastone(ngrid,1)
-     call mympirealbcastone(inspacing,1)
-     OFLWR "GO get_3dpoisson. Gridpoints here, on file=",gridpoints(1:3),ngrid*2+1; CFL
-     if (abs(inspacing-spacing).gt.1d-7) then
-        OFLWR "Spacing does not agree for Invke2.Bin file.  Here, on file=", spacing,inspacing; 
-        WRFL "   File = ", invke2file; CFLST
-     endif
-  endif
+
+!!$    endif
   
   allocate(tempcoulomb(-ngrid:ngrid,-ngrid:ngrid,-ngrid:ngrid));   tempcoulomb(:,:,:)=0d0
 
-  if (runtoothflag.ne.0) then
+!!$    if (runtoothflag.ne.0) then
+
      call getinverse(tempcoulomb,ngrid,toothnbig,toothnsmall,spacing)
      tempcoulomb(:,:,:)=tempcoulomb(:,:,:)/spacing**3
-  else
-     if (myrank.eq.1) then
-        do i=-ngrid,ngrid
-           read(5679) tempcoulomb(:,:,i)
-        enddo
-        close(5679)
-     endif
-     call mympirealbcast(tempcoulomb(:,:,:),1,(2*ngrid+1)**3)
-  endif
+
+!!$    else
+!!$       if (myrank.eq.1) then
+!!$          do i=-ngrid,ngrid
+!!$             read(5679) tempcoulomb(:,:,i)
+!!$          enddo
+!!$          close(5679)
+!!$       endif
+!!$       call mympirealbcast(tempcoulomb(:,:,:),1,(2*ngrid+1)**3)
+!!$    endif
 
 
   istart=0

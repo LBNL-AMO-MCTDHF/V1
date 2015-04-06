@@ -18,8 +18,8 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   character (len=200) :: buffer
   character (len=200) :: nullbuff="                                                                                "
   NAMELIST /sincparinp/        numpoints,spacing,griddim,notwoflag,coulflag,nuccharges,orblanthresh, &
-       numcenters,centershift,orblanorder,runtoothflag,toepflag,nonucrepflag,invke2file,debugflag, &
-       toothnbig, toothnsmall, toothngrid, orbparflag,num_skip_orbs,orb_skip,orblancheckmod,keparopt
+       numcenters,centershift,orblanorder,toepflag,nonucrepflag,invke2file,debugflag, &
+       toothnbig, toothnsmall, orbparflag,num_skip_orbs,orb_skip,orblancheckmod,keparopt
 #ifdef PGFFLAG
   integer :: myiargc
   nargs=myiargc()
@@ -185,9 +185,9 @@ subroutine printmyopts()
      WRFL "centershift",centershift(:,ii)*0.5d0
   enddo
   WRFL "orblanorder,orblanthresh",orblanorder,orblanthresh
-  WRFL "notwoflag,coulflag,runtoothflag",notwoflag,coulflag,runtoothflag
+  WRFL "notwoflag,coulflag",notwoflag,coulflag
   WRFL "toepflag,nonucrepflag",toepflag,nonucrepflag
-  WRFL "toothnbig, toothnsmall, toothngrid",toothnbig, toothnsmall, toothngrid
+  WRFL "toothnbig, toothnsmall",toothnbig, toothnsmall
   WRFL "orbparflag",orbparflag
   WRFL "  -----  "
   WRFL "NBOX ", nbox(1:griddim)

@@ -983,7 +983,7 @@ recursive subroutine myzfft3d_par(in,out,indim,inblockdim,times,howmany)
   complex*16, intent(out) :: out(dim,dim,mysize/dim**2,howmany)
   integer, intent(inout) :: times(8)
   complex*16 :: mywork(dim,dim,mysize/dim**2,howmany),tempout(dim,dim,mysize/dim**2,howmany)
-  integer :: ii,atime,btime,jj
+  integer :: ii,atime,btime
 
   call myclock(atime)
 
