@@ -1,0 +1,42 @@
+#!/global/software/sl-6.x86_64/modules/tools/gnuplot/4.6.0/bin/gnuplot -persist
+
+
+
+#unset ytics
+
+set xlabel "Energy (eV)"
+set ylabel "emission/absorption\ncross section (arb units)"
+
+set term unknown
+set style data lines
+
+
+
+set key top left
+
+set ytics 0,250,250
+
+set xrange [4:15]
+set yrange [-50:250]
+
+plot "Dat/ZDipoleft.Dat000300" using (27.2114*$1):($7/($4**2+$5**2)) lt 3 lw 10 title "T=300"
+
+replot "Dat/ZDipoleft.Dat001000" using (27.2114*$1):($7/($4**2+$5**2)) lt -1 lw 7 title "T=1000"
+
+replot "Dat/ZDipoleft.Dat004000" using (27.2114*$1):($7/($4**2+$5**2)) lt 2 lw 6 title "T=4000"
+
+#replot "Dat/Pulseft.Dat"
+
+AAA=5
+
+replot "Dat/Pulseft.Dat" using (27.2114*$1):($2*AAA) every 10 with points pt 7 ps 2 lt -1 title "F.T. (arb.units)"
+
+
+set term x11
+replot
+
+set out "Absorption.eps"
+set term post enhanced eps solid color 28
+replot
+
+

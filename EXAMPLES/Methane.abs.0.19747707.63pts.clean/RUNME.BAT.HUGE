@@ -1,0 +1,10 @@
+
+
+
+export OMP_NUM_THREADS=7
+mpirun  -n 9 -npernode 2 --bind-to-core --bysocket --cpus-per-proc 7 --report-bindings chmctdhf_sinc.openmp Inp=Input.Inp.Pulse > Outs/Out.pulse
+
+# Debug=42 SDebug=42
+
+
+
