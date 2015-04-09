@@ -1,1 +1,0 @@
-../../MCTDH.SRC/SINCDVR/init_sinc_new.f90
