@@ -1,0 +1,87 @@
+
+
+&parinp
+
+notiming=0
+timingdir="timing.cation"
+timingout=30
+
+mcscfnum=6
+
+expodim=40
+maxexpodim=200
+
+improvedrelaxflag=1
+improvednatflag=1
+
+loadspfflag=1
+spffile="Bin/spfs.bin.neutral.64pts"
+
+saveflag=0
+
+sparseconfigflag=0
+
+denreg=1d-30
+
+stopthresh=1d-6
+astoptol=1d0
+
+numelec=55
+restrictms=1
+
+par_timestep=0.1d0
+timestepfac=1.05d0
+max_timestep=2d0
+
+nspf=28
+
+parorbsplit=3
+
+/
+
+
+
+&sincparinp
+
+orbparflag=.true.
+
+toepflag=1
+
+toothnbig=195
+toothnsmall=39
+
+orblanthresh=1d-1
+
+coulflag=1
+
+numcenters=16
+nuccharges=6,6,6,6,1,1,1,1,6,6,6,6,1,1,1,1
+
+centershift(1,1)=  5 , 5 , 5 
+centershift(1,2)= -5 ,-5 , 5 
+centershift(1,3)= -5 , 5 ,-5 
+centershift(1,4)=  5 ,-5 ,-5 
+
+centershift(1,5)=  9 , 9 , 9 
+centershift(1,6)= -9 ,-9 , 9 
+centershift(1,7)= -9 , 9 ,-9 
+centershift(1,8)=  9 ,-9 ,-9 
+
+centershift(1,9) = -5 ,-5 ,-5 
+centershift(1,10)= +5 ,+5 ,-5 
+centershift(1,11)= +5 ,-5 ,+5 
+centershift(1,12)= -5 ,+5 ,+5 
+
+centershift(1,13)= -9 ,-9 ,-9 
+centershift(1,14)= +9 ,+9 ,-9 
+centershift(1,15)= +9 ,-9 ,+9 
+centershift(1,16)= -9 ,+9 ,+9 
+
+griddim=3
+
+numpoints=64
+spacing=0.5974764d0
+
+/
+
+
