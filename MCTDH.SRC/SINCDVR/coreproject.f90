@@ -914,12 +914,12 @@ recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
   use myparams
   implicit none
   integer :: idim,inoption,option,howmany,notiming
-  DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
-  DATATYPE, allocatable :: temp(:,:)
+  DATATYPE :: in(totpoints,howmany), out(totpoints,howmany), temp(totpoints,howmany)
+!!$  DATATYPE, allocatable :: temp(:,:)
   logical :: dodim(3)
   character :: timingdir*(*)
 
-  allocate(temp(totpoints,howmany))
+!!$  allocate(temp(totpoints,howmany))
 
   if (griddim.ne.3) then
      OFLWR "ERWRESTOPPP"; CFLST
@@ -981,7 +981,7 @@ recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
      endif
   endif
 
-  deallocate(temp)
+!!$  deallocate(temp)
 
 end subroutine mult_allpar
 
@@ -994,8 +994,11 @@ recursive subroutine mult_alltoall_z(in, out,option,howmany,timingdir,notiming)
   integer :: nnn,option,ii,howmany
   DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
        out(numpoints(1)*numpoints(2),numpoints(3),howmany)
-  DATATYPE, allocatable :: &
-       work(:,:,:,:),    work2(:,:,:,:),    work3(:,:,:,:)
+!!$  DATATYPE, allocatable :: &
+!!$       work(:,:,:,:),    work2(:,:,:,:),    work3(:,:,:,:)
+  DATATYPE :: work(numpoints(1)*numpoints(2),numpoints(3),nprocs,howmany),&
+       work2(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs),&
+       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs)
   integer :: times(10),atime,btime,notiming,getlen
   character :: timingdir*(*)
   integer, save :: xcount=0
@@ -1009,9 +1012,9 @@ recursive subroutine mult_alltoall_z(in, out,option,howmany,timingdir,notiming)
      OFLWR "WHAAAAAZZZZ?",totpoints,numpoints(1),numpoints(2),numpoints(3); CFLST
   endif
 
-  allocate(work(numpoints(1)*numpoints(2),numpoints(3),nprocs,howmany),&
-       work2(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs),&
-       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs))
+!!$  allocate(work(numpoints(1)*numpoints(2),numpoints(3),nprocs,howmany),&
+!!$       work2(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs),&
+!!$       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs))
 
   call myclock(atime)
 
@@ -1067,7 +1070,7 @@ call myclock(btime); times(3)=times(3)+btime-atime; atime=btime
 
   call myclock(btime); times(4)=times(4)+btime-atime
 
-  deallocate(work,work2,work3)
+!!$  deallocate(work,work2,work3)
 
   if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
      xcount=xcount+1
@@ -1094,8 +1097,10 @@ recursive subroutine mult_roundrobin_z(in, out,option,howmany,timingdir,notiming
   integer :: nnn,option,ii,howmany
   DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
        out(numpoints(1)*numpoints(2),numpoints(3),howmany)
-  DATATYPE, allocatable :: &
-       work(:,:,:),       work3(:,:,:,:)
+  DATATYPE ::   work(numpoints(1)*numpoints(2),numpoints(3),howmany),&
+       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs)
+!!$  DATATYPE, allocatable :: &
+!!$       work(:,:,:),       work3(:,:,:,:)
   integer :: times(10),atime,btime,notiming,getlen,ibox,iibox,sendrequest(nprocs),recvrequest(nprocs)
   character :: timingdir*(*)
   integer, save :: xcount=0
@@ -1109,8 +1114,8 @@ recursive subroutine mult_roundrobin_z(in, out,option,howmany,timingdir,notiming
      OFLWR "WHAAAAAZZZZ?",totpoints,numpoints(1),numpoints(2),numpoints(3); CFLST
   endif
 
-  allocate(       work(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs))
+!!$  allocate(       work(numpoints(1)*numpoints(2),numpoints(3),howmany),&
+!!$       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs))
 
 
 !!TEMP (not needed)
@@ -1202,7 +1207,7 @@ recursive subroutine mult_roundrobin_z(in, out,option,howmany,timingdir,notiming
 
   call myclock(btime); times(4)=times(4)+btime-atime
 
-  deallocate(work,work3)
+!!$  deallocate(work,work3)
 
   if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
      xcount=xcount+1

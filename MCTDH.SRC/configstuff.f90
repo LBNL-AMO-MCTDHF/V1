@@ -28,12 +28,12 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
   implicit none
 
   integer :: order, printflag,i, guessflag,  l,k,numshift,flag
-  DATATYPE :: thisconfigvects(totadim,order), tempconfigvects(totadim,order+numshift),lastval,dot
+  DATATYPE :: thisconfigvects(totadim,order),lastval,dot
   DATAECS :: thisconfigvals(order), tempconfigvals(order+numshift)
   real*8 :: realconfigvect(totadim)
   real*8 :: sum,time
   DATATYPE, allocatable :: fullconfigmatel(:,:), fullconfigvects(:,:), &
-       spinconfigmatel(:,:), spinconfigvects(:,:)
+       spinconfigmatel(:,:), spinconfigvects(:,:), tempconfigvects(:,:)
   DATAECS, allocatable :: fullconfigvals(:)
 
 !  if (numshift.lt.0.or.numshift.ne.0.and.guessflag.ne.0) then
@@ -48,6 +48,10 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
   endif
 
   if (sparseconfigflag/=0) then
+     
+!!     OFLWR "    ... go myconfigeig, sparse"; CFL
+
+     allocate(tempconfigvects(totadim,order+numshift))
      tempconfigvects(:,:)=0d0
      if (guessflag.ne.0) then
         do i=1,numshift
@@ -62,6 +66,7 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
 
      thisconfigvals(1:order)=tempconfigvals(numshift+1:numshift+order)
      thisconfigvects(:,1:order)=tempconfigvects(:,numshift+1:numshift+order)
+     deallocate(tempconfigvects)
 
   else
 

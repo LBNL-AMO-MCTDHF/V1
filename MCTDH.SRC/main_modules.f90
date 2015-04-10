@@ -579,18 +579,24 @@ subroutine opalloc()
   use opmod
   use parameters
   implicit none
-  allocate(rkemod(numr,numr), proderivmod(numr,numr))   ;  rkemod=0.d0; proderivmod=0.d0; 
+  allocate(rkemod(numr,numr), proderivmod(numr,numr))   
+  rkemod=0.d0; proderivmod=0.d0; 
+
   if (drivingflag.ne.0) then
      allocate(orbs_driving(spfsize,nspf),          avector_driving(numconfig,numr,mcscfnum))
      orbs_driving=0d0;      avector_driving=0d0
   endif
 
   allocate(twoereduced(reducedpotsize,nspf,nspf))
+  twoereduced(:,:,:)=0d0
 
   allocate(   pot(spfsize),  halfniumpot(spfsize) )
+  pot(:)=0; halfniumpot(:)=0
+
   if (numfrozen.gt.0) then
      if (frozenalloced.eq.0) then
         allocate(frozenspfs(spfsize,numfrozen));        frozenalloced=1
+        frozenspfs(:,:)=0
      endif
   endif
 

@@ -7,7 +7,7 @@ subroutine get_3dpoisson(pot)
   use myparams
   use myprojectmod
   implicit none
-  integer :: ngrid,i,k,myiostat,j,ii,jj,kk,qq(3),pp(3),qbox
+  integer :: ngrid,i,k,j,ii,jj,kk,qq(3),pp(3),qbox
   real*8 :: inspacing,rval,pot(totpoints)
   real*8, allocatable :: tempcoulomb(:,:,:)
   real*8, allocatable :: xcoulomb(:,:,:,:,:,:)
@@ -41,7 +41,7 @@ subroutine get_3dpoisson(pot)
      ngrid=toothnsmall
      inspacing=spacing
 
-     OFLWR "GO GET TWOCOULOMB. calling tooth.";CFL
+     OFLWR "GO GET_3DPOISSON. calling getinverse.";CFL
 
 !!$    endif
   
