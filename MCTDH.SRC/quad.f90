@@ -107,7 +107,7 @@ subroutine quadoperate(nullint,inspfs,outspfs)
 
   OFLWR "PROGRAM ME (CALL JACOPERATE)"; CFLST
 
-  outspfs=outspfs-jacexpect*inspfs
+!  outspfs=outspfs-quadexpect*inspfs
 
 end subroutine quadoperate
 
@@ -136,7 +136,7 @@ subroutine quadspfs(inspfs,jjcalls)
   call spf_orthogit(vector,nulldouble)
 
   call onedinit(vector) 
-  call wmult(vector,vector2,ireduced)
+  call wmult(vector,vector2,0)
 
   vector2=(-1)*vector2                     
 
