@@ -601,11 +601,7 @@ OFLWR "HMM CHECK WMULT.  CONMATEL ETC. also allocate arrays."; CFLST
   enddo
   spfmult(:,:)=spfmult(:,:)+tempbigmult(:,:)
 
-  if (whichquad.ne.1) then
-     outspfs=spfmult
-  else
-     call MYGEMM('N','N', spfsize,nspf,nspf,timefac, spfmult,spfsize, yyy%invdenmat(:,:,ireduced), nspf, DATAZERO, outspfs, spfsize)
-  endif
+  call MYGEMM('N','N', spfsize,nspf,nspf,timefac, spfmult,spfsize, yyy%invdenmat(:,:,ireduced), nspf, DATAZERO, outspfs, spfsize)
 
 end subroutine wmult
 

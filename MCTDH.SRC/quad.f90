@@ -107,15 +107,7 @@ subroutine quadoperate(nullint,inspfs,outspfs)
 
   OFLWR "PROGRAM ME (CALL JACOPERATE)"; CFLST
 
-!  if (whichquad.eq.1) then
-!     outspfs=outspfs-jacexpect*inspfs
-!  else
-!     call realproject(outspfs,jacspftemp,jacspf)
-!     outspfs=outspfs-jacspftemp
-!     call realderproject(jacspfmult,jacspftemp,jacspf,inspfs)
-!     outspfs=outspfs-jacspftemp
-!
-!  endif
+  outspfs=outspfs-jacexpect*inspfs
 
 end subroutine quadoperate
 
@@ -143,19 +135,12 @@ subroutine quadspfs(inspfs,jjcalls)
 
   call spf_orthogit(vector,nulldouble)
 
-  OFLWR "PROGRAM ME (JAC INIT)"; CFLST
+  call onedinit(vector) 
+  call wmult(vector,vector2,ireduced)
 
-!  call onedinit(vector) 
-!  call wmult(vector,vector2,ireduced)
+  vector2=(-1)*vector2                     
 
-!  if (whichquad.ne.1) then
-!     call realproject(vector2,vector3,vector)
-!     vector2=vector3-vector2                     !! error term.
-!  else
-!     vector2=(-1)*vector2                     
-!  endif
-!  dev=dot(vector2,vector2,totspfdim)
-  dev=0
+  dev=dot(vector2,vector2,totspfdim)
 
   call openfile(); write(mpifileptr,*)  "    NEWTON: Deviation is ", dev; call closefile()
 
@@ -163,18 +148,14 @@ subroutine quadspfs(inspfs,jjcalls)
      inspfs = vector
      OFLWR "    --> Converged newton, Deviation ", dev; CFL
      OFLWR "PROGME"; CFLST
-!!!     call onedfinal()
+     call onedfinal()
      deallocate(vector, vector2, vector3);     return
   else
      vector3=inspfs
      call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, quadtol,totspfdim,maxexpodim,0)
      OFLWR "PROGME"; CFLST
-!!     call onedfinal()
-     if (whichquad.ne.1) then
-        vector=vector+ vector3
-     else
-        vector=vector3
-     endif
+     call onedfinal()
+     vector=vector3
   endif
 
 
@@ -194,7 +175,7 @@ module aaonedmod
   integer, parameter :: ireduced=1
 
   DATATYPE :: jacexpect=0.d0
-  DATATYPE :: quadexpect=0d0 !! ONLY FOR REPORTING ENERGY, NOT USED IN EQNS    no used for rayleigh whichquad=1
+  DATATYPE :: quadexpect=0d0 !! ONLY FOR REPORTING ENERGY, NOT USED IN EQNS    no, used for rayleigh whichquad=1
   DATATYPE, allocatable :: jacaa(:,:), jacaamult(:,:)
   DATATYPE, allocatable :: bigconfigmatel(:,:), tempconfigmatel(:,:), jacaaproj(:,:), jacaaproj2(:,:), err(:)
   real*8, allocatable :: realconfigmatel(:,:,:,:)
@@ -235,12 +216,8 @@ subroutine quadpreconsub(nullint, inavector,outavector)
      call dfrestrict(tempvector, numr)
   endif
 
-  
-  if (whichquad.eq.0) then
-     call sparseconfigdiagmult(tempvector, outavector, yyy%cptr(0),yyy%sptr(0), 1,1,1,1, jacexpect,0d0) !+quadpreconshift,0d0)
-  else
-     call sparseconfigdiagmult(tempvector, outavector, yyy%cptr(0),yyy%sptr(0), 1,1,1,1, quadexpect,0d0) !+quadpreconshift,0d0)
-  endif
+  call sparseconfigdiagmult(tempvector, outavector, yyy%cptr(0),yyy%sptr(0), 1,1,1,1, quadexpect,0d0) !+quadpreconshift,0d0)
+
   if (allspinproject==1) then
      call configspin_projectall(outavector, 0)
   endif
@@ -302,12 +279,8 @@ subroutine aamult(nullint, inavector0,outavector)
      call dfrestrict(jacaatemp, numr)
   endif
 
-  if (whichquad.eq.0) then
-     outavector= jacaatemp - jacexpect*inavector - ( dot(jacaa,jacaatemp,totadim) + &
-          dot(inavector,jacaamult,totadim) ) * jacaa 
-  else
-     outavector= jacaatemp - quadexpect*inavector 
-  endif
+  outavector= jacaatemp - quadexpect*inavector 
+
 !  quadcalled=quadcalled+1
 !  if (mod(quadcalled,1000).eq.0) then
 !     OFLWR "    Avector Quad - iterating!!  Is your maxaorder high enough??? "
@@ -462,10 +435,6 @@ endif
   ss=0
 333 continue
 
-  if (whichquad.eq.0) then
-     OFLWR "Something is screwy with sparsequadavector.  Dev not being calculated correctly. Run with whichquad=1 not zero. TEMP CONTINUE"; CFL    !!!  CFLST
-  endif
-  
   if (allspinproject==1) then
      call configspin_projectall(vector, 1)
   endif
@@ -488,12 +457,7 @@ endif
      call configspin_transformto(numr,vector2,vector2spin)
   endif
 
-
-  if (whichquad.eq.0) then   !! mine
-     vector3=vector2-jacexpect*vector              !! error term.
-  else   !! rayleigh
-     vector3=vector2-quadexpect*vector              !! error term.
-  endif
+  vector3=vector2-quadexpect*vector              !! error term.
 
   if (allspinproject.ne.0) then
      call configspin_transformto(numr,vector,vectorspin)
@@ -525,82 +489,42 @@ endif
 
   vector3=0d0; 
 
-  if (whichquad.eq.0) then
 
-     if (allspinproject.ne.0) then
-
-        vector2trspin(:,:)=TRANSPOSE(vector2spin(:,:))
-
-if (NEWFLAG==0) then
-        call dgsolve0( vector2trspin(:,spinstart), vector3trspin(:,spinstart), jjcalls, paraamult_transpose_spin,quadprecon,parquadpreconsub_transpose_spin, thisaerror,numr*(spinend-spinstart+1),maxaorder,1)
-else
-        smallvectortrspin(:,:)=0d0; smallvectortrspin(:,spinstart:spinend)=vector2trspin(:,spinstart:spinend)
-        call dgsolve0( smallvectortrspin(:,:), smallvectortrspin2(:,:), jjcalls, paraamult_transpose_spin_padded,quadprecon,parquadpreconsub_transpose_spin_padded, thisaerror,numr*maxspinrank,maxaorder,1)
-        vector3trspin(:,:)=0d0;  vector3trspin(:,spinstart:spinend)=smallvectortrspin2(:,spinstart:spinend)
-endif
-
-        call mpiallgather(vector3trspin(:,:),spintotrank*numr,allspinranks*numr,maxspinrank*numr)
-        vector3spin=TRANSPOSE(vector3trspin)
-        call configspin_transformfrom(numr,vector3spin,vector3)
-
-     else
-
-        vector2tr(:,:)=TRANSPOSE(vector2(:,:))
-
-if (NEWFLAG==0) then
-        call dgsolve0( vector2tr(:,botwalk), vector3tr(:,botwalk), jjcalls, paraamult_transpose,quadprecon,parquadpreconsub_transpose, thisaerror,numr*(topwalk-botwalk+1),maxaorder,1)
-else
-        smallvectortr(:,:)=0d0; smallvectortr(:,botwalk:topwalk)=vector2tr(:,botwalk:topwalk)
-        call dgsolve0( smallvectortr(:,:), smallvectortr2(:,:), jjcalls, paraamult_transpose_padded,quadprecon,parquadpreconsub_transpose_padded, thisaerror,numr*maxconfigsperproc,maxaorder,1)
-        vector3tr(:,:)=0d0; vector3tr(:,botwalk:topwalk)=smallvectortr2(:,botwalk:topwalk)
-endif
-
-        call mpiallgather(vector3tr(:,:),numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
-        vector3=TRANSPOSE(vector3tr)
-
-     endif
-
-     vector=vector - vector3
-
-  else
-
-     if (allspinproject.ne.0) then
-
-        vectortrspin(:,:)=TRANSPOSE(vectorspin(:,:))
-
-if (NEWFLAG==0) then
+  if (allspinproject.ne.0) then
+     
+     vectortrspin(:,:)=TRANSPOSE(vectorspin(:,:))
+     
+     if (NEWFLAG==0) then
         call dgsolve0( vectortrspin(:,spinstart), vector3trspin(:,spinstart), jjcalls, paraamult_transpose_spin,quadprecon,parquadpreconsub_transpose_spin, thisaerror,numr*(spinend-spinstart+1),maxaorder,1)
-else
+     else
         smallvectortrspin(:,:)=0d0; smallvectortrspin(:,spinstart:spinend)=vectortrspin(:,spinstart:spinend)
         call dgsolve0( smallvectortrspin(:,:), smallvectortrspin2(:,:), jjcalls, paraamult_transpose_spin_padded,quadprecon,parquadpreconsub_transpose_spin_padded, thisaerror,numr*maxspinrank,maxaorder,1)
         vector3trspin(:,:)=0d0; vector3trspin(:,spinstart:spinend)=smallvectortrspin2(:,spinstart:spinend)
-endif
-
-        call mpiallgather(vector3trspin(:,:),spintotrank*numr,allspinranks*numr,maxspinrank*numr)
-        vector3spin=TRANSPOSE(vector3trspin)
-        call configspin_transformfrom(numr,vector3spin,vector3)
-        
-     else
-        
-        vectortr(:,:)=TRANSPOSE(vector(:,:))
-
-if (NEWFLAG==0) then
+     endif
+     
+     call mpiallgather(vector3trspin(:,:),spintotrank*numr,allspinranks*numr,maxspinrank*numr)
+     vector3spin=TRANSPOSE(vector3trspin)
+     call configspin_transformfrom(numr,vector3spin,vector3)
+     
+  else
+     
+     vectortr(:,:)=TRANSPOSE(vector(:,:))
+     
+     if (NEWFLAG==0) then
         call dgsolve0( vectortr(:,botwalk), vector3tr(:,botwalk), jjcalls, paraamult_transpose,quadprecon,parquadpreconsub_transpose, thisaerror,numr*(topwalk-botwalk+1),maxaorder,1)
-else
+     else
         smallvectortr(:,:)=0d0; smallvectortr(:,botwalk:topwalk)=vectortr(:,botwalk:topwalk)
         call dgsolve0( smallvectortr(:,:), smallvectortr2(:,:), jjcalls, paraamult_transpose_padded,quadprecon,parquadpreconsub_transpose_padded, thisaerror,numr*maxconfigsperproc,maxaorder,1)
         vector3tr(:,:)=0d0; vector3tr(:,botwalk:topwalk)=smallvectortr2(:,botwalk:topwalk)
-endif
-
-        call mpiallgather(vector3tr(:,:),numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
-        vector3=TRANSPOSE(vector3tr)
-        
      endif
-
-     vector=vector3/sqrt(dot(vector3,vector3,totadim))
-
+     
+     call mpiallgather(vector3tr(:,:),numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
+     vector3=TRANSPOSE(vector3tr)
+     
   endif
-
+     
+  vector=vector3/sqrt(dot(vector3,vector3,totadim))
+     
 !!  OFLWR "    ITERATIONS ***  ",jjcalls
 
   jjcalls0=jjcalls0+jjcalls
@@ -665,11 +589,8 @@ subroutine nonsparsequadavector(avectorout)
   if (dfrestrictflag.ne.0) then
      call dfrestrict(err(:), numr)
   endif
-  if (whichquad.eq.0) then
-     err(:)=err(:)-jacexpect*avectorout(:)              !! error term.
-  else
-     err(:)=err(:)-quadexpect*avectorout(:)              !! error term.
-  endif
+
+  err(:)=err(:)-quadexpect*avectorout(:)              !! error term.
 
   dev=abs(sqrt(hermdot(err(:),err(:),totadim)))
 
@@ -703,23 +624,9 @@ subroutine nonsparsequadavector(avectorout)
 !! no spin project; doing transform below
   call assemble_configmat(bigconfigmatel, yyy%cptr(0),1,1,1,1, 0d0)
 
-  if (whichquad.eq.0) then
-#ifdef REALGO
-     OFLWR "CHECKME ZGEMM"; CFLST
-#endif
-     call zgemm('N', 'N', totadim, totadim, totadim, (1d0,0d0), jacaaproj, &
-       totadim, bigconfigmatel, totadim, (0d0,0d0), tempconfigmatel, totadim)
-     bigconfigmatel=bigconfigmatel - tempconfigmatel
-  endif
-  if (whichquad.eq.0) then
-  do k=1,totadim
-     bigconfigmatel(k,k)=bigconfigmatel(k,k)-jacexpect
-  enddo
-  else
   do k=1,totadim
      bigconfigmatel(k,k)=bigconfigmatel(k,k)-quadexpect
   enddo
-  endif
 
   realconfigmatel=0d0
   do i=1,totadim
@@ -730,20 +637,6 @@ subroutine nonsparsequadavector(avectorout)
      realconfigmatel(2,:,1,i) = imag(bigconfigmatel(:,i))
 #endif
   enddo
-
-  if (whichquad.eq.0) then
-!! jacaaproj2 operates on conjugate of avectorin.
-     do i=1,totadim
-        realconfigmatel(1,:,1,i) =realconfigmatel(1,:,1,i) - real(jacaaproj2(:,i),8)
-#ifndef REALGO
-        realconfigmatel(2,:,2,i) =realconfigmatel(2,:,2,i)- (-1)*real(jacaaproj2(:,i),8)
-        realconfigmatel(1,:,2,i) =realconfigmatel(1,:,2,i)- imag(jacaaproj2(:,i))
-        realconfigmatel(2,:,1,i) =realconfigmatel(2,:,1,i)- imag(jacaaproj2(:,i))
-#endif
-     enddo
-  endif
-
-
 
   if (allspinproject.ne.0) then
 
@@ -794,13 +687,8 @@ allocate(crealconfigmatel(numconfig*numr,zzz,numconfig*numr), &
      call configspin_transformto(numr,err(:),spinerr(:))
 
      if (myrank.eq.1) then
-        if (whichquad.eq.0) then
-           call dgesv(spintotrank*numr*zzz,1,realspinmatel,spintotrank*numr*zzz,ipiv,spinerr,spintotrank*numr*zzz,info)
-           spinavectorout=spinavectorout-spinerr
-        else
-           call dgesv(spintotrank*numr*zzz,1,realspinmatel,spintotrank*numr*zzz,ipiv,spinavectorout,spintotrank*numr*zzz,info)
-           spinavectorout=spinavectorout/sqrt(dot(spinavectorout,spinavectorout,spintotrank*numr))
-        endif
+        call dgesv(spintotrank*numr*zzz,1,realspinmatel,spintotrank*numr*zzz,ipiv,spinavectorout,spintotrank*numr*zzz,info)
+        spinavectorout=spinavectorout/sqrt(dot(spinavectorout,spinavectorout,spintotrank*numr))
         if (info/=0) then
            OFLWR "Info in dgesv nonsparsequadavector= ", info; CFLST
         endif
@@ -816,13 +704,10 @@ allocate(crealconfigmatel(numconfig*numr,zzz,numconfig*numr), &
   else
 
      if (myrank.eq.1) then
-        if (whichquad.eq.0) then
-           call dgesv(totadim*zzz,1,realconfigmatel,totadim*zzz,ipiv,err,totadim*zzz,info)
-           avectorout=avectorout-err
-        else
-           call dgesv(totadim*zzz,1,realconfigmatel,totadim*zzz,ipiv,avectorout,totadim*zzz,info)
-           avectorout=avectorout/sqrt(dot(avectorout,avectorout,totadim))
-        endif
+
+        call dgesv(totadim*zzz,1,realconfigmatel,totadim*zzz,ipiv,avectorout,totadim*zzz,info)
+        avectorout=avectorout/sqrt(dot(avectorout,avectorout,totadim))
+
         if (info/=0) then
            OFLWR "Info in dgesv nonsparsequadavector= ", info; CFLST
         endif
@@ -926,13 +811,8 @@ subroutine paraamult_transpose(nullint, inavectortr,outavectortr)
 
   call parblockconfigmult_transpose(inavectortr,jacaatemptr)
 
-  if (whichquad.eq.0) then
+  outavectortr= jacaatemptr - quadexpect*inavectortr 
 
-     outavectortr(:,:)= jacaatemptr(:,:) - jacexpect*inavectortr(:,:) - ( pardot(jacaalittletr,jacaatemptr,numr*(topwalk-botwalk+1)) + &
-          pardot(inavectortr,jacaamultlittletr,numr*(topwalk-botwalk+1)) ) * jacaalittletr(:,:)
-  else
-     outavectortr= jacaatemptr - quadexpect*inavectortr 
-  endif
 !  quadcalled=quadcalled+1
 !  if (mod(quadcalled,1000).eq.0) then
 !     OFLWR "    Avector Quad - iterating!!  Is your maxaorder high enough??? "
@@ -1011,11 +891,8 @@ subroutine parquadpreconsub_transpose(nullint, inavectortr,outavectortr)
 
   tempvectortr(:,:)=TRANSPOSE(tempvector(:,:))
 
-  if (whichquad.eq.0) then
-     call parsparseconfigdiagmult_transpose(tempvectortr, tempvectortr2, yyy%cptr(0), yyy%sptr(0),1,1,1,1, jacexpect,0d0) !+quadpreconshift,0d0)
-  else
-     call parsparseconfigdiagmult_transpose(tempvectortr, tempvectortr2, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0) !+quadpreconshift,0d0)
-  endif
+  call parsparseconfigdiagmult_transpose(tempvectortr, tempvectortr2, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0) !+quadpreconshift,0d0)
+
   outavector=TRANSPOSE(tempvectortr2)
   if (allspinproject==1) then
      call configspin_projectmine(outavector, 0)

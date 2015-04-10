@@ -391,7 +391,8 @@ integer :: connormflag=0  !! normalize columns for conway=1 or 3
 integer :: sortwalks=0
 integer :: nonatrotate=0
 
-integer :: whichquad=1           !!     0=my eqn 1=rayleigh quotient
+!!!!!  integer :: whichquad=1           !!     0=my eqn 1=rayleigh quotient  WHICHQUAD 1 HARDWIRE
+
 integer :: orderflag=0           !! Order=       !! ordering of configs. 1= first all alphas,  then betas;  
                                                  !!    0= 1a1b2a2b etc.
 integer :: nonuc_checkflag=1     !!              !! Turn off deriv operators in nuclear dofs.
