@@ -439,18 +439,19 @@ subroutine jacinit(inspfs, thistime) !!, timestep)
 
   jactime=thistime;  jacvect=inspfs; 
 
-  gridtime=(jactime-firsttime)/(lasttime-firsttime) 
-
-  if ((gridtime.lt.0.d0).or.(gridtime.gt.1)) then
-     print *, "GGGRIDTIME ERR ", gridtime, jactime, firsttime, lasttime
-     stop
-  endif
 
 !! ONLY GOOD FOR CMF, LMF !!
 
   call actreduced0(jactime,jacvect,nulldouble,jacvectout,1,0,0)
 
   if (effective_cmf_linearflag.ne.0) then
+
+     gridtime=(jactime-firsttime)/(lasttime-firsttime) 
+     if ((gridtime.lt.0.d0).or.(gridtime.gt.1)) then
+        print *, "GGGRIDTIME ERR ", gridtime, jactime, firsttime, lasttime
+        stop
+     endif
+     
      jacvectout=jacvectout*(1.d0-gridtime)
      call actreduced0(jactime,jacvect,jacvect,jactemp,0,0,0)
      jacvectout=jacvectout+gridtime*jactemp

@@ -87,7 +87,7 @@ subroutine getparams()
        sortwalks,  debugflag, drivingflag,drivingproportion, drivingmethod, spineigflag,eigprintflag, &
        avecloadskip,nonsparsepropmode,sparseopt,lanprintflag,dipmodtime,conprop,connormflag, &
        orbcompact,spinrestrictval,mshift,numskiporbs,orbskip,debugfac,denmatfciflag,&
-       walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac
+       walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac, maxquadnorm
 
 
 
@@ -377,10 +377,6 @@ subroutine getparams()
 !     lioreg=1d-13
 !  endif
 
-  if (improvedquadflag.gt.1) then
-     OFLWR "You sure?  Improvedquadflag variable has changed.  Use 1 to do newton solve for A-vector.  Other disabled."; CFLST
-   endif
-
    if (improvedrelaxflag.ne.0.and.constraintflag.ne.0) then
       if (constraintflag.eq.1) then
          OFLWR "FOR DEN CONSTRAINT, USE IMPROVEDNATFLAG FOR RELAX, NO CONSTRAINTFLAG."; CFLST
@@ -607,6 +603,13 @@ subroutine getparams()
   if (ceground.eq.(0d0,0d0)) then
      ceground=eground
   endif
+
+
+  if (improvedquadflag.gt.1.and.jacsymflag.ne.0) then
+     jacsymflag=1
+     OFLWR "enforcing jacsymflag=1 for improved quad orbitals"; CFL
+  endif
+
 
 !! 121912
 !! if numholes or numexcite is not set, define from avectorhole etc. input for backwards compatibility

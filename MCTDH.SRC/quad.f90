@@ -88,26 +88,23 @@ end subroutine dgsolve0
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!
-!!! ONEDMOD SUBROUTINES REMOVED !! USE JACOPERATE !!
+!!! NEWTON SOLVE (IMPROVEDQUADFLAG) FOR ORBITALS
 !!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 
-subroutine quadoperate(nullint,inspfs,outspfs)
-  use parameters
-!!  use onedmod
-  implicit none
-  integer :: nullint
-  DATATYPE ::  inspfs(totspfdim), outspfs(totspfdim)
+ subroutine quadoperate(nullint,inspfs,outspfs)
+   use parameters
+   implicit none
+   integer :: nullint
+   DATATYPE ::  inspfs(totspfdim), outspfs(totspfdim)
 
-!  quadcalled=quadcalled+1
-!  if (mod(quadcalled,1000).eq.0) then
-!     call openfile(); write(mpifileptr,*) "    Quad -iterations ", quadcalled; call closefile()
-!  endif
+! !  quadcalled=quadcalled+1
+! !  if (mod(quadcalled,1000).eq.0) then
+! !     call openfile(); write(mpifileptr,*) "    Quad -iterations ", quadcalled; call closefile()
+! !  endif
 
-  OFLWR "PROGRAM ME (CALL JACOPERATE)"; CFLST
-
-!  outspfs=outspfs-quadexpect*inspfs
+   call jacoperate(inspfs,outspfs)
 
 end subroutine quadoperate
 
@@ -115,51 +112,55 @@ end subroutine quadoperate
 
 subroutine quadspfs(inspfs,jjcalls)
   use parameters
-!  use onedmod
+  use linearmod
   implicit none
   EXTERNAL :: quadoperate,dummysub
-  integer :: jjcalls, ss
-  real*8 :: nulldouble
-  DATATYPE :: dev, dot,inspfs(totspfdim)  
-  DATATYPE, allocatable ::       vector(:), vector2(:), vector3(:)!!, work(:)
+  integer :: jjcalls,icount
+  real*8 :: orthogerror,dev,mynorm
+  DATATYPE ::  hermdot,inspfs(totspfdim)  
+  DATATYPE ::       vector(totspfdim), vector2(totspfdim), vector3(totspfdim)
 
-  allocate(       vector(totspfdim), vector2(totspfdim), vector3(totspfdim))
+  if (jacsymflag.ne.0) then
+     OFLWR "Error, jacsymflag=1 required for improved quad orbitals (improvedquadflag=1 or 3)"; CFLST
+  endif
+
+  effective_cmf_linearflag=0
+  effective_cmf_spfflag=1
 
   vector=inspfs
-  call spf_orthogit(vector,nulldouble)
 
-
-  ss=0
+  icount=0
 
 333 continue
 
-  call spf_orthogit(vector,nulldouble)
+  icount=icount+1
 
-  call onedinit(vector) 
-  call wmult(vector,vector2,0)
+  call spf_orthogit(vector,orthogerror)
 
-  vector2=(-1)*vector2                     
+  call jacinit(vector,0d0)
 
-  dev=dot(vector2,vector2,totspfdim)
+  call spf_linear_derivs(0d0,vector,vector2)
 
-  call openfile(); write(mpifileptr,*)  "    NEWTON: Deviation is ", dev; call closefile()
+  dev=sqrt(abs(hermdot(vector2,vector2,totspfdim))) !! ok imp conv
 
-  if (abs(dev).lt.stopthresh) then
+  OFLWR "   Quad orbitals: Deviation is     ", dev
+  WRFL  "                  Orthog error was ", orthogerror; CFL
+
+  if (dev.lt.stopthresh.or.icount.gt.1) then
      inspfs = vector
-     OFLWR "    --> Converged newton, Deviation ", dev; CFL
-     OFLWR "PROGME"; CFLST
-     call onedfinal()
-     deallocate(vector, vector2, vector3);     return
+     OFLWR "    --> Converged newton", dev; CFL
+     return
   else
-     vector3=inspfs
+     vector3=vector   !! guess
      call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, quadtol,totspfdim,maxexpodim,0)
-     OFLWR "PROGME"; CFLST
-     call onedfinal()
-     vector=vector3
+
+     mynorm=sqrt(abs(hermdot(vector3,vector3,totspfdim))) !! ok imp conv
+     if (mynorm.gt.maxquadnorm*nspf) then
+        vector3=vector3*maxquadnorm*nspf/mynorm
+     endif
+     vector=vector+vector3
   endif
 
-
-  ss=1
   go to 333
 
 end subroutine quadspfs
@@ -167,6 +168,9 @@ end subroutine quadspfs
 
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! NEWTON SOLVE (IMPROVEDQUADFLAG) FOR AVECTOR
+!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 
