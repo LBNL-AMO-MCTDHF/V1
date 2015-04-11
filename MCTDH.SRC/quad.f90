@@ -44,9 +44,15 @@ subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, intole
 #else
   jjxx = 2*indimension
 #endif
-  rgwkdim= 3*(1 + jjxx*(inkrydim+6) + inkrydim*(inkrydim+3)) * 6/5
-  allocate(rgwk(rgwkdim))
+  rgwkdim= (1 + jjxx*(inkrydim+6) + inkrydim*(inkrydim+3)) * 6/5
 
+  if (rgwkdim.lt.0) then
+     OFLWR "OOPS, integer overflow, decrease maxexpodim or reduce size of orbitals (per processor)",rgwkdim; CFLST
+  endif
+
+  allocate(rgwk(rgwkdim)); rgwk(:)=0d0
+
+  
   itol=0;  iunit=0
 
 #ifdef REALGO
@@ -75,11 +81,13 @@ subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, intole
   if (jacwrite==1) then
      OFLWR "   NEWTON: numiter ", numiter, " error ", errest;     call closefile()
   endif
-!  if (ierr.eq.1) then     !! AUTHOR COMMENTS ARE WRONG IN DGMRES.F ierr=1 denotes !! 
-!     OFLWR "WARNING! dgmres did not converge. increase krylov order?"; CFL
-!  else  
-if (ierr/=0) then
-     OFLWR "Error dgmres ", ierr," TEMP CONTINUE"; CFL  !!ST
+  if (ierr.eq.1) then     !! AUTHOR COMMENTS ARE WRONG IN DGMRES.F ierr=1 denotes max restarts (zero) reached !! 
+     OFLWR "WARNING! dgmres did not converge. increase krylov order?"; CFL
+  else  if (ierr/=0) then
+     OFLWR "Error dgmres ", ierr
+     WRFL "igwk(6) = ",igwk(6)
+     WRFL "rgwkdim = ",rgwkdim
+     CFLST
   endif
 
   deallocate(rgwk)
@@ -121,7 +129,8 @@ subroutine quadspfs(inspfs,jjcalls)
   DATATYPE ::       vector(totspfdim), vector2(totspfdim), vector3(totspfdim)
 
   if (jacsymflag.ne.1) then
-     OFLWR "Error, jacsymflag=1 required for improved quad orbitals (improvedquadflag=1 or 3)"; CFLST
+     OFLWR "setting jacsymflag=1 for orbital quad"; CFL
+     jacsymflag=1
   endif
 
   effective_cmf_linearflag=0
@@ -141,20 +150,36 @@ subroutine quadspfs(inspfs,jjcalls)
 
   call spf_linear_derivs(0d0,vector,vector2)
 
-  dev=sqrt(abs(hermdot(vector2,vector2,totspfdim))) !! ok imp conv
+  dev=abs(hermdot(vector2,vector2,totspfdim))
+  if (parorbsplit.eq.3) then
+     call mympirealreduceone(dev)
+  endif
+  dev=sqrt(dev)
+  
+
 
   OFLWR "   Quad orbitals: Deviation is     ", dev
-  WRFL  "                  Orthog error was ", orthogerror; CFL
+  WRFL  "                  Orthog error is  ", orthogerror; CFL
 
   if (dev.lt.stopthresh.or.icount.gt.1) then
      inspfs = vector
-     OFLWR "    --> Converged newton", dev; CFL
+     OFLWR "    --> Converged newton"; CFL
      return
   else
      vector3=vector   !! guess
-     call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, quadtol,totspfdim,maxexpodim,0)
+     if (parorbsplit.eq.3) then
+        call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, quadtol,totspfdim,maxexpodim,1)
+     else
+        call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, quadtol,totspfdim,maxexpodim,0)
+     endif
 
-     mynorm=sqrt(abs(hermdot(vector3,vector3,totspfdim))) !! ok imp conv
+     mynorm=abs(hermdot(vector3,vector3,totspfdim))
+     
+     if (parorbsplit.eq.3) then
+        call mympirealreduceone(mynorm)
+     endif
+     mynorm=sqrt(mynorm)
+
      if (mynorm.gt.maxquadnorm*nspf) then
         vector3=vector3*maxquadnorm*nspf/mynorm
      endif

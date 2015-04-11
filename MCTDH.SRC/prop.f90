@@ -531,7 +531,7 @@ subroutine cmf_prop_wfn(tin, tout)
   if (improvedrelaxflag.ne.0) then
 
      call system_clock(itime)
-     if (improvedquadflag.gt.1) then
+     if (improvedquadflag.gt.1.and.tin.gt.quadstarttime) then
         call quadspfs(yyy%cmfpsivec(spfstart,0), qq)
         numiters=numiters+qq
      else

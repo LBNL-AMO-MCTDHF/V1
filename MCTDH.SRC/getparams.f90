@@ -87,7 +87,7 @@ subroutine getparams()
        sortwalks,  debugflag, drivingflag,drivingproportion, drivingmethod, spineigflag,eigprintflag, &
        avecloadskip,nonsparsepropmode,sparseopt,lanprintflag,dipmodtime,conprop,connormflag, &
        orbcompact,spinrestrictval,mshift,numskiporbs,orbskip,debugfac,denmatfciflag,&
-       walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac, maxquadnorm
+       walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac, maxquadnorm,quadstarttime
 
 
 
@@ -605,10 +605,11 @@ subroutine getparams()
   endif
 
 
-  if (improvedquadflag.gt.1.and.jacsymflag.eq.0) then
-     jacsymflag=1
-     OFLWR "enforcing jacsymflag=1 for improved quad orbitals"; CFL
-  endif
+! no, turning this on in quadspfs.
+!  if (improvedquadflag.gt.1.and.jacsymflag.eq.0) then
+!     jacsymflag=1
+!     OFLWR "enforcing jacsymflag=1 for improved quad orbitals"; CFL
+!  endif
 
 
 !! 121912
