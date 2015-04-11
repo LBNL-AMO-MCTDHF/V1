@@ -25,6 +25,8 @@ OpenMP has been removed from most Makefile.headers, FYI
 
 Velocity gauge sinc DVR just implemented, not debugged nor checked for factors.
 
+Improvedquadflag = 1, 2, and 3 now available again ... new method for 2 & 3
+
 MPI ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3.
   set both parorbsplit=3 in &parinp and orbparflag=.true. in &sinc_params
 
