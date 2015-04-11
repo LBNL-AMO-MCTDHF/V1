@@ -605,7 +605,7 @@ subroutine getparams()
   endif
 
 
-  if (improvedquadflag.gt.1.and.jacsymflag.ne.0) then
+  if (improvedquadflag.gt.1.and.jacsymflag.eq.0) then
      jacsymflag=1
      OFLWR "enforcing jacsymflag=1 for improved quad orbitals"; CFL
   endif

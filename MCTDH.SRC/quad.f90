@@ -120,7 +120,7 @@ subroutine quadspfs(inspfs,jjcalls)
   DATATYPE ::  hermdot,inspfs(totspfdim)  
   DATATYPE ::       vector(totspfdim), vector2(totspfdim), vector3(totspfdim)
 
-  if (jacsymflag.ne.0) then
+  if (jacsymflag.ne.1) then
      OFLWR "Error, jacsymflag=1 required for improved quad orbitals (improvedquadflag=1 or 3)"; CFLST
   endif
 
