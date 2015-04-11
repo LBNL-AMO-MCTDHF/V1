@@ -27,6 +27,9 @@ Velocity gauge sinc DVR just implemented, not debugged nor checked for factors.
 
 Improvedquadflag = 1, 2, and 3 now available again ... new method for 2 & 3
 
+Read orbitals for x2 resolution using loadspfflag=1 for sinc dvr by setting
+reinterp_orbflag=1 in &parinp (not supported for atom or diatom)
+
 MPI ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3.
   set both parorbsplit=3 in &parinp and orbparflag=.true. in &sinc_params
 
