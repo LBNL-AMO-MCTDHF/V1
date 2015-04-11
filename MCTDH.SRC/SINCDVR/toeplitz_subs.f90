@@ -838,10 +838,10 @@ contains
 !! times(1) = transpose   times(2) = mpi  times(3) = copy
 
 
-recursive subroutine mytranspose(in,out,blockistart,blocksizes,blockdim,xmiddledim,myblocksize,xmaxblocksize,myrank,nprocs,times,howmany)
+recursive subroutine mytranspose(in,out,blockdim,xmiddledim,myblocksize,xmaxblocksize,myrank,nprocs,times,howmany)
   use mpi
   implicit none
-  integer,intent(in) :: myrank,nprocs,blocksizes(nprocs),blockistart(nprocs),myblocksize,xmaxblocksize,blockdim,xmiddledim,howmany
+  integer,intent(in) :: myrank,nprocs,myblocksize,xmaxblocksize,blockdim,xmiddledim,howmany
   integer,intent(inout) :: times(3)
        
   complex*16,intent(in) :: in(blockdim,blockdim,myblocksize,howmany)
@@ -1038,8 +1038,6 @@ mywork(dim,dim,mysize/dim**2,howmany)=0; tempout(dim,dim,mysize/dim**2,howmany)=
    call mytranspose(&
         mywork,  &
         tempout,  &
-        (mpiblockstart-1)/dim**2+1,&
-        mpiblocks/dim**2,  &
         dim,  &
         dim,  &
         mpiblocks(myrank)/dim**2,  &

@@ -44,7 +44,7 @@ subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, intole
 #else
   jjxx = 2*indimension
 #endif
-  rgwkdim= (1 + jjxx*(inkrydim+6) + inkrydim*(inkrydim+3)) / 5 * 6
+  rgwkdim= (42 + jjxx*(inkrydim+6) + inkrydim*(inkrydim+3)) / 5 * 6
 
   if (rgwkdim.lt.0) then
      OFLWR "OOPS, integer overflow, decrease maxexpodim or reduce size of orbitals (per processor)",rgwkdim; CFLST

@@ -1675,3 +1675,23 @@ subroutine mult_reke(in, out)
 end subroutine mult_reke
 
 
+
+subroutine reinterpolate_orbs_real(rspfs,dims,num)
+  use myparams
+  implicit none
+  integer, intent(in) :: dims(3),num
+  real*8 :: rspfs(dims(1),dims(2),dims(3),num)
+  OFLWR "Reinterpolate orbs not supported atom/diatom"; CFLST
+  rspfs(:,:,:,:)=0
+end subroutine reinterpolate_orbs_real
+
+
+subroutine reinterpolate_orbs_complex(cspfs,dims,num)
+  use myparams
+  implicit none
+  integer, intent(in) :: dims(3),num
+  complex*16 :: cspfs(dims(1),dims(2),dims(3),num)
+  OFLWR "Reinterpolate orbs not supported atom/diatom"; CFLST
+  cspfs(:,:,:,:)=0
+end subroutine reinterpolate_orbs_complex
+

@@ -257,14 +257,29 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
         obot(idim)=ibot(idim);        otop(idim)=itop(idim)
         
      case (1)
-        if (mod(bigreaddims(idim)-bigoutdims(idim),2).eq.1) then
-           OFLWR "On read must have both even or both odd points for dimension ",idim," they are ", &
-                bigreaddims(idim),bigoutdims(idim); CFLST
+
+!XXARGH modulus function stupidly defined    if (mod(bigreaddims(idim)-bigoutdims(idim),2).eq.1) then
+
+        if (reinterp_orbflag.eq.0) then
+           if (mod(bigreaddims(idim)+bigoutdims(idim),2).eq.1) then
+              OFLWR "On read must have both even or both odd points for dimension ",idim," they are ", &
+                   bigreaddims(idim),bigoutdims(idim); CFLST
+              
+           endif
+
+           ibot(idim)=max(1,(bigreaddims(idim)-bigoutdims(idim))/2+1)
+           obot(idim)=max(1,(bigoutdims(idim)-bigreaddims(idim))/2+1)
+           itop(idim)=ibot(idim)+min(bigoutdims(idim),bigreaddims(idim))-1
+           otop(idim)=obot(idim)+min(bigoutdims(idim),bigreaddims(idim))-1
+
+        else
+
+           ibot(idim)=1    !! these are not used
+           obot(idim)=1
+           itop(idim)=bigoutdims(idim)
+           otop(idim)=bigoutdims(idim)
         endif
-        ibot(idim)=max(1,(bigreaddims(idim)-bigoutdims(idim))/2+1)
-        obot(idim)=max(1,(bigoutdims(idim)-bigreaddims(idim))/2+1)
-        itop(idim)=ibot(idim)+min(bigoutdims(idim),bigreaddims(idim))-1
-        otop(idim)=obot(idim)+min(bigoutdims(idim),bigreaddims(idim))-1
+
      case (2)
         if (bigoutdims(idim).ne.bigreaddims(idim)) then
            OFLWR "For dimension ",idim," spfdimtype is 2 so dimensions must agree ", &
@@ -276,7 +291,6 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
         OFLWR "spfdimtype not recognized for dim", idim," it is ", dimtypes(idim); CFLST
      end select
   end do
-  
 
   if (myrank.eq.1.or.parorbsplit.ne.3) then
      if (readcflag.eq.0) then
@@ -289,48 +303,60 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
      close(iunit)
      OFLWR "   ...okay"; CFL     
 
-
-!!$      if (reinterp_orbflag.ne.0) then
-!!$         if (oldspacing.le.0d0) then
-!!$            OFLWR "must input oldspacing>0 in parinp for reinterp_orbflag"; CFLST
-!!$         endif
-!!$         if (readcflag.eq.0) then
-!!$            call reinterpolate_orbs_real(realspfs(:,:,:,1:numloaded),bigreaddims,numloaded,oldspacing)
-!!$         else
-!!$            call reinterpolate_orbs_complex(cspfs(:,:,:,1:numloaded),bigreaddims,numloaded,oldspacing)
-!!$         endif
-!!$      endif
-
+!! sinc dvr only, half spacing reinterpolation only
+     
   endif
 
   outspfs(:,:,:,:)=0d0
 
-  if (parorbsplit.ne.3) then
+  if ((parorbsplit.eq.3.and.myrank.eq.1).or.(parorbsplit.ne.3.and.reinterp_orbflag.ne.0)) then
      if (readcflag.eq.0) then
-        outspfs(obot(1):otop(1), obot(2):otop(2), obot(3):otop(3), 1:numloaded) =  &
-             realspfs(ibot(1):itop(1), ibot(2):itop(2), ibot(3):itop(3), 1:numloaded )
+        allocate(bigoutrealspfs(bigoutdims(1),bigoutdims(2),bigoutdims(3),numloaded))
      else
-        outspfs(obot(1):otop(1), obot(2):otop(2), obot(3):otop(3), 1:numloaded) =  &
-             cspfs(ibot(1):itop(1), ibot(2):itop(2), ibot(3):itop(3),  1:numloaded )
+        allocate(bigoutcspfs(bigoutdims(1),bigoutdims(2),bigoutdims(3),numloaded))
      endif
   else
-     if (myrank.eq.1) then
+     if (readcflag.eq.0) then
+        allocate(bigoutrealspfs(1,1,1,numloaded))
+     else
+        allocate(bigoutcspfs(1,1,1,numloaded))
+     endif
+  endif
+
+  if (reinterp_orbflag.ne.0.and.(myrank.eq.1.or.parorbsplit.ne.3)) then
+     if (readcflag.eq.0) then
+        call reinterpolate_orbs_real(realspfs(:,:,:,1:numloaded),bigreaddims,bigoutrealspfs,bigoutdims,numloaded)
+     else
+        call reinterpolate_orbs_complex(cspfs(:,:,:,1:numloaded),bigreaddims,bigoutcspfs,bigoutdims,numloaded)
+     endif
+  endif
+
+  if (parorbsplit.ne.3) then
+     if (reinterp_orbflag.ne.0) then
         if (readcflag.eq.0) then
-           allocate(bigoutrealspfs(bigoutdims(1),bigoutdims(2),bigoutdims(3),numloaded))
+           outspfs(:,:,:,1:numloaded)=bigoutrealspfs(:,:,:,:)
+        else
+           outspfs(:,:,:,1:numloaded)=bigoutcspfs(:,:,:,:)
+        endif
+     else
+        if (readcflag.eq.0) then
+           outspfs(obot(1):otop(1), obot(2):otop(2), obot(3):otop(3), 1:numloaded) =  &
+                realspfs(ibot(1):itop(1), ibot(2):itop(2), ibot(3):itop(3), 1:numloaded )
+        else
+           outspfs(obot(1):otop(1), obot(2):otop(2), obot(3):otop(3), 1:numloaded) =  &
+                cspfs(ibot(1):itop(1), ibot(2):itop(2), ibot(3):itop(3),  1:numloaded )
+        endif
+     endif
+  else
+     if (myrank.eq.1.and.reinterp_orbflag.eq.0) then
+        if (readcflag.eq.0) then
            bigoutrealspfs(:,:,:,:)=0d0
            bigoutrealspfs(obot(1):otop(1), obot(2):otop(2), obot(3):otop(3), 1:numloaded) =  &
                 realspfs(ibot(1):itop(1), ibot(2):itop(2), ibot(3):itop(3), 1:numloaded )
         else
-           allocate(bigoutcspfs(bigoutdims(1),bigoutdims(2),bigoutdims(3),numloaded))
            bigoutcspfs(:,:,:,:)=0d0
            bigoutcspfs(obot(1):otop(1), obot(2):otop(2), obot(3):otop(3), 1:numloaded) =  &
                 cspfs(ibot(1):itop(1), ibot(2):itop(2), ibot(3):itop(3),  1:numloaded )
-        endif
-     else
-        if (readcflag.eq.0) then
-           allocate(bigoutrealspfs(1,1,1,numloaded))
-        else
-           allocate(bigoutcspfs(1,1,1,numloaded))
         endif
      endif
      oosize=outdims(1)*outdims(2)*outdims(3)
@@ -349,16 +375,12 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
            outspfs(:,:,:,ispf)= outcspfs(:,:,:,ispf)
         endif
      enddo
-     if (readcflag.eq.0) then
-        deallocate(bigoutrealspfs)
-     else
-        deallocate(bigoutcspfs)
-     endif
   endif
+
   if (readcflag.eq.0) then
-     deallocate(realspfs)
+     deallocate(realspfs,bigoutrealspfs)
   else
-     deallocate(cspfs)
+     deallocate(cspfs,bigoutcspfs)
   endif
 end subroutine spf_read0
 

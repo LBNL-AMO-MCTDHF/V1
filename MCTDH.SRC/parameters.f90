@@ -14,6 +14,7 @@ module parameters
 
 !! recently added, otherwise notable. 
 
+integer :: reinterp_orbflag=0                    !! sinc dvr only, half spacing interpolation for orb load
 real*8 :: quadstarttime=-1d0
 real*8 :: maxquadnorm=1d10                       !! brakes to use if improvedquadflag=2 or 3 is diverging
 real*8 :: timestepfac=1d0                        !! accelerate relax

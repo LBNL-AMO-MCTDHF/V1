@@ -188,7 +188,9 @@ subroutine nonsparseprop(avectorin,avectorout,time)
 
   DATATYPE :: avectorin(totadim), avectorout(totadim),  avectortemp(totadim)
   DATATYPE, allocatable :: bigconfigmatel(:,:), bigconfigvects(:,:) !!,bigconfigvals(:)
+#ifndef REALGO
   real*8, allocatable :: realbigconfigmatel(:,:,:,:)
+#endif
   integer, allocatable :: iiwork(:)
   integer :: iflag
   real*8 :: time

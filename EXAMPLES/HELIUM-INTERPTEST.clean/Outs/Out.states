@@ -1,0 +1,275 @@
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+Sat Apr 11 14:17:18 PDT 2015
+  ****************************************************************************
+  **********************  BEGIN LBNL-AMO-MCTDHF ******************************
+  ****************************************************************************
+ 
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory
+      DJ Haxton, C W McCurdy, T N Rescigno, K Lawler, B Abeln, X Li...
+                              VERSION 1.0 
+        Copyright 2015 the regents of the University of California
+ 
+                This is CHMCTDH: HERM-normed ECS version.
+ 
+                PROCESSOR            1  OF           31
+ 
+ Inpfile is Input.Inp.States  
+ 
+  *************************  COMMAND LINE OPTIONS  ***************************
+ 
+ Reading 
+ Input.Inp.States                                                               
+                                                                                
+                                           
+  ****************************************************************************
+ 
+ Enforcing CMF defaults for Verlet or EXPO.
+ 
+  ****************************************************************************
+ *****************************************************************************
+ 
+ Number of states in propagation=           1
+ 
+  Parameters: electronic
+ 
+                    Number of electrons     2
+ Nuclear KE flag (nonuc_checkflag):         1
+ 
+ ********  SINC DVR PARAMS ******** 
+ griddim,spacing           3  0.300000000000000     
+ numpoints          31          31           1
+ numcenters           1
+ nuccharge   2.00000000000000     
+ centershift  0.000000000000000E+000  0.000000000000000E+000
+  0.000000000000000E+000
+ orblanorder,orblanthresh         250  0.100000000000000     
+ notwoflag,coulflag           0           1
+ toepflag,nonucrepflag           1           0
+ toothnbig, toothnsmall         240          40
+ orbparflag T
+   -----  
+ NBOX            1           1          31
+ totpoints         961
+ **********************************
+ 
+ ************************   Parameters: config/spf    ************************  
+  
+ 
+ Doing full CI: numshells=1.  Shells:
+ Shell            1
+   1a    1b    2a    2b    3a    3b    4a    4b    5a    5b 
+  Final shell occupancy level vexcite=          99
+ 
+    Number of unfrozen spfs:      5
+    Number of frozen spfs:        0
+            Spfs start in m=     0   0   0   0   0
+ 
+ Configurations will be restricted to spin projection           0 /2
+  Configurations will be restricted to spin            0
+ 
+ ***********************    Initial state      ***********************   
+ 
+ Spfs will be loaded from files 
+ 
+ Sfp Quad flag is OFF.
+ Improvednatflag is OFF.
+ 
+ Avector Quad flag is OFF.
+ Avector will be obtained from diagonalization.
+ 
+ ***********************    Parameters: propagation    ***********************  
+  
+ 
+  PAR_TIMESTEP IS    10.0000000000000       LITTLESTEPS IS            1
+ 
+ Spfs will be held CONSTANT. (except for constraint)
+ 
+ Calculation will be stopped with threshold   1.000000000000000E-006 
+ ; timestep is    10.0000000000000     
+ 
+ 
+ *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   ***
+ ****  
+ 
+     Using nonsparse configuration routines.
+  Using EXPONENTIAL integration.
+     Expotol    =  1.000000000000000E-009
+     Maxexpodim=         300
+     Jacprojorth=           0
+     Jacsymflag=           0
+     Jacunitflag=           0
+ 
+ Density matrix regularized with denreg= 0.100E-29
+ 
+ 
+ ****************************************************************************
+ 
+ Autosteps is            1  Autosize is         4001  Numpropsteps is 
+        4000
+ Fluxsteps is            1  Fluxtimestep is    10.0000000000000     
+ 
+ *****************************************************************************
+ 
+ 
+ 
+ Go fast_newconfiglist
+ UPPER/LOWER
+           1           5
+           1           5
+ 
+ 
+ FASTNEWCONFIG: NUMBER OF CONFIGURATIONS           25
+ 
+ NUMSPINBLOCKS, MAXSPINBLOCKSIZE FASTCONFIG          15           2
+ Go fast_newconfiglist, getting configurations
+      ...Done fast_newconfiglist
+ 
+ BOTWALKS /TOPWALKS          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+           1          25          25
+ 
+ Counting walks. Singles
+ Counting walks. Doubles
+ 
+ Maximum number of
+            single walks=           10
+            double walks=           25
+   TOTAL walks:       27125 maxdoublewalks*numconfig         625
+ 
+ Allocating singlewalks
+ Allocating doublewalks
+      ..done walkalloc.
+ Calculating walks. Singles
+ No savewalks.BIN found. 
+ Calculating walks. Doubles
+ Go spinwalks. 
+ Doing spin projector.
+ Maximum number of spin walks=            1
+ Avg number of spin walks=   0.800000000000000     
+ Calculating spin walks.
+ Numspinsets is           15   maxspinset size is            2
+ Getting SPARSE spinset projector.  Numspinsets is           15 
+  maxspinsetsize is            2
+ Getting spin set projectors...
+ ...done.  Eliminated            0  sets with total rank            0
+ Number of spin sets is now           15
+ Total # of spinvects with S^2 =   0.000000000000000E+000  is           15 
+  out of           25
+ TOTAL (all processors) rank          15  out of           25
+      Spin DF rank is           15    all processors          465
+    This proc:  spinstart :            1
+ 
+ Reading spfs.
+ Read complex spfs
+    ...okay
+ Loaded            5  spfs from file 
+ Bin/spfs.bin.states0                                                           
+                                                                                
+                                           
+ Calling init_project                 15376
+ GO GET_3DPOISSON. calling getinverse.
+ filling in....
+     ...filled.
+      ...getting potential...
+     ... done get_3dpoisson.
+    ....Called init_project.
+ Not enough avectors loaded! will diagonalize.
+ Construct big matrix:            25
+  Call spin eig           15
+   -- Nonsparse eigenvals --
+     (-2.72860038804801,1.852759132955579E-015)
+     (-0.446279157556607,-1.073402502408012E-015)
+     (-0.446279157538796,-4.296981977148674E-016)
+     (-0.446279157512618,-8.318447180659835E-017)
+     (-0.189950731813318,-2.742510712188136E-015)
+     (1.51578045182251,1.777659576073128E-016)
+     (1.51578045184848,1.958459358370502E-016)
+     (1.51578045186303,3.391426931023720E-017)
+     (1.54438165239283,2.132820755554652E-016)
+     (1.54438165243396,-2.138148328095085E-016)
+     (1.66524037755800,1.454114166045666E-016)
+ IN PROP: VECTOR NORM  (1.00000000000000,0.000000000000000E+000)
+          ENERGY  (-2.72860038804801,1.857091905662064E-015)
+T=         10.00000  Energy:  -0.2728600388E+01  0.1857091906E-14    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.14E+02  0.10E-05  AVECTOR   0.10E+03  0.10E+01
+             Orbitals Converged, Avector not necessarily converged 
+T=         20.00000  Energy:  -0.2728600388E+01  0.1857091906E-14    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.14E+02  0.10E-05  AVECTOR   0.00E+00  0.10E+01
+ 
+    ***  CONVERGED *** 
+ 
+         -2.728600388048      0.000000000000      0.000000000000      0.000000000000
+    ***   
+ 
+Sat Apr 11 14:17:27 PDT 2015
+Sat Apr 11 14:17:27 PDT 2015
+Sat Apr 11 14:17:27 PDT 2015
+Sat Apr 11 14:17:27 PDT 2015
+Sat Apr 11 14:17:27 PDT 2015
+Sat Apr 11 14:17:27 PDT 2015
+Sat Apr 11 14:17:27 PDT 2015
+Sat Apr 11 14:17:27 PDT 2015
+Sat Apr 11 14:17:27 PDT 2015
+Sat Apr 11 14:17:27 PDT 2015
+Sat Apr 11 14:17:27 PDT 2015
+ MCTDHF STOP!

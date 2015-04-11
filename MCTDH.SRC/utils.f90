@@ -838,7 +838,9 @@ function doubleclebschsq (l2,l1,m2,m1,l3)
 
 !!     sum = (-1)**(l1+l2+l3) * thrcof(l3-l3min+1)   myclebsch l's not doubled
 
-     if (mod(l3-l3min,2).eq.1) then
+!XXXXXARGH modulus function stupidly defined    if (mod(l3-l3min,2).eq.1) then
+
+     if (mod(l3+l3min,2).eq.1) then
         print *, "L3ERROR",l3,l3min; stop
      endif
 
