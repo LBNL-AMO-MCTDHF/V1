@@ -3,10 +3,10 @@
 
 
 
-subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,outorbparflag,multmanyflag) ! ok unused
+subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,outorbparflag,multmanyflag) 
   use myparams
   implicit none
-  integer :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,inspfugvals(innumspf), outspfsmallsize,multmanyflag
+  integer :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,inspfugvals(innumspf), outspfsmallsize,multmanyflag,ii
   logical, intent(out) :: outorbparflag
   numspf=innumspf;  
   outspfsmallsize=totpoints
@@ -15,6 +15,7 @@ subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,
   if (orbparflag) then
      multmanyflag=1
   endif
+  ii=inspfrestrictflag; ii=inspfmvals(1); ii=inspfugvals(1); ii=inspfugrestrict;
 end subroutine transferparams
 
 subroutine twoedealloc()
@@ -745,7 +746,7 @@ end subroutine get_one_dipole
 subroutine mult_ke(in, out,howmany,timingdir,notiming)
   use myparams
   implicit none
-  integer :: howmany,notiming,ii
+  integer :: howmany,notiming
   DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
   character :: timingdir*(*)
   if (toepflag.gt.1) then
@@ -1300,16 +1301,100 @@ subroutine hatom_matel(inspfs1, inspfs2, hatommatel,numberspf)
   use myparams
   implicit none
   integer :: numberspf
-  DATATYPE :: inspfs1(totpoints,numberspf), inspfs2(totpoints,numberspf),hatommatel(numberspf,numberspf)
-  hatommatel(:,:)=0d0
+  DATATYPE :: inspfs1(totpoints,numberspf), inspfs2(totpoints,numberspf),hatommatel(numberspf,numberspf),qq
+  hatommatel(:,:)=0d0; qq=inspfs2(1,1); qq=inspfs1(1,1)
 end subroutine hatom_matel
 
 subroutine hatom_op(inspf, outspf)
   use myparams
   implicit none
-  DATATYPE :: inspf(totpoints),outspf(totpoints)
+  DATATYPE :: inspf(totpoints),outspf(totpoints),qq
   outspf(:)=0d0
+  qq=inspf(1)
 end subroutine hatom_op
+
+
+function mysinc(input)
+  implicit none
+  real*8 :: input,mysinc
+  real*8 :: pi=3.141592653589793d0
+
+  if (abs(input).lt.1d-6) then
+     mysinc=1d0
+  else
+     mysinc=((0d0,-1d0)*exp((0d0,1d0)*pi*input)+(0d0,1d0)*exp((0d0,-1d0)*pi*input))/pi/input/2
+  endif
+end function mysinc
+
+
+!! REINTERPOLATE ORBS FOR HALF SPACING ONLY
+
+subroutine reinterpolate_orbs_complex(cspfs,indims,outcspfs,outdims,num)
+  use myparams
+  implicit none
+  integer, intent(in) :: indims(3),outdims(3),num
+  integer :: indim,i,j,outdim
+  complex*16 :: cspfs(indims(1),indims(2),indims(3),num), &
+       newspfs1(outdims(1),indims(2),indims(3),num), &
+       newspfs2(outdims(1),outdims(2),indims(3),num), &
+       outcspfs(outdims(1),outdims(2),outdims(3),num), &
+       transform(outdims(1),indims(1))
+  real*8 :: distance(1-2*indims(1):outdims(1)-2),&  !! new index minus 2 times old  
+       sincval(1-2*indims(1):outdims(1)-2),mysinc,current_interval,old_interval
+  
+  if ((indims(1).ne.indims(2).or.indims(1).ne.indims(3)).or.&
+       outdims(1).ne.outdims(2).or.outdims(1).ne.outdims(3)) then
+     OFLWR "reinterpolate not supported noncube",indims,outdims; CFLST
+  endif
+  
+  indim=indims(1); outdim=outdims(1)
+
+  current_interval=spacing*(outdim-1)
+  old_interval=spacing*2*(indim-1)
+  
+  do i=1-2*indim,outdim-2
+     ! point-slope form.  when i=1,j=1 then distance(j-2*i) = distance(-1)
+ 
+     distance(i)=(old_interval-current_interval)/2d0 + spacing*(i+1)
+     sincval(i)=mysinc(distance(i)/spacing/2)
+  enddo
+  do i=1,indim  !! old (coarse)
+     do j=1,outdim  !! new (fine)
+        transform(j,i)=sincval(j-2*i)
+     enddo
+  enddo
+
+  call mult_all0_big_gen_complex(cspfs,newspfs1,indim,outdim,transform,1,indim**2*num)
+
+  call mult_all0_big_gen_complex(newspfs1,newspfs2,indim,outdim,transform,outdim,indim*num)
+
+  call mult_all0_big_gen_complex(newspfs2,outcspfs,indim,outdim,transform,outdim**2,num)
+
+
+end subroutine reinterpolate_orbs_complex
+
+
+
+subroutine mult_all0_big_gen_complex(in, out,indim,outdim,mat,nnn,mmm)
+  implicit none
+  integer :: mmm,nnn,jj,indim,outdim
+  complex*16 :: in(nnn,indim,mmm),out(nnn,outdim,mmm),mat(outdim,indim)
+  do jj=1,mmm
+     call ZGEMM('N','T',nnn,outdim,indim,(1d0,0d0),in(:,:,jj),nnn,mat,outdim,(0d0,0d0), out(:,:,jj), nnn)
+  enddo
+end subroutine mult_all0_big_gen_complex
+
+
+subroutine reinterpolate_orbs_real(rspfs,dims,num)
+  use myparams
+  implicit none
+  integer, intent(in) :: dims(3),num
+  real*8 :: rspfs(dims(1),dims(2),dims(3),num)
+  OFLWR "Reinterpolate orbs not supported real valued yet"; CFLST
+  rspfs(:,:,:,:)=0
+end subroutine reinterpolate_orbs_real
+
+
 
 
 !!$subroutine mult_ke_toep_old(in, out)
@@ -1380,41 +1465,65 @@ end subroutine hatom_op
 !!!
 
 
-!!$ subroutine reinterpolate_orbs_complex(cspfs,dims,num,oldspacing)
-!!$   use myparams
-!!$   implicit none
-!!$   real*8, intent(in) :: oldspacing
-!!$   integer, intent(in) :: dims(3),num
-!!$   complex*16 :: cspfs(dims(1),dims(2),dims(3),num), newspfs(dims(1),dims(2),dims(3),num), &
-!!$        transform1(dims(1),dims(1)),transform2(dims(2),dims(2)),&
-!!$        transform3(dims(3),dims(3))
-!!$   real*8 :: distance1(dims(1),dims(1)),distance2(dims(2),dims(2)),&
-!!$        distance3(dims(3),dims(3)),
-!!$   complex*16, dimension(:,:), pointer, type :: cttype
-!!$   cttype :: transforms(3)
-!!$   real*8, dimension(:,:), pointer, type :: rttype
-!!$   rttype :: distances(3)
-!!$ 
-!!$ 
-!!$   transforms(1)=> transform1(:,:); distances(1)=>distance1(:,:)
-!!$   transforms(2)=> transform2(:,:); distances(2)=>distance2(:,:)
-!!$   transforms(3)=> transform3(:,:); distances(3)=>distance3(:,:)
-!!$ 
-!!$   newspfs(:,:,:,:)=cspfs(:,:,:)
-!!$ 
-!!$   do idim=1,3
-!!$      do i=1,dims(idim)
-!!$         distances(idim)(i,:)=(i - (dims(idim)+1)*0.5d0)*spacing
-!!$      enddo
-!!$      do i=1,dims(idim)
-!!$         distances(idim)(:,i)=distances(idim)(:,i) - (i - (dims(idim)+1)*0.5d0)*spacing
-!!$      enddo
-!!$ 
-!!$      transforms(idim)(:,:)=real(exp(distances(idim)(:,:)*pi*(0d0,1d0)))
-!!$ 
-!!$   enddo
 
 
-
-
-
+!!$   subroutine reinterpolate_orbs_complex(cspfs,dims,num)
+!!$     use myparams
+!!$     implicit none
+!!$     integer, intent(in) :: dims(3),num
+!!$     integer :: dim,i,j,idim
+!!$     complex*16 :: cspfs(dims(1),dims(2),dims(3),num), newspfs(dims(1),dims(2),dims(3),num), &
+!!$          transform(dims(1),dims(1))
+!!$     real*8 :: distance(1-2*dims(1):dims(1)-2),&  !! new index minus 2 times old  
+!!$          sincval(1-2*dims(1):dims(1)-2),mysinc,interval
+!!$     
+!!$     if (dims(1).ne.dims(2).or.dims(1).ne.dims(3)) then
+!!$        OFLWR "reinterpolate not supported noncube",dims; CFLST
+!!$     endif
+!!$     
+!!$     dim=dims(1)
+!!$     interval=spacing*(dim-1)
+!!$     
+!!$     do i=1-2*dim,dim-2
+!!$        ! point-slope form.  when i=1,j=1 then distance(j-2*i) = distance(-1)
+!!$    
+!!$        distance(i)=interval/2d0 + spacing*(i+1)
+!!$        sincval(i)=mysinc(distance(i)/spacing/2)
+!!$     enddo
+!!$     do i=1,dim  !! old (coarse)
+!!$        do j=1,dim  !! new (fine)
+!!$           transform(j,i)=sincval(j-2*i)
+!!$        enddo
+!!$     enddo
+!!$     do idim=1,3
+!!$        newspfs(:,:,:,:)=cspfs(:,:,:,:)
+!!$        call mult_allone_big_gen_complex(newspfs,cspfs,dim,idim,transform,num)
+!!$     enddo
+!!$   end subroutine reinterpolate_orbs_complex
+!!$   
+!!$   
+!!$   
+!!$   subroutine mult_allone_big_gen_complex(in, out,dim,idim,mat,howmany)
+!!$     implicit none
+!!$     integer :: mmm,dim,idim,nnn,jdim,howmany
+!!$     complex*16 :: in(dim,dim,dim,howmany), out(dim,dim,dim,howmany),mat(dim,dim)
+!!$     nnn=1; mmm=1
+!!$     do jdim=1,idim-1
+!!$        nnn=nnn*dim
+!!$     enddo
+!!$     do jdim=idim+1,3
+!!$        mmm=mmm*dim
+!!$     enddo
+!!$     call mult_all0_big_gen_complex(in,out,dim,mat,nnn,mmm*howmany)
+!!$   end subroutine mult_allone_big_gen_complex
+!!$   
+!!$   subroutine mult_all0_big_gen_complex(in, out,dim,mat,nnn,mmm)
+!!$     implicit none
+!!$     integer :: mmm,nnn,jj,dim
+!!$     complex*16 :: in(nnn,dim,mmm),out(nnn,dim,mmm),mat(dim,dim)
+!!$     do jj=1,mmm
+!!$        call ZGEMM('N','T',nnn,dim,dim,(1d0,0d0),in(:,:,jj),nnn,mat,dim,(0d0,0d0), out(:,:,jj), nnn)
+!!$     enddo
+!!$   end subroutine mult_all0_big_gen_complex
+!!$   
+!!$   
