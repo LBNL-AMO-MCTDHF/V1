@@ -166,7 +166,7 @@ subroutine write_actions()
   integer :: i,j
 
   do i=1,numactions
-     if ((actions(i).gt.25).or.(actions(i).lt.1)) then
+     if ((actions(i).gt.24).or.(actions(i).lt.1)) then
         OFLWR "ACTION NOT SUPPORTED!!!! ", actions(i); CFLST
      endif
   enddo

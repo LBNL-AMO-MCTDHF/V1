@@ -1378,3 +1378,43 @@ end subroutine hatom_op
 !!!
 !!!end subroutine mult_ke_fast
 !!!
+
+
+!!$ subroutine reinterpolate_orbs_complex(cspfs,dims,num,oldspacing)
+!!$   use myparams
+!!$   implicit none
+!!$   real*8, intent(in) :: oldspacing
+!!$   integer, intent(in) :: dims(3),num
+!!$   complex*16 :: cspfs(dims(1),dims(2),dims(3),num), newspfs(dims(1),dims(2),dims(3),num), &
+!!$        transform1(dims(1),dims(1)),transform2(dims(2),dims(2)),&
+!!$        transform3(dims(3),dims(3))
+!!$   real*8 :: distance1(dims(1),dims(1)),distance2(dims(2),dims(2)),&
+!!$        distance3(dims(3),dims(3)),
+!!$   complex*16, dimension(:,:), pointer, type :: cttype
+!!$   cttype :: transforms(3)
+!!$   real*8, dimension(:,:), pointer, type :: rttype
+!!$   rttype :: distances(3)
+!!$ 
+!!$ 
+!!$   transforms(1)=> transform1(:,:); distances(1)=>distance1(:,:)
+!!$   transforms(2)=> transform2(:,:); distances(2)=>distance2(:,:)
+!!$   transforms(3)=> transform3(:,:); distances(3)=>distance3(:,:)
+!!$ 
+!!$   newspfs(:,:,:,:)=cspfs(:,:,:)
+!!$ 
+!!$   do idim=1,3
+!!$      do i=1,dims(idim)
+!!$         distances(idim)(i,:)=(i - (dims(idim)+1)*0.5d0)*spacing
+!!$      enddo
+!!$      do i=1,dims(idim)
+!!$         distances(idim)(:,i)=distances(idim)(:,i) - (i - (dims(idim)+1)*0.5d0)*spacing
+!!$      enddo
+!!$ 
+!!$      transforms(idim)(:,:)=real(exp(distances(idim)(:,:)*pi*(0d0,1d0)))
+!!$ 
+!!$   enddo
+
+
+
+
+

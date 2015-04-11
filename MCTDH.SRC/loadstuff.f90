@@ -288,6 +288,19 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
      endif
      close(iunit)
      OFLWR "   ...okay"; CFL     
+
+
+!!$      if (reinterp_orbflag.ne.0) then
+!!$         if (oldspacing.le.0d0) then
+!!$            OFLWR "must input oldspacing>0 in parinp for reinterp_orbflag"; CFLST
+!!$         endif
+!!$         if (readcflag.eq.0) then
+!!$            call reinterpolate_orbs_real(realspfs(:,:,:,1:numloaded),bigreaddims,numloaded,oldspacing)
+!!$         else
+!!$            call reinterpolate_orbs_complex(cspfs(:,:,:,1:numloaded),bigreaddims,numloaded,oldspacing)
+!!$         endif
+!!$      endif
+
   endif
 
   outspfs(:,:,:,:)=0d0
