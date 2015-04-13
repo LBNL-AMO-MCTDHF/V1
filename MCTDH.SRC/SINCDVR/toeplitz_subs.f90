@@ -920,20 +920,25 @@ subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
   complex*16, intent(in) :: in(dim**3,howmany)
   complex*16, intent(out) :: out(dim**3,howmany)
 
-#ifdef MPIFFTW
-  call fftw3dfftsub_mpi(in(mystart,ii),out(mystart,ii),indim,mysize/dim**2,howmany)
-  return
-#else
-
   if (dim.ne.indim) then
      print *, "WRONG INIT",dim,indim;stop
   endif
 
-!  if (dims(1).ne.indim1.or.dims(2).ne.indim2.or.dims(3).ne.indim3) then
-!     print *, "WRONG INIT",dims,indim1,indim2,indim3;stop
-!  endif
+!!! ii=1,howmany loops are temporary(?) kloodge... 
+!!!   this subroutine _mpiwrap (called when orbparflag=.false.) 
+!!    should not really be used... hmm
+!!! (3pm 04-13-2015 BUGFIX)
 
-  call myzfft3d_par(in(mystart,ii),out(mystart,ii),indim,mysize/dim**2,nulltimes,howmany)
+#ifdef MPIFFTW
+  do ii=1,howmany
+     call fftw3dfftsub_mpi(in(mystart,ii),out(mystart,ii),indim,mysize/dim**2,1)
+  enddo
+  return
+#else
+
+  do ii=1,howmany
+     call myzfft3d_par(in(mystart,ii),out(mystart,ii),indim,mysize/dim**2,nulltimes,1)
+  enddo
 
 #define TENxxTEST
 #ifdef TENTEST
@@ -948,12 +953,6 @@ subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
   stop
 #endif
 
-!!$  call mygatherv_complex(out,dim**3,&
-!!$       (mpiblockstart(myrank)-1)*dim**2+1,&
-!!$       (mpiblockend(myrank))*dim**2,&
-!!$       mpiblocks(:)*dim**2,&
-!!$       (mpiblockstart(:)-1)*dim**2+1,nprocs,myrank)
-
   do ii=1,howmany
      call mygatherv_complex(out(mpiblockstart(myrank),ii),out,dim**3,&
           mpiblockstart(myrank),&
@@ -963,7 +962,7 @@ subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
   enddo
 
 #endif
-  
+
 end subroutine myzfft3d_mpiwrap
 
 
