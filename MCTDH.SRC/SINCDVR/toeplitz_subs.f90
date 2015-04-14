@@ -317,11 +317,13 @@ subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
 !$OMP END PARALLEL
 
   ffwork(:,:,:,:)=CONJG(ffprod(:,:,:,:))
+
 #ifdef MPIFLAG
   call myzfft3d_mpiwrap(ffwork(:,:,:,:),ffback(:,:,:,:),2*totdim,howmany)
 #else
   call myzfft3d(ffwork(:,:,:,:),ffback(:,:,:,:),2*totdim,howmany)
 #endif
+
   ffback(:,:,:,:)=CONJG(ffback(:,:,:,:))
 
 end subroutine circ3d_sub
@@ -527,23 +529,19 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
   integer :: k
   complex*16, intent(in) :: in(dim,howmany)
   complex*16, intent(out) :: out(dim,howmany)
-!  complex*16 :: wsave(20*dim+100,howmany)
-  complex*16 :: wsave(4*dim+15,howmany)
-!  complex*16 :: wsave(5*dim+128,howmany)
+  complex*16 :: wsave(4*dim+15,howmany)   ! MAKE BIGGER IF SEGFAULT... iffy
 
   out(:,:)=in(:,:)
 
 !$OMP PARALLEL DEFAULT(PRIVATE) SHARED(in,out,dim,howmany,wsave)
 !$OMP DO SCHEDULE(STATIC)
   do k=1,howmany
-!!???     wsave(1,k)=0; wsave(4*dim+15,k)=0
      call zffti(dim,wsave(:,k))
      call zfftf(dim,out(:,k),wsave(:,k))
   enddo
 !$OMP END DO
 !$OMP END PARALLEL
 end subroutine myzfft1d
-
 
 
 subroutine myzfft3d(in,out,indim,howmany)
@@ -637,20 +635,16 @@ subroutine unsetblock()
 end subroutine unsetblock
 
 
-
 recursive subroutine myzfft3d_oneblock(in,out,insize,howmany)
   use bothblockmod
   implicit none
   integer :: insize,howmany
   complex*16, intent(in) :: in(dim,dim,insize,howmany)
   complex*16, intent(out) :: out(dim,dim,insize,howmany)
-
   if (dim.eq.-1) then
      print *, "NEED TO INITIALIZE FFTBLOCK";stop
   endif
-
   call myzfft1d(in(:,:,:,:),out(:,:,:,:),dim,insize*dim*howmany)
-
 end subroutine myzfft3d_oneblock
 
 
@@ -920,6 +914,7 @@ subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
   complex*16, intent(in) :: in(dim**3,howmany)
   complex*16, intent(out) :: out(dim**3,howmany)
 
+
   if (dim.ne.indim) then
      print *, "WRONG INIT",dim,indim;stop
   endif
@@ -954,7 +949,7 @@ subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
 #endif
 
   do ii=1,howmany
-     call mygatherv_complex(out(mpiblockstart(myrank),ii),out,dim**3,&
+     call mygatherv_complex(out(mpiblockstart(myrank),ii),out(:,ii),dim**3,&
           mpiblockstart(myrank),&
           mpiblockend(myrank),&
           mpiblocks(:),&
