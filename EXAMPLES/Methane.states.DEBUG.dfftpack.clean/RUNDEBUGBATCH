@@ -1,0 +1,27 @@
+
+improvedquadflag=0
+
+for sss in 0 1 2
+do
+
+for toepflag in 1 0
+do
+
+if [[ $sss == 2 ]]
+then
+  sparseconfigflag=1
+  sparseopt=0
+else
+  sparseconfigflag=$sss
+  sparseopt=1
+fi
+
+for parorbsplit in 3 1 0
+do
+
+./RUNDEBUGBAT $improvedquadflag $sparseconfigflag $toepflag $parorbsplit $sparseopt
+
+
+done
+done
+done

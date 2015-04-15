@@ -1,0 +1,33 @@
+Tue Apr 14 22:52:39 PDT 2015
+Tue Apr 14 22:52:39 PDT 2015
+Tue Apr 14 22:52:39 PDT 2015
+Tue Apr 14 22:52:39 PDT 2015
+Tue Apr 14 22:52:39 PDT 2015
+Tue Apr 14 22:52:39 PDT 2015
+Tue Apr 14 22:52:39 PDT 2015
+Tue Apr 14 22:52:39 PDT 2015
+Tue Apr 14 22:52:39 PDT 2015
+Tue Apr 14 22:52:39 PDT 2015
+Tue Apr 14 22:52:39 PDT 2015
+Tue Apr 14 22:52:39 PDT 2015
+Tue Apr 14 22:52:39 PDT 2015
+Tue Apr 14 22:52:39 PDT 2015
+Tue Apr 14 22:52:39 PDT 2015
+  ****************************************************************************
+  **********************  BEGIN LBNL-AMO-MCTDHF ******************************
+  ****************************************************************************
+ 
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory
+      DJ Haxton, C W McCurdy, T N Rescigno, K Lawler, B Abeln, X Li...
+                              VERSION 1.0 
+        Copyright 2015 the regents of the University of California
+ 
+                This is CHMCTDH: HERM-normed ECS version.
+ 
+                PROCESSOR            1  OF           15
+ 
+ Inpfile is Input.Inp.temp  
+ Toepflag=0 and orbparflag=.TRUE. not allowed
+ MCTDHF STOP!

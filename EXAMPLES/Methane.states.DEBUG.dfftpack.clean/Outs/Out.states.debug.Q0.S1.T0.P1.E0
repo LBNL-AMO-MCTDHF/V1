@@ -1,0 +1,263 @@
+Tue Apr 14 22:52:42 PDT 2015
+Tue Apr 14 22:52:42 PDT 2015
+Tue Apr 14 22:52:42 PDT 2015
+Tue Apr 14 22:52:42 PDT 2015
+Tue Apr 14 22:52:42 PDT 2015
+Tue Apr 14 22:52:42 PDT 2015
+Tue Apr 14 22:52:42 PDT 2015
+Tue Apr 14 22:52:42 PDT 2015
+Tue Apr 14 22:52:42 PDT 2015
+Tue Apr 14 22:52:42 PDT 2015
+Tue Apr 14 22:52:42 PDT 2015
+Tue Apr 14 22:52:42 PDT 2015
+Tue Apr 14 22:52:42 PDT 2015
+Tue Apr 14 22:52:42 PDT 2015
+Tue Apr 14 22:52:42 PDT 2015
+  ****************************************************************************
+  **********************  BEGIN LBNL-AMO-MCTDHF ******************************
+  ****************************************************************************
+ 
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory
+      DJ Haxton, C W McCurdy, T N Rescigno, K Lawler, B Abeln, X Li...
+                              VERSION 1.0 
+        Copyright 2015 the regents of the University of California
+ 
+                This is CHMCTDH: HERM-normed ECS version.
+ 
+                PROCESSOR            1  OF           15
+ 
+ Inpfile is Input.Inp.temp  
+ 
+  *************************  COMMAND LINE OPTIONS  ***************************
+ 
+ Reading 
+ Input.Inp.temp                                                                 
+                                                                                
+                                           
+ Debugflag set to           42  by command line option
+  ****************************************************************************
+ 
+ Enforcing CMF defaults for Verlet or EXPO.
+ 
+  ****************************************************************************
+ *****************************************************************************
+ 
+ Number of states in propagation=           1
+ 
+  Parameters: electronic
+ 
+                    Number of electrons     7
+ Nuclear KE flag (nonuc_checkflag):         1
+ 
+ ********  SINC DVR PARAMS ******** 
+ griddim,spacing           3  0.300000000000000     
+ numpoints          15          15          15
+ numcenters           5
+ nuccharge   6.00000000000000     
+ centershift  0.000000000000000E+000  0.000000000000000E+000
+  0.000000000000000E+000
+ nuccharge   1.00000000000000     
+ centershift   2.00000000000000        2.00000000000000     
+   2.00000000000000     
+ nuccharge   1.00000000000000     
+ centershift  -2.00000000000000       -2.00000000000000     
+   2.00000000000000     
+ nuccharge   1.00000000000000     
+ centershift  -2.00000000000000        2.00000000000000     
+  -2.00000000000000     
+ nuccharge   1.00000000000000     
+ centershift   2.00000000000000       -2.00000000000000     
+  -2.00000000000000     
+ orblanorder,orblanthresh         600  1.000000000000000E-002
+ notwoflag,coulflag           0           1
+ toepflag,nonucrepflag           0           0
+ toothnbig, toothnsmall         100          20
+ orbparflag F
+   -----  
+ NBOX            1           1           1
+ totpoints        3375
+ **********************************
+ 
+ ************************   Parameters: config/spf    ************************  
+  
+ 
+ Doing full CI: numshells=1.  Shells:
+ Shell            1
+   1a    1b    2a    2b    3a    3b    4a    4b    5a    5b 
+  Final shell occupancy level vexcite=          99
+ 
+    Number of unfrozen spfs:      5
+    Number of frozen spfs:        0
+            Spfs start in m=     0   0   0   0   0
+ 
+ Configurations will be restricted to spin projection           3 /2
+  Configurations will be restricted to spin            3
+ 
+ ***********************    Initial state      ***********************   
+ 
+ Spfs will be one-electron eigfuncts.
+ 
+ Sfp Quad flag is OFF.
+ Improvednatflag is ON.
+ 
+ Avector Quad flag is OFF.
+ Avector will be obtained from diagonalization.
+ 
+ ***********************    Parameters: propagation    ***********************  
+  
+ 
+  PAR_TIMESTEP IS   0.100000000000000       LITTLESTEPS IS            1
+ 
+ Calculation will be stopped with threshold   1.000000000000000E-006 
+ ; timestep is   0.100000000000000     
+ 
+ 
+ *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   ***
+ ****  
+ 
+     Will use sparse configuration routines.
+           Lanczosorder is          200
+           Lanthresh is      1.000000000000000E-008
+           Aorder is                300
+           Maxaorder is            1000
+           Aerror is         1.000000000000000E-009
+  Using EXPONENTIAL integration.
+     Expotol    =  1.000000000000000E-009
+     Maxexpodim=         500
+     Jacprojorth=           0
+     Jacsymflag=           0
+     Jacunitflag=           0
+ 
+ Density matrix regularized with denreg= 0.100E-29
+ 
+ 
+ ****************************************************************************
+ 
+ Autosteps is           10  Autosize is        40001  Numpropsteps is 
+      400000
+ Fluxsteps is            1  Fluxtimestep is   0.100000000000000     
+ 
+ *****************************************************************************
+ 
+ 
+ 
+ Go fast_newconfiglist
+ UPPER/LOWER
+           1           1
+           1           2
+           2           3
+           2           4
+           3           4
+           4           5
+           5           5
+ 
+ 
+ FASTNEWCONFIG: NUMBER OF CONFIGURATIONS           10
+ 
+ NUMSPINBLOCKS, MAXSPINBLOCKSIZE FASTCONFIG          10           1
+ Go fast_newconfiglist, getting configurations
+      ...Done fast_newconfiglist
+ 
+ BOTWALKS /TOPWALKS          10
+           1           0           0
+           1           0           0
+           1           1           1
+           2           1           0
+           2           2           1
+           3           3           1
+           4           3           0
+           4           4           1
+           5           5           1
+           6           5           0
+           6           6           1
+           7           7           1
+           8           7           0
+           8           8           1
+           9          10           2
+ 
+ Counting walks. Singles
+ Counting walks. Doubles
+ 
+ Maximum number of
+            single walks=           13
+            double walks=           80
+   TOTAL walks:         930 maxdoublewalks*numconfig         800
+ 
+ Allocating singlewalks
+ Allocating doublewalks
+      ..done walkalloc.
+ Calculating walks. Singles
+ No savewalks.BIN found. 
+ Calculating walks. Doubles
+ Go spinwalks. 
+ Doing spin projector.
+ Maximum number of spin walks=            0
+ Avg number of spin walks=                      NaN
+ Calculating spin walks.
+ Numspinsets is            0   maxspinset size is            1
+ Getting SPARSE spinset projector.  Numspinsets is            0 
+  maxspinsetsize is            1
+ Getting spin set projectors...
+ ...done.  Eliminated            0  sets with total rank            0
+ Number of spin sets is now            0
+ Total # of spinvects with S^2 =    3.75000000000000       is            0 
+  out of            0
+ TOTAL (all processors) rank          10  out of           10
+      Spin DF rank is            0    all processors           10
+    This proc:  spinstart :            1
+ 
+ Calling init_project                 54000
+ GO GET_3DPOISSON. calling getinverse.
+ filling in....
+     ...filled.
+      ...getting potential...
+     ... done get_3dpoisson.
+ CALL BLOCK LAN FOR ORBS,            5  VECTORS
+ FIRST ALPHA  (49.3017302940202,-8.196568423990414E-017)
+ FIRST ERR 0.7E+03 0.7E+03 0.7E+03 0.1E+04 0.1E+04
+ ENERIGES    -20.764595747657     0.000000000000    -8.178154222737     0.000000000000    -8.141502138760     0.000000000000    -7.999441605629     0.000000000000    -4.460048304760     0.000000000000
+ ENERIGES    -20.764599823825     0.000000000000    -8.194922643675    -0.000000000000    -8.194922001962    -0.000000000000    -8.190086378209     0.000000000000    -8.118623051905     0.000000000000
+ ENERIGES    -20.764599823825    -0.000000000000    -8.194922710862     0.000000000000    -8.194922710862     0.000000000000    -8.194922706216    -0.000000000000    -8.126878479061    -0.000000000000
+ ENERIGES    -20.764599823825     0.000000000000    -8.194922710862     0.000000000000    -8.194922710862     0.000000000000    -8.194922710862    -0.000000000000    -8.126878486492     0.000000000000
+    checking convergence. 0.74316E-08 0.10000E-02       240
+   ERRORS  0.1E-11 0.7E-13 0.3E-12 0.6E-13 0.9E-13
+ Converged.   1.251424993160312E-012  1.000000000000000E-002
+ BLOCKLAN END
+ BL CALLED. ENERGIES: 
+           1 (-20.7645998238247,1.663077819629437E-014)
+           2 (-8.19492271086199,1.254053284827084E-014)
+           3 (-8.19492271086180,3.919011250425831E-015)
+           4 (-8.19492271086158,-8.083444350772243E-015)
+           5 (-8.12687848649241,2.802079291502533E-015)
+ 
+    ....Called init_project.
+ Not enough avectors loaded! will diagonalize.
+ FIRST ALPHA  (-22.6802276633648,-3.615163723935666E-015)
+ FIRST ERR 0.2E+02
+ MAX ERROR :    16.6872079707964       1.000000000000000E-008
+ Max iters           10  reached, setting converged flag to 2
+ ENERIGES    -28.188019940995    -0.000000000000
+    checking convergence. 0.10000E+11 0.10000E-08        10
+   ERRORS  0.6E-12
+ Converged.   5.712692894301560E-013  1.000000000000000E-008
+ BLOCKLAN END
+ DOOG
+ AFTE BLOCKLANCZOS0 BLOCKLANCZOS
+ IN PROP: VECTOR NORM  (1.00000000000000,0.000000000000000E+000)
+          ENERGY  (-28.1880199409951,5.645688125557464E-015)
+ REPLACING SPFS - DENMAT EIGS
+         0.2000000000E+01
+         0.2000000000E+01
+         0.1000000000E+01
+         0.1000000000E+01
+         0.1000000000E+01
+ 
+ Vectors converged on read  1.136862763671695E-013  1.000000000000000E-008
+ BLOCKLAN END
+ DOOG
+ AFTE BLOCKLANCZOS0 BLOCKLANCZOS
+T=          0.10000  Energy:  -0.3044208922E+02  0.7100121408E-14    Norm:   0.1000000000E+01
+ Stopping due to debugflag=42
+ MCTDHF STOP!

@@ -1,0 +1,37 @@
+
+
+##$ ext=$1
+##$ if [[ "$ext " == " " ]]
+##$ then
+##$ 	echo "Need extension
+##$ 	exit
+##$ fi
+##$ inpfile=Input.Inp.States.debug.$ext
+##$ if [[ ! -e $inpfile ]]
+##$ then
+##$ 	echo "no exist $inpfile"
+##$ 	exit
+##$ fi
+
+inpfile=$1
+
+if [[ ! -e $inpfile ]]
+then
+	echo "no exist $inpfile"
+	exit
+fi
+
+outfile=$2
+
+if [[ "$outfile " == " " ]]
+then
+	echo "Need inpfile and outfile (Outs/outfile)"
+	exit
+fi
+
+
+
+export OMP_NUM_THREADS=7
+mpirun  -n 15 -npernode 2 --bind-to-core --cpus-per-proc 7 --report-bindings chmctdhf_sinc.dfftpack.debug Inp=$inpfile Debug=42 |tee Outs/$outfile
+
+
