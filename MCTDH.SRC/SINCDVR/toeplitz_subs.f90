@@ -866,6 +866,10 @@ recursive subroutine mytranspose(in,out,blockdim,xmiddledim,myblocksize,xmaxbloc
   enddo
 !$OMP END DO
 
+!! *** OMP BARRIER ***
+
+!$OMP BARRIER
+
 !$OMP MASTER
   call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
 

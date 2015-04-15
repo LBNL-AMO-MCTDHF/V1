@@ -103,6 +103,10 @@ subroutine sparseconfigmult_nompi(myinvector,myoutvector,matrix_ptr, sparse_ptr,
   Type(SPARSEPTR) :: sparse_ptr
   integer ::  conflag,boflag,nucflag,pulseflag
 
+  if (topwalk-botwalk+1.eq.0) then
+     return
+  endif
+
   myinvectortr(:,:)=TRANSPOSE(myinvector(:,:)); myoutvectortr(:,:)=0d0
   call sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag,time,0,1,numr,0)
   myoutvector(:,:)=TRANSPOSE(myoutvectortr(:,:))
@@ -124,7 +128,6 @@ subroutine sparseconfigdiagmult(invector,outvector,matrix_ptr, sparse_ptr, bofla
 
   real*8 :: time
   call vectdpot(time,facs)
-
 
   myinvectortr(:,:)=1d0; myoutvectortr(:,:)=0d0
   call sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr(:,botwalk),matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag,time,0,1,numr,1)
@@ -157,6 +160,10 @@ subroutine parsparseconfigdiagmult_transpose(myinvectortr,myoutvectortr,matrix_p
   integer ::  conflag,boflag,nucflag,pulseflag
   real*8 :: time
 
+  if (topwalk-botwalk+1.eq.0) then
+     return
+  endif
+
   tempvectortr(:,:)=1d0; myoutvectortr(:,:)=0d0
   call sparseconfigmultnew_transpose_nompi(tempvectortr,myoutvectortr,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag,time,0,1,numr,1)
   
@@ -166,7 +173,6 @@ subroutine parsparseconfigdiagmult_transpose(myinvectortr,myoutvectortr,matrix_p
      myoutvectortr(:,:)=myinvectortr(:,:)*0.5d0* (1d0/(myoutvectortr(:,:)-inenergy+(0d0,1d0)*quadpreconshift) + 1d0/(myoutvectortr(:,:)-inenergy-(0d0,1d0)*quadpreconshift))
   endif
 end subroutine parsparseconfigdiagmult_transpose
-
 
 
 
@@ -184,6 +190,10 @@ subroutine sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr,matrix
   Type(CONFIGPTR) :: matrix_ptr
   Type(SPARSEPTR) :: sparse_ptr
 
+  if (topwalk-botwalk+1.eq.0) then
+     return
+  endif
+
   if (sparseopt.eq.0) then
      call direct_sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr,matrix_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag)
   else
@@ -192,7 +202,7 @@ subroutine sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr,matrix
 end subroutine sparseconfigmultnew_transpose_nompi
 
 
-!! DIRECT MATMUL (with matrix_ptr not sparse_ptr)
+!! SPARSE MATVEC (with matrix_ptr not sparse_ptr)
 
 subroutine direct_sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr,matrix_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag)
   use parameters
@@ -207,6 +217,10 @@ subroutine direct_sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr
   Type(CONFIGPTR) :: matrix_ptr
   real*8 :: time,gg
 
+  if (topwalk-botwalk+1.eq.0) then
+     return
+  endif
+
   myoutvectortr(:,:)=0d0
 
   if (onlytdflag.ne.0) then
@@ -214,36 +228,33 @@ subroutine direct_sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr
   else
      call vectdpot(time,facs)
   endif
-
+  
   mynumr=topr-botr+1
-
+  
   if (boflag==1) then
-
+     
 !! easy nuclear repulsion, hardwired like this for now
 
-    do ir=botr,topr
-       myoutvectortr(ir,:)=myoutvectortr(ir,:)+myinvectortr(ir,botwalk:topwalk)*(nucrepulsion+frozenpotdiag)/bondpoints(ir) * matrix_ptr%kefac
-    enddo
-
-
+     do ir=botr,topr
+        myoutvectortr(ir,:)=myoutvectortr(ir,:)+myinvectortr(ir,botwalk:topwalk)*(nucrepulsion+frozenpotdiag)/bondpoints(ir) * matrix_ptr%kefac
+     enddo
+     
      rvector(:)=1/bondpoints(botr:topr)
      call arbitraryconfig_mult_doubles_transpose_nompi(matrix_ptr%xtwoematel(:,:,:,:),rvector,myinvectortr,tempvectortr,mynumr,diagflag)
      myoutvectortr(:,:)=myoutvectortr(:,:)+tempvectortr(:,:)
-
+     
      call arbitraryconfig_mult_transpose_nompi(matrix_ptr%xpotmatel(:,:),rvector,myinvectortr,tempvectortr,mynumr,diagflag)
      myoutvectortr(:,:)=myoutvectortr(:,:)+tempvectortr(:,:)
-
-
+     
      rvector(:)=1/bondpoints(botr:topr)**2
      call arbitraryconfig_mult_transpose_nompi(matrix_ptr%xopmatel(:,:),rvector,myinvectortr,tempvectortr,mynumr,diagflag)
      myoutvectortr(:,:)=myoutvectortr(:,:)+tempvectortr(:,:)
-
+     
   endif
-
-
+  
   if (conflag==1.and.constraintflag.ne.0) then
      rvector(:)=1
-
+     
      tempmatel(:,:)=matrix_ptr%xconmatel(:,:)
      if (tdflag.ne.0) then
         tempmatel(:,:)=tempmatel(:,:)+matrix_ptr%xconmatelxx(:,:)*facs(1)
@@ -292,15 +303,11 @@ subroutine direct_sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr
            myoutvectortr(ir,:)=myoutvectortr(ir,:)+myinvectortr(ir,botwalk:topwalk)*csum*bondpoints(ir)
         enddo
      else if (onlytdflag.eq.0) then
-
         csum=matrix_ptr%kefac * numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2 ) * 2  * gg   !! a-squared
         do ir=botr,topr
            myoutvectortr(ir,:)=myoutvectortr(ir,:)+myinvectortr(ir,botwalk:topwalk)*csum     !! NO R FACTOR !!
         enddo
-
      endif
-
-
 
   endif   !! PULSE
 
@@ -310,19 +317,17 @@ subroutine direct_sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr
         call arbitraryconfig_mult_transpose_nompi(matrix_ptr%xymatel,rvector,myinvectortr,tempvectortr,numr,0)
         call MYGEMM('N','N',numr,topwalk-botwalk+1,numr,DATAONE,            proderivmod,numr,     tempvectortr,           numr,DATAONE,myoutvectortr,numr)
         call MYGEMM('N','N',numr,topwalk-botwalk+1,numr,DATAONE*matrix_ptr%kefac,rkemod,numr,     myinvectortr(:,botwalk),numr,DATAONE,myoutvectortr,numr)
-!     else
-!        do ir=1,numr
-!           myoutvectortr(ir,:)=myoutvectortr(ir,:)+myinvectortr(ir,botwalk:topwalk)*matrix_ptr%kefac*rkemod(ir,ir)
-!        enddo
+!!$     else
+!!$        do ir=1,numr
+!!$           myoutvectortr(ir,:)=myoutvectortr(ir,:)+myinvectortr(ir,botwalk:topwalk)*matrix_ptr%kefac*rkemod(ir,ir)
+!!$        enddo
      endif
   endif
-
 
 end subroutine direct_sparseconfigmultnew_transpose_nompi
 
 
-
-
+!! DIRECT MATVEC (with sparse_ptr not matrix_ptr)
 
 subroutine sparsesparsemult_transpose_nompi(myinvectortr,myoutvectortr,sparse_ptr,boflag,nucflag,pulseflag,conflag,time,onlytdflag,botr,topr,diagflag)
   use parameters
@@ -342,19 +347,20 @@ subroutine sparsesparsemult_transpose_nompi(myinvectortr,myoutvectortr,sparse_pt
   integer, save:: allochere=0
   DATATYPE,save,allocatable :: tempvectortr(:,:), tempsparsemattr(:,:)
 
+  if (topwalk-botwalk+1.eq.0) then
+     return
+  endif
+
   if (botr.ne.1.or.topr.ne.numr) then
      OFLWR "REPROGRAMMMM."; CFLST
   endif
-
+  if (sparseconfigflag.eq.0) then
+     OFLWR "BADDDCALLL6666666"; CFLST
+  endif
   if (allochere.eq.0) then
      allocate(tempvectortr(botr:topr,botwalk:topwalk), tempsparsemattr(maxsinglewalks,botwalk:topwalk))
   endif
   allochere=1
-
-
-  if (sparseconfigflag.eq.0) then
-     OFLWR "BADDDCALLL6666666"; CFLST
-  endif
 
   myoutvectortr(:,:)=0d0
 
@@ -384,7 +390,6 @@ subroutine sparsesparsemult_transpose_nompi(myinvectortr,myoutvectortr,sparse_pt
      myoutvectortr(:,:)=myoutvectortr(:,:)+tempvectortr(:,:)
 
   endif
-
 
   if (conflag==1.and.constraintflag.ne.0) then
      rvector(:)=1
@@ -425,9 +430,8 @@ subroutine sparsesparsemult_transpose_nompi(myinvectortr,myoutvectortr,sparse_pt
 
 !! A-squared term and nuclear dipole : nuclear dipole always
 
-        gg=0.25d0
-
-
+     gg=0.25d0
+     
      if (velflag.eq.0) then 
         csum=0
         do ii=1,3
@@ -439,16 +443,11 @@ subroutine sparsesparsemult_transpose_nompi(myinvectortr,myoutvectortr,sparse_pt
            myoutvectortr(ir,:)=myoutvectortr(ir,:)+myinvectortr(ir,botwalk:topwalk)*csum*bondpoints(ir)
         enddo
      else if (onlytdflag.eq.0) then
-
         csum= sparse_ptr%kefac * numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2 ) * 2 * gg  !! a-squared
         do ir=botr,topr
            myoutvectortr(ir,:)=myoutvectortr(ir,:)+myinvectortr(ir,botwalk:topwalk)*csum     !! NO R FACTOR !!
         enddo
      endif
-
-
-
-
 
   endif !! PULSE
 
@@ -458,19 +457,14 @@ subroutine sparsesparsemult_transpose_nompi(myinvectortr,myoutvectortr,sparse_pt
         call arbitrary_sparsemult_transpose_nompi_singles(sparse_ptr%xysparsemattr,rvector,myinvectortr,tempvectortr,numr,0)
         call MYGEMM('N','N',numr,topwalk-botwalk+1,numr,DATAONE,            proderivmod,numr,     tempvectortr,           numr,DATAONE,myoutvectortr,numr)
         call MYGEMM('N','N',numr,topwalk-botwalk+1,numr,DATAONE*sparse_ptr%kefac,rkemod,numr,     myinvectortr(:,botwalk),numr,DATAONE,myoutvectortr,numr)
-!     else
-!        do ir=1,numr
-!           myoutvectortr(ir,:)=myoutvectortr(ir,:)+myinvectortr(ir,botwalk:topwalk)*sparse_ptr%kefac*rkemod(ir,ir)
-!        enddo
+!!$     else
+!!$        do ir=1,numr
+!!$           myoutvectortr(ir,:)=myoutvectortr(ir,:)+myinvectortr(ir,botwalk:topwalk)*sparse_ptr%kefac*rkemod(ir,ir)
+!!$        enddo
      endif
   endif
 
-
-
-
 end subroutine sparsesparsemult_transpose_nompi
-
-
 
 
 
@@ -487,6 +481,10 @@ subroutine arbitrary_sparsemult_transpose_nompi_singles(mattrans, rvector,inbigv
      OFLWR "BADDDCALLL6666666"; CFLST
   endif
 
+  if (topwalk-botwalk+1.eq.0) then
+     return
+  endif
+
   outsmallvectortr(:,:)=0d0
 
   if (diagflag.eq.0) then
@@ -500,7 +498,6 @@ subroutine arbitrary_sparsemult_transpose_nompi_singles(mattrans, rvector,inbigv
      if (sortwalks.ne.0) then
         OFLWR " ??? NOT DEBUGGED ??? sortwalks singlediag.  programmer remove me to try"; CFLST
      endif
-
      do config1=botwalk,topwalk
         do idiag=1,numsinglediagwalks(config1)
            outsmallvectortr(:,config1)=outsmallvectortr(:,config1)+mattrans(singlediag(idiag,config1),config1) * inbigvectortr(:,config1)
@@ -510,9 +507,6 @@ subroutine arbitrary_sparsemult_transpose_nompi_singles(mattrans, rvector,inbigv
   endif
 
 end subroutine arbitrary_sparsemult_transpose_nompi_singles
-
-
-
 
 
 subroutine arbitrary_sparsemult_transpose_nompi_doubles(mattrans,rvector,inbigvectortr,outsmallvectortr,mynumr,diagflag)
@@ -527,10 +521,13 @@ subroutine arbitrary_sparsemult_transpose_nompi_doubles(mattrans,rvector,inbigve
      OFLWR "BADDDCALLL6666666"; CFLST
   endif
 
+  if (topwalk-botwalk+1.eq.0) then
+     return
+  endif
+
   outsmallvectortr(:,:)=0d0
 
   do config1=botwalk,topwalk
-     
      if (diagflag.eq.0) then
         do iwalk=1,numdoublewalks(config1)
            outsmallvectortr(:,config1)=outsmallvectortr(:,config1)+mattrans(iwalk,config1) * inbigvectortr(:,doublewalk(iwalk,config1))
@@ -539,17 +536,14 @@ subroutine arbitrary_sparsemult_transpose_nompi_doubles(mattrans,rvector,inbigve
         if (sortwalks.ne.0) then
            OFLWR " ??? NOT DEBUGGED ??? sortwalks doublediag.  programmer remove me to try"; CFLST
         endif
-
         do idiag=1,numdoublediagwalks(config1)
            outsmallvectortr(:,config1)=outsmallvectortr(:,config1)+mattrans(doublediag(idiag,config1),config1) * inbigvectortr(:,config1)
         enddo
      endif
      outsmallvectortr(:,config1)=outsmallvectortr(:,config1)*rvector(:)
   enddo
-  
+
 end subroutine arbitrary_sparsemult_transpose_nompi_doubles
-
-
 
 
 
@@ -563,11 +557,10 @@ subroutine arbitraryconfig_mult(onebodymat, rvector, avectorin, avectorout,inrnu
        avectorintr(inrnum,numconfig),avectorouttr(inrnum,numconfig)
   DATAECS :: rvector(inrnum)
 
-  
   avectorintr(:,:)=TRANSPOSE(avectorin(:,:)); avectorouttr(:,:)=0d0
   
   call arbitraryconfig_mult_transpose_nompi(onebodymat, rvector, avectorintr, avectorouttr(:,botwalk),inrnum,0)
-  
+
   if (sparseconfigflag.ne.0) then
      call mpiallgather(avectorouttr,numconfig*inrnum,configsperproc*inrnum,maxconfigsperproc*inrnum)
   endif
@@ -585,6 +578,10 @@ subroutine arbitraryconfig_mult_transpose_nompi(onebodymat, rvector, avectorintr
   integer ::    config2, config1, iwalk, inrnum,diagflag,idiag
   DATATYPE :: onebodymat(nspf,nspf), avectorintr(inrnum,numconfig), avectorouttr(inrnum,botwalk:topwalk)
   DATAECS :: rvector(inrnum)
+
+  if (topwalk-botwalk+1.eq.0) then
+     return
+  endif
 
   avectorouttr=0.d0
 
@@ -605,7 +602,6 @@ subroutine arbitraryconfig_mult_transpose_nompi(onebodymat, rvector, avectorintr
      if (sortwalks.ne.0) then
         OFLWR " ??? NOT DEBUGGED ??? sortwalks singlediag.  programmer remove me to try"; CFLST
      endif
-
      do config1=botwalk,topwalk
         do idiag=1,numsinglediagwalks(config1)
            iwalk=singlediag(idiag,config1)
@@ -624,7 +620,6 @@ subroutine arbitraryconfig_mult_doubles_transpose_nompi(twobodymat, rvector, ave
   use walkmod
   use parameters
   implicit none
-
   integer ::   config2, config1, iwalk, inrnum,diagflag, idiag
   DATATYPE :: twobodymat(nspf,nspf,nspf,nspf), avectorintr(inrnum,numconfig), avectorouttr(inrnum,botwalk:topwalk)
   DATAECS :: rvector(inrnum)
@@ -645,13 +640,10 @@ subroutine arbitraryconfig_mult_doubles_transpose_nompi(twobodymat, rvector, ave
         enddo
      enddo
   else
-
      if (sortwalks.ne.0) then
         OFLWR " ??? NOT DEBUGGED ??? sortwalks doublediag.  programmer remove me to try"; CFLST
      endif
-
      do config1=botwalk,topwalk
-
         do idiag=1,numdoublediagwalks(config1)
            iwalk=doublediag(idiag,config1)
            config2=doublewalk(iwalk,config1)
@@ -664,12 +656,5 @@ subroutine arbitraryconfig_mult_doubles_transpose_nompi(twobodymat, rvector, ave
         enddo
      enddo
   endif
+
 end subroutine arbitraryconfig_mult_doubles_transpose_nompi
-
-
-
-
-
-
-
-

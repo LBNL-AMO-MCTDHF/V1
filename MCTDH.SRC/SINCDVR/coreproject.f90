@@ -473,11 +473,9 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
 !!!!! reduction is performed in main MCTDHF routines NOT HERE !!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,spf2b,myden)   !! myreduced
-
-!$OMP MASTER
   twoematel(:,:,:,:)=0
-!$OMP END MASTER
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,spf2b,myden)   !! myreduced
 
 !! (YONG FYI)
 !! I GET SEGFAULTS IF MYDEN AND MYREDUCED ARE AUTOMATIC VARIABLES NOT ALLOCATABLE.
@@ -1254,8 +1252,7 @@ function mysinc(input)
   if (abs(input).lt.1d-6) then
      mysinc=1d0
   else
-     mysinc=((0d0,-1d0)*& !! ok conversion
-          exp((0d0,1d0)*pi*input)+(0d0,1d0)*exp((0d0,-1d0)*pi*input))/pi/input/2
+     mysinc=((0d0,-1d0)*exp((0d0,1d0)*pi*input)+(0d0,1d0)*exp((0d0,-1d0)*pi*input))/pi/input/2
   endif
 end function mysinc
 
