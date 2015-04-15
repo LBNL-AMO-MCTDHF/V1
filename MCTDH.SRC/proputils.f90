@@ -45,6 +45,9 @@ function alltdpot(myintime,which)  !! which=1, z component; 2, x component. 3, y
   integer :: which
   real*8 :: myintime
   DATATYPE ::  alltdpot, tdpotlen,tdpotvel
+
+  alltdpot=0d0 !! to avoid spurious compiler warning
+
   if (checktdflag.ne.0) then
      select case(which)
      case(1)
@@ -261,6 +264,9 @@ function cwpulselen(myintime, ipulse, which)
   else 
      fac=1.d0
   endif
+
+!! YIKES !! zero it 04-14-2015
+  cwpulselen=0d0
 
   if (myintime.lt.pi/omega(ipulse)) then
      cwpulselen = pulsestrength(ipulse) * omega2(ipulse)*cos(myintime*omega2(ipulse)+phaseshift(ipulse))*fac
