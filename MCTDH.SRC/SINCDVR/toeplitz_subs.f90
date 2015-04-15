@@ -705,14 +705,10 @@ subroutine fftw3dfftsub_mpi(in,out,indim,insize,howmany)
   endif
 
 !print *, "LMS ", LL,MM,SS
-
   alloc_local = fftw_mpi_local_size_3d(LL,LL,LL, MPI_COMM_WORLD, MM, SS)
-
 !print *, "LMSnow ", LL,MM,SS
 
-
   cdata = fftw_alloc_complex(alloc_local)
-
   call c_f_pointer(cdata, data, [LL,LL,MM])
      
   if (icalled.eq.0) then
@@ -726,7 +722,6 @@ subroutine fftw3dfftsub_mpi(in,out,indim,insize,howmany)
      ! initialize data to some function my_function(i,j)
 
   data(:, :,:) = in(:,:,:)
-     
   ! compute transform (as many times as desired)
 
   call fftw_mpi_execute_dft(plan, data, data)
@@ -738,7 +733,6 @@ subroutine fftw3dfftsub_mpi(in,out,indim,insize,howmany)
   if (myrank.eq.1) then
      print *, "ok done fftw3dfftsub_mpi"
   endif
-
 end subroutine fftw3dfftsub_mpi
 
 #endif
@@ -792,8 +786,8 @@ subroutine fftw1dfftsub(in,out,dim,howmany)
 !!$  call fftw_destroy_plan(plan)
 end subroutine fftw1dfftsub
 
-
 #endif
+
 
 
 #ifdef MPIFLAG
@@ -831,7 +825,6 @@ contains
 
 !! times(1) = transpose   times(2) = mpi  times(3) = copy
 
-
 recursive subroutine mytranspose(in,out,blockdim,xmiddledim,myblocksize,xmaxblocksize,myrank,nprocs,times,howmany)
   use mpi
   implicit none
@@ -854,10 +847,6 @@ recursive subroutine mytranspose(in,out,blockdim,xmiddledim,myblocksize,xmaxbloc
   if (myblocksize*nprocs.ne.blockdim) then
      print *, "NOT UNDERSTAAND",nprocs,myblocksize,blockdim; stop
   endif
-
-
-
-
    
   call myclock(atime)
 
@@ -887,6 +876,9 @@ recursive subroutine mytranspose(in,out,blockdim,xmiddledim,myblocksize,xmaxbloc
   endif
   call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
 !$OMP END MASTER
+
+!! *** OMP BARRIER ***
+
 !$OMP BARRIER
 
 !$OMP DO SCHEDULE(STATIC)
@@ -896,7 +888,8 @@ recursive subroutine mytranspose(in,out,blockdim,xmiddledim,myblocksize,xmaxbloc
      enddo
   enddo
 !$OMP END DO
-!$OMP BARRIER
+!   why?  why not
+!$OMP BARRIER  
 !$OMP END PARALLEL
 
   call myclock(btime); times(3)=times(3)+btime-atime;
@@ -985,15 +978,12 @@ recursive subroutine myzfft3d_par(in,out,indim,inblockdim,times,howmany)
   if (dim**2*(mysize/dim**2).ne.mysize) then
      print *, "WTF!!! 5656578",dim,mysize; stop
   endif
-
   if (dim.ne.indim) then
      print *, "WRONG INIT",dim,indim;stop
   endif
-
   if (dim**2*inblockdim.ne.mysize) then
      print *, "WRONG BLOCK",dim,indim," ",mysize,inblockdim,dim;stop
   endif
-
   if (mysize.ne.mpiblocks(myrank)) then
      print *, "MYSIZE/blocks disagree",mysize,mpiblocks(myrank),myrank,nprocs;stop
   endif
@@ -1038,18 +1028,14 @@ mywork(dim,dim,mysize/dim**2,howmany)=0; tempout(dim,dim,mysize/dim**2,howmany)=
         maxblocksize/dim**2,  &
         myrank,  &
         nprocs,times(3),howmany)
-   
   enddo
-
   out(:,:,:,:)=tempout(:,:,:,:)
 
 #endif
 
 end subroutine myzfft3d_par
 
-
 #endif
-
 
 
 
@@ -1121,5 +1107,3 @@ end subroutine myzfft3d_par
 !!$  endif
 !!$
 !!$end subroutine myzfft1d0
-
-

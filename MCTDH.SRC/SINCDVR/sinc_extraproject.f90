@@ -166,6 +166,9 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
      enddo
   endif
 
+  if (toepflag.eq.0.and.orbparflag) then
+     OFLWR "Toepflag=0 and orbparflag=.TRUE. not allowed"; CFLST
+  endif
 
 end subroutine getmyparams
 

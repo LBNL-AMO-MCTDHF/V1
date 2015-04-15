@@ -67,7 +67,7 @@ subroutine getparams()
        mrestrictflag, mrestrictval, fluxtimestep, autotimestep,  spinwalkflag, nucfluxflag, &
        nosparseforce,  allspinproject,  numfluxfiles,  verletnum, &
        constraintflag, dfrestrictflag, improvedrelaxflag, mcscfnum,  improvednatflag, avectorfile, spffile, &
-       quadprecon,  improvedquadflag, quadtol, quadthresh,  quadpreconshift, &
+       quadprecon,  improvedquadflag, quadtol,  quadpreconshift, &
        plotxyrange,plotrange,plotskip,pm3d, plotterm, plotmodulus,plotpause, numfluxcurves,  & 
        plotres, nspf ,  spfrestrictflag,  spfmvals, spfugvals, spfugrestrict, ugrestrictflag, ugrestrictval, &
        restrictflag,  restrictms,   loadspfflag,  loadavectorflag,  avectorhole, &
@@ -744,7 +744,7 @@ subroutine getparams()
   if (threshflag.ne.0) then
 
      if (improvedquadflag.gt.1) then
-        write(mpifileptr,*) "Spf Quad flag is ON (quadflag>1).  Threshold ", quadthresh
+        write(mpifileptr,*) "Spf Quad flag is ON (quadflag>1).  Start time ", quadstarttime
      else
         write(mpifileptr,*) "Sfp Quad flag is OFF."
      endif
@@ -755,7 +755,7 @@ subroutine getparams()
      endif
      write(mpifileptr, *) 
      if (improvedquadflag.eq.1.or.improvedquadflag.eq.3) then
-        write(mpifileptr,*) "Avector Quad flag is ON (quadflag=1,3).  Threshold ", quadthresh
+        write(mpifileptr,*) "Avector Quad flag is ON (quadflag=1,3)."
      else
         write(mpifileptr,*) "Avector Quad flag is OFF."
      endif

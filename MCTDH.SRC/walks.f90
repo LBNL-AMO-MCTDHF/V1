@@ -151,7 +151,7 @@ subroutine walkalloc()
         OFLWR "WTF EERRROROR", ii, numconfig; CFLST
      endif
      do i=1,nprocs
-        if (configsperproc(i).le.0) then
+        if (configsperproc(i).lt.0) then
            OFLWR "Configs per proc lt 0 for proc ",i,"nprocs must be greater than numconfig???  Can't do."; CFLST
         endif
      enddo

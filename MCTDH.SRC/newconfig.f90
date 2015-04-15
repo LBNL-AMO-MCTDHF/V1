@@ -798,8 +798,8 @@ endif
      do ii=1,nprocs     
 !! WOULD BE NICE BUT NO, NO +1 - canNOT be bot=1,top=0 for range=0.  range not negative. RANGE POSITIVE
 !! would be nice        if (allbotwalks(ii).gt.alltopwalks(ii)+1) then     ...or not
-        if (allbotwalks(ii).gt.alltopwalks(ii)) then   
-           OFLWR "NARG BOTWALKS TOPWALKS ";CFLST
+        if (allbotwalks(ii).gt.alltopwalks(ii)+1) then   
+           OFLWR "ERROR, NUMBER OF CONFIGS PROCESSOR ",ii," IS LESS THAN ZERO", alltopwalks(ii)-allbotwalks(ii)+1 ;CFLST
         endif
      enddo
 

@@ -1,0 +1,18 @@
+
+improvedquadflag=0
+
+for sparseconfigflag in 0 1
+do
+
+for toepflag in 1 0
+do
+
+for parorbsplit in 3 1 0
+do
+
+./RUNDEBUGBAT $improvedquadflag $sparseconfigflag $toepflag $parorbsplit
+
+
+done
+done
+done
