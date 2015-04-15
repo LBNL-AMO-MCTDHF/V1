@@ -83,6 +83,8 @@ subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, intole
   endif
   if (ierr.eq.1) then     !! AUTHOR COMMENTS ARE WRONG IN DGMRES.F ierr=1 denotes max restarts (zero) reached !! 
      OFLWR "WARNING! dgmres did not converge. increase krylov order?"; CFL
+  else if (ierr.eq.2) then
+     OFLWR "WARNING! dgmres stalled."; CFL
   else  if (ierr/=0) then
      OFLWR "Error dgmres ", ierr
      WRFL "igwk(6) = ",igwk(6)
