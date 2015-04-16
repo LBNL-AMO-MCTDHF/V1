@@ -24,16 +24,12 @@ subroutine mpiorbsets()
      orbsperproc=ceiling(real(nspf)/nprocs)
      allocate(procsperset(norbsets))
      procsperset(:)=nprocs
-
   else   
-
      norbsets=floor(real(nprocs)/nspf)
      orbsperproc=1
      allocate(procsperset(norbsets))     
      procsperset(:)=nspf
-
      procsperset(norbsets)= nprocs-nspf*(norbsets-1)
-
      iproc=0
      do iset=1,norbsets
         iproc=iproc+procsperset(iset)
@@ -43,20 +39,16 @@ subroutine mpiorbsets()
      endif
 
   endif
-
 #ifndef MPIFLAG
            myorbset=1
            firstmpiorb=1
 #else
-
   call MPI_Comm_group(MPI_COMM_WORLD,MPI_GROUP_WORLD,ierr)
   if (ierr.ne.0) then
      OFLWR "comm group ERR ", ierr; CFLST
   endif
-
   allocate(process_ranks(nspf*2,norbsets)); process_ranks(:,:)=(-1)
   allocate(MPI_GROUP_ORB(norbsets), MPI_COMM_ORB(norbsets)); MPI_GROUP_ORB(:)=0; MPI_COMM_ORB(:)=0
-
   iproc=0
   do iset=1,norbsets
      jproc=0
@@ -71,9 +63,7 @@ subroutine mpiorbsets()
            firstmpiorb=(jproc-1)*orbsperproc+1
         endif
      enddo
-
      process_ranks(:,iset)=process_ranks(:,iset)-1
-
      call MPI_group_incl(MPI_GROUP_WORLD,procsperset(iset),process_ranks(:,iset),MPI_GROUP_ORB(iset),ierr)
      if (ierr.ne.0) then
         OFLWR "group_incl ERR ", ierr; CFLST
@@ -83,28 +73,21 @@ subroutine mpiorbsets()
         OFLWR "group_create err ", ierr; CFLST
      endif
   enddo
-
   if (myorbset.le.0) then
      OFLWR "SSSETERRROR"; CFLST
   endif
-
   deallocate(process_ranks,procsperset)
-
 #endif
 
 end subroutine mpiorbsets
 
 
-
-
 #ifdef MPIFLAG
-
 
 subroutine mpiorbgather(orbvector,insize)    !! insize=spfsize except debug
   use mpimod
   use parameters
   implicit none
-
   integer :: ierr,insize
   DATATYPE :: orbvector(insize,nspf*2),tempvector(insize,firstmpiorb:firstmpiorb+orbsperproc-1)
 
@@ -116,30 +99,21 @@ subroutine mpiorbgather(orbvector,insize)    !! insize=spfsize except debug
   if (nprocs.eq.1) then
      return
   endif
-
   if (firstmpiorb+orbsperproc-1.gt.nspf*2 .or. orbsperproc*min(nspf,nprocs).gt.nspf*2) then
      OFLWR "YYY ERROR",firstmpiorb,orbsperproc; CFLST
   endif
-
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
 
 #ifdef REALGO
   call mpi_allgather(tempvector(:,:),insize*orbsperproc,MPI_DOUBLE_PRECISION,orbvector(:,:),insize*orbsperproc,MPI_DOUBLE_PRECISION,MPI_COMM_ORB(myorbset),ierr)
 #else
   call mpi_allgather(tempvector(:,:),insize*orbsperproc,MPI_DOUBLE_COMPLEX,orbvector(:,:),insize*orbsperproc,MPI_DOUBLE_COMPLEX,MPI_COMM_ORB(myorbset),ierr)
 #endif
-
   if (ierr.ne.0) then
      OFLWR "ORBGATHER ERR ", ierr; CFLST
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-
-
 end subroutine mpiorbgather
-
-
 
 
 
@@ -161,7 +135,6 @@ subroutine mpistart()
 #else
   nargs=iargc()
 #endif
-
   flag=0
   do i=1,nargs
      call getarg(i,buffer); 
@@ -171,7 +144,6 @@ subroutine mpistart()
 
      endif
   enddo
-
   call MPI_INIT(ierr)
   if (ierr/=0) then; print *,  "MPI ERR 1";  stop; 
   endif
@@ -226,12 +198,8 @@ subroutine mpistart()
      endif
      open(mpifileptr,file=mpioutfile,status="unknown"); WRFL; CFL
   endif
-
   call system_clock(mpibtime);  call system_clock(mpiatime)
-
-
 end subroutine mpistart
-
 
 
 subroutine mpibarrier()
@@ -239,18 +207,14 @@ subroutine mpibarrier()
   use parameters
   implicit none
   integer :: ierr
-
   call system_clock(mpiatime)
   nonmpitime=nonmpitime+mpiatime-mpibtime
-
   call mpi_barrier(MPI_COMM_WORLD,ierr)
   if (ierr/=0) then
      OFLWR "MPI ERR 3"; CFLST
   endif
-
   call system_clock(mpibtime)
   mpitime=mpitime+mpibtime-mpiatime
-
 end subroutine mpibarrier
 
 
@@ -269,8 +233,6 @@ subroutine mpistop()
 end subroutine mpistop
 
 
-
-
 subroutine mympireduce(input, isize)
   use mpimod
   use parameters
@@ -278,21 +240,36 @@ subroutine mympireduce(input, isize)
   DATATYPE :: input(isize)
   DATATYPE :: output(isize) 
   integer :: ierr, isize  !!, iroot
-
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
   ierr=0
-
   call MPI_allreduce( input, output, isize, MPIDATATYPE, MPI_SUM, MPI_COMM_WORLD , ierr)
-
   input=output
   if (ierr/=0) then
-     OFLWR "ERR mympireduce!";     call closefile(); CFLST
+     OFLWR "ERR mympireduce!";   CFLST
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-
 end subroutine mympireduce
+
+
+subroutine mympireduceto(input, output, isize, dest)
+  use mpimod
+  use parameters
+  implicit none
+  DATATYPE :: input(isize)
+  DATATYPE :: output(isize) 
+  integer :: ierr, isize ,dest,idest
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  if (dest.lt.1.or.dest.gt.nprocs) then
+     OFLWR "ERR DEST REDUCETO",dest,nprocs; CFLST
+  endif
+  ierr=0
+  idest=dest-1
+  call MPI_reduce( input, output, isize, MPIDATATYPE, MPI_SUM, idest, MPI_COMM_WORLD , ierr)
+  if (ierr/=0) then
+     OFLWR "ERR mpi_reduce!";   CFLST
+  endif
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+end subroutine mympireduceto
 
 
 !! used in dGMRES parallel routines
@@ -339,7 +316,6 @@ subroutine mympiireduceone(input)
   implicit none
   integer :: input,output
   integer :: ierr,isize=1
-
   ierr=0
   call MPI_allreduce( input, output, isize, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD , ierr)
   input=output
@@ -355,19 +331,15 @@ subroutine mympiireduce(input, isize)
   implicit none
   integer :: ierr, isize  !!, iroot
   integer :: input(isize), output(isize) 
-
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
   ierr=0
   call MPI_allreduce( input, output, isize, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD , ierr)
   if (ierr/=0) then
      OFLWR "ERR mympiireduce!";   CFLST
   endif
   input=output
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympiireduce
-
 
 
 subroutine mympireduceone(input)
@@ -376,20 +348,15 @@ subroutine mympireduceone(input)
   implicit none
   DATATYPE :: input,output
   integer :: ierr 
-
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
   ierr=0
   call MPI_allreduce( input, output, 1, MPIDATATYPE, MPI_SUM, MPI_COMM_WORLD , ierr)
-
   if (ierr/=0) then
      OFLWR "ERR mympireduce!"; CFLST
   endif
   input=output
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympireduceone
-
 
 
 subroutine mympibcast(input, source, isize)
@@ -398,16 +365,33 @@ subroutine mympibcast(input, source, isize)
   implicit none
   integer :: ierr, isize, source, isource
   DATATYPE :: input(isize)
-
   isource=source-1
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_bcast(input,isize,MPIDATATYPE,isource,MPI_COMM_WORLD,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympibcast"; CFLST
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympibcast
+
+
+subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
+  use mpimod
+  use parameters
+  implicit none
+  integer :: ierr, isize, dest, idest, source, isource,tag
+  DATATYPE :: sendbuf(isize),recvbuf(isize)
+  idest=dest-1
+  isource=source-1
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call mpi_sendrecv(sendbuf,isize,MPIDATATYPE,idest,tag,&
+       recvbuf,isize, MPIDATATYPE,isource,tag,MPI_COMM_WORLD,MPI_STATUS_IGNORE,ierr)
+  if (ierr/=0) then
+     OFLWR "ERR mympisendrecv",ierr; CFLST
+  endif
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+end subroutine mympisendrecv
+
 
 
 subroutine mympisend(input, dest, tag, isize)
@@ -416,39 +400,15 @@ subroutine mympisend(input, dest, tag, isize)
   implicit none
   integer :: ierr, isize, dest, idest,tag
   DATATYPE :: input(isize)
-
   idest=dest-1
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_send(input,isize,MPIDATATYPE,idest,tag,MPI_COMM_WORLD,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympisend"; CFLST
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympisend
 
-
-
-subroutine mympi_isend(input, dest, tag, isize,request)
-  use mpimod
-  use parameters
-  implicit none
-  integer :: ierr, isize, dest, idest,tag,request
-  DATATYPE :: input(isize)
-
-  idest=dest-1
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
-!!  call mpi_isend(input,isize,MPIDATATYPE,idest,tag,MPI_COMM_WORLD,MPI_REQUEST_NULL,ierr)
-
-  call mpi_isend(input,isize,MPIDATATYPE,idest,tag,MPI_COMM_WORLD,request,ierr)
-
-  if (ierr/=0) then
-     OFLWR "ERR mympisend"; CFLST
-  endif
-
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-end subroutine mympi_isend
 
 
 subroutine mympirecv(input, source, tag, isize)
@@ -457,52 +417,14 @@ subroutine mympirecv(input, source, tag, isize)
   implicit none
   integer :: ierr, isize, source, isource,tag
   DATATYPE :: input(isize)
-
   isource=source-1
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_recv(input,isize,MPIDATATYPE,isource,tag,MPI_COMM_WORLD,MPI_STATUS_IGNORE,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympirecv"; CFLST
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympirecv
-
-
-subroutine mympi_irecv(input, source, tag, isize,request)
-  use mpimod
-  use parameters
-  implicit none
-  integer :: ierr, isize, source, isource,tag,request
-  DATATYPE :: input(isize)
-
-  isource=source-1
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
-!!  call mpi_irecv(input,isize,MPIDATATYPE,isource,tag,MPI_COMM_WORLD,MPI_REQUEST_NULL,ierr)
-
-  call mpi_irecv(input,isize,MPIDATATYPE,isource,tag,MPI_COMM_WORLD,request,ierr)
-
-  if (ierr/=0) then
-     OFLWR "ERR mympi_irecv"; CFLST
-  endif
-
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-end subroutine mympi_irecv
-
-
-
-subroutine mympiwait(request)
-  use mpimod
-  use parameters
-  implicit none
-  integer :: request,ierr
-  call mpi_wait(request,MPI_STATUS_IGNORE,ierr)
-  if (ierr.ne.0) then
-     OFLWR "IERR ", ierr, " on MPI_WAIT"; CFLST
-  endif
-end subroutine mympiwait
-
 
 
 subroutine mympirealbcast(input, source, isize)
@@ -511,14 +433,12 @@ subroutine mympirealbcast(input, source, isize)
   implicit none
   real*8 :: input(isize)
   integer :: ierr, isize, source, isource
-
   isource=source-1
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_bcast(input,isize,MPI_DOUBLE_PRECISION,isource,MPI_COMM_WORLD,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympibcast"; CFLST
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympirealbcast
 
@@ -528,14 +448,12 @@ subroutine mympiibcast(input, source, isize)
   use parameters
   implicit none
   integer :: ierr, isize, source, isource, input(isize)
-
   isource=source-1
   call system_clock(mpiatime); nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_bcast(input,isize,MPI_INTEGER,isource,MPI_COMM_WORLD,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympibcast"; CFLST
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympiibcast
 
@@ -546,18 +464,14 @@ subroutine mympirealbcastone(input, source)
   implicit none
   real*8 :: input
   integer :: ierr, source, isource
-
   isource=source-1
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_bcast(input,1,MPI_DOUBLE_PRECISION,isource,MPI_COMM_WORLD,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympibcast"; CFLST
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympirealbcastone
-
-
 
 
 subroutine mympiibcastone(input, source)
@@ -565,18 +479,14 @@ subroutine mympiibcastone(input, source)
   use parameters
   implicit none
   integer :: ierr,  source, isource, input
-
   isource=source-1
   call system_clock(mpiatime); nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_bcast(input,1,MPI_INTEGER,isource,MPI_COMM_WORLD,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympibcast"; CFLST
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympiibcastone
-
-
 
 
 subroutine mympilogbcast(input, source, isize)
@@ -585,18 +495,14 @@ subroutine mympilogbcast(input, source, isize)
   implicit none
   logical :: input(isize)
   integer :: ierr, isize, source, isource
-
   isource=source-1
-
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_bcast(input,isize,MPI_LOGICAL,isource,MPI_COMM_WORLD,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympibcast"; CFLST
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympilogbcast
-
 
 
 subroutine mympiimax(input)
@@ -604,20 +510,16 @@ subroutine mympiimax(input)
   use parameters
   implicit none
   integer :: ierr,input, output
-
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
   call MPI_reduce( input, output, 1, MPI_INTEGER, MPI_MAX,0, MPI_COMM_WORLD , ierr)
   if (ierr/=0) then
      OFLWR "ERR MPIMAX!"; CFLST
   endif
-
   call mpi_bcast(output,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   input=output
   if (ierr/=0) then
      OFLWR "ERR MPIIMAX!"; CFLST
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympiimax
 
@@ -627,24 +529,18 @@ subroutine mympiimin(input)
   use parameters
   implicit none
   integer :: ierr,input, output
-
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
   call MPI_reduce( input, output, 1, MPI_INTEGER, MPI_MIN,0, MPI_COMM_WORLD , ierr)
   if (ierr/=0) then
      OFLWR "ERR MPIImin!"; CFLST
   endif
-
   call mpi_bcast(output,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   input=output
   if (ierr/=0) then
      OFLWR "ERR MPIImin!"; CFLST
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympiimin
-
-
 
 
 subroutine mympimax(input)
@@ -653,24 +549,18 @@ subroutine mympimax(input)
   implicit none
   integer :: ierr
   real*8 :: input, output
-
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
   call MPI_reduce( input, output, 1, MPI_DOUBLE_PRECISION, MPI_MAX,0, MPI_COMM_WORLD , ierr)
   if (ierr/=0) then
      OFLWR "ERR MPIMAX!"; CFLST
   endif
-
   call mpi_bcast(output,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
   input=output
   if (ierr/=0) then
      OFLWR "ERR MPIIMAX!"; CFLST
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympimax
-
-
 
 
 subroutine mympimin(input)
@@ -679,20 +569,16 @@ subroutine mympimin(input)
   implicit none
   integer :: ierr
   real*8 :: input, output
-
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
   call MPI_reduce( input, output, 1, MPI_DOUBLE_PRECISION, MPI_MIN,0, MPI_COMM_WORLD , ierr)
   if (ierr/=0) then
      OFLWR "ERR MPImin!"; CFLST
   endif
-
   call mpi_bcast(output,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
   input=output
   if (ierr/=0) then
      OFLWR "ERR MPIImin!"; CFLST
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympimin
 
@@ -718,14 +604,12 @@ SUBROUTINE MYGATHERV_complex(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag
   if (mpierr.ne.0) then
      print *, "GAtherv err",mpierr,myrank;          stop
   endif
-
   if (bcastflag) then
      CALL MPI_BCAST(X1(:),MINPUT,MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD, MPIERR)
      if (mpierr.ne.0) then
         print *, "bcast err",mpierr,myrank;          stop
      endif
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 
 END SUBROUTINE MYGATHERV_complex
@@ -746,24 +630,20 @@ SUBROUTINE MYGATHERV_real(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag)
   if (last-first+1.ne.blocks(myrank)) then
      print *, "ACK BLOCKS",myrank,nprocs,last,first,blocks(myrank);     stop
   endif
-
   CALL MPI_GATHERV(V1(first:), blocks(myrank), MPI_DOUBLE_PRECISION, X1(:), BLOCKS(:), &
        BLOCKSTART(:)-1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, MPIERR)
   if (mpierr.ne.0) then
      print *, "GAtherv err",mpierr,myrank;          stop
   endif
-
   if (bcastflag) then
      CALL MPI_BCAST(X1(:),MINPUT,MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, MPIERR)
      if (mpierr.ne.0) then
         print *, "bcast err",mpierr,myrank;          stop
      endif
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 
 END SUBROUTINE MYGATHERV_real
-
 
 
 SUBROUTINE MYGATHERV_integer(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag)
@@ -781,25 +661,20 @@ SUBROUTINE MYGATHERV_integer(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag
   if (last-first+1.ne.blocks(myrank)) then
      print *, "ACK BLOCKS",myrank,nprocs,last,first,blocks(myrank);     stop
   endif
-
   CALL MPI_GATHERV(V1(first:), blocks(myrank), MPI_INTEGER, X1(:), BLOCKS(:), &
        BLOCKSTART(:)-1, MPI_INTEGER, 0, MPI_COMM_WORLD, MPIERR)
   if (mpierr.ne.0) then
      print *, "GAtherv err",mpierr,myrank;          stop
   endif
-
   if (bcastflag) then
      CALL MPI_BCAST(X1(:),MINPUT,MPI_INTEGER, 0, MPI_COMM_WORLD, MPIERR)
      if (mpierr.ne.0) then
         print *, "bcast err",mpierr,myrank;          stop
      endif
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 
 END SUBROUTINE MYGATHERV_integer
-
-
 
 
 SUBROUTINE MYSCATTERV_complex(X1,V1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART)
@@ -816,13 +691,11 @@ SUBROUTINE MYSCATTERV_complex(X1,V1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART)
   if (last-first+1.ne.blocks(myrank)) then
      print *, "ACK BLOCKS",myrank,nprocs,last,first,blocks(myrank);     stop
   endif
-
   CALL MPI_SCATTERV(X1(:), blocks(:), blockstart(:)-1, MPI_DOUBLE_COMPLEX, V1(first:), BLOCKS(myrank), &
        MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD, MPIERR)
   if (mpierr.ne.0) then
      print *, "Scatterv err",mpierr,myrank;          stop
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 
 END SUBROUTINE MYSCATTERV_complex
@@ -842,13 +715,11 @@ SUBROUTINE MYSCATTERV_real(X1,V1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART)
   if (last-first+1.ne.blocks(myrank)) then
      print *, "ACK BLOCKS",myrank,nprocs,last,first,blocks(myrank);     stop
   endif
-
   CALL MPI_SCATTERV(X1(:), blocks(:), blockstart(:)-1, MPI_DOUBLE_PRECISION, V1(first:), BLOCKS(myrank), &
        MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, MPIERR)
   if (mpierr.ne.0) then
      print *, "Scatterv err",mpierr,myrank;          stop
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 
 END SUBROUTINE MYSCATTERV_real
@@ -966,26 +837,33 @@ end subroutine mympiireduceone
 subroutine mpiorbgather(orbvector,insize)
 end subroutine mpiorbgather
 
-subroutine mympi_isend()
-  use fileptrmod
+
+subroutine mympireduceto(input, output, isize, dest)
+  use mpimod
+  use parameters
   implicit none
-  OFLWR "SHOULDN'T BE CALLING ISEND IF MPIFLAG WASN'T DEFINED ON COMPLIATION>>>ERROR"; CFLST
-end subroutine mympi_isend
+  DATATYPE :: input(isize)
+  DATATYPE :: output(isize) 
+  integer :: ierr, isize ,dest,idest
 
-subroutine mympi_irecv()
-  use fileptrmod
+  if (dest.ne.1) then
+     OFLWR "Error nonpar mympireduceto wrapper",dest; CFLST
+  endif
+  output(:)=input(:)
+end subroutine mympireduceto
+
+
+subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
+  use mpimod
+  use parameters
   implicit none
-  OFLWR "SHOULDN'T BE CALLING IRECV IF MPIFLAG WASN'T DEFINED ON COMPLIATION>>>ERROR"; CFLST
-end subroutine mympi_irecv
-
-subroutine mympiwait()
-  use fileptrmod
-  implicit none
-  OFLWR "SHOULDN'T BE CALLING MPIWAIT IF MPIFLAG WASN'T DEFINED ON COMPLIATION>>>ERROR"; CFLST
-end subroutine mympiwait
-
-
-
+  integer :: ierr, isize, dest, idest, source, isource,tag
+  DATATYPE :: sendbuf(isize),recvbuf(isize)
+  if (dest.ne.1.or.source.ne.1) then
+     OFLWR "Error nonpar mympireduceto wrapper",dest,source; CFLST
+  endif
+  recvbuf(:)=sendbuf(:)
+end subroutine mympisendrecv
 
 
 subroutine mpistart
@@ -1240,83 +1118,5 @@ subroutine mympialltoall(input, output, count)
 
 end subroutine mympialltoall
 
-
-!! probably just the same -- transferred above from boxes
-!!subroutine mpiallgather(inout,totsize,blocksizes,maxblocksize)
-!!  use mpimod
-!!  use parameters
-!!  implicit none
-!!
-!!  integer, intent(in) :: totsize,blocksizes(nprocs),maxblocksize
-!!  DATATYPE :: inout(totsize)
-!!  DATATYPE, allocatable :: intemp(:,:),outtemp(:,:)
-!!  integer :: i,icount,ierr,blockstart(nprocs+1)
-!!
-!!#ifndef MPIFLAG
-!!  return
-!!#else
-!!
-!!if (nprocs.eq.1) then
-!!   return
-!!endif
-!!
-!!  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-!!
-!!  icount=0
-!!  blockstart(1)=1
-!!  do i=1,nprocs
-!!     blockstart(i+1)=blockstart(i)+blocksizes(i)
-!!     if (blocksizes(i).gt.maxblocksize) then
-!!        OFLWR "BBB ERR"; CFLST
-!!     endif
-!!     icount=icount + blocksizes(i)
-!!  enddo
-!!  if (icount.ne.totsize) then
-!!     OFLWR "ALLgather ERR", icount,totsize; 
-!!     WRFL blocksizes;
-!!     CFLST
-!!  endif
-!!
-!!  allocate(intemp(maxblocksize,nprocs)); intemp(:,:) = 0d0
-!!  allocate(outtemp(maxblocksize,nprocs)); outtemp(:,:) = 0d0
-!!
-!!  intemp=0d0
-!!
-!!!   intemp(1:blocksizes(myrank),myrank)=inout(blockstart(myrank):blockstart(myrank+1)-1)
-!!
-!!  do i=1,  nprocs
-!!     intemp(1:blocksizes(myrank),i)=inout(blockstart(myrank):blockstart(myrank+1)-1)
-!!  enddo
-!!
-!!
-!!  outtemp=0d0
-!!
-!!#ifdef REALGO
-!!  call mpi_allgather(intemp(:,:),maxblocksize,MPI_DOUBLE_PRECISION,outtemp(:,:),maxblocksize,MPI_DOUBLE_PRECISION,MPI_COMM_WORLD,ierr)
-!!#else
-!!  call mpi_allgather(intemp(:,:),maxblocksize,MPI_DOUBLE_COMPLEX,outtemp(:,:),maxblocksize,MPI_DOUBLE_COMPLEX,MPI_COMM_WORLD,ierr)
-!!#endif
-!!
-!!
-!!  if (ierr.ne.0) then
-!!     OFLWR "ALLGATHER ERR ", ierr; CFLST
-!!  endif
-!!
-!!
-!!  inout(:)=0d0
-!!  do i=1,nprocs
-!!     inout(blockstart(i):blockstart(i+1)-1)=outtemp(1:blocksizes(i),i)
-!!  enddo
-!!
-!!
-!!
-!!  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-!!  deallocate(intemp,outtemp)
-!!
-!!
-!!#endif
-!!
-!!end subroutine mpiallgather
-!!
 
 

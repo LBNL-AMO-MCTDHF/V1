@@ -51,11 +51,6 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
      call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,tempoutvectorstr,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult_transpose_spin,.true.)
   endif
 
-  OFLWR "DOOG"; CFL
-  call mpibarrier()
-  OFLWR "AFTE BLOCKLANCZOS0 BLOCKLANCZOS"; CFL
-  call mpibarrier()
-
 
   outvectorstr(:,:,:)=0d0
   do i=1,order
@@ -309,10 +304,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
        lanmultvects(maxlansize,lanblocknum,order), tempvectors2(maxlansize,numout))
 
   printflag=inprintflag
-
-!  call mpibarrier()
-!  OFLWR "BLOCKLAN 001"; CFL
-!  call mpibarrier()
 
   alpha=0; beta=0;  values=0
   lanham=0;  laneigvects=0; 
@@ -644,91 +635,5 @@ end subroutine blocklanczos0
 
 
 
-
-
-
-
-
-
-
-!!$ subroutine mygramschmidt_fast(n, m, lda, previous, vector)
-!!$   use fileptrmod
-!!$   implicit none
-!!$   
-!!$ ! n is the length of the vectors; m is how many to orthogonalize to
-!!$ 
-!!$   integer :: n,m,lda
-!!$   DATATYPE :: previous(lda,m), vector(n),thisdot, mydots(m)
-!!$   integer :: i,j
-!!$   DATATYPE :: norm
-!!$ 
-!!$   do j=1,2
-!!$ 
-!!$      if (m.ne.0) then
-!!$         call alldots(previous(:,:),vector,n,lda,m,1,mydots)
-!!$      endif
-!!$ 
-!!$     do i=1,m
-!!$        vector=vector-previous(1:n,i)*mydots(i)                            !! only the same with previous perfectly orth
-!!$     enddo
-!!$     norm=sqrt(thisdot(vector,vector,n))
-!!$     vector=vector/norm
-!!$     if (abs(norm).lt.1e-9) then
-!!$        OFLWR "Gram schmidt norm",norm,m; CFL
-!!$     endif
-!!$   enddo
-!!$ 
-!!$ end subroutine mygramschmidt_fast
-
-
-
-
-!subroutine myhgramschmidt_old(n, m, lda, previous, vector)
-!  use fileptrmod
-!  implicit none
-!  
-!! n is the length of the vectors; m is how many to orthogonalize to
-!
-!  integer :: n,m,lda
-!  DATATYPE :: previous(lda,m), vector(n),hdot
-!  integer :: i,j
-!  DATATYPE :: norm
-!
-!!???????  OFLWR "not supported" ; CFLST   ! (no spin proj)
-!
-!  do j=1,2
-!    do i=1,m
-!       vector=vector-previous(1:n,i)* hdot(previous(1:n,i),vector,n) 
-!    enddo
-!    norm=sqrt(hdot(vector,vector,n))
-!    vector=vector/norm
-!    if (abs(norm).lt.1e-7) then
-!       OFLWR "Gram schmidt norm",norm,m; CFL
-!    endif
-!  enddo
-!
-!end subroutine myhgramschmidt_old
-
-
-
-!!$  subroutine alldots(bravectors,ketvectors,n,lda,num1,num2,outdots,logpar)
-!!$    use parameters
-!!$    implicit none
-!!$  
-!!$    integer :: id,jd,num1,num2,lda,n
-!!$    logical :: logpar
-!!$    DATATYPE :: bravectors(lda,num1), ketvectors(lda,num2), outdots(num1,num2),dot
-!!$  
-!!$  
-!!$    do id=1,num1
-!!$       do jd=1,num2
-!!$          outdots(id,jd)= dot(bravectors(1:n,id),ketvectors(1:n,jd),n)
-!!$       enddo
-!!$    enddo
-!!$  
-!!$    if (logpar) then
-!!$       call mympireduce(outdots,num1*num2)
-!!$    endif
-!!$  end subroutine alldots
 
 

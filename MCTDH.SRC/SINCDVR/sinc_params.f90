@@ -9,6 +9,10 @@ implicit none
 !! PARORBSPLIT=3 in &parinp
 logical :: orbparflag=.false.
 
+!! THE FOLLOWING FLAG IS THEN RELEVANT.  Option for parallel KE matvec,
+!!   rate limiting step in algorithm.
+integer :: zke_paropt=0   !! 0=sendrecv 1=SUMMA (bcast before) 2=reduce after
+
 !! toepflag=1, toeplitz T^-1.  toepflag=2, T^-1 and T.   toepflag=2 slower; just do 1.
 integer :: toepflag=1
 

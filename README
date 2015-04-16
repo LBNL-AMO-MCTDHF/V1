@@ -31,7 +31,15 @@ Read orbitals for x2 resolution using loadspfflag=1 for sinc dvr by setting
 reinterp_orbflag=1 in &parinp (not supported for atom or diatom)
 
 MPI ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3.
-  set both parorbsplit=3 in &parinp and orbparflag=.true. in &sinc_params
+  set both parorbsplit=3 in &parinp and orbparflag=.true. in &sinc_params.
+  When this is set:
+
+THREE OPTIONS FOR MPI MATRIX VECTOR MULTIPLY (matvec) for orbitals.  
+Derivative operator matvec (KE, or first derivative if velocity gauge)
+is the RATE LIMITING STEP in algorithm at scale.
+  zke_paropt=0  sendrecv
+  zke_paropt=1  SUMMA (scalable universal matrix multiply)
+  zke_paropt=2  reduce after (probably slower, but provided)
 
  ----------------------------------------------------
 
