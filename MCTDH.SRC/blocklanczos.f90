@@ -370,7 +370,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
         lanvects(1:lansize,:,1)=initvectors(1:lansize,:)
      endif
      lanham(:,:,:,:)=0.0d0
-
      do i=1,lanblocknum
         if (lansize.eq.0) then
            call nullgramschmidt_fast(i-1, logpar)
@@ -378,7 +377,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
            call myhgramschmidt_fast(lansize, i-1, maxlansize, lanvects(:,:,1),lanvects(:,i,1),logpar)
         endif
      enddo
-
      do j=1,lanblocknum
         if (lansize.eq.0) then
            call multsub(nullvector1(:),nullvector2(:))
@@ -388,7 +386,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
            call multsub(multvectors(:,j),tempvectors2(:,j))
         endif
      enddo
-
      lanmultvects(:,:,1)=multvectors(:,:)
 
      if (lansize.eq.0) then
@@ -474,7 +471,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
         enddo
 
         multvectors(:,:)=0d0
-
         if (lansize.eq.0) then
            do j=1,thislanblocknum
               call multsub(nullvector2(:),nullvector1(:))
@@ -484,7 +480,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
               call multsub(lanvects(:,j,iorder),multvectors(:,j))
            enddo
         endif
-
         lanmultvects(:,:,iorder)=multvectors(:,:)
         
         if (lansize.eq.0) then
@@ -492,7 +487,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
         else
            call allhdots(lanvects(:,:,iorder),multvectors(:,:),lansize,maxlansize,lanblocknum,lanblocknum,alpha,logpar)
         endif
-
         lanham(:,iorder,:,iorder)=alpha(:,:)
 
         allocate(betas(lanblocknum,iorder-1,lanblocknum), betastr(lanblocknum,lanblocknum,iorder-1))
@@ -549,7 +543,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
               endif
 
               outvectors = 0.0d0
-
               do  j=1, numout
                  if (lansize.gt.0) then
                     do k=1, iorder
@@ -566,7 +559,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
               enddo
 
               tempvectors=0d0
-
               do j=1,numout
                  if (lansize.eq.0) then
                     call multsub(nullvector2(:),nullvector1(:))
@@ -648,11 +640,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
 
   deallocate(  initvectors,invector,multvectors, lanvects, tempvectors, lanmultvects,tempvectors2)
 
-  call mpibarrier()
-  OFLWR "BLOCKLAN END"; CFL
-  call mpibarrier()
-
-  call mpibarrier()
 end subroutine blocklanczos0
 
 

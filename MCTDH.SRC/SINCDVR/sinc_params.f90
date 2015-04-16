@@ -29,10 +29,6 @@ integer :: orblanorder=500         !! krylov order for block lanczos orbital cal
 integer :: orblancheckmod=10         !! check every
 real*8 :: orblanthresh=1d-4
 
-!! experimental
-
-integer :: keparopt=0
-
 !! XXSNIPXX 
 !! INTERNAL
 

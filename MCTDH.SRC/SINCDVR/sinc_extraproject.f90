@@ -19,7 +19,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   character (len=200) :: nullbuff="                                                                                "
   NAMELIST /sincparinp/        numpoints,spacing,griddim,notwoflag,coulflag,nuccharges,orblanthresh, &
        numcenters,centershift,orblanorder,toepflag,nonucrepflag,debugflag, &
-       toothnbig, toothnsmall, orbparflag,num_skip_orbs,orb_skip,orblancheckmod,keparopt
+       toothnbig, toothnsmall, orbparflag,num_skip_orbs,orb_skip,orblancheckmod
 #ifdef PGFFLAG
   integer :: myiargc
   nargs=myiargc()
@@ -60,10 +60,6 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
      if (buffer(1:5) .eq. 'Toep=') then
         read(buffer(6:len),*) toepflag
         write(mpifileptr, *) "toepflag set to ", toepflag
-     endif
-     if (buffer(1:6) .eq. 'Kepar=') then
-        read(buffer(7:len),*) keparopt
-        write(mpifileptr, *) "keparopt set to ", keparopt
      endif
      if (buffer(1:6) .eq. 'SDebug') then
         if (.not.(buffer(1:7) .eq. 'SDebug=')) then

@@ -1,6 +1,197 @@
+!!$
+!!$Apache License
+!!$                           Version 2.0, January 2004
+!!$                        http://www.apache.org/licenses/
+!!$
+!!$   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+!!$
+!!$   1. Definitions.
+!!$
+!!$      "License" shall mean the terms and conditions for use, reproduction,
+!!$      and distribution as defined by Sections 1 through 9 of this document.
+!!$
+!!$      "Licensor" shall mean the copyright owner or entity authorized by
+!!$      the copyright owner that is granting the License.
+!!$
+!!$      "Legal Entity" shall mean the union of the acting entity and all
+!!$      other entities that control, are controlled by, or are under common
+!!$      control with that entity. For the purposes of this definition,
+!!$      "control" means (i) the power, direct or indirect, to cause the
+!!$      direction or management of such entity, whether by contract or
+!!$      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+!!$      outstanding shares, or (iii) beneficial ownership of such entity.
+!!$
+!!$      "You" (or "Your") shall mean an individual or Legal Entity
+!!$      exercising permissions granted by this License.
+!!$
+!!$      "Source" form shall mean the preferred form for making modifications,
+!!$      including but not limited to software source code, documentation
+!!$      source, and configuration files.
+!!$
+!!$      "Object" form shall mean any form resulting from mechanical
+!!$      transformation or translation of a Source form, including but
+!!$      not limited to compiled object code, generated documentation,
+!!$      and conversions to other media types.
+!!$
+!!$      "Work" shall mean the work of authorship, whether in Source or
+!!$      Object form, made available under the License, as indicated by a
+!!$      copyright notice that is included in or attached to the work
+!!$      (an example is provided in the Appendix below).
+!!$
+!!$      "Derivative Works" shall mean any work, whether in Source or Object
+!!$      form, that is based on (or derived from) the Work and for which the
+!!$      editorial revisions, annotations, elaborations, or other modifications
+!!$      represent, as a whole, an original work of authorship. For the purposes
+!!$      of this License, Derivative Works shall not include works that remain
+!!$      separable from, or merely link (or bind by name) to the interfaces of,
+!!$      the Work and Derivative Works thereof.
+!!$
+!!$      "Contribution" shall mean any work of authorship, including
+!!$      the original version of the Work and any modifications or additions
+!!$      to that Work or Derivative Works thereof, that is intentionally
+!!$      submitted to Licensor for inclusion in the Work by the copyright owner
+!!$      or by an individual or Legal Entity authorized to submit on behalf of
+!!$      the copyright owner. For the purposes of this definition, "submitted"
+!!$      means any form of electronic, verbal, or written communication sent
+!!$      to the Licensor or its representatives, including but not limited to
+!!$      communication on electronic mailing lists, source code control systems,
+!!$      and issue tracking systems that are managed by, or on behalf of, the
+!!$      Licensor for the purpose of discussing and improving the Work, but
+!!$      excluding communication that is conspicuously marked or otherwise
+!!$      designated in writing by the copyright owner as "Not a Contribution."
+!!$
+!!$      "Contributor" shall mean Licensor and any individual or Legal Entity
+!!$      on behalf of whom a Contribution has been received by Licensor and
+!!$      subsequently incorporated within the Work.
+!!$
+!!$   2. Grant of Copyright License. Subject to the terms and conditions of
+!!$      this License, each Contributor hereby grants to You a perpetual,
+!!$      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+!!$      copyright license to reproduce, prepare Derivative Works of,
+!!$      publicly display, publicly perform, sublicense, and distribute the
+!!$      Work and such Derivative Works in Source or Object form.
+!!$
+!!$   3. Grant of Patent License. Subject to the terms and conditions of
+!!$      this License, each Contributor hereby grants to You a perpetual,
+!!$      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+!!$      (except as stated in this section) patent license to make, have made,
+!!$      use, offer to sell, sell, import, and otherwise transfer the Work,
+!!$      where such license applies only to those patent claims licensable
+!!$      by such Contributor that are necessarily infringed by their
+!!$      Contribution(s) alone or by combination of their Contribution(s)
+!!$      with the Work to which such Contribution(s) was submitted. If You
+!!$      institute patent litigation against any entity (including a
+!!$      cross-claim or counterclaim in a lawsuit) alleging that the Work
+!!$      or a Contribution incorporated within the Work constitutes direct
+!!$      or contributory patent infringement, then any patent licenses
+!!$      granted to You under this License for that Work shall terminate
+!!$      as of the date such litigation is filed.
+!!$
+!!$   4. Redistribution. You may reproduce and distribute copies of the
+!!$      Work or Derivative Works thereof in any medium, with or without
+!!$      modifications, and in Source or Object form, provided that You
+!!$      meet the following conditions:
+!!$
+!!$      (a) You must give any other recipients of the Work or
+!!$          Derivative Works a copy of this License; and
+!!$
+!!$      (b) You must cause any modified files to carry prominent notices
+!!$          stating that You changed the files; and
+!!$
+!!$      (c) You must retain, in the Source form of any Derivative Works
+!!$          that You distribute, all copyright, patent, trademark, and
+!!$          attribution notices from the Source form of the Work,
+!!$          excluding those notices that do not pertain to any part of
+!!$          the Derivative Works; and
+!!$
+!!$      (d) If the Work includes a "NOTICE" text file as part of its
+!!$          distribution, then any Derivative Works that You distribute must
+!!$          include a readable copy of the attribution notices contained
+!!$          within such NOTICE file, excluding those notices that do not
+!!$          pertain to any part of the Derivative Works, in at least one
+!!$          of the following places: within a NOTICE text file distributed
+!!$          as part of the Derivative Works; within the Source form or
+!!$          documentation, if provided along with the Derivative Works; or,
+!!$          within a display generated by the Derivative Works, if and
+!!$          wherever such third-party notices normally appear. The contents
+!!$          of the NOTICE file are for informational purposes only and
+!!$          do not modify the License. You may add Your own attribution
+!!$          notices within Derivative Works that You distribute, alongside
+!!$          or as an addendum to the NOTICE text from the Work, provided
+!!$          that such additional attribution notices cannot be construed
+!!$          as modifying the License.
+!!$
+!!$      You may add Your own copyright statement to Your modifications and
+!!$      may provide additional or different license terms and conditions
+!!$      for use, reproduction, or distribution of Your modifications, or
+!!$      for any such Derivative Works as a whole, provided Your use,
+!!$      reproduction, and distribution of the Work otherwise complies with
+!!$      the conditions stated in this License.
+!!$
+!!$   5. Submission of Contributions. Unless You explicitly state otherwise,
+!!$      any Contribution intentionally submitted for inclusion in the Work
+!!$      by You to the Licensor shall be under the terms and conditions of
+!!$      this License, without any additional terms or conditions.
+!!$      Notwithstanding the above, nothing herein shall supersede or modify
+!!$      the terms of any separate license agreement you may have executed
+!!$      with Licensor regarding such Contributions.
+!!$
+!!$   6. Trademarks. This License does not grant permission to use the trade
+!!$      names, trademarks, service marks, or product names of the Licensor,
+!!$      except as required for reasonable and customary use in describing the
+!!$      origin of the Work and reproducing the content of the NOTICE file.
+!!$
+!!$   7. Disclaimer of Warranty. Unless required by applicable law or
+!!$      agreed to in writing, Licensor provides the Work (and each
+!!$      Contributor provides its Contributions) on an "AS IS" BASIS,
+!!$      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+!!$      implied, including, without limitation, any warranties or conditions
+!!$      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+!!$      PARTICULAR PURPOSE. You are solely responsible for determining the
+!!$      appropriateness of using or redistributing the Work and assume any
+!!$      risks associated with Your exercise of permissions under this License.
+!!$
+!!$   8. Limitation of Liability. In no event and under no legal theory,
+!!$      whether in tort (including negligence), contract, or otherwise,
+!!$      unless required by applicable law (such as deliberate and grossly
+!!$      negligent acts) or agreed to in writing, shall any Contributor be
+!!$      liable to You for damages, including any direct, indirect, special,
+!!$      incidental, or consequential damages of any character arising as a
+!!$      result of this License or out of the use or inability to use the
+!!$      Work (including but not limited to damages for loss of goodwill,
+!!$      work stoppage, computer failure or malfunction, or any and all
+!!$      other commercial damages or losses), even if such Contributor
+!!$      has been advised of the possibility of such damages.
+!!$
+!!$   9. Accepting Warranty or Additional Liability. While redistributing
+!!$      the Work or Derivative Works thereof, You may choose to offer,
+!!$      and charge a fee for, acceptance of support, warranty, indemnity,
+!!$      or other liability obligations and/or rights consistent with this
+!!$      License. However, in accepting such obligations, You may act only
+!!$      on Your own behalf and on Your sole responsibility, not on behalf
+!!$      of any other Contributor, and only if You agree to indemnify,
+!!$      defend, and hold each Contributor harmless for any liability
+!!$      incurred by, or claims asserted against, such Contributor by reason
+!!$      of your accepting any such warranty or additional liability.
+!!$
+!!$   END OF TERMS AND CONDITIONS
+!!$
+!!$   Copyright 2015 the regents of the University of California
+!!$
+!!$   Licensed under the Apache License, Version 2.0 (the "License");
+!!$   you may not use this file except in compliance with the License.
+!!$   You may obtain a copy of the License at
+!!$
+!!$       http://www.apache.org/licenses/LICENSE-2.0
+!!$
+!!$   Unless required by applicable law or agreed to in writing, software
+!!$   distributed under the License is distributed on an "AS IS" BASIS,
+!!$   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+!!$   See the License for the specific language governing permissions and
+!!$   limitations under the License.
+
 
 #include "Definitions.INC"
-
 
 
 subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,outorbparflag,multmanyflag) 
@@ -55,7 +246,7 @@ subroutine mult_imzdipole(in, out)
   implicit none
   DATATYPE :: in(totpoints),out(totpoints)
 #ifdef REALGO
-  out(:)=0
+  out(:)=in(:)*0d0  !! avoid warn unused
 #else
   out(:)=in(:)*imag(dipoles(:,3))
 #endif
@@ -75,7 +266,7 @@ subroutine mult_imydipole(in, out)
   implicit none
   DATATYPE :: in(totpoints),out(totpoints)
 #ifdef REALGO
-  out(:)=0
+  out(:)=in(:)*0d0  !! avoid warn unused
 #else
   out(:)=in(:)*imag(dipoles(:,2))
 #endif
@@ -95,7 +286,7 @@ subroutine mult_imxdipole() !in, out)
   implicit none
   DATATYPE :: in(totpoints),out(totpoints)
 #ifdef REALGO
-  out(:)=0
+  out(:)=in(:)*0d0  !! avoid warn unused
 #else
   out(:)=in(:)*imag(dipoles(:,1))
 #endif
@@ -844,7 +1035,13 @@ subroutine mult_ke_old(in, out,howmany,timingdir,notiming)
   integer :: howmany,notiming
   character :: timingdir*(*)
   DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
+  if (debugflag.gt.0) then
+     call mpibarrier(); OFLWR "        ....CALL MULT_ALLPAR"; CFL; call mpibarrier()
+  endif
   call mult_allpar(in,out,1,howmany,timingdir,notiming)
+  if (debugflag.gt.0) then
+     call mpibarrier(); OFLWR "        ....CALLED MULT_ALLPAR"; CFL; call mpibarrier()
+  endif
 end subroutine mult_ke_old
 
 subroutine mult_xderiv(in, out,howmany)
@@ -883,6 +1080,10 @@ recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
   logical :: dodim(3)
   character :: timingdir*(*)
 
+  if (debugflag.gt.0) then
+     call mpibarrier(); OFLWR "            .... in mult_allpar"; CFL; call mpibarrier()
+  endif
+
   if (griddim.ne.3) then
      OFLWR "ERWRESTOPPP"; CFLST
   endif
@@ -915,6 +1116,9 @@ recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
      if (nbox(1).ne.1.or.nbox(2).ne.1.or.nbox(3).ne.nprocs) then
         OFLWR "OOOFSSF"; CFLST
      endif
+     if (debugflag.gt.0) then
+        call mpibarrier(); OFLWR "            .... go mult_allpar x,y"; CFL; call mpibarrier()
+     endif
      do idim=1,2
         if (dodim(idim)) then
            call mult_allone(in,temp,idim,option,1,1,howmany)
@@ -923,11 +1127,19 @@ recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
      enddo
      idim=3
      if (dodim(idim)) then
-        if (keparopt.eq.0) then
-           call mult_alltoall_z(in,temp,option,howmany,timingdir,notiming)
-        else
-           call mult_roundrobin_z(in,temp,option,howmany,timingdir,notiming)
-        endif
+!        if (keparopt.eq.0) then
+!           if (debugflag.gt.0) then
+!              call mpibarrier(); OFLWR "            .... go mult_allpar z alltoall",howmany; 
+!              CFL; call mpibarrier()
+!           endif
+!           call mult_alltoall_z(in,temp,option,howmany,timingdir,notiming)
+!        else
+           if (debugflag.gt.0) then
+              call mpibarrier(); OFLWR "            .... go mult_allpar z summa",howmany; 
+              CFL; call mpibarrier()
+           endif
+           call mult_summa_z(in,temp,option,howmany,timingdir,notiming)
+!        endif
 
         out(:,:)=out(:,:)+temp(:,:)
 
@@ -943,22 +1155,25 @@ recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
      endif
   endif
 
+  if (debugflag.gt.0) then
+     call mpibarrier(); OFLWR "            .... done mult_allpar"; CFL; call mpibarrier()
+  endif
+
 end subroutine mult_allpar
 
 
-recursive subroutine mult_alltoall_z(in, out,option,howmany,timingdir,notiming)
+
+
+
+recursive subroutine mult_summa_z(in, out,option,howmany,timingdir,notiming)
   use myparams
   use myprojectmod  
   implicit none
-  integer :: nnn,option,ii,howmany
+  integer :: nnn,option,ii,howmany,totsize
   DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       out(numpoints(1)*numpoints(2),numpoints(3),howmany)
-!!$  DATATYPE, allocatable :: &
-!!$       work(:,:,:,:),    work2(:,:,:,:),    work3(:,:,:,:)
-  DATATYPE :: work(numpoints(1)*numpoints(2),numpoints(3),nprocs,howmany),&
-       work2(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs),&
-       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs)
-  integer :: times(10),atime,btime,notiming,getlen
+       out(numpoints(1)*numpoints(2),numpoints(3),howmany), &
+       work(numpoints(1)*numpoints(2),numpoints(3),howmany)
+  integer :: times(10),atime,btime,notiming,getlen,ibox
   character :: timingdir*(*)
   integer, save :: xcount=0
 
@@ -971,196 +1186,58 @@ recursive subroutine mult_alltoall_z(in, out,option,howmany,timingdir,notiming)
      OFLWR "WHAAAAAZZZZ?",totpoints,numpoints(1),numpoints(2),numpoints(3); CFLST
   endif
 
-!!$  allocate(work(numpoints(1)*numpoints(2),numpoints(3),nprocs,howmany),&
-!!$       work2(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs),&
-!!$       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs))
+  nnn=numpoints(1)*numpoints(2)
+  totsize=numpoints(1)*numpoints(2)*numpoints(3)*howmany
 
   call myclock(atime)
-
-  nnn=numpoints(1)*numpoints(2)
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,atime,btime)
-  select case(option)
-  case(1)  !! KE
-!$OMP DO SCHEDULE(STATIC)
-     do ii=1,howmany
-        call MYGEMM('N','T',nnn,gridpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,ketot(3)%mat(1,1,1,myrank),gridpoints(3),DATAZERO, work(:,:,:,ii), nnn)
-     enddo
-!$OMP END DO
-  case(2) 
-!$OMP DO SCHEDULE(STATIC)
-     do ii=1,howmany
-        call MYGEMM('N','T',nnn,gridpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,fdtot(3)%mat(1,1,1,myrank),gridpoints(3),DATAZERO, work(:,:,:,ii), nnn)
-     enddo
-!$OMP END DO
-  case default 
-     OFLWR "WHAAAAT"; CFLST
-  end select
-
-!! *** OMP BARRIER ***
-
-!$OMP BARRIER
-
-!$OMP MASTER
-  call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
-!$OMP END MASTER
-
-!$OMP DO SCHEDULE(STATIC)
-  do ii=1,nprocs
-     work2(:,:,:,ii)=work(:,:,ii,:)
-  enddo
-!$OMP END DO
-
-!! *** OMP BARRIER ***
-
-!$OMP BARRIER
-
-!$OMP MASTER
-  call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
-  call mympialltoall(work2,work3,totpoints*howmany)
-!$OMP END MASTER
-!   why?  why not
-!$OMP BARRIER
-!$OMP END PARALLEL
-
-  call myclock(btime); times(3)=times(3)+btime-atime; atime=btime
   out(:,:,:)=0d0
-  do ii=1,nprocs
-     out(:,:,:)=out(:,:,:)+work3(:,:,:,ii)
-  enddo
-  call myclock(btime); times(4)=times(4)+btime-atime
-
-!!$  deallocate(work,work2,work3)
-
-  if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
-     xcount=xcount+1
-     if (xcount==1) then
-        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke.time.dat", status="unknown")
-        write(2853,'(100A11)')   "mult", "arrange","mpi","reduce"
-        close(2853) 
-     endif
-     open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke.time.dat", status="unknown", position="append")
-     write(2853,'(100I11)')  times(1:4);        close(2853)
-  endif
-end subroutine mult_alltoall_z
-
-
-
-recursive subroutine mult_roundrobin_z(in, out,option,howmany,timingdir,notiming)
-  use myparams
-  use myprojectmod  
-  implicit none
-  integer :: nnn,option,ii,howmany
-  DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       out(numpoints(1)*numpoints(2),numpoints(3),howmany)
-  DATATYPE ::   work(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs)
-!!$  DATATYPE, allocatable :: &
-!!$       work(:,:,:),       work3(:,:,:,:)
-  integer :: times(10),atime,btime,notiming,getlen,ibox,iibox,sendrequest(nprocs),recvrequest(nprocs)
-  character :: timingdir*(*)
-  integer, save :: xcount=0
-
-  times(:)=0
-
-  if (nprocs.ne.nbox(3)) then
-     OFLWR "EEGNOT STOP",nprocs,nbox(3); CFLST
-  endif
-  if (totpoints.ne.numpoints(1)*numpoints(2)*numpoints(3)) then
-     OFLWR "WHAAAAAZZZZ?",totpoints,numpoints(1),numpoints(2),numpoints(3); CFLST
-  endif
-
-!!$  allocate(       work(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-!!$       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs))
-
-  nnn=numpoints(1)*numpoints(2)
+  call myclock(btime); times(1)=times(1)+btime-atime
 
   do ibox=1,nbox(3)
-     iibox=mod(myrank-1+ibox-1,nbox(3))+1
-
      call myclock(atime)
+     if (myrank.eq.ibox) then
+        work(:,:,:)=in(:,:,:)
+     endif
+     call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+     call mympibcast(work(:,:,:),ibox,totsize)
+     call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,atime,btime)
      select case(option)
      case(1)  !! KE
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,ketot(3)%mat(1,iibox,1,myrank),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,work(:,:,ii),nnn,ketot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAONE, out(:,:,ii), nnn)
         enddo
 !$OMP END DO
      case(2) 
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,fdtot(3)%mat(1,iibox,1,myrank),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,work(:,:,ii),nnn,fdtot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAONE, out(:,:,ii), nnn)
         enddo
 !$OMP END DO
      case default 
         OFLWR "WHAAAAT"; CFLST
      end select
 
-!! *** OMP BARRIER ***
-
-!$OMP BARRIER
-     call myclock(btime); times(1)=times(1)+btime-atime
-
-     if (iibox.eq.myrank) then
-
-!! training wheels
-        if (ibox.ne.1) then
-           OFLWR "DOOGSNATCH"; CFLST
-        endif
-
-!! (not counted in time)
-        work3(:,:,:,myrank)=work(:,:,:)
-     else
-        call myclock(atime)
-        call mympi_isend(work(:,:,:),iibox,999,totpoints*howmany,sendrequest(iibox))
-        call myclock(btime); times(2)=times(2)+btime-atime
-     endif
+! (Implied barrier at end parallel)
 !$OMP END PARALLEL
+     call myclock(btime); times(3)=times(3)+btime-atime
+
   enddo
-
-  call myclock(atime)
-  do ibox=1,nbox(3)
-     iibox=mod(myrank-1+ibox-1,nbox(3))+1
-     if (iibox.ne.myrank) then
-       call mympi_irecv(work3(:,:,:,iibox),iibox,999,totpoints*howmany,recvrequest(iibox))
-     endif
-  enddo
-  call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
-
-  do iibox=1,nprocs
-     if (myrank.ne.iibox) then
-        call mympiwait(recvrequest(iibox))
-     endif
-     if (myrank.ne.iibox) then
-        call mympiwait(sendrequest(iibox))
-     endif
-  enddo
-
-  call myclock(btime); times(3)=times(3)+btime-atime; atime=btime
-
-  out(:,:,:)=0d0
-  do ii=1,nprocs
-     out(:,:,:)=out(:,:,:)+work3(:,:,:,ii)
-  enddo
-
-  call myclock(btime); times(4)=times(4)+btime-atime
-
-!!$  deallocate(work,work3)
 
   if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
      xcount=xcount+1
      if (xcount==1) then
         open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown")
-        write(2853,'(100A11)')   "mult", "mpi","wait","reduce"
+        write(2853,'(100A11)')   "copy", "bcast","mult"
         close(2853) 
      endif
      open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown", position="append")
-     write(2853,'(100I11)')  times(1:4);        close(2853)
+     write(2853,'(100I11)')  times(1:3);        close(2853)
   endif
-end subroutine mult_roundrobin_z
 
+end subroutine mult_summa_z
 
 
 
@@ -1320,133 +1397,117 @@ end subroutine reinterpolate_orbs_real
 
 
 
-!!$subroutine mult_ke_toep_old(in, out)
-!!$  use myparams
-!!$  implicit none
-!!$  integer :: idim
-!!$  DATATYPE :: in(totpoints), out(totpoints), temp(totpoints)
-!!$  if (orbparflag) then
-!!$     OFLWR "MULT_ke_toep not supported for orbparflag yet"; CFLST
-!!$  endif
-!!$  out(:)=0d0
-!!$  do idim=1,griddim
-!!$     call mult_ke0toep(in, temp,idim)      !!   1BOX   1,1
-!!$     out(:)=out(:)+temp(:)
-!!$!not debugged noncube
-!!$     call liltranspose(in,numpoints(idim),totpoints/numpoints(idim))
-!!$     call liltranspose(out,numpoints(idim),totpoints/numpoints(idim))
-!!$  enddo
-!!$end subroutine mult_ke_toep_old
-!!$
-!!$subroutine liltranspose(mat,idim,jdim)
-!!$  implicit none
-!!$  integer :: idim,jdim
-!!$  DATATYPE :: mat(idim*jdim),temp(idim*jdim)
-!!$  temp(:)=RESHAPE(TRANSPOSE(RESHAPE(mat,(/idim,jdim/))),(/idim*jdim/))
-!!$  mat(:)=temp(:)
-!!$end subroutine liltranspose
-!!$
-!!$subroutine mult_ke0toep(in, out,idim)
-!!$  use myparams
-!!$  use myprojectmod  
-!!$  implicit none
-!!$  integer :: mmm,idim
-!!$  DATATYPE :: in(numpoints(idim),totpoints/numpoints(idim))
-!!$  DATATYPE :: out(numpoints(idim),totpoints/numpoints(idim))
-!!$  if (orbparflag) then
-!!$     OFLWR "KE TOEP NOT SUPPORTED ORBPARFLAG"; CFLST
-!!$  endif
-!!$  mmm=totpoints/numpoints(idim)
-!!$#ifndef REALGO
-!!$     call toeplitz1d_sub(kevect(idim)%cmat(:),in(:,:),out(:,:),numpoints(idim),mmm)
-!!$#else
-!!$     call toeplitz1d_sub_real(kevect(idim)%cmat(:),in(:,:),out(:,:),numpoints(idim),mmm)
-!!$#endif
-!!$end subroutine mult_ke0toep
 
-!!! is not fast.  for debug of fft
-!!!subroutine mult_ke_fast(in, out)
-!!!  use myparams
-!!!  implicit none
-!!!  integer :: idim
-!!!  DATATYPE :: in(totpoints), out(totpoints), temp(totpoints)
-!!!
-!!!  out(:)=0d0
-!!!  do idim=1,griddim
-!!!     call mult_ke0(in, temp,1,1,idim,1,totpoints/numpoints(idim))    !!   1BOX   1,1
-!!!     out(:)=out(:)+temp(:)
-!!!!     call liltranspose(in,totpoints/numpoints(idim),numpoints(idim))   think it's the other way but haven't debugged
-!!!!     call liltranspose(out,totpoints/numpoints(idim),numpoints(idim))  with noncube
-!!!
-!!!     call liltranspose(in,numpoints(idim),totpoints/numpoints(idim))
-!!!     call liltranspose(out,numpoints(idim),totpoints/numpoints(idim))
-!!!
-!!!
-!!!  enddo
-!!!
-!!!end subroutine mult_ke_fast
-!!!
-
-
-
-
-!!$   subroutine reinterpolate_orbs_complex(cspfs,dims,num)
-!!$     use myparams
-!!$     implicit none
-!!$     integer, intent(in) :: dims(3),num
-!!$     integer :: dim,i,j,idim
-!!$     complex*16 :: cspfs(dims(1),dims(2),dims(3),num), newspfs(dims(1),dims(2),dims(3),num), &
-!!$          transform(dims(1),dims(1))
-!!$     real*8 :: distance(1-2*dims(1):dims(1)-2),&  !! new index minus 2 times old  
-!!$          sincval(1-2*dims(1):dims(1)-2),mysinc,interval
-!!$     
-!!$     if (dims(1).ne.dims(2).or.dims(1).ne.dims(3)) then
-!!$        OFLWR "reinterpolate not supported noncube",dims; CFLST
-!!$     endif
-!!$     
-!!$     dim=dims(1)
-!!$     interval=spacing*(dim-1)
-!!$     
-!!$     do i=1-2*dim,dim-2
-!!$        ! point-slope form.  when i=1,j=1 then distance(j-2*i) = distance(-1)
-!!$    
-!!$        distance(i)=interval/2d0 + spacing*(i+1)
-!!$        sincval(i)=mysinc(distance(i)/spacing/2)
-!!$     enddo
-!!$     do i=1,dim  !! old (coarse)
-!!$        do j=1,dim  !! new (fine)
-!!$           transform(j,i)=sincval(j-2*i)
-!!$        enddo
-!!$     enddo
-!!$     do idim=1,3
-!!$        newspfs(:,:,:,:)=cspfs(:,:,:,:)
-!!$        call mult_allone_big_gen_complex(newspfs,cspfs,dim,idim,transform,num)
-!!$     enddo
-!!$   end subroutine reinterpolate_orbs_complex
-!!$   
-!!$   
-!!$   
-!!$   subroutine mult_allone_big_gen_complex(in, out,dim,idim,mat,howmany)
-!!$     implicit none
-!!$     integer :: mmm,dim,idim,nnn,jdim,howmany
-!!$     complex*16 :: in(dim,dim,dim,howmany), out(dim,dim,dim,howmany),mat(dim,dim)
-!!$     nnn=1; mmm=1
-!!$     do jdim=1,idim-1
-!!$        nnn=nnn*dim
-!!$     enddo
-!!$     do jdim=idim+1,3
-!!$        mmm=mmm*dim
-!!$     enddo
-!!$     call mult_all0_big_gen_complex(in,out,dim,mat,nnn,mmm*howmany)
-!!$   end subroutine mult_allone_big_gen_complex
-!!$   
-!!$   subroutine mult_all0_big_gen_complex(in, out,dim,mat,nnn,mmm)
-!!$     implicit none
-!!$     integer :: mmm,nnn,jj,dim
-!!$     complex*16 :: in(nnn,dim,mmm),out(nnn,dim,mmm),mat(dim,dim)
-!!$     do jj=1,mmm
-!!$        call ZGEMM('N','T',nnn,dim,dim,(1d0,0d0),in(:,:,jj),nnn,mat,dim,(0d0,0d0), out(:,:,jj), nnn)
-!!$     enddo
-!!$   end subroutine mult_all0_big_gen_complex
-!!$   
-!!$   
+!recursive subroutine mult_alltoall_z(in, out,option,howmany,timingdir,notiming)
+!  use myparams
+!  use myprojectmod  
+!  implicit none
+!  integer :: nnn,option,ii,howmany
+!  DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
+!       out(numpoints(1)*numpoints(2),numpoints(3),howmany)
+!!!$  DATATYPE, allocatable :: &
+!!!$       work(:,:,:,:),    work2(:,:,:,:),    work3(:,:,:,:)
+!  DATATYPE :: work(numpoints(1)*numpoints(2),numpoints(3),nprocs,howmany),&
+!       work2(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs),&
+!       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs)
+!  integer :: times(10),atime,btime,notiming,getlen
+!  character :: timingdir*(*)
+!  integer, save :: xcount=0
+!
+!  if (debugflag.gt.0) then
+!     call mpibarrier(); OFLWR "   **zall GO"; CFL; call mpibarrier()
+!  endif
+!
+!  times(:)=0
+!
+!  if (nprocs.ne.nbox(3)) then
+!     OFLWR "EEGNOT STOP",nprocs,nbox(3); CFLST
+!  endif
+!  if (totpoints.ne.numpoints(1)*numpoints(2)*numpoints(3)) then
+!     OFLWR "WHAAAAAZZZZ?",totpoints,numpoints(1),numpoints(2),numpoints(3); CFLST
+!  endif
+!
+!!!$  allocate(work(numpoints(1)*numpoints(2),numpoints(3),nprocs,howmany),&
+!!!$       work2(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs),&
+!!!$       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs))
+!
+!  call myclock(atime)
+!
+!  nnn=numpoints(1)*numpoints(2)
+!
+!  if (debugflag.gt.0) then
+!     call mpibarrier(); OFLWR "   **zall MULT"; CFL; call mpibarrier()
+!  endif
+!
+!!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,atime,btime)
+!  select case(option)
+!  case(1)  !! KE
+!!$OMP DO SCHEDULE(STATIC)
+!     do ii=1,howmany
+!        call MYGEMM('N','T',nnn,gridpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,ketot(3)%mat(1,1,1,myrank),gridpoints(3),DATAZERO, work(:,:,:,ii), nnn)
+!     enddo
+!!$OMP END DO
+!  case(2) 
+!!$OMP DO SCHEDULE(STATIC)
+!     do ii=1,howmany
+!        call MYGEMM('N','T',nnn,gridpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,fdtot(3)%mat(1,1,1,myrank),gridpoints(3),DATAZERO, work(:,:,:,ii), nnn)
+!     enddo
+!!$OMP END DO
+!  case default 
+!     OFLWR "WHAAAAT"; CFLST
+!  end select
+!
+!!$OMP MASTER
+!  call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+!  if (debugflag.gt.0) then
+!     call mpibarrier(); OFLWR "   **zall WORK"; CFL; call mpibarrier()
+!  endif
+!!$OMP END MASTER
+!
+!!! *** OMP BARRIER ***
+!
+!!$OMP BARRIER
+!
+!!$OMP DO SCHEDULE(STATIC)
+!  do ii=1,nprocs
+!     work2(:,:,:,ii)=work(:,:,ii,:)
+!  enddo
+!!$OMP END DO
+!
+!!! *** OMP BARRIER ***
+!
+!!$OMP BARRIER
+!
+!!$OMP MASTER
+!  if (debugflag.gt.0) then
+!     call mpibarrier(); OFLWR "   **zall START ALLTOALL"; CFL; call mpibarrier()
+!  endif
+!  call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
+!  call mympialltoall(work2,work3,totpoints*howmany)
+!  if (debugflag.gt.0) then
+!     call mpibarrier(); OFLWR "   **zall DONE ALLTOALL"; CFL; call mpibarrier()
+!  endif
+!!$OMP END MASTER
+!! (Implied barrier at end parallel)
+!!$OMP END PARALLEL
+!
+!  call myclock(btime); times(3)=times(3)+btime-atime; atime=btime
+!  out(:,:,:)=0d0
+!  do ii=1,nprocs
+!     out(:,:,:)=out(:,:,:)+work3(:,:,:,ii)
+!  enddo
+!  call myclock(btime); times(4)=times(4)+btime-atime
+!
+!!!$  deallocate(work,work2,work3)
+!
+!  if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
+!     xcount=xcount+1
+!     if (xcount==1) then
+!        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke.time.dat", status="unknown")
+!        write(2853,'(100A11)')   "mult", "arrange","mpi","reduce"
+!        close(2853) 
+!     endif
+!     open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke.time.dat", status="unknown", position="append")
+!     write(2853,'(100I11)')  times(1:4);        close(2853)
+!  endif
+!end subroutine mult_alltoall_z

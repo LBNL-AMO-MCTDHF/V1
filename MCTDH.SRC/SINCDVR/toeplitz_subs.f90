@@ -892,8 +892,7 @@ recursive subroutine mytranspose(in,out,blockdim,xmiddledim,myblocksize,xmaxbloc
      enddo
   enddo
 !$OMP END DO
-!   why?  why not
-!$OMP BARRIER  
+! (Implied barrier at end parallel)
 !$OMP END PARALLEL
 
   call myclock(btime); times(3)=times(3)+btime-atime;
