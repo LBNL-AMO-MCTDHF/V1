@@ -717,13 +717,6 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
 
   deallocate( reducedwork3d, twoeden03, tempden03)
 
-
-!! hasn't been reduced yet
-!OFLWR "TEMP MATEL "
-!WRFL real(twoematel(:,1,1,1),8)
-!WRFL "TEMPSTOP TWOEMATEL"; CFLST
-
-
 !!$  if (getpot.ne.0) then
 !!$     jj=numspf**2;     ii=totpoints
 !!$     call MYGEMM('N','N', ii,jj,jj,DATAONE, twoereduced(:,:,:),ii,twoden(:,:,:,:),jj, DATAONE,reducedpot(:,:,:),ii)
@@ -1035,13 +1028,7 @@ subroutine mult_ke_old(in, out,howmany,timingdir,notiming)
   integer :: howmany,notiming
   character :: timingdir*(*)
   DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
-  if (debugflag.gt.0) then
-     call mpibarrier(); OFLWR "        ....CALL MULT_ALLPAR"; CFL; call mpibarrier()
-  endif
   call mult_allpar(in,out,1,howmany,timingdir,notiming)
-  if (debugflag.gt.0) then
-     call mpibarrier(); OFLWR "        ....CALLED MULT_ALLPAR"; CFL; call mpibarrier()
-  endif
 end subroutine mult_ke_old
 
 subroutine mult_xderiv(in, out,howmany)
@@ -1080,10 +1067,6 @@ recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
   logical :: dodim(3)
   character :: timingdir*(*)
 
-  if (debugflag.gt.0) then
-     call mpibarrier(); OFLWR "            .... in mult_allpar"; CFL; call mpibarrier()
-  endif
-
   if (griddim.ne.3) then
      OFLWR "ERWRESTOPPP"; CFLST
   endif
@@ -1116,9 +1099,6 @@ recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
      if (nbox(1).ne.1.or.nbox(2).ne.1.or.nbox(3).ne.nprocs) then
         OFLWR "OOOFSSF"; CFLST
      endif
-     if (debugflag.gt.0) then
-        call mpibarrier(); OFLWR "            .... go mult_allpar x,y"; CFL; call mpibarrier()
-     endif
      do idim=1,2
         if (dodim(idim)) then
            call mult_allone(in,temp,idim,option,1,1,howmany)
@@ -1127,20 +1107,7 @@ recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
      enddo
      idim=3
      if (dodim(idim)) then
-!        if (keparopt.eq.0) then
-!           if (debugflag.gt.0) then
-!              call mpibarrier(); OFLWR "            .... go mult_allpar z alltoall",howmany; 
-!              CFL; call mpibarrier()
-!           endif
-!           call mult_alltoall_z(in,temp,option,howmany,timingdir,notiming)
-!        else
-           if (debugflag.gt.0) then
-              call mpibarrier(); OFLWR "            .... go mult_allpar z summa",howmany; 
-              CFL; call mpibarrier()
-           endif
-           call mult_summa_z(in,temp,option,howmany,timingdir,notiming)
-!        endif
-
+        call mult_summa_z(in,temp,option,howmany,timingdir,notiming)
         out(:,:)=out(:,:)+temp(:,:)
 
 !!$        do ibox=1,nprocs
@@ -1153,10 +1120,6 @@ recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
 !!$        enddo
         
      endif
-  endif
-
-  if (debugflag.gt.0) then
-     call mpibarrier(); OFLWR "            .... done mult_allpar"; CFL; call mpibarrier()
   endif
 
 end subroutine mult_allpar
@@ -1396,118 +1359,3 @@ subroutine reinterpolate_orbs_real(rspfs,dims,num)
 end subroutine reinterpolate_orbs_real
 
 
-
-
-!recursive subroutine mult_alltoall_z(in, out,option,howmany,timingdir,notiming)
-!  use myparams
-!  use myprojectmod  
-!  implicit none
-!  integer :: nnn,option,ii,howmany
-!  DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-!       out(numpoints(1)*numpoints(2),numpoints(3),howmany)
-!!!$  DATATYPE, allocatable :: &
-!!!$       work(:,:,:,:),    work2(:,:,:,:),    work3(:,:,:,:)
-!  DATATYPE :: work(numpoints(1)*numpoints(2),numpoints(3),nprocs,howmany),&
-!       work2(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs),&
-!       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs)
-!  integer :: times(10),atime,btime,notiming,getlen
-!  character :: timingdir*(*)
-!  integer, save :: xcount=0
-!
-!  if (debugflag.gt.0) then
-!     call mpibarrier(); OFLWR "   **zall GO"; CFL; call mpibarrier()
-!  endif
-!
-!  times(:)=0
-!
-!  if (nprocs.ne.nbox(3)) then
-!     OFLWR "EEGNOT STOP",nprocs,nbox(3); CFLST
-!  endif
-!  if (totpoints.ne.numpoints(1)*numpoints(2)*numpoints(3)) then
-!     OFLWR "WHAAAAAZZZZ?",totpoints,numpoints(1),numpoints(2),numpoints(3); CFLST
-!  endif
-!
-!!!$  allocate(work(numpoints(1)*numpoints(2),numpoints(3),nprocs,howmany),&
-!!!$       work2(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs),&
-!!!$       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs))
-!
-!  call myclock(atime)
-!
-!  nnn=numpoints(1)*numpoints(2)
-!
-!  if (debugflag.gt.0) then
-!     call mpibarrier(); OFLWR "   **zall MULT"; CFL; call mpibarrier()
-!  endif
-!
-!!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,atime,btime)
-!  select case(option)
-!  case(1)  !! KE
-!!$OMP DO SCHEDULE(STATIC)
-!     do ii=1,howmany
-!        call MYGEMM('N','T',nnn,gridpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,ketot(3)%mat(1,1,1,myrank),gridpoints(3),DATAZERO, work(:,:,:,ii), nnn)
-!     enddo
-!!$OMP END DO
-!  case(2) 
-!!$OMP DO SCHEDULE(STATIC)
-!     do ii=1,howmany
-!        call MYGEMM('N','T',nnn,gridpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,fdtot(3)%mat(1,1,1,myrank),gridpoints(3),DATAZERO, work(:,:,:,ii), nnn)
-!     enddo
-!!$OMP END DO
-!  case default 
-!     OFLWR "WHAAAAT"; CFLST
-!  end select
-!
-!!$OMP MASTER
-!  call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
-!  if (debugflag.gt.0) then
-!     call mpibarrier(); OFLWR "   **zall WORK"; CFL; call mpibarrier()
-!  endif
-!!$OMP END MASTER
-!
-!!! *** OMP BARRIER ***
-!
-!!$OMP BARRIER
-!
-!!$OMP DO SCHEDULE(STATIC)
-!  do ii=1,nprocs
-!     work2(:,:,:,ii)=work(:,:,ii,:)
-!  enddo
-!!$OMP END DO
-!
-!!! *** OMP BARRIER ***
-!
-!!$OMP BARRIER
-!
-!!$OMP MASTER
-!  if (debugflag.gt.0) then
-!     call mpibarrier(); OFLWR "   **zall START ALLTOALL"; CFL; call mpibarrier()
-!  endif
-!  call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
-!  call mympialltoall(work2,work3,totpoints*howmany)
-!  if (debugflag.gt.0) then
-!     call mpibarrier(); OFLWR "   **zall DONE ALLTOALL"; CFL; call mpibarrier()
-!  endif
-!!$OMP END MASTER
-!! (Implied barrier at end parallel)
-!!$OMP END PARALLEL
-!
-!  call myclock(btime); times(3)=times(3)+btime-atime; atime=btime
-!  out(:,:,:)=0d0
-!  do ii=1,nprocs
-!     out(:,:,:)=out(:,:,:)+work3(:,:,:,ii)
-!  enddo
-!  call myclock(btime); times(4)=times(4)+btime-atime
-!
-!!!$  deallocate(work,work2,work3)
-!
-!  if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
-!     xcount=xcount+1
-!     if (xcount==1) then
-!        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke.time.dat", status="unknown")
-!        write(2853,'(100A11)')   "mult", "arrange","mpi","reduce"
-!        close(2853) 
-!     endif
-!     open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke.time.dat", status="unknown", position="append")
-!     write(2853,'(100I11)')  times(1:4);        close(2853)
-!  endif
-!end subroutine mult_alltoall_z
