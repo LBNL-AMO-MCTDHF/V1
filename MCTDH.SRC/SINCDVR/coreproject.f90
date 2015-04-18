@@ -216,10 +216,6 @@ subroutine call_flux_op_twoe() !mobra,moket,V2,flag)
 print *, "DOME flux_op_twoe"; stop
 end subroutine call_flux_op_twoe
 
-!!$ subroutine hatom_matel(inspfs1, inspfs2, hatommatel,numberspf)   !!!rmatrix,ylmvals, 
-
-!!$ subroutine hatom_op(inspfs, outspfs)    !! , rmatrix,ylmvals
-
 subroutine call_frozen_matels0() !infrozens,numfrozen,frozenkediag,frozenpotdiag)  !! returns last two.  a little cloogey
 print *, "DOME CALL FROZEN MATELS."; stop
 end subroutine call_frozen_matels0
@@ -583,7 +579,6 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
         endif
 #endif
      enddo
-
      deallocate(twoeden03huge,     reducedhuge,       reducedtemp,twoeden03big)
 
   else
@@ -656,31 +651,6 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
 
 !! (YONG FYI)
 !! I GET SEGFAULTS IF MYDEN AND MYREDUCED ARE AUTOMATIC VARIABLES NOT ALLOCATABLE.
-
-!!$    allocate(myden(totpoints), myreduced(totpoints))
-!!$    do spf1b=1,numspf
-!!$    do spf1a=1,numspf
-!!$       myden(:)=CONJUGATE(inspfs10(:,spf1a)) * inspfs20(:,spf1b)
-!!$  !$OMP DO
-!!$    do spf2b=1,numspf
-!!$    do spf2a=1,numspf
-!!$       myreduced(:)=twoereduced(:,spf2a,spf2b)
-!!$  
-!!$  !! TRYING ZDOTU !! BUGGY IN THE PAST !! YES STILL BUGGY (gfortran 4.6 not 4.9 on mac?)
-!!$  !#ifdef REALGO
-!!$  !     twoematel(spf2a,spf2b,spf1a,spf1b) = DDOT(totpoints,myden,1,myreduced,1)
-!!$  !#else
-!!$  !     twoematel(spf2a,spf2b,spf1a,spf1b) = ZDOTU(totpoints,myden,1,myreduced,1)
-!!$  !#endif
-!!$  
-!!$       twoematel(spf2a,spf2b,spf1a,spf1b)=cdot(myden,myreduced,totpoints)
-!!$  
-!!$       enddo
-!!$       enddo
-!!$  !$OMP END DO
-!!$    enddo
-!!$    enddo
-!!$    deallocate(myden,myreduced)
 
   allocate(myden(totpoints))
 !$OMP DO SCHEDULE(STATIC)
@@ -766,7 +736,6 @@ recursive subroutine mult_reducedpot(inspfs,outspf,whichspf,reducedpot)
 
 !!$ CLASSES?
 !!$        if (she lls(kspf).eq.ish ell) then
-           
 !!$ reducedpot is usual notation: <ispf | kspf> so so sum over slow index kspf
                     
         outspf(:) = outspf(:) + &
@@ -937,7 +906,6 @@ recursive subroutine mult_ke_toep(in, out,howmany)
   endif
 #endif
 
-
   if (allocated.eq.0) then
      allocated=1
      allocate(bigke(0-gridsize(1):gridsize(1)-1,0-gridsize(1):gridsize(1)-1,0-gridsize(1):gridsize(1)-1))
@@ -1103,25 +1071,104 @@ recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
            call mult_summa_z(in,temp,option,howmany,timingdir,notiming)
         case(2)
            call mult_reduce_z(in,temp,option,howmany,timingdir,notiming)
+        case(3)
+           call mult_alltoall_z(in, temp,option,howmany,timingdir,notiming)
         case default
            OFLWR "Error, zke_paropt not recognized",zke_paropt; CFLST
         end select
         out(:,:)=out(:,:)+temp(:,:)
 
-!!$        do ibox=1,nprocs
-!!$           do jbox=1,nprocs
-!!$              call mult_allone(in,temp,idim,option,ibox,jbox,howmany)
-!!$              if (jbox.eq.myrank) then
-!!$                 out(:,:)=out(:,:)+temp(:,:)
-!!$              endif
-!!$           enddo
-!!$        enddo
-        
      endif
   endif
 
 end subroutine mult_allpar
 
+
+!!  RATE LIMITING STEP IN CODE: MPI PARALLEL KINETIC ENERGY MULTPILICATION IN Z DIRECTION !!
+!!  FOUR OPTIONS
+!!
+!!  zke_paropt=0   mult_circ_z   sendrecv
+!!  zke_paropt=1   mult_summa_z  SUMMA  scalable universal matrix multiplication algorithm (broadcast before)
+!!  zke_paropt=2   mult_reduce_z  reduce after (slow, generally, right?)
+!!  zke_paropt=3   mult_alltoall_z  Calculate everything, wasting memory, then perform all to all
+
+recursive subroutine mult_circ_z(in, out,option,howmany,timingdir,notiming)
+  use myparams
+  use myprojectmod  
+  implicit none
+  integer :: nnn,option,ii,howmany,totsize
+  DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
+       out(numpoints(1)*numpoints(2),numpoints(3),howmany), &
+       work(numpoints(1)*numpoints(2),numpoints(3),howmany),&  !! AUTOMATIC
+       work2(numpoints(1)*numpoints(2),numpoints(3),howmany)   !! AUTOMATIC
+  integer :: times(10),atime,btime,notiming,getlen,ibox,jbox,deltabox
+  character :: timingdir*(*)
+  integer, save :: xcount=0
+
+  times(:)=0
+
+  if (nprocs.ne.nbox(3)) then
+     OFLWR "EEGNOT STOP",nprocs,nbox(3); CFLST
+  endif
+  if (totpoints.ne.numpoints(1)*numpoints(2)*numpoints(3)) then
+     OFLWR "WHAAAAAZZZZ?",totpoints,numpoints(1),numpoints(2),numpoints(3); CFLST
+  endif
+
+  nnn=numpoints(1)*numpoints(2)
+  totsize=numpoints(1)*numpoints(2)*numpoints(3)*howmany
+
+  out(:,:,:)=0
+
+  do deltabox=0,nbox(3)-1
+     call myclock(atime)
+     
+     ibox=mod(nbox(3)+myrank-1+deltabox,nbox(3))+1
+     jbox=mod(nbox(3)+myrank-1-deltabox,nbox(3))+1
+     
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
+     select case(option)
+     case(1)  !! KE
+!$OMP DO SCHEDULE(STATIC)
+        do ii=1,howmany
+           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,ketot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
+        enddo
+!$OMP END DO
+     case(2) 
+!$OMP DO SCHEDULE(STATIC)
+        do ii=1,howmany
+           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,fdtot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
+        enddo
+!$OMP END DO
+     case default 
+        OFLWR "WHAAAAT"; CFLST
+     end select
+
+! (Implied barrier at end parallel)
+!$OMP END PARALLEL
+     call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+
+     if (deltabox.ne.0) then
+        call mympisendrecv(work(:,:,:),work2(:,:,:),ibox,jbox,deltabox,totsize)
+        call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
+        out(:,:,:)=out(:,:,:)+work2(:,:,:)
+     else
+        out(:,:,:)=out(:,:,:)+work(:,:,:)
+     endif
+     call myclock(btime); times(3)=times(3)+btime-atime
+  enddo
+
+  if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
+     xcount=xcount+1
+     if (xcount==1) then
+        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown")
+        write(2853,'(100A11)')   "mult", "sendrecv","add"
+        close(2853) 
+     endif
+     open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown", position="append")
+     write(2853,'(100I11)')  times(1:3);        close(2853)
+  endif
+
+end subroutine mult_circ_z
 
 
 recursive subroutine mult_summa_z(in, out,option,howmany,timingdir,notiming)
@@ -1166,13 +1213,13 @@ recursive subroutine mult_summa_z(in, out,option,howmany,timingdir,notiming)
      case(1)  !! KE
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,work(:,:,ii),nnn,ketot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAONE, out(:,:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,work(:,:,ii),nnn,ketot(3)%mat(1,myrank,1,ibox),gridpoints(3),DATAONE, out(:,:,ii), nnn)
         enddo
 !$OMP END DO
      case(2) 
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,work(:,:,ii),nnn,fdtot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAONE, out(:,:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,work(:,:,ii),nnn,fdtot(3)%mat(1,myrank,1,ibox),gridpoints(3),DATAONE, out(:,:,ii), nnn)
         enddo
 !$OMP END DO
      case default 
@@ -1232,13 +1279,13 @@ recursive subroutine mult_reduce_z(in, out,option,howmany,timingdir,notiming)
      case(1)  !! KE
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,ketot(3)%mat(1,myrank,1,ibox),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,ketot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
         enddo
 !$OMP END DO
      case(2) 
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,fdtot(3)%mat(1,myrank,1,ibox),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,fdtot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
         enddo
 !$OMP END DO
      case default 
@@ -1267,17 +1314,21 @@ recursive subroutine mult_reduce_z(in, out,option,howmany,timingdir,notiming)
 end subroutine mult_reduce_z
 
 
+!! .. and this (all to all) takes lots of memory obviously
 
-recursive subroutine mult_circ_z(in, out,option,howmany,timingdir,notiming)
+recursive subroutine mult_alltoall_z(in, out,option,howmany,timingdir,notiming)
   use myparams
   use myprojectmod  
   implicit none
-  integer :: nnn,option,ii,howmany,totsize
+  integer :: nnn,option,ii,howmany
   DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       out(numpoints(1)*numpoints(2),numpoints(3),howmany), &
-       work(numpoints(1)*numpoints(2),numpoints(3),howmany),&  !! AUTOMATIC
-       work2(numpoints(1)*numpoints(2),numpoints(3),howmany)   !! AUTOMATIC
-  integer :: times(10),atime,btime,notiming,getlen,ibox,jbox,deltabox
+       out(numpoints(1)*numpoints(2),numpoints(3),howmany)
+!!$  DATATYPE, allocatable :: &
+!!$       work(:,:,:,:),    work2(:,:,:,:),    work3(:,:,:,:)
+  DATATYPE :: work(numpoints(1)*numpoints(2),numpoints(3),nprocs,howmany),&
+       work2(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs),&
+       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs)
+  integer :: times(10),atime,btime,notiming,getlen
   character :: timingdir*(*)
   integer, save :: xcount=0
 
@@ -1290,61 +1341,78 @@ recursive subroutine mult_circ_z(in, out,option,howmany,timingdir,notiming)
      OFLWR "WHAAAAAZZZZ?",totpoints,numpoints(1),numpoints(2),numpoints(3); CFLST
   endif
 
+!!$  allocate(work(numpoints(1)*numpoints(2),numpoints(3),nprocs,howmany),&
+!!$       work2(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs),&
+!!$       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs))
+
+  call myclock(atime)
+
   nnn=numpoints(1)*numpoints(2)
-  totsize=numpoints(1)*numpoints(2)*numpoints(3)*howmany
 
-  do deltabox=0,nbox(3)-1
-     call myclock(atime)
-     
-     ibox=mod(nbox(3)+myrank-1+deltabox,nbox(3))+1
-     jbox=mod(nbox(3)+myrank-1-deltabox,nbox(3))+1
-     
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,atime,btime)
-     select case(option)
-     case(1)  !! KE
+  select case(option)
+  case(1)  !! KE
 !$OMP DO SCHEDULE(STATIC)
-        do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,ketot(3)%mat(1,myrank,1,ibox),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
-        enddo
+     do ii=1,howmany
+        call MYGEMM('N','T',nnn,gridpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,ketot(3)%mat(1,1,1,myrank),gridpoints(3),DATAZERO, work(:,:,:,ii), nnn)
+     enddo
 !$OMP END DO
-     case(2) 
+  case(2) 
 !$OMP DO SCHEDULE(STATIC)
-        do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,fdtot(3)%mat(1,myrank,1,ibox),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
-        enddo
+     do ii=1,howmany
+        call MYGEMM('N','T',nnn,gridpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,fdtot(3)%mat(1,1,1,myrank),gridpoints(3),DATAZERO, work(:,:,:,ii), nnn)
+     enddo
 !$OMP END DO
-     case default 
-        OFLWR "WHAAAAT"; CFLST
-     end select
+  case default 
+     OFLWR "WHAAAAT"; CFLST
+  end select
 
-! (Implied barrier at end parallel)
-!$OMP END PARALLEL
-     call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+!$OMP MASTER
+  call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+!$OMP END MASTER
 
-     if (deltabox.ne.0) then
-        call mympisendrecv(work(:,:,:),work2(:,:,:),ibox,jbox,deltabox,totsize)
-        call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
-        out(:,:,:)=out(:,:,:)+work2(:,:,:)
-     else
-        out(:,:,:)=out(:,:,:)+work(:,:,:)
-     endif
-     call myclock(btime); times(3)=times(3)+btime-atime
+!! *** OMP BARRIER ***
 
+!$OMP BARRIER
+
+!$OMP DO SCHEDULE(STATIC)
+  do ii=1,nprocs
+     work2(:,:,:,ii)=work(:,:,ii,:)
   enddo
+!$OMP END DO
+
+!! *** OMP BARRIER ***
+
+!$OMP BARRIER
+
+!$OMP MASTER
+  call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
+  call mympialltoall(work2,work3,totpoints*howmany)
+!$OMP END MASTER
+!   why?  why not
+!$OMP BARRIER
+!$OMP END PARALLEL
+
+  call myclock(btime); times(3)=times(3)+btime-atime; atime=btime
+  out(:,:,:)=0d0
+  do ii=1,nprocs
+     out(:,:,:)=out(:,:,:)+work3(:,:,:,ii)
+  enddo
+  call myclock(btime); times(4)=times(4)+btime-atime
+
+!!$  deallocate(work,work2,work3)
 
   if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
      xcount=xcount+1
      if (xcount==1) then
-        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown")
-        write(2853,'(100A11)')   "mult", "sendrecv","add"
+        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke.time.dat", status="unknown")
+        write(2853,'(100A11)')   "mult", "arrange","mpi","reduce"
         close(2853) 
      endif
-     open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown", position="append")
-     write(2853,'(100I11)')  times(1:3);        close(2853)
+     open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke.time.dat", status="unknown", position="append")
+     write(2853,'(100I11)')  times(1:4);        close(2853)
   endif
-
-end subroutine mult_circ_z
-
+end subroutine mult_alltoall_z
 
 
 recursive subroutine mult_allone(in, out,idim,option,ibox,jbox,howmany)

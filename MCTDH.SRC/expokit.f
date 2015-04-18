@@ -1582,7 +1582,7 @@
       integer ndeg, i, j, k, ip, ih, iy, iz
       parameter ( ndeg=7, ZERO=(0.0d0,0.0d0) )
       double precision alpha0
-!!DJH      complex*16 alpha(ndeg), theta(ndeg), tmpc
+!!djh      complex*16 alpha(ndeg), theta(ndeg), tmpc
       complex*16 alpha(2*ndeg), theta(2*ndeg), tmpc
 
       intrinsic ABS,DBLE,CONJG,MIN
@@ -1666,6 +1666,10 @@
 *----------------------------------------------------------------------|
       subroutine DGEXPV( n, m, t, v, w, tol, anorm,
      .             wsp,lwsp, iwsp,liwsp, matvec, itrace,iflag,fileptr)
+      implicit none
+      integer n, m, lwsp, liwsp, itrace, iflag, iwsp(liwsp),fileptr
+      double precision t, tol, anorm, v(n), w(n), wsp(lwsp)
+      external matvec
       double precision xx
       xx=1d20
       call DGEXPVxxx( n, m, t, v, w, tol, anorm,
@@ -2910,6 +2914,12 @@
 
       subroutine ZGEXPV( n, m, t, v, w, tol, anorm,
      .             wsp,lwsp, iwsp,liwsp, matvec, itrace,iflag,fileptr )
+      implicit none
+      integer          n, m, lwsp, liwsp, itrace, iflag, iwsp(liwsp)
+      integer fileptr
+      double precision t, tol, anorm
+      complex*16       v(n), w(n), wsp(lwsp)
+      external         matvec
       double precision xx
       xx=1d20
       call ZGEXPVxxx( n, m, t, v, w, tol, anorm,

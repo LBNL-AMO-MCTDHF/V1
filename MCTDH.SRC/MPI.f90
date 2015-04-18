@@ -1096,27 +1096,27 @@ endif
 end subroutine mpiallgather_complex
 
 
-!!$ subroutine mympialltoall(input, output, count)
-!!$   use fileptrmod
-!!$   use mpimod
-!!$   implicit none
-!!$   integer :: ierr, count
-!!$   DATATYPE :: input(count,nprocs), output(count,nprocs)
-!!$ 
-!!$ #ifndef MPIFLAG
-!!$   output(:,:)=input(:,:)
-!!$ #else
-!!$ #ifdef REALGO
-!!$   call mpi_alltoall(input(:,:),count,MPI_DOUBLE_PRECISION,output(:,:),count,MPI_DOUBLE_PRECISION,MPI_COMM_WORLD,ierr)
-!!$ #else
-!!$   call mpi_alltoall(input(:,:),count,MPI_DOUBLE_COMPLEX,output(:,:),count,MPI_DOUBLE_COMPLEX,MPI_COMM_WORLD,ierr)
-!!$ #endif
-!!$   if (ierr.ne.0) then
-!!$      OFLWR "ERROR ALLTOALL ", ierr; CFLST
-!!$   endif
-!!$ #endif
-!!$ 
-!!$ end subroutine mympialltoall
+subroutine mympialltoall(input, output, count)
+  use fileptrmod
+  use mpimod
+  implicit none
+  integer :: ierr, count
+  DATATYPE :: input(count,nprocs), output(count,nprocs)
+
+#ifndef MPIFLAG
+  output(:,:)=input(:,:)
+#else
+#ifdef REALGO
+  call mpi_alltoall(input(:,:),count,MPI_DOUBLE_PRECISION,output(:,:),count,MPI_DOUBLE_PRECISION,MPI_COMM_WORLD,ierr)
+#else
+  call mpi_alltoall(input(:,:),count,MPI_DOUBLE_COMPLEX,output(:,:),count,MPI_DOUBLE_COMPLEX,MPI_COMM_WORLD,ierr)
+#endif
+  if (ierr.ne.0) then
+     OFLWR "ERROR ALLTOALL ", ierr; CFLST
+  endif
+#endif
+
+end subroutine mympialltoall
 
 
 

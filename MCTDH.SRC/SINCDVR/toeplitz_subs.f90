@@ -291,7 +291,6 @@ recursive subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany
 end subroutine circ3d_sub_real
 
 
-
 recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
   implicit none
   integer :: totdim,howmany,ii
@@ -341,12 +340,11 @@ recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
 end subroutine circ3d_sub
 
 
-
 recursive subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,totdim,blocksize,times,howmany)
   implicit none
   integer :: totdim,blocksize,times(*),atime,btime,howmany
-  real*8 :: rmultvector(2*totdim,2*totdim,2*blocksize,howmany), rffback(2*totdim,2*totdim,2*blocksize,howmany),&
-       rbigcirc(2*totdim,2*totdim,2*blocksize)
+  real*8 :: rmultvector(2*totdim,2*totdim,2*blocksize,howmany), &
+       rbigcirc(2*totdim,2*totdim,2*blocksize), rffback(2*totdim,2*totdim,2*blocksize,howmany)
   complex*16 :: multvector(2*totdim,2*totdim,2*blocksize,howmany), &  !! SEGFAULTS FOR AUTOMATIC
         ffback(2*totdim,2*totdim,2*blocksize,howmany),  bigcirc(2*totdim,2*totdim,2*blocksize)
 
@@ -385,8 +383,8 @@ end subroutine circ3d_sub_real_mpi
 recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,times,howmany)
   implicit none
   integer :: totdim,blocksize,times(*),atime,btime,howmany,ii
-  complex*16 ::  multvector(2*totdim,2*totdim,2*blocksize,howmany),  bigcirc(2*totdim,2*totdim,2*blocksize,1,1,1), &
-       ffback(2*totdim,2*totdim,2*blocksize,howmany)
+  complex*16 ::  multvector(2*totdim,2*totdim,2*blocksize,howmany), &
+       ffback(2*totdim,2*totdim,2*blocksize,howmany),  bigcirc(2*totdim,2*totdim,2*blocksize,1,1,1)
   complex*16 :: ffmat(2*totdim,2*totdim,2*blocksize), &  !! SEGFAULTS FOR AUTOMATIC
        ffwork(2*totdim,2*totdim,2*blocksize,howmany), &
        ffvec(2*totdim,2*totdim,2*blocksize,howmany),  ffprod(2*totdim,2*totdim,2*blocksize,howmany)
@@ -478,8 +476,6 @@ subroutine circ1d_sub(bigcirc,multvector,ffback,totdim,howmany)
   ffback(:,:)=CONJG(ffback(:,:))
 end subroutine circ1d_sub
 
-
-!! OLD VERSION WITH SHIFT ATTE MPT AT BOTTOM OF FILE
 
 !! myrank is indexed 1:nprocs
 
@@ -766,8 +762,6 @@ end subroutine fftw1dfftsub
 
 module mytransposemod
 contains
-
-
   recursive subroutine mytranspose(in,out,blocksize,howmany,times)
   use bothblockmod
   implicit none
@@ -819,7 +813,6 @@ contains
   call myclock(btime); times(3)=times(3)+btime-atime;
   
 end subroutine mytranspose
-
 end module  
   
 
@@ -830,7 +823,6 @@ recursive subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
   integer :: indim,nulltimes(10),howmany,ii
   complex*16, intent(in) :: in(dim**3,howmany)
   complex*16, intent(out) :: out(dim**3,howmany)
-
 
   if (dim.ne.indim) then
      print *, "WRONG INIT",dim,indim;stop
@@ -847,7 +839,6 @@ recursive subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
   enddo
   return
 #else
-
   do ii=1,howmany
      call myzfft3d_par(in(mystart,ii),out(mystart,ii),indim,mysize/dim**2,nulltimes,1)
   enddo
@@ -872,11 +863,8 @@ recursive subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
           mpiblocks(:),&
           mpiblockstart(:),.true.)
   enddo
-
 #endif
-
 end subroutine myzfft3d_mpiwrap
-
 
 
 !! adds to times
@@ -930,21 +918,16 @@ recursive subroutine myzfft3d_par(in,out,indim,inblockdim,times,howmany)
   call fftw3dfftsub_mpi(in,out,indim,mysize/dim**2,howmany)
   return
 #else
-
   tempout(:,:,:,:)=in(:,:,:,:)
-
   call myclock(btime); times(1)=times(1)+btime-atime;
 
   do ii=1,3
-
      call myclock(atime)
-
 #ifndef TENTEST
      call myzfft3d_oneblock( tempout, mywork, mysize/dim**2,howmany)
 #else
      mywork(:,:,:,:)=tempout(:,:,:,:)*10
 #endif
-
      call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
      
 !!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
@@ -955,7 +938,6 @@ recursive subroutine myzfft3d_par(in,out,indim,inblockdim,times,howmany)
           howmany,times(3:))
   enddo
   out(:,:,:,:)=tempout(:,:,:,:)
-
 #endif
 
 end subroutine myzfft3d_par
@@ -963,10 +945,7 @@ end subroutine myzfft3d_par
 #endif
 
 
-
 !!$ SHIFT ATTE MPT
-
-!!$
 !!$subroutine myzfft1d(in,out,dim)
 !!$  implicit none
 !!$  integer, intent(in) :: dim

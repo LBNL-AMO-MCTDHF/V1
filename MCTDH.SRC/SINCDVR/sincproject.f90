@@ -39,8 +39,13 @@ subroutine myprojectalloc()
   allocate(ketot(griddim),littlepot(griddim),sinepoints(griddim),kevect(griddim),fdtot(griddim),fdvect(griddim))
   do idim=1,griddim
      allocate( &
-          fdtot(idim)%mat(numpoints(idim),nbox(idim),numpoints(idim),nbox(idim)), &
-          ketot(idim)%mat(numpoints(idim),nbox(idim),numpoints(idim),nbox(idim)), &
+
+!! Allocating extra here for fdtot%mat and ketot%mat (+1's) --
+!!   see Z/GEMM calls in coreproject.f90... leading dimension not
+!!   allocated as passed to Z/GEMM without extra
+
+          fdtot(idim)%mat(numpoints(idim),nbox(idim),numpoints(idim),nbox(idim)   +1), &
+          ketot(idim)%mat(numpoints(idim),nbox(idim),numpoints(idim),nbox(idim)   +1), &
           littlepot(idim)%mat(numpoints(idim),nbox(idim)), &
           kevect(idim)%rmat(1-gridpoints(idim):gridpoints(idim)-1),&
           kevect(idim)%cmat(1-gridpoints(idim):gridpoints(idim)-1),&

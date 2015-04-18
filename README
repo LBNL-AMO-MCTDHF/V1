@@ -21,25 +21,31 @@ The idea is that you can work entirely within the directory that you clone and t
 
  ----------------------------------------------------
 
-OpenMP has been removed from most Makefile.headers, FYI
+Hybrid OpenMP / MPI code       Remember to use PROCESS/THREAD AFFINITY
 
 Velocity gauge sinc DVR just implemented, not debugged nor checked for factors.
 
 Improvedquadflag = 1, 2, and 3 now available again ... new method for 2 & 3
 
 Read orbitals for x2 resolution using loadspfflag=1 for sinc dvr by setting
-reinterp_orbflag=1 in &parinp (not supported for atom or diatom)
+  reinterp_orbflag=1 in &parinp (not supported for atom or diatom)
 
 MPI ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3.
   set both parorbsplit=3 in &parinp and orbparflag=.true. in &sinc_params.
   When this is set:
 
-THREE OPTIONS FOR MPI MATRIX VECTOR MULTIPLY (matvec) for orbitals.  
-Derivative operator matvec (KE, or first derivative if velocity gauge)
-is the RATE LIMITING STEP in algorithm at scale.
-  zke_paropt=0  sendrecv
-  zke_paropt=1  SUMMA (scalable universal matrix multiply)
-  zke_paropt=2  reduce after (probably slower, but provided)
+  RATE LIMITING STEP IN CODE (chmctdhf_sinc) AT SCALE: 
+
+     --> MPI PARALLEL KINETIC ENERGY MULTIPLICATION IN Z DIRECTION <--
+
+  FOUR OPTIONS:
+
+  zke_paropt=0   mult_circ_z      sendrecv
+  zke_paropt=1   mult_summa_z     SUMMA  scalable universal matrix multiplication 
+                                    algorithm (broadcast before)
+  zke_paropt=2   mult_reduce_z    reduce after (slow, generally, right?)
+  zke_paropt=3   mult_alltoall_z  Calculate everything, wasting memory, then perform 
+                                    all to all (previous subroutine)
 
  ----------------------------------------------------
 
@@ -120,4 +126,4 @@ EDISON:
 module unload cray-libsci
 module load mkl
 
-  DJH 03-15-2015
+  DJH 04-18-2015
