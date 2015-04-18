@@ -14,11 +14,11 @@
 
 !! FOR ODEX PROPAGATION (NOT DEFAULT)
 
-subroutine gbs_derivs(nullint,thistime,psi,psip,nulldbl,nullint2)
+subroutine gbs_derivs(notusedint,thistime,psi,psip,notuseddbl,notusedint2)
   use parameters
   implicit none
-  integer :: nullint,nullint2
-  real*8 :: thistime,nulldbl
+  integer :: notusedint,notusedint2
+  real*8 :: thistime,notuseddbl
   DATATYPE :: psi(psilength), psip(psilength)
   call all_derivs(thistime,psi,psip)
 end subroutine gbs_derivs
@@ -97,12 +97,12 @@ end subroutine all_derivs
 
 
 
-subroutine gbs_linear_derivs(nullint,thistime,spfsin,spfsout,nulldbl,nullint2)
+subroutine gbs_linear_derivs(notusedint,thistime,spfsin,spfsout,notuseddbl,notusedint2)
   use parameters
   implicit none
   DATATYPE :: spfsin(spfsize, nspf), spfsout(spfsize, nspf)
-  integer :: nullint,nullint2
-  real*8 :: thistime,nulldbl
+  integer :: notusedint,notusedint2
+  real*8 :: thistime,notuseddbl
   call spf_linear_derivs(thistime,spfsin,spfsout)
 end subroutine gbs_linear_derivs
 

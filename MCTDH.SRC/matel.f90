@@ -3,15 +3,10 @@
 !! ARE CALCULATED HERE ALONG THE WAY.  GET_REDUCEDHAM MUST BE CALLED AFTER TWOE_MATEL
 !! BECAUSE IT NEEDS THOSE REDUCED MATRIX ELEMENTS
 
-!!  Non denmat constraint (1 or 2) will not be accurately reproduced by cmf!!!
-!!    ^ still operative?
-
 #include "Definitions.INC"
 
-!! except for configconmatel and fullconfigconmatel
 
-
-subroutine all_matel()
+recursive subroutine all_matel()
   use parameters
   use xxxmod
   use mpimod
@@ -32,57 +27,57 @@ subroutine all_matel()
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (xcalled==1) then
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/matel.time.dat", status="unknown")
-!        open(8853, file=timingdir(1:getlen(timingdir)-1)//"/matel.abs.time.dat", status="unknown")
+!!$        open(8853, file=timingdir(1:getlen(timingdir)-1)//"/matel.abs.time.dat", status="unknown")
         write(853,'(100A11)')   "op", "pot", "pulse", "two", "assemble"
-!        write(8853,'(100A11)')   "matel absolute timing"
+!!$        write(8853,'(100A11)')   "matel absolute timing"
         close(853)
-!        close(8853)
+!!$        close(8853)
      endif
 
      open(853, file=timingdir(1:getlen(timingdir)-1)//"/matel.time.dat", status="unknown", position="append")
      write(853,'(100I11)')  times(1:5)/1000;        close(853)
      close(853)
-!     call system("date >> "//timingdir(1:getlen(timingdir)-1)//"/matel.abs.time.dat")
+!!$     call system("date >> "//timingdir(1:getlen(timingdir)-1)//"/matel.abs.time.dat")
   endif
 
 end subroutine all_matel
 
-subroutine all_matel0(matrix_ptr,inspfs1,inspfs2,twoereduced,times)
+recursive subroutine all_matel0(matrix_ptr,inspfs1,inspfs2,twoereduced,times)
   use parameters
   use configptrmod
   implicit none
   Type(CONFIGPTR) :: matrix_ptr
   DATATYPE :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf), twoereduced(reducedpotsize,nspf,nspf)
   integer :: times(*), i,j
+
   call system_clock(i)
   call sparseops_matel(matrix_ptr,inspfs1,inspfs2)
+
   call system_clock(j);  times(1)=times(1)+j-i; i=j
   call pot_matel(matrix_ptr,inspfs1,inspfs2)
+
   call system_clock(j);  times(2)=times(2)+j-i; i=j
   call pulse_matel(matrix_ptr,inspfs1,inspfs2)
+
   call system_clock(j);  times(3)=times(3)+j-i; i=j
   call twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced)
   call system_clock(j);  times(4)=times(4)+j-i
 
-
 end subroutine all_matel0
 
-subroutine twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced)
+recursive subroutine twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced)
   use parameters
   use mpimod
   use configptrmod
   implicit none
   Type(CONFIGPTR) :: matrix_ptr
   DATATYPE :: inspfs1(spfsize,nspf),inspfs2(spfsize,nspf),twoereduced(reducedpotsize,nspf,nspf)
-!  print *, "CALL CALL_TWOE_MATEL", sizeof(matrix_ptr%xtwoematel(:,:,:,:)),sizeof(twoereduced)
+
   call call_twoe_matel(inspfs1,inspfs2,matrix_ptr%xtwoematel(:,:,:,:),twoereduced,timingdir,notiming)
 
   if (parorbsplit.eq.3) then
      call mympireduce(matrix_ptr%xtwoematel(:,:,:,:),nspf**4)
   endif
-
-!  print *, "TWOEMATEL:", matrix_ptr%xtwoematel(1,1,1,1),matrix_ptr%xtwoematel(nspf,nspf,nspf,nspf)
-!  print *, "THAT WAZ TWOEMATEL"
 
 end subroutine twoe_matel
 
@@ -125,9 +120,6 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
   if (parorbsplit.eq.3) then
      call mympireduce(matrix_ptr%xpotmatel(:,:),nspf**2)
   endif
-
-!  print *, "POTMATEL:", matrix_ptr%xpotmatel(:,:)
-!  print *, "THAT WAZ POTMATEL"
 
 end subroutine pot_matel
 
@@ -176,10 +168,6 @@ subroutine pulse_matel(matrix_ptr,inspfs1,inspfs2)
      call mympireduce(matrix_ptr%xpulsematelzz(:,:),nspf**2)
   endif
 
-
-!  print *, "PulseMATEL:", matrix_ptr%xpulsematelxx(:,:)
-!  print *, "THAT WAZ PulseMATEL"
-
 end subroutine pulse_matel
 
 
@@ -203,9 +191,6 @@ subroutine sparseops_matel(matrix_ptr,inspfs1,inspfs2)
 
   call MYGEMM(CNORMCHAR,'N',nspf,nspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfs, spfsize, DATAZERO, matrix_ptr%xopmatel(:,:) ,nspf)
 
-!  print *, "KEMATEL:", matrix_ptr%xopmatel(:,:)
-!  print *, "THAT WAZ KEMATEL"
-
   if (nonuc_checkflag/=1) then
      call noparorbsupport("op_yderiv")
      do ispf=1,nspf
@@ -214,7 +199,6 @@ subroutine sparseops_matel(matrix_ptr,inspfs1,inspfs2)
      call MYGEMM(CNORMCHAR,'N',nspf,nspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfs, &
           spfsize, DATAZERO, matrix_ptr%xymatel(:,:) ,nspf)
   endif
-
 
   if (parorbsplit.eq.3) then
      call mympireduce(matrix_ptr%xopmatel(:,:),nspf**2)
@@ -250,8 +234,6 @@ subroutine op_frozen_exchange(inspfs,outspfs)
 end subroutine op_frozen_exchange
 
 
-
-
 subroutine arbitraryconfig_matel00transpose(onebodymat, smallmatrixtr,topdim)
   use walkmod
   use parameters
@@ -268,10 +250,7 @@ subroutine arbitraryconfig_matel00transpose(onebodymat, smallmatrixtr,topdim)
   smallmatrixtr=0d0; 
 
   do config1=botwalk,topwalk
-
      do iwalk=1,numsinglewalks(config1)
-
-
         if (sparseconfigflag.eq.0) then
            myind=singlewalk(iwalk,config1)
         else
@@ -281,14 +260,10 @@ subroutine arbitraryconfig_matel00transpose(onebodymat, smallmatrixtr,topdim)
              onebodymat(singlewalkopspf(1,iwalk,config1), &
              singlewalkopspf(2,iwalk,config1)) *  &
              singlewalkdirphase(iwalk,config1)
-
      enddo
-
   enddo
 
-
 end subroutine arbitraryconfig_matel00transpose
-
 
 
 
@@ -296,7 +271,6 @@ subroutine arbitraryconfig_matel_doubles00transpose(twobodymat, smallmatrixtr,to
   use walkmod
   use parameters
   implicit none
-
   integer ::    config1, iwalk,topdim,myind
   DATATYPE :: twobodymat(nspf,nspf,nspf,nspf), smallmatrixtr(topdim,botwalk:topwalk)
 
@@ -308,15 +282,12 @@ subroutine arbitraryconfig_matel_doubles00transpose(twobodymat, smallmatrixtr,to
   smallmatrixtr=0d0;
 
   do config1=botwalk,topwalk
-     
      do iwalk=1,numdoublewalks(config1)
-        
         if (sparseconfigflag.eq.0) then
            myind=doublewalk(iwalk,config1)
         else
            myind=iwalk  
         endif
-
         smallmatrixtr(myind,config1)=smallmatrixtr(myind,config1) + &           
              twobodymat(doublewalkdirspf(1,iwalk,config1), &
              doublewalkdirspf(2,iwalk,config1),   &
@@ -330,17 +301,10 @@ end subroutine arbitraryconfig_matel_doubles00transpose
 
 
 
-
-
-
-
-
-
 subroutine assemble_spinconfigmat(outmatrix, matrix_ptr, boflag, nucflag, pulseflag, conflag, time)
   use parameters
   use configptrmod
   implicit none
-  
   Type(configptr) :: matrix_ptr
   DATATYPE ::        outmatrix(spintotrank*numr,spintotrank*numr)
   DATATYPE, allocatable ::        bigmatrix(:,:),halfmatrix(:,:),halfmatrix2(:,:)
@@ -380,7 +344,6 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
   use configptrmod
   use opmod   !! rkemod, proderivmod
   implicit none
-
   integer :: conflag,boflag,nucflag,pulseflag,ir,jr,i
   DATATYPE :: bigconfigmat(numconfig,numr,numconfig,numr), tempmatel(nspf,nspf)
   DATATYPE, allocatable :: tempconfigmat(:,:),tempconfigmat2(:,:),diagmat(:,:,:)
@@ -407,7 +370,6 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
      enddo
 
      call arbitraryconfig_matel_doubles00transpose(matrix_ptr%xtwoematel(:,:,:,:),tempconfigmat,numconfig)
-
      call arbitraryconfig_matel00transpose(matrix_ptr%xpotmatel(:,:),tempconfigmat2,numconfig)
 
      tempconfigmat(:,:) = TRANSPOSE( tempconfigmat(:,:) + tempconfigmat2(:,:) )
@@ -422,7 +384,6 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
   endif
 
   if (conflag==1.and.constraintflag.ne.0) then
-
      tempmatel(:,:)=matrix_ptr%xconmatel(:,:)
      if (tdflag.ne.0) then
         tempmatel(:,:)=tempmatel(:,:)+matrix_ptr%xconmatelxx(:,:)*facs(1)
@@ -437,7 +398,6 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
   endif
 
   if ((pulseflag.eq.1.and.tdflag.eq.1)) then
-
      tempmatel(:,:)= matrix_ptr%xpulsematelxx*facs(1)+ &
           matrix_ptr%xpulsematelyy*facs(2)+ &
           matrix_ptr%xpulsematelzz*facs(3)
@@ -456,8 +416,8 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
 
      !!   for velocity ...  also need derivative operator in bond length for hetero !!!!  TO DO !!!!
 
-        gg=0.25d0
 
+        gg=0.25d0
 
 
      if (velflag.ne.0) then 
@@ -466,7 +426,6 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
         !! xpulsenuc is nuclear dipole, divided by R.    from nucdipvalue.
 
         csum0 = (matrix_ptr%xpulsenuc(1) * facs(1) + matrix_ptr%xpulsenuc(2) * facs(2) + matrix_ptr%xpulsenuc(3) * facs(3) )
-
      endif
      
      do ir=1,numr
@@ -475,12 +434,10 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
         else
            csum=   csum0    !! A-squared !!    no R factor !!
         endif
-        
         do i=1,numconfig
            diagmat(i,i,ir)=diagmat(i,i,ir) + csum 
         enddo
      enddo
-
   endif   !! pulse
 
   do ir=1,numr
@@ -510,8 +467,6 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
 
   deallocate(tempconfigmat,tempconfigmat2,diagmat)
 
-
-
 end subroutine assemble_configmat
 
 
@@ -523,7 +478,6 @@ subroutine assemble_sparsemats(matrix_ptr, sparse_ptr,boflag, nucflag, pulseflag
   use sparseptrmod
   use opmod   !! rkemod, proderivmod
   implicit none
-
   integer :: conflag,boflag,nucflag,pulseflag
   Type(CONFIGPTR) :: matrix_ptr
   Type(SPARSEPTR) :: sparse_ptr
@@ -533,46 +487,28 @@ subroutine assemble_sparsemats(matrix_ptr, sparse_ptr,boflag, nucflag, pulseflag
   endif
 
   if (boflag==1) then
-
      call arbitraryconfig_matel_doubles00transpose(matrix_ptr%xtwoematel(:,:,:,:),sparse_ptr%xpotsparsemattr(:,:),maxdoublewalks)
-
      call arbitraryconfig_matel00transpose(matrix_ptr%xpotmatel(:,:),sparse_ptr%xonepotsparsemattr(:,:),maxsinglewalks)
-
      call arbitraryconfig_matel00transpose(matrix_ptr%xopmatel(:,:),sparse_ptr%xopsparsemattr(:,:),maxsinglewalks)
-
   endif
 
   if (conflag==1.and.constraintflag.ne.0) then
-
      call arbitraryconfig_matel00transpose(matrix_ptr%xconmatel,sparse_ptr%xconsparsemattr,maxsinglewalks)
      if (tdflag.ne.0) then
         call arbitraryconfig_matel00transpose(matrix_ptr%xconmatelxx,sparse_ptr%xconsparsemattrxx,maxsinglewalks)
         call arbitraryconfig_matel00transpose(matrix_ptr%xconmatelyy,sparse_ptr%xconsparsemattryy,maxsinglewalks)
         call arbitraryconfig_matel00transpose(matrix_ptr%xconmatelzz,sparse_ptr%xconsparsemattrzz,maxsinglewalks)
      endif
-
   endif
 
   if ((pulseflag.eq.1.and.tdflag.eq.1)) then
-
      call arbitraryconfig_matel00transpose(matrix_ptr%xpulsematelxx,sparse_ptr%xpulsesparsemattrxx,maxsinglewalks)
      call arbitraryconfig_matel00transpose(matrix_ptr%xpulsematelyy,sparse_ptr%xpulsesparsemattryy,maxsinglewalks)
      call arbitraryconfig_matel00transpose(matrix_ptr%xpulsematelzz,sparse_ptr%xpulsesparsemattrzz,maxsinglewalks)
-     
   endif
-
   if (nonuc_checkflag.eq.0.and.nucflag.eq.1) then
        call arbitraryconfig_matel00transpose(matrix_ptr%xymatel,sparse_ptr%xysparsemattr,maxsinglewalks)
   endif
 
 end subroutine assemble_sparsemats
-
-
-
-
-
-
-
-
-
 

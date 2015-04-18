@@ -1,7 +1,5 @@
 
 
-
-
       function fac ( in )
       integer in, i
       real*8 fac
@@ -23,7 +21,7 @@
 
       double precision  alphadouble, betadouble
       double precision  cx,x
-      logical checknan2real
+!!$      logical checknan2real
 
       alpha=abs(myalpha)
       beta=abs(mybeta)
@@ -33,10 +31,10 @@
 c      write(*,'(10F17.13)'), 69 ,n,alpha,fac(4)
       call jacobi_poly( n, alphadouble, betadouble, x, cx )
 
-      if (checknan2real(cx,1)) then
-         print *, "NAN jacobi!"
-         stop
-      endif
+!!$      if (checknan2real(cx,1)) then
+!!$         print *, "NAN jacobi!"
+!!$         stop
+!!$      endif
 
 
 !      cx = cx/  sqrt(real(2**(alpha+beta+1) * fac( n + alpha ) * 
@@ -47,18 +45,17 @@ c      write(*,'(10F17.13)'), 69 ,n,alpha,fac(4)
      & fac ( n + beta ),8) / real(( 2 * n + alpha + beta+1)  * 
      & fac( n ) * fac ( n + alpha + beta  ),8))
 
-      if (checknan2real(cx,1)) then
-         print *, "NAN jacobi! xx"
-         print *, alpha+beta+1
-         print *, 2**(alpha+beta+1)
-         print *,  fac( n + alpha ) 
-         print *, fac ( n + beta )
-         print *, ( 2 * n + alpha + beta+1) 
-         print *, fac( n ) 
-         print *,  fac ( n + alpha + beta  )
-
-         stop
-      endif
+!!$      if (checknan2real(cx,1)) then
+!!$         print *, "NAN jacobi! xx"
+!!$         print *, alpha+beta+1
+!!$         print *, 2**(alpha+beta+1)
+!!$         print *,  fac( n + alpha ) 
+!!$         print *, fac ( n + beta )
+!!$         print *, ( 2 * n + alpha + beta+1) 
+!!$         print *, fac( n ) 
+!!$         print *,  fac ( n + alpha + beta  )
+!!$         stop
+!!$      endif
 
       end subroutine
 

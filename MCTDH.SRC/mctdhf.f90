@@ -410,12 +410,18 @@ program mctdhf
            call staticvector(bigavector(:,i),totadim)
            call gramschmidt(totadim,i-1,totadim,bigavector(:,:),bigavector(:,i),.false.)
         enddo
-        
+        if (debugflag.gt.0) then
+           call mpibarrier();     OFLWR "CALL ALL MATEL IN MAIN"; CFL;     call mpibarrier()
+        endif
+!! FIRST CALL ALL MATEL (MANY SEGFAULTS HAPPEN HERE)
         call all_matel()
+
+        if (debugflag.gt.0) then
+           call mpibarrier();     OFLWR "AFTER CALL ALL MATEL IN MAIN"; CFL;     call mpibarrier()
+        endif
         allocate(tempvals(mcscfnum))
         call myconfigeig(bigavector,tempvals,mcscfnum,1,min(totread,1),0d0,max(0,improvedrelaxflag-1))
         deallocate(tempvals)
-
      endif  
 
      yyy%cmfpsivec(astart(1):aend(mcscfnum),0) = RESHAPE(bigavector(:,:),(/totadim*mcscfnum/))

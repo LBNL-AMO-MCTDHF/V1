@@ -9,12 +9,12 @@
 
 
 subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
-     bondpoints,bondweights,elecweights,elecradii,numelec )
+     bondpoints,bondweights,elecweights,elecradii,notused )
   use myparams
   use myprojectmod
   implicit none
 
-  integer, intent(in) :: skipflag,numelec
+  integer, intent(in) :: skipflag,notused
   integer ::  i,   spfsloaded,j,ii,jj,k,l,idim
   DATATYPE :: inspfs(totpoints, numspf),pot(totpoints),proderivmod(numr,numr),rkemod(numr,numr),&
        bondpoints(numr),bondweights(numr), elecweights(totpoints),elecradii(totpoints),&
@@ -186,10 +186,10 @@ subroutine init_spfs(inspfs,numloaded)
 
 end subroutine init_spfs
 
-subroutine nucdipvalue(nullrvalue,dipoles)
+subroutine nucdipvalue(notused,dipoles)
   use myparams
   implicit none
-  DATATYPE :: nullrvalue(1),dipoles(3)
+  DATATYPE :: notused(1),dipoles(3)
   dipoles(:)=0d0
 end subroutine nucdipvalue
 

@@ -1,9 +1,10 @@
 
 #include "Definitions.INC"
 
-function qbox(nullint)
+function qbox(notusedint)
   implicit none
-  integer :: qbox,nullint
+  integer :: qbox,notusedint,notusedint2
+  notusedint2=0*notusedint !! avoid warn unused
   qbox=1
 end function qbox
 
@@ -706,10 +707,10 @@ subroutine mult_imzdipole(in, out)
 #ifndef REALGO
   integer :: i
   do i=-mbig,mbig
-  out(:,:,i)=in(:,:,i)*imag((0d0,0d0)+zdipole(:,:))
+  out(:,:,i)=in(:,:,i)*imag(zdipole(:,:))
   enddo
 #else
-  out(:,:,:)=0d0
+  out(:,:,:)=0d0*in(:,:,:) !! avoid warn unused
 #endif
 end subroutine mult_imzdipole
 
@@ -737,15 +738,19 @@ subroutine mult_imxdipole(in, out)
   use myprojectmod
   implicit none
   DATATYPE :: in(numerad,lbig+1,-mbig:mbig), out(numerad,lbig+1,-mbig:mbig)
+#ifndef REALGO
   integer :: i
-
   out(:,:,:)=0d0
   do i=-mbig+1,mbig
-     out(:,:,i)=in(:,:,i-1)*imag((0d0,0d0)+xydipole(:,:))  /2 !!TWOFIX
+     out(:,:,i)=in(:,:,i-1)*imag(xydipole(:,:))  /2 !!TWOFIX
   enddo
   do i=-mbig,mbig-1
-     out(:,:,i)=out(:,:,i)+in(:,:,i+1)*imag((0d0,0d0)+xydipole(:,:))  /2 !!TWOFIX
+     out(:,:,i)=out(:,:,i)+in(:,:,i+1)*imag(xydipole(:,:))  /2 !!TWOFIX
   enddo
+#else
+  out(:,:,:)=0d0*in(:,:,:) !! avoid warn unused
+#endif
+
 end subroutine mult_imxdipole
 
 
@@ -761,7 +766,6 @@ subroutine mult_ydipole(in, out)
   DATATYPE :: in(numerad,lbig+1,-mbig:mbig), out(numerad,lbig+1,-mbig:mbig)
   integer :: i
   out(:,:,:)=0d0
-
   do i=-mbig+1,mbig
      out(:,:,i)=in(:,:,i-1)*xydipole(:,:)*(0d0,1d0)  /2 !!TWOFIX
   enddo
@@ -776,14 +780,18 @@ subroutine mult_imydipole(in, out)
   use myprojectmod
   implicit none
   DATATYPE :: in(numerad,lbig+1,-mbig:mbig), out(numerad,lbig+1,-mbig:mbig)
+#ifndef REALGO
   integer :: i
   out(:,:,:)=0d0
   do i=-mbig+1,mbig
-     out(:,:,i)=in(:,:,i-1)*imag((0d0,0d0)+xydipole(:,:))*(0d0,1d0)  /2 !!TWOFIX
+     out(:,:,i)=in(:,:,i-1)*imag(xydipole(:,:))*(0d0,1d0)  /2 !!TWOFIX
   enddo
   do i=-mbig,mbig-1
-     out(:,:,i)=out(:,:,i)+in(:,:,i+1)*imag((0d0,0d0)+xydipole(:,:))*(0d0,-1d0)  /2 !!TWOFIX
+     out(:,:,i)=out(:,:,i)+in(:,:,i+1)*imag(xydipole(:,:))*(0d0,-1d0)  /2 !!TWOFIX
   enddo
+#else
+  out(:,:,:)=0d0*in(:,:,:) !! avoid warn unused
+#endif
 end subroutine mult_imydipole
 
 !subroutine get_reducedpot0(intwoden,outpot,twoereduced)
@@ -1148,7 +1156,7 @@ end subroutine ugexpand_spfs
 
 
 
-function  etalobatto(n,x, mvalue, etapoints, etaweights)
+function  etalobatto(n,x, mvalue, etapoints, etaweights) !! ok unused
   use myparams
   implicit none
   integer :: mvalue,   n
@@ -1166,7 +1174,7 @@ function  etalobatto(n,x, mvalue, etapoints, etaweights)
 end function etalobatto
 
 
-function  etalobattoint(n,x, mvalue, etapoints, etaweights)
+function  etalobattoint(n,x, mvalue, etapoints, etaweights)  !! ok unused
   use myparams
   implicit none
   integer :: mvalue,   n
@@ -1179,7 +1187,8 @@ function  etalobattoint(n,x, mvalue, etapoints, etaweights)
 end function etalobattoint
 
 
-function  xilobatto(n,x, mvalue, xinumpoints, firstelpts, secondelpts, xipoints, xiweights, xielementsizes,xinumelements,xiflag)
+function  xilobatto(n,x, mvalue, xinumpoints, firstelpts, secondelpts, &   !! ok unused
+     xipoints, xiweights, xielementsizes,xinumelements,xiflag)
   implicit none
   integer :: mvalue, l,el2d, n,num,whichelement,point2d,  xinumpoints, xiflag,xinumelements
   real*8 :: x,lobatto,x2d,lastboundary,xielementsizes(*), firstelpts(*), secondelpts(*)
@@ -1238,7 +1247,8 @@ function  xilobatto(n,x, mvalue, xinumpoints, firstelpts, secondelpts, xipoints,
 end function xilobatto
 
 
-function  xilobattoint(n,x, mvalue, xinumpoints, firstelpts, secondelpts, xipoints, xiweights, xielementsizes,xinumelements,xiflag)
+function  xilobattoint(n,x, mvalue, xinumpoints, firstelpts, secondelpts, xipoints,& 
+     xiweights, xielementsizes,xinumelements,xiflag) !! ok unused
 
   implicit none
 
@@ -1450,19 +1460,20 @@ subroutine imvelmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   use myparams
   use myprojectmod
   implicit none
-
-  integer :: imval, qq, ieta , ixi, i 
-  DATATYPE :: work(lbig+1),spfin(numerad,lbig+1,-mbig:mbig), spfout(numerad,lbig+1,-mbig:mbig)
-  complex*16 :: csum, cfac
+  DATATYPE :: spfin(numerad,lbig+1,-mbig:mbig), spfout(numerad,lbig+1,-mbig:mbig)
   real *8 :: myxtdpot0,myztdpot,myytdpot0,myrhotdpot
+#ifdef REALGO
+  OFLWR "Velocity gauge not available for real time propagation"; CFLST
+  myrhotdpot=myztdpot; myrhotdpot=myytdpot0; myrhotdpot=myxtdpot0
+  spfout(:,:,:)=0d0*spfin(:,:,:)  !! avoid warn unused
+#else
+  integer :: imval, qq, ieta , ixi, i 
+  DATATYPE :: work(lbig+1)
+  complex*16 :: csum, cfac
 
   OFLWR "PROGRAM YPOT IMVELMULTIPLY"; CFLST
 
 !! REMEMBER FACTOR OF /2 !!!!   (TWOFIX)  (checkme)
-
-#ifdef REALGO
-  OFLWR "Velocity gauge not available for real time propagation"; CFLST
-#else
 
   spfout=0d0
   if (abs(myztdpot).gt.1.d-10) then

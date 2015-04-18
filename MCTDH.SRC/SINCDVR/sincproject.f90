@@ -86,23 +86,26 @@ end subroutine get_twoe_new
 
 
 
-subroutine op_yderiv(nullin,nullout)
+subroutine op_yderiv(notused1,notused2)
   use myparams
   implicit none
-  DATATYPE :: nullin(*), nullout(*)
-  OFLWR "WHAT! no op_yderiv atom."; CFLST
+  DATATYPE :: notused1(*), notused2(*)
+  OFLWR "WHAT! no op_yderiv sincdvr, not yet."; CFLST
+  notused1(1)=0*notused2(1)
 end subroutine op_yderiv
-subroutine op_reyderiv(nullin,nullout)
+subroutine op_reyderiv(notused1,notused2)
   use myparams
   implicit none
-  DATATYPE :: nullin(*), nullout(*)
-  OFLWR "WHAT! no op_yderiv atom."; CFLST
+  DATATYPE :: notused1(*), notused2(*)
+  OFLWR "WHAT! no op_yderiv sincdvr, not yet."; CFLST
+  notused1(1)=0*notused2(1)
 end subroutine op_reyderiv
-subroutine op_imyderiv(nullin,nullout)
+subroutine op_imyderiv(notused1,notused2)
   use myparams
   implicit none
-  DATATYPE :: nullin(*), nullout(*)
-  OFLWR "WHAT! no op_yderiv atom."; CFLST
+  DATATYPE :: notused1(*), notused2(*)
+  OFLWR "WHAT! no op_yderiv sincdvr, not yet."; CFLST
+  notused1(1)=0*notused2(1)
 end subroutine op_imyderiv
 
 

@@ -170,22 +170,25 @@ subroutine mult_heonebody0sparse_one(in, out,m2val)
 end subroutine mult_heonebody0sparse_one
 
 
-subroutine op_yderiv(nullin,nullout)
+subroutine op_yderiv(notusedin,notusedout)
   use myparams
   implicit none
-  DATATYPE :: nullin(*), nullout(*)
+  DATATYPE :: notusedin(*), notusedout(*)
   OFLWR "WHAT! no op_yderiv atom."; CFLST
+  notusedout(1)=notusedin(1)
 end subroutine op_yderiv
-subroutine op_reyderiv(nullin,nullout)
+subroutine op_reyderiv(notusedin,notusedout)
   use myparams
   implicit none
-  DATATYPE :: nullin(*), nullout(*)
+  DATATYPE :: notusedin(*), notusedout(*)
   OFLWR "WHAT! no op_yderiv atom."; CFLST
+  notusedout(1)=notusedin(1)
 end subroutine op_reyderiv
-subroutine op_imyderiv(nullin,nullout)
+subroutine op_imyderiv(notusedin,notusedout)
   use myparams
   implicit none
-  DATATYPE :: nullin(*), nullout(*)
+  DATATYPE :: notusedin(*), notusedout(*)
   OFLWR "WHAT! no op_yderiv atom."; CFLST
+  notusedout(1)=notusedin(1)
 end subroutine op_imyderiv
 

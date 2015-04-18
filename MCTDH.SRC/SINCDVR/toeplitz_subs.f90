@@ -191,7 +191,6 @@
 !!$   limitations under the License.
 
 
-
 subroutine myclock(mytime)
   integer :: values(10),mytime
   integer, parameter :: fac(5:8)=(/60*60*1000,60*1000,1000,1/)  !! hour,minute,second,millisecond
@@ -207,11 +206,9 @@ subroutine switchit(out,odddim,dim,howmany)
   if (mod(odddim,2).ne.1) then
      print *, "Switchit error", odddim; stop
   endif
-
   outwork(0:dim,:)=out(-dim:0,:)
   outwork(-dim:-1,:)=out(1:dim,:)
   out(:,:)=outwork(:,:)
-
 end subroutine switchit
 
 subroutine switchit_3d(out,odddim,dim,howmany)
@@ -219,7 +216,6 @@ subroutine switchit_3d(out,odddim,dim,howmany)
   integer, intent(in) :: odddim,dim,howmany
   complex*16 :: out(-dim:dim,-dim:dim,-dim:dim,howmany), outwork(-dim:dim,-dim:dim,-dim:dim,howmany)
   integer :: ii
-
   outwork(:,:,:,:)=out(:,:,:,:)
   do ii=1,3
      call switchit(outwork,odddim,dim,(2*dim+1)**2*howmany)
@@ -229,8 +225,6 @@ subroutine switchit_3d(out,odddim,dim,howmany)
 end subroutine switchit_3d
 
 
-
-
 subroutine switch2(out,odddim,dim,howmany)
   implicit none
   integer, intent(in) :: odddim,dim,howmany
@@ -238,13 +232,10 @@ subroutine switch2(out,odddim,dim,howmany)
   if (mod(odddim,2).ne.1) then
      print *, "Switchit error", odddim; stop
   endif
-
   outwork(1:dim,:)= out(0:dim,:)
   outwork(-dim:0,:)= out(-dim:-1,:)
   out(:,:)=outwork(:,:)
-
 end subroutine switch2
-
 
 
 subroutine switch2_3d(out,odddim,dim,howmany)
@@ -252,7 +243,6 @@ subroutine switch2_3d(out,odddim,dim,howmany)
   integer, intent(in) :: odddim,dim,howmany
   complex*16 :: out(-dim:dim,-dim:dim,-dim:dim,howmany), outwork(-dim:dim,-dim:dim,-dim:dim,howmany)
   integer :: ii
-
   outwork(:,:,:,:)=out(:,:,:,:)
   do ii=1,3
      call switch2(outwork,odddim,dim,(2*dim+1)**2*howmany)
@@ -272,18 +262,27 @@ subroutine all3transpose(in,out,len,howmany)
 end subroutine all3transpose
 
 
-
-
-
-
-
-subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany)
+recursive subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany)
   implicit none
   integer :: totdim,howmany
-  complex*16 :: multvector(2*totdim,2*totdim,2*totdim,howmany), ffback(2*totdim,2*totdim,2*totdim,howmany),&
-       bigcirc(2*totdim,2*totdim,2*totdim)
   real*8 :: rmultvector(2*totdim,2*totdim,2*totdim,howmany), rffback(2*totdim,2*totdim,2*totdim,howmany),&
        rbigcirc(2*totdim,2*totdim,2*totdim)
+  complex*16 :: multvector(2*totdim,2*totdim,2*totdim,howmany), &   !! SEGFAULTS FOR AUTOMATIC
+       ffback(2*totdim,2*totdim,2*totdim,howmany),   bigcirc(2*totdim,2*totdim,2*totdim)
+
+!!$  complex*16, allocatable, save :: multvector(:,:,:,:), ffback(:,:,:,:), bigcirc(:,:,:)
+!!$  integer, save :: savetotdim = -999, savehowmany = -999
+!!$  if (savetotdim.eq.-999) then
+!!$     allocate( multvector(2*totdim,2*totdim,2*totdim,howmany), ffback(2*totdim,2*totdim,2*totdim,howmany),&
+!!$          bigcirc(2*totdim,2*totdim,2*totdim))
+!!$     multvector=0; ffback=0; bigcirc=0
+!!$  else if (savetotdim.ne.totdim.or.savehowmany.ne.howmany) then
+!!$     deallocate(multvector,ffback,bigcirc)
+!!$     allocate( multvector(2*totdim,2*totdim,2*totdim,howmany), ffback(2*totdim,2*totdim,2*totdim,howmany),&
+!!$          bigcirc(2*totdim,2*totdim,2*totdim))
+!!$     multvector=0; ffback=0; bigcirc=0
+!!$  endif
+!!$  savetotdim=totdim; savehowmany=howmany
 
   bigcirc(:,:,:)=rbigcirc(:,:,:)
   multvector(:,:,:,:)=rmultvector(:,:,:,:)
@@ -293,19 +292,34 @@ end subroutine circ3d_sub_real
 
 
 
-subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
+recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
   implicit none
   integer :: totdim,howmany,ii
-  complex*16 :: multvector(2*totdim,2*totdim,2*totdim,howmany), ffmat(2*totdim,2*totdim,2*totdim),ffvec(2*totdim,2*totdim,2*totdim,howmany),&
-       ffprod(2*totdim,2*totdim,2*totdim,howmany),ffback(2*totdim,2*totdim,2*totdim,howmany), ffwork(2*totdim,2*totdim,2*totdim,howmany)
-  complex*16 ::        bigcirc(2*totdim,2*totdim,2*totdim,1,1,1)
+  complex*16 ::  bigcirc(2*totdim,2*totdim,2*totdim,1,1,1), multvector(2*totdim,2*totdim,2*totdim,howmany),&
+       ffback(2*totdim,2*totdim,2*totdim,howmany)
+  complex*16 :: ffmat(2*totdim,2*totdim,2*totdim),ffvec(2*totdim,2*totdim,2*totdim,howmany),&  !!SEGFAULTS 
+       ffprod(2*totdim,2*totdim,2*totdim,howmany), ffwork(2*totdim,2*totdim,2*totdim,howmany)  !!AUTOMATIC
+
+!!$  complex*16, allocatable, save :: ffmat(:,:,:), ffvec(:,:,:,:), ffprod(:,:,:,:), ffwork(:,:,:,:)
+!!$  integer, save :: savetotdim = -999, savehowmany = -999
+!!$  if (savetotdim.eq.-999) then
+!!$     allocate( ffmat(2*totdim,2*totdim,2*totdim),ffvec(2*totdim,2*totdim,2*totdim,howmany),&
+!!$          ffprod(2*totdim,2*totdim,2*totdim,howmany), ffwork(2*totdim,2*totdim,2*totdim,howmany))
+!!$     ffmat=0; ffvec=0; ffprod=0; ffwork=0
+!!$  else if (savetotdim.ne.totdim.or.savehowmany.ne.howmany) then
+!!$     deallocate(ffmat,ffvec,ffprod,ffwork)
+!!$     allocate( ffmat(2*totdim,2*totdim,2*totdim),ffvec(2*totdim,2*totdim,2*totdim,howmany),&
+!!$          ffprod(2*totdim,2*totdim,2*totdim,howmany), ffwork(2*totdim,2*totdim,2*totdim,howmany))
+!!$     ffmat=0; ffvec=0; ffprod=0; ffwork=0
+!!$  endif
+!!$  savetotdim=totdim; savehowmany=howmany
 
 #ifdef MPIFLAG
-  call myzfft3d_mpiwrap(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,1)
   call myzfft3d_mpiwrap(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,howmany)
+  call myzfft3d_mpiwrap(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,1)
 #else
-  call myzfft3d(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,1)
   call myzfft3d(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,howmany)
+  call myzfft3d(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,1)
 #endif
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)  
@@ -317,26 +331,38 @@ subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
 !$OMP END PARALLEL
 
   ffwork(:,:,:,:)=CONJG(ffprod(:,:,:,:))
-
 #ifdef MPIFLAG
   call myzfft3d_mpiwrap(ffwork(:,:,:,:),ffback(:,:,:,:),2*totdim,howmany)
 #else
   call myzfft3d(ffwork(:,:,:,:),ffback(:,:,:,:),2*totdim,howmany)
 #endif
-
   ffback(:,:,:,:)=CONJG(ffback(:,:,:,:))
 
 end subroutine circ3d_sub
 
 
 
-subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,totdim,blocksize,times,howmany)
+recursive subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,totdim,blocksize,times,howmany)
   implicit none
   integer :: totdim,blocksize,times(*),atime,btime,howmany
-  complex*16 :: multvector(2*totdim,2*totdim,2*blocksize,howmany), ffback(2*totdim,2*totdim,2*blocksize,howmany),&
-       bigcirc(2*totdim,2*totdim,2*blocksize)
   real*8 :: rmultvector(2*totdim,2*totdim,2*blocksize,howmany), rffback(2*totdim,2*totdim,2*blocksize,howmany),&
        rbigcirc(2*totdim,2*totdim,2*blocksize)
+  complex*16 :: multvector(2*totdim,2*totdim,2*blocksize,howmany), &  !! SEGFAULTS FOR AUTOMATIC
+        ffback(2*totdim,2*totdim,2*blocksize,howmany),  bigcirc(2*totdim,2*totdim,2*blocksize)
+
+!!$  complex*16,allocatable,save  :: multvector(:,:,:,:), ffback(:,:,:,:), bigcirc(:,:,:)
+!!$  integer, save :: savetotdim = -999, savehowmany = -999
+!!$  if (savetotdim.eq.-999) then
+!!$     allocate( multvector(2*totdim,2*totdim,2*blocksize,howmany), ffback(2*totdim,2*totdim,2*blocksize,howmany),&
+!!$          bigcirc(2*totdim,2*totdim,2*blocksize))
+!!$     multvector=0; ffback=0; bigcirc=0
+!!$  else if (savetotdim.ne.totdim.or.savehowmany.ne.howmany) then
+!!$     deallocate(multvector,ffback,bigcirc)
+!!$     allocate( multvector(2*totdim,2*totdim,2*blocksize,howmany), ffback(2*totdim,2*totdim,2*blocksize,howmany),&
+!!$          bigcirc(2*totdim,2*totdim,2*blocksize))
+!!$     multvector=0; ffback=0; bigcirc=0
+!!$  endif
+!!$  savetotdim=totdim; savehowmany=howmany
 
   call myclock(atime)
   bigcirc(:,:,:)=rbigcirc(:,:,:)
@@ -359,27 +385,30 @@ end subroutine circ3d_sub_real_mpi
 recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,times,howmany)
   implicit none
   integer :: totdim,blocksize,times(*),atime,btime,howmany,ii
-  complex*16 :: multvector(2*totdim,2*totdim,2*blocksize,howmany), ffmat(2*totdim,2*totdim,2*blocksize),&
-       ffvec(2*totdim,2*totdim,2*blocksize,howmany),  ffprod(2*totdim,2*totdim,2*blocksize,howmany),&
-       ffback(2*totdim,2*totdim,2*blocksize,howmany), ffwork(2*totdim,2*totdim,2*blocksize,howmany)
-  complex*16 ::        bigcirc(2*totdim,2*totdim,2*blocksize,1,1,1)
+  complex*16 ::  multvector(2*totdim,2*totdim,2*blocksize,howmany),  bigcirc(2*totdim,2*totdim,2*blocksize,1,1,1), &
+       ffback(2*totdim,2*totdim,2*blocksize,howmany)
+  complex*16 :: ffmat(2*totdim,2*totdim,2*blocksize), &  !! SEGFAULTS FOR AUTOMATIC
+       ffwork(2*totdim,2*totdim,2*blocksize,howmany), &
+       ffvec(2*totdim,2*totdim,2*blocksize,howmany),  ffprod(2*totdim,2*totdim,2*blocksize,howmany)
 
-!$OMP PARALLEL
-!$OMP MASTER
-  multvector(1,1,1,1)=0; multvector(2*totdim,2*totdim,2*blocksize,howmany)=0
-  ffmat(1,1,1)=0; ffmat(2*totdim,2*totdim,2*blocksize)=0
-  ffvec(1,1,1,1)=0; ffvec(2*totdim,2*totdim,2*blocksize,howmany)=0
-  ffback(1,1,1,1)=0; ffback(2*totdim,2*totdim,2*blocksize,howmany)=0
-  ffwork(1,1,1,1)=0; ffwork(2*totdim,2*totdim,2*blocksize,howmany)=0
-  ffprod(1,1,1,1)=0; ffprod(2*totdim,2*totdim,2*blocksize,howmany)=0
-!$OMP END MASTER
-!$OMP BARRIER
-!$OMP END PARALLEL
+!!$  complex*16, allocatable,save :: ffmat(:,:,:), ffwork(:,:,:,:), ffvec(:,:,:,:), ffprod(:,:,:,:)
+!!$  integer, save :: savetotdim = -999, savehowmany = -999
+!!$  if (savetotdim.eq.-999) then
+!!$     allocate( ffmat(2*totdim,2*totdim,2*blocksize), ffwork(2*totdim,2*totdim,2*blocksize,howmany), &
+!!$          ffvec(2*totdim,2*totdim,2*blocksize,howmany),  ffprod(2*totdim,2*totdim,2*blocksize,howmany))
+!!$     ffmat=0; ffvec=0; ffprod=0; ffwork=0
+!!$  else if (savetotdim.ne.totdim.or.savehowmany.ne.howmany) then
+!!$     deallocate(ffmat,ffwork,ffvec,ffprod)
+!!$     allocate( ffmat(2*totdim,2*totdim,2*blocksize), ffwork(2*totdim,2*totdim,2*blocksize,howmany), &
+!!$          ffvec(2*totdim,2*totdim,2*blocksize,howmany),  ffprod(2*totdim,2*totdim,2*blocksize,howmany))
+!!$     ffmat=0; ffvec=0; ffprod=0; ffwork=0
+!!$  endif
+!!$  savetotdim=totdim; savehowmany=howmany
 
 #ifdef MPIFLAG
 
-  call myzfft3d_par(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,2*blocksize,times,1)
   call myzfft3d_par(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,2*blocksize,times,howmany)
+  call myzfft3d_par(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,2*blocksize,times,1)
 
   call myclock(atime)
 
@@ -393,9 +422,7 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,t
 
   ffwork(:,:,:,:)=CONJG(ffprod(:,:,:,:))
   call myclock(btime); times(6)=times(6)+btime-atime
-
   call myzfft3d_par(ffwork(:,:,:,:),ffback(:,:,:,:),2*totdim,2*blocksize,times,howmany)
-
   call myclock(atime)
   ffback(:,:,:,:)=CONJG(ffback(:,:,:,:))
   call myclock(btime); times(6)=times(6)+btime-atime
@@ -403,11 +430,7 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,t
 #else
   print *, "ACKKKK!!! MPIFLAG NOT SET"; stop
 #endif
-
 end subroutine circ3d_sub_mpi
-
-
-
 
 
 subroutine toeplitz1d_sub(bigvector,smallmultvector,outvector,totdim,howmany)
@@ -415,20 +438,13 @@ subroutine toeplitz1d_sub(bigvector,smallmultvector,outvector,totdim,howmany)
   integer :: totdim,howmany
   complex*16 :: multvector(2*totdim,howmany),&
        outvector(totdim,howmany),smallmultvector(totdim,howmany),&
-       bigcirc(2*totdim,1), ffback(2*totdim,howmany), &
-       bigvector(1-totdim:totdim-1)
-
+       bigcirc(2*totdim,1), ffback(2*totdim,howmany),     bigvector(1-totdim:totdim-1)
   bigcirc(:,:)=0d0
-  
   bigcirc(2:totdim*2,1)=bigvector(:)
-  
   multvector(:,:)=0d0
   multvector(1:totdim,:)=smallmultvector(:,:)
-
   call circ1d_sub(bigcirc,multvector,ffback,totdim,howmany)
-
   outvector(:,:)=ffback(totdim+1:2*totdim,:)
-  
 end subroutine toeplitz1d_sub
 
 subroutine toeplitz1d_sub_real(bigvector,smallmultvector,outvector,totdim,howmany)
@@ -436,23 +452,14 @@ subroutine toeplitz1d_sub_real(bigvector,smallmultvector,outvector,totdim,howman
   integer :: totdim,howmany
   real*8 :: bigvector(1-totdim:totdim-1), &
        outvector(totdim,howmany),smallmultvector(totdim,howmany)
-  complex*16 :: multvector(2*totdim,howmany), &
-       bigcirc(2*totdim,1), ffback(2*totdim,howmany)
-
+  complex*16 :: multvector(2*totdim,howmany),   bigcirc(2*totdim,1), ffback(2*totdim,howmany)
   bigcirc(:,:)=0d0
-  
   bigcirc(2:totdim*2,1)=bigvector(:)
-  
   multvector(:,:)=0d0
   multvector(1:totdim,:)=smallmultvector(:,:)
-
   call circ1d_sub(bigcirc,multvector,ffback,totdim,howmany)
-
   outvector(:,:)=real(ffback(totdim+1:2*totdim,:),8)
-  
 end subroutine toeplitz1d_sub_real
-
-
 
 
 subroutine circ1d_sub(bigcirc,multvector,ffback,totdim,howmany)
@@ -461,21 +468,15 @@ subroutine circ1d_sub(bigcirc,multvector,ffback,totdim,howmany)
   complex*16 :: multvector(2*totdim,howmany), ffmat(2*totdim),ffvec(2*totdim,howmany),&
        ffprod(2*totdim,howmany),ffback(2*totdim,howmany), ffwork(2*totdim,howmany)
   complex*16 ::        bigcirc(2*totdim,1)
-  
   call myzfft1d(bigcirc(:,:),ffmat(:),2*totdim,1)
   call myzfft1d(multvector(:,:),ffvec(:,:),2*totdim,howmany)
-
   do ii=1,howmany
      ffprod(:,ii)=ffvec(:,ii)*ffmat(:)/(2*totdim)
   enddo
-
   ffwork(:,:)=CONJG(ffprod(:,:))
   call myzfft1d(ffwork(:,:),ffback(:,:),2*totdim,howmany)
   ffback(:,:)=CONJG(ffback(:,:))
-  
 end subroutine circ1d_sub
-
-
 
 
 !! OLD VERSION WITH SHIFT ATTE MPT AT BOTTOM OF FILE
@@ -483,45 +484,36 @@ end subroutine circ1d_sub
 !! myrank is indexed 1:nprocs
 
 module bothblockmod
-  integer :: nprocs=-1,dim=-1,myrank=-1,maxblocksize=-1
+  integer :: nprocs=-1,dim=-1,myrank=-1
   integer, allocatable :: mpiblocks(:),mpiblockend(:),mpiblockstart(:)
 end module bothblockmod
 
 
-
 #ifdef FFTWFLAG
-
 
 recursive subroutine myzfft1d(in,out,dim,howmany)
   implicit none
   integer, intent(in) :: dim,howmany
   complex*16, intent(in) :: in(dim,howmany)
   complex*16, intent(out) :: out(dim,howmany)
-
   call fftw1dfftsub(in,out,dim,howmany)
-
 end subroutine myzfft1d
 
 
-subroutine myzfft3d(in,out,indim,howmany)
+recursive subroutine myzfft3d(in,out,indim,howmany)
   use bothblockmod
   implicit none
   integer :: indim,howmany
   complex*16, intent(in) :: in(dim,dim,dim,howmany)
   complex*16, intent(out) :: out(dim,dim,dim,howmany)
-
   if (dim.ne.indim) then
      print *, "WRONG INIT FFTW3D",dim,indim;stop
   endif
-
   call fftw3dfftsub(in,out,howmany)
-
 end subroutine myzfft3d
 
+
 #else
-
-
-
 
 recursive subroutine myzfft1d(in,out,dim,howmany)
   implicit none
@@ -530,9 +522,7 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
   complex*16, intent(in) :: in(dim,howmany)
   complex*16, intent(out) :: out(dim,howmany)
   complex*16 :: wsave(4*dim+15,howmany)   ! MAKE BIGGER IF SEGFAULT... iffy
-
   out(:,:)=in(:,:)
-
 !$OMP PARALLEL DEFAULT(PRIVATE) SHARED(in,out,dim,howmany,wsave)
 !$OMP DO SCHEDULE(STATIC)
   do k=1,howmany
@@ -550,27 +540,21 @@ subroutine myzfft3d(in,out,indim,howmany)
   integer :: indim,howmany
   complex*16, intent(in) :: in(dim,dim,dim,howmany)
   complex*16, intent(out) :: out(dim,dim,dim,howmany)
-  complex*16 :: work(dim,dim,dim,howmany)
+  complex*16 :: work(dim,dim,dim,howmany)  !! AUTOMATIC
   integer :: ii,i
-
   if (dim.ne.indim) then
      print *, "WRONG INIT",dim,indim;stop
   endif
-
   out(:,:,:,:)=in(:,:,:,:)
-
   do ii=1,3
      call myzfft3d_oneblock(out,work,dim,howmany)
      do i=1,dim
         out(:,:,i,:)=work(i,:,:,:)
      enddo
   enddo
-  
 end subroutine myzfft3d
 
 #endif
-
-
 
 
 module littlestartmod
@@ -591,11 +575,9 @@ subroutine setblock(innprocs,inmyrank,indims)
   if (myrank.eq.0) then
      print *, "WRONG CONVENTION."; stop
   endif
-
   if (indims(2).ne.indims(3).or.indims(1).ne.indims(2)) then
      print *, "Only all dims equal for now", indims; stop
   endif
-
   dim=indims(1)
   allocate(mpiblocks(nprocs),mpiblockend(nprocs),mpiblockstart(nprocs))
   mpiblockstart(1)=1
@@ -605,18 +587,11 @@ subroutine setblock(innprocs,inmyrank,indims)
         mpiblockstart(i+1)=mpiblockend(i)+1
      endif
   enddo
-  maxblocksize = (-1)
   do i=1,nprocs
      mpiblocks(i)=mpiblockend(i)-mpiblockstart(i)+1
-     if (mpiblocks(i).gt.maxblocksize) then
-        maxblocksize=mpiblocks(i)
-     endif
   enddo
-
-
   mystart=mpiblockstart(myrank)
   mysize=mpiblocks(myrank)
-
 end subroutine setblock
 
 
@@ -648,7 +623,6 @@ recursive subroutine myzfft3d_oneblock(in,out,insize,howmany)
 end subroutine myzfft3d_oneblock
 
 
-
 #ifdef FFTWFLAG
 
 
@@ -661,17 +635,14 @@ recursive subroutine fftw3dfftsub(in,out,howmany)
   type(C_PTR),save :: plan
   integer,save :: icalled=0
   complex*16 :: in(dim,dim,dim,howmany),out(dim,dim,dim,howmany)
-
   if (icalled.eq.0) then
      plan=fftw_plan_dft_3d(dim,dim,dim,in(:,:,:,1),out(:,:,:,1),FFTW_FORWARD,FFTW_EXHAUSTIVE) 
   endif
   icalled=1
-
   do ii=1,howmany
      call fftw_execute_dft(plan, in(:,:,:,ii),out(:,:,:,ii))
   enddo
 !!$  call fftw_destroy_plan(plan)
-
 end subroutine fftw3dfftsub
 
 
@@ -681,11 +652,9 @@ end subroutine fftw3dfftsub
 
 subroutine fftw3dfftsub_mpi(in,out,indim,insize,howmany)
   use, intrinsic :: iso_c_binding
-  use mpi
   use bothblockmod
   use littlestartmod
   include 'fftw3-mpi.f03'
-
   integer :: indim,insize,howmany
   integer, save :: icalled=0
   integer(C_INTPTR_T) :: alloc_local,LL,MM,SS
@@ -693,7 +662,6 @@ subroutine fftw3dfftsub_mpi(in,out,indim,insize,howmany)
   complex*16,intent(out) :: out(dim,dim,mysize/dim**2,howmany)
   type(C_PTR),save :: plan, cdata
   complex(C_DOUBLE_COMPLEX), pointer :: data(:,:,:)
-
   if (myrank.eq.1) then
      print *, "GO FFTW MPI SUB."
   endif
@@ -737,11 +705,10 @@ end subroutine fftw3dfftsub_mpi
 
 #endif
 
-subroutine fftw1dfftsub(in,out,dim,howmany)
+recursive subroutine fftw1dfftsub(in,out,dim,howmany)
   use, intrinsic :: iso_c_binding
   implicit none
   include "fftw3.f03"
-
   integer, intent(in) :: dim,howmany
   integer, parameter :: maxplans=3
   type(C_PTR),save :: plans(maxplans)
@@ -792,117 +759,71 @@ end subroutine fftw1dfftsub
 
 #ifdef MPIFLAG
 
-module transposemod
-!!
-!! generalized transpose subroutine adapted from sinc DVR two-electron
-!!     demonstration programs SamTranspose / BigTranspose
-!!     sent to C Yang, JRJ, S Williams 5/22/2013
-!!
-!!  djh 01 12 2015
-!!
-
-
-!! This is, I don't know, a "generalized transpose"
-!!
-!!  M(a,b,c,d,e) -> m(e,a,b,c,d)   last index (e first, d second) is length myblocksize
-!!     others are length isize
-!!
-
-!!   (blockdim,blockdim   ,myblocksize)  dimensions
-!!   (blockdim,jblocksize, myblocksize)  send
-!!   (blockdim,myblocksize,iblocksize)  receive 
-!!   (blockdim,myblocksize,blockdim) assemble
-!!   (blockdim,blockdim,myblocksize) transpose (1,2,3)->(3,1,2)
-
-!! mytranspose subroutine below is not the best way.
-!!    in fact maybe it is the worst way?
-!! obv. I could be doing several at a time i.e. for e.g. 5 or 6
-!! dimensions (ndim) I am doing 5 or 6 transposes whereas I
-!! need only do two.  I would just need to make the inverse
-!! of the following function for the second transpose.
-
-contains
 
 !! times(1) = transpose   times(2) = mpi  times(3) = copy
+!! This is 3D specific
+!!   (123) -> (312)
 
-recursive subroutine mytranspose(in,out,blockdim,xmiddledim,myblocksize,xmaxblocksize,myrank,nprocs,times,howmany)
-  use mpi
+module mytransposemod
+contains
+
+
+  recursive subroutine mytranspose(in,out,blocksize,howmany,times)
+  use bothblockmod
   implicit none
-  integer,intent(in) :: myrank,nprocs,myblocksize,xmaxblocksize,blockdim,xmiddledim,howmany
+  integer,intent(in) :: blocksize,howmany
   integer,intent(inout) :: times(3)
-       
-  complex*16,intent(in) :: in(blockdim,blockdim,myblocksize,howmany)
-  complex*16 :: intranspose(blockdim,myblocksize,myblocksize,howmany,nprocs)
-  complex*16 :: outtemp(blockdim,myblocksize,myblocksize,howmany,nprocs)
-  complex*16,intent(out) :: out(blockdim,blockdim,myblocksize,howmany)
-  integer :: ierr=0,atime,btime
-  integer :: i,count,ii
+  complex*16,intent(in) :: in(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
+  complex*16 :: inchop(nprocs*blocksize,blocksize,blocksize,howmany)  !!AUTOMATIC
+  complex*16,intent(out) :: out(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
+  integer :: atime,btime,i,count,ii,totsize,iproc
+  complex*16 :: intranspose(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)  !!AUTOMATIC
+  complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)      !!AUTOMATIC
 
-  if (xmiddledim.ne.blockdim) then
-     print *, "ONLY ALL SAME PLEASE middle",xmiddledim,blockdim;stop
-  endif
-  if (xmaxblocksize.ne.myblocksize) then
-     print *, "ONLY ALL SAME PLEASE",myrank,xmaxblocksize,myblocksize; stop
-  endif
-  if (myblocksize*nprocs.ne.blockdim) then
-     print *, "NOT UNDERSTAAND",nprocs,myblocksize,blockdim; stop
-  endif
-   
+  totsize=blocksize*nprocs
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!    (123)->(312)    !!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  
   call myclock(atime)
+  
+!!$  if (myrank.eq.1) print *, "TEMP NO OMP TRANSPOSE"
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,count,ierr,ii)
-!$OMP MASTER
-  intranspose(blockdim,myblocksize,myblocksize,howmany,nprocs)=0;  intranspose(1,1,1,1,1)=0
-  outtemp(blockdim,myblocksize,myblocksize,howmany,nprocs)=0; outtemp(1,1,1,1,1)=0
-!$OMP END MASTER
-!$OMP BARRIER
-
-!! YEAH THIS OMP HELPS BIGTIME
-!$OMP DO SCHEDULE(STATIC)
-  do ii=1,howmany
-     do i=1,myblocksize
-        intranspose(:,i,:,ii,:)=RESHAPE(transpose(in(:,:,i,ii)),(/blockdim,myblocksize,nprocs/))
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i,iproc)
+  do iproc=1,nprocs
+     inchop(:,:,:,:)=in(:,(iproc-1)*blocksize+1:iproc*blocksize,:,:)
+!$OMP DO SCHEDULE(DYNAMIC)
+     do ii=1,howmany
+        do i=1,blocksize
+           intranspose(:,:,i,ii,iproc)=TRANSPOSE(inchop(:,i,:,ii))
+        enddo
      enddo
-  enddo
 !$OMP END DO
-
-!! *** OMP BARRIER ***
-
-!$OMP BARRIER
-
-!$OMP MASTER
-  call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
-
-  count=myblocksize**2 * blockdim * howmany
-  call mpi_alltoall(intranspose(:,:,:,:,:),count,MPI_DOUBLE_COMPLEX,outtemp(:,:,:,:,:),count,MPI_DOUBLE_COMPLEX,MPI_COMM_WORLD,ierr)
-  if (ierr.ne.0) then
-     print *, "ALLTOALL ERR ", ierr,myrank,nprocs;     stop
-  endif
-  call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
-!$OMP END MASTER
-
-!! *** OMP BARRIER ***
-
-!$OMP BARRIER
-
-!$OMP DO SCHEDULE(STATIC)
-  do ii=1,howmany
-     do i=1,nprocs
-        out(:,(i-1)*myblocksize+1:i*myblocksize,:,ii)=outtemp(:,:,:,ii,i)
-     enddo
   enddo
-!$OMP END DO
-! (Implied barrier at end parallel)
+! (implied barrier at end)
 !$OMP END PARALLEL
 
-  call myclock(btime); times(3)=times(3)+btime-atime;
+ call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+  
+  count=blocksize**2 * totsize * howmany
+  
+  call mympialltoall_complex(intranspose,outtemp,count)
+  
+ call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
+  
+  do iproc=1,nprocs
+     out((iproc-1)*blocksize+1:iproc*blocksize,:,:,:)=outtemp(:,:,:,:,iproc)
+  enddo
 
+  call myclock(btime); times(3)=times(3)+btime-atime;
+  
 end subroutine mytranspose
 
 end module  
+  
 
-
-subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
+recursive subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
   use littlestartmod
   use bothblockmod
   implicit none
@@ -964,16 +885,18 @@ end subroutine myzfft3d_mpiwrap
 !!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
   
 recursive subroutine myzfft3d_par(in,out,indim,inblockdim,times,howmany)
-  use transposemod
   use bothblockmod
   use littlestartmod
+  use mytransposemod
   implicit none
   integer, intent(in) :: indim,inblockdim,howmany
   complex*16, intent(in) :: in(dim,dim,mysize/dim**2,howmany)
   complex*16, intent(out) :: out(dim,dim,mysize/dim**2,howmany)
   integer, intent(inout) :: times(8)
-  complex*16 :: mywork(dim,dim,mysize/dim**2,howmany),tempout(dim,dim,mysize/dim**2,howmany)
   integer :: ii,atime,btime
+  complex*16 :: mywork(dim,dim,mysize/dim**2,howmany),tempout(dim,dim,mysize/dim**2,howmany)
+!!$  complex*16, allocatable, save :: mywork(:,:,:,:), tempout(:,:,:,:)
+!!$  integer, save :: savehowmany = -999
 
   call myclock(atime)
 
@@ -991,18 +914,22 @@ recursive subroutine myzfft3d_par(in,out,indim,inblockdim,times,howmany)
      print *, "MYSIZE/blocks disagree",mysize,mpiblocks(myrank),myrank,nprocs;stop
   endif
 
+!!$  if (savehowmany.eq.-999) then
+!!$     allocate(mywork(dim,dim,mysize/dim**2,howmany),tempout(dim,dim,mysize/dim**2,howmany))
+!!$     mywork=0; tempout=0
+!!$  else if (savehowmany.ne.howmany) then
+!!$     if (myrank.eq.1) print *, "fDEALLOCATING",myrank,howmany,savehowmany 
+!!$     deallocate(mywork,tempout)
+!!$     allocate(mywork(dim,dim,mysize/dim**2,howmany),tempout(dim,dim,mysize/dim**2,howmany))
+!!$     mywork=0; tempout=0
+!!$  endif
+!!$  savehowmany=howmany
+
+
 #ifdef MPIFFTW
   call fftw3dfftsub_mpi(in,out,indim,mysize/dim**2,howmany)
   return
 #else
-
-!$OMP PARALLEL
-!$OMP MASTER
-mywork(1,1,1,1)=0; tempout(1,1,1,1)=0
-mywork(dim,dim,mysize/dim**2,howmany)=0; tempout(dim,dim,mysize/dim**2,howmany)=0
-!$OMP END MASTER
-!$OMP BARRIER
-!$OMP END PARALLEL
 
   tempout(:,:,:,:)=in(:,:,:,:)
 
@@ -1018,19 +945,14 @@ mywork(dim,dim,mysize/dim**2,howmany)=0; tempout(dim,dim,mysize/dim**2,howmany)=
      mywork(:,:,:,:)=tempout(:,:,:,:)*10
 #endif
 
-  call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
-
+     call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
+     
 !!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
-
-   call mytranspose(&
-        mywork,  &
-        tempout,  &
-        dim,  &
-        dim,  &
-        mpiblocks(myrank)/dim**2,  &
-        maxblocksize/dim**2,  &
-        myrank,  &
-        nprocs,times(3),howmany)
+     call mytranspose(&
+          mywork,  &
+          tempout,  &
+          mysize/dim**2, &
+          howmany,times(3:))
   enddo
   out(:,:,:,:)=tempout(:,:,:,:)
 

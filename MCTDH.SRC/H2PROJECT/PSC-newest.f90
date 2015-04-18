@@ -376,11 +376,11 @@ end subroutine pro_ham
 
 !! NOT A FUNCTION OF rvalue YET - still using easy prolate coords only - need to work on it
 
-subroutine nucdipvalue(rvalue,dipoles)
+subroutine nucdipvalue(rvaluenotused,dipoles)
   use myparams
   implicit none
   real*8 :: nucfac
-  DATATYPE :: rvalue(1),dipoles(3)
+  DATATYPE :: rvaluenotused(1),dipoles(3)
 
   nucfac=( (1.d0-mass_asym)*NucCharge2 - (1.d0+mass_asym)*NucCharge1 )/2.d0
   dipoles(:)=0d0
@@ -590,6 +590,7 @@ subroutine xi_init(points,weights,points2d,ketot, numpoints,numelements,elements
        xivals(numpoints+numextra,numelements,gridpoints), xi_test(gridpoints,gridpoints), &
        xi_vects(gridpoints,gridpoints), xi_vals(gridpoints) 
   DATAECS :: cweight, sum, sum2, sum3, sum4, sum5
+  i=celement; sum=ecstheta !! avoid warn unused
 
   if (evenodd.ne.0.and.evenodd.ne.1) then
      print *, "evenodd error", evenodd
@@ -859,7 +860,6 @@ end subroutine prolate_init
 subroutine prolate_init_new(points,weights, numpoints,numelements,elementsize,gridpoints,start, prolate_derivs, ketot, celement, ecstheta)
   use myparams
   implicit none
-
   integer, parameter :: numextra=20
   integer :: numpoints,numelements,gridpoints, one=1, two=2, izero=0, i,j,k,l,jj,kk, qq, celement, extraorder
   DATAECS ::  prolate_derivs(gridpoints,gridpoints)
@@ -867,10 +867,9 @@ subroutine prolate_init_new(points,weights, numpoints,numelements,elementsize,gr
   real*8 ::  elementsize,start,   endpoints(2)=[-1.0d0,1.0d0],  zero = 0.0, ecstheta, rsum, rsum2
   real*8, allocatable :: firstderiv(:,:), ke(:,:), points2d(:), weights2d(:), scratch(:), &  
        extrapoints0(:), extraweights0(:), rvals0(:,:), firstder(:,:)
-
-
   DATAECS, allocatable :: extrapoints(:,:), extraweights(:,:), rvals(:,:,:), firstdertot(:,:,:), &
        cextrapoints(:,:), cextraweights(:,:)
+  i=celement; sum=ecstheta !! avoid warn unused
 
   extraorder=numpoints+numextra
 

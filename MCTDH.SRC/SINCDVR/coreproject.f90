@@ -327,7 +327,7 @@ subroutine mexpand_spfs() !inspfs,outspfs,numspf,spfmvals)
 print *, "NOT APPLICABLE MEXPAND SINCDVR"; stop
 end subroutine mexpand_spfs
 
-subroutine velmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
+recursive subroutine velmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   use myparams
   implicit none
   DATATYPE :: spfin(totpoints),spfout(totpoints),myxtdpot0,myytdpot0,myztdpot,&
@@ -435,13 +435,8 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
 
   allocate( reducedwork3d(gridsize(1),gridsize(2),gridsize(3),numspf,numspf), &
        twoeden03(numpoints(1),numpoints(2),numpoints(3)), tempden03(numpoints(1),numpoints(2),numpoints(3)))
-  
-!$OMP PARALLEL
-!$OMP MASTER
   twoereduced(:,:,:)=0d0
-  reducedwork3d(:,:,:,:,:)=0d0;
-!$OMP END MASTER
-!$OMP END PARALLEL
+  reducedwork3d(:,:,:,:,:)=0d0; tempden03(:,:,:)=0
 
   call myclock(jtime); times(1)=times(1)+jtime-itime;  
 
@@ -451,6 +446,9 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
      allocate(reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf),&
        reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf),&
        twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3)))
+     reducedhuge(:,:,:,:,:,:,:)=0
+     reducedtemp(:,:,:,:)=0
+     twoeden03big(:,:,:,:)=0
 
 #ifdef MPIFLAG  
      if (.not.orbparflag) then
@@ -464,21 +462,11 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
         if (.not.localflag) then
            allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),nbox(3)*2,numspf))  
         else
-#endif
            allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf))  
-#ifdef MPIFLAG
         endif
      endif
 #endif
-     
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP MASTER
-     twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf)=0;twoeden03huge(1,1,1,1,1,1,1)=0
-     reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf)=0;reducedhuge(1,1,1,1,1,1,1)=0
-     reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf)=0;reducedtemp(1,1,1,1)=0
-!$OMP END MASTER
-!$OMP BARRIER
-!$OMP END PARALLEL
+     twoeden03huge(:,:,:,:,:,:,:)=0
 
      call myclock(jtime); times(1)=times(1)+jtime-itime;  
 
@@ -537,18 +525,16 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
            endif
         else
 #endif
-
            call myclock(itime)
            twoeden03huge(:,:,:,:,:,:,spf2a)=0d0; 
            twoeden03huge(:,1,:,1,:,1,spf2a)=twoeden03(:,:,:)
            call myclock(jtime); times(1)=times(1)+jtime-itime;
-           
+
 #ifdef MPIFLAG
         endif  !! orbparflag
 #endif
 
      enddo  !! spf2a
-
 
 #ifdef MPIFLAG
      if (localflag) then
@@ -765,7 +751,7 @@ end subroutine call_twoe_matel
 
 !! NOW ONLY OUTPUTS ONE. CALL IN LOOP. FOR OPENMPI TRY.
 
-subroutine mult_reducedpot(inspfs,outspf,whichspf,reducedpot)
+recursive subroutine mult_reducedpot(inspfs,outspf,whichspf,reducedpot)
   use myparams
   implicit none
 
@@ -891,7 +877,7 @@ subroutine get_one_dipole(out,idim,whichbox,nnn,mmm)
 end subroutine get_one_dipole
 
 
-subroutine mult_ke(in, out,howmany,timingdir,notiming)
+recursive subroutine mult_ke(in, out,howmany,timingdir,notiming)
   use myparams
   implicit none
   integer :: howmany,notiming
@@ -905,7 +891,7 @@ subroutine mult_ke(in, out,howmany,timingdir,notiming)
 end subroutine mult_ke
 
 
-subroutine mult_ke_toep(in, out,howmany)
+recursive subroutine mult_ke_toep(in, out,howmany)
   use myparams
   use myprojectmod
   implicit none
@@ -915,6 +901,8 @@ subroutine mult_ke_toep(in, out,howmany)
   DATATYPE, allocatable :: bigin(:,:,:,:,:,:,:),bigout(:,:,:,:,:,:,:),mywork(:,:)
   DATATYPE, allocatable, save :: bigke(:,:,:), hugeke(:,:,:)
   integer, save :: allocated=0
+
+  OFLWR "Dont use toepflag=2.  Is stupid as currently done."; CFLST
 
 #ifndef MPIFLAG
   if (orbparflag) then
@@ -1022,7 +1010,7 @@ subroutine mult_ke_toep(in, out,howmany)
 end subroutine mult_ke_toep
 
 
-subroutine mult_ke_old(in, out,howmany,timingdir,notiming)
+recursive subroutine mult_ke_old(in, out,howmany,timingdir,notiming)
   use myparams
   implicit none
   integer :: howmany,notiming
@@ -1031,7 +1019,7 @@ subroutine mult_ke_old(in, out,howmany,timingdir,notiming)
   call mult_allpar(in,out,1,howmany,timingdir,notiming)
 end subroutine mult_ke_old
 
-subroutine mult_xderiv(in, out,howmany)
+recursive subroutine mult_xderiv(in, out,howmany)
   use myparams
   implicit none
   integer :: howmany
@@ -1040,7 +1028,7 @@ subroutine mult_xderiv(in, out,howmany)
   call mult_allpar(in,out,2,howmany,timingdir,2)
 end subroutine mult_xderiv
 
-subroutine mult_yderiv(in, out,howmany)
+recursive subroutine mult_yderiv(in, out,howmany)
   use myparams
   implicit none
   integer :: howmany
@@ -1049,7 +1037,7 @@ subroutine mult_yderiv(in, out,howmany)
   call mult_allpar(in,out,3,howmany,timingdir,2)
 end subroutine mult_yderiv
 
-subroutine mult_zderiv(in, out,howmany)
+recursive subroutine mult_zderiv(in, out,howmany)
   use myparams
   implicit none
   integer :: howmany
@@ -1063,7 +1051,8 @@ recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
   use myparams
   implicit none
   integer :: idim,inoption,option,howmany,notiming
-  DATATYPE :: in(totpoints,howmany), out(totpoints,howmany), temp(totpoints,howmany)
+  DATATYPE :: in(totpoints,howmany), out(totpoints,howmany), &
+       temp(totpoints,howmany)   !! AUTOMATIC
   logical :: dodim(3)
   character :: timingdir*(*)
 
@@ -1142,7 +1131,7 @@ recursive subroutine mult_summa_z(in, out,option,howmany,timingdir,notiming)
   integer :: nnn,option,ii,howmany,totsize
   DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
        out(numpoints(1)*numpoints(2),numpoints(3),howmany), &
-       work(numpoints(1)*numpoints(2),numpoints(3),howmany)
+       work(numpoints(1)*numpoints(2),numpoints(3),howmany)  !! AUTOMATIC
   integer :: times(10),atime,btime,notiming,getlen,ibox
   character :: timingdir*(*)
   integer, save :: xcount=0
@@ -1218,7 +1207,7 @@ recursive subroutine mult_reduce_z(in, out,option,howmany,timingdir,notiming)
   integer :: nnn,option,ii,howmany,totsize
   DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
        out(numpoints(1)*numpoints(2),numpoints(3),howmany), &
-       work(numpoints(1)*numpoints(2),numpoints(3),howmany)
+       work(numpoints(1)*numpoints(2),numpoints(3),howmany)  !! AUTOMATIC
   integer :: times(10),atime,btime,notiming,getlen,ibox
   character :: timingdir*(*)
   integer, save :: xcount=0
@@ -1279,9 +1268,6 @@ end subroutine mult_reduce_z
 
 
 
-
-
-
 recursive subroutine mult_circ_z(in, out,option,howmany,timingdir,notiming)
   use myparams
   use myprojectmod  
@@ -1289,8 +1275,8 @@ recursive subroutine mult_circ_z(in, out,option,howmany,timingdir,notiming)
   integer :: nnn,option,ii,howmany,totsize
   DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
        out(numpoints(1)*numpoints(2),numpoints(3),howmany), &
-       work(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       work2(numpoints(1)*numpoints(2),numpoints(3),howmany)
+       work(numpoints(1)*numpoints(2),numpoints(3),howmany),&  !! AUTOMATIC
+       work2(numpoints(1)*numpoints(2),numpoints(3),howmany)   !! AUTOMATIC
   integer :: times(10),atime,btime,notiming,getlen,ibox,jbox,deltabox
   character :: timingdir*(*)
   integer, save :: xcount=0
@@ -1361,7 +1347,7 @@ end subroutine mult_circ_z
 
 
 
-subroutine mult_allone(in, out,idim,option,ibox,jbox,howmany)
+recursive subroutine mult_allone(in, out,idim,option,ibox,jbox,howmany)
   use myparams
   implicit none
   integer :: mmm,idim,nnn,jdim,option,ibox,jbox,howmany
@@ -1401,7 +1387,7 @@ subroutine mult_allone(in, out,idim,option,ibox,jbox,howmany)
 end subroutine mult_allone
 
 
-subroutine mult_all0(in, out,ibox,jbox,idim,nnn,mmm,option)
+recursive subroutine mult_all0(in, out,ibox,jbox,idim,nnn,mmm,option)
   use myparams
   use myprojectmod  
   implicit none

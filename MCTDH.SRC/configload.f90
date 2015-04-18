@@ -390,11 +390,11 @@ end subroutine readavectorsubroutine
 
 !! N electron wfn, no conversion
 
-subroutine readavectorsubsimple(readconfig, outavector,nullint)
+subroutine readavectorsubsimple(readconfig, outavector,notusedint)
   use parameters
   use aarrmod
   implicit none
-  integer :: i,nullint,phase,reorder,readconfig(ndof),config2,thisconfig(ndof),getconfiguration
+  integer :: i,notusedint,phase,reorder,readconfig(ndof),config2,thisconfig(ndof),getconfiguration
   logical :: allowedconfig
   DATATYPE :: outavector(numconfig)
 

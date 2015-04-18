@@ -299,5 +299,5 @@ subroutine nucdipvalue(nullrvalue,dipoles)
   use myparams
   implicit none
   DATATYPE :: nullrvalue(1),dipoles(3)
-  dipoles(:)=0d0
+  dipoles(:)=0d0*nullrvalue(1)  !! avoid warn unused
 end subroutine nucdipvalue

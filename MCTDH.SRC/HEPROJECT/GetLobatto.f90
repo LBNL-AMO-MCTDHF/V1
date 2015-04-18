@@ -19,6 +19,7 @@ subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,numele
        firstdertot(numpoints+numextra,numelements,gridpoints), ketot(gridpoints,gridpoints), points(gridpoints), &
        weights(gridpoints),  xi_derivs(gridpoints,gridpoints),xi_rhoderivs(gridpoints,gridpoints), &
        xivals(numpoints+numextra,numelements,gridpoints),  cweight, sum
+  i=celement; sum=ecstheta !! avoid warn unused
 
   if (evenodd.ne.0.and.evenodd.ne.1) then
      print *, "evenodd error", evenodd

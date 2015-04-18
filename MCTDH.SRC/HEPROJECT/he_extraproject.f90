@@ -126,7 +126,7 @@ function cylindricalvalue(radpoint, thetapoint,nullrvalue,mvalue, invector)
   real*8 :: radpoint,thetapoint,nullrvalue, angularlobatto
   DATAECS :: radiallobatto
   integer :: mvalue, ixi,lvalue
-  sum=0.d0
+  sum=0.d0*nullrvalue !! avoid warn unused
   do ixi=1,numerad
      do lvalue=1,lbig+1
         sum=sum + &
@@ -264,8 +264,8 @@ function interpolate(radpoint, thetapoint,nullrvalue,mvalue, ixi,lvalue)
   real*8 :: radpoint,thetapoint, angularlobattoint,nullrvalue
   DATAECS :: radiallobattoint
   integer :: mvalue, ixi,lvalue
-  sum=0.d0
-  sum=sum +        radiallobattoint(ixi,radpoint, mvalue) *       angularlobattoint(lvalue,thetapoint, mvalue) 
+  sum=0.d0* nullrvalue !! avoid warn unused
+  sum=sum +    radiallobattoint(ixi,radpoint, mvalue) * angularlobattoint(lvalue,thetapoint, mvalue)
   interpolate=sum
 end function interpolate
 
@@ -298,10 +298,8 @@ function radiusvalue(spfindex,notused)
   use myprojectmod
   implicit none
   integer :: spfindex,ir
-  DATATYPE :: radiusvalue, notused
-
+  DATATYPE :: radiusvalue, notused,notused2
+  notused2=notused*0 !! avoid warn unused
   ir=mod(spfindex-1,numerad)+1
-
   radiusvalue=glpoints(ir+1)
-
 end function radiusvalue

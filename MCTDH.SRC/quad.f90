@@ -103,10 +103,10 @@ end subroutine dgsolve0
 
 
 
- subroutine quadoperate(nullint,inspfs,outspfs)
+ subroutine quadoperate(notusedint,inspfs,outspfs)
    use parameters
    implicit none
-   integer :: nullint
+   integer :: notusedint
    DATATYPE ::  inspfs(totspfdim), outspfs(totspfdim)
 
 ! !  quadcalled=quadcalled+1
@@ -230,12 +230,12 @@ subroutine quadpreconsq(nullint, inavector,outavector)
   call quadpreconsub(nullint, jtempaa,outavector);  outavector=conjg((0d0,0d0)+outavector)
 end subroutine quadpreconsq
 
-subroutine quadpreconsub(nullint, inavector,outavector)
+subroutine quadpreconsub(notusedint, inavector,outavector)
   use parameters
   use aaonedmod
   use xxxmod
   implicit none
-  integer :: nullint
+  integer :: notusedint
   DATATYPE :: inavector(totadim), outavector(totadim),tempvector(totadim)
 
   tempvector=inavector
@@ -281,13 +281,13 @@ subroutine aamultconjg(nullint,inavector,outavector)
   outavector=conjg((0d0,0d0)+outavector)  
 end subroutine aamultconjg
 
-subroutine aamult(nullint, inavector0,outavector)
+subroutine aamult(notusedint, inavector0,outavector)
   use parameters
   use xxxmod
   use aaonedmod
   implicit none
-  integer :: nullint
-  DATATYPE :: inavector(numconfig,numr), outavector(numconfig,numr), dot  ,jacaatemp(numconfig,numr), &
+  integer :: notusedint
+  DATATYPE :: inavector(numconfig,numr), outavector(numconfig,numr),jacaatemp(numconfig,numr), &
        inavector0(numconfig, numr)
 
   inavector(:,:)=inavector0(:,:)
@@ -781,11 +781,11 @@ subroutine paraamult_transpose_spin_padded(nullint,inavectortrspin,outavectortrs
 end subroutine paraamult_transpose_spin_padded
 
 
-subroutine paraamult_transpose_spin(nullint,inavectortrspin,outavectortrspin)
+subroutine paraamult_transpose_spin(notusedint,inavectortrspin,outavectortrspin)
   use parameters
   implicit none
 
-  integer :: nullint
+  integer :: notusedint
   DATATYPE :: inavectortrspin(numr,spinstart:spinend), outavectortrspin(numr,spinstart:spinend)
   DATATYPE :: inavectortr(numr,botwalk:topwalk), outavectortr(numr,botwalk:topwalk)
 
@@ -829,13 +829,13 @@ subroutine paraamult_transpose_padded(nullint, inavectortr,outavectortr)
 end subroutine paraamult_transpose_padded
 
 
-subroutine paraamult_transpose(nullint, inavectortr,outavectortr)
+subroutine paraamult_transpose(notusedint, inavectortr,outavectortr)
   use parameters
   use xxxmod
   use aaonedmod
   implicit none
-  integer :: nullint
-  DATATYPE :: inavectortr(numr,botwalk:topwalk), outavectortr(numr,botwalk:topwalk), pardot , &
+  integer :: notusedint
+  DATATYPE :: inavectortr(numr,botwalk:topwalk), outavectortr(numr,botwalk:topwalk) , &
        jacaatemptr(numr,botwalk:topwalk),jacaalittletr(numr,botwalk:topwalk), jacaamultlittletr(numr,botwalk:topwalk)
 
   jacaalittletr(:,:)=TRANSPOSE(jacaa(botwalk:topwalk,:)); jacaamultlittletr(:,:)=TRANSPOSE(jacaamult(botwalk:topwalk,:))
@@ -867,11 +867,11 @@ subroutine parquadpreconsub_transpose_spin_padded(nullint,inavectortrspin,outave
 end subroutine parquadpreconsub_transpose_spin_padded
 
 
-subroutine parquadpreconsub_transpose_spin(nullint,inavectortrspin,outavectortrspin)
+subroutine parquadpreconsub_transpose_spin(notusedint,inavectortrspin,outavectortrspin)
   use parameters
   implicit none
 
-  integer :: nullint
+  integer :: notusedint
   DATATYPE :: inavectortrspin(numr,spinstart:spinend), outavectortrspin(numr,spinstart:spinend)
   DATATYPE :: inavectortr(numr,botwalk:topwalk),outavectortr(numr,botwalk:topwalk)
 
@@ -902,12 +902,12 @@ subroutine parquadpreconsub_transpose_padded(nullint, inavectortr,outavectortr)
 end subroutine parquadpreconsub_transpose_padded
 
 
-subroutine parquadpreconsub_transpose(nullint, inavectortr,outavectortr)
+subroutine parquadpreconsub_transpose(notusedint, inavectortr,outavectortr)
   use parameters
   use aaonedmod
   use xxxmod
   implicit none
-  integer :: nullint
+  integer :: notusedint
   DATATYPE :: inavectortr(numr,botwalk:topwalk), outavectortr(numr,botwalk:topwalk),tempvector(botwalk:topwalk,numr), &
        tempvectortr(numr,botwalk:topwalk),tempvectortr2(numr,botwalk:topwalk),outavector(botwalk:topwalk,numr)
 

@@ -61,7 +61,6 @@ subroutine myprojectalloc()
   use myparams
   use myprojectmod  
   implicit none
-
   allocate( usualke(rgridpoints,rgridpoints) , usualke2(rgridpoints,rgridpoints) )
   allocate( usualvects(rgridpoints,rgridpoints,0:mbig) ,usualvals(rgridpoints,0:mbig) )
   allocate( xiKE(xigridpoints, xigridpoints,0:max(mbig+2,mseriesmax+1)) )
@@ -105,12 +104,13 @@ subroutine myprojectalloc()
   endif
   allocate( rmatrix(numerad,numerad,mseriesmax+1,lseriesmax+1)   )
   allocate(ylmvals(0:2*mbig, 1:lbig+1, lseriesmax+1))
-
 end subroutine myprojectalloc
+
 
 subroutine myprojectdealloc()
 implicit none
 end subroutine myprojectdealloc
+
 
 subroutine get_twoe_new()
   use myparams
@@ -119,7 +119,7 @@ subroutine get_twoe_new()
 
   DATAECS, allocatable :: work(:),kearray(:,:,:,:), invkearray(:,:,:,:)
   integer, allocatable :: ipiv(:)
-  logical :: checknan2, checknan2real
+!!$  logical :: checknan2, checknan2real
   integer ::  j1a,lsum,deltam,  i,k,ii,m,j, lwork, info
   complex*16 :: pval(mseriesmax+1,lseriesmax+mseriesmax+1, xigridpoints), &
        qval(mseriesmax+1,lseriesmax+mseriesmax+1, xigridpoints), pder(mseriesmax+1,lseriesmax+mseriesmax+1), &
@@ -162,7 +162,6 @@ subroutine get_twoe_new()
      do m=0,mseriesmax
         
         ii=numerad
-        
         kearray(:,:,m+1,i+1) = xike(1:xigridpoints-1,1:xigridpoints-1,m) * (-2.0d0)
 
 !! factor removed from xike.
@@ -175,46 +174,44 @@ subroutine get_twoe_new()
         do j=1,numerad
            invkearray(j,j,m+1,i+1) = invkearray(j,j,m+1,i+1) - (i+m)*(i+m+1) 
         enddo
-        if (checknan2(invkearray(:,:,m+1,i+1),ii*ii)) then
-           print *, "NAN KE!!  Lindex=",i+1," Mindex=", m;call mpistop()
-        endif
+!!$        if (checknan2(invkearray(:,:,m+1,i+1),ii*ii)) then
+!!$           print *, "NAN KE!!  Lindex=",i+1," Mindex=", m;call mpistop()
+!!$        endif
         
         call MYGETRF(ii,ii,invkearray(:,:,m+1,i+1),ii,ipiv,info)
         if (info/=0) then
            OFLWR "dgetrf info ", info;CFLST
         endif
-        
-        if (checknan2(invkearray(:,:,m+1,i+1),ii*ii)) then
-           print *, "NAN INVKE 1!!  Lindex=",i+1," Mindex=", m+1;       stop
-        endif
+!!$        if (checknan2(invkearray(:,:,m+1,i+1),ii*ii)) then
+!!$           print *, "NAN INVKE 1!!  Lindex=",i+1," Mindex=", m+1;       stop
+!!$        endif
+
         call MYGETRI(ii,invkearray(:,:,m+1,i+1),ii,ipiv,work,lwork,info)
-        
-        if (checknan2(invkearray(:,:,m+1,i+1),ii*ii)) then
-           print *, "NAN INVKE 2!!  Lindex=",i+1," Mindex=", m+1
-           stop
-        endif
         if (info/=0) then
            OFLWR "dgetri info ", info;CFLST
         endif
+!!$        if (checknan2(invkearray(:,:,m+1,i+1),ii*ii)) then
+!!$           print *, "NAN INVKE 2!!  Lindex=",i+1," Mindex=", m+1
+!!$           stop
+!!$        endif
 
         do j=1,numerad
            do k=1,numerad
-              
               surface =  (-1.d0)**(m+1) * pval(m+1,i+m+1,j) * pval(m+1,i+m+1,k) * qval(m+1,i+m+1,xigridpoints) &
                    / pval(m+1,i+m+1,xigridpoints)
-              if (checknan2(surface,1)) then
-                 print *, "NAN SURFACE!! ";       stop
-              endif
+!!$              if (checknan2(surface,1)) then
+!!$                 print *, "NAN SURFACE!! ";       stop
+!!$              endif
               wronsk = 2**(2*m) * dgamma( real( i+m + m + 2 ,8)/2.d0 ) * dgamma( real( i+m + m + 1 ,8)/2.d0 ) / &
                    dgamma( real( i+m - m + 2 ,8)/2.d0 ) / dgamma( real( i+m - m + 1 ,8)/2.d0 )
               wronsk=wronsk*floatfac(i+m - m)/floatfac(i+m+m)
               rmatrix(j,k,m+1,i+1) = wronsk / (sqrt(xiweights(j)*xiweights(k))) * invkearray(j,k,m+1,i+1) + surface
            enddo
         enddo
-        if (checknan2(rmatrix(:,:,m+1,i+1),numerad*numerad)) then
-           print *, "NAN RMATRIX!!  Lindex=",i+1," Mindex=", m+1
-           stop
-        endif
+!!$        if (checknan2(rmatrix(:,:,m+1,i+1),numerad*numerad)) then
+!!$           print *, "NAN RMATRIX!!  Lindex=",i+1," Mindex=", m+1
+!!$           stop
+!!$        endif
      enddo
   enddo
   
@@ -230,9 +227,9 @@ subroutine get_twoe_new()
         enddo
      enddo
   enddo
-  if (checknan2real(ylmvals,(2*mbig+1)*(lbig+1)*lseriesmax+1)) then
-     print *, "NAN ylmvals!";     stop
-  endif
+!!$  if (checknan2real(ylmvals,(2*mbig+1)*(lbig+1)*lseriesmax+1)) then
+!!$     print *, "NAN ylmvals!";     stop
+!!$  endif
   deallocate(ipiv,work,kearray,invkearray)
   OFLWR "   ...done.";CFL
 
@@ -242,6 +239,7 @@ subroutine get_twoe_new()
   endif
 
 end subroutine get_twoe_new
+
 
 subroutine op_lsquaredone(in,out,m2val)   !! right now used just to check operators.
   use myparams
@@ -271,7 +269,6 @@ end subroutine
 
 !! kind=1: lplus; 2, lminus 
 
-
 #ifndef REALGO
 #define XXMVXX zgemv 
 #define XXBBXX zgbmv 
@@ -279,7 +276,6 @@ end subroutine
 #define XXMVXX dgemv 
 #define XXBBXX dgbmv 
 #endif
-
 
 subroutine op_lplusminus_one_sparse(in,out,inkind,m2val)
   use myparams
@@ -336,7 +332,6 @@ subroutine op_yderiv(in,out)
   use myprojectmod
   use myparams
   implicit none
-
   DATATYPE, intent(in) :: in(numerad,lbig+1,-mbig:mbig)
   DATATYPE, intent(out) :: out(numerad,lbig+1,-mbig:mbig)
   integer ::  ixi, ieta, i,m2val
@@ -368,7 +363,6 @@ subroutine op_reyderiv(in,out)
   use myprojectmod
   use myparams
   implicit none
-
   DATATYPE, intent(in) :: in(numerad,lbig+1,-mbig:mbig)
   DATATYPE, intent(out) :: out(numerad,lbig+1,-mbig:mbig)
   integer ::  ixi, ieta, i,m2val
@@ -400,7 +394,6 @@ subroutine op_imyderiv(in,out)
   use myprojectmod
   use myparams
   implicit none
-
   DATATYPE, intent(in) :: in(numerad,lbig+1,-mbig:mbig)
   DATATYPE, intent(out) :: out(numerad,lbig+1,-mbig:mbig)
   integer ::  ixi, ieta, i,m2val
@@ -422,15 +415,8 @@ subroutine op_imyderiv(in,out)
      do ieta=1,lbig+1
         call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),(0d0,0d0)+imag((0d0,0d0)+sparseyops_xi_banded(:,:,ieta,abs(m2val)+1)),i, in(:,ieta,m2val),1,(1.d0,0.d0), out(:,ieta,m2val), 1)
      enddo
-  
      out(:,:,m2val) = out(:,:,m2val) - imag((0d0,0d0)+sparseyops_diag(:,:,abs(m2val)+1)) * in(:,:,m2val) 
   enddo
 
 end subroutine op_imyderiv
-
-
-
-
-
-
 

@@ -379,36 +379,22 @@ subroutine jacoperate(inspfs,outspfs)
 
 end subroutine jacoperate
 
-!! keepme
+!! KEEPME
 function checknan2(input,size)
   implicit none
-  integer :: size
+  integer :: size,i
   logical :: checknan2
   DATATYPE :: input(size)
-!  do i=1,size
-!  if (input(i).eq.input(i)+1) then
-!    checknan2=.true.
-!    return
-!  endif
-!  enddo
+  do i=1,size
+  if (input(i).eq.input(i)+1) then
+    checknan2=.true.
+    return
+  endif
+  enddo
   checknan2=.false.
 end function
 
 
-!! keepme
-function checknan2real(input,size)
-  implicit none
-  integer :: size
-  logical :: checknan2real
-  DATATYPE :: input(size)
-!  do i=1,size
-!  if (input(i).eq.input(i)+1) then
-!    checknan2=.true.
-!    return
-!  endif
-!  enddo
-  checknan2real=.false.
-end function
 
 
 

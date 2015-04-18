@@ -4,7 +4,8 @@
 subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
   use parameters
   implicit none 
-  integer :: inprintflag,printflag,guessflag,order,maxdim,vdim,i,mytop,mybot, calcsize
+  integer, intent(in) :: order,inprintflag,guessflag
+  integer :: printflag,maxdim,vdim,i,mytop,mybot, calcsize
   DATATYPE, intent(out) :: outvalues(order)
   DATATYPE :: outvectors(numconfig,numr,order)
   DATATYPE, allocatable :: tempoutvectorstr(:,:,:),outvectorstr(:,:,:), &
@@ -183,20 +184,22 @@ end subroutine nullgramschmidt_fast
 
 !! TAKES TRANSPOSES AS INPUT AND OUTPUT
 
-subroutine parblockconfigmult_transpose(inavectortr,outavectortr)
+recursive subroutine parblockconfigmult_transpose(inavectortr,outavectortr)
   use parameters
   use mpimod
   use xxxmod
   implicit none
-  DATATYPE :: inavectortr(numr,botwalk:topwalk), outavectortr(numr,botwalk:topwalk)
-  integer,save :: allochere=0
-  DATATYPE,save,allocatable :: intemptr(:,:), ttvector(:,:), ttvector2(:,:)
   integer :: ir
+  DATATYPE :: inavectortr(numr,botwalk:topwalk), outavectortr(numr,botwalk:topwalk)
+  DATATYPE :: intemptr(numr,numconfig), ttvector(numconfig,numr), ttvector2(botwalk:topwalk,numr)
 
-  if (allochere.eq.0) then
-     allocate(intemptr(numr,numconfig), ttvector(numconfig,numr), ttvector2(botwalk:topwalk,numr))
-  endif
-  allochere=1
+!!$  integer,save :: allochere=0
+!!$  DATATYPE,save,allocatable :: intemptr(:,:), ttvector(:,:), ttvector2(:,:)
+!!$  if (allochere.eq.0) then
+!!$     allocate(intemptr(numr,numconfig), ttvector(numconfig,numr), ttvector2(botwalk:topwalk,numr))
+!!$  endif
+!!$  allochere=1
+
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parblockconfigmult_transpose"; CFLST
   endif
@@ -223,22 +226,25 @@ subroutine parblockconfigmult_transpose(inavectortr,outavectortr)
 end subroutine parblockconfigmult_transpose
 
 
-subroutine parblockconfigmult_transpose_spin(inavectortrspin,outavectortrspin)
+recursive subroutine parblockconfigmult_transpose_spin(inavectortrspin,outavectortrspin)
   use parameters
   use mpimod
   use xxxmod
   implicit none
-  DATATYPE :: inavectortrspin(numr,spinrank), outavectortrspin(numr,spinrank)
-  integer,save :: allochere=0
-  DATATYPE,save,allocatable :: intemptr(:,:), ttvector(:,:), ttvector2(:,:), &
-       ttvectorspin(:,:), ttvector2spin(:,:)
   integer :: ir
+  DATATYPE :: inavectortrspin(numr,spinrank), outavectortrspin(numr,spinrank)
+  DATATYPE :: intemptr(numr,spintotrank), ttvector(numconfig,numr), ttvector2(botwalk:topwalk,numr), &
+       ttvectorspin(spintotrank,numr), ttvector2spin(spinrank,numr)
 
-  if (allochere.eq.0) then
-     allocate(intemptr(numr,spintotrank), ttvector(numconfig,numr), ttvector2(botwalk:topwalk,numr), &
-       ttvectorspin(spintotrank,numr), ttvector2spin(spinrank,numr))
-  endif
-  allochere=1
+!!$  integer,save :: allochere=0
+!!$  DATATYPE,save,allocatable :: intemptr(:,:), ttvector(:,:), ttvector2(:,:), &
+!!$       ttvectorspin(:,:), ttvector2spin(:,:)
+!!$  if (allochere.eq.0) then
+!!$     allocate(intemptr(numr,spintotrank), ttvector(numconfig,numr), ttvector2(botwalk:topwalk,numr), &
+!!$       ttvectorspin(spintotrank,numr), ttvector2spin(spinrank,numr))
+!!$  endif
+!!$  allochere=1
+
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parblockconfigmult_transpose"; CFLST
   endif
@@ -275,15 +281,14 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
        thislanblocknum, thisdim,ii,nfirst,nlast,myrank,nprocs
   external :: multsub
   DATATYPE, intent(out) :: outvalues(numout)  
+  DATATYPE, intent(inout) :: outvectors(outvectorlda,numout)
   real*8 :: error(numout),lanthresh, stopsum,rsum,nextran
-  DATATYPE :: alpha(lanblocknum,lanblocknum),beta(lanblocknum,lanblocknum), &
-       lanham(lanblocknum,order,lanblocknum,order),&
-       laneigvects(lanblocknum,order,order*lanblocknum),csum, &
-       values(order*lanblocknum), thisdot ,nulldot , &
-       outvectors(outvectorlda,numout), hdot, & 
-       lastvalue(numout), thisvalue(numout), valdot(numout),normsq(numout), &
-       templanham(lanblocknum*order,lanblocknum*order), &
-       nullvector1(1), nullvector2(1)
+  DATATYPE :: alpha(lanblocknum,lanblocknum),beta(lanblocknum,lanblocknum), csum, &
+       thisdot ,nulldot , hdot,        nullvector1(1), nullvector2(1) , &
+       lastvalue(numout), thisvalue(numout), valdot(numout),normsq(numout)
+!! made these allocatable to fix lawrencium segfault 04-15
+  DATATYPE, allocatable  ::       lanham(:,:,:,:),      laneigvects(:,:,:),&
+       values(:),       templanham(:,:)
   DATATYPE, allocatable :: betas(:,:,:),betastr(:,:,:)
 !! made these allocatable to fix carver segfault djh 03-30-15
   DATATYPE, allocatable :: &   
@@ -302,14 +307,18 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
        initvectors(maxlansize,lanblocknum),  invector(maxlansize), multvectors(maxlansize,lanblocknum), &
        lanvects(maxlansize,lanblocknum,order), tempvectors(maxlansize,numout), &
        lanmultvects(maxlansize,lanblocknum,order), tempvectors2(maxlansize,numout))
+  initvectors=0d0; invector=0d0; multvectors=0d0; lanvects=0d0; tempvectors=0d0; 
+  lanmultvects=0d0; tempvectors2=0d0
+  allocate( &
+       lanham(lanblocknum,order,lanblocknum,order),&
+       laneigvects(lanblocknum,order,order*lanblocknum), &
+       values(order*lanblocknum), &
+       templanham(lanblocknum*order,lanblocknum*order))
+  lanham=0d0; laneigvects=0d0; values=0d0; templanham=0d0
 
   printflag=inprintflag
 
-  alpha=0; beta=0;  values=0
-  lanham=0;  laneigvects=0; 
-  initvectors=0; invector=0; multvectors=0; lanvects=0d0;
-
-  lastvalue(:)=1d10;  thisvalue(:)=1d9
+  lastvalue(:)=1d10;  thisvalue(:)=1d9;   alpha=0; beta=0;
 
   call rand_init(1731.d0) 
 
@@ -630,6 +639,8 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
   enddo
 
   deallocate(  initvectors,invector,multvectors, lanvects, tempvectors, lanmultvects,tempvectors2)
+
+  deallocate( lanham,       laneigvects,       values,       templanham)
 
 end subroutine blocklanczos0
 
