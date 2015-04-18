@@ -4,16 +4,15 @@
 FIRST DISTRIBUTION VERSION.  MPI FFT for mean fields.
 
 For the moment, please watch the commits to stay notified about bug fixes:
-     https://github.com/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT/commits/master
+     https://github.com/LBNL-AMO-MCTDHF/V1.00/commits/master
 
 Possible workflow described below for mac.
 Example subdirectories now all renamed with -clean extensions.
 So you may proceed as described for mac; when you perform a git pull, the -clean
    subdirectories will be updated, and you can carry the updates to any new
    subdirectories you have created within EXAMPLES.
-You may also of course create new subdirectories within the .git working
-   directory (V1.0BETA.030315.INTELFFT, renamed V1.0 in the example workflow
-   for mac below)
+You may also create new subdirectories within the .git working
+   directory "V1.00" (which you may rename).
 The idea is that you can work entirely within the directory that you clone and to
    which you pull, not copy the git distribution elsewhere for compilation, for
    instance, and this is described below for mac.  You may or may not wish to do 
@@ -52,12 +51,14 @@ MPI ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3
 On Mac: minimal demonstration
 
 FIRST:
-     git clone https://github.com/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT
-     mv V1.0BETA.030315.INTELFFT V1.0     ...if you want
-     cd V1.0
+     git clone https://github.com/LBNL-AMO-MCTDHF/V1.00 master
+        ( or e.g.
+     git clone https://github.com/LBNL-AMO-MCTDHF/V1.00 v1.02 )
+     mv V1.00 V1.00.firsttry     ...if you want
+     cd V1.00.firsttry
      mkdir MYRUNS         ...if you want, for instance
  
-THEN perform each step in this V1.0 working directory
+THEN perform each step in this V1.00.firsttry working directory
 
 1)   mv COMPDIRS/*mac* .
      rm -r COMPDIRS/*
@@ -90,9 +91,9 @@ B)   cp -R -p METHANE.abs.0.40186.75pts-clean METHANE.abs.0.40186.75pts
      ./gnu.abs.here
 
 If you want to update the code and -clean examples subdirectories then perform 
-step 4, like steps 1-3, in the V1.0 working directory,
+step 4, like steps 1-3, in the V1.00 working directory,
 
-4)   git pull https://github.com/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT
+4)   git pull https://github.com/LBNL-AMO-MCTDHF/V1.00 master
      ... then ./Makeme should be sufficient, in the BIN directories,
          but ./Makeme clean; ./Makeme would certainly be fail safe
          after updating the code with git pull.
