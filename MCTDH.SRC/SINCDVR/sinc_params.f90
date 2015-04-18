@@ -33,6 +33,11 @@ integer :: orblanorder=500         !! krylov order for block lanczos orbital cal
 integer :: orblancheckmod=10         !! check every
 real*8 :: orblanthresh=1d-4
 
+integer :: capflag=0            !! add complex absorbing potential to one-elec Hamiltonian
+real*8  :: capstart=30d0        !! radius in bohr
+real*8  :: capstrength=0.001d0  !! atomic units (hartree)
+integer :: cappower=2           !! V_CAP = (-i) * capstrength * r^cappower  (r>capstart)
+
 !! XXSNIPXX 
 !! INTERNAL
 

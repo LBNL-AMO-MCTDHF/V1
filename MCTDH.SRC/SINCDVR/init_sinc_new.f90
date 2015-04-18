@@ -69,6 +69,12 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   call get_pot(pot(:))
   call get_rad(elecradii(:))
 
+#ifndef REALGO
+  if (capflag.ne.0) then
+     pot(:)=pot(:) + capstrength * (0d0,-1d0) * max(0d0,real(elecradii(:),8)-capstart)**cappower
+  endif
+#endif
+
   call get_dipoles()
 
   call get_twoe_new(pot)
