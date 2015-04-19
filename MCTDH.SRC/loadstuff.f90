@@ -178,19 +178,30 @@ end subroutine load_spfs
 
 subroutine load_spfs0(inspfs, inspfdims, innspf, dimtypes, infile, numloaded)
   use fileptrmod
+  use mpimod
   implicit none
   character :: infile*(*)
   integer :: inspfdims(3), innspf,readdims(3),readnspf, dimtypes(3),numloaded,readcflag,myiostat
   DATATYPE :: inspfs(inspfdims(1),inspfdims(2),inspfdims(3),innspf)
 
-  open(999,file=infile, status="unknown", form="unformatted",iostat=myiostat)
+  if (myrank.eq.1) then
+     open(999,file=infile, status="unknown", form="unformatted",iostat=myiostat)
+  endif
+  call mympiibcastone(myiostat,1)
 
   if (myiostat.ne.0) then
      OFLWR "File ",infile," not found for spf read."; CFLST
   endif
-  call spf_header_read(999,readdims,readnspf,readcflag)
-  call spf_read0(999,innspf,inspfdims,readnspf,readdims,readcflag,dimtypes,inspfs)
-  close(999)
+  if (myrank.eq.1) then
+     call spf_header_read(999,readdims,readnspf,readcflag)
+     call mympiibcast(readdims,1,3); call mympiibcastone(readnspf,1); call mympiibcastone(readcflag,1)
+     call spf_read0(999,innspf,inspfdims,readnspf,readdims,readcflag,dimtypes,inspfs)
+     close(999)
+  else
+     call mympiibcast(readdims,1,3); call mympiibcastone(readnspf,1); call mympiibcastone(readcflag,1)
+     call spf_read0(-66666,innspf,inspfdims,readnspf,readdims,readcflag,dimtypes,inspfs)
+  endif
+
   numloaded=min(readnspf,innspf)
 
 end subroutine load_spfs0
