@@ -1,11 +1,6 @@
 
 
-!! INITIALIZATION ROUTINES FOR PROLATE AND ATOM: INIT_H2 AND INIT_HELIUM.  THESE CALL SUBROUTINES IN PROJECTS/ LIKE PSC.F90
-
 #include "Definitions.INC"
-
-
-!!subroutine init_project(inspfs,spfsloaded,  pot,myrank,nprocs)
 
 
 subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
@@ -13,7 +8,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   use myparams
   use myprojectmod
   implicit none
-
   integer, intent(in) :: skipflag,notused
   integer ::  i,   spfsloaded,j,ii,jj,k,l,idim
   DATATYPE :: inspfs(totpoints, numspf),pot(totpoints),proderivmod(numr,numr),rkemod(numr,numr),&
@@ -54,23 +48,15 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      return
   endif
 
-
-!  littlepot(:,:) = sinep oints(:,:)**2  *(41d0/4d0)
-
   do idim=1,griddim
      littlepot(idim)%mat(:,:) = (32d0/4d0) * sinepoints(idim)%mat(:,:) **2
-
-!RESHAPE(sinep oints(1+jj/2:max gridpoints-jj/2),(/numpoints(idim),nbox(idim)/))  **2
-
   enddo
 
   pot(:)=0d0; elecradii(:)=0d0
 
   call get_pot(pot(:))
   call get_rad(elecradii(:))
-
   call get_dipoles()
-
   call get_twoe_new(pot)
 
 #ifndef REALGO
@@ -90,24 +76,18 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 end subroutine init_project
 
 
-
-subroutine mult_bigspf(inbigspf,outbigspf)
+recursive subroutine mult_bigspf(inbigspf,outbigspf)
   use myparams
   implicit none
-  DATATYPE :: inbigspf(totpoints),outbigspf(totpoints)
-  DATATYPE, allocatable :: tempspf(:)
+  DATATYPE :: inbigspf(totpoints),outbigspf(totpoints),tempspf(totpoints)
 
-  allocate(tempspf(totpoints))
   call mult_ke(inbigspf(:),outbigspf(:),1,"booga",2)
 
   call mult_pot(inbigspf(:),tempspf(:))
+
   outbigspf(:)=outbigspf(:)+tempspf(:)
   
-  deallocatE(tempspf)
-
 end subroutine mult_bigspf
-
-
 
 
 subroutine init_spfs(inspfs,numloaded)
@@ -157,9 +137,7 @@ subroutine init_spfs(inspfs,numloaded)
      OFLWR "FSFFD EEEEE 555",kk,numspf,num_skip_orbs; CFLST
   endif
 
-
   allocate(lanspfs(totpoints,numspf+num_skip_orbs))
-
 
   ibig=totpoints
   iorder=min(ibig,orblanorder)
@@ -179,13 +157,7 @@ subroutine init_spfs(inspfs,numloaded)
   OFLWR;  CFL
 
   do ispf=numloaded+1,numspf
-
-!     inspfs(:,ispf)=lanspfs(:,ispf-numloaded)
-
-!     inspfs(:,ispf)=lanspfs(:,olist(ispf-numloaded))
-
      inspfs(:,ispf)=lanspfs(:,olist(ispf))
-
   enddo
 
   deallocate(lanspfs)
