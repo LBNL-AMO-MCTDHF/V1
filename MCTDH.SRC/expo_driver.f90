@@ -219,7 +219,7 @@ end module
 
 !! SUBROUTINE PASSED TO EXPOKIT FOR ORBITAL PROPAGATION
 
-subroutine jacopcompact(com_inspfs,com_outspfs)
+recursive subroutine jacopcompact(com_inspfs,com_outspfs)
   use parameters
   implicit none
 
@@ -233,26 +233,27 @@ end subroutine jacopcompact
 
      
 
-subroutine jacoperate(inspfs,outspfs)
+recursive subroutine jacoperate(inspfs,outspfs)
   use parameters
   use jacmod
   use mpimod
   use xxxmod    !! drivingorbs.... hmmm could just make wrapper but whatever
   use linearmod
   implicit none
-
   integer :: ii,ibot,getlen
   integer, save :: times(20), numcalledhere=0,itime,jtime
   DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf), nulldouble(2),pots(3)
   real*8 :: facs(0:1)
-  DATATYPE,save,allocatable :: jactemp3(:,:),   jactemp2(:,:),  tempspfs(:,:),temporbs(:,:)
-  integer,save :: allochere=0
+  DATATYPE :: jactemp3(spfsize,nspf),   jactemp2(spfsize,nspf), &  !! AUTOMATIC
+       tempspfs(spfsize,nspf),temporbs(spfsize,nspf)
 
-  if (allochere.eq.0) then
-     allocate(jactemp3(spfsize,nspf),   jactemp2(spfsize,nspf),  tempspfs(spfsize,nspf),temporbs(spfsize,nspf))
-  endif
-  allochere=1
-
+!!$  DATATYPE,save,allocatable :: jactemp3(:,:),   jactemp2(:,:),  tempspfs(:,:),temporbs(:,:)
+!!$  integer,save :: allochere=0
+!!$  if (allochere.eq.0) then
+!!$     allocate(jactemp3(spfsize,nspf),   jactemp2(spfsize,nspf),  &
+!!$    tempspfs(spfsize,nspf),temporbs(spfsize,nspf))
+!!$  endif
+!!$  allochere=1
 
   numcalledhere=numcalledhere+1
 
@@ -272,66 +273,64 @@ subroutine jacoperate(inspfs,outspfs)
 !! ** term with inspfs on far right ** !!
 
   do ii=1,ibot,-1
-
+     
      if (effective_cmf_spfflag.ne.0) then
-
-     if (jacsymflag.ne.0) then
-        call system_clock(itime)
-
-        call project(inspfs,jactemp2,jacvect) 
-
-        call system_clock(jtime); times(1)=times(1)+jtime-itime;   call system_clock(itime)
         
-        call actreduced0(jactime,jactemp2,nulldouble,jactemp3,ii,0,0)
+        if (jacsymflag.ne.0) then
+           call system_clock(itime)
+           
+           call project(inspfs,jactemp2,jacvect) 
+           
+           call system_clock(jtime); times(1)=times(1)+jtime-itime;   call system_clock(itime)
+           
+           call actreduced0(jactime,jactemp2,nulldouble,jactemp3,ii,0,0)
+           
+           call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
+           
+           outspfs=outspfs+jactemp3*facs(ii)
+           
+           call system_clock(jtime); times(1)=times(1)+jtime-itime
+        else
+           
+           call system_clock(itime)
+           
+           call actreduced0(jactime, inspfs,nulldouble, jactemp3,ii,0,0)
+           
+           call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
+           
+           outspfs=outspfs+jactemp3*facs(ii)
+           
+           call system_clock(jtime); times(1)=times(1)+jtime-itime;      
+        endif
+        
+        call system_clock(itime)
+        
+        call actreduced0(jactime,inspfs,nulldouble,jactemp3,ii,0,0)
         
         call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
         
-        outspfs=outspfs+jactemp3*facs(ii)
-
-        call system_clock(jtime); times(1)=times(1)+jtime-itime
-     else
-
-        call system_clock(itime)
-
-        call actreduced0(jactime, inspfs,nulldouble, jactemp3,ii,0,0)
-
-        call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
-
-        outspfs=outspfs+jactemp3*facs(ii)
-
-        call system_clock(jtime); times(1)=times(1)+jtime-itime;      
-     endif
-
-     call system_clock(itime)
-
-     call actreduced0(jactime,inspfs,nulldouble,jactemp3,ii,0,0)
-
-     call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
-
-     call project(jactemp3,jactemp2,jacvect)
-     outspfs=outspfs-jactemp2*facs(ii)
-
+        call project(jactemp3,jactemp2,jacvect)
+        outspfs=outspfs-jactemp2*facs(ii)
+        
 !! terms from projector
 
-     call derproject(jacvectout,jactemp2,jacvect,inspfs)
-     outspfs=outspfs-jactemp2*facs(ii)
-
-     call system_clock(jtime); times(1)=times(1)+jtime-itime
-
-     if (jacsymflag.ne.0) then
-        call system_clock(itime)
-        call derproject(jacvect,jactemp3,jacvect,inspfs) 
-        call system_clock(jtime); times(1)=times(1)+jtime-itime;   call system_clock(itime)
-        call actreduced0(jactime,jactemp3,nulldouble,jactemp2,ii,0,0)
-        call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
-        outspfs=outspfs+jactemp2*facs(ii)
-        call system_clock(jtime); times(1)=times(1)+jtime-itime;  
-     endif
-
+        call derproject(jacvectout,jactemp2,jacvect,inspfs)
+        outspfs=outspfs-jactemp2*facs(ii)
+        
+        call system_clock(jtime); times(1)=times(1)+jtime-itime
+        
+        if (jacsymflag.ne.0) then
+           call system_clock(itime)
+           call derproject(jacvect,jactemp3,jacvect,inspfs) 
+           call system_clock(jtime); times(1)=times(1)+jtime-itime;   call system_clock(itime)
+           call actreduced0(jactime,jactemp3,nulldouble,jactemp2,ii,0,0)
+           call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
+           outspfs=outspfs+jactemp2*facs(ii)
+           call system_clock(jtime); times(1)=times(1)+jtime-itime;  
+        endif
+        
      endif !! spfflag
-
-
-
+     
 !!  CONSTRAINT!!  FORGOTTEN I GUESS !! APR 2014
 
      if (constraintflag.ne.0) then
@@ -343,32 +342,27 @@ subroutine jacoperate(inspfs,outspfs)
 
      if (effective_cmf_spfflag.ne.0) then
 
-     if (drivingflag.eq.1.or.drivingflag.eq.3) then
-        call system_clock(itime)
-
-        call vectdpot(jactime,pots)
-
-        temporbs(:,:)=pots(1)*yyy%drivingorbsxx(:,:,ii)+pots(2)*yyy%drivingorbsyy(:,:,ii)+pots(3)*yyy%drivingorbszz(:,:,ii)
-        call derproject(temporbs,tempspfs,jacvect,inspfs)
-
-        outspfs(:,:)=outspfs(:,:)-tempspfs(:,:)*facs(ii)*timefac
-        call system_clock(jtime); times(3)=times(3)+jtime-itime;
-     endif
-
+        if (drivingflag.eq.1.or.drivingflag.eq.3) then
+           call system_clock(itime)
+           
+           call vectdpot(jactime,pots)
+           
+           temporbs(:,:)=pots(1)*yyy%drivingorbsxx(:,:,ii)+pots(2)*yyy%drivingorbsyy(:,:,ii)+pots(3)*yyy%drivingorbszz(:,:,ii)
+           call derproject(temporbs,tempspfs,jacvect,inspfs)
+           
+           outspfs(:,:)=outspfs(:,:)-tempspfs(:,:)*facs(ii)*timefac
+           call system_clock(jtime); times(3)=times(3)+jtime-itime;
+        endif
+        
      endif
 
   enddo
-
-
-
-
-
+  
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (numcalledhere==1) then
         open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", status="unknown")
         write(8577,'(T16,100A9)') "other ", "actreduced ", "driving"; close(8577)
      endif
-
      if (mod(numcalledhere,timingout).eq.0) then
         open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", status="unknown", position="append")
         write(8577,'(A3,F12.4,15I9)') "T= ", jactime,  times(1:3)/1000
@@ -376,8 +370,8 @@ subroutine jacoperate(inspfs,outspfs)
      endif
   endif
 
-
 end subroutine jacoperate
+
 
 !! KEEPME
 function checknan2(input,size)
@@ -395,9 +389,6 @@ function checknan2(input,size)
 end function
 
 
-
-
-
 subroutine jacmodalloc()
   use jacmod
   use parameters
@@ -407,13 +398,11 @@ end subroutine jacmodalloc
 
 !! SETS UP JACOBIAN FOR ORBITAL EXPO PROP
 
-
 subroutine jacinit(inspfs, thistime) !!, timestep)
   use parameters
   use linearmod
   use jacmod
   implicit none
-
   DATATYPE :: inspfs(spfsize,nspf) 
   DATATYPE :: nulldouble(2), jactemp(spfsize,nspf)
   real*8 :: thistime,gridtime
@@ -425,27 +414,22 @@ subroutine jacinit(inspfs, thistime) !!, timestep)
 
   jactime=thistime;  jacvect=inspfs; 
 
-
 !! ONLY GOOD FOR CMF, LMF !!
 
   call actreduced0(jactime,jacvect,nulldouble,jacvectout,1,0,0)
 
   if (effective_cmf_linearflag.ne.0) then
-
      gridtime=(jactime-firsttime)/(lasttime-firsttime) 
      if ((gridtime.lt.0.d0).or.(gridtime.gt.1)) then
         print *, "GGGRIDTIME ERR ", gridtime, jactime, firsttime, lasttime
         stop
      endif
-     
      jacvectout=jacvectout*(1.d0-gridtime)
      call actreduced0(jactime,jacvect,jacvect,jactemp,0,0,0)
      jacvectout=jacvectout+gridtime*jactemp
   endif
 
-
 end subroutine jacinit
-
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -457,13 +441,11 @@ module avectortimemod
   integer :: times(100)=0, iitime= -1 , jjtime = -1
 end module avectortimemod
 
-
 subroutine avectortimeset()
   use avectortimemod
   implicit none
   call system_clock(iitime)
 end subroutine
-
 
 subroutine avectortimewrite(fileptr)
   use avectortimemod
@@ -471,7 +453,6 @@ subroutine avectortimewrite(fileptr)
   integer :: fileptr
   write(fileptr,'(10(A13,I15))') "Start/end",times(1)/1000,"mult",times(2)/1000,"expokit",times(3)/1000
 end subroutine avectortimewrite
-
 
 subroutine avectortime(which)
   use avectortimemod
@@ -485,9 +466,6 @@ subroutine avectortime(which)
    call system_clock(jjtime); times(which)=times(which)+jjtime-iitime; iitime=jjtime
 
 end subroutine
-
-
-
 
 
 subroutine expoconfigprop(inavector0,outavector,time)
@@ -531,14 +509,14 @@ subroutine expoconfigprop(inavector0,outavector,time)
   if (icalled.eq.1) then
      tempstepsize=par_timestep/littlesteps
      if (allspinproject.ne.0) then
-!!        ii=spintotrank*numr
+!!$        ii=spintotrank*numr
         ii=maxspinrank*nprocs*numr
      else
-!!        ii=totadim
+!!$        ii=totadim
         ii=maxconfigsperproc*nprocs*numr
      endif
-!why was this? 061814     if (maxaorder.gt.ii-1) then
-!        maxaorder=ii-1
+!!$why was this? 061814     if (maxaorder.gt.ii-1) then
+!!$        maxaorder=ii-1
      if (maxaorder.gt.ii) then
         maxaorder=ii
      endif
@@ -598,15 +576,11 @@ subroutine expoconfigprop(inavector0,outavector,time)
 !!$  #else
 !!$  
 
-
-
-
   if (allspinproject.ne.0) then
      ixx=maxspinrank; mybot=spinstart; mytop=spinend ; qqq=spintotrank
   else
      ixx=maxconfigsperproc; mybot=botwalk; mytop=topwalk ; qqq=numconfig
   endif
-
 
   allocate(smallvectortr(numr,ixx),smallvectortrout(numr,ixx), &
        zerovectortr(numr,ixx),smallvectortrtemp(numr,ixx), outavectortr(numr,qqq), outavectorspin(qqq,numr))
@@ -616,13 +590,9 @@ subroutine expoconfigprop(inavector0,outavector,time)
    allocate(wsp(lwsp),iwsp(liwsp));    wsp=0.d0; iwsp=0
 
    smallvectortr(:,:)=0; smallvectortrout(:,:)=0d0
-
    if (allspinproject.ne.0) then
-
       call configspin_transformto(numr,inavector,inavectorspin)
-
       smallvectortr(:,1:spinend-spinstart+1)=TRANSPOSE(inavectorspin(spinstart:spinend,:))
-
    else
       smallvectortr(:,1:topwalk-botwalk+1)=TRANSPOSE(inavector(botwalk:topwalk,:))
    endif
@@ -631,7 +601,6 @@ subroutine expoconfigprop(inavector0,outavector,time)
 
    call avectortime(1)
 
-   
    if (drivingflag.ne.0) then
       zerovectortr(:,:)=0d0
       if (allspinproject.ne.0) then
@@ -651,29 +620,19 @@ subroutine expoconfigprop(inavector0,outavector,time)
 
          call DGPHIVxxx2( zzz*ixx*numr, thisexpodim, one, smallvectortrtemp, zerovectortr, smallvectortrout, aerror, par_timestep/littlesteps, wsp, lwsp, &
               iwsp, liwsp, parconfigexpomult_transpose, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
-         
       endif
-
       smallvectortrout(:,:)=smallvectortrout(:,:)+smallvectortr(:,:)
-      
    else
-
       if (allspinproject.ne.0) then
-
          call DGEXPVxxx2( zzz*ixx*numr, thisexpodim, one, smallvectortr, smallvectortrout, aerror, par_timestep/littlesteps, wsp, lwsp, &
               iwsp, liwsp, parconfigexpomult_transpose_spin, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
-
       else
-         
          call DGEXPVxxx2( zzz*ixx*numr, thisexpodim, one, smallvectortr, smallvectortrout, aerror, par_timestep/littlesteps, wsp, lwsp, &
               iwsp, liwsp, parconfigexpomult_transpose, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
-
       endif
-
    endif
 
    call avectortime(3)
-
 
    lwsp=lwsp/zzz
    
@@ -682,11 +641,8 @@ subroutine expoconfigprop(inavector0,outavector,time)
 
    if (allspinproject.ne.0) then
       call mpiallgather(outavectortr,spintotrank*numr,allspinranks*numr,maxspinrank*numr)
-
       outavectorspin(:,:)=TRANSPOSE(outavectortr(:,:))
-
       call configspin_transformfrom(numr,outavectorspin,outavector)
-
    else
       call mpiallgather(outavectortr,numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
       outavector(:,:)=TRANSPOSE(outavectortr(:,:))
@@ -702,7 +658,6 @@ subroutine expoconfigprop(inavector0,outavector,time)
   if (dfrestrictflag.ne.0) then
      call dfrestrict(outavector,numr)
   endif
-
 
   close(expofileptr)
 
@@ -720,7 +675,7 @@ subroutine expoconfigprop(inavector0,outavector,time)
      write(expofileptr,*) "   End avector prop.  steps, iterations, stepsize", iwsp(4),iwsp(1),tempstepsize; 
      write(expofileptr,*);    
      call avectortimewrite(expofileptr)
- close(expofileptr)
+     close(expofileptr)
   endif
 
   if (numsteps.gt.1) then
@@ -735,6 +690,7 @@ subroutine expoconfigprop(inavector0,outavector,time)
 end subroutine expoconfigprop
 
 
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!   ALL SUBROUTINES BELOW HERE US NO MODULES BUT MPIMOD AND PARAMETERS !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -742,7 +698,7 @@ end subroutine expoconfigprop
 !! for derivative of PROJECTOR using derivative of spfs.     
 !!      on call inspfs is for example jacvectout
 
-subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
+recursive subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
   use parameters
   implicit none
   DATATYPE :: inspfs(spfsize, nspf), outspfs(spfsize, nspf),  prospfs(spfsize, nspf), prospfderivs(spfsize, nspf)
@@ -750,24 +706,24 @@ subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
 end subroutine derproject
 
 
-subroutine derproject0(inspfs, outspfs, prospfs, prospfderivs,inconjgflag)
+recursive subroutine derproject0(inspfs, outspfs, prospfs, prospfderivs,inconjgflag)
   use parameters
   implicit none
-
   DATATYPE :: inspfs(spfsize, nspf), outspfs(spfsize, nspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
   integer :: i,j, inconjgflag
   DATATYPE :: dot
 #ifdef CNORMFLAG
   DATATYPE :: hermdot
 #endif
-  integer,save :: allochere=0
-  DATATYPE,save,allocatable ::  mydot(:,:), prodot(:,:), multdot(:,:), derdot(:,:),mydot2(:,:),prodot2(:,:),multdot2(:,:)
+  DATATYPE ::    mydot(nspf,nspf), prodot(nspf,nspf), multdot(nspf,nspf), derdot(nspf,nspf),& !! AUTOMATIC
+       mydot2(nspf,nspf),prodot2(nspf,nspf),multdot2(nspf,nspf)
 
-  if (allochere.eq.0) then
-     allocate(       mydot(nspf,nspf), prodot(nspf,nspf), multdot(nspf,nspf), derdot(nspf,nspf),mydot2(nspf,nspf),prodot2(nspf,nspf),multdot2(nspf,nspf))
-  endif
-  allochere=1
-
+!!$  integer,save :: allochere=0
+!!$  DATATYPE,save,allocatable ::  mydot(:,:), prodot(:,:), multdot(:,:), derdot(:,:),mydot2(:,:),prodot2(:,:),multdot2(:,:)
+!!$  if (allochere.eq.0) then
+!!$     allocate(       mydot(nspf,nspf), prodot(nspf,nspf), multdot(nspf,nspf), derdot(nspf,nspf),mydot2(nspf,nspf),prodot2(nspf,nspf),multdot2(nspf,nspf))
+!!$  endif
+!!$  allochere=1
 
   outspfs(:,:)=0.d0
   do i=1,nspf
@@ -783,7 +739,6 @@ subroutine derproject0(inspfs, outspfs, prospfs, prospfderivs,inconjgflag)
 #ifdef CNORMFLAG
         endif
 #endif
-
      enddo
   enddo
 
@@ -791,7 +746,6 @@ subroutine derproject0(inspfs, outspfs, prospfs, prospfderivs,inconjgflag)
      call mympireduce(mydot,nspf**2)
      call mympireduce(derdot,nspf**2)
   endif
-
 
   if (inconjgflag==1) then
      mydot=ANTICON(mydot)    !! in derprojectconjg call, this is herm conjg of that in derproject call

@@ -14,7 +14,7 @@
 
 !! FOR ODEX PROPAGATION (NOT DEFAULT)
 
-subroutine gbs_derivs(notusedint,thistime,psi,psip,notuseddbl,notusedint2)
+recursive subroutine gbs_derivs(notusedint,thistime,psi,psip,notuseddbl,notusedint2)
   use parameters
   implicit none
   integer :: notusedint,notusedint2
@@ -24,12 +24,11 @@ subroutine gbs_derivs(notusedint,thistime,psi,psip,notuseddbl,notusedint2)
 end subroutine gbs_derivs
 
 
-subroutine all_derivs(thistime,xpsi, xpsip)
+recursive subroutine all_derivs(thistime,xpsi, xpsip)
   use parameters
   use mpimod
   use xxxmod
   implicit none
-
   DATATYPE :: xpsi(psilength), xpsip(psilength)
   real*8 :: thistime
   integer :: itime,jtime,getlen
@@ -96,8 +95,7 @@ subroutine all_derivs(thistime,xpsi, xpsip)
 end subroutine all_derivs
 
 
-
-subroutine gbs_linear_derivs(notusedint,thistime,spfsin,spfsout,notuseddbl,notusedint2)
+recursive subroutine gbs_linear_derivs(notusedint,thistime,spfsin,spfsout,notuseddbl,notusedint2)
   use parameters
   implicit none
   DATATYPE :: spfsin(spfsize, nspf), spfsout(spfsize, nspf)
@@ -106,37 +104,34 @@ subroutine gbs_linear_derivs(notusedint,thistime,spfsin,spfsout,notuseddbl,notus
   call spf_linear_derivs(thistime,spfsin,spfsout)
 end subroutine gbs_linear_derivs
 
-subroutine spf_linear_derivs(thistime,spfsin,spfsout)
+
+recursive subroutine spf_linear_derivs(thistime,spfsin,spfsout)
   use parameters
   implicit none
-
   DATATYPE :: spfsin(spfsize, nspf), spfsout(spfsize, nspf)
   real*8 :: thistime
   call spf_linear_derivs0(thistime,spfsin,spfsout,1)
-
 end subroutine spf_linear_derivs
 
 
 !! MAIN DERIVATIVE ROUTINE FOR RK, EXPO
 
-subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
+recursive subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
   use linearmod
   use parameters
   use xxxmod  !! frozenexchange
   implicit none
-
   DATATYPE :: spfsin(spfsize, nspf), spfsout(spfsize, nspf)
   real*8 :: thistime,facs(0:1)
   integer ::  jjj, allflag, ispf,jspf,ibot
-  integer, save :: allochere=0
-!  DATATYPE ::   spfmult(spfsize,nspf), spfmult2(spfsize,nspf), spfmult3(spfsize,nspf)
-  DATATYPE,save,allocatable ::   spfmult(:,:),spfmult2(:,:),spfmult3(:,:)
+  DATATYPE ::   spfmult(spfsize,nspf), spfmult2(spfsize,nspf), spfmult3(spfsize,nspf) !!AUTOMATIC
 
-  if (allochere.eq.0) then
-     allocate(spfmult(spfsize,nspf), spfmult2(spfsize,nspf), spfmult3(spfsize,nspf))
-  endif
-  allochere=1
-
+!!$  integer, save :: allochere=0
+!!$  DATATYPE,save,allocatable ::   spfmult(:,:),spfmult2(:,:),spfmult3(:,:)
+!!$  if (allochere.eq.0) then
+!!$     allocate(spfmult(spfsize,nspf), spfmult2(spfsize,nspf), spfmult3(spfsize,nspf))
+!!$  endif
+!!$  allochere=1
 
   if (effective_cmf_linearflag.eq.1) then
      ibot=0;     facs(0)=(thistime-firsttime)/(lasttime-firsttime);     facs(1)=1d0-facs(0)
@@ -156,7 +151,6 @@ subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
      return
   endif
 
-
   do jjj=ibot,1
      call actreduced0(thistime,spfsin,spfsin,spfmult(:,:),jjj, allflag,allflag)
      spfsout(:,:)=spfsout(:,:)+spfmult(:,:)*facs(jjj)
@@ -166,7 +160,6 @@ subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
 
   if (numfrozen.gt.0) then
      spfmult3(:,:)=0d0
-
      do jjj=ibot,1
         spfmult(:,:)=0d0
         do ispf=1,nspf
@@ -178,7 +171,6 @@ subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
 
 !! TIMEFAC HERE
         call MYGEMM('N','N', spfsize,nspf,nspf,timefac, spfmult(:,:),spfsize, yyy%invdenmat(:,:,jjj), nspf, DATAONE, spfmult2(:,:), spfsize)
-
         spfmult3(:,:)=spfmult3(:,:)+spfmult2(:,:)*facs(jjj)
      enddo
 
@@ -189,29 +181,22 @@ subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
 end subroutine spf_linear_derivs0
 
 
-
-
-
-
-
-
-subroutine driving_linear_derivs(thistime,spfsin,spfsout)
+recursive subroutine driving_linear_derivs(thistime,spfsin,spfsout)
   use linearmod
   use parameters
   use xxxmod  !! driving orbs
   implicit none
-
   DATATYPE :: spfsin(spfsize, nspf),spfsout(spfsize, nspf),pots(3)
   real*8 :: thistime,facs(0:1),rsum
   integer ::  jjj, ibot
-!  DATATYPE :: spfmult(spfsize,nspf)
-  DATATYPE,save,allocatable :: spfmult(:,:)
-  integer, save :: allochere=0
+  DATATYPE :: spfmult(spfsize,nspf)  !! AUTOMATIC
 
-  if (allochere.eq.0) then
-     allocate(spfmult(spfsize,nspf))
-  endif
-  allochere=1
+!!$  DATATYPE,save,allocatable :: spfmult(:,:)
+!!$  integer, save :: allochere=0
+!!$  if (allochere.eq.0) then
+!!$     allocate(spfmult(spfsize,nspf))
+!!$  endif
+!!$  allochere=1
 
   spfsout(:,:)=0d0
 
@@ -227,8 +212,6 @@ subroutine driving_linear_derivs(thistime,spfsin,spfsout)
   if (rsum.eq.0d0) then
      return
   endif
-
-
 
   if (effective_cmf_linearflag.eq.1) then
      ibot=0;     facs(0)=(thistime-firsttime)/(lasttime-firsttime);     facs(1)=1d0-facs(0)
@@ -247,9 +230,7 @@ subroutine driving_linear_derivs(thistime,spfsin,spfsout)
 
   call oneminusproject(spfmult(:,:),spfsout(:,:),spfsin(:,:))
 
-
 end subroutine driving_linear_derivs
-
 
 
 !!  outspfs = (1-P) H inspfs
@@ -257,7 +238,7 @@ end subroutine driving_linear_derivs
 !! where P is projector onto opspfs
 !! H is inverse denmat times reducedham
 
-subroutine actreduced(thistime,inspfs,projspfs, outspfs, ireduced)
+recursive subroutine actreduced(thistime,inspfs,projspfs, outspfs, ireduced)
   use parameters
   implicit none
   real*8 :: thistime
@@ -271,7 +252,7 @@ end subroutine actreduced
 !!  IN DIFF EQ SOLVER)
 
 
-subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,conflag)
+recursive subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,conflag)
   use parameters
   use xxxmod
   implicit none
@@ -286,40 +267,39 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
 
 end subroutine actreduced0
 
-subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,conflag, denandtimeflag, onlypulseflag, matrix_ptr, &
+recursive subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,conflag, denandtimeflag, onlypulseflag, matrix_ptr, &
      reducedinvr,reducedinvrsq,reducedr,reducedproderiv, reducedpot,denmat,invdenmat)
   use parameters
   use mpimod
   use configptrmod
   implicit none
-
-  DATATYPE, intent(in) :: inspfs0(spfsize, nspf), projspfs(spfsize,nspf)
-  DATATYPE,intent(in) :: reducedinvr(nspf,nspf),reducedinvrsq(nspf,nspf),reducedr(nspf,nspf),reducedpot(reducedpotsize,nspf,nspf), &
-       denmat(nspf,nspf), invdenmat(nspf,nspf), reducedproderiv(nspf,nspf)
-  DATATYPE :: outspfs(spfsize,nspf)
+  DATATYPE, intent(in) :: inspfs0(spfsize, nspf), projspfs(spfsize,nspf), &
+       reducedinvr(nspf,nspf),reducedinvrsq(nspf,nspf), reducedr(nspf,nspf),&
+       reducedpot(reducedpotsize,nspf,nspf), denmat(nspf,nspf), invdenmat(nspf,nspf), &
+       reducedproderiv(nspf,nspf)
+  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
   integer :: ispf, jspf,   itime, jtime, &
         projflag,getlen, conflag,lowspf,highspf, denandtimeflag,onlypulseflag
   integer, save :: times(0:20)=0,numcalledhere=0
   DATATYPE :: myxtdpot=0,  myytdpot=0, myztdpot=0, pots(3)=0d0
   real*8 :: thistime
   Type(CONFIGPTR) :: matrix_ptr
+  DATATYPE ::   inspfs(spfsize,nspf), tempmult(spfsize),spfmult(spfsize,nspf*2),&  !! AUTOMATIC
+       myspf(spfsize), spfinvr( spfsize,nspf ), spfr( spfsize,nspf ),  &
+       spfinvrsq(  spfsize,nspf),spfproderiv(  spfsize,nspf )
 
-  integer, save :: allochere=0
-  DATATYPE,save,allocatable ::  inspfs(:,:), tempmult(:),spfmult(:,:),myspf(:), &
-       spfinvr( :,: ), spfr( :,: ),  spfinvrsq(  :,:),spfproderiv(  :,: )
-
-
-  if (allochere.eq.0) then
-     allocate(  inspfs(spfsize,nspf), tempmult(spfsize),spfmult(spfsize,nspf*2),myspf(spfsize), &
-       spfinvr( spfsize,nspf ), spfr( spfsize,nspf ),  spfinvrsq(  spfsize,nspf),spfproderiv(  spfsize,nspf ))
-  endif
-  allochere=1
-
+!!$  integer, save :: allochere=0
+!!$  DATATYPE,save,allocatable ::  inspfs(:,:), tempmult(:),spfmult(:,:),myspf(:), &
+!!$       spfinvr( :,: ), spfr( :,: ),  spfinvrsq(  :,:),spfproderiv(  :,: )
+!!$  if (allochere.eq.0) then
+!!$     allocate(  inspfs(spfsize,nspf), tempmult(spfsize),spfmult(spfsize,nspf*2),myspf(spfsize), &
+!!$       spfinvr( spfsize,nspf ), spfr( spfsize,nspf ),  spfinvrsq(  spfsize,nspf),spfproderiv(  spfsize,nspf ))
+!!$  endif
+!!$  allochere=1
 
   if (tdflag.eq.1) then
      call vectdpot(thistime,pots)
      myxtdpot=pots(1);  myytdpot=pots(2);  myztdpot=pots(3);
-
   endif
 
   inspfs(:,:)=inspfs0(:,:)
@@ -330,7 +310,6 @@ subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,conflag, d
  !! sum over fast index reduced matrices, because doing spfinvrsq= reducedinvrsq * inspfs BUT 1) store in transposed order and 2) have to reverse the call in BLAS
 
   if (numr.eq.1) then
-
      call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, denmat(:,:),nspf, DATAZERO, spfinvrsq(:,:), spfsize)
 
      spfinvr(:,:)=spfinvrsq(:,:)/bondpoints(1)
@@ -340,14 +319,10 @@ subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,conflag, d
      endif
 
      spfinvrsq(:,:)=spfinvrsq(:,:)/bondpoints(1)**2
-
   else
-
-
      call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, reducedinvrsq(:,:),nspf, DATAZERO, spfinvrsq(:,:), spfsize)
      call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, reducedinvr(:,:),nspf, DATAZERO, spfinvr(:,:), spfsize)
 
-     
      if (tdflag.eq.1) then
         call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, reducedr(:,:),nspf, DATAZERO, spfr(:,:), spfsize)
      endif
@@ -355,7 +330,6 @@ subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,conflag, d
      if ((nonuc_checkflag/=1).and.onlypulseflag.eq.0) then
         call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, reducedproderiv(:,:),nspf, DATAZERO, spfproderiv(:,:), spfsize)
      endif
-
   endif
 
   call system_clock(jtime);  times(1)=times(1)+jtime-itime
@@ -397,7 +371,6 @@ subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,conflag, d
      call system_clock(jtime);     times(3)=times(3)+jtime-itime;         call system_clock(itime)
 
      if (tdflag.eq.1) then
-
         select case (velflag)
         case (0)
            call lenmultiply(spfr(:,ispf),myspf(:), myxtdpot,myytdpot,myztdpot)
@@ -406,17 +379,14 @@ subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,conflag, d
            call velmultiply(spfinvr(:,ispf),myspf(:), myxtdpot,myytdpot,myztdpot)
            spfmult(:,ispf)=spfmult(:,ispf)+myspf(:)
         end select
-        
      endif  !! tdpot
 
      call system_clock(jtime);        times(4)=times(4)+jtime-itime;        call system_clock(itime)
   
      if ((nonuc_checkflag/=1).and.onlypulseflag.eq.0) then
-
         call noparorbsupport("another call mult_yderiv!!")
         call op_yderiv(spfproderiv(:,ispf),tempmult(:))
         spfmult(:,ispf)=spfmult(:,ispf)+tempmult(:)
-        
      endif
      call system_clock(jtime);     times(5)=times(5)+jtime-itime; call system_clock(itime)
 
@@ -465,8 +435,6 @@ subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,conflag, d
      call system_clock(jtime);        times(9)=times(9)+jtime-itime
   endif
 
-
-
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (numcalledhere==1) then
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/actreduced.time.dat", status="unknown")
@@ -484,9 +452,7 @@ subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,conflag, d
 end subroutine actreduced00
 
 
-
-
-subroutine tauop(inspfs, outspfs, ireduced,thistime)
+recursive subroutine tauop(inspfs, outspfs, ireduced,thistime)
   use parameters
   use mpimod
   use xxxmod
@@ -527,23 +493,21 @@ end subroutine tauop
 !!     this is actually the conjugate-transpose of the operator, even if cmctdh
 !!     (not used)
 
-subroutine actreducedconjg0(thistime,inspfs, projspfs, outspfs, ireduced, projflag,conflag)
+recursive subroutine actreducedconjg0(thistime,inspfs, projspfs, outspfs, ireduced, projflag,conflag)
   use parameters
   implicit none
-
   DATATYPE, intent(in) :: inspfs(spfsize,nspf),projspfs(spfsize,nspf)
-  DATATYPE ::  outspfs(spfsize,nspf)
+  DATATYPE, intent(out) ::  outspfs(spfsize,nspf)
+  DATATYPE :: ttempspfs(spfsize,nspf) !! AUTOMATIC
   integer :: ireduced,projflag,conflag
   real*8 :: thistime
-  integer, save :: allochere=0
-  DATATYPE,save,allocatable ::  ttempspfs(:,:)
 
-  if (allochere.eq.0) then
-     allocate(ttempspfs(spfsize,nspf))
-  endif
-  allochere=1
-
-!!!  OFLWR "You should check me!! actreducedconjg.  Maybe ok."; CFLST  why would it not be ok, i forget
+!!$  integer, save :: allochere=0
+!!$  DATATYPE,save,allocatable ::  ttempspfs(:,:)
+!!$  if (allochere.eq.0) then
+!!$     allocate(ttempspfs(spfsize,nspf))
+!!$  endif
+!!$  allochere=1
 
   ttempspfs(:,:)=ALLCON(inspfs(:,:))
   call actreduced0(thistime,ttempspfs, projspfs, outspfs, ireduced, projflag,conflag)
@@ -551,19 +515,20 @@ subroutine actreducedconjg0(thistime,inspfs, projspfs, outspfs, ireduced, projfl
 
 end subroutine actreducedconjg0
 
-subroutine wmult(inspfs, outspfs, ireduced)
+
+recursive subroutine wmult(inspfs, outspfs, ireduced)
   use parameters
   use xxxmod
   implicit none
-
   DATATYPE, intent(in) :: inspfs(spfsize,nspf)
-  DATATYPE ::  outspfs(spfsize,nspf),  spfmult(spfsize,nspf), tempbigmult(spfsize,nspf), tempmult(spfsize)
+  DATATYPE, intent(out) :: outspfs(spfsize,nspf)
+  DATATYPE :: spfmult(spfsize,nspf), tempbigmult(spfsize,nspf), tempmult(spfsize) !!AUTOMATIC
   integer :: ispf,ireduced
   DATATYPE :: spfinvr( spfsize,nspf ), spfinvrsq(  spfsize,nspf),spfproderiv(  spfsize,nspf )
 
 !! sum over fast index reduced matrices, because doing spfinvrsq= reducedinvrsq * inspfs BUT 1) store in transposed order and 2) have to reverse the call in BLAS
 
-OFLWR "HMM CHECK WMULT.  CONMATEL ETC. also allocate arrays."; CFLST
+  OFLWR "HMM CHECK WMULT.  CONMATEL ETC. also allocate arrays."; CFLST
   
   call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, yyy%reducedinvrsq(:,:,ireduced),nspf, DATAZERO, spfinvrsq(:,:), spfsize)
   call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, yyy%reducedinvr(:,:,ireduced),nspf, DATAZERO, spfinvr(:,:), spfsize)
@@ -581,21 +546,18 @@ OFLWR "HMM CHECK WMULT.  CONMATEL ETC. also allocate arrays."; CFLST
         call mult_ke(spfinvrsq(:,ispf),spfmult(:,ispf),1,timingdir,notiming); 
      enddo
   endif
-
   do ispf=1,nspf
      call mult_pot(spfinvr(:,ispf),tempmult(:));     spfmult(:,ispf)=spfmult(:,ispf)+tempmult(:)
   enddo
-
   if ((nonuc_checkflag/=1)) then
-
      call noparorbsupport("another call op_yderiv")
-
      do ispf=1,nspf
         call op_yderiv(spfproderiv(:,ispf),tempmult(:));        spfmult(:,ispf)=spfmult(:,ispf) + tempmult(:)
      enddo
   endif
 
   do ispf=1,nspf
+
 !! NOW OUTPUTS ONLY ONE (TAKES ALL)
      call mult_reducedpot(inspfs,tempbigmult(:,ispf),ispf,yyy%reducedpot(:,:,:,ireduced))
   enddo
@@ -605,12 +567,10 @@ OFLWR "HMM CHECK WMULT.  CONMATEL ETC. also allocate arrays."; CFLST
 
 end subroutine wmult
 
-
-subroutine denmult(inspfs, outspfs, ireduced)
+recursive subroutine denmult(inspfs, outspfs, ireduced)
   use parameters
   use xxxmod
   implicit none
-
   integer :: ireduced
   DATATYPE  :: inspfs(spfsize,nspf),outspfs(spfsize,nspf)
 

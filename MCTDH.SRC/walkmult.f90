@@ -3,7 +3,7 @@
 
 !! All purpose subroutine.
 
-subroutine sparseconfigmult(myinvector,myoutvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time)
+recursive subroutine sparseconfigmult(myinvector,myoutvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time)
   use parameters
   use configptrmod
   use sparseptrmod
@@ -21,12 +21,11 @@ end subroutine sparseconfigmult
 
 !! For one bond length, born oppenheimer Hamiltonian
 
-subroutine sparseconfigmultone(invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time)
+recursive subroutine sparseconfigmultone(invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time)
   use parameters
   use configptrmod
   use sparseptrmod
   implicit none
-
   DATATYPE :: invector(numconfig), outvector(numconfig)
   Type(CONFIGPTR) :: matrix_ptr
   Type(SPARSEPTR) :: sparse_ptr
@@ -43,7 +42,7 @@ end subroutine sparseconfigmultone
 
 !! All purpose subroutine, just the pulse.
 
-subroutine sparseconfigpulsemult(myinvector,myoutvector,matrix_ptr, sparse_ptr,which)
+recursive subroutine sparseconfigpulsemult(myinvector,myoutvector,matrix_ptr, sparse_ptr,which)
   use parameters
   use configptrmod
   use sparseptrmod
@@ -60,12 +59,13 @@ end subroutine sparseconfigpulsemult
 
 !! MPI subroutine
 
-subroutine sparseconfigmultxxx(myinvector,myoutvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag)
+recursive subroutine sparseconfigmultxxx(myinvector,myoutvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag)
   use parameters
   use configptrmod
   use sparseptrmod
   implicit none
-  DATATYPE :: myinvector(numconfig,numr), myoutvector(numconfig,numr),myinvectortr(numr,numconfig),myoutvectortr(numr,numconfig)
+  DATATYPE :: myinvector(numconfig,numr), myoutvector(numconfig,numr),&
+       myinvectortr(numr,numconfig),myoutvectortr(numr,numconfig)  !!AUTOMATIC
   Type(CONFIGPTR) :: matrix_ptr
   Type(SPARSEPTR) :: sparse_ptr
   integer :: conflag,boflag,nucflag,pulseflag,onlytdflag
@@ -90,14 +90,13 @@ end subroutine sparseconfigmultxxx
 !!   that part for which I have rows in the Hamiltonian.
 
 
-subroutine sparseconfigmult_nompi(myinvector,myoutvector,matrix_ptr, sparse_ptr,boflag, nucflag, pulseflag, conflag,time)
+recursive subroutine sparseconfigmult_nompi(myinvector,myoutvector,matrix_ptr, sparse_ptr,boflag, nucflag, pulseflag, conflag,time)
   use parameters
   use configptrmod
   use sparseptrmod
   implicit none
-
-  DATATYPE :: myinvector(numconfig,numr), myoutvector(botwalk:topwalk,numr)
-  DATATYPE :: myinvectortr(numr,numconfig), myoutvectortr(numr,botwalk:topwalk)
+  DATATYPE :: myinvector(numconfig,numr), myoutvector(botwalk:topwalk,numr), &
+       myinvectortr(numr,numconfig), myoutvectortr(numr,botwalk:topwalk)  !!AUTOMATIC
   real*8 :: time
   Type(CONFIGPTR) :: matrix_ptr
   Type(SPARSEPTR) :: sparse_ptr
@@ -106,7 +105,6 @@ subroutine sparseconfigmult_nompi(myinvector,myoutvector,matrix_ptr, sparse_ptr,
   if (topwalk-botwalk+1.eq.0) then
      return
   endif
-
   myinvectortr(:,:)=TRANSPOSE(myinvector(:,:)); myoutvectortr(:,:)=0d0
   call sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag,time,0,1,numr,0)
   myoutvector(:,:)=TRANSPOSE(myoutvectortr(:,:))
@@ -114,28 +112,25 @@ subroutine sparseconfigmult_nompi(myinvector,myoutvector,matrix_ptr, sparse_ptr,
 end subroutine sparseconfigmult_nompi
 
 
-subroutine sparseconfigdiagmult(invector,outvector,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag, inenergy,time)
+recursive subroutine sparseconfigdiagmult(invector,outvector,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag, inenergy,time)
   use parameters
   use configptrmod
   use sparseptrmod
   implicit none
-
   DATATYPE :: invector(numconfig,numr), outvector(numconfig,numr), inenergy, &
        myinvectortr(numr,numconfig),myoutvectortr(numr,numconfig),facs(3)
   Type(CONFIGPTR) :: matrix_ptr
   Type(SPARSEPTR) :: sparse_ptr
   integer ::  conflag,boflag,nucflag,pulseflag
-
   real*8 :: time
+
   call vectdpot(time,facs)
 
   myinvectortr(:,:)=1d0; myoutvectortr(:,:)=0d0
   call sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr(:,botwalk),matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag,time,0,1,numr,1)
-  
   if (sparseconfigflag.ne.0) then
      call mpiallgather(myoutvectortr,numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
   endif
-
   outvector(:,:)=TRANSPOSE(myoutvectortr)
 
   if (quadpreconshift.eq.0d0) then
@@ -143,17 +138,16 @@ subroutine sparseconfigdiagmult(invector,outvector,matrix_ptr, sparse_ptr, bofla
   else
      outvector(:,:)=invector(:,:)*0.5d0* (1d0/(outvector(:,:)-inenergy+(0d0,1d0)*quadpreconshift) + 1d0/(outvector(:,:)-inenergy-(0d0,1d0)*quadpreconshift))
   endif
+
 end subroutine sparseconfigdiagmult
 
 
-
-subroutine parsparseconfigdiagmult_transpose(myinvectortr,myoutvectortr,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag, inenergy,time)
+recursive subroutine parsparseconfigdiagmult_transpose(myinvectortr,myoutvectortr,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag, inenergy,time)
   use parameters
   use configptrmod
   use sparseptrmod
   implicit none
-
-  DATATYPE :: inenergy,tempvectortr(numr,numconfig), &
+  DATATYPE :: inenergy,tempvectortr(numr,numconfig), &  !!AUTOMATIC
        myinvectortr(numr,numconfig),myoutvectortr(numr,botwalk:topwalk)
   Type(CONFIGPTR) :: matrix_ptr
   Type(SPARSEPTR) :: sparse_ptr
@@ -178,12 +172,12 @@ end subroutine parsparseconfigdiagmult_transpose
 
 !! NOW WRAPPER - SPARSEOPT HERE
 
-subroutine sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag)
+recursive subroutine sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr,matrix_ptr,sparse_ptr,&
+     boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag)
   use parameters
   use configptrmod
   use sparseptrmod
   implicit none
-
   integer :: conflag,boflag,nucflag,pulseflag,onlytdflag,botr,topr,diagflag
   real*8 :: time
   DATATYPE :: myinvectortr(botr:topr,numconfig), myoutvectortr(botr:topr,botwalk:topwalk)
@@ -193,18 +187,19 @@ subroutine sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr,matrix
   if (topwalk-botwalk+1.eq.0) then
      return
   endif
-
   if (sparseopt.eq.0) then
      call direct_sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr,matrix_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag)
   else
      call sparsesparsemult_transpose_nompi(myinvectortr,myoutvectortr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag)
   endif
+
 end subroutine sparseconfigmultnew_transpose_nompi
 
 
 !! SPARSE MATVEC (with matrix_ptr not sparse_ptr)
 
-subroutine direct_sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr,matrix_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag)
+recursive subroutine direct_sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr,matrix_ptr, &
+     boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag)
   use parameters
   use configptrmod
   use opmod   !! rkemod, proderivmod  
@@ -329,7 +324,8 @@ end subroutine direct_sparseconfigmultnew_transpose_nompi
 
 !! DIRECT MATVEC (with sparse_ptr not matrix_ptr)
 
-subroutine sparsesparsemult_transpose_nompi(myinvectortr,myoutvectortr,sparse_ptr,boflag,nucflag,pulseflag,conflag,time,onlytdflag,botr,topr,diagflag)
+recursive subroutine sparsesparsemult_transpose_nompi(myinvectortr,myoutvectortr,sparse_ptr,&
+     boflag,nucflag,pulseflag,conflag,time,onlytdflag,botr,topr,diagflag)
   use parameters
   use sparseptrmod
   use walkmod
@@ -341,11 +337,14 @@ subroutine sparsesparsemult_transpose_nompi(myinvectortr,myoutvectortr,sparse_pt
   DATAECS :: rvector(botr:topr)
   Type(SPARSEPTR) :: sparse_ptr
   DATATYPE ::        myinvectortr(botr:topr,numconfig),myoutvectortr(botr:topr,botwalk:topwalk), facs(3),csum
+  DATATYPE :: tempvectortr(botr:topr,botwalk:topwalk), tempsparsemattr(maxsinglewalks,botwalk:topwalk) !! AUTOMATIC
 
-!! sparseconfigmultone only used for natproj.  when needed, reprogram.  using allocatable arrays allocated ONCE.
-
-  integer, save:: allochere=0
-  DATATYPE,save,allocatable :: tempvectortr(:,:), tempsparsemattr(:,:)
+!!$  integer, save:: allochere=0
+!!$  DATATYPE,save,allocatable :: tempvectortr(:,:), tempsparsemattr(:,:)
+!!$  if (allochere.eq.0) then
+!!$     allocate(tempvectortr(botr:topr,botwalk:topwalk), tempsparsemattr(maxsinglewalks,botwalk:topwalk))
+!!$  endif
+!!$  allochere=1
 
   if (topwalk-botwalk+1.eq.0) then
      return
@@ -357,10 +356,6 @@ subroutine sparsesparsemult_transpose_nompi(myinvectortr,myoutvectortr,sparse_pt
   if (sparseconfigflag.eq.0) then
      OFLWR "BADDDCALLL6666666"; CFLST
   endif
-  if (allochere.eq.0) then
-     allocate(tempvectortr(botr:topr,botwalk:topwalk), tempsparsemattr(maxsinglewalks,botwalk:topwalk))
-  endif
-  allochere=1
 
   myoutvectortr(:,:)=0d0
 
@@ -468,8 +463,7 @@ end subroutine sparsesparsemult_transpose_nompi
 
 
 
-
-subroutine arbitrary_sparsemult_transpose_nompi_singles(mattrans, rvector,inbigvectortr,outsmallvectortr,mynumr,diagflag)
+recursive subroutine arbitrary_sparsemult_transpose_nompi_singles(mattrans, rvector,inbigvectortr,outsmallvectortr,mynumr,diagflag)
   use parameters
   use walkmod
   implicit none
@@ -509,7 +503,7 @@ subroutine arbitrary_sparsemult_transpose_nompi_singles(mattrans, rvector,inbigv
 end subroutine arbitrary_sparsemult_transpose_nompi_singles
 
 
-subroutine arbitrary_sparsemult_transpose_nompi_doubles(mattrans,rvector,inbigvectortr,outsmallvectortr,mynumr,diagflag)
+recursive subroutine arbitrary_sparsemult_transpose_nompi_doubles(mattrans,rvector,inbigvectortr,outsmallvectortr,mynumr,diagflag)
   use parameters
   use walkmod
   implicit none
@@ -520,13 +514,11 @@ subroutine arbitrary_sparsemult_transpose_nompi_doubles(mattrans,rvector,inbigve
   if (sparseconfigflag.eq.0) then
      OFLWR "BADDDCALLL6666666"; CFLST
   endif
-
   if (topwalk-botwalk+1.eq.0) then
      return
   endif
 
   outsmallvectortr(:,:)=0d0
-
   do config1=botwalk,topwalk
      if (diagflag.eq.0) then
         do iwalk=1,numdoublewalks(config1)
@@ -546,10 +538,9 @@ subroutine arbitrary_sparsemult_transpose_nompi_doubles(mattrans,rvector,inbigve
 end subroutine arbitrary_sparsemult_transpose_nompi_doubles
 
 
-
 !! TAKES TRANSPOSED VECTOR (numr,numconfig).  temptransposeflag irrelevant because not constructing configmatels
 
-subroutine arbitraryconfig_mult(onebodymat, rvector, avectorin, avectorout,inrnum)   
+recursive subroutine arbitraryconfig_mult(onebodymat, rvector, avectorin, avectorout,inrnum)   
   use parameters
   implicit none
   integer :: inrnum
@@ -558,23 +549,19 @@ subroutine arbitraryconfig_mult(onebodymat, rvector, avectorin, avectorout,inrnu
   DATAECS :: rvector(inrnum)
 
   avectorintr(:,:)=TRANSPOSE(avectorin(:,:)); avectorouttr(:,:)=0d0
-  
   call arbitraryconfig_mult_transpose_nompi(onebodymat, rvector, avectorintr, avectorouttr(:,botwalk),inrnum,0)
-
   if (sparseconfigflag.ne.0) then
      call mpiallgather(avectorouttr,numconfig*inrnum,configsperproc*inrnum,maxconfigsperproc*inrnum)
   endif
-  
   avectorout(:,:)=TRANSPOSE(avectorouttr)
 
 end subroutine arbitraryconfig_mult
 
 
-subroutine arbitraryconfig_mult_transpose_nompi(onebodymat, rvector, avectorintr, avectorouttr,inrnum,diagflag)
+recursive subroutine arbitraryconfig_mult_transpose_nompi(onebodymat, rvector, avectorintr, avectorouttr,inrnum,diagflag)
    use walkmod
   use parameters
   implicit none
-
   integer ::    config2, config1, iwalk, inrnum,diagflag,idiag
   DATATYPE :: onebodymat(nspf,nspf), avectorintr(inrnum,numconfig), avectorouttr(inrnum,botwalk:topwalk)
   DATAECS :: rvector(inrnum)
@@ -616,7 +603,7 @@ end subroutine arbitraryconfig_mult_transpose_nompi
 
 
 
-subroutine arbitraryconfig_mult_doubles_transpose_nompi(twobodymat, rvector, avectorintr, avectorouttr,inrnum,diagflag)   
+recursive subroutine arbitraryconfig_mult_doubles_transpose_nompi(twobodymat, rvector, avectorintr, avectorouttr,inrnum,diagflag)   
   use walkmod
   use parameters
   implicit none
