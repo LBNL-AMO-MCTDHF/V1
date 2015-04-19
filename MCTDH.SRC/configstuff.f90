@@ -105,7 +105,7 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
 
      if (printflag.ne.0) then
         OFLWR "  -- Nonsparse eigenvals --"
-        do i=1,min(numconfig*numr,order+10)
+        do i=1,min(numconfig*numr,numshift+order+10)
            WRFL "   ", fullconfigvals(i)
         enddo
         CFL
