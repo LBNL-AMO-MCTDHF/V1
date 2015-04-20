@@ -1101,11 +1101,9 @@ recursive subroutine mult_circ_z(in, out,option,howmany,timingdir,notiming)
        out(numpoints(1)*numpoints(2),numpoints(3),howmany), &
        work(numpoints(1)*numpoints(2),numpoints(3),howmany),&  !! AUTOMATIC
        work2(numpoints(1)*numpoints(2),numpoints(3),howmany)   !! AUTOMATIC
-  integer :: times(10),atime,btime,notiming,getlen,ibox,jbox,deltabox
+  integer :: atime,btime,notiming,getlen,ibox,jbox,deltabox
   character :: timingdir*(*)
-  integer, save :: xcount=0
-
-  times(:)=0
+  integer, save :: xcount=0, times(10)=0
 
   if (nprocs.ne.nbox(3)) then
      OFLWR "EEGNOT STOP",nprocs,nbox(3); CFLST
@@ -1164,8 +1162,10 @@ recursive subroutine mult_circ_z(in, out,option,howmany,timingdir,notiming)
         write(2853,'(100A11)')   "mult", "sendrecv","add"
         close(2853) 
      endif
-     open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown", position="append")
-     write(2853,'(100I11)')  times(1:3);        close(2853)
+     if (mod(xcount,20).eq.0) then
+        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown", position="append")
+        write(2853,'(100I11)')  times(1:3);        close(2853)
+     endif
   endif
 
 end subroutine mult_circ_z
@@ -1179,11 +1179,9 @@ recursive subroutine mult_summa_z(in, out,option,howmany,timingdir,notiming)
   DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
        out(numpoints(1)*numpoints(2),numpoints(3),howmany), &
        work(numpoints(1)*numpoints(2),numpoints(3),howmany)  !! AUTOMATIC
-  integer :: times(10),atime,btime,notiming,getlen,ibox
+  integer :: atime,btime,notiming,getlen,ibox
   character :: timingdir*(*)
-  integer, save :: xcount=0
-
-  times(:)=0
+  integer, save :: xcount=0, times(10)=0
 
   if (nprocs.ne.nbox(3)) then
      OFLWR "EEGNOT STOP",nprocs,nbox(3); CFLST
@@ -1239,8 +1237,10 @@ recursive subroutine mult_summa_z(in, out,option,howmany,timingdir,notiming)
         write(2853,'(100A11)')   "copy", "bcast","mult"
         close(2853) 
      endif
-     open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown", position="append")
-     write(2853,'(100I11)')  times(1:3);        close(2853)
+     if (mod(xcount,20).eq.0) then
+        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown", position="append")
+        write(2853,'(100I11)')  times(1:3);        close(2853)
+     endif
   endif
 
 end subroutine mult_summa_z
