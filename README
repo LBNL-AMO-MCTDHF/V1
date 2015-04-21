@@ -28,7 +28,7 @@ Read orbitals for x2 resolution using loadspfflag=1 for sinc dvr by setting
   reinterp_orbflag=1 in &parinp (not supported for atom or diatom)
 
 MPI ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3.
-  set both parorbsplit=3 in &parinp and orbparflag=.true. in &sinc_params.
+  set both parorbsplit=3 in &parinp and orbparflag=.true. in &sincparinp.
   When this is set:
 
   RATE LIMITING STEP IN CODE (chmctdhf_sinc) AT SCALE: 
