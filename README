@@ -1,8 +1,6 @@
 
   ** LBNL-AMO-MCTDHF VERSION 1 **
 
-FIRST DISTRIBUTION VERSION.  MPI FFT for mean fields.
-
 For the moment, please watch the commits to stay notified about bug fixes:
      https://github.com/LBNL-AMO-MCTDHF/V1.00/commits/master
 
