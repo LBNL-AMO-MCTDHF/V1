@@ -280,12 +280,14 @@ subroutine mympirealreduceone(input)
   implicit none
   real*8 :: input,output
   integer :: ierr,isize=1
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   ierr=0
   call MPI_allreduce( input, output, isize, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD , ierr)
   input=output
   if (ierr/=0) then
      OFLWR "ERR mympirealreduce!"; CFLST
   endif
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympirealreduceone
 
 
@@ -295,9 +297,7 @@ subroutine mympirealreduce(input,isize)
   implicit none
   integer :: ierr,isize
   real*8 :: input(isize),output(isize)
-
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
   ierr=0
   call MPI_allreduce( input, output, isize, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD , ierr)
   input=output
@@ -316,12 +316,14 @@ subroutine mympiireduceone(input)
   implicit none
   integer :: input,output
   integer :: ierr,isize=1
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   ierr=0
   call MPI_allreduce( input, output, isize, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD , ierr)
   input=output
   if (ierr/=0) then
      OFLWR "ERR mympiireduce!"; CFLST
   endif
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympiireduceone
 
 
@@ -1103,6 +1105,8 @@ subroutine mympialltoall(input, output, count)
   integer :: ierr, count
   DATATYPE :: input(count,nprocs), output(count,nprocs)
 
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+
 #ifndef MPIFLAG
   output(:,:)=input(:,:)
 #else
@@ -1116,6 +1120,8 @@ subroutine mympialltoall(input, output, count)
   endif
 #endif
 
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+
 end subroutine mympialltoall
 
 
@@ -1126,6 +1132,9 @@ subroutine mympialltoall_complex(input, output, count)
   implicit none
   integer :: ierr, count
   complex*16 :: input(count,nprocs), output(count,nprocs)
+
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+
 #ifndef MPIFLAG
   output(:,:)=input(:,:)
 #else
@@ -1134,6 +1143,9 @@ subroutine mympialltoall_complex(input, output, count)
      OFLWR "ERROR ALLTOALL ", ierr; CFLST
   endif
 #endif
+
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+
 end subroutine mympialltoall_complex
 
 
