@@ -37,14 +37,14 @@ MPI ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3
 
      --> MPI PARALLEL KINETIC ENERGY MULTIPLICATION IN Z DIRECTION <--
 
-  FOUR OPTIONS:
+  FOUR OPTIONS for &sincparinp namelist variable zke_paropt:
 
   zke_paropt=0   mult_circ_z      sendrecv
   zke_paropt=1   mult_summa_z     SUMMA  scalable universal matrix multiplication 
                                     algorithm (broadcast before)
   zke_paropt=2   mult_reduce_z    reduce after (slow, generally, right?)
-  zke_paropt=3   mult_alltoall_z  Calculate everything, wasting memory, then perform 
-                                    all to all (previous subroutine)
+  zke_paropt=3   mult_alltoall_z  Calculate everything, wasting memory, then 
+                                    perform all to all (previous subroutine)
 
  ----------------------------------------------------
 
