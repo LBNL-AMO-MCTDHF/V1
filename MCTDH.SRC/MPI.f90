@@ -685,35 +685,6 @@ SUBROUTINE MYGATHERV_real(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag)
 END SUBROUTINE MYGATHERV_real
 
 
-SUBROUTINE MYGATHERV_integer(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag)
-  use mpimod
-  IMPLICIT NONE
-  logical, intent(in) :: bcastflag
-  INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST
-  INTEGER, INTENT(IN) :: BLOCKS(nprocs), BLOCKSTART(nprocs)
-  integer, INTENT(IN) :: V1(first:last)
-  integer, INTENT(OUT) :: X1(1:MINPUT)
-  INTEGER ::MPIERR=0
-
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
-  if (last-first+1.ne.blocks(myrank)) then
-     print *, "ACK BLOCKS",myrank,nprocs,last,first,blocks(myrank);     stop
-  endif
-  CALL MPI_GATHERV(V1(first:), blocks(myrank), MPI_INTEGER, X1(:), BLOCKS(:), &
-       BLOCKSTART(:)-1, MPI_INTEGER, 0, MPI_COMM_WORLD, MPIERR)
-  if (mpierr.ne.0) then
-     print *, "GAtherv err",mpierr,myrank;          stop
-  endif
-  if (bcastflag) then
-     CALL MPI_BCAST(X1(:),MINPUT,MPI_INTEGER, 0, MPI_COMM_WORLD, MPIERR)
-     if (mpierr.ne.0) then
-        print *, "bcast err",mpierr,myrank;          stop
-     endif
-  endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-
-END SUBROUTINE MYGATHERV_integer
 
 
 SUBROUTINE MYSCATTERV_complex(X1,V1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART)
@@ -802,19 +773,6 @@ SUBROUTINE MYGATHERV_real(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag)
   endif
   X1(:)=V1(:)
 END SUBROUTINE MYGATHERV_real
-
-
-SUBROUTINE MYGATHERV_integer(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag)
-  IMPLICIT NONE
-  logical, intent(in) :: bcastflag
-  INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST, BLOCKS(1), BLOCKSTART(1)
-  integer, INTENT(IN) :: V1(first:last)
-  integer, INTENT(OUT) :: X1(1:MINPUT)
-  if (last-first.ne.minput-1) then
-     print *, "AAUAUAUAUAUAUA"; stop
-  endif
-  X1(:)=V1(:)
-END SUBROUTINE MYGATHERV_integer
 
 
 
