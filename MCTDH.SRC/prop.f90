@@ -241,11 +241,17 @@ subroutine prop_loop( starttime)
 
         avecerror=abs(thisenergyavg-lastenergyavg)/par_timestep
 
-        error=sqrt(abs(hermdot(outspfs,outspfs,totspfdim)))
+!!$ OOPS 04-24-15        error=sqrt(abs(hermdot(outspfs,outspfs,totspfdim)))
+!                        if (parorbsplit.eq.3) then
+!                           call mympirealreduceone(error)
+!                        endif
 
+        error=abs(hermdot(outspfs,outspfs,totspfdim))
         if (parorbsplit.eq.3) then
            call mympirealreduceone(error)
         endif
+        error=sqrt(error)
+
 
         OFL; write(mpifileptr,'(A24,2E10.2,A10,2E10.2)') &
              " STOPTEST : ORBITALS ", error,stopthresh, " AVECTOR ",avecerror,astoptol;CFL
