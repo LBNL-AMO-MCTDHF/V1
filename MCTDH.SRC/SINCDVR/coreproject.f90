@@ -367,7 +367,7 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   use myprojectmod
   implicit none
   integer ::  spf1a, spf1b, spf2a, spf2b, ii,jj,&
-       itime,jtime,getlen,notiming,qqstart(nprocs),qqend(nprocs),qqblocks(nprocs),&
+       itime,jtime,getlen,notiming,&
        kk21,kk22,kk23,  ii21,ii22,ii23, ibox,jproc
   integer, save :: xcount=0, times(10)=0,fttimes(10)=0,qqcount=0
   character :: timingdir*(*)
@@ -390,7 +390,9 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   DATATYPE,allocatable ::  myden(:)
 
 !! ZEROING TIMES... not cumulative
-  times(:)=0; fttimes(:)=0
+  times(:)=0; fttimes(:)=0; 
+
+  ibox=0; jproc=0  !! avoid warn unused
 
   call myclock(firsttime); itime=firsttime
 
@@ -488,15 +490,8 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
            if (.not.localflag) then
               call myclock(itime)
               
-              qqblocks(:)=totpoints
-              do ii=1,nprocs
-                 qqend(ii)=ii*totpoints; qqstart(ii)=(ii-1)*totpoints+1; 
-              enddo
-#ifdef REALGO
-              call mygatherv_real(twoeden03,twoeden03big,totpoints*nprocs,qqstart(myrank),qqend(myrank),qqblocks(:),qqstart(:),.true.)
-#else
-              call mygatherv_complex(twoeden03,twoeden03big,totpoints*nprocs,qqstart(myrank),qqend(myrank),qqblocks(:),qqstart(:),.true.)
-#endif
+              call mympigather(twoeden03,twoeden03big,totpoints)
+
               twoeden03huge(:,:,:,:,:,:,spf2a)=0d0; 
               do ii=1,nbox(3)
                  twoeden03huge(:,1,:,1,:,ii*2-1,spf2a)=twoeden03big(:,:,:,ii)
@@ -866,7 +861,9 @@ recursive subroutine mult_ke_toep(in, out,howmany)
   implicit none
   integer :: howmany
   DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
+#ifdef MPIFLAG
   integer :: qstart(nprocs),qblocks(nprocs),qend(nprocs),ibox,jproc,nulltimes(10)
+#endif
   DATATYPE, allocatable :: bigin(:,:,:,:,:,:,:),bigout(:,:,:,:,:,:,:),mywork(:,:)
   DATATYPE, allocatable, save :: bigke(:,:,:), hugeke(:,:,:)
   integer, save :: allocated=0

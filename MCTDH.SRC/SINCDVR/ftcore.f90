@@ -146,7 +146,7 @@ end module bothblockmod
 subroutine setblock(innprocs,inmyrank,indims)
   use bothblockmod
   implicit none
-  integer :: innprocs,inmyrank,indims(3),i
+  integer :: innprocs,inmyrank,indims(3)
   if (dim.ne.-1) then
      print *, "CALLME ONCE ONLY"; stop
   endif
@@ -249,11 +249,11 @@ recursive subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
   mystart=dim**3/nprocs*(myrank-1)+1
 
   do ii=1,howmany
-     call myzfft3d_par(in(mystart,ii),out(mystart,ii),indim,dim/nprocs,nulltimes,1)
+     call myzfft3d_par(in(mystart,ii),out(mystart,ii),indim,nulltimes,1)
   enddo
 
   do ii=1,howmany
-     call mygatherv_complex(out(mystart,ii),out(:,ii),dim**3/nprocs)
+     call mympigather_complex(out(mystart,ii),out(:,ii),dim**3/nprocs)
   enddo
 
 end subroutine myzfft3d_mpiwrap
@@ -264,11 +264,11 @@ end subroutine myzfft3d_mpiwrap
 !!! times(1) = zero   times(2)=fourier
 !!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
   
-recursive subroutine myzfft3d_par(in,out,indim,inblockdim,times,howmany)
+recursive subroutine myzfft3d_par(in,out,indim,times,howmany)
   use bothblockmod
   use mytransposemod
   implicit none
-  integer, intent(in) :: indim,inblockdim,howmany
+  integer, intent(in) :: indim,howmany
   complex*16, intent(in) :: in(dim,dim,dim/nprocs,howmany)
   complex*16, intent(out) :: out(dim,dim,dim/nprocs,howmany)
   integer, intent(inout) :: times(8)

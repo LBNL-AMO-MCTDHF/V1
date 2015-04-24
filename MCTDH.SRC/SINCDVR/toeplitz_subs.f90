@@ -270,20 +270,6 @@ recursive subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany
   complex*16 :: multvector(2*totdim,2*totdim,2*totdim,howmany), &   !! SEGFAULTS FOR AUTOMATIC
        ffback(2*totdim,2*totdim,2*totdim,howmany),   bigcirc(2*totdim,2*totdim,2*totdim)
 
-!!$  complex*16, allocatable, save :: multvector(:,:,:,:), ffback(:,:,:,:), bigcirc(:,:,:)
-!!$  integer, save :: savetotdim = -999, savehowmany = -999
-!!$  if (savetotdim.eq.-999) then
-!!$     allocate( multvector(2*totdim,2*totdim,2*totdim,howmany), ffback(2*totdim,2*totdim,2*totdim,howmany),&
-!!$          bigcirc(2*totdim,2*totdim,2*totdim))
-!!$     multvector=0; ffback=0; bigcirc=0
-!!$  else if (savetotdim.ne.totdim.or.savehowmany.ne.howmany) then
-!!$     deallocate(multvector,ffback,bigcirc)
-!!$     allocate( multvector(2*totdim,2*totdim,2*totdim,howmany), ffback(2*totdim,2*totdim,2*totdim,howmany),&
-!!$          bigcirc(2*totdim,2*totdim,2*totdim))
-!!$     multvector=0; ffback=0; bigcirc=0
-!!$  endif
-!!$  savetotdim=totdim; savehowmany=howmany
-
   bigcirc(:,:,:)=rbigcirc(:,:,:)
   multvector(:,:,:,:)=rmultvector(:,:,:,:)
   call circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
@@ -298,20 +284,6 @@ recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
        ffback(2*totdim,2*totdim,2*totdim,howmany)
   complex*16 :: ffmat(2*totdim,2*totdim,2*totdim),ffvec(2*totdim,2*totdim,2*totdim,howmany),&  !!SEGFAULTS 
        ffprod(2*totdim,2*totdim,2*totdim,howmany), ffwork(2*totdim,2*totdim,2*totdim,howmany)  !!AUTOMATIC
-
-!!$  complex*16, allocatable, save :: ffmat(:,:,:), ffvec(:,:,:,:), ffprod(:,:,:,:), ffwork(:,:,:,:)
-!!$  integer, save :: savetotdim = -999, savehowmany = -999
-!!$  if (savetotdim.eq.-999) then
-!!$     allocate( ffmat(2*totdim,2*totdim,2*totdim),ffvec(2*totdim,2*totdim,2*totdim,howmany),&
-!!$          ffprod(2*totdim,2*totdim,2*totdim,howmany), ffwork(2*totdim,2*totdim,2*totdim,howmany))
-!!$     ffmat=0; ffvec=0; ffprod=0; ffwork=0
-!!$  else if (savetotdim.ne.totdim.or.savehowmany.ne.howmany) then
-!!$     deallocate(ffmat,ffvec,ffprod,ffwork)
-!!$     allocate( ffmat(2*totdim,2*totdim,2*totdim),ffvec(2*totdim,2*totdim,2*totdim,howmany),&
-!!$          ffprod(2*totdim,2*totdim,2*totdim,howmany), ffwork(2*totdim,2*totdim,2*totdim,howmany))
-!!$     ffmat=0; ffvec=0; ffprod=0; ffwork=0
-!!$  endif
-!!$  savetotdim=totdim; savehowmany=howmany
 
 #ifdef MPIFLAG
   call myzfft3d_mpiwrap(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,howmany)
@@ -348,20 +320,6 @@ recursive subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,totdim,blo
   complex*16 :: multvector(2*totdim,2*totdim,2*blocksize,howmany), &  !! SEGFAULTS FOR AUTOMATIC
         ffback(2*totdim,2*totdim,2*blocksize,howmany),  bigcirc(2*totdim,2*totdim,2*blocksize)
 
-!!$  complex*16,allocatable,save  :: multvector(:,:,:,:), ffback(:,:,:,:), bigcirc(:,:,:)
-!!$  integer, save :: savetotdim = -999, savehowmany = -999
-!!$  if (savetotdim.eq.-999) then
-!!$     allocate( multvector(2*totdim,2*totdim,2*blocksize,howmany), ffback(2*totdim,2*totdim,2*blocksize,howmany),&
-!!$          bigcirc(2*totdim,2*totdim,2*blocksize))
-!!$     multvector=0; ffback=0; bigcirc=0
-!!$  else if (savetotdim.ne.totdim.or.savehowmany.ne.howmany) then
-!!$     deallocate(multvector,ffback,bigcirc)
-!!$     allocate( multvector(2*totdim,2*totdim,2*blocksize,howmany), ffback(2*totdim,2*totdim,2*blocksize,howmany),&
-!!$          bigcirc(2*totdim,2*totdim,2*blocksize))
-!!$     multvector=0; ffback=0; bigcirc=0
-!!$  endif
-!!$  savetotdim=totdim; savehowmany=howmany
-
   call myclock(atime)
   bigcirc(:,:,:)=rbigcirc(:,:,:)
   multvector(:,:,:,:)=rmultvector(:,:,:,:)
@@ -382,31 +340,17 @@ end subroutine circ3d_sub_real_mpi
 
 recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,times,howmany)
   implicit none
-  integer :: totdim,blocksize,times(*),atime,btime,howmany,ii
+  integer :: totdim,blocksize,times(*),howmany
   complex*16 ::  multvector(2*totdim,2*totdim,2*blocksize,howmany), &
        ffback(2*totdim,2*totdim,2*blocksize,howmany),  bigcirc(2*totdim,2*totdim,2*blocksize,1,1,1)
+#ifdef MPIFLAG
+  integer :: atime,btime,ii
   complex*16 :: ffmat(2*totdim,2*totdim,2*blocksize), &  !! SEGFAULTS FOR AUTOMATIC
        ffwork(2*totdim,2*totdim,2*blocksize,howmany), &
        ffvec(2*totdim,2*totdim,2*blocksize,howmany),  ffprod(2*totdim,2*totdim,2*blocksize,howmany)
 
-!!$  complex*16, allocatable,save :: ffmat(:,:,:), ffwork(:,:,:,:), ffvec(:,:,:,:), ffprod(:,:,:,:)
-!!$  integer, save :: savetotdim = -999, savehowmany = -999
-!!$  if (savetotdim.eq.-999) then
-!!$     allocate( ffmat(2*totdim,2*totdim,2*blocksize), ffwork(2*totdim,2*totdim,2*blocksize,howmany), &
-!!$          ffvec(2*totdim,2*totdim,2*blocksize,howmany),  ffprod(2*totdim,2*totdim,2*blocksize,howmany))
-!!$     ffmat=0; ffvec=0; ffprod=0; ffwork=0
-!!$  else if (savetotdim.ne.totdim.or.savehowmany.ne.howmany) then
-!!$     deallocate(ffmat,ffwork,ffvec,ffprod)
-!!$     allocate( ffmat(2*totdim,2*totdim,2*blocksize), ffwork(2*totdim,2*totdim,2*blocksize,howmany), &
-!!$          ffvec(2*totdim,2*totdim,2*blocksize,howmany),  ffprod(2*totdim,2*totdim,2*blocksize,howmany))
-!!$     ffmat=0; ffvec=0; ffprod=0; ffwork=0
-!!$  endif
-!!$  savetotdim=totdim; savehowmany=howmany
-
-#ifdef MPIFLAG
-
-  call myzfft3d_par(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,2*blocksize,times,howmany)
-  call myzfft3d_par(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,2*blocksize,times,1)
+  call myzfft3d_par(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,times,howmany)
+  call myzfft3d_par(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,times,1)
 
   call myclock(atime)
 
@@ -420,13 +364,14 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,t
 
   ffwork(:,:,:,:)=CONJG(ffprod(:,:,:,:))
   call myclock(btime); times(6)=times(6)+btime-atime
-  call myzfft3d_par(ffwork(:,:,:,:),ffback(:,:,:,:),2*totdim,2*blocksize,times,howmany)
+  call myzfft3d_par(ffwork(:,:,:,:),ffback(:,:,:,:),2*totdim,times,howmany)
   call myclock(atime)
   ffback(:,:,:,:)=CONJG(ffback(:,:,:,:))
   call myclock(btime); times(6)=times(6)+btime-atime
 
 #else
   print *, "ACKKKK!!! MPIFLAG NOT SET"; stop
+  bigcirc=0; multvector=0; ffback=0; times(1)=0
 #endif
 end subroutine circ3d_sub_mpi
 
