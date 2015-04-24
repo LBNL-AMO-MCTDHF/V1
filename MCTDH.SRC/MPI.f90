@@ -621,31 +621,42 @@ subroutine simpleallgather_real(vectorin,vectorsout,insize)
 end subroutine simpleallgather_real
 
 
+subroutine getgatherv_stuff(blocks,parsize,blockstart)
+  use mpimod
+  integer, intent(in) :: blocks(nprocs)
+  integer, intent(out) :: parsize, blockstart(nprocs)
+  integer :: ii, isum
+  isum=blocks(1)
+  blockstart(1)=1  
+  do ii=2,nprocs
+     blockstart(ii)=blockstart(ii-1)+blocks(ii-1)
+     isum=isum+blocks(ii)
+  enddo
+  parsize=isum
+end subroutine getgatherv_stuff
 
 
-SUBROUTINE MYGATHERV_complex(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag)
+SUBROUTINE MYGATHERV_complex(V1,X1,BLOCKS,bcastflag)
   use mpimod
   IMPLICIT NONE
   logical, intent(in) :: bcastflag
-  INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST
-  INTEGER, INTENT(IN) :: BLOCKS(nprocs), BLOCKSTART(nprocs)
-  complex*16, INTENT(IN) :: V1(first:last)
-  complex*16, INTENT(OUT) :: X1(1:MINPUT)
-  INTEGER ::MPIERR=0
+  INTEGER, INTENT(IN) :: BLOCKS(nprocs)
+  complex*16, INTENT(IN) :: V1(blocks(myrank))
+  complex*16, INTENT(OUT) :: X1(*)
+  INTEGER ::MPIERR=0, BLOCKSTART(nprocs),parsize
 
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 
-  if (last-first+1.ne.blocks(myrank)) then
-     print *, "ACK BLOCKS",myrank,nprocs,last,first,blocks(myrank);     stop
-  endif
+  call getgatherv_stuff(blocks,parsize,blockstart)
 
-  CALL MPI_GATHERV(V1(first:), blocks(myrank), MPI_DOUBLE_COMPLEX, X1(:), BLOCKS(:), &
+  CALL MPI_GATHERV(V1, blocks(myrank), MPI_DOUBLE_COMPLEX, X1, BLOCKS, &
        BLOCKSTART(:)-1, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD, MPIERR)
   if (mpierr.ne.0) then
      print *, "GAtherv err",mpierr,myrank;          stop
   endif
+
   if (bcastflag) then
-     CALL MPI_BCAST(X1(:),MINPUT,MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD, MPIERR)
+     CALL MPI_BCAST(X1,PARSIZE,MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD, MPIERR)
      if (mpierr.ne.0) then
         print *, "bcast err",mpierr,myrank;          stop
      endif
@@ -655,28 +666,26 @@ SUBROUTINE MYGATHERV_complex(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag
 END SUBROUTINE MYGATHERV_complex
 
 
-SUBROUTINE MYGATHERV_real(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag)
+SUBROUTINE MYGATHERV_real(V1,X1,BLOCKS,bcastflag)
   use mpimod
   IMPLICIT NONE
   logical, intent(in) :: bcastflag
-  INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST
-  INTEGER, INTENT(IN) :: BLOCKS(nprocs), BLOCKSTART(nprocs)
-  real*8, INTENT(IN) :: V1(first:last)
-  real*8, INTENT(OUT) :: X1(1:MINPUT)
-  INTEGER ::MPIERR=0
+  INTEGER, INTENT(IN) :: BLOCKS(nprocs)
+  real*8, INTENT(IN) :: V1(blocks(myrank))
+  real*8, INTENT(OUT) :: X1(*)
+  INTEGER ::MPIERR=0, parsize, BLOCKSTART(nprocs)
 
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 
-  if (last-first+1.ne.blocks(myrank)) then
-     print *, "ACK BLOCKS",myrank,nprocs,last,first,blocks(myrank);     stop
-  endif
-  CALL MPI_GATHERV(V1(first:), blocks(myrank), MPI_DOUBLE_PRECISION, X1(:), BLOCKS(:), &
+  call getgatherv_stuff(blocks,parsize,blockstart)
+
+  CALL MPI_GATHERV(V1, blocks(myrank), MPI_DOUBLE_PRECISION, X1, BLOCKS, &
        BLOCKSTART(:)-1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, MPIERR)
   if (mpierr.ne.0) then
      print *, "GAtherv err",mpierr,myrank;          stop
   endif
   if (bcastflag) then
-     CALL MPI_BCAST(X1(:),MINPUT,MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, MPIERR)
+     CALL MPI_BCAST(X1,PARSIZE,MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, MPIERR)
      if (mpierr.ne.0) then
         print *, "bcast err",mpierr,myrank;          stop
      endif
@@ -688,21 +697,19 @@ END SUBROUTINE MYGATHERV_real
 
 
 
-SUBROUTINE MYSCATTERV_complex(X1,V1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART)
+SUBROUTINE MYSCATTERV_complex(X1,V1,BLOCKS)
   use mpimod
   IMPLICIT NONE
-  INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST
-  INTEGER, INTENT(IN) :: BLOCKS(nprocs), BLOCKSTART(nprocs)
-  complex*16, INTENT(OUT) :: V1(first:last)
-  complex*16, INTENT(IN) :: X1(1:MINPUT)
-  INTEGER ::MPIERR=0
+  INTEGER, INTENT(IN) :: BLOCKS(nprocs)
+  complex*16, INTENT(OUT) :: V1(blocks(myrank))
+  complex*16, INTENT(IN) :: X1(*)
+  INTEGER ::MPIERR=0, parsize, BLOCKSTART(nprocs)
 
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 
-  if (last-first+1.ne.blocks(myrank)) then
-     print *, "ACK BLOCKS",myrank,nprocs,last,first,blocks(myrank);     stop
-  endif
-  CALL MPI_SCATTERV(X1(:), blocks(:), blockstart(:)-1, MPI_DOUBLE_COMPLEX, V1(first:), BLOCKS(myrank), &
+  call getgatherv_stuff(blocks,parsize,blockstart)
+
+  CALL MPI_SCATTERV(X1, blocks, blockstart(:)-1, MPI_DOUBLE_COMPLEX, V1, BLOCKS(myrank), &
        MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD, MPIERR)
   if (mpierr.ne.0) then
      print *, "Scatterv err",mpierr,myrank;          stop
@@ -712,21 +719,19 @@ SUBROUTINE MYSCATTERV_complex(X1,V1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART)
 END SUBROUTINE MYSCATTERV_complex
 
 
-SUBROUTINE MYSCATTERV_real(X1,V1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART)
+SUBROUTINE MYSCATTERV_real(X1,V1,BLOCKS)
   use mpimod
   IMPLICIT NONE
-  INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST
-  INTEGER, INTENT(IN) :: BLOCKS(nprocs), BLOCKSTART(nprocs)
-  real*8, INTENT(OUT) :: V1(first:last)
-  real*8, INTENT(IN) :: X1(1:MINPUT)
-  INTEGER ::MPIERR=0
+  INTEGER, INTENT(IN) :: BLOCKS(nprocs)
+  real*8, INTENT(OUT) :: V1(blocks(myrank))
+  real*8, INTENT(IN) :: X1(*)
+  INTEGER ::MPIERR=0, parsize, BLOCKSTART(nprocs)
 
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 
-  if (last-first+1.ne.blocks(myrank)) then
-     print *, "ACK BLOCKS",myrank,nprocs,last,first,blocks(myrank);     stop
-  endif
-  CALL MPI_SCATTERV(X1(:), blocks(:), blockstart(:)-1, MPI_DOUBLE_PRECISION, V1(first:), BLOCKS(myrank), &
+  call getgatherv_stuff(blocks,parsize,blockstart)
+
+  CALL MPI_SCATTERV(X1, blocks, blockstart(:)-1, MPI_DOUBLE_PRECISION, V1, BLOCKS(myrank), &
        MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, MPIERR)
   if (mpierr.ne.0) then
      print *, "Scatterv err",mpierr,myrank;          stop
@@ -768,70 +773,53 @@ end subroutine mympimin
 
 
 
-SUBROUTINE MYGATHERV_complex(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag)
+SUBROUTINE MYGATHERV_complex(V1,X1,BLOCKS,bcastflag)
   IMPLICIT NONE
   logical, intent(in) :: bcastflag
-  INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST, BLOCKS(1), BLOCKSTART(1)
-  complex*16, INTENT(IN) :: V1(first:last)
-  complex*16, INTENT(OUT) :: X1(1:MINPUT)
-  integer :: i
+  INTEGER, INTENT(IN) :: BLOCKS(1)
+  complex*16, INTENT(IN) :: V1(blocks(1))
+  complex*16, INTENT(OUT) :: X1(blocks(1))
   logical :: ilog
-  if (last-first.ne.minput-1) then
-     print *, "AAUAUAUAUAUAUA"; stop
-  endif
   X1(:)=V1(:)
   return
-  i=blocks(1); i=blockstart(1); ilog=bcastflag   !!avoid warn unused
+  ilog=bcastflag   !!avoid warn unused
 END SUBROUTINE MYGATHERV_complex
 
 
-SUBROUTINE MYGATHERV_real(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag)
+SUBROUTINE MYGATHERV_real(V1,X1,BLOCKS,bcastflag)
   use mpimod
   IMPLICIT NONE
   logical, intent(in) :: bcastflag
-  INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST, BLOCKS(1), BLOCKSTART(1)
-  real*8, INTENT(IN) :: V1(first:last)
-  real*8, INTENT(OUT) :: X1(1:MINPUT)
-  integer :: i
+  INTEGER, INTENT(IN) :: BLOCKS(1)
+  real*8, INTENT(IN) :: V1(blocks(1))
+  real*8, INTENT(OUT) :: X1(blocks(1))
   logical :: ilog
-  if (first-last.ne.minput-1) then
-     print *, "AAUAUAUAUAUAUA"; stop
-  endif
   X1(:)=V1(:)
   return
-  i=blocks(1); i=blockstart(1); ilog=bcastflag   !!avoid warn unused
+  ilog=bcastflag   !!avoid warn unused
 END SUBROUTINE MYGATHERV_real
 
 
 
 
-SUBROUTINE MYSCATTERV_complex(X1,V1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART)
+SUBROUTINE MYSCATTERV_complex(X1,V1,BLOCKS)
   IMPLICIT NONE
-  INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST,BLOCKS(1), BLOCKSTART(1)
-  complex*16, INTENT(OUT) :: V1(first:last)
-  complex*16, INTENT(IN) :: X1(1:MINPUT)
-  integer :: i
-  if (first-last.ne.minput-1) then
-     print *, "AAUAUAUAUAUAUA"; stop
-  endif
+  INTEGER, INTENT(IN) :: BLOCKS(1)
+  complex*16, INTENT(OUT) :: V1(blocks(1))
+  complex*16, INTENT(IN) :: X1(blocks(1))
   V1(:)=X1(:)
-  return
-  i=blocks(1); i=blockstart(1)
 END SUBROUTINE MYSCATTERV_complex
 
-SUBROUTINE MYSCATTERV_real(X1,V1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART)
+
+SUBROUTINE MYSCATTERV_real(X1,V1,BLOCKS)
   IMPLICIT NONE
-  INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST,BLOCKS(1), BLOCKSTART(1)
-  real*8, INTENT(OUT) :: V1(first:last)
-  real*8, INTENT(IN) :: X1(1:MINPUT)
-  integer :: i
-  if (first-last.ne.minput-1) then
-     print *, "AAUAUAUAUAUAUA"; stop
-  endif
+  INTEGER, INTENT(IN) :: BLOCKS(1)
+  real*8, INTENT(OUT) :: V1(blocks(1))
+  real*8, INTENT(IN) :: X1(blocks(1))
   V1(:)=X1(:)
-  return
-  i=blocks(1); i=blockstart(1)
 END SUBROUTINE MYSCATTERV_real
+
+
 
 
 

@@ -862,7 +862,7 @@ recursive subroutine mult_ke_toep(in, out,howmany)
   integer :: howmany
   DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
 #ifdef MPIFLAG
-  integer :: qstart(nprocs),qblocks(nprocs),qend(nprocs),ibox,jproc,nulltimes(10)
+  integer :: qblocks(nprocs),ibox,jproc,nulltimes(10)
 #endif
   DATATYPE, allocatable :: bigin(:,:,:,:,:,:,:),bigout(:,:,:,:,:,:,:),mywork(:,:)
   DATATYPE, allocatable, save :: bigke(:,:,:), hugeke(:,:,:)
@@ -922,14 +922,13 @@ recursive subroutine mult_ke_toep(in, out,howmany)
         allocate(hugeke(1,1,1))
      endif
      if (orbparflag) then
+
         qblocks(:)=8*totpoints
-        do jproc=1, nprocs
-           qstart(jproc)=8*totpoints*(jproc-1)+1; qend(jproc)=8*totpoints*jproc
-        enddo
+
 #ifdef REALGO
-        call myscatterv_real(hugeke,bigke,8*totpoints*nprocs,qstart(myrank),qend(myrank),qblocks(:),qstart(:))
+        call myscatterv_real(hugeke,bigke,qblocks(:))
 #else
-        call myscatterv_complex(hugeke,bigke,8*totpoints*nprocs,qstart(myrank),qend(myrank),qblocks(:),qstart(:))
+        call myscatterv_complex(hugeke,bigke,qblocks(:))
 #endif
      else
 #endif

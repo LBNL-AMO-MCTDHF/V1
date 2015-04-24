@@ -7,7 +7,7 @@ subroutine save_vector(psi,afile,sfile)
   implicit none
   DATATYPE :: psi(psilength) 
   character :: afile*(*), sfile*(*)
-  integer :: iprop,qqblocks(nprocs),qqend(nprocs),qqstart(nprocs),ii,ispf
+  integer :: iprop,qqblocks(nprocs),ispf
   DATATYPE, allocatable :: parorbitals(:,:,:)
 
   if (myrank.ne.1.and.parorbsplit.ne.3) then
@@ -21,18 +21,14 @@ subroutine save_vector(psi,afile,sfile)
      else
         allocate(parorbitals(1,1,nspf))
      endif
+
      qqblocks(:)=spfsize
-     do ii=1,nprocs
-        qqend(ii)=ii*spfsize; qqstart(ii)=(ii-1)*spfsize+1
-     enddo
 
      do ispf=1,nspf
 #ifdef REALGO
-        call mygatherv_real(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,:,ispf),&
-             spfsize*nprocs,qqstart(myrank),qqend(myrank),qqblocks(:),qqstart(:),.false.)
+        call mygatherv_real(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,:,ispf), qqblocks(:),.false.)
 #else
-        call mygatherv_complex(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,:,ispf),&
-             spfsize*nprocs,qqstart(myrank),qqend(myrank),qqblocks(:),qqstart(:),.false.)
+        call mygatherv_complex(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,:,ispf), qqblocks(:),.false.)
 #endif
      enddo
      if (myrank.ne.1) then
@@ -228,7 +224,7 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
 
   DATATYPE :: outspfs(outdims(1),outdims(2),outdims(3),outnspf)
   integer :: numloaded,itop(3),ibot(3),otop(3),obot(3),idim
-  integer :: qqblocks(nprocs),qqend(nprocs),qqstart(nprocs),ii,ispf,oosize
+  integer :: qqblocks(nprocs),ispf
 
      numloaded = min(outnspf,readnspf)
 
@@ -370,19 +366,15 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
                 cspfs(ibot(1):itop(1), ibot(2):itop(2), ibot(3):itop(3),  1:numloaded )
         endif
      endif
-     oosize=outdims(1)*outdims(2)*outdims(3)
-     qqblocks(:)=oosize
-     do ii=1,nprocs
-        qqend(ii)=ii*oosize; qqstart(ii)=(ii-1)*oosize+1
-     enddo
+
+     qqblocks(:)=outdims(1)*outdims(2)*outdims(3)
+
      do ispf=1,numloaded
         if (readcflag.eq.0) then
-           call myscatterv_real(bigoutrealspfs(:,:,:,ispf),outrealspfs(:,:,:,ispf),&
-                oosize*nprocs,qqstart(myrank),qqend(myrank),qqblocks(:),qqstart(:))
+           call myscatterv_real(bigoutrealspfs(:,:,:,ispf),outrealspfs(:,:,:,ispf),qqblocks(:))
            outspfs(:,:,:,ispf)= outrealspfs(:,:,:,ispf)
         else
-           call myscatterv_complex(bigoutcspfs(:,:,:,ispf),outcspfs(:,:,:,ispf),&
-                oosize*nprocs,qqstart(myrank),qqend(myrank),qqblocks(:),qqstart(:))
+           call myscatterv_complex(bigoutcspfs(:,:,:,ispf),outcspfs(:,:,:,ispf),qqblocks(:))
            outspfs(:,:,:,ispf)= outcspfs(:,:,:,ispf)
         endif
      enddo
@@ -395,155 +387,5 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
   endif
 end subroutine spf_read0
 
-
-
-!! initial version for parorbsplit=3 with multiple files
-!!$subroutine save_vector(psi,afile,sfile)
-!!$  use parameters
-!!$  use mpimod
-!!$  implicit none
-!!$  DATATYPE :: psi(psilength) 
-!!$  character :: afile*(*), sfile*(*)
-!!$  integer :: iprop,getlen
-!!$  character (len=3) :: iilab
-!!$  character (len=4) :: iilab0
-!!$
-!!$  if (myrank.ne.1.and.parorbsplit.ne.3) then
-!!$     OFLWR "   --> rank 1 will save. "; CFL;     return
-!!$  endif
-!!$
-!!$  if (myrank.eq.1) then
-!!$     open(999,file=afile, status="unknown", form="unformatted")
-!!$     call avector_header_write(999,mcscfnum)
-!!$  endif
-!!$
-!!$  if (parorbsplit.eq.3) then
-!!$     write(iilab0,'(I4)') myrank+1000
-!!$     iilab(:)=iilab0(2:4)
-!!$     open(998,file=sfile(1:getlen(sfile)-1)//iilab, status="unknown", form="unformatted")
-!!$  else
-!!$     open(998,file=sfile, status="unknown", form="unformatted")
-!!$  endif
-!!$
-!!$  call spf_head er_w rite(998,nspf+numfrozen)
-!!$  call wr ite_spf(998,psi(spfstart));  close(998)
-!!$
-!!$  if (myrank.eq.1) then
-!!$     do iprop=1,mcscfnum
-!!$        call write_avector(999,psi(astart(iprop)))
-!!$     enddo
-!!$     close(999)
-!!$  endif
-!!$
-!!$  OFLWR "SAVED vectors!"; CFL 
-!!$end subroutine save_vector
-
-!!$ old version for multiple files parorbsplit=3 (untested)
-!!$subroutine load_spfs(inspfs, numloaded)    !! both output
-!!$  use parameters
-!!$  use mpimod
-!!$  implicit none
-!!$  integer :: numloaded,ii,jj,kk,ll,flag,getlen
-!!$  DATATYPE :: inspfs(spfsize,nspf+numfrozen), inspfs0(spfsize,nspf+numfrozen+numskiporbs)
-!!$  character (len=3) :: iilab
-!!$  character (len=4) :: iilab0
-!!$
-!!$  write(iilab0,'(I4)') myrank+1000
-!!$  iilab(:)=iilab0(2:4)
-!!$
-!!$  numloaded=0
-!!$  do ii=1,numspffiles
-!!$
-!!$     if (parorbsplit.eq.3) then
-!!$        call load_sp fs0(inspfs0(:,numloaded+1),spfdims,nspf+numfrozen+numskiporbs-numloaded,spfdimtype,&
-!!$             spffile(ii)(1:getlen(spffile(ii))-1)//iilab,&
-!!$             jj)
-!!$     else
-!!$        call loa d_spfs0(inspfs0(:,numloaded+1),spfdims,nspf+numfrozen+numskiporbs-numloaded,spfdimtype,&
-!!$             spffile(ii),&
-!!$             jj)
-!!$     endif
-!!$
-!!$
-!!$     numloaded=numloaded+jj
-!!$     OFLWR "Loaded ", jj, " spfs from file ",spffile(ii); CFL
-!!$  enddo
-!!$  jj=0
-!!$  ll=numloaded
-!!$  do ii=1,ll
-!!$     flag=0
-!!$     do kk=1,numskiporbs
-!!$        if (orbskip(kk).eq.ii) then
-!!$           flag=1
-!!$           exit
-!!$        endif
-!!$     enddo
-!!$     if (flag.eq.0) then
-!!$        jj=jj+1
-!!$        if (jj.gt.nspf+numfrozen) then
-!!$           OFLWR "Dooga error.",ii,jj,nspf,numfrozen,numskiporbs,numloaded; CFLST
-!!$        endif
-!!$        inspfs(:,jj)=inspfs0(:,ii)
-!!$     else
-!!$        numloaded=numloaded-1
-!!$     endif
-!!$  enddo
-!!$
-!!$
-!!$end subroutine load_spfs
-
-
-!!$ before new version for parorbsplit=3
-!!$subroutine spf_r ead0(iunit,outnspf,outdims,readnspf,readdims,readcflag,dimtypes,outspfs)
-!!$  use fileptrmod
-!!$  implicit none
-!!$  integer :: iunit, dimtypes(3),readdims(3),outdims(3),readnspf,outnspf,readcflag
-!!$  real*8 :: realspfs(readdims(1),readdims(2),readdims(3),readnspf)
-!!$  complex*16 :: cspfs(readdims(1),readdims(2),readdims(3),readnspf)
-!!$  DATATYPE :: outspfs(outdims(1),outdims(2),outdims(3),outnspf)
-!!$  integer :: numloaded,itop(3),ibot(3),otop(3),obot(3),idim
-!!$
-!!$  outspfs(:,:,:,:)=0d0
-!!$  do idim=1,3
-!!$     select case(dimtypes(idim))
-!!$     case (0)
-!!$        ibot(idim)=1;        itop(idim)=min(readdims(idim),outdims(idim))
-!!$        obot(idim)=ibot(idim);        otop(idim)=itop(idim)
-!!$
-!!$     case (1)
-!!$        if (mod(readdims(idim)-outdims(idim),2).eq.1) then
-!!$           OFLWR "On read must have both even or both odd points for dimension ",idim," they are ", &
-!!$                readdims(idim),outdims(idim); CFLST
-!!$        endif
-!!$        ibot(idim)=max(1,(readdims(idim)-outdims(idim))/2+1)
-!!$        obot(idim)=max(1,(outdims(idim)-readdims(idim))/2+1)
-!!$        itop(idim)=ibot(idim)+min(outdims(idim),readdims(idim))-1
-!!$        otop(idim)=obot(idim)+min(outdims(idim),readdims(idim))-1
-!!$     case (2)
-!!$        if (outdims(idim).ne.readdims(idim)) then
-!!$           OFLWR "For dimension ",idim," spfdimtype is 2 so dimensions must agree ", &
-!!$                readdims(idim),outdims(idim); CFLST
-!!$        endif
-!!$        itop(idim)=outdims(idim);        otop(idim)=outdims(idim)
-!!$        ibot(idim)=1;        obot(idim)=1
-!!$     case default
-!!$        OFLWR "spfdimtype not recognized for dim", idim," it is ", dimtypes(idim); CFLST
-!!$     end select
-!!$  end do
-!!$ 
-!!$  numloaded = min(outnspf,readnspf)
-!!$  if (readcflag.eq.0) then
-!!$     OFLWR "Read real spfs"; CFL
-!!$     read(iunit) realspfs(:,:,:, 1:numloaded )
-!!$     outspfs(obot(1):otop(1), obot(2):otop(2), obot(3):otop(3), 1:numloaded) =  &
-!!$          realspfs(ibot(1):itop(1), ibot(2):itop(2), ibot(3):itop(3), 1:numloaded )
-!!$  else
-!!$     OFLWR "Read complex spfs"; CFL
-!!$     read(iunit) cspfs(:,:,:, 1:numloaded)
-!!$     outspfs(obot(1):otop(1), obot(2):otop(2), obot(3):otop(3), 1:numloaded) =  &
-!!$          cspfs(ibot(1):itop(1), ibot(2):itop(2), ibot(3):itop(3), 1:numloaded )
-!!$  endif
-!!$  close(iunit)
-!!$end subroutine spf_r ead0
 
 
