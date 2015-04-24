@@ -137,33 +137,6 @@ end subroutine myzfft3d
 
 
 
-module bothblockmod
-  integer :: nprocs=-1,dim=-1,myrank=-1
-end module bothblockmod
-
-
-
-subroutine setblock(innprocs,inmyrank,indims)
-  use bothblockmod
-  implicit none
-  integer :: innprocs,inmyrank,indims(3)
-  if (dim.ne.-1) then
-     print *, "CALLME ONCE ONLY"; stop
-  endif
-  nprocs=innprocs
-  myrank=inmyrank
-  if (myrank.eq.0) then
-     print *, "WRONG CONVENTION."; stop
-  endif
-  if (indims(2).ne.indims(3).or.indims(1).ne.indims(2)) then
-     print *, "Only all dims equal for now", indims; stop
-  endif
-  dim=indims(1)
-
-
-end subroutine setblock
-
-
 
 
 #ifdef MPIFLAG
@@ -175,17 +148,21 @@ end subroutine setblock
 
 module mytransposemod
 contains
-  recursive subroutine mytranspose(in,out,blocksize,howmany,times)
-  use bothblockmod
+  recursive subroutine mytranspose(in,out,blocksize,howmany,times,nprocs)
   implicit none
-  integer,intent(in) :: blocksize,howmany
+  integer,intent(in) :: blocksize,howmany,nprocs
   integer,intent(inout) :: times(3)
   complex*16,intent(in) :: in(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
   complex*16 :: inchop(nprocs*blocksize,blocksize,blocksize,howmany)  !!AUTOMATIC
   complex*16,intent(out) :: out(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
-  integer :: atime,btime,i,count,ii,totsize,iproc
+  integer :: atime,btime,i,count,ii,totsize,iproc,checkprocs,myrank
   complex*16 :: intranspose(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)  !!AUTOMATIC
   complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)      !!AUTOMATIC
+  
+  call getmyranknprocs(myrank,checkprocs)
+  if (nprocs.ne.checkprocs) then
+     print *, "ACK CHECKPROCS",nprocs,checkprocs; call mpistop()
+  endif
 
   totsize=blocksize*nprocs
 
@@ -229,46 +206,70 @@ end subroutine mytranspose
 end module  
   
 
-recursive subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
-  use bothblockmod
+subroutine checkdivisible(number,divisor)
   implicit none
-  integer :: indim,nulltimes(10),howmany,ii
+  integer :: number,divisor
+  if ((number/divisor)*divisor.ne.number) then
+     print *, "ACK NOT DIVISIBLE",number,divisor; call mpistop()
+  endif
+end subroutine checkdivisible
+
+
+recursive subroutine myzfft3d_mpiwrap(in,out,dim,howmany)
+  implicit none
+  integer :: dim,nulltimes(10),howmany,ii
   complex*16, intent(in) :: in(dim**3,howmany)
   complex*16, intent(out) :: out(dim**3,howmany)
-  integer :: mystart
+  complex*16,allocatable :: inlocal(:,:),outgather(:,:,:),outlocal(:,:)
+  integer :: mystart, myend, mysize, myrank, nprocs
 
-  if (dim.ne.indim) then
-     print *, "WRONG INIT",dim,indim;stop
-  endif
-
-!!! ii=1,howmany loops are temporary(?) kloodge... 
-!!!   this subroutine _mpiwrap (called when orbparflag=.false.) 
-!!    should not really be used... hmm
-!!! (3pm 04-13-2015 BUGFIX)
+  call getmyranknprocs(myrank,nprocs)
+  call checkdivisible(dim,nprocs)
 
   mystart=dim**3/nprocs*(myrank-1)+1
+  myend=dim**3/nprocs*myrank
+  mysize=dim**3/nprocs
 
-  do ii=1,howmany
-     call myzfft3d_par(in(mystart,ii),out(mystart,ii),indim,nulltimes,1)
-  enddo
+  allocate(inlocal(mystart:myend,howmany), outlocal(mystart:myend,howmany),&
+       outgather(mystart:myend,howmany,nprocs))
 
+  inlocal(:,:)=in(mystart:myend,:)
+
+  call myzfft3d_par(inlocal,outlocal,dim,nulltimes,howmany)
+
+  call simpleallgather_complex(outlocal,outgather,dim**3/nprocs*howmany)
   do ii=1,howmany
-     call simpleallgather_complex(out(mystart,ii),out(:,ii),dim**3/nprocs)
+     out(:,ii)=RESHAPE(outgather(:,ii,:),(/dim**3/))
   enddo
+  
+  deallocate(inlocal,outlocal,outgather)
 
 end subroutine myzfft3d_mpiwrap
+
 
 
 !! adds to times
 
 !!! times(1) = zero   times(2)=fourier
 !!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
-  
-recursive subroutine myzfft3d_par(in,out,indim,times,howmany)
-  use bothblockmod
+
+recursive subroutine myzfft3d_par(in,out,dim,times,howmany)
+  implicit none
+  integer, intent(in) :: dim,howmany
+  complex*16, intent(in) :: in(*)
+  complex*16, intent(out) :: out(*)
+  integer, intent(inout) :: times(8)
+  integer :: myrank,nprocs
+  call getmyranknprocs(myrank,nprocs)
+  call checkdivisible(dim,nprocs)
+  call myzfft3d_par0(in,out,dim,times,howmany,nprocs)
+end subroutine myzfft3d_par
+
+
+recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs)
   use mytransposemod
   implicit none
-  integer, intent(in) :: indim,howmany
+  integer, intent(in) :: dim,howmany,nprocs
   complex*16, intent(in) :: in(dim,dim,dim/nprocs,howmany)
   complex*16, intent(out) :: out(dim,dim,dim/nprocs,howmany)
   integer, intent(inout) :: times(8)
@@ -277,9 +278,7 @@ recursive subroutine myzfft3d_par(in,out,indim,times,howmany)
 
   call myclock(atime)
 
-  if (dim.ne.indim) then
-     print *, "WRONG INIT",dim,indim;stop
-  endif
+  call checkdivisible(dim,nprocs)
 
   tempout(:,:,:,:)=in(:,:,:,:)
   call myclock(btime); times(1)=times(1)+btime-atime;
@@ -294,11 +293,11 @@ recursive subroutine myzfft3d_par(in,out,indim,times,howmany)
           mywork,  &
           tempout,  &
           dim/nprocs, &
-          howmany,times(3:))
+          howmany,times(3:),nprocs)
   enddo
   out(:,:,:,:)=tempout(:,:,:,:)
 
-end subroutine myzfft3d_par
+end subroutine myzfft3d_par0
 
 #endif
 

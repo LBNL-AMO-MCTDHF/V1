@@ -77,10 +77,6 @@ subroutine get_twoe_new(pot)
 
   call get_3dpoisson(realpot)        
 
-  if (toepflag.ne.0) then
-     call setblock(nprocs,myrank,gridpoints(:)*2) !! cube only
-  endif
-
   pot(:)=realpot(:)
         
   if (notwoflag.eq.1) then
