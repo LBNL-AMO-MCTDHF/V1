@@ -317,8 +317,8 @@ recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
   call myzfft3d_mpiwrap(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,howmany)
   call myzfft3d_mpiwrap(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,1)
 #else
-  call myzfft3d(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,howmany)
-  call myzfft3d(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,1)
+  call myzfft3d(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,2*totdim,2*totdim,howmany)
+  call myzfft3d(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,2*totdim,2*totdim,1)
 #endif
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)  
@@ -333,7 +333,7 @@ recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
 #ifdef MPIFLAG
   call myzfft3d_mpiwrap(ffwork(:,:,:,:),ffback(:,:,:,:),2*totdim,howmany)
 #else
-  call myzfft3d(ffwork(:,:,:,:),ffback(:,:,:,:),2*totdim,howmany)
+  call myzfft3d(ffwork(:,:,:,:),ffback(:,:,:,:),2*totdim,2*totdim,2*totdim,howmany)
 #endif
   ffback(:,:,:,:)=CONJG(ffback(:,:,:,:))
 

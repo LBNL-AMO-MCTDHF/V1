@@ -136,20 +136,15 @@ end subroutine myzfft3d
 #endif
 
 
-module littlestartmod
- integer :: mystart=(-1),mysize=(-1)
-end module littlestartmod
 
 module bothblockmod
   integer :: nprocs=-1,dim=-1,myrank=-1
-  integer, allocatable :: mpiblocks(:),mpiblockend(:),mpiblockstart(:)
 end module bothblockmod
 
 
 
 subroutine setblock(innprocs,inmyrank,indims)
   use bothblockmod
-  use littlestartmod
   implicit none
   integer :: innprocs,inmyrank,indims(3),i
   if (dim.ne.-1) then
@@ -164,35 +159,10 @@ subroutine setblock(innprocs,inmyrank,indims)
      print *, "Only all dims equal for now", indims; stop
   endif
   dim=indims(1)
-  allocate(mpiblocks(nprocs),mpiblockend(nprocs),mpiblockstart(nprocs))
-  mpiblockstart(1)=1
-  do i=1,nprocs
-     mpiblockend(i)=(i*dim/nprocs)*dim**2
-     if (i.lt.nprocs) then
-        mpiblockstart(i+1)=mpiblockend(i)+1
-     endif
-  enddo
-  do i=1,nprocs
-     mpiblocks(i)=mpiblockend(i)-mpiblockstart(i)+1
-  enddo
-  mystart=mpiblockstart(myrank)
-  mysize=mpiblocks(myrank)
+
+
 end subroutine setblock
 
-
-subroutine unsetblock()
-  use bothblockmod
-  implicit none
-  if (dim.eq.(-1)) then
-     if (myrank.eq.1) then 
-        print *, "HMM UNSET ME BUT WHY?";
-     endif
-     return !!stop
-  endif
-!!  nprocs=(-1);  myrank=(-1);  
-  dim=(-1)
-  deallocate(mpiblocks,mpiblockend,mpiblockstart)
-end subroutine unsetblock
 
 
 
@@ -260,12 +230,12 @@ end module
   
 
 recursive subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
-  use littlestartmod
   use bothblockmod
   implicit none
   integer :: indim,nulltimes(10),howmany,ii
   complex*16, intent(in) :: in(dim**3,howmany)
   complex*16, intent(out) :: out(dim**3,howmany)
+  integer :: mystart
 
   if (dim.ne.indim) then
      print *, "WRONG INIT",dim,indim;stop
@@ -276,17 +246,14 @@ recursive subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
 !!    should not really be used... hmm
 !!! (3pm 04-13-2015 BUGFIX)
 
+  mystart=dim**3/nprocs*(myrank-1)+1
 
   do ii=1,howmany
-     call myzfft3d_par(in(mystart,ii),out(mystart,ii),indim,mysize/dim**2,nulltimes,1)
+     call myzfft3d_par(in(mystart,ii),out(mystart,ii),indim,dim/nprocs,nulltimes,1)
   enddo
 
   do ii=1,howmany
-     call mygatherv_complex(out(mpiblockstart(myrank),ii),out(:,ii),dim**3,&
-          mpiblockstart(myrank),&
-          mpiblockend(myrank),&
-          mpiblocks(:),&
-          mpiblockstart(:),.true.)
+     call mygatherv_complex(out(mystart,ii),out(:,ii),dim**3/nprocs)
   enddo
 
 end subroutine myzfft3d_mpiwrap
@@ -299,29 +266,19 @@ end subroutine myzfft3d_mpiwrap
   
 recursive subroutine myzfft3d_par(in,out,indim,inblockdim,times,howmany)
   use bothblockmod
-  use littlestartmod
   use mytransposemod
   implicit none
   integer, intent(in) :: indim,inblockdim,howmany
-  complex*16, intent(in) :: in(dim,dim,mysize/dim**2,howmany)
-  complex*16, intent(out) :: out(dim,dim,mysize/dim**2,howmany)
+  complex*16, intent(in) :: in(dim,dim,dim/nprocs,howmany)
+  complex*16, intent(out) :: out(dim,dim,dim/nprocs,howmany)
   integer, intent(inout) :: times(8)
   integer :: ii,atime,btime
-  complex*16 :: mywork(dim,dim,mysize/dim**2,howmany),tempout(dim,dim,mysize/dim**2,howmany)
+  complex*16 :: mywork(dim,dim,dim/nprocs,howmany),tempout(dim,dim,dim/nprocs,howmany)
 
   call myclock(atime)
 
-  if (dim**2*(mysize/dim**2).ne.mysize) then
-     print *, "WTF!!! 5656578",dim,mysize; stop
-  endif
   if (dim.ne.indim) then
      print *, "WRONG INIT",dim,indim;stop
-  endif
-  if (dim**2*inblockdim.ne.mysize) then
-     print *, "WRONG BLOCK",dim,indim," ",mysize,inblockdim,dim;stop
-  endif
-  if (mysize.ne.mpiblocks(myrank)) then
-     print *, "MYSIZE/blocks disagree",mysize,mpiblocks(myrank),myrank,nprocs;stop
   endif
 
   tempout(:,:,:,:)=in(:,:,:,:)
@@ -329,14 +286,14 @@ recursive subroutine myzfft3d_par(in,out,indim,inblockdim,times,howmany)
 
   do ii=1,3
      call myclock(atime)
-     call myzfft1d( tempout, mywork, dim, (mysize/dim)*howmany)
+     call myzfft1d( tempout, mywork, dim, dim**2/nprocs*howmany)
      call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
      
 !!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
      call mytranspose(&
           mywork,  &
           tempout,  &
-          mysize/dim**2, &
+          dim/nprocs, &
           howmany,times(3:))
   enddo
   out(:,:,:,:)=tempout(:,:,:,:)
@@ -347,68 +304,3 @@ end subroutine myzfft3d_par
 
 
 
-
-
-!!$  
-!!$  #ifdef FFTWFLAG
-!!$  #ifdef MPIFFTW
-!!$  
-!!$   not finished with howmany!  
-!!$  
-!!$  subroutine fftw3dfftsub_mpi(in,out,indim,insize,howmany)
-!!$    use, intrinsic :: iso_c_binding
-!!$    use bothblockmod
-!!$    use littlestartmod
-!!$    include 'fftw3-mpi.f03'
-!!$    integer :: indim,insize,howmany
-!!$    integer, save :: icalled=0
-!!$    integer(C_INTPTR_T) :: alloc_local,LL,MM,SS
-!!$    complex*16,intent(in) :: in(dim,dim,mysize/dim**2,howmany)
-!!$    complex*16,intent(out) :: out(dim,dim,mysize/dim**2,howmany)
-!!$    type(C_PTR),save :: plan, cdata
-!!$    complex(C_DOUBLE_COMPLEX), pointer :: data(:,:,:)
-!!$    if (myrank.eq.1) then
-!!$       print *, "GO FFTW MPI SUB."
-!!$    endif
-!!$  
-!!$    LL=dim;MM=mysize/dim**2;SS=(mystart-1)/dim**2
-!!$  
-!!$    if (indim.ne.dim.or.insize.ne.mysize/dim**2) then
-!!$       print *, "AUGH FFTW MPI FFT ",indim,dim,insize,mysize; stop
-!!$    endif
-!!$  
-!!$  !print *, "LMS ", LL,MM,SS
-!!$    alloc_local = fftw_mpi_local_size_3d(LL,LL,LL, MPI_COMM_WORLD, MM, SS)
-!!$  !print *, "LMSnow ", LL,MM,SS
-!!$  
-!!$    cdata = fftw_alloc_complex(alloc_local)
-!!$    call c_f_pointer(cdata, data, [LL,LL,MM])
-!!$       
-!!$    if (icalled.eq.0) then
-!!$  
-!!$       !   create MPI plan for in-place forward DFT (note dimension reversal)
-!!$  
-!!$       plan = fftw_mpi_plan_dft_3d(LL,LL,LL, data, data, MPI_COMM_WORLD, FFTW_FORWARD, FFTW_EXHAUSTIVE)
-!!$    endif
-!!$    icalled=1
-!!$  
-!!$       ! initialize data to some function my_function(i,j)
-!!$  
-!!$    data(:, :,:) = in(:,:,:)
-!!$    ! compute transform (as many times as desired)
-!!$  
-!!$    call fftw_mpi_execute_dft(plan, data, data)
-!!$  
-!!$  !!  call fftw_execute_dft(plan, data, data)
-!!$  
-!!$    out(:,:,:)=data(:,:,:)
-!!$  
-!!$    if (myrank.eq.1) then
-!!$       print *, "ok done fftw3dfftsub_mpi"
-!!$    endif
-!!$  end subroutine fftw3dfftsub_mpi
-!!$  
-!!$  #endif
-!!$  #endif
-!!$  
-!!$  

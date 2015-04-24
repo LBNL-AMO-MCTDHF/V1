@@ -291,23 +291,6 @@ subroutine mympirealreduceone(input)
 end subroutine mympirealreduceone
 
 
-subroutine mympirealreduce(input,isize)
-  use mpimod
-  use parameters
-  implicit none
-  integer :: ierr,isize
-  real*8 :: input(isize),output(isize)
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-  ierr=0
-  call MPI_allreduce( input, output, isize, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD , ierr)
-  input=output
-  if (ierr/=0) then
-     OFLWR "ERR mympirealreduce!";  CFLST
-  endif
-
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-end subroutine mympirealreduce
-
 
 
 subroutine mympiireduceone(input)
@@ -585,6 +568,60 @@ subroutine mympimin(input)
 end subroutine mympimin
 
 
+
+
+subroutine mympigather(vectorin,vectorsout,insize)
+  use mpimod
+  implicit none
+  integer :: insize
+  DATATYPE :: vectorin(insize),vectorsout(insize,nprocs)
+#ifdef REALGO
+  call mympigather_real(vectorin,vectorsout,insize)
+#else
+  call mympigather_complex(vectorin,vectorsout,insize)
+#endif
+end subroutine mympigather
+
+
+
+subroutine mympigather_complex(vectorin,vectorsout,insize)
+  use mpimod
+  use fileptrmod
+  implicit none
+  integer :: ierr,insize
+  complex*16 :: vectorin(insize),vectorsout(insize,nprocs)
+
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+
+  call mpi_allgather(vectorin(:),insize,MPI_DOUBLE_COMPLEX,vectorsout(:,:),insize,MPI_DOUBLE_COMPLEX,MPI_COMM_WORLD,ierr)
+  if (ierr.ne.0) then
+     write(mpifileptr,*) "gather complex ERR ", ierr; call mpistop()
+  endif
+
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+end subroutine mympigather_complex
+
+
+subroutine mympigather_real(vectorin,vectorsout,insize)
+  use mpimod
+  use fileptrmod
+  implicit none
+  integer :: ierr,insize
+  real*8 :: vectorin(insize),vectorsout(insize,nprocs)
+
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+
+  call mpi_allgather(vectorin(:),insize,MPI_DOUBLE_PRECISION,vectorsout(:,:),insize,MPI_DOUBLE_PRECISION,MPI_COMM_WORLD,ierr)
+  if (ierr.ne.0) then
+     write(mpifileptr,*) "gather real ERR ", ierr; call mpistop()
+  endif
+
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+end subroutine mympigather_real
+
+
+
+
 SUBROUTINE MYGATHERV_complex(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag)
   use mpimod
   IMPLICIT NONE
@@ -746,7 +783,7 @@ SUBROUTINE MYGATHERV_complex(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag
   INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST, BLOCKS(1), BLOCKSTART(1)
   complex*16, INTENT(IN) :: V1(first:last)
   complex*16, INTENT(OUT) :: X1(1:MINPUT)
-  if (first-last.ne.minput-1) then
+  if (last-first.ne.minput-1) then
      print *, "AAUAUAUAUAUAUA"; stop
   endif
   X1(:)=V1(:)
@@ -773,7 +810,7 @@ SUBROUTINE MYGATHERV_integer(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag
   INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST, BLOCKS(1), BLOCKSTART(1)
   integer, INTENT(IN) :: V1(first:last)
   integer, INTENT(OUT) :: X1(1:MINPUT)
-  if (first-last.ne.minput-1) then
+  if (last-first.ne.minput-1) then
      print *, "AAUAUAUAUAUAUA"; stop
   endif
   X1(:)=V1(:)
@@ -807,26 +844,32 @@ END SUBROUTINE MYSCATTERV_real
 
 
 
-subroutine mympirealreduce(input,isize)
-end subroutine
 subroutine mympirealreduceone(input)
+  real*8 :: input
 end subroutine
 subroutine mympireduceone(input)
+  DATATYPE :: input
 end subroutine mympireduceone
 subroutine mympireduce(input, isize)
+  DATATYPE :: input(*)
 end subroutine mympireduce
 subroutine mympiireduce(input, isize)
 end subroutine mympiireduce
 subroutine mympibcast(input, source, isize)
+  integer :: source
+  DATATYPE :: input(*)
 end subroutine mympibcast
 subroutine mympirealbcast(input, source, isize)
 end subroutine mympirealbcast
 subroutine mympiibcast(input, source, isize)
+  integer :: source,isize
+  integer :: input(*)
 end subroutine mympiibcast
 
 subroutine mympirealbcastone(input, source)
 end subroutine mympirealbcastone
 subroutine mympiibcastone(input, source)
+  integer :: input,source
 end subroutine mympiibcastone
 
 subroutine mympilogbcast(input, source, isize)
@@ -834,9 +877,11 @@ end subroutine mympilogbcast
 
 
 subroutine mympiireduceone(input)
+  integer :: input
 end subroutine mympiireduceone
 
 subroutine mpiorbgather(orbvector,insize)
+  DATATYPE :: orbvector(*)
 end subroutine mpiorbgather
 
 
