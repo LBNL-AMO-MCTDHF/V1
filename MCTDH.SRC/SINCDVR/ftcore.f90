@@ -1,33 +1,85 @@
 
 !! myrank is indexed 1:nprocs
 
-module bothblockmod
-  integer :: nprocs=-1,dim=-1,myrank=-1
-  integer, allocatable :: mpiblocks(:),mpiblockend(:),mpiblockstart(:)
-end module bothblockmod
 
 
 #ifdef FFTWFLAG
 
+
 recursive subroutine myzfft1d(in,out,dim,howmany)
+  use, intrinsic :: iso_c_binding
   implicit none
+  include "fftw3.f03"
   integer, intent(in) :: dim,howmany
-  complex*16, intent(in) :: in(dim,howmany)
-  complex*16, intent(out) :: out(dim,howmany)
-  call fftw1dfftsub(in,out,dim,howmany)
+  integer, parameter :: maxplans=3
+  type(C_PTR),save :: plans(maxplans)
+  integer, save :: plandims(maxplans)=-999, planhowmany(maxplans)=-999
+  integer,save :: icalleds(maxplans)=0, numplans=0
+  complex*16 :: in(dim,howmany),out(dim,howmany)
+  integer :: ostride,istride,onembed(1),inembed(1),idist,odist, dims(1),iplan,thisplan
+
+  inembed(1)=dim; onembed(1)=dim; idist=dim; odist=dim; istride=1; ostride=1; dims(1)=dim
+
+  if (numplans.eq.0) then
+     numplans=1
+     thisplan=1
+     plandims(thisplan)=dim; planhowmany(thisplan)=howmany
+  else
+     thisplan= -99
+     do iplan=1,numplans
+        if (plandims(iplan).eq.dim.and.planhowmany(iplan).eq.howmany) then
+           if (icalleds(iplan).eq.0) then
+              print *, "ERROR, plan not done ",iplan,dim,howmany; call mpistop()
+           endif
+           thisplan=iplan
+           exit
+        endif
+     enddo
+     if (thisplan.eq.-99) then
+        if (numplans.eq.maxplans) then
+           print *,  "all plans taken!", maxplans; call mpistop()
+        endif
+        numplans=numplans+1
+        thisplan=numplans
+        plandims(thisplan)=dim; planhowmany(thisplan)=howmany
+     endif
+  endif
+  if (icalleds(thisplan).eq.0) then
+     plans(thisplan) = fftw_plan_many_dft(1,dims,howmany,in,inembed,istride,idist,out,onembed,ostride,odist,FFTW_FORWARD,FFTW_EXHAUSTIVE) 
+  endif
+  icalleds(thisplan)=1    
+
+  call fftw_execute_dft(plans(thisplan), in,out)
+
+!!$  call fftw_destroy_plan(plan)
 end subroutine myzfft1d
 
 
-recursive subroutine myzfft3d(in,out,indim,howmany)
-  use bothblockmod
+recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
+  use, intrinsic :: iso_c_binding
   implicit none
-  integer :: indim,howmany
-  complex*16, intent(in) :: in(dim,dim,dim,howmany)
-  complex*16, intent(out) :: out(dim,dim,dim,howmany)
-  if (dim.ne.indim) then
-     print *, "WRONG INIT FFTW3D",dim,indim;stop
+  include "fftw3.f03"
+  integer :: howmany,ii,dim1,dim2,dim3
+  type(C_PTR),save :: plan
+  integer,save :: icalled=0
+  complex*16 :: in(dim1,dim2,dim3,howmany),out(dim1,dim2,dim3,howmany)
+  integer, save :: savedim1,savedim2,savedim3
+
+  if (icalled.eq.0) then
+     plan=fftw_plan_dft_3d(dim1,dim2,dim3,in(:,:,:,1),out(:,:,:,1),FFTW_FORWARD,FFTW_EXHAUSTIVE) 
+     savedim1=dim1; savedim2=dim2; savedim3=dim3
+  else
+     if (dim1.ne.savedim1.or.dim2.ne.savedim2.or.dim3.ne.savedim3) then
+        print *, "ERROR SAVE DIMS MYZFFT3D FFTW ",dim1,dim2,dim3,savedim1,savedim2,savedim3; call mpistop()
+     endif
   endif
-  call fftw3dfftsub(in,out,howmany)
+  icalled=1
+  do ii=1,howmany
+     call fftw_execute_dft(plan, in(:,:,:,ii),out(:,:,:,ii))
+  enddo
+
+!!$  call fftw_destroy_plan(plan)
+
 end subroutine myzfft3d
 
 
@@ -52,24 +104,38 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
 end subroutine myzfft1d
 
 
-subroutine myzfft3d(in,out,indim,howmany)
-  use bothblockmod
+subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
   implicit none
-  integer :: indim,howmany
-  complex*16, intent(in) :: in(dim,dim,dim,howmany)
-  complex*16, intent(out) :: out(dim,dim,dim,howmany)
-  complex*16 :: work(dim,dim,dim,howmany)  !! AUTOMATIC
+  integer :: dim1,dim2,dim3,howmany
+  complex*16, intent(in) :: in(dim1,dim2,dim3,howmany)
+  complex*16, intent(out) :: out(dim1,dim2,dim3,howmany)
+
+!! need pointers with reshape!  f95 I think
+
+  complex*16 :: work1(dim1,dim2,dim3,howmany)  !! AUTOMATIC
+  complex*16 :: work2(dim2,dim3,dim1,howmany)  !! AUTOMATIC
+  complex*16 :: work3(dim2,dim3,dim1,howmany)  !! AUTOMATIC
+  complex*16 :: work4(dim3,dim1,dim2,howmany)  !! AUTOMATIC
+  complex*16 :: work5(dim3,dim1,dim2,howmany)  !! AUTOMATIC
   integer :: ii,i
+
   if (dim.ne.indim) then
      print *, "WRONG INIT",dim,indim;stop
   endif
-  out(:,:,:,:)=in(:,:,:,:)
-  do ii=1,3
-     call myzfft3d_oneblock(out,work,dim,howmany)
-     do i=1,dim
-        out(:,:,i,:)=work(i,:,:,:)
-     enddo
+
+  call myzfft3d_oneblock(in,work1,dim,howmany)
+  do i=1,dim1
+     work2(:,:,i,:)=work1(i,:,:,:)
   enddo
+  call myzfft3d_oneblock(work2,work3,dim,howmany)
+  do i=1,dim2
+     work4(:,:,i,:)=work3(i,:,:,:)
+  enddo
+  call myzfft3d_oneblock(work4,work5,dim,howmany)
+  do i=1,dim3
+     out(:,:,i,:)=work5(i,:,:,:)
+  enddo
+
 end subroutine myzfft3d
 
 #endif
@@ -79,6 +145,11 @@ module littlestartmod
  integer :: mystart=(-1),mysize=(-1)
 end module littlestartmod
 
+
+module bothblockmod
+  integer :: nprocs=-1,dim=-1,myrank=-1
+  integer, allocatable :: mpiblocks(:),mpiblockend(:),mpiblockstart(:)
+end module bothblockmod
 
 subroutine setblock(innprocs,inmyrank,indims)
   use bothblockmod
@@ -144,26 +215,6 @@ end subroutine myzfft3d_oneblock
 #ifdef FFTWFLAG
 
 
-recursive subroutine fftw3dfftsub(in,out,howmany)
-  use, intrinsic :: iso_c_binding
-  use bothblockmod
-  implicit none
-  include "fftw3.f03"
-  integer :: howmany,ii
-  type(C_PTR),save :: plan
-  integer,save :: icalled=0
-  complex*16 :: in(dim,dim,dim,howmany),out(dim,dim,dim,howmany)
-  if (icalled.eq.0) then
-     plan=fftw_plan_dft_3d(dim,dim,dim,in(:,:,:,1),out(:,:,:,1),FFTW_FORWARD,FFTW_EXHAUSTIVE) 
-  endif
-  icalled=1
-  do ii=1,howmany
-     call fftw_execute_dft(plan, in(:,:,:,ii),out(:,:,:,ii))
-  enddo
-
-!!$  call fftw_destroy_plan(plan)
-
-end subroutine fftw3dfftsub
 
 
 #ifdef MPIFFTW
@@ -225,53 +276,6 @@ end subroutine fftw3dfftsub_mpi
 
 #endif
 
-recursive subroutine fftw1dfftsub(in,out,dim,howmany)
-  use, intrinsic :: iso_c_binding
-  implicit none
-  include "fftw3.f03"
-  integer, intent(in) :: dim,howmany
-  integer, parameter :: maxplans=3
-  type(C_PTR),save :: plans(maxplans)
-  integer, save :: plandims(maxplans)=-999, planhowmany(maxplans)=-999
-  integer,save :: icalleds(maxplans)=0, numplans=0
-  complex*16 :: in(dim,howmany),out(dim,howmany)
-  integer :: ostride,istride,onembed(1),inembed(1),idist,odist, dims(1),iplan,thisplan
-
-  inembed(1)=dim; onembed(1)=dim; idist=dim; odist=dim; istride=1; ostride=1; dims(1)=dim
-
-  if (numplans.eq.0) then
-     numplans=1
-     thisplan=1
-     plandims(thisplan)=dim; planhowmany(thisplan)=howmany
-  else
-     thisplan= -99
-     do iplan=1,numplans
-        if (plandims(iplan).eq.dim.and.planhowmany(iplan).eq.howmany) then
-           if (icalleds(iplan).eq.0) then
-              print *, "ERROR, plan not done ",iplan,dim,howmany; call mpistop()
-           endif
-           thisplan=iplan
-           exit
-        endif
-     enddo
-     if (thisplan.eq.-99) then
-        if (numplans.eq.maxplans) then
-           print *,  "all plans taken!", maxplans; call mpistop()
-        endif
-        numplans=numplans+1
-        thisplan=numplans
-        plandims(thisplan)=dim; planhowmany(thisplan)=howmany
-     endif
-  endif
-  if (icalleds(thisplan).eq.0) then
-     plans(thisplan) = fftw_plan_many_dft(1,dims,howmany,in,inembed,istride,idist,out,onembed,ostride,odist,FFTW_FORWARD,FFTW_EXHAUSTIVE) 
-  endif
-  icalleds(thisplan)=1    
-
-  call fftw_execute_dft(plans(thisplan), in,out)
-
-!!$  call fftw_destroy_plan(plan)
-end subroutine fftw1dfftsub
 
 #endif
 
