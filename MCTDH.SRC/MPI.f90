@@ -93,9 +93,7 @@ subroutine mpiorbgather(orbvector,insize)    !! insize=spfsize except debug
   use parameters
   implicit none
   integer :: ierr,insize
-  DATATYPE :: orbvector(insize,nspf*2),tempvector(insize,firstmpiorb:firstmpiorb+orbsperproc-1)
-
-  tempvector(:,:)=orbvector(:,firstmpiorb:firstmpiorb+orbsperproc-1)
+  DATATYPE :: orbvector(insize,nspf*2)
 
   if (nprocs.eq.1) then
      return
@@ -106,9 +104,11 @@ subroutine mpiorbgather(orbvector,insize)    !! insize=spfsize except debug
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 
 #ifdef REALGO
-  call mpi_allgather(tempvector(:,:),insize*orbsperproc,MPI_DOUBLE_PRECISION,orbvector(:,:),insize*orbsperproc,MPI_DOUBLE_PRECISION,MPI_COMM_ORB(myorbset),ierr)
+  call mpi_allgather(orbvector(:,firstmpiorb:firstmpiorb+orbsperproc-1),&
+       insize*orbsperproc,MPI_DOUBLE_PRECISION,orbvector(:,:),insize*orbsperproc,MPI_DOUBLE_PRECISION,MPI_COMM_ORB(myorbset),ierr)
 #else
-  call mpi_allgather(tempvector(:,:),insize*orbsperproc,MPI_DOUBLE_COMPLEX,orbvector(:,:),insize*orbsperproc,MPI_DOUBLE_COMPLEX,MPI_COMM_ORB(myorbset),ierr)
+  call mpi_allgather(orbvector(:,firstmpiorb:firstmpiorb+orbsperproc-1),&
+       insize*orbsperproc,MPI_DOUBLE_COMPLEX,orbvector(:,:),insize*orbsperproc,MPI_DOUBLE_COMPLEX,MPI_COMM_ORB(myorbset),ierr)
 #endif
   if (ierr.ne.0) then
      OFLWR "ORBGATHER ERR ", ierr; CFLST

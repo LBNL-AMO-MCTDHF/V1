@@ -68,6 +68,10 @@ subroutine expoprop(time1,time2,inspfs, numiters)
      maxexpodim=ttott-1
   endif
   lwsp = ( idim*(maxexpodim+3) + idim + (maxexpodim+3)**2 + 5*(maxexpodim+3)**2+6+1 );  
+  if (lwsp.lt.0) then
+     OFLWR "Oops, integer overflow, reduce maxexpodim", lwsp
+     WRFL "      it's ",maxexpodim," now."; CFLST
+  endif
   allocate(wsp(lwsp)); wsp=0
   liwsp=maxexpodim*2+3;   
   allocate(iwsp(liwsp)); iwsp=0
