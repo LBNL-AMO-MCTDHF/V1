@@ -147,7 +147,10 @@ contains
   complex*16 :: intranspose(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)  !!AUTOMATIC
   complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)      !!AUTOMATIC
   complex*16 :: outone(blocksize,nprocs*blocksize,blocksize,nprocs)               !!AUTOMATIC
-  
+!!
+!! There doesn't seem to be a good way to "threadprivate" outone and inchop... IDEAS?
+!!    if they are thread-local then OMP Barriers can be removed; 1st barrier removal might matter
+!! 
   call getmyranknprocs(myrank,checkprocs)
   if (nprocs.ne.checkprocs) then
      print *, "ACK CHECKPROCS",nprocs,checkprocs; call mpistop()
@@ -171,13 +174,12 @@ contains
         enddo
      enddo
 !$OMP END DO
-
 !! *** OMP BARRIER *** !!   if inchop is shared
 !$OMP BARRIER
-
   enddo
 ! (implied barrier at end)
 !$OMP END PARALLEL
+
   call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
   
   count=blocksize**2 * totsize * howmany
@@ -189,19 +191,27 @@ contains
 !!  complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)     
 !!  complex*16 :: outone(blocksize,nprocs*blocksize,blocksize,nprocs)
 
-  do iproc=1,nprocs
-     out((iproc-1)*blocksize+1:iproc*blocksize,:,:,:)=outtemp(:,:,:,:,iproc)
-  enddo
-
-!  do ii=1,howmany
-!     outone(:,:,:,:)=outtemp(:,:,:,ii,:)
-!     do i=1,blocksize
-!        do j=1,nprocs*blocksize
-!           out(:,j,i,ii)=RESHAPE(outone(:,j,i,:),(/nprocs*blocksize/))
-!        enddo
-!     enddo
+!  OLD WAY - NEVER OMP'D WELL OBVIOUSLY
+!  do iproc=1,nprocs
+!     out((iproc-1)*blocksize+1:iproc*blocksize,:,:,:)=outtemp(:,:,:,:,iproc)
 !  enddo
+!  CROSSING FINGERS FOR THE FOLLOWING WAY
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i,j)
+  do ii=1,howmany
+     outone(:,:,:,:)=outtemp(:,:,:,ii,:)
+!$OMP DO SCHEDULE(STATIC)
+     do i=1,blocksize
+        do j=1,nprocs*blocksize
+           out(:,j,i,ii)=RESHAPE(outone(:,j,i,:),(/nprocs*blocksize/))
+        enddo
+     enddo
+!$OMP END DO
+!! *** OMP BARRIER *** !!   if outone is shared
+!$OMP BARRIER
+  enddo
+! (implied barrier at end)
+!$OMP END PARALLEL
 
   call myclock(btime); times(3)=times(3)+btime-atime;
   

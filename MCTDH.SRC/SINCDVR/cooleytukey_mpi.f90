@@ -4,14 +4,18 @@ module ct_mpimod
   integer :: myrank = -1
   integer :: nprocs = -1
   integer :: mpifileptr=6
+  integer :: ctparopt=999    !! 0 = sendrecv  1 = SUMMA
 end module ct_mpimod
 
 
-
-
-subroutine ctset()
+subroutine ctset(in_ctparopt)
   use ct_mpimod
   implicit none
+  integer :: in_ctparopt
+  if (in_ctparopt.ne.0.and.in_ctparopt.ne.1) then
+     print *, "CTSET ERROR ", in_ctparopt; call mpistop()
+  endif
+  ctparopt=in_ctparopt
   call getmyranknprocs(myrank,nprocs)
   if (myrank.eq.1) then
      mpifileptr=6
@@ -20,8 +24,6 @@ subroutine ctset()
      open(mpifileptr,file="/dev/null", status="unknown")
   endif
 end subroutine ctset
-
-
 
 
 subroutine ctcheck(int1)
@@ -37,113 +39,114 @@ end subroutine ctcheck
 
 !! INVERSE OF cooleytukey_outofplace_mpi
 
-subroutine cooleytukey_outofplace_inverse_mpi(intranspose,out,dim,howmany)
+subroutine cooleytukey3d_outofplace_inverse_mpi(intranspose,out,dim,howmany)
   use ct_mpimod
   implicit none
   integer, intent(in) :: dim,howmany
-  complex*16, intent(in) :: intranspose(1,dim/nprocs,howmany)
-  complex*16, intent(out) :: out(dim/nprocs,1,howmany)
-  complex*16 ::  intransconjg(1,dim/nprocs,howmany), & !! AUTOMATIC
-       outconjg(dim/nprocs,1,howmany)
+  complex*16, intent(in) :: intranspose(dim,dim,1,dim/nprocs,howmany)
+  complex*16, intent(out) :: out(dim,dim,dim/nprocs,1,howmany)
+  complex*16 ::  intransconjg(dim,dim,1,dim/nprocs,howmany), & !! AUTOMATIC
+       outconjg(dim,dim,dim/nprocs,1,howmany)
 
   call ctcheck(dim)
 
-  intransconjg(:,:,:)=CONJG(intranspose(:,:,:))
-  call cooleytukey_outofplaceinput_mpi(intransconjg,outconjg,dim,howmany)
-  out(:,:,:)=CONJG(outconjg(:,:,:))/dim
+  intransconjg(:,:,:,:,:)=CONJG(intranspose(:,:,:,:,:))
+  call cooleytukey3d_outofplaceinput_mpi(intransconjg,outconjg,dim,howmany)
+  out(:,:,:,:,:)=CONJG(outconjg(:,:,:,:,:))/dim**3
 
-end subroutine cooleytukey_outofplace_inverse_mpi
-
-
-
-
+end subroutine cooleytukey3d_outofplace_inverse_mpi
 
 
 !! fourier transform with OUT-OF-PLACE OUTPUT. 
 
-subroutine cooleytukey_outofplace_mpi(in,outtrans,dim,howmany)
+recursive subroutine cooleytukey3d_outofplace_mpi(in,outtrans,dim,howmany)
   use ct_mpimod
   implicit none
-  integer :: ii
   integer, intent(in) :: dim,howmany
-  complex*16, intent(in) :: in(dim/nprocs,1,howmany)
-  complex*16, intent(out) :: outtrans(1,dim/nprocs,howmany)
+  complex*16, intent(in) :: in(dim,dim,dim/nprocs,1,howmany)
+  complex*16, intent(out) :: outtrans(dim,dim,1,dim/nprocs,howmany)
   complex*16 :: twiddle1(dim/nprocs),tt1(dim/nprocs), &  !! AUTOMATIC
-       tempout(dim/nprocs,1,howmany),      outtemp(dim/nprocs,1,howmany)
+       tempout(dim,dim,dim/nprocs,1,howmany),      outtemp(dim,dim,dim/nprocs,1,howmany)
+  integer :: ii,jj
 
   call ctcheck(dim)
 
   call gettwiddlesmall(twiddle1(:),dim/nprocs,nprocs)
 
-  call myzfft1d_slowindex_mpi(in,tempout,dim,howmany)
+  call myzfft1d_slowindex_mpi(dim**2,in,tempout,dim,howmany)
 
   tt1(:)=twiddle1(:)**(myrank-1)
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,jj)
+!$OMP DO SCHEDULE(DYNAMIC)
   do ii=1,howmany
-     outtemp(:,1,ii) = tempout(:,1,ii) * tt1(:)
+     do jj=1,dim/nprocs
+        outtemp(:,:,jj,1,ii) = tempout(:,:,jj,1,ii) * tt1(jj)
+     enddo
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
-  call myzfft1d(outtemp,outtrans,dim/nprocs,howmany)
+  call myzfft3d(outtemp,outtrans,dim,dim,dim/nprocs,howmany)
 
-end subroutine cooleytukey_outofplace_mpi
+end subroutine cooleytukey3d_outofplace_mpi
 
 
-
-subroutine cooleytukey_outofplaceinput_mpi(intranspose,out,dim,howmany)
+recursive subroutine cooleytukey3d_outofplaceinput_mpi(intranspose,out,dim,howmany)
   use ct_mpimod
   implicit none
-  integer :: ii
   integer, intent(in) :: dim,howmany
-  complex*16, intent(in) :: intranspose(dim/nprocs,1,howmany)
-  complex*16, intent(out) :: out(1,dim/nprocs,howmany)
+  complex*16, intent(in) :: intranspose(dim,dim,dim/nprocs,1,howmany)
+  complex*16, intent(out) :: out(dim,dim,1,dim/nprocs,howmany)
   complex*16 :: twiddlefacs(dim/nprocs), tt(dim/nprocs),&  !! AUTOMATIC
-       temptrans(dim/nprocs,1,howmany),outtrans(dim/nprocs,1,howmany)
+       temptrans(dim,dim,dim/nprocs,1,howmany),outtrans(dim,dim,dim/nprocs,1,howmany)
+  integer :: ii,jj
 
   call ctcheck(dim)
 
   call gettwiddlesmall(twiddlefacs(:),dim/nprocs,nprocs)
 
-  call myzfft1d(intranspose,temptrans,dim/nprocs,howmany)
+  call myzfft3d(intranspose,temptrans,dim,dim,dim/nprocs,howmany)
 
   tt(:)=twiddlefacs(:)**(myrank-1)
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,jj)
+!$OMP DO SCHEDULE(DYNAMIC)
   do ii=1,howmany
-     outtrans(:,1,ii) = temptrans(:,1,ii) * tt(:)
+     do jj=1,dim/nprocs
+        outtrans(:,:,jj,1,ii) = temptrans(:,:,jj,1,ii) * tt(jj)
+     enddo
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
-  call myzfft1d_slowindex_mpi(outtrans,out,dim,howmany)
+  call myzfft1d_slowindex_mpi(dim**2,outtrans,out,dim,howmany)
 
-end subroutine cooleytukey_outofplaceinput_mpi
-
-
-
-
+end subroutine cooleytukey3d_outofplaceinput_mpi
 
 
-
-
-subroutine myzfft1d_slowindex_mpi(in,out,dim,howmany)
+subroutine myzfft1d_slowindex_mpi(bunchsize,in,out,dim,howmany)
   use ct_mpimod
   implicit none
-  integer, intent(in) :: dim,howmany
-  complex*16, intent(in) :: in(dim/nprocs,howmany)
-  complex*16, intent(out) :: out(dim/nprocs,howmany)
+  integer, intent(in) :: dim,howmany,bunchsize
+  complex*16, intent(in) :: in(bunchsize,dim/nprocs,howmany)
+  complex*16, intent(out) :: out(bunchsize,dim/nprocs,howmany)
   complex*16 :: fouriermatrix(nprocs,nprocs),twiddle(nprocs)
   integer :: ii
-
   call ctcheck(dim)
-
   call gettwiddlesmall(twiddle,nprocs,1)
-
   do ii=1,nprocs
      fouriermatrix(:,ii)=twiddle(:)**(ii-1)
   enddo
-
-  call simple_circ(in,out,fouriermatrix,dim/nprocs,howmany,myrank,nprocs)
-
+  select case (ctparopt)
+  case(0)
+     call simple_circ(in,out,fouriermatrix,bunchsize*dim/nprocs,howmany,myrank,nprocs)
+  case(1)
+     call simple_summa(in,out,fouriermatrix,bunchsize*dim/nprocs,howmany,myrank,nprocs)
+  case default
+     print *, "How did this happen?  was ctset() not called? internal ctparopt=",ctparopt; call mpistop()
+  end select
 end subroutine myzfft1d_slowindex_mpi
-
-
-
-
 
 
 recursive subroutine simple_circ(in, out,mat,sizeper,howmany,myrank,nprocs)
@@ -152,19 +155,13 @@ recursive subroutine simple_circ(in, out,mat,sizeper,howmany,myrank,nprocs)
   complex*16 :: in(sizeper,howmany),     out(sizeper,howmany),&
       work2(sizeper,howmany),mat(nprocs,nprocs),work(sizeper,howmany)
   integer :: ibox,jbox,deltabox
-
   nnn=1
   totsize=sizeper*howmany
-
   out(:,:)=0
-
   do deltabox=0,nprocs-1
-
      ibox=mod(nprocs+myrank-1+deltabox,nprocs)+1
      jbox=mod(nprocs+myrank-1-deltabox,nprocs)+1
-
      work(:,:)=in(:,:)*mat(ibox,myrank)
-
      if (deltabox.ne.0) then
         call mympisendrecv(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize)
         out(:,:)=out(:,:)+work2(:,:)
@@ -172,9 +169,7 @@ recursive subroutine simple_circ(in, out,mat,sizeper,howmany,myrank,nprocs)
         out(:,:)=out(:,:)+work(:,:)
      endif
   enddo
-
 end subroutine simple_circ
-
 
 
 recursive subroutine simple_summa(in, out,mat,sizeper,howmany,myrank,nprocs)
@@ -182,10 +177,8 @@ recursive subroutine simple_summa(in, out,mat,sizeper,howmany,myrank,nprocs)
   integer :: nnn,sizeper,howmany,totsize,ibox,myrank,nprocs
   complex*16 :: in(sizeper,howmany),     out(sizeper,howmany),&
        work(sizeper,howmany),mat(nprocs,nprocs)
-
   nnn=1
   totsize=sizeper*howmany
-
   out(:,:)=0d0
   do ibox=1,nprocs
      if (myrank.eq.ibox) then
@@ -194,27 +187,10 @@ recursive subroutine simple_summa(in, out,mat,sizeper,howmany,myrank,nprocs)
      call mympibcast(work(:,:),ibox,totsize)
      out(:,:)=out(:,:)+work(:,:)*mat(myrank,ibox)
   enddo
-
 end subroutine simple_summa
 
 
 
-!! NON-MPI SUBROUTINES
-
-subroutine cooleytukey_putinplace(intranspose,out,dim1,dim2,howmany)
-  implicit none
-  integer, intent(in) :: dim1,dim2,howmany
-  integer :: ii
-  complex*16, intent(in) :: intranspose(dim2,dim1,howmany)
-  complex*16, intent(out) :: out(dim1,dim2,howmany)
-  do ii=1,howmany
-     out(:,:,ii)=RESHAPE(TRANSPOSE(RESHAPE(intranspose(:,:,ii),(/dim1,dim2/))),(/dim1,dim2/))
-  enddo
-end subroutine cooleytukey_putinplace
-
-
-
-  
 
 subroutine gettwiddlesmall(twiddlefacs,dim2,dim1)
   implicit none
