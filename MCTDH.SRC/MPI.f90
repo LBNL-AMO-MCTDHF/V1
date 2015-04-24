@@ -1018,154 +1018,39 @@ end subroutine closefile
 
 
 
-
-
-
-subroutine mpiallgather(inout,totsize,blocksizes,maxblocksize)
+subroutine mpiallgather(inout,totsize,blocksizes,notusedint)
   use mpimod
   use parameters
   implicit none
-
-  integer, intent(in) :: totsize,blocksizes(nprocs),maxblocksize
+  integer, intent(in) :: totsize,blocksizes(nprocs)
   DATATYPE :: inout(totsize)
-
-#ifdef REALGO
- call mpiallgather_real(inout,totsize,blocksizes,maxblocksize)
+  integer :: icount,notusedint
+#ifndef MPIFLAG
+  return
+  inout(1)=inout(1); icount=blocksizes(1)
 #else
- call mpiallgather_complex(inout,totsize,blocksizes,maxblocksize)
+  integer :: ierr,blockstart(nprocs)
+  if (nprocs.eq.1) then
+     return
+  endif
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+
+  call getgatherv_stuff(blocksizes,icount,blockstart)
+  if (icount.ne.totsize) then
+     OFLWR "ALLgather ERR count", icount,totsize; 
+     WRFL blocksizes;
+     CFLST
+  endif
+  call mpi_allgatherv(inout(blockstart(myrank)),blocksizes(myrank),MPIDATATYPE,inout,blocksizes(:),blockstart(:)-1,MPIDATATYPE,MPI_COMM_WORLD,ierr)
+  if (ierr.ne.0) then
+     OFLWR "ALLGATHERv ERR ", ierr; CFLST
+  endif
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+
 #endif
 
 end subroutine mpiallgather
 
-
-subroutine mpiallgather_real(inout,totsize,blocksizes,maxblocksize)
-  use mpimod
-  use parameters
-  implicit none
-
-  integer, intent(in) :: totsize,blocksizes(nprocs),maxblocksize
-  real*8 :: inout(totsize)
-  integer :: i
-#ifndef MPIFLAG
-  return
-  inout(1)=inout(1); i=maxblocksize; i=blocksizes(1)
-#else
-  real*8, allocatable :: intemp(:,:),outtemp(:,:)
-  integer :: icount,ierr,blockstart(nprocs+1)
-
-  if (nprocs.eq.1) then
-     return
-  endif
-  
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
-  icount=0
-  blockstart(1)=1
-  do i=1,nprocs
-     blockstart(i+1)=blockstart(i)+blocksizes(i)
-     if (blocksizes(i).gt.maxblocksize) then
-        OFLWR "BBB ERR"; CFLST
-     endif
-     icount=icount + blocksizes(i)
-  enddo
-  if (icount.ne.totsize) then
-     OFLWR "ALLgather ERR", icount,totsize; 
-     WRFL blocksizes;
-     CFLST
-  endif
-
-  allocate(intemp(maxblocksize,nprocs)); intemp(:,:) = 0d0
-  allocate(outtemp(maxblocksize,nprocs)); outtemp(:,:) = 0d0
-
-  intemp=0d0
-  do i=1,  nprocs
-     intemp(1:blocksizes(myrank),i)=inout(blockstart(myrank):blockstart(myrank+1)-1)
-  enddo
-
-  outtemp=0d0
-
-  call mpi_allgather(intemp(:,:),maxblocksize,MPI_DOUBLE_PRECISION,outtemp(:,:),maxblocksize,MPI_DOUBLE_PRECISION,MPI_COMM_WORLD,ierr)
-
-  if (ierr.ne.0) then
-     OFLWR "ALLGATHER ERR ", ierr; CFLST
-  endif
-
-  inout(:)=0d0
-  do i=1,nprocs
-     inout(blockstart(i):blockstart(i+1)-1)=outtemp(1:blocksizes(i),i)
-  enddo
-
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-  deallocate(intemp,outtemp)
-
-#endif
-
-end subroutine mpiallgather_real
-
-
-subroutine mpiallgather_complex(inout,totsize,blocksizes,maxblocksize)
-  use mpimod
-  use parameters
-  implicit none
-
-  integer, intent(in) :: totsize,blocksizes(nprocs),maxblocksize
-  complex*16 :: inout(totsize)
-  integer :: i
-#ifndef MPIFLAG
-  return
-  inout(1)=inout(1); i=maxblocksize; i=blocksizes(1)
-#else
-  complex*16, allocatable :: intemp(:,:),outtemp(:,:)
-  integer :: icount,ierr,blockstart(nprocs+1)
-
-  if (nprocs.eq.1) then
-     return
-  endif
-
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
-  icount=0
-  blockstart(1)=1
-  do i=1,nprocs
-     blockstart(i+1)=blockstart(i)+blocksizes(i)
-     if (blocksizes(i).gt.maxblocksize) then
-        OFLWR "BBB ERR"; CFLST
-     endif
-     icount=icount + blocksizes(i)
-  enddo
-  if (icount.ne.totsize) then
-     OFLWR "ALLgather ERR", icount,totsize; 
-     WRFL blocksizes;
-     CFLST
-  endif
-
-  allocate(intemp(maxblocksize,nprocs)); intemp(:,:) = 0d0
-  allocate(outtemp(maxblocksize,nprocs)); outtemp(:,:) = 0d0
-
-  intemp=0d0
-  do i=1,  nprocs
-     intemp(1:blocksizes(myrank),i)=inout(blockstart(myrank):blockstart(myrank+1)-1)
-  enddo
-
-  outtemp=0d0
-
-  call mpi_allgather(intemp(:,:),maxblocksize,MPI_DOUBLE_COMPLEX,outtemp(:,:),maxblocksize,MPI_DOUBLE_COMPLEX,MPI_COMM_WORLD,ierr)
-
-  if (ierr.ne.0) then
-     OFLWR "C ALLGATHER ERR ", ierr; CFLST
-  endif
-
-  inout(:)=0d0
-  do i=1,nprocs
-     inout(blockstart(i):blockstart(i+1)-1)=outtemp(1:blocksizes(i),i)
-  enddo
-
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-  deallocate(intemp,outtemp)
-
-#endif
-
-end subroutine mpiallgather_complex
 
 
 subroutine mympialltoall(input, output, count)
