@@ -335,7 +335,7 @@ end subroutine circ3d_sub_real_mpi
 
 !!! times(6) = circ math
 !!! from myzfft3d_par:
-!!! times(1) = zero   times(2)=fourier
+!!! times(1) = copy   times(2)=fourier
 !!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
 
 recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,times,howmany)

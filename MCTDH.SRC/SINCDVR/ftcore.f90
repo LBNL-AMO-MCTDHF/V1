@@ -195,7 +195,6 @@ contains
 !  do iproc=1,nprocs
 !     out((iproc-1)*blocksize+1:iproc*blocksize,:,:,:)=outtemp(:,:,:,:,iproc)
 !  enddo
-!  CROSSING FINGERS FOR THE FOLLOWING WAY
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i,j)
   do ii=1,howmany
@@ -261,7 +260,7 @@ end subroutine myzfft3d_mpiwrap
 
 !! adds to times
 
-!!! times(1) = zero   times(2)=fourier
+!!! times(1) = copy   times(2)=fourier
 !!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
 
 recursive subroutine myzfft3d_par(in,out,dim,times,howmany)
@@ -285,12 +284,11 @@ recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs)
   complex*16, intent(out) :: out(dim,dim,dim/nprocs,howmany)
   integer, intent(inout) :: times(8)
   integer :: ii,atime,btime
-  complex*16 :: mywork(dim,dim,dim/nprocs,howmany),tempout(dim,dim,dim/nprocs,howmany)
-
-  call myclock(atime)
+  complex*16 :: mywork(dim,dim,dim/nprocs,howmany),tempout(dim,dim,dim/nprocs,howmany) !! AUTOMATIC
 
   call checkdivisible(dim,nprocs)
 
+  call myclock(atime)
   tempout(:,:,:,:)=in(:,:,:,:)
   call myclock(btime); times(1)=times(1)+btime-atime;
 
@@ -306,7 +304,9 @@ recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs)
           dim/nprocs, &
           howmany,times(3:),nprocs)
   enddo
+  call myclock(atime)
   out(:,:,:,:)=tempout(:,:,:,:)
+  call myclock(btime); times(1)=times(1)+btime-atime
 
 end subroutine myzfft3d_par0
 

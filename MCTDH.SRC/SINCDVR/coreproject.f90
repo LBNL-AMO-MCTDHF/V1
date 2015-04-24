@@ -358,9 +358,9 @@ end subroutine mult_reke
 
 !!! from circ_sub_mpi, fttimes:
 !!! times(6) = circ math
-!!! from myzfft3d_par:
-!!! times(1) = zero   times(2)=fourier
-!!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
+!!! from myzfft3d_par: times(1:5)
+!!! times(1) = copy   times(2)=fourier
+!!!     from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
 
 recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
   use myparams
@@ -678,7 +678,7 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (xcount==1) then
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.time.dat", status="unknown")
-        write(853,'(100A11)')   "etc", "1den", "1mpi", "doit", "2mpi", "dot","all","ft_zero","ft_ft","ft_tr","ft_mpi","ft_copy","ft_circ"
+        write(853,'(100A11)')   "etc", "1den", "1mpi", "F.T.", "2mpi", "dot","ALL","ft_copy","ft_ft","ft_tr","ft_mpi","ft_copy","ft_circ"
         close(853)
      endif
      open(853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.time.dat", status="unknown", position="append")
