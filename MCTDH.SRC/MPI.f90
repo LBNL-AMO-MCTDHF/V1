@@ -7,8 +7,7 @@ subroutine getmyranknprocs(outrank,outnprocs)
   use mpimod
   implicit none
   integer :: outrank,outnprocs
-  outrank=myrank
-  outnprocs=nprocs
+  outrank=myrank;  outnprocs=nprocs
 end subroutine getmyranknprocs
 
 subroutine mpiorbsets()
@@ -20,7 +19,6 @@ subroutine mpiorbsets()
 #ifdef MPIFLAG
   integer, allocatable :: process_ranks(:,:)
 #endif
-
   if (nprocs.lt.nspf) then
      OFLWR " Get ORbsets.  Fewer procs than orbitals."; CFL
      norbsets=1
@@ -40,7 +38,6 @@ subroutine mpiorbsets()
      if (iproc.ne.nprocs) then
         OFLWR "TTTYTUTU ERROR GUY."; CFLST
      endif
-
   endif
 #ifndef MPIFLAG
   myorbset=1
@@ -59,11 +56,9 @@ subroutine mpiorbsets()
      do while (jproc.lt.procsperset(iset))
         jproc=jproc+1
         iproc=iproc+1
-        
         process_ranks(jproc,iset)=iproc
         if (iproc.eq.myrank) then
            myorbset=iset
-!!???           firstmpiorb=real(jproc-1)*orbsperproc+1
            firstmpiorb=(jproc-1)*orbsperproc+1
         endif
      enddo
@@ -82,7 +77,6 @@ subroutine mpiorbsets()
   endif
   deallocate(process_ranks,procsperset)
 #endif
-
 end subroutine mpiorbsets
 
 
@@ -94,7 +88,6 @@ subroutine mpiorbgather(orbvector,insize)    !! insize=spfsize except debug
   implicit none
   integer :: ierr,insize
   DATATYPE :: orbvector(insize,nspf*2)
-
   if (nprocs.eq.1) then
      return
   endif
@@ -102,7 +95,6 @@ subroutine mpiorbgather(orbvector,insize)    !! insize=spfsize except debug
      OFLWR "YYY ERROR",firstmpiorb,orbsperproc; CFLST
   endif
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
 #ifdef REALGO
   call mpi_allgather(orbvector(:,firstmpiorb:firstmpiorb+orbsperproc-1),&
        insize*orbsperproc,MPI_DOUBLE_PRECISION,orbvector(:,:),insize*orbsperproc,MPI_DOUBLE_PRECISION,MPI_COMM_ORB(myorbset),ierr)
@@ -117,8 +109,6 @@ subroutine mpiorbgather(orbvector,insize)    !! insize=spfsize except debug
 end subroutine mpiorbgather
 
 
-
-
 subroutine mpistart()
   use mpimod
   use parameters
@@ -130,7 +120,6 @@ subroutine mpistart()
   integer :: myiargc
 #endif
   character (len=200) :: buffer
-
 #ifdef PGFFLAG
   nargs=myiargc()
 #else
@@ -140,30 +129,12 @@ subroutine mpistart()
   do i=1,nargs
      call getarg(i,buffer); 
      if (buffer(1:6) .eq. 'MPIOUT') then
-
         flag=1
-
      endif
   enddo
   call MPI_INIT(ierr)
   if (ierr/=0) then; print *,  "MPI ERR 1";  stop; 
   endif
-
-!!$!  required=MPI_THREAD_FUNNELED
-!!$  required=MPI_THREAD_SINGLE
-!!$
-!!$!$OMP PARALLEL
-!!$!$OMP MASTER
-!!$  call MPI_INIT_THREAD(required,provided,ierr)
-!!$  if (provided.ne.required) then
-!!$     print *, "MPI thread support not granted.  probably ok.  comment me out in code to continue.",&
-!!$          provided,required; stop
-!!$  endif
-!!$  if (ierr/=0) then; print *,  "MPI ERR 1";  stop; 
-!!$  endif
-!!$!$OMP END MASTER
-!!$!$OMP END PARALLEL
-
   call MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierr)   
   if (ierr/=0) then;   print *,  "MPI ERR 2";   stop; 
   endif
@@ -173,7 +144,6 @@ subroutine mpistart()
   call MPI_COMM_SIZE( MPI_COMM_WORLD, nprocs, ierr)     
   if (ierr/=0) then;   print *,   "MPI ERR 3";   stop; 
   endif
-
   if (nprocs.eq.1.or.myrank.eq.1) then
      stdoutflag=1
   else
@@ -200,6 +170,7 @@ subroutine mpistart()
      open(mpifileptr,file=mpioutfile,status="unknown"); WRFL; CFL
   endif
   call system_clock(mpibtime);  call system_clock(mpiatime)
+
 end subroutine mpistart
 
 
@@ -217,7 +188,6 @@ subroutine mpibarrier()
   call system_clock(mpibtime)
   mpitime=mpitime+mpibtime-mpiatime
 end subroutine mpibarrier
-
 
 
 subroutine mpistop()
@@ -238,9 +208,9 @@ subroutine mympireduce(input, isize)
   use mpimod
   use parameters
   implicit none
-  DATATYPE :: input(isize)
-  DATATYPE :: output(isize) 
-  integer :: ierr, isize  !!, iroot
+  integer :: ierr, isize
+  DATATYPE,intent(inout) :: input(isize)
+  DATATYPE :: output(isize)           !! AUTOMATIC
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   ierr=0
   call MPI_allreduce( input, output, isize, MPIDATATYPE, MPI_SUM, MPI_COMM_WORLD , ierr)
@@ -256,9 +226,9 @@ subroutine mympireduceto(input, output, isize, dest)
   use mpimod
   use parameters
   implicit none
-  DATATYPE :: input(isize)
-  DATATYPE :: output(isize) 
   integer :: ierr, isize ,dest,idest
+  DATATYPE,intent(in) :: input(isize)
+  DATATYPE,intent(out) :: output(isize) 
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   if (dest.lt.1.or.dest.gt.nprocs) then
      OFLWR "ERR DEST REDUCETO",dest,nprocs; CFLST
@@ -292,14 +262,11 @@ subroutine mympirealreduceone(input)
 end subroutine mympirealreduceone
 
 
-
-
 subroutine mympiireduceone(input)
   use mpimod
   use parameters
   implicit none
-  integer :: input,output
-  integer :: ierr,isize=1
+  integer :: input,output,ierr,isize=1
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   ierr=0
   call MPI_allreduce( input, output, isize, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD , ierr)
@@ -315,7 +282,7 @@ subroutine mympiireduce(input, isize)
   use mpimod
   use parameters
   implicit none
-  integer :: ierr, isize  !!, iroot
+  integer :: ierr, isize
   integer :: input(isize), output(isize) 
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   ierr=0
@@ -591,14 +558,11 @@ subroutine simpleallgather_complex(vectorin,vectorsout,insize)
   implicit none
   integer :: ierr,insize
   complex*16 :: vectorin(insize),vectorsout(insize,nprocs)
-
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
   call mpi_allgather(vectorin(:),insize,MPI_DOUBLE_COMPLEX,vectorsout(:,:),insize,MPI_DOUBLE_COMPLEX,MPI_COMM_WORLD,ierr)
   if (ierr.ne.0) then
      write(mpifileptr,*) "gather complex ERR ", ierr; call mpistop()
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine simpleallgather_complex
 
@@ -609,14 +573,11 @@ subroutine simpleallgather_real(vectorin,vectorsout,insize)
   implicit none
   integer :: ierr,insize
   real*8 :: vectorin(insize),vectorsout(insize,nprocs)
-
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
   call mpi_allgather(vectorin(:),insize,MPI_DOUBLE_PRECISION,vectorsout(:,:),insize,MPI_DOUBLE_PRECISION,MPI_COMM_WORLD,ierr)
   if (ierr.ne.0) then
      write(mpifileptr,*) "gather real ERR ", ierr; call mpistop()
   endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine simpleallgather_real
 
@@ -922,8 +883,8 @@ subroutine mympireduceto(input, output, isize, dest)
   use mpimod
   use parameters
   implicit none
-  DATATYPE :: input(isize), output(isize)
   integer :: isize ,dest
+  DATATYPE :: input(isize), output(isize)
   if (dest.ne.1) then
      OFLWR "Error nonpar mympireduceto wrapper",dest; CFLST
   endif
@@ -967,14 +928,19 @@ subroutine mpistart
 
 end subroutine mpistart
 
+
 subroutine mpiinit
 end subroutine mpiinit
+
+
 subroutine mpibarrier()
 end subroutine mpibarrier
+
 
 subroutine mpistop()
   stop
 end subroutine mpistop
+
 
 #endif
 
@@ -998,6 +964,7 @@ function iilen(which)
   endif
 end function iilen
 
+
 subroutine openfile()
   use mpimod
   use parameters  
@@ -1007,6 +974,7 @@ subroutine openfile()
   endif
 end subroutine openfile
 
+
 subroutine closefile()
   use mpimod
   use parameters
@@ -1015,7 +983,6 @@ subroutine closefile()
      close(mpifileptr)
   endif
 end subroutine closefile
-
 
 
 subroutine mpiallgather(inout,totsize,blocksizes,notusedint)
@@ -1034,7 +1001,6 @@ subroutine mpiallgather(inout,totsize,blocksizes,notusedint)
      return
   endif
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
   call getgatherv_stuff(blocksizes,icount,blockstart)
   if (icount.ne.totsize) then
      OFLWR "ALLgather ERR count", icount,totsize; 
@@ -1046,9 +1012,7 @@ subroutine mpiallgather(inout,totsize,blocksizes,notusedint)
      OFLWR "ALLGATHERv ERR ", ierr; CFLST
   endif
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-
 #endif
-
 end subroutine mpiallgather
 
 
@@ -1059,9 +1023,7 @@ subroutine mympialltoall(input, output, count)
   implicit none
   integer :: ierr, count
   DATATYPE :: input(count,nprocs), output(count,nprocs)
-
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
 #ifndef MPIFLAG
   output(:,:)=input(:,:)
   return
@@ -1076,9 +1038,7 @@ subroutine mympialltoall(input, output, count)
      OFLWR "ERROR ALLTOALL ", ierr; CFLST
   endif
 #endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-
 end subroutine mympialltoall
 
 
@@ -1089,7 +1049,6 @@ subroutine mympialltoall_complex(input, output, count)
   implicit none
   integer :: ierr, count
   complex*16 :: input(count,nprocs), output(count,nprocs)
-
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 #ifndef MPIFLAG
   output(:,:)=input(:,:)
@@ -1101,10 +1060,6 @@ subroutine mympialltoall_complex(input, output, count)
      OFLWR "ERROR ALLTOALL ", ierr; CFLST
   endif
 #endif
-
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-
 end subroutine mympialltoall_complex
-
-
 

@@ -1,9 +1,7 @@
 
-!! myrank is indexed 1:nprocs
-
+!! myrank is 1:nprocs
 
 #ifdef FFTWFLAG
-
 
 recursive subroutine myzfft1d(in,out,dim,howmany)
   use, intrinsic :: iso_c_binding
@@ -81,7 +79,6 @@ recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
 
 end subroutine myzfft3d
 
-
 #else
 
 recursive subroutine myzfft1d(in,out,dim,howmany)
@@ -102,45 +99,36 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
 !$OMP END PARALLEL
 end subroutine myzfft1d
 
+
 subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
   implicit none
   integer :: dim1,dim2,dim3,howmany
   complex*16, intent(in) :: in(dim1,dim2,dim3,howmany)
   complex*16, intent(out) :: out(dim1,dim2,dim3,howmany)
-
-!! need pointers with reshape!  f95 I think
-
-  complex*16 :: work1(dim1,dim2,dim3,howmany)  !! AUTOMATIC
-  complex*16 :: work2(dim2,dim3,dim1,howmany)  !! AUTOMATIC
-  complex*16 :: work3(dim2,dim3,dim1,howmany)  !! AUTOMATIC
-  complex*16 :: work4(dim3,dim1,dim2,howmany)  !! AUTOMATIC
-  complex*16 :: work5(dim3,dim1,dim2,howmany)  !! AUTOMATIC
-  integer :: i
-
-  call myzfft1d(in,work1,dim1,dim2*dim3*howmany)
-  do i=1,dim1
-     work2(:,:,i,:)=work1(i,:,:,:)
-  enddo
-  call myzfft1d(work2,work3,dim2,dim3*dim1*howmany)
-  do i=1,dim2
-     work4(:,:,i,:)=work3(i,:,:,:)
-  enddo
-  call myzfft1d(work4,work5,dim3,dim1*dim2*howmany)
-  do i=1,dim3
-     out(:,:,i,:)=work5(i,:,:,:)
-  enddo
-
+  out(:,:,:,:)=in(:,:,:,:)
+  call fftblock_withtranspose(out,dim1,dim2,dim3,howmany)
+  call fftblock_withtranspose(out,dim2,dim3,dim1,howmany)
+  call fftblock_withtranspose(out,dim3,dim1,dim2,howmany)
 end subroutine myzfft3d
 
+
+subroutine fftblock_withtranspose(inout,dim1,dim2,dim3,howmany)
+  implicit none
+  integer :: dim1,dim2,dim3,howmany
+!!!!  is dimensioned (dim1,dim2,dim3) on input. !!!!
+  complex*16,intent(inout) :: inout(dim2,dim3,dim1,howmany) 
+  complex*16 :: work1(dim1,dim2,dim3,howmany)  !! AUTOMATIC
+  integer :: i
+  call myzfft1d(inout,work1,dim1,dim2*dim3*howmany)
+  do i=1,dim1
+     inout(:,:,i,:)=work1(i,:,:,:)
+  enddo
+end subroutine fftblock_withtranspose
 
 #endif
 
 
-
-
-
 #ifdef MPIFLAG
-
 
 !! times(1) = transpose   times(2) = mpi  times(3) = copy
 !! This is 3D specific
@@ -155,9 +143,10 @@ contains
   complex*16,intent(in) :: in(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
   complex*16 :: inchop(nprocs*blocksize,blocksize,blocksize,howmany)  !!AUTOMATIC
   complex*16,intent(out) :: out(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
-  integer :: atime,btime,i,count,ii,totsize,iproc,checkprocs,myrank
+  integer :: atime,btime,i,count,ii,totsize,iproc,checkprocs,myrank,j
   complex*16 :: intranspose(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)  !!AUTOMATIC
   complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)      !!AUTOMATIC
+  complex*16 :: outone(blocksize,nprocs*blocksize,blocksize,nprocs)               !!AUTOMATIC
   
   call getmyranknprocs(myrank,checkprocs)
   if (nprocs.ne.checkprocs) then
@@ -172,8 +161,6 @@ contains
   
   call myclock(atime)
   
-!!$  if (myrank.eq.1) print *, "TEMP NO OMP TRANSPOSE"
-
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i,iproc)
   do iproc=1,nprocs
      inchop(:,:,:,:)=in(:,(iproc-1)*blocksize+1:iproc*blocksize,:,:)
@@ -184,21 +171,37 @@ contains
         enddo
      enddo
 !$OMP END DO
+
+!! *** OMP BARRIER *** !!   if inchop is shared
+!$OMP BARRIER
+
   enddo
 ! (implied barrier at end)
 !$OMP END PARALLEL
-
- call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+  call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
   
   count=blocksize**2 * totsize * howmany
   
   call mympialltoall_complex(intranspose,outtemp,count)
-  
- call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
-  
+  call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
+
+!!  complex*16,intent(out) :: out(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
+!!  complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)     
+!!  complex*16 :: outone(blocksize,nprocs*blocksize,blocksize,nprocs)
+
   do iproc=1,nprocs
      out((iproc-1)*blocksize+1:iproc*blocksize,:,:,:)=outtemp(:,:,:,:,iproc)
   enddo
+
+!  do ii=1,howmany
+!     outone(:,:,:,:)=outtemp(:,:,:,ii,:)
+!     do i=1,blocksize
+!        do j=1,nprocs*blocksize
+!           out(:,j,i,ii)=RESHAPE(outone(:,j,i,:),(/nprocs*blocksize/))
+!        enddo
+!     enddo
+!  enddo
+
 
   call myclock(btime); times(3)=times(3)+btime-atime;
   
@@ -236,12 +239,10 @@ recursive subroutine myzfft3d_mpiwrap(in,out,dim,howmany)
   inlocal(:,:)=in(mystart:myend,:)
 
   call myzfft3d_par(inlocal,outlocal,dim,nulltimes,howmany)
-
   call simpleallgather_complex(outlocal,outgather,dim**3/nprocs*howmany)
   do ii=1,howmany
      out(:,ii)=RESHAPE(outgather(:,ii,:),(/dim**3/))
   enddo
-  
   deallocate(inlocal,outlocal,outgather)
 
 end subroutine myzfft3d_mpiwrap
