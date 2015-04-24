@@ -1,33 +1,84 @@
 
 !! myrank is indexed 1:nprocs
 
-module bothblockmod
-  integer :: nprocs=-1,dim=-1,myrank=-1
-  integer, allocatable :: mpiblocks(:),mpiblockend(:),mpiblockstart(:)
-end module bothblockmod
-
 
 #ifdef FFTWFLAG
 
+
 recursive subroutine myzfft1d(in,out,dim,howmany)
+  use, intrinsic :: iso_c_binding
   implicit none
+  include "fftw3.f03"
   integer, intent(in) :: dim,howmany
-  complex*16, intent(in) :: in(dim,howmany)
-  complex*16, intent(out) :: out(dim,howmany)
-  call fftw1dfftsub(in,out,dim,howmany)
+  integer, parameter :: maxplans=3
+  type(C_PTR),save :: plans(maxplans)
+  integer, save :: plandims(maxplans)=-999, planhowmany(maxplans)=-999
+  integer,save :: icalleds(maxplans)=0, numplans=0
+  complex*16 :: in(dim,howmany),out(dim,howmany)
+  integer :: ostride,istride,onembed(1),inembed(1),idist,odist, dims(1),iplan,thisplan
+
+  inembed(1)=dim; onembed(1)=dim; idist=dim; odist=dim; istride=1; ostride=1; dims(1)=dim
+
+  if (numplans.eq.0) then
+     numplans=1
+     thisplan=1
+     plandims(thisplan)=dim; planhowmany(thisplan)=howmany
+  else
+     thisplan= -99
+     do iplan=1,numplans
+        if (plandims(iplan).eq.dim.and.planhowmany(iplan).eq.howmany) then
+           if (icalleds(iplan).eq.0) then
+              print *, "ERROR, plan not done ",iplan,dim,howmany; call mpistop()
+           endif
+           thisplan=iplan
+           exit
+        endif
+     enddo
+     if (thisplan.eq.-99) then
+        if (numplans.eq.maxplans) then
+           print *,  "all plans taken!", maxplans; call mpistop()
+        endif
+        numplans=numplans+1
+        thisplan=numplans
+        plandims(thisplan)=dim; planhowmany(thisplan)=howmany
+     endif
+  endif
+  if (icalleds(thisplan).eq.0) then
+     plans(thisplan) = fftw_plan_many_dft(1,dims,howmany,in,inembed,istride,idist,out,onembed,ostride,odist,FFTW_FORWARD,FFTW_EXHAUSTIVE) 
+  endif
+  icalleds(thisplan)=1    
+
+  call fftw_execute_dft(plans(thisplan), in,out)
+
+!!$  call fftw_destroy_plan(plan)
 end subroutine myzfft1d
 
 
-recursive subroutine myzfft3d(in,out,indim,howmany)
-  use bothblockmod
+recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
+  use, intrinsic :: iso_c_binding
   implicit none
-  integer :: indim,howmany
-  complex*16, intent(in) :: in(dim,dim,dim,howmany)
-  complex*16, intent(out) :: out(dim,dim,dim,howmany)
-  if (dim.ne.indim) then
-     print *, "WRONG INIT FFTW3D",dim,indim;stop
+  include "fftw3.f03"
+  integer :: howmany,ii,dim1,dim2,dim3
+  type(C_PTR),save :: plan
+  integer,save :: icalled=0
+  complex*16 :: in(dim1,dim2,dim3,howmany),out(dim1,dim2,dim3,howmany)
+  integer, save :: savedim1,savedim2,savedim3
+
+  if (icalled.eq.0) then
+     plan=fftw_plan_dft_3d(dim1,dim2,dim3,in(:,:,:,1),out(:,:,:,1),FFTW_FORWARD,FFTW_EXHAUSTIVE) 
+     savedim1=dim1; savedim2=dim2; savedim3=dim3
+  else
+     if (dim1.ne.savedim1.or.dim2.ne.savedim2.or.dim3.ne.savedim3) then
+        print *, "ERROR SAVE DIMS MYZFFT3D FFTW ",dim1,dim2,dim3,savedim1,savedim2,savedim3; call mpistop()
+     endif
   endif
-  call fftw3dfftsub(in,out,howmany)
+  icalled=1
+  do ii=1,howmany
+     call fftw_execute_dft(plan, in(:,:,:,ii),out(:,:,:,ii))
+  enddo
+
+!!$  call fftw_destroy_plan(plan)
+
 end subroutine myzfft3d
 
 
@@ -51,26 +102,36 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
 !$OMP END PARALLEL
 end subroutine myzfft1d
 
-
-subroutine myzfft3d(in,out,indim,howmany)
-  use bothblockmod
+subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
   implicit none
-  integer :: indim,howmany
-  complex*16, intent(in) :: in(dim,dim,dim,howmany)
-  complex*16, intent(out) :: out(dim,dim,dim,howmany)
-  complex*16 :: work(dim,dim,dim,howmany)  !! AUTOMATIC
-  integer :: ii,i
-  if (dim.ne.indim) then
-     print *, "WRONG INIT",dim,indim;stop
-  endif
-  out(:,:,:,:)=in(:,:,:,:)
-  do ii=1,3
-     call myzfft3d_oneblock(out,work,dim,howmany)
-     do i=1,dim
-        out(:,:,i,:)=work(i,:,:,:)
-     enddo
+  integer :: dim1,dim2,dim3,howmany
+  complex*16, intent(in) :: in(dim1,dim2,dim3,howmany)
+  complex*16, intent(out) :: out(dim1,dim2,dim3,howmany)
+
+!! need pointers with reshape!  f95 I think
+
+  complex*16 :: work1(dim1,dim2,dim3,howmany)  !! AUTOMATIC
+  complex*16 :: work2(dim2,dim3,dim1,howmany)  !! AUTOMATIC
+  complex*16 :: work3(dim2,dim3,dim1,howmany)  !! AUTOMATIC
+  complex*16 :: work4(dim3,dim1,dim2,howmany)  !! AUTOMATIC
+  complex*16 :: work5(dim3,dim1,dim2,howmany)  !! AUTOMATIC
+  integer :: i
+
+  call myzfft1d(in,work1,dim1,dim2*dim3*howmany)
+  do i=1,dim1
+     work2(:,:,i,:)=work1(i,:,:,:)
   enddo
+  call myzfft1d(work2,work3,dim2,dim3*dim1*howmany)
+  do i=1,dim2
+     work4(:,:,i,:)=work3(i,:,:,:)
+  enddo
+  call myzfft1d(work4,work5,dim3,dim1*dim2*howmany)
+  do i=1,dim3
+     out(:,:,i,:)=work5(i,:,:,:)
+  enddo
+
 end subroutine myzfft3d
+
 
 #endif
 
@@ -78,6 +139,12 @@ end subroutine myzfft3d
 module littlestartmod
  integer :: mystart=(-1),mysize=(-1)
 end module littlestartmod
+
+module bothblockmod
+  integer :: nprocs=-1,dim=-1,myrank=-1
+  integer, allocatable :: mpiblocks(:),mpiblockend(:),mpiblockstart(:)
+end module bothblockmod
+
 
 
 subroutine setblock(innprocs,inmyrank,indims)
@@ -126,154 +193,6 @@ subroutine unsetblock()
   dim=(-1)
   deallocate(mpiblocks,mpiblockend,mpiblockstart)
 end subroutine unsetblock
-
-
-recursive subroutine myzfft3d_oneblock(in,out,insize,howmany)
-  use bothblockmod
-  implicit none
-  integer :: insize,howmany
-  complex*16, intent(in) :: in(dim,dim,insize,howmany)
-  complex*16, intent(out) :: out(dim,dim,insize,howmany)
-  if (dim.eq.-1) then
-     print *, "NEED TO INITIALIZE FFTBLOCK";stop
-  endif
-  call myzfft1d(in(:,:,:,:),out(:,:,:,:),dim,insize*dim*howmany)
-end subroutine myzfft3d_oneblock
-
-
-#ifdef FFTWFLAG
-
-
-recursive subroutine fftw3dfftsub(in,out,howmany)
-  use, intrinsic :: iso_c_binding
-  use bothblockmod
-  implicit none
-  include "fftw3.f03"
-  integer :: howmany,ii
-  type(C_PTR),save :: plan
-  integer,save :: icalled=0
-  complex*16 :: in(dim,dim,dim,howmany),out(dim,dim,dim,howmany)
-  if (icalled.eq.0) then
-     plan=fftw_plan_dft_3d(dim,dim,dim,in(:,:,:,1),out(:,:,:,1),FFTW_FORWARD,FFTW_EXHAUSTIVE) 
-  endif
-  icalled=1
-  do ii=1,howmany
-     call fftw_execute_dft(plan, in(:,:,:,ii),out(:,:,:,ii))
-  enddo
-
-!!$  call fftw_destroy_plan(plan)
-
-end subroutine fftw3dfftsub
-
-
-#ifdef MPIFFTW
-
- not finished with howmany!  
-
-subroutine fftw3dfftsub_mpi(in,out,indim,insize,howmany)
-  use, intrinsic :: iso_c_binding
-  use bothblockmod
-  use littlestartmod
-  include 'fftw3-mpi.f03'
-  integer :: indim,insize,howmany
-  integer, save :: icalled=0
-  integer(C_INTPTR_T) :: alloc_local,LL,MM,SS
-  complex*16,intent(in) :: in(dim,dim,mysize/dim**2,howmany)
-  complex*16,intent(out) :: out(dim,dim,mysize/dim**2,howmany)
-  type(C_PTR),save :: plan, cdata
-  complex(C_DOUBLE_COMPLEX), pointer :: data(:,:,:)
-  if (myrank.eq.1) then
-     print *, "GO FFTW MPI SUB."
-  endif
-
-  LL=dim;MM=mysize/dim**2;SS=(mystart-1)/dim**2
-
-  if (indim.ne.dim.or.insize.ne.mysize/dim**2) then
-     print *, "AUGH FFTW MPI FFT ",indim,dim,insize,mysize; stop
-  endif
-
-!print *, "LMS ", LL,MM,SS
-  alloc_local = fftw_mpi_local_size_3d(LL,LL,LL, MPI_COMM_WORLD, MM, SS)
-!print *, "LMSnow ", LL,MM,SS
-
-  cdata = fftw_alloc_complex(alloc_local)
-  call c_f_pointer(cdata, data, [LL,LL,MM])
-     
-  if (icalled.eq.0) then
-
-     !   create MPI plan for in-place forward DFT (note dimension reversal)
-
-     plan = fftw_mpi_plan_dft_3d(LL,LL,LL, data, data, MPI_COMM_WORLD, FFTW_FORWARD, FFTW_EXHAUSTIVE)
-  endif
-  icalled=1
-
-     ! initialize data to some function my_function(i,j)
-
-  data(:, :,:) = in(:,:,:)
-  ! compute transform (as many times as desired)
-
-  call fftw_mpi_execute_dft(plan, data, data)
-
-!!  call fftw_execute_dft(plan, data, data)
-
-  out(:,:,:)=data(:,:,:)
-
-  if (myrank.eq.1) then
-     print *, "ok done fftw3dfftsub_mpi"
-  endif
-end subroutine fftw3dfftsub_mpi
-
-#endif
-
-recursive subroutine fftw1dfftsub(in,out,dim,howmany)
-  use, intrinsic :: iso_c_binding
-  implicit none
-  include "fftw3.f03"
-  integer, intent(in) :: dim,howmany
-  integer, parameter :: maxplans=3
-  type(C_PTR),save :: plans(maxplans)
-  integer, save :: plandims(maxplans)=-999, planhowmany(maxplans)=-999
-  integer,save :: icalleds(maxplans)=0, numplans=0
-  complex*16 :: in(dim,howmany),out(dim,howmany)
-  integer :: ostride,istride,onembed(1),inembed(1),idist,odist, dims(1),iplan,thisplan
-
-  inembed(1)=dim; onembed(1)=dim; idist=dim; odist=dim; istride=1; ostride=1; dims(1)=dim
-
-  if (numplans.eq.0) then
-     numplans=1
-     thisplan=1
-     plandims(thisplan)=dim; planhowmany(thisplan)=howmany
-  else
-     thisplan= -99
-     do iplan=1,numplans
-        if (plandims(iplan).eq.dim.and.planhowmany(iplan).eq.howmany) then
-           if (icalleds(iplan).eq.0) then
-              print *, "ERROR, plan not done ",iplan,dim,howmany; call mpistop()
-           endif
-           thisplan=iplan
-           exit
-        endif
-     enddo
-     if (thisplan.eq.-99) then
-        if (numplans.eq.maxplans) then
-           print *,  "all plans taken!", maxplans; call mpistop()
-        endif
-        numplans=numplans+1
-        thisplan=numplans
-        plandims(thisplan)=dim; planhowmany(thisplan)=howmany
-     endif
-  endif
-  if (icalleds(thisplan).eq.0) then
-     plans(thisplan) = fftw_plan_many_dft(1,dims,howmany,in,inembed,istride,idist,out,onembed,ostride,odist,FFTW_FORWARD,FFTW_EXHAUSTIVE) 
-  endif
-  icalleds(thisplan)=1    
-
-  call fftw_execute_dft(plans(thisplan), in,out)
-
-!!$  call fftw_destroy_plan(plan)
-end subroutine fftw1dfftsub
-
-#endif
 
 
 
@@ -357,28 +276,10 @@ recursive subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
 !!    should not really be used... hmm
 !!! (3pm 04-13-2015 BUGFIX)
 
-#ifdef MPIFFTW
-  do ii=1,howmany
-     call fftw3dfftsub_mpi(in(mystart,ii),out(mystart,ii),indim,mysize/dim**2,1)
-  enddo
-  return
-#else
+
   do ii=1,howmany
      call myzfft3d_par(in(mystart,ii),out(mystart,ii),indim,mysize/dim**2,nulltimes,1)
   enddo
-
-#define TENxxTEST
-#ifdef TENTEST
-  write(*,'(4E20.10,A10,I5)') DOT_PRODUCT(&
-       in(mystart:mystart+mysize-1),&
-       in(mystart:mystart+mysize-1)),&
-       DOT_PRODUCT(&
-       out(mystart:mystart+mysize-1),&
-       out(mystart:mystart+mysize-1)), &
-       "DDOTPAR",myrank
-  call mybarrier()
-  stop
-#endif
 
   do ii=1,howmany
      call mygatherv_complex(out(mpiblockstart(myrank),ii),out(:,ii),dim**3,&
@@ -387,7 +288,7 @@ recursive subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
           mpiblocks(:),&
           mpiblockstart(:),.true.)
   enddo
-#endif
+
 end subroutine myzfft3d_mpiwrap
 
 
@@ -407,12 +308,9 @@ recursive subroutine myzfft3d_par(in,out,indim,inblockdim,times,howmany)
   integer, intent(inout) :: times(8)
   integer :: ii,atime,btime
   complex*16 :: mywork(dim,dim,mysize/dim**2,howmany),tempout(dim,dim,mysize/dim**2,howmany)
-!!$  complex*16, allocatable, save :: mywork(:,:,:,:), tempout(:,:,:,:)
-!!$  integer, save :: savehowmany = -999
 
   call myclock(atime)
 
-!!$  if (dims(1)*dims(2)*(mysize/dims(1)/dims(2)).ne.mysize) then
   if (dim**2*(mysize/dim**2).ne.mysize) then
      print *, "WTF!!! 5656578",dim,mysize; stop
   endif
@@ -426,32 +324,12 @@ recursive subroutine myzfft3d_par(in,out,indim,inblockdim,times,howmany)
      print *, "MYSIZE/blocks disagree",mysize,mpiblocks(myrank),myrank,nprocs;stop
   endif
 
-!!$  if (savehowmany.eq.-999) then
-!!$     allocate(mywork(dim,dim,mysize/dim**2,howmany),tempout(dim,dim,mysize/dim**2,howmany))
-!!$     mywork=0; tempout=0
-!!$  else if (savehowmany.ne.howmany) then
-!!$     if (myrank.eq.1) print *, "fDEALLOCATING",myrank,howmany,savehowmany 
-!!$     deallocate(mywork,tempout)
-!!$     allocate(mywork(dim,dim,mysize/dim**2,howmany),tempout(dim,dim,mysize/dim**2,howmany))
-!!$     mywork=0; tempout=0
-!!$  endif
-!!$  savehowmany=howmany
-
-
-#ifdef MPIFFTW
-  call fftw3dfftsub_mpi(in,out,indim,mysize/dim**2,howmany)
-  return
-#else
   tempout(:,:,:,:)=in(:,:,:,:)
   call myclock(btime); times(1)=times(1)+btime-atime;
 
   do ii=1,3
      call myclock(atime)
-#ifndef TENTEST
-     call myzfft3d_oneblock( tempout, mywork, mysize/dim**2,howmany)
-#else
-     mywork(:,:,:,:)=tempout(:,:,:,:)*10
-#endif
+     call myzfft1d( tempout, mywork, dim, (mysize/dim)*howmany)
      call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
      
 !!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
@@ -462,7 +340,6 @@ recursive subroutine myzfft3d_par(in,out,indim,inblockdim,times,howmany)
           howmany,times(3:))
   enddo
   out(:,:,:,:)=tempout(:,:,:,:)
-#endif
 
 end subroutine myzfft3d_par
 
@@ -471,3 +348,67 @@ end subroutine myzfft3d_par
 
 
 
+
+!!$  
+!!$  #ifdef FFTWFLAG
+!!$  #ifdef MPIFFTW
+!!$  
+!!$   not finished with howmany!  
+!!$  
+!!$  subroutine fftw3dfftsub_mpi(in,out,indim,insize,howmany)
+!!$    use, intrinsic :: iso_c_binding
+!!$    use bothblockmod
+!!$    use littlestartmod
+!!$    include 'fftw3-mpi.f03'
+!!$    integer :: indim,insize,howmany
+!!$    integer, save :: icalled=0
+!!$    integer(C_INTPTR_T) :: alloc_local,LL,MM,SS
+!!$    complex*16,intent(in) :: in(dim,dim,mysize/dim**2,howmany)
+!!$    complex*16,intent(out) :: out(dim,dim,mysize/dim**2,howmany)
+!!$    type(C_PTR),save :: plan, cdata
+!!$    complex(C_DOUBLE_COMPLEX), pointer :: data(:,:,:)
+!!$    if (myrank.eq.1) then
+!!$       print *, "GO FFTW MPI SUB."
+!!$    endif
+!!$  
+!!$    LL=dim;MM=mysize/dim**2;SS=(mystart-1)/dim**2
+!!$  
+!!$    if (indim.ne.dim.or.insize.ne.mysize/dim**2) then
+!!$       print *, "AUGH FFTW MPI FFT ",indim,dim,insize,mysize; stop
+!!$    endif
+!!$  
+!!$  !print *, "LMS ", LL,MM,SS
+!!$    alloc_local = fftw_mpi_local_size_3d(LL,LL,LL, MPI_COMM_WORLD, MM, SS)
+!!$  !print *, "LMSnow ", LL,MM,SS
+!!$  
+!!$    cdata = fftw_alloc_complex(alloc_local)
+!!$    call c_f_pointer(cdata, data, [LL,LL,MM])
+!!$       
+!!$    if (icalled.eq.0) then
+!!$  
+!!$       !   create MPI plan for in-place forward DFT (note dimension reversal)
+!!$  
+!!$       plan = fftw_mpi_plan_dft_3d(LL,LL,LL, data, data, MPI_COMM_WORLD, FFTW_FORWARD, FFTW_EXHAUSTIVE)
+!!$    endif
+!!$    icalled=1
+!!$  
+!!$       ! initialize data to some function my_function(i,j)
+!!$  
+!!$    data(:, :,:) = in(:,:,:)
+!!$    ! compute transform (as many times as desired)
+!!$  
+!!$    call fftw_mpi_execute_dft(plan, data, data)
+!!$  
+!!$  !!  call fftw_execute_dft(plan, data, data)
+!!$  
+!!$    out(:,:,:)=data(:,:,:)
+!!$  
+!!$    if (myrank.eq.1) then
+!!$       print *, "ok done fftw3dfftsub_mpi"
+!!$    endif
+!!$  end subroutine fftw3dfftsub_mpi
+!!$  
+!!$  #endif
+!!$  #endif
+!!$  
+!!$  
