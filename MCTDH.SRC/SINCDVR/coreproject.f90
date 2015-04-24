@@ -490,7 +490,7 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
            if (.not.localflag) then
               call myclock(itime)
               
-              call mympigather(twoeden03,twoeden03big,totpoints)
+              call simpleallgather(twoeden03,twoeden03big,totpoints)
 
               twoeden03huge(:,:,:,:,:,:,spf2a)=0d0; 
               do ii=1,nbox(3)

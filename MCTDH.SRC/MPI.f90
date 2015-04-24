@@ -16,7 +16,10 @@ subroutine mpiorbsets()
   use parameters
   implicit none
   integer :: iproc,iset,jproc,ierr
-  integer, allocatable :: procsperset(:),process_ranks(:,:)
+  integer, allocatable :: procsperset(:)
+#ifdef MPIFLAG
+  integer, allocatable :: process_ranks(:,:)
+#endif
 
   if (nprocs.lt.nspf) then
      OFLWR " Get ORbsets.  Fewer procs than orbitals."; CFL
@@ -40,8 +43,9 @@ subroutine mpiorbsets()
 
   endif
 #ifndef MPIFLAG
-           myorbset=1
-           firstmpiorb=1
+  myorbset=1
+  firstmpiorb=1
+  jproc=0  ;   ierr=0     !! avoid warn unused
 #else
   call MPI_Comm_group(MPI_COMM_WORLD,MPI_GROUP_WORLD,ierr)
   if (ierr.ne.0) then
@@ -93,9 +97,6 @@ subroutine mpiorbgather(orbvector,insize)    !! insize=spfsize except debug
 
   tempvector(:,:)=orbvector(:,firstmpiorb:firstmpiorb+orbsperproc-1)
 
-#ifndef MPIFLAG
-  return
-#endif
   if (nprocs.eq.1) then
      return
   endif
@@ -570,21 +571,21 @@ end subroutine mympimin
 
 
 
-subroutine mympigather(vectorin,vectorsout,insize)
+subroutine simpleallgather(vectorin,vectorsout,insize)
   use mpimod
   implicit none
   integer :: insize
   DATATYPE :: vectorin(insize),vectorsout(insize,nprocs)
 #ifdef REALGO
-  call mympigather_real(vectorin,vectorsout,insize)
+  call simpleallgather_real(vectorin,vectorsout,insize)
 #else
-  call mympigather_complex(vectorin,vectorsout,insize)
+  call simpleallgather_complex(vectorin,vectorsout,insize)
 #endif
-end subroutine mympigather
+end subroutine simpleallgather
 
 
 
-subroutine mympigather_complex(vectorin,vectorsout,insize)
+subroutine simpleallgather_complex(vectorin,vectorsout,insize)
   use mpimod
   use fileptrmod
   implicit none
@@ -599,10 +600,10 @@ subroutine mympigather_complex(vectorin,vectorsout,insize)
   endif
 
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-end subroutine mympigather_complex
+end subroutine simpleallgather_complex
 
 
-subroutine mympigather_real(vectorin,vectorsout,insize)
+subroutine simpleallgather_real(vectorin,vectorsout,insize)
   use mpimod
   use fileptrmod
   implicit none
@@ -617,7 +618,7 @@ subroutine mympigather_real(vectorin,vectorsout,insize)
   endif
 
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-end subroutine mympigather_real
+end subroutine simpleallgather_real
 
 
 
@@ -738,12 +739,31 @@ END SUBROUTINE MYSCATTERV_real
 #else
 
 subroutine mympiimax(input)
+  implicit none
+  integer :: input
+  return
+  input=input 
 end subroutine mympiimax
+
 subroutine mympiimin(input)
+  implicit none
+  integer :: input
+  return
+  input=input
 end subroutine mympiimin
+
 subroutine mympimax(input)
+  implicit none
+  real*8 :: input
+  return
+  input=input
 end subroutine mympimax
+
 subroutine mympimin(input)
+  implicit none
+  real*8 :: input
+  return
+  input=input
 end subroutine mympimin
 
 
@@ -754,10 +774,14 @@ SUBROUTINE MYGATHERV_complex(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag
   INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST, BLOCKS(1), BLOCKSTART(1)
   complex*16, INTENT(IN) :: V1(first:last)
   complex*16, INTENT(OUT) :: X1(1:MINPUT)
+  integer :: i
+  logical :: ilog
   if (last-first.ne.minput-1) then
      print *, "AAUAUAUAUAUAUA"; stop
   endif
   X1(:)=V1(:)
+  return
+  i=blocks(1); i=blockstart(1); ilog=bcastflag   !!avoid warn unused
 END SUBROUTINE MYGATHERV_complex
 
 
@@ -768,10 +792,14 @@ SUBROUTINE MYGATHERV_real(V1,X1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART,bcastflag)
   INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST, BLOCKS(1), BLOCKSTART(1)
   real*8, INTENT(IN) :: V1(first:last)
   real*8, INTENT(OUT) :: X1(1:MINPUT)
+  integer :: i
+  logical :: ilog
   if (first-last.ne.minput-1) then
      print *, "AAUAUAUAUAUAUA"; stop
   endif
   X1(:)=V1(:)
+  return
+  i=blocks(1); i=blockstart(1); ilog=bcastflag   !!avoid warn unused
 END SUBROUTINE MYGATHERV_real
 
 
@@ -782,10 +810,13 @@ SUBROUTINE MYSCATTERV_complex(X1,V1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART)
   INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST,BLOCKS(1), BLOCKSTART(1)
   complex*16, INTENT(OUT) :: V1(first:last)
   complex*16, INTENT(IN) :: X1(1:MINPUT)
+  integer :: i
   if (first-last.ne.minput-1) then
      print *, "AAUAUAUAUAUAUA"; stop
   endif
   V1(:)=X1(:)
+  return
+  i=blocks(1); i=blockstart(1)
 END SUBROUTINE MYSCATTERV_complex
 
 SUBROUTINE MYSCATTERV_real(X1,V1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART)
@@ -793,53 +824,109 @@ SUBROUTINE MYSCATTERV_real(X1,V1,MINPUT,FIRST,LAST,BLOCKS,BLOCKSTART)
   INTEGER, INTENT(IN) :: MINPUT, FIRST, LAST,BLOCKS(1), BLOCKSTART(1)
   real*8, INTENT(OUT) :: V1(first:last)
   real*8, INTENT(IN) :: X1(1:MINPUT)
+  integer :: i
   if (first-last.ne.minput-1) then
      print *, "AAUAUAUAUAUAUA"; stop
   endif
   V1(:)=X1(:)
+  return
+  i=blocks(1); i=blockstart(1)
 END SUBROUTINE MYSCATTERV_real
 
 
 
 
 subroutine mympirealreduceone(input)
+  implicit none
   real*8 :: input
+  return
+  input=input
 end subroutine
+
 subroutine mympireduceone(input)
+  implicit none
   DATATYPE :: input
+  return
+  input=input
 end subroutine mympireduceone
+
 subroutine mympireduce(input, isize)
-  DATATYPE :: input(*)
+  implicit none
+  integer :: isize
+  DATATYPE :: input(isize)
+  return
+  input(1)=input(1)
 end subroutine mympireduce
+
 subroutine mympiireduce(input, isize)
+  implicit none
+  integer :: isize, input(isize)
+  return
+  input(1)=input(1)
 end subroutine mympiireduce
+
 subroutine mympibcast(input, source, isize)
-  integer :: source
-  DATATYPE :: input(*)
-end subroutine mympibcast
-subroutine mympirealbcast(input, source, isize)
-end subroutine mympirealbcast
-subroutine mympiibcast(input, source, isize)
+  implicit none
   integer :: source,isize
-  integer :: input(*)
+  DATATYPE :: input(isize)
+  return
+  source=source;  input(1)=input(1)
+end subroutine mympibcast
+
+subroutine mympirealbcast(input, source, isize)
+  implicit none
+  integer :: source,isize
+  real*8 :: input(isize)
+  return
+  source=source;  input(1)=input(1)
+end subroutine mympirealbcast
+
+subroutine mympiibcast(input, source, isize)
+  implicit none
+  integer :: source,isize
+  integer :: input(isize)
+  return
+  source=source;  input(1)=input(1)
 end subroutine mympiibcast
 
 subroutine mympirealbcastone(input, source)
+  implicit none
+  integer :: source
+  real*8 :: input
+  return
+  source=source;  input=input
 end subroutine mympirealbcastone
+
 subroutine mympiibcastone(input, source)
+  implicit none
   integer :: input,source
+  return
+  source=source; input=input
 end subroutine mympiibcastone
 
 subroutine mympilogbcast(input, source, isize)
+  implicit none
+  integer :: source,isize
+  DATATYPE :: input(isize)
+  return
+  source=source; input(1)=input(1)
 end subroutine mympilogbcast
 
 
 subroutine mympiireduceone(input)
+  implicit none
   integer :: input
+  return
+  input=input
 end subroutine mympiireduceone
 
+
 subroutine mpiorbgather(orbvector,insize)
-  DATATYPE :: orbvector(*)
+  implicit none
+  integer :: insize
+  DATATYPE :: orbvector(insize)
+  return
+  orbvector(1)=orbvector(1)
 end subroutine mpiorbgather
 
 
@@ -847,10 +934,8 @@ subroutine mympireduceto(input, output, isize, dest)
   use mpimod
   use parameters
   implicit none
-  DATATYPE :: input(isize)
-  DATATYPE :: output(isize) 
-  integer :: ierr, isize ,dest,idest
-
+  DATATYPE :: input(isize), output(isize)
+  integer :: isize ,dest
   if (dest.ne.1) then
      OFLWR "Error nonpar mympireduceto wrapper",dest; CFLST
   endif
@@ -862,12 +947,14 @@ subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
   use mpimod
   use parameters
   implicit none
-  integer :: ierr, isize, dest, idest, source, isource,tag
+  integer :: isize, dest, source,tag
   DATATYPE :: sendbuf(isize),recvbuf(isize)
   if (dest.ne.1.or.source.ne.1) then
      OFLWR "Error nonpar mympireduceto wrapper",dest,source; CFLST
   endif
   recvbuf(:)=sendbuf(:)
+  return
+  tag=tag 
 end subroutine mympisendrecv
 
 
@@ -877,11 +964,9 @@ subroutine mpistart
   implicit none
   integer ::  iilen
   character(len=40) :: format
-
   myrank=1
   nprocs=1
   stdoutflag=1
-
   if (stdoutflag==1) then
      mpifileptr=6
   else
@@ -972,17 +1057,18 @@ subroutine mpiallgather_real(inout,totsize,blocksizes,maxblocksize)
 
   integer, intent(in) :: totsize,blocksizes(nprocs),maxblocksize
   real*8 :: inout(totsize)
-  real*8, allocatable :: intemp(:,:),outtemp(:,:)
-  integer :: i,icount,ierr,blockstart(nprocs+1)
-
+  integer :: i
 #ifndef MPIFLAG
   return
+  inout(1)=inout(1); i=maxblocksize; i=blocksizes(1)
 #else
+  real*8, allocatable :: intemp(:,:),outtemp(:,:)
+  integer :: icount,ierr,blockstart(nprocs+1)
 
-if (nprocs.eq.1) then
-   return
-endif
-
+  if (nprocs.eq.1) then
+     return
+  endif
+  
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 
   icount=0
@@ -1004,13 +1090,9 @@ endif
   allocate(outtemp(maxblocksize,nprocs)); outtemp(:,:) = 0d0
 
   intemp=0d0
-
-!   intemp(1:blocksizes(myrank),myrank)=inout(blockstart(myrank):blockstart(myrank+1)-1)
-
   do i=1,  nprocs
      intemp(1:blocksizes(myrank),i)=inout(blockstart(myrank):blockstart(myrank+1)-1)
   enddo
-
 
   outtemp=0d0
 
@@ -1040,16 +1122,17 @@ subroutine mpiallgather_complex(inout,totsize,blocksizes,maxblocksize)
 
   integer, intent(in) :: totsize,blocksizes(nprocs),maxblocksize
   complex*16 :: inout(totsize)
-  complex*16, allocatable :: intemp(:,:),outtemp(:,:)
-  integer :: i,icount,ierr,blockstart(nprocs+1)
-
+  integer :: i
 #ifndef MPIFLAG
   return
+  inout(1)=inout(1); i=maxblocksize; i=blocksizes(1)
 #else
+  complex*16, allocatable :: intemp(:,:),outtemp(:,:)
+  integer :: icount,ierr,blockstart(nprocs+1)
 
-if (nprocs.eq.1) then
-   return
-endif
+  if (nprocs.eq.1) then
+     return
+  endif
 
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 
@@ -1072,13 +1155,9 @@ endif
   allocate(outtemp(maxblocksize,nprocs)); outtemp(:,:) = 0d0
 
   intemp=0d0
-
-!   intemp(1:blocksizes(myrank),myrank)=inout(blockstart(myrank):blockstart(myrank+1)-1)
-
   do i=1,  nprocs
      intemp(1:blocksizes(myrank),i)=inout(blockstart(myrank):blockstart(myrank+1)-1)
   enddo
-
 
   outtemp=0d0
 
@@ -1112,6 +1191,8 @@ subroutine mympialltoall(input, output, count)
 
 #ifndef MPIFLAG
   output(:,:)=input(:,:)
+  return
+  ierr=ierr; count=count  !! avoid warn unused
 #else
 #ifdef REALGO
   call mpi_alltoall(input(:,:),count,MPI_DOUBLE_PRECISION,output(:,:),count,MPI_DOUBLE_PRECISION,MPI_COMM_WORLD,ierr)
@@ -1137,9 +1218,10 @@ subroutine mympialltoall_complex(input, output, count)
   complex*16 :: input(count,nprocs), output(count,nprocs)
 
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-
 #ifndef MPIFLAG
   output(:,:)=input(:,:)
+  return
+  ierr=0;   !! avoid warn unused
 #else
   call mpi_alltoall(input(:,:),count,MPI_DOUBLE_COMPLEX,output(:,:),count,MPI_DOUBLE_COMPLEX,MPI_COMM_WORLD,ierr)
   if (ierr.ne.0) then

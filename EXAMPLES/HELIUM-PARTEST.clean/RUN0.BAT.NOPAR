@@ -1,0 +1,8 @@
+
+threads=17
+
+export OMP_NUM_THREADS=$threads
+chmctdhf_sinc.nopar.debug Inp=Input.Inp.States0.nopar |tee Outs/Out.states0.nopar
+
+
+

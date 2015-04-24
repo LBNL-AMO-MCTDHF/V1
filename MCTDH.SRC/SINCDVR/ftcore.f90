@@ -253,7 +253,7 @@ recursive subroutine myzfft3d_mpiwrap(in,out,indim,howmany)
   enddo
 
   do ii=1,howmany
-     call mympigather_complex(out(mystart,ii),out(:,ii),dim**3/nprocs)
+     call simpleallgather_complex(out(mystart,ii),out(:,ii),dim**3/nprocs)
   enddo
 
 end subroutine myzfft3d_mpiwrap
