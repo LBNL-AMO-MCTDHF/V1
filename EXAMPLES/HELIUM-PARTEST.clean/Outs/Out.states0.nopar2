@@ -1,4 +1,6 @@
-Fri Apr 24 08:06:28 PDT 2015
+Fri Apr 24 09:50:10 PDT 2015
+Fri Apr 24 09:50:10 PDT 2015
+Fri Apr 24 09:50:10 PDT 2015
   ****************************************************************************
   **********************  BEGIN LBNL-AMO-MCTDHF ******************************
   ****************************************************************************
@@ -13,7 +15,7 @@ Fri Apr 24 08:06:28 PDT 2015
  
                 This is CHMCTDH: HERM-normed ECS version.
  
-                PROCESSOR            1  OF            1
+                PROCESSOR            1  OF            3
  
  Inpfile is Input.Inp.States0.nopar2  
  
@@ -128,6 +130,8 @@ Fri Apr 24 08:06:28 PDT 2015
  
  BOTWALKS /TOPWALKS          25
            1          25          25
+           1          25          25
+           1          25          25
  
  Counting walks. Singles
  Counting walks. Doubles
@@ -135,7 +139,7 @@ Fri Apr 24 08:06:28 PDT 2015
  Maximum number of
             single walks=           10
             double walks=           25
-   TOTAL walks:         875 maxdoublewalks*numconfig         625
+   TOTAL walks:        2625 maxdoublewalks*numconfig         625
  
  Allocating singlewalks
  Allocating doublewalks
@@ -157,7 +161,7 @@ Fri Apr 24 08:06:28 PDT 2015
  Total # of spinvects with S^2 =   0.000000000000000E+000  is           15 
   out of           25
  TOTAL (all processors) rank          15  out of           25
-      Spin DF rank is           15    all processors           15
+      Spin DF rank is           15    all processors           45
     This proc:  spinstart :            1
  
  Calling init_project                148176
@@ -361,6 +365,8 @@ T=         12.92018  Energy:  -0.2808614824E+01 -0.7138738941E-15    Norm:   0.1
          -2.808614823524     -0.000000000000     -0.000000000178     -0.000000000000
     ***   
  
+Fri Apr 24 09:52:01 PDT 2015
+Fri Apr 24 09:52:01 PDT 2015
  rank 1 SAVED vectors!
-Fri Apr 24 08:08:53 PDT 2015
+Fri Apr 24 09:52:01 PDT 2015
  MCTDHF STOP!
