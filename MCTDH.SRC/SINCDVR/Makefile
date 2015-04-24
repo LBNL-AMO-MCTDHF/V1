@@ -2,7 +2,7 @@
 
 include ../Makefile.header
 
-HTWO= init_sinc_new.o    sinc_extraproject.o  sinc_params.o sincproject.o SineDVR.o coreproject.o readit.o tooth.o toeplitz_subs.o
+HTWO= init_sinc_new.o    sinc_extraproject.o  sinc_params.o sincproject.o SineDVR.o coreproject.o readit.o tooth.o toeplitz_subs.o ftcore.o cooleytukey_mpi.o
 
 DEPEND= ../Definitions.INC  ../Definitions.ALL ../Makefile.header
 
@@ -20,6 +20,12 @@ sinc_params.o: $(DEPEND) sinc_params.F90
 
 toeplitz_subs.o: $(DEPEND) toeplitz_subs.F90
 	$(F90) $(FFLAGS) $(FFTFLAG)  -c toeplitz_subs.F90 -I$(MYINCLUDE)
+
+ftcore.o: $(DEPEND) ftcore.F90
+	$(F90) $(FFLAGS) $(FFTFLAG)  -c ftcore.F90 -I$(MYINCLUDE)
+
+cooleytukey_mpi.o: $(DEPEND) cooleytukey_mpi.F90
+	$(F90) $(FFLAGS) $(FFTFLAG)  -c cooleytukey_mpi.F90 -I$(MYINCLUDE)
 
 
 readit.o: $(DEPEND) sinc_params.o sincproject.o tooth.o readit.F90
