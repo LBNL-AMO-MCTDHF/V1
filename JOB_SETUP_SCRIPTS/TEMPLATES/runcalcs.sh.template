@@ -1,0 +1,9 @@
+for i in `seq 0 #corespernodem1#`
+do
+	b=$(($1*#corespernode#+$i))
+	cd $b
+	pwd
+       	srun  -n 1 --share bash fullcalculation.sh &
+       	cd ../
+done
+wait

@@ -1,0 +1,12 @@
+$heparinp
+
+NucCharge1=2.d0
+LBIG=4, MBIG=2
+
+henumpoints=10
+henumelements=8
+hecelement=6
+heecstheta=0.4d0
+heelementsizes=6.d0,6.d0,6.d0,6.d0,6.d0,6.d0,6.d0,6.d0,6.d0,6.d0
+
+/

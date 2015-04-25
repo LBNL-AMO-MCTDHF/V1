@@ -1,0 +1,26 @@
+
+
+
+numelec=2
+
+
+sparseconfigflag=1
+
+maxexpodim=300
+
+nspf = 5
+numfrozen=0
+
+spfrestrictflag=1
+spfugrestrict=0
+
+spfmvals=0,0,0,1,-1,0,0,1,-1,0,1,-1,2,-2
+spfugvals=  1, 1, 1,-1,-1,-1
+
+restrictflag=1
+restrictms=0   
+
+mrestrictflag=1
+mrestrictval=0
+
+
