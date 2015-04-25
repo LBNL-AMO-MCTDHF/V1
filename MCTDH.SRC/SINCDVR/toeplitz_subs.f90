@@ -198,7 +198,6 @@ subroutine myclock(mytime)
   mytime=values(8)+values(7)*fac(7)+values(6)*fac(6)+values(5)*fac(5)
 end subroutine myclock
 
-
 subroutine switchit(out,odddim,dim,howmany)
   implicit none
   integer, intent(in) :: odddim,dim,howmany
@@ -224,7 +223,6 @@ subroutine switchit_3d(out,odddim,dim,howmany)
   enddo
 end subroutine switchit_3d
 
-
 subroutine switch2(out,odddim,dim,howmany)
   implicit none
   integer, intent(in) :: odddim,dim,howmany
@@ -236,7 +234,6 @@ subroutine switch2(out,odddim,dim,howmany)
   outwork(-dim:0,:)= out(-dim:-1,:)
   out(:,:)=outwork(:,:)
 end subroutine switch2
-
 
 subroutine switch2_3d(out,odddim,dim,howmany)
   implicit none
@@ -250,7 +247,6 @@ subroutine switch2_3d(out,odddim,dim,howmany)
      outwork(:,:,:,:)=out(:,:,:,:)
   enddo
 end subroutine switch2_3d
-
 
 subroutine all3transpose(in,out,len,howmany)
   implicit none
@@ -325,20 +321,32 @@ recursive subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,totdim,blo
   call myclock(atime)
   bigcirc(:,:,:)=rbigcirc(:,:,:)
   multvector(:,:,:,:)=rmultvector(:,:,:,:)
-  call myclock(btime); times(6)=times(6)+btime-atime
+  call myclock(btime); times(7)=times(7)+btime-atime
 
   call circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,times,howmany,placeopt)
 
   call myclock(atime)
   rffback(:,:,:,:)=real(ffback(:,:,:,:),8)
-  call myclock(btime); times(6)=times(6)+btime-atime
+  call myclock(btime); times(7)=times(7)+btime-atime
 
 end subroutine circ3d_sub_real_mpi
 
-!!! times(6) = circ math
-!!! from myzfft3d_par:
-!!! times(1) = copy   times(2)=fourier
-!!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
+
+!!! times(7) = circ math
+
+!!! from myzfft3d_par (if fft_mpi_inplaceopt == 1):
+
+!!! times(1) = copy  times(2) = conjg  times(3) = ft
+!!! from mytranspose times(4) = transpose   times(5) = mpi  times(6) = copy
+
+!!! from cooleytukey (if fft_mpi_inplaceopt == 0):
+
+!!! times(1) conjugate
+!!! times(2) gettwiddle
+!!! times(3) 1d ft-slowindex
+!!! times(4) raise twiddle factor to power
+!!! times(5) multiply
+!!! times(6) 3d f.t.
 
 recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,times,howmany,placeopt)
   implicit none
@@ -351,8 +359,8 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,t
        ffvec(2*totdim,2*totdim,2*blocksize,howmany),  ffprod(2*totdim,2*totdim,2*blocksize,howmany)
 
   if (placeopt.ne.1) then
-     call cooleytukey3d_outofplace_mpi(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,howmany)
-     call cooleytukey3d_outofplace_mpi(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,1)
+     call cooleytukey3d_outofplace_mpi(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,times,howmany)
+     call cooleytukey3d_outofplace_mpi(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,times,1)
   else
      call myzfft3d_par_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,times,howmany)
      call myzfft3d_par_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,times,1)
@@ -368,10 +376,10 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,t
 !$OMP END DO
 !$OMP END PARALLEL
 
-  call myclock(btime); times(6)=times(6)+btime-atime
+  call myclock(btime); times(7)=times(7)+btime-atime
 
   if (placeopt.ne.1) then
-     call cooleytukey3d_outofplace_backward_mpi(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,howmany)
+     call cooleytukey3d_outofplace_backward_mpi(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,times,howmany)
   else
      call myzfft3d_par_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,times,howmany)
   endif
@@ -395,6 +403,7 @@ subroutine toeplitz1d_sub(bigvector,smallmultvector,outvector,totdim,howmany)
   call circ1d_sub(bigcirc,multvector,ffback,totdim,howmany)
   outvector(:,:)=ffback(totdim+1:2*totdim,:)
 end subroutine toeplitz1d_sub
+
 
 subroutine toeplitz1d_sub_real(bigvector,smallmultvector,outvector,totdim,howmany)
   implicit none
@@ -427,5 +436,5 @@ subroutine circ1d_sub(bigcirc,multvector,ffback,totdim,howmany)
   ffprod(:,:)=CONJG(ffprod(:,:))
   call myzfft1d(ffprod(:,:),ffback(:,:),2*totdim,howmany)
   ffback(:,:)=CONJG(ffback(:,:))
-end subroutine circ1d_sub
 
+end subroutine circ1d_sub

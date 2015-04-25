@@ -356,12 +356,6 @@ print *, "DOME MULT reKE"; stop
 end subroutine mult_reke
 
 
-!!! from circ_sub_mpi, fttimes:
-!!! times(6) = circ math
-!!! from myzfft3d_par: times(1:5)
-!!! times(1) = copy   times(2)=fourier
-!!!     from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
-
 recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
   use myparams
   use myprojectmod
@@ -678,18 +672,46 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (xcount==1) then
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.time.dat", status="unknown")
-        write(853,'(100A11)')   "etc", "1den", "1mpi", "F.T.", "2mpi", "dot","ALL","ft_copy","ft_ft","ft_tr","ft_mpi","ft_copy","ft_circ"
+        
+#ifdef MPIFLAG
+        if (orbparflag) then
+           if (fft_mpi_inplaceflag==1) then
+              write(853,'(100A11)')   "etc", "1den", "1mpi", "F.T.", "2mpi", "dot","ALL",   &
+                   "ft_copy",  "ft_conjg", "ft_ft1d","ft_tr","ft_mpi","ft_copy","ft_circ"
+           else
+              write(853,'(100A11)')   "etc", "1den", "1mpi", "F.T.", "2mpi", "dot","ALL",   &
+                   "ft_conjg","ft_twid","ft_mpict","ft_raise","ft_tmult","ft_ft3d", "ft_circ"
+           endif
+        else
+#endif
+           write(853,'(100A11)')   "etc", "1den", "1mpi", "F.T.", "2mpi", "dot","ALL"
+#ifdef MPIFLAG
+        endif
+#endif
         close(853)
      endif
      open(853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.time.dat", status="unknown", position="append")
-     write(853,'(100I11)')  times(1:7),fttimes(1:6);        close(853)
+     write(853,'(100I11)')  times(1:7),fttimes(1:7);        close(853)
   endif
 
-!!!fttimes
-!!! times(6) = circ math
-!!! from myzfft3d_par:
-!!! times(1) = zero   times(2)=fourier
-!!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
+!!! from circ subs, fttimes
+!!!
+!!! fttimes(7) = circ multiply
+
+!!! from myzfft3d_par (if fft_mpi_inplaceopt == 1):
+
+!!! fttimes(1) = copy  fttimes(2) = conjg  fttimes(3) = ft
+!!! from mytranspose fttimes(4) = transpose   fttimes(5) = mpi  fttimes(6) = copy
+
+!!! from cooleytukey (if fft_mpi_inplaceopt == 0):
+
+!!! fttimes(1) conjugate
+!!! fttimes(2) gettwiddle
+!!! fttimes(3) 1d ft-slowindex
+!!! fttimes(4) raise twiddle factor to power
+!!! fttimes(5) multiply
+!!! fttimes(6) 3d f.t.
+
 
   if (myrank.eq.1.and.(notiming.eq.0).and.debugflag.eq.10) then
         call system("date --rfc-3339=ns >>"//timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat")

@@ -8,11 +8,12 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
   implicit none
   include "fftw3.f03"
   integer, intent(in) :: dim,howmany
+  complex*16 :: in(dim,howmany)    !! cannot be declared intent(in)...hmmm...
+  complex*16, intent(out) :: out(dim,howmany)
   integer, parameter :: maxplans=3
   type(C_PTR),save :: plans(maxplans)
   integer, save :: plandims(maxplans)=-999, planhowmany(maxplans)=-999
   integer,save :: icalleds(maxplans)=0, numplans=0
-  complex*16 :: in(dim,howmany),out(dim,howmany)
   integer :: ostride,istride,onembed(1),inembed(1),idist,odist, dims(1),iplan,thisplan
 
   inembed(1)=dim; onembed(1)=dim; idist=dim; odist=dim; istride=1; ostride=1; dims(1)=dim
@@ -48,7 +49,6 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
 
   call fftw_execute_dft(plans(thisplan), in,out)
 
-!!$  call fftw_destroy_plan(plan)
 end subroutine myzfft1d
 
 
@@ -56,30 +56,57 @@ recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
   use, intrinsic :: iso_c_binding
   implicit none
   include "fftw3.f03"
-  integer :: howmany,ii,dim1,dim2,dim3
-  type(C_PTR),save :: plan
-  integer,save :: icalled=0
-  complex*16 :: in(dim1,dim2,dim3,howmany),out(dim1,dim2,dim3,howmany)
-  integer, save :: savedim1,savedim2,savedim3
+  integer, intent(in) :: dim1,dim2,dim3,howmany
+  complex*16 :: in(dim1,dim2,dim3,howmany)  !! cannot be declared intent(in)...hmmm...
+  complex*16, intent(out) :: out(dim1,dim2,dim3,howmany)
+  integer, parameter :: maxplans=3
+  type(C_PTR),save :: plans(maxplans)
+  integer, save :: plandims(3,maxplans)=-999, planhowmany(maxplans)=-999
+  integer,save :: icalleds(maxplans)=0, numplans=0
+  integer :: ostride,istride,onembed(3),inembed(3),idist,odist, dims(3),iplan,thisplan
 
-  if (icalled.eq.0) then
-     plan=fftw_plan_dft_3d(dim3,dim2,dim1,in(:,:,:,1),out(:,:,:,1),FFTW_FORWARD,FFTW_EXHAUSTIVE) 
-     savedim1=dim1; savedim2=dim2; savedim3=dim3
+  dims(:)=(/dim3,dim2,dim1/)
+  inembed(:)=dims(:); onembed(:)=dims(:); idist=dim1*dim2*dim3; odist=dim1*dim2*dim3; istride=1; ostride=1; 
+
+  if (numplans.eq.0) then
+     numplans=1
+     thisplan=1
+     plandims(:,thisplan)=dims(:); planhowmany(thisplan)=howmany
   else
-     if (dim1.ne.savedim1.or.dim2.ne.savedim2.or.dim3.ne.savedim3) then
-        print *, "ERROR SAVE DIMS MYZFFT3D FFTW ",dim1,dim2,dim3,savedim1,savedim2,savedim3; call mpistop()
+     thisplan= -99
+     do iplan=1,numplans
+        if (plandims(1,iplan).eq.dims(1).and.&
+             plandims(2,iplan).eq.dims(2).and.&
+             plandims(3,iplan).eq.dims(3).and.&
+             planhowmany(iplan).eq.howmany) then
+           if (icalleds(iplan).eq.0) then
+              print *, "ERROR, plan not done ",iplan,dims(:),howmany; call mpistop()
+           endif
+           thisplan=iplan
+           exit
+        endif
+     enddo
+     if (thisplan.eq.-99) then
+        if (numplans.eq.maxplans) then
+           print *,  "all plans taken!", maxplans; call mpistop()
+        endif
+        numplans=numplans+1
+        thisplan=numplans
+        plandims(:,thisplan)=dims(:); planhowmany(thisplan)=howmany
      endif
   endif
-  icalled=1
-  do ii=1,howmany
-     call fftw_execute_dft(plan, in(:,:,:,ii),out(:,:,:,ii))
-  enddo
+  if (icalleds(thisplan).eq.0) then
+     plans(thisplan) = fftw_plan_many_dft(3,dims,howmany,in,inembed,istride,idist,out,onembed,ostride,odist,FFTW_FORWARD,FFTW_EXHAUSTIVE) 
+  endif
+  icalleds(thisplan)=1    
 
-!!$  call fftw_destroy_plan(plan)
+  call fftw_execute_dft(plans(thisplan), in,out)
 
 end subroutine myzfft3d
 
+
 #else
+
 
 recursive subroutine myzfft1d(in,out,dim,howmany)
   implicit none
@@ -227,8 +254,6 @@ subroutine checkdivisible(number,divisor)
 end subroutine checkdivisible
 
 
-
-
 recursive subroutine myzfft3d_mpiwrap_forward(in,out,dim,howmany,placeopt)
   implicit none
   integer, intent(in) :: dim,howmany,placeopt
@@ -237,7 +262,6 @@ recursive subroutine myzfft3d_mpiwrap_forward(in,out,dim,howmany,placeopt)
   call myzfft3d_mpiwrap0(in,out,dim,howmany,1,placeopt)
 end subroutine myzfft3d_mpiwrap_forward
 
-
 recursive subroutine myzfft3d_mpiwrap_backward(in,out,dim,howmany,placeopt)
   implicit none
   integer, intent(in) :: dim,howmany,placeopt
@@ -245,8 +269,6 @@ recursive subroutine myzfft3d_mpiwrap_backward(in,out,dim,howmany,placeopt)
   complex*16, intent(out) :: out(*)
   call myzfft3d_mpiwrap0(in,out,dim,howmany,-1,placeopt)
 end subroutine myzfft3d_mpiwrap_backward
-
-
 
 recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
   implicit none
@@ -271,13 +293,13 @@ recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
   select case(direction)
   case(-1)
      if (placeopt.ne.1) then
-        call cooleytukey3d_outofplace_backward_mpi(inlocal,outlocal,dim,howmany)
+        call cooleytukey3d_outofplace_backward_mpi(inlocal,outlocal,dim,nulltimes,howmany)
      else
         call myzfft3d_par_backward(inlocal,outlocal,dim,nulltimes,howmany)
      endif
   case(1)
      if (placeopt.ne.1) then
-        call cooleytukey3d_outofplace_mpi(inlocal,outlocal,dim,howmany)
+        call cooleytukey3d_outofplace_mpi(inlocal,outlocal,dim,nulltimes,howmany)
      else
         call myzfft3d_par_forward(inlocal,outlocal,dim,nulltimes,howmany)
      endif
@@ -294,12 +316,6 @@ end select
 end subroutine myzfft3d_mpiwrap0
 
 
-
-!! adds to times
-
-!!! times(1) = copy   times(2)=fourier
-!!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
-
 recursive subroutine myzfft3d_par_forward(in,out,dim,times,howmany)
   implicit none
   integer, intent(in) :: dim,howmany
@@ -311,7 +327,6 @@ recursive subroutine myzfft3d_par_forward(in,out,dim,times,howmany)
   call checkdivisible(dim,nprocs)
   call myzfft3d_par0(in,out,dim,times,howmany,nprocs,1)
 end subroutine myzfft3d_par_forward
-
 
 recursive subroutine myzfft3d_par_backward(in,out,dim,times,howmany)
   implicit none
@@ -325,6 +340,11 @@ recursive subroutine myzfft3d_par_backward(in,out,dim,times,howmany)
   call myzfft3d_par0(in,out,dim,times,howmany,nprocs,-1)
 end subroutine myzfft3d_par_backward
 
+
+!!! adds to times
+
+!!! times(1) = copy  times(2) = conjg  times(3) = ft
+!!! from mytranspose times(4) = transpose   times(5) = mpi  times(6) = copy
 
 recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs,direction)
   use mytransposemod
@@ -342,41 +362,39 @@ recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs,direction)
   select case(direction)
   case(-1)
      tempout(:,:,:,:)=CONJG(in(:,:,:,:))
+     call myclock(btime); times(2)=times(2)+btime-atime;
   case(1)
      tempout(:,:,:,:)=in(:,:,:,:)
+     call myclock(btime); times(1)=times(1)+btime-atime;
   case default
      print *, "ACK PAR0 DIRECTION=",direction; call mpistop()
   end select
-
-  call myclock(btime); times(1)=times(1)+btime-atime;
 
   do ii=1,3
      call myclock(atime)
      call myzfft1d( tempout, mywork, dim, dim**2/nprocs*howmany)
-     call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
+     call myclock(btime); times(3)=times(3)+btime-atime
      
-!!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
+!!! from mytranspose times(4) = transpose   times(5) = mpi  times(6) = copy
      call mytranspose(&
           mywork,  &
           tempout,  &
           dim/nprocs, &
-          howmany,times(3:),nprocs)
+          howmany,times(4:),nprocs)
   enddo
-  call myclock(atime)
 
+  call myclock(atime)
   select case(direction)
   case(-1)
      out(:,:,:,:)=CONJG(tempout(:,:,:,:))
+     call myclock(btime); times(2)=times(2)+btime-atime
   case(1)
      out(:,:,:,:)=tempout(:,:,:,:)
+     call myclock(btime); times(1)=times(1)+btime-atime
   case default
      print *, "ACK PAR0 DIRECTION=",direction; call mpistop()
   end select
-  call myclock(btime); times(1)=times(1)+btime-atime
 
 end subroutine myzfft3d_par0
 
 #endif
-
-
-

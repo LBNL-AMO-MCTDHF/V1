@@ -39,10 +39,12 @@ end subroutine ctcheck
 
 !! INVERSE OF cooleytukey_outofplace_mpi  EXCEPT FOR DIVISON
 
-subroutine cooleytukey3d_outofplace_backward_mpi(intranspose,out,dim,howmany)
+subroutine cooleytukey3d_outofplace_backward_mpi(intranspose,out,dim,times,howmany)
   use ct_mpimod
   implicit none
   integer, intent(in) :: dim,howmany
+  integer, intent(inout) :: times(8)
+  integer :: atime,btime
   complex*16, intent(in) :: intranspose(dim,dim,1,dim/nprocs,howmany)
   complex*16, intent(out) :: out(dim,dim,dim/nprocs,1,howmany)
   complex*16 ::  intransconjg(dim,dim,1,dim/nprocs,howmany), & !! AUTOMATIC
@@ -50,32 +52,52 @@ subroutine cooleytukey3d_outofplace_backward_mpi(intranspose,out,dim,howmany)
 
   call ctcheck(dim)
 
+  call myclock(atime)
   intransconjg(:,:,:,:,:)=CONJG(intranspose(:,:,:,:,:))
-  call cooleytukey3d_outofplaceinput_mpi(intransconjg,outconjg,dim,howmany)
+  call myclock(btime); times(1)=times(1)+btime-atime
+
+  call cooleytukey3d_outofplaceinput_mpi(intransconjg,outconjg,dim,times,howmany)
+
+  call myclock(atime)
   out(:,:,:,:,:)=CONJG(outconjg(:,:,:,:,:))     !!! IN CIRC3D_SUB  /dim**3
+  call myclock(btime); times(1)=times(1)+btime-atime
 
 end subroutine cooleytukey3d_outofplace_backward_mpi
 
 
 !! fourier transform with OUT-OF-PLACE OUTPUT. 
 
-recursive subroutine cooleytukey3d_outofplace_mpi(in,outtrans,dim,howmany)
+!! times(1) saved for conjugate, backward, not used here
+!! times(2) gettwiddle
+!! times(3) 1d ft-slowindex
+!! times(4) raise twiddle factor to power
+!! times(5) multiply
+!! times(6) 3d f.t.
+
+recursive subroutine cooleytukey3d_outofplace_mpi(in,outtrans,dim,times,howmany)
   use ct_mpimod
   implicit none
   integer, intent(in) :: dim,howmany
-  complex*16, intent(in) :: in(dim,dim,dim/nprocs,1,howmany)
+  integer, intent(inout) :: times(8)
+    complex*16, intent(in) :: in(dim,dim,dim/nprocs,1,howmany)
   complex*16, intent(out) :: outtrans(dim,dim,1,dim/nprocs,howmany)
   complex*16 :: twiddle1(dim/nprocs),tt1(dim/nprocs), &  !! AUTOMATIC
        tempout(dim,dim,dim/nprocs,1,howmany),      outtemp(dim,dim,dim/nprocs,1,howmany)
-  integer :: ii,jj
+  integer :: ii,jj,atime,btime
 
   call ctcheck(dim)
 
+  call myclock(atime)
   call gettwiddlesmall(twiddle1(:),dim/nprocs,nprocs)
+  call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
 
   call myzfft1d_slowindex_mpi(dim**2,in,tempout,dim,howmany)
 
+  call myclock(btime); times(3)=times(3)+btime-atime; atime=btime
+
   tt1(:)=twiddle1(:)**(myrank-1)
+
+  call myclock(btime); times(4)=times(4)+btime-atime; atime=btime
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,jj)
 !$OMP DO SCHEDULE(DYNAMIC)
@@ -87,28 +109,42 @@ recursive subroutine cooleytukey3d_outofplace_mpi(in,outtrans,dim,howmany)
 !$OMP END DO
 !$OMP END PARALLEL
 
+  call myclock(btime); times(5)=times(5)+btime-atime; atime=btime
+
   call myzfft3d(outtemp,outtrans,dim,dim,dim/nprocs,howmany)
+
+  call myclock(btime); times(6)=times(6)+btime-atime
 
 end subroutine cooleytukey3d_outofplace_mpi
 
 
-recursive subroutine cooleytukey3d_outofplaceinput_mpi(intranspose,out,dim,howmany)
+
+recursive subroutine cooleytukey3d_outofplaceinput_mpi(intranspose,out,dim,times,howmany)
   use ct_mpimod
   implicit none
   integer, intent(in) :: dim,howmany
+  integer, intent(inout) :: times(8)
   complex*16, intent(in) :: intranspose(dim,dim,dim/nprocs,1,howmany)
   complex*16, intent(out) :: out(dim,dim,1,dim/nprocs,howmany)
   complex*16 :: twiddlefacs(dim/nprocs), tt(dim/nprocs),&  !! AUTOMATIC
        temptrans(dim,dim,dim/nprocs,1,howmany),outtrans(dim,dim,dim/nprocs,1,howmany)
-  integer :: ii,jj
+  integer :: ii,jj,atime,btime
 
   call ctcheck(dim)
 
+  call myclock(atime)
+
   call gettwiddlesmall(twiddlefacs(:),dim/nprocs,nprocs)
+
+  call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
 
   call myzfft3d(intranspose,temptrans,dim,dim,dim/nprocs,howmany)
 
+  call myclock(btime); times(6)=times(6)+btime-atime; atime=btime
+
   tt(:)=twiddlefacs(:)**(myrank-1)
+
+  call myclock(btime); times(4)=times(4)+btime-atime; atime=btime
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,jj)
 !$OMP DO SCHEDULE(DYNAMIC)
@@ -120,7 +156,11 @@ recursive subroutine cooleytukey3d_outofplaceinput_mpi(intranspose,out,dim,howma
 !$OMP END DO
 !$OMP END PARALLEL
 
+  call myclock(btime); times(5)=times(5)+btime-atime; atime=btime
+
   call myzfft1d_slowindex_mpi(dim**2,outtrans,out,dim,howmany)
+
+  call myclock(btime); times(3)=times(3)+btime-atime; atime=btime
 
 end subroutine cooleytukey3d_outofplaceinput_mpi
 
@@ -190,8 +230,6 @@ recursive subroutine simple_summa(in, out,mat,sizeper,howmany,myrank,nprocs)
 end subroutine simple_summa
 
 
-
-
 subroutine gettwiddlesmall(twiddlefacs,dim2,dim1)
   implicit none
   integer, intent(in) :: dim2,dim1
@@ -205,5 +243,3 @@ subroutine gettwiddlesmall(twiddlefacs,dim2,dim1)
   enddo
   twiddlefacs(:)=phi**itwiddle(:)
 end subroutine gettwiddlesmall
-
-
