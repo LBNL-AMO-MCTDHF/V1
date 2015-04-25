@@ -227,9 +227,30 @@ subroutine checkdivisible(number,divisor)
 end subroutine checkdivisible
 
 
-recursive subroutine myzfft3d_mpiwrap(in,out,dim,howmany)
+
+
+recursive subroutine myzfft3d_mpiwrap_forward(in,out,dim,howmany)
   implicit none
-  integer :: dim,nulltimes(10),howmany,ii
+  integer, intent(in) :: dim,howmany
+  complex*16, intent(in) :: in(*)
+  complex*16, intent(out) :: out(*)
+  call myzfft3d_mpiwrap0(in,out,dim,howmany,1)
+end subroutine myzfft3d_mpiwrap_forward
+
+
+recursive subroutine myzfft3d_mpiwrap_backward(in,out,dim,howmany)
+  implicit none
+  integer, intent(in) :: dim,howmany
+  complex*16, intent(in) :: in(*)
+  complex*16, intent(out) :: out(*)
+  call myzfft3d_mpiwrap0(in,out,dim,howmany,-1)
+end subroutine myzfft3d_mpiwrap_backward
+
+
+
+recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction)
+  implicit none
+  integer :: dim,nulltimes(10),howmany,ii,direction
   complex*16, intent(in) :: in(dim**3,howmany)
   complex*16, intent(out) :: out(dim**3,howmany)
   complex*16,allocatable :: inlocal(:,:),outgather(:,:,:),outlocal(:,:)
@@ -247,14 +268,22 @@ recursive subroutine myzfft3d_mpiwrap(in,out,dim,howmany)
 
   inlocal(:,:)=in(mystart:myend,:)
 
-  call myzfft3d_par(inlocal,outlocal,dim,nulltimes,howmany)
+  select case(direction)
+  case(-1)
+     call myzfft3d_par_backward(inlocal,outlocal,dim,nulltimes,howmany)
+  case(1)
+     call myzfft3d_par_forward(inlocal,outlocal,dim,nulltimes,howmany)
+  case default
+  print *, "ACK DIRECTION!!!!", direction; call mpistop()
+end select
+
   call simpleallgather_complex(outlocal,outgather,dim**3/nprocs*howmany)
   do ii=1,howmany
      out(:,ii)=RESHAPE(outgather(:,ii,:),(/dim**3/))
   enddo
   deallocate(inlocal,outlocal,outgather)
 
-end subroutine myzfft3d_mpiwrap
+end subroutine myzfft3d_mpiwrap0
 
 
 
@@ -263,7 +292,7 @@ end subroutine myzfft3d_mpiwrap
 !!! times(1) = copy   times(2)=fourier
 !!! from mytranspose times(3) = transpose   times(4) = mpi  times(5) = copy
 
-recursive subroutine myzfft3d_par(in,out,dim,times,howmany)
+recursive subroutine myzfft3d_par_forward(in,out,dim,times,howmany)
   implicit none
   integer, intent(in) :: dim,howmany
   complex*16, intent(in) :: in(*)
@@ -272,14 +301,27 @@ recursive subroutine myzfft3d_par(in,out,dim,times,howmany)
   integer :: myrank,nprocs
   call getmyranknprocs(myrank,nprocs)
   call checkdivisible(dim,nprocs)
-  call myzfft3d_par0(in,out,dim,times,howmany,nprocs)
-end subroutine myzfft3d_par
+  call myzfft3d_par0(in,out,dim,times,howmany,nprocs,1)
+end subroutine myzfft3d_par_forward
 
 
-recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs)
+recursive subroutine myzfft3d_par_backward(in,out,dim,times,howmany)
+  implicit none
+  integer, intent(in) :: dim,howmany
+  complex*16, intent(in) :: in(*)
+  complex*16, intent(out) :: out(*)
+  integer, intent(inout) :: times(8)
+  integer :: myrank,nprocs
+  call getmyranknprocs(myrank,nprocs)
+  call checkdivisible(dim,nprocs)
+  call myzfft3d_par0(in,out,dim,times,howmany,nprocs,-1)
+end subroutine myzfft3d_par_backward
+
+
+recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs,direction)
   use mytransposemod
   implicit none
-  integer, intent(in) :: dim,howmany,nprocs
+  integer, intent(in) :: dim,howmany,nprocs,direction
   complex*16, intent(in) :: in(dim,dim,dim/nprocs,howmany)
   complex*16, intent(out) :: out(dim,dim,dim/nprocs,howmany)
   integer, intent(inout) :: times(8)
@@ -289,7 +331,15 @@ recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs)
   call checkdivisible(dim,nprocs)
 
   call myclock(atime)
-  tempout(:,:,:,:)=in(:,:,:,:)
+  select case(direction)
+  case(-1)
+     tempout(:,:,:,:)=CONJG(in(:,:,:,:))
+  case(1)
+     tempout(:,:,:,:)=in(:,:,:,:)
+  case default
+     print *, "ACK PAR0 DIRECTION=",direction; call mpistop()
+  end select
+
   call myclock(btime); times(1)=times(1)+btime-atime;
 
   do ii=1,3
@@ -305,7 +355,15 @@ recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs)
           howmany,times(3:),nprocs)
   enddo
   call myclock(atime)
-  out(:,:,:,:)=tempout(:,:,:,:)
+
+  select case(direction)
+  case(-1)
+     out(:,:,:,:)=CONJG(tempout(:,:,:,:))
+  case(1)
+     out(:,:,:,:)=tempout(:,:,:,:)
+  case default
+     print *, "ACK PAR0 DIRECTION=",direction; call mpistop()
+  end select
   call myclock(btime); times(1)=times(1)+btime-atime
 
 end subroutine myzfft3d_par0
