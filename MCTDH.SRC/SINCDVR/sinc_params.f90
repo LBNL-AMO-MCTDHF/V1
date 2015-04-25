@@ -36,7 +36,7 @@ integer :: numcenters=1
 integer :: centershift(3,100)=0    !! grid point index for each center
 real*8 :: nuccharges(100)=2d0
 
-integer :: numpoints(100)=(-1)
+integer :: numpoints(100)=15
 real*8 :: spacing=0.25d0
 
 integer :: orblanorder=500         !! krylov order for block lanczos orbital calculation
