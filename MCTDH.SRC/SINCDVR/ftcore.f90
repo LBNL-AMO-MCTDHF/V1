@@ -63,7 +63,7 @@ recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
   integer, save :: savedim1,savedim2,savedim3
 
   if (icalled.eq.0) then
-     plan=fftw_plan_dft_3d(dim1,dim2,dim3,in(:,:,:,1),out(:,:,:,1),FFTW_FORWARD,FFTW_EXHAUSTIVE) 
+     plan=fftw_plan_dft_3d(dim3,dim2,dim1,in(:,:,:,1),out(:,:,:,1),FFTW_FORWARD,FFTW_EXHAUSTIVE) 
      savedim1=dim1; savedim2=dim2; savedim3=dim3
   else
      if (dim1.ne.savedim1.or.dim2.ne.savedim2.or.dim3.ne.savedim3) then
@@ -229,28 +229,28 @@ end subroutine checkdivisible
 
 
 
-recursive subroutine myzfft3d_mpiwrap_forward(in,out,dim,howmany)
+recursive subroutine myzfft3d_mpiwrap_forward(in,out,dim,howmany,placeopt)
   implicit none
-  integer, intent(in) :: dim,howmany
+  integer, intent(in) :: dim,howmany,placeopt
   complex*16, intent(in) :: in(*)
   complex*16, intent(out) :: out(*)
-  call myzfft3d_mpiwrap0(in,out,dim,howmany,1)
+  call myzfft3d_mpiwrap0(in,out,dim,howmany,1,placeopt)
 end subroutine myzfft3d_mpiwrap_forward
 
 
-recursive subroutine myzfft3d_mpiwrap_backward(in,out,dim,howmany)
+recursive subroutine myzfft3d_mpiwrap_backward(in,out,dim,howmany,placeopt)
   implicit none
-  integer, intent(in) :: dim,howmany
+  integer, intent(in) :: dim,howmany,placeopt
   complex*16, intent(in) :: in(*)
   complex*16, intent(out) :: out(*)
-  call myzfft3d_mpiwrap0(in,out,dim,howmany,-1)
+  call myzfft3d_mpiwrap0(in,out,dim,howmany,-1,placeopt)
 end subroutine myzfft3d_mpiwrap_backward
 
 
 
-recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction)
+recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
   implicit none
-  integer :: dim,nulltimes(10),howmany,ii,direction
+  integer :: dim,nulltimes(10),howmany,ii,direction,placeopt
   complex*16, intent(in) :: in(dim**3,howmany)
   complex*16, intent(out) :: out(dim**3,howmany)
   complex*16,allocatable :: inlocal(:,:),outgather(:,:,:),outlocal(:,:)
@@ -270,9 +270,17 @@ recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction)
 
   select case(direction)
   case(-1)
-     call myzfft3d_par_backward(inlocal,outlocal,dim,nulltimes,howmany)
+     if (placeopt.ne.1) then
+        call cooleytukey3d_outofplace_backward_mpi(inlocal,outlocal,dim,howmany)
+     else
+        call myzfft3d_par_backward(inlocal,outlocal,dim,nulltimes,howmany)
+     endif
   case(1)
-     call myzfft3d_par_forward(inlocal,outlocal,dim,nulltimes,howmany)
+     if (placeopt.ne.1) then
+        call cooleytukey3d_outofplace_mpi(inlocal,outlocal,dim,howmany)
+     else
+        call myzfft3d_par_forward(inlocal,outlocal,dim,nulltimes,howmany)
+     endif
   case default
   print *, "ACK DIRECTION!!!!", direction; call mpistop()
 end select

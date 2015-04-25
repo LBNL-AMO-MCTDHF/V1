@@ -16,6 +16,16 @@ integer :: zke_paropt=1   !! 0=sendrecv 1=SUMMA (bcast before) 2=reduce after
 !! toepflag=1, toeplitz T^-1.  toepflag=2, T^-1 and T.   toepflag=2 slower; just do 1.
 integer :: toepflag=1
 
+!! fft_mpi_inplaceflag:
+!!  0 = out-of-place fft, out-of-place fft inverse
+!!      3d FFT + (summa/circ C.T. depending on fft_ctflag)
+!!  1 = 3 x (1d FFT , all-to-all index transposition)
+integer :: fft_mpi_inplaceflag=1    
+
+!! fft_ct_paropt: if fft_mpi_inplaceflag=0:
+!!    like zke_paropt: 0 = sendrecv 1 = summa
+integer :: fft_ct_paropt=1
+
 integer :: num_skip_orbs=0
 integer :: orb_skip(200)=-1
 

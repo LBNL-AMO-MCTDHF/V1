@@ -1,10 +1,10 @@
-Fri Apr 24 12:09:58 PDT 2015
-Fri Apr 24 12:09:58 PDT 2015
-Fri Apr 24 12:09:58 PDT 2015
-Fri Apr 24 12:09:58 PDT 2015
-Fri Apr 24 12:09:58 PDT 2015
-Fri Apr 24 12:09:58 PDT 2015
-Fri Apr 24 12:09:58 PDT 2015
+Fri Apr 24 23:10:11 PDT 2015
+Fri Apr 24 23:10:11 PDT 2015
+Fri Apr 24 23:10:11 PDT 2015
+Fri Apr 24 23:10:11 PDT 2015
+Fri Apr 24 23:10:11 PDT 2015
+Fri Apr 24 23:10:11 PDT 2015
+Fri Apr 24 23:10:11 PDT 2015
   ****************************************************************************
   **********************  BEGIN LBNL-AMO-MCTDHF ******************************
   ****************************************************************************
@@ -57,6 +57,7 @@ Fri Apr 24 12:09:58 PDT 2015
  toothnbig, toothnsmall         100          20
  orbparflag F
  zke_paropt           1
+ fft_mpi_inplaceflag           1
    -----  
  NBOX            1           1           1
  totpoints        9261
@@ -379,8 +380,7 @@ T=         11.82875  Energy:  -0.2808614823E+01 -0.8718100547E-17    Norm:   0.1
          -2.808614823248     -0.000000000000     -0.000000000643      0.000000000000
     ***   
  
-Fri Apr 24 12:12:03 PDT 2015
-Fri Apr 24 12:12:03 PDT 2015
-Fri Apr 24 12:12:03 PDT 2015
+Fri Apr 24 23:12:16 PDT 2015
+Fri Apr 24 23:12:16 PDT 2015
  rank 1 SAVED vectors!
  MCTDHF STOP!

@@ -532,9 +532,9 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
         call myclock(itime); 
 
 #ifdef REALGO
-        call circ3d_sub_real_mpi(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numpoints(3),fttimes,numspf)
+        call circ3d_sub_real_mpi(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numpoints(3),fttimes,numspf,fft_mpi_inplaceflag)
 #else
-        call circ3d_sub_mpi(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numpoints(3),fttimes,numspf)
+        call circ3d_sub_mpi(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numpoints(3),fttimes,numspf,fft_mpi_inplaceflag)
 #endif
 
         call myclock(jtime); times(4)=times(4)+jtime-itime; itime=jtime
@@ -558,9 +558,9 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
         call myclock(itime)
 
 #ifdef REALGO
-        call circ3d_sub_real(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numspf)
+        call circ3d_sub_real(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numspf,fft_mpi_inplaceflag)
 #else
-        call circ3d_sub(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numspf)
+        call circ3d_sub(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numspf,fft_mpi_inplaceflag)
 #endif
 
         do ii=1,nbox(3)
@@ -942,9 +942,9 @@ recursive subroutine mult_ke_toep(in, out,howmany)
 #ifdef MPIFLAG 
   if (orbparflag) then
 #ifdef REALGO
-     call circ3d_sub_real_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany)
+     call circ3d_sub_real_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany,fft_mpi_inplaceflag)
 #else
-     call circ3d_sub_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany)
+     call circ3d_sub_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany,fft_mpi_inplaceflag)
 #endif
      do ibox=1,nbox(3)  !! processor receiving
         jproc=(ibox+nbox(3)+1)/2
@@ -960,9 +960,9 @@ recursive subroutine mult_ke_toep(in, out,howmany)
   else
 #endif
 #ifdef REALGO
-     call circ3d_sub_real(bigke,bigin,bigout,gridpoints(3),howmany)
+     call circ3d_sub_real(bigke,bigin,bigout,gridpoints(3),howmany,fft_mpi_inplaceflag)
 #else
-     call circ3d_sub(bigke,bigin,bigout,gridpoints(3),howmany)
+     call circ3d_sub(bigke,bigin,bigout,gridpoints(3),howmany,fft_mpi_inplaceflag)
 #endif
      out(:,:)=RESHAPE(bigout(:,2,:,2,:,2,:),(/totpoints,howmany/))
 #ifdef MPIFLAG

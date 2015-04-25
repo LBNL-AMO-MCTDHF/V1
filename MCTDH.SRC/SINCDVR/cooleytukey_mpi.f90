@@ -13,7 +13,7 @@ subroutine ctset(in_ctparopt)
   implicit none
   integer :: in_ctparopt
   if (in_ctparopt.ne.0.and.in_ctparopt.ne.1) then
-     print *, "CTSET ERROR ", in_ctparopt; call mpistop()
+     print *, "COOLEY TUKEY OPTION ERROR (fft_ct_paropt)", in_ctparopt; call mpistop()
   endif
   ctparopt=in_ctparopt
   call getmyranknprocs(myrank,nprocs)
@@ -37,9 +37,9 @@ subroutine ctcheck(int1)
 end subroutine ctcheck
 
 
-!! INVERSE OF cooleytukey_outofplace_mpi
+!! INVERSE OF cooleytukey_outofplace_mpi  EXCEPT FOR DIVISON
 
-subroutine cooleytukey3d_outofplace_inverse_mpi(intranspose,out,dim,howmany)
+subroutine cooleytukey3d_outofplace_backward_mpi(intranspose,out,dim,howmany)
   use ct_mpimod
   implicit none
   integer, intent(in) :: dim,howmany
@@ -52,9 +52,9 @@ subroutine cooleytukey3d_outofplace_inverse_mpi(intranspose,out,dim,howmany)
 
   intransconjg(:,:,:,:,:)=CONJG(intranspose(:,:,:,:,:))
   call cooleytukey3d_outofplaceinput_mpi(intransconjg,outconjg,dim,howmany)
-  out(:,:,:,:,:)=CONJG(outconjg(:,:,:,:,:))/dim**3
+  out(:,:,:,:,:)=CONJG(outconjg(:,:,:,:,:))     !!! IN CIRC3D_SUB  /dim**3
 
-end subroutine cooleytukey3d_outofplace_inverse_mpi
+end subroutine cooleytukey3d_outofplace_backward_mpi
 
 
 !! fourier transform with OUT-OF-PLACE OUTPUT. 
