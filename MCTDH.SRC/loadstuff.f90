@@ -238,23 +238,19 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
 
   if (myrank.ne.1.and.parorbsplit.eq.3) then
      OFLWR "   --> rank 1 will read. "; CFL
-
-     if (readcflag.eq.0) then
-        allocate(realspfs(1,1,1,readnspf))
-     else
-        allocate(cspfs(1,1,1,readnspf))
-     endif
+     allocate(realspfs(1,1,1,readnspf))
+     allocate(cspfs(1,1,1,readnspf))
   else
      OFLWR "Reading spfs."; CFL
-
      if (readcflag.eq.0) then
         allocate(realspfs(bigreaddims(1),bigreaddims(2),bigreaddims(3),readnspf))
+        allocate(cspfs(1,1,1,1))
      else
         allocate(cspfs(bigreaddims(1),bigreaddims(2),bigreaddims(3),readnspf))
+        allocate(realspfs(1,1,1,1))
      endif
-
   endif
-
+  realspfs=0; cspfs=0
 
 
   do idim=1,3
@@ -319,17 +315,18 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
   if ((parorbsplit.eq.3.and.myrank.eq.1).or.(parorbsplit.ne.3.and.reinterp_orbflag.ne.0)) then
      if (readcflag.eq.0) then
         allocate(bigoutrealspfs(bigoutdims(1),bigoutdims(2),bigoutdims(3),numloaded))
+        allocate(bigoutcspfs(1,1,1,numloaded))
      else
         allocate(bigoutcspfs(bigoutdims(1),bigoutdims(2),bigoutdims(3),numloaded))
+        allocate(bigoutrealspfs(1,1,1,numloaded))
      endif
   else
-     if (readcflag.eq.0) then
-        allocate(bigoutrealspfs(1,1,1,numloaded))
-     else
-        allocate(bigoutcspfs(1,1,1,numloaded))
-     endif
+     allocate(bigoutrealspfs(1,1,1,numloaded))
+     allocate(bigoutcspfs(1,1,1,numloaded))
   endif
+  bigoutrealspfs=0; bigoutcspfs=0
 
+  
   if (reinterp_orbflag.ne.0.and.(myrank.eq.1.or.parorbsplit.ne.3)) then
      if (readcflag.eq.0) then
         call reinterpolate_orbs_real(realspfs(:,:,:,1:numloaded),bigreaddims,bigoutrealspfs,bigoutdims,numloaded)
@@ -380,11 +377,8 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
      enddo
   endif
 
-  if (readcflag.eq.0) then
-     deallocate(realspfs,bigoutrealspfs)
-  else
-     deallocate(cspfs,bigoutcspfs)
-  endif
+  deallocate(realspfs,bigoutrealspfs,cspfs,bigoutcspfs)
+
 end subroutine spf_read0
 
 

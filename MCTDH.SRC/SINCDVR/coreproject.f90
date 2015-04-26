@@ -513,6 +513,7 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
         index2low=1; index2high=1
      case default
         OFLWR "ACK BACTCHDIM", batchdim; CFLST
+        index2low=999; index2high=(-42)
      end select
 
      do index2b=index2low,index2high
@@ -524,6 +525,7 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
         spf2low=1; spf2high=numspf
      case default
         OFLWR "ACK BACTCHDIM", batchdim; CFLST
+        spf2low=42; spf2high=(-999)
      end select
 
      do spf2b=spf2low,spf2high
@@ -800,7 +802,8 @@ contains
     case(2)
        batchindex=spf2a+(spf2b-1)*numspf
     case default
-       OFLWR "ACK BATCHINDEX FUNCTION",spf2a,spf2b
+       OFLWR "ACK BATCHINDEX FUNCTION",spf2a,spf2b; CFLST
+       batchindex=999
     end select
   end function batchindex
 
@@ -1656,13 +1659,17 @@ subroutine reinterpolate_orbs_complex(cspfs,indims,outcspfs,outdims,num)
 
 end subroutine reinterpolate_orbs_complex
 
-subroutine mult_all0_big_gen_complex(in, out,indim,outdim,mat,nnn,mmm)
+recursive subroutine mult_all0_big_gen_complex(in, out,indim,outdim,mat,nnn,mmm)
   implicit none
   integer :: mmm,nnn,jj,indim,outdim
   complex*16 :: in(nnn,indim,mmm),out(nnn,outdim,mmm),mat(outdim,indim)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
+!$OMP DO SCHEDULE(STATIC)
   do jj=1,mmm
      call ZGEMM('N','T',nnn,outdim,indim,(1d0,0d0),in(:,:,jj),nnn,mat,outdim,(0d0,0d0), out(:,:,jj), nnn)
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
 end subroutine mult_all0_big_gen_complex
 
 subroutine reinterpolate_orbs_real(rspfs,dims,num)
