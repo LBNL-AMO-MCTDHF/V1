@@ -118,12 +118,12 @@ subroutine autocall(mynumdata, forwardovl, backwardovl,sflag)
 !
 !BRANT'S FFT using the Hanning Window.
   IF(hanningflag .EQ. 4)  THEN
-     
      ALLOCATE(hanningenergy(1:numdata), hanningwork(1:numdata*4+19), hanningft(1:numdata,mcscfnum), hanningfftinp(1:numdata), STAT=status)
-
      IF(STATUS .NE. 0) THEN
         WRITE(222, *) "FAIL";        STOP
      ENDIF
+  else
+     ALLOCATE(hanningenergy(1), hanningwork(1), hanningft(1,1), hanningfftinp(1))
   endif
 
   do imc=1,mcscfnum
@@ -279,9 +279,10 @@ subroutine autocall(mynumdata, forwardovl, backwardovl,sflag)
            WRITE(991, '(F18.12, 3E20.8)') (hanningenergy(i), ABS(hanningft(i,imc)), DREAL(hanningft(i,imc)), DIMAG(hanningft(i,imc)),imc=1,mcscfnum)
         ENDDO
         CLOSE(991)
-        DEALLOCATE(hanningenergy, hanningft, hanningwork, hanningfftinp)
      ENDIF
   endif
+
+  DEALLOCATE(hanningenergy, hanningft, hanningwork, hanningfftinp)
 
 end subroutine autocall
 
