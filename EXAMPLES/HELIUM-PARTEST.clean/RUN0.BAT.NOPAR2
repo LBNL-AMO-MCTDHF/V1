@@ -2,7 +2,7 @@
 threads=17
 
 export OMP_NUM_THREADS=$threads
-mpirun -n 3  -npernode 1 chmctdhf_sinc.debug Inp=Input.Inp.States0.nopar2 |tee Outs/Out.states0.nopar2
+mpirun -n 3  -npernode 1 chmctdhf_sinc.debug $1 Inp=Input.Inp.States0.nopar2 |tee Outs/Out.states0.nopar2
 
 
 

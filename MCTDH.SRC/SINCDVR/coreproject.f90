@@ -363,7 +363,7 @@ subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,not
   DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,numspf),twoereduced(totpoints,numspf,numspf)
   character,intent(in) :: timingdir*(*)
   integer, intent(in) :: notiming
-  integer :: mynumber
+  integer :: mynumber,batchdim
 
 #ifdef MPIFLAG  
   if (.not.orbparflag) then
@@ -381,19 +381,29 @@ subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,not
      endif
   endif
 #endif
-  call call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming,mynumber) 
+
+  select case (fft_batchopt)
+  case(1)
+     batchdim=1
+  case(2)
+     batchdim=2
+  case default
+     OFLWR "error fft_batchopt=",fft_batchopt; CFLST
+  end select
+  call call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming,mynumber,batchdim) 
 end subroutine call_twoe_matel
 
-recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming,mynumber) 
+recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming,mynumber,batchdim) 
   use myparams
   use myprojectmod
   implicit none
   DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
   DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,numspf),twoereduced(totpoints,numspf,numspf)
   character,intent(in) :: timingdir*(*)
-  integer, intent(in) :: notiming,mynumber
+  integer, intent(in) :: notiming,mynumber,batchdim
   integer ::  spf1a, spf1b, spf2a, spf2b, ii,jj,&
-       itime,jtime,getlen,  kk21,kk22,kk23,  ii21,ii22,ii23, ibox,jproc
+       itime,jtime,getlen,  kk21,kk22,kk23,  ii21,ii22,ii23, ibox,jproc,&
+       spf2low,spf2high,index2b,index2low,index2high
   integer, save :: xcount=0, times(10)=0,fttimes(10)=0,qqcount=0
 !!$  DATATYPE, allocatable :: twoeden03huge(:,:,:,:,:,:,:)
 !!$       reducedhuge(:,:,:,:,:,:,:),&
@@ -401,10 +411,10 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
 !!$       twoeden03(:,:,:), tempden03(:,:,:),&
 !!$       reducedwork3d(:,:,:,:,:), &
 !!$       twoeden03big(:,:,:,:)
-  DATATYPE :: twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),mynumber*2,numspf)
-  DATATYPE :: reducedwork3d(gridsize(1),gridsize(2),gridsize(3),numspf,numspf), &
-       reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf),&
-       reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf), &
+  DATATYPE :: twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),mynumber*2,numspf**batchdim)
+  DATATYPE ::        reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf**batchdim),&
+       reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf**batchdim), &
+       reducedwork3d(gridsize(1),gridsize(2),gridsize(3),numspf,numspf), &
        twoeden03(numpoints(1),numpoints(2),numpoints(3)), tempden03(numpoints(1),numpoints(2),numpoints(3)),&
        twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3))
   integer :: pointsperproc(nprocs),procstart(nprocs),procend(nprocs),firsttime,lasttime,ilow,ihigh
@@ -496,7 +506,27 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
 
      call myclock(jtime); times(1)=times(1)+jtime-itime;  
 
-     do spf2b=1,numspf
+     select case(batchdim)
+     case(1)
+        index2low=1; index2high=numspf
+     case(2)
+        index2low=1; index2high=1
+     case default
+        OFLWR "ACK BACTCHDIM", batchdim; CFLST
+     end select
+
+     do index2b=index2low,index2high
+        
+     select case(batchdim)
+     case(1)
+        spf2low=index2b;        spf2high=index2b
+     case(2)
+        spf2low=1; spf2high=numspf
+     case default
+        OFLWR "ACK BACTCHDIM", batchdim; CFLST
+     end select
+
+     do spf2b=spf2low,spf2high
      do spf2a=1,numspf
            
  ! integrating over electron 2
@@ -520,24 +550,24 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
               
               call simpleallgather(twoeden03,twoeden03big,totpoints)
 
-              twoeden03huge(:,:,:,:,:,:,spf2a)=0d0; 
+              twoeden03huge(:,:,:,:,:,:,batchindex(spf2a,spf2b))=0d0; 
               do ii=1,nbox(3)
-                 twoeden03huge(:,1,:,1,:,ii*2-1,spf2a)=twoeden03big(:,:,:,ii)
+                 twoeden03huge(:,1,:,1,:,ii*2-1,batchindex(spf2a,spf2b))=twoeden03big(:,:,:,ii)
               enddo
               call myclock(jtime); times(3)=times(3)+jtime-itime;
            else
               call myclock(itime)
-              twoeden03huge(:,:,:,:,:,:,spf2a)=0d0; 
+              twoeden03huge(:,:,:,:,:,:,batchindex(spf2a,spf2b))=0d0; 
 
               do ibox=1,nbox(3)  !! processor sending
                  jproc=(ibox+1)/2
                  if (ibox.eq.myrank.and.jproc.eq.myrank) then
-                    twoeden03huge(:,1,:,1,:,mod(ibox-1,2)+1,spf2a)=twoeden03(:,:,:)
+                    twoeden03huge(:,1,:,1,:,mod(ibox-1,2)+1,batchindex(spf2a,spf2b))=twoeden03(:,:,:)
                  else if (ibox.eq.myrank) then
                     call mympisend(twoeden03,jproc,999,totpoints)
                  else if (jproc.eq.myrank) then
                     call mympirecv(tempden03,ibox,999,totpoints)
-                    twoeden03huge(:,1,:,1,:,mod(ibox-1,2)+1,spf2a)=tempden03(:,:,:)
+                    twoeden03huge(:,1,:,1,:,mod(ibox-1,2)+1,batchindex(spf2a,spf2b))=tempden03(:,:,:)
                  endif
               enddo
               call myclock(jtime); times(3)=times(3)+jtime-itime;
@@ -545,8 +575,8 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
         else
 #endif
            call myclock(itime)
-           twoeden03huge(:,:,:,:,:,:,spf2a)=0d0; 
-           twoeden03huge(:,1,:,1,:,1,spf2a)=twoeden03(:,:,:)
+           twoeden03huge(:,:,:,:,:,:,batchindex(spf2a,spf2b))=0d0; 
+           twoeden03huge(:,1,:,1,:,1,batchindex(spf2a,spf2b))=twoeden03(:,:,:)
            call myclock(jtime); times(1)=times(1)+jtime-itime;
 
 #ifdef MPIFLAG
@@ -554,15 +584,16 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
 #endif
 
      enddo  !! spf2a
+     enddo  !! spf2b
 
 #ifdef MPIFLAG
      if (localflag) then
         call myclock(itime); 
 
 #ifdef REALGO
-        call circ3d_sub_real_mpi(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numpoints(3),fttimes,numspf,fft_mpi_inplaceflag)
+        call circ3d_sub_real_mpi(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numpoints(3),fttimes,numspf**batchdim,fft_mpi_inplaceflag)
 #else
-        call circ3d_sub_mpi(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numpoints(3),fttimes,numspf,fft_mpi_inplaceflag)
+        call circ3d_sub_mpi(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numpoints(3),fttimes,numspf**batchdim,fft_mpi_inplaceflag)
 #endif
 
         call myclock(jtime); times(4)=times(4)+jtime-itime; itime=jtime
@@ -570,13 +601,13 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
         do ibox=1,nbox(3)  !! processor receiving
            jproc=(ibox+nbox(3)+1)/2
            if (ibox.eq.myrank.and.jproc.eq.myrank) then
-              reducedwork3d(:,:,:,:,spf2b)=RESHAPE(reducedhuge(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:),&
-                   (/gridsize(1),gridsize(2),gridsize(3),numspf/))
+              reducedwork3d(:,:,:,:,spf2low:spf2high)=RESHAPE(reducedhuge(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:),&
+                   (/gridsize(1),gridsize(2),gridsize(3),numspf,numspf**(batchdim-1)/))
            else if (ibox.eq.myrank) then
-              call mympirecv(reducedwork3d(:,:,:,:,spf2b),jproc,999,totpoints*numspf)
+              call mympirecv(reducedwork3d(:,:,:,:,spf2low:spf2high),jproc,999,totpoints*numspf**batchdim)
            else if (jproc.eq.myrank) then
               reducedtemp(:,:,:,:)=reducedhuge(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:)
-              call mympisend(reducedtemp(:,:,:,:),ibox,999,totpoints*numspf)
+              call mympisend(reducedtemp(:,:,:,:),ibox,999,totpoints*numspf**batchdim)
            endif
         enddo
 
@@ -586,22 +617,22 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
         call myclock(itime)
 
 #ifdef REALGO
-        call circ3d_sub_real(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numspf,fft_mpi_inplaceflag)
+        call circ3d_sub_real(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numspf**batchdim,fft_mpi_inplaceflag)
 #else
-        call circ3d_sub(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numspf,fft_mpi_inplaceflag)
+        call circ3d_sub(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numspf**batchdim,fft_mpi_inplaceflag)
 #endif
 
         do ii=1,nbox(3)
            ilow=(ii-1)*numpoints(3)+1; ihigh=ii*numpoints(3)
-           reducedwork3d(:,:,ilow:ihigh,:,spf2b)=RESHAPE(reducedhuge(:,2,:,2,:, 2*ii ,:),&
-             (/numpoints(1),numpoints(2),numpoints(3),numspf/))
+           reducedwork3d(:,:,ilow:ihigh,:,spf2low:spf2high)=RESHAPE(reducedhuge(:,2,:,2,:, 2*ii ,:),&
+             (/numpoints(1),numpoints(2),numpoints(3),numspf,numspf**(batchdim-1)/))
         enddo
 
         call myclock(jtime); times(4)=times(4)+jtime-itime
 #ifdef MPIFLAG
         endif
 #endif
-     enddo
+     enddo  !! DO INDEX2B
 
 !!$     deallocate(twoeden03huge)
 !!$     deallocate(twoeden03huge,     reducedhuge,       reducedtemp,twoeden03big)
@@ -759,6 +790,19 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
   if ((notiming.eq.0).and.debugflag.eq.10.and.qqcount.gt.1) then
      OFLWR "DEBUG10STOP"; CFLST
   endif
+
+contains
+  function batchindex(spf2a,spf2b)
+    integer :: spf2a,spf2b,batchindex
+    select case(batchdim)
+    case(1)
+       batchindex=spf2a
+    case(2)
+       batchindex=spf2a+(spf2b-1)*numspf
+    case default
+       OFLWR "ACK BATCHINDEX FUNCTION",spf2a,spf2b
+    end select
+  end function batchindex
 
 !contains
 !  subroutine myclock(mytime)

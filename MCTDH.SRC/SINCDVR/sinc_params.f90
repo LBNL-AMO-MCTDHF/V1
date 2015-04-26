@@ -26,6 +26,9 @@ integer :: fft_mpi_inplaceflag=1
 !!    like zke_paropt: 0 = sendrecv 1 = summa
 integer :: fft_ct_paropt=1
 
+integer :: fft_batchopt=1    !! 1 = do nspf matrix elements in nspf batches (less memory)
+                             !! 2 = do nspf^2 matrix elements in one batch (faster)
+
 integer :: num_skip_orbs=0
 integer :: orb_skip(200)=-1
 
