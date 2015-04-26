@@ -127,7 +127,7 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
 end subroutine myzfft1d
 
 
-subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
+recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
   implicit none
   integer :: dim1,dim2,dim3,howmany
   complex*16, intent(in) :: in(dim1,dim2,dim3,howmany)
@@ -139,7 +139,7 @@ subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
 end subroutine myzfft3d
 
 
-subroutine fftblock_withtranspose(inout,dim1,dim2,dim3,howmany)
+recursive subroutine fftblock_withtranspose(inout,dim1,dim2,dim3,howmany)
   implicit none
   integer :: dim1,dim2,dim3,howmany
 !!!!  is dimensioned (dim1,dim2,dim3) on input. !!!!

@@ -39,7 +39,7 @@ end subroutine ctcheck
 
 !! INVERSE OF cooleytukey_outofplace_mpi  EXCEPT FOR DIVISON
 
-subroutine cooleytukey3d_outofplace_backward_mpi(intranspose,out,dim,times,howmany)
+recursive subroutine cooleytukey3d_outofplace_backward_mpi(intranspose,out,dim,times,howmany)
   use ct_mpimod
   implicit none
   integer, intent(in) :: dim,howmany
@@ -165,7 +165,7 @@ recursive subroutine cooleytukey3d_outofplaceinput_mpi(intranspose,out,dim,times
 end subroutine cooleytukey3d_outofplaceinput_mpi
 
 
-subroutine myzfft1d_slowindex_mpi(bunchsize,in,out,dim,howmany)
+recursive subroutine myzfft1d_slowindex_mpi(bunchsize,in,out,dim,howmany)
   use ct_mpimod
   implicit none
   integer, intent(in) :: dim,howmany,bunchsize
