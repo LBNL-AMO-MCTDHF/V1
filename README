@@ -125,4 +125,3 @@ EDISON:
 module unload cray-libsci
 module load mkl
 
-  DJH 04-18-2015
