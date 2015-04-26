@@ -323,7 +323,7 @@ subroutine mexpand_spfs() !inspfs,outspfs,numspf,spfmvals)
 print *, "NOT APPLICABLE MEXPAND SINCDVR"; stop
 end subroutine mexpand_spfs
 
-recursive subroutine velmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
+subroutine velmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   use myparams
   implicit none
   DATATYPE :: spfin(totpoints),spfout(totpoints),myxtdpot0,myytdpot0,myztdpot,&
@@ -355,33 +355,62 @@ subroutine mult_reke() !in, out)
 print *, "DOME MULT reKE"; stop
 end subroutine mult_reke
 
-
-recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
+subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
   use myparams
   use myprojectmod
   implicit none
+  DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
+  DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,numspf),twoereduced(totpoints,numspf,numspf)
+  character,intent(in) :: timingdir*(*)
+  integer, intent(in) :: notiming
+  integer :: mynumber
+
+#ifdef MPIFLAG  
+  if (.not.orbparflag) then
+#endif
+     if ( nbox(3).ne.1) then
+        OFLWR "WHAT? NBOX=1 only.  Parallel options not set."; CFLST
+     endif
+     mynumber=1
+#ifdef MPIFLAG  
+  else
+     if (.not.localflag) then
+        mynumber=nbox(3)
+     else
+        mynumber=1
+     endif
+  endif
+#endif
+  call call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming,mynumber) 
+end subroutine call_twoe_matel
+
+recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming,mynumber) 
+  use myparams
+  use myprojectmod
+  implicit none
+  DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
+  DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,numspf),twoereduced(totpoints,numspf,numspf)
+  character,intent(in) :: timingdir*(*)
+  integer, intent(in) :: notiming,mynumber
   integer ::  spf1a, spf1b, spf2a, spf2b, ii,jj,&
-       itime,jtime,getlen,notiming,&
-       kk21,kk22,kk23,  ii21,ii22,ii23, ibox,jproc
+       itime,jtime,getlen,  kk21,kk22,kk23,  ii21,ii22,ii23, ibox,jproc
   integer, save :: xcount=0, times(10)=0,fttimes(10)=0,qqcount=0
-  character :: timingdir*(*)
-  DATATYPE :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf), &
-       twoematel(numspf,numspf,numspf,numspf),twoereduced(totpoints,numspf,numspf)
-  DATATYPE, allocatable :: reducedwork3d(:,:,:,:,:), &
-       reducedhuge(:,:,:,:,:,:,:),&
-       reducedtemp(:,:,:,:),&
-       twoeden03(:,:,:), tempden03(:,:,:),&
-       twoeden03huge(:,:,:,:,:,:,:),&
-       twoeden03big(:,:,:,:)
-!!$  DATATYPE :: reducedwork3d(gridsize(1),gridsize(2),gridsize(3),numspf,numspf), &
-!!$       reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),1,2,numspf),&
-!!$       reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf), &
-!!$       twoeden03(numpoints(1),numpoints(2),numpoints(3)), tempden03(numpoints(1),numpoints(2),numpoints(3))
-!!$  DATATYPE :: twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3))
+!!$  DATATYPE, allocatable :: twoeden03huge(:,:,:,:,:,:,:)
+!!$       reducedhuge(:,:,:,:,:,:,:),&
+!!$       reducedtemp(:,:,:,:),&
+!!$       twoeden03(:,:,:), tempden03(:,:,:),&
+!!$       reducedwork3d(:,:,:,:,:), &
+!!$       twoeden03big(:,:,:,:)
+  DATATYPE :: twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),mynumber*2,numspf)
+  DATATYPE :: reducedwork3d(gridsize(1),gridsize(2),gridsize(3),numspf,numspf), &
+       reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf),&
+       reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf), &
+       twoeden03(numpoints(1),numpoints(2),numpoints(3)), tempden03(numpoints(1),numpoints(2),numpoints(3)),&
+       twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3))
   integer :: pointsperproc(nprocs),procstart(nprocs),procend(nprocs),firsttime,lasttime,ilow,ihigh
   integer, save :: maxpointsperproc
-!!$  DATATYPE ::  myden(totpoints), myreduced(totpoints)  !! I GET SEGFAULTS THIS WAY
-  DATATYPE,allocatable ::  myden(:)
+  DATATYPE ::  myden(totpoints)              !! I WAS GETTING SEGFAULTS THIS WAY
+!!$  DATATYPE,allocatable ::  myden(:)
 
 !! ZEROING TIMES... not cumulative
   times(:)=0; fttimes(:)=0; 
@@ -425,8 +454,9 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
      return
   endif
 
-  allocate( reducedwork3d(gridsize(1),gridsize(2),gridsize(3),numspf,numspf), &
-       twoeden03(numpoints(1),numpoints(2),numpoints(3)), tempden03(numpoints(1),numpoints(2),numpoints(3)))
+!!$  allocate( reducedwork3d(gridsize(1),gridsize(2),gridsize(3),numspf,numspf), &
+!!$       twoeden03(numpoints(1),numpoints(2),numpoints(3)), tempden03(numpoints(1),numpoints(2),numpoints(3)))
+
   twoereduced(:,:,:)=0d0
   reducedwork3d(:,:,:,:,:)=0d0; tempden03(:,:,:)=0
 
@@ -435,29 +465,33 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   if (toepflag.ne.0) then
      call myclock(itime)
 
-     allocate(reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf),&
-       reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf),&
-       twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3)))
+!!$     allocate(reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf),&
+!!$       reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf),&
+!!$       twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3)))
+
      reducedhuge(:,:,:,:,:,:,:)=0
      reducedtemp(:,:,:,:)=0
      twoeden03big(:,:,:,:)=0
 
-#ifdef MPIFLAG  
-     if (.not.orbparflag) then
-#endif
-        if ( nbox(3).ne.1) then
-           OFLWR "WHAT? NBOX=1 only.  Parallel options not set."; CFLST
-        endif
-        allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf))  
-#ifdef MPIFLAG  
-     else
-        if (.not.localflag) then
-           allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),nbox(3)*2,numspf))  
-        else
-           allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf))  
-        endif
-     endif
-#endif
+!!$ made wrapper, added xxx to subroutine name to avoid this, use automatic variables for speed (?)
+
+!!$  #ifdef MPIFLAG  
+!!$       if (.not.orbparflag) then
+!!$  #endif
+!!$          if ( nbox(3).ne.1) then
+!!$             OFLWR "WHAT? NBOX=1 only.  Parallel options not set."; CFLST
+!!$          endif
+!!$          allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf))  
+!!$  #ifdef MPIFLAG  
+!!$       else
+!!$          if (.not.localflag) then
+!!$             allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),nbox(3)*2,numspf))  
+!!$          else
+!!$             allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf))  
+!!$          endif
+!!$       endif
+!!$  #endif
+
      twoeden03huge(:,:,:,:,:,:,:)=0
 
      call myclock(jtime); times(1)=times(1)+jtime-itime;  
@@ -568,7 +602,9 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
         endif
 #endif
      enddo
-     deallocate(twoeden03huge,     reducedhuge,       reducedtemp,twoeden03big)
+
+!!$     deallocate(twoeden03huge)
+!!$     deallocate(twoeden03huge,     reducedhuge,       reducedtemp,twoeden03big)
 
   else
      do spf2b=1,numspf
@@ -638,10 +674,8 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,spf2b,myden)   !! myreduced
 
-!! (YONG FYI)
-!! I GET SEGFAULTS IF MYDEN AND MYREDUCED ARE AUTOMATIC VARIABLES NOT ALLOCATABLE.
+!!$   allocate(myden(totpoints))
 
-  allocate(myden(totpoints))
 !$OMP DO SCHEDULE(STATIC)
   do spf1b=1,numspf
   do spf1a=1,numspf
@@ -652,7 +686,8 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   enddo
   enddo
 !$OMP END DO
-  deallocate(myden)
+
+!!$  deallocate(myden)
 
 !$OMP END PARALLEL
 
@@ -660,7 +695,7 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   lasttime=jtime
   times(7)=times(7)+lasttime-firsttime
 
-  deallocate( reducedwork3d, twoeden03, tempden03)
+!!$  deallocate( reducedwork3d, twoeden03, tempden03)
 
 !!$  if (getpot.ne.0) then
 !!$     jj=numspf**2;     ii=totpoints
@@ -732,13 +767,13 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
 !    call date_and_time(values=values)
 !    mytime=values(8)+values(7)*fac(7)+values(6)*fac(6)+values(5)*fac(5)
 !  end subroutine myclock
-end subroutine call_twoe_matel
+end subroutine call_twoe_matelxxx
 
 
 
 !! NOW ONLY OUTPUTS ONE. CALL IN LOOP. FOR OPENMPI TRY.
 
-recursive subroutine mult_reducedpot(inspfs,outspf,whichspf,reducedpot)
+subroutine mult_reducedpot(inspfs,outspf,whichspf,reducedpot)
   use myparams
   implicit none
 
@@ -863,7 +898,7 @@ subroutine get_one_dipole(out,idim,whichbox,nnn,mmm)
 end subroutine get_one_dipole
 
 
-recursive subroutine mult_ke(in, out,howmany,timingdir,notiming)
+subroutine mult_ke(in, out,howmany,timingdir,notiming)
   use myparams
   implicit none
   integer :: howmany,notiming
@@ -877,7 +912,7 @@ recursive subroutine mult_ke(in, out,howmany,timingdir,notiming)
 end subroutine mult_ke
 
 
-recursive subroutine mult_ke_toep(in, out,howmany)
+subroutine mult_ke_toep(in, out,howmany)
   use myparams
   use myprojectmod
   implicit none
@@ -996,7 +1031,7 @@ recursive subroutine mult_ke_toep(in, out,howmany)
 end subroutine mult_ke_toep
 
 
-recursive subroutine mult_ke_old(in, out,howmany,timingdir,notiming)
+subroutine mult_ke_old(in, out,howmany,timingdir,notiming)
   use myparams
   implicit none
   integer :: howmany,notiming
@@ -1005,7 +1040,7 @@ recursive subroutine mult_ke_old(in, out,howmany,timingdir,notiming)
   call mult_allpar(in,out,1,howmany,timingdir,notiming)
 end subroutine mult_ke_old
 
-recursive subroutine mult_xderiv(in, out,howmany)
+subroutine mult_xderiv(in, out,howmany)
   use myparams
   implicit none
   integer :: howmany
@@ -1014,7 +1049,7 @@ recursive subroutine mult_xderiv(in, out,howmany)
   call mult_allpar(in,out,2,howmany,timingdir,2)
 end subroutine mult_xderiv
 
-recursive subroutine mult_yderiv(in, out,howmany)
+subroutine mult_yderiv(in, out,howmany)
   use myparams
   implicit none
   integer :: howmany
@@ -1023,7 +1058,7 @@ recursive subroutine mult_yderiv(in, out,howmany)
   call mult_allpar(in,out,3,howmany,timingdir,2)
 end subroutine mult_yderiv
 
-recursive subroutine mult_zderiv(in, out,howmany)
+subroutine mult_zderiv(in, out,howmany)
   use myparams
   implicit none
   integer :: howmany
@@ -1033,7 +1068,7 @@ recursive subroutine mult_zderiv(in, out,howmany)
 end subroutine mult_zderiv
 
 
-recursive subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
+subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
   use myparams
   implicit none
   integer :: idim,inoption,option,howmany,notiming
@@ -1433,7 +1468,7 @@ recursive subroutine mult_alltoall_z(in, out,option,howmany,timingdir,notiming)
 end subroutine mult_alltoall_z
 
 
-recursive subroutine mult_allone(in, out,idim,option,ibox,jbox,howmany)
+subroutine mult_allone(in, out,idim,option,ibox,jbox,howmany)
   use myparams
   implicit none
   integer :: mmm,idim,nnn,jdim,option,ibox,jbox,howmany
@@ -1482,13 +1517,21 @@ recursive subroutine mult_all0(in, out,ibox,jbox,idim,nnn,mmm,option)
   DATATYPE :: out(nnn,numpoints(idim),mmm)
   select case(option)
   case(1)  !! KE
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
+!$OMP DO SCHEDULE(STATIC)
      do jj=1,mmm
         call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,ketot(idim)%mat(1,jbox,1,ibox),gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
   case(2)  !! X Y or Z derivative (real valued antisymmetric)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
+!$OMP DO SCHEDULE(STATIC)
      do jj=1,mmm
         call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,fdtot(idim)%mat(1,jbox,1,ibox),gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
   case default 
      OFLWR "WHAAAAT"; CFLST
   end select

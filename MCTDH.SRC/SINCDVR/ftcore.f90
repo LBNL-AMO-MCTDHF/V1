@@ -15,6 +15,8 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
   integer, save :: plandims(maxplans)=-999, planhowmany(maxplans)=-999
   integer,save :: icalleds(maxplans)=0, numplans=0
   integer :: ostride,istride,onembed(1),inembed(1),idist,odist, dims(1),iplan,thisplan
+  integer :: myrank,nprocs
+  call getmyranknprocs(myrank,nprocs)
 
   inembed(1)=dim; onembed(1)=dim; idist=dim; odist=dim; istride=1; ostride=1; dims(1)=dim
 
@@ -43,6 +45,9 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
      endif
   endif
   if (icalleds(thisplan).eq.0) then
+     if (myrank.eq.1) then
+        print *, "       Making a 1D FFT plan ", thisplan, dims, howmany
+     endif
      plans(thisplan) = fftw_plan_many_dft(1,dims,howmany,in,inembed,istride,idist,out,onembed,ostride,odist,FFTW_FORWARD,FFTW_EXHAUSTIVE) 
   endif
   icalleds(thisplan)=1    
@@ -64,6 +69,8 @@ recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
   integer, save :: plandims(3,maxplans)=-999, planhowmany(maxplans)=-999
   integer,save :: icalleds(maxplans)=0, numplans=0
   integer :: ostride,istride,onembed(3),inembed(3),idist,odist, dims(3),iplan,thisplan
+  integer :: myrank,nprocs
+  call getmyranknprocs(myrank,nprocs)
 
   dims(:)=(/dim3,dim2,dim1/)
   inembed(:)=dims(:); onembed(:)=dims(:); idist=dim1*dim2*dim3; odist=dim1*dim2*dim3; istride=1; ostride=1; 
@@ -96,6 +103,9 @@ recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
      endif
   endif
   if (icalleds(thisplan).eq.0) then
+     if (myrank.eq.1) then
+        print *, "       Making a 3D fft plan ", thisplan, dims, howmany
+     endif
      plans(thisplan) = fftw_plan_many_dft(3,dims,howmany,in,inembed,istride,idist,out,onembed,ostride,odist,FFTW_FORWARD,FFTW_EXHAUSTIVE) 
   endif
   icalleds(thisplan)=1    
@@ -168,12 +178,12 @@ contains
   integer,intent(in) :: blocksize,howmany,nprocs
   integer,intent(inout) :: times(3)
   complex*16,intent(in) :: in(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
-  complex*16 :: inchop(nprocs*blocksize,blocksize,blocksize,howmany)  !!AUTOMATIC
   complex*16,intent(out) :: out(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
   integer :: atime,btime,i,count,ii,totsize,iproc,checkprocs,myrank,j
   complex*16 :: intranspose(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)  !!AUTOMATIC
   complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)      !!AUTOMATIC
   complex*16 :: outone(blocksize,nprocs*blocksize,blocksize,nprocs)               !!AUTOMATIC
+  complex*16 :: inchop(nprocs*blocksize,blocksize,blocksize,howmany)              !!AUTOMATIC
 !!
 !! There doesn't seem to be a good way to "threadprivate" outone and inchop... IDEAS?
 !!    if they are thread-local then OMP Barriers can be removed; 1st barrier removal might matter
@@ -191,7 +201,13 @@ contains
   
   call myclock(atime)
   
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i,iproc)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i)    !! IPROC IS SHARED (GOES WITH BARRIER, INCHOP SHARED)
+!$OMP MASTER
+  intranspose(:,:,:,:,:)=0d0
+!$OMP END MASTER
+!! *** OMP BARRIER *** !!  make sure master touches first
+!$OMP BARRIER
+
   do iproc=1,nprocs
      inchop(:,:,:,:)=in(:,(iproc-1)*blocksize+1:iproc*blocksize,:,:)
 !$OMP DO SCHEDULE(DYNAMIC)
@@ -201,7 +217,7 @@ contains
         enddo
      enddo
 !$OMP END DO
-!! *** OMP BARRIER *** !!   if inchop is shared
+!! *** OMP BARRIER *** !!   if inchop & iproc are shared
 !$OMP BARRIER
   enddo
 ! (implied barrier at end)
@@ -218,12 +234,12 @@ contains
 !!  complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)     
 !!  complex*16 :: outone(blocksize,nprocs*blocksize,blocksize,nprocs)
 
-!  OLD WAY - NEVER OMP'D WELL OBVIOUSLY
-!  do iproc=1,nprocs
-!     out((iproc-1)*blocksize+1:iproc*blocksize,:,:,:)=outtemp(:,:,:,:,iproc)
-!  enddo
+!!$  OLD WAY - NEVER OMP'D WELL OBVIOUSLY
+!!$  do iproc=1,nprocs
+!!$     out((iproc-1)*blocksize+1:iproc*blocksize,:,:,:)=outtemp(:,:,:,:,iproc)
+!!$  enddo
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i,j)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)  !! ii IS SHARED (OUTTEMP IS SHARED; BARRIER)
   do ii=1,howmany
      outone(:,:,:,:)=outtemp(:,:,:,ii,:)
 !$OMP DO SCHEDULE(STATIC)
@@ -233,7 +249,7 @@ contains
         enddo
      enddo
 !$OMP END DO
-!! *** OMP BARRIER *** !!   if outone is shared
+!! *** OMP BARRIER *** !!   if outone & ii are shared
 !$OMP BARRIER
   enddo
 ! (implied barrier at end)
@@ -354,17 +370,17 @@ recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs,direction)
   complex*16, intent(out) :: out(dim,dim,dim/nprocs,howmany)
   integer, intent(inout) :: times(8)
   integer :: ii,atime,btime
-  complex*16 :: mywork(dim,dim,dim/nprocs,howmany),tempout(dim,dim,dim/nprocs,howmany) !! AUTOMATIC
+  complex*16 :: mywork(dim,dim,dim/nprocs,howmany) !! AUTOMATIC
 
   call checkdivisible(dim,nprocs)
 
   call myclock(atime)
   select case(direction)
   case(-1)
-     tempout(:,:,:,:)=CONJG(in(:,:,:,:))
+     out(:,:,:,:)=CONJG(in(:,:,:,:))
      call myclock(btime); times(2)=times(2)+btime-atime;
   case(1)
-     tempout(:,:,:,:)=in(:,:,:,:)
+     out(:,:,:,:)=in(:,:,:,:)
      call myclock(btime); times(1)=times(1)+btime-atime;
   case default
      print *, "ACK PAR0 DIRECTION=",direction; call mpistop()
@@ -372,13 +388,13 @@ recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs,direction)
 
   do ii=1,3
      call myclock(atime)
-     call myzfft1d( tempout, mywork, dim, dim**2/nprocs*howmany)
+     call myzfft1d( out, mywork, dim, dim**2/nprocs*howmany)
      call myclock(btime); times(3)=times(3)+btime-atime
      
 !!! from mytranspose times(4) = transpose   times(5) = mpi  times(6) = copy
      call mytranspose(&
           mywork,  &
-          tempout,  &
+          out,  &
           dim/nprocs, &
           howmany,times(4:),nprocs)
   enddo
@@ -386,11 +402,9 @@ recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs,direction)
   call myclock(atime)
   select case(direction)
   case(-1)
-     out(:,:,:,:)=CONJG(tempout(:,:,:,:))
+     out(:,:,:,:)=CONJG(out(:,:,:,:))
      call myclock(btime); times(2)=times(2)+btime-atime
   case(1)
-     out(:,:,:,:)=tempout(:,:,:,:)
-     call myclock(btime); times(1)=times(1)+btime-atime
   case default
      print *, "ACK PAR0 DIRECTION=",direction; call mpistop()
   end select
