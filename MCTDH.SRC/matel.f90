@@ -18,6 +18,10 @@ recursive subroutine all_matel()
 
   call all_matel0(yyy%cptr(0), yyy%cmfpsivec(spfstart,0), yyy%cmfpsivec(spfstart,0), twoereduced,times)
 
+  if (debugflag.eq.42) then
+     call mpibarrier();     OFLWR "     ...called all_matel0 in all_matel"; CFL; call mpibarrier()
+  endif
+
   call system_clock(itime)
   if (sparseopt.ne.0) then
      call assemble_sparsemats(yyy%cptr(0),yyy%sptr(0),1,1,1,1)
@@ -40,6 +44,10 @@ recursive subroutine all_matel()
 !!$     call system("date >> "//timingdir(1:getlen(timingdir)-1)//"/matel.abs.time.dat")
   endif
 
+  if (debugflag.eq.42) then
+     call mpibarrier();     OFLWR "     ...finished all_matel"; CFL; call mpibarrier()
+  endif
+
 end subroutine all_matel
 
 recursive subroutine all_matel0(matrix_ptr,inspfs1,inspfs2,twoereduced,times)
@@ -50,18 +58,30 @@ recursive subroutine all_matel0(matrix_ptr,inspfs1,inspfs2,twoereduced,times)
   DATATYPE :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf), twoereduced(reducedpotsize,nspf,nspf)
   integer :: times(*), i,j
 
+  if (debugflag.eq.42) then
+     call mpibarrier();     OFLWR "     ...sparseops_matel"; CFL; call mpibarrier()
+  endif
   call system_clock(i)
   call sparseops_matel(matrix_ptr,inspfs1,inspfs2)
-
+  if (debugflag.eq.42) then
+     call mpibarrier();     OFLWR "     ...pot_matel"; CFL; call mpibarrier()
+  endif
   call system_clock(j);  times(1)=times(1)+j-i; i=j
   call pot_matel(matrix_ptr,inspfs1,inspfs2)
-
+  if (debugflag.eq.42) then
+     call mpibarrier();     OFLWR "     ...pulse_matel"; CFL; call mpibarrier()
+  endif
   call system_clock(j);  times(2)=times(2)+j-i; i=j
   call pulse_matel(matrix_ptr,inspfs1,inspfs2)
-
+  if (debugflag.eq.42) then
+     call mpibarrier();     OFLWR "     ...twoe_matel"; CFL; call mpibarrier()
+  endif
   call system_clock(j);  times(3)=times(3)+j-i; i=j
   call twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced)
   call system_clock(j);  times(4)=times(4)+j-i
+  if (debugflag.eq.42) then
+     call mpibarrier();     OFLWR "     ...done all_matel0"; CFL; call mpibarrier()
+  endif
 
 end subroutine all_matel0
 
@@ -73,10 +93,18 @@ recursive subroutine twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced)
   Type(CONFIGPTR) :: matrix_ptr
   DATATYPE :: inspfs1(spfsize,nspf),inspfs2(spfsize,nspf),twoereduced(reducedpotsize,nspf,nspf)
 
+  if (debugflag.eq.42) then
+     call mpibarrier();     OFLWR "         In twoe_matel.  Calling call_twoe_matel"; CFL; call mpibarrier()
+  endif
   call call_twoe_matel(inspfs1,inspfs2,matrix_ptr%xtwoematel(:,:,:,:),twoereduced,timingdir,notiming)
-
+  if (debugflag.eq.42) then
+     call mpibarrier();     OFLWR "         Done call_twoe_matel.  Reduce"; CFL; call mpibarrier()
+  endif
   if (parorbsplit.eq.3) then
      call mympireduce(matrix_ptr%xtwoematel(:,:,:,:),nspf**4)
+  endif
+  if (debugflag.eq.42) then
+     call mpibarrier();     OFLWR "         Done reduce, done twoe_matel."; CFL; call mpibarrier()
   endif
 
 end subroutine twoe_matel
