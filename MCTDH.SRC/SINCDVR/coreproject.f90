@@ -355,7 +355,7 @@ subroutine mult_reke() !in, out)
 print *, "DOME MULT reKE"; stop
 end subroutine mult_reke
 
-subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
+recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
   use myparams
   use myprojectmod
   implicit none
@@ -405,22 +405,32 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
        itime,jtime,getlen,  kk21,kk22,kk23,  ii21,ii22,ii23, ibox,jproc,&
        spf2low,spf2high,index2b,index2low,index2high
   integer, save :: xcount=0, times(10)=0,fttimes(10)=0,qqcount=0
-!!$  DATATYPE, allocatable :: twoeden03huge(:,:,:,:,:,:,:)
-!!$       reducedhuge(:,:,:,:,:,:,:),&
-!!$       reducedtemp(:,:,:,:),&
-!!$       twoeden03(:,:,:), tempden03(:,:,:),&
-!!$       reducedwork3d(:,:,:,:,:), &
-!!$       twoeden03big(:,:,:,:)
+#define AUTOMAxxSEGFAULTS_SOMETIMESxxxTICTWO
+#ifdef AUTOMATICTWO
   DATATYPE :: twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),mynumber*2,numspf**batchdim)
   DATATYPE ::        reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf**batchdim),&
        reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf**batchdim), &
        reducedwork3d(gridsize(1),gridsize(2),gridsize(3),numspf,numspf), &
        twoeden03(numpoints(1),numpoints(2),numpoints(3)), tempden03(numpoints(1),numpoints(2),numpoints(3)),&
        twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3))
+#else
+  DATATYPE, allocatable :: twoeden03huge(:,:,:,:,:,:,:),&
+       reducedhuge(:,:,:,:,:,:,:),&
+       reducedtemp(:,:,:,:),&
+       reducedwork3d(:,:,:,:,:), &
+       twoeden03(:,:,:), tempden03(:,:,:),&
+       twoeden03big(:,:,:,:)
+#endif
   integer :: pointsperproc(nprocs),procstart(nprocs),procend(nprocs),firsttime,lasttime,ilow,ihigh
   integer, save :: maxpointsperproc
-  DATATYPE ::  myden(totpoints)              !! I WAS GETTING SEGFAULTS THIS WAY
-!!$  DATATYPE,allocatable ::  myden(:)
+!!$
+!!$  DATATYPE ::  myden(totpoints)         !! I GET SEGFAULTS THIS WAY 
+                                           !!
+DATATYPE,allocatable,save ::  myden(:)     !! OR THIS WAY (save)  if I don't allocate extra
+!$OMP THREADPRIVATE(myden)                 !!     regardless of whether or not this is added   04-26-15
+                                           !!
+!!$    DATATYPE,allocatable ::  myden(:)   !! ONLY WAY THAT DIDN'T SEGFAULT BEFORE (with private)
+!!$
 
 !! ZEROING TIMES... not cumulative
   times(:)=0; fttimes(:)=0; 
@@ -464,45 +474,42 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
      return
   endif
 
-!!$  allocate( reducedwork3d(gridsize(1),gridsize(2),gridsize(3),numspf,numspf), &
-!!$       twoeden03(numpoints(1),numpoints(2),numpoints(3)), tempden03(numpoints(1),numpoints(2),numpoints(3)))
 
+#ifndef AUTOMATICTWO
+ allocate(       reducedwork3d(gridsize(1),gridsize(2),gridsize(3),numspf,numspf), &
+      twoeden03(numpoints(1),numpoints(2),numpoints(3)), &
+      tempden03(numpoints(1),numpoints(2),numpoints(3)))
+#endif
+
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP MASTER
   twoereduced(:,:,:)=0d0
-  reducedwork3d(:,:,:,:,:)=0d0; tempden03(:,:,:)=0
+  reducedwork3d(:,:,:,:,:)=0d0; tempden03(:,:,:)=0; twoeden03(:,:,:)=0
+!$OMP END MASTER
+!$OMP BARRIER
+!$OMP END PARALLEL
 
   call myclock(jtime); times(1)=times(1)+jtime-itime;  
 
   if (toepflag.ne.0) then
      call myclock(itime)
 
-!!$     allocate(reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf),&
-!!$       reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf),&
-!!$       twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3)))
+#ifndef AUTOMATICTWO
+     allocate( reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf**batchdim),&
+          reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf**batchdim), &
+          twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3)),&
+          twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),mynumber*2,numspf**batchdim))
+#endif
 
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP MASTER
      reducedhuge(:,:,:,:,:,:,:)=0
      reducedtemp(:,:,:,:)=0
      twoeden03big(:,:,:,:)=0
-
-!!$ made wrapper, added xxx to subroutine name to avoid this, use automatic variables for speed (?)
-
-!!$  #ifdef MPIFLAG  
-!!$       if (.not.orbparflag) then
-!!$  #endif
-!!$          if ( nbox(3).ne.1) then
-!!$             OFLWR "WHAT? NBOX=1 only.  Parallel options not set."; CFLST
-!!$          endif
-!!$          allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf))  
-!!$  #ifdef MPIFLAG  
-!!$       else
-!!$          if (.not.localflag) then
-!!$             allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),nbox(3)*2,numspf))  
-!!$          else
-!!$             allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf))  
-!!$          endif
-!!$       endif
-!!$  #endif
-
      twoeden03huge(:,:,:,:,:,:,:)=0
+!$OMP END MASTER
+!$OMP BARRIER
+!$OMP END PARALLEL
 
      call myclock(jtime); times(1)=times(1)+jtime-itime;  
 
@@ -636,8 +643,9 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
 #endif
      enddo  !! DO INDEX2B
 
-!!$     deallocate(twoeden03huge)
-!!$     deallocate(twoeden03huge,     reducedhuge,       reducedtemp,twoeden03big)
+#ifndef AUTOMATICTWO
+     deallocate(twoeden03huge,     reducedhuge,       reducedtemp,twoeden03big)
+#endif
 
   else
      do spf2b=1,numspf
@@ -705,14 +713,15 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
 
   twoematel(:,:,:,:)=0
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,spf2b,myden)   !! myreduced
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,spf2b)   !! MYDEN IS THREADPRIVATE
 
-!!$   allocate(myden(totpoints))
+!!!  allocate(myden(totpoints*2))
+  allocate(myden(totpoints*10))
 
 !$OMP DO SCHEDULE(STATIC)
   do spf1b=1,numspf
   do spf1a=1,numspf
-     myden(:)=CONJUGATE(inspfs10(:,spf1a)) * inspfs20(:,spf1b)
+     myden(1:totpoints)=CONJUGATE(inspfs10(:,spf1a)) * inspfs20(:,spf1b)
 
      call MYGEMV('T',totpoints,numspf**2,DATAONE,twoereduced,totpoints,myden,1,DATAZERO,twoematel(:,:,spf1a,spf1b),1)
 
@@ -720,7 +729,7 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
   enddo
 !$OMP END DO
 
-!!$  deallocate(myden)
+  deallocate(myden)
 
 !$OMP END PARALLEL
 
@@ -728,7 +737,9 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
   lasttime=jtime
   times(7)=times(7)+lasttime-firsttime
 
-!!$  deallocate( reducedwork3d, twoeden03, tempden03)
+#ifndef AUTOMATICTWO
+  deallocate( reducedwork3d, twoeden03, tempden03)
+#endif
 
 !!$  if (getpot.ne.0) then
 !!$     jj=numspf**2;     ii=totpoints

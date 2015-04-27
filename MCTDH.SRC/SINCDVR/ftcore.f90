@@ -182,12 +182,18 @@ contains
   integer :: atime,btime,i,count,ii,totsize,iproc,checkprocs,myrank,j
   complex*16 :: intranspose(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)  !!AUTOMATIC
   complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)      !!AUTOMATIC
+#define AUTOMATxxNOxxICTRANS
+#ifdef AUTOMATICTRANS
   complex*16 :: outone(blocksize,nprocs*blocksize,blocksize,nprocs)               !!AUTOMATIC
   complex*16 :: inchop(nprocs*blocksize,blocksize,blocksize,howmany)              !!AUTOMATIC
+#else
 !!
-!! There doesn't seem to be a good way to "threadprivate" outone and inchop... IDEAS?
-!!    if they are thread-local then OMP Barriers can be removed; 1st barrier removal might matter
+!! if outone and inchop are private to threads, then there is no need for barriers below.
 !! 
+  complex*16, allocatable, save :: outone(:,:,:,:),inchop(:,:,:,:)
+!$OMP THREADPRIVATE(outone,inchop)
+#endif
+
   call getmyranknprocs(myrank,checkprocs)
   if (nprocs.ne.checkprocs) then
      print *, "ACK CHECKPROCS",nprocs,checkprocs; call mpistop()
@@ -200,35 +206,62 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   
   call myclock(atime)
-  
+
+#ifdef AUTOMATICTRANS  
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i)    !! IPROC IS SHARED (GOES WITH BARRIER, INCHOP SHARED)
+#else
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i,iproc)    !! IPROC IS private (no BARRIER, INCHOP threadprivate)
+  allocate(inchop(nprocs*blocksize,blocksize,blocksize,howmany))
+#endif
+
 !$OMP MASTER
   intranspose(:,:,:,:,:)=0d0
 !$OMP END MASTER
 !! *** OMP BARRIER *** !!  make sure master touches first
 !$OMP BARRIER
 
+#ifndef AUTOMATICTRANS
+!$OMP DO SCHEDULE(DYNAMIC)
+#endif
   do iproc=1,nprocs
      inchop(:,:,:,:)=in(:,(iproc-1)*blocksize+1:iproc*blocksize,:,:)
+#ifdef AUTOMATICTRANS
 !$OMP DO SCHEDULE(DYNAMIC)
+#endif
      do ii=1,howmany
         do i=1,blocksize
            intranspose(:,:,i,ii,iproc)=TRANSPOSE(inchop(:,i,:,ii))
         enddo
      enddo
+#ifdef AUTOMATICTRANS
 !$OMP END DO
 !! *** OMP BARRIER *** !!   if inchop & iproc are shared
 !$OMP BARRIER
   enddo
+#else
+  enddo
+!$OMP END DO
+  deallocate(inchop)
+#endif
 ! (implied barrier at end)
 !$OMP END PARALLEL
 
+!! UMM does this do anything, not sure
+!!   mpi seems slow at start of run if not included
+!!   or maybe that's just how the wind is blowing today
+!!
+!$OxxMP PARALLEL DEFAULT(SHARED)
+!$OxxMP MASTER
   call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
   
   count=blocksize**2 * totsize * howmany
   
   call mympialltoall_complex(intranspose,outtemp,count)
   call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
+!$OxxMP END MASTER
+!! (barrier at end)
+!$OxxMP END PARALLEL
+
 
 !!  complex*16,intent(out) :: out(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
 !!  complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)     
@@ -239,19 +272,38 @@ contains
 !!$     out((iproc-1)*blocksize+1:iproc*blocksize,:,:,:)=outtemp(:,:,:,:,iproc)
 !!$  enddo
 
+#ifdef AUTOMATICTRANS
+
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)  !! ii IS SHARED (OUTTEMP IS SHARED; BARRIER)
   do ii=1,howmany
      outone(:,:,:,:)=outtemp(:,:,:,ii,:)
 !$OMP DO SCHEDULE(STATIC)
+#else
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j,ii)  !! ii IS PRIVATE (OUTTEMP IS THREADPRIVATE; NO BARRIER)
+  allocate(outone(blocksize,nprocs*blocksize,blocksize,nprocs))
+!$OMP DO SCHEDULE(STATIC)
+  do ii=1,howmany
+     outone(:,:,:,:)=outtemp(:,:,:,ii,:)
+
+#endif
      do i=1,blocksize
         do j=1,nprocs*blocksize
            out(:,j,i,ii)=RESHAPE(outone(:,j,i,:),(/nprocs*blocksize/))
         enddo
      enddo
+
+#ifdef AUTOMATICTRANS
 !$OMP END DO
 !! *** OMP BARRIER *** !!   if outone & ii are shared
 !$OMP BARRIER
   enddo
+#else
+  enddo   !! no barrier because outone is threadprivate; ii is private
+!$OMP END DO
+  deallocate(outone)
+#endif
+
 ! (implied barrier at end)
 !$OMP END PARALLEL
 
