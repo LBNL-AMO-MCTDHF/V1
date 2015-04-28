@@ -100,7 +100,7 @@ recursive subroutine cooleytukey3d_outofplace_mpi(in,outtrans,dim,times,howmany)
   call myclock(btime); times(4)=times(4)+btime-atime; atime=btime
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,jj)
-!$OMP DO SCHEDULE(DYNAMIC)
+!$OMP DO SCHEDULE(STATIC)
   do ii=1,howmany
      do jj=1,dim/nprocs
         outtemp(:,:,jj,1,ii) = tempout(:,:,jj,1,ii) * tt1(jj)
@@ -147,7 +147,7 @@ recursive subroutine cooleytukey3d_outofplaceinput_mpi(intranspose,out,dim,times
   call myclock(btime); times(4)=times(4)+btime-atime; atime=btime
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,jj)
-!$OMP DO SCHEDULE(DYNAMIC)
+!$OMP DO SCHEDULE(STATIC)
   do ii=1,howmany
      do jj=1,dim/nprocs
         outtrans(:,:,jj,1,ii) = temptrans(:,:,jj,1,ii) * tt(jj)

@@ -20,7 +20,8 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   NAMELIST /sincparinp/        numpoints,spacing,griddim,notwoflag,coulflag,nuccharges,orblanthresh, &
        numcenters,centershift,orblanorder,toepflag,nonucrepflag,debugflag, &
        toothnbig, toothnsmall, orbparflag,num_skip_orbs,orb_skip,orblancheckmod,zke_paropt,&
-       capflag,capstrength,capstart,cappower,fft_mpi_inplaceflag, fft_ct_paropt,fft_batchopt
+       capflag,capstrength,capstart,cappower,fft_mpi_inplaceflag, fft_ct_paropt,fft_batchdim,&
+       fft_circbatchdim
 
 #ifdef PGFFLAG
   integer :: myiargc
@@ -63,9 +64,13 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
         read(buffer(6:len),*) toepflag
         write(mpifileptr, *) "toepflag set to ", toepflag
      endif
-     if (buffer(1:9) .eq. 'Batchopt=') then
-        read(buffer(10:len),*) fft_batchopt
-        write(mpifileptr, *) "fft_batchopt set to ", fft_batchopt
+     if (buffer(1:9) .eq. 'Batchdim=') then
+        read(buffer(10:len),*) fft_batchdim
+        write(mpifileptr, *) "fft_batchdim set to ", fft_batchdim
+     endif
+     if (buffer(1:10) .eq. 'Circbatch=') then
+        read(buffer(11:len),*) fft_circbatchdim
+        write(mpifileptr, *) "fft_circbatchdim set to ", fft_circbatchdim
      endif
      if (buffer(1:6) .eq. 'SDebug') then
         if (.not.(buffer(1:7) .eq. 'SDebug=')) then
@@ -199,7 +204,8 @@ subroutine printmyopts()
   if (fft_mpi_inplaceflag==0) then
      WRFL "   --> fft_ct_paropt",fft_ct_paropt
   endif
-  WRFL "fft_batchopt",fft_batchopt
+  WRFL "fft_batchdim",fft_batchdim
+  WRFL "fft_circbatchdim",fft_circbatchdim
   WRFL "  -----  "
   WRFL "NBOX ", nbox(1:griddim)
   WRFL "totpoints",totpoints

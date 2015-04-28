@@ -5,30 +5,38 @@
 module myparams
 implicit none
 
-!! FOR TOTAL ORBITAL PARALLELIZATION, SET THIS TO TRUE, ALSO
-!! PARORBSPLIT=3 in &parinp
+!! FOR TOTAL ORBITAL PARALLELIZATION, SET orbparflag=.true., AND
+!! parorbsplit=3 in &parinp
+
 logical :: orbparflag=.false.
 
 !! THE FOLLOWING FLAG IS THEN RELEVANT.  Option for parallel KE matvec,
 !!   rate limiting step in algorithm.
+
 integer :: zke_paropt=1   !! 0=sendrecv 1=SUMMA (bcast before) 2=reduce after
 
-!! toepflag=1, toeplitz T^-1.  toepflag=2, T^-1 and T.   toepflag=2 slower; just do 1.
+!! toepflag:  Fast Fourier transforms for Toeplitz matrix vector multiplications
+!! toepflag=1, triple toeplitz T^-1.  toepflag=2, T^-1 and single toeplitz T. 
+!!   right now toepflag=2 slower; just do toepflag=1.
+
 integer :: toepflag=1
 
-!! fft_mpi_inplaceflag:
-!!  0 = out-of-place fft, out-of-place fft inverse
-!!      3d FFT + (summa/circ C.T. depending on fft_ctflag)
-!!  1 = 3 x (1d FFT , all-to-all index transposition)
-integer :: fft_mpi_inplaceflag=1    
+!! fft_batchdim: determines batch size for matrix elements and 
+!! fft_circbatchdim: determines sub batch size for FFT 
+!!    defaults set small (less memory, more MPI messages) to avoid MPI problems when doing large 
+!!    calculations.  Otherwise bigger values will be faster.  There is a message size sweet spot
+!!    on many machines.
 
-!! fft_ct_paropt: if fft_mpi_inplaceflag=0:
-!!    like zke_paropt: 0 = sendrecv 1 = summa
-integer :: fft_ct_paropt=1
+integer :: fft_batchdim=1     !! 1 = do nspf matrix elements in nspf batches (less memory)
+                              !! 2 = do nspf^2 in one batch (faster unless MPI problems)
+integer :: fft_circbatchdim=0 !! 0,1,2, circbatchdim < batchdim; larger faster unless MPI problems
 
-integer :: fft_batchopt=1    !! 1 = do nspf matrix elements in nspf batches (less memory)
-                             !! 2 = do nspf^2 matrix elements in one batch (faster)
-
+integer :: fft_mpi_inplaceflag=1     !! fft_mpi_inplaceflag:
+                                     !!  0 = out-of-place fft, out-of-place fft inverse
+                                     !!      3d FFT + (summa/circ C.T. depending on fft_ctflag)
+                                     !!  1 = 3 x (1d FFT , all-to-all index transposition)
+integer :: fft_ct_paropt=1           !! fft_ct_paropt, relevant if fft_mpi_inplaceflag=0
+                                     !!    like zke_paropt: 0 = sendrecv 1 = summa
 integer :: num_skip_orbs=0
 integer :: orb_skip(200)=-1
 

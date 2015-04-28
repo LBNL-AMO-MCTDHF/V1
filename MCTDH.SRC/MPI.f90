@@ -1022,7 +1022,9 @@ subroutine mympialltoall(input, output, count)
   use mpimod
   implicit none
   integer :: ierr, count
-  DATATYPE :: input(count,nprocs), output(count,nprocs)
+  DATATYPE,intent(in) :: input(count,nprocs)
+  DATATYPE, intent(out) :: output(count,nprocs)
+
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 #ifndef MPIFLAG
   output(:,:)=input(:,:)
@@ -1048,7 +1050,9 @@ subroutine mympialltoall_complex(input, output, count)
   use mpimod
   implicit none
   integer :: ierr, count
-  complex*16 :: input(count,nprocs), output(count,nprocs)
+  complex*16, intent(in) :: input(count,nprocs)
+  complex*16, intent(out) :: output(count,nprocs)
+
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 #ifndef MPIFLAG
   output(:,:)=input(:,:)

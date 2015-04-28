@@ -363,7 +363,7 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,numspf),twoereduced(totpoints,numspf,numspf)
   character,intent(in) :: timingdir*(*)
   integer, intent(in) :: notiming
-  integer :: mynumber,batchdim
+  integer :: mynumber
 
 #ifdef MPIFLAG  
   if (.not.orbparflag) then
@@ -382,34 +382,38 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
   endif
 #endif
 
-  select case (fft_batchopt)
-  case(1)
-     batchdim=1
-  case(2)
-     batchdim=2
-  case default
-     OFLWR "error fft_batchopt=",fft_batchopt; CFLST
-  end select
-  call call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming,mynumber,batchdim) 
+  if (fft_batchdim.lt.0.or.fft_batchdim.gt.2) then
+     OFLWR "fft_batchdim error", fft_batchdim; CFLST
+  endif
+  if (fft_circbatchdim.gt.fft_batchdim) then
+     OFLWR "Error, fft_circbatchdim can't be greater than fft_batchdim",fft_circbatchdim,fft_batchdim; CFLST
+  endif
+  if (fft_circbatchdim.lt.0.or.fft_circbatchdim.gt.2) then
+     OFLWR "circbatchdim error", fft_circbatchdim; CFLST
+  endif
+  call call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming,mynumber) 
+
 end subroutine call_twoe_matel
 
-recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming,mynumber,batchdim) 
+recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming,mynumber) 
   use myparams
   use myprojectmod
   implicit none
   DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
   DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,numspf),twoereduced(totpoints,numspf,numspf)
   character,intent(in) :: timingdir*(*)
-  integer, intent(in) :: notiming,mynumber,batchdim
+  integer, intent(in) :: notiming,mynumber
   integer ::  spf1a, spf1b, spf2a, spf2b, ii,jj,&
        itime,jtime,getlen,  kk21,kk22,kk23,  ii21,ii22,ii23, ibox,jproc,&
        spf2low,spf2high,index2b,index2low,index2high
+  integer :: circsize,circhigh,circindex,icirc
   integer, save :: xcount=0, times(10)=0,fttimes(10)=0,qqcount=0
 #define AUTOMAxxSEGFAULTS_SOMETIMESxxxTICTWO
-#ifdef AUTOMATICTWO
-  DATATYPE :: twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),mynumber*2,numspf**batchdim)
-  DATATYPE ::        reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf**batchdim),&
-       reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf**batchdim), &
+#define AUTOMATICTWO
+#ifdef  AUTOMATICTWO
+  DATATYPE :: twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),mynumber*2,numspf**fft_batchdim)
+  DATATYPE ::        reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf**fft_batchdim),&
+       reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf**fft_batchdim), &
        reducedwork3d(gridsize(1),gridsize(2),gridsize(3),numspf,numspf), &
        twoeden03(numpoints(1),numpoints(2),numpoints(3)), tempden03(numpoints(1),numpoints(2),numpoints(3)),&
        twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3))
@@ -424,13 +428,13 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
   integer :: pointsperproc(nprocs),procstart(nprocs),procend(nprocs),firsttime,lasttime,ilow,ihigh
   integer, save :: maxpointsperproc
 !!$
-!!$  DATATYPE ::  myden(totpoints)         !! I GET SEGFAULTS THIS WAY 
+!!$  DATATYPE ::  myden(totpoints)         !! I WAS GETTING SEGFAULTS THIS WAY 
                                            !!
 DATATYPE,allocatable,save ::  myden(:)     !! OR THIS WAY (save)  if I don't allocate extra
 !$OMP THREADPRIVATE(myden)                 !!     regardless of whether or not this is added   04-26-15
                                            !!
 !!$    DATATYPE,allocatable ::  myden(:)   !! ONLY WAY THAT DIDN'T SEGFAULT BEFORE (with private)
-!!$
+!!$                                        !!     04-28 might be good now, but leaving it this way (factor of ten)
 
 !! ZEROING TIMES... not cumulative
   times(:)=0; fttimes(:)=0; 
@@ -451,6 +455,16 @@ DATATYPE,allocatable,save ::  myden(:)     !! OR THIS WAY (save)  if I don't all
   if (griddim.ne.3) then
      OFLWR "OOGA DIM"; CFLST
   endif
+
+  if (fft_circbatchdim.gt.fft_batchdim) then
+     OFLWR "Error, fft_circbatchdim can't be greater than fft_batchdim",fft_circbatchdim,fft_batchdim; CFLST
+  endif
+  if (fft_circbatchdim.lt.0.or.fft_circbatchdim.gt.2) then
+     OFLWR "circbatchdim error", fft_circbatchdim; CFLST
+  endif
+  circsize=numspf**fft_circbatchdim
+  circhigh=numspf**(fft_batchdim-fft_circbatchdim)
+
 
 !! for toepflag 0. if doing toepflag=0, need to reduce.
   maxpointsperproc=0
@@ -495,10 +509,10 @@ DATATYPE,allocatable,save ::  myden(:)     !! OR THIS WAY (save)  if I don't all
      call myclock(itime)
 
 #ifndef AUTOMATICTWO
-     allocate( reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf**batchdim),&
-          reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf**batchdim), &
+     allocate( reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,numspf**fft_batchdim),&
+          reducedtemp(numpoints(1),numpoints(2),numpoints(3),numspf**fft_batchdim), &
           twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3)),&
-          twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),mynumber*2,numspf**batchdim))
+          twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),mynumber*2,numspf**fft_batchdim))
 #endif
 
 !$OMP PARALLEL DEFAULT(SHARED)
@@ -513,26 +527,26 @@ DATATYPE,allocatable,save ::  myden(:)     !! OR THIS WAY (save)  if I don't all
 
      call myclock(jtime); times(1)=times(1)+jtime-itime;  
 
-     select case(batchdim)
+     select case(fft_batchdim)
      case(1)
         index2low=1; index2high=numspf
      case(2)
         index2low=1; index2high=1
      case default
-        OFLWR "ACK BACTCHDIM", batchdim; CFLST
-        index2low=999; index2high=(-42)
+        OFLWR "ACK BACTCHDIM", fft_batchdim; CFLST
+        index2low=999; index2high=(-42)    !! avoid warn unused
      end select
 
      do index2b=index2low,index2high
         
-     select case(batchdim)
+     select case(fft_batchdim)
      case(1)
         spf2low=index2b;        spf2high=index2b
      case(2)
         spf2low=1; spf2high=numspf
      case default
-        OFLWR "ACK BACTCHDIM", batchdim; CFLST
-        spf2low=42; spf2high=(-999)
+        OFLWR "ACK BACTCHDIM", fft_batchdim; CFLST
+        spf2low=42; spf2high=(-999)   !! avoid warn unused
      end select
 
      do spf2b=spf2low,spf2high
@@ -599,11 +613,14 @@ DATATYPE,allocatable,save ::  myden(:)     !! OR THIS WAY (save)  if I don't all
      if (localflag) then
         call myclock(itime); 
 
+        do icirc=1,circhigh
+           circindex=(icirc-1)*circsize+1
 #ifdef REALGO
-        call circ3d_sub_real_mpi(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numpoints(3),fttimes,numspf**batchdim,fft_mpi_inplaceflag)
+           call circ3d_sub_real_mpi(threed_two,twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag)
 #else
-        call circ3d_sub_mpi(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numpoints(3),fttimes,numspf**batchdim,fft_mpi_inplaceflag)
+           call circ3d_sub_mpi(threed_two,twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag)
 #endif
+        enddo
 
         call myclock(jtime); times(4)=times(4)+jtime-itime; itime=jtime
 
@@ -611,12 +628,12 @@ DATATYPE,allocatable,save ::  myden(:)     !! OR THIS WAY (save)  if I don't all
            jproc=(ibox+nbox(3)+1)/2
            if (ibox.eq.myrank.and.jproc.eq.myrank) then
               reducedwork3d(:,:,:,:,spf2low:spf2high)=RESHAPE(reducedhuge(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:),&
-                   (/gridsize(1),gridsize(2),gridsize(3),numspf,numspf**(batchdim-1)/))
+                   (/gridsize(1),gridsize(2),gridsize(3),numspf,numspf**(fft_batchdim-1)/))
            else if (ibox.eq.myrank) then
-              call mympirecv(reducedwork3d(:,:,:,:,spf2low:spf2high),jproc,999,totpoints*numspf**batchdim)
+              call mympirecv(reducedwork3d(:,:,:,:,spf2low:spf2high),jproc,999,totpoints*numspf**fft_batchdim)
            else if (jproc.eq.myrank) then
               reducedtemp(:,:,:,:)=reducedhuge(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:)
-              call mympisend(reducedtemp(:,:,:,:),ibox,999,totpoints*numspf**batchdim)
+              call mympisend(reducedtemp(:,:,:,:),ibox,999,totpoints*numspf**fft_batchdim)
            endif
         enddo
 
@@ -625,16 +642,19 @@ DATATYPE,allocatable,save ::  myden(:)     !! OR THIS WAY (save)  if I don't all
 #endif
         call myclock(itime)
 
+        do icirc=1,circhigh
+           circindex=(icirc-1)*circsize+1
 #ifdef REALGO
-        call circ3d_sub_real(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numspf**batchdim,fft_mpi_inplaceflag)
+           call circ3d_sub_real(threed_two,twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag)
 #else
-        call circ3d_sub(threed_two,twoeden03huge(:,:,:,:,:,:,:),reducedhuge(:,:,:,:,:,:,:),gridpoints(3),numspf**batchdim,fft_mpi_inplaceflag)
+           call circ3d_sub(threed_two,twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag)
 #endif
+        enddo
 
         do ii=1,nbox(3)
            ilow=(ii-1)*numpoints(3)+1; ihigh=ii*numpoints(3)
            reducedwork3d(:,:,ilow:ihigh,:,spf2low:spf2high)=RESHAPE(reducedhuge(:,2,:,2,:, 2*ii ,:),&
-             (/numpoints(1),numpoints(2),numpoints(3),numspf,numspf**(batchdim-1)/))
+             (/numpoints(1),numpoints(2),numpoints(3),numspf,numspf**(fft_batchdim-1)/))
         enddo
 
         call myclock(jtime); times(4)=times(4)+jtime-itime
@@ -715,7 +735,7 @@ DATATYPE,allocatable,save ::  myden(:)     !! OR THIS WAY (save)  if I don't all
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,spf2b)   !! MYDEN IS THREADPRIVATE
 
-!!!  allocate(myden(totpoints*2))
+!!$ LEAVING IT THIS WAY
   allocate(myden(totpoints*10))
 
 !$OMP DO SCHEDULE(STATIC)
@@ -806,8 +826,9 @@ DATATYPE,allocatable,save ::  myden(:)     !! OR THIS WAY (save)  if I don't all
 
 contains
   function batchindex(spf2a,spf2b)
+    implicit none
     integer :: spf2a,spf2b,batchindex
-    select case(batchdim)
+    select case(fft_batchdim)
     case(1)
        batchindex=spf2a
     case(2)
@@ -1338,7 +1359,6 @@ recursive subroutine mult_summa_z(in, out,option,howmany,timingdir,notiming)
 ! (Implied barrier at end parallel)
 !$OMP END PARALLEL
      call myclock(btime); times(3)=times(3)+btime-atime
-
   enddo
 
   if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
@@ -1408,7 +1428,6 @@ recursive subroutine mult_reduce_z(in, out,option,howmany,timingdir,notiming)
      call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
      call mympireduceto(work(:,:,:),out(:,:,:),totsize,ibox)
      call myclock(btime); times(2)=times(2)+btime-atime
-
   enddo
 
   if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then

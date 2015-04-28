@@ -180,9 +180,14 @@ contains
   complex*16,intent(in) :: in(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
   complex*16,intent(out) :: out(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
   integer :: atime,btime,i,count,ii,totsize,iproc,checkprocs,myrank,j
+#define AUTOMATICBLOCKS
+#ifdef AUTOMATICBLOCKS
   complex*16 :: intranspose(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)  !!AUTOMATIC
   complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)      !!AUTOMATIC
-#define AUTOMATxxNOxxICTRANS
+#else
+  complex*16, allocatable :: intranspose(:,:,:,:,:), outtemp(:,:,:,:,:)
+#endif
+#define AUTOMATICTRANS
 #ifdef AUTOMATICTRANS
   complex*16 :: outone(blocksize,nprocs*blocksize,blocksize,nprocs)               !!AUTOMATIC
   complex*16 :: inchop(nprocs*blocksize,blocksize,blocksize,howmany)              !!AUTOMATIC
@@ -192,6 +197,11 @@ contains
 !! 
   complex*16, allocatable, save :: outone(:,:,:,:),inchop(:,:,:,:)
 !$OMP THREADPRIVATE(outone,inchop)
+#endif
+
+#ifndef AUTOMATICBLOCKS
+  allocate( intranspose(blocksize,nprocs*blocksize,blocksize,howmany,nprocs), &
+       outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs))
 #endif
 
   call getmyranknprocs(myrank,checkprocs)
@@ -221,12 +231,12 @@ contains
 !$OMP BARRIER
 
 #ifndef AUTOMATICTRANS
-!$OMP DO SCHEDULE(DYNAMIC)
+!$OMP DO SCHEDULE(STATIC)
 #endif
   do iproc=1,nprocs
      inchop(:,:,:,:)=in(:,(iproc-1)*blocksize+1:iproc*blocksize,:,:)
 #ifdef AUTOMATICTRANS
-!$OMP DO SCHEDULE(DYNAMIC)
+!$OMP DO SCHEDULE(STATIC)
 #endif
      do ii=1,howmany
         do i=1,blocksize
@@ -247,20 +257,20 @@ contains
 !$OMP END PARALLEL
 
 !! UMM does this do anything, not sure
-!!   mpi seems slow at start of run if not included
-!!   or maybe that's just how the wind is blowing today
 !!
-!$OxxMP PARALLEL DEFAULT(SHARED)
-!$OxxMP MASTER
+!$OcccMP PARALLEL DEFAULT(SHARED)
+!$OcccMP MASTER
   call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+
+  outtemp(:,:,:,:,:)=0d0
   
   count=blocksize**2 * totsize * howmany
   
   call mympialltoall_complex(intranspose,outtemp,count)
   call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
-!$OxxMP END MASTER
+!$OccccMP END MASTER
 !! (barrier at end)
-!$OxxMP END PARALLEL
+!$OccccMP END PARALLEL
 
 
 !!  complex*16,intent(out) :: out(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
@@ -308,6 +318,10 @@ contains
 !$OMP END PARALLEL
 
   call myclock(btime); times(3)=times(3)+btime-atime;
+
+#ifndef AUTOMATICBLOCKS
+  deallocate(intranspose, outtemp)
+#endif
   
 end subroutine mytranspose
 end module  
