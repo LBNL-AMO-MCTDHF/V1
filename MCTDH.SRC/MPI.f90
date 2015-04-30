@@ -10,6 +10,21 @@ subroutine getmyranknprocs(outrank,outnprocs)
   outrank=myrank;  outnprocs=nprocs
 end subroutine getmyranknprocs
 
+
+subroutine getWorldCommGroup(outcommunicator,outgroup)
+  use mpimod
+  implicit none
+  integer, intent(out) :: outcommunicator,outgroup
+#ifndef MPIFLAG
+  outcommunicator= (-798)
+  outgroup= 42
+#else
+  outcommunicator=MPI_COMM_WORLD
+  outgroup=MPI_GROUP_WORLD
+#endif
+end subroutine getWorldCommGroup
+
+
 subroutine mpiorbsets()
   use mpimod
   use parameters

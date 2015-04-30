@@ -63,7 +63,7 @@ subroutine getparams()
        excitecombos, jacunitflag, jacsymflag, jacprojorth,  fluxoptype, timefac, threshflag, &
        timefacforce, avectoroutfile, spfoutfile,  autopermthresh, messamount, numshells,   &
        lanthresh, lanczosorder,  lioreg, &   !! rcond
-       autonormthresh,  saveflag, &
+       autonormthresh,  saveflag, save_every, &
        mrestrictflag, mrestrictval, fluxtimestep, autotimestep,  spinwalkflag, nucfluxflag, &
        nosparseforce,  allspinproject,  numfluxfiles,  verletnum, &
        constraintflag, dfrestrictflag, improvedrelaxflag, mcscfnum,  improvednatflag, avectorfile, spffile, &

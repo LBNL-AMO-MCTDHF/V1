@@ -1,3 +1,12 @@
+
+
+#define MAXFACTORS 7
+
+#define BLOCKVARS blocksize1,blocksize2
+#define BLOCKPROD blocksize1*blocksize2
+#define ONED_FLAG
+#define THRExxED_FLAG
+
 !!$
 !!$Apache License
 !!$                           Version 2.0, January 2004
@@ -191,267 +200,119 @@
 !!$   limitations under the License.
 
 
-subroutine myclock(mytime)
-  integer :: values(10),mytime
-  integer, parameter :: fac(5:8)=(/60*60*1000,60*1000,1000,1/)  !! hour,minute,second,millisecond
-  call date_and_time(values=values)
-  mytime=values(8)+values(7)*fac(7)+values(6)*fac(6)+values(5)*fac(5)
-end subroutine myclock
 
-subroutine switchit(out,odddim,dim,howmany)
+
+!! INVERSE OF cooleytukey_outofplace_mpi except for division
+
+subroutine cooleytukey1d_outofplace_backward_mpi(BLOCKVARS,intranspose,out,dim1,pf,proclist,localnprocs,localrank,howmany)
   implicit none
-  integer, intent(in) :: odddim,dim,howmany
-  complex*16 :: out(-dim:dim,howmany), outwork(-dim:dim,howmany)
-  if (mod(odddim,2).ne.1) then
-     print *, "Switchit error", odddim; stop
+  integer, intent(in) :: BLOCKVARS,dim1,localnprocs,localrank,howmany,pf(MAXFACTORS),proclist(localnprocs)
+  complex*16, intent(in) :: intranspose(BLOCKPROD,dim1,howmany)
+  complex*16, intent(out) :: out(BLOCKPROD,dim1,howmany)
+  complex*16 ::  intransconjg(BLOCKPROD,dim1,howmany),  outconjg(BLOCKPROD,dim1,howmany)
+
+  intransconjg(:,:,:)=CONJG(intranspose(:,:,:))
+  call cooleytukey1d_outofplaceinput_mpi(BLOCKVARS,intransconjg,outconjg,dim1,pf,proclist,localnprocs,localrank,howmany)
+  out(:,:,:)=CONJG(outconjg(:,:,:)) !!/dim1/localnprocs
+
+end subroutine cooleytukey1d_outofplace_backward_mpi
+
+
+
+!! fourier transform with OUT-OF-PLACE OUTPUT. 
+
+recursive subroutine cooleytukey1d_outofplace_mpi(BLOCKVARS,in,outtrans,dim1,pf,proclist,localnprocs,localrank,howmany)
+  use ct_fileptrmod
+  implicit none
+  integer, intent(in) :: BLOCKVARS,dim1,localnprocs,localrank,howmany,pf(MAXFACTORS),proclist(localnprocs/pf(1),pf(1))
+  complex*16, intent(in) :: in(BLOCKPROD,dim1,howmany)
+  complex*16, intent(out) :: outtrans(BLOCKPROD,dim1,howmany)
+  complex*16 ::  tempout(BLOCKPROD,dim1,howmany),  outtemp(BLOCKPROD,dim1,howmany)
+  integer :: depth, newrank, newpf(MAXFACTORS),newproclist(localnprocs/pf(1)),ctrank,ctset(pf(1))
+
+  if ((localnprocs/pf(1))*pf(1).ne.localnprocs) then
+     write(mpifileptr,*) "Divisibility error outofplace ",localnprocs,pf(1); call mpistop()
   endif
-  outwork(0:dim,:)=out(-dim:0,:)
-  outwork(-dim:-1,:)=out(1:dim,:)
-  out(:,:)=outwork(:,:)
-end subroutine switchit
-
-subroutine switchit_3d(out,odddim,dim,howmany)
-  implicit none
-  integer, intent(in) :: odddim,dim,howmany
-  complex*16 :: out(-dim:dim,-dim:dim,-dim:dim,howmany), outwork(-dim:dim,-dim:dim,-dim:dim,howmany)
-  integer :: ii
-  outwork(:,:,:,:)=out(:,:,:,:)
-  do ii=1,3
-     call switchit(outwork,odddim,dim,(2*dim+1)**2*howmany)
-     call all3transpose(outwork,out,2*dim+1,howmany)         !! order doesn't matter
-     outwork(:,:,:,:)=out(:,:,:,:)
-  enddo
-end subroutine switchit_3d
-
-subroutine switch2(out,odddim,dim,howmany)
-  implicit none
-  integer, intent(in) :: odddim,dim,howmany
-  complex*16 :: out(-dim:dim,howmany), outwork(-dim:dim,howmany)
-  if (mod(odddim,2).ne.1) then
-     print *, "Switchit error", odddim; stop
+  if (localrank.lt.1.or.localrank.gt.localnprocs) then
+     write(mpifileptr,*) "Rank error outofplace ",localrank,localnprocs; call mpistop()
   endif
-  outwork(1:dim,:)= out(0:dim,:)
-  outwork(-dim:0,:)= out(-dim:-1,:)
-  out(:,:)=outwork(:,:)
-end subroutine switch2
 
-subroutine switch2_3d(out,odddim,dim,howmany)
-  implicit none
-  integer, intent(in) :: odddim,dim,howmany
-  complex*16 :: out(-dim:dim,-dim:dim,-dim:dim,howmany), outwork(-dim:dim,-dim:dim,-dim:dim,howmany)
-  integer :: ii
-  outwork(:,:,:,:)=out(:,:,:,:)
-  do ii=1,3
-     call switch2(outwork,odddim,dim,(2*dim+1)**2*howmany)
-     call all3transpose(outwork,out,2*dim+1,howmany)         !! order doesn't matter
-     outwork(:,:,:,:)=out(:,:,:,:)
-  enddo
-end subroutine switch2_3d
+  depth=localnprocs/pf(1)
+  ctrank=(localrank-1)/depth+1
+  newrank=mod(localrank-1,depth)+1
+  ctset(:)=proclist(newrank,:)
+  newproclist=proclist(:,ctrank)
 
-subroutine all3transpose(in,out,len,howmany)
-  implicit none
-  integer :: len,howmany,ii
-  complex*16 :: out(len,len,len,howmany), in(len,len,len,howmany)
-  do ii=1,len
-     out(:,:,ii,:)=in(ii,:,:,:)
-  enddo
-end subroutine all3transpose
+  if (mod(proclist(newrank,ctrank)-1,localnprocs)+1.ne.localrank) then
+     write(*,*) "RANK FAIL",proclist(newrank,ctrank),localrank,newrank,depth,ctrank,pf(1); call mpistop()
+  endif
 
+  call myzfft1d_slowindex_mpi(in,tempout,pf(1),ctrank,ctset,dim1*howmany*BLOCKPROD)
 
-recursive subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany,placeopt)
-  implicit none
-  integer :: totdim,howmany,placeopt
-  real*8 :: rmultvector(2*totdim,2*totdim,2*totdim,howmany), rffback(2*totdim,2*totdim,2*totdim,howmany),&
-       rbigcirc(2*totdim,2*totdim,2*totdim)
-  complex*16 :: multvector(2*totdim,2*totdim,2*totdim,howmany), &   
-       ffback(2*totdim,2*totdim,2*totdim,howmany),   bigcirc(2*totdim,2*totdim,2*totdim)
-
-  bigcirc(:,:,:)=rbigcirc(:,:,:)
-  multvector(:,:,:,:)=rmultvector(:,:,:,:)
-  call circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeopt)
-  rffback(:,:,:,:)=real(ffback(:,:,:,:),8)
-end subroutine circ3d_sub_real
-
-
-recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeopt)
-  implicit none
-  integer :: totdim,howmany,ii,placeopt
-  complex*16 ::  bigcirc(2*totdim,2*totdim,2*totdim,1,1,1), multvector(2*totdim,2*totdim,2*totdim,howmany),&
-       ffback(2*totdim,2*totdim,2*totdim,howmany)
-  complex*16 :: ffmat(2*totdim,2*totdim,2*totdim),ffvec(2*totdim,2*totdim,2*totdim,howmany),& 
-       ffprod(2*totdim,2*totdim,2*totdim,howmany)
-
-#ifdef MPIFLAG
-  call myzfft3d_mpiwrap_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,howmany,placeopt)
-  call myzfft3d_mpiwrap_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,1,placeopt)
+  call twiddlemult_mpi(BLOCKPROD,tempout,outtemp,dim1,depth,newrank,pf(1),ctrank,howmany)
+  if (depth.eq.1) then
+#ifdef ONED_FLAG
+     call myzfft1d_slowindex_local(outtemp,outtrans,BLOCKPROD,dim1,howmany)
 #else
-  call myzfft3d(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,2*totdim,2*totdim,howmany)
-  call myzfft3d(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,2*totdim,2*totdim,1)
-#endif
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)  
-!$OMP DO SCHEDULE(STATIC)
-  do ii=1,howmany
-     ffprod(:,:,:,ii)=ffvec(:,:,:,ii)*ffmat(:,:,:)/(2*totdim)**3
-  enddo
-!$OMP END DO
-!$OMP END PARALLEL
-
-#ifdef MPIFLAG
-  call myzfft3d_mpiwrap_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,howmany,placeopt)
+#ifdef THREED_FLAG
+     call myzfft3d(outtemp,outtrans,BLOCKVARS,dim1,howmany)
 #else
-  ffprod(:,:,:,:)=CONJG(ffprod(:,:,:,:))
-  call myzfft3d(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,2*totdim,2*totdim,howmany)
-  ffback(:,:,:,:)=CONJG(ffback(:,:,:,:))
-  return
-  placeopt=placeopt  !! avoid warn unused
+     NOT SUPPORTED.
 #endif
-
-end subroutine circ3d_sub
-
-
-recursive subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,totdim,blocksize,times,howmany,placeopt)
-  implicit none
-  integer :: totdim,blocksize,times(*),atime,btime,howmany,placeopt
-  real*8 :: rmultvector(2*totdim,2*totdim,2*blocksize,howmany), &
-       rbigcirc(2*totdim,2*totdim,2*blocksize), rffback(2*totdim,2*totdim,2*blocksize,howmany)
-  complex*16 :: multvector(2*totdim,2*totdim,2*blocksize,howmany), & 
-        ffback(2*totdim,2*totdim,2*blocksize,howmany),  bigcirc(2*totdim,2*totdim,2*blocksize)
-
-  call myclock(atime)
-  bigcirc(:,:,:)=rbigcirc(:,:,:)
-  multvector(:,:,:,:)=rmultvector(:,:,:,:)
-  call myclock(btime); times(7)=times(7)+btime-atime
-
-  call circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,times,howmany,placeopt)
-
-  call myclock(atime)
-  rffback(:,:,:,:)=real(ffback(:,:,:,:),8)
-  call myclock(btime); times(7)=times(7)+btime-atime
-
-end subroutine circ3d_sub_real_mpi
-
-
-!!! times(7) = circ math
-
-!!! from myzfft3d_par (if fft_mpi_inplaceopt == 1):
-
-!!! times(1) = copy  times(2) = conjg  times(3) = ft
-!!! from mytranspose times(4) = transpose   times(5) = mpi  times(6) = copy
-
-!!! from cooleytukey (if fft_mpi_inplaceopt == 0):
-
-!!! times(1) conjugate
-!!! times(2) gettwiddle
-!!! times(3) 1d ft-slowindex
-!!! times(4) raise twiddle factor to power
-!!! times(5) multiply
-!!! times(6) 3d f.t.
-
-recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,times,howmany,placeopt)
-  implicit none
-  integer :: totdim,blocksize,times(*),howmany,placeopt
-  complex*16 ::  multvector(2*totdim,2*totdim,2*blocksize,howmany), &
-       ffback(2*totdim,2*totdim,2*blocksize,howmany),  bigcirc(2*totdim,2*totdim,2*blocksize,1,1,1)
-#ifdef MPIFLAG
-  integer :: atime,btime,ii,primefactors(128),numfactors,myrank,nprocs
-  integer, allocatable :: proclist(:)
-  complex*16 :: ffmat(2*totdim,2*totdim,2*blocksize), &  
-       ffvec(2*totdim,2*totdim,2*blocksize,howmany),  ffprod(2*totdim,2*totdim,2*blocksize,howmany)
-
-  call getmyranknprocs(myrank,nprocs)
-  allocate(proclist(nprocs))
-  do ii=1,nprocs
-     proclist(ii)=ii
-  enddo
-  call getallprimefactors(nprocs,numfactors,primefactors)
-  if (numfactors.gt.128) then
-     print *, "REDIM NUMFACTORS ;)" ; call mpistop()
-  endif
-  if (placeopt.ne.1) then
-     if (2*totdim/nprocs.ne.2*blocksize) then
-        print *, "totdim err", totdim, blocksize*nprocs, nprocs; call mpistop()
-     endif
-     call cooleytukey3d_outofplace_mpi(2*totdim,2*totdim,multvector(:,:,:,:),ffvec(:,:,:,:),2*blocksize,primefactors,proclist,nprocs,myrank,howmany)
-     call cooleytukey3d_outofplace_mpi(2*totdim,2*totdim,bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*blocksize,primefactors,proclist,nprocs,myrank,1)
+#endif
   else
-     call myzfft3d_par_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,times,howmany)
-     call myzfft3d_par_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,times,1)
+     newpf(1:MAXFACTORS-1)=pf(2:MAXFACTORS); newpf(MAXFACTORS)=1
+     call cooleytukey1d_outofplace_mpi(BLOCKVARS,outtemp,outtrans,dim1,newpf,newproclist,depth,newrank,howmany)
   endif
 
-  call myclock(atime)
+end subroutine cooleytukey1d_outofplace_mpi
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
-!$OMP DO SCHEDULE(STATIC)
-  do ii=1,howmany
-     ffprod(:,:,:,ii)=ffvec(:,:,:,ii)*ffmat(:,:,:)/(2*totdim)**3
-  enddo
-!$OMP END DO
-!$OMP END PARALLEL
 
-  call myclock(btime); times(7)=times(7)+btime-atime
 
-  if (placeopt.ne.1) then
-     if (2*totdim/nprocs.ne.2*blocksize) then
-        print *, "totdim err", totdim, blocksize*nprocs, nprocs; call mpistop()
-     endif
-     call cooleytukey3d_outofplace_backward_mpi(2*totdim,2*totdim,ffprod(:,:,:,:),ffback(:,:,:,:),2*blocksize,primefactors,proclist,nprocs,myrank,howmany)
-  else
-     call myzfft3d_par_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,times,howmany)
+recursive subroutine cooleytukey1d_outofplaceinput_mpi(BLOCKVARS,intranspose,out,dim1,pf,proclist,localnprocs,localrank,howmany)
+  use ct_fileptrmod
+  implicit none
+  integer, intent(in) :: BLOCKVARS,dim1,localnprocs,localrank,howmany,pf(MAXFACTORS),proclist(localnprocs/pf(1),pf(1))
+  complex*16, intent(in) :: intranspose(BLOCKPROD,dim1,howmany)
+  complex*16, intent(out) :: out(BLOCKPROD,dim1,howmany)
+  complex*16 ::   temptrans(BLOCKPROD,dim1,howmany),outtrans(BLOCKPROD,dim1,howmany)
+  integer :: depth, newrank, newpf(MAXFACTORS),newproclist(localnprocs/pf(1)),ctrank,ctset(pf(1))
+
+  if ((localnprocs/pf(1))*pf(1).ne.localnprocs) then
+     write(mpifileptr,*) "Divisibility error outofplaceinput ",localnprocs,pf(1); call mpistop()
   endif
-  deallocate(proclist)
+  if (localrank.lt.1.or.localrank.gt.localnprocs) then
+     write(mpifileptr,*) "Rank error outofplaceinput ",localrank,localnprocs; call mpistop()
+  endif
+
+  depth=localnprocs/pf(1)
+  ctrank=(localrank-1)/depth+1
+  newrank=mod(localrank-1,depth)+1
+  ctset(:)=proclist(newrank,:)
+  newproclist=proclist(:,ctrank)
+
+  if (mod(proclist(newrank,ctrank)-1,localnprocs)+1.ne.localrank) then
+     write(*,*) "RANK FAIL INVERSE",proclist(newrank,ctrank),localrank,newrank,depth,ctrank,pf(1); call mpistop()
+  endif
+
+  if (depth.eq.1) then
+#ifdef ONED_FLAG
+     call myzfft1d_slowindex_local(intranspose,temptrans,BLOCKPROD,dim1,howmany)
 #else
-  print *, "ACKKKK!!! MPIFLAG NOT SET"; stop
-  bigcirc=0; multvector=0; ffback=0; times(1)=0; placeopt=placeopt
+#ifdef THREED_FLAG
+     call myzfft3d(intranspose,temptrans,BLOCKVARS,dim1,howmany)
+#else
+     NOT SUPPORTED.
 #endif
-end subroutine circ3d_sub_mpi
+#endif
+  else
+     newpf(1:MAXFACTORS-1)=pf(2:MAXFACTORS); newpf(MAXFACTORS)=1
+     call cooleytukey1d_outofplaceinput_mpi(BLOCKVARS,intranspose,temptrans,dim1,newpf,newproclist,depth,newrank,howmany)
+  endif
+
+  call twiddlemult_mpi(BLOCKPROD,temptrans,outtrans,dim1,depth,newrank,pf(1),ctrank,howmany)
+  call myzfft1d_slowindex_mpi(outtrans,out,pf(1),ctrank,ctset,dim1*howmany*BLOCKPROD)
+
+end subroutine cooleytukey1d_outofplaceinput_mpi
 
 
-subroutine toeplitz1d_sub(bigvector,smallmultvector,outvector,totdim,howmany)
-  implicit none
-  integer :: totdim,howmany
-  complex*16 :: multvector(2*totdim,howmany),&
-       outvector(totdim,howmany),smallmultvector(totdim,howmany),&
-       bigcirc(2*totdim,1), ffback(2*totdim,howmany),     bigvector(1-totdim:totdim-1)
-  bigcirc(:,:)=0d0
-  bigcirc(2:totdim*2,1)=bigvector(:)
-  multvector(:,:)=0d0
-  multvector(1:totdim,:)=smallmultvector(:,:)
-  call circ1d_sub(bigcirc,multvector,ffback,totdim,howmany)
-  outvector(:,:)=ffback(totdim+1:2*totdim,:)
-end subroutine toeplitz1d_sub
-
-
-subroutine toeplitz1d_sub_real(bigvector,smallmultvector,outvector,totdim,howmany)
-  implicit none
-  integer :: totdim,howmany
-  real*8 :: bigvector(1-totdim:totdim-1), &
-       outvector(totdim,howmany),smallmultvector(totdim,howmany)
-  complex*16 :: multvector(2*totdim,howmany),   bigcirc(2*totdim,1), ffback(2*totdim,howmany)
-  bigcirc(:,:)=0d0
-  bigcirc(2:totdim*2,1)=bigvector(:)
-  multvector(:,:)=0d0
-  multvector(1:totdim,:)=smallmultvector(:,:)
-  call circ1d_sub(bigcirc,multvector,ffback,totdim,howmany)
-  outvector(:,:)=real(ffback(totdim+1:2*totdim,:),8)
-end subroutine toeplitz1d_sub_real
-
-
-subroutine circ1d_sub(bigcirc,multvector,ffback,totdim,howmany)
-  implicit none
-  integer :: totdim,howmany,ii
-  complex*16 :: multvector(2*totdim,howmany),  bigcirc(2*totdim,1), &
-       ffback(2*totdim,howmany)
-  complex*16 ::   ffmat(2*totdim),ffvec(2*totdim,howmany),& !! AUTOMATIC
-       ffprod(2*totdim,howmany)
-
-  call myzfft1d(bigcirc(:,:),ffmat(:),2*totdim,1)
-  call myzfft1d(multvector(:,:),ffvec(:,:),2*totdim,howmany)
-  do ii=1,howmany
-     ffprod(:,ii)=ffvec(:,ii)*ffmat(:)/(2*totdim)
-  enddo
-  ffprod(:,:)=CONJG(ffprod(:,:))
-  call myzfft1d(ffprod(:,:),ffback(:,:),2*totdim,howmany)
-  ffback(:,:)=CONJG(ffback(:,:))
-
-end subroutine circ1d_sub

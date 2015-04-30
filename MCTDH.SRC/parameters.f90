@@ -29,7 +29,8 @@ integer :: sparseconfigflag=0    !! Sparse       !! Sparse configuration routine
 integer :: orbcompact=0          !!              !! Compact orbitals for expo prop with spfrestrictflag?  Probably ok.
 real*8 :: denreg=1d-10           !! Denreg=      !! density matrix regularization parameter.
 real*8 :: invtol=1d-12
-integer :: saveflag=1                            !! if zero does not save wave function
+integer :: saveflag=1                            !! if zero does not save wave function at the end
+integer :: save_every=0                          !! if nonzero saves wave function every save_every mean field steps
 integer :: walkwriteflag=0                       !! Turning OFF writing of walks by default
 integer :: spf_flag=1            !!              !! IF ZERO, FREEZE SPFS. (for debugging, or TDCI)
 integer :: avector_flag=1        !!              !! IF ZERO, FREEZE AVECTOR. (for debugging)

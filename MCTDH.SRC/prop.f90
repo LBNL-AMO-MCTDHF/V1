@@ -99,6 +99,11 @@ subroutine prop_loop( starttime)
   jj=0
   do while (flag==0)
      jj=jj+1
+
+     if (save_every.ne.0.and.mod(jj,save_every).eq.0) then
+        call save_vector(yyy%cmfpsivec(:,0),avectoroutfile,spfoutfile)  
+     endif
+
      if ((jj==numpropsteps) .and. (threshflag/=1)) then
         flag=1
      endif
