@@ -1,20 +1,17 @@
 
-  ** LBNL-AMO-MCTDHF VERSION 1 **
+  ** LBNL-AMO-MCTDHF VERSION 1.03 **
 
-For the moment, please watch the commits to stay notified about bug fixes:
+Please watch the commits to stay notified about bugs and bug fixes:
      https://github.com/LBNL-AMO-MCTDHF/V1/commits/master
 
-Possible workflow described below for mac.
-Example subdirectories now all renamed with -clean extensions.
-So you may proceed as described for mac; when you perform a git pull, the -clean
-   subdirectories will be updated, and you can carry the updates to any new
-   subdirectories you have created within EXAMPLES.
-You may also create new subdirectories within the .git working
-   directory "V1" (which you may rename).
-The idea is that you can work entirely within the directory that you clone and to
-   which you pull, not copy the git distribution elsewhere for compilation, for
-   instance, and this is described below for mac.  You may or may not wish to do 
-   this.
+Known bugs appear as issues:
+     https://github.com/LBNL-AMO-MCTDHF/V1/issues
+
+Possible workflow described below for mac.  The general idea is that you can 
+   work entirely within the directory that you clone and to which you pull, not 
+   copy the git distribution elsewhere for compilation, for instance, and one
+   possible workflow is described below for mac.  You may or may not wish to 
+   use it.
 
  ----------------------------------------------------
 
@@ -54,6 +51,7 @@ FIRST:
      git clone https://github.com/LBNL-AMO-MCTDHF/V1 v1.02 )
      mv V1 V1.firsttry     ...if you want
      cd V1.firsttry
+     mkdir EXAMPLES
      mkdir MYRUNS         ...if you want, for instance
  
 THEN perform each step in this V1.firsttry working directory
@@ -74,15 +72,15 @@ THEN perform each step in this V1.firsttry working directory
                           ...or however you do it.  Maybe in your .bashrc
               and
      ./Makeme
-3)   cd EXAMPLES
-              then
-A)   cp -R -p METHANE.abs.0.40186.45pts-clean METHANE.abs.0.40186.45pts
-     cd METHANE.abs.0.40186.45pts
+3A)  cp -R -p EXAMPLES-depot/METHANE.abs.0.40186.45pts EXAMPLES/
+               or
+3B)  cp -R -p EXAMPLES-depot/METHANE.abs.0.40186.75pts EXAMPLES/
+
+4A)  cd EXAMPLES/METHANE.abs.0.40186.45pts
      chmctdhf_sinc Inp=Input.Inp.Relax | tee Outs/Out.relax
      chmctdhf_sinc Inp=Input.Inp.Pulse | tee Outs/Out.pulse
                or
-B)   cp -R -p METHANE.abs.0.40186.75pts-clean METHANE.abs.0.40186.75pts
-     cd METHANE.abs.0.40186.75pts
+4B)  cd EXAMPLES/METHANE.abs.0.40186.75pts
      mpirun -n 15 chmctdhf_sinc Inp=Input.Inp.Relax | tee Outs/Out.relax
      mpirun -n 15 chmctdhf_sinc Inp=Input.Inp.Pulse | tee Outs/Out.pulse
               then
