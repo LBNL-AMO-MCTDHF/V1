@@ -195,7 +195,7 @@ subroutine load_spfs0(inspfs, inspfdims, innspf, dimtypes, infile, numloaded)
      close(999)
   else
      call mympiibcast(readdims,1,3); call mympiibcastone(readnspf,1); call mympiibcastone(readcflag,1)
-     call spf_read0(-66666,innspf,inspfdims,readnspf,readdims,readcflag,dimtypes,inspfs)
+     call spf_read0(-798,innspf,inspfdims,readnspf,readdims,readcflag,dimtypes,inspfs)
   endif
 
   numloaded=min(readnspf,innspf)
@@ -219,8 +219,8 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
   complex*16,allocatable :: cspfs(:,:,:,:)
   real*8,allocatable :: bigoutrealspfs(:,:,:,:)
   complex*16,allocatable :: bigoutcspfs(:,:,:,:)
-  real*8 :: outrealspfs(outdims(1),outdims(2),outdims(3),outnspf)
-  complex*16 :: outcspfs(outdims(1),outdims(2),outdims(3),outnspf)
+  real*8 :: outrealspfs(outdims(1),outdims(2),outdims(3),outnspf)  !!AUTOMATIC
+  complex*16 :: outcspfs(outdims(1),outdims(2),outdims(3),outnspf) !!AUTOMATIC
 
   DATATYPE :: outspfs(outdims(1),outdims(2),outdims(3),outnspf)
   integer :: numloaded,itop(3),ibot(3),otop(3),obot(3),idim
@@ -236,7 +236,7 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
      bigoutdims(3)=outdims(3)*nprocs        !!   change as nprocs is varied; likewise bigoutdims/outdims.
   endif 
 
-  if (myrank.ne.1.and.parorbsplit.eq.3) then
+  if (myrank.ne.1) then
      OFLWR "   --> rank 1 will read. "; CFL
      allocate(realspfs(1,1,1,readnspf))
      allocate(cspfs(1,1,1,readnspf))
@@ -295,7 +295,7 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
      end select
   end do
 
-  if (myrank.eq.1.or.parorbsplit.ne.3) then
+  if (myrank.eq.1) then
      if (readcflag.eq.0) then
         OFLWR "Read real spfs"; CFL
         read(iunit) realspfs(:,:,:, 1:numloaded )
@@ -305,14 +305,9 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
      endif
      close(iunit)
      OFLWR "   ...okay"; CFL     
-
-!! sinc dvr only, half spacing reinterpolation only
-     
   endif
 
-  outspfs(:,:,:,:)=0d0
-
-  if ((parorbsplit.eq.3.and.myrank.eq.1).or.(parorbsplit.ne.3.and.reinterp_orbflag.ne.0)) then
+  if (myrank.eq.1) then
      if (readcflag.eq.0) then
         allocate(bigoutrealspfs(bigoutdims(1),bigoutdims(2),bigoutdims(3),numloaded))
         allocate(bigoutcspfs(1,1,1,numloaded))
@@ -326,46 +321,47 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
   endif
   bigoutrealspfs=0; bigoutcspfs=0
 
-  
-  if (reinterp_orbflag.ne.0.and.(myrank.eq.1.or.parorbsplit.ne.3)) then
-     if (readcflag.eq.0) then
-        call reinterpolate_orbs_real(realspfs(:,:,:,1:numloaded),bigreaddims,bigoutrealspfs,bigoutdims,numloaded)
-     else
-        call reinterpolate_orbs_complex(cspfs(:,:,:,1:numloaded),bigreaddims,bigoutcspfs,bigoutdims,numloaded)
-     endif
-  endif
+!!$ (code above)
+!!$     numloaded = min(outnspf,readnspf)
+!!$
 
-  if (parorbsplit.ne.3) then
+  if (myrank.eq.1) then
      if (reinterp_orbflag.ne.0) then
+
+!! sinc dvr only, half spacing reinterpolation only
+
         if (readcflag.eq.0) then
-           outspfs(:,:,:,1:numloaded)=bigoutrealspfs(:,:,:,:)
+           call reinterpolate_orbs_real(realspfs(:,:,:,1:numloaded),bigreaddims,bigoutrealspfs,bigoutdims,numloaded)
         else
-           outspfs(:,:,:,1:numloaded)=bigoutcspfs(:,:,:,:)
+           call reinterpolate_orbs_complex(cspfs(:,:,:,1:numloaded),bigreaddims,bigoutcspfs,bigoutdims,numloaded)
         endif
      else
         if (readcflag.eq.0) then
-           outspfs(obot(1):otop(1), obot(2):otop(2), obot(3):otop(3), 1:numloaded) =  &
-                realspfs(ibot(1):itop(1), ibot(2):itop(2), ibot(3):itop(3), 1:numloaded )
-        else
-           outspfs(obot(1):otop(1), obot(2):otop(2), obot(3):otop(3), 1:numloaded) =  &
-                cspfs(ibot(1):itop(1), ibot(2):itop(2), ibot(3):itop(3),  1:numloaded )
-        endif
-     endif
-  else
-     if (myrank.eq.1.and.reinterp_orbflag.eq.0) then
-        if (readcflag.eq.0) then
-           bigoutrealspfs(:,:,:,:)=0d0
            bigoutrealspfs(obot(1):otop(1), obot(2):otop(2), obot(3):otop(3), 1:numloaded) =  &
                 realspfs(ibot(1):itop(1), ibot(2):itop(2), ibot(3):itop(3), 1:numloaded )
         else
-           bigoutcspfs(:,:,:,:)=0d0
            bigoutcspfs(obot(1):otop(1), obot(2):otop(2), obot(3):otop(3), 1:numloaded) =  &
                 cspfs(ibot(1):itop(1), ibot(2):itop(2), ibot(3):itop(3),  1:numloaded )
         endif
      endif
+  endif
 
-     qqblocks(:)=outdims(1)*outdims(2)*outdims(3)
+  qqblocks(:)=outdims(1)*outdims(2)*outdims(3)
 
+  outspfs(:,:,:,:)=0d0
+
+  if (parorbsplit.ne.3) then
+     do ispf=1,numloaded
+        if (myrank.eq.1) then
+           if (readcflag.eq.0) then
+              outspfs(:,:,:,ispf)= bigoutrealspfs(:,:,:,ispf)
+           else
+              outspfs(:,:,:,ispf)= bigoutcspfs(:,:,:,ispf)
+           endif
+        endif
+        call mympibcast(outspfs(:,:,:,ispf),1,qqblocks(1))
+     enddo
+  else
      do ispf=1,numloaded
         if (readcflag.eq.0) then
            call myscatterv_real(bigoutrealspfs(:,:,:,ispf),outrealspfs(:,:,:,ispf),qqblocks(:))

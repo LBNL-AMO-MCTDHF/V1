@@ -27,6 +27,7 @@ end subroutine getWorldCommGroup
 
 subroutine mpiorbsets()
   use mpimod
+  use mpi_orbsetmod
   use parameters
   implicit none
   integer :: iproc,iset,jproc,ierr
@@ -59,10 +60,6 @@ subroutine mpiorbsets()
   firstmpiorb=1
   jproc=0  ;   ierr=0     !! avoid warn unused
 #else
-  call MPI_Comm_group(MPI_COMM_WORLD,MPI_GROUP_WORLD,ierr)
-  if (ierr.ne.0) then
-     OFLWR "comm group ERR ", ierr; CFLST
-  endif
   allocate(process_ranks(nspf*2,norbsets)); process_ranks(:,:)=(-1)
   allocate(MPI_GROUP_ORB(norbsets), MPI_COMM_ORB(norbsets)); MPI_GROUP_ORB(:)=0; MPI_COMM_ORB(:)=0
   iproc=0
@@ -92,6 +89,11 @@ subroutine mpiorbsets()
   endif
   deallocate(process_ranks,procsperset)
 #endif
+
+  mpi_orbset_init=1
+  mpi_orbset_init=1
+  mpi_orbset_init=1
+
 end subroutine mpiorbsets
 
 
@@ -99,10 +101,16 @@ end subroutine mpiorbsets
 
 subroutine mpiorbgather(orbvector,insize)    !! insize=spfsize except debug
   use mpimod
+  use mpi_orbsetmod
+  use fileptrmod
   use parameters
   implicit none
   integer :: ierr,insize
   DATATYPE :: orbvector(insize,nspf*2)
+  if (mpi_orbset_init.ne.1) then
+     OFLWR "Programmer fail, mpiorbgather called but mpiorbsets() appears "
+     WRFL "   not to have been called."; CFLST
+  endif
   if (nprocs.eq.1) then
      return
   endif
@@ -126,7 +134,7 @@ end subroutine mpiorbgather
 
 subroutine mpistart()
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: ierr,  iilen !!,provided,required
   character(len=40) :: format
@@ -149,6 +157,10 @@ subroutine mpistart()
   enddo
   call MPI_INIT(ierr)
   if (ierr/=0) then; print *,  "MPI ERR 1";  stop; 
+  endif
+  call MPI_Comm_group(MPI_COMM_WORLD,MPI_GROUP_WORLD,ierr)
+  if (ierr.ne.0) then
+     OFLWR "world comm group ERR ", ierr; CFLST
   endif
   call MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierr)   
   if (ierr/=0) then;   print *,  "MPI ERR 2";   stop; 
@@ -191,7 +203,7 @@ end subroutine mpistart
 
 subroutine mpibarrier()
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: ierr
   call system_clock(mpiatime)
@@ -207,7 +219,7 @@ end subroutine mpibarrier
 
 subroutine mpistop()
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: ierr
   call mpi_finalize(ierr)
@@ -221,7 +233,7 @@ end subroutine mpistop
 
 subroutine mympireduce(input, isize)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: ierr, isize
   DATATYPE,intent(inout) :: input(isize)
@@ -239,7 +251,7 @@ end subroutine mympireduce
 
 subroutine mympireduceto(input, output, isize, dest)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: ierr, isize ,dest,idest
   DATATYPE,intent(in) :: input(isize)
@@ -262,7 +274,7 @@ end subroutine mympireduceto
 
 subroutine mympirealreduceone(input)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   real*8 :: input,output
   integer :: ierr,isize=1
@@ -279,7 +291,7 @@ end subroutine mympirealreduceone
 
 subroutine mympiireduceone(input)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: input,output,ierr,isize=1
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
@@ -295,7 +307,7 @@ end subroutine mympiireduceone
 
 subroutine mympiireduce(input, isize)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: ierr, isize
   integer :: input(isize), output(isize) 
@@ -312,7 +324,7 @@ end subroutine mympiireduce
 
 subroutine mympireduceone(input)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   DATATYPE :: input,output
   integer :: ierr 
@@ -328,24 +340,21 @@ end subroutine mympireduceone
 
 
 subroutine mympibcast(input, source, isize)
-  use mpimod
-  use parameters
   implicit none
-  integer :: ierr, isize, source, isource
+  integer :: isize, source
   DATATYPE :: input(isize)
-  isource=source-1
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-  call mpi_bcast(input,isize,MPIDATATYPE,isource,MPI_COMM_WORLD,ierr)
-  if (ierr/=0) then
-     OFLWR "ERR mympibcast"; CFLST
-  endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+#ifdef REALGO
+  call mympirealbcast(input, source, isize)
+#else
+  call mympicomplexbcast(input, source, isize)
+#endif
+
 end subroutine mympibcast
 
 
 subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: ierr, isize, dest, idest, source, isource,tag
   DATATYPE :: sendbuf(isize),recvbuf(isize)
@@ -364,7 +373,7 @@ end subroutine mympisendrecv
 
 subroutine mympisend(input, dest, tag, isize)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: ierr, isize, dest, idest,tag
   DATATYPE :: input(isize)
@@ -381,7 +390,7 @@ end subroutine mympisend
 
 subroutine mympirecv(input, source, tag, isize)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: ierr, isize, source, isource,tag
   DATATYPE :: input(isize)
@@ -397,7 +406,7 @@ end subroutine mympirecv
 
 subroutine mympirealbcast(input, source, isize)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   real*8 :: input(isize)
   integer :: ierr, isize, source, isource
@@ -405,15 +414,31 @@ subroutine mympirealbcast(input, source, isize)
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_bcast(input,isize,MPI_DOUBLE_PRECISION,isource,MPI_COMM_WORLD,ierr)
   if (ierr/=0) then
-     OFLWR "ERR mympibcast"; CFLST
+     OFLWR "ERR mympirealbcast"; CFLST
   endif
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympirealbcast
 
 
+subroutine mympicomplexbcast(input, source, isize)
+  use mpimod
+  use fileptrmod
+  implicit none
+  complex*16 :: input(isize)
+  integer :: ierr, isize, source, isource
+  isource=source-1
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call mpi_bcast(input,isize,MPI_DOUBLE_COMPLEX,isource,MPI_COMM_WORLD,ierr)
+  if (ierr/=0) then
+     OFLWR "ERR mympicomplexbcast"; CFLST
+  endif
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+end subroutine mympicomplexbcast
+
+
 subroutine mympiibcast(input, source, isize)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: ierr, isize, source, isource, input(isize)
   isource=source-1
@@ -428,7 +453,7 @@ end subroutine mympiibcast
 
 subroutine mympirealbcastone(input, source)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   real*8 :: input
   integer :: ierr, source, isource
@@ -444,7 +469,7 @@ end subroutine mympirealbcastone
 
 subroutine mympiibcastone(input, source)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: ierr,  source, isource, input
   isource=source-1
@@ -459,7 +484,7 @@ end subroutine mympiibcastone
 
 subroutine mympilogbcast(input, source, isize)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   logical :: input(isize)
   integer :: ierr, isize, source, isource
@@ -475,7 +500,7 @@ end subroutine mympilogbcast
 
 subroutine mympiimax(input)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: ierr,input, output
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
@@ -494,7 +519,7 @@ end subroutine mympiimax
 
 subroutine mympiimin(input)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: ierr,input, output
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
@@ -513,7 +538,7 @@ end subroutine mympiimin
 
 subroutine mympimax(input)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: ierr
   real*8 :: input, output
@@ -533,7 +558,7 @@ end subroutine mympimax
 
 subroutine mympimin(input)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: ierr
   real*8 :: input, output
@@ -845,6 +870,14 @@ subroutine mympirealbcast(input, source, isize)
   source=source;  input(1)=input(1)
 end subroutine mympirealbcast
 
+subroutine mympicomplexbcast(input, source, isize)
+  implicit none
+  integer :: source,isize
+  complex*16 :: input(isize)
+  return
+  source=source;  input(1)=input(1)
+end subroutine mympicomplexbcast
+
 subroutine mympiibcast(input, source, isize)
   implicit none
   integer :: source,isize
@@ -896,7 +929,7 @@ end subroutine mpiorbgather
 
 subroutine mympireduceto(input, output, isize, dest)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: isize ,dest
   DATATYPE :: input(isize), output(isize)
@@ -909,7 +942,7 @@ end subroutine mympireduceto
 
 subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer :: isize, dest, source,tag
   DATATYPE :: sendbuf(isize),recvbuf(isize)
@@ -924,7 +957,7 @@ end subroutine mympisendrecv
 
 subroutine mpistart
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer ::  iilen
   character(len=40) :: format
@@ -982,7 +1015,7 @@ end function iilen
 
 subroutine openfile()
   use mpimod
-  use parameters  
+  use fileptrmod  
   implicit none
   if (stdoutflag==0) then
      open(mpifileptr,file=mpioutfile,status="old", position="append")
@@ -992,7 +1025,7 @@ end subroutine openfile
 
 subroutine closefile()
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   if (stdoutflag==0)  then
      close(mpifileptr)
@@ -1002,7 +1035,7 @@ end subroutine closefile
 
 subroutine mpiallgather(inout,totsize,blocksizes,notusedint)
   use mpimod
-  use parameters
+  use fileptrmod
   implicit none
   integer, intent(in) :: totsize,blocksizes(nprocs)
   DATATYPE :: inout(totsize)
