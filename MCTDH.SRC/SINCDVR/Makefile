@@ -2,7 +2,7 @@
 
 include ../Makefile.header
 
-HTWO= init_sinc_new.o    sinc_extraproject.o  sinc_params.o sincproject.o SineDVR.o coreproject.o readit.o tooth.o toeplitz_subs.o ftcore.o cooleytukey1d_mpi.o cooleytukey3d_mpi.o cooleytukey_shared.o
+HTWO= init_sinc_new.o    sinc_extraproject.o  sinc_params.o sincproject.o SineDVR.o coreproject.o readit.o tooth.o toeplitz_subs.o ftcore.o  cooleytukey_shared.o cooleytukey_mpi.o
 
 DEPEND= ../Definitions.INC  ../Definitions.ALL ../Makefile.header
 
@@ -27,11 +27,8 @@ ftcore.o: $(DEPEND) ftcore.F90
 cooleytukey_shared.o: $(DEPEND) cooleytukey_shared.F90
 	$(F90) $(FFLAGS) $(MPIFLAG)  -c cooleytukey_shared.F90 -I$(MYINCLUDE)
 
-cooleytukey3d_mpi.o: $(DEPEND) cooleytukey3d_mpi.F90 cooleytukey_shared.o
-	$(F90) $(FFLAGS)  -c cooleytukey3d_mpi.F90 -I$(MYINCLUDE)
-
-cooleytukey1d_mpi.o: $(DEPEND) cooleytukey1d_mpi.F90 cooleytukey_shared.o
-	$(F90) $(FFLAGS)  -c cooleytukey1d_mpi.F90 -I$(MYINCLUDE)
+cooleytukey_mpi.o: $(DEPEND) cooleytukey_mpi.F90 cooleytukey_shared.o
+	$(F90) $(FFLAGS)  -c cooleytukey_mpi.F90 -I$(MYINCLUDE)
 
 readit.o: $(DEPEND) sinc_params.o sincproject.o tooth.o readit.F90
 	$(F90) $(FFLAGS)  -c readit.F90 

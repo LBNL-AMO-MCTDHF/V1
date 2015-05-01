@@ -381,16 +381,19 @@ recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
 
   inlocal(:,:)=in(mystart:myend,:)
 
+
   select case(direction)
   case(-1)
      if (placeopt.ne.1) then
-        call cooleytukey3d_outofplace_backward_mpi(dim,dim,inlocal,outlocal,dim/nprocs,primefactors,proclist,nprocs,myrank,howmany)
+        call ctdim(3)
+        call cooleytukey_outofplace_backward_mpi(inlocal,outlocal,dim,dim,dim/nprocs,primefactors,proclist,nprocs,myrank,howmany)
      else
         call myzfft3d_par_backward(inlocal,outlocal,dim,nulltimes,howmany)
      endif
   case(1)
      if (placeopt.ne.1) then
-        call cooleytukey3d_outofplace_mpi(dim,dim,inlocal,outlocal,dim/nprocs,primefactors,proclist,nprocs,myrank,howmany)
+        call ctdim(3)
+        call cooleytukey_outofplace_mpi(inlocal,outlocal,dim,dim,dim/nprocs,primefactors,proclist,nprocs,myrank,howmany)
      else
         call myzfft3d_par_forward(inlocal,outlocal,dim,nulltimes,howmany)
      endif

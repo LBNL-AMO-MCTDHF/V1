@@ -13,11 +13,31 @@ module ct_mpimod
   integer :: CT_GROUP_WORLD = -1
 end module ct_mpimod
 
+module ct_options
+  integer :: ct_dimensionality=3
+  integer :: ct_paropt=1
+end module ct_options
 
-subroutine ctset()
+
+subroutine ctdim(in_ctdim)
   use ct_fileptrmod
   use ct_mpimod
+  use ct_options
   implicit none
+  integer, intent(in) :: in_ctdim
+  if (in_ctdim.ne.1.and.in_ctdim.ne.3) then 
+     write(mpifileptr,*) "CTDIM NOT SUPPORTED", in_ctdim; call mpistop()
+  endif
+  ct_dimensionality=in_ctdim
+end subroutine ctdim
+
+subroutine ctset(in_ctparopt)
+  use ct_fileptrmod
+  use ct_mpimod
+  use ct_options
+  implicit none
+  integer, intent(in) :: in_ctparopt
+  ct_paropt=in_ctparopt
   call getmyranknprocs(myrank,nprocs)
   call getworldcommgroup(CT_COMM_WORLD,CT_GROUP_WORLD)
   if (myrank.eq.1) then
@@ -56,6 +76,8 @@ end subroutine twiddlemult_mpi
 
 
 subroutine myzfft1d_slowindex_mpi(in,out,localnumprocs,ctrank,proclist,totsize)
+  use ct_fileptrmod
+  use ct_options
   implicit none
   integer, intent(in) :: totsize,localnumprocs,ctrank,proclist(localnumprocs)
   complex*16, intent(in) :: in(totsize)
@@ -67,7 +89,14 @@ subroutine myzfft1d_slowindex_mpi(in,out,localnumprocs,ctrank,proclist,totsize)
   do ii=1,localnumprocs
      fouriermatrix(:,ii)=twiddle(:)**(ii-1)
   enddo
+  select case (ct_paropt)
+  case(0)
+  call simple_circ(in,out,fouriermatrix,totsize,ctrank,localnumprocs,proclist)
+  case(1)
   call simple_summa(in,out,fouriermatrix,totsize,ctrank,localnumprocs,proclist)
+  case default
+     write(mpifileptr,*) "ct_paropt not recognized",ct_paropt; call mpistop()
+  end select
 
 end subroutine myzfft1d_slowindex_mpi
 

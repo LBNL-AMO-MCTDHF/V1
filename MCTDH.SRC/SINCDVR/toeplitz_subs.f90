@@ -359,7 +359,7 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,t
   complex*16 :: ffmat(2*totdim,2*totdim,2*blocksize), &  
        ffvec(2*totdim,2*totdim,2*blocksize,howmany),  ffprod(2*totdim,2*totdim,2*blocksize,howmany)
 
-  call getmyranknprocs(myrank,nprocs)
+  call getmyranknprocs(myrank,nprocs)  
   allocate(proclist(nprocs))
   do ii=1,nprocs
      proclist(ii)=ii
@@ -372,8 +372,9 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,t
      if (2*totdim/nprocs.ne.2*blocksize) then
         print *, "totdim err", totdim, blocksize*nprocs, nprocs; call mpistop()
      endif
-     call cooleytukey3d_outofplace_mpi(2*totdim,2*totdim,multvector(:,:,:,:),ffvec(:,:,:,:),2*blocksize,primefactors,proclist,nprocs,myrank,howmany)
-     call cooleytukey3d_outofplace_mpi(2*totdim,2*totdim,bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*blocksize,primefactors,proclist,nprocs,myrank,1)
+     call ctdim(3)
+     call cooleytukey_outofplace_mpi(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,2*totdim,2*blocksize,primefactors,proclist,nprocs,myrank,howmany)
+     call cooleytukey_outofplace_mpi(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,2*totdim,2*blocksize,primefactors,proclist,nprocs,myrank,1)
   else
      call myzfft3d_par_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,times,howmany)
      call myzfft3d_par_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,times,1)
@@ -395,7 +396,8 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,t
      if (2*totdim/nprocs.ne.2*blocksize) then
         print *, "totdim err", totdim, blocksize*nprocs, nprocs; call mpistop()
      endif
-     call cooleytukey3d_outofplace_backward_mpi(2*totdim,2*totdim,ffprod(:,:,:,:),ffback(:,:,:,:),2*blocksize,primefactors,proclist,nprocs,myrank,howmany)
+     call ctdim(3)
+     call cooleytukey_outofplace_backward_mpi(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,2*totdim,2*blocksize,primefactors,proclist,nprocs,myrank,howmany)
   else
      call myzfft3d_par_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,times,howmany)
   endif

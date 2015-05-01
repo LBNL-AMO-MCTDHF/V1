@@ -2,11 +2,6 @@
 
 #define MAXFACTORS 7
 
-#define BLOCKVARS blocksize1,blocksize2
-#define BLOCKPROD blocksize1*blocksize2
-#define ONED_FLAG
-#define THRExxED_FLAG
-
 !!$
 !!$Apache License
 !!$                           Version 2.0, January 2004
@@ -204,30 +199,31 @@
 
 !! INVERSE OF cooleytukey_outofplace_mpi except for division
 
-subroutine cooleytukey1d_outofplace_backward_mpi(BLOCKVARS,intranspose,out,dim1,pf,proclist,localnprocs,localrank,howmany)
+subroutine cooleytukey_outofplace_backward_mpi(intranspose,out,dim2,dim3,dim1,pf,proclist,localnprocs,localrank,howmany)
   implicit none
-  integer, intent(in) :: BLOCKVARS,dim1,localnprocs,localrank,howmany,pf(MAXFACTORS),proclist(localnprocs)
-  complex*16, intent(in) :: intranspose(BLOCKPROD,dim1,howmany)
-  complex*16, intent(out) :: out(BLOCKPROD,dim1,howmany)
-  complex*16 ::  intransconjg(BLOCKPROD,dim1,howmany),  outconjg(BLOCKPROD,dim1,howmany)
+  integer, intent(in) :: dim2,dim3,dim1,localnprocs,localrank,howmany,pf(MAXFACTORS),proclist(localnprocs)
+  complex*16, intent(in) :: intranspose(dim2,dim3,dim1,howmany)
+  complex*16, intent(out) :: out(dim2,dim3,dim1,howmany)
+  complex*16 ::  intransconjg(dim2,dim3,dim1,howmany),  outconjg(dim2,dim3,dim1,howmany)
 
-  intransconjg(:,:,:)=CONJG(intranspose(:,:,:))
-  call cooleytukey1d_outofplaceinput_mpi(BLOCKVARS,intransconjg,outconjg,dim1,pf,proclist,localnprocs,localrank,howmany)
-  out(:,:,:)=CONJG(outconjg(:,:,:)) !!/dim1/localnprocs
+  intransconjg(:,:,:,:)=CONJG(intranspose(:,:,:,:))
+  call cooleytukey_outofplaceinput_mpi(intransconjg,outconjg,dim2,dim3,dim1,pf,proclist,localnprocs,localrank,howmany)
+  out(:,:,:,:)=CONJG(outconjg(:,:,:,:)) !!/dim1/localnprocs
 
-end subroutine cooleytukey1d_outofplace_backward_mpi
+end subroutine cooleytukey_outofplace_backward_mpi
 
 
 
 !! fourier transform with OUT-OF-PLACE OUTPUT. 
 
-recursive subroutine cooleytukey1d_outofplace_mpi(BLOCKVARS,in,outtrans,dim1,pf,proclist,localnprocs,localrank,howmany)
+recursive subroutine cooleytukey_outofplace_mpi(in,outtrans,dim2,dim3,dim1,pf,proclist,localnprocs,localrank,howmany)
   use ct_fileptrmod
+  use ct_options
   implicit none
-  integer, intent(in) :: BLOCKVARS,dim1,localnprocs,localrank,howmany,pf(MAXFACTORS),proclist(localnprocs/pf(1),pf(1))
-  complex*16, intent(in) :: in(BLOCKPROD,dim1,howmany)
-  complex*16, intent(out) :: outtrans(BLOCKPROD,dim1,howmany)
-  complex*16 ::  tempout(BLOCKPROD,dim1,howmany),  outtemp(BLOCKPROD,dim1,howmany)
+  integer, intent(in) :: dim2,dim3,dim1,localnprocs,localrank,howmany,pf(MAXFACTORS),proclist(localnprocs/pf(1),pf(1))
+  complex*16, intent(in) :: in(dim2,dim3,dim1,howmany)
+  complex*16, intent(out) :: outtrans(dim2,dim3,dim1,howmany)
+  complex*16 ::  tempout(dim2,dim3,dim1,howmany),  outtemp(dim2,dim3,dim1,howmany)
   integer :: depth, newrank, newpf(MAXFACTORS),newproclist(localnprocs/pf(1)),ctrank,ctset(pf(1))
 
   if ((localnprocs/pf(1))*pf(1).ne.localnprocs) then
@@ -247,35 +243,35 @@ recursive subroutine cooleytukey1d_outofplace_mpi(BLOCKVARS,in,outtrans,dim1,pf,
      write(*,*) "RANK FAIL",proclist(newrank,ctrank),localrank,newrank,depth,ctrank,pf(1); call mpistop()
   endif
 
-  call myzfft1d_slowindex_mpi(in,tempout,pf(1),ctrank,ctset,dim1*howmany*BLOCKPROD)
+  call myzfft1d_slowindex_mpi(in,tempout,pf(1),ctrank,ctset,dim1*dim2*dim3*howmany)
 
-  call twiddlemult_mpi(BLOCKPROD,tempout,outtemp,dim1,depth,newrank,pf(1),ctrank,howmany)
+  call twiddlemult_mpi(dim2*dim3,tempout,outtemp,dim1,depth,newrank,pf(1),ctrank,howmany)
   if (depth.eq.1) then
-#ifdef ONED_FLAG
-     call myzfft1d_slowindex_local(outtemp,outtrans,BLOCKPROD,dim1,howmany)
-#else
-#ifdef THREED_FLAG
-     call myzfft3d(outtemp,outtrans,BLOCKVARS,dim1,howmany)
-#else
-     NOT SUPPORTED.
-#endif
-#endif
+     select case(ct_dimensionality)
+     case(1)
+        call myzfft1d_slowindex_local(outtemp,outtrans,dim2*dim3,dim1,howmany)
+     case(3)
+        call myzfft3d(outtemp,outtrans,dim2,dim3,dim1,howmany)
+     case default
+        write(mpifileptr,*) "NOT SUPPORTED ct_dimensionality",ct_dimensionality; call mpistop()
+     end select
   else
      newpf(1:MAXFACTORS-1)=pf(2:MAXFACTORS); newpf(MAXFACTORS)=1
-     call cooleytukey1d_outofplace_mpi(BLOCKVARS,outtemp,outtrans,dim1,newpf,newproclist,depth,newrank,howmany)
+     call cooleytukey_outofplace_mpi(outtemp,outtrans,dim2,dim3,dim1,newpf,newproclist,depth,newrank,howmany)
   endif
 
-end subroutine cooleytukey1d_outofplace_mpi
+end subroutine cooleytukey_outofplace_mpi
 
 
 
-recursive subroutine cooleytukey1d_outofplaceinput_mpi(BLOCKVARS,intranspose,out,dim1,pf,proclist,localnprocs,localrank,howmany)
+recursive subroutine cooleytukey_outofplaceinput_mpi(intranspose,out,dim2,dim3,dim1,pf,proclist,localnprocs,localrank,howmany)
   use ct_fileptrmod
+  use ct_options
   implicit none
-  integer, intent(in) :: BLOCKVARS,dim1,localnprocs,localrank,howmany,pf(MAXFACTORS),proclist(localnprocs/pf(1),pf(1))
-  complex*16, intent(in) :: intranspose(BLOCKPROD,dim1,howmany)
-  complex*16, intent(out) :: out(BLOCKPROD,dim1,howmany)
-  complex*16 ::   temptrans(BLOCKPROD,dim1,howmany),outtrans(BLOCKPROD,dim1,howmany)
+  integer, intent(in) :: dim2,dim3,dim1,localnprocs,localrank,howmany,pf(MAXFACTORS),proclist(localnprocs/pf(1),pf(1))
+  complex*16, intent(in) :: intranspose(dim2,dim3,dim1,howmany)
+  complex*16, intent(out) :: out(dim2,dim3,dim1,howmany)
+  complex*16 ::   temptrans(dim2,dim3,dim1,howmany),outtrans(dim2,dim3,dim1,howmany)
   integer :: depth, newrank, newpf(MAXFACTORS),newproclist(localnprocs/pf(1)),ctrank,ctset(pf(1))
 
   if ((localnprocs/pf(1))*pf(1).ne.localnprocs) then
@@ -296,23 +292,22 @@ recursive subroutine cooleytukey1d_outofplaceinput_mpi(BLOCKVARS,intranspose,out
   endif
 
   if (depth.eq.1) then
-#ifdef ONED_FLAG
-     call myzfft1d_slowindex_local(intranspose,temptrans,BLOCKPROD,dim1,howmany)
-#else
-#ifdef THREED_FLAG
-     call myzfft3d(intranspose,temptrans,BLOCKVARS,dim1,howmany)
-#else
-     NOT SUPPORTED.
-#endif
-#endif
+     select case(ct_dimensionality)
+     case(1)
+        call myzfft1d_slowindex_local(intranspose,temptrans,dim2*dim3,dim1,howmany)
+     case(3)
+        call myzfft3d(intranspose,temptrans,dim2,dim3,dim1,howmany)
+     case default
+        write(mpifileptr,*) "NOT SUPPORTED ct_dimensionality",ct_dimensionality; call mpistop()
+     end select
   else
      newpf(1:MAXFACTORS-1)=pf(2:MAXFACTORS); newpf(MAXFACTORS)=1
-     call cooleytukey1d_outofplaceinput_mpi(BLOCKVARS,intranspose,temptrans,dim1,newpf,newproclist,depth,newrank,howmany)
+     call cooleytukey_outofplaceinput_mpi(intranspose,temptrans,dim2,dim3,dim1,newpf,newproclist,depth,newrank,howmany)
   endif
 
-  call twiddlemult_mpi(BLOCKPROD,temptrans,outtrans,dim1,depth,newrank,pf(1),ctrank,howmany)
-  call myzfft1d_slowindex_mpi(outtrans,out,pf(1),ctrank,ctset,dim1*howmany*BLOCKPROD)
+  call twiddlemult_mpi(dim2*dim3,temptrans,outtrans,dim1,depth,newrank,pf(1),ctrank,howmany)
+  call myzfft1d_slowindex_mpi(outtrans,out,pf(1),ctrank,ctset,dim1*dim2*dim3*howmany)
 
-end subroutine cooleytukey1d_outofplaceinput_mpi
+end subroutine cooleytukey_outofplaceinput_mpi
 
 
