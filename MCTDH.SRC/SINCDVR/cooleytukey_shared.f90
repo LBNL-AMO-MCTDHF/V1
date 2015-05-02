@@ -410,21 +410,6 @@ subroutine simple_summa(in, out,mat,howmany,rdd)
 end subroutine simple_summa
 
 
-subroutine myzfft1d_slowindex_local(in,out,dim1,dim2,howmany)
-  implicit none
-  integer, intent(in) :: dim1,dim2,howmany
-  complex*16, intent(in) :: in(dim1,dim2,howmany)
-  complex*16, intent(out) :: out(dim1,dim2,howmany)
-  complex*16 :: intrans(dim2,dim1,howmany),outtrans(dim2,dim1,howmany)
-  integer :: ii
-  do ii=1,howmany
-     intrans(:,:,ii)=TRANSPOSE(in(:,:,ii))
-  enddo
-  call myzfft1d(intrans,outtrans,dim2,dim1*howmany)
-  do ii=1,howmany
-     out(:,:,ii)=TRANSPOSE(outtrans(:,:,ii))
-  enddo
-end subroutine myzfft1d_slowindex_local
   
 
 subroutine getprimefactor(dim,myfactor)
