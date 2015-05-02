@@ -1,10 +1,10 @@
-Sat Apr 25 23:56:12 PDT 2015
-Sat Apr 25 23:56:12 PDT 2015
-Sat Apr 25 23:56:12 PDT 2015
-Sat Apr 25 23:56:12 PDT 2015
-Sat Apr 25 23:56:12 PDT 2015
-Sat Apr 25 23:56:12 PDT 2015
-Sat Apr 25 23:56:12 PDT 2015
+Fri May  1 20:28:47 PDT 2015
+Fri May  1 20:28:47 PDT 2015
+Fri May  1 20:28:47 PDT 2015
+Fri May  1 20:28:47 PDT 2015
+Fri May  1 20:28:47 PDT 2015
+Fri May  1 20:28:47 PDT 2015
+Fri May  1 20:28:47 PDT 2015
   ****************************************************************************
   **********************  BEGIN LBNL-AMO-MCTDHF ******************************
   ****************************************************************************
@@ -58,7 +58,8 @@ Sat Apr 25 23:56:12 PDT 2015
  orbparflag F
  zke_paropt           1
  fft_mpi_inplaceflag           1
- fft_batchopt           1
+ fft_batchdim           1
+ fft_circbatchdim           0
    -----  
  NBOX            1           1           1
  totpoints        9261
@@ -205,8 +206,7 @@ Sat Apr 25 23:56:12 PDT 2015
  
     ....Called init_project.
  Not enough avectors loaded! will diagonalize.
-        Making a 1D FFT plan            1          42        1260
-        Making a 1D FFT plan            2          42         252
+        Making a 1D FFT plan            1          42         252
  FIRST ALPHA  (-1.07105407710381,-1.474514954580286E-017)
  FIRST ERR 0.4E+00
  MAX ERROR :   0.388334461284526       1.000000000000000E-009
@@ -383,8 +383,11 @@ T=         11.82875  Energy:  -0.2808614823E+01 -0.8718100547E-17    Norm:   0.1
          -2.808614823248     -0.000000000000     -0.000000000643      0.000000000000
     ***   
  
-Sat Apr 25 23:58:13 PDT 2015
-Sat Apr 25 23:58:13 PDT 2015
-Sat Apr 25 23:58:13 PDT 2015
+Fri May  1 20:30:57 PDT 2015
+Fri May  1 20:30:57 PDT 2015
+Fri May  1 20:30:57 PDT 2015
+Fri May  1 20:30:57 PDT 2015
+Fri May  1 20:30:57 PDT 2015
  rank 1 SAVED vectors!
+Fri May  1 20:30:57 PDT 2015
  MCTDHF STOP!
