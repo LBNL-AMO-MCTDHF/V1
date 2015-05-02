@@ -977,147 +977,89 @@ subroutine get_one_dipole(out,idim,whichbox,nnn,mmm)
 end subroutine get_one_dipole
 
 
-subroutine mult_ke(in, out,howmany,timingdir,notiming)
-  use myparams
-  implicit none
-  integer :: howmany,notiming
-  DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
-  character :: timingdir*(*)
-  if (toepflag.gt.1) then
-     call mult_ke_toep(in,out,howmany)     !! FASTER NOW MAYBE FOR BIG GRIDS?
-  else
-     call mult_ke_old(in,out,howmany,timingdir,notiming)
-  endif
-end subroutine mult_ke
 
-
-subroutine mult_ke_toep(in, out,howmany)
+subroutine mult_toep_z(in, out,option, howmany)
   use myparams
   use myprojectmod
   implicit none
-  integer :: howmany
-  DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
-#ifdef MPIFLAG
-  integer :: qblocks(nprocs),ibox,jproc,nulltimes(10)
-#endif
-  DATATYPE, allocatable :: bigin(:,:,:,:,:,:,:),bigout(:,:,:,:,:,:,:),mywork(:,:)
-  DATATYPE, allocatable, save :: bigke(:,:,:), hugeke(:,:,:)
-  integer, save :: allocated=0
-
-  OFLWR "Dont use toepflag=2.  Is stupid as currently done."; CFLST
+  integer,intent(in) :: howmany,option
+  DATATYPE,intent(in) :: in(totpoints,howmany)
+  DATATYPE, intent(out) :: out(totpoints,howmany)
 
 #ifndef MPIFLAG
-  if (orbparflag) then
-     OFLWR "Ack, with orbparflag need MPIFLAG set during compilation."; CFLST
+  OFLWR "ACK, don't use mult_ke_toep without MPIFLAG"; CFLST
+  out(:,:)=in(:,:) * 42 * 0 * option  !! avoid warn unused
+#else
+
+  integer :: ibox,jproc,nulltimes(10)
+  DATATYPE :: littlecirc(0-gridpoints(3):gridpoints(3)-1)
+  DATATYPE, allocatable :: bigin(:,:,:,:,:,:,:),bigout(:,:,:,:,:,:,:),mywork(:,:)
+  if (.not.orbparflag) then
+     OFLWR "Ack, don't use mult_ke_toep without orbparflag"; CFLST
   endif
-#endif
+
+!!! ?????
   if (mod((nprocs-1)*numpoints(3),2).eq.1) then
-     OFLWR "WOOOOOD"; CFLST
+     OFLWR "ERROR SQUASH 55"; CFLST
   endif
 
   allocate(bigin(gridsize(1),2,gridsize(2),2,gridsize(3),2,howmany),&
        bigout(gridsize(1),2,gridsize(2),2,gridsize(3),2,howmany),mywork(totpoints,howmany))
   bigin(:,:,:,:,:,:,:)=0d0
-
-#ifdef MPIFLAG
-  if (orbparflag) then
-     do ibox=1,nbox(3)  !! processor sending
-        jproc=(ibox+1)/2
-        if (ibox.eq.myrank.and.jproc.eq.myrank) then
-           bigin(:,1,:,1,:,mod(ibox-1,2)+1,:)=RESHAPE(in,(/numpoints(1),numpoints(2),numpoints(3),howmany/))
-        else if (ibox.eq.myrank) then
-           call mympisend(in,jproc,999,totpoints*howmany)
-        else if (jproc.eq.myrank) then
-           call mympirecv(mywork,ibox,999,totpoints*howmany)
-           bigin(:,1,:,1,:,mod(ibox-1,2)+1,:)=RESHAPE(mywork(:,:),(/numpoints(1),numpoints(2),numpoints(3),howmany/))
-        endif
-     enddo
-  else
-#endif
-  bigin(:,1,:,1,:,1,:)=RESHAPE(in,(/numpoints(1),numpoints(2),numpoints(3),howmany/))
-#ifdef MPIFLAG
-  endif
-#endif
-
-  if (allocated.eq.0) then
-     allocated=1
-     allocate(bigke(0-gridsize(1):gridsize(1)-1,0-gridsize(1):gridsize(1)-1,0-gridsize(1):gridsize(1)-1))
-#ifdef MPIFLAG
-     if (myrank.eq.1.or.(.not.orbparflag)) then
-#endif
-        allocate(hugeke(0-gridpoints(1):gridpoints(1)-1,0-gridpoints(1):gridpoints(1)-1,0-gridpoints(1):gridpoints(1)-1))
-        hugeke(:,:,:)=0d0
-        hugeke(1-gridsize(1):gridsize(1)-1,0,0)=hugeke(1-gridsize(1):gridsize(1)-1,0,0)+&
-             kevect(1)%cmat(1-gridsize(1):gridsize(1)-1)
-        hugeke(0,1-gridsize(2):gridsize(2)-1,0)=hugeke(0,1-gridsize(2):gridsize(2)-1,0)+&
-             kevect(2)%cmat(1-gridsize(2):gridsize(2)-1)
-        hugeke(0,0,1-gridsize(3):gridsize(3)-1)=hugeke(0,0,1-gridsize(3):gridsize(3)-1)+&
-             kevect(3)%cmat(1-gridsize(3):gridsize(3)-1)
-#ifdef MPIFLAG
-     else
-        allocate(hugeke(1,1,1))
+  
+  do ibox=1,nbox(3)  !! processor sending
+     jproc=(ibox+1)/2
+     if (ibox.eq.myrank.and.jproc.eq.myrank) then
+        bigin(:,1,:,1,:,mod(ibox-1,2)+1,:)=RESHAPE(in,(/numpoints(1),numpoints(2),numpoints(3),howmany/))
+     else if (ibox.eq.myrank) then
+        call mympisend(in,jproc,999,totpoints*howmany)
+     else if (jproc.eq.myrank) then
+        call mympirecv(mywork,ibox,999,totpoints*howmany)
+        bigin(:,1,:,1,:,mod(ibox-1,2)+1,:)=RESHAPE(mywork(:,:),(/numpoints(1),numpoints(2),numpoints(3),howmany/))
      endif
-     if (orbparflag) then
+  enddo
 
-        qblocks(:)=8*totpoints
+  littlecirc(:) = 0
+  select case(option)
+  case(1)  !! KE
+     littlecirc(1-gridpoints(3):gridpoints(3)-1) = kevect(3)%rmat(1-gridpoints(3):gridpoints(3)-1)
+  case(2)  !! F.D.
+     littlecirc(1-gridpoints(3):gridpoints(3)-1) = fdvect(3)%rmat(1-gridpoints(3):gridpoints(3)-1)
+  end select
 
 #ifdef REALGO
-        call myscatterv_real(hugeke,bigke,qblocks(:))
+  OFLWR "PROGRAM CIRC1D_SUB_REAL"; CFLST
+  nulltimes(:)=0
+!!$  call circ1d_sub_real_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany)
 #else
-        call myscatterv_complex(hugeke,bigke,qblocks(:))
+  call circ1d_sub_mpi(littlecirc,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany)
 #endif
-     else
-#endif
-        bigke(:,:,:)=hugeke(:,:,:)
-#ifdef MPIFLAG
+  
+  do ibox=1,nbox(3)  !! processor receiving
+     jproc=(ibox+nbox(3)+1)/2
+     if (ibox.eq.myrank.and.jproc.eq.myrank) then
+        out(:,:)=RESHAPE(bigout(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:),(/totpoints,howmany/))
+     else if (ibox.eq.myrank) then
+        call mympirecv(out,jproc,999,totpoints*howmany)
+     else if (jproc.eq.myrank) then
+        mywork(:,:)=RESHAPE(bigout(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:),(/totpoints,howmany/))
+        call mympisend(mywork,ibox,999,totpoints*howmany)
      endif
-#endif
-     deallocate(hugeke)
-  endif  !! allocated
-
-#ifdef MPIFLAG 
-  if (orbparflag) then
-#ifdef REALGO
-     call circ3d_sub_real_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany,fft_mpi_inplaceflag)
-#else
-     call circ3d_sub_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany,fft_mpi_inplaceflag)
-#endif
-     do ibox=1,nbox(3)  !! processor receiving
-        jproc=(ibox+nbox(3)+1)/2
-        if (ibox.eq.myrank.and.jproc.eq.myrank) then
-           out(:,:)=RESHAPE(bigout(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:),(/totpoints,howmany/))
-        else if (ibox.eq.myrank) then
-           call mympirecv(out,jproc,999,totpoints*howmany)
-        else if (jproc.eq.myrank) then
-           mywork(:,:)=RESHAPE(bigout(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:),(/totpoints,howmany/))
-           call mympisend(mywork,ibox,999,totpoints*howmany)
-        endif
-     enddo
-  else
-#endif
-#ifdef REALGO
-     call circ3d_sub_real(bigke,bigin,bigout,gridpoints(3),howmany,fft_mpi_inplaceflag)
-#else
-     call circ3d_sub(bigke,bigin,bigout,gridpoints(3),howmany,fft_mpi_inplaceflag)
-#endif
-     out(:,:)=RESHAPE(bigout(:,2,:,2,:,2,:),(/totpoints,howmany/))
-#ifdef MPIFLAG
-  endif
-#endif
+  enddo
 
   deallocate(bigin,bigout,mywork)
+#endif
+end subroutine mult_toep_z
 
-end subroutine mult_ke_toep
 
-
-subroutine mult_ke_old(in, out,howmany,timingdir,notiming)
+subroutine mult_ke(in, out,howmany,timingdir,notiming)
   use myparams
   implicit none
   integer :: howmany,notiming
   character :: timingdir*(*)
   DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
   call mult_allpar(in,out,1,howmany,timingdir,notiming)
-end subroutine mult_ke_old
+end subroutine mult_ke
 
 subroutine mult_xderiv(in, out,howmany)
   use myparams
@@ -1196,18 +1138,22 @@ subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
      enddo
      idim=3
      if (dodim(idim)) then
-        select case(zke_paropt)
-        case(0)
-           call mult_circ_z(in,temp,option,howmany,timingdir,notiming)
-        case(1)
-           call mult_summa_z(in,temp,option,howmany,timingdir,notiming)
-        case(2)
-           call mult_reduce_z(in,temp,option,howmany,timingdir,notiming)
-        case(3)
-           call mult_alltoall_z(in, temp,option,howmany,timingdir,notiming)
-        case default
-           OFLWR "Error, zke_paropt not recognized",zke_paropt; CFLST
-        end select
+        if (toepflag.eq.2) then
+           call mult_toep_z(in,temp,option,howmany)
+        else
+           select case(zke_paropt)
+           case(0)
+              call mult_circ_z(in,temp,option,howmany,timingdir,notiming)
+           case(1)
+              call mult_summa_z(in,temp,option,howmany,timingdir,notiming)
+           case(2)
+              call mult_reduce_z(in,temp,option,howmany,timingdir,notiming)
+           case(3)
+              call mult_alltoall_z(in, temp,option,howmany,timingdir,notiming)
+           case default
+              OFLWR "Error, zke_paropt not recognized",zke_paropt; CFLST
+           end select
+        end if
         out(:,:)=out(:,:)+temp(:,:)
 
      endif

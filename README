@@ -86,7 +86,7 @@ THEN perform each step in this V1.firsttry working directory
               then
      ./gnu.abs.here
 
-If you want to update the code and -clean examples subdirectories then perform 
+If you want to update the code and EXAMPLES-depot directories then perform 
 step 4, like steps 1-3, in the V1 working directory,
 
 4)   git pull https://github.com/LBNL-AMO-MCTDHF/V1 master
