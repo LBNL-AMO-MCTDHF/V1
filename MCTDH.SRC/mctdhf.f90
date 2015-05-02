@@ -277,11 +277,11 @@ program mctdhf
 
   call getclasses()
 
-  call mpiorbsets()
+  if (parorbsplit.eq.1) then
+     call mpiorbsets()
+  endif
 
-     call fast_newconfiglist(.false.);   
-
-
+  call fast_newconfiglist(.false.);   
   if (numconfig.eq.0) then
      OFLWR " No configs!! "; CFLST
   endif

@@ -336,7 +336,17 @@ recursive subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,
 
   lowspf=1; highspf=nspf
   if (parorbsplit.eq.1) then
-     lowspf=firstmpiorb;     highspf=min(nspf,firstmpiorb+orbsperproc-1)
+
+!!$ 05-01-2015 DJH
+     lowspf=1; highspf=nspf
+     if (parorbsplit.eq.1) then
+        call getOrbSetRange(lowspf,highspf)
+     endif
+
+!!$ 05-01-2015 DJH
+!!$     lowspf=firstmpiorb;     highspf=min(nspf,firstmpiorb+orbsperproc-1)
+!!$
+
      if (multmanyflag.ne.0) then
         OFLWR "PARORBSPLIT=1/MULTMANY not compatible"; CFLST
      endif

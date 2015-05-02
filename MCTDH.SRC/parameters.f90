@@ -475,15 +475,35 @@ character (len=200) :: nullbuff="                                               
 end module parameters
 
 
+module mpi_orbsetmod
+  implicit none
+  integer :: mpi_orbset_init=0
+  integer :: orbsperproc=(-1),  norbsets
+  integer :: myorbset=-1, firstmpiorb=-1  !! specific to each processor
+  integer, allocatable :: MPI_GROUP_ORB(:),MPI_COMM_ORB(:)
+end module
+
+subroutine getOrbSetRange(out_lowspf,out_highspf)
+  use parameters
+  use mpi_orbsetmod
+  implicit none
+  integer, intent(out) :: out_lowspf, out_highspf
+  if (mpi_orbset_init.ne.1) then
+     OFLWR "error, mpiorbset init.ne.1",mpi_orbset_init; CFLST
+  endif
+  out_lowspf=firstmpiorb
+  out_highspf=min(nspf,firstmpiorb+orbsperproc-1)
+end subroutine getOrbSetRange
+
+
+
 module mpimod
   implicit none
 
 #ifdef MPIFLAG
   include "mpif.h"
 #endif
-  integer ::  MPI_GROUP_WORLD, orbsperproc=(-1),  norbsets
-  integer :: myorbset=-1, firstmpiorb=-1  !! specific to each processor
-  integer, allocatable :: MPI_GROUP_ORB(:),MPI_COMM_ORB(:)
+  integer ::  MPI_GROUP_WORLD
 
 integer :: nprocs=1, myrank
 character(len=200), parameter :: mpioutfilebase="MPIOUTS/MPI.Out."

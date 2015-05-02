@@ -1,5 +1,4 @@
 
-
 #define MAXFACTORS 7
 
 !!$
@@ -196,7 +195,6 @@
 
 
 
-
 !! INVERSE OF cooleytukey_outofplace_mpi except for division
 
 subroutine cooleytukey_outofplace_backward_mpi(intranspose,out,dim2,dim3,dim1,pf,proclist,localnprocs,localrank,howmany)
@@ -224,7 +222,7 @@ recursive subroutine cooleytukey_outofplace_mpi(in,outtrans,dim2,dim3,dim1,pf,pr
   complex*16, intent(in) :: in(dim2,dim3,dim1,howmany)
   complex*16, intent(out) :: outtrans(dim2,dim3,dim1,howmany)
   complex*16 ::  tempout(dim2,dim3,dim1,howmany),  outtemp(dim2,dim3,dim1,howmany)
-  integer :: depth, newrank, newpf(MAXFACTORS),newproclist(localnprocs/pf(1)),ctrank,ctset(pf(1))
+  integer :: othersize, newrank, newpf(MAXFACTORS),newproclist(localnprocs/pf(1)),ctrank,ctset(pf(1))
 
   if ((localnprocs/pf(1))*pf(1).ne.localnprocs) then
      write(mpifileptr,*) "Divisibility error outofplace ",localnprocs,pf(1); call mpistop()
@@ -233,20 +231,21 @@ recursive subroutine cooleytukey_outofplace_mpi(in,outtrans,dim2,dim3,dim1,pf,pr
      write(mpifileptr,*) "Rank error outofplace ",localrank,localnprocs; call mpistop()
   endif
 
-  depth=localnprocs/pf(1)
-  ctrank=(localrank-1)/depth+1
-  newrank=mod(localrank-1,depth)+1
+  othersize=localnprocs/pf(1)
+  ctrank=(localrank-1)/othersize+1
+  newrank=mod(localrank-1,othersize)+1
   ctset(:)=proclist(newrank,:)
   newproclist=proclist(:,ctrank)
 
   if (mod(proclist(newrank,ctrank)-1,localnprocs)+1.ne.localrank) then
-     write(*,*) "RANK FAIL",proclist(newrank,ctrank),localrank,newrank,depth,ctrank,pf(1); call mpistop()
+     write(*,*) "RANK FAIL",proclist(newrank,ctrank),localrank,newrank,othersize,ctrank,pf(1); call mpistop()
   endif
 
   call myzfft1d_slowindex_mpi(in,tempout,pf(1),ctrank,ctset,dim1*dim2*dim3*howmany)
 
-  call twiddlemult_mpi(dim2*dim3,tempout,outtemp,dim1,depth,newrank,pf(1),ctrank,howmany)
-  if (depth.eq.1) then
+  call twiddlemult_mpi(dim2*dim3,tempout,outtemp,dim1,othersize,newrank,pf(1),ctrank,howmany)
+
+  if (othersize.eq.1) then
      select case(ct_dimensionality)
      case(1)
         call myzfft1d_slowindex_local(outtemp,outtrans,dim2*dim3,dim1,howmany)
@@ -257,11 +256,10 @@ recursive subroutine cooleytukey_outofplace_mpi(in,outtrans,dim2,dim3,dim1,pf,pr
      end select
   else
      newpf(1:MAXFACTORS-1)=pf(2:MAXFACTORS); newpf(MAXFACTORS)=1
-     call cooleytukey_outofplace_mpi(outtemp,outtrans,dim2,dim3,dim1,newpf,newproclist,depth,newrank,howmany)
+     call cooleytukey_outofplace_mpi(outtemp,outtrans,dim2,dim3,dim1,newpf,newproclist,othersize,newrank,howmany)
   endif
 
 end subroutine cooleytukey_outofplace_mpi
-
 
 
 recursive subroutine cooleytukey_outofplaceinput_mpi(intranspose,out,dim2,dim3,dim1,pf,proclist,localnprocs,localrank,howmany)
@@ -272,7 +270,7 @@ recursive subroutine cooleytukey_outofplaceinput_mpi(intranspose,out,dim2,dim3,d
   complex*16, intent(in) :: intranspose(dim2,dim3,dim1,howmany)
   complex*16, intent(out) :: out(dim2,dim3,dim1,howmany)
   complex*16 ::   temptrans(dim2,dim3,dim1,howmany),outtrans(dim2,dim3,dim1,howmany)
-  integer :: depth, newrank, newpf(MAXFACTORS),newproclist(localnprocs/pf(1)),ctrank,ctset(pf(1))
+  integer :: othersize, newrank, newpf(MAXFACTORS),newproclist(localnprocs/pf(1)),ctrank,ctset(pf(1))
 
   if ((localnprocs/pf(1))*pf(1).ne.localnprocs) then
      write(mpifileptr,*) "Divisibility error outofplaceinput ",localnprocs,pf(1); call mpistop()
@@ -281,17 +279,17 @@ recursive subroutine cooleytukey_outofplaceinput_mpi(intranspose,out,dim2,dim3,d
      write(mpifileptr,*) "Rank error outofplaceinput ",localrank,localnprocs; call mpistop()
   endif
 
-  depth=localnprocs/pf(1)
-  ctrank=(localrank-1)/depth+1
-  newrank=mod(localrank-1,depth)+1
+  othersize=localnprocs/pf(1)
+  ctrank=(localrank-1)/othersize+1
+  newrank=mod(localrank-1,othersize)+1
   ctset(:)=proclist(newrank,:)
   newproclist=proclist(:,ctrank)
 
   if (mod(proclist(newrank,ctrank)-1,localnprocs)+1.ne.localrank) then
-     write(*,*) "RANK FAIL INVERSE",proclist(newrank,ctrank),localrank,newrank,depth,ctrank,pf(1); call mpistop()
+     write(*,*) "RANK FAIL INVERSE",proclist(newrank,ctrank),localrank,newrank,othersize,ctrank,pf(1); call mpistop()
   endif
 
-  if (depth.eq.1) then
+  if (othersize.eq.1) then
      select case(ct_dimensionality)
      case(1)
         call myzfft1d_slowindex_local(intranspose,temptrans,dim2*dim3,dim1,howmany)
@@ -302,10 +300,10 @@ recursive subroutine cooleytukey_outofplaceinput_mpi(intranspose,out,dim2,dim3,d
      end select
   else
      newpf(1:MAXFACTORS-1)=pf(2:MAXFACTORS); newpf(MAXFACTORS)=1
-     call cooleytukey_outofplaceinput_mpi(intranspose,temptrans,dim2,dim3,dim1,newpf,newproclist,depth,newrank,howmany)
+     call cooleytukey_outofplaceinput_mpi(intranspose,temptrans,dim2,dim3,dim1,newpf,newproclist,othersize,newrank,howmany)
   endif
 
-  call twiddlemult_mpi(dim2*dim3,temptrans,outtrans,dim1,depth,newrank,pf(1),ctrank,howmany)
+  call twiddlemult_mpi(dim2*dim3,temptrans,outtrans,dim1,othersize,newrank,pf(1),ctrank,howmany)
   call myzfft1d_slowindex_mpi(outtrans,out,pf(1),ctrank,ctset,dim1*dim2*dim3*howmany)
 
 end subroutine cooleytukey_outofplaceinput_mpi

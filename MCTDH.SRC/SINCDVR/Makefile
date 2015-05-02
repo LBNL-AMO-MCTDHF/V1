@@ -19,16 +19,16 @@ sinc_params.o: $(DEPEND) sinc_params.F90
 	$(F90) $(FFLAGS)  -c sinc_params.F90
 
 toeplitz_subs.o: $(DEPEND) toeplitz_subs.F90
-	$(F90) $(FFLAGS) $(MPIFLAG)  -c toeplitz_subs.F90 -I$(MYINCLUDE)
+	$(F90) $(FFLAGS) $(MPIFLAG)  -c toeplitz_subs.F90
 
 ftcore.o: $(DEPEND) ftcore.F90
 	$(F90) $(FFLAGS) $(FFTFLAG) $(MPIFLAG)  -c ftcore.F90 -I$(MYINCLUDE)
 
 cooleytukey_shared.o: $(DEPEND) cooleytukey_shared.F90
-	$(F90) $(FFLAGS) $(MPIFLAG)  -c cooleytukey_shared.F90 -I$(MYINCLUDE)
+	$(F90) $(FFLAGS) $(MPIFLAG)  -c cooleytukey_shared.F90
 
 cooleytukey_mpi.o: $(DEPEND) cooleytukey_mpi.F90 cooleytukey_shared.o
-	$(F90) $(FFLAGS)  -c cooleytukey_mpi.F90 -I$(MYINCLUDE)
+	$(F90) $(FFLAGS) $(MPIFLAG)  -c cooleytukey_mpi.F90
 
 readit.o: $(DEPEND) sinc_params.o sincproject.o tooth.o readit.F90
 	$(F90) $(FFLAGS)  -c readit.F90 
