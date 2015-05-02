@@ -1,6 +1,3 @@
-
-#define MAXFACTORS 7
-
 !!$
 !!$Apache License
 !!$                           Version 2.0, January 2004
@@ -197,55 +194,62 @@
 
 !! INVERSE OF cooleytukey_outofplace_mpi except for division
 
-subroutine cooleytukey_outofplace_backward_mpi(intranspose,out,dim2,dim3,dim1,pf,proclist,localnprocs,localrank,howmany)
+subroutine cooleytukey_outofplace_backward_mpi(intranspose,out,dim2,dim3,dim1,howmany)
   implicit none
-  integer, intent(in) :: dim2,dim3,dim1,localnprocs,localrank,howmany,pf(MAXFACTORS),proclist(localnprocs)
+  integer, intent(in) :: dim2,dim3,dim1,howmany
+  complex*16, intent(in) :: intranspose(dim2,dim3,dim1,howmany)
+  complex*16, intent(out) :: out(dim2,dim3,dim1,howmany)
+
+  call cooleytukey_outofplace_backward_mpi0(intranspose,out,dim2,dim3,dim1,howmany,1)
+
+end subroutine
+
+subroutine cooleytukey_outofplace_backward_mpi0(intranspose,out,dim2,dim3,dim1,howmany,recursiondepth)
+  implicit none
+  integer, intent(in) :: dim2,dim3,dim1,howmany,recursiondepth
   complex*16, intent(in) :: intranspose(dim2,dim3,dim1,howmany)
   complex*16, intent(out) :: out(dim2,dim3,dim1,howmany)
   complex*16 ::  intransconjg(dim2,dim3,dim1,howmany),  outconjg(dim2,dim3,dim1,howmany)
 
   intransconjg(:,:,:,:)=CONJG(intranspose(:,:,:,:))
-  call cooleytukey_outofplaceinput_mpi(intransconjg,outconjg,dim2,dim3,dim1,pf,proclist,localnprocs,localrank,howmany)
-  out(:,:,:,:)=CONJG(outconjg(:,:,:,:)) !!/dim1/localnprocs
+  call cooleytukey_outofplaceinput_mpi0(intransconjg,outconjg,dim2,dim3,dim1,howmany,recursiondepth)
+  out(:,:,:,:)=CONJG(outconjg(:,:,:,:))
 
-end subroutine cooleytukey_outofplace_backward_mpi
+end subroutine cooleytukey_outofplace_backward_mpi0
 
 
 
 !! fourier transform with OUT-OF-PLACE OUTPUT. 
 
-recursive subroutine cooleytukey_outofplace_mpi(in,outtrans,dim2,dim3,dim1,pf,proclist,localnprocs,localrank,howmany)
+subroutine cooleytukey_outofplace_forward_mpi(in,outtrans,dim2,dim3,dim1,howmany)
   use ct_fileptrmod
   use ct_options
   implicit none
-  integer, intent(in) :: dim2,dim3,dim1,localnprocs,localrank,howmany,pf(MAXFACTORS),proclist(localnprocs/pf(1),pf(1))
+  integer, intent(in) :: dim2,dim3,dim1,howmany
+  complex*16, intent(in) :: in(dim2,dim3,dim1,howmany)
+  complex*16, intent(out) :: outtrans(dim2,dim3,dim1,howmany)
+
+  call cooleytukey_outofplace_mpi0(in,outtrans,dim2,dim3,dim1,howmany,1)
+
+end subroutine cooleytukey_outofplace_forward_mpi
+
+
+recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim2,dim3,dim1,howmany,recursiondepth)
+  use ct_fileptrmod
+  use ct_options
+  use ct_primesetmod !! ct_numprimes
+  implicit none
+  integer, intent(in) :: dim2,dim3,dim1,howmany,recursiondepth
   complex*16, intent(in) :: in(dim2,dim3,dim1,howmany)
   complex*16, intent(out) :: outtrans(dim2,dim3,dim1,howmany)
   complex*16 ::  tempout(dim2,dim3,dim1,howmany),  outtemp(dim2,dim3,dim1,howmany)
-  integer :: othersize, newrank, newpf(MAXFACTORS),newproclist(localnprocs/pf(1)),ctrank,ctset(pf(1))
+  integer ::  newdepth
 
-  if ((localnprocs/pf(1))*pf(1).ne.localnprocs) then
-     write(mpifileptr,*) "Divisibility error outofplace ",localnprocs,pf(1); call mpistop()
-  endif
-  if (localrank.lt.1.or.localrank.gt.localnprocs) then
-     write(mpifileptr,*) "Rank error outofplace ",localrank,localnprocs; call mpistop()
-  endif
+  call myzfft1d_slowindex_mpi(in,tempout,dim1*dim2*dim3*howmany,recursiondepth)
 
-  othersize=localnprocs/pf(1)
-  ctrank=(localrank-1)/othersize+1
-  newrank=mod(localrank-1,othersize)+1
-  ctset(:)=proclist(newrank,:)
-  newproclist=proclist(:,ctrank)
+  call twiddlemult_mpi(dim2*dim3,tempout,outtemp,dim1,howmany,recursiondepth)
 
-  if (mod(proclist(newrank,ctrank)-1,localnprocs)+1.ne.localrank) then
-     write(*,*) "RANK FAIL",proclist(newrank,ctrank),localrank,newrank,othersize,ctrank,pf(1); call mpistop()
-  endif
-
-  call myzfft1d_slowindex_mpi(in,tempout,pf(1),ctrank,ctset,dim1*dim2*dim3*howmany)
-
-  call twiddlemult_mpi(dim2*dim3,tempout,outtemp,dim1,othersize,newrank,pf(1),ctrank,howmany)
-
-  if (othersize.eq.1) then
+  if (recursiondepth.eq.ct_numprimes) then
      select case(ct_dimensionality)
      case(1)
         call myzfft1d_slowindex_local(outtemp,outtrans,dim2*dim3,dim1,howmany)
@@ -255,41 +259,25 @@ recursive subroutine cooleytukey_outofplace_mpi(in,outtrans,dim2,dim3,dim1,pf,pr
         write(mpifileptr,*) "NOT SUPPORTED ct_dimensionality",ct_dimensionality; call mpistop()
      end select
   else
-     newpf(1:MAXFACTORS-1)=pf(2:MAXFACTORS); newpf(MAXFACTORS)=1
-     call cooleytukey_outofplace_mpi(outtemp,outtrans,dim2,dim3,dim1,newpf,newproclist,othersize,newrank,howmany)
+     newdepth=recursiondepth+1
+     call cooleytukey_outofplace_mpi0(outtemp,outtrans,dim2,dim3,dim1,howmany,newdepth)
   endif
 
-end subroutine cooleytukey_outofplace_mpi
+end subroutine cooleytukey_outofplace_mpi0
 
 
-recursive subroutine cooleytukey_outofplaceinput_mpi(intranspose,out,dim2,dim3,dim1,pf,proclist,localnprocs,localrank,howmany)
+recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim2,dim3,dim1,howmany,recursiondepth)
   use ct_fileptrmod
   use ct_options
+  use ct_primesetmod !! ct_numprimes
   implicit none
-  integer, intent(in) :: dim2,dim3,dim1,localnprocs,localrank,howmany,pf(MAXFACTORS),proclist(localnprocs/pf(1),pf(1))
+  integer, intent(in) :: dim2,dim3,dim1,howmany,recursiondepth
   complex*16, intent(in) :: intranspose(dim2,dim3,dim1,howmany)
   complex*16, intent(out) :: out(dim2,dim3,dim1,howmany)
   complex*16 ::   temptrans(dim2,dim3,dim1,howmany),outtrans(dim2,dim3,dim1,howmany)
-  integer :: othersize, newrank, newpf(MAXFACTORS),newproclist(localnprocs/pf(1)),ctrank,ctset(pf(1))
+  integer ::  newdepth
 
-  if ((localnprocs/pf(1))*pf(1).ne.localnprocs) then
-     write(mpifileptr,*) "Divisibility error outofplaceinput ",localnprocs,pf(1); call mpistop()
-  endif
-  if (localrank.lt.1.or.localrank.gt.localnprocs) then
-     write(mpifileptr,*) "Rank error outofplaceinput ",localrank,localnprocs; call mpistop()
-  endif
-
-  othersize=localnprocs/pf(1)
-  ctrank=(localrank-1)/othersize+1
-  newrank=mod(localrank-1,othersize)+1
-  ctset(:)=proclist(newrank,:)
-  newproclist=proclist(:,ctrank)
-
-  if (mod(proclist(newrank,ctrank)-1,localnprocs)+1.ne.localrank) then
-     write(*,*) "RANK FAIL INVERSE",proclist(newrank,ctrank),localrank,newrank,othersize,ctrank,pf(1); call mpistop()
-  endif
-
-  if (othersize.eq.1) then
+  if (recursiondepth.eq.ct_numprimes) then
      select case(ct_dimensionality)
      case(1)
         call myzfft1d_slowindex_local(intranspose,temptrans,dim2*dim3,dim1,howmany)
@@ -299,13 +287,13 @@ recursive subroutine cooleytukey_outofplaceinput_mpi(intranspose,out,dim2,dim3,d
         write(mpifileptr,*) "NOT SUPPORTED ct_dimensionality",ct_dimensionality; call mpistop()
      end select
   else
-     newpf(1:MAXFACTORS-1)=pf(2:MAXFACTORS); newpf(MAXFACTORS)=1
-     call cooleytukey_outofplaceinput_mpi(intranspose,temptrans,dim2,dim3,dim1,newpf,newproclist,othersize,newrank,howmany)
+     newdepth=recursiondepth+1
+     call cooleytukey_outofplaceinput_mpi0(intranspose,temptrans,dim2,dim3,dim1,howmany,newdepth)
   endif
 
-  call twiddlemult_mpi(dim2*dim3,temptrans,outtrans,dim1,othersize,newrank,pf(1),ctrank,howmany)
-  call myzfft1d_slowindex_mpi(outtrans,out,pf(1),ctrank,ctset,dim1*dim2*dim3*howmany)
+  call twiddlemult_mpi(dim2*dim3,temptrans,outtrans,dim1,howmany,recursiondepth)
+  call myzfft1d_slowindex_mpi(outtrans,out,dim1*dim2*dim3*howmany,recursiondepth)
 
-end subroutine cooleytukey_outofplaceinput_mpi
+end subroutine cooleytukey_outofplaceinput_mpi0
 
 

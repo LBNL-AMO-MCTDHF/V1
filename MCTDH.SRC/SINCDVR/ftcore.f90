@@ -358,19 +358,10 @@ recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
   complex*16, intent(in) :: in(dim**3,howmany)
   complex*16, intent(out) :: out(dim**3,howmany)
   complex*16,allocatable :: inlocal(:,:),outgather(:,:,:),outlocal(:,:)
-  integer :: mystart, myend, mysize, primefactors(128),numfactors,myrank,nprocs
-  integer, allocatable :: proclist(:)
+  integer :: mystart, myend, mysize, myrank,nprocs
 
   call getmyranknprocs(myrank,nprocs)
   call checkdivisible(dim,nprocs)
-  allocate(proclist(nprocs))
-  do ii=1,nprocs
-     proclist(ii)=ii
-  enddo
-  call getallprimefactors(nprocs,numfactors,primefactors)
-  if (numfactors.gt.128) then
-     print *, "REDIM NUMFACTORS ;)" ; call mpistop()
-  endif
 
   mystart=dim**3/nprocs*(myrank-1)+1
   myend=dim**3/nprocs*myrank
@@ -386,14 +377,14 @@ recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
   case(-1)
      if (placeopt.ne.1) then
         call ctdim(3)
-        call cooleytukey_outofplace_backward_mpi(inlocal,outlocal,dim,dim,dim/nprocs,primefactors,proclist,nprocs,myrank,howmany)
+        call cooleytukey_outofplace_backward_mpi(inlocal,outlocal,dim,dim,dim/nprocs,howmany)
      else
         call myzfft3d_par_backward(inlocal,outlocal,dim,nulltimes,howmany)
      endif
   case(1)
      if (placeopt.ne.1) then
         call ctdim(3)
-        call cooleytukey_outofplace_mpi(inlocal,outlocal,dim,dim,dim/nprocs,primefactors,proclist,nprocs,myrank,howmany)
+        call cooleytukey_outofplace_forward_mpi(inlocal,outlocal,dim,dim,dim/nprocs,howmany)
      else
         call myzfft3d_par_forward(inlocal,outlocal,dim,nulltimes,howmany)
      endif

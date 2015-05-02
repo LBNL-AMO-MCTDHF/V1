@@ -978,22 +978,24 @@ end subroutine get_one_dipole
 
 
 
-subroutine mult_toep_z(in, out,option, howmany)
+subroutine mult_ke_toep(in, out, howmany)
   use myparams
   use myprojectmod
   implicit none
-  integer,intent(in) :: howmany,option
+  integer,intent(in) :: howmany
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE, intent(out) :: out(totpoints,howmany)
 
 #ifndef MPIFLAG
   OFLWR "ACK, don't use mult_ke_toep without MPIFLAG"; CFLST
-  out(:,:)=in(:,:) * 42 * 0 * option  !! avoid warn unused
+  out(:,:)=in(:,:) * 42 * 0 !! avoid warn unused
 #else
+  integer :: ibox,jproc,nulltimes(10),qblocks(nprocs),inplace
+  DATATYPE ::  bigin(gridsize(1),2,gridsize(2),2,gridsize(3),2,howmany),&
+       bigout(gridsize(1),2,gridsize(2),2,gridsize(3),2,howmany),mywork(totpoints,howmany)
+  DATATYPE, allocatable, save :: bigke(:,:,:), hugeke(:,:,:)
+  integer, save :: allocated=0
 
-  integer :: ibox,jproc,nulltimes(10)
-  DATATYPE :: littlecirc(0-gridpoints(3):gridpoints(3)-1)
-  DATATYPE, allocatable :: bigin(:,:,:,:,:,:,:),bigout(:,:,:,:,:,:,:),mywork(:,:)
   if (.not.orbparflag) then
      OFLWR "Ack, don't use mult_ke_toep without orbparflag"; CFLST
   endif
@@ -1003,8 +1005,6 @@ subroutine mult_toep_z(in, out,option, howmany)
      OFLWR "ERROR SQUASH 55"; CFLST
   endif
 
-  allocate(bigin(gridsize(1),2,gridsize(2),2,gridsize(3),2,howmany),&
-       bigout(gridsize(1),2,gridsize(2),2,gridsize(3),2,howmany),mywork(totpoints,howmany))
   bigin(:,:,:,:,:,:,:)=0d0
   
   do ibox=1,nbox(3)  !! processor sending
@@ -1019,20 +1019,42 @@ subroutine mult_toep_z(in, out,option, howmany)
      endif
   enddo
 
-  littlecirc(:) = 0
-  select case(option)
-  case(1)  !! KE
-     littlecirc(1-gridpoints(3):gridpoints(3)-1) = kevect(3)%rmat(1-gridpoints(3):gridpoints(3)-1)
-  case(2)  !! F.D.
-     littlecirc(1-gridpoints(3):gridpoints(3)-1) = fdvect(3)%rmat(1-gridpoints(3):gridpoints(3)-1)
-  end select
+  if (allocated.eq.0) then
+     allocated=1
+     allocate(bigke(0-gridsize(1):gridsize(1)-1,0-gridsize(2):gridsize(2)-1,0-gridsize(3):gridsize(3)-1))
+     if (myrank.eq.1) then
+        allocate(hugeke(0-gridpoints(1):gridpoints(1)-1,0-gridpoints(2):gridpoints(2)-1,0-gridpoints(3):gridpoints(3)-1))
+        hugeke(:,:,:)=0d0
+        hugeke(1-gridsize(1):gridsize(1)-1,0,0)=hugeke(1-gridsize(1):gridsize(1)-1,0,0)+&
+             kevect(1)%cmat(1-gridsize(1):gridsize(1)-1)
+        hugeke(0,1-gridsize(2):gridsize(2)-1,0)=hugeke(0,1-gridsize(2):gridsize(2)-1,0)+&
+             kevect(2)%cmat(1-gridsize(2):gridsize(2)-1)
+        hugeke(0,0,1-gridsize(3):gridsize(3)-1)=hugeke(0,0,1-gridsize(3):gridsize(3)-1)+&
+             kevect(3)%cmat(1-gridsize(3):gridsize(3)-1)
+     else
+        allocate(hugeke(1,1,1))
+     endif
+
+     qblocks(:)=8*totpoints
 
 #ifdef REALGO
-  OFLWR "PROGRAM CIRC1D_SUB_REAL"; CFLST
-  nulltimes(:)=0
-!!$  call circ1d_sub_real_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany)
+     call myscatterv_real(hugeke,bigke,qblocks(:))
 #else
-  call circ1d_sub_mpi(littlecirc,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany)
+     call myscatterv_complex(hugeke,bigke,qblocks(:))
+#endif
+     deallocate(hugeke)
+  endif  !! allocated
+
+  if (nprocs.eq.1) then
+     inplace=1
+  else
+     inplace=0
+  endif
+
+#ifdef REALGO
+  call circ3d_sub_real_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany,inplace)
+#else
+  call circ3d_sub_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany,inplace)
 #endif
   
   do ibox=1,nbox(3)  !! processor receiving
@@ -1047,9 +1069,8 @@ subroutine mult_toep_z(in, out,option, howmany)
      endif
   enddo
 
-  deallocate(bigin,bigout,mywork)
 #endif
-end subroutine mult_toep_z
+end subroutine mult_ke_toep
 
 
 subroutine mult_ke(in, out,howmany,timingdir,notiming)
@@ -1058,7 +1079,11 @@ subroutine mult_ke(in, out,howmany,timingdir,notiming)
   integer :: howmany,notiming
   character :: timingdir*(*)
   DATATYPE :: in(totpoints,howmany), out(totpoints,howmany)
-  call mult_allpar(in,out,1,howmany,timingdir,notiming)
+  if (toepflag.eq.2) then
+     call mult_ke_toep(in,out,howmany)
+  else
+     call mult_allpar(in,out,1,howmany,timingdir,notiming)
+  endif
 end subroutine mult_ke
 
 subroutine mult_xderiv(in, out,howmany)
@@ -1138,24 +1163,19 @@ subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
      enddo
      idim=3
      if (dodim(idim)) then
-        if (toepflag.eq.2) then
-           call mult_toep_z(in,temp,option,howmany)
-        else
-           select case(zke_paropt)
-           case(0)
-              call mult_circ_z(in,temp,option,howmany,timingdir,notiming)
-           case(1)
-              call mult_summa_z(in,temp,option,howmany,timingdir,notiming)
-           case(2)
-              call mult_reduce_z(in,temp,option,howmany,timingdir,notiming)
-           case(3)
-              call mult_alltoall_z(in, temp,option,howmany,timingdir,notiming)
-           case default
-              OFLWR "Error, zke_paropt not recognized",zke_paropt; CFLST
-           end select
-        end if
+        select case(zke_paropt)
+        case(0)
+           call mult_circ_z(in,temp,option,howmany,timingdir,notiming)
+        case(1)
+           call mult_summa_z(in,temp,option,howmany,timingdir,notiming)
+        case(2)
+           call mult_reduce_z(in,temp,option,howmany,timingdir,notiming)
+        case(3)
+           call mult_alltoall_z(in, temp,option,howmany,timingdir,notiming)
+        case default
+           OFLWR "Error, zke_paropt not recognized",zke_paropt; CFLST
+        end select
         out(:,:)=out(:,:)+temp(:,:)
-
      endif
   endif
 
@@ -1656,5 +1676,6 @@ subroutine reinterpolate_orbs_real(rspfs,dims,num)
   OFLWR "Reinterpolate orbs not supported real valued yet"; CFLST
   rspfs(:,:,:,:)=0
 end subroutine reinterpolate_orbs_real
+
 
 
