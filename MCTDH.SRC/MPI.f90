@@ -340,13 +340,14 @@ end subroutine mympireduceone
 
 
 subroutine mympibcast(input, source, isize)
+  use mpimod
   implicit none
-  integer :: isize, source
-  DATATYPE :: input(isize)
+  integer,intent(in) :: isize, source
+  DATATYPE,intent(inout) :: input(isize)
 #ifdef REALGO
-  call mympirealbcast(input, source, isize)
+  call mympirealbcast_local(input, source, isize,MPI_COMM_WORLD)
 #else
-  call mympicomplexbcast(input, source, isize)
+  call mympicomplexbcast_local(input, source, isize,MPI_COMM_WORLD)
 #endif
 
 end subroutine mympibcast
@@ -356,8 +357,11 @@ subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
   use mpimod
   use fileptrmod
   implicit none
-  integer :: ierr, isize, dest, idest, source, isource,tag
-  DATATYPE :: sendbuf(isize),recvbuf(isize)
+  integer, intent(in) :: dest,source,tag,isize
+  integer :: ierr, idest,isource
+  DATATYPE, intent(in) :: sendbuf(isize)
+  DATATYPE, intent(out) :: recvbuf(isize)
+
   idest=dest-1
   isource=source-1
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
@@ -368,6 +372,26 @@ subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
   endif
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympisendrecv
+
+
+subroutine mympisendrecv_complex_local(sendbuf, recvbuf, dest, source, tag, isize,MPI_COMM_LOCAL)
+  use mpimod
+  use fileptrmod
+  implicit none
+  integer, intent(in) :: dest,source,tag,isize,MPI_COMM_LOCAL
+  integer :: ierr, idest,isource
+  complex*16, intent(in) :: sendbuf(isize)
+  complex*16, intent(out) :: recvbuf(isize)
+  idest=dest-1
+  isource=source-1
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call mpi_sendrecv(sendbuf,isize,MPI_DOUBLE_COMPLEX,idest,tag,&
+       recvbuf,isize, MPI_DOUBLE_COMPLEX,isource,tag,MPI_COMM_LOCAL,MPI_STATUS_IGNORE,ierr)
+  if (ierr/=0) then
+     OFLWR "ERR mympisendrecv",ierr; CFLST
+  endif
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+end subroutine mympisendrecv_complex_local
 
 
 
@@ -404,12 +428,14 @@ subroutine mympirecv(input, source, tag, isize)
 end subroutine mympirecv
 
 
-subroutine mympirealbcast(input, source, isize)
+subroutine mympirealbcast_local(input, source, isize,MPI_COMM_LOCAL)
   use mpimod
   use fileptrmod
   implicit none
-  real*8 :: input(isize)
-  integer :: ierr, isize, source, isource
+  integer, intent(in) ::  isize, source, MPI_COMM_LOCAL
+  real*8, intent(inout) :: input(isize)
+  integer :: ierr, isource
+
   isource=source-1
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_bcast(input,isize,MPI_DOUBLE_PRECISION,isource,MPI_COMM_WORLD,ierr)
@@ -417,23 +443,25 @@ subroutine mympirealbcast(input, source, isize)
      OFLWR "ERR mympirealbcast"; CFLST
   endif
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-end subroutine mympirealbcast
+end subroutine mympirealbcast_local
 
 
-subroutine mympicomplexbcast(input, source, isize)
+subroutine mympicomplexbcast_local(input, source, isize, MPI_COMM_LOCAL)
   use mpimod
   use fileptrmod
   implicit none
-  complex*16 :: input(isize)
-  integer :: ierr, isize, source, isource
+  integer, intent(in) ::  isize, source, MPI_COMM_LOCAL
+  complex*16, intent(inout) :: input(isize)
+  integer :: ierr, isource
+
   isource=source-1
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-  call mpi_bcast(input,isize,MPI_DOUBLE_COMPLEX,isource,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(input,isize,MPI_DOUBLE_COMPLEX,isource,MPI_COMM_LOCAL,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympicomplexbcast"; CFLST
   endif
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-end subroutine mympicomplexbcast
+end subroutine mympicomplexbcast_local
 
 
 subroutine mympiibcast(input, source, isize)
