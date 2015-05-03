@@ -3,7 +3,65 @@
 
 #ifdef FFTWFLAG
 
-subroutine myzfft1d(in,out,dim,howmany)
+!! Old version myzfft1d() for intel, should not be needed; see myzfft1d_not() below
+
+recursive subroutine myzfft1d(in,out,dim,howmany)
+  use, intrinsic :: iso_c_binding
+  implicit none
+  include "fftw3.f03"
+  integer, intent(in) :: dim,howmany
+  complex*16 :: in(dim,howmany)    !! cannot be declared intent(in)...hmmm...
+  complex*16, intent(out) :: out(dim,howmany)
+  integer, parameter :: maxplans=3
+  type(C_PTR),save :: plans(maxplans)
+  integer, save :: plandims(maxplans)=-999, planhowmany(maxplans)=-999
+  integer,save :: icalleds(maxplans)=0, numplans=0
+  integer :: ostride,istride,onembed(1),inembed(1),idist,odist, dims(1),iplan,thisplan
+  integer :: myrank,nprocs
+  call getmyranknprocs(myrank,nprocs)
+
+  inembed(1)=dim; onembed(1)=dim; idist=dim; odist=dim; istride=1; ostride=1; dims(1)=dim
+
+  if (numplans.eq.0) then
+     numplans=1
+     thisplan=1
+     plandims(thisplan)=dim; planhowmany(thisplan)=howmany
+  else
+     thisplan= -99
+     do iplan=1,numplans
+        if (plandims(iplan).eq.dim.and.planhowmany(iplan).eq.howmany) then
+           if (icalleds(iplan).eq.0) then
+              print *, "ERROR, plan not done ",iplan,dim,howmany; call mpistop()
+           endif
+           thisplan=iplan
+           exit
+        endif
+     enddo
+     if (thisplan.eq.-99) then
+        if (numplans.eq.maxplans) then
+           print *,  "all plans taken!", maxplans; call mpistop()
+        endif
+        numplans=numplans+1
+        thisplan=numplans
+        plandims(thisplan)=dim; planhowmany(thisplan)=howmany
+     endif
+  endif
+  if (icalleds(thisplan).eq.0) then
+     if (myrank.eq.1) then
+        print *, "       Making a 1D FFT plan ", thisplan, dims, howmany
+     endif
+     plans(thisplan) = fftw_plan_many_dft(1,dims,howmany,in,inembed,istride,idist,out,onembed,ostride,odist,FFTW_FORWARD,FFTW_EXHAUSTIVE) 
+  endif
+  icalleds(thisplan)=1    
+
+  call fftw_execute_dft(plans(thisplan), in,out)
+
+end subroutine myzfft1d
+
+
+!! Not sure why this didn't work.  Old version myzfft1d() for intel, above, should not be needed
+
+subroutine myzfft1d_not(in,out,dim,howmany)
   use, intrinsic :: iso_c_binding
   implicit none
   include "fftw3.f03"
@@ -11,7 +69,7 @@ subroutine myzfft1d(in,out,dim,howmany)
   complex*16,intent(in) :: in(dim,howmany)
   complex*16, intent(out) :: out(dim,howmany)
   call myzfft1d0(1,in,out,dim,howmany)
-end subroutine myzfft1d
+end subroutine myzfft1d_not
 
 
 subroutine myzfft1d_slowindex_local(in,out,dim1,dim2,howmany)
@@ -437,9 +495,9 @@ recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
         call myzfft3d_par_forward(inlocal,outlocal,dim,nulltimes,howmany)
      endif
   case default
-  print *, "ACK DIRECTION!!!!", direction; call mpistop()
-end select
-
+     print *, "ACK DIRECTION!!!!", direction; call mpistop()
+  end select
+  
   call simpleallgather_complex(outlocal,outgather,dim**3/nprocs*howmany)
   do ii=1,howmany
      out(:,ii)=RESHAPE(outgather(:,ii,:),(/dim**3/))

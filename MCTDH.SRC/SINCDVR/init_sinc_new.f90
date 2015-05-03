@@ -15,7 +15,9 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
        halfniumpot(totpoints)
   character (len=2) :: th(4)
 
-  call ct_init(fft_ct_paropt,mpifileptr)
+  if (fft_mpi_inplaceflag.eq.0) then
+     call ct_init(fft_ct_paropt,mpifileptr)
+  endif
 
   rkemod(:,:)=0d0; proderivmod(:,:)=0d0; bondpoints(:)=1d0; bondweights(:)=1d0
 

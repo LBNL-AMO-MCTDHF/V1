@@ -1,24 +1,24 @@
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
-Fri May  1 21:35:35 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
+Sat May  2 21:22:31 PDT 2015
   ****************************************************************************
   **********************  BEGIN LBNL-AMO-MCTDHF ******************************
   ****************************************************************************
@@ -204,6 +204,14 @@ Fri May  1 21:35:35 PDT 2015
     This proc:  spinstart :            1
  
  Calling init_project                148176
+ 
+ Go CT_INIT
+    CT_MAXPRIME IS            7
+     CT_PRIMEFACTORS ARE
+              3           7
+ Calling ct_construct...
+    ....Called ct_construct.
+ 
  GO GET_3DPOISSON. calling getinverse.
  filling in....
      ...filled.
@@ -407,13 +415,18 @@ T=         12.92018  Energy:  -0.2808614824E+01  0.2653392934E-15    Norm:   0.1
     ***   
  
  rank 1 SAVED vectors!
-Fri May  1 21:37:35 PDT 2015
-Fri May  1 21:37:35 PDT 2015
-Fri May  1 21:37:35 PDT 2015
-Fri May  1 21:37:35 PDT 2015
-Fri May  1 21:37:35 PDT 2015
-Fri May  1 21:37:35 PDT 2015
-Fri May  1 21:37:35 PDT 2015
-Fri May  1 21:37:35 PDT 2015
-Fri May  1 21:37:35 PDT 2015
+Sat May  2 21:24:29 PDT 2015
+Sat May  2 21:24:29 PDT 2015
+Sat May  2 21:24:29 PDT 2015
+Sat May  2 21:24:29 PDT 2015
+Sat May  2 21:24:29 PDT 2015
+Sat May  2 21:24:29 PDT 2015
+Sat May  2 21:24:29 PDT 2015
+Sat May  2 21:24:29 PDT 2015
+Sat May  2 21:24:29 PDT 2015
+Sat May  2 21:24:29 PDT 2015
+Sat May  2 21:24:29 PDT 2015
+Sat May  2 21:24:29 PDT 2015
+Sat May  2 21:24:29 PDT 2015
+Sat May  2 21:24:29 PDT 2015
  MCTDHF STOP!

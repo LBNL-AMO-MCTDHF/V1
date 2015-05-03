@@ -1,5 +1,5 @@
 
-#define MAXPRIMES 7
+#define MAXPRIMES 10
 
 !!$
 !!$Apache License
@@ -519,8 +519,6 @@ subroutine ct_getprimeset()
 end subroutine ct_getprimeset
 
 
-
-
 subroutine ct_construct()
   use ct_fileptrmod
   use ct_mpimod
@@ -528,20 +526,18 @@ subroutine ct_construct()
   implicit none
 #ifdef MPIFLAG
   integer :: thisfileptr,procshift(nprocs),ierr,iprime,&
-       allprocs0(nprocs), proc_check, ii, &
-       allprocs(ct_pf(7),ct_pf(6),ct_pf(5),ct_pf(4),ct_pf(3),ct_pf(2),ct_pf(1)),&
-       qqtop(7),icomm
-  integer, target :: qq(7),pp0(7),pp1(7)
-  integer, pointer :: qq1,qq2,qq3,qq4,qq5,qq6,qq7
+       allprocs0(nprocs), proc_check, ii, icomm, &
+       xxtop(1:ct_numprimes),yytop(1:ct_numprimes),xx,yy
 
-  if (ct_numprimes.gt.7) then
-     print *, "REDIM CONSTRUCT",ct_numprimes,7; call mpistop()
-  endif
-
-  proc_check=ct_pf(1)*ct_pf(2)*ct_pf(3)*ct_pf(4)*ct_pf(5)*ct_pf(6)*ct_pf(7)
+  proc_check=1; xxtop(:)=1; yytop(:)=1
+  do ii=1,ct_numprimes
+     proc_check=proc_check*ct_pf(ii)
+     yytop(1:ii-1)=yytop(1:ii-1)*ct_pf(ii)
+     xxtop(ii+1: )=xxtop(ii+1:)*ct_pf(ii)
+  enddo
   if (proc_check.ne.nprocs) then
      write(mpifileptr,*) "Proc check programmer error ", proc_check,nprocs,&
-          ct_pf(1:7); call mpistop()
+          ct_pf(1:ct_numprimes); call mpistop()
   endif
 
   ct_maxposition(:)=1
@@ -554,11 +550,6 @@ subroutine ct_construct()
      allprocs0(ii)=ii
   enddo
 
-  allprocs(:,:,:,:,:,:,:)=RESHAPE(allprocs0,(/ct_pf(7),ct_pf(6),ct_pf(5),ct_pf(4),ct_pf(3),ct_pf(2),ct_pf(1)/))
-
-  qq1=>qq(1); qq2=>qq(2); qq3=>qq(3); qq4=>qq(4); qq5=>qq(5); 
-  qq6=>qq(6); qq7=>qq(7); 
-
   thisfileptr=6
 
   CT_MYLOC = (-99)
@@ -570,32 +561,23 @@ subroutine ct_construct()
   enddo
 
   do iprime=1,ct_numprimes
-     qqtop(:)=1
-     qqtop(1:ct_numprimes)=ct_pf(1:ct_numprimes)
-     qqtop(iprime)=1
+
      icomm=0
 
-     do qq7=1,qqtop(7)
-     do qq6=1,qqtop(6)
-     do qq5=1,qqtop(5)
-     do qq4=1,qqtop(4)
-     do qq3=1,qqtop(3)
-     do qq2=1,qqtop(2)
-     do qq1=1,qqtop(1)
-
-        pp0(1:7)=qq(1:7)
-        pp1(1:7)=qq(1:7)
-        pp0(iprime)=1
-        pp1(iprime)=ct_pf(iprime)
+     do xx=1, xxtop(iprime)    !!  EITHER LOOP ORDER APPEARS OK
+     do yy=1, yytop(iprime)    !!  CHECKME (with qqtop etc was fast index outer, slow inner)
 
         icomm=icomm+1
         if (icomm.gt.nprocs/ct_minprime) then
            write(mpifileptr,*) "Error construct",icomm,nprocs,ct_minprime; call mpistop()
         endif
 
-        CT_PROCSET(1:ct_pf(iprime),icomm,iprime)=RESHAPE( &
-             allprocs(pp0(7):pp1(7), pp0(6):pp1(6), pp0(5):pp1(5), pp0(4):pp1(4), &
-             pp0(3):pp1(3), pp0(2):pp1(2), pp0(1):pp1(1)),(/ct_pf(iprime)/))
+!!$        CT_PROCSET(1:ct_pf(iprime),icomm,iprime)=RESHAPE( &
+!!$             allprocs(pp0(7):pp1(7), pp0(6):pp1(6), pp0(5):pp1(5), pp0(4):pp1(4), &
+!!$             pp0(3):pp1(3), pp0(2):pp1(2), pp0(1):pp1(1)),(/ct_pf(iprime)/))
+!!$
+        call ct_cast_assign(allprocs0,yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
+             CT_PROCSET(1:ct_pf(iprime),icomm,iprime))
 
         do ii=1,ct_pf(iprime)
            if (CT_PROCSET(ii,icomm,iprime).eq.myrank) then
@@ -630,17 +612,20 @@ subroutine ct_construct()
 
      enddo
      enddo
-     enddo
-     enddo
-     enddo
-     enddo
-     enddo
      if (CT_MYLOC(iprime).le.0) then
         print *, "MYLOC ERROR",myrank,CT_MYLOC(iprime),iprime; call mpistop()
      endif
   enddo
 #endif
 
+contains
+  subroutine ct_cast_assign(threemat,first,middle,last,x1,x3,middle_out)
+    implicit none
+    integer, intent(in) :: first,middle,last,x1,x3, threemat(first,middle,last)
+    integer, intent(out) :: middle_out(middle)
+    middle_out(:)=threemat(x1,:,x3)
+  end subroutine ct_cast_assign
+  
 end subroutine ct_construct
 
 
