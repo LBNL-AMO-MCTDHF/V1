@@ -475,7 +475,7 @@ subroutine oneminusproject(inspfs, outspfs, prospfs)
 end subroutine
 
 
-subroutine project(inspfs, outspfs, prospfs)
+recursive subroutine project(inspfs, outspfs, prospfs)
   use parameters
   use opmod !! frozenspfs
   implicit none
@@ -504,18 +504,22 @@ subroutine project(inspfs, outspfs, prospfs)
 !!$     enddo
 !!$  enddo
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
   do i=1,nspf
      do j=1,nspf+numfrozen
         mydot(j,i)=   dot(tempprospfs(:,j),inspfs(:,i),spfsize)
      enddo
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
   if (parorbsplit.eq.3) then
      call mympireduce(mydot,nspf*(nspf+numfrozen))
   endif
 
+  outspfs(:,:)=0
   do i=1,nspf
-     outspfs(:,i)=0.d0
      do j=1,nspf+numfrozen
         outspfs(:,i) = outspfs(:,i) + tempprospfs(:,j) * &
              mydot(j,i)

@@ -730,6 +730,9 @@ recursive subroutine derproject0(inspfs, outspfs, prospfs, prospfderivs,inconjgf
 !!$  allochere=1
 
   outspfs(:,:)=0.d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
   do i=1,nspf
      do j=1,nspf
         mydot(i,j) = dot(prospfs(:,i),inspfs(:,j),spfsize)
@@ -745,6 +748,8 @@ recursive subroutine derproject0(inspfs, outspfs, prospfs, prospfderivs,inconjgf
 #endif
      enddo
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
   if (parorbsplit.eq.3) then
      call mympireduce(mydot,nspf**2)
@@ -754,6 +759,7 @@ recursive subroutine derproject0(inspfs, outspfs, prospfs, prospfderivs,inconjgf
   if (inconjgflag==1) then
      mydot=ANTICON(mydot)    !! in derprojectconjg call, this is herm conjg of that in derproject call
   endif
+
   do i=1,nspf
      if (inconjgflag==1) then
         do j=1,nspf
@@ -790,6 +796,9 @@ recursive subroutine derproject0(inspfs, outspfs, prospfs, prospfderivs,inconjgf
 !        and mydot2 is  (in,pro)
 
      prodot2=0.d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
      do i=1,nspf
         do j=1,nspf
            if (inconjgflag.eq.1) then
@@ -802,6 +811,8 @@ recursive subroutine derproject0(inspfs, outspfs, prospfs, prospfderivs,inconjgf
            endif
         enddo
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
 !prodot  (pro,der) x mydot (pro,in)   : pro is in;    in is out
 !prodot2  (der,pro) x mydot (pro,in)   : der is in;    in is out

@@ -76,7 +76,7 @@ subroutine twoedealloc
 end subroutine twoedealloc
 
 !! flag=1 means flux, otherwise whole op
-subroutine call_flux_op_twoe(mobra,moket,V2,flag) 
+recursive subroutine call_flux_op_twoe(mobra,moket,V2,flag) 
 !! determine the 2-electron matrix elements in the orbital basis for the flux operator i(H-H^{\dag}) 
 !! input :
 !! mobra - the orbitals that contained in the bra 
@@ -93,11 +93,16 @@ subroutine call_flux_op_twoe(mobra,moket,V2,flag)
        V2(numspf,numspf,numspf,numspf), twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),&
        twoeden2(numerad),twoeden3(numerad)
 
-  V2=0d0
+  V2(:,:,:,:)=0d0
+
 !! The bra determinant is <ij|
 !! The ket determinant is |ab>
 !! without the ecs rmatrix and ylm are real, sooooooo V-V^dagger is zero by def...
 !! ALWAYS USING ALLLCON TO MAKE SURE ITS ALWAYS hermitian elements of V-V^\dagger and V\dagger must have transpose 
+
+!$OMP PARALLEL DEFAULT(shared) PRIVATE(b,j,twoemat2,qq,rr,qq2,rr2,mvalj,mvalb,deltam,twoeden,lsum,twoeden2,twoeden3,a,i,mvali,mvala,ieta,ixi)
+
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
   do b=1,numspf !! ket vector
     do j=1,numspf !! bra vector
 !! integrating over electron 2
@@ -112,18 +117,25 @@ subroutine call_flux_op_twoe(mobra,moket,V2,flag)
       do mvalj=qq,rr
         do mvalb=qq2,rr2
           deltam=mvalb-mvalj
+
           twoeden(:,:) = CONJUGATE(mobra(:,:,mvalj,j)) * moket(:,:,mvalb,b)
+
           do lsum=1+abs(deltam),jacobisummax+1
 !! this is always real and serves as a delta function, can use for both V and V^\dagger
 !! We do not need conjugation and separate V and V^\dagger densities as Ylm is real
 !! Ylm's here mean it is a delta function for e-2 in eta 
+
             twoeden2=0d0
+
             do ieta=1,lbig+1
               twoeden2(:)=twoeden2(:) + twoeden(:,ieta) * ylmvals(abs(deltam),ieta,lsum-abs(deltam)) 
             enddo
+
 !! we need to be able to do the conjugate here
 !! thankfully the rmatrix is diagonal in xi, so transposing rmatrix only switches e-s which doesn't make any sense
+
             twoeden3=0d0
+
             select case(flag)
             case(1)  ! flux imag
 #ifdef ECSFLAG
@@ -195,6 +207,9 @@ subroutine call_flux_op_twoe(mobra,moket,V2,flag)
       enddo
     enddo
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
   if(flag.eq.1) then
     V2=(0d0,1d0)*V2       !!! yes because I got the imaginary part above with conjugates...  returns imaginary... mult by i to get -2 x imag part (real valued number) like others
  else if (flag.eq.2) then
@@ -208,23 +223,29 @@ end subroutine call_flux_op_twoe
 !  DATAECS :: rmatrix(numerad,numerad,mseriesmax+1,lseriesmax+1)
 !  real*8 :: ylmvals(0:2*mbig, 1:lbig+1, lseriesmax+1)
 
-subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnotiming) !! ok unused
+recursive subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnotiming) !! ok unused
   use myparams
   use twoemod
   use myprojectmod
   implicit none
   DATATYPE :: TWOEreduced(numerad,lbig+1,-2*mbig:2*mbig, numspf,numspf)
   DATATYPE :: inspfs1(numerad,lbig+1,-mbig:mbig,numspf),inspfs2(numerad,lbig+1,-mbig:mbig,numspf), &
-       twoematel(numspf,numspf,numspf,numspf),sum
+       twoematel(numspf,numspf,numspf,numspf)
   integer :: mvalue2a, mvalue1b, mvalue2b, mvalue1a, itime, jtime,xnotiming,  &
        i1,i2,j1,j2,spf1a,spf1b,spf2a,spf2b, deltam,k1,lsum,qq,rr,qq2,rr2,times(100)
-  DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),twoeden2(numerad),twoeden3(numerad)
+  DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),twoeden2(numerad),twoeden3(numerad),&
+       tempmatel(numspf,numspf)
   character :: xtimingdir*(*)
 
   twoematel(:,:,:,:)=0d0
+  twoereduced=0d0
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2b,spf2a,twoemat2,qq,rr,qq2,rr2,mvalue2a,mvalue2b,deltam,twoeden,lsum,twoeden2,j1,twoeden3,j2,k1,spf1a,spf1b,mvalue1a,mvalue1b,i1,i2,tempmatel)
+
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
   do spf2b=1,numspf
      do spf2a=1,numspf
+
         twoemat2=0.d0
 
         ! integrating over electron 2
@@ -240,13 +261,19 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
         do mvalue2a=qq,rr
            do mvalue2b=qq2,rr2
               deltam=mvalue2b-mvalue2a
+
               twoeden(:,:) = CONJUGATE(inspfs1(:,:,mvalue2a,spf2a)) * inspfs2(:,:,mvalue2b,spf2b)
+
               do lsum=1+abs(deltam),jacobisummax+1
+
                  twoeden2=0.d0
+
                  do j1=1,lbig+1
                     twoeden2(:)=twoeden2(:) + twoeden(:,j1) * ylmvals(abs(deltam),j1,lsum-abs(deltam))
                  enddo
+
                  twoeden3=0.d0
+
                  do j2=1,numerad
                     if (atomflag==0) then
                        twoeden3(:)=twoeden3(:) + twoeden2(j2) * rmatrix(:,j2,abs(deltam)+1,lsum-abs(deltam)) * 4.d0
@@ -261,13 +288,16 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
               enddo
            enddo
         enddo
-        twoereduced(:,:,:,spf2a,spf2b) = twoemat2    !! bra,ket
+        twoereduced(:,:,:,spf2a,spf2b) = twoereduced(:,:,:,spf2a,spf2b) + twoemat2(:,:,:)    !! bra,ket
 
         call system_clock(jtime);           times(1)=times(1)+jtime-itime
 
+        tempmatel(:,:)=0d0
+
         do spf1b=1,numspf
            do spf1a=1,numspf
-              sum=0.d0
+
+!!$OPEN-MP              sum=0.d0
               
               if (spfrestrictflag==1) then
                  qq=spfmvals(spf1a);                    rr=spfmvals(spf1a)
@@ -282,21 +312,34 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
                     
                     deltam=mvalue1a-mvalue1b
                     
-!!$ if (1==1) then  ! is faster when optimized, much slower when not.
-
                     do i1=1,lbig+1
                        do i2=1,numerad
-                          sum = sum + CONJUGATE(inspfs1(i2,i1,mvalue1a,spf1a)) * inspfs2(i2,i1,mvalue1b,spf1b) * twoemat2(i2,i1,deltam)
+
+!!$ OPEN-MP                          twoematel(spf2a,spf2b,spf1a,spf1b) = twoematel(spf2a,spf2b,spf1a,spf1b) +&
+!!$                               CONJUGATE(inspfs1(i2,i1,mvalue1a,spf1a)) * inspfs2(i2,i1,mvalue1b,spf1b) * twoemat2(i2,i1,deltam)
+
+                          tempmatel(spf1a,spf1b) = tempmatel(spf1a,spf1b) +&
+                               CONJUGATE(inspfs1(i2,i1,mvalue1a,spf1a)) * inspfs2(i2,i1,mvalue1b,spf1b) * twoemat2(i2,i1,deltam)
+
                        enddo
                     enddo
                  enddo
               enddo
-              twoematel(spf2a,spf2b,spf1a,spf1b) = sum
+
+
+!!$ OPEN-MP              twoematel(spf2a,spf2b,spf1a,spf1b) = sum
+
            enddo
         enddo
+        
+        twoematel(spf2a,spf2b,:,:) = twoematel(spf2a,spf2b,:,:)+tempmatel(:,:)
+
         call system_clock(itime);   times(2)=times(2)+itime-jtime
      enddo
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
 
 !  if ((myrank.eq.1).and.(notiming.eq.0)) then
 !     if (timingflag==1) then
@@ -323,7 +366,7 @@ end subroutine call_twoe_matel
 
 !! ADDS TO matrix hatommatel  NO NEVERMIND
 
-subroutine hatom_matel(inspfs1, inspfs2, hatommatel,numberspf)   !!!rmatrix,ylmvals, 
+recursive subroutine hatom_matel(inspfs1, inspfs2, hatommatel,numberspf)   !!!rmatrix,ylmvals, 
   use myparams
   use twoemod
   use myprojectmod
@@ -349,10 +392,13 @@ subroutine hatom_matel(inspfs1, inspfs2, hatommatel,numberspf)   !!!rmatrix,ylmv
      return
   endif
 
-  
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf1b,spf1a,sum,mvalue1a,mvalue1b,deltam,i1,i2)
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(4)
   do spf1b=1,numberspf
      do spf1a=1,numberspf
-        sum=0.d0
+
+!!$OPEN-MP        sum=0.d0
+
         do mvalue1a=-mbig,mbig
            do mvalue1b=-mbig,mbig
               deltam=mvalue1a-mvalue1b
@@ -361,29 +407,34 @@ subroutine hatom_matel(inspfs1, inspfs2, hatommatel,numberspf)   !!!rmatrix,ylmv
                        
               do i1=1,lbig+1
                  do i2=1,numerad
-                    sum = sum + CONJUGATE(inspfs1(i2,i1,mvalue1a,spf1a)) * inspfs2(i2,i1,mvalue1b,spf1b) * hatomtwoemat2(i2,i1,deltam)
+
+                    hatommatel(spf1a,spf1b) = hatommatel(spf1a,spf1b) - &
+                         CONJUGATE(inspfs1(i2,i1,mvalue1a,spf1a)) * inspfs2(i2,i1,mvalue1b,spf1b) * hatomtwoemat2(i2,i1,deltam)
+
+!!$OPEN-MP                    sum = sum + CONJUGATE(inspfs1(i2,i1,mvalue1a,spf1a)) * inspfs2(i2,i1,mvalue1b,spf1b) * hatomtwoemat2(i2,i1,deltam)
+
                  enddo
               enddo
            enddo
         enddo
-        hatommatel(spf1a,spf1b) = hatommatel(spf1a,spf1b) -  sum
+!!$OPEN-MP        hatommatel(spf1a,spf1b) = hatommatel(spf1a,spf1b) -  sum
      enddo
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
   
 end subroutine hatom_matel
 
 
-subroutine hatom_op(inspfs, outspfs)    !! , rmatrix,ylmvals
+recursive subroutine hatom_op(inspfs, outspfs)    !! , rmatrix,ylmvals
   use myparams
   use twoemod
   use myprojectmod
   implicit none
 
   DATATYPE :: inspfs(numerad,lbig+1,-mbig:mbig), outspfs(numerad,lbig+1,-mbig:mbig)
-  integer ::  mvalue1b, mvalue1a,  &
-       i1,i2,deltam
-
-  outspfs(:,:,:)=0d0
+  DATATYPE :: tempspfs(numerad,lbig+1,-mbig:mbig) !! AUTOMATIC
+  integer ::  mvalue1b, mvalue1a,i1,i2
 
   if (numhatoms.eq.0) then
      return
@@ -396,30 +447,37 @@ subroutine hatom_op(inspfs, outspfs)    !! , rmatrix,ylmvals
      print *, "Hatom not for calc with multiple r gridpoints.sorry.";     stop
   endif
 
+  outspfs(:,:,:)=0d0
 
-
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(mvalue1a,mvalue1b,i1,i2,tempspfs)  !!deltam
+  tempspfs(:,:,:)=0d0
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(4)
      do mvalue1a=-mbig,mbig
         do mvalue1b=-mbig,mbig
-           deltam=mvalue1a-mvalue1b
 
-!!$ if (1==1) then  ! is faster when optimized, much slower when not.
-                       
+!!OPEN-MP           deltam=mvalue1a-mvalue1b
+
            do i1=1,lbig+1
               do i2=1,numerad
-                 outspfs(i2,i1,mvalue1a)= &
-                 outspfs(i2,i1,mvalue1a)- &
-                 inspfs(i2,i1,mvalue1b) * hatomtwoemat2(i2,i1,deltam)
+                 tempspfs(i2,i1,mvalue1a)= &
+                 tempspfs(i2,i1,mvalue1a)- &
+                 inspfs(i2,i1,mvalue1b) * hatomtwoemat2(i2,i1,mvalue1a-mvalue1b)
+!!OPEN-MP                 inspfs(i2,i1,mvalue1b) * hatomtwoemat2(i2,i1,deltam)
+
               enddo
            enddo
         enddo
      enddo
+!$OMP END DO
+     outspfs(:,:,:)=outspfs(:,:,:)+tempspfs(:,:,:)
+!$OMP END PARALLEL
 
 
 end subroutine hatom_op
 
 
 
-subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  !! returns last two.  a little cloogey
+recursive subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  !! returns last two.  a little cloogey
   use myparams
   use twoemod
   use myprojectmod
@@ -432,7 +490,9 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   integer :: mvalue2a, mvalue1b, mvalue2b, mvalue1a, numfrozen, &
        i1,i2,j1,j2,spf1a,spf1b,spf2a,spf2b, deltam,k1,lsum,qq,rr,qq2,rr2,i,ii, &
        iispf,ispf,ispin,iispin, kk,sizespf
-  DATATYPE, allocatable :: tempreduced(:,:,:,:,:), tempmatel(:,:,:,:), temppotmatel(:,:),tempmult(:,:), temppotmatel2(:,:)
+  DATATYPE :: tempreduced(numerad,lbig+1,-2*mbig:2*mbig,numfrozen,numfrozen), tempmult(numerad*(lbig+1)*(2*mbig+1),numfrozen), &
+       tempmatel(numfrozen,numfrozen,numfrozen,numfrozen),       temppotmatel(numfrozen,numfrozen),   &
+       temppotmatel2(numfrozen,numfrozen)
   DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),twoeden2(numerad),   twoeden3(numerad)
 
   if (numfrozen.eq.0) then
@@ -440,12 +500,13 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   endif
 
   sizespf=numerad*(lbig+1)*(2*mbig+1)
-  allocate(tempreduced(numerad,lbig+1,-2*mbig:2*mbig,numfrozen,numfrozen), tempmult(sizespf,numfrozen), &
-       tempmatel(numfrozen,numfrozen,numfrozen,numfrozen),       temppotmatel(numfrozen,numfrozen),   &
-       temppotmatel2(numfrozen,numfrozen))
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2b,spf2a,twoemat2,qq,rr,qq2,rr2,mvalue2a,mvalue2b,deltam,twoeden,lsum,twoeden2,twoeden3,j2,j1,k1,spf1b,spf1a,mvalue1a,mvalue1b,i1,i2)
+
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
   do spf2b=1,numfrozen
      do spf2a=1,numfrozen
+
         twoemat2=0.d0
 
         ! integrating over electron 2
@@ -504,6 +565,9 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
         enddo
      enddo
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
 
 !! THIS WAY
   frozenreduced(:,:,:)=0d0
@@ -558,14 +622,12 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
      frozenkediag=frozenkediag+2*temppotmatel(i,i)
   enddo
 
-  deallocate(tempreduced,       tempmatel,       temppotmatel,tempmult,temppotmatel2)
-
 end subroutine call_frozen_matels0
 
 
 !! ADDS TO OUTSPFS
 
-subroutine call_frozen_exchange0(inspfs,outspfs,infrozens,numfrozen)   !! rmatrix ylmvals
+recursive subroutine call_frozen_exchange0(inspfs,outspfs,infrozens,numfrozen)   !! rmatrix ylmvals
   use myparams
   use twoemod
   use myprojectmod
@@ -574,17 +636,21 @@ subroutine call_frozen_exchange0(inspfs,outspfs,infrozens,numfrozen)   !! rmatri
   integer :: mvalue2a, mvalue2b,  numfrozen, &
        spf2a,spf2b, deltam,k1,lsum,qq,rr,qq2,rr2,j1,j2
   DATATYPE :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen), inspfs(numerad,lbig+1,-mbig:mbig,numspf)
-  DATATYPE :: outspfs(numerad,lbig+1,-mbig:mbig,numspf)
-  DATATYPE, allocatable :: twoemat2(:,:,:),  &              !! numerad,lbig+1,-2*mbig:2*mbig
-       twoeden(:,:), twoeden2(:), twoeden3(:)
+  DATATYPE :: outspfs(numerad,lbig+1,-mbig:mbig,numspf), workspfs(numerad,lbig+1,-mbig:mbig,numspf)
+  DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),twoeden2(numerad),twoeden3(numerad)
 
   if (numfrozen.eq.0) then
      return
   endif
-  allocate(twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),twoeden2(numerad),twoeden3(numerad))
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2b,spf2a,twoemat2,qq,rr,qq2,rr2,mvalue2a,mvalue2b,deltam,twoeden,lsum,j1,j2,k1,workspfs)
+
+  workspfs=0d0
+
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
   do spf2b=1,numfrozen
      do spf2a=1,numspf
+
         twoemat2=0.d0
 
         ! integrating over electron 2
@@ -636,7 +702,7 @@ subroutine call_frozen_exchange0(inspfs,outspfs,infrozens,numfrozen)   !! rmatri
            do mvalue2b=qq2,rr2  !! frozen
 
 !! YES MINUS 1 TIMES              
-              outspfs(:,:,mvalue2a,spf2a) = outspfs(:,:,mvalue2a,spf2a) -    & 
+              workspfs(:,:,mvalue2a,spf2a) = workspfs(:,:,mvalue2a,spf2a) -    & 
 !!NO                   twoemat2(:,:,mvalue2b-mvalue2a) * CONJUGATE(infrozens(:,:,mvalue2b,spf2b))
 !! THIS WAY
                    twoemat2(:,:,mvalue2b-mvalue2a) * (infrozens(:,:,mvalue2b,spf2b))
@@ -644,23 +710,33 @@ subroutine call_frozen_exchange0(inspfs,outspfs,infrozens,numfrozen)   !! rmatri
         enddo
      enddo
   enddo
-  deallocate(twoemat2,twoeden,twoeden2,twoeden3)
+!$OMP END DO
+  outspfs=outspfs+workspfs
+!$OMP END PARALLEL
+
   
 end subroutine call_frozen_exchange0
 
 
-subroutine getdensity(density, indenmat, inspfs,in_numspf)
+recursive subroutine getdensity(density, indenmat, inspfs,in_numspf)
   use myparams
   implicit none
 
   integer :: in_numspf, i,j,ii,jj,kk, mm,nn
   DATATYPE :: indenmat(in_numspf,in_numspf), inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)
-  complex*16 :: density(numerad,lbig+1,2*mbig+1)
+  complex*16,intent(out) :: density(numerad,lbig+1,2*mbig+1)
+  complex*16 :: tempdens(numerad,lbig+1,2*mbig+1)  !!AUTOMATIC
   real*8 :: phi,pi
 
   pi=4d0*atan(1d0)
-  density=0.d0
 
+  density=0d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(tempdens,mm,nn,i,j,kk,phi,jj,ii)
+
+  tempdens=0.d0
+
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(5)
   do mm=-mbig,mbig
   do nn=-mbig,mbig
      do i=1,in_numspf
@@ -673,10 +749,10 @@ subroutine getdensity(density, indenmat, inspfs,in_numspf)
 
 !!  integral sum_ij  | phi_j(x) > rho_ji < phi_i (x) |                    
 
-!! 111510 was with transpose denmat                   density(ii,jj,kk) = density(ii,jj,kk) + indenmat(i,j) * inspfs(ii,jj,mm,i)*CONJUGATE(inspfs(ii,jj,nn,j)) * exp((0.d0,1.d0)*(nn-mm)*phi)
+!! 111510 was with transpose denmat                   tempdens(ii,jj,kk) = tempdens(ii,jj,kk) + indenmat(i,j) * inspfs(ii,jj,mm,i)*CONJUGATE(inspfs(ii,jj,nn,j)) * exp((0.d0,1.d0)*(nn-mm)*phi)
 
 !! NOW 111510
-                    density(ii,jj,kk) = density(ii,jj,kk) + indenmat(j,i) * inspfs(ii,jj,mm,i)*CONJUGATE(inspfs(ii,jj,nn,j)) * exp((0.d0,1.d0)*(nn-mm)*phi)
+                    tempdens(ii,jj,kk) = tempdens(ii,jj,kk) + indenmat(j,i) * inspfs(ii,jj,mm,i)*CONJUGATE(inspfs(ii,jj,nn,j)) * exp((0.d0,1.d0)*(nn-mm)*phi)
 
                  enddo
               enddo
@@ -685,6 +761,9 @@ subroutine getdensity(density, indenmat, inspfs,in_numspf)
      enddo
   enddo
   enddo
+!$OMP END DO
+  density=density+tempdens
+!$OMP END PARALLEL
 
 end subroutine getdensity
 
@@ -794,6 +873,8 @@ subroutine mult_imydipole(in, out)
 #endif
 end subroutine mult_imydipole
 
+
+
 !subroutine get_reducedpot0(intwoden,outpot,twoereduced)
 !  use myparams
 !  use twoemod
@@ -809,17 +890,26 @@ end subroutine mult_imydipole
 !
 !end subroutine get_reducedpot0
 
+
+
+
 !! NOW ONLY OUTPUTS ONE. CALL IN LOOP. FOR OPENMPI TRY.
-subroutine mult_reducedpot(inspfs,outspf,whichspf,reducedpot)
+recursive subroutine mult_reducedpot(inspfs,outspf,whichspf,reducedpot)
   use myparams
   use twoemod
   implicit none
   DATATYPE :: reducedpot(numerad,lbig+1,-2*mbig:2*mbig,  numspf,numspf),  outspf(numerad,lbig+1, -mbig:mbig)
   DATATYPE, intent(in) :: inspfs(numerad,lbig+1, -mbig:mbig, numspf)
+  DATATYPE :: workspf(numerad,lbig+1, -mbig:mbig)  !!AUTOMATIC
   integer :: ispf,imval,flag,kspf,kmval,whichspf
 
   outspf(:,:,:)=0d0
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(workspf,ispf,imval,flag,kspf,kmval)
+
+  workspf(:,:,:)=0d0
+
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
   do ispf=whichspf,whichspf
      do imval=-mbig,mbig
         flag=1
@@ -831,25 +921,30 @@ subroutine mult_reducedpot(inspfs,outspf,whichspf,reducedpot)
               do kmval=-mbig,mbig
 !! reducedpot is usual notation: <ispf | kspf> so so sum over slow index kspf
                     
-                 outspf(:,:,imval) = outspf(:,:,imval) + & 
+                 workspf(:,:,imval) = workspf(:,:,imval) + & 
                       reducedpot(:,:,imval-kmval,ispf,kspf) * inspfs(:,:,kmval,kspf)
               enddo
            enddo
         endif
      enddo
   enddo
+!$OMP END DO
+  outspf(:,:,:)=outspf(:,:,:)+workspf(:,:,:)
+!$OMP END PARALLEL
+
 end subroutine mult_reducedpot
 
 
 !! FOR EXPERIMENTAL ADDITION OF ADDITIONAL HYDROGEN ATOMS VIA POISSON SOLVE
 
-subroutine hatomcalc()
+recursive subroutine hatomcalc()
   use myparams
   use myprojectmod
   use twoemod
   implicit none
-  DATATYPE :: interpolate, hatomden(numerad,lbig+1,-mbig:mbig,-mbig:mbig)
-  DATATYPE :: twoeden(numerad,lbig+1),twoeden2(numerad),twoeden3(numerad)
+  DATATYPE :: interpolate
+  DATATYPE :: twoeden(numerad,lbig+1),twoeden2(numerad),twoeden3(numerad),&  !!AUTOMATIC
+       hatomden(numerad,lbig+1,-mbig:mbig,-mbig:mbig), hatomtwoemattwo(numerad,lbig+1,-2*mbig:2*mbig)
   integer :: mvalue2a, mvalue2b,       iatom, &
        j1,j2,deltam,k1,lsum,  ixi,ieta
 
@@ -874,26 +969,40 @@ subroutine hatomcalc()
      return
   endif
 
-  hatomden=0d0
-  do mvalue2a=-mbig,mbig
-     do mvalue2b=-mbig,mbig
-        deltam=mvalue2b-mvalue2a
+  hatomden=0d0    !! HATOMDEN IS OPENMP SHARED
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(mvalue2a,mvalue2b,iatom,ieta,ixi)
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(3)
+  do mvalue2b=-mbig,mbig
+     do mvalue2a=-mbig,mbig
+
+!!OPEN-MP        deltam=mvalue2b-mvalue2a
+
         do iatom=1,numhatoms
            if (hlocrealflag.ne.0) then
               do ieta=1,lbig+1
                  do ixi=1,numerad
                     hatomden(ixi,ieta,mvalue2a,mvalue2b) = hatomden(ixi,ieta,mvalue2a,mvalue2b) + &
-                         1.d0/(real(2*mbig+1,8))*hlocs(3,iatom)**(mvalue2a+mvalue2b) * interpolate(hlocreal(1,iatom),hlocreal(2,iatom),real(rpoints(1),8), abs(deltam),ixi,ieta)
+                         1.d0/(real(2*mbig+1,8))*hlocs(3,iatom)**(mvalue2a+mvalue2b) * interpolate(hlocreal(1,iatom),hlocreal(2,iatom),real(rpoints(1),8), abs(mvalue2b-mvalue2a),ixi,ieta)
                  enddo
               enddo
            endif
         enddo
      enddo
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
   hatomtwoemat2=0.d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(twoeden,twoeden2,twoeden3,mvalue2a,mvalue2b,deltam,iatom,ieta,ixi,lsum,j1,j2,k1,hatomtwoemattwo)
+
+  hatomtwoemattwo=0.d0
+
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
   do mvalue2a=-mbig,mbig
      do mvalue2b=-mbig,mbig
+
         deltam=mvalue2b-mvalue2a
         twoeden=0d0
         if (hlocrealflag.ne.0) then
@@ -917,13 +1026,17 @@ subroutine hatomcalc()
               endif
            enddo
            do k1=1,lbig+1
-              hatomtwoemat2(:,k1,deltam) = hatomtwoemat2(:,k1,deltam) - &
+              hatomtwoemattwo(:,k1,deltam) = hatomtwoemattwo(:,k1,deltam) - &
                    twoeden3(:)*ylmvals(abs(deltam),k1,lsum-abs(deltam))
            enddo
         enddo
      enddo
   enddo
+!$OMP END DO
 
+  hatomtwoemat2(:,:,:)=hatomtwoemat2(:,:,:)+hatomtwoemattwo(:,:,:)
+
+!$OMP END PARALLEL
 
 end subroutine hatomcalc
 
@@ -1313,35 +1426,46 @@ end function xilobattoint
 !! all proddrhos are the same. (and asymmetric individually)
 
 
-subroutine velmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
+recursive subroutine velmultiply(spfin,spfoutout, myxtdpot0,myytdpot0,myztdpot)
   use myparams
   use myprojectmod
   implicit none
-  integer :: imval, qq, ieta , ixi, i 
-  DATATYPE :: spfin(numerad,lbig+1,-mbig:mbig), spfout(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(in) :: spfin(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: spfoutout(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(in) :: myxtdpot0,myztdpot,myytdpot0
+  DATATYPE :: spfout(numerad,lbig+1,-mbig:mbig), work(lbig+1)  !! AUTOMATIC
   complex*16 :: csum1,csum2,cfacreal,cfacimag
-  DATATYPE :: myxtdpot0,myztdpot,myytdpot0
   real*8 :: myrhotdpotreal,myrhotdpotimag
-  DATATYPE :: work(lbig+1)
+  integer :: imval, ieta , ixi
 
 #ifdef REALGO
 OFLWR "Velocity gauge not available for real time propagation"; CFLST
 #endif
 
+  spfoutout=0d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spfout,imval,ixi,work,csum1,ieta,cfacreal,myrhotdpotreal,cfacimag,myrhotdpotimag,csum2)
+
   spfout=0d0
+
   if (abs(myztdpot).gt.1.d-10) then
+
+     csum1=myztdpot * (0.d0,1.d0) 
+
      do imval=-mbig,mbig
-        qq=lbig+1
+!$OMP DO SCHEDULE(STATIC)
         do ixi=1,numerad
-           call MYGEMV('N',qq,qq,DATAONE,sparseddz_eta(:,:,ixi,abs(imval)+1),qq,spfin(ixi,:,imval),1,DATAZERO, work, 1)
+           call MYGEMV('N',lbig+1,lbig+1,DATAONE,sparseddz_eta(:,:,ixi,abs(imval)+1),lbig+1,spfin(ixi,:,imval),1,DATAZERO, work, 1)
            spfout(ixi,:,imval)= spfout(ixi,:,imval) + work(1:lbig+1) * myztdpot * (0.d0,1.d0)  
         enddo
-
-        i=2*bandwidth+1
-        csum1=myztdpot * (0.d0,1.d0) 
+!$OMP END DO 
+! no barrier needed
+!$OMP DO SCHEDULE(STATIC)
         do ieta=1,lbig+1
-           call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum1,sparseddz_xi_banded(:,:,ieta,abs(imval)+1),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval), 1)
+           call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum1,sparseddz_xi_banded(:,:,ieta,abs(imval)+1),2*bandwidth+1,&
+                spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval), 1)
         enddo
+!$OMP END DO 
         spfout(:,:,imval) = spfout(:,:,imval) - sparseddz_diag(:,:,abs(imval)+1) * spfin(:,:,imval) * myztdpot * (0.0d0, 1.d0) 
      enddo
   endif
@@ -1362,9 +1486,10 @@ OFLWR "Velocity gauge not available for real time propagation"; CFLST
 
      do imval = -mbig,mbig
         if (mod(imval,2).eq.0) then  !! even.  no transpose.
-           qq=lbig+1
+
+!$OMP DO SCHEDULE(STATIC)
            do ixi=1,numerad
-              call MYGEMV('N',qq,qq,DATAONE,sparseddrho_eta(:,:,ixi,1),qq,spfin(ixi,:,imval),1,DATAZERO, work, 1)
+              call MYGEMV('N',lbig+1,lbig+1,DATAONE,sparseddrho_eta(:,:,ixi,1),lbig+1,spfin(ixi,:,imval),1,DATAZERO, work, 1)
               if (imval.gt.-mbig) then
                  spfout(ixi,:,imval-1)= spfout(ixi,:,imval-1) + work(1:lbig+1) * csum1
               endif
@@ -1372,16 +1497,25 @@ OFLWR "Velocity gauge not available for real time propagation"; CFLST
                  spfout(ixi,:,imval+1)= spfout(ixi,:,imval+1) + work(1:lbig+1) * csum2
               endif
            enddo
-           i=2*bandwidth+1
-           do ieta=1,lbig+1
-              if (imval.gt.-mbig) then
-                 call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum1,sparseddrho_xi_banded(:,:,ieta,1),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval-1), 1)
-              endif
+!$OMP END DO
+           if (imval.gt.-mbig) then
+!$OMP DO SCHEDULE(STATIC)
+              do ieta=1,lbig+1
+                 call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum1,sparseddrho_xi_banded(:,:,ieta,1),2*bandwidth+1,&
+                      spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval-1), 1)
+              enddo
+!$OMP END DO
+           endif
+           if (imval.lt.mbig) then
+!$OMP DO SCHEDULE(STATIC)
+              do ieta=1,lbig+1
+                 call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum2,sparseddrho_xi_banded(:,:,ieta,1),2*bandwidth+1,&
+                      spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval+1), 1)
+              enddo
+!$OMP END DO
+           endif
 
-              if (imval.lt.mbig) then
-                 call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum2,sparseddrho_xi_banded(:,:,ieta,1),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval+1), 1)
-              endif
-           enddo
+
            if (imval.gt.-mbig) then                       
               spfout(:,:,imval-1) = spfout(:,:,imval-1) - sparseddrho_diag(:,:,1) * spfin(:,:,imval) *csum1
            endif
@@ -1401,9 +1535,11 @@ OFLWR "Velocity gauge not available for real time propagation"; CFLST
 
         else  !! even or odd:  odd. transpose.
 
-           qq=lbig+1
+!!$           qq=lbig+1
+
+!$OMP DO SCHEDULE(STATIC)
            do ixi=1,numerad
-              call MYGEMV('T',qq,qq,DATANEGONE,sparseddrho_eta(:,:,ixi,1),qq,spfin(ixi,:,imval),1,DATAZERO, work, 1)
+              call MYGEMV('T',lbig+1,lbig+1,DATANEGONE,sparseddrho_eta(:,:,ixi,1),lbig+1,spfin(ixi,:,imval),1,DATAZERO, work, 1)
               if (imval.gt.-mbig) then
                  spfout(ixi,:,imval-1)= spfout(ixi,:,imval-1) + work(1:lbig+1) * csum1
               endif
@@ -1411,18 +1547,26 @@ OFLWR "Velocity gauge not available for real time propagation"; CFLST
                  spfout(ixi,:,imval+1)= spfout(ixi,:,imval+1) + work(1:lbig+1) * csum2
               endif
            enddo
+!$OMP END DO
 
-           i=2*bandwidth+1
-           do ieta=1,lbig+1
-              if (imval.gt.-mbig) then
-                 call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum1*(-1),sparseddrho_xi_banded(:,:,ieta,1),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval-1), 1)
-              endif
+           if (imval.gt.-mbig) then
+!$OMP DO SCHEDULE(STATIC)
+              do ieta=1,lbig+1
+                 call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum1*(-1),sparseddrho_xi_banded(:,:,ieta,1),2*bandwidth+1,&
+                      spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval-1), 1)
+              enddo
+!$OMP END DO
+           endif
+           if (imval.lt.mbig) then
+!$OMP DO SCHEDULE(STATIC)
+              do ieta=1,lbig+1
+                 call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum2*(-1),sparseddrho_xi_banded(:,:,ieta,1),2*bandwidth+1,&
+                      spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval+1), 1)
+              enddo
+!$OMP END DO
+           endif
 
-              if (imval.lt.mbig) then
-                 call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum2*(-1),sparseddrho_xi_banded(:,:,ieta,1),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval+1), 1)
 
-              endif
-           enddo
            if (imval.gt.-mbig) then                       
               spfout(:,:,imval-1) = spfout(:,:,imval-1) + sparseddrho_diag(:,:,1) * spfin(:,:,imval) * csum1
            endif
@@ -1442,7 +1586,8 @@ OFLWR "Velocity gauge not available for real time propagation"; CFLST
         endif  ! mval even or odd
      enddo
   endif
-
+  spfoutout(:,:,:)=spfoutout(:,:,:)+spfout(:,:,:)
+!$OMP END PARALLEL
 
 
 end subroutine velmultiply
@@ -1456,7 +1601,7 @@ end subroutine velmultiply
 !!   imag part(complex antisymmetric ddz) is hermitian  times i is antihermitian
 !! imag() returns real value
 
-subroutine imvelmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
+recursive subroutine imvelmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   use myparams
   use myprojectmod
   implicit none
@@ -1467,11 +1612,11 @@ subroutine imvelmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   myrhotdpot=myztdpot; myrhotdpot=myytdpot0; myrhotdpot=myxtdpot0
   spfout(:,:,:)=0d0*spfin(:,:,:)  !! avoid warn unused
 #else
-  integer :: imval, qq, ieta , ixi, i 
+  integer :: imval, ieta , ixi
   DATATYPE :: work(lbig+1)
   complex*16 :: csum, cfac
 
-  OFLWR "PROGRAM YPOT IMVELMULTIPLY"; CFLST
+  OFLWR "PROGRAM YPOT IMVELMULTIPLY.openmp too"; CFLST
 
 !! REMEMBER FACTOR OF /2 !!!!   (TWOFIX)  (checkme)
 
@@ -1479,16 +1624,18 @@ subroutine imvelmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   if (abs(myztdpot).gt.1.d-10) then
 
      do imval=-mbig,mbig
-        qq=lbig+1
+
+!!$        qq=lbig+1
+
         do ixi=1,numerad
-           call MYGEMV('N',qq,qq,DATAONE,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddz_eta(:,:,ixi,abs(imval)+1)),qq,spfin(ixi,:,imval),1,DATAZERO, work, 1)
+           call MYGEMV('N',lbig+1,lbig+1,DATAONE,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddz_eta(:,:,ixi,abs(imval)+1)),lbig+1,spfin(ixi,:,imval),1,DATAZERO, work, 1)
            spfout(ixi,:,imval)= spfout(ixi,:,imval) + work(1:lbig+1) * myztdpot * (0.d0,1.d0) 
         enddo
 
-        i=2*bandwidth+1
         csum=myztdpot * (0.d0,1.d0) 
         do ieta=1,lbig+1
-           call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddz_xi_banded(:,:,ieta,abs(imval)+1)),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval), 1)
+           call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddz_xi_banded(:,:,ieta,abs(imval)+1)),2*bandwidth+1,&
+                spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval), 1)
         enddo
 
         spfout(:,:,imval) = spfout(:,:,imval) - (0d0,1d0)*imag((0d0,0d0)+sparseddz_diag(:,:,abs(imval)+1)) * spfin(:,:,imval) * myztdpot * (0.0d0, 1.d0) 
@@ -1504,9 +1651,11 @@ subroutine imvelmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   if (abs(myrhotdpot).gt.1.d-10) then
      do imval = -mbig,mbig
         if (mod(imval,2).eq.0) then  !! even.  no transpose.
-           qq=lbig+1
+
+!!$           qq=lbig+1
+
            do ixi=1,numerad
-              call MYGEMV('N',qq,qq,DATAONE,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_eta(:,:,ixi,1)),qq,spfin(ixi,:,imval),1,DATAZERO, work, 1)
+              call MYGEMV('N',lbig+1,lbig+1,DATAONE,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_eta(:,:,ixi,1)),lbig+1,spfin(ixi,:,imval),1,DATAZERO, work, 1)
               if (imval.gt.-mbig) then
                  spfout(ixi,:,imval-1)= spfout(ixi,:,imval-1) + work(1:lbig+1) * myrhotdpot * (0.d0,1.d0)  *cfac
               endif
@@ -1515,14 +1664,15 @@ subroutine imvelmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
               endif
            enddo
 
-           i=2*bandwidth+1
            csum=myrhotdpot * (0.d0,1.d0) 
            do ieta=1,lbig+1
               if (imval.gt.-mbig) then
-                 call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum*cfac,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_xi_banded(:,:,ieta,1)),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval-1), 1)
+                 call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum*cfac,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_xi_banded(:,:,ieta,1)),2*bandwidth+1,&
+                      spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval-1), 1)
               endif
               if (imval.lt.mbig) then
-                 call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum* CONJG(cfac),(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_xi_banded(:,:,ieta,1)),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval+1), 1)
+                 call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum* CONJG(cfac),(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_xi_banded(:,:,ieta,1)),2*bandwidth+1,&
+                      spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval+1), 1)
               endif
            enddo
            if (imval.gt.-mbig) then                       
@@ -1544,9 +1694,10 @@ subroutine imvelmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
            
         else  !! even or odd:  odd. transpose.
 
-           qq=lbig+1
+!!$           qq=lbig+1
+
            do ixi=1,numerad
-              call MYGEMV('T',qq,qq,DATANEGONE,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_eta(:,:,ixi,1)),qq,spfin(ixi,:,imval),1,DATAZERO, work, 1)
+              call MYGEMV('T',lbig+1,lbig+1,DATANEGONE,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_eta(:,:,ixi,1)),lbig+1,spfin(ixi,:,imval),1,DATAZERO, work, 1)
               if (imval.gt.-mbig) then
                  spfout(ixi,:,imval-1)= spfout(ixi,:,imval-1) + work(1:lbig+1) * myrhotdpot * (0.d0,1.d0)  *cfac
               endif
@@ -1555,14 +1706,15 @@ subroutine imvelmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
               endif
            enddo
            
-           i=2*bandwidth+1
            csum=   (-1)   *   myrhotdpot * (0.d0,1.d0) 
            do ieta=1,lbig+1
               if (imval.gt.-mbig) then
-                 call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum*cfac,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_xi_banded(:,:,ieta,1)),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval-1), 1)
+                 call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum*cfac,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_xi_banded(:,:,ieta,1)),2*bandwidth+1,&
+                      spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval-1), 1)
               endif
               if (imval.lt.mbig) then
-                 call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum* CONJG(cfac),(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_xi_banded(:,:,ieta,1)),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval+1), 1)
+                 call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum* CONJG(cfac),(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_xi_banded(:,:,ieta,1)),2*bandwidth+1,&
+                      spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval+1), 1)
               endif
            enddo
            if (imval.gt.-mbig) then                       
@@ -1600,31 +1752,58 @@ end subroutine imvelmultiply
 
 !! needs factor of 1/r^2 for ham
 
-subroutine mult_ke(in, out,howmanyNOT)
+recursive subroutine mult_ke(in, outout,howmanyNOT)
   use myparams
   use myprojectmod  
   implicit none
 
-  integer :: m2val, ixi,ieta, i,howmanyNOT
-  DATATYPE :: work(lbig+1), work2(lbig+1)   , in(numerad,lbig+1,-mbig:mbig),out(numerad,lbig+1,-mbig:mbig)
+  integer, intent(in) :: howmanyNOT
+  DATATYPE, intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE, intent(out) :: outout(numerad,lbig+1,-mbig:mbig)
+  DATATYPE :: out(numerad,lbig+1,-mbig:mbig) !!,  work(lbig+1), work2(lbig+1)  !! AUTOMATIC
+  DATATYPE :: tempin(numerad,lbig+1,-mbig:mbig),myetamat(lbig+1,lbig+1),myximat(2*bandwidth+1,numerad)
+  integer :: m2val, ixi,ieta
 
   if (howmanyNOT.ne.1) then
      OFLWR "howmany not supported for atom/diatom mult_ke (multmanyflag)"; CFLST
   endif
 
+  outout=0.d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(out,m2val,ixi,ieta,tempin,myetamat,myximat)
+
+  tempin=in
+
   out=0.d0
+
   do m2val=-mbig,mbig
+!$OMP DO SCHEDULE(STATIC)
      do ixi=1,numerad
-        work2=in(ixi,:,m2val)
-        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),sparseops_eta(:,:,ixi,abs(m2val)+1),lbig+1,work2,1,(0.d0,0.d0), work, 1)
-        out(ixi,:,m2val)=out(ixi,:,m2val)+work(1:lbig+1)
+
+!!05-03-2015
+!!        work2=in(ixi,:,m2val)
+!!        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),sparseops_eta(:,:,ixi,abs(m2val)+1),lbig+1,work2,1,(0.d0,0.d0), work, 1)
+!!        out(ixi,:,m2val)=out(ixi,:,m2val)+work(1:lbig+1)
+
+        myetamat(:,:)=sparseops_eta(:,:,ixi,abs(m2val)+1)
+
+        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),myetamat,lbig+1,tempin(ixi,1,m2val),numerad, (1d0,0d0), out(ixi,1,m2val), numerad)
+
      enddo
-     i=2*bandwidth+1
+!$OMP END DO
+!$OMP DO SCHEDULE(STATIC)
      do ieta=1,lbig+1
-        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),sparseops_xi_banded(:,:,ieta,abs(m2val)+1),i,in(:,ieta,m2val),1,(1.d0,0.d0), out(:,ieta,m2val), 1)
+        myximat(:,:)=sparseops_xi_banded(:,:,ieta,abs(m2val)+1)
+        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),myximat,2*bandwidth+1,&
+             tempin(:,ieta,m2val),1,(1.d0,0.d0), out(:,ieta,m2val), 1)
      enddo
+!$OMP END DO
      out(:,:,m2val) = out(:,:,m2val) - sparseops_diag(:,:,abs(m2val)+1) * in(:,:,m2val)
   enddo
+
+  outout=outout+out
+
+!$OMP END PARALLEL
 
 end subroutine mult_ke
 
@@ -1634,55 +1813,108 @@ end subroutine mult_ke
 
 !! needs factor of 1/r^2 for ham
 
-subroutine mult_imke(in, out)
+recursive subroutine mult_imke(in, outout)
   use myparams
   use myprojectmod  
   implicit none
 
-  integer :: m2val, ixi,ieta, i
-  DATATYPE :: in(numerad,lbig+1,-mbig:mbig), out(numerad,lbig+1,-mbig:mbig), work(lbig+1), work2(lbig+1)  
+  DATATYPE, intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE, intent(out) :: outout(numerad,lbig+1,-mbig:mbig)
+  DATATYPE :: out(numerad,lbig+1,-mbig:mbig) !!,  work(lbig+1), work2(lbig+1)  !! AUTOMATIC
+  DATATYPE :: tempin(numerad,lbig+1,-mbig:mbig),myetamat(lbig+1,lbig+1),myximat(2*bandwidth+1,numerad)
+  integer :: m2val, ixi,ieta
+
+  outout=0.d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(out,tempin,m2val,ixi,ieta,myetamat,myximat)
 
   out=0.d0
+
+  tempin=in
+
   do m2val=-mbig,mbig
+!$OMP DO SCHEDULE(STATIC)
      do ixi=1,numerad
-        work2=in(ixi,:,m2val)
-        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),DATAZERO+imag((0d0,0d0)+sparseops_eta(:,:,ixi,abs(m2val)+1)),lbig+1,work2,1,(0.d0,0.d0), work, 1)
-        out(ixi,:,m2val)=out(ixi,:,m2val)+work(1:lbig+1)
+
+
+!!        work2=in(ixi,:,m2val)
+!!        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),DATAZERO+imag((0d0,0d0)+sparseops_eta(:,:,ixi,abs(m2val)+1)),lbig+1,work2,1,(0.d0,0.d0), work, 1)
+!!        out(ixi,:,m2val)=out(ixi,:,m2val)+work(1:lbig+1)
+
+        myetamat(:,:)=imag((0d0,0d0)+sparseops_eta(:,:,ixi,abs(m2val)+1))
+
+        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),myetamat,lbig+1,tempin(ixi,1,m2val),numerad,(1.d0,0.d0), out(ixi,1,m2val), numerad)
+
      enddo
-     i=2*bandwidth+1
+!$OMP END DO
+!$OMP DO SCHEDULE(STATIC)
      do ieta=1,lbig+1
-        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),DATAZERO+imag((0d0,0d0)+sparseops_xi_banded(:,:,ieta,abs(m2val)+1)),i,in(:,ieta,m2val),1,(1.d0,0.d0), out(:,ieta,m2val), 1)
-        
+
+        myximat(:,:)=imag((0d0,0d0)+sparseops_xi_banded(:,:,ieta,abs(m2val)+1))
+
+        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),myximat,2*bandwidth+1,&
+             tempin(:,ieta,m2val),1,(1.d0,0.d0), out(:,ieta,m2val), 1)
      enddo
+!$OMP END DO
      out(:,:,m2val) = out(:,:,m2val) - imag((0d0,0d0)+sparseops_diag(:,:,abs(m2val)+1)) * in(:,:,m2val)
   enddo
+
+  outout=outout+out
+
+!$OMP END PARALLEL
 
 end subroutine mult_imke
 
 
 !! needs factor of 1/r^2 for ham
 
-subroutine mult_reke(in, out)
+recursive subroutine mult_reke(in, outout)
   use myparams
   use myprojectmod  
   implicit none
-  integer :: m2val, ixi,ieta, i
-  DATATYPE :: work(lbig+1), work2(lbig+1)   , in(numerad,lbig+1,-mbig:mbig),out(numerad,lbig+1,-mbig:mbig)
+  DATATYPE, intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE, intent(out) :: outout(numerad,lbig+1,-mbig:mbig)
+  DATATYPE :: out(numerad,lbig+1,-mbig:mbig) !!,  work(lbig+1), work2(lbig+1)  !! AUTOMATIC
+  DATATYPE :: tempin(numerad,lbig+1,-mbig:mbig),myetamat(lbig+1,lbig+1),myximat(2*bandwidth+1,numerad)
+  integer :: m2val, ixi,ieta
+
+  outout=0.d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(out,tempin,m2val,ixi,ieta,myetamat,myximat)
 
   out=0.d0
+
+  tempin=in
+
   do m2val=-mbig,mbig
+!$OMP DO SCHEDULE(STATIC)
      do ixi=1,numerad
-        work2=in(ixi,:,m2val)
-        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),DATAZERO+real(sparseops_eta(:,:,ixi,abs(m2val)+1),8),lbig+1,work2,1,(0.d0,0.d0), work, 1)
-        out(ixi,:,m2val)=out(ixi,:,m2val)+work(1:lbig+1)
+
+!!        work2=in(ixi,:,m2val)
+!!        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),DATAZERO+real(sparseops_eta(:,:,ixi,abs(m2val)+1),8),lbig+1,work2,1,(0.d0,0.d0), work, 1)
+!!        out(ixi,:,m2val)=out(ixi,:,m2val)+work(1:lbig+1)
+
+        myetamat(:,:)=real(sparseops_eta(:,:,ixi,abs(m2val)+1),8)
+        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),myetamat,lbig+1,tempin(ixi,1,m2val),numerad,(1.d0,0.d0), out(ixi,1,m2val), numerad)
+
      enddo
-     i=2*bandwidth+1
+!$OMP END DO
+!$OMP DO SCHEDULE(STATIC)
      do ieta=1,lbig+1
-        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),DATAZERO+real(sparseops_xi_banded(:,:,ieta,abs(m2val)+1),8),i,in(:,ieta,m2val),1,(1.d0,0.d0), out(:,ieta,m2val), 1)
+        myximat=real(sparseops_xi_banded(:,:,ieta,abs(m2val)+1),8)
+
+        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),myximat,2*bandwidth+1,&
+             tempin(:,ieta,m2val),1,(1.d0,0.d0), out(:,ieta,m2val), 1)
         
      enddo
+!$OMP END DO
      out(:,:,m2val) = out(:,:,m2val) - real(sparseops_diag(:,:,abs(m2val)+1),8) * in(:,:,m2val)
   enddo
+
+  outout=outout+out
+
+!$OMP END PARALLEL
+
 end subroutine mult_reke
 
 
