@@ -200,22 +200,28 @@ subroutine cooleytukey_outofplace_backward_mpi(intranspose,out,dim2,dim3,dim1,ho
   complex*16, intent(in) :: intranspose(dim2,dim3,dim1,howmany)
   complex*16, intent(out) :: out(dim2,dim3,dim1,howmany)
 
-  call cooleytukey_outofplace_backward_mpi0(intranspose,out,dim2,dim3,dim1,howmany,1)
+  call cooleytukey_outofplace_backward_mpixxx(intranspose,out,dim2,dim3,dim1,howmany,1)
 
 end subroutine
 
-subroutine cooleytukey_outofplace_backward_mpi0(intranspose,out,dim2,dim3,dim1,howmany,recursiondepth)
+subroutine cooleytukey_outofplace_backward_mpixxx(intranspose,out,dim2,dim3,dim1,howmany,recursiondepth)
   implicit none
   integer, intent(in) :: dim2,dim3,dim1,howmany,recursiondepth
   complex*16, intent(in) :: intranspose(dim2,dim3,dim1,howmany)
   complex*16, intent(out) :: out(dim2,dim3,dim1,howmany)
-  complex*16 ::  intransconjg(dim2,dim3,dim1,howmany),  outconjg(dim2,dim3,dim1,howmany)
+!!$  complex*16 ::  intransconjg(dim2,dim3,dim1,howmany),  outconjg(dim2,dim3,dim1,howmany)
+  complex*16 ::  work(dim2,dim3,dim1,howmany), work2(dim2,dim3,dim1,howmany)  !!AUTOMATIC
 
-  intransconjg(:,:,:,:)=CONJG(intranspose(:,:,:,:))
-  call cooleytukey_outofplaceinput_mpi0(intransconjg,outconjg,dim2,dim3,dim1,howmany,recursiondepth)
-  out(:,:,:,:)=CONJG(outconjg(:,:,:,:))
+!! USING WORK2 FIRST... PASS WORK NOT WORK2 AS INPUT
 
-end subroutine cooleytukey_outofplace_backward_mpi0
+  work(:,:,:,:)=CONJG(intranspose(:,:,:,:))
+  call cooleytukey_outofplaceinput_mpi0(work,out,dim2,dim3,dim1,howmany,recursiondepth,work,work2)
+  out(:,:,:,:)=CONJG(out(:,:,:,:))
+
+!!$  call cooleytukey_outofplaceinput_mpi0(intransconjg,outconjg,dim2,dim3,dim1,howmany,recursiondepth)
+!!$  out(:,:,:,:)=CONJG(outconjg(:,:,:,:))
+
+end subroutine cooleytukey_outofplace_backward_mpixxx
 
 
 
@@ -228,13 +234,14 @@ subroutine cooleytukey_outofplace_forward_mpi(in,outtrans,dim2,dim3,dim1,howmany
   integer, intent(in) :: dim2,dim3,dim1,howmany
   complex*16, intent(in) :: in(dim2,dim3,dim1,howmany)
   complex*16, intent(out) :: outtrans(dim2,dim3,dim1,howmany)
+  complex*16 ::  work(dim2,dim3,dim1,howmany) , work2(dim2,dim3,dim1,howmany)  !!AUTOMATIC
 
-  call cooleytukey_outofplace_mpi0(in,outtrans,dim2,dim3,dim1,howmany,1)
+  call cooleytukey_outofplace_mpi0(in,outtrans,dim2,dim3,dim1,howmany,1,work,work2)
 
 end subroutine cooleytukey_outofplace_forward_mpi
 
 
-recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim2,dim3,dim1,howmany,recursiondepth)
+recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim2,dim3,dim1,howmany,recursiondepth,work,work2)
   use ct_fileptrmod
   use ct_options
   use ct_primesetmod !! ct_numprimes
@@ -242,31 +249,34 @@ recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim2,dim3,dim1,howm
   integer, intent(in) :: dim2,dim3,dim1,howmany,recursiondepth
   complex*16, intent(in) :: in(dim2,dim3,dim1,howmany)
   complex*16, intent(out) :: outtrans(dim2,dim3,dim1,howmany)
-  complex*16 ::  tempout(dim2,dim3,dim1,howmany),  outtemp(dim2,dim3,dim1,howmany)
+!!$  complex*16 ::  tempout(dim2,dim3,dim1,howmany),  outtemp(dim2,dim3,dim1,howmany)
+  complex*16,intent(inout) ::  work(dim2,dim3,dim1,howmany), work2(dim2,dim3,dim1,howmany)
   integer ::  newdepth
 
-  call myzfft1d_slowindex_mpi(in,tempout,dim1*dim2*dim3*howmany,recursiondepth)
+!! PASSING WORK(:,:,:) AS IN(:,:,:)... USE WORK2 FIRST
 
-  call twiddlemult_mpi(dim2*dim3,tempout,outtemp,dim1,howmany,recursiondepth)
+  call myzfft1d_slowindex_mpi(in,work2,dim1*dim2*dim3*howmany,recursiondepth)
+
+  call twiddlemult_mpi(dim2*dim3,work2,work,dim1,howmany,recursiondepth)
 
   if (recursiondepth.eq.ct_numprimes) then
      select case(ct_dimensionality)
      case(1)
-        call myzfft1d_slowindex_local(outtemp,outtrans,dim2*dim3,dim1,howmany)
+        call myzfft1d_slowindex_local(work,outtrans,dim2*dim3,dim1,howmany)
      case(3)
-        call myzfft3d(outtemp,outtrans,dim2,dim3,dim1,howmany)
+        call myzfft3d(work,outtrans,dim2,dim3,dim1,howmany)
      case default
         write(mpifileptr,*) "NOT SUPPORTED ct_dimensionality",ct_dimensionality; call mpistop()
      end select
   else
      newdepth=recursiondepth+1
-     call cooleytukey_outofplace_mpi0(outtemp,outtrans,dim2,dim3,dim1,howmany,newdepth)
+     call cooleytukey_outofplace_mpi0(work,outtrans,dim2,dim3,dim1,howmany,newdepth,work,work2)
   endif
 
 end subroutine cooleytukey_outofplace_mpi0
 
 
-recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim2,dim3,dim1,howmany,recursiondepth)
+recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim2,dim3,dim1,howmany,recursiondepth,work,work2)
   use ct_fileptrmod
   use ct_options
   use ct_primesetmod !! ct_numprimes
@@ -274,25 +284,33 @@ recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim2,dim3,
   integer, intent(in) :: dim2,dim3,dim1,howmany,recursiondepth
   complex*16, intent(in) :: intranspose(dim2,dim3,dim1,howmany)
   complex*16, intent(out) :: out(dim2,dim3,dim1,howmany)
-  complex*16 ::   temptrans(dim2,dim3,dim1,howmany),outtrans(dim2,dim3,dim1,howmany)
+!!$  complex*16 ::   temptrans(dim2,dim3,dim1,howmany),outtrans(dim2,dim3,dim1,howmany)
+  complex*16,intent(inout) ::  work(dim2,dim3,dim1,howmany), work2(dim2,dim3,dim1,howmany)
   integer ::  newdepth
+
+!! PASSING WORK(:,:,:) AS INTRANSPOSE(:,:,:)... USE WORK2 FIRST
 
   if (recursiondepth.eq.ct_numprimes) then
      select case(ct_dimensionality)
      case(1)
-        call myzfft1d_slowindex_local(intranspose,temptrans,dim2*dim3,dim1,howmany)
+        call myzfft1d_slowindex_local(intranspose,work2,dim2*dim3,dim1,howmany)
      case(3)
-        call myzfft3d(intranspose,temptrans,dim2,dim3,dim1,howmany)
+        call myzfft3d(intranspose,work2,dim2,dim3,dim1,howmany)
      case default
         write(mpifileptr,*) "NOT SUPPORTED ct_dimensionality",ct_dimensionality; call mpistop()
      end select
   else
      newdepth=recursiondepth+1
-     call cooleytukey_outofplaceinput_mpi0(intranspose,temptrans,dim2,dim3,dim1,howmany,newdepth)
+
+!! USING WORK2 AS OUTPUT
+
+     call cooleytukey_outofplaceinput_mpi0(intranspose,work2,dim2,dim3,dim1,howmany,newdepth,work,work2)
   endif
 
-  call twiddlemult_mpi(dim2*dim3,temptrans,outtrans,dim1,howmany,recursiondepth)
-  call myzfft1d_slowindex_mpi(outtrans,out,dim1*dim2*dim3*howmany,recursiondepth)
+  call twiddlemult_mpi(dim2*dim3,work2,work,dim1,howmany,recursiondepth)
+
+!! WORK HERE... WORK2 IS OUTPUT
+  call myzfft1d_slowindex_mpi(work,out,dim1*dim2*dim3*howmany,recursiondepth)
 
 end subroutine cooleytukey_outofplaceinput_mpi0
 
