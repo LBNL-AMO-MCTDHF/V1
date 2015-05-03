@@ -277,9 +277,9 @@ program mctdhf
 
   call getclasses()
 
-  if (parorbsplit.eq.1) then
+!!$  if (parorbsplit.eq.1) then
      call mpiorbsets()
-  endif
+!!$  endif
 
   call fast_newconfiglist(.false.);   
   if (numconfig.eq.0) then

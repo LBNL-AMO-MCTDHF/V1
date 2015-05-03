@@ -191,6 +191,10 @@ real*8 :: conprop=1d-1                           !! epsilon for conway=3
 !!EE
 !!{\large \quad INPUT / OUTPUT }
 !!BB
+integer :: notiming=2            !!NoTiming=0,1,2!! controls writing of all timing and some info files
+                                 !!  Timing=2,1,0!!     0=write all 1=write some 2= write none
+integer :: timingout=499         !!              !! various routines output to file (timing info) every this 
+                                 !!              !!   # of calls
 character (len=200) ::      avectoroutfile="Bin/avector.bin"  !! A-vector output file.        
 character (len=200) ::      spfoutfile="Bin/spfs.bin"         !! Spf output file.
 character(len=200):: psistatsfile="Dat/psistats.dat"
@@ -425,9 +429,6 @@ integer :: autosize, autosteps
 integer :: auto_biortho=1        !! do we want to use biorthonormalization or permutation overlaps? 0 perm overlaps, 1 biortho
 integer :: cdenflag=0            !!              !! Calulate natconfig?  Not necessary if Act=6.
 integer :: rdenflag=0            !!              !! Calulate denmat in R? 
-integer :: timingout=499         !!              !! various routines output to file (timing info) every this 
-                                 !!              !!   # of calls
-integer :: notiming=2            !! turn off writing of all timing and some info files   0=write all 1=write some 2= write none
 integer :: lanagain = -1  !! Lanczos restart flag.  Default -1 (lanczos eigen restart until converged)
                           !!    Otherwise, max number of maxlanorder full builds of krylov spaces (# restarts + 1)
                           !! Improved relax: starts at 1.  Incremented every time energy goes up with an iteration.

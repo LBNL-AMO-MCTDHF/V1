@@ -186,6 +186,15 @@ subroutine getparams()
   do i=1,nargs
      buffer=nullbuff;     call getarg(i,buffer);     len=getlen(buffer)
 
+     if (buffer(1:9) .eq. 'NoTiming=') then
+        read(buffer(10:len),*) notiming
+        write(mpifileptr, *) "notiming variable set to ",notiming," by command line input."
+     endif
+     if (buffer(1:7) .eq. 'Timing=') then
+        read(buffer(8:len),*) j
+        notiming=2-j
+        write(mpifileptr, *) "notiming variable set to ",notiming," by command line input."
+     endif
      if (buffer(1:4) .eq. 'Rel=') then
         read(buffer(5:len),*) relerr
         write(mpifileptr, *) "Relative error for spf prop set to ", relerr, " by command line option."
