@@ -986,27 +986,48 @@ subroutine mult_ke_toep(in, out, howmany)
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE, intent(out) :: out(totpoints,howmany)
 
-#ifndef MPIFLAG
-  OFLWR "ACK, don't use mult_ke_toep without MPIFLAG"; CFLST
-  out(:,:)=in(:,:) * 42 * 0 !! avoid warn unused
-#else
-  integer :: ibox,jproc,nulltimes(10),qblocks(nprocs),inplace
-  DATATYPE ::  bigin(gridsize(1),2,gridsize(2),2,gridsize(3),2,howmany),&
-       bigout(gridsize(1),2,gridsize(2),2,gridsize(3),2,howmany),mywork(totpoints,howmany)
-  DATATYPE, allocatable, save :: bigke(:,:,:), hugeke(:,:,:)
+!!$ gridsize variable only appropriate for two-electron (depends on whether or not
+!!$ toepflag is zero)    ... deprecate gridsize, it's just confusing 05-03-15
+
+  DATATYPE ::  bigin(numpoints(1),2,numpoints(2),2,numpoints(3),2,howmany),&
+       bigout(numpoints(1),2,numpoints(2),2,numpoints(3),2,howmany)
+  DATATYPE, allocatable, save :: bigke(:,:,:)
+#ifdef MPIFLAG
+  DATATYPE :: mywork(totpoints,howmany)
+  DATATYPE, allocatable :: hugeke(:,:,:)
+  integer :: qblocks(nprocs),ibox,jproc,  nulltimes(10)
+#endif
   integer, save :: allocated=0
 
-  if (.not.orbparflag) then
-     OFLWR "Ack, don't use mult_ke_toep without orbparflag"; CFLST
+!  if (.not.orbparflag) then
+!     OFLWR "Ack, don't use mult_ke_toep without orbparflag"; CFLST
+!  endif
+
+!!! ????? means that the situation where nprocs is even and numpoints is odd is forbidden... does not make sense
+!  if (mod((nprocs-1)*numpoints(3),2).eq.1) then
+!     OFLWR "ERROR SQUASH 55 TEMP CONTINUE"; CFL
+!  endif
+
+!! legitimate checks
+
+  if (nbox(3).ne.nprocs.or.nbox(1).ne.1.or.nbox(2).ne.1) then
+     OFLWR "KE TOEP ERROR (programmer fail)",nbox(1:3),nprocs; CFLST
   endif
 
-!!! ?????
-  if (mod((nprocs-1)*numpoints(3),2).eq.1) then
-     OFLWR "ERROR SQUASH 55"; CFLST
+  if (.not.orbparflag.and.nbox(3).ne.1) then
+     OFLWR "KE TOEP BLUEBERRY ERROR (programmer failure)", orbparflag,nbox(3); CFLST
   endif
+#ifndef MPIFLAG
+  if (nbox(3).gt.1) then
+     OFLWR "KE TOEP GORILLA ERROR (programmer fail non-MPI)", nbox(3); CFLST
+  endif
+#endif
 
   bigin(:,:,:,:,:,:,:)=0d0
-  
+
+#ifndef MPIFLAG
+  bigin(:,1,:,1,:,1,:)=RESHAPE(in(:,:),(/numpoints(1),numpoints(2),numpoints(3),howmany/))
+#else
   do ibox=1,nbox(3)  !! processor sending
      jproc=(ibox+1)/2
      if (ibox.eq.myrank.and.jproc.eq.myrank) then
@@ -1018,23 +1039,32 @@ subroutine mult_ke_toep(in, out, howmany)
         bigin(:,1,:,1,:,mod(ibox-1,2)+1,:)=RESHAPE(mywork(:,:),(/numpoints(1),numpoints(2),numpoints(3),howmany/))
      endif
   enddo
+#endif
 
   if (allocated.eq.0) then
      allocated=1
-     allocate(bigke(0-gridsize(1):gridsize(1)-1,0-gridsize(2):gridsize(2)-1,0-gridsize(3):gridsize(3)-1))
+     allocate(bigke(0-numpoints(1):numpoints(1)-1,0-numpoints(2):numpoints(2)-1,0-numpoints(3):numpoints(3)-1))
+#ifndef MPIFLAG
+        bigke(:,:,:)=0d0
+        bigke(1-gridpoints(1):gridpoints(1)-1,0,0)=bigke(1-gridpoints(1):gridpoints(1)-1,0,0)+&
+             kevect(1)%cmat(1-gridpoints(1):gridpoints(1)-1)
+        bigke(0,1-gridpoints(2):gridpoints(2)-1,0)=bigke(0,1-gridpoints(2):gridpoints(2)-1,0)+&
+             kevect(2)%cmat(1-gridpoints(2):gridpoints(2)-1)
+        bigke(0,0,1-gridpoints(3):gridpoints(3)-1)=bigke(0,0,1-gridpoints(3):gridpoints(3)-1)+&
+             kevect(3)%cmat(1-gridpoints(3):gridpoints(3)-1)
+#else
      if (myrank.eq.1) then
         allocate(hugeke(0-gridpoints(1):gridpoints(1)-1,0-gridpoints(2):gridpoints(2)-1,0-gridpoints(3):gridpoints(3)-1))
         hugeke(:,:,:)=0d0
-        hugeke(1-gridsize(1):gridsize(1)-1,0,0)=hugeke(1-gridsize(1):gridsize(1)-1,0,0)+&
-             kevect(1)%cmat(1-gridsize(1):gridsize(1)-1)
-        hugeke(0,1-gridsize(2):gridsize(2)-1,0)=hugeke(0,1-gridsize(2):gridsize(2)-1,0)+&
-             kevect(2)%cmat(1-gridsize(2):gridsize(2)-1)
-        hugeke(0,0,1-gridsize(3):gridsize(3)-1)=hugeke(0,0,1-gridsize(3):gridsize(3)-1)+&
-             kevect(3)%cmat(1-gridsize(3):gridsize(3)-1)
+        hugeke(1-gridpoints(1):gridpoints(1)-1,0,0)=hugeke(1-gridpoints(1):gridpoints(1)-1,0,0)+&
+             kevect(1)%cmat(1-gridpoints(1):gridpoints(1)-1)
+        hugeke(0,1-gridpoints(2):gridpoints(2)-1,0)=hugeke(0,1-gridpoints(2):gridpoints(2)-1,0)+&
+             kevect(2)%cmat(1-gridpoints(2):gridpoints(2)-1)
+        hugeke(0,0,1-gridpoints(3):gridpoints(3)-1)=hugeke(0,0,1-gridpoints(3):gridpoints(3)-1)+&
+             kevect(3)%cmat(1-gridpoints(3):gridpoints(3)-1)
      else
         allocate(hugeke(1,1,1))
      endif
-
      qblocks(:)=8*totpoints
 
 #ifdef REALGO
@@ -1043,33 +1073,46 @@ subroutine mult_ke_toep(in, out, howmany)
      call myscatterv_complex(hugeke,bigke,qblocks(:))
 #endif
      deallocate(hugeke)
+
+!MPIFLAG
+#endif
+
   endif  !! allocated
 
-  if (nprocs.eq.1) then
-     inplace=1
-  else
-     inplace=0
-  endif
-
+#ifndef MPIFLAG
 #ifdef REALGO
-  call circ3d_sub_real_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany,inplace)
+  call circ3d_sub_real(bigke,bigin,bigout,gridpoints(3),howmany,fft_mpi_keinplace)
 #else
-  call circ3d_sub_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany,inplace)
+  call circ3d_sub(bigke,bigin,bigout,gridpoints(3),howmany,fft_mpi_keinplace)
+#endif
+#else
+#ifdef REALGO
+  call circ3d_sub_real_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany,fft_mpi_keinplace)
+#else
+  call circ3d_sub_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany,fft_mpi_keinplace)
+#endif
 #endif
   
+
+
+#ifndef MPIFLAG
+  out(:,:)=RESHAPE(bigout(:,2,:,2,:,2,:),(/totpoints,howmany/))
+#else
+  out(:,:)=0d0
   do ibox=1,nbox(3)  !! processor receiving
      jproc=(ibox+nbox(3)+1)/2
      if (ibox.eq.myrank.and.jproc.eq.myrank) then
-        out(:,:)=RESHAPE(bigout(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:),(/totpoints,howmany/))
+        out(:,:)=out(:,:)+RESHAPE(bigout(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:),(/totpoints,howmany/))
      else if (ibox.eq.myrank) then
-        call mympirecv(out,jproc,999,totpoints*howmany)
+        call mympirecv(mywork,jproc,999,totpoints*howmany)
+        out(:,:)=out(:,:)+mywork(:,:)
      else if (jproc.eq.myrank) then
         mywork(:,:)=RESHAPE(bigout(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:),(/totpoints,howmany/))
         call mympisend(mywork,ibox,999,totpoints*howmany)
      endif
   enddo
-
 #endif
+
 end subroutine mult_ke_toep
 
 

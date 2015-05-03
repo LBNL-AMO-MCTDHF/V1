@@ -335,6 +335,7 @@ subroutine simple_circ(in, out,mat,howmany,rdd)
 #ifndef MPIFLAG
   out(:)=in(:)
   return
+  out(1)=mat(1,1) !! avoid warn unused
 #else
 
 !!$  if (ct_pf(rdd).eq.1) then
@@ -387,6 +388,7 @@ subroutine simple_summa(in, out,mat,howmany,rdd)
 #ifndef MPIFLAG
   out(:)=in(:)
   return
+  out(1)=mat(1,1) !! avoid warn unused
 #else
 
 !!$  if (ct_pf(rdd).eq.1) then

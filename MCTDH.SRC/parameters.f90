@@ -191,8 +191,8 @@ real*8 :: conprop=1d-1                           !! epsilon for conway=3
 !!EE
 !!{\large \quad INPUT / OUTPUT }
 !!BB
-integer :: notiming=2            !!NoTiming=0,1,2!! controls writing of all timing and some info files
-                                 !!  Timing=2,1,0!!     0=write all 1=write some 2= write none
+integer :: notiming=2            !!NoTiming=0,1,2!! 0=write all 1=write some 2= write none
+                                 !!  Timing=2,1,0!!     controls writing of all timing and some info files
 integer :: timingout=499         !!              !! various routines output to file (timing info) every this 
                                  !!              !!   # of calls
 character (len=200) ::      avectoroutfile="Bin/avector.bin"  !! A-vector output file.        

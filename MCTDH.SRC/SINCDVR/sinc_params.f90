@@ -17,7 +17,6 @@ integer :: zke_paropt=1   !! 0=sendrecv 1=SUMMA (bcast before) 2=reduce after
 
 !! toepflag:  Fast Fourier transforms for Toeplitz matrix vector multiplications
 !! toepflag=1, triple toeplitz T^-1.  toepflag=2, T^-1 and single toeplitz T. 
-!!   right now toepflag=2 slower; just do toepflag=1.
 
 integer :: toepflag=1
 
@@ -29,7 +28,7 @@ integer :: toepflag=1
 
 integer :: fft_batchdim=1     !! 1 = do nspf matrix elements in nspf batches (less memory)
                               !! 2 = do nspf^2 in one batch (faster unless MPI problems)
-integer :: fft_circbatchdim=0 !! 0,1,2, circbatchdim < batchdim; larger faster unless MPI problems
+integer :: fft_circbatchdim=1 !! 0,1,2, circbatchdim < batchdim; larger faster unless MPI problems
 
 integer :: fft_mpi_inplaceflag=1     !! fft_mpi_inplaceflag:
                                      !!  0 = out-of-place fft, out-of-place fft inverse
@@ -37,6 +36,9 @@ integer :: fft_mpi_inplaceflag=1     !! fft_mpi_inplaceflag:
                                      !!  1 = 3 x (1d FFT , all-to-all index transposition)
 integer :: fft_ct_paropt=1           !! fft_ct_paropt, relevant if fft_mpi_inplaceflag=0
                                      !!    like zke_paropt: 0 = sendrecv 1 = summa
+integer :: fft_mpi_keinplace=1       !! for toepflag=2 (single toeplitz matvec for KE) equals 
+                                     !!    fft_mpi_inplaceflag by default; specify in namelist
+                                     !!    if you want FFT methods to be different for T and T^-1
 integer :: num_skip_orbs=0
 integer :: orb_skip(200)=-1
 
@@ -58,7 +60,6 @@ integer :: capflag=0            !! add complex absorbing potential to one-elec H
 real*8  :: capstart=30d0        !! radius in bohr
 real*8  :: capstrength=0.001d0  !! atomic units (hartree)
 integer :: cappower=2           !! V_CAP = (-i) * capstrength * r^cappower  (r>capstart)
-
 !! XXSNIPXX 
 !! INTERNAL
 

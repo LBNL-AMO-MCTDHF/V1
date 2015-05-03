@@ -21,7 +21,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        numcenters,centershift,orblanorder,toepflag,nonucrepflag,debugflag, &
        toothnbig, toothnsmall, orbparflag,num_skip_orbs,orb_skip,orblancheckmod,zke_paropt,&
        capflag,capstrength,capstart,cappower,fft_mpi_inplaceflag, fft_ct_paropt,fft_batchdim,&
-       fft_circbatchdim
+       fft_circbatchdim,fft_mpi_keinplace
 
 #ifdef PGFFLAG
   integer :: myiargc
@@ -43,11 +43,19 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   open(971,file=inpfile, status="old", iostat=myiostat)
 
   if (myiostat/=0) then
-
      OFLWR "No Input.Inp found, not reading sincparams. iostat=",myiostat;CFL
   else
      read(971,nml=sincparinp)
      close(971)
+
+!! enforce defaults that depend on other variables
+
+     fft_mpi_keinplace=fft_mpi_inplaceflag
+
+     open(971,file=inpfile, status="old", iostat=myiostat)
+     read(971,nml=sincparinp)
+     close(971)
+
   endif
 
 
@@ -203,6 +211,9 @@ subroutine printmyopts()
   WRFL "fft_mpi_inplaceflag",fft_mpi_inplaceflag
   if (fft_mpi_inplaceflag==0) then
      WRFL "   --> fft_ct_paropt",fft_ct_paropt
+  endif
+  if (toepflag.gt.1) then
+     WRFL "fft_mpi_keinplace",fft_mpi_keinplace
   endif
   WRFL "fft_batchdim",fft_batchdim
   WRFL "fft_circbatchdim",fft_circbatchdim
