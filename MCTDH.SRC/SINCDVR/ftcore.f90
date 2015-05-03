@@ -342,7 +342,7 @@ contains
   do iproc=1,nprocs
      inchop(:,:,:,:)=in(:,(iproc-1)*blocksize+1:iproc*blocksize,:,:)
 #ifdef AUTOMATICTRANS
-!$OMP DO SCHEDULE(STATIC)
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
 #endif
      do ii=1,howmany
         do i=1,blocksize
@@ -393,12 +393,12 @@ contains
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)  !! ii IS SHARED (OUTTEMP IS SHARED; BARRIER)
   do ii=1,howmany
      outone(:,:,:,:)=outtemp(:,:,:,ii,:)
-!$OMP DO SCHEDULE(STATIC)
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
 #else
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j,ii)  !! ii IS PRIVATE (OUTTEMP IS THREADPRIVATE; NO BARRIER)
   allocate(outone(blocksize,nprocs*blocksize,blocksize,nprocs))
-!$OMP DO SCHEDULE(STATIC)
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(1)
   do ii=1,howmany
      outone(:,:,:,:)=outtemp(:,:,:,ii,:)
 

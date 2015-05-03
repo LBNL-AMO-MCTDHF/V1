@@ -403,6 +403,7 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
   DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,numspf),twoereduced(totpoints,numspf,numspf)
   character,intent(in) :: timingdir*(*)
   integer, intent(in) :: notiming,mynumber
+  DATATYPE :: twoemattemp(numspf,numspf) !! AUTOMATIC (OPENMP!)
   integer ::  spf1a, spf1b, spf2a, spf2b, ii,jj,&
        itime,jtime,getlen,  kk21,kk22,kk23,  ii21,ii22,ii23, ibox,jproc,&
        spf2low,spf2high,index2b,index2low,index2high
@@ -427,14 +428,16 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
 #endif
   integer :: pointsperproc(nprocs),procstart(nprocs),procend(nprocs),firsttime,lasttime,ilow,ihigh
   integer, save :: maxpointsperproc
-!!$
-!!$  DATATYPE ::  myden(totpoints)         !! I WAS GETTING SEGFAULTS THIS WAY 
-                                           !!
-DATATYPE,allocatable,save ::  myden(:)     !! OR THIS WAY (save)  if I don't allocate extra
-!$OMP THREADPRIVATE(myden)                 !!     regardless of whether or not this is added   04-26-15
-                                           !!
-!!$    DATATYPE,allocatable ::  myden(:)   !! ONLY WAY THAT DIDN'T SEGFAULT BEFORE (with private)
-!!$                                        !!     04-28 might be good now, but leaving it this way (factor of ten)
+!!$!!$
+!!$!!$  DATATYPE ::  myden(totpoints)         !! I WAS GETTING SEGFAULTS THIS WAY 
+!!$                                           !!
+!!$DATATYPE,allocatable,save ::  myden(:)     !! OR THIS WAY (save)  if I don't allocate extra
+!!$!OxMP THREADPRIVATE(myden)                 !!     regardless of whether or not this is added   04-26-15
+!!$!!$                                           !!
+!!$!!$    DATATYPE,allocatable ::  myden(:)   !! ONLY WAY THAT DIDN'T SEGFAULT BEFORE (with private)
+!!$!!$                                        !!     04-28 might be good now, but leaving it this way (factor of ten)
+
+  DATATYPE ::  myden(2*totpoints)
 
 !! ZEROING TIMES... not cumulative
   times(:)=0; fttimes(:)=0; 
@@ -733,23 +736,27 @@ DATATYPE,allocatable,save ::  myden(:)     !! OR THIS WAY (save)  if I don't all
 
   twoematel(:,:,:,:)=0
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,spf2b)   !! MYDEN IS THREADPRIVATE
+!! MYDEN IS NO LONGER THREADPRIVATE CROSSING FINGERS
 
-!!$ LEAVING IT THIS WAY
-  allocate(myden(totpoints*10))
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,spf2b,twoemattemp,myden)   
 
-!$OMP DO SCHEDULE(STATIC)
+  twoemattemp(:,:)=0
+
+!!$CROSSINGFINGERS !!$ LEAVING IT THIS WAY
+!!$CROSSINGFINGERS  allocate(myden(totpoints*10))
+
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
   do spf1b=1,numspf
   do spf1a=1,numspf
      myden(1:totpoints)=CONJUGATE(inspfs10(:,spf1a)) * inspfs20(:,spf1b)
 
-     call MYGEMV('T',totpoints,numspf**2,DATAONE,twoereduced,totpoints,myden,1,DATAZERO,twoematel(:,:,spf1a,spf1b),1)
-
+     call MYGEMV('T',totpoints,numspf**2,DATAONE,twoereduced,totpoints,myden,1,DATAZERO,twoemattemp(:,:),1)
+     twoematel(:,:,spf1a,spf1b)=twoemattemp(:,:)
   enddo
   enddo
 !$OMP END DO
 
-  deallocate(myden)
+!!$CROSSINGFINGERS  deallocate(myden)
 
 !$OMP END PARALLEL
 
