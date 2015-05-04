@@ -323,8 +323,8 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
      if (flag.ne.0) then
         OFLWR "SHIFTING ORBITALS, spf_gridshift=",in_gridshift(:); CFL
 
-        amin(:)=max(1,1+in_gridshift(:)); amax(:)=min(bigreaddims(:),bigreaddims(:)+in_gridshift(:))
-        bmin(:)=max(1,1-in_gridshift(:)); bmax(:)=min(bigreaddims(:),bigreaddims(:)-in_gridshift(:))
+        amin(:)=max(1,1-in_gridshift(:)); amax(:)=min(bigreaddims(:),bigreaddims(:)-in_gridshift(:))
+        bmin(:)=max(1,1+in_gridshift(:)); bmax(:)=min(bigreaddims(:),bigreaddims(:)+in_gridshift(:))
         
         if (readcflag.eq.0) then
            realspfs(amin(1):amax(1),amin(2):amax(2),amin(3):amax(3),1:numloaded)=&
