@@ -40,8 +40,8 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
 !     OFLWR "GG ERROR.", numshift,guessflag; CFLST
 !  endif
 
-  if (order.gt.totadim) then
-     OFLWR "Error, want ",order," vectors but totadim= ",totadim;CFLST
+  if (order+numshift.gt.totadim) then
+     OFLWR "Error, want ",order," plus ",numshift," vectors but totadim= ",totadim;CFLST
   endif
   if (numshift.lt.0) then
      OFLWR "GG ERROR.", numshift,guessflag; CFLST
@@ -114,7 +114,6 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
      thisconfigvects(:,1:order) = fullconfigvects(:,1+numshift:order+numshift)
      thisconfigvals(1:order) = fullconfigvals(1+numshift:order+numshift)
 
-
      lastval = -99999999d0
      flag=0
      do i=1,order
@@ -127,7 +126,6 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
         endif
         lastval=thisconfigvals(i)
      enddo
-
 
      deallocate(fullconfigmatel, fullconfigvects, fullconfigvals)
 
@@ -149,6 +147,7 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
      enddo
      thisconfigvects(:,i)=thisconfigvects(:,i)*abs(thisconfigvects(l,i))/thisconfigvects(l,i)
   enddo
+
 end subroutine myconfigeig
 
 
