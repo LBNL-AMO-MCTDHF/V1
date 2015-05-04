@@ -226,6 +226,10 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
 end subroutine myzfft1d
 
 
+!! OBVIOUSLY UNSATISFACTORY WITH DFFTPACK ROUTINES
+!! OBVIOUSLY UNSATISFACTORY WITH DFFTPACK ROUTINES
+!! OBVIOUSLY UNSATISFACTORY WITH DFFTPACK ROUTINES USED CURRENTLY:
+
 subroutine myzfft1d_slowindex_local(in,out,dim1,dim2,howmany)
   implicit none
   integer, intent(in) :: dim1,dim2,howmany
