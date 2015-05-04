@@ -1,24 +1,24 @@
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
-Sat May  2 21:20:07 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
+Sun May  3 21:10:12 PDT 2015
   ****************************************************************************
   **********************  BEGIN LBNL-AMO-MCTDHF ******************************
   ****************************************************************************
@@ -73,7 +73,7 @@ Sat May  2 21:20:07 PDT 2015
  fft_mpi_inplaceflag           0
     --> fft_ct_paropt           0
  fft_batchdim           1
- fft_circbatchdim           0
+ fft_circbatchdim           1
    -----  
  NBOX            1           1           1
  totpoints        9261
@@ -413,18 +413,15 @@ T=         12.92018  Energy:  -0.2808614824E+01  0.2060069997E-14    Norm:   0.1
     ***   
  
  rank 1 SAVED vectors!
-Sat May  2 21:22:09 PDT 2015
-Sat May  2 21:22:09 PDT 2015
-Sat May  2 21:22:09 PDT 2015
-Sat May  2 21:22:09 PDT 2015
-Sat May  2 21:22:09 PDT 2015
-Sat May  2 21:22:09 PDT 2015
-Sat May  2 21:22:09 PDT 2015
-Sat May  2 21:22:09 PDT 2015
-Sat May  2 21:22:09 PDT 2015
-Sat May  2 21:22:09 PDT 2015
-Sat May  2 21:22:09 PDT 2015
-Sat May  2 21:22:09 PDT 2015
-Sat May  2 21:22:09 PDT 2015
-Sat May  2 21:22:09 PDT 2015
+Sun May  3 21:11:55 PDT 2015
+Sun May  3 21:11:55 PDT 2015
+Sun May  3 21:11:55 PDT 2015
+Sun May  3 21:11:55 PDT 2015
+Sun May  3 21:11:55 PDT 2015
+Sun May  3 21:11:55 PDT 2015
+Sun May  3 21:11:55 PDT 2015
+Sun May  3 21:11:55 PDT 2015
+Sun May  3 21:11:55 PDT 2015
+Sun May  3 21:11:55 PDT 2015
+Sun May  3 21:11:55 PDT 2015
  MCTDHF STOP!

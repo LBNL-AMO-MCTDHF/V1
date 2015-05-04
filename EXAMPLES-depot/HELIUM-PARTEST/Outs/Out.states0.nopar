@@ -1,4 +1,4 @@
-Sat May  2 21:25:15 PDT 2015
+Sun May  3 21:14:14 PDT 2015
   ****************************************************************************
   **********************  BEGIN LBNL-AMO-MCTDHF ******************************
   ****************************************************************************
@@ -52,7 +52,7 @@ Sat May  2 21:25:15 PDT 2015
  zke_paropt           1
  fft_mpi_inplaceflag           1
  fft_batchdim           1
- fft_circbatchdim           0
+ fft_circbatchdim           1
    -----  
  NBOX            1           1           1
  totpoints        9261
@@ -365,4 +365,4 @@ T=         12.92018  Energy:  -0.2808614824E+01 -0.7381360548E-15    Norm:   0.1
     ***   
  
  rank 1 SAVED vectors!
-Sat May  2 21:27:53 PDT 2015
+Sun May  3 21:16:26 PDT 2015

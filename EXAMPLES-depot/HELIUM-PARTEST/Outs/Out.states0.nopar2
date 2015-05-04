@@ -1,6 +1,6 @@
-Sat May  2 21:20:25 PDT 2015
-Sat May  2 21:20:25 PDT 2015
-Sat May  2 21:20:25 PDT 2015
+Sun May  3 21:10:15 PDT 2015
+Sun May  3 21:10:15 PDT 2015
+Sun May  3 21:10:15 PDT 2015
   ****************************************************************************
   **********************  BEGIN LBNL-AMO-MCTDHF ******************************
   ****************************************************************************
@@ -54,7 +54,7 @@ Sat May  2 21:20:25 PDT 2015
  zke_paropt           1
  fft_mpi_inplaceflag           1
  fft_batchdim           1
- fft_circbatchdim           0
+ fft_circbatchdim           1
    -----  
  NBOX            1           1           1
  totpoints        9261
@@ -193,7 +193,8 @@ Sat May  2 21:20:25 PDT 2015
  
     ....Called init_project.
  Not enough avectors loaded! will diagonalize.
-        Making a 1D FFT plan            1          42         588
+        Making a 1D FFT plan            1          42        2940
+        Making a 1D FFT plan            2          42         588
  Construct big matrix:            25
   Call spin eig           15
    -- Nonsparse eigenvals --
@@ -369,8 +370,8 @@ T=         12.92018  Energy:  -0.2808614824E+01 -0.7138738941E-15    Norm:   0.1
          -2.808614823524     -0.000000000000     -0.000000000178     -0.000000000000
     ***   
  
-Sat May  2 21:22:28 PDT 2015
-Sat May  2 21:22:28 PDT 2015
+Sun May  3 21:11:55 PDT 2015
+Sun May  3 21:11:55 PDT 2015
  rank 1 SAVED vectors!
-Sat May  2 21:22:28 PDT 2015
+Sun May  3 21:11:55 PDT 2015
  MCTDHF STOP!

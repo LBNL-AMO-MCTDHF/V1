@@ -1,0 +1,7 @@
+
+source ./RUNS.H
+
+chmctdhf_diatom.nopar.debug $OPTION Inp=Input.Inp.States0$1 Sparse |tee Outs/Out.states0.nopar.sparse$1
+
+
+
