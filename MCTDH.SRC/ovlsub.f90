@@ -71,7 +71,7 @@ subroutine ovl_initial()
      open(910,file=ovlavectorfiles(ifile),status="unknown",form="unformatted")
      call avector_header_read_simple(910,nstate,tndof,tnumr,tnumconfig,acomplex)
      call spf_header_read(909,tdims,tnspf,spfcomplex)
-     call spf_read0(909,nspf,spfdims,tnspf,tdims,spfcomplex,spfdimtype,orig_spfs(:,:,jnumovl+1))
+     call spf_read0(909,nspf,spfdims,tnspf,tdims,spfcomplex,spfdimtype,orig_spfs(:,:,jnumovl+1),(/0,0,0/))
      do i=tnspf+1,nspf
         call staticvector(orig_spfs(:,i,jnumovl+1),spfsize)
         call gramschmidt(spfsize,i-1,spfsize,orig_spfs(:,:,jnumovl+1),orig_spfs(:,i,jnumovl+1),.false.)

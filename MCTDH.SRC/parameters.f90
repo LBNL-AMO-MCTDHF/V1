@@ -143,7 +143,8 @@ integer :: vexcite=99            !!              !! excitations INTO last shell.
 integer :: loadspfflag=0         !! Spf=file     !! load spfs to start calculation?  
                                                  !!    (Otherwise, core eigenfunctions.)
 integer :: reinterp_orbflag=0                    !! sinc dvr only, half spacing interpolation for orb load
-integer :: numspffiles=1
+integer :: spf_gridshift(3,100)=0                !! sinc dvr only, shift orbitals on read, slow index spffile
+integer :: numspffiles=1         !!              !! for multiple-molecule (e.g. chemistry) calcs, load many
 integer :: numskiporbs=0         !!              !! Reading orbs on file(s), skips members of combined set.
 integer :: orbskip(1000)=0       !!              !! Which to skip
 integer :: loadavectorflag=0     !! A=file       !! load avector to start calculation?

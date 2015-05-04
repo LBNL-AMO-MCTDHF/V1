@@ -565,7 +565,7 @@ subroutine projeflux_single(mem)
 
   call simple_load_avectors(910,acomplex,ta(:,:,1),ndof-2,1,tnumconfig,nstate)
 
-  call spf_read0(909,nspf,spfdims,tnspf,tdims,spfcomplex,spfdimtype,tmo(:,:,1))
+  call spf_read0(909,nspf,spfdims,tnspf,tdims,spfcomplex,spfdimtype,tmo(:,:,1),(/0,0,0/))
 
 
   do i=tnspf+1,nspf

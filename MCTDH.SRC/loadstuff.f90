@@ -140,11 +140,14 @@ subroutine load_spfs(inspfs, numloaded)    !! both output
   DATATYPE :: inspfs(spfsize,nspf+numfrozen), inspfs0(spfsize,nspf+numfrozen+numskiporbs)
 
   numloaded=0
-  do ii=1,numspffiles
 
+  if (numspffiles.gt.100) then
+     OFLWR "REDIM SPF_GRIDSHIFT?"; CFLST
+  endif
+  do ii=1,numspffiles
      call load_spfs0(inspfs0(:,numloaded+1),spfdims,nspf+numfrozen+numskiporbs-numloaded,spfdimtype,&
           spffile(ii),&
-          jj)
+          jj,spf_gridshift(:,ii))
      numloaded=numloaded+jj
      OFLWR "Loaded ", jj, " spfs from file ",spffile(ii); CFL
   enddo
@@ -172,13 +175,15 @@ subroutine load_spfs(inspfs, numloaded)    !! both output
 
 end subroutine load_spfs
 
-subroutine load_spfs0(inspfs, inspfdims, innspf, dimtypes, infile, numloaded)
+subroutine load_spfs0(inspfs, inspfdims, innspf, dimtypes, infile, numloaded,in_gridshift)
   use fileptrmod
   use mpimod
   implicit none
-  character :: infile*(*)
-  integer :: inspfdims(3), innspf,readdims(3),readnspf, dimtypes(3),numloaded,readcflag,myiostat
-  DATATYPE :: inspfs(inspfdims(1),inspfdims(2),inspfdims(3),innspf)
+  character,intent(in) :: infile*(*)
+  integer, intent(in) :: inspfdims(3), innspf, dimtypes(3),in_gridshift(3)
+  DATATYPE,intent(out) :: inspfs(inspfdims(1),inspfdims(2),inspfdims(3),innspf)
+  integer, intent(out) :: numloaded
+  integer :: readcflag,myiostat, readdims(3),readnspf
 
   if (myrank.eq.1) then
      open(999,file=infile, status="unknown", form="unformatted",iostat=myiostat)
@@ -191,11 +196,11 @@ subroutine load_spfs0(inspfs, inspfdims, innspf, dimtypes, infile, numloaded)
   if (myrank.eq.1) then
      call spf_header_read(999,readdims,readnspf,readcflag)
      call mympiibcast(readdims,1,3); call mympiibcastone(readnspf,1); call mympiibcastone(readcflag,1)
-     call spf_read0(999,innspf,inspfdims,readnspf,readdims,readcflag,dimtypes,inspfs)
+     call spf_read0(999,innspf,inspfdims,readnspf,readdims,readcflag,dimtypes,inspfs,in_gridshift)
      close(999)
   else
      call mympiibcast(readdims,1,3); call mympiibcastone(readnspf,1); call mympiibcastone(readcflag,1)
-     call spf_read0(-798,innspf,inspfdims,readnspf,readdims,readcflag,dimtypes,inspfs)
+     call spf_read0(-798,innspf,inspfdims,readnspf,readdims,readcflag,dimtypes,inspfs,in_gridshift)
   endif
 
   numloaded=min(readnspf,innspf)
@@ -207,26 +212,23 @@ end subroutine load_spfs0
 !   outdims is local
 !   readdims is global
 
-subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtypes,outspfs)
+subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtypes,outspfs,in_gridshift)
 !! use fileptrmod  !! need nprocs and parorbsplit now
   use mpimod
   use parameters
 
   implicit none
-  integer :: iunit, dimtypes(3),outdims(3),readnspf,outnspf,readcflag,&
-       bigreaddims(3),bigoutdims(3)  !! readdims(3),
-  real*8,allocatable :: realspfs(:,:,:,:)
-  complex*16,allocatable :: cspfs(:,:,:,:)
-  real*8,allocatable :: bigoutrealspfs(:,:,:,:)
-  complex*16,allocatable :: bigoutcspfs(:,:,:,:)
+  integer, intent(in) :: iunit, dimtypes(3),outdims(3),readnspf,outnspf,readcflag,&
+       bigreaddims(3),in_gridshift(3)
+  DATATYPE,intent(out) :: outspfs(outdims(1),outdims(2),outdims(3),outnspf)
+  real*8,allocatable :: realspfs(:,:,:,:), bigoutrealspfs(:,:,:,:)
+  complex*16,allocatable :: cspfs(:,:,:,:), bigoutcspfs(:,:,:,:)
   real*8 :: outrealspfs(outdims(1),outdims(2),outdims(3),outnspf)  !!AUTOMATIC
   complex*16 :: outcspfs(outdims(1),outdims(2),outdims(3),outnspf) !!AUTOMATIC
+  integer :: numloaded,itop(3),ibot(3),otop(3),obot(3),idim,flag, amin(3),amax(3),bmin(3),bmax(3),&
+       qqblocks(nprocs),ispf, bigoutdims(3)
 
-  DATATYPE :: outspfs(outdims(1),outdims(2),outdims(3),outnspf)
-  integer :: numloaded,itop(3),ibot(3),otop(3),obot(3),idim
-  integer :: qqblocks(nprocs),ispf
-
-     numloaded = min(outnspf,readnspf)
+  numloaded = min(outnspf,readnspf)
 
 
 !!$  bigreaddims(:)=readdims(:)
@@ -305,6 +307,40 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
      endif
      close(iunit)
      OFLWR "   ...okay"; CFL     
+
+     do idim=1,3
+        if (spfdimtype(idim).ne.1.and.in_gridshift(idim).ne.0) then
+           OFLWR "spf_gridshift=",in_gridshift(idim)," not supported for dim",idim," because dimtype is ",spfdimtype(idim); CFLST
+        endif
+     enddo
+     flag=0
+     do idim=1,3
+        if (in_gridshift(idim).ne.0) then
+           flag=1
+           exit
+        endif
+     enddo
+     if (flag.ne.0) then
+        OFLWR "SHIFTING ORBITALS, spf_gridshift=",in_gridshift(:); CFL
+
+        amin(:)=max(1,1+in_gridshift(:)); amax(:)=min(bigreaddims(:),bigreaddims(:)+in_gridshift(:))
+        bmin(:)=max(1,1-in_gridshift(:)); bmax(:)=min(bigreaddims(:),bigreaddims(:)-in_gridshift(:))
+        
+        if (readcflag.eq.0) then
+           realspfs(amin(1):amax(1),amin(2):amax(2),amin(3):amax(3),1:numloaded)=&
+                realspfs(bmin(1):bmax(1),bmin(2):bmax(2),bmin(3):bmax(3),1:numloaded)
+           realspfs(1:amin(1)-1,:,:,1:numloaded)=0; realspfs(amax(1)+1:bigreaddims(1),:,:,1:numloaded)=0
+           realspfs(:,1:amin(2)-1,:,1:numloaded)=0; realspfs(:,amax(2)+1:bigreaddims(2),:,1:numloaded)=0
+           realspfs(:,:,1:amin(3)-1,1:numloaded)=0; realspfs(:,:,amax(3)+1:bigreaddims(3),1:numloaded)=0
+        else
+           cspfs(amin(1):amax(1),amin(2):amax(2),amin(3):amax(3),1:numloaded)=&
+                cspfs(bmin(1):bmax(1),bmin(2):bmax(2),bmin(3):bmax(3),1:numloaded)
+           cspfs(1:amin(1)-1,:,:,1:numloaded)=0; cspfs(amax(1)+1:bigreaddims(1),:,:,1:numloaded)=0
+           cspfs(:,1:amin(2)-1,:,1:numloaded)=0; cspfs(:,amax(2)+1:bigreaddims(2),:,1:numloaded)=0
+           cspfs(:,:,1:amin(3)-1,1:numloaded)=0; cspfs(:,:,amax(3)+1:bigreaddims(3),1:numloaded)=0
+        endif
+        OFLWR "    ..shifted orbitals."; CFL
+     endif
   endif
 
   if (myrank.eq.1) then
