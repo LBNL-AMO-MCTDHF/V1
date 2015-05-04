@@ -6,11 +6,15 @@ implicit none
 integer :: mpifileptr
 end module
 
+module littleparmod
+  implicit none
+  integer, parameter :: MXF=5
+end module littleparmod
+
 !!YYSNIPYY
 !!BB
 module parameters
-  use fileptrmod
-  implicit none
+  use littleparmod;  use fileptrmod;  implicit none
 
 !! *********************************************************************************************************** !!
 !!   Parameters for MCTDHF calculation; parinp NAMELIST input from Input.Inp (default)
@@ -149,10 +153,10 @@ integer :: numskiporbs=0         !!              !! Reading orbs on file(s), ski
 integer :: orbskip(1000)=0       !!              !! Which to skip
 integer :: loadavectorflag=0     !! A=file       !! load avector to start calculation?
 integer :: numavectorfiles=1
-character (len=200) :: &         !!              !! A-vector binary file to read.  Can have different configs
-     avectorfile(100)="Bin/avector.bin"          !!   but should have same number of electrons.   
-character (len=200) :: &         !!              !! Spf file to read.  Can have fewer m vals, smaller radial 
-      spffile(100)="Bin/spfs.bin"!! Spf=filename !!   grid, or fewer than nspf total orbitals. 
+character (len=200) :: &         !! A=file       !! A-vector binary file to read.  Can have different configs
+     avectorfile(MXF)="Bin/avector.bin"          !!   but should have same number of electrons.   
+character (len=200) :: &         !! Spf=file     !! Spf file to read.  Can have fewer m vals, smaller radial 
+     spffile(MXF)="Bin/spfs.bin"                 !!   grid, or fewer than nspf total orbitals. 
 integer :: avecloadskip(100)=0
 integer :: numholes=0                            !! Load a-vector with this many more electrons and annihilate
 integer :: numholecombo=1                        !! Number of (products of) annihilation operators to combine 

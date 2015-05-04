@@ -241,8 +241,8 @@ subroutine getparams()
      endif
      if (buffer(1:4) .eq. 'Spf=') then
         spffile=nullbuff
-        spffile(1:len-4)=buffer(5:len)
-        write(mpifileptr, *) "Spf file is ", spffile(1:len-4+1)
+        spffile(:)(1:len-4)=buffer(5:len)
+        write(mpifileptr, *) "Spf file is ", spffile(1)(1:len-4+1)
         write(mpifileptr, *) "    Loadspfflag turned on."
         loadspfflag=1
      endif
@@ -670,7 +670,9 @@ subroutine getparams()
      sparseopt=0
   endif
 
-
+  if (numavectorfiles.gt.MXF.or.numspffiles.gt.MXF) then
+     OFLWR "PROGRAMMER REDIM littleparmod",numavectorfiles,numspffiles,MXF; CFLST
+  endif
 
   call openfile()
   write(mpifileptr, *)
