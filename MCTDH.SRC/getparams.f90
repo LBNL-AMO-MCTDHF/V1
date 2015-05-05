@@ -553,11 +553,6 @@ subroutine getparams()
      endif
   endif
 
-
-!!  if (needpulse.ne.0.or.mcscfflag.ne.0) then
-!!     call getpulse(mcscfflag)    !! if mcscfflag ne 0, will not exit with warning if pulse is not read.
-!!  endif
-
   if (needpulse.ne.0) then
      call getpulse(0)
   endif
