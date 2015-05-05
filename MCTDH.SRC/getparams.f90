@@ -88,7 +88,7 @@ subroutine getparams()
        avecloadskip,nonsparsepropmode,sparseopt,lanprintflag,dipmodtime,conprop,connormflag, &
        orbcompact,spinrestrictval,mshift,numskiporbs,orbskip,debugfac,denmatfciflag,&
        walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac, maxquadnorm,quadstarttime,&
-       reinterp_orbflag,spf_gridshift
+       reinterp_orbflag,spf_gridshift,load_avector_product
 
 
 

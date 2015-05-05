@@ -148,6 +148,7 @@ subroutine load_spfs(inspfs, numloaded)    !! both output
      call load_spfs0(inspfs0(:,numloaded+1),spfdims,nspf+numfrozen+numskiporbs-numloaded,spfdimtype,&
           spffile(ii),&
           jj,spf_gridshift(:,ii))
+     eachloaded(ii)=jj
      numloaded=numloaded+jj
      OFLWR "Loaded ", jj, " spfs from file ",spffile(ii); CFL
   enddo

@@ -389,6 +389,11 @@ program mctdhf
 
      if (loadavectorflag.eq.1) then
 
+        if (load_avector_product.ne.0) then
+           OFLWR "Reading product avector!" ; CFL
+           call load_avector_productsub(bigavector(:,:))
+           readnum=mcscfnum; totread=mcscfnum
+        else
         do ifile=1,numavectorfiles
            if (totread.lt.mcscfnum) then
               OFLWR "Reading avector..." ; CFL
@@ -396,7 +401,7 @@ program mctdhf
            endif
            totread=totread+readnum
         enddo
-
+        endif
         OFLWR "Read ",totread," A-vectors"; CFL
 
      endif

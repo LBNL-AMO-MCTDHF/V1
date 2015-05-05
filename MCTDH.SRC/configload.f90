@@ -51,12 +51,10 @@ end subroutine print_excitations
 subroutine avector_header_read_simple(iunit,numvects,outndof,outnumr,outnumconfig,icomplex)
   implicit none
   integer :: outnumr,outnumconfig,icomplex,iunit,numvects,outndof,ierr,nullint
-
   call avector_header_read(iunit,numvects,outndof,outnumr,outnumconfig,nullint,nullint,nullint,nullint,icomplex,ierr)  
   if (ierr.ne.0) then
      call avector_header_read_old(iunit,numvects,outndof,outnumr,outnumconfig,nullint,icomplex)
   endif
-
 end subroutine avector_header_read_simple
 
 
@@ -121,6 +119,310 @@ end subroutine
 
 
 
+subroutine load_avector_productsub(myavector)
+  use parameters
+  use mpimod
+  implicit none
+  DATATYPE,intent(out) :: myavector(numconfig,numr,mcscfnum)
+  integer :: readnumvects(numavectorfiles),readndof(numavectorfiles),readnumr(numavectorfiles),&
+       readnumconfig(numavectorfiles),readcomplex(numavectorfiles),readunit(numavectorfiles)
+  integer :: configtable(numconfig),configphase(numconfig) !! AUTOMATIC
+  type threemat
+     DATATYPE, allocatable :: mat(:,:,:)
+  end type threemat
+  TYPE(threemat) :: readavectors(numavectorfiles)
+  type inttwomat
+     integer, allocatable :: mat(:,:)
+  end type inttwomat
+  type(inttwomat) :: readconfiglist(numavectorfiles)
+  DATATYPE, allocatable :: productvector(:,:,:,:,:,:,:),productreshape(:,:)
+  integer,allocatable :: newconfiglist(:,:)
+  integer :: ifile,tot_ndof,tot_numconfig,iconfig,jj,kk,dirphase,reorder,num_allowed,jconfig,iitop(6),&
+       dofsum,thisconfig(ndof),ir,getconfiguration,tot_wfns,iwfn
+  logical :: allowedconfig
+  integer, target :: ii(6)
+  integer, pointer :: ii1,ii2,ii3,ii4,ii5,ii6
+
+  if (numspffiles.ne.numavectorfiles) then
+     OFLWR "numavectorfiles and numspffiles should be the same for load_avector_product"; CFLST
+  endif
+  do ifile=1,numavectorfiles
+     if (eachloaded(ifile).le.0) then
+        OFLWR "Error Eachloaded:", eachloaded(1:numavectorfiles); CFLST
+     endif
+  enddo
+
+  if (myrank.eq.1) then
+     do ifile=1,numavectorfiles
+        readunit(ifile)=677+ifile
+        open(readunit(ifile),file=avectorfile(ifile), status="unknown", form="unformatted")
+        call avector_header_read_simple(readunit(ifile),readnumvects(ifile),readndof(ifile),readnumr(ifile),readnumconfig(ifile),readcomplex(ifile))  
+        close(readunit(ifile))
+     enddo
+  endif
+     
+  call mympiibcast(readunit,1,numavectorfiles)
+  call mympiibcast(readnumvects,1,numavectorfiles)
+  call mympiibcast(readndof,1,numavectorfiles)
+  call mympiibcast(readnumr,1,numavectorfiles)
+  call mympiibcast(readnumconfig,1,numavectorfiles)
+  call mympiibcast(readcomplex,1,numavectorfiles)
+
+  do ifile=1,numavectorfiles
+     if (readnumr(ifile).ne.numr) then
+        OFLWR "error, for product all numr must agree", numr
+        WRFL readnumr(1:numavectorfiles); CFLST
+     endif
+  enddo
+
+  tot_ndof=0
+  tot_numconfig=1
+  tot_wfns=1
+  do ifile=1,numavectorfiles
+     tot_ndof=tot_ndof+readndof(ifile)
+     tot_numconfig=tot_numconfig*readnumconfig(ifile)
+     tot_wfns=tot_wfns*readnumvects(ifile)
+  enddo
+
+  if (tot_ndof.ne.ndof) then
+     OFLWR "error, total number of electrons doesn't agree load_avector_product"
+     WRFL tot_ndof,ndof,readndof(1:numavectorfiles); CFLST
+  endif
+
+  if (tot_wfns.ne.mcscfnum) then
+     OFLWR "Load_avector_product: error: mcscfnum must equal total number of wave functions"; CFLST
+  endif
+
+  OFLWR "LOAD_AVECTOR_PRODUCT: tot_numconfig=",tot_numconfig; CFL
+  OFLWR "     total number of wave functions = ",tot_wfns; CFL
+
+  do ifile=1,numavectorfiles
+     allocate(readavectors(ifile)%mat(readnumconfig(ifile),numr,mcscfnum))
+     allocate(readconfiglist(ifile)%mat(readndof(ifile),readnumconfig(ifile)))
+  enddo
+
+  do ifile=1,numavectorfiles
+
+     open(readunit(ifile),file=avectorfile(ifile), status="unknown", form="unformatted")
+
+     call avector_header_read_simple(readunit(ifile),readnumvects(ifile),readndof(ifile),numr, &
+          readnumconfig(ifile),readcomplex(ifile))  
+
+     if (myrank.eq.1) then
+        call simple_load_avectors(readunit(ifile),readcomplex(ifile), readavectors(ifile)%mat(:,:,:), &
+             readndof(ifile), numr, readnumconfig(ifile), readnumvects(ifile))
+     endif
+     
+     close(readunit(ifile))
+     open(readunit(ifile),file=avectorfile(ifile), status="unknown", form="unformatted")
+
+     call avector_header_read_simple(readunit(ifile),readnumvects(ifile),readndof(ifile),numr, &
+          readnumconfig(ifile),readcomplex(ifile))  
+     
+     if (myrank.eq.1) then
+        call get_avectorfile_configlist(readunit(ifile),readcomplex(ifile), readconfiglist(ifile)%mat(:,:), &
+             readndof(ifile), numr, readnumconfig(ifile))
+     endif
+     close(readunit(ifile))
+  enddo
+
+  call mpibarrier()
+  OFLWR "     ...A-Vectors read for product. broadcasting."; CFL
+  call mpibarrier()
+
+  do ifile=1,numavectorfiles
+     call mympibcast(readavectors(ifile)%mat(:,:,:),1,readnumconfig(ifile)*numr*mcscfnum)
+     call mympiibcast(readconfiglist(ifile)%mat(:,:),1,readndof(ifile)*readnumconfig(ifile))
+  enddo
+
+  if (numavectorfiles.gt.6) then
+     OFLWR "REDIM LOAD_AVECTOR_PRODUCT",6,numavectorfiles; CFLST
+  endif
+
+  OFLWR "    ..go get newconfiglist load_avector_product"; CFL
+
+  allocate(newconfiglist(ndof,tot_numconfig))
+
+  iitop(:)=1
+  iitop(1:numavectorfiles)=readnumconfig(1:numavectorfiles)
+
+  ii1=>ii(1); ii2=>ii(2); ii3=>ii(3); ii4=>ii(4); ii5=>ii(5); ii6=>ii(6)
+
+  iconfig=0
+
+  do ii1=1,iitop(1)
+  do ii2=1,iitop(2)
+  do ii3=1,iitop(3)
+  do ii4=1,iitop(4)
+  do ii5=1,iitop(5)
+  do ii6=1,iitop(6)
+
+     jj=0
+     dofsum=0
+     do ifile=1,numavectorfiles
+        thisconfig(jj+1:jj+readndof(ifile))=readconfiglist(ifile)%mat(:,ii(ifile))
+        do kk=1,readndof(ifile)-1,2
+           thisconfig(jj+kk)=thisconfig(jj+kk)+    dofsum
+        enddo
+        dofsum=dofsum+eachloaded(ifile)
+        jj=jj+readndof(ifile)
+     enddo
+
+     iconfig=iconfig+1
+     if (iconfig.gt.tot_numconfig) then
+        OFLWR "error iconfig (programmer fail)", iconfig,tot_numconfig,ii(:); CFLST
+     endif
+     newconfiglist(:,iconfig)=thisconfig(:)
+!!$     iiarray(:,iconfig)=ii(:)
+
+  enddo
+  enddo
+  enddo
+  enddo
+  enddo
+  enddo
+
+  if (iconfig.ne.tot_numconfig) then
+     OFLWR "error iconfig  at end (programmer fail)", iconfig,tot_numconfig; CFLST
+  endif
+
+  OFLWR "    ..done get newconfiglist load_avector_product. go configtable"; CFL
+
+  configtable(:)=(-99)
+
+  num_allowed=0
+  do iconfig=1,tot_numconfig
+     dirphase=reorder(newconfiglist(:,iconfig))
+     if (allowedconfig(newconfiglist(:,iconfig))) then
+        num_allowed=num_allowed+1
+        jconfig=getconfiguration(newconfiglist(:,iconfig))
+        if (configtable(jconfig).ne.(-99)) then
+           OFLWR "PROGFAIL CONFIGTABEEE"; CFLST
+        endif
+        configtable(jconfig)=iconfig
+        configphase(jconfig)=dirphase
+     endif
+  enddo
+
+  deallocate(newconfiglist)
+
+  OFLWR "    ..done product table.  Go product vector"; CFL
+
+  allocate(productvector(iitop(1),iitop(2),iitop(3),iitop(4),iitop(5),iitop(6),numr))
+  allocate(productreshape(tot_numconfig,numr))
+
+  iwfn=0
+
+  iitop(:)=1
+  iitop(1:numavectorfiles)=readnumvects(1:numavectorfiles)
+
+  do ii1=1,iitop(1)
+  do ii2=1,iitop(2)
+  do ii3=1,iitop(3)
+  do ii4=1,iitop(4)
+  do ii5=1,iitop(5)
+  do ii6=1,iitop(6)
+
+     iwfn=iwfn+1
+
+     OFLWR "          ...construct wfn ",iwfn, " of ", mcscfnum; CFL
+
+     if (iwfn.gt.mcscfnum) then
+        OFLWR "PROGFAIL IWFN", iwfn,mcscfnum,ii(1:numavectorfiles);CFLST
+     endif
+
+     productvector=1d0
+     do ir=1,numr
+        do iconfig=1,readnumconfig(1)
+           productvector(iconfig,:,:,:,:,:,ir)=productvector(iconfig,:,:,:,:,:,ir)*readavectors(1)%mat(iconfig,ir,ii(1))
+        enddo
+     enddo
+     if (numavectorfiles.ge.2) then
+        do ir=1,numr
+           do iconfig=1,readnumconfig(2)
+              productvector(:,iconfig,:,:,:,:,ir)=productvector(:,iconfig,:,:,:,:,ir)*readavectors(2)%mat(iconfig,ir,ii(2))
+           enddo
+        enddo
+     endif
+     if (numavectorfiles.ge.3) then
+        do ir=1,numr
+           do iconfig=1,readnumconfig(3)
+              productvector(:,:,iconfig,:,:,:,ir)=productvector(:,:,iconfig,:,:,:,ir)*readavectors(3)%mat(iconfig,ir,ii(3))
+           enddo
+        enddo
+     endif
+     if (numavectorfiles.ge.4) then
+        do ir=1,numr
+           do iconfig=1,readnumconfig(4)
+              productvector(:,:,:,iconfig,:,:,ir)=productvector(:,:,:,iconfig,:,:,ir)*readavectors(4)%mat(iconfig,ir,ii(4))
+           enddo
+        enddo
+     endif
+     if (numavectorfiles.ge.5) then
+        do ir=1,numr
+           do iconfig=1,readnumconfig(5)
+              productvector(:,:,:,:,iconfig,:,ir)=productvector(:,:,:,:,iconfig,:,ir)*readavectors(5)%mat(iconfig,ir,ii(5))
+           enddo
+        enddo
+     endif
+     if (numavectorfiles.ge.6) then
+        do ir=1,numr
+           do iconfig=1,readnumconfig(6)
+              productvector(:,:,:,:,:,iconfig,ir)=productvector(:,:,:,:,:,iconfig,ir)*readavectors(6)%mat(iconfig,ir,ii(6))
+           enddo
+        enddo
+     endif
+     
+     productreshape(:,:)=RESHAPE(productvector,(/tot_numconfig,numr/))
+
+     myavector(:,:,iwfn)=0d0
+
+     do jconfig=1,numconfig
+        if (configtable(jconfig).gt.0) then
+           myavector(jconfig,:,iwfn)=productreshape(configtable(jconfig),:)*configphase(jconfig)
+        endif
+     enddo
+
+  enddo
+  enddo
+  enddo
+  enddo
+  enddo
+  enddo
+
+  do ifile=1,numavectorfiles
+     deallocate(readavectors(ifile)%mat,readconfiglist(ifile)%mat)
+  enddo
+
+  deallocate(productvector,productreshape)
+
+  OFLWR "   ... done load_avector_product."; CFL
+
+end subroutine load_avector_productsub
+
+
+
+
+subroutine get_avectorfile_configlist(iunit, qq, myconfiglist, myndof, mynumr, mynumconfig)
+  use fileptrmod
+  implicit none
+  integer :: myndof, mynumconfig, mynumr,iunit,qq, config1, myiostat
+  integer, intent(out) :: myconfiglist(myndof,mynumconfig)
+  real*8 :: rtempreadvect(mynumr)
+  complex*16 :: ctempreadvect(mynumr)
+
+  do config1=1,mynumconfig
+     if (qq==0) then
+        read (iunit,iostat=myiostat) myconfiglist(:,config1), rtempreadvect(1:mynumr)
+     else
+        read (iunit,iostat=myiostat) myconfiglist(:,config1), ctempreadvect(1:mynumr)
+     endif
+     if (myiostat.ne.0) then
+        OFLWR "err get_avectorfile_configlist "; CFLST
+     endif
+  enddo
+end subroutine get_avectorfile_configlist
+
 
 
 
@@ -137,7 +439,7 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
 
   open(999,file=filename, status="unknown", form="unformatted")
 
-!!  call avector_header_read(999,readnumvects,readndof,readnumr,readnumconfig,readspinrestrictval,readcomplex)  
+!!$  call avector_header_read(999,readnumvects,readndof,readnumr,readnumconfig,readspinrestrictval,readcomplex)  
 
  call avector_header_read_simple(999,readnumvects,readndof,readnumr,readnumconfig,readcomplex)  
 
@@ -166,7 +468,7 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
   if (myrank.eq.1) then
      open(999,file=filename, status="unknown", form="unformatted")
 
-!     call avector_header_read(999,readnumvects,readndof,readnumr,readnumconfig,readspinrestrictval,readcomplex)  
+!!$     call avector_header_read(999,readnumvects,readndof,readnumr,readnumconfig,readspinrestrictval,readcomplex)  
 
      call avector_header_read_simple(999,readnumvects,readndof,readnumr,readnumconfig,readcomplex)
 
@@ -174,7 +476,7 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
 
         call easy_load_avectors(999,readcomplex, readavectors(:,:,:), ndof, numr, readnumconfig, readnumvects)
 
-!        call load_avectors0(999,readcomplex,myavectors(:,:,:),numr,numconfig,ndof           ,readnumr,readnumconfig, readavectorsubsimple,readnumvects)
+!!$        call load_avectors0(999,readcomplex,myavectors(:,:,:),numr,numconfig,ndof           ,readnumr,readnumconfig, readavectorsubsimple,readnumvects)
      else
         call load_avectors0(999,readcomplex,readavectors(:,:,:),numr,numconfig,ndof+2*numholes,readnumr,readnumconfig, readavectorsubroutine,readnumvects)
      endif
@@ -184,15 +486,11 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
      readnumvects=min(mynumvects,readnumvects-numskip)
      myavectors(:,:,1:readnumvects) = readavectors(:,:, 1+numskip : numskip+readnumvects)
      
-!     myavectors(:,:,1:readnumvects)=readavectors(:,:,:)
+!!$     myavectors(:,:,1:readnumvects)=readavectors(:,:,:)
 
   endif
 
-
   call mympibcast(myavectors(:,:,:),1,numconfig*numr*mynumvects)
-
-!     OFLWR "DDDDDOT ", dot(myavectors(:,:,1),myavectors(:,:,1),totadim),dot(myavectors(:,:,2),myavectors(:,:,2),totadim); CFL
-!  OFLWR "READ ", readnumvects, " VECTORS. ",numskip
 
 end subroutine load_avectors
 
