@@ -64,7 +64,7 @@ real*8  :: expostepfac=1.2d0     !!              !! Miscellaneous algorithm para
 !!EE
 !!\textbf{\qquad SPARSE - if sparseconfigflag .ne. 0}
 !!BB
-integer :: maxaorder=1000        !!              !!   lanczos order for sparse a-vector prop and improvedquad=3
+integer :: maxaorder=100         !!              !!   lanczos order for sparse a-vector prop and improvedquad=3
 integer :: sparseopt =1                          !! 0= direct CI  1= sparse matrix algebra (faster, more memory)
 !!EE
 !!{\large \quad PROPAGATION}
