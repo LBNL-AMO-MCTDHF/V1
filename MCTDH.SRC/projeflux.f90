@@ -138,7 +138,7 @@ subroutine projeflux_double_time_int(bintimes,xsec,mem,istate,nstate,imc,nt,dt)
   use mpimod
   implicit none  
   integer :: i,k,tlen,mem,istate,curtime,tau,whichbin,nt,ir ,imc,nstate, bintimes(FluxNBins),ipulse
-  integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,bratop,flag
+  integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,bratop,flag,getlen
  !! bintimes and xsec done outside so we don't have to redo over and over for each state
   real*8 :: doubleclebschsq,aa,bb,cc,xsec(nEFlux),MemTot,MemVal,Energy,dt,wfi,cgfac,ffac,myft,piover2,estep
   DATATYPE, allocatable,target :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:)
@@ -333,7 +333,12 @@ subroutine projeflux_double_time_int(bintimes,xsec,mem,istate,nstate,imc,nt,dt)
               OFLWR "Taking the fourier transform of g(tau) to get cross section"; CFL
               
               if(myrank.eq.1) then
-                 open(1004,file="Dat/xsec.proj."//xstate1//"_"//xmc1//".spi.dat",status="replace",action="readwrite",position="rewind")
+
+!!$ 05-05-2015   open(1004,file="Dat/xsec.proj."//xstate1//"_"//xmc1//".spi.dat",status="replace",action="readwrite",position="rewind")
+
+                 open(1004,file=projspifile(1:getlen(projspifile)-1)//"_"//xstate1//"_"//xmc1//".dat",status="replace",action="readwrite",position="rewind")
+
+
                  write(1004,*);write(1004,*) "# Omega; pulse ft; projected flux at t= ... "
                  write(1004,'(A8, A8, 100F36.5)') "#  ", " ", bintimes(1:FluxNBins)*dt;            write(1004,*)
               endif
