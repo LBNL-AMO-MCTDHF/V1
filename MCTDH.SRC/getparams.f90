@@ -538,10 +538,10 @@ subroutine getparams()
 
 
   needpulse=0
-  if (noftflag.eq.0) then
-     if (tdflag.eq.1) then
-        needpulse=1
-     else 
+  if (tdflag.eq.1) then
+     needpulse=1
+  else 
+     if (noftflag.eq.0) then
         do j=1,numactions
            if ((actions(j).eq.1).or.&
                 (actions(j).eq.14).or.&
@@ -552,6 +552,7 @@ subroutine getparams()
         enddo
      endif
   endif
+
 
 !!  if (needpulse.ne.0.or.mcscfflag.ne.0) then
 !!     call getpulse(mcscfflag)    !! if mcscfflag ne 0, will not exit with warning if pulse is not read.
