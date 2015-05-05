@@ -538,14 +538,19 @@ subroutine getparams()
 
 
   needpulse=0
-  if (tdflag.eq.1) then
-     needpulse=1
-  else 
-     do j=1,numactions
-        if ((actions(j).eq.1).or.(actions(j).eq.14).or.(actions(j).eq.16).or.(actions(j).eq.17)) then
-           needpulse=1
-        endif
-     enddo
+  if (noftflag.eq.0) then
+     if (tdflag.eq.1) then
+        needpulse=1
+     else 
+        do j=1,numactions
+           if ((actions(j).eq.1).or.&
+                (actions(j).eq.14).or.&
+                (actions(j).eq.16).or.&
+                (actions(j).eq.17)) then
+              needpulse=1
+           endif
+        enddo
+     endif
   endif
 
 !!  if (needpulse.ne.0.or.mcscfflag.ne.0) then
