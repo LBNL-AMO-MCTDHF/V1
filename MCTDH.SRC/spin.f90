@@ -322,7 +322,7 @@ subroutine configspin_matel()
   if (walksonfile.ne.0) then
 
      read(751,iostat=myiostat) configspinmatel
-
+     call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "Read error for savewalks.BIN!  Delete it to recompute walks. 662", myiostat;CFLST
      endif
@@ -345,10 +345,14 @@ subroutine configspin_matel()
         enddo
      enddo
      if (walkwriteflag.ne.0) then
-        call beforebarrier()
+        if (walksinturn) then
+           call beforebarrier()
+        endif
         OFLWR "   ...writing configspinmatel..."; CFL
         write(751) configspinmatel
-        call afterbarrier()
+        if (walksinturn) then
+           call afterbarrier()
+        endif
      endif
   endif
 
@@ -388,6 +392,7 @@ subroutine configspinset_projector()
      OFLWR "Reading spin set projectors...";CFL
 
      read(751,iostat=myiostat) numspinsets,maxspinsetsize,spinrank,spindfrank
+     call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "Read error xx44 savewalks.BIN"; CFLST
      endif
@@ -396,6 +401,7 @@ subroutine configspinset_projector()
      spinsetsize=0;spinsets=0; spinsetrank=0
 
      read(751,iostat=myiostat) spinsetsize(1:numspinsets),spinsetrank(1:numspinsets),spinsets(:,:)
+     call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "Read error xx45 savewalks.BIN"; CFLST
      endif
@@ -406,6 +412,7 @@ subroutine configspinset_projector()
      enddo
 
      read(751,iostat=myiostat) (spinsetprojector(i)%mat,spinsetprojector(i)%vects,i=1,numspinsets)     
+     call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "Read error setprojector savewalks.BIN"; CFLST
      endif
@@ -497,12 +504,16 @@ subroutine configspinset_projector()
      enddo
 
      if (walkwriteflag.ne.0) then
-        call beforebarrier()
+        if (walksinturn) then
+           call beforebarrier()
+        endif
         OFLWR "   ...writing spinsets..."; CFL
         write(751) numspinsets,maxspinsetsize,spinrank,spindfrank
         write(751) spinsetsize(1:numspinsets),spinsetrank(1:numspinsets),spinsets(:,1:numspinsets)
         write(751) (spinsetprojector(i)%mat,spinsetprojector(i)%vects,i=1,numspinsets)
-        call afterbarrier()
+        if (walksinturn) then
+           call afterbarrier()
+        endif
      endif
 
      deallocate(spinvects, spinvals, realprojector, work)

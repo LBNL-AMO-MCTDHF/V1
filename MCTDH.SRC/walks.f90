@@ -276,6 +276,7 @@ subroutine walks()
           numdoublediagwalks, &
           doublediag
 
+     call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "Read error for savewalks.BIN!  Delete it to recompute walks!!", myiostat; CFLST
      else
@@ -509,23 +510,26 @@ subroutine walks()
   endif
   
   if (walkwriteflag.ne.0) then
-     OFLWR "WRITING WALKS IN TURN."; CFL
-     call beforebarrier()
-     write(751) &
-          singlewalkopspf, &
-          singlewalkdirphase, &
-          singlewalk, &
-          numsinglediagwalks, &
-          singlediag, &
-          
-          doublewalkdirspf, &
-          doublewalkdirphase, &
-          doublewalk, &
-          numdoublediagwalks, &
-          doublediag
-     
-     call afterbarrier()
-     OFLWR "DONE WRITING WALKS"; CFL
+        if (walksinturn) then
+           call beforebarrier()
+        endif
+        OFLWR "WRITING WALKS."; CFL
+        write(751) &
+             singlewalkopspf, &
+             singlewalkdirphase, &
+             singlewalk, &
+             numsinglediagwalks, &
+             singlediag, &
+             
+             doublewalkdirspf, &
+             doublewalkdirphase, &
+             doublewalk, &
+             numdoublediagwalks, &
+             doublediag
+        if (walksinturn) then 
+           call afterbarrier()
+        endif
+        OFLWR "DONE WRITING WALKS"; CFL
   endif
 
 end subroutine walks
@@ -558,6 +562,7 @@ subroutine getnumwalks()
 
   !!  ***********   SINGLES  **********
 
+  call mpibarrier()
   call openfile();  write(mpifileptr, *) "Counting walks. Singles";  call closefile()
 
   flag=1
@@ -567,12 +572,15 @@ subroutine getnumwalks()
      if (myrank.ne.1) then
         close(751)
         open(751,file="WALKS/savewalks.BIN"//iilab,status="old",iostat=myiostat, form="unformatted")
-        if (myiostat.ne.0) then
-           OFLWR "error savewalks on processor ", myrank; CFLST
-        endif
+        myiostat=myiostat*myrank
+     endif
+     call mympiimax(myiostat)
+     if (myiostat.ne.0) then
+        OFLWR "error savewalks ", myiostat; CFLST
      endif
 
      read(751,iostat=myiostat) inprocs, innumconfig
+     call mympiimax(myiostat)
 
      if (myiostat==0) then
         if (inprocs.ne.nprocs) then
@@ -585,6 +593,10 @@ subroutine getnumwalks()
         walksonfile=1;        flag=0
      endif
      read(751,iostat=myiostat) numsinglewalks,numdoublewalks
+     call mympiimax(myiostat)
+     if (myiostat.ne.0) then
+        OFLWR "error savewalks xx", myiostat; CFLST
+     endif
   endif
 
   if (flag==1) then
@@ -726,15 +738,21 @@ subroutine getnumwalks()
      enddo   ! config1
 
      if (walkwriteflag.ne.0) then
-        call beforebarrier()
-        OFLWR "OPENING WALKS...."; CFL
+        if (walksinturn) then
+           OFLWR "OPENING WALKS and writing in turn...."; CFL
+           call beforebarrier()
+        else
+           OFLWR "OPENING WALKS...."; CFL
+        endif
         if (myrank.eq.1) then
            open(751,file="WALKS/walks.BIN",status="unknown", form="unformatted")
-           write(751) nprocs, numconfig;     write(751) numsinglewalks,numdoublewalks
         else
            open(751,file="WALKS/walks.BIN"//iilab,status="unknown", form="unformatted")
         endif
-        call afterbarrier()
+           write(751) nprocs, numconfig;     write(751) numsinglewalks,numdoublewalks
+        if (walksinturn) then
+           call afterbarrier()
+        endif
         OFLWR "    ...opened walks and wrote header info"; CFL
      endif
   endif

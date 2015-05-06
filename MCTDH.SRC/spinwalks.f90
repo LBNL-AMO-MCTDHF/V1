@@ -68,6 +68,7 @@ subroutine spinwalks()
      spinwalk=0; spinwalkdirphase=0
 
      read(751,iostat=myiostat) spinwalk(:,botwalk:topwalk),spinwalkdirphase(:,botwalk:topwalk) 
+     call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "Read error for savewalks.BIN!  Delete it to recompute walks. 662", myiostat; CFLST
      endif
@@ -124,10 +125,14 @@ subroutine spinwalks()
      enddo   ! config1
 
      if (walkwriteflag.ne.0) then
-        call beforebarrier()
+        if (walksinturn) then
+           call beforebarrier()
+        endif
         OFLWR " ...writing spinwalks..."; CFL
         write(751) spinwalk(:,botwalk:topwalk),spinwalkdirphase(:,botwalk:topwalk)  
-        call afterbarrier()
+        if (walksinturn) then
+           call afterbarrier()
+        endif
      endif
 
   endif  !! walksonfile
@@ -256,6 +261,7 @@ subroutine getnumspinwalks()
      numunpaired=0; msvalue=0; numspinwalks=0; unpaired=0;
 
      read(751,iostat=myiostat)  numunpaired(botwalk:topwalk), msvalue(botwalk:topwalk), numspinwalks(botwalk:topwalk), unpaired(:,botwalk:topwalk)
+     call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "Read error for savewalks.BIN!  Delete it to recompute walks. 887", myiostat; CFLST
      endif
@@ -308,12 +314,17 @@ subroutine getnumspinwalks()
         enddo  ! ii
         numspinwalks(config1) = iwalk 
      enddo   ! config1
+
      if (walkwriteflag.ne.0) then
-        call beforebarrier()
+        if (walksinturn) then
+           call beforebarrier()
+        endif
         OFLWR " ...writing spin info..."; CFL
         write(751)  numunpaired(botwalk:topwalk), msvalue(botwalk:topwalk), numspinwalks(botwalk:topwalk), &
              unpaired(:,botwalk:topwalk)
-        call afterbarrier()
+        if (walksinturn) then
+           call afterbarrier()
+        endif
      endif
   endif  !! walksonfile
 
