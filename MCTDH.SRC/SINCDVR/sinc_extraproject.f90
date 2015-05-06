@@ -21,7 +21,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        numcenters,centershift,orblanorder,toepflag,nonucrepflag,debugflag, &
        toothnbig, toothnsmall, orbparflag,num_skip_orbs,orb_skip,orblancheckmod,zke_paropt,&
        capflag,capstrength,capstart,cappower,fft_mpi_inplaceflag, fft_ct_paropt,fft_batchdim,&
-       fft_circbatchdim,fft_mpi_keinplace
+       fft_circbatchdim,fft_mpi_keinplace,maxcap
 
 #ifdef PGFFLAG
   integer :: myiargc

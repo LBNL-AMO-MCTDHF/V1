@@ -65,7 +65,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
 #ifndef REALGO
   if (capflag.ne.0) then
-     pot(:)=pot(:) + capstrength * (0d0,-1d0) * max(0d0,real(elecradii(:),8)-capstart)**cappower
+     pot(:)=pot(:) + capstrength * (0d0,-1d0) * min(maxcap,max(0d0,real(elecradii(:),8)-capstart)**cappower)
   endif
 #endif
 

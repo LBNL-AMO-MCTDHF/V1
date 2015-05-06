@@ -7,17 +7,14 @@ implicit none
 
 !! FOR TOTAL ORBITAL PARALLELIZATION, SET orbparflag=.true., AND
 !! parorbsplit=3 in &parinp
-
 logical :: orbparflag=.false.
 
 !! THE FOLLOWING FLAG IS THEN RELEVANT.  Option for parallel KE matvec,
 !!   rate limiting step in algorithm.
-
 integer :: zke_paropt=1   !! 0=sendrecv 1=SUMMA (bcast before) 2=reduce after
 
 !! toepflag:  Fast Fourier transforms for Toeplitz matrix vector multiplications
 !! toepflag=1, triple toeplitz T^-1.  toepflag=2, T^-1 and single toeplitz T. 
-
 integer :: toepflag=1
 
 !! fft_batchdim: determines batch size for matrix elements and 
@@ -59,7 +56,8 @@ real*8 :: orblanthresh=1d-4
 integer :: capflag=0            !! add complex absorbing potential to one-elec Hamiltonian
 real*8  :: capstart=30d0        !! radius in bohr
 real*8  :: capstrength=0.001d0  !! atomic units (hartree)
-integer :: cappower=2           !! V_CAP = (-i) * capstrength * r^cappower  (r>capstart)
+integer :: cappower=2           !! V_CAP= (-i) * min(maxcap,capstrength * r^cappower)
+real*8  :: maxcap=1d0           !! atomic units (hartree)                     (r>capstart)
 !! XXSNIPXX 
 !! INTERNAL
 
