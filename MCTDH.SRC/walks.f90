@@ -261,7 +261,7 @@ subroutine walks()
 
   if (walksonfile.ne.0) then
 
-     call openfile();  write(mpifileptr, *) "Reading walks. Singles";  call closefile()
+     OFLWR "Reading walks. Singles";  CFL
 
      read(751,iostat=myiostat) &
           singlewalkopspf, &
@@ -276,11 +276,20 @@ subroutine walks()
           numdoublediagwalks, &
           doublediag
 
+     OFLWR "   ..read single walks this processor...";  CFL
      call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "Read error for savewalks.BIN!  Delete it to recompute walks!!", myiostat; CFLST
      else
         OFLWR "savewalks.BIN was found and read. SKIPPING WALK CALCULATION.";CFL
+        return
+!! RETURN
+        return
+!! RETURN
+        return
+!! RETURN
+        return
+!! RETURN
         return
      endif
   else
@@ -513,7 +522,7 @@ subroutine walks()
         if (walksinturn) then
            call beforebarrier()
         endif
-        OFLWR "WRITING WALKS."; CFL
+        OFLWR "    ... writing double walks ..."; CFL
         write(751) &
              singlewalkopspf, &
              singlewalkdirphase, &
@@ -526,10 +535,11 @@ subroutine walks()
              doublewalk, &
              numdoublediagwalks, &
              doublediag
+        OFLWR "    ... done writing double walks this processor..."; CFL
         if (walksinturn) then 
            call afterbarrier()
         endif
-        OFLWR "DONE WRITING WALKS"; CFL
+        OFLWR "    ... done writing double walks."; CFL
   endif
 
 end subroutine walks
@@ -750,7 +760,9 @@ subroutine getnumwalks()
         else
            open(751,file="WALKS/walks.BIN"//iilab,status="unknown", form="unformatted")
         endif
-           write(751) nprocs, numconfig;     write(751) numsinglewalks,numdoublewalks
+
+        write(751) nprocs, numconfig;     write(751) numsinglewalks,numdoublewalks
+
         if (walksinturn) then
            call afterbarrier()
         endif
