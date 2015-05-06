@@ -349,7 +349,8 @@ subroutine fast_newconfiglist(alreadycounted)
   integer, target :: jjj(max_numelec)  !! no, it is set.
   integer :: alltopwalks(nprocs),allbotwalks(nprocs)
   integer :: idof, ii , lowerarr(max_numelec),upperarr(max_numelec),  thisconfig(ndof),&
-       reorder,nullint,kk,iconfig,mm, single(max_numelec),ishell,jj,maxssize=0,sss,nss,ssflag,numdoubly
+       reorder,nullint,kk,iconfig,mm, single(max_numelec),ishell,jj,maxssize=0,sss,nss,ssflag,numdoubly,&
+       mynumexcite(0:numshells),isum,jshell
   logical :: allowedconfig
 
   if (numelec.gt.max_numelec) then
@@ -468,10 +469,35 @@ subroutine fast_newconfiglist(alreadycounted)
 !! numexcite(:) is CUMULATIVE
 !! vexcite only for last shell   not debugged
 
+!! Now account for maxocc 05-05-2015
+
+  mynumexcite(0)=0
+
+  do ishell=1,numshells
+     isum=0
+     do jshell=1,numshells
+        if (jshell.ne.ishell) then
+           isum=isum+min(maxocc(jshell),2*(allshelltop(jshell)-allshelltop(jshell-1)))
+        endif
+     enddo
+!! minimum number of electrons in shell ishell is now numelec-isum
+!!   maximum number of holes is 2*(shelltop(ishell)-shelltop(ishell-1))-(numelec-isum)     
+
+     mynumexcite(ishell)=min(numexcite(ishell),mynumexcite(ishell-1)+ &
+          max(0,2*(allshelltop(ishell)-allshelltop(ishell-1))-(numelec-isum)))
+  enddo
+
+  OFLWR "Numexcite, mynumexcite"
+  do ishell=1,numshells
+     WRFL ishell,numexcite(ishell),mynumexcite(ishell)
+  enddo
+  CFL
+     
+!!!!!!
 
   kk=0
   do ishell=1,numshells
-     mm=2*allshelltop(ishell)-min(numexcite(ishell),2*nspf-numelec)
+     mm=2*allshelltop(ishell)-min(mynumexcite(ishell),2*nspf-numelec)
      do jj=kk+1,mm
 
 !!        upperarr(jj)=allshelltop(ishell)-(mm-jj)/2
