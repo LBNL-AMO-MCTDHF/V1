@@ -316,9 +316,9 @@ program mctdhf
      endif
 
      if (walkwriteflag.ne.0) then
-        OFLWR "Closing walks.BIN"; close(751); CFL
+        OFLWR "Closing walks.BIN"; CFL; close(751);
      endif
-
+     
      call singlewalkwrite()
 
      call configalloc()
@@ -445,6 +445,9 @@ program mctdhf
 
 !! *********************** !!
 
+  OFLWR "   ...cleanup..."; CFL
+  call mpibarrier()
+
   call opdealloc()
 !  call myprojectdealloc()  ;  
   call twoedealloc();     call xdealloc()
@@ -458,7 +461,8 @@ program mctdhf
   call natprojdealloc(); 
 
   call system("date")
-  call mpistop()
+  call mpibarrier()
+  OFLWR "   ...END MCTDHF"; CFLST
 
 end program mctdhf
 

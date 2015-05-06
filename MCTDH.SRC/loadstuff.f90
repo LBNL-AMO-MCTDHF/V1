@@ -15,9 +15,9 @@ subroutine save_vector(psi,afile,sfile)
   endif
   if (parorbsplit.eq.3) then
      if (myrank.eq.1) then
-        OFLWR "allocating big orbitals for save!!"; CFL
+!!$        OFLWR "allocating big orbitals for save!!"; CFL
         allocate(parorbitals(spfsize,nprocs,nspf)); parorbitals(:,:,:)=0d0
-        OFLWR "   ...ok"; CFL
+!!$        OFLWR "   ...ok"; CFL
      else
         allocate(parorbitals(1,1,nspf))
      endif
@@ -59,9 +59,9 @@ subroutine save_vector(psi,afile,sfile)
 
   call mpibarrier()
   if (myrank.eq.1) then
-     OFLWR "saved vectors!"; CFL
+     OFLWR "   ...saved vectors!"; CFL
   else
-     OFLWR "rank 1 SAVED vectors!"; CFL 
+     OFLWR "   ...rank 1 SAVED vectors!"; CFL 
   endif
 
 

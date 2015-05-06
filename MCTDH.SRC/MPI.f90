@@ -201,6 +201,7 @@ subroutine mpistart()
 end subroutine mpistart
 
 
+
 subroutine mpibarrier()
   use mpimod
   use fileptrmod
@@ -1143,3 +1144,24 @@ subroutine mympialltoall_complex(input, output, count)
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympialltoall_complex
 
+
+
+subroutine beforebarrier()
+  use mpimod
+  implicit none
+  integer :: ii
+  do ii=1,myrank
+     call mpibarrier()
+  enddo
+end subroutine beforebarrier
+
+
+
+subroutine afterbarrier()
+  use mpimod
+  implicit none
+  integer :: ii
+  do ii=myrank,nprocs
+     call mpibarrier()
+  enddo
+end subroutine afterbarrier

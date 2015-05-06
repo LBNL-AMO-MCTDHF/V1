@@ -304,12 +304,16 @@ subroutine prop_loop( starttime)
      endif
   enddo
 
+  call actions_final()
+
+  OFLWR "   ...done prop..."; CFL
+  call mpibarrier()
+  OFLWR "   ...saving vector..."; CFL
   if (saveflag.ne.0) then
      call save_vector(yyy%cmfpsivec(:,0),avectoroutfile,spfoutfile)  
   endif
-
-  call actions_final()
-
+  OFLWR "   ...end prop..."; CFL
+  call mpibarrier()
 
   if (improvedrelaxflag.ne.0) then
      lanagain=-1 !! reset to original value -- should already be -1 in all cases, redundant

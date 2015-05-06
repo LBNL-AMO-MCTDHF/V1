@@ -345,7 +345,10 @@ subroutine configspin_matel()
         enddo
      enddo
      if (walkwriteflag.ne.0) then
+        call beforebarrier()
+        OFLWR "   ...writing configspinmatel..."; CFL
         write(751) configspinmatel
+        call afterbarrier()
      endif
   endif
 
@@ -441,7 +444,7 @@ subroutine configspinset_projector()
      
         call dsyev('V','U', spinsetsize(iset), spinvects, maxspinsetsize, spinvals, work, lwork, info)
         if (info/=0) then
-           WRFL  "INFO SSYEV", info
+           OFLWR  "INFO SSYEV", info; CFLST
         endif
         j=0; 
         do i=1,spinsetsize(iset)
@@ -494,9 +497,12 @@ subroutine configspinset_projector()
      enddo
 
      if (walkwriteflag.ne.0) then
+        call beforebarrier()
+        OFLWR "   ...writing spinsets..."; CFL
         write(751) numspinsets,maxspinsetsize,spinrank,spindfrank
         write(751) spinsetsize(1:numspinsets),spinsetrank(1:numspinsets),spinsets(:,1:numspinsets)
         write(751) (spinsetprojector(i)%mat,spinsetprojector(i)%vects,i=1,numspinsets)
+        call afterbarrier()
      endif
 
      deallocate(spinvects, spinvals, realprojector, work)

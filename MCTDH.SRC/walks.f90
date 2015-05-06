@@ -201,6 +201,8 @@ subroutine singlewalkwrite()
   use mpimod
   implicit none
 
+!! beforebarrier and afterbarrier in main
+
   if (myrank.eq.1) then
      open(1088,file=configlistfile,status="unknown",form="unformatted")
      write(1088) numconfig,ndof,maxsinglewalks
@@ -507,7 +509,8 @@ subroutine walks()
   endif
   
   if (walkwriteflag.ne.0) then
-     OFLWR "WRITING WALKS"; CFL
+     OFLWR "WRITING WALKS IN TURN."; CFL
+     call beforebarrier()
      write(751) &
           singlewalkopspf, &
           singlewalkdirphase, &
@@ -521,7 +524,7 @@ subroutine walks()
           numdoublediagwalks, &
           doublediag
      
-     call mpibarrier()
+     call afterbarrier()
      OFLWR "DONE WRITING WALKS"; CFL
   endif
 
@@ -723,12 +726,16 @@ subroutine getnumwalks()
      enddo   ! config1
 
      if (walkwriteflag.ne.0) then
+        call beforebarrier()
+        OFLWR "OPENING WALKS...."; CFL
         if (myrank.eq.1) then
            open(751,file="WALKS/walks.BIN",status="unknown", form="unformatted")
+           write(751) nprocs, numconfig;     write(751) numsinglewalks,numdoublewalks
         else
            open(751,file="WALKS/walks.BIN"//iilab,status="unknown", form="unformatted")
         endif
-        write(751) nprocs, numconfig;     write(751) numsinglewalks,numdoublewalks
+        call afterbarrier()
+        OFLWR "    ...opened walks and wrote header info"; CFL
      endif
   endif
 

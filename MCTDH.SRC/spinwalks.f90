@@ -124,7 +124,10 @@ subroutine spinwalks()
      enddo   ! config1
 
      if (walkwriteflag.ne.0) then
+        call beforebarrier()
+        OFLWR " ...writing spinwalks..."; CFL
         write(751) spinwalk(:,botwalk:topwalk),spinwalkdirphase(:,botwalk:topwalk)  
+        call afterbarrier()
      endif
 
   endif  !! walksonfile
@@ -306,8 +309,11 @@ subroutine getnumspinwalks()
         numspinwalks(config1) = iwalk 
      enddo   ! config1
      if (walkwriteflag.ne.0) then
+        call beforebarrier()
+        OFLWR " ...writing spin info..."; CFL
         write(751)  numunpaired(botwalk:topwalk), msvalue(botwalk:topwalk), numspinwalks(botwalk:topwalk), &
              unpaired(:,botwalk:topwalk)
+        call afterbarrier()
      endif
   endif  !! walksonfile
 
