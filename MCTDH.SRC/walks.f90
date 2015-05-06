@@ -259,9 +259,9 @@ subroutine walks()
 
   !!  ***********   SINGLES  **********
 
-  call openfile();  write(mpifileptr, *) "Calculating walks. Singles";  call closefile()
-
   if (walksonfile.ne.0) then
+
+     call openfile();  write(mpifileptr, *) "Reading walks. Singles";  call closefile()
 
      read(751,iostat=myiostat) &
           singlewalkopspf, &
@@ -284,7 +284,7 @@ subroutine walks()
         return
      endif
   else
-     OFLWR "No savewalks.BIN found. ";CFL
+     OFLWR "No savewalks.BIN found.  Calculating walks.  Singles...";  CFL
   endif
 
   
@@ -364,7 +364,7 @@ subroutine walks()
   enddo   ! config1
 
 
-  OFLWR "Calculating walks. Doubles";  call closefile()
+  OFLWR "Calculating walks.  Doubles...";  call closefile()
 
   !!   ***********  DOUBLES  ************
 
@@ -563,7 +563,6 @@ subroutine getnumwalks()
   !!  ***********   SINGLES  **********
 
   call mpibarrier()
-  call openfile();  write(mpifileptr, *) "Counting walks. Singles";  call closefile()
 
   flag=1
   
@@ -600,6 +599,8 @@ subroutine getnumwalks()
   endif
 
   if (flag==1) then
+
+     OFLWR "Counting walks. Singles";  CFL
 
      do config1=botwalk,topwalk
         
