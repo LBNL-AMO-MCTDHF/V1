@@ -193,38 +193,35 @@ subroutine load_avector_productsub(myavector)
      OFLWR "Load_avector_product: error: mcscfnum must equal total number of wave functions"; CFLST
   endif
 
+  call mpibarrier()
   OFLWR "LOAD_AVECTOR_PRODUCT: tot_numconfig=",tot_numconfig; CFL
   OFLWR "     total number of wave functions = ",tot_wfns; CFL
+  call mpibarrier()
 
   do ifile=1,numavectorfiles
      allocate(readavectors(ifile)%mat(readnumconfig(ifile),numr,mcscfnum))
      allocate(readconfiglist(ifile)%mat(readndof(ifile),readnumconfig(ifile)))
   enddo
 
-  do ifile=1,numavectorfiles
+  if (myrank.eq.1) then
 
-     open(readunit(ifile),file=avectorfile(ifile), status="unknown", form="unformatted")
+     do ifile=1,numavectorfiles
 
-     call avector_header_read_simple(readunit(ifile),readnumvects(ifile),readndof(ifile),numr, &
-          readnumconfig(ifile),readcomplex(ifile))  
-
-     if (myrank.eq.1) then
+        open(readunit(ifile),file=avectorfile(ifile), status="unknown", form="unformatted")
+        call avector_header_read_simple(readunit(ifile),readnumvects(ifile),readndof(ifile),numr, &
+             readnumconfig(ifile),readcomplex(ifile))  
         call simple_load_avectors(readunit(ifile),readcomplex(ifile), readavectors(ifile)%mat(:,:,:), &
              readndof(ifile), numr, readnumconfig(ifile), readnumvects(ifile))
-     endif
-     
-     close(readunit(ifile))
-     open(readunit(ifile),file=avectorfile(ifile), status="unknown", form="unformatted")
+        close(readunit(ifile))
+        open(readunit(ifile),file=avectorfile(ifile), status="unknown", form="unformatted")
 
-     call avector_header_read_simple(readunit(ifile),readnumvects(ifile),readndof(ifile),numr, &
-          readnumconfig(ifile),readcomplex(ifile))  
-     
-     if (myrank.eq.1) then
+        call avector_header_read_simple(readunit(ifile),readnumvects(ifile),readndof(ifile),numr, &
+             readnumconfig(ifile),readcomplex(ifile))  
         call get_avectorfile_configlist(readunit(ifile),readcomplex(ifile), readconfiglist(ifile)%mat(:,:), &
              readndof(ifile), numr, readnumconfig(ifile))
-     endif
-     close(readunit(ifile))
-  enddo
+        close(readunit(ifile))
+     enddo
+  endif
 
   call mpibarrier()
   OFLWR "     ...A-Vectors read for product. broadcasting."; CFL
