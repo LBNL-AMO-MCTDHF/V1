@@ -593,7 +593,10 @@ subroutine easy_load_avectors(iunit, qq, myavectors, myndof, mynumr, mynumconfig
               myavectors(config1,:,ivect)=ctempreadvect(:)*phase
            endif
         else
-           OFLWR "Config on file not allowed!!!"; CFLST
+           if (readfullvector) then
+              OFLWR "Config on file not allowed!!!"; CFLST
+           endif
+           myavectors(config1,:,ivect)=0d0
         endif
         if (myiostat.ne.0) then
            OFLWR "err read config "; CFLST
