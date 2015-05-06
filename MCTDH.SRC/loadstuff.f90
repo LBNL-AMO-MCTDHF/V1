@@ -31,34 +31,37 @@ subroutine save_vector(psi,afile,sfile)
         call mygatherv_complex(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,:,ispf), qqblocks(:),.false.)
 #endif
      enddo
-     if (myrank.ne.1) then
-        OFLWR " ---> orbs sent to rank 1 for save!"; CFL
-        deallocatE(parorbitals)
-        return
+  endif
+
+  if (myrank.eq.1) then
+     open(999,file=afile, status="unknown", form="unformatted")
+     call avector_header_write(999,mcscfnum)
+     
+     open(998,file=sfile, status="unknown", form="unformatted")
+     call spf_header_write(998,nspf+numfrozen)
+     
+     if (parorbsplit.eq.3) then
+        call write_spf(998,parorbitals(:,:,:),spfsize*nprocs)
+     else
+        call write_spf(998,psi(spfstart),spfsize)
      endif
+     close(998)
+     
+     do iprop=1,mcscfnum
+        call write_avector(999,psi(astart(iprop)))
+     enddo
+     close(999)
   endif
-
-  open(999,file=afile, status="unknown", form="unformatted")
-  call avector_header_write(999,mcscfnum)
-
-  open(998,file=sfile, status="unknown", form="unformatted")
-  call spf_header_write(998,nspf+numfrozen)
-
-  if (parorbsplit.eq.3) then
-     call write_spf(998,parorbitals(:,:,:),spfsize*nprocs)
-     deallocate(parorbitals)
+  
+  deallocate(parorbitals)
+  
+  call mpibarrier()
+  if (myrank.eq.1) then
+     OFLWR "saved vectors!"; CFL
   else
-     call write_spf(998,psi(spfstart),spfsize)
+     OFLWR "rank 1 SAVED vectors!"; CFL 
   endif
-  close(998)
 
-  do iprop=1,mcscfnum
-     call write_avector(999,psi(astart(iprop)))
-  enddo
-  close(999)
-
-
-  OFLWR "rank 1 SAVED vectors!"; CFL 
 
 end subroutine save_vector
 
