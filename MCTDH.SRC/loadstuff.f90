@@ -53,8 +53,10 @@ subroutine save_vector(psi,afile,sfile)
      close(999)
   endif
   
-  deallocate(parorbitals)
-  
+  if (parorbsplit.eq.3) then
+     deallocate(parorbitals)
+  endif
+
   call mpibarrier()
   if (myrank.eq.1) then
      OFLWR "saved vectors!"; CFL
