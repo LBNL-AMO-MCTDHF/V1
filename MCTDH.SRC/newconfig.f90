@@ -350,7 +350,7 @@ subroutine fast_newconfiglist(alreadycounted)
   integer :: alltopwalks(nprocs),allbotwalks(nprocs)
   integer :: idof, ii , lowerarr(max_numelec),upperarr(max_numelec),  thisconfig(ndof),&
        reorder,nullint,kk,iconfig,mm, single(max_numelec),ishell,jj,maxssize=0,sss,nss,ssflag,numdoubly,&
-       mynumexcite(0:numshells),isum,jshell
+       mynumexcite(numshells),isum,jshell,jsum   !! mynumexcite(0:numshells)
   logical :: allowedconfig
 
   if (numelec.gt.max_numelec) then
@@ -469,31 +469,62 @@ subroutine fast_newconfiglist(alreadycounted)
 !! numexcite(:) is CUMULATIVE
 !! vexcite only for last shell   not debugged
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! Now account for maxocc 05-05-2015
+!
+! (ZERO DIMENSION STATEMENT ABOVE)
+!  mynumexcite(0)=0
+!
+!  do ishell=1,numshells
+!     isum=0
+!     do jshell=1,numshells
+!        if (jshell.ne.ishell) then
+!           isum=isum+min(maxocc(jshell),2*(allshelltop(jshell)-allshelltop(jshell-1)))
+!        endif
+!     enddo
+!!! minimum number of electrons in shell ishell is now numelec-isum.... actually max(minocc(ishell),numelec-isum)
+!!!   maximum number of holes is 2*(shelltop(ishell)-shelltop(ishell-1))-max(minocc(ishell),(numelec-isum))
+!
+!     mynumexcite(ishell)=min(numexcite(ishell),mynumexcite(ishell-1)+ &
+!          max(0,2*(allshelltop(ishell)-allshelltop(ishell-1))-max(minocc(ishell),(numelec-isum))))
+!  enddo
 
-  mynumexcite(0)=0
+!! better: minocc and maxocc
 
   do ishell=1,numshells
+
+!! count maximum number of electrons in shells greater than ishell, given maxocc
      isum=0
-     do jshell=1,numshells
-        if (jshell.ne.ishell) then
-           isum=isum+min(maxocc(jshell),2*(allshelltop(jshell)-allshelltop(jshell-1)))
-        endif
+     do jshell=2,numshells
+        isum=isum+min(maxocc(jshell),2*(allshelltop(jshell)-allshelltop(jshell-1)))
      enddo
-!! minimum number of electrons in shell ishell is now numelec-isum
-!!   maximum number of holes is 2*(shelltop(ishell)-shelltop(ishell-1))-(numelec-isum)     
+!! minimum number of electrons in shells 1 through ishell is then max(0,numelec-isum)
+!! maximum number of holes in shells 1 through ishell given maxocc is then 
+!!     2*allshelltop(ishell)-max(0,numelec-isum)
 
-     mynumexcite(ishell)=min(numexcite(ishell),mynumexcite(ishell-1)+ &
-          max(0,2*(allshelltop(ishell)-allshelltop(ishell-1))-(numelec-isum)))
+     isum=max(0,2*allshelltop(ishell)-max(0,numelec-isum))
+
+!! count maximum number of holes in shells 1 through ishell, given minocc
+     jsum=0
+     do jshell=1,ishell
+        jsum=jsum+minocc(jshell)
+     enddo
+!! maximum number of holes in shells 1 through ishell, given minocc, is 2*allshelltop(ishell)-jsum
+!! could do this to numexcite(:) variable in getparams really... maybe no need
+
+     jsum=max(0,2*allshelltop(ishell)-jsum)
+
+     mynumexcite(ishell)=min(min(numexcite(ishell),isum), jsum)
+
   enddo
 
-  OFLWR "Numexcite, mynumexcite"
-  do ishell=1,numshells
-     WRFL ishell,numexcite(ishell),mynumexcite(ishell)
-  enddo
-  CFL
+!!$  OFLWR "Numexcite, mynumexcite"
+!!$  do ishell=1,numshells
+!!$     WRFL ishell,numexcite(ishell),mynumexcite(ishell)
+!!$  enddo
+!!$  CFL
      
-!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   kk=0
   do ishell=1,numshells
