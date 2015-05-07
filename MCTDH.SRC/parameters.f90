@@ -344,6 +344,7 @@ real*8  :: povsparse=1.d-3       !!              !! Sparsity threshold for trans
 !!BB
 logical :: readfullvector=.true.
 logical :: walksinturn=.false.   !!              !! if you have problems with MPI i/o, maybe try this
+integer :: turnbatchsize=5
 integer :: nosparseforce=0       !!              !! to override exit with large number of configs, no sparse
 integer :: iprintconfiglist=0
 integer :: drivingflag=0                         !!  Solve for the change in the wave function not wave function 

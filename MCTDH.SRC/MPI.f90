@@ -1148,9 +1148,12 @@ end subroutine mympialltoall_complex
 
 subroutine beforebarrier()
   use mpimod
+  use parameters
   implicit none
-  integer :: ii
-  do ii=1,myrank
+  integer :: ii,qrank,qprocs
+  qprocs=(nprocs-1)/turnbatchsize+1
+  qrank=(myrank-1)/turnbatchsize+1
+  do ii=1,qrank
      call mpibarrier()
   enddo
 end subroutine beforebarrier
@@ -1159,9 +1162,12 @@ end subroutine beforebarrier
 
 subroutine afterbarrier()
   use mpimod
+  use parameters
   implicit none
-  integer :: ii
-  do ii=myrank,nprocs
+  integer :: ii,qrank,qprocs
+  qprocs=(nprocs-1)/turnbatchsize+1
+  qrank=(myrank-1)/turnbatchsize+1
+  do ii=qrank,qprocs
      call mpibarrier()
   enddo
 end subroutine afterbarrier
