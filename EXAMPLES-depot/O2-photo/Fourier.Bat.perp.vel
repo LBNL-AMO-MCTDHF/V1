@@ -1,0 +1,3 @@
+
+
+chmctdhf_diatom Inp=Input.Inp.Fourier.perp.vel |tee Outs/Out.fourier.perp.vel

@@ -12,9 +12,9 @@ energy=$e2
 
 echo "ENERGY $energy"
 
-chmctdhf_diatom Inp=Input.Inp.Fourier Act=16   Eground=$energy T=$1 |tee Outs/Out.flux.t$1
+chmctdhf_diatom Inp=Input.Inp.Fourier$2 Act=16   Eground=$energy T=$1 |tee Outs/Out.flux$2.t$1
 
-cp Dat/xsec.spi.dat Dat/xsec.spi.dat.t$1
+cp -p Dat/xsec.spi$2.dat Dat/xsec.spi$2.dat.t$1
 
 
 

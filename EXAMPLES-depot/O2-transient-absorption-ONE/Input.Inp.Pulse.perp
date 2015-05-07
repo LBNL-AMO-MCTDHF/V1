@@ -42,9 +42,6 @@ $pulse
 
 $parinp
 
-notiming=0
-timingdir="timing.pulse.perp.8thread"
-
 sparseconfigflag=1
 
 efluxlo=0.01d0

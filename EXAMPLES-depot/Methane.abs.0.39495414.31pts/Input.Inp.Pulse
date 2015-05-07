@@ -2,6 +2,7 @@
 
 pulsetype=2
 intensity=1d-4
+intensity=1d-5
 omega2 = 3d-1
 omega  = 6d-2
 pulsestart=0d0
@@ -39,8 +40,8 @@ denreg=1d-8
 
 numelec=10
 
-par_timestep=0.1d0
-littlesteps=1
+par_timestep=0.25d0
+littlesteps=5
 
 nspf=9
 

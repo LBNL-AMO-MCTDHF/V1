@@ -9,14 +9,16 @@ else
 fi
 
 
-#set ylabel \"A(t) or V(t)\"
 
 echo "set term x11
 set style data lines
+
+set logscale y
+
 set xrange [$xlow:$xhigh]
-set xlabel \"Energy (au)\"
-#set xlabel \"Energy (eV)\"
-set ylabel \"A(t) \"
+set xlabel \"Energy (eV)\"
+set ylabel \"FT \"
+
 plot \"Dat/Pulseft.Dat\" using (27.2114*\$1):2 lw 4 notitle
 
 set out \"pulseft.ps\"

@@ -37,7 +37,8 @@ projfluxfile="Flux/projflux.wfn.bin.perp.vel"
 fluxskipmult=1
 fluxinterval=1
 
-spifile="Dat/xsec.spi.dat.perp.vel"
+spifile="Dat/xsec.spi.perp.vel.dat"
+projspifile="Dat/xsec.proj.spi.perp.vel"
 
 efluxlo=0.01d0
 efluxhi=2d0

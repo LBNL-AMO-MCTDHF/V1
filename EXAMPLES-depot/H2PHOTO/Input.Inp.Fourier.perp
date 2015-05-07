@@ -26,7 +26,7 @@ spffile="Bin/spfs.bin.afterpulse.perp"
 
 fluxmofile="Flux/flux.mo.bin.perp"
 fluxafile="Flux/flux.avec.bin.perp"
-spifile="Dat/xsec.spi.dat.perp"
+spifile="Dat/xsec.spi.perp.dat"
 
 
 numelec=2

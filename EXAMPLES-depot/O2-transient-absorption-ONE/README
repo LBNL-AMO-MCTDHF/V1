@@ -1,0 +1,22 @@
+
+
+Relax.Bat
+
+   then
+
+Pulse.Bat
+Pulse.Vel.Bat
+./gnu.abs.parallel
+
+    or
+
+Pulse.Perp.Bat
+Pulse.Perp.Vel.Bat
+./gnu.abs.perpendicular
+
+
+  You may also
+
+./gnu.PulseFT   view pulse F.T.
+./gnu.Pulse     view pulse
+

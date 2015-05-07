@@ -8,7 +8,7 @@ fi
  for ext in doub quart; do for sym in sig pi; do for ger in u g
  do 
 
-./ProjFlux.Bat $1 $ext.${sym}_${ger} 
+./ProjFlux.Bat $1 $ext.${sym}_${ger} $2
 
 done; done; done
 

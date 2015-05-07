@@ -1,0 +1,21 @@
+
+./Relax.Bat
+
+   then
+
+./Pulse.Bat
+./Fourier.Bat
+./Flux.Bat 500
+./gnu.xsec
+
+   or
+
+./Pulse.Perp.Bat
+./Fourier.Perp.Bat
+./Flux.Perp.Bat 500
+./gnu.xsec.perp
+
+   Also you can run Flux.Bats during Fourier run; 
+specify a final time (not 500) not exceeding the last time already calculated.
+
+

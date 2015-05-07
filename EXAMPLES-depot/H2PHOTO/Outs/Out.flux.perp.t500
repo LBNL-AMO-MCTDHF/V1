@@ -1,0 +1,217 @@
+Tue May  5 08:54:46 PDT 2015
+  ****************************************************************************
+  **********************  BEGIN LBNL-AMO-MCTDHF ******************************
+  ****************************************************************************
+ 
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory
+      D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, 
+      B Abeln, X Li . . .
+                              VERSION 1 
+        Copyright 2015 the regents of the University of California
+ 
+                This is CHMCTDH: HERM-normed ECS version.
+ 
+                PROCESSOR            1  OF            1
+ 
+ Inpfile is Input.Inp.Fourier.perp  
+ 
+  *************************  COMMAND LINE OPTIONS  ***************************
+ 
+ Reading 
+ Input.Inp.Fourier.perp                                                         
+                                                                                
+                                           
+ Eground for autoft set to    -1.15961173000000       by command line option.
+  ****************************************************************************
+ 
+ Enforcing CMF defaults for Verlet or EXPO.
+ READ PULSE:    length.
+ 
+ NUMBER OF PULSES:             1
+ 
+     -----> Pulse            1  : 
+ Pulse type is 2 or 3: envelope with carrier
+    chirp:             0.000000000000000E+000
+    ramp:             0.000000000000000E+000  Hartree
+    Envelope omega:    0.200000000000000     
+    Pulse omega:        1.00000000000000     
+    Pulsestart:        0.100000000000000     
+    Pulsestrength:    (1.687898947432473E-003,0.000000000000000E+000)
+    Intensity:         1.000000000000000E-005  x 10^16 W cm^-2
+    Pulsetheta:         1.57079632680000     
+    Pulsephi:        0.000000000000000E+000
+    Pulsefinish:        15.8079632679490     
+ ---> Pulsetype 2.
+ Finaltime set by command line option to    500.000000000000     
+      numpropsteps now          10001
+      finaltime    now      500.050000000000     
+ 
+  ****************************************************************************
+ *****************************************************************************
+ 
+ Number of states in propagation=           1
+ 
+  Parameters: electronic
+ 
+                    Number of electrons     2
+ Nuclear KE flag (nonuc_checkflag):         1
+ 
+   *****  prolate spheroidal coordinate options ****
+                        bornopflag:         1
+             Xinumpoints, xinumelements:   12    7
+                              ECS is ON!
+                 xicelement,  xiecstheta    6    0.400000000000
+    Xi elementsizes:   7.00000   7.00000   7.00000   7.00000   7.00000   7.00000  14.00000
+      lbig,mbig          00006     00001
+ 
+ **************************   Parameters: nuclear    *************************  
+  
+ 
+   Hmass, Dmass, Reduced:     1836.15270100     1836.15270100      918.07635050
+rnumelements, rnumpoints:    1    3
+  relementsize ,  rstart:   0.00000   1.40000
+                              ECS is ON!
+                   rcelement,  rthetaecs  100    0.000000000000
+                             CAP is Off!
+                  Jvalue:    0
+                            Reducedflag:    0
+ 
+ ************************   Parameters: config/spf    ************************  
+  
+ 
+ Doing full CI: numshells=1.  Shells:
+ Shell            1
+   1a    1b    2a    2b    3a    3b 
+  Final shell occupancy level vexcite=          99
+ 
+    Number of unfrozen spfs:      3
+    Number of frozen spfs:        0
+            Spfs start in m=     0   0   0
+ 
+ Configurations will be restricted to spin projection           0 /2
+  Configurations will be restricted to spin            0
+ 
+ ***********************    Initial state      ***********************   
+ 
+ Spfs will be loaded from files 
+ 
+ Avector will be loaded from files.  Number of files=            1
+ 
+ ***********************    Parameters: propagation    ***********************  
+  
+ 
+  PAR_TIMESTEP IS   5.000000000000000E-002  LITTLESTEPS IS            1
+ 
+                 # of steps, final time:     10001            500.05000000
+ 
+ 
+ *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   ***
+ ****  
+ 
+     Using nonsparse configuration routines.
+  Using EXPONENTIAL integration.
+     Expotol    =  1.000000000000000E-008
+     Maxexpodim=         100
+     Jacprojorth=           0
+     Jacsymflag=           0
+     Jacunitflag=           0
+ 
+ Density matrix regularized with denreg= 0.100E-09
+ 
+ 
+ ****************************************************************************
+ 
+ Autosteps is           20  Autosize is          501  Numpropsteps is 
+       10001
+ Fluxsteps is            2  Fluxtimestep is   0.100000000000000     
+ 
+ *****************************************************************************
+ 
+    ****************************************
+      SKIPPING CALCULATION!  Doing analysis.
+    ****************************************
+ 
+ ACTIONS:  Ion.  Flux  FT 
+ 
+ FOR IONIZATION FLUX:
+    Flux Parameters   1.000000000000000E-002   4.00000000000000             1001
+    Flux Interval           10  0.500000000000000     
+  Get ORbsets.  Fewer procs than orbitals.
+ Go fast_newconfiglist
+ UPPER/LOWER
+           1           3
+           1           3
+ 
+ 
+ FASTNEWCONFIG: NUMBER OF CONFIGURATIONS            9
+ 
+ NUMSPINBLOCKS, MAXSPINBLOCKSIZE FASTCONFIG           6           2
+ Go fast_newconfiglist, getting configurations
+      ...Done fast_newconfiglist
+ 
+ BOTWALKS /TOPWALKS           9
+           1           9           9
+ 
+ Counting walks. Singles
+ Counting walks. Doubles
+ 
+ Maximum number of
+            single walks=            6
+            double walks=            9
+   TOTAL walks:         135 maxdoublewalks*numconfig          81
+ 
+ Allocating singlewalks
+ Allocating doublewalks
+      ..done walkalloc.
+ Calculating walks. Singles
+ No savewalks.BIN found. 
+ Calculating walks. Doubles
+ Go spinwalks. 
+ Doing spin projector.
+ Maximum number of spin walks=            1
+ Avg number of spin walks=   0.666666666666667     
+ Calculating spin walks.
+ Numspinsets is            6   maxspinset size is            2
+ Getting SPARSE spinset projector.  Numspinsets is            6 
+  maxspinsetsize is            2
+ Getting spin set projectors...
+ ...done.  Eliminated            0  sets with total rank            0
+ Number of spin sets is now            6
+ Total # of spinvects with S^2 =   0.000000000000000E+000  is            6 
+  out of            9
+ TOTAL (all processors) rank           6  out of            9
+      Spin DF rank is            6    all processors            6
+    This proc:  spinstart :            1
+ 
+ Calling init_project                 25872
+ MAX prolate_derivs asym :     14.6562500000000     
+ 
+    ....Called init_project.
+ Guess at necessary memory is   155.676 MB
+ g(tau) will be computed with all psi being read in batches
+ Desired amount of memory to use   500.000 MB
+ Good, there is enough memory for only one batch.
+ MO record length is        19404
+ AVEC record length is           36
+ Reading ket batch            1  of            1
+ Reading bra batch            1  of            1
+ Taking the FT of g(tau) to get xsection at T=   125.0000
+ Timing statistics as of T=   125.0000
+   Times:        All      Read    Biorth     One-e     Two-e  Fluxeval   FT gtau
+                  83        74       211       136         0         7         5
+ Taking the FT of g(tau) to get xsection at T=   250.0000
+ Timing statistics as of T=   250.0000
+   Times:        All      Read    Biorth     One-e     Two-e  Fluxeval   FT gtau
+                  95        74       857       514         2        29        12
+ Taking the FT of g(tau) to get xsection at T=   375.0000
+ Timing statistics as of T=   375.0000
+   Times:        All      Read    Biorth     One-e     Two-e  Fluxeval   FT gtau
+                 115        74      1933      1134         6        65        23
+ Taking the FT of g(tau) to get xsection at T=   500.0000
+ Timing statistics as of T=   500.0000
+   Times:        All      Read    Biorth     One-e     Two-e  Fluxeval   FT gtau
+                 139        74      3439      1993        11       114        36
+ Stopping
+ MCTDHF STOP!

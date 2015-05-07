@@ -1,0 +1,17 @@
+
+
+Having difficulty getting these coming out as nice as the paper.  05-05-2015
+
+
+1) ./RUNME.BAT.RELAX
+
+2) ./RUNME.BAT.PULSE
+
+3) gnuplot -persist ./gnu.abs.here
+
+you may also
+
+./gnu.Pulse
+./gnu.PulseFT
+
+

@@ -21,9 +21,7 @@ export OMP_NUM_THREADS=4
 #exit
 
 
-./chmctdhf_diatom Inp=Input.Inp.Fourier Act=16   Eground=$energy T=$1 |tee Outs/Out.flux.t$1
-
-#./chmctdhf_diatom Inp=Input.Inp.Fourier Act=16  Eground=0.000000001d0 T=$1 |tee Outs/Out.flux.t$1
+chmctdhf_diatom Inp=Input.Inp.Fourier Act=16   Eground=$energy T=$1 |tee Outs/Out.flux.t$1
 
 cp Dat/xsec.spi.dat Dat/xsec.spi.dat.t$1
 

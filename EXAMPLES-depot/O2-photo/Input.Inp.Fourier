@@ -36,6 +36,7 @@ fluxskipmult=1
 fluxinterval=1
 
 spifile="Dat/xsec.spi.dat"
+projspifile="Dat/xsec.proj.spi"
 
 efluxlo=0.01d0
 efluxhi=2d0

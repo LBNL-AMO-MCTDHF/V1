@@ -26,9 +26,6 @@ $pulse
 
 $parinp
 
-notiming=0
-timingdir="timing.pulse.perp.vel"
-
 efluxlo=0.01d0
 efluxhi=2d0
 

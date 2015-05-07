@@ -20,7 +20,7 @@ sparseconfigflag=1
 denreg=1d-8
 denreg=1d-30
 
-stopthresh=1d-7
+stopthresh=1d-6
 astoptol=1d0
 
 numelec=10

@@ -38,14 +38,15 @@ energy=$e2
 echo "ENERGY $energy"
 
 
-chmctdhf_diatom Inp=Input.Inp.Fourier Act=17   Eground=$energy T=$1 |tee Outs/Out.projflux.t$1
+chmctdhf_diatom Inp=Input.Inp.Fourier$3 Act=17   Eground=$energy T=$1 |tee Outs/Out.projflux$3.$2.t$1
 
-for file in Dat/FTGTau*_*Dat Dat/KVLsum*_*dat Dat/xsec.proj*_*dat
+
+###
+###  for file in Dat/FTGTau*_*Dat Dat/KVLsum*_*dat Dat/xsec.proj.spi${3}*_*dat
+###
+
+for file in Dat/xsec.proj.spi${3}*_*dat
 do
 	mv $file $file.$2
 done
-
-# 
-
-
 
