@@ -1,0 +1,562 @@
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+Wed May  6 15:49:10 PDT 2015
+  ****************************************************************************
+  **********************  BEGIN LBNL-AMO-MCTDHF ******************************
+  ****************************************************************************
+ 
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory
+      D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, 
+      B Abeln, X Li . . .
+                              VERSION 1 
+        Copyright 2015 the regents of the University of California
+ 
+                This is CHMCTDH: HERM-normed ECS version.
+ 
+                PROCESSOR            1  OF           64
+ 
+ Inpfile is Input.Inp.Combine  
+ 
+  *************************  COMMAND LINE OPTIONS  ***************************
+ 
+ Reading 
+ Input.Inp.Combine                                                              
+                                                                                
+                                           
+  ****************************************************************************
+ 
+ Enforcing CMF defaults for Verlet or EXPO.
+ 
+  ****************************************************************************
+ *****************************************************************************
+ 
+ Number of states in propagation=           1
+ 
+  Parameters: electronic
+ 
+                    Number of electrons    46
+ Nuclear KE flag (nonuc_checkflag):         1
+ 
+ ********  SINC DVR PARAMS ******** 
+ griddim,spacing           3  0.467684000000000     
+ numpoints          64          64           1
+ numcenters          16
+ nuccharge   1.00000000000000     
+ centershift -0.500000000000000       -6.50000000000000     
+  -6.50000000000000     
+ nuccharge   1.00000000000000     
+ centershift  -2.50000000000000       -8.50000000000000     
+  -2.50000000000000     
+ nuccharge   6.00000000000000     
+ centershift  -2.50000000000000       -6.50000000000000     
+  -4.50000000000000     
+ nuccharge   6.00000000000000     
+ centershift  -6.50000000000000       -2.50000000000000     
+  -4.50000000000000     
+ nuccharge   1.00000000000000     
+ centershift  -6.50000000000000      -0.500000000000000     
+  -6.50000000000000     
+ nuccharge   1.00000000000000     
+ centershift  -8.50000000000000       -2.50000000000000     
+  -2.50000000000000     
+ nuccharge   1.00000000000000     
+ centershift   9.50000000000000      -0.500000000000000     
+   7.50000000000000     
+ nuccharge   1.00000000000000     
+ centershift   9.50000000000000        3.50000000000000     
+   3.50000000000000     
+ nuccharge   6.00000000000000     
+ centershift   7.50000000000000        1.50000000000000     
+   7.50000000000000     
+ nuccharge   6.00000000000000     
+ centershift   7.50000000000000        3.50000000000000     
+   5.50000000000000     
+ nuccharge   1.00000000000000     
+ centershift   5.50000000000000        1.50000000000000     
+   9.50000000000000     
+ nuccharge   6.00000000000000     
+ centershift   3.50000000000000        7.50000000000000     
+   5.50000000000000     
+ nuccharge   1.00000000000000     
+ centershift   1.50000000000000        5.50000000000000     
+   9.50000000000000     
+ nuccharge   1.00000000000000     
+ centershift   3.50000000000000        9.50000000000000     
+   3.50000000000000     
+ nuccharge   6.00000000000000     
+ centershift   1.50000000000000        7.50000000000000     
+   7.50000000000000     
+ nuccharge   1.00000000000000     
+ centershift -0.500000000000000        7.50000000000000     
+   9.50000000000000     
+ orblanorder,orblanthresh         300  0.100000000000000     
+ notwoflag,coulflag           0           1
+ toepflag,nonucrepflag           1           0
+ toothnbig, toothnsmall         240          40
+ orbparflag T
+ zke_paropt           1
+ fft_mpi_inplaceflag           1
+ fft_batchdim           1
+ fft_circbatchdim           1
+   -----  
+ NBOX            1           1          64
+ totpoints        4096
+ **********************************
+ 
+ ************************   Parameters: config/spf    ************************  
+  
+ 
+ Shells:
+ Shell            1 Excitation level:            3
+   1a    1b    2a    2b    3a    3b    4a    4b    5a    5b    6a    6b 
+   7a    7b    8a    8b    9a    9b   10a   10b   11a   11b   12a   12b 
+  13a   13b   14a   14b   15a   15b   16a   16b   17a   17b   18a   18b 
+  19a   19b   20a   20b   21a   21b   22a   22b   23a   23b 
+ Shell            2
+  24a   24b   25a   25b   26a   26b 
+ No restriction on occupancy of final shell (CISDQT+++)
+  DF restrictflag is on for constraintflag=2 or other purposes =            1
+ 
+    Number of unfrozen spfs:     26
+    Number of frozen spfs:        0
+            Spfs start in m=     0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0
+ 
+ Configurations will be restricted to spin projection           0 /2
+  Configurations will be restricted to spin            0
+ 
+ ***********************    Initial state      ***********************   
+ 
+ Spfs will be loaded from files 
+ 
+ Sfp Quad flag is OFF.
+ Improvednatflag is ON.
+ 
+ Avector Quad flag is OFF.
+ Avector will be loaded from files.  Number of files=            2
+ 
+ ***********************    Parameters: propagation    ***********************  
+  
+ 
+  PAR_TIMESTEP IS    10.0000000000000       LITTLESTEPS IS            1
+ 
+ Spfs will be held CONSTANT. (except for constraint)
+ 
+ Calculation will be stopped with threshold   1.000000000000000E-005 
+ ; timestep is    10.0000000000000     
+ 
+ 
+ *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   ***
+ ****  
+ 
+     Will use sparse configuration routines.
+           Lanczosorder is          200
+           Lanthresh is      1.000000000000000E-009
+           Aorder is                300
+           Maxaorder is             300
+           Aerror is         1.000000000000000E-009
+  Using EXPONENTIAL integration.
+     Expotol    =  1.000000000000000E-009
+     Maxexpodim=         200
+     Jacprojorth=           0
+     Jacsymflag=           0
+     Jacunitflag=           0
+ 
+ Density matrix regularized with denreg= 0.100E-29
+ 
+ 
+ ****************************************************************************
+ 
+ Autosteps is            1  Autosize is         4001  Numpropsteps is 
+        4000
+ Fluxsteps is            1  Fluxtimestep is    10.0000000000000     
+ 
+ *****************************************************************************
+ 
+ 
+ 
+ Go fast_newconfiglist
+ UPPER/LOWER
+           1           2
+           1           3
+           2           3
+           2           4
+           3           4
+           3           5
+           4           5
+           4           6
+           5           6
+           5           7
+           6           7
+           6           8
+           7           8
+           7           9
+           8           9
+           8          10
+           9          10
+           9          11
+          10          11
+          10          12
+          11          12
+          11          13
+          12          13
+          12          14
+          13          14
+          13          15
+          14          15
+          14          16
+          15          16
+          15          17
+          16          17
+          16          18
+          17          18
+          17          19
+          18          19
+          18          20
+          19          20
+          19          21
+          20          21
+          20          22
+          21          22
+          21          23
+          22          23
+          22          25
+          23          26
+          23          26
+ 
+ 
+ FASTNEWCONFIG: NUMBER OF CONFIGURATIONS       114702
+ 
+ NUMSPINBLOCKS, MAXSPINBLOCKSIZE FASTCONFIG       17665          20
+ Go fast_newconfiglist, getting configurations
+      ...Done fast_newconfiglist
+ 
+ BOTWALKS /TOPWALKS      114702
+           1        1788        1788
+        1789        3570        1782
+        3571        5373        1803
+        5374        7162        1789
+        7163        8952        1790
+        8953       10749        1797
+       10750       12544        1795
+       12545       14336        1792
+       14337       16124        1788
+       16125       17921        1797
+       17922       19711        1790
+       19712       21500        1789
+       21501       23294        1794
+       23295       25086        1792
+       25087       26873        1787
+       26874       28665        1792
+       28666       30465        1800
+       30466       32250        1785
+       32251       34046        1796
+       34047       35840        1794
+       35841       37634        1794
+       37635       39409        1775
+       39410       41217        1808
+       41218       43009        1792
+       43010       44801        1792
+       44802       46586        1785
+       46587       48388        1802
+       48389       50180        1792
+       50181       51962        1782
+       51963       53764        1802
+       53765       55545        1781
+       55546       57349        1804
+       57350       59129        1780
+       59130       60929        1800
+       60930       62725        1796
+       62726       64518        1793
+       64519       66310        1792
+       66311       68098        1788
+       68099       69884        1786
+       69885       71686        1802
+       71687       73468        1782
+       73469       75271        1803
+       75272       77059        1788
+       77060       78853        1794
+       78854       80647        1794
+       80648       82435        1788
+       82436       84231        1796
+       84232       86019        1788
+       86020       87814        1795
+       87815       89604        1790
+       89605       91398        1794
+       91399       93184        1786
+       93185       94986        1802
+       94987       96768        1782
+       96769       98566        1798
+       98567      100363        1797
+      100364      102155        1792
+      102156      103943        1788
+      103944      105729        1786
+      105730      107531        1802
+      107532      109313        1782
+      109314      111115        1802
+      111116      112905        1790
+      112906      114702        1797
+ 
+ Counting walks. Singles
+ Counting walks. Doubles
+        1000  out of         1788
+ OPENING WALKS....
+     ...opened walks and wrote header info
+ 
+ Maximum number of
+            single walks=          184
+            double walks=        18584
+   TOTAL walks:  1044871002 maxdoublewalks*numconfig  2131621968
+ 
+ Allocating singlewalks
+ Allocating doublewalks
+      ..done walkalloc.
+ Calculating walks. Singles
+ No savewalks.BIN found. 
+        1000  out of         1788
+ Calculating walks. Doubles
+        1000  out of         1788
+ WRITING WALKS.
+ DONE WRITING WALKS
+ Go spinwalks. 
+ Doing spin projector.
+  ...writing spin info...
+ Maximum number of spin walks=            9
+ Avg number of spin walks=    4.11409395973154     
+ Calculating spin walks.
+  ...writing spinwalks...
+ Numspinsets is          422   maxspinset size is           20
+    ...writing configspinmatel...
+ Getting SPARSE spinset projector.  Numspinsets is          422 
+  maxspinsetsize is           20
+ Getting spin set projectors...
+    ...writing spinsets...
+ ...done.  Eliminated            0  sets with total rank            0
+ Number of spin sets is now          422
+ Total # of spinvects with S^2 =   0.000000000000000E+000  is          654 
+  out of         1788
+ TOTAL (all processors) rank       36640  out of       114702
+      Spin DF rank is          184    all processors         2485
+    This proc:  spinstart :            1
+ 
+ Closing walks.BIN
+ Number of included configurations         6418
+ Number of not included       108284
+ 
+ numdfwalks:          6858 
+  is total number DF single excitations on this processor
+ 
+ numdfwalks:          6858 
+  is really number DF single excitations on this processor
+ 
+ Reading spfs.
+ Read complex spfs
+    ...okay
+ SHIFTING ORBITALS, spf_gridshift=          -5          -5          -5
+     ..shifted orbitals.
+ Loaded            8  spfs from file 
+ Bin/spfs.bin.ethylene                                                          
+                                                                                
+                                           
+ Reading spfs.
+ Read complex spfs
+    ...okay
+ SHIFTING ORBITALS, spf_gridshift=           5           5           5
+     ..shifted orbitals.
+ Loaded           18  spfs from file 
+ Bin/spfs.bin.butadiene                                                         
+                                                                                
+                                           
+ Calling init_project                 65536
+ GO GET_3DPOISSON. calling getinverse.
+ filling in....
+     ...filled.
+      ...getting potential...
+     ... done get_3dpoisson.
+    ....Called init_project.
+ Reading product avector!
+ LOAD_AVECTOR_PRODUCT: tot_numconfig=       32006
+      total number of wave functions =            1
+      ...A-Vectors read for product. broadcasting.
+     ..go get newconfiglist load_avector_product
+     ..done get newconfiglist load_avector_product. go configtable
+     ..done product table.  Go product vector
+           ...construct wfn            1  of            1
+    ... done load_avector_product.
+ Read            1  A-vectors
+        Making a 1D FFT plan            1         128        6656
+        Making a 1D FFT plan            2         128         256
+ IN PROP: VECTOR NORM  (1.00000000000000,0.000000000000000E+000)
+          ENERGY  (-194.530865140379,7.765928705608656E-015)
+ REPLACING SPFS - DENMAT EIGS
+         0.2000000000E+01
+         0.2000000000E+01
+         0.2000000000E+01
+         0.2000000000E+01
+         0.2000000000E+01
+         0.2000000000E+01
+         0.2000000000E+01
+         0.2000000000E+01
+         0.1999999533E+01
+         0.1999999459E+01
+         0.1999992641E+01
+         0.1999992070E+01
+         0.1999879210E+01
+         0.1999814875E+01
+         0.1999732587E+01
+         0.1999688861E+01
+         0.1999378648E+01
+         0.1999185512E+01
+         0.1999049907E+01
+         0.1996989278E+01
+         0.1990805699E+01
+         0.1989968714E+01
+         0.1989767861E+01
+         0.1372457175E-01
+         0.1175890221E-01
+         0.1027166790E-01
+ 
+T=         10.00000  Energy:  -0.1945308674E+03  0.3794491944E-14    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.14E-01  0.10E-04  AVECTOR   0.12E+03  0.10E+01
+             Orbitals Converged, Avector not necessarily converged 
+ REPLACING SPFS - DENMAT EIGS
+         0.2000000000E+01
+         0.2000000000E+01
+         0.2000000000E+01
+         0.2000000000E+01
+         0.2000000000E+01
+         0.2000000000E+01
+         0.2000000000E+01
+         0.1999999979E+01
+         0.1999999534E+01
+         0.1999999460E+01
+         0.1999992637E+01
+         0.1999992066E+01
+         0.1999879126E+01
+         0.1999814738E+01
+         0.1999732690E+01
+         0.1999688895E+01
+         0.1999379330E+01
+         0.1999187138E+01
+         0.1999051058E+01
+         0.1996994724E+01
+         0.1990802749E+01
+         0.1989969046E+01
+         0.1989760164E+01
+         0.1372232489E-01
+         0.1176110215E-01
+         0.1027324112E-01
+ 
+T=         20.00000  Energy:  -0.1945308688E+03  0.1099435492E-13    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.14E-01  0.10E-04  AVECTOR   0.14E-06  0.10E+01
+ 
+    ***  CONVERGED *** 
+ 
+       -194.530868798576      0.000000000000     -0.000001440746      0.000000000000
+    ***   
+ 
+    ...done prop...
+    ...saving vector...
+    ...saved vectors!
+    ...end prop...
+    ...cleanup...
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+    ...END MCTDHF
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+Wed May  6 16:16:28 PDT 2015
+ MCTDHF STOP!

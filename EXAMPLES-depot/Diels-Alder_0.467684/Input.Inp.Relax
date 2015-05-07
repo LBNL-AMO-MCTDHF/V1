@@ -1,0 +1,105 @@
+
+
+&parinp
+
+notiming=0
+timingdir="timing.relax"
+timingout=30
+
+walksinturn=.true.
+turnbatchsize=16
+
+mcscfnum=1
+
+expodim=20
+maxexpodim=300
+
+improvedrelaxflag=1
+improvednatflag=1
+
+loadspfflag=1
+loadavectorflag=1
+
+spffile="Bin/spfs.bin.combine"
+avectorfile="Bin/avector.bin.combine"
+
+saveflag=1
+spfoutfile="Bin/spfs.bin.relax"
+avectoroutfile="Bin/avector.bin.relax"
+
+sparseconfigflag=1
+
+denreg=1d-30
+
+stopthresh=1d-5
+astoptol=1d0
+
+numelec=46
+restrictms=0
+
+par_timestep=0.2d0
+timestepfac=1.1d0
+max_timestep=2d0
+
+nspf=26
+numshells=2
+shelltop=23
+numexcite=3
+dfrestrictflag=1
+
+parorbsplit=3
+
+/
+
+
+&sincparinp
+
+fft_batchdim=1
+fft_circbatchdim=1
+
+fft_mpi_inplaceflag=1
+
+orbparflag=.true.
+
+toepflag=1
+
+orblanthresh=1d-1
+orblanorder=300
+orblancheckmod=20
+
+coulflag=1
+
+
+numcenters=16
+nuccharges(1:6)=1,1,6,6,1,1
+nuccharges(7:16)=1,1,6,6,1, 6,1,1,6,1
+
+
+centershift(1:3,1)= -1 ,-13 ,-13 
+centershift(1:3,2)= -5, -17 ,-5 
+centershift(1:3,3)= -5 ,-13 ,-9 
+centershift(1:3,4)= -13 ,-5 ,-9 
+centershift(1:3,5)= -13 ,-1 ,-13 
+centershift(1:3,6)= -17 ,-5 ,-5 
+
+centershift(1:3, 7)= +19,-1 ,+15 
+centershift(1:3, 8)= +19,+7 ,+7 
+centershift(1:3, 9)= +15,+3 ,+15 
+centershift(1:3,10)= +15,+7 ,+11 
+centershift(1:3,11)= +11,+3 ,+19 
+centershift(1:3,12)= +7 ,+15,+11 
+centershift(1:3,13)= +3 ,+11,+19 
+centershift(1:3,14)= +7 ,+19,+7 
+centershift(1:3,15)= +3 ,+15,+15 
+centershift(1:3,16)= -1,+15 ,+19 
+
+
+
+griddim=3
+
+numpoints=64
+
+spacing=0.467684d0
+
+/
+
