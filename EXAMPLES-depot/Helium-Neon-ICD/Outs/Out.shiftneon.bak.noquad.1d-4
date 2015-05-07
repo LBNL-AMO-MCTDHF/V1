@@ -1,0 +1,392 @@
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+Wed May  6 14:26:05 PDT 2015
+  ****************************************************************************
+  **********************  BEGIN LBNL-AMO-MCTDHF ******************************
+  ****************************************************************************
+ 
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory
+      D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, 
+      B Abeln, X Li . . .
+                              VERSION 1 
+        Copyright 2015 the regents of the University of California
+ 
+                This is CHMCTDH: HERM-normed ECS version.
+ 
+                PROCESSOR            1  OF           48
+ 
+ Inpfile is Input.Inp.ShiftNeon  
+ 
+  *************************  COMMAND LINE OPTIONS  ***************************
+ 
+ Reading 
+ Input.Inp.ShiftNeon                                                            
+                                                                                
+                                           
+  ****************************************************************************
+ 
+ Enforcing CMF defaults for Verlet or EXPO.
+ 
+  ****************************************************************************
+ *****************************************************************************
+ 
+ Number of states in propagation=           1
+ 
+  Parameters: electronic
+ 
+                    Number of electrons    10
+ Nuclear KE flag (nonuc_checkflag):         1
+ 
+ ********  SINC DVR PARAMS ******** 
+ griddim,spacing           3  0.400000000000000     
+ numpoints          96          96           2
+ numcenters           1
+ nuccharge   10.0000000000000     
+ centershift   8.50000000000000        8.50000000000000     
+   8.50000000000000     
+ orblanorder,orblanthresh         300  0.100000000000000     
+ notwoflag,coulflag           0           1
+ toepflag,nonucrepflag           1           0
+ toothnbig, toothnsmall         240          40
+ orbparflag T
+ zke_paropt           1
+ fft_mpi_inplaceflag           1
+ fft_batchdim           1
+ fft_circbatchdim           1
+   -----  
+ NBOX            1           1          48
+ totpoints       18432
+ **********************************
+ 
+ ************************   Parameters: config/spf    ************************  
+  
+ 
+ Shells:
+ Shell            1 Excitation level:            3
+   1a    1b    2a    2b    3a    3b    4a    4b    5a    5b 
+ Shell            2
+   6a    6b    7a    7b    8a    8b    9a    9b 
+ No restriction on occupancy of final shell (CISDQT+++)
+  DF restrictflag is on for constraintflag=2 or other purposes =            1
+ 
+    Number of unfrozen spfs:      9
+    Number of frozen spfs:        0
+            Spfs start in m=     0   0   0   0   0   0   0   0   0
+ 
+ Configurations will be restricted to spin projection           0 /2
+  Configurations will be restricted to spin            0
+ 
+ ***********************    Initial state      ***********************   
+ 
+ Spfs will be loaded from files 
+ 
+ Sfp Quad flag is OFF.
+ Improvednatflag is ON.
+ 
+ Avector Quad flag is OFF.
+ Avector will be loaded from files.  Number of files=            1
+ 
+ ***********************    Parameters: propagation    ***********************  
+  
+ 
+  PAR_TIMESTEP IS    10.0000000000000       LITTLESTEPS IS            1
+ 
+ Calculation will be stopped with threshold   1.000000000000000E-004 
+ ; timestep is    10.0000000000000     
+ 
+ 
+ *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   ***
+ ****  
+ 
+     Will use sparse configuration routines.
+           Lanczosorder is          200
+           Lanthresh is      1.000000000000000E-009
+           Aorder is                300
+           Maxaorder is             300
+           Aerror is         1.000000000000000E-009
+  Using EXPONENTIAL integration.
+     Expotol    =  1.000000000000000E-009
+     Maxexpodim=         200
+     Jacprojorth=           0
+     Jacsymflag=           0
+     Jacunitflag=           0
+ 
+ Density matrix regularized with denreg= 0.100E-29
+ 
+ 
+ ****************************************************************************
+ 
+ Autosteps is            1  Autosize is         4001  Numpropsteps is 
+        4000
+ Fluxsteps is            1  Fluxtimestep is    10.0000000000000     
+ 
+ *****************************************************************************
+ 
+ 
+ 
+ Go fast_newconfiglist
+ UPPER/LOWER
+           1           2
+           1           3
+           2           3
+           2           4
+           3           4
+           3           5
+           4           5
+           4           8
+           5           9
+           5           9
+ 
+ 
+ FASTNEWCONFIG: NUMBER OF CONFIGURATIONS         3041
+ 
+ NUMSPINBLOCKS, MAXSPINBLOCKSIZE FASTCONFIG         651          20
+ Go fast_newconfiglist, getting configurations
+      ...Done fast_newconfiglist
+ 
+ BOTWALKS /TOPWALKS        3041
+           1          61          61
+          62         125          64
+         126         189          64
+         190         249          60
+         250         311          62
+         312         377          66
+         378         441          64
+         442         505          64
+         506         569          64
+         570         631          62
+         632         695          64
+         696         759          64
+         760         813          54
+         814         885          72
+         886         949          64
+         950        1011          62
+        1012        1057          46
+        1058        1135          78
+        1136        1197          62
+        1198        1255          58
+        1256        1325          70
+        1326        1392          67
+        1393        1455          63
+        1456        1519          64
+        1520        1581          62
+        1582        1645          64
+        1646        1707          62
+        1708        1759          52
+        1760        1835          76
+        1836        1897          62
+        1898        1957          60
+        1958        2023          66
+        2024        2085          62
+        2086        2149          64
+        2150        2199          50
+        2200        2279          80
+        2280        2341          62
+        2342        2399          58
+        2400        2469          70
+        2470        2525          56
+        2526        2595          70
+        2596        2657          62
+        2658        2723          66
+        2724        2785          62
+        2786        2849          64
+        2850        2911          62
+        2912        2975          64
+        2976        3041          66
+ 
+ Counting walks. Singles
+ Counting walks. Doubles
+ 
+ Maximum number of
+            single walks=           50
+            double walks=         1225
+   TOTAL walks:     2211435 maxdoublewalks*numconfig     3725225
+ 
+ Allocating singlewalks
+ Allocating doublewalks
+      ..done walkalloc.
+ Calculating walks. Singles
+ No savewalks.BIN found. 
+ Calculating walks. Doubles
+ Go spinwalks. 
+ Doing spin projector.
+ Maximum number of spin walks=            4
+ Avg number of spin walks=    2.09836065573771     
+ Calculating spin walks.
+ Numspinsets is           25   maxspinset size is           20
+ Getting SPARSE spinset projector.  Numspinsets is           25 
+  maxspinsetsize is           20
+ Getting spin set projectors...
+ ...done.  Eliminated            0  sets with total rank            0
+ Number of spin sets is now           25
+ Total # of spinvects with S^2 =   0.000000000000000E+000  is           29 
+  out of           61
+ TOTAL (all processors) rank        1071  out of         3041
+      Spin DF rank is           29    all processors          231
+    This proc:  spinstart :            1
+ 
+ Number of included configurations          561
+ Number of not included         2480
+ 
+ numdfwalks:             0 
+  is total number DF single excitations on this processor
+ 
+ numdfwalks:             0 
+  is really number DF single excitations on this processor
+ 
+ Reading spfs.
+ Read complex spfs
+    ...okay
+ SHIFTING ORBITALS, spf_gridshift=           8           8           8
+     ..shifted orbitals.
+ Loaded            9  spfs from file 
+ Bin/spfs.bin.neon                                                              
+                                                                                
+                                           
+ Calling init_project                294912
+ GO GET_3DPOISSON. calling getinverse.
+ filling in....
+     ...filled.
+      ...getting potential...
+     ... done get_3dpoisson.
+    ....Called init_project.
+ Reading avector...
+ Read            1  A-vectors
+        Making a 1D FFT plan            1         192        6912
+        Making a 1D FFT plan            2         192         768
+ IN PROP: VECTOR NORM  (1.00000000000000,0.000000000000000E+000)
+          ENERGY  (-100.825878832347,-2.124034767204831E-014)
+ REPLACING SPFS - DENMAT EIGS
+         0.1999927521E+01
+         0.1994194217E+01
+         0.1991090264E+01
+         0.1991090264E+01
+         0.1991090264E+01
+         0.8758495307E-02
+         0.8758495289E-02
+         0.8758495258E-02
+         0.6331984759E-02
+ 
+T=         10.00000  Energy:  -0.1008259132E+03 -0.9765359319E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.22E-03  0.10E-03  AVECTOR   0.11E+03  0.10E+01
+ REPLACING SPFS - DENMAT EIGS
+         0.1999927523E+01
+         0.1994193706E+01
+         0.1991090016E+01
+         0.1991090016E+01
+         0.1991090016E+01
+         0.8758711511E-02
+         0.8758711504E-02
+         0.8758711491E-02
+         0.6332589275E-02
+ 
+T=         12.00000  Energy:  -0.1008259134E+03 -0.9765919521E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.12E-03  0.10E-03  AVECTOR   0.14E-06  0.10E+01
+ REPLACING SPFS - DENMAT EIGS
+         0.1999927523E+01
+         0.1994194020E+01
+         0.1991090076E+01
+         0.1991090076E+01
+         0.1991090076E+01
+         0.8758670169E-02
+         0.8758670166E-02
+         0.8758670161E-02
+         0.6332217769E-02
+ 
+T=         14.00000  Energy:  -0.1008259135E+03 -0.9765733603E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.43E-04  0.10E-03  AVECTOR   0.40E-07  0.10E+01
+ 
+    ***  CONVERGED *** 
+ 
+       -100.825913527385     -0.000000000977     -0.000000080857      0.000000000000
+    ***   
+ 
+    ...done prop...
+    ...saving vector...
+    ...saved vectors!
+    ...end prop...
+    ...cleanup...
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+    ...END MCTDHF
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+Wed May  6 14:31:13 PDT 2015
+ MCTDHF STOP!

@@ -1,0 +1,457 @@
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:40 PDT 2015
+Thu May  7 00:03:39 PDT 2015
+Thu May  7 00:03:40 PDT 2015
+  ****************************************************************************
+  **********************  BEGIN LBNL-AMO-MCTDHF ******************************
+  ****************************************************************************
+ 
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory
+      D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, 
+      B Abeln, X Li . . .
+                              VERSION 1 
+        Copyright 2015 the regents of the University of California
+ 
+                This is CHMCTDH: HERM-normed ECS version.
+ 
+                PROCESSOR            1  OF           48
+ 
+ Inpfile is Input.Inp.ICD.DF  
+ 
+  *************************  COMMAND LINE OPTIONS  ***************************
+ 
+ Reading 
+ Input.Inp.ICD.DF                                                               
+                                                                                
+                                           
+  ****************************************************************************
+ 
+ Enforcing CMF defaults for Verlet or EXPO.
+ 
+  ****************************************************************************
+ *****************************************************************************
+ 
+ Number of states in propagation=           1
+ 
+  Parameters: electronic
+ 
+                    Number of electrons    12
+ Nuclear KE flag (nonuc_checkflag):         1
+ 
+ ********  SINC DVR PARAMS ******** 
+ griddim,spacing           3  0.400000000000000     
+ numpoints          96          96           2
+ numcenters           2
+ nuccharge   10.0000000000000     
+ centershift   8.50000000000000        8.50000000000000     
+   8.50000000000000     
+ nuccharge   2.00000000000000     
+ centershift  -7.50000000000000       -7.50000000000000     
+  -7.50000000000000     
+ orblanorder,orblanthresh         300  0.100000000000000     
+ notwoflag,coulflag           0           1
+ toepflag,nonucrepflag           1           0
+ toothnbig, toothnsmall         240          40
+ orbparflag T
+ zke_paropt           1
+ fft_mpi_inplaceflag           1
+ fft_batchdim           1
+ fft_circbatchdim           1
+   -----  
+ NBOX            1           1          48
+ totpoints       18432
+ **********************************
+ 
+ ************************   Parameters: config/spf    ************************  
+  
+ 
+ Shells:
+ Shell            1 Excitation level:            3
+   1a    1b    2a    2b    3a    3b    4a    4b    5a    5b 
+ Shell            2
+   6a    6b    7a    7b    8a    8b    9a    9b   10a   10b   11a   11b 
+  12a   12b   13a   13b 
+ No restriction on occupancy of final shell (CISDQT+++)
+  DF restrictflag is on for constraintflag=2 or other purposes =            1
+ 
+    Number of unfrozen spfs:     13
+    Number of frozen spfs:        0
+            Spfs start in m=     0   0   0   0   0   0   0   0   0   0   0   0   0
+ 
+ Configurations will be restricted to spin projection           0 /2
+  Configurations will be restricted to spin            0
+ 
+ ***********************    Initial state      ***********************   
+ 
+ Spfs will be loaded from files 
+ 
+ Avector will be loaded from files.  Number of files=            1
+ 
+ ***********************    Parameters: propagation    ***********************  
+  
+ 
+  PAR_TIMESTEP IS   5.000000000000000E-002  LITTLESTEPS IS            1
+ 
+                 # of steps, final time:     20000           1000.00000000
+ 
+ 
+ *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   ***
+ ****  
+ 
+     Will use sparse configuration routines.
+           Lanczosorder is          200
+           Lanthresh is      1.000000000000000E-009
+           Aorder is                 20
+           Maxaorder is             100
+           Aerror is         1.000000000000000E-009
+  Using EXPONENTIAL integration.
+     Expotol    =  1.000000000000000E-008
+     Maxexpodim=         200
+     Jacprojorth=           0
+     Jacsymflag=           0
+     Jacunitflag=           0
+ 
+ Density matrix regularized with denreg= 0.100E-29
+ 
+ Using true Dirac-Frenkel equation for constraint.
+      dfrestrictflag =            1
+ Lagrangian with epsilon times McLachlan.  epsilon=conprop=
+  0.100000000000000     
+   connormflag            0
+ Lioville solve regularized with lioreg=  1.000000000000000E-009
+ 
+ ****************************************************************************
+ 
+ Autosteps is           20  Autosize is         1001  Numpropsteps is 
+       20000
+ Fluxsteps is            2  Fluxtimestep is   0.100000000000000     
+ 
+ *****************************************************************************
+ 
+ 
+ ACTIONS:  Autocorr       Ion.  Flux SaveDipoleFT       
+ 
+ FOR IONIZATION FLUX:
+    Flux Parameters   9.999999776482582E-003   2.00000000000000             1001
+    Flux Interval           20   1.00000000000000     
+ Go fast_newconfiglist
+ UPPER/LOWER
+           1           2
+           1           3
+           2           3
+           2           4
+           3           4
+           3           5
+           4           5
+           4          11
+           5          12
+           5          12
+           6          13
+           6          13
+ 
+ 
+ FASTNEWCONFIG: NUMBER OF CONFIGURATIONS       198864
+ 
+ NUMSPINBLOCKS, MAXSPINBLOCKSIZE FASTCONFIG       19706          70
+ Go fast_newconfiglist, getting configurations
+      ...Done fast_newconfiglist
+ 
+ BOTWALKS /TOPWALKS      198864
+           1        4140        4140
+        4141        8280        4140
+        8281       12412        4132
+       12413       16570        4158
+       16571       20710        4140
+       20711       24848        4138
+       24849       28938        4090
+       28939       33138        4200
+       33139       37282        4144
+       37283       41424        4142
+       41425       45562        4138
+       45563       49710        4148
+       49711       53850        4140
+       53851       57994        4144
+       57995       62144        4150
+       62145       66286        4142
+       66287       70424        4138
+       70425       74538        4114
+       74539       78672        4134
+       78673       82832        4160
+       82833       86990        4158
+       86991       91142        4152
+       91143       95280        4138
+       95281       99430        4150
+       99431      103574        4144
+      103575      107714        4140
+      107715      111860        4146
+      111861      115954        4094
+      115955      120146        4192
+      120147      124282        4136
+      124283      128408        4126
+      128409      132570        4162
+      132571      136696        4126
+      136697      140858        4162
+      140859      144992        4134
+      144993      149142        4150
+      149143      153244        4102
+      153245      157424        4180
+      157425      161572        4148
+      161573      165682        4110
+      165683      169846        4164
+      169847      173970        4124
+      173971      178146        4176
+      178147      182286        4140
+      182287      186434        4148
+      186435      190572        4138
+      190573      194720        4148
+      194721      198864        4144
+ 
+   ...reading walks....
+   ...ok reading walks....
+ savewalks.BIN exists; reading walks, not computing.
+ 
+ Maximum number of
+            single walks=           96
+            double walks=         4464
+   TOTAL walks:   449109440 maxdoublewalks*numconfig   887728896
+ 
+ Allocating singlewalks
+ Allocating doublewalks
+      ..done walkalloc.
+ Reading walks. Singles
+    ..read single walks this processor...
+ savewalks.BIN was found and read. SKIPPING WALK CALCULATION.
+ Go spinwalks. 
+    ...reading spin projector....
+    ...done reading spin projector....
+ Maximum number of spin walks=            9
+ Avg number of spin walks=    5.14927536231884     
+    ...reading spinwalks...
+    ...done reading spinwalks...
+    ...reading configspinmatel...
+    ...ok, done reading configspinmatel...
+ Getting SPARSE spinset projector.  Numspinsets is            0 
+  maxspinsetsize is            0
+ Reading spin set projectors...
+    ...reading spinsets...
+    ...reading spin set projector ... 
+    ...ok, done reading spin set projector ...
+ Number of spin sets is now          781
+ Total # of spinvects with S^2 =   0.000000000000000E+000  is         1400 
+  out of         4140
+ TOTAL (all processors) rank       55056  out of       198864
+      Spin DF rank is         1400    all processors         9696
+    This proc:  spinstart :            1
+ 
+ Number of included configurations        30864
+ Number of not included       168000
+ 
+ numdfwalks:             0 
+  is total number DF single excitations on this processor
+ 
+ numdfwalks:             0 
+  is really number DF single excitations on this processor
+ 
+ Reading spfs.
+ Read complex spfs
+    ...okay
+ Loaded           13  spfs from file 
+ Bin/spfs.bin.combine.df                                                        
+                                                                                
+                                           
+ Calling init_project                294912
+ GO GET_3DPOISSON. calling getinverse.
+ filling in....
+     ...filled.
+      ...getting potential...
+     ... done get_3dpoisson.
+    ....Called init_project.
+ Reading avector...
+ Read            1  A-vectors
+        Making a 1D FFT plan            1         192        9984
+        Making a 1D FFT plan            2         192         768
+ IN PROP: VECTOR NORM  (1.00000000000000,0.000000000000000E+000)
+          ENERGY  (-101.598568155886,-4.084734971777424E-008)
+ Saving the wavefunction for reactive flux.
+ Saving wavefunction at T=      0.0000
+ FFT : NORM BEFORE, AFTER                      NaN                     NaN
+ FFT : NORM BEFORE, AFTER                      NaN                     NaN
+ FFT : NORM BEFORE, AFTER                      NaN                     NaN
+ Writing psi stats.
+T=          0.05000  Energy:  -0.1015985682E+03 -0.4084731927E-07    Norm:   0.9999999980E+00
+T=          0.10000  Energy:  -0.1015985682E+03 -0.4084739148E-07    Norm:   0.9999999959E+00
+T=          0.15000  Energy:  -0.1015985682E+03 -0.4084732033E-07    Norm:   0.9999999939E+00
+T=          0.20000  Energy:  -0.1015985681E+03 -0.4084730373E-07    Norm:   0.9999999918E+00
+T=          0.25000  Energy:  -0.1015985681E+03 -0.4084734867E-07    Norm:   0.9999999898E+00
+T=          0.30000  Energy:  -0.1015985681E+03 -0.4084712446E-07    Norm:   0.9999999877E+00
+T=          0.35000  Energy:  -0.1015985681E+03 -0.4084711061E-07    Norm:   0.9999999857E+00
+T=          0.40000  Energy:  -0.1015985681E+03 -0.4084733215E-07    Norm:   0.9999999837E+00
+T=          0.45000  Energy:  -0.1015985681E+03 -0.4084737827E-07    Norm:   0.9999999816E+00
+T=          0.50000  Energy:  -0.1015985681E+03 -0.4084722251E-07    Norm:   0.9999999796E+00
+T=          0.55000  Energy:  -0.1015985681E+03 -0.4084732164E-07    Norm:   0.9999999775E+00
+T=          0.60000  Energy:  -0.1015985680E+03 -0.4084727008E-07    Norm:   0.9999999755E+00
+T=          0.65000  Energy:  -0.1015985680E+03 -0.4084731195E-07    Norm:   0.9999999734E+00
+T=          0.70000  Energy:  -0.1015985679E+03 -0.4084732197E-07    Norm:   0.9999999714E+00
+T=          0.75000  Energy:  -0.1015985678E+03 -0.4084734989E-07    Norm:   0.9999999694E+00
+T=          0.80000  Energy:  -0.1015985675E+03 -0.4084737878E-07    Norm:   0.9999999673E+00
+T=          0.85000  Energy:  -0.1015985671E+03 -0.4084730949E-07    Norm:   0.9999999653E+00
+T=          0.90000  Energy:  -0.1015985666E+03 -0.4084735144E-07    Norm:   0.9999999632E+00
+T=          0.95000  Energy:  -0.1015985658E+03 -0.4084723553E-07    Norm:   0.9999999612E+00
+T=          1.00000  Energy:  -0.1015985646E+03 -0.4084735677E-07    Norm:   0.9999999592E+00
+ Saving wavefunction at T=      1.0000
+T=          1.05000  Energy:  -0.1015985627E+03 -0.4084730992E-07    Norm:   0.9999999571E+00
+T=          1.10000  Energy:  -0.1015985597E+03 -0.4084731125E-07    Norm:   0.9999999551E+00
+T=          1.15000  Energy:  -0.1015985550E+03 -0.4084744086E-07    Norm:   0.9999999530E+00
+T=          1.20000  Energy:  -0.1015985475E+03 -0.4084729473E-07    Norm:   0.9999999510E+00
+T=          1.25000  Energy:  -0.1015985360E+03 -0.4084738468E-07    Norm:   0.9999999489E+00
+T=          1.30000  Energy:  -0.1015985185E+03 -0.4084737081E-07    Norm:   0.9999999469E+00
+T=          1.35000  Energy:  -0.1015984916E+03 -0.4084733231E-07    Norm:   0.9999999449E+00
+T=          1.40000  Energy:  -0.1015984503E+03 -0.4084730628E-07    Norm:   0.9999999428E+00
+T=          1.45000  Energy:  -0.1015983864E+03 -0.4084762194E-07    Norm:   0.9999999408E+00
+T=          1.50000  Energy:  -0.1015982872E+03 -0.4084752062E-07    Norm:   0.9999999387E+00
+T=          1.55000  Energy:  -0.1015981331E+03 -0.4084781836E-07    Norm:   0.9999999367E+00
+T=          1.60000  Energy:  -0.1015978943E+03 -0.4084814213E-07    Norm:   0.9999999346E+00
+T=          1.65000  Energy:  -0.1015975252E+03 -0.4084836354E-07    Norm:   0.9999999326E+00
+T=          1.70000  Energy:  -0.1015969554E+03 -0.4084885819E-07    Norm:   0.9999999306E+00
+T=          1.75000  Energy:  -0.1015960758E+03 -0.4085028206E-07    Norm:   0.9999999285E+00
+T=          1.80000  Energy:  -0.1015947188E+03 -0.4085174455E-07    Norm:   0.9999999265E+00
+T=          1.85000  Energy:  -0.1015926236E+03 -0.4085352042E-07    Norm:   0.9999999244E+00
+T=          1.90000  Energy:  -0.1015893865E+03 -0.4085795063E-07    Norm:   0.9999999224E+00
+T=          1.95000  Energy:  -0.1015843936E+03 -0.4086449802E-07    Norm:   0.9999999203E+00
+T=          2.00000  Energy:  -0.1015767122E+03 -0.4087237041E-07    Norm:   0.9999999183E+00
+ Saving wavefunction at T=      2.0000
+T=          2.05000  Energy:  -0.1015649118E+03 -0.4088738804E-07    Norm:   0.9999999163E+00
+T=          2.10000  Energy:  -0.1015468626E+03 -0.4091176976E-07    Norm:   0.9999999142E+00
+T=          2.15000  Energy:  -0.1015194921E+03 -0.4094543073E-07    Norm:   0.9999999122E+00
+T=          2.20000  Energy:  -0.1014782905E+03 -0.4099751925E-07    Norm:   0.9999999101E+00
+T=          2.25000  Energy:  -0.1014169875E+03 -0.4108363214E-07    Norm:   0.9999999081E+00
+T=          2.30000  Energy:  -0.1013280613E+03 -0.4120643519E-07    Norm:   0.9999999060E+00
+T=          2.35000  Energy:  -0.1012029179E+03 -0.4138014379E-07    Norm:   0.9999999039E+00
+T=          2.40000  Energy:  -0.1010329424E+03 -0.4163800074E-07    Norm:   0.9999999019E+00
+T=          2.45000  Energy:  -0.1008162942E+03 -0.4198963246E-07    Norm:   0.9999998998E+00
+T=          2.50000  Energy:  -0.1005630865E+03 -0.4242727363E-07    Norm:   0.9999998976E+00
+T=          2.55000  Energy:  -0.1002915653E+03 -0.4297187775E-07    Norm:   0.9999998955E+00
+T=          2.60000  Energy:  -0.1000324766E+03 -0.4362230905E-07    Norm:   0.9999998933E+00
+T=          2.65000  Energy:  -0.9982651081E+02 -0.4433529358E-07    Norm:   0.9999998911E+00
+T=          2.70000  Energy:  -0.9969322664E+02 -0.4509431896E-07    Norm:   0.9999998889E+00
+T=          2.75000  Energy:  -0.9962572646E+02 -0.4590606515E-07    Norm:   0.9999998866E+00
+T=          2.80000  Energy:  -0.9961346174E+02 -0.4673618955E-07    Norm:   0.9999998843E+00
+T=          2.85000  Energy:  -0.9964162591E+02 -0.4752406175E-07    Norm:   0.9999998820E+00
+T=          2.90000  Energy:  -0.9968595688E+02 -0.4823770204E-07    Norm:   0.9999998796E+00
+T=          2.95000  Energy:  -0.9972573325E+02 -0.4886647633E-07    Norm:   0.9999998772E+00
+T=          3.00000  Energy:  -0.9975243177E+02 -0.4938470361E-07    Norm:   0.9999998747E+00
+ Saving wavefunction at T=      3.0000
+T=          3.05000  Energy:  -0.9976368781E+02 -0.4976231358E-07    Norm:   0.9999998722E+00
+T=          3.10000  Energy:  -0.9975632578E+02 -0.4998988047E-07    Norm:   0.9999998698E+00
+T=          3.15000  Energy:  -0.9972813329E+02 -0.5007733580E-07    Norm:   0.9999998673E+00
+T=          3.20000  Energy:  -0.9968201916E+02 -0.5002769931E-07    Norm:   0.9999998648E+00
+T=          3.25000  Energy:  -0.9962491704E+02 -0.4983088689E-07    Norm:   0.9999998623E+00
+T=          3.30000  Energy:  -0.9956273290E+02 -0.4948469514E-07    Norm:   0.9999998598E+00
+T=          3.35000  Energy:  -0.9949830702E+02 -0.4900345152E-07    Norm:   0.9999998574E+00
+T=          3.40000  Energy:  -0.9943348088E+02 -0.4840649997E-07    Norm:   0.9999998549E+00
+T=          3.45000  Energy:  -0.9937104864E+02 -0.4770447987E-07    Norm:   0.9999998525E+00
+T=          3.50000  Energy:  -0.9931360129E+02 -0.4690629588E-07    Norm:   0.9999998502E+00
+T=          3.55000  Energy:  -0.9926114601E+02 -0.4603175611E-07    Norm:   0.9999998478E+00
+T=          3.60000  Energy:  -0.9921090092E+02 -0.4510719560E-07    Norm:   0.9999998456E+00
+T=          3.65000  Energy:  -0.9915912777E+02 -0.4415942675E-07    Norm:   0.9999998433E+00
+T=          3.70000  Energy:  -0.9910287066E+02 -0.4320693178E-07    Norm:   0.9999998411E+00
+T=          3.75000  Energy:  -0.9903999136E+02 -0.4226589081E-07    Norm:   0.9999998390E+00
+T=          3.80000  Energy:  -0.9896807182E+02 -0.4135671786E-07    Norm:   0.9999998369E+00
+T=          3.85000  Energy:  -0.9888408912E+02 -0.4050090836E-07    Norm:   0.9999998349E+00
+T=          3.90000  Energy:  -0.9878557830E+02 -0.3971580736E-07    Norm:   0.9999998328E+00
+T=          3.95000  Energy:  -0.9867222259E+02 -0.3901001055E-07    Norm:   0.9999998309E+00
+T=          4.00000  Energy:  -0.9854596526E+02 -0.3839112754E-07    Norm:   0.9999998289E+00
+ Saving wavefunction at T=      4.0000
+T=          4.05000  Energy:  -0.9840927245E+02 -0.3786050483E-07    Norm:   0.9999998270E+00
+T=          4.10000  Energy:  -0.9826348694E+02 -0.3741639480E-07    Norm:   0.9999998251E+00
+T=          4.15000  Energy:  -0.9810897647E+02 -0.3706950804E-07    Norm:   0.9999998232E+00
+T=          4.20000  Energy:  -0.9794652022E+02 -0.3682251185E-07    Norm:   0.9999998214E+00
+T=          4.25000  Energy:  -0.9777782408E+02 -0.3666838936E-07    Norm:   0.9999998196E+00
+T=          4.30000  Energy:  -0.9760428358E+02 -0.3659894750E-07    Norm:   0.9999998177E+00
+T=          4.35000  Energy:  -0.9742555009E+02 -0.3663392148E-07    Norm:   0.9999998159E+00
+T=          4.40000  Energy:  -0.9723965505E+02 -0.3677318419E-07    Norm:   0.9999998141E+00
+T=          4.45000  Energy:  -0.9704450522E+02 -0.3700504202E-07    Norm:   0.9999998122E+00
+T=          4.50000  Energy:  -0.9683902547E+02 -0.3738254417E-07    Norm:   0.9999998104E+00
+T=          4.55000  Energy:  -0.9662287662E+02 -0.3788791234E-07    Norm:   0.9999998085E+00
+T=          4.60000  Energy:  -0.9639557859E+02 -0.3849584884E-07    Norm:   0.9999998066E+00
+T=          4.65000  Energy:  -0.9615635468E+02 -0.3929242552E-07    Norm:   0.9999998046E+00
+T=          4.70000  Energy:  -0.9590483178E+02 -0.4023866548E-07    Norm:   0.9999998027E+00
+T=          4.75000  Energy:  -0.9564167458E+02 -0.4133577133E-07    Norm:   0.9999998006E+00
+T=          4.80000  Energy:  -0.9536843019E+02 -0.4267007893E-07    Norm:   0.9999997985E+00
+T=          4.85000  Energy:  -0.9508704811E+02 -0.4418417136E-07    Norm:   0.9999997964E+00
+T=          4.90000  Energy:  -0.9479983724E+02 -0.4589323969E-07    Norm:   0.9999997942E+00
+T=          4.95000  Energy:  -0.9450970486E+02 -0.4786895604E-07    Norm:   0.9999997918E+00
+T=          5.00000  Energy:  -0.9422023167E+02 -0.5013130438E-07    Norm:   0.9999997894E+00
+ Saving wavefunction at T=      5.0000
+T=          5.05000  Energy:  -0.9393542497E+02 -0.5276158715E-07    Norm:   0.9999997869E+00
+T=          5.10000  Energy:  -0.9365929845E+02 -0.5580468750E-07    Norm:   0.9999997842E+00
+T=          5.15000  Energy:  -0.9339574104E+02 -0.5931052678E-07    Norm:   0.9999997813E+00
+T=          5.20000  Energy:  -0.9314862068E+02 -0.6337704171E-07    Norm:   0.9999997783E+00
+T=          5.25000  Energy:  -0.9292172616E+02 -0.6803008964E-07    Norm:   0.9999997751E+00
+T=          5.30000  Energy:  -0.9271854097E+02 -0.7332195874E-07    Norm:   0.9999997716E+00
+T=          5.35000  Energy:  -0.9254184371E+02 -0.7936008889E-07    Norm:   0.9999997678E+00
+T=          5.40000  Energy:  -0.9239334542E+02 -0.8619723070E-07    Norm:   0.9999997637E+00
+T=          5.45000  Energy:  -0.9227372358E+02 -0.9391483683E-07    Norm:   0.9999997593E+00
+T=          5.50000  Energy:  -0.9218290841E+02 -0.1026320360E-06    Norm:   0.9999997544E+00
+T=          5.55000  Energy:  -0.9212037880E+02 -0.1124905316E-06    Norm:   0.9999997491E+00
+T=          5.60000  Energy:  -0.9208527922E+02 -0.1236388008E-06    Norm:   0.9999997432E+00
+T=          5.65000  Energy:  -0.9207621359E+02 -0.1360867389E-06    Norm:   0.9999997368E+00
+T=          5.70000  Energy:  -0.9209104156E+02 -0.1499587709E-06    Norm:   0.9999997296E+00
+T=          5.75000  Energy:  -0.9212708398E+02 -0.1654299293E-06    Norm:   0.9999997218E+00
+T=          5.80000  Energy:  -0.9218166834E+02 -0.1825032746E-06    Norm:   0.9999997131E+00
+T=          5.85000  Energy:  -0.9225255245E+02 -0.2013847763E-06    Norm:   0.9999997035E+00
+T=          5.90000  Energy:  -0.9233772098E+02 -0.2223460593E-06    Norm:   0.9999996929E+00
+T=          5.95000  Energy:  -0.9243468439E+02 -0.2454999403E-06    Norm:   0.9999996812E+00
+T=          6.00000  Energy:  -0.9254012776E+02 -0.2709430263E-06    Norm:   0.9999996683E+00
+ Saving wavefunction at T=      6.0000
+T=          6.05000  Energy:  -0.9265027409E+02 -0.2986904652E-06    Norm:   0.9999996540E+00
+T=          6.10000  Energy:  -0.9276139494E+02 -0.3287096531E-06    Norm:   0.9999996382E+00
+T=          6.15000  Energy:  -0.9286983053E+02 -0.3611304441E-06    Norm:   0.9999996209E+00
+T=          6.20000  Energy:  -0.9297154738E+02 -0.3960841503E-06    Norm:   0.9999996019E+00
+T=          6.25000  Energy:  -0.9306199321E+02 -0.4337481770E-06    Norm:   0.9999995811E+00

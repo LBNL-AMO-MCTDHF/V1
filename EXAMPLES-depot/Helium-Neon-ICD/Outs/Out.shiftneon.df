@@ -1,0 +1,510 @@
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+Wed May  6 19:45:06 PDT 2015
+  ****************************************************************************
+  **********************  BEGIN LBNL-AMO-MCTDHF ******************************
+  ****************************************************************************
+ 
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory
+      D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, 
+      B Abeln, X Li . . .
+                              VERSION 1 
+        Copyright 2015 the regents of the University of California
+ 
+                This is CHMCTDH: HERM-normed ECS version.
+ 
+                PROCESSOR            1  OF           48
+ 
+ Inpfile is Input.Inp.ShiftNeon.DF  
+ 
+  *************************  COMMAND LINE OPTIONS  ***************************
+ 
+ Reading 
+ Input.Inp.ShiftNeon.DF                                                         
+                                                                                
+                                           
+  ****************************************************************************
+ 
+ Enforcing CMF defaults for Verlet or EXPO.
+ 
+  ****************************************************************************
+ *****************************************************************************
+ 
+ Number of states in propagation=           1
+ 
+  Parameters: electronic
+ 
+                    Number of electrons    10
+ Nuclear KE flag (nonuc_checkflag):         1
+ 
+ ********  SINC DVR PARAMS ******** 
+ griddim,spacing           3  0.400000000000000     
+ numpoints          96          96           2
+ numcenters           1
+ nuccharge   10.0000000000000     
+ centershift   8.50000000000000        8.50000000000000     
+   8.50000000000000     
+ orblanorder,orblanthresh         300  0.100000000000000     
+ notwoflag,coulflag           0           1
+ toepflag,nonucrepflag           1           0
+ toothnbig, toothnsmall         240          40
+ orbparflag T
+ zke_paropt           1
+ fft_mpi_inplaceflag           1
+ fft_batchdim           1
+ fft_circbatchdim           1
+   -----  
+ NBOX            1           1          48
+ totpoints       18432
+ **********************************
+ 
+ ************************   Parameters: config/spf    ************************  
+  
+ 
+ Shells:
+ Shell            1 Excitation level:            3
+   1a    1b    2a    2b    3a    3b    4a    4b    5a    5b 
+ Shell            2
+   6a    6b    7a    7b    8a    8b    9a    9b 
+ No restriction on occupancy of final shell (CISDQT+++)
+  DF restrictflag is on for constraintflag=2 or other purposes =            1
+ 
+    Number of unfrozen spfs:      9
+    Number of frozen spfs:        0
+            Spfs start in m=     0   0   0   0   0   0   0   0   0
+ 
+ Configurations will be restricted to spin projection           0 /2
+  Configurations will be restricted to spin            0
+ 
+ ***********************    Initial state      ***********************   
+ 
+ Spfs will be loaded from files 
+ 
+ Sfp Quad flag is OFF.
+ Improvednatflag is OFF.
+ 
+ Avector Quad flag is OFF.
+ Avector will be loaded from files.  Number of files=            1
+ 
+ ***********************    Parameters: propagation    ***********************  
+  
+ 
+  PAR_TIMESTEP IS   5.000000000000000E-002  LITTLESTEPS IS            1
+ 
+ Calculation will be stopped with threshold   1.000000000000000E-006 
+ ; timestep is   5.000000000000000E-002
+ 
+ 
+ *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   ***
+ ****  
+ 
+     Will use sparse configuration routines.
+           Lanczosorder is          200
+           Lanthresh is      1.000000000000000E-009
+           Aorder is                 30
+           Maxaorder is            2000
+           Aerror is         1.000000000000000E-009
+  Using EXPONENTIAL integration.
+     Expotol    =  1.000000000000000E-008
+     Maxexpodim=         200
+     Jacprojorth=           0
+     Jacsymflag=           0
+     Jacunitflag=           0
+ 
+ Density matrix regularized with denreg= 0.100E-29
+ 
+ Using true Dirac-Frenkel equation for constraint.
+      dfrestrictflag =            1
+ Lagrangian with epsilon times McLachlan.  epsilon=conprop=
+  0.100000000000000     
+   connormflag            0
+ Lioville solve regularized with lioreg=  1.000000000000000E-009
+ 
+ ****************************************************************************
+ 
+ Autosteps is           20  Autosize is        40001  Numpropsteps is 
+      800000
+ Fluxsteps is            2  Fluxtimestep is   0.100000000000000     
+ 
+ *****************************************************************************
+ 
+ 
+ 
+ Go fast_newconfiglist
+ UPPER/LOWER
+           1           2
+           1           3
+           2           3
+           2           4
+           3           4
+           3           5
+           4           5
+           4           8
+           5           9
+           5           9
+ 
+ 
+ FASTNEWCONFIG: NUMBER OF CONFIGURATIONS         3041
+ 
+ NUMSPINBLOCKS, MAXSPINBLOCKSIZE FASTCONFIG         651          20
+ Go fast_newconfiglist, getting configurations
+      ...Done fast_newconfiglist
+ 
+ BOTWALKS /TOPWALKS        3041
+           1          61          61
+          62         125          64
+         126         189          64
+         190         249          60
+         250         311          62
+         312         377          66
+         378         441          64
+         442         505          64
+         506         569          64
+         570         631          62
+         632         695          64
+         696         759          64
+         760         813          54
+         814         885          72
+         886         949          64
+         950        1011          62
+        1012        1057          46
+        1058        1135          78
+        1136        1197          62
+        1198        1255          58
+        1256        1325          70
+        1326        1392          67
+        1393        1455          63
+        1456        1519          64
+        1520        1581          62
+        1582        1645          64
+        1646        1707          62
+        1708        1759          52
+        1760        1835          76
+        1836        1897          62
+        1898        1957          60
+        1958        2023          66
+        2024        2085          62
+        2086        2149          64
+        2150        2199          50
+        2200        2279          80
+        2280        2341          62
+        2342        2399          58
+        2400        2469          70
+        2470        2525          56
+        2526        2595          70
+        2596        2657          62
+        2658        2723          66
+        2724        2785          62
+        2786        2849          64
+        2850        2911          62
+        2912        2975          64
+        2976        3041          66
+ 
+ Counting walks. Singles
+ Counting walks. Doubles
+ 
+ Maximum number of
+            single walks=           50
+            double walks=         1225
+   TOTAL walks:     2211435 maxdoublewalks*numconfig     3725225
+ 
+ Allocating singlewalks
+ Allocating doublewalks
+      ..done walkalloc.
+ No savewalks.BIN found.  Calculating walks.  Singles...
+ Calculating walks.  Doubles...
+ Go spinwalks. 
+ Doing spin projector.
+ Maximum number of spin walks=            4
+ Avg number of spin walks=    2.09836065573771     
+ Calculating spin walks.
+ Numspinsets is           25   maxspinset size is           20
+ Getting SPARSE spinset projector.  Numspinsets is           25 
+  maxspinsetsize is           20
+ Getting spin set projectors...
+ ...done.  Eliminated            0  sets with total rank            0
+ Number of spin sets is now           25
+ Total # of spinvects with S^2 =   0.000000000000000E+000  is           29 
+  out of           61
+ TOTAL (all processors) rank        1071  out of         3041
+      Spin DF rank is           29    all processors          231
+    This proc:  spinstart :            1
+ 
+ Number of included configurations          561
+ Number of not included         2480
+ 
+ numdfwalks:             0 
+  is total number DF single excitations on this processor
+ 
+ numdfwalks:             0 
+  is really number DF single excitations on this processor
+ 
+ Reading spfs.
+ Read complex spfs
+    ...okay
+ SHIFTING ORBITALS, spf_gridshift=           8           8           8
+     ..shifted orbitals.
+ Loaded            9  spfs from file 
+ Bin/spfs.bin.neon.df                                                           
+                                                                                
+                                           
+ Calling init_project                294912
+ GO GET_3DPOISSON. calling getinverse.
+ filling in....
+     ...filled.
+      ...getting potential...
+     ... done get_3dpoisson.
+    ....Called init_project.
+ Reading avector...
+ Read            1  A-vectors
+        Making a 1D FFT plan            1         192        6912
+        Making a 1D FFT plan            2         192         768
+ IN PROP: VECTOR NORM  (1.00000000000000,0.000000000000000E+000)
+          ENERGY  (-100.825960457331,-1.526632572666107E-014)
+T=          0.05000  Energy:  -0.1008259949E+03 -0.8058904166E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.29E-02  0.10E-05  AVECTOR   0.22E+05  0.10E+01
+T=          0.10000  Energy:  -0.1008259952E+03 -0.9456400296E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.50E-03  0.10E-05  AVECTOR   0.59E-05  0.10E+01
+T=          0.15000  Energy:  -0.1008259952E+03 -0.9666493135E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.19E-03  0.10E-05  AVECTOR   0.30E-06  0.10E+01
+T=          0.20000  Energy:  -0.1008259953E+03 -0.9716350667E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.12E-03  0.10E-05  AVECTOR   0.62E-07  0.10E+01
+T=          0.25000  Energy:  -0.1008259953E+03 -0.9734882084E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.90E-04  0.10E-05  AVECTOR   0.25E-07  0.10E+01
+T=          0.30000  Energy:  -0.1008259953E+03 -0.9744529488E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.75E-04  0.10E-05  AVECTOR   0.13E-07  0.10E+01
+T=          0.35000  Energy:  -0.1008259953E+03 -0.9750401626E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.64E-04  0.10E-05  AVECTOR   0.78E-08  0.10E+01
+T=          0.40000  Energy:  -0.1008259953E+03 -0.9754665452E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.57E-04  0.10E-05  AVECTOR   0.50E-08  0.10E+01
+T=          0.45000  Energy:  -0.1008259953E+03 -0.9757724680E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.51E-04  0.10E-05  AVECTOR   0.33E-08  0.10E+01
+T=          0.50000  Energy:  -0.1008259953E+03 -0.9759781381E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.46E-04  0.10E-05  AVECTOR   0.23E-08  0.10E+01
+T=          0.55000  Energy:  -0.1008259953E+03 -0.9761446405E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.41E-04  0.10E-05  AVECTOR   0.17E-08  0.10E+01
+T=          0.60000  Energy:  -0.1008259953E+03 -0.9762658592E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.37E-04  0.10E-05  AVECTOR   0.13E-08  0.10E+01
+T=          0.65000  Energy:  -0.1008259953E+03 -0.9764019697E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.34E-04  0.10E-05  AVECTOR   0.98E-09  0.10E+01
+T=          0.70000  Energy:  -0.1008259953E+03 -0.9764760039E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.31E-04  0.10E-05  AVECTOR   0.76E-09  0.10E+01
+T=          0.75000  Energy:  -0.1008259953E+03 -0.9765658144E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.28E-04  0.10E-05  AVECTOR   0.60E-09  0.10E+01
+T=          0.80000  Energy:  -0.1008259953E+03 -0.9765944320E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.26E-04  0.10E-05  AVECTOR   0.50E-09  0.10E+01
+T=          0.85000  Energy:  -0.1008259953E+03 -0.9766337718E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.24E-04  0.10E-05  AVECTOR   0.40E-09  0.10E+01
+T=          0.90000  Energy:  -0.1008259953E+03 -0.9766911967E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.22E-04  0.10E-05  AVECTOR   0.33E-09  0.10E+01
+T=          0.95000  Energy:  -0.1008259953E+03 -0.9767339377E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.20E-04  0.10E-05  AVECTOR   0.28E-09  0.10E+01
+T=          1.00000  Energy:  -0.1008259953E+03 -0.9767418042E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.18E-04  0.10E-05  AVECTOR   0.23E-09  0.10E+01
+T=          1.05000  Energy:  -0.1008259953E+03 -0.9767731438E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.17E-04  0.10E-05  AVECTOR   0.20E-09  0.10E+01
+T=          1.10000  Energy:  -0.1008259953E+03 -0.9767921109E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.16E-04  0.10E-05  AVECTOR   0.17E-09  0.10E+01
+T=          1.15000  Energy:  -0.1008259953E+03 -0.9768008981E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.15E-04  0.10E-05  AVECTOR   0.15E-09  0.10E+01
+T=          1.20000  Energy:  -0.1008259953E+03 -0.9768251301E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.14E-04  0.10E-05  AVECTOR   0.13E-09  0.10E+01
+T=          1.25000  Energy:  -0.1008259953E+03 -0.9768267001E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.13E-04  0.10E-05  AVECTOR   0.12E-09  0.10E+01
+T=          1.30000  Energy:  -0.1008259953E+03 -0.9768434331E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.12E-04  0.10E-05  AVECTOR   0.99E-10  0.10E+01
+T=          1.35000  Energy:  -0.1008259953E+03 -0.9768366668E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.11E-04  0.10E-05  AVECTOR   0.80E-10  0.10E+01
+T=          1.40000  Energy:  -0.1008259953E+03 -0.9768495308E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.11E-04  0.10E-05  AVECTOR   0.82E-10  0.10E+01
+T=          1.45000  Energy:  -0.1008259953E+03 -0.9768641177E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.10E-04  0.10E-05  AVECTOR   0.66E-10  0.10E+01
+T=          1.50000  Energy:  -0.1008259953E+03 -0.9768669794E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.94E-05  0.10E-05  AVECTOR   0.60E-10  0.10E+01
+T=          1.55000  Energy:  -0.1008259953E+03 -0.9768828073E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.89E-05  0.10E-05  AVECTOR   0.53E-10  0.10E+01
+T=          1.60000  Energy:  -0.1008259953E+03 -0.9768699253E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.84E-05  0.10E-05  AVECTOR   0.48E-10  0.10E+01
+T=          1.65000  Energy:  -0.1008259953E+03 -0.9768844098E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.79E-05  0.10E-05  AVECTOR   0.44E-10  0.10E+01
+T=          1.70000  Energy:  -0.1008259953E+03 -0.9768791431E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.75E-05  0.10E-05  AVECTOR   0.40E-10  0.10E+01
+T=          1.75000  Energy:  -0.1008259953E+03 -0.9768879702E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.71E-05  0.10E-05  AVECTOR   0.31E-10  0.10E+01
+T=          1.80000  Energy:  -0.1008259953E+03 -0.9769050081E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.67E-05  0.10E-05  AVECTOR   0.27E-10  0.10E+01
+T=          1.85000  Energy:  -0.1008259953E+03 -0.9769149318E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.64E-05  0.10E-05  AVECTOR   0.32E-10  0.10E+01
+T=          1.90000  Energy:  -0.1008259953E+03 -0.9768901164E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.61E-05  0.10E-05  AVECTOR   0.25E-10  0.10E+01
+T=          1.95000  Energy:  -0.1008259953E+03 -0.9768966667E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.58E-05  0.10E-05  AVECTOR   0.22E-10  0.10E+01
+T=          2.00000  Energy:  -0.1008259953E+03 -0.9768943331E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.55E-05  0.10E-05  AVECTOR   0.23E-10  0.10E+01
+T=          2.05000  Energy:  -0.1008259953E+03 -0.9769017425E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.52E-05  0.10E-05  AVECTOR   0.14E-10  0.10E+01
+T=          2.10000  Energy:  -0.1008259953E+03 -0.9769046303E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.50E-05  0.10E-05  AVECTOR   0.16E-10  0.10E+01
+T=          2.15000  Energy:  -0.1008259953E+03 -0.9769102347E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.47E-05  0.10E-05  AVECTOR   0.18E-10  0.10E+01
+T=          2.20000  Energy:  -0.1008259953E+03 -0.9769115921E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.45E-05  0.10E-05  AVECTOR   0.14E-10  0.10E+01
+T=          2.25000  Energy:  -0.1008259953E+03 -0.9769140634E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.43E-05  0.10E-05  AVECTOR   0.16E-10  0.10E+01
+T=          2.30000  Energy:  -0.1008259953E+03 -0.9769195702E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.41E-05  0.10E-05  AVECTOR   0.11E-10  0.10E+01
+T=          2.35000  Energy:  -0.1008259953E+03 -0.9769094064E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.39E-05  0.10E-05  AVECTOR   0.91E-11  0.10E+01
+T=          2.40000  Energy:  -0.1008259953E+03 -0.9769029421E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.37E-05  0.10E-05  AVECTOR   0.74E-11  0.10E+01
+T=          2.45000  Energy:  -0.1008259953E+03 -0.9769130280E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.36E-05  0.10E-05  AVECTOR   0.11E-10  0.10E+01
+T=          2.50000  Energy:  -0.1008259953E+03 -0.9769043571E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.34E-05  0.10E-05  AVECTOR   0.71E-11  0.10E+01
+T=          2.55000  Energy:  -0.1008259953E+03 -0.9769040773E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.32E-05  0.10E-05  AVECTOR   0.31E-11  0.10E+01
+T=          2.60000  Energy:  -0.1008259953E+03 -0.9769027634E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.31E-05  0.10E-05  AVECTOR   0.88E-11  0.10E+01
+T=          2.65000  Energy:  -0.1008259953E+03 -0.9768985956E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.30E-05  0.10E-05  AVECTOR   0.91E-11  0.10E+01
+T=          2.70000  Energy:  -0.1008259953E+03 -0.9769157486E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.28E-05  0.10E-05  AVECTOR   0.92E-12  0.10E+01
+T=          2.75000  Energy:  -0.1008259953E+03 -0.9769105922E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.27E-05  0.10E-05  AVECTOR   0.11E-10  0.10E+01
+T=          2.80000  Energy:  -0.1008259953E+03 -0.9769060922E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.26E-05  0.10E-05  AVECTOR   0.43E-11  0.10E+01
+T=          2.85000  Energy:  -0.1008259953E+03 -0.9769164817E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.25E-05  0.10E-05  AVECTOR   0.77E-11  0.10E+01
+T=          2.90000  Energy:  -0.1008259953E+03 -0.9769068029E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.24E-05  0.10E-05  AVECTOR   0.23E-11  0.10E+01
+T=          2.95000  Energy:  -0.1008259953E+03 -0.9769177992E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.23E-05  0.10E-05  AVECTOR   0.31E-11  0.10E+01
+T=          3.00000  Energy:  -0.1008259953E+03 -0.9768959562E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.22E-05  0.10E-05  AVECTOR   0.57E-11  0.10E+01
+T=          3.05000  Energy:  -0.1008259953E+03 -0.9769084233E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.21E-05  0.10E-05  AVECTOR   0.29E-11  0.10E+01
+T=          3.10000  Energy:  -0.1008259953E+03 -0.9769042272E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.20E-05  0.10E-05  AVECTOR   0.28E-11  0.10E+01
+T=          3.15000  Energy:  -0.1008259953E+03 -0.9769018757E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.19E-05  0.10E-05  AVECTOR   0.74E-11  0.10E+01
+T=          3.20000  Energy:  -0.1008259953E+03 -0.9769077755E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.18E-05  0.10E-05  AVECTOR   0.58E-12  0.10E+01
+T=          3.25000  Energy:  -0.1008259953E+03 -0.9769097275E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.17E-05  0.10E-05  AVECTOR   0.85E-12  0.10E+01
+T=          3.30000  Energy:  -0.1008259953E+03 -0.9769161635E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.17E-05  0.10E-05  AVECTOR   0.23E-11  0.10E+01
+T=          3.35000  Energy:  -0.1008259953E+03 -0.9768969392E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.16E-05  0.10E-05  AVECTOR   0.29E-11  0.10E+01
+T=          3.40000  Energy:  -0.1008259953E+03 -0.9769099694E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.15E-05  0.10E-05  AVECTOR   0.63E-12  0.10E+01
+T=          3.45000  Energy:  -0.1008259953E+03 -0.9769133716E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.15E-05  0.10E-05  AVECTOR   0.31E-11  0.10E+01
+T=          3.50000  Energy:  -0.1008259953E+03 -0.9769004550E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.14E-05  0.10E-05  AVECTOR   0.26E-11  0.10E+01
+T=          3.55000  Energy:  -0.1008259953E+03 -0.9769121416E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.13E-05  0.10E-05  AVECTOR   0.26E-11  0.10E+01
+T=          3.60000  Energy:  -0.1008259953E+03 -0.9769230643E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.13E-05  0.10E-05  AVECTOR   0.68E-11  0.10E+01
+T=          3.65000  Energy:  -0.1008259953E+03 -0.9769073871E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.12E-05  0.10E-05  AVECTOR   0.65E-12  0.10E+01
+T=          3.70000  Energy:  -0.1008259953E+03 -0.9769189558E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.12E-05  0.10E-05  AVECTOR   0.20E-11  0.10E+01
+T=          3.75000  Energy:  -0.1008259953E+03 -0.9769196318E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.11E-05  0.10E-05  AVECTOR   0.20E-11  0.10E+01
+T=          3.80000  Energy:  -0.1008259953E+03 -0.9769062718E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.11E-05  0.10E-05  AVECTOR   0.27E-12  0.10E+01
+T=          3.85000  Energy:  -0.1008259953E+03 -0.9769162527E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.10E-05  0.10E-05  AVECTOR   0.31E-11  0.10E+01
+T=          3.90000  Energy:  -0.1008259953E+03 -0.9769191252E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.10E-05  0.10E-05  AVECTOR   0.57E-12  0.10E+01
+T=          3.95000  Energy:  -0.1008259953E+03 -0.9769072301E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.96E-06  0.10E-05  AVECTOR   0.37E-12  0.10E+01
+ 
+    ***  CONVERGED *** 
+ 
+       -100.825995253954     -0.000000000977      0.000000000000      0.000000000000
+    ***   
+ 
+    ...done prop...
+    ...saving vector...
+    ...saved vectors!
+    ...end prop...
+    ...cleanup...
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+    ...END MCTDHF
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+Wed May  6 20:03:36 PDT 2015
+ MCTDHF STOP!

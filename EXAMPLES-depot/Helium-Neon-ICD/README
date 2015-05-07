@@ -1,0 +1,38 @@
+
+Lithium - Neon interatomic coulombic decay calculation
+
+  1) ./Helium0.Bat
+     ./Helium1.Bat
+     ./Helium.Bat
+     ./ShiftHelium.Bat
+
+ 2A) ./Neon.Bat
+     ./ShiftNeon.Bat
+
+ 3A) ./Combine.Bat
+
+ 4A) ./ICD.Bat
+
+ 5A) ./Flux.Bat TIME
+
+
+ 2B) ./Neon.Bat
+     ./Neon.DF.Bat
+     ./ShiftNeon.DF.Bat  
+
+ 3B) ./Combine.DF.Bat
+
+ 4B) ./ICD.DF.Bat
+
+ 5B) ./Flux.DF.Bat TIME
+
+where TIME is the final time for the Fourier transform.  Step (5) may be
+run during step (4) as long as TIME is less than or equal to the last 
+time that step (4) has saved to file.  To plot
+
+ 6A) ./gnu.autocorr
+     ./gnu.xsec
+     ./gnu.overlaps
+     ./gnu.dipoleft
+     ./gnu.dipole
+

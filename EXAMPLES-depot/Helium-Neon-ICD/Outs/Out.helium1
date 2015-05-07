@@ -1,0 +1,383 @@
+Wed May  6 15:23:14 PDT 2015
+Wed May  6 15:23:14 PDT 2015
+Wed May  6 15:23:14 PDT 2015
+Wed May  6 15:23:14 PDT 2015
+Wed May  6 15:23:14 PDT 2015
+Wed May  6 15:23:14 PDT 2015
+Wed May  6 15:23:14 PDT 2015
+Wed May  6 15:23:14 PDT 2015
+Wed May  6 15:23:14 PDT 2015
+Wed May  6 15:23:14 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:14 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:13 PDT 2015
+Wed May  6 15:23:14 PDT 2015
+Wed May  6 15:23:14 PDT 2015
+Wed May  6 15:23:14 PDT 2015
+Wed May  6 15:23:14 PDT 2015
+Wed May  6 15:23:14 PDT 2015
+  ****************************************************************************
+  **********************  BEGIN LBNL-AMO-MCTDHF ******************************
+  ****************************************************************************
+ 
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory
+      D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, 
+      B Abeln, X Li . . .
+                              VERSION 1 
+        Copyright 2015 the regents of the University of California
+ 
+                This is CHMCTDH: HERM-normed ECS version.
+ 
+                PROCESSOR            1  OF           64
+ 
+ Inpfile is Input.Inp.Helium1  
+ 
+  *************************  COMMAND LINE OPTIONS  ***************************
+ 
+ Reading 
+ Input.Inp.Helium1                                                              
+                                                                                
+                                           
+  ****************************************************************************
+ 
+ Enforcing CMF defaults for Verlet or EXPO.
+ 
+  ****************************************************************************
+ *****************************************************************************
+ 
+ Number of states in propagation=           1
+ 
+  Parameters: electronic
+ 
+                    Number of electrons     2
+ Nuclear KE flag (nonuc_checkflag):         1
+ 
+ ********  SINC DVR PARAMS ******** 
+ griddim,spacing           3  0.400000000000000     
+ numpoints          64          64           1
+ numcenters           1
+ nuccharge   2.00000000000000     
+ centershift  0.500000000000000       0.500000000000000     
+  0.500000000000000     
+ orblanorder,orblanthresh         300  0.100000000000000     
+ notwoflag,coulflag           0           1
+ toepflag,nonucrepflag           1           0
+ toothnbig, toothnsmall         240          40
+ orbparflag T
+ zke_paropt           1
+ fft_mpi_inplaceflag           1
+ fft_batchdim           2
+ fft_circbatchdim           2
+   -----  
+ NBOX            1           1          64
+ totpoints        4096
+ **********************************
+ 
+ ************************   Parameters: config/spf    ************************  
+  
+ 
+ Doing full CI: numshells=1.  Shells:
+ Shell            1
+   1a    1b    2a    2b    3a    3b    4a    4b    5a    5b    6a    6b 
+   7a    7b    8a    8b    9a    9b   10a   10b   11a   11b   12a   12b 
+  13a   13b   14a   14b 
+  Final shell occupancy level vexcite=          99
+ 
+    Number of unfrozen spfs:     14
+    Number of frozen spfs:        0
+            Spfs start in m=     0   0   0   0   0   0   0   0   0   0   0   0   0   0
+ 
+ Configurations will be restricted to spin projection           0 /2
+  Configurations will be restricted to spin            0
+ 
+ ***********************    Initial state      ***********************   
+ 
+ Spfs will be loaded from files 
+ 
+ Sfp Quad flag is OFF.
+ Improvednatflag is ON.
+ 
+ Avector Quad flag is OFF.
+ Avector will be loaded from files.  Number of files=            1
+ 
+ ***********************    Parameters: propagation    ***********************  
+  
+ 
+  PAR_TIMESTEP IS   0.100000000000000       LITTLESTEPS IS            1
+ 
+ Spfs will be held CONSTANT. (except for constraint)
+ 
+ Calculation will be stopped with threshold   1.000000000000000E-002 
+ ; timestep is   0.100000000000000     
+ 
+ 
+ *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   ***
+ ****  
+ 
+     Using nonsparse configuration routines.
+  Using EXPONENTIAL integration.
+     Expotol    =  1.000000000000000E-009
+     Maxexpodim=         200
+     Jacprojorth=           0
+     Jacsymflag=           0
+     Jacunitflag=           0
+ 
+ Density matrix regularized with denreg= 0.100E-29
+ 
+ 
+ ****************************************************************************
+ 
+ Autosteps is           10  Autosize is        40001  Numpropsteps is 
+      400000
+ Fluxsteps is            1  Fluxtimestep is   0.100000000000000     
+ 
+ *****************************************************************************
+ 
+ 
+ 
+ Go fast_newconfiglist
+ UPPER/LOWER
+           1          14
+           1          14
+ 
+ 
+ FASTNEWCONFIG: NUMBER OF CONFIGURATIONS          196
+ 
+ NUMSPINBLOCKS, MAXSPINBLOCKSIZE FASTCONFIG         105           2
+ Go fast_newconfiglist, getting configurations
+      ...Done fast_newconfiglist
+ 
+ BOTWALKS /TOPWALKS         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+           1         196         196
+ 
+ Counting walks. Singles
+ Counting walks. Doubles
+ 
+ Maximum number of
+            single walks=           28
+            double walks=          196
+   TOTAL walks:     2809856 maxdoublewalks*numconfig       38416
+ 
+ Allocating singlewalks
+ Allocating doublewalks
+      ..done walkalloc.
+ Calculating walks. Singles
+ No savewalks.BIN found. 
+ Calculating walks. Doubles
+ Go spinwalks. 
+ Doing spin projector.
+ Maximum number of spin walks=            1
+ Avg number of spin walks=   0.928571428571429     
+ Calculating spin walks.
+ Numspinsets is          105   maxspinset size is            2
+ Getting SPARSE spinset projector.  Numspinsets is          105 
+  maxspinsetsize is            2
+ Getting spin set projectors...
+ ...done.  Eliminated            0  sets with total rank            0
+ Number of spin sets is now          105
+ Total # of spinvects with S^2 =   0.000000000000000E+000  is          105 
+  out of          196
+ TOTAL (all processors) rank         105  out of          196
+      Spin DF rank is          105    all processors         6720
+    This proc:  spinstart :            1
+ 
+ Reading spfs.
+ Read complex spfs
+    ...okay
+ Loaded           14  spfs from file 
+ Bin/spfs.bin.helium0                                                           
+                                                                                
+                                           
+ Calling init_project                 65536
+ GO GET_3DPOISSON. calling getinverse.
+ filling in....
+     ...filled.
+      ...getting potential...
+     ... done get_3dpoisson.
+    ....Called init_project.
+ Reading avector...
+ Read            1  A-vectors
+        Making a 1D FFT plan            1         128       50176
+        Making a 1D FFT plan            2         128         256
+ IN PROP: VECTOR NORM  (1.00000000000000,0.000000000000000E+000)
+          ENERGY  (-0.772410243643567,5.111896150120617E-018)
+ REPLACING SPFS - DENMAT EIGS
+         0.1422277092E+01
+         0.1900094320E+00
+         0.1898830268E+00
+         0.1896511945E+00
+         0.3650388669E-02
+         0.1180641493E-02
+         0.1170230119E-02
+         0.1166482427E-02
+         0.2477348471E-03
+         0.1543181573E-03
+         0.1528993288E-03
+         0.1526101744E-03
+         0.1521844991E-03
+         0.1517647220E-03
+ 
+T=          0.10000  Energy:  -0.7724102436E+00  0.8985797409E-17    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.34E+01  0.10E-01  AVECTOR   0.10E+05  0.10E+01
+             Orbitals Converged, Avector not necessarily converged 
+ REPLACING SPFS - DENMAT EIGS
+         0.1422277092E+01
+         0.1900094320E+00
+         0.1898830268E+00
+         0.1896511945E+00
+         0.3650388669E-02
+         0.1180641493E-02
+         0.1170230119E-02
+         0.1166482427E-02
+         0.2477348471E-03
+         0.1543181573E-03
+         0.1528993288E-03
+         0.1526101744E-03
+         0.1521844991E-03
+         0.1517647220E-03
+ 
+T=          0.20100  Energy:  -0.7724102436E+00 -0.1152093751E-16    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.34E+01  0.10E-01  AVECTOR   0.55E-14  0.10E+01
+ 
+    ***  CONVERGED *** 
+ 
+         -0.772410243644     -0.000000000000      0.000000000000     -0.000000000000
+    ***   
+ 
+    ...done prop...
+    ...saving vector...
+    ...saved vectors!
+    ...end prop...
+    ...cleanup...
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+    ...END MCTDHF
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+Wed May  6 15:24:32 PDT 2015
+ MCTDHF STOP!

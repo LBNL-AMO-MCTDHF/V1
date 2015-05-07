@@ -1,0 +1,382 @@
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+Wed May  6 16:04:26 PDT 2015
+  ****************************************************************************
+  **********************  BEGIN LBNL-AMO-MCTDHF ******************************
+  ****************************************************************************
+ 
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory
+      D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, 
+      B Abeln, X Li . . .
+                              VERSION 1 
+        Copyright 2015 the regents of the University of California
+ 
+                This is CHMCTDH: HERM-normed ECS version.
+ 
+                PROCESSOR            1  OF           48
+ 
+ Inpfile is Input.Inp.ShiftHelium  
+ 
+  *************************  COMMAND LINE OPTIONS  ***************************
+ 
+ Reading 
+ Input.Inp.ShiftHelium                                                          
+                                                                                
+                                           
+  ****************************************************************************
+ 
+ Enforcing CMF defaults for Verlet or EXPO.
+ 
+  ****************************************************************************
+ *****************************************************************************
+ 
+ Number of states in propagation=           1
+ 
+  Parameters: electronic
+ 
+                    Number of electrons     2
+ Nuclear KE flag (nonuc_checkflag):         1
+ 
+ ********  SINC DVR PARAMS ******** 
+ griddim,spacing           3  0.400000000000000     
+ numpoints          96          96           2
+ numcenters           1
+ nuccharge   2.00000000000000     
+ centershift  -7.50000000000000       -7.50000000000000     
+  -7.50000000000000     
+ orblanorder,orblanthresh         300  0.100000000000000     
+ notwoflag,coulflag           0           1
+ toepflag,nonucrepflag           1           0
+ toothnbig, toothnsmall         240          40
+ orbparflag T
+ zke_paropt           1
+ fft_mpi_inplaceflag           1
+ fft_batchdim           1
+ fft_circbatchdim           1
+   -----  
+ NBOX            1           1          48
+ totpoints       18432
+ **********************************
+ 
+ ************************   Parameters: config/spf    ************************  
+  
+ 
+ Doing full CI: numshells=1.  Shells:
+ Shell            1
+   1a    1b    2a    2b    3a    3b    4a    4b 
+  Final shell occupancy level vexcite=          99
+ 
+    Number of unfrozen spfs:      4
+    Number of frozen spfs:        0
+            Spfs start in m=     0   0   0   0
+ 
+ Configurations will be restricted to spin projection           0 /2
+  Configurations will be restricted to spin            0
+ 
+ ***********************    Initial state      ***********************   
+ 
+ Spfs will be loaded from files 
+ 
+ Spf Quad flag is ON (quadflag>1).  Start time   -1.00000000000000     
+ Improvednatflag is OFF.
+ 
+ Avector Quad flag is ON (quadflag=1,3).
+ Avector will be loaded from files.  Number of files=            1
+ 
+ ***********************    Parameters: propagation    ***********************  
+  
+ 
+  PAR_TIMESTEP IS    10.0000000000000       LITTLESTEPS IS            1
+ 
+ Calculation will be stopped with threshold   1.000000000000000E-006 
+ ; timestep is    10.0000000000000     
+ 
+ 
+ *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   ***
+ ****  
+ 
+     Using nonsparse configuration routines.
+  Using EXPONENTIAL integration.
+     Expotol    =  1.000000000000000E-009
+     Maxexpodim=         200
+     Jacprojorth=           0
+     Jacsymflag=           0
+     Jacunitflag=           0
+ 
+ Density matrix regularized with denreg= 0.100E-29
+ 
+ 
+ ****************************************************************************
+ 
+ Autosteps is            1  Autosize is         4001  Numpropsteps is 
+        4000
+ Fluxsteps is            1  Fluxtimestep is    10.0000000000000     
+ 
+ *****************************************************************************
+ 
+ 
+ 
+ Go fast_newconfiglist
+ UPPER/LOWER
+           1           4
+           1           4
+ 
+ 
+ FASTNEWCONFIG: NUMBER OF CONFIGURATIONS           16
+ 
+ NUMSPINBLOCKS, MAXSPINBLOCKSIZE FASTCONFIG          10           2
+ Go fast_newconfiglist, getting configurations
+      ...Done fast_newconfiglist
+ 
+ BOTWALKS /TOPWALKS          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+           1          16          16
+ 
+ Counting walks. Singles
+ Counting walks. Doubles
+ 
+ Maximum number of
+            single walks=            8
+            double walks=           16
+   TOTAL walks:       18432 maxdoublewalks*numconfig         256
+ 
+ Allocating singlewalks
+ Allocating doublewalks
+      ..done walkalloc.
+ Calculating walks. Singles
+ No savewalks.BIN found. 
+ Calculating walks. Doubles
+ Go spinwalks. 
+ Doing spin projector.
+ Maximum number of spin walks=            1
+ Avg number of spin walks=   0.750000000000000     
+ Calculating spin walks.
+ Numspinsets is           10   maxspinset size is            2
+ Getting SPARSE spinset projector.  Numspinsets is           10 
+  maxspinsetsize is            2
+ Getting spin set projectors...
+ ...done.  Eliminated            0  sets with total rank            0
+ Number of spin sets is now           10
+ Total # of spinvects with S^2 =   0.000000000000000E+000  is           10 
+  out of           16
+ TOTAL (all processors) rank          10  out of           16
+      Spin DF rank is           10    all processors          480
+    This proc:  spinstart :            1
+ 
+ Reading spfs.
+ Read complex spfs
+    ...okay
+ SHIFTING ORBITALS, spf_gridshift=          -8          -8          -8
+     ..shifted orbitals.
+ Loaded            4  spfs from file 
+ Bin/spfs.bin.helium                                                            
+                                                                                
+                                           
+ Calling init_project                294912
+ GO GET_3DPOISSON. calling getinverse.
+ filling in....
+     ...filled.
+      ...getting potential...
+     ... done get_3dpoisson.
+    ....Called init_project.
+ Reading avector...
+ Read            1  A-vectors
+        Making a 1D FFT plan            1         192        3072
+        Making a 1D FFT plan            2         192         768
+ IN PROP: VECTOR NORM  (1.00000000000000,0.000000000000000E+000)
+          ENERGY  (-0.772313263730475,-8.987663131599400E-009)
+ setting jacsymflag=1 for orbital quad
+    Quad orbitals: Deviation is       7.960201559773339E-002
+                   Orthog error is    4.440892098500626E-016
+         DGSOLVE - restarts            0 iters          11
+    Quad orbitals: Deviation is       3.639944979270416E-003
+                   Orthog error is    8.591068053145653E-016
+     --> Converged newton
+   NONSPARSEQUAD: DEV  6.637988171486799E-006
+   NONSPARSEQUAD: DEV  1.328021851734484E-014
+T=         10.00000  Energy:  -0.7725702559E+00 -0.9202962868E-08    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.36E-02  0.10E-05  AVECTOR   0.10E+03  0.10E+01
+    Quad orbitals: Deviation is       3.639951483085577E-003
+                   Orthog error is    8.473409486550036E-016
+         DGSOLVE - restarts            0 iters          42
+    Quad orbitals: Deviation is       1.771589654032653E-004
+                   Orthog error is    1.776356839400250E-015
+     --> Converged newton
+   NONSPARSEQUAD: DEV  7.772770577832149E-006
+   NONSPARSEQUAD: DEV  1.433772741551054E-014
+T=         20.00000  Energy:  -0.7725848483E+00 -0.3584996752E-07    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.18E-03  0.10E-05  AVECTOR   0.15E-05  0.10E+01
+    Quad orbitals: Deviation is       1.765774324322673E-004
+                   Orthog error is    1.554312234475219E-015
+         DGSOLVE - restarts            0 iters          53
+    Quad orbitals: Deviation is       8.601420917749029E-006
+                   Orthog error is    8.881784197001252E-016
+     --> Converged newton
+   NONSPARSEQUAD: DEV  4.254230857019469E-006
+   NONSPARSEQUAD: DEV  4.289871351707236E-015
+T=         30.00000  Energy:  -0.7725848913E+00 -0.3991203135E-07    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.24E-04  0.10E-05  AVECTOR   0.43E-08  0.10E+01
+    Quad orbitals: Deviation is       2.393459661007812E-005
+                   Orthog error is    1.110223024625157E-015
+         DGSOLVE - restarts            0 iters          52
+    Quad orbitals: Deviation is       1.173474593451349E-006
+                   Orthog error is    1.294824376059433E-015
+     --> Converged newton
+   NONSPARSEQUAD: DEV  1.534957590505745E-006
+   NONSPARSEQUAD: DEV  1.282793221107568E-016
+T=         40.00000  Energy:  -0.7725848916E+00 -0.3986955320E-07    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.41E-05  0.10E-05  AVECTOR   0.31E-10  0.10E+01
+    Quad orbitals: Deviation is       4.078042088749334E-006
+                   Orthog error is    1.388628535127055E-015
+         DGSOLVE - restarts            0 iters          50
+    Quad orbitals: Deviation is       1.889880041801993E-007
+                   Orthog error is    8.881784197001252E-016
+     --> Converged newton
+   NONSPARSEQUAD: DEV  1.747083224375843E-007
+   NONSPARSEQUAD: DEV  4.060290982301724E-016
+T=         50.00000  Energy:  -0.7725848916E+00 -0.3987032944E-07    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.80E-06  0.10E-05  AVECTOR   0.47E-12  0.10E+01
+ 
+    ***  CONVERGED *** 
+ 
+         -0.772584891576     -0.000000039870     -0.000000000005     -0.000000000001
+    ***   
+ 
+    ...done prop...
+    ...saving vector...
+    ...saved vectors!
+    ...end prop...
+    ...cleanup...
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+Wed May  6 16:06:24 PDT 2015
+    ...END MCTDHF
+ MCTDHF STOP!
