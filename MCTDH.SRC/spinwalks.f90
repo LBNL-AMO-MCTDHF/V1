@@ -61,13 +61,23 @@ subroutine spinwalks()
        myiostat
   logical :: allowedconfig !! extraconfig
 
+  spinwalk=0;     spinwalkdirphase=0
+
   if (walksonfile.ne.0) then
 
-     OFLWR "Reading spinwalks"; CFL
+     if (walksinturn) then
+        call beforebarrier()
+     endif
 
-     spinwalk=0; spinwalkdirphase=0
-
+     OFLWR "   ...reading spinwalks..."; CFL
      read(751,iostat=myiostat) spinwalk(:,botwalk:topwalk),spinwalkdirphase(:,botwalk:topwalk) 
+     OFLWR "   ...done reading spinwalks..."; CFL
+
+     if (walksinturn) then
+        call afterbarrier()
+     endif
+
+
      call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "Read error for savewalks.BIN!  Delete it to recompute walks. 662", myiostat; CFLST
@@ -76,8 +86,6 @@ subroutine spinwalks()
   else   !WALKSONFILE
 
      OFLWR "Calculating spin walks.";  call closefile()
-
-     spinwalk=0;     spinwalkdirphase=0
 
      do config1=botwalk,topwalk
 
@@ -128,8 +136,10 @@ subroutine spinwalks()
         if (walksinturn) then
            call beforebarrier()
         endif
-        OFLWR " ...writing spinwalks..."; CFL
+        OFLWR "   ...writing spinwalks..."; CFL
         write(751) spinwalk(:,botwalk:topwalk),spinwalkdirphase(:,botwalk:topwalk)  
+        OFLWR "   ...ok, wrote spinwalks..."; CFL
+
         if (walksinturn) then
            call afterbarrier()
         endif
@@ -254,18 +264,32 @@ subroutine getnumspinwalks()
   real*8 :: avgspinwalks
   logical :: allowedconfig !! extraconfig
 
-  OFLWR "Doing spin projector.";  CFL
+
 
 
   if (walksonfile.ne.0) then
      numunpaired=0; msvalue=0; numspinwalks=0; unpaired=0;
 
+     if (walksinturn) then
+        call beforebarrier()
+     endif
+
+     OFLWR "   ...reading spin projector....";  CFL
      read(751,iostat=myiostat)  numunpaired(botwalk:topwalk), msvalue(botwalk:topwalk), numspinwalks(botwalk:topwalk), unpaired(:,botwalk:topwalk)
+     OFLWR "   ...done reading spin projector....";  CFL
+
+     if (walksinturn) then
+        call afterbarrier()
+     endif
+
      call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "Read error for savewalks.BIN!  Delete it to recompute walks. 887", myiostat; CFLST
      endif
   else
+
+     OFLWR "Doing spin projector.";  CFL
+
      do config1=botwalk,topwalk
         unpaired(:,config1)=0;    numunpaired(config1)=0;   msvalue(config1)=0
         thisconfig=configlist(:,config1)
@@ -319,9 +343,12 @@ subroutine getnumspinwalks()
         if (walksinturn) then
            call beforebarrier()
         endif
-        OFLWR " ...writing spin info..."; CFL
+
+        OFLWR "   ...writing spin info..."; CFL
         write(751)  numunpaired(botwalk:topwalk), msvalue(botwalk:topwalk), numspinwalks(botwalk:topwalk), &
              unpaired(:,botwalk:topwalk)
+        OFLWR "   ...ok, wrote spin info..."; CFL
+
         if (walksinturn) then
            call afterbarrier()
         endif

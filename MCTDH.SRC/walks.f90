@@ -261,6 +261,10 @@ subroutine walks()
 
   if (walksonfile.ne.0) then
 
+     if (walksinturn) then 
+        call beforebarrier()
+     endif
+
      OFLWR "Reading walks. Singles";  CFL
 
      read(751,iostat=myiostat) &
@@ -277,6 +281,11 @@ subroutine walks()
           doublediag
 
      OFLWR "   ..read single walks this processor...";  CFL
+
+     if (walksinturn) then 
+        call afterbarrier()
+     endif
+
      call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "Read error for savewalks.BIN!  Delete it to recompute walks!!", myiostat; CFLST
@@ -588,7 +597,18 @@ subroutine getnumwalks()
         OFLWR "error savewalks ", myiostat; CFLST
      endif
 
+     if (walksinturn) then 
+        call beforebarrier()
+     endif
+
+     OFLWR "  ...reading walks...."; CFL
      read(751,iostat=myiostat) inprocs, innumconfig
+     OFLWR "  ...ok reading walks...."; CFL
+
+     if (walksinturn) then 
+        call afterbarrier()
+     endif
+
      call mympiimax(myiostat)
 
      if (myiostat==0) then
@@ -601,7 +621,17 @@ subroutine getnumwalks()
         OFLWR "savewalks.BIN exists; reading walks, not computing.";        CFL
         walksonfile=1;        flag=0
      endif
+
+     if (walksinturn) then 
+        call beforebarrier()
+     endif
+
      read(751,iostat=myiostat) numsinglewalks,numdoublewalks
+
+     if (walksinturn) then 
+        call afterbarrier()
+     endif
+
      call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "error savewalks xx", myiostat; CFLST

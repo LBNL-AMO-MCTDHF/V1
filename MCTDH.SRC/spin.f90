@@ -321,7 +321,18 @@ subroutine configspin_matel()
 
   if (walksonfile.ne.0) then
 
+     if (walksinturn) then 
+        call beforebarrier()
+     endif
+     
+     OFLWR "   ...reading configspinmatel..."; CFL
      read(751,iostat=myiostat) configspinmatel
+     OFLWR "   ...ok, done reading configspinmatel..."; CFL
+
+     if (walksinturn) then 
+        call afterbarrier()
+     endif
+
      call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "Read error for savewalks.BIN!  Delete it to recompute walks. 662", myiostat;CFLST
@@ -348,8 +359,11 @@ subroutine configspin_matel()
         if (walksinturn) then
            call beforebarrier()
         endif
+
         OFLWR "   ...writing configspinmatel..."; CFL
         write(751) configspinmatel
+        OFLWR "   ...ok, done writing configspinmatel..."; CFL
+
         if (walksinturn) then
            call afterbarrier()
         endif
@@ -389,9 +403,17 @@ subroutine configspinset_projector()
 
   if (walksonfile.ne.0) then
 
-     OFLWR "Reading spin set projectors...";CFL
+     if (walksinturn) then
+        call beforebarrier()
+     endif
 
+     OFLWR "Reading spin set projectors...";CFL
      read(751,iostat=myiostat) numspinsets,maxspinsetsize,spinrank,spindfrank
+
+     if (walksinturn) then
+        call afterbarrier()
+     endif
+
      call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "Read error xx44 savewalks.BIN"; CFLST
@@ -400,7 +422,17 @@ subroutine configspinset_projector()
      allocate(spinsets(maxspinsetsize,numspinsets),spinsetprojector(numspinsets))
      spinsetsize=0;spinsets=0; spinsetrank=0
 
+     if (walksinturn) then
+        call beforebarrier()
+     endif
+     
+     OFLWR "   ...reading spinsets..."; CFL
      read(751,iostat=myiostat) spinsetsize(1:numspinsets),spinsetrank(1:numspinsets),spinsets(:,:)
+
+     if (walksinturn) then
+        call afterbarrier()
+     endif
+
      call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "Read error xx45 savewalks.BIN"; CFLST
@@ -411,7 +443,18 @@ subroutine configspinset_projector()
         allocate(spinsetprojector(iset)%vects(spinsetsize(iset), spinsetrank(iset)))
      enddo
 
+     if (walksinturn) then
+        call beforebarrier()
+     endif
+
+     OFLWR "   ...reading spin set projector ... "; CFL
      read(751,iostat=myiostat) (spinsetprojector(i)%mat,spinsetprojector(i)%vects,i=1,numspinsets)     
+     OFLWR "   ...ok, done reading spin set projector ..."; CFL
+
+     if (walksinturn) then
+        call afterbarrier()
+     endif
+
      call mympiimax(myiostat)
      if (myiostat.ne.0) then
         OFLWR "Read error setprojector savewalks.BIN"; CFLST
@@ -507,10 +550,13 @@ subroutine configspinset_projector()
         if (walksinturn) then
            call beforebarrier()
         endif
+
         OFLWR "   ...writing spinsets..."; CFL
         write(751) numspinsets,maxspinsetsize,spinrank,spindfrank
         write(751) spinsetsize(1:numspinsets),spinsetrank(1:numspinsets),spinsets(:,1:numspinsets)
         write(751) (spinsetprojector(i)%mat,spinsetprojector(i)%vects,i=1,numspinsets)
+        OFLWR "   ...ok, done writing spinsets..."; CFL
+
         if (walksinturn) then
            call afterbarrier()
         endif
