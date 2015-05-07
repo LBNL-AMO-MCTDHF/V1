@@ -379,31 +379,31 @@ subroutine getparams()
         read(buffer(9:len),*) eground
         write(mpifileptr, *) "Eground for autoft set to  ", eground, " by command line option."
      endif
-
+     
   enddo
   write(mpifileptr, *) " ****************************************************************************"     
   write(mpifileptr,*);  call closefile()
-
+  
 !  if (lioreg.lt.1d-13) then    !! really needs to be 1d-11 or greater for stability, at least dfcon
 !     lioreg=1d-13
 !  endif
 
-   if (improvedrelaxflag.ne.0.and.constraintflag.ne.0) then
-      if (constraintflag.eq.1) then
-         OFLWR "FOR DEN CONSTRAINT, USE IMPROVEDNATFLAG FOR RELAX, NO CONSTRAINTFLAG."; CFLST
-      else
-         OFLWR "FOR DF CONSTRAINT, USE REGULAR RELAXATION (NO IMPROVED) - GET WRONG ANSWER"; CFLST
-         OFLWR "FOR DF CONSTRAINT, USE REGULAR RELAXATION (NO IMPROVED) - GET WRONG ANSWER"; CFLST
-         OFLWR "FOR DF CONSTRAINT, USE REGULAR RELAXATION (NO IMPROVED) - GET WRONG ANSWER"; CFLST
-!!         OFLWR "TEMP CONTINUE!!!"
-      endif
-   endif
-
-   if ((sparseconfigflag.ne.0).and.(stopthresh.lt.lanthresh)) then
-      call openfile();      write(mpifileptr,*) "Enforcing lanthresh.le.stopthresh"
-      lanthresh=stopthresh
-      write(mpifileptr,*) "    --> lanthresh now  ", lanthresh;      call closefile()
-   endif
+  if (constraintflag > 2) then
+     OFLWR "Constraintflag not supported: ", constraintflag;     CFLST
+  endif
+  
+  if (improvedrelaxflag.ne.0.and.constraintflag.eq.1) then
+     OFLWR "FOR DEN CONSTRAINT, USE IMPROVEDNATFLAG FOR RELAX, NO CONSTRAINTFLAG."; CFLST
+  endif
+  if (improvedrelaxflag.ne.0.and.constraintflag.eq.2.and.improvedquadflag.ne.3.and.improvedquadflag.ne.1) then  
+     OFLWR "FOR DF CONSTRAINT, DO NOT DIAGONALIZE FOR A-VECTOR - GET WRONG ANSWER"; CFLST
+  endif
+  
+  if ((sparseconfigflag.ne.0).and.(stopthresh.lt.lanthresh)) then
+     OFLWR "Enforcing lanthresh.le.stopthresh"
+     lanthresh=stopthresh
+     write(mpifileptr,*) "    --> lanthresh now  ", lanthresh; CFL
+  endif
   if (intopt.eq.4) then
      if ((constraintflag.ne.0)) then
         OFLWR "Verlet not available with pulse nor constraint yet."; CFLST
@@ -434,9 +434,7 @@ subroutine getparams()
   if (spinwalkflag==0) then
      allspinproject=0
   endif
-  if (constraintflag > 2) then
-     OFLWR "Constraintflag not supported: ", constraintflag;     CFLST
-  endif
+
   if (numshells.lt.1) then
      OFLWR "Shell error ", numshells; CFLST
   endif
