@@ -11,50 +11,51 @@ subroutine save_vector(psi,afile,sfile)
   DATATYPE, allocatable :: parorbitals(:,:,:)
 
   if (myrank.ne.1.and.parorbsplit.ne.3) then
-     OFLWR "   --> rank 1 will save. "; CFL;     return
-  endif
-  if (parorbsplit.eq.3) then
-     if (myrank.eq.1) then
+     OFLWR "   --> rank 1 will save. "; CFL
+  else
+     if (parorbsplit.eq.3) then
+        if (myrank.eq.1) then
 !!$        OFLWR "allocating big orbitals for save!!"; CFL
-        allocate(parorbitals(spfsize,nprocs,nspf)); parorbitals(:,:,:)=0d0
+           allocate(parorbitals(spfsize,nprocs,nspf)); parorbitals(:,:,:)=0d0
 !!$        OFLWR "   ...ok"; CFL
-     else
-        allocate(parorbitals(1,1,nspf))
-     endif
-
-     qqblocks(:)=spfsize
-
-     do ispf=1,nspf
+        else
+           allocate(parorbitals(1,1,nspf))
+        endif
+        
+        qqblocks(:)=spfsize
+        
+        do ispf=1,nspf
 #ifdef REALGO
-        call mygatherv_real(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,:,ispf), qqblocks(:),.false.)
+           call mygatherv_real(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,:,ispf), qqblocks(:),.false.)
 #else
-        call mygatherv_complex(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,:,ispf), qqblocks(:),.false.)
+           call mygatherv_complex(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,:,ispf), qqblocks(:),.false.)
 #endif
-     enddo
-  endif
-
-  if (myrank.eq.1) then
-     open(999,file=afile, status="unknown", form="unformatted")
-     call avector_header_write(999,mcscfnum)
+        enddo
+     endif
      
-     open(998,file=sfile, status="unknown", form="unformatted")
-     call spf_header_write(998,nspf+numfrozen)
+     if (myrank.eq.1) then
+        open(999,file=afile, status="unknown", form="unformatted")
+        call avector_header_write(999,mcscfnum)
+        
+        open(998,file=sfile, status="unknown", form="unformatted")
+        call spf_header_write(998,nspf+numfrozen)
+        
+        if (parorbsplit.eq.3) then
+           call write_spf(998,parorbitals(:,:,:),spfsize*nprocs)
+        else
+           call write_spf(998,psi(spfstart),spfsize)
+        endif
+        close(998)
+        
+        do iprop=1,mcscfnum
+           call write_avector(999,psi(astart(iprop)))
+        enddo
+        close(999)
+     endif
      
      if (parorbsplit.eq.3) then
-        call write_spf(998,parorbitals(:,:,:),spfsize*nprocs)
-     else
-        call write_spf(998,psi(spfstart),spfsize)
+        deallocate(parorbitals)
      endif
-     close(998)
-     
-     do iprop=1,mcscfnum
-        call write_avector(999,psi(astart(iprop)))
-     enddo
-     close(999)
-  endif
-  
-  if (parorbsplit.eq.3) then
-     deallocate(parorbitals)
   endif
 
   call mpibarrier()
@@ -232,7 +233,7 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
   real*8 :: outrealspfs(outdims(1),outdims(2),outdims(3),outnspf)  !!AUTOMATIC
   complex*16 :: outcspfs(outdims(1),outdims(2),outdims(3),outnspf) !!AUTOMATIC
   integer :: numloaded,itop(3),ibot(3),otop(3),obot(3),idim,flag, amin(3),amax(3),bmin(3),bmax(3),&
-       qqblocks(nprocs),ispf, bigoutdims(3)
+       qqblocks(nprocs),ispf, bigoutdims(3),ooshift,rrshift
 
   numloaded = min(outnspf,readnspf)
 
@@ -272,16 +273,25 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
 !XXARGH modulus function stupidly defined    if (mod(bigreaddims(idim)-bigoutdims(idim),2).eq.1) then
 
         if (reinterp_orbflag.eq.0) then
+           ooshift=0; rrshift=0
            if (mod(bigreaddims(idim)+bigoutdims(idim),2).eq.1) then
-              OFLWR "On read must have both even or both odd points for dimension ",idim," they are ", &
-                   bigreaddims(idim),bigoutdims(idim); CFLST
-              
+
+!!$              OFLWR "On read must have both even or both odd points for dimension ",idim," they are ", &
+!!$                   bigreaddims(idim),bigoutdims(idim); CFLST
+
+!!$ chop odd-valued grid at the positive end of xyz 
+!!$ that means an even numbered grid with a nucleus at centershift=1,1,1 (location 1/2,1/2,1/2 times spacing)
+!!$ and an odd numbered grid with a nucleus at 0,0,0 
+!!$ can be used back and forth, without invoking spf_gridshift
+
+              rrshift=(-1)*mod(bigreaddims(idim),2)
+              ooshift=(-1)*mod(bigoutdims(idim),2)
            endif
 
-           ibot(idim)=max(1,(bigreaddims(idim)-bigoutdims(idim))/2+1)
-           obot(idim)=max(1,(bigoutdims(idim)-bigreaddims(idim))/2+1)
-           itop(idim)=ibot(idim)+min(bigoutdims(idim),bigreaddims(idim))-1
-           otop(idim)=obot(idim)+min(bigoutdims(idim),bigreaddims(idim))-1
+           ibot(idim)=max(1,((bigreaddims(idim)+rrshift)-(bigoutdims(idim)+ooshift))/2+1)
+           obot(idim)=max(1,((bigoutdims(idim)+ooshift)-(bigreaddims(idim)+rrshift))/2+1)
+           itop(idim)=ibot(idim)+min(bigoutdims(idim)+ooshift,bigreaddims(idim)+rrshift)-1
+           otop(idim)=obot(idim)+min(bigoutdims(idim)+ooshift,bigreaddims(idim)+rrshift)-1
 
         else
 
