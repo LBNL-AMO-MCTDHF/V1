@@ -91,6 +91,12 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   call closefile()
 
 
+  if (myrank.eq.1.and.debugflag.ne.0) then
+     call ftset(1,mpifileptr)
+  else
+     call ftset(0,-99)
+  endif
+
   numpoints(:)=numpoints(1); nbox(:)=1
   if (orbparflag) then
      if (nprocs*(numpoints(3)/nprocs).ne.numpoints(3)) then

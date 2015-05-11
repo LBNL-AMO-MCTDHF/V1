@@ -605,7 +605,10 @@ subroutine configspinset_projector()
      spinend=spinstart+spinrank-1
   endif
 
-  spintotdfrank=spindfrank; call mympiireduceone(spintotdfrank)
+  spintotdfrank=spindfrank; 
+  if (sparseconfigflag.ne.0) then !! 05-08-2015 Okay.. was only used if sparseconfigflag.ne.0.. 
+     call mympiireduceone(spintotdfrank)
+  endif
   
 
   OFLWR "TOTAL (all processors) rank",spintotrank," out of ", numconfig

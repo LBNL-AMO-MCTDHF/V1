@@ -1,11 +1,25 @@
 
 !! myrank is 1:nprocs
 
+module ftoutmod
+  implicit none
+  integer :: ftoutflag=0
+  integer :: ftfileptr=6
+end module ftoutmod
+
+subroutine ftset(inoutflag,infileptr)
+  use ftoutmod
+  integer, intent(in) :: inoutflag,infileptr
+  ftoutflag=inoutflag; ftfileptr=infileptr
+end subroutine ftset
+
+
 #ifdef FFTWFLAG
 
 !! Old version myzfft1d() for intel, should not be needed; see myzfft1d_not() below
 
 recursive subroutine myzfft1d(in,out,dim,howmany)
+  use ftoutmod
   use, intrinsic :: iso_c_binding
   implicit none
   include "fftw3.f03"
@@ -17,8 +31,8 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
   integer, save :: plandims(maxplans)=-999, planhowmany(maxplans)=-999
   integer,save :: icalleds(maxplans)=0, numplans=0
   integer :: ostride,istride,onembed(1),inembed(1),idist,odist, dims(1),iplan,thisplan
-  integer :: myrank,nprocs
-  call getmyranknprocs(myrank,nprocs)
+!!$  integer :: myrank,nprocs
+!!$  call getmyranknprocs(myrank,nprocs)
 
   inembed(1)=dim; onembed(1)=dim; idist=dim; odist=dim; istride=1; ostride=1; dims(1)=dim
 
@@ -47,14 +61,25 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
      endif
   endif
   if (icalleds(thisplan).eq.0) then
-     if (myrank.eq.1) then
+     if (ftoutflag.ne.0) then
         print *, "       Making a 1D FFT plan ", thisplan, dims, howmany
      endif
      plans(thisplan) = fftw_plan_many_dft(1,dims,howmany,in,inembed,istride,idist,out,onembed,ostride,odist,FFTW_FORWARD,FFTW_EXHAUSTIVE) 
+     if (ftoutflag.ne.0) then
+        print *, "       Done making a 1D FFT plan ", thisplan, dims, howmany
+     endif
   endif
   icalleds(thisplan)=1    
 
+  if (ftoutflag.ne.0) then
+     print *, "       Doing a 1D FFT ", thisplan
+  endif
+
   call fftw_execute_dft(plans(thisplan), in,out)
+
+  if (ftoutflag.ne.0) then
+     print *, "          Done with a 1D FFT ", thisplan
+  endif
 
 end subroutine myzfft1d
 
@@ -82,6 +107,7 @@ end subroutine myzfft1d_slowindex_local
 
 
 recursive subroutine myzfft1d0(blockdim,in,out,dim,howmany)
+  use ftoutmod
   use, intrinsic :: iso_c_binding
   implicit none
   include "fftw3.f03"
@@ -94,8 +120,8 @@ recursive subroutine myzfft1d0(blockdim,in,out,dim,howmany)
        planblockdim(maxplans)=-999
   integer,save :: icalleds(maxplans)=0, numplans=0
   integer :: ostride,istride,onembed(1),inembed(1),idist,odist, dims(1),iplan,thisplan
-  integer :: myrank,nprocs
-  call getmyranknprocs(myrank,nprocs)
+!!$  integer :: myrank,nprocs
+!!$  call getmyranknprocs(myrank,nprocs)
 
 !!$  KEEPME           EITHER WORK BLOCKDIM=1            KEEPME
 !!$
@@ -133,20 +159,32 @@ recursive subroutine myzfft1d0(blockdim,in,out,dim,howmany)
      endif
   endif
   if (icalleds(thisplan).eq.0) then
-     if (myrank.eq.1) then
-        print *, "       Making a 1D FFT plan ", thisplan,  howmany, blockdim
+     if (ftoutflag.ne.0) then
+        print *, "       Making a 1D FFT plan! ", thisplan,  howmany, blockdim
         print *, "       ", dims
      endif
      plans(thisplan) = fftw_plan_many_dft(1,dims,howmany*blockdim,in,inembed,istride,idist,out,onembed,ostride,odist,FFTW_FORWARD,FFTW_EXHAUSTIVE) 
+     if (ftoutflag.ne.0) then
+        print *, "       Done making a 1D FFT plan! ", thisplan,  howmany, blockdim
+     endif
   endif
   icalleds(thisplan)=1    
 
+  if (ftoutflag.ne.0) then
+     print *, "       Doing a 1D FFT! ", thisplan
+  endif
+
   call fftw_execute_dft(plans(thisplan), in,out)
+
+  if (ftoutflag.ne.0) then
+     print *, "          Done with a 1D FFT! ", thisplan
+  endif
 
 end subroutine myzfft1d0
 
 
 recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
+  use ftoutmod
   use, intrinsic :: iso_c_binding
   implicit none
   include "fftw3.f03"
@@ -158,8 +196,8 @@ recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
   integer, save :: plandims(3,maxplans)=-999, planhowmany(maxplans)=-999
   integer,save :: icalleds(maxplans)=0, numplans=0
   integer :: ostride,istride,onembed(3),inembed(3),idist,odist, dims(3),iplan,thisplan
-  integer :: myrank,nprocs
-  call getmyranknprocs(myrank,nprocs)
+!!$  integer :: myrank,nprocs
+!!$  call getmyranknprocs(myrank,nprocs)
 
   dims(:)=(/dim3,dim2,dim1/)
   inembed(:)=dims(:); onembed(:)=dims(:); idist=dim1*dim2*dim3; odist=dim1*dim2*dim3; istride=1; ostride=1; 
@@ -192,14 +230,23 @@ recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
      endif
   endif
   if (icalleds(thisplan).eq.0) then
-     if (myrank.eq.1) then
+     if (ftoutflag.ne.0) then
         print *, "       Making a 3D fft plan ", thisplan, dims, howmany
      endif
      plans(thisplan) = fftw_plan_many_dft(3,dims,howmany,in,inembed,istride,idist,out,onembed,ostride,odist,FFTW_FORWARD,FFTW_EXHAUSTIVE) 
+     if (ftoutflag.ne.0) then
+        print *, "        ...ok, made a 3D fft plan ", thisplan, dims, howmany
+     endif
   endif
   icalleds(thisplan)=1    
 
+  if (ftoutflag.ne.0) then
+     print *, "       Doing a 3D fft ", thisplan
+  endif
   call fftw_execute_dft(plans(thisplan), in,out)
+  if (ftoutflag.ne.0) then
+     print *, "          Done with a 3D fft ", thisplan
+  endif
 
 end subroutine myzfft3d
 
