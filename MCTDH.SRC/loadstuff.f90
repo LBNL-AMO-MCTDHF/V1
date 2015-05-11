@@ -280,7 +280,7 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
 !!$                   bigreaddims(idim),bigoutdims(idim); CFLST
 
 !!$ chop odd-valued grid at the positive end of xyz 
-!!$ that means an even numbered grid with a nucleus at centershift=1,1,1 (location 1/2,1/2,1/2 times spacing)
+!!$ that means an even numbered grid with a nucleus at centershift=-1,-1,-1 (location 1/2,1/2,1/2 times spacing)
 !!$ and an odd numbered grid with a nucleus at 0,0,0 
 !!$ can be used back and forth, without invoking spf_gridshift
 
