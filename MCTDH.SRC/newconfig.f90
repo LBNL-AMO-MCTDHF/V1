@@ -182,21 +182,30 @@ end function
 function allowedconfig(thisconfig)
   use parameters
   implicit none
+  integer,intent(in) :: thisconfig(ndof)
+  logical :: allowedconfig,allowedconfig0
+  allowedconfig=allowedconfig0(thisconfig,0)
+end function allowedconfig
 
-  integer :: thisconfig(ndof), i, isum, j, tempcount, tempcount2, ishell, ii, k, iind, getugval,getmval
-  logical :: allowedconfig, tempflag
+
+function allowedconfig0(thisconfig,in_df)
+  use parameters
+  implicit none
+  integer,intent(in) :: thisconfig(ndof), in_df
+  integer :: i, isum, j, tempcount, tempcount2, ishell, ii, k, iind, getugval,getmval
+  logical :: allowedconfig0, tempflag
 
   do j=1,numelec
      do i=j+1,numelec
         if ( (thisconfig(2*i-1)==thisconfig(2*j-1)).and.(thisconfig(2*i)==thisconfig(2*j)) ) then
-           allowedconfig=.false.;           return
+           allowedconfig0=.false.;           return
         endif
      enddo
   enddo
   do j=1,numelec
      i=thisconfig(j*2-1)
      if ((i.lt.1).or.(i.gt.nspf)) then
-        allowedconfig=.false.;        return
+        allowedconfig0=.false.;        return
      endif
   enddo
   if (restrictflag==1) then    ! by m_s
@@ -205,26 +214,26 @@ function allowedconfig(thisconfig)
         isum=isum+(thisconfig(i)*2-3)
      enddo
      if (isum /= restrictms) then
-        allowedconfig=.false.;        return
+        allowedconfig0=.false.;        return
      endif
   end if
   if (spfrestrictflag==1) then
      if (mrestrictflag==1.or.mrestrictmin.gt.-99999.or.mrestrictmax.lt.99999) then    ! by m
         isum=getmval(thisconfig)
         if ((mrestrictflag==1.and.isum /= mrestrictval).or.isum.lt.mrestrictmin.or.isum.gt.mrestrictmax) then
-           allowedconfig=.false.;        return
+           allowedconfig0=.false.;        return
         endif
      endif
   end if
-
+  
   if ((spfugrestrict==1).and.(ugrestrictflag==1)) then    ! by m
      isum=getugval(thisconfig)
      if (isum /= ugrestrictval) then
-        allowedconfig=.false.
+        allowedconfig0=.false.
         return
      endif
   end if
-
+  
   tempcount=0
   do i=allshelltop(numshells-1)+1,allshelltop(numshells)
      do ii=1,2
@@ -239,10 +248,10 @@ function allowedconfig(thisconfig)
         endif
      enddo
   enddo
-  if (tempcount.gt.vexcite) then
-     allowedconfig=.false.;     return
+  if (tempcount.gt.vexcite-in_df) then
+     allowedconfig0=.false.;     return
   endif
-
+  
   tempcount=0
   do ishell=1,numshells
 
@@ -267,19 +276,19 @@ function allowedconfig(thisconfig)
            endif
         enddo
      enddo
-     if (tempcount2.gt.maxocc(ishell)) then
-        allowedconfig=.false.;        return
+     if (tempcount2.gt.maxocc(ishell)-in_df) then
+        allowedconfig0=.false.;        return
      endif
-     if (tempcount2.lt.minocc(ishell)) then
-        allowedconfig=.false.;        return
+     if (tempcount2.lt.minocc(ishell)+in_df) then
+        allowedconfig0=.false.;        return
      endif
-     if (ishell.lt.numshells.and.tempcount.gt.numexcite(ishell)) then
-        allowedconfig=.false.;        return
+     if (ishell.lt.numshells.and.tempcount.gt.numexcite(ishell)-in_df) then
+        allowedconfig0=.false.;        return
      endif
   enddo
-  allowedconfig=.true.
+  allowedconfig0=.true.
 
-end function allowedconfig
+end function allowedconfig0
 
 
 !! RETURNS M-VALUE OF CONFIGURATION

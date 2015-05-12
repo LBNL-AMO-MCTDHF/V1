@@ -10,75 +10,10 @@
 function dfincluded(thisconfig)
   use parameters
   implicit none
-  integer :: thisconfig(ndof), i, isum, j, tempcount, tempcount2, ishell, ii, k, iind
-  logical :: allowedconfig, dfincluded, tempflag
+  integer,intent(in) :: thisconfig(ndof)
+  logical :: allowedconfig0, dfincluded
 
-  dfincluded=.false.
-  if (.not.allowedconfig(thisconfig)) then
-     return
-  endif
-  if (restrictflag==1) then    ! by m_s
-     isum=0
-     do i=2,numelec*2,2
-        isum=isum+(thisconfig(i)*2-3)
-     enddo
-     if (isum /= restrictms) then
-        dfincluded=.false.;        return
-     endif
-  end if
-  tempcount=0
-  do i=allshelltop(numshells-1)+1,allshelltop(numshells)
-     do ii=1,2
-        k=iind((/ i,ii /));        tempflag=.false.
-        do j=1,numelec
-           if (iind(thisconfig((j*2)-1:j*2)) == k) then
-              tempflag=.true.;              exit
-           endif
-        enddo
-        if (tempflag) then
-           tempcount=tempcount+1
-        endif
-     enddo
-  enddo
-
-  if (tempcount.le.vexcite-dfrestrictflag) then
-     dfincluded=.true.
-  endif
-  tempcount=0
-
-  do ishell=1,numshells
-     tempcount2=0
-
-     do i=allshelltop(ishell-1)+1,allshelltop(ishell)  !! spatial orbital
-        do ii=1,2 ! spin 
-           tempflag=.false.;   k=iind((/ i,ii /))  ! spin orbital
-
-           do j=1,numelec
-              if (iind(thisconfig((j*2)-1:j*2)) == k) then  ! got this spin orbital in the configuration
-                 tempflag=.true.
-                 exit
-              endif
-           enddo
-           if (.not.tempflag) then
- !counts how many spin orbitals as of shell ishell are not included in the configuration
-              tempcount=tempcount+1  
-           else
- !counts how many spin orbitals of shell ishell are included in the configuration
-              tempcount2=tempcount2+1  
-           endif
-        enddo
-     enddo
-
-     if (tempcount2.gt.maxocc(ishell)-dfrestrictflag) then
-        dfincluded=.false.;        return
-     endif
-     if (tempcount2.lt.minocc(ishell)+dfrestrictflag) then
-        dfincluded=.false.;        return
-     endif
-     if (ishell.lt.numshells.and.tempcount.gt.numexcite(ishell)-dfrestrictflag) then
-        dfincluded=.false.;        return
-     endif
-  enddo
+  dfincluded = allowedconfig0(thisconfig,dfrestrictflag)
 
 end function dfincluded
 
