@@ -35,10 +35,12 @@ On Mac: minimal demonstration
      https://github.com/LBNL-AMO-MCTDHF/V1/archive/master.zip
           and unzip this file.
 
-     You then have a V1 directory with the code in it.  change
+     You then have a V1 or V1-master directory with the code in it.  change
      to that directory:
 
      cd ./V1
+         or
+     cd ./V1-master
 
      and perform all other steps in this directory.
 
