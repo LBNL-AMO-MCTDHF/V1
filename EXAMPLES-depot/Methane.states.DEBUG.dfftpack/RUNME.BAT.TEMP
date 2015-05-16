@@ -1,4 +1,4 @@
-
+#!/bin/bash
 
 export OMP_NUM_THREADS=1
 mpirun  -n 1 -npernode 1 --bind-to-core --cpus-per-proc 1 --report-bindings chmctdhf_sinc.debug Inp=Input.Inp.temp

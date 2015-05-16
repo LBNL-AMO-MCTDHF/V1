@@ -1,3 +1,4 @@
+#!/bin/bash
 
 threads=5
 procs=7

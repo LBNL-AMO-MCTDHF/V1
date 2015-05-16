@@ -1,3 +1,4 @@
+#!/bin/bash
 
 evals=9
 
