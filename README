@@ -27,7 +27,9 @@ Possible workflow described below for mac.  The general idea is that you can
 ----------------------------------------------------------------------------
 
 On Mac: minimal demonstration.  BIN*mac* directories use GFORTRAN.  You must have
-gfortran installed to use the BIN*mac* directories.
+gfortran installed to use the BIN*mac* directories.  To install gfortran -- which
+you will need to do if the Makeme step fails -- visit the app store, and get xcode 
+tools.
 
 1)   git clone https://github.com/LBNL-AMO-MCTDHF/V1 master
 
