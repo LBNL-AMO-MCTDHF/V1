@@ -31,7 +31,7 @@ gfortran installed to use the BIN*mac* directories.  To install gfortran -- whic
 you will need to do if the Makeme step fails -- visit the app store, and get xcode 
 tools.
 
-1)   git clone https://github.com/LBNL-AMO-MCTDHF/V1 master
+0)   git clone https://github.com/LBNL-AMO-MCTDHF/V1 master
 
           or download using a web browser
 
@@ -45,18 +45,24 @@ tools.
          or
      cd ./V1-master
 
-     and perform all other steps in this directory.
+     and PERFORM ALL OTHER STEPS IN THIS V1 DIRECTORY.
 
-2)   cd ./COMPDIRS/BIN.ecs.hermorm.mac
-              then
-     export PATH=.:$PWD:$PATH
-               or
-     export PATH=$PWD:$PATH
-               or 
-     export PATH=$PATH:$PWD
-                          ...or however you do it.  Maybe in your .bashrc
-              and
+1)   cd COMPDIRS/BIN.ecs.hermnorm.mac
      ./Makeme
+
+     if this fails, you need gfortran.
+
+2)   You need to have the code in your path.  Safe, temporary way:
+
+2A)  cd ./COMPDIRS/BIN.ecs.hermorm.mac
+     export PATH=$PATH:$PWD
+
+2B)  Permanent way:
+     Script is provided to put path in your .bashrc.
+     No Warranty Expressed Nor Implied.  Use at your own risk.
+
+     cd ./COMPDIRS
+     ./BASHRC.MAC.BAT
 
 3)   cp -R -p EXAMPLES-depot/H2PHOTO EXAMPLES
 
