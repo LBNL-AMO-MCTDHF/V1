@@ -46,7 +46,7 @@ On Mac: minimal demonstration
      mkdir EXAMPLES
      mkdir MYRUNS         ...if you want, for instance
  
-2)  cd COMPDIRS/BIN.ecs.hermorm.mac
+2)   cd COMPDIRS/BIN.ecs.hermorm.mac
               then
      export PATH=.:$PWD:$PATH
                or
@@ -58,7 +58,7 @@ On Mac: minimal demonstration
      ./Makeme
 3)   cp -R -p EXAMPLES-depot/H2PHOTO EXAMPLES
                or
-4)  cd EXAMPLES/H2PHOTO
+4)   cd EXAMPLES/H2PHOTO
      ./Relax.Bat
      ./Pulse.Bat
      ./Fourier.Bat 
