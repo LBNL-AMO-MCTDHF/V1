@@ -11,6 +11,9 @@ STEP 1 OF README HAS BEEN IN ERROR.  FIXED May 16.
 
 Scripts, and the instructions below, are designed to be run in BASH.
 
+To begin a bash shell, if it is not your default, simply execute the command
+   prompt> bash
+
 To set bash as your default shell on mac or other linux, execute the command
    prompt> chsh -s /bin/bash
 
