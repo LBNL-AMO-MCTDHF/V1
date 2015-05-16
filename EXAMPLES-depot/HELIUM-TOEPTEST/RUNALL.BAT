@@ -1,3 +1,4 @@
+#!/bin/bash
 
 ./RUN0.BAT.CT.NOPAR
 ./RUN0.BAT.NOPAR

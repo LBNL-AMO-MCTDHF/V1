@@ -1,3 +1,4 @@
+#!/bin/bash
 
 for opt in "" .vel .perp .perp.vel
 do

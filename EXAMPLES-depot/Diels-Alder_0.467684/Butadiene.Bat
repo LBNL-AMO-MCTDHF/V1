@@ -1,3 +1,4 @@
+#!/bin/bash
 
 threads=1
 procs=64

@@ -1,3 +1,4 @@
+#!/bin/bash
 
 opt="Batchopt=2"
 
