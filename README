@@ -7,22 +7,15 @@ Please watch the commits to stay notified about bugs and bug fixes:
 Known bugs appear as issues:
      https://github.com/LBNL-AMO-MCTDHF/V1/issues
 
+STEP 1 OF README HAS BEEN IN ERROR.  FIXED May 16.
+
 Possible workflow described below for mac.  The general idea is that you can 
    work entirely within the directory that you clone and to which you pull, not 
-   copy the git distribution elsewhere for compilation, for instance, and one
-   possible workflow is described below for mac.  You may or may not wish to 
-   use it.
+   copy the git distribution elsewhere for compilation.
 
  ----------------------------------------------------
 
-Hybrid OpenMP / MPI code       Remember to use PROCESS/THREAD AFFINITY
-
 Velocity gauge sinc DVR just implemented, not debugged nor checked for factors.
-
-Improvedquadflag = 1, 2, and 3 now available again ... new method for 2 & 3
-
-Read orbitals for x2 resolution using loadspfflag=1 for sinc dvr by setting
-  reinterp_orbflag=1 in &parinp (not supported for atom or diatom)
 
 MPI ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3.
   set both parorbsplit=3 in &parinp and orbparflag=.true. in &sincparinp.
@@ -45,8 +38,7 @@ MPI ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3
 
 On Mac: minimal demonstration
 
-FIRST:
-     git clone https://github.com/LBNL-AMO-MCTDHF/V1 master
+1)   git clone https://github.com/LBNL-AMO-MCTDHF/V1 master
         ( or e.g.
      git clone https://github.com/LBNL-AMO-MCTDHF/V1 v1.02 )
      mv V1 V1.firsttry     ...if you want
@@ -54,15 +46,7 @@ FIRST:
      mkdir EXAMPLES
      mkdir MYRUNS         ...if you want, for instance
  
-THEN perform each step in this V1.firsttry working directory
-
-1)   mv COMPDIRS/*mac* .
-     rm -r COMPDIRS/*
-     mv *BIN*mac* COMPDIRS
-
-2A)  cd COMPDIRS/BIN.ecs.hermorm.mac
-               or
-2B)  cd COMPDIRS/BIN.ecs.hermorm.mac.mpi
+2)  cd COMPDIRS/BIN.ecs.hermorm.mac
               then
      export PATH=.:$PWD:$PATH
                or
@@ -72,20 +56,15 @@ THEN perform each step in this V1.firsttry working directory
                           ...or however you do it.  Maybe in your .bashrc
               and
      ./Makeme
-3A)  cp -R -p EXAMPLES-depot/METHANE.abs.0.40186.45pts EXAMPLES/
+3)   cp -R -p EXAMPLES-depot/H2PHOTO EXAMPLES
                or
-3B)  cp -R -p EXAMPLES-depot/METHANE.abs.0.40186.75pts EXAMPLES/
-
-4A)  cd EXAMPLES/METHANE.abs.0.40186.45pts
-     chmctdhf_sinc Inp=Input.Inp.Relax | tee Outs/Out.relax
-     chmctdhf_sinc Inp=Input.Inp.Pulse | tee Outs/Out.pulse
-               or
-4B)  cd EXAMPLES/METHANE.abs.0.40186.75pts
-     mpirun -n 15 chmctdhf_sinc Inp=Input.Inp.Relax | tee Outs/Out.relax
-     mpirun -n 15 chmctdhf_sinc Inp=Input.Inp.Pulse | tee Outs/Out.pulse
-              then
-     ./gnu.abs.here
-
+4)  cd EXAMPLES/H2PHOTO
+     ./Relax.Bat
+     ./Pulse.Bat
+     ./Fourier.Bat 
+     ./Flux.Bat 500
+     ./gnu.xsec
+ 
 If you want to update the code and EXAMPLES-depot directories then perform 
 step 5, like steps 1-4, in the V1 working directory,
 
