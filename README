@@ -56,8 +56,9 @@ On Mac: minimal demonstration
                           ...or however you do it.  Maybe in your .bashrc
               and
      ./Makeme
+
 3)   cp -R -p EXAMPLES-depot/H2PHOTO EXAMPLES
-               or
+
 4)   cd EXAMPLES/H2PHOTO
      ./Relax.Bat
      ./Pulse.Bat
