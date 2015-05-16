@@ -26,7 +26,8 @@ Possible workflow described below for mac.  The general idea is that you can
 
 ----------------------------------------------------------------------------
 
-On Mac: minimal demonstration
+On Mac: minimal demonstration.  BIN*mac* directories use GFORTRAN.  You must have
+gfortran installed to use the BIN*mac* directories.
 
 1)   git clone https://github.com/LBNL-AMO-MCTDHF/V1 master
 
