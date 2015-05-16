@@ -9,11 +9,62 @@ Known bugs appear as issues:
 
 STEP 1 OF README HAS BEEN IN ERROR.  FIXED May 16.
 
+Lots of scripts use gnuplot.  Gnuplot should be installed on your system,
+   if you want to have an easy time using the examples.
+
 Possible workflow described below for mac.  The general idea is that you can 
    work entirely within the directory that you clone and to which you pull, not 
    copy the git distribution elsewhere for compilation.
 
- ----------------------------------------------------
+----------------------------------------------------------------------------
+
+On Mac: minimal demonstration
+
+1)   git clone https://github.com/LBNL-AMO-MCTDHF/V1 master
+
+          or download using a web browser
+
+     https://github.com/LBNL-AMO-MCTDHF/V1/archive/master.zip
+          and unzip this file.
+
+     You then have a V1 directory with the code in it.  change
+     to that directory:
+
+     cd ./V1
+
+     and perform all other steps in this directory.
+
+2)   cd ./COMPDIRS/BIN.ecs.hermorm.mac
+              then
+     export PATH=.:$PWD:$PATH
+               or
+     export PATH=$PWD:$PATH
+               or 
+     export PATH=$PATH:$PWD
+                          ...or however you do it.  Maybe in your .bashrc
+              and
+     ./Makeme
+
+3)   cp -R -p EXAMPLES-depot/H2PHOTO EXAMPLES
+
+4)   cd ./EXAMPLES/H2PHOTO
+     ./Relax.Bat
+     ./Pulse.Bat
+     ./Fourier.Bat 
+     ./Flux.Bat 500
+     ./gnu.xsec
+
+     as per the README in that H2PHOTO directory.
+ 
+If you want to update the code and EXAMPLES-depot directories then perform 
+step 5, like steps 1-4, in the V1 working directory,
+
+5)   git pull https://github.com/LBNL-AMO-MCTDHF/V1 master
+     ... then ./Makeme should be sufficient, in the BIN directories,
+         but ./Makeme clean; ./Makeme would certainly be fail safe
+         after updating the code with git pull.
+
+----------------------------------------------------------------------------
 
 Velocity gauge sinc DVR just implemented, not debugged nor checked for factors.
 
@@ -33,46 +84,6 @@ MPI ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3
   zke_paropt=2   mult_reduce_z    reduce after (slow, generally, right?)
   zke_paropt=3   mult_alltoall_z  Calculate everything, wasting memory, then 
                                     perform all to all (previous subroutine)
-
- ----------------------------------------------------
-
-On Mac: minimal demonstration
-
-1)   git clone https://github.com/LBNL-AMO-MCTDHF/V1 master
-        ( or e.g.
-     git clone https://github.com/LBNL-AMO-MCTDHF/V1 v1.02 )
-     mv V1 V1.firsttry     ...if you want
-     cd V1.firsttry
-     mkdir EXAMPLES
-     mkdir MYRUNS         ...if you want, for instance
- 
-2)   cd COMPDIRS/BIN.ecs.hermorm.mac
-              then
-     export PATH=.:$PWD:$PATH
-               or
-     export PATH=$PWD:$PATH
-               or 
-     export PATH=$PATH:$PWD
-                          ...or however you do it.  Maybe in your .bashrc
-              and
-     ./Makeme
-
-3)   cp -R -p EXAMPLES-depot/H2PHOTO EXAMPLES
-
-4)   cd EXAMPLES/H2PHOTO
-     ./Relax.Bat
-     ./Pulse.Bat
-     ./Fourier.Bat 
-     ./Flux.Bat 500
-     ./gnu.xsec
- 
-If you want to update the code and EXAMPLES-depot directories then perform 
-step 5, like steps 1-4, in the V1 working directory,
-
-5)   git pull https://github.com/LBNL-AMO-MCTDHF/V1 master
-     ... then ./Makeme should be sufficient, in the BIN directories,
-         but ./Makeme clean; ./Makeme would certainly be fail safe
-         after updating the code with git pull.
 
 
 -------------------    MODULES TO LOAD    --------------------
