@@ -65,6 +65,8 @@ you will need to do if the Makeme step fails -- visit
      cd COMPDIRS
      ./BASHRC.MAC.BAT
 
+2C)  Other permanent way listed at bottom
+
 3)   cp -R -p EXAMPLES-depot/H2PHOTO EXAMPLES
 
 4)   cd EXAMPLES/H2PHOTO
@@ -106,8 +108,8 @@ MPI ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3
                                     perform all to all (previous subroutine)
 
 
--------------------    MODULES TO LOAD    --------------------
-------------------- ON NERSC & LAWRENCIUM --------------------
+----------------------------    MODULES TO LOAD    -----------------------------
+---------------------------- ON NERSC & LAWRENCIUM -----------------------------
 
   COMPDIRS/BIN.ecs.hermnorm.law, 
   COMPDIRS/BIN.ecs.hermnorm.edison, etc.
@@ -133,4 +135,33 @@ EDISON:
 
 module unload cray-libsci
 module load mkl
+
+----------------------------------------------------------------------------
+
+Better permanent way for step 2 in mac example above.
+
+2C) 
+
+> cd ~/
+> mkdir bin
+> cd bin
+> ln -s ~/progs/V1/COMPDIRS/BIN.ecs.hermnorm.mac/chmctdhf_sinc
+> ln -s ~/progs/V1/COMPDIRS/BIN.ecs.hermnorm.mac/chmctdhf_atom
+> ln -s ~/progs/V1/COMPDIRS/BIN.ecs.hermnorm.mac/chmctdhf_diatom
+
+optionally
+
+> ln -s ~/progs/V1/COMPDIRS/debug.BIN.ecs.hermnorm.mac/chmctdhf_sinc chmctdhf_sinc.debug
+> ln -s ~/progs/V1/COMPDIRS/debug.BIN.ecs.hermnorm.mac/chmctdhf_atom chmctdhf_atom.debug
+> ln -s ~/progs/V1/COMPDIRS/debug.BIN.ecs.hermnorm.mac/chmctdhf_diatom chmctdhf_diatom.debug
+
+then
+
+> cd ..        or cd ~/, same thing
+> mv .bashrc BACKUP.bashrc
+> echo 'export PATH=$PATH:~/bin/' > .bashrc
+> cat BACKUP.bashrc  >> .bashrc
+
+That's single quotes in the penultimate step, i.e. double quotes without
+the shift key.
 
