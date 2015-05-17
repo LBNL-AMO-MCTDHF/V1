@@ -158,10 +158,9 @@ optionally
 then
 
 > cd ..        or cd ~/, same thing
-> mv .bashrc BACKUP.bashrc
-> echo 'export PATH=$PATH:~/bin/' > .bashrc
-> cat BACKUP.bashrc  >> .bashrc
+> cp -p .bashrc BACKUP.bashrc
+> echo 'export PATH=$PATH:~/bin/' >> .bashrc
 
-That's single quotes in the penultimate step, i.e. double quotes without
+That's single quotes in the last step, i.e. double quotes without
 the shift key.
 
