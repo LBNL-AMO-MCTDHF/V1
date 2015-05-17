@@ -87,6 +87,7 @@ step 5, like steps 1-4, in the V1 working directory,
          after updating the code with git pull.
 
 ----------------------------------------------------------------------------
+XXSNIPXX
 
 Velocity gauge sinc DVR just implemented, not debugged nor checked for factors.
 
