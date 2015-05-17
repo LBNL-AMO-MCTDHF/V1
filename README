@@ -87,29 +87,8 @@ step 5, like steps 1-4, in the V1 working directory,
          but ./Makeme clean; ./Makeme would certainly be fail safe
          after updating the code with git pull.
 
-----------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 XXSNIPXX
-
-Velocity gauge sinc DVR just implemented, not debugged nor checked for factors.
-
-MPI ORBITAL PARALLELIZATION for sinc dvr (chmctdhf_sinc) only with parorbsplit=3.
-  set both parorbsplit=3 in &parinp and orbparflag=.true. in &sincparinp.
-  When this is set:
-
-  RATE LIMITING STEP IN CODE (chmctdhf_sinc) AT SCALE: 
-
-     --> MPI PARALLEL KINETIC ENERGY MULTIPLICATION IN Z DIRECTION <--
-
-  FOUR OPTIONS for &sincparinp namelist variable zke_paropt:
-
-  zke_paropt=0   mult_circ_z      sendrecv
-  zke_paropt=1   mult_summa_z     SUMMA  scalable universal matrix multiplication 
-                                    algorithm (broadcast before)
-  zke_paropt=2   mult_reduce_z    reduce after (slow, generally, right?)
-  zke_paropt=3   mult_alltoall_z  Calculate everything, wasting memory, then 
-                                    perform all to all (previous subroutine)
-
-
 ----------------------------    MODULES TO LOAD    -----------------------------
 ---------------------------- ON NERSC & LAWRENCIUM -----------------------------
 
