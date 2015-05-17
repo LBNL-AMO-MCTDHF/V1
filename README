@@ -64,6 +64,7 @@ you will need to do if the Makeme step fails -- visit
 
      cd COMPDIRS
      ./BASHRC.MAC.BAT
+     bash       (or close terminal and open a new one - must restart bash)
 
 2C)  Other permanent way listed at bottom
 
