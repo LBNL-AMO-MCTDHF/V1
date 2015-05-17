@@ -142,4 +142,4 @@ then
 > cp -p .bashrc BACKUP.bashrc
 > echo 'export PATH=$PATH:~/bin/' >> .bashrc
 
-That's single quotes in the last step, i.e. double quotes without the shift key.
+Those are single quotes in the last step, i.e. double quotes without the shift key.
