@@ -8,11 +8,10 @@ Known bugs appear as issues:
      https://github.com/LBNL-AMO-MCTDHF/V1/issues
 
 The scripts in the example directories use bash and gnuplot.  
-Using the bash shell is recommended but may not be necessary.
 
+Using the bash shell is recommended but may not be necessary.
 To begin a bash shell, if it is not your default, simply execute the command
    prompt> bash
-
 To set bash as your default shell on mac or other linux, execute the command
    prompt> chsh -s /bin/bash
 
