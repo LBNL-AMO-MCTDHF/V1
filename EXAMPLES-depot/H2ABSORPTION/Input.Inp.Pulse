@@ -1,0 +1,83 @@
+$pulse
+
+ pulsetype=2
+
+ omega2=1d0
+ omega=0.2d0
+
+ intensity=1d-5
+
+ velflag=0
+
+ minpulsetime=2000d0
+
+/
+
+
+
+$parinp
+
+numactions=2
+actions=1,21
+eground = -1.159611729729d0
+corrdatfile="Dat/Correlation.Dat"
+corrftfile="Dat/Corrft.Dat"
+dipmodtime=100
+diptime=100
+xdipfile="Dat/XDipoleexpect.Dat"
+xdftfile="Dat/XDipoleft.Dat"
+ydipfile="Dat/YDipoleexpect.Dat"
+ydftfile="Dat/YDipoleft.Dat"
+zdipfile="Dat/ZDipoleexpect.Dat"
+zdftfile="Dat/ZDipoleft.Dat"
+
+loadavectorflag=1
+avectorfile="Bin/avector.bin.relax"
+loadspfflag=1
+spffile="Bin/spfs.bin.relax"
+
+saveflag=0
+
+numelec=2
+
+sparseconfigflag=0
+
+nspf=3
+
+spfrestrictflag=1
+
+spfmvals =  0, 0, 0, 1,-1,    0, 0, 0 
+
+restrictflag=1
+restrictms=0
+
+mrestrictflag=1
+mrestrictval=0
+
+tdflag=1
+
+par_timestep=1d0
+littlesteps=10
+
+efluxlo=0.01d0
+efluxhi=2d0
+
+/
+
+$h2parinp
+
+NucCharge1=1d0
+NucCharge2=1d0
+
+LBIG=6,MBIG=0
+
+xinumpoints=12
+xinumelements=7
+xicelement=6
+xiecstheta=0.4d0
+xielementsizes=7d0,7d0,7d0,7d0,7d0,  7d0,14d0
+
+rstart=1.4d0
+
+/
+
