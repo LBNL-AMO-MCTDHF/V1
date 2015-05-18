@@ -7,7 +7,7 @@ echo "This script puts links in /opt/local/bin for the code."
 
 if [[ "$1 " == " " ]]
 then
-	ext= ""
+	ext=""
 else
 	ext=".$1"
 	echo "It will link them with the extension $ext you provided."
