@@ -27,7 +27,7 @@ cp -p ~/.profile ~/BACKUP.profile
 
 echo >> ~/.profile
 echo "#### LBNL-AMO-MCTDHF ###" >> ~/.profile
-echo "export PATH=$PWD/BIN.ecs.hermnorm.mac:\$PATH" >> ~/.profile
+echo "export PATH=$PWD:\$PATH" >> ~/.profile
 echo "########################" >> ~/.profile
 echo >> ~/.profile
 
