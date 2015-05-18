@@ -1,0 +1,46 @@
+
+echo
+echo
+echo "WARNING WARNING WARNING"
+echo "This edits your ~/.profile file."
+echo "It will back it up as ~/BACKUP.profile but PLEASE MAKE YOUR OWN BACKUP"
+echo "Use this script AT YOUR OWN RISK"
+echo 
+echo "Hit enter to continue"
+read var
+echo "Are you sure?  Hit enter to continue"
+read var
+
+if [[ -e ~/BACKUP.profile ]]
+then
+	echo "the file BACKUP.profile exists in your home directory."
+	echo "perhaps you have already run this script."
+	echo "please move or delete this file and try again."
+	echo "for example"
+	echo "prompt> cd ~/"
+	echo "prompt> mv BACKUP.profile BACKUP.profile.BACKUP"
+	echo
+	exit
+fi
+
+cp -p ~/.profile ~/BACKUP.profile
+
+echo >> ~/.profile
+echo "#### LBNL-AMO-MCTDHF ###" >> ~/.profile
+echo "export PATH=$PWD/BIN.ecs.hermnorm.mac:\$PATH" >> ~/.profile
+echo "########################" >> ~/.profile
+echo >> ~/.profile
+
+echo
+echo "ok.  chmctdhf_sinc, chmctdhf_atom, and chmctdhf_diatom"
+echo "should be in your path after you start a new terminal."
+echo "after restarting a new terminal, you can check by executing"
+echo "for example the command"    
+echo "prompt> which chmcthdf_sinc"
+echo
+
+
+
+
+
+

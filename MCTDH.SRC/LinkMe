@@ -1,0 +1,40 @@
+#!/bin/bash
+
+mydir=$PWD
+
+echo
+echo "This script puts links in /opt/local/bin for the code."
+
+if [[ "$1 " == " " ]]
+then
+	ext= ""
+else
+	ext=".$1"
+	echo "It will link them with the extension $ext you provided."
+fi
+
+echo "Requires your root password."
+echo "Hit enter to continue."
+read var
+echo "Are you sure?  Hit enter to continue."
+read var
+
+
+
+
+cd /opt/local/bin
+err=$?
+
+if [[ $err -ne 0 ]]
+then 
+     echo "Error changing directory, not linked.   $err"
+     exit
+fi
+
+for coord in atom diatom sinc
+do
+	sudo rm -f chmctdhf_$coord$ext
+	sudo ln -s $mydir/chmctdhf_$coord ./chmctdhf_$coord$ext
+done
+
+ 

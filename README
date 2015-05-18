@@ -1,5 +1,5 @@
 
-  ** LBNL-AMO-MCTDHF VERSION 1.04 **
+  ** LBNL-AMO-MCTDHF VERSION 1.05 **
 
 Please watch the commits to stay notified about bugs and bug fixes:
      https://github.com/LBNL-AMO-MCTDHF/V1/commits/master
@@ -7,9 +7,8 @@ Please watch the commits to stay notified about bugs and bug fixes:
 Known bugs appear as issues:
      https://github.com/LBNL-AMO-MCTDHF/V1/issues
 
-STEP 1 OF README HAS BEEN IN ERROR.  FIXED May 16.
-
-Scripts, and the instructions below, are designed to be run in BASH.
+The scripts in the example directories use bash and gnuplot.  
+Using the bash shell is recommended but may not be necessary.
 
 To begin a bash shell, if it is not your default, simply execute the command
    prompt> bash
@@ -18,7 +17,11 @@ To set bash as your default shell on mac or other linux, execute the command
    prompt> chsh -s /bin/bash
 
 Lots of scripts use gnuplot.  Gnuplot should be installed on your system,
-   if you want to have an easy time using the examples.
+if you want to have an easy time seeing the results of the example calculations.
+If gnuplot is installed on your system then the command
+   prompt> which gnuplot
+should return the location of the executable file.  If it returns nothing then
+it is not installed.  The best way to install gnuplot is probably with macports.
 
 Possible workflow described below for mac.  The general idea is that you can 
    work entirely within the directory that you clone and to which you pull, not 
@@ -51,22 +54,35 @@ you will need to do if the Makeme step fails -- visit
 1)   cd COMPDIRS/BIN.ecs.hermnorm.mac
      ./Makeme
 
-     if this fails, you need gfortran.
+     if this fails, you need gfortran.  Also you may then
+
+     cd ../debug.BIN.ecs.hermnorm.mac
+     ./Makeme
+     cd ../BIN.ecs.hermnorm.mac.mpi
+     ./Makeme
+     cd ../debug.BIN.ecs.hermnorm.mac.mpi
+     ./Makeme
 
 2)   You need to have the code in your path.  Safe, temporary way:
 
 2A)  cd COMPDIRS/BIN.ecs.hermorm.mac
      export PATH=$PATH:$PWD
 
-2B)  Permanent way:
-     Script is provided to put path in your .bashrc.
-     No Warranty Expressed Nor Implied.  Use at your own risk.
+2B)  Permanent way, system-wide, links in /opt/local/bin, requires root password:
+     cd COMPDIRS/BIN.ecs.hermorm.mac
+     ./LinkMe
+     cd ../debug.BIN.ecs.hermorm.mac
+     ./LinkMe debug
+     cd ../BIN.ecs.hermorm.mac.mpi
+     ./LinkMe mpi
+     cd ../debug.BIN.ecs.hermorm.mac.mpi
+     ./LinkMe mpi.debug
 
-     cd COMPDIRS
-     ./BASHRC.MAC.BAT
-     bash       (or close terminal and open a new one - must restart bash)
+2C)  Permanent way, user-specific, script that edits your .profile file
+     cd COMPDIRS/BIN.ecs.hermnorm.mac
+     ./LinkMeLocal
 
-2C)  Other permanent way listed at bottom
+     You must restart the terminal after step 2C.
 
 3)   cp -R -p EXAMPLES-depot/H2PHOTO EXAMPLES
 
@@ -77,7 +93,8 @@ you will need to do if the Makeme step fails -- visit
      ./Flux.Bat 500
      ./gnu.xsec
 
-     as per the README in that H2PHOTO directory.
+     as per the README in that H2PHOTO directory.  Also see the H2ABSORPTION
+     example directory to start.
  
 If you want to update the code and EXAMPLES-depot directories then perform 
 step 5, like steps 1-4, in the V1 working directory,
@@ -87,8 +104,6 @@ step 5, like steps 1-4, in the V1 working directory,
          but ./Makeme clean; ./Makeme would certainly be fail safe
          after updating the code with git pull.
 
---------------------------------------------------------------------------------
-XXSNIPXX
 ----------------------------    MODULES TO LOAD    -----------------------------
 ---------------------------- ON NERSC & LAWRENCIUM -----------------------------
 
@@ -117,29 +132,3 @@ EDISON:
 module unload cray-libsci
 module load mkl
 
-----------------------------------------------------------------------------
-
-Better permanent way for step 2 in mac example above.
-
-2C) 
-
-> cd ~/
-> mkdir bin
-> cd bin
-> ln -s ~/progs/V1/COMPDIRS/BIN.ecs.hermnorm.mac/chmctdhf_sinc
-> ln -s ~/progs/V1/COMPDIRS/BIN.ecs.hermnorm.mac/chmctdhf_atom
-> ln -s ~/progs/V1/COMPDIRS/BIN.ecs.hermnorm.mac/chmctdhf_diatom
-
-optionally
-
-> ln -s ~/progs/V1/COMPDIRS/debug.BIN.ecs.hermnorm.mac/chmctdhf_sinc chmctdhf_sinc.debug
-> ln -s ~/progs/V1/COMPDIRS/debug.BIN.ecs.hermnorm.mac/chmctdhf_atom chmctdhf_atom.debug
-> ln -s ~/progs/V1/COMPDIRS/debug.BIN.ecs.hermnorm.mac/chmctdhf_diatom chmctdhf_diatom.debug
-
-then
-
-> cd ..        or cd ~/, same thing
-> cp -p .bashrc BACKUP.bashrc
-> echo 'export PATH=$PATH:~/bin/' >> .bashrc
-
-Those are single quotes in the last step, i.e. double quotes without the shift key.
