@@ -166,7 +166,9 @@ subroutine expoprop(time1,time2,inspfs, numiters)
         endif
      endif
 
-     close(expofileptr)
+     if (expofileptr.ne.nullfileptr) then
+        close(expofileptr)
+     endif
      inspfs=inspfs+outspfs
 
      
@@ -665,7 +667,9 @@ subroutine expoconfigprop(inavector0,outavector,time)
      call dfrestrict(outavector,numr)
   endif
 
-  close(expofileptr)
+  if (expofileptr.ne.nullfileptr) then
+     close(expofileptr)
+  endif
 
   if (iflag .ne. 0) then
      OFLWR "Error expoconfigprop: ", iflag; CFLST

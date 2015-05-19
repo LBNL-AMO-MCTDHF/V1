@@ -196,6 +196,7 @@
 
 module ct_fileptrmod
   implicit none
+  integer :: nullfileptr=798   !!! HARDWIRE TO MATCH PARAMETERS.F90
   integer :: mpifileptr = (-798)
 end module ct_fileptrmod
 
@@ -259,7 +260,7 @@ subroutine ct_init(in_ctparopt,in_mpifileptr)
 !!$     mpifileptr=4910 + 0 * in_mpifileptr   !! avoid warn unused
 !!$     open(mpifileptr,file="/dev/null", status="unknown")
 
-     mpifileptr=798   !!! HARDWIRE TO MATCH PARAMETERS.F90
+     mpifileptr=nullfileptr
 
   endif
 

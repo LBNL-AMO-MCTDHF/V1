@@ -993,15 +993,7 @@ subroutine mpistart
   myrank=1
   nprocs=1
   stdoutflag=1
-  if (stdoutflag==1) then
-     mpifileptr=6
-  else
-     mpifileptr=987
-     write(format,'(A2,I1,A2,I1,A1)') "(A",mpioutfilelen,",I",iilen(myrank),")"
-     write(mpioutfile,format) mpioutfilebase,myrank
-     open(mpifileptr,file=mpioutfile,status="unknown")
-     write(mpifileptr,*);     close(mpifileptr)
-  endif
+  mpifileptr=6
 
 end subroutine mpistart
 
@@ -1046,7 +1038,7 @@ subroutine openfile()
   use mpimod
   use fileptrmod  
   implicit none
-  if (stdoutflag==0) then
+  if (stdoutflag==0.and.mpifileptr.ne.nullfileptr) then
      open(mpifileptr,file=mpioutfile,status="old", position="append")
   endif
 end subroutine openfile
@@ -1056,7 +1048,7 @@ subroutine closefile()
   use mpimod
   use fileptrmod
   implicit none
-  if (stdoutflag==0)  then
+  if (stdoutflag==0.and.mpifileptr.ne.nullfileptr)  then
      close(mpifileptr)
   endif
 end subroutine closefile
