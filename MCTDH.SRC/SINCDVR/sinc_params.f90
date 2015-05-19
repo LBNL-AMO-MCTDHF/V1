@@ -59,6 +59,8 @@ real*8 :: mincap=0d0 , maxcap=1d30 !! V_CAP = -i* max(mincap,min(maxcap,sum_i v_
 !! XXSNIPXX 
 !! INTERNAL
 
+integer,parameter :: nullfileptr=798
+
   integer :: myrank=(-1),nprocs=(-1)
 
   integer :: gridoffset,gridlow,gridhigh,gridsize(100)=(-1)

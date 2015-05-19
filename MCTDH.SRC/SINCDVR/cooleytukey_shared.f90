@@ -255,8 +255,12 @@ subroutine ct_init(in_ctparopt,in_mpifileptr)
 !!$     mpifileptr=in_mpifileptr
 !!$     open(mpifileptr,file="/dev/null", status="unknown")
 
-     mpifileptr=4910 + 0 * in_mpifileptr   !! avoid warn unused
-     open(mpifileptr,file="/dev/null", status="unknown")
+!!$ opening /dev/null multiple times not allowed :<  
+!!$     mpifileptr=4910 + 0 * in_mpifileptr   !! avoid warn unused
+!!$     open(mpifileptr,file="/dev/null", status="unknown")
+
+     mpifileptr=798   !!! HARDWIRE TO MATCH PARAMETERS.F90
+
   endif
 
  call ct_getprimeset()

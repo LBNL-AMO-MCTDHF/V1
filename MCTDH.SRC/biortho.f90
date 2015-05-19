@@ -276,7 +276,8 @@ subroutine abio_sparse(abio,aout,inbiovar)
   if (myrank.eq.1.and.notiming.eq.0) then
      open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="old", position="append")
   else
-     open(biofileptr,file="/dev/null",status="unknown")
+!!$ opening /dev/null multiple times not allowed :<       open(biofileptr,file="/dev/null",status="unknown")
+     biofileptr=nullfileptr
   endif
 
   call biomatvecset(inbiovar)

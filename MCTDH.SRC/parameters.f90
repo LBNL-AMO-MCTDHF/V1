@@ -4,6 +4,7 @@
 module fileptrmod
 implicit none
 integer :: mpifileptr
+integer,parameter :: nullfileptr=798  !! MUST MATCH COOLEYTUKEY_SHARED.F90
 end module
 
 module littleparmod

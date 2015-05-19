@@ -213,6 +213,8 @@ program mctdhf
   call system("mkdir Dat"); call system("mkdir Bin"); call system("mkdir Flux")
   call system("mkdir WALKS");  
 
+  open(nullfileptr,file="/dev/null",status="unknown")
+
   call MPIstart()
   
   call openfile()

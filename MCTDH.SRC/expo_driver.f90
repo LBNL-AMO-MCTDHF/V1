@@ -33,7 +33,7 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   DATATYPE :: inspfs(spfsize,nspf),tempspfs(spfsize,nspf)
   real*8, save :: tempstepsize = -1d0
   integer :: itrace, iflag,  numiters,getlen
-  integer, parameter :: expofileptr=805
+  integer :: expofileptr=805
   external :: jacoperate,jacopcompact ,realpardotsub
 
 !! lowers thisexpodim until number of internal expokit steps is 2 or less, 
@@ -143,7 +143,8 @@ subroutine expoprop(time1,time2,inspfs, numiters)
      if (myrank.eq.1.and.notiming.eq.0) then
         open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="old", position="append")
      else
-        open(expofileptr,file="/dev/null",status="unknown")
+!!$ opening /dev/null multiple times not allowed :<       open(expofileptr,file="/dev/null",status="unknown")
+        expofileptr=nullfileptr
      endif
      if (orbcompact.ne.0) then
         call spfs_compact(aspfs,com_aspfs); call spfs_compact(propspfs,com_propspfs);
@@ -560,7 +561,8 @@ subroutine expoconfigprop(inavector0,outavector,time)
   if (myrank.eq.1.and.notiming.eq.0) then
      open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",status="old", position="append")
   else
-     open(expofileptr,file="/dev/null",status="unknown")
+!!$ opening /dev/null multiple times not allowed :<       open(expofileptr,file="/dev/null",status="unknown")
+     expofileptr=nullfileptr
   endif
 
 

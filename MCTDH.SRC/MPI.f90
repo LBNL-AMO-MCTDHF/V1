@@ -138,7 +138,7 @@ subroutine mpistart()
   implicit none
   integer :: ierr,  iilen !!,provided,required
   character(len=40) :: format
-  integer :: nargs, i, flag
+  integer :: nargs, i, mpioutflag
 #ifdef PGFFLAG
   integer :: myiargc
 #endif
@@ -148,11 +148,11 @@ subroutine mpistart()
 #else
   nargs=iargc()
 #endif
-  flag=0
+  mpioutflag=0
   do i=1,nargs
      call getarg(i,buffer); 
      if (buffer(1:6) .eq. 'MPIOUT') then
-        flag=1
+        mpioutflag=1
      endif
   enddo
   call MPI_INIT(ierr)
@@ -187,15 +187,15 @@ subroutine mpistart()
         write(format,'(A2,I1,A2,I1,A1)') "(A",mpioutfilelen,",I",iilen(myrank),")"
      endif
      write(mpioutfile,format) mpioutfilebase,myrank
-
 !! nevermind writing out every one
-     if (flag.eq.0) then
-        if (myrank.ne.1) then
-           mpioutfile="/dev/null"
-        endif
+     if (mpioutflag.eq.0.and.myrank.ne.1) then
+        mpifileptr=nullfileptr
+        mpioutfile="garmonbozia"
+     else
+        open(mpifileptr,file=mpioutfile,status="unknown"); CFL
      endif
-     open(mpifileptr,file=mpioutfile,status="unknown"); WRFL; CFL
   endif
+  OFLWR; CFL
   call system_clock(mpibtime);  call system_clock(mpiatime)
 
 end subroutine mpistart
