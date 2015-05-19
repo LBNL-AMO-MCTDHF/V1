@@ -254,7 +254,8 @@ subroutine ct_init(in_ctparopt,in_mpifileptr)
   else
 !!$     mpifileptr=in_mpifileptr
 !!$     open(mpifileptr,file="/dev/null", status="unknown")
-     mpifileptr=4910
+
+     mpifileptr=4910 + 0 * in_mpifileptr   !! avoid warn unused
      open(mpifileptr,file="/dev/null", status="unknown")
   endif
 

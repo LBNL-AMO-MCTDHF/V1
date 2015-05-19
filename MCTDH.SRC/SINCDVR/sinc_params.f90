@@ -1,4 +1,3 @@
-
 !! PARAMETERS FILE FOR SINC DVR POLYATOMIC BASIS AND HAMILTONIAN:
 !!            sincparinp namelist input.
 
@@ -22,11 +21,9 @@ integer :: toepflag=1
 !!    defaults set small (less memory, more MPI messages) to avoid MPI problems when doing large 
 !!    calculations.  Otherwise bigger values will be faster.  There is a message size sweet spot
 !!    on many machines.
-
 integer :: fft_batchdim=1     !! 1 = do nspf matrix elements in nspf batches (less memory)
                               !! 2 = do nspf^2 in one batch (faster unless MPI problems)
 integer :: fft_circbatchdim=1 !! 0,1,2, circbatchdim < batchdim; larger faster unless MPI problems
-
 integer :: fft_mpi_inplaceflag=1     !! fft_mpi_inplaceflag:
                                      !!  0 = out-of-place fft, out-of-place fft inverse
                                      !!      3d FFT + (summa/circ C.T. depending on fft_ctflag)
@@ -50,14 +47,15 @@ integer :: numpoints(100)=15
 real*8 :: spacing=0.25d0
 
 integer :: orblanorder=500         !! krylov order for block lanczos orbital calculation
-integer :: orblancheckmod=10         !! check every
+integer :: orblancheckmod=10       !! check every
 real*8 :: orblanthresh=1d-4
 
-integer :: capflag=0            !! add complex absorbing potential to one-elec Hamiltonian
-real*8  :: capstart=30d0        !! radius in bohr
-real*8  :: capstrength=0.001d0  !! atomic units (hartree)
-integer :: cappower=2           !! V_CAP= (-i) * min(maxcap,capstrength*(r-capstart)^cappower)
-real*8  :: maxcap=1d0           !! atomic units (hartree)                     (r>capstart)
+integer :: capflag=0               !! Number of complex absorbing potentials
+integer :: capmode=0               !! Capmode=1 is 
+integer :: cappower(100)=2         !!   v_i(r)= capstrength_i*(r/capstart_i)^cappower_i
+real*8 :: capstart(100)=0.001d0    !! Capmode=0 is    
+real*8 :: capstrength(100)=0.01d0  !!   v_i(r)= capstrength_i*max(0,r-capstart_i)^cappower_i
+real*8 :: mincap=0d0 , maxcap=1d30 !! V_CAP = -i* max(mincap,min(maxcap,sum_i v_i))
 !! XXSNIPXX 
 !! INTERNAL
 

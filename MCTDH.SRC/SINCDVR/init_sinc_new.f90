@@ -13,8 +13,10 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   DATATYPE :: inspfs(totpoints, numspf),pot(totpoints),proderivmod(numr,numr),rkemod(numr,numr),&
        bondpoints(numr),bondweights(numr), elecweights(totpoints),elecradii(totpoints),&
        halfniumpot(totpoints)
+#ifndef REALGO
+  real*8 :: temppot(totpoints) !! AUTOMATIC
+#endif
   character (len=2) :: th(4)
-
   if (fft_mpi_inplaceflag.eq.0) then
      call ct_init(fft_ct_paropt,mpifileptr)
   endif
@@ -64,8 +66,17 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   call get_twoe_new(pot)
 
 #ifndef REALGO
-  if (capflag.ne.0) then
-     pot(:)=pot(:) + capstrength * (0d0,-1d0) * min(maxcap,max(0d0,real(elecradii(:),8)-capstart)**cappower)
+  if (capflag.gt.0) then
+     temppot(:)=0d0
+     do i=1,capflag
+        if (capmode.eq.1) then
+           temppot(:)=temppot(:) + capstrength(i)*( real(elecradii(:),8)/capstart(i) )**cappower(i)
+        else
+           temppot(:)=temppot(:) + capstrength(i)*( real(elecradii(:),8)-capstart(i) )**cappower(i)
+        endif
+     enddo
+     temppot(:)= min(maxcap,max(mincap,temppot(:)))
+     pot(:)=pot(:) + (0d0,-1d0) * temppot(:)
   endif
 #endif
 
