@@ -72,7 +72,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         if (capmode.eq.1) then
            temppot(:)=temppot(:) + capstrength(i)*( real(elecradii(:),8)/capstart(i) )**cappower(i)
         else
-           temppot(:)=temppot(:) + capstrength(i)*( real(elecradii(:),8)-capstart(i) )**cappower(i)
+           temppot(:)=temppot(:) + capstrength(i)*( max(0d0,real(elecradii(:),8)-capstart(i)) )**cappower(i)
         endif
      enddo
      temppot(:)= min(maxcap,max(mincap,temppot(:)))
