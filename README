@@ -79,7 +79,7 @@ you will need to do if the Makeme step fails -- visit
      cd ../debug.BIN.ecs.hermorm.mac.mpi
      ./LinkMe mpi.debug
 
-2C)  Permanent way, user-specific, script that edits your .profile file
+2C)  Permanent way, user-specific, script that edits your .bashrc file
      cd COMPDIRS/BIN.ecs.hermnorm.mac
      ./LinkMeLocal
 

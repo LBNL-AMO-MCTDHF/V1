@@ -2,8 +2,8 @@
 echo
 echo
 echo "WARNING WARNING WARNING"
-echo "This edits your ~/.profile file."
-echo "It will back it up as ~/BACKUP.profile but PLEASE MAKE YOUR OWN BACKUP"
+echo "This edits your ~/.bashrc file."
+echo "It will back it up as ~/BACKUP.bashrc but PLEASE MAKE YOUR OWN BACKUP"
 echo "Use this script AT YOUR OWN RISK"
 echo 
 echo "Hit enter to continue"
@@ -11,25 +11,25 @@ read var
 echo "Are you sure?  Hit enter to continue"
 read var
 
-if [[ -e ~/BACKUP.profile ]]
+if [[ -e ~/BACKUP.bashrc ]]
 then
-	echo "the file BACKUP.profile exists in your home directory."
+	echo "the file BACKUP.bashrc exists in your home directory."
 	echo "perhaps you have already run this script."
 	echo "please move or delete this file and try again."
 	echo "for example"
 	echo "prompt> cd ~/"
-	echo "prompt> mv BACKUP.profile BACKUP.profile.BACKUP"
+	echo "prompt> mv BACKUP.bashrc BACKUP.bashrc.BACKUP"
 	echo
 	exit
 fi
 
-cp -p ~/.profile ~/BACKUP.profile
+cp -p ~/.bashrc ~/BACKUP.bashrc
 
-echo >> ~/.profile
-echo "#### LBNL-AMO-MCTDHF ###" >> ~/.profile
-echo "export PATH=$PWD:\$PATH" >> ~/.profile
-echo "########################" >> ~/.profile
-echo >> ~/.profile
+echo >> ~/.bashrc
+echo "#### LBNL-AMO-MCTDHF ###" >> ~/.bashrc
+echo "export PATH=$PWD:\$PATH" >> ~/.bashrc
+echo "########################" >> ~/.bashrc
+echo >> ~/.bashrc
 
 echo
 echo "ok.  chmctdhf_sinc, chmctdhf_atom, and chmctdhf_diatom"
