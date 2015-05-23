@@ -71,15 +71,15 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
   endif
   icalleds(thisplan)=1    
 
-  if (ftoutflag.ne.0) then
-     print *, "       Doing a 1D FFT ", thisplan
-  endif
+!  if (ftoutflag.ne.0) then
+!     print *, "       Doing a 1D FFT ", thisplan
+!  endif
 
   call fftw_execute_dft(plans(thisplan), in,out)
 
-  if (ftoutflag.ne.0) then
-     print *, "          Done with a 1D FFT ", thisplan
-  endif
+!  if (ftoutflag.ne.0) then
+!     print *, "          Done with a 1D FFT ", thisplan
+!  endif
 
 end subroutine myzfft1d
 
@@ -170,15 +170,15 @@ recursive subroutine myzfft1d0(blockdim,in,out,dim,howmany)
   endif
   icalleds(thisplan)=1    
 
-  if (ftoutflag.ne.0) then
-     print *, "       Doing a 1D FFT! ", thisplan
-  endif
+!  if (ftoutflag.ne.0) then
+!     print *, "       Doing a 1D FFT! ", thisplan
+!  endif
 
   call fftw_execute_dft(plans(thisplan), in,out)
 
-  if (ftoutflag.ne.0) then
-     print *, "          Done with a 1D FFT! ", thisplan
-  endif
+!  if (ftoutflag.ne.0) then
+!     print *, "          Done with a 1D FFT! ", thisplan
+!  endif
 
 end subroutine myzfft1d0
 
@@ -240,13 +240,13 @@ recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
   endif
   icalleds(thisplan)=1    
 
-  if (ftoutflag.ne.0) then
-     print *, "       Doing a 3D fft ", thisplan
-  endif
+!  if (ftoutflag.ne.0) then
+!     print *, "       Doing a 3D fft ", thisplan
+!  endif
   call fftw_execute_dft(plans(thisplan), in,out)
-  if (ftoutflag.ne.0) then
-     print *, "          Done with a 3D fft ", thisplan
-  endif
+!  if (ftoutflag.ne.0) then
+!     print *, "          Done with a 3D fft ", thisplan
+!  endif
 
 end subroutine myzfft3d
 
