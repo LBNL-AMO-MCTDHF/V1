@@ -641,7 +641,6 @@ subroutine biorthogmat(A,N)
   integer :: N
   DATATYPE :: A(N,N)
 #ifdef CNORMFLAG
-!!  call cnormorthogmat(A,N,2,0)
   call symorthogmat(A,N,2)
 #else
   call symorthogmat(A,N,2)
@@ -654,8 +653,7 @@ subroutine orthogmat(A,N)
   integer :: N
   DATATYPE :: A(N,N)
 #ifdef CNORMFLAG
-  call cnormorthogmat(A,N,1,0)
-!!  call symorthogmat(A,N,1)   no such alg?
+  call cnormorthogmat(A,N)
 #else
   call symorthogmat(A,N,1)
 #endif
@@ -734,68 +732,69 @@ Asave(:,:)=A(:,:)
 end subroutine symorthogmat
 
 
-subroutine cnormorthogmat(ovl,num,flag,printflag)
+subroutine cnormorthogmat(A,N)
+  use fileptrmod
   implicit none
-  DATATYPE :: ovl(num,num), dot
-  integer :: num,i,j,printflag,k, flag
-  DATATYPE :: ovlvals(num),ovlvects(num,num)
-  if ((flag.ne.1).and.(flag.ne.2)) then
-     print *, "bad flag",flag;     stop
-  endif
-#ifndef CNORMFLAG
-  print *, "ERR why did you call cnormorthogmat?  eigen_cnorm won't do what you want it to"
-  stop
-#endif
-  do i=1,num
-     do j=1,i
-        if (abs((ovl(i,j))-ovl(j,i)).gt.1.d-7) then
-           print *, "CNORM ERR ORTHOG", abs((ovl(i,j))-ovl(j,i))
-           stop
-        endif
-     enddo
-  enddo
-
-print *,  "REDO SPECTRAL EXPANSION."; call mpistop()
-
-#ifdef REALGO
-  call get_eigen_two(ovl,num,num,ovlvects,ovlvals)
-#else
-  call get_eigen_cnorm(ovl,num,num,ovlvects,ovlvals)
-#endif
-  do i=1,num
-     do j=1,i-1
-        if (abs(dot(ovlvects(:,i),ovlvects(:,j),num)).gt.1.d-7) then
-           print *, " ERR CNORM ", abs(dot(ovlvects(:,i),ovlvects(:,j),num)),i,j,ovlvals(i),ovlvals(j)
-        endif
-     enddo
-  enddo
-  if (printflag.eq.1) then
-     do i=1,num
-        if (abs(sqrt(ovlvals(i))-1.d0).gt.0.01d0) then
-            write(*,*) "Large ovl!! ", ovlvals(i)
-        endif
-     enddo
-  endif
-  ovl=0.d0
-  do k=1,num
-     if (abs(ovlvals(k)).lt.1d-10) then
-        ovlvals(k)=0.d0
-        print *, "CSING!"
-     else if (flag.eq.1) then
-        ovlvals(k)=1.d0/sqrt(ovlvals(k))
-     else
-        ovlvals(k)=1.d0/ovlvals(k)
-     endif
-     do i=1,num
-        do j=1,num
-!! inverse square root or inverse
-           ovl(i,j) = ovl(i,j) + ovlvects(i,k)*ovlvects(j,k) * ovlvals(k)
-        enddo
-     enddo
-  enddo
-
-
+  integer,intent(in) :: N
+  DATATYPE,intent(inout) :: A(N,N)
+  OFLWR "cnormorthogmat CHECKME"; CFLST
+  call allpurposemat(A,N,1)
 end subroutine cnormorthogmat
+
+
+
+subroutine allpurposemat(A,N,flag)
+  use fileptrmod
+!! input :
+!! A - an N by N matrix
+!! N - the dimension of A
+!! output:
+!! A - an N by N matrix that is A=sqrt^-1(A_in) if flag=1 or sqrt(A_in) if flag=2
+  implicit none
+  integer,intent(in) :: N
+  DATATYPE,intent(inout) :: A(N,N)
+  integer :: lwork,i,k,j,flag
+  complex*16 :: eig(N)  ,CVL(N,N),CVR(N,N),CA(N,N)
+  DATATYPE :: VL(N,N),VR(N,N),work(8*N),rwork(4*N)
+
+  lwork=8*N
+
+#ifdef REALGO 
+  call dgeev('V','V',N,A,N,rwork(1),rwork(1+N),VL,N,VR,N,work,lwork,i)
+  do j=1,N
+    eig(j)= (1d0,0d0)*rwork(j) + (0d0,1d0)*rwork(j+N)
+  enddo
+#else
+  j=0
+  call zgeev('V','V',N,A,N,eig,VL,N,VR,N,work,lwork,rwork,i)
+#endif
+
+
+  VL(:,:)=TRANSPOSE(VR(:,:))
+
+  call invmatsmooth(VL,N,N,0d0)
+
+
+!! apply the function
+  do k=1,N
+     select case(flag)
+     case(1)
+        eig(k) = 1d0 / sqrt( eig(k) )
+     case(2)
+        eig(k) = sqrt( eig(k) )
+     case default
+        OFLWR "OOGA ALLPURPOSEMAT ",flag; CFLST
+     end select
+     CVR(:,k)=VR(:,k)*eig(k)
+  enddo
+  CVL(:,:)=VL(:,:)
+
+!! rebuild the matrix
+
+  call ZGEMM('N','T',N,N,N,(1d0,0d0),CVR,N,CVL,N,(0d0,0d0),CA,N)
+  A(:,:)=CA(:,:)  !! OK IMP CONV
+
+end subroutine allpurposemat
 
 
 
