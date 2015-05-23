@@ -1,0 +1,29 @@
+#!/opt/local/bin/gnuplot -persist
+
+
+
+#unset ytics
+
+set xlabel "Energy (eV)"
+set ylabel "emission/absorption"
+
+set title "O2 parallel"
+
+set term unknown
+set style data lines
+
+set xrange [17:40]
+set xrange [20:40]
+set xrange [22:40]
+
+
+plot "Dat/ZDipoleft.Dat.one" using (27.2114*$1):($7/($4**2+$5**2)) lt 2 lw 6 title "parallel"
+
+set term x11
+replot
+
+set out "Absorption.temp.eps"
+set term post enhanced eps solid color 20
+replot
+
+
