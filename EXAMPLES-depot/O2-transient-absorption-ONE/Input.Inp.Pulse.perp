@@ -61,8 +61,8 @@ avectorfile="Bin/avector.bin.Relax"
 loadspfflag=1
 spffile="Bin/spfs.bin.Relax"
 
-diptime=500
-dipmodtime=1000
+diptime=50
+dipmodtime=100
 
 numactions=1
 actions=21
