@@ -54,18 +54,38 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      return
   endif
 
-  do idim=1,griddim
-     littlepot(idim)%mat(:,:) = (32d0/4d0) * sinepoints(idim)%mat(:,:) **2
-  enddo
-
-  pot(:)=0d0; elecradii(:)=0d0
-
-  call get_pot(pot(:))
   call get_rad(elecradii(:))
   call get_dipoles()
+
+#ifndef REALGO
+  if (scalingflag.ne.0) then
+
+!! X(x,y,z) = x + i scalefunction(x,1) etc.
+     scalefunction(:,:)=dipoles(:,:); jacobian(:,:)=1d0
+
+     do jj=1,3
+        do i=0,scalingorders(jj)
+           scalefunction(:,jj)=scalefunction(:,jj) +   dipoles(:,jj)**i * scalingterms(i+1,jj) * exp((0d0,1d0)*ecstheta)
+        enddo
+        do i=1,scalingorders(jj)
+           jacobian(:,jj)=jacobian(:,jj)       + i*dipoles(:,jj)**(i-1) * scalingterms(i+1,jj) * exp((0d0,1d0)*ecstheta)
+        enddo
+     enddo
+     invjacobian(:,:)=1d0/jacobian(:,:)
+     sqrtjacobian(:,:)=sqrt(jacobian(:,:))
+     invsqrtjacobian(:,:)=sqrt(invjacobian(:,:))
+
+     scaleweights(:)=jacobian(:,1)*jacobian(:,2)*jacobian(:,3)
+     invsqrtscaleweights(:)=sqrt(1d0/scaleweights(:))
+
+  endif
+
+#endif
+
   call get_twoe_new(pot)
 
 #ifndef REALGO
+
   if (capflag.gt.0) then
      temppot(:)=0d0
      do i=1,capflag
@@ -87,6 +107,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   endif
 
   spfsloaded=numspf   !! for mcscf... really just for BO curve to skip eigen
+
+!!  OFLWR "TEMPSTOP init_project"; CFLST
 
 end subroutine init_project
 

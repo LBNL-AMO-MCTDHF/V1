@@ -4,7 +4,8 @@
 module myprojectmod
   implicit none
 
-  DATATYPE, allocatable ::  oned_two(:),twod_two(:,:),threed_two(:,:,:)
+  integer :: threedtwosize=0
+  DATATYPE, allocatable ::  threed_two(:,:,:,:)
 
   type fourmat
      DATATYPE, allocatable :: mat(:,:,:,:)
@@ -20,10 +21,20 @@ module myprojectmod
   end type onemat
 
   type(fourmat), allocatable :: ketot(:),fdtot(:)
-  type(twomat), allocatable :: littlepot(:), sinepoints(:)
+  type(twomat), allocatable ::  sinepoints(:)
   type(onemat),allocatable :: kevect(:),fdvect(:)
 
-  DATATYPE, allocatable :: dipoles(:,:)
+  DATATYPE, allocatable :: dipoles(:,:), &
+
+!! smooth complex scaling:  e.g. X(x) = x + i scalefunction(x,1)
+       scalefunction(:,:), &  !! scalefunction(:,1) and 
+       jacobian(:,:),&        !! jacobian(:,1) should only be a function of x, etc.
+       sqrtjacobian(:,:),&
+       invsqrtjacobian(:,:),&
+       invjacobian(:,:),&
+       scaleweights(:),&
+       invsqrtscaleweights(:)
+  
 
 end module myprojectmod
 
@@ -35,8 +46,12 @@ subroutine myprojectalloc()
   integer :: idim
 
   allocate(dipoles(totpoints,griddim))
-
-  allocate(ketot(griddim),littlepot(griddim),sinepoints(griddim),kevect(griddim),fdtot(griddim),fdvect(griddim))
+  if (scalingflag.ne.0) then
+     allocate(scalefunction(totpoints,3),jacobian(totpoints,3), &
+          invsqrtjacobian(totpoints,3), sqrtjacobian(totpoints,3), invjacobian(totpoints,3),&
+          scaleweights(totpoints), invsqrtscaleweights(totpoints))
+  endif
+  allocate(ketot(griddim),sinepoints(griddim),kevect(griddim),fdtot(griddim),fdvect(griddim))
   do idim=1,griddim
      allocate( &
 
@@ -46,7 +61,6 @@ subroutine myprojectalloc()
 
           fdtot(idim)%mat(numpoints(idim),nbox(idim),numpoints(idim),nbox(idim)   +1), &
           ketot(idim)%mat(numpoints(idim),nbox(idim),numpoints(idim),nbox(idim)   +1), &
-          littlepot(idim)%mat(numpoints(idim),nbox(idim)), &
           kevect(idim)%rmat(1-gridpoints(idim):gridpoints(idim)-1),&
           kevect(idim)%cmat(1-gridpoints(idim):gridpoints(idim)-1),&
           fdvect(idim)%rmat(1-gridpoints(idim):gridpoints(idim)-1),&
@@ -58,7 +72,13 @@ subroutine myprojectalloc()
      OFLWR "griddim.ne.3 not supported no mo"; CFLST
   endif
 
-  allocate(threed_two(0-gridsize(1):gridsize(1)-1,0-gridsize(2):gridsize(2)-1,0-gridsize(3):gridsize(3)-1))
+  if (scalingflag.ne.0) then
+     threedtwosize=4
+  else
+     threedtwosize=1
+  endif
+
+  allocate(threed_two(0-gridsize(1):gridsize(1)-1,0-gridsize(2):gridsize(2)-1,0-gridsize(3):gridsize(3)-1,threedtwosize))
 
 end subroutine myprojectalloc
 
@@ -71,16 +91,19 @@ subroutine get_twoe_new(pot)
   real*8 :: realpot(totpoints)
   DATATYPE :: pot(totpoints)
 
-  if (griddim.ne.3.or.coulflag.eq.0) then
-     OFLWR "griddim.ne.3 or coulflag.eq.0 not supported get_twoe_new"; CFLST
+  if (griddim.ne.3) then
+     OFLWR "griddim.ne.3 not supported get_twoe_new"; CFLST
   endif
 
   call get_3dpoisson(realpot)        
-
   pot(:)=realpot(:)
-        
+
   if (notwoflag.eq.1) then
-     threed_two(:,:,:)=0d0
+     threed_two(:,:,:,:)=0d0
+  endif
+
+  if (debugflag.eq.33.or.scalingflag.ne.0) then
+     call get_3dpoisson_scaledoption(pot)
   endif
 
 end subroutine get_twoe_new

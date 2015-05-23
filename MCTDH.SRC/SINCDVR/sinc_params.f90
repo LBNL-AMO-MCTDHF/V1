@@ -4,12 +4,10 @@
 module myparams
 implicit none
 
-!! FOR TOTAL ORBITAL PARALLELIZATION, SET orbparflag=.true., AND
-!! parorbsplit=3 in &parinp
+!! FOR TOTAL ORBITAL PARALLELIZATION, SET orbparflag=.true., AND parorbsplit=3 in &parinp
 logical :: orbparflag=.false.
 
-!! THE FOLLOWING FLAG IS THEN RELEVANT.  Option for parallel KE matvec,
-!!   rate limiting step in algorithm.
+!! THE FOLLOWING FLAG IS THEN RELEVANT.  Option for parallel KE matvec, rate limiting step.
 integer :: zke_paropt=1   !! 0=sendrecv 1=SUMMA (bcast before) 2=reduce after
 
 !! toepflag:  Fast Fourier transforms for Toeplitz matrix vector multiplications
@@ -56,6 +54,11 @@ integer :: cappower(100)=2         !!   v_i(r)= capstrength_i*(r/capstart_i)^cap
 real*8 :: capstart(100)=0.001d0    !! Capmode=0 is    
 real*8 :: capstrength(100)=0.01d0  !!   v_i(r)= capstrength_i*max(0,r-capstart_i)^cappower_i
 real*8 :: mincap=0d0 , maxcap=1d30 !! V_CAP = -i* max(mincap,min(maxcap,sum_i v_i))
+
+integer :: scalingflag=0           !! SMOOTH COMPLEX SCALING in x,y,z separately
+integer :: scalingorders(3)=0      !!   put nodes where nuclei are, that's the idea
+real*8 :: scalingterms(100,3)=0d0  !!   doesn't work well yet
+real*8 :: ecstheta=0d0             !! X(x)= x + e^(i ecstheta)*sum_j scalingterms(j,1) x^(j-1)
 !! XXSNIPXX 
 !! INTERNAL
 
@@ -84,7 +87,6 @@ integer, parameter :: numr=1,bornopflag=1
 
 !! internal
 
-integer :: coulflag=1
 integer :: nonucrepflag=0
 real*8 :: sumcharge, nucrepulsion
 integer :: debugflag=0

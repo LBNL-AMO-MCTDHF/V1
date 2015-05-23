@@ -17,11 +17,12 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   real*8 :: outnucrepulsion, rsq(griddim)
   character (len=200) :: buffer
   character (len=200) :: nullbuff="                                                                                "
-  NAMELIST /sincparinp/        numpoints,spacing,griddim,notwoflag,coulflag,nuccharges,orblanthresh, &
+  NAMELIST /sincparinp/        numpoints,spacing,griddim,notwoflag,nuccharges,orblanthresh, &
        numcenters,centershift,orblanorder,toepflag,nonucrepflag,debugflag, &
        toothnbig, toothnsmall, orbparflag,num_skip_orbs,orb_skip,orblancheckmod,zke_paropt,&
        capflag,capstrength,capstart,cappower,fft_mpi_inplaceflag, fft_ct_paropt,fft_batchdim,&
-       fft_circbatchdim,fft_mpi_keinplace,maxcap,mincap,capmode
+       fft_circbatchdim,fft_mpi_keinplace,maxcap,mincap,capmode,scalingflag,scalingorders,&
+       scalingterms,ecstheta
 
 #ifdef PGFFLAG
   integer :: myiargc
@@ -209,7 +210,7 @@ subroutine printmyopts()
      WRFL "centershift",centershift(:,ii)*0.5d0
   enddo
   WRFL "orblanorder,orblanthresh",orblanorder,orblanthresh
-  WRFL "notwoflag,coulflag",notwoflag,coulflag
+  WRFL "notwoflag",notwoflag
   WRFL "toepflag,nonucrepflag",toepflag,nonucrepflag
   WRFL "toothnbig, toothnsmall",toothnbig, toothnsmall
   WRFL "orbparflag",orbparflag
