@@ -55,12 +55,18 @@ real*8 :: capstart(100)=0.001d0    !! Capmode=0 is
 real*8 :: capstrength(100)=0.01d0  !!   v_i(r)= capstrength_i*max(0,r-capstart_i)^cappower_i
 real*8 :: mincap=0d0 , maxcap=1d30 !! V_CAP = -i* max(mincap,min(maxcap,sum_i v_i))
 
-integer :: scalingflag=0           !! SMOOTH COMPLEX SCALING in x,y,z separately
-integer :: scalingorders(3)=0      !!   put nodes where nuclei are, that's the idea
-real*8 :: scalingterms(100,3)=0d0  !!   doesn't work well yet
-real*8 :: ecstheta=0d0             !! X(x)= x + e^(i ecstheta)*sum_j scalingterms(j,1) x^(j-1)
+integer :: scalingflag=0           !! COMPLEX SCALING is disabled.
 !! XXSNIPXX 
 !! INTERNAL
+
+!!$ integer :: scalingorders(3)=0      !!   put nodes where nuclei are, that's the idea
+!!$ real*8 :: scalingterms(100,3)=0d0  !!   doesn't work well yet
+!!$ integer :: scalingdflag=0
+!!$ real*8 :: scalingdconst(3)=1d0
+!!$ real*8 :: tinv_tol=1d-2
+
+!!real*8 :: ecstheta=0d0             !! X(x)= x + e^(i ecstheta)*sum_j scalingterms(j,1) x^(j-1)
+
 
 integer,parameter :: nullfileptr=798
 

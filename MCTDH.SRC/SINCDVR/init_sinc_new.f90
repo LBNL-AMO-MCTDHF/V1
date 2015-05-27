@@ -16,6 +16,13 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 #ifndef REALGO
   real*8 :: temppot(totpoints) !! AUTOMATIC
 #endif
+
+!!$#ifndef REALGO
+!!$  DATATYPE :: scaledenom(totpoints,3),scaledenomderiv(totpoints,3),scaledenomsecderiv(totpoints,3),&
+!!$       djacobian(totpoints,3), new_jacobian(totpoints,3),new_djacobian(totpoints,3),& !! AUTOMATIC
+!!$       scalefunction(totpoints,3),scaleweights(totpoints)
+!!$#endif
+
   character (len=2) :: th(4)
   if (fft_mpi_inplaceflag.eq.0) then
      call ct_init(fft_ct_paropt,mpifileptr)
@@ -57,30 +64,78 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   call get_rad(elecradii(:))
   call get_dipoles()
 
-#ifndef REALGO
-  if (scalingflag.ne.0) then
-
-!! X(x,y,z) = x + i scalefunction(x,1) etc.
-     scalefunction(:,:)=dipoles(:,:); jacobian(:,:)=1d0
-
-     do jj=1,3
-        do i=0,scalingorders(jj)
-           scalefunction(:,jj)=scalefunction(:,jj) +   dipoles(:,jj)**i * scalingterms(i+1,jj) * exp((0d0,1d0)*ecstheta)
-        enddo
-        do i=1,scalingorders(jj)
-           jacobian(:,jj)=jacobian(:,jj)       + i*dipoles(:,jj)**(i-1) * scalingterms(i+1,jj) * exp((0d0,1d0)*ecstheta)
-        enddo
-     enddo
-     invjacobian(:,:)=1d0/jacobian(:,:)
-     sqrtjacobian(:,:)=sqrt(jacobian(:,:))
-     invsqrtjacobian(:,:)=sqrt(invjacobian(:,:))
-
-     scaleweights(:)=jacobian(:,1)*jacobian(:,2)*jacobian(:,3)
-     invsqrtscaleweights(:)=sqrt(1d0/scaleweights(:))
-
-  endif
-
-#endif
+!!$#ifndef REALGO
+!!$  if (scalingflag.ne.0) then
+!!$
+!!$!! X(x,y,z) = x + i scalefunction(x,1) etc.
+!!$
+!!$     djacobian(:,:)=0d0; jacobian(:,:)=0d0; scalefunction(:,:)=0d0
+!!$
+!!$     do jj=1,3
+!!$        do i=0,scalingorders(jj)
+!!$           scalefunction(:,jj)=scalefunction(:,jj) +   dipoles(:,jj)**i * scalingterms(i+1,jj) * (0d0,1d0)
+!!$        enddo
+!!$        do i=1,scalingorders(jj)
+!!$           jacobian(:,jj)=jacobian(:,jj)       + i*dipoles(:,jj)**(i-1) * scalingterms(i+1,jj) * (0d0,1d0)
+!!$        enddo
+!!$        do i=2,scalingorders(jj)
+!!$           djacobian(:,jj)=djacobian(:,jj)   + i*(i-1)*dipoles(:,jj)**(i-2) * scalingterms(i+1,jj) * (0d0,1d0)
+!!$        enddo
+!!$     enddo
+!!$     
+!!$     if (scalingdflag.ne.0) then
+!!$        do jj=1,3
+!!$           if (scalingorders(jj).lt.1) then
+!!$              OFLWR "error, must have scalingorders>1 for scalingdflag", scalingorders(jj),jj,scalingdflag; CFLST
+!!$           endif
+!!$
+!!$           scaledenomderiv(:,jj)=0d0; scaledenomsecderiv(:,jj) = 0d0
+!!$
+!!$           scaledenom(:,jj) = 1d0 +  scalingdconst(jj)* scalingterms(scalingorders(jj)+1,jj) * dipoles(:,jj)**(scalingorders(jj)-1)
+!!$
+!!$           if (scalingorders(jj).gt.1) then
+!!$              scaledenomderiv(:,jj) = scalingdconst(jj)* scalingterms(scalingorders(jj)+1,jj) * dipoles(:,jj)**(scalingorders(jj)-2) * (scalingorders(jj)-1)
+!!$           endif
+!!$           if (scalingorders(jj).gt.2) then
+!!$              scaledenomsecderiv(:,jj) = scalingdconst(jj)* scalingterms(scalingorders(jj)+1,jj) * dipoles(:,jj)**(scalingorders(jj)-3) * (scalingorders(jj)-1) * (scalingorders(jj)-2)
+!!$           endif
+!!$        enddo
+!!$
+!!$        new_jacobian(:,:) = ( jacobian(:,:) * scaledenom(:,:) - scalefunction(:,:) * scaledenomderiv(:,:) ) / scaledenom(:,:)**2
+!!$
+!!$        new_djacobian(:,:) = ( djacobian(:,:) * scaledenom(:,:) - 2* jacobian(:,:) * scaledenomderiv(:,:) - scalefunction(:,:) * scaledenomsecderiv(:,:) ) / scaledenom(:,:)**2 + &
+!!$             2 * scalefunction(:,:) * scaledenomderiv(:,:)**2 / scaledenom(:,:)**3
+!!$
+!!$        scalefunction(:,:) = scalefunction(:,:) / scaledenom(:,:)
+!!$
+!!$        jacobian(:,:)=new_jacobian(:,:)
+!!$        djacobian(:,:)=new_djacobian(:,:)
+!!$
+!!$     endif
+!!$
+!!$     scalefunction(:,:)=scalefunction(:,:) + dipoles(:,:)
+!!$     jacobian(:,:) = jacobian + 1d0
+!!$
+!!$!! attempt at a kloodge
+!!$     sumjacobian(:)=0d0
+!!$     do jj=1,3
+!!$        sumjacobian(:)=sumjacobian(:)+jacobian(:,jj) / 3d0
+!!$     enddo
+!!$
+!!$
+!!$     invjacobian(:,:)=1d0/jacobian(:,:)
+!!$     scaleweights(:)=jacobian(:,1)*jacobian(:,2)*jacobian(:,3)
+!!$     invsqrtscaleweights(:)=sqrt(1d0/scaleweights(:))
+!!$
+!!$     scaleder(:,:)=0.5d0 * invjacobian(:,:)**2 * djacobian(:,:)
+!!$     scalediag(:)=0d0
+!!$     do jj=1,3
+!!$        scalediag(:)=scalediag(:) - scaleder(:,jj)**2    !! MINUS  (negative 1 goes here, add scalediag to ke mult)
+!!$     enddo
+!!$
+!!$  endif
+!!$
+!!$#endif
 
   call get_twoe_new(pot)
 

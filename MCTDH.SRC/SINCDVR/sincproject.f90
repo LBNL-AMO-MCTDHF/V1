@@ -24,17 +24,15 @@ module myprojectmod
   type(twomat), allocatable ::  sinepoints(:)
   type(onemat),allocatable :: kevect(:),fdvect(:)
 
-  DATATYPE, allocatable :: dipoles(:,:), &
+  DATATYPE, allocatable :: dipoles(:,:)
 
-!! smooth complex scaling:  e.g. X(x) = x + i scalefunction(x,1)
-       scalefunction(:,:), &  !! scalefunction(:,1) and 
-       jacobian(:,:),&        !! jacobian(:,1) should only be a function of x, etc.
-       sqrtjacobian(:,:),&
-       invsqrtjacobian(:,:),&
-       invjacobian(:,:),&
-       scaleweights(:),&
-       invsqrtscaleweights(:)
-  
+!!$  !! smooth complex scaling:  e.g. X(x) = x + i scalefunction(x,1)
+!!$         jacobian(:,:),&        !! jacobian(:,1) should only be a function of x, etc.
+!!$         invsqrtscaleweights(:), &
+!!$         invjacobian(:,:),&
+!!$         scalediag(:),&      !!sum  (-1/4) J^-4 (d/dx J(x))^2 = (-1)* sum_i=1..3 scaleder(:,i)**2
+!!$         scaleder(:,:),&     !!     (1/2) J^-2 (d/dx J(x))   
+!!$         sumjacobian(:)      !! kloodge attempt TEMP?
 
 end module myprojectmod
 
@@ -46,11 +44,14 @@ subroutine myprojectalloc()
   integer :: idim
 
   allocate(dipoles(totpoints,griddim))
-  if (scalingflag.ne.0) then
-     allocate(scalefunction(totpoints,3),jacobian(totpoints,3), &
-          invsqrtjacobian(totpoints,3), sqrtjacobian(totpoints,3), invjacobian(totpoints,3),&
-          scaleweights(totpoints), invsqrtscaleweights(totpoints))
-  endif
+
+!!$  if (scalingflag.ne.0) then
+!!$     allocate(jacobian(totpoints,3), &
+!!$          invjacobian(totpoints,3), invsqrtscaleweights(totpoints),&
+!!$          scalediag(totpoints),scaleder(totpoints,3),&
+!!$          sumjacobian(totpoints))   !! sumjacobian TEMP?
+!!$  endif
+
   allocate(ketot(griddim),sinepoints(griddim),kevect(griddim),fdtot(griddim),fdvect(griddim))
   do idim=1,griddim
      allocate( &
@@ -72,11 +73,14 @@ subroutine myprojectalloc()
      OFLWR "griddim.ne.3 not supported no mo"; CFLST
   endif
 
-  if (scalingflag.ne.0) then
-     threedtwosize=4
-  else
+!!$  if (scalingflag.ne.0) then
+!!$!!$     threedtwosize=7
+!!$     threedtwosize=4
+!!$  else
+
      threedtwosize=1
-  endif
+
+!!$  endif
 
   allocate(threed_two(0-gridsize(1):gridsize(1)-1,0-gridsize(2):gridsize(2)-1,0-gridsize(3):gridsize(3)-1,threedtwosize))
 

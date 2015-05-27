@@ -354,6 +354,15 @@ subroutine mympibcast(input, source, isize)
 end subroutine mympibcast
 
 
+subroutine mympirealbcast(input, source, isize)
+  use mpimod
+  implicit none
+  integer,intent(in) :: isize, source
+  real*8,intent(inout) :: input(isize)
+  call mympirealbcast_local(input, source, isize,MPI_COMM_WORLD)
+end subroutine mympirealbcast
+
+
 subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
   use mpimod
   use fileptrmod

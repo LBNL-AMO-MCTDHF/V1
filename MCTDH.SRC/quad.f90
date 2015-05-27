@@ -58,7 +58,9 @@ subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, intole
      call dgmrespar(jjxx, rhs, solution, nullint1, nullint2, nullint3, nulldouble1, nullint3, inmult, inprecon,itol , tol, nullint4, numiter, errest, ierr, iunit, nulldouble2, nulldouble3, rgwk, rgwkdim, igwk, ligwk, nulldouble4, nullint5)
   endif
 
-  OFLWR "        DGSOLVE - restarts ",igwk(5), "iters", numiter; CFL
+!!$  if (debugflag.ne.0) then
+!!$     OFLWR "        DGSOLVE - restarts ",igwk(5), "iters", numiter; CFL
+!!$  endif
 
   if (jacwrite==1) then
      OFLWR "   NEWTON: numiter ", numiter, " error ", errest;     call closefile()

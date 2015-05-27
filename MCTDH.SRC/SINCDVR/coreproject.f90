@@ -639,93 +639,171 @@ recursive subroutine  op_tinv(twoeden03,twoereduced,allsize,circsize,&
   endif
 #endif
 
-  if (scalingflag.eq.0) then
+!!$  if (scalingflag.eq.0) then
+
      call op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,mynumber,&
      times1,times3,times4,times5,fttimes)
-  else
-     call op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,mynumber,&
-     times1,times3,times4,times5,fttimes)
-  endif
+
+!!$  else
+!!$     call op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,mynumber,&
+!!$     times1,times3,times4,times5,fttimes)
+!!$  endif
 
 end subroutine op_tinv
 
 
-!!! QQQQQQ
-!!$   circsize=numspf**fft_circbatchdim
-!!$   circhigh=numspf**(fft_batchdim-fft_circbatchdim)
 
-recursive subroutine  op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,mynumber,&
-     times1,times3,times4,times5,fttimes)
-  use myparams
-  use myprojectmod
-  implicit none
-  integer, intent(in) :: allsize,circsize,mynumber
-  integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
-  DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
-  DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
-  DATATYPE :: temp(totpoints,allsize),temp2(totpoints,allsize)
-  integer :: ii,jj
-  real*8 :: fac
 
-  fac= (-1) * spacing**3 / (16 * atan(1d0))     !! apparently
-
-  twoereduced(:,:)=0d0
-
-  do jj=1,3
-
-     do ii=1,allsize
-        temp2(:,ii)=twoeden03(:,ii)*invsqrtscaleweights(:)*sqrtjacobian(:,jj)
-     enddo
-
-     call op_finv_notscaled(jj,temp2(:,:),temp(:,:),allsize,circsize,&
-          mynumber, times1,times3,times4,times5,fttimes)
-     
-     do ii=1,allsize
-        temp2(:,ii)=temp(:,ii)*jacobian(:,jj)
-     enddo
-
-     call op_finv_notscaled(jj,temp2(:,:),temp(:,:),allsize,circsize,&
-          mynumber, times1,times3,times4,times5,fttimes)
-
-     do ii=1,allsize
-        twoereduced(:,ii)=twoereduced(:,ii)+temp(:,ii)*invsqrtscaleweights(:)*sqrtjacobian(:,jj) * fac
-     enddo
-
-!!$     call op_finv_notscaled(jj,twoeden03(:,:),temp2(:,:),allsize,circsize,&
-!!$          mynumber, times1,times3,times4,times5,fttimes)
-!!$     call op_finv_notscaled(jj,temp2(:,:),temp(:,:),allsize,circsize,&
-!!$          mynumber, times1,times3,times4,times5,fttimes)
-!!$     do ii=1,allsize
-!!$        twoereduced(:,ii)=twoereduced(:,ii)-temp(:,ii)*fac
-!!$     enddo
-
-  enddo
-
-!!$  call op_tinv_notscaled(twoeden03,temp,allsize,circsize,mynumber,&
+!!$!! T-twiddle = 
+!!$!! J^-1/2  F  J^-1  F  J^-1/2 
+!!$!!
+!!$!! Need to invert T-twiddle.
+!!$!!
+!!$!! find B given X
+!!$!!
+!!$!! T-twiddle^-1 X = B
+!!$!! 
+!!$!! X = T-twiddle B
+!!$!! 
+!!$!! so solve
+!!$!!
+!!$!! T^-1 X = T^-1 T-twiddle B
+!!$!! 
+!!$
+!!$
+!!$recursive subroutine  op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,mynumber,&
 !!$     times1,times3,times4,times5,fttimes)
-!!$  twoereduced(:,:)=twoereduced(:,:)+temp(:,:)
+!!$  use myparams
+!!$  use myprojectmod
+!!$  implicit none
+!!$  integer, intent(in) :: allsize,circsize,mynumber
+!!$  integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
+!!$  DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
+!!$  DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
+!!$  DATATYPE :: temp(totpoints,allsize),temp2(totpoints,allsize)
+!!$  integer :: ii,numcalled
+!!$  external :: scaled_operate_sub, dummysub
+!!$
+!!$  call op_tinv_notscaled(twoeden03(:,:),temp(:,:),allsize,circsize,&
+!!$       mynumber, times1,times3,times4,times5,fttimes)
+!!$
+!!$  temp2(:,:)=temp(:,:)  !! guess
+!!$
+!!$  do ii=1,allsize
+!!$     if (orbparflag) then
+!!$        call dgsolve0(temp(:,ii),temp2(:,ii),numcalled, scaled_operate_sub, 0, dummysub, tinv_tol, totpoints, orblanorder, 1)
+!!$     else
+!!$        call dgsolve0(temp(:,ii),temp2(:,ii),numcalled, scaled_operate_sub, 0, dummysub, tinv_tol, totpoints, orblanorder, 0)
+!!$     endif
+!!$  enddo
+!!$
+!!$  call mpibarrier()   !!TEMP
+!!$
+!!$  OFLWR "op_tinv_scaled: iterations=",numcalled; CFL
+!!$
+!!$  twoereduced(:,:)=temp2(:,:)
+!!$
+!!$end subroutine op_tinv_scaled
+!!$
+!!$
+!!$subroutine scaled_operate_sub(notusedint,in,out)
+!!$  use myparams
+!!$  implicit none
+!!$  integer :: notusedint
+!!$  DATATYPE, intent(in) :: in(totpoints)
+!!$  DATATYPE, intent(out) :: out(totpoints)
+!!$  DATATYPE :: work(totpoints)
+!!$  integer :: times1,times3,times4,times5,fttimes(10),mynumber
+!!$  real*8 :: pi
+!!$
+!!$#ifdef MPIFLAG  
+!!$  if (.not.orbparflag) then
+!!$#endif
+!!$     if ( nbox(3).ne.1) then
+!!$        OFLWR "WHAT? NBOX=1 only.  Parallel options not set."; CFLST
+!!$     endif
+!!$     mynumber=1
+!!$#ifdef MPIFLAG  
+!!$  else
+!!$     if (.not.localflag) then
+!!$        mynumber=nbox(3)
+!!$     else
+!!$        mynumber=1
+!!$     endif
+!!$  endif
+!!$#endif
+!!$
+!!$  call mult_ke_scaled(in(:),work(:),1,"booga",2)
+!!$
+!!$!! too much  work(:)=work(:)*(0.25d0)
+!!$!! too much  work(:)=work(:)*(0.18d0)
+!!$
+!!$  
+!!$!! not enough  work(:)=work(:)*(0.14d0)
+!!$
+!!$  pi=4d0*atan(1d0)
+!!$
+!!$  work(:)=work(:)/2d0/pi
+!!$
+!!$  call op_tinv_notscaled(work(:),out(:),1,1,&
+!!$       mynumber, times1,times3,times4,times5,fttimes)
+!!$
+!!$end subroutine scaled_operate_sub
 
 
-end subroutine op_tinv_scaled
+!!$recursive subroutine  op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,mynumber,&
+!!$     times1,times3,times4,times5,fttimes)
+!!$  use myparams
+!!$  use myprojectmod
+!!$  implicit none
+!!$  integer, intent(in) :: allsize,circsize,mynumber
+!!$  integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
+!!$  DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
+!!$  DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
+!!$  DATATYPE :: temp(totpoints,allsize),temp2(totpoints,allsize)
+!!$  integer :: ii
+!!$
+!!$!!$  real*8 :: fac
+!!$!!$  fac= (-1) * spacing**3 / (16 * atan(1d0))     !! apparently (for finv . finv)
+!!$
+!!$!  OFLWR "go tinv_scaled. ..."; CFL
+!!$!  call mpibarrier()
+!!$
+!!$!! kloodge.  only correct for straight scaling.
+!!$
+!!$  do ii=1,allsize
+!!$     temp2(:,ii)=twoeden03(:,ii)*invsqrtscaleweights(:)*sumjacobian(:)
+!!$  enddo
+!!$  
+!!$  call op_tinv_notscaled(temp2(:,:),temp(:,:),allsize,circsize,&
+!!$       mynumber, times1,times3,times4,times5,fttimes)
+!!$  
+!!$  do ii=1,allsize
+!!$     twoereduced(:,ii)=temp(:,ii)*invsqrtscaleweights(:)*sumjacobian(:) 
+!!$  enddo
+!!$
+!!$
+!!$end subroutine op_tinv_scaled
 
 
-recursive subroutine  op_finv_notscaled(icoord,twoeden03,twoereduced,allsize,circsize,mynumber,&
-     times1,times3,times4,times5,fttimes)
-  use myparams
-  implicit none
-  integer, intent(in) :: allsize,circsize,mynumber,icoord
-  integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
-  DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
-  DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
+!!$recursive subroutine  op_finv_notscaled(icoord,twoeden03,twoereduced,allsize,circsize,mynumber,&
+!!$     times1,times3,times4,times5,fttimes)
+!!$  use myparams
+!!$  implicit none
+!!$  integer, intent(in) :: allsize,circsize,mynumber,icoord
+!!$  integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
+!!$  DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
+!!$  DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
+!!$
+!!$  if (icoord.lt.1.or.icoord.gt.3.or.scalingflag.eq.0) then
+!!$     OFLWR "icoor derror",icoord,scalingflag; CFLST
+!!$  endif
+!!$
+!!$  call op_geninv_notscaled(1+icoord,twoeden03,twoereduced,allsize,circsize,mynumber,&
+!!$       times1,times3,times4,times5,fttimes)
+!!$
+!!$end subroutine op_finv_notscaled
 
-  if (icoord.lt.1.or.icoord.gt.3.or.scalingflag.eq.0) then
-     OFLWR "icoor derror",icoord,scalingflag; CFLST
-  endif
-
-  call op_geninv_notscaled(1+icoord,twoeden03,twoereduced,allsize,circsize,mynumber,&
-       times1,times3,times4,times5,fttimes)
-
-end subroutine op_finv_notscaled
 
 recursive subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,mynumber,&
           times1,times3,times4,times5,fttimes)
@@ -1196,57 +1274,77 @@ subroutine mult_ke(in,out,howmany,timingdir,notiming)
   character :: timingdir*(*)
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE, intent(out) :: out(totpoints,howmany)
-  if (scalingflag.eq.0) then
+
+!!$  if (scalingflag.eq.0) then
+
      call mult_ke000(in, out,howmany,timingdir,notiming)
-  else
-     call mult_ke_scaled(in,out,howmany,timingdir,notiming)
-  endif
+
+!!$  else
+!!$     call mult_ke_scaled(in,out,howmany,timingdir,notiming)
+!!$  endif
+
 end subroutine mult_ke
 
-subroutine mult_ke_scaled(in,out,howmany,timingdir,notiming)
-  use myparams
-  use myprojectmod
-  implicit none
-  integer :: howmany,notiming,ii,jj
-  character :: timingdir*(*)
-  DATATYPE,intent(in) :: in(totpoints,howmany)
-  DATATYPE, intent(out) :: out(totpoints,howmany)
-  DATATYPE :: temp(totpoints,howmany),temp2(totpoints,howmany)   !!AUTOMATIC
 
-  out(:,:)=0d0
 
-  do jj=1,3
-
-     do ii=1,howmany
-        temp(:,ii)=in(:,ii)*invsqrtjacobian(:,jj)
-     enddo
-
-     call mult_easyderiv(temp(:,:), temp2(:,:),howmany,jj)
-
-     do ii=1,howmany
-        temp(:,ii)=temp2(:,ii)*invjacobian(:,jj)
-     enddo
-        
-     call mult_easyderiv(temp(:,:), temp2(:,:),howmany,jj)
-
-     do ii=1,howmany
-        out(:,ii)=out(:,ii)+temp2(:,ii)*invsqrtjacobian(:,jj)
-     enddo
-
-!!$     call mult_easyderiv(in(:,:), temp(:,:),howmany,jj)
+!!$!! J^-1/2  F  J^-1  F  J^-1/2 
+!!$!!
+!!$!!    = J^-1/2 ( J^-1/2 F + (d/dx J^-1/2(x)) ) ( F J^-1/2 - (d/dx J^-1/2(x)) ) J^-1/2
+!!$!!
+!!$!!    = J^-1 T J^-1   - J^-1 (d/dx J^-1/2(x))^2  - J^-1 F (d/dx J^-1/2(x)) J^-1/2  + J^-1/2 (d/dx J^-1/2(x)) F J^-1
+!!$!!
+!!$!!    = J^-1 T J^-1  - (1/4) J^-4 (d/dx J(x))^2  + (1/2) J^-1 F (d/dx J(x)) J^-2   - (1/2) J^-2 (d/dx J(x)) F J^-1 
+!!$!! 
+!!$!!    = invjacobian KE invjacobian + scalediag + invjacobian F scaleder - scaleder F invjacobian
+!!$!!
+!!$!!       scalediag(:) = sum_i scaleder**2(:,i) * (-1)
+!!$!!
+!!$
+!!$subroutine mult_ke_scaled(in,out,howmany,timingdir,notiming)
+!!$  use myparams
+!!$  use myprojectmod
+!!$  implicit none
+!!$  integer :: howmany,notiming,ii,jj
+!!$  character :: timingdir*(*)
+!!$  DATATYPE,intent(in) :: in(totpoints,howmany)
+!!$  DATATYPE, intent(out) :: out(totpoints,howmany)
+!!$  DATATYPE :: temp(totpoints,howmany),temp2(totpoints,howmany)   !!AUTOMATIC
+!!$
+!!$  do jj=1,howmany
+!!$     out(:,jj)=in(:,jj) * scalediag(:) * (-0.5d0)
+!!$  enddo
+!!$
+!!$  do jj=1,3
+!!$
+!!$     do ii=1,howmany
+!!$        temp(:,ii)=in(:,ii)*invjacobian(:,jj)
+!!$     enddo
+!!$
+!!$     call mult_easyke(temp(:,:), temp2(:,:),howmany,jj)
+!!$
+!!$     do ii=1,howmany
+!!$        out(:,ii)=out(:,ii)+temp2(:,ii)*invjacobian(:,jj)
+!!$     enddo
+!!$
 !!$     call mult_easyderiv(temp(:,:), temp2(:,:),howmany,jj)
-!!$     out(:,:)=out(:,:)-temp2(:,:)
-
-  enddo
-
-  temp2(:,:)=out(:,:)*(-0.5d0)
-  out(:,:)=temp2(:,:)
-
-!!$  call mult_ke000(in, temp,howmany,timingdir,notiming)
-!!$  out(:,:)=out(:,:) + temp(:,:)
-
-
-end subroutine mult_ke_scaled
+!!$
+!!$     do ii=1,howmany
+!!$        out(:,ii)=out(:,ii) - temp2(:,ii)*scaleder(:,jj)  * (-0.5d0)    !!MINUS
+!!$     enddo
+!!$
+!!$     do ii=1,howmany
+!!$        temp(:,ii)=in(:,ii)*scaleder(:,jj)
+!!$     enddo
+!!$
+!!$     call mult_easyderiv(temp(:,:), temp2(:,:),howmany,jj)
+!!$
+!!$     do ii=1,howmany
+!!$        out(:,ii)=out(:,ii) + temp2(:,ii)*invjacobian(:,jj) * (-0.5d0)   !!PLUS
+!!$     enddo
+!!$
+!!$  enddo
+!!$
+!!$end subroutine mult_ke_scaled
 
 
 subroutine mult_ke000(in, out,howmany,timingdir,notiming)
@@ -1281,6 +1379,20 @@ subroutine mult_easyderiv(in, out,howmany,which)
      OFLWR "oopsie",which; CFLST
   end select
 end subroutine mult_easyderiv
+
+
+subroutine mult_easyke(in,out,howmany,which)
+  use myparams
+  implicit none
+  integer,intent(in) :: howmany,which
+  DATATYPE,intent(in) :: in(totpoints,howmany)
+  DATATYPE, intent(out) :: out(totpoints,howmany)
+  if (which.lt.1.or.which.gt.3) then
+     OFLWR "which error easyke",which; CFLST
+  endif
+  call mult_allpar(in,out,4+which,howmany,"booga",2)
+
+end subroutine mult_easyke
 
 
 subroutine mult_xderiv(in, out,howmany)
@@ -1328,16 +1440,22 @@ subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
      OFLWR "ERWRESTOPPP"; CFLST
   endif
 
-  dodim(:)=.false.
-  if (inoption.eq.1) then
-     option=1
-     dodim(:)=.true.
-  else if (inoption.lt.1.or.inoption.gt.4) then
+  if (inoption.lt.1.or.inoption.gt.7) then
      OFLWR "OWWOWORE WHAT?"; CFLST
      option=99
+  endif
+  dodim(:)=.false.
+
+  if (inoption.eq.1.or.inoption.gt.4) then
+     option=1                    !! KE options 1, 5,6,7
   else
-     option=2
-     dodim(inoption-1)=.true.
+     option=2                    !! first derivative options 2,3,4
+  endif
+
+  if (inoption.eq.1) then
+     dodim(:)=.true.
+  else 
+     dodim(mod(inoption-2,3)+1)=.true.
   endif
 
   out(:,:)=0d0

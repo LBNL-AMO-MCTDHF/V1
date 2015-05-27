@@ -81,8 +81,12 @@ DEALLOCATE(WORK,W,WT,E,EIGS,QQ)
 
 TINVOUT(:,:,:,1)=TINV(-N:N,-N:N,-N:N)
 
-if (finvflag.ne.0) then
+if (finvflag.eq.1) then
    CALL FVECTOR(TINV,TINVOUT(:,:,:,2:4),NBIG,N,DELTA)
+else if (finvflag.eq.2) then
+   CALL FVECTOR2(TINV,TINVOUT(:,:,:,2:4),TINVOUT(:,:,:,5:7),NBIG,N,DELTA)
+else if (finvflag.ne.0) then
+   print *, "finvflag not recognized", finvflag; call mpistop()
 endif
 
 END SUBROUTINE GETINVERSE
@@ -180,19 +184,16 @@ RECURSIVE SUBROUTINE FVECTOR(TINV,FINV,NBIG,NSMALL,DELTA)
 
   INTEGER, INTENT(IN) :: NBIG, NSMALL
   REAL *8, INTENT(IN) :: DELTA
-  REAL *8, INTENT(OUT) :: TINV(-NBIG:NBIG,-NBIG:NBIG,-NBIG:NBIG)
+  REAL *8, INTENT(IN) :: TINV(-NBIG:NBIG,-NBIG:NBIG,-NBIG:NBIG)
   REAL *8, INTENT(OUT) :: FINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL,3)
   INTEGER :: I,J,K,P
-  REAL *8 :: T1,T2,T3,RAD,DELTAINV
-  REAL *8 :: PI,X,Y,Z !!,A,C,XX(-NBIG:NBIG)
+  REAL *8 :: T1,T2,T3,DELTAINV
 
   if (NBIG.LE.NSMALL) THEN
      print *, "NBIG is less than nsmall.  error", nbig,nsmall
      call mpistop()
   endif
   
-  PI = 4D0*ATAN(1D0)
-
   FINV(:,:,:,:) = 0
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(I,J,K,P,T1,T2,T3,DELTAINV)
@@ -230,6 +231,84 @@ RECURSIVE SUBROUTINE FVECTOR(TINV,FINV,NBIG,NSMALL,DELTA)
 
 
 END SUBROUTINE FVECTOR
+
+
+
+!--------------------------------------------------------------------------------------
+
+RECURSIVE SUBROUTINE FVECTOR2(TINV,FINVOUT,FINVSQOUT,NBIG,NSMALL,DELTA)
+
+  INTEGER, INTENT(IN) :: NBIG, NSMALL
+  REAL *8, INTENT(IN) :: DELTA
+  REAL *8, INTENT(IN) :: TINV(-NBIG:NBIG,-NBIG:NBIG,-NBIG:NBIG)
+  REAL *8, INTENT(OUT) :: FINVOUT(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL,3)
+  REAL *8, INTENT(OUT) :: FINVSQOUT(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL,3)
+  REAL *8 :: WORK(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL)
+  REAL *8 :: FINV(-NBIG:NBIG,-NBIG:NBIG,-NBIG:NBIG,3)  !! AUTOMATIC
+  INTEGER :: I,J,K,P,myrank,nprocs
+  REAL *8 :: T1,T2,T3,DELTAINV
+  REAL*8 :: aaa,bbb,ccc
+
+  if (NBIG.LE.NSMALL) THEN
+     print *, "NBIG is less than nsmall.  error", nbig,nsmall
+     call mpistop()
+  endif
+  
+  FINV(:,:,:,:) = 0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(I,J,K,P,T1,T2,T3,DELTAINV)
+  
+  DELTAINV=1d0/DELTA
+  
+  DO P = -NBIG,NBIG
+
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(3)
+     DO K = -NBIG,NBIG
+     DO J = -NBIG,NBIG
+     DO I = -NBIG,NBIG
+
+        T1 = 0d0
+        T2 = 0d0
+        T3 = 0d0
+        
+        IF(I /= P) T1 = (-1D0)**(I-P)*DELTAINV/(I-P)
+        IF(J /= P) T2 = (-1D0)**(J-P)*DELTAINV/(J-P)
+        IF(K /= P) T3 = (-1D0)**(K-P)*DELTAINV/(K-P)
+        
+        FINV(I,J,K,1) = FINV(I,J,K,1) + T1*TINV(P,J,K)
+        FINV(I,J,K,2) = FINV(I,J,K,2) + T2*TINV(I,P,K)
+        FINV(I,J,K,3) = FINV(I,J,K,3) + T3*TINV(I,J,P)
+        
+     END DO
+     END DO
+     END DO
+!$OMP END DO
+  END DO
+
+!$OMP BARRIER
+!$OMP END PARALLEL
+
+  CALL CONVOLVE_3D(FINV,FINV,FINVSQOUT,NBIG,NSMALL,3)
+
+  FINVOUT(:,:,:,:)=FINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL,:)
+
+  call getmyranknprocs(myrank,nprocs)
+  if (myrank.eq.1) then
+     print *, "CHECKING FVECTOR2."
+     WORK(:,:,:) = FINVSQOUT(:,:,:,1)+FINVSQOUT(:,:,:,1)+FINVSQOUT(:,:,:,3)
+
+     aaa= DOT_PRODUCT(RESHAPE(WORK(:,:,:),(/(2*nsmall+1)**3/)),&
+          RESHAPE(WORK(:,:,:),(/(2*nsmall+1)**3/)))
+     bbb= DOT_PRODUCT(RESHAPE(TINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL),(/(2*nsmall+1)**3/)),&
+          RESHAPE(TINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL),(/(2*nsmall+1)**3/)))
+     ccc= DOT_PRODUCT(RESHAPE(TINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL),(/(2*nsmall+1)**3/)),&
+          RESHAPE(WORK(:,:,:),(/(2*nsmall+1)**3/)))
+     print *, aaa,bbb,ccc,aaa*bbb/ccc/ccc
+     print *, "TEMPSTOP."
+  endif
+  call mpibarrier(); call mpistop()
+
+END SUBROUTINE FVECTOR2
 
 
 
