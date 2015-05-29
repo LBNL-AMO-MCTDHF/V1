@@ -24,6 +24,8 @@ module myprojectmod
   type(twomat), allocatable ::  sinepoints(:)
   type(onemat),allocatable :: kevect(:),fdvect(:)
 
+  type(onemat), allocatable :: maskfunction(:)
+
   DATATYPE, allocatable :: dipoles(:,:)
 
 !!$  !! smooth complex scaling:  e.g. X(x) = x + i scalefunction(x,1)
@@ -44,6 +46,18 @@ subroutine myprojectalloc()
   integer :: idim
 
   allocate(dipoles(totpoints,griddim))
+  if (maskflag.ne.0) then
+     if (masknumpoints.lt.0.or.&
+          masknumpoints.gt.gridpoints(1).or.&
+          masknumpoints.gt.gridpoints(2).or.&
+          masknumpoints.gt.gridpoints(3)) then
+        OFLWR "masknumpoints not allowed",masknumpoints; CFLST
+     endif
+     allocate(maskfunction(3))
+     do idim=1,griddim
+        allocate(maskfunction(idim)%rmat(numpoints(idim)))
+     enddo
+  endif
 
 !!$  if (scalingflag.ne.0) then
 !!$     allocate(jacobian(totpoints,3), &

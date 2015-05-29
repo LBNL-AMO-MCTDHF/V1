@@ -55,6 +55,9 @@ real*8 :: capstart(100)=0.001d0    !! Capmode=0 is
 real*8 :: capstrength(100)=0.01d0  !!   v_i(r)= capstrength_i*max(0,r-capstart_i)^cappower_i
 real*8 :: mincap=0d0 , maxcap=1d30 !! V_CAP = -i* max(mincap,min(maxcap,sum_i v_i))
 
+integer :: maskflag=0
+integer :: masknumpoints=0
+
 integer :: scalingflag=0           !! COMPLEX SCALING is disabled.
 !! XXSNIPXX 
 !! INTERNAL

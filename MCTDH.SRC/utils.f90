@@ -737,7 +737,9 @@ subroutine cnormorthogmat(A,N)
   implicit none
   integer,intent(in) :: N
   DATATYPE,intent(inout) :: A(N,N)
-  OFLWR "cnormorthogmat CHECKME"; CFLST
+
+!!  OFLWR "cnormorthogmat CHECKME"; CFLST
+
   call allpurposemat(A,N,1)
 end subroutine cnormorthogmat
 

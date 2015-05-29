@@ -9,13 +9,15 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   use myprojectmod
   implicit none
   integer, intent(in) :: skipflag,notused
-  integer ::  i,   spfsloaded,j,ii,jj,k,l,idim
+  integer ::  i,   spfsloaded,j,ii,jj,k,l,idim,ilow(3),ihigh(3)
   DATATYPE :: inspfs(totpoints, numspf),pot(totpoints),proderivmod(numr,numr),rkemod(numr,numr),&
        bondpoints(numr),bondweights(numr), elecweights(totpoints),elecradii(totpoints),&
        halfniumpot(totpoints)
 #ifndef REALGO
   real*8 :: temppot(totpoints) !! AUTOMATIC
 #endif
+  real*8 :: rsum,pi
+  character (len=2) :: th(4)
 
 !!$#ifndef REALGO
 !!$  DATATYPE :: scaledenom(totpoints,3),scaledenomderiv(totpoints,3),scaledenomsecderiv(totpoints,3),&
@@ -23,7 +25,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 !!$       scalefunction(totpoints,3),scaleweights(totpoints)
 !!$#endif
 
-  character (len=2) :: th(4)
+
   if (fft_mpi_inplaceflag.eq.0) then
      call ct_init(fft_ct_paropt,mpifileptr)
   endif
@@ -154,6 +156,37 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      pot(:)=pot(:) + (0d0,-1d0) * temppot(:)
   endif
 #endif
+
+  ilow(1:3)=1
+  ihigh(1:3)=gridpoints(1:3)
+
+  if (orbparflag) then
+     ilow(3)=(myrank-1)*numpoints(3)+1
+     ihigh(3)=myrank*numpoints(3)
+  endif
+
+  pi=4d0*atan(1d0)
+
+  if (maskflag.ne.0) then
+     do jj=1,3
+        maskfunction(jj)%rmat(:)=1d0
+        do ii=1,masknumpoints
+
+!!$           rsum=cos(pi * i / (masknumpoints+1) )
+
+           rsum=0.5d0 * ( cos( 2*pi * i / (masknumpoints+1) ) + 1d0 )
+
+           i=masknumpoints+1-ii
+           if (i.ge.ilow(jj).and.i.le.ihigh(jj)) then
+              maskfunction(jj)%rmat(i+1-ilow(jj)) = maskfunction(jj)%rmat(i+1-ilow(jj)) * rsum
+           endif
+           i=gridpoints(jj)-masknumpoints+ii
+           if (i.ge.ilow(jj).and.i.le.ihigh(jj)) then
+              maskfunction(jj)%rmat(i+1-ilow(jj)) = maskfunction(jj)%rmat(i+1-ilow(jj)) * rsum
+           endif
+        enddo
+     enddo
+  endif
 
   halfniumpot(:)=pot(:)/sumcharge
 

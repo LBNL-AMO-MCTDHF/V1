@@ -1277,13 +1277,55 @@ subroutine mult_ke(in,out,howmany,timingdir,notiming)
 
 !!$  if (scalingflag.eq.0) then
 
+  if (maskflag.ne.0) then
+     call mult_ke_mask(in, out,howmany,timingdir,notiming)
+  else
      call mult_ke000(in, out,howmany,timingdir,notiming)
+  endif
 
 !!$  else
 !!$     call mult_ke_scaled(in,out,howmany,timingdir,notiming)
 !!$  endif
 
 end subroutine mult_ke
+
+
+
+subroutine mult_ke_mask(in,out,howmany,timingdir,notiming)
+  use myparams
+  use myprojectmod
+  implicit none
+  integer :: howmany,notiming,ii
+  character :: timingdir*(*)
+  DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3),howmany)
+  DATATYPE, intent(out) :: out(numpoints(1),numpoints(2),numpoints(3),howmany)
+  DATATYPE :: work(numpoints(1),numpoints(2),numpoints(3),howmany)
+
+  work(:,:,:,:)=in(:,:,:,:)
+
+  do ii=1,numpoints(1)
+     work(ii,:,:,:)=work(ii,:,:,:)/maskfunction(1)%rmat(ii)
+  enddo
+  do ii=1,numpoints(2)
+     work(:,ii,:,:)=work(:,ii,:,:)/maskfunction(2)%rmat(ii)
+  enddo
+  do ii=1,numpoints(3)
+     work(:,:,ii,:)=work(:,:,ii,:)/maskfunction(3)%rmat(ii)
+  enddo
+ 
+  call mult_ke000(work, out, howmany,timingdir,notiming)
+
+  do ii=1,numpoints(1)
+     out(ii,:,:,:)=out(ii,:,:,:)*maskfunction(1)%rmat(ii)
+  enddo
+  do ii=1,numpoints(2)
+     out(:,ii,:,:)=out(:,ii,:,:)*maskfunction(2)%rmat(ii)
+  enddo
+  do ii=1,numpoints(3)
+     out(:,:,ii,:)=out(:,:,ii,:)*maskfunction(3)%rmat(ii)
+  enddo
+
+end subroutine mult_ke_mask
 
 
 
