@@ -10,10 +10,6 @@ logical :: orbparflag=.false.
 !! THE FOLLOWING FLAG IS THEN RELEVANT.  Option for parallel KE matvec, rate limiting step.
 integer :: zke_paropt=1   !! 0=sendrecv 1=SUMMA (bcast before) 2=reduce after
 
-!! toepflag:  Fast Fourier transforms for Toeplitz matrix vector multiplications
-!! toepflag=1, triple toeplitz T^-1.  toepflag=2, T^-1 and single toeplitz T. 
-integer :: toepflag=1
-
 !! fft_batchdim: determines batch size for matrix elements and 
 !! fft_circbatchdim: determines sub batch size for FFT 
 !!    defaults set small (less memory, more MPI messages) to avoid MPI problems when doing large 
@@ -28,9 +24,6 @@ integer :: fft_mpi_inplaceflag=1     !! fft_mpi_inplaceflag:
                                      !!  1 = 3 x (1d FFT , all-to-all index transposition)
 integer :: fft_ct_paropt=1           !! fft_ct_paropt, relevant if fft_mpi_inplaceflag=0
                                      !!    like zke_paropt: 0 = sendrecv 1 = summa
-integer :: fft_mpi_keinplace=1       !! for toepflag=2 (single toeplitz matvec for KE) equals 
-                                     !!    fft_mpi_inplaceflag by default; specify in namelist
-                                     !!    if you want FFT methods to be different for T and T^-1
 integer :: num_skip_orbs=0
 integer :: orb_skip(200)=-1
 
@@ -58,7 +51,12 @@ real*8 :: mincap=0d0 , maxcap=1d30 !! V_CAP = -i* max(mincap,min(maxcap,sum_i v_
 integer :: maskflag=0
 integer :: masknumpoints=0
 
-integer :: scalingflag=0           !! COMPLEX SCALING is disabled.
+integer :: scalingflag=0           !! 1 = SMOOTH EXTERIOR COMPLEX SCALING
+real*8 :: scalingdistance=10000d0  !! atomic units (bohr)
+real*8 :: smoothness=5             !! atomic units (bohr)
+real*8 :: scalingtheta=0d0         !! scaling angle
+integer :: scalingorder=2          !! should be 2 or greater!
+ real*8 :: tinv_tol=1d-3
 !! XXSNIPXX 
 !! INTERNAL
 
@@ -74,9 +72,6 @@ integer :: scalingflag=0           !! COMPLEX SCALING is disabled.
 integer,parameter :: nullfileptr=798
 
   integer :: myrank=(-1),nprocs=(-1)
-
-  integer :: gridoffset,gridlow,gridhigh,gridsize(100)=(-1)
-  logical :: localflag
 
 
 

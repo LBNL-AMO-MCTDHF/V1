@@ -26,15 +26,16 @@ module myprojectmod
 
   type(onemat), allocatable :: maskfunction(:)
 
-  DATATYPE, allocatable :: dipoles(:,:)
+  DATATYPE, allocatable :: dipoles(:,:),&
 
-!!$  !! smooth complex scaling:  e.g. X(x) = x + i scalefunction(x,1)
-!!$         jacobian(:,:),&        !! jacobian(:,1) should only be a function of x, etc.
-!!$         invsqrtscaleweights(:), &
-!!$         invjacobian(:,:),&
-!!$         scalediag(:),&      !!sum  (-1/4) J^-4 (d/dx J(x))^2 = (-1)* sum_i=1..3 scaleder(:,i)**2
-!!$         scaleder(:,:),&     !!     (1/2) J^-2 (d/dx J(x))   
-!!$         sumjacobian(:)      !! kloodge attempt TEMP?
+!! WAS:  e.g. X(x) = x + i scalefunction(x,1)
+
+
+       jacobian(:,:),&         !! jacobian(:,1) should only be a function of x, etc.
+       invjacobian(:,:),&
+       scalediag(:),&      !!sum  (-1/4) J^-4 (d/dx J(x))^2 = (-1)* sum_i=1..3 scaleder(:,i)**2
+       scaleder(:,:),&       !!     (1/2) J^-2 (d/dx J(x))   
+       invsqrtscaleweights(:)
 
 end module myprojectmod
 
@@ -58,14 +59,14 @@ subroutine myprojectalloc()
         allocate(maskfunction(idim)%rmat(numpoints(idim)))
      enddo
   endif
+  
+  if (scalingflag.ne.0) then
+     allocate(          jacobian(totpoints,3),invjacobian(totpoints,3), &
+          scalediag(totpoints),scaleder(totpoints,3),&
+          invsqrtscaleweights(totpoints))
 
-!!$  if (scalingflag.ne.0) then
-!!$     allocate(jacobian(totpoints,3), &
-!!$          invjacobian(totpoints,3), invsqrtscaleweights(totpoints),&
-!!$          scalediag(totpoints),scaleder(totpoints,3),&
-!!$          sumjacobian(totpoints))   !! sumjacobian TEMP?
-!!$  endif
-
+  endif
+  
   allocate(ketot(griddim),sinepoints(griddim),kevect(griddim),fdtot(griddim),fdvect(griddim))
   do idim=1,griddim
      allocate( &
@@ -96,7 +97,7 @@ subroutine myprojectalloc()
 
 !!$  endif
 
-  allocate(threed_two(0-gridsize(1):gridsize(1)-1,0-gridsize(2):gridsize(2)-1,0-gridsize(3):gridsize(3)-1,threedtwosize))
+  allocate(threed_two(0-numpoints(1):numpoints(1)-1,0-numpoints(2):numpoints(2)-1,0-numpoints(3):numpoints(3)-1,threedtwosize))
 
 end subroutine myprojectalloc
 

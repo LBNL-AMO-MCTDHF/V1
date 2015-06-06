@@ -12,7 +12,7 @@ subroutine get_3dpoisson(pot)
   real*8, allocatable :: tempcoulomb(:,:,:,:)
   real*8, allocatable :: xcoulomb(:,:,:,:,:,:)
   real*8, allocatable :: threed_two_big(:,:,:)
-  integer :: ldims(3),udims(3),istart
+  integer :: ldims(3),udims(3),istart,gridoffset
 
   if (griddim.ne.3) then
      OFLWR "WTF! should not happen."; CFLST
@@ -38,11 +38,13 @@ subroutine get_3dpoisson(pot)
   tempcoulomb(:,:,:,:)=tempcoulomb(:,:,:,:)/spacing**3
 
   istart=0
-  if (myrank.eq.1.or.(.not.localflag)) then
+  if (myrank.eq.1.or.(.not.orbparflag)) then
      istart=1
   endif
 
-  if (localflag) then
+  if (orbparflag) then
+     gridoffset=(myrank-1)*numpoints(3)
+
      pp(1:2)=1-gridpoints(1:2)
      qq(1:2)=gridpoints(1:2)-1
      pp(3)=istart+2*gridoffset-gridpoints(3)

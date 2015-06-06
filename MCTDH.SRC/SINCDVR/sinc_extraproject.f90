@@ -13,15 +13,19 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
 
   integer :: spfdims(3),spfdimtype(3),inmpifileptr,nonuc_checkflag,myiostat, reducedpotsize, outnumr,&
        nargs, idim ,i,j,len,getlen
+  integer :: toepflag  !! toepflag deprecated; dummy
   character :: inpfile*(*)
   real*8 :: outnucrepulsion, rsq(griddim)
   character (len=200) :: buffer
   character (len=200) :: nullbuff="                                                                                "
   NAMELIST /sincparinp/        numpoints,spacing,griddim,notwoflag,nuccharges,orblanthresh, &
-       numcenters,centershift,orblanorder,toepflag,nonucrepflag,debugflag, &
+       numcenters,centershift,orblanorder,nonucrepflag,debugflag, &
        toothnbig, toothnsmall, orbparflag,num_skip_orbs,orb_skip,orblancheckmod,zke_paropt,&
        capflag,capstrength,capstart,cappower,fft_mpi_inplaceflag, fft_ct_paropt,fft_batchdim,&
-       fft_circbatchdim,fft_mpi_keinplace,maxcap,mincap,capmode,scalingflag, maskflag, masknumpoints
+       fft_circbatchdim,maxcap,mincap,capmode, maskflag, masknumpoints,&
+       scalingflag,scalingdistance,smoothness,scalingtheta,scalingorder,tinv_tol,&
+       toepflag  !! toepflag deprecated
+
 
 !!$  ,scalingorders,&
 !!$       scalingterms,scalingdflag,scalingdconst,tinv_tol
@@ -52,8 +56,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
      close(971)
 
 !! enforce defaults that depend on other variables
-
-     fft_mpi_keinplace=fft_mpi_inplaceflag
+!! (none currently)
 
      open(971,file=inpfile, status="old", iostat=myiostat)
      read(971,nml=sincparinp)
@@ -70,10 +73,6 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
      if (buffer(1:2) .eq. 'N=') then
         read(buffer(3:len),*) numpoints(1)
         write(mpifileptr, *) "numpoints set to ", numpoints(1)
-     endif
-     if (buffer(1:5) .eq. 'Toep=') then
-        read(buffer(6:len),*) toepflag
-        write(mpifileptr, *) "toepflag set to ", toepflag
      endif
      if (buffer(1:9) .eq. 'Batchdim=') then
         read(buffer(10:len),*) fft_batchdim
@@ -101,6 +100,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   endif
 
   numpoints(:)=numpoints(1); nbox(:)=1
+
   if (orbparflag) then
      if (nprocs*(numpoints(3)/nprocs).ne.numpoints(3)) then
         OFLWR "ACK, orbparflag is set, but numpoints is not divisible by nprocs",numpoints(3),nprocs; CFLST
@@ -161,39 +161,6 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
 
   outnucrepulsion=nucrepulsion
 
-
-!! If orbparflag=.false., toepflag.ne.0, then distribute effort and allgather.
-!! If orbparflag=.true., toepflag .ne.0, and MPIFLAG is set, then only have local block; no communication afterwards is needed
-!! If orbparflag=.true., toepflag .eq.0, then allocate big grid and reduce (need more memory with toepflag 0)
-
-  gridlow=1 ; gridhigh=numpoints(3); localflag=.false.; gridoffset=0
-  gridsize(1:griddim)=numpoints(1:griddim)
-
-  if (orbparflag) then
-     localflag=.true.
-     gridoffset=(myrank-1)*numpoints(3)
-#ifdef MPIFLAG
-     if (toepflag.eq.0.or.debugflag.eq.9886) then
-#endif
-        gridlow=(myrank-1)*numpoints(3)+1; gridhigh=myrank*numpoints(3)
-        gridsize(1:griddim)=gridpoints(1:griddim)
-        localflag=.false.
-#ifdef MPIFLAG
-     endif
-#endif
-
-  else
-     do j=1,3
-        if (nbox(j).ne.1) then
-           OFLWR "FDSsdffdfds"; CFLST
-        endif
-     enddo
-  endif
-
-  if (toepflag.eq.0.and.orbparflag) then
-     OFLWR "Toepflag=0 and orbparflag=.TRUE. not allowed"; CFLST
-  endif
-
 end subroutine getmyparams
 
 
@@ -213,16 +180,13 @@ subroutine printmyopts()
   enddo
   WRFL "orblanorder,orblanthresh",orblanorder,orblanthresh
   WRFL "notwoflag",notwoflag
-  WRFL "toepflag,nonucrepflag",toepflag,nonucrepflag
+  WRFL "nonucrepflag",nonucrepflag
   WRFL "toothnbig, toothnsmall",toothnbig, toothnsmall
   WRFL "orbparflag",orbparflag
   WRFL "zke_paropt",zke_paropt
   WRFL "fft_mpi_inplaceflag",fft_mpi_inplaceflag
   if (fft_mpi_inplaceflag==0) then
      WRFL "   --> fft_ct_paropt",fft_ct_paropt
-  endif
-  if (toepflag.gt.1) then
-     WRFL "fft_mpi_keinplace",fft_mpi_keinplace
   endif
   WRFL "fft_batchdim",fft_batchdim
   WRFL "fft_circbatchdim",fft_circbatchdim

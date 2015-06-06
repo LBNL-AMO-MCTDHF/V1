@@ -619,227 +619,142 @@ recursive subroutine  op_tinv(twoeden03,twoereduced,allsize,circsize,&
   integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
   DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
   DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
-  integer :: mynumber
 
-
-#ifdef MPIFLAG  
-  if (.not.orbparflag) then
-#endif
-     if ( nbox(3).ne.1) then
-        OFLWR "WHAT? NBOX=1 only.  Parallel options not set."; CFLST
-     endif
-     mynumber=1
-#ifdef MPIFLAG  
-  else
-     if (.not.localflag) then
-        mynumber=nbox(3)
-     else
-        mynumber=1
-     endif
-  endif
-#endif
-
-!!$  if (scalingflag.eq.0) then
-
-     call op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,mynumber,&
+  if (scalingflag.eq.0) then
+     call op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
      times1,times3,times4,times5,fttimes)
 
-!!$  else
-!!$     call op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,mynumber,&
-!!$     times1,times3,times4,times5,fttimes)
-!!$  endif
+  else
+     call op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,&
+     times1,times3,times4,times5,fttimes)
+  endif
 
 end subroutine op_tinv
 
 
+!! S = T-twiddle, T-scaled.
+!! A = twoeden03
+!! B = tweoreduced
+
+!! Solve A = S B as follows
+!!
+!! Solve for TB
+!!
+!!  A = (S T^-1) (TB)
+!!    = O (TB)
+!!
+!! Then B = T^-1 (TB)
+!!
+!! O = S T^-1 = T-twiddle T^-1 = 1 + (T-twiddle - T) T^-1
+!!
+!! O is scaled_operate_sub
+!!
 
 
-!!$!! T-twiddle = 
-!!$!! J^-1/2  F  J^-1  F  J^-1/2 
-!!$!!
-!!$!! Need to invert T-twiddle.
-!!$!!
-!!$!! find B given X
-!!$!!
-!!$!! T-twiddle^-1 X = B
-!!$!! 
-!!$!! X = T-twiddle B
-!!$!! 
-!!$!! so solve
-!!$!!
-!!$!! T^-1 X = T^-1 T-twiddle B
-!!$!! 
-!!$
-!!$
-!!$recursive subroutine  op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,mynumber,&
-!!$     times1,times3,times4,times5,fttimes)
-!!$  use myparams
-!!$  use myprojectmod
-!!$  implicit none
-!!$  integer, intent(in) :: allsize,circsize,mynumber
-!!$  integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
-!!$  DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
-!!$  DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
-!!$  DATATYPE :: temp(totpoints,allsize),temp2(totpoints,allsize)
-!!$  integer :: ii,numcalled
-!!$  external :: scaled_operate_sub, dummysub
-!!$
-!!$  call op_tinv_notscaled(twoeden03(:,:),temp(:,:),allsize,circsize,&
-!!$       mynumber, times1,times3,times4,times5,fttimes)
-!!$
-!!$  temp2(:,:)=temp(:,:)  !! guess
-!!$
-!!$  do ii=1,allsize
-!!$     if (orbparflag) then
-!!$        call dgsolve0(temp(:,ii),temp2(:,ii),numcalled, scaled_operate_sub, 0, dummysub, tinv_tol, totpoints, orblanorder, 1)
-!!$     else
-!!$        call dgsolve0(temp(:,ii),temp2(:,ii),numcalled, scaled_operate_sub, 0, dummysub, tinv_tol, totpoints, orblanorder, 0)
-!!$     endif
-!!$  enddo
-!!$
-!!$  call mpibarrier()   !!TEMP
-!!$
-!!$  OFLWR "op_tinv_scaled: iterations=",numcalled; CFL
-!!$
-!!$  twoereduced(:,:)=temp2(:,:)
-!!$
-!!$end subroutine op_tinv_scaled
-!!$
-!!$
-!!$subroutine scaled_operate_sub(notusedint,in,out)
-!!$  use myparams
-!!$  implicit none
-!!$  integer :: notusedint
-!!$  DATATYPE, intent(in) :: in(totpoints)
-!!$  DATATYPE, intent(out) :: out(totpoints)
-!!$  DATATYPE :: work(totpoints)
-!!$  integer :: times1,times3,times4,times5,fttimes(10),mynumber
-!!$  real*8 :: pi
-!!$
-!!$#ifdef MPIFLAG  
-!!$  if (.not.orbparflag) then
-!!$#endif
-!!$     if ( nbox(3).ne.1) then
-!!$        OFLWR "WHAT? NBOX=1 only.  Parallel options not set."; CFLST
-!!$     endif
-!!$     mynumber=1
-!!$#ifdef MPIFLAG  
-!!$  else
-!!$     if (.not.localflag) then
-!!$        mynumber=nbox(3)
-!!$     else
-!!$        mynumber=1
-!!$     endif
-!!$  endif
-!!$#endif
-!!$
-!!$  call mult_ke_scaled(in(:),work(:),1,"booga",2)
-!!$
-!!$!! too much  work(:)=work(:)*(0.25d0)
-!!$!! too much  work(:)=work(:)*(0.18d0)
-!!$
-!!$  
-!!$!! not enough  work(:)=work(:)*(0.14d0)
-!!$
-!!$  pi=4d0*atan(1d0)
-!!$
-!!$  work(:)=work(:)/2d0/pi
-!!$
-!!$  call op_tinv_notscaled(work(:),out(:),1,1,&
-!!$       mynumber, times1,times3,times4,times5,fttimes)
-!!$
-!!$end subroutine scaled_operate_sub
+recursive subroutine  op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,&
+     times1,times3,times4,times5,fttimes)
+  use myparams
+  use myprojectmod
+  implicit none
+  integer, intent(in) :: allsize,circsize
+  integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
+  DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
+  DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
+  DATATYPE :: temp(totpoints,allsize)
+  integer :: ii,numcalled
+  external :: scaled_operate_sub, dummysub
+
+  do ii=1,allsize
+     temp(:,ii)=twoeden03(:,ii)*invsqrtscaleweights(:)  
+  enddo
+
+  twoereduced(:,:)=temp(:,:)  !! guess
+
+  do ii=1,allsize
+     if (orbparflag) then
+        call dgsolve0(temp(:,ii),twoereduced(:,ii),numcalled, scaled_operate_sub, 0, dummysub, tinv_tol, totpoints, orblanorder, 1)
+     else
+        call dgsolve0(temp(:,ii),twoereduced(:,ii),numcalled, scaled_operate_sub, 0, dummysub, tinv_tol, totpoints, orblanorder, 0)
+     endif
+  enddo
+
+  call mpibarrier()   !!TEMP?
+
+  if (debugflag.ne.0) then
+     OFLWR "op_tinv_scaled: iterations=",numcalled; CFL
+  endif
+
+  call op_tinv_notscaled(twoereduced(:,:),temp(:,:),allsize,circsize,&
+       times1,times3,times4,times5,fttimes)
+
+  do ii=1,allsize
+     twoereduced(:,ii)=temp(:,ii)*invsqrtscaleweights(:)  
+  enddo
 
 
-!!$recursive subroutine  op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,mynumber,&
-!!$     times1,times3,times4,times5,fttimes)
-!!$  use myparams
-!!$  use myprojectmod
-!!$  implicit none
-!!$  integer, intent(in) :: allsize,circsize,mynumber
-!!$  integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
-!!$  DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
-!!$  DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
-!!$  DATATYPE :: temp(totpoints,allsize),temp2(totpoints,allsize)
-!!$  integer :: ii
-!!$
-!!$!!$  real*8 :: fac
-!!$!!$  fac= (-1) * spacing**3 / (16 * atan(1d0))     !! apparently (for finv . finv)
-!!$
-!!$!  OFLWR "go tinv_scaled. ..."; CFL
-!!$!  call mpibarrier()
-!!$
-!!$!! kloodge.  only correct for straight scaling.
-!!$
-!!$  do ii=1,allsize
-!!$     temp2(:,ii)=twoeden03(:,ii)*invsqrtscaleweights(:)*sumjacobian(:)
-!!$  enddo
-!!$  
-!!$  call op_tinv_notscaled(temp2(:,:),temp(:,:),allsize,circsize,&
-!!$       mynumber, times1,times3,times4,times5,fttimes)
-!!$  
-!!$  do ii=1,allsize
-!!$     twoereduced(:,ii)=temp(:,ii)*invsqrtscaleweights(:)*sumjacobian(:) 
-!!$  enddo
-!!$
-!!$
-!!$end subroutine op_tinv_scaled
+
+end subroutine op_tinv_scaled
 
 
-!!$recursive subroutine  op_finv_notscaled(icoord,twoeden03,twoereduced,allsize,circsize,mynumber,&
-!!$     times1,times3,times4,times5,fttimes)
-!!$  use myparams
-!!$  implicit none
-!!$  integer, intent(in) :: allsize,circsize,mynumber,icoord
-!!$  integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
-!!$  DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
-!!$  DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
-!!$
-!!$  if (icoord.lt.1.or.icoord.gt.3.or.scalingflag.eq.0) then
-!!$     OFLWR "icoor derror",icoord,scalingflag; CFLST
-!!$  endif
-!!$
-!!$  call op_geninv_notscaled(1+icoord,twoeden03,twoereduced,allsize,circsize,mynumber,&
-!!$       times1,times3,times4,times5,fttimes)
-!!$
-!!$end subroutine op_finv_notscaled
+subroutine scaled_operate_sub(notusedint,in,out)
+  use myparams
+  implicit none
+  integer :: notusedint
+  DATATYPE, intent(in) :: in(totpoints)
+  DATATYPE, intent(out) :: out(totpoints)
+  DATATYPE :: work(totpoints),temp(totpoints)
+  integer :: times1,times3,times4,times5,fttimes(10)
+  real*8 :: pi
+
+  call op_tinv_notscaled(in(:),work(:),1,1,&
+       times1,times3,times4,times5,fttimes)
+
+  pi=4d0*atan(1d0)
+
+  work(:)=work(:)/2d0/pi
+
+  call mult_ke_scaled(work(:),out(:),1,"booga",2)
+
+  call mult_ke000(work(:),temp(:),1,"booga",2)
+  
+  out(:) = out(:) - temp(:) + in(:)
+
+end subroutine scaled_operate_sub
 
 
-recursive subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,mynumber,&
+recursive subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
           times1,times3,times4,times5,fttimes)
   use myparams
   implicit none
-  integer, intent(in) :: allsize,circsize,mynumber
+  integer, intent(in) :: allsize,circsize
   integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
   DATATYPE,intent(in) :: twoeden03(numpoints(1),numpoints(2),numpoints(3),allsize)
   DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
 
-  call op_geninv_notscaled(1,twoeden03,twoereduced,allsize,circsize,mynumber,&
+  call op_geninv_notscaled(1,twoeden03,twoereduced,allsize,circsize,&
        times1,times3,times4,times5,fttimes)
 
 end subroutine op_tinv_notscaled
 
-recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,circsize,mynumber,&
+
+recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,circsize,&
           times1,times3,times4,times5,fttimes)
   use myparams
   use myprojectmod
   implicit none
-  integer, intent(in) :: allsize,circsize,mynumber,iwhich
+  integer, intent(in) :: allsize,circsize,iwhich
   integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
   DATATYPE,intent(in) :: twoeden03(numpoints(1),numpoints(2),numpoints(3),allsize)
   DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
   integer ::   ii,jj, itime,jtime, kk21,kk22,kk23,  ii21,ii22,ii23, ibox,jproc
   integer :: circhigh,circindex,icirc,ilow,ihigh
-  DATATYPE :: twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),mynumber*2,allsize),&
+  DATATYPE :: twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,allsize),&
        reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,allsize),&
-       reducedwork3d(gridsize(1),gridsize(2),gridsize(3),allsize), &
+       reducedwork3d(numpoints(1),numpoints(2),numpoints(3),allsize), &
        tempden03(numpoints(1),numpoints(2),numpoints(3),allsize)
 #ifdef MPIFLAG
   DATATYPE, allocatable ::  twoeden03big(:,:,:,:,:)
 #endif
-  integer :: pointsperproc(nprocs),procstart(nprocs),procend(nprocs)
-  integer, save :: maxpointsperproc
-
   if (iwhich.lt.1.or.iwhich.gt.threedtwosize) then
      OFLWR "iwhich error",iwhich,threedtwosize; CFLST
   endif
@@ -850,24 +765,6 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
 
   circhigh=allsize/circsize
 
-!! for toepflag 0. if doing toepflag=0, need to reduce.
-  maxpointsperproc=0
-  if (orbparflag) then
-     procstart(:)=1
-     procend(:)=gridpoints(3)
-  else
-     do ii=1,nprocs
-        procstart(ii)=(ii-1)*gridpoints(3)/nprocs+1
-        procend(ii)=ii*gridpoints(3)/nprocs
-     enddo
-     do ii=1,nprocs
-        pointsperproc(ii)=procend(ii)-procstart(ii)+1
-        if (maxpointsperproc.lt.pointsperproc(ii)) then
-           maxpointsperproc=pointsperproc(ii)
-        endif
-     enddo
-  endif
-
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP MASTER
   twoereduced(:,:)=0d0;  reducedwork3d(:,:,:,:)=0d0;
@@ -876,154 +773,100 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
 !$OMP END PARALLEL
 
 
-  if (toepflag.ne.0) then
-        
-     do ii=2,griddim
-        if (gridpoints(ii).ne.gridpoints(1)) then
-           OFLWR "DOME NONCUBE",gridpoints(:); CFLST
-        endif
-     enddo
-#ifdef MPIFLAG
-     
-     if (orbparflag) then
-        if (numpoints(1).ne.numpoints(2).or.numpoints(1).ne.numpoints(3)*nbox(3).or.nbox(1).gt.1.or.nbox(2).gt.1) then
-           OFLWR "WOOTTTFFFF"; CFLST
-        endif
-        if (.not.localflag) then
-           call myclock(itime)
-           allocate(twoeden03big(numpoints(1),numpoints(2),numpoints(3),nbox(3),allsize))
-           call simpleallgather(twoeden03,twoeden03big,totpoints*allsize)
-           twoeden03huge(:,:,:,:,:,:,:)=0d0; 
-           do ii=1,nbox(3)
-              twoeden03huge(:,1,:,1,:,ii*2-1,:)=twoeden03big(:,:,:,ii,:)
-           enddo
-           deallocate(twoeden03big)
-           call myclock(jtime); times3=times3+jtime-itime;
-        else
-           call myclock(itime)
-           twoeden03huge(:,:,:,:,:,:,:)=0d0; 
-           
-           do ibox=1,nbox(3)  !! processor sending
-              jproc=(ibox+1)/2
-              if (ibox.eq.myrank.and.jproc.eq.myrank) then
-                 twoeden03huge(:,1,:,1,:,mod(ibox-1,2)+1,:)=twoeden03(:,:,:,:)
-              else if (ibox.eq.myrank) then
-                 call mympisend(twoeden03,jproc,999,totpoints*allsize)
-              else if (jproc.eq.myrank) then
-                 call mympirecv(tempden03,ibox,999,totpoints*allsize)
-                 twoeden03huge(:,1,:,1,:,mod(ibox-1,2)+1,:)=tempden03(:,:,:,:)
-              endif
-           enddo
-           call myclock(jtime); times3=times3+jtime-itime;
-        endif
-     else
-#endif
-        call myclock(itime)
-        twoeden03huge(:,:,:,:,:,:,:)=0d0; 
-        twoeden03huge(:,1,:,1,:,1,:)=twoeden03(:,:,:,:)
-        call myclock(jtime); times1=times1+jtime-itime;
-        
-#ifdef MPIFLAG
-     endif  !! orbparflag
-#endif
-
-#ifdef MPIFLAG
-     if (localflag) then
-        call myclock(itime); 
-        
-        do icirc=1,circhigh
-           circindex=(icirc-1)*circsize+1
-#ifdef REALGO
-           call circ3d_sub_real_mpi(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag)
-#else
-           call circ3d_sub_mpi(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag)
-#endif
-        enddo
-        
-        call myclock(jtime); times4=times4+jtime-itime; itime=jtime
-        
-        do ibox=1,nbox(3)  !! processor receiving
-           jproc=(ibox+nbox(3)+1)/2
-           if (ibox.eq.myrank.and.jproc.eq.myrank) then
-              reducedwork3d(:,:,:,:)=reducedhuge(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:)
-           else if (ibox.eq.myrank) then
-              call mympirecv(reducedwork3d(:,:,:,:),jproc,999,totpoints*allsize)
-           else if (jproc.eq.myrank) then
-              tempden03(:,:,:,:)=reducedhuge(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:)
-              call mympisend(tempden03(:,:,:,:),ibox,999,totpoints*allsize)
-           endif
-        enddo
-        
-        call myclock(jtime); times5=times5+jtime-itime
-     else
-#endif
-        call myclock(itime)
-        
-        do icirc=1,circhigh
-           circindex=(icirc-1)*circsize+1
-#ifdef REALGO
-           call circ3d_sub_real(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag)
-#else
-           call circ3d_sub(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag)
-#endif
-        enddo
-        
-        do ii=1,nbox(3)
-           ilow=(ii-1)*numpoints(3)+1; ihigh=ii*numpoints(3)
-           reducedwork3d(:,:,ilow:ihigh,:)=reducedhuge(:,2,:,2,:, 2*ii ,:)
-        enddo
-        
-        call myclock(jtime); times4=times4+jtime-itime
-#ifdef MPIFLAG
+  do ii=2,griddim
+     if (gridpoints(ii).ne.gridpoints(1)) then
+        OFLWR "DOME NONCUBE",gridpoints(:); CFLST
      endif
+  enddo
+#ifdef MPIFLAG
+  
+  if (orbparflag) then
+     if (numpoints(1).ne.numpoints(2).or.numpoints(1).ne.numpoints(3)*nbox(3).or.nbox(1).gt.1.or.nbox(2).gt.1) then
+        OFLWR "WOOTTTFFFF"; CFLST
+     endif
+
+     call myclock(itime)
+     twoeden03huge(:,:,:,:,:,:,:)=0d0; 
+     
+     do ibox=1,nbox(3)  !! processor sending
+        jproc=(ibox+1)/2
+        if (ibox.eq.myrank.and.jproc.eq.myrank) then
+           twoeden03huge(:,1,:,1,:,mod(ibox-1,2)+1,:)=twoeden03(:,:,:,:)
+        else if (ibox.eq.myrank) then
+           call mympisend(twoeden03,jproc,999,totpoints*allsize)
+        else if (jproc.eq.myrank) then
+           call mympirecv(tempden03,ibox,999,totpoints*allsize)
+           twoeden03huge(:,1,:,1,:,mod(ibox-1,2)+1,:)=tempden03(:,:,:,:)
+        endif
+     enddo
+     call myclock(jtime); times3=times3+jtime-itime;
+  else
+#endif
+     call myclock(itime)
+     twoeden03huge(:,:,:,:,:,:,:)=0d0; 
+     twoeden03huge(:,1,:,1,:,1,:)=twoeden03(:,:,:,:)
+     call myclock(jtime); times1=times1+jtime-itime;
+     
+#ifdef MPIFLAG
+  endif  !! orbparflag
+#endif
+  
+#ifdef MPIFLAG
+  if (orbparflag) then
+     call myclock(itime); 
+     
+     do icirc=1,circhigh
+        circindex=(icirc-1)*circsize+1
+#ifdef REALGO
+        call circ3d_sub_real_mpi(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag)
+#else
+        call circ3d_sub_mpi(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag)
+#endif
+     enddo
+     
+     call myclock(jtime); times4=times4+jtime-itime; itime=jtime
+     
+     do ibox=1,nbox(3)  !! processor receiving
+        jproc=(ibox+nbox(3)+1)/2
+        if (ibox.eq.myrank.and.jproc.eq.myrank) then
+           reducedwork3d(:,:,:,:)=reducedhuge(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:)
+        else if (ibox.eq.myrank) then
+           call mympirecv(reducedwork3d(:,:,:,:),jproc,999,totpoints*allsize)
+        else if (jproc.eq.myrank) then
+           tempden03(:,:,:,:)=reducedhuge(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:)
+           call mympisend(tempden03(:,:,:,:),ibox,999,totpoints*allsize)
+        endif
+     enddo
+     
+     call myclock(jtime); times5=times5+jtime-itime
+  else
+#endif
+     call myclock(itime)
+     
+     do icirc=1,circhigh
+        circindex=(icirc-1)*circsize+1
+#ifdef REALGO
+        call circ3d_sub_real(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag)
+#else
+        call circ3d_sub(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag)
+#endif
+     enddo
+     
+     do ii=1,nbox(3)
+        ilow=(ii-1)*numpoints(3)+1; ihigh=ii*numpoints(3)
+        reducedwork3d(:,:,ilow:ihigh,:)=reducedhuge(:,2,:,2,:, 2*ii ,:)
+     enddo
+     
+     call myclock(jtime); times4=times4+jtime-itime
+#ifdef MPIFLAG
+  endif
 #endif
      
-  else  !! TOEPFLAG NE 0
-     
-     call myclock(itime)
-     do icirc=1,allsize
-        do ii23=procstart(myrank),procend(myrank)
-           do kk23=1,numpoints(3)                    
-           do kk22=1,numpoints(2)                 
-           do kk21=1,numpoints(1)                 
-           do ii22=1,gridsize(2)
-           do ii21=1,gridsize(1)
-              reducedwork3d(ii21,ii22,ii23,icirc)=reducedwork3d(ii21,ii22,ii23,icirc)+&
-                   twoeden03(kk21,kk22,kk23,icirc) * threed_two(ii21-kk21,ii22-kk22,ii23-kk23-gridoffset,iwhich)
-           enddo
-           enddo
-           enddo
-           enddo
-           enddo
-        enddo
-     enddo
-     call myclock(jtime); times4=times4+jtime-itime
-     
-  endif !!TOEPLITZ
-     
-
-!! If orbparflag=.false., toepflag.ne.0, then distribute effort and allgather.
-!! If orbparflag=.true., toepflag .ne.0, and MPIFLAG is set, then only have local block; no communication afterwards is needed
-!! If orbparflag=.true., toepflag .eq.0, then allocate big grid and reduce (need more memory with toepflag 0)
-
-  call myclock(itime)
-  if (orbparflag.and.toepflag.eq.0) then
-     call mympireduce(reducedwork3d,gridsize(1)*gridsize(2)*gridsize(3)*allsize)
-  else if (toepflag.eq.0) then    !! no orbparflag
-     jj=gridsize(1)*gridsize(2)
-     do icirc=1,allsize
-        call mpiallgather(reducedwork3d(:,:,:,icirc),jj*gridsize(3),jj*pointsperproc(:),jj*maxpointsperproc)
-     enddo
-  endif
-  call myclock(jtime); times5=times5+jtime-itime; itime=jtime
-     
-  twoereduced(:,:) =RESHAPE(reducedwork3d(:,:,gridlow:gridhigh,:),(/totpoints,allsize/))
+  twoereduced(:,:) =RESHAPE(reducedwork3d(:,:,:,:),(/totpoints,allsize/))
 
   call myclock(jtime); times1=times1+jtime-itime; itime=jtime
   
 end subroutine op_geninv_notscaled
-
-!!! QQQQQQQQ
 
 
 
@@ -1129,143 +972,6 @@ end subroutine get_one_dipole
 
 
 
-subroutine mult_ke_toep(in, out, howmany)
-  use myparams
-  use myprojectmod
-  implicit none
-  integer,intent(in) :: howmany
-  DATATYPE,intent(in) :: in(totpoints,howmany)
-  DATATYPE, intent(out) :: out(totpoints,howmany)
-
-!!$ gridsize variable only appropriate for two-electron (depends on whether or not
-!!$ toepflag is zero)    ... deprecate gridsize, it's just confusing 05-03-15
-
-  DATATYPE ::  bigin(numpoints(1),2,numpoints(2),2,numpoints(3),2,howmany),&
-       bigout(numpoints(1),2,numpoints(2),2,numpoints(3),2,howmany)
-  DATATYPE, allocatable, save :: bigke(:,:,:)
-#ifdef MPIFLAG
-  DATATYPE :: mywork(totpoints,howmany)
-  DATATYPE, allocatable :: hugeke(:,:,:)
-  integer :: qblocks(nprocs),ibox,jproc,  nulltimes(10)
-#endif
-  integer, save :: allocated=0
-
-!  if (.not.orbparflag) then
-!     OFLWR "Ack, don't use mult_ke_toep without orbparflag"; CFLST
-!  endif
-
-!!! ????? means that the situation where nprocs is even and numpoints is odd is forbidden... does not make sense
-!  if (mod((nprocs-1)*numpoints(3),2).eq.1) then
-!     OFLWR "ERROR SQUASH 55 TEMP CONTINUE"; CFL
-!  endif
-
-!! legitimate checks
-
-  if (nbox(3).ne.nprocs.or.nbox(1).ne.1.or.nbox(2).ne.1) then
-     OFLWR "KE TOEP ERROR (programmer fail)",nbox(1:3),nprocs; CFLST
-  endif
-
-  if (.not.orbparflag.and.nbox(3).ne.1) then
-     OFLWR "KE TOEP BLUEBERRY ERROR (programmer failure)", orbparflag,nbox(3); CFLST
-  endif
-#ifndef MPIFLAG
-  if (nbox(3).gt.1) then
-     OFLWR "KE TOEP GORILLA ERROR (programmer fail non-MPI)", nbox(3); CFLST
-  endif
-#endif
-
-  bigin(:,:,:,:,:,:,:)=0d0
-
-#ifndef MPIFLAG
-  bigin(:,1,:,1,:,1,:)=RESHAPE(in(:,:),(/numpoints(1),numpoints(2),numpoints(3),howmany/))
-#else
-  do ibox=1,nbox(3)  !! processor sending
-     jproc=(ibox+1)/2
-     if (ibox.eq.myrank.and.jproc.eq.myrank) then
-        bigin(:,1,:,1,:,mod(ibox-1,2)+1,:)=RESHAPE(in,(/numpoints(1),numpoints(2),numpoints(3),howmany/))
-     else if (ibox.eq.myrank) then
-        call mympisend(in,jproc,999,totpoints*howmany)
-     else if (jproc.eq.myrank) then
-        call mympirecv(mywork,ibox,999,totpoints*howmany)
-        bigin(:,1,:,1,:,mod(ibox-1,2)+1,:)=RESHAPE(mywork(:,:),(/numpoints(1),numpoints(2),numpoints(3),howmany/))
-     endif
-  enddo
-#endif
-
-  if (allocated.eq.0) then
-     allocated=1
-     allocate(bigke(0-numpoints(1):numpoints(1)-1,0-numpoints(2):numpoints(2)-1,0-numpoints(3):numpoints(3)-1))
-#ifndef MPIFLAG
-        bigke(:,:,:)=0d0
-        bigke(1-gridpoints(1):gridpoints(1)-1,0,0)=bigke(1-gridpoints(1):gridpoints(1)-1,0,0)+&
-             kevect(1)%cmat(1-gridpoints(1):gridpoints(1)-1)
-        bigke(0,1-gridpoints(2):gridpoints(2)-1,0)=bigke(0,1-gridpoints(2):gridpoints(2)-1,0)+&
-             kevect(2)%cmat(1-gridpoints(2):gridpoints(2)-1)
-        bigke(0,0,1-gridpoints(3):gridpoints(3)-1)=bigke(0,0,1-gridpoints(3):gridpoints(3)-1)+&
-             kevect(3)%cmat(1-gridpoints(3):gridpoints(3)-1)
-#else
-     if (myrank.eq.1) then
-        allocate(hugeke(0-gridpoints(1):gridpoints(1)-1,0-gridpoints(2):gridpoints(2)-1,0-gridpoints(3):gridpoints(3)-1))
-        hugeke(:,:,:)=0d0
-        hugeke(1-gridpoints(1):gridpoints(1)-1,0,0)=hugeke(1-gridpoints(1):gridpoints(1)-1,0,0)+&
-             kevect(1)%cmat(1-gridpoints(1):gridpoints(1)-1)
-        hugeke(0,1-gridpoints(2):gridpoints(2)-1,0)=hugeke(0,1-gridpoints(2):gridpoints(2)-1,0)+&
-             kevect(2)%cmat(1-gridpoints(2):gridpoints(2)-1)
-        hugeke(0,0,1-gridpoints(3):gridpoints(3)-1)=hugeke(0,0,1-gridpoints(3):gridpoints(3)-1)+&
-             kevect(3)%cmat(1-gridpoints(3):gridpoints(3)-1)
-     else
-        allocate(hugeke(1,1,1))
-     endif
-     qblocks(:)=8*totpoints
-
-#ifdef REALGO
-     call myscatterv_real(hugeke,bigke,qblocks(:))
-#else
-     call myscatterv_complex(hugeke,bigke,qblocks(:))
-#endif
-     deallocate(hugeke)
-
-!MPIFLAG
-#endif
-
-  endif  !! allocated
-
-#ifndef MPIFLAG
-#ifdef REALGO
-  call circ3d_sub_real(bigke,bigin,bigout,gridpoints(3),howmany,fft_mpi_keinplace)
-#else
-  call circ3d_sub(bigke,bigin,bigout,gridpoints(3),howmany,fft_mpi_keinplace)
-#endif
-#else
-#ifdef REALGO
-  call circ3d_sub_real_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany,fft_mpi_keinplace)
-#else
-  call circ3d_sub_mpi(bigke,bigin,bigout,gridpoints(3),numpoints(3),nulltimes,howmany,fft_mpi_keinplace)
-#endif
-#endif
-  
-
-
-#ifndef MPIFLAG
-  out(:,:)=RESHAPE(bigout(:,2,:,2,:,2,:),(/totpoints,howmany/))
-#else
-  out(:,:)=0d0
-  do ibox=1,nbox(3)  !! processor receiving
-     jproc=(ibox+nbox(3)+1)/2
-     if (ibox.eq.myrank.and.jproc.eq.myrank) then
-        out(:,:)=out(:,:)+RESHAPE(bigout(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:),(/totpoints,howmany/))
-     else if (ibox.eq.myrank) then
-        call mympirecv(mywork,jproc,999,totpoints*howmany)
-        out(:,:)=out(:,:)+mywork(:,:)
-     else if (jproc.eq.myrank) then
-        mywork(:,:)=RESHAPE(bigout(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:),(/totpoints,howmany/))
-        call mympisend(mywork,ibox,999,totpoints*howmany)
-     endif
-  enddo
-#endif
-
-end subroutine mult_ke_toep
-
 
 subroutine mult_ke(in,out,howmany,timingdir,notiming)
   use myparams
@@ -1275,17 +981,15 @@ subroutine mult_ke(in,out,howmany,timingdir,notiming)
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE, intent(out) :: out(totpoints,howmany)
 
-!!$  if (scalingflag.eq.0) then
-
-  if (maskflag.ne.0) then
-     call mult_ke_mask(in, out,howmany,timingdir,notiming)
+  if (scalingflag.eq.0) then
+     if (maskflag.ne.0) then
+        call mult_ke_mask(in, out,howmany,timingdir,notiming)
+     else
+        call mult_ke000(in, out,howmany,timingdir,notiming)
+     endif
   else
-     call mult_ke000(in, out,howmany,timingdir,notiming)
+     call mult_ke_scaled(in,out,howmany,timingdir,notiming)
   endif
-
-!!$  else
-!!$     call mult_ke_scaled(in,out,howmany,timingdir,notiming)
-!!$  endif
 
 end subroutine mult_ke
 
@@ -1342,51 +1046,52 @@ end subroutine mult_ke_mask
 !!$!!       scalediag(:) = sum_i scaleder**2(:,i) * (-1)
 !!$!!
 !!$
-!!$subroutine mult_ke_scaled(in,out,howmany,timingdir,notiming)
-!!$  use myparams
-!!$  use myprojectmod
-!!$  implicit none
-!!$  integer :: howmany,notiming,ii,jj
-!!$  character :: timingdir*(*)
-!!$  DATATYPE,intent(in) :: in(totpoints,howmany)
-!!$  DATATYPE, intent(out) :: out(totpoints,howmany)
-!!$  DATATYPE :: temp(totpoints,howmany),temp2(totpoints,howmany)   !!AUTOMATIC
-!!$
-!!$  do jj=1,howmany
-!!$     out(:,jj)=in(:,jj) * scalediag(:) * (-0.5d0)
-!!$  enddo
-!!$
-!!$  do jj=1,3
-!!$
-!!$     do ii=1,howmany
-!!$        temp(:,ii)=in(:,ii)*invjacobian(:,jj)
-!!$     enddo
-!!$
-!!$     call mult_easyke(temp(:,:), temp2(:,:),howmany,jj)
-!!$
-!!$     do ii=1,howmany
-!!$        out(:,ii)=out(:,ii)+temp2(:,ii)*invjacobian(:,jj)
-!!$     enddo
-!!$
-!!$     call mult_easyderiv(temp(:,:), temp2(:,:),howmany,jj)
-!!$
-!!$     do ii=1,howmany
-!!$        out(:,ii)=out(:,ii) - temp2(:,ii)*scaleder(:,jj)  * (-0.5d0)    !!MINUS
-!!$     enddo
-!!$
-!!$     do ii=1,howmany
-!!$        temp(:,ii)=in(:,ii)*scaleder(:,jj)
-!!$     enddo
-!!$
-!!$     call mult_easyderiv(temp(:,:), temp2(:,:),howmany,jj)
-!!$
-!!$     do ii=1,howmany
-!!$        out(:,ii)=out(:,ii) + temp2(:,ii)*invjacobian(:,jj) * (-0.5d0)   !!PLUS
-!!$     enddo
-!!$
-!!$  enddo
-!!$
-!!$end subroutine mult_ke_scaled
+
+subroutine mult_ke_scaled(in,out,howmany,timingdir,notiming)
+  use myparams
+  use myprojectmod
+  implicit none
+  integer :: howmany,notiming,ii,jj
+  character :: timingdir*(*)
+  DATATYPE,intent(in) :: in(totpoints,howmany)
+  DATATYPE, intent(out) :: out(totpoints,howmany)
+  DATATYPE :: temp(totpoints,howmany),temp2(totpoints,howmany)   !!AUTOMATIC
+
+  do jj=1,howmany
+     out(:,jj)=in(:,jj) * scalediag(:) * (-0.5d0)
+  enddo
+
+  do jj=1,3
+
+     do ii=1,howmany
+        temp(:,ii)=in(:,ii)*invjacobian(:,jj)
+     enddo
+
+     call mult_easyke(temp(:,:), temp2(:,:),howmany,jj)
+
+     do ii=1,howmany
+        out(:,ii)=out(:,ii)+temp2(:,ii)*invjacobian(:,jj)
+     enddo
+
+     call mult_easyderiv(temp(:,:), temp2(:,:),howmany,jj)
+
+     do ii=1,howmany
+        out(:,ii)=out(:,ii) - temp2(:,ii)*scaleder(:,jj)  * (-0.5d0)    !!MINUS
+     enddo
+
+     do ii=1,howmany
+        temp(:,ii)=in(:,ii)*scaleder(:,jj)
+     enddo
+
+     call mult_easyderiv(temp(:,:), temp2(:,:),howmany,jj)
+
+     do ii=1,howmany
+        out(:,ii)=out(:,ii) + temp2(:,ii)*invjacobian(:,jj) * (-0.5d0)   !!PLUS
+     enddo
+
+  enddo
+
+end subroutine mult_ke_scaled
 
 
 subroutine mult_ke000(in, out,howmany,timingdir,notiming)
@@ -1396,11 +1101,9 @@ subroutine mult_ke000(in, out,howmany,timingdir,notiming)
   character :: timingdir*(*)
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE, intent(out) :: out(totpoints,howmany)
-  if (toepflag.eq.2) then
-     call mult_ke_toep(in,out,howmany)
-  else
-     call mult_allpar(in,out,1,howmany,timingdir,notiming)
-  endif
+
+  call mult_allpar(in,out,1,howmany,timingdir,notiming)
+
 end subroutine mult_ke000
 
 
@@ -1508,7 +1211,7 @@ subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
      endif
      do idim=1,griddim
         if (dodim(idim)) then
-           call mult_allone(in,temp,idim,option,1,1,howmany)
+           call mult_allone(in,temp,idim,option,howmany)
            out(:,:)=out(:,:)+temp(:,:)
         endif
      enddo
@@ -1518,7 +1221,7 @@ subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
      endif
      do idim=1,2
         if (dodim(idim)) then
-           call mult_allone(in,temp,idim,option,1,1,howmany)
+           call mult_allone(in,temp,idim,option,howmany)
            out(:,:)=out(:,:)+temp(:,:)
         endif
      enddo
@@ -1529,10 +1232,6 @@ subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
            call mult_circ_z(in,temp,option,howmany,timingdir,notiming)
         case(1)
            call mult_summa_z(in,temp,option,howmany,timingdir,notiming)
-        case(2)
-           call mult_reduce_z(in,temp,option,howmany,timingdir,notiming)
-        case(3)
-           call mult_alltoall_z(in, temp,option,howmany,timingdir,notiming)
         case default
            OFLWR "Error, zke_paropt not recognized",zke_paropt; CFLST
         end select
@@ -1548,8 +1247,6 @@ end subroutine mult_allpar
 !!
 !!  zke_paropt=0   mult_circ_z   sendrecv
 !!  zke_paropt=1   mult_summa_z  SUMMA  scalable universal matrix multiplication algorithm (broadcast before)
-!!  zke_paropt=2   mult_reduce_z  reduce after (slow, generally, right?)
-!!  zke_paropt=3   mult_alltoall_z  Calculate everything, wasting memory, then perform all to all
 
 recursive subroutine mult_circ_z(in, out,option,howmany,timingdir,notiming)
   use myparams
@@ -1704,219 +1401,31 @@ recursive subroutine mult_summa_z(in, out,option,howmany,timingdir,notiming)
 end subroutine mult_summa_z
 
 
-!! yeah this is slow.  had to check
-recursive subroutine mult_reduce_z(in, out,option,howmany,timingdir,notiming)
-  use myparams
-  use myprojectmod  
-  implicit none
-  integer :: nnn,option,ii,howmany,totsize
-  DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       out(numpoints(1)*numpoints(2),numpoints(3),howmany), &
-       work(numpoints(1)*numpoints(2),numpoints(3),howmany)  !! AUTOMATIC
-  integer :: times(10),atime,btime,notiming,getlen,ibox
-  character :: timingdir*(*)
-  integer, save :: xcount=0
 
-  times(:)=0
-
-  if (nprocs.ne.nbox(3)) then
-     OFLWR "EEGNOT STOP",nprocs,nbox(3); CFLST
-  endif
-  if (totpoints.ne.numpoints(1)*numpoints(2)*numpoints(3)) then
-     OFLWR "WHAAAAAZZZZ?",totpoints,numpoints(1),numpoints(2),numpoints(3); CFLST
-  endif
-
-  nnn=numpoints(1)*numpoints(2)
-  totsize=numpoints(1)*numpoints(2)*numpoints(3)*howmany
-
-  do ibox=1,nbox(3)
-     call myclock(atime)
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,atime,btime)
-     select case(option)
-     case(1)  !! KE
-!$OMP DO SCHEDULE(STATIC)
-        do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,ketot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
-        enddo
-!$OMP END DO
-     case(2) 
-!$OMP DO SCHEDULE(STATIC)
-        do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,fdtot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
-        enddo
-!$OMP END DO
-     case default 
-        OFLWR "WHAAAAT"; CFLST
-     end select
-
-! (Implied barrier at end parallel)
-!$OMP END PARALLEL
-     call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
-     call mympireduceto(work(:,:,:),out(:,:,:),totsize,ibox)
-     call myclock(btime); times(2)=times(2)+btime-atime
-  enddo
-
-  if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
-     xcount=xcount+1
-     if (xcount==1) then
-        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown")
-        write(2853,'(100A11)')   "mult", "reduce"
-        close(2853) 
-     endif
-     open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown", position="append")
-     write(2853,'(100I11)')  times(1:2);        close(2853)
-  endif
-
-end subroutine mult_reduce_z
-
-
-!! .. and this (all to all) takes lots of memory obviously
-
-recursive subroutine mult_alltoall_z(in, out,option,howmany,timingdir,notiming)
-  use myparams
-  use myprojectmod  
-  implicit none
-  integer :: nnn,option,ii,howmany
-  integer :: times(10),atime,btime,notiming,getlen
-  DATATYPE,intent(in) :: in(numpoints(1)*numpoints(2),numpoints(3),howmany)
-  DATATYPE,intent(out) :: out(numpoints(1)*numpoints(2),numpoints(3),howmany)
-  DATATYPE :: work(numpoints(1)*numpoints(2),numpoints(3),nprocs,howmany),&
-       work2(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs),&
-       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs)
-  character :: timingdir*(*)
-  integer, save :: xcount=0
-
-  times(:)=0
-
-  if (nprocs.ne.nbox(3)) then
-     OFLWR "EEGNOT STOP",nprocs,nbox(3); CFLST
-  endif
-  if (totpoints.ne.numpoints(1)*numpoints(2)*numpoints(3)) then
-     OFLWR "WHAAAAAZZZZ?",totpoints,numpoints(1),numpoints(2),numpoints(3); CFLST
-  endif
-
-!!$  allocate(work(numpoints(1)*numpoints(2),numpoints(3),nprocs,howmany),&
-!!$       work2(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs),&
-!!$       work3(numpoints(1)*numpoints(2),numpoints(3),howmany,nprocs))
-
-  call myclock(atime)
-
-  nnn=numpoints(1)*numpoints(2)
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,atime,btime)
-  select case(option)
-  case(1)  !! KE
-!$OMP DO SCHEDULE(STATIC)
-     do ii=1,howmany
-        call MYGEMM('N','T',nnn,gridpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,ketot(3)%mat(1,1,1,myrank),gridpoints(3),DATAZERO, work(:,:,:,ii), nnn)
-     enddo
-!$OMP END DO
-  case(2) 
-!$OMP DO SCHEDULE(STATIC)
-     do ii=1,howmany
-        call MYGEMM('N','T',nnn,gridpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,fdtot(3)%mat(1,1,1,myrank),gridpoints(3),DATAZERO, work(:,:,:,ii), nnn)
-     enddo
-!$OMP END DO
-  case default 
-     OFLWR "WHAAAAT"; CFLST
-  end select
-
-!$OMP MASTER
-  call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
-!$OMP END MASTER
-
-!! *** OMP BARRIER ***
-
-!$OMP BARRIER
-
-!$OMP DO SCHEDULE(STATIC)
-  do ii=1,nprocs
-     work2(:,:,:,ii)=work(:,:,ii,:)
-  enddo
-!$OMP END DO
-
-!! *** OMP BARRIER ***
-
-!$OMP BARRIER
-
-!$OMP MASTER
-  call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
-  call mympialltoall(work2,work3,totpoints*howmany)
-!$OMP END MASTER
-!   why?  why not
-!$OMP BARRIER
-!$OMP END PARALLEL
-
-  call myclock(btime); times(3)=times(3)+btime-atime; atime=btime
-  out(:,:,:)=0d0
-  do ii=1,nprocs
-     out(:,:,:)=out(:,:,:)+work3(:,:,:,ii)
-  enddo
-  call myclock(btime); times(4)=times(4)+btime-atime
-
-!!$  deallocate(work,work2,work3)
-
-  if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
-     xcount=xcount+1
-     if (xcount==1) then
-        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke.time.dat", status="unknown")
-        write(2853,'(100A11)')   "mult", "arrange","mpi","reduce"
-        close(2853) 
-     endif
-     open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke.time.dat", status="unknown", position="append")
-     write(2853,'(100I11)')  times(1:4);        close(2853)
-  endif
-end subroutine mult_alltoall_z
-
-
-subroutine mult_allone(in, out,idim,option,ibox,jbox,howmany)
+subroutine mult_allone(in, out,idim,option,howmany)
   use myparams
   implicit none
-  integer :: mmm,idim,nnn,jdim,option,ibox,jbox,howmany
+  integer :: mmm,idim,nnn,jdim,option,howmany
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE, intent(out) :: out(totpoints,howmany)
 
-  if (ibox.lt.1.or.jbox.lt.1) then
-     OFLWR "ERGSTTTTOP"; CFLST
-  endif
-  if (ibox.gt.nbox(idim).or.jbox.gt.nbox(idim)) then
-     OFLWR "OOGSTOP"; CFLST
-  endif
-  if ((.not.orbparflag).or.idim.ne.3) then
-     if (ibox.ne.1.or.jbox.ne.1) then
-        OFLWR "BOOBOBOBXSTOP"; CFLST
-     endif
-  endif
-  if ((.not.orbparflag).or.(idim.ne.3).or.(ibox.eq.myrank)) then
-     nnn=1; mmm=1
-     do jdim=1,idim-1
-        nnn=nnn*numpoints(jdim)
-     enddo
-     do jdim=idim+1,griddim
-        mmm=mmm*numpoints(jdim)
-     enddo
-     call mult_all0(in,out,ibox,jbox,idim,nnn,mmm*howmany,option)
-#ifdef MPIFLAG
-     if (orbparflag.and.(idim.eq.3).and.(jbox.ne.ibox)) then
-        call mympisend(out,jbox,999,totpoints*howmany)
-     endif
-#endif
-  endif
-#ifdef MPIFLAG
-  if (orbparflag.and.(idim.eq.3).and.(jbox.ne.ibox).and.(jbox.eq.myrank)) then
-     call mympirecv(out,ibox,999,totpoints*howmany)
-  endif
-#endif
+  nnn=1; mmm=1
+  do jdim=1,idim-1
+     nnn=nnn*numpoints(jdim)
+  enddo
+  do jdim=idim+1,griddim
+     mmm=mmm*numpoints(jdim)
+  enddo
+  call mult_all0(in,out,idim,nnn,mmm*howmany,option)
 
 end subroutine mult_allone
 
 
-recursive subroutine mult_all0(in, out,ibox,jbox,idim,nnn,mmm,option)
+recursive subroutine mult_all0(in, out,idim,nnn,mmm,option)
   use myparams
   use myprojectmod  
   implicit none
-  integer :: mmm,idim,nnn,jj,ibox,jbox,option
+  integer :: mmm,idim,nnn,jj,option
   DATATYPE,intent(in) :: in(nnn,numpoints(idim),mmm)
   DATATYPE,intent(out) :: out(nnn,numpoints(idim),mmm)
 
@@ -1925,7 +1434,7 @@ recursive subroutine mult_all0(in, out,ibox,jbox,idim,nnn,mmm,option)
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
 !$OMP DO SCHEDULE(STATIC)
      do jj=1,mmm
-        call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,ketot(idim)%mat(1,jbox,1,ibox),gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
+        call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,ketot(idim)%mat(1,1,1,1),gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
      enddo
 !$OMP END DO
 !$OMP END PARALLEL
@@ -1933,7 +1442,7 @@ recursive subroutine mult_all0(in, out,ibox,jbox,idim,nnn,mmm,option)
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
 !$OMP DO SCHEDULE(STATIC)
      do jj=1,mmm
-        call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,fdtot(idim)%mat(1,jbox,1,ibox),gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
+        call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,fdtot(idim)%mat(1,1,1,1),gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
      enddo
 !$OMP END DO
 !$OMP END PARALLEL

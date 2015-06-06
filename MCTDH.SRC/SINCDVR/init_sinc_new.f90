@@ -19,6 +19,12 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   real*8 :: rsum,pi
   character (len=2) :: th(4)
 
+!! smooth exterior scaling
+  DATATYPE :: scalefunction(totpoints,3),scaleweights(totpoints), djacobian(totpoints,3)
+  real*8 :: exteriorcoord(totpoints,3)
+  DATATYPE :: fac
+
+!!$ smooth, not exterior scaling
 !!$#ifndef REALGO
 !!$  DATATYPE :: scaledenom(totpoints,3),scaledenomderiv(totpoints,3),scaledenomsecderiv(totpoints,3),&
 !!$       djacobian(totpoints,3), new_jacobian(totpoints,3),new_djacobian(totpoints,3),& !! AUTOMATIC
@@ -66,10 +72,55 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   call get_rad(elecradii(:))
   call get_dipoles()
 
+
+  fac=1d0
+
+  if (scalingflag.ne.0) then
+     fac=exp((0d0,1d0)*scalingtheta) !! ok imp conv mctdhf
+
+
+     if (mod(scalingorder,2).eq.0) then
+        OFLWR "Only odd scaling order supported right now", scalingorder; CFLST
+     endif
+
+     if (scalingorder.lt.3) then
+        OFLWR "need scalingorder .ge. 3", scalingorder; CFLST
+     endif
+
+!! exterior smooth scaling
+!! X(x,y,z) = x + scalefunction(x,1) etc.
+
+     exteriorcoord(:,:)=&
+          max(real(dipoles(:,:),8)-scalingdistance,0d0) + &
+          min(real(dipoles(:,:),8)+scalingdistance,0d0)
+
+     scalefunction(:,:) = fac * &
+          exteriorcoord(:,:)**scalingorder / smoothness**scalingorder*scalingdistance
+
+     jacobian(:,:) = 1 + fac * scalingorder * &
+          exteriorcoord(:,:)**(scalingorder-1) / smoothness**scalingorder*scalingdistance
+
+     djacobian(:,:) = fac * scalingorder * (scalingorder-1) * &
+          exteriorcoord(:,:)**(scalingorder-2) / smoothness**scalingorder*scalingdistance
+
+     invjacobian(:,:)=1d0/jacobian(:,:)
+     scaleweights(:)=jacobian(:,1)*jacobian(:,2)*jacobian(:,3)
+
+     invsqrtscaleweights(:)=sqrt(1d0/scaleweights(:))
+
+     scaleder(:,:)=0.5d0 * invjacobian(:,:)**2 * djacobian(:,:)
+     scalediag(:)=0d0
+     do jj=1,3
+        scalediag(:)=scalediag(:) - scaleder(:,jj)**2    !! MINUS  (negative 1 goes here, add scalediag to ke mult)
+     enddo
+  endif
+  
+   
+!!$ smooth, not exterior scaling
 !!$#ifndef REALGO
 !!$  if (scalingflag.ne.0) then
 !!$
-!!$!! X(x,y,z) = x + i scalefunction(x,1) etc.
+!!$!! X(x,y,z) = x + scalefunction(x,1) etc.
 !!$
 !!$     djacobian(:,:)=0d0; jacobian(:,:)=0d0; scalefunction(:,:)=0d0
 !!$
@@ -138,6 +189,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 !!$  endif
 !!$
 !!$#endif
+
 
   call get_twoe_new(pot)
 
