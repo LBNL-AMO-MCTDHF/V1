@@ -377,25 +377,48 @@ subroutine mympirealbcast(input, source, isize)
 end subroutine mympirealbcast
 
 
+
+!subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
+!  use mpimod
+!  use fileptrmod
+!  implicit none
+!  integer, intent(in) :: dest,source,tag,isize
+!  integer :: ierr, idest,isource
+!  DATATYPE, intent(in) :: sendbuf(isize)
+!  DATATYPE, intent(out) :: recvbuf(isize)
+!
+!  idest=dest-1
+!  isource=source-1
+!  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+!  call mpi_sendrecv(sendbuf,isize,MPIDATATYPE,idest,tag,&
+!       recvbuf,isize, MPIDATATYPE,isource,tag,MPI_COMM_WORLD,MPI_STATUS_IGNORE,ierr)
+!  if (ierr/=0) then
+!     OFLWR "ERR mympisendrecv",ierr; CFLST
+!  endif
+!  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+!end subroutine mympisendrecv
+!
+
 subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
   use mpimod
-  use fileptrmod
   implicit none
   integer, intent(in) :: dest,source,tag,isize
-  integer :: ierr, idest,isource
   DATATYPE, intent(in) :: sendbuf(isize)
   DATATYPE, intent(out) :: recvbuf(isize)
-
-  idest=dest-1
-  isource=source-1
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-  call mpi_sendrecv(sendbuf,isize,MPIDATATYPE,idest,tag,&
-       recvbuf,isize, MPIDATATYPE,isource,tag,MPI_COMM_WORLD,MPI_STATUS_IGNORE,ierr)
-  if (ierr/=0) then
-     OFLWR "ERR mympisendrecv",ierr; CFLST
-  endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call mympisendrecv_local(sendbuf, recvbuf, dest, source, tag, isize,MPI_COMM_WORLD)
 end subroutine mympisendrecv
+
+subroutine mympisendrecv_local(sendbuf, recvbuf, dest, source, tag, isize,MPI_COMM_LOCAL)
+  implicit none
+  integer, intent(in) :: dest,source,tag,isize,MPI_COMM_LOCAL
+  DATATYPE, intent(in) :: sendbuf(isize)
+  DATATYPE, intent(out) :: recvbuf(isize)
+#ifdef REALGO
+  call mympisendrecv_real_local(sendbuf, recvbuf, dest, source, tag, isize,MPI_COMM_LOCAL)
+#else
+  call mympisendrecv_complex_local(sendbuf, recvbuf, dest, source, tag, isize,MPI_COMM_LOCAL)
+#endif
+end subroutine mympisendrecv_local
 
 
 subroutine mympisendrecv_complex_local(sendbuf, recvbuf, dest, source, tag, isize,MPI_COMM_LOCAL)
@@ -416,6 +439,27 @@ subroutine mympisendrecv_complex_local(sendbuf, recvbuf, dest, source, tag, isiz
   endif
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympisendrecv_complex_local
+
+
+
+subroutine mympisendrecv_real_local(sendbuf, recvbuf, dest, source, tag, isize,MPI_COMM_LOCAL)
+  use mpimod
+  use fileptrmod
+  implicit none
+  integer, intent(in) :: dest,source,tag,isize,MPI_COMM_LOCAL
+  integer :: ierr, idest,isource
+  real*8, intent(in) :: sendbuf(isize)
+  real*8, intent(out) :: recvbuf(isize)
+  idest=dest-1
+  isource=source-1
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call mpi_sendrecv(sendbuf,isize,MPI_DOUBLE_PRECISION,idest,tag,&
+       recvbuf,isize, MPI_DOUBLE_PRECISION,isource,tag,MPI_COMM_LOCAL,MPI_STATUS_IGNORE,ierr)
+  if (ierr/=0) then
+     OFLWR "ERR mympisendrecv_real_local",ierr; CFLST
+  endif
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+end subroutine mympisendrecv_real_local
 
 
 
@@ -462,7 +506,7 @@ subroutine mympirealbcast_local(input, source, isize,MPI_COMM_LOCAL)
 
   isource=source-1
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
-  call mpi_bcast(input,isize,MPI_DOUBLE_PRECISION,isource,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(input,isize,MPI_DOUBLE_PRECISION,isource,MPI_COMM_LOCAL,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympirealbcast"; CFLST
   endif
@@ -1017,12 +1061,26 @@ subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
 end subroutine mympisendrecv
 
 
+subroutine mympisendrecv_local(sendbuf, recvbuf, dest, source, tag, isize,INCOMM)
+  use mpimod
+  use fileptrmod
+  implicit none
+  integer :: isize, dest, source,tag,incomm
+  DATATYPE :: sendbuf(isize),recvbuf(isize)
+  if (dest.ne.1.or.source.ne.1) then
+     OFLWR "Error nonpar mympireduceto wrapper",dest,source; CFLST
+  endif
+  recvbuf(:)=sendbuf(:)
+  return
+  tag=tag ; tag=incomm
+end subroutine mympisendrecv_local
+
+
+
 subroutine mpistart
   use mpimod
   use fileptrmod
   implicit none
-  integer ::  iilen
-  character(len=40) :: format
   myrank=1
   nprocs=1
   stdoutflag=1

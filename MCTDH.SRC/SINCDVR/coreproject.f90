@@ -1290,46 +1290,59 @@ recursive subroutine mult_circ_gen(indim,in, out,option,howmany,timingdir,notimi
   use pfileptrmod
   use myprojectmod  
   implicit none
-  integer :: nnn,option,ii,howmany,totsize,indim
+  integer,intent(in) :: option,howmany,indim,notiming
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE,intent(out) :: out(totpoints,howmany)
-  DATATYPE ::     work(totpoints,howmany),       work2(totpoints,howmany) !! AUTOMATIC
-  integer :: atime,btime,notiming,getlen,ibox,jbox,deltabox
-  character :: timingdir*(*)
+  character,intent(in) :: timingdir*(*)
+  integer :: nnn,mmm,ii
+  nnn=1
+  do ii=1,indim-1
+     nnn=nnn*numpoints(ii)
+  enddo
+  mmm=howmany
+  do ii=indim+1,3
+     mmm=mmm*numpoints(ii)
+  enddo
+  call mult_circ_gen0(nnn,indim,in,out,option,mmm,timingdir,notiming)
+end subroutine mult_circ_gen
+
+
+recursive subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
+  use myparams
+  use pmpimod
+  use pfileptrmod
+  use myprojectmod  
+  implicit none
+  integer,intent(in) :: nnn,option,howmany,indim
+  DATATYPE,intent(in) :: in(nnn*numpoints(indim),howmany)
+  DATATYPE,intent(out) :: out(nnn*numpoints(indim),howmany)
+  character,intent(in) :: timingdir*(*)
+  DATATYPE ::     work(nnn*numpoints(indim),howmany),       work2(nnn*numpoints(indim),howmany) !! AUTOMATIC
+  integer :: atime,btime,notiming,getlen,ibox,jbox,deltabox,ii,totsize
   integer, save :: xcount=0, times(10)=0
-
-  if (indim.ne.3) then
-     OFLWR "indim not supported",indim; CFLST
-  endif
-
-!! QQQQQQQ
-  if (nprocs.ne.nbox(3)) then
-     OFLWR "EEGNOT STOP",nprocs,nbox(3); CFLST
-  endif
-
-  nnn=numpoints(1)*numpoints(2)
-  totsize=numpoints(1)*numpoints(2)*numpoints(3)*howmany
+  
+  totsize=nnn*numpoints(indim)*howmany
 
   out(:,:)=0
 
-  do deltabox=0,nbox(3)-1
+  do deltabox=0,nbox(indim)-1
      call myclock(atime)
      
-     ibox=mod(nbox(3)+myrank-1+deltabox,nbox(3))+1
-     jbox=mod(nbox(3)+myrank-1-deltabox,nbox(3))+1
+     ibox=mod(nbox(indim)+boxrank(indim)-1+deltabox,nbox(indim))+1
+     jbox=mod(nbox(indim)+boxrank(indim)-1-deltabox,nbox(indim))+1
      
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
      select case(option)
      case(1)  !! KE
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,ii),nnn,ketot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAZERO, work(:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,ketot(indim)%mat(1,ibox,1,myrank),gridpoints(indim),DATAZERO, work(:,ii), nnn)
         enddo
 !$OMP END DO
      case(2) 
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,ii),nnn,fdtot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAZERO, work(:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,fdtot(indim)%mat(1,ibox,1,myrank),gridpoints(indim),DATAZERO, work(:,ii), nnn)
         enddo
 !$OMP END DO
      case default 
@@ -1339,9 +1352,20 @@ recursive subroutine mult_circ_gen(indim,in, out,option,howmany,timingdir,notimi
 ! (Implied barrier at end parallel)
 !$OMP END PARALLEL
      call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
-
+     
      if (deltabox.ne.0) then
-        call mympisendrecv(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize)
+
+        select case(indim)
+        case(3)
+           call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(2),boxrank(1),3))
+        case(2)
+           call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(1),boxrank(3),2))
+        case(1)
+           call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(3),boxrank(2),1))
+        case default
+           print *, "OOGGDSO", indim; call mpistop()
+        end select
+
         call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
         out(:,:)=out(:,:)+work2(:,:)
      else
@@ -1349,7 +1373,7 @@ recursive subroutine mult_circ_gen(indim,in, out,option,howmany,timingdir,notimi
      endif
      call myclock(btime); times(3)=times(3)+btime-atime
   enddo
-
+  
   if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
      xcount=xcount+1
      if (xcount==1) then
@@ -1362,8 +1386,9 @@ recursive subroutine mult_circ_gen(indim,in, out,option,howmany,timingdir,notimi
         write(2853,'(100I11)')  times(1:3);        close(2853)
      endif
   endif
+  
+end subroutine mult_circ_gen0
 
-end subroutine mult_circ_gen
 
 
 recursive subroutine mult_summa_gen(indim,in, out,option,howmany,timingdir,notiming)
@@ -1372,35 +1397,47 @@ recursive subroutine mult_summa_gen(indim,in, out,option,howmany,timingdir,notim
   use pfileptrmod
   use myprojectmod  
   implicit none
-  integer :: nnn,option,ii,howmany,totsize,indim
+  integer,intent(in) :: option,howmany,indim,notiming
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE,intent(out) :: out(totpoints,howmany)
-  DATATYPE ::     work(totpoints,howmany) !! AUTOMATIC
-  integer :: atime,btime,notiming,getlen,ibox
-  character :: timingdir*(*)
+  character,intent(in) :: timingdir*(*)
+  integer :: nnn,mmm,ii
+  nnn=1
+  do ii=1,indim-1
+     nnn=nnn*numpoints(ii)
+  enddo
+  mmm=howmany
+  do ii=indim+1,3
+     mmm=mmm*numpoints(ii)
+  enddo
+  call mult_summa_gen0(nnn,indim,in,out,option,mmm,timingdir,notiming)
+end subroutine mult_summa_gen
+
+
+recursive subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
+  use myparams
+  use pmpimod
+  use pfileptrmod
+  use myprojectmod  
+  implicit none
+  integer,intent(in) :: nnn,option,howmany,indim
+  DATATYPE,intent(in) :: in(nnn*numpoints(indim),howmany)
+  DATATYPE,intent(out) :: out(nnn*numpoints(indim),howmany)
+  DATATYPE ::     work(nnn*numpoints(indim),howmany) !! AUTOMATIC
+  character,intent(in) :: timingdir*(*)
+  integer :: atime,btime,notiming,getlen,ibox,ii,totsize
   integer, save :: xcount=0, times(10)=0
 
-  if (indim.ne.3) then
-     OFLWR "indim not supported",indim; CFLST
-  endif
+  totsize=numpoints(indim)*nnn*howmany
 
-!! QQQQQQQ
-  if (nprocs.ne.nbox(3)) then
-     OFLWR "EEGNOT STOP",nprocs,nbox(3); CFLST
-  endif
-
-  nnn=numpoints(1)*numpoints(2)
-  totsize=numpoints(1)*numpoints(2)*numpoints(3)*howmany
 
   call myclock(atime)
   out(:,:)=0d0
   call myclock(btime); times(1)=times(1)+btime-atime
 
-!!! QQQQQQQ
-
-  do ibox=1,nbox(3)
+  do ibox=1,nbox(indim)
      call myclock(atime)
-     if (myrank.eq.ibox) then
+     if (boxrank(indim).eq.ibox) then
         work(:,:)=in(:,:)
      endif
      call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
@@ -1456,7 +1493,7 @@ recursive subroutine mult_summa_gen(indim,in, out,option,howmany,timingdir,notim
      endif
   endif
 
-end subroutine mult_summa_gen
+end subroutine mult_summa_gen0
 
 
 
