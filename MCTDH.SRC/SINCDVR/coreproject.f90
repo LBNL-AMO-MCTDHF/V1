@@ -784,12 +784,13 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
   enddo
 #ifdef MPIFLAG
   
-!! QQQQQ
 
   if (orbparflag) then
 
      call myclock(itime)
      twoeden03huge(:,:,:,:,:,:,:)=0d0; 
+
+!! QQQQQ
      
      do ibox=1,nbox(3)  !! processor sending
         jproc=(ibox+1)/2
@@ -1218,10 +1219,7 @@ subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
 
   out(:,:)=0d0
 
-!! QQQQQ
-
   if (.not.orbparflag) then
-
      if (nbox(1).ne.1.or.nbox(2).ne.1.or.nbox(3).ne.1) then
         OFLWR "OOOFSSxxxF",nbox; CFLST
      endif
@@ -1232,30 +1230,49 @@ subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
         endif
      enddo
   else
-     if (nbox(1).ne.1.or.nbox(2).ne.1.or.nbox(3).ne.nprocs) then
-        OFLWR "OOOFSSF"; CFLST
-     endif
-     do idim=1,2
+!! CHECK
+     do idim=1,orbparlevel-1
+        if (nbox(idim).ne.1) then
+           OFLWR "OOOFSSFxx",idim,nbox(idim),1; CFLST
+        endif
+     enddo
+     do idim=orbparlevel,3
+        select case (orbparlevel)
+        case(3)
+           if (nbox(idim).ne.nprocs) then
+              OFLWR "OOOFSSF"; CFLST
+           endif
+        case(2)
+           if (nbox(idim).ne.sqnprocs) then
+              OFLWR "OOOFSSF"; CFLST
+           endif
+        case(1)
+           if (nbox(idim).ne.cbnprocs) then
+              OFLWR "OOOFSSF"; CFLST
+           endif
+        end select
+     enddo
+!! END CHECK
+     
+     do idim=1,orbparlevel-1
         if (dodim(idim)) then
            call mult_allone(in,temp,idim,option,howmany)
            out(:,:)=out(:,:)+temp(:,:)
         endif
      enddo
-
-!!! QQQQQ
-
-     idim=3
-     if (dodim(idim)) then
-        select case(zke_paropt)
-        case(0)
-           call mult_circ_z(in,temp,option,howmany,timingdir,notiming)
-        case(1)
-           call mult_summa_z(in,temp,option,howmany,timingdir,notiming)
-        case default
-           OFLWR "Error, zke_paropt not recognized",zke_paropt; CFLST
-        end select
-        out(:,:)=out(:,:)+temp(:,:)
-     endif
+     do idim=orbparlevel,3
+        if (dodim(idim)) then
+           select case(zke_paropt)
+           case(0)
+              call mult_circ_gen(idim,in,temp,option,howmany,timingdir,notiming)
+           case(1)
+              call mult_summa_gen(idim,in,temp,option,howmany,timingdir,notiming)
+           case default
+              OFLWR "Error, zke_paropt not recognized",zke_paropt; CFLST
+           end select
+           out(:,:)=out(:,:)+temp(:,:)
+        endif
+     enddo
   endif
 
 end subroutine mult_allpar
@@ -1267,32 +1284,33 @@ end subroutine mult_allpar
 !!  zke_paropt=0   mult_circ_z   sendrecv
 !!  zke_paropt=1   mult_summa_z  SUMMA  scalable universal matrix multiplication algorithm (broadcast before)
 
-recursive subroutine mult_circ_z(in, out,option,howmany,timingdir,notiming)
+recursive subroutine mult_circ_gen(indim,in, out,option,howmany,timingdir,notiming)
   use myparams
   use pmpimod
   use pfileptrmod
   use myprojectmod  
   implicit none
-  integer :: nnn,option,ii,howmany,totsize
-  DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       out(numpoints(1)*numpoints(2),numpoints(3),howmany), &
-       work(numpoints(1)*numpoints(2),numpoints(3),howmany),&  !! AUTOMATIC
-       work2(numpoints(1)*numpoints(2),numpoints(3),howmany)   !! AUTOMATIC
+  integer :: nnn,option,ii,howmany,totsize,indim
+  DATATYPE,intent(in) :: in(totpoints,howmany)
+  DATATYPE,intent(out) :: out(totpoints,howmany)
+  DATATYPE ::     work(totpoints,howmany),       work2(totpoints,howmany) !! AUTOMATIC
   integer :: atime,btime,notiming,getlen,ibox,jbox,deltabox
   character :: timingdir*(*)
   integer, save :: xcount=0, times(10)=0
 
+  if (indim.ne.3) then
+     OFLWR "indim not supported",indim; CFLST
+  endif
+
+!! QQQQQQQ
   if (nprocs.ne.nbox(3)) then
      OFLWR "EEGNOT STOP",nprocs,nbox(3); CFLST
-  endif
-  if (totpoints.ne.numpoints(1)*numpoints(2)*numpoints(3)) then
-     OFLWR "WHAAAAAZZZZ?",totpoints,numpoints(1),numpoints(2),numpoints(3); CFLST
   endif
 
   nnn=numpoints(1)*numpoints(2)
   totsize=numpoints(1)*numpoints(2)*numpoints(3)*howmany
 
-  out(:,:,:)=0
+  out(:,:)=0
 
   do deltabox=0,nbox(3)-1
      call myclock(atime)
@@ -1305,13 +1323,13 @@ recursive subroutine mult_circ_z(in, out,option,howmany,timingdir,notiming)
      case(1)  !! KE
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,ketot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,ii),nnn,ketot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAZERO, work(:,ii), nnn)
         enddo
 !$OMP END DO
      case(2) 
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,:,ii),nnn,fdtot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAZERO, work(:,:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,in(:,ii),nnn,fdtot(3)%mat(1,ibox,1,myrank),gridpoints(3),DATAZERO, work(:,ii), nnn)
         enddo
 !$OMP END DO
      case default 
@@ -1323,11 +1341,11 @@ recursive subroutine mult_circ_z(in, out,option,howmany,timingdir,notiming)
      call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
 
      if (deltabox.ne.0) then
-        call mympisendrecv(work(:,:,:),work2(:,:,:),ibox,jbox,deltabox,totsize)
+        call mympisendrecv(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize)
         call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
-        out(:,:,:)=out(:,:,:)+work2(:,:,:)
+        out(:,:)=out(:,:)+work2(:,:)
      else
-        out(:,:,:)=out(:,:,:)+work(:,:,:)
+        out(:,:)=out(:,:)+work(:,:)
      endif
      call myclock(btime); times(3)=times(3)+btime-atime
   enddo
@@ -1345,44 +1363,61 @@ recursive subroutine mult_circ_z(in, out,option,howmany,timingdir,notiming)
      endif
   endif
 
-end subroutine mult_circ_z
+end subroutine mult_circ_gen
 
 
-recursive subroutine mult_summa_z(in, out,option,howmany,timingdir,notiming)
+recursive subroutine mult_summa_gen(indim,in, out,option,howmany,timingdir,notiming)
   use myparams
   use pmpimod
   use pfileptrmod
   use myprojectmod  
   implicit none
-  integer :: nnn,option,ii,howmany,totsize
-  DATATYPE :: in(numpoints(1)*numpoints(2),numpoints(3),howmany),&
-       out(numpoints(1)*numpoints(2),numpoints(3),howmany), &
-       work(numpoints(1)*numpoints(2),numpoints(3),howmany)  !! AUTOMATIC
+  integer :: nnn,option,ii,howmany,totsize,indim
+  DATATYPE,intent(in) :: in(totpoints,howmany)
+  DATATYPE,intent(out) :: out(totpoints,howmany)
+  DATATYPE ::     work(totpoints,howmany) !! AUTOMATIC
   integer :: atime,btime,notiming,getlen,ibox
   character :: timingdir*(*)
   integer, save :: xcount=0, times(10)=0
 
+  if (indim.ne.3) then
+     OFLWR "indim not supported",indim; CFLST
+  endif
+
+!! QQQQQQQ
   if (nprocs.ne.nbox(3)) then
      OFLWR "EEGNOT STOP",nprocs,nbox(3); CFLST
-  endif
-  if (totpoints.ne.numpoints(1)*numpoints(2)*numpoints(3)) then
-     OFLWR "WHAAAAAZZZZ?",totpoints,numpoints(1),numpoints(2),numpoints(3); CFLST
   endif
 
   nnn=numpoints(1)*numpoints(2)
   totsize=numpoints(1)*numpoints(2)*numpoints(3)*howmany
 
   call myclock(atime)
-  out(:,:,:)=0d0
+  out(:,:)=0d0
   call myclock(btime); times(1)=times(1)+btime-atime
+
+!!! QQQQQQQ
 
   do ibox=1,nbox(3)
      call myclock(atime)
      if (myrank.eq.ibox) then
-        work(:,:,:)=in(:,:,:)
+        work(:,:)=in(:,:)
      endif
      call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
-     call mympibcast(work(:,:,:),ibox,totsize)
+
+!!$     call mympibcast(work(:,:),ibox,totsize)
+
+     select case(indim)
+     case(3)
+        call mympibcast_local(work(:,:),ibox,totsize,BOX_COMM(boxrank(2),boxrank(1),3))
+     case(2)
+        call mympibcast_local(work(:,:),ibox,totsize,BOX_COMM(boxrank(1),boxrank(3),2))
+     case(1)
+        call mympibcast_local(work(:,:),ibox,totsize,BOX_COMM(boxrank(3),boxrank(2),1))
+     case default
+        OFLWR "OOGNOT", indim; CFLST
+     end select
+
      call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,atime,btime)
@@ -1390,13 +1425,13 @@ recursive subroutine mult_summa_z(in, out,option,howmany,timingdir,notiming)
      case(1)  !! KE
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,work(:,:,ii),nnn,ketot(3)%mat(1,myrank,1,ibox),gridpoints(3),DATAONE, out(:,:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,work(:,ii),nnn,ketot(3)%mat(1,myrank,1,ibox),gridpoints(3),DATAONE, out(:,ii), nnn)
         enddo
 !$OMP END DO
      case(2) 
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,work(:,:,ii),nnn,fdtot(3)%mat(1,myrank,1,ibox),gridpoints(3),DATAONE, out(:,:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,work(:,ii),nnn,fdtot(3)%mat(1,myrank,1,ibox),gridpoints(3),DATAONE, out(:,ii), nnn)
         enddo
 !$OMP END DO
      case default 
@@ -1421,7 +1456,7 @@ recursive subroutine mult_summa_z(in, out,option,howmany,timingdir,notiming)
      endif
   endif
 
-end subroutine mult_summa_z
+end subroutine mult_summa_gen
 
 
 

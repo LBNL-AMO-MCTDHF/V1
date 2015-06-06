@@ -33,8 +33,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 !!$       scalefunction(totpoints,3),scaleweights(totpoints)
 !!$#endif
 
-  call getworldcommgroup(PROJ_COMM_WORLD,PROJ_GROUP_WORLD)
-
   if (fft_mpi_inplaceflag.eq.0) then
      call ct_init(fft_ct_paropt)
   endif

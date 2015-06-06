@@ -14,12 +14,13 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   implicit none
 
   integer :: spfdims(3),spfdimtype(3),inmpifileptr,nonuc_checkflag,myiostat, reducedpotsize, outnumr,&
-       nargs, idim ,i,j,len,getlen
+       nargs, idim ,i,j,len,getlen,iproc,k,ierr,ii
   integer :: toepflag  !! toepflag deprecated; dummy
   character :: inpfile*(*)
   real*8 :: outnucrepulsion, rsq(griddim)
   character (len=200) :: buffer
   character (len=200) :: nullbuff="                                                                                "
+  integer, allocatable :: proclist(:,:,:),newproclist(:,:,:)
   NAMELIST /sincparinp/        numpoints,spacing,griddim,notwoflag,nuccharges,orblanthresh, &
        numcenters,centershift,orblanorder,nonucrepflag,debugflag, &
        toothnbig, toothnsmall, orbparflag,num_skip_orbs,orb_skip,orblancheckmod,zke_paropt,&
@@ -39,9 +40,18 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
 #else
   nargs=iargc()
 #endif
-  mpifileptr=inmpifileptr
 
+!!! MPI INIT
+
+  call getworldcommgroup(PROJ_COMM_WORLD,PROJ_GROUP_WORLD)
+  mpifileptr=inmpifileptr
   call getmyranknprocs(myrank,nprocs)
+
+
+
+
+
+
 
   nonuc_checkflag=1
   outnumr=1
@@ -140,7 +150,83 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
      case default
         OFLWR "orbparlevel not allowed", orbparlevel; CFLST
      end select
+
+     allocate(BOX_COMM(nbox(1),nbox(2),orbparlevel:3), BOX_GROUP(nbox(1),nbox(2),orbparlevel:3))
+     BOX_COMM=(-1); BOX_GROUP=(-1)
+
+     allocate(rankbybox(nbox(1),nbox(2),nbox(3)),proclist(nbox(1),nbox(2),nbox(3)),&
+          newproclist(nbox(1),nbox(2),nbox(3)))
+
+     iproc=0
+     do i=1,nbox(3)
+     do j=1,nbox(2)
+     do k=1,nbox(1)
+        proclist(k,j,i)=iproc
+        iproc=iproc+1
+     enddo
+     enddo
+     enddo
+     rankbybox(:,:,:)=proclist(:,:,:)+1
+
+     select case(orbparlevel)
+     case(3)
+#ifdef MPIFLAG
+        BOX_COMM(1,1,3) = PROJ_COMM_WORLD
+        BOX_GROUP(1,1,3) = PROJ_GROUP_WORLD
+#endif
+        boxrank(1)=1; boxrank(2)=1; boxrank(3)=myrank
+
+     case(2)
+        do ii=2,3
+           do i=1,sqnprocs
+#ifdef MPIFLAG
+              call mpi_group_incl(PROJ_GROUP_WORLD, sqnprocs, proclist(1,:,i), BOX_GROUP(1,i,ii), ierr)
+              if (ierr.ne.0) then
+                 OFLWR "error twoproc group",ierr; CFLST
+              endif
+              call mpi_comm_create(PROJ_COMM_WORLD, BOX_GROUP(1,i,ii), BOX_COMM(1,i,ii), ierr)
+              if (ierr.ne.0) then
+                 OFLWR "error twoproc comm",ierr; CFLST
+              endif
+#endif
+           enddo
+           proclist(1,:,:)=TRANSPOSE(proclist(1,:,:))
+        enddo
+        boxrank(1)=1; boxrank(2)=mod(myrank-1,sqnprocs)+1; boxrank(3)=(myrank-1)/sqnprocs + 1
+     case(1)
+        do ii=1,3
+           do i=1,cbnprocs
+           do j=1,cbnprocs
+#ifdef MPIFLAG
+              call mpi_group_incl(PROJ_GROUP_WORLD, cbnprocs, proclist(:,j,i), BOX_GROUP(j,i,ii), ierr)
+              if (ierr.ne.0) then
+                 OFLWR "error threeproc group",ierr; CFLST
+              endif
+              call mpi_comm_create(PROJ_COMM_WORLD, BOX_GROUP(j,i,ii), BOX_COMM(j,i,ii), ierr)
+              if (ierr.ne.0) then
+                 OFLWR "error threeproc comm",ierr; CFLST
+              endif
+#endif
+           enddo
+           enddo
+           do i=1,cbnprocs
+              newproclist(:,:,i)=proclist(i,:,:)
+           enddo
+           proclist(:,:,:)=newproclist(:,:,:)
+        enddo
+        boxrank(1)=mod(myrank-1,cbnprocs)+1; 
+        boxrank(2)=mod((myrank-1)/cbnprocs,cbnprocs)+1; 
+        boxrank(3)=(myrank-1)/cbnprocs**2 + 1
+     case default
+        OFLWR "doogstnfsdf", orbparlevel; CFLST
+     end select
+     if (rankbybox(boxrank(1),boxrank(2),boxrank(3)).ne.myrank) then
+        print *,  "rankbybox error",myrank,boxrank,rankbybox(boxrank(1),boxrank(2),boxrank(3)); call mpistop()
+     endif
+     deallocate(proclist,newproclist)
+
   endif
+  
 
   numpoints(griddim+1:)=1
 

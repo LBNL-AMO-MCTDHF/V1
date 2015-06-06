@@ -354,6 +354,20 @@ subroutine mympibcast(input, source, isize)
 end subroutine mympibcast
 
 
+subroutine mympibcast_local(input, source, isize,INCOMM)
+  use mpimod
+  implicit none
+  integer,intent(in) :: isize, source,INCOMM
+  DATATYPE,intent(inout) :: input(isize)
+#ifdef REALGO
+  call mympirealbcast_local(input, source, isize,INCOMM)
+#else
+  call mympicomplexbcast_local(input, source, isize,INCOMM)
+#endif
+
+end subroutine mympibcast_local
+
+
 subroutine mympirealbcast(input, source, isize)
   use mpimod
   implicit none
@@ -899,6 +913,16 @@ subroutine mympibcast(input, source, isize)
   return
   source=source;  input(1)=input(1)
 end subroutine mympibcast
+
+
+subroutine mympibcast_local(input, source, isize)
+  implicit none
+  integer :: source,isize
+  DATATYPE :: input(isize)
+  return
+  source=source;  input(1)=input(1)
+end subroutine mympibcast_local
+
 
 subroutine mympirealbcast(input, source, isize)
   implicit none

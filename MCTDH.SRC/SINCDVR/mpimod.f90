@@ -7,7 +7,12 @@ end module pfileptrmod
 
 module pmpimod
   implicit none
-  integer :: myrank=(-1),nprocs=(-1),sqnprocs=(-1),cbnprocs=(-1), PROJ_COMM_WORLD=(-1), PROJ_GROUP_WORLD=(-1)
+  integer :: myrank=(-1),nprocs=(-1),sqnprocs=(-1),cbnprocs=(-1), &
+       PROJ_COMM_WORLD=(-1), PROJ_GROUP_WORLD=(-1)
+  integer :: boxrank(3)=1
+  integer, allocatable :: BOX_COMM(:,:,:), BOX_GROUP(:,:,:), rankbybox(:,:,:)
+!!  allocated BOX_COMM(nbox(1),nbox(2),orbparlevel:3)
+
 end module pmpimod
 
 
