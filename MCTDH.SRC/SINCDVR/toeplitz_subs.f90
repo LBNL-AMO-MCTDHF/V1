@@ -258,9 +258,9 @@ subroutine all3transpose(in,out,len,howmany)
 end subroutine all3transpose
 
 
-recursive subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany,placeopt,oplevel)
+recursive subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany,placeopt)
   implicit none
-  integer :: totdim,howmany,placeopt,oplevel
+  integer :: totdim,howmany,placeopt
   real*8 :: rmultvector(2*totdim,2*totdim,2*totdim,howmany), rffback(2*totdim,2*totdim,2*totdim,howmany),&
        rbigcirc(2*totdim,2*totdim,2*totdim)
   complex*16 :: multvector(2*totdim,2*totdim,2*totdim,howmany), &   
@@ -268,22 +268,22 @@ recursive subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany
 
   bigcirc(:,:,:)=rbigcirc(:,:,:)
   multvector(:,:,:,:)=rmultvector(:,:,:,:)
-  call circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeopt,oplevel)
+  call circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeopt)
   rffback(:,:,:,:)=real(ffback(:,:,:,:),8)
 end subroutine circ3d_sub_real
 
 
-recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeopt,oplevel)
+recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeopt)
   implicit none
-  integer :: totdim,howmany,ii,placeopt,oplevel
+  integer :: totdim,howmany,ii,placeopt
   complex*16 ::  bigcirc(2*totdim,2*totdim,2*totdim,1,1,1), multvector(2*totdim,2*totdim,2*totdim,howmany),&
        ffback(2*totdim,2*totdim,2*totdim,howmany)
   complex*16 :: ffmat(2*totdim,2*totdim,2*totdim),ffvec(2*totdim,2*totdim,2*totdim,howmany),& 
        ffprod(2*totdim,2*totdim,2*totdim,howmany)
 
 #ifdef MPIFLAG
-  call myzfft3d_mpiwrap_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,howmany,placeopt,oplevel)
-  call myzfft3d_mpiwrap_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,1,placeopt,oplevel)
+  call myzfft3d_mpiwrap_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,howmany,placeopt)
+  call myzfft3d_mpiwrap_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,1,placeopt)
 #else
   call myzfft3d(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,2*totdim,2*totdim,howmany)
   call myzfft3d(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,2*totdim,2*totdim,1)
@@ -298,7 +298,7 @@ recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeop
 !$OMP END PARALLEL
 
 #ifdef MPIFLAG
-  call myzfft3d_mpiwrap_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,howmany,placeopt,oplevel)
+  call myzfft3d_mpiwrap_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,howmany,placeopt)
 #else
   ffprod(:,:,:,:)=CONJG(ffprod(:,:,:,:))
   call myzfft3d(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,2*totdim,2*totdim,howmany)
@@ -310,9 +310,9 @@ recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeop
 end subroutine circ3d_sub
 
 
-recursive subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,dim1,dim2,dim3,times,howmany,placeopt,oplevel)
+recursive subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,dim1,dim2,dim3,times,howmany,placeopt)
   implicit none
-  integer :: dim1,dim2,dim3,times(*),atime,btime,howmany,placeopt,oplevel
+  integer :: dim1,dim2,dim3,times(*),atime,btime,howmany,placeopt
   real*8 :: rmultvector(2*dim1,2*dim2,2*dim3,howmany), &
        rbigcirc(2*dim1,2*dim2,2*dim3), rffback(2*dim1,2*dim2,2*dim3,howmany)
   complex*16 :: multvector(2*dim1,2*dim2,2*dim3,howmany), & 
@@ -323,7 +323,7 @@ recursive subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,dim1,dim2,
   multvector(:,:,:,:)=rmultvector(:,:,:,:)
   call myclock(btime); times(7)=times(7)+btime-atime
 
-  call circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany,placeopt,oplevel)
+  call circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany,placeopt)
 
   call myclock(atime)
   rffback(:,:,:,:)=real(ffback(:,:,:,:),8)
@@ -348,9 +348,9 @@ end subroutine circ3d_sub_real_mpi
 !!! times(5) multiply
 !!! times(6) 3d f.t.
 
-recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany,placeopt,oplevel)
+recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany,placeopt)
   implicit none
-  integer :: dim1,dim2,dim3,times(*),howmany,placeopt,oplevel
+  integer :: dim1,dim2,dim3,times(*),howmany,placeopt
   complex*16 ::  multvector(2*dim1,2*dim2,2*dim3,howmany), &
        ffback(2*dim1,2*dim2,2*dim3,howmany),  bigcirc(2*dim1,2*dim2,2*dim3,1,1,1)
 #ifdef MPIFLAG
@@ -362,14 +362,14 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,tim
 
   if (placeopt.ne.1) then
 !!$     call ctdim(3)
-     call cooleytukey_outofplace_forward_mpi(multvector(:,:,:,:),ffvec(:,:,:,:),2*dim1,2*dim2,2*dim3,howmany,oplevel)
-     call cooleytukey_outofplace_forward_mpi(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*dim1,2*dim2,2*dim3,1,oplevel)
+     call cooleytukey_outofplace_forward_mpi(multvector(:,:,:,:),ffvec(:,:,:,:),2*dim1,2*dim2,2*dim3,howmany)
+     call cooleytukey_outofplace_forward_mpi(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*dim1,2*dim2,2*dim3,1)
   else
 
 !! QQQQQQQ?
 
-     call myzfft3d_par_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*dim1,times,howmany,oplevel)
-     call myzfft3d_par_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*dim1,times,1,oplevel)
+     call myzfft3d_par_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*dim1,times,howmany)
+     call myzfft3d_par_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*dim1,times,1)
   endif
 
   call myclock(atime)
@@ -386,12 +386,12 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,tim
 
   if (placeopt.ne.1) then
 !!$     call ctdim(3)
-     call cooleytukey_outofplace_backward_mpi(ffprod(:,:,:,:),ffback(:,:,:,:),2*dim1,2*dim2,2*dim3,howmany,oplevel)
+     call cooleytukey_outofplace_backward_mpi(ffprod(:,:,:,:),ffback(:,:,:,:),2*dim1,2*dim2,2*dim3,howmany)
   else
 
 !!! QQQQQQQ?
 
-     call myzfft3d_par_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*dim1,times,howmany,oplevel)
+     call myzfft3d_par_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*dim1,times,howmany)
   endif
 
 #else

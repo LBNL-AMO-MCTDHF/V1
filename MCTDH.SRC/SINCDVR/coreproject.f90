@@ -838,9 +838,9 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
      do icirc=1,circhigh
         circindex=(icirc-1)*circsize+1
 #ifdef REALGO
-        call circ3d_sub_real_mpi(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),numpoints(1),numpoints(2),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag,orbparlevel)
+        call circ3d_sub_real_mpi(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),numpoints(1),numpoints(2),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag)
 #else
-        call circ3d_sub_mpi(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),numpoints(1),numpoints(2),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag,orbparlevel)
+        call circ3d_sub_mpi(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),numpoints(1),numpoints(2),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag)
 #endif
      enddo
      
@@ -881,9 +881,9 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
      do icirc=1,circhigh
         circindex=(icirc-1)*circsize+1
 #ifdef REALGO
-        call circ3d_sub_real(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag,orbparlevel)
+        call circ3d_sub_real(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag)
 #else
-        call circ3d_sub(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag,orbparlevel)
+        call circ3d_sub(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag)
 #endif
      enddo
      

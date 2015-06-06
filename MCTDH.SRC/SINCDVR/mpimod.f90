@@ -13,6 +13,8 @@ module pmpimod
   integer, allocatable :: BOX_COMM(:,:,:), BOX_GROUP(:,:,:), rankbybox(:,:,:)
 !!  allocated BOX_COMM(nbox(1),nbox(2),orbparlevel:3)
 
+  integer :: orbparlevel=3  !!  in namelist, but not in myparams
+
 end module pmpimod
 
 
