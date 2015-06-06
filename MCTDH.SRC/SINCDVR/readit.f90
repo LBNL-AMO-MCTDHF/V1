@@ -39,13 +39,11 @@ subroutine get_3dpoisson(pot)
 
   tempcoulomb(:,:,:,:)=tempcoulomb(:,:,:,:)/spacing**3
 
-  istart(:)=0
-  if (.not.orbparflag) then
-     istart(:)=1
-  else
+  istart(:)=1
+  if (orbparflag) then
      do ii=orbparlevel,3
-        if (boxrank(ii).eq.1) then
-           istart(ii)=1
+        if (boxrank(ii).ne.1) then
+           istart(ii)=0
         endif
      enddo
   endif

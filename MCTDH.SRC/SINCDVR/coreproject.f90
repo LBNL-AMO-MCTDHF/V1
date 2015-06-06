@@ -752,12 +752,16 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
   integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
   DATATYPE,intent(in) :: twoeden03(numpoints(1),numpoints(2),numpoints(3),allsize)
   DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
-  integer ::   ii, itime,jtime,  ibox,jproc
+  integer ::   ii, itime,jtime
+#ifdef MPIFLAG
+  integer ::  ibox,jproc
+  DATATYPE :: tempden03(numpoints(1),numpoints(2),numpoints(3),allsize)
+#endif
   integer :: circhigh,circindex,icirc,ilow,ihigh
   DATATYPE :: twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,allsize),&
        reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,allsize),&
-       reducedwork3d(numpoints(1),numpoints(2),numpoints(3),allsize), &
-       tempden03(numpoints(1),numpoints(2),numpoints(3),allsize)
+       reducedwork3d(numpoints(1),numpoints(2),numpoints(3),allsize)
+
 
   if (iwhich.lt.1.or.iwhich.gt.threedtwosize) then
      OFLWR "iwhich error",iwhich,threedtwosize; CFLST
