@@ -226,13 +226,16 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
 !!$           rsum=cos(pi * i / (masknumpoints+1) )
 
+           i=masknumpoints+1-ii
            rsum=0.5d0 * ( cos( 2*pi * i / (masknumpoints+1) ) + 1d0 )
 
-           i=masknumpoints+1-ii
            if (i.ge.ilow(jj).and.i.le.ihigh(jj)) then
               maskfunction(jj)%rmat(i+1-ilow(jj)) = maskfunction(jj)%rmat(i+1-ilow(jj)) * rsum
            endif
+
            i=gridpoints(jj)-masknumpoints+ii
+           rsum=0.5d0 * ( cos( 2*pi * i / (masknumpoints+1) ) + 1d0 )
+
            if (i.ge.ilow(jj).and.i.le.ihigh(jj)) then
               maskfunction(jj)%rmat(i+1-ilow(jj)) = maskfunction(jj)%rmat(i+1-ilow(jj)) * rsum
            endif
