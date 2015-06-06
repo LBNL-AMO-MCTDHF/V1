@@ -319,9 +319,6 @@ end subroutine fftblock_withtranspose
 #ifdef MPIFLAG
 
 !! times(1) = transpose   times(2) = mpi  times(3) = copy
-!! This is 3D specific
-!!   (123) -> (312)
-!! NEWWAY
 !!   (123) -> (231)
 
 module mytransposemod
@@ -333,18 +330,10 @@ contains
   complex*16,intent(in) :: in(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
   complex*16,intent(out) :: out(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
   integer :: atime,btime,i,count,ii,iproc,j
-#define NEWWAY
-#ifdef NEWWAY
   complex*16 :: intranspose(nprocs*blocksize,blocksize,blocksize,howmany,nprocs)  !!AUTOMATIC
   complex*16 :: outtemp(nprocs*blocksize,blocksize,blocksize,howmany,nprocs)      !!AUTOMATIC
   complex*16 :: outone(nprocs*blocksize,blocksize,blocksize,nprocs)               !!AUTOMATIC
   complex*16 :: inchop(blocksize,nprocs*blocksize,blocksize,howmany)              !!AUTOMATIC
-#else
-  complex*16 :: intranspose(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)  !!AUTOMATIC
-  complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)      !!AUTOMATIC
-  complex*16 :: outone(blocksize,nprocs*blocksize,blocksize,nprocs)               !!AUTOMATIC
-  complex*16 :: inchop(nprocs*blocksize,blocksize,blocksize,howmany)              !!AUTOMATIC
-#endif
 
 !!! QQQQ
 
@@ -354,8 +343,7 @@ contains
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!    (123)->(312)          !!!!!
-!!!!! newway   (123)->(231)    !!!!!
+!!!!!    (123)->(231)    !!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   
   call myclock(atime)
@@ -366,20 +354,16 @@ contains
 
   do iproc=1,nprocs
 
-#ifdef NEWWAY
+
      inchop(:,:,:,:)=in((iproc-1)*blocksize+1:iproc*blocksize,:,:,:)
-#else
-     inchop(:,:,:,:)=in(:,(iproc-1)*blocksize+1:iproc*blocksize,:,:)
-#endif
+
 
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
      do ii=1,howmany
         do i=1,blocksize
-#ifdef NEWWAY
+
            intranspose(:,:,i,ii,iproc)=inchop(i,:,:,ii)
-#else
-           intranspose(:,:,i,ii,iproc)=TRANSPOSE(inchop(:,i,:,ii))
-#endif
+
         enddo
      enddo
 !$OMP END DO
@@ -398,10 +382,6 @@ contains
   call mympialltoall_complex(intranspose,outtemp,count)
   call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
 
-!!  complex*16,intent(out) :: out(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
-!!  complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)     
-!!  complex*16 :: outone(blocksize,nprocs*blocksize,blocksize,nprocs)
-
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)  !! ii IS SHARED (OUTTEMP IS SHARED; BARRIER)
   do ii=1,howmany
 
@@ -410,12 +390,8 @@ contains
 
      do i=1,blocksize
         do j=1,nprocs*blocksize
-#ifdef NEWWAY
-           out(j,:,i,ii)=RESHAPE(outone(j,:,i,:),(/nprocs*blocksize/))
-#else
-           out(:,j,i,ii)=RESHAPE(outone(:,j,i,:),(/nprocs*blocksize/))
-#endif
 
+           out(j,:,i,ii)=RESHAPE(outone(j,:,i,:),(/nprocs*blocksize/))
 
         enddo
      enddo
