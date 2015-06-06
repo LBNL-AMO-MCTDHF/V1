@@ -357,6 +357,7 @@ end subroutine mult_reke
 
 recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
   use myparams
+  use fileptrmod
   use myprojectmod
   implicit none
   DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
@@ -382,6 +383,8 @@ end subroutine call_twoe_matel
 
 recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
   use myparams
+  use mpimod
+  use fileptrmod
   use myprojectmod
   implicit none
   DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
@@ -654,6 +657,7 @@ end subroutine op_tinv
 recursive subroutine  op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,&
      times1,times3,times4,times5,fttimes)
   use myparams
+  use fileptrmod
   use myprojectmod
   implicit none
   integer, intent(in) :: allsize,circsize
@@ -740,21 +744,21 @@ end subroutine op_tinv_notscaled
 recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,circsize,&
           times1,times3,times4,times5,fttimes)
   use myparams
+  use mpimod
+  use fileptrmod
   use myprojectmod
   implicit none
   integer, intent(in) :: allsize,circsize,iwhich
   integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
   DATATYPE,intent(in) :: twoeden03(numpoints(1),numpoints(2),numpoints(3),allsize)
   DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
-  integer ::   ii,jj, itime,jtime, kk21,kk22,kk23,  ii21,ii22,ii23, ibox,jproc
+  integer ::   ii, itime,jtime,  ibox,jproc
   integer :: circhigh,circindex,icirc,ilow,ihigh
   DATATYPE :: twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,allsize),&
        reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,allsize),&
        reducedwork3d(numpoints(1),numpoints(2),numpoints(3),allsize), &
        tempden03(numpoints(1),numpoints(2),numpoints(3),allsize)
-#ifdef MPIFLAG
-  DATATYPE, allocatable ::  twoeden03big(:,:,:,:,:)
-#endif
+
   if (iwhich.lt.1.or.iwhich.gt.threedtwosize) then
      OFLWR "iwhich error",iwhich,threedtwosize; CFLST
   endif
@@ -902,6 +906,7 @@ end subroutine mult_reducedpot
 
 function qbox(idim)
   use myparams
+  use mpimod
   implicit none
   integer :: qbox,idim
   if (orbparflag.and.idim.eq.3) then
@@ -1109,6 +1114,7 @@ end subroutine mult_ke000
 
 subroutine mult_easyderiv(in, out,howmany,which)
   use myparams
+  use fileptrmod
   implicit none
   integer,intent(in) :: howmany,which
   DATATYPE,intent(in) :: in(totpoints,howmany)
@@ -1128,6 +1134,7 @@ end subroutine mult_easyderiv
 
 subroutine mult_easyke(in,out,howmany,which)
   use myparams
+  use fileptrmod
   implicit none
   integer,intent(in) :: howmany,which
   DATATYPE,intent(in) :: in(totpoints,howmany)
@@ -1173,6 +1180,8 @@ end subroutine mult_zderiv
 
 subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
   use myparams
+  use mpimod
+  use fileptrmod
   implicit none
   integer :: idim,inoption,option,howmany,notiming
   DATATYPE,intent(in) :: in(totpoints,howmany)
@@ -1250,6 +1259,8 @@ end subroutine mult_allpar
 
 recursive subroutine mult_circ_z(in, out,option,howmany,timingdir,notiming)
   use myparams
+  use mpimod
+  use fileptrmod
   use myprojectmod  
   implicit none
   integer :: nnn,option,ii,howmany,totsize
@@ -1329,6 +1340,8 @@ end subroutine mult_circ_z
 
 recursive subroutine mult_summa_z(in, out,option,howmany,timingdir,notiming)
   use myparams
+  use mpimod
+  use fileptrmod
   use myprojectmod  
   implicit none
   integer :: nnn,option,ii,howmany,totsize
@@ -1404,6 +1417,7 @@ end subroutine mult_summa_z
 
 subroutine mult_allone(in, out,idim,option,howmany)
   use myparams
+  use fileptrmod
   implicit none
   integer :: mmm,idim,nnn,jdim,option,howmany
   DATATYPE,intent(in) :: in(totpoints,howmany)
@@ -1423,6 +1437,7 @@ end subroutine mult_allone
 
 recursive subroutine mult_all0(in, out,idim,nnn,mmm,option)
   use myparams
+  use fileptrmod
   use myprojectmod  
   implicit none
   integer :: mmm,idim,nnn,jj,option
@@ -1487,6 +1502,7 @@ end function mysinc
 
 subroutine reinterpolate_orbs_complex(cspfs,indims,outcspfs,outdims,num)
   use myparams
+  use fileptrmod
   implicit none
   integer, intent(in) :: indims(3),outdims(3),num
   integer :: indim,i,j,outdim
@@ -1541,6 +1557,7 @@ end subroutine mult_all0_big_gen_complex
 
 subroutine reinterpolate_orbs_real(rspfs,dims,num)
   use myparams
+  use fileptrmod
   implicit none
   integer, intent(in) :: dims(3),num
   real*8 :: rspfs(dims(1),dims(2),dims(3),num)

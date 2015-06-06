@@ -194,23 +194,15 @@
 !!$   limitations under the License.
 
 
-module ct_fileptrmod
-  implicit none
-  integer :: nullfileptr=798   !!! HARDWIRE TO MATCH PARAMETERS.F90
-  integer :: mpifileptr = (-798)
-end module ct_fileptrmod
 
 module ct_mpimod
   implicit none
-  integer :: myrank = -1
-  integer :: nprocs = -1
   integer :: CT_COMM_WORLD = -1
   integer :: CT_GROUP_WORLD = -1
 end module ct_mpimod
 
 
 module ct_options
-  integer :: ct_dimensionality=3
   integer :: ct_paropt=1
 end module ct_options
 
@@ -228,49 +220,20 @@ module ct_primesetmod
 end module ct_primesetmod
 
 
-subroutine ctdim(in_ctdim)
-  use ct_fileptrmod
+
+subroutine ct_init(in_ctparopt)
   use ct_mpimod
   use ct_options
   implicit none
-  integer, intent(in) :: in_ctdim
-  if (in_ctdim.ne.1.and.in_ctdim.ne.3) then 
-     write(mpifileptr,*) "CTDIM NOT SUPPORTED", in_ctdim; call mpistop()
-  endif
-  ct_dimensionality=in_ctdim
-end subroutine ctdim
-
-
-subroutine ct_init(in_ctparopt,in_mpifileptr)
-  use ct_fileptrmod
-  use ct_mpimod
-  use ct_options
-  implicit none
-  integer, intent(in) :: in_ctparopt,in_mpifileptr
+  integer, intent(in) :: in_ctparopt
   ct_paropt=in_ctparopt
-  call getmyranknprocs(myrank,nprocs)
   call getworldcommgroup(CT_COMM_WORLD,CT_GROUP_WORLD)
-  if (myrank.eq.1) then
-     mpifileptr=6
-  else
-!!$     mpifileptr=in_mpifileptr
-!!$     open(mpifileptr,file="/dev/null", status="unknown")
-
-!!$ opening /dev/null multiple times not allowed :<  
-!!$     mpifileptr=4910 + 0 * in_mpifileptr   !! avoid warn unused
-!!$     open(mpifileptr,file="/dev/null", status="unknown")
-
-     mpifileptr=nullfileptr
-
-  endif
-
- call ct_getprimeset()
-
+  call ct_getprimeset()
+  
 end subroutine ct_init
 
 
 subroutine twiddlemult_mpi(blocksize,in,out,dim1,howmany,rdd)
-  use ct_fileptrmod
   use ct_primesetmod
   implicit none
   integer, intent(in) :: blocksize,dim1,howmany,rdd
@@ -292,7 +255,7 @@ end subroutine twiddlemult_mpi
 
 
 subroutine myzfft1d_slowindex_mpi(in,out,totsize,rdd)
-  use ct_fileptrmod
+  use fileptrmod
   use ct_options
   use ct_primesetmod
   implicit none
@@ -319,7 +282,7 @@ end subroutine myzfft1d_slowindex_mpi
 
 
 subroutine simple_circ(in, out,mat,howmany,rdd)
-  use ct_fileptrmod
+  use mpimod
   use ct_mpimod
   use ct_primesetmod
   implicit none
@@ -372,7 +335,7 @@ end subroutine simple_circ
 
 
 subroutine simple_summa(in, out,mat,howmany,rdd)
-  use ct_fileptrmod
+  use mpimod
   use ct_mpimod
   use ct_primesetmod
   implicit none
@@ -485,7 +448,8 @@ end subroutine gettwiddlesmall
 
 
 subroutine ct_getprimeset()
-  use ct_fileptrmod
+  use mpimod
+  use fileptrmod
   use ct_mpimod
   use ct_primesetmod
   use ct_options
@@ -528,7 +492,8 @@ end subroutine ct_getprimeset
 
 
 subroutine ct_construct()
-  use ct_fileptrmod
+  use mpimod
+  use fileptrmod
   use ct_mpimod
   use ct_primesetmod
   implicit none

@@ -228,7 +228,7 @@ end subroutine cooleytukey_outofplace_backward_mpixxx
 !! fourier transform with OUT-OF-PLACE OUTPUT. 
 
 subroutine cooleytukey_outofplace_forward_mpi(in,outtrans,dim2,dim3,dim1,howmany)
-  use ct_fileptrmod
+  use mpimod
   use ct_options
   implicit none
   integer, intent(in) :: dim2,dim3,dim1,howmany
@@ -242,7 +242,7 @@ end subroutine cooleytukey_outofplace_forward_mpi
 
 
 recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim2,dim3,dim1,howmany,recursiondepth,work,work2)
-  use ct_fileptrmod
+  use mpimod
   use ct_options
   use ct_primesetmod !! ct_numprimes
   implicit none
@@ -260,14 +260,18 @@ recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim2,dim3,dim1,howm
   call twiddlemult_mpi(dim2*dim3,work2,work,dim1,howmany,recursiondepth)
 
   if (recursiondepth.eq.ct_numprimes) then
-     select case(ct_dimensionality)
-     case(1)
-        call myzfft1d_slowindex_local(work,outtrans,dim2*dim3,dim1,howmany)
-     case(3)
+
+!!$     select case(ct_dimensionality)
+!!$     case(1)
+!!$        call myzfft1d_slowindex_local(work,outtrans,dim2*dim3,dim1,howmany)
+!!$     case(3)
+
         call myzfft3d(work,outtrans,dim2,dim3,dim1,howmany)
-     case default
-        write(mpifileptr,*) "NOT SUPPORTED ct_dimensionality",ct_dimensionality; call mpistop()
-     end select
+
+!!$     case default
+!!$        write(mpifileptr,*) "NOT SUPPORTED ct_dimensionality",ct_dimensionality; call mpistop()
+!!$     end select
+
   else
      newdepth=recursiondepth+1
      call cooleytukey_outofplace_mpi0(work,outtrans,dim2,dim3,dim1,howmany,newdepth,work,work2)
@@ -277,7 +281,7 @@ end subroutine cooleytukey_outofplace_mpi0
 
 
 recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim2,dim3,dim1,howmany,recursiondepth,work,work2)
-  use ct_fileptrmod
+  use mpimod
   use ct_options
   use ct_primesetmod !! ct_numprimes
   implicit none
@@ -291,14 +295,18 @@ recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim2,dim3,
 !! PASSING WORK(:,:,:) AS INTRANSPOSE(:,:,:)... USE WORK2 FIRST
 
   if (recursiondepth.eq.ct_numprimes) then
-     select case(ct_dimensionality)
-     case(1)
-        call myzfft1d_slowindex_local(intranspose,work2,dim2*dim3,dim1,howmany)
-     case(3)
+
+!!$     select case(ct_dimensionality)
+!!$     case(1)
+!!$        call myzfft1d_slowindex_local(intranspose,work2,dim2*dim3,dim1,howmany)
+!!$     case(3)
+
         call myzfft3d(intranspose,work2,dim2,dim3,dim1,howmany)
-     case default
-        write(mpifileptr,*) "NOT SUPPORTED ct_dimensionality",ct_dimensionality; call mpistop()
-     end select
+
+!!$     case default
+!!$        write(mpifileptr,*) "NOT SUPPORTED ct_dimensionality",ct_dimensionality; call mpistop()
+!!$     end select
+
   else
      newdepth=recursiondepth+1
 

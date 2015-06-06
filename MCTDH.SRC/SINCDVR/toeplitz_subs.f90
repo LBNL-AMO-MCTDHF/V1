@@ -364,7 +364,7 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,t
      if (2*totdim/nprocs.ne.2*blocksize) then
         print *, "totdim err 3d", totdim, blocksize*nprocs, nprocs; call mpistop()
      endif
-     call ctdim(3)
+!!$     call ctdim(3)
      call cooleytukey_outofplace_forward_mpi(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,2*totdim,2*blocksize,howmany)
      call cooleytukey_outofplace_forward_mpi(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,2*totdim,2*blocksize,1)
   else
@@ -388,7 +388,7 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,t
      if (2*totdim/nprocs.ne.2*blocksize) then
         print *, "totdim err 3d", totdim, blocksize*nprocs, nprocs; call mpistop()
      endif
-     call ctdim(3)
+!!$     call ctdim(3)
      call cooleytukey_outofplace_backward_mpi(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,2*totdim,2*blocksize,howmany)
   else
      call myzfft3d_par_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,times,howmany)

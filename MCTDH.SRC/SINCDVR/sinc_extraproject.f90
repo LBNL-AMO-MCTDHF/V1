@@ -9,6 +9,8 @@
 
 subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,outnumr,outnucrepulsion,nonuc_checkflag)
   use myparams
+  use fileptrmod
+  use mpimod
   implicit none
 
   integer :: spfdims(3),spfdimtype(3),inmpifileptr,nonuc_checkflag,myiostat, reducedpotsize, outnumr,&
@@ -165,7 +167,8 @@ end subroutine getmyparams
 
 
 subroutine printmyopts()
-  use myparams !! mpifileptr
+  use myparams
+  use fileptrmod
   implicit none
   integer :: ii
 

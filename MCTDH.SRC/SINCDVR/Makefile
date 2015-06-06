@@ -4,7 +4,7 @@ include ../Makefile.header
 
 HTWO= init_sinc_new.o    sinc_extraproject.o  sinc_params.o sincproject.o SineDVR.o coreproject.o readit.o tooth.o toeplitz_subs.o ftcore.o  cooleytukey_shared.o cooleytukey_mpi.o
 
-DEPEND= ../Definitions.INC  ../Definitions.ALL ../Makefile.header
+DEPEND= ../Definitions.INC  ../Definitions.ALL ../Makefile.header  mpimod.o
 
 default: sincprojectar.a
 
@@ -14,9 +14,11 @@ clean:
 sincprojectar.a:  $(HTWO) 
 	$(AR) -r sincprojectar.a    $(HTWO) 
 
-
 sinc_params.o: $(DEPEND) sinc_params.F90
 	$(F90) $(FFLAGS)  -c sinc_params.F90
+
+mpimod.o: mpimod.f90
+	$(F90) $(FFLAGS)  -c mpimod.f90
 
 toeplitz_subs.o: $(DEPEND) toeplitz_subs.F90
 	$(F90) $(FFLAGS) $(MPIFLAG)  -c toeplitz_subs.F90

@@ -6,6 +6,8 @@
 subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
      bondpoints,bondweights,elecweights,elecradii,notused )
   use myparams
+  use mpimod
+  use fileptrmod
   use myprojectmod
   implicit none
   integer, intent(in) :: skipflag,notused
@@ -272,6 +274,8 @@ end subroutine mult_bigspf
 
 subroutine init_spfs(inspfs,numloaded)
   use myparams
+  use mpimod
+  use fileptrmod
   implicit none
   DATATYPE :: inspfs(totpoints,numspf), energies(numspf+num_skip_orbs)
   DATATYPE,allocatable :: lanspfs(:,:)

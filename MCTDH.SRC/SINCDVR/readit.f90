@@ -5,6 +5,8 @@
 subroutine get_3dpoisson(pot)
   use tooth
   use myparams
+  use mpimod
+  use fileptrmod
   use myprojectmod
   implicit none
   integer :: i,k,j,ii,jj,kk,qq(3),pp(3),qbox
@@ -141,6 +143,8 @@ end subroutine get_3dpoisson
 subroutine get_3dpoisson_scaledoption(cpot)
   use tooth
   use myparams
+  use mpimod
+  use fileptrmod
   use myprojectmod
   implicit none
   integer :: i,jj,qq(3)
