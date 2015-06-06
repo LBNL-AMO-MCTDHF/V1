@@ -321,6 +321,8 @@ end subroutine fftblock_withtranspose
 !! times(1) = transpose   times(2) = mpi  times(3) = copy
 !! This is 3D specific
 !!   (123) -> (312)
+!! NEWWAY
+!!   (123) -> (231)
 
 module mytransposemod
 contains
@@ -330,52 +332,68 @@ contains
   integer,intent(inout) :: times(3)
   complex*16,intent(in) :: in(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
   complex*16,intent(out) :: out(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
-  integer :: atime,btime,i,count,ii,totsize,iproc,checkprocs,myrank,j
+  integer :: atime,btime,i,count,ii,iproc,j
+#define NEWWAY
+#ifdef NEWWAY
+  complex*16 :: intranspose(nprocs*blocksize,blocksize,blocksize,howmany,nprocs)  !!AUTOMATIC
+  complex*16 :: outtemp(nprocs*blocksize,blocksize,blocksize,howmany,nprocs)      !!AUTOMATIC
+  complex*16 :: outone(nprocs*blocksize,blocksize,blocksize,nprocs)               !!AUTOMATIC
+  complex*16 :: inchop(blocksize,nprocs*blocksize,blocksize,howmany)              !!AUTOMATIC
+#else
   complex*16 :: intranspose(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)  !!AUTOMATIC
   complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)      !!AUTOMATIC
   complex*16 :: outone(blocksize,nprocs*blocksize,blocksize,nprocs)               !!AUTOMATIC
   complex*16 :: inchop(nprocs*blocksize,blocksize,blocksize,howmany)              !!AUTOMATIC
+#endif
 
-  call getmyranknprocs(myrank,checkprocs)
-  if (nprocs.ne.checkprocs) then
-     print *, "ACK CHECKPROCS",nprocs,checkprocs; call mpistop()
-  endif
+!!! QQQQ
 
-  totsize=blocksize*nprocs
+!  if (nprocs1.ne.nprocs2) then
+!     print *, "doogsnatch"; call mpistop()
+!  endif
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!    (123)->(312)    !!!!!
+!!!!!    (123)->(312)          !!!!!
+!!!!! newway   (123)->(231)    !!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   
   call myclock(atime)
 
+  intranspose(:,:,:,:,:)=0d0
+
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i)    !! IPROC IS SHARED (GOES WITH BARRIER, INCHOP SHARED)
 
-!$OMP MASTER
-  intranspose(:,:,:,:,:)=0d0
-!$OMP END MASTER
-!! *** OMP BARRIER *** !!  make sure master touches first
-!$OMP BARRIER
-
   do iproc=1,nprocs
+
+#ifdef NEWWAY
+     inchop(:,:,:,:)=in((iproc-1)*blocksize+1:iproc*blocksize,:,:,:)
+#else
      inchop(:,:,:,:)=in(:,(iproc-1)*blocksize+1:iproc*blocksize,:,:)
+#endif
+
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
      do ii=1,howmany
         do i=1,blocksize
+#ifdef NEWWAY
+           intranspose(:,:,i,ii,iproc)=inchop(i,:,:,ii)
+#else
            intranspose(:,:,i,ii,iproc)=TRANSPOSE(inchop(:,i,:,ii))
+#endif
         enddo
      enddo
 !$OMP END DO
 !! *** OMP BARRIER *** !!   if inchop & iproc are shared
 !$OMP BARRIER
   enddo
+
 !$OMP END PARALLEL
 
   call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
 
   outtemp(:,:,:,:,:)=0d0
   
-  count=blocksize**2 * totsize * howmany
+  count=blocksize**3 * nprocs * howmany
   
   call mympialltoall_complex(intranspose,outtemp,count)
   call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
@@ -386,18 +404,26 @@ contains
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)  !! ii IS SHARED (OUTTEMP IS SHARED; BARRIER)
   do ii=1,howmany
+
      outone(:,:,:,:)=outtemp(:,:,:,ii,:)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
 
      do i=1,blocksize
         do j=1,nprocs*blocksize
+#ifdef NEWWAY
+           out(j,:,i,ii)=RESHAPE(outone(j,:,i,:),(/nprocs*blocksize/))
+#else
            out(:,j,i,ii)=RESHAPE(outone(:,j,i,:),(/nprocs*blocksize/))
+#endif
+
+
         enddo
      enddo
 
 !$OMP END DO
 !! *** OMP BARRIER *** !!   if outone & ii are shared
 !$OMP BARRIER
+
   enddo
 !$OMP END PARALLEL
 
