@@ -357,7 +357,7 @@ end subroutine mult_reke
 
 recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
   use myparams
-  use fileptrmod
+  use pfileptrmod
   use myprojectmod
   implicit none
   DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
@@ -383,8 +383,8 @@ end subroutine call_twoe_matel
 
 recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
   use myparams
-  use mpimod
-  use fileptrmod
+  use pmpimod
+  use pfileptrmod
   use myprojectmod
   implicit none
   DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
@@ -657,7 +657,7 @@ end subroutine op_tinv
 recursive subroutine  op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,&
      times1,times3,times4,times5,fttimes)
   use myparams
-  use fileptrmod
+  use pfileptrmod
   use myprojectmod
   implicit none
   integer, intent(in) :: allsize,circsize
@@ -744,8 +744,8 @@ end subroutine op_tinv_notscaled
 recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,circsize,&
           times1,times3,times4,times5,fttimes)
   use myparams
-  use mpimod
-  use fileptrmod
+  use pmpimod
+  use pfileptrmod
   use myprojectmod
   implicit none
   integer, intent(in) :: allsize,circsize,iwhich
@@ -784,10 +784,9 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
   enddo
 #ifdef MPIFLAG
   
+!! QQQQQ
+
   if (orbparflag) then
-     if (numpoints(1).ne.numpoints(2).or.numpoints(1).ne.numpoints(3)*nbox(3).or.nbox(1).gt.1.or.nbox(2).gt.1) then
-        OFLWR "WOOTTTFFFF"; CFLST
-     endif
 
      call myclock(itime)
      twoeden03huge(:,:,:,:,:,:,:)=0d0; 
@@ -829,6 +828,8 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
      enddo
      
      call myclock(jtime); times4=times4+jtime-itime; itime=jtime
+
+!!! QQQQQ
      
      do ibox=1,nbox(3)  !! processor receiving
         jproc=(ibox+nbox(3)+1)/2
@@ -906,9 +907,12 @@ end subroutine mult_reducedpot
 
 function qbox(idim)
   use myparams
-  use mpimod
+  use pmpimod
   implicit none
   integer :: qbox,idim
+
+!! QQQQQ
+
   if (orbparflag.and.idim.eq.3) then
      qbox=myrank
   else
@@ -1114,7 +1118,7 @@ end subroutine mult_ke000
 
 subroutine mult_easyderiv(in, out,howmany,which)
   use myparams
-  use fileptrmod
+  use pfileptrmod
   implicit none
   integer,intent(in) :: howmany,which
   DATATYPE,intent(in) :: in(totpoints,howmany)
@@ -1134,7 +1138,7 @@ end subroutine mult_easyderiv
 
 subroutine mult_easyke(in,out,howmany,which)
   use myparams
-  use fileptrmod
+  use pfileptrmod
   implicit none
   integer,intent(in) :: howmany,which
   DATATYPE,intent(in) :: in(totpoints,howmany)
@@ -1180,8 +1184,8 @@ end subroutine mult_zderiv
 
 subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
   use myparams
-  use mpimod
-  use fileptrmod
+  use pmpimod
+  use pfileptrmod
   implicit none
   integer :: idim,inoption,option,howmany,notiming
   DATATYPE,intent(in) :: in(totpoints,howmany)
@@ -1214,7 +1218,10 @@ subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
 
   out(:,:)=0d0
 
+!! QQQQQ
+
   if (.not.orbparflag) then
+
      if (nbox(1).ne.1.or.nbox(2).ne.1.or.nbox(3).ne.1) then
         OFLWR "OOOFSSxxxF",nbox; CFLST
      endif
@@ -1234,6 +1241,9 @@ subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
            out(:,:)=out(:,:)+temp(:,:)
         endif
      enddo
+
+!!! QQQQQ
+
      idim=3
      if (dodim(idim)) then
         select case(zke_paropt)
@@ -1259,8 +1269,8 @@ end subroutine mult_allpar
 
 recursive subroutine mult_circ_z(in, out,option,howmany,timingdir,notiming)
   use myparams
-  use mpimod
-  use fileptrmod
+  use pmpimod
+  use pfileptrmod
   use myprojectmod  
   implicit none
   integer :: nnn,option,ii,howmany,totsize
@@ -1340,8 +1350,8 @@ end subroutine mult_circ_z
 
 recursive subroutine mult_summa_z(in, out,option,howmany,timingdir,notiming)
   use myparams
-  use mpimod
-  use fileptrmod
+  use pmpimod
+  use pfileptrmod
   use myprojectmod  
   implicit none
   integer :: nnn,option,ii,howmany,totsize
@@ -1417,7 +1427,7 @@ end subroutine mult_summa_z
 
 subroutine mult_allone(in, out,idim,option,howmany)
   use myparams
-  use fileptrmod
+  use pfileptrmod
   implicit none
   integer :: mmm,idim,nnn,jdim,option,howmany
   DATATYPE,intent(in) :: in(totpoints,howmany)
@@ -1437,7 +1447,7 @@ end subroutine mult_allone
 
 recursive subroutine mult_all0(in, out,idim,nnn,mmm,option)
   use myparams
-  use fileptrmod
+  use pfileptrmod
   use myprojectmod  
   implicit none
   integer :: mmm,idim,nnn,jj,option
@@ -1502,7 +1512,7 @@ end function mysinc
 
 subroutine reinterpolate_orbs_complex(cspfs,indims,outcspfs,outdims,num)
   use myparams
-  use fileptrmod
+  use pfileptrmod
   implicit none
   integer, intent(in) :: indims(3),outdims(3),num
   integer :: indim,i,j,outdim
@@ -1557,7 +1567,7 @@ end subroutine mult_all0_big_gen_complex
 
 subroutine reinterpolate_orbs_real(rspfs,dims,num)
   use myparams
-  use fileptrmod
+  use pfileptrmod
   implicit none
   integer, intent(in) :: dims(3),num
   real*8 :: rspfs(dims(1),dims(2),dims(3),num)

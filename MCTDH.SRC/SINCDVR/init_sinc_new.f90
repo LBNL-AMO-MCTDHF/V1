@@ -6,8 +6,8 @@
 subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
      bondpoints,bondweights,elecweights,elecradii,notused )
   use myparams
-  use mpimod
-  use fileptrmod
+  use pmpimod
+  use pfileptrmod
   use myprojectmod
   implicit none
   integer, intent(in) :: skipflag,notused
@@ -33,9 +33,10 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 !!$       scalefunction(totpoints,3),scaleweights(totpoints)
 !!$#endif
 
+  call getworldcommgroup(PROJ_COMM_WORLD,PROJ_GROUP_WORLD)
 
   if (fft_mpi_inplaceflag.eq.0) then
-     call ct_init(fft_ct_paropt,mpifileptr)
+     call ct_init(fft_ct_paropt)
   endif
 
   rkemod(:,:)=0d0; proderivmod(:,:)=0d0; bondpoints(:)=1d0; bondweights(:)=1d0
@@ -214,6 +215,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   ilow(1:3)=1
   ihigh(1:3)=gridpoints(1:3)
 
+!! QQQQQ
+
   if (orbparflag) then
      ilow(3)=(myrank-1)*numpoints(3)+1
      ihigh(3)=myrank*numpoints(3)
@@ -274,8 +277,8 @@ end subroutine mult_bigspf
 
 subroutine init_spfs(inspfs,numloaded)
   use myparams
-  use mpimod
-  use fileptrmod
+  use pmpimod
+  use pfileptrmod
   implicit none
   DATATYPE :: inspfs(totpoints,numspf), energies(numspf+num_skip_orbs)
   DATATYPE,allocatable :: lanspfs(:,:)

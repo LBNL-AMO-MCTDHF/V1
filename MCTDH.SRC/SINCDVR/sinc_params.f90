@@ -5,7 +5,8 @@ module myparams
 implicit none
 
 !! FOR TOTAL ORBITAL PARALLELIZATION, SET orbparflag=.true., AND parorbsplit=3 in &parinp
-logical :: orbparflag=.false.
+logical :: orbparflag=.true.
+integer :: orbparlevel=3
 
 !! THE FOLLOWING FLAG IS THEN RELEVANT.  Option for parallel KE matvec, rate limiting step.
 integer :: zke_paropt=1   !! 0=sendrecv 1=SUMMA (bcast before) 2=reduce after

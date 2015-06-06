@@ -1,13 +1,21 @@
 
-module fileptrmod
+module pfileptrmod
   implicit none
   integer :: mpifileptr=-1
   integer,parameter :: nullfileptr=798   !! HARDWIRE TO MATCH PARAMETERS.F90
-end module fileptrmod
+end module pfileptrmod
 
-module mpimod
+module pmpimod
   implicit none
-  integer :: myrank=(-1),nprocs=(-1)
-end module mpimod
+  integer :: myrank=(-1),nprocs=(-1),sqnprocs=(-1),cbnprocs=(-1), PROJ_COMM_WORLD=(-1), PROJ_GROUP_WORLD=(-1)
+end module pmpimod
 
+
+subroutine getProjCommGroup(outcommunicator,outgroup)
+  use pmpimod
+  implicit none
+  integer, intent(out) :: outcommunicator,outgroup
+  outcommunicator=PROJ_COMM_WORLD
+  outgroup=PROJ_GROUP_WORLD
+end subroutine getProjCommGroup
 

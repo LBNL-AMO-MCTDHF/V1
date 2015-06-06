@@ -2,7 +2,7 @@
 
 include ../Makefile.header
 
-HTWO= init_sinc_new.o    sinc_extraproject.o  sinc_params.o sincproject.o SineDVR.o coreproject.o readit.o tooth.o toeplitz_subs.o ftcore.o  cooleytukey_shared.o cooleytukey_mpi.o
+HTWO= mpimod.o sinc_params.o sincproject.o init_sinc_new.o    sinc_extraproject.o   SineDVR.o coreproject.o readit.o tooth.o toeplitz_subs.o ftcore.o  cooleytukey_shared.o cooleytukey_mpi.o
 
 DEPEND= ../Definitions.INC  ../Definitions.ALL ../Makefile.header  mpimod.o
 

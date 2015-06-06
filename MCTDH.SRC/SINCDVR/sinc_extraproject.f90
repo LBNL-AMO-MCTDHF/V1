@@ -9,8 +9,8 @@
 
 subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,outnumr,outnucrepulsion,nonuc_checkflag)
   use myparams
-  use fileptrmod
-  use mpimod
+  use pfileptrmod
+  use pmpimod
   implicit none
 
   integer :: spfdims(3),spfdimtype(3),inmpifileptr,nonuc_checkflag,myiostat, reducedpotsize, outnumr,&
@@ -26,6 +26,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        capflag,capstrength,capstart,cappower,fft_mpi_inplaceflag, fft_ct_paropt,fft_batchdim,&
        fft_circbatchdim,maxcap,mincap,capmode, maskflag, masknumpoints,&
        scalingflag,scalingdistance,smoothness,scalingtheta,scalingorder,tinv_tol,&
+       orbparlevel, &
        toepflag  !! toepflag deprecated
 
 
@@ -104,13 +105,43 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   numpoints(:)=numpoints(1); nbox(:)=1
 
   if (orbparflag) then
-     if (nprocs*(numpoints(3)/nprocs).ne.numpoints(3)) then
-        OFLWR "ACK, orbparflag is set, but numpoints is not divisible by nprocs",numpoints(3),nprocs; CFLST
+
+     if (orbparlevel.ne.3) then
+        OFLWR "Error, orbparlevel=3 only allowed right now",orbparlevel; CFLST
      endif
-     numpoints(3)=numpoints(3)/nprocs
-     nbox(3)=nprocs
+
+     select case (orbparlevel)
+     case (3)
+        if (mod(numpoints(3),nprocs).ne.0) then
+           OFLWR "ACK, orbparlevel=3, but numpoints is not divisible by nprocs",numpoints(3),nprocs; CFLST
+        endif
+        numpoints(3)=numpoints(3)/nprocs
+        nbox(3)=nprocs
+     case (2)
+        sqnprocs=floor(real(nprocs)**(0.500000001d0))
+        if (sqnprocs**2 .ne. nprocs) then
+           OFLWR "ACK, orbparlevel=2, but it looks like nprocs is not square",sqnprocs**2,nprocs; CFLST
+        endif
+        if (mod(numpoints(3),sqnprocs).ne.0) then
+           OFLWR "ACK, orbparlevel=2, but numpoints is not divisible by sqrt(nprocs)",numpoints(3),sqnprocs; CFLST
+        endif
+        numpoints(2:3)=numpoints(2:3)/sqnprocs
+        nbox(2:3)=sqnprocs
+     case(1)
+        cbnprocs=floor(real(nprocs)**(0.333333334d0))
+        if (cbnprocs**3 .ne. nprocs) then
+           OFLWR "ACK, orbparlevel=1, but it looks like nprocs is not cubic",cbnprocs**3,nprocs; CFLST
+        endif
+        if (mod(numpoints(3),cbnprocs).ne.0) then
+           OFLWR "ACK, orbparlevel=1, but numpoints is not divisible by cbrt(nprocs)",numpoints(3),cbnprocs; CFLST
+        endif
+        numpoints(1:3)=numpoints(1:3)/cbnprocs
+        nbox(1:3)=cbnprocs
+     case default
+        OFLWR "orbparlevel not allowed", orbparlevel; CFLST
+     end select
   endif
-  
+
   numpoints(griddim+1:)=1
 
 !! NBOX HARDWIRE 1 BUT FOR PAR.
@@ -168,7 +199,7 @@ end subroutine getmyparams
 
 subroutine printmyopts()
   use myparams
-  use fileptrmod
+  use pfileptrmod
   implicit none
   integer :: ii
 
@@ -185,7 +216,7 @@ subroutine printmyopts()
   WRFL "notwoflag",notwoflag
   WRFL "nonucrepflag",nonucrepflag
   WRFL "toothnbig, toothnsmall",toothnbig, toothnsmall
-  WRFL "orbparflag",orbparflag
+  WRFL "orbparflag, orbparlevel",orbparflag, orbparlevel
   WRFL "zke_paropt",zke_paropt
   WRFL "fft_mpi_inplaceflag",fft_mpi_inplaceflag
   if (fft_mpi_inplaceflag==0) then

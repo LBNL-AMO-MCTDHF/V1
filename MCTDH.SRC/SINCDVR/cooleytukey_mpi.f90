@@ -228,7 +228,7 @@ end subroutine cooleytukey_outofplace_backward_mpixxx
 !! fourier transform with OUT-OF-PLACE OUTPUT. 
 
 subroutine cooleytukey_outofplace_forward_mpi(in,outtrans,dim2,dim3,dim1,howmany)
-  use mpimod
+  use pmpimod
   use ct_options
   implicit none
   integer, intent(in) :: dim2,dim3,dim1,howmany
@@ -242,7 +242,7 @@ end subroutine cooleytukey_outofplace_forward_mpi
 
 
 recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim2,dim3,dim1,howmany,recursiondepth,work,work2)
-  use mpimod
+  use pmpimod
   use ct_options
   use ct_primesetmod !! ct_numprimes
   implicit none
@@ -281,7 +281,7 @@ end subroutine cooleytukey_outofplace_mpi0
 
 
 recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim2,dim3,dim1,howmany,recursiondepth,work,work2)
-  use mpimod
+  use pmpimod
   use ct_options
   use ct_primesetmod !! ct_numprimes
   implicit none

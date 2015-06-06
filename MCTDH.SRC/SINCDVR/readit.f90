@@ -5,8 +5,8 @@
 subroutine get_3dpoisson(pot)
   use tooth
   use myparams
-  use mpimod
-  use fileptrmod
+  use pmpimod
+  use pfileptrmod
   use myprojectmod
   implicit none
   integer :: i,k,j,ii,jj,kk,qq(3),pp(3),qbox
@@ -39,10 +39,14 @@ subroutine get_3dpoisson(pot)
 
   tempcoulomb(:,:,:,:)=tempcoulomb(:,:,:,:)/spacing**3
 
+!!! QQQQQ
+
   istart=0
   if (myrank.eq.1.or.(.not.orbparflag)) then
      istart=1
   endif
+
+!!! QQQQQ
 
   if (orbparflag) then
      gridoffset=(myrank-1)*numpoints(3)
@@ -63,6 +67,8 @@ subroutine get_3dpoisson(pot)
           1-gridpoints(2):gridpoints(2)-1,&
           1-gridpoints(3):gridpoints(3)-1,:)
   endif
+
+!!! QQQQQ
 
   if (orbparflag.and.myrank.gt.nbox(3)) then
      OFLWR "DOODODFODxxx",myrank,nbox(3); CFLST
@@ -143,8 +149,8 @@ end subroutine get_3dpoisson
 subroutine get_3dpoisson_scaledoption(cpot)
   use tooth
   use myparams
-  use mpimod
-  use fileptrmod
+  use pmpimod
+  use pfileptrmod
   use myprojectmod
   implicit none
   integer :: i,jj,qq(3)

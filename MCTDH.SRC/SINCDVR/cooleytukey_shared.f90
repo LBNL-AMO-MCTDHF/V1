@@ -227,7 +227,7 @@ subroutine ct_init(in_ctparopt)
   implicit none
   integer, intent(in) :: in_ctparopt
   ct_paropt=in_ctparopt
-  call getworldcommgroup(CT_COMM_WORLD,CT_GROUP_WORLD)
+  call getprojcommgroup(CT_COMM_WORLD,CT_GROUP_WORLD)
   call ct_getprimeset()
   
 end subroutine ct_init
@@ -255,7 +255,7 @@ end subroutine twiddlemult_mpi
 
 
 subroutine myzfft1d_slowindex_mpi(in,out,totsize,rdd)
-  use fileptrmod
+  use pfileptrmod
   use ct_options
   use ct_primesetmod
   implicit none
@@ -282,7 +282,7 @@ end subroutine myzfft1d_slowindex_mpi
 
 
 subroutine simple_circ(in, out,mat,howmany,rdd)
-  use mpimod
+  use pmpimod
   use ct_mpimod
   use ct_primesetmod
   implicit none
@@ -335,7 +335,7 @@ end subroutine simple_circ
 
 
 subroutine simple_summa(in, out,mat,howmany,rdd)
-  use mpimod
+  use pmpimod
   use ct_mpimod
   use ct_primesetmod
   implicit none
@@ -448,8 +448,8 @@ end subroutine gettwiddlesmall
 
 
 subroutine ct_getprimeset()
-  use mpimod
-  use fileptrmod
+  use pmpimod
+  use pfileptrmod
   use ct_mpimod
   use ct_primesetmod
   use ct_options
@@ -492,8 +492,8 @@ end subroutine ct_getprimeset
 
 
 subroutine ct_construct()
-  use mpimod
-  use fileptrmod
+  use pmpimod
+  use pfileptrmod
   use ct_mpimod
   use ct_primesetmod
   implicit none
