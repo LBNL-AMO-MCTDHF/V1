@@ -194,19 +194,19 @@
 
 !! INVERSE OF cooleytukey_outofplace_mpi except for division
 
-subroutine cooleytukey_outofplace_backward_mpi(intranspose,out,dim2,dim3,dim1,howmany)
+subroutine cooleytukey_outofplace_backward_mpi(intranspose,out,dim2,dim3,dim1,howmany,oplevel)
   implicit none
-  integer, intent(in) :: dim2,dim3,dim1,howmany
+  integer, intent(in) :: dim2,dim3,dim1,howmany,oplevel
   complex*16, intent(in) :: intranspose(dim2,dim3,dim1,howmany)
   complex*16, intent(out) :: out(dim2,dim3,dim1,howmany)
 
-  call cooleytukey_outofplace_backward_mpixxx(intranspose,out,dim2,dim3,dim1,howmany,1)
+  call cooleytukey_outofplace_backward_mpixxx(intranspose,out,dim2,dim3,dim1,howmany,1,oplevel)
 
 end subroutine
 
-subroutine cooleytukey_outofplace_backward_mpixxx(intranspose,out,dim2,dim3,dim1,howmany,recursiondepth)
+subroutine cooleytukey_outofplace_backward_mpixxx(intranspose,out,dim2,dim3,dim1,howmany,recursiondepth,oplevel)
   implicit none
-  integer, intent(in) :: dim2,dim3,dim1,howmany,recursiondepth
+  integer, intent(in) :: dim2,dim3,dim1,howmany,recursiondepth,oplevel
   complex*16, intent(in) :: intranspose(dim2,dim3,dim1,howmany)
   complex*16, intent(out) :: out(dim2,dim3,dim1,howmany)
 !!$  complex*16 ::  intransconjg(dim2,dim3,dim1,howmany),  outconjg(dim2,dim3,dim1,howmany)
@@ -215,7 +215,7 @@ subroutine cooleytukey_outofplace_backward_mpixxx(intranspose,out,dim2,dim3,dim1
 !! USING WORK2 FIRST... PASS WORK NOT WORK2 AS INPUT
 
   work(:,:,:,:)=CONJG(intranspose(:,:,:,:))
-  call cooleytukey_outofplaceinput_mpi0(work,out,dim2,dim3,dim1,howmany,recursiondepth,work,work2)
+  call cooleytukey_outofplaceinput_mpi0(work,out,dim2,dim3,dim1,howmany,recursiondepth,work,work2,oplevel)
   out(:,:,:,:)=CONJG(out(:,:,:,:))
 
 !!$  call cooleytukey_outofplaceinput_mpi0(intransconjg,outconjg,dim2,dim3,dim1,howmany,recursiondepth)
@@ -227,26 +227,26 @@ end subroutine cooleytukey_outofplace_backward_mpixxx
 
 !! fourier transform with OUT-OF-PLACE OUTPUT. 
 
-subroutine cooleytukey_outofplace_forward_mpi(in,outtrans,dim2,dim3,dim1,howmany)
+subroutine cooleytukey_outofplace_forward_mpi(in,outtrans,dim2,dim3,dim1,howmany,oplevel)
   use pmpimod
   use ct_options
   implicit none
-  integer, intent(in) :: dim2,dim3,dim1,howmany
+  integer, intent(in) :: dim2,dim3,dim1,howmany,oplevel
   complex*16, intent(in) :: in(dim2,dim3,dim1,howmany)
   complex*16, intent(out) :: outtrans(dim2,dim3,dim1,howmany)
   complex*16 ::  work(dim2,dim3,dim1,howmany) , work2(dim2,dim3,dim1,howmany)  !!AUTOMATIC
 
-  call cooleytukey_outofplace_mpi0(in,outtrans,dim2,dim3,dim1,howmany,1,work,work2)
+  call cooleytukey_outofplace_mpi0(in,outtrans,dim2,dim3,dim1,howmany,1,work,work2,oplevel)
 
 end subroutine cooleytukey_outofplace_forward_mpi
 
 
-recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim2,dim3,dim1,howmany,recursiondepth,work,work2)
+recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim2,dim3,dim1,howmany,recursiondepth,work,work2,oplevel)
   use pmpimod
   use ct_options
   use ct_primesetmod !! ct_numprimes
   implicit none
-  integer, intent(in) :: dim2,dim3,dim1,howmany,recursiondepth
+  integer, intent(in) :: dim2,dim3,dim1,howmany,recursiondepth,oplevel
   complex*16, intent(in) :: in(dim2,dim3,dim1,howmany)
   complex*16, intent(out) :: outtrans(dim2,dim3,dim1,howmany)
 !!$  complex*16 ::  tempout(dim2,dim3,dim1,howmany),  outtemp(dim2,dim3,dim1,howmany)
@@ -274,18 +274,18 @@ recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim2,dim3,dim1,howm
 
   else
      newdepth=recursiondepth+1
-     call cooleytukey_outofplace_mpi0(work,outtrans,dim2,dim3,dim1,howmany,newdepth,work,work2)
+     call cooleytukey_outofplace_mpi0(work,outtrans,dim2,dim3,dim1,howmany,newdepth,work,work2,oplevel)
   endif
 
 end subroutine cooleytukey_outofplace_mpi0
 
 
-recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim2,dim3,dim1,howmany,recursiondepth,work,work2)
+recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim2,dim3,dim1,howmany,recursiondepth,work,work2,oplevel)
   use pmpimod
   use ct_options
   use ct_primesetmod !! ct_numprimes
   implicit none
-  integer, intent(in) :: dim2,dim3,dim1,howmany,recursiondepth
+  integer, intent(in) :: dim2,dim3,dim1,howmany,recursiondepth,oplevel
   complex*16, intent(in) :: intranspose(dim2,dim3,dim1,howmany)
   complex*16, intent(out) :: out(dim2,dim3,dim1,howmany)
 !!$  complex*16 ::   temptrans(dim2,dim3,dim1,howmany),outtrans(dim2,dim3,dim1,howmany)
@@ -312,7 +312,7 @@ recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim2,dim3,
 
 !! USING WORK2 AS OUTPUT
 
-     call cooleytukey_outofplaceinput_mpi0(intranspose,work2,dim2,dim3,dim1,howmany,newdepth,work,work2)
+     call cooleytukey_outofplaceinput_mpi0(intranspose,work2,dim2,dim3,dim1,howmany,newdepth,work,work2,oplevel)
   endif
 
   call twiddlemult_mpi(dim2*dim3,work2,work,dim1,howmany,recursiondepth)

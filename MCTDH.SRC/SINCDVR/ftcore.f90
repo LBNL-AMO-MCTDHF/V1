@@ -416,25 +416,25 @@ subroutine checkdivisible(number,divisor)
 end subroutine checkdivisible
 
 
-recursive subroutine myzfft3d_mpiwrap_forward(in,out,dim,howmany,placeopt)
+recursive subroutine myzfft3d_mpiwrap_forward(in,out,dim,howmany,placeopt,oplevel)
   implicit none
-  integer, intent(in) :: dim,howmany,placeopt
+  integer, intent(in) :: dim,howmany,placeopt,oplevel
   complex*16, intent(in) :: in(*)
   complex*16, intent(out) :: out(*)
-  call myzfft3d_mpiwrap0(in,out,dim,howmany,1,placeopt)
+  call myzfft3d_mpiwrap0(in,out,dim,howmany,1,placeopt,oplevel)
 end subroutine myzfft3d_mpiwrap_forward
 
-recursive subroutine myzfft3d_mpiwrap_backward(in,out,dim,howmany,placeopt)
+recursive subroutine myzfft3d_mpiwrap_backward(in,out,dim,howmany,placeopt,oplevel)
   implicit none
-  integer, intent(in) :: dim,howmany,placeopt
+  integer, intent(in) :: dim,howmany,placeopt,oplevel
   complex*16, intent(in) :: in(*)
   complex*16, intent(out) :: out(*)
-  call myzfft3d_mpiwrap0(in,out,dim,howmany,-1,placeopt)
+  call myzfft3d_mpiwrap0(in,out,dim,howmany,-1,placeopt,oplevel)
 end subroutine myzfft3d_mpiwrap_backward
 
-recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
+recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt,oplevel)
   implicit none
-  integer :: dim,nulltimes(10),howmany,ii,direction,placeopt
+  integer :: dim,nulltimes(10),howmany,ii,direction,placeopt,oplevel
   complex*16, intent(in) :: in(dim**3,howmany)
   complex*16, intent(out) :: out(dim**3,howmany)
   complex*16,allocatable :: inlocal(:,:),outgather(:,:,:),outlocal(:,:)
@@ -457,16 +457,22 @@ recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
   case(-1)
      if (placeopt.ne.1) then
 !!$        call ctdim(3)
-        call cooleytukey_outofplace_backward_mpi(inlocal,outlocal,dim,dim,dim/nprocs,howmany)
+
+!! QQQQQ
+
+        call cooleytukey_outofplace_backward_mpi(inlocal,outlocal,dim,dim,dim/nprocs,howmany,oplevel)
      else
-        call myzfft3d_par_backward(inlocal,outlocal,dim,nulltimes,howmany)
+        call myzfft3d_par_backward(inlocal,outlocal,dim,nulltimes,howmany,oplevel)
      endif
   case(1)
      if (placeopt.ne.1) then
 !!$        call ctdim(3)
-        call cooleytukey_outofplace_forward_mpi(inlocal,outlocal,dim,dim,dim/nprocs,howmany)
+
+!! QQQQQQ
+
+        call cooleytukey_outofplace_forward_mpi(inlocal,outlocal,dim,dim,dim/nprocs,howmany,oplevel)
      else
-        call myzfft3d_par_forward(inlocal,outlocal,dim,nulltimes,howmany)
+        call myzfft3d_par_forward(inlocal,outlocal,dim,nulltimes,howmany,oplevel)
      endif
   case default
      print *, "ACK DIRECTION!!!!", direction; call mpistop()
@@ -481,28 +487,32 @@ recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
 end subroutine myzfft3d_mpiwrap0
 
 
-recursive subroutine myzfft3d_par_forward(in,out,dim,times,howmany)
+recursive subroutine myzfft3d_par_forward(in,out,dim,times,howmany,oplevel)
   implicit none
-  integer, intent(in) :: dim,howmany
+  integer, intent(in) :: dim,howmany,oplevel
   complex*16, intent(in) :: in(*)
   complex*16, intent(out) :: out(*)
   integer, intent(inout) :: times(8)
   integer :: myrank,nprocs
+
+!!! QQQQQQ
   call getmyranknprocs(myrank,nprocs)
   call checkdivisible(dim,nprocs)
-  call myzfft3d_par0(in,out,dim,times,howmany,nprocs,1)
+  call myzfft3d_par0(in,out,dim,times,howmany,nprocs,1,oplevel)
 end subroutine myzfft3d_par_forward
 
-recursive subroutine myzfft3d_par_backward(in,out,dim,times,howmany)
+recursive subroutine myzfft3d_par_backward(in,out,dim,times,howmany,oplevel)
   implicit none
-  integer, intent(in) :: dim,howmany
+  integer, intent(in) :: dim,howmany,oplevel
   complex*16, intent(in) :: in(*)
   complex*16, intent(out) :: out(*)
   integer, intent(inout) :: times(8)
   integer :: myrank,nprocs
+
+!!! QQQQQ
   call getmyranknprocs(myrank,nprocs)
   call checkdivisible(dim,nprocs)
-  call myzfft3d_par0(in,out,dim,times,howmany,nprocs,-1)
+  call myzfft3d_par0(in,out,dim,times,howmany,nprocs,-1,oplevel)
 end subroutine myzfft3d_par_backward
 
 
@@ -511,15 +521,19 @@ end subroutine myzfft3d_par_backward
 !!! times(1) = copy  times(2) = conjg  times(3) = ft
 !!! from mytranspose times(4) = transpose   times(5) = mpi  times(6) = copy
 
-recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs,direction)
+recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs,direction,oplevel)
   use mytransposemod
   implicit none
-  integer, intent(in) :: dim,howmany,nprocs,direction
+  integer, intent(in) :: dim,howmany,nprocs,direction,oplevel
   complex*16, intent(in) :: in(dim**3/nprocs,howmany)
   complex*16, intent(out) :: out(dim**3/nprocs,howmany)
   integer, intent(inout) :: times(8)
   integer :: ii,atime,btime
   complex*16 :: mywork(dim,dim,dim/nprocs,howmany) !! AUTOMATIC
+
+  if (oplevel.ne.3) then
+     print *, "OPLEVEL NOT SUP",oplevel; call mpistop()
+  endif
 
   call checkdivisible(dim,nprocs)
 
