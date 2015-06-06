@@ -310,20 +310,20 @@ recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeop
 end subroutine circ3d_sub
 
 
-recursive subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,totdim,blocksize,times,howmany,placeopt)
+recursive subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,dim1,dim2,dim3,times,howmany,placeopt)
   implicit none
-  integer :: totdim,blocksize,times(*),atime,btime,howmany,placeopt
-  real*8 :: rmultvector(2*totdim,2*totdim,2*blocksize,howmany), &
-       rbigcirc(2*totdim,2*totdim,2*blocksize), rffback(2*totdim,2*totdim,2*blocksize,howmany)
-  complex*16 :: multvector(2*totdim,2*totdim,2*blocksize,howmany), & 
-        ffback(2*totdim,2*totdim,2*blocksize,howmany),  bigcirc(2*totdim,2*totdim,2*blocksize)
+  integer :: dim1,dim2,dim3,times(*),atime,btime,howmany,placeopt
+  real*8 :: rmultvector(2*dim1,2*dim2,2*dim3,howmany), &
+       rbigcirc(2*dim1,2*dim2,2*dim3), rffback(2*dim1,2*dim2,2*dim3,howmany)
+  complex*16 :: multvector(2*dim1,2*dim2,2*dim3,howmany), & 
+        ffback(2*dim1,2*dim2,2*dim3,howmany),  bigcirc(2*dim1,2*dim2,2*dim3)
 
   call myclock(atime)
   bigcirc(:,:,:)=rbigcirc(:,:,:)
   multvector(:,:,:,:)=rmultvector(:,:,:,:)
   call myclock(btime); times(7)=times(7)+btime-atime
 
-  call circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,times,howmany,placeopt)
+  call circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany,placeopt)
 
   call myclock(atime)
   rffback(:,:,:,:)=real(ffback(:,:,:,:),8)
@@ -348,28 +348,28 @@ end subroutine circ3d_sub_real_mpi
 !!! times(5) multiply
 !!! times(6) 3d f.t.
 
-recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,times,howmany,placeopt)
+recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany,placeopt)
   implicit none
-  integer :: totdim,blocksize,times(*),howmany,placeopt
-  complex*16 ::  multvector(2*totdim,2*totdim,2*blocksize,howmany), &
-       ffback(2*totdim,2*totdim,2*blocksize,howmany),  bigcirc(2*totdim,2*totdim,2*blocksize,1,1,1)
+  integer :: dim1,dim2,dim3,times(*),howmany,placeopt
+  complex*16 ::  multvector(2*dim1,2*dim2,2*dim3,howmany), &
+       ffback(2*dim1,2*dim2,2*dim3,howmany),  bigcirc(2*dim1,2*dim2,2*dim3,1,1,1)
 #ifdef MPIFLAG
   integer :: atime,btime,ii,myrank,nprocs
-  complex*16 :: ffmat(2*totdim,2*totdim,2*blocksize), &  
-       ffvec(2*totdim,2*totdim,2*blocksize,howmany),  ffprod(2*totdim,2*totdim,2*blocksize,howmany)
+  complex*16 :: ffmat(2*dim1,2*dim2,2*dim3), &  
+       ffvec(2*dim1,2*dim2,2*dim3,howmany),  ffprod(2*dim1,2*dim2,2*dim3,howmany)
 
   call getmyranknprocs(myrank,nprocs)  
 
   if (placeopt.ne.1) then
-     if (2*totdim/nprocs.ne.2*blocksize) then
-        print *, "totdim err 3d", totdim, blocksize*nprocs, nprocs; call mpistop()
-     endif
 !!$     call ctdim(3)
-     call cooleytukey_outofplace_forward_mpi(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,2*totdim,2*blocksize,howmany)
-     call cooleytukey_outofplace_forward_mpi(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,2*totdim,2*blocksize,1)
+     call cooleytukey_outofplace_forward_mpi(multvector(:,:,:,:),ffvec(:,:,:,:),2*dim1,2*dim2,2*dim3,howmany)
+     call cooleytukey_outofplace_forward_mpi(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*dim1,2*dim2,2*dim3,1)
   else
-     call myzfft3d_par_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,times,howmany)
-     call myzfft3d_par_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,times,1)
+
+!! QQQQQQQ?
+
+     call myzfft3d_par_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*dim1,times,howmany)
+     call myzfft3d_par_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*dim1,times,1)
   endif
 
   call myclock(atime)
@@ -377,7 +377,7 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,t
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
 !$OMP DO SCHEDULE(STATIC)
   do ii=1,howmany
-     ffprod(:,:,:,ii)=ffvec(:,:,:,ii)*ffmat(:,:,:)/(2*totdim)**3
+     ffprod(:,:,:,ii)=ffvec(:,:,:,ii)*ffmat(:,:,:)/(8*dim1*dim2*dim3*nprocs)
   enddo
 !$OMP END DO
 !$OMP END PARALLEL
@@ -385,13 +385,13 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,totdim,blocksize,t
   call myclock(btime); times(7)=times(7)+btime-atime
 
   if (placeopt.ne.1) then
-     if (2*totdim/nprocs.ne.2*blocksize) then
-        print *, "totdim err 3d", totdim, blocksize*nprocs, nprocs; call mpistop()
-     endif
 !!$     call ctdim(3)
-     call cooleytukey_outofplace_backward_mpi(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,2*totdim,2*blocksize,howmany)
+     call cooleytukey_outofplace_backward_mpi(ffprod(:,:,:,:),ffback(:,:,:,:),2*dim1,2*dim2,2*dim3,howmany)
   else
-     call myzfft3d_par_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,times,howmany)
+
+!!! QQQQQQQ?
+
+     call myzfft3d_par_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*dim1,times,howmany)
   endif
 
 #else

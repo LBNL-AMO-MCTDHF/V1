@@ -285,6 +285,7 @@ end subroutine getmyparams
 
 subroutine printmyopts()
   use myparams
+  use pmpimod !! orbparlevel
   use pfileptrmod
   implicit none
   integer :: ii
