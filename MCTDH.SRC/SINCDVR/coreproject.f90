@@ -912,13 +912,8 @@ function qbox(idim)
   implicit none
   integer :: qbox,idim
 
-!! QQQQQ
+  qbox=boxrank(idim)
 
-  if (orbparflag.and.idim.eq.3) then
-     qbox=myrank
-  else
-     qbox=1
-  endif
 end function qbox
 
 

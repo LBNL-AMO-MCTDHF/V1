@@ -14,7 +14,7 @@ subroutine get_3dpoisson(pot)
   real*8, allocatable :: tempcoulomb(:,:,:,:)
   real*8, allocatable :: xcoulomb(:,:,:,:,:,:)
   real*8, allocatable :: threed_two_big(:,:,:)
-  integer :: ldims(3),udims(3),istart,gridoffset
+  integer :: ldims(3),udims(3),istart(3),gridoffset(3)
 
   if (griddim.ne.3) then
      OFLWR "WTF! should not happen."; CFLST
@@ -39,25 +39,31 @@ subroutine get_3dpoisson(pot)
 
   tempcoulomb(:,:,:,:)=tempcoulomb(:,:,:,:)/spacing**3
 
-!!! QQQQQ
-
-  istart=0
-  if (myrank.eq.1.or.(.not.orbparflag)) then
-     istart=1
+  istart(:)=0
+  if (.not.orbparflag) then
+     istart(:)=1
+  else
+     do ii=orbparlevel,3
+        if (boxrank(ii).eq.1) then
+           istart(ii)=1
+        endif
+     enddo
   endif
 
-!!! QQQQQ
-
   if (orbparflag) then
-     gridoffset=(myrank-1)*numpoints(3)
 
-     pp(1:2)=1-gridpoints(1:2)
-     qq(1:2)=gridpoints(1:2)-1
-     pp(3)=istart+2*gridoffset-gridpoints(3)
-     qq(3)=2*(gridoffset+numpoints(3))-gridpoints(3)-1
+     gridoffset(1:3)=(boxrank(1:3)-1)*numpoints(1:3)
+
+!     pp(1:2)=1-gridpoints(1:2)
+!     qq(1:2)=gridpoints(1:2)-1
+
+     pp(1:3)=istart(1:3)+2*gridoffset(1:3)-gridpoints(1:3)
+     qq(1:3)=2*(gridoffset(1:3)+numpoints(1:3))-gridpoints(1:3)-1
 
      threed_two(:,:,:,:)=0
-     threed_two(1-numpoints(1):numpoints(1)-1,1-numpoints(2):numpoints(2)-1,istart-numpoints(3):numpoints(3)-1,:)=&
+     threed_two(istart(1)-numpoints(1):numpoints(1)-1,&
+          istart(2)-numpoints(2):numpoints(2)-1,&
+          istart(3)-numpoints(3):numpoints(3)-1,:)=&
           tempcoulomb(pp(1):qq(1),pp(2):qq(2),pp(3):qq(3),:)
   else
      threed_two(:,:,:,:)=0
@@ -66,12 +72,6 @@ subroutine get_3dpoisson(pot)
           1-gridpoints(1):gridpoints(1)-1,&
           1-gridpoints(2):gridpoints(2)-1,&
           1-gridpoints(3):gridpoints(3)-1,:)
-  endif
-
-!!! QQQQQ
-
-  if (orbparflag.and.myrank.gt.nbox(3)) then
-     OFLWR "DOODODFODxxx",myrank,nbox(3); CFLST
   endif
 
   OFLWR "     ...getting potential..."; CFL
@@ -134,7 +134,7 @@ subroutine get_3dpoisson(pot)
           (/numpoints(1),nbox(1),numpoints(2),nbox(2),numpoints(3),nbox(3)/))
   enddo
 
-  pot(:)=RESHAPE(xcoulomb(:,1,:,1,:,qbox(3)),(/totpoints/))
+  pot(:)=RESHAPE(xcoulomb(:,qbox(1),:,qbox(2),:,qbox(3)),(/totpoints/))
 
   deallocate(xcoulomb,threed_two_big)
 

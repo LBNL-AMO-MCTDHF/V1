@@ -213,11 +213,9 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   ilow(1:3)=1
   ihigh(1:3)=gridpoints(1:3)
 
-!! QQQQQ
-
   if (orbparflag) then
-     ilow(3)=(myrank-1)*numpoints(3)+1
-     ihigh(3)=myrank*numpoints(3)
+     ilow(orbparlevel:3)=(boxrank(orbparlevel:3)-1)*numpoints(orbparlevel:3)+1
+     ihigh(orbparlevel:3)=boxrank(orbparlevel:3)*numpoints(orbparlevel:3)
   endif
 
   pi=4d0*atan(1d0)
