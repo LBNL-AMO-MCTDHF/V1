@@ -31,8 +31,6 @@ recursive subroutine myzfft1d(in,out,dim,howmany)
   integer, save :: plandims(maxplans)=-999, planhowmany(maxplans)=-999
   integer,save :: icalleds(maxplans)=0, numplans=0
   integer :: ostride,istride,onembed(1),inembed(1),idist,odist, dims(1),iplan,thisplan
-!!$  integer :: myrank,nprocs
-!!$  call getmyranknprocs(myrank,nprocs)
 
   inembed(1)=dim; onembed(1)=dim; idist=dim; odist=dim; istride=1; ostride=1; dims(1)=dim
 
@@ -120,8 +118,6 @@ recursive subroutine myzfft1d0(blockdim,in,out,dim,howmany)
        planblockdim(maxplans)=-999
   integer,save :: icalleds(maxplans)=0, numplans=0
   integer :: ostride,istride,onembed(1),inembed(1),idist,odist, dims(1),iplan,thisplan
-!!$  integer :: myrank,nprocs
-!!$  call getmyranknprocs(myrank,nprocs)
 
 !!$  KEEPME           EITHER WORK BLOCKDIM=1            KEEPME
 !!$
@@ -196,8 +192,6 @@ recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
   integer, save :: plandims(3,maxplans)=-999, planhowmany(maxplans)=-999
   integer,save :: icalleds(maxplans)=0, numplans=0
   integer :: ostride,istride,onembed(3),inembed(3),idist,odist, dims(3),iplan,thisplan
-!!$  integer :: myrank,nprocs
-!!$  call getmyranknprocs(myrank,nprocs)
 
   dims(:)=(/dim3,dim2,dim1/)
   inembed(:)=dims(:); onembed(:)=dims(:); idist=dim1*dim2*dim3; odist=dim1*dim2*dim3; istride=1; ostride=1; 
@@ -337,29 +331,10 @@ contains
   complex*16,intent(in) :: in(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
   complex*16,intent(out) :: out(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
   integer :: atime,btime,i,count,ii,totsize,iproc,checkprocs,myrank,j
-#define AUTOMATICBLOCKS
-#ifdef AUTOMATICBLOCKS
   complex*16 :: intranspose(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)  !!AUTOMATIC
   complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)      !!AUTOMATIC
-#else
-  complex*16, allocatable :: intranspose(:,:,:,:,:), outtemp(:,:,:,:,:)
-#endif
-#define AUTOMATICTRANS
-#ifdef AUTOMATICTRANS
   complex*16 :: outone(blocksize,nprocs*blocksize,blocksize,nprocs)               !!AUTOMATIC
   complex*16 :: inchop(nprocs*blocksize,blocksize,blocksize,howmany)              !!AUTOMATIC
-#else
-!!
-!! if outone and inchop are private to threads, then there is no need for barriers below.
-!! 
-  complex*16, allocatable, save :: outone(:,:,:,:),inchop(:,:,:,:)
-!$OMP THREADPRIVATE(outone,inchop)
-#endif
-
-#ifndef AUTOMATICBLOCKS
-  allocate( intranspose(blocksize,nprocs*blocksize,blocksize,howmany,nprocs), &
-       outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs))
-#endif
 
   call getmyranknprocs(myrank,checkprocs)
   if (nprocs.ne.checkprocs) then
@@ -374,12 +349,7 @@ contains
   
   call myclock(atime)
 
-#ifdef AUTOMATICTRANS  
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i)    !! IPROC IS SHARED (GOES WITH BARRIER, INCHOP SHARED)
-#else
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i,iproc)    !! IPROC IS private (no BARRIER, INCHOP threadprivate)
-  allocate(inchop(nprocs*blocksize,blocksize,blocksize,howmany))
-#endif
 
 !$OMP MASTER
   intranspose(:,:,:,:,:)=0d0
@@ -387,36 +357,20 @@ contains
 !! *** OMP BARRIER *** !!  make sure master touches first
 !$OMP BARRIER
 
-#ifndef AUTOMATICTRANS
-!$OMP DO SCHEDULE(STATIC)
-#endif
   do iproc=1,nprocs
      inchop(:,:,:,:)=in(:,(iproc-1)*blocksize+1:iproc*blocksize,:,:)
-#ifdef AUTOMATICTRANS
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
-#endif
      do ii=1,howmany
         do i=1,blocksize
            intranspose(:,:,i,ii,iproc)=TRANSPOSE(inchop(:,i,:,ii))
         enddo
      enddo
-#ifdef AUTOMATICTRANS
 !$OMP END DO
 !! *** OMP BARRIER *** !!   if inchop & iproc are shared
 !$OMP BARRIER
   enddo
-#else
-  enddo
-!$OMP END DO
-  deallocate(inchop)
-#endif
-! (implied barrier at end)
 !$OMP END PARALLEL
 
-!! UMM does this do anything, not sure
-!!
-!$OcccMP PARALLEL DEFAULT(SHARED)
-!$OcccMP MASTER
   call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
 
   outtemp(:,:,:,:,:)=0d0
@@ -425,61 +379,30 @@ contains
   
   call mympialltoall_complex(intranspose,outtemp,count)
   call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
-!$OccccMP END MASTER
-!! (barrier at end)
-!$OccccMP END PARALLEL
-
 
 !!  complex*16,intent(out) :: out(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
 !!  complex*16 :: outtemp(blocksize,nprocs*blocksize,blocksize,howmany,nprocs)     
 !!  complex*16 :: outone(blocksize,nprocs*blocksize,blocksize,nprocs)
 
-!!$  OLD WAY - NEVER OMP'D WELL OBVIOUSLY
-!!$  do iproc=1,nprocs
-!!$     out((iproc-1)*blocksize+1:iproc*blocksize,:,:,:)=outtemp(:,:,:,:,iproc)
-!!$  enddo
-
-#ifdef AUTOMATICTRANS
-
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)  !! ii IS SHARED (OUTTEMP IS SHARED; BARRIER)
   do ii=1,howmany
      outone(:,:,:,:)=outtemp(:,:,:,ii,:)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
-#else
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j,ii)  !! ii IS PRIVATE (OUTTEMP IS THREADPRIVATE; NO BARRIER)
-  allocate(outone(blocksize,nprocs*blocksize,blocksize,nprocs))
-!$OMP DO SCHEDULE(STATIC) COLLAPSE(1)
-  do ii=1,howmany
-     outone(:,:,:,:)=outtemp(:,:,:,ii,:)
-
-#endif
      do i=1,blocksize
         do j=1,nprocs*blocksize
            out(:,j,i,ii)=RESHAPE(outone(:,j,i,:),(/nprocs*blocksize/))
         enddo
      enddo
 
-#ifdef AUTOMATICTRANS
 !$OMP END DO
 !! *** OMP BARRIER *** !!   if outone & ii are shared
 !$OMP BARRIER
   enddo
-#else
-  enddo   !! no barrier because outone is threadprivate; ii is private
-!$OMP END DO
-  deallocate(outone)
-#endif
-
-! (implied barrier at end)
 !$OMP END PARALLEL
 
   call myclock(btime); times(3)=times(3)+btime-atime;
 
-#ifndef AUTOMATICBLOCKS
-  deallocate(intranspose, outtemp)
-#endif
-  
 end subroutine mytranspose
 end module  
   
@@ -518,7 +441,7 @@ recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
   integer :: mystart, myend, mysize, myrank,nprocs
 
   call getmyranknprocs(myrank,nprocs)
-  call checkdivisible(dim,nprocs)
+  call checkdivisible(dim**3,nprocs)
 
   mystart=dim**3/nprocs*(myrank-1)+1
   myend=dim**3/nprocs*myrank
@@ -592,8 +515,8 @@ recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs,direction)
   use mytransposemod
   implicit none
   integer, intent(in) :: dim,howmany,nprocs,direction
-  complex*16, intent(in) :: in(dim,dim,dim/nprocs,howmany)
-  complex*16, intent(out) :: out(dim,dim,dim/nprocs,howmany)
+  complex*16, intent(in) :: in(dim**3/nprocs,howmany)
+  complex*16, intent(out) :: out(dim**3/nprocs,howmany)
   integer, intent(inout) :: times(8)
   integer :: ii,atime,btime
   complex*16 :: mywork(dim,dim,dim/nprocs,howmany) !! AUTOMATIC
@@ -603,10 +526,10 @@ recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs,direction)
   call myclock(atime)
   select case(direction)
   case(-1)
-     out(:,:,:,:)=CONJG(in(:,:,:,:))
+     out(:,:)=CONJG(in(:,:))
      call myclock(btime); times(2)=times(2)+btime-atime;
   case(1)
-     out(:,:,:,:)=in(:,:,:,:)
+     out(:,:)=in(:,:)
      call myclock(btime); times(1)=times(1)+btime-atime;
   case default
      print *, "ACK PAR0 DIRECTION=",direction; call mpistop()
@@ -628,7 +551,7 @@ recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs,direction)
   call myclock(atime)
   select case(direction)
   case(-1)
-     out(:,:,:,:)=CONJG(out(:,:,:,:))
+     out(:,:)=CONJG(out(:,:))
      call myclock(btime); times(2)=times(2)+btime-atime
   case(1)
   case default
