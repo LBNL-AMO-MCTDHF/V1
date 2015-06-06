@@ -52,9 +52,6 @@ subroutine get_3dpoisson(pot)
 
      gridoffset(1:3)=(boxrank(1:3)-1)*numpoints(1:3)
 
-!     pp(1:2)=1-gridpoints(1:2)
-!     qq(1:2)=gridpoints(1:2)-1
-
      pp(1:3)=istart(1:3)+2*gridoffset(1:3)-gridpoints(1:3)
      qq(1:3)=2*(gridoffset(1:3)+numpoints(1:3))-gridpoints(1:3)-1
 

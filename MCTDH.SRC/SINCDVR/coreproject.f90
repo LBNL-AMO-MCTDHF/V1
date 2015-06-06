@@ -391,7 +391,7 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
   DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,numspf),twoereduced(totpoints,numspf,numspf)
   character,intent(in) :: timingdir*(*)
   integer, intent(in) :: notiming
-  integer ::  spf1a, spf1b, spf2a, spf2b, itime,jtime,getlen, ibox,jproc,&
+  integer ::  spf1a, spf1b, spf2a, spf2b, itime,jtime,getlen,&
        spf2low,spf2high,index2b,index2low,index2high, firsttime,lasttime
   integer, save :: xcount=0, times(10)=0,fttimes(10)=0,qqcount=0
   DATATYPE :: twoeden03(numpoints(1),numpoints(2),numpoints(3),numspf**fft_batchdim), &
@@ -409,7 +409,6 @@ recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,
 !!$
 
   times(:)=0; fttimes(:)=0;   !! ZEROING TIMES... not cumulative
-  ibox=0; jproc=0             !! avoid warn unused
 
   call myclock(firsttime); itime=firsttime
 
@@ -754,10 +753,10 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
   DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
   integer ::   ii, itime,jtime
 #ifdef MPIFLAG
-  integer ::  ibox,jproc
+  integer ::  ibox1,ibox2,ibox3,jbox1,jbox2,jbox3,jproc,iproc
   DATATYPE :: tempden03(numpoints(1),numpoints(2),numpoints(3),allsize)
 #endif
-  integer :: circhigh,circindex,icirc,ilow,ihigh
+  integer :: circhigh,circindex,icirc
   DATATYPE :: twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,allsize),&
        reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,allsize),&
        reducedwork3d(numpoints(1),numpoints(2),numpoints(3),allsize)
@@ -794,18 +793,31 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
      call myclock(itime)
      twoeden03huge(:,:,:,:,:,:,:)=0d0; 
 
-!! QQQQQ
-     
-     do ibox=1,nbox(3)  !! processor sending
-        jproc=(ibox+1)/2
-        if (ibox.eq.myrank.and.jproc.eq.myrank) then
-           twoeden03huge(:,1,:,1,:,mod(ibox-1,2)+1,:)=twoeden03(:,:,:,:)
-        else if (ibox.eq.myrank) then
+     do ibox3=1,nbox(3)  !! processor sending
+     do ibox2=1,nbox(2)  !! processor sending
+     do ibox1=1,nbox(1)  !! processor sending
+
+        iproc=rankbybox(ibox1,ibox2,ibox3)
+
+        jbox3=(ibox3+1)/2   !! processor receiving
+        jbox2=(ibox2+1)/2
+        jbox1=(ibox1+1)/2
+
+!!$        jproc=(ibox+1)/2
+
+        jproc=rankbybox(jbox1,jbox2,jbox3)
+
+        if (iproc.eq.myrank.and.jproc.eq.myrank) then
+           twoeden03huge(:,mod(ibox1-1,2)+1,:,mod(ibox2-1,2)+1,:,mod(ibox3-1,2)+1,:)=twoeden03(:,:,:,:)
+        else if (iproc.eq.myrank) then
            call mympisend(twoeden03,jproc,999,totpoints*allsize)
         else if (jproc.eq.myrank) then
-           call mympirecv(tempden03,ibox,999,totpoints*allsize)
-           twoeden03huge(:,1,:,1,:,mod(ibox-1,2)+1,:)=tempden03(:,:,:,:)
+           call mympirecv(tempden03,iproc,999,totpoints*allsize)
+           twoeden03huge(:,mod(ibox1-1,2)+1,:,mod(ibox2-1,2)+1,:,mod(ibox3-1,2)+1,:)=tempden03(:,:,:,:)
         endif
+
+     enddo
+     enddo
      enddo
      call myclock(jtime); times3=times3+jtime-itime;
   else
@@ -834,18 +846,31 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
      
      call myclock(jtime); times4=times4+jtime-itime; itime=jtime
 
-!!! QQQQQ
-     
-     do ibox=1,nbox(3)  !! processor receiving
-        jproc=(ibox+nbox(3)+1)/2
-        if (ibox.eq.myrank.and.jproc.eq.myrank) then
-           reducedwork3d(:,:,:,:)=reducedhuge(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:)
-        else if (ibox.eq.myrank) then
+     do ibox3=1,nbox(3)  !! processor receiving
+     do ibox2=1,nbox(2)
+     do ibox1=1,nbox(1)
+
+        iproc=rankbybox(ibox1,ibox2,ibox3)
+
+        jbox3=(ibox3+nbox(3)+1)/2   !! processor sending
+        jbox2=(ibox2+nbox(2)+1)/2
+        jbox1=(ibox1+nbox(1)+1)/2
+
+!!$         jproc=(ibox+nbox(3)+1)/2
+
+        jproc=rankbybox(jbox1,jbox2,jbox3)
+
+        if (iproc.eq.myrank.and.jproc.eq.myrank) then
+           reducedwork3d(:,:,:,:)=reducedhuge(:,mod(ibox1+nbox(1)-1,2)+1,:,mod(ibox2+nbox(2)-1,2)+1,:,mod(ibox3+nbox(3)-1,2)+1,:)
+        else if (iproc.eq.myrank) then
            call mympirecv(reducedwork3d(:,:,:,:),jproc,999,totpoints*allsize)
         else if (jproc.eq.myrank) then
-           tempden03(:,:,:,:)=reducedhuge(:,2,:,2,:,mod(ibox+nbox(3)-1,2)+1,:)
-           call mympisend(tempden03(:,:,:,:),ibox,999,totpoints*allsize)
+           tempden03(:,:,:,:)=reducedhuge(:,mod(ibox1+nbox(1)-1,2)+1,:,mod(ibox2+nbox(2)-1,2)+1,:,mod(ibox3+nbox(3)-1,2)+1,:)
+           call mympisend(tempden03(:,:,:,:),iproc,999,totpoints*allsize)
         endif
+
+     enddo
+     enddo
      enddo
      
      call myclock(jtime); times5=times5+jtime-itime
@@ -862,10 +887,7 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
 #endif
      enddo
      
-     do ii=1,nbox(3)
-        ilow=(ii-1)*numpoints(3)+1; ihigh=ii*numpoints(3)
-        reducedwork3d(:,:,ilow:ihigh,:)=reducedhuge(:,2,:,2,:, 2*ii ,:)
-     enddo
+     reducedwork3d(:,:,:,:)=reducedhuge(:,2,:,2,:,2,:)
      
      call myclock(jtime); times4=times4+jtime-itime
 #ifdef MPIFLAG
