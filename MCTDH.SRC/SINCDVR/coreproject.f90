@@ -932,22 +932,20 @@ subroutine mult_reducedpot(inspfs,outspf,whichspf,reducedpot)
 end subroutine mult_reducedpot
 
 
-function qbox(idim)
-  use myparams
-  use pmpimod
-  implicit none
-  integer :: qbox,idim
-
-  qbox=boxrank(idim)
-
-end function qbox
+!function qbox(idim)
+!  use myparams
+!  use pmpimod
+!  implicit none
+!  integer :: qbox,idim
+!  qbox=boxrank(idim)
+!end function qbox
 
 
 
 subroutine get_rad(outpot)
   use myparams
   implicit none
-  integer :: jj,ii,kk,qbox
+  integer :: jj,ii,kk
   DATATYPE :: outpot(totpoints)
   outpot(:)=0d0
   ii=1;  kk=totpoints
@@ -978,7 +976,7 @@ subroutine get_dipoles()
   use myparams
   use myprojectmod  
   implicit none
-  integer :: jj,ii,kk,qbox
+  integer :: jj,ii,kk
   ii=1;  kk=totpoints
   do jj=1,griddim 
      kk=kk/numpoints(jj)
@@ -1459,7 +1457,6 @@ recursive subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,
   integer, save :: xcount=0, times(10)=0
 
   totsize=numpoints(indim)*nnn*howmany
-
 
   call myclock(atime)
   out(:,:)=0d0

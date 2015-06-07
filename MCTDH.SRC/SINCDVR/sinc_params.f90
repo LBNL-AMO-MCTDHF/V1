@@ -74,6 +74,7 @@ integer :: scalingorder=2          !! should be 2 or greater!
 integer :: notwoflag=0
   integer :: numspf=-1
 integer :: nbox(100)=1  !! BOXES FOR PAR.
+integer :: qbox(3)=1
 
 integer :: griddim=3, ccc=0
 

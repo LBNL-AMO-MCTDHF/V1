@@ -71,6 +71,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   endif
 
   call get_rad(elecradii(:))
+
   call get_dipoles()
 
 
@@ -190,6 +191,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 !!$  endif
 !!$
 !!$#endif
+
 
 
   call get_twoe_new(pot)

@@ -9,7 +9,7 @@ subroutine get_3dpoisson(pot)
   use pfileptrmod
   use myprojectmod
   implicit none
-  integer :: i,k,j,ii,jj,kk,qq(3),pp(3),qbox
+  integer :: i,k,j,ii,jj,kk,qq(3),pp(3)
   real*8 :: rval,pot(totpoints)
   real*8, allocatable :: tempcoulomb(:,:,:,:)
   real*8, allocatable :: xcoulomb(:,:,:,:,:,:)
