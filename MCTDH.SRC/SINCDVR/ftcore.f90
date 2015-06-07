@@ -467,14 +467,14 @@ recursive subroutine myzfft3d_mpiwrap_backward(in,out,dim,howmany,placeopt)
 end subroutine myzfft3d_mpiwrap_backward
 
 recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
+  use pmpimod
   implicit none
   integer :: dim,nulltimes(10),howmany,ii,direction,placeopt
   complex*16, intent(in) :: in(dim**3,howmany)
   complex*16, intent(out) :: out(dim**3,howmany)
   complex*16,allocatable :: inlocal(:,:),outgather(:,:,:),outlocal(:,:)
-  integer :: mystart, myend, mysize, myrank,nprocs
+  integer :: mystart, myend, mysize
 
-  call getmyranknprocs(myrank,nprocs)
   call checkdivisible(dim**3,nprocs)
 
   mystart=dim**3/nprocs*(myrank-1)+1
@@ -491,20 +491,14 @@ recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
   case(-1)
      if (placeopt.ne.1) then
 !!$        call ctdim(3)
-
-!! QQQQQ
-
-        call cooleytukey_outofplace_backward_mpi(inlocal,outlocal,dim,dim,dim/nprocs,howmany)
+        call cooleytukey_outofplace_backward_mpi(inlocal,outlocal,dim/procsplit(1),dim/procsplit(2),dim/procsplit(3),howmany)
      else
         call myzfft3d_par_backward(inlocal,outlocal,dim,nulltimes,howmany)
      endif
   case(1)
      if (placeopt.ne.1) then
 !!$        call ctdim(3)
-
-!! QQQQQQ
-
-        call cooleytukey_outofplace_forward_mpi(inlocal,outlocal,dim,dim,dim/nprocs,howmany)
+        call cooleytukey_outofplace_forward_mpi(inlocal,outlocal,dim/procsplit(1),dim/procsplit(2),dim/procsplit(3),howmany)
      else
         call myzfft3d_par_forward(inlocal,outlocal,dim,nulltimes,howmany)
      endif

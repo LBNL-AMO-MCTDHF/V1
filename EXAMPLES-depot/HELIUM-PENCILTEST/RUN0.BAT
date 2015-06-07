@@ -1,9 +1,10 @@
 
-threads=5
-procs=9
+threads=3
+procs=36
+NPN=6
 
 export OMP_NUM_THREADS=$threads
-mpirun  -n $procs -npernode 4 --bind-to-core --bysocket --cpus-per-proc $threads --report-bindings chmctdhf_sinc.debug $1 Inp=Input.Inp.States0 MPIOUT |tee Outs/Out.states0
+mpirun  -n $procs -npernode $NPN --bind-to-core --bysocket --cpus-per-proc $threads --report-bindings chmctdhf_sinc.debug $1 Inp=Input.Inp.States0 |tee Outs/Out.states0
 
 
 

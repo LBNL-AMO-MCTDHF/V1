@@ -36,6 +36,9 @@ parorbsplit=3
 
 &sincparinp
 
+fft_mpi_inplaceflag=0
+fft_ct_paropt=1
+
 zke_paropt=0
 zke_paropt=1
 
