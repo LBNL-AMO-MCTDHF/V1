@@ -195,13 +195,6 @@
 
 
 
-module ct_mpimod
-  implicit none
-  integer :: CT_COMM_WORLD = -1
-  integer :: CT_GROUP_WORLD = -1
-end module ct_mpimod
-
-
 module ct_options
   integer :: ct_paropt=1
 end module ct_options
@@ -222,12 +215,14 @@ end module ct_primesetmod
 
 
 subroutine ct_init(in_ctparopt)
-  use ct_mpimod
+  use pmpimod
   use ct_options
   implicit none
   integer, intent(in) :: in_ctparopt
+  integer :: ilevel
+
   ct_paropt=in_ctparopt
-  call getprojcommgroup(CT_COMM_WORLD,CT_GROUP_WORLD)
+
   call ct_getprimeset()
   
 end subroutine ct_init
@@ -283,7 +278,6 @@ end subroutine myzfft1d_slowindex_mpi
 
 subroutine simple_circ(in, out,mat,howmany,rdd,oplevel)
   use pmpimod
-  use ct_mpimod
   use ct_primesetmod
   implicit none
   integer, intent(in) :: howmany,rdd,oplevel
@@ -336,7 +330,6 @@ end subroutine simple_circ
 
 subroutine simple_summa(in, out,mat,howmany,rdd,oplevel)
   use pmpimod
-  use ct_mpimod
   use ct_primesetmod
   implicit none
   integer, intent(in) :: howmany,rdd,oplevel
@@ -450,7 +443,6 @@ end subroutine gettwiddlesmall
 subroutine ct_getprimeset()
   use pmpimod
   use pfileptrmod
-  use ct_mpimod
   use ct_primesetmod
   use ct_options
   implicit none
@@ -494,7 +486,6 @@ end subroutine ct_getprimeset
 subroutine ct_construct()
   use pmpimod
   use pfileptrmod
-  use ct_mpimod
   use ct_primesetmod
   implicit none
 #ifdef MPIFLAG
@@ -564,11 +555,11 @@ subroutine ct_construct()
 
         procshift(1:ct_pf(iprime))=CT_PROCSET(1:ct_pf(iprime),icomm,iprime) - 1
 
-        call mpi_group_incl(CT_GROUP_WORLD,ct_pf(iprime),procshift,CT_GROUP_EACH(icomm,iprime),ierr)
+        call mpi_group_incl(PROJ_GROUP_WORLD,ct_pf(iprime),procshift,CT_GROUP_EACH(icomm,iprime),ierr)
         if (ierr.ne.0) then
            write(thisfileptr,*) "Error group incl CT",icomm,iprime,ierr; call mpistop()
         endif
-        call mpi_comm_create(CT_COMM_WORLD, CT_GROUP_EACH(icomm,iprime), CT_COMM_EACH(icomm,iprime),ierr)
+        call mpi_comm_create(PROJ_COMM_WORLD, CT_GROUP_EACH(icomm,iprime), CT_COMM_EACH(icomm,iprime),ierr)
         if (ierr.ne.0) then
            write(thisfileptr,*) "Error comm create CT",icomm,iprime,ierr; call mpistop()
         endif

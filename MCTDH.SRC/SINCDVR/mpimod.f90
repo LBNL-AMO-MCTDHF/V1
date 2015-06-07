@@ -18,11 +18,3 @@ module pmpimod
 end module pmpimod
 
 
-subroutine getProjCommGroup(outcommunicator,outgroup)
-  use pmpimod
-  implicit none
-  integer, intent(out) :: outcommunicator,outgroup
-  outcommunicator=PROJ_COMM_WORLD
-  outgroup=PROJ_GROUP_WORLD
-end subroutine getProjCommGroup
-
