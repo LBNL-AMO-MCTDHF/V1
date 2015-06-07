@@ -235,6 +235,11 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
      maxgridpoints=max(gridpoints(idim),maxgridpoints)
   enddo
 
+  if (toothnbig.lt.maxgridpoints-1) then
+     OFLWR "resetting toothnbig",toothnbig,maxgridpoints-1; CFL
+     toothnbig=maxgridpoints-1
+  endif
+
   if (griddim.gt.3) then
      OFLWR "redim spfdims"; CFLST
   endif
