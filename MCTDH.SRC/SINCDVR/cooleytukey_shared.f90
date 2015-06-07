@@ -254,12 +254,12 @@ subroutine twiddlemult_mpi(blocksize,in,out,dim1,howmany,rdd)
 end subroutine twiddlemult_mpi
 
 
-subroutine myzfft1d_slowindex_mpi(in,out,totsize,rdd)
+subroutine myzfft1d_slowindex_mpi(in,out,totsize,rdd,oplevel)
   use pfileptrmod
   use ct_options
   use ct_primesetmod
   implicit none
-  integer, intent(in) :: totsize,rdd
+  integer, intent(in) :: totsize,rdd,oplevel
   complex*16, intent(in) :: in(totsize)
   complex*16, intent(out) :: out(totsize)
   complex*16 :: fouriermatrix(ct_pf(rdd),ct_pf(rdd)),twiddle(ct_pf(rdd))
@@ -271,9 +271,9 @@ subroutine myzfft1d_slowindex_mpi(in,out,totsize,rdd)
   enddo
   select case (ct_paropt)
   case(0)
-  call simple_circ(in,out,fouriermatrix,totsize,rdd)
+  call simple_circ(in,out,fouriermatrix,totsize,rdd,oplevel)
   case(1)
-  call simple_summa(in,out,fouriermatrix,totsize,rdd)
+  call simple_summa(in,out,fouriermatrix,totsize,rdd,oplevel)
   case default
      write(mpifileptr,*) "ct_paropt not recognized",ct_paropt; call mpistop()
   end select
@@ -281,12 +281,12 @@ subroutine myzfft1d_slowindex_mpi(in,out,totsize,rdd)
 end subroutine myzfft1d_slowindex_mpi
 
 
-subroutine simple_circ(in, out,mat,howmany,rdd)
+subroutine simple_circ(in, out,mat,howmany,rdd,oplevel)
   use pmpimod
   use ct_mpimod
   use ct_primesetmod
   implicit none
-  integer, intent(in) :: howmany,rdd
+  integer, intent(in) :: howmany,rdd,oplevel
   complex*16, intent(in) :: in(howmany), mat(ct_pf(rdd),ct_pf(rdd))
   complex*16, intent(out) :: out(howmany)
   integer :: thisfileptr
@@ -334,12 +334,12 @@ subroutine simple_circ(in, out,mat,howmany,rdd)
 end subroutine simple_circ
 
 
-subroutine simple_summa(in, out,mat,howmany,rdd)
+subroutine simple_summa(in, out,mat,howmany,rdd,oplevel)
   use pmpimod
   use ct_mpimod
   use ct_primesetmod
   implicit none
-  integer, intent(in) :: howmany,rdd
+  integer, intent(in) :: howmany,rdd,oplevel
   complex*16, intent(in) :: in(howmany), mat(ct_pf(rdd),ct_pf(rdd))
   complex*16, intent(out) :: out(howmany)
   integer :: thisfileptr

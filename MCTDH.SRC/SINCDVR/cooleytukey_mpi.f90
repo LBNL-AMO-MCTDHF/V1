@@ -240,9 +240,25 @@ recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim1,dim2,dim3,howm
 
 !! PASSING WORK(:,:,:) AS IN(:,:,:)... USE WORK2 FIRST
 
-  call myzfft1d_slowindex_mpi(in,work2,dim1*dim2*dim3*howmany,recursiondepth)
-
-  call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth)
+  select case(orbparlevel)
+  case(3)
+     call myzfft1d_slowindex_mpi(in,work2,dim1*dim2*dim3*howmany,recursiondepth,3)
+     call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth)
+  case(2)
+     call myzfft1d_slowindex_mpi(in,work2,dim1*dim2*dim3*howmany,recursiondepth,3)
+     call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth)
+     call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,2)
+     call twiddlemult_mpi(dim1,work2,work,dim2,dim3*howmany,recursiondepth)
+  case(1)
+     call myzfft1d_slowindex_mpi(in,work2,dim1*dim2*dim3*howmany,recursiondepth,3)
+     call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth)
+     call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,2)
+     call twiddlemult_mpi(dim1,work2,work,dim2,dim3*howmany,recursiondepth)
+     call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,1)
+     call twiddlemult_mpi(1,work2,work,dim1,dim3*dim2*howmany,recursiondepth)
+  case default
+     print *, "fdsdfsf6666888"; stop
+  end select
 
   if (recursiondepth.eq.ct_numprimes) then
      call myzfft3d(work,outtrans,dim1,dim2,dim3,howmany)
@@ -279,10 +295,31 @@ recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim1,dim2,
      call cooleytukey_outofplaceinput_mpi0(intranspose,work2,dim1,dim2,dim3,howmany,newdepth,work,work2)
   endif
 
-  call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth)
 
 !! WORK HERE... WORK2 IS OUTPUT
-  call myzfft1d_slowindex_mpi(work,out,dim1*dim2*dim3*howmany,recursiondepth)
+!!$  call myzfft1d_slowindex_mpi(work,out,dim1*dim2*dim3*howmany,recursiondepth)
+
+  select case(orbparlevel)
+  case(3)
+     call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth)
+     call myzfft1d_slowindex_mpi(work,out,dim1*dim2*dim3*howmany,recursiondepth,3)
+  case(2)
+     call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth)
+     call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,3)
+     call twiddlemult_mpi(dim1,work2,work,dim2,dim3*howmany,recursiondepth)
+     call myzfft1d_slowindex_mpi(work,out,dim1*dim2*dim3*howmany,recursiondepth,2)
+  case(1)
+     call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth)
+     call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,3)
+     call twiddlemult_mpi(dim1,work2,work,dim2,dim3*howmany,recursiondepth)
+     call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,2)
+     call twiddlemult_mpi(1,work2,work,dim1,dim2*dim3*howmany,recursiondepth)
+     call myzfft1d_slowindex_mpi(work,out,dim1*dim2*dim3*howmany,recursiondepth,1)
+
+  case default
+     print *, "fdsdfsf6666888"; stop
+  end select
+
 
 end subroutine cooleytukey_outofplaceinput_mpi0
 
