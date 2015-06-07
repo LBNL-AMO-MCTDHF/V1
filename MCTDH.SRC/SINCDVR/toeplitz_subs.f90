@@ -366,8 +366,6 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,tim
      call cooleytukey_outofplace_forward_mpi(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*dim1,2*dim2,2*dim3,1)
   else
 
-!! QQQQQQQ?
-
      call myzfft3d_par_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*dim1,times,howmany)
      call myzfft3d_par_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*dim1,times,1)
   endif
@@ -388,9 +386,6 @@ recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,tim
 !!$     call ctdim(3)
      call cooleytukey_outofplace_backward_mpi(ffprod(:,:,:,:),ffback(:,:,:,:),2*dim1,2*dim2,2*dim3,howmany)
   else
-
-!!! QQQQQQQ?
-
      call myzfft3d_par_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*dim1,times,howmany)
   endif
 
