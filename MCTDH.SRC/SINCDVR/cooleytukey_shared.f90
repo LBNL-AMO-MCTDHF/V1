@@ -202,8 +202,16 @@ end module ct_options
 
 module ct_primesetmod
   implicit none
-  integer, allocatable :: CT_COMM_EACH(:,:),CT_GROUP_EACH(:,:)
+
+!  type CTBOXTYPE
+
+     integer, allocatable :: CT_COMM_EACH(:,:),CT_GROUP_EACH(:,:)
+
+!  end type CTBOXTYPE
+!  type(CTBOXTYPE), allocatable :: CTBOX(:,:,:)  !! allocated (nbox(1),nbox(2),orbparlevel:3)
+
   integer :: CT_MYLOC(MAXPRIMES),CT_MYRANK(MAXPRIMES),CT_MYPOSITION(MAXPRIMES)
+
   integer :: ct_called=0
   integer :: ct_numprimes = (-1)
   integer :: ct_maxprime = (-1)
@@ -231,6 +239,9 @@ end subroutine ct_init
 subroutine twiddlemult_mpi(blocksize,in,out,dim1,howmany,rdd)
   use ct_primesetmod
   implicit none
+
+!!  Type(CTBOXTYPE) :: CT
+
   integer, intent(in) :: blocksize,dim1,howmany,rdd
   complex*16, intent(in) :: in(blocksize,dim1,howmany)
   complex*16, intent(out) :: out(blocksize,dim1,howmany)
@@ -446,21 +457,33 @@ subroutine ct_getprimeset()
   use ct_primesetmod
   use ct_options
   implicit none
-  integer :: ii, allprocs0(nprocs)
+  integer :: ii, allprocs0(nprocs),jj,kk,iproc
 
   if (ct_called.ne.0) then
      write(mpifileptr,*) "ONLY CALL CT_GETPRIMESET ONCE (programmer fail)"; call mpistop()
   endif
   ct_called=1
 
+  ct_maxposition(:)=1
+
   select case(orbparlevel)
   case(3)
      call getallprimefactors(nprocs,MAXPRIMES,ct_numprimes,ct_pf)
+     ct_maxposition(1:ct_numprimes)=nprocs
   case(2)
      call getallprimefactors(sqnprocs,MAXPRIMES,ct_numprimes,ct_pf)
+     ct_maxposition(1:ct_numprimes)=sqnprocs
   case(1)
      call getallprimefactors(cbnprocs,MAXPRIMES,ct_numprimes,ct_pf)
+     ct_maxposition(1:ct_numprimes)=cbnprocs
   end select
+
+
+  do ii=1,ct_numprimes
+     ct_maxposition(ii:ct_numprimes)=ct_maxposition(ii:ct_numprimes)/ct_pf(ii)
+  enddo
+
+
 
   ct_maxprime=1; ct_minprime=32767
   do ii=1,ct_numprimes
@@ -478,15 +501,40 @@ subroutine ct_getprimeset()
   write(mpifileptr,*) "    CT_PRIMEFACTORS ARE"
   write(mpifileptr,*) "  ",ct_pf(1:ct_numprimes)
 
+  allocate(CT_COMM_EACH(nprocs/ct_minprime,ct_numprimes),&
+       CT_GROUP_EACH(nprocs/ct_minprime,ct_numprimes))
+  CT_COMM_EACH(:,:)=(-42); 
+  CT_GROUP_EACH(:,:)=(-42)
+ 
 
-  allocate(CT_COMM_EACH(nprocs/ct_minprime,ct_numprimes),CT_GROUP_EACH(nprocs/ct_minprime,ct_numprimes))
-  CT_COMM_EACH(:,:)=(-42); CT_GROUP_EACH(:,:)=(-42)
+!  allocate(CTBOX(nbox(1),nbox(2),orbparlevel:3))
+!    do ii=orbparlevel,3
+!     do jj=1,nbox(2)
+!        do kk=1,nbox(1)
+!           allocate(CTBOX(kk,jj,ii)%CT_COMM_EACH(nprocs/ct_minprime,ct_numprimes),&
+!                CTBOX(kk,jj,ii)%CT_GROUP_EACH(nprocs/ct_minprime,ct_numprimes))
+!           CTBOX(kk,jj,ii)%CT_COMM_EACH(:,:)=(-42); 
+!           CTBOX(kk,jj,ii)%CT_GROUP_EACH(:,:)=(-42)
+!        enddo
+!     enddo
+!  enddo
 
   write(mpifileptr,*) "Calling ct_construct..."
-  do ii=1,nprocs
-     allprocs0(ii)=ii
+  iproc=0
+  do iproc=1,nprocs
+     allprocs0(iproc)=iproc
   enddo
+
   call ct_construct(allprocs0)
+
+!  do ii=orbparlevel,3
+!     do jj=1,nbox(2)
+!        do kk=1,nbox(1)
+!           call ct_construct(allprocs0(:,jj,kk)) !!,CTBOX(kk,jj,ii))
+!        enddo
+!     enddo
+!  enddo
+
   write(mpifileptr,*) "   ....Called ct_construct."
   write(mpifileptr,*) 
 
@@ -503,7 +551,7 @@ subroutine ct_construct(allprocs0)
   integer :: thisfileptr,procshift(nprocs),ierr,iprime,&
        proc_check, ii, icomm, &
        xxtop(1:ct_numprimes),yytop(1:ct_numprimes),xx,yy
-  integer :: CT_PROCSET(ct_maxprime)
+  integer :: procset(ct_maxprime)
 
   proc_check=1; xxtop(:)=1; yytop(:)=1
   do ii=1,ct_numprimes
@@ -515,12 +563,6 @@ subroutine ct_construct(allprocs0)
      write(mpifileptr,*) "Proc check programmer error ", proc_check,nprocs,&
           ct_pf(1:ct_numprimes); call mpistop()
   endif
-
-  ct_maxposition(:)=1
-  ct_maxposition(1:ct_numprimes)=nprocs
-  do ii=1,ct_numprimes
-     ct_maxposition(ii:ct_numprimes)=ct_maxposition(ii:ct_numprimes)/ct_pf(ii)
-  enddo
 
   thisfileptr=6
 
@@ -545,10 +587,10 @@ subroutine ct_construct(allprocs0)
         endif
 
         call ct_cast_assign(allprocs0,yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
-             CT_PROCSET(1:ct_pf(iprime)))
+             procset(1:ct_pf(iprime)))
 
         do ii=1,ct_pf(iprime)
-           if (CT_PROCSET(ii).eq.myrank) then
+           if (procset(ii).eq.myrank) then
               if (CT_MYLOC(iprime).gt.0) then
                  print *, "ERROR MYLOC"; call mpistop()
               endif
@@ -557,7 +599,7 @@ subroutine ct_construct(allprocs0)
            endif
         enddo
 
-        procshift(1:ct_pf(iprime))=CT_PROCSET(1:ct_pf(iprime)) - 1
+        procshift(1:ct_pf(iprime))=procset(1:ct_pf(iprime)) - 1
 
         call mpi_group_incl(PROJ_GROUP_WORLD,ct_pf(iprime),procshift,CT_GROUP_EACH(icomm,iprime),ierr)
         if (ierr.ne.0) then
@@ -567,16 +609,6 @@ subroutine ct_construct(allprocs0)
         if (ierr.ne.0) then
            write(thisfileptr,*) "Error comm create CT",icomm,iprime,ierr; call mpistop()
         endif
-
-!!$ make destroy subroutine; keepme
-!!$          call mpi_comm_free(CT_COMM_EACH(icomm,iprime),ierr)
-!!$          if (ierr.ne.0) then
-!!$             write(thisfileptr,*) "Error comm destroy CT",icomm,iprime,ierr; call mpistop()
-!!$          endif
-!!$          call mpi_group_free(CT_GROUP_EACH(icomm,iprime),ierr)
-!!$          if (ierr.ne.0) then
-!!$             write(thisfileptr,*) "Error group destroy CT",icomm,iprime,ierr; call mpistop()
-!!$          endif
 
      enddo
      enddo

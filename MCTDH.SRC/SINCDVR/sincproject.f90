@@ -43,7 +43,6 @@ end module myprojectmod
 subroutine myprojectalloc()
   use myparams
   use pfileptrmod
-  use pmpimod
   use myprojectmod
   implicit none
   integer :: idim
