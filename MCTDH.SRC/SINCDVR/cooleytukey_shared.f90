@@ -204,10 +204,10 @@ module ct_primesetmod
   implicit none
 
   integer, allocatable :: CT_COMM_EACH(:,:),CT_GROUP_EACH(:,:)
-  integer :: CT_MYLOC(MAXPRIMES),CT_MYRANK(MAXPRIMES),CT_MYPOSITION(MAXPRIMES)
+!  integer :: CT_MYLOC(MAXPRIMES),CT_MYRANK(MAXPRIMES),CT_MYPOSITION(MAXPRIMES)
 
 !  integer, allocatable :: CT_COMM_EACH(:,:,:),CT_GROUP_EACH(:,:,:)
-!  integer :: CT_MYLOC(MAXPRIMES,3),CT_MYRANK(MAXPRIMES,3),CT_MYPOSITION(MAXPRIMES,3)
+  integer :: CT_MYLOC(MAXPRIMES,3),CT_MYRANK(MAXPRIMES,3),CT_MYPOSITION(MAXPRIMES,3)
 
   integer :: ct_called=0
   integer :: ct_numprimes = (-1)
@@ -224,7 +224,6 @@ subroutine ct_init(in_ctparopt)
   use ct_options
   implicit none
   integer, intent(in) :: in_ctparopt
-  integer :: ilevel
 
   ct_paropt=in_ctparopt
 
@@ -233,10 +232,10 @@ subroutine ct_init(in_ctparopt)
 end subroutine ct_init
 
 
-subroutine twiddlemult_mpi(blocksize,in,out,dim1,howmany,rdd)
+subroutine twiddlemult_mpi(blocksize,in,out,dim1,howmany,rdd,oplevel)
   use ct_primesetmod
   implicit none
-  integer, intent(in) :: blocksize,dim1,howmany,rdd
+  integer, intent(in) :: blocksize,dim1,howmany,rdd,oplevel
   complex*16, intent(in) :: in(blocksize,dim1,howmany)
   complex*16, intent(out) :: out(blocksize,dim1,howmany)
   complex*16 :: twiddle1(dim1,ct_maxposition(rdd)),tt1(dim1)
@@ -244,7 +243,7 @@ subroutine twiddlemult_mpi(blocksize,in,out,dim1,howmany,rdd)
 
   call gettwiddlesmall(twiddle1(:,:),dim1*ct_maxposition(rdd),ct_pf(rdd))
 
-  tt1(:)=twiddle1(:,ct_myposition(rdd))**(ct_myrank(rdd)-1)
+  tt1(:)=twiddle1(:,ct_myposition(rdd,oplevel))**(ct_myrank(rdd,oplevel)-1)
   do ii=1,howmany
      do n1=1,dim1
         out(:,n1,ii) = in(:,n1,ii) * tt1(n1)
@@ -306,23 +305,17 @@ subroutine simple_circ(in, out,mat,howmany,rdd,oplevel)
   out(1)=mat(1,1) !! avoid warn unused
 #else
 
-!!$  if (ct_pf(rdd).eq.1) then
-!!$     write(thisfileptr,*) "localnumprocs=1 will work, but please edit calling subroutine or "
-!!$     write(thisfileptr,*) "  main input file and do not call cooleytukey with nprocs=1."
-!!$     call mpistop()
-!!$  endif
-
   nnn=1
   out(:)=0
 
   do deltabox=0,ct_pf(rdd)-1
-     ibox=mod(ct_pf(rdd)+CT_MYRANK(rdd)-1+deltabox,ct_pf(rdd))+1
-     jbox=mod(ct_pf(rdd)+CT_MYRANK(rdd)-1-deltabox,ct_pf(rdd))+1
+     ibox=mod(ct_pf(rdd)+CT_MYRANK(rdd,oplevel)-1+deltabox,ct_pf(rdd))+1
+     jbox=mod(ct_pf(rdd)+CT_MYRANK(rdd,oplevel)-1-deltabox,ct_pf(rdd))+1
 
-     work(:)=in(:)*mat(ibox,CT_MYRANK(rdd))
+     work(:)=in(:)*mat(ibox,CT_MYRANK(rdd,oplevel))
 
      if (deltabox.ne.0) then
-        call mympisendrecv_complex_local(work(:),work2(:),ibox,jbox,deltabox,howmany,CT_COMM_EACH(CT_MYLOC(rdd),rdd))
+        call mympisendrecv_complex_local(work(:),work2(:),ibox,jbox,deltabox,howmany,CT_COMM_EACH(CT_MYLOC(rdd,oplevel),rdd))
         out(:)=out(:)+work2(:)
      else
         out(:)=out(:)+work(:)
@@ -358,21 +351,15 @@ subroutine simple_summa(in, out,mat,howmany,rdd,oplevel)
   out(1)=mat(1,1) !! avoid warn unused
 #else
 
-!!$  if (ct_pf(rdd).eq.1) then
-!!$     write(thisfileptr,*) "localnumprocs=1 will work, but please edit calling subroutine or "
-!!$     write(thisfileptr,*) "  main program input file; do not call cooleytukey with nprocs=1."
-!!$     call mpistop()
-!!$  endif
-
   nnn=1
   out(:)=0d0
 
   do ibox=1,ct_pf(rdd)
-     if (CT_MYRANK(rdd).eq.ibox) then
+     if (CT_MYRANK(rdd,oplevel).eq.ibox) then
         work(:)=in(:)
      endif
-     call mympicomplexbcast_local(work(:),ibox,howmany,CT_COMM_EACH(CT_MYLOC(rdd),rdd))
-     out(:)=out(:)+work(:)*mat(CT_MYRANK(rdd),ibox)
+     call mympicomplexbcast_local(work(:),ibox,howmany,CT_COMM_EACH(CT_MYLOC(rdd,oplevel),rdd))
+     out(:)=out(:)+work(:)*mat(CT_MYRANK(rdd,oplevel),ibox)
   enddo
 #endif
 
@@ -495,6 +482,8 @@ subroutine ct_getprimeset()
   write(mpifileptr,*) "    CT_PRIMEFACTORS ARE"
   write(mpifileptr,*) "  ",ct_pf(1:ct_numprimes)
 
+!! QQQQQQQQ
+
   allocate(CT_COMM_EACH(nprocs/ct_minprime,ct_numprimes),&
        CT_GROUP_EACH(nprocs/ct_minprime,ct_numprimes))
   CT_COMM_EACH(:,:)=(-42); 
@@ -537,7 +526,7 @@ subroutine ct_construct(allprocs0)
   use pfileptrmod
   use ct_primesetmod
   implicit none
-  integer :: allprocs0(nprocs)
+  integer :: allprocs0(procsplit(1),procsplit(2),procsplit(3))
 #ifdef MPIFLAG
   integer :: thisfileptr,procshift(nprocs),ierr,iprime,&
        proc_check, ii, icomm, ilevel, box1,box2,&
@@ -559,60 +548,86 @@ subroutine ct_construct(allprocs0)
 
   CT_MYLOC = (-99)
   CT_MYRANK = (-99)
-  CT_MYPOSITION(:) = 1
+  CT_MYPOSITION = 1
 
-  do iprime=1,ct_numprimes
-     CT_MYPOSITION(iprime)=mod(myrank-1,ct_maxposition(iprime))+1
-  enddo
+  do ilevel=orbparlevel,3
 
-  do iprime=1,ct_numprimes
+     do iprime=1,ct_numprimes
+        CT_MYPOSITION(iprime,ilevel)=mod(boxrank(ilevel)-1,ct_maxposition(iprime))+1
+     enddo
 
-     icomm=0
+     do iprime=1,ct_numprimes
 
-     do xx=1, xxtop(iprime)    !!  EITHER LOOP ORDER APPEARS OK
-     do yy=1, yytop(iprime)    !!  CHECKME (with qqtop etc was fast index outer, slow inner)
+        icomm=0
 
-        icomm=icomm+1
-        if (icomm.gt.nprocs/ct_minprime) then
-           write(mpifileptr,*) "Error construct",icomm,nprocs,ct_minprime; call mpistop()
-        endif
+        do xx=1, xxtop(iprime)    !!  EITHER LOOP ORDER APPEARS OK
+        do yy=1, yytop(iprime)    !!  CHECKME (with qqtop etc was fast index outer, slow inner)
 
-        call ct_cast_assign(allprocs0,yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
-             procset(1:ct_pf(iprime)))
+           icomm=icomm+1
+           if (icomm.gt.procsplit(ilevel)/ct_minprime) then
+              write(mpifileptr,*) "Error construct",icomm,procsplit(ilevel),ct_minprime; call mpistop()
+           endif
+           
+           select case(ilevel)
+           case(3)
+              call ct_cast_assign(allprocs0(boxrank(1),boxrank(2),:),yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
+                   procset(1:ct_pf(iprime)))
+           case(2)
+              call ct_cast_assign(allprocs0(boxrank(1),:,boxrank(3)),yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
+                   procset(1:ct_pf(iprime)))
+           case(1)
+              call ct_cast_assign(allprocs0(:,boxrank(2),boxrank(3)),yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
+                   procset(1:ct_pf(iprime)))
+           end select
 
-        do ii=1,ct_pf(iprime)
-           if (procset(ii).eq.myrank) then
-              if (CT_MYLOC(iprime).gt.0) then
-                 print *, "ERROR MYLOC"; call mpistop()
+           do ii=1,ct_pf(iprime)
+              if (procset(ii).eq.boxrank(ilevel)) then
+                 if (CT_MYLOC(iprime,ilevel).gt.0) then
+                    print *, "ERROR MYLOC"; call mpistop()
+                 endif
+                 CT_MYLOC(iprime,ilevel)=icomm
+                 CT_MYRANK(iprime,ilevel)=ii
               endif
-              CT_MYLOC(iprime)=icomm
-              CT_MYRANK(iprime)=ii
+           enddo
+           
+           procshift(1:ct_pf(iprime))=procset(1:ct_pf(iprime)) - 1
+
+           select case(ilevel)
+           case(3)
+              box1=boxrank(1)
+              box2=boxrank(2)
+           case(2)
+              select case(orbparlevel)
+              case(2)
+                 box1=boxrank(1)
+                 box2=boxrank(3)
+              case(1)
+                 box1=boxrank(3)
+                 box2=boxrank(1)
+              case default
+                 print *, "ssfdsfd level"; stop
+              end select
+           case(1)
+              box1=boxrank(2)
+              box2=boxrank(3)
+           case default
+              print *, "fdsdsfsf dim"; stop
+           end select
+
+           call mpi_group_incl(BOX_GROUP(box1,box2,ilevel),ct_pf(iprime),procshift,CT_GROUP_EACH(icomm,iprime),ierr)
+           if (ierr.ne.0) then
+              write(thisfileptr,*) "Error group incl CT",icomm,iprime,ierr; call mpistop()
+           endif
+           call mpi_comm_create(BOX_COMM(box1,box2,ilevel), CT_GROUP_EACH(icomm,iprime), CT_COMM_EACH(icomm,iprime),ierr)
+           if (ierr.ne.0) then
+              write(thisfileptr,*) "Error comm create CT",icomm,iprime,ierr; call mpistop()
            endif
         enddo
-
-        procshift(1:ct_pf(iprime))=procset(1:ct_pf(iprime)) - 1
-
-        do ilevel=orbparlevel,3
-           do box2=1,procsplit(2)
-              do box1=1,procsplit(1)
-
-   call mpi_group_incl(BOX_GROUP(box1,box2,ilevel),ct_pf(iprime),procshift,CT_GROUP_EACH(icomm,iprime),ierr)
-   if (ierr.ne.0) then
-      write(thisfileptr,*) "Error group incl CT",icomm,iprime,ierr; call mpistop()
-   endif
-   call mpi_comm_create(BOX_COMM(box1,box2,ilevel), CT_GROUP_EACH(icomm,iprime), CT_COMM_EACH(icomm,iprime),ierr)
-   if (ierr.ne.0) then
-      write(thisfileptr,*) "Error comm create CT",icomm,iprime,ierr; call mpistop()
-   endif
-              enddo
-           enddo
         enddo
-        
+        if (CT_MYLOC(iprime,ilevel).le.0) then
+           print *, "MYLOC ERROR",myrank,boxrank(ilevel),CT_MYLOC(iprime,ilevel),iprime; call mpistop()
+        endif
      enddo
-     enddo
-     if (CT_MYLOC(iprime).le.0) then
-        print *, "MYLOC ERROR",myrank,CT_MYLOC(iprime),iprime; call mpistop()
-     endif
   enddo
 #endif
 

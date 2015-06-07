@@ -932,15 +932,6 @@ subroutine mult_reducedpot(inspfs,outspf,whichspf,reducedpot)
 end subroutine mult_reducedpot
 
 
-!function qbox(idim)
-!  use myparams
-!  use pmpimod
-!  implicit none
-!  integer :: qbox,idim
-!  qbox=boxrank(idim)
-!end function qbox
-
-
 
 subroutine get_rad(outpot)
   use myparams
@@ -1389,7 +1380,7 @@ recursive subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,n
         case(1)
            call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(2),boxrank(3),1))
         case default 
-           print *, "ACK ORB"; stop
+           print *, "ACK dim"; stop
         end select
 
               
@@ -1486,7 +1477,7 @@ recursive subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,
      case(1)
         call mympibcast_local(work(:,:),ibox,totsize,BOX_COMM(boxrank(2),boxrank(3),1))
      case default 
-        print *, "ACK ORB"; stop
+        print *, "ACK dim"; stop
      end select
 
      call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
