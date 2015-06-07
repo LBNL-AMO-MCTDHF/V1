@@ -477,6 +477,8 @@ subroutine ct_getprimeset()
   write(mpifileptr,*) "   CT_MAXPRIME IS ",ct_maxprime
   write(mpifileptr,*) "    CT_PRIMEFACTORS ARE"
   write(mpifileptr,*) "  ",ct_pf(1:ct_numprimes)
+
+
   allocate(CT_COMM_EACH(nprocs/ct_minprime,ct_numprimes),CT_GROUP_EACH(nprocs/ct_minprime,ct_numprimes))
   CT_COMM_EACH(:,:)=(-42); CT_GROUP_EACH(:,:)=(-42)
 

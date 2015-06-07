@@ -15,6 +15,8 @@ module pmpimod
 
   integer :: orbparlevel=3  !!  in namelist, but not in myparams
 
+  integer :: nbox(100)=1  !! BOXES FOR PAR.
+
 end module pmpimod
 
 
