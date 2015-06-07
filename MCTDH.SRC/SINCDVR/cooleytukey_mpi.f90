@@ -207,6 +207,8 @@ subroutine cooleytukey_outofplace_backward_mpi(intranspose,out,dim1,dim2,dim3,ho
   call cooleytukey_outofplaceinput_mpi0(work,out,dim1,dim2,dim3,howmany,1,work,work2)
   out(:,:,:,:)=CONJG(out(:,:,:,:))
 
+  call mpibarrier()
+
 end subroutine cooleytukey_outofplace_backward_mpi
 
 
@@ -223,6 +225,8 @@ subroutine cooleytukey_outofplace_forward_mpi(in,outtrans,dim1,dim2,dim3,howmany
   complex*16 ::  work(dim1,dim2,dim3,howmany) , work2(dim1,dim2,dim3,howmany)  !!AUTOMATIC
 
   call cooleytukey_outofplace_mpi0(in,outtrans,dim1,dim2,dim3,howmany,1,work,work2)
+
+  call mpibarrier()
 
 end subroutine cooleytukey_outofplace_forward_mpi
 
