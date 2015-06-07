@@ -475,7 +475,11 @@ recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
   complex*16,allocatable :: inlocal(:,:),outgather(:,:,:),outlocal(:,:)
   integer :: mystart, myend, mysize
 
-  call checkdivisible(dim**3,nprocs)
+  if (orbparlevel.ne.3) then
+     print *,  "orbparlevel .ne. 3 not supported mpiwrap"; call mpistop()
+  endif
+
+  call checkdivisible(dim,nprocs)
 
   mystart=dim**3/nprocs*(myrank-1)+1
   myend=dim**3/nprocs*myrank

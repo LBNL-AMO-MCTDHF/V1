@@ -583,37 +583,11 @@ subroutine ct_construct(allprocs0)
            
            procshift(1:ct_pf(iprime))=procset(1:ct_pf(iprime)) - 1
 
-!           select case(ilevel)
-!           case(3)
-!              box1=boxrank(1)
-!              box2=boxrank(2)
-!           case(2)
-!              select case(orbparlevel)
-!              case(2)
-!                 box1=boxrank(1)
-!                 box2=boxrank(3)
-!              case(1)
-!                 box1=boxrank(3)
-!                 box2=boxrank(1)
-!              case default
-!                 print *, "ssfdsfd level"; stop
-!              end select
-!           case(1)
-!              box1=boxrank(2)
-!              box2=boxrank(3)
-!           case default
-!              print *, "fdsdsfsf dim"; stop
-!           end select
-
-!           call mpi_group_incl(BOX_GROUP(box1,box2,ilevel),ct_pf(iprime),procshift,CT_GROUP_EACH(icomm,iprime,ilevel),ierr)
-
            call mpi_group_incl(PROJ_GROUP_WORLD,ct_pf(iprime),procshift,CT_GROUP_EACH(icomm,iprime,ilevel),ierr)
 
            if (ierr.ne.0) then
               write(thisfileptr,*) "Error group incl CT",icomm,iprime,ierr; call mpistop()
            endif
-
-!           call mpi_comm_create(BOX_COMM(box1,box2,ilevel), CT_GROUP_EACH(icomm,iprime,ilevel), CT_COMM_EACH(icomm,iprime,ilevel),ierr)
 
            call mpi_comm_create(PROJ_COMM_WORLD, CT_GROUP_EACH(icomm,iprime,ilevel), CT_COMM_EACH(icomm,iprime,ilevel),ierr)
 
