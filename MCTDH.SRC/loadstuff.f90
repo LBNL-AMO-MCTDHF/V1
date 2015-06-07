@@ -7,30 +7,39 @@ subroutine save_vector(psi,afile,sfile)
   implicit none
   DATATYPE :: psi(psilength) 
   character :: afile*(*), sfile*(*)
-  integer :: iprop,qqblocks(nprocs),ispf
-  DATATYPE, allocatable :: parorbitals(:,:,:)
+  integer :: iprop,ispf,qqblocks(nprocs)
+  DATATYPE, allocatable :: parorbitals(:,:)
 
   if (myrank.ne.1.and.parorbsplit.ne.3) then
      OFLWR "   --> rank 1 will save. "; CFL
   else
      if (parorbsplit.eq.3) then
         if (myrank.eq.1) then
-!!$        OFLWR "allocating big orbitals for save!!"; CFL
-           allocate(parorbitals(spfsize,nprocs,nspf)); parorbitals(:,:,:)=0d0
-!!$        OFLWR "   ...ok"; CFL
+           allocate(parorbitals(spfsize*nprocs,nspf)); parorbitals(:,:)=0d0
         else
-           allocate(parorbitals(1,1,nspf))
+           allocate(parorbitals(1,nspf))
         endif
         
-        qqblocks(:)=spfsize
+
         
         do ispf=1,nspf
+
+!!$not needed
+!!$#ifdef REALGO
+!!$           call splitgatherv_real(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
+!!$#else
+!!$           call splitgatherv_complex(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
+!!$#endif
+
+           qqblocks(:)=spfsize
 #ifdef REALGO
-           call mygatherv_real(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,:,ispf), qqblocks(:),.false.)
+           call mygatherv_real(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), qqblocks(:),.false.)
 #else
-           call mygatherv_complex(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,:,ispf), qqblocks(:),.false.)
+           call mygatherv_complex(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), qqblocks(:),.false.)
 #endif
+
         enddo
+
      endif
      
      if (myrank.eq.1) then
@@ -41,7 +50,7 @@ subroutine save_vector(psi,afile,sfile)
         call spf_header_write(998,nspf+numfrozen)
         
         if (parorbsplit.eq.3) then
-           call write_spf(998,parorbitals(:,:,:),spfsize*nprocs)
+           call write_spf(998,parorbitals(:,:),spfsize*nprocs)
         else
            call write_spf(998,psi(spfstart),spfsize)
         endif
@@ -65,9 +74,7 @@ subroutine save_vector(psi,afile,sfile)
      OFLWR "   ...rank 1 SAVED vectors!"; CFL 
   endif
 
-
 end subroutine save_vector
-
 
 
 
@@ -87,11 +94,11 @@ subroutine write_spf(unit,spfin,inspfsize)
   write (unit) allspf
 end subroutine
 
+
 subroutine spf_header_write(iunit,num)
-  use mpimod
   use parameters
   implicit none
-  integer ::  cflag,iunit,num,qqq(3)
+  integer ::  cflag,iunit,num,qqq(3),ppp(3)
 #ifdef REALGO
   cflag=0
 #else
@@ -99,48 +106,27 @@ subroutine spf_header_write(iunit,num)
 #endif
   qqq(:)=1
   if (parorbsplit.eq.3) then
-     qqq(3)=nprocs
+     ppp(:)=1; call bigdimsub(ppp,qqq)
   endif
   write(iunit) spfdims(:)*qqq(:),num,cflag
 end subroutine
+
+
 subroutine spf_header_read(iunit,outdims,outnspf,cflag)
-!! use fileptrmod  !! need nprocs and parorbsplit now
-  use mpimod
-  use parameters
   implicit none
-  integer ::  cflag,outdims(3),outnspf,iunit,qdim
+  integer ::  cflag,outdims(3),outnspf,iunit
 #ifdef REALGO
   cflag=0
 #else
   cflag=1
 #endif
-  if (parorbsplit.eq.3) then
-     qdim=nprocs
-  else
-     qdim=1
-  endif
-
   read(iunit) outdims(:),outnspf,cflag
-
-!!$  if ((outdims(3)/qdim)*qdim.ne.outdims(3)) then
-!!$     OFLWR "parorb err header read",outdims(3),qdim; CFLST
-!!$  endif
-!!$  outdims(3)=outdims(3)/qdim
 end subroutine
 
-!subroutine loa d_spfs(inspfs, numloaded)    !! both output
-!  use parameters
-!  implicit none
-!  integer :: numloaded
-!  DATATYPE :: inspfs(spfsize,nspf)
-!  call load_sp fs0(inspfs,spfdims,nspf,spfdimtype,spffile,numloaded)
-!  OFLWR "Loaded ", numloaded, " spfs from file ",spffile; CFL
-!end subroutine lo ad_spfs
 
 
 subroutine load_spfs(inspfs, numloaded)    !! both output
   use parameters
-  use mpimod
   implicit none
   integer :: numloaded,ii,jj,kk,ll,flag
   DATATYPE :: inspfs(spfsize,nspf+numfrozen), inspfs0(spfsize,nspf+numfrozen+numskiporbs)
@@ -179,8 +165,8 @@ subroutine load_spfs(inspfs, numloaded)    !! both output
      endif
   enddo
 
-
 end subroutine load_spfs
+
 
 subroutine load_spfs0(inspfs, inspfdims, innspf, dimtypes, infile, numloaded,in_gridshift)
   use fileptrmod
@@ -220,10 +206,8 @@ end subroutine load_spfs0
 !   readdims is global
 
 subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtypes,outspfs,in_gridshift)
-!! use fileptrmod  !! need nprocs and parorbsplit now
   use mpimod
   use parameters
-
   implicit none
   integer, intent(in) :: iunit, dimtypes(3),outdims(3),readnspf,outnspf,readcflag,&
        bigreaddims(3),in_gridshift(3)
@@ -233,16 +217,20 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
   real*8 :: outrealspfs(outdims(1),outdims(2),outdims(3),outnspf)  !!AUTOMATIC
   complex*16 :: outcspfs(outdims(1),outdims(2),outdims(3),outnspf) !!AUTOMATIC
   integer :: numloaded,itop(3),ibot(3),otop(3),obot(3),idim,flag, amin(3),amax(3),bmin(3),bmax(3),&
-       qqblocks(nprocs),ispf, bigoutdims(3),ooshift,rrshift
+       ispf, bigoutdims(3),ooshift,rrshift,qqblocks(nprocs)
 
   numloaded = min(outnspf,readnspf)
 
-
 !!$  bigreaddims(:)=readdims(:)
   bigoutdims(:)=outdims(:)
+
   if (parorbsplit.eq.3) then                !! see spf_header_read:
-!!$     bigreaddims(3)=readdims(3)*nprocs      !! it is this variable bigreaddims not readdims that will not
-     bigoutdims(3)=outdims(3)*nprocs        !!   change as nprocs is varied; likewise bigoutdims/outdims.
+
+!!!!$     bigreaddims(3)=readdims(3)*nprocs      !! it is this variable bigreaddims not readdims that will not
+!!     bigoutdims(3)=outdims(3)*nprocs        !!   change as nprocs is varied; likewise bigoutdims/outdims.
+
+     call bigdimsub(outdims,bigoutdims)
+
   endif 
 
   if (myrank.ne.1) then
@@ -259,8 +247,8 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
         allocate(realspfs(1,1,1,1))
      endif
   endif
-  realspfs=0; cspfs=0
 
+  realspfs=0; cspfs=0
 
   do idim=1,3
      select case(dimtypes(idim))
@@ -398,7 +386,6 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
      endif
   endif
 
-  qqblocks(:)=outdims(1)*outdims(2)*outdims(3)
 
   outspfs(:,:,:,:)=0d0
 
@@ -411,10 +398,21 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
               outspfs(:,:,:,ispf)= bigoutcspfs(:,:,:,ispf)
            endif
         endif
-        call mympibcast(outspfs(:,:,:,ispf),1,qqblocks(1))
+        call mympibcast(outspfs(:,:,:,ispf),1,outdims(1)*outdims(2)*outdims(3))
      enddo
   else
      do ispf=1,numloaded
+
+!! not needed
+!!        if (readcflag.eq.0) then
+!!           call splitscatterv_real(bigoutrealspfs(:,:,:,ispf),outrealspfs(:,:,:,ispf))
+!!           outspfs(:,:,:,ispf)= outrealspfs(:,:,:,ispf)
+!!        else
+!!           call splitscatterv_complex(bigoutcspfs(:,:,:,ispf),outcspfs(:,:,:,ispf))
+!!           outspfs(:,:,:,ispf)= outcspfs(:,:,:,ispf)
+!!        endif
+
+        qqblocks(:)=outdims(1)*outdims(2)*outdims(3)
         if (readcflag.eq.0) then
            call myscatterv_real(bigoutrealspfs(:,:,:,ispf),outrealspfs(:,:,:,ispf),qqblocks(:))
            outspfs(:,:,:,ispf)= outrealspfs(:,:,:,ispf)
@@ -422,6 +420,7 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
            call myscatterv_complex(bigoutcspfs(:,:,:,ispf),outcspfs(:,:,:,ispf),qqblocks(:))
            outspfs(:,:,:,ispf)= outcspfs(:,:,:,ispf)
         endif
+
      enddo
   endif
 

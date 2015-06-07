@@ -207,7 +207,9 @@ subroutine cooleytukey_outofplace_backward_mpi(intranspose,out,dim1,dim2,dim3,ho
   call cooleytukey_outofplaceinput_mpi0(work,out,dim1,dim2,dim3,howmany,1,work,work2)
   out(:,:,:,:)=CONJG(out(:,:,:,:))
 
-  call mpibarrier()
+!! regrettably appears necessary to stop bad mpi behavior in some cases
+!! actuall not here; below
+!!  call mpibarrier()
 
 end subroutine cooleytukey_outofplace_backward_mpi
 
@@ -226,7 +228,9 @@ subroutine cooleytukey_outofplace_forward_mpi(in,outtrans,dim1,dim2,dim3,howmany
 
   call cooleytukey_outofplace_mpi0(in,outtrans,dim1,dim2,dim3,howmany,1,work,work2)
 
-  call mpibarrier()
+!! regrettably appears necessary to stop bad mpi behavior in some cases
+!! actuall not here; below
+!!  call mpibarrier()
 
 end subroutine cooleytukey_outofplace_forward_mpi
 
@@ -249,17 +253,24 @@ recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim1,dim2,dim3,howm
      call myzfft1d_slowindex_mpi(in,work2,dim1*dim2*dim3*howmany,recursiondepth,3)
      call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth,3)
   case(2)
+     call mpibarrier()
      call myzfft1d_slowindex_mpi(in,work2,dim1*dim2*dim3*howmany,recursiondepth,3)
      call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth,3)
+     call mpibarrier()
      call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,2)
      call twiddlemult_mpi(dim1,work2,work,dim2,dim3*howmany,recursiondepth,2)
+     call mpibarrier()
   case(1)
+     call mpibarrier()
      call myzfft1d_slowindex_mpi(in,work2,dim1*dim2*dim3*howmany,recursiondepth,3)
      call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth,3)
+     call mpibarrier()
      call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,2)
      call twiddlemult_mpi(dim1,work2,work,dim2,dim3*howmany,recursiondepth,2)
+     call mpibarrier()
      call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,1)
      call twiddlemult_mpi(1,work2,work,dim1,dim3*dim2*howmany,recursiondepth,1)
+     call mpibarrier()
   case default
      print *, "fdsdfsf6666888"; stop
   end select
@@ -308,18 +319,24 @@ recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim1,dim2,
      call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth,3)
      call myzfft1d_slowindex_mpi(work,out,dim1*dim2*dim3*howmany,recursiondepth,3)
   case(2)
+     call mpibarrier()
      call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth,3)
      call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,3)
+     call mpibarrier()
      call twiddlemult_mpi(dim1,work2,work,dim2,dim3*howmany,recursiondepth,2)
      call myzfft1d_slowindex_mpi(work,out,dim1*dim2*dim3*howmany,recursiondepth,2)
+     call mpibarrier()
   case(1)
+     call mpibarrier()
      call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth,3)
      call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,3)
+     call mpibarrier()
      call twiddlemult_mpi(dim1,work2,work,dim2,dim3*howmany,recursiondepth,2)
      call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,2)
+     call mpibarrier()
      call twiddlemult_mpi(1,work2,work,dim1,dim2*dim3*howmany,recursiondepth,1)
      call myzfft1d_slowindex_mpi(work,out,dim1*dim2*dim3*howmany,recursiondepth,1)
-
+     call mpibarrier()
   case default
      print *, "fdsdfsf6666888"; stop
   end select

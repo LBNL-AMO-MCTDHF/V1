@@ -8,6 +8,15 @@ function qbox(notusedint)
   qbox=1
 end function qbox
 
+subroutine bigdimsub(localdims,alldims)
+  use myparams
+  implicit none
+  integer, intent(in) :: localdims(3)
+  integer, intent(out) :: alldims(3)
+  OFLWR "What?  calling bigdimsub for atom or diatom not allowed"; CFLST
+  alldims(:)=localdims(:)
+end subroutine bigdimsub
+
 module twoemod
   implicit none
 
