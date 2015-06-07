@@ -30,11 +30,17 @@ subroutine get_3dpoisson(pot)
      OFLWR" NEED CUBE"; CFLST
   endif
 
+  if (toothnbig.lt.gridpoints(1)-1.or.toothnbig.lt.gridpoints(2)-1.or.toothnbig.lt.gridpoints(3)-1) then
+     OFLWR "Error, need toothnbig > gridpoints-1",toothnbig, gridpoints(1:3); CFLST
+  endif
+
 !!$  if (scalingflag.ne.0) then
 !!$     call getinverse(tempcoulomb,1,gridpoints(1)-1,toothnbig,toothnsmall,spacing)
 !!$!!$     call getinverse(tempcoulomb,2,gridpoints(1)-1,toothnbig,toothnsmall,spacing)
 !!$  else
+
      call getinverse(tempcoulomb,0,gridpoints(1)-1,toothnbig,toothnsmall,spacing)
+
 !!$  endif
 
   tempcoulomb(:,:,:,:)=tempcoulomb(:,:,:,:)/spacing**3
