@@ -1378,11 +1378,11 @@ recursive subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,n
 
         select case(indim)
         case(3)
-           call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(2),boxrank(1),3))
+           call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(1),boxrank(2),3))
         case(2)
-           call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(1),boxrank(3),2))
+           call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(1),boxrank(2),2))
         case(1)
-           call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(3),boxrank(2),1))
+           call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(1),boxrank(2),1))
         case default
            print *, "OOGGDSO", indim; call mpistop()
         end select

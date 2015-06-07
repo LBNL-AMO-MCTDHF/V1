@@ -323,23 +323,18 @@ end subroutine fftblock_withtranspose
 
 module mytransposemod
 contains
-  recursive subroutine mytranspose(in,out,blocksize,howmany,times,nprocs)
+recursive subroutine mytranspose(in,out,blocksize,howmany,times,nprocs1,nprocs2)
+  use pmpimod  !! box_comm
   implicit none
-  integer,intent(in) :: blocksize,howmany,nprocs
+  integer,intent(in) :: blocksize,howmany,nprocs1,nprocs2
   integer,intent(inout) :: times(3)
-  complex*16,intent(in) :: in(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
-  complex*16,intent(out) :: out(nprocs*blocksize,nprocs*blocksize,blocksize,howmany)
+  complex*16,intent(in) :: in(nprocs1*blocksize,nprocs2*blocksize,blocksize,howmany)
+  complex*16,intent(out) :: out(nprocs1*blocksize,nprocs2*blocksize,blocksize,howmany)
   integer :: atime,btime,i,count,ii,iproc,j
-  complex*16 :: intranspose(nprocs*blocksize,blocksize,blocksize,howmany,nprocs)  !!AUTOMATIC
-  complex*16 :: outtemp(nprocs*blocksize,blocksize,blocksize,howmany,nprocs)      !!AUTOMATIC
-  complex*16 :: outone(nprocs*blocksize,blocksize,blocksize,nprocs)               !!AUTOMATIC
-  complex*16 :: inchop(blocksize,nprocs*blocksize,blocksize,howmany)              !!AUTOMATIC
-
-!!! QQQQ
-
-!  if (nprocs1.ne.nprocs2) then
-!     print *, "doogsnatch"; call mpistop()
-!  endif
+  complex*16 :: intranspose(nprocs2*blocksize,blocksize,blocksize,howmany,nprocs1)  !!AUTOMATIC
+  complex*16 :: outtemp(nprocs2*blocksize,blocksize,blocksize,howmany,nprocs1)      !!AUTOMATIC
+  complex*16 :: outone(nprocs2*blocksize,blocksize,blocksize,nprocs1)               !!AUTOMATIC
+  complex*16 :: inchop(blocksize,nprocs2*blocksize,blocksize,howmany)              !!AUTOMATIC
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -352,15 +347,16 @@ contains
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i)    !! IPROC IS SHARED (GOES WITH BARRIER, INCHOP SHARED)
 
-  do iproc=1,nprocs
-
+  do iproc=1,nprocs1
 
      inchop(:,:,:,:)=in((iproc-1)*blocksize+1:iproc*blocksize,:,:,:)
-
 
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
      do ii=1,howmany
         do i=1,blocksize
+
+!! (123)->(231)  (:,:,7) -> (:,7,:)
+!! (123)->(231)  (:,5,7) -> (5,7,:)
 
            intranspose(:,:,i,ii,iproc)=inchop(i,:,:,ii)
 
@@ -377,29 +373,65 @@ contains
 
   outtemp(:,:,:,:,:)=0d0
   
-  count=blocksize**3 * nprocs * howmany
-  
-  call mympialltoall_complex(intranspose,outtemp,count)
+  count=blocksize**3 * nprocs2 * howmany
+
+  if (nprocs1.eq.nprocs2) then  !! orbparlevel=3
+
+!! 231  (:,7,:) -> (:,:,7)
+
+     call mympialltoall_complex(intranspose,outtemp,count)
+
+  else
+
+!! 231  (5,7,:) -> (7,5,:)
+
+     call mympisendrecv(intranspose,outtemp,&
+          rankbybox(boxrank(1),boxrank(3),boxrank(2)), rankbybox(boxrank(1),boxrank(3),boxrank(2)), &
+          999,count*nprocs1)
+
+     intranspose(:,:,:,:,:)=outtemp(:,:,:,:,:)
+
+!! 231  (7,5,:) -> (:,5,7)
+
+     call mympialltoall_complex_local(intranspose,outtemp,count,BOX_COMM(1,boxrank(2),3))
+
+  endif
+
+
   call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)  !! ii IS SHARED (OUTTEMP IS SHARED; BARRIER)
   do ii=1,howmany
 
      outone(:,:,:,:)=outtemp(:,:,:,ii,:)
+     if (nprocs1.eq.nprocs2) then
+
+!! (231) collecting middle index, 3.. have first index,2
+
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
-
-     do i=1,blocksize
-        do j=1,nprocs*blocksize
-
-           out(j,:,i,ii)=RESHAPE(outone(j,:,i,:),(/nprocs*blocksize/))
-
+        do i=1,blocksize
+           do j=1,nprocs1*blocksize
+              out(j,:,i,ii)=RESHAPE(outone(j,:,i,:),(/nprocs1*blocksize/))
+           enddo
         enddo
-     enddo
-
 !$OMP END DO
 !! *** OMP BARRIER *** !!   if outone & ii are shared
 !$OMP BARRIER
+     else
 
+!! (231) collecting first index,2
+
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
+        do i=1,blocksize
+           do j=1,blocksize
+              out(:,j,i,ii)=RESHAPE(outone(:,j,i,:),(/nprocs1*blocksize/))
+           enddo
+        enddo
+!$OMP END DO
+!! *** OMP BARRIER *** !!   if outone & ii are shared
+!$OMP BARRIER
+        
+     endif
   enddo
 !$OMP END PARALLEL
 
@@ -564,17 +596,24 @@ recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs1,nprocs2,dire
      
 !!! from mytranspose times(4) = transpose   times(5) = mpi  times(6) = copy
 
-!! QQQQQ
-     if (oplevel.ne.3) then
+!! QQQQ  ok?
+
+     select case(oplevel)
+     case(3)
+        call mytranspose(&
+             mywork,  &
+             out,  &
+             dim/nprocs1, &
+             howmany,times(4:),nprocs1,nprocs1)
+     case(2)
+        call mytranspose(&
+             mywork,  &
+             out,  &
+             dim/nprocs1, &
+             howmany,times(4:),nprocs1,1)
+     case default
         print *, "NOOOT SUP", oplevel; call mpistop()
-     endif
-
-     call mytranspose(&
-          mywork,  &
-          out,  &
-          dim/nprocs1, &
-          howmany,times(4:),nprocs1)
-
+     end select
   enddo
 
   call myclock(atime)

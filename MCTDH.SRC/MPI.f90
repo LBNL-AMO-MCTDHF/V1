@@ -1229,6 +1229,30 @@ end subroutine mympialltoall_complex
 
 
 
+subroutine mympialltoall_complex_local(input, output, count,INCOMM)
+  use fileptrmod
+  use mpimod
+  implicit none
+  integer :: ierr, count,INCOMM
+  complex*16, intent(in) :: input(count,nprocs)
+  complex*16, intent(out) :: output(count,nprocs)
+
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+#ifndef MPIFLAG
+  output(:,:)=input(:,:)
+  return
+  ierr=0;   !! avoid warn unused
+#else
+  call mpi_alltoall(input(:,:),count,MPI_DOUBLE_COMPLEX,output(:,:),count,MPI_DOUBLE_COMPLEX,INCOMM,ierr)
+  if (ierr.ne.0) then
+     OFLWR "ERROR ALLTOALLlocal ", ierr; CFLST
+  endif
+#endif
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+end subroutine mympialltoall_complex_local
+
+
+
 subroutine beforebarrier()
   use mpimod
   use parameters
