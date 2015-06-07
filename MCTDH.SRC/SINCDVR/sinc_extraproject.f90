@@ -49,10 +49,6 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
 
 
 
-
-
-
-
   nonuc_checkflag=1
   outnumr=1
 
@@ -116,10 +112,6 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
 
   if (orbparflag) then
 
-     if (orbparlevel.ne.3) then
-        OFLWR "Error, orbparlevel=3 only allowed right now",orbparlevel; CFLST
-     endif
-
      select case (orbparlevel)
      case (3)
         if (mod(numpoints(3),nprocs).ne.0) then
@@ -168,6 +160,9 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
      enddo
      rankbybox(:,:,:)=proclist(:,:,:)+1
 
+!! TEMP
+     call mpibarrier()
+
      select case(orbparlevel)
      case(3)
 #ifdef MPIFLAG
@@ -192,7 +187,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
            enddo
            proclist(1,:,:)=TRANSPOSE(proclist(1,:,:))
         enddo
-        boxrank(1)=1; boxrank(2)=mod(myrank-1,sqnprocs)+1; boxrank(3)=(myrank-1)/sqnprocs + 1
+        boxrank(1)=1; boxrank(2)=mod(myrank-1,sqnprocs)+1; boxrank(3)=(myrank-1)/sqnprocs + 1; 
      case(1)
         do ii=1,3
            do i=1,cbnprocs
@@ -200,11 +195,11 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
 #ifdef MPIFLAG
               call mpi_group_incl(PROJ_GROUP_WORLD, cbnprocs, proclist(:,j,i), BOX_GROUP(j,i,ii), ierr)
               if (ierr.ne.0) then
-                 OFLWR "error threeproc group",ierr; CFLST
+                 print *, "error threeproc group",ierr;stop
               endif
               call mpi_comm_create(PROJ_COMM_WORLD, BOX_GROUP(j,i,ii), BOX_COMM(j,i,ii), ierr)
               if (ierr.ne.0) then
-                 OFLWR "error threeproc comm",ierr; CFLST
+                 print *, "error threeproc comm",ierr;stop
               endif
 #endif
            enddo
@@ -221,11 +216,12 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
         OFLWR "doogstnfsdf", orbparlevel; CFLST
      end select
      if (rankbybox(boxrank(1),boxrank(2),boxrank(3)).ne.myrank) then
-        print *,  "rankbybox error",myrank,boxrank,rankbybox(boxrank(1),boxrank(2),boxrank(3)); call mpistop()
+        print *,  "rankbybox error",myrank,boxrank,rankbybox(boxrank(1),boxrank(2),boxrank(3)); stop
      endif
      deallocate(proclist,newproclist)
 
   endif
+
   
 
   numpoints(griddim+1:)=1

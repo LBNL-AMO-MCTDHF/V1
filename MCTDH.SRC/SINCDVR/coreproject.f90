@@ -1357,13 +1357,13 @@ recursive subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,n
      case(1)  !! KE
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,ketot(indim)%mat(1,ibox,1,myrank),gridpoints(indim),DATAZERO, work(:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,ketot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
         enddo
 !$OMP END DO
      case(2) 
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,fdtot(indim)%mat(1,ibox,1,myrank),gridpoints(indim),DATAZERO, work(:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,fdtot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
         enddo
 !$OMP END DO
      case default 
@@ -1376,16 +1376,25 @@ recursive subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,n
      
      if (deltabox.ne.0) then
 
-        select case(indim)
+        select case (indim)
         case(3)
            call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(1),boxrank(2),3))
         case(2)
-           call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(1),boxrank(2),2))
+           select case(orbparlevel)
+           case(2)
+              call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(1),boxrank(3),2))
+           case(1)
+              call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(3),boxrank(1),2))
+           case default
+              print *, "ACK LEVEL"; stop
+           end select
         case(1)
-           call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(1),boxrank(2),1))
-        case default
-           print *, "OOGGDSO", indim; call mpistop()
+           call mympisendrecv_local(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize,BOX_COMM(boxrank(2),boxrank(3),1))
+        case default 
+           print *, "ACK ORB"; stop
         end select
+
+              
 
         call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
         out(:,:)=out(:,:)+work2(:,:)
@@ -1465,15 +1474,22 @@ recursive subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,
 
 !!$     call mympibcast(work(:,:),ibox,totsize)
 
-     select case(indim)
+     select case (indim)
      case(3)
-        call mympibcast_local(work(:,:),ibox,totsize,BOX_COMM(boxrank(2),boxrank(1),3))
+        call mympibcast_local(work(:,:),ibox,totsize,BOX_COMM(boxrank(1),boxrank(2),3))
      case(2)
-        call mympibcast_local(work(:,:),ibox,totsize,BOX_COMM(boxrank(1),boxrank(3),2))
+        select case(orbparlevel)
+        case(2)
+           call mympibcast_local(work(:,:),ibox,totsize,BOX_COMM(boxrank(1),boxrank(3),2))
+        case(1)
+           call mympibcast_local(work(:,:),ibox,totsize,BOX_COMM(boxrank(3),boxrank(1),2))
+        case default
+           print *, "ACK LEVEL"; stop
+        end select
      case(1)
-        call mympibcast_local(work(:,:),ibox,totsize,BOX_COMM(boxrank(3),boxrank(2),1))
-     case default
-        OFLWR "OOGNOT", indim; CFLST
+        call mympibcast_local(work(:,:),ibox,totsize,BOX_COMM(boxrank(2),boxrank(3),1))
+     case default 
+        print *, "ACK ORB"; stop
      end select
 
      call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
@@ -1483,13 +1499,13 @@ recursive subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,
      case(1)  !! KE
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,work(:,ii),nnn,ketot(3)%mat(1,myrank,1,ibox),gridpoints(3),DATAONE, out(:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,work(:,ii),nnn,ketot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
         enddo
 !$OMP END DO
      case(2) 
 !$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(3),numpoints(3),DATAONE,work(:,ii),nnn,fdtot(3)%mat(1,myrank,1,ibox),gridpoints(3),DATAONE, out(:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,work(:,ii),nnn,fdtot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
         enddo
 !$OMP END DO
      case default 
