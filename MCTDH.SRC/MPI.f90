@@ -377,6 +377,15 @@ subroutine mympirealbcast(input, source, isize)
 end subroutine mympirealbcast
 
 
+subroutine mympicomplexbcast(input, source, isize)
+  use mpimod
+  implicit none
+  integer,intent(in) :: isize, source
+  complex*16,intent(inout) :: input(isize)
+  call mympicomplexbcast_local(input, source, isize,MPI_COMM_WORLD)
+end subroutine mympicomplexbcast
+
+
 
 !subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
 !  use mpimod

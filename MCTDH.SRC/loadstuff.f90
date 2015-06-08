@@ -24,12 +24,16 @@ subroutine save_vector(psi,afile,sfile)
         
         do ispf=1,nspf
 
-!!$not needed
-!!$#ifdef REALGO
-!!$           call splitgatherv_real(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
-!!$#else
-!!$           call splitgatherv_complex(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
-!!$#endif
+#define NEWSCATTER
+#ifdef NEWSCATTER
+
+#ifdef REALGO
+           call splitgatherv_real(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
+#else
+           call splitgatherv_complex(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
+#endif
+
+#else
 
            qqblocks(:)=spfsize
 #ifdef REALGO
@@ -38,6 +42,7 @@ subroutine save_vector(psi,afile,sfile)
            call mygatherv_complex(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), qqblocks(:),.false.)
 #endif
 
+#endif
         enddo
 
      endif
@@ -403,15 +408,15 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
   else
      do ispf=1,numloaded
 
-!! not needed
-!!        if (readcflag.eq.0) then
-!!           call splitscatterv_real(bigoutrealspfs(:,:,:,ispf),outrealspfs(:,:,:,ispf))
-!!           outspfs(:,:,:,ispf)= outrealspfs(:,:,:,ispf)
-!!        else
-!!           call splitscatterv_complex(bigoutcspfs(:,:,:,ispf),outcspfs(:,:,:,ispf))
-!!           outspfs(:,:,:,ispf)= outcspfs(:,:,:,ispf)
-!!        endif
-
+#ifdef NEWSCATTER
+        if (readcflag.eq.0) then
+           call splitscatterv_real(bigoutrealspfs(:,:,:,ispf),outrealspfs(:,:,:,ispf))
+           outspfs(:,:,:,ispf)= outrealspfs(:,:,:,ispf)
+        else
+           call splitscatterv_complex(bigoutcspfs(:,:,:,ispf),outcspfs(:,:,:,ispf))
+           outspfs(:,:,:,ispf)= outcspfs(:,:,:,ispf)
+        endif
+#else
         qqblocks(:)=outdims(1)*outdims(2)*outdims(3)
         if (readcflag.eq.0) then
            call myscatterv_real(bigoutrealspfs(:,:,:,ispf),outrealspfs(:,:,:,ispf),qqblocks(:))
@@ -420,6 +425,7 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
            call myscatterv_complex(bigoutcspfs(:,:,:,ispf),outcspfs(:,:,:,ispf),qqblocks(:))
            outspfs(:,:,:,ispf)= outcspfs(:,:,:,ispf)
         endif
+#endif
 
      enddo
   endif

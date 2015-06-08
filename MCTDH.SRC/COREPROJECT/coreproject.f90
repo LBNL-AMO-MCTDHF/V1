@@ -8,14 +8,6 @@ function qbox(notusedint)
   qbox=1
 end function qbox
 
-subroutine bigdimsub(localdims,alldims)
-  use myparams
-  implicit none
-  integer, intent(in) :: localdims(3)
-  integer, intent(out) :: alldims(3)
-  OFLWR "What?  calling bigdimsub for atom or diatom not allowed"; CFLST
-  alldims(:)=localdims(:)
-end subroutine bigdimsub
 
 module twoemod
   implicit none
@@ -1714,4 +1706,51 @@ subroutine reinterpolate_orbs_complex(cspfs,dims,num)
   OFLWR "Reinterpolate orbs not supported atom/diatom"; CFLST
   cspfs(:,:,:,:)=0
 end subroutine reinterpolate_orbs_complex
+
+subroutine bigdimsub(localdims,alldims)
+  use myparams
+  implicit none
+  integer, intent(in) :: localdims(3)
+  integer, intent(out) :: alldims(3)
+  OFLWR "What?  calling bigdimsub for atom or diatom not allowed"; CFLST
+  alldims(:)=localdims(:)
+end subroutine bigdimsub
+
+
+subroutine splitscatterv_complex(inbig,outlocal)
+  use myparams
+  implicit none
+  integer :: inbig,outlocal
+  OFLWR "What? don't call split gather/scatter routines for atom/diatom.  Programmer fail"; CFLST
+  inbig=outlocal
+end subroutine splitscatterv_complex
+
+subroutine splitscatterv_real(inbig,outlocal)
+  use myparams
+  implicit none
+  integer :: inbig,outlocal
+  OFLWR "What? don't call split gather/scatter routines for atom/diatom.  Programmer fail"; CFLST
+  inbig=outlocal
+end subroutine splitscatterv_real
+
+subroutine splitgatherv_complex(inbig,outlocal,ilog)
+  use myparams
+  implicit none
+  logical :: ilog
+  integer :: inbig,outlocal
+  OFLWR "What? don't call split gather/scatter routines for atom/diatom.  Programmer fail"; CFLST
+  inbig=outlocal
+  ilog=.true.
+end subroutine splitgatherv_complex
+
+
+subroutine splitgatherv_real(inbig,outlocal,ilog)
+  use myparams
+  implicit none
+  logical :: ilog
+  integer :: inbig,outlocal
+  OFLWR "What? don't call split gather/scatter routines for atom/diatom.  Programmer fail"; CFLST
+  inbig=outlocal
+  ilog=.true.
+end subroutine splitgatherv_real
 

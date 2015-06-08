@@ -1407,7 +1407,7 @@ recursive subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,n
   endif
 
 !! regrettably appears necessary to fix bad behavior in some cases (perhaps only with cooleytukey orbparlevel .lt. 3?)
-  call mpibarrier()
+!!  call mpibarrier()
 
 end subroutine mult_circ_gen0
 
@@ -1521,7 +1521,7 @@ recursive subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,
      endif
   endif
 !! regrettably appears necessary to fix bad behavior in some cases (perhaps only with cooleytukey orbparlevel .lt. 3?)
-  call mpibarrier()
+!!  call mpibarrier()
 
 end subroutine mult_summa_gen0
 
