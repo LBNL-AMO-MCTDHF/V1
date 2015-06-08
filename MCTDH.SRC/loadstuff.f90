@@ -7,7 +7,7 @@ subroutine save_vector(psi,afile,sfile)
   implicit none
   DATATYPE :: psi(psilength) 
   character :: afile*(*), sfile*(*)
-  integer :: iprop,ispf,qqblocks(nprocs)
+  integer :: iprop,ispf
   DATATYPE, allocatable :: parorbitals(:,:)
 
   if (myrank.ne.1.and.parorbsplit.ne.3) then
@@ -24,8 +24,6 @@ subroutine save_vector(psi,afile,sfile)
         
         do ispf=1,nspf
 
-#define NEWSCATTER
-#ifdef NEWSCATTER
 
 #ifdef REALGO
            call splitgatherv_real(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
@@ -33,16 +31,6 @@ subroutine save_vector(psi,afile,sfile)
            call splitgatherv_complex(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
 #endif
 
-#else
-
-           qqblocks(:)=spfsize
-#ifdef REALGO
-           call mygatherv_real(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), qqblocks(:),.false.)
-#else
-           call mygatherv_complex(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), qqblocks(:),.false.)
-#endif
-
-#endif
         enddo
 
      endif
@@ -222,7 +210,7 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
   real*8 :: outrealspfs(outdims(1),outdims(2),outdims(3),outnspf)  !!AUTOMATIC
   complex*16 :: outcspfs(outdims(1),outdims(2),outdims(3),outnspf) !!AUTOMATIC
   integer :: numloaded,itop(3),ibot(3),otop(3),obot(3),idim,flag, amin(3),amax(3),bmin(3),bmax(3),&
-       ispf, bigoutdims(3),ooshift,rrshift,qqblocks(nprocs)
+       ispf, bigoutdims(3),ooshift,rrshift
 
   numloaded = min(outnspf,readnspf)
 
@@ -408,7 +396,6 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
   else
      do ispf=1,numloaded
 
-#ifdef NEWSCATTER
         if (readcflag.eq.0) then
            call splitscatterv_real(bigoutrealspfs(:,:,:,ispf),outrealspfs(:,:,:,ispf))
            outspfs(:,:,:,ispf)= outrealspfs(:,:,:,ispf)
@@ -416,16 +403,6 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
            call splitscatterv_complex(bigoutcspfs(:,:,:,ispf),outcspfs(:,:,:,ispf))
            outspfs(:,:,:,ispf)= outcspfs(:,:,:,ispf)
         endif
-#else
-        qqblocks(:)=outdims(1)*outdims(2)*outdims(3)
-        if (readcflag.eq.0) then
-           call myscatterv_real(bigoutrealspfs(:,:,:,ispf),outrealspfs(:,:,:,ispf),qqblocks(:))
-           outspfs(:,:,:,ispf)= outrealspfs(:,:,:,ispf)
-        else
-           call myscatterv_complex(bigoutcspfs(:,:,:,ispf),outcspfs(:,:,:,ispf),qqblocks(:))
-           outspfs(:,:,:,ispf)= outcspfs(:,:,:,ispf)
-        endif
-#endif
 
      enddo
   endif
