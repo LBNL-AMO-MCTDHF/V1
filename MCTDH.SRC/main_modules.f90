@@ -164,7 +164,9 @@ module configmod
        configlist(  :  ,   : ),&               !! LIST OF CONFIGURATIONS ndof, numconfig
        bigspinblockstart(:),bigspinblockend(:)  !! numspinblocks, values from 1 to numconfig
   integer :: numspinblocks=-1,maxspinblocksize=-1
-  
+
+  integer, allocatable :: allbotconfigs(:), alltopconfigs(:)  !! nprocs
+
 end module configmod
 
 

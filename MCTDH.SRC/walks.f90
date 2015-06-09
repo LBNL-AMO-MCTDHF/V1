@@ -92,7 +92,6 @@ subroutine walkalloc()
   use configmod !! configlist for newconfigflag
   use walkmod
   implicit none
-  integer :: ii,i
   logical :: highspinorder,lowspinorder
 
 !! botwalk and topwalk in newconfig.f90.
@@ -110,31 +109,8 @@ subroutine walkalloc()
         CFLST
      endif
   endif
-     
-  allocate(configsperproc(nprocs))
 
-  if (sparseconfigflag.eq.0) then
-     maxconfigsperproc=(-1); configsperproc(:)=(-1)       !! SHOULDN'T BE USED
-  else
-     configsperproc(myrank)=topwalk-botwalk+1
-     ii=0
-     maxconfigsperproc=0
-     do i=1,nprocs
-        call mympiibcast(configsperproc(i),i,1)
-        ii=ii+configsperproc(i)
-        if (configsperproc(i).gt.maxconfigsperproc) then
-           maxconfigsperproc=configsperproc(i)
-        endif
-     enddo
-     if (ii.ne.numconfig) then
-        OFLWR "WTF EERRROROR", ii, numconfig; CFLST
-     endif
-     do i=1,nprocs
-        if (configsperproc(i).lt.0) then
-           OFLWR "Configs per proc lt 0 for proc ",i,"nprocs must be greater than numconfig???  Can't do."; CFLST
-        endif
-     enddo
-  endif
+!! 06-2015 configpserproc also in newconfig.f90
 
   allocate( numsinglewalks(botwalk:topwalk) , numdoublewalks(botwalk:topwalk) )
   allocate( numsinglediagwalks(botwalk:topwalk) , numdoublediagwalks(botwalk:topwalk) )

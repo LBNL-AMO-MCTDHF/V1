@@ -356,8 +356,10 @@ subroutine fast_newconfiglist(alreadycounted)
        jj71,jj72, jj73, jj74, jj75, jj76, jj77, jj78, jj79, jj80
   integer, target :: iii(max_numelec)  !! no, it is set.
   integer, target :: jjj(max_numelec)  !! no, it is set.
-  integer :: alltopwalks(nprocs),allbotwalks(nprocs)
-  integer :: idof, ii , lowerarr(max_numelec),upperarr(max_numelec),  thisconfig(ndof),&
+
+!! 06-2015  integer :: alltopconfigs(nprocs),allbotconfigs(nprocs)
+
+  integer :: i, idof, ii , lowerarr(max_numelec),upperarr(max_numelec),  thisconfig(ndof),&
        reorder,nullint,kk,iconfig,mm, single(max_numelec),ishell,jj,maxssize=0,sss,nss,ssflag,numdoubly,&
        mynumexcite(numshells),isum,jshell,jsum   !! mynumexcite(0:numshells)
   logical :: allowedconfig
@@ -840,43 +842,45 @@ endif
 
 !!$ 06-2015
 !!$     if (sparseconfigflag.eq.0) then
-!!$        allbotwalks=1
-!!$        alltopwalks=numconfig
+!!$        allbotconfigs=1
+!!$        alltopconfigs=numconfig
 !!$     else
 
-     alltopwalks(:)=0
+     allocate(alltopconfigs(nprocs),allbotconfigs(nprocs))
+
+     alltopconfigs(:)=0
      jj=1
      do ii=1,nprocs-1
         do while (bigspinblockend(jj).lt.numconfig*ii/nprocs)
-           alltopwalks(ii:)=bigspinblockend(jj)
+           alltopconfigs(ii:)=bigspinblockend(jj)
            jj=jj+1
         enddo
      enddo
-     alltopwalks(nprocs)=numconfig
-     allbotwalks(1)=1
+     alltopconfigs(nprocs)=numconfig
+     allbotconfigs(1)=1
      do ii=2,nprocs
-        allbotwalks(ii)=alltopwalks(ii-1)+1
+        allbotconfigs(ii)=alltopconfigs(ii-1)+1
      enddo
      
 !!$     endif
 
      OFLWR; WRFL "BOTWALKS /TOPWALKS",numconfig
      do ii=1,nprocs
-        WRFL allbotwalks(ii),alltopwalks(ii),alltopwalks(ii)-allbotwalks(ii)+1
+        WRFL allbotconfigs(ii),alltopconfigs(ii),alltopconfigs(ii)-allbotconfigs(ii)+1
      enddo
      WRFL; CFL
      do ii=1,nprocs     
 !! WOULD BE NICE BUT NO, NO +1 - canNOT be bot=1,top=0 for range=0.  range not negative. RANGE POSITIVE
-!! would be nice        if (allbotwalks(ii).gt.alltopwalks(ii)+1) then     ...or not
-        if (allbotwalks(ii).gt.alltopwalks(ii)+1) then   
-           OFLWR "ERROR, NUMBER OF CONFIGS PROCESSOR ",ii," IS LESS THAN ZERO", alltopwalks(ii)-allbotwalks(ii)+1 ;CFLST
+!! would be nice        if (allbotconfigs(ii).gt.alltopconfigs(ii)+1) then     ...or not
+        if (allbotconfigs(ii).gt.alltopconfigs(ii)+1) then   
+           OFLWR "ERROR, NUMBER OF CONFIGS PROCESSOR ",ii," IS LESS THAN ZERO", alltopconfigs(ii)-allbotconfigs(ii)+1 ;CFLST
         endif
      enddo
 
 !!$ 06-2015: now have botconfig topconfig:
 
-     botconfig=allbotwalks(myrank)
-     topconfig=alltopwalks(myrank)
+     botconfig=allbotconfigs(myrank)
+     topconfig=alltopconfigs(myrank)
 
      if (sparseconfigflag.eq.0) then
         botwalk=1
@@ -885,6 +889,34 @@ endif
         botwalk=botconfig
         topwalk=topconfig
      endif
+
+!! 06-2015 moved this here from walkalloc
+     
+     allocate(configsperproc(nprocs))
+
+     configsperproc(:)=alltopconfigs(:) - allbotconfigs(:) + 1
+
+!!$ 06-2015     configsperproc(myrank)=topwalk-botwalk+1
+
+     ii=0
+     maxconfigsperproc=0
+     do i=1,nprocs
+
+!!$ 06-2015        call mympiibcast(configsperproc(i),i,1)
+
+        ii=ii+configsperproc(i)
+        if (configsperproc(i).gt.maxconfigsperproc) then
+           maxconfigsperproc=configsperproc(i)
+        endif
+     enddo
+     if (ii.ne.numconfig) then
+        OFLWR "WTF EERRROROR", ii, numconfig; CFLST
+     endif
+     do i=1,nprocs
+        if (configsperproc(i).lt.0) then
+           OFLWR "Configs per proc lt 0 for proc ",i,"nprocs must be greater than numconfig???  Can't do."; CFLST
+        endif
+     enddo
 
 !!$ end 06-2015
 
