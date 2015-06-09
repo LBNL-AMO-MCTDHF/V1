@@ -209,7 +209,7 @@ subroutine walks()
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, jspf, iispf, jjspf, config2, config1, dirphase, &
        iind, flag, idof, iidof, jdof, iwalk, reorder, getconfiguration,myiostat,getmval,idiag
   logical :: allowedconfig   !! extraconfig
-  integer :: thisconfig(ndof), thatconfig(ndof), temporb(2), temporb2(2), &
+  integer :: thisconfig(ndof), thatconfig(ndof), temporb(2), temporb2(2), isize, &
        newdoublediag(numelec*(numelec-1)), newsinglediag(numelec), listorder(maxdoublewalks+maxsinglewalks), i
 
   !!  ***********   SINGLES  **********
@@ -261,7 +261,10 @@ subroutine walks()
   endif
 
   
-  do config1=botwalk,topwalk
+!! 06-2015  do config1=bot walk,top walk
+
+  do config1=botconfig,topconfig
+
      if (mod(config1,1000).eq.0) then
         OFLWR config1, " out of ", topwalk;        call closefile()
      endif
@@ -336,12 +339,27 @@ subroutine walks()
 
   enddo   ! config1
 
+!! 06-2015
+  if (sparseconfigflag.eq.0) then
+     isize=2*maxsinglewalks
+     call mpiallgather_i(singlewalkopspf,   numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
+     isize=maxsinglewalks
+     call mpiallgather_i(singlewalkdirphase,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
+     call mpiallgather_i(singlewalk,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
+     isize=numelec
+     call mpiallgather_i(singlediag,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
+     isize=1
+     call mpiallgather_i(numsinglediagwalks,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
+  endif
+
 
   OFLWR "Calculating walks.  Doubles...";  call closefile()
 
   !!   ***********  DOUBLES  ************
 
-  do config1=botwalk,topwalk
+!! 06-2015  do config1=bot walk,top walk
+
+  do config1=botconfig,topconfig
 
      if (mod(config1,1000).eq.0) then
         OFLWR config1, " out of ", topwalk;        CFL
@@ -447,6 +465,19 @@ subroutine walks()
      numdoublediagwalks(config1)=idiag
 
   enddo   ! config1
+
+!! 06-2015
+  if (sparseconfigflag.eq.0) then
+     isize=4*maxdoublewalks
+     call mpiallgather_i(doublewalkdirspf,  numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
+     isize=maxdoublewalks
+     call mpiallgather_i(doublewalkdirphase,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
+     call mpiallgather_i(doublewalk,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
+     isize=numelec*(numelec-1)
+     call mpiallgather_i(doublediag,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
+     isize=1
+     call mpiallgather_i(numdoublediagwalks,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
+  endif
 
 
 !! SINGLEDIAG, DOUBLEDIAG NOT DEBUGGED
@@ -654,6 +685,7 @@ subroutine getnumwalks()
         
      enddo   ! config1
 
+!! 06-2015
      if (sparseconfigflag.eq.0) then
         call mpiallgather_i(numsinglewalks(:),numconfig,configsperproc(:),maxconfigsperproc)
      endif
@@ -742,6 +774,7 @@ subroutine getnumwalks()
         
      enddo   ! config1
 
+!! 06-2015
      if (sparseconfigflag.eq.0) then
         call mpiallgather_i(numdoublewalks(:),numconfig,configsperproc(:),maxconfigsperproc)
      endif
