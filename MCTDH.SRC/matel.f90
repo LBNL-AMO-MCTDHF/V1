@@ -277,7 +277,9 @@ subroutine arbitraryconfig_matel00transpose(onebodymat, smallmatrixtr,topdim)
 
   smallmatrixtr=0d0; 
 
-  do config1=botwalk,topwalk
+!! 06-2015   do config1=botwalk,topwalk
+
+  do config1=botconfig,topconfig
      do iwalk=1,numsinglewalks(config1)
         if (sparseconfigflag.eq.0) then
            myind=singlewalk(iwalk,config1)
@@ -290,6 +292,12 @@ subroutine arbitraryconfig_matel00transpose(onebodymat, smallmatrixtr,topdim)
              singlewalkdirphase(iwalk,config1)
      enddo
   enddo
+
+!! 06-2015
+
+  if (sparseconfigflag.eq.0) then
+     call mpiallgather(smallmatrixtr(:,:),numconfig**2,configsperproc(:)*numconfig,maxconfigsperproc*numconfig)
+  endif
 
 end subroutine arbitraryconfig_matel00transpose
 
@@ -309,7 +317,9 @@ subroutine arbitraryconfig_matel_doubles00transpose(twobodymat, smallmatrixtr,to
 
   smallmatrixtr=0d0;
 
-  do config1=botwalk,topwalk
+!! 06-2015   do config1=botwalk,topwalk
+
+  do config1=botconfig,topconfig
      do iwalk=1,numdoublewalks(config1)
         if (sparseconfigflag.eq.0) then
            myind=doublewalk(iwalk,config1)
@@ -324,6 +334,12 @@ subroutine arbitraryconfig_matel_doubles00transpose(twobodymat, smallmatrixtr,to
              doublewalkdirphase(iwalk,config1) 
      enddo
   enddo
+
+!! 06-2015
+
+  if (sparseconfigflag.eq.0) then
+     call mpiallgather(smallmatrixtr(:,:),numconfig**2,configsperproc(:)*numconfig,maxconfigsperproc*numconfig)
+  endif
 
 end subroutine arbitraryconfig_matel_doubles00transpose
 
