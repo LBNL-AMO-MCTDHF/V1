@@ -576,14 +576,6 @@ subroutine abio_nonsparse(smo,abio,aout,nr)
   endif
 
 !! this is where the linear equation solver is called to solve S*abio'=abio to get our  abio'
-
-  call MYGESV(numconfig,numr,Sconfig,numconfig,ipiv,aout(:,:),numconfig,iflag)
-
-  if(iflag.ne.0) then
-     OFLWR "Stopping due to bad iflag in nonsparsebiortho: ",iflag; CFLST
-  endif
-
-!! this is where the linear equation solver is called to solve S*abio'=abio to get our  abio'
 !! parallelize over internuclear coordinate
 
   clow = (myrank-1)*nr/nprocs+1;  chigh = myrank*nr/nprocs
