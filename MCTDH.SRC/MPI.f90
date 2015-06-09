@@ -1186,6 +1186,37 @@ end subroutine mpiallgather
 
 
 
+subroutine mpiallgather_i(inout,totsize,blocksizes,notusedint)
+  use mpimod
+  use fileptrmod
+  implicit none
+  integer, intent(in) :: totsize,blocksizes(nprocs)
+  integer :: inout(totsize)
+  integer :: icount,notusedint
+#ifndef MPIFLAG
+  return
+  inout(1)=inout(1); icount=blocksizes(1)
+#else
+  integer :: ierr,blockstart(nprocs)
+  if (nprocs.eq.1) then
+     return
+  endif
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call getgatherv_stuff(blocksizes,icount,blockstart)
+  if (icount.ne.totsize) then
+     OFLWR "ALLgather ERR count", icount,totsize; 
+     WRFL blocksizes;
+     CFLST
+  endif
+  call mpi_allgatherv(inout(blockstart(myrank)),blocksizes(myrank),MPI_INTEGER,inout,blocksizes(:),blockstart(:)-1,MPI_INTEGER,MPI_COMM_WORLD,ierr)
+  if (ierr.ne.0) then
+     OFLWR "ALLGATHERv ERR ", ierr; CFLST
+  endif
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+#endif
+end subroutine mpiallgather_i
+
+
 subroutine mympialltoall(input, output, count)
   use fileptrmod
   use mpimod

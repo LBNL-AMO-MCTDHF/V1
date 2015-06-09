@@ -560,14 +560,31 @@ subroutine abio_nonsparse(smo,abio,aout,nr)
      enddo
   enddo
   
-  do j=1,numconfig
+!! 06-2015  do j=1,numconfig
+
+  do j=botconfig,topconfig
+
      do i=1,numconfig
         call get_petite_mat(nspf*2,numelec,Smobig,Stmpbig,bioconfiglist(:,i),bioconfiglist(:,j))
         sconfig(i,j) = matdet(numelec,Stmpbig)
      enddo
   enddo
-  
+
+!! 06-2015
+  if (sparseconfigflag.eq.0) then   !! it is, but whatever
+     call mpiallgather(sconfig,numconfig**2,configsperproc*numconfig,maxconfigsperproc*numconfig)
+  endif
+
 !! this is where the linear equation solver is called to solve S*abio'=abio to get our  abio'
+
+  call MYGESV(numconfig,numr,Sconfig,numconfig,ipiv,aout(:,:),numconfig,iflag)
+
+  if(iflag.ne.0) then
+     OFLWR "Stopping due to bad iflag in nonsparsebiortho: ",iflag; CFLST
+  endif
+
+!! this is where the linear equation solver is called to solve S*abio'=abio to get our  abio'
+!! parallelize over internuclear coordinate
 
   clow = (myrank-1)*nr/nprocs+1;  chigh = myrank*nr/nprocs
 
@@ -576,11 +593,6 @@ subroutine abio_nonsparse(smo,abio,aout,nr)
   if(iflag.ne.0) then
      OFLWR "Stopping due to bad iflag in nonsparsebiortho: ",iflag; CFLST
   endif
-
-!! if we aren't parallel this means several different calls to biortho maybe going on at once across all procs
-!! so we REALLY do not want to broadcast the a-vector in that case
-!! this is the case in electronflux where the parallelization is over the bras of the flux integral for a specific ket
-!! this is also the case in projeflux where the parallelization is over time in forming the projected single particle function
 
   do jproc=1,nprocs
      clow = (jproc-1)*nr/nprocs+1;      chigh = jproc*nr/nprocs;      cnum = (chigh-clow+1)*numconfig

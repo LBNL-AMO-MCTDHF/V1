@@ -597,8 +597,10 @@ subroutine getnumwalks()
 
      OFLWR "Counting walks. Singles";  CFL
 
-     do config1=botwalk,topwalk
+!! 06-2015     do config1=bot walk,top walk
         
+     do config1=botconfig,topconfig
+
         iwalk=0
         thisconfig=configlist(:,config1)
         
@@ -652,11 +654,18 @@ subroutine getnumwalks()
         
      enddo   ! config1
 
+     if (sparseconfigflag.eq.0) then
+        call mpiallgather_i(numsinglewalks(:),numconfig,configsperproc(:),maxconfigsperproc)
+     endif
+
+
      OFLWR "Counting walks. Doubles"; CFL
      
   !!   ***********  DOUBLES  ************
 
-     do config1=botwalk,topwalk
+!! 06-2015     do config1=bot walk,top walk
+
+     do config1=botconfig,topconfig
         if (mod(config1,1000).eq.0) then
            OFLWR config1, " out of ", topwalk;        call closefile()
         endif
@@ -732,6 +741,10 @@ subroutine getnumwalks()
         numdoublewalks(config1)=iwalk
         
      enddo   ! config1
+
+     if (sparseconfigflag.eq.0) then
+        call mpiallgather_i(numdoublewalks(:),numconfig,configsperproc(:),maxconfigsperproc)
+     endif
 
      if (walkwriteflag.ne.0) then
         if (walksinturn) then
