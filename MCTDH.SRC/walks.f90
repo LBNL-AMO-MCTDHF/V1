@@ -95,29 +95,8 @@ subroutine walkalloc()
   integer :: ii,i
   logical :: highspinorder,lowspinorder
 
-!!$ in newconfig.f90
-!!$  if (sparseconfigflag.ne.0) then            
-!!$     botwalk=1+(myrank-1)*numconfig/nprocs
-!!$     topwalk=myrank*numconfig/nprocs
-!!$  else
-!!$     botwalk=1
-!!$     topwalk=numconfig
-!!$  endif
-!!$
-!!$  do while (.not.lowspinorder(configlist(:,botwalk)))
-!!$     botwalk=botwalk+1
-!!$     if (botwalk.gt.numconfig) then
-!!$        OFLWR "AAUGH NExxWCCON"; CFLST
-!!$     endif
-!!$  enddo
-!!$  do while (.not.highspinorder(configlist(:,topwalk)))
-!!$     topwalk=topwalk+1
-!!$     if (topwalk.gt.numconfig) then
-!!$        OFLWR "AAUGH NEWCCON"; CFLST
-!!$     endif
-!!$  enddo
-
-!! now with fast_newconfiglist, just check
+!! botwalk and topwalk in newconfig.f90.
+!! now, with fast_newconfiglist, just check
 
   if (topwalk-botwalk.gt.0) then
      if (.not.highspinorder(configlist(:,topwalk))) then

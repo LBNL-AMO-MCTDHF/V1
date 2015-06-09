@@ -4,16 +4,13 @@
 #include "Definitions.INC"
   
 
-
 !! ASSUMES denmat,denvects is ready. 
-
 
 subroutine output_denmat( incmf, time)
   use parameters
   use mpimod
   use xxxmod
   implicit none
-
   integer :: i,j, incmf, numcalledhere=0, mytimingout
   real*8 ::  rsum, rsum2, time, rsum3
 
@@ -51,13 +48,12 @@ subroutine output_denmat( incmf, time)
      write(853,'(F17.8, 100E17.7)') time, yyy%denvals(1:nspf); close(853)
 
      open(853,file=denrotfile,status="unknown", position="append")
-!     write(853,'(100F17.8)') time, rsum/rsum2, rsum3/rsum2;     close(853)
      write(853,'(100F23.14)') time, rsum/rsum2, rsum3/rsum2;     close(853)
            
-!     if (cdenflag.ne.0.and.rdenflag.ne.0) then
-!        !!     call openfile(); write(mpifileptr,*) "Calling schmidt check"; call closefile()
-!        call schmidtcheck(1)
-!     endif
+!!$     if (cdenflag.ne.0.and.rdenflag.ne.0) then
+!!$        !!     call openfile(); write(mpifileptr,*) "Calling schmidt check"; call closefile()
+!!$        call schmidtcheck(1)
+!!$     endif
   endif
 end subroutine output_denmat
 
@@ -105,12 +101,11 @@ subroutine replace_withnat(printflag)
 
   do j=1,nspf  ! which natorb
      do i=1,nspf  ! which original
-
-
-        outspfs(:,j)=outspfs(:,j)+ yyy%cmfpsivec(spfstart+(i-1)*spfsize:spfstart+i*spfsize-1,0)*yyy%denvects(i,j)
-
+        outspfs(:,j)=outspfs(:,j)+ &
+             yyy%cmfpsivec(spfstart+(i-1)*spfsize:spfstart+i*spfsize-1,0)*yyy%denvects(i,j)
      enddo
   enddo
+
   call spf_orthogit(outspfs, errorval)
   if (errorval.gt.1d-7) then
      OFLWR "WTF!  ERROR IN REPLACENAT ", errorval; CFLST
@@ -124,7 +119,6 @@ subroutine replace_withnat(printflag)
      WRFL; CFL
   endif
 
-
   call bioset(natrepbiovar,smo,numr)
 
   do imc=1,mcscfnum
@@ -133,29 +127,27 @@ subroutine replace_withnat(printflag)
 
      call biotransform(yyy%cmfpsivec(spfstart,0),outspfs,yyy%cmfpsivec(astart(imc),0),natrepbiovar)
 
-!! doesn't work.  permoverlaps broken presumably.
-!#ifdef NOWAYDUDE
-!     call autocorrelate_one(yyy%cmfpsivec(astart(imc),0), outspfs, yyy%cmfpsivec(spfstart,0), tempavector, sum,1)
-!!! CHECK
-!     tempavector2(:)=yyy%cmfpsivec(astart(imc):aend(imc),0)
-!     call biotransform(outspfs,yyy%cmfpsivec(spfstart,0),tempavector2(:),natrepbiovar)
-!     print *, DOT_PRODUCT(tempavector,tempavector),"AAAAAA"
-!     tempavector2(:)=     tempavector2(:) - tempavector(:)
-!     print *, DOT_PRODUCT(tempavector2,tempavector2),"BBBBB";
-!     nullspfs(:,:)=0d0
-!nullspfs(:,:)=nullspfs(:,:)-outspfs(:,:)
-!print *, "BIOCHECK ", DOT_PRODUCT(RESHAPE(nullspfs, (/spfsize*nspf/)), RESHAPE(nullspfs, (/spfsize*nspf/)))
-!!     call checkbio(yyy%cmfpsivec(spfstart,0),outspfs,tempavector,yyy%cmfpsivec(astart(imc),0))
-!!     call checkbio(yyy%cmfpsivec(spfstart,0),nullspfs,tempavector,yyy%cmfpsivec(astart(imc),0))
-!#endif
-
+!!$! doesn't work.  permoverlaps broken presumably.
+!!$#ifdef NOWAYDUDE
+!!$     call autocorrelate_one(yyy%cmfpsivec(astart(imc),0), outspfs, yyy%cmfpsivec(spfstart,0), tempavector, sum,1)
+!!$!! CHECK
+!!$     tempavector2(:)=yyy%cmfpsivec(astart(imc):aend(imc),0)
+!!$     call biotransform(outspfs,yyy%cmfpsivec(spfstart,0),tempavector2(:),natrepbiovar)
+!!$     print *, DOT_PRODUCT(tempavector,tempavector),"AAAAAA"
+!!$     tempavector2(:)=     tempavector2(:) - tempavector(:)
+!!$     print *, DOT_PRODUCT(tempavector2,tempavector2),"BBBBB";
+!!$     nullspfs(:,:)=0d0
+!!$nullspfs(:,:)=nullspfs(:,:)-outspfs(:,:)
+!!$print *, "BIOCHECK ", DOT_PRODUCT(RESHAPE(nullspfs, (/spfsize*nspf/)), RESHAPE(nullspfs, (/spfsize*nspf/)))
+!!$!     call checkbio(yyy%cmfpsivec(spfstart,0),outspfs,tempavector,yyy%cmfpsivec(astart(imc),0))
+!!$!     call checkbio(yyy%cmfpsivec(spfstart,0),nullspfs,tempavector,yyy%cmfpsivec(astart(imc),0))
+!!$#endif
 
   enddo
 
   yyy%cmfpsivec(spfstart:spfend,0)=RESHAPE(outspfs,(/totspfdim/))
 
 end subroutine replace_withnat
-
 
 
 
@@ -166,15 +158,15 @@ subroutine getdenmatx()
 
   call getdenmat0(yyy%cmfpsivec(astart(1),0), yyy%denmat(:,:,0) , yyy%invdenmat(:,:,0) , yyy%denvals(:) , yyy%denvects(:,:), numr*mcscfnum)
 
-!  if (rdenflag==1) then
-!     call getrdenmat()
-!  endif
-!  if (cdenflag==1) then
-!     call getnatconfig()
-!  endif
-!  if (cdenflag==1.and.rdenflag==1) then
-!     call schmidtcheck(0)
-!  endif
+!!$  if (rdenflag==1) then
+!!$     call getrdenmat()
+!!$  endif
+!!$  if (cdenflag==1) then
+!!$     call getnatconfig()
+!!$  endif
+!!$  if (cdenflag==1.and.rdenflag==1) then
+!!$     call schmidtcheck(0)
+!!$  endif
 
 end subroutine getdenmatx
 
@@ -191,12 +183,14 @@ subroutine getdenmat0(avector, denmat, invdenmat, denvals, denvects, numpoints)
   DATATYPE :: avector(numconfig,numpoints), a1, a2, denmat(nspf,nspf),invdenmat(nspf,nspf)
   DATATYPE :: tempinvden(nspf,nspf,numclasses),tempdenvects(nspf,nspf,numclasses),denvects(nspf,nspf)
 
-
   denmat(:,:)=0.d0; denvects(:,:)=0d0; invdenmat(:,:)=0d0
 
      !! single off diagonal walks
   do ii=1,numpoints
-     do config1=botwalk,topwalk
+
+!! 06-2015     do config1=bot walk,top walk
+     do config1=botconfig,topconfig
+
         a1=avector(config1,ii)
         
         do iwalk=1,numsinglewalks(config1)
@@ -215,9 +209,12 @@ subroutine getdenmat0(avector, denmat, invdenmat, denvals, denvects, numpoints)
         enddo
      enddo
   enddo
-  if (sparseconfigflag.ne.0) then
+
+!! 06-2015  if (sparse configflag.ne.0) then
+
      call mympireduce(denmat,nspf**2)
-  endif
+
+!! 06-2015  endif
 
   tempinvden(:,:,:)=0d0; tempdenvals(:,:)=0d0; tempdenvects(:,:,:)=0d0; 
 
@@ -476,8 +473,10 @@ subroutine get_denconstraint1(iwhich,time)
 
   !! single off diagonal walks
      do ii=1,numr
-        do config1=botwalk,topwalk
-           
+
+!! 06-2015        do config1=bot walk,top walk
+        do config1=botconfig,topconfig
+
            a1(:)=avector(config1,ii,:)
            a1p(:)=avectorp(config1,ii,:)
 
@@ -516,9 +515,12 @@ subroutine get_denconstraint1(iwhich,time)
            enddo
         enddo
      enddo
-     if (sparseconfigflag.ne.0) then
+
+!! 06-2015      if (sparse configflag.ne.0) then
+
         call mympireduce(liosolve,liosize)
-     endif
+
+!! 06-2015      endif
 
 
      select case (iwhich)
@@ -767,8 +769,10 @@ subroutine new_get_denconstraint1(time)
   !! single off diagonal walks
      do ii=1,numr
 
-        do config1=botwalk,topwalk
-           
+!! 06-2015         do config1=bot walk,top walk
+
+         do config1=botconfig,topconfig
+
            a1(:)=avector(config1,ii,:)
            a1p(:)=avectorp(config1,ii,:)
            
@@ -798,9 +802,12 @@ subroutine new_get_denconstraint1(time)
         enddo
 
      enddo
-     if (sparseconfigflag.ne.0) then
+
+!! 06-2015      if (sparse configflag.ne.0) then
+
         call mympireduce(liosolve,isize)
-     endif
+
+!! 06-2015      endif
 
 
      

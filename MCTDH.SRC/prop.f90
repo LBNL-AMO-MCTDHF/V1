@@ -563,7 +563,8 @@ subroutine cmf_prop_wfn(tin, tout)
         call system_clock(itime)
 !! IT WORKS
         call replace_withnat(printflag)
-        call system_clock(jtime);        times(2)=times(2)+jtime-itime;      !  call system_clock(itime)
+!! 06-2015        call system_clock(jtime);        times(2)=times(2)+jtime-itime;
+        call system_clock(jtime);        times(7)=times(7)+jtime-itime;
      endif
 
      call system_clock(itime)

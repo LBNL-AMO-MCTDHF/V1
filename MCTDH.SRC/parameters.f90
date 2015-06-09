@@ -437,6 +437,7 @@ integer, allocatable :: configsperproc(:)
 integer ::       maxconfigsperproc
 integer, allocatable :: allspinranks(:), allspinstart(:)
 integer ::       maxspinrank
+integer :: botconfig,topconfig
 integer :: topwalk,botwalk  !! newwalks.f90, new mpi method distribute walks
 !!!integer, parameter :: exchangeflag=0        !!              !! interpolate exchange i.e. 1=LMF 0=CMF
 integer :: walksonfile=0       

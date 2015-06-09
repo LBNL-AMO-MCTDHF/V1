@@ -97,8 +97,9 @@ subroutine get_tworeducedx(reducedpottally,avector1,avector2)
 
         !! doubly off diagonal walks
         
-     do config1=botwalk,topwalk
-        
+!!$ 06-2015     do config1=bot walk,top walk
+     do config1=botconfig,topconfig
+
         a1(:)=avector1(config1,qq,:)   !! NO MORE
         
         do iwalk=1,numdoublewalks(config1)
@@ -124,9 +125,11 @@ subroutine get_tworeducedx(reducedpottally,avector1,avector2)
      enddo   ! config1
   enddo  !! qq
 
-  if (sparseconfigflag.ne.0) then
-     call mympireduce(reducedpottally(:,:,:,:), nspf**4)
-  endif
+!!$ 06-2015  if (sparse configflag.ne.0) then
+
+  call mympireduce(reducedpottally(:,:,:,:), nspf**4)
+
+!!$ 06-2015  endif
 
 end subroutine get_tworeducedx
 
@@ -147,7 +150,9 @@ subroutine get_reducedproderiv(reducedproderiv,avector1,avector2)
 
      !! single off diagonal walks
 
-  do config1=botwalk,topwalk
+!!$ 06-2015  do config1=bot walk,top walk
+  do config1=botconfig,topconfig
+
      do iwalk=1,numsinglewalks(config1)
         config2=singlewalk(iwalk,config1);        dirphase=singlewalkdirphase(iwalk,config1)
         ispf=singlewalkopspf(1,iwalk,config1);        jspf=singlewalkopspf(2,iwalk,config1)
@@ -164,9 +169,11 @@ subroutine get_reducedproderiv(reducedproderiv,avector1,avector2)
      enddo
   enddo
 
-  if (sparseconfigflag.ne.0) then
+!!$ 06-2015  if (sparse configflag.ne.0) then
+
      call mympireduce(reducedproderiv(:,:), nspf**2)
-  endif
+
+!!$ 06-2015  endif
 
 end subroutine get_reducedproderiv
 
@@ -195,7 +202,9 @@ subroutine get_reducedr(reducedinvr,reducedinvrsq,reducedr,avector1,avector2)
 
      thisrvalue=bondpoints(ii);        csum=(1.d0/thisrvalue);        csum2=(1.d0/thisrvalue**2)
 
-     do config1=botwalk,topwalk
+!!$ 06-2015     do config1=bot walk,top walk
+     do config1=botconfig,topconfig
+
         a1(:)=avector1(config1,ii,:)
         
         do iwalk=1,numsinglewalks(config1)
@@ -212,10 +221,12 @@ subroutine get_reducedr(reducedinvr,reducedinvrsq,reducedr,avector1,avector2)
      enddo
   enddo !! numr
   
-  if (sparseconfigflag.ne.0) then
+!!$ 06-2015  if (sparse configflag.ne.0) then
+
      call mympireduce(reducedr(:,:), nspf**2);  call mympireduce(reducedinvr(:,:), nspf**2)
      call mympireduce(reducedinvrsq(:,:), nspf**2)
-  endif
+
+!!$ 06-2015  endif
 
 end subroutine get_reducedr
 

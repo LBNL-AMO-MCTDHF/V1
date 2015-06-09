@@ -838,24 +838,28 @@ endif
 !        bigspinblockend(ii)=bigspinblockstart(ii+1)-1
 !     enddo
 
-     if (sparseconfigflag.eq.0) then
-        allbotwalks=1
-        alltopwalks=numconfig
-     else
-        alltopwalks(:)=0
-        jj=1
-        do ii=1,nprocs-1
-           do while (bigspinblockend(jj).lt.numconfig*ii/nprocs)
-              alltopwalks(ii:)=bigspinblockend(jj)
-              jj=jj+1
-           enddo
+!!$ 06-2015
+!!$     if (sparseconfigflag.eq.0) then
+!!$        allbotwalks=1
+!!$        alltopwalks=numconfig
+!!$     else
+
+     alltopwalks(:)=0
+     jj=1
+     do ii=1,nprocs-1
+        do while (bigspinblockend(jj).lt.numconfig*ii/nprocs)
+           alltopwalks(ii:)=bigspinblockend(jj)
+           jj=jj+1
         enddo
-        alltopwalks(nprocs)=numconfig
-        allbotwalks(1)=1
-        do ii=2,nprocs
-           allbotwalks(ii)=alltopwalks(ii-1)+1
-        enddo
-     endif
+     enddo
+     alltopwalks(nprocs)=numconfig
+     allbotwalks(1)=1
+     do ii=2,nprocs
+        allbotwalks(ii)=alltopwalks(ii-1)+1
+     enddo
+     
+!!$     endif
+
      OFLWR; WRFL "BOTWALKS /TOPWALKS",numconfig
      do ii=1,nprocs
         WRFL allbotwalks(ii),alltopwalks(ii),alltopwalks(ii)-allbotwalks(ii)+1
@@ -869,8 +873,21 @@ endif
         endif
      enddo
 
-     botwalk=allbotwalks(myrank)
-     topwalk=alltopwalks(myrank)
+!!$ 06-2015: now have botconfig topconfig:
+
+     botconfig=allbotwalks(myrank)
+     topconfig=alltopwalks(myrank)
+
+     if (sparseconfigflag.eq.0) then
+        botwalk=1
+        topwalk=numconfig
+     else
+        botwalk=botconfig
+        topwalk=topconfig
+     endif
+
+!!$ end 06-2015
+
   else
      numspinblocks=nss
      maxspinblocksize=maxssize

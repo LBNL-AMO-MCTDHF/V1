@@ -141,7 +141,9 @@ subroutine drivingtrans(thistime)
   do imc=1,mcscfnum
      inavector(:,:)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numconfig,numr/))
 
-     do config1=botwalk,topwalk
+!! 06-2015     do config1=bot walk,top walk
+
+     do config1=botconfig,topconfig
 
         thisconfig=configlist(:,config1)
 
@@ -155,7 +157,9 @@ subroutine drivingtrans(thistime)
      enddo
 
 
-     do config1=botwalk,topwalk
+!! 06-2015     do config1=bot walk,top walk
+
+     do config1=botconfig,topconfig
 
         a1(:)=tempdrivingavector(config1,:,imc)   *rvector(:)
 
@@ -174,9 +178,11 @@ subroutine drivingtrans(thistime)
   enddo
 
 
-  if (sparseconfigflag.ne.0) then
+!! 06-2015  if (sparse configflag.ne.0) then
+
      call mympireduce(tempdenmat,nspf**2)
-  endif
+
+!! 06-2015  endif
   
 !! (NO TIMEFAC)
 
