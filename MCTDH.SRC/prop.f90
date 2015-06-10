@@ -59,6 +59,7 @@ subroutine prop_loop( starttime)
         OFLWR "call drivinginit"; CFL
         call drivinginit(startenergy)
         OFLWR "called drivinginit"; CFL
+        call get_stuff(0.0d0)  ! for actions_initial
      endif
 
      if ((myrank.eq.1).and.(notiming.le.1)) then
@@ -69,10 +70,8 @@ subroutine prop_loop( starttime)
   endif
 
   call system_clock(itime)
-
   call actions_initial()                 !!   ACTIONS_INITIAL: PUT ANALYSIS ROUTINES HERE; THEN TERMINATES.
                                          !! ***************************************************************
-
   call system_clock(jtime)  ;  times(3)=times(3)+jtime-itime
 
   if (skipflag.ne.0) then
@@ -85,7 +84,7 @@ subroutine prop_loop( starttime)
      call replace_withnat(1)
      call system_clock(jtime);        times(7)=times(7)+jtime-itime;
   endif
-!! allowing that actions_initial could change psi.  OR replace_withnat!
+!! allowing that actions_initial could change psi.  OR replace_withnat!  drivinginit ok.
 
   call get_stuff(0.d0)
 
