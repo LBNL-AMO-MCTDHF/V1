@@ -44,34 +44,22 @@ subroutine prop_loop( starttime)
         endif
      enddo
 
-     call all_matel()      ! initial
+!!$ 06-2015
+!!$     call all_matel()      ! initial
+!!$     if (drivingflag.ne.0.and.1==1) then
+!!$        OFLWR "call drivinginit"; CFL
+!!$        call drivinginit(startenergy)
+!!$        OFLWR "called drivinginit"; CFL
+!!$     endif
 
-     do imc=1,mcscfnum
+     call get_stuff(0.0d0)  !initial
 
-        call sparseconfigmult(yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0)
-
-        OFLWR "IN PROP: VECTOR NORM ",sqrt( dot(     yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),numconfig*numr) ); CFL
-
-
-        startenergy(imc)=dot(     yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),numconfig*numr)/dot(     yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),numconfig*numr)
-        OFLWR "         ENERGY ", startenergy(imc); CFL
-
-        if (debugflag.eq.956) then
-           OFLWR "Stopping due to debugflag=956"; CFLST
-        endif
-
-     enddo
-
-
+!!$ 06-2015
      if (drivingflag.ne.0.and.1==1) then
         OFLWR "call drivinginit"; CFL
         call drivinginit(startenergy)
         OFLWR "called drivinginit"; CFL
      endif
-
-     call get_stuff(0.0d0)  !initial
-
-
 
      if ((myrank.eq.1).and.(notiming.le.1)) then
         !! times(1:5)
@@ -79,7 +67,6 @@ subroutine prop_loop( starttime)
         write(853,'(T16,100A15)')  "Spfs ", "Prop ", "Act ", "Final ", "MPI", "Non MPI";        close(853)
      endif
   endif
-
 
   call system_clock(itime)
 
@@ -93,14 +80,30 @@ subroutine prop_loop( starttime)
   endif
 
 !! 06-2015 ADDING THIS HERE
-     if (improvedrelaxflag.ne.0.and.improvednatflag.ne.0) then
-        call system_clock(itime)
-        call replace_withnat(1)
-        call system_clock(jtime);        times(7)=times(7)+jtime-itime;
-     endif
+  if (improvedrelaxflag.ne.0.and.improvednatflag.ne.0) then
+     call system_clock(itime)
+     call replace_withnat(1)
+     call system_clock(jtime);        times(7)=times(7)+jtime-itime;
+  endif
 !! allowing that actions_initial could change psi.  OR replace_withnat!
 
   call get_stuff(0.d0)
+
+!! 06-2015 moved this down here
+  do imc=1,mcscfnum
+
+     call sparseconfigmult(yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0)
+
+     OFLWR "IN PROP: VECTOR NORM ",&
+          sqrt( dot(     yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),numconfig*numr) ); CFL
+     startenergy(imc)=dot(     yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),numconfig*numr)/&
+          dot(     yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),numconfig*numr)
+     OFLWR "         ENERGY ", startenergy(imc); CFL
+     
+     if (debugflag.eq.956) then
+        OFLWR "Stopping due to debugflag=956"; CFLST
+     endif
+  enddo
 
   jj=0
   do while (flag==0)
