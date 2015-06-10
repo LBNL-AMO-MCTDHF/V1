@@ -1138,8 +1138,12 @@ subroutine openfile()
   use mpimod
   use fileptrmod  
   implicit none
+  integer :: myiostat
   if (stdoutflag==0.and.mpifileptr.ne.nullfileptr) then
-     open(mpifileptr,file=mpioutfile,status="old", position="append")
+     open(mpifileptr,file=mpioutfile,status="old", position="append",iostat=myiostat)
+     if (myiostat.ne.0) then
+        print *, "IOSTAT OPENFILE",myiostat,myrank,mpifileptr,nullfileptr; stop
+     endif
   endif
 end subroutine openfile
 

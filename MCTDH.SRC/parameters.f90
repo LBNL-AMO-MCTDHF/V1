@@ -241,19 +241,19 @@ character(len=200):: rnatplotbin="Bin/RNatorb.bin"
 !!BB
 integer :: numpulses=1
 integer :: velflag=0             !!              !!  Length (V(t)) or velocity (A(t))       
-integer ::  pulsetype(10)=1      !!              !!  Pulsetype=1:  A(t) = pulsestrength * sin(w t)^2,
-real*8  :: omega(10)=1.d0        !!              !!  2:  A(t) = strength * sin(w t)^2 
-real*8 :: omega2(10)=1.d0        !!              !!             * sin(w2 t + phaseshift),
-real*8 :: pulsestart(10)=0.1d0   !!              !!   
-real*8 :: phaseshift(10)=0.d0    !!              !!    pulsestart < t < pulsestart + pi/w; 0 otherwise
-real*8 :: chirp(10)=0d0          !!              !!
-real*8 :: ramp(10)=0d0
-real*8 :: longstep(10)=1d0       !!              !!  Pulsetype 3 available: monochromatic, sinesq start+end
+integer ::  pulsetype(100)=1      !!              !!  Pulsetype=1:  A(t) = pulsestrength * sin(w t)^2,
+real*8  :: omega(100)=1.d0        !!              !!  2:  A(t) = strength * sin(w t)^2 
+real*8 :: omega2(100)=1.d0        !!              !!             * sin(w2 t + phaseshift),
+real*8 :: pulsestart(100)=0.1d0   !!              !!   
+real*8 :: phaseshift(100)=0.d0    !!              !!    pulsestart < t < pulsestart + pi/w; 0 otherwise
+real*8 :: chirp(100)=0d0          !!              !!
+real*8 :: ramp(100)=0d0
+real*8 :: longstep(100)=1d0       !!              !!  Pulsetype 3 available: monochromatic, sinesq start+end
 !! NOW COMPLEX
 DATATYPE :: pulsestrength(10)=.5d0 !!            !!  A_0 = E_0/omega (strength of field)  
-real*8 :: intensity(10)= -1.d0   !!              !! overrides pulse strength.  Intensity, 10^16 W cm^-2 
-real*8 :: pulsetheta(10)=0.d0    !!              !!  angle between polarization and bond axis (radians)
-real*8 :: pulsephi(10)=0.d0      !!              !!  polarization in xy plane
+real*8 :: intensity(100)= -1.d0   !!              !! overrides pulse strength.  Intensity, 10^16 W cm^-2 
+real*8 :: pulsetheta(100)=0.d0    !!              !!  angle between polarization and bond axis (radians)
+real*8 :: pulsephi(100)=0.d0      !!              !!  polarization in xy plane
 real*8 :: maxpulsetime=1.d20     !!              !!  
 real*8 :: minpulsetime=0.d0      !!              !!  By default calc stops after pulse (overrides finaltime,
                                                  !!   numpropsteps); this will enforce minimum duration
@@ -464,8 +464,8 @@ integer, parameter :: denfile=904
 integer, parameter :: denprojfile=597
 integer, parameter :: natprojfile=488
 integer :: psilength
-integer :: astart(100)
-integer :: aend(100)
+integer :: astart(1000)
+integer :: aend(1000)
 integer :: totadim
 integer :: spfstart
 integer :: spfend
