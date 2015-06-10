@@ -250,7 +250,7 @@ real*8 :: chirp(100)=0d0          !!              !!
 real*8 :: ramp(100)=0d0
 real*8 :: longstep(100)=1d0       !!              !!  Pulsetype 3 available: monochromatic, sinesq start+end
 !! NOW COMPLEX
-DATATYPE :: pulsestrength(10)=.5d0 !!            !!  A_0 = E_0/omega (strength of field)  
+DATATYPE :: pulsestrength(100)=.5d0 !!            !!  A_0 = E_0/omega (strength of field)  
 real*8 :: intensity(100)= -1.d0   !!              !! overrides pulse strength.  Intensity, 10^16 W cm^-2 
 real*8 :: pulsetheta(100)=0.d0    !!              !!  angle between polarization and bond axis (radians)
 real*8 :: pulsephi(100)=0.d0      !!              !!  polarization in xy plane
