@@ -92,9 +92,15 @@ subroutine prop_loop( starttime)
      OFLWR "Stopping"; CFLST
   endif
 
-!! allowing that actions_initial could change psi.
+!! 06-2015 ADDING THIS HERE
+     if (improvedrelaxflag.ne.0.and.improvednatflag.ne.0) then
+        call system_clock(itime)
+        call replace_withnat(1)
+        call system_clock(jtime);        times(7)=times(7)+jtime-itime;
+     endif
+!! allowing that actions_initial could change psi.  OR replace_withnat!
 
-  call get_stuff(0.d0)  !initial
+  call get_stuff(0.d0)
 
   jj=0
   do while (flag==0)
@@ -551,11 +557,9 @@ subroutine cmf_prop_wfn(tin, tout)
         call quadspfs(yyy%cmfpsivec(spfstart,0), qq)
         numiters=numiters+qq
      else
-
         time1=tin;        time2=tout
         call propspfs(yyy%cmfpsivec(spfstart,1), yyy%cmfpsivec(spfstart,0), time1,time2,0,spf_flag,qq)
         numiters=numiters+qq
-
      endif
      call system_clock(jtime);     times(4)=times(4)+jtime-itime;     
 
