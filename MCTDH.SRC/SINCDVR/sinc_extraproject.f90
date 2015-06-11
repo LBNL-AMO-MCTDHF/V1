@@ -27,7 +27,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        capflag,capstrength,capstart,cappower,fft_mpi_inplaceflag, fft_ct_paropt,fft_batchdim,&
        fft_circbatchdim,maxcap,mincap,capmode, maskflag, masknumpoints,&
        scalingflag,scalingdistance,smoothness,scalingtheta,scalingorder,tinv_tol,&
-       orbparlevel, &
+       orbparlevel, ivoflag, loadedocc, &
        toepflag  !! toepflag deprecated
 
 #ifdef PGFFLAG

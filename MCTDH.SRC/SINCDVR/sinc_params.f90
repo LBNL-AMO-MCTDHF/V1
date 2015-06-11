@@ -58,6 +58,10 @@ real*8 :: smoothness=5             !! atomic units (bohr)
 real*8 :: scalingtheta=0d0         !! scaling angle
 integer :: scalingorder=2          !! should be 2 or greater!
  real*8 :: tinv_tol=1d-3
+
+!! construct virtual orbtials using density based on loaded orbitals
+integer :: ivoflag=0
+real*8 :: loadedocc(200)=2d0
 !! XXSNIPXX 
 !! INTERNAL
 

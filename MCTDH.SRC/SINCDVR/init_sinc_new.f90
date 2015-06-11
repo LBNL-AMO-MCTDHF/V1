@@ -258,9 +258,14 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
 end subroutine init_project
 
+module ivopotmod
+  implicit none
+  DATATYPE, allocatable :: ivopot(:)
+end module ivopotmod
 
 recursive subroutine mult_bigspf(inbigspf,outbigspf)
   use myparams
+  use ivopotmod
   implicit none
   DATATYPE :: inbigspf(totpoints),outbigspf(totpoints),tempspf(totpoints)
 
@@ -269,7 +274,11 @@ recursive subroutine mult_bigspf(inbigspf,outbigspf)
   call mult_pot(inbigspf(:),tempspf(:))
 
   outbigspf(:)=outbigspf(:)+tempspf(:)
-  
+
+  if (ivoflag.ne.0) then
+     outbigspf(:)=outbigspf(:)+ivopot(:)*inbigspf(:)
+  endif
+
 end subroutine mult_bigspf
 
 
@@ -277,10 +286,12 @@ subroutine init_spfs(inspfs,numloaded)
   use myparams
   use pmpimod
   use pfileptrmod
+  use ivopotmod
   implicit none
   DATATYPE :: inspfs(totpoints,numspf), energies(numspf+num_skip_orbs)
-  DATATYPE,allocatable :: lanspfs(:,:)
+  DATATYPE,allocatable :: lanspfs(:,:),density(:)
   integer :: ibig,iorder,ispf,numloaded,ppfac,ii,jj,kk,olist(numspf),flag
+  integer :: null1,null2,null3,null4,null10(10)
   external :: mult_bigspf
 
   if (numloaded.ge.numspf) then
@@ -288,9 +299,6 @@ subroutine init_spfs(inspfs,numloaded)
      return
   endif
 
-!  if (num_skip_orbs.lt.0) then
-!     OFLWR "WOOWOWWO"; CFLST
-!  endif
   if (num_skip_orbs+numloaded.lt.0) then
      OFLWR "WOOWOWWOxxx",num_skip_orbs,numloaded; CFLST
   endif
@@ -298,11 +306,12 @@ subroutine init_spfs(inspfs,numloaded)
      OFLWR "WOOWOWWOyyy",num_skip_orbs,numspf; CFLST
   endif
 
-  do ii=1,num_skip_orbs
-     if (orb_skip(ii).lt.1.or.orb_skip(ii).gt.numspf+num_skip_orbs) then
-        OFLWR "TTTT DOG!"; CFLST
-     endif
-  enddo
+!  do ii=1,num_skip_orbs
+!     if (orb_skip(ii).lt.1.or.orb_skip(ii).gt.numspf+num_skip_orbs) then
+!        OFLWR "TTTT DOG!"; CFLST
+!     endif
+!  enddo
+
   kk=0-min(num_skip_orbs,0)
   olist(:)=(-9999999)
   do ii=1,numspf+num_skip_orbs
@@ -317,10 +326,29 @@ subroutine init_spfs(inspfs,numloaded)
         kk=kk+1
         olist(kk)=ii
      endif
+     if (kk.eq.numspf) then
+        exit
+     endif
   enddo
-  if (kk.ne.numspf) then
+  if (kk.lt.numspf) then
      OFLWR "FSFFD EEEEE 555",kk,numspf,num_skip_orbs; CFLST
   endif
+
+  if (ivoflag.ne.0) then
+     if (numloaded.le.0) then
+        OFLWR "error, ivoflag .ne. 0 but no orbitals are loaded"; CFLST
+     endif
+     OFLWR "getting IVO pot.  occupations are "
+     WRFL loadedocc(1:numloaded); CFL
+
+     allocate(ivopot(totpoints), density(totpoints))
+     do ispf=1,numloaded
+        density(:)=density(:)+abs(inspfs(:,ispf)**2)*loadedocc(ispf)
+     enddo
+     call op_tinv(density,ivopot,1,1,null1,null2,null3,null4,null10)
+     deallocate(density)
+  endif
+
 
   allocate(lanspfs(totpoints,numspf+num_skip_orbs))
 
