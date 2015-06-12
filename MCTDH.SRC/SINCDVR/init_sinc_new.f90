@@ -258,28 +258,97 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
 end subroutine init_project
 
-module ivopotmod
-  implicit none
-  DATATYPE, allocatable :: ivopot(:)
-end module ivopotmod
 
 recursive subroutine mult_bigspf(inbigspf,outbigspf)
   use myparams
-  use ivopotmod
   implicit none
-  DATATYPE :: inbigspf(totpoints),outbigspf(totpoints),tempspf(totpoints)
+  DATATYPE,intent(in) :: inbigspf(totpoints)
+  DATATYPE, intent(out) :: outbigspf(totpoints)
+  if (ivoflag.eq.0) then
+     call mult_bigspf0(inbigspf,outbigspf)
+  else
+     call mult_bigspf_ivo(inbigspf,outbigspf)
+  endif
+end subroutine mult_bigspf
+
+
+recursive subroutine mult_bigspf0(inbigspf,outbigspf)
+  use myparams
+  implicit none
+  DATATYPE,intent(in) :: inbigspf(totpoints)
+  DATATYPE, intent(out) :: outbigspf(totpoints)
+  DATATYPE :: tempspf(totpoints)
 
   call mult_ke(inbigspf(:),outbigspf(:),1,"booga",2)
-
   call mult_pot(inbigspf(:),tempspf(:))
-
   outbigspf(:)=outbigspf(:)+tempspf(:)
 
-  if (ivoflag.ne.0) then
-     outbigspf(:)=outbigspf(:)+ivopot(:)*inbigspf(:)
-  endif
+end subroutine mult_bigspf0
 
-end subroutine mult_bigspf
+
+function ivodot(inbra,inket,size)
+  use myparams
+  implicit none
+  integer,intent(in) :: size 
+  DATATYPE,intent(in) :: inbra(size),inket(size)
+  DATATYPE :: ivodot,csum
+  csum=DOT_PRODUCT(inbra,inket)
+  if (orbparflag) then
+     call mympireduceone(csum)
+  endif
+  ivodot=csum
+end function ivodot
+
+
+module ivopotmod
+  implicit none
+  integer :: numocc=(-1)
+  DATATYPE, allocatable :: ivopot(:),ivo_occupied(:,:)
+end module ivopotmod
+
+
+subroutine ivo_project(inbigspf,outbigspf)
+  use myparams
+  use ivopotmod
+  implicit none
+  DATATYPE,intent(in) :: inbigspf(totpoints)
+  DATATYPE, intent(out) :: outbigspf(totpoints)
+  DATATYPE :: ivodot
+  integer :: ii
+  outbigspf(:)=0d0
+  do ii=1,numocc
+     outbigspf(:)=outbigspf(:) + ivo_occupied(:,ii) * ivodot(ivo_occupied(:,ii),inbigspf(:),totpoints)
+  enddo
+end subroutine ivo_project
+
+  
+recursive subroutine mult_bigspf_ivo(inbigspf,outbigspf)
+  use myparams
+  use ivopotmod
+  implicit none
+  DATATYPE,intent(in) :: inbigspf(totpoints)
+  DATATYPE, intent(out) :: outbigspf(totpoints)
+  DATATYPE :: tempspf(totpoints),inwork(totpoints),inwork2(totpoints)
+
+  call ivo_project(inbigspf,outbigspf)
+
+  inwork2(:)=inbigspf(:)-outbigspf(:)
+
+  outbigspf(:)=outbigspf(:) * (-1d3)
+
+  call mult_ke(inwork2(:),inwork(:),1,"booga",2)
+
+  call mult_pot(inwork2(:),tempspf(:))
+
+  inwork(:) = inwork(:) + tempspf(:) + ivopot(:)*inwork2(:)
+
+  call ivo_project(inwork,inwork2)
+
+  outbigspf(:) = outbigspf(:) + inwork(:) - inwork2(:)
+
+
+end subroutine mult_bigspf_ivo
+
 
 
 subroutine init_spfs(inspfs,numloaded)
@@ -341,7 +410,9 @@ subroutine init_spfs(inspfs,numloaded)
      OFLWR "getting IVO pot.  occupations are "
      WRFL loadedocc(1:numloaded); CFL
 
-     allocate(ivopot(totpoints), density(totpoints))
+     allocate(ivopot(totpoints), density(totpoints),ivo_occupied(totpoints,numloaded))
+     numocc=numloaded
+     ivo_occupied(:,:)=inspfs(:,1:numloaded)
      do ispf=1,numloaded
         density(:)=density(:)+abs(inspfs(:,ispf)**2)*loadedocc(ispf)
      enddo
@@ -362,6 +433,10 @@ subroutine init_spfs(inspfs,numloaded)
   OFLWR "CALL BLOCK LAN FOR ORBS, ",numspf+num_skip_orbs," VECTORS"; CFL
 
   call blocklanczos0(min(3,numspf),numspf+num_skip_orbs,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,energies,1,0,orblancheckmod,orblanthresh,mult_bigspf,orbparflag)
+
+  if (ivoflag.ne.0) then
+     deallocate(ivopot,ivo_occupied)
+  endif
   
   OFLWR "BL CALLED. ENERGIES: ";CFL
   do ispf=1,numspf+num_skip_orbs
