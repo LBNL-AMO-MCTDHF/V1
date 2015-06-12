@@ -334,7 +334,7 @@ recursive subroutine mult_bigspf_ivo(inbigspf,outbigspf)
 
   inwork2(:)=inbigspf(:)-outbigspf(:)
 
-  outbigspf(:)=outbigspf(:) * (-1d3)
+  outbigspf(:)=outbigspf(:) * (1d3)
 
   call mult_ke(inwork2(:),inwork(:),1,"booga",2)
 
@@ -357,56 +357,65 @@ subroutine init_spfs(inspfs,numloaded)
   use pfileptrmod
   use ivopotmod
   implicit none
-  DATATYPE :: inspfs(totpoints,numspf), energies(numspf+num_skip_orbs)
-  DATATYPE,allocatable :: lanspfs(:,:),density(:)
-  integer :: ibig,iorder,ispf,numloaded,ppfac,ii,jj,kk,olist(numspf),flag
-  integer :: null1,null2,null3,null4,null10(10)
+  DATATYPE :: inspfs(totpoints,numspf)
+  DATATYPE,allocatable :: lanspfs(:,:),density(:), energies(:)
+  integer, intent(in) :: numloaded
+  integer :: ibig,iorder,ispf,ppfac,ii,jj,kk,olist(numspf),flag
+  integer :: null1,null2,null3,null4,null10(10),numcompute
   external :: mult_bigspf
 
-  if (numloaded.ge.numspf) then
-     OFLWR "already loaded ", numloaded,numspf; CFL
+  if (ivoflag.ne.0) then
+     if (numloaded.le.0) then
+        OFLWR "error, for ivo must load orbitals",numloaded; CFLST
+     endif
+     numcompute = numspf + max(0,num_skip_orbs) - numloaded
+  else
+     numcompute = numspf + num_skip_orbs
+  endif
+
+  if (numcompute.lt.0) then
+     OFLWR "error numcompute lt 0 ", numloaded,numspf; CFLST
+  endif
+  if (numcompute.eq.0) then
+     OFLWR "numcompute eq 0 RETURN"; CFL
+     return
+  endif
+  if (numspf-numloaded.le.0) then
+     OFLWR "numget eq 0 return", numspf-numloaded; CFL
      return
   endif
 
-  if (num_skip_orbs+numloaded.lt.0) then
-     OFLWR "WOOWOWWOxxx",num_skip_orbs,numloaded; CFLST
-  endif
-  if (num_skip_orbs+numspf.le.0) then
-     OFLWR "WOOWOWWOyyy",num_skip_orbs,numspf; CFLST
+  if (ivoflag.ne.0) then
+     kk=0
+  else
+     if (num_skip_orbs.lt.0) then
+        kk=numloaded+num_skip_orbs
+     else
+        kk=numloaded
+     endif
   endif
 
-!  do ii=1,num_skip_orbs
-!     if (orb_skip(ii).lt.1.or.orb_skip(ii).gt.numspf+num_skip_orbs) then
-!        OFLWR "TTTT DOG!"; CFLST
-!     endif
-!  enddo
-
-  kk=0-min(num_skip_orbs,0)
-  olist(:)=(-9999999)
-  do ii=1,numspf+num_skip_orbs
+  ii=1
+  do while (ii.le.numspf-numloaded)
+     kk=kk+1
      flag=0
      do jj=1,num_skip_orbs
-        if (orb_skip(jj).eq.ii) then
+        if (orb_skip(jj).eq.kk) then
            flag=1
            exit
         endif
      enddo
      if (flag.eq.0) then
-        kk=kk+1
-        olist(kk)=ii
-     endif
-     if (kk.eq.numspf) then
-        exit
+        olist(ii)=kk
+        ii=ii+1
      endif
   enddo
-  if (kk.lt.numspf) then
+
+  if (kk.gt.numcompute) then
      OFLWR "FSFFD EEEEE 555",kk,numspf,num_skip_orbs; CFLST
   endif
 
   if (ivoflag.ne.0) then
-     if (numloaded.le.0) then
-        OFLWR "error, ivoflag .ne. 0 but no orbitals are loaded"; CFLST
-     endif
      OFLWR "getting IVO pot.  occupations are "
      WRFL loadedocc(1:numloaded); CFL
 
@@ -420,8 +429,7 @@ subroutine init_spfs(inspfs,numloaded)
      deallocate(density)
   endif
 
-
-  allocate(lanspfs(totpoints,numspf+num_skip_orbs))
+  allocate(lanspfs(totpoints,numcompute),energies(numcompute))
 
   ibig=totpoints
   iorder=min(ibig,orblanorder)
@@ -430,25 +438,25 @@ subroutine init_spfs(inspfs,numloaded)
      ppfac=nprocs
   endif
 
-  OFLWR "CALL BLOCK LAN FOR ORBS, ",numspf+num_skip_orbs," VECTORS"; CFL
+  OFLWR "CALL BLOCK LAN FOR ORBS, ",numcompute," VECTORS"; CFL
 
-  call blocklanczos0(min(3,numspf),numspf+num_skip_orbs,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,energies,1,0,orblancheckmod,orblanthresh,mult_bigspf,orbparflag)
+  call blocklanczos0(min(3,numspf),numcompute,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,energies,1,0,orblancheckmod,orblanthresh,mult_bigspf,orbparflag)
 
   if (ivoflag.ne.0) then
      deallocate(ivopot,ivo_occupied)
   endif
   
   OFLWR "BL CALLED. ENERGIES: ";CFL
-  do ispf=1,numspf+num_skip_orbs
+  do ispf=1,numcompute
      OFLWR ispf,energies(ispf); CFL
   enddo
   OFLWR;  CFL
 
-  do ispf=numloaded+1,numspf
-     inspfs(:,ispf)=lanspfs(:,olist(ispf))
+  do ispf=1,numspf-numloaded
+     inspfs(:,ispf+numloaded)=lanspfs(:,olist(ispf))
   enddo
 
-  deallocate(lanspfs)
+  deallocate(lanspfs,energies)
 
 end subroutine init_spfs
 
