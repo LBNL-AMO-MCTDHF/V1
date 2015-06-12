@@ -334,7 +334,7 @@ recursive subroutine mult_bigspf_ivo(inbigspf,outbigspf)
 
   inwork2(:)=inbigspf(:)-outbigspf(:)
 
-  outbigspf(:)=outbigspf(:) * (1d3)
+  outbigspf(:)=outbigspf(:) * (1d2)
 
   call mult_ke(inwork2(:),inwork(:),1,"booga",2)
 
@@ -423,7 +423,10 @@ subroutine init_spfs(inspfs,numloaded)
      numocc=numloaded
      ivo_occupied(:,:)=inspfs(:,1:numloaded)
      do ispf=1,numloaded
-        density(:)=density(:)+abs(inspfs(:,ispf)**2)*loadedocc(ispf)
+
+        call myhgramschmidt_fast(totpoints,ispf-1,totpoints,ivo_occupied(:,:),ivo_occupied(:,ispf),orbparflag)
+
+        density(:)=density(:)+abs(ivo_occupied(:,ispf)**2)*loadedocc(ispf)
      enddo
      call op_tinv(density,ivopot,1,1,null1,null2,null3,null4,null10)
      deallocate(density)
