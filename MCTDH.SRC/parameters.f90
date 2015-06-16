@@ -141,7 +141,7 @@ integer :: numexcite(100)=999    !! Numexcite=   !! excitations from core shells
                                                  !!    assigned via command line input.
 integer :: minocc(100)=-999      !!              !! minimum occupation, each shell
 integer :: maxocc(100)=999       !!              !!    maximum
-integer :: vexcite=99            !!              !! excitations INTO last shell. Use to restrict to doubles, etc.
+integer :: vexcite=999           !!              !! excitations INTO last shell. Use to restrict to doubles, etc.
 !!EE
 !!{\large \quad INITIALIZATION}
 !!BB
