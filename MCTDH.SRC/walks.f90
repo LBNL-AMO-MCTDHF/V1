@@ -340,7 +340,7 @@ subroutine walks()
   enddo   ! config1
 
 !! 06-2015
-  if (sparseconfigflag.eq.0) then
+  if (sparseconfigflag.eq.0.and.maxsinglewalks.ne.0) then
      isize=2*maxsinglewalks
      call mpiallgather_i(singlewalkopspf,   numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
      isize=maxsinglewalks
@@ -467,7 +467,7 @@ subroutine walks()
   enddo   ! config1
 
 !! 06-2015
-  if (sparseconfigflag.eq.0) then
+  if (sparseconfigflag.eq.0.and.maxdoublewalks.ne.0) then
      isize=4*maxdoublewalks
      call mpiallgather_i(doublewalkdirspf,  numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
      isize=maxdoublewalks
