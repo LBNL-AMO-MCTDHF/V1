@@ -105,7 +105,6 @@ subroutine getparams()
 #endif
 
   numfluxcurves=0;  numfluxcurves(1)=1
-  numexcite(:)=99
 
 #ifdef REALGO
   conway=0
