@@ -136,7 +136,7 @@ integer :: numshells=1           !!              !! number of shells.  greater t
 !!integer :: shelltop(100)=-1    !! Numfrozen=   !! shelltop is namelist input in parinp; the internal variable 
                                                  !!    is allshelltop.   shelltop(1) only may be assigned via 
                                                  !!    command line, with Numfrozen.
-integer :: numexcite(100)=99     !! Numexcite=   !! excitations from core shells (i.e. defined for shells 1 
+integer :: numexcite(100)=999    !! Numexcite=   !! excitations from core shells (i.e. defined for shells 1 
                                                  !!    through numshells-1).  Only numexcite(1) may be 
                                                  !!    assigned via command line input.
 integer :: minocc(100)=-999      !!              !! minimum occupation, each shell
