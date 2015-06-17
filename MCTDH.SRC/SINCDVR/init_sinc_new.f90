@@ -70,10 +70,10 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      return
   endif
 
-  call get_rad(elecradii(:))
+!!$  later, just from dipoles
+!!$  call get_rad(elecradii(:))
 
   call get_dipoles()
-
 
   fac=1d0
 
@@ -106,95 +106,43 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
           exteriorcoord(:,:)**(scalingorder-2) / smoothness**scalingorder*scalingdistance
 
      invjacobian(:,:)=1d0/jacobian(:,:)
+     invsqrtjacobian(:,:)=1d0/sqrt(jacobian(:,:))
+     scaleder2(:,:)=1d0*invsqrtjacobian(:,:)**3 * djacobian(:,:)
+
      scaleweights(:)=jacobian(:,1)*jacobian(:,2)*jacobian(:,3)
 
-     invsqrtscaleweights(:)=sqrt(1d0/scaleweights(:))
+!!in case angle gt 60 use next formula     invsqrtscaleweights(:)=sqrt(1d0/scaleweights(:))
+
+     invsqrtscaleweights(:)=invsqrtjacobian(:,1)*invsqrtjacobian(:,2)*invsqrtjacobian(:,3)
 
      scaleder(:,:)=0.5d0 * invjacobian(:,:)**2 * djacobian(:,:)
      scalediag(:)=0d0
      do jj=1,3
         scalediag(:)=scalediag(:) - scaleder(:,jj)**2    !! MINUS  (negative 1 goes here, add scalediag to ke mult)
      enddo
+
+     elecweights(:)=elecweights(:)*scaleweights(:)
+
+     dipoles(:,:)=dipoles(:,:)+exteriorcoord(:,:)
+
   endif
-  
+
+  elecradii(:)=sqrt( dipoles(:,1)**2 + dipoles(:,2)**2 + dipoles(:,3)**2)
    
-!!$ smooth, not exterior scaling
-!!$#ifndef REALGO
-!!$  if (scalingflag.ne.0) then
-!!$
-!!$!! X(x,y,z) = x + scalefunction(x,1) etc.
-!!$
-!!$     djacobian(:,:)=0d0; jacobian(:,:)=0d0; scalefunction(:,:)=0d0
-!!$
-!!$     do jj=1,3
-!!$        do i=0,scalingorders(jj)
-!!$           scalefunction(:,jj)=scalefunction(:,jj) +   dipoles(:,jj)**i * scalingterms(i+1,jj) * (0d0,1d0)
-!!$        enddo
-!!$        do i=1,scalingorders(jj)
-!!$           jacobian(:,jj)=jacobian(:,jj)       + i*dipoles(:,jj)**(i-1) * scalingterms(i+1,jj) * (0d0,1d0)
-!!$        enddo
-!!$        do i=2,scalingorders(jj)
-!!$           djacobian(:,jj)=djacobian(:,jj)   + i*(i-1)*dipoles(:,jj)**(i-2) * scalingterms(i+1,jj) * (0d0,1d0)
-!!$        enddo
-!!$     enddo
-!!$     
-!!$     if (scalingdflag.ne.0) then
-!!$        do jj=1,3
-!!$           if (scalingorders(jj).lt.1) then
-!!$              OFLWR "error, must have scalingorders>1 for scalingdflag", scalingorders(jj),jj,scalingdflag; CFLST
-!!$           endif
-!!$
-!!$           scaledenomderiv(:,jj)=0d0; scaledenomsecderiv(:,jj) = 0d0
-!!$
-!!$           scaledenom(:,jj) = 1d0 +  scalingdconst(jj)* scalingterms(scalingorders(jj)+1,jj) * dipoles(:,jj)**(scalingorders(jj)-1)
-!!$
-!!$           if (scalingorders(jj).gt.1) then
-!!$              scaledenomderiv(:,jj) = scalingdconst(jj)* scalingterms(scalingorders(jj)+1,jj) * dipoles(:,jj)**(scalingorders(jj)-2) * (scalingorders(jj)-1)
-!!$           endif
-!!$           if (scalingorders(jj).gt.2) then
-!!$              scaledenomsecderiv(:,jj) = scalingdconst(jj)* scalingterms(scalingorders(jj)+1,jj) * dipoles(:,jj)**(scalingorders(jj)-3) * (scalingorders(jj)-1) * (scalingorders(jj)-2)
-!!$           endif
-!!$        enddo
-!!$
-!!$        new_jacobian(:,:) = ( jacobian(:,:) * scaledenom(:,:) - scalefunction(:,:) * scaledenomderiv(:,:) ) / scaledenom(:,:)**2
-!!$
-!!$        new_djacobian(:,:) = ( djacobian(:,:) * scaledenom(:,:) - 2* jacobian(:,:) * scaledenomderiv(:,:) - scalefunction(:,:) * scaledenomsecderiv(:,:) ) / scaledenom(:,:)**2 + &
-!!$             2 * scalefunction(:,:) * scaledenomderiv(:,:)**2 / scaledenom(:,:)**3
-!!$
-!!$        scalefunction(:,:) = scalefunction(:,:) / scaledenom(:,:)
-!!$
-!!$        jacobian(:,:)=new_jacobian(:,:)
-!!$        djacobian(:,:)=new_djacobian(:,:)
-!!$
-!!$     endif
-!!$
-!!$     scalefunction(:,:)=scalefunction(:,:) + dipoles(:,:)
-!!$     jacobian(:,:) = jacobian + 1d0
-!!$
-!!$!! attempt at a kloodge
-!!$     sumjacobian(:)=0d0
-!!$     do jj=1,3
-!!$        sumjacobian(:)=sumjacobian(:)+jacobian(:,jj) / 3d0
-!!$     enddo
-!!$
-!!$
-!!$     invjacobian(:,:)=1d0/jacobian(:,:)
-!!$     scaleweights(:)=jacobian(:,1)*jacobian(:,2)*jacobian(:,3)
-!!$     invsqrtscaleweights(:)=sqrt(1d0/scaleweights(:))
-!!$
-!!$     scaleder(:,:)=0.5d0 * invjacobian(:,:)**2 * djacobian(:,:)
-!!$     scalediag(:)=0d0
-!!$     do jj=1,3
-!!$        scalediag(:)=scalediag(:) - scaleder(:,jj)**2    !! MINUS  (negative 1 goes here, add scalediag to ke mult)
-!!$     enddo
-!!$
-!!$  endif
-!!$
-!!$#endif
-
-
-
   call get_twoe_new(pot)
+
+  if (debugflag .eq. 4040.or.debugflag.eq.3939) then
+     pot(:) = 0.35d0 * elecradii(:)**2 * ( &
+          exp((-0.13d0)*(dipoles(:,1)**2+dipoles(:,2)**2+(dipoles(:,3)-2d0)**2)) + &
+          exp((-0.13d0)*(dipoles(:,1)**2+dipoles(:,2)**2+(dipoles(:,3)+2d0)**2)) )
+     threed_two(:,:,:,:)=0d0
+  else if (debugflag .eq. 4242.or.debugflag.eq.4141) then
+     pot(:) = 7.5d0 * elecradii(:)**2 * exp((-1)*elecradii(:))
+     threed_two(:,:,:,:)=0d0
+  else if (debugflag.eq.4343) then
+     pot(:) = 4.5d0 * elecradii(:)**2 
+     threed_two(:,:,:,:)=0d0
+  endif
 
 #ifndef REALGO
 
@@ -443,7 +391,7 @@ subroutine init_spfs(inspfs,numloaded)
 
   OFLWR "CALL BLOCK LAN FOR ORBS, ",numcompute," VECTORS"; CFL
 
-  call blocklanczos0(min(3,numspf),numcompute,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,energies,1,0,orblancheckmod,orblanthresh,mult_bigspf,orbparflag)
+  call blocklanczos0(min(3,numspf),numcompute,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,energies,1,0,orblancheckmod,orblanthresh,mult_bigspf,orbparflag,orbtargetflag,orbtarget)
 
   if (ivoflag.ne.0) then
      deallocate(ivopot,ivo_occupied)

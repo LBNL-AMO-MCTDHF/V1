@@ -47,9 +47,9 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
      enddo
   endif
   if (allspinproject.eq.0) then
-     call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,tempoutvectorstr,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult_transpose,.true.)
+     call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,tempoutvectorstr,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult_transpose,.true.,0,DATAZERO)
   else
-     call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,tempoutvectorstr,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult_transpose_spin,.true.)
+     call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,tempoutvectorstr,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult_transpose_spin,.true.,0,DATAZERO)
   endif
 
 
@@ -272,17 +272,19 @@ recursive subroutine parblockconfigmult_transpose_spin(inavectortrspin,outavecto
 end subroutine parblockconfigmult_transpose_spin
 
 
-subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,  outvectors,outvectorlda, outvalues,inprintflag,guessflag,lancheckmod,lanthresh,multsub,logpar)
+subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,  outvectors,outvectorlda, outvalues,inprintflag,guessflag,lancheckmod,lanthresh,multsub,logpar,targetflag,etarget)
   use fileptrmod
   implicit none 
-  logical :: logpar
-  integer :: lansize,maxlansize,maxiter,lanblocknum,printflag,inprintflag,order,&
-       lancheckmod,outvectorlda,numout, iorder,k,flag,j,id,nn,i,guessflag,&
-       thislanblocknum, thisdim,ii,nfirst,nlast,myrank,nprocs
-  external :: multsub
+  logical,intent(in) :: logpar
+  integer,intent(in) :: lansize,maxlansize,maxiter,lanblocknum,inprintflag,order,&
+       lancheckmod,outvectorlda,numout,targetflag,guessflag
+  DATATYPE, intent(in) :: etarget
   DATATYPE, intent(out) :: outvalues(numout)  
   DATATYPE, intent(inout) :: outvectors(outvectorlda,numout)
-  real*8 :: error(numout),lanthresh, stopsum,rsum,nextran
+  real*8, intent(in) :: lanthresh
+  integer :: printflag, iorder,k,flag,j,id,nn,i,&
+       thislanblocknum, thisdim,ii,nfirst,nlast,myrank,nprocs
+  real*8 :: error(numout), stopsum,rsum,nextran
   DATATYPE :: alpha(lanblocknum,lanblocknum),beta(lanblocknum,lanblocknum), csum, &
        thisdot ,nulldot , hdot,        nullvector1(1), nullvector2(1) , &
        lastvalue(numout), thisvalue(numout), valdot(numout),normsq(numout)
@@ -295,6 +297,7 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
        initvectors(:,:),  invector(:), multvectors(:,:), &
        lanvects(:,:,:), tempvectors(:,:), &
        lanmultvects(:,:,:), tempvectors2(:,:)
+  external :: multsub
 
   if (numout.lt.lanblocknum) then
      OFLWR "numout >= lanblocknum please",numout,lanblocknum; CFLST
@@ -519,6 +522,9 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
                 RESHAPE(lanham(:,1:iorder,:,1:iorder),(/lanblocknum*iorder,lanblocknum*iorder/))
            thisdim=min(maxiter,iorder*lanblocknum)
            call CONFIGEIG(templanham,thisdim,order*lanblocknum,laneigvects,values)
+           if (targetflag.ne.0) then
+              call mysort2(laneigvects,values,thisdim,order*lanblocknum,etarget)
+           endif
            outvalues(:)=values(1:numout)
            if (printflag.ne.0) then
               OFL; write(mpifileptr,'(A10,1000F19.12)') " ENERIGES ", values(1:numout); CFL
@@ -648,3 +654,36 @@ end subroutine blocklanczos0
 
 
 
+subroutine mysort2(inout, values,n,lda,etarget)
+  implicit none
+  integer,intent(in) :: lda, n
+  DATATYPE, intent(in) :: etarget
+  DATATYPE :: inout(lda,n), out(lda,n), values(lda), newvals(lda)
+  real*8 :: lowval 
+  integer :: taken(lda), order(lda),i,j,whichlowest, flag
+
+  taken=0;  order=-1
+  do j=1,n
+     whichlowest=-1; flag=0;     lowval=1.d+30  !! is not used (see flag)
+     do i=1,n
+        if ( taken(i) .eq. 0 ) then
+           if ((flag.eq.0) .or.(abs(values(i)-etarget) .le. lowval)) then
+              flag=1;              lowval=abs(values(i)-etarget); whichlowest=i
+           endif
+        endif
+     enddo
+     if ((whichlowest.gt.n).or.(whichlowest.lt.1)) then
+        write(*,*) taken;        write(*,*) 
+         write(*,*) "WHICHLOWEST ERROR, J=",j," WHICHLOWEST=", whichlowest;        call mpistop()
+     endif
+     if (taken(whichlowest).ne.0) then
+        write(*,*) "TAKEN ERROR.";        call mpistop()
+     endif
+     taken(whichlowest)=1;     order(j)=whichlowest
+     out(:,j)=inout(:,order(j));     newvals(j)=values(order(j))
+  enddo
+
+  values(1:n)=newvals(1:n)
+  inout(1:n,1:n)=out(1:n,1:n)
+
+end subroutine mysort2

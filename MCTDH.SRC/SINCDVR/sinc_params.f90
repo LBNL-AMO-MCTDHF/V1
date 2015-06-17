@@ -1,6 +1,8 @@
 !! PARAMETERS FILE FOR SINC DVR POLYATOMIC BASIS AND HAMILTONIAN:
 !!            sincparinp namelist input.
 
+#include "Definitions.INC"
+
 module myparams
 implicit none
 
@@ -65,15 +67,8 @@ real*8 :: loadedocc(200)=2d0
 !! XXSNIPXX 
 !! INTERNAL
 
-!!$ integer :: scalingorders(3)=0      !!   put nodes where nuclei are, that's the idea
-!!$ real*8 :: scalingterms(100,3)=0d0  !!   doesn't work well yet
-!!$ integer :: scalingdflag=0
-!!$ real*8 :: scalingdconst(3)=1d0
-!!$ real*8 :: tinv_tol=1d-2
-
-!!real*8 :: ecstheta=0d0             !! X(x)= x + e^(i ecstheta)*sum_j scalingterms(j,1) x^(j-1)
-
-
+integer :: orbtargetflag=0
+DATATYPE :: orbtarget=DATAZERO
 
 integer :: notwoflag=0
   integer :: numspf=-1
