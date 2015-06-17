@@ -933,34 +933,34 @@ end subroutine mult_reducedpot
 
 
 
-subroutine get_rad(outpot)
-  use myparams
-  implicit none
-  integer :: jj,ii,kk
-  DATATYPE :: outpot(totpoints)
-  outpot(:)=0d0
-  ii=1;  kk=totpoints
-  do jj=1,griddim 
-     kk=kk/numpoints(jj)
-     call get_rsq_onedim(outpot,jj,qbox(jj),ii,kk)
-     ii=ii*numpoints(jj)
-  enddo
-  outpot(:)=sqrt(outpot)
-end subroutine get_rad
-
-
-subroutine get_rsq_onedim(out,idim,whichbox,nnn,mmm)
-  use myparams
-  use myprojectmod  
-  implicit none
-  integer :: mmm,idim,nnn,jj,whichbox,ii
-  DATATYPE :: out(nnn,numpoints(idim),mmm)
-  do jj=1,mmm
-     do ii=1,numpoints(idim)
-        out(:,ii,jj)=out(:,ii,jj) + sinepoints(idim)%mat(ii,whichbox)**2
-     enddo
-  enddo
-end subroutine get_rsq_onedim
+!!$subroutine get_rad(outpot)
+!!$  use myparams
+!!$  implicit none
+!!$  integer :: jj,ii,kk
+!!$  DATATYPE :: outpot(totpoints)
+!!$  outpot(:)=0d0
+!!$  ii=1;  kk=totpoints
+!!$  do jj=1,griddim 
+!!$     kk=kk/numpoints(jj)
+!!$     call get_rsq_onedim(outpot,jj,qbox(jj),ii,kk)
+!!$     ii=ii*numpoints(jj)
+!!$  enddo
+!!$  outpot(:)=sqrt(outpot)
+!!$end subroutine get_rad
+!!$
+!!$
+!!$subroutine get_rsq_onedim(out,idim,whichbox,nnn,mmm)
+!!$  use myparams
+!!$  use myprojectmod  
+!!$  implicit none
+!!$  integer :: mmm,idim,nnn,jj,whichbox,ii
+!!$  DATATYPE :: out(nnn,numpoints(idim),mmm)
+!!$  do jj=1,mmm
+!!$     do ii=1,numpoints(idim)
+!!$        out(:,ii,jj)=out(:,ii,jj) + sinepoints(idim)%mat(ii,whichbox)**2
+!!$     enddo
+!!$  enddo
+!!$end subroutine get_rsq_onedim
 
 
 subroutine get_dipoles()
@@ -1052,19 +1052,39 @@ subroutine mult_ke_mask(in,out,howmany,timingdir,notiming)
 end subroutine mult_ke_mask
 
 
+#define NEWxxSCALED
+#ifdef NEWSCALED
 
-!!$!! J^-1/2  F  J^-1  F  J^-1/2 
-!!$!!
-!!$!!    = J^-1/2 ( J^-1/2 F + (d/dx J^-1/2(x)) ) ( F J^-1/2 - (d/dx J^-1/2(x)) ) J^-1/2
-!!$!!
-!!$!!    = J^-1 T J^-1   - J^-1 (d/dx J^-1/2(x))^2  - J^-1 F (d/dx J^-1/2(x)) J^-1/2  + J^-1/2 (d/dx J^-1/2(x)) F J^-1
-!!$!!
-!!$!!    = J^-1 T J^-1  - (1/4) J^-4 (d/dx J(x))^2  + (1/2) J^-1 F (d/dx J(x)) J^-2   - (1/2) J^-2 (d/dx J(x)) F J^-1 
-!!$!! 
-!!$!!    = invjacobian KE invjacobian + scalediag + invjacobian F scaleder - scaleder F invjacobian
-!!$!!
-!!$!!       scalediag(:) = sum_i scaleder**2(:,i) * (-1)
-!!$!!
+!!$  (-0.5) J^-1/2 F J J^-1/2 = 
+!!$  1/2 ( J^-3/2 t J^-1/2 + J^-1/2 t J^-3/2 + J^1/2 C F J^1/2 - J^1/2 F C J^1/2
+
+
+#else
+
+!!$  This derivation uses operator and matrix algebra as needed
+!!$    hoping the DVR approximation justifies going between the two
+!!$  T_ij is the matrix element for the 1D dof x
+!!$    real valued scaled basis function g_i(z) = f(x(z)) with x real
+!!$    are still c-orthonormal by quadrature after being multiplied by J_i^-1/2
+!!$  contour is z(x)  with jacobian J(x) = d/dx z(x)
+!!$  J_i = J(x_i)
+!!$
+!!$  T_ij     = (-0.5) (J_i J_j)^1/2 int dz g'_i(z) g'_j(z)
+!!$  T_ij     = (-0.5) (J_i J_j)^1/2 int dx J(x) J^-1(x) f'_i(x) J^-1(x) f'_j(x)
+!!$
+!!$  insert identity: now matrices, J diagonal
+!!$
+!!$  T approx = (-0.5) * J^-1/2  F  J^-1  F  J^-1/2 
+!!$    approx = (-0.5) J^-1/2 ( J^-1/2 F + C ) ( F J^-1/2 - C ) J^1/2
+!!$  with   C = F J^1/2 - J^1/2 F     = d/dx J^-1/2(x) = -1/2 J^-3/2 d/dx J(x)
+!!$
+!!$  T approx = J^-1 t J^-1 + 0.5 * ( J^-1/2 C F J^-1 - J^-1 F C J^-1/2 - C^2 J^-1)
+!!$  with t the unscaled T.
+!!$
+!!$  T = invjacobian KE invjacobian -0.5 * ( scalediag + invjacobian F scaleder - scaleder F invjacobian )
+!!$
+!!$       scalediag(:) = sum_i scaleder**2(:,i) * (-1)
+!!$       scaleder = C J^-1/2
 !!$
 
 subroutine mult_ke_scaled(in,out,howmany,timingdir,notiming)
@@ -1078,7 +1098,9 @@ subroutine mult_ke_scaled(in,out,howmany,timingdir,notiming)
   DATATYPE :: temp(totpoints,howmany),temp2(totpoints,howmany)   !!AUTOMATIC
 
   do jj=1,howmany
+
      out(:,jj)=in(:,jj) * scalediag(:) * (-0.5d0)
+
   enddo
 
   do jj=1,3
@@ -1095,9 +1117,19 @@ subroutine mult_ke_scaled(in,out,howmany,timingdir,notiming)
 
      call mult_easyderiv(temp(:,:), temp2(:,:),howmany,jj)
 
+if (debugflag.eq.4141.or.debugflag.eq.3939) then
+
      do ii=1,howmany
-        out(:,ii)=out(:,ii) - temp2(:,ii)*scaleder(:,jj)  * (-0.5d0)    !!MINUS
+        out(:,ii)=out(:,ii) - temp2(:,ii)*scaleder(:,jj)  * (-0.5d0)    !!try minus
      enddo
+
+else
+
+     do ii=1,howmany
+        out(:,ii)=out(:,ii) + temp2(:,ii)*scaleder(:,jj)  * (-0.5d0)    !! IT'S PLUS
+     enddo
+
+endif
 
      do ii=1,howmany
         temp(:,ii)=in(:,ii)*scaleder(:,jj)
@@ -1105,14 +1137,26 @@ subroutine mult_ke_scaled(in,out,howmany,timingdir,notiming)
 
      call mult_easyderiv(temp(:,:), temp2(:,:),howmany,jj)
 
+if (debugflag.eq.4141.or.debugflag.eq.3939) then
+
      do ii=1,howmany
-        out(:,ii)=out(:,ii) + temp2(:,ii)*invjacobian(:,jj) * (-0.5d0)   !!PLUS
+        out(:,ii)=out(:,ii) + temp2(:,ii)*invjacobian(:,jj) * (-0.5d0)   !! try plus
      enddo
+
+else
+
+     do ii=1,howmany
+        out(:,ii)=out(:,ii) - temp2(:,ii)*invjacobian(:,jj) * (-0.5d0)   !! IT'S MINUS
+     enddo
+
+endif
 
   enddo
 
 end subroutine mult_ke_scaled
 
+
+#endif
 
 subroutine mult_ke000(in, out,howmany,timingdir,notiming)
   use myparams
