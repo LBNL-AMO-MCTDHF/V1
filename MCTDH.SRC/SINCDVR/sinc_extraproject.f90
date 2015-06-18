@@ -26,7 +26,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        toothnbig, toothnsmall, orbparflag,num_skip_orbs,orb_skip,orblancheckmod,zke_paropt,&
        capflag,capstrength,capstart,cappower,fft_mpi_inplaceflag, fft_ct_paropt,fft_batchdim,&
        fft_circbatchdim,maxcap,mincap,capmode, maskflag, masknumpoints,&
-       scalingflag,scalingdistance,smoothness,scalingtheta,scalingorder,tinv_tol,&
+       scalingflag,scalingdistance,smoothness,scalingtheta,scalingstretch,tinv_tol,&
        orbparlevel, ivoflag, loadedocc, orbtargetflag,orbtarget,&
        toepflag  !! toepflag deprecated
 

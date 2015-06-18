@@ -1,0 +1,270 @@
+Wed Jun 17 18:42:01 PDT 2015
+Wed Jun 17 18:42:01 PDT 2015
+Wed Jun 17 18:42:01 PDT 2015
+Wed Jun 17 18:42:01 PDT 2015
+Wed Jun 17 18:42:01 PDT 2015
+Wed Jun 17 18:42:01 PDT 2015
+Wed Jun 17 18:42:01 PDT 2015
+Wed Jun 17 18:42:01 PDT 2015
+Wed Jun 17 18:42:01 PDT 2015
+Wed Jun 17 18:42:01 PDT 2015
+Wed Jun 17 18:42:01 PDT 2015
+Wed Jun 17 18:42:01 PDT 2015
+Wed Jun 17 18:42:01 PDT 2015
+Wed Jun 17 18:42:01 PDT 2015
+Wed Jun 17 18:42:01 PDT 2015
+Wed Jun 17 18:42:01 PDT 2015
+ 
+  ****************************************************************************
+  **********************  BEGIN LBNL-AMO-MCTDHF ******************************
+  ****************************************************************************
+ 
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory
+      D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, 
+      B Abeln, X Li . . .
+                              VERSION 1 
+        Copyright 2015 the regents of the University of California
+ 
+                This is CHMCTDH: HERM-normed ECS version.
+ 
+                PROCESSOR            1  OF           16
+ 
+ Inpfile is Input.Inp.States  
+ resetting toothnbig          50          63
+ 
+  *************************  COMMAND LINE OPTIONS  ***************************
+ 
+ Reading 
+ Input.Inp.States                                                               
+                                                                                
+                                           
+  ****************************************************************************
+ 
+ Enforcing CMF defaults for Verlet or EXPO.
+ 
+  ****************************************************************************
+ *****************************************************************************
+ 
+ Number of states in propagation=           1
+ 
+  Parameters: electronic
+ 
+                    Number of electrons     1
+ Nuclear KE flag (nonuc_checkflag):         1
+ 
+ ********  SINC DVR PARAMS ******** 
+ griddim,spacing           3  0.400000000000000     
+ numpoints          64          16          16
+ numcenters           0
+ orblanorder,orblanthresh        1000  1.000000000000000E-010
+ notwoflag           0
+ nonucrepflag           0
+ toothnbig, toothnsmall          63          10
+ orbparflag, orbparlevel T           2
+ zke_paropt           1
+ fft_mpi_inplaceflag           1
+ fft_batchdim           1
+ fft_circbatchdim           1
+   -----  
+ NBOX            1           4           4
+ totpoints       16384
+ **********************************
+ 
+ ************************   Parameters: config/spf    ************************  
+  
+ 
+ Doing full CI: numshells=1.  Shells:
+ Shell            1
+   1a    1b 
+  Final shell occupancy level vexcite=         999
+ 
+    Number of unfrozen spfs:      1
+    Number of frozen spfs:        0
+            Spfs start in m=     0
+ 
+ Configurations will be restricted to spin projection           1 /2
+  Configurations will be restricted to spin            1
+ 
+ ***********************    Initial state      ***********************   
+ 
+ Spfs will be one-electron eigfuncts.
+ 
+ Sfp Quad flag is OFF.
+ Improvednatflag is ON.
+ 
+ Avector Quad flag is OFF.
+ Avector will be obtained from diagonalization.
+ 
+ ***********************    Parameters: propagation    ***********************  
+  
+ 
+  PAR_TIMESTEP IS   0.100000000000000       LITTLESTEPS IS            1
+ 
+ Spfs will be held CONSTANT. (except for constraint)
+ 
+ Calculation will be stopped with threshold   1.000000000000000E-004 
+ ; timestep is   0.100000000000000     
+ 
+ 
+ *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   ***
+ ****  
+ 
+     Using nonsparse configuration routines.
+  Using EXPONENTIAL integration.
+     Expotol    =  1.000000000000000E-009
+     Maxexpodim=         300
+     Jacprojorth=           0
+     Jacsymflag=           0
+     Jacunitflag=           0
+ 
+ Density matrix regularized with denreg= 0.100E-29
+ 
+ 
+ ****************************************************************************
+ 
+ Autosteps is           10  Autosize is        40001  Numpropsteps is 
+      400000
+ Fluxsteps is            1  Fluxtimestep is   0.100000000000000     
+ 
+ *****************************************************************************
+ 
+ 
+ 
+ Go fast_newconfiglist
+ UPPER/LOWER
+           1           1
+ 
+ 
+ FASTNEWCONFIG: NUMBER OF CONFIGURATIONS            1
+ 
+ NUMSPINBLOCKS, MAXSPINBLOCKSIZE FASTCONFIG           1           1
+ Go fast_newconfiglist, getting configurations
+      ...Done fast_newconfiglist
+ 
+ BOTWALKS /TOPWALKS           1
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           1           1
+ 
+ Counting walks. Singles
+ Counting walks. Doubles
+ 
+ Maximum number of
+            single walks=            1
+            double walks=            0
+   TOTAL walks:          16 maxdoublewalks*numconfig           0
+ 
+ Allocating singlewalks
+ Allocating doublewalks
+      ..done walkalloc.
+ No savewalks.BIN found.  Calculating walks.  Singles...
+ Calculating walks.  Doubles...
+ Go spinwalks. 
+ Doing spin projector.
+ Maximum number of spin walks=            0
+ Avg number of spin walks=   0.000000000000000E+000
+ Calculating spin walks.
+ Numspinsets is            1   maxspinset size is            1
+ Getting SPARSE spinset projector.  Numspinsets is            1 
+  maxspinsetsize is            1
+ Getting spin set projectors...
+ ...done.  Eliminated            0  sets with total rank            0
+ Number of spin sets is now            1
+ Total # of spinvects with S^2 =   0.750000000000000       is            1 
+  out of            1
+ TOTAL (all processors) rank           1  out of            1
+      Spin DF rank is            1    all processors            1
+    This proc:  spinstart :            1
+ 
+ Calling init_project                262144
+ Getting scaling...
+     ....Ok got scaling.
+ GO GET_3DPOISSON. calling getinverse.           1
+      ...getting potential...
+ filling in....
+     ...filled.
+     ... done get_3dpoisson.
+     ... go scaled option ...
+     ... done scaledoption.
+ CALL BLOCK LAN FOR ORBS,            1  VECTORS
+ FIRST ALPHA  (19.6797006595310,-1.34679076699011)
+ FIRST ERR 0.2E+03
+ MAX ERROR :    210.403807233341       1.000000000000000E-010
+ ENERIGES      1.010072273689    -0.638975289946
+ ENERIGES      1.096238263146    -0.429686391811
+ ENERIGES      1.160425626763    -0.016864218642
+ ENERIGES      1.158959641388    -0.011098865129
+ ENERIGES      1.158990234508    -0.011085976655
+ ENERIGES      1.158989508488    -0.011086045291
+ ENERIGES      1.158989508070    -0.011086047596
+ ENERIGES      1.158989508106    -0.011086047589
+ ENERIGES      1.158989508106    -0.011086047589
+    checking convergence. 0.11056E-12 0.10000E-10       900
+   ERRORS  0.2E-14
+ Converged.   1.804112415015879E-015  1.000000000000000E-010
+ BL CALLED. ENERGIES: 
+           1 (1.15898950810614,-1.108604758886732E-002)
+ 
+    ....Called init_project.
+ Not enough avectors loaded! will diagonalize.
+ Construct big matrix:             1
+  Call spin eig            1
+   -- Nonsparse eigenvals --
+     (1.15898950810612,-1.108604758887452E-002)
+ REPLACING SPFS - DENMAT EIGS
+         0.1000000000E+01
+ 
+ IN PROP: VECTOR NORM  (1.00000000000000,0.000000000000000E+000)
+          ENERGY  (1.15898950810612,-1.108604758887452E-002)
+ REPLACING SPFS - DENMAT EIGS
+         0.1000000000E+01
+ 
+T=          0.10000  Energy:   0.1158989508E+01 -0.1108604759E-01    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.20E-11  0.10E-03  AVECTOR   0.10E+05  0.10E+01
+             Orbitals Converged, Avector not necessarily converged 
+ REPLACING SPFS - DENMAT EIGS
+         0.1000000000E+01
+ 
+T=          0.20500  Energy:   0.1158989508E+01 -0.1108604759E-01    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.20E-11  0.10E-03  AVECTOR   0.00E+00  0.10E+01
+ 
+    ***  CONVERGED *** 
+ 
+          1.158989508106     -0.011086047589      0.000000000000      0.000000000000
+    ***   
+ 
+    ...end prop...
+    ...cleanup...
+Wed Jun 17 18:44:51 PDT 2015
+Wed Jun 17 18:44:51 PDT 2015
+Wed Jun 17 18:44:51 PDT 2015
+Wed Jun 17 18:44:51 PDT 2015
+Wed Jun 17 18:44:51 PDT 2015
+Wed Jun 17 18:44:51 PDT 2015
+Wed Jun 17 18:44:51 PDT 2015
+Wed Jun 17 18:44:51 PDT 2015
+Wed Jun 17 18:44:51 PDT 2015
+Wed Jun 17 18:44:51 PDT 2015
+Wed Jun 17 18:44:51 PDT 2015
+Wed Jun 17 18:44:51 PDT 2015
+Wed Jun 17 18:44:51 PDT 2015
+Wed Jun 17 18:44:51 PDT 2015
+Wed Jun 17 18:44:51 PDT 2015
+Wed Jun 17 18:44:51 PDT 2015
+    ...END MCTDHF
+ MCTDHF STOP!

@@ -1,0 +1,503 @@
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:51 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+Wed Jun 17 19:35:52 PDT 2015
+ 
+  ****************************************************************************
+  **********************  BEGIN LBNL-AMO-MCTDHF ******************************
+  ****************************************************************************
+ 
+    Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
+      for ultrafast electronic and nuclear dynamics in strong laser fields
+    AMO Theory Group, Lawrence Berkeley Laboratory
+      D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, 
+      B Abeln, X Li . . .
+                              VERSION 1 
+        Copyright 2015 the regents of the University of California
+ 
+                This is CHMCTDH: HERM-normed ECS version.
+ 
+                PROCESSOR            1  OF          100
+ 
+ Inpfile is Input.Inp.States  
+ resetting toothnbig          50         199
+ 
+  *************************  COMMAND LINE OPTIONS  ***************************
+ 
+ Reading 
+ Input.Inp.States                                                               
+                                                                                
+                                           
+  ****************************************************************************
+ 
+ Enforcing CMF defaults for Verlet or EXPO.
+ 
+  ****************************************************************************
+ *****************************************************************************
+ 
+ Number of states in propagation=           1
+ 
+  Parameters: electronic
+ 
+                    Number of electrons     1
+ Nuclear KE flag (nonuc_checkflag):         1
+ 
+ ********  SINC DVR PARAMS ******** 
+ griddim,spacing           3  0.130000000000000     
+ numpoints         200          20          20
+ numcenters           0
+ orblanorder,orblanthresh        1000  1.000000000000000E-010
+ notwoflag           0
+ nonucrepflag           0
+ toothnbig, toothnsmall         199          10
+ orbparflag, orbparlevel T           2
+ zke_paropt           1
+ fft_mpi_inplaceflag           1
+ fft_batchdim           1
+ fft_circbatchdim           1
+   -----  
+ NBOX            1          10          10
+ totpoints       80000
+ **********************************
+ 
+ ************************   Parameters: config/spf    ************************  
+  
+ 
+ Doing full CI: numshells=1.  Shells:
+ Shell            1
+   1a    1b 
+  Final shell occupancy level vexcite=         999
+ 
+    Number of unfrozen spfs:      1
+    Number of frozen spfs:        0
+            Spfs start in m=     0
+ 
+ Configurations will be restricted to spin projection           1 /2
+  Configurations will be restricted to spin            1
+ 
+ ***********************    Initial state      ***********************   
+ 
+ Spfs will be one-electron eigfuncts.
+ 
+ Sfp Quad flag is OFF.
+ Improvednatflag is ON.
+ 
+ Avector Quad flag is OFF.
+ Avector will be obtained from diagonalization.
+ 
+ ***********************    Parameters: propagation    ***********************  
+  
+ 
+  PAR_TIMESTEP IS   0.100000000000000       LITTLESTEPS IS            1
+ 
+ Spfs will be held CONSTANT. (except for constraint)
+ 
+ Calculation will be stopped with threshold   1.000000000000000E-004 
+ ; timestep is   0.100000000000000     
+ 
+ 
+ *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   ***
+ ****  
+ 
+     Using nonsparse configuration routines.
+  Using EXPONENTIAL integration.
+     Expotol    =  1.000000000000000E-009
+     Maxexpodim=         300
+     Jacprojorth=           0
+     Jacsymflag=           0
+     Jacunitflag=           0
+ 
+ Density matrix regularized with denreg= 0.100E-29
+ 
+ 
+ ****************************************************************************
+ 
+ Autosteps is           10  Autosize is        40001  Numpropsteps is 
+      400000
+ Fluxsteps is            1  Fluxtimestep is   0.100000000000000     
+ 
+ *****************************************************************************
+ 
+ 
+ 
+ Go fast_newconfiglist
+ UPPER/LOWER
+           1           1
+ 
+ 
+ FASTNEWCONFIG: NUMBER OF CONFIGURATIONS            1
+ 
+ NUMSPINBLOCKS, MAXSPINBLOCKSIZE FASTCONFIG           1           1
+ Go fast_newconfiglist, getting configurations
+      ...Done fast_newconfiglist
+ 
+ BOTWALKS /TOPWALKS           1
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           0           0
+           1           1           1
+ 
+ Counting walks. Singles
+ Counting walks. Doubles
+ 
+ Maximum number of
+            single walks=            1
+            double walks=            0
+   TOTAL walks:         100 maxdoublewalks*numconfig           0
+ 
+ Allocating singlewalks
+ Allocating doublewalks
+      ..done walkalloc.
+ No savewalks.BIN found.  Calculating walks.  Singles...
+ Calculating walks.  Doubles...
+ Go spinwalks. 
+ Doing spin projector.
+ Maximum number of spin walks=            0
+ Avg number of spin walks=   0.000000000000000E+000
+ Calculating spin walks.
+ Numspinsets is            1   maxspinset size is            1
+ Getting SPARSE spinset projector.  Numspinsets is            1 
+  maxspinsetsize is            1
+ Getting spin set projectors...
+ ...done.  Eliminated            0  sets with total rank            0
+ Number of spin sets is now            1
+ Total # of spinvects with S^2 =   0.750000000000000       is            1 
+  out of            1
+ TOTAL (all processors) rank           1  out of            1
+      Spin DF rank is            1    all processors            1
+    This proc:  spinstart :            1
+ 
+ Calling init_project               1280000
+ Getting scaling...
+     ....Ok got scaling.
+ GO GET_3DPOISSON. calling getinverse.           1
+      ...getting potential...
+ filling in....
+     ...filled.
+     ... done get_3dpoisson.
+     ... go scaled option ...
+     ... done scaledoption.
+ CALL BLOCK LAN FOR ORBS,            1  VECTORS
+ FIRST ALPHA  (182.752493520615,-12.7394601933898)
+ FIRST ERR 0.2E+05
+ MAX ERROR :    18567.6483161873       1.000000000000000E-010
+ ENERIGES      0.406219039056    -0.281321280275
+ ENERIGES      1.002972891738    -0.666360486959
+ ENERIGES      0.829161221896    -0.518634454073
+ ENERIGES      0.725509435950    -0.449380501939
+ ENERIGES      0.989553968620    -0.606368609833
+ ENERIGES      0.949111487191    -0.496619356577
+ ENERIGES      1.021395897548    -0.545411155973
+ ENERIGES      1.017139348296    -0.496623441299
+ ENERIGES      1.142345355710    -0.409204140876
+ ENERIGES      1.171586428444    -0.092947874716
+    checking convergence. 0.31761E+00 0.10000E-10      1000
+   ERRORS  0.3E+01
+ Not converged   3.36136985565060       1.000000000000000E-010
+   Not converged. restarting.   3.36136985565060       1.000000000000000E-010
+ FIRST ALPHA  (1.17158642844432,-9.294787471634269E-002)
+ FIRST ERR 0.3E+01
+ MAX ERROR :    3.36136985565060       1.000000000000000E-010
+ ENERIGES      1.169821095472    -0.034535335237
+ ENERIGES      1.160340402923    -0.015942444378
+ ENERIGES      1.159117596903    -0.011545653229
+ ENERIGES      1.159028391960    -0.011299495041
+ ENERIGES      1.159010854974    -0.011099962305
+ ENERIGES      1.158989281848    -0.011082309289
+ ENERIGES      1.158994581797    -0.011087244452
+ ENERIGES      1.158991066122    -0.011088336342
+ ENERIGES      1.158989820395    -0.011086488891
+ ENERIGES      1.158989762851    -0.011086010371
+    checking convergence. 0.48197E-06 0.10000E-10      1000
+   ERRORS  0.2E-06
+ Not converged  2.037519795021625E-007  1.000000000000000E-010
+   Not converged. restarting.  2.037519795021625E-007  1.000000000000000E-010
+ FIRST ALPHA  (1.15898976285113,-1.108601037054825E-002)
+ FIRST ERR 0.2E-06
+ MAX ERROR :   2.037519771067545E-007  1.000000000000000E-010
+ ENERIGES      1.158990012460    -0.011085998968
+ ENERIGES      1.158989972253    -0.011086104691
+ ENERIGES      1.158989967101    -0.011086087582
+ ENERIGES      1.158989965587    -0.011086086614
+ ENERIGES      1.158989963862    -0.011086087515
+ ENERIGES      1.158989963196    -0.011086085036
+ ENERIGES      1.158989963315    -0.011086085762
+ ENERIGES      1.158989963353    -0.011086085483
+ ENERIGES      1.158989963387    -0.011086085423
+ ENERIGES      1.158989963429    -0.011086085432
+    checking convergence. 0.42888E-10 0.10000E-10      1000
+   ERRORS  0.1E-10
+ Converged.   1.024417708035484E-011  1.000000000000000E-010
+ BL CALLED. ENERGIES: 
+           1 (1.15898996342893,-1.108608543200886E-002)
+ 
+    ....Called init_project.
+ Not enough avectors loaded! will diagonalize.
+ Construct big matrix:             1
+  Call spin eig            1
+   -- Nonsparse eigenvals --
+     (1.15898996342866,-1.108608543209753E-002)
+ REPLACING SPFS - DENMAT EIGS
+         0.1000000000E+01
+ 
+ IN PROP: VECTOR NORM  (1.00000000000000,0.000000000000000E+000)
+          ENERGY  (1.15898996342866,-1.108608543209753E-002)
+ REPLACING SPFS - DENMAT EIGS
+         0.1000000000E+01
+ 
+T=          0.10000  Energy:   0.1158989963E+01 -0.1108608543E-01    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.45E-08  0.10E-03  AVECTOR   0.10E+05  0.10E+01
+             Orbitals Converged, Avector not necessarily converged 
+ REPLACING SPFS - DENMAT EIGS
+         0.1000000000E+01
+ 
+T=          0.20500  Energy:   0.1158989963E+01 -0.1108608543E-01    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.45E-08  0.10E-03  AVECTOR   0.00E+00  0.10E+01
+ 
+    ***  CONVERGED *** 
+ 
+          1.158989963429     -0.011086085432      0.000000000000      0.000000000000
+    ***   
+ 
+    ...end prop...
+    ...cleanup...
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+Wed Jun 17 20:36:42 PDT 2015
+    ...END MCTDHF
+ MCTDHF STOP!

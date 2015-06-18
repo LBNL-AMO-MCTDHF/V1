@@ -622,6 +622,11 @@ recursive subroutine  op_tinv(twoeden03,twoereduced,allsize,circsize,&
   DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
   DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
 
+  if (debugflag.eq.4040.or.debugflag.eq.4242.or.debugflag.eq.4343) then
+     twoereduced=0d0
+     return
+  endif
+
   if (scalingflag.eq.0) then
      call op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
      times1,times3,times4,times5,fttimes)
@@ -638,18 +643,18 @@ end subroutine op_tinv
 !! A = twoeden03
 !! B = tweoreduced
 
-!! Solve A = S B as follows
+!! Solve den = T-twiddle reduced as follows
 !!
-!! Solve for TB
+!! Solve for T reduced
 !!
-!!  A = (S T^-1) (TB)
-!!    = O (TB)
+!!  den = (T-twiddle T^-1) (T reduced)
+!!      = Op (T reduced)
 !!
-!! Then B = T^-1 (TB)
+!! Then reduced = T^-1 (T reduced)
 !!
-!! O = S T^-1 = T-twiddle T^-1 = 1 + (T-twiddle - T) T^-1
+!! Op = T-twiddle T^-1 = 1 + (T-twiddle - T) T^-1
 !!
-!! O is scaled_operate_sub
+!! Op is scaled_operate_sub
 !!
 
 
@@ -1052,41 +1057,6 @@ subroutine mult_ke_mask(in,out,howmany,timingdir,notiming)
 end subroutine mult_ke_mask
 
 
-#define NEWxxSCALED
-#ifdef NEWSCALED
-
-!!$  (-0.5) J^-1/2 F J J^-1/2 = 
-!!$  1/2 ( J^-3/2 t J^-1/2 + J^-1/2 t J^-3/2 + J^1/2 C F J^1/2 - J^1/2 F C J^1/2
-
-
-#else
-
-!!$  This derivation uses operator and matrix algebra as needed
-!!$    hoping the DVR approximation justifies going between the two
-!!$  T_ij is the matrix element for the 1D dof x
-!!$    real valued scaled basis function g_i(z) = f(x(z)) with x real
-!!$    are still c-orthonormal by quadrature after being multiplied by J_i^-1/2
-!!$  contour is z(x)  with jacobian J(x) = d/dx z(x)
-!!$  J_i = J(x_i)
-!!$
-!!$  T_ij     = (-0.5) (J_i J_j)^1/2 int dz g'_i(z) g'_j(z)
-!!$  T_ij     = (-0.5) (J_i J_j)^1/2 int dx J(x) J^-1(x) f'_i(x) J^-1(x) f'_j(x)
-!!$
-!!$  insert identity: now matrices, J diagonal
-!!$
-!!$  T approx = (-0.5) * J^-1/2  F  J^-1  F  J^-1/2 
-!!$    approx = (-0.5) J^-1/2 ( J^-1/2 F + C ) ( F J^-1/2 - C ) J^1/2
-!!$  with   C = F J^1/2 - J^1/2 F     = d/dx J^-1/2(x) = -1/2 J^-3/2 d/dx J(x)
-!!$
-!!$  T approx = J^-1 t J^-1 + 0.5 * ( J^-1/2 C F J^-1 - J^-1 F C J^-1/2 - C^2 J^-1)
-!!$  with t the unscaled T.
-!!$
-!!$  T = invjacobian KE invjacobian -0.5 * ( scalediag + invjacobian F scaleder - scaleder F invjacobian )
-!!$
-!!$       scalediag(:) = sum_i scaleder**2(:,i) * (-1)
-!!$       scaleder = C J^-1/2
-!!$
-
 subroutine mult_ke_scaled(in,out,howmany,timingdir,notiming)
   use myparams
   use myprojectmod
@@ -1098,9 +1068,7 @@ subroutine mult_ke_scaled(in,out,howmany,timingdir,notiming)
   DATATYPE :: temp(totpoints,howmany),temp2(totpoints,howmany)   !!AUTOMATIC
 
   do jj=1,howmany
-
-     out(:,jj)=in(:,jj) * scalediag(:) * (-0.5d0)
-
+     out(:,jj)=in(:,jj) * scalediag(:) 
   enddo
 
   do jj=1,3
@@ -1114,49 +1082,11 @@ subroutine mult_ke_scaled(in,out,howmany,timingdir,notiming)
      do ii=1,howmany
         out(:,ii)=out(:,ii)+temp2(:,ii)*invjacobian(:,jj)
      enddo
-
-     call mult_easyderiv(temp(:,:), temp2(:,:),howmany,jj)
-
-if (debugflag.eq.4141.or.debugflag.eq.3939) then
-
-     do ii=1,howmany
-        out(:,ii)=out(:,ii) - temp2(:,ii)*scaleder(:,jj)  * (-0.5d0)    !!try minus
-     enddo
-
-else
-
-     do ii=1,howmany
-        out(:,ii)=out(:,ii) + temp2(:,ii)*scaleder(:,jj)  * (-0.5d0)    !! IT'S PLUS
-     enddo
-
-endif
-
-     do ii=1,howmany
-        temp(:,ii)=in(:,ii)*scaleder(:,jj)
-     enddo
-
-     call mult_easyderiv(temp(:,:), temp2(:,:),howmany,jj)
-
-if (debugflag.eq.4141.or.debugflag.eq.3939) then
-
-     do ii=1,howmany
-        out(:,ii)=out(:,ii) + temp2(:,ii)*invjacobian(:,jj) * (-0.5d0)   !! try plus
-     enddo
-
-else
-
-     do ii=1,howmany
-        out(:,ii)=out(:,ii) - temp2(:,ii)*invjacobian(:,jj) * (-0.5d0)   !! IT'S MINUS
-     enddo
-
-endif
-
   enddo
 
 end subroutine mult_ke_scaled
 
 
-#endif
 
 subroutine mult_ke000(in, out,howmany,timingdir,notiming)
   use myparams

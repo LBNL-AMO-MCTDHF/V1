@@ -3,6 +3,167 @@
 #include "Definitions.INC"
 
 
+function ffunct(xval)
+  use myparams
+  implicit none
+  real*8, intent(in) :: xval
+  DATATYPE :: ffunct, fac
+  real*8 :: fscaled, xx
+
+  fac=exp((0d0,1d0)*scalingtheta)*scalingstretch
+
+  if (xval.le.(-1)*(scalingdistance+smoothness)) then
+     ffunct=xval + (fac-1)*(xval+scalingdistance+smoothness/2d0)
+  else if (xval.ge.scalingdistance+smoothness) then
+     ffunct=xval + (fac-1)*(xval-scalingdistance-smoothness/2d0)
+  else if (abs(xval).le.scalingdistance) then
+     ffunct=xval
+  else if (xval.ge.scalingdistance) then
+     xx = (xval-scalingdistance)/smoothness
+     ffunct = xval + (fac-1) * smoothness * fscaled(xx)
+  else if (xval.le.(-1)*scalingdistance) then
+     xx = (-xval-scalingdistance)/smoothness
+     ffunct = xval - (fac-1) * smoothness * fscaled(xx)
+  else
+     print *, "OOGABLAH0"; stop
+  endif
+end function ffunct
+
+
+function jfunct(xval)
+  use myparams
+  implicit none
+  real*8, intent(in) :: xval
+  DATATYPE :: jfunct, fac
+  real*8 :: jscaled, xx
+
+  fac=exp((0d0,1d0)*scalingtheta)*scalingstretch
+
+  if (xval.le.(-1)*(scalingdistance+smoothness)) then
+     jfunct=fac
+  else if (xval.ge.scalingdistance+smoothness) then
+     jfunct=fac
+  else if (abs(xval).le.scalingdistance) then
+     jfunct=1d0
+  else if (xval.ge.scalingdistance) then
+     xx = (xval-scalingdistance)/smoothness
+     jfunct = 1d0 + (fac-1d0) * jscaled(xx) 
+  else if (xval.le.(-1)*scalingdistance) then
+     xx = (-xval-scalingdistance)/smoothness
+     jfunct = 1d0 + (fac-1d0) * jscaled(xx) 
+  else
+     print *, "OOGABLAHd"; stop
+  endif
+end function jfunct
+
+
+function djfunct(xval)
+  use myparams
+  implicit none
+  real*8, intent(in) :: xval
+  DATATYPE :: djfunct, fac
+  real*8 :: djscaled, xx
+
+  fac=exp((0d0,1d0)*scalingtheta)*scalingstretch
+
+  if (xval.le.(-1)*(scalingdistance+smoothness)) then
+     djfunct=0
+  else if (xval.ge.scalingdistance+smoothness) then
+     djfunct=0
+  else if (abs(xval).le.scalingdistance) then
+     djfunct=0
+  else if (xval.ge.scalingdistance) then
+     xx = (xval-scalingdistance)/smoothness
+     djfunct = (fac-1d0) * djscaled(xx) / smoothness
+  else if (xval.le.(-1)*scalingdistance) then
+     xx = (-xval-scalingdistance)/smoothness
+     djfunct = (1d0-fac) * djscaled(xx) / smoothness
+  else
+     print *, "OOGABLAHd"; stop
+  endif
+end function djfunct
+
+
+function ddjfunct(xval)
+  use myparams
+  implicit none
+  real*8, intent(in) :: xval
+  DATATYPE :: ddjfunct, fac
+  real*8 :: ddjscaled, xx
+
+  fac=exp((0d0,1d0)*scalingtheta)*scalingstretch
+
+  if (xval.le.(-1)*(scalingdistance+smoothness)) then
+     ddjfunct=0
+  else if (xval.ge.scalingdistance+smoothness) then
+     ddjfunct=0
+  else if (abs(xval).le.scalingdistance) then
+     ddjfunct=0
+  else if (xval.ge.scalingdistance) then
+     xx = (xval-scalingdistance)/smoothness
+     ddjfunct = (fac-1d0) * ddjscaled(xx) / smoothness**2
+  else if (xval.le.(-1)*scalingdistance) then
+     xx = (-xval-scalingdistance)/smoothness
+     ddjfunct = (fac-1d0) * ddjscaled(xx) / smoothness**2
+  else
+     print *, "OOGABLAHd"; stop
+  endif
+end function ddjfunct
+
+!! f happens to go from 0 to 1/2 on (0,1)
+
+function fscaled(xval)
+  implicit none
+  real*8 :: fscaled,xval,pixval
+  real*8, parameter :: pi = 3.14159265358979323844d0 !!TEMP
+
+  if (xval.lt.0d0.or.xval.gt.1d0) then
+     print *, "SCALEDERR F",xval; stop
+  endif
+  pixval=pi*xval
+  fscaled = (-1d0)/12d0/pi * sin(pixval)**3 - 1d0/2d0/pi * sin(pixval) + xval/2d0
+end function fscaled
+
+function jscaled(xval)
+  implicit none
+  real*8 :: jscaled,xval,pixval
+  real*8, parameter :: pi = 3.14159265358979323844d0 !!TEMP
+
+  if (xval.lt.0d0.or.xval.gt.1d0) then
+     print *, "SCALEDERR F",xval; stop
+  endif
+  pixval=pi*xval
+  jscaled = 1d0/4d0 * cos(pixval)**3 - 3d0/4d0 * cos(pixval) + 0.5d0
+end function jscaled
+
+function djscaled(xval)
+  implicit none
+  real*8 :: djscaled,xval,pixval
+  real*8, parameter :: pi = 3.14159265358979323844d0 !!TEMP
+
+  if (xval.lt.0d0.or.xval.gt.1d0) then
+     print *, "SCALEDERR F",xval; stop
+  endif
+  pixval=pi*xval
+  djscaled = 0.75d0 * pi * sin(pixval)**3 
+
+end function djscaled
+
+function ddjscaled(xval)
+  implicit none
+  real*8 :: ddjscaled,xval,pixval
+  real*8, parameter :: pi = 3.14159265358979323844d0 !!TEMP
+
+  if (xval.lt.0d0.or.xval.gt.1d0) then
+     print *, "SCALEDERR F",xval; stop
+  endif
+  pixval=pi*xval
+  ddjscaled = 9d0/4d0*pi**2 * sin(pixval)**2 * cos(pixval)
+end function ddjscaled
+
+
+
+
 subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
      bondpoints,bondweights,elecweights,elecradii,notused )
   use myparams
@@ -22,16 +183,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   character (len=2) :: th(4)
 
 !! smooth exterior scaling
-  DATATYPE :: scalefunction(totpoints,3),scaleweights(totpoints), djacobian(totpoints,3)
-  real*8 :: exteriorcoord(totpoints,3)
-  DATATYPE :: fac
-
-!!$ smooth, not exterior scaling
-!!$#ifndef REALGO
-!!$  DATATYPE :: scaledenom(totpoints,3),scaledenomderiv(totpoints,3),scaledenomsecderiv(totpoints,3),&
-!!$       djacobian(totpoints,3), new_jacobian(totpoints,3),new_djacobian(totpoints,3),& !! AUTOMATIC
-!!$       scalefunction(totpoints,3),scaleweights(totpoints)
-!!$#endif
+  DATATYPE :: scalefunction(totpoints,3), djacobian(totpoints,3), ddjacobian(totpoints,3)
+  DATATYPE :: ffunct, djfunct, ddjfunct, jfunct
 
   if (fft_mpi_inplaceflag.eq.0) then
      call ct_init(fft_ct_paropt)
@@ -75,68 +228,58 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   call get_dipoles()
 
-  fac=1d0
 
   if (scalingflag.ne.0) then
-     fac=exp((0d0,1d0)*scalingtheta) !! ok imp conv mctdhf
 
-
-     if (mod(scalingorder,2).eq.0) then
-        OFLWR "Only odd scaling order supported right now", scalingorder; CFLST
+#ifdef TEMPSCALINGTEST
+     OFLWR "#Testing scaling..."; CFL
+     if (myrank.eq.1) then
+        do i=-100,100
+           rsum=i/10d0
+           write(*,'(100F12.5)') rsum, ffunct(rsum), jfunct(rsum), djfunct(rsum), ddjfunct(rsum)
+        enddo
      endif
+     call mpibarrier()
+     OFLWR "#Done testing scaling"; CFLST
+#endif
 
-     if (scalingorder.lt.3) then
-        OFLWR "need scalingorder .ge. 3", scalingorder; CFLST
-     endif
+     OFLWR "Getting scaling..."; CFL
 
-!! exterior smooth scaling
-!! X(x,y,z) = x + scalefunction(x,1) etc.
-
-     exteriorcoord(:,:)=&
-          max(real(dipoles(:,:),8)-scalingdistance,0d0) + &
-          min(real(dipoles(:,:),8)+scalingdistance,0d0)
-
-     scalefunction(:,:) = fac * &
-          exteriorcoord(:,:)**scalingorder / smoothness**scalingorder*scalingdistance
-
-     jacobian(:,:) = 1 + fac * scalingorder * &
-          exteriorcoord(:,:)**(scalingorder-1) / smoothness**scalingorder*scalingdistance
-
-     djacobian(:,:) = fac * scalingorder * (scalingorder-1) * &
-          exteriorcoord(:,:)**(scalingorder-2) / smoothness**scalingorder*scalingdistance
-
-     invjacobian(:,:)=1d0/jacobian(:,:)
-     invsqrtjacobian(:,:)=1d0/sqrt(jacobian(:,:))
-     scaleder2(:,:)=1d0*invsqrtjacobian(:,:)**3 * djacobian(:,:)
-
-     scaleweights(:)=jacobian(:,1)*jacobian(:,2)*jacobian(:,3)
-
-!!in case angle gt 60 use next formula     invsqrtscaleweights(:)=sqrt(1d0/scaleweights(:))
-
-     invsqrtscaleweights(:)=invsqrtjacobian(:,1)*invsqrtjacobian(:,2)*invsqrtjacobian(:,3)
-
-     scaleder(:,:)=0.5d0 * invjacobian(:,:)**2 * djacobian(:,:)
-     scalediag(:)=0d0
-     do jj=1,3
-        scalediag(:)=scalediag(:) - scaleder(:,jj)**2    !! MINUS  (negative 1 goes here, add scalediag to ke mult)
+     do idim=1,3
+        do i=1,totpoints
+           scalefunction(i,idim)=ffunct(real(dipoles(i,idim),8))
+           jacobian(i,idim)=jfunct(real(dipoles(i,idim),8))
+           djacobian(i,idim)=djfunct(real(dipoles(i,idim),8))
+           ddjacobian(i,idim)=ddjfunct(real(dipoles(i,idim),8))
+        enddo
      enddo
 
-     elecweights(:)=elecweights(:)*scaleweights(:)
+     invjacobian(:,:)=1d0/jacobian(:,:)
 
-     dipoles(:,:)=dipoles(:,:)+exteriorcoord(:,:)
+     invsqrtscaleweights(:) = sqrt(invjacobian(:,1)) * sqrt(invjacobian(:,2)) *  sqrt(invjacobian(:,3))
 
+     scalediag(:)=0d0
+     do jj=1,3
+        scalediag(:)=scalediag(:) + 3d0/8d0 * invjacobian(:,jj)**4 * djacobian(:,jj)**2 &
+             - 1d0/4d0 * invjacobian(:,jj)**3 * ddjacobian(:,jj)
+     enddo
+
+     elecweights(:)=elecweights(:)*jacobian(:,1)*jacobian(:,2)*jacobian(:,3)
+
+     dipoles(:,:)=scalefunction(:,:)
+     OFLWR "    ....Ok got scaling."; CFL
   endif
 
   elecradii(:)=sqrt( dipoles(:,1)**2 + dipoles(:,2)**2 + dipoles(:,3)**2)
    
   call get_twoe_new(pot)
 
-  if (debugflag .eq. 4040.or.debugflag.eq.3939) then
+  if (debugflag .eq. 4040) then
      pot(:) = 0.35d0 * elecradii(:)**2 * ( &
           exp((-0.13d0)*(dipoles(:,1)**2+dipoles(:,2)**2+(dipoles(:,3)-2d0)**2)) + &
           exp((-0.13d0)*(dipoles(:,1)**2+dipoles(:,2)**2+(dipoles(:,3)+2d0)**2)) )
      threed_two(:,:,:,:)=0d0
-  else if (debugflag .eq. 4242.or.debugflag.eq.4141) then
+  else if (debugflag .eq. 4242) then
      pot(:) = 7.5d0 * elecradii(:)**2 * exp((-1)*elecradii(:))
      threed_two(:,:,:,:)=0d0
   else if (debugflag.eq.4343) then

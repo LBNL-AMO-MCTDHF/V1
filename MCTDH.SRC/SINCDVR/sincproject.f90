@@ -32,11 +32,8 @@ module myprojectmod
 
 
        jacobian(:,:),&         !! jacobian(:,1) should only be a function of x, etc.
-       invsqrtjacobian(:,:),&
-       scaleder2(:,:),&
        invjacobian(:,:),&
-       scalediag(:),&      !!sum  (-1/4) J^-4 (d/dx J(x))^2 = (-1)* sum_i=1..3 scaleder(:,i)**2
-       scaleder(:,:),&       !!     (1/2) J^-2 (d/dx J(x))   
+       scalediag(:),&
        invsqrtscaleweights(:)
 
 end module myprojectmod
@@ -65,10 +62,8 @@ subroutine myprojectalloc()
   
   if (scalingflag.ne.0) then
      allocate(          jacobian(totpoints,3),invjacobian(totpoints,3), &
-          scalediag(totpoints),scaleder(totpoints,3),&
-          invsqrtscaleweights(totpoints), &
-          invsqrtjacobian(totpoints,3),   scaleder2(totpoints,3))
-
+          scalediag(totpoints),&
+          invsqrtscaleweights(totpoints))
   endif
   
   allocate(ketot(griddim),sinepoints(griddim),kevect(griddim),fdtot(griddim),fdvect(griddim))
