@@ -281,13 +281,15 @@ recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeop
   complex*16 :: ffmat(2*totdim,2*totdim,2*totdim),ffvec(2*totdim,2*totdim,2*totdim,howmany),& 
        ffprod(2*totdim,2*totdim,2*totdim,howmany)
 
-#ifdef MPIFLAG
-  call myzfft3d_mpiwrap_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,howmany,placeopt)
-  call myzfft3d_mpiwrap_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,1,placeopt)
-#else
+!!$MPIWRAP  #ifdef MPIFLAG
+!!$MPIWRAP    call myzfft3d_mpiwrap_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,howmany,placeopt)
+!!$MPIWRAP    call myzfft3d_mpiwrap_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,1,placeopt)
+!!$MPIWRAP  #else
+
   call myzfft3d(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,2*totdim,2*totdim,howmany)
   call myzfft3d(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,2*totdim,2*totdim,1)
-#endif
+
+!!$MPIWRAP  #endif
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)  
 !$OMP DO SCHEDULE(STATIC)
@@ -297,15 +299,17 @@ recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeop
 !$OMP END DO
 !$OMP END PARALLEL
 
-#ifdef MPIFLAG
-  call myzfft3d_mpiwrap_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,howmany,placeopt)
-#else
+!!$MPIWRAP  #ifdef MPIFLAG
+!!$MPIWRAP    call myzfft3d_mpiwrap_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,howmany,placeopt)
+!!$MPIWRAP  #else
+
   ffprod(:,:,:,:)=CONJG(ffprod(:,:,:,:))
   call myzfft3d(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,2*totdim,2*totdim,howmany)
   ffback(:,:,:,:)=CONJG(ffback(:,:,:,:))
   return
   placeopt=placeopt  !! avoid warn unused
-#endif
+
+!!$MPIWRAP  #endif
 
 end subroutine circ3d_sub
 

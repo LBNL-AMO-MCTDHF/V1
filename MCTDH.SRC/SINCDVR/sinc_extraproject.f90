@@ -105,43 +105,49 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
 
   numpoints(:)=numpoints(1)
 
-  select case (orbparlevel)
-  case (3)
-     if (mod(numpoints(3),nprocs).ne.0) then
-        OFLWR "ACK, orbparlevel=3, but numpoints is not divisible by nprocs",numpoints(3),nprocs; CFLST
-     endif
-  case (2)
-     sqnprocs=floor(real(nprocs)**(0.500000001d0))
-     if (sqnprocs**2 .ne. nprocs) then
-        OFLWR "ACK, orbparlevel=2, but it looks like nprocs is not square",sqnprocs**2,nprocs; CFLST
-     endif
-     if (mod(numpoints(3),sqnprocs).ne.0) then
-        OFLWR "ACK, orbparlevel=2, but numpoints is not divisible by sqrt(nprocs)",numpoints(3),sqnprocs; CFLST
-     endif
-  case(1)
-     cbnprocs=floor(real(nprocs)**(0.333333334d0))
-     if (cbnprocs**3 .ne. nprocs) then
-        OFLWR "ACK, orbparlevel=1, but it looks like nprocs is not cubic",cbnprocs**3,nprocs; CFLST
-     endif
-     if (mod(numpoints(3),cbnprocs).ne.0) then
-        OFLWR "ACK, orbparlevel=1, but numpoints is not divisible by cbrt(nprocs)",numpoints(3),cbnprocs; CFLST
-     endif
-  case default
-     OFLWR "orbparlevel not allowed", orbparlevel; CFLST
-  end select
+  procsplit(:)=1
 
-  select case(orbparlevel)
-  case(3)
-     procsplit(1:3) = (/ 1,1,nprocs /)
-  case(2)
-     procsplit(1:3) = (/ 1,sqnprocs,sqnprocs /)
-  case(1)
-     procsplit(1:3) = (/ cbnprocs,cbnprocs,cbnprocs /)
-  end select
+  if (orbparflag) then
 
-  allocate(BOX_COMM(procsplit(1),procsplit(2),orbparlevel:3), BOX_GROUP(procsplit(1),procsplit(2),orbparlevel:3))
-  BOX_COMM=(-1); BOX_GROUP=(-1)
-  
+     select case (orbparlevel)
+     case (3)
+        if (mod(numpoints(3),nprocs).ne.0) then
+           OFLWR "ACK, orbparlevel=3, but numpoints is not divisible by nprocs",numpoints(3),nprocs; CFLST
+        endif
+     case (2)
+        sqnprocs=floor(real(nprocs)**(0.500000001d0))
+        if (sqnprocs**2 .ne. nprocs) then
+           OFLWR "ACK, orbparlevel=2, but it looks like nprocs is not square",sqnprocs**2,nprocs; CFLST
+        endif
+        if (mod(numpoints(3),sqnprocs).ne.0) then
+           OFLWR "ACK, orbparlevel=2, but numpoints is not divisible by sqrt(nprocs)",numpoints(3),sqnprocs; CFLST
+        endif
+     case(1)
+        cbnprocs=floor(real(nprocs)**(0.333333334d0))
+        if (cbnprocs**3 .ne. nprocs) then
+           OFLWR "ACK, orbparlevel=1, but it looks like nprocs is not cubic",cbnprocs**3,nprocs; CFLST
+        endif
+        if (mod(numpoints(3),cbnprocs).ne.0) then
+           OFLWR "ACK, orbparlevel=1, but numpoints is not divisible by cbrt(nprocs)",numpoints(3),cbnprocs; CFLST
+        endif
+     case default
+        OFLWR "orbparlevel not allowed", orbparlevel; CFLST
+     end select
+
+     select case(orbparlevel)
+     case(3)
+        procsplit(1:3) = (/ 1,1,nprocs /)
+     case(2)
+        procsplit(1:3) = (/ 1,sqnprocs,sqnprocs /)
+     case(1)
+        procsplit(1:3) = (/ cbnprocs,cbnprocs,cbnprocs /)
+     end select
+
+     allocate(BOX_COMM(procsplit(1),procsplit(2),orbparlevel:3), BOX_GROUP(procsplit(1),procsplit(2),orbparlevel:3))
+     BOX_COMM=(-1); BOX_GROUP=(-1)
+     
+  endif
+
   allocate(rankbybox(procsplit(1),procsplit(2),procsplit(3)),proclist(procsplit(1),procsplit(2),procsplit(3)),&
        newproclist(procsplit(1),procsplit(2),procsplit(3)))
 
@@ -155,61 +161,65 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
      enddo
   enddo
   rankbybox(:,:,:)=proclist(:,:,:)+1
-
+  
   boxrank(:)=1
 
 #ifdef MPIFLAG
 
-  select case(orbparlevel)
-  case(3)
-     BOX_COMM(1,1,3) = PROJ_COMM_WORLD
-     BOX_GROUP(1,1,3) = PROJ_GROUP_WORLD
-     boxrank(1)=1; boxrank(2)=1; boxrank(3)=myrank
-  case(2)
-     do ii=2,3
-        do i=1,sqnprocs
-           call mpi_group_incl(PROJ_GROUP_WORLD, sqnprocs, proclist(1,:,i), BOX_GROUP(1,i,ii), ierr)
-           if (ierr.ne.0) then
-              OFLWR "error twoproc group",ierr; CFLST
-           endif
-           call mpi_comm_create(PROJ_COMM_WORLD, BOX_GROUP(1,i,ii), BOX_COMM(1,i,ii), ierr)
-           if (ierr.ne.0) then
-              OFLWR "error twoproc comm",ierr; CFLST
-           endif
-        enddo
-        proclist(1,:,:)=TRANSPOSE(proclist(1,:,:))
-     enddo
-     boxrank(1)=1; boxrank(2)=mod(myrank-1,sqnprocs)+1; boxrank(3)=(myrank-1)/sqnprocs + 1; 
-  case(1)
-     do ii=1,3
-        do i=1,cbnprocs
-           do j=1,cbnprocs
-              call mpi_group_incl(PROJ_GROUP_WORLD, cbnprocs, proclist(:,j,i), BOX_GROUP(j,i,ii), ierr)
+  if (orbparflag) then
+     select case(orbparlevel)
+     case(3)
+        BOX_COMM(1,1,3) = PROJ_COMM_WORLD
+        BOX_GROUP(1,1,3) = PROJ_GROUP_WORLD
+        boxrank(1)=1; boxrank(2)=1; boxrank(3)=myrank
+     case(2)
+        do ii=2,3
+           do i=1,sqnprocs
+              call mpi_group_incl(PROJ_GROUP_WORLD, sqnprocs, proclist(1,:,i), BOX_GROUP(1,i,ii), ierr)
               if (ierr.ne.0) then
-                 print *, "error threeproc group",ierr;stop
+                 OFLWR "error twoproc group",ierr; CFLST
               endif
-              call mpi_comm_create(PROJ_COMM_WORLD, BOX_GROUP(j,i,ii), BOX_COMM(j,i,ii), ierr)
+              call mpi_comm_create(PROJ_COMM_WORLD, BOX_GROUP(1,i,ii), BOX_COMM(1,i,ii), ierr)
               if (ierr.ne.0) then
-                 print *, "error threeproc comm",ierr;stop
+                 OFLWR "error twoproc comm",ierr; CFLST
               endif
            enddo
+           proclist(1,:,:)=TRANSPOSE(proclist(1,:,:))
         enddo
-        do i=1,cbnprocs
-           newproclist(:,:,i)=proclist(i,:,:)
+        boxrank(1)=1; boxrank(2)=mod(myrank-1,sqnprocs)+1; boxrank(3)=(myrank-1)/sqnprocs + 1; 
+     case(1)
+        do ii=1,3
+           do i=1,cbnprocs
+              do j=1,cbnprocs
+                 call mpi_group_incl(PROJ_GROUP_WORLD, cbnprocs, proclist(:,j,i), BOX_GROUP(j,i,ii), ierr)
+                 if (ierr.ne.0) then
+                    print *, "error threeproc group",ierr;stop
+                 endif
+                 call mpi_comm_create(PROJ_COMM_WORLD, BOX_GROUP(j,i,ii), BOX_COMM(j,i,ii), ierr)
+                 if (ierr.ne.0) then
+                    print *, "error threeproc comm",ierr;stop
+                 endif
+              enddo
+           enddo
+           do i=1,cbnprocs
+              newproclist(:,:,i)=proclist(i,:,:)
+           enddo
+           proclist(:,:,:)=newproclist(:,:,:)
         enddo
-        proclist(:,:,:)=newproclist(:,:,:)
-     enddo
-     boxrank(1)=mod(myrank-1,cbnprocs)+1; 
-     boxrank(2)=mod((myrank-1)/cbnprocs,cbnprocs)+1; 
-     boxrank(3)=(myrank-1)/cbnprocs**2 + 1
-  case default
-     OFLWR "doogstnfsdf", orbparlevel; CFLST
-  end select
-  if (rankbybox(boxrank(1),boxrank(2),boxrank(3)).ne.myrank) then
-     print *,  "rankbybox error",myrank,boxrank,rankbybox(boxrank(1),boxrank(2),boxrank(3)); stop
-  endif
-  
+        boxrank(1)=mod(myrank-1,cbnprocs)+1; 
+        boxrank(2)=mod((myrank-1)/cbnprocs,cbnprocs)+1; 
+        boxrank(3)=(myrank-1)/cbnprocs**2 + 1
+     case default
+        OFLWR "doogstnfsdf", orbparlevel; CFLST
+     end select
+     if (rankbybox(boxrank(1),boxrank(2),boxrank(3)).ne.myrank) then
+        print *,  "rankbybox error",myrank,boxrank,rankbybox(boxrank(1),boxrank(2),boxrank(3)); stop
+     endif
+
+  endif  
+     
 #endif
+
 
   deallocate(proclist,newproclist)
 
