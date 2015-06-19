@@ -128,9 +128,9 @@ subroutine get_twoe_new(pot)
      threed_two(:,:,:,:)=0d0
   endif
 
-!!$  if (debugflag.eq.33.or.scalingflag.ne.0) then
-!!$     call get_3dpoisson_scaledoption(pot)
-!!$  endif
+!!$TINV  if (debugflag.eq.33.or.scalingflag.ne.0) then
+!!$TINV     call get_3dpoisson_scaledoption(pot)
+!!$TINV   endif
 
 end subroutine get_twoe_new
 
