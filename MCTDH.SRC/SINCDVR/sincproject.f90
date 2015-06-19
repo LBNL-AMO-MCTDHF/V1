@@ -34,7 +34,11 @@ module myprojectmod
        jacobian(:,:),&         !! jacobian(:,1) should only be a function of x, etc.
        invjacobian(:,:),&
        scalediag(:),&
-       invsqrtscaleweights(:)
+       invsqrtscaleweights(:),&
+       scaleweights13(:), &
+       invscaleweights13(:),&
+       scaleweights16(:), &
+       invscaleweights16(:)
 
 end module myprojectmod
 
@@ -63,7 +67,10 @@ subroutine myprojectalloc()
   if (scalingflag.ne.0) then
      allocate(          jacobian(totpoints,3),invjacobian(totpoints,3), &
           scalediag(totpoints),&
-          invsqrtscaleweights(totpoints))
+          invsqrtscaleweights(totpoints),scaleweights13(totpoints),&
+          invscaleweights13(totpoints),scaleweights16(totpoints),&
+          invscaleweights16(totpoints))
+
   endif
   
   allocate(ketot(griddim),sinepoints(griddim),kevect(griddim),fdtot(griddim),fdvect(griddim))
@@ -121,9 +128,9 @@ subroutine get_twoe_new(pot)
      threed_two(:,:,:,:)=0d0
   endif
 
-  if (debugflag.eq.33.or.scalingflag.ne.0) then
-     call get_3dpoisson_scaledoption(pot)
-  endif
+!!$  if (debugflag.eq.33.or.scalingflag.ne.0) then
+!!$     call get_3dpoisson_scaledoption(pot)
+!!$  endif
 
 end subroutine get_twoe_new
 

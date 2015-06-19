@@ -231,17 +231,17 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   if (scalingflag.ne.0) then
 
-#ifdef TEMPSCALINGTEST
-     OFLWR "#Testing scaling..."; CFL
-     if (myrank.eq.1) then
-        do i=-100,100
-           rsum=i/10d0
-           write(*,'(100F12.5)') rsum, ffunct(rsum), jfunct(rsum), djfunct(rsum), ddjfunct(rsum)
-        enddo
+     if (debugflag.eq.54321) then
+        OFLWR "#Testing scaling..."; CFL
+        if (myrank.eq.1) then
+           do i=-100,100
+              rsum=i/100d0*spacing*gridpoints(1)/2d0
+              write(*,'(100F12.5)') rsum, ffunct(rsum), jfunct(rsum), djfunct(rsum), ddjfunct(rsum)
+           enddo
+        endif
+        call mpibarrier()
+        OFLWR "#Done testing scaling"; CFLST
      endif
-     call mpibarrier()
-     OFLWR "#Done testing scaling"; CFLST
-#endif
 
      OFLWR "Getting scaling..."; CFL
 
@@ -257,6 +257,15 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      invjacobian(:,:)=1d0/jacobian(:,:)
 
      invsqrtscaleweights(:) = sqrt(invjacobian(:,1)) * sqrt(invjacobian(:,2)) *  sqrt(invjacobian(:,3))
+
+     scaleweights13(:) = (jacobian(:,1))**(1d0/3d0) * (jacobian(:,2))**(1d0/3d0) * (jacobian(:,3))**(1d0/3d0)
+     invscaleweights13(:) = 1d0/scaleweights13(:)
+
+     scaleweights16(:)=sqrt(scaleweights13(:))
+     invscaleweights16(:)=sqrt(invscaleweights13(:))
+
+!!     scaleweights13(:) = 1d0
+!!     invscaleweights13(:) = 1d0
 
      scalediag(:)=0d0
      do jj=1,3
@@ -345,7 +354,9 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   spfsloaded=numspf   !! for mcscf... really just for BO curve to skip eigen
 
-!!  OFLWR "TEMPSTOP init_project"; CFLST
+  if (debugflag.eq.90210) then
+     OFLWR "TEMPSTOP init_project debugflag 90210"; CFLST
+  endif
 
 end subroutine init_project
 

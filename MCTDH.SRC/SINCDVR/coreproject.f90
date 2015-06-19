@@ -627,36 +627,33 @@ recursive subroutine  op_tinv(twoeden03,twoereduced,allsize,circsize,&
      return
   endif
 
-  if (scalingflag.eq.0) then
+!!$TINV  if (scalingflag.eq.0) then
+
      call op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
      times1,times3,times4,times5,fttimes)
 
-  else
-     call op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,&
-     times1,times3,times4,times5,fttimes)
-  endif
+
+!!$TINV  else
+!!$TINV     call op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,&
+!!$TINV     times1,times3,times4,times5,fttimes)
+!!$TINV  endif
 
 end subroutine op_tinv
 
 
-!! S = T-twiddle, T-scaled.
-!! A = twoeden03
-!! B = tweoreduced
-
-!! Solve den = T-twiddle reduced as follows
+!! w = weights e^3itheta
+!! c = weights^1/3
 !!
-!! Solve for T reduced
+!! reduced = w^-1/2 T-twiddle^-1 w^-1/2 den
+!!         = c^-3/2 T-twiddle^-1 c^-3/2 den
 !!
-!!  den = (T-twiddle T^-1) (T reduced)
-!!      = Op (T reduced)
+!! T-twiddle c^3/2 reduced = c^-3/2 den
 !!
-!! Then reduced = T^-1 (T reduced)
+!! c T-twiddle c c^1/2 reduced = c^-1/2 den
 !!
-!! Op = T-twiddle T^-1 = 1 + (T-twiddle - T) T^-1
+!! ( c T-twiddle c T^-1) (T c^1/2 reduced) = c^-1/2 den
 !!
-!! Op is scaled_operate_sub
-!!
-
+!! ( c T-twiddle c T^-1) = 1 + (c T-twiddle c - T) T^-1
 
 recursive subroutine  op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,&
      times1,times3,times4,times5,fttimes)
@@ -673,9 +670,8 @@ recursive subroutine  op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,&
   external :: scaled_operate_sub, dummysub
 
   do ii=1,allsize
-     temp(:,ii)=twoeden03(:,ii)*invsqrtscaleweights(:)  
+     temp(:,ii)=twoeden03(:,ii)*invscaleweights16(:)  
   enddo
-
   twoereduced(:,:)=temp(:,:)  !! guess
 
   do ii=1,allsize
@@ -696,36 +692,37 @@ recursive subroutine  op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,&
        times1,times3,times4,times5,fttimes)
 
   do ii=1,allsize
-     twoereduced(:,ii)=temp(:,ii)*invsqrtscaleweights(:)  
+     twoereduced(:,ii)=temp(:,ii)*invscaleweights16(:)
   enddo
-
-
 
 end subroutine op_tinv_scaled
 
 
+!! Op =  1 + (c T-twiddle c - T) T^-1
+
 subroutine scaled_operate_sub(notusedint,in,out)
   use myparams
+  use myprojectmod
   implicit none
   integer :: notusedint
   DATATYPE, intent(in) :: in(totpoints)
   DATATYPE, intent(out) :: out(totpoints)
-  DATATYPE :: work(totpoints),temp(totpoints)
+  DATATYPE :: work(totpoints),temp(totpoints),temp2(totpoints)
   integer :: times1,times3,times4,times5,fttimes(10)
-  real*8 :: pi
+  real*8 :: pi=3.141592653589793d0
 
-  call op_tinv_notscaled(in(:),work(:),1,1,&
+  call op_tinv_notscaled(in(:),temp(:),1,1,&
        times1,times3,times4,times5,fttimes)
 
-  pi=4d0*atan(1d0)
+  work(:)=temp(:)/2d0/pi
 
-  work(:)=work(:)/2d0/pi
-
-  call mult_ke_scaled(work(:),out(:),1,"booga",2)
+  temp(:)=work(:)*scaleweights13(:)
+  call mult_ke_scaled(temp(:),temp2(:),1,"booga",2)
+  out(:)=temp2(:)*scaleweights13(:)
 
   call mult_ke000(work(:),temp(:),1,"booga",2)
-  
-  out(:) = out(:) - temp(:) + in(:)
+
+  out(:) = out(:) + in(:) - temp(:)
 
 end subroutine scaled_operate_sub
 
