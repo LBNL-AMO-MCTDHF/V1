@@ -97,6 +97,10 @@ subroutine dipolesub_one(avector,inspfs,xdipole_expect,ydipole_expect,zdipole_ex
      call mult_zdipole(inspfs(:,i),tempspfs(:,i))
   enddo
   call MYGEMM(CNORMCHAR,'N',nspf,nspf,spfsize,DATAONE, inspfs, spfsize, tempspfs, spfsize, DATAZERO, dipolemat, nspf)
+  if (parorbsplit.eq.3) then
+     call mympireduce(dipolemat(:,:),nspf**2)
+  endif
+
   rvector(:)=bondpoints(:)
   call arbitraryconfig_mult(dipolemat,rvector,avector,tempvector,numr)
   zdipole_expect=dot(avector,tempvector,numconfig*numr)
@@ -109,6 +113,10 @@ subroutine dipolesub_one(avector,inspfs,xdipole_expect,ydipole_expect,zdipole_ex
      call mult_ydipole(inspfs(:,i),tempspfs(:,i))
   enddo
   call MYGEMM(CNORMCHAR,'N',nspf,nspf,spfsize,DATAONE, inspfs, spfsize, tempspfs, spfsize, DATAZERO, dipolemat, nspf)
+  if (parorbsplit.eq.3) then
+     call mympireduce(dipolemat(:,:),nspf**2)
+  endif
+
   rvector(:)=bondpoints(:)
   call arbitraryconfig_mult(dipolemat,rvector,avector,tempvector,numr)
   ydipole_expect=dot(avector,tempvector,numconfig*numr)
@@ -121,6 +129,10 @@ subroutine dipolesub_one(avector,inspfs,xdipole_expect,ydipole_expect,zdipole_ex
      call mult_xdipole(inspfs(:,i),tempspfs(:,i))
   enddo
   call MYGEMM(CNORMCHAR,'N',nspf,nspf,spfsize,DATAONE, inspfs, spfsize, tempspfs, spfsize, DATAZERO, dipolemat, nspf)
+  if (parorbsplit.eq.3) then
+     call mympireduce(dipolemat(:,:),nspf**2)
+  endif
+
   rvector(:)=bondpoints(:)
   call arbitraryconfig_mult(dipolemat,rvector,avector,tempvector,numr)
   xdipole_expect=dot(avector,tempvector,numconfig*numr)

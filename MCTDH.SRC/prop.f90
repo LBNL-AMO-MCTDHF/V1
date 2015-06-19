@@ -99,10 +99,11 @@ subroutine prop_loop( starttime)
           dot(     yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),numconfig*numr)
      OFLWR "         ENERGY ", startenergy(imc); CFL
      
-     if (debugflag.eq.956) then
-        OFLWR "Stopping due to debugflag=956"; CFLST
-     endif
   enddo
+
+  if (debugflag.eq.956) then
+     OFLWR "Stopping due to debugflag=956"; CFLST
+  endif
 
   jj=0
   do while (flag==0)

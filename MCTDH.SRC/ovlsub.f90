@@ -74,7 +74,11 @@ subroutine ovl_initial()
      call spf_read0(909,nspf,spfdims,tnspf,tdims,spfcomplex,spfdimtype,orig_spfs(:,:,jnumovl+1),(/0,0,0/))
      do i=tnspf+1,nspf
         call staticvector(orig_spfs(:,i,jnumovl+1),spfsize)
-        call gramschmidt(spfsize,i-1,spfsize,orig_spfs(:,:,jnumovl+1),orig_spfs(:,i,jnumovl+1),.false.)
+        if (parorbsplit.eq.3) then
+           call gramschmidt(spfsize,i-1,spfsize,orig_spfs(:,:,jnumovl+1),orig_spfs(:,i,jnumovl+1),.true.)
+        else
+           call gramschmidt(spfsize,i-1,spfsize,orig_spfs(:,:,jnumovl+1),orig_spfs(:,i,jnumovl+1),.false.)
+        endif
      enddo
      do kk=2,nstate
         orig_spfs(:,:,jnumovl+kk)=orig_spfs(:,:,jnumovl+1)

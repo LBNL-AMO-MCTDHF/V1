@@ -1,4 +1,6 @@
 
+!! NOT DONE PARORBFLAG=3
+
 !! PROJECTED FLUX BY KVL
 
 #include "Definitions.INC"
@@ -576,7 +578,11 @@ subroutine projeflux_single(mem)
   do i=tnspf+1,nspf
      tmo(:,i,1)=0d0
      call staticvector(tmo(:,i,1),spfsize)
-     call gramschmidt(spfsize,i-1,spfsize,tmo(:,:,1),tmo(:,i,1),.false.)
+     if (parorbsplit.eq.3) then
+        call gramschmidt(spfsize,i-1,spfsize,tmo(:,:,1),tmo(:,i,1),.true.)
+     else
+        call gramschmidt(spfsize,i-1,spfsize,tmo(:,:,1),tmo(:,i,1),.false.)
+     endif
   enddo
 
 
