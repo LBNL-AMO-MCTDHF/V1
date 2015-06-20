@@ -409,7 +409,7 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
   if (boflag==1) then
      do ir=1,numr
         do i=1,numconfig
-         diagmat(i,i,ir)=(nucrepulsion+frozenpotdiag)/bondpoints(ir) * matrix_ptr%kefac
+         diagmat(i,i,ir)=( (nucrepulsion+frozenpotdiag)/bondpoints(ir) + energyshift ) * matrix_ptr%kefac 
         enddo
      enddo
 

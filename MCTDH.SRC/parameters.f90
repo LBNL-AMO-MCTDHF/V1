@@ -62,6 +62,7 @@ integer :: threshflag=0          !!              !! Set to 1 for regular relaxat
 real*8 :: expotol=1d-8           !!              !! Orbital krylov convergence parameter
 integer :: maxexpodim=100        !!              !! Orbital maximum kry dimension OR DGMRES DIM improvedquad=2,3
 real*8  :: expostepfac=1.2d0     !!              !! Miscellaneous algorithm parameter
+DATATYPE :: energyshift=0d0      !!              !! complex shift for making energy real for imperfect CAP/ECS
 !!EE
 !!\textbf{\qquad SPARSE - if sparseconfigflag .ne. 0}
 !!BB

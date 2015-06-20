@@ -231,7 +231,8 @@ recursive subroutine direct_sparseconfigmultnew_transpose_nompi(myinvectortr,myo
 !! easy nuclear repulsion, hardwired like this for now
 
      do ir=botr,topr
-        myoutvectortr(ir,:)=myoutvectortr(ir,:)+myinvectortr(ir,botwalk:topwalk)*(nucrepulsion+frozenpotdiag)/bondpoints(ir) * matrix_ptr%kefac
+        myoutvectortr(ir,:)=myoutvectortr(ir,:) + myinvectortr(ir,botwalk:topwalk) * ( &
+             energyshift + (nucrepulsion+frozenpotdiag)/bondpoints(ir) ) * matrix_ptr%kefac
      enddo
      
      rvector(:)=1/bondpoints(botr:topr)
@@ -370,7 +371,8 @@ recursive subroutine sparsesparsemult_transpose_nompi(myinvectortr,myoutvectortr
   if (boflag==1) then
 
     do ir=botr,topr
-       myoutvectortr(ir,:)=myoutvectortr(ir,:)+myinvectortr(ir,botwalk:topwalk)*(nucrepulsion+frozenpotdiag)/bondpoints(ir) * sparse_ptr%kefac
+       myoutvectortr(ir,:)=myoutvectortr(ir,:) + myinvectortr(ir,botwalk:topwalk) * ( &
+            energyshift + (nucrepulsion+frozenpotdiag)/bondpoints(ir) ) * sparse_ptr%kefac
     enddo
 
      rvector(:)=1/bondpoints(botr:topr)
