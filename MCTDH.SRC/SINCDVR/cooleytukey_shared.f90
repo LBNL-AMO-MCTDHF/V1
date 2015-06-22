@@ -1,6 +1,8 @@
 
 #define MAXPRIMES 10
 
+#include "Definitions.INC"
+
 !!$
 !!$Apache License
 !!$                           Version 2.0, January 2004
@@ -271,7 +273,7 @@ subroutine myzfft1d_slowindex_mpi(in,out,totsize,rdd,oplevel)
   case(1)
   call simple_summa(in,out,fouriermatrix,totsize,rdd,oplevel)
   case default
-     write(mpifileptr,*) "ct_paropt not recognized",ct_paropt; call mpistop()
+     OFLWR "ct_paropt not recognized",ct_paropt; CFLST
   end select
 
 end subroutine myzfft1d_slowindex_mpi
@@ -438,7 +440,7 @@ subroutine ct_getprimeset()
   integer :: ii, allprocs0(procsplit(1),procsplit(2),procsplit(3)),jj,kk,iproc
 
   if (ct_called.ne.0) then
-     write(mpifileptr,*) "ONLY CALL CT_GETPRIMESET ONCE (programmer fail)"; call mpistop()
+     OFLWR "ONLY CALL CT_GETPRIMESET ONCE (programmer fail)"; CFLST
   endif
   ct_called=1
 
@@ -473,18 +475,19 @@ subroutine ct_getprimeset()
      endif
   enddo
   
-  write(mpifileptr,*)
-  write(mpifileptr,*) "Go CT_INIT"
-  write(mpifileptr,*) "   CT_MAXPRIME IS ",ct_maxprime
-  write(mpifileptr,*) "    CT_PRIMEFACTORS ARE"
-  write(mpifileptr,*) "  ",ct_pf(1:ct_numprimes)
+  OFLWR
+  WRFL "Go CT_INIT"
+  WRFL "   CT_MAXPRIME IS ",ct_maxprime
+  WRFL "    CT_PRIMEFACTORS ARE"
+  WRFL "  ",ct_pf(1:ct_numprimes)
+  CFL
 
   allocate(CT_COMM_EACH(procsplit(3)/ct_minprime,ct_numprimes,orbparlevel:3),&
        CT_GROUP_EACH(procsplit(3)/ct_minprime,ct_numprimes,orbparlevel:3))
   CT_COMM_EACH(:,:,:)=(-42); 
   CT_GROUP_EACH(:,:,:)=(-42)
  
-  write(mpifileptr,*) "Calling ct_construct..."
+  OFLWR "Calling ct_construct..."; CFL
 
   iproc=0
   do ii=1,procsplit(3)
@@ -506,8 +509,8 @@ subroutine ct_getprimeset()
 !     enddo
 !  enddo
 
-  write(mpifileptr,*) "   ....Called ct_construct."
-  write(mpifileptr,*) 
+  OFLWR "   ....Called ct_construct."; CFL
+
 
 end subroutine ct_getprimeset
 
@@ -531,8 +534,8 @@ subroutine ct_construct(allprocs0)
      xxtop(ii+1: )=xxtop(ii+1:)*ct_pf(ii)
   enddo
   if (proc_check.ne.procsplit(3)) then
-     write(mpifileptr,*) "Proc check programmer error ", proc_check,procsplit(3),&
-          ct_pf(1:ct_numprimes); call mpistop()
+     OFLWR "Proc check programmer error ", proc_check,procsplit(3),&
+          ct_pf(1:ct_numprimes); CFLST
   endif
 
   thisfileptr=6
@@ -556,7 +559,7 @@ subroutine ct_construct(allprocs0)
 
            icomm=icomm+1
            if (icomm.gt.procsplit(ilevel)/ct_minprime) then
-              write(mpifileptr,*) "Error construct",icomm,procsplit(ilevel),ct_minprime; call mpistop()
+              OFLWR  "Error construct",icomm,procsplit(ilevel),ct_minprime; CFLST
            endif
            
            select case(ilevel)
