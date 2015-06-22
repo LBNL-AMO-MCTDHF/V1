@@ -42,17 +42,14 @@ parorbsplit=3
 fft_batchdim=1
 fft_circbatchdim=1
 
-fft_mpi_inplaceflag=1
+fft_mpi_inplaceflag=0
 
 orbparflag=.true.
-
-toepflag=1
+orbparlevel=1
 
 orblanthresh=1d-1
 orblanorder=300
 orblancheckmod=20
-
-coulflag=1
 
 numcenters=6
 nuccharges(1:6)=1,1,6,6,1,1
@@ -63,8 +60,6 @@ centershift(1:3,3)= +5 ,-3 ,+1
 centershift(1:3,4)= -3 ,+5 ,+1 
 centershift(1:3,5)= -3 ,+9 ,-3 
 centershift(1:3,6)= -7 ,+5 ,+5 
-
-griddim=3
 
 numpoints=64
 
