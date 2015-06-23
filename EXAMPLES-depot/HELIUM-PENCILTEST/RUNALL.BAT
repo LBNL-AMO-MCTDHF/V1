@@ -1,4 +1,0 @@
-./RUN0.BAT
-./RUN0.BAT.CT
-./RUN0.BAT.BOX
-
