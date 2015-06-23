@@ -1,7 +1,12 @@
-Wed May  6 16:02:48 PDT 2015
-Wed May  6 16:02:48 PDT 2015
-Wed May  6 16:02:48 PDT 2015
-Wed May  6 16:02:48 PDT 2015
+Mon Jun 22 09:53:58 PDT 2015
+Mon Jun 22 09:53:58 PDT 2015
+Mon Jun 22 09:53:58 PDT 2015
+Mon Jun 22 09:53:58 PDT 2015
+Mon Jun 22 09:53:58 PDT 2015
+Mon Jun 22 09:53:58 PDT 2015
+Mon Jun 22 09:53:58 PDT 2015
+Mon Jun 22 09:53:58 PDT 2015
+ 
   ****************************************************************************
   **********************  BEGIN LBNL-AMO-MCTDHF ******************************
   ****************************************************************************
@@ -16,7 +21,7 @@ Wed May  6 16:02:48 PDT 2015
  
                 This is CHMCTDH: HERM-normed ECS version.
  
-                PROCESSOR            1  OF            4
+                PROCESSOR            1  OF            8
  
  Inpfile is Input.Inp.Helium  
  
@@ -42,23 +47,24 @@ Wed May  6 16:02:48 PDT 2015
  
  ********  SINC DVR PARAMS ******** 
  griddim,spacing           3  0.400000000000000     
- numpoints          64          64          16
+ numpoints          32          32          32
  numcenters           1
  nuccharge   2.00000000000000     
  centershift  0.500000000000000       0.500000000000000     
   0.500000000000000     
  orblanorder,orblanthresh         300  0.100000000000000     
- notwoflag,coulflag           0           1
- toepflag,nonucrepflag           1           0
+ notwoflag           0
+ nonucrepflag           0
  toothnbig, toothnsmall         240          40
- orbparflag T
+ orbparflag, orbparlevel T           1
  zke_paropt           1
- fft_mpi_inplaceflag           1
+ fft_mpi_inplaceflag           0
+    --> fft_ct_paropt           1
  fft_batchdim           2
  fft_circbatchdim           2
    -----  
- NBOX            1           1           4
- totpoints       65536
+ NBOX            2           2           2
+ totpoints       32768
  **********************************
  
  ************************   Parameters: config/spf    ************************  
@@ -67,7 +73,7 @@ Wed May  6 16:02:48 PDT 2015
  Doing full CI: numshells=1.  Shells:
  Shell            1
    1a    1b    2a    2b    3a    3b    4a    4b 
-  Final shell occupancy level vexcite=          99
+  Final shell occupancy level vexcite=         999
  
     Number of unfrozen spfs:      4
     Number of frozen spfs:        0
@@ -132,10 +138,14 @@ Wed May  6 16:02:48 PDT 2015
       ...Done fast_newconfiglist
  
  BOTWALKS /TOPWALKS          16
-           1          16          16
-           1          16          16
-           1          16          16
-           1          16          16
+           1           1           1
+           2           3           2
+           4           5           2
+           6           7           2
+           8           8           1
+           9          10           2
+          11          13           3
+          14          16           3
  
  Counting walks. Singles
  Counting walks. Doubles
@@ -143,14 +153,13 @@ Wed May  6 16:02:48 PDT 2015
  Maximum number of
             single walks=            8
             double walks=           16
-   TOTAL walks:        1536 maxdoublewalks*numconfig         256
+   TOTAL walks:        3072 maxdoublewalks*numconfig         256
  
  Allocating singlewalks
  Allocating doublewalks
       ..done walkalloc.
- Calculating walks. Singles
- No savewalks.BIN found. 
- Calculating walks. Doubles
+ No savewalks.BIN found.  Calculating walks.  Singles...
+ Calculating walks.  Doubles...
  Go spinwalks. 
  Doing spin projector.
  Maximum number of spin walks=            1
@@ -165,7 +174,7 @@ Wed May  6 16:02:48 PDT 2015
  Total # of spinvects with S^2 =   0.000000000000000E+000  is           10 
   out of           16
  TOTAL (all processors) rank          10  out of           16
-      Spin DF rank is           10    all processors           40
+      Spin DF rank is           10    all processors           10
     This proc:  spinstart :            1
  
  Reading spfs.
@@ -175,66 +184,68 @@ Wed May  6 16:02:48 PDT 2015
  Bin/spfs.bin.helium1                                                           
                                                                                 
                                            
- Calling init_project               1048576
- GO GET_3DPOISSON. calling getinverse.
+ Calling init_project                524288
+ 
+ Go CT_INIT
+    CT_MAXPRIME IS            2
+     CT_PRIMEFACTORS ARE
+              2
+ Calling ct_construct...
+    ....Called ct_construct.
+ 
+ GO GET_3DPOISSON. calling getinverse.           1
+      ...getting potential...
  filling in....
      ...filled.
-      ...getting potential...
      ... done get_3dpoisson.
     ....Called init_project.
  Reading avector...
  WARNING: bigger numconfigs.         196          16
  Read            1  A-vectors
-        Making a 1D FFT plan            1         128       65536
-        Making a 1D FFT plan            2         128        4096
- IN PROP: VECTOR NORM  (0.997953091473623,0.000000000000000E+000)
-          ENERGY  (-0.771274045728681,4.053504585560837E-017)
+ IN PROP: VECTOR NORM  (0.997950074726689,0.000000000000000E+000)
+          ENERGY  (-0.771263155388344,-1.818035870400503E-017)
  setting jacsymflag=1 for orbital quad
-    Quad orbitals: Deviation is       6.283359714884067E-002
-                   Orthog error is    8.881784197001252E-016
-         DGSOLVE - restarts            0 iters          38
-    Quad orbitals: Deviation is       2.974971396083863E-003
-                   Orthog error is    2.886579864025407E-015
+    Quad orbitals: Deviation is       6.298255270200534E-002
+                   Orthog error is    1.110223024625157E-015
+    Quad orbitals: Deviation is       2.991686029480983E-003
+                   Orthog error is    3.222204846181652E-015
      --> Converged newton
-   NONSPARSEQUAD: DEV  5.384708626974970E-003
-   NONSPARSEQUAD: DEV  3.364375618325815E-006
-   NONSPARSEQUAD: DEV  9.339562097563017E-016
-T=         10.00000  Energy:  -0.7725720737E+00 -0.3122502327E-16    Norm:   0.1000000000E+01
+   NONSPARSEQUAD: DEV  5.394378598072654E-003
+   NONSPARSEQUAD: DEV  3.382611852882287E-006
+   NONSPARSEQUAD: DEV  1.041117974403462E-015
+T=         10.00000  Energy:  -0.7725721316E+00 -0.1630640048E-15    Norm:   0.1000000000E+01
     STOPTEST : ORBITALS   0.54E-02  0.10E-03  AVECTOR   0.10E+03  0.10E+01
-    Quad orbitals: Deviation is       5.353777199536204E-003
-                   Orthog error is    7.025576536654031E-016
-         DGSOLVE - restarts            0 iters          51
-    Quad orbitals: Deviation is       2.576314603104643E-004
-                   Orthog error is    3.767097317859323E-015
+    Quad orbitals: Deviation is       5.354011678956530E-003
+                   Orthog error is    1.554312234475219E-015
+    Quad orbitals: Deviation is       2.605522843372290E-004
+                   Orthog error is    2.783664228718615E-015
      --> Converged newton
-   NONSPARSEQUAD: DEV  1.213899113988271E-005
-   NONSPARSEQUAD: DEV  8.635703060277159E-014
-T=         20.00000  Energy:  -0.7725814556E+00  0.4490888852E-16    Norm:   0.1000000000E+01
-    STOPTEST : ORBITALS   0.62E-03  0.10E-03  AVECTOR   0.94E-06  0.10E+01
-    Quad orbitals: Deviation is       6.194601127942482E-004
-                   Orthog error is    8.881784197001252E-016
-         DGSOLVE - restarts            0 iters          48
-    Quad orbitals: Deviation is       2.979504862116890E-005
-                   Orthog error is    3.108624468950438E-015
+   NONSPARSEQUAD: DEV  1.784781518207512E-005
+   NONSPARSEQUAD: DEV  3.282395990098472E-013
+T=         20.00000  Energy:  -0.7725814527E+00  0.3750858486E-16    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.62E-03  0.10E-03  AVECTOR   0.93E-06  0.10E+01
+    Quad orbitals: Deviation is       6.228153067459235E-004
+                   Orthog error is    4.440892098500626E-016
+    Quad orbitals: Deviation is       3.016052167507889E-005
+                   Orthog error is    2.109423746787797E-015
      --> Converged newton
-   NONSPARSEQUAD: DEV  2.191895326777721E-005
-   NONSPARSEQUAD: DEV  2.243577607580665E-013
-T=         30.00000  Energy:  -0.7725815968E+00 -0.7462791822E-17    Norm:   0.1000000000E+01
+   NONSPARSEQUAD: DEV  2.200567962829577E-005
+   NONSPARSEQUAD: DEV  2.294602414874265E-013
+T=         30.00000  Energy:  -0.7725815967E+00  0.2843548061E-15    Norm:   0.1000000000E+01
     STOPTEST : ORBITALS   0.17E-03  0.10E-03  AVECTOR   0.14E-07  0.10E+01
-    Quad orbitals: Deviation is       1.693009199958499E-004
-                   Orthog error is    1.776356839400250E-015
-         DGSOLVE - restarts            0 iters          40
-    Quad orbitals: Deviation is       8.392801688785005E-006
-                   Orthog error is    3.108624468950438E-015
+    Quad orbitals: Deviation is       1.702196954923619E-004
+                   Orthog error is    2.182698537002008E-015
+    Quad orbitals: Deviation is       8.432246723932685E-006
+                   Orthog error is    1.519475178254459E-015
      --> Converged newton
-   NONSPARSEQUAD: DEV  1.691327756235926E-006
-   NONSPARSEQUAD: DEV  3.034817317553569E-016
-T=         40.00000  Energy:  -0.7725816056E+00 -0.1110226308E-15    Norm:   0.1000000000E+01
-    STOPTEST : ORBITALS   0.45E-04  0.10E-03  AVECTOR   0.87E-09  0.10E+01
+   NONSPARSEQUAD: DEV  1.722402906062206E-006
+   NONSPARSEQUAD: DEV  3.947907539283372E-016
+T=         40.00000  Energy:  -0.7725816055E+00 -0.1491867254E-15    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.45E-04  0.10E-03  AVECTOR   0.88E-09  0.10E+01
  
     ***  CONVERGED *** 
  
-         -0.772581605555     -0.000000000000     -0.000000008748     -0.000000000000
+         -0.772581605548     -0.000000000000     -0.000000008850     -0.000000000000
     ***   
  
     ...done prop...
@@ -242,9 +253,13 @@ T=         40.00000  Energy:  -0.7725816056E+00 -0.1110226308E-15    Norm:   0.1
     ...saved vectors!
     ...end prop...
     ...cleanup...
-Wed May  6 16:04:13 PDT 2015
-Wed May  6 16:04:13 PDT 2015
-Wed May  6 16:04:13 PDT 2015
+Mon Jun 22 09:54:23 PDT 2015
+Mon Jun 22 09:54:23 PDT 2015
     ...END MCTDHF
-Wed May  6 16:04:13 PDT 2015
+Mon Jun 22 09:54:23 PDT 2015
+Mon Jun 22 09:54:23 PDT 2015
+Mon Jun 22 09:54:23 PDT 2015
+Mon Jun 22 09:54:23 PDT 2015
+Mon Jun 22 09:54:23 PDT 2015
+Mon Jun 22 09:54:23 PDT 2015
  MCTDHF STOP!

@@ -52,11 +52,10 @@ parorbsplit=3
 fft_batchdim=1
 fft_circbatchdim=1
 
-fft_mpi_inplaceflag=1
+fft_mpi_inplaceflag=0
 
+orbparlevel=1
 orbparflag=.true.
-
-toepflag=1
 
 orblanthresh=1d-1
 orblanorder=300
@@ -65,14 +64,10 @@ orblancheckmod=20
 num_skip_orbs=5
 orb_skip(1:5)=6,7,8,9,10
 
-coulflag=1
-
 numcenters=1
 nuccharges=10
 
 centershift=1,1,1
-
-griddim=3
 
 numpoints=64
 

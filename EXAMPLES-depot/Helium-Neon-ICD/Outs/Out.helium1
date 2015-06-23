@@ -1,67 +1,12 @@
-Wed May  6 15:23:14 PDT 2015
-Wed May  6 15:23:14 PDT 2015
-Wed May  6 15:23:14 PDT 2015
-Wed May  6 15:23:14 PDT 2015
-Wed May  6 15:23:14 PDT 2015
-Wed May  6 15:23:14 PDT 2015
-Wed May  6 15:23:14 PDT 2015
-Wed May  6 15:23:14 PDT 2015
-Wed May  6 15:23:14 PDT 2015
-Wed May  6 15:23:14 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:14 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:13 PDT 2015
-Wed May  6 15:23:14 PDT 2015
-Wed May  6 15:23:14 PDT 2015
-Wed May  6 15:23:14 PDT 2015
-Wed May  6 15:23:14 PDT 2015
-Wed May  6 15:23:14 PDT 2015
+Mon Jun 22 09:52:57 PDT 2015
+Mon Jun 22 09:52:57 PDT 2015
+Mon Jun 22 09:52:57 PDT 2015
+Mon Jun 22 09:52:57 PDT 2015
+Mon Jun 22 09:52:57 PDT 2015
+Mon Jun 22 09:52:57 PDT 2015
+Mon Jun 22 09:52:57 PDT 2015
+Mon Jun 22 09:52:57 PDT 2015
+ 
   ****************************************************************************
   **********************  BEGIN LBNL-AMO-MCTDHF ******************************
   ****************************************************************************
@@ -76,7 +21,7 @@ Wed May  6 15:23:14 PDT 2015
  
                 This is CHMCTDH: HERM-normed ECS version.
  
-                PROCESSOR            1  OF           64
+                PROCESSOR            1  OF            8
  
  Inpfile is Input.Inp.Helium1  
  
@@ -102,23 +47,24 @@ Wed May  6 15:23:14 PDT 2015
  
  ********  SINC DVR PARAMS ******** 
  griddim,spacing           3  0.400000000000000     
- numpoints          64          64           1
+ numpoints          32          32          32
  numcenters           1
  nuccharge   2.00000000000000     
  centershift  0.500000000000000       0.500000000000000     
   0.500000000000000     
  orblanorder,orblanthresh         300  0.100000000000000     
- notwoflag,coulflag           0           1
- toepflag,nonucrepflag           1           0
+ notwoflag           0
+ nonucrepflag           0
  toothnbig, toothnsmall         240          40
- orbparflag T
+ orbparflag, orbparlevel T           1
  zke_paropt           1
- fft_mpi_inplaceflag           1
+ fft_mpi_inplaceflag           0
+    --> fft_ct_paropt           1
  fft_batchdim           2
  fft_circbatchdim           2
    -----  
- NBOX            1           1          64
- totpoints        4096
+ NBOX            2           2           2
+ totpoints       32768
  **********************************
  
  ************************   Parameters: config/spf    ************************  
@@ -129,7 +75,7 @@ Wed May  6 15:23:14 PDT 2015
    1a    1b    2a    2b    3a    3b    4a    4b    5a    5b    6a    6b 
    7a    7b    8a    8b    9a    9b   10a   10b   11a   11b   12a   12b 
   13a   13b   14a   14b 
-  Final shell occupancy level vexcite=          99
+  Final shell occupancy level vexcite=         999
  
     Number of unfrozen spfs:     14
     Number of frozen spfs:        0
@@ -183,6 +129,7 @@ Wed May  6 15:23:14 PDT 2015
  
  
  
+  Get ORbsets.  Fewer procs than orbitals.
  Go fast_newconfiglist
  UPPER/LOWER
            1          14
@@ -196,70 +143,14 @@ Wed May  6 15:23:14 PDT 2015
       ...Done fast_newconfiglist
  
  BOTWALKS /TOPWALKS         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
-           1         196         196
+           1          23          23
+          24          48          25
+          49          71          23
+          72          97          26
+          98         120          23
+         121         145          25
+         146         169          24
+         170         196          27
  
  Counting walks. Singles
  Counting walks. Doubles
@@ -267,14 +158,13 @@ Wed May  6 15:23:14 PDT 2015
  Maximum number of
             single walks=           28
             double walks=          196
-   TOTAL walks:     2809856 maxdoublewalks*numconfig       38416
+   TOTAL walks:      351232 maxdoublewalks*numconfig       38416
  
  Allocating singlewalks
  Allocating doublewalks
       ..done walkalloc.
- Calculating walks. Singles
- No savewalks.BIN found. 
- Calculating walks. Doubles
+ No savewalks.BIN found.  Calculating walks.  Singles...
+ Calculating walks.  Doubles...
  Go spinwalks. 
  Doing spin projector.
  Maximum number of spin walks=            1
@@ -289,7 +179,7 @@ Wed May  6 15:23:14 PDT 2015
  Total # of spinvects with S^2 =   0.000000000000000E+000  is          105 
   out of          196
  TOTAL (all processors) rank         105  out of          196
-      Spin DF rank is          105    all processors         6720
+      Spin DF rank is          105    all processors          105
     This proc:  spinstart :            1
  
  Reading spfs.
@@ -299,60 +189,82 @@ Wed May  6 15:23:14 PDT 2015
  Bin/spfs.bin.helium0                                                           
                                                                                 
                                            
- Calling init_project                 65536
- GO GET_3DPOISSON. calling getinverse.
+ Calling init_project                524288
+ 
+ Go CT_INIT
+    CT_MAXPRIME IS            2
+     CT_PRIMEFACTORS ARE
+              2
+ Calling ct_construct...
+    ....Called ct_construct.
+ 
+ GO GET_3DPOISSON. calling getinverse.           1
+      ...getting potential...
  filling in....
      ...filled.
-      ...getting potential...
      ... done get_3dpoisson.
     ....Called init_project.
  Reading avector...
  Read            1  A-vectors
-        Making a 1D FFT plan            1         128       50176
-        Making a 1D FFT plan            2         128         256
- IN PROP: VECTOR NORM  (1.00000000000000,0.000000000000000E+000)
-          ENERGY  (-0.772410243643567,5.111896150120617E-018)
  REPLACING SPFS - DENMAT EIGS
-         0.1422277092E+01
-         0.1900094320E+00
-         0.1898830268E+00
-         0.1896511945E+00
-         0.3650388669E-02
-         0.1180641493E-02
-         0.1170230119E-02
-         0.1166482427E-02
-         0.2477348471E-03
-         0.1543181573E-03
-         0.1528993288E-03
-         0.1526101744E-03
-         0.1521844991E-03
-         0.1517647220E-03
+         0.1422202619E+01
+         0.1902173626E+00
+         0.1897225476E+00
+         0.1896661737E+00
+         0.3651256347E-02
+         0.1184588879E-02
+         0.1183406377E-02
+         0.1161278003E-02
+         0.2481150680E-03
+         0.1540110293E-03
+         0.1532837468E-03
+         0.1522188273E-03
+         0.1517236375E-03
+         0.1514147909E-03
  
-T=          0.10000  Energy:  -0.7724102436E+00  0.8985797409E-17    Norm:   0.1000000000E+01
+ IN PROP: VECTOR NORM  (0.999999999999997,0.000000000000000E+000)
+          ENERGY  (-0.772400422731381,4.437605611561456E-018)
+ REPLACING SPFS - DENMAT EIGS
+         0.1422202619E+01
+         0.1902173626E+00
+         0.1897225476E+00
+         0.1896661737E+00
+         0.3651256347E-02
+         0.1184588879E-02
+         0.1183406377E-02
+         0.1161278003E-02
+         0.2481150680E-03
+         0.1540110293E-03
+         0.1532837468E-03
+         0.1522188273E-03
+         0.1517236375E-03
+         0.1514147909E-03
+ 
+T=          0.10000  Energy:  -0.7724004227E+00 -0.4015942107E-16    Norm:   0.1000000000E+01
     STOPTEST : ORBITALS   0.34E+01  0.10E-01  AVECTOR   0.10E+05  0.10E+01
              Orbitals Converged, Avector not necessarily converged 
  REPLACING SPFS - DENMAT EIGS
-         0.1422277092E+01
-         0.1900094320E+00
-         0.1898830268E+00
-         0.1896511945E+00
-         0.3650388669E-02
-         0.1180641493E-02
-         0.1170230119E-02
-         0.1166482427E-02
-         0.2477348471E-03
-         0.1543181573E-03
-         0.1528993288E-03
-         0.1526101744E-03
-         0.1521844991E-03
-         0.1517647220E-03
+         0.1422202619E+01
+         0.1902173626E+00
+         0.1897225476E+00
+         0.1896661737E+00
+         0.3651256347E-02
+         0.1184588879E-02
+         0.1183406377E-02
+         0.1161278003E-02
+         0.2481150680E-03
+         0.1540110293E-03
+         0.1532837468E-03
+         0.1522188273E-03
+         0.1517236375E-03
+         0.1514147909E-03
  
-T=          0.20100  Energy:  -0.7724102436E+00 -0.1152093751E-16    Norm:   0.1000000000E+01
-    STOPTEST : ORBITALS   0.34E+01  0.10E-01  AVECTOR   0.55E-14  0.10E+01
+T=          0.20100  Energy:  -0.7724004227E+00 -0.1150805302E-16    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.34E+01  0.10E-01  AVECTOR   0.11E-14  0.10E+01
  
     ***  CONVERGED *** 
  
-         -0.772410243644     -0.000000000000      0.000000000000     -0.000000000000
+         -0.772400422731     -0.000000000000      0.000000000000      0.000000000000
     ***   
  
     ...done prop...
@@ -360,24 +272,12 @@ T=          0.20100  Energy:  -0.7724102436E+00 -0.1152093751E-16    Norm:   0.1
     ...saved vectors!
     ...end prop...
     ...cleanup...
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
+Mon Jun 22 09:53:58 PDT 2015
+Mon Jun 22 09:53:58 PDT 2015
+Mon Jun 22 09:53:58 PDT 2015
     ...END MCTDHF
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
-Wed May  6 15:24:32 PDT 2015
+Mon Jun 22 09:53:58 PDT 2015
+Mon Jun 22 09:53:58 PDT 2015
+Mon Jun 22 09:53:58 PDT 2015
+Mon Jun 22 09:53:58 PDT 2015
  MCTDHF STOP!

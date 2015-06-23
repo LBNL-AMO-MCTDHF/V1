@@ -2,6 +2,8 @@
 
 &parinp
 
+energyshift=(0d0, -0.00000439788717989d0)
+
 walksinturn=.true.
 turnbatchsize=10
 
@@ -85,17 +87,14 @@ parorbsplit=3
 fft_batchdim=1
 fft_circbatchdim=1
 
-fft_mpi_inplaceflag=1
+fft_mpi_inplaceflag=0
 
+orbparlevel=1
 orbparflag=.true.
-
-toepflag=1
 
 orblanthresh=1d-1
 orblanorder=300
 orblancheckmod=20
-
-coulflag=1
 
 numcenters=2
 nuccharges=10,2
@@ -103,17 +102,15 @@ nuccharges=10,2
 centershift(:,1) =  17, 17, 17
 centershift(:,2) = -15,-15,-15
 
-griddim=3
-
 numpoints=96
 
 spacing=0.4d0
 
-capflag=1
-capstart=17d0
-capstrength=0.01d0
-cappower=2
-maxcap=1d0
+scalingflag=1
+scalingdistance=12d0
+smoothness=6d0
+scalingstretch=3d0
+scalingtheta=0.5d0
 
 /
 

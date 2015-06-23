@@ -1,7 +1,7 @@
 #!/bin/bash
 
 threads=1
-procs=48
+procs=64
 NPN=16
 
 export OMP_NUM_THREADS=$threads

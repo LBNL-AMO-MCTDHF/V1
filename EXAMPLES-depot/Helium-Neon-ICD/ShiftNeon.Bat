@@ -1,8 +1,8 @@
 #!/bin/bash
 
-threads=1
-procs=48
-NPN=16
+threads=8
+procs=8
+NPN=2
 
 export OMP_NUM_THREADS=$threads
 mpirun  -n $procs -npernode $NPN --bind-to-core --bysocket --cpus-per-proc $threads --report-bindings chmctdhf_sinc $1 Inp=Input.Inp.ShiftNeon |tee Outs/Out.shiftneon
