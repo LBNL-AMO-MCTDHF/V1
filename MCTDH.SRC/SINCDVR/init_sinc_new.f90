@@ -234,10 +234,12 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      if (debugflag.eq.54321) then
         OFLWR "#Testing scaling..."; CFL
         if (myrank.eq.1) then
+           open(76333,file="Contour.Dat",status="unknown")
            do i=-100,100
               rsum=i/100d0*spacing*gridpoints(1)/2d0
-              write(*,'(100F12.5)') rsum, ffunct(rsum), jfunct(rsum), djfunct(rsum), ddjfunct(rsum)
+              write(76333,'(100F12.5)') rsum, ffunct(rsum), jfunct(rsum), djfunct(rsum), ddjfunct(rsum)
            enddo
+           close(76333)
         endif
         call mpibarrier()
         OFLWR "#Done testing scaling"; CFLST
