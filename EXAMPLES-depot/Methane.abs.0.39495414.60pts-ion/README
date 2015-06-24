@@ -7,7 +7,8 @@ Having difficulty getting these coming out as nice as the paper.  05-05-2015
 
 2) ./RUNME.BAT.PULSE
 
-3) gnuplot -persist ./gnu.abs.here
+3) ./gnu.abs.here after t=300
+   or ./gnu.abs   after t=50
 
 you may also
 

@@ -1,0 +1,40 @@
+
+echo '
+
+
+set xlabel "Photon energy (eV)"
+set ylabel "absorption cross section (arb units)"
+
+set term unknown
+set style data lines
+
+
+
+set key top left
+
+#unset ytics
+#set ytics 0,250,250
+
+set yrange [0:100]
+set yrange [0:60]
+
+set xrange [4:45]
+set xrange [7:30]
+set xrange [6:26]
+
+plot "Dat/ZDipoleft.Dat" using (27.2114*$1):($7/($4**2+$5**2)) lt 3 lw 10 title "Absorption"
+
+BB=200000
+
+replot "Dat/ZDipoleft.Dat" using (27.2114*$1):(BB*($4**2+$5**2)) with points pt 7 ps 2 lt -1 title "FT"
+
+set term x11
+replot
+
+set out "Absorption.ps"
+set term post enhanced solid color 20
+replot
+
+' | gnuplot -persist
+
+
