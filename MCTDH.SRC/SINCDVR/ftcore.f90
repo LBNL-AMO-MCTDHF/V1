@@ -385,7 +385,7 @@ recursive subroutine mytranspose(in,out,blocksize,howmany,times,nprocs1,nprocs2)
 
 !! 231  (5,7,:) -> (7,5,:)
 
-     call mympisendrecv(intranspose,outtemp,&
+     call mympisendrecv_complex(intranspose,outtemp,&
           rankbybox(boxrank(1),boxrank(3),boxrank(2)), rankbybox(boxrank(1),boxrank(3),boxrank(2)), &
           999,count*nprocs1)
 

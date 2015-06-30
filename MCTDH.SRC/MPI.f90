@@ -417,6 +417,15 @@ subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
   call mympisendrecv_local(sendbuf, recvbuf, dest, source, tag, isize,MPI_COMM_WORLD)
 end subroutine mympisendrecv
 
+subroutine mympisendrecv_complex(sendbuf, recvbuf, dest, source, tag, isize)
+  use mpimod
+  implicit none
+  integer, intent(in) :: dest,source,tag,isize
+  complex*16, intent(in) :: sendbuf(isize)
+  complex*16, intent(out) :: recvbuf(isize)
+  call mympisendrecv_complex_local(sendbuf, recvbuf, dest, source, tag, isize,MPI_COMM_WORLD)
+end subroutine mympisendrecv_complex
+
 subroutine mympisendrecv_local(sendbuf, recvbuf, dest, source, tag, isize,MPI_COMM_LOCAL)
   implicit none
   integer, intent(in) :: dest,source,tag,isize,MPI_COMM_LOCAL
