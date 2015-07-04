@@ -288,7 +288,7 @@ subroutine get_dfconstraint(time)
        projector(:,:,:,:,:), realrhomat(:,:,:,:,:,:), bigprojector(:,:,:,:,:), rhomatpairsbig(:,:,:,:), &
        realrhs(:,:,:), sing(:), rwork(:), rhomatpairscopy(:,:,:,:), rhomatpairsbigcopy(:,:,:,:), &
        rhomatpairscopy2(:,:,:,:), rhspairstemp2(:,:),&
-       mattemp(:,:),pseudoinv(:,:), rhspairsbigtemp(:,:), walknorm(:)
+       mattemp(:,:),pseudoinv(:,:), rhspairsbigtemp(:,:), walknorm(:), temppairs(:,:),temppairsbig(:,:)
   complex*16, allocatable :: work(:)
 #ifdef REALGO
   integer, parameter :: zzz=1
@@ -313,18 +313,16 @@ subroutine get_dfconstraint(time)
 
   call system_clock(itime)
 
-!! CHECK...  maybe leave this.  smallwalkvects.  
-  do i=1,numdfwalks
-     if (dfwalkto(i).lt.botwalk.or.dfwalkto(i).gt.topwalk) then
-        OFLWR "ARGCHECK.", i,dfwalkto(i),botwalk,topwalk; CFLST
-     endif
-  enddo
-
+!!$!! CHECK...  maybe leave this.  smallwalkvects.  ... commented out 07-2015
+!!$  do i=1,numdfwalks
+!!$     if (dfwalkto(i).lt.botwalk.or.dfwalkto(i).gt.topwalk) then
+!!$        OFLWR "ARGCHECK.", i,dfwalkto(i),botwalk,topwalk; CFLST
+!!$     endif
+!!$  enddo
  
   if (dfrestrictflag.lt.1) then
      OFLWR "WTF DFRESTRICT IS  ", dfrestrictflag; CFLST
   endif
-
 
   icalled=icalled+1
 
@@ -334,10 +332,9 @@ subroutine get_dfconstraint(time)
         write(8712,*) "DF timings."; close(8712)
      else if (mod(icalled,30).eq.0) then
         open(8712,file=timingdir(1:getlen(timingdir)-1)//"/dfconstrain.dat",status="old", position="append")
-        write(8712,'(100I12)') times(1:13)/1000; close(8712)
+        write(8712,'(100I12)') times(1:14)/1000; close(8712)
      endif
   endif
-
 
   yyy%cptr(0)%xconmatel(:,:)=0.d0;   yyy%cptr(0)%xconmatelxx(:,:)=0.d0;   yyy%cptr(0)%xconmatelyy(:,:)=0.d0;   yyy%cptr(0)%xconmatelzz(:,:)=0.d0
 
@@ -361,10 +358,6 @@ subroutine get_dfconstraint(time)
   projector=0d0;   bigprojector=0d0;
 
 
-
-
-
-
   do ii=1,isize
      projector(:,ii,:,ipairs(1,ii),ipairs(2,ii))=oneone(:,:)
      projector(:,ii,:,ipairs(2,ii),ipairs(1,ii))=(-1)*myconjg(:,:)
@@ -381,33 +374,37 @@ subroutine get_dfconstraint(time)
 
   enddo
 
-
   allocate(realrhs(zzz,nspf,nspf),realrhomat(zzz,nspf,nspf,zzz,nspf,nspf), &
        rhomatpairs(zzz,isize,zzz,isize),rhspairs(zzz,isize),rhspairstemp(zzz,isize), rhomatpairscopy(zzz,isize,zzz,isize), &
        rhomatpairscopy2(zzz,isize,zzz,isize),rhspairstemp2(zzz,isize), &
        rhomatpairsbig(zzz,2*isize,zzz,isize),rhspairsbig(zzz,2*isize),rhspairsbigtemp(zzz,2*isize), &
        rhomatpairsbigcopy(zzz,2*isize,zzz,isize))
   allocate(walknorm(2*isize))
+  allocate(temppairs(zzz*isize,zzz*nspf**2),temppairsbig(2*zzz*isize,zzz*nspf**2))
+
 
   lwork=100*isize*zzz
   allocate(sing(2*isize*zzz),work(lwork), rwork(lwork))
   rrcond=lioreg
 
-  call system_clock(jtime)
-  times(1)=times(1)+jtime-itime
+  call system_clock(jtime);   times(1)=times(1)+jtime-itime
 
   maxii=1
   if (tdflag.ne.0) then
      maxii=4
   endif
+
   do iiyy=1,maxii
 
+     call system_clock(itime)
 
      rhomatpairscopy(:,:,:,:)=0d0
      rhspairstemp(:,:)=0d0
      rhomatpairsbigcopy(:,:,:,:)=0d0
      rhspairsbigtemp(:,:)=0d0
      walknorm(:)=0d0
+
+     call system_clock(jtime);     times(1)=times(1)+jtime-itime
 
      do imc=1,mcscfnum
         
@@ -422,7 +419,7 @@ subroutine get_dfconstraint(time)
         endif
         avectortrans(:,:)=TRANSPOSE(avector(:,:))
 
-        call system_clock(jtime);        times(2)=times(2)+jtime-itime;     call system_clock(itime)
+        call system_clock(jtime);        times(2)=times(2)+jtime-itime;     itime=jtime
         
         smallwalkvects(:,:,:,:)=0d0
         
@@ -432,11 +429,7 @@ subroutine get_dfconstraint(time)
            smallwalkvects(:,dfwalkto(i),ii,ix)=smallwalkvects(:,dfwalkto(i),ii,ix) + avectortrans(:,dfwalkfrom(i)) * dfwalkphase(i)
         enddo
         
-
-        call system_clock(jtime);        times(3)=times(3)+jtime-itime;     call system_clock(itime)
-        
-        call system_clock(jtime);        times(4)=times(4)+jtime-itime;     call system_clock(itime)
-        
+        call system_clock(jtime);        times(3)=times(3)+jtime-itime;     itime=jtime
 
 !! THIS TAKES A LONG TIME.        !! should only need to do off diagonal blocks but doing all to check
 !!   ...no for general case do all I think (Except for diag, whatever)
@@ -444,23 +437,13 @@ subroutine get_dfconstraint(time)
         ii=(topwalk-botwalk+1)*numr
         call MYGEMM(CNORMCHAR,'N',nspf**2,nspf**2,ii,DATAONE,smallwalkvects,ii,smallwalkvects,ii,DATAZERO,rhomat,nspf**2)
 
-!        rhomat(:,:,:,:)=0d0
-!        do l=1,nspf
-!           do k=1,nspf     
-!              do j=1,nspf
-!                 do i=1,nspf
-!                    rhomat(i,j,k,l)=dot(smallwalkvects(:,:,i,j),smallwalkvects(:,:,k,l),(topwalk-botwalk+1)*numr)
-!                 enddo
-!              enddo
-!           enddo
-!        enddo
-
-        call system_clock(jtime);        times(5)=times(5)+jtime-itime;     call system_clock(itime)
+        call system_clock(jtime);        times(4)=times(4)+jtime-itime;     itime=jtime
 
         if (sparseconfigflag.ne.0) then
            call mympireduce(rhomat,nspf**4)  !! BAD REDUCE
         endif
-        
+
+        call system_clock(jtime);        times(5)=times(5)+jtime-itime;     itime=jtime
         
         if (conway.eq.2.or.conway.eq.3) then
            rhomat(:,:,:,:)=rhomat(:,:,:,:)/timefac
@@ -489,25 +472,36 @@ subroutine get_dfconstraint(time)
         endif
 
 
-        call system_clock(jtime);        times(6)=times(6)+jtime-itime;     call system_clock(itime)
+        call system_clock(jtime);        times(6)=times(6)+jtime-itime;     itime=jtime
         
         call assigncomplexmat(realrhomat,rhomat, nspf**2,nspf**2)
      
-        call system_clock(jtime);        times(7)=times(7)+jtime-itime;     call system_clock(itime)
-        
-        rhomatpairs(:,:,:,:)= &
-             RESHAPE(MATMUL(MATMUL(RESHAPE(projector(:,:,:,:,:),(/zzz*isize,zzz*nspf**2/)), &
-             RESHAPE(realrhomat,(/zzz*nspf**2,zzz*nspf**2/))), &
-             TRANSPOSE(RESHAPE(projector,(/zzz*isize,zzz*nspf**2/)))), &
-             (/zzz,isize,zzz,isize/))
-        
-        rhomatpairsbig(:,:,:,:)= &
-             RESHAPE(MATMUL(MATMUL(RESHAPE(bigprojector(:,:,:,:,:),(/2*zzz*isize,zzz*nspf**2/)), &
-             RESHAPE(realrhomat,(/zzz*nspf**2,zzz*nspf**2/))), &
-             TRANSPOSE(RESHAPE(projector,(/zzz*isize,zzz*nspf**2/)))), &
-             (/zzz,2*isize,zzz,isize/))
+        call system_clock(jtime);        times(7)=times(7)+jtime-itime;     itime=jtime
 
-        call system_clock(jtime);        times(8)=times(8)+jtime-itime;     call system_clock(itime)
+
+        call DGEMM('N','N',zzz*isize,zzz*nspf**2,zzz*nspf**2,1d0,projector,zzz*isize,&
+             realrhomat,zzz*nspf**2,0d0,temppairs,zzz*isize)
+        call DGEMM('N','T',zzz*isize,zzz*isize,zzz*nspf**2,1d0,temppairs,zzz*isize,&
+             projector,zzz*isize,0d0,rhomatpairs,zzz*isize)
+
+        call DGEMM('N','N',2*zzz*isize,zzz*nspf**2,zzz*nspf**2,1d0,bigprojector,2*zzz*isize,&
+             realrhomat,zzz*nspf**2,0d0,temppairsbig,2*zzz*isize)
+        call DGEMM('N','T',2*zzz*isize,zzz*isize,zzz*nspf**2,1d0,temppairsbig,2*zzz*isize,&
+             projector,zzz*isize,0d0,rhomatpairsbig,2*zzz*isize)
+
+!        rhomatpairs(:,:,:,:)= &
+!             RESHAPE(MATMUL(MATMUL(RESHAPE(projector(:,:,:,:,:),(/zzz*isize,zzz*nspf**2/)), &
+!             RESHAPE(realrhomat,(/zzz*nspf**2,zzz*nspf**2/))), &
+!             TRANSPOSE(RESHAPE(projector,(/zzz*isize,zzz*nspf**2/)))), &
+!             (/zzz,isize,zzz,isize/))
+        
+!        rhomatpairsbig(:,:,:,:)= &
+!             RESHAPE(MATMUL(MATMUL(RESHAPE(bigprojector(:,:,:,:,:),(/2*zzz*isize,zzz*nspf**2/)), &
+!             RESHAPE(realrhomat,(/zzz*nspf**2,zzz*nspf**2/))), &
+!             TRANSPOSE(RESHAPE(projector,(/zzz*isize,zzz*nspf**2/)))), &
+!             (/zzz,2*isize,zzz,isize/))
+
+        call system_clock(jtime);        times(8)=times(8)+jtime-itime;     itime=jtime
         
         if (iiyy.eq.1) then
            call sparseconfigmult(avector,avectorp,yyy%cptr(0),yyy%sptr(0),1,1,0,0,time)
@@ -515,7 +509,7 @@ subroutine get_dfconstraint(time)
            call sparseconfigpulsemult(avector,avectorp,yyy%cptr(0),yyy%sptr(0),iiyy-1)
         endif
 
-        call system_clock(jtime);        times(9)=times(9)+jtime-itime;     call system_clock(itime)
+        call system_clock(jtime);        times(9)=times(9)+jtime-itime;     itime=jtime
         
         if (conway.ne.2.and.conway.ne.3) then
            avectorp(:,:)=avectorp(:,:)*timefac   
@@ -530,13 +524,13 @@ subroutine get_dfconstraint(time)
            enddo
         enddo
 
-        call system_clock(jtime);        times(10)=times(10)+jtime-itime;     call system_clock(itime)
+        call system_clock(jtime);        times(10)=times(10)+jtime-itime;     itime=jtime
 
         if (sparseconfigflag.ne.0) then
            call mympireduce(rhs,nspf**2)
         endif
 
-        call system_clock(jtime);        times(11)=times(11)+jtime-itime;     call system_clock(itime)
+        call system_clock(jtime);        times(11)=times(11)+jtime-itime;     itime=jtime
 
         call assigncomplexvec(realrhs(:,:,:),rhs(:,:), nspf**2)
         
@@ -544,10 +538,6 @@ subroutine get_dfconstraint(time)
              RESHAPE(realrhs(:,:,:),(/zzz*nspf**2,1/))),(/zzz,isize/))
         rhspairsbig(:,:)=RESHAPE(MATMUL(RESHAPE(bigprojector,(/2*zzz*isize,zzz*nspf**2/)), &
              RESHAPE(realrhs(:,:,:),(/zzz*nspf**2,1/))),(/zzz,2*isize/))
-        
-
-        call system_clock(jtime);        times(12)=times(12)+jtime-itime;     
-
         
         if (conway.ne.1.and.conway.ne.3) then
            
@@ -558,21 +548,18 @@ subroutine get_dfconstraint(time)
            rhspairsbigtemp(:,:)=rhspairsbigtemp(:,:)+rhspairsbig(:,:)
            
         endif
+
+        call system_clock(jtime);        times(12)=times(12)+jtime-itime;     
         
      enddo    !!! IMC
 
+     call system_clock(itime)
+
      walknorm(:)=sqrt(walknorm(:))
-
-
-
-
-call system_clock(itime)
-
 
      if (conway.ne.1.and.conway.ne.3) then
 
 !! rhomatpairscopy(zzz,isize,zzz,isize)
-
 
         if (conway.eq.2) then   !! make a symmetric matrix equation
 
@@ -613,7 +600,7 @@ call system_clock(itime)
 
      endif
 
-     call system_clock(jtime);        times(13)=times(13)+jtime-itime;  
+     call system_clock(jtime);        times(13)=times(13)+jtime-itime;    itime=jtime
 
 
      tempmatel(:,:)=0d0
@@ -641,6 +628,8 @@ call system_clock(itime)
         yyy%cptr(0)%xconmatelzz(:,:)=  tempmatel(:,:)
      end select
 
+     call system_clock(jtime);        times(14)=times(14)+jtime-itime;  
+
   enddo
 
 !  OFL;write(mpifileptr,'(A20,100E13.4)') "CONMATEL::::: ", &
@@ -663,7 +652,7 @@ call system_clock(itime)
        rhomatpairsbig,  rhspairsbig, rhspairsbigtemp, &
        rhomatpairsbigcopy, &
        walknorm, &
-       sing,  work,  rwork)
+       sing,  work,  rwork,temppairs,temppairsbig)
 
 end subroutine get_dfconstraint
 
