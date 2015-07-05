@@ -33,10 +33,11 @@ subroutine get_3dpoisson(pot)
   if (toothnbig.lt.gridpoints(1)-1.or.toothnbig.lt.gridpoints(2)-1.or.toothnbig.lt.gridpoints(3)-1) then
      OFLWR "Error, need toothnbig > gridpoints-1",toothnbig, gridpoints(1:3); CFLST
   endif
-
-  call getinverse(tempcoulomb,gridpoints(1)-1,toothnbig,toothnsmall,spacing)
-
-  tempcoulomb(:,:,:)=tempcoulomb(:,:,:)/spacing**3
+  if (myrank.eq.1) then
+     call getinverse(tempcoulomb,gridpoints(1)-1,toothnbig,toothnsmall,spacing)
+     tempcoulomb(:,:,:)=tempcoulomb(:,:,:)/spacing**3
+  endif
+  call mympirealbcast(tempcoulomb,1,(2*gridpoints(1)-1)*(2*gridpoints(2)-1)*(2*gridpoints(3)-1))
 
   istart(:)=1
   if (orbparflag) then
