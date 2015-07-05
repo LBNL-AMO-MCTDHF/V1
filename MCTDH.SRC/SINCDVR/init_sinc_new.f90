@@ -329,9 +329,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         maskfunction(jj)%rmat(:)=1d0
         do ii=1,masknumpoints
 
-           rsum=cos(pi * ii / (masknumpoints+1) )
-
-!!$           rsum=0.5d0 * ( cos( 2*pi * ii / (masknumpoints+1) ) + 1d0 )
+           rsum=( 1d0 + cos(pi*ii/(masknumpoints+1)) ) / 2d0
 
            i=masknumpoints+1-ii
 
