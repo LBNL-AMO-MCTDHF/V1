@@ -1189,7 +1189,8 @@ subroutine mpiallgather(inout,totsize,blocksizes,notusedint)
      WRFL blocksizes;
      CFLST
   endif
-  call mpi_allgatherv(inout(blockstart(myrank)),blocksizes(myrank),MPIDATATYPE,inout,blocksizes(:),blockstart(:)-1,MPIDATATYPE,MPI_COMM_WORLD,ierr)
+  blockstart(:)=blockstart(:)-1
+  call mpi_allgatherv(inout(blockstart(myrank)+1),blocksizes(myrank),MPIDATATYPE,inout,blocksizes(:),blockstart(:),MPIDATATYPE,MPI_COMM_WORLD,ierr)
   if (ierr.ne.0) then
      OFLWR "ALLGATHERv ERR ", ierr; CFLST
   endif
@@ -1221,7 +1222,8 @@ subroutine mpiallgather_i(inout,totsize,blocksizes,notusedint)
      WRFL blocksizes;
      CFLST
   endif
-  call mpi_allgatherv(inout(blockstart(myrank)),blocksizes(myrank),MPI_INTEGER,inout,blocksizes(:),blockstart(:)-1,MPI_INTEGER,MPI_COMM_WORLD,ierr)
+  blockstart(:)=blockstart(:)-1
+  call mpi_allgatherv(inout(blockstart(myrank)+1),blocksizes(myrank),MPI_INTEGER,inout,blocksizes(:),blockstart(:),MPI_INTEGER,MPI_COMM_WORLD,ierr)
   if (ierr.ne.0) then
      OFLWR "ALLGATHERv ERR ", ierr; CFLST
   endif
