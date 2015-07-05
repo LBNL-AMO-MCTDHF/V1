@@ -180,7 +180,7 @@ subroutine mpistart()
      mpifileptr=6
   else
      mpifileptr=987
-     call system("mkdir MPIOUTS")
+     call system("mkdir -p MPIOUTS")
      if (mpioutfilelen.gt.9) then
         write(format,'(A2,I2,A2,I1,A1)') "(A",mpioutfilelen,",I",iilen(myrank),")"
      else

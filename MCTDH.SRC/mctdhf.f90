@@ -210,8 +210,8 @@ program mctdhf
   pi=4.d0*atan(1.d0)
 
   call system("date")
-  call system("mkdir Dat"); call system("mkdir Bin"); call system("mkdir Flux")
-  call system("mkdir WALKS");  
+  call system("mkdir -p Dat"); call system("mkdir -p Bin"); call system("mkdir -p Flux")
+  call system("mkdir -p WALKS");  
 
   open(nullfileptr,file="/dev/null",status="unknown")
 
@@ -258,7 +258,7 @@ program mctdhf
   allocate(bondpoints(numr),bondweights(numr),elecweights(spfdims(1),spfdims(2),spfdims(3)),elecradii(spfsize))
 
   call getparams()
-  call system("mkdir "//timingdir)  
+  call system("mkdir -p "//timingdir)  
 
   call transferparams(nspf,spfrestrictflag,spfmvals,spfugrestrict,spfugvals,spfsmallsize,logcheckpar,multmanyflag);
   if (logcheckpar) then

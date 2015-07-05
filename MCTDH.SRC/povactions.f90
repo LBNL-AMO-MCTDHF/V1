@@ -93,7 +93,7 @@ subroutine read_povother( thistime, inspf, iprop, dirlabel, iwhich, ispf, irecor
   endif
 #else
   if (yycall(iwhich).eq.1) then
-     call system("mkdir "//dirlabel);     call system("mkdir "//dirlabel//"/df3")
+     call system("mkdir -p "//dirlabel);     call system("mkdir -p "//dirlabel//"/df3")
   endif
   itotpov=(2*povres+1)**3
 

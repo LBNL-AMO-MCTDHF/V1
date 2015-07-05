@@ -29,7 +29,7 @@ subroutine save_natproj( thistime )
 
   xcalledhere=xcalledhere+1
   if (xcalledhere==1) then
-     call system("mkdir NatCurves")
+     call system("mkdir -p NatCurves")
   endif
 
 !  do iorb=1,numr
