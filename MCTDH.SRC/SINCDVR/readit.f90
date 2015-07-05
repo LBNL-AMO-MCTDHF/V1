@@ -11,7 +11,7 @@ subroutine get_3dpoisson(pot)
   implicit none
   integer :: i,k,j,ii,jj,kk,qq(3),pp(3)
   real*8 :: rval,pot(totpoints)
-  real*8, allocatable :: tempcoulomb(:,:,:,:)
+  real*8, allocatable :: tempcoulomb(:,:,:)
   real*8, allocatable :: xcoulomb(:,:,:,:,:,:)
   real*8, allocatable :: threed_two_big(:,:,:)
   integer :: ldims(3),udims(3),istart(3),gridoffset(3)
@@ -20,11 +20,11 @@ subroutine get_3dpoisson(pot)
      OFLWR "WTF! should not happen."; CFLST
   endif
 
-  OFLWR "GO GET_3DPOISSON. calling getinverse.",threedtwosize;CFL
+  OFLWR "GO GET_3DPOISSON. calling getinverse.";CFL
 
   allocate(tempcoulomb(1-gridpoints(1):gridpoints(1)-1,&
        1-gridpoints(2):gridpoints(2)-1,&
-       1-gridpoints(3):gridpoints(3)-1,      threedtwosize))
+       1-gridpoints(3):gridpoints(3)-1))
 
   if (gridpoints(1).ne.gridpoints(2).or.gridpoints(1).ne.gridpoints(3)) then
      OFLWR" NEED CUBE"; CFLST
@@ -34,16 +34,9 @@ subroutine get_3dpoisson(pot)
      OFLWR "Error, need toothnbig > gridpoints-1",toothnbig, gridpoints(1:3); CFLST
   endif
 
-!!$  if (scalingflag.ne.0) then
-!!$     call getinverse(tempcoulomb,1,gridpoints(1)-1,toothnbig,toothnsmall,spacing)
-!!$!!$     call getinverse(tempcoulomb,2,gridpoints(1)-1,toothnbig,toothnsmall,spacing)
-!!$  else
+  call getinverse(tempcoulomb,gridpoints(1)-1,toothnbig,toothnsmall,spacing)
 
-     call getinverse(tempcoulomb,0,gridpoints(1)-1,toothnbig,toothnsmall,spacing)
-
-!!$  endif
-
-  tempcoulomb(:,:,:,:)=tempcoulomb(:,:,:,:)/spacing**3
+  tempcoulomb(:,:,:)=tempcoulomb(:,:,:)/spacing**3
 
   istart(:)=1
   if (orbparflag) then
@@ -61,18 +54,18 @@ subroutine get_3dpoisson(pot)
      pp(1:3)=istart(1:3)+2*gridoffset(1:3)-gridpoints(1:3)
      qq(1:3)=2*(gridoffset(1:3)+numpoints(1:3))-gridpoints(1:3)-1
 
-     threed_two(:,:,:,:)=0
+     threed_two(:,:,:)=0
      threed_two(istart(1)-numpoints(1):numpoints(1)-1,&
           istart(2)-numpoints(2):numpoints(2)-1,&
-          istart(3)-numpoints(3):numpoints(3)-1,:)=&
-          tempcoulomb(pp(1):qq(1),pp(2):qq(2),pp(3):qq(3),:)
+          istart(3)-numpoints(3):numpoints(3)-1)=&
+          tempcoulomb(pp(1):qq(1),pp(2):qq(2),pp(3):qq(3))
   else
-     threed_two(:,:,:,:)=0
-     threed_two(1-gridpoints(1):gridpoints(1)-1,1-gridpoints(2):gridpoints(2)-1,1-gridpoints(3):gridpoints(3)-1,:)=&
+     threed_two(:,:,:)=0
+     threed_two(1-gridpoints(1):gridpoints(1)-1,1-gridpoints(2):gridpoints(2)-1,1-gridpoints(3):gridpoints(3)-1)=&
           tempcoulomb(&
           1-gridpoints(1):gridpoints(1)-1,&
           1-gridpoints(2):gridpoints(2)-1,&
-          1-gridpoints(3):gridpoints(3)-1,:)
+          1-gridpoints(3):gridpoints(3)-1)
   endif
 
   OFLWR "     ...getting potential..."; CFL
@@ -117,7 +110,7 @@ subroutine get_3dpoisson(pot)
   jj=gridpoints(2)-1
   kk=gridpoints(3)-1
 
-  threed_two_big(-ii:ii,-jj:jj,-kk:kk)=tempcoulomb(-ii:ii,-jj:jj,-kk:kk,1)
+  threed_two_big(-ii:ii,-jj:jj,-kk:kk)=tempcoulomb(-ii:ii,-jj:jj,-kk:kk)
 
   deallocate(tempcoulomb)
 

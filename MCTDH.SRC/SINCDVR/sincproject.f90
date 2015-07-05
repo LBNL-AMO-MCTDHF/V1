@@ -4,8 +4,7 @@
 module myprojectmod
   implicit none
 
-  integer :: threedtwosize=0
-  DATATYPE, allocatable ::  threed_two(:,:,:,:)
+  DATATYPE, allocatable ::  threed_two(:,:,:)
 
   type fourmat
      DATATYPE, allocatable :: mat(:,:,:,:)
@@ -94,16 +93,7 @@ subroutine myprojectalloc()
      OFLWR "griddim.ne.3 not supported no mo"; CFLST
   endif
 
-!!$  if (scalingflag.ne.0) then
-!!$!!$     threedtwosize=7
-!!$     threedtwosize=4
-!!$  else
-
-     threedtwosize=1
-
-!!$  endif
-
-  allocate(threed_two(0-numpoints(1):numpoints(1)-1,0-numpoints(2):numpoints(2)-1,0-numpoints(3):numpoints(3)-1,threedtwosize))
+  allocate(threed_two(0-numpoints(1):numpoints(1)-1,0-numpoints(2):numpoints(2)-1,0-numpoints(3):numpoints(3)-1))
 
 end subroutine myprojectalloc
 
@@ -125,7 +115,7 @@ subroutine get_twoe_new(pot)
   pot(:)=realpot(:)
 
   if (notwoflag.eq.1) then
-     threed_two(:,:,:,:)=0d0
+     threed_two(:,:,:)=0d0
   endif
 
 !!$TINV  if (debugflag.eq.33.or.scalingflag.ne.0) then

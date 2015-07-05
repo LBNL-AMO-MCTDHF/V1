@@ -289,13 +289,13 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      pot(:) = 0.35d0 * elecradii(:)**2 * ( &
           exp((-0.13d0)*(dipoles(:,1)**2+dipoles(:,2)**2+(dipoles(:,3)-2d0)**2)) + &
           exp((-0.13d0)*(dipoles(:,1)**2+dipoles(:,2)**2+(dipoles(:,3)+2d0)**2)) )
-     threed_two(:,:,:,:)=0d0
+     threed_two(:,:,:)=0d0
   else if (debugflag .eq. 4242) then
      pot(:) = 7.5d0 * elecradii(:)**2 * exp((-1)*elecradii(:))
-     threed_two(:,:,:,:)=0d0
+     threed_two(:,:,:)=0d0
   else if (debugflag.eq.4343) then
      pot(:) = 4.5d0 * elecradii(:)**2 
-     threed_two(:,:,:,:)=0d0
+     threed_two(:,:,:)=0d0
   endif
 
 #ifndef REALGO

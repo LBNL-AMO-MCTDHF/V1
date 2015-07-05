@@ -404,93 +404,93 @@ end subroutine circ3d_sub_mpi
 
 
 
-recursive subroutine convolve_3d(vec1,vec2,outvec,nbig,nsmall,howmany)
-  implicit none
-  integer,intent(in) :: nbig,nsmall,howmany
-  real*8,intent(in) :: vec1(-nbig:nbig,-nbig:nbig,-nbig:nbig,howmany),&
-       vec2(-nbig:nbig,-nbig:nbig,-nbig:nbig,howmany)
-  real*8, intent(out) :: outvec(-nsmall:nsmall,-nsmall:nsmall,-nsmall:nsmall,howmany)
-  complex*16,allocatable :: workvec1(:,:,:),workvec2(:,:,:),workvec3(:,:,:)
-  integer :: ii,mydim,myrank,nprocs
-  integer, parameter :: QQ=1
-
-  mydim=4*nbig+2*QQ + 1
-
-  call getmyranknprocs(myrank,nprocs)
-
-  if (myrank.eq.1) then
-
-  print *, "Go convolve."
-
-  allocate(workvec1(mydim,mydim,mydim),workvec2(mydim,mydim,mydim),workvec3(mydim,mydim,mydim))
-  workvec1(:,:,:)=0d0; workvec2(:,:,:)=0d0; workvec3(:,:,:)=0d0
-
-  do ii=1,howmany
-
-     workvec1(:,:,:)=0d0
-     workvec1(          1:nbig+1,            1:nbig+1,            1:nbig+1) = vec1(  0:nbig,   0:nbig,   0:nbig, ii)
-
-     workvec1(          1:nbig+1,            1:nbig+1,  mydim-nbig+1:mydim) = vec1(  0:nbig,   0:nbig, -nbig:-1, ii)
-     workvec1(          1:nbig+1,  mydim-nbig+1:mydim,            1:nbig+1) = vec1(  0:nbig, -nbig:-1,   0:nbig, ii)
-     workvec1(mydim-nbig+1:mydim,            1:nbig+1,            1:nbig+1) = vec1(-nbig:-1,   0:nbig,   0:nbig, ii)
-
-     workvec1(mydim-nbig+1:mydim,  mydim-nbig+1:mydim,            1:nbig+1) = vec1(-nbig:-1, -nbig:-1,   0:nbig, ii)
-     workvec1(mydim-nbig+1:mydim,            1:nbig+1,  mydim-nbig+1:mydim) = vec1(-nbig:-1,   0:nbig, -nbig:-1, ii)
-     workvec1(          1:nbig+1,  mydim-nbig+1:mydim,  mydim-nbig+1:mydim) = vec1(  0:nbig, -nbig:-1, -nbig:-1, ii)
-
-     workvec1(mydim-nbig+1:mydim,  mydim-nbig+1:mydim,  mydim-nbig+1:mydim) = vec1(-nbig:-1, -nbig:-1, -nbig:-1, ii)
-
-     call myzfft3d(workvec1,workvec2,mydim,mydim,mydim,1)
-
-     workvec1(:,:,:)=0d0
-     workvec1(          1:nbig+1,            1:nbig+1,            1:nbig+1) = vec2(  0:nbig,   0:nbig,   0:nbig, ii)
-
-     workvec1(          1:nbig+1,            1:nbig+1,  mydim-nbig+1:mydim) = vec2(  0:nbig,   0:nbig, -nbig:-1, ii)
-     workvec1(          1:nbig+1,  mydim-nbig+1:mydim,            1:nbig+1) = vec2(  0:nbig, -nbig:-1,   0:nbig, ii)
-     workvec1(mydim-nbig+1:mydim,            1:nbig+1,            1:nbig+1) = vec2(-nbig:-1,   0:nbig,   0:nbig, ii)
-
-     workvec1(mydim-nbig+1:mydim,  mydim-nbig+1:mydim,            1:nbig+1) = vec2(-nbig:-1, -nbig:-1,   0:nbig, ii)
-     workvec1(mydim-nbig+1:mydim,            1:nbig+1,  mydim-nbig+1:mydim) = vec2(-nbig:-1,   0:nbig, -nbig:-1, ii)
-     workvec1(          1:nbig+1,  mydim-nbig+1:mydim,  mydim-nbig+1:mydim) = vec2(  0:nbig, -nbig:-1, -nbig:-1, ii)
-
-     workvec1(mydim-nbig+1:mydim,  mydim-nbig+1:mydim,  mydim-nbig+1:mydim) = vec2(-nbig:-1, -nbig:-1, -nbig:-1, ii)
-
-     call myzfft3d(workvec1,workvec3,mydim,mydim,mydim,1)
-
-     workvec1(:,:,:)=workvec2(:,:,:)*workvec3(:,:,:)
-     workvec2(:,:,:)=CONJG(workvec1(:,:,:))
-     workvec1(:,:,:)=workvec2(:,:,:)/mydim**3
-
-     call myzfft3d(workvec1(:,:,:),workvec2(:,:,:),mydim,mydim,mydim,1)
-
-     outvec(  0:nsmall,   0:nsmall,   0:nsmall, ii) = real(workvec2(          1:nsmall+1,            1:nsmall+1,            1:nsmall+1),8)
-
-     outvec(  0:nsmall,   0:nsmall, -nsmall:-1, ii) = real(workvec2(          1:nsmall+1,            1:nsmall+1,  mydim-nsmall+1:mydim),8)
-     outvec(  0:nsmall, -nsmall:-1,   0:nsmall, ii) = real(workvec2(          1:nsmall+1,  mydim-nsmall+1:mydim,            1:nsmall+1),8)
-     outvec(-nsmall:-1,   0:nsmall,   0:nsmall, ii) = real(workvec2(mydim-nsmall+1:mydim,            1:nsmall+1,            1:nsmall+1),8)
-
-     outvec(-nsmall:-1, -nsmall:-1,   0:nsmall, ii) = real(workvec2(mydim-nsmall+1:mydim,  mydim-nsmall+1:mydim,            1:nsmall+1),8)
-     outvec(-nsmall:-1,   0:nsmall, -nsmall:-1, ii) = real(workvec2(mydim-nsmall+1:mydim,            1:nsmall+1,  mydim-nsmall+1:mydim),8)
-     outvec(  0:nsmall, -nsmall:-1, -nsmall:-1, ii) = real(workvec2(          1:nsmall+1,  mydim-nsmall+1:mydim,  mydim-nsmall+1:mydim),8)
-
-     outvec(-nsmall:-1, -nsmall:-1, -nsmall:-1, ii) = real(workvec2(mydim-nsmall+1:mydim,  mydim-nsmall+1:mydim,  mydim-nsmall+1:mydim),8)
-
-  enddo
-
-  deallocate(workvec1,workvec2,workvec3)
-
-  endif
-
-  call mpibarrier()
-
-  call mympirealbcast(outvec,1,(2*nsmall+1)**3)
-
-  call mpibarrier()
-  if (myrank.eq.1) then
-     print *, "Done convolve."
-  endif
-
-end subroutine convolve_3d
+!!$recursive subroutine convolve_3d(vec1,vec2,outvec,nbig,nsmall,howmany)
+!!$  implicit none
+!!$  integer,intent(in) :: nbig,nsmall,howmany
+!!$  real*8,intent(in) :: vec1(-nbig:nbig,-nbig:nbig,-nbig:nbig,howmany),&
+!!$       vec2(-nbig:nbig,-nbig:nbig,-nbig:nbig,howmany)
+!!$  real*8, intent(out) :: outvec(-nsmall:nsmall,-nsmall:nsmall,-nsmall:nsmall,howmany)
+!!$  complex*16,allocatable :: workvec1(:,:,:),workvec2(:,:,:),workvec3(:,:,:)
+!!$  integer :: ii,mydim,myrank,nprocs
+!!$  integer, parameter :: QQ=1
+!!$
+!!$  mydim=4*nbig+2*QQ + 1
+!!$
+!!$  call getmyranknprocs(myrank,nprocs)
+!!$
+!!$  if (myrank.eq.1) then
+!!$
+!!$  print *, "Go convolve."
+!!$
+!!$  allocate(workvec1(mydim,mydim,mydim),workvec2(mydim,mydim,mydim),workvec3(mydim,mydim,mydim))
+!!$  workvec1(:,:,:)=0d0; workvec2(:,:,:)=0d0; workvec3(:,:,:)=0d0
+!!$
+!!$  do ii=1,howmany
+!!$
+!!$     workvec1(:,:,:)=0d0
+!!$     workvec1(          1:nbig+1,            1:nbig+1,            1:nbig+1) = vec1(  0:nbig,   0:nbig,   0:nbig, ii)
+!!$
+!!$     workvec1(          1:nbig+1,            1:nbig+1,  mydim-nbig+1:mydim) = vec1(  0:nbig,   0:nbig, -nbig:-1, ii)
+!!$     workvec1(          1:nbig+1,  mydim-nbig+1:mydim,            1:nbig+1) = vec1(  0:nbig, -nbig:-1,   0:nbig, ii)
+!!$     workvec1(mydim-nbig+1:mydim,            1:nbig+1,            1:nbig+1) = vec1(-nbig:-1,   0:nbig,   0:nbig, ii)
+!!$
+!!$     workvec1(mydim-nbig+1:mydim,  mydim-nbig+1:mydim,            1:nbig+1) = vec1(-nbig:-1, -nbig:-1,   0:nbig, ii)
+!!$     workvec1(mydim-nbig+1:mydim,            1:nbig+1,  mydim-nbig+1:mydim) = vec1(-nbig:-1,   0:nbig, -nbig:-1, ii)
+!!$     workvec1(          1:nbig+1,  mydim-nbig+1:mydim,  mydim-nbig+1:mydim) = vec1(  0:nbig, -nbig:-1, -nbig:-1, ii)
+!!$
+!!$     workvec1(mydim-nbig+1:mydim,  mydim-nbig+1:mydim,  mydim-nbig+1:mydim) = vec1(-nbig:-1, -nbig:-1, -nbig:-1, ii)
+!!$
+!!$     call myzfft3d(workvec1,workvec2,mydim,mydim,mydim,1)
+!!$
+!!$     workvec1(:,:,:)=0d0
+!!$     workvec1(          1:nbig+1,            1:nbig+1,            1:nbig+1) = vec2(  0:nbig,   0:nbig,   0:nbig, ii)
+!!$
+!!$     workvec1(          1:nbig+1,            1:nbig+1,  mydim-nbig+1:mydim) = vec2(  0:nbig,   0:nbig, -nbig:-1, ii)
+!!$     workvec1(          1:nbig+1,  mydim-nbig+1:mydim,            1:nbig+1) = vec2(  0:nbig, -nbig:-1,   0:nbig, ii)
+!!$     workvec1(mydim-nbig+1:mydim,            1:nbig+1,            1:nbig+1) = vec2(-nbig:-1,   0:nbig,   0:nbig, ii)
+!!$
+!!$     workvec1(mydim-nbig+1:mydim,  mydim-nbig+1:mydim,            1:nbig+1) = vec2(-nbig:-1, -nbig:-1,   0:nbig, ii)
+!!$     workvec1(mydim-nbig+1:mydim,            1:nbig+1,  mydim-nbig+1:mydim) = vec2(-nbig:-1,   0:nbig, -nbig:-1, ii)
+!!$     workvec1(          1:nbig+1,  mydim-nbig+1:mydim,  mydim-nbig+1:mydim) = vec2(  0:nbig, -nbig:-1, -nbig:-1, ii)
+!!$
+!!$     workvec1(mydim-nbig+1:mydim,  mydim-nbig+1:mydim,  mydim-nbig+1:mydim) = vec2(-nbig:-1, -nbig:-1, -nbig:-1, ii)
+!!$
+!!$     call myzfft3d(workvec1,workvec3,mydim,mydim,mydim,1)
+!!$
+!!$     workvec1(:,:,:)=workvec2(:,:,:)*workvec3(:,:,:)
+!!$     workvec2(:,:,:)=CONJG(workvec1(:,:,:))
+!!$     workvec1(:,:,:)=workvec2(:,:,:)/mydim**3
+!!$
+!!$     call myzfft3d(workvec1(:,:,:),workvec2(:,:,:),mydim,mydim,mydim,1)
+!!$
+!!$     outvec(  0:nsmall,   0:nsmall,   0:nsmall, ii) = real(workvec2(          1:nsmall+1,            1:nsmall+1,            1:nsmall+1),8)
+!!$
+!!$     outvec(  0:nsmall,   0:nsmall, -nsmall:-1, ii) = real(workvec2(          1:nsmall+1,            1:nsmall+1,  mydim-nsmall+1:mydim),8)
+!!$     outvec(  0:nsmall, -nsmall:-1,   0:nsmall, ii) = real(workvec2(          1:nsmall+1,  mydim-nsmall+1:mydim,            1:nsmall+1),8)
+!!$     outvec(-nsmall:-1,   0:nsmall,   0:nsmall, ii) = real(workvec2(mydim-nsmall+1:mydim,            1:nsmall+1,            1:nsmall+1),8)
+!!$
+!!$     outvec(-nsmall:-1, -nsmall:-1,   0:nsmall, ii) = real(workvec2(mydim-nsmall+1:mydim,  mydim-nsmall+1:mydim,            1:nsmall+1),8)
+!!$     outvec(-nsmall:-1,   0:nsmall, -nsmall:-1, ii) = real(workvec2(mydim-nsmall+1:mydim,            1:nsmall+1,  mydim-nsmall+1:mydim),8)
+!!$     outvec(  0:nsmall, -nsmall:-1, -nsmall:-1, ii) = real(workvec2(          1:nsmall+1,  mydim-nsmall+1:mydim,  mydim-nsmall+1:mydim),8)
+!!$
+!!$     outvec(-nsmall:-1, -nsmall:-1, -nsmall:-1, ii) = real(workvec2(mydim-nsmall+1:mydim,  mydim-nsmall+1:mydim,  mydim-nsmall+1:mydim),8)
+!!$
+!!$  enddo
+!!$
+!!$  deallocate(workvec1,workvec2,workvec3)
+!!$
+!!$  endif
+!!$
+!!$  call mpibarrier()
+!!$
+!!$  call mympirealbcast(outvec,1,(2*nsmall+1)**3)
+!!$
+!!$  call mpibarrier()
+!!$  if (myrank.eq.1) then
+!!$     print *, "Done convolve."
+!!$  endif
+!!$
+!!$end subroutine convolve_3d
 
 
 

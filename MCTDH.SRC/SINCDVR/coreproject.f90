@@ -730,26 +730,11 @@ end subroutine scaled_operate_sub
 recursive subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
           times1,times3,times4,times5,fttimes)
   use myparams
-  implicit none
-  integer, intent(in) :: allsize,circsize
-  integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
-  DATATYPE,intent(in) :: twoeden03(numpoints(1),numpoints(2),numpoints(3),allsize)
-  DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
-
-  call op_geninv_notscaled(1,twoeden03,twoereduced,allsize,circsize,&
-       times1,times3,times4,times5,fttimes)
-
-end subroutine op_tinv_notscaled
-
-
-recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,circsize,&
-          times1,times3,times4,times5,fttimes)
-  use myparams
   use pmpimod
   use pfileptrmod
   use myprojectmod
   implicit none
-  integer, intent(in) :: allsize,circsize,iwhich
+  integer, intent(in) :: allsize,circsize
   integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
   DATATYPE,intent(in) :: twoeden03(numpoints(1),numpoints(2),numpoints(3),allsize)
   DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
@@ -762,11 +747,6 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
   DATATYPE :: twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,allsize),&
        reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,allsize),&
        reducedwork3d(numpoints(1),numpoints(2),numpoints(3),allsize)
-
-
-  if (iwhich.lt.1.or.iwhich.gt.threedtwosize) then
-     OFLWR "iwhich error",iwhich,threedtwosize; CFLST
-  endif
 
   if (mod(allsize,circsize).ne.0) then
      OFLWR "SIZE ERROR OP_TINV",allsize,circsize; CFLST
@@ -840,9 +820,9 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
      do icirc=1,circhigh
         circindex=(icirc-1)*circsize+1
 #ifdef REALGO
-        call circ3d_sub_real_mpi(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),numpoints(1),numpoints(2),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag)
+        call circ3d_sub_real_mpi(threed_two(:,:,:),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),numpoints(1),numpoints(2),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag)
 #else
-        call circ3d_sub_mpi(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),numpoints(1),numpoints(2),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag)
+        call circ3d_sub_mpi(threed_two(:,:,:),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),numpoints(1),numpoints(2),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag)
 #endif
      enddo
      
@@ -883,9 +863,9 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
      do icirc=1,circhigh
         circindex=(icirc-1)*circsize+1
 #ifdef REALGO
-        call circ3d_sub_real(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag)
+        call circ3d_sub_real(threed_two(:,:,:),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag)
 #else
-        call circ3d_sub(threed_two(:,:,:,iwhich),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag)
+        call circ3d_sub(threed_two(:,:,:),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag)
 #endif
      enddo
      
@@ -900,7 +880,7 @@ recursive subroutine  op_geninv_notscaled(iwhich,twoeden03,twoereduced,allsize,c
 
   call myclock(jtime); times1=times1+jtime-itime; itime=jtime
   
-end subroutine op_geninv_notscaled
+end subroutine op_tinv_notscaled
 
 
 
