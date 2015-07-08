@@ -4,30 +4,6 @@
 #include "Definitions.INC"
 
 
-!!$  function xtdpot(myintime)
-!!$    use parameters
-!!$    implicit none
-!!$    real*8 :: myintime
-!!$    DATATYPE :: xtdpot, alltdpot
-!!$    xtdpot= alltdpot(myintime,2)
-!!$  end function xtdpot
-!!$  function ytdpot(myintime)
-!!$    use parameters
-!!$    implicit none
-!!$    real*8 :: myintime
-!!$    DATATYPE :: ytdpot, alltdpot
-!!$    ytdpot= alltdpot(myintime,3)
-!!$  end function ytdpot
-!!$  function ztdpot(myintime)
-!!$    use parameters
-!!$    implicit none
-!!$    real*8 :: myintime
-!!$    DATATYPE :: ztdpot, alltdpot
-!!$    ztdpot = alltdpot(myintime,1)
-!!$  end function ztdpot
-!!$  
-
-
 
 subroutine vectdpot(myintime,tdpotsout)
   use parameters
@@ -76,23 +52,37 @@ function tdpotlen(myintime, which)
   use parameters
   implicit none
   integer :: which, ipulse
-  real*8 :: myintime
+  real*8 :: myintime,fac
   DATATYPE :: tdpotlen, simplepulselen,pulselen, longpulselen,cwpulselen
+
   tdpotlen=0.d0
+
   do ipulse=1,numpulses
+
+     if (which==1) then !! z component
+        fac=cos(pulsetheta(ipulse))
+     else if (which==2) then
+        fac=sin(pulsetheta(ipulse))*cos(pulsephi(ipulse))
+     else if (which==3) then
+        fac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
+     else 
+        fac=1.d0
+     endif
+
      select case (pulsetype(ipulse))
      case (1)
-        tdpotlen=tdpotlen+simplepulselen(myintime,ipulse,which)
+        tdpotlen=tdpotlen+simplepulselen(myintime,ipulse) * fac
      case (2)
-        tdpotlen=tdpotlen+pulselen(myintime,ipulse,which)
+        tdpotlen=tdpotlen+pulselen(myintime,ipulse) * fac
      case (3)
-        tdpotlen=tdpotlen+longpulselen(myintime,ipulse,which)
+        tdpotlen=tdpotlen+longpulselen(myintime,ipulse) * fac
      case (4)
-        tdpotlen=tdpotlen+cwpulselen(myintime,ipulse,which)
+        tdpotlen=tdpotlen+cwpulselen(myintime,ipulse) * fac
      case default
         OFLWR "Pulse type not supported: ", pulsetype(ipulse); CFLST
      end select
   enddo
+
 end function tdpotlen
 
 function tdpotvel(myintime,which)
@@ -100,30 +90,44 @@ function tdpotvel(myintime,which)
 
   implicit none
   integer :: which, ipulse
-  real*8 :: myintime
+  real*8 :: myintime,fac
   DATATYPE :: tdpotvel, simplepulsevel, pulsevel, longpulsevel,cwpulsevel
+
   tdpotvel=0.d0
+
   do ipulse=1,numpulses
+
+     if (which==1) then !! z component
+        fac=cos(pulsetheta(ipulse))
+     else if (which==2) then
+        fac=sin(pulsetheta(ipulse))*cos(pulsephi(ipulse))
+     else if (which==3) then
+        fac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
+     else 
+        fac=1.d0
+     endif
+
      select case (pulsetype(ipulse))
      case (1)
-        tdpotvel=tdpotvel+simplepulsevel(myintime, ipulse, which) 
+        tdpotvel=tdpotvel+simplepulsevel(myintime, ipulse) * fac
      case (2)
-        tdpotvel=tdpotvel+pulsevel(myintime, ipulse, which)
+        tdpotvel=tdpotvel+pulsevel(myintime, ipulse) * fac
      case (3)
-        tdpotvel=tdpotvel+longpulsevel(myintime, ipulse, which)
+        tdpotvel=tdpotvel+longpulsevel(myintime, ipulse) * fac
      case (4)
-        tdpotvel=tdpotvel+cwpulsevel(myintime, ipulse, which)
+        tdpotvel=tdpotvel+cwpulsevel(myintime, ipulse) * fac
      case default
-        call openfile()
-        write(mpifileptr,*) "Pulse type not supported: ", pulsetype(ipulse)
-        call closefile()
-        call mpistop()
+        OFLWR "Pulse type not supported: ", pulsetype(ipulse); CFLST
      end select
+
   enddo
+
 end function tdpotvel
 
 
-!! rotating wave approx for types 1 and 2.
+!! rotating wave approx for types 1 and 2.  
+!! SHOULD ELIMINATE TDPOTFT, RELY ON NUMERICAL FOURIER TRANSFORMS FOR GENERALITY ACROSS THE WHOLE CODE
+!! (as in dipolesub routines)
 
 function tdpotft(myenergy)
   use parameters
@@ -182,64 +186,41 @@ function simplepulseft(myenergy, ipulse)
 end function simplepulseft
 
 
-function simplepulselen(myintime, ipulse, which)
+function simplepulselen(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse, which
-  real*8 :: time, myintime, fac
+  integer :: ipulse
+  real*8 :: time, myintime
   DATATYPE :: simplepulselen
 
-  if (which==1) then !! z component
-     fac=cos(pulsetheta(ipulse))
-  else if (which==2) then
-     fac=sin(pulsetheta(ipulse))*cos(pulsephi(ipulse))
-  else if (which==3) then
-     fac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
-  else 
-     fac=1.d0
-  endif
   simplepulselen=0.d0
+
   if (myintime.ge.pulsestart(ipulse)) then
      time=myintime-pulsestart(ipulse)
      if (time.le.pi/omega(ipulse)) then
 
-!        simplepulselen = pulsestrength(ipulse) * 2*omega(ipulse)*sin(time*omega(ipulse))*cos(time*omega(ipulse)) * fac
-
         simplepulselen = pulsestrength(ipulse) * omega(ipulse) * &
-             ( sin(time*omega(ipulse))*cos(time*omega(ipulse) + phaseshift(ipulse)) + sin(time*omega(ipulse) + phaseshift(ipulse))*cos(time*omega(ipulse)) ) * fac
-
-
+             ( sin(time*omega(ipulse))*cos(time*omega(ipulse) + phaseshift(ipulse)) + sin(time*omega(ipulse) + phaseshift(ipulse))*cos(time*omega(ipulse)) )
 
      endif
   endif
 end function simplepulselen
 
 
-function simplepulsevel(myintime, ipulse, which)
+function simplepulsevel(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse, which
-  real*8 :: time, myintime, fac
+  integer :: ipulse
+  real*8 :: time, myintime
   DATATYPE :: simplepulsevel
-  if (which==1) then !! z component
-     fac=cos(pulsetheta(ipulse))
-  else if (which==2) then
-     fac=sin(pulsetheta(ipulse))*cos(pulsephi(ipulse))
-  else if (which==3) then
-     fac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
-  else
-     fac=1.d0
-  endif
 
   simplepulsevel=0.d0
+
   if (myintime.ge.pulsestart(ipulse)) then
      time=myintime-pulsestart(ipulse)
      if (time.le.pi/omega(ipulse)) then
 
-!!        simplepulsevel = pulsestrength(ipulse) * sin(time*omega(ipulse))**2  * fac
-
-
-        simplepulsevel = pulsestrength(ipulse) * sin(time*omega(ipulse)) * sin(time*omega(ipulse) + phaseshift(ipulse) ) * fac
+        simplepulsevel = pulsestrength(ipulse) * sin(time*omega(ipulse)) * sin(time*omega(ipulse) + phaseshift(ipulse) )
 
      endif
   endif
@@ -248,82 +229,47 @@ end function simplepulsevel
 
 
 
-function cwpulselen(myintime, ipulse, which)
+function cwpulselen(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse, which
-  real*8 :: myintime, fac
+  integer :: ipulse
+  real*8 :: myintime
   DATATYPE :: cwpulselen
 
-  if (which==1) then !! z component
-     fac=cos(pulsetheta(ipulse))
-  else if (which==2) then
-     fac=sin(pulsetheta(ipulse))*cos(pulsephi(ipulse))
-  else if (which==3) then
-     fac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
-  else 
-     fac=1.d0
-  endif
-
-!! YIKES !! zero it 04-14-2015
   cwpulselen=0d0
-
   if (myintime.lt.pi/omega(ipulse)) then
-     cwpulselen = pulsestrength(ipulse) * omega2(ipulse)*cos(myintime*omega2(ipulse)+phaseshift(ipulse))*fac
+     cwpulselen = pulsestrength(ipulse) * omega2(ipulse)*cos(myintime*omega2(ipulse)+phaseshift(ipulse))
   endif
 
 end function cwpulselen
 
 
-function cwpulsevel(myintime, ipulse, which)
+function cwpulsevel(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse, which
-  real*8 :: myintime, fac
+  integer :: ipulse
+  real*8 :: myintime
   DATATYPE :: cwpulsevel
-  if (which==1) then !! z component
-     fac=cos(pulsetheta(ipulse))
-  else if (which==2) then
-     fac=sin(pulsetheta(ipulse))*cos(pulsephi(ipulse))
-  else if (which==3) then
-     fac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
-  else
-     fac=1.d0
-  endif
 
   cwpulsevel=0.d0
   if (myintime.lt.pi/omega(ipulse)) then
-     cwpulsevel = pulsestrength(ipulse) * sin(myintime*omega2(ipulse) + phaseshift(ipulse))  * fac
+     cwpulsevel = pulsestrength(ipulse) * sin(myintime*omega2(ipulse) + phaseshift(ipulse))
   endif
 
 end function cwpulsevel
 
 
-function pulselen(myintime, ipulse, which)
+function pulselen(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse, which, icalled=0
-  real*8 :: time, myintime, fac
+  integer :: ipulse
+  real*8 :: time, myintime
   DATATYPE :: pulselen
 
-  icalled=icalled+1
-
-  if (which==1) then !! z component
-     fac=cos(pulsetheta(ipulse))
-  else if (which==2) then
-     fac=sin(pulsetheta(ipulse))*cos(pulsephi(ipulse))
-  else if (which==3) then
-     fac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
-  else
-     fac=1.d0
-  endif
-
   pulselen=0.d0
+
   if (chirp(ipulse).ne.0d0.or.ramp(ipulse).ne.0d0) then
-     if (icalled.eq.1) then
-        OFLWR "Chirp / ramp not supported for length", chirp(ipulse), ipulse; CFL
-     endif
-     return
+     OFLWR "Chirp / ramp not supported for length", chirp(ipulse), ipulse; CFLST
   endif
   if (myintime.ge.pulsestart(ipulse)) then
      time=myintime-pulsestart(ipulse)
@@ -333,27 +279,19 @@ function pulselen(myintime, ipulse, which)
              + sin(time*omega(ipulse))**2 * omega2(ipulse) * cos((time-pi/omega(ipulse)/2)*omega2(ipulse) + phaseshift(ipulse)) )
      endif
   endif
-  pulselen=pulselen*fac
+
 end function pulselen
 
 
-function pulsevel(myintime, ipulse, which)
+function pulsevel(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse, which
-  real*8 :: time, myintime, fac, thisomega2
+  integer :: ipulse
+  real*8 :: time, myintime, thisomega2
   DATATYPE :: pulsevel, thisstrength
 
-  if (which==1) then !! z component
-     fac=cos(pulsetheta(ipulse))
-  else if (which==2) then
-     fac=sin(pulsetheta(ipulse))*cos(pulsephi(ipulse))
-  else if (which==3) then
-     fac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
-  else
-     fac=1.d0
-  endif
   pulsevel=0.d0
+
   if (myintime.ge.pulsestart(ipulse)) then
      time=myintime-pulsestart(ipulse)
 
@@ -370,35 +308,23 @@ function pulsevel(myintime, ipulse, which)
         pulsevel = thisstrength * sin(time*omega(ipulse))**2 * sin((time-pi/omega(ipulse)/2)*thisomega2 + phaseshift(ipulse))
      endif
   endif
-  pulsevel=pulsevel*fac
+
 end function pulsevel
 
 !! wtf with longstep...  why did I do it 2* longstep+1?  So for longstep 0, no constant part of
 !!  envelope; for longstep 1, constant part is middle 2/3 of pulse.
 
-function longpulselen(myintime, ipulse, which)
+function longpulselen(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse, which , icalled=0
-  real*8 :: time, myintime, fac, fac2, xfac
+  integer :: ipulse
+  real*8 :: time, myintime, fac, fac2
   DATATYPE :: longpulselen
-  icalled=icalled+1
 
-  if (which==1) then !! z component
-     xfac=cos(pulsetheta(ipulse))
-  else if (which==2) then
-     xfac=sin(pulsetheta(ipulse))*cos(pulsephi(ipulse))
-  else if (which==3) then
-     xfac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
-  else
-     xfac=1.d0
-  endif
   longpulselen=0.d0
+
   if (chirp(ipulse).ne.0d0.or.ramp(ipulse).ne.0d0) then
-     if (icalled.eq.1) then
-        OFLWR "Chirp not supported for length", chirp(ipulse), ipulse; CFL
-     endif
-     return
+     OFLWR "Chirp not supported for length", chirp(ipulse), ipulse; CFLST
   endif
   if (myintime.ge.pulsestart(ipulse)) then
      time=myintime-pulsestart(ipulse)
@@ -418,28 +344,19 @@ function longpulselen(myintime, ipulse, which)
           + fac2 * omega2(ipulse) * cos(time*omega2(ipulse) + phaseshift(ipulse)) )
      endif
   endif
-  longpulselen=longpulselen*xfac
 
 end function longpulselen
 
 
-function longpulsevel(myintime, ipulse, which)
+function longpulsevel(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse, which
-  real*8 :: time, myintime, fac, thisomega2
+  integer :: ipulse
+  real*8 :: time, myintime, thisomega2
   DATATYPE :: longpulsevel,thisstrength
 
-  if (which==1) then !! z component
-     fac=cos(pulsetheta(ipulse))
-  else if (which==2) then
-     fac=sin(pulsetheta(ipulse))*cos(pulsephi(ipulse))
-  else if (which==3) then
-     fac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
-  else
-     fac=1.d0
-  endif
   longpulsevel=0.d0
+
   if (myintime.ge.pulsestart(ipulse)) then
      time=myintime-pulsestart(ipulse)
 
@@ -459,8 +376,7 @@ function longpulsevel(myintime, ipulse, which)
         endif
      endif
   endif
-  longpulsevel=longpulsevel*fac
-
+  
 end function longpulsevel
 
 
@@ -492,6 +408,7 @@ recursive subroutine project(inspfs, outspfs, prospfs)
   if (numfrozen.ne.0) then
      tempprospfs(:,nspf+1:nspf+numfrozen)=frozenspfs(:,:)
   endif
+
 !  if (noorthogflag.eq.0) then   !hardwire.  eliminated realproject.
 !     call spf_orthogi t(tempprospfs,nspf+numfrozen, nulldouble)
 !  endif
@@ -644,16 +561,10 @@ subroutine lenmultiply(spfin,spfout, myxtdpot,myytdpot,myztdpot)
   use mpimod
   use parameters
   implicit none
-  integer, save :: icalled=0
   DATATYPE :: ttempspf(spfsize), spfin(spfsize), spfout(spfsize)
-!!  real *8 :: myxtdpot,myztdpot,myytdpot
   DATATYPE :: myxtdpot,myztdpot,myytdpot
 
-!print *, "GOLENMULT.",myxtdpot,myytdpot,myztdpot
-
   spfout(:)=0d0
-
-  icalled=icalled+1
 
   if (abs(myztdpot).ne.0d0) then
      call mult_zdipole(spfin(:),ttempspf(:))
