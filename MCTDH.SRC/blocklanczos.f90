@@ -283,11 +283,11 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
   DATATYPE, intent(inout) :: outvectors(outvectorlda,numout)
   real*8, intent(in) :: lanthresh
   integer :: printflag, iorder,k,flag,j,id,nn,i,&
-       thislanblocknum, thisdim,ii,nfirst,nlast,myrank,nprocs
+       thislanblocknum, thisdim,ii,nfirst,nlast,myrank,nprocs,thisout
   real*8 :: error(numout), stopsum,rsum,nextran
   DATATYPE :: alpha(lanblocknum,lanblocknum),beta(lanblocknum,lanblocknum), csum, &
        thisdot ,nulldot , hdot,        nullvector1(1), nullvector2(1) , &
-       lastvalue(numout), thisvalue(numout), valdot(numout),normsq(numout)
+       lastvalue(numout), thisvalue(numout), valdot(numout),normsq(numout),sqdot(numout)
 !! made these allocatable to fix lawrencium segfault 04-15
   DATATYPE, allocatable  ::       lanham(:,:,:,:),      laneigvects(:,:,:),&
        values(:),       templanham(:,:)
@@ -409,24 +409,21 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
         if (lansize.eq.0) then
            normsq(j)=nulldot(logpar)
            valdot(j)=nulldot(logpar)
+           sqdot(j)=nulldot(logpar)
         else
            normsq(j)=hdot(lanvects(:,j,1),lanvects(:,j,1),lansize,logpar)  !! yes should be normed, whatever
            valdot(j)=hdot(lanvects(:,j,1),multvectors(:,j),lansize,logpar)
+           sqdot(j)= hdot(lanvects(:,j,1),tempvectors2(:,j),lansize,logpar)
         endif
         values(j)=valdot(j)/normsq(j)
 
-        if (lansize.eq.0) then
-           error(j)=abs(&
-                valdot(j)**2 / normsq(j)**2 - &
-                nulldot(logpar)/normsq(j))
-        else
-           error(j)=abs(&
-                valdot(j)**2 / normsq(j)**2 - &
-                hdot(lanvects(:,j,1),tempvectors2(:,j),lansize,logpar)/normsq(j))
-        endif
+        error(j)=abs(&
+             valdot(j)**2 / normsq(j)**2 - &
+             sqdot(j)/normsq(j))
+        
      enddo
      if (printflag.ne.0) then
-        OFL; write(mpifileptr,'(A10,100E8.1)') " FIRST ERRORS ", error(1:numout); CFL
+        OFL; write(mpifileptr,'(A10,100E8.1)') " FIRST ERRORS ", error(1:lanblocknum); CFL
      endif
      if (numout.eq.lanblocknum) then
         stopsum=0d0
@@ -525,25 +522,27 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
            if (targetflag.ne.0) then
               call mysort2(laneigvects,values,thisdim,order*lanblocknum,etarget)
            endif
-           outvalues(:)=values(1:numout)
+
+           thisout=min(numout,thisdim)
+
+           outvalues(1:thisout)=values(1:thisout)
            if (printflag.ne.0) then
-              OFL; write(mpifileptr,'(A10,1000F19.12)') " ENERIGES ", values(1:numout); CFL
+              OFL; write(mpifileptr,'(A10,1000F19.12)') " ENERGIES ", values(1:thisout); CFL
            endif
-           thisvalue(:)=values(1:numout)
+           thisvalue(1:thisout)=values(1:thisout)
            stopsum=0d0
-           do nn=1,numout
+           do nn=1,thisout
               rsum=abs(thisvalue(nn)-lastvalue(nn))
               if (rsum.gt.stopsum) then
                  stopsum=rsum
               endif
            enddo
-           lastvalue(:)=thisvalue(:)
+           lastvalue(1:thisout)=thisvalue(1:thisout)
 
-! so lanthresh is for error of HPsi...  empirically make guess as to 
+! so lanthresh is for error of HPsi...  empirically make guess (divided by 4) as to 
 !  when it might be converged based on change in energy
 
-!!$           if (stopsum.lt.lanthresh/10.or.flag.ne.0) then   ! flag=1 for maxiter,maxorder
-           if (stopsum.lt.lanthresh/4.or.flag.ne.0) then   ! flag=1 for maxiter,maxorder
+           if ((thisout.eq.numout.and.stopsum.lt.lanthresh/4).or.flag.ne.0) then   ! flag=1 for maxiter,maxorder
               if (printflag.ne.0) then
                  OFL; write(mpifileptr,'(A25,2E12.5,I10)')  "checking convergence.",stopsum,lanthresh/10,thisdim; CFL
               endif
@@ -579,21 +578,17 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
                  if (lansize.eq.0) then
                     normsq(j)=nulldot(logpar)
                     valdot(j)=nulldot(logpar)
+                    sqdot(j)=nulldot(logpar)
                  else
                     normsq(j)=hdot(outvectors(:,j),outvectors(:,j),lansize,logpar)
                     valdot(j)=hdot(outvectors(:,j),tempvectors(:,j),lansize,logpar)
+                    sqdot(j)= hdot(outvectors(:,j),tempvectors2(:,j),lansize,logpar)
                  endif
                  values(j)=valdot(j)/normsq(j)
 
-                 if (lansize.eq.0) then
-                    error(j)=abs(&
-                         valdot(j)**2 / normsq(j)**2 - &
-                         nulldot(logpar)/normsq(j))
-                 else
-                    error(j)=abs(&
-                         valdot(j)**2 / normsq(j)**2 - &
-                         hdot(outvectors(:,j),tempvectors2(:,j),lansize,logpar)/normsq(j))
-                 endif
+                 error(j)=abs(&
+                      valdot(j)**2 / normsq(j)**2 - &
+                      sqdot(j)/normsq(j))
 
 !!$                 tempvectors(1:lansize,j) = tempvectors(1:lansize,j) - values(j) * outvectors(1:lansize,j)
 !!$                 error(j)=sqrt(abs(hdot(tempvectors(:,j),tempvectors(:,j),lansize,logpar)))/ &
@@ -601,7 +596,10 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
 
               enddo
               if (printflag.ne.0) then
-                 OFL; write(mpifileptr,'(A10,100E8.1)') " ERRORS ", error(1:numout); CFL
+                 OFL; write(mpifileptr,'(A10,100E9.2)') " ERRORS ", error(1:numout); CFL
+!                 OFL; write(mpifileptr,'(A10,100E9.2)') " ERRORv ", abs(valdot(1:numout)); CFL
+!                 OFL; write(mpifileptr,'(A10,100E9.2)') " ERRORn ", abs(normsq(1:numout)); CFL
+!                 OFL; write(mpifileptr,'(A10,100E9.2)') " ERRORs ", abs(sqdot(1:numout)); CFL
               endif
               stopsum=0d0
               do nn=1,numout
