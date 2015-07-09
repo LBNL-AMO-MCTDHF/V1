@@ -127,7 +127,8 @@ subroutine pardotsub(one,two,n,out)
   out=sum
 end subroutine pardotsub
 
-function dot(one,two,n)
+!! CALLED INSIDE OMP LOOPS
+recursive function dot(one,two,n)
   implicit none
   integer :: n,i
   DATATYPE :: one(n), two(n), dot, sum

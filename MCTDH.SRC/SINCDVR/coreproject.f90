@@ -1414,8 +1414,6 @@ recursive subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,
      endif
      call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
 
-!!$     call mympibcast(work(:,:),ibox,totsize)
-
      select case (indim)
      case(3)
         call mympibcast_local(work(:,:),ibox,totsize,BOX_COMM(boxrank(1),boxrank(2),3))
@@ -1436,7 +1434,7 @@ recursive subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,
 
      call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,atime,btime)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
      select case(option)
      case(1)  !! KE
 !$OMP DO SCHEDULE(STATIC)
@@ -1471,6 +1469,7 @@ recursive subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,
         write(2853,'(100I11)')  times(1:3);        close(2853)
      endif
   endif
+
 !! regrettably appears necessary to fix bad behavior in some cases (perhaps only with cooleytukey orbparlevel .lt. 3?)
 !!  call mpibarrier()
 
@@ -1507,23 +1506,26 @@ recursive subroutine mult_all0(in, out,idim,nnn,mmm,option)
   DATATYPE,intent(in) :: in(nnn,numpoints(idim),mmm)
   DATATYPE,intent(out) :: out(nnn,numpoints(idim),mmm)
 
+!! OMP PROBLEMS LAWRENCIUM - OBSERVE ERRORS IN BLOCKLANCZOS ORBITALS THREADS > 1 - 07-2015
+!! COMMENTING THIS OUT!!  REINSTATE ONLY WITH TESTING LARGE NUMBER OF THREADS
+
   select case(option)
   case(1)  !! KE
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
-!$OMP DO SCHEDULE(STATIC)
+!$OxMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
+!$OxMP DO SCHEDULE(STATIC)
      do jj=1,mmm
-        call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,ketot(idim)%mat(1,1,1,1),gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
+        call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,ketot(idim)%mat,gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
      enddo
-!$OMP END DO
-!$OMP END PARALLEL
+!$OxMP END DO
+!$OxMP END PARALLEL
   case(2)  !! X Y or Z derivative (real valued antisymmetric)
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
-!$OMP DO SCHEDULE(STATIC)
+!$OxMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
+!$OxMP DO SCHEDULE(STATIC)
      do jj=1,mmm
-        call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,fdtot(idim)%mat(1,1,1,1),gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
+        call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,fdtot(idim)%mat,gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
      enddo
-!$OMP END DO
-!$OMP END PARALLEL
+!$OxMP END DO
+!$OxMP END PARALLEL
   case default 
      OFLWR "WHAAAAT"; CFLST
   end select
