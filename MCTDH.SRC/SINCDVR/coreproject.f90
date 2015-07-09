@@ -1291,27 +1291,30 @@ recursive subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,n
      
      ibox=mod(nbox(indim)+boxrank(indim)-1+deltabox,nbox(indim))+1
      jbox=mod(nbox(indim)+boxrank(indim)-1-deltabox,nbox(indim))+1
-     
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
+    
+!! OMP PROBLEMS LAWRENCIUM - OBSERVE ERRORS IN BLOCKLANCZOS ORBITALS THREADS > 1 - 07-2015
+!! COMMENTING THIS OUT!!  REINSTATE ONLY WITH TESTING LARGE NUMBER OF THREADS BOXES PENCILS AND SHEETS
+ 
+!$OxMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
      select case(option)
      case(1)  !! KE
-!$OMP DO SCHEDULE(STATIC)
+!$OxMP DO SCHEDULE(STATIC)
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,ketot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
         enddo
-!$OMP END DO
+!$OxMP END DO
      case(2) 
-!$OMP DO SCHEDULE(STATIC)
+!$OxMP DO SCHEDULE(STATIC)
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,fdtot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
         enddo
-!$OMP END DO
+!$OxMP END DO
      case default 
         OFLWR "WHAAAAT"; CFLST
      end select
 
 ! (Implied barrier at end parallel)
-!$OMP END PARALLEL
+!$OxMP END PARALLEL
      call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
      
      if (deltabox.ne.0) then
@@ -1434,26 +1437,29 @@ recursive subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,
 
      call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
+!! OMP PROBLEMS LAWRENCIUM - OBSERVE ERRORS IN BLOCKLANCZOS ORBITALS THREADS > 1 - 07-2015
+!! COMMENTING THIS OUT!!  REINSTATE ONLY WITH TESTING LARGE NUMBER OF THREADS BOXES PENCILS AND SHEETS
+
+!$OxMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
      select case(option)
      case(1)  !! KE
-!$OMP DO SCHEDULE(STATIC)
+!$OxMP DO SCHEDULE(STATIC)
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,work(:,ii),nnn,ketot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
         enddo
-!$OMP END DO
+!$OxMP END DO
      case(2) 
-!$OMP DO SCHEDULE(STATIC)
+!$OxMP DO SCHEDULE(STATIC)
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,work(:,ii),nnn,fdtot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
         enddo
-!$OMP END DO
+!$OxMP END DO
      case default 
         OFLWR "WHAAAAT"; CFLST
      end select
 
 ! (Implied barrier at end parallel)
-!$OMP END PARALLEL
+!$OxMP END PARALLEL
      call myclock(btime); times(3)=times(3)+btime-atime
   enddo
 
@@ -1507,7 +1513,7 @@ recursive subroutine mult_all0(in, out,idim,nnn,mmm,option)
   DATATYPE,intent(out) :: out(nnn,numpoints(idim),mmm)
 
 !! OMP PROBLEMS LAWRENCIUM - OBSERVE ERRORS IN BLOCKLANCZOS ORBITALS THREADS > 1 - 07-2015
-!! COMMENTING THIS OUT!!  REINSTATE ONLY WITH TESTING LARGE NUMBER OF THREADS
+!! COMMENTING THIS OUT!!  REINSTATE ONLY WITH TESTING LARGE NUMBER OF THREADS BOXES PENCILS AND SHEETS
 
   select case(option)
   case(1)  !! KE
@@ -1611,13 +1617,13 @@ recursive subroutine mult_all0_big_gen_complex(in, out,indim,outdim,mat,nnn,mmm)
   implicit none
   integer :: mmm,nnn,jj,indim,outdim
   complex*16 :: in(nnn,indim,mmm),out(nnn,outdim,mmm),mat(outdim,indim)
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
-!$OMP DO SCHEDULE(STATIC)
+!$OxMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
+!$OxMP DO SCHEDULE(STATIC)
   do jj=1,mmm
      call ZGEMM('N','T',nnn,outdim,indim,(1d0,0d0),in(:,:,jj),nnn,mat,outdim,(0d0,0d0), out(:,:,jj), nnn)
   enddo
-!$OMP END DO
-!$OMP END PARALLEL
+!$OxMP END DO
+!$OxMP END PARALLEL
 end subroutine mult_all0_big_gen_complex
 
 subroutine reinterpolate_orbs_real(rspfs,dims,num)
