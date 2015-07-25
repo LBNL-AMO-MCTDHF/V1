@@ -378,6 +378,8 @@ integer :: nonsparsepropmode=1   !! 0 = ZGCHBV expokit; 1 = mine expmat
 !!EE
 !! XXSNIPXX
 
+integer :: nodgexpthirdflag=0
+
 !integer :: noorthogflag=1        !! 082010 NOW TURNING THIS ON !!
 !     hardwire.  eliminated realproject for quad which didn't have the 
 !     call to orthog.  don't remember if that was purposeful.

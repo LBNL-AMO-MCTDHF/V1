@@ -118,13 +118,17 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   itrace=0   !! 1=print info
   norm=1.d0
 
-  if  ((jacsymflag.ne.0).and.(jacprojorth.eq.0)) then  !! homogeneous third order.  Simpler expression for propagator.
-
-     call noparorbsupport("dgexpthird")
-
+  if  ((jacsymflag.ne.0).and.(jacprojorth.eq.0).and.(nodgexpthirdflag.eq.0)) then  !! homogeneous third order.  Simpler expression for propagator.
      aspfs=inspfs
-     call dgexpthird(idim, thisexpodim, tdiff, aspfs, inspfs, expotol, norm, &
-          wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag)
+
+     if (parorbsplit.eq.3) then
+        call dgexpthirdxxx2(idim, thisexpodim, tdiff, aspfs, inspfs, expotol, norm, &
+             wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,tempstepsize,realpardotsub,idim*nprocs)
+     else
+        call dgexpthird(idim, thisexpodim, tdiff, aspfs, inspfs, expotol, norm, &
+             wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,tempstepsize)
+     endif
+
   else
      !! this does phi_1 = phi_0 + (exp(J t)-1)/J f(phi_0)
 
