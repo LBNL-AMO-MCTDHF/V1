@@ -118,6 +118,15 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   itrace=0   !! 1=print info
   norm=1.d0
 
+
+  if (myrank.eq.1.and.notiming.eq.0) then
+     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="old", position="append")
+  else
+!!$ opening /dev/null multiple times not allowed :<       open(expofileptr,file="/dev/null",status="unknown")
+     expofileptr=nullfileptr
+  endif
+  
+
   if  ((jacsymflag.ne.0).and.(jacprojorth.eq.0).and.(nodgexpthirdflag.eq.0)) then  !! homogeneous third order.  Simpler expression for propagator.
      aspfs=inspfs
 
@@ -144,12 +153,6 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 
      propspfs=0.d0
 
-     if (myrank.eq.1.and.notiming.eq.0) then
-        open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="old", position="append")
-     else
-!!$ opening /dev/null multiple times not allowed :<       open(expofileptr,file="/dev/null",status="unknown")
-        expofileptr=nullfileptr
-     endif
      if (orbcompact.ne.0) then
         call spfs_compact(aspfs,com_aspfs); call spfs_compact(propspfs,com_propspfs);
         if (parorbsplit.eq.3) then
@@ -170,12 +173,13 @@ subroutine expoprop(time1,time2,inspfs, numiters)
         endif
      endif
 
-     if (expofileptr.ne.nullfileptr) then
-        close(expofileptr)
-     endif
      inspfs=inspfs+outspfs
 
      
+  endif
+
+  if (expofileptr.ne.nullfileptr) then
+     close(expofileptr)
   endif
 
   if (iflag/=0) then
