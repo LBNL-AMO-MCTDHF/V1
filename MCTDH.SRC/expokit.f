@@ -4142,7 +4142,7 @@
 
 
 
-!! THIS IS FOR A-VECTOR WITH DRIVING
+!! PARALLEL SUBROUTINE.
 
       subroutine DGPHIVxxx2( n, m, t, u, v, w, tol, anorm,
      .  wsp,lwsp, iwsp,liwsp,matvec,itrace,iflag,fileptr,guess_stepsize,
@@ -4242,7 +4242,8 @@
      .           mxreject = 0,
      .           ideg     = 6, 
      .           delta    = 1.2d0,
-     .           gamma    = 0.9d0 )
+     .           gamma    = 0.8d0 )
+!!DJH     .           gamma    = 0.9d0 )
 
 *     mxstep  : maximum allowable number of integration steps.
 *               The value 0 means an infinite number of steps.
@@ -5685,10 +5686,12 @@
 * djh adapted dgexpv.  computes 2/3 + 1/3 exp(t*A)*v, constraining 2/3 + 1/3 exp(t*A) to be unitary
 
       subroutine DGEXPTHIRD( n, m, t, v, w, tol, anorm,
-     .              wsp,lwsp, iwsp,liwsp, matvec, itrace,iflag,fileptr )
+     .     wsp,lwsp, iwsp,liwsp, matvec, itrace,iflag,fileptr,
+     .     guess_stepsize)
 
       implicit none
       integer n, m, lwsp, liwsp, itrace, iflag, iwsp(liwsp),fileptr
+      real*8 guess_stepsize
       double precision t, tol, anorm, v(n), w(n), wsp(lwsp)
       external matvec
 
@@ -5816,7 +5819,7 @@
       double precision sgn, t_out, tbrkdwn, step_min,step_max, err_loc,
      .                 s_error, x_error, t_now, t_new, t_step, t_old,
      .                 xm, beta, break_tol, p1, p2, p3, eps, rndoff,
-     .                 vnorm, avnorm, hj1j, hij, hump, SQR1
+     .                 vnorm, avnorm, hj1j, hij, hump, SQR1, t_last
 
       intrinsic AINT,ABS,DBLE,LOG10,MAX,MIN,NINT,SIGN,SQRT
       double precision DDOT, DNRM2, sum
@@ -5830,6 +5833,10 @@
 *
 *---  initialisations ...
 *
+! djh
+      t_last=0d0
+      t_step=0d0
+!
       k1 = 2
       mh = m + 2
       iv = 1
@@ -5871,15 +5878,19 @@
       beta = DNRM2( n, w,1 )
       vnorm = beta
       hump = beta 
-*
-*---  obtain the very first stepsize ...
-*
-      SQR1 = SQRT( 0.1d0 )
+
+!! DJH (07-2015) TOO CUTE BY HALF.  USE INPUT guess_stepsize.
+      t_new=guess_stepsize
       xm = 1.0d0/DBLE( m )
-      p1 = tol*(((m+1)/2.72D0)**(m+1))*SQRT(2.0D0*3.14D0*(m+1))
-      t_new = (1.0d0/anorm)*(p1/(4.0d0*beta*anorm))**xm
-      p1 = 10.0d0**(NINT( LOG10( t_new )-SQR1 )-1)
-      t_new = AINT( t_new/p1 + 0.55d0 ) * p1
+
+!*---  obtain the very first stepsize ...
+!      SQR1 = SQRT( 0.1d0 )
+!      xm = 1.0d0/DBLE( m )
+!      p1 = tol*(((m+1)/2.72D0)**(m+1))*SQRT(2.0D0*3.14D0*(m+1))
+!      t_new = (1.0d0/anorm)*(p1/(4.0d0*beta*anorm))**xm
+!      p1 = 10.0d0**(NINT( LOG10( t_new )-SQR1 )-1)
+!      t_new = AINT( t_new/p1 + 0.55d0 ) * p1
+
 *
 *---  step-by-step integration ...
 *
@@ -5969,9 +5980,10 @@
          if ( p1.gt.10.0d0*p2 ) then
             err_loc = p2
             xm = 1.0d0/DBLE( m )
-         elseif ( p1.gt.p2 ) then
-            err_loc = (p1*p2)/(p1-p2)
-            xm = 1.0d0/DBLE( m )
+!! DJH (07-2015) GOSH THIS LOOKS STRANGE.  if avnorm is just less than 1 one it will never converge
+!         elseif ( p1.gt.p2 ) then
+!            err_loc = (p1*p2)/(p1-p2)
+!            xm = 1.0d0/DBLE( m )
          else
             err_loc = p1
             xm = 1.0d0/DBLE( m-1 )
@@ -5984,9 +5996,15 @@
      .     (mxreject.eq.0 .or. ireject.lt.mxreject) ) then
          write(fileptr,*) "STEP REJECTED", t_step,err_loc,tol
          t_old = t_step
-         t_step = gamma * t_step * (t_step*tol/err_loc)**xm
-         p1 = 10.0d0**(NINT( LOG10( t_step )-SQR1 )-1)
-         t_step = AINT( t_step/p1 + 0.55d0 ) * p1
+
+!! DJH (07-2015) LET'S NOT GET TOOO CRAZY
+         t_step = gamma * t_step
+
+!! DJH (07-2015)
+!         t_step = gamma * t_step * (t_step*tol/err_loc)**xm
+!         p1 = 10.0d0**(NINT( LOG10( t_step )-SQR1 )-1)
+!         t_step = AINT( t_step/p1 + 0.55d0 ) * p1
+
          if ( itrace.ne.0 ) then
             print*,'t_step =',t_old
             print*,'err_loc =',err_loc
@@ -5996,7 +6014,7 @@
          ireject = ireject + 1
          nreject = nreject + 1
          if ( mxreject.ne.0 .and. ireject.gt.mxreject ) then
-            print*,"Failure in DGEXPV: ---"
+            print*,"Failure in DGEXPTHIRD: ---"
             print*,"The requested tolerance is too high."
             Print*,"Rerun with a smaller value."
             iflag = 2
@@ -6013,17 +6031,20 @@
 *  change from exp(tH)v to 2/3 + 1/3 exp(tH)v
 
       sum=ddot(mx,wsp(iexph),1,wsp(iexph),1)
-!      print *, "SUM IS ", sum
+
+!!      print *, "SUM IS ", sum
+
       wsp(iexph:iexph+mx-1)=wsp(iexph:iexph+mx-1)/3.d0
       wsp(iexph)=wsp(iexph)+2.d0/3.d0
 
       sum=ddot(mx,wsp(iexph),1,wsp(iexph),1)
-!      print *, "SUM IS ", sum
-!      stop
-!!!      wsp(iexph:iexph+mx-1)=wsp(iexph:iexph+mx-1)/sqrt(sum)
 
-!      sum=ddot(mx-1,wsp(iexph+1),1,wsp(iexph+1),1)
-!      wsp(iexph+1:iexph+mx-1)=wsp(iexph+1:iexph+mx-1)*sqrt((1-wsp(iexph)**2)/sum)
+!!      print *, "SUM IS ", sum
+!!      stop
+!!!!      wsp(iexph:iexph+mx-1)=wsp(iexph:iexph+mx-1)/sqrt(sum)
+
+!!      sum=ddot(mx-1,wsp(iexph+1),1,wsp(iexph+1),1)
+!!      wsp(iexph+1:iexph+mx-1)=wsp(iexph+1:iexph+mx-1)*sqrt((1-wsp(iexph)**2)/sum)
 
 * end djh
 
@@ -6036,6 +6057,11 @@
       t_new = gamma * t_step * (t_step*tol/err_loc)**xm
       p1 = 10.0d0**(NINT( LOG10( t_new )-SQR1 )-1)
       t_new = AINT( t_new/p1 + 0.55d0 ) * p1
+
+!! DJH (07-2015) don't decrease here..  not sure if it would
+      if (t_new.lt.t_step) then
+         t_new = t_step
+      endif
 
       err_loc = MAX( err_loc,rndoff )
 *
@@ -6081,4 +6107,14 @@
       wsp(8)  = sgn*t_now
       wsp(9)  = hump/vnorm
       wsp(10) = beta/vnorm
+
+!! djh 07-2015
+      if (nstep.eq.1) then
+         guess_stepsize=t_step
+      else
+         guess_stepsize=t_last
+      endif
+
       END
+
+
