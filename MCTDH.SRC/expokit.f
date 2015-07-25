@@ -4364,7 +4364,6 @@
 !! DJH TOO CUTE BY HALF.  USE INPUT
          t_new=guess_stepsize
          xm = 1.0d0/DBLE( m )
-         SQR1 = SQRT( 0.1d0 )
 
 !*---     obtain the very first stepsize ...
 !         xm = 1.0d0/DBLE( m )
@@ -4477,10 +4476,16 @@
          write(fileptr,'(A18,100E12.4)') "   ...REJECTED",
      .    t_step,err_loc,tol
 
-          t_old = t_step
-          t_step = gamma * t_step * (t_step*tol/err_loc)**xm
-          p1 = 10.0d0**(NINT( LOG10( t_step )-SQR1 )-1)
-          t_step = AINT( t_step/p1 + 0.55d0 ) * p1
+         t_old = t_step
+
+!! DJH (07-2015) LET'S NOT GET TOOO CRAZY
+         t_step = gamma * t_step
+
+!! DJH (07-2015)
+!         t_step = gamma * t_step * (t_step*tol/err_loc)**xm
+!         p1 = 10.0d0**(NINT( LOG10( t_step )-SQR1 )-1)
+!         t_step = AINT( t_step/p1 + 0.55d0 ) * p1
+
          if ( itrace.ne.0 ) then
             print*,'t_step =',t_old
             print*,'err_loc =',err_loc
