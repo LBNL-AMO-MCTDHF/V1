@@ -719,29 +719,11 @@ end subroutine expoconfigprop
 recursive subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
   use parameters
   implicit none
-  DATATYPE :: inspfs(spfsize, nspf), outspfs(spfsize, nspf),  prospfs(spfsize, nspf), prospfderivs(spfsize, nspf)
-  call derproject0(inspfs, outspfs, prospfs, prospfderivs,0)  ! no conjg
-end subroutine derproject
-
-
-recursive subroutine derproject0(inspfs, outspfs, prospfs, prospfderivs,inconjgflag)
-  use parameters
-  implicit none
-  DATATYPE :: inspfs(spfsize, nspf), outspfs(spfsize, nspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
-  integer :: i,j, inconjgflag
+  DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
+  DATATYPE, intent(out) :: outspfs(spfsize, nspf)
+  integer :: i,j
   DATATYPE :: dot
-#ifdef CNORMFLAG
-  DATATYPE :: hermdot
-#endif
-  DATATYPE ::    mydot(nspf,nspf), prodot(nspf,nspf), multdot(nspf,nspf), derdot(nspf,nspf),& !! AUTOMATIC
-       mydot2(nspf,nspf),prodot2(nspf,nspf),multdot2(nspf,nspf)
-
-!!$  integer,save :: allochere=0
-!!$  DATATYPE,save,allocatable ::  mydot(:,:), prodot(:,:), multdot(:,:), derdot(:,:),mydot2(:,:),prodot2(:,:),multdot2(:,:)
-!!$  if (allochere.eq.0) then
-!!$     allocate(       mydot(nspf,nspf), prodot(nspf,nspf), multdot(nspf,nspf), derdot(nspf,nspf),mydot2(nspf,nspf),prodot2(nspf,nspf),multdot2(nspf,nspf))
-!!$  endif
-!!$  allochere=1
+  DATATYPE ::    mydot(nspf,nspf), prodot(nspf,nspf), multdot(nspf,nspf), derdot(nspf,nspf) !! AUTOMATIC
 
   outspfs(:,:)=0.d0
 
@@ -750,16 +732,7 @@ recursive subroutine derproject0(inspfs, outspfs, prospfs, prospfderivs,inconjgf
   do i=1,nspf
      do j=1,nspf
         mydot(i,j) = dot(prospfs(:,i),inspfs(:,j),spfsize)
-
-#ifdef CNORMFLAG
-        if (inconjgflag==1) then
-           derdot(i,j) = conjg(hermdot(prospfderivs(:,i),inspfs(:,j),spfsize))
-        else
-#endif
-           derdot(i,j) = dot(prospfderivs(:,i),inspfs(:,j),spfsize)
-#ifdef CNORMFLAG
-        endif
-#endif
+        derdot(i,j) = dot(prospfderivs(:,i),inspfs(:,j),spfsize)
      enddo
   enddo
 !$OMP END DO
@@ -770,22 +743,12 @@ recursive subroutine derproject0(inspfs, outspfs, prospfs, prospfderivs,inconjgf
      call mympireduce(derdot,nspf**2)
   endif
 
-  if (inconjgflag==1) then
-     mydot=ANTICON(mydot)    !! in derprojectconjg call, this is herm conjg of that in derproject call
-  endif
-
   do i=1,nspf
-     if (inconjgflag==1) then
-        do j=1,nspf
-           outspfs(:,i) = outspfs(:,i) + ANTICON(prospfs(:,j)) *                derdot(j,i)
-        enddo
-     else
-        do j=1,nspf
-           outspfs(:,i) = outspfs(:,i) + prospfs(:,j) *           derdot(j,i)
-        enddo
-     endif
      do j=1,nspf
-        outspfs(:,i) = outspfs(:,i) + (prospfderivs(:,j)) *             mydot(j,i)
+        outspfs(:,i) = outspfs(:,i) + prospfs(:,j) *           derdot(j,i)
+     enddo
+     do j=1,nspf
+        outspfs(:,i) = outspfs(:,i) + prospfderivs(:,j) *      mydot(j,i)
      enddo
   enddo
 
@@ -805,60 +768,31 @@ recursive subroutine derproject0(inspfs, outspfs, prospfs, prospfderivs,inconjgf
 !!
 
 !        prodot is     (pro/proder,pro/proder)
-!        mydot2 is     (pro,in)
-!        conjg: want  (in/proder, in/proder)
-!        and mydot2 is  (in,pro)
-
-     prodot2=0.d0
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
      do i=1,nspf
         do j=1,nspf
-           if (inconjgflag.eq.1) then
-              prodot(i,j) = dot(ANTICON(inspfs(:,i)),prospfderivs(:,j),spfsize) 
-              prodot2(i,j) = (dot(ALLCON(inspfs(:,i)),CONJUGATE(prospfderivs(:,j)),spfsize))
-              mydot2(i,j) = dot(ALLCON(prospfs(:,i)),ALLCON(inspfs(:,j)),spfsize)
-           else
-              prodot(i,j) = dot(prospfs(:,i),prospfderivs(:,j),spfsize) 
-              prodot(i,j) = prodot(i,j) + dot(prospfderivs(:,i),prospfs(:,j),spfsize)
-           endif
+           prodot(i,j) = dot(prospfs(:,i),prospfderivs(:,j),spfsize) 
+           prodot(i,j) = prodot(i,j) + dot(prospfderivs(:,i),prospfs(:,j),spfsize)
         enddo
      enddo
 !$OMP END DO
 !$OMP END PARALLEL
 
 !prodot  (pro,der) x mydot (pro,in)   : pro is in;    in is out
-!prodot2  (der,pro) x mydot (pro,in)   : der is in;    in is out
 !
-! conjg : given in as pro=in,in=pro. mydot already cc.
-!
-!  mydot (ANTI(in),ANTI(pro))  x prodot (ANTI(in),der)  
-!  prodot2(der,ALC(in))    x  mydot (ANTI(in),ANTI(pro))
-! 
 ! multiply prodot -> multdot(pro,in)  by gemm(n,n,prom,my,mult)
 !
-! conjg:  mydot(in,pro)* prodot (pro,der)   der is out p
-!         
-     if (inconjgflag.eq.1) then
-!! first term like the second, but having ANTICONNED all but prospfderivs
-        call MYGEMM('N', 'N', nspf, nspf, nspf, DATANEGONE, prodot, nspf, mydot, nspf, DATAZERO, multdot, nspf)
 
-        call MYGEMM('N', 'N', nspf, nspf, nspf, DATANEGONE, prodot2, nspf, mydot2, nspf, DATAZERO, multdot2, nspf)
-     else
-        call MYGEMM('N', 'N', nspf, nspf, nspf, DATANEGONE, prodot, nspf, mydot, nspf, DATAZERO, multdot, nspf)
-     endif
+     call MYGEMM('N', 'N', nspf, nspf, nspf, DATANEGONE, prodot, nspf, mydot, nspf, DATAZERO, multdot, nspf)
+
      do i=1,nspf
         do j=1,nspf
-           if (inconjgflag.eq.1) then
-              outspfs(:,i) = outspfs(:,i) + ANTICON(inspfs(:,j)) * multdot(j,i)
-              outspfs(:,i) = outspfs(:,i) + ANTICON(inspfs(:,j)) * (multdot2(i,j))
-           else
-              outspfs(:,i) = outspfs(:,i) + prospfs(:,j) * multdot(j,i)        !!multdot 
-           endif
+           outspfs(:,i) = outspfs(:,i) + prospfs(:,j) * multdot(j,i)        !!multdot
         enddo
      enddo
   endif
 
-end subroutine derproject0
+end subroutine derproject
 
