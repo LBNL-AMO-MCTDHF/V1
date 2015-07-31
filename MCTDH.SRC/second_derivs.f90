@@ -18,11 +18,14 @@ subroutine second_derivs(thistime,inspfs,sdspfs)
        workspfs0(:,:), derspfs0(:,:)
 
   gridtime=(thistime-firsttime)/(lasttime-firsttime) 
-  if (jacunitflag.ne.0) then
-     print *, "program jacunit secondderivs";     stop
+  if (jacprojorth.ne.0) then
+     OFLWR "program jacprojorth secondderivs???"; CFLST
   endif
   if (jacsymflag.ne.0) then
-     print *, "program jacsym secondderivs";     stop
+     OFLWR "program jacsym secondderivs"; CFLST
+  endif
+  if (jacgmatthird.ne.0) then
+     OFLWR "program jacgmatthird secondderivs"; CFLST
   endif
   if (constraintflag.ne.0) then
      OFLWR "constraintflag with verlet not checked"; CFLST

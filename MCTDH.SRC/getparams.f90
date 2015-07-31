@@ -60,7 +60,7 @@ subroutine getparams()
 
   NAMELIST/parinp/  noftflag, biodim,biotol,biocomplex, rdenflag,cdenflag, notiming, littlesteps, &
        expotol, eground,  ceground, maxexpodim, numloadfrozen, numholecombo, numholes, excitations, &
-       excitecombos, jacunitflag, jacsymflag, jacprojorth,  fluxoptype, timefac, threshflag, &
+       excitecombos, jacsymflag, jacprojorth,jacgmatthird,  fluxoptype, timefac, threshflag, &
        timefacforce, avectoroutfile, spfoutfile,  autopermthresh, messamount, numshells,   &
        lanthresh, lanczosorder,  lioreg, &   !! rcond
        autonormthresh,  saveflag, save_every, &
@@ -820,6 +820,14 @@ subroutine getparams()
      write(mpifileptr,*)   "    Using nonsparse configuration routines."
   endif
   iiflag=0
+
+  write(mpifileptr,*) " Jacobian options:"
+  write(mpifileptr,*) "    Jacprojorth=", jacprojorth
+  write(mpifileptr,*) "    Jacsymflag=", jacsymflag
+  if (constraintflag.ne.0) then
+     write(mpifileptr,*) "    Jacgmatthird=", jacgmatthird
+  endif
+
   select case (intopt)
   case(4)
      write(mpifileptr,*) " Using VERLET integration, expo first step."
@@ -829,9 +837,6 @@ subroutine getparams()
      write(mpifileptr,*) " Using EXPONENTIAL integration."
      write(mpifileptr,*) "    Expotol    =", expotol
      write(mpifileptr,*) "    Maxexpodim=", maxexpodim
-     write(mpifileptr,*) "    Jacprojorth=", jacprojorth
-     write(mpifileptr,*) "    Jacsymflag=", jacsymflag
-     write(mpifileptr,*) "    Jacunitflag=", jacunitflag
   case(0)
      write(mpifileptr, *) "RK integration.  Recommend errors 1.d-8"
      write(mpifileptr, *) "Myrelerr=", myrelerr;      iiflag=1

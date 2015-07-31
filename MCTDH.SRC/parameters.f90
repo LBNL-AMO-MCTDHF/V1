@@ -367,10 +367,10 @@ integer :: intopt=3              !! RK, GBS      !! SPF/VMF Integrator: 0, RK; 1
                                                  !!  for CMF: 3=expo 4=verlet
 integer :: verletnum=80          !!              !! Number of verlet steps per CMF step
 integer :: jacprojorth=0         !! 1: projector = sum_i |phi_i> <phi_i|phi_i>^-1 <phi_i|
-                                 !! 0:             sum_i |phi_i> <phi_i|
-integer :: jacunitflag=0         !! 1:  (1 x v)_j = sum_i |v_i><v_i|v_j>  for homogeneous third order
-                                 !! 0: usual          
-integer :: jacsymflag=0          !! 3:  use 1-PHP  not (1-P)H
+                                 !! 0:             sum_i |phi_i> <phi_i|    default
+integer :: jacsymflag=0          !! 1:  use WP - PW  not (1-P)W   0: default (1-P)W
+integer :: jacgmatthird=0        !! 0: default g (constraintflag.ne.0) is linear operator
+                                 !! 1: g |phi_c> -> sum_ab |phi_a> g_ab <phi_b|phi_c>
 integer :: biocomplex=0          !! 1=old way complex zg/hpiv  0=always real
 integer :: debugflag=0
 real*8 :: debugfac=1d0

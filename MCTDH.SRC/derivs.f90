@@ -411,7 +411,6 @@ end subroutine actreduced0
 
 subroutine op_gmat(inspfs, outspfs, ireduced,thistime)
   use parameters
-  use xxxmod
   implicit none
   DATATYPE, intent(in) :: inspfs(spfsize,nspf)
   DATATYPE, intent(out) :: outspfs(spfsize,nspf)

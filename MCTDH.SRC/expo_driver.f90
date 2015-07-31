@@ -803,7 +803,6 @@ end subroutine derproject
 
 recursive subroutine der_gmat(thistime,ireduced,inspfs, outspfs, prospfs, prospfderivs)
   use parameters
-  use xxxmod
   implicit none
   integer, intent(in) :: ireduced
   real*8, intent(in) :: thistime
