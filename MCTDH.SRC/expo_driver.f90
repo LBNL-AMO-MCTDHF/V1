@@ -743,14 +743,17 @@ recursive subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
      call mympireduce(derdot,nspf**2)
   endif
 
-  do i=1,nspf
-     do j=1,nspf
-        outspfs(:,i) = outspfs(:,i) + prospfs(:,j) *           derdot(j,i)
-     enddo
-     do j=1,nspf
-        outspfs(:,i) = outspfs(:,i) + prospfderivs(:,j) *      mydot(j,i)
-     enddo
-  enddo
+  call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,prospfs,     spfsize,derdot,nspf,DATAONE,outspfs,spfsize)
+  call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,prospfderivs,spfsize,mydot, nspf,DATAONE,outspfs,spfsize)
+
+!!  do i=1,nspf
+!!     do j=1,nspf
+!!        outspfs(:,i) = outspfs(:,i) + prospfs(:,j) *           derdot(j,i)
+!!     enddo
+!!     do j=1,nspf
+!!        outspfs(:,i) = outspfs(:,i) + prospfderivs(:,j) *      mydot(j,i)
+!!     enddo
+!!  enddo
 
   if (jacprojorth.ne.0) then
 

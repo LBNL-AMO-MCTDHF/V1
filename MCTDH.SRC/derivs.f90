@@ -418,22 +418,22 @@ subroutine op_gmat(inspfs, outspfs, ireduced,thistime)
   integer, intent(in) :: ireduced
   real*8, intent(in) ::  thistime 
   DATATYPE :: conmat(nspf,nspf)        !! AUTOMATIC
-  integer :: ispf, jspf
-
-  outspfs(:,:)=0d0
 
   if (constraintflag.eq.0) then
+     outspfs(:,:)=0d0
      return
   endif
 
 !! with timefac
   call getconmat(thistime,ireduced,conmat)
 
-  do ispf=1,nspf
-     do jspf=1,nspf
-        outspfs(:,ispf) = outspfs(:,ispf) + inspfs(:,jspf) * conmat(jspf,ispf)
-     enddo
-  enddo
+  call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,inspfs,spfsize,conmat,nspf,DATAZERO,outspfs,spfsize)
+
+!!  do ispf=1,nspf
+!!     do jspf=1,nspf
+!!        outspfs(:,ispf) = outspfs(:,ispf) + inspfs(:,jspf) * conmat(jspf,ispf)
+!!     enddo
+!!  enddo
 
 end subroutine op_gmat
 
