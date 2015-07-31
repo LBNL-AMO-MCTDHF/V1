@@ -352,6 +352,10 @@ recursive subroutine jacoperate(inspfs,outspfs)
         call system_clock(itime)
         call op_gmat(inspfs,jactemp2,ii,jactime,jacvect)
         outspfs=outspfs+jactemp2*facs(ii)
+        if (jacgmatthird.ne.0) then
+           call der_gmat(jacvect,jactemp2,ii,jactime,jacvect,inspfs)
+           outspfs=outspfs+jactemp2*facs(ii)
+        endif
         call system_clock(jtime); times(1)=times(1)+jtime-itime;
      endif
 
@@ -716,7 +720,7 @@ end subroutine expoconfigprop
 !! for derivative of PROJECTOR using derivative of spfs.     
 !!      on call inspfs is for example jacvectout
 
-recursive subroutine derproject(inspfs, outspfs, prospfderivs, prospfs)
+recursive subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
   use parameters
   implicit none
   DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
@@ -801,7 +805,7 @@ end subroutine derproject
 
 
 
-recursive subroutine der_gmat(inspfs, outspfs, ireduced,thistime,prospfderivs, prospfs)
+recursive subroutine der_gmat(inspfs, outspfs, ireduced,thistime,prospfs, prospfderivs)
   use parameters
   implicit none
   integer, intent(in) :: ireduced
