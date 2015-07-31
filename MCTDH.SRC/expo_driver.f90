@@ -127,7 +127,7 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   endif
   
 
-  if  ((jacsymflag.ne.0).and.(jacprojorth.eq.0).and.(constraintflag.eq.0).and.(nodgexpthirdflag.eq.0)) then  !! homogeneous third order.  Simpler expression for propagator.
+  if  ((jacsymflag.ne.0).and.(jacprojorth.eq.0).and.(constraintflag.eq.0.or.jacgmatthird.ne.0).and.(nodgexpthirdflag.eq.0)) then  !! homogeneous third order.  Simpler expression for propagator.
      aspfs=inspfs
 
      if (parorbsplit.eq.3) then
