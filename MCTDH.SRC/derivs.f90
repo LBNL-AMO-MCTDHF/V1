@@ -407,21 +407,16 @@ recursive subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, 
 end subroutine actreduced0
 
 
-recursive subroutine tauop(inspfs, outspfs, ireduced,thistime)
+subroutine tauop(inspfs, outspfs, ireduced,thistime)
   use parameters
-  use mpimod
   use xxxmod
   implicit none
-
-  DATATYPE :: inspfs(spfsize,nspf), outspfs(spfsize,nspf)
-  integer :: ispf, jspf, ireduced
-  real*8 ::  thistime 
-  DATATYPE :: myxtdpot=0,  myytdpot=0, myztdpot=0,pots(3)=0d0
-
-  if (tdflag.eq.1) then
-     call vectdpot(thistime,pots)
-     myxtdpot=pots(1);     myytdpot=pots(2);     myztdpot=pots(3);
-  endif
+  DATATYPE, intent(in) :: inspfs(spfsize,nspf)
+  DATATYPE, intent(out) :: outspfs(spfsize,nspf)
+  integer, intent(in) :: ireduced
+  real*8, intent(in) ::  thistime 
+  DATATYPE :: conmat(nspf,nspf)        !! AUTOMATIC
+  integer :: ispf, jspf
 
   outspfs(:,:)=0d0
 
@@ -429,19 +424,42 @@ recursive subroutine tauop(inspfs, outspfs, ireduced,thistime)
      return
   endif
 
+  call getconmat(thistime,ireduced,conmat)
+
   do ispf=1,nspf
      do jspf=1,nspf
-        outspfs(:,ispf) = outspfs(:,ispf) + inspfs(:,jspf) * yyy%cptr(ireduced)%xconmatel(jspf,ispf) * timefac 
-        if (tdflag.eq.1) then
-           outspfs(:,ispf) = outspfs(:,ispf) + inspfs(:,jspf) * timefac * ( &
-                yyy%cptr(ireduced)%xconmatelxx(jspf,ispf) *myxtdpot + &
-                yyy%cptr(ireduced)%xconmatelyy(jspf,ispf) *myytdpot + &
-                yyy%cptr(ireduced)%xconmatelzz(jspf,ispf) *myztdpot )
-        endif
+        outspfs(:,ispf) = outspfs(:,ispf) + inspfs(:,jspf) * conmat(jspf,ispf) * timefac
      enddo
   enddo
 
 end subroutine tauop
+
+
+
+subroutine getconmat(thistime,ireduced,conmat)
+  use parameters
+  use xxxmod
+  implicit none
+  integer, intent(in) :: ireduced
+  real*8, intent(in) ::  thistime 
+  DATATYPE, intent(out) :: conmat(nspf,nspf)
+  DATATYPE :: pots(3)
+
+  if (constraintflag.eq.0) then
+     conmat(:,:)=0d0
+     return
+  endif
+
+  conmat(:,:) =   yyy%cptr(ireduced)%xconmatel(:,:)
+  if (tdflag.eq.1) then
+     call vectdpot(thistime,pots)
+     conmat(:,:) =   conmat(:,:) + &
+          yyy%cptr(ireduced)%xconmatelxx(:,:) *pots(1) + &
+          yyy%cptr(ireduced)%xconmatelyy(:,:) *pots(2) + &
+          yyy%cptr(ireduced)%xconmatelzz(:,:) *pots(3)
+  endif
+
+end subroutine getconmat
 
 
 !! only used for relax ; time not needed    
