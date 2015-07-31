@@ -499,7 +499,7 @@ subroutine op_gmat_thirdorder(inspfs, outspfs, ireduced,thistime,projspfs)
 
   do i=1,nspf
      do j=1,nspf
-        mydot(i,j)=dot(projspfs,inspfs,spfsize)
+        mydot(i,j)=dot(projspfs(:,i),inspfs(:,j),spfsize)
      enddo
   enddo
 
