@@ -800,20 +800,25 @@ recursive subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
 end subroutine derproject
 
 
-#ifdef NOTYETFELLA
 
-recursive subroutine dertau(inspfs, outspfs, prospfs, prospfderivs)
+recursive subroutine der_gmat(thistime,ireduced,inspfs, outspfs, prospfs, prospfderivs)
   use parameters
   use xxxmod
   implicit none
+  integer, intent(in) :: ireduced
+  real*8, intent(in) :: thistime
   DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
   DATATYPE, intent(out) :: outspfs(spfsize, nspf)
   integer :: i,j
   DATATYPE :: dot
-  DATATYPE ::    mydot(nspf,nspf), prodot(nspf,nspf), multdot(nspf,nspf), derdot(nspf,nspf),& !! AUTOMATIC
-       mydot0(nspf,nspf), derdot0(nspf,nspf)
+  DATATYPE ::    mydot(nspf,nspf), derdot(nspf,nspf), mydot0(nspf,nspf), &  !!  AUTOMATIC
+       derdot0(nspf,nspf), conmat(nspf,nspf)
 
   outspfs(:,:)=0.d0
+
+  if (constraintflag.eq.0) then
+     return
+  endif
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
@@ -831,17 +836,15 @@ recursive subroutine dertau(inspfs, outspfs, prospfs, prospfderivs)
      call mympireduce(derdot0,nspf**2)
   endif
 
-  call MYGEMM('N','N',nspf,nspf,nspf,DATAONE,
+  call getconmat(thistime,ireduced,conmat)
 
-  do i=1,nspf
-     do j=1,nspf
-        outspfs(:,i) = outspfs(:,i) + prospfs(:,j) *           derdot(j,i)
-     enddo
-     do j=1,nspf
-        outspfs(:,i) = outspfs(:,i) + prospfderivs(:,j) *      mydot(j,i)
-     enddo
-  enddo
+  call MYGEMM('N','N',nspf,nspf,nspf,DATAONE,conmat,nspf,mydot0,nspf,DATAZERO,mydot,nspf)
+  call MYGEMM('N','N',nspf,nspf,nspf,DATAONE,conmat,nspf,derdot0,nspf,DATAZERO,derdot,nspf)
+
+  call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,prospfs,     spfsize,derdot,nspf,DATAONE,outspfs,spfsize)
+  call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,prospfderivs,spfsize,mydot, nspf,DATAONE,outspfs,spfsize)
+
+end subroutine der_gmat
 
 
-#endif
 
