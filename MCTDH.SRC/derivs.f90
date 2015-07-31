@@ -59,7 +59,8 @@ recursive subroutine all_derivs(thistime,xpsi, xpsip)
         OFLWR "CHECK/FIX GETDFCONSTRAINT"; CFLST
 !!        call get_dfc onstra int(xpsi(astart(1)))
      endif
-     call actreduced(thistime,xpsi(spfstart),xpsi(spfstart),xpsip(spfstart),1)
+!! ireduced should be zero right   07-2015
+     call actreduced0(thistime,xpsi(spfstart),xpsi(spfstart),xpsip(spfstart),0,1,1)
      call system_clock(jtime);     times(5)=times(5)+jtime-itime
 
   call system_clock(itime)
@@ -233,69 +234,28 @@ recursive subroutine driving_linear_derivs(thistime,spfsin,spfsout)
 end subroutine driving_linear_derivs
 
 
+!! MAIN ROUTINE TO OPERATE WITH REDUCED HAMILTONIAN (TIMES TIMEFAC!)
+!!
 !!  outspfs = (1-P) H inspfs
-
 !! where P is projector onto opspfs
 !! H is inverse denmat times reducedham
 
-recursive subroutine actreduced(thistime,inspfs,projspfs, outspfs, ireduced)
-  use parameters
-  implicit none
-  real*8 :: thistime
-  DATATYPE :: inspfs(spfsize,nspf),  outspfs(spfsize,nspf),  projspfs(spfsize,nspf)
-  integer :: ireduced
-  call actreduced0(thistime,inspfs, projspfs, outspfs, ireduced, 1,1)
-end subroutine actreduced
-
-
-!! MAIN ROUTINE TO OPERATE WITH REDUCED HAMILTONIAN (YOURSELF, NOT
-!!  IN DIFF EQ SOLVER)
-
-
 recursive subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,conflag)
-  use parameters
-  use xxxmod
-  implicit none
-
-  DATATYPE :: outspfs(spfsize,nspf),inspfs0(spfsize, nspf), projspfs(spfsize,nspf)
-  integer :: ireduced    ,    projflag,conflag
-  real*8 :: thistime
-
-  call actreduced00(thistime,inspfs0,projspfs,outspfs,projflag,conflag,1,0, yyy%cptr(ireduced),yyy%reducedinvr(:,:,ireduced), &
-       yyy%reducedinvrsq(:,:,ireduced),yyy%reducedr(:,:,ireduced),yyy%reducedproderiv(:,:,ireduced), &
-       yyy%reducedpot(:,:,:,ireduced),yyy%denmat(:,:,ireduced),yyy%invdenmat(:,:,ireduced))
-
-end subroutine actreduced0
-
-recursive subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,conflag, denandtimeflag, onlypulseflag, matrix_ptr, &
-     reducedinvr,reducedinvrsq,reducedr,reducedproderiv, reducedpot,denmat,invdenmat)
   use parameters
   use mpimod
   use configptrmod
+  use xxxmod
   implicit none
-  DATATYPE, intent(in) :: inspfs0(spfsize, nspf), projspfs(spfsize,nspf), &
-       reducedinvr(nspf,nspf),reducedinvrsq(nspf,nspf), reducedr(nspf,nspf),&
-       reducedpot(reducedpotsize,nspf,nspf), denmat(nspf,nspf), invdenmat(nspf,nspf), &
-       reducedproderiv(nspf,nspf)
+  integer, intent(in) :: ireduced,projflag,conflag
+  real*8, intent(in) :: thistime
+  DATATYPE, intent(in) :: inspfs0(spfsize, nspf), projspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-  integer :: ispf, jspf,   itime, jtime, &
-        projflag,getlen, conflag,lowspf,highspf, denandtimeflag,onlypulseflag
+  integer :: ispf, itime, jtime, getlen, lowspf,highspf
   integer, save :: times(0:20)=0,numcalledhere=0
   DATATYPE :: myxtdpot=0,  myytdpot=0, myztdpot=0, pots(3)=0d0
-  real*8 :: thistime
-  Type(CONFIGPTR) :: matrix_ptr
   DATATYPE ::   inspfs(spfsize,nspf), tempmult(spfsize),spfmult(spfsize,nspf*2),&  !! AUTOMATIC
        myspf(spfsize), spfinvr( spfsize,nspf ), spfr( spfsize,nspf ),  &
        spfinvrsq(  spfsize,nspf),spfproderiv(  spfsize,nspf )
-
-!!$  integer, save :: allochere=0
-!!$  DATATYPE,save,allocatable ::  inspfs(:,:), tempmult(:),spfmult(:,:),myspf(:), &
-!!$       spfinvr( :,: ), spfr( :,: ),  spfinvrsq(  :,:),spfproderiv(  :,: )
-!!$  if (allochere.eq.0) then
-!!$     allocate(  inspfs(spfsize,nspf), tempmult(spfsize),spfmult(spfsize,nspf*2),myspf(spfsize), &
-!!$       spfinvr( spfsize,nspf ), spfr( spfsize,nspf ),  spfinvrsq(  spfsize,nspf),spfproderiv(  spfsize,nspf ))
-!!$  endif
-!!$  allochere=1
 
   if (tdflag.eq.1) then
      call vectdpot(thistime,pots)
@@ -310,7 +270,7 @@ recursive subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,
  !! sum over fast index reduced matrices, because doing spfinvrsq= reducedinvrsq * inspfs BUT 1) store in transposed order and 2) have to reverse the call in BLAS
 
   if (numr.eq.1) then
-     call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, denmat(:,:),nspf, DATAZERO, spfinvrsq(:,:), spfsize)
+     call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, yyy%denmat(:,:,ireduced),nspf, DATAZERO, spfinvrsq(:,:), spfsize)
 
      spfinvr(:,:)=spfinvrsq(:,:)/bondpoints(1)
 
@@ -320,15 +280,15 @@ recursive subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,
 
      spfinvrsq(:,:)=spfinvrsq(:,:)/bondpoints(1)**2
   else
-     call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, reducedinvrsq(:,:),nspf, DATAZERO, spfinvrsq(:,:), spfsize)
-     call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, reducedinvr(:,:),nspf, DATAZERO, spfinvr(:,:), spfsize)
+     call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, yyy%reducedinvrsq(:,:,ireduced),nspf, DATAZERO, spfinvrsq(:,:), spfsize)
+     call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, yyy%reducedinvr(:,:,ireduced),nspf, DATAZERO, spfinvr(:,:), spfsize)
 
      if (tdflag.eq.1) then
-        call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, reducedr(:,:),nspf, DATAZERO, spfr(:,:), spfsize)
+        call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, yyy%reducedr(:,:,ireduced),nspf, DATAZERO, spfr(:,:), spfsize)
      endif
      
-     if ((nonuc_checkflag/=1).and.onlypulseflag.eq.0) then
-        call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, reducedproderiv(:,:),nspf, DATAZERO, spfproderiv(:,:), spfsize)
+     if (nonuc_checkflag.eq.0) then
+        call MYGEMM('N', 'N', spfsize,nspf,nspf,DATAONE, inspfs, spfsize, yyy%reducedproderiv(:,:,ireduced),nspf, DATAZERO, spfproderiv(:,:), spfsize)
      endif
   endif
 
@@ -355,28 +315,24 @@ recursive subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,
   spfmult=0.d0
 
   if (multmanyflag.ne.0) then
-     if (onlypulseflag.eq.0) then
-        call system_clock(itime)
-        call mult_ke(spfinvrsq(:,:),spfmult,nspf,timingdir,notiming)
-        call system_clock(jtime);  times(2)=times(2)+jtime-itime
-     endif
+     call system_clock(itime)
+     call mult_ke(spfinvrsq(:,:),spfmult,nspf,timingdir,notiming)
+     call system_clock(jtime);  times(2)=times(2)+jtime-itime
   endif
 
   do ispf=lowspf,highspf
      call system_clock(itime)
-     if (onlypulseflag.eq.0) then
-        if (multmanyflag.eq.0) then
-           call mult_ke(spfinvrsq(:,ispf),tempmult,1,timingdir,notiming)
-           spfmult(:,ispf) = spfmult(:,ispf) + tempmult(:)
-           call system_clock(jtime);  times(2)=times(2)+jtime-itime;  call system_clock(itime)
-        endif
-        call mult_pot(spfinvr(:,ispf),tempmult)
+     if (multmanyflag.eq.0) then
+        call mult_ke(spfinvrsq(:,ispf),tempmult,1,timingdir,notiming)
         spfmult(:,ispf) = spfmult(:,ispf) + tempmult(:)
-        call hatom_op(spfinvr(:,ispf),tempmult)
-        spfmult(:,ispf)=spfmult(:,ispf)+tempmult(:)
-        if (numfrozen.gt.0) then
-           call op_frozenreduced(spfinvr(:,ispf),spfmult(:,ispf))  !! adds to spfmult DIRECT ONLY
-        endif
+        call system_clock(jtime);  times(2)=times(2)+jtime-itime;  call system_clock(itime)
+     endif
+     call mult_pot(spfinvr(:,ispf),tempmult)
+     spfmult(:,ispf) = spfmult(:,ispf) + tempmult(:)
+     call hatom_op(spfinvr(:,ispf),tempmult)
+     spfmult(:,ispf)=spfmult(:,ispf)+tempmult(:)
+     if (numfrozen.gt.0) then
+        call op_frozenreduced(spfinvr(:,ispf),spfmult(:,ispf))  !! adds to spfmult DIRECT ONLY
      endif
      call system_clock(jtime);     times(3)=times(3)+jtime-itime;         call system_clock(itime)
 
@@ -393,20 +349,18 @@ recursive subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,
 
      call system_clock(jtime);        times(4)=times(4)+jtime-itime;        call system_clock(itime)
   
-     if ((nonuc_checkflag/=1).and.onlypulseflag.eq.0) then
+     if (nonuc_checkflag.eq.0) then
         call noparorbsupport("another call mult_yderiv!!")
         call op_yderiv(spfproderiv(:,ispf),tempmult(:))
         spfmult(:,ispf)=spfmult(:,ispf)+tempmult(:)
      endif
      call system_clock(jtime);     times(5)=times(5)+jtime-itime; call system_clock(itime)
 
-     if (onlypulseflag.eq.0) then
-
 !! NOW ONLY OUTPUTS ONE, TAKES ALL
-        call mult_reducedpot(inspfs(:,:),tempmult(:),ispf,reducedpot(:,:,:))
-        spfmult(:,ispf)=spfmult(:,ispf) + tempmult(:)
-     endif
+     call mult_reducedpot(inspfs(:,:),tempmult(:),ispf,yyy%reducedpot(:,:,:,ireduced))
+     spfmult(:,ispf)=spfmult(:,ispf) + tempmult(:)
      call system_clock(jtime);  times(6)=times(6)+jtime-itime;  
+
   enddo
 
   if (parorbsplit.eq.1) then
@@ -416,11 +370,11 @@ recursive subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,
   endif
 
 !! WITH TIMEFAC
-  if (denandtimeflag.ne.0) then
-     call system_clock(itime)
-     call MYGEMM('N','N', spfsize,nspf,nspf,timefac, spfmult,spfsize, invdenmat(:,:), nspf, DATAZERO, outspfs, spfsize)
-     call system_clock(jtime);  times(7)=times(7)+jtime-itime
-  endif
+
+  call system_clock(itime)
+  call MYGEMM('N','N', spfsize,nspf,nspf,timefac, spfmult,spfsize, yyy%invdenmat(:,:,ireduced), nspf, DATAZERO, outspfs, spfsize)
+  call system_clock(jtime);  times(7)=times(7)+jtime-itime
+
 
   if (projflag==1) then
      call system_clock(itime)
@@ -431,17 +385,8 @@ recursive subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,
      
   if (constraintflag/=0.and.conflag.ne.0) then
      call system_clock(itime)
-     do ispf=1,nspf
-        do jspf=1,nspf
-           outspfs(:,ispf) = outspfs(:,ispf) + inspfs(:,jspf) * matrix_ptr%xconmatel(jspf,ispf) * timefac 
-           if (tdflag.eq.1) then
-              outspfs(:,ispf) = outspfs(:,ispf) + inspfs(:,jspf) * timefac * ( &
-                   matrix_ptr%xconmatelxx(jspf,ispf) *myxtdpot + &
-                   matrix_ptr%xconmatelyy(jspf,ispf) *myytdpot + &
-                   matrix_ptr%xconmatelzz(jspf,ispf) *myztdpot )
-           endif
-        enddo
-     enddo
+     call tauop(inspfs,spfmult,ireduced,thistime)
+     outspfs(:,:)=outspfs(:,:)+spfmult(:,:)
      call system_clock(jtime);        times(9)=times(9)+jtime-itime
   endif
 
@@ -459,7 +404,7 @@ recursive subroutine actreduced00(thistime,inspfs0, projspfs, outspfs, projflag,
      endif
   endif
 
-end subroutine actreduced00
+end subroutine actreduced0
 
 
 recursive subroutine tauop(inspfs, outspfs, ireduced,thistime)
