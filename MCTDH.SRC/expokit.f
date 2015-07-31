@@ -2347,7 +2347,6 @@
 
 *---     if `happy breakdown' go straightforward at the end ... 
          if ( hj1j.le.break_tol ) then
-!            print*,'happy breakdown: mbrkdwn =',j,' h =',hj1j
             write(fileptr,*) 'happy breakdown: mbrkdwn =',j,' h =',hj1j
             k1 = 0
             ibrkflag = 1
@@ -5904,6 +5903,7 @@
  100  if ( t_now.ge.t_out ) goto 500
 
       nstep = nstep + 1
+      t_last=t_step
       t_step = MIN( t_out-t_now, t_new )
 
       p1 = 1.0d0/beta
@@ -6346,6 +6346,7 @@
  100  if ( t_now.ge.t_out ) goto 500
 
       nstep = nstep + 1
+      t_last=t_step
       t_step = MIN( t_out-t_now, t_new )
 
       p1 = 1.0d0/beta
