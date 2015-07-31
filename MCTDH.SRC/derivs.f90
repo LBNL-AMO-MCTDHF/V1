@@ -503,6 +503,10 @@ subroutine op_gmat_thirdorder(inspfs, outspfs, ireduced,thistime,projspfs)
      enddo
   enddo
 
+  if (parorbsplit.eq.3) then
+     call mympireduce(mydot,nspf**2)
+  endif
+
 !! with timefac
   call getconmat(thistime,ireduced,conmat)
 
