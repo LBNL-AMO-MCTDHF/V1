@@ -350,7 +350,7 @@ recursive subroutine jacoperate(inspfs,outspfs)
 
      if (constraintflag.ne.0) then
         call system_clock(itime)
-        call tauop(inspfs,jactemp2,ii,jactime)
+        call op_gmat(inspfs,jactemp2,ii,jactime)
         outspfs=outspfs+jactemp2*facs(ii)
         call system_clock(jtime); times(1)=times(1)+jtime-itime;
      endif
@@ -795,4 +795,50 @@ recursive subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
   endif
 
 end subroutine derproject
+
+
+#ifdef NOTYETFELLA
+
+recursive subroutine dertau(inspfs, outspfs, prospfs, prospfderivs)
+  use parameters
+  use xxxmod
+  implicit none
+  DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
+  DATATYPE, intent(out) :: outspfs(spfsize, nspf)
+  integer :: i,j
+  DATATYPE :: dot
+  DATATYPE ::    mydot(nspf,nspf), prodot(nspf,nspf), multdot(nspf,nspf), derdot(nspf,nspf),& !! AUTOMATIC
+       mydot0(nspf,nspf), derdot0(nspf,nspf)
+
+  outspfs(:,:)=0.d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
+  do i=1,nspf
+     do j=1,nspf
+        mydot0(i,j) = dot(prospfs(:,i),inspfs(:,j),spfsize)
+        derdot0(i,j) = dot(prospfderivs(:,i),inspfs(:,j),spfsize)
+     enddo
+  enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
+  if (parorbsplit.eq.3) then
+     call mympireduce(mydot0,nspf**2)
+     call mympireduce(derdot0,nspf**2)
+  endif
+
+  call MYGEMM('N','N',nspf,nspf,nspf,DATAONE,
+
+  do i=1,nspf
+     do j=1,nspf
+        outspfs(:,i) = outspfs(:,i) + prospfs(:,j) *           derdot(j,i)
+     enddo
+     do j=1,nspf
+        outspfs(:,i) = outspfs(:,i) + prospfderivs(:,j) *      mydot(j,i)
+     enddo
+  enddo
+
+
+#endif
 

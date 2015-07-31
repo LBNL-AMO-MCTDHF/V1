@@ -146,7 +146,7 @@ recursive subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
         return
      endif
      do jjj=ibot,1
-        call tauop(spfsin(:,:),spfmult(:,:), jjj,thistime)
+        call op_gmat(spfsin(:,:),spfmult(:,:), jjj,thistime)
         spfsout(:,:)=spfsout(:,:)+spfmult(:,:)*facs(jjj)
      enddo
      return
@@ -385,7 +385,7 @@ recursive subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, 
      
   if (constraintflag/=0.and.conflag.ne.0) then
      call system_clock(itime)
-     call tauop(inspfs,spfmult,ireduced,thistime)
+     call op_gmat(inspfs,spfmult,ireduced,thistime)
      outspfs(:,:)=outspfs(:,:)+spfmult(:,:)
      call system_clock(jtime);        times(9)=times(9)+jtime-itime
   endif
@@ -407,7 +407,9 @@ recursive subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, 
 end subroutine actreduced0
 
 
-subroutine tauop(inspfs, outspfs, ireduced,thistime)
+!! WITH TIMEFAC
+
+subroutine op_gmat(inspfs, outspfs, ireduced,thistime)
   use parameters
   use xxxmod
   implicit none
@@ -424,17 +426,19 @@ subroutine tauop(inspfs, outspfs, ireduced,thistime)
      return
   endif
 
+!! with timefac
   call getconmat(thistime,ireduced,conmat)
 
   do ispf=1,nspf
      do jspf=1,nspf
-        outspfs(:,ispf) = outspfs(:,ispf) + inspfs(:,jspf) * conmat(jspf,ispf) * timefac
+        outspfs(:,ispf) = outspfs(:,ispf) + inspfs(:,jspf) * conmat(jspf,ispf)
      enddo
   enddo
 
-end subroutine tauop
+end subroutine op_gmat
 
 
+!! WITH TIMEFAC
 
 subroutine getconmat(thistime,ireduced,conmat)
   use parameters
@@ -450,13 +454,13 @@ subroutine getconmat(thistime,ireduced,conmat)
      return
   endif
 
-  conmat(:,:) =   yyy%cptr(ireduced)%xconmatel(:,:)
+  conmat(:,:) =   yyy%cptr(ireduced)%xconmatel(:,:) * timefac
   if (tdflag.eq.1) then
      call vectdpot(thistime,pots)
      conmat(:,:) =   conmat(:,:) + &
-          yyy%cptr(ireduced)%xconmatelxx(:,:) *pots(1) + &
-          yyy%cptr(ireduced)%xconmatelyy(:,:) *pots(2) + &
-          yyy%cptr(ireduced)%xconmatelzz(:,:) *pots(3)
+          yyy%cptr(ireduced)%xconmatelxx(:,:) *pots(1) * timefac + &
+          yyy%cptr(ireduced)%xconmatelyy(:,:) *pots(2) * timefac + &
+          yyy%cptr(ireduced)%xconmatelzz(:,:) *pots(3) * timefac
   endif
 
 end subroutine getconmat
