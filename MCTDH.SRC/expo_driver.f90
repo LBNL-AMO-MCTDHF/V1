@@ -716,7 +716,7 @@ end subroutine expoconfigprop
 !! for derivative of PROJECTOR using derivative of spfs.     
 !!      on call inspfs is for example jacvectout
 
-recursive subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
+recursive subroutine derproject(inspfs, outspfs, prospfderivs, prospfs)
   use parameters
   implicit none
   DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
@@ -801,7 +801,7 @@ end subroutine derproject
 
 
 
-recursive subroutine der_gmat(inspfs, outspfs, ireduced,thistime,prospfs, prospfderivs)
+recursive subroutine der_gmat(inspfs, outspfs, ireduced,thistime,prospfderivs, prospfs)
   use parameters
   implicit none
   integer, intent(in) :: ireduced
