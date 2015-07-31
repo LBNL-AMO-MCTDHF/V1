@@ -146,7 +146,7 @@ recursive subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
         return
      endif
      do jjj=ibot,1
-        call op_gmat(spfsin(:,:),spfmult(:,:), jjj,thistime)
+        call op_gmat(spfsin(:,:),spfmult(:,:),jjj,thistime,spfsin(:,:))
         spfsout(:,:)=spfsout(:,:)+spfmult(:,:)*facs(jjj)
      enddo
      return
@@ -385,7 +385,7 @@ recursive subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, 
      
   if (constraintflag/=0.and.conflag.ne.0) then
      call system_clock(itime)
-     call op_gmat(inspfs,spfmult,ireduced,thistime)
+     call op_gmat(inspfs,spfmult,ireduced,thistime,projspfs)
      outspfs(:,:)=outspfs(:,:)+spfmult(:,:)
      call system_clock(jtime);        times(9)=times(9)+jtime-itime
   endif
@@ -409,31 +409,18 @@ end subroutine actreduced0
 
 !! WITH TIMEFAC
 
-subroutine op_gmat(inspfs, outspfs, ireduced,thistime)
+subroutine op_gmat(inspfs, outspfs, ireduced,thistime,projspfs)
   use parameters
   implicit none
-  DATATYPE, intent(in) :: inspfs(spfsize,nspf)
+  DATATYPE, intent(in) :: inspfs(spfsize,nspf), projspfs(spfsize,nspf)
   DATATYPE, intent(out) :: outspfs(spfsize,nspf)
   integer, intent(in) :: ireduced
   real*8, intent(in) ::  thistime 
-  DATATYPE :: conmat(nspf,nspf)        !! AUTOMATIC
-
-  if (constraintflag.eq.0) then
-     outspfs(:,:)=0d0
-     return
+  if (jacgmatthird.eq.0) then
+     call op_gmat_firstorder(inspfs, outspfs, ireduced, thistime)
+  else
+     call op_gmat_thirdorder(inspfs, outspfs, ireduced, thistime,projspfs)
   endif
-
-!! with timefac
-  call getconmat(thistime,ireduced,conmat)
-
-  call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,inspfs,spfsize,conmat,nspf,DATAZERO,outspfs,spfsize)
-
-!!  do ispf=1,nspf
-!!     do jspf=1,nspf
-!!        outspfs(:,ispf) = outspfs(:,ispf) + inspfs(:,jspf) * conmat(jspf,ispf)
-!!     enddo
-!!  enddo
-
 end subroutine op_gmat
 
 
@@ -463,6 +450,70 @@ subroutine getconmat(thistime,ireduced,conmat)
   endif
 
 end subroutine getconmat
+
+
+subroutine op_gmat_firstorder(inspfs, outspfs, ireduced,thistime)
+  use parameters
+  implicit none
+  DATATYPE, intent(in) :: inspfs(spfsize,nspf)
+  DATATYPE, intent(out) :: outspfs(spfsize,nspf)
+  integer, intent(in) :: ireduced
+  real*8, intent(in) ::  thistime 
+  DATATYPE :: conmat(nspf,nspf)        !! AUTOMATIC
+
+  if (constraintflag.eq.0) then
+     outspfs(:,:)=0d0
+     return
+  endif
+
+!! with timefac
+  call getconmat(thistime,ireduced,conmat)
+
+  call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,inspfs,spfsize,conmat,nspf,DATAZERO,outspfs,spfsize)
+
+!!  do ispf=1,nspf
+!!     do jspf=1,nspf
+!!        outspfs(:,ispf) = outspfs(:,ispf) + inspfs(:,jspf) * conmat(jspf,ispf)
+!!     enddo
+!!  enddo
+
+end subroutine op_gmat_firstorder
+
+
+
+subroutine op_gmat_thirdorder(inspfs, outspfs, ireduced,thistime,projspfs)
+  use parameters
+  implicit none
+  DATATYPE, intent(in) :: inspfs(spfsize,nspf), projspfs(spfsize,nspf)
+  DATATYPE, intent(out) :: outspfs(spfsize,nspf)
+  integer, intent(in) :: ireduced
+  real*8, intent(in) ::  thistime 
+  DATATYPE :: conmat(nspf,nspf), mydot(nspf,nspf), mymat(nspf,nspf)    !! AUTOMATIC
+  DATATYPE :: dot
+  integer :: i,j
+
+  if (constraintflag.eq.0) then
+     outspfs(:,:)=0d0
+     return
+  endif
+
+  do i=1,nspf
+     do j=1,nspf
+        mydot(i,j)=dot(projspfs,inspfs,spfsize)
+     enddo
+  enddo
+
+!! with timefac
+  call getconmat(thistime,ireduced,conmat)
+
+  call MYGEMM('N','N',nspf,nspf,nspf,DATAONE,conmat,nspf,mydot,nspf,DATAZERO,mymat,nspf)
+
+  call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,projspfs,spfsize,mymat,nspf,DATAZERO,outspfs,spfsize)
+
+end subroutine op_gmat_thirdorder
+
+
+
 
 
 !! only used for relax ; time not needed    

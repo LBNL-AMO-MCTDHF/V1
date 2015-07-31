@@ -350,7 +350,7 @@ recursive subroutine jacoperate(inspfs,outspfs)
 
      if (constraintflag.ne.0) then
         call system_clock(itime)
-        call op_gmat(inspfs,jactemp2,ii,jactime)
+        call op_gmat(inspfs,jactemp2,ii,jactime,jacvect)
         outspfs=outspfs+jactemp2*facs(ii)
         call system_clock(jtime); times(1)=times(1)+jtime-itime;
      endif
@@ -801,7 +801,7 @@ end subroutine derproject
 
 
 
-recursive subroutine der_gmat(thistime,ireduced,inspfs, outspfs, prospfs, prospfderivs)
+recursive subroutine der_gmat(inspfs, outspfs, ireduced,thistime,prospfs, prospfderivs)
   use parameters
   implicit none
   integer, intent(in) :: ireduced
