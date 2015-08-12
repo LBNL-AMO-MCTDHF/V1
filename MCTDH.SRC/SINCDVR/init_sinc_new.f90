@@ -522,6 +522,8 @@ subroutine init_spfs(inspfs,numloaded)
      WRFL loadedocc(1:numloaded); CFL
 
      allocate(ivopot(totpoints), density(totpoints),ivo_occupied(totpoints,numloaded))
+     ivopot(:)=0d0; density(:)=0d0
+
      numocc=numloaded
      ivo_occupied(:,:)=inspfs(:,1:numloaded)
      do ispf=1,numloaded
