@@ -24,6 +24,7 @@ end subroutine staticvector
 subroutine ovl_initial()
   use ovlmod
   use parameters
+  use mpimod
   implicit none
 
   integer :: jnumovl, ifile,acomplex,spfcomplex,nstate,i,kk,tdims(3),tndof,tnumconfig,tnumr,tnspf
@@ -37,14 +38,19 @@ subroutine ovl_initial()
 
   numovl=0
   do ifile=1,numovlfiles
-     open(909,file=ovlspffiles(ifile),status="unknown",form="unformatted")
-     open(910,file=ovlavectorfiles(ifile),status="unknown",form="unformatted")
+     if (myrank.eq.1) then
+        open(909,file=ovlspffiles(ifile),status="unknown",form="unformatted")
+        open(910,file=ovlavectorfiles(ifile),status="unknown",form="unformatted")
 
-     call avector_header_read_simple(910,nstate,tndof,tnumr,tnumconfig,acomplex)
+        call avector_header_read_simple(910,nstate,tndof,tnumr,tnumconfig,acomplex)
+        call spf_header_read(909,tdims,tnspf,spfcomplex)
+        close(909);     close(910)
+     endif
+
+     call mympiibcastone(nstate,1); call mympiibcastone(tnspf,1); call mympiibcastone(tnumconfig,1); 
+     call mympiibcastone(tnumr,1)
 
      numovl=numovl+nstate
-
-     call spf_header_read(909,tdims,tnspf,spfcomplex)
 
      if (tnspf.gt.nspf) then
         OFLWR " *** WARNING *** WARNING *** WARNING *** WARNING *** WARNING *** "
@@ -57,21 +63,21 @@ subroutine ovl_initial()
      if(tnumr.gt.numr) then
         OFLWR "numr on disk too big. on file, current:",tnumr,numr; CFLST
      endif
-     close(909);     close(910)
   enddo
 
   allocate(overlaps(numovl,0:autosize,mcscfnum),orig_spfs(spfsize,nspf,numovl),orig_avectors(numconfig,numr,numovl))
   orig_spfs=0d0;  orig_avectors=0d0
   jnumovl=0
 
-!! no should be ok  call noparorbsupport("in ovl_initial")
-
   do ifile=1,numovlfiles
-     open(909,file=ovlspffiles(ifile),status="unknown",form="unformatted")
-     open(910,file=ovlavectorfiles(ifile),status="unknown",form="unformatted")
-     call avector_header_read_simple(910,nstate,tndof,tnumr,tnumconfig,acomplex)
-     call spf_header_read(909,tdims,tnspf,spfcomplex)
-     call spf_read0(909,nspf,spfdims,tnspf,tdims,spfcomplex,spfdimtype,orig_spfs(:,:,jnumovl+1),(/0,0,0/))
+
+     call load_spfs0(orig_spfs(:,:,jnumovl+1), spfdims, nspf, spfdimtype, ovlspffiles(ifile), tnspf, (/0,0,0/))
+
+!     open(909,file=ovlspffiles(ifile),status="unknown",form="unformatted")
+!     call spf_header_read(909,tdims,tnspf,spfcomplex)
+!     call spf_read0(909,nspf,spfdims,tnspf,tdims,spfcomplex,spfdimtype,orig_spfs(:,:,jnumovl+1),(/0,0,0/))
+!     close(909)
+
      do i=tnspf+1,nspf
         call staticvector(orig_spfs(:,i,jnumovl+1),spfsize)
         if (parorbsplit.eq.3) then
@@ -80,10 +86,24 @@ subroutine ovl_initial()
            call gramschmidt(spfsize,i-1,spfsize,orig_spfs(:,:,jnumovl+1),orig_spfs(:,i,jnumovl+1),.false.)
         endif
      enddo
+
+     if (myrank.eq.1) then
+        open(910,file=ovlavectorfiles(ifile),status="unknown",form="unformatted")
+        call avector_header_read_simple(910,nstate,tndof,tnumr,tnumconfig,acomplex)
+     endif
+     call mympiibcastone(nstate,1); call mympiibcastone(tndof,1); call mympiibcastone(tnumr,1);
+     call mympiibcastone(tnumconfig,1); call mympiibcastone(acomplex,1)
+     if (myrank.eq.1) then
+        call load_avectors0(910,acomplex,orig_avectors(:,:,jnumovl+1),numr,numconfig,ndof,tnumr,tnumconfig,readavectorsubsimple, nstate)
+        close(910)
+     endif
+
+     call mympibcast(orig_avectors(:,:,jnumovl+1),1,numconfig*numr*nstate)
+
      do kk=2,nstate
         orig_spfs(:,:,jnumovl+kk)=orig_spfs(:,:,jnumovl+1)
      enddo
-     call load_avectors0(910,acomplex,orig_avectors(:,:,jnumovl+1),numr,numconfig,ndof,tnumr,tnumconfig,readavectorsubsimple, nstate)
+
      jnumovl=jnumovl+nstate
      
   enddo

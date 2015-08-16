@@ -303,7 +303,7 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
         read(iunit) cspfs(:,:,:, 1:numloaded)
      endif
      close(iunit)
-     OFLWR "   ...okay"; CFL     
+     OFLWR "   ...rank 1 read from file"; CFL     
 
      do idim=1,3
         if (spfdimtype(idim).ne.1.and.in_gridshift(idim).ne.0) then
@@ -395,7 +395,9 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
      enddo
   else
      do ispf=1,numloaded
-
+        if (debugflag.ne.0) then
+           OFLWR "call scatter orbital ", ispf; CFL
+        endif
         if (readcflag.eq.0) then
            call splitscatterv_real(bigoutrealspfs(:,:,:,ispf),outrealspfs(:,:,:,ispf))
            outspfs(:,:,:,ispf)= outrealspfs(:,:,:,ispf)

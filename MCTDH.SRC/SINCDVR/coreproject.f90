@@ -1741,14 +1741,16 @@ subroutine splitscatterv_real(inbig,outlocal)
      enddo
      enddo
      enddo
-
   else
      allocate(inscatter(1,1,1,1,1,1))
   endif
 
+  call mpibarrier()
+
   qqblocks(:)=totpoints
   call myscatterv_real(inscatter,outlocal,qqblocks)
 
+  call mpibarrier()
 
   deallocate(inscatter)
 
@@ -1777,14 +1779,16 @@ subroutine splitscatterv_complex(inbig,outlocal)
      enddo
      enddo
      enddo
-
   else
      allocate(inscatter(1,1,1,1,1,1))
   endif
 
+  call mpibarrier()
+
   qqblocks(:)=totpoints
   call myscatterv_complex(inscatter,outlocal,qqblocks)
 
+  call mpibarrier()
 
   deallocate(inscatter)
 
