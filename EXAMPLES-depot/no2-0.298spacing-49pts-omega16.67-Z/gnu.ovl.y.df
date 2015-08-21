@@ -1,0 +1,52 @@
+#!/global/software/sl-6.x86_64/modules/tools/gnuplot/4.6.0/bin/gnuplot -persist 
+
+set style data lines
+
+set border 31 lw 2
+
+set logscale y
+
+## set format y "10^{%T}"
+
+## set ytics 0.000001,100,100
+
+set ytics 2
+
+set key bottom right
+set xlabel "Time (as)"
+
+set term unknown
+
+#plot "Dat/Overlaps.y.df.dat" using 1:2 lw 4 title "1"
+
+plot "Dat/Overlaps.y.df.dat" using 1:3 lw 4 title "2"
+replot "Dat/Overlaps.y.df.dat" using 1:4 lw 4 title "3"
+replot "Dat/Overlaps.y.df.dat" using 1:5 lw 4 title "4"
+replot "Dat/Overlaps.y.df.dat" using 1:6 lw 4 title "5"
+replot "Dat/Overlaps.y.df.dat" using 1:7 lw 4 title "6"
+replot "Dat/Overlaps.y.df.dat" using 1:8 lw 4 title "7"
+replot "Dat/Overlaps.y.df.dat" using 1:9 lw 4 title "8"
+replot "Dat/Overlaps.y.df.dat" using 1:10 lw 4 title "9"
+replot "Dat/Overlaps.y.df.dat" using 1:11 lw 6 title "10"
+replot "Dat/Overlaps.y.df.dat" using 1:12 lw 6 title "11"
+replot "Dat/Overlaps.y.df.dat" using 1:13 lw 6 title "12"
+replot "Dat/Overlaps.y.df.dat" using 1:14 lw 6 title "13"
+replot "Dat/Overlaps.y.df.dat" using 1:15 lw 6 title "14"
+replot "Dat/Overlaps.y.df.dat" using 1:16 lw 6 title "15"
+replot "Dat/Overlaps.y.df.dat" using 1:17 lw 6 title "16"
+replot "Dat/Overlaps.y.df.dat" using 1:18 lw 6 title "17"
+replot "Dat/Overlaps.y.df.dat" using 1:19 lw 8 title "18"
+replot "Dat/Overlaps.y.df.dat" using 1:20 lw 8 title "19"
+replot "Dat/Overlaps.y.df.dat" using 1:21 lw 8 title "20"
+
+set yrange [0.00001:*]
+
+set term x11
+replot
+
+set key top left
+set term post solid color 20
+set out "overlaps.y.df.ps"
+replot
+
+

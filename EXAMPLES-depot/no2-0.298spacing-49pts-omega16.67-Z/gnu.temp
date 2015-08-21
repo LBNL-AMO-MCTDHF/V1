@@ -1,0 +1,16 @@
+#!/global/software/sl-6.x86_64/modules/tools/gnuplot/4.6.0/bin/gnuplot -persist 
+
+set style data lines
+
+set border 31 lw 2
+
+set key bottom right
+set xlabel "Time (as)"
+
+set term unknown
+
+plot "Dat/Overlaps.x.df.dat" using 1:2 lw 4 title "1"
+
+set term x11
+replot
+
