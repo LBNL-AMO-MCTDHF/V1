@@ -331,15 +331,15 @@ subroutine velmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   spfout(:)=0d0
   if (abs(myxtdpot0).gt.0d0) then
      call mult_xderiv(spfin,work,1)
-     spfout(:)=spfout(:)+work(:)*(0d0,1d0)
+     spfout(:)=spfout(:)+work(:)*(0d0,1d0)*myxtdpot0  * (-1)
   endif
   if (abs(myytdpot0).gt.0d0) then
      call mult_yderiv(spfin,work,1)
-     spfout(:)=spfout(:)+work(:)*(0d0,1d0)
+     spfout(:)=spfout(:)+work(:)*(0d0,1d0)*myytdpot0  * (-1)
   endif
   if (abs(myztdpot).gt.0d0) then
      call mult_zderiv(spfin,work,1)
-     spfout(:)=spfout(:)+work(:)*(0d0,1d0)
+     spfout(:)=spfout(:)+work(:)*(0d0,1d0)*myztdpot   * (-1)
   endif
 end subroutine velmultiply
 
@@ -1076,26 +1076,6 @@ subroutine mult_ke000(in, out,howmany,timingdir,notiming)
   call mult_allpar(in,out,1,howmany,timingdir,notiming)
 
 end subroutine mult_ke000
-
-
-subroutine mult_easyderiv(in, out,howmany,which)
-  use myparams
-  use pfileptrmod
-  implicit none
-  integer,intent(in) :: howmany,which
-  DATATYPE,intent(in) :: in(totpoints,howmany)
-  DATATYPE, intent(out) :: out(totpoints,howmany)
-  select case(which)
-  case(1)
-     call mult_xderiv(in,out,howmany)
-  case(2)
-     call mult_yderiv(in,out,howmany)
-  case(3)
-     call mult_zderiv(in,out,howmany)
-  case default
-     OFLWR "oopsie",which; CFLST
-  end select
-end subroutine mult_easyderiv
 
 
 subroutine mult_easyke(in,out,howmany,which)
