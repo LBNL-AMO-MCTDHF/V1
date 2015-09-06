@@ -51,18 +51,14 @@ subroutine fluxgtau(alg)
 !! 2       = use full one-e potential, no two-e 
 !! other   = only KE
 
-  integer :: alg,curtime,oldtime,tau,k,nt,i,molength,alength,  BatchSize,NBat,brabat,brareadsize, &
-       bratime,ketbat,ketreadsize,kettime,bratop, whichbin,atime,btime,itime,jtime,times(1:7)=0, clow, &
-       chigh,jproc,cnum, flag, ipulse, imc
-  integer, allocatable :: bintimes(:)
-  real*8 :: MemTot,MemVal,dt,wfi,ffac, piover2, estep, myft,xyfac,zfac
-!!092712 real*8 :: Energy
-  complex*16 :: Energy,  tdpotft
-  real*8, allocatable :: xsec(:)
-  complex*16, allocatable :: FTgtau(:,:), FTgtausave(:,:)
+  integer :: alg,curtime,oldtime,k,nt,i,molength,alength,  BatchSize,NBat,brabat,brareadsize, &
+       bratime,ketbat,ketreadsize,kettime,bratop, atime,btime,itime,jtime,times(1:7)=0, &
+       imc, tau
+  real*8 :: MemTot,MemVal,dt, xyfac,zfac,myfac,wfi,estep
+  complex*16, allocatable :: FTgtau(:,:), pulseft(:,:)
+  real*8, allocatable :: pulseftsq(:)
   DATATYPE :: dot,fluxeval,fluxevalval(mcscfnum), pots1(3)=0d0, pots2(3)=0d0
-  logical :: doFT
-  DATATYPE, allocatable :: gtau(:,:,:),wsave(:), tempgtau(:,:), mobio(:,:),abio(:,:,:)
+  DATATYPE, allocatable :: gtau(:,:), mobio(:,:),abio(:,:,:)
   DATATYPE, allocatable, target :: bramo(:,:,:),braavec(:,:,:,:), ketmo(:,:,:),ketavec(:,:,:,:)
   DATATYPE, pointer :: moket(:,:),mobra(:,:),aket(:,:,:)
   DATATYPE, allocatable :: ke(:,:),pe(:,:),V2(:,:,:,:), yderiv(:,:),zdip(:,:), xydip(:,:)
@@ -75,32 +71,28 @@ subroutine fluxgtau(alg)
      OFLWR "Eground is ZERO.  Are you sure?  If want zero just make it small. \n     Otherwise need eground: initial state energy."; CFLST
   endif
 
-  piover2=atan2(1d0,1d0)*2
-
 !! initial setup
 
 !!  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  nt=floor(final time/dt)
 
   dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
 
+  allocate(gtau(0:nt,mcscfnum))
+  gtau(:,:)=0d0
 
-  allocate(gtau(0:nt,FluxNBins,mcscfnum),bintimes(FluxNBins),xsec(nEFlux))
   allocate(xydip(nspf,nspf),zdip(nspf,nspf),ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf))
   allocate(rexydip(nspf,nspf),rezdip(nspf,nspf),reke(nspf,nspf),repe(nspf,nspf),reV2(nspf,nspf,nspf,nspf),reyderiv(nspf,nspf))
-  gtau(:,:,:)=0d0
-  call getFTpulse(xsec) 
   allocate(mobio(spfsize,nspf),abio(numconfig,numr,mcscfnum), &
        keop(spfsize,nspf),peop(spfsize,nspf),xydipop(spfsize,nspf),zdipop(spfsize,nspf), &
        rekeop(spfsize,nspf),repeop(spfsize,nspf),rexydipop(spfsize,nspf),rezdipop(spfsize,nspf))
-
   allocate(yop(spfsize,nspf));  allocate(reyop(spfsize,nspf))
   
   rexydip=0d0;rezdip=0d0;reke=0d0;repe=0d0;rev2=0d0;reyderiv=0d0;rekeop=0d0;repeop=0d0;rexydipop=0d0;rezdipop=0d0
   xydip=0d0;zdip=0d0;ke=0d0;pe=0d0;v2=0d0;yderiv=0d0;keop=0d0;peop=0d0;xydipop=0d0;zdipop=0d0
 
-
 !! determine if we should do batching or not
 !! 250,000 words/MB, real*8 2words/#, complex*16 4words/#
+
 #ifdef REALGO
   MemVal = 1.25d5
 #else
@@ -127,10 +119,8 @@ subroutine fluxgtau(alg)
     endif
   endif
 
-
   allocate(ketmo(spfsize,nspf,BatchSize),ketavec(numconfig,numr,mcscfnum,BatchSize))
   allocate(bramo(spfsize,nspf,BatchSize),braavec(numconfig,numr,mcscfnum,BatchSize))
-
 
   NBat=ceiling(real(nt+1)/real(BatchSize))
   ketreadsize=0;  brareadsize=0
@@ -145,14 +135,6 @@ subroutine fluxgtau(alg)
   write(454,*) "#KVL flux sum: itime, time, flux sum"
   write(454,*);  close(454)
   
-!! figure out where bins begin
-  tau=floor(real(nt,8)/real(FluxNBins,8))
-  k=0
-  do i=FluxNBins,2,-1
-     k=k+tau
-     bintimes(i)=k
-  enddo
-  bintimes(1)=nt
 
 !! begin the ket batch read loop
   do ketbat=1,NBat
@@ -201,15 +183,9 @@ subroutine fluxgtau(alg)
 !! loop over all time for the ket of the flux integral
         do kettime=1,ketreadsize
 
-!           OFLWR "KETTIME ", kettime,ketreadsize; CFL
-
 !! get the one-e half transformed matrix elements for this ket time
            call system_clock(atime)
            curtime=(ketbat-1)*BatchSize+kettime-1 
-           whichbin=1
-           do k=2,FluxNBins
-              if(curtime.le.bintimes(k)) whichbin=k
-           enddo
            moket=>ketmo(:,:,kettime);        aket=>ketavec(:,:,:,kettime)
            
            call flux_op_onee(moket,keop,peop,zdipop,xydipop,1)  !! 1 means flux
@@ -224,6 +200,7 @@ subroutine fluxgtau(alg)
                  call flux_op_nuc(moket,reyop,2)  !! 1 means flux
               endif
            endif
+
 !! determine bounds of loop over bras and setup doing in parallel with mpi!
            if(brabat.lt.ketbat) then
               bratop=brareadsize
@@ -231,16 +208,11 @@ subroutine fluxgtau(alg)
               bratop=kettime
            endif
 
-!!MAY2014           clow = (myrank-1)*bratop/nprocs+1;        chigh = myrank*bratop/nprocs
-  
-           clow = 1;        chigh = bratop
-         
-           allocate(tempgtau(mcscfnum,1:bratop))
-           tempgtau=0d0
            call system_clock(btime);        times(4)=times(4)+btime-atime
            
            !! loop over all previous time for the bra of the flux integral
-           do bratime=clow,chigh
+           do bratime=1,bratop
+
               oldtime=(brabat-1)*BatchSize+bratime-1
               
 !! biortho this pair of times!        
@@ -326,11 +298,13 @@ subroutine fluxgtau(alg)
               endif
               call system_clock(jtime)
               times(5)=times(5)+jtime-itime
+
 !! evaluate the actual g(tau) expression
               xyfac=0d0; zfac=0d0
 
 !! for length at least, trying flux = [H(t),heaviside] = [H(t'),heaviside] = average    !! WAS BUG 01-2014 no dt
               if (tdflag.ne.1) then
+
 !!! STILL NEED Y
 !!! STILL NEED Y
 !!! STILL NEED Y
@@ -340,8 +314,6 @@ subroutine fluxgtau(alg)
                  xyfac=real( pots1(1) + pots2(1) ,8) /2d0
                  zfac=real( pots1(3) + pots2(3) ,8) /2d0
 
-!                 xyfac=( xtdpot(curtime*dt) + xtdpot(oldtime*dt) ) /2d0
-!                 zfac= ( ztdpot(curtime*dt) + ztdpot(oldtime*dt) ) /2d0
               endif
               do imc=1,mcscfnum
                  fluxevalval(imc) = fluxeval(abio,aket,ke,pe,V2,zdip,zfac,xydip,xyfac,yderiv,1,imc) * dt  !! 1 means flux
@@ -352,217 +324,116 @@ subroutine fluxgtau(alg)
                     fluxevalval(imc) = fluxevalval(imc)+fluxeval(abio,aket,reke,repe,reV2,rezdip,zfac,rexydip,xyfac,reyderiv,2,imc) * dt  !! 2 means flux
                  enddo
               endif
-              tempgtau(:,bratime) = tempgtau(:,bratime) + fluxevalval(:)
-              nullify(mobra) !!,abra)
-              call system_clock(itime);          times(6)=times(6)+itime-jtime
-           enddo !! end loop over specific bras
-           
-!! broadcast the parallelized data
-           call system_clock(itime)
-           do jproc=1,nprocs
 
-              clow=(jproc-1)*bratop/nprocs+1;          chigh=jproc*bratop/nprocs
-              cnum=chigh-clow+1
-
-              if (cnum.gt.0) then
-                 call mympibcast(tempgtau(:,clow:),jproc,cnum*mcscfnum)
-              endif
-           enddo
-!! sum up the parallelized data
-           do bratime=1,bratop
               oldtime=(brabat-1)*BatchSize+bratime-1
               tau=curtime-oldtime; 
-              do imc=1,mcscfnum
-                 gtau(tau,1:whichbin,imc) = gtau(tau,1:whichbin,imc) + tempgtau(imc,bratime)
-              enddo
-           enddo
-           deallocate(tempgtau);        nullify(moket,aket)
+              gtau(tau,:) = gtau(tau,:) + fluxevalval(:)
+
+              nullify(mobra)
+              call system_clock(itime);          times(6)=times(6)+itime-jtime
+
+           enddo !! end loop over specific bras
+
+           nullify(moket,aket)
            call system_clock(jtime);        times(6)=times(6)+jtime-itime
-           
-!! create the xsec as it should be now
-           doFT=.false.
-           if(brabat.eq.ketbat) then
-              do k=1,FluxNBins
-                 if(curtime.eq.bintimes(k)) doFT=.true.
-              enddo
-           endif
-           if(doFT) then
-              call openfile
-              write(mpifileptr,'(A47,F10.4)') " Taking the FT of g(tau) to get xsection at T= ",real(curtime,8)*dt; CFL
-              if(myrank.eq.1) then
-                 open(1004,file=spifile,status="replace",action="readwrite",position="rewind")
-                 write(1004,*)
-                 write(1004,*) "# Omega; pulse ft; flux at t= ... "
-                 write(1004,'(A8, A8, 100F36.5)') "#  ", " ", real(bintimes(1:FluxNBins),8)*dt
-                 write(1004,*)
-                 
-                 open(1005,file="Dat/xsec.alt.dat",status="replace",action="readwrite",position="rewind")
-                 write(1005,*)
-                 write(1005,*) "# Omega; pulse ft; flux at t= ... "
-                 write(1005,'(A8, A8, 100F36.5)') "#  ", " ", real(bintimes(1:FluxNBins),8)*dt
-                 write(1005,*)
-              endif
-!! get the FT of gtau
-              allocate(FTgtau(FluxNBins,mcscfnum))
-              do k=1,nEFlux
-                 wfi=EFluxLo+(k-1)*dEFlux
-                 FTgtau=0d0
-!!092812            if(wfi.ge.0d0) then
-                 Energy=wfi+ceground
-                 FTgtau(:,:) = gtau(0,:,:) * dt 
-                 do i=1,curtime
-                    if(FluxSineOpt.eq.0) then
-                       ffac = dt
-                    else
-                       ffac = (cos(real(i)/real(nt)*PI/2d0)**FluxSineOpt) * dt 
-                    endif
-                    FTgtau(:,:) = FTgtau(:,:) + exp((0d0,1d0)*Energy*i*dt) * gtau(i,:,:) * ffac
-                    FTgtau(:,:) = FTgtau(:,:) + exp((0d0,1d0)*ALLCON(Energy)*(-i)*dt) * ALLCON(gtau(i,:,:)) * ffac
-                 enddo
-                 if(myrank.eq.1) then
-                    write(1004,'(F8.4,100E18.6)') wfi, 1d0/xsec(k), xsec(k)*FTgtau(1:2,:)
-                    write(1005,'(F8.4,100E18.6)') wfi, 1d0/xsec(k), xsec(k)*FTgtau(1,:), FTgtau(1,:)
-                 endif
-              enddo
-              deallocate(FTgtau)
-              if(myrank.eq.1) then
-                 close(1004); close(1005)
-              endif
-           
-              allocate(ftgtau(-curtime:curtime,mcscfnum),ftgtausave(-curtime:curtime,mcscfnum), wsave(20*(2*curtime+1)+30))
-              ftgtau(:,:)=0d0; ftgtausave(:,:)=0d0
-              
-              do i=0,curtime
-                 ftgtau(i,:) = ALLCON(gtau(i,1,:))   * cos(real(i,8)/real(curtime,8) * piover2) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
-              enddo
-              do i=0,curtime
-                 ftgtau(-i,:) = (gtau(i,1,:))  * cos(real(i,8)/real(curtime,8) * piover2) * exp((0.d0,1.d0)*ceground*par_timestep*FluxInterval*FluxSkipMult*i)
-              enddo
 
-              if (myrank.eq.1) then
-                 open(171,file="Dat/myGTau.Dat",status="unknown");          write(171,*) "#   ", curtime
-                 do i=-curtime,curtime
-                    write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*FluxInterval*FluxSkipMult, ftgtau(i,:)
-                 enddo
-                 close(171)
-              endif
-              do imc=1,mcscfnum
-
-                 call zffti(2*curtime+1,wsave);          call zfftf(2*curtime+1,ftgtau(-curtime,imc),wsave)
-
-              enddo
-
-              ftgtau(-curtime:curtime,:)=ftgtau(-curtime:curtime,:)*par_timestep*FluxInterval*FluxSkipMult
-              
-              !! NEW 0603
-              do i=-curtime,curtime
-                 ftgtau(i,:)=ftgtau(i,:)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))
-              enddo
-              do i=1,curtime
-                 ftgtausave(i-curtime-1,:) = ftgtau(i,:)
-              enddo
-              do i=-curtime,0
-                 ftgtausave(curtime+i,:)=ftgtau(i,:)
-              enddo
-              
-              estep=4*piover2/par_timestep/fluxinterval/fluxskipmult/(2*curtime+1)
-              
-              flag=0
-              if (noftflag.eq.0) then
-                 flag=1
-                 do ipulse=1,numpulses
-                    if ((pulsetype(ipulse).ne.1.and.pulsetype(ipulse).ne.2).or.chirp(ipulse).ne.0d0) then
-                       flag=0
-                    endif
-                 enddo
-              endif
-
-              if (myrank.eq.1) then
-                 open(171,file="Dat/FTGtau.Dat", status="unknown")
-                 do i=-curtime,curtime
-                    myft=1d0
-                    if (flag.eq.1) then
-                       myft=abs(tdpotft(i*Estep))**2
-                    endif
-!             write(171,'(F18.12, T22, 400E20.8)')  i*Estep, abs(ftgtausave(i)), ftgtausave(i), ftgtausave(i)/myft, myft
-                    write(171,'(F18.12, T22, 400E20.8)')  i*Estep,  ftgtausave(i,:), ftgtausave(i,:)/myft, myft
-                 enddo
-                 close(171)
-              endif
-              deallocate(ftgtau,ftgtausave, wsave)
-              call system_clock(btime);        times(7)=times(7)+btime-jtime;        times(1)=times(1)+btime-atime
-!! write out times and totals
-              if (brabat.eq.ketbat) then
-                 call openfile
+!! only do this after we are sure we've gone through every bra
+           if (brabat.eq.ketbat) then
+              if (notiming.ne.2) then
+                 OFL
                  write(mpifileptr,'(A28,F10.4)') " Timing statistics as of T= ",real(curtime,8)*dt
                  write(mpifileptr,'(100A10)') "Times: ", "All", "Read","Biorth", "One-e", "Two-e", "Fluxeval", "FT gtau"
                  write(mpifileptr,'(A10,100I10)') " ", times(1:7)/100; CFL
               endif
-
-           endif !! doFT
-        
-!! only do this after we are sure we've gone through every bra
-           if(brabat.eq.ketbat) then
               if (myrank.eq.1) then
                  open(454, file="Dat/KVLsum.dat", status="old", position="append")
-                 
-                 write(454,'(I5,100F18.12)') curtime, curtime*dt, gtau(0,1,:);    
+                 write(454,'(I5,100F18.12)') curtime, curtime*dt, gtau(0,:);    
                  close(454)
               endif
            endif
-        enddo !! end loop overspecific kets
-     enddo !! end loop over bra batches
-  enddo !! end loop over ket batches
-  deallocate(bramo,braavec,ketmo,ketavec,mobio,abio,keop,peop,ke,pe,V2,gtau,xsec,bintimes,yderiv)
-  deallocate(yop)
+        enddo !! do kettime
+     enddo !! do brabat
+  enddo !! do ketbat
+
+  if (curtime.ne.nt) then
+     OFLWR "DOOG CURTIME NT ERR",curtime,nt; CFLST
+  endif
+
+!! create the xsec as it should be now
+
+  OFLWR " Taking the FT of g(tau) to get xsection at T= ",curtime*dt; CFL
+           
+  allocate(ftgtau(-curtime:curtime,mcscfnum), pulseft(-curtime:curtime,3), pulseftsq(-curtime:curtime))
+  ftgtau(:,:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0
+
+  do i=0,curtime
+     ftgtau(i,:) = ALLCON(gtau(i,:))   * cos(real(i,8)/real(curtime,8) * pi/2d0) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
+
+     call vectdpot(i*par_timestep*fluxinterval*fluxskipmult,1,pots1)   !! VELOCITY GAUGE.
+     pulseft(i,:)=pots1(:)
+
+  enddo
+  do i=1,curtime
+     ftgtau(-i,:) = ALLCON(ftgtau(i,:))
+  enddo
+  
+  if (myrank.eq.1) then
+     open(171,file="Dat/gtau.dat",status="unknown");          write(171,*) "#   ", curtime
+     do i=0,curtime
+        write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*FluxInterval*FluxSkipMult, pulseft(i,:), ftgtau(i,:)
+     enddo
+     close(171)
+  endif
+  
+  do imc=1,mcscfnum
+     call zfftf_wrap(2*curtime+1,ftgtau(-curtime,imc))
+  enddo
+  do i=1,3
+     call zfftf_wrap(2*curtime+1,pulseft(-curtime,i))
+  enddo
+  
+  ftgtau(-curtime:curtime,:)=ftgtau(-curtime:curtime,:)*par_timestep*FluxInterval*FluxSkipMult
+  pulseft(-curtime:curtime,:)=pulseft(-curtime:curtime,:)*par_timestep*FluxInterval*FluxSkipMult
+  
+  do i=-curtime,curtime
+     ftgtau(i,:)=ftgtau(i,:)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))
+     pulseft(i,:)=pulseft(i,:)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))
+  enddo
+
+  pulseftsq(:) = abs(pulseft(:,1)**2) + abs(pulseft(:,2)**2) + abs(pulseft(:,3)**2)
+
+  estep=2*pi/par_timestep/fluxinterval/fluxskipmult/(2*curtime+1)
+
+  if(myrank.eq.1) then
+     open(1004,file=spifile,status="replace",action="readwrite",position="rewind")
+     write(1004,*)
+     write(1004,*) "# Omega; pulse ft; flux "
+     write(1004,*)
+     do i=-curtime,curtime
+        wfi=(i+curtime)*Estep
+
+!! VELOCITY GAUGE WAS FT'ed divide not multiply by wfi
+        myfac = 5.291772108d0**2 / 3d0 * 2d0 * PI / 1.37036d2 / wfi
+
+        write(1004,'(F8.4,100E18.6)') wfi, pulseftsq(i), FTgtau(i,:)/pulseftsq(i) * myfac, ftgtau(i,:)
+
+     enddo
+     close(1004)
+  endif
+
+  deallocate(ftgtau,pulseft,pulseftsq)
+  deallocate(bramo,ketmo,braavec,ketavec)
+  deallocate(gtau)
+  deallocate(xydip,zdip,ke,pe,V2,yderiv)
+  deallocate(rexydip,rezdip,reke,repe,reV2,reyderiv)
+  deallocate(mobio,abio,keop,peop,xydipop,zdipop,rekeop,repeop,rexydipop,rezdipop)
+  deallocate(yop,reyop)
+
 
 end subroutine fluxgtau
 
 
 !! begin the flux matrix element and contraction routine section
-
-
-subroutine getFTpulse(xsec)
-  use parameters
-  implicit none
-  integer :: i,k,numstep
-  real*8 :: time,wfi,xsec(nEFlux)
-  DATATYPE :: alltdpot
-  complex*16 :: FTpulse
-!! Get the FT of the pulse and the coefficeints for the xsec 
-  xsec=0d0
-
-  if (noftflag.ne.0) then   !! for, for instance, propagating an ansatz core hole. no ft factor.
-     xsec=1d0
-     return
-  endif
-
-    do i=1,numpulses
-!! DJH APR 2014
-       numstep=ceiling(1d0/omega(i)/200d0/par_timestep)
-    enddo
-
-  do k=1,nEFlux
-    wfi=EFluxLo+(k-1)*dEFlux
-    FTpulse=0d0
-!! get the FT of the pulse
-    do i=1,numpulses
-!! DJH APR 2014
-       numstep=ceiling(1d0/omega(i)/200d0/par_timestep)
-       time=0d0
-       do while(time.lt.pi/omega(i)+pulsestart(i))
-          FTpulse=FTpulse+par_timestep*numstep*alltdpot(time,4)*exp((0d0,1d0)*wfi*time)
-          time=time+par_timestep*numstep
-       enddo
-    enddo
-!! finish the cross section with the right constants
-    if(velflag.eq.0) then !! length gauge
-       xsec(k) = ( ((5.291772108d0**2) / 3d0) * (2d0 * PI / 1.37036d2) * wfi ) / real(conjg(FTpulse)*FTpulse,8)
-    else !! velocity gauge
-       xsec(k) = ( ((5.291772108d0**2) / 3d0) * (2d0 * PI / 1.37036d2) / wfi ) / real(conjg(FTpulse)*FTpulse,8)
-    endif
-  enddo
-end subroutine getFTpulse
 
 
 subroutine flux_op_onee(inspfs,keop,peop,zdipop,xydipop,flag) !! flag=1, flux (imag); flag=2, flux (real); flag=0, all  0 not used

@@ -201,6 +201,7 @@ real*8 :: conprop=1d-1                           !! epsilon for conway=3
 !!EE
 !!{\large \quad INPUT / OUTPUT }
 !!BB
+real*8 :: pulseft_estep=0.01d0                   !! energy step in hartree for Pulseft.Dat output files
 integer :: notiming=2            !!NoTiming=0,1,2!! 0=write all 1=write some 2= write none
                                  !!  Timing=2,1,0!!     controls writing of all timing and some info files
 integer :: timingout=499         !!              !! various routines output to file (timing info) every this 
@@ -295,8 +296,7 @@ real*8 :: keprojminenergy=0.04d0 !!   "
 real*8 :: keprojenergystep=0.04d0!!   "
 real*8 :: keprojminrad=30        !!   "
 real*8 :: keprojmaxrad=40        !!   "
-
-integer :: hanningflag=0         !! for hanning window -- was corrflag
+integer :: hanningflag=0         !! for hanning window set nonzero action 1 autocorr
 integer :: diptime=100           !! For act=20, outputs copies every diptime atomic units
 integer :: dipmodtime=200        !! do ft every autotimestep*dipmodtime
 integer :: numovlfiles=1
@@ -312,14 +312,9 @@ integer :: nucfluxflag=0         !! 0 = both 1 =electronic 2= nuclear  NOT nucle
 !!BB
 integer :: computeFlux=500, &      !! 0=All in memory other: MBs to allocate
      FluxInterval=50,&           !! Multiple of par_timestep at which to save flux
-     nEFlux=1001,&               !! Number of energies in flux FT
      FluxSkipMult=1              !! Read every this number of time points.  Step=FluxInterval*FluxSkipMult
 integer :: nucfluxopt=0          !! Include imaginary part of hamiltonian from nuc ke 
-integer :: FluxSineOpt=1,&       !! Use windowng function
-     FluxOpType=1                !! 0=Full ham 1=halfnium 
-real*8 :: EFluxLo=0.01,&         !! Low energy boundary of F.T. (relative to eground)
-     EFluxHi=2d0                 !! High energy boundary
-integer :: FluxNBins=4           !! number of previous times to plot in xsec.spi.dat
+integer :: FluxOpType=1                !! 0=Full ham 1=halfnium 
 !!EE
 !!{\large \quad PLOTTING OPTIONS }
 !!BB
@@ -356,9 +351,6 @@ integer :: timefacforce=0        !!              !!  override defaults
 DATATYPE :: timefac=&            !! Prop/        !! d/dt psi = timefac * H * psi
         DATANEGONE               !!  Relax       !!
 integer :: timedepexpect=0  !! expectation value of H_0(t) or H(t) reported
-integer ::  checktdflag=0   !!  makes pulse constant and evaluates expectation value of h(t) 
-                            !!  to check energy conservation for dipole operators (consistency 
-                            !!  between reduced and matel)
 integer :: dipolewindowpower=1   !!  multiply by cosine^dipolewindowpower for dipole ft
 integer :: diffdipoleflag=1 !! fourier transform derivative of dipole moment not dipole moment
 
@@ -433,7 +425,6 @@ DATATYPE, allocatable :: bondpoints(:),bondweights(:),elecweights(:,:,:), elecra
 real*8 :: langramthresh=1d-9
 integer :: numreduced=1
 integer :: headersize=200
-real*8 ::     dEFlux
 integer :: spinrank=-1, spinstart=-1, spinend=-1
 integer :: numconfig=-1
 integer, allocatable :: configsperproc(:)

@@ -227,7 +227,7 @@ program mctdhf
   write(mpifileptr, *) "   AMO Theory Group, Lawrence Berkeley Laboratory"
   write(mpifileptr, *) "     D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, "
   write(mpifileptr, *) "     B Abeln, X Li . . ."
-  write(mpifileptr, *) "                             VERSION 1 "
+  write(mpifileptr, *) "                             VERSION 1.10 "
   write(mpifileptr, *) "       Copyright 2015 the regents of the University of California"
   write(mpifileptr, *)
 #ifdef REALGO
@@ -321,7 +321,7 @@ program mctdhf
         OFLWR "Closing walks.BIN"; CFL; close(751);
      endif
      
-     call singlewalkwrite()
+     call configlistwrite()
 
      call configalloc()
      if (dfrestrictflag.ne.0) then

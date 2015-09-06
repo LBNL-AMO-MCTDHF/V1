@@ -1,5 +1,5 @@
 
-!! NOT DONE PARORBFLAG=3
+!! NOT DONE PARORBSPLIT=3
 
 !! PROJECTED FLUX BY KVL
 
@@ -9,9 +9,8 @@ module projefluxmod !! needed for cation walks and bi-orthonormalization
 
 !! variables so we don't have to pass the single cation walks for the target states to the MCTDHF wavefunction 
 !! target readable variables
-  integer :: targetms, targetrestrictflag, targetspinproject, tnumconfig,tmaxsinglewalks,targetspinval,cgflag=0
-  integer, allocatable :: tconfiglist(:,:),tnumsinglewalks(:),tsinglewalk(:,:),tsinglewalkopspf(:,:,:), &
-       tsinglewalkdirphase(:,:), pphase1(:,:) ,pspf1(:,:,:) ,numpwalk1(:) ,pwalk1(:,:)  
+  integer :: targetms, targetrestrictflag, targetspinproject, tnumconfig,targetspinval,cgflag=0
+  integer, allocatable :: tconfiglist(:,:),pphase1(:,:) ,pspf1(:,:,:) ,numpwalk1(:) ,pwalk1(:,:)
   DATATYPE, allocatable :: tmo(:,:,:),ta(:,:,:)
 !! cation walks variables
   integer :: maxpwalk1 !!,maxpwalk2
@@ -133,22 +132,21 @@ subroutine projeflux_doproj(cata,neuta,mo,offset)
 end subroutine projeflux_doproj
 
 
-!! do the double time integral piece
-subroutine projeflux_double_time_int(bintimes,xsec,mem,istate,nstate,imc,nt,dt)
+!! do the double time integral piece    08-2015 now looping over istate and imc here
+
+subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   use parameters
   use projefluxmod  !! targetms, ..
   use mpimod
   implicit none  
-  integer :: i,k,tlen,mem,istate,curtime,tau,whichbin,nt,ir ,imc,nstate, bintimes(FluxNBins),ipulse
-  integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,bratop,flag,getlen
- !! bintimes and xsec done outside so we don't have to redo over and over for each state
-  real*8 :: doubleclebschsq,aa,bb,cc,xsec(nEFlux),MemTot,MemVal,Energy,dt,wfi,cgfac,ffac,myft,piover2,estep
-  DATATYPE, allocatable,target :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:)
-  complex*16, allocatable :: ftgtau(:),ftgtausave(:),wsave(:)
-  complex*16  :: myFTgtau(FluxNBins),tdpotft
-
-  logical :: doFT
-  DATATYPE :: dot
+  integer :: i,k,tlen,mem,istate,curtime,tau,nt,ir ,imc,nstate
+  integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,bratop,getlen
+ !! bintimes and pulseftsq done outside so we don't have to redo over and over for each state
+  real*8 :: doubleclebschsq,aa,bb,cc,MemTot,MemVal,dt,wfi,cgfac,estep,myfac
+  DATATYPE, allocatable,target :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:)
+  complex*16, allocatable :: ftgtau(:),pulseft(:,:)
+  real*8, allocatable :: pulseftsq(:)
+  DATATYPE :: dot, pots1(3)
   character (len=4) :: xstate0,xmc0
   character (len=3) :: xstate1,xmc1
 
@@ -156,9 +154,6 @@ subroutine projeflux_double_time_int(bintimes,xsec,mem,istate,nstate,imc,nt,dt)
      OFLWR "Eground is ZERO.  Are you sure?  If want zero just make it small. \n     Otherwise need eground: initial state energy."; CFLST
   endif
 
-  piover2=atan2(1d0,1d0)*2
-
-              
 !!!!  100912 NEED CG COEFFICIENT RATIO 
               
 !! programmed this with restrictms, targetms.  Do have option to change spinrestrictval; should use this.
@@ -205,16 +200,8 @@ subroutine projeflux_double_time_int(bintimes,xsec,mem,istate,nstate,imc,nt,dt)
      cgfac = (aa+bb+cc)/aa
   endif
 
-
-
-
 !! determine if we should do batching or not
 !! 250,000 words/MB, real*8 2words/#, complex*16 4words/#
-
-  write(xstate0,'(I4)') istate+1000;  write(xmc0,'(I4)') imc+1000
-  xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
-
-  OFLWR "Computing the CrossSection for state ",istate,"wfn",imc; CFL
 
 #ifdef REALGO
   MemVal = 1.25d5
@@ -243,223 +230,196 @@ subroutine projeflux_double_time_int(bintimes,xsec,mem,istate,nstate,imc,nt,dt)
      endif
   endif
 
-  allocate(gtau(0:nt,FluxNBins),ketmo(spfsize,numr,2,BatchSize),bramo(spfsize,numr,2,BatchSize))
+  allocate(gtau(0:nt,nstate,mcscfnum),ketmo(spfsize,numr,2,BatchSize),bramo(spfsize,numr,2,BatchSize))
   NBat=ceiling(real(nt+1)/real(BatchSize))
   ketreadsize=0;  brareadsize=0
 
   inquire (iolength=tlen) ketmo(:,1,:,1)
   write(mpifileptr,*) "Projected 1e- function record length is ",tlen;  call closefile()
-!! set up the sum of gtau(0) for debugging monitoring purposes
-
-  open(454,file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat",status="unknown")
-  write(454,*) "#KVL flux sum: itime, time, flux sum";  write(454,*)
-
-!! lets go through this loop
-!!  open(1003,file="proj.flux.wfn.bin",status="unknown",form="unformatted",access="direct",recl=tlen)
-
-  open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=tlen)
 
   gtau=0d0
+
+!! looping here now 08-2015
+  do imc=1,mcscfnum
+     do istate=1,nstate
+
+        OFLWR "Computing the CrossSection for state ",istate,"wfn",imc; CFL
+
+!! set up the sum of gtau(0) for debugging monitoring purposes
+
+        write(xstate0,'(I4)') istate+1000;  write(xmc0,'(I4)') imc+1000
+        xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
+
+        open(454,file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat",status="unknown")
+        write(454,*) "#KVL flux sum: itime, time, flux sum";  write(454,*); close(454)
+
+        open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=tlen)
 
 !! lets do this double time integral double batched monster loop here. 
 !! as can be seen in total flux eveything but biortho is fast as hell
 
-  do ketbat=1,NBat
-     OFLWR "Reading ket batch ", ketbat, " of ", NBat," for state ",istate; CFL
-     ketreadsize=min(BatchSize,nt+1-(ketbat-1)*BatchSize)
+        do ketbat=1,NBat
+           OFLWR "Reading ket batch ", ketbat, " of ", NBat," for state ",istate; CFL
+           ketreadsize=min(BatchSize,nt+1-(ketbat-1)*BatchSize)
      
 !! read the orbital |\psi(t)>
-     if(myrank.eq.1) then
-        do i=1,ketreadsize !! loop over times in this batch
-!        do r=1,numr !! loop over all the r's for this time
-!          k = (istate-1)*(nt+1)*numr + ((ketbat-1)*BatchSize+(i-1))*numr + r  
+           if(myrank.eq.1) then
+              do i=1,ketreadsize !! loop over times in this batch
+                 do ir=1,numr !! loop over all the r's for this time           
+                    k = (imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + ((ketbat-1)*BatchSize+i-1)*numr + ir
+                    read(1003,rec=k) ketmo(:,ir,:,i)
+                 enddo
+              enddo
+           endif
 
-           do ir=1,numr !! loop over all the r's for this time           
-              k = (imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + ((ketbat-1)*BatchSize+i-1)*numr + ir
-              read(1003,rec=k) ketmo(:,ir,:,i)
-           enddo
-        enddo
-     endif
-
-     call mympibcast(ketmo(:,:,:,1:ketreadsize),1,spfsize*numr*2*ketreadsize)
-
+           call mympibcast(ketmo(:,:,:,1:ketreadsize),1,spfsize*numr*2*ketreadsize)
 
 !! change it to \hat{F}|\psi(t)>, the onee part
-     do i=1,ketreadsize
-        do k=1,2 !! loop over the spins...
-           call projeflux_op_onee(ketmo(:,:,k,i))
-        enddo
-     enddo
-!! begin the bra batch read loop
-     do brabat=1,ketbat
-        OFLWR "Reading bra batch ", brabat, " of ", ketbat," for state ",istate; CFL
-        brareadsize=min(BatchSize,nt+1-(brabat-1)*BatchSize)
-        if(myrank.eq.1) then
-           do i=1,brareadsize
-              do ir=1,numr 
-!            k = (istate-1)*(nt+1)*numr + ((brabat-1)*BatchSize+(i-1))*numr + r 
-             
-                 k = (imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + ((brabat-1)*BatchSize+i-1)*numr + ir
-                 read(1003,rec=k) bramo(:,ir,:,i)
+           do i=1,ketreadsize
+              do k=1,2 !! loop over the spins...
+                 call projeflux_op_onee(ketmo(:,:,k,i))
               enddo
            enddo
-        endif
+!! begin the bra batch read loop
+           do brabat=1,ketbat
+              OFLWR "Reading bra batch ", brabat, " of ", ketbat," for state ",istate; CFL
+              brareadsize=min(BatchSize,nt+1-(brabat-1)*BatchSize)
+              if(myrank.eq.1) then
+                 do i=1,brareadsize
+                    do ir=1,numr 
+                       k = (imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + ((brabat-1)*BatchSize+i-1)*numr + ir
+                       read(1003,rec=k) bramo(:,ir,:,i)
+                    enddo
+                 enddo
+              endif
 
-     call mympibcast(bramo(:,:,:,1:brareadsize),1,spfsize*numr*2*brareadsize)
+              call mympibcast(bramo(:,:,:,1:brareadsize),1,spfsize*numr*2*brareadsize)
 
 !! loop over the specific ket indices & over all previous times & evaluate the actual g(tau) expression           
-        do kettime=1,ketreadsize
-           curtime=(ketbat-1)*BatchSize+kettime-1 
-           whichbin=1
-           do k=2,FluxNBins
-              if(curtime.le.bintimes(k)) whichbin=k
-           enddo
-           if(brabat.lt.ketbat) then
-              bratop=brareadsize
-           else
-              bratop=kettime
-           endif
-           do bratime=1,bratop
-              tau=curtime-((brabat-1)*BatchSize+bratime-1)
-              gtau(tau,1:whichbin) = gtau(tau,1:whichbin) + dot(bramo(:,:,:,bratime),ketmo(:,:,:,kettime),2*spfsize*numr) * dt
-           enddo
-           
-!! create the xsec as it should be now
-           doFT=.false.
-           if(brabat.eq.ketbat) then
-              do k=1,FluxNBins
-                 if(curtime.eq.bintimes(k)) doFT=.true.
-              enddo
-           endif
-           if(doFT) then
-              OFLWR "Taking the fourier transform of g(tau) to get cross section"; CFL
-              
-              if(myrank.eq.1) then
+              do kettime=1,ketreadsize
 
-!!$ 05-05-2015   open(1004,file="Dat/xsec.proj."//xstate1//"_"//xmc1//".spi.dat",status="replace",action="readwrite",position="rewind")
+                 curtime=(ketbat-1)*BatchSize+kettime-1 
 
-                 open(1004,file=projspifile(1:getlen(projspifile)-1)//"_"//xstate1//"_"//xmc1//".dat",status="replace",action="readwrite",position="rewind")
-
-
-                 write(1004,*);write(1004,*) "# Omega; pulse ft; projected flux at t= ... "
-                 write(1004,'(A8, A8, 100F36.5)') "#  ", " ", bintimes(1:FluxNBins)*dt;            write(1004,*)
-              endif
-
-              do k=1,nEFlux
-                 wfi=EFluxLo+(k-1)*dEFlux;                 Myftgtau=0d0
-                 if(wfi.ge.0d0) then
-                    Energy=wfi+eground;                    Myftgtau(:) = gtau(0,:) * dt
-                    do i=1,curtime
-                       if(FluxSineOpt.eq.0) then
-                          ffac=1d0 * dt
-                       else
-                          ffac=(cos(real(i)/real(nt)*3.14159265d0/2d0)**FluxSineOpt) * dt
-                       endif
-                       Myftgtau(:) = Myftgtau(:) + exp((0d0,1d0)*Energy*i*dt) * gtau(i,:) * ffac
-                       Myftgtau(:) = Myftgtau(:) + exp((0d0,1d0)*Energy*(-i)*dt) * ALLCON(gtau(i,:)) * ffac
-                    enddo
+                 if(brabat.lt.ketbat) then
+                    bratop=brareadsize
+                 else
+                    bratop=kettime
                  endif
-
-                 if(myrank.eq.1) then
-                    write(1004,'(F8.4,100E18.6)') wfi, xsec(k), xsec(k)*Myftgtau(1:FluxNBins)* cgfac
-                 endif
-              enddo
-              if(myrank.eq.1) then
-                 close(1004)
-              endif
-
-
-
-
-              allocate(ftgtau(-curtime:curtime),ftgtausave(-curtime:curtime), wsave(20*(2*curtime+1)+30))
-              ftgtau(:)=0d0; ftgtausave(:)=0d0
-              
-              do i=0,curtime
-                 ftgtau(i) = ALLCON(gtau(i,1))   * cos(real(i,8)/real(curtime,8) * piover2) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
-              enddo
-              do i=0,curtime
-                 ftgtau(-i) = (gtau(i,1))  * cos(real(i,8)/real(curtime,8) * piover2) * exp((0.d0,1.d0)*ceground*par_timestep*FluxInterval*FluxSkipMult*i)
-              enddo
-
-              if (myrank.eq.1) then
-                 open(171,file="Dat/myGTau."//xstate1//"_"//xmc1//".Dat"  ,status="unknown");          write(171,*) "#   ", curtime
-                 do i=-curtime,curtime
-                    write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*FluxInterval*FluxSkipMult, ftgtau(i)
+                 do bratime=1,bratop
+                    tau=curtime-((brabat-1)*BatchSize+bratime-1)
+                    gtau(tau,istate,imc) = gtau(tau,istate,imc) + dot(bramo(:,:,:,bratime),ketmo(:,:,:,kettime),2*spfsize*numr) * dt
                  enddo
-                 close(171)
-              endif
-
-              call zffti(2*curtime+1,wsave);          call zfftf(2*curtime+1,ftgtau(-curtime),wsave)
-
-
-              ftgtau(-curtime:curtime)=ftgtau(-curtime:curtime)*par_timestep*FluxInterval*FluxSkipMult
-              
-              !! NEW 0603
-              do i=-curtime,curtime
-                 ftgtau(i)=ftgtau(i)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))
-              enddo
-              do i=1,curtime
-                 ftgtausave(i-curtime-1) = ftgtau(i)
-              enddo
-              do i=-curtime,0
-                 ftgtausave(curtime+i)=ftgtau(i)
-              enddo
-              
-              estep=4*piover2/par_timestep/fluxinterval/fluxskipmult/(2*curtime+1)
-              
-              flag=0
-              if (noftflag.eq.0) then
-                 flag=1
-                 do ipulse=1,numpulses
-                    if ((pulsetype(ipulse).ne.1.and.pulsetype(ipulse).ne.2).or.chirp(ipulse).ne.0d0) then
-                       flag=0
-                    endif
-                 enddo
-              endif
-
-              if (myrank.eq.1) then
-
-                 open(171,file="Dat/FTGTau."//xstate1//"_"//xmc1//".Dat"  ,status="unknown");          write(171,*) "#   ", curtime
-!!                 open(171,file="Dat/FTGtau.Dat", status="unknown")
-                 do i=-curtime,curtime
-                    myft=1d0
-                    if (flag.eq.1) then
-                       myft=abs(tdpotft(i*Estep))**2
-                    endif
-!             write(171,'(F18.12, T22, 400E20.8)')  i*Estep, abs(ftgtausave(i)), ftgtausave(i), ftgtausave(i)/myft, myft
-                    write(171,'(F18.12, T22, 400E20.8)')  i*Estep,  ftgtausave(i), ftgtausave(i)/myft, myft
-                 enddo
-                 close(171)
-              endif
-              deallocate(ftgtau,ftgtausave, wsave)
-
-           endif  !! doft
 
 !! only do this after we are sure we've gone through every bra
-           if(brabat.eq.ketbat) then
-              if (myrank.eq.1) then
-                 open(454, file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat", status="old", position="append")
-                 write(454,'(I5,100F18.12)') curtime, curtime*dt, gtau(0,1);    
-                 close(454)
-              endif
-           endif
+                 if(brabat.eq.ketbat) then
+                    if (myrank.eq.1) then
+                       open(454, file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat", status="old", position="append")
+                       write(454,'(I5,100F18.12)') curtime, curtime*dt, gtau(0,istate,imc);    
+                       close(454)
+                    endif
+                 endif
 
+              enddo !! do kettime
+           enddo   !! do brabat
+        enddo   !! do ketbat
+        
+        if (curtime.ne.nt) then
+           OFLWR "DEEG CURTIME NT ERR", curtime, nt; CFLST
+        endif
 
-!! write out times
-!        if(brabat.eq.ketbat.and.(mod(curtime,20).eq.0.or.curtime.eq.nt)) then
-!          write(454,'(I5,100F18.12)') curtime, curtime*dt, gtau(0,1)
-!          call openfile
-!          write(mpifileptr,'(A50,F10.4)') " Timing Statistics: Computing gtau and xsec at T= ",curtime*dt
-!          write(mpifileptr,'(100A10)') "Times: ", "All", "IO", "Walks", "Biorth", "1e Bld", "1e Op", "Fluxeval", "!FT gtau"
-!          write(mpifileptr,'(A10,100I10)') " ", times(1:8)/100
-!          call closefile
-!        endif
-        enddo
      enddo
   enddo
-  close(1003);  close(454);  deallocate(gtau,ketmo,bramo)
+
+!! create the xsec as it should be now
+
+  OFLWR "Taking the fourier transform of g(tau) to get cross section at T= ",curtime*dt; CFL
+
+  allocate(ftgtau(-curtime:curtime), pulseft(-curtime:curtime,3),pulseftsq(-curtime:curtime))
+  ftgtau(:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0
+
+  do i=0,curtime
+     call vectdpot(i*par_timestep*fluxinterval*fluxskipmult,1,pots1)  !! VELOCITY GAUGE
+     pulseft(i,:)=pots1(:)
+  enddo
+  
+  do i=1,3
+     call zfftf_wrap(2*curtime+1,pulseft(-curtime,i))
+  enddo
+
+  pulseft(:,:)=pulseft(:,:)*par_timestep*FluxInterval*FluxSkipMult
+  
+  do i=-curtime,curtime
+     pulseft(i,:)=pulseft(i,:)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))
+  enddo
+
+  pulseftsq(:) = abs(pulseft(:,1)**2) + abs(pulseft(:,2)**2) + abs(pulseft(:,3)**2)
+
+  estep=2*pi/par_timestep/fluxinterval/fluxskipmult/(2*curtime+1)      
+  
+  do imc=1,mcscfnum
+     do istate=1,nstate
+
+        ftgtau(:)=0d0;
+
+        do i=0,curtime
+           ftgtau(i) = ALLCON(gtau(i,istate,imc))   * cos(real(i,8)/real(curtime,8) * pi/2) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
+        enddo
+        do i=1,curtime
+           ftgtau(-i) = ALLCON(ftgtau(i))
+        enddo
+
+        write(xstate0,'(I4)') istate+1000;  write(xmc0,'(I4)') imc+1000
+        xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
+        
+        if (myrank.eq.1) then
+           open(171,file="Dat/gtau."//xstate1//"_"//xmc1//".dat"  ,status="unknown");          write(171,*) "#   ", curtime
+           do i=0,curtime
+              write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*FluxInterval*FluxSkipMult, pulseft(i,:), gtau(i,istate,imc), ftgtau(i)
+           enddo
+           close(171)
+        endif
+        
+        call zfftf_wrap(2*curtime+1,ftgtau(-curtime))
+        
+        ftgtau(-curtime:curtime)=ftgtau(-curtime:curtime)*par_timestep*FluxInterval*FluxSkipMult
+        
+        do i=-curtime,curtime
+           ftgtau(i)=ftgtau(i)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))
+        enddo
+        
+!! cross section reported in units of 10^-18 cm^2
+!! equals 1/3 times quantum mechanical cross section for fixed nuclei problem
+
+!! missing factor 2/pi?  See old projeflux before aug 2015
+
+        if(myrank.eq.1) then
+
+           open(1004,file=projspifile(1:getlen(projspifile)-1)//"_"//xstate1//"_"//xmc1//".dat",status="replace",action="readwrite",position="rewind")
+           write(1004,*);write(1004,*) "# Omega; pulse ft; projected flux at t= ",finaltime
+
+           do i=-curtime,curtime
+              wfi=(i+curtime)*estep
+
+!! VELOCITY GAUGE WAS FT'ed divide not multiply by wfi
+              myfac = 5.291772108d0**2 / 3d0 * 2d0 * PI / 1.37036d2 / wfi 
+
+              write(1004,'(F18.12, T22, 400E20.8)')  wfi,  pulseftsq(i), ftgtau(i)/pulseftsq(i) * cgfac * myfac, ftgtau(i)
+           enddo
+           close(1004)
+
+        endif
+
+        close(1003)
+
+     enddo  !! do istate
+  enddo  !! do imc
+
+  deallocate(ftgtau,pulseft,pulseftsq)
+
+  deallocate(gtau,ketmo,bramo)
 
 end subroutine projeflux_double_time_int
+
 
 
 !! get the contraction of the flux operator (iH-H^\dag) with our current set of orbitals F*inspfs=outspfs
@@ -495,11 +455,9 @@ subroutine projeflux_single(mem)
   use mpimod
   implicit none
 !! necessary working variables
-  integer :: mem,tau, i,k,nt ,ir,tndof,tnspf,nstate,tnumr,istate,myiostat,ierr
+  integer :: mem,tau, i,nt ,ir,tndof,tnspf,nstate,tnumr,istate,myiostat,ierr
   integer :: spfcomplex, acomplex, tdims(3),ttndof,ttnumconfig,imc,ii
   real*8 :: dt
-  real*8, allocatable :: xsec(:)
-  integer, allocatable :: bintimes(:)
   DATATYPE, allocatable :: readmo(:,:),readavec(:,:,:),mobio(:,:),abio(:,:)
 !! mcscf specific read variables
   DATATYPE,target :: smo(nspf,nspf)
@@ -600,17 +558,15 @@ subroutine projeflux_single(mem)
   if (myiostat.ne.0) then
      OFLWR "iostat ",myiostat," in open of cation.configlist.BIN"; CFLST
   endif
-  call singlewalkheaderread(676,ttnumconfig,ttndof,tmaxsinglewalks)
+  call configlistheaderread(676,ttnumconfig,ttndof)
 
   if (ttnumconfig.ne.tnumconfig.or.tndof.ne.ttndof) then
      OFLWR "TTTYQ ERROR"; CFLST
   endif
 
-  allocate(tconfiglist(tndof,tnumconfig),tnumsinglewalks(tnumconfig),tsinglewalk(tmaxsinglewalks,tnumconfig))
-  allocate(tsinglewalkopspf(1:2,tmaxsinglewalks,tnumconfig),tsinglewalkdirphase(tmaxsinglewalks,tnumconfig))
+  allocate(tconfiglist(tndof,tnumconfig))
 
-  call singlewalkread(676,tnumconfig,tndof,tmaxsinglewalks,tconfiglist,tnumsinglewalks, &
-       tsinglewalk,tsinglewalkopspf,tsinglewalkdirphase)
+  call configlistread(676,tnumconfig,tndof,tconfiglist)
   close(676)
 
   do ii=myrank,nprocs
@@ -670,32 +626,12 @@ subroutine projeflux_single(mem)
 !! clean up
   close(1001);  close(1002)
   deallocate(mobio,abio,readmo,readavec,ta,tconfiglist,tmo)
-  deallocate(tnumsinglewalks,tsinglewalk,tsinglewalkopspf,tsinglewalkdirphase)
   deallocate(numpwalk1,pwalk1,pspf1,pphase1) !!,num pw alk2,pwal k2,ps pf2,ppha se2)
 
 
-!! do all the prep work and then do the double time integral
-!! get FT of pulse and constants
-  allocate(bintimes(FluxNBins),xsec(nEFlux))
-  call getFTpulse(xsec)
-
-!! figure out the bins
-  tau=floor(real(nt,8)/real(FluxNBins,8))
-  k=0
-  do i=FluxNBins,2,-1
-    k=k+tau
-    bintimes(i)=k
-  enddo
-  bintimes(1)=nt
-
 !! do the double time integral
-  do imc=1,mcscfnum
-  do istate=1,nstate
-    call projeflux_double_time_int(bintimes,xsec,mem,istate,nstate,imc,nt,dt)
-  enddo
-  enddo
- 
-  deallocate(bintimes,xsec)
+    call projeflux_double_time_int(mem,nstate,nt,dt)
+
   OFLWR "Cross Section acquired, cleaning and closing";CFLST
 end subroutine projeflux_single
 

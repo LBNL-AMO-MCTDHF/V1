@@ -1,6 +1,4 @@
 
-!! UTILITIES FOR PROPAGATION: CHIEFLY PROJECTOR AND WRAPPERS FOR PULSE FUNCTIONS
-
 #include "Definitions.INC"
 
 
@@ -8,49 +6,19 @@
 subroutine vectdpot(myintime,invelflag,tdpotsout)
   use parameters
   implicit none
-  integer :: invelflag
-  real*8 :: myintime
-  DATATYPE :: tdpotsout(3),tdpotlen,tdpotvel
+  real*8,intent(in) :: myintime
+  integer, intent(in) :: invelflag
+  DATATYPE,intent(out) :: tdpotsout(3)
+  DATATYPE :: tdpotlen,tdpotvel
+
   if (invelflag.eq.0) then
-     tdpotsout(1)=tdpotlen(myintime,2)    !! NOTE ORDER (see alltdpot, simplepulselen, etc in proputils - how I wrote it oh well)
-     tdpotsout(2)=tdpotlen(myintime,3);  tdpotsout(3)=tdpotlen(myintime,1)
+     tdpotsout(1)=tdpotlen(myintime,1)  ;  tdpotsout(2)=tdpotlen(myintime,2);  tdpotsout(3)=tdpotlen(myintime,3)
   else
-     tdpotsout(1)=tdpotvel(myintime,2)    !! NOTE ORDER (see alltdpot, simplepulselen, etc in proputils - how I wrote it oh well)
-     tdpotsout(2)=tdpotvel(myintime,3);  tdpotsout(3)=tdpotvel(myintime,1)
+     tdpotsout(1)=tdpotvel(myintime,1)  ;  tdpotsout(2)=tdpotvel(myintime,2);  tdpotsout(3)=tdpotvel(myintime,3)
   endif
+
 end subroutine vectdpot
 
-
-function alltdpot(myintime,which)  !! which=1, z component; 2, x component. 3, y component
-  use parameters
-  implicit none
-  integer :: which
-  real*8 :: myintime
-  DATATYPE ::  alltdpot, tdpotlen,tdpotvel
-
-  alltdpot=0d0 !! to avoid spurious compiler warning
-
-  if (checktdflag.ne.0) then
-     select case(which)
-     case(1)
-        alltdpot=pulsestrength(1)*cos(pulsetheta(1))
-     case(2)
-        alltdpot=pulsestrength(1)*sin(pulsetheta(1))*cos(pulsephi(1))
-     case(3)
-        alltdpot=pulsestrength(1)*sin(pulsetheta(1))*sin(pulsephi(1))
-     case(4)
-        alltdpot=pulsestrength(1)
-     case default
-        OFLWR "AUUUUGGH!!!"; CFLST
-     end select
-  else
-     if (velflag==0) then
-        alltdpot=tdpotlen(myintime,which)
-     else
-        alltdpot=tdpotvel(myintime,which)
-     endif
-  endif
-end function alltdpot
 
 
 
@@ -65,31 +33,34 @@ function tdpotlen(myintime, which)
 
   do ipulse=1,numpulses
 
-     if (which==1) then !! z component
+     if (which==3) then !! z component
         fac=cos(pulsetheta(ipulse))
-     else if (which==2) then
+     else if (which==1) then
         fac=sin(pulsetheta(ipulse))*cos(pulsephi(ipulse))
-     else if (which==3) then
+     else if (which==2) then
         fac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
      else 
-        fac=1.d0
+        OFLWR "ACK which = ",which," not allowed tdpotlen"; CFLST
      endif
 
-     select case (pulsetype(ipulse))
-     case (1)
-        tdpotlen=tdpotlen+simplepulselen(myintime,ipulse) * fac
-     case (2)
-        tdpotlen=tdpotlen+pulselen(myintime,ipulse) * fac
-     case (3)
-        tdpotlen=tdpotlen+longpulselen(myintime,ipulse) * fac
-     case (4)
-        tdpotlen=tdpotlen+cwpulselen(myintime,ipulse) * fac
-     case default
-        OFLWR "Pulse type not supported: ", pulsetype(ipulse); CFLST
-     end select
+     if (fac.ne.0d0) then
+        select case (pulsetype(ipulse))
+        case (1)
+           tdpotlen=tdpotlen+simplepulselen(myintime,ipulse) * fac
+        case (2)
+           tdpotlen=tdpotlen+pulselen(myintime,ipulse) * fac
+        case (3)
+           tdpotlen=tdpotlen+longpulselen(myintime,ipulse) * fac
+        case (4)
+           tdpotlen=tdpotlen+cwpulselen(myintime,ipulse) * fac
+        case default
+           OFLWR "Pulse type not supported: ", pulsetype(ipulse); CFLST
+        end select
+     endif
   enddo
-
+  
 end function tdpotlen
+
 
 function tdpotvel(myintime,which)
   use parameters
@@ -103,93 +74,34 @@ function tdpotvel(myintime,which)
 
   do ipulse=1,numpulses
 
-     if (which==1) then !! z component
+     if (which==3) then !! z component
         fac=cos(pulsetheta(ipulse))
-     else if (which==2) then
+     else if (which==1) then
         fac=sin(pulsetheta(ipulse))*cos(pulsephi(ipulse))
-     else if (which==3) then
+     else if (which==2) then
         fac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
      else 
-        fac=1.d0
+        OFLWR "ACK which = ",which," not allowed tdpotvel"; CFLST
      endif
 
-     select case (pulsetype(ipulse))
-     case (1)
-        tdpotvel=tdpotvel+simplepulsevel(myintime, ipulse) * fac
-     case (2)
-        tdpotvel=tdpotvel+pulsevel(myintime, ipulse) * fac
-     case (3)
-        tdpotvel=tdpotvel+longpulsevel(myintime, ipulse) * fac
-     case (4)
-        tdpotvel=tdpotvel+cwpulsevel(myintime, ipulse) * fac
-     case default
-        OFLWR "Pulse type not supported: ", pulsetype(ipulse); CFLST
-     end select
-
+     if (fac.ne.0d0) then
+        select case (pulsetype(ipulse))
+        case (1)
+           tdpotvel=tdpotvel+simplepulsevel(myintime, ipulse) * fac
+        case (2)
+           tdpotvel=tdpotvel+pulsevel(myintime, ipulse) * fac
+        case (3)
+           tdpotvel=tdpotvel+longpulsevel(myintime, ipulse) * fac
+        case (4)
+           tdpotvel=tdpotvel+cwpulsevel(myintime, ipulse) * fac
+        case default
+           OFLWR "Pulse type not supported: ", pulsetype(ipulse); CFLST
+        end select
+     endif
   enddo
 
 end function tdpotvel
 
-
-!! rotating wave approx for types 1 and 2.  
-!! SHOULD ELIMINATE TDPOTFT, RELY ON NUMERICAL FOURIER TRANSFORMS FOR GENERALITY ACROSS THE WHOLE CODE
-!! (as in dipolesub routines)
-
-function tdpotft(myenergy)
-  use parameters
-  implicit none
-  integer :: ipulse
-  real*8 :: myenergy
-  complex*16 :: tdpotft, simplepulseft, pulseft
-  tdpotft=0.d0
-  do ipulse=1,numpulses
-     select case (pulsetype(ipulse))
-     case (1)
-        tdpotft=tdpotft+simplepulseft(myenergy, ipulse) 
-     case (2)
-        tdpotft=tdpotft+pulseft(myenergy, ipulse)
-     case (3)
-     case default
-        tdpotft=0d0
-     end select
-  enddo
-end function tdpotft
-
-
-function pulseft(myenergy, ipulse)
-  use parameters
-  implicit none
-  integer :: ipulse
-  complex*16 :: pulseft
-  real*8 ::  myenergy, tau, oki
-
-  oki=myenergy-0.d0  !!eground
-  if (oki.lt.0) then
-     pulseft=0.d0
-     return
-  endif
-  tau=pi/omega(ipulse)
-  pulseft = exp((0.d0,-1.d0)*omega2(ipulse)*tau) * ( exp((0.d0,1.d0)*(omega2(ipulse)-oki)*tau) - 1.d0 ) *pi**2 / &
-       (tau**2 * (omega2(ipulse)-oki)**2 - 4 *pi**2) / (omega2(ipulse)-oki) &
-       * pulsestrength(ipulse) &
-       * exp((0.d0,1.d0)*oki*pulsestart(ipulse))    !!! not checked
-  pulseft=pulseft*2   !! 0608
-
-end function pulseft
-
-function simplepulseft(myenergy, ipulse)
-  use parameters
-  implicit none
-  integer :: ipulse
-  complex*16 :: simplepulseft
-  real*8 :: myenergy,  oki
-  oki=myenergy-0.d0  !!eground
-  if (oki.lt.0) then
-     simplepulseft=0.d0
-     return
-  endif
-  simplepulseft = -4 * omega(ipulse)**2 / oki / (oki**2 - 4*omega(ipulse)**2) * (exp((0.d0,1.d0)*oki * pi / omega(ipulse)) - 1.d0) * pulsestrength(ipulse)
-end function simplepulseft
 
 
 function simplepulselen(myintime, ipulse)
@@ -384,6 +296,10 @@ function longpulsevel(myintime, ipulse)
   endif
   
 end function longpulsevel
+
+
+
+#include "Definitions.INC"
 
 
 subroutine oneminusproject(inspfs, outspfs, prospfs)

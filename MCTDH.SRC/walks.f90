@@ -149,7 +149,7 @@ subroutine walkdealloc()
 end subroutine walkdealloc
 
 
-subroutine singlewalkwrite()
+subroutine configlistwrite()
   use parameters
   use configmod
   use walkmod
@@ -160,42 +160,30 @@ subroutine singlewalkwrite()
 
   if (myrank.eq.1) then
      open(1088,file=configlistfile,status="unknown",form="unformatted")
-     write(1088) numconfig,ndof,maxsinglewalks
+     write(1088) numconfig,ndof
      write(1088) configlist(:,:)
-     write(1088) numsinglewalks(:)
-     write(1088) singlewalk(:,:)
-     write(1088) singlewalkopspf(:,:,:)
-     write(1088) singlewalkdirphase(:,:)
      close(1088)
   endif
 
-end subroutine singlewalkwrite
+end subroutine configlistwrite
 
-subroutine singlewalkheaderread(iunit,readnumconfig,readndof,readmaxsinglewalks)
+subroutine configlistheaderread(iunit,readnumconfig,readndof)
   implicit none
-  integer :: iunit,readnumconfig,readndof,readmaxsinglewalks
+  integer :: iunit,readnumconfig,readndof
 
-  read(iunit) readnumconfig,readndof,readmaxsinglewalks
+  read(iunit) readnumconfig,readndof
 
-end subroutine singlewalkheaderread
+end subroutine configlistheaderread
 
 
-subroutine singlewalkread(iunit,readnumconfig,readndof,readmaxsinglewalks,  readconfiglist,readnumsinglewalks, &
-     readsinglewalks, readsinglewalkopspf, readsinglewalkdirphase)
+subroutine configlistread(iunit,readnumconfig,readndof, readconfiglist)
+
   implicit none
-  integer :: iunit,readnumconfig,readndof,readmaxsinglewalks, &
-       readconfiglist(readndof,readnumconfig), readnumsinglewalks(readnumconfig), &
-       readsinglewalks(readmaxsinglewalks,readnumconfig), &
-       readsinglewalkopspf(2,readmaxsinglewalks,readnumconfig), &
-       readsinglewalkdirphase(readmaxsinglewalks,readnumconfig)
+  integer :: iunit,readnumconfig,readndof, readconfiglist(readndof,readnumconfig)
   
   read(iunit) readconfiglist(:,:)
-  read(iunit) readnumsinglewalks(:)
-  read(iunit) readsinglewalks(:,:)
-  read(iunit) readsinglewalkopspf(:,:,:)
-  read(iunit) readsinglewalkdirphase(:,:)
 
-end subroutine singlewalkread
+end subroutine configlistread
 
 
 

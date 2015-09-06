@@ -71,11 +71,11 @@ subroutine getparams()
        plotxyrange,plotrange,plotskip,pm3d, plotterm, plotmodulus,plotpause, numfluxcurves,  & 
        plotres, nspf ,  spfrestrictflag,  spfmvals, spfugvals, spfugrestrict, ugrestrictflag, ugrestrictval, &
        restrictflag,  restrictms,   loadspfflag,  loadavectorflag,  avectorhole, &
-       par_timestep,  stopthresh ,  cmf_flag,  intopt, checktdflag, timedepexpect,  avector_flag, &
+       par_timestep,  stopthresh ,  cmf_flag,  intopt, timedepexpect,  avector_flag, &
        numelec,  relerr,  myrelerr,  spf_flag,  denreg,  timingout, tdflag, finaltime, actions, numactions, &
        messflag,  sparseconfigflag,  aorder, maxaorder, aerror, orderflag, shelltop, numexcite, povres, povrange,&
        numpovranges, povsparse,  povmult, vexcite, plotnum,lancheckstep,  plotview1, plotview2, &
-       computeFlux, FluxInterval, FluxSkipMult, FluxSineOpt, FluxNBins, nEFlux, EFluxLo, EFluxHi, &
+       computeFlux, FluxInterval, FluxSkipMult, &
        numfrozen, nucfluxopt, natplotbin, spfplotbin, denplotbin, denprojplotbin, &
        natprojplotbin, rnatplotbin, dendatfile, denrotfile, rdendatfile,   avectorexcitefrom, avectorexciteto,&
        numovlfiles, ovlavectorfiles, ovlspffiles, outovl,fluxmofile,fluxafile, spifile, astoptol,  &
@@ -89,7 +89,7 @@ subroutine getparams()
        orbcompact,spinrestrictval,mshift,numskiporbs,orbskip,debugfac,denmatfciflag,&
        walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac, maxquadnorm,quadstarttime,&
        reinterp_orbflag,spf_gridshift,load_avector_product,projspifile,readfullvector,walksinturn,&
-       turnbatchsize,energyshift,nodgexpthirdflag
+       turnbatchsize,energyshift,nodgexpthirdflag, pulseft_estep
 
 
 
@@ -475,8 +475,6 @@ subroutine getparams()
         ishell=ishell+1
      endif
   enddo
-
-  dEFlux=(EFluxHi-EFluxLo)/real(nEFlux-1,8);  EFluxHi=EFluxLo+real(nEFlux-1,8)*dEFlux
 
 !! 092010 PUT ACTIONS HERE...
 
@@ -918,13 +916,14 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
 
   NAMELIST /pulse/ omega,pulsestart,pulsestrength, velflag, omega2,phaseshift,intensity,pulsetype, &
        pulsetheta,pulsephi, longstep, numpulses, minpulsetime, maxpulsetime, chirp, ramp
-  real*8 ::  time,   lastfinish, fac, wfi, pulse_end
-  DATATYPE :: pots(3),  tdpotlen, tdpotvel, csumx,csumy,csumz
+  real*8 ::  time,   lastfinish, fac, pulse_end, estep
+  DATATYPE :: pots1(3),pots2(3),pots3(3), pots4(3), pots5(3), csumx,csumy,csumz
   integer :: i, myiostat, ipulse,no_error_exit_flag
-  complex*16 :: tdpotft
   character (len=12) :: line
-  real*8, allocatable :: xsec(:)
   real*8, parameter :: epsilon=1d-4
+  integer, parameter :: neflux=10000
+  complex*16 :: lenpot(0:neflux,3),velpot(0:neflux,3)
+  real*8 :: pulseftsq(0:neflux), vpulseftsq(0:neflux)
 
   open(971,file=inpfile, status="old", iostat=myiostat)
   if (myiostat/=0) then
@@ -1015,7 +1014,18 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
 #endif
 
   if (tdflag.ne.0) then
-     finaltime=lastfinish+par_timestep*4;     pulse_end=finaltime
+     finaltime=lastfinish+par_timestep*4
+
+!! I think this is right
+
+     pulse_end = 2*pi/(pulseft_estep*(neflux+1)/neflux)
+
+     if (pulse_end.lt.finaltime) then
+        pulse_end=finaltime
+     endif
+
+     estep = 2*pi/(pulse_end*(neflux+1)/neflux)
+
      if (finaltime.lt.minpulsetime) then
         write(mpifileptr,*) " Enforcing minpulsetime =        ", minpulsetime
         finaltime=minpulsetime
@@ -1028,45 +1038,75 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
      finaltime=numpropsteps*par_timestep
      write(mpifileptr, *) "    ---> Resetting finaltime to ", finaltime
      write(mpifileptr, *) "                numpropsteps to ", numpropsteps
+     write(mpifileptr, *) "   ... Writing pulse to file"
+     CFL
+
      if (myrank.eq.1) then
-        open(886, file="Dat/Pulse.Dat", status="unknown")
-        open(887, file="Dat/Pulse.Datx", status="unknown")
-        open(888, file="Dat/Pulse.Daty", status="unknown")
+        open(886, file="Dat/Pulse.Datx", status="unknown")
+        open(887, file="Dat/Pulse.Daty", status="unknown")
+        open(888, file="Dat/Pulse.Datz", status="unknown")
 
-        i=0;        time=0;
         csumx=0; csumy=0; csumz=0
-
-        do while (time.lt.pulse_end)
-!!           time=i*par_timestep
+        do i=0,neflux
            time=i*pulse_end/neflux
-           call vectdpot(time,velflag,pots)
-!           write(887,'(10F15.10)') time, xtdpot(time), tdpotlen(time,2), tdpotvel(time,2), (tdpotvel(time+par_timestep,2)-tdpotvel(time-par_timestep,2))/2.d0/par_timestep
-!           write(886,'(10F15.10)') time, ztdpot(time), tdpotlen(time,1), tdpotvel(time,1), (tdpotvel(time+par_timestep,1)-tdpotvel(time-par_timestep,1))/2.d0/par_timestep
 
-           write(887,'(100F15.10)') time, pots(1), tdpotlen(time,2), tdpotvel(time,2), (tdpotlen(time+epsilon,2)-tdpotlen(time-epsilon,2))/2.d0/epsilon, &
-                (tdpotvel(time+epsilon,2)-tdpotvel(time-epsilon,2))/2.d0/epsilon,csumx
-           write(888,'(100F15.10)') time, pots(2), tdpotlen(time,3), tdpotvel(time,3), (tdpotlen(time+epsilon,3)-tdpotlen(time-epsilon,3))/2.d0/epsilon, &
-                (tdpotvel(time+epsilon,3)-tdpotvel(time-epsilon,3))/2.d0/epsilon,csumy
-           write(886,'(100F15.10)') time, pots(3), tdpotlen(time,1), tdpotvel(time,1), (tdpotlen(time+epsilon,1)-tdpotlen(time-epsilon,1))/2.d0/epsilon, &
-                (tdpotvel(time+epsilon,1)-tdpotvel(time-epsilon,1))/2.d0/epsilon,csumz
+!! checking that E(t) = d/dt A(t)   and  A(t) = integral E(t)
 
-           csumx=csumx+ pulse_end/neflux * tdpotvel(time+pulse_end/neflux/2,2)
-           csumy=csumy+ pulse_end/neflux * tdpotvel(time+pulse_end/neflux/2,3)
-           csumz=csumz+ pulse_end/neflux * tdpotvel(time+pulse_end/neflux/2,1)
+           call vectdpot(time,                  0,pots1)
+           call vectdpot(time,                  1,pots2)
+           call vectdpot(time-epsilon,          1,pots3)
+           call vectdpot(time+epsilon,          1,pots4)
+           call vectdpot(time+pulse_end/neflux ,0,pots5)
 
-           i=i+1
+           lenpot(i,:)=pots1(:)
+           velpot(i,:)=pots2(:)
+
+           write(886,'(100F15.10)') time, pots1(1), pots2(1), (pots4(1)-pots3(1))/2/epsilon, csumx
+           write(887,'(100F15.10)') time, pots1(2), pots2(2), (pots4(2)-pots3(2))/2/epsilon, csumy
+           write(888,'(100F15.10)') time, pots1(3), pots2(3), (pots4(3)-pots3(3))/2/epsilon, csumz
+
+           csumx=csumx+ pulse_end/neflux * pots5(1)
+           csumy=csumy+ pulse_end/neflux * pots5(2)
+           csumz=csumz+ pulse_end/neflux * pots5(3)
         enddo
         close(886);    close(887); close(888)
-        open(886, file="Dat/Pulseft.Dat", status="unknown")
-        allocate(xsec(neflux))
-        call getFTpulse(xsec) 
-        do i=1,neflux
-           wfi=efluxlo+(i-1)*deflux
-           write(886,'(100F30.12)') wfi, abs(tdpotft(wfi)**2), tdpotft(wfi), 1d0/abs(xsec(i)**2), 1d0/xsec(i)
+
+        do i=1,3
+           call zfftf_wrap(neflux+1,lenpot(:,i))
+           call zfftf_wrap(neflux+1,velpot(:,i))
         enddo
-        close(886);        deallocate(xsec)
+
+        lenpot(:,:)=lenpot(:,:)*pulse_end/neflux
+
+        velpot(:,:)=velpot(:,:)*pulse_end/neflux
+
+        pulseftsq(:)=abs(lenpot(:,1)**2)+abs(lenpot(:,2)**2)+abs(lenpot(:,3)**2)
+
+        vpulseftsq(:)=abs(velpot(:,1)**2)+abs(velpot(:,2)**2)+abs(velpot(:,3)**2)
+
+        open(885, file="Dat/Pulseftsq.Dat", status="unknown")
+        open(886, file="Dat/Pulseft.Datx", status="unknown")
+        open(887, file="Dat/Pulseft.Daty", status="unknown")
+        open(888, file="Dat/Pulseft.Datz", status="unknown")
+
+!! PREVIOUS OUTPUT IN Pulseft.Dat was vpulseftsq / 4
+
+        do i=0,neflux
+           write(885,'(100F30.12)') i*estep, pulseftsq(i), vpulseftsq(i)
+           write(886,'(100F30.12)') i*estep, lenpot(i,1),velpot(i,1)
+           write(887,'(100F30.12)') i*estep, lenpot(i,2),velpot(i,2)
+           write(888,'(100F30.12)') i*estep, lenpot(i,3),velpot(i,3)
+        enddo
+
+        close(885);   close(886);   close(887);   close(888)
+
      endif
+
+     call mpibarrier()
+
+     OFLWR "       ... done Writing pulse to file"; CFL
+
   endif
-  call closefile()     
+
 
 end subroutine getpulse
