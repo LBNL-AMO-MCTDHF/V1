@@ -5,7 +5,7 @@
 module dipolemod
   implicit none
   DATATYPE, allocatable :: xdipoleexpect(:),ydipoleexpect(:),zdipoleexpect(:)
-  integer :: calledflags=0,xcalledflags=0
+  integer :: calledflag=0,xcalledflag=0
 end module dipolemod
 
 subroutine dipolesub_initial()
@@ -25,11 +25,11 @@ subroutine dipolesub()
   integer, save :: lastouttime=0
   real*8 :: thistime
 
-  if (mod(xcalledflags,autosteps).eq.0) then
+  if (mod(xcalledflag,autosteps).eq.0) then
 
-     xdipoleexpect(calledflags)=0d0
-     ydipoleexpect(calledflags)=0d0
-     zdipoleexpect(calledflags)=0d0
+     xdipoleexpect(calledflag)=0d0
+     ydipoleexpect(calledflag)=0d0
+     zdipoleexpect(calledflag)=0d0
 
      do imc=1,mcscfnum
         call dipolesub_one(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0), xx,yy,zz)
@@ -37,35 +37,34 @@ subroutine dipolesub()
 !! 101414 REAL-VALUED FOR HERM.
 
 #ifndef CNORMFLAG
-        xdipoleexpect(calledflags) = xdipoleexpect(calledflags) + real(xx,8)
-        ydipoleexpect(calledflags) = ydipoleexpect(calledflags) + real(yy,8)
-        zdipoleexpect(calledflags) = zdipoleexpect(calledflags) + real(zz,8)
+        xdipoleexpect(calledflag) = xdipoleexpect(calledflag) + real(xx,8)
+        ydipoleexpect(calledflag) = ydipoleexpect(calledflag) + real(yy,8)
+        zdipoleexpect(calledflag) = zdipoleexpect(calledflag) + real(zz,8)
 #else
-        xdipoleexpect(calledflags) = xdipoleexpect(calledflags) + xx
-        ydipoleexpect(calledflags) = ydipoleexpect(calledflags) + yy
-        zdipoleexpect(calledflags) = zdipoleexpect(calledflags) + zz
+        xdipoleexpect(calledflag) = xdipoleexpect(calledflag) + xx
+        ydipoleexpect(calledflag) = ydipoleexpect(calledflag) + yy
+        zdipoleexpect(calledflag) = zdipoleexpect(calledflag) + zz
 #endif
 
      enddo
 
+     if (mod(calledflag,dipmodtime).eq.0.and.calledflag.gt.0) then
 
-
-     if (mod(calledflags,dipmodtime).eq.0) then
-
-        thistime=calledflags*par_timestep*autosteps
+        thistime=calledflag*par_timestep*autosteps
         sflag=0
         if (floor(thistime/diptime).gt.lastouttime) then
            lastouttime=floor(thistime/diptime)
            sflag=1
         endif
 
-        call dipolecall(calledflags, xdipoleexpect(0:),xdipfile,xdftfile,2,sflag)
-        call dipolecall(calledflags, ydipoleexpect(0:),ydipfile,ydftfile,3,sflag)
-        call dipolecall(calledflags, zdipoleexpect(0:),zdipfile,zdftfile,1,sflag)
+        call dipolecall(calledflag, xdipoleexpect(0:),xdipfile,xdftfile,1,sflag)
+        call dipolecall(calledflag, ydipoleexpect(0:),ydipfile,ydftfile,2,sflag)
+        call dipolecall(calledflag, zdipoleexpect(0:),zdipfile,zdftfile,3,sflag)
+
      endif
-     calledflags=calledflags+1
+     calledflag=calledflag+1
   endif
-  xcalledflags=xcalledflags+1
+  xcalledflag=xcalledflag+1
 
 end subroutine dipolesub
 
