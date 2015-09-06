@@ -201,7 +201,6 @@ subroutine write_actions()
   enddo
   if (j==1) then
      write(mpifileptr,*) "FOR IONIZATION FLUX:"
-     write(mpifileptr,*) "   Flux Parameters ",EFluxLo,EFluxHi,nEFlux
      write(mpifileptr,*) "   Flux Interval ",FluxInterval,FluxInterval*par_timestep
   endif
 
