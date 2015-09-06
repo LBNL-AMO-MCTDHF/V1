@@ -5,6 +5,26 @@
 
 #include "Definitions.INC"
 
+subroutine zfftf_wrap(size,inout)
+  implicit none
+  integer, intent(in) :: size
+  complex*16, intent(inout) :: inout(size)
+  complex*16 :: wsave(4*size+15)             !! AUTOMATIC
+  call zffti(size,wsave)
+  call zfftf(size,inout,wsave)
+end subroutine zfftf_wrap
+
+
+subroutine zfftb_wrap(size,inout)
+  implicit none
+  integer, intent(in) :: size
+  complex*16, intent(inout) :: inout(size)
+  complex*16 :: wsave(4*size+15)             !! AUTOMATIC
+  call zffti(size,wsave)
+  call zfftb(size,inout,wsave)
+end subroutine zfftb_wrap
+
+
 subroutine checkiostat(iniostat)
   use fileptrmod
   implicit none
