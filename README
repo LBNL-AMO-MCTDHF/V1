@@ -2,6 +2,7 @@
   ** LBNL-AMO-MCTDHF VERSION 1.10 **
 
 CHANGES TO PULSE FOURIER TRANSFORM SUBROUTINES IN VERSION 1.10.
+VARIABLES EFLUXLO, EFLUXHI, NEFLUX, FLUXNBINS, FLUXSINEOPT DEPRECATED.
 
 Please watch the commits to stay notified about bugs and bug fixes:
      https://github.com/LBNL-AMO-MCTDHF/V1/commits/master
