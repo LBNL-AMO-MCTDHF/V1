@@ -75,7 +75,7 @@ subroutine drivingtrans(thistime)
   if (tdflag.ne.1) then
      return
   endif
-  call vectdpot(thistime,pots)
+  call vectdpot(thistime,velflag,pots)
   rsum=0d0
   do i=1,3
      rsum=rsum+abs(pots(i))**2

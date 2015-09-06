@@ -404,7 +404,7 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
 
   diagmat(:,:,:)=0d0
 
-  call vectdpot(time,facs)
+  call vectdpot(time,velflag,facs)
 
   if (boflag==1) then
      do ir=1,numr

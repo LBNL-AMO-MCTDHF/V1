@@ -335,8 +335,8 @@ subroutine fluxgtau(alg)
 !!! STILL NEED Y
 !!! STILL NEED Y
 !!! STILL NEED Y
-                 call vectdpot(curtime*dt,pots1)
-                 call vectdpot(oldtime*dt,pots2)
+                 call vectdpot(curtime*dt,velflag,pots1)
+                 call vectdpot(oldtime*dt,velflag,pots2)
                  xyfac=real( pots1(1) + pots2(1) ,8) /2d0
                  zfac=real( pots1(3) + pots2(3) ,8) /2d0
 

@@ -205,7 +205,7 @@ recursive subroutine driving_linear_derivs(thistime,spfsin,spfsout)
      return
   endif
 
-  call vectdpot(thistime,pots)
+  call vectdpot(thistime,velflag,pots)
   rsum=0
   do jjj=1,3
      rsum=rsum+abs(pots(jjj))**2
@@ -258,7 +258,7 @@ recursive subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, 
        spfinvrsq(  spfsize,nspf),spfproderiv(  spfsize,nspf )
 
   if (tdflag.eq.1) then
-     call vectdpot(thistime,pots)
+     call vectdpot(thistime,velflag,pots)
      myxtdpot=pots(1);  myytdpot=pots(2);  myztdpot=pots(3);
   endif
 
@@ -442,7 +442,7 @@ subroutine getconmat(thistime,ireduced,conmat)
 
   conmat(:,:) =   yyy%cptr(ireduced)%xconmatel(:,:) * timefac
   if (tdflag.eq.1) then
-     call vectdpot(thistime,pots)
+     call vectdpot(thistime,velflag,pots)
      conmat(:,:) =   conmat(:,:) + &
           yyy%cptr(ireduced)%xconmatelxx(:,:) *pots(1) * timefac + &
           yyy%cptr(ireduced)%xconmatelyy(:,:) *pots(2) * timefac + &

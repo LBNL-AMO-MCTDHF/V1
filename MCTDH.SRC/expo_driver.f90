@@ -364,7 +364,7 @@ recursive subroutine jacoperate(inspfs,outspfs)
         if (drivingflag.eq.1.or.drivingflag.eq.3) then
            call system_clock(itime)
            
-           call vectdpot(jactime,pots)
+           call vectdpot(jactime,velflag,pots)
            
            temporbs(:,:)=pots(1)*yyy%drivingorbsxx(:,:,ii)+pots(2)*yyy%drivingorbsyy(:,:,ii)+pots(3)*yyy%drivingorbszz(:,:,ii)
            call derproject(temporbs,tempspfs,jacvect,inspfs)

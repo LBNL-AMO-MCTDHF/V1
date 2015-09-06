@@ -1039,7 +1039,7 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         do while (time.lt.pulse_end)
 !!           time=i*par_timestep
            time=i*pulse_end/neflux
-           call vectdpot(time,pots)
+           call vectdpot(time,velflag,pots)
 !           write(887,'(10F15.10)') time, xtdpot(time), tdpotlen(time,2), tdpotvel(time,2), (tdpotvel(time+par_timestep,2)-tdpotvel(time-par_timestep,2))/2.d0/par_timestep
 !           write(886,'(10F15.10)') time, ztdpot(time), tdpotlen(time,1), tdpotvel(time,1), (tdpotvel(time+par_timestep,1)-tdpotvel(time-par_timestep,1))/2.d0/par_timestep
 

@@ -5,13 +5,19 @@
 
 
 
-subroutine vectdpot(myintime,tdpotsout)
+subroutine vectdpot(myintime,invelflag,tdpotsout)
   use parameters
   implicit none
+  integer :: invelflag
   real*8 :: myintime
-  DATATYPE :: tdpotsout(3),alltdpot
-  tdpotsout(1)=alltdpot(myintime,2)    !! NOTE ORDER (see alltdpot, simplepulselen, etc in proputils - how I wrote it oh well)
-  tdpotsout(2)=alltdpot(myintime,3);  tdpotsout(3)=alltdpot(myintime,1)
+  DATATYPE :: tdpotsout(3),tdpotlen,tdpotvel
+  if (invelflag.eq.0) then
+     tdpotsout(1)=tdpotlen(myintime,2)    !! NOTE ORDER (see alltdpot, simplepulselen, etc in proputils - how I wrote it oh well)
+     tdpotsout(2)=tdpotlen(myintime,3);  tdpotsout(3)=tdpotlen(myintime,1)
+  else
+     tdpotsout(1)=tdpotvel(myintime,2)    !! NOTE ORDER (see alltdpot, simplepulselen, etc in proputils - how I wrote it oh well)
+     tdpotsout(2)=tdpotvel(myintime,3);  tdpotsout(3)=tdpotvel(myintime,1)
+  endif
 end subroutine vectdpot
 
 

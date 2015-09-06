@@ -847,7 +847,7 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
 
   iflag=0
   if (drivingflag.ne.0) then
-     call vectdpot(midtime,pots)
+     call vectdpot(midtime,velflag,pots)
      rsum=0d0
      do ii=1,3
         rsum=rsum+abs(pots(ii))**2

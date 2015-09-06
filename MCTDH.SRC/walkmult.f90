@@ -124,7 +124,7 @@ recursive subroutine sparseconfigdiagmult(invector,outvector,matrix_ptr, sparse_
   integer ::  conflag,boflag,nucflag,pulseflag
   real*8 :: time
 
-  call vectdpot(time,facs)
+  call vectdpot(time,velflag,facs)
 
   myinvectortr(:,:)=1d0; myoutvectortr(:,:)=0d0
   call sparseconfigmultnew_transpose_nompi(myinvectortr,myoutvectortr(:,botwalk),matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag,time,0,1,numr,1)
@@ -221,7 +221,7 @@ recursive subroutine direct_sparseconfigmultnew_transpose_nompi(myinvectortr,myo
   if (onlytdflag.ne.0) then
      facs(:)=0;     facs(onlytdflag)=1d0
   else
-     call vectdpot(time,facs)
+     call vectdpot(time,velflag,facs)
   endif
   
   mynumr=topr-botr+1
@@ -363,7 +363,7 @@ recursive subroutine sparsesparsemult_transpose_nompi(myinvectortr,myoutvectortr
   if (onlytdflag.ne.0) then
      facs(:)=0;     facs(onlytdflag)=1d0
   else
-     call vectdpot(time,facs)
+     call vectdpot(time,velflag,facs)
   endif
 
   mynumr=topr-botr+1
