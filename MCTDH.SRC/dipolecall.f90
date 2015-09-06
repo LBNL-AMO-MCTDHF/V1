@@ -18,17 +18,21 @@ function facfunct(myenergy)
   facfunct=ccsum
 end function facfunct
 
-subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   !! which=1,z component; 2, xy component
+
+!! actually have numdata+1 data points in indipolearray
+
+subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   !! which=1,2,3  =  x,y,z
   use parameters
   use mpimod
   implicit none
 
-  DATATYPE :: indipolearray(0:numdata), temparray(0:numdata),facfunct,tdpotlen
+  DATATYPE :: indipolearray(0:numdata), temparray(0:numdata),facfunct,pots(3)
   integer :: i, numdata, which,getlen,jj,sflag
   real*8 :: estep, thistime, myenergy,sum1,sum2
   character (len=7) :: number
   character :: outftname*(*), outename*(*)
-  DATATYPE ::  wsave(10*autosize+1000), fftrans(0:autosize), eft(0:autosize)
+  DATATYPE ::  fftrans(0:autosize), eft(0:autosize)
+
   fftrans=0.d0; eft=0d0
 
 #ifdef REALGO
@@ -73,12 +77,14 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
      temparray(:)=temparray(:)/par_timestep/autosteps
      do i=0,numdata
         fftrans(i) = temparray(i)  *cos(pi/2d0 * real(i,8)/real(numdata,8))**dipolewindowpower
-        eft(i)=tdpotlen(i*par_timestep*autosteps,which)
+        call vectdpot(i*par_timestep*autosteps,0,pots)
+        eft(i)=pots(which)
      enddo
   else
      do i=0,numdata
         fftrans(i) = (indipolearray(i)-indipolearray(0))  *cos(pi/2d0 * real(i,8)/real(numdata,8))**dipolewindowpower
-        eft(i)=tdpotlen(i*par_timestep*autosteps,which)
+        call vectdpot(i*par_timestep*autosteps,0,pots)
+        eft(i)=pots(which)
      enddo
   endif
 
@@ -94,8 +100,9 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
   do i=0,numdata
      sum1=sum1+abs(fftrans(i))**2
   enddo
-  call zffti(numdata+1,wsave);  call zfftf(numdata+1,fftrans(0), wsave)  
-  call zffti(numdata+1,wsave);  call zfftf(numdata+1,eft(0), wsave)  
+
+  call zfftf_wrap(numdata+1,fftrans(0))
+  call zfftf_wrap(numdata+1,eft(0))
 
   sum2=0d0
   do i=0,numdata
@@ -103,40 +110,27 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
   enddo
   OFLWR "FFT : NORM BEFORE, AFTER ", sum1,sum2/(numdata+1); CFL
 
-
   Estep=2*pi/par_timestep/autosteps/(numdata+1)
+
   thistime=numdata*par_timestep*autosteps
 
   if (myrank.eq.1) then
      open(171,file=outftname,status="unknown")
-     do i=(numdata+2)/2,numdata
-        myenergy=(i-numdata-1)*Estep
-
-        write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i)*facfunct(myenergy), eft(i), fftrans(i)*facfunct(myenergy)*ALLCON(eft(i))
-     enddo
-     do i=0,(numdata+1)/2
-        myenergy=(i)*Estep
+     do i=0,numdata
+        myenergy=i*Estep
         write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i)*facfunct(myenergy), eft(i), fftrans(i)*facfunct(myenergy)*ALLCON(eft(i))
      enddo
      close(171)
-
-!!     if (mod(floor(thistime+1d0),diptime) .eq.0) then
-
      if (sflag.ne.0) then
-
         write(number,'(I7)') 1000000+floor(thistime)
-
         open(171,file=outftname(1:getlen(outftname)-1)//number(2:7),status="unknown")
-        do i=(numdata+2)/2,numdata
-           myenergy=(i-numdata-1)*Estep
-           write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i)*facfunct(myenergy), eft(i), fftrans(i)*facfunct(myenergy)*ALLCON(eft(i))
-        enddo
-        do i=0,(numdata+1)/2
-           myenergy=(i)*Estep
+        do i=0,numdata
+           myenergy=i*Estep
            write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i)*facfunct(myenergy), eft(i), fftrans(i)*facfunct(myenergy)*ALLCON(eft(i))
         enddo
         close(171)
      endif
   endif
+
 end subroutine dipolecall
 
