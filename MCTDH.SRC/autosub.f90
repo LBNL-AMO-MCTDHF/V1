@@ -18,8 +18,6 @@ subroutine autocorrelate_initial()
   implicit none
   integer :: imc
   
-  call ftalloc(autosize)
-
   allocate(overlaps(0:autosize,mcscfnum),  orig_spfs(  spfsize, nspf ),  calledflag,  xcalledflag)
   overlaps(:,:)=0d0
   calledflag=0;  xcalledflag=0
@@ -42,9 +40,6 @@ subroutine autocorrelate()
   integer ::  i,imc,sflag
   integer, save :: lastouttime=0
   real*8 :: thistime
-  DATATYPE :: zeroarray(0:1,mcscfnum)  !zeros for backward FT of autocorr function if hanningflag=4
-
-  zeroarray(:,:) = (0.0d0,0.0d0)
 
   if (mod(xcalledflag,autosteps).eq.0) then
      do imc=1,mcscfnum
@@ -52,9 +47,8 @@ subroutine autocorrelate()
              orig_avectors(:,:,imc), overlaps(calledflag,imc),numr)
      enddo
 
-     calledflag=calledflag+1
-     
-     if (mod(calledflag,dipmodtime).eq.0) then
+     if (mod(calledflag,dipmodtime).eq.0.and.calledflag.gt.0) then
+
         thistime=calledflag*par_timestep*autosteps
         sflag=0
         if (floor(thistime/diptime).gt.lastouttime) then
@@ -70,12 +64,10 @@ subroutine autocorrelate()
            close(881)
         endif
         
-        IF (hanningflag .EQ. 3 .OR. hanningflag .EQ. 4) THEN
-           call autocall(calledflag, overlaps(:,:), zeroarray(:,:), sflag)
-        else
-           call autocall(calledflag, overlaps(:,:), overlaps(:,:), sflag)
-        endif
+        call autocall(calledflag, overlaps(:,:), sflag)
+
      endif
+     calledflag=calledflag+1
   endif
   xcalledflag=xcalledflag+1
   
@@ -163,7 +155,6 @@ subroutine autocorrelate_final()
   use automod
   implicit none
   deallocate(orig_spfs,   orig_avectors,  overlaps)
-  call ftdealloc()
 end subroutine autocorrelate_final
 
 
