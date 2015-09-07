@@ -157,8 +157,6 @@ recursive subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
      spfsout(:,:)=spfsout(:,:)+spfmult(:,:)*facs(jjj)
   enddo
 
-!! NOW INTERPOLATING EXCHANGE -- UNTESTED -- BEFORE HAD CMF EXCHANGE FOR STABILITY
-
   if (numfrozen.gt.0) then
      spfmult3(:,:)=0d0
      do jjj=ibot,1
@@ -171,7 +169,7 @@ recursive subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
         enddo
 
 !! TIMEFAC HERE
-        call MYGEMM('N','N', spfsize,nspf,nspf,timefac, spfmult(:,:),spfsize, yyy%invdenmat(:,:,jjj), nspf, DATAONE, spfmult2(:,:), spfsize)
+        call MYGEMM('N','N', spfsize,nspf,nspf,timefac, spfmult(:,:),spfsize, yyy%invdenmat(:,:,jjj), nspf, DATAZERO, spfmult2(:,:), spfsize)
         spfmult3(:,:)=spfmult3(:,:)+spfmult2(:,:)*facs(jjj)
      enddo
 
