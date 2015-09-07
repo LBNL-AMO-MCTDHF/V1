@@ -27,13 +27,13 @@ subroutine autocall(numdata, forwardovl, sflag)
 
   if (hanningflag.eq.4) then
      ibot=0
-     totdim=numdata
+     totdim=numdata+1
   else
      ibot=(-numdata)
-     totdim=2*numdata-1
+     totdim=2*numdata+1
   endif
 
-  allocate( fftrans(ibot:numdata-1,mcscfnum),fftrans0(ibot:numdata-1,mcscfnum))
+  allocate( fftrans(ibot:numdata,mcscfnum),fftrans0(ibot:numdata,mcscfnum))
 
   fftrans=0.d0;  fftrans0=0.d0
 
