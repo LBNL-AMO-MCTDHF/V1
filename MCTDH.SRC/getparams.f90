@@ -539,8 +539,7 @@ subroutine getparams()
   else 
      if (noftflag.eq.0) then
         do j=1,numactions
-           if ((actions(j).eq.1).or.&
-                (actions(j).eq.14).or.&
+           if ( (actions(j).eq.14).or.&
                 (actions(j).eq.16).or.&
                 (actions(j).eq.17)) then
               needpulse=1
