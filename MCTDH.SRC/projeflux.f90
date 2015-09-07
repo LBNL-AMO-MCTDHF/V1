@@ -458,7 +458,8 @@ subroutine projeflux_single(mem)
   integer :: mem,tau, i,nt ,ir,tndof,tnspf,nstate,tnumr,istate,myiostat,ierr
   integer :: spfcomplex, acomplex, tdims(3),ttndof,ttnumconfig,imc,ii
   real*8 :: dt
-  DATATYPE, allocatable :: readmo(:,:),readavec(:,:,:),mobio(:,:),abio(:,:)
+  DATATYPE, allocatable :: readmo(:,:),readavec(:,:,:),mobio(:,:),abio(:,:),&
+       tmotemp(:,:)
 !! mcscf specific read variables
   DATATYPE,target :: smo(nspf,nspf)
 
@@ -482,8 +483,8 @@ subroutine projeflux_single(mem)
   if (tnumr.ne.1) then
      OFLWR "projecting only one r value... input numr>1... numr>1 proj not supported yet"; CFLST
   endif
-  if (tnspf.gt.nspf) then
-     OFLWR "ERROR, for now can't do more orbs in projection than in calculation",tnspf,nspf; CFLST
+  if (tnspf.gt.nspf+numfrozen) then
+     OFLWR "ERROR, for now can't do more orbs in projection than in calculation",tnspf,nspf+numfrozen; CFLST
   endif
   if (tndof.ne.ndof-2 ) then
      OFLWR "Vectors read are not n-1 electron functions"; CFLST
@@ -520,7 +521,7 @@ subroutine projeflux_single(mem)
      endif
   endif
 
-  allocate(tmo(spfsize,nspf,numr),ta(tnumconfig,nstate,numr))
+  allocate(tmo(spfsize,nspf,numr),ta(tnumconfig,nstate,numr),tmotemp(spfsize,nspf+numfrozen))
 
   OFLWR "Reading", nstate," Born-Oppenheimer states."; CFL
 
@@ -530,8 +531,11 @@ subroutine projeflux_single(mem)
 
   call simple_load_avectors(910,acomplex,ta(:,:,1),ndof-2,1,tnumconfig,nstate)
 
-  call spf_read0(909,nspf,spfdims,tnspf,tdims,spfcomplex,spfdimtype,tmo(:,:,1),(/0,0,0/))
+  call spf_read0(909,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,tmotemp(:,:),(/0,0,0/))
 
+  tmo(:,1:tnspf-numfrozen,1) = tmotemp(:,numfrozen+1:tnspf)
+  deallocate(tmotemp)
+  tnspf=tnspf-numfrozen
 
   do i=tnspf+1,nspf
      tmo(:,i,1)=0d0
