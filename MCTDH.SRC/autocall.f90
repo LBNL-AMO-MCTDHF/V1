@@ -78,7 +78,7 @@ subroutine autocall(numdata, forwardovl, sflag)
         call zfftf_wrap(totdim,fftrans(:,imc))
         fftrans(:,imc)=fftrans(:,imc)*autosteps*par_timestep
         do i=-numdata,numdata
-           fftrans(i,:)=fftrans(i,:)*exp((0.d0,1.d0)*(numdata+i)*numdata*2*pi/real(2*numdata+1))
+           fftrans(i,imc)=fftrans(i,imc)*exp((0.d0,1.d0)*(numdata+i)*numdata*2*pi/real(2*numdata+1))
         enddo
      else
         CALL ZFFTB_wrap(totdim,fftrans(:,imc))
