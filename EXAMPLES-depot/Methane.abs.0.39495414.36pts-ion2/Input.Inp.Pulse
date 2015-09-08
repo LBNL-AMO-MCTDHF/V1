@@ -15,9 +15,6 @@ minpulsetime=2000d0
 
 energyshift=(0d0,-0.64319338E-05)
 
-efluxlo=0.001d0
-efluxhi=1.8d0
-
 notiming=0
 timingdir="timing.pulse"
 timingout=30

@@ -41,6 +41,7 @@ function tdpotlen(myintime, which)
         fac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
      else 
         OFLWR "ACK which = ",which," not allowed tdpotlen"; CFLST
+        fac=798d0   !! avoid warn unused
      endif
 
      if (fac.ne.0d0) then
@@ -82,6 +83,7 @@ function tdpotvel(myintime,which)
         fac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
      else 
         OFLWR "ACK which = ",which," not allowed tdpotvel"; CFLST
+        fac=798d0   !! avoid warn unused
      endif
 
      if (fac.ne.0d0) then

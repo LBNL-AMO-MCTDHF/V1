@@ -44,9 +44,6 @@ tdflag=1
 
 par_timestep=0.05d0
 
-efluxlo=0.01d0
-efluxhi=2d0
-
 /
 
 $h2parinp

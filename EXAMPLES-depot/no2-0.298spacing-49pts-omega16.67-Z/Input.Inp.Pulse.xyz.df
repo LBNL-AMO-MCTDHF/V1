@@ -10,7 +10,7 @@ $pulse
  velflag=0
 
  pulsetheta=0.78539816339745d0
- pulsephi=0.78539816339745d0
+ pulsephi=0.95531661812451d0
 
  minpulsetime=2000d0
  minpulsetime=0d0
@@ -67,9 +67,6 @@ restrictms=1
 tdflag=1
 
 par_timestep=0.02d0
-
-efluxlo=0.01d0
-efluxhi=1.6d0
 
 parorbsplit=3
 

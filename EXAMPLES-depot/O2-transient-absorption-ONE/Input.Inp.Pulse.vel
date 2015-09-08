@@ -43,9 +43,6 @@ $parinp
 
 sparseconfigflag=1
 
-efluxlo=0.01d0
-efluxhi=2d0
-
 zdftfile="Dat/ZDipoleft.Dat.one.vel"
 zdipfile="Dat/ZDipoleexpect.Dat.one.vel"
 

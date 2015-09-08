@@ -31,12 +31,12 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
   real*8 :: estep, thistime, myenergy,sum1,sum2
   character (len=7) :: number
   character :: outftname*(*), outename*(*)
-  DATATYPE ::  fftrans(0:autosize), eft(0:autosize)
+  complex*16 ::  fftrans(0:autosize), eft(0:autosize)
 
   fftrans=0.d0; eft=0d0
 
 #ifdef REALGO
-  OFLWR "Cant dipole real fool"; CFLST
+  OFLWR "Cant use dipolesub for real valued code."; CFLST
 #endif
 
   if (diffdipoleflag.ne.0) then

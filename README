@@ -3,6 +3,7 @@
 
 CHANGES TO PULSE FOURIER TRANSFORM SUBROUTINES IN VERSION 1.10.
 VARIABLES EFLUXLO, EFLUXHI, NEFLUX, FLUXNBINS, FLUXSINEOPT DEPRECATED.
+NOTE NEW VARIABLE pulseft_estep USED FOR Pulseft.Dat OUTPUT ONLY
 
 Please watch the commits to stay notified about bugs and bug fixes:
      https://github.com/LBNL-AMO-MCTDHF/V1/commits/master

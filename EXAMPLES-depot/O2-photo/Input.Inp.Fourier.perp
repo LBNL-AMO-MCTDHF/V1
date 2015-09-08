@@ -40,9 +40,6 @@ fluxinterval=1
 spifile="Dat/xsec.spi.perp.dat"
 projspifile="Dat/xsec.proj.spi.perp"
 
-efluxlo=0.01d0
-efluxhi=2d0
-
 sparseconfigflag=1
 
 autotimestep=0.5d0

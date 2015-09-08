@@ -53,9 +53,6 @@ actions=15
 fluxskipmult=1
 fluxinterval=10
 
-efluxlo=0.01d0
-efluxhi=4d0
-
 /
 
 $h2parinp

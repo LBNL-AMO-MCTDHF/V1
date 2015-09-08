@@ -60,9 +60,6 @@ tdflag=1
 par_timestep=1d0
 littlesteps=10
 
-efluxlo=0.01d0
-efluxhi=2d0
-
 /
 
 $h2parinp

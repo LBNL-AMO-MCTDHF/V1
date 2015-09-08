@@ -24,9 +24,6 @@ $pulse
 
 $parinp
 
-efluxlo=0.01d0
-efluxhi=2d0
-
 sparseconfigflag=1
 
 autotimestep=0.5d0
