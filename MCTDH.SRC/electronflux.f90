@@ -380,7 +380,7 @@ subroutine fluxgtau(alg)
   if (myrank.eq.1) then
      open(171,file="Dat/gtau.dat",status="unknown");          write(171,*) "#   ", curtime
      do i=0,curtime
-        write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*FluxInterval*FluxSkipMult, pulseft(i,:), ftgtau(i,:)
+        write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*FluxInterval*FluxSkipMult, ftgtau(i,:)
      enddo
      close(171)
   endif
