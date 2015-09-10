@@ -201,43 +201,45 @@ real*8 :: conprop=1d-1                           !! epsilon for conway=3
 !!EE
 !!{\large \quad INPUT / OUTPUT }
 !!BB
+character(len=200):: finalstatsfile="Dat/finalstats.dat"      !! output for relaxation calculation
 real*8 :: pulseft_estep=0.01d0                   !! energy step in hartree for Pulseft.Dat output files
 integer :: notiming=2            !!NoTiming=0,1,2!! 0=write all 1=write some 2= write none
                                  !!  Timing=2,1,0!!     controls writing of all timing and some info files
 integer :: timingout=499         !!              !! various routines output to file (timing info) every this 
                                  !!              !!   # of calls
+character(len=200):: timingdir="timing"                       !!
 character (len=200) ::      avectoroutfile="Bin/avector.bin"  !! A-vector output file.        
 character (len=200) ::      spfoutfile="Bin/spfs.bin"         !! Spf output file.
-character(len=200):: psistatsfile="Dat/psistats.dat"
-character(len=200):: dendatfile="Dat/denmat.eigs.dat"
-character(len=200):: denrotfile="Dat/denmat.rotate.dat"
-character(len=200):: rdendatfile="Dat/rdenmat.eigs.dat"
-character (len=200) :: ovlspffiles(50)="ovl.spfs.bin"
-character (len=200) :: ovlavectorfiles(50)="ovl.avector.bin"
-character(len=200):: zdipfile="Dat/ZDipoleexpect.Dat"
-character(len=200):: zdftfile="Dat/ZDipoleft.Dat"
-character(len=200):: ydipfile="Dat/YDipoleexpect.Dat"
-character(len=200):: ydftfile="Dat/YDipoleft.Dat"
-character(len=200):: xdipfile="Dat/XDipoleexpect.Dat"
-character(len=200):: xdftfile="Dat/XDipoleft.Dat"
-character(len=200):: corrdatfile="Dat/Correlation.Dat"
-character(len=200):: corrftfile="Dat/Corrft.Dat"
-character(len=200):: outovl="Dat/Overlaps.dat"
-character(len=200):: fluxmofile="Flux/flux.mo.bin"
-character(len=200):: fluxafile="Flux/flux.avec.bin"
-character(len=200):: configlistfile="WALKS/configlist.BIN"
-character(len=200):: fluxmofile2="Flux/flux.mo.bin"
-character(len=200):: fluxafile2="Flux/flux.avec.bin"
-character(len=200):: projfluxfile="Flux/proj.flux.wfn.bin"
-character(len=200):: timingdir="timing"
-character(len=200):: spifile="Dat/xsec.spi.dat"
-character(len=200):: projspifile="Dat/xsec.proj.spi"
-character(len=200):: natplotbin="Bin/Natlorb.bin"
-character(len=200):: spfplotbin="Bin/Spfplot.bin"
-character(len=200):: denplotbin="Bin/Density.bin"
-character(len=200):: denprojplotbin="Bin/Denproj.bin"
-character(len=200):: natprojplotbin="Bin/Natproj.bin"
-character(len=200):: rnatplotbin="Bin/RNatorb.bin"
+character(len=200):: psistatsfile="Dat/psistats.dat"          !! for action 25
+integer :: psistatfreq=1                                      !!  "
+character(len=200):: dendatfile="Dat/denmat.eigs.dat"         !! if notiming=0
+character(len=200):: denrotfile="Dat/denmat.rotate.dat"       !!  "
+character(len=200):: rdendatfile="Dat/rdenmat.eigs.dat"       !! deprecated
+character (len=200) :: ovlspffiles(50)="ovl.spfs.bin"         !! for action 20
+character (len=200) :: ovlavectorfiles(50)="ovl.avector.bin"  !!  "
+character(len=200):: outovl="Dat/Overlaps.dat"                !! 
+character(len=200):: zdipfile="Dat/ZDipoleexpect.Dat"         !! for action 21
+character(len=200):: zdftfile="Dat/ZDipoleft.Dat"             !!  "
+character(len=200):: ydipfile="Dat/YDipoleexpect.Dat"         !!  "
+character(len=200):: ydftfile="Dat/YDipoleft.Dat"             !!  "
+character(len=200):: xdipfile="Dat/XDipoleexpect.Dat"         !!  "
+character(len=200):: xdftfile="Dat/XDipoleft.Dat"             !!  "
+character(len=200):: corrdatfile="Dat/Correlation.Dat"        !! for action 1
+character(len=200):: corrftfile="Dat/Corrft.Dat"              !!  "
+character(len=200):: fluxmofile="Flux/flux.mo.bin"            !! for actions 15,16,17,23
+character(len=200):: fluxafile="Flux/flux.avec.bin"           !!  "
+character(len=200):: configlistfile="WALKS/configlist.BIN"    !! need cation.configlist.BIN action 17
+character(len=200):: spifile="Dat/xsec.spi.dat"               !! for action 16
+character(len=200):: projspifile="Dat/xsec.proj.spi"          !! for action 17
+character(len=200):: projfluxfile="Flux/proj.flux.wfn.bin"    !!  "
+character(len=200):: fluxafile2="Flux/flux.avec.bin"          !! for action 23
+character(len=200):: fluxmofile2="Flux/flux.mo.bin"           !!  "
+character(len=200):: natplotbin="Bin/Natlorb.bin"             !! for actions 2,8
+character(len=200):: spfplotbin="Bin/Spfplot.bin"             !! for actions 3,9
+character(len=200):: denplotbin="Bin/Density.bin"             !! for actions 4,10
+character(len=200):: rnatplotbin="Bin/RNatorb.bin"            !! for actions 5,11
+character(len=200):: denprojplotbin="Bin/Denproj.bin"         !! for actions 6,12
+character(len=200):: natprojplotbin="Bin/Natproj.bin"         !!  "
 !!EE
 !!{\large \quad PULSE.  (If tdflag=1) }
 !!BB
@@ -291,6 +293,7 @@ integer :: actions(100)=0        !!              !! ACTIONS
 !!   Act=23   Enter plotting/analysis mode and read flux.bin files from Act=15 for overlaps
 !!                 between two time dependent wave functions
 !!   Act=24   keprojector
+!!   Act=25   make psistats.dat
 integer :: nkeproj=200           !!  For keprojector
 real*8 :: keprojminenergy=0.04d0 !!   "
 real*8 :: keprojenergystep=0.04d0!!   "

@@ -689,11 +689,49 @@ subroutine getdensity(density, indenmat, inspfs,in_numspf)
 
 end subroutine getdensity
 
+!! redundancy here with getsmallugvalue
+
+subroutine op_reflectz(in, out)
+  use myparams
+  implicit none
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
+  integer :: i
+  do i=1,lbig+1
+     out(:,i,:)=in(:,lbig+2-i,:)
+  enddo
+end subroutine op_reflectz
+
+subroutine op_reflecty(in, out)
+  use myparams
+  implicit none
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
+  integer :: i
+  do i=-mbig,mbig
+     out(:,:,i)=in(:,:,-i)*(-1)**i
+  enddo
+end subroutine op_reflecty
+
+
+subroutine op_reflectx(in, out)
+  use myparams
+  implicit none
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
+  integer :: i
+  do i=-mbig,mbig
+     out(:,:,i)=in(:,:,-i)
+  enddo
+end subroutine op_reflectx
+
+
 subroutine mult_zdipole(in, out)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE :: in(numerad,lbig+1,-mbig:mbig), out(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
   integer :: i
   do i=-mbig,mbig
      out(:,:,i)=in(:,:,i)*zdipole(:,:)
@@ -704,7 +742,8 @@ subroutine mult_imzdipole(in, out)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE :: in(numerad,lbig+1,-mbig:mbig), out(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
 #ifndef REALGO
   integer :: i
   do i=-mbig,mbig
@@ -715,14 +754,12 @@ subroutine mult_imzdipole(in, out)
 #endif
 end subroutine mult_imzdipole
 
-
-
-
 subroutine mult_xdipole(in, out)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE :: in(numerad,lbig+1,-mbig:mbig), out(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
   integer :: i
   out(:,:,:)=0d0
   do i=-mbig+1,mbig
@@ -733,12 +770,12 @@ subroutine mult_xdipole(in, out)
   enddo
 end subroutine mult_xdipole
 
-
 subroutine mult_imxdipole(in, out)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE :: in(numerad,lbig+1,-mbig:mbig), out(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
 #ifndef REALGO
   integer :: i
   out(:,:,:)=0d0
@@ -754,17 +791,12 @@ subroutine mult_imxdipole(in, out)
 
 end subroutine mult_imxdipole
 
-
-
-
-
-
-
 subroutine mult_ydipole(in, out)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE :: in(numerad,lbig+1,-mbig:mbig), out(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
   integer :: i
   out(:,:,:)=0d0
   do i=-mbig+1,mbig
@@ -780,7 +812,8 @@ subroutine mult_imydipole(in, out)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE :: in(numerad,lbig+1,-mbig:mbig), out(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
 #ifndef REALGO
   integer :: i
   out(:,:,:)=0d0

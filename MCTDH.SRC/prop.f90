@@ -773,7 +773,6 @@ subroutine cmf_prop_wfn(tin, tout)
 
   if (myrank.eq.1.and.notiming.le.1) then
      call output_denmat(1,tout)
-     call psistats(tout)
   endif
 
   if ((myrank.eq.1).and.(notiming.eq.0)) then

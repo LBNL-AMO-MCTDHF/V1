@@ -447,6 +447,12 @@ program mctdhf
 
 !! *********************** !!
 
+  if (threshflag.ne.0) then
+     call finalstats()
+  endif
+
+!! *********************** !!
+
   OFLWR "   ...cleanup..."; CFL
   call mpibarrier()
 

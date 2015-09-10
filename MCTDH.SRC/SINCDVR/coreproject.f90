@@ -228,11 +228,95 @@ subroutine getdensity() !density, indenmat, inspfs,numspf)
 print *, "DOME GETDENSITY"; stop
 end subroutine getdensity
 
+
+subroutine op_reflectz(in,out)
+  use myparams
+  use pmpimod
+  implicit none
+  DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3))
+  DATATYPE,intent(out) :: out(numpoints(1),numpoints(2),numpoints(3))
+  DATATYPE :: work(numpoints(1),numpoints(2),numpoints(3))
+  integer :: partrank(3),partner,i
+
+  if (orbparflag) then
+     partrank(:)=(/ boxrank(1),boxrank(2),boxrank(3) /)
+     partrank(3) = nbox(3) + 1 - boxrank(3)
+     partner = rankbybox(partrank(1),partrank(2),partrank(3))
+     if (partner.eq.myrank) then
+        work(:,:,:)=in(:,:,:)
+     else
+        call mympisendrecv(in,work,partner,partner,partner,totpoints)
+     endif
+  endif
+
+  do i=1,numpoints(3)
+     out(:,:,numpoints(3)+1-i)=work(:,:,i)
+  enddo
+
+end subroutine op_reflectz
+
+
+subroutine op_reflecty(in,out)
+  use myparams
+  use pmpimod
+  implicit none
+  DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3))
+  DATATYPE,intent(out) :: out(numpoints(1),numpoints(2),numpoints(3))
+  DATATYPE :: work(numpoints(1),numpoints(2),numpoints(3))
+  integer :: partrank(3),partner,i
+
+  if (orbparflag) then
+     partrank(:)=(/ boxrank(1),boxrank(2),boxrank(3) /)
+     partrank(2) = nbox(2) + 1 - boxrank(2)
+     partner = rankbybox(partrank(1),partrank(2),partrank(3))
+     if (partner.eq.myrank) then
+        work(:,:,:)=in(:,:,:)
+     else
+        call mympisendrecv(in,work,partner,partner,partner,totpoints)
+     endif
+  endif
+
+  do i=1,numpoints(2)
+     out(:,numpoints(2)+1-i,:)=work(:,i,:)
+  enddo
+
+end subroutine op_reflecty
+
+
+subroutine op_reflectx(in,out)
+  use myparams
+  use pmpimod
+  implicit none
+  DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3))
+  DATATYPE,intent(out) :: out(numpoints(1),numpoints(2),numpoints(3))
+  DATATYPE :: work(numpoints(1),numpoints(2),numpoints(3))
+  integer :: partrank(3),partner,i
+
+  if (orbparflag) then
+     partrank(:)=(/ boxrank(1),boxrank(2),boxrank(3) /)
+     partrank(1) = nbox(1) + 1 - boxrank(1)
+     partner = rankbybox(partrank(1),partrank(2),partrank(3))
+     if (partner.eq.myrank) then
+        work(:,:,:)=in(:,:,:)
+     else
+        call mympisendrecv(in,work,partner,partner,partner,totpoints)
+     endif
+  endif
+
+  do i=1,numpoints(1)
+     out(numpoints(1)+1-i,:,:)=work(i,:,:)
+  enddo
+
+end subroutine op_reflectx
+
+
+
 subroutine mult_zdipole(in,out)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE :: in(totpoints),out(totpoints)
+  DATATYPE,intent(in) :: in(totpoints)
+  DATATYPE,intent(out) :: out(totpoints)
   out(:)=in(:)*dipoles(:,3)
 end subroutine mult_zdipole
 
@@ -240,7 +324,8 @@ subroutine mult_imzdipole(in, out)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE :: in(totpoints),out(totpoints)
+  DATATYPE,intent(in) :: in(totpoints)
+  DATATYPE,intent(out) :: out(totpoints)
 #ifdef REALGO
   out(:)=in(:)*0d0  !! avoid warn unused
 #else
@@ -252,7 +337,8 @@ subroutine mult_ydipole(in,out)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE :: in(totpoints),out(totpoints)
+  DATATYPE,intent(in) :: in(totpoints)
+  DATATYPE,intent(out) :: out(totpoints)
   out(:)=in(:)*dipoles(:,2)
 end subroutine mult_ydipole
 
@@ -260,7 +346,8 @@ subroutine mult_imydipole(in, out)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE :: in(totpoints),out(totpoints)
+  DATATYPE,intent(in) :: in(totpoints)
+  DATATYPE,intent(out) :: out(totpoints)
 #ifdef REALGO
   out(:)=in(:)*0d0  !! avoid warn unused
 #else
@@ -272,15 +359,17 @@ subroutine mult_xdipole(in,out)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE :: in(totpoints),out(totpoints)
+  DATATYPE,intent(in) :: in(totpoints)
+  DATATYPE,intent(out) :: out(totpoints)
   out(:)=in(:)*dipoles(:,1)
 end subroutine mult_xdipole
 
-subroutine mult_imxdipole() !in, out)
+subroutine mult_imxdipole(in, out)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE :: in(totpoints),out(totpoints)
+  DATATYPE,intent(in) :: in(totpoints)
+  DATATYPE,intent(out) :: out(totpoints)
 #ifdef REALGO
   out(:)=in(:)*0d0  !! avoid warn unused
 #else

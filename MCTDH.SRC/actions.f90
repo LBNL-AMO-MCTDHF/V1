@@ -7,7 +7,7 @@
 
 module actionlistmod
   
-  character (len=15) :: action_list(24) = (/ &
+  character (len=15) :: action_list(25) = (/ &
        "Autocorr       ", &      !! 1
        "Save nat       ", &      !! 2
        "Save spf       ", &      !! 3
@@ -32,7 +32,8 @@ module actionlistmod
        "DipoleFT       ", &      !! 21
        "Check D-F error", &      !! 22
        "Wfn ovls       ", &      !! 23
-       "KE projector   " /)      !! 24
+       "KE projector   ", &      !! 24
+       "psistats.dat   " /)      !! 25
 
 end module actionlistmod
 
@@ -44,7 +45,7 @@ subroutine actionsub(thistime)
   use actionlistmod
   implicit none
   
-  integer :: i, calledhere=0, atime, btime, times(24)=0,getlen
+  integer :: i, calledhere=0, atime, btime, times(25)=0,getlen
   real*8 :: thistime
   CNORMTYPE :: error
 
@@ -135,6 +136,12 @@ subroutine actionsub(thistime)
            call keprojector(yyy%cmfpsivec(astart(1),0),yyy%cmfpsivec(spfstart,0),par_timestep*FluxInterval)
            call system_clock(btime);        times(24)=times(24)+btime-atime
         endif
+     case (25)
+        if (mod(calledhere,psistatfreq).eq.0) then
+           call system_clock(atime)
+           call psistats(thistime)
+           call system_clock(btime);        times(25)=times(25)+btime-atime
+        endif
      end select
 
   enddo
@@ -166,7 +173,7 @@ subroutine write_actions()
   integer :: i,j
 
   do i=1,numactions
-     if ((actions(i).gt.24).or.(actions(i).lt.1)) then
+     if ((actions(i).gt.25).or.(actions(i).lt.1)) then
         OFLWR "ACTION NOT SUPPORTED!!!! ", actions(i); CFLST
      endif
   enddo
@@ -352,6 +359,8 @@ subroutine actions_initial()
      case (23)
         call wfnovl()
      case(24)
+     case(25)
+        call psistats(0d0)
      case default
         OFLWR "Action not supported: ", actions(i); CFLST
      end select
