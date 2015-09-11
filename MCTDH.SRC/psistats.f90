@@ -105,9 +105,11 @@ subroutine psistats( thistime )
      if (myrank.eq.1) then
         open(662, file=psistatsfile, status="unknown")
 #ifdef REALGO        
-        write(662,'(A6,20A14)') " Time ", " M ", " M2 ", " UG ", " XDipole ", " YDipole ", " ZDipole ", " XReflect ", " YReflect ", " ZReflect "
+        write(662,'(A16,200A14)') &
+             " Time     ", " M        ", " M2       ", " UG       ", " XDipole  ", " YDipole  ", " ZDipole  ", " XReflect ", " YReflect ", " ZReflect "
 #else
-        write(662,'(A6,20A14)') " Time ", " M ", " M2 ", " UG ", " XDipole ", " YDipole ", " ZDipole ", " XReflect ", " YReflect ", " ZReflect "
+        write(662,'(A16,A14,200A28)') &
+             " Time     ", " M        ", " M2       ", " UG       ", " XDipole  ", " YDipole  ", " ZDipole  ", " XReflect ", " YReflect ", " ZReflect "
 #endif
         close(662)
      endif
@@ -115,7 +117,7 @@ subroutine psistats( thistime )
 
   calledflag=1
 
-  call get_psistats(yyy%cmfpsivec(spfstart,0),mcscfnum,yyy%cmfpsivec(astart,0),&
+  call get_psistats(yyy%cmfpsivec(spfstart,0),mcscfnum,yyy%cmfpsivec(astart(1),0),&
        mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
        
   if (myrank.eq.1) then
@@ -404,7 +406,7 @@ subroutine finalstats( )
      write(662,*) "--------------------------------"
 
      do i=1,mcscfnum
-        write(662,'(F13.5,I3,2000F14.8)') (mmatel(i,j),j=1,mcscfnum)
+        write(662,'(2000F14.8)') (mmatel(i,j),j=1,mcscfnum)
      enddo
 
 
@@ -416,7 +418,7 @@ subroutine finalstats( )
      write(662,*) "--------------------------------"
 
      do i=1,mcscfnum
-        write(662,'(F13.5,I3,2000F14.8)') (m2matel(i,j),j=1,mcscfnum)
+        write(662,'(2000F14.8)') (m2matel(i,j),j=1,mcscfnum)
      enddo
 
 
@@ -428,14 +430,14 @@ subroutine finalstats( )
      write(662,*) "--------------------------------"
 
      do i=1,nspf
-        write(662,'(F13.5,I3,2000F14.8)') (ugmat(i,j),j=1,nspf)
+        write(662,'(2000F14.8)') (ugmat(i,j),j=1,nspf)
      enddo
      write(662,*) "--------------------------------"
      write(662,*) "     PSI VECTORS    "
      write(662,*) "--------------------------------"
 
      do i=1,mcscfnum
-        write(662,'(F13.5,I3,2000F14.8)') (ugmatel(i,j),j=1,mcscfnum)
+        write(662,'(2000F14.8)') (ugmatel(i,j),j=1,mcscfnum)
      enddo
 
 
@@ -447,14 +449,14 @@ subroutine finalstats( )
      write(662,*) "--------------------------------"
 
      do i=1,nspf
-        write(662,'(F13.5,I3,2000F14.8)') (zdipmat(i,j),j=1,nspf)
+        write(662,'(2000F14.8)') (zdipmat(i,j),j=1,nspf)
      enddo
      write(662,*) "--------------------------------"
      write(662,*) "     PSI VECTORS    "
      write(662,*) "--------------------------------"
 
      do i=1,mcscfnum
-        write(662,'(F13.5,I3,2000F14.8)') (zdipmatel(i,j),j=1,mcscfnum)
+        write(662,'(2000F14.8)') (zdipmatel(i,j),j=1,mcscfnum)
      enddo
 
 
@@ -466,14 +468,14 @@ subroutine finalstats( )
      write(662,*) "--------------------------------"
 
      do i=1,nspf
-        write(662,'(F13.5,I3,2000F14.8)') (ydipmat(i,j),j=1,nspf)
+        write(662,'(2000F14.8)') (ydipmat(i,j),j=1,nspf)
      enddo
      write(662,*) "--------------------------------"
      write(662,*) "     PSI VECTORS    "
      write(662,*) "--------------------------------"
 
      do i=1,mcscfnum
-        write(662,'(F13.5,I3,2000F14.8)') (ydipmatel(i,j),j=1,mcscfnum)
+        write(662,'(2000F14.8)') (ydipmatel(i,j),j=1,mcscfnum)
      enddo
 
 
@@ -485,14 +487,14 @@ subroutine finalstats( )
      write(662,*) "--------------------------------"
 
      do i=1,nspf
-        write(662,'(F13.5,I3,2000F14.8)') (xdipmat(i,j),j=1,nspf)
+        write(662,'(2000F14.8)') (xdipmat(i,j),j=1,nspf)
      enddo
      write(662,*) "--------------------------------"
      write(662,*) "     PSI VECTORS    "
      write(662,*) "--------------------------------"
 
      do i=1,mcscfnum
-        write(662,'(F13.5,I3,2000F14.8)') (xdipmatel(i,j),j=1,mcscfnum)
+        write(662,'(2000F14.8)') (xdipmatel(i,j),j=1,mcscfnum)
      enddo
 
 
@@ -504,14 +506,14 @@ subroutine finalstats( )
      write(662,*) "--------------------------------"
 
      do i=1,nspf
-        write(662,'(F13.5,I3,2000F14.8)') (zrefmat(i,j),j=1,nspf)
+        write(662,'(2000F14.8)') (zrefmat(i,j),j=1,nspf)
      enddo
      write(662,*) "--------------------------------"
      write(662,*) "     PSI VECTORS    "
      write(662,*) "--------------------------------"
 
      do i=1,mcscfnum
-        write(662,'(F13.5,I3,2000F14.8)') (zrefmatel(i,j),j=1,mcscfnum)
+        write(662,'(2000F14.8)') (zrefmatel(i,j),j=1,mcscfnum)
      enddo
      write(662,*)
      write(662,*)
@@ -521,14 +523,14 @@ subroutine finalstats( )
      write(662,*) "--------------------------------"
 
      do i=1,nspf
-        write(662,'(F13.5,I3,2000F14.8)') (yrefmat(i,j),j=1,nspf)
+        write(662,'(2000F14.8)') (yrefmat(i,j),j=1,nspf)
      enddo
      write(662,*) "--------------------------------"
      write(662,*) "     PSI VECTORS    "
      write(662,*) "--------------------------------"
 
      do i=1,mcscfnum
-        write(662,'(F13.5,I3,2000F14.8)') (yrefmatel(i,j),j=1,mcscfnum)
+        write(662,'(2000F14.8)') (yrefmatel(i,j),j=1,mcscfnum)
      enddo
      write(662,*)
      write(662,*)
@@ -538,14 +540,14 @@ subroutine finalstats( )
      write(662,*) "--------------------------------"
 
      do i=1,nspf
-        write(662,'(F13.5,I3,2000F14.8)') (xrefmat(i,j),j=1,nspf)
+        write(662,'(2000F14.8)') (xrefmat(i,j),j=1,nspf)
      enddo
      write(662,*) "--------------------------------"
      write(662,*) "     PSI VECTORS    "
      write(662,*) "--------------------------------"
 
      do i=1,mcscfnum
-        write(662,'(F13.5,I3,2000F14.8)') (xrefmatel(i,j),j=1,mcscfnum)
+        write(662,'(2000F14.8)') (xrefmatel(i,j),j=1,mcscfnum)
      enddo
 
      close(662)

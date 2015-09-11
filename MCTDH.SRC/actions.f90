@@ -360,7 +360,6 @@ subroutine actions_initial()
         call wfnovl()
      case(24)
      case(25)
-        call psistats(0d0)
      case default
         OFLWR "Action not supported: ", actions(i); CFLST
      end select

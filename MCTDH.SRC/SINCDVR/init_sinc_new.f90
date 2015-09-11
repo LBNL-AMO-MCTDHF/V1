@@ -567,10 +567,16 @@ subroutine init_spfs(inspfs,numloaded)
 
 end subroutine init_spfs
 
+!! fixed nuclei only for now
+
 subroutine nucdipvalue(notused,dipoles)
   use myparams
   implicit none
   DATATYPE :: notused(1),dipoles(3)
+  integer :: i
   dipoles(:)=0d0
+  do i=1,numcenters
+     dipoles(:)=dipoles(:) + nuccharges(i) * centershift(:,i)/2d0 * spacing
+  enddo
 end subroutine nucdipvalue
 
