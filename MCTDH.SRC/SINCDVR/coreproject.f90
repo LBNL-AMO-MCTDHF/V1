@@ -239,13 +239,13 @@ subroutine op_reflectz(in,out)
   integer :: partrank(3),partner,i
 
   if (orbparflag) then
-     partrank(:)=(/ boxrank(1),boxrank(2),boxrank(3) /)
+     partrank(:)=boxrank(:)
      partrank(3) = nbox(3) + 1 - boxrank(3)
      partner = rankbybox(partrank(1),partrank(2),partrank(3))
      if (partner.eq.myrank) then
         work(:,:,:)=in(:,:,:)
      else
-        call mympisendrecv(in,work,partner,partner,partner,totpoints)
+        call mympisendrecv(in,work,partner,partner,0,totpoints)
      endif
   endif
 
@@ -266,13 +266,13 @@ subroutine op_reflecty(in,out)
   integer :: partrank(3),partner,i
 
   if (orbparflag) then
-     partrank(:)=(/ boxrank(1),boxrank(2),boxrank(3) /)
+     partrank(:)=boxrank(:)
      partrank(2) = nbox(2) + 1 - boxrank(2)
      partner = rankbybox(partrank(1),partrank(2),partrank(3))
      if (partner.eq.myrank) then
         work(:,:,:)=in(:,:,:)
      else
-        call mympisendrecv(in,work,partner,partner,partner,totpoints)
+        call mympisendrecv(in,work,partner,partner,0,totpoints)
      endif
   endif
 
@@ -293,13 +293,13 @@ subroutine op_reflectx(in,out)
   integer :: partrank(3),partner,i
 
   if (orbparflag) then
-     partrank(:)=(/ boxrank(1),boxrank(2),boxrank(3) /)
+     partrank(:)=boxrank(:)
      partrank(1) = nbox(1) + 1 - boxrank(1)
      partner = rankbybox(partrank(1),partrank(2),partrank(3))
      if (partner.eq.myrank) then
         work(:,:,:)=in(:,:,:)
      else
-        call mympisendrecv(in,work,partner,partner,partner,totpoints)
+        call mympisendrecv(in,work,partner,partner,0,totpoints)
      endif
   endif
 
