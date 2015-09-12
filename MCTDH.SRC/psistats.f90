@@ -370,7 +370,7 @@ subroutine finalstats( )
   enddo
   do imc=1,mcscfnum
      do jmc=1,mcscfnum
-        call autocorrelate_one(inavectors(:,:,imc),myspfs,tempspfs,inavectors(:,:,imc),zrefmatel(jmc,imc),numr)
+        call autocorrelate_one(inavectors(:,:,jmc),myspfs,tempspfs,inavectors(:,:,imc),zrefmatel(jmc,imc),numr)
      enddo
   enddo
 
