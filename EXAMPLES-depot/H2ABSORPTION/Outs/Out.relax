@@ -1,14 +1,14 @@
-Sat May 16 20:32:05 PDT 2015
+Tue Sep  8 14:36:11 PDT 2015
   ****************************************************************************
   **********************  BEGIN LBNL-AMO-MCTDHF ******************************
   ****************************************************************************
 
     Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
-      for ultrafast electronic and nuclear dynamics in strong laser fields
+      for ultrafast electronic and nuclear dynamics in intense laser fields
     AMO Theory Group, Lawrence Berkeley Laboratory
       D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, 
       B Abeln, X Li . . .
-                              VERSION 1 
+                              VERSION 1.10 
         Copyright 2015 the regents of the University of California
 
                 This is CHMCTDH: HERM-normed ECS version.
@@ -58,7 +58,7 @@ rnumelements, rnumpoints:    1    3
  Doing full CI: numshells=1.  Shells:
  Shell            1
    1a    1b    2a    2b    3a    3b 
-  Final shell occupancy level vexcite=          99
+  Final shell occupancy level vexcite=         999
 
     Number of unfrozen spfs:      3
     Number of frozen spfs:        0
@@ -90,12 +90,12 @@ rnumelements, rnumpoints:    1    3
  *******  USING POLYNOMIAL MEAN FIELDS/MAGNUS A-VECTOR PREDICTOR/CORRECTOR   *******  
 
      Using nonsparse configuration routines.
+  Jacobian options:
+     Jacprojorth=           0
+     Jacsymflag=           0
   Using EXPONENTIAL integration.
      Expotol    =   1.0000000000000001E-009
      Maxexpodim=         300
-     Jacprojorth=           0
-     Jacsymflag=           0
-     Jacunitflag=           0
 
  Density matrix regularized with denreg= 0.100E-08
 
@@ -193,8 +193,13 @@ rnumelements, rnumpoints:    1    3
      (  0.0000000000000000     ,  0.0000000000000000     )
      (  0.0000000000000000     ,  0.0000000000000000     )
      (  0.0000000000000000     ,  0.0000000000000000     )
- IN PROP: VECTOR NORM  (  1.0000000000000002     ,  0.0000000000000000     )
-          ENERGY  ( -1.1348282048029767     ,  1.7912331854898903E-010)
+ REPLACING SPFS - DENMAT EIGS
+         0.1972098572E+01
+         0.2109977839E-01
+         0.6801649867E-02
+
+ IN PROP: VECTOR NORM  ( 0.99999999999999978     ,  0.0000000000000000     )
+          ENERGY  ( -1.1348282048029796     ,  1.7912409932208373E-010)
  REPLACING SPFS - DENMAT EIGS
          0.1972098572E+01
          0.2109977839E-01
@@ -326,28 +331,28 @@ T=         18.00000  Energy:  -0.1159611730E+01  0.1791474099E-09    Norm:   0.1
          0.2293344255E-01
          0.6797517915E-02
 
-T=         19.00000  Energy:  -0.1159611730E+01  0.1791474081E-09    Norm:   0.1000000000E+01
+T=         19.00000  Energy:  -0.1159611730E+01  0.1791474080E-09    Norm:   0.1000000000E+01
     STOPTEST : ORBITALS   0.12E-04  0.10E-07  AVECTOR   0.51E-10  0.10E-06
  REPLACING SPFS - DENMAT EIGS
          0.1970269095E+01
          0.2293345873E-01
          0.6797446385E-02
 
-T=         20.00000  Energy:  -0.1159611730E+01  0.1791474086E-09    Norm:   0.1000000000E+01
+T=         20.00000  Energy:  -0.1159611730E+01  0.1791474084E-09    Norm:   0.1000000000E+01
     STOPTEST : ORBITALS   0.76E-05  0.10E-07  AVECTOR   0.19E-10  0.10E-06
  REPLACING SPFS - DENMAT EIGS
          0.1970269128E+01
          0.2293346858E-01
          0.6797402971E-02
 
-T=         21.00000  Energy:  -0.1159611730E+01  0.1791474011E-09    Norm:   0.1000000000E+01
+T=         21.00000  Energy:  -0.1159611730E+01  0.1791473986E-09    Norm:   0.1000000000E+01
     STOPTEST : ORBITALS   0.46E-05  0.10E-07  AVECTOR   0.72E-11  0.10E-06
  REPLACING SPFS - DENMAT EIGS
          0.1970269149E+01
          0.2293347457E-01
          0.6797376599E-02
 
-T=         22.00000  Energy:  -0.1159611730E+01  0.1791473717E-09    Norm:   0.1000000000E+01
+T=         22.00000  Energy:  -0.1159611730E+01  0.1791473975E-09    Norm:   0.1000000000E+01
     STOPTEST : ORBITALS   0.28E-05  0.10E-07  AVECTOR   0.27E-11  0.10E-06
  REPLACING SPFS - DENMAT EIGS
          0.1970269161E+01
@@ -362,42 +367,42 @@ T=         23.00000  Energy:  -0.1159611730E+01  0.1791474102E-09    Norm:   0.1
          0.6797350814E-02
 
 T=         24.00000  Energy:  -0.1159611730E+01  0.1791474102E-09    Norm:   0.1000000000E+01
-    STOPTEST : ORBITALS   0.11E-05  0.10E-07  AVECTOR   0.39E-12  0.10E-06
+    STOPTEST : ORBITALS   0.11E-05  0.10E-07  AVECTOR   0.38E-12  0.10E-06
  REPLACING SPFS - DENMAT EIGS
          0.1970269173E+01
          0.2293348179E-01
          0.6797344877E-02
 
 T=         25.00000  Energy:  -0.1159611730E+01  0.1791474102E-09    Norm:   0.1000000000E+01
-    STOPTEST : ORBITALS   0.64E-06  0.10E-07  AVECTOR   0.14E-12  0.10E-06
+    STOPTEST : ORBITALS   0.64E-06  0.10E-07  AVECTOR   0.15E-12  0.10E-06
  REPLACING SPFS - DENMAT EIGS
          0.1970269176E+01
          0.2293348262E-01
          0.6797341260E-02
 
 T=         26.00000  Energy:  -0.1159611730E+01  0.1791474101E-09    Norm:   0.1000000000E+01
-    STOPTEST : ORBITALS   0.39E-06  0.10E-07  AVECTOR   0.55E-13  0.10E-06
+    STOPTEST : ORBITALS   0.39E-06  0.10E-07  AVECTOR   0.54E-13  0.10E-06
  REPLACING SPFS - DENMAT EIGS
          0.1970269178E+01
          0.2293348312E-01
          0.6797339056E-02
 
-T=         27.00000  Energy:  -0.1159611730E+01  0.1791474066E-09    Norm:   0.1000000000E+01
-    STOPTEST : ORBITALS   0.24E-06  0.10E-07  AVECTOR   0.19E-13  0.10E-06
+T=         27.00000  Energy:  -0.1159611730E+01  0.1791474074E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.24E-06  0.10E-07  AVECTOR   0.20E-13  0.10E-06
  REPLACING SPFS - DENMAT EIGS
          0.1970269179E+01
          0.2293348343E-01
          0.6797337713E-02
 
-T=         28.00000  Energy:  -0.1159611730E+01  0.1791474059E-09    Norm:   0.1000000000E+01
-    STOPTEST : ORBITALS   0.15E-06  0.10E-07  AVECTOR   0.82E-14  0.10E-06
+T=         28.00000  Energy:  -0.1159611730E+01  0.1791474028E-09    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.17E-06  0.10E-07  AVECTOR   0.87E-14  0.10E-06
  REPLACING SPFS - DENMAT EIGS
          0.1970269179E+01
          0.2293348361E-01
          0.6797336893E-02
 
 T=         29.00000  Energy:  -0.1159611730E+01  0.1791474102E-09    Norm:   0.1000000000E+01
-    STOPTEST : ORBITALS   0.90E-07  0.10E-07  AVECTOR   0.89E-15  0.10E-06
+    STOPTEST : ORBITALS   0.90E-07  0.10E-07  AVECTOR   0.20E-14  0.10E-06
  REPLACING SPFS - DENMAT EIGS
          0.1970269180E+01
          0.2293348373E-01
@@ -411,14 +416,14 @@ T=         30.00000  Energy:  -0.1159611730E+01  0.1791474102E-09    Norm:   0.1
          0.6797336087E-02
 
 T=         31.00000  Energy:  -0.1159611730E+01  0.1791474102E-09    Norm:   0.1000000000E+01
-    STOPTEST : ORBITALS   0.34E-07  0.10E-07  AVECTOR   0.17E-19  0.10E-06
+    STOPTEST : ORBITALS   0.34E-07  0.10E-07  AVECTOR   0.13E-14  0.10E-06
  REPLACING SPFS - DENMAT EIGS
          0.1970269180E+01
          0.2293348384E-01
          0.6797335901E-02
 
 T=         32.00000  Energy:  -0.1159611730E+01  0.1791474102E-09    Norm:   0.1000000000E+01
-    STOPTEST : ORBITALS   0.21E-07  0.10E-07  AVECTOR   0.19E-19  0.10E-06
+    STOPTEST : ORBITALS   0.21E-07  0.10E-07  AVECTOR   0.18E-14  0.10E-06
  REPLACING SPFS - DENMAT EIGS
          0.1970269180E+01
          0.2293348387E-01
@@ -432,11 +437,11 @@ T=         33.00000  Energy:  -0.1159611730E+01  0.1791474102E-09    Norm:   0.1
          0.6797335717E-02
 
 T=         34.00000  Energy:  -0.1159611730E+01  0.1791474102E-09    Norm:   0.1000000000E+01
-    STOPTEST : ORBITALS   0.81E-08  0.10E-07  AVECTOR   0.16E-14  0.10E-06
+    STOPTEST : ORBITALS   0.79E-08  0.10E-07  AVECTOR   0.31E-14  0.10E-06
 
     ***  CONVERGED *** 
 
-         -1.159611729729      0.000000000179      0.000000000000      0.000000000000
+         -1.159611729729      0.000000000179     -0.000000000000     -0.000000000000
     ***   
 
     ...done prop...
@@ -444,5 +449,5 @@ T=         34.00000  Energy:  -0.1159611730E+01  0.1791474102E-09    Norm:   0.1
     ...saved vectors!
     ...end prop...
     ...cleanup...
-Sat May 16 20:32:10 PDT 2015
+Tue Sep  8 14:36:16 PDT 2015
     ...END MCTDHF
