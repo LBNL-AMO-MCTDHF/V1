@@ -1,8 +1,6 @@
-#!/opt/local/bin/gnuplot -persist
+#!/bin/bash
 
-
-
-#unset ytics
+echo '
 
 set xlabel "Energy (eV)"
 set ylabel "emission/absorption"
@@ -28,4 +26,5 @@ set out "Absorption.perp.eps"
 set term post enhanced eps solid color 20
 replot
 
+' |gnuplot -persist
 

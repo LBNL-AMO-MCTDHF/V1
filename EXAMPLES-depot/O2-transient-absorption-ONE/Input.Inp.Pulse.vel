@@ -27,7 +27,7 @@ $pulse
  pulsestart(4)=0d0
  pulsestart(5)=0d0
 
- minpulsetime=2000d0
+ minpulsetime=1000d0
 
  phaseshift(2:3)=0,0
  phaseshift(4:5)=1.5707963267949d0, 1.5707963267949d0
