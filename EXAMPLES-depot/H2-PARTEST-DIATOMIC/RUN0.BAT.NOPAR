@@ -1,8 +1,0 @@
-#!/bin/bash
-
-source ./RUNS.H
-
-chmctdhf_diatom.nopar.debug $OPTION Inp=Input.Inp.States0$1 |tee Outs/Out.states0.nopar$1
-
-
-
