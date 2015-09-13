@@ -1,0 +1,62 @@
+#!/bin/bash
+
+	ylow="*"
+	yhigh="*"
+	xlow="*"
+	xhigh="*"
+
+if [[ -e "pulset.h" ]]
+then
+	source ./pulset.h
+fi
+
+if [[ "$4 " != " " ]]
+then
+	ylow=$3
+	yhigh=$4
+fi
+
+if [[ "$2 " != " " ]]
+then
+	xlow=$1
+	xhigh=$2
+fi
+
+line=`grep --text "T=" Outs/Out.icd.df`
+
+line2="set term x11
+
+set xrange [$xlow:$xhigh]
+set yrange [$ylow:$yhigh]
+
+set format y \"%12.5f\"
+
+set xlabel \"Time (au)\"
+set ylabel \"Expectation value of energy (hartree)\" 2,0
+set style data lines
+plot \"-\" using 2:4 every 5 lw 6 with lines title \"1\"
+$line
+e
+
+"
+
+echo "$line2"|gnuplot -persist
+
+
+if [[ "$5 " == "s " ]]
+then
+	echo "xlow=$xlow" > pulset.h
+	echo "xhigh=$xhigh" >> pulset.h
+
+	echo "ylow=$ylow" >> pulset.h
+	echo "yhigh=$yhigh" >> pulset.h
+fi
+
+
+if [[ "$3 " == "s " ]]
+then
+	echo "xlow=$xlow" > pulset.h
+	echo "xhigh=$xhigh" >> pulset.h
+fi
+
+

@@ -4,9 +4,6 @@
 
 energyshift=(0d0, -0.00000439788717989d0)
 
-walksinturn=.true.
-turnbatchsize=10
-
 aorder=20
 
 notiming=0
@@ -22,8 +19,8 @@ corrdatfile="Dat/Correlation.Dat.ICD"
 corrftfile="Dat/Corrft.Dat.ICD"
 eground = -103.60888561d0
 
-fluxinterval=20
-fluxskipmult=3
+fluxinterval=25
+fluxskipmult=2
 fluxmofile="Flux/flux.mo.bin.icd"
 fluxafile="Flux/flux.avec.bin.icd"
 spifile="Dat/xsec.spi.dat.icd"
@@ -67,7 +64,7 @@ denreg=1d-30
 numelec=12
 restrictms=0
 
-par_timestep=0.05d0
+par_timestep=0.02d0
 littlesteps=1
 
 nspf=13

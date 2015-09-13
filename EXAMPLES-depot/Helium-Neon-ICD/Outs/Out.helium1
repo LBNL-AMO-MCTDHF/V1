@@ -1,22 +1,22 @@
-Mon Jun 22 09:52:57 PDT 2015
-Mon Jun 22 09:52:57 PDT 2015
-Mon Jun 22 09:52:57 PDT 2015
-Mon Jun 22 09:52:57 PDT 2015
-Mon Jun 22 09:52:57 PDT 2015
-Mon Jun 22 09:52:57 PDT 2015
-Mon Jun 22 09:52:57 PDT 2015
-Mon Jun 22 09:52:57 PDT 2015
+Wed Sep  9 13:00:29 PDT 2015
+Wed Sep  9 13:00:29 PDT 2015
+Wed Sep  9 13:00:29 PDT 2015
+Wed Sep  9 13:00:29 PDT 2015
+Wed Sep  9 13:00:29 PDT 2015
+Wed Sep  9 13:00:29 PDT 2015
+Wed Sep  9 13:00:29 PDT 2015
+Wed Sep  9 13:00:29 PDT 2015
  
   ****************************************************************************
   **********************  BEGIN LBNL-AMO-MCTDHF ******************************
   ****************************************************************************
  
     Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
-      for ultrafast electronic and nuclear dynamics in strong laser fields
+      for ultrafast electronic and nuclear dynamics in intense laser fields
     AMO Theory Group, Lawrence Berkeley Laboratory
       D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, 
       B Abeln, X Li . . .
-                              VERSION 1 
+                              VERSION 1.10 
         Copyright 2015 the regents of the University of California
  
                 This is CHMCTDH: HERM-normed ECS version.
@@ -109,12 +109,12 @@ Mon Jun 22 09:52:57 PDT 2015
  ****  
  
      Using nonsparse configuration routines.
+  Jacobian options:
+     Jacprojorth=           0
+     Jacsymflag=           0
   Using EXPONENTIAL integration.
      Expotol    =  1.000000000000000E-009
      Maxexpodim=         200
-     Jacprojorth=           0
-     Jacsymflag=           0
-     Jacunitflag=           0
  
  Density matrix regularized with denreg= 0.100E-29
  
@@ -184,7 +184,7 @@ Mon Jun 22 09:52:57 PDT 2015
  
  Reading spfs.
  Read complex spfs
-    ...okay
+    ...rank 1 read from file
  Loaded           14  spfs from file 
  Bin/spfs.bin.helium0                                                           
                                                                                 
@@ -197,8 +197,7 @@ Mon Jun 22 09:52:57 PDT 2015
               2
  Calling ct_construct...
     ....Called ct_construct.
- 
- GO GET_3DPOISSON. calling getinverse.           1
+ GO GET_3DPOISSON. calling getinverse.
       ...getting potential...
  filling in....
      ...filled.
@@ -222,8 +221,8 @@ Mon Jun 22 09:52:57 PDT 2015
          0.1517236375E-03
          0.1514147909E-03
  
- IN PROP: VECTOR NORM  (0.999999999999997,0.000000000000000E+000)
-          ENERGY  (-0.772400422731381,4.437605611561456E-018)
+ IN PROP: VECTOR NORM  (1.00000000000000,0.000000000000000E+000)
+          ENERGY  (-0.772400422731380,5.295321761005221E-017)
  REPLACING SPFS - DENMAT EIGS
          0.1422202619E+01
          0.1902173626E+00
@@ -240,7 +239,7 @@ Mon Jun 22 09:52:57 PDT 2015
          0.1517236375E-03
          0.1514147909E-03
  
-T=          0.10000  Energy:  -0.7724004227E+00 -0.4015942107E-16    Norm:   0.1000000000E+01
+T=          0.10000  Energy:  -0.7724004227E+00 -0.3153804517E-16    Norm:   0.1000000000E+01
     STOPTEST : ORBITALS   0.34E+01  0.10E-01  AVECTOR   0.10E+05  0.10E+01
              Orbitals Converged, Avector not necessarily converged 
  REPLACING SPFS - DENMAT EIGS
@@ -259,12 +258,12 @@ T=          0.10000  Energy:  -0.7724004227E+00 -0.4015942107E-16    Norm:   0.1
          0.1517236375E-03
          0.1514147909E-03
  
-T=          0.20100  Energy:  -0.7724004227E+00 -0.1150805302E-16    Norm:   0.1000000000E+01
-    STOPTEST : ORBITALS   0.34E+01  0.10E-01  AVECTOR   0.11E-14  0.10E+01
+T=          0.20100  Energy:  -0.7724004227E+00 -0.4078993798E-16    Norm:   0.1000000000E+01
+    STOPTEST : ORBITALS   0.34E+01  0.10E-01  AVECTOR   0.66E-14  0.10E+01
  
     ***  CONVERGED *** 
  
-         -0.772400422731     -0.000000000000      0.000000000000      0.000000000000
+         -0.772400422731     -0.000000000000      0.000000000000     -0.000000000000
     ***   
  
     ...done prop...
@@ -272,12 +271,11 @@ T=          0.20100  Energy:  -0.7724004227E+00 -0.1150805302E-16    Norm:   0.1
     ...saved vectors!
     ...end prop...
     ...cleanup...
-Mon Jun 22 09:53:58 PDT 2015
-Mon Jun 22 09:53:58 PDT 2015
-Mon Jun 22 09:53:58 PDT 2015
+Wed Sep  9 13:02:10 PDT 2015
+Wed Sep  9 13:02:10 PDT 2015
+Wed Sep  9 13:02:10 PDT 2015
     ...END MCTDHF
-Mon Jun 22 09:53:58 PDT 2015
-Mon Jun 22 09:53:58 PDT 2015
-Mon Jun 22 09:53:58 PDT 2015
-Mon Jun 22 09:53:58 PDT 2015
+Wed Sep  9 13:02:10 PDT 2015
+Wed Sep  9 13:02:10 PDT 2015
+Wed Sep  9 13:02:10 PDT 2015
  MCTDHF STOP!

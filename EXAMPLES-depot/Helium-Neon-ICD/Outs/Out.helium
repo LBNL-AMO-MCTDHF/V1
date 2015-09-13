@@ -1,22 +1,22 @@
-Mon Jun 22 09:53:58 PDT 2015
-Mon Jun 22 09:53:58 PDT 2015
-Mon Jun 22 09:53:58 PDT 2015
-Mon Jun 22 09:53:58 PDT 2015
-Mon Jun 22 09:53:58 PDT 2015
-Mon Jun 22 09:53:58 PDT 2015
-Mon Jun 22 09:53:58 PDT 2015
-Mon Jun 22 09:53:58 PDT 2015
+Wed Sep  9 13:02:11 PDT 2015
+Wed Sep  9 13:02:11 PDT 2015
+Wed Sep  9 13:02:11 PDT 2015
+Wed Sep  9 13:02:11 PDT 2015
+Wed Sep  9 13:02:11 PDT 2015
+Wed Sep  9 13:02:11 PDT 2015
+Wed Sep  9 13:02:11 PDT 2015
+Wed Sep  9 13:02:11 PDT 2015
  
   ****************************************************************************
   **********************  BEGIN LBNL-AMO-MCTDHF ******************************
   ****************************************************************************
  
     Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code
-      for ultrafast electronic and nuclear dynamics in strong laser fields
+      for ultrafast electronic and nuclear dynamics in intense laser fields
     AMO Theory Group, Lawrence Berkeley Laboratory
       D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, 
       B Abeln, X Li . . .
-                              VERSION 1 
+                              VERSION 1.10 
         Copyright 2015 the regents of the University of California
  
                 This is CHMCTDH: HERM-normed ECS version.
@@ -105,12 +105,12 @@ Mon Jun 22 09:53:58 PDT 2015
  ****  
  
      Using nonsparse configuration routines.
+  Jacobian options:
+     Jacprojorth=           0
+     Jacsymflag=           0
   Using EXPONENTIAL integration.
      Expotol    =  1.000000000000000E-009
      Maxexpodim=         200
-     Jacprojorth=           0
-     Jacsymflag=           0
-     Jacunitflag=           0
  
  Density matrix regularized with denreg= 0.100E-29
  
@@ -179,7 +179,7 @@ Mon Jun 22 09:53:58 PDT 2015
  
  Reading spfs.
  Read complex spfs
-    ...okay
+    ...rank 1 read from file
  Loaded            4  spfs from file 
  Bin/spfs.bin.helium1                                                           
                                                                                 
@@ -192,8 +192,7 @@ Mon Jun 22 09:53:58 PDT 2015
               2
  Calling ct_construct...
     ....Called ct_construct.
- 
- GO GET_3DPOISSON. calling getinverse.           1
+ GO GET_3DPOISSON. calling getinverse.
       ...getting potential...
  filling in....
      ...filled.
@@ -203,49 +202,49 @@ Mon Jun 22 09:53:58 PDT 2015
  WARNING: bigger numconfigs.         196          16
  Read            1  A-vectors
  IN PROP: VECTOR NORM  (0.997950074726689,0.000000000000000E+000)
-          ENERGY  (-0.771263155388344,-1.818035870400503E-017)
+          ENERGY  (-0.771263155388344,-7.604836246384471E-017)
  setting jacsymflag=1 for orbital quad
-    Quad orbitals: Deviation is       6.298255270200534E-002
-                   Orthog error is    1.110223024625157E-015
-    Quad orbitals: Deviation is       2.991686029480983E-003
-                   Orthog error is    3.222204846181652E-015
+    Quad orbitals: Deviation is       6.298255270200354E-002
+                   Orthog error is    3.470140771968940E-016
+    Quad orbitals: Deviation is       2.991686029500752E-003
+                   Orthog error is    2.220446049250313E-015
      --> Converged newton
-   NONSPARSEQUAD: DEV  5.394378598072654E-003
-   NONSPARSEQUAD: DEV  3.382611852882287E-006
-   NONSPARSEQUAD: DEV  1.041117974403462E-015
-T=         10.00000  Energy:  -0.7725721316E+00 -0.1630640048E-15    Norm:   0.1000000000E+01
+   NONSPARSEQUAD: DEV  5.394378598073624E-003
+   NONSPARSEQUAD: DEV  3.382611852748582E-006
+   NONSPARSEQUAD: DEV  8.735645320560762E-016
+T=         10.00000  Energy:  -0.7725721316E+00  0.6591949425E-16    Norm:   0.1000000000E+01
     STOPTEST : ORBITALS   0.54E-02  0.10E-03  AVECTOR   0.10E+03  0.10E+01
-    Quad orbitals: Deviation is       5.354011678956530E-003
-                   Orthog error is    1.554312234475219E-015
-    Quad orbitals: Deviation is       2.605522843372290E-004
-                   Orthog error is    2.783664228718615E-015
+    Quad orbitals: Deviation is       5.354011678959500E-003
+                   Orthog error is    1.341846453588348E-015
+    Quad orbitals: Deviation is       2.605522843383907E-004
+                   Orthog error is    1.610604569457482E-015
      --> Converged newton
-   NONSPARSEQUAD: DEV  1.784781518207512E-005
-   NONSPARSEQUAD: DEV  3.282395990098472E-013
-T=         20.00000  Energy:  -0.7725814527E+00  0.3750858486E-16    Norm:   0.1000000000E+01
+   NONSPARSEQUAD: DEV  1.784781518270445E-005
+   NONSPARSEQUAD: DEV  3.281487478386445E-013
+T=         20.00000  Energy:  -0.7725814527E+00  0.4618220299E-16    Norm:   0.1000000000E+01
     STOPTEST : ORBITALS   0.62E-03  0.10E-03  AVECTOR   0.93E-06  0.10E+01
-    Quad orbitals: Deviation is       6.228153067459235E-004
-                   Orthog error is    4.440892098500626E-016
-    Quad orbitals: Deviation is       3.016052167507889E-005
-                   Orthog error is    2.109423746787797E-015
+    Quad orbitals: Deviation is       6.228153067431380E-004
+                   Orthog error is    1.332267629550188E-015
+    Quad orbitals: Deviation is       3.016052167459115E-005
+                   Orthog error is    6.108690234307018E-016
      --> Converged newton
-   NONSPARSEQUAD: DEV  2.200567962829577E-005
-   NONSPARSEQUAD: DEV  2.294602414874265E-013
-T=         30.00000  Energy:  -0.7725815967E+00  0.2843548061E-15    Norm:   0.1000000000E+01
+   NONSPARSEQUAD: DEV  2.200567962734635E-005
+   NONSPARSEQUAD: DEV  2.293655724717876E-013
+T=         30.00000  Energy:  -0.7725815967E+00 -0.9554963517E-16    Norm:   0.1000000000E+01
     STOPTEST : ORBITALS   0.17E-03  0.10E-03  AVECTOR   0.14E-07  0.10E+01
-    Quad orbitals: Deviation is       1.702196954923619E-004
-                   Orthog error is    2.182698537002008E-015
-    Quad orbitals: Deviation is       8.432246723932685E-006
-                   Orthog error is    1.519475178254459E-015
+    Quad orbitals: Deviation is       1.702196954916068E-004
+                   Orthog error is    6.661338147750939E-016
+    Quad orbitals: Deviation is       8.432246723868776E-006
+                   Orthog error is    1.752342062307188E-015
      --> Converged newton
-   NONSPARSEQUAD: DEV  1.722402906062206E-006
-   NONSPARSEQUAD: DEV  3.947907539283372E-016
-T=         40.00000  Energy:  -0.7725816055E+00 -0.1491867254E-15    Norm:   0.1000000000E+01
+   NONSPARSEQUAD: DEV  1.722402905343614E-006
+   NONSPARSEQUAD: DEV  2.400807827511444E-016
+T=         40.00000  Energy:  -0.7725816055E+00  0.3816340943E-16    Norm:   0.1000000000E+01
     STOPTEST : ORBITALS   0.45E-04  0.10E-03  AVECTOR   0.88E-09  0.10E+01
  
     ***  CONVERGED *** 
  
-         -0.772581605548     -0.000000000000     -0.000000008850     -0.000000000000
+         -0.772581605548      0.000000000000     -0.000000008850      0.000000000000
     ***   
  
     ...done prop...
@@ -253,13 +252,13 @@ T=         40.00000  Energy:  -0.7725816055E+00 -0.1491867254E-15    Norm:   0.1
     ...saved vectors!
     ...end prop...
     ...cleanup...
-Mon Jun 22 09:54:23 PDT 2015
-Mon Jun 22 09:54:23 PDT 2015
+Wed Sep  9 13:02:52 PDT 2015
+Wed Sep  9 13:02:52 PDT 2015
+Wed Sep  9 13:02:52 PDT 2015
+Wed Sep  9 13:02:52 PDT 2015
+Wed Sep  9 13:02:52 PDT 2015
     ...END MCTDHF
-Mon Jun 22 09:54:23 PDT 2015
-Mon Jun 22 09:54:23 PDT 2015
-Mon Jun 22 09:54:23 PDT 2015
-Mon Jun 22 09:54:23 PDT 2015
-Mon Jun 22 09:54:23 PDT 2015
-Mon Jun 22 09:54:23 PDT 2015
+Wed Sep  9 13:02:52 PDT 2015
+Wed Sep  9 13:02:52 PDT 2015
+Wed Sep  9 13:02:52 PDT 2015
  MCTDHF STOP!

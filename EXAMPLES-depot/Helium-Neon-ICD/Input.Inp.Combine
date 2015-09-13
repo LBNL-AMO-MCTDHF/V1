@@ -15,7 +15,6 @@ expodim=30
 maxexpodim=200
 
 improvedrelaxflag=1
-improvednatflag=1
 
 loadspfflag=1
 numspffiles=2
