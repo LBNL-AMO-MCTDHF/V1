@@ -13,5 +13,3 @@ fi
 
 done; done; done
 
- wait
-

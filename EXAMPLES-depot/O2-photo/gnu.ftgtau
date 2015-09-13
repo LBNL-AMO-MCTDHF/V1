@@ -1,7 +1,0 @@
-#!/opt/local/bin/gnuplot -persist
-
-set style data lines
-set xrange [0:4]
-plot "Dat/FTGtau.Dat" using 1:2
-
-

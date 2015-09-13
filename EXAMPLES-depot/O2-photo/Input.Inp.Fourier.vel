@@ -24,7 +24,7 @@ $pulse
 
 $parinp
 
-finaltime=1000
+finaltime=600
 
 numactions=1
 actions=15

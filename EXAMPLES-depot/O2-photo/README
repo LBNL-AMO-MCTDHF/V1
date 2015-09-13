@@ -5,7 +5,7 @@
 2A)  ./Pulse.Bat
 3A)  ./Fourier.Bat
 4A)  ./Flux.Bat TIME
-     ./RunRunProjFlux.Bat TIME
+     ./RunProjFlux.Bat TIME
 
 2B)  ./Pulse.Bat.perp
 3B)  ./Fourier.Bat.perp
@@ -24,7 +24,6 @@
 
 5)   ./gnu.xsec
      ./gnu.xsec.perp
-     ./gnu.ftgtau  (good for double checking gnu.xsec)
      ./gnu.proj.xsec
      ./gnu.proj.xsec.vel
      ./gnu.proj.xsec.perp
