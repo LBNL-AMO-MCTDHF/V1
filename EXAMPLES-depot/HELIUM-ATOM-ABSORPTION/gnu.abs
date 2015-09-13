@@ -1,3 +1,4 @@
+#!/bin/bash
 
 echo '
 
@@ -16,8 +17,6 @@ set xrange [0:40]
 set logscale y
 
 plot "Dat/ZDipoleft.Dat" using (27.2114*$1):($7/($4**2+$5**2)) lt 7 lw 10 title "Z"
-
-
 
 set term x11
 replot
