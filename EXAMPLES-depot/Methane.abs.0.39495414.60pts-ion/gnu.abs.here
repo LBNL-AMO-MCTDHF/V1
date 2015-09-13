@@ -1,3 +1,4 @@
+#!/bin/bash
 
 echo '
 
@@ -26,7 +27,9 @@ plot "Dat/ZDipoleft.Dat000300" using (27.2114*$1):($7/($4**2+$5**2)) lt 3 lw 10 
 
 replot "Dat/ZDipoleft.Dat000500" using (27.2114*$1):($7/($4**2+$5**2)) lt -1 lw 5 title "T=500"
 
-replot "Dat/ZDipoleft.Dat001000" using (27.2114*$1):($7/($4**2+$5**2)) lt 2 lw 3 title "T=1000"
+replot "Dat/ZDipoleft.Dat001000" using (27.2114*$1):($7/($4**2+$5**2)) lt 2 lw 4 title "T=1000"
+
+replot "Dat/ZDipoleft.Dat001800" using (27.2114*$1):($7/($4**2+$5**2)) lt -1 lw 1 title "T=1800"
 
 
 BB=200000
@@ -36,8 +39,8 @@ replot "Dat/ZDipoleft.Dat000300" using (27.2114*$1):(BB*($4**2+$5**2)) with poin
 set term x11
 replot
 
-set out "Absorption.eps"
-set term post enhanced eps solid color 28
+set out "Absorption.here.ps"
+set term post enhanced solid color 28
 replot
 
 ' | gnuplot -persist
