@@ -448,6 +448,7 @@ program mctdhf
 !! *********************** !!
 
   if (threshflag.ne.0) then
+     OFLWR "   ...getting state expectation values etcetera..."; CFL
      call finalstats()
   endif
 

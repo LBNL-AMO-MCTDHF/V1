@@ -399,6 +399,48 @@ subroutine finalstats( )
 
      write(662,*)
      write(662,*)
+     write(662,*) "  M expectation values psi vectors "
+
+     do i=1,mcscfnum
+        write(662,'(I10,2000F14.8)') i, mmatel(i,i)
+     enddo
+
+     write(662,*)
+     write(662,*)
+     write(662,*) "  M^2 expectation values psi vectors "
+
+     do i=1,mcscfnum
+        write(662,'(I10,2000F14.8)') i, m2matel(i,i)
+     enddo
+
+     write(662,*)
+     write(662,*)
+     write(662,*) "  UG expectation values psi vectors "
+
+     do i=1,mcscfnum
+        write(662,'(I10,2000F14.8)') i, ugmatel(i,i)
+     enddo
+
+     write(662,*)
+     write(662,*)
+     write(662,*) "  X, Y, Z dipole expectation values psi vectors"
+     do i=1,mcscfnum
+        write(662,'(I10,2000F14.8)') i, xdipmatel(i,i), ydipmatel(i,i), zdipmatel(i,i)
+     enddo
+
+
+     write(662,*)
+     write(662,*)
+     write(662,*) "  X, Y, Z reflection expectation values psi vectors"
+
+     do i=1,mcscfnum
+        write(662,'(I10,2000F14.8)') i, xrefmatel(i,i), yrefmatel(i,i), zrefmatel(i,i)
+     enddo
+
+
+
+     write(662,*)
+     write(662,*)
      write(662,*) "  M matrix elements "
 
      write(662,*) "--------------------------------"
