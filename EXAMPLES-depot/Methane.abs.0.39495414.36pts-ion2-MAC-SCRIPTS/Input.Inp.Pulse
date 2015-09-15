@@ -7,7 +7,7 @@ omega  = 0.19d0
 pulsestart=0d0
 velflag=0
 
-minpulsetime=2000d0
+minpulsetime=1000d0
 
 /
 

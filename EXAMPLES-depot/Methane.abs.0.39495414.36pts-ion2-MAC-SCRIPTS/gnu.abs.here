@@ -1,3 +1,4 @@
+#!/bin/bash
 
 echo '
 
@@ -36,8 +37,8 @@ replot "Dat/ZDipoleft.Dat000300" using (27.2114*$1):(BB*($4**2+$5**2)) with poin
 set term x11
 replot
 
-set out "Absorption.eps"
-set term post enhanced eps solid color 28
+set out "Absorption.ps"
+set term post enhanced solid color 28
 replot
 
 ' | gnuplot -persist

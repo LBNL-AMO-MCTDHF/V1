@@ -2,9 +2,6 @@
 
 &parinp
 
-lanthresh=1d-11
-expotol=1d-12
-
 messflag=1
 messamount=1d-4
 
@@ -21,7 +18,7 @@ sparseconfigflag=1
 
 denreg=1d-30
 
-stopthresh=1d-10
+stopthresh=1d-7
 astoptol=1d0
 
 numelec=10

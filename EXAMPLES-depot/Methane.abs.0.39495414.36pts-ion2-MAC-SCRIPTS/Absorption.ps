@@ -1,9 +1,11 @@
-%!PS-Adobe-2.0 EPSF-2.0
-%%Title: Absorption.eps
-%%Creator: gnuplot 4.6 patchlevel 0
-%%CreationDate: Wed Jun 24 09:50:51 2015
+%!PS-Adobe-2.0
+%%Title: Absorption.ps
+%%Creator: gnuplot 4.6 patchlevel 5
+%%CreationDate: Tue Sep 15 10:24:59 2015
 %%DocumentFonts: (atend)
-%%BoundingBox: 50 50 410 302
+%%BoundingBox: 50 50 554 770
+%%Orientation: Landscape
+%%Pages: (atend)
 %%EndComments
 %%BeginProlog
 /gnudict 256 dict def
@@ -16,7 +18,7 @@ gnudict begin
 /Blacktext false def
 /Solid true def
 /Dashlength 1 def
-/Landscape false def
+/Landscape true def
 /Level1 false def
 /Rounded false def
 /ClipToBoundingBox false def
@@ -42,12 +44,12 @@ gnudict begin
 /vpt vpt_ def
 /doclip {
   ClipToBoundingBox {
-    newpath 50 50 moveto 410 50 lineto 410 302 lineto 50 302 lineto closepath
+    newpath 50 50 moveto 554 50 lineto 554 770 lineto 50 770 lineto closepath
     clip
   } if
 } def
 %
-% Gnuplot Prolog Version 4.4 (August 2010)
+% Gnuplot Prolog Version 4.6 (September 2012)
 %
 %/SuppressPDFMark true def
 %
@@ -314,7 +316,8 @@ gnudict begin
 /PatternFill {gsave /PFa [ 9 2 roll ] def
   PFa 0 get PFa 2 get 2 div add PFa 1 get PFa 3 get 2 div add translate
   PFa 2 get -2 div PFa 3 get -2 div PFa 2 get PFa 3 get Rec
-  gsave 1 setgray fill grestore clip
+  TransparentPatterns {} {gsave 1 setgray fill grestore} ifelse
+  clip
   currentlinewidth 0.5 mul setlinewidth
   /PFs PFa 2 get dup mul PFa 3 get dup mul add sqrt def
   0 0 M PFa 5 get rotate PFs -2 div dup translate
@@ -454,13 +457,13 @@ systemdict /pdfmark known not {
   userdict /pdfmark systemdict /cleartomark get put
 } if
 SDict begin [
-  /Title (Absorption.eps)
+  /Title (Absorption.ps)
   /Subject (gnuplot plot)
-  /Creator (gnuplot 4.6 patchlevel 0)
-  /Author (djhaxton)
+  /Creator (gnuplot 4.6 patchlevel 5)
+  /Author (dhaxton)
 %  /Producer (gnuplot)
 %  /Keywords ()
-  /CreationDate (Wed Jun 24 09:50:51 2015)
+  /CreationDate (Tue Sep 15 10:24:59 2015)
   /DOCINFO pdfmark
 end
 } ifelse
@@ -471,13 +474,16 @@ gnudict begin
 gsave
 doclip
 50 50 translate
-0.050 0.050 scale
+0.100 0.100 scale
+90 rotate
+0 -5040 translate
 0 setgray
 newpath
 (Helvetica) findfont 280 scalefont setfont
-BackgroundColor 0 lt 3 1 roll 0 lt exch 0 lt or or not {BackgroundColor C 1.000 0 0 7200.00 5040.00 BoxColFill} if
+BackgroundColor 0 lt 3 1 roll 0 lt exch 0 lt or or not {gsave BackgroundColor C clippath fill grestore} if
 1.000 UL
 LTb
+LCb setrgbcolor
 1204 896 M
 63 0 V
 5428 0 R
@@ -488,6 +494,7 @@ stroke
 ] -93.3 MRshow
 1.000 UL
 LTb
+LCb setrgbcolor
 1204 1531 M
 63 0 V
 5428 0 R
@@ -498,6 +505,7 @@ stroke
 ] -93.3 MRshow
 1.000 UL
 LTb
+LCb setrgbcolor
 1204 2165 M
 63 0 V
 5428 0 R
@@ -508,6 +516,7 @@ stroke
 ] -93.3 MRshow
 1.000 UL
 LTb
+LCb setrgbcolor
 1204 2800 M
 63 0 V
 5428 0 R
@@ -518,6 +527,7 @@ stroke
 ] -93.3 MRshow
 1.000 UL
 LTb
+LCb setrgbcolor
 1204 3434 M
 63 0 V
 5428 0 R
@@ -528,6 +538,7 @@ stroke
 ] -93.3 MRshow
 1.000 UL
 LTb
+LCb setrgbcolor
 1204 4069 M
 63 0 V
 5428 0 R
@@ -538,6 +549,7 @@ stroke
 ] -93.3 MRshow
 1.000 UL
 LTb
+LCb setrgbcolor
 1204 4703 M
 63 0 V
 5428 0 R
@@ -548,6 +560,7 @@ stroke
 ] -93.3 MRshow
 1.000 UL
 LTb
+LCb setrgbcolor
 2302 896 M
 0 63 V
 0 3744 R
@@ -558,6 +571,7 @@ stroke
 ] -93.3 MCshow
 1.000 UL
 LTb
+LCb setrgbcolor
 3675 896 M
 0 63 V
 0 3744 R
@@ -568,6 +582,7 @@ stroke
 ] -93.3 MCshow
 1.000 UL
 LTb
+LCb setrgbcolor
 5048 896 M
 0 63 V
 0 3744 R
@@ -578,6 +593,7 @@ stroke
 ] -93.3 MCshow
 1.000 UL
 LTb
+LCb setrgbcolor
 6420 896 M
 0 63 V
 0 3744 R
@@ -588,8 +604,10 @@ stroke
 ] -93.3 MCshow
 1.000 UL
 LTb
+LCb setrgbcolor
 1.000 UL
 LTb
+LCb setrgbcolor
 1204 4703 N
 0 -3807 V
 5491 0 V
@@ -611,9 +629,11 @@ LTb
 1.000 UP
 1.000 UL
 LTb
+LCb setrgbcolor
 % Begin plot #1
 10.000 UL
 LT2
+LC2 setrgbcolor
 LCb setrgbcolor
 2380 4500 M
 [ [(Helvetica) 280.0 0.0 true true 0 (T=300)]
@@ -621,8 +641,8 @@ LCb setrgbcolor
 LT2
 2548 4500 M
 735 0 V
-1204 918 M
-71 2 V
+1204 917 M
+71 3 V
 156 1 V
 156 1 V
 157 2 V
@@ -664,15 +684,16 @@ stroke
 5.000 UL
 LTb
 LCb setrgbcolor
+LCb setrgbcolor
 2380 4220 M
 [ [(Helvetica) 280.0 0.0 true true 0 (T=500)]
 ] -93.3 MRshow
 LTb
 2548 4220 M
 735 0 V
-1204 922 M
+1204 921 M
 41 1 V
-94 0 V
+94 1 V
 93 0 V
 94 0 V
 94 0 V
@@ -685,8 +706,8 @@ LTb
 94 23 V
 93 58 V
 94 283 V
-82 3392 V
-26 0 R
+83 3392 V
+25 0 R
 80 -2601 V
 93 -669 V
 94 60 V
@@ -737,6 +758,7 @@ LTb
 stroke
 3.000 UL
 LT1
+LC1 setrgbcolor
 LCb setrgbcolor
 2380 3940 M
 [ [(Helvetica) 280.0 0.0 true true 0 (T=1000)]
@@ -747,32 +769,32 @@ LT1
 1204 923 M
 42 1 V
 47 0 V
-47 1 V
-46 0 V
 47 0 V
-47 0 V
-47 0 V
-47 0 V
-47 0 V
-47 0 V
-47 0 V
-47 1 V
-47 0 V
-47 1 V
-47 2 V
 46 1 V
+47 0 V
+47 0 V
+47 -1 V
+47 0 V
+47 0 V
+47 1 V
+47 0 V
+47 0 V
+47 1 V
+47 1 V
+47 1 V
+46 2 V
+47 2 V
 47 3 V
-47 3 V
-47 3 V
+47 4 V
 47 6 V
 47 7 V
 47 10 V
-47 15 V
-47 23 V
+47 14 V
+47 24 V
 47 40 V
 47 81 V
-47 207 V
-47 815 V
+47 206 V
+47 816 V
 30 2560 V
 52 0 R
 11 -434 V
@@ -781,11 +803,11 @@ LT1
 47 -81 V
 47 29 V
 47 48 V
-47 41 V
-47 173 V
+47 42 V
+47 172 V
 47 292 V
-47 346 V
-47 289 V
+47 347 V
+47 288 V
 46 131 V
 47 43 V
 47 47 V
@@ -812,8 +834,8 @@ LT1
 47 -35 V
 46 -37 V
 47 -36 V
-47 -36 V
 47 -37 V
+47 -36 V
 47 -37 V
 47 -36 V
 47 -37 V
@@ -872,6 +894,7 @@ stroke
 1.000 UL
 LTb
 LCb setrgbcolor
+LCb setrgbcolor
 2380 3660 M
 [ [(Helvetica) 280.0 0.0 true true 0 (FT)]
 ] -93.3 MRshow
@@ -915,6 +938,7 @@ LTb
 % End plot #4
 1.000 UL
 LTb
+LCb setrgbcolor
 1204 4703 N
 0 -3807 V
 5491 0 V
@@ -924,9 +948,11 @@ Z stroke
 1.000 UP
 1.000 UL
 LTb
+LCb setrgbcolor
 stroke
 grestore
 end
 showpage
 %%Trailer
 %%DocumentFonts: Helvetica
+%%Pages: 1
