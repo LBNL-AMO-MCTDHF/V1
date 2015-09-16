@@ -7,6 +7,8 @@ then
 	exit
 fi
 
+export OMP_NUM_THREADS=1
+
 nodelist=`echo $SLURM_NODELIST | tr , ' '`
 
 ncpu=`echo $SLURM_JOB_CPUS_PER_NODE |cut -f 1 -d \(`

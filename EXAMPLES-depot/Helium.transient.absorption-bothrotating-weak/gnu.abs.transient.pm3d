@@ -1,0 +1,52 @@
+#!/bin/bash
+
+#   Cycle is 107.562 atomic units; 1fs is 41.341au.
+
+# durations about 910 and 55 atomic units... XUV at 1000
+# 1000 - (910-55)/2 approx 570
+
+
+echo '
+
+XX=107.562
+
+qqq(x)=log(abs(x)+1)*(x>0) - log(abs(x)+1)*(x<0)
+lll(x,A)=qqq(x/A)
+
+set style data linespoints
+
+set xrange [20:26]
+
+set ticslevel -0.3333
+unset surf
+set palette rgb 33,13,10
+
+unset contour
+unset surf
+set pm3d
+
+set view 180,90
+set grid xtics
+set grid ytics
+unset key
+unset ztics
+set xtics 1
+set ytics 1
+
+set xlabel "eV"
+set ylabel "IR First     Delay (cycle)     XUV First"
+
+set out "absorption.helium.ps"
+set term post enhanced solid color 20
+
+set cbrange [-0.0001:0.0005]
+set cbrange [-0.000015:0.000045]
+
+set title "transient absorption signal"
+splot "ZDipoleft.all.Dat" using (27.2114*$2):(($1-570)/XX):3 lw 2 notitle
+
+set term x11
+replot
+
+' |gnuplot -persist
+

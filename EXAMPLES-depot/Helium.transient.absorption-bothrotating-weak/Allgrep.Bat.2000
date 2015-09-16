@@ -1,13 +1,13 @@
 
 
 
-blah=( `wc Dips/ZDipoleft.Dat.01000_0_0_005000`)
+blah=( `wc Dips/ZDipoleft.Dat.01000_0_0_002000`)
 
 num=${blah[0]}
 
 rm ZDipoleft.all.Dat
 
-line1=`ls Dips/ZDipoleft.Dat.*_0_0_005000`
+line1=`ls Dips/ZDipoleft.Dat.*_0_0_002000`
 
 echo $line1 
 echo "hit enter"

@@ -1,22 +1,17 @@
-#!/global/software/sl-6.x86_64/modules/tools/gnuplot/4.6.0/bin/gnuplot -persist
-
-##!/usr/bin/gnuplot -persist
-
-##!/opt/local/bin/gnuplot -persist
+#!/bin/bash
 
 #   Cycle is 107.562 atomic units; 1fs is 41.341au.
-
-XX=107.562
 
 # durations about 910 and 55 atomic units... XUV at 1000
 # 1000 - (910-55)/2 approx 570
 
 
+echo '
+
+XX=107.562
+
 qqq(x)=log(abs(x)+1)*(x>0) - log(abs(x)+1)*(x<0)
 lll(x,A)=qqq(x/A)
-
-
-
 
 set style data linespoints
 
@@ -26,11 +21,9 @@ set ticslevel -0.3333
 unset surf
 set palette rgb 33,13,10
 
-
 unset contour
 unset surf
 set pm3d
-
 
 set view 180,90
 set grid xtics
@@ -39,7 +32,6 @@ unset key
 unset ztics
 set xtics 1
 set ytics 1
-
 
 A0=0.000001
 A1=0.00000001
@@ -50,7 +42,6 @@ A5=0.00000001
 A6=0.000000001
 A7=0.0000001
 A8=0.00000001
-
 
 set xlabel "eV"
 set ylabel "IR First     Delay (cycle)     XUV First\nred=absorption  magenta=emission"
@@ -66,8 +57,6 @@ set title "0,0 photon"
 splot "BigFourier.Dat" using (27.2114*$2):(($1-570)/XX):(($3*$6 - $4*$5)/1000) lw 2 notitle
 
 # factor of 1000 in bigfourier.dat
-
-#unset cbrange
 
 set title "0,1 photon"
 splot "BigFourier.Dat" using (27.2114*$2):(($1-570)/XX):(($3*$8 - $4*$7)/1000) lw 2 notitle
@@ -100,9 +89,6 @@ set title "-2,0 photon"
 splot "BigFourier.Dat" using (27.2114*$2):(($1-570)/XX):(($3*$132 - $4*$131)/1000) lw 2 notitle
 
 
-
-
-
 set title "-1,1 photon"
 splot "BigFourier.Dat" using (27.2114*$2):(($1-570)/XX):(($3*$152 - $4*$151)/1000) lw 2 notitle
 
@@ -116,8 +102,5 @@ splot "BigFourier.Dat" using (27.2114*$2):(($1-570)/XX):(($3*$136 - $4*$135)/100
 set title "2,-2 photon"
 splot "BigFourier.Dat" using (27.2114*$2):(($1-570)/XX):(($3*$56 - $4*$55)/1000) lw 2 notitle
 
-
-
-
-
+' |gnuplot -persist
 

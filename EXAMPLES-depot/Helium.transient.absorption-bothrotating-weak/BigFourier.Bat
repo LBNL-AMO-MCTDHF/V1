@@ -7,6 +7,7 @@ phase=( xx 0 0.6981 1.3962 2.0943 2.7925 3.4906 4.1887 4.8869 5.5850 )
 totevals=`expr $evals \* $evals`
 echo "TOT $totevals"
 
+rm BigFourier.Dat
 
 blah=( `wc Dips/ZDipoleft.Dat.01000_0_0_005000` )
 
@@ -43,9 +44,9 @@ done
 #exit
 
 
-iline=5550
+iline=580
 
-while [[ $iline -lt 5800 ]]
+while [[ $iline -lt 780 ]]
 do
 	(( iline++ ))
 
@@ -122,12 +123,12 @@ do
 	done
 	done
 
-	echo " $delay $energy     ${refield[1]} ${imfield[1]}  $outline"
+	echo " $delay $energy     ${refield[1]} ${imfield[1]}  $outline" >> BigFourier.Dat
 
 
 done
 
-echo
+echo >> BigFourier.Dat
 
 done
 

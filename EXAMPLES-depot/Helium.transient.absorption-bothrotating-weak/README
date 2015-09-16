@@ -1,0 +1,13 @@
+
+1) ./Relax.Bat
+
+2) ./Helium.Tasklist.Bat
+
+3) ./Run.Tasks TASKS.LIST
+
+4) ./Allgrep.Bat
+   then ./gnu.abs.transient.pm3d to see the experimental result
+
+5) ./BigFourier.Bat
+   then ./gnu.abs.bigfourier.pm3d to decompose it into photon components
+

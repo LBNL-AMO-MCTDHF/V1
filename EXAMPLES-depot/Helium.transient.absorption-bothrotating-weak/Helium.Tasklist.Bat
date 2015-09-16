@@ -54,7 +54,7 @@ do
       perl -pi -e "s/II4/$shift4/" Inps/Input.Inp.Pulse.$ext
       perl -pi -e "s/EEE/$ext/" Inps/Input.Inp.Pulse.$ext
 
-      echo "chmctdhf_atom.seq Inp=Inps/Input.Inp.Pulse.$ext > Outs/Out.pulse.$ext" >> TASKS.LIST
+      echo "chmctdhf_atom Inp=Inps/Input.Inp.Pulse.$ext > Outs/Out.pulse.$ext" >> TASKS.LIST
 
      (( jphase++ ))
    done

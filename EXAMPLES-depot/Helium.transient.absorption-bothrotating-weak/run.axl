@@ -4,7 +4,7 @@
 #
 #SBATCH --qos=condo_axl  --account=lr_axl --partition=lr3 --constraint=lr3_c20
 #
-#SBATCH --nodes=8
+#SBATCH --nodes=4
 #
 #SBATCH -t 504:00:00
 #

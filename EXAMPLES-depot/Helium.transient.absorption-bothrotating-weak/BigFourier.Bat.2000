@@ -7,6 +7,7 @@ phase=( xx 0 0.6981 1.3962 2.0943 2.7925 3.4906 4.1887 4.8869 5.5850 )
 totevals=`expr $evals \* $evals`
 echo "TOT $totevals"
 
+rm BigFourier.Dat
 
 blah=( `wc Dips/ZDipoleft.Dat.01000_0_0_002000` )
 
@@ -43,9 +44,9 @@ done
 #exit
 
 
-iline=2220
+iline=230
 
-while [[ $iline -lt 2320 ]]
+while [[ $iline -lt 320 ]]
 do
 	(( iline++ ))
 
@@ -103,8 +104,8 @@ do
 			(( ff++ ))
 
 #			echo ${imdip[ff]} ${redip[ff]}
-			realline="$realline + (${redip[ff]} * c(${phase[i]}*($ifour-1) + ${phase[j]}*($jfour-1)) - ${imdip[ff]} * s(${phase[i]}*($ifour-1) + ${phase[j]}*($jfour-1) ))/$totevals"
-			imagline="$imagline + (${redip[ff]} * s(${phase[i]}*($ifour-1) + ${phase[j]}*($jfour-1)) + ${imdip[ff]} * c(${phase[i]}*($ifour-1) + ${phase[j]}*($jfour-1) ))/$totevals"
+			realline="$realline + (${redip[ff]} * c(${phase[i]}*($ifour-1) + ${phase[j]}*($jfour-1)) - ${imdip[ff]} * s(${phase[i]}*($ifour-1) + ${phase[j]}*($jfour-1) ))/$totevals*1000"
+			imagline="$imagline + (${redip[ff]} * s(${phase[i]}*($ifour-1) + ${phase[j]}*($jfour-1)) + ${imdip[ff]} * c(${phase[i]}*($ifour-1) + ${phase[j]}*($jfour-1) ))/$totevals*1000"
 
 		done
 		done
@@ -123,12 +124,12 @@ do
 	done
 	done
 
-	echo " $delay $energy     ${refield[1]} ${imfield[1]}  $outline"
+	echo " $delay $energy     ${refield[1]} ${imfield[1]}  $outline" >> BigFourier.Dat
 
 
 done
 
-echo
+echo >> BigFourier.Dat
 
 done
 

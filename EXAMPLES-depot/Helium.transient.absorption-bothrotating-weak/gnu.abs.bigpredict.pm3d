@@ -1,20 +1,19 @@
-#!/global/software/sl-6.x86_64/modules/tools/gnuplot/4.6.0/bin/gnuplot -persist
+#!/bin/bash
 
 # got a factor of 1000 in data file for resolution (number of digits)
 
 #   Cycle is 107.562 atomic units; 1fs is 41.341au.
 
-XX=107.562
-
 # durations about 910 and 55 atomic units... XUV at 1000
 # 1000 - (910-55)/2 approx 570
 
 
+echo '
+
+XX=107.562
+
 qqq(x)=log(abs(x)+1)*(x>0) - log(abs(x)+1)*(x<0)
 lll(x,A)=qqq(x/A)
-
-
-
 
 set style data linespoints
 
@@ -29,7 +28,6 @@ set pm3d
 
 set cbrange [-0.0001:0.0005]
 set cbrange [-0.000015:0.000045]
-
 
 set view 180,90
 set grid xtics
@@ -54,7 +52,6 @@ C7=0
 C8=0
 
 A0=0.000001
-
 
 set out "absorption.bigfourier.helium.weak.predict.pm3d.ps"
 set term post enhanced solid color 20
@@ -86,10 +83,5 @@ splot "BigFourier.Dat" using (27.2114*$2):(($1-570)/XX): \
  C2*$131 + C3*$133 + C4*$135 + C5*$137 + C6*$139 + C6*$141 + C5*$143 + C4*$145 + C3*$147 +  \
  C1*$149 + C2*$151 + C3*$153 + C4*$155 + C5*$157 + C5*$159 + C4*$161 + C3*$163 + C2*$165 ))/1000) lw 2 notitle
 
-
-
-
-
-
-
+' |gnuplot -persist
 
