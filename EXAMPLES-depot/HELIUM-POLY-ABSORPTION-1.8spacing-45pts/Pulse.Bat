@@ -1,10 +1,9 @@
 #!/bin/bash
 
 threads=1
-procs=25
-NPN=13
+procs=9
 
 export OMP_NUM_THREADS=$threads
 
-mpirun -n $procs -npernode $NPN --bind-to-core --bysocket --cpus-per-proc $threads --report-bindings chmctdhf_sinc Inp=Input.Inp.Pulse |tee Outs/Out.pulse
+mpirun -n $procs chmctdhf_sinc.mpi Inp=Input.Inp.Pulse |tee Outs/Out.pulse
 

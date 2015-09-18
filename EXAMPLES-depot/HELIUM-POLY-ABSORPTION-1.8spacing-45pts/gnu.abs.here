@@ -1,0 +1,36 @@
+#!/bin/bash
+
+echo '
+
+set xlabel "Energy (eV)"
+set ylabel "emission/absorption\ncross section (arb units)"
+
+set term unknown
+set style data lines
+
+set key top left
+
+set yrange [0.001:*]
+
+set xrange [0:40]
+
+set logscale y
+
+plot "Dat/ZDipoleft.Dat000400" using (27.2114*$1):($7/($4**2+$5**2)) lt 7 lw 10 title "T=400"
+
+replot "Dat/ZDipoleft.Dat001000" using (27.2114*$1):($7/($4**2+$5**2)) lt 4 lw 6 title "T=1000"
+
+replot "Dat/ZDipoleft.Dat001400" using (27.2114*$1):($7/($4**2+$5**2)) lt -1 lw 2 title "T=1400"
+
+replot "Dat/ZDipoleft.Dat001800" using (27.2114*$1):($7/($4**2+$5**2)) lt 2 lw 2 title "T=1800"
+
+set term x11
+replot
+
+set out "Absorption.helium.conv.eps"
+set term post enhanced eps solid color 28
+replot
+
+' | gnuplot -persist
+
+
