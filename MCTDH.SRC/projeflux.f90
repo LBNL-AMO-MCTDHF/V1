@@ -372,7 +372,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
         xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
         
         if (myrank.eq.1) then
-           open(171,file="Dat/gtau."//xstate1//"_"//xmc1//".dat"  ,status="unknown");          write(171,*) "#   ", curtime
+           open(171,file=projgtaufile(1:getlen(projgtaufile)-1)//xstate1//"_"//xmc1//".dat"  ,status="unknown");          write(171,*) "#   ", curtime
            do i=0,curtime
               write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*FluxInterval*FluxSkipMult, pulseft(i,:), gtau(i,istate,imc), ftgtau(i)
            enddo

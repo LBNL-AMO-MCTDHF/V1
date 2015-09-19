@@ -57,7 +57,7 @@ subroutine fluxgtau(alg)
   real*8 :: MemTot,MemVal,dt, xyfac,zfac,myfac,wfi,estep
   complex*16, allocatable :: FTgtau(:,:), pulseft(:,:)
   real*8, allocatable :: pulseftsq(:)
-  DATATYPE :: dot,fluxeval,fluxevalval(mcscfnum), pots1(3)=0d0, pots2(3)=0d0
+  DATATYPE :: dot,fluxeval,fluxevalval(mcscfnum), pots1(3)=0d0  !!$, pots2(3)=0d0
   DATATYPE, allocatable :: gtau(:,:), mobio(:,:),abio(:,:,:)
   DATATYPE, allocatable, target :: bramo(:,:,:),braavec(:,:,:,:), ketmo(:,:,:),ketavec(:,:,:,:)
   DATATYPE, pointer :: moket(:,:),mobra(:,:),aket(:,:,:)
@@ -384,7 +384,7 @@ subroutine fluxgtau(alg)
   enddo
   
   if (myrank.eq.1) then
-     open(171,file="Dat/gtau.dat",status="unknown");          write(171,*) "#   ", curtime
+     open(171,file=gtaufile,status="unknown");          write(171,*) "#   ", curtime
      do i=0,curtime
         write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*FluxInterval*FluxSkipMult, ftgtau(i,:)
      enddo
@@ -413,7 +413,8 @@ subroutine fluxgtau(alg)
   if(myrank.eq.1) then
      open(1004,file=spifile,status="replace",action="readwrite",position="rewind")
      write(1004,*)
-     write(1004,*) "# Omega; pulse ft; flux "
+     write(1004,*) "# six columns."
+     write(1004,*) "# Omega (column 1); |pulse ft|^2 (2); cross section (Mb) (3); flux (column 5)"
      write(1004,*)
      do i=-curtime,curtime
         wfi=(i+curtime)*Estep
@@ -590,7 +591,7 @@ function fluxeval(abra,aket,ke,pe,V2,zdip,zfac,xydip,xyfac,yderiv,flag,imc)
 end function fluxeval
 
 
-function fluxeval00(abra,aket,ke,pe,V2,zdip,zfac,xydip,xyfac,yderiv,flag,ipart)   
+function fluxeval00(abra,aket,ke,pe,V2,zdipnotused,zfacnotused,xydipnotused,xyfacnotused,yderiv,flag,ipart)   
 !! flag=1 means flux (take into account fluxoptype) otherwise whole thing
 
 !! ipart=0 do all   1 elec only   (diagonal nuclear ke ; cap; herm(Y+3/2)*anti(d/dR term) 
@@ -613,9 +614,9 @@ function fluxeval00(abra,aket,ke,pe,V2,zdip,zfac,xydip,xyfac,yderiv,flag,ipart)
   implicit none
 
   integer :: bra,ket,r,flag,rr, iiflag=0,ipart
-  real*8 :: xyfac, zfac
-  DATATYPE :: abra(numconfig,numr),aket(numconfig,numr),INVR,IIINVR,INVRSQ,fluxeval00,PRODERIV,BONDKE,PULSEFAC,csum
-  DATATYPE :: ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf),xydip(nspf,nspf),zdip(nspf,nspf)
+  real*8 :: xyfacnotused, zfacnotused
+  DATATYPE :: abra(numconfig,numr),aket(numconfig,numr),INVR,IIINVR,INVRSQ,fluxeval00,PRODERIV,BONDKE,PULSEFAC   !!$,csum
+  DATATYPE :: ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf),xydipnotused(nspf,nspf),zdipnotused(nspf,nspf)
 
   if (flag.ne.1.or.fluxoptype.ne.1.or.ipart.ne.0) then
      OFLWR "maybe checkme debug"; CFLST
