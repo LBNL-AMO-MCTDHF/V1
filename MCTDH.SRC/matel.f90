@@ -134,8 +134,6 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
   if (numfrozen.gt.0) then
 !! only call of op_frozen_exchange.
 
-     call noparorbsupport("call frozen")
-
      ttempspfs=0d0
      call op_frozen_exchange(inspfs2,ttempspfs)
      do j=1,nspf
@@ -241,8 +239,6 @@ subroutine frozen_matels()
   use parameters
   implicit none
 
-  call noparorbsupport("in frozen_matels")
-
   call call_frozen_matels()
 
 end subroutine frozen_matels
@@ -256,9 +252,8 @@ subroutine op_frozen_exchange(inspfs,outspfs)
   DATATYPE :: inspfs(spfsize,nspf)
   DATATYPE :: outspfs(spfsize,nspf)
 
-  call noparorbsupport("op_frozen_exchange")
-
   call call_frozen_exchange(inspfs,outspfs)
+
 end subroutine op_frozen_exchange
 
 

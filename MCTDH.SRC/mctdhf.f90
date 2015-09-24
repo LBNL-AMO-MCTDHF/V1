@@ -350,7 +350,6 @@ program mctdhf
      endif  ! loadspfflag
   endif  !! skipflag.eq.0
 
-
   OFLWR "Calling init_project",sizeof(pot); CFL
   call init_project(bigspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
        bondpoints,bondweights,elecweights,elecradii,numelec)
@@ -370,11 +369,11 @@ program mctdhf
 
 
      call spf_orthogit_gs(yyy%cmfpsivec(spfstart,0))
-     
+
      if (numfrozen.ne.0) then
-        call noparorbsupport("frozen_matels")
         call frozen_matels()
      endif
+
 !! MAY 2014 now not doing load avector if skipflag=1 (flux)
 
   endif  !! skipflag.lt.2

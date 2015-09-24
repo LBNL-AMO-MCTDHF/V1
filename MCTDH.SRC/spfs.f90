@@ -61,6 +61,22 @@ subroutine spfs_compact(inspfs,outspfs)
 end subroutine spfs_compact
 
 
+subroutine orthog_tofrozen(inspf)
+  use parameters
+  use opmod !! frozenspfs
+  implicit none
+  DATATYPE :: inspf(spfsize)
+  logical :: orbparflag
+  orbparflag=.false.
+  if (parorbsplit.eq.3) then
+     orbparflag=.true.
+  endif
+  if (numfrozen.gt.0) then
+     call gramschmidt(spfsize, numfrozen, spfsize, frozenspfs(:,:), inspf(:),orbparflag)
+  endif
+end subroutine orthog_tofrozen
+
+
 subroutine spf_orthogit(inspfs,error)
   use parameters
   use opmod !! frozenspfs

@@ -194,8 +194,15 @@
 #include "Definitions.INC"
 
 
+module twoemod
+  implicit none
+  DATATYPE, allocatable :: frozenreduced(:)
+end module twoemod
+
+
 subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,outorbparflag,multmanyflag) 
   use myparams
+  use twoemod
   implicit none
   integer :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,inspfugvals(innumspf), outspfsmallsize,multmanyflag,ii
   logical, intent(out) :: outorbparflag
@@ -207,7 +214,12 @@ subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,
      multmanyflag=1
   endif
   ii=inspfrestrictflag; ii=inspfmvals(1); ii=inspfugvals(1); ii=inspfugrestrict;
+
+  allocate(frozenreduced(totpoints))
+  frozenreduced(:)=0d0
+
 end subroutine transferparams
+
 
 subroutine twoedealloc()
 end subroutine twoedealloc
@@ -216,13 +228,139 @@ subroutine call_flux_op_twoe() !mobra,moket,V2,flag)
 print *, "DOME flux_op_twoe"; stop
 end subroutine call_flux_op_twoe
 
-subroutine call_frozen_matels0() !infrozens,numfrozen,frozenkediag,frozenpotdiag)  !! returns last two.  a little cloogey
-print *, "DOME CALL FROZEN MATELS."; stop
+subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  !! returns last two.  a little cloogey
+  use twoemod
+  use myparams
+  use pmpimod
+  use pfileptrmod
+  implicit none
+  integer, intent(in) :: numfrozen
+  DATATYPE, intent(in) :: infrozens(totpoints,numfrozen)
+  DATATYPE, intent(out) :: frozenkediag, frozenpotdiag
+  DATATYPE :: frodensity(totpoints), work(totpoints), tempreduced(totpoints), &
+       tempmatel(numfrozen,numfrozen,numfrozen,numfrozen), temppotmatel(numfrozen,numfrozen), &
+       tempmult(totpoints,numfrozen), &
+       csum,direct,exch
+  integer :: times1,times3,times4,times5,fttimes(10), i, ii, spf1a,spf2a,spf1b,spf2b, &
+       ispin,iispin,ispf,iispf
+
+  if (numfrozen.eq.0) then
+     return
+  endif
+
+  frodensity(:)=0d0
+  do ii=1,numfrozen
+     frodensity(:)=frodensity(:) + infrozens(:,ii)*CONJUGATE(infrozens(:,ii))
+  enddo
+
+  call op_tinv(frodensity(:),frozenreduced(:),1,1,&
+       times1,times3,times4,times5,fttimes)
+
+  do spf2b=1,numfrozen
+     do spf2a=1,numfrozen
+
+        frodensity(:) = CONJUGATE(infrozens(:,spf2a)) * infrozens(:,spf2b)
+
+        call op_tinv(frodensity(:),tempreduced(:),1,1,&
+             times1,times3,times4,times5,fttimes)
+
+        do spf1b=1,numfrozen
+           do spf1a=1,numfrozen
+              work(:) = CONJUGATE(infrozens(:,spf1a)) * infrozens(:,spf1b) * tempreduced(:)
+              csum=0d0
+              do ii=1,totpoints
+                 csum=csum + work(ii)
+              enddo
+              tempmatel(spf2a,spf2b,spf1a,spf1b) = csum
+
+           enddo
+        enddo
+     enddo
+  enddo
+
+  call mympireduce(tempmatel,numfrozen**4)
+
+  csum=0d0
+  do i=1,numfrozen*2
+     do ii=i+1,numfrozen*2
+        ispf=(i-1-mod(i-1,2))/2+1            !! elec 1
+        iispf=(ii-1-mod(ii-1,2))/2+1            !! elec 2
+        ispin=mod(i-1,2)+1           !! elec 1
+        iispin=mod(ii-1,2)+1           !! elec 2
+        direct = tempmatel(iispf,iispf,ispf,ispf)
+        if (ispin==iispin) then
+           exch = tempmatel(iispf,ispf,ispf,iispf)
+        else
+           exch=0.d0
+        endif
+        csum=csum+direct-exch
+     enddo
+  enddo
+  frozenpotdiag=csum
+
+  do ii=1,numfrozen
+     call mult_pot(infrozens(:,ii),tempmult(:,ii))
+  enddo
+
+  call MYGEMM(CNORMCHAR,'N',numfrozen,numfrozen, totpoints, DATAONE, infrozens, totpoints, tempmult, totpoints, DATAZERO, temppotmatel(:,:) ,numfrozen)
+
+  call mympireduce(temppotmatel,numfrozen**2)
+
+  do i=1,numfrozen
+     frozenpotdiag=frozenpotdiag+2*temppotmatel(i,i)
+  enddo
+
+  do ii=1,numfrozen
+     call mult_ke(infrozens(:,ii),tempmult(:,ii),1,"booga",2)
+  enddo
+
+  call MYGEMM(CNORMCHAR,'N',numfrozen,numfrozen, totpoints, DATAONE, infrozens(:,:), totpoints, tempmult(:,:), totpoints, DATAZERO, temppotmatel(:,:) ,numfrozen)
+
+  call mympireduce(temppotmatel,numfrozen**2)
+  
+  frozenkediag=0d0
+  do i=1,numfrozen
+     frozenkediag=frozenkediag+2*temppotmatel(i,i)
+  enddo
+
 end subroutine call_frozen_matels0
 
-subroutine call_frozen_exchange0() !inspfs,outspfs,infrozens,numfrozen)   !! rmatrix ylmvals
-print *, "DOME CALL FROZEN EXCHANGE"; stop
+
+
+!! ADDS TO OUTSPFS
+
+subroutine call_frozen_exchange0(inspfs,outspfs,infrozens,numfrozen)
+  use twoemod
+  use myparams
+  use pmpimod
+  use pfileptrmod
+  implicit none
+  integer, intent(in) :: numfrozen
+  DATATYPE, intent(in) :: infrozens(totpoints,numfrozen), inspfs(totpoints,numspf)
+  DATATYPE, intent(inout) :: outspfs(totpoints,numspf)
+  DATATYPE :: frodensity(totpoints), tempreduced(totpoints)
+  integer :: times1,times3,times4,times5,fttimes(10),spf2a,spf2b
+
+  if (numfrozen.eq.0) then
+     return
+  endif
+
+  do spf2b=1,numfrozen
+     do spf2a=1,numspf
+
+        frodensity(:) = CONJUGATE(infrozens(:,spf2b)) * inspfs(:,spf2a)
+
+        call op_tinv(frodensity(:),tempreduced(:),1,1,&
+             times1,times3,times4,times5,fttimes)
+
+!! ADDS TO OUTSPFS
+        outspfs(:,spf2a) = outspfs(:,spf2a) - tempreduced(:)*infrozens(:,spf2b)
+
+     enddo
+  enddo
+
 end subroutine call_frozen_exchange0
+
 
 subroutine getdensity() !density, indenmat, inspfs,numspf)
 print *, "DOME GETDENSITY"; stop
@@ -380,9 +518,22 @@ end subroutine mult_imxdipole
 subroutine hatomcalc()
 end subroutine hatomcalc
 
-subroutine op_frozenreduced() !inspfs,outspfs)
-print *, "DOME OP FROZENREDUCED"; stop
+
+!! ADDS TO SPFS !!
+
+subroutine op_frozenreduced(inspfs,outspfs)
+  use twoemod
+  use myparams
+  use pmpimod
+  use pfileptrmod
+  implicit none
+  DATATYPE,intent(in) :: inspfs(totpoints)
+  DATATYPE,intent(inout) :: outspfs(totpoints)
+
+  outspfs(:)=outspfs(:) + frozenreduced(:) * inspfs(:) * 2d0
+
 end subroutine op_frozenreduced
+
 
 subroutine restrict_spfs() !inspfs,numspf,spfmvals)
 end subroutine restrict_spfs

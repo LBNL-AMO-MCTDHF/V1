@@ -68,6 +68,40 @@ recursive subroutine project(inspfs, outspfs, prospfs)
 
 end subroutine project
 
+
+
+recursive subroutine project_onfrozen(inspf, outspf)
+  use parameters
+  use opmod !! frozenspfs
+  implicit none
+  DATATYPE :: inspf(spfsize),outspf(spfsize)
+  integer :: j
+  DATATYPE :: dot,mydot(numfrozen)
+
+  outspf(:)=0
+
+  if (numfrozen.gt.1) then
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j)
+!$OMP DO SCHEDULE(STATIC)
+     do j=1,numfrozen
+        mydot(j)=   dot(frozenspfs(:,j),inspf(:),spfsize)
+     enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
+     if (parorbsplit.eq.3) then
+        call mympireduce(mydot,numfrozen)
+     endif
+
+     do j=1,numfrozen
+        outspf(:) = outspf(:) + frozenspfs(:,j) * mydot(j)
+     enddo
+  endif
+
+end subroutine project_onfrozen
+
+
+
 subroutine get_frexchange()
   use parameters
   use xxxmod !! frozenexchange

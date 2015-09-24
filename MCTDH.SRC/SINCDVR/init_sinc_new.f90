@@ -349,6 +349,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   halfniumpot(:)=pot(:)/sumcharge
 
   if (spfsloaded.lt.numspf) then
+     call frozen_matels()
      call init_spfs(inspfs(:,:),spfsloaded)
   endif
 
@@ -430,9 +431,12 @@ recursive subroutine mult_bigspf_ivo(inbigspf,outbigspf)
   implicit none
   DATATYPE,intent(in) :: inbigspf(totpoints)
   DATATYPE, intent(out) :: outbigspf(totpoints)
-  DATATYPE :: tempspf(totpoints),inwork(totpoints),inwork2(totpoints)
+  DATATYPE :: tempspf(totpoints),inwork(totpoints),inwork2(totpoints),&
+       workspf(totpoints)
 
   call ivo_project(inbigspf,outbigspf)
+  call project_onfrozen(inbigspf,workspf)
+  outbigspf=outbigspf+workspf
 
   inwork2(:)=inbigspf(:)-outbigspf(:)
 
@@ -445,6 +449,8 @@ recursive subroutine mult_bigspf_ivo(inbigspf,outbigspf)
   inwork(:) = inwork(:) + tempspf(:) + ivopot(:)*inwork2(:)
 
   call ivo_project(inwork,inwork2)
+  call project_onfrozen(inwork,workspf)
+  inwork2=inwork2+workspf
 
   outbigspf(:) = outbigspf(:) + inwork(:) - inwork2(:)
 
@@ -458,6 +464,7 @@ subroutine init_spfs(inspfs,numloaded)
   use pmpimod
   use pfileptrmod
   use ivopotmod
+  use twoemod
   implicit none
   DATATYPE :: inspfs(totpoints,numspf)
   DATATYPE,allocatable :: lanspfs(:,:),density(:), energies(:)
@@ -534,6 +541,9 @@ subroutine init_spfs(inspfs,numloaded)
      enddo
      call op_tinv(density,ivopot,1,1,null1,null2,null3,null4,null10)
      deallocate(density)
+
+     ivopot(:)=ivopot(:)+frozenreduced(:)*2
+
   endif
 
   allocate(lanspfs(totpoints,numcompute),energies(numcompute))
