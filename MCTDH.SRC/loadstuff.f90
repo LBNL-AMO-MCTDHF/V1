@@ -3,12 +3,13 @@
 
 subroutine save_vector(psi,afile,sfile)
   use parameters
+  use opmod !! frozenspfs
   use mpimod
   implicit none
   DATATYPE :: psi(psilength) 
   character :: afile*(*), sfile*(*)
   integer :: iprop,ispf
-  DATATYPE, allocatable :: parorbitals(:,:)
+  DATATYPE, allocatable :: parorbitals(:,:), parfrozen(:,:)
 
   if (myrank.ne.1.and.parorbsplit.ne.3) then
      OFLWR "   --> rank 1 will save. "; CFL
@@ -16,22 +17,28 @@ subroutine save_vector(psi,afile,sfile)
      if (parorbsplit.eq.3) then
         if (myrank.eq.1) then
            allocate(parorbitals(spfsize*nprocs,nspf)); parorbitals(:,:)=0d0
+           allocate(parfrozen(spfsize*nprocs,max(numfrozen,1))); parfrozen(:,:)=0d0
         else
-           allocate(parorbitals(1,nspf))
+           allocate(parorbitals(1,nspf), parfrozen(1,max(numfrozen,1)))
         endif
         
-
-        
         do ispf=1,nspf
-
-
 #ifdef REALGO
            call splitgatherv_real(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
 #else
            call splitgatherv_complex(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
 #endif
-
         enddo
+
+        if (numfrozen.gt.0) then
+           do ispf=1,numfrozen
+#ifdef REALGO
+              call splitgatherv_real(frozenspfs(:,ispf),parfrozen(:,ispf), .false.)
+#else
+              call splitgatherv_complex(frozenspfs(:,ispf),parfrozen(:,ispf), .false.)
+#endif
+           enddo
+        endif
 
      endif
      
@@ -43,9 +50,9 @@ subroutine save_vector(psi,afile,sfile)
         call spf_header_write(998,nspf+numfrozen)
         
         if (parorbsplit.eq.3) then
-           call write_spf(998,parorbitals(:,:),spfsize*nprocs)
+           call write_spf(998,parorbitals(:,:),parfrozen(:,:),spfsize*nprocs)
         else
-           call write_spf(998,psi(spfstart),spfsize)
+           call write_spf(998,psi(spfstart),frozenspfs(:,:),spfsize)
         endif
         close(998)
         
@@ -56,7 +63,7 @@ subroutine save_vector(psi,afile,sfile)
      endif
      
      if (parorbsplit.eq.3) then
-        deallocate(parorbitals)
+        deallocate(parorbitals,parfrozen)
      endif
   endif
 
@@ -71,17 +78,14 @@ end subroutine save_vector
 
 
 
-subroutine write_spf(unit,spfin,inspfsize)
+subroutine write_spf(unit,spfin,frozenin,inspfsize)
   use parameters
-  use opmod !! frozenspfs
   implicit none
   integer :: unit,inspfsize
-  DATATYPE :: allspf(inspfsize,nspf+numfrozen), spfin(inspfsize, nspf   )
+  DATATYPE :: allspf(inspfsize,nspf+numfrozen), spfin(inspfsize, nspf   ),&
+       frozenin(inspfsize, numfrozen)
   if (numfrozen.gt.0) then
-     if (inspfsize.ne.spfsize) then
-        OFLWR "AAACK SFFFRROZ"; CFLST
-     endif
-     allspf(:,1:numfrozen)=frozenspfs(:,:)
+     allspf(:,1:numfrozen)=frozenin(:,:)
   endif
   allspf(:,numfrozen+1:nspf+numfrozen) = spfin(:,:)
   write (unit) allspf
