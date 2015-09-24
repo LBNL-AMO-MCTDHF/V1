@@ -397,40 +397,38 @@ subroutine finalstats( )
   if (myrank.eq.1) then
      open(662, file=finalstatsfile, status="unknown")
 
-     write(662,*)
-     write(662,*)
+     write(662,*);     write(662,*)
+     write(662,*) "--- EXPECTATION VALUES PSI VECTORS ---"
+
+     write(662,*);     write(662,*)
      write(662,*) "  M expectation values psi vectors "
 
      do i=1,mcscfnum
         write(662,'(I10,2000F14.8)') i, mmatel(i,i)
      enddo
 
-     write(662,*)
-     write(662,*)
+     write(662,*);     write(662,*)
      write(662,*) "  M^2 expectation values psi vectors "
 
      do i=1,mcscfnum
         write(662,'(I10,2000F14.8)') i, m2matel(i,i)
      enddo
 
-     write(662,*)
-     write(662,*)
-     write(662,*) "  UG expectation values psi vectors "
+     write(662,*);     write(662,*)
+     write(662,*) "  inversion expectation values psi vectors "
 
      do i=1,mcscfnum
         write(662,'(I10,2000F14.8)') i, ugmatel(i,i)
      enddo
 
-     write(662,*)
-     write(662,*)
+     write(662,*);     write(662,*)
      write(662,*) "  X, Y, Z dipole expectation values psi vectors"
      do i=1,mcscfnum
         write(662,'(I10,2000F14.8)') i, xdipmatel(i,i), ydipmatel(i,i), zdipmatel(i,i)
      enddo
 
 
-     write(662,*)
-     write(662,*)
+     write(662,*);     write(662,*)
      write(662,*) "  X, Y, Z reflection expectation values psi vectors"
 
      do i=1,mcscfnum
@@ -438,9 +436,34 @@ subroutine finalstats( )
      enddo
 
 
+     write(662,*);     write(662,*)
+     write(662,*) "--- EXPECTATION VALUES ORBITALS ---"
 
-     write(662,*)
-     write(662,*)
+
+     write(662,*);     write(662,*)
+     write(662,*) "  inversion expectation values orbitals"
+     do i=1,nspf
+        write(662,'(I10,2000F14.8)') i, ugmat(i,i)
+     enddo
+
+     write(662,*);     write(662,*)
+     write(662,*) "  X,Y,Z dipole expectation values orbitals"
+     do i=1,nspf
+        write(662,'(I10,2000F14.8)') i,xdipmat(i,i),ydipmat(i,i),zdipmat(i,i)
+     enddo
+
+     write(662,*);     write(662,*)
+     write(662,*) "  X,Y,Z reflection expectation values orbitals "
+     do i=1,nspf
+        write(662,'(I10, 2000F14.8)') i,xrefmat(i,i),yrefmat(i,i),zrefmat(i,i)
+     enddo
+
+
+     write(662,*);     write(662,*)
+     write(662,*) "--- MATRIX ELEMENTS ---"
+
+
+     write(662,*);     write(662,*)
      write(662,*) "  M matrix elements "
 
      write(662,*) "--------------------------------"
@@ -464,9 +487,8 @@ subroutine finalstats( )
      enddo
 
 
-     write(662,*)
-     write(662,*)
-     write(662,*) "  UG matrix elements "
+     write(662,*);     write(662,*)
+     write(662,*) "  inversion matrix elements "
      write(662,*) "--------------------------------"
      write(662,*) "     ORBITALS    "
      write(662,*) "--------------------------------"
@@ -482,9 +504,7 @@ subroutine finalstats( )
         write(662,'(2000F14.8)') (ugmatel(i,j),j=1,mcscfnum)
      enddo
 
-
-     write(662,*)
-     write(662,*)
+     write(662,*);     write(662,*)
      write(662,*) "  Z dipole matrix elements "
      write(662,*) "--------------------------------"
      write(662,*) "     ORBITALS    "
@@ -501,9 +521,7 @@ subroutine finalstats( )
         write(662,'(2000F14.8)') (zdipmatel(i,j),j=1,mcscfnum)
      enddo
 
-
-     write(662,*)
-     write(662,*)
+     write(662,*);     write(662,*)
      write(662,*) "  Y dipole matrix elements "
      write(662,*) "--------------------------------"
      write(662,*) "     ORBITALS    "
@@ -520,9 +538,7 @@ subroutine finalstats( )
         write(662,'(2000F14.8)') (ydipmatel(i,j),j=1,mcscfnum)
      enddo
 
-
-     write(662,*)
-     write(662,*)
+     write(662,*);     write(662,*)
      write(662,*) "  X dipole matrix elements "
      write(662,*) "--------------------------------"
      write(662,*) "     ORBITALS    "
@@ -539,9 +555,7 @@ subroutine finalstats( )
         write(662,'(2000F14.8)') (xdipmatel(i,j),j=1,mcscfnum)
      enddo
 
-
-     write(662,*)
-     write(662,*)
+     write(662,*);     write(662,*)
      write(662,*) "  Z reflection matrix elements "
      write(662,*) "--------------------------------"
      write(662,*) "     ORBITALS    "
@@ -557,8 +571,7 @@ subroutine finalstats( )
      do i=1,mcscfnum
         write(662,'(2000F14.8)') (zrefmatel(i,j),j=1,mcscfnum)
      enddo
-     write(662,*)
-     write(662,*)
+     write(662,*);     write(662,*)
      write(662,*) "  Y reflection matrix elements "
      write(662,*) "--------------------------------"
      write(662,*) "     ORBITALS    "
@@ -574,8 +587,7 @@ subroutine finalstats( )
      do i=1,mcscfnum
         write(662,'(2000F14.8)') (yrefmatel(i,j),j=1,mcscfnum)
      enddo
-     write(662,*)
-     write(662,*)
+     write(662,*);     write(662,*)
      write(662,*) "  X reflection matrix elements "
      write(662,*) "--------------------------------"
      write(662,*) "     ORBITALS    "
