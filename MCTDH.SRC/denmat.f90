@@ -243,6 +243,53 @@ subroutine getdenmat0(avector, denmat, invdenmat, denvals, denvects, numpoints)
 end subroutine getdenmat0
 
 
+subroutine getoccupations(avector, numpoints, occupations)
+  use parameters
+  use walkmod
+  implicit none
+
+  integer,intent(in) ::  numpoints
+  CNORMTYPE, intent(out) :: occupations(nspf)
+  integer :: config1,  ispf,jspf,  iwalk,ii,idiag
+
+  DATATYPE, intent(in) :: avector(numconfig,numpoints)
+  DATATYPE :: a1
+
+  occupations(:)=0d0
+
+  do config1=botconfig,topconfig
+     do idiag=1,numsinglediagwalks(config1)
+        iwalk=singlediag(idiag,config1)
+
+        ispf=singlewalkopspf(1,iwalk,config1)  !! goes with config1
+        jspf=singlewalkopspf(2,iwalk,config1)  !! goes with config2
+
+        if (ispf.ne.jspf) then
+           OFLWR "ACK OCCUPATIONS TRAINING WHEELS FAIL"; CFLST
+        endif
+
+        do ii=1,numpoints
+           a1=avector(config1,ii)
+           occupations(ispf)=occupations(ispf) + a1*CONJUGATE(a1)
+           
+        enddo
+     enddo
+  enddo
+
+#ifndef REALGO
+#ifndef CNORMFLAG
+  call mympirealreduce(occupations,nspf)
+#else
+  call mympireduce(occupations,nspf)
+#endif
+#else
+  call mympireduce(occupations,nspf)
+#endif
+
+
+end subroutine getoccupations
+
+
 !!$subroutine getrdenmat()
 !!$  use parameters
 !!$  use xxxmod

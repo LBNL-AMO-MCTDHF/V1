@@ -250,6 +250,24 @@ subroutine mympireduce(input, isize)
 end subroutine mympireduce
 
 
+subroutine mympirealreduce(input, isize)
+  use mpimod
+  use fileptrmod
+  implicit none
+  integer :: ierr, isize
+  real*8,intent(inout) :: input(isize)
+  real*8 :: output(isize)           !! AUTOMATIC
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  ierr=0
+  call MPI_allreduce( input, output, isize, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD , ierr)
+  input=output
+  if (ierr/=0) then
+     OFLWR "ERR mympireduce!";   CFLST
+  endif
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+end subroutine mympirealreduce
+
+
 subroutine mympireduceto(input, output, isize, dest)
   use mpimod
   use fileptrmod
@@ -960,6 +978,14 @@ subroutine mympireduce(input, isize)
   return
   input(1)=input(1)
 end subroutine mympireduce
+
+subroutine mympirealreduce(input, isize)
+  implicit none
+  integer :: isize
+  real*8 :: input(isize)
+  return
+  input(1)=input(1)
+end subroutine mympirealreduce
 
 subroutine mympiireduce(input, isize)
   implicit none

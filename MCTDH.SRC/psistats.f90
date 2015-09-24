@@ -267,6 +267,7 @@ subroutine finalstats( )
        xrefmat(nspf,nspf), yrefmat(nspf,nspf), zrefmat(nspf,nspf),&
        dot,nullcomplex,dipoles(3),tempvector(numconfig,numr),&
        tempspfs(spfsize,nspf),tempspfs2(spfsize,nspf)
+  CNORMTYPE :: occupations(nspf,mcscfnum)
   DATAECS :: rvector(numr)
   integer :: i,j,imc,jmc
 
@@ -275,6 +276,10 @@ subroutine finalstats( )
   inavectors(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numconfig,numr,mcscfnum/))
 
   call get_orbmats( myspfs,  nspf,  ugmat,   xdipmat,ydipmat,zdipmat,   xrefmat,yrefmat,zrefmat)
+
+  do imc=1,mcscfnum
+     call getoccupations(inavectors(:,:,imc),numr,occupations(:,imc))
+  enddo
 
 !! M & U/G
 
@@ -460,7 +465,14 @@ subroutine finalstats( )
 
 
      write(662,*);     write(662,*)
-     write(662,*) "--- MATRIX ELEMENTS ---"
+     write(662,*) "--- ORBITAL OCCUPATIONS BY STATE ---"
+     write(662,'(A15,1000I15)') "Orbital State",(i,i=1,mcscfnum)
+     do i=1,nspf
+        write(662,'(I15,1000F15.10)') i, (occupations(i,j),j=1,mcscfnum)
+     enddo
+
+     write(662,*);     write(662,*)
+     write(662,*) "---------------- MATRIX ELEMENTS ------------------"
 
 
      write(662,*);     write(662,*)
