@@ -183,8 +183,7 @@ end subroutine quadspfs
 module aaonedmod
   implicit none
   integer, parameter :: ireduced=1
-  DATATYPE :: jacexpect=0.d0
-  DATATYPE :: quadexpect=0d0 !! ONLY FOR REPORTING ENERGY, NOT USED IN EQNS    no, used for rayleigh whichquad=1
+  DATATYPE :: quadexpect=0d0
   DATATYPE, allocatable :: jacaa(:,:), jacaamult(:,:)
   DATATYPE, allocatable :: bigconfigmatel(:,:), tempconfigmatel(:,:), jacaaproj(:,:), jacaaproj2(:,:), err(:)
   real*8, allocatable :: realconfigmatel(:,:,:,:)
@@ -329,7 +328,7 @@ subroutine aaonedinit(inavector)
      call dfrestrict(jacaamult, numr)
   endif
 
-  jacexpect=dot(jacaa,jacaamult,totadim);  quadexpect=dot(jacaa,jacaamult,totadim)/dot(jacaa,jacaa,totadim)
+  quadexpect=dot(jacaa,jacaamult,totadim)/dot(jacaa,jacaa,totadim)
 
 end subroutine aaonedinit
 
@@ -343,15 +342,6 @@ subroutine aaonedfinal
      deallocate(bigconfigmatel, tempconfigmatel, jacaaproj, jacaaproj2, realconfigmatel, ipiv, err)
   endif
 end subroutine
-
-
-function  fquadenergy()
-  use parameters
-  use aaonedmod
-  implicit none
-  DATATYPE :: fquadenergy
-  fquadenergy=quadexpect
-end function fquadenergy
 
 
 subroutine quadavector(inavector,jjcalls)
@@ -462,7 +452,6 @@ endif
 
   dev=abs(sqrt(hermdot(vector3,vector3,totadim)))
 
-!  OFLWR "     SPARSEQUAD: DEV,EXPECT", dev,quadexpect,jacexpect; CFL
   OFLWR "     SPARSEQUAD: DEV", dev; CFL
 
   thisaerror=min(0.1d0,max(sqrt(aerror),aerror/dev))

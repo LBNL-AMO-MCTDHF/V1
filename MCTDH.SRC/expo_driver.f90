@@ -761,8 +761,6 @@ recursive subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
 
   if (jacprojorth.ne.0) then
 
-     call noparorbsupport("jacprojorth dude!")
-
 !! Proj in always-orthogonal-derivative form,
 !!
 !!  P = sum_ij | prospf_i > (S^-1)_ij < prospf_j |
@@ -786,6 +784,8 @@ recursive subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
      enddo
 !$OMP END DO
 !$OMP END PARALLEL
+
+     call mympireduce(prodot,nspf**2)
 
 !prodot  (pro,der) x mydot (pro,in)   : pro is in;    in is out
 !
