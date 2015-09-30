@@ -785,7 +785,9 @@ recursive subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
 !$OMP END DO
 !$OMP END PARALLEL
 
+  if (parorbsplit.eq.3) then
      call mympireduce(prodot,nspf**2)
+  endif
 
 !prodot  (pro,der) x mydot (pro,in)   : pro is in;    in is out
 !
