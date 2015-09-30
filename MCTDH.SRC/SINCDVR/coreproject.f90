@@ -278,7 +278,9 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
      enddo
   enddo
 
-  call mympireduce(tempmatel,numfrozen**4)
+  if (orbparflag) then
+     call mympireduce(tempmatel,numfrozen**4)
+  endif
 
   csum=0d0
   do i=1,numfrozen*2
@@ -304,7 +306,9 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
 
   call MYGEMM(CNORMCHAR,'N',numfrozen,numfrozen, totpoints, DATAONE, infrozens, totpoints, tempmult, totpoints, DATAZERO, temppotmatel(:,:) ,numfrozen)
 
-  call mympireduce(temppotmatel,numfrozen**2)
+  if (orbparflag) then
+     call mympireduce(temppotmatel,numfrozen**2)
+  endif
 
   do i=1,numfrozen
      frozenpotdiag=frozenpotdiag+2*temppotmatel(i,i)
@@ -316,8 +320,10 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
 
   call MYGEMM(CNORMCHAR,'N',numfrozen,numfrozen, totpoints, DATAONE, infrozens(:,:), totpoints, tempmult(:,:), totpoints, DATAZERO, temppotmatel(:,:) ,numfrozen)
 
-  call mympireduce(temppotmatel,numfrozen**2)
-  
+  if (orbparflag) then
+     call mympireduce(temppotmatel,numfrozen**2)
+  endif
+
   frozenkediag=0d0
   do i=1,numfrozen
      frozenkediag=frozenkediag+2*temppotmatel(i,i)
