@@ -194,12 +194,6 @@
 #include "Definitions.INC"
 
 
-module twoemod
-  implicit none
-  DATATYPE, allocatable :: frozenreduced(:)
-end module twoemod
-
-
 subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,outorbparflag,multmanyflag) 
   use myparams
   use twoemod
