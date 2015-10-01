@@ -185,7 +185,7 @@ module aaonedmod
   integer, parameter :: ireduced=1
   DATATYPE :: quadexpect=0d0
   DATATYPE, allocatable :: jacaa(:,:), jacaamult(:,:)
-  DATATYPE, allocatable :: bigconfigmatel(:,:), tempconfigmatel(:,:), jacaaproj(:,:), jacaaproj2(:,:), err(:)
+  DATATYPE, allocatable :: bigconfigmatel(:,:), jacaaproj(:,:), jacaaproj2(:,:), err(:)
   real*8, allocatable :: realconfigmatel(:,:,:,:)
   integer, allocatable :: ipiv(:)
 #ifdef REALGO
@@ -304,7 +304,7 @@ subroutine aaonedinit(inavector)
 
 !  quadcalled=0
   if (sparseconfigflag.eq.0) then
-     allocate(bigconfigmatel(totadim,totadim), tempconfigmatel(totadim,totadim), jacaaproj(totadim,totadim), jacaaproj2(totadim,totadim), realconfigmatel(zzz,totadim,zzz,totadim), ipiv(zzz*totadim), err(totadim))
+     allocate(bigconfigmatel(totadim,totadim), jacaaproj(totadim,totadim), jacaaproj2(totadim,totadim), realconfigmatel(zzz,totadim,zzz,totadim), ipiv(zzz*totadim), err(totadim))
   endif
   allocate(jacaa(numconfig,numr), jacaamult(numconfig,numr))
 
@@ -339,7 +339,7 @@ subroutine aaonedfinal
   implicit none
   deallocate(jacaa, jacaamult) 
   if (sparseconfigflag.eq.0) then
-     deallocate(bigconfigmatel, tempconfigmatel, jacaaproj, jacaaproj2, realconfigmatel, ipiv, err)
+     deallocate(bigconfigmatel, jacaaproj, jacaaproj2, realconfigmatel, ipiv, err)
   endif
 end subroutine
 
@@ -481,11 +481,15 @@ endif
      vectortrspin(:,:)=TRANSPOSE(vectorspin(:,:))
      
      if (NEWFLAG==0) then
+        vector3trspin(:,:)=vectortrspin(:,:)    !! guess
         call dgsolve0( vectortrspin(:,spinstart), vector3trspin(:,spinstart), jjcalls, paraamult_transpose_spin,quadprecon,parquadpreconsub_transpose_spin, thisaerror,numr*(spinend-spinstart+1),maxaorder,1)
      else
-        smallvectortrspin(:,:)=0d0; smallvectortrspin(:,spinstart:spinend)=vectortrspin(:,spinstart:spinend)
+        smallvectortrspin(:,:)=0d0
+        smallvectortrspin(:,spinstart:spinend)=vectortrspin(:,spinstart:spinend)
+        smallvectortrspin2(:,:)=smallvectortrspin(:,:)    !! guess
         call dgsolve0( smallvectortrspin(:,:), smallvectortrspin2(:,:), jjcalls, paraamult_transpose_spin_padded,quadprecon,parquadpreconsub_transpose_spin_padded, thisaerror,numr*maxspinrank,maxaorder,1)
-        vector3trspin(:,:)=0d0; vector3trspin(:,spinstart:spinend)=smallvectortrspin2(:,spinstart:spinend)
+        vector3trspin(:,:)=0d0; 
+        vector3trspin(:,spinstart:spinend)=smallvectortrspin2(:,spinstart:spinend)
      endif
      
      call mpiallgather(vector3trspin(:,:),spintotrank*numr,allspinranks*numr,maxspinrank*numr)
@@ -495,11 +499,13 @@ endif
   else
      
      vectortr(:,:)=TRANSPOSE(vector(:,:))
-     
      if (NEWFLAG==0) then
+        vector3tr(:,:)=vectortr(:,:)               !! guess
         call dgsolve0( vectortr(:,botwalk), vector3tr(:,botwalk), jjcalls, paraamult_transpose,quadprecon,parquadpreconsub_transpose, thisaerror,numr*(topwalk-botwalk+1),maxaorder,1)
      else
-        smallvectortr(:,:)=0d0; smallvectortr(:,botwalk:topwalk)=vectortr(:,botwalk:topwalk)
+        smallvectortr(:,:)=0d0; 
+        smallvectortr(:,botwalk:topwalk)=vectortr(:,botwalk:topwalk)
+        smallvectortr2(:,:)=smallvectortr(:,:)     !! guess
         call dgsolve0( smallvectortr(:,:), smallvectortr2(:,:), jjcalls, paraamult_transpose_padded,quadprecon,parquadpreconsub_transpose_padded, thisaerror,numr*maxconfigsperproc,maxaorder,1)
         vector3tr(:,:)=0d0; vector3tr(:,botwalk:topwalk)=smallvectortr2(:,botwalk:topwalk)
      endif
