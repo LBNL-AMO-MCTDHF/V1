@@ -712,33 +712,33 @@ end subroutine biomatvec_nompi
 
 
 
-!! NOW for nat check, not biortho.  ONLY FOR DEBUG, HANGS.
-
-subroutine checkbio(origmo,mobio,abio,atmp)
-  use parameters
-  use configmod
-  implicit none
-  DATATYPE :: mobio(spfsize,nspf), origmo(spfsize,nspf), atmp(numconfig,numr), abio(numconfig,numr), checkoverlap, check1,check2
-  integer, save :: icalled=-1
-  real*8 :: err
-  icalled=icalled+1
-
-  OFLWR "SOMETHING IS UP.  BIOTRANSFORM DEFINITELY WORKS BUT CHECKBIO DOES NOT AGREE. AUTOCORRELATE_ONE LIKELY BROKEN."; CFLST
-
-  call openfile(); write(mpifileptr,*) "   .... check biortho perm " ; call closefile()
-
-  call permoverlaps(numr,numelec,spfsize,origmo,mobio,abio,atmp,checkoverlap,0,0.d-8,0.d-8,nspf,nspf,numconfig,numconfig,configlist,numelec*2,configlist,numelec*2,0,parorbsplit)
-  call permoverlaps(numr,numelec,spfsize,origmo,origmo,abio,abio,check1,0,0.d-8,0.d-8,nspf,nspf,numconfig,numconfig,configlist,numelec*2,configlist,numelec*2,0,parorbsplit)
-  call permoverlaps(numr,numelec,spfsize,mobio,mobio,atmp,atmp,check2,0,0.d-8,0.d-8,nspf,nspf,numconfig,numconfig,configlist,numelec*2,configlist,numelec*2,0,parorbsplit)
-
-  err=abs((checkoverlap-sqrt(check1*check2))/checkoverlap)
-  if (err.gt.1.d-7) then
-     OFLWR "Checkbio: FAIL ", checkoverlap,check1,check2,err,numconfig*numr; CFL
-  else
-     OFLWR "Checkbio: err",err; CFL
-  endif
-
-end subroutine checkbio
+!!$  !! NOW for nat check, not biortho.  ONLY FOR DEBUG, HANGS.
+!!$  
+!!$  subroutine checkbio(origmo,mobio,abio,atmp)
+!!$    use parameters
+!!$    use configmod
+!!$    implicit none
+!!$    DATATYPE :: mobio(spfsize,nspf), origmo(spfsize,nspf), atmp(numconfig,numr), abio(numconfig,numr), checkoverlap, check1,check2
+!!$    integer, save :: icalled=-1
+!!$    real*8 :: err
+!!$    icalled=icalled+1
+!!$  
+!!$    OFLWR "SOMETHING IS UP.  BIOTRANSFORM DEFINITELY WORKS BUT CHECKBIO DOES NOT AGREE. AUTOCORRELATE_ONE LIKELY BROKEN."; CFLST
+!!$  
+!!$    call openfile(); write(mpifileptr,*) "   .... check biortho perm " ; call closefile()
+!!$  
+!!$    call permoverlaps(numr,numelec,spfsize,origmo,mobio,abio,atmp,checkoverlap,0,0.d-8,0.d-8,nspf,nspf,numconfig,numconfig,configlist,numelec*2,configlist,numelec*2,0,parorbsplit)
+!!$    call permoverlaps(numr,numelec,spfsize,origmo,origmo,abio,abio,check1,0,0.d-8,0.d-8,nspf,nspf,numconfig,numconfig,configlist,numelec*2,configlist,numelec*2,0,parorbsplit)
+!!$    call permoverlaps(numr,numelec,spfsize,mobio,mobio,atmp,atmp,check2,0,0.d-8,0.d-8,nspf,nspf,numconfig,numconfig,configlist,numelec*2,configlist,numelec*2,0,parorbsplit)
+!!$  
+!!$    err=abs((checkoverlap-sqrt(check1*check2))/checkoverlap)
+!!$    if (err.gt.1.d-7) then
+!!$       OFLWR "Checkbio: FAIL ", checkoverlap,check1,check2,err,numconfig*numr; CFL
+!!$    else
+!!$       OFLWR "Checkbio: err",err; CFL
+!!$    endif
+!!$  
+!!$  end subroutine checkbio
 
 
 !! OLD OLD OLD
