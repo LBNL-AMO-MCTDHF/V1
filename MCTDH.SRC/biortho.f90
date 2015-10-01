@@ -645,42 +645,6 @@ end subroutine parbiomatvec_transpose
 !! the config and walk mod objects are pointers to the configlist and singlewalk arrays 
 !! that were passed to biortho when it was called this time
 
-subroutine biomatvec(x,y)
-  use matvecsetmod
-  use biomatvecmod
-  use walkmod
-  use parameters
-  implicit none
-  integer :: i,j
-  DATATYPE :: x(numconfig,biopointer%bionr),y(numconfig,biopointer%bionr),ytr(biopointer%bionr,numconfig)
-
-  y(:,:)=0d0
-
-  do i=botwalk,topwalk
-!!$     tmpval=0d0
-!!$removed 09-2016 simple walks
-!!$     do j=1,numelec
-!!$        tmpval = tmpval + biopointer%smo(configlist((j-1)*2+1,i),configlist((j-1)*2+1,i))
-!!$     enddo
-     y(i,:)=0    !!$tmpval*x(i,:)
-     do j=1,numsinglewalks(i) !! summing over nonconjugated second index in s(:), good -- s(i,j) is ln(<i|j>) correct?
-        y(i,:) = y(i,:) + biopointer%smo(singlewalkopspf(1,j,i),singlewalkopspf(2,j,i)) * singlewalkdirphase(j,i) * x(singlewalk(j,i),:) 
-     enddo
-  enddo
-
-  if (sparseconfigflag.ne.0) then
-     ytr(:,:)=TRANSPOSE(y)
-     call mpiallgather(ytr,numconfig*biopointer%bionr,configsperproc*biopointer%bionr,maxconfigsperproc*biopointer%bionr)
-     y=TRANSPOSE(ytr)
-  endif
-
-!!!!  call mympireduce(y,numconfig*biopointer%bionr)
-
-
-
-end subroutine biomatvec
-
-
 
 
 
