@@ -313,13 +313,6 @@ subroutine get_dfconstraint(time)
 
   call system_clock(itime)
 
-!!$!! CHECK...  maybe leave this.  smallwalkvects.  ... commented out 07-2015
-!!$  do i=1,numdfwalks
-!!$     if (dfwalkto(i).lt.botwalk.or.dfwalkto(i).gt.topwalk) then
-!!$        OFLWR "ARGCHECK.", i,dfwalkto(i),botwalk,topwalk; CFLST
-!!$     endif
-!!$  enddo
- 
   if (dfrestrictflag.lt.1) then
      OFLWR "WTF DFRESTRICT IS  ", dfrestrictflag; CFLST
   endif
@@ -489,18 +482,6 @@ subroutine get_dfconstraint(time)
         call DGEMM('N','T',2*zzz*isize,zzz*isize,zzz*nspf**2,1d0,temppairsbig,2*zzz*isize,&
              projector,zzz*isize,0d0,rhomatpairsbig,2*zzz*isize)
 
-!        rhomatpairs(:,:,:,:)= &
-!             RESHAPE(MATMUL(MATMUL(RESHAPE(projector(:,:,:,:,:),(/zzz*isize,zzz*nspf**2/)), &
-!             RESHAPE(realrhomat,(/zzz*nspf**2,zzz*nspf**2/))), &
-!             TRANSPOSE(RESHAPE(projector,(/zzz*isize,zzz*nspf**2/)))), &
-!             (/zzz,isize,zzz,isize/))
-        
-!        rhomatpairsbig(:,:,:,:)= &
-!             RESHAPE(MATMUL(MATMUL(RESHAPE(bigprojector(:,:,:,:,:),(/2*zzz*isize,zzz*nspf**2/)), &
-!             RESHAPE(realrhomat,(/zzz*nspf**2,zzz*nspf**2/))), &
-!             TRANSPOSE(RESHAPE(projector,(/zzz*isize,zzz*nspf**2/)))), &
-!             (/zzz,2*isize,zzz,isize/))
-
         call system_clock(jtime);        times(8)=times(8)+jtime-itime;     itime=jtime
         
         if (iiyy.eq.1) then
@@ -578,7 +559,6 @@ subroutine get_dfconstraint(time)
 
         call checksym(rhomatpairscopy,isize*zzz)
 
-
         call realinvmatsmooth(rhomatpairscopy,isize*zzz,lioreg)
         call dgemv('N',isize*zzz,isize*zzz,1d0,rhomatpairscopy,isize*zzz,rhspairstemp,1,0d0,rhspairs,1)
 
@@ -632,15 +612,6 @@ subroutine get_dfconstraint(time)
 
   enddo
 
-!  OFL;write(mpifileptr,'(A20,100E13.4)') "CONMATEL::::: ", &
-!       abs(dot_product(RESHAPE(yyy%cptr(0)%xconmatel(:,:),(/nspf**2/)), &
-!       RESHAPE(yyy%cptr(0)%xconmatel(:,:),(/nspf**2/)))), &
-!       abs(dot_product(RESHAPE(yyy%cptr(0)%xconmatelxx(:,:),(/nspf**2/)), &
-!       RESHAPE(yyy%cptr(0)%xconmatelxx(:,:),(/nspf**2/)))), &
-!       abs(dot_product(RESHAPE(yyy%cptr(0)%xconmatelzz(:,:),(/nspf**2/)), &
-!       RESHAPE(yyy%cptr(0)%xconmatelzz(:,:),(/nspf**2/)))); CFL
-
-
   deallocate(&
        avectorp,   avector,         avectorptrans,  avectortrans,  &
        smallwalkvects,         rhs,          rhomat,  &
@@ -668,21 +639,12 @@ subroutine get_rhomat(avector, rhomat,howmany)
   integer ::    i,      ii,ix,howmany
   DATATYPE ::  avector(numconfig,howmany), rhomat(nspf,nspf,nspf,nspf)
   DATATYPE, allocatable ::  avectortrans(:,:), &
-       smallwalkvects(:,:,:,:)   !! numconfig,howmany,alpha,beta  alpha=included beta=excluded
-
-
-!! CHECK...  maybe leave this.  smallwalkvects.  
-  do i=1,numdfwalks
-     if (dfwalkto(i).lt.botwalk.or.dfwalkto(i).gt.topwalk) then
-        OFLWR "ARGCHECK.", i,dfwalkto(i),botwalk,topwalk; CFLST
-     endif
-  enddo
+       smallwalkvects(:,:,:,:)   !! howmany,botwalk:topwalk,alpha,beta  alpha=included beta=excluded
 
   if (dfrestrictflag.lt.1) then
      OFLWR "WTF DFRESTRICT IS  ", dfrestrictflag; CFLST
   endif
 
-  
   allocate( avectortrans(howmany,numconfig),       smallwalkvects(howmany,botwalk:topwalk,nspf,nspf))
   
   avectortrans(:,:)=TRANSPOSE(avector(:,:))
@@ -693,26 +655,15 @@ subroutine get_rhomat(avector, rhomat,howmany)
      ii=includedorb(i);     ix=excludedorb(i)
      smallwalkvects(:,dfwalkto(i),ii,ix)=smallwalkvects(:,dfwalkto(i),ii,ix) + avectortrans(:,dfwalkfrom(i)) * dfwalkphase(i)
   enddo
-        
   
   ii=(topwalk-botwalk+1)*numr
   call MYGEMM(CNORMCHAR,'N',nspf**2,nspf**2,ii,DATAONE,smallwalkvects,ii,smallwalkvects,ii,DATAZERO,rhomat,nspf**2)
-
-!  rhomat(:,:,:,:)=0d0
-!  do i=1,nspf
-!     do j=1,nspf
-!        do k=1,nspf     
-!           do l=1,nspf
-!              rhomat(i,j,k,l)=dot(smallwalkvects(:,:,i,j),smallwalkvects(:,:,k,l),(topwalk-botwalk+1)*howmany)
-!           enddo
-!        enddo
-!     enddo
-!  enddo
 
   if (sparseconfigflag.ne.0) then
      call mympireduce(rhomat,nspf**4)  !! BAD REDUCE
   endif
   
+  deallocate( avectortrans,smallwalkvects )
 
 end subroutine get_rhomat
 
