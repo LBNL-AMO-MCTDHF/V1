@@ -489,6 +489,8 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
 
   call mympibcast(myavectors(:,:,:),1,numconfig*numr*mynumvects)
 
+  deallocate(readavectors)
+
 end subroutine load_avectors
 
 
