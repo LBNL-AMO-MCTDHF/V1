@@ -323,7 +323,7 @@ subroutine abio_sparse(abio,aout,inbiovar)
 
 !!  if (mod(icalled,4000)==0.and.iwsp(4).eq.1) then
   if (mod(icalled,20)==0.and.iwsp(4).eq.1) then
-     inbiovar%thisbiodim=max(min(2,inbiovar%biomaxdim),inbiovar%thisbiodim-1)
+     inbiovar%thisbiodim=max(min(4,inbiovar%biomaxdim),inbiovar%thisbiodim-1)
   endif
   if (iwsp(4).gt.1) then
      inbiovar%thisbiodim=min(inbiovar%thisbiodim+2, inbiovar%biomaxdim)
