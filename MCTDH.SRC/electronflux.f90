@@ -345,19 +345,23 @@ subroutine fluxgtau(alg)
 
 !! only do this after we are sure we've gone through every bra
            if (brabat.eq.ketbat) then
-              if (notiming.ne.2) then
-                 OFL
-                 write(mpifileptr,'(A28,F10.4)') " Timing statistics as of T= ",real(curtime,8)*dt
-                 write(mpifileptr,'(100A10)') "Times: ", "All", "Read","Biorth", "One-e", "Two-e", "Fluxeval", "FT gtau"
-                 write(mpifileptr,'(A10,100I10)') " ", times(1:7)/100; CFL
-              endif
               if (myrank.eq.1) then
                  open(454, file="Dat/KVLsum.dat", status="old", position="append")
                  write(454,'(I5,100F18.12)') curtime, curtime*dt, gtau(0,:);    
                  close(454)
               endif
            endif
+
         enddo !! do kettime
+
+        if (brabat.eq.ketbat) then
+           if (notiming.ne.2) then
+              OFL
+              write(mpifileptr,'(A28,F10.4)') " Timing statistics as of T= ",real(curtime,8)*dt
+              write(mpifileptr,'(100A10)') "Times: ", "All", "Read","Biorth", "One-e", "Two-e", "Fluxeval", "FT gtau"
+              write(mpifileptr,'(A10,100I10)') " ", times(1:7)/100; CFL
+           endif
+        endif
      enddo !! do brabat
   enddo !! do ketbat
 
