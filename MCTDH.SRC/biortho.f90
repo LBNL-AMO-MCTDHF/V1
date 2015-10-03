@@ -298,8 +298,10 @@ subroutine abio_sparse(abio,aout,inbiovar)
   call DGEXPVxxx2(2*ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec_transpose,itrace,iflag,biofileptr,tempstepsize,realpardotsub,2*maxconfigsperproc*nprocs*inbiovar%bionr)    !! 2*numconfig*inbiovar%bionr)
   lwsp=lwsp/2
 #endif
-  if(iflag.ne.0) then
-     print *, "Stopping due to bad iflag in sparsebiortho: ",iflag;     call mpistop()
+  if(iflag.eq.1) then
+     OFLWR "Solution did not converge in sparsebiortho - TEMP CONTINUE",iflag,tol,inbiovar%thisbiodim,inbiovar%biomaxdim,maxbiodim; CFL
+  elseif(iflag.ne.0) then
+     OFLWR "Stopping due to bad iflag in sparsebiortho: ",iflag,tol,inbiovar%thisbiodim,inbiovar%biomaxdim,maxbiodim; CFLST
   endif
   aouttr(:,:)=0d0
   aouttr(:,botwalk:topwalk)=smallvectorout(:,1:topwalk-botwalk+1)
