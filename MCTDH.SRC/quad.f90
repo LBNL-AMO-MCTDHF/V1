@@ -794,7 +794,7 @@ recursive subroutine parquadpreconsub_transpose_spin_padded(nullint,inavectortrs
   implicit none
   integer :: nullint
   DATATYPE :: inavectortrspin(numr,maxspinrank), outavectortrspin(numr,maxspinrank)
-  outavectortrspin(:,:)=outavectortrspin(:,:)  !! MUST BE FULL RANK
+  outavectortrspin(:,:)=inavectortrspin(:,:)  !! MUST BE FULL RANK
   call parquadpreconsub_transpose_spin(nullint,inavectortrspin,outavectortrspin)
 end subroutine parquadpreconsub_transpose_spin_padded
 
