@@ -147,7 +147,6 @@ use configptrmod
        pot(:), &                     !!  One-e potential
        halfniumpot(:)                     !!  One-e potential
 
-  integer :: frozenalloced=0
   DATATYPE, allocatable :: frozenspfs(:,:)
   DATATYPE :: frozenpotdiag=0d0  !! potential matrix element
   DATATYPE :: frozenkediag=0d0  !! ke matrix element
@@ -595,12 +594,8 @@ subroutine opalloc()
   allocate(   pot(spfsize),  halfniumpot(spfsize) )
   pot(:)=0; halfniumpot(:)=0
 
-  if (numfrozen.gt.0) then
-     if (frozenalloced.eq.0) then
-        allocate(frozenspfs(spfsize,numfrozen));        frozenalloced=1
-        frozenspfs(:,:)=0
-     endif
-  endif
+  allocate(frozenspfs(spfsize,max(1,numfrozen)))
+  frozenspfs(:,:)=0
 
 end subroutine opalloc
 
