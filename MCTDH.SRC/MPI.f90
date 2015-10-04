@@ -935,6 +935,20 @@ end subroutine mympimin
 
 
 
+SUBROUTINE MYGATHERV(V1,X1,BLOCKS,bcastflag)
+  IMPLICIT NONE
+  logical, intent(in) :: bcastflag
+  INTEGER, INTENT(IN) :: BLOCKS(1)
+  DATATYPE, INTENT(IN) :: V1(blocks(1))
+  DATATYPE, INTENT(OUT) :: X1(blocks(1))
+  logical :: ilog
+  X1(:)=V1(:)
+  return
+  ilog=bcastflag   !!avoid warn unused
+END SUBROUTINE MYGATHERV
+
+
+
 SUBROUTINE MYGATHERV_complex(V1,X1,BLOCKS,bcastflag)
   IMPLICIT NONE
   logical, intent(in) :: bcastflag
@@ -962,6 +976,15 @@ SUBROUTINE MYGATHERV_real(V1,X1,BLOCKS,bcastflag)
 END SUBROUTINE MYGATHERV_real
 
 
+
+
+SUBROUTINE MYSCATTERV(X1,V1,BLOCKS)
+  IMPLICIT NONE
+  INTEGER, INTENT(IN) :: BLOCKS(1)
+  DATATYPE, INTENT(OUT) :: V1(blocks(1))
+  DATATYPE, INTENT(IN) :: X1(blocks(1))
+  V1(:)=X1(:)
+END SUBROUTINE MYSCATTERV
 
 
 SUBROUTINE MYSCATTERV_complex(X1,V1,BLOCKS)
