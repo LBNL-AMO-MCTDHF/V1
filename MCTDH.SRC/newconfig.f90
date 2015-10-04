@@ -80,12 +80,7 @@ function newgetconfiguration(thisconfig)
      flag=1
      do k=1,numelec
 
-
-!!NEWCONFIGFLAG        if (newconfigflag.ne.0) then
-           aa=configlist(2*k-1,j);        bb=thisconfig(2*k-1)
-!!NEWCONFIGFLAG        else
-!!NEWCONFIGFLAG           aa=iind(configlist(2*k-1:2*k,j));        bb=iind(thisconfig(2*k-1:2*k))
-!!NEWCONFIGFLAG        endif
+        aa=configlist(2*k-1,j);        bb=thisconfig(2*k-1)
 
         if (aa .ne. bb) then
            flag=0
@@ -112,7 +107,8 @@ function newgetconfiguration(thisconfig)
 
      ii=j
 
-!! DON'T HAVE MAXSPINSETSIZE YET.     do j=max(1,ii-maxspinsetsize),min(numconfig,ii+maxspinsetsize)
+!!$   DON'T HAVE MAXSPINSETSIZE YET.
+!!$   otherwise would be do j=max(1,ii-maxspinsetsize),min(numconfig,ii+maxspinsetsize)
 
      kk=(-1); flag1=0; flag2=0
      do while (flag1.eq.0.or.flag2.eq.0)
@@ -141,9 +137,9 @@ function newgetconfiguration(thisconfig)
            endif
         enddo
      enddo
-
+     OFLWR
      call printconfig(thisconfig)
-     OFLWR "NEWGETCONFIG NEWCONFIG ERROR"; CFLST
+     WRFL "NEWGETCONFIG NEWCONFIG ERROR"; CFLST
 
 end function newgetconfiguration
 
@@ -327,8 +323,6 @@ end function getugval
 !! GETS CONFIGURATION LIST (SLATER DETERMINANTS NOT SPIN EIGFUNCTS)
 !!  AT BEGINNING. 
 
-
-
 subroutine fast_newconfiglist(alreadycounted)
   use parameters
   use configmod
@@ -370,20 +364,6 @@ subroutine fast_newconfiglist(alreadycounted)
   if (orderflag.eq.1) then
      OFLWR "orderflag 1 not supported for fastconfig (would be trivial, a simplification, no sort I think)"; CFLST
   endif
-
-!!$ no, is ok, still using allowedconfig.
-!!$  if (vexcite.ne.99) then
-!!$     OFLWR "Vexcite not quite done for fastconfig"; CFLST
-!!$  endif
-!!$  if (mrestrictflag.ne.0.or.ugrestrictflag.ne.0.or.mrestrictmin.gt.-99999.or.mrestrictmax.lt.99999) then
-!!$     OFLWR "Can't use mrestrictflag nor ugrestrictflag with fastconfig   nor mrestrictmin/max"; CFLST
-!!$  endif
-!!$  do ii=1,numshells
-!!$     if ((minocc(ii).gt.0).or.(maxocc(ii).lt.2*(allshelltop(ii)-allshelltop(ii-1)))) then
-!!$        OFLWR "can't use minocc or maxocc with fastconfig"; CFLST
-!!$     endif
-!!$  enddo
-
 
   if (alreadycounted) then
      OFLWR "Go fast_newconfiglist, getting configurations";CFL
@@ -457,12 +437,6 @@ subroutine fast_newconfiglist(alreadycounted)
      upperarr(ii)=nspf+1-lowerarr(numelec+1-ii)
   enddo
 
-
-!  do ii=1,numelec
-!     lowerarr(ii)=(ii+1)/2
-!     upperarr(ii)=nspf-(numelec-ii)/2
-!  enddo
-
   do ii=numelec+3,max_numelec
      upperarr(ii)=1000000+ii-numelec+2
      lowerarr(ii)=1000000+ii-numelec+2
@@ -529,20 +503,12 @@ subroutine fast_newconfiglist(alreadycounted)
 
   enddo
 
-!!$  OFLWR "Numexcite, mynumexcite"
-!!$  do ishell=1,numshells
-!!$     WRFL ishell,numexcite(ishell),mynumexcite(ishell)
-!!$  enddo
-!!$  CFL
-     
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   kk=0
   do ishell=1,numshells
      mm=2*allshelltop(ishell)-min(mynumexcite(ishell),2*nspf-numelec)
      do jj=kk+1,mm
-
-!!        upperarr(jj)=allshelltop(ishell)-(mm-jj)/2
 
         upperarr(jj)=min(upperarr(jj),allshelltop(ishell)-(mm-jj)/2)
 
@@ -807,15 +773,6 @@ endif
   enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo
   enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo
 
-!  if (alreadycounted) then
-!     OFLWR "BIGSPINCHECK"
-!     do ii=1,numspinblocks
-!        WRFL bigspinblockstart(ii),bigspinblockend(ii)
-!     enddo
-!     WRFL "TEMPSTOP"; CFLST
-!  endif
-
-
 
   if (alreadycounted) then
      if (iconfig/=numconfig) then
@@ -835,16 +792,6 @@ endif
      if (nss.ne.numspinblocks) then
         OFLWR "NUMSPINBLOCKS ERR",nss,numspinblocks; CFLST
      endif
-!     bigspinblockend(numspinblocks)=numconfig
-!     do ii=1,numspinblocks-1
-!        bigspinblockend(ii)=bigspinblockstart(ii+1)-1
-!     enddo
-
-!!$ 06-2015
-!!$     if (sparseconfigflag.eq.0) then
-!!$        allbotconfigs=1
-!!$        alltopconfigs=numconfig
-!!$     else
 
      allocate(alltopconfigs(nprocs),allbotconfigs(nprocs))
 
@@ -862,22 +809,16 @@ endif
         allbotconfigs(ii)=alltopconfigs(ii-1)+1
      enddo
      
-!!$     endif
-
      OFLWR; WRFL "BOTWALKS /TOPWALKS",numconfig
      do ii=1,nprocs
         WRFL allbotconfigs(ii),alltopconfigs(ii),alltopconfigs(ii)-allbotconfigs(ii)+1
      enddo
      WRFL; CFL
      do ii=1,nprocs     
-!! WOULD BE NICE BUT NO, NO +1 - canNOT be bot=1,top=0 for range=0.  range not negative. RANGE POSITIVE
-!! would be nice        if (allbotconfigs(ii).gt.alltopconfigs(ii)+1) then     ...or not
         if (allbotconfigs(ii).gt.alltopconfigs(ii)+1) then   
            OFLWR "ERROR, NUMBER OF CONFIGS PROCESSOR ",ii," IS LESS THAN ZERO", alltopconfigs(ii)-allbotconfigs(ii)+1 ;CFLST
         endif
      enddo
-
-!!$ 06-2015: now have botconfig topconfig:
 
      botconfig=allbotconfigs(myrank)
      topconfig=alltopconfigs(myrank)
@@ -890,19 +831,13 @@ endif
         topwalk=topconfig
      endif
 
-!! 06-2015 moved this here from walkalloc
-     
      allocate(configsperproc(nprocs))
 
      configsperproc(:)=alltopconfigs(:) - allbotconfigs(:) + 1
 
-!!$ 06-2015     configsperproc(myrank)=topwalk-botwalk+1
-
      ii=0
      maxconfigsperproc=0
      do i=1,nprocs
-
-!!$ 06-2015        call mympiibcast(configsperproc(i),i,1)
 
         ii=ii+configsperproc(i)
         if (configsperproc(i).gt.maxconfigsperproc) then
@@ -917,8 +852,6 @@ endif
            OFLWR "Configs per proc lt 0 for proc ",i,"nprocs must be greater than numconfig???  Can't do."; CFLST
         endif
      enddo
-
-!!$ end 06-2015
 
   else
      numspinblocks=nss
@@ -935,8 +868,6 @@ endif
      enddo
      WRFL; CFLST
   endif
-
-        
   
 
 contains
