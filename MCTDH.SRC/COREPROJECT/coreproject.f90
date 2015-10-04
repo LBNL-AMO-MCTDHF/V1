@@ -1750,6 +1750,14 @@ subroutine bigdimsub(localdims,alldims)
 end subroutine bigdimsub
 
 
+subroutine splitscatterv(inbig,outlocal)
+  use myparams
+  implicit none
+  integer :: inbig,outlocal
+  OFLWR "What? don't call split gather/scatter routines for atom/diatom.  Programmer fail"; CFLST
+  inbig=outlocal
+end subroutine splitscatterv
+
 subroutine splitscatterv_complex(inbig,outlocal)
   use myparams
   implicit none
@@ -1766,6 +1774,16 @@ subroutine splitscatterv_real(inbig,outlocal)
   inbig=outlocal
 end subroutine splitscatterv_real
 
+subroutine splitgatherv(inbig,outlocal,ilog)
+  use myparams
+  implicit none
+  logical :: ilog
+  integer :: inbig,outlocal
+  OFLWR "What? don't call split gather/scatter routines for atom/diatom.  Programmer fail"; CFLST
+  inbig=outlocal
+  ilog=.true.
+end subroutine splitgatherv
+
 subroutine splitgatherv_complex(inbig,outlocal,ilog)
   use myparams
   implicit none
@@ -1775,7 +1793,6 @@ subroutine splitgatherv_complex(inbig,outlocal,ilog)
   inbig=outlocal
   ilog=.true.
 end subroutine splitgatherv_complex
-
 
 subroutine splitgatherv_real(inbig,outlocal,ilog)
   use myparams

@@ -1860,6 +1860,45 @@ end subroutine reinterpolate_orbs_real
 
 !! For good loading boxes and pencils... also need for improvements to getinverse
 
+subroutine splitgatherv(inlocal,outbig,bcastflag)
+  use pmpimod
+  use myparams
+  implicit none
+  logical,intent(in) :: bcastflag
+  DATATYPE, intent(in) :: inlocal(numpoints(1),numpoints(2),numpoints(3))
+  DATATYPE, allocatable :: ingather(:,:,:,:,:,:)
+  DATATYPE, intent(out) :: outbig(numpoints(1),procsplit(1),numpoints(2),procsplit(2),numpoints(3),procsplit(3))
+  integer :: qqblocks(nprocs)
+  integer :: ii,jj,kk
+
+  if (myrank.eq.1) then
+     allocate(ingather(numpoints(1),numpoints(2),numpoints(3),procsplit(1),procsplit(2),procsplit(3)))
+  else
+     allocate(ingather(1,1,1,1,1,1))
+  endif
+
+  qqblocks(:)=totpoints
+  call mygatherv(inlocal,ingather,qqblocks,.false.)
+
+  if (myrank.eq.1) then
+     do ii=1,procsplit(3)
+     do jj=1,procsplit(2)
+     do kk=1,procsplit(1)
+        outbig(:,kk,:,jj,:,ii) = ingather(:,:,:,kk,jj,ii)
+     enddo
+     enddo
+     enddo
+  endif
+
+  deallocate(ingather)
+
+  if (bcastflag) then
+     call mympibcast(outbig,1,totpoints*nprocs)
+  endif
+
+end subroutine splitgatherv
+
+
 subroutine splitgatherv_real(inlocal,outbig,bcastflag)
   use pmpimod
   use myparams
@@ -1936,9 +1975,44 @@ subroutine splitgatherv_complex(inlocal,outbig,bcastflag)
      call mympicomplexbcast(outbig,1,totpoints*nprocs)
   endif
 
-
 end subroutine splitgatherv_complex
 
+
+
+subroutine splitscatterv(inbig,outlocal)
+  use pmpimod
+  use myparams
+  implicit none
+  DATATYPE, intent(out) :: outlocal(numpoints(1),numpoints(2),numpoints(3))
+  DATATYPE, allocatable :: inscatter(:,:,:,:,:,:)
+  DATATYPE, intent(in) :: inbig(numpoints(1),procsplit(1),numpoints(2),procsplit(2),numpoints(3),procsplit(3))
+  integer :: qqblocks(nprocs)
+  integer :: ii,jj,kk
+
+  if (myrank.eq.1) then
+     allocate(inscatter(numpoints(1),numpoints(2),numpoints(3),procsplit(1),procsplit(2),procsplit(3)))
+
+     do ii=1,procsplit(3)
+     do jj=1,procsplit(2)
+     do kk=1,procsplit(1)
+        inscatter(:,:,:,kk,jj,ii)=inbig(:,kk,:,jj,:,ii)
+     enddo
+     enddo
+     enddo
+  else
+     allocate(inscatter(1,1,1,1,1,1))
+  endif
+
+  call mpibarrier()
+
+  qqblocks(:)=totpoints
+  call myscatterv(inscatter,outlocal,qqblocks)
+
+  call mpibarrier()
+
+  deallocate(inscatter)
+
+end subroutine splitscatterv
 
 
 subroutine splitscatterv_real(inbig,outlocal)

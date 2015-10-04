@@ -23,20 +23,12 @@ subroutine save_vector(psi,afile,sfile)
         endif
         
         do ispf=1,nspf
-#ifdef REALGO
-           call splitgatherv_real(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
-#else
-           call splitgatherv_complex(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
-#endif
+           call splitgatherv(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
         enddo
 
         if (numfrozen.gt.0) then
            do ispf=1,numfrozen
-#ifdef REALGO
-              call splitgatherv_real(frozenspfs(:,ispf),parfrozen(:,ispf), .false.)
-#else
-              call splitgatherv_complex(frozenspfs(:,ispf),parfrozen(:,ispf), .false.)
-#endif
+              call splitgatherv(frozenspfs(:,ispf),parfrozen(:,ispf), .false.)
            enddo
         endif
 

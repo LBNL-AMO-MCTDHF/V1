@@ -769,6 +769,22 @@ subroutine getgatherv_stuff(blocks,parsize,blockstart)
 end subroutine getgatherv_stuff
 
 
+SUBROUTINE MYGATHERV(V1,X1,BLOCKS,bcastflag)
+  use mpimod
+  IMPLICIT NONE
+  logical, intent(in) :: bcastflag
+  INTEGER, INTENT(IN) :: BLOCKS(nprocs)
+  DATATYPE, INTENT(IN) :: V1(blocks(myrank))
+  DATATYPE, INTENT(OUT) :: X1(*)
+#ifdef REALGO
+  call mygatherv_real(v1,x1,blocks,bcastflag)
+#else
+  call mygatherv_complex(v1,x1,blocks,bcastflag)
+#endif
+
+END SUBROUTINE MYGATHERV
+
+
 SUBROUTINE MYGATHERV_complex(V1,X1,BLOCKS,bcastflag)
   use mpimod
   IMPLICIT NONE
@@ -828,6 +844,19 @@ SUBROUTINE MYGATHERV_real(V1,X1,BLOCKS,bcastflag)
 END SUBROUTINE MYGATHERV_real
 
 
+
+SUBROUTINE MYSCATTERV(X1,V1,BLOCKS)
+  use mpimod
+  IMPLICIT NONE
+  INTEGER, INTENT(IN) :: BLOCKS(nprocs)
+  DATATYPE, INTENT(OUT) :: V1(blocks(myrank))
+  DATATYPE, INTENT(IN) :: X1(*)
+#ifdef REALGO
+  call myscatterv_real(x1,v1,blocks)
+#else
+  call myscatterv_complex(x1,v1,blocks)
+#endif
+end SUBROUTINE MYSCATTERV
 
 
 SUBROUTINE MYSCATTERV_complex(X1,V1,BLOCKS)
