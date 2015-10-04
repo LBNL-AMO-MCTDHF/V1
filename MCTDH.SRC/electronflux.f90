@@ -238,16 +238,6 @@ subroutine fluxgtau(alg)
                        reke(k,i) = dot(mobio(:,k),rekeop(:,i),spfsize)
                        repe(k,i) = dot(mobio(:,k),repeop(:,i),spfsize)
                     endif
-
-!!$                    if (tdflag.ne.0) then
-!!$                       zdip(k,i) = dot(mobio(:,k),zdipop(:,i),spfsize)
-!!$                       xydip(k,i) = dot(mobio(:,k),xydipop(:,i),spfsize)
-!!$                       if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
-!!$                          rezdip(k,i) = dot(mobio(:,k),rezdipop(:,i),spfsize)
-!!$                          rexydip(k,i) = dot(mobio(:,k),rexydipop(:,i),spfsize)
-!!$                       endif
-!!$                    endif
-
                  enddo
               enddo
               if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
@@ -270,16 +260,6 @@ subroutine fluxgtau(alg)
                     call mympireduce(reke,nspf**2)
                     call mympireduce(repe,nspf**2)
                  endif
-
-!!$                 if (tdflag.ne.0) then
-!!$                    call mympireduce(zdip,nspf**2)
-!!$                    call mympireduce(xydip,nspf**2)
-!!$                    if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
-!!$                       call mympireduce(rezdip,nspf**2)
-!!$                       call mympireduce(rexydip,nspf**2)
-!!$                    endif
-!!$                 endif
-
                  if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
                     call mympireduce(yderiv,nspf**2)
                     call mympireduce(reyderiv,nspf**2)
@@ -305,21 +285,6 @@ subroutine fluxgtau(alg)
 
 !! evaluate the actual g(tau) expression
               xyfac=0d0; zfac=0d0
-
-!! this was dumb, commenting out 09/2015
-!! for length at least, trying flux = [H(t),heaviside] = [H(t'),heaviside] = average    !! WAS BUG 01-2014 no dt
-!!$              if (tdflag.ne.1) then
-!!$
-!!$!!! STILL NEED Y
-!!$!!! STILL NEED Y
-!!$!!! STILL NEED Y
-!!$!!! STILL NEED Y
-!!$                 call vectdpot(curtime*dt,velflag,pots1)
-!!$                 call vectdpot(oldtime*dt,velflag,pots2)
-!!$                 xyfac=real( pots1(1) + pots2(1) ,8) /2d0
-!!$                 zfac=real( pots1(3) + pots2(3) ,8) /2d0
-!!$
-!!$              endif
 
               do imc=1,mcscfnum
                  fluxevalval(imc) = fluxeval(abio,aket,ke,pe,V2,zdip,zfac,xydip,xyfac,yderiv,1,imc) * dt  !! 1 means flux
@@ -462,7 +427,6 @@ subroutine flux_op_onee(inspfs,keop,peop,zdipop,xydipop,flag) !! flag=1, flux (i
      select case(flag)
      case(1)
         call mult_imke(inspfs(:,ispf),keop(:,ispf))
-!        print *, "KEOP",keop(:,ispf); stop
      case(2)
         call mult_reke(inspfs(:,ispf),keop(:,ispf))
      case default
@@ -488,26 +452,6 @@ subroutine flux_op_onee(inspfs,keop,peop,zdipop,xydipop,flag) !! flag=1, flux (i
      case default
         call mult_pot(inspfs(:,ispf),peop(:,ispf))
      end select
-
-!!$     if (tdflag.ne.0) then
-!!$        if (flag.ne.1) then
-!!$           OFLWR "Programmmmm meeee"; CFLST
-!!$        endif
-!!$
-!!$!! NO Y POLARIZATION YET
-!!$        select case (velflag)
-!!$        case (0)
-!!$           call mult_imzdipole(inspfs(:,ispf),zdipop(:,ispf))
-!!$           call mult_imxdipole(inspfs(:,ispf),xydipop(:,ispf))
-!!$        case (1)
-!!$
-!!$           call noparorbsupport("call imvelmultiply")
-!!$
-!!$           call imvelmultiply(inspfs(:,ispf),zdipop(:,ispf), 0d0,0d0,1d0)
-!!$           call imvelmultiply(inspfs(:,ispf),xydipop(:,ispf), 1d0,0d0,0d0)
-!!$        end select
-!!$     endif
-
   enddo
 
 !! scale correctly and clear memory
@@ -630,140 +574,6 @@ function fluxeval00(abra,aket,ke,pe,V2,zdipnotused,zfacnotused,xydipnotused,xyfa
 
   fluxeval00 = 0d0
 
-
-  IF (1==0) THEN   !! 1==0 !! TEMP???
-
-
-
-  do bra=botwalk,topwalk
-!! A) do all diagonal terms
-
-    IIINVR=0d0;    INVR=0d0;    INVRSQ=0d0;    PULSEFAC=0d0
-
-    do r=1,numr
-       select case(flag)
-       case(1)
-          INVR = INVR + CONJUGATE(abra(bra,r)) * aket(bra,r) * real(1.d0/bondpoints(r),8)
-          IIINVR = IIINVR + CONJUGATE(abra(bra,r)) * aket(bra,r) * imag((0d0,0d0)+1.d0/bondpoints(r))
-          INVRSQ = INVRSQ + CONJUGATE(abra(bra,r)) * aket(bra,r) * real(1d0/bondpoints(r)**2,8)
-       case(2)
-          INVR = INVR + CONJUGATE(abra(bra,r)) * aket(bra,r) * imag((0d0,0d0)+1d0/bondpoints(r)**2)
-          INVRSQ = INVRSQ + CONJUGATE(abra(bra,r)) * aket(bra,r) * imag((0d0,0d0)+1d0/bondpoints(r)**2)
-       case default
-          INVR = INVR + CONJUGATE(abra(bra,r)) * aket(bra,r) / (bondpoints(r))
-          IIINVR = IIINVR + CONJUGATE(abra(bra,r)) * aket(bra,r) / (bondpoints(r))
-          INVRSQ = INVRSQ + CONJUGATE(abra(bra,r)) * aket(bra,r) / (bondpoints(r)**2)
-       end select
-
-!!$       if (tdflag.ne.0) then
-!!$         if (velflag==0) then
-!!$            csum=bondpoints(r)
-!!$         else
-!!$            csum=1d0/bondpoints(r)
-!!$         endif
-!!$         select case(flag)
-!!$         case(1)
-!!$            PULSEFAC= PULSEFAC + CONJUGATE(abra(bra,r)) * aket(bra,r) * imag((0d0,0d0)+csum)
-!!$         case(2)
-!!$            PULSEFAC= PULSEFAC + CONJUGATE(abra(bra,r)) * aket(bra,r) * real(csum)
-!!$         case default
-!!$            PULSEFAC= PULSEFAC + CONJUGATE(abra(bra,r)) * aket(bra,r) * csum
-!!$         end select
-!!$       endif
-
-    enddo
-
-    BONDKE=0d0;    PRODERIV=0d0
-
-    if (ipart.eq.0.or.ipart.eq.2) then
-
-    if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
-       select case(flag)
-       case(1)
-          do rr=1,numr
-             do r=1,numr
-                BONDKE = BONDKE + CONJUGATE(abra(bra,r)) * aket(bra,rr) * imag((0d0,0d0)+rkemod(r,rr))
-                PRODERIV = PRODERIV + CONJUGATE(abra(bra,r)) * aket(bra,rr) * real(proderivmod(r,rr),8)
-             enddo
-          enddo
-       case(2)
-          do rr=1,numr
-             do r=1,numr
-                PRODERIV = PRODERIV + CONJUGATE(abra(bra,r)) * aket(bra,rr) * imag((0d0,0d0)+proderivmod(r,rr))
-             enddo
-          enddo
-       case default
-          do rr=1,numr
-             do r=1,numr
-                BONDKE = BONDKE + CONJUGATE(abra(bra,r)) * aket(bra,rr) * rkemod(r,rr)
-                PRODERIV = PRODERIV + CONJUGATE(abra(bra,r)) * aket(bra,rr) * proderivmod(r,rr) 
-             enddo
-          enddo
-       end select
-
-       if (flag.eq.1.or.flag.eq.2) then
-          fluxeval00=fluxeval00+BONDKE * (-2d0)
-       else
-          fluxeval00=fluxeval00+BONDKE 
-       endif
-
-!! with flag=1 we should have imag(yderiv) thats hermitian part yderiv for nuclear part  (ipart=2)
-!! yes this correct   likewise real(yderiv), imag(R derivative) flag=2   for elect
-!! for flag=0 only do once, so do for ipart=1
-!!
-!! so then for capflag do imag part of yderiv times hermitian part of yderiv  (flag=1)
-!!     but don't do flag.eq.2  (which part is zero; so no need for new logic )  SO WEIRD
-
-! sparate diagonal REMOVED 09-2014 (WALKS SIMPLIFIED)
-!       do i=1,numelec
-!          !! A.1) 1 electron
-!          ii=configlist((i-1)*2+1,bra);          is=configlist((i-1)*2+2,bra)
-!          fluxeval00 = fluxeval00 + PRODERIV * yderiv(ii,ii) 
-!       enddo
-
-    endif
-    endif  !! NONUC
-
-
-    if (ipart.eq.0.or.ipart.eq.1) then
-    select case(flag)
-    case(1)
-       fluxeval00=fluxeval00+IIINVR*nucrepulsion * (-2)  
-    case(0)
-       fluxeval00=fluxeval00+IIINVR*nucrepulsion
-    end select
-
-
-
-! separate diagonal REMOVED 09-2014 (walks simplified)
-!    do i=1,numelec
-!!! A.1) 1 electron
-!      ii=configlist((i-1)*2+1,bra)
-!      is=configlist((i-1)*2+2,bra)
-!      fluxeval00 = fluxeval00 + INVRSQ * ke(ii,ii) + INVR * pe(ii,ii)
-!      if (tdflag.ne.0) then
-!         fluxeval00 = fluxeval00 + PULSEFAC * zdip(ii,ii) * zfac
-!         fluxeval00 = fluxeval00 + PULSEFAC * xydip(ii,ii) * xyfac
-!      endif
-!!! A.2) 2 electron
-!      if(((FluxOpType.eq.0).or.(flag.ne.1))) then  !!.and.onee_checkflag/=1) then
-!        do j=i+1,numelec
-!          jj=configlist((j-1)*2+1,bra)
-!          js=configlist((j-1)*2+2,bra)
-!          fluxeval00 = fluxeval00 + IIINVR * V2(ii,ii,jj,jj)
-!          if(is.eq.js) fluxeval00 = fluxeval00 - IIINVR * V2(ii,jj,jj,ii)
-!        enddo
-!      endif
-!    enddo
-
-    endif   !! ipart
-
- enddo
-endif   !! 1==0
-
-
-!! B) do all the single walks
-
   do bra=botwalk,topwalk
 
     do ket=1,numsinglewalks(bra)
@@ -781,22 +591,6 @@ endif   !! 1==0
             INVR = INVR + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),r) / (bondpoints(r))
             INVRSQ = INVRSQ + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),r) / (bondpoints(r)**2)
          end select
-
-!!$        if (tdflag.ne.0) then
-!!$           if (velflag==0) then
-!!$              csum=bondpoints(r)
-!!$           else
-!!$              csum=1d0/bondpoints(r)
-!!$           endif
-!!$           select case(flag)
-!!$           case(1)
-!!$              PULSEFAC= PULSEFAC + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),r) * real(csum,8)
-!!$           case(2)
-!!$              PULSEFAC= PULSEFAC + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),r) * imag((0d0,0d0)+csum)
-!!$           case default
-!!$              PULSEFAC= PULSEFAC + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),r) * csum
-!!$           end select
-!!$         endif
 
       enddo
 
@@ -843,17 +637,8 @@ endif   !! 1==0
       endif
       if (ipart.eq.1.or.ipart.eq.0) then
 
-!! B.1) 1 electron
       fluxeval00 = fluxeval00 + INVRSQ * ke(singlewalkopspf(1,ket,bra),singlewalkopspf(2,ket,bra)) & !! conjugates OK
                           + INVR * pe(singlewalkopspf(1,ket,bra),singlewalkopspf(2,ket,bra))
-
-!!$      if (tdflag.ne.0) then
-!!$         fluxeval00 = fluxeval00 + PULSEFAC * zdip(singlewalkopspf(1,ket,bra),singlewalkopspf(2,ket,bra))  * zfac
-!!$         fluxeval00 = fluxeval00 + PULSEFAC * xydip(singlewalkopspf(1,ket,bra),singlewalkopspf(2,ket,bra))  * xyfac
-!!$      endif
-
-!! B.2) 2 electron  
-!! singlewalks removed REMOVED 09-2014 (walks simplified)
 
       endif  !! ipart
     enddo
