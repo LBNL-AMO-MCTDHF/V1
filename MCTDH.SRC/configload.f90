@@ -25,29 +25,6 @@ subroutine print_excitations()
 end subroutine print_excitations
 
 
-
-!!$ subroutine avector_header_read(iunit,numvects,outndof,outnumr,outnumconfig,outspinrestrictval,icomplex)
-!!$   implicit none
-!!$   integer :: outnumr,outnumconfig,icomplex,iunit,numvects,outndof,outspinrestrictval
-!!$   read(iunit) numvects;  read(iunit) outndof,outnumr,outnumconfig,outspinrestrictval
-!!$   read(iunit) icomplex
-!!$ end subroutine
-!!$ 
-!!$ subroutine avector_header_write(iunit,numvects)
-!!$   use parameters
-!!$   implicit none
-!!$   integer :: iunit,numvects
-!!$ 
-!!$   write(iunit) numvects;  write(iunit) ndof,numr,numconfig,spinrestrictval
-!!$ #ifdef REALGO
-!!$   write(iunit) 0
-!!$ #else
-!!$   write(iunit) 1
-!!$ #endif
-!!$ 
-!!$ end subroutine
-
-
 subroutine avector_header_read_simple(iunit,numvects,outndof,outnumr,outnumconfig,icomplex)
   implicit none
   integer :: outnumr,outnumconfig,icomplex,iunit,numvects,outndof,ierr,nullint
@@ -436,8 +413,6 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
 
   open(999,file=filename, status="unknown", form="unformatted")
 
-!!$  call avector_header_read(999,readnumvects,readndof,readnumr,readnumconfig,readspinrestrictval,readcomplex)  
-
  call avector_header_read_simple(999,readnumvects,readndof,readnumr,readnumconfig,readcomplex)  
 
   allocate(readavectors(numconfig,numr,readnumvects))
@@ -465,15 +440,12 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
   if (myrank.eq.1) then
      open(999,file=filename, status="unknown", form="unformatted")
 
-!!$     call avector_header_read(999,readnumvects,readndof,readnumr,readnumconfig,readspinrestrictval,readcomplex)  
-
      call avector_header_read_simple(999,readnumvects,readndof,readnumr,readnumconfig,readcomplex)
 
      if (numholes.eq.0.and.excitations.eq.0) then
 
         call easy_load_avectors(999,readcomplex, readavectors(:,:,:), ndof, numr, readnumconfig, readnumvects)
 
-!!$        call load_avectors0(999,readcomplex,myavectors(:,:,:),numr,numconfig,ndof           ,readnumr,readnumconfig, readavectorsubsimple,readnumvects)
      else
         call load_avectors0(999,readcomplex,readavectors(:,:,:),numr,numconfig,ndof+2*numholes,readnumr,readnumconfig, readavectorsubroutine,readnumvects)
      endif
@@ -482,8 +454,6 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
 
      readnumvects=min(mynumvects,readnumvects-numskip)
      myavectors(:,:,1:readnumvects) = readavectors(:,:, 1+numskip : numskip+readnumvects)
-     
-!!$     myavectors(:,:,1:readnumvects)=readavectors(:,:,:)
 
   endif
 
