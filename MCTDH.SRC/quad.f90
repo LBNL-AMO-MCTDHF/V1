@@ -224,7 +224,7 @@ recursive subroutine quadpreconsub(notusedint, inavector,outavector)
      call dfrestrict(tempvector, numr)
   endif
 
-  call sparseconfigdiagmult(tempvector, outavector, yyy%cptr(0),yyy%sptr(0), 1,1,1,1, quadexpect,0d0) !+quadpreconshift,0d0)
+  call sparseconfigdiagmult(tempvector, outavector, yyy%cptr(0),yyy%sptr(0), 1,1,1,1, quadexpect,0d0)
 
   if (allspinproject==1) then
      call configspin_projectall(outavector, 0)
@@ -843,7 +843,7 @@ recursive subroutine parquadpreconsub_transpose(notusedint, inavectortr,outavect
      call dfrestrict_par(tempvector, numr)
   endif
   tempvectortr(:,:)=TRANSPOSE(tempvector(:,:))
-  call parsparseconfigdiagmult_transpose(tempvectortr, tempvectortr2, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0) !+quadpreconshift,0d0)
+  call parsparseconfigdiagmult_transpose(tempvectortr, tempvectortr2, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0)
   outavector=TRANSPOSE(tempvectortr2)
   if (allspinproject==1) then
      call configspin_projectmine(outavector, 0)

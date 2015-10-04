@@ -133,11 +133,7 @@ recursive subroutine sparseconfigdiagmult(invector,outvector,matrix_ptr, sparse_
   endif
   outvector(:,:)=TRANSPOSE(myoutvectortr)
 
-  if (quadpreconshift.eq.0d0) then
-     outvector(:,:)=invector(:,:)/(outvector(:,:)-inenergy)
-  else
-     outvector(:,:)=invector(:,:)*0.5d0* (1d0/(outvector(:,:)-inenergy+(0d0,1d0)*quadpreconshift) + 1d0/(outvector(:,:)-inenergy-(0d0,1d0)*quadpreconshift))
-  endif
+  outvector(:,:)=invector(:,:)/(outvector(:,:)-inenergy)
 
 end subroutine sparseconfigdiagmult
 
@@ -161,11 +157,8 @@ recursive subroutine parsparseconfigdiagmult_transpose(myinvectortr,myoutvectort
   tempvectortr(:,:)=1d0; myoutvectortr(:,:)=0d0
   call sparseconfigmultnew_transpose_nompi(tempvectortr,myoutvectortr,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag,time,0,1,numr,1)
   
-  if (quadpreconshift.eq.0d0) then
-     myoutvectortr(:,:)=myinvectortr(:,:)/(myoutvectortr(:,:)-inenergy)
-  else
-     myoutvectortr(:,:)=myinvectortr(:,:)*0.5d0* (1d0/(myoutvectortr(:,:)-inenergy+(0d0,1d0)*quadpreconshift) + 1d0/(myoutvectortr(:,:)-inenergy-(0d0,1d0)*quadpreconshift))
-  endif
+  myoutvectortr(:,:)=myinvectortr(:,:)/(myoutvectortr(:,:)-inenergy)
+
 end subroutine parsparseconfigdiagmult_transpose
 
 

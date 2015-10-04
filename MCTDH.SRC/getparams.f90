@@ -67,7 +67,7 @@ subroutine getparams()
        mrestrictflag, mrestrictval, fluxtimestep, autotimestep,  spinwalkflag, nucfluxflag, &
        nosparseforce,  allspinproject,  numfluxfiles,  verletnum, &
        constraintflag, dfrestrictflag, improvedrelaxflag, mcscfnum,  improvednatflag, avectorfile, spffile, &
-       quadprecon,  improvedquadflag, quadtol,  quadpreconshift, &
+       quadprecon,  improvedquadflag, quadtol,  &
        plotxyrange,plotrange,plotskip,pm3d, plotterm, plotmodulus,plotpause, numfluxcurves,  & 
        plotres, nspf ,  spfrestrictflag,  spfmvals, spfugvals, spfugrestrict, ugrestrictflag, ugrestrictval, &
        restrictflag,  restrictms,   loadspfflag,  loadavectorflag,  avectorhole, &
