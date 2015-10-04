@@ -262,14 +262,6 @@ recursive subroutine jacoperate(inspfs,outspfs)
   DATATYPE :: jactemp3(spfsize,nspf),   jactemp2(spfsize,nspf), &  !! AUTOMATIC
        tempspfs(spfsize,nspf),temporbs(spfsize,nspf)
 
-!!$  DATATYPE,save,allocatable :: jactemp3(:,:),   jactemp2(:,:),  tempspfs(:,:),temporbs(:,:)
-!!$  integer,save :: allochere=0
-!!$  if (allochere.eq.0) then
-!!$     allocate(jactemp3(spfsize,nspf),   jactemp2(spfsize,nspf),  &
-!!$    tempspfs(spfsize,nspf),temporbs(spfsize,nspf))
-!!$  endif
-!!$  allochere=1
-
   numcalledhere=numcalledhere+1
 
   call system_clock(itime)
@@ -528,14 +520,10 @@ subroutine expoconfigprop(inavector0,outavector,time)
   if (icalled.eq.1) then
      tempstepsize=par_timestep/littlesteps
      if (allspinproject.ne.0) then
-!!$        ii=spintotrank*numr
         ii=maxspinrank*nprocs*numr
      else
-!!$        ii=totadim
         ii=maxconfigsperproc*nprocs*numr
      endif
-!!$why was this? 061814     if (maxaorder.gt.ii-1) then
-!!$        maxaorder=ii-1
      if (maxaorder.gt.ii) then
         maxaorder=ii
      endif
@@ -581,20 +569,6 @@ subroutine expoconfigprop(inavector0,outavector,time)
 
 
   one=1.d0; itrace=0 ! running mode
-
-!!$  #ifdef REALGO     
-!!$    OFLWR "REPROGRAM REAL VALUED PROP SORRY"; CFLST
-!!$  !  if (nprocs.gt.1) then
-!!$  !     OFLWR "parconfigsplit not implemented for real valued (mctdhf_diatom, _atom)"; CFLST
-!!$  !  endif
-!!$  !  lwsp =  ( totadim*(thisexpodim+3) + totadim + (thisexpodim+3)**2 + 5*(thisexpodim+3)**2+6+1 )
-!!$  !  liwsp=thisexpodim+3
-!!$  !  allocate(wsp(lwsp),iwsp(liwsp));    wsp=0.d0; iwsp=0
-!!$  !
-!!$  !!! par_timestep is a-norm estimate, ok, whatever
-!!$  !  call EXPSPARSE( totadim, thisexpodim, one, inavector, outavector, aerror, par_timestep/littlesteps, wsp, lwsp, iwsp, liwsp, configexpomult, itrace, iflag,expofileptr)
-!!$  #else
-!!$  
 
   if (allspinproject.ne.0) then
      ixx=maxspinrank; mybot=spinstart; mytop=spinend ; qqq=spintotrank
@@ -669,8 +643,6 @@ subroutine expoconfigprop(inavector0,outavector,time)
    endif
 
    deallocate(smallvectortr,smallvectortrout,  zerovectortr,smallvectortrtemp, outavectortr, outavectorspin)
-
-!!$   #endif
 
   if (allspinproject.ne.0) then
      call configspin_projectall(outavector,0)
@@ -749,15 +721,6 @@ recursive subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
 
   call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,prospfs,     spfsize,derdot,nspf,DATAONE,outspfs,spfsize)
   call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,prospfderivs,spfsize,mydot, nspf,DATAONE,outspfs,spfsize)
-
-!!  do i=1,nspf
-!!     do j=1,nspf
-!!        outspfs(:,i) = outspfs(:,i) + prospfs(:,j) *           derdot(j,i)
-!!     enddo
-!!     do j=1,nspf
-!!        outspfs(:,i) = outspfs(:,i) + prospfderivs(:,j) *      mydot(j,i)
-!!     enddo
-!!  enddo
 
   if (jacprojorth.ne.0) then
 
