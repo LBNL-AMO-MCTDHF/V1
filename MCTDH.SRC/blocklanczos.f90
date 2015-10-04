@@ -193,13 +193,6 @@ recursive subroutine parblockconfigmult_transpose(inavectortr,outavectortr)
   DATATYPE :: inavectortr(numr,botwalk:topwalk), outavectortr(numr,botwalk:topwalk)
   DATATYPE :: intemptr(numr,numconfig), ttvector(numconfig,numr), ttvector2(botwalk:topwalk,numr)
 
-!!$  integer,save :: allochere=0
-!!$  DATATYPE,save,allocatable :: intemptr(:,:), ttvector(:,:), ttvector2(:,:)
-!!$  if (allochere.eq.0) then
-!!$     allocate(intemptr(numr,numconfig), ttvector(numconfig,numr), ttvector2(botwalk:topwalk,numr))
-!!$  endif
-!!$  allochere=1
-
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parblockconfigmult_transpose"; CFLST
   endif
@@ -235,15 +228,6 @@ recursive subroutine parblockconfigmult_transpose_spin(inavectortrspin,outavecto
   DATATYPE :: inavectortrspin(numr,spinrank), outavectortrspin(numr,spinrank)
   DATATYPE :: intemptr(numr,spintotrank), ttvector(numconfig,numr), ttvector2(botwalk:topwalk,numr), &
        ttvectorspin(spintotrank,numr), ttvector2spin(spinrank,numr)
-
-!!$  integer,save :: allochere=0
-!!$  DATATYPE,save,allocatable :: intemptr(:,:), ttvector(:,:), ttvector2(:,:), &
-!!$       ttvectorspin(:,:), ttvector2spin(:,:)
-!!$  if (allochere.eq.0) then
-!!$     allocate(intemptr(numr,spintotrank), ttvector(numconfig,numr), ttvector2(botwalk:topwalk,numr), &
-!!$       ttvectorspin(spintotrank,numr), ttvector2spin(spinrank,numr))
-!!$  endif
-!!$  allochere=1
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parblockconfigmult_transpose"; CFLST
