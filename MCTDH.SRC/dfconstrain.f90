@@ -110,35 +110,44 @@ subroutine dfcondealloc()
   numdfwalks=-1;  numdfconfigs=-1
 end subroutine dfcondealloc
 
+
 subroutine dfrestrict(avector,howmany)
   use parameters
   use dfconmod
   implicit none
-  integer :: howmany,i
-  DATATYPE :: avector(numconfig,howmany)
-  if (numdfconfigs.gt.0) then
-     do i=1,howmany
-        avector(:,i)=avector(:,i)*dfincludedmask(:)
-     enddo
-       else if (numdfconfigs.lt.0) then
-     OFLWR "error, dfconstrain not allocated"; CFLST
+  integer :: howmany
+  DATATYPE :: avector(howmany,firstconfig:lastconfig)
+
+  if (parconsplit.eq.0) then
+     call dfrestrict_all(avector,howmany)
+  else
+     call dfrestrict_local(avector,howmany)
   endif
+
 end subroutine dfrestrict
 
-subroutine dfrestrict_par(avector,howmany)
+
+subroutine dfrestrict_all(avector,howmany)
   use parameters
   use dfconmod
   implicit none
   integer :: howmany,i
-  DATATYPE :: avector(botwalk:topwalk,howmany)
-  if (numdfconfigs.gt.0) then
-     do i=1,howmany
-        avector(:,i)=avector(:,i)*dfincludedmask(botwalk:topwalk)
-     enddo
-       else if (numdfconfigs.lt.0) then
-     OFLWR "error, dfconstrain not allocated"; CFLST
-  endif
-end subroutine dfrestrict_par
+  DATATYPE :: avector(howmany,numconfig)
+  do i=1,numconfig
+     avector(:,i)=avector(:,i)*dfincludedmask(i)
+  enddo
+end subroutine dfrestrict_all
+
+subroutine dfrestrict_local(avector,howmany)
+  use parameters
+  use dfconmod
+  implicit none
+  integer :: howmany,i
+  DATATYPE :: avector(howmany,botwalk:topwalk)
+  do i=botwalk,topwalk
+     avector(:,i)=avector(:,i)*dfincludedmask(i)
+  enddo
+end subroutine dfrestrict_local
 
 subroutine checksym(mat,dim)
   use fileptrmod
@@ -175,8 +184,8 @@ subroutine dferror(avector,outerror,time)
   implicit none
 
   integer :: i,imc
-  DATATYPE :: avector(numconfig,numr,mcscfnum), dot
-  DATATYPE :: temp1(numconfig,numr), temp2(numconfig,numr)
+  DATATYPE :: avector(numr,firstconfig:lastconfig,mcscfnum), dot
+  DATATYPE :: temp1(numr,firstconfig:lastconfig), temp2(numr,firstconfig:lastconfig)
   CNORMTYPE :: outerror
   real *8 :: time
 
@@ -186,19 +195,29 @@ subroutine dferror(avector,outerror,time)
 
         temp1(:,:)=avector(:,:,imc)
         call sparseconfigmult(temp1,temp2,yyy%cptr(0),yyy%sptr(0),1,1,1,1,time)
-        do i=1,numr
-           temp1(:,i)=temp2(:,i)*(1-dfincludedmask(:))
+        do i=firstconfig,lastconfig
+           temp1(:,i)=temp2(:,i)*(1-dfincludedmask(i))
         enddo
         
 !! reporting norm of error appropriate to the variational principle.
 
-        outerror=   outerror + &
-             dot(temp1,temp1,totadim)/ & !! ok implicit
-             dot(avector(:,:,imc),avector(:,:,imc),totadim) !! ok implicit
+        outerror=   outerror +  dot(temp1,temp1,localnconfig*numr)
      else if (numdfconfigs.lt.0) then
         OFLWR "error, dfconstrain not allocated"; CFLST
      endif
   enddo
+  if (parconsplit.ne.0) then
+#ifndef REALGO
+#ifndef CNORMFLAG
+     call mympirealreduceone(outerror)
+#else
+     call mympireduceone(outerror)
+#endif
+#else
+     call mympireduceone(outerror)
+#endif
+  endif
+
 end subroutine dferror
 
 
@@ -279,10 +298,9 @@ subroutine get_dfconstraint(time)
 
   DATATYPE ::  dot,tempmatel(nspf,nspf)
   integer, save :: times(20)=0, icalled=0
-  integer ::    i,     j,  ii,ix, lwork,isize,ishell,iiyy,maxii,imc,itime,jtime,getlen
+  integer ::    i,     j,  ii, lwork,isize,ishell,iiyy,maxii,imc,itime,jtime,getlen
   integer :: ipairs(2,nspf*(nspf-1))
   DATATYPE, allocatable :: avectorp(:,:), rhs(:,:), avector(:,:), rhomat(:,:,:,:), &
-       avectorptrans(:,:), avectortrans(:,:), &
        smallwalkvects(:,:,:,:)   !! numconfig,numr,alpha,beta  alpha=included beta=excluded
   real*8, allocatable :: rhomatpairs(:,:,:,:),rhspairs(:,:), rhspairstemp(:,:), rhspairsbig(:,:), &
        projector(:,:,:,:,:), realrhomat(:,:,:,:,:,:), bigprojector(:,:,:,:,:), rhomatpairsbig(:,:,:,:), &
@@ -331,8 +349,7 @@ subroutine get_dfconstraint(time)
 
   yyy%cptr(0)%xconmatel(:,:)=0.d0;   yyy%cptr(0)%xconmatelxx(:,:)=0.d0;   yyy%cptr(0)%xconmatelyy(:,:)=0.d0;   yyy%cptr(0)%xconmatelzz(:,:)=0.d0
 
-  allocate(avectorp(numconfig,numr), avector(numconfig,numr), &
-       avectorptrans(numr,numconfig),avectortrans(numr,numconfig), &
+  allocate(avectorp(numr,firstconfig:lastconfig), avector(numr,firstconfig:lastconfig), &
        smallwalkvects(numr,botwalk:topwalk,nspf,nspf), rhs(nspf,nspf),  rhomat(nspf,nspf,nspf,nspf))
 
   isize=0
@@ -403,24 +420,21 @@ subroutine get_dfconstraint(time)
         
         call system_clock(itime)
         
-        avector(:,:)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numconfig,numr/))
+        avector(:,:)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numr,localnconfig/))
         
-        call dfrestrict(avector,numr)
-        
-        if (allspinproject.ne.0) then
-           call configspin_projectall(avector,0)  !! should commute
+        if (parconsplit.eq.0) then
+           call dfrestrict_all(avector,numr)
+           if (allspinproject.ne.0) then
+              call configspin_project_all(avector,0)  !! should commute
+           endif
+        else
+           call dfrestrict_local(avector,numr)
+           if (allspinproject.ne.0) then
+              call configspin_project_local(avector,0)  !! should commute
+           endif
         endif
-        avectortrans(:,:)=TRANSPOSE(avector(:,:))
 
-        call system_clock(jtime);        times(2)=times(2)+jtime-itime;     itime=jtime
-        
-        smallwalkvects(:,:,:,:)=0d0
-        
-
-        do i=1,numdfwalks
-           ii=includedorb(i);     ix=excludedorb(i)
-           smallwalkvects(:,dfwalkto(i),ii,ix)=smallwalkvects(:,dfwalkto(i),ii,ix) + avectortrans(:,dfwalkfrom(i)) * dfwalkphase(i)
-        enddo
+        call get_smallwalkvects(avector,smallwalkvects,numr,1)
         
         call system_clock(jtime);        times(3)=times(3)+jtime-itime;     itime=jtime
 
@@ -471,7 +485,6 @@ subroutine get_dfconstraint(time)
      
         call system_clock(jtime);        times(7)=times(7)+jtime-itime;     itime=jtime
 
-
         call DGEMM('N','N',zzz*isize,zzz*nspf**2,zzz*nspf**2,1d0,projector,zzz*isize,&
              realrhomat,zzz*nspf**2,0d0,temppairs,zzz*isize)
         call DGEMM('N','T',zzz*isize,zzz*isize,zzz*nspf**2,1d0,temppairs,zzz*isize,&
@@ -483,6 +496,8 @@ subroutine get_dfconstraint(time)
              projector,zzz*isize,0d0,rhomatpairsbig,2*zzz*isize)
 
         call system_clock(jtime);        times(8)=times(8)+jtime-itime;     itime=jtime
+
+!! DO SUMMA IN SPARSECONFIGMULT
         
         if (iiyy.eq.1) then
            call sparseconfigmult(avector,avectorp,yyy%cptr(0),yyy%sptr(0),1,1,0,0,time)
@@ -496,12 +511,10 @@ subroutine get_dfconstraint(time)
            avectorp(:,:)=avectorp(:,:)*timefac   
         endif
 
-        avectorptrans(:,:)=TRANSPOSE(avectorp(:,:))
-
         rhs(:,:)=0d0
         do j=1,nspf
            do i=1,nspf
-              rhs(i,j)=dot(smallwalkvects(:,:,i,j),avectorptrans(:,botwalk:topwalk),(topwalk-botwalk+1)*numr)
+              rhs(i,j)=dot(smallwalkvects(:,:,i,j),avectorp(:,botwalk:topwalk),(topwalk-botwalk+1)*numr)
            enddo
         enddo
 
@@ -582,7 +595,6 @@ subroutine get_dfconstraint(time)
 
      call system_clock(jtime);        times(13)=times(13)+jtime-itime;    itime=jtime
 
-
      tempmatel(:,:)=0d0
 
      do ii=1,isize
@@ -593,7 +605,6 @@ subroutine get_dfconstraint(time)
         tempmatel(j,i) = rhspairs(1,ii) + (0d0,1d0) * rhspairs(2,ii)
 #endif
      enddo
-
 
     tempmatel(:,:)=  ( tempmatel(:,:) -TRANSPOSE(CONJUGATE(tempmatel(:,:)))  ) / timefac  * condamp
 
@@ -613,9 +624,8 @@ subroutine get_dfconstraint(time)
   enddo
 
   deallocate(&
-       avectorp,   avector,         avectorptrans,  avectortrans,  &
+       avectorp,   avector,    &
        smallwalkvects,         rhs,          rhomat,  &
-
         projector,  bigprojector, mattemp,pseudoinv, &
           realrhs,  realrhomat,  &
        rhomatpairs,  rhspairs,      rhspairstemp,  rhomatpairscopy, &
@@ -631,30 +641,62 @@ end subroutine get_dfconstraint
 
 
 
-subroutine get_rhomat(avector, rhomat,howmany)
+subroutine get_smallwalkvects(avector, smallwalkvects,nblock,howmany)
   use parameters
   use dfconmod
   implicit none
 
-  integer ::    i,      ii,ix,howmany
-  DATATYPE ::  avector(numconfig,howmany), rhomat(nspf,nspf,nspf,nspf)
-  DATATYPE, allocatable ::  avectortrans(:,:), &
-       smallwalkvects(:,:,:,:)   !! howmany,botwalk:topwalk,alpha,beta  alpha=included beta=excluded
+  integer ::    i,ii,ix,nblock,howmany
+  DATATYPE,intent(in) ::  avector(nblock,firstconfig:lastconfig,howmany)
+  DATATYPE,intent(out) :: smallwalkvects(nblock,botwalk:topwalk,howmany,nspf,nspf)
+  DATATYPE, allocatable ::  bigavector(:,:,:)
 
   if (dfrestrictflag.lt.1) then
      OFLWR "WTF DFRESTRICT IS  ", dfrestrictflag; CFLST
   endif
-
-  allocate( avectortrans(howmany,numconfig),       smallwalkvects(howmany,botwalk:topwalk,nspf,nspf))
   
-  avectortrans(:,:)=TRANSPOSE(avector(:,:))
+!! DO SUMMA
+  allocate(bigavector(nblock,numconfig,howmany))
+  bigavector(:,:,:)=0d0
+  bigavector(:,firstconfig:lastconfig,:)=avector(:,:,:)
 
-  smallwalkvects(:,:,:,:)=0d0
+  if (parconsplit.ne.0) then
+     do ii=1,howmany
+        call mpiallgather(bigavector(:,:,ii),nblock*numconfig,nblock*configsperproc(:),nblock*maxconfigsperproc)
+     enddo
+  endif
+
+  smallwalkvects(:,:,:,:,:)=0d0
   
   do i=1,numdfwalks
      ii=includedorb(i);     ix=excludedorb(i)
-     smallwalkvects(:,dfwalkto(i),ii,ix)=smallwalkvects(:,dfwalkto(i),ii,ix) + avectortrans(:,dfwalkfrom(i)) * dfwalkphase(i)
+     smallwalkvects(:,dfwalkto(i),:,ii,ix)=smallwalkvects(:,dfwalkto(i),:,ii,ix) + bigavector(:,dfwalkfrom(i),:) * dfwalkphase(i)
   enddo
+
+  deallocate(bigavector)
+
+end subroutine get_smallwalkvects
+
+
+
+subroutine get_rhomat(avector, rhomat,nblock,howmany)
+  use parameters
+  implicit none
+  integer ::    ii,nblock,howmany
+  DATATYPE,intent(in) ::  avector(nblock,firstconfig:lastconfig,howmany)
+  DATATYPE,intent(out) :: rhomat(nspf,nspf,nspf,nspf)
+  DATATYPE, allocatable ::  &
+       smallwalkvects(:,:,:,:,:)   !! nblock,botwalk:topwalk,howmany,alpha,beta  alpha=included beta=excluded
+
+  if (dfrestrictflag.lt.1) then
+     OFLWR "WTF DFRESTRICT IS  ", dfrestrictflag; CFLST
+  endif
+  
+  allocate(smallwalkvects(nblock,botwalk:topwalk,howmany,nspf,nspf))
+
+  call get_smallwalkvects(avector,smallwalkvects,nblock,howmany)
+
+!! THIS TAKES A LONG TIME.
   
   ii=(topwalk-botwalk+1)*numr
   call MYGEMM(CNORMCHAR,'N',nspf**2,nspf**2,ii,DATAONE,smallwalkvects,ii,smallwalkvects,ii,DATAZERO,rhomat,nspf**2)
@@ -662,8 +704,8 @@ subroutine get_rhomat(avector, rhomat,howmany)
   if (sparseconfigflag.ne.0) then
      call mympireduce(rhomat,nspf**4)  !! BAD REDUCE
   endif
-  
-  deallocate( avectortrans,smallwalkvects )
+
+  deallocate(smallwalkvects)
 
 end subroutine get_rhomat
 

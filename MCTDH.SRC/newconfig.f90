@@ -826,6 +826,7 @@ endif
      if (sparseconfigflag.eq.0) then
         botwalk=1
         topwalk=numconfig
+        parconsplit=0
      else
         botwalk=botconfig
         topwalk=topconfig
@@ -835,10 +836,19 @@ endif
 
      configsperproc(:)=alltopconfigs(:) - allbotconfigs(:) + 1
 
+     if (parconsplit.eq.0) then
+        firstconfig=1
+        lastconfig=numconfig
+     else
+        firstconfig=botconfig
+        lastconfig=topconfig
+     endif
+
+     localnconfig=lastconfig-firstconfig+1
+
      ii=0
      maxconfigsperproc=0
      do i=1,nprocs
-
         ii=ii+configsperproc(i)
         if (configsperproc(i).gt.maxconfigsperproc) then
            maxconfigsperproc=configsperproc(i)
@@ -868,7 +878,7 @@ endif
      enddo
      WRFL; CFLST
   endif
-  
+
 
 contains
   function okexcite(jjj)

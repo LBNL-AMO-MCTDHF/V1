@@ -365,9 +365,9 @@ subroutine assemble_spinconfigmat(outmatrix, matrix_ptr, boflag, nucflag, pulsef
 
 !! obviously not good to project on spin for each r; should project earlier. 
 
-  call configspin_transformto(numconfig*numr*numr,bigmatrix,halfmatrix)
-  halfmatrix2=TRANSPOSE(halfmatrix)
-  call configspin_transformto(spintotrank*numr*numr,halfmatrix2,outmatrix)
+  call configspin_transformto(numconfig*numr*numr,bigmatrix,halfmatrix2)
+  halfmatrix=TRANSPOSE(halfmatrix2)
+  call configspin_transformto(spintotrank*numr*numr,halfmatrix,outmatrix)
   outmatrix=transpose(outmatrix)
 
   deallocate(bigmatrix,halfmatrix,halfmatrix2)
@@ -384,7 +384,7 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
   use opmod   !! rkemod, proderivmod
   implicit none
   integer :: conflag,boflag,nucflag,pulseflag,ir,jr,i
-  DATATYPE :: bigconfigmat(numconfig,numr,numconfig,numr), tempmatel(nspf,nspf)
+  DATATYPE :: bigconfigmat(numr,numconfig,numr,numconfig), tempmatel(nspf,nspf)
   DATATYPE, allocatable :: tempconfigmat(:,:),tempconfigmat2(:,:),diagmat(:,:,:)
   Type(CONFIGPTR) :: matrix_ptr
   real*8 :: time,gg
@@ -488,7 +488,7 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
   bigconfigmat(:,:,:,:)=0d0
 
   do ir=1,numr
-     bigconfigmat(:,ir,:,ir)=diagmat(:,:,ir)
+     bigconfigmat(ir,:,ir,:)=diagmat(:,:,ir)
   enddo
 
   if (nonuc_checkflag.eq.0.and.nucflag.eq.1) then
@@ -498,11 +498,11 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
 
      do ir=1,numr
         do jr=1,numr
-           bigconfigmat(:,ir,:,jr)=bigconfigmat(:,ir,:,jr)+tempconfigmat(:,:)*proderivmod(ir,jr)
+           bigconfigmat(ir,:,jr,:)=bigconfigmat(ir,:,jr,:)+tempconfigmat(:,:)*proderivmod(ir,jr)
         enddo
      enddo
      do i=1,numconfig
-        bigconfigmat(i,:,i,:)=bigconfigmat(i,:,i,:) + rkemod(:,:)*matrix_ptr%kefac
+        bigconfigmat(:,i,:,i)=bigconfigmat(:,i,:,i) + rkemod(:,:)*matrix_ptr%kefac
      enddo
   endif
 
@@ -511,7 +511,7 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
 end subroutine assemble_configmat
 
 
-!! NO A-SQUARED TERM HERE; TIME IS NOT AN ARGUMENT.  A-squared in sparsesparsemult_transpose_nompi.
+!! NO A-SQUARED TERM HERE; TIME IS NOT AN ARGUMENT.  A-squared in sparsesparsemult_nompi.
 
 subroutine assemble_sparsemats(matrix_ptr, sparse_ptr,boflag, nucflag, pulseflag, conflag)
   use parameters

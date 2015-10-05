@@ -137,13 +137,13 @@ subroutine get_psistats( myspfs, numvec, inavectors, mexpect,m2expect,ugexpect, 
   implicit none
 
   integer, intent(in) :: numvec
-  DATATYPE,intent(in) :: myspfs(spfsize,nspf), inavectors(numconfig,numr,numvec)       
+  DATATYPE,intent(in) :: myspfs(spfsize,nspf), inavectors(numr,firstconfig:lastconfig,numvec)       
   DATATYPE, intent(out) :: mexpect(numvec),ugexpect(numvec),m2expect(numvec),&
        xreflect(numvec),yreflect(numvec),zreflect(numvec),xdipole(numvec),ydipole(numvec),zdipole(numvec)
   DATATYPE :: ugmat(nspf,nspf), xdipmat(nspf,nspf), ydipmat(nspf,nspf), zdipmat(nspf,nspf), &
        xrefmat(nspf,nspf), yrefmat(nspf,nspf), zrefmat(nspf,nspf),&
-       dot,normsq(numvec),nullcomplex,dipoles(3),tempvector(numconfig,numr),&
-       tempspfs(spfsize,nspf),tempspfs2(spfsize,nspf), nucdipexpect(numvec,3)
+       dot,normsq(numvec),nullcomplex,dipoles(3),tempvector(numr,firstconfig:lastconfig),&
+       tempspfs(spfsize,nspf),tempspfs2(spfsize,nspf), nucdipexpect(numvec,3),csum
   DATAECS :: rvector(numr)
   integer :: i,imc
 
@@ -154,24 +154,32 @@ subroutine get_psistats( myspfs, numvec, inavectors, mexpect,m2expect,ugexpect, 
   do imc=1,numvec
      normsq(imc)=dot(inavectors(:,:,imc),inavectors(:,:,imc),totadim)
   enddo
+  if (parconsplit.ne.0) then
+     call mympireduce(normsq,numvec)
+  endif
 
   if (spfrestrictflag.eq.1) then
      do imc=1,numvec      
         do i=1,numr
-           tempvector(:,i)=inavectors(:,i,imc) * configmvals(:)
+           tempvector(i,:)=inavectors(i,:,imc) * configmvals(firstconfig:lastconfig)
         enddo
         mexpect(imc)=dot(inavectors(:,:,imc),tempvector(:,:),totadim)   /normsq(imc)
         
         do i=1,numr
-           tempvector(:,i)=inavectors(:,i,imc) * configugvals(:)
+           tempvector(i,:)=inavectors(i,:,imc) * configugvals(firstconfig:lastconfig)
         enddo
         ugexpect(imc)=dot(inavectors(:,:,imc),tempvector(:,:),totadim)   /normsq(imc)
         
         do i=1,numr
-           tempvector(:,i)=inavectors(:,i,imc) * configmvals(:)**2
+           tempvector(i,:)=inavectors(i,:,imc) * configmvals(firstconfig:lastconfig)**2
         enddo
         m2expect(imc)=dot(inavectors(:,:,imc),tempvector(:,:),totadim)   /normsq(imc)
      enddo
+     if (parconsplit.ne.0) then
+        call mympireduce(mexpect,numvec)
+        call mympireduce(ugexpect,numvec)
+        call mympireduce(m2expect,numvec)
+     endif
   else
      mexpect=-99d0; m2expect=-99d0; !! could program these
 
@@ -194,9 +202,13 @@ subroutine get_psistats( myspfs, numvec, inavectors, mexpect,m2expect,ugexpect, 
 
   do imc=1,mcscfnum
      do i=1,numr
-        tempvector(:,i)=inavectors(:,i,imc)*bondpoints(i)
+        tempvector(i,:)=inavectors(i,:,imc)*bondpoints(i)
      enddo
-     nucdipexpect(imc,:)=dipoles(:)*dot(inavectors(:,:,imc),tempvector,numconfig*numr)
+     csum=dot(inavectors(:,:,imc),tempvector,totadim)
+     if (parconsplit.ne.0) then
+        call mympireduceone(csum)
+     endif
+     nucdipexpect(imc,:)=dipoles(:)*csum
   enddo
 
   rvector(:)=bondpoints(:)
@@ -205,22 +217,34 @@ subroutine get_psistats( myspfs, numvec, inavectors, mexpect,m2expect,ugexpect, 
 
   do imc=1,numvec
      call arbitraryconfig_mult(zdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
-     zdipole(imc)=(dot(inavectors(:,:,imc),tempvector,numconfig*numr) + nucdipexpect(imc,3))   /normsq(imc)
+     zdipole(imc)=dot(inavectors(:,:,imc),tempvector,totadim)
   enddo
+  if (parconsplit.ne.0) then
+     call mympireduce(zdipole,numvec)
+  endif
+  zdipole(:)=(zdipole(:)+nucdipexpect(:,3))/normsq(:)
 
 !! Y DIPOLE
 
   do imc=1,numvec
      call arbitraryconfig_mult(ydipmat,rvector,inavectors(:,:,imc),tempvector,numr)
-     ydipole(imc)=(dot(inavectors(:,:,imc),tempvector,numconfig*numr) + nucdipexpect(imc,2))   /normsq(imc)
+     ydipole(imc)=dot(inavectors(:,:,imc),tempvector,totadim)
   enddo
+  if (parconsplit.ne.0) then
+     call mympireduce(ydipole,numvec)
+  endif
+  ydipole(:)=(ydipole(:)+nucdipexpect(:,2))/normsq(:)
 
 !! X DIPOLE
 
   do imc=1,numvec
      call arbitraryconfig_mult(xdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
-     xdipole(imc)=(dot(inavectors(:,:,imc),tempvector,numconfig*numr) + nucdipexpect(imc,1))   /normsq(imc)
+     xdipole(imc)=dot(inavectors(:,:,imc),tempvector,totadim)
   enddo
+  if (parconsplit.ne.0) then
+     call mympireduce(xdipole,numvec)
+  endif
+  xdipole(:)=(xdipole(:)+nucdipexpect(:,1))/normsq(:)
 
 !! REFLECTIONS
 
@@ -258,14 +282,14 @@ subroutine finalstats( )
   use xxxmod
   implicit none
 
-  DATATYPE :: myspfs(spfsize,nspf), inavectors(numconfig,numr,mcscfnum)       
+  DATATYPE :: myspfs(spfsize,nspf), inavectors(numr,firstconfig:lastconfig,mcscfnum)       
   DATATYPE :: mmatel(mcscfnum,mcscfnum),ugmatel(mcscfnum,mcscfnum),m2matel(mcscfnum,mcscfnum),&
        xrefmatel(mcscfnum,mcscfnum),yrefmatel(mcscfnum,mcscfnum),zrefmatel(mcscfnum,mcscfnum),&
        xdipmatel(mcscfnum,mcscfnum),ydipmatel(mcscfnum,mcscfnum),zdipmatel(mcscfnum,mcscfnum),&
        ovlmatel(mcscfnum,mcscfnum), nucdipmatel(mcscfnum,mcscfnum,3)
   DATATYPE :: ugmat(nspf,nspf), xdipmat(nspf,nspf), ydipmat(nspf,nspf), zdipmat(nspf,nspf), &
        xrefmat(nspf,nspf), yrefmat(nspf,nspf), zrefmat(nspf,nspf),&
-       dot,nullcomplex,dipoles(3),tempvector(numconfig,numr),&
+       dot,nullcomplex,dipoles(3),tempvector(numr,firstconfig:lastconfig),&
        tempspfs(spfsize,nspf),tempspfs2(spfsize,nspf)
   CNORMTYPE :: occupations(nspf,mcscfnum)
   DATAECS :: rvector(numr)
@@ -273,7 +297,7 @@ subroutine finalstats( )
 
   myspfs=RESHAPE(yyy%cmfpsivec(spfstart:spfend,0),(/spfsize,nspf/))
 
-  inavectors(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numconfig,numr,mcscfnum/))
+  inavectors(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numr,localnconfig,mcscfnum/))
 
   call get_orbmats( myspfs,  nspf,  ugmat,   xdipmat,ydipmat,zdipmat,   xrefmat,yrefmat,zrefmat)
 
@@ -288,28 +312,37 @@ subroutine finalstats( )
         ovlmatel(jmc,imc)=dot(inavectors(:,:,jmc),inavectors(:,:,imc),totadim)
      enddo
   enddo
+  if (parconsplit.ne.0) then
+     call mympireduce(ovlmatel,mcscfnum**2)
+  endif
 
   if (spfrestrictflag.eq.1) then
      do imc=1,mcscfnum
         do i=1,numr
-           tempvector(:,i)=inavectors(:,i,imc) * configmvals(:)
+           tempvector(i,:)=inavectors(i,:,imc) * configmvals(:)
         enddo
         do jmc=1,mcscfnum
            mmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector(:,:),totadim)
         enddo
         do i=1,numr
-           tempvector(:,i)=inavectors(:,i,imc) * configugvals(:)
+           tempvector(i,:)=inavectors(i,:,imc) * configugvals(:)
         enddo
         do jmc=1,mcscfnum
            ugmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector(:,:),totadim)
         enddo
         do i=1,numr
-           tempvector(:,i)=inavectors(:,i,imc) * configmvals(:)**2
+           tempvector(i,:)=inavectors(i,:,imc) * configmvals(:)**2
         enddo
         do jmc=1,mcscfnum
            m2matel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector(:,:),totadim)
         enddo
      enddo
+     if (parconsplit.ne.0) then
+        call mympireduce(mmatel,mcscfnum**2)
+        call mympireduce(ugmatel,mcscfnum**2)
+        call mympireduce(m2matel,mcscfnum**2)
+     endif
+
   else
 
      mmatel=-99d0; m2matel=-99d0; !! could program these polyatomic
@@ -332,12 +365,15 @@ subroutine finalstats( )
 
   do imc=1,mcscfnum
      do i=1,numr
-        tempvector(:,i)=inavectors(:,i,imc)*bondpoints(i)
+        tempvector(i,:)=inavectors(i,:,imc)*bondpoints(i)
      enddo
      do jmc=1,mcscfnum
         nucdipmatel(jmc,imc,:)=dipoles(:)*dot(inavectors(:,:,jmc),tempvector,numconfig*numr)
      enddo
   enddo
+  if (parconsplit.ne.0) then
+     call mympireduce(nucdipmatel,3*mcscfnum**2)
+  endif
 
   rvector(:)=bondpoints(:)
 
@@ -346,27 +382,39 @@ subroutine finalstats( )
   do imc=1,mcscfnum
      call arbitraryconfig_mult(zdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
      do jmc=1,mcscfnum
-        zdipmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector,numconfig*numr) + nucdipmatel(jmc,imc,3)
+        zdipmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector,totadim)
      enddo
   enddo
+  if (parconsplit.ne.0) then
+     call mympireduce(zdipmatel(:,:),mcscfnum**2)
+  endif
+  zdipmatel(:,:)=zdipmatel(:,:)+nucdipmatel(:,:,3)
 
 !! Y DIPOLE
 
   do imc=1,mcscfnum
      call arbitraryconfig_mult(ydipmat,rvector,inavectors(:,:,imc),tempvector,numr)
      do jmc=1,mcscfnum
-        ydipmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector,numconfig*numr) + nucdipmatel(jmc,imc,2)
+        ydipmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector,totadim)
      enddo
   enddo
+  if (parconsplit.ne.0) then
+     call mympireduce(ydipmatel(:,:),mcscfnum**2)
+  endif
+  ydipmatel(:,:)=ydipmatel(:,:)+nucdipmatel(:,:,2)
 
 !! X DIPOLE
 
   do imc=1,mcscfnum
      call arbitraryconfig_mult(xdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
      do jmc=1,mcscfnum
-        xdipmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector,numconfig*numr) + nucdipmatel(jmc,imc,1)
+        xdipmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector,totadim)
      enddo
   enddo
+  if (parconsplit.ne.0) then
+     call mympireduce(xdipmatel(:,:),mcscfnum**2)
+  endif
+  xdipmatel(:,:)=xdipmatel(:,:)+nucdipmatel(:,:,1)
 
 !! REFLECTIONS
 

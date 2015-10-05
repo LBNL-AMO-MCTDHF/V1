@@ -22,11 +22,11 @@ subroutine autocorrelate_initial()
   overlaps(:,:)=0d0
   calledflag=0;  xcalledflag=0
   
-  allocate(orig_avectors(numconfig,numr,mcscfnum))
+  allocate(orig_avectors(numr,firstconfig:lastconfig,mcscfnum))
 
   orig_spfs(:,:)=RESHAPE(yyy%cmfpsivec(spfstart:spfend,0),(/spfsize,nspf/))
   do imc=1,mcscfnum
-     orig_avectors(:,:,imc)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numconfig,numr/))
+     orig_avectors(:,:,imc)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numr,localnconfig/))
   enddo
   
 end subroutine
@@ -125,11 +125,11 @@ subroutine autocorrelate_one(avector,inspfs,orig_spf,orig_avector,inoverlaps,inn
 
   DATATYPE, allocatable :: mobio(:,:),abio(:,:)
   DATATYPE :: inspfs(  spfsize, nspf ), dot
-  DATATYPE :: orig_spf(  spfsize, nspf ), orig_avector(numconfig,innr), inoverlaps, avector(numconfig,innr)
+  DATATYPE :: orig_spf(  spfsize, nspf ), orig_avector(innr,firstconfig:lastconfig), inoverlaps, avector(innr,firstconfig:lastconfig)
   DATATYPE,target :: smo(nspf,nspf)
   integer :: innr
 
-  allocate(mobio(spfsize,nspf),abio(numconfig,innr))
+  allocate(mobio(spfsize,nspf),abio(innr,firstconfig:lastconfig))
 
   if(auto_biortho.eq.0) then
      OFLWR "Permoverlaps disabled.  set auto_biortho=1"; CFLST
@@ -145,7 +145,10 @@ subroutine autocorrelate_one(avector,inspfs,orig_spf,orig_avector,inoverlaps,inn
      call bioset(autobiovar,smo,innr)
      call biortho(orig_spf,inspfs,mobio,abio,autobiovar)
 
-     inoverlaps=dot(avector,abio,numconfig*innr)
+     inoverlaps=dot(avector,abio,localnconfig*innr)
+     if (parconsplit.ne.0) then
+        call mympireduceone(inoverlaps)
+     endif
   endif
 
   deallocate(mobio,abio)
@@ -158,6 +161,7 @@ subroutine autocorrelate_final()
   implicit none
   deallocate(orig_spfs,   orig_avectors,  overlaps)
 end subroutine autocorrelate_final
+
 
 
 !!$  !! MULTI-USE OVERLAP ROUTINE, BEFORE BIORTHO.  MANUAL LOOPS

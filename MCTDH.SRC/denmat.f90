@@ -92,7 +92,7 @@ subroutine replace_withnat(printflag)
   use xxxmod
   implicit none
 
-  DATATYPE :: outspfs(spfsize,nspf), nullspfs(spfsize,nspf), tempavector(numconfig*numr)
+  DATATYPE :: outspfs(spfsize,nspf), nullspfs(spfsize,nspf)
   integer :: i,j,printflag,imc
   real*8 :: errorval
   DATATYPE,target :: smo(nspf,nspf)
@@ -123,7 +123,7 @@ subroutine replace_withnat(printflag)
 
   do imc=1,mcscfnum
 
-     tempavector(:)=yyy%cmfpsivec(astart(imc):aend(imc),0)
+!!$     tempavector(:)=yyy%cmfpsivec(astart(imc):aend(imc),0)
 
      call biotransform(yyy%cmfpsivec(spfstart,0),outspfs,yyy%cmfpsivec(astart(imc),0),natrepbiovar)
 
@@ -156,7 +156,7 @@ subroutine getdenmatx()
   use xxxmod
   implicit none
 
-  call getdenmat0(yyy%cmfpsivec(astart(1),0), yyy%denmat(:,:,0) , yyy%invdenmat(:,:,0) , yyy%denvals(:) , yyy%denvects(:,:), numr*mcscfnum)
+  call getdenmat0(yyy%cmfpsivec(astart(1),0), yyy%denmat(:,:,0) , yyy%invdenmat(:,:,0) , yyy%denvals(:) , yyy%denvects(:,:), numr, mcscfnum)
 
 !!$  if (rdenflag==1) then
 !!$     call getrdenmat()
@@ -172,49 +172,58 @@ end subroutine getdenmatx
 
 !! denmat is the true denmat, not transposed.
 
-subroutine getdenmat0(avector, denmat, invdenmat, denvals, denvects, numpoints)
+subroutine getdenmat0(in_avector, denmat, invdenmat, denvals, denvects, numpoints,howmany)
   use parameters
   use walkmod
   implicit none
 
-  integer ::  numpoints,config1,config2,  ispf,jspf,  dirphase, &
-       iwalk,ii,iclass
-  CNORMTYPE :: denvals(nspf), tempdenvals(nspf,numclasses)
-  DATATYPE :: avector(numconfig,numpoints), a1, a2, denmat(nspf,nspf),invdenmat(nspf,nspf)
-  DATATYPE :: tempinvden(nspf,nspf,numclasses),tempdenvects(nspf,nspf,numclasses),denvects(nspf,nspf)
+  integer,intent(in) ::  numpoints,howmany
+  CNORMTYPE,intent(out) :: denvals(nspf)
+  DATATYPE, intent(in) :: in_avector(numpoints,firstconfig:lastconfig,howmany)
+  DATATYPE,intent(out) :: denmat(nspf,nspf),invdenmat(nspf,nspf),denvects(nspf,nspf)
+  CNORMTYPE :: tempdenvals(nspf,numclasses)
+  DATATYPE :: tempinvden(nspf,nspf,numclasses),tempdenvects(nspf,nspf,numclasses),&
+       a1(numpoints,howmany), a2(numpoints,howmany), dot
+  DATATYPE :: avector(numpoints,numconfig,howmany)   !! AUTOMATIC
+  integer :: config1,config2,  ispf,jspf,  dirphase, iwalk,iclass
+
+  avector(:,firstconfig:lastconfig,:) = in_avector(:,:,:)
+
+!! DO SUMMA
+  if (parconsplit.ne.0) then
+     call mpiallgather(avector,numconfig*numpoints,configsperproc*numpoints,maxconfigsperproc*numpoints)
+  endif
 
   denmat(:,:)=0.d0; denvects(:,:)=0d0; invdenmat(:,:)=0d0
 
-     !! single off diagonal walks
-  do ii=1,numpoints
+  !! single off diagonal walks
 
-!! 06-2015     do config1=bot walk,top walk
-     do config1=botconfig,topconfig
+  do config1=botconfig,topconfig
 
-        a1=avector(config1,ii)
+     a1(:,:)=avector(:,config1,:)
         
-        do iwalk=1,numsinglewalks(config1)
-           config2=singlewalk(iwalk,config1)
-           dirphase=singlewalkdirphase(iwalk,config1);           a2=avector(config2,ii)
-           ispf=singlewalkopspf(1,iwalk,config1)  !! goes with config1
-           jspf=singlewalkopspf(2,iwalk,config1)  !! goes with config2
+     do iwalk=1,numsinglewalks(config1)
+        config2=singlewalk(iwalk,config1)
+        dirphase=singlewalkdirphase(iwalk,config1)
+        a2(:,:)=avector(:,config2,:)
+        ispf=singlewalkopspf(1,iwalk,config1)  !! goes with config1
+        jspf=singlewalkopspf(2,iwalk,config1)  !! goes with config2
 
-!!  ONCE AND FOR ALL 2014           :                     RIGHT MULTIPLYING!!!
-           denmat(ispf,jspf)=denmat(ispf,jspf)+ &
-                dirphase*a1*CONJUGATE(a2)
-!! NOT
-!!           denmat(jspf,ispf)=denmat(jspf,ispf)+ &
-!!                dirphase*a1*CONJUGATE(a2)
 
-        enddo
+        denmat(ispf,jspf)=denmat(ispf,jspf)+ &
+             dot(a2(:,:),a1(:,:),numpoints*howmany)*dirphase
+
+!!$!!  ONCE AND FOR ALL 2014           :                     RIGHT MULTIPLYING!!!
+!!$           denmat(ispf,jspf)=denmat(ispf,jspf)+ &
+!!$                dirphase*a1*CONJUGATE(a2)
+!!$!! NOT
+!!$!!           denmat(jspf,ispf)=denmat(jspf,ispf)+ &
+!!$!!                dirphase*a1*CONJUGATE(a2)
+
      enddo
   enddo
 
-!! 06-2015  if (sparse configflag.ne.0) then
-
-     call mympireduce(denmat,nspf**2)
-
-!! 06-2015  endif
+  call mympireduce(denmat,nspf**2)
 
   tempinvden(:,:,:)=0d0; tempdenvals(:,:)=0d0; tempdenvects(:,:,:)=0d0; 
 
@@ -243,17 +252,24 @@ subroutine getdenmat0(avector, denmat, invdenmat, denvals, denvects, numpoints)
 end subroutine getdenmat0
 
 
-subroutine getoccupations(avector, numpoints, occupations)
+subroutine getoccupations(in_avector, numpoints, occupations)
   use parameters
   use walkmod
   implicit none
 
   integer,intent(in) ::  numpoints
   CNORMTYPE, intent(out) :: occupations(nspf)
-  integer :: config1,  ispf,jspf,  iwalk,ii,idiag
+  integer :: config1,  ispf,jspf,  iwalk,idiag
+  DATATYPE, intent(in) :: in_avector(numpoints,firstconfig:lastconfig)
+  DATATYPE :: dot
+  DATATYPE :: avector(numpoints,numconfig)   !! AUTOMATIC
 
-  DATATYPE, intent(in) :: avector(numconfig,numpoints)
-  DATATYPE :: a1
+  avector(:,firstconfig:lastconfig) = in_avector(:,:)
+
+!! DO SUMMA
+  if (parconsplit.ne.0) then
+     call mpiallgather(avector,numconfig*numpoints,configsperproc*numpoints,maxconfigsperproc*numpoints)
+  endif
 
   occupations(:)=0d0
 
@@ -264,15 +280,8 @@ subroutine getoccupations(avector, numpoints, occupations)
         ispf=singlewalkopspf(1,iwalk,config1)  !! goes with config1
         jspf=singlewalkopspf(2,iwalk,config1)  !! goes with config2
 
-        if (ispf.ne.jspf) then
-           OFLWR "ACK OCCUPATIONS TRAINING WHEELS FAIL"; CFLST
-        endif
+        occupations(ispf)=occupations(ispf) + dot(avector(:,config1),avector(:,config1),numpoints)
 
-        do ii=1,numpoints
-           a1=avector(config1,ii)
-           occupations(ispf)=occupations(ispf) + a1*CONJUGATE(a1)
-           
-        enddo
      enddo
   enddo
 
@@ -351,8 +360,7 @@ end subroutine get_constraint
 
 
 subroutine get_denconstraint(time)
-!  use fileptrmod
-  use parameters !! TEMP
+  use parameters
   implicit none
   real*8 :: time
 
@@ -415,15 +423,18 @@ subroutine get_denconstraint1(iwhich,time)
   use xxxmod
   implicit none
 
-  DATATYPE ::  a1(mcscfnum), a2(mcscfnum), a1p(mcscfnum), a2p(mcscfnum),dot
-  DATATYPE :: avector(numconfig,numr,mcscfnum), avectorp(numconfig,numr,mcscfnum),tempconmatels(nspf,nspf)
-  integer ::  config1,config2,   ispf,jspf,  dirphase,  i,     iwalk,ii,  info, kspf, lspf, ind, jind, &
+  DATATYPE ::  a1(numr,mcscfnum), a2(numr,mcscfnum), a1p(numr,mcscfnum), a2p(numr,mcscfnum),&
+       tempconmatels(nspf,nspf),dot
+  DATATYPE :: bigavector(numr,numconfig,mcscfnum), bigavectorp(numr,numconfig,mcscfnum)
+  DATATYPE :: avector(numr,firstconfig:lastconfig,mcscfnum), avectorp(numr,firstconfig:lastconfig,mcscfnum)
+  integer ::  config1,config2,   ispf,jspf,  dirphase,  i,     iwalk, info, kspf, lspf, ind, jind, &
        lind, llind, flag, isize, iwhich,  iiyy,maxii,imc
   integer :: ipiv(liosize)
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
   DATATYPE :: liosolve(liosize),lioden(liosize, liosize),liodencopy(liosize,liosize),liosolvetemp(liosize)
 
-  avector(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numconfig,numr,mcscfnum/))
+  avector(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numr,localnconfig,mcscfnum/))
+
   yyy%cptr(0)%xconmatel(:,:)=0.d0;   yyy%cptr(0)%xconmatelxx(:,:)=0.d0;   yyy%cptr(0)%xconmatelyy(:,:)=0.d0;   yyy%cptr(0)%xconmatelzz(:,:)=0.d0
 
   if ((iwhich.eq.2).and.(numshells.eq.1)) then
@@ -516,59 +527,58 @@ subroutine get_denconstraint1(iwhich,time)
         end select
      enddo
 
+!! DO SUMMA
+     bigavector(:,firstconfig:lastconfig,:)=avector(:,:,:)
+     bigavectorp(:,firstconfig:lastconfig,:)=avectorp(:,:,:)
+
+     if (parconsplit.ne.0) then
+        do i=1,mcscfnum
+           call mpiallgather(bigavector(:,:,i),numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
+           call mpiallgather(bigavectorp(:,:,i),numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
+        enddo
+     endif
+
      liosolve=0.d0
 
   !! single off diagonal walks
-     do ii=1,numr
 
-!! 06-2015        do config1=bot walk,top walk
-        do config1=botconfig,topconfig
+     do config1=botconfig,topconfig
 
-           a1(:)=avector(config1,ii,:)
-           a1p(:)=avectorp(config1,ii,:)
+        a1(:,:)=avector(:,config1,:)
+        a1p(:,:)=avectorp(:,config1,:)
 
-           do iwalk=1,numsinglewalks(config1)
+        do iwalk=1,numsinglewalks(config1)
+           
+           config2=singlewalk(iwalk,config1)
+           dirphase=singlewalkdirphase(iwalk,config1)
+           a2(:,:)=bigavector(:,config2,:)
+           a2p(:,:)=bigavectorp(:,config2,:)
 
-              config2=singlewalk(iwalk,config1)
-              dirphase=singlewalkdirphase(iwalk,config1)
-              a2(:)=avector(config2,ii,:)
-              a2p(:)=avectorp(config2,ii,:)
-
-              ispf=singlewalkopspf(1,iwalk,config1)
-              jspf=singlewalkopspf(2,iwalk,config1)
+           ispf=singlewalkopspf(1,iwalk,config1)
+           jspf=singlewalkopspf(2,iwalk,config1)
               
-              flag=0
-              select case (iwhich)
-              case (1)
-                 ind=lind(ispf,jspf) ; flag=1  !!unfuck this
-              case (2)
-                 if (shells(ispf).ne.shells(jspf)) then
+           flag=0
+           select case (iwhich)
+           case (1)
+              ind=lind(ispf,jspf) ; flag=1  !!unfuck this
+           case (2)
+              if (shells(ispf).ne.shells(jspf)) then
 !! FIRSTWAY
-                    ind=llind(ispf,jspf);                 flag=1
-                 endif
-              case default
-                 ind=0
-                 OFLWR "get_denconstraint1 error"; CFLST
-              end select
-
-              if (flag==1) then
-!                 liosolve(ind)=liosolve(ind)+                   dirphase*a1*CONJUGATE(a2p*timefac)
-!                 liosolve(ind)=liosolve(ind)+                    dirphase*a1p*timefac*CONJUGATE(a2)
-
-                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:)*timefac,a1(:),mcscfnum)
-                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:),a1p(:)*timefac,mcscfnum)
-
+                 ind=llind(ispf,jspf);                 flag=1
               endif
-           enddo
+           case default
+              ind=0
+              OFLWR "get_denconstraint1 error"; CFLST
+           end select
+
+           if (flag==1) then
+              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:,:)*timefac,a1(:,:),numr*mcscfnum)
+              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:,:),a1p(:,:)*timefac,numr*mcscfnum)
+           endif
         enddo
      enddo
 
-!! 06-2015      if (sparse configflag.ne.0) then
-
-        call mympireduce(liosolve,liosize)
-
-!! 06-2015      endif
-
+     call mympireduce(liosolve,liosize)
 
      select case (iwhich)
      case (1)
@@ -583,8 +593,6 @@ subroutine get_denconstraint1(iwhich,time)
      end select
 
 
-
-     
      liodencopy(:,:)=lioden(:,:)
      if (lioreg.le.0.d0) then
         call MYGESV(isize, 1, liodencopy, liosize, ipiv, liosolve, liosize, info)
@@ -698,15 +706,14 @@ subroutine new_get_denconstraint1(time)
 
   integer :: ipairs(2,nspf*(nspf-1))
   DATATYPE ::  a1(mcscfnum), a2(mcscfnum), a1p(mcscfnum), a2p(mcscfnum),dot
-  DATATYPE :: avector(numconfig,numr,mcscfnum), avectorp(numconfig,numr,mcscfnum),tempconmatels(nspf,nspf), &
-       rhomat(nspf,nspf,nspf,nspf)
-  integer ::  config1,config2,   ispf,jspf,  dirphase,  i,     iwalk,ii,  info, kspf, lspf, ind, jind, &
-       llind, flag, isize,   iiyy,maxii,imc,j
+  DATATYPE :: tempconmatels(nspf,nspf), rhomat(nspf,nspf,nspf,nspf)
+  DATATYPE :: bigavector(numr,numconfig,mcscfnum), bigavectorp(numr,numconfig,mcscfnum)
+  DATATYPE :: avector(numr,firstconfig:lastconfig,mcscfnum), avectorp(numr,firstconfig:lastconfig,mcscfnum)
+  integer ::  config1,config2,   ispf,jspf,  dirphase,  i,  iwalk,ii,  info, kspf, &
+       lspf, ind, jind, llind, flag, isize,   iiyy,maxii,imc,j
   integer,allocatable :: ipiv(:)
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
   DATATYPE, allocatable :: liosolve(:),lioden(:, :),liodencopy(:,:),liosolvetemp(:)
-
-
 
   yyy%cptr(0)%xconmatel(:,:)=0.d0;   yyy%cptr(0)%xconmatelxx(:,:)=0.d0;   yyy%cptr(0)%xconmatelyy(:,:)=0.d0;   yyy%cptr(0)%xconmatelzz(:,:)=0.d0
 
@@ -716,10 +723,10 @@ subroutine new_get_denconstraint1(time)
 
   rhomat(:,:,:,:)=0d0
 
-  avector(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numconfig,numr,mcscfnum/))
+  avector(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numr,localnconfig,mcscfnum/))
 
   if (dfrestrictflag.gt.0) then
-     call get_rhomat(avector,rhomat,numr*mcscfnum)
+     call get_rhomat(avector,rhomat,numr,mcscfnum)
   endif
 
 
@@ -733,10 +740,7 @@ subroutine new_get_denconstraint1(time)
      enddo
   enddo
 
-
   allocate(liosolve(isize),lioden(isize, isize),liodencopy(isize,isize),liosolvetemp(isize),ipiv(isize))  
-
-
 
   lioden=0.d0
 
@@ -754,28 +758,19 @@ subroutine new_get_denconstraint1(time)
 
 !! rhomat included,excluded
 
-
         lioden(ind,jind)=  rhomat(kspf,lspf,ispf,jspf) - rhomat(jspf,ispf,lspf,kspf)   
-
 
         if (jspf.eq.lspf) then
 
-!              if ( (shells(ispf).ne.shells(lspf) ) .and. (shells(kspf).ne.shells(lspf) ) ) then
-!                 ind=llind(ispf,lspf);             jind=llind(kspf,lspf);              flag=1
-!              endif
-
            lioden(ind, jind) = lioden(ind, jind) - &
                 yyy%denmat(ispf,kspf,0)  
-           
+
         endif
         if (ispf.eq.kspf) then
-!
-!              if ( (shells(kspf).ne.shells(jspf) ) .and. (shells(kspf).ne.shells(lspf) ) ) then
-!                 ind=llind(kspf,jspf);                 jind=llind(kspf,lspf);                 flag=1
-!              endif
 
            lioden(ind,jind) = lioden(ind,jind) + &
                 yyy%denmat(lspf,jspf,0)  
+
         endif
      enddo
   enddo
@@ -805,30 +800,39 @@ subroutine new_get_denconstraint1(time)
         end select
      enddo
 
-
      if (dfrestrictflag.gt.0) then
-        call dfrestrict(avectorp,numr*mcscfnum)
+        do imc=1,mcscfnum
+           call dfrestrict(avectorp(:,:,imc),numr)
+        enddo
      endif
 
+!! DO SUMMA
+     bigavector(:,firstconfig:lastconfig,:)=avector(:,:,:)
+     bigavectorp(:,firstconfig:lastconfig,:)=avectorp(:,:,:)
+
+     if (parconsplit.ne.0) then
+        do i=1,mcscfnum
+           call mpiallgather(bigavector(:,:,i),numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
+           call mpiallgather(bigavectorp(:,:,i),numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
+        enddo
+     endif
 
      liosolve=0.d0
 
   !! single off diagonal walks
      do ii=1,numr
 
-!! 06-2015         do config1=bot walk,top walk
-
          do config1=botconfig,topconfig
 
-           a1(:)=avector(config1,ii,:)
-           a1p(:)=avectorp(config1,ii,:)
+           a1(:)=avector(ii,config1,:)
+           a1p(:)=avectorp(ii,config1,:)
            
            do iwalk=1,numsinglewalks(config1)
               
               config2=singlewalk(iwalk,config1)
               dirphase=singlewalkdirphase(iwalk,config1)
-              a2(:)=avector(config2,ii,:)
-              a2p(:)=avectorp(config2,ii,:)
+              a2(:)=bigavector(ii,config2,:)
+              a2p(:)=bigavectorp(ii,config2,:)
               
               ispf=singlewalkopspf(1,iwalk,config1)
               jspf=singlewalkopspf(2,iwalk,config1)
@@ -850,14 +854,8 @@ subroutine new_get_denconstraint1(time)
 
      enddo
 
-!! 06-2015      if (sparse configflag.ne.0) then
+     call mympireduce(liosolve,isize)
 
-        call mympireduce(liosolve,isize)
-
-!! 06-2015      endif
-
-
-     
      liodencopy(:,:)=lioden(:,:)       
 
      if (lioreg.le.0.d0) then

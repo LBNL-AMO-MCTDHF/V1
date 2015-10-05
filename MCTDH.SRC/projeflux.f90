@@ -6,15 +6,11 @@
 #include "Definitions.INC"
 
 module projefluxmod !! needed for cation walks and bi-orthonormalization
-
-!! variables so we don't have to pass the single cation walks for the target states to the MCTDHF wavefunction 
-!! target readable variables
+  implicit none
   integer :: targetms, targetrestrictflag, targetspinproject, tnumconfig,targetspinval,cgflag=0
   integer, allocatable :: tconfiglist(:,:),pphase1(:,:) ,pspf1(:,:,:) ,numpwalk1(:) ,pwalk1(:,:)
   DATATYPE, allocatable :: tmo(:,:,:),ta(:,:,:)
-!! cation walks variables
-  integer :: maxpwalk1 !!,maxpwalk2
-
+  integer :: maxpwalk1 
 end module projefluxmod
 
 
@@ -25,7 +21,7 @@ subroutine projeflux_singlewalks()
   use projefluxmod
   use mpimod
   implicit none
-  integer :: clow,chigh,jproc,cnum, iconfig,idof,iindex,iind,iwalk,flag,getconfiguration,reorder,dirphase
+  integer :: iconfig,jconfig,idof,iindex,iind,iwalk,flag,getconfiguration,reorder,dirphase
   integer :: tempconfig(ndof),temporb(2)
   logical :: allowedconfig
 
@@ -33,9 +29,10 @@ subroutine projeflux_singlewalks()
   OFLWR "Getting cation single walks"; CFL
 
   allocate(numpwalk1(tnumconfig))
+
   numpwalk1(:)=0
-  clow=(myrank-1)*tnumconfig/nprocs+1;  chigh=myrank*tnumconfig/nprocs
-  do iconfig=clow,chigh
+
+  do iconfig=1,tnumconfig
     iwalk=0
     do iindex=1,spftot
       tempconfig(3:ndof)=tconfiglist(:,iconfig);      temporb=aarr(iindex,nspf)
@@ -45,30 +42,30 @@ subroutine projeflux_singlewalks()
       enddo
       if(flag.eq.0) then
         tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig)
-        if(allowedconfig(tempconfig)) iwalk=iwalk+1
+        if(allowedconfig(tempconfig)) then
+           jconfig=getconfiguration(tempconfig)
+           if (jconfig.ge.botwalk.and.jconfig.le.topwalk) then
+              iwalk=iwalk+1
+           endif
+        endif
       endif
     enddo
     numpwalk1(iconfig)=iwalk
   enddo
-!! mpi broadcasting of number of single walks
-  do jproc=1,nprocs
-    clow=(jproc-1)*tnumconfig/nprocs+1;    chigh=jproc*tnumconfig/nprocs;    cnum=chigh-clow+1
-    call mympiibcast(numpwalk1(clow:),jproc,cnum)
-  enddo
+
 !! figure out the maximum number of single target walks
   maxpwalk1=0
   do iconfig=1,tnumconfig
     if(maxpwalk1.lt.numpwalk1(iconfig)) maxpwalk1=numpwalk1(iconfig)
   enddo
-  OFLWR "Max # single walks from cation state is ",maxpwalk1;CFL
+  OFLWR "Max # single walks from cation state on this processor is ",maxpwalk1;CFL
 
   allocate(pphase1(maxpwalk1,tnumconfig),pwalk1(maxpwalk1,tnumconfig),pspf1(2,maxpwalk1,tnumconfig))
 
 
   pwalk1=0;  pspf1=0;  pphase1=0
-  clow=(myrank-1)*tnumconfig/nprocs+1;  chigh=myrank*tnumconfig/nprocs
 
-  do iconfig=clow,chigh
+  do iconfig=1,tnumconfig
     iwalk=0
     do iindex=1,spftot
       tempconfig(3:ndof)=tconfiglist(:,iconfig);      temporb=aarr(iindex,nspf);      flag=0
@@ -78,8 +75,11 @@ subroutine projeflux_singlewalks()
       if(flag.eq.0) then
         tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig)
         if(allowedconfig(tempconfig)) then
-          iwalk=iwalk+1;          pwalk1(iwalk,iconfig)=getconfiguration(tempconfig)
-          pspf1(:,iwalk,iconfig)=temporb;          pphase1(iwalk,iconfig)=dirphase
+           jconfig=getconfiguration(tempconfig)
+           if (jconfig.ge.botwalk.and.jconfig.le.topwalk) then
+              iwalk=iwalk+1;          pwalk1(iwalk,iconfig)=jconfig
+              pspf1(:,iwalk,iconfig)=temporb;          pphase1(iwalk,iconfig)=dirphase
+           endif
         endif
       endif
     enddo
@@ -89,16 +89,7 @@ subroutine projeflux_singlewalks()
     endif
   enddo
 
-  OFLWR "DONE getting proj single walks, broadcasting"; CFL
-
-!! mpi broadcasting of our actual single walks
-  do jproc=1,nprocs
-    clow=(jproc-1)*tnumconfig/nprocs+1;    chigh=jproc*tnumconfig/nprocs;    cnum=(chigh-clow+1)*maxpwalk1
-    call mympiibcast(pwalk1(:,clow:),jproc,cnum);    call mympiibcast(pspf1(:,:,clow:),jproc,2*cnum)
-    call mympiibcast(pphase1(:,clow:),jproc,cnum)
-  enddo
-  call mpibarrier()
-  OFLWR "     ... done boroadcasting."; CFL
+  OFLWR "DONE getting proj single walks"; CFL
 
 end subroutine projeflux_singlewalks
 
@@ -107,27 +98,63 @@ end subroutine projeflux_singlewalks
 subroutine projeflux_doproj(cata,neuta,mo,offset)
   use parameters
   use projefluxmod
+  use mpimod
   implicit none
-  integer :: jconfig,iwalk,iconfig,ispf,ispin,iphase, offset
-  DATATYPE :: cata(tnumconfig),neuta(numconfig),mo(spfsize,nspf), projwfn(spfsize,2)
+  integer,intent(in) :: offset 
+  DATATYPE,intent(in) :: cata(tnumconfig),neuta(firstconfig:lastconfig),mo(spfsize,nspf)
+  DATATYPE :: projwfn(spfsize,2),  projcoefs(nspf,2)
+  integer :: jconfig,iwalk,iconfig,ispf,ispin,iphase
+  DATATYPE,allocatable:: bigprojwfn(:,:)
 
 !! make the single electron wfn
-  projwfn=0d0
+
+  projcoefs(:,:)=0d0
   do jconfig=1,tnumconfig
-!! original spin loop
     do iwalk=1,numpwalk1(jconfig)
       iconfig=pwalk1(iwalk,jconfig);      ispf=pspf1(1,iwalk,jconfig)
       ispin=pspf1(2,iwalk,jconfig);      iphase=pphase1(iwalk,jconfig)
 
-      projwfn(:,ispin) = projwfn(:,ispin) + CONJUGATE(cata(jconfig)) * neuta(iconfig) * mo(:,ispf) * iphase
+      projcoefs(ispf,ispin)=projcoefs(ispf,ispin) + CONJUGATE(cata(jconfig)) * neuta(iconfig) * iphase
     enddo
   enddo
 
-!! write out when done for this time and r
-  inquire (iolength=ispf) projwfn
-!  open(1003,file="proj.flux.wfn.bin",status="unknown",form="unformatted",access="direct",recl=ispf)
-  open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=ispf)
-  write(1003,rec=offset) projwfn(:,:) ;  close(1003)
+  if (sparseconfigflag.ne.0) then
+     call mympireduce(projcoefs,nspf*2)
+  endif
+
+  projwfn(:,:)=0d0
+  do ispin=1,2
+     do ispf=1,nspf
+        projwfn(:,ispin) = projwfn(:,ispin) + mo(:,ispf) * projcoefs(ispf,ispin)
+     enddo
+  enddo
+
+  if (myrank.eq.1) then
+     if (parorbsplit.eq.3) then
+        allocate(bigprojwfn(spfsize*nprocs,2))
+        bigprojwfn(:,:)=0d0
+     else
+        allocate(bigprojwfn(spfsize,2))
+        bigprojwfn(:,:)=projwfn(:,:)
+     endif
+  else
+     allocate(bigprojwfn(1,2))
+  endif
+
+  if (parorbsplit.eq.3) then
+     do ispin=1,2
+        call splitgatherv(projwfn(:,ispin),bigprojwfn(:,ispin),.false.)
+     enddo
+  endif
+
+  if (myrank.eq.1) then
+     inquire (iolength=ispf) bigprojwfn
+     open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=ispf)
+     write(1003,rec=offset) bigprojwfn(:,:) 
+     close(1003)
+  endif
+
+  deallocate(bigprojwfn)
 
 end subroutine projeflux_doproj
 
@@ -144,6 +171,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
  !! bintimes and pulseftsq done outside so we don't have to redo over and over for each state
   real*8 :: doubleclebschsq,aa,bb,cc,MemTot,MemVal,dt,wfi,cgfac,estep,myfac
   DATATYPE, allocatable,target :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:)
+  DATATYPE, allocatable :: read_bramo(:,:,:,:), read_ketmo(:,:,:,:)
   complex*16, allocatable :: ftgtau(:),pulseft(:,:)
   real*8, allocatable :: pulseftsq(:)
   DATATYPE :: dot, pots1(3)
@@ -229,13 +257,29 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
         write(mpifileptr,*) "Batchsize is ",BatchSize,"/",(nt+1)
      endif
   endif
+  call closefile()
 
   allocate(gtau(0:nt,nstate,mcscfnum),ketmo(spfsize,numr,2,BatchSize),bramo(spfsize,numr,2,BatchSize))
+  if (myrank.eq.1) then
+     if (parorbsplit.eq.3) then
+        allocate(read_ketmo(spfsize*nprocs,numr,2,BatchSize),read_bramo(spfsize*nprocs,numr,2,BatchSize))
+     else
+        allocate(read_ketmo(spfsize,numr,2,BatchSize),read_bramo(spfsize,numr,2,BatchSize))
+     endif
+  else
+     allocate(read_ketmo(1,numr,2,batchsize),read_bramo(1,numr,2,batchsize))
+  endif
+
+
   NBat=ceiling(real(nt+1)/real(BatchSize))
   ketreadsize=0;  brareadsize=0
 
-  inquire (iolength=tlen) ketmo(:,1,:,1)
-  write(mpifileptr,*) "Projected 1e- function record length is ",tlen;  call closefile()
+  if (myrank.eq.1) then
+     inquire (iolength=tlen) read_ketmo(:,1,:,1)
+  endif
+  call mympiibcastone(tlen,1)
+
+  OFLWR "Projected 1e- function record length is ",tlen;  CFL
 
   gtau=0d0
 
@@ -250,10 +294,11 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
         write(xstate0,'(I4)') istate+1000;  write(xmc0,'(I4)') imc+1000
         xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
 
-        open(454,file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat",status="unknown")
-        write(454,*) "#KVL flux sum: itime, time, flux sum";  write(454,*); close(454)
-
-        open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=tlen)
+        if (myrank.eq.1) then
+           open(454,file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat",status="unknown")
+           write(454,*) "#KVL flux sum: itime, time, flux sum";  write(454,*); close(454)
+           open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=tlen)
+        endif
 
 !! lets do this double time integral double batched monster loop here. 
 !! as can be seen in total flux eveything but biortho is fast as hell
@@ -267,12 +312,24 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
               do i=1,ketreadsize !! loop over times in this batch
                  do ir=1,numr !! loop over all the r's for this time           
                     k = (imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + ((ketbat-1)*BatchSize+i-1)*numr + ir
-                    read(1003,rec=k) ketmo(:,ir,:,i)
+                    read(1003,rec=k) read_ketmo(:,ir,:,i)
                  enddo
               enddo
            endif
-
-           call mympibcast(ketmo(:,:,:,1:ketreadsize),1,spfsize*numr*2*ketreadsize)
+           if (parorbsplit.ne.3) then
+              if (myrank.eq.1) then
+                 ketmo(:,:,:,1:ketreadsize)=read_ketmo(:,:,:,1:ketreadsize)
+              endif
+              call mympibcast(ketmo(:,:,:,1:ketreadsize),1,spfsize*numr*2*ketreadsize)
+           else
+              do i=1,ketreadsize
+                 do k=1,2
+                    do ir=1,numr
+                       call splitscatterv(read_ketmo(:,ir,k,i),ketmo(:,ir,k,i))
+                    enddo
+                 enddo
+              enddo
+           endif
 
 !! change it to \hat{F}|\psi(t)>, the onee part
            do i=1,ketreadsize
@@ -288,12 +345,25 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
                  do i=1,brareadsize
                     do ir=1,numr 
                        k = (imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + ((brabat-1)*BatchSize+i-1)*numr + ir
-                       read(1003,rec=k) bramo(:,ir,:,i)
+                       read(1003,rec=k) read_bramo(:,ir,:,i)
                     enddo
                  enddo
               endif
 
-              call mympibcast(bramo(:,:,:,1:brareadsize),1,spfsize*numr*2*brareadsize)
+              if (parorbsplit.ne.3) then
+                 if (myrank.eq.1) then
+                    bramo(:,:,:,1:brareadsize)=read_bramo(:,:,:,1:brareadsize)
+                 endif
+                 call mympibcast(bramo(:,:,:,1:brareadsize),1,spfsize*numr*2*brareadsize)
+              else
+                 do i=1,brareadsize
+                    do k=1,2
+                       do ir=1,numr
+                          call splitscatterv(read_bramo(:,ir,k,i),bramo(:,ir,k,i))
+                       enddo
+                    enddo
+                 enddo
+              endif
 
 !! loop over the specific ket indices & over all previous times & evaluate the actual g(tau) expression           
               do kettime=1,ketreadsize
@@ -327,10 +397,10 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            OFLWR "DEEG CURTIME NT ERR", curtime, nt; CFLST
         endif
 
+        close(1003)
+
      enddo
   enddo
-
-!! create the xsec as it should be now
 
   OFLWR "Taking the fourier transform of g(tau) to get cross section at T= ",curtime*dt; CFL
 
@@ -406,11 +476,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
               write(1004,'(F18.12, T22, 400E20.8)')  wfi,  pulseftsq(i), ftgtau(i)/pulseftsq(i) * cgfac * myfac, ftgtau(i)
            enddo
            close(1004)
-
         endif
-
-        close(1003)
-
      enddo  !! do istate
   enddo  !! do imc
 
@@ -456,10 +522,11 @@ subroutine projeflux_single(mem)
   implicit none
 !! necessary working variables
   integer :: mem,tau, i,nt ,ir,tndof,tnspf,nstate,tnumr,istate,myiostat,ierr
-  integer :: spfcomplex, acomplex, tdims(3),ttndof,ttnumconfig,imc,ii
+  integer :: spfcomplex, acomplex, tdims(3),ttndof,ttnumconfig,imc
   real*8 :: dt
   DATATYPE, allocatable :: readmo(:,:),readavec(:,:,:),mobio(:,:),abio(:,:),&
-       tmotemp(:,:)
+       tmotemp(:,:),mymo(:,:),myavec(:,:,:)
+
 !! mcscf specific read variables
   DATATYPE,target :: smo(nspf,nspf)
 
@@ -549,33 +616,34 @@ subroutine projeflux_single(mem)
 
 
 
-!! only one r point on file supported..temporary
+!! only one r point on file supported..temporary.. should project on BO states at each r
+
   do ir=1,numr
      tmo(:,:,ir)=tmo(:,:,1)
      ta(:,:,ir)=ta(:,:,1)
   enddo
 
-  do ii=1,myrank
-     call mpibarrier()
-  enddo
-  open(676,file="WALKS/cation.configlist.BIN",status="old",form="unformatted",iostat=myiostat)
+  if (myrank.eq.1) then
+     open(676,file="WALKS/cation.configlist.BIN",status="old",form="unformatted",iostat=myiostat)
+  endif
+  call mympiibcastone(myiostat,1)
   if (myiostat.ne.0) then
      OFLWR "iostat ",myiostat," in open of cation.configlist.BIN"; CFLST
   endif
-  call configlistheaderread(676,ttnumconfig,ttndof)
-
+  if (myrank.eq.1) then
+     call configlistheaderread(676,ttnumconfig,ttndof)
+  endif
+  call mympiibcastone(ttnumconfig,1); call mympiibcastone(ttndof,1)
   if (ttnumconfig.ne.tnumconfig.or.tndof.ne.ttndof) then
      OFLWR "TTTYQ ERROR"; CFLST
   endif
 
   allocate(tconfiglist(tndof,tnumconfig))
-
-  call configlistread(676,tnumconfig,tndof,tconfiglist)
-  close(676)
-
-  do ii=myrank,nprocs
-     call mpibarrier()
-  enddo
+  if (myrank.eq.1) then
+     call configlistread(676,tnumconfig,tndof,tconfiglist)
+     close(676)
+  endif
+  call mympiibcast(tconfiglist,1,tndof*tnumconfig)
 
 !! do the walks from the target state into our final state
 
@@ -587,31 +655,68 @@ subroutine projeflux_single(mem)
 
   dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
 
-  allocate(mobio(spfsize,nspf),abio(numconfig,mcscfnum),readmo(spfsize,nspf),readavec(numconfig,numr,mcscfnum))
-  inquire (iolength=i) readmo
-  open(1001,file=fluxmofile,status="unknown",form="unformatted",access="direct",recl=i)
-  inquire (iolength=i) readavec
-  open(1002,file=fluxafile,status="unknown",form="unformatted",access="direct",recl=i)
+  allocate(mobio(spfsize,nspf),abio(firstconfig:lastconfig,mcscfnum),mymo(spfsize,nspf),&
+       myavec(numr,firstconfig:lastconfig,mcscfnum))
+
+  if (myrank.eq.1) then
+     if (parorbsplit.eq.3) then
+        allocate(readmo(spfsize*nprocs,nspf))
+     else
+        allocate(readmo(spfsize,nspf))
+     endif
+     allocate(readavec(numr,numconfig,mcscfnum))
+  else
+     allocate(readmo(1,nspf),readavec(1,numr,mcscfnum))
+  endif
+
+  if (myrank.eq.1) then
+     inquire (iolength=i) readmo
+     open(1001,file=fluxmofile,status="unknown",form="unformatted",access="direct",recl=i)
+     inquire (iolength=i) readavec
+     open(1002,file=fluxafile,status="unknown",form="unformatted",access="direct",recl=i)
+  endif
 
 !! do the loop over all time, ALL TIME and now in parallel-o-vision
 
   do tau=0,nt    
 !! read in this time's wavefucntion
 
-     read(1001,rec=FluxSkipMult*tau+1) readmo(:,:);     read(1002,rec=FluxSkipMult*tau+1) readavec(:,:,:)
+     if (myrank.eq.1) then
+        read(1001,rec=FluxSkipMult*tau+1) readmo(:,:);     read(1002,rec=FluxSkipMult*tau+1) readavec(:,:,:)
+     endif
+     if (parorbsplit.ne.3) then
+        if (myrank.eq.1) then
+           mymo(:,:)=readmo(:,:)
+        endif
+        call mympibcast(mymo(:,:),1,totspfdim)
+     else
+        do i=1,nspf
+           call splitscatterv(readmo(:,i),mymo(:,i))
+        enddo
+     endif
+     if (parconsplit.eq.0) then
+        if (myrank.eq.1) then
+           myavec(:,:,:)=readavec(:,:,:)
+        endif
+        call mympibcast(myavec(:,:,:),1,numr*numconfig*mcscfnum)
+     else
+        do i=1,mcscfnum
+           call myscatterv(readavec(:,:,i),myavec(:,:,i),configsperproc(:)*numr)
+        enddo
+     endif
 
 !! do biortho and construct the single particle function
 
      do ir=1,numr
 
-        abio(:,:)=readavec(:,ir,:)
-        call bioset(projbiovar,smo,mcscfnum); 
-        call biortho(readmo,tmo(:,:,ir),mobio,abio(:,:),projbiovar)
-
+        abio(:,:)=myavec(ir,:,:)
+        call bioset(projbiovar,smo,1); 
+        call biortho(mymo,tmo(:,:,ir),mobio,abio(:,1),projbiovar)
+        do imc=2,mcscfnum
+           call biotransform(mymo,mobio,abio(:,imc),projbiovar)
+        enddo
         do imc=1,mcscfnum
            do istate=1,nstate
-!!      i=(istate-1)*(nt+1)*numr + tau*numr +r 
-
               i=(imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + tau*numr + ir
               call projeflux_doproj(ta(:,istate,ir),abio(:,imc),mobio(:,:),i)
 
@@ -629,7 +734,7 @@ subroutine projeflux_single(mem)
   enddo
 !! clean up
   close(1001);  close(1002)
-  deallocate(mobio,abio,readmo,readavec,ta,tconfiglist,tmo)
+  deallocate(mobio,abio,readmo,readavec,mymo,myavec,ta,tconfiglist,tmo)
   deallocate(numpwalk1,pwalk1,pspf1,pphase1) !!,num pw alk2,pwal k2,ps pf2,ppha se2)
 
 

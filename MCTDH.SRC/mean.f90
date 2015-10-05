@@ -76,17 +76,27 @@ end subroutine get_reducedpot0
 
 
 
-subroutine get_tworeducedx(reducedpottally,avector1,avector2)
+subroutine get_tworeducedx(reducedpottally,avector1,in_avector2)
   use parameters
   use walkmod
   implicit none
 
   integer ::   ispf, jspf, iispf, jjspf ,  config2, config1,dirphase, iwalk, qq
-  DATATYPE :: avector1(numconfig,numr,mcscfnum),  avector2(numconfig,numr,mcscfnum), &
-       a1(mcscfnum), a2(mcscfnum), dot, reducedpottally(nspf,nspf,nspf,nspf)
+  DATATYPE,intent(in) :: avector1(numr,firstconfig:lastconfig,mcscfnum),  in_avector2(numr,firstconfig:lastconfig,mcscfnum)
+  DATATYPE,intent(out) :: reducedpottally(nspf,nspf,nspf,nspf)
+  DATATYPE :: avector2(numr,numconfig,mcscfnum)             !! AUTOMATIC
+  DATATYPE ::  a1(mcscfnum), a2(mcscfnum), dot
   DATAECS :: thisrvalue
 
-!!  avector(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numconfig,numr,mcscfnum/))
+  avector2(:,:,:)=0d0
+  avector2(:,firstconfig:lastconfig,:)=in_avector2(:,:,:)
+
+!! DO SUMMA
+  if (parconsplit.ne.0) then
+     do qq=1,mcscfnum
+        call mpiallgather(avector2(:,:,qq),numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
+     enddo
+  endif
 
   reducedpottally(:,:,:,:)=0.d0
 
@@ -97,16 +107,15 @@ subroutine get_tworeducedx(reducedpottally,avector1,avector2)
 
         !! doubly off diagonal walks
         
-!!$ 06-2015     do config1=bot walk,top walk
      do config1=botconfig,topconfig
 
-        a1(:)=avector1(config1,qq,:)   !! NO MORE
+        a1(:)=avector1(qq,config1,:)   !! NO MORE
         
         do iwalk=1,numdoublewalks(config1)
            
            dirphase=doublewalkdirphase(iwalk,config1)
            config2=doublewalk(iwalk,config1)
-           a2(:)=avector2(config2,qq,:)
+           a2(:)=avector2(qq,config2,:)
            
            ispf=doublewalkdirspf(1,iwalk,config1)   !BRA2 
            jspf=doublewalkdirspf(2,iwalk,config1)   !KET2 (walk)
@@ -125,32 +134,37 @@ subroutine get_tworeducedx(reducedpottally,avector1,avector2)
      enddo   ! config1
   enddo  !! qq
 
-!!$ 06-2015  if (sparse configflag.ne.0) then
-
   call mympireduce(reducedpottally(:,:,:,:), nspf**4)
-
-!!$ 06-2015  endif
 
 end subroutine get_tworeducedx
 
 
 
 
-subroutine get_reducedproderiv(reducedproderiv,avector1,avector2)
+subroutine get_reducedproderiv(reducedproderiv,avector1,in_avector2)
   use opmod   !! rkemod, proderivmod
   use parameters
   use walkmod
   implicit none
 
-  DATATYPE :: avector2(numconfig,numr,mcscfnum), avector1(numconfig,numr,mcscfnum),&
-       a1(mcscfnum), a2(mcscfnum), dot,reducedproderiv(nspf,nspf)
+  DATATYPE,intent(in) :: avector1(numr,firstconfig:lastconfig,mcscfnum), in_avector2(numr,firstconfig:lastconfig,mcscfnum)
+  DATATYPE,intent(out) :: reducedproderiv(nspf,nspf)
+  DATATYPE :: avector2(numr,numconfig,mcscfnum)     !! AUTOMATIC
+  DATATYPE :: a1(mcscfnum), a2(mcscfnum), dot
   integer ::  config1,config2,  ispf,jspf,  dirphase,     iwalk,ii,jj
+
+  avector2(:,:,:)=0d0
+  avector2(:,firstconfig:lastconfig,:)=in_avector2(:,:,:)
+
+!! DO SUMMA
+  if (parconsplit.ne.0) then
+     do ii=1,mcscfnum
+        call mpiallgather(avector2(:,:,ii),numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
+     enddo
+  endif
 
   reducedproderiv(:,:)=0.d0
 
-     !! single off diagonal walks
-
-!!$ 06-2015  do config1=bot walk,top walk
   do config1=botconfig,topconfig
 
      do iwalk=1,numsinglewalks(config1)
@@ -159,8 +173,8 @@ subroutine get_reducedproderiv(reducedproderiv,avector1,avector2)
         
         do jj=1,numr
            do ii=1,numr
-              a1(:)=avector1(config1,ii,:)
-              a2(:)=avector2(config2,jj,:)
+              a1(:)=avector1(ii,config1,:)
+              a2(:)=avector2(jj,config2,:)
               
               reducedproderiv(jspf,ispf)=reducedproderiv(jspf,ispf)+ &
                    dirphase*dot(a1,a2,mcscfnum)*proderivmod(ii,jj)
@@ -169,23 +183,20 @@ subroutine get_reducedproderiv(reducedproderiv,avector1,avector2)
      enddo
   enddo
 
-!!$ 06-2015  if (sparse configflag.ne.0) then
-
-     call mympireduce(reducedproderiv(:,:), nspf**2)
-
-!!$ 06-2015  endif
+  call mympireduce(reducedproderiv(:,:), nspf**2)
 
 end subroutine get_reducedproderiv
 
 
-subroutine get_reducedr(reducedinvr,reducedinvrsq,reducedr,avector1,avector2)
+subroutine get_reducedr(reducedinvr,reducedinvrsq,reducedr,avector1,in_avector2)
   use parameters
   use walkmod
   implicit none
 
-  DATATYPE :: avector1(numconfig,numr,mcscfnum), avector2(numconfig,numr,mcscfnum), &
-       a1(mcscfnum), a2(mcscfnum), dot, reducedinvr(nspf,nspf),reducedr(nspf,nspf), &
-       reducedinvrsq(nspf,nspf)
+  DATATYPE,intent(in) :: avector1(numr,firstconfig:lastconfig,mcscfnum), in_avector2(numr,firstconfig:lastconfig,mcscfnum)
+  DATATYPE,intent(out) :: reducedinvr(nspf,nspf),reducedr(nspf,nspf),  reducedinvrsq(nspf,nspf)
+  DATATYPE :: avector2(numr,numconfig,mcscfnum)      !! AUTOMATIC
+  DATATYPE ::  a1(mcscfnum), a2(mcscfnum), dot
   integer ::  config1,config2,   ispf,jspf,  dirphase,    iwalk,ii
   DATAECS :: thisrvalue,  csum,csum2
 
@@ -194,22 +205,25 @@ subroutine get_reducedr(reducedinvr,reducedinvrsq,reducedr,avector1,avector2)
      return
   endif
 
+  avector2(:,:,:)=0d0
+  avector2(:,firstconfig:lastconfig,:) = in_avector2(:,:,:)
+  if (parconsplit.ne.0) then
+     do ii=1,mcscfnum
+        call mpiallgather(avector2(:,:,ii),numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
+     enddo
+  endif
 
   do ii=1,numr
 
-        !! matches constraint (init_H2_ line 61)
-!! single off diagonal walks
-
      thisrvalue=bondpoints(ii);        csum=(1.d0/thisrvalue);        csum2=(1.d0/thisrvalue**2)
 
-!!$ 06-2015     do config1=bot walk,top walk
      do config1=botconfig,topconfig
 
-        a1(:)=avector1(config1,ii,:)
+        a1(:)=avector1(ii,config1,:)
         
         do iwalk=1,numsinglewalks(config1)
            config2=singlewalk(iwalk,config1);              dirphase=singlewalkdirphase(iwalk,config1)
-           a2(:)=avector2(config2,ii,:)
+           a2(:)=avector2(ii,config2,:)
            
            ispf=singlewalkopspf(1,iwalk,config1);              jspf=singlewalkopspf(2,iwalk,config1)
            
@@ -221,12 +235,8 @@ subroutine get_reducedr(reducedinvr,reducedinvrsq,reducedr,avector1,avector2)
      enddo
   enddo !! numr
   
-!!$ 06-2015  if (sparse configflag.ne.0) then
-
-     call mympireduce(reducedr(:,:), nspf**2);  call mympireduce(reducedinvr(:,:), nspf**2)
-     call mympireduce(reducedinvrsq(:,:), nspf**2)
-
-!!$ 06-2015  endif
+  call mympireduce(reducedr(:,:), nspf**2);  call mympireduce(reducedinvr(:,:), nspf**2)
+  call mympireduce(reducedinvrsq(:,:), nspf**2)
 
 end subroutine get_reducedr
 

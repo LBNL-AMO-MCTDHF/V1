@@ -245,9 +245,9 @@ subroutine abio_sparse(abio,aout,inbiovar)
   integer :: biofileptr=6719
   real*8 :: t,anorm, tol
   real*8,save :: tempstepsize=-1d0
-  DATATYPE :: abio(numconfig,inbiovar%bionr), aout(numconfig,inbiovar%bionr)
-  DATATYPE, allocatable :: wsp(:), smallvector(:,:), smallvectorout(:,:),          aouttr(:,:)
-  external biomatvec, parbiomatvec_transpose,realpardotsub
+  DATATYPE :: abio(inbiovar%bionr,firstconfig:lastconfig), aout(inbiovar%bionr,firstconfig:lastconfig)
+  DATATYPE, allocatable :: wsp(:), smallvector(:,:), smallvectorout(:,:)
+  external parbiomatvec,realpardotsub
 
 
   t=1d0;  anorm=1d0 ;  itrace=0;   iflag=0; tol=biotol;   icalled=icalled+1
@@ -286,30 +286,28 @@ subroutine abio_sparse(abio,aout,inbiovar)
   liwsp=max(12,inbiovar%thisbiodim+3);  lwsp=ixx*(liwsp+1) + 6*(liwsp)**2 + 6+1
   
   allocate(wsp(lwsp),iwsp(liwsp))
-  allocate(smallvector(inbiovar%bionr,maxconfigsperproc),smallvectorout(inbiovar%bionr,maxconfigsperproc), &
-          aouttr(inbiovar%bionr,numconfig))
+  allocate(smallvector(inbiovar%bionr,maxconfigsperproc),smallvectorout(inbiovar%bionr,maxconfigsperproc))
   smallvector(:,:)=0; smallvectorout(:,:)=0
-  smallvector(:,1:topwalk-botwalk+1)=TRANSPOSE(abio(botwalk:topwalk,:))
+  smallvector(:,1:topwalk-botwalk+1)=abio(:,botwalk:topwalk)
 
 #ifdef REALGO
-  call DGEXPVxxx2(ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec_transpose,itrace,iflag,biofileptr,tempstepsize,realpardotsub,maxconfigsperproc*nprocs*inbiovar%bionr)     !!!! numconfig*inbiovar%bionr)
+  call DGEXPVxxx2(ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec,itrace,iflag,biofileptr,tempstepsize,realpardotsub,maxconfigsperproc*nprocs*inbiovar%bionr)
 #else
   lwsp=2*lwsp
-  call DGEXPVxxx2(2*ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec_transpose,itrace,iflag,biofileptr,tempstepsize,realpardotsub,2*maxconfigsperproc*nprocs*inbiovar%bionr)    !! 2*numconfig*inbiovar%bionr)
+  call DGEXPVxxx2(2*ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec,itrace,iflag,biofileptr,tempstepsize,realpardotsub,2*maxconfigsperproc*nprocs*inbiovar%bionr)
   lwsp=lwsp/2
 #endif
   if(iflag.eq.1) then
-     OFLWR "Solution did not converge in sparsebiortho - TEMP CONTINUE",iflag,tol,inbiovar%thisbiodim,inbiovar%biomaxdim,maxbiodim; CFL
+     OFLWR "Solution did not converge in sparsebiortho - TEMP CONTINUE",iflag,tol,inbiovar%thisbiodim; CFL
   elseif(iflag.ne.0) then
-     OFLWR "Stopping due to bad iflag in sparsebiortho: ",iflag,tol,inbiovar%thisbiodim,inbiovar%biomaxdim,maxbiodim; CFLST
+     OFLWR "Stopping due to bad iflag in sparsebiortho: ",iflag,tol,inbiovar%thisbiodim; CFLST
   endif
-  aouttr(:,:)=0d0
-  aouttr(:,botwalk:topwalk)=smallvectorout(:,1:topwalk-botwalk+1)
-  if (sparseconfigflag.ne.0) then
-     call mpiallgather(aouttr,numconfig*inbiovar%bionr,configsperproc*inbiovar%bionr,maxconfigsperproc*inbiovar%bionr)
+  aout(:,:)=0d0
+  aout(:,botwalk:topwalk)=smallvectorout(:,1:topwalk-botwalk+1)
+  if (sparseconfigflag.ne.0.and.parconsplit.eq.0) then
+     call mpiallgather(aout,numconfig*inbiovar%bionr,configsperproc*inbiovar%bionr,maxconfigsperproc*inbiovar%bionr)
   endif
-  aout(:,:)=TRANSPOSE(aouttr(:,:))
-  deallocate(aouttr,smallvector,smallvectorout)
+  deallocate(smallvector,smallvectorout)
 
   if (myrank.eq.1.and.notiming.eq.0) then
      open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="old", position="append")
@@ -391,8 +389,8 @@ contains
     type(biorthotype),target :: inbiovar
     integer :: i,j
     integer, save :: icalled=0
-    DATATYPE :: origmo(spfsize,nspf),oppmo(spfsize,nspf),mobio(spfsize,nspf),abio(numconfig,inbiovar%bionr),dot,data0,data1
-    DATATYPE :: atmp(numconfig,inbiovar%bionr),smosave(nspf,nspf)
+    DATATYPE :: origmo(spfsize,nspf),oppmo(spfsize,nspf),mobio(spfsize,nspf),abio(inbiovar%bionr,firstconfig:lastconfig),dot,data0,data1
+    DATATYPE :: atmp(inbiovar%bionr,firstconfig:lastconfig),smosave(nspf,nspf)
     
     icalled=icalled+1
     
@@ -454,8 +452,8 @@ contains
     type(biorthotype),target :: inbiovar
     integer :: i,j
     integer, save :: icalled=0
-    DATATYPE :: origmo(spfsize,nspf),oppmo(spfsize,nspf),abio(numconfig,inbiovar%bionr),dot
-    DATATYPE :: atmp(numconfig,inbiovar%bionr)
+    DATATYPE :: origmo(spfsize,nspf),oppmo(spfsize,nspf),abio(inbiovar%bionr,firstconfig:lastconfig),dot
+    DATATYPE :: atmp(inbiovar%bionr,firstconfig:lastconfig)
     
     icalled=icalled+1
     
@@ -493,8 +491,8 @@ contains
     type(biorthotype),target :: inbiovar
     integer :: i,j
     integer, save :: icalled=0
-    DATATYPE :: origmo(spfsize,nspf),oppmo(spfsize,nspf),abio(numconfig,inbiovar%bionr),dot
-    DATATYPE :: atmp(numconfig,inbiovar%bionr)
+    DATATYPE :: origmo(spfsize,nspf),oppmo(spfsize,nspf),abio(inbiovar%bionr,firstconfig:lastconfig),dot
+    DATATYPE :: atmp(inbiovar%bionr,firstconfig:lastconfig)
     
     icalled=icalled+1
     
@@ -536,15 +534,15 @@ subroutine abio_nonsparse(smo,abio,aout,nr)
   implicit none
   integer :: nr,i,j,iflag,clow,chigh,jproc,cnum,nnn(2),iind,mmm(2)
   integer :: ipiv(numconfig),bioconfiglist(numelec,numconfig)
-  DATATYPE :: abio(numconfig,nr),aout(numconfig,nr),matdet,smobig(nspf*2,nspf*2),Stmpbig(numelec,numelec)
-  DATATYPE  :: Sconfig(numconfig,numconfig),smo(nspf,nspf)
+  DATATYPE :: abio(nr,numconfig),aout(nr,numconfig),matdet,smobig(nspf*2,nspf*2),Stmpbig(numelec,numelec)
+  DATATYPE  :: Sconfig(numconfig,numconfig),smo(nspf,nspf), aouttr(numconfig,nr)
   
 !! for the nonsparse routine this builds the full nonsparse configuration overlap matrix
 !! this relies on the unique properties of the Doolittle algorithm of LU factorization
 !! to take the overlap matrices of the ith and jth configs alpha and beta orbitals and get their determinant that way 
 !! this is very much so a brute force way to approach this problem
 
-  aout(:,:)=abio(:,:);  smobig(:,:)=0d0
+  smobig(:,:)=0d0
 
   do i=1,nspf*2
      mmm(:)=aarr(i,nspf)
@@ -562,8 +560,6 @@ subroutine abio_nonsparse(smo,abio,aout,nr)
      enddo
   enddo
   
-!! 06-2015  do j=1,numconfig
-
   do j=botconfig,topconfig
 
      do i=1,numconfig
@@ -572,17 +568,16 @@ subroutine abio_nonsparse(smo,abio,aout,nr)
      enddo
   enddo
 
-!! 06-2015
-  if (sparseconfigflag.eq.0) then   !! it is, but whatever
-     call mpiallgather(sconfig,numconfig**2,configsperproc*numconfig,maxconfigsperproc*numconfig)
-  endif
+  call mpiallgather(sconfig,numconfig**2,configsperproc*numconfig,maxconfigsperproc*numconfig)
 
 !! this is where the linear equation solver is called to solve S*abio'=abio to get our  abio'
 !! parallelize over internuclear coordinate
 
+  aouttr(:,:)=TRANSPOSE(abio(:,:))
+
   clow = (myrank-1)*nr/nprocs+1;  chigh = myrank*nr/nprocs
 
-  call MYGESV(numconfig,chigh-clow+1,Sconfig,numconfig,ipiv,aout(:,clow),numconfig,iflag)
+  call MYGESV(numconfig,chigh-clow+1,Sconfig,numconfig,ipiv,aouttr(:,clow),numconfig,iflag)
 
   if(iflag.ne.0) then
      OFLWR "Stopping due to bad iflag in nonsparsebiortho: ",iflag; CFLST
@@ -590,46 +585,45 @@ subroutine abio_nonsparse(smo,abio,aout,nr)
 
   do jproc=1,nprocs
      clow = (jproc-1)*nr/nprocs+1;      chigh = jproc*nr/nprocs;      cnum = (chigh-clow+1)*numconfig
-     call mympibcast(aout(:,clow:),jproc,cnum)
+     call mympibcast(aouttr(:,clow:),jproc,cnum)
   enddo
+
+  aout(:,:)=TRANSPOSE(aouttr(:,:))
 
 end subroutine abio_nonsparse
 
 
 !! NOTE BOUNDS !!
 
-subroutine parbiomatvec_transpose(inavectortr,outavectortr)
+subroutine parbiomatvec(inavector,outavector)
   use parameters
   use mpimod
   use matvecsetmod
   use biomatvecmod
   implicit none
 
-!!  DATATYPE :: inavectortr(biopointer%bionr,botwalk:topwalk), outavectortr(biopointer%bionr,botwalk:topwalk)
-  DATATYPE :: inavectortr(biopointer%bionr,botwalk:botwalk+maxconfigsperproc-1), outavectortr(biopointer%bionr,botwalk:botwalk+maxconfigsperproc-1)
+  DATATYPE,intent(in) :: inavector(biopointer%bionr,botwalk:botwalk+maxconfigsperproc-1)
+  DATATYPE,intent(out) :: outavector(biopointer%bionr,botwalk:botwalk+maxconfigsperproc-1)
 
-  DATATYPE :: intemptr(biopointer%bionr,numconfig), ttvector(numconfig,biopointer%bionr), ttvector2(botwalk:topwalk,biopointer%bionr)
-
-  outavectortr(:,:)=0d0
+  DATATYPE :: intemp(biopointer%bionr,numconfig)
 
   if (sparseconfigflag.eq.0) then
-     OFLWR "error, must use sparse for parbiomatvec_transpose"; CFLST
+     OFLWR "error, must use sparse for parbiomatvec"; CFLST
   endif
 
-  intemptr(:,:)=0d0
-  intemptr(:,botwalk:topwalk)=inavectortr(:,botwalk:topwalk)
+  intemp(:,:)=0d0
+  intemp(:,botwalk:topwalk)=inavector(:,botwalk:topwalk)
+
+!! DO SUMMA INSTEAD
 
   if (sparseconfigflag.ne.0) then
-     call mpiallgather(intemptr,numconfig*biopointer%bionr,configsperproc*biopointer%bionr,maxconfigsperproc*biopointer%bionr)
+     call mpiallgather(intemp,numconfig*biopointer%bionr,configsperproc*biopointer%bionr,maxconfigsperproc*biopointer%bionr)
   endif
 
-  ttvector(:,:)=TRANSPOSE(intemptr(:,:))
+  outavector(:,:)=0d0
+  call biomatvec_nompi(intemp,outavector)
 
-  call biomatvec_nompi(ttvector,ttvector2)
-
-  outavectortr(:,botwalk:topwalk)=TRANSPOSE(ttvector2(botwalk:topwalk,:))
-  
-end subroutine parbiomatvec_transpose
+end subroutine parbiomatvec
 
 
 
@@ -648,8 +642,6 @@ end subroutine parbiomatvec_transpose
 !! that were passed to biortho when it was called this time
 
 
-
-
 subroutine biomatvec_nompi(x,y)
   use matvecsetmod
   use biomatvecmod
@@ -657,7 +649,7 @@ subroutine biomatvec_nompi(x,y)
   use parameters
   implicit none
   integer :: i,j
-  DATATYPE :: x(numconfig,biopointer%bionr),y(botwalk:topwalk,biopointer%bionr)
+  DATATYPE :: x(biopointer%bionr,numconfig),y(biopointer%bionr,botwalk:topwalk)
 
   y(:,:)=0d0
 
@@ -666,9 +658,9 @@ subroutine biomatvec_nompi(x,y)
 !!$     do j=1,numelec
 !!$        tmpval = tmpval + biopointer%smo(configlist((j-1)*2+1,i),configlist((j-1)*2+1,i))
 !!$     enddo
-     y(i,:)=0   !!$tmpval*x(i,:)
-     do j=1,numsinglewalks(i) !! summing over nonconjugated second index in s(:), good -- s(i,j) is ln(<i|j>) correct?
-        y(i,:) = y(i,:) + biopointer%smo(singlewalkopspf(1,j,i),singlewalkopspf(2,j,i)) * singlewalkdirphase(j,i) * x(singlewalk(j,i),:) 
+     y(:,i)=0   !!$tmpval*x(:,i)
+     do j=1,numsinglewalks(i) !! summing over nonconjugated second index in s(:), good
+        y(:,i) = y(:,i) + biopointer%smo(singlewalkopspf(1,j,i),singlewalkopspf(2,j,i)) * singlewalkdirphase(j,i) * x(:,singlewalk(j,i)) 
      enddo
   enddo
 

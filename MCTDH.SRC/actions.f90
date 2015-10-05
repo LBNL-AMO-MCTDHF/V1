@@ -109,7 +109,7 @@ subroutine actionsub(thistime)
 
         call system_clock(atime)
         if(mod(calledhere-1,FluxInterval).eq.0) then  !! writes all mcscfnum
-          if(myrank.eq.1) call fluxwrite((calledhere-1)/FluxInterval,yyy%cmfpsivec(spfstart,0),yyy%cmfpsivec(astart(1),0))
+           call fluxwrite((calledhere-1)/FluxInterval,yyy%cmfpsivec(spfstart,0),yyy%cmfpsivec(astart(1),0))
        endif
         call system_clock(btime);        times(15)=times(15)+btime-atime
 
@@ -260,7 +260,7 @@ subroutine actions_final()
         endif
      case(15)
         if(mod(numpropsteps,FluxInterval).eq.0) then
-          if(myrank.eq.1) call fluxwrite(numpropsteps/FluxInterval,yyy%cmfpsivec(spfstart,0),yyy%cmfpsivec(astart(1),0))
+          call fluxwrite(numpropsteps/FluxInterval,yyy%cmfpsivec(spfstart,0),yyy%cmfpsivec(astart(1),0))
        endif
     case(20)
         call getoverlaps(1)

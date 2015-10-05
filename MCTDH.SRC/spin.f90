@@ -5,256 +5,202 @@
 #include "Definitions.INC"
 
 
-subroutine configspin_projectall(vector, iprint)
+subroutine configspin_project(vector, iprint)
+  use parameters
+  implicit none
+  integer :: iprint
+  DATATYPE :: vector(numr,firstconfig:lastconfig)
+
+  if (parconsplit.eq.0) then
+     call configspin_project_all(vector(:,:),iprint)
+  else
+     call configspin_project_local(vector(:,:),iprint)
+  endif
+
+end subroutine configspin_project
+
+
+subroutine configspin_project_all(vector, iprint)
   use spinwalkmod
   use parameters
   implicit none
   integer :: iprint
-  DATATYPE :: vector(numconfig,numr)
-  integer,save :: allochere=0
-  DATATYPE,save,allocatable :: smallvect(:,:), smalltemp(:,:),  configvector1(:,:), vectortr(:,:)
+  DATATYPE :: vector(numr,numconfig)
 
-  if (allochere.eq.0) then
-     allocate(smallvect(maxspinsetsize,numr), smalltemp(maxspinsetsize,numr), &
-       configvector1(numconfig,numr), vectortr(numr,numconfig))
+  call configspin_project_local(vector(:,botwalk),iprint)
+
+  if (sparseconfigflag.ne.0) then
+     call mpiallgather(vector,numconfig*numr, configsperproc*numr,maxconfigsperproc*numr)
   endif
-  allochere=1
 
-  call configspin_project0(vector,iprint,1,numconfig,smallvect,smalltemp,configvector1,vectortr)
-
-end subroutine configspin_projectall
+end subroutine configspin_project_all
 
 
 
-subroutine configspin_projectmine(vector, iprint)
+subroutine configspin_project_local(vector,iprint)
   use spinwalkmod
   use parameters
   implicit none
-  integer :: iprint
-  DATATYPE :: vector(botwalk:topwalk,numr)
-  integer,save :: allochere=0
-  DATATYPE,save,allocatable :: smallvect(:,:), smalltemp(:,:),  configvector1(:,:), vectortr(:,:)
-
-  if (allochere.eq.0) then
-     allocate(smallvect(maxspinsetsize,numr), smalltemp(maxspinsetsize,numr), &
-       configvector1(botwalk:topwalk,numr), vectortr(numr,botwalk:topwalk))
-  endif
-  allochere=1
-
-  call configspin_project0(vector,iprint,botwalk,topwalk,smallvect,smalltemp,configvector1,vectortr)
-
-end subroutine configspin_projectmine
-
-
-subroutine configspin_project0(vector,iprint,ibot,itop,smallvect,smalltemp,configvector1,vectortr)
-  use spinwalkmod
-  use parameters
-  implicit none
-  integer :: iprint, iset, ii, ibot,itop,isize
+  integer :: iprint, iset, ii, isize
   real*8 :: normsq, normsq2
-  DATATYPE :: hermdot        , vector(ibot:itop,numr)
-  !! keep hermdot, want to see if wfn has gotten chopped; dot could increase with cmctdh
-
-  DATATYPE :: smallvect(maxspinsetsize,numr), smalltemp(maxspinsetsize,numr), &
-       configvector1(ibot:itop,numr), vectortr(numr,ibot:itop)
-
-  if (.not.((ibot.eq.1.and.itop.eq.numconfig).or.(ibot.eq.botwalk.and.itop.eq.topwalk))) then
-     OFLWR "ISIZE UNRECOGNIIIIZED"; CFLST
-  endif
-
-  isize=itop-ibot+1
+  DATATYPE :: hermdot, vector(numr,botwalk:topwalk)
+  DATATYPE :: smallvect(numr,maxspinsetsize), smalltemp(numr,maxspinsetsize), &
+       outvector(numr,botwalk:topwalk)
 
   if (spinwalkflag==0) then
      OFLWR "Error, configspin_projectmany called but spinwalkflag is 1"; CFLST
   endif
-  normsq=real(hermdot(vector,vector,numr*isize))  !! ok hermdot    !! just for check, so don't allreduce.
 
-  configvector1(:,:) = 0.d0
+  isize=topwalk-botwalk+1
+
+  normsq=real(hermdot(vector,vector,numr*isize))  !! ok hermdot
+  if (sparseconfigflag.ne.0) then
+     call mympirealreduceone(normsq)
+  endif
+
+  outvector(:,:) = 0.d0
   do iset=1,numspinsets
      do ii=1,spinsetsize(iset)
-        smallvect(ii,:)=vector(spinsets(ii,iset),:)
+        smallvect(:,ii)=vector(:,spinsets(ii,iset))
      enddo
-     call MYGEMM('N', 'N', spinsetsize(iset), numr, spinsetsize(iset), DATAONE, spinsetprojector(iset)%mat, spinsetsize(iset), smallvect, maxspinsetsize,DATAZERO,smalltemp, maxspinsetsize)
+     call MYGEMM('N', 'T', numr, spinsetsize(iset), spinsetsize(iset), DATAONE,  smallvect, numr, spinsetprojector(iset)%mat, spinsetsize(iset),DATAZERO,smalltemp, numr)
      do ii=1,spinsetsize(iset)
-        configvector1(spinsets(ii,iset),1:numr) = configvector1(spinsets(ii,iset),1:numr) + smalltemp(ii,:)
+        outvector(:,spinsets(ii,iset)) = outvector(:,spinsets(ii,iset)) + smalltemp(:,ii)
      enddo
   enddo
 
-  if (isize.eq.numconfig.and.sparseconfigflag.ne.0) then
-     
-     vectortr=TRANSPOSE(vector)
-     call mpiallgather(vectortr,numconfig*numr, configsperproc*numr,maxconfigsperproc*numr)
-     vector=TRANSPOSE(vectortr)
-     
+  vector(:,:)=outvector(:,:)
+
+  normsq2=real(hermdot(vector,vector,numr*isize))  !! ok hermdot
+  if (sparseconfigflag.ne.0) then
+     call mympirealreduceone(normsq2)
   endif
-     
-  normsq2=real(hermdot(vector,vector,numr*numconfig))  !! ok hermdot
 
   if (iprint/=0) then
      if (abs(normsq/normsq2-1.d0).gt.1.d-7) then
-        OFLWR "Warning, in configspin_projectmany I lost norm: ", normsq, normsq2; CFL
+        OFLWR "Warning, in configspin_project_local I lost norm: ", normsq, normsq2; CFL
      endif
   endif
-end subroutine configspin_project0
+
+end subroutine configspin_project_local
 
 
-
-subroutine configspin_transformto(howmany,invector,outvector)
+subroutine configspin_transformto(nblock,invector,outvector)
   use spinwalkmod
   use parameters
   implicit none
-  integer :: howmany, iset, iind,ii
-  DATATYPE :: invector(numconfig,howmany),outvector(spintotrank,howmany), smallvect(maxspinsetsize,howmany), smalltemp(maxspinsetsize,howmany), &
-       outvectortr(howmany,spintotrank)
-
-  outvector(:,:)=0d0
-
-  iind=spinstart
-  do iset=1,numspinsets
-     smallvect(:,:)=0d0
-     do ii=1,spinsetsize(iset)
-        smallvect(ii,:)=invector(spinsets(ii,iset),:)
-     enddo
-     call MYGEMM('T', 'N', spinsetrank(iset), howmany, spinsetsize(iset), DATAONE, spinsetprojector(iset)%vects, spinsetsize(iset), smallvect, maxspinsetsize,DATAZERO,smalltemp, maxspinsetsize)
-     outvector(iind:iind+spinsetrank(iset)-1,:) = smalltemp(1:spinsetrank(iset),:)
-     iind=iind+spinsetrank(iset)
-  enddo
-
-  if (iind.ne.spinend+1) then
-     OFLWR "IIND ERRO", iind-spinstart,spinrank,iind,spinend; CFLST
+  integer,intent(in) :: nblock
+  DATATYPE,intent(in) :: invector(nblock,localnconfig)
+  DATATYPE,intent(out) :: outvector(nblock,localnspin)
+  if (parconsplit.eq.0) then
+     call configspin_transformto_all(nblock,invector,outvector)
+  else
+     call configspin_transformto_local(nblock,invector,outvector)
   endif
-
-  if (sparseconfigflag.ne.0) then
-     outvectortr=TRANSPOSE(outvector)
-     call mpiallgather(outvectortr,spintotrank*howmany, allspinranks*howmany,maxspinrank*howmany)
-     outvector=TRANSPOSE(outvectortr)
-  endif
-
 end subroutine configspin_transformto
 
 
+!! ALL NUMCONFIG.
 
-subroutine configspin_transformto_mine(howmany,invector,outvector)
+subroutine configspin_transformto_all(nblock,invector,outvector)
   use spinwalkmod
   use parameters
   implicit none
-  integer :: howmany, iset, iind,ii
-  DATATYPE :: invector(botwalk:topwalk,howmany),outvector(spinrank,howmany), smallvect(maxspinsetsize,howmany), smalltemp(maxspinsetsize,howmany)
-
+  integer :: nblock
+  DATATYPE,intent(in) :: invector(nblock,numconfig)
+  DATATYPE,intent(out) :: outvector(nblock,spintotrank)
 
   outvector(:,:)=0d0
-
-  iind=1
-  do iset=1,numspinsets
-     smallvect(:,:)=0d0
-     do ii=1,spinsetsize(iset)
-        smallvect(ii,:)=invector(spinsets(ii,iset),:)
-     enddo
-     call MYGEMM('T', 'N', spinsetrank(iset), howmany, spinsetsize(iset), DATAONE, spinsetprojector(iset)%vects, spinsetsize(iset), smallvect, maxspinsetsize,DATAZERO,smalltemp, maxspinsetsize)
-     outvector(iind:iind+spinsetrank(iset)-1,:) = smalltemp(1:spinsetrank(iset),:)
-     iind=iind+spinsetrank(iset)
-  enddo
-
-  if (iind.ne.spinrank+1) then
-     OFLWR "IIND ERRO", iind,spinrank; CFLST
-  endif
-
-end subroutine configspin_transformto_mine
-
-
-
-
-subroutine configspin_transformto_mine_transpose(invectortr,outvectortr)
-  use spinwalkmod
-  use parameters
-  implicit none
-  integer :: iset, iind,ii
-  DATATYPE :: invectortr(numr,botwalk:topwalk),outvectortr(numr,spinrank)
-  integer, save :: allochere=0
-  DATATYPE,save,allocatable :: smallvecttr(:,:), smalltemptr(:,:)
-
-  if (allochere.eq.0) then
-     allocate(smallvecttr(numr,maxspinsetsize), smalltemptr(numr,maxspinsetsize))
-  endif
-  allochere=1
-
-  outvectortr(:,:)=0d0
-
-  iind=1
-  do iset=1,numspinsets
-     smallvecttr(:,:)=0d0
-     do ii=1,spinsetsize(iset)
-        smallvecttr(:,ii)=invectortr(:,spinsets(ii,iset))
-     enddo
-!     call MYGEMM('T', 'N', spinsetrank(iset), numr, spinsetsize(iset), DATAONE, spinsetprojector(iset)%vects, spinsetsize(iset), smallvect, maxspinsetsize,DATAZERO,smalltemp, maxspinsetsize)
-
-     call MYGEMM('N', 'N', numr, spinsetrank(iset), spinsetsize(iset), DATAONE, smallvecttr, numr, spinsetprojector(iset)%vects, spinsetsize(iset), DATAZERO,smalltemptr, numr)
-
-     outvectortr(:,iind:iind+spinsetrank(iset)-1) = smalltemptr(:,1:spinsetrank(iset))
-     iind=iind+spinsetrank(iset)
-  enddo
-
-  if (iind.ne.spinrank+1) then
-     OFLWR "IIND ERRO", iind,spinrank; CFLST
-  endif
-
-end subroutine configspin_transformto_mine_transpose
-
-
-
-subroutine configspin_transformfrom(howmany,invector,outvector)
-  use spinwalkmod
-  use parameters
-  implicit none
-  integer :: howmany, iset, iind,ii
-  DATATYPE :: outvector(numconfig,howmany),invector(spintotrank,howmany), smallvect(maxspinsetsize,howmany), smalltemp(maxspinsetsize,howmany), &
-       outvectortr(howmany,numconfig)
-
-  outvector(:,:)=0d0
-
-  iind=spinstart
-  do iset=1,numspinsets
-     smallvect(:,:)=0d0
-     smallvect(1:spinsetrank(iset),:)=invector(iind:iind+spinsetrank(iset)-1,:)
-     call MYGEMM('N', 'N', spinsetsize(iset), howmany, spinsetrank(iset), DATAONE, spinsetprojector(iset)%vects, spinsetsize(iset), smallvect, maxspinsetsize,DATAZERO,smalltemp, maxspinsetsize)
-
-     do ii=1,spinsetsize(iset)
-        outvector(spinsets(ii,iset),:)=smalltemp(ii,:)
-     enddo
-     iind=iind+spinsetrank(iset)
-  enddo
-
-  if (iind.ne.spinend+1) then
-     OFLWR "IIND ERRO", iind-spinstart,spinrank,iind,spinend; CFLST
-  endif
-
+  call configspin_transformto_local(nblock,invector(:,botwalk),outvector(:,spinstart))
   if (sparseconfigflag.ne.0) then
-     outvectortr=TRANSPOSE(outvector)
-     call mpiallgather(outvectortr,numconfig*howmany, configsperproc*howmany,maxconfigsperproc*howmany)
-     outvector=TRANSPOSE(outvectortr)
+     call mpiallgather(outvector(:,:),spintotrank*nblock, allspinranks(:)*nblock,maxspinrank*nblock)
   endif
 
+end subroutine configspin_transformto_all
+
+
+
+
+subroutine configspin_transformto_local(nblock,invector,outvector)
+  use spinwalkmod
+  use parameters
+  implicit none
+  integer :: nblock, iset, iind,ii
+  DATATYPE,intent(in) :: invector(nblock,botwalk:topwalk)
+  DATATYPE,intent(out) :: outvector(nblock,spinrank)
+
+  DATATYPE :: smallvect(nblock,maxspinsetsize), smalltemp(nblock,maxspinsetsize)
+
+  outvector(:,:)=0d0
+
+  iind=1
+  do iset=1,numspinsets
+     smallvect(:,:)=0d0
+     do ii=1,spinsetsize(iset)
+        smallvect(:,ii)=invector(:,spinsets(ii,iset))
+     enddo
+     call MYGEMM('N', 'N', nblock, spinsetrank(iset), spinsetsize(iset), DATAONE, smallvect,nblock, spinsetprojector(iset)%vects, spinsetsize(iset), DATAZERO,smalltemp, nblock)
+     outvector(:,iind:iind+spinsetrank(iset)-1) = smalltemp(:,1:spinsetrank(iset))
+     iind=iind+spinsetrank(iset)
+  enddo
+
+  if (iind.ne.spinrank+1) then
+     OFLWR "IIND ERRO", iind,spinrank; CFLST
+  endif
+
+end subroutine configspin_transformto_local
+
+
+
+subroutine configspin_transformfrom(nblock,invector,outvector)
+  use parameters
+  implicit none
+  integer :: nblock
+  DATATYPE,intent(out) :: outvector(nblock,localnconfig)
+  DATATYPE,intent(in) :: invector(nblock,localnspin)
+  if (parconsplit.eq.0) then
+     call configspin_transformfrom_all(nblock,invector,outvector)
+  else
+     call configspin_transformfrom_local(nblock,invector,outvector)
+  endif
 end subroutine configspin_transformfrom
 
 
-
-subroutine configspin_transformfrom_mine(howmany,invector,outvector)
+subroutine configspin_transformfrom_all(nblock,invector,outvector)
   use spinwalkmod
   use parameters
   implicit none
-  integer :: howmany, iset, iind,ii
-  DATATYPE :: outvector(botwalk:topwalk,howmany),invector(spinrank,howmany), smallvect(maxspinsetsize,howmany), smalltemp(maxspinsetsize,howmany)
+  integer :: nblock
+  DATATYPE,intent(out) :: outvector(nblock,numconfig)
+  DATATYPE,intent(in) :: invector(nblock,spintotrank)
+
+  outvector(:,:)=0d0
+  call configspin_transformfrom_local(nblock,invector(:,spinstart),outvector(:,botwalk))
+  if (sparseconfigflag.ne.0) then
+        call mpiallgather(outvector(:,:),numconfig*nblock, configsperproc(:)*nblock,maxconfigsperproc*nblock)
+  endif
+
+end subroutine configspin_transformfrom_all
+
+
+
+subroutine configspin_transformfrom_local(nblock,invector,outvector)
+  use spinwalkmod
+  use parameters
+  implicit none
+  integer :: nblock,iset, iind, ii
+  DATATYPE,intent(out) :: outvector(nblock,botwalk:topwalk)
+  DATATYPE,intent(in) :: invector(nblock,spinrank)
+  DATATYPE :: smallvect(nblock,maxspinsetsize), smalltemp(nblock,maxspinsetsize)
 
   outvector(:,:)=0d0
 
   iind=1
   do iset=1,numspinsets
-     smallvect(:,:)=0d0
-     smallvect(1:spinsetrank(iset),:)=invector(iind:iind+spinsetrank(iset)-1,:)
-     call MYGEMM('N', 'N', spinsetsize(iset), howmany, spinsetrank(iset), DATAONE, spinsetprojector(iset)%vects, spinsetsize(iset), smallvect, maxspinsetsize,DATAZERO,smalltemp, maxspinsetsize)
-
+     smallvect(:,1:spinsetrank(iset))=invector(:,iind:iind+spinsetrank(iset)-1)
+     call MYGEMM('N', 'T', nblock, spinsetsize(iset), spinsetrank(iset), DATAONE, smallvect, nblock, spinsetprojector(iset)%vects, spinsetsize(iset), DATAZERO,smalltemp, nblock)
      do ii=1,spinsetsize(iset)
-        outvector(spinsets(ii,iset),:)=smalltemp(ii,:)
+        outvector(:,spinsets(ii,iset))=smalltemp(:,ii)
      enddo
      iind=iind+spinsetrank(iset)
   enddo
@@ -263,48 +209,7 @@ subroutine configspin_transformfrom_mine(howmany,invector,outvector)
      OFLWR "IIND ERROxx", iind, spinrank; CFLST
   endif
 
-end subroutine configspin_transformfrom_mine
-
-
-
-
-subroutine configspin_transformfrom_mine_transpose(invectortr,outvectortr)
-  use spinwalkmod
-  use parameters
-  implicit none
-  integer :: iset, iind,ii
-  DATATYPE :: outvectortr(numr,botwalk:topwalk),invectortr(numr,spinrank)
-  integer, save :: allochere=0
-  DATATYPE,save,allocatable :: smallvecttr(:,:), smalltemptr(:,:)
-
-  if (allochere.eq.0) then
-     allocate(smallvecttr(numr,maxspinsetsize), smalltemptr(numr,maxspinsetsize))
-  endif
-  allochere=1
-
-  outvectortr(:,:)=0d0
-
-  iind=1
-  do iset=1,numspinsets
-     smallvecttr(:,:)=0d0
-     smallvecttr(:,1:spinsetrank(iset))=invectortr(:,iind:iind+spinsetrank(iset)-1)
-
-!!     call MYGEMM('N', 'N', spinsetsize(iset), numr, spinsetrank(iset), DATAONE, spinsetprojector(iset)%vects, spinsetsize(iset), smallvect, maxspinsetsize,DATAZERO,smalltemp, maxspinsetsize)
-
-     call MYGEMM('N', 'T', numr, spinsetsize(iset), spinsetrank(iset), DATAONE, smallvecttr, numr, spinsetprojector(iset)%vects, spinsetsize(iset), DATAZERO,smalltemptr, numr)
-
-     do ii=1,spinsetsize(iset)
-        outvectortr(:,spinsets(ii,iset))=smalltemptr(:,ii)
-     enddo
-     iind=iind+spinsetrank(iset)
-  enddo
-
-  if (iind.ne.spinrank+1) then
-     OFLWR "IIND ERROxx", iind, spinrank; CFLST
-  endif
-
-end subroutine configspin_transformfrom_mine_transpose
-
+end subroutine configspin_transformfrom_local
 
 
 
@@ -469,7 +374,7 @@ subroutine configspinset_projector()
      lwork=10*maxspinsetsize;  allocate(work(lwork))
      
      OFLWR "Getting spin set projectors...";CFL
-  
+
      elim=0;  elimsets=0;  iset=1; spinrank=0; spindfrank=0
   
      do while (iset.le.numspinsets)
@@ -512,7 +417,6 @@ subroutine configspinset_projector()
               spindfrank=spindfrank+j
            endif
         endif
-
 
         spinvects(:,j+1:maxspinsetsize)=0d0
         
@@ -585,10 +489,11 @@ subroutine configspinset_projector()
   allocate(allspinstart(nprocs)); allspinstart=(-1); allocate(allspinranks(nprocs)); allspinranks=(-1)
 
 
-
-
   if (sparseconfigflag.eq.0) then
      spintotrank=spinrank;      spinstart=1; spinend=spintotrank
+     allspinranks(1)=spintotrank; allspinstart(1)=1
+     maxspinrank=spintotrank
+     firstspinconfig=1; lastspinconfig=spintotrank; localnspin=spintotrank
   else
      allspinranks(myrank)=spinrank
      ii=0
@@ -603,6 +508,16 @@ subroutine configspinset_projector()
      spintotrank=ii
      spinstart=allspinstart(myrank)
      spinend=spinstart+spinrank-1
+     if (parconsplit.eq.0) then
+        firstspinconfig=1
+        lastspinconfig=spintotrank
+        localnspin=spintotrank
+
+     else
+        firstspinconfig=spinstart
+        lastspinconfig=spinend
+        localnspin=spinrank
+     endif
   endif
 
   spintotdfrank=spindfrank; 

@@ -288,7 +288,9 @@ program mctdhf
      OFLWR " No configs!! "; CFLST
   endif
 
-  totspfdim=nspf*spfsize; totadim=numconfig*numr;  
+  call fast_newconfiglist(.true.);   
+
+  totspfdim=nspf*spfsize; totadim=localnconfig*numr;  
   psilength=totadim*mcscfnum+totspfdim
 
   do i=1,mcscfnum
@@ -302,8 +304,6 @@ program mctdhf
   endif
 
   call opalloc()
-
-  call fast_newconfiglist(.true.);   
 
   if ((skipflag.lt.2)) then
 

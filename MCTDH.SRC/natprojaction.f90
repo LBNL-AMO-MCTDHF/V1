@@ -318,7 +318,7 @@ subroutine save_natproj( thistime )
 
   tempdenmat(:,:,:)=0d0
   do i=1,min(numr,min(numconfig,4))
-     call getdenmat0(natconfigs(:,i),tempdenmat(:,:,i),tempinvden(:,:),tempdenvals(:),tempdenvects(:,:),1)
+     call getdenmat0(natconfigs(:,i),tempdenmat(:,:,i),tempinvden(:,:),tempdenvals(:),tempdenvects(:,:),1,1)
   enddo
   call save_denproj( 4, thistime, yyy%cmfpsivec(spfstart,0),  tempdenmat, denprojplotbin)
   

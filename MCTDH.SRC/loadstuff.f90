@@ -9,57 +9,74 @@ subroutine save_vector(psi,afile,sfile)
   DATATYPE :: psi(psilength) 
   character :: afile*(*), sfile*(*)
   integer :: iprop,ispf
-  DATATYPE, allocatable :: parorbitals(:,:), parfrozen(:,:)
+  DATATYPE, allocatable :: parorbitals(:,:), parfrozen(:,:), paravec(:,:,:)
 
-  if (myrank.ne.1.and.parorbsplit.ne.3) then
-     OFLWR "   --> rank 1 will save. "; CFL
-  else
-     if (parorbsplit.eq.3) then
-        if (myrank.eq.1) then
-           allocate(parorbitals(spfsize*nprocs,nspf)); parorbitals(:,:)=0d0
-           allocate(parfrozen(spfsize*nprocs,max(numfrozen,1))); parfrozen(:,:)=0d0
-        else
-           allocate(parorbitals(1,nspf), parfrozen(1,max(numfrozen,1)))
-        endif
-        
-        do ispf=1,nspf
-           call splitgatherv(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
-        enddo
-
-        if (numfrozen.gt.0) then
-           do ispf=1,numfrozen
-              call splitgatherv(frozenspfs(:,ispf),parfrozen(:,ispf), .false.)
-           enddo
-        endif
-
+  if (parorbsplit.eq.3) then
+     if (myrank.eq.1) then
+        allocate(parorbitals(spfsize*nprocs,nspf)); parorbitals(:,:)=0d0
+        allocate(parfrozen(spfsize*nprocs,max(numfrozen,1))); parfrozen(:,:)=0d0
+     else
+        allocate(parorbitals(1,nspf), parfrozen(1,max(numfrozen,1)))
      endif
      
+     do ispf=1,nspf
+        call splitgatherv(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
+     enddo
+     
+     if (numfrozen.gt.0) then
+        do ispf=1,numfrozen
+           call splitgatherv(frozenspfs(:,ispf),parfrozen(:,ispf), .false.)
+        enddo
+     endif
+     
+  endif
+
+
+  if (parconsplit.ne.0) then
      if (myrank.eq.1) then
-        open(999,file=afile, status="unknown", form="unformatted")
-        call avector_header_write(999,mcscfnum)
-        
-        open(998,file=sfile, status="unknown", form="unformatted")
-        call spf_header_write(998,nspf+numfrozen)
-        
-        if (parorbsplit.eq.3) then
-           call write_spf(998,parorbitals(:,:),parfrozen(:,:),spfsize*nprocs)
-        else
-           call write_spf(998,psi(spfstart),frozenspfs(:,:),spfsize)
-        endif
-        close(998)
-        
+        allocate(paravec(numr,numconfig,mcscfnum)); paravec(:,:,:)=0d0
+     else
+        allocate(paravec(1,1,mcscfnum))
+     endif
+     do iprop=1,mcscfnum
+        call mygatherv(psi(astart(iprop)),paravec(:,:,iprop),configsperproc(:)*numr,.false.)
+     enddo
+  endif
+
+  if (myrank.eq.1) then
+     open(998,file=sfile, status="unknown", form="unformatted")
+     call spf_header_write(998,nspf+numfrozen)
+     
+     if (parorbsplit.eq.3) then
+        call write_spf(998,parorbitals(:,:),parfrozen(:,:),spfsize*nprocs)
+     else
+        call write_spf(998,psi(spfstart),frozenspfs(:,:),spfsize)
+     endif
+     close(998)
+     
+     open(999,file=afile, status="unknown", form="unformatted")
+     call avector_header_write(999,mcscfnum)
+     if (parconsplit.ne.0) then
+        do iprop=1,mcscfnum
+           call write_avector(999,paravec(:,:,iprop))
+        enddo
+     else
         do iprop=1,mcscfnum
            call write_avector(999,psi(astart(iprop)))
         enddo
-        close(999)
      endif
-     
-     if (parorbsplit.eq.3) then
-        deallocate(parorbitals,parfrozen)
-     endif
+     close(999)
+  endif
+  
+  call mpibarrier()
+
+  if (parorbsplit.eq.3) then
+     deallocate(parorbitals,parfrozen)
+  endif
+  if (parconsplit.ne.0) then
+     deallocate(paravec)
   endif
 
-  call mpibarrier()
   if (myrank.eq.1) then
      OFLWR "   ...saved vectors!"; CFL
   else

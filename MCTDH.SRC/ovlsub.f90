@@ -101,10 +101,16 @@ subroutine ovl_initial()
         close(910)
      endif
 
-     if (myrank.eq.1) then
-        orig_avectors(:,jnumovl+1:jnumovl+nstate)=read_avectors(:,jnumovl+1:jnumovl+nstate)
+     if (parconsplit.eq.0) then
+        if (myrank.eq.1) then
+           orig_avectors(:,jnumovl+1:jnumovl+nstate)=read_avectors(:,jnumovl+1:jnumovl+nstate)
+        endif
+        call mympibcast(orig_avectors(:,jnumovl+1),1,numconfig*numr*nstate)
+     else
+        do kk=1,nstate
+           call myscatterv(read_avectors(:,jnumovl+kk),orig_avectors(:,jnumovl+kk),configsperproc(:)*numr)
+        enddo
      endif
-     call mympibcast(orig_avectors(:,jnumovl+1),1,numconfig*numr*nstate)
 
      do kk=2,nstate
         orig_spfs(:,:,jnumovl+kk)=orig_spfs(:,:,jnumovl+1)
@@ -222,16 +228,27 @@ subroutine wfnovl()
            call splitscatterv(read_ketmo(:,ispf),ketmo(:,ispf))
         enddo
      endif
-     if (myrank.eq.1) then
-        braavec(:,:)=read_braavec(:,:)
-        ketavec(:,:)=read_ketavec(:,:)
+     if (parconsplit.eq.0) then
+        if (myrank.eq.1) then
+           braavec(:,:)=read_braavec(:,:)
+           ketavec(:,:)=read_ketavec(:,:)
+        endif
+        call mympibcast(braavec(:,:),1,numr*numconfig*mcscfnum)
+        call mympibcast(ketavec(:,:),1,numr*numconfig*mcscfnum)
+     else
+        do imc=1,mcscfnum
+           call myscatterv(read_braavec(:,imc),braavec(:,imc),configsperproc(:)*numr)
+           call myscatterv(read_ketavec(:,imc),ketavec(:,imc),configsperproc(:)*numr)
+        enddo
      endif
-     call mympibcast(braavec(:,:),1,numr*numconfig*mcscfnum)
-     call mympibcast(ketavec(:,:),1,numr*numconfig*mcscfnum)
+
 
      do imc=1,mcscfnum
         bradot=dot(braavec(:,imc),braavec(:,imc),totadim)
         ketdot=dot(ketavec(:,imc),ketavec(:,imc),totadim)
+        if (parconsplit.ne.0) then
+           call mympireduceone(bradot); call mympireduceone(ketdot)
+        endif
         
         call autocorrelate_one(braavec(:,imc),bramo,ketmo,ketavec(:,imc),myovl(imc),numr)
        

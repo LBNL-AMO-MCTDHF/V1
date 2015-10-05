@@ -75,9 +75,9 @@ subroutine dipolesub_one(avector,inspfs,xdipole_expect,ydipole_expect,zdipole_ex
   implicit none
 
   DATATYPE ::  inspfs(  spfsize, nspf ),  zdipole_expect, ydipole_expect, xdipole_expect, &
-       avector(numconfig,numr),tempvector(numconfig,numr)
+       avector(numr,firstconfig:lastconfig),tempvector(numr,firstconfig:lastconfig)
   DATATYPE :: dot,nullcomplex(1),dipoles(3), &
-       tempspfs(spfsize,nspf), dipolemat(nspf,nspf)
+       tempspfs(spfsize,nspf), dipolemat(nspf,nspf),csum
   DATAECS :: rvector(numr)
   integer :: i
  
@@ -85,12 +85,15 @@ subroutine dipolesub_one(avector,inspfs,xdipole_expect,ydipole_expect,zdipole_ex
   call nucdipvalue(nullcomplex,dipoles)
 
   do i=1,numr
-     tempvector(:,i)=avector(:,i)*bondpoints(i)
+     tempvector(i,:)=avector(i,:)*bondpoints(i)
   enddo
-  dipoles(:)=dipoles(:)*dot(avector,tempvector,numconfig*numr)
+  csum=dot(avector,tempvector,totadim)
+  if (parconsplit.ne.0) then
+     call mympireduceone(csum)
+  endif
+  dipoles(:)=dipoles(:)*csum
 
 !! Z DIPOLE
-
 
   do i=1,nspf
      call mult_zdipole(inspfs(:,i),tempspfs(:,i))
@@ -102,7 +105,10 @@ subroutine dipolesub_one(avector,inspfs,xdipole_expect,ydipole_expect,zdipole_ex
 
   rvector(:)=bondpoints(:)
   call arbitraryconfig_mult(dipolemat,rvector,avector,tempvector,numr)
-  zdipole_expect=dot(avector,tempvector,numconfig*numr)
+  zdipole_expect=dot(avector,tempvector,totadim)
+  if (parconsplit.ne.0) then
+     call mympireduceone(zdipole_expect)
+  endif
   zdipole_expect=zdipole_expect + dipoles(3)
 
 
@@ -118,7 +124,10 @@ subroutine dipolesub_one(avector,inspfs,xdipole_expect,ydipole_expect,zdipole_ex
 
   rvector(:)=bondpoints(:)
   call arbitraryconfig_mult(dipolemat,rvector,avector,tempvector,numr)
-  ydipole_expect=dot(avector,tempvector,numconfig*numr)
+  ydipole_expect=dot(avector,tempvector,totadim)
+  if (parconsplit.ne.0) then
+     call mympireduceone(ydipole_expect)
+  endif
   ydipole_expect=ydipole_expect + dipoles(2)
 
 
@@ -134,7 +143,10 @@ subroutine dipolesub_one(avector,inspfs,xdipole_expect,ydipole_expect,zdipole_ex
 
   rvector(:)=bondpoints(:)
   call arbitraryconfig_mult(dipolemat,rvector,avector,tempvector,numr)
-  xdipole_expect=dot(avector,tempvector,numconfig*numr)
+  xdipole_expect=dot(avector,tempvector,totadim)
+  if (parconsplit.ne.0) then
+     call mympireduceone(xdipole_expect)
+  endif
   xdipole_expect=xdipole_expect + dipoles(1)
 
 end subroutine dipolesub_one

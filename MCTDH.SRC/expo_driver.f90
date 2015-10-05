@@ -471,7 +471,7 @@ subroutine avectortime(which)
   integer :: which
 
 !! times(1) = miscellaneous.  
-!! times(2) = parconfigexpomult_transpose or parconfigexpomult_transpose_spin.
+!! times(2) = parconfigexpomult or parconfigexpomult_spin.
 !! times(3) = in-between (expokit)
 
    call system_clock(jjtime); times(which)=times(which)+jjtime-iitime; iitime=jjtime
@@ -484,20 +484,20 @@ subroutine expoconfigprop(inavector0,outavector,time)
   use configpropmod
   use mpimod
   implicit none
-  DATATYPE :: inavector(numconfig,numr), outavector(numconfig,numr), &
-       inavector0(numconfig,numr), inavectorspin(spintotrank,numr)
-  external :: parconfigexpomult_transpose_spin,parconfigexpomult_transpose,realdotsub,realpardotsub
+  DATATYPE,intent(in) :: inavector0(numr,firstconfig:lastconfig)
+  DATATYPE,intent(out) :: outavector(numr,firstconfig:lastconfig)
+  DATATYPE :: inavector(numr,firstconfig:lastconfig),  inavectorspin(numr,firstspinconfig:lastspinconfig)
+  external :: parconfigexpomult_spin,parconfigexpomult,realpardotsub
   real*8 :: one,time
   real*8, save :: tempstepsize=-1d0
-  integer :: itrace, iflag, numsteps, numiters,expofileptr=61142, liwsp=0, lwsp=0,qqq,getlen,mytop,mybot,ixx,ii
+  integer :: itrace, iflag, numsteps, numiters,expofileptr=61142, liwsp=0, lwsp=0,qqq,getlen,ixx,ii
 #ifdef REALGO
   integer, parameter :: zzz=1
 #else
   integer, parameter ::   zzz=2
 #endif
 
-  DATATYPE, allocatable :: wsp(:), smallvectortr(:,:),smallvectortrout(:,:),smallvectortrtemp(:,:),zerovectortr(:,:), &
-       outavectortr(:,:),outavectorspin(:,:)
+  DATATYPE, allocatable :: wsp(:), smallvector(:,:),smallvectorout(:,:),smallvectortemp(:,:),zerovector(:,:)
   integer, allocatable :: iwsp(:)
   integer, save :: thisexpodim=-1, icalled=0
 !! 0 = not set; reduce to minimum 
@@ -509,7 +509,7 @@ subroutine expoconfigprop(inavector0,outavector,time)
   inavector(:,:)=inavector0(:,:)
 
   if (allspinproject.ne.0) then
-     call configspin_projectall(inavector,0)
+     call configspin_project(inavector,0)
   endif
   if (dfrestrictflag.ne.0) then
      call dfrestrict(inavector,numr)
@@ -571,24 +571,24 @@ subroutine expoconfigprop(inavector0,outavector,time)
   one=1.d0; itrace=0 ! running mode
 
   if (allspinproject.ne.0) then
-     ixx=maxspinrank; mybot=spinstart; mytop=spinend ; qqq=spintotrank
+     ixx=maxspinrank ; qqq=spintotrank
   else
-     ixx=maxconfigsperproc; mybot=botwalk; mytop=topwalk ; qqq=numconfig
+     ixx=maxconfigsperproc ; qqq=numconfig
   endif
 
-  allocate(smallvectortr(numr,ixx),smallvectortrout(numr,ixx), &
-       zerovectortr(numr,ixx),smallvectortrtemp(numr,ixx), outavectortr(numr,qqq), outavectorspin(qqq,numr))
+  allocate(smallvector(numr,ixx),smallvectorout(numr,ixx), &
+       zerovector(numr,ixx),smallvectortemp(numr,ixx))
 
    lwsp =  ( ixx*numr*(thisexpodim+3) + ixx*numr + (thisexpodim+3)**2 + 5*(thisexpodim+3)**2+6+1 )
    liwsp=max(10,thisexpodim+3)
    allocate(wsp(lwsp),iwsp(liwsp));    wsp=0.d0; iwsp=0
 
-   smallvectortr(:,:)=0; smallvectortrout(:,:)=0d0
+   smallvector(:,:)=0; smallvectorout(:,:)=0d0
    if (allspinproject.ne.0) then
       call configspin_transformto(numr,inavector,inavectorspin)
-      smallvectortr(:,1:spinend-spinstart+1)=TRANSPOSE(inavectorspin(spinstart:spinend,:))
+      smallvector(:,1:spinend-spinstart+1)=inavectorspin(:,spinstart:spinend)
    else
-      smallvectortr(:,1:topwalk-botwalk+1)=TRANSPOSE(inavector(botwalk:topwalk,:))
+      smallvector(:,1:topwalk-botwalk+1)=inavector(:,botwalk:topwalk)
    endif
 
    lwsp=zzz*lwsp
@@ -596,33 +596,33 @@ subroutine expoconfigprop(inavector0,outavector,time)
    call avectortime(1)
 
    if (drivingflag.ne.0) then
-      zerovectortr(:,:)=0d0
+      zerovector(:,:)=0d0
       if (allspinproject.ne.0) then
-         call parconfigexpomult_transpose_spin(smallvectortr,smallvectortrtemp)
+         call parconfigexpomult_spin(smallvector,smallvectortemp)
 
-         smallvectortrtemp(:,1:spinend-spinstart+1)=  smallvectortrtemp(:,1:spinend-spinstart+1) + TRANSPOSE(workdrivingavecspin(spinstart:spinend,:)) * timefac 
+         smallvectortemp(:,1:spinend-spinstart+1)=  smallvectortemp(:,1:spinend-spinstart+1) + workdrivingavecspin(:,spinstart:spinend) * timefac 
 
 !! par_timestep is a-norm estimate, ok, whatever
 
-         call DGPHIVxxx2( zzz*ixx*numr, thisexpodim, one, smallvectortrtemp, zerovectortr, smallvectortrout, aerror, par_timestep/littlesteps, wsp, lwsp, &
-              iwsp, liwsp, parconfigexpomult_transpose_spin, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
+         call DGPHIVxxx2( zzz*ixx*numr, thisexpodim, one, smallvectortemp, zerovector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
+              iwsp, liwsp, parconfigexpomult_spin, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
          
       else
-         call parconfigexpomult_transpose(smallvectortr,smallvectortrtemp)
+         call parconfigexpomult(smallvector,smallvectortemp)
 
-         smallvectortrtemp(:,1:topwalk-botwalk+1)=  smallvectortrtemp(:,1:topwalk-botwalk+1) + TRANSPOSE(workdrivingavec(botwalk:topwalk,:)) * timefac 
+         smallvectortemp(:,1:topwalk-botwalk+1)=  smallvectortemp(:,1:topwalk-botwalk+1) + workdrivingavec(:,botwalk:topwalk) * timefac 
 
-         call DGPHIVxxx2( zzz*ixx*numr, thisexpodim, one, smallvectortrtemp, zerovectortr, smallvectortrout, aerror, par_timestep/littlesteps, wsp, lwsp, &
-              iwsp, liwsp, parconfigexpomult_transpose, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
+         call DGPHIVxxx2( zzz*ixx*numr, thisexpodim, one, smallvectortemp, zerovector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
+              iwsp, liwsp, parconfigexpomult, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
       endif
-      smallvectortrout(:,:)=smallvectortrout(:,:)+smallvectortr(:,:)
+      smallvectorout(:,:)=smallvectorout(:,:)+smallvector(:,:)
    else
       if (allspinproject.ne.0) then
-         call DGEXPVxxx2( zzz*ixx*numr, thisexpodim, one, smallvectortr, smallvectortrout, aerror, par_timestep/littlesteps, wsp, lwsp, &
-              iwsp, liwsp, parconfigexpomult_transpose_spin, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
+         call DGEXPVxxx2( zzz*ixx*numr, thisexpodim, one, smallvector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
+              iwsp, liwsp, parconfigexpomult_spin, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
       else
-         call DGEXPVxxx2( zzz*ixx*numr, thisexpodim, one, smallvectortr, smallvectortrout, aerror, par_timestep/littlesteps, wsp, lwsp, &
-              iwsp, liwsp, parconfigexpomult_transpose, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
+         call DGEXPVxxx2( zzz*ixx*numr, thisexpodim, one, smallvector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
+              iwsp, liwsp, parconfigexpomult, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
       endif
    endif
 
@@ -630,57 +630,57 @@ subroutine expoconfigprop(inavector0,outavector,time)
 
    lwsp=lwsp/zzz
    
-   outavectortr(:,:)=0d0;   
-   outavectortr(:,mybot:mytop)=smallvectortrout(:,1:mytop-mybot+1)
+   outavector(:,:)=0d0;   
 
    if (allspinproject.ne.0) then
-      call mpiallgather(outavectortr,spintotrank*numr,allspinranks*numr,maxspinrank*numr)
-      outavectorspin(:,:)=TRANSPOSE(outavectortr(:,:))
-      call configspin_transformfrom(numr,outavectorspin,outavector)
+      call configspin_transformfrom_local(numr,smallvectorout,outavector(:,botwalk))
    else
-      call mpiallgather(outavectortr,numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
-      outavector(:,:)=TRANSPOSE(outavectortr(:,:))
+      outavector(:,botwalk:topwalk)=smallvectorout(:,1:botwalk-topwalk+1)
    endif
 
-   deallocate(smallvectortr,smallvectortrout,  zerovectortr,smallvectortrtemp, outavectortr, outavectorspin)
+   if (parconsplit.eq.0) then
+      call mpiallgather(outavector,numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
+   endif
 
-  if (allspinproject.ne.0) then
-     call configspin_projectall(outavector,0)
-  endif
-  if (dfrestrictflag.ne.0) then
-     call dfrestrict(outavector,numr)
-  endif
+   deallocate(smallvector,smallvectorout,  zerovector,smallvectortemp)
 
-  if (expofileptr.ne.nullfileptr) then
-     close(expofileptr)
-  endif
-
-  if (iflag .ne. 0) then
-     OFLWR "Error expoconfigprop: ", iflag; CFLST
-  endif
-  numsteps=iwsp(4);  numiters=iwsp(1)
-
-  if ((exposet==0).and.(numsteps.eq.1).and.(thisexpodim.gt.2)) then
-     thisexpodim=max(2,thisexpodim-1)
-  endif
-
-  if (myrank.eq.1.and.notiming.eq.0) then
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",status="old", position="append")
-     write(expofileptr,*) "   End avector prop.  steps, iterations, stepsize", iwsp(4),iwsp(1),tempstepsize; 
-     write(expofileptr,*);    
-     call avectortimewrite(expofileptr)
-     close(expofileptr)
-  endif
-
-  if (numsteps.gt.1) then
-     exposet=1
-     thisexpodim=min(floor(thisexpodim*1.2)+5, maxaorder)
-  endif
-
-  deallocate(wsp,iwsp)
-
+   if (allspinproject.ne.0) then
+      call configspin_project(outavector,0)
+   endif
+   if (dfrestrictflag.ne.0) then
+      call dfrestrict(outavector,numr)
+   endif
+   
+   if (expofileptr.ne.nullfileptr) then
+      close(expofileptr)
+   endif
+   
+   if (iflag .ne. 0) then
+      OFLWR "Error expoconfigprop: ", iflag; CFLST
+   endif
+   numsteps=iwsp(4);  numiters=iwsp(1)
+   
+   if ((exposet==0).and.(numsteps.eq.1).and.(thisexpodim.gt.2)) then
+      thisexpodim=max(2,thisexpodim-1)
+   endif
+   
+   if (myrank.eq.1.and.notiming.eq.0) then
+      open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",status="old", position="append")
+      write(expofileptr,*) "   End avector prop.  steps, iterations, stepsize", iwsp(4),iwsp(1),tempstepsize; 
+      write(expofileptr,*);    
+      call avectortimewrite(expofileptr)
+      close(expofileptr)
+   endif
+   
+   if (numsteps.gt.1) then
+      exposet=1
+      thisexpodim=min(floor(thisexpodim*1.2)+5, maxaorder)
+   endif
+   
+   deallocate(wsp,iwsp)
+   
    call avectortime(1)
-
+   
 end subroutine expoconfigprop
 
 

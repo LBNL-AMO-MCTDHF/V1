@@ -5,19 +5,25 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
   use parameters
   implicit none 
   integer, intent(in) :: order,inprintflag,guessflag
-  integer :: printflag,maxdim,vdim,i,mytop,mybot, calcsize
+  integer :: printflag,maxdim,vdim,mytop,mybot, calcsize, localsize,localstart,localend,ii
   DATATYPE, intent(out) :: outvalues(order)
-  DATATYPE :: outvectors(numconfig,numr,order)
-  DATATYPE, allocatable :: tempoutvectorstr(:,:,:),outvectorstr(:,:,:), &
-       initvectors(:,:,:), outvectorsspin(:,:,:)
-  external :: parblockconfigmult_transpose, parblockconfigmult_transpose_spin
+  DATATYPE, intent(inout) :: outvectors(numr,firstconfig:lastconfig,order)
+  DATATYPE, allocatable :: workvectors(:,:,:),myoutvectors(:,:,:), &
+       initvectors(:,:,:)
+  external :: parblockconfigmult, parblockconfigmult_spin
 
   printflag=max(lanprintflag,inprintflag)
 
   if (allspinproject.ne.0) then
      calcsize=spintotrank;   mytop=spinend; mybot=spinstart
+     localsize=localnspin
+     localstart=firstspinconfig
+     localend=lastspinconfig
   else
      calcsize=numconfig;    mytop=topwalk; mybot=botwalk
+     localsize=localnconfig
+     localstart=firstconfig
+     localend=lastconfig
   endif
   if (dfrestrictflag.eq.0) then
      maxdim=calcsize*numr
@@ -31,48 +37,44 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
 
   vdim=(mytop-mybot+1)*numr
 
-  allocate(tempoutvectorstr(numr,mybot:mytop,order),outvectorstr(numr,order,calcsize), &
-       initvectors(calcsize,numr,order),        outvectorsspin(calcsize,numr,order))
+  allocate(workvectors(numr,mybot:mytop,order),myoutvectors(numr,botwalk:topwalk,order), &
+       initvectors(numr,localstart:localend,order))
 
-  tempoutvectorstr(:,:,:)=0d0
+  workvectors(:,:,:)=0d0
 
   if (guessflag.ne.0) then
      if (allspinproject.eq.0) then
         initvectors(:,:,:)=outvectors(:,:,:)  
      else
-        call configspin_transformto(numr*order,outvectors,initvectors)
+        do ii=1,order 
+           call configspin_transformto(numr,outvectors(:,:,ii),initvectors(:,:,ii))
+        enddo
      endif
-     do i=1,order
-        tempoutvectorstr(:,:,i)=TRANSPOSE(initvectors(mybot:mytop,:,i))
-     enddo
+     workvectors(:,:,:)=initvectors(:,mybot:mytop,:)
   endif
   if (allspinproject.eq.0) then
-     call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,tempoutvectorstr,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult_transpose,.true.,0,DATAZERO)
+     call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,workvectors,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,.true.,0,DATAZERO)
   else
-     call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,tempoutvectorstr,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult_transpose_spin,.true.,0,DATAZERO)
+     call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,workvectors,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult_spin,.true.,0,DATAZERO)
   endif
 
 
-  outvectorstr(:,:,:)=0d0
-  do i=1,order
-     outvectorstr(:,i,mybot:mytop)=tempoutvectorstr(:,:,i)
-  enddo
+  outvectors(:,:,:)=0d0
   if (allspinproject.eq.0) then
-     call mpiallgather(outvectorstr,calcsize*numr*order,configsperproc*numr*order,&
-          maxconfigsperproc*numr*order)
-     do i=1,order
-        outvectors(:,:,i)=TRANSPOSE(outvectorstr(:,i,:))
-     enddo
+     outvectors(:,botwalk:topwalk,:)=workvectors(:,:,:)
   else
-     call mpiallgather(outvectorstr,calcsize*numr*order,allspinranks*numr*order,maxspinrank*numr*order)
-     do i=1,order
-        outvectorsspin(:,:,i)=TRANSPOSE(outvectorstr(:,i,:))
+     do ii=1,order
+        call configspin_transformfrom_local(numr,workvectors(:,:,ii),myoutvectors(:,:,ii))
      enddo
-     outvectors(:,:,:)=0d0
-     call configspin_transformfrom(numr*order,outvectorsspin,outvectors)
+     outvectors(:,botwalk:topwalk,:)=myoutvectors(:,:,:)
+  endif
+  if (parconsplit.eq.0) then
+     do ii=1,order
+        call mpiallgather(outvectors(:,:,ii),numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
+     enddo
   endif
 
-  deallocate(tempoutvectorstr,outvectorstr, initvectors,       outvectorsspin)
+  deallocate(workvectors,myoutvectors, initvectors)
 
 end subroutine blocklanczos
 
@@ -182,78 +184,82 @@ subroutine nullgramschmidt_fast(m,logpar)
 end subroutine nullgramschmidt_fast
 
 
-!! TAKES TRANSPOSES AS INPUT AND OUTPUT
 
-recursive subroutine parblockconfigmult_transpose(inavectortr,outavectortr)
+recursive subroutine parblockconfigmult(inavector,outavector)
   use parameters
   use mpimod
   use xxxmod
   implicit none
-  integer :: ir
-  DATATYPE :: inavectortr(numr,botwalk:topwalk), outavectortr(numr,botwalk:topwalk)
-  DATATYPE :: intemptr(numr,numconfig), ttvector(numconfig,numr), ttvector2(botwalk:topwalk,numr)
+  integer :: ii
+  DATATYPE,intent(in) :: inavector(numr,botwalk:topwalk)
+  DATATYPE,intent(out) :: outavector(numr,botwalk:topwalk)
+  DATATYPE :: intemp(numr,numconfig)
 
   if (sparseconfigflag.eq.0) then
-     OFLWR "error, must use sparse for parblockconfigmult_transpose"; CFLST
+     OFLWR "error, must use sparse for parblockconfigmult"; CFLST
   endif
 
-  intemptr(:,:)=0d0;   intemptr(:,botwalk:topwalk)=inavectortr(:,:)
-  call mpiallgather(intemptr,numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
-  ttvector(:,:)=TRANSPOSE(intemptr(:,:))
+  intemp(:,:)=0d0;   intemp(:,botwalk:topwalk)=inavector(:,:)
+
+!! DO SUMMA
+
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(ttvector,numr)
+     call dfrestrict_local(intemp(:,botwalk),numr)
   endif
 
-  call sparseconfigmult_nompi(ttvector,ttvector2, yyy%cptr(0), yyy%sptr(0), 1,1,1,0,0d0)
+  call mpiallgather(intemp,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
+
+  call sparseconfigmult_nompi(intemp,outavector, yyy%cptr(0), yyy%sptr(0), 1,1,1,0,0d0,0,1,numr,0)
   if (mshift.ne.0d0) then 
-     do ir=1,numr
-        ttvector2(:,ir)=ttvector2(:,ir)+ ttvector(botwalk:topwalk,ir)*configmvals(botwalk:topwalk)*mshift
+     do ii=botwalk,topwalk
+        outavector(:,ii)=outavector(:,ii)+ intemp(:,ii)*configmvals(ii)*mshift
      enddo
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict_par(ttvector2,numr)
+     call dfrestrict_local(outavector,numr)
   endif
 
-  outavectortr(:,:)=TRANSPOSE(ttvector2(:,:))
-
-end subroutine parblockconfigmult_transpose
+end subroutine parblockconfigmult
 
 
-recursive subroutine parblockconfigmult_transpose_spin(inavectortrspin,outavectortrspin)
+recursive subroutine parblockconfigmult_spin(inavectorspin,outavectorspin)
   use parameters
   use mpimod
   use xxxmod
   implicit none
-  integer :: ir
-  DATATYPE :: inavectortrspin(numr,spinrank), outavectortrspin(numr,spinrank)
-  DATATYPE :: intemptr(numr,spintotrank), ttvector(numconfig,numr), ttvector2(botwalk:topwalk,numr), &
-       ttvectorspin(spintotrank,numr), ttvector2spin(spinrank,numr)
+  integer :: ii
+  DATATYPE,intent(in) :: inavectorspin(numr,spinrank)
+  DATATYPE,intent(out) :: outavectorspin(numr,spinrank)
+  DATATYPE :: intemp(numr,numconfig), ttvector2(numr,botwalk:topwalk)
 
   if (sparseconfigflag.eq.0) then
-     OFLWR "error, must use sparse for parblockconfigmult_transpose"; CFLST
+     OFLWR "error, must use sparse for parblockconfigmult_spin"; CFLST
   endif
 
-  intemptr(:,:)=0d0;   intemptr(:,spinstart:spinend)=inavectortrspin(:,:)
-  call mpiallgather(intemptr,spintotrank*numr,allspinranks*numr,maxspinrank*numr)
-  ttvectorspin(:,:)=TRANSPOSE(intemptr(:,:))
-  call configspin_transformfrom(numr,ttvectorspin,ttvector)
+!! DO SUMMA
+
+  intemp(:,:)=0d0
+
+  call configspin_transformfrom_local(numr,inavectorspin,intemp(:,botwalk))
+
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(ttvector,numr)
+     call dfrestrict_local(intemp(:,botwalk),numr)
   endif
-  call sparseconfigmult_nompi(ttvector,ttvector2, yyy%cptr(0), yyy%sptr(0), 1,1,1,0,0d0)
+
+  call mpiallgather(intemp,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
+
+  call sparseconfigmult_nompi(intemp,ttvector2, yyy%cptr(0), yyy%sptr(0), 1,1,1,0,0d0,0,1,numr,0)
   if (mshift.ne.0d0) then 
-     do ir=1,numr
-        ttvector2(:,ir)=ttvector2(:,ir)+ ttvector(botwalk:topwalk,ir)*configmvals(botwalk:topwalk)*mshift
+     do ii=botwalk,topwalk
+        ttvector2(:,ii)=ttvector2(:,ii) + intemp(:,ii)*configmvals(ii)*mshift
      enddo
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict_par(ttvector2,numr)
+     call dfrestrict_local(ttvector2,numr)
   endif
-  call configspin_transformto_mine(numr,ttvector2,ttvector2spin)
+  call configspin_transformto_local(numr,ttvector2,outavectorspin)
   
-  outavectortrspin(:,:)=TRANSPOSE(ttvector2spin(:,:))
-
-end subroutine parblockconfigmult_transpose_spin
+end subroutine parblockconfigmult_spin
 
 
 subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,  outvectors,outvectorlda, outvalues,inprintflag,guessflag,lancheckmod,lanthresh,multsub,logpar,targetflag,etarget)

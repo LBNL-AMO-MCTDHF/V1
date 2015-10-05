@@ -96,11 +96,13 @@ end subroutine
 
 
 
+!! PARCONSPLIT=0 ONLY RIGHT NOW
+
 subroutine load_avector_productsub(myavector)
   use parameters
   use mpimod
   implicit none
-  DATATYPE,intent(out) :: myavector(numconfig,numr,mcscfnum)
+  DATATYPE,intent(out) :: myavector(numr,firstconfig:lastconfig,mcscfnum)
   integer :: readnumvects(numavectorfiles),readndof(numavectorfiles),readnumr(numavectorfiles),&
        readnumconfig(numavectorfiles),readcomplex(numavectorfiles),readunit(numavectorfiles)
   integer :: configtable(numconfig),configphase(numconfig) !! AUTOMATIC
@@ -176,7 +178,7 @@ subroutine load_avector_productsub(myavector)
   call mpibarrier()
 
   do ifile=1,numavectorfiles
-     allocate(readavectors(ifile)%mat(readnumconfig(ifile),numr,mcscfnum))
+     allocate(readavectors(ifile)%mat(numr,readnumconfig(ifile),mcscfnum))
      allocate(readconfiglist(ifile)%mat(readndof(ifile),readnumconfig(ifile)))
   enddo
 
@@ -282,8 +284,8 @@ subroutine load_avector_productsub(myavector)
 
   OFLWR "    ..done product table.  Go product vector"; CFL
 
-  allocate(productvector(iitop(1),iitop(2),iitop(3),iitop(4),iitop(5),iitop(6),numr))
-  allocate(productreshape(tot_numconfig,numr))
+  allocate(productvector(numr,iitop(1),iitop(2),iitop(3),iitop(4),iitop(5),iitop(6)))
+  allocate(productreshape(numr,tot_numconfig))
 
   iwfn=0
 
@@ -308,52 +310,52 @@ subroutine load_avector_productsub(myavector)
      productvector=1d0
      do ir=1,numr
         do iconfig=1,readnumconfig(1)
-           productvector(iconfig,:,:,:,:,:,ir)=productvector(iconfig,:,:,:,:,:,ir)*readavectors(1)%mat(iconfig,ir,ii(1))
+           productvector(ir,iconfig,:,:,:,:,:)=productvector(ir,iconfig,:,:,:,:,:)*readavectors(1)%mat(ir,iconfig,ii(1))
         enddo
      enddo
      if (numavectorfiles.ge.2) then
         do ir=1,numr
            do iconfig=1,readnumconfig(2)
-              productvector(:,iconfig,:,:,:,:,ir)=productvector(:,iconfig,:,:,:,:,ir)*readavectors(2)%mat(iconfig,ir,ii(2))
+              productvector(ir,:,iconfig,:,:,:,:)=productvector(ir,:,iconfig,:,:,:,:)*readavectors(2)%mat(ir,iconfig,ii(2))
            enddo
         enddo
      endif
      if (numavectorfiles.ge.3) then
         do ir=1,numr
            do iconfig=1,readnumconfig(3)
-              productvector(:,:,iconfig,:,:,:,ir)=productvector(:,:,iconfig,:,:,:,ir)*readavectors(3)%mat(iconfig,ir,ii(3))
+              productvector(ir,:,:,iconfig,:,:,:)=productvector(ir,:,:,iconfig,:,:,:)*readavectors(3)%mat(ir,iconfig,ii(3))
            enddo
         enddo
      endif
      if (numavectorfiles.ge.4) then
         do ir=1,numr
            do iconfig=1,readnumconfig(4)
-              productvector(:,:,:,iconfig,:,:,ir)=productvector(:,:,:,iconfig,:,:,ir)*readavectors(4)%mat(iconfig,ir,ii(4))
+              productvector(ir,:,:,:,iconfig,:,:)=productvector(ir,:,:,:,iconfig,:,:)*readavectors(4)%mat(ir,iconfig,ii(4))
            enddo
         enddo
      endif
      if (numavectorfiles.ge.5) then
         do ir=1,numr
            do iconfig=1,readnumconfig(5)
-              productvector(:,:,:,:,iconfig,:,ir)=productvector(:,:,:,:,iconfig,:,ir)*readavectors(5)%mat(iconfig,ir,ii(5))
+              productvector(ir,:,:,:,:,iconfig,:)=productvector(ir,:,:,:,:,iconfig,:)*readavectors(5)%mat(ir,iconfig,ii(5))
            enddo
         enddo
      endif
      if (numavectorfiles.ge.6) then
         do ir=1,numr
            do iconfig=1,readnumconfig(6)
-              productvector(:,:,:,:,:,iconfig,ir)=productvector(:,:,:,:,:,iconfig,ir)*readavectors(6)%mat(iconfig,ir,ii(6))
+              productvector(ir,:,:,:,:,:,iconfig)=productvector(ir,:,:,:,:,:,iconfig)*readavectors(6)%mat(ir,iconfig,ii(6))
            enddo
         enddo
      endif
      
-     productreshape(:,:)=RESHAPE(productvector,(/tot_numconfig,numr/))
+     productreshape(:,:)=RESHAPE(productvector,(/numr,tot_numconfig/))
 
      myavector(:,:,iwfn)=0d0
 
-     do jconfig=1,numconfig
+     do jconfig=firstconfig,lastconfig
         if (configtable(jconfig).gt.0) then
-           myavector(jconfig,:,iwfn)=productreshape(configtable(jconfig),:)*configphase(jconfig)
+           myavector(:,jconfig,iwfn)=productreshape(:,configtable(jconfig))*configphase(jconfig)
         endif
      enddo
 
@@ -406,8 +408,8 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
   use mpimod
   implicit none
   character :: filename*(*)
-  integer :: readnumvects,readndof,readnumr,readnumconfig,readcomplex,mynumvects,numskip
-  DATATYPE :: myavectors(numconfig,numr,mynumvects)
+  integer :: readnumvects,readndof,readnumr,readnumconfig,readcomplex,mynumvects,numskip,ii
+  DATATYPE :: myavectors(numr,firstconfig:lastconfig,mynumvects)
   external :: readavectorsubroutine,readavectorsubsimple
   DATATYPE, allocatable :: readavectors(:,:,:)
 
@@ -415,7 +417,11 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
 
  call avector_header_read_simple(999,readnumvects,readndof,readnumr,readnumconfig,readcomplex)  
 
-  allocate(readavectors(numconfig,numr,readnumvects))
+ if (myrank.eq.1) then
+    allocate(readavectors(numr,numconfig,readnumvects))
+ else
+    allocate(readavectors(1,1,readnumvects))
+ endif
 
   readnumvects=min(mynumvects,readnumvects-numskip)
 
@@ -453,11 +459,19 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
      close(999)
 
      readnumvects=min(mynumvects,readnumvects-numskip)
-     myavectors(:,:,1:readnumvects) = readavectors(:,:, 1+numskip : numskip+readnumvects)
 
   endif
 
-  call mympibcast(myavectors(:,:,:),1,numconfig*numr*mynumvects)
+  if (parconsplit.eq.0) then
+     if (myrank.eq.1) then
+        myavectors(:,:,1:readnumvects) = readavectors(:,:, 1+numskip : numskip+readnumvects)
+     endif
+     call mympibcast(myavectors(:,:,:),1,numconfig*numr*readnumvects)
+  else
+     do ii=1,readnumvects
+        call myscatterv(readavectors(:,:,ii+numskip),myavectors(:,:,ii),configsperproc(:)*numr)
+     enddo
+  endif
 
   deallocate(readavectors)
 
@@ -474,7 +488,7 @@ subroutine load_avectors0(iunit, qq, myavectors, mynumr, mynumconfig, readndof, 
   external :: mysubroutine
   integer :: mynumconfig, mynumr, mynumvects,iunit,i,  readndof, readnumr, readnumconfig
   integer :: qq, config1,  thatconfig(readndof),  myiostat, ivect
-  DATATYPE :: myavectors(mynumconfig,mynumr,mynumvects),  mytempavector(mynumconfig), readvect(readnumr)
+  DATATYPE :: myavectors(mynumr,mynumconfig,mynumvects),  mytempavector(mynumconfig), readvect(readnumr)
   real*8 :: rtempreadvect(readnumr)
   complex*16 :: ctempreadvect(readnumr)
 
@@ -499,7 +513,7 @@ subroutine load_avectors0(iunit, qq, myavectors, mynumr, mynumconfig, readndof, 
 
         call mysubroutine(thatconfig,mytempavector(:),ivect)
         do i=1,min(mynumr,readnumr)
-           myavectors(:,i,ivect)= myavectors(:,i,ivect) +  readvect(i) * mytempavector(:)
+           myavectors(i,:,ivect)= myavectors(i,:,ivect) +  readvect(i) * mytempavector(:)
         enddo
      enddo
   enddo
@@ -511,7 +525,7 @@ subroutine simple_load_avectors(iunit, qq, myavectors, myndof, mynumr, mynumconf
   implicit none
 
   integer :: myndof, mynumconfig, mynumr,mynumvects,iunit,ivect,qq, config1, thatconfig(myndof), myiostat
-  DATATYPE :: myavectors(mynumconfig,mynumr,mynumvects)
+  DATATYPE :: myavectors(mynumr,mynumconfig,mynumvects)
   real*8 :: rtempreadvect(mynumr)
   complex*16 :: ctempreadvect(mynumr)
 
@@ -521,10 +535,10 @@ subroutine simple_load_avectors(iunit, qq, myavectors, myndof, mynumr, mynumconf
      do config1=1,mynumconfig
         if (qq==0) then
            read (iunit,iostat=myiostat) thatconfig(1:myndof), rtempreadvect(1:mynumr)
-           myavectors(config1,:,ivect)=rtempreadvect(:)
+           myavectors(:,config1,ivect)=rtempreadvect(:)
         else
            read (iunit,iostat=myiostat) thatconfig(1:myndof), ctempreadvect(1:mynumr)
-           myavectors(config1,:,ivect)=ctempreadvect(:)
+           myavectors(:,config1,ivect)=ctempreadvect(:)
         endif
         if (myiostat.ne.0) then
            OFLWR "err read config "; CFLST
@@ -542,7 +556,7 @@ subroutine easy_load_avectors(iunit, qq, myavectors, myndof, mynumr, mynumconfig
 
   integer :: myndof, mynumconfig, mynumr,mynumvects,iunit,ivect,qq, config1, thatconfig(myndof), myiostat,&
        phase,reorder,myconfig,getconfiguration
-  DATATYPE :: myavectors(numconfig,mynumr,mynumvects)
+  DATATYPE :: myavectors(mynumr,numconfig,mynumvects)
   real*8 :: rtempreadvect(mynumr)
   logical :: allowedconfig
   complex*16 :: ctempreadvect(mynumr)
@@ -560,9 +574,9 @@ subroutine easy_load_avectors(iunit, qq, myavectors, myndof, mynumr, mynumconfig
         if (allowedconfig(thatconfig)) then
            config1=getconfiguration(thatconfig)
            if (qq==0) then
-              myavectors(config1,:,ivect)=rtempreadvect(:)*phase
+              myavectors(:,config1,ivect)=rtempreadvect(:)*phase
            else
-              myavectors(config1,:,ivect)=ctempreadvect(:)*phase
+              myavectors(:,config1,ivect)=ctempreadvect(:)*phase
            endif
         else
            if (readfullvector) then
@@ -686,11 +700,15 @@ end subroutine readavectorsubsimple
 subroutine write_avector(unit,avector)
   use configmod
   use parameters
+  use mpimod
   implicit none
   integer :: unit, config1
-  DATATYPE :: avector(numconfig,numr)
+  DATATYPE :: avector(numr,numconfig)
+  if (myrank.ne.1) then
+     OFLWR "only call write_avector on process 1 right????"; CFLST
+  endif
   do config1=1,numconfig
-     write (unit) configlist(:,config1), avector(config1,:)
+     write (unit) configlist(:,config1), avector(:,config1)
   enddo
 end subroutine write_avector
 

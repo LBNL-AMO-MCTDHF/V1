@@ -7,8 +7,9 @@ subroutine keprojector(inavector,inspfs,infac)
   use parameters
   implicit none
 
-  DATATYPE :: inavector(numconfig,numr,mcscfnum), inspfs(spfsize,nspf), tempelecweights(spfsize),rad, &
-       kedot(nspf),krval,dot,tempvector(numconfig,numr),csum,kedot2(nspf)
+  DATATYPE,intent(in) :: inavector(totadim,mcscfnum), inspfs(spfsize,nspf)
+  DATATYPE :: tempelecweights(spfsize),rad, &
+       kedot(nspf),krval,dot,tempvector(totadim),csum,kedot2(nspf)
   DATATYPE, allocatable,save :: kevects(:,:),keproj(:,:,:),keproj2(:,:,:)
   real*8, allocatable, save ::  kesum(:),energy(:), kesum2(:)
   real*8 :: infac
@@ -68,14 +69,21 @@ subroutine keprojector(inavector,inspfs,infac)
      ones(:)=1d0
 
      call arbitraryconfig_mult(keproj(:,:,ii),ones,inavector,tempvector,numr)
-     csum=dot(inavector(:,:,1),tempvector(:,:),numconfig*numr)
+     csum=dot(inavector(:,1),tempvector(:),totadim)
+     if (parconsplit.ne.0) then
+        call mympireduceone(csum)
+     endif
      if (real(csum).lt.1d6*abs(imag((0d0,0d0)+csum))) then     !! should be positive real  (um but not for cmctdhf, so don't use it then)
         OFLWR "SUMERRKEPRJOFS", csum; CFL
      endif
      kesum(ii)=kesum(ii)+real(csum)*infac
 
+
      call arbitraryconfig_mult(keproj2(:,:,ii),ones,inavector,tempvector,numr)
-     csum=dot(inavector(:,:,1),tempvector(:,:),numconfig*numr)
+     csum=dot(inavector(:,1),tempvector(:),totadim)
+     if (parconsplit.ne.0) then
+        call mympireduceone(csum)
+     endif
      if (real(csum).lt.1d6*abs(imag((0d0,0d0)+csum))) then     !! should be positive real  (um but not for cmctdhf, so don't use it then)
         OFLWR "SUMERRKEPRJOFS", csum; CFL
      endif

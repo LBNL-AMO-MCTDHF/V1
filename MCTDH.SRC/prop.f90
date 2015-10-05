@@ -36,7 +36,7 @@ subroutine prop_loop( starttime)
   if (skipflag.eq.0) then
      do imc=1,mcscfnum
         if (allspinproject==1) then
-           call configspin_projectall(yyy%cmfpsivec(astart(imc),0),1)
+           call configspin_project(yyy%cmfpsivec(astart(imc),0),1)
         endif
         
         if (dfrestrictflag.ne.0) then
@@ -93,10 +93,18 @@ subroutine prop_loop( starttime)
 
      call sparseconfigmult(yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0)
 
-     OFLWR "IN PROP: VECTOR NORM ",&
-          sqrt( dot(     yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),numconfig*numr) ); CFL
-     startenergy(imc)=dot(     yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),numconfig*numr)/&
-          dot(     yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),numconfig*numr)
+     sum = dot(     yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),totadim)
+     if (parconsplit.ne.0) then
+        call mympireduceone(sum)
+     endif
+     OFLWR "IN PROP: VECTOR NORM ",sqrt(sum);CFL
+
+     sum2=dot(     yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),totadim)
+     if (parconsplit.ne.0) then
+        call mympireduceone(sum2)
+     endif
+
+     startenergy(imc)=sum2/sum
      OFLWR "         ENERGY ", startenergy(imc); CFL
      
   enddo
@@ -153,7 +161,7 @@ subroutine prop_loop( starttime)
 
      do imc=1,mcscfnum
         if (allspinproject==1) then
-           call configspin_projectall(yyy%cmfpsivec(astart(imc),0),1)
+           call configspin_project(yyy%cmfpsivec(astart(imc),0),1)
         endif
         if (dfrestrictflag.ne.0) then
            call dfrestrict(yyy%cmfpsivec(astart(imc),0),numr)
@@ -167,13 +175,17 @@ subroutine prop_loop( starttime)
 
 !! 080313 didn't have this spin project
         if (allspinproject.ne.0) then
-           call configspin_projectall(psip(astart(imc)),0)
+           call configspin_project(psip(astart(imc)),0)
         endif
         if (dfrestrictflag.ne.0) then
            call dfrestrict(psip(astart(imc)),numr)
         endif
         sum=dot(yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),totadim)
         sum2=dot(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),totadim)
+        if (parconsplit.ne.0) then
+           call mympireduceone(sum); call mympireduceone(sum2)
+        endif
+
         thisenergy(imc) = sum/sum2   !! ok implicit pmctdh
         norms(imc)=sqrt(sum2)   !! ok implicit p/chmctdh
         
@@ -305,14 +317,29 @@ subroutine prop_loop( starttime)
      endif
   enddo
   do imc=1,mcscfnum
-     norms(imc)=sqrt(dot(yyy%cmfpsivec(astart(imc),0),& !! ok implicit
-          yyy%cmfpsivec(astart(imc),0),totadim))   !! ok implicit
-     if (threshflag.eq.1) then
+     norms(imc)=dot(yyy%cmfpsivec(astart(imc),0),& !! ok implicit
+          yyy%cmfpsivec(astart(imc),0),totadim)   !! ok implicit
+  enddo
+  if (parconsplit.ne.0) then
+#ifndef REALGO
+#ifndef CNORMFLAG     
+     call mympirealreduce(norms,mcscfnum)
+#else
+     call mympireduce(norms,mcscfnum)
+#endif
+#else
+     call mympireduce(norms,mcscfnum)
+#endif
+  endif
+  norms(:)=sqrt(norms(:))
+
+  if (threshflag.eq.1) then
+     do imc=1,mcscfnum
         yyy%cmfpsivec(astart(imc):aend(imc),0)=yyy%cmfpsivec(astart(imc):aend(imc),0)/norms(imc)
         norms(imc)=1.d0
-     endif
-  enddo
-
+     enddo
+  endif
+  
   call actions_final()
 
 
@@ -796,7 +823,7 @@ end subroutine cmf_prop_wfn
 subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc)
   use parameters
   implicit none
-  DATATYPE :: avectorin(totadim), avectorout(totadim),tempvector(totadim),dot
+  DATATYPE :: avectorin(totadim), avectorout(totadim),tempvector(totadim),dot,csum
   integer :: k, linearflag,imc
   real*8 :: time1,time2,timea,timeb
 
@@ -813,7 +840,11 @@ subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc)
   enddo
 
   if (threshflag.ne.0) then
-     avectorout(:)=avectorout(:)/sqrt(dot(avectorout,avectorout,totadim))
+     csum=dot(avectorout,avectorout,totadim)
+     if (parconsplit.ne.0) then
+        call mympireduceone(csum)
+     endif
+     avectorout(:)=avectorout(:)/sqrt(csum)
   endif
 
 end subroutine cmf_prop_avector

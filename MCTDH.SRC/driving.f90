@@ -28,11 +28,11 @@ subroutine drivingtrans(thistime)
   use opmod
   implicit none
 
-  DATATYPE ::  inavector(numconfig,numr), a1(numr), a2(numr) !, dipmat(nspf,nspf)
+  DATATYPE :: bigavector(numr,numconfig), a1(numr), a2(numr)
   DATATYPE :: dipmatxx(nspf,nspf),dipmatyy(nspf,nspf),dipmatzz(nspf,nspf),scalarpotyy(nspf,nspf),scalarpotzz(nspf,nspf)
   DATATYPE :: tempinvden(nspf,nspf),tempdenmat2(nspf,nspf), dreducedpottally(nspf,nspf,nspf,nspf)
   DATATYPE ::  tempdenmat(nspf,nspf), tempdrivingorbs(spfsize,nspf), &
-       currentorbs(spfsize,nspf),tempdrivingavector(numconfig,numr,mcscfnum), dot
+       currentorbs(spfsize,nspf),tempdrivingavector(numr,firstconfig:lastconfig,mcscfnum), dot
   DATATYPE :: scalarpotxx(nspf,nspf), multorbsxx(spfsize,nspf), multorbsyy(spfsize,nspf), multorbszz(spfsize,nspf)
   DATATYPE :: dtwoereduced(reducedpotsize,nspf,nspf), pots(3)=0d0
 
@@ -71,6 +71,10 @@ subroutine drivingtrans(thistime)
      drivingoverlap(imc)=dot(yyy%cmfpsivec(astart(imc),0),tempdrivingavector(:,:,imc),totadim)
 
   enddo
+
+  if (parconsplit.ne.0) then
+     call mympireduce(drivingoverlap,mcscfnum)
+  endif
 
   if (tdflag.ne.1) then
      return
@@ -139,34 +143,33 @@ subroutine drivingtrans(thistime)
   tempdenmat(:,:)=0.d0
 
   do imc=1,mcscfnum
-     inavector(:,:)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numconfig,numr/))
-
-!! 06-2015     do config1=bot walk,top walk
+     bigavector(:,:)=0d0
+     bigavector(:,firstconfig:lastconfig)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numr,localnconfig/))
+     if (parconsplit.ne.0) then
+        call mpiallgather(bigavector,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
+     endif
 
      do config1=botconfig,topconfig
 
         thisconfig=configlist(:,config1)
 
-        a1(:)=tempdrivingavector(config1,:,imc)*rvector(:)
+        a1(:)=tempdrivingavector(:,config1,imc)*rvector(:)
 
-        a2(:)=inavector(config1,:)
+        a2(:)=bigavector(:,config1)
         do i=1,numelec
            ispf=thisconfig((i-1)*2+1)
            tempdenmat(ispf,ispf) = tempdenmat(ispf,ispf) + dot(a2,a1,numr)   !! true denmat type thing checked 11510
         enddo
      enddo
 
-
-!! 06-2015     do config1=bot walk,top walk
-
      do config1=botconfig,topconfig
 
-        a1(:)=tempdrivingavector(config1,:,imc)   *rvector(:)
+        a1(:)=tempdrivingavector(:,config1,imc)   *rvector(:)
 
         do iwalk=1,numsinglewalks(config1)
            config2=singlewalk(iwalk,config1)
            dirphase=singlewalkdirphase(iwalk,config1)
-           a2(:)=inavector(config2,:)
+           a2(:)=bigavector(:,config2)
            ispf=singlewalkopspf(1,iwalk,config1)  !! goes with config1, driving
            jspf=singlewalkopspf(2,iwalk,config1)  !! goes with config2, bra, current avector
            
@@ -177,13 +180,8 @@ subroutine drivingtrans(thistime)
 
   enddo
 
+  call mympireduce(tempdenmat,nspf**2)
 
-!! 06-2015  if (sparse configflag.ne.0) then
-
-     call mympireduce(tempdenmat,nspf**2)
-
-!! 06-2015  endif
-  
 !! (NO TIMEFAC)
 
   tempinvden(:,:)=yyy%invdenmat(:,:,0) 
@@ -221,13 +219,11 @@ subroutine drivinginit(inenergies)
   use opmod
   implicit none
 
-  DATATYPE :: tempavectors(numconfig,numr,mcscfnum),inenergies(mcscfnum)
+  DATATYPE,intent(in) :: inenergies(mcscfnum)
 
   orbs_driving(:,:)=RESHAPE(yyy%cmfpsivec(spfstart:spfend,0),(/spfsize,nspf/))
 
-  tempavectors(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numconfig,numr,mcscfnum/))
-
-  avector_driving(:,:,:)=tempavectors(:,:,:)*drivingproportion
+  avector_driving(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numr,localnconfig,mcscfnum/))*drivingproportion
 
   yyy%cmfpsivec(astart(1):aend(mcscfnum),0) = yyy%cmfpsivec(astart(1):aend(mcscfnum),0) * (1d0-drivingproportion)
 

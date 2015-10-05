@@ -92,11 +92,6 @@ recursive subroutine quadoperate(notusedint,inspfs,outspfs)
    integer :: notusedint
    DATATYPE ::  inspfs(totspfdim), outspfs(totspfdim)
 
-! !  quadcalled=quadcalled+1
-! !  if (mod(quadcalled,1000).eq.0) then
-! !     call openfile(); write(mpifileptr,*) "    Quad -iterations ", quadcalled; call closefile()
-! !  endif
-
    call jacoperate(inspfs,outspfs)
 
 end subroutine quadoperate
@@ -218,7 +213,7 @@ recursive subroutine quadpreconsub(notusedint, inavector,outavector)
   tempvector=inavector
 
   if (allspinproject==1) then
-     call configspin_projectall(tempvector, 0)
+     call configspin_project(tempvector, 0)
   endif
   if (dfrestrictflag.ne.0) then
      call dfrestrict(tempvector, numr)
@@ -227,7 +222,7 @@ recursive subroutine quadpreconsub(notusedint, inavector,outavector)
   call sparseconfigdiagmult(tempvector, outavector, yyy%cptr(0),yyy%sptr(0), 1,1,1,1, quadexpect,0d0)
 
   if (allspinproject==1) then
-     call configspin_projectall(outavector, 0)
+     call configspin_project(outavector, 0)
   endif
   if (dfrestrictflag.ne.0) then
      call dfrestrict(outavector, numr)
@@ -236,60 +231,33 @@ end subroutine
 
 
 
-recursive subroutine aamultsq(nullint,inavector,outavector)
-  use parameters
-  use aaonedmod
-  implicit none
-  integer :: nullint
-  DATATYPE :: inavector(totadim), outavector(totadim),jtempaa(totadim)
-  call aamult(nullint,inavector,jtempaa)
-  call aamultconjg(nullint,jtempaa,outavector)
-end subroutine aamultsq
-
-recursive subroutine aamultconjg(nullint,inavector,outavector)
-  use parameters
-  use aaonedmod
-  implicit none
-  integer :: nullint
-  DATATYPE :: inavector(totadim), outavector(totadim)
-  inavector=conjg((0d0,0d0)+inavector)
-  call aamult(nullint,inavector,outavector)
-  inavector=conjg((0d0,0d0)+inavector)
-  outavector=conjg((0d0,0d0)+outavector)  
-end subroutine aamultconjg
-
 recursive subroutine aamult(notusedint, inavector0,outavector)
   use parameters
   use xxxmod
   use aaonedmod
   implicit none
   integer :: notusedint
-  DATATYPE :: inavector(numconfig,numr), outavector(numconfig,numr),jacaatemp(numconfig,numr), &
-       inavector0(numconfig, numr)
+  DATATYPE, intent(in) :: inavector0(numr,firstconfig:lastconfig)
+  DATATYPE, intent(out) :: outavector(numr,firstconfig:lastconfig)
+  DATATYPE :: inavector(numr,firstconfig:lastconfig), jacaatemp(numr,firstconfig:lastconfig)
 
   inavector(:,:)=inavector0(:,:)
 
   if (allspinproject==1) then
-     call configspin_projectall(inavector, 0)
+     call configspin_project(inavector, 0)
   endif
   if (dfrestrictflag.ne.0) then
      call dfrestrict(inavector, numr)
   endif
   call sparseconfigmult(inavector, jacaatemp, yyy%cptr(0), yyy%sptr(0), 1,1,0,1,0d0)
   if (allspinproject==1) then
-     call configspin_projectall(jacaatemp, 0)
+     call configspin_project(jacaatemp, 0)
   endif
   if (dfrestrictflag.ne.0) then
      call dfrestrict(jacaatemp, numr)
   endif
 
   outavector= jacaatemp - quadexpect*inavector 
-
-!  quadcalled=quadcalled+1
-!  if (mod(quadcalled,1000).eq.0) then
-!     OFLWR "    Avector Quad - iterating!!  Is your maxaorder high enough??? "
-!     WRFL "         iterations ", quadcalled, " maxaorder=",maxaorder; CFL
-!  endif
 
 end subroutine aamult
 
@@ -300,35 +268,45 @@ subroutine aaonedinit(inavector)
   use parameters
   implicit none
   real*8 :: norm
-  DATATYPE :: inavector(numconfig,numr),  dot 
+  DATATYPE :: inavector(numr,firstconfig:lastconfig),  dot, csum1, csum2
 
-!  quadcalled=0
   if (sparseconfigflag.eq.0) then
      allocate(bigconfigmatel(totadim,totadim), jacaaproj(totadim,totadim), jacaaproj2(totadim,totadim), realconfigmatel(zzz,totadim,zzz,totadim), ipiv(zzz*totadim), err(totadim))
   endif
-  allocate(jacaa(numconfig,numr), jacaamult(numconfig,numr))
+  allocate(jacaa(numr,firstconfig:lastconfig), jacaamult(numr,firstconfig:lastconfig))
 
-  jacaa=inavector
+  jacaa(:,:)=inavector(:,:)
   if (allspinproject==1) then
-     call configspin_projectall(jacaa,1)
+     call configspin_project(jacaa,1)
   endif
   if (dfrestrictflag.ne.0) then
      call dfrestrict(jacaa,numr)
   endif
-  norm=abs(sqrt(dot(jacaa,jacaa,totadim)))
+  norm=abs(dot(jacaa,jacaa,totadim))
+  if (parconsplit.ne.0) then
+     call mympirealreduceone(norm)
+  endif
+  norm=sqrt(norm)
+
   if (abs(norm)-1.d0.gt.1.d-5) then
      print *, "warning large norm error  avec ", norm, abs(norm)
   endif
 
   call sparseconfigmult(jacaa, jacaamult, yyy%cptr(0), yyy%sptr(0),1,1,0,1,0d0)
   if (allspinproject==1) then
-     call configspin_projectall(jacaamult, 1)
+     call configspin_project(jacaamult, 1)
   endif
   if (dfrestrictflag.ne.0) then
      call dfrestrict(jacaamult, numr)
   endif
 
-  quadexpect=dot(jacaa,jacaamult,totadim)/dot(jacaa,jacaa,totadim)
+  csum1=dot(jacaa,jacaamult,totadim)
+  csum2=dot(jacaa,jacaa,totadim)
+  if (parconsplit.ne.0) then
+     call mympireduceone(csum1); call mympireduceone(csum2)
+  endif
+
+  quadexpect=csum1/csum2
 
 end subroutine aaonedinit
 
@@ -366,48 +344,30 @@ subroutine sparsequadavector(inavector,jjcalls0)
   use aaonedmod
   use xxxmod
   implicit none
-  EXTERNAL :: paraamult_transpose, parquadpreconsub_transpose
-  EXTERNAL :: paraamult_transpose_spin, parquadpreconsub_transpose_spin
-  EXTERNAL :: paraamult_transpose_padded, parquadpreconsub_transpose_padded
-  EXTERNAL :: paraamult_transpose_spin_padded, parquadpreconsub_transpose_spin_padded
+  EXTERNAL :: paraamult_padded, parquadpreconsub_padded
+  EXTERNAL :: paraamult_spin_padded, parquadpreconsub_spin_padded
+  DATATYPE, intent(inout) ::  inavector(numr,firstconfig:lastconfig)
   integer :: jjcalls, ss,ii,jjcalls0
   real*8 ::  dev,  thisaerror
-  DATATYPE :: dot, hermdot, inavector(numconfig,numr)
-  DATATYPE, allocatable ::  vector(:,:), vector2(:,:), vector3(:,:), vectortr(:,:), vector2tr(:,:), vector3tr(:,:), &
-       vector2spin(:,:), vector2trspin(:,:),vector3trspin(:,:), vectortrspin(:,:), vectorspin(:,:), vector3spin(:,:), &
-       smallvectortr(:,:),smallvectortrspin(:,:),smallvectortr2(:,:),smallvectortrspin2(:,:)
+  DATATYPE :: dot, hermdot,csum 
+  DATATYPE, allocatable ::  vector(:,:), vector2(:,:), vector3(:,:), &
+       smallvector(:,:),smallvectorspin(:,:),smallvector2(:,:),smallvectorspin2(:,:)
   CNORMTYPE :: norm
 
   jjcalls0=0
 
-  allocate(smallvectortr(numr,botwalk:botwalk+maxconfigsperproc-1),smallvectortrspin(numr,spinstart:spinstart+maxspinrank-1), &
-       smallvectortr2(numr,botwalk:botwalk+maxconfigsperproc-1),smallvectortrspin2(numr,spinstart:spinstart+maxspinrank-1))
+  allocate(smallvector(numr,botwalk:botwalk+maxconfigsperproc-1),smallvectorspin(numr,spinstart:spinstart+maxspinrank-1), &
+       smallvector2(numr,botwalk:botwalk+maxconfigsperproc-1),smallvectorspin2(numr,spinstart:spinstart+maxspinrank-1))
 
-  allocate(       vector(numconfig,numr), vector2(numconfig,numr), vector3(numconfig,numr),vector2spin(spintotrank,numr), &
-       vectorspin(spintotrank,numr), vector3spin(spintotrank,numr))
+  allocate( vector(numr,firstconfig:lastconfig), vector2(numr,firstconfig:lastconfig), vector3(numr,firstconfig:lastconfig))
 
-  allocate(       vectortr(numr,numconfig), vector2tr(numr,numconfig), vector3tr(numr,numconfig))
-  allocate(       vectortrspin(numr,spintotrank), vector2trspin(numr,spintotrank), vector3trspin(numr,spintotrank))
-
-  vector=inavector
-
-#define NEWFLAG 1
-
-if (NEWFLAG==1) then
+  vector(:,:)=inavector(:,:)
 
   if (allspinproject.ne.0) then
      ii=maxspinrank*nprocs*numr
   else
      ii=maxconfigsperproc*nprocs*numr
   endif
-
-else
-  if (allspinproject.ne.0) then
-     ii=spintotrank*numr
-  else
-     ii=totadim
-  endif
-endif
 
   if (maxaorder.gt.ii) then
      maxaorder=ii
@@ -423,7 +383,7 @@ endif
 333 continue
 
   if (allspinproject==1) then
-     call configspin_projectall(vector, 1)
+     call configspin_project(vector, 1)
   endif
   if (dfrestrictflag.ne.0) then
      call dfrestrict(vector, numr)
@@ -434,23 +394,19 @@ endif
   call sparseconfigmult(vector, vector2, yyy%cptr(0), yyy%sptr(0), 1,1,0,1,0d0)
 
   if (allspinproject.ne.0) then
-     call configspin_projectall(vector2,0)
+     call configspin_project(vector2,0)
   endif
   if (dfrestrictflag.ne.0) then
      call dfrestrict(vector2,numr)
   endif
 
-  if (allspinproject.ne.0) then
-     call configspin_transformto(numr,vector2,vector2spin)
-  endif
-
   vector3=vector2-quadexpect*vector              !! error term.
 
-  if (allspinproject.ne.0) then
-     call configspin_transformto(numr,vector,vectorspin)
+  dev=abs(hermdot(vector3,vector3,totadim))
+  if (parconsplit.ne.0) then
+     call mympirealreduceone(dev)
   endif
-
-  dev=abs(sqrt(hermdot(vector3,vector3,totadim)))
+  dev=sqrt(dev)
 
   OFLWR "     SPARSEQUAD: DEV", dev; CFL
 
@@ -468,8 +424,8 @@ endif
      !OFLWR "     Converged sparse quad: dev ", dev, "  Expect ", quadexpect, " tol is ", thisaerror; CFL
 
      call aaonedfinal()
-     deallocate(smallvectortr,smallvectortr2,smallvectortrspin,smallvectortrspin2)
-     deallocate(vector, vector2, vector3,vector2spin,vectorspin,vector3spin,vectortr, vector2tr, vector3tr,vectortrspin,vector2trspin,vector3trspin)
+     deallocate(smallvector,smallvector2,smallvectorspin,smallvectorspin2)
+     deallocate(vector, vector2, vector3)
      return
   endif
 
@@ -478,62 +434,51 @@ endif
 
   if (allspinproject.ne.0) then
      
-     vectortrspin(:,:)=TRANSPOSE(vectorspin(:,:))
-     
-     if (NEWFLAG==0) then
-        vector3trspin(:,:)=vectortrspin(:,:)    !! guess
-        call dgsolve0( vectortrspin(:,spinstart), vector3trspin(:,spinstart), jjcalls, paraamult_transpose_spin,quadprecon,parquadpreconsub_transpose_spin, thisaerror,numr*(spinend-spinstart+1),maxaorder,1)
-     else
-        smallvectortrspin(:,:)=0d0
-        smallvectortrspin(:,spinstart:spinend)=vectortrspin(:,spinstart:spinend)
-        smallvectortrspin2(:,:)=smallvectortrspin(:,:)    !! guess
-        call dgsolve0( smallvectortrspin(:,:), smallvectortrspin2(:,:), jjcalls, paraamult_transpose_spin_padded,quadprecon,parquadpreconsub_transpose_spin_padded, thisaerror,numr*maxspinrank,maxaorder,1)
-        vector3trspin(:,:)=0d0; 
-        vector3trspin(:,spinstart:spinend)=smallvectortrspin2(:,spinstart:spinend)
-     endif
-     
-     call mpiallgather(vector3trspin(:,:),spintotrank*numr,allspinranks*numr,maxspinrank*numr)
-     vector3spin=TRANSPOSE(vector3trspin)
-     call configspin_transformfrom(numr,vector3spin,vector3)
+     smallvectorspin(:,:)=0d0
+     call configspin_transformto_local(numr,vector(:,botwalk),smallvectorspin(:,spinstart))
+     smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
+     call dgsolve0( smallvectorspin(:,:), smallvectorspin2(:,:), jjcalls, paraamult_spin_padded,quadprecon,parquadpreconsub_spin_padded, thisaerror,numr*maxspinrank,maxaorder,1)
+
+     call configspin_transformfrom_local(numr,smallvectorspin2(:,:),smallvector2(:,:))
      
   else
      
-     vectortr(:,:)=TRANSPOSE(vector(:,:))
-     if (NEWFLAG==0) then
-        vector3tr(:,:)=vectortr(:,:)               !! guess
-        call dgsolve0( vectortr(:,botwalk), vector3tr(:,botwalk), jjcalls, paraamult_transpose,quadprecon,parquadpreconsub_transpose, thisaerror,numr*(topwalk-botwalk+1),maxaorder,1)
-     else
-        smallvectortr(:,:)=0d0; 
-        smallvectortr(:,botwalk:topwalk)=vectortr(:,botwalk:topwalk)
-        smallvectortr2(:,:)=smallvectortr(:,:)     !! guess
-        call dgsolve0( smallvectortr(:,:), smallvectortr2(:,:), jjcalls, paraamult_transpose_padded,quadprecon,parquadpreconsub_transpose_padded, thisaerror,numr*maxconfigsperproc,maxaorder,1)
-        vector3tr(:,:)=0d0; vector3tr(:,botwalk:topwalk)=smallvectortr2(:,botwalk:topwalk)
-     endif
-     
-     call mpiallgather(vector3tr(:,:),numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
-     vector3=TRANSPOSE(vector3tr)
-     
+     smallvector(:,:)=0d0; 
+     smallvector(:,botwalk:topwalk)=vector(:,botwalk:topwalk)
+     smallvector2(:,:)=smallvector(:,:)       !! guess
+     call dgsolve0( smallvector(:,:), smallvector2(:,:), jjcalls, paraamult_padded,quadprecon,parquadpreconsub_padded, thisaerror,numr*maxconfigsperproc,maxaorder,1)
+
   endif
-     
-  vector=vector3/sqrt(dot(vector3,vector3,totadim))
+
+  vector3(:,:)=0d0; 
+  vector3(:,botwalk:topwalk)=smallvector2(:,botwalk:topwalk)
+  
+  if (parconsplit.eq.0) then
+     call mpiallgather(vector3(:,:),numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
+  endif
+
+
+  csum=dot(vector3,vector3,totadim)
+  if (parconsplit.ne.0) then
+     call mympireduceone(csum)
+  endif
+  vector=vector3/sqrt(csum)
      
 !!  OFLWR "    ITERATIONS ***  ",jjcalls
 
   jjcalls0=jjcalls0+jjcalls
 
   if (allspinproject==1) then
-     call configspin_projectall(vector, 1)
+     call configspin_project(vector, 1)
   endif
   if (dfrestrictflag.ne.0) then
      call dfrestrict(vector, numr)
   endif
 
-  norm=sqrt(dot(vector,vector,totadim)) ! ok conv
+  csum=dot(vector,vector,totadim)
+  call mympireduceone(csum)
+  norm=sqrt(csum)         ! ok conv
   vector=vector/norm
-
-#ifndef CNORMFLAG
-  vector=vector*abs(sum(vector))/sum(vector)
-#endif
 
   call aaonedfinal()
 
@@ -549,10 +494,12 @@ subroutine nonsparsequadavector(avectorout)
   use parameters
   use xxxmod
   implicit none
-  DATATYPE :: avectorout(totadim), dot, hermdot, flatjacaa(totadim),flatjacaamult(totadim)
-  CNORMTYPE :: norm, dev  !! making dev hermdot now 030912
+  DATATYPE,intent(inout) :: avectorout(totadim)
+  DATATYPE :: dot, hermdot
+  DATATYPE :: flatjacaa(totadim),flatjacaamult(totadim)  !! AUTOMATIC
+  CNORMTYPE :: norm
+  real*8 :: dev
   integer :: k,i, info,ss
-!! spin
   real*8, allocatable :: realhalfmatel(:,:,:,:),realhalfmatel2(:,:,:,:),realspinmatel(:,:,:,:)
   DATATYPE, allocatable :: crealconfigmatel(:,:,:),crealhalfmatel(:,:,:),crealhalfmatel2(:,:,:),&
        crealspinmatel(:,:,:),spinerr(:),spinavectorout(:)
@@ -565,7 +512,7 @@ subroutine nonsparsequadavector(avectorout)
 333 continue
 
   if (allspinproject==1) then
-     call configspin_projectall(avectorout, 1)
+     call configspin_project(avectorout, 1)
   endif
   if (dfrestrictflag.ne.0) then
      call dfrestrict(avectorout, numr)
@@ -575,7 +522,7 @@ subroutine nonsparsequadavector(avectorout)
   call sparseconfigmult(avectorout(:),err(:),yyy%cptr(0),yyy%sptr(0),1,1,0,1,0d0)
 
   if (allspinproject==1) then
-     call configspin_projectall(err(:), 0)
+     call configspin_project(err(:), 0)
   endif
   if (dfrestrictflag.ne.0) then
      call dfrestrict(err(:), numr)
@@ -583,7 +530,7 @@ subroutine nonsparsequadavector(avectorout)
 
   err(:)=err(:)-quadexpect*avectorout(:)              !! error term.
 
-  dev=abs(sqrt(hermdot(err(:),err(:),totadim)))
+  dev=sqrt(abs(hermdot(err(:),err(:),totadim)))
 
   OFLWR "  NONSPARSEQUAD: DEV", dev; CFL
 
@@ -648,23 +595,23 @@ allocate(crealconfigmatel(numconfig*numr,zzz,numconfig*numr), &
      crealconfigmatel=realconfigmatel(1,:,:,:) + realconfigmatel(2,:,:,:) * (0d0,1d0)
 #endif
 
-     call configspin_transformto(numconfig*numr*numr*zzz,crealconfigmatel,crealhalfmatel)
+     call configspin_transformto(numr*numconfig*numr*zzz,crealconfigmatel,crealhalfmatel2)
 
-     realhalfmatel(1,:,:,:) = real( crealhalfmatel(:,:,:) ,8)
+     realhalfmatel2(1,:,:,:) = real( crealhalfmatel2(:,:,:) ,8)
 
 #ifndef REALGO
-     realhalfmatel(2,:,:,:) = imag( crealhalfmatel(:,:,:) )
+     realhalfmatel2(2,:,:,:) = imag( crealhalfmatel2(:,:,:) )
 #endif
 
-     realhalfmatel2(:,:,:,:)=RESHAPE(TRANSPOSE(RESHAPE(realhalfmatel(:,:,:,:),(/zzz*spintotrank*numr,zzz*numconfig*numr/))),(/zzz,numconfig*numr,zzz,spintotrank*numr/))
+     realhalfmatel(:,:,:,:)=RESHAPE(TRANSPOSE(RESHAPE(realhalfmatel2(:,:,:,:),(/zzz*numconfig*numr,zzz*spintotrank*numr/))),(/zzz,spintotrank*numr,zzz,numconfig*numr/))
 
 #ifdef REALGO
-     crealhalfmatel2(:,:,:)=realhalfmatel2(1,:,:,:)
+     crealhalfmatel(:,:,:)=realhalfmatel(1,:,:,:)
 #else
-     crealhalfmatel2(:,:,:)=realhalfmatel2(1,:,:,:) + realhalfmatel2(2,:,:,:) * (0d0,1d0) 
+     crealhalfmatel(:,:,:)=realhalfmatel(1,:,:,:) + realhalfmatel(2,:,:,:) * (0d0,1d0) 
 #endif
 
-     call configspin_transformto(spintotrank*numr*numr*zzz,crealhalfmatel2,crealspinmatel)
+     call configspin_transformto(numr*spintotrank*numr*zzz,crealhalfmatel,crealspinmatel)
 
      realspinmatel(1,:,:,:) = real( crealspinmatel(:,:,:) ,8)
 #ifndef REALGO
@@ -709,17 +656,14 @@ allocate(crealconfigmatel(numconfig*numr,zzz,numconfig*numr), &
 
 
   if (allspinproject==1) then
-     call configspin_projectall(avectorout, 1)
+     call configspin_project(avectorout, 1)
   endif
   if (dfrestrictflag.ne.0) then
      call dfrestrict(avectorout, numr)
   endif
 
-  norm=sqrt(dot(avectorout,avectorout,totadim))  !ok imp conv ch/pmctdh
+  norm=sqrt(dot(avectorout,avectorout,totadim))  !ok conv
   avectorout=avectorout/norm
-#ifndef CNORMFLAG
-  avectorout=avectorout*abs(sum(avectorout))/sum(avectorout)
-#endif
 
   call aaonedfinal()
   ss=ss+1
@@ -728,129 +672,123 @@ allocate(crealconfigmatel(numconfig*numr,zzz,numconfig*numr), &
 end subroutine nonsparsequadavector
 
 
-recursive subroutine paraamult_transpose_spin_padded(nullint,inavectortrspin,outavectortrspin)
+recursive subroutine paraamult_spin_padded(nullint,inavectorspin,outavectorspin)
   use parameters
   implicit none
   integer :: nullint
-  DATATYPE :: inavectortrspin(numr,maxspinrank), outavectortrspin(numr,maxspinrank)
-  outavectortrspin(:,:)=0d0
-  call paraamult_transpose_spin(nullint,inavectortrspin,outavectortrspin)
-end subroutine paraamult_transpose_spin_padded
+  DATATYPE,intent(in) :: inavectorspin(numr,maxspinrank)
+  DATATYPE,intent(out) :: outavectorspin(numr,maxspinrank)
+  outavectorspin(:,:)=0d0
+  call paraamult_spin(nullint,inavectorspin,outavectorspin)
+end subroutine paraamult_spin_padded
 
 
-recursive subroutine paraamult_transpose_spin(notusedint,inavectortrspin,outavectortrspin)
+recursive subroutine paraamult_spin(notusedint,inavectorspin,outavectorspin)
   use parameters
   implicit none
   integer :: notusedint
-  DATATYPE :: inavectortrspin(numr,spinstart:spinend), outavectortrspin(numr,spinstart:spinend)
-  DATATYPE :: inavectortr(numr,botwalk:topwalk), outavectortr(numr,botwalk:topwalk)
+  DATATYPE,intent(in) :: inavectorspin(numr,spinstart:spinend)
+  DATATYPE,intent(out) :: outavectorspin(numr,spinstart:spinend)
+  DATATYPE :: inavector(numr,botwalk:topwalk), outavector(numr,botwalk:topwalk)
   if (spinwalkflag.eq.0) then
      OFLWR "WTF SPIN"; CFLST
   endif
-  call configspin_transformfrom_mine_transpose(inavectortrspin,inavectortr)
-  call paraamult_transpose(0,inavectortr,outavectortr)
-  call configspin_transformto_mine_transpose(outavectortr,outavectortrspin)
-end subroutine paraamult_transpose_spin
+  call configspin_transformfrom_local(numr,inavectorspin,inavector)
+  call paraamult(0,inavector,outavector)
+  call configspin_transformto_local(numr,outavector,outavectorspin)
+end subroutine paraamult_spin
 
 
-recursive subroutine paraamult_transpose_padded(nullint, inavectortr,outavectortr)
-  use parameters
-  use xxxmod
-  use aaonedmod
-  implicit none
-  integer :: nullint
-  DATATYPE :: inavectortr(numr,maxconfigsperproc), outavectortr(numr,maxconfigsperproc)
-  outavectortr(:,:)=0d0   
-  call paraamult_transpose(nullint, inavectortr,outavectortr)
-end subroutine paraamult_transpose_padded
-
-
-recursive subroutine paraamult_transpose(notusedint, inavectortr,outavectortr)
-  use parameters
-  use xxxmod
-  use aaonedmod
-  implicit none
-  integer :: notusedint
-  DATATYPE :: inavectortr(numr,botwalk:topwalk), outavectortr(numr,botwalk:topwalk) , &
-       jacaatemptr(numr,botwalk:topwalk),jacaalittletr(numr,botwalk:topwalk), jacaamultlittletr(numr,botwalk:topwalk)
-
-  jacaalittletr(:,:)=TRANSPOSE(jacaa(botwalk:topwalk,:)); jacaamultlittletr(:,:)=TRANSPOSE(jacaamult(botwalk:topwalk,:))
-
-  call parblockconfigmult_transpose(inavectortr,jacaatemptr)
-
-  outavectortr= jacaatemptr - quadexpect*inavectortr 
-
-!  quadcalled=quadcalled+1
-!  if (mod(quadcalled,1000).eq.0) then
-!     OFLWR "    Avector Quad - iterating!!  Is your maxaorder high enough??? "
-!     WRFL "         iterations ", quadcalled, " maxaorder=",maxaorder; CFL
-!  endif
-
-end subroutine paraamult_transpose
-
-
-recursive subroutine parquadpreconsub_transpose_spin_padded(nullint,inavectortrspin,outavectortrspin)
+recursive subroutine paraamult_padded(nullint, inavector,outavector)
   use parameters
   implicit none
   integer :: nullint
-  DATATYPE :: inavectortrspin(numr,maxspinrank), outavectortrspin(numr,maxspinrank)
-  outavectortrspin(:,:)=inavectortrspin(:,:)  !! MUST BE FULL RANK
-  call parquadpreconsub_transpose_spin(nullint,inavectortrspin,outavectortrspin)
-end subroutine parquadpreconsub_transpose_spin_padded
+  DATATYPE,intent(in) :: inavector(numr,maxconfigsperproc)
+  DATATYPE,intent(out) :: outavector(numr,maxconfigsperproc)
+  outavector(:,:)=0d0   
+  call paraamult(nullint, inavector,outavector)
+end subroutine paraamult_padded
 
 
-recursive subroutine parquadpreconsub_transpose_spin(notusedint,inavectortrspin,outavectortrspin)
+recursive subroutine paraamult(notusedint, inavector,outavector)
+  use parameters
+  use aaonedmod
+  implicit none
+  integer :: notusedint
+  DATATYPE,intent(in) :: inavector(numr,botwalk:topwalk)
+  DATATYPE,intent(out) :: outavector(numr,botwalk:topwalk)
+
+  call parblockconfigmult(inavector,outavector)
+
+  outavector= outavector - quadexpect*inavector 
+
+end subroutine paraamult
+
+
+recursive subroutine parquadpreconsub_spin_padded(nullint,inavectorspin,outavectorspin)
+  use parameters
+  implicit none
+  integer :: nullint
+  DATATYPE,intent(in) :: inavectorspin(numr,maxspinrank)
+  DATATYPE,intent(out) :: outavectorspin(numr,maxspinrank)
+  outavectorspin(:,:)=inavectorspin(:,:)  !! MUST BE FULL RANK
+  call parquadpreconsub_spin(nullint,inavectorspin,outavectorspin)
+end subroutine parquadpreconsub_spin_padded
+
+
+recursive subroutine parquadpreconsub_spin(notusedint,inavectorspin,outavectorspin)
   use parameters
   implicit none
   integer :: notusedint
-  DATATYPE :: inavectortrspin(numr,spinstart:spinend), outavectortrspin(numr,spinstart:spinend)
-  DATATYPE :: inavectortr(numr,botwalk:topwalk),outavectortr(numr,botwalk:topwalk)
+  DATATYPE,intent(in) :: inavectorspin(numr,spinstart:spinend)
+  DATATYPE,intent(out) :: outavectorspin(numr,spinstart:spinend)
+  DATATYPE :: inavector(numr,botwalk:topwalk),outavector(numr,botwalk:topwalk)
   if (spinwalkflag.eq.0) then
      OFLWR "WTF SPIN"; CFLST
   endif
-  call configspin_transformfrom_mine_transpose(inavectortrspin,inavectortr)
-  call parquadpreconsub_transpose(0,inavectortr,outavectortr)
-  call configspin_transformto_mine_transpose(outavectortr,outavectortrspin)
-end subroutine parquadpreconsub_transpose_spin
+  call configspin_transformfrom_local(numr,inavectorspin,inavector)
+  call parquadpreconsub(0,inavector,outavector)
+  call configspin_transformto_local(numr,outavector,outavectorspin)
+end subroutine parquadpreconsub_spin
 
 
-recursive subroutine parquadpreconsub_transpose_padded(nullint, inavectortr,outavectortr)
+recursive subroutine parquadpreconsub_padded(nullint, inavector,outavector)
   use parameters
-  use aaonedmod
-  use xxxmod
   implicit none
   integer :: nullint
-  DATATYPE :: inavectortr(numr,maxconfigsperproc), outavectortr(numr,maxconfigsperproc)
-  outavectortr(:,:)=inavectortr(:,:) !! MUST BE FULL RANK
-  call parquadpreconsub_transpose(nullint, inavectortr,outavectortr)
-end subroutine parquadpreconsub_transpose_padded
+  DATATYPE,intent(in) :: inavector(numr,maxconfigsperproc)
+  DATATYPE,intent(out) :: outavector(numr,maxconfigsperproc)
+  outavector(:,:)=inavector(:,:) !! MUST BE FULL RANK
+  call parquadpreconsub(nullint, inavector,outavector)
+end subroutine parquadpreconsub_padded
 
 
-recursive subroutine parquadpreconsub_transpose(notusedint, inavectortr,outavectortr)
+recursive subroutine parquadpreconsub(notusedint, inavector,outavector)
   use parameters
   use aaonedmod
   use xxxmod
   implicit none
   integer :: notusedint
-  DATATYPE :: inavectortr(numr,botwalk:topwalk), outavectortr(numr,botwalk:topwalk),tempvector(botwalk:topwalk,numr), &
-       tempvectortr(numr,botwalk:topwalk),tempvectortr2(numr,botwalk:topwalk),outavector(botwalk:topwalk,numr)
+  DATATYPE,intent(in) :: inavector(numr,botwalk:topwalk)
+  DATATYPE,intent(out) :: outavector(numr,botwalk:topwalk)
+  DATATYPE :: tempvector(numr,botwalk:topwalk)
 
-  tempvector(:,:)=TRANSPOSE(inavectortr(:,:))
+  tempvector(:,:)=inavector(:,:)
+
   if (allspinproject==1) then
-     call configspin_projectmine(tempvector,0)
+     call configspin_project_local(tempvector,0)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict_par(tempvector, numr)
+     call dfrestrict_local(tempvector, numr)
   endif
-  tempvectortr(:,:)=TRANSPOSE(tempvector(:,:))
-  call parsparseconfigdiagmult_transpose(tempvectortr, tempvectortr2, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0)
-  outavector=TRANSPOSE(tempvectortr2)
+
+  call parsparseconfigdiagmult(tempvector, outavector, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0)
+
   if (allspinproject==1) then
-     call configspin_projectmine(outavector, 0)
+     call configspin_project_local(outavector, 0)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict_par(outavector, numr)
+     call dfrestrict_local(outavector, numr)
   endif
-  outavectortr(:,:)=TRANSPOSE(outavector)
 
-end subroutine
+end subroutine parquadpreconsub

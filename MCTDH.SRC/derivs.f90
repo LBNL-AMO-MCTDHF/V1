@@ -70,7 +70,7 @@ recursive subroutine all_derivs(thistime,xpsi, xpsip)
   do imc=1,mcscfnum
      call sparseconfigmult(xpsi(astart(imc)),xpsip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,1,thistime)
      if (allspinproject.ne.0) then
-        call configspin_projectall(xpsip(astart(imc)),0)
+        call configspin_project(xpsip(astart(imc)),0)
      endif
      if (dfrestrictflag.ne.0) then
         call dfrestrict(xpsip(astart(imc)),numr)

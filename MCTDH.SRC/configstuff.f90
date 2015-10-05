@@ -8,13 +8,8 @@ subroutine printconfig(thisconfig)
   integer :: thisconfig(ndof), i
   character (len=4) :: mslabels(2) =["a ","b "]
   
-!!  call openfile()
-
-!  write(mpifileptr,'(100(I5,A3,A3,I3))') (thisconfig((i-1)*2+1), mslabels(thisconfig(i*2)),"M=",spfmvals(thisconfig((i-1)*2+1)), i=1,numelec)
-
   write(mpifileptr,'(100(I3,A2))') (thisconfig((i-1)*2+1), mslabels(thisconfig(i*2)), i=1,numelec)
 
-!!  call closefile()
 end subroutine printconfig
 
 
@@ -36,10 +31,6 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
        spinconfigmatel(:,:), spinconfigvects(:,:), tempconfigvects(:,:)
   DATAECS, allocatable :: fullconfigvals(:)
 
-!  if (numshift.lt.0.or.numshift.ne.0.and.guessflag.ne.0) then
-!     OFLWR "GG ERROR.", numshift,guessflag; CFLST
-!  endif
-
   if (order+numshift.gt.totadim) then
      OFLWR "Error, want ",order," plus ",numshift," vectors but totadim= ",totadim;CFLST
   endif
@@ -49,8 +40,6 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
 
   if (sparseconfigflag/=0) then
      
-!!     OFLWR "    ... go myconfigeig, sparse"; CFL
-
      allocate(tempconfigvects(totadim,order+numshift))
      tempconfigvects(:,:)=0d0
      if (guessflag.ne.0) then
@@ -87,7 +76,9 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
         endif
         if (myrank.eq.1) then
            call CONFIGEIG(spinconfigmatel(:,:),spintotrank*numr,spintotrank*numr, spinconfigvects, fullconfigvals)
-           call configspin_transformfrom(spintotrank*numr*numr,spinconfigvects(:,:),fullconfigvects(:,:))
+           do i=1,spintotrank*numr
+              call configspin_transformfrom(numr,spinconfigvects(:,i),fullconfigvects(:,i))
+           enddo
         endif
         deallocate(spinconfigmatel,spinconfigvects)
      else
@@ -160,7 +151,7 @@ subroutine myconfigprop(avectorin,avectorout,time)
   real*8 :: time
   DATATYPE :: avectorin(totadim), avectorout(totadim)
   if (allspinproject.ne.0) then
-     call configspin_projectall(avectorin,0)
+     call configspin_project(avectorin,0)
   endif
   if (dfrestrictflag.ne.0) then
      call dfrestrict(avectorin,numr)
@@ -171,7 +162,7 @@ subroutine myconfigprop(avectorin,avectorout,time)
      call nonsparseprop(avectorin,avectorout,time)
   endif
   if (allspinproject.ne.0) then
-     call configspin_projectall(avectorout,0)
+     call configspin_project(avectorout,0)
   endif
   if (dfrestrictflag.ne.0) then
      call dfrestrict(avectorout,numr)
@@ -242,9 +233,9 @@ subroutine nonsparseprop(avectorin,avectorout,time)
 
 
      bigconfigmatel=bigconfigmatel*timefac
-     call configspin_transformto(1,avectorin,avectortemp)
-     if (myrank.eq.1) then
+     call configspin_transformto(numr,avectorin,avectortemp)
 
+     if (myrank.eq.1) then
         if (nonsparsepropmode.eq.1) then
            avectorout=avectortemp  !! in spin basis
            call expmat(bigconfigmatel,spintotrank*numr); call MYGEMV('N',spintotrank*numr,spintotrank*numr,DATAONE,bigconfigmatel,spintotrank*numr,avectorout,1,DATAZERO,avectortemp,1)
@@ -264,7 +255,7 @@ subroutine nonsparseprop(avectorin,avectorout,time)
         endif
      endif
      call mympibcast(avectortemp,1,spintotrank*numr)
-     call configspin_transformfrom(1,avectortemp,avectorout)
+     call configspin_transformfrom(numr,avectortemp,avectorout)
   endif
 
   deallocate(iiwork,bigconfigmatel,bigconfigvects)
@@ -293,67 +284,57 @@ end subroutine configexpotimeinit
 !! NOTE BOUNDS !!
 
 
-subroutine parconfigexpomult_transpose(inavectortr,outavectortr)
+subroutine parconfigexpomult(inavector,outavector)
   use parameters
   use mpimod
   use configexpotimemod
   use configpropmod
   implicit none
 
-  DATATYPE :: inavectortr(numr,botwalk:botwalk+maxconfigsperproc-1), outavectortr(numr,botwalk:botwalk+maxconfigsperproc-1)
-  integer, save :: allochere=0
-  DATATYPE,save,allocatable :: intemptr(:,:), ttvector(:,:), ttvector2(:,:)
-
-  if (allochere.eq.0) then
-     allocate(intemptr(numr,numconfig), ttvector(numconfig,numr), ttvector2(botwalk:topwalk,numr))
-  endif
-  allochere=1
+  DATATYPE,intent(in) :: inavector(numr,botwalk:botwalk+maxconfigsperproc-1)
+  DATATYPE,intent(out) :: outavector(numr,botwalk:botwalk+maxconfigsperproc-1)
+  DATATYPE :: intemp(numr,numconfig)
 
   call avectortime(3)
 
   if (sparseconfigflag.eq.0) then
-     OFLWR "error, must use sparse for parconfigexpomult_transpose_direct"; CFLST
+     OFLWR "error, must use sparse for parconfigexpomult"; CFLST
   endif
-  intemptr(:,:)=0d0;  intemptr(:,botwalk:topwalk)=inavectortr(:,botwalk:topwalk)
-  
-  call mpiallgather(intemptr,numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
-
-  ttvector(:,:)=TRANSPOSE(intemptr(:,:))
+  intemp(:,:)=0d0;  intemp(:,botwalk:topwalk)=inavector(:,botwalk:topwalk)
 
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(ttvector,numr)
+     call dfrestrict_local(intemp(:,botwalk),numr)
   endif
 
-  call sparseconfigmult_nompi(ttvector,ttvector2, workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime)
+!! DO SUMMA  
+  call mpiallgather(intemp,numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
+
+  outavector(:,:)=0d0
+  call sparseconfigmult_nompi(intemp(:,:),outavector(:,:), workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0)
 
 
   if (dfrestrictflag.ne.0) then
-     call dfrestrict_par(ttvector2,numr)
+     call dfrestrict_local(outavector,numr)
   endif
-  outavectortr(:,:)=0d0
-  outavectortr(:,botwalk:topwalk)=TRANSPOSE(ttvector2(botwalk:topwalk,:))
-  outavectortr=outavectortr*timefac
+
+  outavector=outavector*timefac
   
   call avectortime(2)
 
-end subroutine parconfigexpomult_transpose
+end subroutine parconfigexpomult
 
 
 
-subroutine parconfigexpomult_transpose_spin(inavectortrspin,outavectortrspin)
+subroutine parconfigexpomult_spin(inavectorspin,outavectorspin)
   use parameters
   use mpimod
   use configexpotimemod
   implicit none
 
-  DATATYPE :: inavectortrspin(numr,spinstart:spinstart+maxspinrank-1), outavectortrspin(numr,spinstart:spinstart+maxspinrank-1)
-  integer,save :: allochere=0
-  DATATYPE,save,allocatable :: inavectortr(:,:),outavectortr(:,:)
-
-  if (allochere.eq.0) then
-     allocate(inavectortr(numr,botwalk:botwalk+maxconfigsperproc-1),outavectortr(numr,botwalk:botwalk+maxconfigsperproc-1))
-  endif
-  allochere=1
+  DATATYPE,intent(in) :: inavectorspin(numr,spinstart:spinstart+maxspinrank-1)
+  DATATYPE,intent(out) :: outavectorspin(numr,spinstart:spinstart+maxspinrank-1)
+  DATATYPE :: inavector(numr,botwalk:botwalk+maxconfigsperproc-1),&
+       outavector(numr,botwalk:botwalk+maxconfigsperproc-1)
 
   call avectortime(3)
 
@@ -361,19 +342,19 @@ subroutine parconfigexpomult_transpose_spin(inavectortrspin,outavectortrspin)
      OFLWR "WTF SPIN"; CFLST
   endif
 
-  call configspin_transformfrom_mine_transpose(inavectortrspin,inavectortr)
+  call configspin_transformfrom_local(numr,inavectorspin,inavector)
 
   call avectortime(2)
 
-  call parconfigexpomult_transpose(inavectortr,outavectortr)
+  call parconfigexpomult(inavector,outavector)
 
-  outavectortrspin(:,:)=0d0
+  outavectorspin(:,:)=0d0
 
-  call configspin_transformto_mine_transpose(outavectortr,outavectortrspin)
+  call configspin_transformto_local(numr,outavector,outavectorspin)
 
   call avectortime(2)
   
-end subroutine parconfigexpomult_transpose_spin
+end subroutine parconfigexpomult_spin
 
 
 

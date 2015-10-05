@@ -193,7 +193,7 @@ subroutine configalloc()
      worksparsepointer%kefac=par_timestep     !! constant term in poly expansion goes with ke in R; will be set
   endif
 
-  allocate(workdrivingavec(numconfig,numr)); workdrivingavec(:,:)=0d0
+  allocate(workdrivingavec(numr,firstconfig:lastconfig)); workdrivingavec(:,:)=0d0
   allocate(workdrivingavecspin(spintotrank,numr)); workdrivingavecspin(:,:)=0d0
 
 end subroutine configalloc
@@ -584,7 +584,7 @@ subroutine opalloc()
   rkemod=0.d0; proderivmod=0.d0; 
 
   if (drivingflag.ne.0) then
-     allocate(orbs_driving(spfsize,nspf),          avector_driving(numconfig,numr,mcscfnum))
+     allocate(orbs_driving(spfsize,nspf),          avector_driving(numr,firstconfig:lastconfig,mcscfnum))
      orbs_driving=0d0;      avector_driving=0d0
   endif
 
@@ -615,8 +615,8 @@ subroutine natprojalloc
   use parameters
   implicit none
   if (nnalloc==0) then
-  allocate( natproj(numr,numr,mcscfnum), natconfigs(numconfig,numr), natderiv(numconfig), natvals(numconfig), &
-       natdot(numr,mcscfnum), curves(numr,numr))
+  allocate( natproj(numr,numr,mcscfnum), natconfigs(firstconfig:lastconfig,numr), natderiv(firstconfig:lastconfig), &
+       natvals(firstconfig:lastconfig), natdot(numr,mcscfnum), curves(numr,numr))
   endif
   nnalloc=1
 end subroutine
@@ -676,9 +676,9 @@ subroutine xalloc()
   endif
 
   if (drivingflag.ne.0) then
-     allocate(yyy%drivingavectorsxx(numconfig,numr,mcscfnum,0:numreduced), yyy%drivingorbsxx(spfsize,nspf,0:numreduced))
-     allocate(yyy%drivingavectorsyy(numconfig,numr,mcscfnum,0:numreduced), yyy%drivingorbsyy(spfsize,nspf,0:numreduced))
-     allocate(yyy%drivingavectorszz(numconfig,numr,mcscfnum,0:numreduced), yyy%drivingorbszz(spfsize,nspf,0:numreduced))
+     allocate(yyy%drivingavectorsxx(numr,firstconfig:lastconfig,mcscfnum,0:numreduced), yyy%drivingorbsxx(spfsize,nspf,0:numreduced))
+     allocate(yyy%drivingavectorsyy(numr,firstconfig:lastconfig,mcscfnum,0:numreduced), yyy%drivingorbsyy(spfsize,nspf,0:numreduced))
+     allocate(yyy%drivingavectorszz(numr,firstconfig:lastconfig,mcscfnum,0:numreduced), yyy%drivingorbszz(spfsize,nspf,0:numreduced))
      yyy%drivingavectorsxx(:,:,:,:)=0d0; yyy%drivingorbsxx(:,:,:)=0d0
      yyy%drivingavectorsyy(:,:,:,:)=0d0; yyy%drivingorbsyy(:,:,:)=0d0
      yyy%drivingavectorszz(:,:,:,:)=0d0; yyy%drivingorbszz(:,:,:)=0d0

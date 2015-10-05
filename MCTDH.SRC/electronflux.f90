@@ -5,26 +5,70 @@
 
 #include "Definitions.INC"
 
-subroutine fluxwrite(curtime,xmo,xa)
+subroutine fluxwrite(curtime,in_xmo,in_xa)
 !! Write out the wavefunction for the flux calculation
 !! input :
 !! curtime - the current time
 !! xmo - this time's current orbitals
 !! xa - this time's current A vector
   use parameters
+  use mpimod
   implicit none
-  integer :: curtime,molength,alength
-  DATATYPE :: xmo(spfsize,nspf),xa(numconfig,numr,mcscfnum)
-  inquire (iolength=molength) xmo
-  inquire (iolength=alength) xa
-  call openfile
-  write(mpifileptr,'(A27,F11.4)') " Saving wavefunction at T= ",curtime*FluxInterval*par_timestep
-  call closefile
-  open(1001,file=fluxmofile,status="unknown",form="unformatted",access="direct",recl=molength)
-  open(1002,file=fluxafile,status="unknown",form="unformatted",access="direct",recl=alength)
+  integer :: curtime,molength,alength,ispf,ii
+  DATATYPE,intent(in) :: in_xmo(spfsize,nspf),in_xa(numr,firstconfig:lastconfig,mcscfnum)
+  DATATYPE,allocatable :: xmo(:,:), xa(:,:,:)
 
-  write(1001,rec=curtime+1) xmo;  write(1002,rec=curtime+1) xa
-  close(1001);  close(1002)
+  if (myrank.eq.1) then
+     if (parorbsplit.eq.3) then
+        allocate(xmo(spfsize*nprocs,nspf))
+     else
+        allocate(xmo(spfsize,nspf))
+     endif
+  else
+     allocate(xmo(1,nspf))
+  endif
+  xmo(:,:)=0d0
+
+  if (parorbsplit.eq.3) then
+     do ispf=1,nspf
+        call splitgatherv(in_xmo(:,ispf),xmo(:,ispf),.false.)
+     enddo
+  elseif (myrank.eq.1) then
+     xmo(:,:)=in_xmo(:,:)
+  endif
+
+  if (myrank.eq.1) then
+     allocate(xa(numr,numconfig,mcscfnum))
+  else
+     allocate(xa(1,1,mcscfnum))
+  endif
+  xa(:,:,:)=0d0
+
+  if (parconsplit.ne.0) then
+     do ii=1,mcscfnum
+        call mygatherv(in_xa(:,:,ii),xa(:,:,ii), configsperproc(:)*numr,.false.)
+     enddo
+  elseif(myrank.eq.1) then
+     xa(:,:,:)=in_xa(:,:,:)
+  endif
+
+  if (myrank.eq.1) then
+     inquire (iolength=molength) xmo
+     inquire (iolength=alength) xa
+     call openfile
+     write(mpifileptr,'(A27,F11.4)') " Saving wavefunction at T= ",curtime*FluxInterval*par_timestep
+     call closefile
+     open(1001,file=fluxmofile,status="unknown",form="unformatted",access="direct",recl=molength)
+     open(1002,file=fluxafile,status="unknown",form="unformatted",access="direct",recl=alength)
+     
+     write(1001,rec=curtime+1) xmo;  write(1002,rec=curtime+1) xa
+     close(1001);  close(1002)
+  endif
+
+  deallocate(xmo,xa)
+  
+  call mpibarrier()
+
 end subroutine fluxwrite
 
 
@@ -53,18 +97,19 @@ subroutine fluxgtau(alg)
 
   integer :: alg,curtime,oldtime,k,nt,i,molength,alength,  BatchSize,NBat,brabat,brareadsize, &
        bratime,ketbat,ketreadsize,kettime,bratop, atime,btime,itime,jtime,times(1:7)=0, &
-       imc, tau
-  real*8 :: MemTot,MemVal,dt, xyfac,zfac,myfac,wfi,estep
+       imc, tau, ispf
+  real*8 :: MemTot,MemVal,dt, myfac,wfi,estep
   complex*16, allocatable :: FTgtau(:,:), pulseft(:,:)
   real*8, allocatable :: pulseftsq(:)
   DATATYPE :: dot,fluxeval,fluxevalval(mcscfnum), pots1(3)=0d0  !!$, pots2(3)=0d0
   DATATYPE, allocatable :: gtau(:,:), mobio(:,:),abio(:,:,:)
   DATATYPE, allocatable, target :: bramo(:,:,:),braavec(:,:,:,:), ketmo(:,:,:),ketavec(:,:,:,:)
+  DATATYPE,allocatable :: read_bramo(:,:,:),read_braavec(:,:,:,:),read_ketmo(:,:,:),read_ketavec(:,:,:,:)
   DATATYPE, pointer :: moket(:,:),mobra(:,:),aket(:,:,:)
-  DATATYPE, allocatable :: ke(:,:),pe(:,:),V2(:,:,:,:), yderiv(:,:),zdip(:,:), xydip(:,:)
-  DATATYPE, allocatable :: keop(:,:),peop(:,:),  yop(:,:), zdipop(:,:), xydipop(:,:)
-  DATATYPE, allocatable :: reke(:,:),repe(:,:),reV2(:,:,:,:), reyderiv(:,:),rezdip(:,:), rexydip(:,:)
-  DATATYPE, allocatable :: rekeop(:,:),repeop(:,:),  reyop(:,:), rezdipop(:,:), rexydipop(:,:)
+  DATATYPE, allocatable :: ke(:,:),pe(:,:),V2(:,:,:,:), yderiv(:,:)
+  DATATYPE, allocatable :: keop(:,:),peop(:,:),  yop(:,:)
+  DATATYPE, allocatable :: reke(:,:),repe(:,:),reV2(:,:,:,:), reyderiv(:,:)
+  DATATYPE, allocatable :: rekeop(:,:),repeop(:,:),  reyop(:,:)
   DATATYPE,target :: smo(nspf,nspf)
 
   if (ceground.eq.(0d0,0d0)) then
@@ -80,15 +125,14 @@ subroutine fluxgtau(alg)
   allocate(gtau(0:nt,mcscfnum))
   gtau(:,:)=0d0
 
-  allocate(xydip(nspf,nspf),zdip(nspf,nspf),ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf))
-  allocate(rexydip(nspf,nspf),rezdip(nspf,nspf),reke(nspf,nspf),repe(nspf,nspf),reV2(nspf,nspf,nspf,nspf),reyderiv(nspf,nspf))
-  allocate(mobio(spfsize,nspf),abio(numconfig,numr,mcscfnum), &
-       keop(spfsize,nspf),peop(spfsize,nspf),xydipop(spfsize,nspf),zdipop(spfsize,nspf), &
-       rekeop(spfsize,nspf),repeop(spfsize,nspf),rexydipop(spfsize,nspf),rezdipop(spfsize,nspf))
+  allocate(ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf))
+  allocate(reke(nspf,nspf),repe(nspf,nspf),reV2(nspf,nspf,nspf,nspf),reyderiv(nspf,nspf))
+  allocate(mobio(spfsize,nspf),abio(numr,firstconfig:lastconfig,mcscfnum), &
+       keop(spfsize,nspf),peop(spfsize,nspf),   rekeop(spfsize,nspf),repeop(spfsize,nspf))
   allocate(yop(spfsize,nspf));  allocate(reyop(spfsize,nspf))
   
-  rexydip=0d0;rezdip=0d0;reke=0d0;repe=0d0;rev2=0d0;reyderiv=0d0;rekeop=0d0;repeop=0d0;rexydipop=0d0;rezdipop=0d0
-  xydip=0d0;zdip=0d0;ke=0d0;pe=0d0;v2=0d0;yderiv=0d0;keop=0d0;peop=0d0;xydipop=0d0;zdipop=0d0
+  reke=0d0;repe=0d0;rev2=0d0;reyderiv=0d0;rekeop=0d0;repeop=0d0
+  ke=0d0;pe=0d0;v2=0d0;yderiv=0d0;keop=0d0;peop=0d0
 
 !! determine if we should do batching or not
 !! 250,000 words/MB, real*8 2words/#, complex*16 4words/#
@@ -99,7 +143,7 @@ subroutine fluxgtau(alg)
   MemVal = 6.25d4
 #endif
   call openfile()
-  write(mpifileptr,'(A30,F9.3,A3)') " Guess at necessary memory is ",2d0*real((nt+1)*(numconfig*numr*mcscfnum+spfsize*nspf),8)/MemVal," MB"
+  write(mpifileptr,'(A30,F9.3,A3)') " Guess at necessary memory is ",2d0*real((nt+1)*(localnconfig*numr*mcscfnum+spfsize*nspf),8)/MemVal," MB"
   if(alg.eq.0) then
     write(mpifileptr,*) "g(tau) will be computed with all of psi in core"
     BatchSize=nt+1
@@ -107,7 +151,7 @@ subroutine fluxgtau(alg)
     MemTot=real(alg,8)    
     write(mpifileptr,*) "g(tau) will be computed with all psi being read in batches"
     write(mpifileptr,'(A33,F9.3,A3)') " Desired amount of memory to use ",MemTot," MB"
-    BatchSize=floor(MemTot * MemVal / (2d0*real(numconfig*numr*mcscfnum+spfsize*nspf,8)))
+    BatchSize=floor(MemTot * MemVal / (2d0*real(localnconfig*numr*mcscfnum+spfsize*nspf,8)))
     if(BatchSize.lt.1) then
       write(mpifileptr,*) "Tiny amount of memory or huge wavefunction, Batchsize is 1" 
       BatchSize=1
@@ -118,23 +162,46 @@ subroutine fluxgtau(alg)
       write(mpifileptr,*) "Batchsize is ",BatchSize,"/",(nt+1)
     endif
   endif
+  call closefile()
 
-  allocate(ketmo(spfsize,nspf,BatchSize),ketavec(numconfig,numr,mcscfnum,BatchSize))
-  allocate(bramo(spfsize,nspf,BatchSize),braavec(numconfig,numr,mcscfnum,BatchSize))
+  allocate(ketmo(spfsize,nspf,BatchSize),ketavec(numr,firstconfig:lastconfig,mcscfnum,BatchSize))
+  allocate(bramo(spfsize,nspf,BatchSize),braavec(numr,firstconfig:lastconfig,mcscfnum,BatchSize))
+
+  if (myrank.eq.1) then
+     if (parorbsplit.eq.3) then
+        allocate(read_bramo(spfsize*nprocs,nspf,BatchSize),read_ketmo(spfsize*nprocs,nspf,BatchSize))
+     else
+        allocate(read_bramo(spfsize,nspf,BatchSize),read_ketmo(spfsize,nspf,BatchSize))
+     endif
+  else
+     allocate(read_bramo(1,nspf,BatchSize),read_ketmo(1,nspf,BatchSize))
+  endif
+  if (myrank.eq.1) then
+     allocate(read_braavec(numr,numconfig,mcscfnum,BatchSize),read_ketavec(numr,numconfig,mcscfnum,BatchSize))
+  else
+     allocate(read_braavec(1,1,mcscfnum,BatchSize),read_ketavec(1,1,mcscfnum,BatchSize))
+  endif
+
 
   NBat=ceiling(real(nt+1)/real(BatchSize))
   ketreadsize=0;  brareadsize=0
 
-  inquire (iolength=molength) ketmo(:,:,1);  inquire (iolength=alength) ketavec(:,:,:,1)
+  if (myrank.eq.1) then
+     inquire (iolength=molength) read_ketmo(:,:,1);  inquire (iolength=alength) read_ketavec(:,:,:,1)
+  endif
+  call mympiibcastone(molength,1); call mympiibcastone(alength,1)
 
+  call openfile()
   write(mpifileptr,*) "MO record length is ",molength
   write(mpifileptr,*) "AVEC record length is ",alength
   call closefile()
 
-  open(454, file="Dat/KVLsum.dat", status="unknown")
-  write(454,*) "#KVL flux sum: itime, time, flux sum"
-  write(454,*);  close(454)
-  
+
+  if (myrank.eq.1) then
+     open(454, file="Dat/KVLsum.dat", status="unknown")
+     write(454,*) "#KVL flux sum: itime, time, flux sum"
+     write(454,*);  close(454)
+  endif
 
 !! begin the ket batch read loop
   do ketbat=1,NBat
@@ -146,13 +213,35 @@ subroutine fluxgtau(alg)
         open(1002,file=fluxafile,status="old",form="unformatted",access="direct",recl=alength)
         do i=1,ketreadsize
            k=FluxSkipMult*((ketbat-1)*BatchSize+i-1)+1
-           read(1001,rec=k) ketmo(:,:,i) ;        read(1002,rec=k) ketavec(:,:,:,i) 
+           read(1001,rec=k) read_ketmo(:,:,i) ;        read(1002,rec=k) read_ketavec(:,:,:,i) 
         enddo
         close(1001);      close(1002)
      endif
 
-     call mympibcast(ketmo(:,:,1:ketreadsize),1,totspfdim*ketreadsize)
-     call mympibcast(ketavec(:,:,:,1:ketreadsize),1,numr*numconfig*mcscfnum*ketreadsize)
+     if (parorbsplit.ne.3) then
+        if (myrank.eq.1) then
+           ketmo(:,:,1:ketreadsize)=read_ketmo(:,:,1:ketreadsize)
+        endif
+        call mympibcast(ketmo(:,:,:),1,totspfdim*ketreadsize)
+     else
+        do i=1,ketreadsize
+           do ispf=1,nspf
+              call splitscatterv(read_ketmo(:,ispf,i),ketmo(:,ispf,i))
+           enddo
+        enddo
+     endif
+     if (parconsplit.eq.0) then
+        if (myrank.eq.1) then
+           ketavec(:,:,:,1:ketreadsize)=read_ketavec(:,:,:,1:ketreadsize)
+        endif
+        call mympibcast(ketavec(:,:,:,1:ketreadsize),1,numr*numconfig*mcscfnum*ketreadsize)
+     else
+        do i=1,ketreadsize
+           do imc=1,mcscfnum
+              call myscatterv(read_ketavec(:,:,imc,i),ketavec(:,:,imc,i),configsperproc(:)*numr)
+           enddo
+        enddo
+     endif
 
      call system_clock(btime)
      times(1)=times(1)+btime-atime;    times(2)=times(2)+btime-atime
@@ -170,13 +259,38 @@ subroutine fluxgtau(alg)
               open(1002,file=fluxafile,status="old",form="unformatted",access="direct",recl=alength)
               do i=1,brareadsize
                  k=FluxSkipMult*((brabat-1)*BatchSize+i-1)+1
-                 read(1001,rec=k) bramo(:,:,i) ;            read(1002,rec=k) braavec(:,:,:,i) 
+                 read(1001,rec=k) read_bramo(:,:,i) ;            read(1002,rec=k) read_braavec(:,:,:,i) 
               enddo
               close(1001);          close(1002)
            endif
-           call mympibcast(bramo(:,:,1:brareadsize),1,totspfdim*brareadsize)
-           call mympibcast(braavec(:,:,:,1:brareadsize),1,numr*numconfig*mcscfnum*brareadsize)
+
+           if (parorbsplit.ne.3) then
+              if (myrank.eq.1) then
+                 bramo(:,:,1:brareadsize)=read_bramo(:,:,1:brareadsize)
+              endif
+              call mympibcast(bramo(:,:,:),1,totspfdim*brareadsize)
+           else
+              do i=1,brareadsize
+                 do ispf=1,nspf
+                    call splitscatterv(read_bramo(:,ispf,i),bramo(:,ispf,i))
+                 enddo
+              enddo
+           endif
+           if (parconsplit.eq.0) then
+              if (myrank.eq.1) then
+                 braavec(:,:,:,1:brareadsize)=read_braavec(:,:,:,1:brareadsize)
+              endif
+              call mympibcast(braavec(:,:,:,1:brareadsize),1,numr*numconfig*mcscfnum*brareadsize)
+           else
+              do i=1,brareadsize
+                 do imc=1,mcscfnum
+                    call myscatterv(read_braavec(:,:,imc,i),braavec(:,:,imc,i),configsperproc(:)*numr)
+                 enddo
+              enddo
+           endif
+
         endif
+
         call system_clock(btime)
         times(1)=times(1)+btime-atime;      times(2)=times(2)+btime-atime
         
@@ -188,9 +302,9 @@ subroutine fluxgtau(alg)
            curtime=(ketbat-1)*BatchSize+kettime-1 
            moket=>ketmo(:,:,kettime);        aket=>ketavec(:,:,:,kettime)
            
-           call flux_op_onee(moket,keop,peop,zdipop,xydipop,1)  !! 1 means flux
+           call flux_op_onee(moket,keop,peop,1)  !! 1 means flux
            if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
-              call flux_op_onee(moket,rekeop,repeop,rezdipop,rexydipop,2)  !! 1 means flux
+              call flux_op_onee(moket,rekeop,repeop,2)  !! 1 means flux
            endif
            
            if (nonuc_checkflag.eq.0) then
@@ -284,15 +398,14 @@ subroutine fluxgtau(alg)
               times(5)=times(5)+jtime-itime
 
 !! evaluate the actual g(tau) expression
-              xyfac=0d0; zfac=0d0
 
               do imc=1,mcscfnum
-                 fluxevalval(imc) = fluxeval(abio,aket,ke,pe,V2,zdip,zfac,xydip,xyfac,yderiv,1,imc) * dt  !! 1 means flux
+                 fluxevalval(imc) = fluxeval(abio,aket,ke,pe,V2,yderiv,1,imc) * dt  !! 1 means flux
               enddo
           
               if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
                  do imc=1,mcscfnum
-                    fluxevalval(imc) = fluxevalval(imc)+fluxeval(abio,aket,reke,repe,reV2,rezdip,zfac,rexydip,xyfac,reyderiv,2,imc) * dt  !! 2 means flux
+                    fluxevalval(imc) = fluxevalval(imc)+fluxeval(abio,aket,reke,repe,reV2,reyderiv,2,imc) * dt  !! 2 means flux
                  enddo
               endif
 
@@ -399,10 +512,11 @@ subroutine fluxgtau(alg)
 
   deallocate(ftgtau,pulseft,pulseftsq)
   deallocate(bramo,ketmo,braavec,ketavec)
+  deallocate(read_bramo,read_ketmo,read_braavec,read_ketavec)
   deallocate(gtau)
-  deallocate(xydip,zdip,ke,pe,V2,yderiv)
-  deallocate(rexydip,rezdip,reke,repe,reV2,reyderiv)
-  deallocate(mobio,abio,keop,peop,xydipop,zdipop,rekeop,repeop,rexydipop,rezdipop)
+  deallocate(ke,pe,V2,yderiv)
+  deallocate(reke,repe,reV2,reyderiv)
+  deallocate(mobio,abio,keop,peop,rekeop,repeop)
   deallocate(yop,reyop)
 
 
@@ -412,15 +526,15 @@ end subroutine fluxgtau
 !! begin the flux matrix element and contraction routine section
 
 
-subroutine flux_op_onee(inspfs,keop,peop,zdipop,xydipop,flag) !! flag=1, flux (imag); flag=2, flux (real); flag=0, all  0 not used
+subroutine flux_op_onee(inspfs,keop,peop,flag) !! flag=1, flux (imag); flag=2, flux (real); flag=0, all  0 not used
   use parameters
   implicit none
   DATATYPE, intent(in) :: inspfs(spfsize,nspf)
-  DATATYPE ::  keop(spfsize,nspf),peop(spfsize,nspf),zdipop(spfsize,nspf),xydipop(spfsize,nspf)
+  DATATYPE ::  keop(spfsize,nspf),peop(spfsize,nspf)
   integer :: ispf,flag
 
 !! initialize
-  keop=0d0; peop=0d0; zdipop=0d0; xydipop=0d0
+  keop=0d0; peop=0d0
 
 !! the kinetic energy
   do ispf=1,nspf
@@ -452,12 +566,11 @@ subroutine flux_op_onee(inspfs,keop,peop,zdipop,xydipop,flag) !! flag=1, flux (i
      case default
         call mult_pot(inspfs(:,ispf),peop(:,ispf))
      end select
+
   enddo
 
 !! scale correctly and clear memory
   if(flag.ne.0) then
-    zdipop=zdipop*(-2d0)
-    xydipop=xydipop*(-2d0)
     peop=peop*(-2d0)
     keop=keop*(-2d0)
   endif
@@ -526,20 +639,20 @@ end subroutine flux_op_twoe
 !! with flag=0 does full hamiltonian no real or imag part
 
 
-function fluxeval(abra,aket,ke,pe,V2,zdip,zfac,xydip,xyfac,yderiv,flag,imc)   
+function fluxeval(abra,aket,ke,pe,V2,yderiv,flag,imc)   
   use parameters 
   implicit none
   integer :: flag,imc
-  real*8 :: xyfac, zfac
-  DATATYPE :: abra(numconfig,numr,mcscfnum),aket(numconfig,numr,mcscfnum),fluxeval,fluxeval00
-  DATATYPE :: ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf),xydip(nspf,nspf),zdip(nspf,nspf)
+  DATATYPE :: abra(numr,firstconfig:lastconfig,mcscfnum),aket(numr,firstconfig:lastconfig,mcscfnum),fluxeval,fluxeval00
+  DATATYPE :: ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf)
 
-  fluxeval=fluxeval00(abra(:,:,imc),aket(:,:,imc),ke,pe,V2,zdip,zfac,xydip,xyfac,yderiv,flag,nucfluxflag)
+  fluxeval=fluxeval00(abra(:,:,imc),aket(:,:,imc),ke,pe,V2,yderiv,flag,nucfluxflag)
 
 end function fluxeval
 
 
-function fluxeval00(abra,aket,ke,pe,V2,zdipnotused,zfacnotused,xydipnotused,xyfacnotused,yderiv,flag,ipart)   
+function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart)   
+
 !! flag=1 means flux (take into account fluxoptype) otherwise whole thing
 
 !! ipart=0 do all   1 elec only   (diagonal nuclear ke ; cap; herm(Y+3/2)*anti(d/dR term) 
@@ -561,16 +674,22 @@ function fluxeval00(abra,aket,ke,pe,V2,zdipnotused,zfacnotused,xydipnotused,xyfa
   use walkmod
   implicit none
 
-  integer :: bra,ket,r,flag,rr, iiflag=0,ipart
-  real*8 :: xyfacnotused, zfacnotused
-  DATATYPE :: abra(numconfig,numr),aket(numconfig,numr),INVR,IIINVR,INVRSQ,fluxeval00,PRODERIV,BONDKE,PULSEFAC   !!$,csum
-  DATATYPE :: ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf),xydipnotused(nspf,nspf),zdipnotused(nspf,nspf)
+  integer :: bra,ket,r,flag,rr,ipart
+  DATATYPE,intent(in) :: abra(numr,firstconfig:lastconfig),in_aket(numr,firstconfig:lastconfig)
+  DATATYPE :: ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf)
+  DATATYPE :: INVR,INVRSQ,fluxeval00,PRODERIV,BONDKE
+  DATATYPE :: aket(numr,numconfig)  !! AUTOMATIC
 
   if (flag.ne.1.or.fluxoptype.ne.1.or.ipart.ne.0) then
      OFLWR "maybe checkme debug"; CFLST
   endif
 
-  iiflag=iiflag+1
+  aket(:,firstconfig:lastconfig)=in_aket(:,:)
+
+!! DO SUMMA
+  if (parconsplit.ne.0) then
+     call mpiallgather(aket,numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
+  endif
 
   fluxeval00 = 0d0
 
@@ -578,25 +697,24 @@ function fluxeval00(abra,aket,ke,pe,V2,zdipnotused,zfacnotused,xydipnotused,xyfa
 
     do ket=1,numsinglewalks(bra)
 
-      INVR=0d0;      INVRSQ=0d0;      PULSEFAC=0d0
+      INVR=0d0;      INVRSQ=0d0
       do r=1,numr
          select case(flag)
          case(1)
-            INVR = INVR + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),r) * real(1d0/ (bondpoints(r)),8)
-            INVRSQ = INVRSQ + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),r) * real(1d0 / (bondpoints(r)**2),8)
+            INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,singlewalk(ket,bra)) * real(1d0/ (bondpoints(r)),8)
+            INVRSQ = INVRSQ + CONJUGATE(abra(r,bra)) * aket(r,singlewalk(ket,bra)) * real(1d0 / (bondpoints(r)**2),8)
          case(2)
-            INVR = INVR + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),r) *imag((0d0,0d0)+1d0/bondpoints(r))
-            INVRSQ = INVRSQ + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),r) * imag((0d0,0d0)+1d0/ (bondpoints(r)**2))
+            INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,singlewalk(ket,bra)) *imag((0d0,0d0)+1d0/bondpoints(r))
+            INVRSQ = INVRSQ + CONJUGATE(abra(r,bra)) * aket(r,singlewalk(ket,bra)) * imag((0d0,0d0)+1d0/ (bondpoints(r)**2))
          case default
-            INVR = INVR + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),r) / (bondpoints(r))
-            INVRSQ = INVRSQ + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),r) / (bondpoints(r)**2)
+            INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,singlewalk(ket,bra)) / (bondpoints(r))
+            INVRSQ = INVRSQ + CONJUGATE(abra(r,bra)) * aket(r,singlewalk(ket,bra)) / (bondpoints(r)**2)
          end select
 
       enddo
 
       INVR = INVR * singlewalkdirphase(ket,bra)
       INVRSQ = INVRSQ * singlewalkdirphase(ket,bra)
-      PULSEFAC = PULSEFAC * singlewalkdirphase(ket,bra)
       BONDKE=0d0;      PRODERIV=0d0
 
       if (ipart.eq.0.or.ipart.eq.2) then
@@ -605,21 +723,21 @@ function fluxeval00(abra,aket,ke,pe,V2,zdipnotused,zfacnotused,xydipnotused,xyfa
          case(1)
             do rr=1,numr
                do r=1,numr
-                  BONDKE = BONDKE + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),rr) * imag((0d0,0d0)+rkemod(r,rr))
-                  PRODERIV = PRODERIV + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),rr) * real(proderivmod(r,rr),8)
+                  BONDKE = BONDKE + CONJUGATE(abra(r,bra)) * aket(rr,singlewalk(ket,bra)) * imag((0d0,0d0)+rkemod(r,rr))
+                  PRODERIV = PRODERIV + CONJUGATE(abra(r,bra)) * aket(rr,singlewalk(ket,bra)) * real(proderivmod(r,rr),8)
                enddo
             enddo
          case(2)
             do rr=1,numr
                do r=1,numr
-                  PRODERIV = PRODERIV + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),rr) * imag((0d0,0d0)+proderivmod(r,rr))
+                  PRODERIV = PRODERIV + CONJUGATE(abra(r,bra)) * aket(rr,singlewalk(ket,bra)) * imag((0d0,0d0)+proderivmod(r,rr))
                enddo
             enddo
          case default
             do rr=1,numr
                do r=1,numr
-                  BONDKE = BONDKE + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),rr) * rkemod(r,rr)
-                  PRODERIV = PRODERIV + CONJUGATE(abra(bra,r)) * aket(singlewalk(ket,bra),rr) * proderivmod(r,rr)
+                  BONDKE = BONDKE + CONJUGATE(abra(r,bra)) * aket(rr,singlewalk(ket,bra)) * rkemod(r,rr)
+                  PRODERIV = PRODERIV + CONJUGATE(abra(r,bra)) * aket(rr,singlewalk(ket,bra)) * proderivmod(r,rr)
                enddo
             enddo
          end select
@@ -637,8 +755,8 @@ function fluxeval00(abra,aket,ke,pe,V2,zdipnotused,zfacnotused,xydipnotused,xyfa
       endif
       if (ipart.eq.1.or.ipart.eq.0) then
 
-      fluxeval00 = fluxeval00 + INVRSQ * ke(singlewalkopspf(1,ket,bra),singlewalkopspf(2,ket,bra)) & !! conjugates OK
-                          + INVR * pe(singlewalkopspf(1,ket,bra),singlewalkopspf(2,ket,bra))
+         fluxeval00 = fluxeval00 + INVRSQ * ke(singlewalkopspf(1,ket,bra),singlewalkopspf(2,ket,bra)) & !! conjugates OK
+              + INVR * pe(singlewalkopspf(1,ket,bra),singlewalkopspf(2,ket,bra))
 
       endif  !! ipart
     enddo
@@ -646,7 +764,7 @@ function fluxeval00(abra,aket,ke,pe,V2,zdipnotused,zfacnotused,xydipnotused,xyfa
     if(ipart.eq.0.or.ipart.eq.1) then
 
 !! C) do all the double walks (only 2 electron)
-    if(((FluxOpType.eq.0).or.(flag.ne.1))) then !!.and.onee_checkflag/=1) then
+    if(((FluxOpType.eq.0).or.(flag.ne.1))) then
 
        OFLWR "MAYBE DOUBLE CHECKME"; CFLST
 
@@ -655,15 +773,15 @@ function fluxeval00(abra,aket,ke,pe,V2,zdipnotused,zfacnotused,xydipnotused,xyfa
         select case(flag)
         case(1)
            do r=1,numr
-              INVR = INVR + CONJUGATE(abra(bra,r)) * aket(doublewalk(ket,bra),r) *real(1d0/ (bondpoints(r)),8)
+              INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,doublewalk(ket,bra)) *real(1d0/ (bondpoints(r)),8)
            enddo
         case(2)
            do r=1,numr
-              INVR = INVR + CONJUGATE(abra(bra,r)) * aket(doublewalk(ket,bra),r) *imag((0d0,0d0)+1d0/bondpoints(r))
+              INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,doublewalk(ket,bra)) *imag((0d0,0d0)+1d0/bondpoints(r))
            enddo
         case default
            do r=1,numr
-              INVR = INVR + CONJUGATE(abra(bra,r)) * aket(doublewalk(ket,bra),r) / (bondpoints(r))
+              INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,doublewalk(ket,bra)) / (bondpoints(r))
            enddo
         end select
           fluxeval00 = fluxeval00 + INVR * V2(doublewalkdirspf(1,ket,bra), &
@@ -671,7 +789,7 @@ function fluxeval00(abra,aket,ke,pe,V2,zdipnotused,zfacnotused,xydipnotused,xyfa
             doublewalkdirspf(3,ket,bra), &
             doublewalkdirspf(4,ket,bra)) * &
             doublewalkdirphase(ket,bra)
-      enddo
+       enddo
     endif
     endif  !! ipart
   enddo

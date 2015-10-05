@@ -44,6 +44,7 @@ integer :: parorbsplit=1                         !!  Parallelize orbital calcula
 !! FOR TOTAL ORBITAL PARALLELIZATION with SINC DVR, SET PARORBSPLIT=3
 !!   and orbparflag=.true. in &sinc_params.  parorbsplit=3 not supported for atom or diatom.
 
+integer :: parconsplit=0
 character (len=200) :: &         !!              !! MAY BE SET BY COMMAND LINE OPTION ONLY: not namelist
   inpfile="Input.Inp        "    !! Inp=filename !!  input.  (=name of input file where namelist input is)
 !!EE
@@ -435,9 +436,10 @@ integer, allocatable :: configsperproc(:)
 integer ::       maxconfigsperproc
 integer, allocatable :: allspinranks(:), allspinstart(:)
 integer ::       maxspinrank
+integer :: firstspinconfig,lastspinconfig,localnspin
 integer :: botconfig,topconfig
 integer :: topwalk,botwalk  !! newwalks.f90, new mpi method distribute walks
-!!!integer, parameter :: exchangeflag=0        !!              !! interpolate exchange i.e. 1=LMF 0=CMF
+integer :: firstconfig,lastconfig,localnconfig
 integer :: walksonfile=0       
 integer :: autosize, autosteps
 integer :: auto_biortho=1        !! do we want to use biorthonormalization or permutation overlaps? 0 perm overlaps, 1 biortho
