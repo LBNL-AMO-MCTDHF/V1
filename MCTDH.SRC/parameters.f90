@@ -375,7 +375,7 @@ integer :: nonsparsepropmode=1   !! 0 = ZGCHBV expokit; 1 = mine expmat
 !!EE
 !! XXSNIPXX
 
-integer :: nodgexpthirdflag=0
+integer, parameter :: nodgexpthirdflag=1  !! =1 HARDWIRE 10-2015 not sure about dgexpthird
 
 !integer :: noorthogflag=1        !! 082010 NOW TURNING THIS ON !!
 !     hardwire.  eliminated realproject for quad which didn't have the 

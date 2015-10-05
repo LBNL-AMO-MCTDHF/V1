@@ -126,6 +126,7 @@ subroutine expoprop(time1,time2,inspfs, numiters)
      expofileptr=nullfileptr
   endif
   
+!! nodgexpthirdflag=1 HARDWIRE 10-2015  NOT SURE ABOUT DGEXPTHIRD SUBROUTINES
 
   if  ((jacsymflag.ne.0).and.(jacprojorth.eq.0).and.(constraintflag.eq.0.or.jacgmatthird.ne.0).and.(nodgexpthirdflag.eq.0)) then  !! homogeneous third order.  Simpler expression for propagator.
      aspfs=inspfs

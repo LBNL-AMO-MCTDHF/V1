@@ -89,7 +89,7 @@ subroutine getparams()
        orbcompact,spinrestrictval,mshift,numskiporbs,orbskip,debugfac,denmatfciflag,&
        walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac, maxquadnorm,quadstarttime,&
        reinterp_orbflag,spf_gridshift,load_avector_product,projspifile,readfullvector,walksinturn,&
-       turnbatchsize,energyshift,nodgexpthirdflag, pulseft_estep, finalstatsfile, projgtaufile,gtaufile
+       turnbatchsize,energyshift, pulseft_estep, finalstatsfile, projgtaufile,gtaufile
 
 
 
