@@ -73,11 +73,6 @@ subroutine ovl_initial()
 
      call load_spfs0(orig_spfs(:,:,jnumovl+1), spfdims, nspf, spfdimtype, ovlspffiles(ifile), tnspf, (/0,0,0/))
 
-!     open(909,file=ovlspffiles(ifile),status="unknown",form="unformatted")
-!     call spf_header_read(909,tdims,tnspf,spfcomplex)
-!     call spf_read0(909,nspf,spfdims,tnspf,tdims,spfcomplex,spfdimtype,orig_spfs(:,:,jnumovl+1),(/0,0,0/))
-!     close(909)
-
      do i=tnspf+1,nspf
         call staticvector(orig_spfs(:,i,jnumovl+1),spfsize)
         if (parorbsplit.eq.3) then
