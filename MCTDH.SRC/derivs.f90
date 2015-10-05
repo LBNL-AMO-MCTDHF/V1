@@ -73,7 +73,7 @@ recursive subroutine all_derivs(thistime,xpsi, xpsip)
         call configspin_project(xpsip(astart(imc)),0)
      endif
      if (dfrestrictflag.ne.0) then
-        call dfrestrict(xpsip(astart(imc)),numr)
+        call df_project(xpsip(astart(imc)),numr)
      endif
   enddo
   

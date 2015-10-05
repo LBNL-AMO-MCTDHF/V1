@@ -513,7 +513,7 @@ subroutine expoconfigprop(inavector0,outavector,time)
      call configspin_project(inavector,0)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(inavector,numr)
+     call df_project(inavector,numr)
   endif
 
   icalled=icalled+1
@@ -649,7 +649,7 @@ subroutine expoconfigprop(inavector0,outavector,time)
       call configspin_project(outavector,0)
    endif
    if (dfrestrictflag.ne.0) then
-      call dfrestrict(outavector,numr)
+      call df_project(outavector,numr)
    endif
    
    if (expofileptr.ne.nullfileptr) then

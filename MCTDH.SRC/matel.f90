@@ -482,7 +482,7 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
   endif   !! pulse
 
   do ir=1,numr
-     call dfrestrictmatrix(diagmat(:,:,ir))
+     call df_projectmatrix(diagmat(:,:,ir))
   enddo
 
   bigconfigmat(:,:,:,:)=0d0
@@ -494,7 +494,7 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
   if (nonuc_checkflag.eq.0.and.nucflag.eq.1) then
        call arbitraryconfig_matel00transpose(matrix_ptr%xymatel,tempconfigmat,numconfig)   !! fills in all, wasteful
        tempconfigmat(:,:)=TRANSPOSE(tempconfigmat(:,:))
-       call dfrestrictmatrix(tempconfigmat)
+       call df_projectmatrix(tempconfigmat)
 
      do ir=1,numr
         do jr=1,numr

@@ -40,7 +40,7 @@ subroutine prop_loop( starttime)
         endif
         
         if (dfrestrictflag.ne.0) then
-           call dfrestrict(yyy%cmfpsivec(astart(imc),0),numr)
+           call df_project(yyy%cmfpsivec(astart(imc),0),numr)
         endif
      enddo
 
@@ -164,7 +164,7 @@ subroutine prop_loop( starttime)
            call configspin_project(yyy%cmfpsivec(astart(imc),0),1)
         endif
         if (dfrestrictflag.ne.0) then
-           call dfrestrict(yyy%cmfpsivec(astart(imc),0),numr)
+           call df_project(yyy%cmfpsivec(astart(imc),0),numr)
         endif
      enddo
      call system_clock(jtime)  ;     times(2)=times(2)+jtime-itime;     call system_clock(itime)  
@@ -178,7 +178,7 @@ subroutine prop_loop( starttime)
            call configspin_project(psip(astart(imc)),0)
         endif
         if (dfrestrictflag.ne.0) then
-           call dfrestrict(psip(astart(imc)),numr)
+           call df_project(psip(astart(imc)),numr)
         endif
         sum=dot(yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),totadim)
         sum2=dot(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),totadim)

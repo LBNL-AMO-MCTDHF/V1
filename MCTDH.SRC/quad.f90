@@ -216,7 +216,7 @@ recursive subroutine quadpreconsub(notusedint, inavector,outavector)
      call configspin_project(tempvector, 0)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(tempvector, numr)
+     call df_project(tempvector, numr)
   endif
 
   call sparseconfigdiagmult(tempvector, outavector, yyy%cptr(0),yyy%sptr(0), 1,1,1,1, quadexpect,0d0)
@@ -225,7 +225,7 @@ recursive subroutine quadpreconsub(notusedint, inavector,outavector)
      call configspin_project(outavector, 0)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(outavector, numr)
+     call df_project(outavector, numr)
   endif
 end subroutine
 
@@ -247,14 +247,14 @@ recursive subroutine aamult(notusedint, inavector0,outavector)
      call configspin_project(inavector, 0)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(inavector, numr)
+     call df_project(inavector, numr)
   endif
   call sparseconfigmult(inavector, jacaatemp, yyy%cptr(0), yyy%sptr(0), 1,1,0,1,0d0)
   if (allspinproject==1) then
      call configspin_project(jacaatemp, 0)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(jacaatemp, numr)
+     call df_project(jacaatemp, numr)
   endif
 
   outavector= jacaatemp - quadexpect*inavector 
@@ -280,7 +280,7 @@ subroutine aaonedinit(inavector)
      call configspin_project(jacaa,1)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(jacaa,numr)
+     call df_project(jacaa,numr)
   endif
   norm=abs(dot(jacaa,jacaa,totadim))
   if (parconsplit.ne.0) then
@@ -297,7 +297,7 @@ subroutine aaonedinit(inavector)
      call configspin_project(jacaamult, 1)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(jacaamult, numr)
+     call df_project(jacaamult, numr)
   endif
 
   csum1=dot(jacaa,jacaamult,totadim)
@@ -386,7 +386,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
      call configspin_project(vector, 1)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(vector, numr)
+     call df_project(vector, numr)
   endif
 
   call aaonedinit(vector)
@@ -397,7 +397,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
      call configspin_project(vector2,0)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(vector2,numr)
+     call df_project(vector2,numr)
   endif
 
   vector3=vector2-quadexpect*vector              !! error term.
@@ -472,7 +472,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
      call configspin_project(vector, 1)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(vector, numr)
+     call df_project(vector, numr)
   endif
 
   csum=dot(vector,vector,totadim)
@@ -515,7 +515,7 @@ subroutine nonsparsequadavector(avectorout)
      call configspin_project(avectorout, 1)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(avectorout, numr)
+     call df_project(avectorout, numr)
   endif
 
   call aaonedinit(avectorout)
@@ -525,7 +525,7 @@ subroutine nonsparsequadavector(avectorout)
      call configspin_project(err(:), 0)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(err(:), numr)
+     call df_project(err(:), numr)
   endif
 
   err(:)=err(:)-quadexpect*avectorout(:)              !! error term.
@@ -659,7 +659,7 @@ allocate(crealconfigmatel(numconfig*numr,zzz,numconfig*numr), &
      call configspin_project(avectorout, 1)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(avectorout, numr)
+     call df_project(avectorout, numr)
   endif
 
   norm=sqrt(dot(avectorout,avectorout,totadim))  !ok conv
@@ -779,7 +779,7 @@ recursive subroutine parquadpreconsub(notusedint, inavector,outavector)
      call configspin_project_local(tempvector,0)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict_local(tempvector, numr)
+     call df_project_local(tempvector, numr)
   endif
 
   call parsparseconfigdiagmult(tempvector, outavector, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0)
@@ -788,7 +788,7 @@ recursive subroutine parquadpreconsub(notusedint, inavector,outavector)
      call configspin_project_local(outavector, 0)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict_local(outavector, numr)
+     call df_project_local(outavector, numr)
   endif
 
 end subroutine parquadpreconsub

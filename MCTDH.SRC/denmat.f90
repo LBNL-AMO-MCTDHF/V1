@@ -802,7 +802,7 @@ subroutine new_get_denconstraint1(time)
 
      if (dfrestrictflag.gt.0) then
         do imc=1,mcscfnum
-           call dfrestrict(avectorp(:,:,imc),numr)
+           call df_project(avectorp(:,:,imc),numr)
         enddo
      endif
 

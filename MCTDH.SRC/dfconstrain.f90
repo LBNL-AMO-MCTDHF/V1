@@ -27,27 +27,27 @@ subroutine getdfcon()
   use walkmod
   implicit none
 
-  integer :: i,j,iconfig
+  integer :: i,j,iconfig,nondfconfigs
   logical :: allowed, dfincluded
   integer,allocatable :: dfnotconfigs(:)
 
   if (numdfconfigs.ne.-1) then
      OFLWR "DFCON already gotten"; CFL; return   !!!!  " PRobably was not deallocated."; CFLST
   endif
-  allocate(dfincludedmask(numconfig),dfnotconfigs(numconfig))
+  allocate(dfincludedmask(numconfig), dfincludedconfigs(numconfig), dfnotconfigs(numconfig))
 
   if (dfrestrictflag.eq.0) then
      OFLWR "WTF WWW dfrestrictflag is zero"; CFLST
   endif
 
-  dfincludedmask(:)=0;  dfnotconfigs(:)=-1
+  dfincludedmask(:)=0;  dfincludedconfigs(:)=-1;  dfnotconfigs(:)=-1
   numdfconfigs=0;  nondfconfigs=0
 
   do i=1,numconfig
      allowed=dfincluded(configlist(:,i))
      if (allowed) then 
         numdfconfigs=numdfconfigs+1
-        dfincludedmask(i)=1
+        dfincludedmask(i)=1;        dfincludedconfigs(numdfconfigs)=i
      else
         nondfconfigs=nondfconfigs+1;        dfnotconfigs(nondfconfigs)=i
      endif
@@ -108,13 +108,13 @@ subroutine dfcondealloc()
   use parameters
   use dfconmod
   implicit none
-  deallocate(dfincludedmask)
+  deallocate(dfincludedmask,dfincludedconfigs)
   deallocate(dfwalkfrom, dfwalkto, includedorb, excludedorb,dfwalkphase)
   numdfwalks=-1;  numdfconfigs=-1
 end subroutine dfcondealloc
 
 
-subroutine dfrestrict(avector,howmany)
+subroutine df_project(avector,howmany)
   use parameters
   use dfconmod
   implicit none
@@ -122,15 +122,15 @@ subroutine dfrestrict(avector,howmany)
   DATATYPE :: avector(howmany,firstconfig:lastconfig)
 
   if (parconsplit.eq.0) then
-     call dfrestrict_all(avector,howmany)
+     call df_project_all(avector,howmany)
   else
-     call dfrestrict_local(avector,howmany)
+     call df_project_local(avector,howmany)
   endif
 
-end subroutine dfrestrict
+end subroutine df_project
 
 
-subroutine dfrestrict_all(avector,howmany)
+subroutine df_project_all(avector,howmany)
   use parameters
   use dfconmod
   implicit none
@@ -139,9 +139,9 @@ subroutine dfrestrict_all(avector,howmany)
   do i=1,numconfig
      avector(:,i)=avector(:,i)*dfincludedmask(i)
   enddo
-end subroutine dfrestrict_all
+end subroutine df_project_all
 
-subroutine dfrestrict_local(avector,howmany)
+subroutine df_project_local(avector,howmany)
   use parameters
   use dfconmod
   implicit none
@@ -150,7 +150,7 @@ subroutine dfrestrict_local(avector,howmany)
   do i=botwalk,topwalk
      avector(:,i)=avector(:,i)*dfincludedmask(i)
   enddo
-end subroutine dfrestrict_local
+end subroutine df_project_local
 
 subroutine checksym(mat,dim)
   use fileptrmod
@@ -425,16 +425,9 @@ subroutine get_dfconstraint(time)
         
         avector(:,:)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numr,localnconfig/))
         
-        if (parconsplit.eq.0) then
-           call dfrestrict_all(avector,numr)
-           if (allspinproject.ne.0) then
-              call configspin_project_all(avector,0)  !! should commute
-           endif
-        else
-           call dfrestrict_local(avector,numr)
-           if (allspinproject.ne.0) then
-              call configspin_project_local(avector,0)  !! should commute
-           endif
+        call df_project(avector,numr)
+        if (allspinproject.ne.0) then
+           call configspin_project(avector,0)  !! should commute
         endif
 
         call get_smallwalkvects(avector,smallwalkvects,numr,1)

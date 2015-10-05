@@ -204,7 +204,7 @@ recursive subroutine parblockconfigmult(inavector,outavector)
 !! DO SUMMA
 
   if (dfrestrictflag.ne.0) then
-     call dfrestrict_local(intemp(:,botwalk),numr)
+     call df_project_local(intemp(:,botwalk),numr)
   endif
 
   call mpiallgather(intemp,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
@@ -216,7 +216,7 @@ recursive subroutine parblockconfigmult(inavector,outavector)
      enddo
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict_local(outavector,numr)
+     call df_project_local(outavector,numr)
   endif
 
 end subroutine parblockconfigmult
@@ -243,7 +243,7 @@ recursive subroutine parblockconfigmult_spin(inavectorspin,outavectorspin)
   call configspin_transformfrom_local(numr,inavectorspin,intemp(:,botwalk))
 
   if (dfrestrictflag.ne.0) then
-     call dfrestrict_local(intemp(:,botwalk),numr)
+     call df_project_local(intemp(:,botwalk),numr)
   endif
 
   call mpiallgather(intemp,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
@@ -255,7 +255,7 @@ recursive subroutine parblockconfigmult_spin(inavectorspin,outavectorspin)
      enddo
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict_local(ttvector2,numr)
+     call df_project_local(ttvector2,numr)
   endif
   call configspin_transformto_local(numr,ttvector2,outavectorspin)
   

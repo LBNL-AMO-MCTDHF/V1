@@ -451,7 +451,7 @@ integer :: lanagain = -1  !! Lanczos restart flag.  Default -1 (lanczos eigen re
                           !!   If subsequent iters are within stopthresh, turned to -1. 
 integer :: spintotrank=0
 integer :: spintotdfrank=0
-integer :: numdfconfigs=-1, nondfconfigs=-1
+integer :: numdfconfigs=-1
 integer :: fluxsteps=1
 real*8 :: globaltime=0.d0   !! for ease of output
 !!! real*8 :: rcond=1.d-4      !! singular value for split operator cranck-nicholson

@@ -154,7 +154,7 @@ subroutine myconfigprop(avectorin,avectorout,time)
      call configspin_project(avectorin,0)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(avectorin,numr)
+     call df_project(avectorin,numr)
   endif
   if (sparseconfigflag/=0) then
      call expoconfigprop(avectorin,avectorout,time)
@@ -165,7 +165,7 @@ subroutine myconfigprop(avectorin,avectorout,time)
      call configspin_project(avectorout,0)
   endif
   if (dfrestrictflag.ne.0) then
-     call dfrestrict(avectorout,numr)
+     call df_project(avectorout,numr)
   endif
 end subroutine myconfigprop
 
@@ -303,7 +303,7 @@ subroutine parconfigexpomult(inavector,outavector)
   intemp(:,:)=0d0;  intemp(:,botwalk:topwalk)=inavector(:,botwalk:topwalk)
 
   if (dfrestrictflag.ne.0) then
-     call dfrestrict_local(intemp(:,botwalk),numr)
+     call df_project_local(intemp(:,botwalk),numr)
   endif
 
 !! DO SUMMA  
@@ -314,7 +314,7 @@ subroutine parconfigexpomult(inavector,outavector)
 
 
   if (dfrestrictflag.ne.0) then
-     call dfrestrict_local(outavector,numr)
+     call df_project_local(outavector,numr)
   endif
 
   outavector=outavector*timefac

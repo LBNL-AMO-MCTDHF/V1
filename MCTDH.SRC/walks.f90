@@ -820,7 +820,7 @@ end subroutine getnumwalks
 
 
 
-subroutine dfrestrictmatrix(inmatrix)
+subroutine df_projectmatrix(inmatrix)
   use parameters
   implicit none
   DATATYPE :: inmatrix(numconfig,numconfig),tempmatrix(numconfig,numconfig)
@@ -829,11 +829,11 @@ subroutine dfrestrictmatrix(inmatrix)
      return
   endif
   tempmatrix=TRANSPOSE(inmatrix)
-  call dfrestrict(tempmatrix,numconfig)
+  call df_project(tempmatrix,numconfig)
   inmatrix=TRANSPOSE(tempmatrix)
-  call dfrestrict(inmatrix,numconfig)
+  call df_project(inmatrix,numconfig)
   
-end subroutine dfrestrictmatrix
+end subroutine df_projectmatrix
   
 
 
