@@ -54,9 +54,9 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   rkemod=rketot(2:numr+1,2:numr+1)
   proderivmod(:,:) = prolate_derivs(2:numr+1,2:numr+1)
 
-  if (skipflag.gt.1) then
-     return
-  endif
+!!$  if (skipflag.gt.1) then
+!!$     return
+!!$  endif
 
 !!MAY2014  thisrvalue=rpoints(2) 
   
@@ -72,7 +72,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         endif
      enddo
 
-     if ((skipflag.eq.0).and.(spfsloaded.lt.numspf).and.(jflag==1)) then
+!!$  if ((skipflag.eq.0).and.(spfsloaded.lt.numspf).and.(jflag==1)) then
+     if ((spfsloaded.lt.numspf).and.(jflag==1)) then
         bigham=proham(:,:,:,:,ii+1)/thisrvalue**2
         do i=1,lbig+1
            do j=1,numerad
@@ -109,9 +110,9 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      call hatomcalc()
   endif
 
-  if (skipflag.ne.0) then
-     return
-  endif
+!!$  if (skipflag.ne.0) then
+!!$     return
+!!$  endif
 
   call openfile()
   if (spfsloaded.lt.numspf) then

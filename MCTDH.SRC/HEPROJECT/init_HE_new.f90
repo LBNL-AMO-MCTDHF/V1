@@ -80,9 +80,9 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   proderivmod(:,:)=0d0
 
 
-  if (skipflag.gt.1) then
-     return
-  endif
+!!$  if (skipflag.gt.1) then
+!!$     return
+!!$  endif
 
   allocate(bigham(numerad, lbig+1, numerad, lbig+1), bigvects(numerad,lbig+1, edim,0:mbig), bigvals(edim))
   do j=1,lbig+1
@@ -126,8 +126,10 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   do ii=0,mbig
 
-!! 062111 added this logic here for atom too
-     if ((skipflag.eq.0).and.(spfsloaded.lt.numspf)) then
+!!$!! 062111 added this logic here for atom too
+!!$     if ((skipflag.eq.0).and.(spfsloaded.lt.numspf)) then
+
+     if (spfsloaded.lt.numspf) then
 
         bigham=0.d0
         do i=1,hegridpoints-2
@@ -221,9 +223,9 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      pot(i,:,:) = (-1.0d0) * nuccharge1 /glpoints(i+1)
      halfniumpot(i,:,:) = (-1d0) /glpoints(i+1) * (nuccharge1 - numelec + 1)
   enddo
-  if (skipflag.ne.0) then
-     return
-  endif
+!!$  if (skipflag.ne.0) then
+!!$     return
+!!$  endif
 
 
   call openfile()

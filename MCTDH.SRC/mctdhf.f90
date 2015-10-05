@@ -307,7 +307,7 @@ program mctdhf
 
   if ((skipflag.lt.2)) then
 
-  call walkalloc();             call walks()
+     call walkalloc();             call walks()
 
      if (spinwalkflag==1) then
         call spinwalkalloc(); 
@@ -336,7 +336,9 @@ program mctdhf
 
   allocate(bigspfs(spfsize,nspf+numfrozen))
 
-  if (skipflag.eq.0) then
+!! oct 2015 loading orbitals if skipflag equals 1 (in case need frozen)
+
+  if (skipflag.lt.2) then
      if (loadspfflag.eq.1) then
         call load_spfs(bigspfs(:,:),spfsloaded)
         if (numfrozen.gt.0) then
@@ -348,7 +350,7 @@ program mctdhf
 !! hold it this is done below 041114           yyy%cmfpsivec(spfstart:spfend,0) = RESHAPE(bigspfs(:,:),(/totspfdim/))
 
      endif  ! loadspfflag
-  endif  !! skipflag.eq.0
+  endif
 
   OFLWR "Calling init_project",sizeof(pot); CFL
   call init_project(bigspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
@@ -374,13 +376,14 @@ program mctdhf
         call frozen_matels()
      endif
 
-!! MAY 2014 now not doing load avector if skipflag=1 (flux)
-
   endif  !! skipflag.lt.2
 
   deallocate(bigspfs)
 
   yyy%cmfpsivec(astart(1):aend(mcscfnum),0) = 0d0
+
+
+!! MAY 2014 now not doing load avector if skipflag=1 (flux)
 
   if (skipflag.eq.0) then
 
@@ -434,7 +437,7 @@ program mctdhf
      yyy%cmfpsivec(astart(1):aend(mcscfnum),0) = RESHAPE(bigavector(:,:),(/totadim*mcscfnum/))
 
      deallocate(bigavector)
-  endif   !! skipflag lt 2
+  endif
 
   if (cdenflag.ne.0) then
      call natprojalloc()

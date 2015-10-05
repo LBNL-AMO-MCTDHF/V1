@@ -219,12 +219,9 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   th=(/ "st", "nd", "rd", "th" /)
 
-  if (skipflag.gt.1) then
-     return
-  endif
-
-!!$  later, just from dipoles
-!!$  call get_rad(elecradii(:))
+!!$  if (skipflag.gt.1) then
+!!$     return
+!!$  endif
 
   call get_dipoles()
 
