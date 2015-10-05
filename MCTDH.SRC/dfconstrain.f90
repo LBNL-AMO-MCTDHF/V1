@@ -29,24 +29,25 @@ subroutine getdfcon()
 
   integer :: i,j,iconfig
   logical :: allowed, dfincluded
+  integer,allocatable :: dfnotconfigs(:)
 
   if (numdfconfigs.ne.-1) then
      OFLWR "DFCON already gotten"; CFL; return   !!!!  " PRobably was not deallocated."; CFLST
   endif
-  allocate(dfincludedmask(numconfig), dfincludedconfigs(numconfig), dfnotconfigs(numconfig))
+  allocate(dfincludedmask(numconfig),dfnotconfigs(numconfig))
 
   if (dfrestrictflag.eq.0) then
      OFLWR "WTF WWW dfrestrictflag is zero"; CFLST
   endif
 
-  dfincludedmask(:)=0;  dfincludedconfigs(:)=-1;  dfnotconfigs(:)=-1
+  dfincludedmask(:)=0;  dfnotconfigs(:)=-1
   numdfconfigs=0;  nondfconfigs=0
 
   do i=1,numconfig
      allowed=dfincluded(configlist(:,i))
      if (allowed) then 
         numdfconfigs=numdfconfigs+1
-        dfincludedmask(i)=1;        dfincludedconfigs(numdfconfigs)=i
+        dfincludedmask(i)=1
      else
         nondfconfigs=nondfconfigs+1;        dfnotconfigs(nondfconfigs)=i
      endif
@@ -99,13 +100,15 @@ subroutine getdfcon()
 
   OFLWR "numdfwalks:  ", numdfwalks," is really number DF single excitations on this processor"; WRFL; CFL
 
+  deallocate(dfnotconfigs)
+
 end subroutine getdfcon
 
 subroutine dfcondealloc()
   use parameters
   use dfconmod
   implicit none
-  deallocate(dfincludedmask,dfincludedconfigs,dfnotconfigs)
+  deallocate(dfincludedmask)
   deallocate(dfwalkfrom, dfwalkto, includedorb, excludedorb,dfwalkphase)
   numdfwalks=-1;  numdfconfigs=-1
 end subroutine dfcondealloc

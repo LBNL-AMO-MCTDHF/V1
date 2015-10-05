@@ -297,7 +297,7 @@ end module natprojmod
 module dfconmod
   implicit none
 
-  integer, allocatable :: dfincludedmask(:), dfincludedconfigs(:), dfnotconfigs(:)
+  integer, allocatable :: dfincludedmask(:)
 
 !! careful!  parconfigsplit, botwalk, topwalk, etc.
 
