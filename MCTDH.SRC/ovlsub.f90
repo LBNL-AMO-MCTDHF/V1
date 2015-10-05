@@ -3,7 +3,7 @@
 
 module ovlmod
   implicit none
-  DATATYPE, allocatable :: orig_spfs(:,:,:), orig_avectors(:,:,:), overlaps(:,:,:)
+  DATATYPE, allocatable :: orig_spfs(:,:,:), orig_avectors(:,:), overlaps(:,:,:)
   integer :: numovl, calledflag=0 ,  xcalledflag=0 
 end module ovlmod
 
@@ -29,6 +29,7 @@ subroutine ovl_initial()
 
   integer :: jnumovl, ifile,acomplex,spfcomplex,nstate,i,kk,tdims(3),tndof,tnumconfig,tnumr,tnspf
   external :: readavectorsubsimple
+  DATATYPE, allocatable :: read_avectors(:,:)
 
   if (numr.gt.1) then
      OFLWR "Need numr=1 for projone at this time TEMP CONTINUE.";CFL
@@ -65,8 +66,15 @@ subroutine ovl_initial()
      endif
   enddo
 
-  allocate(overlaps(numovl,0:autosize,mcscfnum),orig_spfs(spfsize,nspf,numovl),orig_avectors(numconfig,numr,numovl))
-  orig_spfs=0d0;  orig_avectors=0d0
+  allocate(overlaps(numovl,0:autosize,mcscfnum),orig_spfs(spfsize,nspf,numovl),orig_avectors(totadim,numovl))
+
+  if (myrank.eq.1) then
+     allocate(read_avectors(numr*numconfig,numovl))
+  else
+     allocate(read_avectors(1,numovl))
+  endif
+
+  orig_spfs=0d0;  orig_avectors=0d0; overlaps=0d0; read_avectors=0d0
   jnumovl=0
 
   do ifile=1,numovlfiles
@@ -89,11 +97,14 @@ subroutine ovl_initial()
      call mympiibcastone(nstate,1); call mympiibcastone(tndof,1); call mympiibcastone(tnumr,1);
      call mympiibcastone(tnumconfig,1); call mympiibcastone(acomplex,1)
      if (myrank.eq.1) then
-        call load_avectors0(910,acomplex,orig_avectors(:,:,jnumovl+1),numr,numconfig,ndof,tnumr,tnumconfig,readavectorsubsimple, nstate)
+        call load_avectors0(910,acomplex,read_avectors(:,jnumovl+1),numr,numconfig,ndof,tnumr,tnumconfig,readavectorsubsimple, nstate)
         close(910)
      endif
 
-     call mympibcast(orig_avectors(:,:,jnumovl+1),1,numconfig*numr*nstate)
+     if (myrank.eq.1) then
+        orig_avectors(:,jnumovl+1:jnumovl+nstate)=read_avectors(:,jnumovl+1:jnumovl+nstate)
+     endif
+     call mympibcast(orig_avectors(:,jnumovl+1),1,numconfig*numr*nstate)
 
      do kk=2,nstate
         orig_spfs(:,:,jnumovl+kk)=orig_spfs(:,:,jnumovl+1)
@@ -103,6 +114,8 @@ subroutine ovl_initial()
      
   enddo
   
+  deallocate(read_avectors)
+
 end subroutine ovl_initial
 
 
@@ -119,7 +132,7 @@ subroutine getoverlaps(forceflag)
      do imc=1,mcscfnum
         do i=1,numovl
            call autocorrelate_one(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:,i), &
-                orig_avectors(:,:,i), overlaps(i,xcalledflag,imc),numr)
+                orig_avectors(:,i), overlaps(i,xcalledflag,imc),numr)
         enddo
         xcalledflag=xcalledflag+1
      enddo
@@ -137,12 +150,29 @@ end subroutine getoverlaps
  
 subroutine wfnovl()
   use parameters
+  use mpimod
   implicit none
-
-  integer :: k,molength,alength,nt,ketbat,imc
+  
+  integer :: k,molength,alength,nt,ketbat,imc,ispf
   real*8 :: piover2,dt,angle(mcscfnum)
   DATATYPE :: dot,myovl(mcscfnum) , bradot,phase,ketdot,blah
-  DATATYPE :: bramo(spfsize,nspf),braavec(numconfig,numr,mcscfnum),ketmo(spfsize,nspf),ketavec(numconfig,numr,mcscfnum)
+  DATATYPE :: bramo(spfsize,nspf),braavec(totadim,mcscfnum),ketmo(spfsize,nspf),ketavec(totadim,mcscfnum)
+  DATATYPE, allocatable :: read_bramo(:,:), read_braavec(:,:), read_ketmo(:,:), read_ketavec(:,:)
+
+  if (myrank.eq.1) then
+     if (parorbsplit.eq.3) then
+        allocate(read_bramo(spfsize*nprocs,nspf),read_ketmo(spfsize*nprocs,nspf))
+     else
+        allocate(read_bramo(spfsize,nspf),read_ketmo(spfsize,nspf))
+     endif
+  else
+     allocate(read_bramo(1,nspf),read_ketmo(1,nspf))
+  endif
+  if (myrank.eq.1) then
+     allocate(read_braavec(numr*numconfig,mcscfnum),read_ketavec(numr*numconfig,mcscfnum))
+  else
+     allocate(read_braavec(1,mcscfnum),read_ketavec(1,mcscfnum))
+  endif
 
 !!  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  nt=floor(final time/dt)
 
@@ -151,8 +181,12 @@ subroutine wfnovl()
   piover2=atan2(1d0,1d0)*2
 
 !! initial setup
-     
-  inquire (iolength=molength) ketmo(:,:);  inquire (iolength=alength) ketavec(:,:,:)
+
+  if (myrank.eq.1) then
+     inquire (iolength=molength) read_ketmo(:,:);  inquire (iolength=alength) read_ketavec(:,:)
+  endif
+  call mympiibcastone(molength,1); call mympiibcastone(alength,1)
+
   OFL
   write(mpifileptr,*) "MO record length is ",molength;  write(mpifileptr,*) "AVEC record length is ",alength
   CFL
@@ -160,32 +194,54 @@ subroutine wfnovl()
   phase=(1d0,0d0)
 
   do ketbat=1,nt+1
+     
+     OFLWR "Reading ket batch ", ketbat, " of ", nt+1; CFL
+     if (myrank.eq.1) then
+        open(11001,file=fluxmofile2,status="old",form="unformatted",access="direct",recl=molength)
+        open(11002,file=fluxafile2,status="old",form="unformatted",access="direct",recl=alength)
+        open(1001,file=fluxmofile,status="old",form="unformatted",access="direct",recl=molength)
+        open(1002,file=fluxafile,status="old",form="unformatted",access="direct",recl=alength)
+        
+        k=FluxSkipMult*(ketbat-1)+1
+        read(1001,rec=k) read_ketmo(:,:) ;    read(1002,rec=k) read_ketavec(:,:) 
+        read(11001,rec=k) read_bramo(:,:) ;    read(11002,rec=k) read_braavec(:,:) 
+        
+        close(1001);    close(1002);    close(11001);    close(11002)
+     endif
+     
+     if (parorbsplit.ne.3) then
+        if (myrank.eq.1) then
+           bramo(:,:)=read_bramo(:,:)
+           ketmo(:,:)=read_ketmo(:,:)
+        endif
+        call mympibcast(bramo(:,:),1,totspfdim)
+        call mympibcast(ketmo(:,:),1,totspfdim)
+     else
+        do ispf=1,nspf
+           call splitscatterv(read_bramo(:,ispf),bramo(:,ispf))
+           call splitscatterv(read_ketmo(:,ispf),ketmo(:,ispf))
+        enddo
+     endif
+     if (myrank.eq.1) then
+        braavec(:,:)=read_braavec(:,:)
+        ketavec(:,:)=read_ketavec(:,:)
+     endif
+     call mympibcast(braavec(:,:),1,numr*numconfig*mcscfnum)
+     call mympibcast(ketavec(:,:),1,numr*numconfig*mcscfnum)
 
-    OFLWR "Reading ket batch ", ketbat, " of ", nt+1; CFL
-    open(11001,file=fluxmofile2,status="old",form="unformatted",access="direct",recl=molength)
-    open(11002,file=fluxafile2,status="old",form="unformatted",access="direct",recl=alength)
-    open(1001,file=fluxmofile,status="old",form="unformatted",access="direct",recl=molength)
-    open(1002,file=fluxafile,status="old",form="unformatted",access="direct",recl=alength)
-
-    k=FluxSkipMult*(ketbat-1)+1
-    read(1001,rec=k) ketmo(:,:) ;    read(1002,rec=k) ketavec(:,:,:) 
-    read(11001,rec=k) bramo(:,:) ;    read(11002,rec=k) braavec(:,:,:) 
-
-    close(1001);    close(1002);    close(11001);    close(11002)
-
-    do imc=1,mcscfnum
-       bradot=dot(braavec(:,:,imc),braavec(:,:,imc),numconfig*numr)
-       ketdot=dot(ketavec(:,:,imc),ketavec(:,:,imc),numconfig*numr)
+     do imc=1,mcscfnum
+        bradot=dot(braavec(:,imc),braavec(:,imc),totadim)
+        ketdot=dot(ketavec(:,imc),ketavec(:,imc),totadim)
+        
+        call autocorrelate_one(braavec(:,imc),bramo,ketmo,ketavec(:,imc),myovl(imc),numr)
        
-       call autocorrelate_one(braavec(:,:,imc),bramo,ketmo,ketavec(:,:,imc),myovl(imc),numr)
-       
-       blah=myovl(imc)/sqrt(bradot*ketdot)
-       angle(imc)=acos(abs(blah))
-       myovl(imc)=bradot+ketdot-myovl(imc)-CONJUGATE(myovl(imc))
-    enddo
-
-    OFL; write(mpifileptr,'(A30,1000F18.10)') "ERRDOT,ABSERRDOT,ANGLE T= ",dt*ketbat,myovl,(abs(myovl(imc)),angle(imc),imc=1,mcscfnum); CFL
- enddo
+        blah=myovl(imc)/sqrt(bradot*ketdot)
+        angle(imc)=acos(abs(blah))
+        myovl(imc)=bradot+ketdot-myovl(imc)-CONJUGATE(myovl(imc))
+     enddo
+     
+     OFL; write(mpifileptr,'(A30,1000F18.10)') "ERRDOT,ABSERRDOT,ANGLE T= ",dt*ketbat,myovl,(abs(myovl(imc)),angle(imc),imc=1,mcscfnum); CFL
+  enddo
 
 end subroutine wfnovl
 
