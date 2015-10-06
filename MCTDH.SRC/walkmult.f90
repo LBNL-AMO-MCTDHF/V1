@@ -343,9 +343,6 @@ recursive subroutine sparsesparsemult_nompi(myinvector,myoutvector,sparse_ptr,&
   if (botr.ne.1.or.topr.ne.numr) then
      OFLWR "REPROGRAMMMM."; CFLST
   endif
-  if (sparseconfigflag.eq.0) then
-     OFLWR "BADDDCALLL6666666"; CFLST
-  endif
 
   myoutvector(:,:)=0d0
 
@@ -467,10 +464,6 @@ recursive subroutine arbitrary_sparsemult_nompi_singles(mattrans, rvector,inbigv
   DATAECS :: rvector(mynumr)
   integer :: iwalk,config1,idiag
 
-  if (sparseconfigflag.eq.0) then
-     OFLWR "BADDDCALLL6666666"; CFLST
-  endif
-
   if (topconfig-botconfig+1.eq.0) then
      return
   endif
@@ -509,9 +502,6 @@ recursive subroutine arbitrary_sparsemult_nompi_doubles(mattrans,rvector,inbigve
   DATAECS :: rvector(mynumr)
   integer :: iwalk,config1,idiag
 
-  if (sparseconfigflag.eq.0) then
-     OFLWR "BADDDCALLL6666666"; CFLST
-  endif
   if (topconfig-botconfig+1.eq.0) then
      return
   endif
