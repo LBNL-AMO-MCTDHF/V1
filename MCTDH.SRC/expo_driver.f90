@@ -505,6 +505,10 @@ subroutine exposparseprop(inavector0,outavector,time)
 !! 1 = minimum found; don't decrease
   integer, save :: exposet=0
 
+  if (sparseconfigflag.eq.0) then
+     OFLWR "must use sparseconfigflag.ne.0 for exposparseprop"; CFLST
+  endif
+
   call avectortimeset()
 
   inavector(:,:)=inavector0(:,:)
@@ -589,7 +593,7 @@ subroutine exposparseprop(inavector0,outavector,time)
       call configspin_transformto(numr,inavector,inavectorspin)
       smallvector(:,1:spinend-spinstart+1)=inavectorspin(:,spinstart:spinend)
    else
-      smallvector(:,1:topwalk-botwalk+1)=inavector(:,botwalk:topwalk)
+      smallvector(:,1:topconfig-botconfig+1)=inavector(:,botconfig:topconfig)
    endif
 
    lwsp=zzz*lwsp
@@ -611,7 +615,7 @@ subroutine exposparseprop(inavector0,outavector,time)
       else
          call parconfigexpomult(smallvector,smallvectortemp)
 
-         smallvectortemp(:,1:topwalk-botwalk+1)=  smallvectortemp(:,1:topwalk-botwalk+1) + workdrivingavec(:,botwalk:topwalk) * timefac 
+         smallvectortemp(:,1:topconfig-botconfig+1)=  smallvectortemp(:,1:topconfig-botconfig+1) + workdrivingavec(:,botconfig:topconfig) * timefac 
 
          call DGPHIVxxx2( zzz*ixx*numr, thisexpodim, one, smallvectortemp, zerovector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
               iwsp, liwsp, parconfigexpomult, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
@@ -634,9 +638,9 @@ subroutine exposparseprop(inavector0,outavector,time)
    outavector(:,:)=0d0;   
 
    if (allspinproject.ne.0) then
-      call configspin_transformfrom_local(numr,smallvectorout,outavector(:,botwalk))
+      call configspin_transformfrom_local(numr,smallvectorout,outavector(:,botconfig))
    else
-      outavector(:,botwalk:topwalk)=smallvectorout(:,1:botwalk-topwalk+1)
+      outavector(:,botconfig:topconfig)=smallvectorout(:,1:botconfig-topconfig+1)
    endif
 
    if (parconsplit.eq.0) then

@@ -14,13 +14,17 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
 
   printflag=max(lanprintflag,inprintflag)
 
+  if (sparseconfigflag.eq.0) then
+     OFLWR "error, can't use blocklanczos for a-vector with sparseconfigflag=0"; CFLST
+  endif
+
   if (allspinproject.ne.0) then
      calcsize=numspinconfig;   mytop=spinend; mybot=spinstart
      localsize=localnspin
      localstart=firstspinconfig
      localend=lastspinconfig
   else
-     calcsize=numconfig;    mytop=topwalk; mybot=botwalk
+     calcsize=numconfig;    mytop=topconfig; mybot=botconfig
      localsize=localnconfig
      localstart=firstconfig
      localend=lastconfig
@@ -37,7 +41,7 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
 
   vdim=(mytop-mybot+1)*numr
 
-  allocate(workvectors(numr,mybot:mytop,order),myoutvectors(numr,botwalk:topwalk,order), &
+  allocate(workvectors(numr,mybot:mytop,order),myoutvectors(numr,botconfig:topconfig,order), &
        initvectors(numr,localstart:localend,order))
 
   workvectors(:,:,:)=0d0
@@ -61,12 +65,12 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
 
   outvectors(:,:,:)=0d0
   if (allspinproject.eq.0) then
-     outvectors(:,botwalk:topwalk,:)=workvectors(:,:,:)
+     outvectors(:,botconfig:topconfig,:)=workvectors(:,:,:)
   else
      do ii=1,order
         call configspin_transformfrom_local(numr,workvectors(:,:,ii),myoutvectors(:,:,ii))
      enddo
-     outvectors(:,botwalk:topwalk,:)=myoutvectors(:,:,:)
+     outvectors(:,botconfig:topconfig,:)=myoutvectors(:,:,:)
   endif
   if (parconsplit.eq.0) then
      do ii=1,order
@@ -191,27 +195,27 @@ recursive subroutine parblockconfigmult(inavector,outavector)
   use xxxmod
   implicit none
   integer :: ii
-  DATATYPE,intent(in) :: inavector(numr,botwalk:topwalk)
-  DATATYPE,intent(out) :: outavector(numr,botwalk:topwalk)
+  DATATYPE,intent(in) :: inavector(numr,botconfig:topconfig)
+  DATATYPE,intent(out) :: outavector(numr,botconfig:topconfig)
   DATATYPE :: intemp(numr,numconfig)
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parblockconfigmult"; CFLST
   endif
 
-  intemp(:,:)=0d0;   intemp(:,botwalk:topwalk)=inavector(:,:)
+  intemp(:,:)=0d0;   intemp(:,botconfig:topconfig)=inavector(:,:)
 
 !! DO SUMMA
 
   if (dfrestrictflag.ne.0) then
-     call df_project_local(intemp(:,botwalk),numr)
+     call df_project_local(intemp(:,botconfig),numr)
   endif
 
   call mpiallgather(intemp,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
 
   call sparseconfigmult_nompi(intemp,outavector, yyy%cptr(0), yyy%sptr(0), 1,1,1,0,0d0,0,1,numr,0)
   if (mshift.ne.0d0) then 
-     do ii=botwalk,topwalk
+     do ii=botconfig,topconfig
         outavector(:,ii)=outavector(:,ii)+ intemp(:,ii)*configmvals(ii)*mshift
      enddo
   endif
@@ -230,7 +234,7 @@ recursive subroutine parblockconfigmult_spin(inavectorspin,outavectorspin)
   integer :: ii
   DATATYPE,intent(in) :: inavectorspin(numr,spinrank)
   DATATYPE,intent(out) :: outavectorspin(numr,spinrank)
-  DATATYPE :: intemp(numr,numconfig), ttvector2(numr,botwalk:topwalk)
+  DATATYPE :: intemp(numr,numconfig), ttvector2(numr,botconfig:topconfig)
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parblockconfigmult_spin"; CFLST
@@ -240,17 +244,17 @@ recursive subroutine parblockconfigmult_spin(inavectorspin,outavectorspin)
 
   intemp(:,:)=0d0
 
-  call configspin_transformfrom_local(numr,inavectorspin,intemp(:,botwalk))
+  call configspin_transformfrom_local(numr,inavectorspin,intemp(:,botconfig))
 
   if (dfrestrictflag.ne.0) then
-     call df_project_local(intemp(:,botwalk),numr)
+     call df_project_local(intemp(:,botconfig),numr)
   endif
 
   call mpiallgather(intemp,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
 
   call sparseconfigmult_nompi(intemp,ttvector2, yyy%cptr(0), yyy%sptr(0), 1,1,1,0,0d0,0,1,numr,0)
   if (mshift.ne.0d0) then 
-     do ii=botwalk,topwalk
+     do ii=botconfig,topconfig
         ttvector2(:,ii)=ttvector2(:,ii) + intemp(:,ii)*configmvals(ii)*mshift
      enddo
   endif

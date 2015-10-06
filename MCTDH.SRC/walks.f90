@@ -94,18 +94,17 @@ subroutine walkalloc()
   implicit none
   logical :: highspinorder,lowspinorder
 
-!! botwalk and topwalk in newconfig.f90.
-!! now, with fast_newconfiglist, just check
+!! training wheels
 
-  if (topwalk-botwalk.gt.0) then
-     if (.not.highspinorder(configlist(:,topwalk))) then
-        OFLWR "NOT HIGHSPIN",topwalk
-        call printconfig(configlist(:,topwalk))
+  if (topconfig-botconfig.gt.0) then
+     if (.not.highspinorder(configlist(:,topconfig))) then
+        OFLWR "NOT HIGHSPIN",topconfig
+        call printconfig(configlist(:,topconfig))
         CFLST
      endif
-     if (.not.lowspinorder(configlist(:,botwalk))) then
-        OFLWR "NOT LOWSPIN",botwalk
-        call printconfig(configlist(:,topwalk))
+     if (.not.lowspinorder(configlist(:,botconfig))) then
+        OFLWR "NOT LOWSPIN",botconfig
+        call printconfig(configlist(:,topconfig))
         CFLST
      endif
   endif
@@ -805,7 +804,9 @@ subroutine getnumwalks()
 
   enddo
 
-  call mympiireduceone(totwalks)
+  if (sparseconfigflag.ne.0) then
+     call mympiireduceone(totwalks)
+  endif
   call mympiimax(maxsinglewalks);  call mympiimax(maxdoublewalks)
 
 

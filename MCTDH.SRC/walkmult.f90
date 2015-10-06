@@ -39,8 +39,8 @@ recursive subroutine sparseconfigmultone(invector,outvector,matrix_ptr,sparse_pt
   if (parconsplit.ne.0) then
      call mpiallgather(workvector,numconfig,configsperproc(:),maxconfigsperproc)
   endif
-  call sparseconfigmult_nompi(workvector,outvector(botwalk),matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0)
-  if (sparseconfigflag.ne.0.and.parconsplit.eq.0) then
+  call sparseconfigmult_nompi(workvector,outvector(botconfig),matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0)
+  if (parconsplit.eq.0) then
      call mpiallgather(outvector,numconfig,configsperproc,maxconfigsperproc)
   endif
 
@@ -85,9 +85,9 @@ recursive subroutine sparseconfigmultxxx(myinvector,myoutvector,matrix_ptr,spars
      call mpiallgather(invector,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
   endif
 
-  call sparseconfigmult_nompi(invector,myoutvector(:,botwalk),matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0)
+  call sparseconfigmult_nompi(invector,myoutvector(:,botconfig),matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0)
 
-  if (sparseconfigflag.ne.0.and.parconsplit.eq.0) then
+  if (parconsplit.eq.0) then
      call mpiallgather(myoutvector,numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
   endif
      
@@ -119,8 +119,8 @@ recursive subroutine sparseconfigdiagmult(invector,outvector,matrix_ptr, sparse_
   DATATYPE :: workvector(numr,numconfig),tempvector(numr,firstconfig:lastconfig)       !! AUTOMATIC
 
   workvector(:,:)=1d0; tempvector(:,:)=0d0
-  call sparseconfigmult_nompi(workvector(:,:),tempvector(:,botwalk),matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag,time,0,1,numr,1)
-  if (sparseconfigflag.ne.0.and.parconsplit.eq.0) then
+  call sparseconfigmult_nompi(workvector(:,:),tempvector(:,botconfig),matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag,time,0,1,numr,1)
+  if (parconsplit.eq.0) then
      call mpiallgather(tempvector,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
   endif
 
@@ -134,16 +134,16 @@ recursive subroutine parsparseconfigdiagmult(invector,outvector,matrix_ptr, spar
   use configptrmod
   use sparseptrmod
   implicit none
-  DATATYPE,intent(in) :: invector(numr,botwalk:topwalk)
-  DATATYPE,intent(out) :: outvector(numr,botwalk:topwalk)
+  DATATYPE,intent(in) :: invector(numr,botconfig:topconfig)
+  DATATYPE,intent(out) :: outvector(numr,botconfig:topconfig)
   DATATYPE,intent(in) :: inenergy
   Type(CONFIGPTR),intent(in) :: matrix_ptr
   Type(SPARSEPTR),intent(in) :: sparse_ptr
   integer,intent(in) ::  conflag,boflag,nucflag,pulseflag
   real*8,intent(in) :: time
-  DATATYPE :: workvector(numr,numconfig),tempvector(numr,botwalk:topwalk)     !!AUTOMATIC
+  DATATYPE :: workvector(numr,numconfig),tempvector(numr,botconfig:topconfig)     !!AUTOMATIC
 
-  if (topwalk-botwalk+1.eq.0) then
+  if (topconfig-botconfig+1.eq.0) then
      return
   endif
 
@@ -166,12 +166,12 @@ recursive subroutine sparseconfigmult_nompi(myinvector,myoutvector,matrix_ptr,sp
   implicit none
   integer,intent(in) :: conflag,boflag,nucflag,pulseflag,onlytdflag,botr,topr,diagflag
   DATATYPE,intent(in) :: myinvector(botr:topr,numconfig)
-  DATATYPE,intent(out) :: myoutvector(botr:topr,botwalk:topwalk)
+  DATATYPE,intent(out) :: myoutvector(botr:topr,botconfig:topconfig)
   real*8,intent(in) :: time
   Type(CONFIGPTR),intent(in) :: matrix_ptr
   Type(SPARSEPTR),intent(in) :: sparse_ptr
 
-  if (topwalk-botwalk+1.eq.0) then
+  if (topconfig-botconfig+1.eq.0) then
      return
   endif
   if (sparseopt.eq.0) then
@@ -193,16 +193,16 @@ recursive subroutine direct_sparseconfigmult_nompi(myinvector,myoutvector,matrix
   implicit none
   integer,intent(in) :: conflag,boflag,nucflag,pulseflag,onlytdflag,botr,topr,diagflag
   DATATYPE,intent(in) :: myinvector(botr:topr,numconfig)
-  DATATYPE,intent(out) :: myoutvector(botr:topr,botwalk:topwalk)
+  DATATYPE,intent(out) :: myoutvector(botr:topr,botconfig:topconfig)
   Type(CONFIGPTR),intent(in) :: matrix_ptr
   real*8, intent(in) :: time
   integer :: mynumr,ir,flag,ii
-  DATATYPE :: tempvector(botr:topr,botwalk:topwalk) !! AUTOMATIC
+  DATATYPE :: tempvector(botr:topr,botconfig:topconfig) !! AUTOMATIC
   DATATYPE :: tempmatel(nspf,nspf),facs(3),csum
   DATAECS :: rvector(botr:topr)
   real*8 :: gg
 
-  if (topwalk-botwalk+1.eq.0) then
+  if (topconfig-botconfig+1.eq.0) then
      return
   endif
 
@@ -222,7 +222,7 @@ recursive subroutine direct_sparseconfigmult_nompi(myinvector,myoutvector,matrix
 
      do ir=botr,topr
 
-        myoutvector(ir,:)=myoutvector(ir,:) + myinvector(ir,botwalk:topwalk) * ( &
+        myoutvector(ir,:)=myoutvector(ir,:) + myinvector(ir,botconfig:topconfig) * ( &
              energyshift + (nucrepulsion+frozenpotdiag)/bondpoints(ir) + &
              frozenkediag/bondpoints(ir)**2 ) * matrix_ptr%kefac
 
@@ -289,12 +289,12 @@ recursive subroutine direct_sparseconfigmult_nompi(myinvector,myoutvector,matrix
            endif
         enddo
         do ir=botr,topr
-           myoutvector(ir,:)=myoutvector(ir,:)+myinvector(ir,botwalk:topwalk)*csum*bondpoints(ir)
+           myoutvector(ir,:)=myoutvector(ir,:)+myinvector(ir,botconfig:topconfig)*csum*bondpoints(ir)
         enddo
      else if (onlytdflag.eq.0) then
         csum=matrix_ptr%kefac * numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2 ) * 2  * gg   !! a-squared
         do ir=botr,topr
-           myoutvector(ir,:)=myoutvector(ir,:)+myinvector(ir,botwalk:topwalk)*csum     !! NO R FACTOR !!
+           myoutvector(ir,:)=myoutvector(ir,:)+myinvector(ir,botconfig:topconfig)*csum     !! NO R FACTOR !!
         enddo
      endif
 
@@ -304,11 +304,11 @@ recursive subroutine direct_sparseconfigmult_nompi(myinvector,myoutvector,matrix
      if (diagflag.eq.0) then
         rvector(:)=1d0
         call arbitraryconfig_mult_nompi(matrix_ptr%xymatel,rvector,myinvector,tempvector,numr,0)
-        call MYGEMM('N','N',numr,topwalk-botwalk+1,numr,DATAONE,            proderivmod,numr,     tempvector,           numr,DATAONE,myoutvector,numr)
-        call MYGEMM('N','N',numr,topwalk-botwalk+1,numr,DATAONE*matrix_ptr%kefac,rkemod,numr,     myinvector(:,botwalk),numr,DATAONE,myoutvector,numr)
+        call MYGEMM('N','N',numr,topconfig-botconfig+1,numr,DATAONE,            proderivmod,numr,     tempvector,           numr,DATAONE,myoutvector,numr)
+        call MYGEMM('N','N',numr,topconfig-botconfig+1,numr,DATAONE*matrix_ptr%kefac,rkemod,numr,     myinvector(:,botconfig),numr,DATAONE,myoutvector,numr)
 !!$     else
 !!$        do ir=1,numr
-!!$           myoutvector(ir,:)=myoutvector(ir,:)+myinvector(ir,botwalk:topwalk)*matrix_ptr%kefac*rkemod(ir,ir)
+!!$           myoutvector(ir,:)=myoutvector(ir,:)+myinvector(ir,botconfig:topconfig)*matrix_ptr%kefac*rkemod(ir,ir)
 !!$        enddo
      endif
   endif
@@ -327,16 +327,16 @@ recursive subroutine sparsesparsemult_nompi(myinvector,myoutvector,sparse_ptr,&
   implicit none
   integer,intent(in) :: boflag,nucflag,pulseflag,conflag,onlytdflag,botr,topr,diagflag
   DATATYPE,intent(in)  :: myinvector(botr:topr,numconfig)
-  DATATYPE,intent(out) :: myoutvector(botr:topr,botwalk:topwalk)
+  DATATYPE,intent(out) :: myoutvector(botr:topr,botconfig:topconfig)
   Type(SPARSEPTR),intent(in) :: sparse_ptr
   real*8,intent(in) :: time
   DATATYPE :: facs(3),csum
-  DATATYPE :: tempvector(botr:topr,botwalk:topwalk), tempsparsemattr(maxsinglewalks,botwalk:topwalk) !! AUTOMATIC
+  DATATYPE :: tempvector(botr:topr,botconfig:topconfig), tempsparsemattr(maxsinglewalks,botconfig:topconfig) !! AUTOMATIC
   real*8 :: gg
   DATAECS :: rvector(botr:topr)
   integer :: ir,mynumr,ii,flag
 
-  if (topwalk-botwalk+1.eq.0) then
+  if (topconfig-botconfig+1.eq.0) then
      return
   endif
 
@@ -361,7 +361,7 @@ recursive subroutine sparsesparsemult_nompi(myinvector,myoutvector,sparse_ptr,&
 
     do ir=botr,topr
 
-       myoutvector(ir,:)=myoutvector(ir,:) + myinvector(ir,botwalk:topwalk) * ( &
+       myoutvector(ir,:)=myoutvector(ir,:) + myinvector(ir,botconfig:topconfig) * ( &
             energyshift + (nucrepulsion+frozenpotdiag)/bondpoints(ir) + &
             frozenkediag/bondpoints(ir)**2 ) * sparse_ptr%kefac
        
@@ -429,12 +429,12 @@ recursive subroutine sparsesparsemult_nompi(myinvector,myoutvector,sparse_ptr,&
            endif
         enddo
         do ir=botr,topr
-           myoutvector(ir,:)=myoutvector(ir,:)+myinvector(ir,botwalk:topwalk)*csum*bondpoints(ir)
+           myoutvector(ir,:)=myoutvector(ir,:)+myinvector(ir,botconfig:topconfig)*csum*bondpoints(ir)
         enddo
      else if (onlytdflag.eq.0) then
         csum= sparse_ptr%kefac * numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2 ) * 2 * gg  !! a-squared
         do ir=botr,topr
-           myoutvector(ir,:)=myoutvector(ir,:)+myinvector(ir,botwalk:topwalk)*csum     !! NO R FACTOR !!
+           myoutvector(ir,:)=myoutvector(ir,:)+myinvector(ir,botconfig:topconfig)*csum     !! NO R FACTOR !!
         enddo
      endif
 
@@ -444,11 +444,11 @@ recursive subroutine sparsesparsemult_nompi(myinvector,myoutvector,sparse_ptr,&
      if (diagflag.eq.0) then
         rvector(:)=1d0
         call arbitrary_sparsemult_nompi_singles(sparse_ptr%xysparsemattr,rvector,myinvector,tempvector,numr,0)
-        call MYGEMM('N','N',numr,topwalk-botwalk+1,numr,DATAONE,            proderivmod,numr,     tempvector,           numr,DATAONE,myoutvector,numr)
-        call MYGEMM('N','N',numr,topwalk-botwalk+1,numr,DATAONE*sparse_ptr%kefac,rkemod,numr,     myinvector(:,botwalk),numr,DATAONE,myoutvector,numr)
+        call MYGEMM('N','N',numr,topconfig-botconfig+1,numr,DATAONE,            proderivmod,numr,     tempvector,           numr,DATAONE,myoutvector,numr)
+        call MYGEMM('N','N',numr,topconfig-botconfig+1,numr,DATAONE*sparse_ptr%kefac,rkemod,numr,     myinvector(:,botconfig),numr,DATAONE,myoutvector,numr)
 !!$     else
 !!$        do ir=1,numr
-!!$           myoutvector(ir,:)=myoutvector(ir,:)+myinvector(ir,botwalk:topwalk)*sparse_ptr%kefac*rkemod(ir,ir)
+!!$           myoutvector(ir,:)=myoutvector(ir,:)+myinvector(ir,botconfig:topconfig)*sparse_ptr%kefac*rkemod(ir,ir)
 !!$        enddo
      endif
   endif
@@ -462,8 +462,8 @@ recursive subroutine arbitrary_sparsemult_nompi_singles(mattrans, rvector,inbigv
   use walkmod
   implicit none
   integer,intent(in) :: mynumr,diagflag
-  DATATYPE,intent(in) :: inbigvector(mynumr,numconfig), mattrans(maxsinglewalks,botwalk:topwalk)
-  DATATYPE,intent(out) :: outsmallvector(mynumr,botwalk:topwalk)
+  DATATYPE,intent(in) :: inbigvector(mynumr,numconfig), mattrans(maxsinglewalks,botconfig:topconfig)
+  DATATYPE,intent(out) :: outsmallvector(mynumr,botconfig:topconfig)
   DATAECS :: rvector(mynumr)
   integer :: iwalk,config1,idiag
 
@@ -471,14 +471,14 @@ recursive subroutine arbitrary_sparsemult_nompi_singles(mattrans, rvector,inbigv
      OFLWR "BADDDCALLL6666666"; CFLST
   endif
 
-  if (topwalk-botwalk+1.eq.0) then
+  if (topconfig-botconfig+1.eq.0) then
      return
   endif
 
   outsmallvector(:,:)=0d0
 
   if (diagflag.eq.0) then
-     do config1=botwalk,topwalk
+     do config1=botconfig,topconfig
         do iwalk=1,numsinglewalks(config1)
            outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(iwalk,config1) * inbigvector(:,singlewalk(iwalk,config1))
         enddo
@@ -488,7 +488,7 @@ recursive subroutine arbitrary_sparsemult_nompi_singles(mattrans, rvector,inbigv
      if (sortwalks.ne.0) then
         OFLWR " ??? NOT DEBUGGED ??? sortwalks singlediag.  programmer remove me to try"; CFLST
      endif
-     do config1=botwalk,topwalk
+     do config1=botconfig,topconfig
         do idiag=1,numsinglediagwalks(config1)
            outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(singlediag(idiag,config1),config1) * inbigvector(:,config1)
         enddo
@@ -504,21 +504,21 @@ recursive subroutine arbitrary_sparsemult_nompi_doubles(mattrans,rvector,inbigve
   use walkmod
   implicit none
   integer,intent(in) :: mynumr,diagflag
-  DATATYPE,intent(in) :: inbigvector(mynumr,numconfig),  mattrans(maxdoublewalks,botwalk:topwalk)
-  DATATYPE,intent(out) :: outsmallvector(mynumr,botwalk:topwalk)
+  DATATYPE,intent(in) :: inbigvector(mynumr,numconfig),  mattrans(maxdoublewalks,botconfig:topconfig)
+  DATATYPE,intent(out) :: outsmallvector(mynumr,botconfig:topconfig)
   DATAECS :: rvector(mynumr)
   integer :: iwalk,config1,idiag
 
   if (sparseconfigflag.eq.0) then
      OFLWR "BADDDCALLL6666666"; CFLST
   endif
-  if (topwalk-botwalk+1.eq.0) then
+  if (topconfig-botconfig+1.eq.0) then
      return
   endif
 
   outsmallvector(:,:)=0d0
 
-  do config1=botwalk,topwalk
+  do config1=botconfig,topconfig
      if (diagflag.eq.0) then
         do iwalk=1,numdoublewalks(config1)
            outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(iwalk,config1) * inbigvector(:,doublewalk(iwalk,config1))
@@ -554,8 +554,8 @@ recursive subroutine arbitraryconfig_mult(onebodymat, rvector, avectorin, avecto
      call mpiallgather(workvector,numconfig*inrnum,configsperproc(:)*inrnum,maxconfigsperproc*inrnum)
   endif
 
-  call arbitraryconfig_mult_nompi(onebodymat, rvector, workvector, avectorout(:,botwalk),inrnum,0)
-  if (sparseconfigflag.ne.0.and.parconsplit.eq.0) then
+  call arbitraryconfig_mult_nompi(onebodymat, rvector, workvector, avectorout(:,botconfig),inrnum,0)
+  if (parconsplit.eq.0) then
      call mpiallgather(avectorout,numconfig*inrnum,configsperproc(:)*inrnum,maxconfigsperproc*inrnum)
   endif
 
@@ -568,18 +568,18 @@ recursive subroutine arbitraryconfig_mult_nompi(onebodymat, rvector, avectorin, 
   implicit none
   integer,intent(in) :: inrnum,diagflag
   DATATYPE,intent(in) :: onebodymat(nspf,nspf), avectorin(inrnum,numconfig)
-  DATATYPE,intent(out) :: avectorout(inrnum,botwalk:topwalk)
+  DATATYPE,intent(out) :: avectorout(inrnum,botconfig:topconfig)
   DATAECS :: rvector(inrnum)
   integer ::    config2, config1, iwalk, idiag
 
-  if (topwalk-botwalk+1.eq.0) then
+  if (topconfig-botconfig+1.eq.0) then
      return
   endif
 
   avectorout(:,:)=0.d0
 
   if (diagflag.eq.0) then
-     do config1=botwalk,topwalk
+     do config1=botconfig,topconfig
         do iwalk=1,numsinglewalks(config1)
            config2=singlewalk(iwalk,config1)
            avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config2)*&
@@ -592,7 +592,7 @@ recursive subroutine arbitraryconfig_mult_nompi(onebodymat, rvector, avectorin, 
      if (sortwalks.ne.0) then
         OFLWR " ??? NOT DEBUGGED ??? sortwalks singlediag.  programmer remove me to try"; CFLST
      endif
-     do config1=botwalk,topwalk
+     do config1=botconfig,topconfig
         do idiag=1,numsinglediagwalks(config1)
            iwalk=singlediag(idiag,config1)
            avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config1)*&
@@ -612,14 +612,14 @@ recursive subroutine arbitraryconfig_mult_doubles_nompi(twobodymat, rvector, ave
   implicit none
   integer,intent(in) :: inrnum,diagflag
   DATATYPE,intent(in) :: twobodymat(nspf,nspf,nspf,nspf), avectorin(inrnum,numconfig)
-  DATATYPE,intent(out) :: avectorout(inrnum,botwalk:topwalk)
+  DATATYPE,intent(out) :: avectorout(inrnum,botconfig:topconfig)
   DATAECS :: rvector(inrnum)
   integer ::   config2, config1, iwalk, idiag
 
   avectorout(:,:)=0.d0
 
   if (diagflag.eq.0) then
-     do config1=botwalk,topwalk
+     do config1=botconfig,topconfig
 
         do iwalk=1,numdoublewalks(config1)
            config2=doublewalk(iwalk,config1)
@@ -635,7 +635,7 @@ recursive subroutine arbitraryconfig_mult_doubles_nompi(twobodymat, rvector, ave
      if (sortwalks.ne.0) then
         OFLWR " ??? NOT DEBUGGED ??? sortwalks doublediag.  programmer remove me to try"; CFLST
      endif
-     do config1=botwalk,topwalk
+     do config1=botconfig,topconfig
         do idiag=1,numdoublediagwalks(config1)
            iwalk=doublediag(idiag,config1)
            config2=doublewalk(iwalk,config1)

@@ -288,7 +288,7 @@ subroutine abio_sparse(abio,aout,inbiovar)
   allocate(wsp(lwsp),iwsp(liwsp))
   allocate(smallvector(inbiovar%bionr,maxconfigsperproc),smallvectorout(inbiovar%bionr,maxconfigsperproc))
   smallvector(:,:)=0; smallvectorout(:,:)=0
-  smallvector(:,1:topwalk-botwalk+1)=abio(:,botwalk:topwalk)
+  smallvector(:,1:topconfig-botconfig+1)=abio(:,botconfig:topconfig)
 
 #ifdef REALGO
   call DGEXPVxxx2(ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec,itrace,iflag,biofileptr,tempstepsize,realpardotsub,maxconfigsperproc*nprocs*inbiovar%bionr)
@@ -303,7 +303,7 @@ subroutine abio_sparse(abio,aout,inbiovar)
      OFLWR "Stopping due to bad iflag in sparsebiortho: ",iflag,tol,inbiovar%thisbiodim; CFLST
   endif
   aout(:,:)=0d0
-  aout(:,botwalk:topwalk)=smallvectorout(:,1:topwalk-botwalk+1)
+  aout(:,botconfig:topconfig)=smallvectorout(:,1:topconfig-botconfig+1)
   if (sparseconfigflag.ne.0.and.parconsplit.eq.0) then
      call mpiallgather(aout,numconfig*inbiovar%bionr,configsperproc*inbiovar%bionr,maxconfigsperproc*inbiovar%bionr)
   endif
@@ -602,8 +602,8 @@ subroutine parbiomatvec(inavector,outavector)
   use biomatvecmod
   implicit none
 
-  DATATYPE,intent(in) :: inavector(biopointer%bionr,botwalk:botwalk+maxconfigsperproc-1)
-  DATATYPE,intent(out) :: outavector(biopointer%bionr,botwalk:botwalk+maxconfigsperproc-1)
+  DATATYPE,intent(in) :: inavector(biopointer%bionr,botconfig:botconfig+maxconfigsperproc-1)
+  DATATYPE,intent(out) :: outavector(biopointer%bionr,botconfig:botconfig+maxconfigsperproc-1)
 
   DATATYPE :: intemp(biopointer%bionr,numconfig)
 
@@ -612,13 +612,11 @@ subroutine parbiomatvec(inavector,outavector)
   endif
 
   intemp(:,:)=0d0
-  intemp(:,botwalk:topwalk)=inavector(:,botwalk:topwalk)
+  intemp(:,botconfig:topconfig)=inavector(:,botconfig:topconfig)
 
 !! DO SUMMA INSTEAD
 
-  if (sparseconfigflag.ne.0) then
-     call mpiallgather(intemp,numconfig*biopointer%bionr,configsperproc*biopointer%bionr,maxconfigsperproc*biopointer%bionr)
-  endif
+  call mpiallgather(intemp,numconfig*biopointer%bionr,configsperproc*biopointer%bionr,maxconfigsperproc*biopointer%bionr)
 
   outavector(:,:)=0d0
   call biomatvec_nompi(intemp,outavector)
@@ -649,11 +647,11 @@ subroutine biomatvec_nompi(x,y)
   use parameters
   implicit none
   integer :: i,j
-  DATATYPE :: x(biopointer%bionr,numconfig),y(biopointer%bionr,botwalk:topwalk)
+  DATATYPE :: x(biopointer%bionr,numconfig),y(biopointer%bionr,botconfig:topconfig)
 
   y(:,:)=0d0
 
-  do i=botwalk,topwalk
+  do i=botconfig,topconfig
      y(:,i)=0
      do j=1,numsinglewalks(i) !! summing over nonconjugated second index in s(:), good
         y(:,i) = y(:,i) + biopointer%smo(singlewalkopspf(1,j,i),singlewalkopspf(2,j,i)) * singlewalkdirphase(j,i) * x(:,singlewalk(j,i)) 

@@ -291,8 +291,8 @@ subroutine parconfigexpomult(inavector,outavector)
   use configpropmod
   implicit none
 
-  DATATYPE,intent(in) :: inavector(numr,botwalk:botwalk+maxconfigsperproc-1)
-  DATATYPE,intent(out) :: outavector(numr,botwalk:botwalk+maxconfigsperproc-1)
+  DATATYPE,intent(in) :: inavector(numr,botconfig:botconfig+maxconfigsperproc-1)
+  DATATYPE,intent(out) :: outavector(numr,botconfig:botconfig+maxconfigsperproc-1)
   DATATYPE :: intemp(numr,numconfig)
 
   call avectortime(3)
@@ -300,10 +300,10 @@ subroutine parconfigexpomult(inavector,outavector)
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parconfigexpomult"; CFLST
   endif
-  intemp(:,:)=0d0;  intemp(:,botwalk:topwalk)=inavector(:,botwalk:topwalk)
+  intemp(:,:)=0d0;  intemp(:,botconfig:topconfig)=inavector(:,botconfig:topconfig)
 
   if (dfrestrictflag.ne.0) then
-     call df_project_local(intemp(:,botwalk),numr)
+     call df_project_local(intemp(:,botconfig),numr)
   endif
 
 !! DO SUMMA  
@@ -333,8 +333,8 @@ subroutine parconfigexpomult_spin(inavectorspin,outavectorspin)
 
   DATATYPE,intent(in) :: inavectorspin(numr,spinstart:spinstart+maxspinsperproc-1)
   DATATYPE,intent(out) :: outavectorspin(numr,spinstart:spinstart+maxspinsperproc-1)
-  DATATYPE :: inavector(numr,botwalk:botwalk+maxconfigsperproc-1),&
-       outavector(numr,botwalk:botwalk+maxconfigsperproc-1)
+  DATATYPE :: inavector(numr,botconfig:botconfig+maxconfigsperproc-1),&
+       outavector(numr,botconfig:botconfig+maxconfigsperproc-1)
 
   call avectortime(3)
 

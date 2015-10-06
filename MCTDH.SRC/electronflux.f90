@@ -693,7 +693,7 @@ function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart)
 
   fluxeval00 = 0d0
 
-  do bra=botwalk,topwalk
+  do bra=botconfig,topconfig
 
     do ket=1,numsinglewalks(bra)
 
@@ -794,8 +794,6 @@ function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart)
     endif  !! ipart
   enddo
 
-  if (sparseconfigflag.ne.0) then
-     call mympireduceone(fluxeval00)
-  endif
+  call mympireduceone(fluxeval00)
 
 end function fluxeval00

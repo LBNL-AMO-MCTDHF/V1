@@ -44,7 +44,7 @@ subroutine projeflux_singlewalks()
         tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig)
         if(allowedconfig(tempconfig)) then
            jconfig=getconfiguration(tempconfig)
-           if (jconfig.ge.botwalk.and.jconfig.le.topwalk) then
+           if (jconfig.ge.botconfig.and.jconfig.le.topconfig) then
               iwalk=iwalk+1
            endif
         endif
@@ -76,7 +76,7 @@ subroutine projeflux_singlewalks()
         tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig)
         if(allowedconfig(tempconfig)) then
            jconfig=getconfiguration(tempconfig)
-           if (jconfig.ge.botwalk.and.jconfig.le.topwalk) then
+           if (jconfig.ge.botconfig.and.jconfig.le.topconfig) then
               iwalk=iwalk+1;          pwalk1(iwalk,iconfig)=jconfig
               pspf1(:,iwalk,iconfig)=temporb;          pphase1(iwalk,iconfig)=dirphase
            endif
@@ -118,9 +118,7 @@ subroutine projeflux_doproj(cata,neuta,mo,offset)
     enddo
   enddo
 
-  if (sparseconfigflag.ne.0) then
-     call mympireduce(projcoefs,nspf*2)
-  endif
+  call mympireduce(projcoefs,nspf*2)
 
   projwfn(:,:)=0d0
   do ispin=1,2

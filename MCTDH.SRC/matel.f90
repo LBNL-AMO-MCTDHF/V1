@@ -272,8 +272,6 @@ subroutine arbitraryconfig_matel00transpose(onebodymat, smallmatrixtr,topdim)
 
   smallmatrixtr=0d0; 
 
-!! 06-2015   do config1=botwalk,topwalk
-
   do config1=botconfig,topconfig
      do iwalk=1,numsinglewalks(config1)
         if (sparseconfigflag.eq.0) then
@@ -287,8 +285,6 @@ subroutine arbitraryconfig_matel00transpose(onebodymat, smallmatrixtr,topdim)
              singlewalkdirphase(iwalk,config1)
      enddo
   enddo
-
-!! 06-2015
 
   if (sparseconfigflag.eq.0) then
      call mpiallgather(smallmatrixtr(:,:),numconfig**2,configsperproc(:)*numconfig,maxconfigsperproc*numconfig)
@@ -312,8 +308,6 @@ subroutine arbitraryconfig_matel_doubles00transpose(twobodymat, smallmatrixtr,to
 
   smallmatrixtr=0d0;
 
-!! 06-2015   do config1=botwalk,topwalk
-
   do config1=botconfig,topconfig
      do iwalk=1,numdoublewalks(config1)
         if (sparseconfigflag.eq.0) then
@@ -329,8 +323,6 @@ subroutine arbitraryconfig_matel_doubles00transpose(twobodymat, smallmatrixtr,to
              doublewalkdirphase(iwalk,config1) 
      enddo
   enddo
-
-!! 06-2015
 
   if (sparseconfigflag.eq.0) then
      call mpiallgather(smallmatrixtr(:,:),numconfig**2,configsperproc(:)*numconfig,maxconfigsperproc*numconfig)
@@ -452,10 +444,10 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
         endif
      enddo
 
-     !! A-SQUARED TERM...  looked ok for z polarization.  number of electrons times a-squared.  fac of 2 needed apparently.
-     !!   for length... need nuclear dipole too.
+!! A-SQUARED TERM...  looked ok for z polarization.  number of electrons times a-squared.  fac of 2 needed apparently.
+!!   for length... need nuclear dipole too.
 
-     !!   for velocity ...  also need derivative operator in bond length for hetero !!!!  TO DO !!!!
+!!   for velocity ...  also need derivative operator in bond length for hetero !!!!  TO DO !!!!
 
 
         gg=0.25d0
@@ -464,7 +456,7 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
      if (velflag.ne.0) then 
         csum0 = matrix_ptr%kefac * numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2) * 2  * gg   !! a-squared term.
      else
-        !! xpulsenuc is nuclear dipole, divided by R.    from nucdipvalue.
+!! xpulsenuc is nuclear dipole, divided by R.    from nucdipvalue.
 
         csum0 = (matrix_ptr%xpulsenuc(1) * facs(1) + matrix_ptr%xpulsenuc(2) * facs(2) + matrix_ptr%xpulsenuc(3) * facs(3) )
      endif

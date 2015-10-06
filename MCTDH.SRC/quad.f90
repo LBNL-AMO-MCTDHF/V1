@@ -354,10 +354,14 @@ subroutine sparsequadavector(inavector,jjcalls0)
        smallvector(:,:),smallvectorspin(:,:),smallvector2(:,:),smallvectorspin2(:,:)
   CNORMTYPE :: norm
 
+  if (sparseconfigflag.eq.0) then
+     OFLWR "Error, must use sparseconfigflag.ne.0 for sparsequadavector"; CFLST
+  endif
+
   jjcalls0=0
 
-  allocate(smallvector(numr,botwalk:botwalk+maxconfigsperproc-1),smallvectorspin(numr,spinstart:spinstart+maxspinsperproc-1), &
-       smallvector2(numr,botwalk:botwalk+maxconfigsperproc-1),smallvectorspin2(numr,spinstart:spinstart+maxspinsperproc-1))
+  allocate(smallvector(numr,botconfig:botconfig+maxconfigsperproc-1),smallvectorspin(numr,spinstart:spinstart+maxspinsperproc-1), &
+       smallvector2(numr,botconfig:botconfig+maxconfigsperproc-1),smallvectorspin2(numr,spinstart:spinstart+maxspinsperproc-1))
 
   allocate( vector(numr,firstconfig:lastconfig), vector2(numr,firstconfig:lastconfig), vector3(numr,firstconfig:lastconfig))
 
@@ -435,7 +439,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
   if (allspinproject.ne.0) then
      
      smallvectorspin(:,:)=0d0
-     call configspin_transformto_local(numr,vector(:,botwalk),smallvectorspin(:,spinstart))
+     call configspin_transformto_local(numr,vector(:,botconfig),smallvectorspin(:,spinstart))
      smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
      call dgsolve0( smallvectorspin(:,:), smallvectorspin2(:,:), jjcalls, paraamult_spin_padded,quadprecon,parquadpreconsub_spin_padded, thisaerror,numr*maxspinsperproc,maxaorder,1)
 
@@ -444,14 +448,14 @@ subroutine sparsequadavector(inavector,jjcalls0)
   else
      
      smallvector(:,:)=0d0; 
-     smallvector(:,botwalk:topwalk)=vector(:,botwalk:topwalk)
+     smallvector(:,botconfig:topconfig)=vector(:,botconfig:topconfig)
      smallvector2(:,:)=smallvector(:,:)       !! guess
      call dgsolve0( smallvector(:,:), smallvector2(:,:), jjcalls, paraamult_padded,quadprecon,parquadpreconsub_padded, thisaerror,numr*maxconfigsperproc,maxaorder,1)
 
   endif
 
   vector3(:,:)=0d0; 
-  vector3(:,botwalk:topwalk)=smallvector2(:,botwalk:topwalk)
+  vector3(:,botconfig:topconfig)=smallvector2(:,botconfig:topconfig)
   
   if (parconsplit.eq.0) then
      call mpiallgather(vector3(:,:),numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
@@ -689,7 +693,7 @@ recursive subroutine paraamult_spin(notusedint,inavectorspin,outavectorspin)
   integer :: notusedint
   DATATYPE,intent(in) :: inavectorspin(numr,spinstart:spinend)
   DATATYPE,intent(out) :: outavectorspin(numr,spinstart:spinend)
-  DATATYPE :: inavector(numr,botwalk:topwalk), outavector(numr,botwalk:topwalk)
+  DATATYPE :: inavector(numr,botconfig:topconfig), outavector(numr,botconfig:topconfig)
   if (spinwalkflag.eq.0) then
      OFLWR "WTF SPIN"; CFLST
   endif
@@ -715,8 +719,8 @@ recursive subroutine paraamult(notusedint, inavector,outavector)
   use aaonedmod
   implicit none
   integer :: notusedint
-  DATATYPE,intent(in) :: inavector(numr,botwalk:topwalk)
-  DATATYPE,intent(out) :: outavector(numr,botwalk:topwalk)
+  DATATYPE,intent(in) :: inavector(numr,botconfig:topconfig)
+  DATATYPE,intent(out) :: outavector(numr,botconfig:topconfig)
 
   call parblockconfigmult(inavector,outavector)
 
@@ -742,7 +746,7 @@ recursive subroutine parquadpreconsub_spin(notusedint,inavectorspin,outavectorsp
   integer :: notusedint
   DATATYPE,intent(in) :: inavectorspin(numr,spinstart:spinend)
   DATATYPE,intent(out) :: outavectorspin(numr,spinstart:spinend)
-  DATATYPE :: inavector(numr,botwalk:topwalk),outavector(numr,botwalk:topwalk)
+  DATATYPE :: inavector(numr,botconfig:topconfig),outavector(numr,botconfig:topconfig)
   if (spinwalkflag.eq.0) then
      OFLWR "WTF SPIN"; CFLST
   endif
@@ -769,9 +773,9 @@ recursive subroutine parquadpreconsub(notusedint, inavector,outavector)
   use xxxmod
   implicit none
   integer :: notusedint
-  DATATYPE,intent(in) :: inavector(numr,botwalk:topwalk)
-  DATATYPE,intent(out) :: outavector(numr,botwalk:topwalk)
-  DATATYPE :: tempvector(numr,botwalk:topwalk)
+  DATATYPE,intent(in) :: inavector(numr,botconfig:topconfig)
+  DATATYPE,intent(out) :: outavector(numr,botconfig:topconfig)
+  DATATYPE :: tempvector(numr,botconfig:topconfig)
 
   tempvector(:,:)=inavector(:,:)
 
