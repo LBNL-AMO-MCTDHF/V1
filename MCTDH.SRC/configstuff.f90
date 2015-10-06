@@ -329,8 +329,8 @@ subroutine parconfigexpomult_spin(inavectorspin,outavectorspin)
   use configexpotimemod
   implicit none
 
-  DATATYPE,intent(in) :: inavectorspin(numr,spinstart:spinstart+maxspinsperproc-1)
-  DATATYPE,intent(out) :: outavectorspin(numr,spinstart:spinstart+maxspinsperproc-1)
+  DATATYPE,intent(in) :: inavectorspin(numr,botspin:botspin+maxspinsperproc-1)
+  DATATYPE,intent(out) :: outavectorspin(numr,botspin:botspin+maxspinsperproc-1)
   DATATYPE :: inavector(numr,botconfig:botconfig+maxconfigsperproc-1),&
        outavector(numr,botconfig:botconfig+maxconfigsperproc-1)
 

@@ -11,14 +11,16 @@ subroutine save_vector(psi,afile,sfile)
   integer :: iprop,ispf
   DATATYPE, allocatable :: parorbitals(:,:), parfrozen(:,:), paravec(:,:,:)
 
-  if (parorbsplit.eq.3) then
-     if (myrank.eq.1) then
-        allocate(parorbitals(spfsize*nprocs,nspf)); parorbitals(:,:)=0d0
-        allocate(parfrozen(spfsize*nprocs,max(numfrozen,1))); parfrozen(:,:)=0d0
-     else
-        allocate(parorbitals(1,nspf), parfrozen(1,max(numfrozen,1)))
-     endif
-     
+!! always allocate avoid warn bounds
+
+  if (parorbsplit.eq.3.and.myrank.eq.1) then
+     allocate(parorbitals(spfsize*nprocs,nspf)); parorbitals(:,:)=0d0
+     allocate(parfrozen(spfsize*nprocs,max(numfrozen,1))); parfrozen(:,:)=0d0
+  else
+     allocate(parorbitals(1,nspf), parfrozen(1,max(numfrozen,1)))
+  endif
+
+  if (parorbsplit.eq.3) then     
      do ispf=1,nspf
         call splitgatherv(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
      enddo
@@ -28,16 +30,16 @@ subroutine save_vector(psi,afile,sfile)
            call splitgatherv(frozenspfs(:,ispf),parfrozen(:,ispf), .false.)
         enddo
      endif
-     
   endif
 
 
+  if (parconsplit.ne.0.and.myrank.eq.1) then
+     allocate(paravec(numr,numconfig,mcscfnum)); paravec(:,:,:)=0d0
+  else
+     allocate(paravec(1,1,mcscfnum))
+  endif
+
   if (parconsplit.ne.0) then
-     if (myrank.eq.1) then
-        allocate(paravec(numr,numconfig,mcscfnum)); paravec(:,:,:)=0d0
-     else
-        allocate(paravec(1,1,mcscfnum))
-     endif
      do iprop=1,mcscfnum
         call mygatherv(psi(astart(iprop)),paravec(:,:,iprop),configsperproc(:)*numr,.false.)
      enddo
@@ -70,12 +72,8 @@ subroutine save_vector(psi,afile,sfile)
   
   call mpibarrier()
 
-  if (parorbsplit.eq.3) then
-     deallocate(parorbitals,parfrozen)
-  endif
-  if (parconsplit.ne.0) then
-     deallocate(paravec)
-  endif
+  deallocate(parorbitals,parfrozen)
+  deallocate(paravec)
 
   if (myrank.eq.1) then
      OFLWR "   ...saved vectors!"; CFL

@@ -286,80 +286,20 @@ end function
   
 subroutine configspinset_projector()   
   use spinwalkmod
-  use configmod   !! configlist for spintotdfrank
+  use configmod   !! configlist for numspindfconfig
   use mpimod
   use parameters
   implicit none
-  integer :: info, lwork,j,i,ii,iset,jj, elim, elimsets, flag, iwalk,myiostat,spindfrank,spinrank
+  integer :: info, lwork,j,i,ii,iset,jj, elim, elimsets, flag, iwalk,&
+       spindfrank,spinrank,spinlocalrank,spinlocaldfrank
   real*8, allocatable :: spinvects(:,:), spinvals(:), work(:), realprojector(:,:)
   logical :: spinallowed,dfallowed
-  integer :: allspinstart(nprocs)
+  integer :: allbotspin(nprocs)
 !  DATATYPE :: doublevects(maxspinsetsize**2)
 !  real*8 :: doublevals(maxspinsetsize)
   
-  OFLWR "Getting SPARSE spinset projector.  Numspinsets is ", numspinsets, " maxspinsetsize is ", maxspinsetsize; CFL
+  OFLWR "Getting Spinset Projectors.  Numspinsets is ", numspinsets, " maxspinsetsize is ", maxspinsetsize; CFL
 
-
-  if (walksonfile.ne.0) then
-
-     if (walksinturn) then
-        call beforebarrier()
-     endif
-
-     OFLWR "Reading spin set projectors...";CFL
-     read(751,iostat=myiostat) numspinsets,maxspinsetsize,spinrank,spindfrank
-
-     if (walksinturn) then
-        call afterbarrier()
-     endif
-
-     call mympiimax(myiostat)
-     if (myiostat.ne.0) then
-        OFLWR "Read error xx44 savewalks.BIN"; CFLST
-     endif
-
-     allocate(spinsets(maxspinsetsize,numspinsets),spinsetprojector(numspinsets))
-     spinsetsize=0;spinsets=0; spinsetrank=0
-
-     if (walksinturn) then
-        call beforebarrier()
-     endif
-     
-     OFLWR "   ...reading spinsets..."; CFL
-     read(751,iostat=myiostat) spinsetsize(1:numspinsets),spinsetrank(1:numspinsets),spinsets(:,:)
-
-     if (walksinturn) then
-        call afterbarrier()
-     endif
-
-     call mympiimax(myiostat)
-     if (myiostat.ne.0) then
-        OFLWR "Read error xx45 savewalks.BIN"; CFLST
-     endif
-
-     do iset=1,numspinsets
-        allocate(spinsetprojector(iset)%mat(spinsetsize(iset), spinsetsize(iset)))
-        allocate(spinsetprojector(iset)%vects(spinsetsize(iset), spinsetrank(iset)))
-     enddo
-
-     if (walksinturn) then
-        call beforebarrier()
-     endif
-
-     OFLWR "   ...reading spin set projector ... "; CFL
-     read(751,iostat=myiostat) (spinsetprojector(i)%mat,spinsetprojector(i)%vects,i=1,numspinsets)     
-     OFLWR "   ...ok, done reading spin set projector ..."; CFL
-
-     if (walksinturn) then
-        call afterbarrier()
-     endif
-
-     call mympiimax(myiostat)
-     if (myiostat.ne.0) then
-        OFLWR "Read error setprojector savewalks.BIN"; CFLST
-     endif
-
-  else
 
      allocate(spinsetprojector(numspinsets))
 
@@ -367,9 +307,8 @@ subroutine configspinset_projector()
           realprojector(maxspinsetsize,maxspinsetsize))
      lwork=10*maxspinsetsize;  allocate(work(lwork))
      
-     OFLWR "Getting spin set projectors...";CFL
-
      elim=0;  elimsets=0;  iset=1; spinrank=0; spindfrank=0
+     spinlocalrank=0; spinlocaldfrank=0
   
      do while (iset.le.numspinsets)
         spinvects=0.d0
@@ -402,13 +341,15 @@ subroutine configspinset_projector()
            endif
         enddo
         spinsetrank(iset)=j
-        spinrank=spinrank+j
 
-        if (dfrestrictflag.eq.0) then
+        spinrank=spinrank+j
+        if (spinsets(1,iset).ge.botconfig.and.spinsets(1,iset).le.topconfig) then
+           spinlocalrank=spinlocalrank+j
+        endif
+        if (dfallowed(configlist(:,spinsets(1,iset)))) then
            spindfrank=spindfrank+j
-        else
-           if (dfallowed(configlist(:,spinsets(1,iset)))) then
-              spindfrank=spindfrank+j
+           if (spinsets(1,iset).ge.botconfig.and.spinsets(1,iset).le.topconfig) then
+              spinlocaldfrank=spinlocaldfrank+j
            endif
         endif
 
@@ -444,28 +385,9 @@ subroutine configspinset_projector()
         endif
      enddo
 
-     if (walkwriteflag.ne.0) then
-        if (walksinturn) then
-           call beforebarrier()
-        endif
-
-        OFLWR "   ...writing spinsets..."; CFL
-        write(751) numspinsets,maxspinsetsize,spinrank,spindfrank
-        write(751) spinsetsize(1:numspinsets),spinsetrank(1:numspinsets),spinsets(:,1:numspinsets)
-        write(751) (spinsetprojector(i)%mat,spinsetprojector(i)%vects,i=1,numspinsets)
-        OFLWR "   ...ok, done writing spinsets..."; CFL
-
-        if (walksinturn) then
-           call afterbarrier()
-        endif
-     endif
-
      deallocate(spinvects, spinvals, realprojector, work)
   
      OFLWR "...done.  Eliminated ", elimsets, " sets with total rank ", elim   ; CFL
-
-  endif !! walksonfile
-
 
   i=0
   do ii=1,numspinsets
@@ -477,55 +399,68 @@ subroutine configspinset_projector()
 
   
   OFLWR  "Number of spin sets is now ", numspinsets
-  WRFL "Total # of spinvects with S^2 = ", (spinrestrictval/2.d0*(spinrestrictval/2.d0+1)), " is ", spinrank, " out of ", configend-configstart+1; CFL
+  WRFL "Number of spinvects with S^2 = ", (spinrestrictval/2.d0*(spinrestrictval/2.d0+1)), " is ", spinrank, " out of ", configend-configstart+1; CFL
 
-  maxspinsperproc=spinrank
+
+
 
   allocate(spinsperproc(nprocs)); spinsperproc=(-1)
 
+  spinsperproc(myrank)=spinlocalrank
+  maxspinsperproc=0
+  ii=0
+  do i=1,nprocs
+     allbotspin(i)=ii+1
+     call mympiibcast(spinsperproc(i),i,1)
+     ii=ii+spinsperproc(i)
+     if (spinsperproc(i).gt.maxspinsperproc) then
+        maxspinsperproc=spinsperproc(i)
+     endif
+  enddo
+  numspinconfig=ii
+  botspin=allbotspin(myrank)
+  topspin=botspin+spinlocalrank
+
 
   if (sparseconfigflag.eq.0) then
-     numspinconfig=spinrank;      spinstart=1; spinend=numspinconfig
-     spinsperproc(1)=numspinconfig
-     maxspinsperproc=numspinconfig
-     firstspinconfig=1; lastspinconfig=numspinconfig; localnspin=numspinconfig
+     if (spinrank.ne.numspinconfig) then
+        OFLWR "ACK CHECKME SPINNN"; CFLST
+     endif
+     spinstart=1
+     spinend=numspinconfig
   else
-     spinsperproc(myrank)=spinrank
-     ii=0
-     do i=1,nprocs
-        allspinstart(i)=ii+1
-        call mympiibcast(spinsperproc(i),i,1)
-        ii=ii+spinsperproc(i)
-        if (spinsperproc(i).gt.maxspinsperproc) then
-           maxspinsperproc=spinsperproc(i)
-        endif
-     enddo
-     numspinconfig=ii
-     spinstart=allspinstart(myrank)
-     spinend=spinstart+spinrank-1
-     if (parconsplit.eq.0) then
-        firstspinconfig=1
-        lastspinconfig=numspinconfig
-        localnspin=numspinconfig
+     if (spinrank.ne.spinlocalrank) then
+        OFLWR "ACK CHECKME SPINNNxxxx"; CFLST
+     endif
+     spinstart=botspin
+     spinend=topspin
+  endif
 
-     else
-        firstspinconfig=spinstart
-        lastspinconfig=spinend
-        localnspin=spinrank
+
+  if (parconsplit.eq.0) then
+     firstspinconfig=1
+     lastspinconfig=numspinconfig
+     localnspin=numspinconfig
+  else
+     firstspinconfig=spinstart
+     lastspinconfig=spinend
+     localnspin=spinrank
+  endif
+
+  numspindfconfig=spinlocaldfrank; 
+
+  call mympiireduceone(numspindfconfig)
+
+  if (sparseconfigflag.eq.0) then
+     if (numspindfconfig.ne.spindfrank) then
+        OFLWR "CHECKME FAIL SPINDF ",numspindfconfig,spindfrank; CFLST
      endif
   endif
 
-  spintotdfrank=spindfrank; 
-  if (sparseconfigflag.ne.0) then !! 05-08-2015 Okay.. was only used if sparseconfigflag.ne.0.. 
-     call mympiireduceone(spintotdfrank)
-  endif
-  
-
-  OFLWR "TOTAL (all processors) rank",numspinconfig," out of ", numconfig
-  WRFL "     Spin DF rank is ", spindfrank, "   all processors ", spintotdfrank
-  WRFL "   This proc:  spinstart : ", spinstart
+  OFLWR "TOTAL (all processors) spin rank",numspinconfig," out of ", numconfig
+  WRFL "     Spin DF rank (all processors) ", numspindfconfig
+  WRFL "   This proc:  spinstart,spinend : ", spinstart,spinend
   WRFL; CFL
-  
 
   
 end subroutine configspinset_projector

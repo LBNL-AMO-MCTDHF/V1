@@ -360,8 +360,8 @@ subroutine sparsequadavector(inavector,jjcalls0)
 
   jjcalls0=0
 
-  allocate(smallvector(numr,botconfig:botconfig+maxconfigsperproc-1),smallvectorspin(numr,spinstart:spinstart+maxspinsperproc-1), &
-       smallvector2(numr,botconfig:botconfig+maxconfigsperproc-1),smallvectorspin2(numr,spinstart:spinstart+maxspinsperproc-1))
+  allocate(smallvector(numr,botconfig:botconfig+maxconfigsperproc-1),smallvectorspin(numr,botspin:botspin+maxspinsperproc-1), &
+       smallvector2(numr,botconfig:botconfig+maxconfigsperproc-1),smallvectorspin2(numr,botspin:botspin+maxspinsperproc-1))
 
   allocate( vector(numr,firstconfig:lastconfig), vector2(numr,firstconfig:lastconfig), vector3(numr,firstconfig:lastconfig))
 
@@ -439,7 +439,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
   if (allspinproject.ne.0) then
      
      smallvectorspin(:,:)=0d0
-     call configspin_transformto_local(numr,vector(:,botconfig),smallvectorspin(:,spinstart))
+     call configspin_transformto_local(numr,vector(:,botconfig),smallvectorspin(:,botspin))
      smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
      call dgsolve0( smallvectorspin(:,:), smallvectorspin2(:,:), jjcalls, paraamult_spin_padded,quadprecon,parquadpreconsub_spin_padded, thisaerror,numr*maxspinsperproc,maxaorder,1)
 

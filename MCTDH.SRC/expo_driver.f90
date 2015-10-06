@@ -591,7 +591,7 @@ subroutine exposparseprop(inavector0,outavector,time)
    smallvector(:,:)=0; smallvectorout(:,:)=0d0
    if (allspinproject.ne.0) then
       call configspin_transformto(numr,inavector,inavectorspin)
-      smallvector(:,1:spinend-spinstart+1)=inavectorspin(:,spinstart:spinend)
+      smallvector(:,1:topspin-botspin+1)=inavectorspin(:,botspin:topspin)
    else
       smallvector(:,1:topconfig-botconfig+1)=inavector(:,botconfig:topconfig)
    endif
@@ -605,7 +605,7 @@ subroutine exposparseprop(inavector0,outavector,time)
       if (allspinproject.ne.0) then
          call parconfigexpomult_spin(smallvector,smallvectortemp)
 
-         smallvectortemp(:,1:spinend-spinstart+1)=  smallvectortemp(:,1:spinend-spinstart+1) + workdrivingavecspin(:,spinstart:spinend) * timefac 
+         smallvectortemp(:,1:topspin-botspin+1)=  smallvectortemp(:,1:topspin-botspin+1) + workdrivingavecspin(:,botspin:topspin) * timefac 
 
 !! par_timestep is a-norm estimate, ok, whatever
 

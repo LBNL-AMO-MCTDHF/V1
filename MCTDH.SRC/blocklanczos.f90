@@ -19,7 +19,7 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
   endif
 
   if (allspinproject.ne.0) then
-     calcsize=numspinconfig;   mytop=spinend; mybot=spinstart
+     calcsize=numspinconfig;   mytop=topspin; mybot=botspin
      localsize=localnspin
      localstart=firstspinconfig
      localend=lastspinconfig
@@ -33,7 +33,7 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
      maxdim=calcsize*numr
   else
      if (allspinproject.ne.0) then
-        maxdim=spintotdfrank*numr
+        maxdim=numspindfconfig*numr
      else
         maxdim=numdfconfigs*numr
      endif
@@ -231,8 +231,8 @@ recursive subroutine parblockconfigmult_spin(inavectorspin,outavectorspin)
   use mpimod
   use xxxmod
   implicit none
-  DATATYPE,intent(in) :: inavectorspin(numr,spinstart:spinend)
-  DATATYPE,intent(out) :: outavectorspin(numr,spinstart:spinend)
+  DATATYPE,intent(in) :: inavectorspin(numr,botspin:topspin)
+  DATATYPE,intent(out) :: outavectorspin(numr,botspin:topspin)
   DATATYPE :: intemp(numr,botconfig:topconfig),ttvector2(numr,botconfig:topconfig)
 
   call configspin_transformfrom_local(numr,inavectorspin,intemp)

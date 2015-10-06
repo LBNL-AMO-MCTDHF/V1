@@ -429,16 +429,24 @@ DATATYPE, allocatable :: bondpoints(:),bondweights(:),elecweights(:,:,:), elecra
 real*8 :: langramthresh=1d-9
 integer :: numreduced=1
 integer :: headersize=200
-integer :: spinstart=-1, spinend=-1
+
 integer :: numconfig=-1
 integer, allocatable :: configsperproc(:)
 integer ::       maxconfigsperproc
+integer :: botconfig=-1,topconfig=-1
+integer :: configend=-1,configstart=-1
+integer :: firstconfig,lastconfig,localnconfig
+
+integer :: numspinconfig=0
 integer, allocatable :: spinsperproc(:)
 integer ::       maxspinsperproc
+integer :: botspin=-1,topspin=-1
+integer :: spinstart=-1, spinend=-1
 integer :: firstspinconfig,lastspinconfig,localnspin
-integer :: botconfig,topconfig
-integer :: configend,configstart  !! newwalks.f90, new mpi method distribute walks
-integer :: firstconfig,lastconfig,localnconfig
+
+integer :: numspindfconfig=0
+integer :: numdfconfigs=-1
+
 integer :: walksonfile=0       
 integer :: autosize, autosteps
 integer :: auto_biortho=1        !! do we want to use biorthonormalization or permutation overlaps? 0 perm overlaps, 1 biortho
@@ -448,9 +456,6 @@ integer :: lanagain = -1  !! Lanczos restart flag.  Default -1 (lanczos eigen re
                           !!    Otherwise, max number of maxlanorder full builds of krylov spaces (# restarts + 1)
                           !! Improved relax: starts at 1.  Incremented every time energy goes up with an iteration.
                           !!   If subsequent iters are within stopthresh, turned to -1. 
-integer :: numspinconfig=0
-integer :: spintotdfrank=0
-integer :: numdfconfigs=-1
 integer :: fluxsteps=1
 real*8 :: globaltime=0.d0   !! for ease of output
 !!! real*8 :: rcond=1.d-4      !! singular value for split operator cranck-nicholson
