@@ -321,19 +321,29 @@ program mctdhf
      
      call getdfcon()
 
-     allocate(basisperproc(nprocs))
+     allocate(basisperproc(nprocs),dfbasisperproc(nprocs))
 
      if (allspinproject.eq.0) then
-        numbasisconfig=numdfconfigs
-        basisperproc(:)=dfconfsperproc(:)
-        maxbasisperproc=maxdfconfsperproc
-        botbasis=botdfconfig;  topbasis=topdfconfig
+        numbasis=numconfig
+        basisperproc(:)=configsperproc(:)
+        maxbasisperproc=maxconfigsperproc
+        botbasis=botconfig;  topbasis=topconfig
+
+        numdfbasis=numdfconfigs
+        dfbasisperproc(:)=dfconfsperproc(:)
+        maxdfbasisperproc=maxdfconfsperproc
+        botdfbasis=botdfconfig;  topdfbasis=topdfconfig
         
      else
-        numbasisconfig=numspindfconfig
-        basisperproc(:)=spindfsperproc(:)
-        maxbasisperproc=maxspindfsperproc
-        botbasis=botdfspin;  topbasis=topdfspin
+        numbasis=numspinconfig
+        basisperproc(:)=spinsperproc(:)
+        maxbasisperproc=maxspinsperproc
+        botbasis=botspin;  topbasis=topspin
+
+        numdfbasis=numspindfconfig
+        dfbasisperproc(:)=spindfsperproc(:)
+        maxdfbasisperproc=maxspindfsperproc
+        botdfbasis=botdfspin;  topdfbasis=topdfspin
      endif
 
      call configlistwrite()
@@ -477,9 +487,7 @@ program mctdhf
 
   deallocate(myavectorhole,myavectorexcitefrom,myavectorexciteto)
 
-  if (dfrestrictflag.ne.0) then
-     call dfcondealloc()
-  endif
+  call dfcondealloc()
   
   call natprojdealloc(); 
 
