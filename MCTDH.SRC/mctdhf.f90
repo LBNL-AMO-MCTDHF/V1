@@ -309,13 +309,11 @@ program mctdhf
 
      call walkalloc();             call walks()
 
-     if (spinwalkflag==1) then
-        call spinwalkalloc(); 
-        call spinwalks()
-        call spinsets_first()
-        call configspin_matel()
-        call configspinset_projector()
-     endif
+     call spinwalkalloc(); 
+     call spinwalks()
+     call spinsets_first()
+     call configspin_matel()
+     call configspinset_projector()
 
      if (walkwriteflag.ne.0) then
         OFLWR "Closing walks.BIN"; CFL; close(751);

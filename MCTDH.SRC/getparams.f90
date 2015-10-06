@@ -64,7 +64,7 @@ subroutine getparams()
        timefacforce, avectoroutfile, spfoutfile,  autopermthresh, messamount, numshells,   &
        lanthresh, lanczosorder,  lioreg, &   !! rcond
        autonormthresh,  saveflag, save_every, &
-       mrestrictflag, mrestrictval, fluxtimestep, autotimestep,  spinwalkflag, nucfluxflag, &
+       mrestrictflag, mrestrictval, fluxtimestep, autotimestep,  nucfluxflag, &
        nosparseforce,  allspinproject,  numfluxfiles,  verletnum, &
        constraintflag, dfrestrictflag, improvedrelaxflag, mcscfnum,  improvednatflag, avectorfile, spffile, &
        quadprecon,  improvedquadflag, quadtol,  &
@@ -428,10 +428,6 @@ subroutine getparams()
      if (real(timefac,8).ne.0.d0) then
         OFLWR "denmat Constraint flag only available for real time propagation. use improvednatflag."; CFLST
      endif
-  endif
-
-  if (spinwalkflag==0) then
-     allspinproject=0
   endif
 
   if (numshells.lt.1) then

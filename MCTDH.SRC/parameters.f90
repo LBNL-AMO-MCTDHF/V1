@@ -126,7 +126,6 @@ integer :: ugrestrictval=1       !!              !!    like mrestrictval but for
 integer :: restrictflag=1        !!              !! Restrict spin projection of determinants?
 integer :: restrictms=0          !!              !! For restrictflag=1: 2*m_s: 2x total m_s (multiplicity of 
                                                  !!    lowest included spin states minus one)
-integer :: spinwalkflag=1        !!              !! Calculate spin info (required for below 2 options)
 integer :: allspinproject=1      !!              !! Constrain S(S+1) for propagation?
 integer :: spinrestrictval=0     !!              !! For allspinproject=1: determines spin. Default high spin S=M_s.
                                                  !!  To override use this variable. Equals 2S if S^2 eigval is S(S+1)

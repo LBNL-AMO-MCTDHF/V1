@@ -684,13 +684,12 @@ recursive subroutine paraamult_spin_padded(notusedint,inavectorspin,outavectorsp
   DATATYPE,intent(in) :: inavectorspin(numr,maxspinsperproc)
   DATATYPE,intent(out) :: outavectorspin(numr,maxspinsperproc)
   DATATYPE :: inavector(numr,maxconfigsperproc), outavector(numr,maxconfigsperproc)
-  if (spinwalkflag.eq.0) then
-     OFLWR "WTF SPIN"; CFLST
-  endif
+
   outavectorspin(:,:)=0d0   
   call configspin_transformfrom_local(numr,inavectorspin,inavector)
   call paraamult_padded(0,inavector,outavector)
   call configspin_transformto_local(numr,outavector,outavectorspin)
+
 end subroutine paraamult_spin_padded
 
 
@@ -720,9 +719,7 @@ recursive subroutine parquadpreconsub_spin_padded(notusedint,inavectorspin,outav
   DATATYPE,intent(in) :: inavectorspin(numr,maxspinsperproc)
   DATATYPE,intent(out) :: outavectorspin(numr,maxspinsperproc)
   DATATYPE :: inavector(numr,maxconfigsperproc),outavector(numr,maxconfigsperproc)
-  if (spinwalkflag.eq.0) then
-     OFLWR "WTF SPIN"; CFLST
-  endif
+
   call configspin_transformfrom_local(numr,inavectorspin,inavector)
   call parquadpreconsub_padded(0,inavector,outavector)
 

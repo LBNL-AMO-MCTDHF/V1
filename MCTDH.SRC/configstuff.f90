@@ -336,10 +336,6 @@ subroutine parconfigexpomult_spin(inavectorspin,outavectorspin)
 
   call avectortime(3)
 
-  if (spinwalkflag.eq.0) then
-     OFLWR "WTF SPIN"; CFLST
-  endif
-
   call configspin_transformfrom_local(numr,inavectorspin,inavector)
 
   call avectortime(2)

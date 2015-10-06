@@ -47,10 +47,6 @@ subroutine configspin_project_local(vector,iprint)
   DATATYPE :: smallvect(numr,maxspinsetsize), smalltemp(numr,maxspinsetsize), &
        outvector(numr,configstart:configend)
 
-  if (spinwalkflag==0) then
-     OFLWR "Error, configspin_projectmany called but spinwalkflag is 1"; CFLST
-  endif
-
   isize=configend-configstart+1
 
   normsq=real(hermdot(vector,vector,numr*isize))  !! ok hermdot
@@ -220,9 +216,6 @@ subroutine configspin_matel()
   use parameters
   implicit none
   integer ::     config2, config1,   iwalk, myind,myiostat
-  if (spinwalkflag == 0) then
-     return
-  endif
 
   if (walksonfile.ne.0) then
 

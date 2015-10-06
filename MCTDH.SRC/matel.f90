@@ -345,9 +345,6 @@ subroutine assemble_spinconfigmat(outmatrix, matrix_ptr, boflag, nucflag, pulsef
   if (sparseconfigflag/=0) then
      OFLWR "Error, assemble_full_config_matel called when sparseconfigflag/=0";CFLST
   endif
-  if (spinwalkflag.eq.0) then
-     OFLWR "Error, assemble spin matel called but spinwalkflag is zero"; CFLST
-  endif
   
   allocate(  bigmatrix(numconfig*numr,numconfig*numr), halfmatrix(numspinconfig*numr,numconfig*numr),halfmatrix2(numconfig*numr,numspinconfig*numr))
 
