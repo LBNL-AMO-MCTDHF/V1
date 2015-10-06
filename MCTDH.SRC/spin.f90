@@ -27,7 +27,7 @@ subroutine configspin_project_all(vector, iprint)
   integer :: iprint
   DATATYPE :: vector(numr,numconfig)
 
-  call configspin_project_local(vector(:,botwalk),iprint)
+  call configspin_project_local(vector(:,configstart),iprint)
 
   if (sparseconfigflag.ne.0) then
      call mpiallgather(vector,numconfig*numr, configsperproc*numr,maxconfigsperproc*numr)
@@ -43,15 +43,15 @@ subroutine configspin_project_local(vector,iprint)
   implicit none
   integer :: iprint, iset, ii, isize
   real*8 :: normsq, normsq2
-  DATATYPE :: hermdot, vector(numr,botwalk:topwalk)
+  DATATYPE :: hermdot, vector(numr,configstart:configend)
   DATATYPE :: smallvect(numr,maxspinsetsize), smalltemp(numr,maxspinsetsize), &
-       outvector(numr,botwalk:topwalk)
+       outvector(numr,configstart:configend)
 
   if (spinwalkflag==0) then
      OFLWR "Error, configspin_projectmany called but spinwalkflag is 1"; CFLST
   endif
 
-  isize=topwalk-botwalk+1
+  isize=configend-configstart+1
 
   normsq=real(hermdot(vector,vector,numr*isize))  !! ok hermdot
   if (sparseconfigflag.ne.0) then
@@ -111,7 +111,7 @@ subroutine configspin_transformto_all(nblock,invector,outvector)
   DATATYPE,intent(out) :: outvector(nblock,numspinconfig)
 
   outvector(:,:)=0d0
-  call configspin_transformto_local(nblock,invector(:,botwalk),outvector(:,spinstart))
+  call configspin_transformto_local(nblock,invector(:,configstart),outvector(:,spinstart))
   if (sparseconfigflag.ne.0) then
      call mpiallgather(outvector(:,:),numspinconfig*nblock, spinsperproc(:)*nblock,maxspinsperproc*nblock)
   endif
@@ -126,7 +126,7 @@ subroutine configspin_transformto_local(nblock,invector,outvector)
   use parameters
   implicit none
   integer :: nblock, iset, iind,ii
-  DATATYPE,intent(in) :: invector(nblock,botwalk:topwalk)
+  DATATYPE,intent(in) :: invector(nblock,configstart:configend)
   DATATYPE,intent(out) :: outvector(nblock,spinrank)
 
   DATATYPE :: smallvect(nblock,maxspinsetsize), smalltemp(nblock,maxspinsetsize)
@@ -175,7 +175,7 @@ subroutine configspin_transformfrom_all(nblock,invector,outvector)
   DATATYPE,intent(in) :: invector(nblock,numspinconfig)
 
   outvector(:,:)=0d0
-  call configspin_transformfrom_local(nblock,invector(:,spinstart),outvector(:,botwalk))
+  call configspin_transformfrom_local(nblock,invector(:,spinstart),outvector(:,configstart))
   if (sparseconfigflag.ne.0) then
         call mpiallgather(outvector(:,:),numconfig*nblock, configsperproc(:)*nblock,maxconfigsperproc*nblock)
   endif
@@ -189,7 +189,7 @@ subroutine configspin_transformfrom_local(nblock,invector,outvector)
   use parameters
   implicit none
   integer :: nblock,iset, iind, ii
-  DATATYPE,intent(out) :: outvector(nblock,botwalk:topwalk)
+  DATATYPE,intent(out) :: outvector(nblock,configstart:configend)
   DATATYPE,intent(in) :: invector(nblock,spinrank)
   DATATYPE :: smallvect(nblock,maxspinsetsize), smalltemp(nblock,maxspinsetsize)
 
@@ -246,7 +246,7 @@ subroutine configspin_matel()
   else   !WALKSONFILE
 
      configspinmatel(:,:)=0.d0
-     do config1=botwalk,topwalk
+     do config1=configstart,configend
         myind=1
         
 !! msvalue is 2x ms quantum number
@@ -484,7 +484,7 @@ subroutine configspinset_projector()
 
   
   OFLWR  "Number of spin sets is now ", numspinsets
-  WRFL "Total # of spinvects with S^2 = ", (spinrestrictval/2.d0*(spinrestrictval/2.d0+1)), " is ", spinrank, " out of ", topwalk-botwalk+1; CFL
+  WRFL "Total # of spinvects with S^2 = ", (spinrestrictval/2.d0*(spinrestrictval/2.d0+1)), " is ", spinrank, " out of ", configend-configstart+1; CFL
 
   maxspinsperproc=spinrank
 

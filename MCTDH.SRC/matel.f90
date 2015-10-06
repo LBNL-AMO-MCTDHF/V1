@@ -263,7 +263,7 @@ subroutine arbitraryconfig_matel00transpose(onebodymat, smallmatrixtr,topdim)
   implicit none
 
   integer ::    config1,  iwalk,topdim,myind
-  DATATYPE :: onebodymat(nspf,nspf), smallmatrixtr(topdim,botwalk:topwalk)
+  DATATYPE :: onebodymat(nspf,nspf), smallmatrixtr(topdim,configstart:configend)
 
   if ( (sparseconfigflag.ne.0.and.topdim.ne.maxsinglewalks) .or. &
        (sparseconfigflag.eq.0.and.topdim.ne.numconfig) ) then
@@ -299,7 +299,7 @@ subroutine arbitraryconfig_matel_doubles00transpose(twobodymat, smallmatrixtr,to
   use parameters
   implicit none
   integer ::    config1, iwalk,topdim,myind
-  DATATYPE :: twobodymat(nspf,nspf,nspf,nspf), smallmatrixtr(topdim,botwalk:topwalk)
+  DATATYPE :: twobodymat(nspf,nspf,nspf,nspf), smallmatrixtr(topdim,configstart:configend)
 
   if ( (sparseconfigflag.ne.0.and.topdim.ne.maxdoublewalks) .or. &
        (sparseconfigflag.eq.0.and.topdim.ne.numconfig) ) then

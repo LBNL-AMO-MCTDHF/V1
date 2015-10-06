@@ -66,7 +66,7 @@ subroutine getdfcon()
   numdfwalks=0
   do i=1,NONdfconfigs
      iconfig=dfNOTconfigs(i)
-     if (iconfig.ge.botwalk.and.iconfig.le.topwalk) then
+     if (iconfig.ge.configstart.and.iconfig.le.configend) then
         do j=1,numsinglewalks(iconfig)
            if (dfincluded(configlist(:,singlewalk(j,iconfig)))) then
               numdfwalks=numdfwalks+1
@@ -82,7 +82,7 @@ subroutine getdfcon()
   numdfwalks=0
   do i=1,NONdfconfigs
      iconfig=dfNOTconfigs(i)
-     if (iconfig.ge.botwalk.and.iconfig.le.topwalk) then
+     if (iconfig.ge.configstart.and.iconfig.le.configend) then
         do j=1,numsinglewalks(iconfig)
            if (dfincluded(configlist(:,singlewalk(j,iconfig)))) then
               numdfwalks=numdfwalks+1
@@ -146,8 +146,8 @@ subroutine df_project_local(avector,howmany)
   use dfconmod
   implicit none
   integer :: howmany,i
-  DATATYPE :: avector(howmany,botwalk:topwalk)
-  do i=botwalk,topwalk
+  DATATYPE :: avector(howmany,configstart:configend)
+  do i=configstart,configend
      avector(:,i)=avector(:,i)*dfincludedmask(i)
   enddo
 end subroutine df_project_local
@@ -353,7 +353,7 @@ subroutine get_dfconstraint(time)
   yyy%cptr(0)%xconmatel(:,:)=0.d0;   yyy%cptr(0)%xconmatelxx(:,:)=0.d0;   yyy%cptr(0)%xconmatelyy(:,:)=0.d0;   yyy%cptr(0)%xconmatelzz(:,:)=0.d0
 
   allocate(avectorp(numr,firstconfig:lastconfig), avector(numr,firstconfig:lastconfig), &
-       smallwalkvects(numr,botwalk:topwalk,nspf,nspf), rhs(nspf,nspf),  rhomat(nspf,nspf,nspf,nspf))
+       smallwalkvects(numr,configstart:configend,nspf,nspf), rhs(nspf,nspf),  rhomat(nspf,nspf,nspf,nspf))
 
   isize=0
   do ishell=1,numshells-1
@@ -437,7 +437,7 @@ subroutine get_dfconstraint(time)
 !! THIS TAKES A LONG TIME.        !! should only need to do off diagonal blocks but doing all to check
 !!   ...no for general case do all I think (Except for diag, whatever)
 
-        ii=(topwalk-botwalk+1)*numr
+        ii=(configend-configstart+1)*numr
         call MYGEMM(CNORMCHAR,'N',nspf**2,nspf**2,ii,DATAONE,smallwalkvects,ii,smallwalkvects,ii,DATAZERO,rhomat,nspf**2)
 
         call system_clock(jtime);        times(4)=times(4)+jtime-itime;     itime=jtime
@@ -455,20 +455,20 @@ subroutine get_dfconstraint(time)
         if (conway.eq.1) then
            do ii=1,isize
               walknorm(ii)=walknorm(ii)+sqrt(abs(DOT_PRODUCT(&
-                   RESHAPE(smallwalkvects(:,:,ipairs(1,ii),ipairs(2,ii)),(/(topwalk-botwalk+1)*numr/)), &
-                   RESHAPE(smallwalkvects(:,:,ipairs(1,ii),ipairs(2,ii)),(/(topwalk-botwalk+1)*numr/))))) 
+                   RESHAPE(smallwalkvects(:,:,ipairs(1,ii),ipairs(2,ii)),(/(configend-configstart+1)*numr/)), &
+                   RESHAPE(smallwalkvects(:,:,ipairs(1,ii),ipairs(2,ii)),(/(configend-configstart+1)*numr/))))) 
               walknorm(ii+isize)=walknorm(ii+isize)+sqrt(abs(DOT_PRODUCT(&
-                   RESHAPE(smallwalkvects(:,:,ipairs(2,ii),ipairs(1,ii)),(/(topwalk-botwalk+1)*numr/)), &
-                   RESHAPE(smallwalkvects(:,:,ipairs(2,ii),ipairs(1,ii)),(/(topwalk-botwalk+1)*numr/))))) 
+                   RESHAPE(smallwalkvects(:,:,ipairs(2,ii),ipairs(1,ii)),(/(configend-configstart+1)*numr/)), &
+                   RESHAPE(smallwalkvects(:,:,ipairs(2,ii),ipairs(1,ii)),(/(configend-configstart+1)*numr/))))) 
            enddo
         else
            do ii=1,isize
               rsum=sqrt(abs(DOT_PRODUCT(&
-                   RESHAPE(smallwalkvects(:,:,ipairs(1,ii),ipairs(2,ii)),(/(topwalk-botwalk+1)*numr/)), &
-                   RESHAPE(smallwalkvects(:,:,ipairs(1,ii),ipairs(2,ii)),(/(topwalk-botwalk+1)*numr/)))) &
+                   RESHAPE(smallwalkvects(:,:,ipairs(1,ii),ipairs(2,ii)),(/(configend-configstart+1)*numr/)), &
+                   RESHAPE(smallwalkvects(:,:,ipairs(1,ii),ipairs(2,ii)),(/(configend-configstart+1)*numr/)))) &
                    +abs(DOT_PRODUCT(&
-                   RESHAPE(smallwalkvects(:,:,ipairs(2,ii),ipairs(1,ii)),(/(topwalk-botwalk+1)*numr/)), &
-                   RESHAPE(smallwalkvects(:,:,ipairs(2,ii),ipairs(1,ii)),(/(topwalk-botwalk+1)*numr/)))))
+                   RESHAPE(smallwalkvects(:,:,ipairs(2,ii),ipairs(1,ii)),(/(configend-configstart+1)*numr/)), &
+                   RESHAPE(smallwalkvects(:,:,ipairs(2,ii),ipairs(1,ii)),(/(configend-configstart+1)*numr/)))))
               walknorm(ii)=walknorm(ii)+rsum
               walknorm(ii+isize)=walknorm(ii+isize)+rsum
            enddo
@@ -510,7 +510,7 @@ subroutine get_dfconstraint(time)
         rhs(:,:)=0d0
         do j=1,nspf
            do i=1,nspf
-              rhs(i,j)=dot(smallwalkvects(:,:,i,j),avectorp(:,botwalk:topwalk),(topwalk-botwalk+1)*numr)
+              rhs(i,j)=dot(smallwalkvects(:,:,i,j),avectorp(:,configstart:configend),(configend-configstart+1)*numr)
            enddo
         enddo
 
@@ -644,7 +644,7 @@ subroutine get_smallwalkvects(avector, smallwalkvects,nblock,howmany)
 
   integer ::    i,ii,ix,nblock,howmany
   DATATYPE,intent(in) ::  avector(nblock,firstconfig:lastconfig,howmany)
-  DATATYPE,intent(out) :: smallwalkvects(nblock,botwalk:topwalk,howmany,nspf,nspf)
+  DATATYPE,intent(out) :: smallwalkvects(nblock,configstart:configend,howmany,nspf,nspf)
   DATATYPE, allocatable ::  bigavector(:,:,:)
 
   if (dfrestrictflag.lt.1) then
@@ -682,19 +682,19 @@ subroutine get_rhomat(avector, rhomat,nblock,howmany)
   DATATYPE,intent(in) ::  avector(nblock,firstconfig:lastconfig,howmany)
   DATATYPE,intent(out) :: rhomat(nspf,nspf,nspf,nspf)
   DATATYPE, allocatable ::  &
-       smallwalkvects(:,:,:,:,:)   !! nblock,botwalk:topwalk,howmany,alpha,beta  alpha=included beta=excluded
+       smallwalkvects(:,:,:,:,:)   !! nblock,configstart:configend,howmany,alpha,beta  alpha=included beta=excluded
 
   if (dfrestrictflag.lt.1) then
      OFLWR "WTF DFRESTRICT IS  ", dfrestrictflag; CFLST
   endif
   
-  allocate(smallwalkvects(nblock,botwalk:topwalk,howmany,nspf,nspf))
+  allocate(smallwalkvects(nblock,configstart:configend,howmany,nspf,nspf))
 
   call get_smallwalkvects(avector,smallwalkvects,nblock,howmany)
 
 !! THIS TAKES A LONG TIME.
   
-  ii=(topwalk-botwalk+1)*numr
+  ii=(configend-configstart+1)*numr
   call MYGEMM(CNORMCHAR,'N',nspf**2,nspf**2,ii,DATAONE,smallwalkvects,ii,smallwalkvects,ii,DATAZERO,rhomat,nspf**2)
 
   if (sparseconfigflag.ne.0) then

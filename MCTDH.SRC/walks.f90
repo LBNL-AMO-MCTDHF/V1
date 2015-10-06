@@ -111,23 +111,23 @@ subroutine walkalloc()
 
 !! 06-2015 configpserproc also in newconfig.f90
 
-  allocate( numsinglewalks(botwalk:topwalk) , numdoublewalks(botwalk:topwalk) )
-  allocate( numsinglediagwalks(botwalk:topwalk) , numdoublediagwalks(botwalk:topwalk) )
+  allocate( numsinglewalks(configstart:configend) , numdoublewalks(configstart:configend) )
+  allocate( numsinglediagwalks(configstart:configend) , numdoublediagwalks(configstart:configend) )
 
   call getnumwalks()
   OFLWR "Allocating singlewalks"; CFL
-  allocate( singlewalk(maxsinglewalks,botwalk:topwalk), singlediag(numelec,botwalk:topwalk) )
+  allocate( singlewalk(maxsinglewalks,configstart:configend), singlediag(numelec,configstart:configend) )
   singlewalk=-1
-  allocate( singlewalkdirphase(maxsinglewalks,botwalk:topwalk) )
+  allocate( singlewalkdirphase(maxsinglewalks,configstart:configend) )
   singlewalkdirphase=0
-  allocate( singlewalkopspf(1:2,maxsinglewalks,botwalk:topwalk) )
+  allocate( singlewalkopspf(1:2,maxsinglewalks,configstart:configend) )
   singlewalkopspf=-1
   OFLWR "Allocating doublewalks"; CFL
-  allocate( doublewalkdirspf(1:4,maxdoublewalks,botwalk:topwalk ) )
+  allocate( doublewalkdirspf(1:4,maxdoublewalks,configstart:configend ) )
   doublewalkdirspf=-1
-  allocate( doublewalkdirphase(maxdoublewalks,botwalk:topwalk) )
+  allocate( doublewalkdirphase(maxdoublewalks,configstart:configend) )
   doublewalkdirphase=0
-  allocate( doublewalk(maxdoublewalks,botwalk:topwalk), doublediag(numelec*(numelec-1),botwalk:topwalk) )
+  allocate( doublewalk(maxdoublewalks,configstart:configend), doublediag(numelec*(numelec-1),configstart:configend) )
   doublewalk=-1
   OFLWR "     ..done walkalloc."; CFL
 end subroutine walkalloc
@@ -253,7 +253,7 @@ subroutine walks()
   do config1=botconfig,topconfig
 
      if (mod(config1,1000).eq.0) then
-        OFLWR config1, " out of ", topwalk;        call closefile()
+        OFLWR config1, " out of ", configend;        call closefile()
      endif
 
      iwalk=0; idiag=0
@@ -349,7 +349,7 @@ subroutine walks()
   do config1=botconfig,topconfig
 
      if (mod(config1,1000).eq.0) then
-        OFLWR config1, " out of ", topwalk;        CFL
+        OFLWR config1, " out of ", configend;        CFL
      endif
 
      iwalk=0; idiag=0
@@ -472,9 +472,9 @@ subroutine walks()
   if (sortwalks.ne.0) then
 
      OFLWR "Sorting walks..."; CFL
-     do config1=botwalk,topwalk
+     do config1=configstart,configend
         if (mod(config1,1000).eq.0) then
-           OFLWR "   ...config ", config1," of ", topwalk; CFL
+           OFLWR "   ...config ", config1," of ", configend; CFL
         endif
         
         call getlistorder(singlewalk(:,config1),listorder(:),numsinglewalks(config1))
@@ -686,7 +686,7 @@ subroutine getnumwalks()
 
      do config1=botconfig,topconfig
         if (mod(config1,1000).eq.0) then
-           OFLWR config1, " out of ", topwalk;        call closefile()
+           OFLWR config1, " out of ", configend;        call closefile()
         endif
         
         iwalk=0
@@ -791,7 +791,7 @@ subroutine getnumwalks()
   maxsinglewalks=0;  maxdoublewalks=0
 
   totwalks=0
-  do config1=botwalk,topwalk
+  do config1=configstart,configend
 
      if (maxsinglewalks.lt.numsinglewalks(config1)) then
         maxsinglewalks=numsinglewalks(config1)

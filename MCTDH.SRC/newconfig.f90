@@ -824,12 +824,12 @@ endif
      topconfig=alltopconfigs(myrank)
 
      if (sparseconfigflag.eq.0) then
-        botwalk=1
-        topwalk=numconfig
+        configstart=1
+        configend=numconfig
         parconsplit=0
      else
-        botwalk=botconfig
-        topwalk=topconfig
+        configstart=botconfig
+        configend=topconfig
      endif
 
      allocate(configsperproc(nprocs))

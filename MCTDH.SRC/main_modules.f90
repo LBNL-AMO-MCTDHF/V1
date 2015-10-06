@@ -299,7 +299,7 @@ module dfconmod
 
   integer, allocatable :: dfincludedmask(:), dfincludedconfigs(:)
 
-!! careful!  parconfigsplit, botwalk, topwalk, etc.
+!! careful!  parconfigsplit, configstart, configend, etc.
 
   integer :: numdfwalks=-1    !! all walks, for all configurations
   integer, allocatable :: dfwalkto(:)    !! excluded  
@@ -540,17 +540,17 @@ subroutine sparseptralloc(inptr)
   implicit none
   Type(SPARSEPTR) :: inptr
 
-  allocate(inptr%xpotsparsemattr    (maxdoublewalks,botwalk:topwalk))
-  allocate(inptr%xopsparsemattr     (maxsinglewalks,botwalk:topwalk))
-  allocate(inptr%xonepotsparsemattr (maxsinglewalks,botwalk:topwalk))
-  allocate(inptr%xpulsesparsemattrxx(maxsinglewalks,botwalk:topwalk))
-  allocate(inptr%xpulsesparsemattryy(maxsinglewalks,botwalk:topwalk))
-  allocate(inptr%xpulsesparsemattrzz(maxsinglewalks,botwalk:topwalk))
-  allocate(inptr%xconsparsemattr    (maxsinglewalks,botwalk:topwalk))
-  allocate(inptr%xconsparsemattrxx  (maxsinglewalks,botwalk:topwalk))
-  allocate(inptr%xconsparsemattryy  (maxsinglewalks,botwalk:topwalk))
-  allocate(inptr%xconsparsemattrzz  (maxsinglewalks,botwalk:topwalk))
-  allocate(inptr%xysparsemattr      (maxsinglewalks,botwalk:topwalk))
+  allocate(inptr%xpotsparsemattr    (maxdoublewalks,configstart:configend))
+  allocate(inptr%xopsparsemattr     (maxsinglewalks,configstart:configend))
+  allocate(inptr%xonepotsparsemattr (maxsinglewalks,configstart:configend))
+  allocate(inptr%xpulsesparsemattrxx(maxsinglewalks,configstart:configend))
+  allocate(inptr%xpulsesparsemattryy(maxsinglewalks,configstart:configend))
+  allocate(inptr%xpulsesparsemattrzz(maxsinglewalks,configstart:configend))
+  allocate(inptr%xconsparsemattr    (maxsinglewalks,configstart:configend))
+  allocate(inptr%xconsparsemattrxx  (maxsinglewalks,configstart:configend))
+  allocate(inptr%xconsparsemattryy  (maxsinglewalks,configstart:configend))
+  allocate(inptr%xconsparsemattrzz  (maxsinglewalks,configstart:configend))
+  allocate(inptr%xysparsemattr      (maxsinglewalks,configstart:configend))
 
 end subroutine sparseptralloc
 

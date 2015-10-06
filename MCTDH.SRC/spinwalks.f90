@@ -19,13 +19,13 @@ subroutine spinwalkalloc()
   
   OFLWR "Go spinwalks. "; CFL
   
-  allocate(unpaired(numelec,botwalk:topwalk), numunpaired(botwalk:topwalk), msvalue(botwalk:topwalk), numspinwalks(botwalk:topwalk))
+  allocate(unpaired(numelec,configstart:configend), numunpaired(configstart:configend), msvalue(configstart:configend), numspinwalks(configstart:configend))
 
   call getnumspinwalks()
 
-  allocate(spinwalk(maxspinwalks,botwalk:topwalk),spinwalkdirphase(maxspinwalks,botwalk:topwalk))
-  allocate(configspinmatel(maxspinwalks+1,botwalk:topwalk))
-  allocate(spinsetsize(topwalk-botwalk+1),spinsetrank(topwalk-botwalk+1))
+  allocate(spinwalk(maxspinwalks,configstart:configend),spinwalkdirphase(maxspinwalks,configstart:configend))
+  allocate(configspinmatel(maxspinwalks+1,configstart:configend))
+  allocate(spinsetsize(configend-configstart+1),spinsetrank(configend-configstart+1))
 
 end subroutine spinwalkalloc
 
@@ -70,7 +70,7 @@ subroutine spinwalks()
      endif
 
      OFLWR "   ...reading spinwalks..."; CFL
-     read(751,iostat=myiostat) spinwalk(:,botwalk:topwalk),spinwalkdirphase(:,botwalk:topwalk) 
+     read(751,iostat=myiostat) spinwalk(:,configstart:configend),spinwalkdirphase(:,configstart:configend) 
      OFLWR "   ...done reading spinwalks..."; CFL
 
      if (walksinturn) then
@@ -87,7 +87,7 @@ subroutine spinwalks()
 
      OFLWR "Calculating spin walks.";  call closefile()
 
-     do config1=botwalk,topwalk
+     do config1=configstart,configend
 
      iwalk=0
         do ii=1,numunpaired(config1)
@@ -116,8 +116,8 @@ subroutine spinwalks()
                     spinwalk(iwalk,config1)=config2
 
 
-                    if ((config2.lt.botwalk.or.config2.gt.topwalk)) then
-                       OFLWR "BOT TOP NEWCONFIG ERR", config1,config2,botwalk,topwalk; CFLST
+                    if ((config2.lt.configstart.or.config2.gt.configend)) then
+                       OFLWR "BOT TOP NEWCONFIG ERR", config1,config2,configstart,configend; CFLST
                     endif
                  endif
               endif
@@ -137,7 +137,7 @@ subroutine spinwalks()
            call beforebarrier()
         endif
         OFLWR "   ...writing spinwalks..."; CFL
-        write(751) spinwalk(:,botwalk:topwalk),spinwalkdirphase(:,botwalk:topwalk)  
+        write(751) spinwalk(:,configstart:configend),spinwalkdirphase(:,configstart:configend)  
         OFLWR "   ...ok, wrote spinwalks..."; CFL
 
         if (walksinturn) then
@@ -166,12 +166,12 @@ subroutine spinsets_first()
 
   if (walksonfile.eq.0) then
 
-     allocate(taken(botwalk:topwalk), tempwalks(1:topwalk-botwalk+1))
+     allocate(taken(configstart:configend), tempwalks(1:configend-configstart+1))
      maxspinsetsize=0
 
      do jj=0,1
         taken=0;        iset=0
-        do i=botwalk,topwalk
+        do i=configstart,configend
 
            if (taken(i).ne.1) then
               taken(i)=1;           iset=iset+1
@@ -222,7 +222,7 @@ subroutine spinsets_first()
               OFLWR "NUMSPINSETS ERROR ", numspinsets, iset;CFLST
            endif
         endif
-        do i=botwalk,topwalk
+        do i=configstart,configend
            if (taken(i).ne.1) then
               OFLWR "TAKEN ERROR!!!!", i,taken(i);CFLST
            endif
@@ -231,8 +231,8 @@ subroutine spinsets_first()
         do i=1,numspinsets
            j=j+spinsetsize(i)
         enddo
-        if (j.ne.topwalk-botwalk+1) then
-           OFLWR "SPINSETSIZE ERROR!! ", j, topwalk-botwalk+1, numconfig;CFLST
+        if (j.ne.configend-configstart+1) then
+           OFLWR "SPINSETSIZE ERROR!! ", j, configend-configstart+1, numconfig;CFLST
         endif
 
         call mympiimax(maxspinsetsize)
@@ -275,7 +275,7 @@ subroutine getnumspinwalks()
      endif
 
      OFLWR "   ...reading spin projector....";  CFL
-     read(751,iostat=myiostat)  numunpaired(botwalk:topwalk), msvalue(botwalk:topwalk), numspinwalks(botwalk:topwalk), unpaired(:,botwalk:topwalk)
+     read(751,iostat=myiostat)  numunpaired(configstart:configend), msvalue(configstart:configend), numspinwalks(configstart:configend), unpaired(:,configstart:configend)
      OFLWR "   ...done reading spin projector....";  CFL
 
      if (walksinturn) then
@@ -290,7 +290,7 @@ subroutine getnumspinwalks()
 
      OFLWR "Doing spin projector.";  CFL
 
-     do config1=botwalk,topwalk
+     do config1=configstart,configend
         unpaired(:,config1)=0;    numunpaired(config1)=0;   msvalue(config1)=0
         thisconfig=configlist(:,config1)
         do idof=1,numelec
@@ -310,7 +310,7 @@ subroutine getnumspinwalks()
         enddo
      enddo
 
-     do config1=botwalk,topwalk
+     do config1=configstart,configend
         iwalk=0
         do ii=1,numunpaired(config1)
            thisconfig=configlist(:,config1)
@@ -345,8 +345,8 @@ subroutine getnumspinwalks()
         endif
 
         OFLWR "   ...writing spin info..."; CFL
-        write(751)  numunpaired(botwalk:topwalk), msvalue(botwalk:topwalk), numspinwalks(botwalk:topwalk), &
-             unpaired(:,botwalk:topwalk)
+        write(751)  numunpaired(configstart:configend), msvalue(configstart:configend), numspinwalks(configstart:configend), &
+             unpaired(:,configstart:configend)
         OFLWR "   ...ok, wrote spin info..."; CFL
 
         if (walksinturn) then
@@ -357,14 +357,14 @@ subroutine getnumspinwalks()
 
   maxspinwalks=0
   avgspinwalks=0.d0
-  do config1=botwalk,topwalk
+  do config1=configstart,configend
      avgspinwalks = avgspinwalks + numspinwalks(config1)
      if (maxspinwalks.lt.numspinwalks(config1)) then
         maxspinwalks=numspinwalks(config1)
      endif
   enddo
 
-     avgspinwalks=avgspinwalks/(topwalk-botwalk+1)
+     avgspinwalks=avgspinwalks/(configend-configstart+1)
 
   OFLWR "Maximum number of spin walks= ",  maxspinwalks
   write(mpifileptr, *) "Avg number of spin walks= ",  avgspinwalks;CFL

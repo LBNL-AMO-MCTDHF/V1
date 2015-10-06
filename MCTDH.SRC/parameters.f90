@@ -438,7 +438,7 @@ integer, allocatable :: spinsperproc(:)
 integer ::       maxspinsperproc
 integer :: firstspinconfig,lastspinconfig,localnspin
 integer :: botconfig,topconfig
-integer :: topwalk,botwalk  !! newwalks.f90, new mpi method distribute walks
+integer :: configend,configstart  !! newwalks.f90, new mpi method distribute walks
 integer :: firstconfig,lastconfig,localnconfig
 integer :: walksonfile=0       
 integer :: autosize, autosteps
