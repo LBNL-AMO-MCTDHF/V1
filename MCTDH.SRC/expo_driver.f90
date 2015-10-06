@@ -640,7 +640,7 @@ subroutine exposparseprop(inavector0,outavector,time)
    if (allspinproject.ne.0) then
       call configspin_transformfrom_local(numr,smallvectorout,outavector(:,botconfig))
    else
-      outavector(:,botconfig:topconfig)=smallvectorout(:,1:botconfig-topconfig+1)
+      outavector(:,botconfig:topconfig)=smallvectorout(:,1:topconfig-botconfig+1)
    endif
 
    if (parconsplit.eq.0) then
