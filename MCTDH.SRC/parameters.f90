@@ -434,8 +434,8 @@ integer :: spinrank=-1, spinstart=-1, spinend=-1
 integer :: numconfig=-1
 integer, allocatable :: configsperproc(:)
 integer ::       maxconfigsperproc
-integer, allocatable :: allspinranks(:), allspinstart(:)
-integer ::       maxspinrank
+integer, allocatable :: spinsperproc(:)
+integer ::       maxspinsperproc
 integer :: firstspinconfig,lastspinconfig,localnspin
 integer :: botconfig,topconfig
 integer :: topwalk,botwalk  !! newwalks.f90, new mpi method distribute walks
@@ -449,7 +449,7 @@ integer :: lanagain = -1  !! Lanczos restart flag.  Default -1 (lanczos eigen re
                           !!    Otherwise, max number of maxlanorder full builds of krylov spaces (# restarts + 1)
                           !! Improved relax: starts at 1.  Incremented every time energy goes up with an iteration.
                           !!   If subsequent iters are within stopthresh, turned to -1. 
-integer :: spintotrank=0
+integer :: numspinconfig=0
 integer :: spintotdfrank=0
 integer :: numdfconfigs=-1
 integer :: fluxsteps=1

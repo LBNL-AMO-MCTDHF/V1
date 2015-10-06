@@ -480,7 +480,7 @@ subroutine avectortime(which)
 end subroutine
 
 
-subroutine expoconfigprop(inavector0,outavector,time)
+subroutine exposparseprop(inavector0,outavector,time)
   use parameters
   use configpropmod
   use mpimod
@@ -521,7 +521,7 @@ subroutine expoconfigprop(inavector0,outavector,time)
   if (icalled.eq.1) then
      tempstepsize=par_timestep/littlesteps
      if (allspinproject.ne.0) then
-        ii=maxspinrank*nprocs*numr
+        ii=maxspinsperproc*nprocs*numr
      else
         ii=maxconfigsperproc*nprocs*numr
      endif
@@ -572,7 +572,7 @@ subroutine expoconfigprop(inavector0,outavector,time)
   one=1.d0; itrace=0 ! running mode
 
   if (allspinproject.ne.0) then
-     ixx=maxspinrank ; qqq=spintotrank
+     ixx=maxspinsperproc ; qqq=numspinconfig
   else
      ixx=maxconfigsperproc ; qqq=numconfig
   endif
@@ -657,7 +657,7 @@ subroutine expoconfigprop(inavector0,outavector,time)
    endif
    
    if (iflag .ne. 0) then
-      OFLWR "Error expoconfigprop: ", iflag; CFLST
+      OFLWR "Error exposparseprop: ", iflag; CFLST
    endif
    numsteps=iwsp(4);  numiters=iwsp(1)
    
@@ -682,7 +682,7 @@ subroutine expoconfigprop(inavector0,outavector,time)
    
    call avectortime(1)
    
-end subroutine expoconfigprop
+end subroutine exposparseprop
 
 
 

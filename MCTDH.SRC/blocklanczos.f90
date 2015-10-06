@@ -15,7 +15,7 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
   printflag=max(lanprintflag,inprintflag)
 
   if (allspinproject.ne.0) then
-     calcsize=spintotrank;   mytop=spinend; mybot=spinstart
+     calcsize=numspinconfig;   mytop=spinend; mybot=spinstart
      localsize=localnspin
      localstart=firstspinconfig
      localend=lastspinconfig

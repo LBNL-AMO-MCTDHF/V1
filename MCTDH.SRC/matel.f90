@@ -345,7 +345,7 @@ subroutine assemble_spinconfigmat(outmatrix, matrix_ptr, boflag, nucflag, pulsef
   use configptrmod
   implicit none
   Type(configptr) :: matrix_ptr
-  DATATYPE ::        outmatrix(spintotrank*numr,spintotrank*numr)
+  DATATYPE ::        outmatrix(numspinconfig*numr,numspinconfig*numr)
   DATATYPE, allocatable ::        bigmatrix(:,:),halfmatrix(:,:),halfmatrix2(:,:)
   integer :: nucflag, pulseflag, conflag, boflag
   real*8 :: time
@@ -357,7 +357,7 @@ subroutine assemble_spinconfigmat(outmatrix, matrix_ptr, boflag, nucflag, pulsef
      OFLWR "Error, assemble spin matel called but spinwalkflag is zero"; CFLST
   endif
   
-  allocate(  bigmatrix(numconfig*numr,numconfig*numr), halfmatrix(spintotrank*numr,numconfig*numr),halfmatrix2(numconfig*numr,spintotrank*numr))
+  allocate(  bigmatrix(numconfig*numr,numconfig*numr), halfmatrix(numspinconfig*numr,numconfig*numr),halfmatrix2(numconfig*numr,numspinconfig*numr))
 
   call assemble_configmat(bigmatrix,matrix_ptr,boflag,nucflag,pulseflag,conflag,time)
 
@@ -367,7 +367,7 @@ subroutine assemble_spinconfigmat(outmatrix, matrix_ptr, boflag, nucflag, pulsef
 
   call configspin_transformto(numconfig*numr*numr,bigmatrix,halfmatrix2)
   halfmatrix=TRANSPOSE(halfmatrix2)
-  call configspin_transformto(spintotrank*numr*numr,halfmatrix,outmatrix)
+  call configspin_transformto(numspinconfig*numr*numr,halfmatrix,outmatrix)
   outmatrix=transpose(outmatrix)
 
   deallocate(bigmatrix,halfmatrix,halfmatrix2)

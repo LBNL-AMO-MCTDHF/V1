@@ -67,16 +67,16 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
      fullconfigmatel=0.d0; fullconfigvects=0d0; fullconfigvals=0d0
 
      if (spineigflag.ne.0.and.allspinproject.ne.0) then
-        allocate(spinconfigmatel(spintotrank*numr,spintotrank*numr), spinconfigvects(spintotrank*numr,spintotrank*numr))
+        allocate(spinconfigmatel(numspinconfig*numr,numspinconfig*numr), spinconfigvects(numspinconfig*numr,numspinconfig*numr))
         spinconfigmatel=0.d0
 
         call assemble_spinconfigmat(spinconfigmatel,yyy%cptr(0),1,1,0,0,  time)
         if (printflag.ne.0) then
-           OFLWR " Call spin eig ",spintotrank*numr; CFL
+           OFLWR " Call spin eig ",numspinconfig*numr; CFL
         endif
         if (myrank.eq.1) then
-           call CONFIGEIG(spinconfigmatel(:,:),spintotrank*numr,spintotrank*numr, spinconfigvects, fullconfigvals)
-           do i=1,spintotrank*numr
+           call CONFIGEIG(spinconfigmatel(:,:),numspinconfig*numr,numspinconfig*numr, spinconfigvects, fullconfigvals)
+           do i=1,numspinconfig*numr
               call configspin_transformfrom(numr,spinconfigvects(:,i),fullconfigvects(:,i))
            enddo
         endif
@@ -157,7 +157,7 @@ subroutine myconfigprop(avectorin,avectorout,time)
      call df_project(avectorin,numr)
   endif
   if (sparseconfigflag/=0) then
-     call expoconfigprop(avectorin,avectorout,time)
+     call exposparseprop(avectorin,avectorout,time)
   else
      call nonsparseprop(avectorin,avectorout,time)
   endif
@@ -225,7 +225,7 @@ subroutine nonsparseprop(avectorin,avectorout,time)
      call mympibcast(avectorout,1,numconfig*numr)
   else
 
-     allocate(bigconfigmatel(spintotrank*numr,spintotrank*numr), bigconfigvects(spintotrank*numr,2*(spintotrank*numr+2)))
+     allocate(bigconfigmatel(numspinconfig*numr,numspinconfig*numr), bigconfigvects(numspinconfig*numr,2*(numspinconfig*numr+2)))
 
 
      call assemble_spinconfigmat(bigconfigmatel, workconfigpointer,1,1,1,1, time)
@@ -238,23 +238,23 @@ subroutine nonsparseprop(avectorin,avectorout,time)
      if (myrank.eq.1) then
         if (nonsparsepropmode.eq.1) then
            avectorout=avectortemp  !! in spin basis
-           call expmat(bigconfigmatel,spintotrank*numr); call MYGEMV('N',spintotrank*numr,spintotrank*numr,DATAONE,bigconfigmatel,spintotrank*numr,avectorout,1,DATAZERO,avectortemp,1)
+           call expmat(bigconfigmatel,numspinconfig*numr); call MYGEMV('N',numspinconfig*numr,numspinconfig*numr,DATAONE,bigconfigmatel,numspinconfig*numr,avectorout,1,DATAZERO,avectortemp,1)
 #ifndef REALGO
         else if (nonsparsepropmode.eq.2) then
-           allocate(realbigconfigmatel(2,spintotrank*numr,2,spintotrank*numr))
-           call assigncomplexmat(realbigconfigmatel,bigconfigmatel,spintotrank*numr,spintotrank*numr)
-           call DGCHBV(spintotrank*numr*2, 1.d0, realbigconfigmatel, spintotrank*numr*2, avectortemp, bigconfigvects, iiwork, iflag)           
+           allocate(realbigconfigmatel(2,numspinconfig*numr,2,numspinconfig*numr))
+           call assigncomplexmat(realbigconfigmatel,bigconfigmatel,numspinconfig*numr,numspinconfig*numr)
+           call DGCHBV(numspinconfig*numr*2, 1.d0, realbigconfigmatel, numspinconfig*numr*2, avectortemp, bigconfigvects, iiwork, iflag)           
            deallocate(realbigconfigmatel)
 #endif
         else
-           call EXPFULL(spintotrank*numr, 1.d0, bigconfigmatel, spintotrank*numr, avectortemp, bigconfigvects, iiwork, iflag)
+           call EXPFULL(numspinconfig*numr, 1.d0, bigconfigmatel, numspinconfig*numr, avectortemp, bigconfigvects, iiwork, iflag)
            
            if (iflag.ne.0) then
               OFLWR "Expo error A ", iflag; CFLST
            endif
         endif
      endif
-     call mympibcast(avectortemp,1,spintotrank*numr)
+     call mympibcast(avectortemp,1,numspinconfig*numr)
      call configspin_transformfrom(numr,avectortemp,avectorout)
   endif
 
@@ -331,8 +331,8 @@ subroutine parconfigexpomult_spin(inavectorspin,outavectorspin)
   use configexpotimemod
   implicit none
 
-  DATATYPE,intent(in) :: inavectorspin(numr,spinstart:spinstart+maxspinrank-1)
-  DATATYPE,intent(out) :: outavectorspin(numr,spinstart:spinstart+maxspinrank-1)
+  DATATYPE,intent(in) :: inavectorspin(numr,spinstart:spinstart+maxspinsperproc-1)
+  DATATYPE,intent(out) :: outavectorspin(numr,spinstart:spinstart+maxspinsperproc-1)
   DATATYPE :: inavector(numr,botwalk:botwalk+maxconfigsperproc-1),&
        outavector(numr,botwalk:botwalk+maxconfigsperproc-1)
 

@@ -654,16 +654,11 @@ subroutine biomatvec_nompi(x,y)
   y(:,:)=0d0
 
   do i=botwalk,topwalk
-!!$removed 09-2016 simple walks     tmpval=0d0
-!!$     do j=1,numelec
-!!$        tmpval = tmpval + biopointer%smo(configlist((j-1)*2+1,i),configlist((j-1)*2+1,i))
-!!$     enddo
-     y(:,i)=0   !!$tmpval*x(:,i)
+     y(:,i)=0
      do j=1,numsinglewalks(i) !! summing over nonconjugated second index in s(:), good
         y(:,i) = y(:,i) + biopointer%smo(singlewalkopspf(1,j,i),singlewalkopspf(2,j,i)) * singlewalkdirphase(j,i) * x(:,singlewalk(j,i)) 
      enddo
   enddo
-
 
 end subroutine biomatvec_nompi
 

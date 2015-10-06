@@ -108,12 +108,12 @@ subroutine configspin_transformto_all(nblock,invector,outvector)
   implicit none
   integer :: nblock
   DATATYPE,intent(in) :: invector(nblock,numconfig)
-  DATATYPE,intent(out) :: outvector(nblock,spintotrank)
+  DATATYPE,intent(out) :: outvector(nblock,numspinconfig)
 
   outvector(:,:)=0d0
   call configspin_transformto_local(nblock,invector(:,botwalk),outvector(:,spinstart))
   if (sparseconfigflag.ne.0) then
-     call mpiallgather(outvector(:,:),spintotrank*nblock, allspinranks(:)*nblock,maxspinrank*nblock)
+     call mpiallgather(outvector(:,:),numspinconfig*nblock, spinsperproc(:)*nblock,maxspinsperproc*nblock)
   endif
 
 end subroutine configspin_transformto_all
@@ -172,7 +172,7 @@ subroutine configspin_transformfrom_all(nblock,invector,outvector)
   implicit none
   integer :: nblock
   DATATYPE,intent(out) :: outvector(nblock,numconfig)
-  DATATYPE,intent(in) :: invector(nblock,spintotrank)
+  DATATYPE,intent(in) :: invector(nblock,numspinconfig)
 
   outvector(:,:)=0d0
   call configspin_transformfrom_local(nblock,invector(:,spinstart),outvector(:,botwalk))
@@ -300,6 +300,7 @@ subroutine configspinset_projector()
   integer :: info, lwork,j,i,ii,iset,jj, elim, elimsets, flag, iwalk,myiostat,spindfrank
   real*8, allocatable :: spinvects(:,:), spinvals(:), work(:), realprojector(:,:)
   logical :: spinallowed,dfincluded
+  integer :: allspinstart(nprocs)
 !  DATATYPE :: doublevects(maxspinsetsize**2)
 !  real*8 :: doublevals(maxspinsetsize)
   
@@ -485,33 +486,34 @@ subroutine configspinset_projector()
   OFLWR  "Number of spin sets is now ", numspinsets
   WRFL "Total # of spinvects with S^2 = ", (spinrestrictval/2.d0*(spinrestrictval/2.d0+1)), " is ", spinrank, " out of ", topwalk-botwalk+1; CFL
 
-  maxspinrank=spinrank
-  allocate(allspinstart(nprocs)); allspinstart=(-1); allocate(allspinranks(nprocs)); allspinranks=(-1)
+  maxspinsperproc=spinrank
+
+  allocate(spinsperproc(nprocs)); spinsperproc=(-1)
 
 
   if (sparseconfigflag.eq.0) then
-     spintotrank=spinrank;      spinstart=1; spinend=spintotrank
-     allspinranks(1)=spintotrank; allspinstart(1)=1
-     maxspinrank=spintotrank
-     firstspinconfig=1; lastspinconfig=spintotrank; localnspin=spintotrank
+     numspinconfig=spinrank;      spinstart=1; spinend=numspinconfig
+     spinsperproc(1)=numspinconfig
+     maxspinsperproc=numspinconfig
+     firstspinconfig=1; lastspinconfig=numspinconfig; localnspin=numspinconfig
   else
-     allspinranks(myrank)=spinrank
+     spinsperproc(myrank)=spinrank
      ii=0
      do i=1,nprocs
         allspinstart(i)=ii+1
-        call mympiibcast(allspinranks(i),i,1)
-        ii=ii+allspinranks(i)
-        if (allspinranks(i).gt.maxspinrank) then
-           maxspinrank=allspinranks(i)
+        call mympiibcast(spinsperproc(i),i,1)
+        ii=ii+spinsperproc(i)
+        if (spinsperproc(i).gt.maxspinsperproc) then
+           maxspinsperproc=spinsperproc(i)
         endif
      enddo
-     spintotrank=ii
+     numspinconfig=ii
      spinstart=allspinstart(myrank)
      spinend=spinstart+spinrank-1
      if (parconsplit.eq.0) then
         firstspinconfig=1
-        lastspinconfig=spintotrank
-        localnspin=spintotrank
+        lastspinconfig=numspinconfig
+        localnspin=numspinconfig
 
      else
         firstspinconfig=spinstart
@@ -526,7 +528,7 @@ subroutine configspinset_projector()
   endif
   
 
-  OFLWR "TOTAL (all processors) rank",spintotrank," out of ", numconfig
+  OFLWR "TOTAL (all processors) rank",numspinconfig," out of ", numconfig
   WRFL "     Spin DF rank is ", spindfrank, "   all processors ", spintotdfrank
   WRFL "   This proc:  spinstart : ", spinstart
   WRFL; CFL

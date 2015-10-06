@@ -194,7 +194,7 @@ subroutine configalloc()
   endif
 
   allocate(workdrivingavec(numr,firstconfig:lastconfig)); workdrivingavec(:,:)=0d0
-  allocate(workdrivingavecspin(spintotrank,numr)); workdrivingavecspin(:,:)=0d0
+  allocate(workdrivingavecspin(numspinconfig,numr)); workdrivingavecspin(:,:)=0d0
 
 end subroutine configalloc
 

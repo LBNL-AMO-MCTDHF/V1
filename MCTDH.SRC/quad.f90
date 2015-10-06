@@ -356,15 +356,15 @@ subroutine sparsequadavector(inavector,jjcalls0)
 
   jjcalls0=0
 
-  allocate(smallvector(numr,botwalk:botwalk+maxconfigsperproc-1),smallvectorspin(numr,spinstart:spinstart+maxspinrank-1), &
-       smallvector2(numr,botwalk:botwalk+maxconfigsperproc-1),smallvectorspin2(numr,spinstart:spinstart+maxspinrank-1))
+  allocate(smallvector(numr,botwalk:botwalk+maxconfigsperproc-1),smallvectorspin(numr,spinstart:spinstart+maxspinsperproc-1), &
+       smallvector2(numr,botwalk:botwalk+maxconfigsperproc-1),smallvectorspin2(numr,spinstart:spinstart+maxspinsperproc-1))
 
   allocate( vector(numr,firstconfig:lastconfig), vector2(numr,firstconfig:lastconfig), vector3(numr,firstconfig:lastconfig))
 
   vector(:,:)=inavector(:,:)
 
   if (allspinproject.ne.0) then
-     ii=maxspinrank*nprocs*numr
+     ii=maxspinsperproc*nprocs*numr
   else
      ii=maxconfigsperproc*nprocs*numr
   endif
@@ -437,7 +437,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
      smallvectorspin(:,:)=0d0
      call configspin_transformto_local(numr,vector(:,botwalk),smallvectorspin(:,spinstart))
      smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
-     call dgsolve0( smallvectorspin(:,:), smallvectorspin2(:,:), jjcalls, paraamult_spin_padded,quadprecon,parquadpreconsub_spin_padded, thisaerror,numr*maxspinrank,maxaorder,1)
+     call dgsolve0( smallvectorspin(:,:), smallvectorspin2(:,:), jjcalls, paraamult_spin_padded,quadprecon,parquadpreconsub_spin_padded, thisaerror,numr*maxspinsperproc,maxaorder,1)
 
      call configspin_transformfrom_local(numr,smallvectorspin2(:,:),smallvector2(:,:))
      
@@ -581,13 +581,13 @@ subroutine nonsparsequadavector(avectorout)
 !!   but doing it carefully, only condensing leading index as complex
 
 allocate(crealconfigmatel(numconfig*numr,zzz,numconfig*numr), &
-     crealhalfmatel(spintotrank*numr,zzz,numconfig*numr), &
-     realhalfmatel(zzz,spintotrank*numr,zzz,numconfig*numr), &
-     realhalfmatel2(zzz,numconfig*numr,zzz,spintotrank*numr), &
-     crealhalfmatel2(numconfig*numr,zzz,spintotrank*numr), &
-     crealspinmatel(spintotrank*numr,zzz,spintotrank*numr), &
-     realspinmatel(zzz,spintotrank*numr,zzz,spintotrank*numr), &
-     spinerr(spintotrank*numr),spinavectorout(spintotrank*numr))
+     crealhalfmatel(numspinconfig*numr,zzz,numconfig*numr), &
+     realhalfmatel(zzz,numspinconfig*numr,zzz,numconfig*numr), &
+     realhalfmatel2(zzz,numconfig*numr,zzz,numspinconfig*numr), &
+     crealhalfmatel2(numconfig*numr,zzz,numspinconfig*numr), &
+     crealspinmatel(numspinconfig*numr,zzz,numspinconfig*numr), &
+     realspinmatel(zzz,numspinconfig*numr,zzz,numspinconfig*numr), &
+     spinerr(numspinconfig*numr),spinavectorout(numspinconfig*numr))
 
 #ifdef REALGO
      crealconfigmatel=realconfigmatel(1,:,:,:)
@@ -603,7 +603,7 @@ allocate(crealconfigmatel(numconfig*numr,zzz,numconfig*numr), &
      realhalfmatel2(2,:,:,:) = imag( crealhalfmatel2(:,:,:) )
 #endif
 
-     realhalfmatel(:,:,:,:)=RESHAPE(TRANSPOSE(RESHAPE(realhalfmatel2(:,:,:,:),(/zzz*numconfig*numr,zzz*spintotrank*numr/))),(/zzz,spintotrank*numr,zzz,numconfig*numr/))
+     realhalfmatel(:,:,:,:)=RESHAPE(TRANSPOSE(RESHAPE(realhalfmatel2(:,:,:,:),(/zzz*numconfig*numr,zzz*numspinconfig*numr/))),(/zzz,numspinconfig*numr,zzz,numconfig*numr/))
 
 #ifdef REALGO
      crealhalfmatel(:,:,:)=realhalfmatel(1,:,:,:)
@@ -611,27 +611,27 @@ allocate(crealconfigmatel(numconfig*numr,zzz,numconfig*numr), &
      crealhalfmatel(:,:,:)=realhalfmatel(1,:,:,:) + realhalfmatel(2,:,:,:) * (0d0,1d0) 
 #endif
 
-     call configspin_transformto(numr*spintotrank*numr*zzz,crealhalfmatel,crealspinmatel)
+     call configspin_transformto(numr*numspinconfig*numr*zzz,crealhalfmatel,crealspinmatel)
 
      realspinmatel(1,:,:,:) = real( crealspinmatel(:,:,:) ,8)
 #ifndef REALGO
      realspinmatel(2,:,:,:) = imag( crealspinmatel(:,:,:))
 #endif
 
-     realspinmatel(:,:,:,:)=RESHAPE(TRANSPOSE(RESHAPE(realspinmatel(:,:,:,:),(/zzz*spintotrank*numr,zzz*spintotrank*numr/))),(/zzz,spintotrank*numr,zzz,spintotrank*numr/))
+     realspinmatel(:,:,:,:)=RESHAPE(TRANSPOSE(RESHAPE(realspinmatel(:,:,:,:),(/zzz*numspinconfig*numr,zzz*numspinconfig*numr/))),(/zzz,numspinconfig*numr,zzz,numspinconfig*numr/))
 
      call configspin_transformto(numr,avectorout(:),spinavectorout(:))
      call configspin_transformto(numr,err(:),spinerr(:))
 
      if (myrank.eq.1) then
-        call dgesv(spintotrank*numr*zzz,1,realspinmatel,spintotrank*numr*zzz,ipiv,spinavectorout,spintotrank*numr*zzz,info)
-        spinavectorout=spinavectorout/sqrt(dot(spinavectorout,spinavectorout,spintotrank*numr))
+        call dgesv(numspinconfig*numr*zzz,1,realspinmatel,numspinconfig*numr*zzz,ipiv,spinavectorout,numspinconfig*numr*zzz,info)
+        spinavectorout=spinavectorout/sqrt(dot(spinavectorout,spinavectorout,numspinconfig*numr))
         if (info/=0) then
            OFLWR "Info in dgesv nonsparsequadavector= ", info; CFLST
         endif
      endif
 
-     call mympibcast(spinavectorout,1,spintotrank*numr)
+     call mympibcast(spinavectorout,1,numspinconfig*numr)
 
      call configspin_transformfrom(numr,spinavectorout(:),avectorout(:))
 
@@ -676,8 +676,8 @@ recursive subroutine paraamult_spin_padded(nullint,inavectorspin,outavectorspin)
   use parameters
   implicit none
   integer :: nullint
-  DATATYPE,intent(in) :: inavectorspin(numr,maxspinrank)
-  DATATYPE,intent(out) :: outavectorspin(numr,maxspinrank)
+  DATATYPE,intent(in) :: inavectorspin(numr,maxspinsperproc)
+  DATATYPE,intent(out) :: outavectorspin(numr,maxspinsperproc)
   outavectorspin(:,:)=0d0
   call paraamult_spin(nullint,inavectorspin,outavectorspin)
 end subroutine paraamult_spin_padded
@@ -729,8 +729,8 @@ recursive subroutine parquadpreconsub_spin_padded(nullint,inavectorspin,outavect
   use parameters
   implicit none
   integer :: nullint
-  DATATYPE,intent(in) :: inavectorspin(numr,maxspinrank)
-  DATATYPE,intent(out) :: outavectorspin(numr,maxspinrank)
+  DATATYPE,intent(in) :: inavectorspin(numr,maxspinsperproc)
+  DATATYPE,intent(out) :: outavectorspin(numr,maxspinsperproc)
   outavectorspin(:,:)=inavectorspin(:,:)  !! MUST BE FULL RANK
   call parquadpreconsub_spin(nullint,inavectorspin,outavectorspin)
 end subroutine parquadpreconsub_spin_padded
