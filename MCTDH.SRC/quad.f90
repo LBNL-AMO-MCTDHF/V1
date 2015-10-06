@@ -676,123 +676,84 @@ allocate(crealconfigmatel(numconfig*numr,zzz,numconfig*numr), &
 end subroutine nonsparsequadavector
 
 
-recursive subroutine paraamult_spin_padded(nullint,inavectorspin,outavectorspin)
-  use parameters
-  implicit none
-  integer :: nullint
-  DATATYPE,intent(in) :: inavectorspin(numr,maxspinsperproc)
-  DATATYPE,intent(out) :: outavectorspin(numr,maxspinsperproc)
-  outavectorspin(:,:)=0d0
-  call paraamult_spin(nullint,inavectorspin,outavectorspin)
-end subroutine paraamult_spin_padded
 
-
-recursive subroutine paraamult_spin(notusedint,inavectorspin,outavectorspin)
+recursive subroutine paraamult_spin_padded(notusedint,inavectorspin,outavectorspin)
   use parameters
   implicit none
   integer :: notusedint
-  DATATYPE,intent(in) :: inavectorspin(numr,spinstart:spinend)
-  DATATYPE,intent(out) :: outavectorspin(numr,spinstart:spinend)
-  DATATYPE :: inavector(numr,botconfig:topconfig), outavector(numr,botconfig:topconfig)
+  DATATYPE,intent(in) :: inavectorspin(numr,maxspinsperproc)
+  DATATYPE,intent(out) :: outavectorspin(numr,maxspinsperproc)
+  DATATYPE :: inavector(numr,maxconfigsperproc), outavector(numr,maxconfigsperproc)
   if (spinwalkflag.eq.0) then
      OFLWR "WTF SPIN"; CFLST
   endif
+  outavectorspin(:,:)=0d0   
   call configspin_transformfrom_local(numr,inavectorspin,inavector)
-  call paraamult(0,inavector,outavector)
+  call paraamult_padded(0,inavector,outavector)
   call configspin_transformto_local(numr,outavector,outavectorspin)
-end subroutine paraamult_spin
+end subroutine paraamult_spin_padded
 
 
-recursive subroutine paraamult_padded(nullint, inavector,outavector)
-  use parameters
-  implicit none
-  integer :: nullint
-  DATATYPE,intent(in) :: inavector(numr,maxconfigsperproc)
-  DATATYPE,intent(out) :: outavector(numr,maxconfigsperproc)
-  outavector(:,:)=0d0   
-  call paraamult(nullint, inavector,outavector)
-end subroutine paraamult_padded
 
-
-recursive subroutine paraamult(notusedint, inavector,outavector)
+recursive subroutine paraamult_padded(notusedint, inavector,outavector)
   use parameters
   use aaonedmod
   implicit none
   integer :: notusedint
-  DATATYPE,intent(in) :: inavector(numr,botconfig:topconfig)
-  DATATYPE,intent(out) :: outavector(numr,botconfig:topconfig)
+  DATATYPE,intent(in) :: inavector(numr,maxconfigsperproc)
+  DATATYPE,intent(out) :: outavector(numr,maxconfigsperproc)
+
+  outavector(:,:)=0d0   
 
   call parblockconfigmult(inavector,outavector)
 
-  outavector= outavector - quadexpect*inavector 
+  outavector(:,1:(topconfig-botconfig+1))= outavector(:,1:(topconfig-botconfig+1)) &
+       - quadexpect*inavector(:,1:(topconfig-botconfig+1))
 
-end subroutine paraamult
-
-
-recursive subroutine parquadpreconsub_spin_padded(nullint,inavectorspin,outavectorspin)
-  use parameters
-  implicit none
-  integer :: nullint
-  DATATYPE,intent(in) :: inavectorspin(numr,maxspinsperproc)
-  DATATYPE,intent(out) :: outavectorspin(numr,maxspinsperproc)
-  outavectorspin(:,:)=inavectorspin(:,:)  !! MUST BE FULL RANK
-  call parquadpreconsub_spin(nullint,inavectorspin,outavectorspin)
-end subroutine parquadpreconsub_spin_padded
+end subroutine paraamult_padded
 
 
-recursive subroutine parquadpreconsub_spin(notusedint,inavectorspin,outavectorspin)
+recursive subroutine parquadpreconsub_spin_padded(notusedint,inavectorspin,outavectorspin)
   use parameters
   implicit none
   integer :: notusedint
-  DATATYPE,intent(in) :: inavectorspin(numr,spinstart:spinend)
-  DATATYPE,intent(out) :: outavectorspin(numr,spinstart:spinend)
-  DATATYPE :: inavector(numr,botconfig:topconfig),outavector(numr,botconfig:topconfig)
+  DATATYPE,intent(in) :: inavectorspin(numr,maxspinsperproc)
+  DATATYPE,intent(out) :: outavectorspin(numr,maxspinsperproc)
+  DATATYPE :: inavector(numr,maxconfigsperproc),outavector(numr,maxconfigsperproc)
   if (spinwalkflag.eq.0) then
      OFLWR "WTF SPIN"; CFLST
   endif
   call configspin_transformfrom_local(numr,inavectorspin,inavector)
-  call parquadpreconsub(0,inavector,outavector)
+  call parquadpreconsub_padded(0,inavector,outavector)
+
+  outavectorspin(:,:)=inavectorspin(:,:)  !! MUST BE FULL RANK
   call configspin_transformto_local(numr,outavector,outavectorspin)
-end subroutine parquadpreconsub_spin
+
+end subroutine parquadpreconsub_spin_padded
 
 
-recursive subroutine parquadpreconsub_padded(nullint, inavector,outavector)
-  use parameters
-  implicit none
-  integer :: nullint
-  DATATYPE,intent(in) :: inavector(numr,maxconfigsperproc)
-  DATATYPE,intent(out) :: outavector(numr,maxconfigsperproc)
-  outavector(:,:)=inavector(:,:) !! MUST BE FULL RANK
-  call parquadpreconsub(nullint, inavector,outavector)
-end subroutine parquadpreconsub_padded
-
-
-recursive subroutine parquadpreconsub(notusedint, inavector,outavector)
+recursive subroutine parquadpreconsub_padded(notusedint, inavector,outavector)
   use parameters
   use aaonedmod
   use xxxmod
   implicit none
   integer :: notusedint
-  DATATYPE,intent(in) :: inavector(numr,botconfig:topconfig)
-  DATATYPE,intent(out) :: outavector(numr,botconfig:topconfig)
-  DATATYPE :: tempvector(numr,botconfig:topconfig)
+  DATATYPE,intent(in) :: inavector(numr,maxconfigsperproc)
+  DATATYPE,intent(out) :: outavector(numr,maxconfigsperproc)
+  DATATYPE :: tempvector(numr,maxconfigsperproc)
 
   tempvector(:,:)=inavector(:,:)
 
-  if (allspinproject==1) then
-     call configspin_project_local(tempvector,0)
-  endif
   if (dfrestrictflag.ne.0) then
      call df_project_local(tempvector, numr)
   endif
 
+  outavector(:,:)=inavector(:,:) !! MUST BE FULL RANK
+
   call parsparseconfigdiagmult(tempvector, outavector, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0)
 
-  if (allspinproject==1) then
-     call configspin_project_local(outavector, 0)
-  endif
   if (dfrestrictflag.ne.0) then
      call df_project_local(outavector, numr)
   endif
 
-end subroutine parquadpreconsub
+end subroutine parquadpreconsub_padded

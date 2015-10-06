@@ -231,36 +231,14 @@ recursive subroutine parblockconfigmult_spin(inavectorspin,outavectorspin)
   use mpimod
   use xxxmod
   implicit none
-  integer :: ii
   DATATYPE,intent(in) :: inavectorspin(numr,spinstart:spinend)
   DATATYPE,intent(out) :: outavectorspin(numr,spinstart:spinend)
-  DATATYPE :: intemp(numr,numconfig), ttvector2(numr,botconfig:topconfig)
+  DATATYPE :: intemp(numr,botconfig:topconfig),ttvector2(numr,botconfig:topconfig)
 
-  if (sparseconfigflag.eq.0) then
-     OFLWR "error, must use sparse for parblockconfigmult_spin"; CFLST
-  endif
+  call configspin_transformfrom_local(numr,inavectorspin,intemp)
 
-!! DO SUMMA
+  call parblockconfigmult(intemp,ttvector2)
 
-  intemp(:,:)=0d0
-
-  call configspin_transformfrom_local(numr,inavectorspin,intemp(:,botconfig))
-
-  if (dfrestrictflag.ne.0) then
-     call df_project_local(intemp(:,botconfig),numr)
-  endif
-
-  call mpiallgather(intemp,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
-
-  call sparseconfigmult_nompi(intemp,ttvector2, yyy%cptr(0), yyy%sptr(0), 1,1,1,0,0d0,0,1,numr,0)
-  if (mshift.ne.0d0) then 
-     do ii=botconfig,topconfig
-        ttvector2(:,ii)=ttvector2(:,ii) + intemp(:,ii)*configmvals(ii)*mshift
-     enddo
-  endif
-  if (dfrestrictflag.ne.0) then
-     call df_project_local(ttvector2,numr)
-  endif
   call configspin_transformto_local(numr,ttvector2,outavectorspin)
   
 end subroutine parblockconfigmult_spin

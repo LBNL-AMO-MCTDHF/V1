@@ -279,9 +279,7 @@ end subroutine configexpotimeinit
 
 !! MULTIPLY BY A-VECTOR HAMILTONIAN MATRIX
 
-!! TAKES TRANSPOSES AS INPUT AND OUTPUT
-
-!! NOTE BOUNDS !!
+!! NOTE BOUNDS !!  PADDED
 
 
 subroutine parconfigexpomult(inavector,outavector)
