@@ -31,74 +31,87 @@ subroutine getdfcon()
   logical :: allowed, dfincluded
   integer,allocatable :: dfnotconfigs(:)
 
-  if (numdfconfigs.ne.-1) then
-     OFLWR "DFCON already gotten"; CFL; return   !!!!  " PRobably was not deallocated."; CFLST
-  endif
   allocate(dfincludedmask(numconfig), dfincludedconfigs(numconfig), dfnotconfigs(numconfig))
 
   if (dfrestrictflag.eq.0) then
-     OFLWR "WTF WWW dfrestrictflag is zero"; CFLST
-  endif
+     dfincludedmask(:)=1; dfnotconfigs(:)=(-1)
+     do i=1,numconfig
+        dfincludedconfigs(i)=i
+     enddo
+     numdfconfigs=numconfig; nondfconfigs=0
 
-  dfincludedmask(:)=0;  dfincludedconfigs(:)=-1;  dfnotconfigs(:)=-1
-  numdfconfigs=0;  nondfconfigs=0
+  else
 
-  do i=1,numconfig
-     allowed=dfincluded(configlist(:,i))
-     if (allowed) then 
-        numdfconfigs=numdfconfigs+1
-        dfincludedmask(i)=1;        dfincludedconfigs(numdfconfigs)=i
-     else
-        nondfconfigs=nondfconfigs+1;        dfnotconfigs(nondfconfigs)=i
+     dfincludedmask(:)=0;  dfincludedconfigs(:)=(-1);  dfnotconfigs(:)=(-1)
+     numdfconfigs=0;  nondfconfigs=0
+
+     do i=1,numconfig
+        allowed=dfincluded(configlist(:,i))
+        if (allowed) then 
+           numdfconfigs=numdfconfigs+1
+           dfincludedmask(i)=1;        dfincludedconfigs(numdfconfigs)=i
+        else
+           nondfconfigs=nondfconfigs+1;        dfnotconfigs(nondfconfigs)=i
+        endif
+     enddo
+
+     if (numdfconfigs.eq.0) then
+        OFLWR "Error, no included DF configs!"; CFLST
      endif
-  enddo
 
-  if (nondfconfigs.eq.0) then
-     OFLWR "Error, no excluded DF configurations... if doing full ci, don't use constraint...?"; CFLST
-  endif
-  if (numdfconfigs.eq.0) then
-     OFLWR "Error, no included DF configs!"; CFLST
-  endif
+     OFLWR "Number of included configurations ", numdfconfigs
+     WRFL  "Number of not included ", nondfconfigs;  WRFL; CFL
 
-  OFLWR "Number of included configurations ", numdfconfigs
-  WRFL  "Number of not included ", nondfconfigs;  WRFL; CFL
+  endif
 
   numdfwalks=0
-  do i=1,NONdfconfigs
-     iconfig=dfNOTconfigs(i)
-     if (iconfig.ge.configstart.and.iconfig.le.configend) then
-        do j=1,numsinglewalks(iconfig)
-           if (dfincluded(configlist(:,singlewalk(j,iconfig)))) then
-              numdfwalks=numdfwalks+1
-           endif
-        enddo
-     endif
-  enddo
 
-  OFLWR "numdfwalks:  ", numdfwalks," is total number DF single excitations on this processor"; WRFL; CFL
+  if (dfrestrictflag.eq.0) then
 
-  allocate(dfwalkfrom(numdfwalks), dfwalkto(numdfwalks), includedorb(numdfwalks), excludedorb(numdfwalks), dfwalkphase(numdfwalks))
+     allocate(dfwalkfrom(1), dfwalkto(1), includedorb(1), &
+          excludedorb(1), dfwalkphase(1))
+     dfwalkfrom(:)=(-1); dfwalkto(:)=(-1); includedorb(:)=(-1)
+     excludedorb(:)=(-1); dfwalkphase(:)=(-798)
 
-  numdfwalks=0
-  do i=1,NONdfconfigs
-     iconfig=dfNOTconfigs(i)
-     if (iconfig.ge.configstart.and.iconfig.le.configend) then
-        do j=1,numsinglewalks(iconfig)
-           if (dfincluded(configlist(:,singlewalk(j,iconfig)))) then
-              numdfwalks=numdfwalks+1
+  else
+
+     do i=1,NONdfconfigs
+        iconfig=dfNOTconfigs(i)
+        if (iconfig.ge.configstart.and.iconfig.le.configend) then
+           do j=1,numsinglewalks(iconfig)
+              if (dfincluded(configlist(:,singlewalk(j,iconfig)))) then
+                 numdfwalks=numdfwalks+1
+              endif
+           enddo
+        endif
+     enddo
+
+     OFLWR "numdfwalks:  ", numdfwalks," is total number DF single excitations on this processor"; WRFL; CFL
+
+     allocate(dfwalkfrom(numdfwalks), dfwalkto(numdfwalks), includedorb(numdfwalks), excludedorb(numdfwalks), dfwalkphase(numdfwalks))
+
+     numdfwalks=0
+     do i=1,NONdfconfigs
+        iconfig=dfNOTconfigs(i)
+        if (iconfig.ge.configstart.and.iconfig.le.configend) then
+           do j=1,numsinglewalks(iconfig)
+              if (dfincluded(configlist(:,singlewalk(j,iconfig)))) then
+                 numdfwalks=numdfwalks+1
               
-              dfwalkTO(numdfwalks)=iconfig
-              dfwalkFROM(numdfwalks)=singlewalk(j,iconfig)
-              EXcludedorb(numdfwalks)=singlewalkopspf(1,j,iconfig)
-              INcludedorb(numdfwalks)=singlewalkopspf(2,j,iconfig)
+                 dfwalkTO(numdfwalks)=iconfig
+                 dfwalkFROM(numdfwalks)=singlewalk(j,iconfig)
+                 EXcludedorb(numdfwalks)=singlewalkopspf(1,j,iconfig)
+                 INcludedorb(numdfwalks)=singlewalkopspf(2,j,iconfig)
               
-              dfwalkphase(numdfwalks)=singlewalkdirphase(j,iconfig)
-           endif
-        enddo
-     endif
-  enddo
+                 dfwalkphase(numdfwalks)=singlewalkdirphase(j,iconfig)
+              endif
+           enddo
+        endif
+     enddo
 
-  OFLWR "numdfwalks:  ", numdfwalks," is really number DF single excitations on this processor"; WRFL; CFL
+     OFLWR "numdfwalks:  ", numdfwalks," is really number DF single excitations on this processor"; WRFL; CFL
+     
+  endif
 
   deallocate(dfnotconfigs)
 

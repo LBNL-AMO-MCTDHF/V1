@@ -354,8 +354,6 @@ subroutine actions_initial()
         if (dfrestrictflag.lt.2) then
            OFLWR "WARNING, usually need dfrestrictflag=2 or greater for action 22...."; CFL
         endif
-        OFLWR "Getting D-F info for act=22"; CFL
-        call getdfcon()
      case (23)
         call wfnovl()
      case(24)

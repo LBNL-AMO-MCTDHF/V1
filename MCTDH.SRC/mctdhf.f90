@@ -324,9 +324,9 @@ program mctdhf
      call configlistwrite()
 
      call configalloc()
-     if (dfrestrictflag.ne.0) then
-        call getdfcon()
-     endif
+
+     call getdfcon()
+
 
   endif
 
