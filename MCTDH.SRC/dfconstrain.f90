@@ -7,15 +7,15 @@
 
 
 
-function dfincluded(thisconfig)
+function dfallowed(thisconfig)
   use parameters
   implicit none
   integer,intent(in) :: thisconfig(ndof)
-  logical :: allowedconfig0, dfincluded
+  logical :: allowedconfig0, dfallowed
 
-  dfincluded = allowedconfig0(thisconfig,dfrestrictflag)
+  dfallowed = allowedconfig0(thisconfig,dfrestrictflag)
 
-end function dfincluded
+end function dfallowed
 
 ! "included" configurations are those kept in the calculation.
 ! there are numdfconfigs INCLUDED configurations.
@@ -28,7 +28,7 @@ subroutine getdfcon()
   implicit none
 
   integer :: i,j,iconfig,nondfconfigs
-  logical :: allowed, dfincluded
+  logical :: dfallowed
   integer,allocatable :: dfnotconfigs(:)
 
   allocate(dfincludedmask(numconfig), dfincludedconfigs(numconfig), dfnotconfigs(numconfig))
@@ -46,8 +46,7 @@ subroutine getdfcon()
      numdfconfigs=0;  nondfconfigs=0
 
      do i=1,numconfig
-        allowed=dfincluded(configlist(:,i))
-        if (allowed) then 
+        if (dfallowed(configlist(:,i))) then 
            numdfconfigs=numdfconfigs+1
            dfincludedmask(i)=1;        dfincludedconfigs(numdfconfigs)=i
         else
@@ -79,7 +78,7 @@ subroutine getdfcon()
         iconfig=dfNOTconfigs(i)
         if (iconfig.ge.configstart.and.iconfig.le.configend) then
            do j=1,numsinglewalks(iconfig)
-              if (dfincluded(configlist(:,singlewalk(j,iconfig)))) then
+              if (dfallowed(configlist(:,singlewalk(j,iconfig)))) then
                  numdfwalks=numdfwalks+1
               endif
            enddo
@@ -95,7 +94,7 @@ subroutine getdfcon()
         iconfig=dfNOTconfigs(i)
         if (iconfig.ge.configstart.and.iconfig.le.configend) then
            do j=1,numsinglewalks(iconfig)
-              if (dfincluded(configlist(:,singlewalk(j,iconfig)))) then
+              if (dfallowed(configlist(:,singlewalk(j,iconfig)))) then
                  numdfwalks=numdfwalks+1
               
                  dfwalkTO(numdfwalks)=iconfig

@@ -299,7 +299,7 @@ subroutine configspinset_projector()
   implicit none
   integer :: info, lwork,j,i,ii,iset,jj, elim, elimsets, flag, iwalk,myiostat,spindfrank,spinrank
   real*8, allocatable :: spinvects(:,:), spinvals(:), work(:), realprojector(:,:)
-  logical :: spinallowed,dfincluded
+  logical :: spinallowed,dfallowed
   integer :: allspinstart(nprocs)
 !  DATATYPE :: doublevects(maxspinsetsize**2)
 !  real*8 :: doublevals(maxspinsetsize)
@@ -414,7 +414,7 @@ subroutine configspinset_projector()
         if (dfrestrictflag.eq.0) then
            spindfrank=spindfrank+j
         else
-           if (dfincluded(configlist(:,spinsets(1,iset)))) then
+           if (dfallowed(configlist(:,spinsets(1,iset)))) then
               spindfrank=spindfrank+j
            endif
         endif

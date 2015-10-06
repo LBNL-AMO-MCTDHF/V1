@@ -195,7 +195,7 @@ subroutine walks()
 
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, jspf, iispf, jjspf, config2, config1, dirphase, &
        iind, flag, idof, iidof, jdof, iwalk, reorder, getconfiguration,myiostat,getmval,idiag
-  logical :: allowedconfig   !! extraconfig
+  logical :: dfallowed
   integer :: thisconfig(ndof), thatconfig(ndof), temporb(2), temporb2(2), isize, &
        newdoublediag(numelec*(numelec-1)), newsinglediag(numelec), listorder(maxdoublewalks+maxsinglewalks), i
 
@@ -294,7 +294,7 @@ subroutine walks()
 
            dirphase=reorder(thatconfig)
            
-           if (.not.allowedconfig(thatconfig)) then
+           if (.not.dfallowed(thatconfig)) then
               cycle
            endif
 
@@ -415,7 +415,7 @@ subroutine walks()
 
                  dirphase=reorder(thatconfig)
 
-                 if (.not.allowedconfig(thatconfig)) then
+                 if (.not.dfallowed(thatconfig)) then
                     cycle
                  endif
 
@@ -539,7 +539,7 @@ subroutine getnumwalks()
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, iispf,  config1,innumconfig,  &
        dirphase, iind, flag, idof, iidof, jdof,iwalk , reorder, myiostat, inprocs , getmval
 
-  logical :: allowedconfig !! extraconfig
+  logical :: dfallowed
   integer :: thisconfig(ndof), thatconfig(ndof), temporb(2), temporb2(2),totwalks
   character(len=3) :: iilab
   character(len=4) :: iilab0
@@ -655,7 +655,7 @@ subroutine getnumwalks()
 
               dirphase=reorder(thatconfig)
 
-              if (.not.allowedconfig(thatconfig)) then
+              if (.not.dfallowed(thatconfig)) then
                  cycle
               endif
 
@@ -746,7 +746,7 @@ subroutine getnumwalks()
                     thatconfig((iidof-1)*2+1  : iidof*2)=temporb2
                     dirphase=reorder(thatconfig)
                     
-                    if (allowedconfig(thatconfig)) then
+                    if (dfallowed(thatconfig)) then
                        if (offaxispulseflag.ne.0.or.getmval(thatconfig).eq.getmval(thisconfig)) then
                           iwalk = iwalk+1
                        endif
