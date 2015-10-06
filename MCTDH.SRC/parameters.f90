@@ -430,7 +430,7 @@ DATATYPE, allocatable :: bondpoints(:),bondweights(:),elecweights(:,:,:), elecra
 real*8 :: langramthresh=1d-9
 integer :: numreduced=1
 integer :: headersize=200
-integer :: spinrank=-1, spinstart=-1, spinend=-1
+integer :: spinstart=-1, spinend=-1
 integer :: numconfig=-1
 integer, allocatable :: configsperproc(:)
 integer ::       maxconfigsperproc

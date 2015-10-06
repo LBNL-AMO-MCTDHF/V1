@@ -127,13 +127,13 @@ subroutine configspin_transformto_local(nblock,invector,outvector)
   implicit none
   integer :: nblock, iset, iind,ii
   DATATYPE,intent(in) :: invector(nblock,configstart:configend)
-  DATATYPE,intent(out) :: outvector(nblock,spinrank)
+  DATATYPE,intent(out) :: outvector(nblock,spinstart:spinend)
 
   DATATYPE :: smallvect(nblock,maxspinsetsize), smalltemp(nblock,maxspinsetsize)
 
   outvector(:,:)=0d0
 
-  iind=1
+  iind=spinstart
   do iset=1,numspinsets
      smallvect(:,:)=0d0
      do ii=1,spinsetsize(iset)
@@ -144,8 +144,8 @@ subroutine configspin_transformto_local(nblock,invector,outvector)
      iind=iind+spinsetrank(iset)
   enddo
 
-  if (iind.ne.spinrank+1) then
-     OFLWR "IIND ERRO", iind,spinrank; CFLST
+  if (iind.ne.spinend+1) then
+     OFLWR "IIND ERRO", iind,spinstart,spinend; CFLST
   endif
 
 end subroutine configspin_transformto_local
@@ -190,12 +190,12 @@ subroutine configspin_transformfrom_local(nblock,invector,outvector)
   implicit none
   integer :: nblock,iset, iind, ii
   DATATYPE,intent(out) :: outvector(nblock,configstart:configend)
-  DATATYPE,intent(in) :: invector(nblock,spinrank)
+  DATATYPE,intent(in) :: invector(nblock,spinstart:spinend)
   DATATYPE :: smallvect(nblock,maxspinsetsize), smalltemp(nblock,maxspinsetsize)
 
   outvector(:,:)=0d0
 
-  iind=1
+  iind=spinstart
   do iset=1,numspinsets
      smallvect(:,1:spinsetrank(iset))=invector(:,iind:iind+spinsetrank(iset)-1)
      call MYGEMM('N', 'T', nblock, spinsetsize(iset), spinsetrank(iset), DATAONE, smallvect, nblock, spinsetprojector(iset)%vects, spinsetsize(iset), DATAZERO,smalltemp, nblock)
@@ -205,8 +205,8 @@ subroutine configspin_transformfrom_local(nblock,invector,outvector)
      iind=iind+spinsetrank(iset)
   enddo
 
-  if (iind.ne.spinrank+1) then
-     OFLWR "IIND ERROxx", iind, spinrank; CFLST
+  if (iind.ne.spinend+1) then
+     OFLWR "IIND ERROxx", iind, spinstart, spinend; CFLST
   endif
 
 end subroutine configspin_transformfrom_local
@@ -297,7 +297,7 @@ subroutine configspinset_projector()
   use mpimod
   use parameters
   implicit none
-  integer :: info, lwork,j,i,ii,iset,jj, elim, elimsets, flag, iwalk,myiostat,spindfrank
+  integer :: info, lwork,j,i,ii,iset,jj, elim, elimsets, flag, iwalk,myiostat,spindfrank,spinrank
   real*8, allocatable :: spinvects(:,:), spinvals(:), work(:), realprojector(:,:)
   logical :: spinallowed,dfincluded
   integer :: allspinstart(nprocs)

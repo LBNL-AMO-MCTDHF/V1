@@ -232,8 +232,8 @@ recursive subroutine parblockconfigmult_spin(inavectorspin,outavectorspin)
   use xxxmod
   implicit none
   integer :: ii
-  DATATYPE,intent(in) :: inavectorspin(numr,spinrank)
-  DATATYPE,intent(out) :: outavectorspin(numr,spinrank)
+  DATATYPE,intent(in) :: inavectorspin(numr,spinstart:spinend)
+  DATATYPE,intent(out) :: outavectorspin(numr,spinstart:spinend)
   DATATYPE :: intemp(numr,numconfig), ttvector2(numr,botconfig:topconfig)
 
   if (sparseconfigflag.eq.0) then
