@@ -351,7 +351,7 @@ subroutine fast_newconfiglist(alreadycounted)
   integer, target :: iii(max_numelec)  !! no, it is set.
   integer, target :: jjj(max_numelec)  !! no, it is set.
 
-!! 06-2015  integer :: alltopconfigs(nprocs),allbotconfigs(nprocs)
+  integer :: alltopconfigs(nprocs),allbotconfigs(nprocs)
 
   integer :: i, idof, ii , lowerarr(max_numelec),upperarr(max_numelec),  thisconfig(ndof),&
        reorder,nullint,kk,iconfig,mm, single(max_numelec),ishell,jj,maxssize=0,sss,nss,ssflag,numdoubly,&
@@ -792,8 +792,6 @@ endif
      if (nss.ne.numspinblocks) then
         OFLWR "NUMSPINBLOCKS ERR",nss,numspinblocks; CFLST
      endif
-
-     allocate(alltopconfigs(nprocs),allbotconfigs(nprocs))
 
      alltopconfigs(:)=0
      jj=1

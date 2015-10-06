@@ -294,7 +294,7 @@ subroutine configspinset_projector()
        spindfrank,spinrank,spinlocalrank,spinlocaldfrank
   real*8, allocatable :: spinvects(:,:), spinvals(:), work(:), realprojector(:,:)
   logical :: spinallowed,dfallowed
-  integer :: allbotspin(nprocs)
+  integer :: allbottemp(nprocs)
 !  DATATYPE :: doublevects(maxspinsetsize**2)
 !  real*8 :: doublevals(maxspinsetsize)
   
@@ -410,16 +410,16 @@ subroutine configspinset_projector()
   maxspinsperproc=0
   ii=0
   do i=1,nprocs
-     allbotspin(i)=ii+1
-     call mympiibcast(spinsperproc(i),i,1)
+     allbottemp(i)=ii+1
+     call mympiibcastone(spinsperproc(i),i)
      ii=ii+spinsperproc(i)
      if (spinsperproc(i).gt.maxspinsperproc) then
         maxspinsperproc=spinsperproc(i)
      endif
   enddo
   numspinconfig=ii
-  botspin=allbotspin(myrank)
-  topspin=botspin+spinlocalrank
+  botspin=allbottemp(myrank)
+  topspin=botspin+spinlocalrank-1
 
 
   if (sparseconfigflag.eq.0) then
@@ -436,6 +436,31 @@ subroutine configspinset_projector()
      spinend=topspin
   endif
 
+!! SPIN DF
+
+  allocate(spindfsperproc(nprocs)); spindfsperproc=(-1)
+
+  spindfsperproc(myrank)=spinlocaldfrank
+  maxspindfsperproc=0
+  ii=0
+  do i=1,nprocs
+     allbottemp(i)=ii+1
+     call mympiibcastone(spindfsperproc(i),i)
+     ii=ii+spindfsperproc(i)
+     if (spindfsperproc(i).gt.maxspindfsperproc) then
+        maxspindfsperproc=spindfsperproc(i)
+     endif
+  enddo
+  numspindfconfig=ii
+  botdfspin=allbottemp(myrank)
+  topdfspin=botdfspin+spinlocaldfrank-1
+
+  if (sparseconfigflag.eq.0) then
+     if (numspindfconfig.ne.spindfrank) then
+        OFLWR "CHECKME FAIL SPINDF ",numspindfconfig,spindfrank; CFLST
+     endif
+  endif
+
 
   if (parconsplit.eq.0) then
      firstspinconfig=1
@@ -447,15 +472,6 @@ subroutine configspinset_projector()
      localnspin=spinrank
   endif
 
-  numspindfconfig=spinlocaldfrank; 
-
-  call mympiireduceone(numspindfconfig)
-
-  if (sparseconfigflag.eq.0) then
-     if (numspindfconfig.ne.spindfrank) then
-        OFLWR "CHECKME FAIL SPINDF ",numspindfconfig,spindfrank; CFLST
-     endif
-  endif
 
   OFLWR "TOTAL (all processors) spin rank",numspinconfig," out of ", numconfig
   WRFL "     Spin DF rank (all processors) ", numspindfconfig

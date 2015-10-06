@@ -25,13 +25,15 @@ subroutine getdfcon()
   use dfconmod
   use configmod
   use walkmod
+  use mpimod
   implicit none
 
-  integer :: i,j,iconfig,nondfconfigs
+  integer :: i,j,iconfig,nondfconfigs,dfrank,ii,allbottemp(nprocs)
   logical :: dfallowed
   integer,allocatable :: dfnotconfigs(:)
 
-  allocate(dfincludedmask(numconfig), dfincludedconfigs(numconfig), dfnotconfigs(numconfig))
+  allocate(dfincludedmask(numconfig), dfincludedconfigs(numconfig), &
+       dfnotconfigs(numconfig),  dfconfsperproc(nprocs))
 
   if (dfrestrictflag.eq.0) then
      dfincludedmask(:)=1; dfnotconfigs(:)=(-1)
@@ -39,6 +41,9 @@ subroutine getdfcon()
         dfincludedconfigs(i)=i
      enddo
      numdfconfigs=numconfig; nondfconfigs=0
+     dfconfsperproc(:)=configsperproc(:)
+     maxdfconfsperproc=maxconfigsperproc
+     botdfconfig=botconfig;  topdfconfig=topconfig
 
   else
 
@@ -61,7 +66,32 @@ subroutine getdfcon()
      OFLWR "Number of included configurations ", numdfconfigs
      WRFL  "Number of not included ", nondfconfigs;  WRFL; CFL
 
+     dfrank=0
+     do i=botconfig,topconfig
+        if (dfallowed(configlist(:,i))) then 
+           dfrank=dfrank+1
+        endif
+     enddo
+
+     dfconfsperproc(myrank)=dfrank
+     maxdfconfsperproc=0
+     ii=0
+     do i=1,nprocs
+        allbottemp(i)=ii+1
+        call mympiibcastone(dfconfsperproc(i),i)
+        ii=ii+dfconfsperproc(i)
+        if (dfconfsperproc(i).gt.maxdfconfsperproc) then
+           maxdfconfsperproc=dfconfsperproc(i)
+        endif
+     enddo
+     botdfconfig=allbottemp(myrank)
+     topdfconfig=botdfconfig+dfrank-1
+
   endif
+
+
+
+
 
   numdfwalks=0
 

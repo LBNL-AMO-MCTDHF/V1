@@ -444,8 +444,20 @@ integer :: botspin=-1,topspin=-1
 integer :: spinstart=-1, spinend=-1
 integer :: firstspinconfig,lastspinconfig,localnspin
 
-integer :: numspindfconfig=0
 integer :: numdfconfigs=-1
+integer, allocatable :: dfconfsperproc(:)
+integer ::       maxdfconfsperproc
+integer :: botdfconfig=-1,topdfconfig=-1
+
+integer :: numspindfconfig=0
+integer, allocatable :: spindfsperproc(:)
+integer ::       maxspindfsperproc
+integer :: botdfspin=-1,topdfspin=-1
+
+integer :: numbasisconfig=0
+integer, allocatable :: basisperproc(:)
+integer ::       maxbasisperproc
+integer :: botbasis=-1,topbasis=-1
 
 integer :: walksonfile=0       
 integer :: autosize, autosteps

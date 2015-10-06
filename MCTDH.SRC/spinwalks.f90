@@ -9,7 +9,7 @@ module spinwalkinternal
   integer, allocatable :: unpaired(:,:)
 end module
 
-subroutine spinwalkalloc()
+subroutine spinwalkinit()
   use parameters
   use spinwalkinternal
   use spinwalkmod
@@ -27,7 +27,7 @@ subroutine spinwalkalloc()
   allocate(configspinmatel(maxspinwalks+1,configstart:configend))
   allocate(spinsetsize(configend-configstart+1),spinsetrank(configend-configstart+1))
 
-end subroutine spinwalkalloc
+end subroutine spinwalkinit
 
 
 subroutine spinwalkdealloc()

@@ -309,7 +309,7 @@ program mctdhf
 
      call walkalloc();             call walks()
 
-     call spinwalkalloc(); 
+     call spinwalkinit(); 
      call spinwalks()
      call spinsets_first()
      call configspin_matel()
@@ -319,12 +319,26 @@ program mctdhf
         OFLWR "Closing walks.BIN"; CFL; close(751);
      endif
      
+     call getdfcon()
+
+     allocate(basisperproc(nprocs))
+
+     if (allspinproject.eq.0) then
+        numbasisconfig=numdfconfigs
+        basisperproc(:)=dfconfsperproc(:)
+        maxbasisperproc=maxdfconfsperproc
+        botbasis=botdfconfig;  topbasis=topdfconfig
+        
+     else
+        numbasisconfig=numspindfconfig
+        basisperproc(:)=spindfsperproc(:)
+        maxbasisperproc=maxspindfsperproc
+        botbasis=botdfspin;  topbasis=topdfspin
+     endif
+
      call configlistwrite()
 
      call configalloc()
-
-     call getdfcon()
-
 
   endif
 
@@ -474,6 +488,11 @@ program mctdhf
   OFLWR "   ...END MCTDHF"; CFLST
 
 end program mctdhf
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 
