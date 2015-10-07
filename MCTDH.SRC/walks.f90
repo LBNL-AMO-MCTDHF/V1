@@ -195,7 +195,9 @@ subroutine walks()
 
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, jspf, iispf, jjspf, config2, config1, dirphase, &
        iind, flag, idof, iidof, jdof, iwalk, reorder, getconfiguration,myiostat,getmval,idiag
-  logical :: dfallowed
+!! DFALLOWED FOR SINGLE ELECTRON OPERATOR SINGLEWALKS (KEEP ALL FOR BIORTHO)
+!! ALLOWEDCONFIG FOR TWO ELECTRON OPERATOR DOUBLEWALKS (KEEP ONLY WALKS FROM DFALLOWED)
+  logical :: dfallowed, allowedconfig
   integer :: thisconfig(ndof), thatconfig(ndof), temporb(2), temporb2(2), isize, &
        newdoublediag(numelec*(numelec-1)), newsinglediag(numelec), listorder(maxdoublewalks+maxsinglewalks), i
 
@@ -248,8 +250,6 @@ subroutine walks()
   endif
 
   
-!! 06-2015  do config1=bot walk,top walk
-
   do config1=botconfig,topconfig
 
      if (mod(config1,1000).eq.0) then
@@ -293,8 +293,11 @@ subroutine walks()
            thatconfig((idof-1)*2+1  : idof*2)=temporb
 
            dirphase=reorder(thatconfig)
-           
-           if (.not.dfallowed(thatconfig)) then
+
+!! KEEPING ALL SINGLE WALKS (FROM ALLOWED AND NOT ALLOWED)
+!! FOR BIORTHO WITH ALLOWEDCONFIG() NOT DFALLOWED()
+
+           if (.not.allowedconfig(thatconfig)) then
               cycle
            endif
 
@@ -414,6 +417,9 @@ subroutine walks()
                  thatconfig((iidof-1)*2+1  : iidof*2)=temporb2
 
                  dirphase=reorder(thatconfig)
+
+!! KEEPING DOUBLE WALKS ONLY FROM ALLOWED CONFIGS
+!! WITH DFALLOWED() NOT ALLOWEDCONFIG()
 
                  if (.not.dfallowed(thatconfig)) then
                     cycle
@@ -539,7 +545,9 @@ subroutine getnumwalks()
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, iispf,  config1,innumconfig,  &
        dirphase, iind, flag, idof, iidof, jdof,iwalk , reorder, myiostat, inprocs , getmval
 
-  logical :: dfallowed
+!! DFALLOWED FOR SINGLE ELECTRON OPERATOR SINGLEWALKS (KEEP ALL FOR BIORTHO)
+!! ALLOWEDCONFIG FOR TWO ELECTRON OPERATOR DOUBLEWALKS (KEEP ONLY WALKS FROM DFALLOWED)
+  logical :: dfallowed, allowedconfig
   integer :: thisconfig(ndof), thatconfig(ndof), temporb(2), temporb2(2),totwalks
   character(len=3) :: iilab
   character(len=4) :: iilab0
@@ -655,7 +663,10 @@ subroutine getnumwalks()
 
               dirphase=reorder(thatconfig)
 
-              if (.not.dfallowed(thatconfig)) then
+!! KEEPING ALL SINGLE WALKS (FROM ALLOWED AND NOT ALLOWED)
+!! FOR BIORTHO WITH ALLOWEDCONFIG() NOT DFALLOWED()
+
+              if (.not.allowedconfig(thatconfig)) then
                  cycle
               endif
 
@@ -745,7 +756,10 @@ subroutine getnumwalks()
                     thatconfig((idof-1)*2+1  : idof*2)=temporb
                     thatconfig((iidof-1)*2+1  : iidof*2)=temporb2
                     dirphase=reorder(thatconfig)
-                    
+
+!! KEEPING DOUBLE WALKS ONLY FROM ALLOWED CONFIGS
+!! WITH DFALLOWED() NOT ALLOWEDCONFIG()
+
                     if (dfallowed(thatconfig)) then
                        if (offaxispulseflag.ne.0.or.getmval(thatconfig).eq.getmval(thisconfig)) then
                           iwalk = iwalk+1
