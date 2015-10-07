@@ -5,7 +5,7 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
   use parameters
   implicit none 
   integer, intent(in) :: order,inprintflag,guessflag
-  integer :: printflag,maxdim,vdim, calcsize, localsize,localstart,localend,ii
+  integer :: printflag,maxdim,vdim,ii
   DATATYPE, intent(out) :: outvalues(order)
   DATATYPE, intent(inout) :: outvectors(numr,firstconfig:lastconfig,order)
   DATATYPE :: workvectors(numr,botbasis:topbasis,order) !! AUTOMATIC
@@ -17,29 +17,6 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
      OFLWR "error, can't use blocklanczos for a-vector with sparseconfigflag=0"; CFLST
   endif
 
-  if (allspinproject.ne.0) then
-     calcsize=numspinconfig
-     localsize=localnspin
-     localstart=firstspinconfig
-     localend=lastspinconfig
-  else
-     calcsize=numconfig
-     localsize=localnconfig
-     localstart=firstconfig
-     localend=lastconfig
-  endif
-  if (dfrestrictflag.eq.0) then
-     maxdim=calcsize*numr
-  else
-     if (allspinproject.ne.0) then
-        maxdim=numspindfconfig*numr
-     else
-        maxdim=numdfconfigs*numr
-     endif
-  endif
-
-  vdim=(topbasis-botbasis+1)*numr
-
   workvectors(:,:,:)=0d0
 
   if (guessflag.ne.0) then
@@ -50,7 +27,13 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
            call configspin_transformto_local(numr,outvectors(:,botconfig:topconfig,ii),workvectors(:,:,ii))
         enddo
      endif
+     if (dfrestrictflag.ne.0) then
+        call df_project_local(workvectors,numr)
+     endif
   endif
+
+  maxdim=numdfbasis*numr
+  vdim=(topbasis-botbasis+1)*numr
 
   call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,workvectors,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,.true.,0,DATAZERO)
 
