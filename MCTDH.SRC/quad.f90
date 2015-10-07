@@ -345,7 +345,6 @@ subroutine sparsequadavector(inavector,jjcalls0)
   use xxxmod
   implicit none
   EXTERNAL :: paraamult_padded, parquadpreconsub_padded
-  EXTERNAL :: paraamult_spin_padded, parquadpreconsub_spin_padded
   DATATYPE, intent(inout) ::  inavector(numr,firstconfig:lastconfig)
   integer :: jjcalls, ss,ii,jjcalls0
   real*8 ::  dev,  thisaerror
@@ -360,8 +359,8 @@ subroutine sparsequadavector(inavector,jjcalls0)
 
   jjcalls0=0
 
-  allocate(smallvector(numr,botconfig:botconfig+maxconfigsperproc-1),smallvectorspin(numr,botspin:botspin+maxspinsperproc-1), &
-       smallvector2(numr,botconfig:botconfig+maxconfigsperproc-1),smallvectorspin2(numr,botspin:botspin+maxspinsperproc-1))
+  allocate(smallvector(numr,botconfig:botconfig+maxconfigsperproc-1),smallvectorspin(numr,botbasis:botbasis+maxbasisperproc-1), &
+       smallvector2(numr,botconfig:botconfig+maxconfigsperproc-1),smallvectorspin2(numr,botbasis:botbasis+maxbasisperproc-1))
 
   allocate( vector(numr,firstconfig:lastconfig), vector2(numr,firstconfig:lastconfig), vector3(numr,firstconfig:lastconfig))
 
@@ -436,22 +435,20 @@ subroutine sparsequadavector(inavector,jjcalls0)
   vector3=0d0; 
 
 
+  smallvectorspin(:,:)=0d0
+
   if (allspinproject.ne.0) then
-     
-     smallvectorspin(:,:)=0d0
-     call configspin_transformto_local(numr,vector(:,botconfig),smallvectorspin(:,botspin))
-     smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
-     call dgsolve0( smallvectorspin(:,:), smallvectorspin2(:,:), jjcalls, paraamult_spin_padded,quadprecon,parquadpreconsub_spin_padded, thisaerror,numr*maxspinsperproc,maxaorder,1)
-
-     call configspin_transformfrom_local(numr,smallvectorspin2(:,:),smallvector2(:,:))
-     
+     call configspin_transformto_local(numr,vector(:,botconfig),smallvectorspin(:,botbasis))
   else
-     
-     smallvector(:,:)=0d0; 
-     smallvector(:,botconfig:topconfig)=vector(:,botconfig:topconfig)
-     smallvector2(:,:)=smallvector(:,:)       !! guess
-     call dgsolve0( smallvector(:,:), smallvector2(:,:), jjcalls, paraamult_padded,quadprecon,parquadpreconsub_padded, thisaerror,numr*maxconfigsperproc,maxaorder,1)
+     smallvectorspin(:,botbasis:topbasis)=vector(:,botconfig:topconfig)
+  endif
+  smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
+  call dgsolve0( smallvectorspin(:,:), smallvectorspin2(:,:), jjcalls, paraamult_padded,quadprecon,parquadpreconsub_padded, thisaerror,numr*maxbasisperproc,maxaorder,1)
 
+  if (allspinproject.ne.0) then
+     call configspin_transformfrom_local(numr,smallvectorspin2(:,:),smallvector2(:,:))
+  else
+     smallvector2(:,:)=smallvectorspin2(:,:)
   endif
 
   vector3(:,:)=0d0; 
@@ -677,80 +674,58 @@ end subroutine nonsparsequadavector
 
 
 
-recursive subroutine paraamult_spin_padded(notusedint,inavectorspin,outavectorspin)
-  use parameters
-  implicit none
-  integer :: notusedint
-  DATATYPE,intent(in) :: inavectorspin(numr,maxspinsperproc)
-  DATATYPE,intent(out) :: outavectorspin(numr,maxspinsperproc)
-  DATATYPE :: inavector(numr,maxconfigsperproc), outavector(numr,maxconfigsperproc)
-
-  outavectorspin(:,:)=0d0   
-  call configspin_transformfrom_local(numr,inavectorspin,inavector)
-  call paraamult_padded(0,inavector,outavector)
-  call configspin_transformto_local(numr,outavector,outavectorspin)
-
-end subroutine paraamult_spin_padded
-
-
-
-recursive subroutine paraamult_padded(notusedint, inavector,outavector)
+recursive subroutine paraamult_padded(notusedint,inavectorspin,outavectorspin)
   use parameters
   use aaonedmod
   implicit none
   integer :: notusedint
-  DATATYPE,intent(in) :: inavector(numr,maxconfigsperproc)
-  DATATYPE,intent(out) :: outavector(numr,maxconfigsperproc)
+  DATATYPE,intent(in) :: inavectorspin(numr,maxbasisperproc)
+  DATATYPE,intent(out) :: outavectorspin(numr,maxbasisperproc)
 
-  outavector(:,:)=0d0   
+  outavectorspin(:,:)=0d0   
 
-  call parblockconfigmult(inavector,outavector)
+  call parblockconfigmult(inavectorspin,outavectorspin)
 
-  outavector(:,1:(topconfig-botconfig+1))= outavector(:,1:(topconfig-botconfig+1)) &
-       - quadexpect*inavector(:,1:(topconfig-botconfig+1))
+  outavectorspin(:,1:(topbasis-botbasis+1))= outavectorspin(:,1:(topbasis-botbasis+1)) &
+       - quadexpect*inavectorspin(:,1:(topbasis-botbasis+1))
 
 end subroutine paraamult_padded
 
 
-recursive subroutine parquadpreconsub_spin_padded(notusedint,inavectorspin,outavectorspin)
-  use parameters
-  implicit none
-  integer :: notusedint
-  DATATYPE,intent(in) :: inavectorspin(numr,maxspinsperproc)
-  DATATYPE,intent(out) :: outavectorspin(numr,maxspinsperproc)
-  DATATYPE :: inavector(numr,maxconfigsperproc),outavector(numr,maxconfigsperproc)
-
-  call configspin_transformfrom_local(numr,inavectorspin,inavector)
-  call parquadpreconsub_padded(0,inavector,outavector)
-
-  outavectorspin(:,:)=inavectorspin(:,:)  !! MUST BE FULL RANK
-  call configspin_transformto_local(numr,outavector,outavectorspin)
-
-end subroutine parquadpreconsub_spin_padded
 
 
-recursive subroutine parquadpreconsub_padded(notusedint, inavector,outavector)
+recursive subroutine parquadpreconsub_padded(notusedint, inavectorspin,outavectorspin)
   use parameters
   use aaonedmod
   use xxxmod
   implicit none
   integer :: notusedint
-  DATATYPE,intent(in) :: inavector(numr,maxconfigsperproc)
-  DATATYPE,intent(out) :: outavector(numr,maxconfigsperproc)
-  DATATYPE :: tempvector(numr,maxconfigsperproc)
+  DATATYPE,intent(in) :: inavectorspin(numr,maxbasisperproc)
+  DATATYPE,intent(out) :: outavectorspin(numr,maxbasisperproc)
+  DATATYPE :: inavector(numr,botconfig:topconfig),outavector(numr,botconfig:topconfig)
 
-  tempvector(:,:)=inavector(:,:)
-
-  if (dfrestrictflag.ne.0) then
-     call df_project_local(tempvector, numr)
+  if (allspinproject.eq.0) then
+     inavector(:,:)=inavectorspin(:,1:topconfig-botconfig+1)
+  else
+     call configspin_transformfrom_local(numr,inavectorspin,inavector)
   endif
 
-  outavector(:,:)=inavector(:,:) !! MUST BE FULL RANK
+  if (dfrestrictflag.ne.0) then
+     call df_project_local(inavector, numr)
+  endif
 
-  call parsparseconfigdiagmult(tempvector, outavector, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0)
+  call parsparseconfigdiagmult(inavector, outavector, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0)
 
   if (dfrestrictflag.ne.0) then
      call df_project_local(outavector, numr)
+  endif
+
+  outavectorspin(:,:)=inavectorspin(:,:) !! MUST BE FULL RANK
+
+  if (allspinproject.eq.0) then
+     outavectorspin(:,1:topconfig-botconfig+1)=outavector(:,:)
+  else
+     call configspin_transformto_local(numr,outavector,outavectorspin)     
   endif
 
 end subroutine parquadpreconsub_padded
