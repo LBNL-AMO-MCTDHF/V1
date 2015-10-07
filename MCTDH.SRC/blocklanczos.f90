@@ -5,12 +5,11 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
   use parameters
   implicit none 
   integer, intent(in) :: order,inprintflag,guessflag
-  integer :: printflag,maxdim,vdim,mytop,mybot, calcsize, localsize,localstart,localend,ii
+  integer :: printflag,maxdim,vdim, calcsize, localsize,localstart,localend,ii
   DATATYPE, intent(out) :: outvalues(order)
   DATATYPE, intent(inout) :: outvectors(numr,firstconfig:lastconfig,order)
-  DATATYPE, allocatable :: workvectors(:,:,:),myoutvectors(:,:,:), &
-       initvectors(:,:,:)
-  external :: parblockconfigmult, parblockconfigmult_spin
+  DATATYPE :: workvectors(numr,botbasis:topbasis,order) !! AUTOMATIC
+  external :: parblockconfigmult
 
   printflag=max(lanprintflag,inprintflag)
 
@@ -19,12 +18,12 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
   endif
 
   if (allspinproject.ne.0) then
-     calcsize=numspinconfig;   mytop=topspin; mybot=botspin
+     calcsize=numspinconfig
      localsize=localnspin
      localstart=firstspinconfig
      localend=lastspinconfig
   else
-     calcsize=numconfig;    mytop=topconfig; mybot=botconfig
+     calcsize=numconfig
      localsize=localnconfig
      localstart=firstconfig
      localend=lastconfig
@@ -39,46 +38,35 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
      endif
   endif
 
-  vdim=(mytop-mybot+1)*numr
-
-  allocate(workvectors(numr,mybot:mytop,order),myoutvectors(numr,botconfig:topconfig,order), &
-       initvectors(numr,localstart:localend,order))
+  vdim=(topbasis-botbasis+1)*numr
 
   workvectors(:,:,:)=0d0
 
   if (guessflag.ne.0) then
      if (allspinproject.eq.0) then
-        initvectors(:,:,:)=outvectors(:,:,:)  
+        workvectors(:,:,:)=outvectors(:,botconfig:topconfig,:)  
      else
         do ii=1,order 
-           call configspin_transformto(numr,outvectors(:,:,ii),initvectors(:,:,ii))
+           call configspin_transformto_local(numr,outvectors(:,botconfig:topconfig,ii),workvectors(:,:,ii))
         enddo
      endif
-     workvectors(:,:,:)=initvectors(:,mybot:mytop,:)
-  endif
-  if (allspinproject.eq.0) then
-     call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,workvectors,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,.true.,0,DATAZERO)
-  else
-     call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,workvectors,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult_spin,.true.,0,DATAZERO)
   endif
 
+  call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,workvectors,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,.true.,0,DATAZERO)
 
   outvectors(:,:,:)=0d0
   if (allspinproject.eq.0) then
      outvectors(:,botconfig:topconfig,:)=workvectors(:,:,:)
   else
      do ii=1,order
-        call configspin_transformfrom_local(numr,workvectors(:,:,ii),myoutvectors(:,:,ii))
+        call configspin_transformfrom_local(numr,workvectors(:,:,ii),outvectors(:,botconfig:topconfig,ii))
      enddo
-     outvectors(:,botconfig:topconfig,:)=myoutvectors(:,:,:)
   endif
   if (parconsplit.eq.0) then
      do ii=1,order
         call mpiallgather(outvectors(:,:,ii),numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
      enddo
   endif
-
-  deallocate(workvectors,myoutvectors, initvectors)
 
 end subroutine blocklanczos
 
@@ -195,15 +183,22 @@ recursive subroutine parblockconfigmult(inavector,outavector)
   use xxxmod
   implicit none
   integer :: ii
-  DATATYPE,intent(in) :: inavector(numr,botconfig:topconfig)
-  DATATYPE,intent(out) :: outavector(numr,botconfig:topconfig)
-  DATATYPE :: intemp(numr,numconfig)
+  DATATYPE,intent(in) :: inavector(numr,botbasis:topbasis)
+  DATATYPE,intent(out) :: outavector(numr,botbasis:topbasis)
+  DATATYPE :: intemp(numr,numconfig),inwork(numr,botconfig:topconfig),outwork(numr,botconfig:topconfig)
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parblockconfigmult"; CFLST
   endif
 
-  intemp(:,:)=0d0;   intemp(:,botconfig:topconfig)=inavector(:,:)
+  intemp(:,:)=0d0;   
+
+  if (allspinproject.ne.0) then
+     call configspin_transformfrom_local(numr,inavector,inwork)
+     intemp(:,botconfig:topconfig)=inwork(:,:)
+  else
+     intemp(:,botconfig:topconfig)=inavector(:,:)
+  endif
 
 !! DO SUMMA
 
@@ -213,35 +208,24 @@ recursive subroutine parblockconfigmult(inavector,outavector)
 
   call mpiallgather(intemp,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
 
-  call sparseconfigmult_nompi(intemp,outavector, yyy%cptr(0), yyy%sptr(0), 1,1,1,0,0d0,0,1,numr,0)
+  call sparseconfigmult_nompi(intemp,outwork, yyy%cptr(0), yyy%sptr(0), 1,1,1,0,0d0,0,1,numr,0)
   if (mshift.ne.0d0) then 
      do ii=botconfig,topconfig
-        outavector(:,ii)=outavector(:,ii)+ intemp(:,ii)*configmvals(ii)*mshift
+        outwork(:,ii)=outwork(:,ii)+ intemp(:,ii)*configmvals(ii)*mshift
      enddo
   endif
   if (dfrestrictflag.ne.0) then
-     call df_project_local(outavector,numr)
+     call df_project_local(outwork,numr)
+  endif
+
+  if (allspinproject.ne.0) then
+     call configspin_transformto_local(numr,outwork,outavector)
+  else
+     outavector(:,:)=outwork(:,:)
   endif
 
 end subroutine parblockconfigmult
 
-
-recursive subroutine parblockconfigmult_spin(inavectorspin,outavectorspin)
-  use parameters
-  use mpimod
-  use xxxmod
-  implicit none
-  DATATYPE,intent(in) :: inavectorspin(numr,botspin:topspin)
-  DATATYPE,intent(out) :: outavectorspin(numr,botspin:topspin)
-  DATATYPE :: intemp(numr,botconfig:topconfig),ttvector2(numr,botconfig:topconfig)
-
-  call configspin_transformfrom_local(numr,inavectorspin,intemp)
-
-  call parblockconfigmult(intemp,ttvector2)
-
-  call configspin_transformto_local(numr,ttvector2,outavectorspin)
-  
-end subroutine parblockconfigmult_spin
 
 
 subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,  outvectors,outvectorlda, outvalues,inprintflag,guessflag,lancheckmod,lanthresh,multsub,logpar,targetflag,etarget)
