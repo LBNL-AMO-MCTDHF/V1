@@ -249,6 +249,9 @@ subroutine abio_sparse(abio,aout,inbiovar)
   DATATYPE, allocatable :: wsp(:), smallvector(:,:), smallvectorout(:,:)
   external parbiomatvec,realpardotsub
 
+  if (sparseconfigflag.eq.0) then
+     OFLWR "Error, can't use abio_sparse if sparseconfigflag=0"; CFLST
+  endif
 
   t=1d0;  anorm=1d0 ;  itrace=0;   iflag=0; tol=biotol;   icalled=icalled+1
   if (icalled.eq.1) then
@@ -282,19 +285,23 @@ subroutine abio_sparse(abio,aout,inbiovar)
 
   call biomatvecset(inbiovar)
 
-  ixx=maxconfigsperproc*inbiovar%bionr
+  ixx=maxbasisperproc*inbiovar%bionr
   liwsp=max(12,inbiovar%thisbiodim+3);  lwsp=ixx*(liwsp+1) + 6*(liwsp)**2 + 6+1
   
   allocate(wsp(lwsp),iwsp(liwsp))
-  allocate(smallvector(inbiovar%bionr,maxconfigsperproc),smallvectorout(inbiovar%bionr,maxconfigsperproc))
+  allocate(smallvector(inbiovar%bionr,maxbasisperproc),smallvectorout(inbiovar%bionr,maxbasisperproc))
   smallvector(:,:)=0; smallvectorout(:,:)=0
-  smallvector(:,1:topconfig-botconfig+1)=abio(:,botconfig:topconfig)
+  if (allspinproject.eq.0) then
+     smallvector(:,1:topbasis-botbasis+1)=abio(:,botconfig:topconfig)
+  else
+     call configspin_transformto_local(inbiovar%bionr,abio(:,botconfig),smallvector(:,:))
+  endif
 
 #ifdef REALGO
-  call DGEXPVxxx2(ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec,itrace,iflag,biofileptr,tempstepsize,realpardotsub,maxconfigsperproc*nprocs*inbiovar%bionr)
+  call DGEXPVxxx2(ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec,itrace,iflag,biofileptr,tempstepsize,realpardotsub,maxbasisperproc*nprocs*inbiovar%bionr)
 #else
   lwsp=2*lwsp
-  call DGEXPVxxx2(2*ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec,itrace,iflag,biofileptr,tempstepsize,realpardotsub,2*maxconfigsperproc*nprocs*inbiovar%bionr)
+  call DGEXPVxxx2(2*ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec,itrace,iflag,biofileptr,tempstepsize,realpardotsub,2*maxbasisperproc*nprocs*inbiovar%bionr)
   lwsp=lwsp/2
 #endif
   if(iflag.eq.1) then
@@ -303,8 +310,13 @@ subroutine abio_sparse(abio,aout,inbiovar)
      OFLWR "Stopping due to bad iflag in sparsebiortho: ",iflag,tol,inbiovar%thisbiodim; CFLST
   endif
   aout(:,:)=0d0
-  aout(:,botconfig:topconfig)=smallvectorout(:,1:topconfig-botconfig+1)
-  if (sparseconfigflag.ne.0.and.parconsplit.eq.0) then
+  if (allspinproject.eq.0) then
+     aout(:,botconfig:topconfig)=smallvectorout(:,1:topbasis-botbasis+1)
+  else
+     call configspin_transformfrom_local(inbiovar%bionr,smallvectorout(:,:),aout(:,botconfig))
+  endif
+
+  if (parconsplit.eq.0) then
      call mpiallgather(aout,numconfig*inbiovar%bionr,configsperproc*inbiovar%bionr,maxconfigsperproc*inbiovar%bionr)
   endif
   deallocate(smallvector,smallvectorout)
@@ -425,7 +437,6 @@ contains
     if(sparseconfigflag.eq.0) then
        call abio_nonsparse(inbiovar%smo,abio,atmp,inbiovar%bionr)
     else
-!       call neglnmat(inbiovar%smo,nspf,lntol) !! transform s to -ln(s)
        inbiovar%smo(:,:)=smosave(:,:)
        call lnmat(inbiovar%smo(:,:),nspf,lntol) 
        call abio_sparse(abio,atmp,inbiovar)
@@ -602,24 +613,35 @@ subroutine parbiomatvec(inavector,outavector)
   use biomatvecmod
   implicit none
 
-  DATATYPE,intent(in) :: inavector(biopointer%bionr,botconfig:botconfig+maxconfigsperproc-1)
-  DATATYPE,intent(out) :: outavector(biopointer%bionr,botconfig:botconfig+maxconfigsperproc-1)
+  DATATYPE,intent(in) :: inavector(biopointer%bionr,maxbasisperproc)
+  DATATYPE,intent(out) :: outavector(biopointer%bionr,maxbasisperproc)
 
-  DATATYPE :: intemp(biopointer%bionr,numconfig)
+  DATATYPE :: intemp(biopointer%bionr,numconfig),workvector(biopointer%bionr,botconfig:topconfig)
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parbiomatvec"; CFLST
   endif
 
   intemp(:,:)=0d0
-  intemp(:,botconfig:topconfig)=inavector(:,botconfig:topconfig)
+  if (allspinproject.eq.0) then
+     intemp(:,botconfig:topconfig)=inavector(:,1:topconfig-botconfig+1)
+  else
+     call configspin_transformfrom_local(biopointer%bionr,inavector(:,:),intemp(:,botconfig))
+  endif
 
-!! DO SUMMA INSTEAD
+!! DO SUMMA INSTEAD GATHER FIRST THEN TRANSFORM
 
   call mpiallgather(intemp,numconfig*biopointer%bionr,configsperproc*biopointer%bionr,maxconfigsperproc*biopointer%bionr)
 
+  call biomatvec_nompi(intemp,workvector)
+
   outavector(:,:)=0d0
-  call biomatvec_nompi(intemp,outavector)
+
+  if (allspinproject.eq.0) then
+     outavector(:,1:topconfig-botconfig+1)=workvector(:,:)
+  else
+     call configspin_transformto_local(biopointer%bionr,workvector(:,:),outavector(:,:))
+  endif
 
 end subroutine parbiomatvec
 
