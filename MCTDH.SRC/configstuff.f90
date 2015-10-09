@@ -281,24 +281,30 @@ end subroutine configexpotimeinit
 
 !! NOTE BOUNDS !!  PADDED
 
-
-subroutine parconfigexpomult(inavector,outavector)
+subroutine parconfigexpomult_padded(inavectorspin,outavectorspin)
   use parameters
   use mpimod
   use configexpotimemod
   use configpropmod
   implicit none
 
-  DATATYPE,intent(in) :: inavector(numr,botconfig:botconfig+maxconfigsperproc-1)
-  DATATYPE,intent(out) :: outavector(numr,botconfig:botconfig+maxconfigsperproc-1)
-  DATATYPE :: intemp(numr,numconfig)
+  DATATYPE,intent(in) :: inavectorspin(numr,botbasis:botbasis+maxbasisperproc-1)
+  DATATYPE,intent(out) :: outavectorspin(numr,botbasis:botbasis+maxbasisperproc-1)
+  DATATYPE :: intemp(numr,numconfig), outavector(numr,botconfig:topconfig)
 
   call avectortime(3)
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parconfigexpomult"; CFLST
   endif
-  intemp(:,:)=0d0;  intemp(:,botconfig:topconfig)=inavector(:,botconfig:topconfig)
+
+  intemp(:,:)=0d0;  
+
+  if (allspinproject.eq.0) then
+     intemp(:,botconfig:topconfig)=inavectorspin(:,botbasis:topbasis)
+  else
+     call configspin_transformfrom_local(numr,inavectorspin,intemp(:,botconfig))
+  endif
 
   if (dfrestrictflag.ne.0) then
      call df_project_local(intemp(:,botconfig),numr)
@@ -307,48 +313,27 @@ subroutine parconfigexpomult(inavector,outavector)
 !! DO SUMMA  
   call mpiallgather(intemp,numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
 
-  outavector(:,:)=0d0
   call sparseconfigmult_nompi(intemp(:,:),outavector(:,:), workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0)
-
 
   if (dfrestrictflag.ne.0) then
      call df_project_local(outavector,numr)
   endif
 
-  outavector=outavector*timefac
-  
-  call avectortime(2)
-
-end subroutine parconfigexpomult
-
-
-
-subroutine parconfigexpomult_spin(inavectorspin,outavectorspin)
-  use parameters
-  use mpimod
-  use configexpotimemod
-  implicit none
-
-  DATATYPE,intent(in) :: inavectorspin(numr,botspin:botspin+maxspinsperproc-1)
-  DATATYPE,intent(out) :: outavectorspin(numr,botspin:botspin+maxspinsperproc-1)
-  DATATYPE :: inavector(numr,botconfig:botconfig+maxconfigsperproc-1),&
-       outavector(numr,botconfig:botconfig+maxconfigsperproc-1)
-
-  call avectortime(3)
-
-  call configspin_transformfrom_local(numr,inavectorspin,inavector)
-
-  call avectortime(2)
-
-  call parconfigexpomult(inavector,outavector)
-
   outavectorspin(:,:)=0d0
 
-  call configspin_transformto_local(numr,outavector,outavectorspin)
+  if (allspinproject.eq.0) then
+     outavectorspin(:,botbasis:topbasis) = outavector(:,botconfig:topconfig)
+  else
+     call configspin_transformto_local(numr,outavector,outavectorspin)
+  endif
 
-  call avectortime(2)
+  outavectorspin=outavectorspin*timefac
   
-end subroutine parconfigexpomult_spin
+  call avectortime(2)
+
+end subroutine parconfigexpomult_padded
+
+
 
 
 

@@ -365,7 +365,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
   if (allspinproject.ne.0) then
      call configspin_transformfrom_local(numr,smallvectorspin2(:,:),smallvector2(:,:))
   else
-     smallvector2(:,:)=smallvectorspin2(:,:)
+     smallvector2(:,botconfig:topconfig)=smallvectorspin2(:,botbasis:topbasis)
   endif
 
   if (dfrestrictflag.ne.0) then

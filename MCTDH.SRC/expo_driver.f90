@@ -472,7 +472,7 @@ subroutine avectortime(which)
   integer :: which
 
 !! times(1) = miscellaneous.  
-!! times(2) = parconfigexpomult or parconfigexpomult_spin.
+!! times(2) = parconfigexpomult
 !! times(3) = in-between (expokit)
 
    call system_clock(jjtime); times(which)=times(which)+jjtime-iitime; iitime=jjtime
@@ -488,10 +488,10 @@ subroutine exposparseprop(inavector0,outavector,time)
   DATATYPE,intent(in) :: inavector0(numr,firstconfig:lastconfig)
   DATATYPE,intent(out) :: outavector(numr,firstconfig:lastconfig)
   DATATYPE :: inavector(numr,firstconfig:lastconfig),  inavectorspin(numr,firstspinconfig:lastspinconfig)
-  external :: parconfigexpomult_spin,parconfigexpomult,realpardotsub
+  external :: parconfigexpomult_padded,realpardotsub
   real*8 :: one,time
   real*8, save :: tempstepsize=-1d0
-  integer :: itrace, iflag, numsteps, numiters,expofileptr=61142, liwsp=0, lwsp=0,qqq,getlen,ixx,ii
+  integer :: itrace, iflag, numsteps, numiters,expofileptr=61142, liwsp=0, lwsp=0,getlen,ii
 #ifdef REALGO
   integer, parameter :: zzz=1
 #else
@@ -572,19 +572,12 @@ subroutine exposparseprop(inavector0,outavector,time)
      expofileptr=nullfileptr
   endif
 
-
   one=1.d0; itrace=0 ! running mode
 
-  if (allspinproject.ne.0) then
-     ixx=maxspinsperproc ; qqq=numspinconfig
-  else
-     ixx=maxconfigsperproc ; qqq=numconfig
-  endif
+  allocate(smallvector(numr,maxbasisperproc),smallvectorout(numr,maxbasisperproc), &
+       zerovector(numr,maxbasisperproc),smallvectortemp(numr,maxbasisperproc))
 
-  allocate(smallvector(numr,ixx),smallvectorout(numr,ixx), &
-       zerovector(numr,ixx),smallvectortemp(numr,ixx))
-
-   lwsp =  ( ixx*numr*(thisexpodim+3) + ixx*numr + (thisexpodim+3)**2 + 5*(thisexpodim+3)**2+6+1 )
+   lwsp =  ( maxbasisperproc*numr*(thisexpodim+3) + maxbasisperproc*numr + (thisexpodim+3)**2 + 5*(thisexpodim+3)**2+6+1 )
    liwsp=max(10,thisexpodim+3)
    allocate(wsp(lwsp),iwsp(liwsp));    wsp=0.d0; iwsp=0
 
@@ -603,31 +596,31 @@ subroutine exposparseprop(inavector0,outavector,time)
    if (drivingflag.ne.0) then
       zerovector(:,:)=0d0
       if (allspinproject.ne.0) then
-         call parconfigexpomult_spin(smallvector,smallvectortemp)
+         call parconfigexpomult_padded(smallvector,smallvectortemp)
 
          smallvectortemp(:,1:topspin-botspin+1)=  smallvectortemp(:,1:topspin-botspin+1) + workdrivingavecspin(:,botspin:topspin) * timefac 
 
 !! par_timestep is a-norm estimate, ok, whatever
 
-         call DGPHIVxxx2( zzz*ixx*numr, thisexpodim, one, smallvectortemp, zerovector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
-              iwsp, liwsp, parconfigexpomult_spin, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
+         call DGPHIVxxx2( zzz*maxbasisperproc*numr, thisexpodim, one, smallvectortemp, zerovector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
+              iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*numbasis*numr)
          
       else
-         call parconfigexpomult(smallvector,smallvectortemp)
+         call parconfigexpomult_padded(smallvector,smallvectortemp)
 
          smallvectortemp(:,1:topconfig-botconfig+1)=  smallvectortemp(:,1:topconfig-botconfig+1) + workdrivingavec(:,botconfig:topconfig) * timefac 
 
-         call DGPHIVxxx2( zzz*ixx*numr, thisexpodim, one, smallvectortemp, zerovector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
-              iwsp, liwsp, parconfigexpomult, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
+         call DGPHIVxxx2( zzz*maxbasisperproc*numr, thisexpodim, one, smallvectortemp, zerovector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
+              iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*numbasis*numr)
       endif
       smallvectorout(:,:)=smallvectorout(:,:)+smallvector(:,:)
    else
       if (allspinproject.ne.0) then
-         call DGEXPVxxx2( zzz*ixx*numr, thisexpodim, one, smallvector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
-              iwsp, liwsp, parconfigexpomult_spin, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
+         call DGEXPVxxx2( zzz*maxbasisperproc*numr, thisexpodim, one, smallvector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
+              iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*numbasis*numr)
       else
-         call DGEXPVxxx2( zzz*ixx*numr, thisexpodim, one, smallvector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
-              iwsp, liwsp, parconfigexpomult, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*qqq*numr)
+         call DGEXPVxxx2( zzz*maxbasisperproc*numr, thisexpodim, one, smallvector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
+              iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*numbasis*numr)
       endif
    endif
 
