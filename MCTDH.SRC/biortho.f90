@@ -374,11 +374,11 @@ contains
     integer :: innumr
 
     biotypevar%smo=>insmo
-    biotypevar%biomaxdim=min(maxbiodim,numconfig*innumr-1)
+    biotypevar%biomaxdim=min(maxbiodim,numbasis*innumr-1)
 
 #ifndef REALGO
     if (biocomplex.eq.0) then
-       biotypevar%biomaxdim=numconfig*innumr*2-1
+       biotypevar%biomaxdim=numbasis*innumr*2-1
     endif
 #endif
     biotypevar%bionr=innumr
