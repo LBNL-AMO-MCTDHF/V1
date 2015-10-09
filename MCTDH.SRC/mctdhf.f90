@@ -473,23 +473,28 @@ program mctdhf
 
   if (threshflag.ne.0) then
      OFLWR "   ...getting state expectation values etcetera..."; CFL
+     call mpibarrier()
      call finalstats()
   endif
 
 !! *********************** !!
 
-  OFLWR "   ...cleanup..."; CFL
+!  OFLWR "   ...cleanup..."; CFL
+
   call mpibarrier()
 
-  call opdealloc()
-!  call myprojectdealloc()  ;  
-  call twoedealloc();     call xdealloc()
-
-  deallocate(myavectorhole,myavectorexcitefrom,myavectorexciteto)
-
-  call dfcondealloc()
-  
-  call natprojdealloc(); 
+!! 10-2015 something is buggy... no need to explicitly deallocate so commenting out - djh
+!  call opdealloc()
+!
+!!!  call myprojectdealloc()  ;  
+!
+!  call twoedealloc();     
+!  call xdealloc()
+!
+!  deallocate(myavectorhole,myavectorexcitefrom,myavectorexciteto)
+!
+!  call dfcondealloc()
+!  call natprojdealloc(); 
 
   call system("date")
   call mpibarrier()

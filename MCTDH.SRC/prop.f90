@@ -342,11 +342,12 @@ subroutine prop_loop( starttime)
   
   call actions_final()
 
+  OFLWR "   ...done prop..."; CFL
+  call mpibarrier()
 
   if (saveflag.ne.0) then
-     OFLWR "   ...done prop..."; CFL
+     OFLWR "  ...saving vector..."; CFL
      call mpibarrier()
-     OFLWR "   ...saving vector..."; CFL
      call save_vector(yyy%cmfpsivec(:,0),avectoroutfile,spfoutfile)  
   endif
   OFLWR "   ...end prop..."; CFL
