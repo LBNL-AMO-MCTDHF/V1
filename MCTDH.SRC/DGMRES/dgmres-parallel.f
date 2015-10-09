@@ -435,8 +435,6 @@ C   ------------------------------------------------------------------
       JPRE = IGWK(4)
 C         Check for valid value of ITOL.
 
-!      print *, "In dgmrespar  AA 00."
-
       IF( (ITOL.LT.0) .OR. ((ITOL.GT.3).AND.(ITOL.NE.11)) ) GOTO 650
 C         Check for consistent values of ITOL and JPRE.
       IF( ITOL.EQ.1 .AND. JPRE.LT.0 ) GOTO 650
@@ -458,7 +456,14 @@ C   ------------------------------------------------------------------
       MAXLP1 = MAXL + 1
       LV = 1
       LR = LV + N*MAXLP1
-      LHES = LR + N + 1
+
+C DJH 10-2015
+C DJH 10-2015
+C DJH 10-2015 MAXL can be > N for parallel     LHES = LR + N + 1
+C DJH 10-2015
+C DJH 10-2015:
+      LHES = LR + MAX(N,MAXL) + 1
+
       LQ = LHES + MAXL*MAXLP1
       LDL = LQ + 2*MAXL
       LW = LDL + N
@@ -477,12 +482,7 @@ C   ------------------------------------------------------------------
      $        RWORK, IWORK)
          NMS = NMS + 1
       ELSE
-!        print *, "before dcopy.", lr, ubound(RGWK), lr+n
-!!         rgwk(lr:lr+n-1)=b(1:n)
          CALL DCOPY(N, B, 1, RGWK(LR), 1)
-!         print *, "after dcopy."
-!         call mpistop()
-
       ENDIF
 
       IF( JSCAL.EQ.2 .OR. JSCAL.EQ.3 ) THEN
@@ -499,11 +499,6 @@ C   ------------------------------------------------------------------
          BNRM = djhDNRM2(N,RGWK(LR),1)
       ENDIF
 
-ccc      call openfile()
-ccc      write(971,*) "
-cc      print *, "CHECK 1 djhDNRM2: ", BNRM
-ccc      call closefile()
-
 C   ------------------------------------------------------------------
 C         Calculate initial residual.
 C   ------------------------------------------------------------------
@@ -518,8 +513,6 @@ C         If performing restarting, then load the residual into the
 C         correct location in the RGWK array.
 C   ------------------------------------------------------------------
  100  CONTINUE
-
-!      print *, "NRSTS before goto",NRSTS,NRMAX
 
       IF( NRSTS.GT.NRMAX ) GOTO 610
       IF( NRSTS.GT.0 ) THEN
@@ -537,9 +530,6 @@ C   ------------------------------------------------------------------
      $       RGWK(LDL), RHOL, NRMAX, B, BNRM, X, RGWK(LXL), ITOL,
      $       TOL, NELT, IA, JA, A, ISYM, IUNIT, IFLAG, ERR)
 
-
-!      print *, "NRSTS after pigmr",NRSTS,NRMAX
-
       ITER = ITER + LGMR
 
       NMS = NMS + NMSL
@@ -550,8 +540,6 @@ C
       DO 110 I = 1,N
          X(I) = X(I) + RGWK(LZM1+I)
  110  CONTINUE
-
-!      print *, "NRSTS at iflag",NRSTS,NRMAX
 
       IF( IFLAG.EQ.0 ) GOTO 600
       IF( IFLAG.EQ.1 ) THEN

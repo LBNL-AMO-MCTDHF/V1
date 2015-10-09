@@ -274,7 +274,6 @@ C   -------------------------------------------------------------------
  20      CONTINUE
       ENDIF
       R0NRM = djhDNRM2(N, V, 1)
-
       ITER = NRSTS*MAXL
 C
 C         Call stopping routine ISDGMRPAR.
@@ -283,9 +282,10 @@ C
      $    NMSL, ITOL, TOL, ITMAX, ITER, ERR, IUNIT, V(1,1), Z, WK,
      $    RPAR, IPAR, R0NRM, BNRM, SR, SZ, JSCAL,
      $    KMP, LGMR, MAXL, MAXLP1, V, Q, SNORMW, PROD, R0NRM,
-     $    HES, JPRE) .NE. 0) RETURN
+     $    HES, JPRE) .NE. 0) THEN
+         RETURN
+      ENDIF
       TEM = 1.0D0/R0NRM
-
       CALL DSCAL(N, TEM, V(1,1), 1)
 C
 C         Zero out the HES array.
@@ -312,7 +312,6 @@ C        routine DORTH  to  orthogonalize the    new vector VNEW   =
 C        V(*,LL+1).  Call routine DHEQR to update the factors of HES.
 C   -------------------------------------------------------------------
         IF ((JSCAL .EQ. 1) .OR.(JSCAL .EQ. 3)) THEN
-           print *, "CHECKMEEE PIGMR"; call mpistop()
            DO 60 I = 1,N
               WK(I) = V(I,LL)/SZ(I)
  60        CONTINUE
@@ -344,7 +343,6 @@ C   -------------------------------------------------------------------
         HES(LL+1,LL) = SNORMW
 
         CALL DHEQR(HES, MAXLP1, LL, Q, INFO, LL)
-
 
         IF (INFO .EQ. LL) GO TO 120
 C   -------------------------------------------------------------------
@@ -378,7 +376,6 @@ C   -------------------------------------------------------------------
  80        CONTINUE
            DLNRM = djhDNRM2(N, DL, 1)
            RHO = RHO*DLNRM
-
         ENDIF
         RHOL = RHO
 
@@ -392,10 +389,9 @@ C   -------------------------------------------------------------------
      $      NMSL, ITOL, TOL, ITMAX, ITER, ERR, IUNIT, DL, Z, WK,
      $      RPAR, IPAR, RHOL, BNRM, SR, SZ, JSCAL,
      $      KMP, LGMR, MAXL, MAXLP1, V, Q, SNORMW, PROD, R0NRM,
-     $      HES, JPRE) .NE. 0) then
+     $      HES, JPRE) .NE. 0) THEN
            GO TO 200
-
-        endif
+        ENDIF
 
         IF (LL .EQ. MAXL) GO TO 100
 C   -------------------------------------------------------------------
@@ -404,6 +400,7 @@ C   -------------------------------------------------------------------
         TEM = 1.0D0/SNORMW
 
         CALL DSCAL(N, TEM, V(1,LL+1), 1)
+
  90   CONTINUE
 
  100  CONTINUE
@@ -424,7 +421,7 @@ C
 C         Tolerance not met, but residual norm reduced.
 C
       IF (NRMAX .GT. 0) THEN
-C
+C     
 C        If performing restarting (NRMAX > 0)  calculate the residual
 C        vector RL and  store it in the DL  array.  If the incomplete
 C        version is being used (KMP < MAXL) then DL has  already been
