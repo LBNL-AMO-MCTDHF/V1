@@ -448,11 +448,13 @@ integer :: numdfconfigs=-1
 integer, allocatable :: dfconfsperproc(:)
 integer ::       maxdfconfsperproc
 integer :: botdfconfig=-1,topdfconfig=-1
+integer :: configdfstart=-1,configdfend=-1
 
 integer :: numspindfconfig=0
 integer, allocatable :: spindfsperproc(:)
 integer ::       maxspindfsperproc
 integer :: botdfspin=-1,topdfspin=-1
+integer :: spindfstart=-1,spindfend=-1
 
 integer :: numbasis=0
 integer, allocatable :: basisperproc(:)

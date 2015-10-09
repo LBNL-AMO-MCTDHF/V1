@@ -26,39 +26,42 @@ end function
 function getconfiguration(thisconfig)
   use parameters
   implicit none
-  integer :: getconfiguration, oldgetconfiguration, newgetconfiguration, thisconfig(ndof)
+  integer :: getconfiguration, newgetconfiguration, thisconfig(ndof)
 
-  if (numconfig.gt.10) then 
+!!$  if (numconfig.gt.10) then 
+
     getconfiguration=newgetconfiguration(thisconfig)
-  else
-    getconfiguration=oldgetconfiguration(thisconfig)
-  endif
+
+!!$  else
+!!$    getconfiguration=oldgetconfiguration(thisconfig)
+!!$  endif
+
 end function getconfiguration
 
-function oldgetconfiguration(thisconfig)
-  use parameters
-  use configmod
-  implicit none
-  integer :: oldgetconfiguration, thisconfig(ndof), i, j,flag,k
 
-  i=-1;  j=0;  flag=0
-  do while (flag.eq.0)
-     j=j+1;     flag=1
-     do k=1,ndof
-        if (configlist(k,j) /= thisconfig(k)) then
-           flag=0;           exit
-        endif
-     enddo
-     if (flag.eq.1) then
-        i=j
-     endif
-     if (j.eq.numconfig) then
-        flag=1
-     endif
-  enddo
-  oldgetconfiguration=i
-end function oldgetconfiguration
-
+!!$function oldgetconfiguration(thisconfig)
+!!$  use parameters
+!!$  use configmod
+!!$  implicit none
+!!$  integer :: oldgetconfiguration, thisconfig(ndof), i, j,flag,k
+!!$
+!!$  i=-1;  j=0;  flag=0
+!!$  do while (flag.eq.0)
+!!$     j=j+1;     flag=1
+!!$     do k=1,ndof
+!!$        if (configlist(k,j) /= thisconfig(k)) then
+!!$           flag=0;           exit
+!!$        endif
+!!$     enddo
+!!$     if (flag.eq.1) then
+!!$        i=j
+!!$     endif
+!!$     if (j.eq.numconfig) then
+!!$        flag=1
+!!$     endif
+!!$  enddo
+!!$  oldgetconfiguration=i
+!!$end function oldgetconfiguration
 
 
 function newgetconfiguration(thisconfig)
@@ -74,7 +77,7 @@ function newgetconfiguration(thisconfig)
     return
   endif
 
-  dir=1;  j=1;  step=numconfig/4;  flag=0
+  dir=1;  j=1;  step=max(1,numconfig/4);  flag=0
 
   do while (flag.eq.0)
      flag=1

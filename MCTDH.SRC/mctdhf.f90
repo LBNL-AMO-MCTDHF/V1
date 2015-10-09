@@ -319,7 +319,7 @@ program mctdhf
         OFLWR "Closing walks.BIN"; CFL; close(751);
      endif
      
-     call getdfcon()
+     call init_dfcon()
 
      allocate(basisperproc(nprocs),dfbasisperproc(nprocs))
 

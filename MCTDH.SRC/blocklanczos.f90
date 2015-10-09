@@ -20,15 +20,15 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
   workvectors(:,:,:)=0d0
 
   if (guessflag.ne.0) then
+     if (dfrestrictflag.ne.0) then
+        call df_project(outvectors,numr)
+     endif
      if (allspinproject.eq.0) then
         workvectors(:,:,:)=outvectors(:,botconfig:topconfig,:)  
      else
         do ii=1,order 
            call configspin_transformto_local(numr,outvectors(:,botconfig:topconfig,ii),workvectors(:,:,ii))
         enddo
-     endif
-     if (dfrestrictflag.ne.0) then
-        call df_project_local(workvectors,numr)
      endif
   endif
 

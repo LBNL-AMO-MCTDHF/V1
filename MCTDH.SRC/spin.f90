@@ -148,6 +148,39 @@ end subroutine configspin_transformto_local
 
 
 
+subroutine dfspin_transformto_local(nblock,invector,outvector)
+  use spinwalkmod
+  use parameters
+  implicit none
+  integer :: nblock, iset, iind,ii,jset
+  DATATYPE,intent(in) :: invector(nblock,configdfstart:configdfend)
+  DATATYPE,intent(out) :: outvector(nblock,spindfstart:spindfend)
+
+  DATATYPE :: smallvect(nblock,maxspinsetsize), smalltemp(nblock,maxspinsetsize)
+
+  outvector(:,:)=0d0
+
+  iind=spindfstart
+  do jset=1,numspindfsets
+     iset=spindfsetindex(jset)
+
+     smallvect(:,:)=0d0
+     do ii=1,spinsetsize(iset)
+        smallvect(:,ii)=invector(:,spindfsets(ii,jset))
+     enddo
+     call MYGEMM('N', 'N', nblock, spinsetrank(iset), spinsetsize(iset), DATAONE, smallvect,nblock, spinsetprojector(iset)%vects, spinsetsize(iset), DATAZERO,smalltemp, nblock)
+     outvector(:,iind:iind+spinsetrank(iset)-1) = smalltemp(:,1:spinsetrank(iset))
+     iind=iind+spinsetrank(iset)
+  enddo
+
+  if (iind.ne.spindfend+1) then
+     OFLWR "IIND ERRO", iind,spindfstart,spindfend; CFLST
+  endif
+
+end subroutine dfspin_transformto_local
+
+
+
 subroutine configspin_transformfrom(nblock,invector,outvector)
   use parameters
   implicit none
@@ -206,6 +239,36 @@ subroutine configspin_transformfrom_local(nblock,invector,outvector)
   endif
 
 end subroutine configspin_transformfrom_local
+
+
+
+subroutine dfspin_transformfrom_local(nblock,invector,outvector)
+  use spinwalkmod
+  use parameters
+  implicit none
+  integer :: nblock,iset, iind, ii, jset
+  DATATYPE,intent(out) :: outvector(nblock,configdfstart:configdfend)
+  DATATYPE,intent(in) :: invector(nblock,spindfstart:spindfend)
+  DATATYPE :: smallvect(nblock,maxspinsetsize), smalltemp(nblock,maxspinsetsize)
+
+  outvector(:,:)=0d0
+
+  iind=spindfstart
+  do jset=1,numspindfsets
+     iset=spindfsetindex(jset)
+     smallvect(:,1:spinsetrank(iset))=invector(:,iind:iind+spinsetrank(iset)-1)
+     call MYGEMM('N', 'T', nblock, spinsetsize(iset), spinsetrank(iset), DATAONE, smallvect, nblock, spinsetprojector(iset)%vects, spinsetsize(iset), DATAZERO,smalltemp, nblock)
+     do ii=1,spinsetsize(iset)
+        outvector(:,spindfsets(ii,jset))=smalltemp(:,ii)
+     enddo
+     iind=iind+spinsetrank(iset)
+  enddo
+
+  if (iind.ne.spindfend+1) then
+     OFLWR "IIND ERROxx", iind, spindfstart, spindfend; CFLST
+  endif
+
+end subroutine dfspin_transformfrom_local
 
 
 
@@ -461,6 +524,13 @@ subroutine configspinset_projector()
      endif
   endif
 
+  if (sparseconfigflag.eq.0) then
+     spindfstart=1
+     spindfend=numspindfconfig
+  else
+     spindfstart=botdfspin
+     spindfend=topdfspin
+  endif
 
   if (parconsplit.eq.0) then
      firstspinconfig=1

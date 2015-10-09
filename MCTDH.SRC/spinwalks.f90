@@ -154,6 +154,7 @@ end subroutine spinwalks
 
 
 subroutine spinsets_first()
+  use dfconmod !! dfincludedmask
   use spinwalkmod
   use spinwalkinternal
   use configmod
@@ -161,7 +162,7 @@ subroutine spinsets_first()
   use aarrmod
   implicit none
 
-  integer ::  iwalk, jj,  iset, ilevel, currentnumwalks, prevnumwalks, flag, iflag, addwalks,  i, j, jwalk
+  integer ::  iwalk, jj,  iset, ilevel, currentnumwalks, prevnumwalks, flag, iflag, addwalks,  i, j, jwalk, jset, getdfindex
   integer, allocatable :: taken(:), tempwalks(:)
 
   if (walksonfile.eq.0) then
@@ -170,9 +171,8 @@ subroutine spinsets_first()
      maxspinsetsize=0
 
      do jj=0,1
-        taken=0;        iset=0
+        taken=0;        iset=0;    jset=0
         do i=configstart,configend
-
            if (taken(i).ne.1) then
               taken(i)=1;           iset=iset+1
               ilevel=0;           flag=0
@@ -212,14 +212,25 @@ subroutine spinsets_first()
                     OFLWR "WALK ERROR";CFLST
                  endif
                  spinsets(1:currentnumwalks,iset)=tempwalks(1:currentnumwalks)
+                 if (dfincludedmask(i).ne.0) then
+                    jset=jset+1
+                    spindfsetindex(jset)=iset
+                    do j=1,currentnumwalks
+                       spindfsets(j,jset)=getdfindex(tempwalks(j))
+                    enddo
+                 endif
               endif
            endif
         enddo
         if (jj==0) then
            numspinsets=iset
+           numspindfsets=jset
         else
            if (numspinsets.ne.iset) then
               OFLWR "NUMSPINSETS ERROR ", numspinsets, iset;CFLST
+           endif
+           if (numspindfsets.ne.jset) then
+              OFLWR "NUMSPINdfSETS ERROR ", numspindfsets, jset;CFLST
            endif
         endif
         do i=configstart,configend
@@ -238,7 +249,7 @@ subroutine spinsets_first()
         call mympiimax(maxspinsetsize)
 
         if (jj==0) then
-           allocate(spinsets(maxspinsetsize,numspinsets))
+           allocate(spinsets(maxspinsetsize,numspinsets),spindfsets(maxspinsetsize,numspindfsets),spindfsetindex(numspindfsets))
         endif
      enddo
      deallocate(taken, tempwalks)

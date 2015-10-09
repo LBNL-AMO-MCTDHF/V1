@@ -17,10 +17,53 @@ function dfallowed(thisconfig)
 
 end function dfallowed
 
+function getdfindex(config1)
+  use parameters
+  use dfconmod
+  implicit none
+  integer :: getdfindex, config1,j,flag, dir,newdir, step
+
+  getdfindex=-1
+
+  if (dfincludedmask(config1).eq.0) then
+     return
+  endif
+  
+  dir=1;  j=1;  step=max(1,numdfconfigs/4);  flag=0
+
+  do while (flag.eq.0)
+     flag=1
+
+     if (dfincludedconfigs(j) .ne. config1) then
+        flag=0
+        if (dfincludedconfigs(j).lt.config1) then
+           newdir=1
+        else
+           newdir=-1
+        endif
+        if (newdir.ne.dir) then
+           step=max(1,step/2)
+        endif
+        dir=newdir;           j=j+dir*step
+        if (j.le.1) then
+           j=1;              dir=1
+        endif
+        if (j.ge.numdfconfigs) then
+           j=numdfconfigs;              dir=-1
+        endif
+     endif
+  enddo
+
+  getdfindex=j
+  
+end function getdfindex
+
+
+
 ! "included" configurations are those kept in the calculation.
 ! there are numdfconfigs INCLUDED configurations.
 
-subroutine getdfcon()
+subroutine init_dfcon()
   use parameters
   use dfconmod
   use configmod
@@ -89,9 +132,13 @@ subroutine getdfcon()
 
   endif
 
-
-
-
+  if (sparseconfigflag.eq.0) then
+     configdfstart=1
+     configdfend=numdfconfigs
+  else
+     configdfstart=botdfconfig
+     configdfend=topdfconfig
+  endif
 
   numdfwalks=0
 
@@ -144,7 +191,7 @@ subroutine getdfcon()
 
   deallocate(dfnotconfigs)
 
-end subroutine getdfcon
+end subroutine init_dfcon
 
 subroutine dfcondealloc()
   use parameters
@@ -183,6 +230,7 @@ subroutine df_project_all(avector,howmany)
   enddo
 end subroutine df_project_all
 
+
 subroutine df_project_local(avector,howmany)
   use parameters
   use dfconmod
@@ -193,6 +241,40 @@ subroutine df_project_local(avector,howmany)
      avector(:,i)=avector(:,i)*dfincludedmask(i)
   enddo
 end subroutine df_project_local
+
+
+subroutine df_transformto_local(avectorin,avectorout,howmany)
+  use parameters
+  use dfconmod
+  implicit none
+  integer :: howmany,i
+  DATATYPE,intent(in) :: avectorin(howmany,configstart:configend)
+  DATATYPE,intent(out) :: avectorout(howmany,configdfstart:configdfend)
+
+  do i=configdfstart,configdfend
+     avectorout(:,i)=avectorin(:,dfincludedconfigs(i))
+  enddo
+
+end subroutine df_transformto_local
+
+
+subroutine df_transformfrom_local(avectorin,avectorout,howmany)
+  use parameters
+  use dfconmod
+  implicit none
+  integer :: howmany,i
+  DATATYPE,intent(in) :: avectorin(howmany,configdfstart:configdfend)
+  DATATYPE,intent(out) :: avectorout(howmany,configstart:configend)
+
+  avectorout(:,:)=0d0
+
+  do i=configdfstart,configdfend
+     avectorout(:,dfincludedconfigs(i))=avectorin(:,i)
+  enddo
+
+end subroutine df_transformfrom_local
+
+
 
 subroutine checksym(mat,dim)
   use fileptrmod
