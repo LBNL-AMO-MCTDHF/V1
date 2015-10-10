@@ -309,6 +309,8 @@ program mctdhf
 
      call walkalloc();             call walks()
 
+     call init_dfcon()
+
      call spinwalkinit(); 
      call spinwalks()
      call spinsets_first()
@@ -319,8 +321,6 @@ program mctdhf
         OFLWR "Closing walks.BIN"; CFL; close(751);
      endif
      
-     call init_dfcon()
-
      allocate(basisperproc(nprocs),dfbasisperproc(nprocs))
 
      if (allspinproject.eq.0) then

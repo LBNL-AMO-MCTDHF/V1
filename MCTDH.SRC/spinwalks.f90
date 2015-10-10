@@ -174,6 +174,9 @@ subroutine spinsets_first()
         taken=0;        iset=0;    jset=0
         do i=configstart,configend
            if (taken(i).ne.1) then
+              if (dfincludedmask(i).ne.0) then
+                 jset=jset+1
+              endif
               taken(i)=1;           iset=iset+1
               ilevel=0;           flag=0
               tempwalks(1) = i;
@@ -213,7 +216,6 @@ subroutine spinsets_first()
                  endif
                  spinsets(1:currentnumwalks,iset)=tempwalks(1:currentnumwalks)
                  if (dfincludedmask(i).ne.0) then
-                    jset=jset+1
                     spindfsetindex(jset)=iset
                     do j=1,currentnumwalks
                        spindfsets(j,jset)=getdfindex(tempwalks(j))
