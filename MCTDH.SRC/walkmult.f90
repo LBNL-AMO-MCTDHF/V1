@@ -478,9 +478,6 @@ recursive subroutine arbitrary_sparsemult_nompi_singles(mattrans, rvector,inbigv
         outsmallvector(:,config1)=outsmallvector(:,config1)*rvector(:)
      enddo
   else
-     if (sortwalks.ne.0) then
-        OFLWR " ??? NOT DEBUGGED ??? sortwalks singlediag.  programmer remove me to try"; CFLST
-     endif
      do config1=botconfig,topconfig
         do idiag=1,numsinglediagwalks(config1)
            outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(singlediag(idiag,config1),config1) * inbigvector(:,config1)
@@ -514,9 +511,6 @@ recursive subroutine arbitrary_sparsemult_nompi_doubles(mattrans,rvector,inbigve
            outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(iwalk,config1) * inbigvector(:,doublewalk(iwalk,config1))
         enddo
      else
-        if (sortwalks.ne.0) then
-           OFLWR " ??? NOT DEBUGGED ??? sortwalks doublediag.  programmer remove me to try"; CFLST
-        endif
         do idiag=1,numdoublediagwalks(config1)
            outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(doublediag(idiag,config1),config1) * inbigvector(:,config1)
         enddo
@@ -579,9 +573,6 @@ recursive subroutine arbitraryconfig_mult_nompi(onebodymat, rvector, avectorin, 
         enddo
      enddo
   else
-     if (sortwalks.ne.0) then
-        OFLWR " ??? NOT DEBUGGED ??? sortwalks singlediag.  programmer remove me to try"; CFLST
-     endif
      do config1=botconfig,topconfig
         do idiag=1,numsinglediagwalks(config1)
            iwalk=singlediag(idiag,config1)
@@ -622,9 +613,6 @@ recursive subroutine arbitraryconfig_mult_doubles_nompi(twobodymat, rvector, ave
         enddo
      enddo
   else
-     if (sortwalks.ne.0) then
-        OFLWR " ??? NOT DEBUGGED ??? sortwalks doublediag.  programmer remove me to try"; CFLST
-     endif
      do config1=botconfig,topconfig
         do idiag=1,numdoublediagwalks(config1)
            iwalk=doublediag(idiag,config1)
