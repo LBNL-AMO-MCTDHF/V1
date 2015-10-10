@@ -480,14 +480,16 @@ subroutine avectortime(which)
 end subroutine
 
 
-subroutine exposparseprop(inavector0,outavector,time)
+subroutine exposparseprop(inavector,outavector,time)
   use parameters
   use configpropmod
   use mpimod
   implicit none
-  DATATYPE,intent(in) :: inavector0(numr,firstconfig:lastconfig)
+  DATATYPE,intent(in) :: inavector(numr,firstconfig:lastconfig)
   DATATYPE,intent(out) :: outavector(numr,firstconfig:lastconfig)
-  DATATYPE :: inavector(numr,firstconfig:lastconfig)
+  DATATYPE :: smallvector(numr,maxdfbasisperproc),smallvectorout(numr,maxdfbasisperproc), &
+       zerovector(numr,maxdfbasisperproc),smallvectortemp(numr,maxdfbasisperproc), &
+       workdrivingavecdfbasis(numr,botdfbasis:topdfbasis)
   external :: parconfigexpomult_padded,realpardotsub
   real*8 :: one,time
   real*8, save :: tempstepsize=-1d0
@@ -498,7 +500,7 @@ subroutine exposparseprop(inavector0,outavector,time)
   integer, parameter ::   zzz=2
 #endif
 
-  DATATYPE, allocatable :: wsp(:), smallvector(:,:),smallvectorout(:,:),smallvectortemp(:,:),zerovector(:,:)
+  DATATYPE, allocatable :: wsp(:)
   integer, allocatable :: iwsp(:)
   integer, save :: thisexpodim=-1, icalled=0,my_maxaorder=0
 !! 0 = not set; reduce to minimum 
@@ -511,20 +513,11 @@ subroutine exposparseprop(inavector0,outavector,time)
 
   call avectortimeset()
 
-  inavector(:,:)=inavector0(:,:)
-
-  if (allspinproject.ne.0) then
-     call configspin_project(inavector,0)
-  endif
-  if (dfrestrictflag.ne.0) then
-     call df_project(inavector,numr)
-  endif
-
   icalled=icalled+1
 
   if (icalled.eq.1) then
      tempstepsize=par_timestep/littlesteps
-     my_maxaorder=min(maxbasisperproc*nprocs*numr,maxaorder)
+     my_maxaorder=min(maxdfbasisperproc*nprocs*numr,maxaorder)
      thisexpodim=min(my_maxaorder,aorder)
   endif
   
@@ -558,44 +551,36 @@ subroutine exposparseprop(inavector0,outavector,time)
 !!$ opening /dev/null multiple times not allowed :<       open(expofileptr,file="/dev/null",status="unknown")
      expofileptr=nullfileptr
   endif
-
+  
   one=1.d0; itrace=0 ! running mode
+  
+  lwsp =  ( maxdfbasisperproc*numr*(thisexpodim+3) + maxdfbasisperproc*numr + (thisexpodim+3)**2 + 5*(thisexpodim+3)**2+6+1 )
+  liwsp=max(10,thisexpodim+3)
+  allocate(wsp(lwsp),iwsp(liwsp));    wsp=0.d0; iwsp=0
+  
+  smallvector(:,:)=0; smallvectorout(:,:)=0d0
 
-  allocate(smallvector(numr,maxbasisperproc),smallvectorout(numr,maxbasisperproc), &
-       zerovector(numr,maxbasisperproc),smallvectortemp(numr,maxbasisperproc))
+  call basis_transformto_local(numr,inavector(:,botconfig),smallvector(:,:))
 
-   lwsp =  ( maxbasisperproc*numr*(thisexpodim+3) + maxbasisperproc*numr + (thisexpodim+3)**2 + 5*(thisexpodim+3)**2+6+1 )
-   liwsp=max(10,thisexpodim+3)
-   allocate(wsp(lwsp),iwsp(liwsp));    wsp=0.d0; iwsp=0
+  lwsp=zzz*lwsp
 
-   smallvector(:,:)=0; smallvectorout(:,:)=0d0
-   if (allspinproject.ne.0) then
-      call configspin_transformto_local(numr,inavector(:,botconfig),smallvector(:,:))
-   else
-      smallvector(:,1:topbasis-botbasis+1)=inavector(:,botconfig:topconfig)
-   endif
-
-   lwsp=zzz*lwsp
-
-   call avectortime(1)
-
-   if (drivingflag.ne.0) then
-      call parconfigexpomult_padded(smallvector,smallvectortemp)
-      if (allspinproject.ne.0) then
-         smallvectortemp(:,1:topbasis-botbasis+1)=  smallvectortemp(:,1:topbasis-botbasis+1) + workdrivingavecspin(:,botspin:topspin) * timefac 
-      else
-         smallvectortemp(:,1:topbasis-botbasis+1)=  smallvectortemp(:,1:topbasis-botbasis+1) + workdrivingavec(:,botconfig:topconfig) * timefac 
-      endif
+  call avectortime(1)
 
 !! par_timestep is a-norm estimate, ok, whatever
-      zerovector(:,:)=0d0
-      call DGPHIVxxx2( zzz*maxbasisperproc*numr, thisexpodim, one, smallvectortemp, zerovector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
-           iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*numbasis*numr)
+
+  if (drivingflag.ne.0) then
+     call parconfigexpomult_padded(smallvector,smallvectortemp)
+     call basis_transformto_local(numr,workdrivingavec(:,botconfig),workdrivingavecdfbasis(:,:))
+     smallvectortemp(:,1:topdfbasis-botdfbasis+1)=  smallvectortemp(:,1:topdfbasis-botdfbasis+1) + workdrivingavecdfbasis(:,:) * timefac 
+
+     zerovector(:,:)=0d0
+     call DGPHIVxxx2( zzz*maxdfbasisperproc*numr, thisexpodim, one, smallvectortemp, zerovector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
+           iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*numdfbasis*numr)
 
       smallvectorout(:,:)=smallvectorout(:,:)+smallvector(:,:)
    else
-      call DGEXPVxxx2( zzz*maxbasisperproc*numr, thisexpodim, one, smallvector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
-           iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*numbasis*numr)
+      call DGEXPVxxx2( zzz*maxdfbasisperproc*numr, thisexpodim, one, smallvector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
+           iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*numdfbasis*numr)
    endif
 
    call avectortime(3)
@@ -604,25 +589,12 @@ subroutine exposparseprop(inavector0,outavector,time)
    
    outavector(:,:)=0d0;   
 
-   if (allspinproject.ne.0) then
-      call configspin_transformfrom_local(numr,smallvectorout,outavector(:,botconfig))
-   else
-      outavector(:,botconfig:topconfig)=smallvectorout(:,1:topconfig-botconfig+1)
-   endif
+   call basis_transformto_local(numr,smallvectorout,outavector(:,botconfig))
 
    if (parconsplit.eq.0) then
       call mpiallgather(outavector,numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
    endif
 
-   deallocate(smallvector,smallvectorout,  zerovector,smallvectortemp)
-
-   if (allspinproject.ne.0) then
-      call configspin_project(outavector,0)
-   endif
-   if (dfrestrictflag.ne.0) then
-      call df_project(outavector,numr)
-   endif
-   
    if (expofileptr.ne.nullfileptr) then
       close(expofileptr)
    endif

@@ -263,8 +263,8 @@ subroutine parconfigexpomult_padded(inavectorspin,outavectorspin)
   use configpropmod
   implicit none
 
-  DATATYPE,intent(in) :: inavectorspin(numr,botbasis:botbasis+maxbasisperproc-1)
-  DATATYPE,intent(out) :: outavectorspin(numr,botbasis:botbasis+maxbasisperproc-1)
+  DATATYPE,intent(in) :: inavectorspin(numr,botdfbasis:botdfbasis+maxdfbasisperproc-1)
+  DATATYPE,intent(out) :: outavectorspin(numr,botdfbasis:botdfbasis+maxdfbasisperproc-1)
   DATATYPE :: intemp(numr,numconfig), outavector(numr,botconfig:topconfig)
 
   call avectortime(3)
@@ -275,32 +275,16 @@ subroutine parconfigexpomult_padded(inavectorspin,outavectorspin)
 
   intemp(:,:)=0d0;  
 
-  if (allspinproject.eq.0) then
-     intemp(:,botconfig:topconfig)=inavectorspin(:,botbasis:topbasis)
-  else
-     call configspin_transformfrom_local(numr,inavectorspin,intemp(:,botconfig))
-  endif
-
-  if (dfrestrictflag.ne.0) then
-     call df_project_local(intemp(:,botconfig),numr)
-  endif
+  call basis_transformfrom_local(numr,inavectorspin,intemp(:,botconfig))
 
 !! DO SUMMA  
   call mpiallgather(intemp,numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
 
   call sparseconfigmult_nompi(intemp(:,:),outavector(:,:), workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0)
 
-  if (dfrestrictflag.ne.0) then
-     call df_project_local(outavector,numr)
-  endif
-
   outavectorspin(:,:)=0d0
 
-  if (allspinproject.eq.0) then
-     outavectorspin(:,botbasis:topbasis) = outavector(:,botconfig:topconfig)
-  else
-     call configspin_transformto_local(numr,outavector,outavectorspin)
-  endif
+  call basis_transformto_local(numr,outavector,outavectorspin)
 
   outavectorspin=outavectorspin*timefac
   

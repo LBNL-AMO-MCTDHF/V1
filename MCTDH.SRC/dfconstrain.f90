@@ -311,8 +311,12 @@ subroutine basis_transformfrom_local(howmany,avectorin,avectorout)
   implicit none
   integer :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,basisdfstart:basisdfend)
-  DATATYPE,intent(out) :: avectorout(howmany,basisstart:basisend)
+  DATATYPE,intent(out) :: avectorout(howmany,configstart:configend)
   DATATYPE :: workvec(howmany,configdfstart:configdfend)
+
+  if (configend-configstart+1.ne.0) then
+     avectorout(:,:)=0d0
+  endif
 
   if (basisdfend-basisdfstart+1.ne.0) then
      if (dfrestrictflag.ne.0) then

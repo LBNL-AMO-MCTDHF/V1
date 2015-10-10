@@ -901,16 +901,19 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
 
      if (drivingflag.ne.0) then
         workdrivingavec(:,:)=0d0
-        if (allspinproject.ne.0) then
-           workdrivingavecspin(:,:)=0d0
-        endif
+
+!!$        if (allspinproject.ne.0) then
+!!$           workdrivingavecspin(:,:)=0d0
+!!$        endif
+
         if (iflag.eq.1) then
            workdrivingavec(:,:)=( yyy%drivingavectorsxx(:,:,imc,1)*pots(1) + &
                 yyy%drivingavectorsyy(:,:,imc,1)*pots(2) + yyy%drivingavectorszz(:,:,imc,1)*pots(3) )*thisstep
 
-           if (allspinproject.ne.0) then
-              call configspin_transformto(numr,workdrivingavec,workdrivingavecspin)
-           endif
+!!$           if (allspinproject.ne.0) then
+!!$              call configspin_transformto(numr,workdrivingavec,workdrivingavecspin)
+!!$           endif
+
         endif
      endif
   else
@@ -922,9 +925,11 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
 
      if (drivingflag.ne.0) then
         workdrivingavec(:,:)=0d0
-        if (allspinproject.ne.0) then
-           workdrivingavecspin(:,:)=0d0
-        endif
+
+!!$        if (allspinproject.ne.0) then
+!!$           workdrivingavecspin(:,:)=0d0
+!!$        endif
+
         if (iflag.eq.1) then
 
            workdrivingavec(:,:) = thisstep*( &
@@ -932,9 +937,10 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
                 (sum1*yyy%drivingavectorsyy(:,:,imc,1)+ sum0*yyy%drivingavectorsyy(:,:,imc,0))*pots(2) + &
                 (sum1*yyy%drivingavectorszz(:,:,imc,1)+ sum0*yyy%drivingavectorszz(:,:,imc,0))*pots(3) )
 
-           if (allspinproject.ne.0) then
-              call configspin_transformto(numr,workdrivingavec,workdrivingavecspin)
-           endif
+!!$           if (allspinproject.ne.0) then
+!!$              call configspin_transformto(numr,workdrivingavec,workdrivingavecspin)
+!!$           endif
+
         endif
      endif
 

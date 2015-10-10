@@ -174,7 +174,7 @@ module configpropmod
   Type(CONFIGPTR) ::                   &     !! Pointers for pass to sparseconfigmult
        workconfigpointer
   Type(SPARSEPTR) ::        worksparsepointer
-  DATATYPE, allocatable :: workdrivingavec(:,:), workdrivingavecspin(:,:)
+  DATATYPE, allocatable :: workdrivingavec(:,:)
 
 end module configpropmod
 
@@ -192,7 +192,6 @@ subroutine configalloc()
   endif
 
   allocate(workdrivingavec(numr,firstconfig:lastconfig)); workdrivingavec(:,:)=0d0
-  allocate(workdrivingavecspin(numspinconfig,numr)); workdrivingavecspin(:,:)=0d0
 
 end subroutine configalloc
 
@@ -205,7 +204,7 @@ subroutine configdealloc()
   if (sparseopt.ne.0) then
      call sparseptrdealloc(worksparsepointer)
   endif
-  deallocate(workdrivingavec, workdrivingavecspin)
+  deallocate(workdrivingavec)
 end subroutine configdealloc
 
 
