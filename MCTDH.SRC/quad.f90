@@ -278,7 +278,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
   real*8 ::  dev,  thisaerror
   DATATYPE :: dot, hermdot,csum 
   DATATYPE, allocatable ::  vector(:,:), vector2(:,:), vector3(:,:), &
-       smallvector(:,:),smallvectorspin(:,:),smallvector2(:,:),smallvectorspin2(:,:)
+       smallvector(:,:),smallvectorspin(:,:),smallvectorspin2(:,:)
 
   if (sparseconfigflag.eq.0) then
      OFLWR "Error, must use sparseconfigflag.ne.0 for sparsequadavector"; CFLST
@@ -288,8 +288,8 @@ subroutine sparsequadavector(inavector,jjcalls0)
      OFLWR "Error, set tolerance parameter arror at least 1d-7 for reliable performance sparse quad a-vector."; CFLST
   endif
 
-  allocate(smallvector(numr,botconfig:topconfig),smallvectorspin(numr,botbasis:topbasis),&
-       smallvector2(numr,botconfig:topconfig),smallvectorspin2(numr,botbasis:topbasis))
+  allocate(smallvector(numr,botdfconfig:topdfconfig),smallvectorspin(numr,botdfbasis:topdfbasis),&
+       smallvectorspin2(numr,botdfbasis:topdfbasis))
 
   allocate( vector(numr,firstconfig:lastconfig), vector2(numr,firstconfig:lastconfig), vector3(numr,firstconfig:lastconfig))
 
@@ -340,41 +340,64 @@ subroutine sparsequadavector(inavector,jjcalls0)
      !OFLWR "     Converged sparse quad: dev ", dev, "  Expect ", quadexpect, " tol is ", thisaerror; CFL
 
      call aaonedfinal()
-     deallocate(smallvector,smallvector2,smallvectorspin,smallvectorspin2)
+     deallocate(smallvector,smallvectorspin,smallvectorspin2)
      deallocate(vector, vector2, vector3)
      return
   endif
 
-  smallvectorspin(:,:)=0d0
+!! zero dimension will fail in dgsolve, but putting this logic in anyway
+  if (topdfbasis-botdfbasis+1.ne.0) then
 
-  if (allspinproject.ne.0) then
-     call configspin_transformto_local(numr,vector(:,botconfig),smallvectorspin(:,:))
-  else
-     smallvectorspin(:,botbasis:topbasis)=vector(:,botconfig:topconfig)
+     smallvectorspin(:,:)=0d0
+
+     if (dfrestrictflag.ne.0) then
+        if (allspinproject.ne.0) then
+           call df_transformto_local(numr,vector(:,botconfig),smallvector(:,:))
+           call dfspin_transformto_local(numr,smallvector(:,:),smallvectorspin(:,:))
+        else
+           call df_transformto_local(numr,vector(:,botconfig),smallvectorspin(:,:))
+        endif
+     else
+        if (allspinproject.ne.0) then
+           call configspin_transformto_local(numr,vector(:,botconfig),smallvectorspin(:,:))
+        else
+           smallvectorspin(:,botbasis:topbasis)=vector(:,botconfig:topconfig)
+        endif
+     endif
+
+     smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
+
   endif
 
-  smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
+  maxdim=min(maxaorder,numr*numdfbasis)
+  mysize=numr*(topdfbasis-botdfbasis+1)
 
-  maxdim=min(maxaorder,numr*numbasis)   !! MAXDFBASISPERPROC?
-  mysize=numr*(topbasis-botbasis+1)
   call dgsolve0( smallvectorspin(:,:), smallvectorspin2(:,:), jjcalls, paraamult,quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1)
 
 !!$  call basicblocklansolve(1,mysize,maxdim,maxdim,smallvectorspin,smallvectorspin2,1,parhrmult,parhrdotsub,quadexpect)
 !!$  jjcalls=0
 
-  if (allspinproject.ne.0) then
-     call configspin_transformfrom_local(numr,smallvectorspin2(:,:),smallvector2(:,:))
-  else
-     smallvector2(:,botconfig:topconfig)=smallvectorspin2(:,botbasis:topbasis)
-  endif
-
-  if (dfrestrictflag.ne.0) then
-     call df_project_local(smallvector2, numr)
-  endif
-
   vector3(:,:)=0d0; 
-  vector3(:,botconfig:topconfig)=smallvector2(:,botconfig:topconfig)
-  
+
+  if (topdfbasis-botdfbasis+1.ne.0) then
+
+     if (dfrestrictflag.ne.0) then
+        if (allspinproject.ne.0) then
+           call dfspin_transformfrom_local(numr,smallvectorspin2(:,:),smallvector(:,:))
+           call df_transformfrom_local(numr,smallvector(:,:),vector3(:,botconfig))
+        else
+           call df_transformfrom_local(numr,smallvectorspin2(:,:),vector3(:,botconfig))
+        endif
+     else
+        if (allspinproject.ne.0) then
+           call configspin_transformfrom_local(numr,smallvectorspin2(:,:),vector3(:,botconfig))
+        else
+           vector3(:,botconfig:topconfig)=smallvectorspin2(:,botdfbasis:topdfbasis)
+        endif
+     endif
+
+  endif
+
   if (parconsplit.eq.0) then
      call mpiallgather(vector3(:,:),numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
   endif
@@ -587,8 +610,8 @@ recursive subroutine paraamult(notusedint,inavectorspin,outavectorspin)
   use aaonedmod
   implicit none
   integer :: notusedint
-  DATATYPE,intent(in) :: inavectorspin(numr,botbasis:topbasis)
-  DATATYPE,intent(out) :: outavectorspin(numr,botbasis:topbasis)
+  DATATYPE,intent(in) :: inavectorspin(numr,botdfbasis:topdfbasis)
+  DATATYPE,intent(out) :: outavectorspin(numr,botdfbasis:topdfbasis)
 
   call parblockconfigmult(inavectorspin,outavectorspin)
 
@@ -605,30 +628,41 @@ recursive subroutine parquadpreconsub(notusedint, inavectorspin,outavectorspin)
   use xxxmod
   implicit none
   integer :: notusedint
-  DATATYPE,intent(in) :: inavectorspin(numr,botbasis:topbasis)
-  DATATYPE,intent(out) :: outavectorspin(numr,botbasis:topbasis)
-  DATATYPE :: inavector(numr,botconfig:topconfig),outavector(numr,botconfig:topconfig)
+  DATATYPE,intent(in) :: inavectorspin(numr,botdfbasis:topdfbasis)
+  DATATYPE,intent(out) :: outavectorspin(numr,botdfbasis:topdfbasis)
+  DATATYPE :: inavector(numr,botconfig:topconfig),outavector(numr,botconfig:topconfig),&
+       workvector(numr,botdfconfig:topdfconfig)
 
-  if (allspinproject.eq.0) then
-     inavector(:,:)=inavectorspin(:,:)
+  if (dfrestrictflag.eq.0) then
+     if (allspinproject.eq.0) then
+        inavector(:,botconfig:topconfig)=inavectorspin(:,botdfbasis:topdfbasis)
+     else
+        call configspin_transformfrom_local(numr,inavectorspin,inavector)
+     endif
   else
-     call configspin_transformfrom_local(numr,inavectorspin,inavector)
-  endif
-
-  if (dfrestrictflag.ne.0) then
-     call df_project_local(inavector, numr)
+     if (allspinproject.eq.0) then
+        call df_transformfrom_local(numr,inavectorspin,inavector)
+     else
+        call dfspin_transformfrom_local(numr,inavectorspin,workvector)
+        call df_transformfrom_local(numr,workvector,inavector)
+     endif
   endif
 
   call parsparseconfigdiagmult(inavector, outavector, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0)
 
-  if (dfrestrictflag.ne.0) then
-     call df_project_local(outavector, numr)
-  endif
-
-  if (allspinproject.eq.0) then
-     outavectorspin(:,:)=outavector(:,:)
+  if (dfrestrictflag.eq.0) then
+     if (allspinproject.eq.0) then
+        outavectorspin(:,botdfbasis:topdfbasis)=outavector(:,botconfig:topconfig)
+     else
+        call configspin_transformto_local(numr,outavector,outavectorspin)     
+     endif
   else
-     call configspin_transformto_local(numr,outavector,outavectorspin)     
+     if (allspinproject.eq.0) then
+        call df_transformfrom_local(numr,outavector,outavectorspin)
+     else
+        call df_transformto_local(numr,outavector,workvector)
+        call dfspin_transformto_local(numr,workvector,outavectorspin)     
+     endif
   endif
 
 end subroutine parquadpreconsub

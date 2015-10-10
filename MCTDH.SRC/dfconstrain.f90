@@ -243,7 +243,7 @@ subroutine df_project_local(avector,howmany)
 end subroutine df_project_local
 
 
-subroutine df_transformto_local(avectorin,avectorout,howmany)
+subroutine df_transformto_local(howmany,avectorin,avectorout)
   use parameters
   use dfconmod
   implicit none
@@ -258,7 +258,7 @@ subroutine df_transformto_local(avectorin,avectorout,howmany)
 end subroutine df_transformto_local
 
 
-subroutine df_transformfrom_local(avectorin,avectorout,howmany)
+subroutine df_transformfrom_local(howmany,avectorin,avectorout)
   use parameters
   use dfconmod
   implicit none

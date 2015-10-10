@@ -84,7 +84,7 @@ subroutine getparams()
        expodim,timingdir, hanningflag, numspffiles, condamp,conway, &
        mrestrictmin,mrestrictmax,lntol,invtol,psistatsfile, psistatfreq, configlistfile, &
        parorbsplit,maxbiodim, nkeproj,keprojminenergy,keprojenergystep,keprojminrad,keprojmaxrad, &
-       sortwalks,  debugflag, drivingflag,drivingproportion, drivingmethod, spineigflag,eigprintflag, &
+       sortwalks,  debugflag, drivingflag,drivingproportion, drivingmethod, eigprintflag, &
        avecloadskip,nonsparsepropmode,sparseopt,lanprintflag,dipmodtime,conprop,connormflag, &
        orbcompact,spinrestrictval,mshift,numskiporbs,orbskip,debugfac,denmatfciflag,&
        walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac, maxquadnorm,quadstarttime,&

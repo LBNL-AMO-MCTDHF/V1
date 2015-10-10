@@ -28,7 +28,7 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
   real*8 :: realconfigvect(totadim)
   real*8 :: sum,time
   DATATYPE, allocatable :: fullconfigmatel(:,:), fullconfigvects(:,:), &
-       spinconfigmatel(:,:), spinconfigvects(:,:), tempconfigvects(:,:)
+       tempconfigvects(:,:)
   DATAECS, allocatable :: fullconfigvals(:)
 
   if (order+numshift.gt.totadim) then
@@ -62,41 +62,36 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
      if (printflag.ne.0) then
         OFLWR "Construct big matrix:  ", numconfig*numr; CFL
      endif
-     allocate(fullconfigvals(totadim))
-     allocate(fullconfigmatel(numconfig*numr,numconfig*numr), fullconfigvects(totadim,totadim))
-     fullconfigmatel=0.d0; fullconfigvects=0d0; fullconfigvals=0d0
+     allocate(fullconfigvals(numbasis*numr))
+     allocate(fullconfigmatel(numbasis*numr,numbasis*numr), fullconfigvects(numconfig*numr,numbasis*numr))
+     allocate(tempconfigvects(numbasis*numr,numbasis*numr))
+     fullconfigmatel=0.d0; fullconfigvects=0d0; fullconfigvals=0d0; tempconfigvects=0d0
 
-     if (spineigflag.ne.0.and.allspinproject.ne.0) then
-        allocate(spinconfigmatel(numspinconfig*numr,numspinconfig*numr), spinconfigvects(numspinconfig*numr,numspinconfig*numr))
-        spinconfigmatel=0.d0
-
-        call assemble_spinconfigmat(spinconfigmatel,yyy%cptr(0),1,1,0,0,  time)
-        if (printflag.ne.0) then
-           OFLWR " Call spin eig ",numspinconfig*numr; CFL
-        endif
-        if (myrank.eq.1) then
-           call CONFIGEIG(spinconfigmatel(:,:),numspinconfig*numr,numspinconfig*numr, spinconfigvects, fullconfigvals)
-           do i=1,numspinconfig*numr
-              call configspin_transformfrom(numr,spinconfigvects(:,i),fullconfigvects(:,i))
-           enddo
-        endif
-        deallocate(spinconfigmatel,spinconfigvects)
+     if (allspinproject.ne.0) then
+        call assemble_spinconfigmat(fullconfigmatel,yyy%cptr(0),1,1,0,0,  time)
      else
         call assemble_configmat(fullconfigmatel,yyy%cptr(0),1,1,0,0, time)
-        if (printflag.ne.0) then
-           OFLWR " Call big eig ",numconfig*numr; CFL
-        endif
-        if (myrank.eq.1) then
-           call CONFIGEIG(fullconfigmatel(:,:),totadim,totadim, fullconfigvects, fullconfigvals)
+     endif
+     if (printflag.ne.0) then
+        OFLWR " Call eig ",numbasis*numr; CFL
+     endif
+     if (myrank.eq.1) then
+        call CONFIGEIG(fullconfigmatel(:,:),numbasis*numr,numbasis*numr, tempconfigvects, fullconfigvals)
+        if (allspinproject.eq.0) then
+           fullconfigvects(:,:)=tempconfigvects(:,:)
+        else
+           do i=1,numspinconfig*numr
+              call configspin_transformfrom(numr,tempconfigvects(:,i),fullconfigvects(:,i))
+           enddo
         endif
      endif
 
-     call mympibcast(fullconfigvects,1,totadim**2)
-     call mympibcast(fullconfigvals,1,totadim)
+     call mympibcast(fullconfigvects,1,numbasis*numr*numconfig*numr)
+     call mympibcast(fullconfigvals,1,numbasis*numr)
 
      if (printflag.ne.0) then
         OFLWR "  -- Nonsparse eigenvals --"
-        do i=1,min(numconfig*numr,numshift+order+10)
+        do i=1,min(numbasis*numr,numshift+order+10)
            WRFL "   ", fullconfigvals(i)
         enddo
         CFL
@@ -118,7 +113,7 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
         lastval=thisconfigvals(i)
      enddo
 
-     deallocate(fullconfigmatel, fullconfigvects, fullconfigvals)
+     deallocate(fullconfigmatel, fullconfigvects, fullconfigvals,tempconfigvects)
 
   endif
 
@@ -176,7 +171,7 @@ subroutine nonsparseprop(avectorin,avectorout,time)
   use configpropmod
   implicit none
 
-  DATATYPE :: avectorin(totadim), avectorout(totadim),  avectortemp(totadim)
+  DATATYPE :: avectorin(totadim), avectorout(totadim),  avectortemp(numbasis*numr), avectortemp2(numbasis*numr)
   DATATYPE, allocatable :: bigconfigmatel(:,:), bigconfigvects(:,:) !!,bigconfigvals(:)
 #ifndef REALGO
   real*8, allocatable :: realbigconfigmatel(:,:,:,:)
@@ -191,70 +186,50 @@ subroutine nonsparseprop(avectorin,avectorout,time)
   if (drivingflag.ne.0) then
      OFLWR "Driving flag not implemented for nonsparse"; CFLST
   endif
-  allocate(iiwork(totadim*2))
+  allocate(iiwork(numbasis*numr*2))
 
+  allocate(bigconfigmatel(numbasis*numr,numbasis*numr), bigconfigvects(numbasis*numr,2*(numbasis*numr+2)))
 
   if (allspinproject.eq.0) then
-     allocate(bigconfigmatel(totadim,totadim), bigconfigvects(totadim,2*(totadim+2)))
      call assemble_configmat(bigconfigmatel, workconfigpointer,1,1,1,1, time)
-
-     bigconfigmatel=bigconfigmatel*timefac
-
-     avectorout = avectorin
-
-     if (myrank.eq.1) then
-
-        if (nonsparsepropmode.eq.1) then
-           call expmat(bigconfigmatel,numconfig*numr); call MYGEMV('N',numconfig*numr,numconfig*numr,DATAONE,bigconfigmatel,numconfig*numr,avectorin,1,DATAZERO,avectorout,1)
-#ifndef REALGO
-        else if (nonsparsepropmode.eq.2) then
-           allocate(realbigconfigmatel(2,numconfig*numr,2,numconfig*numr))
-           call assigncomplexmat(realbigconfigmatel,bigconfigmatel,numconfig*numr,numconfig*numr)
-           call DGCHBV(numconfig*numr*2, 1.d0, realbigconfigmatel, numconfig*numr*2, avectorout, bigconfigvects, iiwork, iflag)           
-           deallocate(realbigconfigmatel)
-#endif
-        else
-           call EXPFULL(numconfig*numr, 1.d0, bigconfigmatel, numconfig*numr, avectorout, bigconfigvects, iiwork, iflag)
-
-           if (iflag.ne.0) then
-              OFLWR "Expo error A ", iflag; CFLST
-           endif
-        endif
-
-     endif
-     call mympibcast(avectorout,1,numconfig*numr)
   else
-
-     allocate(bigconfigmatel(numspinconfig*numr,numspinconfig*numr), bigconfigvects(numspinconfig*numr,2*(numspinconfig*numr+2)))
-
-
      call assemble_spinconfigmat(bigconfigmatel, workconfigpointer,1,1,1,1, time)
+  endif
+  
+  bigconfigmatel=bigconfigmatel*timefac
 
-
-
-     bigconfigmatel=bigconfigmatel*timefac
+  if (allspinproject.eq.0) then
+     avectortemp(:)=avectorin(:)
+  else
      call configspin_transformto(numr,avectorin,avectortemp)
+  endif
 
-     if (myrank.eq.1) then
-        if (nonsparsepropmode.eq.1) then
-           avectorout=avectortemp  !! in spin basis
-           call expmat(bigconfigmatel,numspinconfig*numr); call MYGEMV('N',numspinconfig*numr,numspinconfig*numr,DATAONE,bigconfigmatel,numspinconfig*numr,avectorout,1,DATAZERO,avectortemp,1)
+  if (myrank.eq.1) then
+     if (nonsparsepropmode.eq.1) then
+        avectortemp2(:)=avectortemp(:)
+        call expmat(bigconfigmatel,numbasis*numr) 
+        call MYGEMV('N',numbasis*numr,numbasis*numr,DATAONE,bigconfigmatel,numbasis*numr,avectortemp2,1,DATAZERO,avectortemp,1)
 #ifndef REALGO
-        else if (nonsparsepropmode.eq.2) then
-           allocate(realbigconfigmatel(2,numspinconfig*numr,2,numspinconfig*numr))
-           call assigncomplexmat(realbigconfigmatel,bigconfigmatel,numspinconfig*numr,numspinconfig*numr)
-           call DGCHBV(numspinconfig*numr*2, 1.d0, realbigconfigmatel, numspinconfig*numr*2, avectortemp, bigconfigvects, iiwork, iflag)           
-           deallocate(realbigconfigmatel)
+     else if (nonsparsepropmode.eq.2) then
+        allocate(realbigconfigmatel(2,numbasis*numr,2,numbasis*numr))
+        call assigncomplexmat(realbigconfigmatel,bigconfigmatel,numbasis*numr,numbasis*numr)
+        call DGCHBV(numbasis*numr*2, 1.d0, realbigconfigmatel, numbasis*numr*2, avectortemp, bigconfigvects, iiwork, iflag)           
+        deallocate(realbigconfigmatel)
 #endif
-        else
-           call EXPFULL(numspinconfig*numr, 1.d0, bigconfigmatel, numspinconfig*numr, avectortemp, bigconfigvects, iiwork, iflag)
-           
-           if (iflag.ne.0) then
-              OFLWR "Expo error A ", iflag; CFLST
-           endif
+     else
+        call EXPFULL(numbasis*numr, 1.d0, bigconfigmatel, numbasis*numr, avectortemp, bigconfigvects, iiwork, iflag)
+        
+        if (iflag.ne.0) then
+           OFLWR "Expo error A ", iflag; CFLST
         endif
      endif
-     call mympibcast(avectortemp,1,numspinconfig*numr)
+  endif
+
+  call mympibcast(avectortemp,1,numbasis*numr)
+
+  if (allspinproject.eq.0) then
+     avectorout(:)=avectortemp(:)
+  else
      call configspin_transformfrom(numr,avectortemp,avectorout)
   endif
 

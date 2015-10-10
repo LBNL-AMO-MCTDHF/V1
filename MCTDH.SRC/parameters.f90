@@ -381,7 +381,6 @@ integer, parameter :: nodgexpthirdflag=1  !! =1 HARDWIRE 10-2015 not sure about 
 !     call to orthog.  don't remember if that was purposeful.
 !!integer :: cmfmode=0    !! experimental 1=new 0=old attempt 2=old with additional a-vector
 integer :: eigprintflag=0
-integer :: spineigflag=1
 !integer :: intopt=3              !! RK, GBS      !! SPF/VMF Integrator: 0, RK; 1, GBS, 2, DLSODPK  
 !                                                 !!  for CMF: 3=expo 4=verlet
 real*8 :: relerr=1.d-10          !!              !! relative error for integrator (RK/GBS/DLSODPK)
