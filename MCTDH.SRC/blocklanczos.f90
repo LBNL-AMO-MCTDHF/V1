@@ -8,8 +8,7 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
   integer :: printflag,maxdim,vdim,ii
   DATATYPE, intent(out) :: outvalues(order)
   DATATYPE, intent(inout) :: outvectors(numr,firstconfig:lastconfig,order)
-  DATATYPE :: workvectorsspin(numr,botdfbasis:topdfbasis,order),&
-       workvectors(numr,botdfconfig:topdfconfig,order) !! AUTOMATIC
+  DATATYPE :: workvectorsspin(numr,botdfbasis:topdfbasis,order)  !! AUTOMATIC
   external :: parblockconfigmult
 
   printflag=max(lanprintflag,inprintflag)
@@ -19,31 +18,13 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
   endif
 
   if (topdfbasis-botdfbasis+1.ne.0) then
-
      workvectorsspin(:,:,:)=0d0
+  endif
 
-     if (guessflag.ne.0) then
-        if (dfrestrictflag.ne.0) then
-           if (allspinproject.ne.0) then
-              do ii=1,order 
-                 call df_transformto_local(numr,outvectors(:,botconfig,ii),workvectors(:,:,ii))
-                 call dfspin_transformto_local(numr,workvectors(:,:,ii),workvectorsspin(:,:,ii))
-              enddo
-           else
-              do ii=1,order
-                 call df_transformto_local(numr,outvectors(:,botconfig,ii),workvectorsspin(:,:,ii))
-              enddo
-           endif
-        else
-           if (allspinproject.ne.0) then
-              do ii=1,order 
-                 call configspin_transformto_local(numr,outvectors(:,botconfig:topconfig,ii),workvectorsspin(:,:,ii))
-              enddo
-           else
-              workvectorsspin(:,:,:)=outvectors(:,botconfig:topconfig,:)  
-           endif
-        endif
-     endif
+  if (guessflag.ne.0) then
+     do ii=1,order
+        call basis_transformto_local(numr,outvectors(:,botconfig,ii),workvectorsspin(:,:,ii))
+     enddo
   endif
 
   maxdim=numdfbasis*numr
@@ -54,28 +35,9 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
 
   outvectors(:,:,:)=0d0
 
-  if (topdfbasis-botdfbasis+1.ne.0) then
-     if (dfrestrictflag.ne.0) then
-        if (allspinproject.eq.0) then
-           do ii=1,order
-              call df_transformfrom_local(numr,workvectorsspin(:,:,ii),outvectors(:,botconfig:topconfig,ii))
-           enddo
-        else
-           do ii=1,order
-              call dfspin_transformfrom_local(numr,workvectorsspin(:,:,ii),workvectors(:,:,ii))
-              call df_transformfrom_local(numr,workvectors(:,:,ii),outvectors(:,botconfig:topconfig,ii))
-           enddo
-        endif
-     else
-        if (allspinproject.eq.0) then
-           outvectors(:,botconfig:topconfig,:)=workvectorsspin(:,:,:)
-        else
-           do ii=1,order
-              call configspin_transformfrom_local(numr,workvectorsspin(:,:,ii),outvectors(:,botconfig:topconfig,ii))
-           enddo
-        endif
-     endif
-  endif
+  do ii=1,order
+     call basis_transformfrom_local(numr,workvectorsspin(:,:,ii),outvectors(:,botconfig:topconfig,ii))
+  enddo
 
   if (parconsplit.eq.0) then
      do ii=1,order
@@ -201,8 +163,7 @@ recursive subroutine parblockconfigmult(inavector,outavector)
   integer :: ii
   DATATYPE,intent(in) :: inavector(numr,botdfbasis:topdfbasis)
   DATATYPE,intent(out) :: outavector(numr,botdfbasis:topdfbasis)
-  DATATYPE :: intemp(numr,numconfig),outwork(numr,botconfig:topconfig),&
-       work2(numr,botdfconfig:topdfconfig)
+  DATATYPE :: intemp(numr,numconfig),outwork(numr,botconfig:topconfig)
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parblockconfigmult"; CFLST
@@ -210,20 +171,7 @@ recursive subroutine parblockconfigmult(inavector,outavector)
 
   intemp(:,:)=0d0;   
 
-  if (dfrestrictflag.ne.0) then
-     if (allspinproject.ne.0) then
-        call dfspin_transformfrom_local(numr,inavector,work2)
-        call df_transformfrom_local(numr,work2,intemp(:,botconfig))
-     else
-        call df_transformfrom_local(numr,inavector,intemp(:,botconfig))
-     endif
-  else
-     if (allspinproject.ne.0) then
-        call configspin_transformfrom_local(numr,inavector,intemp(:,botconfig))
-     else
-        intemp(:,botconfig:topconfig)=inavector(:,:)
-     endif
-  endif
+  call basis_transformfrom_local(numr,inavector,intemp(:,botconfig:topconfig))
 
 !! DO SUMMA
 
@@ -236,20 +184,7 @@ recursive subroutine parblockconfigmult(inavector,outavector)
      enddo
   endif
 
-  if (dfrestrictflag.ne.0) then
-     if (allspinproject.ne.0) then
-        call df_transformto_local(numr,outwork,work2)
-        call dfspin_transformto_local(numr,work2,outavector)
-     else
-        call df_transformto_local(numr,outwork,outavector)
-     endif
-  else
-     if (allspinproject.ne.0) then
-        call configspin_transformto_local(numr,outwork,outavector)
-     else
-        outavector(:,:)=outwork(:,:)
-     endif
-  endif
+  call basis_transformto_local(numr,outwork,outavector)
 
 end subroutine parblockconfigmult
 

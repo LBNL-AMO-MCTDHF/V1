@@ -275,6 +275,65 @@ subroutine df_transformfrom_local(howmany,avectorin,avectorout)
 end subroutine df_transformfrom_local
 
 
+subroutine basis_transformto_local(howmany,avectorin,avectorout)
+  use parameters
+  use dfconmod
+  implicit none
+  integer :: howmany
+  DATATYPE,intent(in) :: avectorin(howmany,configstart:configend)
+  DATATYPE,intent(out) :: avectorout(howmany,basisdfstart:basisdfend)
+  DATATYPE :: workvec(howmany,configdfstart:configdfend)
+
+  if (basisdfend-basisdfstart+1.ne.0) then
+     if (dfrestrictflag.ne.0) then
+        if (allspinproject.ne.0) then
+           call df_transformto_local(numr,avectorin(:,:),workvec(:,:))
+           call dfspin_transformto_local(numr,workvec(:,:),avectorout(:,:))
+        else
+           call df_transformto_local(numr,avectorin(:,:),avectorout(:,:))
+        endif
+     else
+        if (allspinproject.ne.0) then
+           call configspin_transformto_local(numr,avectorin(:,:),avectorout(:,:))
+        else
+           avectorout(:,:)=avectorin(:,:)
+        endif
+     endif
+  endif
+
+end subroutine basis_transformto_local
+
+
+
+subroutine basis_transformfrom_local(howmany,avectorin,avectorout)
+  use parameters
+  use dfconmod
+  implicit none
+  integer :: howmany
+  DATATYPE,intent(in) :: avectorin(howmany,basisdfstart:basisdfend)
+  DATATYPE,intent(out) :: avectorout(howmany,basisstart:basisend)
+  DATATYPE :: workvec(howmany,configdfstart:configdfend)
+
+  if (basisdfend-basisdfstart+1.ne.0) then
+     if (dfrestrictflag.ne.0) then
+        if (allspinproject.ne.0) then
+           call dfspin_transformfrom_local(numr,avectorin(:,:),workvec(:,:))
+           call df_transformfrom_local(numr,workvec(:,:),avectorout(:,:))
+        else
+           call df_transformfrom_local(numr,avectorin(:,:),avectorout(:,:))
+        endif
+     else
+        if (allspinproject.ne.0) then
+           call configspin_transformfrom_local(numr,avectorin(:,:),avectorout(:,:))
+        else
+           avectorout(:,:)=avectorin(:,:)
+        endif
+     endif
+  endif
+
+end subroutine basis_transformfrom_local
+
+
 
 subroutine checksym(mat,dim)
   use fileptrmod

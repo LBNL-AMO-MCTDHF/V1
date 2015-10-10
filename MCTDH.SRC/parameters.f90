@@ -459,11 +459,13 @@ integer :: numbasis=0
 integer, allocatable :: basisperproc(:)
 integer ::       maxbasisperproc
 integer :: botbasis=-1,topbasis=-1
+integer :: basisstart=-1,basisend=-1
 
 integer :: numdfbasis=0
 integer, allocatable :: dfbasisperproc(:)
 integer ::       maxdfbasisperproc
 integer :: botdfbasis=-1,topdfbasis=-1
+integer :: basisdfstart=-1,basisdfend=-1
 
 integer :: walksonfile=0       
 integer :: autosize, autosteps

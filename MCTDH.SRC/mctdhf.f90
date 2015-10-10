@@ -345,6 +345,17 @@ program mctdhf
         maxdfbasisperproc=maxspindfsperproc
         botdfbasis=botdfspin;  topdfbasis=topdfspin
      endif
+     if (sparseconfigflag.eq.0) then
+        basisdfstart=1
+        basisdfend=numdfbasis
+        basisstart=1
+        basisend=numbasis
+     else
+        basisdfstart=botdfbasis
+        basisdfend=topdfbasis
+        basisstart=botbasis
+        basisend=topbasis
+     endif
 
      call configlistwrite()
 
