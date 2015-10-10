@@ -185,14 +185,8 @@ module aaonedmod
   implicit none
   DATATYPE :: quadexpect=0d0
   DATATYPE, allocatable :: jacaa(:,:), jacaamult(:,:)
-  DATATYPE, allocatable :: bigconfigmatel(:,:), jacaaproj(:,:), jacaaproj2(:,:), err(:)
-  real*8, allocatable :: realconfigmatel(:,:,:,:)
+  DATATYPE, allocatable :: bigconfigmatel(:,:), err(:)
   integer, allocatable :: ipiv(:)
-#ifdef REALGO
-  integer, parameter :: zzz=1
-#else
-  integer, parameter :: zzz=2
-#endif
 end module
 
 
@@ -205,7 +199,7 @@ subroutine aaonedinit(inavector)
   DATATYPE :: inavector(numr,firstconfig:lastconfig),  dot, csum2
 
   if (sparseconfigflag.eq.0) then
-     allocate(bigconfigmatel(totadim,totadim), jacaaproj(totadim,totadim), jacaaproj2(totadim,totadim), realconfigmatel(zzz,totadim,zzz,totadim), ipiv(zzz*totadim), err(totadim))
+     allocate(bigconfigmatel(totadim,totadim), ipiv(totadim), err(totadim))
   endif
   allocate(jacaa(numr,firstconfig:lastconfig), jacaamult(numr,firstconfig:lastconfig))
 
@@ -245,7 +239,7 @@ subroutine aaonedfinal
   implicit none
   deallocate(jacaa, jacaamult) 
   if (sparseconfigflag.eq.0) then
-     deallocate(bigconfigmatel, jacaaproj, jacaaproj2, realconfigmatel, ipiv, err)
+     deallocate(bigconfigmatel, ipiv, err)
   endif
 end subroutine
 
@@ -396,13 +390,11 @@ subroutine nonsparsequadavector(avectorout)
   implicit none
   DATATYPE,intent(inout) :: avectorout(totadim)
   DATATYPE :: dot, hermdot
-  DATATYPE :: flatjacaa(totadim),flatjacaamult(totadim)  !! AUTOMATIC
   CNORMTYPE :: norm
   real*8 :: dev
-  integer :: k,i, info,ss
-  real*8, allocatable :: realhalfmatel(:,:,:,:),realhalfmatel2(:,:,:,:),realspinmatel(:,:,:,:)
-  DATATYPE, allocatable :: crealconfigmatel(:,:,:),crealhalfmatel(:,:,:),crealhalfmatel2(:,:,:),&
-       crealspinmatel(:,:,:),spinerr(:),spinavectorout(:)
+  integer :: k, info,ss
+  DATATYPE, allocatable :: halfmatel(:,:),halfmatel2(:,:),&
+       spinmatel(:,:),spinerr(:),spinavectorout(:)
 
   if (sparseconfigflag/=0) then
      OFLWR "Error, nonsparsequadavector called but sparseconfigflag= ", sparseconfigflag; CFLST
@@ -446,18 +438,6 @@ subroutine nonsparsequadavector(avectorout)
      return
   endif
 
-  flatjacaa(:)=RESHAPE(jacaa,(/totadim/))
-  flatjacaamult(:)=RESHAPE(jacaamult,(/totadim/))
-
-  do k=1,totadim
-     jacaaproj(:,k)=flatjacaa(:)*CONJUGATE(flatjacaa(k))
-  enddo
-
-!! this operates on conjugate of vector
-  do k=1,totadim
-     jacaaproj2(:,k)=flatjacaamult(:)*(flatjacaa(k))
-  enddo
-
 !! no spin project; doing transform below
   call assemble_configmat(bigconfigmatel, yyy%cptr(0),1,1,1,1, 0d0)
 
@@ -465,66 +445,29 @@ subroutine nonsparsequadavector(avectorout)
      bigconfigmatel(k,k)=bigconfigmatel(k,k)-quadexpect
   enddo
 
-  realconfigmatel=0d0
-  do i=1,totadim
-     realconfigmatel(1,:,1,i) = real(bigconfigmatel(:,i),8)
-#ifndef REALGO     
-     realconfigmatel(2,:,2,i) = real(bigconfigmatel(:,i),8)
-     realconfigmatel(1,:,2,i) = (-1)*imag(bigconfigmatel(:,i))
-     realconfigmatel(2,:,1,i) = imag(bigconfigmatel(:,i))
-#endif
-  enddo
-
   if (allspinproject.ne.0) then
 
 !! can make this complex or whatever; multiplying by real matrix
 !!   but doing it carefully, only condensing leading index as complex
 
-allocate(crealconfigmatel(numconfig*numr,zzz,numconfig*numr), &
-     crealhalfmatel(numspinconfig*numr,zzz,numconfig*numr), &
-     realhalfmatel(zzz,numspinconfig*numr,zzz,numconfig*numr), &
-     realhalfmatel2(zzz,numconfig*numr,zzz,numspinconfig*numr), &
-     crealhalfmatel2(numconfig*numr,zzz,numspinconfig*numr), &
-     crealspinmatel(numspinconfig*numr,zzz,numspinconfig*numr), &
-     realspinmatel(zzz,numspinconfig*numr,zzz,numspinconfig*numr), &
-     spinerr(numspinconfig*numr),spinavectorout(numspinconfig*numr))
+     allocate(halfmatel(numspinconfig*numr,numconfig*numr), &
+          halfmatel2(numconfig*numr,numspinconfig*numr), &
+          spinmatel(numspinconfig*numr,numspinconfig*numr), &
+          spinerr(numspinconfig*numr),spinavectorout(numspinconfig*numr))
 
-#ifdef REALGO
-     crealconfigmatel=realconfigmatel(1,:,:,:)
-#else
-     crealconfigmatel=realconfigmatel(1,:,:,:) + realconfigmatel(2,:,:,:) * (0d0,1d0)
-#endif
+     call configspin_transformto(numr*numconfig*numr,bigconfigmatel,halfmatel2)
+     
+     halfmatel(:,:)=TRANSPOSE(halfmatel2(:,:))
 
-     call configspin_transformto(numr*numconfig*numr*zzz,crealconfigmatel,crealhalfmatel2)
+     call configspin_transformto(numr*numspinconfig*numr,halfmatel,spinmatel)
 
-     realhalfmatel2(1,:,:,:) = real( crealhalfmatel2(:,:,:) ,8)
-
-#ifndef REALGO
-     realhalfmatel2(2,:,:,:) = imag( crealhalfmatel2(:,:,:) )
-#endif
-
-     realhalfmatel(:,:,:,:)=RESHAPE(TRANSPOSE(RESHAPE(realhalfmatel2(:,:,:,:),(/zzz*numconfig*numr,zzz*numspinconfig*numr/))),(/zzz,numspinconfig*numr,zzz,numconfig*numr/))
-
-#ifdef REALGO
-     crealhalfmatel(:,:,:)=realhalfmatel(1,:,:,:)
-#else
-     crealhalfmatel(:,:,:)=realhalfmatel(1,:,:,:) + realhalfmatel(2,:,:,:) * (0d0,1d0) 
-#endif
-
-     call configspin_transformto(numr*numspinconfig*numr*zzz,crealhalfmatel,crealspinmatel)
-
-     realspinmatel(1,:,:,:) = real( crealspinmatel(:,:,:) ,8)
-#ifndef REALGO
-     realspinmatel(2,:,:,:) = imag( crealspinmatel(:,:,:))
-#endif
-
-     realspinmatel(:,:,:,:)=RESHAPE(TRANSPOSE(RESHAPE(realspinmatel(:,:,:,:),(/zzz*numspinconfig*numr,zzz*numspinconfig*numr/))),(/zzz,numspinconfig*numr,zzz,numspinconfig*numr/))
+     spinmatel(:,:)=TRANSPOSE(spinmatel(:,:))
 
      call configspin_transformto(numr,avectorout(:),spinavectorout(:))
      call configspin_transformto(numr,err(:),spinerr(:))
 
      if (myrank.eq.1) then
-        call dgesv(numspinconfig*numr*zzz,1,realspinmatel,numspinconfig*numr*zzz,ipiv,spinavectorout,numspinconfig*numr*zzz,info)
+        call MYGESV(numspinconfig*numr,1,spinmatel,numspinconfig*numr,ipiv,spinavectorout,numspinconfig*numr,info)
         spinavectorout=spinavectorout/sqrt(dot(spinavectorout,spinavectorout,numspinconfig*numr))
         if (info/=0) then
            OFLWR "Info in dgesv nonsparsequadavector= ", info; CFLST
@@ -532,17 +475,15 @@ allocate(crealconfigmatel(numconfig*numr,zzz,numconfig*numr), &
      endif
 
      call mympibcast(spinavectorout,1,numspinconfig*numr)
-
      call configspin_transformfrom(numr,spinavectorout(:),avectorout(:))
 
-     deallocate(crealconfigmatel,     crealhalfmatel,     realhalfmatel,     realhalfmatel2, &
-          crealhalfmatel2,     crealspinmatel,      realspinmatel,     spinerr, spinavectorout)
+     deallocate(halfmatel, halfmatel2, spinmatel,     spinerr, spinavectorout)
 
   else
 
      if (myrank.eq.1) then
 
-        call dgesv(totadim*zzz,1,realconfigmatel,totadim*zzz,ipiv,avectorout,totadim*zzz,info)
+        call MYGESV(totadim,1,bigconfigmatel,totadim,ipiv,avectorout,totadim,info)
         avectorout=avectorout/sqrt(dot(avectorout,avectorout,totadim))
 
         if (info/=0) then
@@ -554,10 +495,6 @@ allocate(crealconfigmatel(numconfig*numr,zzz,numconfig*numr), &
 
   endif
 
-
-  if (allspinproject==1) then
-     call configspin_project(avectorout, 1)
-  endif
   if (dfrestrictflag.ne.0) then
      call df_project(avectorout, numr)
   endif
