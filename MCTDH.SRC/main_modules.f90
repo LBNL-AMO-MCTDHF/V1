@@ -160,9 +160,7 @@ use configptrmod
 module configmod
   implicit none
   integer, allocatable ::   &
-       configlist(  :  ,   : ),&               !! LIST OF CONFIGURATIONS ndof, numconfig
-       bigspinblockstart(:),bigspinblockend(:)  !! numspinblocks, values from 1 to numconfig
-  integer :: numspinblocks=-1,maxspinblocksize=-1
+       configlist(  :  ,   : )               !! LIST OF CONFIGURATIONS ndof, numconfig
 
 end module configmod
 

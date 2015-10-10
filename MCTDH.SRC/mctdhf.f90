@@ -283,12 +283,7 @@ program mctdhf
      call mpiorbsets()
 !!$  endif
 
-  call fast_newconfiglist(.false.);   
-  if (numconfig.eq.0) then
-     OFLWR " No configs!! "; CFLST
-  endif
-
-  call fast_newconfiglist(.true.);   
+  call fast_newconfiglist();   
 
   totspfdim=nspf*spfsize; totadim=localnconfig*numr;  
   psilength=totadim*mcscfnum+totspfdim

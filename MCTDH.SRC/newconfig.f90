@@ -326,7 +326,7 @@ end function getugval
 !! GETS CONFIGURATION LIST (SLATER DETERMINANTS NOT SPIN EIGFUNCTS)
 !!  AT BEGINNING. 
 
-subroutine fast_newconfiglist(alreadycounted)
+subroutine fast_newconfiglist()
   use parameters
   use configmod
   use mpimod
@@ -355,10 +355,10 @@ subroutine fast_newconfiglist(alreadycounted)
   integer, target :: jjj(max_numelec)  !! no, it is set.
 
   integer :: alltopconfigs(nprocs),allbotconfigs(nprocs)
-
+  integer,allocatable :: bigspinblockstart(:),bigspinblockend(:)
   integer :: i, idof, ii , lowerarr(max_numelec),upperarr(max_numelec),  thisconfig(ndof),&
        reorder,nullint,kk,iconfig,mm, single(max_numelec),ishell,jj,maxssize=0,sss,nss,ssflag,numdoubly,&
-       mynumexcite(numshells),isum,jshell,jsum   !! mynumexcite(0:numshells)
+       mynumexcite(numshells),isum,jshell,jsum,ppp,numspinblocks
   logical :: allowedconfig
 
   if (numelec.gt.max_numelec) then
@@ -368,11 +368,20 @@ subroutine fast_newconfiglist(alreadycounted)
      OFLWR "orderflag 1 not supported for fastconfig (would be trivial, a simplification, no sort I think)"; CFLST
   endif
 
+!! 10-2015 NOW INTERNAL LOOP
+
+  do ppp=0,1
+     if (ppp.eq.0) then
+        alreadycounted=.false.
+     else
+        alreadycounted=.true.
+     endif
+
   if (alreadycounted) then
      OFLWR "Go fast_newconfiglist, getting configurations";CFL
      allocate(configlist(ndof,numconfig), configmvals(numconfig), configugvals(numconfig),&
           bigspinblockstart(numspinblocks+2*nprocs),bigspinblockend(numspinblocks+2*nprocs))
-          
+
      configlist(:,:)=0; configmvals(:)=0;configugvals(:)=0
   else
      OFLWR "Go fast_newconfiglist";CFL
@@ -866,7 +875,6 @@ endif
 
   else
      numspinblocks=nss
-     maxspinblocksize=maxssize
      OFLWR "NUMSPINBLOCKS, MAXSPINBLOCKSIZE FASTCONFIG",nss,maxssize;CFL
   endif
 
@@ -879,6 +887,15 @@ endif
      enddo
      WRFL; CFLST
   endif
+
+  if (alreadycounted) then
+     deallocate(bigspinblockstart,bigspinblockend)
+  endif
+
+  if (numconfig.eq.0) then
+     OFLWR "No configs!! "; CFLST
+  endif
+  enddo !! ppp
 
 
 contains
