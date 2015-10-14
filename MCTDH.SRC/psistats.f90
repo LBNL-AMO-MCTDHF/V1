@@ -219,7 +219,7 @@ subroutine get_psistats( myspfs, numvec, inavectors, mexpect,m2expect,ugexpect, 
 !! Z DIPOLE
 
   do imc=1,numvec
-     call arbitraryconfig_mult(zdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
+     call arbitraryconfig_mult_singles(zdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
      zdipole(imc)=dot(inavectors(:,:,imc),tempvector,totadim)
   enddo
   if (parconsplit.ne.0) then
@@ -230,7 +230,7 @@ subroutine get_psistats( myspfs, numvec, inavectors, mexpect,m2expect,ugexpect, 
 !! Y DIPOLE
 
   do imc=1,numvec
-     call arbitraryconfig_mult(ydipmat,rvector,inavectors(:,:,imc),tempvector,numr)
+     call arbitraryconfig_mult_singles(ydipmat,rvector,inavectors(:,:,imc),tempvector,numr)
      ydipole(imc)=dot(inavectors(:,:,imc),tempvector,totadim)
   enddo
   if (parconsplit.ne.0) then
@@ -241,7 +241,7 @@ subroutine get_psistats( myspfs, numvec, inavectors, mexpect,m2expect,ugexpect, 
 !! X DIPOLE
 
   do imc=1,numvec
-     call arbitraryconfig_mult(xdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
+     call arbitraryconfig_mult_singles(xdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
      xdipole(imc)=dot(inavectors(:,:,imc),tempvector,totadim)
   enddo
   if (parconsplit.ne.0) then
@@ -392,7 +392,7 @@ subroutine finalstats( )
 !! Z DIPOLE
 
   do imc=1,mcscfnum
-     call arbitraryconfig_mult(zdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
+     call arbitraryconfig_mult_singles(zdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
      do jmc=1,mcscfnum
         zdipmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector,totadim)
      enddo
@@ -405,7 +405,7 @@ subroutine finalstats( )
 !! Y DIPOLE
 
   do imc=1,mcscfnum
-     call arbitraryconfig_mult(ydipmat,rvector,inavectors(:,:,imc),tempvector,numr)
+     call arbitraryconfig_mult_singles(ydipmat,rvector,inavectors(:,:,imc),tempvector,numr)
      do jmc=1,mcscfnum
         ydipmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector,totadim)
      enddo
@@ -418,7 +418,7 @@ subroutine finalstats( )
 !! X DIPOLE
 
   do imc=1,mcscfnum
-     call arbitraryconfig_mult(xdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
+     call arbitraryconfig_mult_singles(xdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
      do jmc=1,mcscfnum
         xdipmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector,totadim)
      enddo

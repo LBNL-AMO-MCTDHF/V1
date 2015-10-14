@@ -9,8 +9,8 @@ recursive subroutine sparseconfigmult(myinvector,myoutvector,matrix_ptr,sparse_p
   use sparseptrmod
   implicit none
   integer,intent(in) :: conflag,boflag,nucflag,pulseflag
-  DATATYPE,intent(in) :: myinvector(numr,firstconfig:lastconfig)
-  DATATYPE,intent(out) :: myoutvector(numr,firstconfig:lastconfig)
+  DATATYPE,intent(in) :: myinvector(totadim)
+  DATATYPE,intent(out) :: myoutvector(totadim)
   Type(CONFIGPTR),intent(in) :: matrix_ptr
   Type(SPARSEPTR),intent(in) :: sparse_ptr
   real*8,intent(in) :: time
@@ -55,8 +55,8 @@ recursive subroutine sparseconfigpulsemult(myinvector,myoutvector,matrix_ptr, sp
   use sparseptrmod
   implicit none
   integer,intent(in) :: which
-  DATATYPE,intent(in) :: myinvector(numr,firstconfig:lastconfig)
-  DATATYPE,intent(out) :: myoutvector(numr,firstconfig:lastconfig)
+  DATATYPE,intent(in) :: myinvector(totadim)
+  DATATYPE,intent(out) :: myoutvector(totadim)
   Type(CONFIGPTR),intent(in) :: matrix_ptr
   Type(SPARSEPTR),intent(in) :: sparse_ptr
 
@@ -198,11 +198,11 @@ recursive subroutine direct_sparseconfigmult_nompi(myinvector,myoutvector,matrix
      call arbitraryconfig_mult_doubles_nompi(matrix_ptr%xtwoematel(:,:,:,:),rvector,myinvector,tempvector,mynumr,diagflag)
      myoutvector(:,:)=myoutvector(:,:)+tempvector(:,:)
      
-     call arbitraryconfig_mult_nompi(matrix_ptr%xpotmatel(:,:),rvector,myinvector,tempvector,mynumr,diagflag)
+     call arbitraryconfig_mult_singles_nompi(matrix_ptr%xpotmatel(:,:),rvector,myinvector,tempvector,mynumr,diagflag)
      myoutvector(:,:)=myoutvector(:,:)+tempvector(:,:)
      
      rvector(:)=1/bondpoints(botr:topr)**2
-     call arbitraryconfig_mult_nompi(matrix_ptr%xopmatel(:,:),rvector,myinvector,tempvector,mynumr,diagflag)
+     call arbitraryconfig_mult_singles_nompi(matrix_ptr%xopmatel(:,:),rvector,myinvector,tempvector,mynumr,diagflag)
      myoutvector(:,:)=myoutvector(:,:)+tempvector(:,:)
      
   endif
@@ -216,7 +216,7 @@ recursive subroutine direct_sparseconfigmult_nompi(myinvector,myoutvector,matrix
         tempmatel(:,:)=tempmatel(:,:)+matrix_ptr%xconmatelyy(:,:)*facs(2)
         tempmatel(:,:)=tempmatel(:,:)+matrix_ptr%xconmatelzz(:,:)*facs(3)
      endif
-     call arbitraryconfig_mult_nompi(tempmatel,rvector,myinvector,tempvector,mynumr,diagflag)
+     call arbitraryconfig_mult_singles_nompi(tempmatel,rvector,myinvector,tempvector,mynumr,diagflag)
      myoutvector(:,:)=myoutvector(:,:)-tempvector(:,:)
 
   endif
@@ -238,7 +238,7 @@ recursive subroutine direct_sparseconfigmult_nompi(myinvector,myoutvector,matrix
         tempmatel(:,:)= tempmatel(:,:) + matrix_ptr%xpulsematelzz*facs(3); flag=1
      endif
      if (flag.eq.1) then
-        call arbitraryconfig_mult_nompi(tempmatel,rvector,myinvector,tempvector,mynumr,diagflag)
+        call arbitraryconfig_mult_singles_nompi(tempmatel,rvector,myinvector,tempvector,mynumr,diagflag)
         myoutvector(:,:)=myoutvector(:,:)+tempvector(:,:)
      endif
 
@@ -269,7 +269,7 @@ recursive subroutine direct_sparseconfigmult_nompi(myinvector,myoutvector,matrix
   if (nonuc_checkflag.eq.0.and.nucflag.eq.1.and.mynumr.eq.numr) then
      if (diagflag.eq.0) then
         rvector(:)=1d0
-        call arbitraryconfig_mult_nompi(matrix_ptr%xymatel,rvector,myinvector,tempvector,numr,0)
+        call arbitraryconfig_mult_singles_nompi(matrix_ptr%xymatel,rvector,myinvector,tempvector,numr,0)
         call MYGEMM('N','N',numr,topconfig-botconfig+1,numr,DATAONE,            proderivmod,numr,     tempvector,           numr,DATAONE,myoutvector,numr)
         call MYGEMM('N','N',numr,topconfig-botconfig+1,numr,DATAONE*matrix_ptr%kefac,rkemod,numr,     myinvector(:,botconfig),numr,DATAONE,myoutvector,numr)
 !!$     else
@@ -487,7 +487,7 @@ recursive subroutine arbitrary_sparsemult_nompi_doubles(mattrans,rvector,inbigve
 end subroutine arbitrary_sparsemult_nompi_doubles
 
 
-recursive subroutine arbitraryconfig_mult(onebodymat, rvector, avectorin, avectorout,inrnum)   
+recursive subroutine arbitraryconfig_mult_singles(onebodymat, rvector, avectorin, avectorout,inrnum)   
   use parameters
   implicit none
   integer,intent(in) :: inrnum
@@ -504,15 +504,15 @@ recursive subroutine arbitraryconfig_mult(onebodymat, rvector, avectorin, avecto
      call mpiallgather(workvector,numconfig*inrnum,configsperproc(:)*inrnum,maxconfigsperproc*inrnum)
   endif
 
-  call arbitraryconfig_mult_nompi(onebodymat, rvector, workvector, avectorout(:,botconfig),inrnum,0)
+  call arbitraryconfig_mult_singles_nompi(onebodymat, rvector, workvector, avectorout(:,botconfig),inrnum,0)
   if (parconsplit.eq.0) then
      call mpiallgather(avectorout,numconfig*inrnum,configsperproc(:)*inrnum,maxconfigsperproc*inrnum)
   endif
 
-end subroutine arbitraryconfig_mult
+end subroutine arbitraryconfig_mult_singles
 
 
-recursive subroutine arbitraryconfig_mult_nompi(onebodymat, rvector, avectorin, avectorout,inrnum,diagflag)
+recursive subroutine arbitraryconfig_mult_singles_nompi(onebodymat, rvector, avectorin, avectorout,inrnum,diagflag)
    use walkmod
   use parameters
   implicit none
@@ -549,7 +549,7 @@ recursive subroutine arbitraryconfig_mult_nompi(onebodymat, rvector, avectorin, 
         enddo
      enddo
   endif
-end subroutine arbitraryconfig_mult_nompi
+end subroutine arbitraryconfig_mult_singles_nompi
 
 
 

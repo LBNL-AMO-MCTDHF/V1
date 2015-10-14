@@ -104,7 +104,7 @@ subroutine dipolesub_one(avector,inspfs,xdipole_expect,ydipole_expect,zdipole_ex
   endif
 
   rvector(:)=bondpoints(:)
-  call arbitraryconfig_mult(dipolemat,rvector,avector,tempvector,numr)
+  call arbitraryconfig_mult_singles(dipolemat,rvector,avector,tempvector,numr)
   zdipole_expect=dot(avector,tempvector,totadim)
   if (parconsplit.ne.0) then
      call mympireduceone(zdipole_expect)
@@ -123,7 +123,7 @@ subroutine dipolesub_one(avector,inspfs,xdipole_expect,ydipole_expect,zdipole_ex
   endif
 
   rvector(:)=bondpoints(:)
-  call arbitraryconfig_mult(dipolemat,rvector,avector,tempvector,numr)
+  call arbitraryconfig_mult_singles(dipolemat,rvector,avector,tempvector,numr)
   ydipole_expect=dot(avector,tempvector,totadim)
   if (parconsplit.ne.0) then
      call mympireduceone(ydipole_expect)
@@ -142,7 +142,7 @@ subroutine dipolesub_one(avector,inspfs,xdipole_expect,ydipole_expect,zdipole_ex
   endif
 
   rvector(:)=bondpoints(:)
-  call arbitraryconfig_mult(dipolemat,rvector,avector,tempvector,numr)
+  call arbitraryconfig_mult_singles(dipolemat,rvector,avector,tempvector,numr)
   xdipole_expect=dot(avector,tempvector,totadim)
   if (parconsplit.ne.0) then
      call mympireduceone(xdipole_expect)

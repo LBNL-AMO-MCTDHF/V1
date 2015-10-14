@@ -552,11 +552,12 @@ end subroutine simple_load_avectors
 
 subroutine easy_load_avectors(iunit, qq, outavectors, mynumr, mynumconfig, mynumvects)
   use parameters
+  use mpimod
   implicit none
 
   integer ::  mynumconfig, mynumr,mynumvects,iunit,ivect,qq, config1, thatconfig(ndof), myiostat,&
        phase,reorder,myconfig,getconfiguration
-  DATATYPE :: outavectors(mynumr,firstconfig:lastconfig,mynumvects)
+  DATATYPE :: outavectors(mynumr,numconfig,mynumvects)
   real*8 :: rtempreadvect(mynumr)
   logical :: allowedconfig
   complex*16 :: ctempreadvect(mynumr)
@@ -567,6 +568,10 @@ subroutine easy_load_avectors(iunit, qq, outavectors, mynumr, mynumconfig, mynum
 
   if (mynumr.gt.numr) then
      OFLWR "error numr on file greater than calc",mynumr,numr; CFLST
+  endif
+
+  if (myrank.ne.1) then
+     OFLWR "only call me rank 1 easy"; CFLST
   endif
 
   outavectors=0d0

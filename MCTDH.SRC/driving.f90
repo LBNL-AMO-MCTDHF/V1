@@ -124,9 +124,9 @@ subroutine drivingtrans(thistime)
      endif
 
 
-     call arbitraryconfig_mult(dipmatxx,rvector,tempdrivingavector(:,:,imc),     yyy%drivingavectorsxx(:,:,imc,0),numr)
-     call arbitraryconfig_mult(dipmatyy,rvector,tempdrivingavector(:,:,imc),     yyy%drivingavectorsyy(:,:,imc,0),numr)
-     call arbitraryconfig_mult(dipmatzz,rvector,tempdrivingavector(:,:,imc),     yyy%drivingavectorszz(:,:,imc,0),numr)
+     call arbitraryconfig_mult_singles(dipmatxx,rvector,tempdrivingavector(:,:,imc),     yyy%drivingavectorsxx(:,:,imc,0),numr)
+     call arbitraryconfig_mult_singles(dipmatyy,rvector,tempdrivingavector(:,:,imc),     yyy%drivingavectorsyy(:,:,imc,0),numr)
+     call arbitraryconfig_mult_singles(dipmatzz,rvector,tempdrivingavector(:,:,imc),     yyy%drivingavectorszz(:,:,imc,0),numr)
   enddo
 
   call get_tworeducedx( dreducedpottally, yyy%cmfpsivec(astart(1),0), tempdrivingavector)

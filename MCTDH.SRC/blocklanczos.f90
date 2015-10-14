@@ -19,12 +19,11 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
 
   if (topdfbasis-botdfbasis+1.ne.0) then
      workvectorsspin(:,:,:)=0d0
-  endif
-
-  if (guessflag.ne.0) then
-     do ii=1,order
-        call basis_transformto_local(numr,outvectors(:,botconfig,ii),workvectorsspin(:,:,ii))
-     enddo
+     if (guessflag.ne.0) then
+        do ii=1,order
+           call basis_transformto_local(numr,outvectors(:,botconfig,ii),workvectorsspin(:,:,ii))
+        enddo
+     endif
   endif
 
   maxdim=numdfbasis*numr
@@ -35,9 +34,11 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
 
   outvectors(:,:,:)=0d0
 
-  do ii=1,order
-     call basis_transformfrom_local(numr,workvectorsspin(:,:,ii),outvectors(:,botconfig:topconfig,ii))
-  enddo
+  if (topdfbasis-botdfbasis+1.ne.0) then
+     do ii=1,order
+        call basis_transformfrom_local(numr,workvectorsspin(:,:,ii),outvectors(:,botconfig,ii))
+     enddo
+  endif
 
   if (parconsplit.eq.0) then
      do ii=1,order

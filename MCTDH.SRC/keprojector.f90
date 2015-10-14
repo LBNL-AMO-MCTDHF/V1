@@ -68,7 +68,7 @@ subroutine keprojector(inavector,inspfs,infac)
   do ii=1,nkeproj
      ones(:)=1d0
 
-     call arbitraryconfig_mult(keproj(:,:,ii),ones,inavector,tempvector,numr)
+     call arbitraryconfig_mult_singles(keproj(:,:,ii),ones,inavector,tempvector,numr)
      csum=dot(inavector(:,1),tempvector(:),totadim)
      if (parconsplit.ne.0) then
         call mympireduceone(csum)
@@ -79,7 +79,7 @@ subroutine keprojector(inavector,inspfs,infac)
      kesum(ii)=kesum(ii)+real(csum)*infac
 
 
-     call arbitraryconfig_mult(keproj2(:,:,ii),ones,inavector,tempvector,numr)
+     call arbitraryconfig_mult_singles(keproj2(:,:,ii),ones,inavector,tempvector,numr)
      csum=dot(inavector(:,1),tempvector(:),totadim)
      if (parconsplit.ne.0) then
         call mympireduceone(csum)
