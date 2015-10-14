@@ -29,7 +29,9 @@ recursive subroutine all_derivs(thistime,xpsi, xpsip)
   use mpimod
   use xxxmod
   implicit none
-  DATATYPE :: xpsi(psilength), xpsip(psilength)
+  DATATYPE,intent(in) :: xpsi(psilength)
+  DATATYPE,intent(out) :: xpsip(psilength)
+  DATATYPE :: avector(totadim)   !! AUTOMATIC
   real*8 :: thistime
   integer :: itime,jtime,getlen
   integer, save :: times(20)=0, numcalledhere=0,imc
@@ -68,7 +70,14 @@ recursive subroutine all_derivs(thistime,xpsi, xpsip)
   !! AVECTOR PART.
 
   do imc=1,mcscfnum
-     call sparseconfigmult(xpsi(astart(imc)),xpsip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,1,thistime)
+     avector(:)=xpsi(astart(imc):aend(imc))
+     if (allspinproject.ne.0) then
+        call configspin_project(avector,0)
+     endif
+     if (dfrestrictflag.ne.0) then
+        call df_project(avector,numr)
+     endif     
+     call sparseconfigmult(avector,xpsip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,1,thistime)
      if (allspinproject.ne.0) then
         call configspin_project(xpsip(astart(imc)),0)
      endif
