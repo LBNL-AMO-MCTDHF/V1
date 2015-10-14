@@ -20,6 +20,8 @@ subroutine save_vector(psi,afile,sfile)
      allocate(parorbitals(1,nspf), parfrozen(1,max(numfrozen,1)))
   endif
 
+  call mpibarrier()
+
   if (parorbsplit.eq.3) then     
      do ispf=1,nspf
         call splitgatherv(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
@@ -38,6 +40,8 @@ subroutine save_vector(psi,afile,sfile)
   else
      allocate(paravec(1,1,mcscfnum))
   endif
+
+  call mpibarrier()
 
   if (parconsplit.ne.0) then
      do iprop=1,mcscfnum

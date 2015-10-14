@@ -13,6 +13,8 @@ subroutine get_orbmats( myspfs,  numspf,  ugmat,   xdipmat,ydipmat,zdipmat,   xr
   DATATYPE ::  tempspfs(spfsize,numspf),tempspfs2(spfsize,numspf)
   integer :: i
 
+  tempspfs(:,:)=0; tempspfs2(:,:)=0
+
 !! M & U/G
 
   do i=1,numspf
@@ -147,6 +149,7 @@ subroutine get_psistats( myspfs, numvec, inavectors, mexpect,m2expect,ugexpect, 
   DATAECS :: rvector(numr)
   integer :: i,imc
 
+  ugmat=0; xdipmat=0; ydipmat=0; zdipmat=0; xrefmat=0; yrefmat=0; zrefmat=0
   call get_orbmats( myspfs,  nspf,  ugmat,   xdipmat,ydipmat,zdipmat,   xrefmat,yrefmat,zrefmat)
 
 !! M & U/G
@@ -295,10 +298,15 @@ subroutine finalstats( )
   DATAECS :: rvector(numr)
   integer :: i,j,imc,jmc
 
+  call mpibarrier()
+
+  tempvector(:,:)=0d0; tempspfs(:,:)=0d0; tempspfs2(:,:)=0d0
+
   myspfs=RESHAPE(yyy%cmfpsivec(spfstart:spfend,0),(/spfsize,nspf/))
 
   inavectors(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numr,localnconfig,mcscfnum/))
 
+  ugmat=0; xdipmat=0; ydipmat=0; zdipmat=0; xrefmat=0; yrefmat=0; zrefmat=0
   call get_orbmats( myspfs,  nspf,  ugmat,   xdipmat,ydipmat,zdipmat,   xrefmat,yrefmat,zrefmat)
 
   do imc=1,mcscfnum
@@ -306,6 +314,8 @@ subroutine finalstats( )
   enddo
 
 !! M & U/G
+
+  call mpibarrier()
 
   do imc=1,mcscfnum
      do jmc=1,mcscfnum
@@ -358,6 +368,8 @@ subroutine finalstats( )
         enddo
      enddo
   endif
+
+  call mpibarrier()
 
 
 !! independent of R for now.  multiply by R for prolate  (R set to 1 for atom)
@@ -417,6 +429,8 @@ subroutine finalstats( )
   xdipmatel(:,:)=xdipmatel(:,:)+nucdipmatel(:,:,1)
 
 !! REFLECTIONS
+
+  call mpibarrier()
 
   do i=1,nspf
      call op_reflectz(myspfs(:,i),tempspfs(:,i))
@@ -666,7 +680,9 @@ subroutine finalstats( )
 
      close(662)
   endif
-  
+
+  call mpibarrier()
+
 end subroutine finalstats
 
 

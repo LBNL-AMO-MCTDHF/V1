@@ -629,7 +629,7 @@ subroutine parbiomatvec(inavector,outavector)
      call configspin_transformfrom_local(biopointer%bionr,inavector(:,:),intemp(:,botconfig))
   endif
 
-!! DO SUMMA INSTEAD GATHER FIRST THEN TRANSFORM
+!! DO SUMMA INSTEAD BROADCAST FIRST THEN TRANSFORM?
 
   call mpiallgather(intemp,numconfig*biopointer%bionr,configsperproc*biopointer%bionr,maxconfigsperproc*biopointer%bionr)
 
@@ -674,7 +674,6 @@ subroutine biomatvec_nompi(x,y)
   y(:,:)=0d0
 
   do i=botconfig,topconfig
-     y(:,i)=0
      do j=1,numsinglewalks(i) !! summing over nonconjugated second index in s(:), good
         y(:,i) = y(:,i) + biopointer%smo(singlewalkopspf(1,j,i),singlewalkopspf(2,j,i)) * singlewalkdirphase(j,i) * x(:,singlewalk(j,i)) 
      enddo
