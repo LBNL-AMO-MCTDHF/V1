@@ -184,9 +184,6 @@ end subroutine quadspfs
 module aaonedmod
   implicit none
   DATATYPE :: quadexpect=0d0
-  DATATYPE, allocatable :: jacaa(:,:), jacaamult(:,:)
-  DATATYPE, allocatable :: bigconfigmatel(:,:), err(:)
-  integer, allocatable :: ipiv(:)
 end module
 
 
@@ -196,14 +193,12 @@ subroutine aaonedinit(inavector)
   use xxxmod
   use parameters
   implicit none
-  DATATYPE :: inavector(numr,firstconfig:lastconfig),  dot, csum2
+  DATATYPE,intent(in) :: inavector(totadim)
+  DATATYPE :: jacaa(totadim), jacaamult(totadim) !! AUTOMATIC
+  DATATYPE :: dot, csum2
 
-  if (sparseconfigflag.eq.0) then
-     allocate(bigconfigmatel(totadim,totadim), ipiv(totadim), err(totadim))
-  endif
-  allocate(jacaa(numr,firstconfig:lastconfig), jacaamult(numr,firstconfig:lastconfig))
+  jacaa(:)=inavector(:)
 
-  jacaa(:,:)=inavector(:,:)
   if (allspinproject==1) then
      call configspin_project(jacaa,1)
   endif
@@ -215,7 +210,7 @@ subroutine aaonedinit(inavector)
   if (parconsplit.ne.0) then
      call mympireduceone(csum2)
   endif
-  jacaa(:,:)=jacaa(:,:)/sqrt(csum2)
+  jacaa(:)=jacaa(:)/sqrt(csum2)
 
   call sparseconfigmult(jacaa, jacaamult, yyy%cptr(0), yyy%sptr(0),1,1,0,1,0d0)
   if (allspinproject==1) then
@@ -232,16 +227,6 @@ subroutine aaonedinit(inavector)
 
 end subroutine aaonedinit
 
-
-subroutine aaonedfinal
-  use aaonedmod
-  use parameters
-  implicit none
-  deallocate(jacaa, jacaamult) 
-  if (sparseconfigflag.eq.0) then
-     deallocate(bigconfigmatel, ipiv, err)
-  endif
-end subroutine
 
 
 subroutine quadavector(inavector,jjcalls)
@@ -272,7 +257,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
   real*8 ::  dev,  thisaerror
   DATATYPE :: dot, hermdot,csum 
   DATATYPE, allocatable ::  vector(:,:), vector2(:,:), vector3(:,:), &
-       smallvector(:,:),smallvectorspin(:,:),smallvectorspin2(:,:)
+       smallvectorspin(:,:),smallvectorspin2(:,:)
 
   if (sparseconfigflag.eq.0) then
      OFLWR "Error, must use sparseconfigflag.ne.0 for sparsequadavector"; CFLST
@@ -282,8 +267,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
      OFLWR "Error, set tolerance parameter arror at least 1d-7 for reliable performance sparse quad a-vector."; CFLST
   endif
 
-  allocate(smallvector(numr,botdfconfig:topdfconfig),smallvectorspin(numr,botdfbasis:topdfbasis),&
-       smallvectorspin2(numr,botdfbasis:topdfbasis))
+  allocate(smallvectorspin(numr,botdfbasis:topdfbasis), smallvectorspin2(numr,botdfbasis:topdfbasis))
 
   allocate( vector(numr,firstconfig:lastconfig), vector2(numr,firstconfig:lastconfig), vector3(numr,firstconfig:lastconfig))
 
@@ -333,8 +317,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
 
      !OFLWR "     Converged sparse quad: dev ", dev, "  Expect ", quadexpect, " tol is ", thisaerror; CFL
 
-     call aaonedfinal()
-     deallocate(smallvector,smallvectorspin,smallvectorspin2)
+     deallocate(smallvectorspin,smallvectorspin2)
      deallocate(vector, vector2, vector3)
      return
   endif
@@ -374,8 +357,6 @@ subroutine sparsequadavector(inavector,jjcalls0)
 
   jjcalls0=jjcalls0+jjcalls
 
-  call aaonedfinal()
-
   ss=ss+1
   go to 333
 
@@ -395,6 +376,8 @@ subroutine nonsparsequadavector(avectorout)
   integer :: k, info,ss
   DATATYPE, allocatable :: halfmatel(:,:),halfmatel2(:,:),&
        spinmatel(:,:),spinerr(:),spinavectorout(:)
+  DATATYPE :: bigconfigmatel(totadim,totadim),err(totadim)
+  integer :: ipiv(totadim)
 
   if (sparseconfigflag/=0) then
      OFLWR "Error, nonsparsequadavector called but sparseconfigflag= ", sparseconfigflag; CFLST
@@ -424,7 +407,7 @@ subroutine nonsparsequadavector(avectorout)
 
   dev=sqrt(abs(hermdot(err(:),err(:),totadim)))
 
-  OFLWR "  NONSPARSEQUAD: DEV", dev; CFL
+  OFL;write(mpifileptr,'(A22,E12.5,A6,E12.5,A7,100F14.7)') "   NONSPARSEQUAD: DEV", dev, " TOL ",aerror,"ENERGY",quadexpect; CFL
 
   if (abs(dev).lt.aerror.or.(ss.gt.10)) then
 
@@ -434,7 +417,6 @@ subroutine nonsparsequadavector(avectorout)
 !  OFL; write(mpifileptr,'(A40,F15.10, A5,2F18.10,A5,1E6.1)') "      Converged nonsparse quad: dev ", dev, "  E= ", quadexpect, " tol ", aerror; CFL
 !#endif
 
-     call aaonedfinal()
      return
   endif
 
@@ -502,7 +484,6 @@ subroutine nonsparsequadavector(avectorout)
   norm=sqrt(dot(avectorout,avectorout,totadim))  !ok conv
   avectorout=avectorout/norm
 
-  call aaonedfinal()
   ss=ss+1
   go to 333
   
@@ -536,6 +517,10 @@ recursive subroutine parquadpreconsub(notusedint, inavectorspin,outavectorspin)
   DATATYPE,intent(in) :: inavectorspin(numr,botdfbasis:topdfbasis)
   DATATYPE,intent(out) :: outavectorspin(numr,botdfbasis:topdfbasis)
   DATATYPE :: inavector(numr,botconfig:topconfig),outavector(numr,botconfig:topconfig)
+
+  if (sparseconfigflag.eq.0) then
+     OFLWR "error, no parquadpreconsub if sparseconfigflag=0"; CFLST
+  endif
 
   call basis_transformfrom_local(numr,inavectorspin,inavector)
 
