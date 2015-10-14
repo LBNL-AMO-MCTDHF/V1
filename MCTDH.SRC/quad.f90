@@ -539,7 +539,7 @@ recursive subroutine parquadpreconsub(notusedint, inavectorspin,outavectorspin)
 
   call basis_transformfrom_local(numr,inavectorspin,inavector)
 
-  call parsparseconfigdiagmult(inavector, outavector, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0)
+  call parsparseconfigpreconmult(inavector, outavector, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0)
 
   call basis_transformto_local(numr,outavector,outavectorspin)
 

@@ -94,42 +94,8 @@ recursive subroutine sparseconfigmultxxx(myinvector,myoutvector,matrix_ptr,spars
 end subroutine sparseconfigmultxxx
 
 
-!! So, counterintuitively, this routine is used within MPI propagation with
-!!   parconfigsplit=1. 
-!!   
-!! Is a subroutine without mpi communication, that can be called, if vector is distributed
-!!   (parconfigsplit=1)
-!!   after communication to gather invector has been done.  Input whole vector; output only
-!!   that part for which I have rows in the Hamiltonian.
 
-
-
-recursive subroutine sparseconfigdiagmult(invector,outvector,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag, inenergy,time)
-  use parameters
-  use configptrmod
-  use sparseptrmod
-  implicit none
-  integer,intent(in) ::  conflag,boflag,nucflag,pulseflag
-  DATATYPE,intent(in) :: invector(numr,firstconfig:lastconfig)
-  DATATYPE,intent(out) :: outvector(numr,firstconfig:lastconfig)
-  DATATYPE,intent(in) :: inenergy
-  Type(CONFIGPTR),intent(in) :: matrix_ptr
-  Type(SPARSEPTR),intent(in) :: sparse_ptr
-  real*8,intent(in) :: time
-  DATATYPE :: workvector(numr,numconfig),tempvector(numr,firstconfig:lastconfig)       !! AUTOMATIC
-
-  workvector(:,:)=1d0; tempvector(:,:)=0d0
-  call sparseconfigmult_nompi(workvector(:,:),tempvector(:,botconfig),matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag,time,0,1,numr,1)
-  if (parconsplit.eq.0) then
-     call mpiallgather(tempvector,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
-  endif
-
-  outvector(:,:)=invector(:,:)/(tempvector(:,:)-inenergy)
-
-end subroutine sparseconfigdiagmult
-
-
-recursive subroutine parsparseconfigdiagmult(invector,outvector,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag, inenergy,time)
+recursive subroutine parsparseconfigpreconmult(invector,outvector,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag, inenergy,time)
   use parameters
   use configptrmod
   use sparseptrmod
@@ -152,7 +118,7 @@ recursive subroutine parsparseconfigdiagmult(invector,outvector,matrix_ptr, spar
   
   outvector(:,:)=invector(:,:)/(tempvector(:,:)-inenergy)
 
-end subroutine parsparseconfigdiagmult
+end subroutine parsparseconfigpreconmult
 
 
 
