@@ -311,6 +311,7 @@ program mctdhf
      call spinsets_first()
      call configspin_matel()
      call configspinset_projector()
+     call spinwalkinternal_dealloc()
 
      if (walkwriteflag.ne.0) then
         OFLWR "Closing walks.BIN"; CFL; close(751);
