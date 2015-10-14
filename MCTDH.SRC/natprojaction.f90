@@ -24,8 +24,7 @@ subroutine save_natproj( thistime )
   character(len=256) :: cwdline  !!, cwd 
   character(len=256) :: nnbb="                                                                                                &
 &                                                                                                                                                                "
-  DATATYPE :: tempdenmat(nspf,nspf,4),tempinvden(nspf,nspf),tempdenvects(nspf,nspf)
-  CNORMTYPE :: tempdenvals(nspf)
+  DATATYPE :: tempdenmat(nspf,nspf,4)
 
   xcalledhere=xcalledhere+1
   if (xcalledhere==1) then
@@ -103,7 +102,21 @@ subroutine save_natproj( thistime )
                    numconfig) !! ok implicit.
 
            enddo
+        enddo
 
+        if (parconsplit.ne.0) then
+#ifndef REALGO
+#ifndef CNORMFLAG
+           call mympirealreduce(curves(:,:),numr*korder)
+#else
+           call mympireduce(curves(:,:),numr*korder)
+#endif
+#else
+           call mympireduce(curves(:,:),numr*korder)
+#endif
+        endif
+
+        do isplit=1,numr
            write(888,'(100F12.6)') real(curves(isplit,1:korder))
 !           OFLWR "program quick plotting routine in PROJECT"; CFLST
            write(889,'(100F12.6)') (abs(natproj(isplit,1:korder,imc)**2/bondweights(isplit)),imc=1,mcscfnum)
@@ -318,7 +331,7 @@ subroutine save_natproj( thistime )
 
   tempdenmat(:,:,:)=0d0
   do i=1,min(numr,min(numconfig,4))
-     call getdenmat0(natconfigs(:,i),tempdenmat(:,:,i),tempinvden(:,:),tempdenvals(:),tempdenvects(:,:),1,1)
+     call getdenmat00(natconfigs(:,i),natconfigs(:,i),(/DATAONE/),tempdenmat(:,:,i),1,1)
   enddo
   call save_denproj( 4, thistime, yyy%cmfpsivec(spfstart,0),  tempdenmat, denprojplotbin)
   

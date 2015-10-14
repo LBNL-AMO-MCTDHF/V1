@@ -28,7 +28,6 @@ subroutine drivingtrans(thistime)
   use opmod
   implicit none
 
-  DATATYPE :: bigavector(numr,numconfig), a1(numr), a2(numr)
   DATATYPE :: dipmatxx(nspf,nspf),dipmatyy(nspf,nspf),dipmatzz(nspf,nspf),scalarpotyy(nspf,nspf),scalarpotzz(nspf,nspf)
   DATATYPE :: tempinvden(nspf,nspf),tempdenmat2(nspf,nspf), dreducedpottally(nspf,nspf,nspf,nspf)
   DATATYPE ::  tempdenmat(nspf,nspf), tempdrivingorbs(spfsize,nspf), &
@@ -37,9 +36,8 @@ subroutine drivingtrans(thistime)
   DATATYPE :: dtwoereduced(reducedpotsize,nspf,nspf), pots(3)=0d0
 
   Type(CONFIGPTR) :: drivingptr     !!, nullptr
-  integer :: thisconfig(ndof),nulltimes(10)
+  integer ::  i, imc,j, nulltimes(10)
   real*8 :: thistime,rsum
-  integer :: ispf, config1,config2,  i, iwalk, dirphase, jspf,imc,j
   DATATYPE, target :: smo(nspf,nspf)
   DATAECS :: rvector(numr)
 
@@ -140,47 +138,36 @@ subroutine drivingtrans(thistime)
 
 !! NOT DENMAT, REDUCED OPERATOR FOR PULSE (rvector)
 
-  tempdenmat(:,:)=0.d0
+  call getdenmat00(tempdrivingavector(:,:,:),yyy%cmfpsivec(astart(1),0),rvector(:),tempdenmat(:,:),numr,mcscfnum)
 
-  do imc=1,mcscfnum
-     bigavector(:,:)=0d0
-     bigavector(:,firstconfig:lastconfig)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numr,localnconfig/))
-     if (parconsplit.ne.0) then
-        call mpiallgather(bigavector,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
-     endif
-
-     do config1=botconfig,topconfig
-
-        thisconfig=configlist(:,config1)
-
-        a1(:)=tempdrivingavector(:,config1,imc)*rvector(:)
-
-        a2(:)=bigavector(:,config1)
-        do i=1,numelec
-           ispf=thisconfig((i-1)*2+1)
-           tempdenmat(ispf,ispf) = tempdenmat(ispf,ispf) + dot(a2,a1,numr)   !! true denmat type thing checked 11510
-        enddo
-     enddo
-
-     do config1=botconfig,topconfig
-
-        a1(:)=tempdrivingavector(:,config1,imc)   *rvector(:)
-
-        do iwalk=1,numsinglewalks(config1)
-           config2=singlewalk(iwalk,config1)
-           dirphase=singlewalkdirphase(iwalk,config1)
-           a2(:)=bigavector(:,config2)
-           ispf=singlewalkopspf(1,iwalk,config1)  !! goes with config1, driving
-           jspf=singlewalkopspf(2,iwalk,config1)  !! goes with config2, bra, current avector
-           
-           tempdenmat(ispf,jspf)=tempdenmat(ispf,jspf)+ &  
-                dirphase*dot(a2,a1,numr)
-        enddo
-     enddo
-
-  enddo
-
-  call mympireduce(tempdenmat,nspf**2)
+!!$  tempdenmat(:,:)=0.d0
+!!$
+!!$  do imc=1,mcscfnum
+!!$     bigavector(:,:)=0d0
+!!$     bigavector(:,firstconfig:lastconfig)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numr,localnconfig/))
+!!$     if (parconsplit.ne.0) then
+!!$        call mpiallgather(bigavector,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
+!!$     endif
+!!$
+!!$     do config1=botconfig,topconfig
+!!$
+!!$        a1(:)=tempdrivingavector(:,config1,imc)   *rvector(:)
+!!$
+!!$        do iwalk=1,numsinglewalks(config1)
+!!$           config2=singlewalk(iwalk,config1)
+!!$           dirphase=singlewalkdirphase(iwalk,config1)
+!!$           a2(:)=bigavector(:,config2)
+!!$           ispf=singlewalkopspf(1,iwalk,config1)  !! goes with config1, driving
+!!$           jspf=singlewalkopspf(2,iwalk,config1)  !! goes with config2, bra, current avector
+!!$           
+!!$           tempdenmat(ispf,jspf)=tempdenmat(ispf,jspf)+ &  
+!!$                dirphase*dot(a2,a1,numr)
+!!$        enddo
+!!$     enddo
+!!$
+!!$  enddo
+!!$
+!!$  call mympireduce(tempdenmat,nspf**2)
 
 !! (NO TIMEFAC)
 

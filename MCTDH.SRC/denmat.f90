@@ -156,7 +156,7 @@ subroutine getdenmatx()
   use xxxmod
   implicit none
 
-  call getdenmat0(yyy%cmfpsivec(astart(1),0), yyy%denmat(:,:,0) , yyy%invdenmat(:,:,0) , yyy%denvals(:) , yyy%denvects(:,:), numr, mcscfnum)
+  call getdenmatstuff(yyy%cmfpsivec(astart(1),0), yyy%denmat(:,:,0) , yyy%invdenmat(:,:,0) , yyy%denvals(:) , yyy%denvects(:,:), numr, mcscfnum)
 
 !!$  if (rdenflag==1) then
 !!$     call getrdenmat()
@@ -172,40 +172,43 @@ end subroutine getdenmatx
 
 !! denmat is the true denmat, not transposed.
 
-subroutine getdenmat0(in_avector, denmat, invdenmat, denvals, denvects, numpoints,howmany)
+subroutine getdenmat00(avector1,in_avector2,rvector, denmat, numpoints,howmany)
   use parameters
   use walkmod
   implicit none
 
   integer,intent(in) ::  numpoints,howmany
-  CNORMTYPE,intent(out) :: denvals(nspf)
-  DATATYPE, intent(in) :: in_avector(numpoints,firstconfig:lastconfig,howmany)
-  DATATYPE,intent(out) :: denmat(nspf,nspf),invdenmat(nspf,nspf),denvects(nspf,nspf)
-  CNORMTYPE :: tempdenvals(nspf,numclasses)
-  DATATYPE :: tempinvden(nspf,nspf,numclasses),tempdenvects(nspf,nspf,numclasses),&
-       a1(numpoints,howmany), a2(numpoints,howmany), dot
-  DATATYPE :: avector(numpoints,numconfig,howmany)   !! AUTOMATIC
-  integer :: config1,config2,  ispf,jspf,  dirphase, iwalk,iclass
+  DATATYPE, intent(in) :: in_avector2(numpoints,firstconfig:lastconfig,howmany),&
+       avector1(numpoints,firstconfig:lastconfig,howmany)
+  DATAECS,intent(in) :: rvector(numpoints)
+  DATATYPE,intent(out) :: denmat(nspf,nspf)
+  DATATYPE :: a1(numpoints,howmany), a2(numpoints,howmany), dot
+  DATATYPE :: avector2(numpoints,numconfig,howmany)   !! AUTOMATIC
+  integer :: config1,config2,  ispf,jspf,  dirphase, iwalk, ii
 
-  avector(:,firstconfig:lastconfig,:) = in_avector(:,:,:)
+  avector2(:,firstconfig:lastconfig,:) = in_avector2(:,:,:)
 
 !! DO SUMMA
   if (parconsplit.ne.0) then
-     call mpiallgather(avector,numconfig*numpoints,configsperproc*numpoints,maxconfigsperproc*numpoints)
+     do ii=1,howmany
+        call mpiallgather(avector2(:,:,ii),numconfig*numpoints,configsperproc(:)*numpoints,maxconfigsperproc*numpoints)
+     enddo
   endif
 
-  denmat(:,:)=0.d0; denvects(:,:)=0d0; invdenmat(:,:)=0d0
+  denmat(:,:)=0.d0
 
   !! single off diagonal walks
 
   do config1=botconfig,topconfig
 
-     a1(:,:)=avector(:,config1,:)
-        
+     do ii=1,howmany
+        a1(:,ii)=avector1(:,config1,ii) * rvector(:)
+     enddo
+
      do iwalk=1,numsinglewalks(config1)
         config2=singlewalk(iwalk,config1)
         dirphase=singlewalkdirphase(iwalk,config1)
-        a2(:,:)=avector(:,config2,:)
+        a2(:,:)=avector2(:,config2,:)
         ispf=singlewalkopspf(1,iwalk,config1)  !! goes with config1
         jspf=singlewalkopspf(2,iwalk,config1)  !! goes with config2
 
@@ -224,6 +227,30 @@ subroutine getdenmat0(in_avector, denmat, invdenmat, denvals, denvects, numpoint
   enddo
 
   call mympireduce(denmat,nspf**2)
+
+end subroutine getdenmat00
+
+
+
+subroutine getdenmatstuff(avector, denmat, invdenmat, denvals, denvects, numpoints,howmany)
+  use parameters
+  use walkmod
+  use configmod
+  implicit none
+
+  integer,intent(in) ::  numpoints,howmany
+  CNORMTYPE,intent(out) :: denvals(nspf)
+  DATATYPE, intent(in) :: avector(numpoints,firstconfig:lastconfig,howmany)
+  DATATYPE,intent(out) :: denmat(nspf,nspf),invdenmat(nspf,nspf),denvects(nspf,nspf)
+  CNORMTYPE :: tempdenvals(nspf,numclasses)
+  DATATYPE :: tempinvden(nspf,nspf,numclasses),tempdenvects(nspf,nspf,numclasses)
+  integer :: ispf,jspf,iclass
+  DATAECS :: rvector(numpoints)
+
+  rvector(:)=1d0
+  call getdenmat00(avector,avector,rvector,denmat,numpoints,howmany)
+
+  denvects(:,:)=0d0; invdenmat(:,:)=0d0
 
   tempinvden(:,:,:)=0d0; tempdenvals(:,:)=0d0; tempdenvects(:,:,:)=0d0; 
 
@@ -249,7 +276,7 @@ subroutine getdenmat0(in_avector, denmat, invdenmat, denvals, denvects, numpoint
   enddo
 
 
-end subroutine getdenmat0
+end subroutine getdenmatstuff
 
 
 subroutine getoccupations(in_avector, numpoints, occupations)
