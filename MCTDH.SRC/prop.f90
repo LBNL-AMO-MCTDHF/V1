@@ -584,7 +584,7 @@ subroutine cmf_prop_wfn(tin, tout)
   if (improvedrelaxflag.ne.0) then
 
      call system_clock(itime)
-     if (improvedquadflag.gt.1.and.tin.gt.quadstarttime) then
+     if (improvedquadflag.gt.1.and.tin.gt.quadstarttime.and.spf_flag.ne.0) then
         call quadspfs(yyy%cmfpsivec(spfstart,0), qq)
         numiters=numiters+qq
      else
@@ -607,10 +607,12 @@ subroutine cmf_prop_wfn(tin, tout)
      call system_clock(jtime);     times(1)=times(1)+jtime-itime;    
 
      call system_clock(itime)
-     if (improvedquadflag.eq.1.or.improvedquadflag.eq.3) then
-        call quadavector(yyy%cmfpsivec(astart(1),0),qq)
-     else
-        call myconfigeig(yyy%cmfpsivec(astart(1),0),myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
+     if (avector_flag.ne.0) then
+        if (improvedquadflag.eq.1.or.improvedquadflag.eq.3) then
+           call quadavector(yyy%cmfpsivec(astart(1),0),qq)
+        else
+           call myconfigeig(yyy%cmfpsivec(astart(1),0),myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
+        endif
      endif
      call system_clock(jtime);     times(5)=times(5)+jtime-itime;     call system_clock(itime)
 
@@ -902,17 +904,9 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
      if (drivingflag.ne.0) then
         workdrivingavec(:,:)=0d0
 
-!!$        if (allspinproject.ne.0) then
-!!$           workdrivingavecspin(:,:)=0d0
-!!$        endif
-
         if (iflag.eq.1) then
            workdrivingavec(:,:)=( yyy%drivingavectorsxx(:,:,imc,1)*pots(1) + &
                 yyy%drivingavectorsyy(:,:,imc,1)*pots(2) + yyy%drivingavectorszz(:,:,imc,1)*pots(3) )*thisstep
-
-!!$           if (allspinproject.ne.0) then
-!!$              call configspin_transformto(numr,workdrivingavec,workdrivingavecspin)
-!!$           endif
 
         endif
      endif
@@ -926,20 +920,12 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
      if (drivingflag.ne.0) then
         workdrivingavec(:,:)=0d0
 
-!!$        if (allspinproject.ne.0) then
-!!$           workdrivingavecspin(:,:)=0d0
-!!$        endif
-
         if (iflag.eq.1) then
 
            workdrivingavec(:,:) = thisstep*( &
                 (sum1*yyy%drivingavectorsxx(:,:,imc,1)+ sum0*yyy%drivingavectorsxx(:,:,imc,0))*pots(1) + &
                 (sum1*yyy%drivingavectorsyy(:,:,imc,1)+ sum0*yyy%drivingavectorsyy(:,:,imc,0))*pots(2) + &
                 (sum1*yyy%drivingavectorszz(:,:,imc,1)+ sum0*yyy%drivingavectorszz(:,:,imc,0))*pots(3) )
-
-!!$           if (allspinproject.ne.0) then
-!!$              call configspin_transformto(numr,workdrivingavec,workdrivingavecspin)
-!!$           endif
 
         endif
      endif
