@@ -450,7 +450,7 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
 
      if (numholes.eq.0.and.excitations.eq.0) then
 
-        call easy_load_avectors(999,readcomplex, readavectors(:,:,:), ndof, numr, readnumconfig, readnumvects)
+        call easy_load_avectors(999,readcomplex, readavectors(:,:,:), readnumr, readnumconfig, readnumvects)
 
      else
         call load_avectors0(999,readcomplex,readavectors(:,:,:),numr,numconfig,ndof+2*numholes,readnumr,readnumconfig, readavectorsubroutine,readnumvects)
@@ -550,33 +550,41 @@ end subroutine simple_load_avectors
 
 !! outavectors = numconfig
 
-subroutine easy_load_avectors(iunit, qq, myavectors, myndof, mynumr, mynumconfig, mynumvects)
+subroutine easy_load_avectors(iunit, qq, outavectors, mynumr, mynumconfig, mynumvects)
   use parameters
   implicit none
 
-  integer :: myndof, mynumconfig, mynumr,mynumvects,iunit,ivect,qq, config1, thatconfig(myndof), myiostat,&
+  integer ::  mynumconfig, mynumr,mynumvects,iunit,ivect,qq, config1, thatconfig(ndof), myiostat,&
        phase,reorder,myconfig,getconfiguration
-  DATATYPE :: myavectors(mynumr,numconfig,mynumvects)
+  DATATYPE :: outavectors(mynumr,firstconfig:lastconfig,mynumvects)
   real*8 :: rtempreadvect(mynumr)
   logical :: allowedconfig
   complex*16 :: ctempreadvect(mynumr)
 
-   myavectors=0d0
+  if (parconsplit.ne.0) then
+     OFLWR "dome parconsplit easy"; CFLST
+  endif
+
+  if (mynumr.gt.numr) then
+     OFLWR "error numr on file greater than calc",mynumr,numr; CFLST
+  endif
+
+  outavectors=0d0
 
   do ivect=1,mynumvects
      do myconfig=1,mynumconfig
         if (qq==0) then
-           read (iunit,iostat=myiostat) thatconfig(1:myndof), rtempreadvect(1:mynumr)
+           read (iunit,iostat=myiostat) thatconfig(1:ndof), rtempreadvect(1:mynumr)
         else
-           read (iunit,iostat=myiostat) thatconfig(1:myndof), ctempreadvect(1:mynumr)
+           read (iunit,iostat=myiostat) thatconfig(1:ndof), ctempreadvect(1:mynumr)
         endif
         phase=reorder(thatconfig)
         if (allowedconfig(thatconfig)) then
            config1=getconfiguration(thatconfig)
            if (qq==0) then
-              myavectors(:,config1,ivect)=rtempreadvect(:)*phase
+              outavectors(1:mynumr,config1,ivect)=rtempreadvect(:)*phase
            else
-              myavectors(:,config1,ivect)=ctempreadvect(:)*phase
+              outavectors(1:mynumr,config1,ivect)=ctempreadvect(:)*phase
            endif
         else
            if (readfullvector) then

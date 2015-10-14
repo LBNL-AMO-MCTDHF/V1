@@ -97,7 +97,7 @@ subroutine ovl_initial()
      call mympiibcastone(nstate,1); call mympiibcastone(tndof,1); call mympiibcastone(tnumr,1);
      call mympiibcastone(tnumconfig,1); call mympiibcastone(acomplex,1)
      if (myrank.eq.1) then
-        call load_avectors0(910,acomplex,read_avectors(:,jnumovl+1),numr,numconfig,ndof,tnumr,tnumconfig,readavectorsubsimple, nstate)
+        call easy_load_avectors(910,acomplex,read_avectors(:,jnumovl+1),tnumr,tnumconfig,nstate)
         close(910)
      endif
 
