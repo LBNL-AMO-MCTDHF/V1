@@ -396,7 +396,7 @@ integer :: numfluxcurves(20)
 
 integer :: drivingmethod=0   !! 0 = V(t)  1 = H(t)-E
 integer :: connormflag=0  !! normalize columns for conway=1 or 3
-integer :: sortwalks=0
+integer :: sortwalks=1
 integer :: nonatrotate=0
 
 !!!!!  integer :: whichquad=1           !!     0=my eqn 1=rayleigh quotient  WHICHQUAD 1 HARDWIRE

@@ -151,7 +151,6 @@ end subroutine walkdealloc
 subroutine configlistwrite()
   use parameters
   use configmod
-  use walkmod
   use mpimod
   implicit none
 
@@ -331,19 +330,6 @@ subroutine walks()
   enddo   ! config1
 
 
-  if (sparseconfigflag.eq.0.and.maxsinglewalks.ne.0) then
-     isize=2*maxsinglewalks
-     call mpiallgather_i(singlewalkopspf,   numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
-     isize=maxsinglewalks
-     call mpiallgather_i(singlewalkdirphase,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
-     call mpiallgather_i(singlewalk,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
-!!$     isize=numelec
-!!$     call mpiallgather_i(singlediag,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
-!!$     isize=1
-!!$     call mpiallgather_i(numsinglediagwalks,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
-  endif
-
-
   OFLWR "Calculating walks.  Doubles...";  call closefile()
 
   !!   ***********  DOUBLES  ************
@@ -459,27 +445,12 @@ subroutine walks()
 
   enddo   ! config1
 
-
-  if (sparseconfigflag.eq.0.and.maxdoublewalks.ne.0) then
-     isize=4*maxdoublewalks
-     call mpiallgather_i(doublewalkdirspf,  numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
-     isize=maxdoublewalks
-     call mpiallgather_i(doublewalkdirphase,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
-     call mpiallgather_i(doublewalk,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
-!!$     isize=numelec*(numelec-1)
-!!$     call mpiallgather_i(doublediag,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
-!!$     isize=1
-!!$     call mpiallgather_i(numdoublediagwalks,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc)
-  endif
-
+  call mpibarrier()
 
   if (sortwalks.ne.0) then
 
      OFLWR "Sorting walks..."; CFL
-     do config1=configstart,configend
-        if (mod(config1,1000).eq.0) then
-           OFLWR "   ...config ", config1," of ", configend; CFL
-        endif
+     do config1=botconfig,topconfig
         
         call getlistorder(singlewalk(:,config1),listorder(:),numsinglewalks(config1))
         call listreorder(singlewalkdirphase(:,config1),listorder(:),numsinglewalks(config1),1)
@@ -493,6 +464,35 @@ subroutine walks()
      enddo
      OFLWR "    .... done sorting walks."; CFL
   endif
+
+  call mpibarrier()
+
+  if (sparseconfigflag.eq.0.and.maxsinglewalks.ne.0) then
+     isize=2*maxsinglewalks
+     call mpiallgather_i(singlewalkopspf,   numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
+     isize=maxsinglewalks
+     call mpiallgather_i(singlewalkdirphase,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
+     call mpiallgather_i(singlewalk,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
+!!$     isize=numelec
+!!$     call mpiallgather_i(singlediag,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
+!!$     isize=1
+!!$     call mpiallgather_i(numsinglediagwalks,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
+  endif
+
+
+  if (sparseconfigflag.eq.0.and.maxdoublewalks.ne.0) then
+     isize=4*maxdoublewalks
+     call mpiallgather_i(doublewalkdirspf,  numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
+     isize=maxdoublewalks
+     call mpiallgather_i(doublewalkdirphase,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
+     call mpiallgather_i(doublewalk,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
+!!$     isize=numelec*(numelec-1)
+!!$     call mpiallgather_i(doublediag,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
+!!$     isize=1
+!!$     call mpiallgather_i(numdoublediagwalks,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
+  endif
+
+
 
 
   do config1=configstart,configend
