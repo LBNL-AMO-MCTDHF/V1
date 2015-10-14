@@ -205,7 +205,6 @@ end subroutine dfcondealloc
 
 subroutine df_project(avector,howmany)
   use parameters
-  use dfconmod
   implicit none
   integer :: howmany
   DATATYPE :: avector(howmany,firstconfig:lastconfig)
@@ -275,6 +274,20 @@ subroutine df_transformfrom_local(howmany,avectorin,avectorout)
 end subroutine df_transformfrom_local
 
 
+subroutine basis_transformto_all(howmany,avectorin,avectorout)
+  use parameters
+  use dfconmod
+  implicit none
+  integer :: howmany
+  DATATYPE,intent(in) :: avectorin(howmany,numconfig)
+  DATATYPE,intent(out) :: avectorout(howmany,numdfbasis)
+  if (sparseconfigflag.ne.0) then
+     OFLWR "program me basis transformto all nonsparse"; CFLST
+  endif
+  call basis_transformto_local(howmany,avectorin,avectorout)
+end subroutine basis_transformto_all
+
+
 subroutine basis_transformto_local(howmany,avectorin,avectorout)
   use parameters
   use dfconmod
@@ -303,6 +316,20 @@ subroutine basis_transformto_local(howmany,avectorin,avectorout)
 
 end subroutine basis_transformto_local
 
+
+
+subroutine basis_transformfrom_all(howmany,avectorin,avectorout)
+  use parameters
+  use dfconmod
+  implicit none
+  integer :: howmany
+  DATATYPE,intent(in) :: avectorin(howmany,numdfbasis)
+  DATATYPE,intent(out) :: avectorout(howmany,numconfig)
+  if (sparseconfigflag.ne.0) then
+     OFLWR "program me basis transformfrom all nonsparse"; CFLST
+  endif
+  call basis_transformfrom_local(howmany,avectorin,avectorout)
+end subroutine basis_transformfrom_all
 
 
 subroutine basis_transformfrom_local(howmany,avectorin,avectorout)

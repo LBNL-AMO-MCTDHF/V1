@@ -838,24 +838,6 @@ end subroutine getnumwalks
 
 
 
-subroutine df_projectmatrix(inmatrix)
-  use parameters
-  implicit none
-  DATATYPE :: inmatrix(numconfig,numconfig),tempmatrix(numconfig,numconfig)
-
-  if (dfrestrictflag.eq.0) then
-     return
-  endif
-  tempmatrix=TRANSPOSE(inmatrix)
-  call df_project(tempmatrix,numconfig)
-  inmatrix=TRANSPOSE(tempmatrix)
-  call df_project(inmatrix,numconfig)
-  
-end subroutine df_projectmatrix
-  
-
-
-
 
 subroutine getlistorder(values, order,num)
   use fileptrmod

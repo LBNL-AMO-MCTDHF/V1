@@ -374,10 +374,8 @@ subroutine nonsparsequadavector(avectorout)
   CNORMTYPE :: norm
   real*8 :: dev
   integer :: k, info,ss
-  DATATYPE, allocatable :: halfmatel(:,:),halfmatel2(:,:),&
-       spinmatel(:,:),spinerr(:),spinavectorout(:)
-  DATATYPE :: bigconfigmatel(totadim,totadim),err(totadim)
-  integer :: ipiv(totadim)
+  DATATYPE ::  spinmatel(numdfbasis*numr,numdfbasis*numr),spinavectorout(numdfbasis*numr),err(totadim)
+  integer :: ipiv(numdfbasis*numr)
 
   if (sparseconfigflag/=0) then
      OFLWR "Error, nonsparsequadavector called but sparseconfigflag= ", sparseconfigflag; CFLST
@@ -420,66 +418,32 @@ subroutine nonsparsequadavector(avectorout)
      return
   endif
 
-!! no spin project; doing transform below
-  call assemble_configmat(bigconfigmatel, yyy%cptr(0),1,1,1,1, 0d0)
+  spinmatel(:,:)=0d0
 
-  do k=1,totadim
-     bigconfigmatel(k,k)=bigconfigmatel(k,k)-quadexpect
+  call assemble_dfbasismat(spinmatel, yyy%cptr(0),1,1,1,1, 0d0)
+
+  do k=1,numdfbasis*numr
+     spinmatel(k,k)=spinmatel(k,k)-quadexpect
   enddo
 
-  if (allspinproject.ne.0) then
+  spinavectorout(:)=0d0
 
-!! can make this complex or whatever; multiplying by real matrix
-!!   but doing it carefully, only condensing leading index as complex
+  call basis_transformto_all(numr,avectorout(:),spinavectorout(:))
 
-     allocate(halfmatel(numspinconfig*numr,numconfig*numr), &
-          halfmatel2(numconfig*numr,numspinconfig*numr), &
-          spinmatel(numspinconfig*numr,numspinconfig*numr), &
-          spinerr(numspinconfig*numr),spinavectorout(numspinconfig*numr))
 
-     call configspin_transformto(numr*numconfig*numr,bigconfigmatel,halfmatel2)
-     
-     halfmatel(:,:)=TRANSPOSE(halfmatel2(:,:))
-
-     call configspin_transformto(numr*numspinconfig*numr,halfmatel,spinmatel)
-
-     spinmatel(:,:)=TRANSPOSE(spinmatel(:,:))
-
-     call configspin_transformto(numr,avectorout(:),spinavectorout(:))
-     call configspin_transformto(numr,err(:),spinerr(:))
-
-     if (myrank.eq.1) then
-        call MYGESV(numspinconfig*numr,1,spinmatel,numspinconfig*numr,ipiv,spinavectorout,numspinconfig*numr,info)
-        spinavectorout=spinavectorout/sqrt(dot(spinavectorout,spinavectorout,numspinconfig*numr))
-        if (info/=0) then
-           OFLWR "Info in dgesv nonsparsequadavector= ", info; CFLST
-        endif
+  if (myrank.eq.1) then
+     call MYGESV(numdfbasis*numr,1,spinmatel,numdfbasis*numr,ipiv,spinavectorout,numdfbasis*numr,info)
+     spinavectorout=spinavectorout/sqrt(dot(spinavectorout,spinavectorout,numdfbasis*numr))
+     if (info/=0) then
+        OFLWR "Info in dgesv nonsparsequadavector= ", info; CFLST
      endif
-
-     call mympibcast(spinavectorout,1,numspinconfig*numr)
-     call configspin_transformfrom(numr,spinavectorout(:),avectorout(:))
-
-     deallocate(halfmatel, halfmatel2, spinmatel,     spinerr, spinavectorout)
-
-  else
-
-     if (myrank.eq.1) then
-
-        call MYGESV(totadim,1,bigconfigmatel,totadim,ipiv,avectorout,totadim,info)
-        avectorout=avectorout/sqrt(dot(avectorout,avectorout,totadim))
-
-        if (info/=0) then
-           OFLWR "Info in dgesv nonsparsequadavector= ", info; CFLST
-        endif
-     endif
-
-     call mympibcast(avectorout,1,totadim)
-
   endif
 
-  if (dfrestrictflag.ne.0) then
-     call df_project(avectorout, numr)
-  endif
+  call mpibarrier()
+
+  call mympibcast(spinavectorout,1,numdfbasis*numr)
+
+  call basis_transformfrom_all(numr,spinavectorout(:),avectorout(:))
 
   norm=sqrt(dot(avectorout,avectorout,totadim))  !ok conv
   avectorout=avectorout/norm

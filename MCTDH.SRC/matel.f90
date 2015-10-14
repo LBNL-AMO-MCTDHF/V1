@@ -332,13 +332,13 @@ end subroutine arbitraryconfig_matel_doubles00transpose
 
 
 
-subroutine assemble_spinconfigmat(outmatrix, matrix_ptr, boflag, nucflag, pulseflag, conflag, time)
+subroutine assemble_dfbasismat(outmatrix, matrix_ptr, boflag, nucflag, pulseflag, conflag, time)
   use parameters
   use configptrmod
   implicit none
   Type(configptr) :: matrix_ptr
-  DATATYPE ::        outmatrix(numspinconfig*numr,numspinconfig*numr)
-  DATATYPE, allocatable ::        bigmatrix(:,:),halfmatrix(:,:),halfmatrix2(:,:)
+  DATATYPE ::        outmatrix(numdfbasis*numr,numdfbasis*numr)
+  DATATYPE, allocatable ::        bigmatrix(:,:),halfmatrix(:,:),halfmatrix2(:,:),donematrix(:,:)
   integer :: nucflag, pulseflag, conflag, boflag
   real*8 :: time
 
@@ -346,22 +346,22 @@ subroutine assemble_spinconfigmat(outmatrix, matrix_ptr, boflag, nucflag, pulsef
      OFLWR "Error, assemble_full_config_matel called when sparseconfigflag/=0";CFLST
   endif
   
-  allocate(  bigmatrix(numconfig*numr,numconfig*numr), halfmatrix(numspinconfig*numr,numconfig*numr),halfmatrix2(numconfig*numr,numspinconfig*numr))
+  allocate(  bigmatrix(numconfig*numr,numconfig*numr), halfmatrix(numdfbasis*numr,numconfig*numr),halfmatrix2(numconfig*numr,numdfbasis*numr), donematrix(numdfbasis*numr,numdfbasis*numr))
+
+  bigmatrix(:,:)=0d0; halfmatrix(:,:)=0d0; halfmatrix2(:,:)=0d0; donematrix(:,:)=0d0; outmatrix(:,:)=0d0
 
   call assemble_configmat(bigmatrix,matrix_ptr,boflag,nucflag,pulseflag,conflag,time)
 
-!! PROJECT ON SPIN !!
+!! obviously not good to transform for each r; should transform earlier. 
 
-!! obviously not good to project on spin for each r; should project earlier. 
-
-  call configspin_transformto(numconfig*numr*numr,bigmatrix,halfmatrix2)
+  call basis_transformto_all(numconfig*numr*numr,bigmatrix,halfmatrix2)
   halfmatrix=TRANSPOSE(halfmatrix2)
-  call configspin_transformto(numspinconfig*numr*numr,halfmatrix,outmatrix)
-  outmatrix=transpose(outmatrix)
+  call basis_transformto_all(numdfbasis*numr*numr,halfmatrix,donematrix)
+  outmatrix=transpose(donematrix)
 
-  deallocate(bigmatrix,halfmatrix,halfmatrix2)
+  deallocate(bigmatrix,halfmatrix,halfmatrix2,donematrix)
 
-end subroutine assemble_spinconfigmat
+end subroutine assemble_dfbasismat
 
 
 
@@ -470,10 +470,6 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
      enddo
   endif   !! pulse
 
-  do ir=1,numr
-     call df_projectmatrix(diagmat(:,:,ir))
-  enddo
-
   bigconfigmat(:,:,:,:)=0d0
 
   do ir=1,numr
@@ -483,7 +479,6 @@ subroutine assemble_configmat(bigconfigmat,matrix_ptr, boflag, nucflag, pulsefla
   if (nonuc_checkflag.eq.0.and.nucflag.eq.1) then
        call arbitraryconfig_matel00transpose(matrix_ptr%xymatel,tempconfigmat,numconfig)   !! fills in all, wasteful
        tempconfigmat(:,:)=TRANSPOSE(tempconfigmat(:,:))
-       call df_projectmatrix(tempconfigmat)
 
      do ir=1,numr
         do jr=1,numr
