@@ -589,7 +589,7 @@ subroutine exposparseprop(inavector,outavector,time)
    
    outavector(:,:)=0d0;   
 
-   call basis_transformto_local(numr,smallvectorout,outavector(:,botconfig))
+   call basis_transformfrom_local(numr,smallvectorout,outavector(:,botconfig))
 
    if (parconsplit.eq.0) then
       call mpiallgather(outavector,numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
