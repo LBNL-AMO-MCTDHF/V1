@@ -213,7 +213,7 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
   DATATYPE, allocatable :: betas(:,:,:),betastr(:,:,:)
 !! made these allocatable to fix carver segfault djh 03-30-15
   DATATYPE, allocatable :: &   
-       initvectors(:,:),  invector(:), multvectors(:,:), &
+       invector(:), multvectors(:,:), &
        lanvects(:,:,:), tempvectors(:,:), &
        lanmultvects(:,:,:), tempvectors2(:,:)
   external :: multsub
@@ -226,10 +226,10 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
   endif
 
   allocate(&
-       initvectors(maxlansize,lanblocknum),  invector(maxlansize), multvectors(maxlansize,lanblocknum), &
+       invector(maxlansize), multvectors(maxlansize,lanblocknum), &
        lanvects(maxlansize,lanblocknum,order), tempvectors(maxlansize,numout), &
        lanmultvects(maxlansize,lanblocknum,order), tempvectors2(maxlansize,numout))
-  initvectors=0d0; invector=0d0; multvectors=0d0; lanvects=0d0; tempvectors=0d0; 
+  invector=0d0; multvectors=0d0; lanvects=0d0; tempvectors=0d0; 
   lanmultvects=0d0; tempvectors2=0d0
   allocate( &
        lanham(lanblocknum,order,lanblocknum,order),&
@@ -246,9 +246,9 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
 
   if (guessflag==0) then
 
-     initvectors=0.0d0
+     outvectors=0.0d0
 
-     do k=1,lanblocknum
+     do k=1,numout
 
 !! want to be sure to have exactly the same calc regardless of nprocs.
 !!    but doesn't seem to work
@@ -270,7 +270,7 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
            enddo
         enddo
         do i=1,lansize
-           initvectors(i,k)=nextran() + (0d0,1d0) * nextran()
+           outvectors(i,k)=nextran() + (0d0,1d0) * nextran()
         enddo
         do ii=1,nlast
            do i=1,lansize
@@ -278,18 +278,67 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
            enddo
         enddo
      enddo
-  else
-     initvectors(1:lansize,:)=outvectors(1:lansize,1:lanblocknum)
   endif
 
-  initvectors(lansize+1:,:)=0d0  ! why not
+  outvectors(lansize+1:,:)=0d0  ! why not
 
   flag=0
 !  do while (flag==0)
   do while (flag.ne.1)
      flag=0
+
+     do j=1,numout
+        if (lansize.eq.0) then
+           call multsub(nullvector1(:),nullvector2(:))
+           call multsub(nullvector1(:),nullvector2(:))
+        else
+           call multsub(outvectors(:,j),tempvectors(:,j))
+           call multsub(tempvectors(:,j),tempvectors2(:,j))
+        endif
+     enddo
+
+     error(:)=1000d0
+     
+     do j=1,numout
+        if (lansize.eq.0) then
+           normsq(j)=nulldot(logpar)
+           valdot(j)=nulldot(logpar)
+           sqdot(j)=nulldot(logpar)
+        else
+           normsq(j)=hdot(outvectors(:,j),outvectors(:,j),lansize,logpar)  !! yes should be normed, whatever
+           valdot(j)=hdot(outvectors(:,j),tempvectors(:,j),lansize,logpar)
+           sqdot(j)= hdot(outvectors(:,j),tempvectors2(:,j),lansize,logpar)
+        endif
+        values(j)=valdot(j)/normsq(j)
+        
+        error(j)=abs(&
+             valdot(j)**2 / normsq(j)**2 - &
+             sqdot(j)/normsq(j))
+        
+     enddo
+     if (printflag.ne.0) then
+        OFL; write(mpifileptr,'(A10,100E8.1)') " FIRST ERRORS ", error(1:numout); CFL
+     endif
+
+     stopsum=0d0
+     do nn=1,numout
+        if (error(nn).gt.stopsum) then
+           stopsum=error(nn)
+        endif
+     enddo
+     if (stopsum.lt.lanthresh) then
+        OFLWR "Vectors converged on read",stopsum,lanthresh; CFL
+        flag=1
+     else
+        if (printflag.ne.0) then
+           OFLWR "MAX ERROR : ", stopsum, lanthresh; CFL
+        endif
+     endif
+
+!!!!!!!
+
      if (lansize.gt.0) then
-        lanvects(1:lansize,:,1)=initvectors(1:lansize,:)
+        lanvects(1:lansize,:,1)=outvectors(1:lansize,1:lanblocknum)
      endif
      lanham(:,:,:,:)=0.0d0
      do i=1,lanblocknum
@@ -302,12 +351,11 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
      do j=1,lanblocknum
         if (lansize.eq.0) then
            call multsub(nullvector1(:),nullvector2(:))
-           call multsub(nullvector1(:),nullvector2(:))
         else
            call multsub(lanvects(:,j,1),multvectors(:,j))
-           call multsub(multvectors(:,j),tempvectors2(:,j))
         endif
      enddo
+
      lanmultvects(:,:,1)=multvectors(:,:)
 
      if (lansize.eq.0) then
@@ -322,44 +370,9 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
         OFLWR "FIRST ALPHA ", alpha(1,1); CFL
      endif
 
-     error(:)=1000d0
 
-     do j=1,lanblocknum  !! not numout, don't have them yet.
-        if (lansize.eq.0) then
-           normsq(j)=nulldot(logpar)
-           valdot(j)=nulldot(logpar)
-           sqdot(j)=nulldot(logpar)
-        else
-           normsq(j)=hdot(lanvects(:,j,1),lanvects(:,j,1),lansize,logpar)  !! yes should be normed, whatever
-           valdot(j)=hdot(lanvects(:,j,1),multvectors(:,j),lansize,logpar)
-           sqdot(j)= hdot(lanvects(:,j,1),tempvectors2(:,j),lansize,logpar)
-        endif
-        values(j)=valdot(j)/normsq(j)
+!!!!!!!!
 
-        error(j)=abs(&
-             valdot(j)**2 / normsq(j)**2 - &
-             sqdot(j)/normsq(j))
-        
-     enddo
-     if (printflag.ne.0) then
-        OFL; write(mpifileptr,'(A10,100E8.1)') " FIRST ERRORS ", error(1:lanblocknum); CFL
-     endif
-     if (numout.eq.lanblocknum) then
-        stopsum=0d0
-        do nn=1,numout
-           if (error(nn).gt.stopsum) then
-              stopsum=error(nn)
-           endif
-        enddo
-        if (stopsum.lt.lanthresh) then
-           OFLWR "Vectors converged on read",stopsum,lanthresh; CFL
-           flag=1
-        else
-           if (printflag.ne.0) then
-              OFLWR "MAX ERROR : ", stopsum, lanthresh; CFL
-           endif
-        endif
-     endif
 
      iorder=1
      do while ( flag==0 )
@@ -555,13 +568,9 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
         flag=0
         OFLWR "  Not converged. restarting.", stopsum,lanthresh; CFL
      endif
-     initvectors(:,:)=0d0
-     if (lansize.gt.0) then
-        initvectors(1:lansize,1:lanblocknum)=outvectors(1:lansize,1:lanblocknum)
-     endif
   enddo
 
-  deallocate(  initvectors,invector,multvectors, lanvects, tempvectors, lanmultvects,tempvectors2)
+  deallocate(  invector,multvectors, lanvects, tempvectors, lanmultvects,tempvectors2)
 
   deallocate( lanham,       laneigvects,       values,       templanham)
 
