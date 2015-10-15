@@ -200,10 +200,10 @@ subroutine aaonedinit(inavector)
   jacaa(:)=inavector(:)
 
   if (allspinproject==1) then
-     call configspin_project(jacaa,1)
+     call configspin_project(numr,jacaa)
   endif
   if (dfrestrictflag.ne.0) then
-     call df_project(jacaa,numr)
+     call df_project(numr,jacaa)
   endif
 
   csum2=dot(jacaa,jacaa,totadim)
@@ -214,10 +214,10 @@ subroutine aaonedinit(inavector)
 
   call sparseconfigmult(jacaa, jacaamult, yyy%cptr(0), yyy%sptr(0),1,1,0,1,0d0)
   if (allspinproject==1) then
-     call configspin_project(jacaamult, 1)
+     call configspin_project(numr,jacaamult)
   endif
   if (dfrestrictflag.ne.0) then
-     call df_project(jacaamult, numr)
+     call df_project(numr,jacaamult)
   endif
 
   quadexpect=dot(jacaa,jacaamult,totadim)
@@ -279,10 +279,10 @@ subroutine sparsequadavector(inavector,jjcalls0)
 333 continue
 
   if (allspinproject==1) then
-     call configspin_project(vector, 1)
+     call configspin_project(numr,vector)
   endif
   if (dfrestrictflag.ne.0) then
-     call df_project(vector, numr)
+     call df_project(numr,vector)
   endif
 
   call aaonedinit(vector)
@@ -290,10 +290,10 @@ subroutine sparsequadavector(inavector,jjcalls0)
   call sparseconfigmult(vector, vector2, yyy%cptr(0), yyy%sptr(0), 1,1,0,1,0d0)
 
   if (allspinproject.ne.0) then
-     call configspin_project(vector2,0)
+     call configspin_project(numr,vector2)
   endif
   if (dfrestrictflag.ne.0) then
-     call df_project(vector2,numr)
+     call df_project(numr,vector2)
   endif
 
   vector3=vector2-quadexpect*vector              !! error term.
@@ -385,20 +385,20 @@ subroutine nonsparsequadavector(avectorout)
 333 continue
 
   if (allspinproject==1) then
-     call configspin_project(avectorout, 1)
+     call configspin_project(numr,avectorout)
   endif
   if (dfrestrictflag.ne.0) then
-     call df_project(avectorout, numr)
+     call df_project(numr,avectorout)
   endif
 
   call aaonedinit(avectorout)
   call sparseconfigmult(avectorout(:),err(:),yyy%cptr(0),yyy%sptr(0),1,1,0,1,0d0)
 
   if (allspinproject==1) then
-     call configspin_project(err(:), 0)
+     call configspin_project(numr,err(:))
   endif
   if (dfrestrictflag.ne.0) then
-     call df_project(err(:), numr)
+     call df_project(numr,err(:))
   endif
 
   err(:)=err(:)-quadexpect*avectorout(:)              !! error term.

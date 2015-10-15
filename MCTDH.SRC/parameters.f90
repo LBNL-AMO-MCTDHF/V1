@@ -430,42 +430,37 @@ integer :: numreduced=1
 integer :: headersize=200
 
 integer :: numconfig=-1
-integer, allocatable :: configsperproc(:)
+integer, allocatable :: configsperproc(:), alltopconfigs(:), allbotconfigs(:)
 integer ::       maxconfigsperproc
 integer :: botconfig=-1,topconfig=-1
 integer :: configend=-1,configstart=-1
 integer :: firstconfig,lastconfig,localnconfig
 
 integer :: numspinconfig=0
-integer, allocatable :: spinsperproc(:)
+integer, allocatable :: spinsperproc(:), alltopspins(:), allbotspins(:)
 integer ::       maxspinsperproc
 integer :: botspin=-1,topspin=-1
-integer :: spinstart=-1, spinend=-1
 integer :: firstspinconfig,lastspinconfig,localnspin
 
 integer :: numdfconfigs=-1
-integer, allocatable :: dfconfsperproc(:)
+integer, allocatable :: dfconfsperproc(:), alltopdfconfigs(:), allbotdfconfigs(:)
 integer ::       maxdfconfsperproc
 integer :: botdfconfig=-1,topdfconfig=-1
-integer :: configdfstart=-1,configdfend=-1
 
 integer :: numspindfconfig=0
-integer, allocatable :: spindfsperproc(:)
+integer, allocatable :: spindfsperproc(:), alltopspindfs(:), allbotspindfs(:)
 integer ::       maxspindfsperproc
 integer :: botdfspin=-1,topdfspin=-1
-integer :: spindfstart=-1,spindfend=-1
 
 integer :: numbasis=0
 integer, allocatable :: basisperproc(:)
 integer ::       maxbasisperproc
 integer :: botbasis=-1,topbasis=-1
-integer :: basisstart=-1,basisend=-1
 
 integer :: numdfbasis=0
 integer, allocatable :: dfbasisperproc(:)
 integer ::       maxdfbasisperproc
 integer :: botdfbasis=-1,topdfbasis=-1
-integer :: basisdfstart=-1,basisdfend=-1
 
 integer :: walksonfile=0       
 integer :: autosize, autosteps

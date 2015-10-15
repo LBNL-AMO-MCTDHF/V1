@@ -354,7 +354,6 @@ subroutine fast_newconfiglist()
   integer, target :: iii(max_numelec)  !! no, it is set.
   integer, target :: jjj(max_numelec)  !! no, it is set.
 
-  integer :: alltopconfigs(nprocs),allbotconfigs(nprocs)
   integer,allocatable :: bigspinblockstart(:),bigspinblockend(:)
   integer :: i, idof, ii , lowerarr(max_numelec),upperarr(max_numelec),  thisconfig(ndof),&
        reorder,nullint,kk,iconfig,mm, single(max_numelec),ishell,jj,maxssize=0,sss,nss,ssflag,numdoubly,&
@@ -367,6 +366,9 @@ subroutine fast_newconfiglist()
   if (orderflag.eq.1) then
      OFLWR "orderflag 1 not supported for fastconfig (would be trivial, a simplification, no sort I think)"; CFLST
   endif
+
+  allocate(configsperproc(nprocs),alltopconfigs(nprocs),allbotconfigs(nprocs))
+
 
 !! 10-2015 NOW INTERNAL LOOP
 
@@ -841,8 +843,6 @@ endif
         configstart=botconfig
         configend=topconfig
      endif
-
-     allocate(configsperproc(nprocs))
 
      configsperproc(:)=alltopconfigs(:) - allbotconfigs(:) + 1
 

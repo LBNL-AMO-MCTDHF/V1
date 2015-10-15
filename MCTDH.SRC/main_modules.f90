@@ -218,12 +218,13 @@ end subroutine configdealloc
 module spinwalkmod
   implicit none
   integer, allocatable ::  &
-       spinsetsize(:),spinsets(:,:), spinsetrank(:), spindfsets(:,:), spindfsetindex(:)
-  integer :: numspinsets=0,maxspinsetsize=0, numspindfsets=0
+       spinsetsize(:,:),spinsets(:,:,:), spinsetrank(:,:), spindfsets(:,:,:), spindfsetindex(:,:)
+  integer :: maxspinsetsize=0,maxnumspinsets=0,maxnumspindfsets=0
+  integer,allocatable :: numspinsets(:),numspindfsets(:)
   type settype
      DATATYPE, allocatable :: mat(:,:), vects(:,:)
   end type settype
-  type(settype), allocatable :: spinsetprojector(:)
+  type(settype), allocatable :: spinsetprojector(:,:)
 end module
 
 

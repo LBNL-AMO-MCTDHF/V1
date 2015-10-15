@@ -74,13 +74,9 @@ subroutine myconfigeig(thisconfigvects,thisconfigvals,order,printflag, guessflag
      endif
      if (myrank.eq.1) then
         call CONFIGEIG(fullconfigmatel(:,:),numdfbasis*numr,numdfbasis*numr, tempconfigvects, fullconfigvals)
-        if (allspinproject.eq.0) then
-           fullconfigvects(:,:)=tempconfigvects(:,:)
-        else
-           do i=1,numdfbasis*numr
-              call basis_transformfrom_all(numr,tempconfigvects(:,i),fullconfigvects(:,i))
-           enddo
-        endif
+        do i=1,numdfbasis*numr
+           call basis_transformfrom_all(numr,tempconfigvects(:,i),fullconfigvects(:,i))
+        enddo
      endif
 
      call mympibcast(fullconfigvects,1,numdfbasis*numr*numconfig*numr)
@@ -150,10 +146,10 @@ subroutine myconfigprop(avectorin,avectorout,time)
   endif
 
   if (allspinproject.ne.0) then
-     call configspin_project(avectorout,0)
+     call configspin_project(numr,avectorout)
   endif
   if (dfrestrictflag.ne.0) then
-     call df_project(avectorout,numr)
+     call df_project(numr,avectorout)
   endif
 
 end subroutine myconfigprop

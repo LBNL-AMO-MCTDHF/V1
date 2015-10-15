@@ -306,10 +306,19 @@ program mctdhf
 
      call init_dfcon()
 
+     call mpibarrier()
      call spinwalkinit(); 
+
+     call mpibarrier()
      call spinwalks()
+
+     call mpibarrier()
      call spinsets_first()
+
+     call mpibarrier()
      call configspin_matel()
+
+     call mpibarrier()
      call configspinset_projector()
      call spinwalkinternal_dealloc()
 
@@ -341,17 +350,7 @@ program mctdhf
         maxdfbasisperproc=maxspindfsperproc
         botdfbasis=botdfspin;  topdfbasis=topdfspin
      endif
-     if (sparseconfigflag.eq.0) then
-        basisdfstart=1
-        basisdfend=numdfbasis
-        basisstart=1
-        basisend=numbasis
-     else
-        basisdfstart=botdfbasis
-        basisdfend=topdfbasis
-        basisstart=botbasis
-        basisend=topbasis
-     endif
+
 
      call configlistwrite()
 

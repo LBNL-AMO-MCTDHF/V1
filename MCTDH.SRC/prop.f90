@@ -36,11 +36,11 @@ subroutine prop_loop( starttime)
   if (skipflag.eq.0) then
      do imc=1,mcscfnum
         if (allspinproject==1) then
-           call configspin_project(yyy%cmfpsivec(astart(imc),0),1)
+           call configspin_project(numr,yyy%cmfpsivec(astart(imc),0))
         endif
         
         if (dfrestrictflag.ne.0) then
-           call df_project(yyy%cmfpsivec(astart(imc),0),numr)
+           call df_project(numr,yyy%cmfpsivec(astart(imc),0))
         endif
      enddo
 
@@ -161,10 +161,10 @@ subroutine prop_loop( starttime)
 
      do imc=1,mcscfnum
         if (allspinproject==1) then
-           call configspin_project(yyy%cmfpsivec(astart(imc),0),1)
+           call configspin_project(numr,yyy%cmfpsivec(astart(imc),0))
         endif
         if (dfrestrictflag.ne.0) then
-           call df_project(yyy%cmfpsivec(astart(imc),0),numr)
+           call df_project(numr,yyy%cmfpsivec(astart(imc),0))
         endif
      enddo
      call system_clock(jtime)  ;     times(2)=times(2)+jtime-itime;     call system_clock(itime)  
@@ -175,10 +175,10 @@ subroutine prop_loop( starttime)
 
 !! 080313 didn't have this spin project
         if (allspinproject.ne.0) then
-           call configspin_project(psip(astart(imc)),0)
+           call configspin_project(numr,psip(astart(imc)))
         endif
         if (dfrestrictflag.ne.0) then
-           call df_project(psip(astart(imc)),numr)
+           call df_project(numr,psip(astart(imc)))
         endif
         sum=dot(yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),totadim)
         sum2=dot(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),totadim)

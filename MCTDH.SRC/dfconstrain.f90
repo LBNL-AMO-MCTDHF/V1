@@ -71,12 +71,13 @@ subroutine init_dfcon()
   use mpimod
   implicit none
 
-  integer :: i,j,iconfig,nondfconfigs,dfrank,ii,allbottemp(nprocs)
+  integer :: i,j,iconfig,nondfconfigs,dfrank,ii
   logical :: dfallowed
   integer,allocatable :: dfnotconfigs(:)
 
   allocate(dfincludedmask(numconfig), dfincludedconfigs(numconfig), &
-       dfnotconfigs(numconfig),  dfconfsperproc(nprocs))
+       dfnotconfigs(numconfig),  dfconfsperproc(nprocs), &
+       allbotdfconfigs(nprocs),alltopdfconfigs(nprocs))
 
   if (dfrestrictflag.eq.0) then
      dfincludedmask(:)=1; dfnotconfigs(:)=(-1)
@@ -85,6 +86,8 @@ subroutine init_dfcon()
      enddo
      numdfconfigs=numconfig; nondfconfigs=0
      dfconfsperproc(:)=configsperproc(:)
+     allbotdfconfigs(:)=allbotconfigs(:)
+     alltopdfconfigs(:)=alltopconfigs(:)
      maxdfconfsperproc=maxconfigsperproc
      botdfconfig=botconfig;  topdfconfig=topconfig
 
@@ -120,24 +123,17 @@ subroutine init_dfcon()
      maxdfconfsperproc=0
      ii=0
      do i=1,nprocs
-        allbottemp(i)=ii+1
+        allbotdfconfigs(i)=ii+1
         call mympiibcastone(dfconfsperproc(i),i)
         ii=ii+dfconfsperproc(i)
+        alltopdfconfigs(i)=ii
         if (dfconfsperproc(i).gt.maxdfconfsperproc) then
            maxdfconfsperproc=dfconfsperproc(i)
         endif
      enddo
-     botdfconfig=allbottemp(myrank)
-     topdfconfig=botdfconfig+dfrank-1
+     botdfconfig=allbotdfconfigs(myrank)
+     topdfconfig=alltopdfconfigs(myrank)
 
-  endif
-
-  if (sparseconfigflag.eq.0) then
-     configdfstart=1
-     configdfend=numdfconfigs
-  else
-     configdfstart=botdfconfig
-     configdfend=topdfconfig
   endif
 
   numdfwalks=0
@@ -203,22 +199,22 @@ subroutine dfcondealloc()
 end subroutine dfcondealloc
 
 
-subroutine df_project(avector,howmany)
+subroutine df_project(howmany,avector)
   use parameters
   implicit none
   integer :: howmany
   DATATYPE :: avector(howmany,firstconfig:lastconfig)
 
   if (parconsplit.eq.0) then
-     call df_project_all(avector,howmany)
+     call df_project_all(howmany,avector)
   else
-     call df_project_local(avector,howmany)
+     call df_project_local(howmany,avector)
   endif
 
 end subroutine df_project
 
 
-subroutine df_project_all(avector,howmany)
+subroutine df_project_all(howmany,avector)
   use parameters
   use dfconmod
   implicit none
@@ -230,16 +226,31 @@ subroutine df_project_all(avector,howmany)
 end subroutine df_project_all
 
 
-subroutine df_project_local(avector,howmany)
+subroutine df_project_local(howmany,avector)
   use parameters
   use dfconmod
   implicit none
   integer :: howmany,i
-  DATATYPE :: avector(howmany,configstart:configend)
-  do i=configstart,configend
+  DATATYPE :: avector(howmany,botconfig:topconfig)
+  do i=botconfig,topconfig
      avector(:,i)=avector(:,i)*dfincludedmask(i)
   enddo
 end subroutine df_project_local
+
+
+subroutine df_transformto_all(howmany,avectorin,avectorout)
+  use parameters
+  use dfconmod
+  implicit none
+  integer :: howmany,i
+  DATATYPE,intent(in) :: avectorin(howmany,numconfig)
+  DATATYPE,intent(out) :: avectorout(howmany,numdfconfigs)
+
+  do i=1,numdfconfigs
+     avectorout(:,i)=avectorin(:,dfincludedconfigs(i))
+  enddo
+
+end subroutine df_transformto_all
 
 
 subroutine df_transformto_local(howmany,avectorin,avectorout)
@@ -247,14 +258,33 @@ subroutine df_transformto_local(howmany,avectorin,avectorout)
   use dfconmod
   implicit none
   integer :: howmany,i
-  DATATYPE,intent(in) :: avectorin(howmany,configstart:configend)
-  DATATYPE,intent(out) :: avectorout(howmany,configdfstart:configdfend)
+  DATATYPE,intent(in) :: avectorin(howmany,botconfig:topconfig)
+  DATATYPE,intent(out) :: avectorout(howmany,botdfconfig:topdfconfig)
 
-  do i=configdfstart,configdfend
+  do i=botdfconfig,topdfconfig
      avectorout(:,i)=avectorin(:,dfincludedconfigs(i))
   enddo
 
 end subroutine df_transformto_local
+
+
+
+subroutine df_transformfrom_all(howmany,avectorin,avectorout)
+  use parameters
+  use dfconmod
+  implicit none
+  integer :: howmany,i
+  DATATYPE,intent(in) :: avectorin(howmany,numdfconfigs)
+  DATATYPE,intent(out) :: avectorout(howmany,numconfig)
+
+  avectorout(:,:)=0d0
+
+  do i=1,numdfconfigs
+     avectorout(:,dfincludedconfigs(i))=avectorin(:,i)
+  enddo
+
+end subroutine df_transformfrom_all
+
 
 
 subroutine df_transformfrom_local(howmany,avectorin,avectorout)
@@ -262,12 +292,12 @@ subroutine df_transformfrom_local(howmany,avectorin,avectorout)
   use dfconmod
   implicit none
   integer :: howmany,i
-  DATATYPE,intent(in) :: avectorin(howmany,configdfstart:configdfend)
-  DATATYPE,intent(out) :: avectorout(howmany,configstart:configend)
+  DATATYPE,intent(in) :: avectorin(howmany,botdfconfig:topdfconfig)
+  DATATYPE,intent(out) :: avectorout(howmany,botconfig:topconfig)
 
   avectorout(:,:)=0d0
 
-  do i=configdfstart,configdfend
+  do i=botdfconfig,topdfconfig
      avectorout(:,dfincludedconfigs(i))=avectorin(:,i)
   enddo
 
@@ -281,11 +311,25 @@ subroutine basis_transformto_all(howmany,avectorin,avectorout)
   integer :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,numconfig)
   DATATYPE,intent(out) :: avectorout(howmany,numdfbasis)
-  if (sparseconfigflag.ne.0) then
-     OFLWR "program me basis transformto all nonsparse"; CFLST
+  DATATYPE :: workvec(howmany,numdfconfigs)
+
+  if (dfrestrictflag.ne.0) then
+     if (allspinproject.ne.0) then
+        call df_transformto_all(howmany,avectorin(:,:),workvec(:,:))
+        call dfspin_transformto_all(howmany,workvec(:,:),avectorout(:,:))
+     else
+        call df_transformto_all(howmany,avectorin(:,:),avectorout(:,:))
+     endif
+  else
+     if (allspinproject.ne.0) then
+        call configspin_transformto_all(howmany,avectorin(:,:),avectorout(:,:))
+     else
+        avectorout(:,:)=avectorin(:,:)
+     endif
   endif
-  call basis_transformto_local(howmany,avectorin,avectorout)
+
 end subroutine basis_transformto_all
+
 
 
 subroutine basis_transformto_local(howmany,avectorin,avectorout)
@@ -293,21 +337,21 @@ subroutine basis_transformto_local(howmany,avectorin,avectorout)
   use dfconmod
   implicit none
   integer :: howmany
-  DATATYPE,intent(in) :: avectorin(howmany,configstart:configend)
-  DATATYPE,intent(out) :: avectorout(howmany,basisdfstart:basisdfend)
-  DATATYPE :: workvec(howmany,configdfstart:configdfend)
+  DATATYPE,intent(in) :: avectorin(howmany,botconfig:topconfig)
+  DATATYPE,intent(out) :: avectorout(howmany,botdfbasis:topdfbasis)
+  DATATYPE :: workvec(howmany,botdfconfig:topdfconfig)
 
-  if (basisdfend-basisdfstart+1.ne.0) then
+  if (topdfbasis-botdfbasis+1.ne.0) then
      if (dfrestrictflag.ne.0) then
         if (allspinproject.ne.0) then
-           call df_transformto_local(numr,avectorin(:,:),workvec(:,:))
-           call dfspin_transformto_local(numr,workvec(:,:),avectorout(:,:))
+           call df_transformto_local(howmany,avectorin(:,:),workvec(:,:))
+           call dfspin_transformto_local(howmany,workvec(:,:),avectorout(:,:))
         else
-           call df_transformto_local(numr,avectorin(:,:),avectorout(:,:))
+           call df_transformto_local(howmany,avectorin(:,:),avectorout(:,:))
         endif
      else
         if (allspinproject.ne.0) then
-           call configspin_transformto_local(numr,avectorin(:,:),avectorout(:,:))
+           call configspin_transformto_local(howmany,avectorin(:,:),avectorout(:,:))
         else
            avectorout(:,:)=avectorin(:,:)
         endif
@@ -325,11 +369,25 @@ subroutine basis_transformfrom_all(howmany,avectorin,avectorout)
   integer :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,numdfbasis)
   DATATYPE,intent(out) :: avectorout(howmany,numconfig)
-  if (sparseconfigflag.ne.0) then
-     OFLWR "program me basis transformfrom all nonsparse"; CFLST
+  DATATYPE :: workvec(howmany,numdfconfigs)
+
+  if (dfrestrictflag.ne.0) then
+     if (allspinproject.ne.0) then
+        call dfspin_transformfrom_all(howmany,avectorin(:,:),workvec(:,:))
+        call df_transformfrom_all(howmany,workvec(:,:),avectorout(:,:))
+     else
+        call df_transformfrom_all(howmany,avectorin(:,:),avectorout(:,:))
+     endif
+  else
+     if (allspinproject.ne.0) then
+        call configspin_transformfrom_all(howmany,avectorin(:,:),avectorout(:,:))
+     else
+        avectorout(:,:)=avectorin(:,:)
+     endif
   endif
-  call basis_transformfrom_local(howmany,avectorin,avectorout)
+
 end subroutine basis_transformfrom_all
+
 
 
 subroutine basis_transformfrom_local(howmany,avectorin,avectorout)
@@ -337,25 +395,25 @@ subroutine basis_transformfrom_local(howmany,avectorin,avectorout)
   use dfconmod
   implicit none
   integer :: howmany
-  DATATYPE,intent(in) :: avectorin(howmany,basisdfstart:basisdfend)
-  DATATYPE,intent(out) :: avectorout(howmany,configstart:configend)
-  DATATYPE :: workvec(howmany,configdfstart:configdfend)
+  DATATYPE,intent(in) :: avectorin(howmany,botdfbasis:topdfbasis)
+  DATATYPE,intent(out) :: avectorout(howmany,botconfig:topconfig)
+  DATATYPE :: workvec(howmany,botdfconfig:topdfconfig)
 
-  if (configend-configstart+1.ne.0) then
+  if (topconfig-botconfig+1.ne.0) then
      avectorout(:,:)=0d0
   endif
 
-  if (basisdfend-basisdfstart+1.ne.0) then
+  if (topdfbasis-botdfbasis+1.ne.0) then
      if (dfrestrictflag.ne.0) then
         if (allspinproject.ne.0) then
-           call dfspin_transformfrom_local(numr,avectorin(:,:),workvec(:,:))
-           call df_transformfrom_local(numr,workvec(:,:),avectorout(:,:))
+           call dfspin_transformfrom_local(howmany,avectorin(:,:),workvec(:,:))
+           call df_transformfrom_local(howmany,workvec(:,:),avectorout(:,:))
         else
-           call df_transformfrom_local(numr,avectorin(:,:),avectorout(:,:))
+           call df_transformfrom_local(howmany,avectorin(:,:),avectorout(:,:))
         endif
      else
         if (allspinproject.ne.0) then
-           call configspin_transformfrom_local(numr,avectorin(:,:),avectorout(:,:))
+           call configspin_transformfrom_local(howmany,avectorin(:,:),avectorout(:,:))
         else
            avectorout(:,:)=avectorin(:,:)
         endif
@@ -639,9 +697,9 @@ subroutine get_dfconstraint(time)
         
         avector(:,:)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numr,localnconfig/))
         
-        call df_project(avector,numr)
+        call df_project(numr,avector)
         if (allspinproject.ne.0) then
-           call configspin_project(avector,0)  !! should commute
+           call configspin_project(numr,avector)  !! should commute
         endif
 
         call get_smallwalkvects(avector,smallwalkvects,numr,1)
@@ -908,7 +966,7 @@ subroutine get_rhomat(avector, rhomat,nblock,howmany)
 
 !! THIS TAKES A LONG TIME.
   
-  ii=(configend-configstart+1)*numr
+  ii=(configend-configstart+1)*nblock*howmany
   call MYGEMM(CNORMCHAR,'N',nspf**2,nspf**2,ii,DATAONE,smallwalkvects,ii,smallwalkvects,ii,DATAZERO,rhomat,nspf**2)
 
   if (sparseconfigflag.ne.0) then
