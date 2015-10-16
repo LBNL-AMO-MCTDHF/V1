@@ -304,27 +304,18 @@ program mctdhf
 
      call walkalloc();             call walks()
 
-     call init_dfcon()
-
-     call mpibarrier()
-     call spinwalkinit(); 
-
-     call mpibarrier()
-     call spinwalks()
-
-     call mpibarrier()
-     call spinsets_first()
-
-     call mpibarrier()
-     call configspin_matel()
-
-     call mpibarrier()
-     call configspinset_projector()
-     call spinwalkinternal_dealloc()
-
      if (walkwriteflag.ne.0) then
         OFLWR "Closing walks.BIN"; CFL; close(751);
      endif
+
+     call init_dfcon()
+
+     call spinwalkinit(); 
+     call spinwalks()
+     call spinsets_first()
+     call configspin_matel()
+     call configspinset_projector()
+     call spinwalkinternal_dealloc()
      
      allocate(basisperproc(nprocs),dfbasisperproc(nprocs))
 
