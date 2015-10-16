@@ -411,7 +411,8 @@ subroutine configspinset_projector()
 !  DATATYPE :: doublevects(maxspinsetsize**2)
 !  real*8 :: doublevals(maxspinsetsize)
   
-  OFLWR "Getting Spinset Projectors.  Numspinsets is ", numspinsets, " maxspinsetsize is ", maxspinsetsize; CFL
+  OFLWR "Getting Spinset Projectors.  Numspinsets this process is ", numspinsets(myrank)
+  WRFL "                                        maxspinsetsize is ", maxspinsetsize; CFL
 
   allocate(spinsetprojector(maxnumspinsets,nprocs))
   allocate(spinvects(maxspinsetsize,maxspinsetsize), spinvals(maxspinsetsize), &
@@ -573,13 +574,14 @@ subroutine configspinset_projector()
 
   OFLWR
   WRFL  "This processor: "
-  WRFL "      spin sets ", numspinsets(myrank)
-  WRFL "      spin rank ", spinsperproc(myrank), " of ", configsperproc(myrank) 
-  WRFL "   df spin rank ", spindfsperproc(myrank), " of ", dfconfsperproc(myrank) 
-  WRFL "All processors: total spin rank, S^2 = ", (spinrestrictval/2.d0*(spinrestrictval/2.d0+1)), " is ", numspinconfig, " out of ", numconfig
-  WRFL "   df spin rank ", numspindfconfig, " of ", numdfconfigs
-  WRFL "   This proc:  botspin,topspin: ", botspin,topspin
-  WRFL "               botdfspin,topdfspin: ", botdfspin,topdfspin
+  WRFL "      spin sets        ", numspinsets(myrank)
+  WRFL "      spin rank            ", spinsperproc(myrank), " of ", configsperproc(myrank) 
+  WRFL "      botspin,topspin:     ", botspin,topspin
+  WRFL "      df spin rank         ", spindfsperproc(myrank), " of ", dfconfsperproc(myrank) 
+  WRFL "      botdfspin,topdfspin: ", botdfspin,topdfspin
+  WRFL "All processors:"
+  WRFL "      spin rank, S^2 = ", (spinrestrictval/2.d0*(spinrestrictval/2.d0+1)), " is ", numspinconfig, " out of ", numconfig
+  WRFL "      df spin rank         ", numspindfconfig, " of ", numdfconfigs
   WRFL; CFL
 
   
