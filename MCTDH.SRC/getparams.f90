@@ -398,7 +398,7 @@ subroutine getparams()
      OFLWR "FOR DF CONSTRAINT, DO NOT DIAGONALIZE FOR A-VECTOR - GET WRONG ANSWER"; CFLST
   endif
   
-  if ((sparseconfigflag.ne.0).and.(stopthresh.lt.lanthresh)) then
+  if ((sparseconfigflag.ne.0).and.(stopthresh.lt.lanthresh).and.(improvedquadflag.eq.0.or.improvedquadflag.eq.2)) then
      OFLWR "Enforcing lanthresh.le.stopthresh"
      lanthresh=stopthresh
      write(mpifileptr,*) "    --> lanthresh now  ", lanthresh; CFL

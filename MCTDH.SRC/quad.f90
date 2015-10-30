@@ -264,7 +264,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
   endif
 
   if (aerror.lt.1d-7) then
-     OFLWR "Error, set tolerance parameter arror at least 1d-7 for reliable performance sparse quad a-vector."; CFLST
+     OFLWR "Error, set tolerance parameter arror at least 1d-7 for reliable performance sparse quad a-vector.  TEMP CONTINUE"; CFL
   endif
 
   allocate(smallvectorspin(numr,botdfbasis:topdfbasis), smallvectorspin2(numr,botdfbasis:topdfbasis))
