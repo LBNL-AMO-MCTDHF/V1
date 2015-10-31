@@ -805,7 +805,7 @@ subroutine cmf_prop_wfn(tin, tout)
      call output_denmat(1,tout)
   endif
 
-  if ((myrank.eq.1).and.(notiming.eq.0)) then
+  if ((myrank.eq.1).and.(notiming.le.1)) then
      if (xxcount==1) then
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/cmf_prop.time.dat", status="unknown")
         write(853,'(A15,100A11)')  "Time",  "matel", "denmat", "reduced", "spfprop", "aprop",  "advance", "constrain", "driving", "#DERIVS"
