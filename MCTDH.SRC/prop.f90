@@ -29,10 +29,6 @@ subroutine prop_loop( starttime)
 
   lastenergy(:)=1.d+3;  lastenergyavg=1.d+3
 
-  if (myrank.eq.1.and.notiming.lt.2) then
-     call system("rm "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
-  endif
-
   if (skipflag.eq.0) then
      do imc=1,mcscfnum
         if (allspinproject==1) then
@@ -63,6 +59,9 @@ subroutine prop_loop( starttime)
      endif
 
      if ((myrank.eq.1).and.(notiming.le.1)) then
+
+        call system("echo -n > "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
+
         !! times(1:5)
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="unknown")
         write(853,'(T16,100A15)')  "Spfs ", "Prop ", "Act ", "Final ", "MPI", "Non MPI";        close(853)
@@ -244,11 +243,9 @@ subroutine prop_loop( starttime)
         thisenergyavg=thisenergyavg+thisenergy(imc)/mcscfnum
      enddo
      
-     if (myrank.eq.1.and.notiming.lt.2) then
-        call system("date >> "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
-     endif
-
      if ((myrank.eq.1).and.(notiming.le.1)) then
+
+        call system("date >> "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="old", position="append")
         write(853,'(F13.3,T16,100I15)')  thistime, times(1:4)/1000, mpitime/1000, nonmpitime/1000;     close(853)
      endif
