@@ -201,7 +201,7 @@ dipolecall.o: $(DEPEND)  dipolecall.F90
 	$(F90) $(FFLAGS)  -c dipolecall.F90
 
 
-blocklanczos.o: blocklanczos.F90
+blocklanczos.o: $(DEPEND) blocklanczos.F90
 	$(F90) $(FFLAGS) -c blocklanczos.F90
 
 eigen.o: eigen.F90  Definitions.ALL
