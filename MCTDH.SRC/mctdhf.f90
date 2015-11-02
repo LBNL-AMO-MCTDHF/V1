@@ -281,46 +281,46 @@ program mctdhf
   call getclasses()
 
 !!$  if (parorbsplit.eq.1) then
-     call mpiorbsets()
+  call mpiorbsets()
 !!$  endif
 
-     www%parconsplit=par_consplit
+  www%parconsplit=par_consplit
 
-     www%numelec=numelec
-     www%ndof=ndof
-     www%nspf=nspf
+  www%numelec=numelec
+  www%ndof=ndof
+  www%nspf=nspf
 
-     www%allspinproject=all_spinproject
-     www%restrictms=restrict_ms
-     www%sss%spinrestrictval=spin_restrictval
+  www%allspinproject=all_spinproject
+  www%restrictms=restrict_ms
+  www%sss%spinrestrictval=spin_restrictval
 
-     www%dfrestrictflag=df_restrictflag
-     www%dflevel=0
-     www%dfwalklevel=0
+  www%dfrestrictflag=df_restrictflag
+  www%dflevel=0
+  www%dfwalklevel=0
      
   call fast_newconfiglist(www);   
 
+  num_config=www%numconfig
+  allocate(configs_perproc(nprocs))
+  configs_perproc(:)=www%configsperproc(:)
+  first_config=www%firstconfig
+  last_config=www%lastconfig
+  local_nconfig=www%localnconfig
 
-     call walkalloc(www);             call walks(www)
+  call walkalloc(www);             call walks(www)
 
-     num_config=www%numconfig
-     allocate(configs_perproc(nprocs))
-     configs_perproc(:)=www%configsperproc(:)
-     first_config=www%firstconfig
-     last_config=www%lastconfig
-     local_nconfig=www%localnconfig
+  call hops(www);
 
+  call init_dfcon(www)
 
-     call init_dfcon(www)
+  call spinwalkinit(www); 
+  call spinwalks(www)
+  call spinsets_first(www)
+  call configspin_matel(www)
+  call configspinset_projector(www)
+  call spinwalkinternal_dealloc()
 
-     call spinwalkinit(www); 
-     call spinwalks(www)
-     call spinsets_first(www)
-     call configspin_matel(www)
-     call configspinset_projector(www)
-     call spinwalkinternal_dealloc()
-
-     call basis_set(www)
+  call basis_set(www)
 
 
   totspfdim=nspf*spfsize; tot_adim=local_nconfig*numr;  
@@ -338,13 +338,9 @@ program mctdhf
 
   call opalloc()
 
-
-
-
-     call configlistwrite(www,configlistfile)
-
-     call configpropalloc()
-
+  call configlistwrite(www,configlistfile)
+  
+  call configpropalloc()
 
   call myprojectalloc()      !! Initialize coordinate-dependent arrays.
 

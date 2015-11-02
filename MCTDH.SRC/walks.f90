@@ -653,7 +653,159 @@ subroutine getnumwalks(www)
 end subroutine getnumwalks
 
 
+subroutine hops(www)
+  use fileptrmod
+  use ham_parameters
+  use sparse_parameters
+  use walkmod
+  use mpimod
+  use aarrmod
+  implicit none
+  type(walktype) :: www
+  integer :: ii,iwalk,iconfig,totsinglehops,totdoublehops,totsinglewalks,totdoublewalks,ihop
 
+  allocate(www%numsinglehops(www%configstart:www%configend),&
+       www%numdoublehops(www%configstart:www%configend))
+
+  do ii=0,1
+
+     if (ii.eq.0) then
+!! avoid warn bounds
+        allocate(www%singlehop(1,1),www%singlehopwalkstart(1,1),www%singlehopwalkend(1,1),&
+             www%doublehop(1,1),www%doublehopwalkstart(1,1),www%doublehopwalkend(1,1))
+     else
+        deallocate(www%singlehop,www%singlehopwalkstart,www%singlehopwalkend,&
+             www%doublehop,www%doublehopwalkstart,www%doublehopwalkend)
+        allocate(www%singlehop(www%maxnumsinglehops,www%configstart:www%configend),&
+             www%singlehopwalkstart(www%maxnumsinglehops,www%configstart:www%configend),&
+             www%singlehopwalkend(www%maxnumsinglehops,www%configstart:www%configend),&
+             www%doublehop(www%maxnumdoublehops,www%configstart:www%configend),&
+             www%doublehopwalkstart(www%maxnumdoublehops,www%configstart:www%configend),&
+             www%doublehopwalkend(www%maxnumdoublehops,www%configstart:www%configend))
+     endif
+
+     if (ii.eq.0) then
+        OFLWR "Counting single hops..."; CFL
+     else
+        OFLWR "Getting single hops..."; CFL
+     endif
+
+     do iconfig=www%configstart,www%configend
+        ihop=1
+        if (ii.eq.1) then
+           www%singlehop(1,iconfig)=www%singlewalk(1,iconfig)
+           www%singlehopwalkstart(1,iconfig)=1
+        endif
+        do iwalk=2,www%numsinglewalks(iconfig)
+           if (www%singlewalk(iwalk,iconfig).ne.www%singlewalk(iwalk-1,iconfig)) then
+              if (ii.eq.1) then
+                 www%singlehopwalkend(ihop,iconfig)=iwalk-1
+              endif
+              ihop=ihop+1
+              if (ii.eq.1) then
+                 www%singlehop(ihop,iconfig)=www%singlewalk(iwalk,iconfig)
+                 www%singlehopwalkstart(ihop,iconfig)=iwalk
+              endif
+           endif
+        enddo
+        if (ii.eq.0) then
+           www%numsinglehops(iconfig)=ihop
+        else
+           www%singlehopwalkend(ihop,iconfig)=www%numsinglewalks(iconfig)
+           if (www%numsinglehops(iconfig).ne.ihop) then
+              OFLWR "CHECKME SINGLEHOPW",www%numsinglehops(iconfig),ihop,iconfig; CFLST
+           endif
+        endif
+     enddo
+
+
+     if (ii.eq.0) then
+        OFLWR "Counting double hops..."; CFL
+     else
+        OFLWR "Getting double hops..."; CFL
+     endif
+
+     do iconfig=www%configstart,www%configend
+        ihop=1
+        if (ii.eq.1) then
+           www%doublehop(1,iconfig)=www%doublewalk(1,iconfig)
+           www%doublehopwalkstart(1,iconfig)=1
+        endif
+        do iwalk=2,www%numdoublewalks(iconfig)
+           if (www%doublewalk(iwalk,iconfig).ne.www%doublewalk(iwalk-1,iconfig)) then
+              if (ii.eq.1) then
+                 www%doublehopwalkend(ihop,iconfig)=iwalk-1
+              endif
+              ihop=ihop+1
+              if (ii.eq.1) then
+                 www%doublehop(ihop,iconfig)=www%doublewalk(iwalk,iconfig)
+                 www%doublehopwalkstart(ihop,iconfig)=iwalk
+              endif
+           endif
+        enddo
+        if (ii.eq.0) then
+           www%numdoublehops(iconfig)=ihop
+        else
+           www%doublehopwalkend(ihop,iconfig)=www%numdoublewalks(iconfig)
+           if (www%numdoublehops(iconfig).ne.ihop) then
+              OFLWR "CHECKME DOUBLEHOPW",www%numdoublehops(iconfig),ihop,iconfig; CFLST
+           endif
+        endif
+     enddo
+
+     if (ii.eq.0) then
+        www%maxnumsinglehops=0
+        www%maxnumdoublehops=0
+        totsinglehops=0; totsinglewalks=0
+        totdoublehops=0; totdoublewalks=0
+        do iconfig=www%configstart,www%configend
+           totsinglehops=totsinglehops+www%numsinglehops(iconfig)
+           totsinglewalks=totsinglewalks+www%numsinglewalks(iconfig)
+           if (www%numsinglehops(iconfig).gt.www%maxnumsinglehops) then
+              www%maxnumsinglehops=www%numsinglehops(iconfig)
+           endif
+           totdoublehops=totdoublehops+www%numdoublehops(iconfig)
+           totdoublewalks=totdoublewalks+www%numdoublewalks(iconfig)
+           if (www%numdoublehops(iconfig).gt.www%maxnumdoublehops) then
+              www%maxnumdoublehops=www%numdoublehops(iconfig)
+           endif
+        enddo
+     endif
+
+  enddo
+
+  if (sparseconfigflag.eq.0) then
+     ii=1
+     call mpiallgather_i(www%numdoublehops(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%numsinglehops(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+     ii=www%maxnumsinglehops
+     call mpiallgather_i(www%singlehop(:,:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%singlehopwalkstart(:,:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%singlehopwalkend(:,:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+     ii=www%maxnumdoublehops
+     call mpiallgather_i(www%doublehop(:,:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%doublehopwalkstart(:,:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%doublehopwalkend(:,:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+  endif
+
+
+
+
+  OFLWR "GOT HOPS:  "
+  WRFL " Single hops this processor ",totsinglehops, " of ", totsinglewalks
+  WRFL " Double hops this processor ",totdoublehops, " of ", totdoublewalks; CFL
+  if (sparseconfigflag.ne.0) then
+     call mympiireduceone(totsinglehops);  call mympiireduceone(totdoublehops)
+     call mympiireduceone(totsinglewalks);  call mympiireduceone(totdoublewalks)
+     call mympiimax(www%maxnumsinglehops);  call mympiimax(www%maxnumdoublehops)
+  endif
+  OFLWR " Single hops total ",totsinglehops, " of ", totsinglewalks
+  WRFL " Double hops total ",totdoublehops, " of ", totdoublewalks
+  WRFL "    Max single hops ", www%maxnumsinglehops
+  WRFL "    Max double hops ", www%maxnumdoublehops
+  WRFL; CFL
+
+end subroutine hops
 
 
 subroutine getlistorder(values, order,num)

@@ -297,6 +297,15 @@ module walkmod
      type(spintype) :: sss
      type(dfcontype) :: ddd
 
+     integer :: maxnumsinglehops=0
+     integer,allocatable :: numsinglehops(:)
+     integer,allocatable :: singlehop(:,:), singlehopwalkstart(:,:), singlehopwalkend(:,:)
+
+     integer :: maxnumdoublehops=0
+     integer,allocatable :: numdoublehops(:)
+     integer,allocatable :: doublehop(:,:), doublehopwalkstart(:,:), doublehopwalkend(:,:)
+
+
   end type walktype
 
 end module walkmod
