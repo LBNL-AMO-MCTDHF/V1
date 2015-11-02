@@ -26,6 +26,10 @@ subroutine save_natproj( thistime )
 &                                                                                                                                                                "
   DATATYPE :: tempdenmat(nspf,nspf,4)
 
+  if (parconsplit.ne.0) then
+     OFLWR "Error, no natproj parconsplit.ne.0"; CFLST
+  endif
+
   xcalledhere=xcalledhere+1
   if (xcalledhere==1) then
      call system("mkdir -p NatCurves")
@@ -103,18 +107,6 @@ subroutine save_natproj( thistime )
 
            enddo
         enddo
-
-        if (parconsplit.ne.0) then
-#ifndef REALGO
-#ifndef CNORMFLAG
-           call mympirealreduce(curves(:,:),numr*korder)
-#else
-           call mympireduce(curves(:,:),numr*korder)
-#endif
-#else
-           call mympireduce(curves(:,:),numr*korder)
-#endif
-        endif
 
         do isplit=1,numr
            write(888,'(100F12.6)') real(curves(isplit,1:korder))
