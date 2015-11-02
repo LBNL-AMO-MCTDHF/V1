@@ -217,19 +217,6 @@ end subroutine nonsparseprop
 
 
 
-!! SUBROUTINE FOR LANCZOS PROPAGATION (CALLED BY EXPOKIT)
-
-subroutine configexpotimeinit(intime)
-  use parameters
-  use configexpotimemod
-  implicit none
-  real*8 :: intime
-  configexpotime=intime;  initialized=.true.
-end subroutine configexpotimeinit
-
-
-
-
 !! MULTIPLY BY A-VECTOR HAMILTONIAN MATRIX
 
 !! NOTE BOUNDS !!  PADDED

@@ -633,6 +633,14 @@ module configexpotimemod
 end module configexpotimemod
 
 
+subroutine configexpotimeinit(intime)
+  use configexpotimemod
+  implicit none
+  real*8 :: intime
+  configexpotime=intime;  initialized=.true.
+end subroutine configexpotimeinit
+
+
 
 !!  NEVER CHANGE IGLOBALPROP WITHOUT CALLING XXXPTR_INIT !!!!!
 
