@@ -291,8 +291,11 @@ subroutine abio_sparse(abio,aout,inbiovar)
   allocate(wsp(lwsp),iwsp(liwsp))
   allocate(smallvector(inbiovar%bionr,maxbasisperproc),smallvectorout(inbiovar%bionr,maxbasisperproc))
   smallvector(:,:)=0; smallvectorout(:,:)=0
-
-  call fullbasis_transformto_local(inbiovar%bionr,abio(:,botconfig),smallvector(:,:))
+  if (allspinproject.eq.0) then
+     smallvector(:,1:topbasis-botbasis+1)=abio(:,botconfig:topconfig)
+  else
+     call configspin_transformto_local(inbiovar%bionr,abio(:,botconfig),smallvector(:,:))
+  endif
 
 #ifdef REALGO
   call DGEXPVxxx2(ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec,itrace,iflag,biofileptr,tempstepsize,realpardotsub,maxbasisperproc*nprocs*inbiovar%bionr)
@@ -307,8 +310,11 @@ subroutine abio_sparse(abio,aout,inbiovar)
      OFLWR "Stopping due to bad iflag in sparsebiortho: ",iflag,tol,inbiovar%thisbiodim; CFLST
   endif
   aout(:,:)=0d0
-
-  call fullbasis_transformfrom_local(inbiovar%bionr,smallvectorout(:,:),aout(:,botconfig))
+  if (allspinproject.eq.0) then
+     aout(:,botconfig:topconfig)=smallvectorout(:,1:topbasis-botbasis+1)
+  else
+     call configspin_transformfrom_local(inbiovar%bionr,smallvectorout(:,:),aout(:,botconfig))
+  endif
 
   if (parconsplit.eq.0) then
      call mpiallgather(aout,numconfig*inbiovar%bionr,configsperproc*inbiovar%bionr,maxconfigsperproc*inbiovar%bionr)
@@ -617,8 +623,11 @@ subroutine parbiomatvec(inavector,outavector)
   endif
 
   intemp(:,:)=0d0
-
-  call fullbasis_transformfrom_local(biopointer%bionr,inavector(:,:),intemp(:,botconfig))
+  if (allspinproject.eq.0) then
+     intemp(:,botconfig:topconfig)=inavector(:,1:topconfig-botconfig+1)
+  else
+     call configspin_transformfrom_local(biopointer%bionr,inavector(:,:),intemp(:,botconfig))
+  endif
 
 !! DO SUMMA INSTEAD BROADCAST FIRST THEN TRANSFORM?
 
@@ -628,7 +637,11 @@ subroutine parbiomatvec(inavector,outavector)
 
   outavector(:,:)=0d0
 
-  call fullbasis_transformto_local(biopointer%bionr,workvector(:,:),outavector(:,:))
+  if (allspinproject.eq.0) then
+     outavector(:,1:topconfig-botconfig+1)=workvector(:,:)
+  else
+     call configspin_transformto_local(biopointer%bionr,workvector(:,:),outavector(:,:))
+  endif
 
 end subroutine parbiomatvec
 

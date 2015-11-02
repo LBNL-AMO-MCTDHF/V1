@@ -306,7 +306,6 @@ end subroutine df_transformfrom_local
 
 subroutine basis_transformto_all(howmany,avectorin,avectorout)
   use parameters
-  use dfconmod
   implicit none
   integer :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,numconfig)
@@ -334,7 +333,6 @@ end subroutine basis_transformto_all
 
 subroutine basis_transformto_local(howmany,avectorin,avectorout)
   use parameters
-  use dfconmod
   implicit none
   integer :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,botconfig:topconfig)
@@ -364,7 +362,6 @@ end subroutine basis_transformto_local
 
 subroutine basis_transformfrom_all(howmany,avectorin,avectorout)
   use parameters
-  use dfconmod
   implicit none
   integer :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,numdfbasis)
@@ -392,7 +389,6 @@ end subroutine basis_transformfrom_all
 
 subroutine basis_transformfrom_local(howmany,avectorin,avectorout)
   use parameters
-  use dfconmod
   implicit none
   integer :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,botdfbasis:topdfbasis)
@@ -421,6 +417,47 @@ subroutine basis_transformfrom_local(howmany,avectorin,avectorout)
   endif
 
 end subroutine basis_transformfrom_local
+
+
+subroutine fullbasis_transformto_local(howmany,avectorin,avectorout)
+  use parameters
+  implicit none
+  integer :: howmany
+  DATATYPE,intent(in) :: avectorin(howmany,botconfig:topconfig)
+  DATATYPE,intent(out) :: avectorout(howmany,botbasis:topbasis)
+
+  if (topbasis-botbasis+1.ne.0) then
+     if (allspinproject.ne.0) then
+        call configspin_transformto_local(howmany,avectorin(:,:),avectorout(:,:))
+     else
+        avectorout(:,:)=avectorin(:,:)
+     endif
+  endif
+
+end subroutine fullbasis_transformto_local
+  
+
+
+subroutine fullbasis_transformfrom_local(howmany,avectorin,avectorout)
+  use parameters
+  implicit none
+  integer :: howmany
+  DATATYPE,intent(in) :: avectorin(howmany,botbasis:topbasis)
+  DATATYPE,intent(out) :: avectorout(howmany,botconfig:topconfig)
+
+  if (topconfig-botconfig+1.ne.0) then
+     avectorout(:,:)=0d0
+  endif
+
+  if (topbasis-botbasis+1.ne.0) then
+     if (allspinproject.ne.0) then
+        call configspin_transformfrom_local(howmany,avectorin(:,:),avectorout(:,:))
+     else
+        avectorout(:,:)=avectorin(:,:)
+     endif
+  endif
+
+end subroutine fullbasis_transformfrom_local
 
 
 
