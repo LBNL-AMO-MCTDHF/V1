@@ -199,12 +199,8 @@ subroutine aaonedinit(inavector)
 
   jacaa(:)=inavector(:)
 
-  if (allspinproject==1) then
-     call configspin_project(numr,jacaa)
-  endif
-  if (dfrestrictflag.ne.0) then
-     call df_project(numr,jacaa)
-  endif
+
+  call basis_project(numr,jacaa)
 
   csum2=dot(jacaa,jacaa,totadim)
   if (parconsplit.ne.0) then
@@ -213,12 +209,8 @@ subroutine aaonedinit(inavector)
   jacaa(:)=jacaa(:)/sqrt(csum2)
 
   call sparseconfigmult(jacaa, jacaamult, yyy%cptr(0), yyy%sptr(0),1,1,0,1,0d0)
-  if (allspinproject==1) then
-     call configspin_project(numr,jacaamult)
-  endif
-  if (dfrestrictflag.ne.0) then
-     call df_project(numr,jacaamult)
-  endif
+
+  call basis_project(numr,jacaamult)
 
   quadexpect=dot(jacaa,jacaamult,totadim)
   if (parconsplit.ne.0) then
@@ -278,23 +270,13 @@ subroutine sparsequadavector(inavector,jjcalls0)
 
 333 continue
 
-  if (allspinproject==1) then
-     call configspin_project(numr,vector)
-  endif
-  if (dfrestrictflag.ne.0) then
-     call df_project(numr,vector)
-  endif
+  call basis_project(numr,vector)
 
   call aaonedinit(vector)
 
   call sparseconfigmult(vector, vector2, yyy%cptr(0), yyy%sptr(0), 1,1,0,1,0d0)
 
-  if (allspinproject.ne.0) then
-     call configspin_project(numr,vector2)
-  endif
-  if (dfrestrictflag.ne.0) then
-     call df_project(numr,vector2)
-  endif
+  call basis_project(numr,vector2)
 
   vector3=vector2-quadexpect*vector              !! error term.
 
@@ -384,22 +366,12 @@ subroutine nonsparsequadavector(avectorout)
   ss=0
 333 continue
 
-  if (allspinproject==1) then
-     call configspin_project(numr,avectorout)
-  endif
-  if (dfrestrictflag.ne.0) then
-     call df_project(numr,avectorout)
-  endif
+  call basis_project(numr,avectorout)
 
   call aaonedinit(avectorout)
   call sparseconfigmult(avectorout(:),err(:),yyy%cptr(0),yyy%sptr(0),1,1,0,1,0d0)
 
-  if (allspinproject==1) then
-     call configspin_project(numr,err(:))
-  endif
-  if (dfrestrictflag.ne.0) then
-     call df_project(numr,err(:))
-  endif
+  call basis_project(numr,err(:))
 
   err(:)=err(:)-quadexpect*avectorout(:)              !! error term.
 

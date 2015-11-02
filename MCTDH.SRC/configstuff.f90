@@ -145,12 +145,7 @@ subroutine myconfigprop(avectorin,avectorout,time)
      call nonsparseprop(avectorin,avectorout,time)
   endif
 
-  if (allspinproject.ne.0) then
-     call configspin_project(numr,avectorout)
-  endif
-  if (dfrestrictflag.ne.0) then
-     call df_project(numr,avectorout)
-  endif
+  call basis_project(numr,avectorout)
 
 end subroutine myconfigprop
 

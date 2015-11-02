@@ -304,6 +304,22 @@ subroutine df_transformfrom_local(howmany,avectorin,avectorout)
 end subroutine df_transformfrom_local
 
 
+subroutine basis_project(howmany,avector)
+  use parameters
+  implicit none
+  integer :: howmany
+  DATATYPE,intent(inout) :: avector(howmany,firstconfig:lastconfig)
+
+  if (allspinproject==1) then
+     call configspin_project(howmany,avector)
+  endif
+  if (dfrestrictflag.ne.0) then
+     call df_project(howmany,avector)
+  endif
+
+end subroutine basis_project
+
+
 subroutine basis_transformto_all(howmany,avectorin,avectorout)
   use parameters
   implicit none
@@ -734,10 +750,7 @@ subroutine get_dfconstraint(time)
         
         avector(:,:)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numr,localnconfig/))
         
-        call df_project(numr,avector)
-        if (allspinproject.ne.0) then
-           call configspin_project(numr,avector)  !! should commute
-        endif
+        call basis_project(numr,avector)
 
         call get_smallwalkvects(avector,smallwalkvects,numr,1)
         

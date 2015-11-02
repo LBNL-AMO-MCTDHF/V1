@@ -71,19 +71,13 @@ recursive subroutine all_derivs(thistime,xpsi, xpsip)
 
   do imc=1,mcscfnum
      avector(:)=xpsi(astart(imc):aend(imc))
-     if (allspinproject.ne.0) then
-        call configspin_project(numr,avector)
-     endif
-     if (dfrestrictflag.ne.0) then
-        call df_project(numr,avector)
-     endif     
+
+     call basis_project(numr,avector)
+
      call sparseconfigmult(avector,xpsip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,1,thistime)
-     if (allspinproject.ne.0) then
-        call configspin_project(numr,xpsip(astart(imc)))
-     endif
-     if (dfrestrictflag.ne.0) then
-        call df_project(numr,xpsip(astart(imc)))
-     endif
+
+     call basis_project(numr,xpsip(astart(imc)))
+
   enddo
   
   xpsip(astart(1):aend(mcscfnum))=xpsip(astart(1):aend(mcscfnum))*timefac
