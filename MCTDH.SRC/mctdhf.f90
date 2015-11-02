@@ -313,31 +313,7 @@ program mctdhf
      call configspinset_projector()
      call spinwalkinternal_dealloc()
      
-     allocate(basisperproc(nprocs),dfbasisperproc(nprocs))
-
-     if (allspinproject.eq.0) then
-        numbasis=numconfig
-        basisperproc(:)=configsperproc(:)
-        maxbasisperproc=maxconfigsperproc
-        botbasis=botconfig;  topbasis=topconfig
-
-        numdfbasis=numdfconfigs
-        dfbasisperproc(:)=dfconfsperproc(:)
-        maxdfbasisperproc=maxdfconfsperproc
-        botdfbasis=botdfconfig;  topdfbasis=topdfconfig
-        
-     else
-        numbasis=numspinconfig
-        basisperproc(:)=spinsperproc(:)
-        maxbasisperproc=maxspinsperproc
-        botbasis=botspin;  topbasis=topspin
-
-        numdfbasis=numspindfconfig
-        dfbasisperproc(:)=spindfsperproc(:)
-        maxdfbasisperproc=maxspindfsperproc
-        botdfbasis=botdfspin;  topdfbasis=topdfspin
-     endif
-
+     call basis_set()
 
      call configlistwrite()
 

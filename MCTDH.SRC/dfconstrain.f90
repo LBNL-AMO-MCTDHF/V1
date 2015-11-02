@@ -59,6 +59,38 @@ function getdfindex(config1)
 end function getdfindex
 
 
+subroutine basis_set()
+  use parameters
+  use mpimod !! nprocs
+  implicit none
+
+  allocate(basisperproc(nprocs),dfbasisperproc(nprocs))
+  
+  if (allspinproject.eq.0) then
+     numbasis=numconfig
+     basisperproc(:)=configsperproc(:)
+     maxbasisperproc=maxconfigsperproc
+     botbasis=botconfig;  topbasis=topconfig
+     
+     numdfbasis=numdfconfigs
+     dfbasisperproc(:)=dfconfsperproc(:)
+     maxdfbasisperproc=maxdfconfsperproc
+     botdfbasis=botdfconfig;  topdfbasis=topdfconfig
+     
+  else
+     numbasis=numspinconfig
+     basisperproc(:)=spinsperproc(:)
+     maxbasisperproc=maxspinsperproc
+     botbasis=botspin;  topbasis=topspin
+     
+     numdfbasis=numspindfconfig
+     dfbasisperproc(:)=spindfsperproc(:)
+     maxdfbasisperproc=maxspindfsperproc
+     botdfbasis=botdfspin;  topdfbasis=topdfspin
+  endif
+
+end subroutine basis_set
+
 
 ! "included" configurations are those kept in the calculation.
 ! there are numdfconfigs INCLUDED configurations.

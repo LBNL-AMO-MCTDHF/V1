@@ -4,7 +4,6 @@
 
 
 subroutine vectdpot(myintime,invelflag,tdpotsout)
-  use parameters
   implicit none
   real*8,intent(in) :: myintime
   integer, intent(in) :: invelflag
