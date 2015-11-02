@@ -211,7 +211,6 @@ subroutine walks()
      endif
 
      iwalk=0
-!!$     idiag=0
      thisconfig=configlist(:,config1)
 
      do idof=1,numelec   !! position in thisconfig that we're walking 
@@ -268,19 +267,12 @@ subroutine walks()
            
            singlewalk(iwalk,config1)=config2
 
-!!$           if (config2.eq.config1) then
-!!$              idiag=idiag+1
-!!$              singlediag(idiag,config1)=iwalk
-!!$           endif
-
         enddo   ! the walk
      enddo  ! position we're walking
 
      if (     numsinglewalks(config1) /= iwalk ) then
         OFLWR "WALK ERROR SINGLES.";        CFLST
      endif
-
-!!$     numsinglediagwalks(config1)=idiag
 
   enddo   ! config1
 
@@ -296,7 +288,6 @@ subroutine walks()
      endif
 
      iwalk=0
-!!$     idiag=0
      thisconfig=configlist(:,config1)
 
      do idof=1,numelec         !! positions in thisconfig that we're walking 
@@ -380,12 +371,6 @@ subroutine walks()
                  config2=getconfiguration(thatconfig)
                  doublewalk(iwalk,config1)=config2
 
-!!$                 if (config2.eq.config1) then
-!!$                    idiag=idiag+1
-!!$                    doublediag(idiag,config1)=iwalk
-!!$                 endif
-
-                 
               enddo   ! the walk
            enddo
            
@@ -395,8 +380,6 @@ subroutine walks()
      if (     numdoublewalks(config1) /= iwalk ) then
         OFLWR "WALK ERROR DOUBLES.",config1,numdoublewalks(config1),iwalk; CFLST
      endif
-
-!!$     numdoublediagwalks(config1)=idiag
 
   enddo   ! config1
 
@@ -428,10 +411,6 @@ subroutine walks()
      isize=maxsinglewalks
      call mpiallgather_i(singlewalkdirphase,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
      call mpiallgather_i(singlewalk,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
-!!$     isize=numelec
-!!$     call mpiallgather_i(singlediag,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
-!!$     isize=1
-!!$     call mpiallgather_i(numsinglediagwalks,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
   endif
 
 
@@ -441,10 +420,6 @@ subroutine walks()
      isize=maxdoublewalks
      call mpiallgather_i(doublewalkdirphase,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
      call mpiallgather_i(doublewalk,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
-!!$     isize=numelec*(numelec-1)
-!!$     call mpiallgather_i(doublediag,        numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
-!!$     isize=1
-!!$     call mpiallgather_i(numdoublediagwalks,numconfig*isize,configsperproc(:)*isize,maxconfigsperproc*isize)
   endif
 
 

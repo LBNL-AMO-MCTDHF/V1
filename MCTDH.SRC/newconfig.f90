@@ -23,55 +23,16 @@ end function
 
 !! RETURN CONFIGURATION INDEX GIVEN ORBITAL OCCUPANCIES
 
+
+
 function getconfiguration(thisconfig)
-  use parameters
-  implicit none
-  integer :: getconfiguration, newgetconfiguration, thisconfig(ndof)
-
-!!$  if (numconfig.gt.10) then 
-
-    getconfiguration=newgetconfiguration(thisconfig)
-
-!!$  else
-!!$    getconfiguration=oldgetconfiguration(thisconfig)
-!!$  endif
-
-end function getconfiguration
-
-
-!!$function oldgetconfiguration(thisconfig)
-!!$  use parameters
-!!$  use configmod
-!!$  implicit none
-!!$  integer :: oldgetconfiguration, thisconfig(ndof), i, j,flag,k
-!!$
-!!$  i=-1;  j=0;  flag=0
-!!$  do while (flag.eq.0)
-!!$     j=j+1;     flag=1
-!!$     do k=1,ndof
-!!$        if (configlist(k,j) /= thisconfig(k)) then
-!!$           flag=0;           exit
-!!$        endif
-!!$     enddo
-!!$     if (flag.eq.1) then
-!!$        i=j
-!!$     endif
-!!$     if (j.eq.numconfig) then
-!!$        flag=1
-!!$     endif
-!!$  enddo
-!!$  oldgetconfiguration=i
-!!$end function oldgetconfiguration
-
-
-function newgetconfiguration(thisconfig)
   use parameters
   use configmod
   implicit none
-  integer :: newgetconfiguration, thisconfig(ndof),  j,flag,k, dir,newdir, step,aa,bb, ii,kk,jj,flag1,flag2
+  integer :: getconfiguration, thisconfig(ndof),  j,flag,k, dir,newdir, step,aa,bb, ii,kk,jj,flag1,flag2
   logical :: allowedconfig
 
-  newgetconfiguration=-1
+  getconfiguration=-1
 
   if (.not.allowedconfig(thisconfig)) then
     return
@@ -135,7 +96,7 @@ function newgetconfiguration(thisconfig)
               endif
            enddo
            if (flag.eq.1) then
-              newgetconfiguration=j
+              getconfiguration=j
               return
            endif
         enddo
@@ -144,7 +105,7 @@ function newgetconfiguration(thisconfig)
      call printconfig(thisconfig)
      WRFL "NEWGETCONFIG NEWCONFIG ERROR"; CFLST
 
-end function newgetconfiguration
+end function getconfiguration
 
 
 
