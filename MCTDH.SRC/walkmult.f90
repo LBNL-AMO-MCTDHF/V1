@@ -161,7 +161,7 @@ recursive subroutine sparseconfigmult_nompi(www,myinvector,myoutvector,matrix_pt
 end subroutine sparseconfigmult_nompi
 
 
-!! SPARSE MATVEC (with matrix_ptr not sparse_ptr)
+!! DIRECT MATVEC (with matrix_ptr not sparse_ptr)
 
 recursive subroutine direct_sparseconfigmult_nompi(www,myinvector,myoutvector,matrix_ptr, &
      boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag)
@@ -297,10 +297,11 @@ recursive subroutine direct_sparseconfigmult_nompi(www,myinvector,myoutvector,ma
 end subroutine direct_sparseconfigmult_nompi
 
 
-!! DIRECT MATVEC (with sparse_ptr not matrix_ptr)
+!! SPARSE MATVEC (with sparse_ptr not matrix_ptr)
 
 recursive subroutine sparsesparsemult_nompi(www,myinvector,myoutvector,sparse_ptr,&
      boflag,nucflag,pulseflag,conflag,time,onlytdflag,botr,topr,diagflag)
+  use sparse_parameters
   use ham_parameters
   use r_parameters
   use sparseptrmod
@@ -316,10 +317,14 @@ recursive subroutine sparsesparsemult_nompi(www,myinvector,myoutvector,sparse_pt
   real*8,intent(in) :: time
   DATATYPE :: facs(3),csum
   DATATYPE :: tempvector(botr:topr,www%botconfig:www%topconfig), &
-       tempsparsemattr(www%maxsinglewalks,www%botconfig:www%topconfig) !! AUTOMATIC
+       tempsparsemattr(www%singlematsize,www%botconfig:www%topconfig) !! AUTOMATIC
   real*8 :: gg
   DATAECS :: rvector(botr:topr)
   integer :: ir,mynumr,ii,flag
+
+  if (sparseconfigflag.eq.0) then
+     OFLWR "error no sparsesparsemult if sparseconfigflag.eq.0"; CFLST
+  endif
 
   if (www%topconfig-www%botconfig+1.eq.0) then
      return
@@ -441,13 +446,19 @@ end subroutine sparsesparsemult_nompi
 
 recursive subroutine arbitrary_sparsemult_nompi_singles(www,mattrans, rvector,inbigvector,outsmallvector,mynumr,diagflag)
   use walkmod
+  use sparse_parameters
+  use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: mynumr,diagflag
-  DATATYPE,intent(in) :: inbigvector(mynumr,www%numconfig), mattrans(www%maxsinglewalks,www%botconfig:www%topconfig)
+  DATATYPE,intent(in) :: inbigvector(mynumr,www%numconfig), mattrans(www%singlematsize,www%botconfig:www%topconfig)
   DATATYPE,intent(out) :: outsmallvector(mynumr,www%botconfig:www%topconfig)
   DATAECS :: rvector(mynumr)
-  integer :: iwalk,config1,idiag
+  integer :: iwalk,config1,idiag,ihop
+
+  if (sparseconfigflag.eq.0) then
+     OFLWR "error no arbitrary_sparsemult if sparseconfigflag.eq.0"; CFLST
+  endif
 
   if (www%topconfig-www%botconfig+1.eq.0) then
      return
@@ -455,34 +466,57 @@ recursive subroutine arbitrary_sparsemult_nompi_singles(www,mattrans, rvector,in
 
   outsmallvector(:,:)=0d0
 
-  if (diagflag.eq.0) then
-     do config1=www%botconfig,www%topconfig
-        do iwalk=1,www%numsinglewalks(config1)
-           outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(iwalk,config1) * inbigvector(:,www%singlewalk(iwalk,config1))
+  if (sparsehopflag.eq.0) then
+
+     if (diagflag.eq.0) then
+        do config1=www%botconfig,www%topconfig
+           do iwalk=1,www%numsinglewalks(config1)
+              outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(iwalk,config1) * inbigvector(:,www%singlewalk(iwalk,config1)) * rvector(:)
+           enddo
         enddo
-        outsmallvector(:,config1)=outsmallvector(:,config1)*rvector(:)
-     enddo
+     else
+        do config1=www%botconfig,www%topconfig
+           do idiag=1,www%numsinglediagwalks(config1)
+              outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(www%singlediag(idiag,config1),config1) * inbigvector(:,config1) * rvector(:)
+           enddo
+        enddo
+     endif
+
   else
-     do config1=www%botconfig,www%topconfig
-        do idiag=1,www%numsinglediagwalks(config1)
-           outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(www%singlediag(idiag,config1),config1) * inbigvector(:,config1)
+
+     if (diagflag.eq.0) then
+        do config1=www%botconfig,www%topconfig
+           do ihop=1,www%numsinglehops(config1)
+              outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(ihop,config1) * inbigvector(:,www%singlehop(ihop,config1)) * rvector(:)
+           enddo
         enddo
-        outsmallvector(:,config1)=outsmallvector(:,config1)*rvector(:)
-     enddo
+     else
+        do config1=www%botconfig,www%topconfig
+           outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(www%singlediaghop(config1),config1) * inbigvector(:,config1) * rvector(:)
+        enddo
+     endif
+
   endif
+
 
 end subroutine arbitrary_sparsemult_nompi_singles
 
 
 recursive subroutine arbitrary_sparsemult_nompi_doubles(www,mattrans,rvector,inbigvector,outsmallvector,mynumr,diagflag)
+  use fileptrmod
+  use sparse_parameters
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: mynumr,diagflag
-  DATATYPE,intent(in) :: inbigvector(mynumr,www%numconfig),  mattrans(www%maxdoublewalks,www%botconfig:www%topconfig)
+  DATATYPE,intent(in) :: inbigvector(mynumr,www%numconfig),  mattrans(www%doublematsize,www%botconfig:www%topconfig)
   DATATYPE,intent(out) :: outsmallvector(mynumr,www%botconfig:www%topconfig)
   DATAECS :: rvector(mynumr)
-  integer :: iwalk,config1,idiag
+  integer :: iwalk,config1,idiag,ihop
+
+  if (sparseconfigflag.eq.0) then
+     OFLWR "error no arbitrary_sparsemult_doubles if sparseconfigflag.eq.0"; CFLST
+  endif
 
   if (www%topconfig-www%botconfig+1.eq.0) then
      return
@@ -490,18 +524,37 @@ recursive subroutine arbitrary_sparsemult_nompi_doubles(www,mattrans,rvector,inb
 
   outsmallvector(:,:)=0d0
 
-  do config1=www%botconfig,www%topconfig
+  if (sparsehopflag.eq.0) then
+
      if (diagflag.eq.0) then
-        do iwalk=1,www%numdoublewalks(config1)
-           outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(iwalk,config1) * inbigvector(:,www%doublewalk(iwalk,config1))
+        do config1=www%botconfig,www%topconfig
+           do iwalk=1,www%numdoublewalks(config1)
+              outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(iwalk,config1) * inbigvector(:,www%doublewalk(iwalk,config1)) * rvector(:)
+           enddo
         enddo
      else
-        do idiag=1,www%numdoublediagwalks(config1)
-           outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(www%doublediag(idiag,config1),config1) * inbigvector(:,config1)
+        do config1=www%botconfig,www%topconfig
+           do idiag=1,www%numdoublediagwalks(config1)
+              outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(www%doublediag(idiag,config1),config1) * inbigvector(:,config1) * rvector(:)
+           enddo
         enddo
      endif
-     outsmallvector(:,config1)=outsmallvector(:,config1)*rvector(:)
-  enddo
+
+  else
+
+     if (diagflag.eq.0) then
+        do config1=www%botconfig,www%topconfig
+           do ihop=1,www%numdoublehops(config1)
+              outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(ihop,config1) * inbigvector(:,www%doublehop(ihop,config1)) * rvector(:)
+           enddo
+        enddo
+     else
+        do config1=www%botconfig,www%topconfig
+           outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(www%doublediaghop(config1),config1) * inbigvector(:,config1) * rvector(:)
+        enddo
+     endif
+
+  endif
 
 end subroutine arbitrary_sparsemult_nompi_doubles
 
@@ -541,8 +594,8 @@ recursive subroutine arbitraryconfig_mult_singles_nompi(www,onebodymat, rvector,
   integer,intent(in) :: inrnum,diagflag
   DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf), avectorin(inrnum,www%numconfig)
   DATATYPE,intent(out) :: avectorout(inrnum,www%botconfig:www%topconfig)
-  DATAECS :: rvector(inrnum)
-  integer ::    config2, config1, iwalk, idiag
+  DATAECS :: rvector(inrnum),csum
+  integer ::    config2, config1, iwalk, idiag,ihop
 
   if (www%topconfig-www%botconfig+1.eq.0) then
      return
@@ -551,26 +604,45 @@ recursive subroutine arbitraryconfig_mult_singles_nompi(www,onebodymat, rvector,
   avectorout(:,:)=0.d0
 
   if (diagflag.eq.0) then
+
      do config1=www%botconfig,www%topconfig
-        do iwalk=1,www%numsinglewalks(config1)
-           config2=www%singlewalk(iwalk,config1)
-           avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config2)*&
-                onebodymat(www%singlewalkopspf(1,iwalk,config1), &
-                www%singlewalkopspf(2,iwalk,config1)) *  &
-                www%singlewalkdirphase(iwalk,config1) * rvector(:)
+
+!!$        do iwalk=1,www%numsinglewalks(config1)
+!!$           config2=www%singlewalk(iwalk,config1)
+!!$           avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config2)*&
+!!$                onebodymat(www%singlewalkopspf(1,iwalk,config1), &
+!!$                www%singlewalkopspf(2,iwalk,config1)) *  &
+!!$                www%singlewalkdirphase(iwalk,config1) * rvector(:)
+!!$        enddo
+
+        do ihop=1,www%numsinglehops(config1)
+           config2=www%singlehop(ihop,config1)
+           csum=0d0
+           do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
+              csum=csum +  onebodymat(www%singlewalkopspf(1,iwalk,config1), &
+                   www%singlewalkopspf(2,iwalk,config1)) *  &
+                   www%singlewalkdirphase(iwalk,config1)
+           enddo
+           avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config2) * csum * rvector(:)
         enddo
      enddo
+
   else
+
      do config1=www%botconfig,www%topconfig
+        csum=0d0
         do idiag=1,www%numsinglediagwalks(config1)
            iwalk=www%singlediag(idiag,config1)
-           avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config1)*&
+           csum=csum+&
                 onebodymat(www%singlewalkopspf(1,iwalk,config1), &
                 www%singlewalkopspf(2,iwalk,config1)) *  &
-                www%singlewalkdirphase(iwalk,config1) * rvector(:)
+                www%singlewalkdirphase(iwalk,config1)
         enddo
+        avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config1) * csum * rvector(:)
      enddo
+
   endif
+
 end subroutine arbitraryconfig_mult_singles_nompi
 
 
@@ -583,37 +655,57 @@ recursive subroutine arbitraryconfig_mult_doubles_nompi(www,twobodymat, rvector,
   integer,intent(in) :: inrnum,diagflag
   DATATYPE,intent(in) :: twobodymat(www%nspf,www%nspf,www%nspf,www%nspf), avectorin(inrnum,www%numconfig)
   DATATYPE,intent(out) :: avectorout(inrnum,www%botconfig:www%topconfig)
-  DATAECS :: rvector(inrnum)
-  integer ::   config2, config1, iwalk, idiag
+  DATAECS :: rvector(inrnum),csum
+  integer ::   config2, config1, iwalk, idiag, ihop
 
   avectorout(:,:)=0.d0
 
   if (diagflag.eq.0) then
+
      do config1=www%botconfig,www%topconfig
 
-        do iwalk=1,www%numdoublewalks(config1)
-           config2=www%doublewalk(iwalk,config1)
-           avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config2)*&
+!!$        do iwalk=1,www%numdoublewalks(config1)
+!!$           config2=www%doublewalk(iwalk,config1)
+!!$           avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config2)*&
+!!$                twobodymat(www%doublewalkdirspf(1,iwalk,config1), &
+!!$                www%doublewalkdirspf(2,iwalk,config1),   &
+!!$                www%doublewalkdirspf(3,iwalk,config1),   &
+!!$                www%doublewalkdirspf(4,iwalk,config1))* &
+!!$                www%doublewalkdirphase(iwalk,config1) * rvector(:)
+!!$        enddo
+
+        do ihop=1,www%numdoublehops(config1)
+           config2=www%doublehop(ihop,config1)
+           csum=0d0
+           do iwalk=www%doublehopwalkstart(ihop,config1),www%doublehopwalkend(ihop,config1)
+              csum=csum+&
                 twobodymat(www%doublewalkdirspf(1,iwalk,config1), &
                 www%doublewalkdirspf(2,iwalk,config1),   &
                 www%doublewalkdirspf(3,iwalk,config1),   &
                 www%doublewalkdirspf(4,iwalk,config1))* &
-                www%doublewalkdirphase(iwalk,config1) * rvector(:)
+                www%doublewalkdirphase(iwalk,config1)
+           enddo
+           avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config2) *  csum * rvector(:)
         enddo
      enddo
+
   else
+
      do config1=www%botconfig,www%topconfig
+        csum=0d0
         do idiag=1,www%numdoublediagwalks(config1)
            iwalk=www%doublediag(idiag,config1)
-           config2=www%doublewalk(iwalk,config1)
-           avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config2)*&
+           csum=csum+&
                 twobodymat(www%doublewalkdirspf(1,iwalk,config1), &
                 www%doublewalkdirspf(2,iwalk,config1),   &
                 www%doublewalkdirspf(3,iwalk,config1),   &
                 www%doublewalkdirspf(4,iwalk,config1))* &
-                www%doublewalkdirphase(iwalk,config1) * rvector(:)
+                www%doublewalkdirphase(iwalk,config1)
         enddo
+        avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config1) * csum * rvector(:)
      enddo
+
   endif
 
 end subroutine arbitraryconfig_mult_doubles_nompi
+

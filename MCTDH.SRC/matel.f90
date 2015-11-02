@@ -258,33 +258,38 @@ subroutine op_frozen_exchange(inspfs,outspfs)
 end subroutine op_frozen_exchange
 
 
-subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixtr,topdim,sparseconfigflag)
+subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixtr)
   use fileptrmod
+  use sparse_parameters
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
-  integer,intent(in) :: sparseconfigflag
-  integer ::    config1,  iwalk,topdim,myind
-  DATATYPE :: onebodymat(www%nspf,www%nspf), smallmatrixtr(topdim,www%configstart:www%configend)
-
-  if ( (sparseconfigflag.ne.0.and.topdim.ne.www%maxsinglewalks) .or. &
-       (sparseconfigflag.eq.0.and.topdim.ne.www%numconfig) ) then
-     OFLWR "BAD CALL 0909 ",sparseconfigflag,topdim,www%maxsinglewalks,www%numconfig; CFLST
-  endif
+  integer ::    config1,  iwalk,myind,ihop
+  DATATYPE :: onebodymat(www%nspf,www%nspf), &
+       smallmatrixtr(www%singlematsize,www%configstart:www%configend)
 
   smallmatrixtr=0d0; 
 
   do config1=www%botconfig,www%topconfig
-     do iwalk=1,www%numsinglewalks(config1)
-        if (sparseconfigflag.eq.0) then
-           myind=www%singlewalk(iwalk,config1)
-        else
-           myind=iwalk
-        endif
-        smallmatrixtr(myind,config1)=smallmatrixtr(myind,config1)+   &
-             onebodymat(www%singlewalkopspf(1,iwalk,config1), &
-             www%singlewalkopspf(2,iwalk,config1)) *  &
-             www%singlewalkdirphase(iwalk,config1)
+     do ihop=1,www%numsinglehops(config1)
+        do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
+
+!!$     do iwalk=1,www%numsinglewalks(config1)
+
+           if (sparseconfigflag.eq.0) then
+              myind=www%singlewalk(iwalk,config1)
+           else
+              if (sparsehopflag.eq.0) then
+                 myind=iwalk
+              else
+                 myind=ihop
+              endif
+           endif
+           smallmatrixtr(myind,config1)=smallmatrixtr(myind,config1)+   &
+                onebodymat(www%singlewalkopspf(1,iwalk,config1), &
+                www%singlewalkopspf(2,iwalk,config1)) *  &
+                www%singlewalkdirphase(iwalk,config1)
+        enddo
      enddo
   enddo
 
@@ -296,35 +301,41 @@ end subroutine arbitraryconfig_matel_singles00transpose
 
 
 
-subroutine arbitraryconfig_matel_doubles00transpose(www,twobodymat, smallmatrixtr,topdim,sparseconfigflag)   
+subroutine arbitraryconfig_matel_doubles00transpose(www,twobodymat, smallmatrixtr)
+  use sparse_parameters
   use fileptrmod
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
-  integer,intent(in) :: sparseconfigflag
-  integer ::    config1, iwalk,topdim,myind
-  DATATYPE :: twobodymat(www%nspf,www%nspf,www%nspf,www%nspf), smallmatrixtr(topdim,www%configstart:www%configend)
-
-  if ( (sparseconfigflag.ne.0.and.topdim.ne.www%maxdoublewalks) .or. &
-       (sparseconfigflag.eq.0.and.topdim.ne.www%numconfig) ) then
-     OFLWR "BAD CALL 09119 ",sparseconfigflag,topdim,www%maxdoublewalks,www%numconfig; CFLST
-  endif
+  integer ::    config1, iwalk,myind,ihop
+  DATATYPE :: twobodymat(www%nspf,www%nspf,www%nspf,www%nspf), &
+       smallmatrixtr(www%doublematsize,www%configstart:www%configend)
 
   smallmatrixtr=0d0;
 
   do config1=www%botconfig,www%topconfig
-     do iwalk=1,www%numdoublewalks(config1)
-        if (sparseconfigflag.eq.0) then
-           myind=www%doublewalk(iwalk,config1)
-        else
-           myind=iwalk  
-        endif
-        smallmatrixtr(myind,config1)=smallmatrixtr(myind,config1) + &           
-             twobodymat(www%doublewalkdirspf(1,iwalk,config1), &
-             www%doublewalkdirspf(2,iwalk,config1),   &
-             www%doublewalkdirspf(3,iwalk,config1),   &
-             www%doublewalkdirspf(4,iwalk,config1))* &
-             www%doublewalkdirphase(iwalk,config1) 
+
+     do ihop=1,www%numdoublehops(config1)
+        do iwalk=www%doublehopwalkstart(ihop,config1),www%doublehopwalkend(ihop,config1)
+
+!!$     do iwalk=1,www%numdoublewalks(config1)
+
+           if (sparseconfigflag.eq.0) then
+              myind=www%doublewalk(iwalk,config1)
+           else
+              if (sparsehopflag.eq.0) then
+                 myind=iwalk  
+              else
+                 myind=ihop
+              endif
+           endif
+           smallmatrixtr(myind,config1)=smallmatrixtr(myind,config1) + &           
+                twobodymat(www%doublewalkdirspf(1,iwalk,config1), &
+                www%doublewalkdirspf(2,iwalk,config1),   &
+                www%doublewalkdirspf(3,iwalk,config1),   &
+                www%doublewalkdirspf(4,iwalk,config1))* &
+                www%doublewalkdirphase(iwalk,config1) 
+        enddo
      enddo
   enddo
 
@@ -412,14 +423,14 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
         enddo
      enddo
 
-     call arbitraryconfig_matel_doubles00transpose(www,matrix_ptr%xtwoematel(:,:,:,:),tempconfigmat,www%numconfig,sparseconfigflag)
-     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xpotmatel(:,:),tempconfigmat2,www%numconfig,sparseconfigflag)
+     call arbitraryconfig_matel_doubles00transpose(www,matrix_ptr%xtwoematel(:,:,:,:),tempconfigmat)
+     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xpotmatel(:,:),tempconfigmat2)
 
      tempconfigmat(:,:) = TRANSPOSE( tempconfigmat(:,:) + tempconfigmat2(:,:) )
      do ir=1,numr
         diagmat(:,:,ir)=diagmat(:,:,ir)+tempconfigmat(:,:)/bondpoints(ir)
      enddo
-     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xopmatel(:,:),tempconfigmat,www%numconfig,sparseconfigflag)
+     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xopmatel(:,:),tempconfigmat)
      tempconfigmat(:,:)=TRANSPOSE(tempconfigmat(:,:))
      do ir=1,numr
         diagmat(:,:,ir)=diagmat(:,:,ir)+tempconfigmat(:,:)/bondpoints(ir)**2
@@ -433,7 +444,7 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
         tempmatel(:,:)=tempmatel(:,:)+matrix_ptr%xconmatelyy(:,:)*facs(2)
         tempmatel(:,:)=tempmatel(:,:)+matrix_ptr%xconmatelzz(:,:)*facs(3)
      endif
-     call arbitraryconfig_matel_singles00transpose(www,tempmatel,tempconfigmat,www%numconfig,sparseconfigflag)
+     call arbitraryconfig_matel_singles00transpose(www,tempmatel,tempconfigmat)
      tempconfigmat(:,:)=TRANSPOSE(tempconfigmat(:,:))
      do ir=1,numr
         diagmat(:,:,ir)=diagmat(:,:,ir)-tempconfigmat(:,:)
@@ -444,7 +455,7 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
      tempmatel(:,:)= matrix_ptr%xpulsematelxx*facs(1)+ &
           matrix_ptr%xpulsematelyy*facs(2)+ &
           matrix_ptr%xpulsematelzz*facs(3)
-     call arbitraryconfig_matel_singles00transpose(www,tempmatel,tempconfigmat,www%numconfig,sparseconfigflag)
+     call arbitraryconfig_matel_singles00transpose(www,tempmatel,tempconfigmat)
      tempconfigmat(:,:)=TRANSPOSE(tempconfigmat(:,:))
      do ir=1,numr
         if (velflag.eq.0) then
@@ -490,7 +501,7 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
   enddo
 
   if (nonuc_checkflag.eq.0.and.nucflag.eq.1) then
-       call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xymatel,tempconfigmat,www%numconfig,sparseconfigflag)   !! fills in all, wasteful
+       call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xymatel,tempconfigmat)   !! fills in all, wasteful
        tempconfigmat(:,:)=TRANSPOSE(tempconfigmat(:,:))
 
      do ir=1,numr
@@ -530,27 +541,27 @@ subroutine assemble_sparsemats(www,matrix_ptr, sparse_ptr,boflag, nucflag, pulse
   endif
 
   if (boflag==1) then
-     call arbitraryconfig_matel_doubles00transpose(www,matrix_ptr%xtwoematel(:,:,:,:),sparse_ptr%xpotsparsemattr(:,:),www%maxdoublewalks,sparseconfigflag)
-     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xpotmatel(:,:),sparse_ptr%xonepotsparsemattr(:,:),www%maxsinglewalks,sparseconfigflag)
-     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xopmatel(:,:),sparse_ptr%xopsparsemattr(:,:),www%maxsinglewalks,sparseconfigflag)
+     call arbitraryconfig_matel_doubles00transpose(www,matrix_ptr%xtwoematel(:,:,:,:),sparse_ptr%xpotsparsemattr(:,:))
+     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xpotmatel(:,:),sparse_ptr%xonepotsparsemattr(:,:))
+     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xopmatel(:,:),sparse_ptr%xopsparsemattr(:,:))
   endif
 
   if (conflag==1.and.constraintflag.ne.0) then
-     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xconmatel,sparse_ptr%xconsparsemattr,www%maxsinglewalks,sparseconfigflag)
+     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xconmatel,sparse_ptr%xconsparsemattr)
      if (tdflag.ne.0) then
-        call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xconmatelxx,sparse_ptr%xconsparsemattrxx,www%maxsinglewalks,sparseconfigflag)
-        call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xconmatelyy,sparse_ptr%xconsparsemattryy,www%maxsinglewalks,sparseconfigflag)
-        call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xconmatelzz,sparse_ptr%xconsparsemattrzz,www%maxsinglewalks,sparseconfigflag)
+        call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xconmatelxx,sparse_ptr%xconsparsemattrxx)
+        call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xconmatelyy,sparse_ptr%xconsparsemattryy)
+        call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xconmatelzz,sparse_ptr%xconsparsemattrzz)
      endif
   endif
 
   if ((pulseflag.eq.1.and.tdflag.eq.1)) then
-     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xpulsematelxx,sparse_ptr%xpulsesparsemattrxx,www%maxsinglewalks,sparseconfigflag)
-     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xpulsematelyy,sparse_ptr%xpulsesparsemattryy,www%maxsinglewalks,sparseconfigflag)
-     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xpulsematelzz,sparse_ptr%xpulsesparsemattrzz,www%maxsinglewalks,sparseconfigflag)
+     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xpulsematelxx,sparse_ptr%xpulsesparsemattrxx)
+     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xpulsematelyy,sparse_ptr%xpulsesparsemattryy)
+     call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xpulsematelzz,sparse_ptr%xpulsesparsemattrzz)
   endif
   if (nonuc_checkflag.eq.0.and.nucflag.eq.1) then
-       call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xymatel,sparse_ptr%xysparsemattr,www%maxsinglewalks,sparseconfigflag)
+       call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xymatel,sparse_ptr%xysparsemattr)
   endif
 
 end subroutine assemble_sparsemats

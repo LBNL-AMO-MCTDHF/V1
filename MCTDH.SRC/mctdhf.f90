@@ -311,6 +311,8 @@ program mctdhf
 
   call hops(www);
 
+  call set_matsize(www);
+
   call init_dfcon(www)
 
   call spinwalkinit(www); 

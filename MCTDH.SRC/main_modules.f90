@@ -300,11 +300,14 @@ module walkmod
      integer :: maxnumsinglehops=0
      integer,allocatable :: numsinglehops(:)
      integer,allocatable :: singlehop(:,:), singlehopwalkstart(:,:), singlehopwalkend(:,:)
+     integer,allocatable :: singlediaghop(:)
 
      integer :: maxnumdoublehops=0
      integer,allocatable :: numdoublehops(:)
      integer,allocatable :: doublehop(:,:), doublehopwalkstart(:,:), doublehopwalkend(:,:)
+     integer,allocatable :: doublediaghop(:)
 
+     integer :: singlematsize=0,doublematsize=0
 
   end type walktype
 
@@ -339,7 +342,7 @@ subroutine configpropalloc()
   call configptralloc(workconfigpointer,www)  !! nspf not used for regular walks (not walks2)
   workconfigpointer%kefac=par_timestep     !! constant term in poly expansion goes with ke in R; will be set
 
-  if (sparseopt.ne.0) then
+  if (sparseopt.ne.0) then  !! (sparseconfigflag is also 0, see getparams)
      call sparseptralloc(worksparsepointer,www)  !! nspf not used for regular walks (not walks2)
      worksparsepointer%kefac=par_timestep     !! constant term in poly expansion goes with ke in R; will be set
   endif
@@ -618,23 +621,29 @@ end subroutine zero_sptr
 
 
 subroutine sparseptralloc(inptr,www)
+  use fileptrmod
+  use sparse_parameters
   use sparseptrmod
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
   Type(SPARSEPTR) :: inptr
 
-  allocate(inptr%xpotsparsemattr    (www%maxdoublewalks,www%configstart:www%configend))
-  allocate(inptr%xopsparsemattr     (www%maxsinglewalks,www%configstart:www%configend))
-  allocate(inptr%xonepotsparsemattr (www%maxsinglewalks,www%configstart:www%configend))
-  allocate(inptr%xpulsesparsemattrxx(www%maxsinglewalks,www%configstart:www%configend))
-  allocate(inptr%xpulsesparsemattryy(www%maxsinglewalks,www%configstart:www%configend))
-  allocate(inptr%xpulsesparsemattrzz(www%maxsinglewalks,www%configstart:www%configend))
-  allocate(inptr%xconsparsemattr    (www%maxsinglewalks,www%configstart:www%configend))
-  allocate(inptr%xconsparsemattrxx  (www%maxsinglewalks,www%configstart:www%configend))
-  allocate(inptr%xconsparsemattryy  (www%maxsinglewalks,www%configstart:www%configend))
-  allocate(inptr%xconsparsemattrzz  (www%maxsinglewalks,www%configstart:www%configend))
-  allocate(inptr%xysparsemattr      (www%maxsinglewalks,www%configstart:www%configend))
+  if (sparseconfigflag.eq.0) then
+     OFLWR "error, sparseptralloc called when sparseconfigflag.eq.0"; CFLST
+  endif
+
+  allocate(inptr%xpotsparsemattr    (www%doublematsize,www%configstart:www%configend))
+  allocate(inptr%xopsparsemattr     (www%singlematsize,www%configstart:www%configend))
+  allocate(inptr%xonepotsparsemattr (www%singlematsize,www%configstart:www%configend))
+  allocate(inptr%xpulsesparsemattrxx(www%singlematsize,www%configstart:www%configend))
+  allocate(inptr%xpulsesparsemattryy(www%singlematsize,www%configstart:www%configend))
+  allocate(inptr%xpulsesparsemattrzz(www%singlematsize,www%configstart:www%configend))
+  allocate(inptr%xconsparsemattr    (www%singlematsize,www%configstart:www%configend))
+  allocate(inptr%xconsparsemattrxx  (www%singlematsize,www%configstart:www%configend))
+  allocate(inptr%xconsparsemattryy  (www%singlematsize,www%configstart:www%configend))
+  allocate(inptr%xconsparsemattrzz  (www%singlematsize,www%configstart:www%configend))
+  allocate(inptr%xysparsemattr      (www%singlematsize,www%configstart:www%configend))
 
 end subroutine sparseptralloc
 

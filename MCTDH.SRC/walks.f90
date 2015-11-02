@@ -662,11 +662,13 @@ subroutine hops(www)
   use aarrmod
   implicit none
   type(walktype) :: www
-  integer :: ii,iwalk,iconfig,totsinglehops,totdoublehops,totsinglewalks,totdoublewalks,ihop
+  integer :: ii,iwalk,iconfig,totsinglehops,totdoublehops,totsinglewalks,totdoublewalks,ihop,flag
 
   allocate(www%numsinglehops(www%configstart:www%configend),&
        www%numdoublehops(www%configstart:www%configend))
-
+  allocate( www%singlediaghop(www%configstart:www%configend),&
+       www%doublediaghop(www%configstart:www%configend))
+  
   do ii=0,1
 
      if (ii.eq.0) then
@@ -774,10 +776,48 @@ subroutine hops(www)
 
   enddo
 
+  do iconfig=www%configstart,www%configend
+
+     flag=0
+     do ihop=1,www%numsinglehops(iconfig)
+        if (www%singlehop(ihop,iconfig).eq.iconfig) then
+           if (flag.eq.1) then
+              OFLWR "EERRR HOPSSING"; CFLST
+           else
+              flag=1
+              www%singlediaghop(iconfig)=ihop
+           endif
+        endif
+     enddo
+     if (flag.eq.0) then
+        OFLWR "ERRRORR HOPSSING"; CFLST
+     endif
+
+     flag=0
+     do ihop=1,www%numdoublehops(iconfig)
+        if (www%doublehop(ihop,iconfig).eq.iconfig) then
+           if (flag.eq.1) then
+              OFLWR "EERRR HOPSDOUB"; CFLST
+           else
+              flag=1
+              www%doublediaghop(iconfig)=ihop
+           endif
+        endif
+     enddo
+     if (flag.eq.0) then
+        OFLWR "ERRRORR HOPSDOUB"; CFLST
+     endif
+
+  enddo
+
+
   if (sparseconfigflag.eq.0) then
      ii=1
      call mpiallgather_i(www%numdoublehops(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
      call mpiallgather_i(www%numsinglehops(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%singlediaghop(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%doublediaghop(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+
      ii=www%maxnumsinglehops
      call mpiallgather_i(www%singlehop(:,:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
      call mpiallgather_i(www%singlehopwalkstart(:,:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
@@ -806,6 +846,26 @@ subroutine hops(www)
   WRFL; CFL
 
 end subroutine hops
+
+subroutine set_matsize(www)
+  use walkmod
+  use sparse_parameters
+  implicit none
+  type(walktype),intent(inout) :: www
+
+  if (sparseconfigflag.eq.0) then
+     www%singlematsize=www%numconfig
+     www%doublematsize=www%numconfig
+  else
+     if (sparsehopflag.eq.0) then
+        www%singlematsize=www%maxsinglewalks
+        www%doublematsize=www%maxdoublewalks
+     else
+        www%singlematsize=www%maxnumsinglehops
+        www%doublematsize=www%maxnumdoublehops
+     endif
+  endif
+end subroutine set_matsize
 
 
 subroutine getlistorder(values, order,num)
