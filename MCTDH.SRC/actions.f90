@@ -42,6 +42,7 @@ subroutine actionsub(thistime)
   use parameters
   use mpimod
   use xxxmod
+  use configmod
   use actionlistmod
   implicit none
   
@@ -127,13 +128,13 @@ subroutine actionsub(thistime)
         call system_clock(btime);        times(21)=times(21)+btime-atime
      case (22)    
         call system_clock(atime)
-        call dferror(yyy%cmfpsivec(astart(1),0),error,thistime)  !! does all mcscfnum
+        call dferror(www,yyy%cptr(0),yyy%sptr(0),yyy%cmfpsivec(astart(1),0),mcscfnum,error,thistime)  !! does all mcscfnum
         OFL; write(mpifileptr,'(A15,2F25.10)') " DF error is ", error; CFL
         call system_clock(btime);        times(22)=times(22)+btime-atime
      case (24)    
         if(mod(calledhere-1,FluxInterval).eq.0) then 
            call system_clock(atime)
-           call keprojector(yyy%cmfpsivec(astart(1),0),yyy%cmfpsivec(spfstart,0),par_timestep*FluxInterval)
+           call keprojector(yyy%cmfpsivec(astart(1),0),yyy%cmfpsivec(spfstart,0),par_timestep*FluxInterval,www)
            call system_clock(btime);        times(24)=times(24)+btime-atime
         endif
      case (25)
@@ -348,10 +349,10 @@ subroutine actions_initial()
      case (21)    
         call dipolesub_initial()
      case (22)    
-        if (dfrestrictflag.eq.0) then
+        if (df_restrictflag.eq.0) then
            OFLWR "Um, you are doing action 22 without dfrestrictflag...wtf..."; CFLST
         endif
-        if (dfrestrictflag.lt.2) then
+        if (df_restrictflag.lt.2) then
            OFLWR "WARNING, usually need dfrestrictflag=2 or greater for action 22...."; CFL
         endif
      case (23)

@@ -480,16 +480,18 @@ subroutine avectortime(which)
 end subroutine
 
 
-subroutine exposparseprop(inavector,outavector,time)
+subroutine exposparseprop(www,inavector,outavector,time)
   use parameters
   use configpropmod
+  use walkmod
   use mpimod
   implicit none
-  DATATYPE,intent(in) :: inavector(numr,firstconfig:lastconfig)
-  DATATYPE,intent(out) :: outavector(numr,firstconfig:lastconfig)
-  DATATYPE :: smallvector(numr,maxdfbasisperproc),smallvectorout(numr,maxdfbasisperproc), &
-       zerovector(numr,maxdfbasisperproc),smallvectortemp(numr,maxdfbasisperproc), &
-       workdrivingavecdfbasis(numr,botdfbasis:topdfbasis)
+  type(walktype),intent(in) :: www
+  DATATYPE,intent(in) :: inavector(numr,www%firstconfig:www%lastconfig)
+  DATATYPE,intent(out) :: outavector(numr,www%firstconfig:www%lastconfig)
+  DATATYPE :: smallvector(numr,www%maxdfbasisperproc),smallvectorout(numr,www%maxdfbasisperproc), &
+       zerovector(numr,www%maxdfbasisperproc),smallvectortemp(numr,www%maxdfbasisperproc), &
+       workdrivingavecdfbasis(numr,www%botdfbasis:www%topdfbasis)
   external :: parconfigexpomult_padded,realpardotsub
   real*8 :: one,time
   real*8, save :: tempstepsize=-1d0
@@ -517,7 +519,7 @@ subroutine exposparseprop(inavector,outavector,time)
 
   if (icalled.eq.1) then
      tempstepsize=par_timestep/littlesteps
-     my_maxaorder=min(maxdfbasisperproc*nprocs*numr,maxaorder)
+     my_maxaorder=min(www%maxdfbasisperproc*nprocs*numr,maxaorder)
      thisexpodim=min(my_maxaorder,aorder)
   endif
   
@@ -554,13 +556,13 @@ subroutine exposparseprop(inavector,outavector,time)
   
   one=1.d0; itrace=0 ! running mode
   
-  lwsp =  ( maxdfbasisperproc*numr*(thisexpodim+3) + maxdfbasisperproc*numr + (thisexpodim+3)**2 + 5*(thisexpodim+3)**2+6+1 )
+  lwsp =  ( www%maxdfbasisperproc*numr*(thisexpodim+3) + www%maxdfbasisperproc*numr + (thisexpodim+3)**2 + 5*(thisexpodim+3)**2+6+1 )
   liwsp=max(10,thisexpodim+3)
   allocate(wsp(lwsp),iwsp(liwsp));    wsp=0.d0; iwsp=0
   
   smallvector(:,:)=0; smallvectorout(:,:)=0d0
 
-  call basis_transformto_local(numr,inavector(:,botconfig),smallvector(:,:))
+  call basis_transformto_local(www,numr,inavector(:,www%botconfig),smallvector(:,:))
 
   lwsp=zzz*lwsp
 
@@ -570,17 +572,17 @@ subroutine exposparseprop(inavector,outavector,time)
 
   if (drivingflag.ne.0) then
      call parconfigexpomult_padded(smallvector,smallvectortemp)
-     call basis_transformto_local(numr,workdrivingavec(:,botconfig),workdrivingavecdfbasis(:,:))
-     smallvectortemp(:,1:topdfbasis-botdfbasis+1)=  smallvectortemp(:,1:topdfbasis-botdfbasis+1) + workdrivingavecdfbasis(:,:) * timefac 
+     call basis_transformto_local(www,numr,workdrivingavec(:,www%botconfig),workdrivingavecdfbasis(:,:))
+     smallvectortemp(:,1:www%topdfbasis-www%botdfbasis+1)=  smallvectortemp(:,1:www%topdfbasis-www%botdfbasis+1) + workdrivingavecdfbasis(:,:) * timefac 
 
      zerovector(:,:)=0d0
-     call DGPHIVxxx2( zzz*maxdfbasisperproc*numr, thisexpodim, one, smallvectortemp, zerovector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
-           iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*numdfbasis*numr)
+     call DGPHIVxxx2( zzz*www%maxdfbasisperproc*numr, thisexpodim, one, smallvectortemp, zerovector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
+           iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*www%numdfbasis*numr)
 
       smallvectorout(:,:)=smallvectorout(:,:)+smallvector(:,:)
    else
-      call DGEXPVxxx2( zzz*maxdfbasisperproc*numr, thisexpodim, one, smallvector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
-           iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*numdfbasis*numr)
+      call DGEXPVxxx2( zzz*www%maxdfbasisperproc*numr, thisexpodim, one, smallvector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
+           iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,tempstepsize,realpardotsub,zzz*www%numdfbasis*numr)
    endif
 
    call avectortime(3)
@@ -589,10 +591,10 @@ subroutine exposparseprop(inavector,outavector,time)
    
    outavector(:,:)=0d0;   
 
-   call basis_transformfrom_local(numr,smallvectorout,outavector(:,botconfig))
+   call basis_transformfrom_local(www,numr,smallvectorout,outavector(:,www%botconfig))
 
-   if (parconsplit.eq.0) then
-      call mpiallgather(outavector,numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
+   if (www%parconsplit.eq.0) then
+      call mpiallgather(outavector,www%numconfig*numr,www%configsperproc*numr,www%maxconfigsperproc*numr)
    endif
 
    if (expofileptr.ne.nullfileptr) then

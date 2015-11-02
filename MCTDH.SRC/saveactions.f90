@@ -134,7 +134,7 @@ subroutine save_rnatorb( thistime, inrdenvects, inrdenvals, iprop)
   OFLWR " Saving rnatorb !";CFL
 
 !! noo way too many  do iorb=1,numr
-  do iorb=1,min(numr,min(numconfig,10))
+  do iorb=1,min(numr,min(num_config,10))
      csum=inrdenvals(iorb)
      call write_nat_header(header,thistime,iprop,iorb,csum)
      call save_orbvector(tempvects(:,iorb), numr, rnatorbfile, rnatplotbin, header)

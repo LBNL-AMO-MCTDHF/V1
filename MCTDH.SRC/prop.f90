@@ -10,6 +10,7 @@ subroutine prop_loop( starttime)
   use parameters
   use mpimod
   use xxxmod
+  use configmod
   implicit none
 
   integer ::  jj,flag,  iii, itime, jtime, times(20)=0, qq,imc,getlen
@@ -31,7 +32,7 @@ subroutine prop_loop( starttime)
 
   if (skipflag.eq.0) then
      do imc=1,mcscfnum
-        call basis_project(numr,yyy%cmfpsivec(astart(imc),0))
+        call basis_project(www,numr,yyy%cmfpsivec(astart(imc),0))
      enddo
 
 !!$ 06-2015
@@ -53,9 +54,7 @@ subroutine prop_loop( starttime)
      endif
 
      if ((myrank.eq.1).and.(notiming.le.1)) then
-
         call system("echo -n > "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
-
         !! times(1:5)
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="unknown")
         write(853,'(T16,100A15)')  "Spfs ", "Prop ", "Act ", "Final ", "MPI", "Non MPI";        close(853)
@@ -84,16 +83,16 @@ subroutine prop_loop( starttime)
 !! 06-2015 moved this down here
   do imc=1,mcscfnum
 
-     call sparseconfigmult(yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0)
+     call sparseconfigmult(www,yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0)
 
-     sum = dot(     yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),totadim)
-     if (parconsplit.ne.0) then
+     sum = dot(     yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),tot_adim)
+     if (par_consplit.ne.0) then
         call mympireduceone(sum)
      endif
      OFLWR "IN PROP: VECTOR NORM ",sqrt(sum);CFL
 
-     sum2=dot(     yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),totadim)
-     if (parconsplit.ne.0) then
+     sum2=dot(     yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),tot_adim)
+     if (par_consplit.ne.0) then
         call mympireduceone(sum2)
      endif
 
@@ -153,20 +152,21 @@ subroutine prop_loop( starttime)
      endif
 
      do imc=1,mcscfnum
-        call basis_project(numr,yyy%cmfpsivec(astart(imc),0))
+        call basis_project(www,numr,yyy%cmfpsivec(astart(imc),0))
      enddo
+
      call system_clock(jtime)  ;     times(2)=times(2)+jtime-itime;     call system_clock(itime)  
 
      do imc=1,mcscfnum
 
-        call sparseconfigmult(yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,timedepexpect,0,thattime)
+        call sparseconfigmult(www,yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,timedepexpect,0,thattime)
 
-!! 080313 didn't have this spin project
-        call basis_project(numr,psip(astart(imc)))
 
-        sum=dot(yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),totadim)
-        sum2=dot(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),totadim)
-        if (parconsplit.ne.0) then
+        call basis_project(www,numr,psip(astart(imc)))
+
+        sum=dot(yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),tot_adim)
+        sum2=dot(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),tot_adim)
+        if (par_consplit.ne.0) then
            call mympireduceone(sum); call mympireduceone(sum2)
         endif
 
@@ -188,7 +188,7 @@ subroutine prop_loop( starttime)
         CFL
 
         if (drivingflag.ne.0) then
-          call getdrivingoverlap(drivingoverlap)
+          call getdrivingoverlap(drivingoverlap,mcscfnum)
 
           OFL
 #ifdef ECSFLAG     
@@ -229,7 +229,6 @@ subroutine prop_loop( starttime)
      enddo
      
      if ((myrank.eq.1).and.(notiming.le.1)) then
-
         call system("date >> "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="old", position="append")
         write(853,'(F13.3,T16,100I15)')  thistime, times(1:4)/1000, mpitime/1000, nonmpitime/1000;     close(853)
@@ -300,9 +299,9 @@ subroutine prop_loop( starttime)
   enddo
   do imc=1,mcscfnum
      norms(imc)=dot(yyy%cmfpsivec(astart(imc),0),& !! ok implicit
-          yyy%cmfpsivec(astart(imc),0),totadim)   !! ok implicit
+          yyy%cmfpsivec(astart(imc),0),tot_adim)   !! ok implicit
   enddo
-  if (parconsplit.ne.0) then
+  if (par_consplit.ne.0) then
 #ifndef REALGO
 #ifndef CNORMFLAG     
      call mympirealreduce(norms,mcscfnum)
@@ -510,6 +509,7 @@ subroutine cmf_prop_wfn(tin, tout)
   use parameters
   use linearmod
   use xxxmod
+  use configmod
   use mpimod
   implicit none
 
@@ -593,7 +593,7 @@ subroutine cmf_prop_wfn(tin, tout)
         if (improvedquadflag.eq.1.or.improvedquadflag.eq.3) then
            call quadavector(yyy%cmfpsivec(astart(1),0),qq)
         else
-           call myconfigeig(yyy%cmfpsivec(astart(1),0),myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
+           call myconfigeig(www,yyy%cptr(0),yyy%cmfpsivec(astart(1),0),myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
         endif
      endif
      call system_clock(jtime);     times(5)=times(5)+jtime-itime;     call system_clock(itime)
@@ -808,7 +808,7 @@ end subroutine cmf_prop_wfn
 subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc)
   use parameters
   implicit none
-  DATATYPE :: avectorin(totadim), avectorout(totadim),tempvector(totadim),dot,csum
+  DATATYPE :: avectorin(tot_adim), avectorout(tot_adim),tempvector(tot_adim),dot,csum
   integer :: k, linearflag,imc
   real*8 :: time1,time2,timea,timeb
 
@@ -825,8 +825,8 @@ subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc)
   enddo
 
   if (threshflag.ne.0) then
-     csum=dot(avectorout,avectorout,totadim)
-     if (parconsplit.ne.0) then
+     csum=dot(avectorout,avectorout,tot_adim)
+     if (par_consplit.ne.0) then
         call mympireduceone(csum)
      endif
      avectorout(:)=avectorout(:)/sqrt(csum)
@@ -839,10 +839,11 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
   use parameters
   use mpimod
   use xxxmod
+  use configmod
   use configpropmod
   implicit none
 
-  DATATYPE :: avectorin(totadim), avectorout(totadim),sum1,sum0,pots(3)=0d0
+  DATATYPE :: avectorin(tot_adim), avectorout(tot_adim),sum1,sum0,pots(3)=0d0
   integer :: linearflag,imc,itime,jtime,getlen,ii,iflag
   real*8 :: time1,time2,thisstep,midtime,rsum
   integer, save :: times(2)=0, icalled=0
@@ -921,7 +922,7 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
 
   call system_clock(jtime); times(1)=times(1)+jtime-itime; itime=jtime
 
-  call myconfigprop(avectorin,avectorout,midtime)
+  call myconfigprop(www,avectorin,avectorout,midtime)
 
   call system_clock(jtime); times(2)=times(2)+jtime-itime;
 

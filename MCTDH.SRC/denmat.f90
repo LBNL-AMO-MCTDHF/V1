@@ -89,6 +89,7 @@ subroutine replace_withnat(printflag)
   use natrepbiomod
   use biorthomod
   use parameters
+  use configmod
   use xxxmod
   implicit none
 
@@ -119,7 +120,7 @@ subroutine replace_withnat(printflag)
      WRFL; CFL
   endif
 
-  call bioset(natrepbiovar,smo,numr)
+  call bioset(natrepbiovar,smo,numr,www)
 
   do imc=1,mcscfnum
 
@@ -153,10 +154,11 @@ end subroutine replace_withnat
 
 subroutine getdenmatx()
   use parameters
+  use configmod
   use xxxmod
   implicit none
 
-  call getdenmatstuff(yyy%cmfpsivec(astart(1),0), yyy%denmat(:,:,0) , yyy%invdenmat(:,:,0) , yyy%denvals(:) , yyy%denvects(:,:), numr, mcscfnum)
+  call getdenmatstuff(www,yyy%cmfpsivec(astart(1),0), yyy%denmat(:,:,0) , yyy%invdenmat(:,:,0) , yyy%denvals(:) , yyy%denvects(:,:), numr, mcscfnum)
 
 !!$  if (rdenflag==1) then
 !!$     call getrdenmat()
@@ -172,26 +174,25 @@ end subroutine getdenmatx
 
 !! denmat is the true denmat, not transposed.
 
-subroutine getdenmat00(avector1,in_avector2,rvector, denmat, numpoints,howmany)
-  use parameters
+subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howmany)
   use walkmod
   implicit none
-
+  type(walktype),intent(in) :: www
   integer,intent(in) ::  numpoints,howmany
-  DATATYPE, intent(in) :: in_avector2(numpoints,firstconfig:lastconfig,howmany),&
-       avector1(numpoints,firstconfig:lastconfig,howmany)
+  DATATYPE, intent(in) :: in_avector2(numpoints,www%firstconfig:www%lastconfig,howmany),&
+       avector1(numpoints,www%firstconfig:www%lastconfig,howmany)
   DATAECS,intent(in) :: rvector(numpoints)
-  DATATYPE,intent(out) :: denmat(nspf,nspf)
+  DATATYPE,intent(out) :: denmat(www%nspf,www%nspf)
   DATATYPE :: a1(numpoints,howmany), a2(numpoints,howmany), dot
-  DATATYPE :: avector2(numpoints,numconfig,howmany)   !! AUTOMATIC
+  DATATYPE :: avector2(numpoints,www%numconfig,howmany)   !! AUTOMATIC
   integer :: config1,config2,  ispf,jspf,  dirphase, iwalk, ii
 
-  avector2(:,firstconfig:lastconfig,:) = in_avector2(:,:,:)
+  avector2(:,www%firstconfig:www%lastconfig,:) = in_avector2(:,:,:)
 
 !! DO SUMMA
-  if (parconsplit.ne.0) then
+  if (www%parconsplit.ne.0) then
      do ii=1,howmany
-        call mpiallgather(avector2(:,:,ii),numconfig*numpoints,configsperproc(:)*numpoints,maxconfigsperproc*numpoints)
+        call mpiallgather(avector2(:,:,ii),www%numconfig*numpoints,www%configsperproc(:)*numpoints,www%maxconfigsperproc*numpoints)
      enddo
   endif
 
@@ -199,18 +200,18 @@ subroutine getdenmat00(avector1,in_avector2,rvector, denmat, numpoints,howmany)
 
   !! single off diagonal walks
 
-  do config1=botconfig,topconfig
+  do config1=www%botconfig,www%topconfig
 
      do ii=1,howmany
         a1(:,ii)=avector1(:,config1,ii) * rvector(:)
      enddo
 
-     do iwalk=1,numsinglewalks(config1)
-        config2=singlewalk(iwalk,config1)
-        dirphase=singlewalkdirphase(iwalk,config1)
+     do iwalk=1,www%numsinglewalks(config1)
+        config2=www%singlewalk(iwalk,config1)
+        dirphase=www%singlewalkdirphase(iwalk,config1)
         a2(:,:)=avector2(:,config2,:)
-        ispf=singlewalkopspf(1,iwalk,config1)  !! goes with config1
-        jspf=singlewalkopspf(2,iwalk,config1)  !! goes with config2
+        ispf=www%singlewalkopspf(1,iwalk,config1)  !! goes with config1
+        jspf=www%singlewalkopspf(2,iwalk,config1)  !! goes with config2
 
 
         denmat(ispf,jspf)=denmat(ispf,jspf)+ &
@@ -226,29 +227,29 @@ subroutine getdenmat00(avector1,in_avector2,rvector, denmat, numpoints,howmany)
      enddo
   enddo
 
-  call mympireduce(denmat,nspf**2)
+  call mympireduce(denmat,www%nspf**2)
 
 end subroutine getdenmat00
 
 
 
-subroutine getdenmatstuff(avector, denmat, invdenmat, denvals, denvects, numpoints,howmany)
-  use parameters
+subroutine getdenmatstuff(www,avector, denmat, invdenmat, denvals, denvects, numpoints,howmany)
+  use class_parameters
+  use denreg_parameters
   use walkmod
-  use configmod
   implicit none
-
+  type(walktype),intent(in) :: www
   integer,intent(in) ::  numpoints,howmany
-  CNORMTYPE,intent(out) :: denvals(nspf)
-  DATATYPE, intent(in) :: avector(numpoints,firstconfig:lastconfig,howmany)
-  DATATYPE,intent(out) :: denmat(nspf,nspf),invdenmat(nspf,nspf),denvects(nspf,nspf)
-  CNORMTYPE :: tempdenvals(nspf,numclasses)
-  DATATYPE :: tempinvden(nspf,nspf,numclasses),tempdenvects(nspf,nspf,numclasses)
+  CNORMTYPE,intent(out) :: denvals(www%nspf)
+  DATATYPE, intent(in) :: avector(numpoints,www%firstconfig:www%lastconfig,howmany)
+  DATATYPE,intent(out) :: denmat(www%nspf,www%nspf),invdenmat(www%nspf,www%nspf),denvects(www%nspf,www%nspf)
+  CNORMTYPE :: tempdenvals(www%nspf,numclasses)
+  DATATYPE :: tempinvden(www%nspf,www%nspf,numclasses),tempdenvects(www%nspf,www%nspf,numclasses)
   integer :: ispf,jspf,iclass
   DATAECS :: rvector(numpoints)
 
   rvector(:)=1d0
-  call getdenmat00(avector,avector,rvector,denmat,numpoints,howmany)
+  call getdenmat00(www,avector,avector,rvector,denmat,numpoints,howmany)
 
   denvects(:,:)=0d0; invdenmat(:,:)=0d0
 
@@ -261,11 +262,11 @@ subroutine getdenmatstuff(avector, denmat, invdenmat, denvals, denvects, numpoin
         enddo
      enddo
      tempinvden(:,:,iclass)= (-1) * tempinvden(:,:,iclass)
-     call EIGEN(tempinvden(:,:,iclass),nperclass(iclass), nspf, tempdenvects(:,:,iclass),tempdenvals(:,iclass))
+     call EIGEN(tempinvden(:,:,iclass),nperclass(iclass), www%nspf, tempdenvects(:,:,iclass),tempdenvals(:,iclass))
      tempinvden(:,:,iclass)= (-1) * tempinvden(:,:,iclass)
      tempdenvals(:,iclass)= (-1) * tempdenvals(:,iclass)
 
-     call invmatsmooth(tempinvden(:,:,iclass),nperclass(iclass),nspf,denreg)
+     call invmatsmooth(tempinvden(:,:,iclass),nperclass(iclass),www%nspf,denreg)
      do ispf=1,nperclass(iclass)
         denvals(classorb(ispf,iclass))=tempdenvals(ispf,iclass)
         do jspf=1,nperclass(iclass)
@@ -279,33 +280,32 @@ subroutine getdenmatstuff(avector, denmat, invdenmat, denvals, denvects, numpoin
 end subroutine getdenmatstuff
 
 
-subroutine getoccupations(in_avector, numpoints, occupations)
-  use parameters
+subroutine getoccupations(www,in_avector, numpoints, occupations)
   use walkmod
   implicit none
-
+  type(walktype),intent(in) :: www
   integer,intent(in) ::  numpoints
-  CNORMTYPE, intent(out) :: occupations(nspf)
+  CNORMTYPE, intent(out) :: occupations(www%nspf)
   integer :: config1,  ispf,jspf,  iwalk,idiag
-  DATATYPE, intent(in) :: in_avector(numpoints,firstconfig:lastconfig)
+  DATATYPE, intent(in) :: in_avector(numpoints,www%firstconfig:www%lastconfig)
   DATATYPE :: dot
-  DATATYPE :: avector(numpoints,numconfig)   !! AUTOMATIC
+  DATATYPE :: avector(numpoints,www%numconfig)   !! AUTOMATIC
 
-  avector(:,firstconfig:lastconfig) = in_avector(:,:)
+  avector(:,www%firstconfig:www%lastconfig) = in_avector(:,:)
 
 !! DO SUMMA
-  if (parconsplit.ne.0) then
-     call mpiallgather(avector,numconfig*numpoints,configsperproc*numpoints,maxconfigsperproc*numpoints)
+  if (www%parconsplit.ne.0) then
+     call mpiallgather(avector,www%numconfig*numpoints,www%configsperproc(:)*numpoints,www%maxconfigsperproc*numpoints)
   endif
 
   occupations(:)=0d0
 
-  do config1=botconfig,topconfig
-     do idiag=1,numsinglediagwalks(config1)
-        iwalk=singlediag(idiag,config1)
+  do config1=www%botconfig,www%topconfig
+     do idiag=1,www%numsinglediagwalks(config1)
+        iwalk=www%singlediag(idiag,config1)
 
-        ispf=singlewalkopspf(1,iwalk,config1)  !! goes with config1
-        jspf=singlewalkopspf(2,iwalk,config1)  !! goes with config2
+        ispf=www%singlewalkopspf(1,iwalk,config1)  !! goes with config1
+        jspf=www%singlewalkopspf(2,iwalk,config1)  !! goes with config2
 
         occupations(ispf)=occupations(ispf) + dot(avector(:,config1),avector(:,config1),numpoints)
 
@@ -314,12 +314,12 @@ subroutine getoccupations(in_avector, numpoints, occupations)
 
 #ifndef REALGO
 #ifndef CNORMFLAG
-  call mympirealreduce(occupations,nspf)
+  call mympirealreduce(occupations,www%nspf)
 #else
-  call mympireduce(occupations,nspf)
+  call mympireduce(occupations,www%nspf)
 #endif
 #else
-  call mympireduce(occupations,nspf)
+  call mympireduce(occupations,www%nspf)
 #endif
 
 
@@ -367,8 +367,8 @@ end subroutine getoccupations
 
 
 subroutine get_constraint(time)
-  use parameters
-  use xxxmod
+  use fileptrmod
+  use ham_parameters
   implicit none
   real*8 :: time
 
@@ -387,7 +387,7 @@ end subroutine get_constraint
 
 
 subroutine get_denconstraint(time)
-  use parameters
+  use ham_parameters
   implicit none
   real*8 :: time
 
@@ -443,26 +443,49 @@ function llind(ispf,jspf)
 end function llind
 
 
-
 subroutine get_denconstraint1(iwhich,time)
   use parameters
-  use walkmod
   use xxxmod
+  use configmod
   implicit none
+  integer,intent(in) :: iwhich
+  real*8,intent(in) :: time
+  call get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,yyy%cmfpsivec(astart(1):aend(mcscfnum),0),&
+       yyy%drivingavectorsxx(:,:,:,0),yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
+       yyy%denmat(:,:,0),iwhich,time)
+end subroutine get_denconstraint1
 
-  DATATYPE ::  a1(numr,mcscfnum), a2(numr,mcscfnum), a1p(numr,mcscfnum), a2p(numr,mcscfnum),&
-       tempconmatels(nspf,nspf),dot
-  DATATYPE :: bigavector(numr,numconfig,mcscfnum), bigavectorp(numr,numconfig,mcscfnum)
-  DATATYPE :: avector(numr,firstconfig:lastconfig,mcscfnum), avectorp(numr,firstconfig:lastconfig,mcscfnum)
+
+subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx, &
+     drivingavectorsyy,drivingavectorszz,denmat,iwhich,time)
+  use fileptrmod
+  use r_parameters
+  use basis_parameters
+  use ham_parameters
+  use constraint_parameters
+  use walkmod
+  use configptrmod
+  use sparseptrmod
+  implicit none
+  integer,intent(in) :: numvects
+  type(walktype),intent(in) :: www
+  type(CONFIGPTR) :: cptr
+  type(SPARSEPTR) :: sptr
+  DATATYPE,intent(in) :: denmat(www%nspf,www%nspf),avector(numr,www%firstconfig:www%lastconfig,numvects),&
+       drivingavectorsxx(numr,www%firstconfig:www%lastconfig,numvects),&
+       drivingavectorsyy(numr,www%firstconfig:www%lastconfig,numvects),&
+       drivingavectorszz(numr,www%firstconfig:www%lastconfig,numvects)
+  DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a1p(numr,numvects), a2p(numr,numvects),&
+       tempconmatels(www%nspf,www%nspf),dot
+  DATATYPE :: bigavector(numr,www%numconfig,numvects), bigavectorp(numr,www%numconfig,numvects)
+  DATATYPE :: avectorp(numr,www%firstconfig:www%lastconfig,numvects)
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,     iwalk, info, kspf, lspf, ind, jind, &
        lind, llind, flag, isize, iwhich,  iiyy,maxii,imc
   integer :: ipiv(liosize)
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
   DATATYPE :: liosolve(liosize),lioden(liosize, liosize),liodencopy(liosize,liosize),liosolvetemp(liosize)
 
-  avector(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numr,localnconfig,mcscfnum/))
-
-  yyy%cptr(0)%xconmatel(:,:)=0.d0;   yyy%cptr(0)%xconmatelxx(:,:)=0.d0;   yyy%cptr(0)%xconmatelyy(:,:)=0.d0;   yyy%cptr(0)%xconmatelzz(:,:)=0.d0
+  cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
 
   if ((iwhich.eq.2).and.(numshells.eq.1)) then
      return
@@ -473,9 +496,9 @@ subroutine get_denconstraint1(iwhich,time)
 
   lioden=0.d0
 
-  do ispf=1,nspf
-     do kspf=1,nspf
-        do lspf=1,nspf
+  do ispf=1,www%nspf
+     do kspf=1,www%nspf
+        do lspf=1,www%nspf
            flag=0
            select case (iwhich)
            case (1)
@@ -494,16 +517,16 @@ subroutine get_denconstraint1(iwhich,time)
 
            if (flag==1) then
               lioden(ind, jind) = lioden(ind, jind) + &
-!!PREV                   yyy%denmat(kspf,ispf,0)      * (0d0,1d0)          !!!!   NO, timefac goes in RHS   * CONJUGATE(timefac)
-                   yyy%denmat(ispf,kspf,0)      * (0d0,1d0)          !!!!   NO, timefac goes in RHS   * CONJUGATE(timefac)
+!!PREV                   denmat(kspf,ispf)      * (0d0,1d0)          !!!!   NO, timefac goes in RHS   * CONJUGATE(timefac)
+                   denmat(ispf,kspf)      * (0d0,1d0)          !!!!   NO, timefac goes in RHS   * CONJUGATE(timefac)
            endif
         enddo
      enddo
   enddo
 
-  do jspf=1,nspf
-     do kspf=1,nspf
-        do lspf=1,nspf
+  do jspf=1,www%nspf
+     do kspf=1,www%nspf
+        do lspf=1,www%nspf
            flag=0
            select case (iwhich)
            case (1)
@@ -522,8 +545,8 @@ subroutine get_denconstraint1(iwhich,time)
 
            if (flag==1) then
               lioden(ind,jind) = lioden(ind,jind) + &
-!!PREV                   yyy%denmat(jspf,lspf,0)    * (0d0, -1d0)      !!!! NO, timefac goes in RHS  * timefac
-                   yyy%denmat(lspf,jspf,0)    * (0d0, -1d0)      !!!! NO, timefac goes in RHS  * timefac
+!!PREV                   denmat(jspf,lspf)    * (0d0, -1d0)      !!!! NO, timefac goes in RHS  * timefac
+                   denmat(lspf,jspf)    * (0d0, -1d0)      !!!! NO, timefac goes in RHS  * timefac
            endif
         enddo
      enddo
@@ -536,32 +559,32 @@ subroutine get_denconstraint1(iwhich,time)
   endif
 
   do iiyy=1,maxii
-     do imc=1,mcscfnum
+     do imc=1,numvects
         select case(iiyy)
         case(1)
-           call sparseconfigmult(avector(:,:,imc),avectorp(:,:,imc),yyy%cptr(0),yyy%sptr(0),1,1,0,0,time)
+           call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,1,1,0,0,time)
         case default
-           call sparseconfigpulsemult(avector(:,:,imc),avectorp(:,:,imc),yyy%cptr(0),yyy%sptr(0),iiyy-1)
+           call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,iiyy-1)
            if (drivingflag.ne.0) then
               if (iiyy.eq.2) then
-                 avectorp(:,:,imc)=avectorp(:,:,imc)+yyy%drivingavectorsxx(:,:,imc,0)
+                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsxx(:,:,imc)
               else if (iiyy.eq.3) then
-                 avectorp(:,:,imc)=avectorp(:,:,imc)+yyy%drivingavectorsyy(:,:,imc,0)
+                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsyy(:,:,imc)
               else if (iiyy.eq.4) then
-                 avectorp(:,:,imc)=avectorp(:,:,imc)+yyy%drivingavectorszz(:,:,imc,0)
+                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorszz(:,:,imc)
               endif
            endif
         end select
      enddo
 
 !! DO SUMMA
-     bigavector(:,firstconfig:lastconfig,:)=avector(:,:,:)
-     bigavectorp(:,firstconfig:lastconfig,:)=avectorp(:,:,:)
+     bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
+     bigavectorp(:,www%firstconfig:www%lastconfig,:)=avectorp(:,:,:)
 
-     if (parconsplit.ne.0) then
-        do i=1,mcscfnum
-           call mpiallgather(bigavector(:,:,i),numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
-           call mpiallgather(bigavectorp(:,:,i),numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
+     if (www%parconsplit.ne.0) then
+        do i=1,numvects
+           call mpiallgather(bigavector(:,:,i),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+           call mpiallgather(bigavectorp(:,:,i),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
         enddo
      endif
 
@@ -569,20 +592,20 @@ subroutine get_denconstraint1(iwhich,time)
 
   !! single off diagonal walks
 
-     do config1=botconfig,topconfig
+     do config1=www%botconfig,www%topconfig
 
         a1(:,:)=avector(:,config1,:)
         a1p(:,:)=avectorp(:,config1,:)
 
-        do iwalk=1,numsinglewalks(config1)
+        do iwalk=1,www%numsinglewalks(config1)
            
-           config2=singlewalk(iwalk,config1)
-           dirphase=singlewalkdirphase(iwalk,config1)
+           config2=www%singlewalk(iwalk,config1)
+           dirphase=www%singlewalkdirphase(iwalk,config1)
            a2(:,:)=bigavector(:,config2,:)
            a2p(:,:)=bigavectorp(:,config2,:)
 
-           ispf=singlewalkopspf(1,iwalk,config1)
-           jspf=singlewalkopspf(2,iwalk,config1)
+           ispf=www%singlewalkopspf(1,iwalk,config1)
+           jspf=www%singlewalkopspf(2,iwalk,config1)
               
            flag=0
            select case (iwhich)
@@ -599,8 +622,8 @@ subroutine get_denconstraint1(iwhich,time)
            end select
 
            if (flag==1) then
-              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:,:)*timefac,a1(:,:),numr*mcscfnum)
-              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:,:),a1p(:,:)*timefac,numr*mcscfnum)
+              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:,:)*timefac,a1(:,:),numr*numvects)
+              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:,:),a1p(:,:)*timefac,numr*numvects)
            endif
         enddo
      enddo
@@ -611,7 +634,7 @@ subroutine get_denconstraint1(iwhich,time)
      case (1)
         isize=liosize
      case (2)
-        isize=nspf**2
+        isize=www%nspf**2
         do i=1,numshells
            isize=isize-(allshelltop(i)-allshelltop(i-1))**2
         enddo
@@ -649,8 +672,8 @@ subroutine get_denconstraint1(iwhich,time)
      
      tempconmatels(:,:)=0d0
      
-     do ispf=1,nspf
-        do jspf=1,nspf
+     do ispf=1,www%nspf
+        do jspf=1,www%nspf
            select case (iwhich)
            case (1)
               if (ispf/=jspf) then
@@ -675,8 +698,8 @@ subroutine get_denconstraint1(iwhich,time)
      maxval=0d0
      maxanti=0d0
 
-     do ispf=1,nspf
-        do jspf=ispf+1,nspf
+     do ispf=1,www%nspf
+        do jspf=ispf+1,www%nspf
            
            rsum=abs(timefac*tempconmatels(ispf,jspf)+CONJUGATE(timefac*tempconmatels(jspf,ispf)))
 
@@ -705,44 +728,68 @@ subroutine get_denconstraint1(iwhich,time)
 
      select case(iiyy)
      case(1)
-        yyy%cptr(0)%xconmatel(:,:)=tempconmatels(:,:)
+        cptr%xconmatel(:,:)=tempconmatels(:,:)
      case(2)
-        yyy%cptr(0)%xconmatelxx(:,:)=tempconmatels(:,:)
+        cptr%xconmatelxx(:,:)=tempconmatels(:,:)
      case(3)
-        yyy%cptr(0)%xconmatelyy(:,:)=tempconmatels(:,:)
+        cptr%xconmatelyy(:,:)=tempconmatels(:,:)
      case(4)
-        yyy%cptr(0)%xconmatelzz(:,:)=tempconmatels(:,:)
+        cptr%xconmatelzz(:,:)=tempconmatels(:,:)
      end select
      
   end do
 
 
-end subroutine get_denconstraint1
-
-
+end subroutine get_denconstraint1_0
 
 
 
 
 subroutine new_get_denconstraint1(time)
   use parameters
-  use walkmod
   use xxxmod
-  use dfconmod
+  use configmod
   implicit none
+  real*8,intent(in) :: time
 
-  integer :: ipairs(2,nspf*(nspf-1))
-  DATATYPE ::  a1(mcscfnum), a2(mcscfnum), a1p(mcscfnum), a2p(mcscfnum),dot
-  DATATYPE :: tempconmatels(nspf,nspf), rhomat(nspf,nspf,nspf,nspf)
-  DATATYPE :: bigavector(numr,numconfig,mcscfnum), bigavectorp(numr,numconfig,mcscfnum)
-  DATATYPE :: avector(numr,firstconfig:lastconfig,mcscfnum), avectorp(numr,firstconfig:lastconfig,mcscfnum)
+  call new_get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,yyy%cmfpsivec(astart(1):aend(mcscfnum),0),&
+       yyy%drivingavectorsxx(:,:,:,0),yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
+       yyy%denmat(:,:,0),time)
+end subroutine new_get_denconstraint1
+
+
+subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx, &
+     drivingavectorsyy,drivingavectorszz,denmat,time)
+  use fileptrmod
+  use constraint_parameters
+  use ham_parameters
+  use basis_parameters
+  use sparse_parameters
+  use r_parameters
+  use walkmod
+  use configptrmod
+  use sparseptrmod
+  implicit none
+  integer,intent(in) :: numvects
+  type(walktype),intent(in) :: www
+  type(CONFIGPTR) :: cptr
+  type(SPARSEPTR) :: sptr
+  DATATYPE,intent(in) :: denmat(www%nspf,www%nspf),avector(numr,www%firstconfig:www%lastconfig,numvects),&
+       drivingavectorsxx(numr,www%firstconfig:www%lastconfig,numvects),&
+       drivingavectorsyy(numr,www%firstconfig:www%lastconfig,numvects),&
+       drivingavectorszz(numr,www%firstconfig:www%lastconfig,numvects)
+  integer :: ipairs(2,www%nspf*(www%nspf-1))
+  DATATYPE ::  a1(numvects), a2(numvects), a1p(numvects), a2p(numvects),dot
+  DATATYPE :: tempconmatels(www%nspf,www%nspf), rhomat(www%nspf,www%nspf,www%nspf,www%nspf)
+  DATATYPE :: bigavector(numr,www%numconfig,numvects), bigavectorp(numr,www%numconfig,numvects)
+  DATATYPE :: avectorp(numr,www%firstconfig:www%lastconfig,numvects)
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,  iwalk,ii,  info, kspf, &
        lspf, ind, jind, llind, flag, isize,   iiyy,maxii,imc,j
   integer,allocatable :: ipiv(:)
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
   DATATYPE, allocatable :: liosolve(:),lioden(:, :),liodencopy(:,:),liosolvetemp(:)
 
-  yyy%cptr(0)%xconmatel(:,:)=0.d0;   yyy%cptr(0)%xconmatelxx(:,:)=0.d0;   yyy%cptr(0)%xconmatelyy(:,:)=0.d0;   yyy%cptr(0)%xconmatelzz(:,:)=0.d0
+  cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
 
   if ((numshells.eq.1)) then
      return
@@ -750,16 +797,14 @@ subroutine new_get_denconstraint1(time)
 
   rhomat(:,:,:,:)=0d0
 
-  avector(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numr,localnconfig,mcscfnum/))
-
-  if (dfrestrictflag.gt.0) then
-     call get_rhomat(avector,rhomat,numr,mcscfnum)
+  if (www%dfrestrictflag.gt.www%dflevel) then
+     call get_rhomat(www,avector,rhomat,numr,numvects)
   endif
 
 
   isize=0
-  do i=1,nspf
-     do j=1,nspf
+  do i=1,www%nspf
+     do j=1,www%nspf
         if (shells(i).ne.shells(j)) then
            isize=isize+1
            ipairs(:,isize)=(/ i,j /)
@@ -790,13 +835,13 @@ subroutine new_get_denconstraint1(time)
         if (jspf.eq.lspf) then
 
            lioden(ind, jind) = lioden(ind, jind) - &
-                yyy%denmat(ispf,kspf,0)  
+                denmat(ispf,kspf)  
 
         endif
         if (ispf.eq.kspf) then
 
            lioden(ind,jind) = lioden(ind,jind) + &
-                yyy%denmat(lspf,jspf,0)  
+                denmat(lspf,jspf)  
 
         endif
      enddo
@@ -809,38 +854,38 @@ subroutine new_get_denconstraint1(time)
   endif
 
   do iiyy=1,maxii
-     do imc=1,mcscfnum
+     do imc=1,numvects
         select case(iiyy)
         case(1)
-           call sparseconfigmult(avector(:,:,imc),avectorp(:,:,imc),yyy%cptr(0),yyy%sptr(0),1,1,0,0,time)
+           call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,1,1,0,0,time)
         case default
-           call sparseconfigpulsemult(avector(:,:,imc),avectorp(:,:,imc),yyy%cptr(0),yyy%sptr(0),iiyy-1)
+           call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,iiyy-1)
            if (drivingflag.ne.0) then
               if (iiyy.eq.2) then
-                 avectorp(:,:,imc)=avectorp(:,:,imc)+yyy%drivingavectorsxx(:,:,imc,0)
+                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsxx(:,:,imc)
               else if (iiyy.eq.3) then
-                 avectorp(:,:,imc)=avectorp(:,:,imc)+yyy%drivingavectorsyy(:,:,imc,0)
+                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsyy(:,:,imc)
               else if (iiyy.eq.4) then
-                 avectorp(:,:,imc)=avectorp(:,:,imc)+yyy%drivingavectorszz(:,:,imc,0)
+                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorszz(:,:,imc)
               endif
            endif
         end select
      enddo
 
-     if (dfrestrictflag.gt.0) then
-        do imc=1,mcscfnum
-           call df_project(numr,avectorp(:,:,imc))
+     if (www%dfrestrictflag.gt.www%dflevel) then
+        do imc=1,numvects
+           call df_project(www,numr,avectorp(:,:,imc))
         enddo
      endif
 
 !! DO SUMMA
-     bigavector(:,firstconfig:lastconfig,:)=avector(:,:,:)
-     bigavectorp(:,firstconfig:lastconfig,:)=avectorp(:,:,:)
+     bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
+     bigavectorp(:,www%firstconfig:www%lastconfig,:)=avectorp(:,:,:)
 
-     if (parconsplit.ne.0) then
-        do i=1,mcscfnum
-           call mpiallgather(bigavector(:,:,i),numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
-           call mpiallgather(bigavectorp(:,:,i),numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
+     if (www%parconsplit.ne.0) then
+        do i=1,numvects
+           call mpiallgather(bigavector(:,:,i),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+           call mpiallgather(bigavectorp(:,:,i),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
         enddo
      endif
 
@@ -849,20 +894,20 @@ subroutine new_get_denconstraint1(time)
   !! single off diagonal walks
      do ii=1,numr
 
-         do config1=botconfig,topconfig
+         do config1=www%botconfig,www%topconfig
 
            a1(:)=avector(ii,config1,:)
            a1p(:)=avectorp(ii,config1,:)
            
-           do iwalk=1,numsinglewalks(config1)
+           do iwalk=1,www%numsinglewalks(config1)
               
-              config2=singlewalk(iwalk,config1)
-              dirphase=singlewalkdirphase(iwalk,config1)
+              config2=www%singlewalk(iwalk,config1)
+              dirphase=www%singlewalkdirphase(iwalk,config1)
               a2(:)=bigavector(ii,config2,:)
               a2p(:)=bigavectorp(ii,config2,:)
               
-              ispf=singlewalkopspf(1,iwalk,config1)
-              jspf=singlewalkopspf(2,iwalk,config1)
+              ispf=www%singlewalkopspf(1,iwalk,config1)
+              jspf=www%singlewalkopspf(2,iwalk,config1)
               
               flag=0
               if (shells(ispf).ne.shells(jspf)) then
@@ -872,8 +917,8 @@ subroutine new_get_denconstraint1(time)
               
               if (flag==1) then
                  
-                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:)*timefac,a1(:),mcscfnum)
-                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:),a1p(:)*timefac,mcscfnum)
+                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:)*timefac,a1(:),numvects)
+                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:),a1p(:)*timefac,numvects)
                  
               endif
            enddo
@@ -900,8 +945,8 @@ subroutine new_get_denconstraint1(time)
 
      tempconmatels(:,:)=0d0
      
-     do ispf=1,nspf
-        do jspf=1,nspf
+     do ispf=1,www%nspf
+        do jspf=1,www%nspf
            if (shells(ispf)/=shells(jspf)) then
               ind=llind(ispf,jspf)
               tempconmatels(ispf,jspf)=liosolve(ind)/timefac 
@@ -916,8 +961,8 @@ subroutine new_get_denconstraint1(time)
      maxval=0d0
      maxanti=0d0
 
-     do ispf=1,nspf
-        do jspf=ispf+1,nspf
+     do ispf=1,www%nspf
+        do jspf=ispf+1,www%nspf
            
            rsum=abs(tempconmatels(ispf,jspf)-CONJUGATE(tempconmatels(jspf,ispf)))
 
@@ -946,19 +991,19 @@ subroutine new_get_denconstraint1(time)
 
      select case(iiyy)
      case(1)
-        yyy%cptr(0)%xconmatel(:,:)=tempconmatels(:,:)
+        cptr%xconmatel(:,:)=tempconmatels(:,:)
      case(2)
-        yyy%cptr(0)%xconmatelxx(:,:)=tempconmatels(:,:)
+        cptr%xconmatelxx(:,:)=tempconmatels(:,:)
      case(3)
-        yyy%cptr(0)%xconmatelyy(:,:)=tempconmatels(:,:)
+        cptr%xconmatelyy(:,:)=tempconmatels(:,:)
      case(4)
-        yyy%cptr(0)%xconmatelzz(:,:)=tempconmatels(:,:)
+        cptr%xconmatelzz(:,:)=tempconmatels(:,:)
      end select
      
   end do
 
 
-end subroutine new_get_denconstraint1
+end subroutine new_get_denconstraint1_0
 
 
 

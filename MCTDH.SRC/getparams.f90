@@ -43,6 +43,12 @@ end subroutine getinpfile
 
 subroutine getparams()
   use parameters
+  use denreg_parameters
+  use bio_parameters
+  use constraint_parameters
+  use lan_parameters
+  use output_parameters
+  use walks_parameters !! sortwalks
   use mpimod
   use orblabelmod
   implicit none
@@ -57,6 +63,11 @@ subroutine getparams()
   integer :: avectorexcitefrom(1000)=-1001
   integer :: avectorexciteto(1000)=-1001
   real*8 :: tempreal
+
+!! DUMMIES
+  integer :: restrictms=0
+  integer :: dfrestrictflag=0
+  integer :: allspinproject=1
 
   NAMELIST/parinp/  noftflag, biodim,biotol,biocomplex, rdenflag,cdenflag, notiming, littlesteps, &
        expotol, eground,  ceground, maxexpodim, numloadfrozen, numholecombo, numholes, excitations, &
@@ -86,7 +97,7 @@ subroutine getparams()
        parorbsplit,maxbiodim, nkeproj,keprojminenergy,keprojenergystep,keprojminrad,keprojmaxrad, &
        sortwalks,  debugflag, drivingflag,drivingproportion, drivingmethod, eigprintflag, &
        avecloadskip,nonsparsepropmode,sparseopt,lanprintflag,dipmodtime,conprop,connormflag, &
-       orbcompact,spinrestrictval,mshift,numskiporbs,orbskip,debugfac,denmatfciflag,&
+       orbcompact,spin_restrictval,mshift,numskiporbs,orbskip,debugfac,denmatfciflag,&
        walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac, maxquadnorm,quadstarttime,&
        reinterp_orbflag,spf_gridshift,load_avector_product,projspifile,readfullvector,walksinturn,&
        turnbatchsize,energyshift, pulseft_estep, finalstatsfile, projgtaufile,gtaufile
@@ -119,6 +130,9 @@ subroutine getparams()
   else
      OFLWR "Reading ",inpfile; CFL
      read(971,nml=parinp)
+     restrict_ms=restrictms
+     all_spinproject=allspinproject
+     df_restrictflag=dfrestrictflag
 
 !! input dependent defaults
 
@@ -139,8 +153,8 @@ subroutine getparams()
         expotol=min(expotol,1d-9)
      endif
 
-     if (spinrestrictval.lt.abs(restrictms)) then
-        spinrestrictval=abs(restrictms)
+     if (spin_restrictval.lt.abs(restrictms)) then
+        spin_restrictval=abs(restrictms)
      endif
 
      if (improvedrelaxflag.ne.0) then    !! not good.  reprogram this whole thing later.  Defaults here should
@@ -445,7 +459,7 @@ subroutine getparams()
         numexcite(ishell:numshells)=numexcite(ishell+1:numshells+1)
      endif
   enddo
-  maxnspfshell=nspf;  liosize=maxnspfshell*(maxnspfshell-1)
+  liosize=nspf*(nspf-1)
 
   do i=1,numshells
      if (allshelltop(i).le.allshelltop(i-1)) then
@@ -583,7 +597,7 @@ subroutine getparams()
      endif
   enddo
 
-  spftot=nspf*2;  ndof=2*numelec
+  ndof=2*numelec
 
   !! make it convenient - turn on nonuc_checkflag if numr=1
   !! THIS IS BAD.  makes default improved adiabatic hamiltonian.
@@ -700,8 +714,8 @@ subroutine getparams()
   else
      write(mpifileptr,*)  " Final shell occupancy level vexcite=",vexcite
   endif
-  if (dfrestrictflag.gt.0) then
-     write(mpifileptr,*) " DF restrictflag is on for constraintflag=2 or other purposes = ",dfrestrictflag
+  if (df_restrictflag.gt.0) then
+     write(mpifileptr,*) " DF restrictflag is on for constraintflag=2 or other purposes = ",df_restrictflag
   endif
   write(mpifileptr, *) 
   write(mpifileptr,'(A30,I5)')    "   Number of unfrozen spfs:  ", nspf
@@ -723,8 +737,8 @@ subroutine getparams()
   if (restrictflag.eq.1) then
      write(mpifileptr, *) "Configurations will be restricted to spin projection", restrictms, "/2"
   endif
-  if (allspinproject.ne.0) then
-     write(mpifileptr,*) " Configurations will be restricted to spin ",spinrestrictval 
+  if (all_spinproject.ne.0) then
+     write(mpifileptr,*) " Configurations will be restricted to spin ",spin_restrictval 
   endif
   write(mpifileptr, *) 
   write(mpifileptr, *) "***********************    Initial state      ***********************   "
@@ -848,7 +862,7 @@ subroutine getparams()
         write(mpifileptr, *) "Using constraintflag=1, density matrices with full lioville solve (assume full, constant off-block diagonal)."
      case(2)
         OFLWR "Using true Dirac-Frenkel equation for constraint."
-        WRFL "     dfrestrictflag = ", dfrestrictflag;      
+        WRFL "     dfrestrictflag = ", df_restrictflag;      
         select case(conway)
         case(0)
            WRFL "McLachlan constraint"

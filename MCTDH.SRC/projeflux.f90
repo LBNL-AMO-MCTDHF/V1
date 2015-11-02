@@ -19,11 +19,12 @@ subroutine projeflux_singlewalks()
   use parameters
   use aarrmod
   use projefluxmod
+  use configmod
   use mpimod
   implicit none
   integer :: iconfig,jconfig,idof,iindex,iind,iwalk,flag,getconfiguration,reorder,dirphase
   integer :: tempconfig(ndof),temporb(2)
-  logical :: allowedconfig
+  logical :: allowedconfig0
 
 !! get the number of single walks from the target N-1 e- state to our regular N e- state
   OFLWR "Getting cation single walks"; CFL
@@ -34,17 +35,17 @@ subroutine projeflux_singlewalks()
 
   do iconfig=1,tnumconfig
     iwalk=0
-    do iindex=1,spftot
-      tempconfig(3:ndof)=tconfiglist(:,iconfig);      temporb=aarr(iindex,nspf)
+    do iindex=1,2*www%nspf
+      tempconfig(3:ndof)=tconfiglist(:,iconfig);      temporb=aarr(iindex)
       flag=0
       do idof=2,numelec 
         if(iind(tempconfig(idof*2-1:idof*2)).eq.iindex) flag=1
       enddo
       if(flag.eq.0) then
-        tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig)
-        if(allowedconfig(tempconfig)) then
-           jconfig=getconfiguration(tempconfig)
-           if (jconfig.ge.botconfig.and.jconfig.le.topconfig) then
+        tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig,www%numelec)
+        if(allowedconfig0(www,tempconfig,www%dflevel)) then
+           jconfig=getconfiguration(tempconfig,www)
+           if (jconfig.ge.www%botconfig.and.jconfig.le.www%topconfig) then
               iwalk=iwalk+1
            endif
         endif
@@ -67,16 +68,16 @@ subroutine projeflux_singlewalks()
 
   do iconfig=1,tnumconfig
     iwalk=0
-    do iindex=1,spftot
-      tempconfig(3:ndof)=tconfiglist(:,iconfig);      temporb=aarr(iindex,nspf);      flag=0
+    do iindex=1,2*www%nspf
+      tempconfig(3:ndof)=tconfiglist(:,iconfig);      temporb=aarr(iindex);      flag=0
       do idof=2,numelec
         if(iind(tempconfig(idof*2-1:idof*2)).eq.iindex) flag=1
       enddo
       if(flag.eq.0) then
-        tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig)
-        if(allowedconfig(tempconfig)) then
-           jconfig=getconfiguration(tempconfig)
-           if (jconfig.ge.botconfig.and.jconfig.le.topconfig) then
+        tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig,www%numelec)
+        if(allowedconfig0(www,tempconfig,www%dflevel)) then
+           jconfig=getconfiguration(tempconfig,www)
+           if (jconfig.ge.www%botconfig.and.jconfig.le.www%topconfig) then
               iwalk=iwalk+1;          pwalk1(iwalk,iconfig)=jconfig
               pspf1(:,iwalk,iconfig)=temporb;          pphase1(iwalk,iconfig)=dirphase
            endif
@@ -101,7 +102,7 @@ subroutine projeflux_doproj(cata,neuta,mo,offset)
   use mpimod
   implicit none
   integer,intent(in) :: offset 
-  DATATYPE,intent(in) :: cata(tnumconfig),neuta(firstconfig:lastconfig),mo(spfsize,nspf)
+  DATATYPE,intent(in) :: cata(tnumconfig),neuta(first_config:last_config),mo(spfsize,nspf)
   DATATYPE :: projwfn(spfsize,2),  projcoefs(nspf,2)
   integer :: jconfig,iwalk,iconfig,ispf,ispin,iphase
   DATATYPE,allocatable:: bigprojwfn(:,:)
@@ -182,7 +183,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
 !!!!  100912 NEED CG COEFFICIENT RATIO 
               
-!! programmed this with restrictms, targetms.  Do have option to change spinrestrictval; should use this.
+!! programmed this with restrict_ms, targetms.  Do have option to change spinrestrictval; should use this.
 !!
 !!    have high spin cation and high spin neutral.
 !!
@@ -194,7 +195,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 !!    only have |s' s' > m_s'=s'  cation not |s' s'-1> m_s'=s'-1
 !!
 !!   
-!!    if restrictms > targetms  then we couple high spin to high spin to get high spin, one CG coef = 1.
+!!    if restrict_ms > targetms  then we couple high spin to high spin to get high spin, one CG coef = 1.
 !!    
 !!        otherwise we couple high spin target down to high spin neutral:
 !!
@@ -208,10 +209,10 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 !!     otherwise cross section is meaningless.
 !! all arguments are x 2, integers for half spin.
 
-!!$                 if (restrictms.lt.targetms.and.restrictflag.eq.1) then
-!!$                    aa= doubleclebschsq(targetms,1,targetms,restrictms-targetms,restrictms)      !! what we're calculating  targetms-restrictms=+/-1
-!!$                    bb= doubleclebschsq(targetms,1,targetms-2,restrictms-targetms+2,restrictms)      !! only one could be nonzero obviously
-!!$                    cc= doubleclebschsq(targetms,1,targetms+2,restrictms-targetms-2,restrictms)      
+!!$                 if (restrict_ms.lt.targetms.and.restrictflag.eq.1) then
+!!$                    aa= doubleclebschsq(targetms,1,targetms,restrict_ms-targetms,restrict_ms)      !! what we're calculating  targetms-restrict_ms=+/-1
+!!$                    bb= doubleclebschsq(targetms,1,targetms-2,restrict_ms-targetms+2,restrict_ms)      !! only one could be nonzero obviously
+!!$                    cc= doubleclebschsq(targetms,1,targetms+2,restrict_ms-targetms-2,restrict_ms)      
 !!$                    cgfac = (aa+bb+cc)/aa
 !!$                 else
 !!$                    cgfac=1
@@ -220,9 +221,9 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   if (cgflag.eq.0) then
      cgfac=1
   else
-     aa= doubleclebschsq(targetspinval,1,targetms,restrictms-targetms,spinrestrictval)      !! what we're calculating  targetms-restrictms=+/-1
-     bb= doubleclebschsq(targetspinval,1,targetms-2,restrictms-targetms+2,spinrestrictval)      !! only one could be nonzero obviously
-     cc= doubleclebschsq(targetspinval,1,targetms+2,restrictms-targetms-2,spinrestrictval)      
+     aa= doubleclebschsq(targetspinval,1,targetms,restrict_ms-targetms,spin_restrictval)      !! what we're calculating  targetms-restrict_ms=+/-1
+     bb= doubleclebschsq(targetspinval,1,targetms-2,restrict_ms-targetms+2,spin_restrictval)      !! only one could be nonzero obviously
+     cc= doubleclebschsq(targetspinval,1,targetms+2,restrict_ms-targetms-2,spin_restrictval)      
      cgfac = (aa+bb+cc)/aa
   endif
 
@@ -514,7 +515,7 @@ subroutine projeflux_single(mem)
   use projbiomod
   use biorthomod
   use parameters
-  use walkmod
+  use configmod
   use projefluxmod
   use mpimod
   implicit none
@@ -562,18 +563,18 @@ subroutine projeflux_single(mem)
      if (targetrestrictflag.eq.0) then
         OFLWR "WARNING: N-1 electron state is not spin projection restricted (restrictflag=0).  No CG algebra.";CFL
      else
-        if (abs(targetms-restrictms).ne.1) then
+        if (abs(targetms-restrict_ms).ne.1) then
            OFLWR "Targetms should differ from restrictms by 1.  Cation and neutral have no dyson orbital"
-           WRFL  "    Targetms=", targetms, " restrictms=",restrictms; CFLST
+           WRFL  "    Targetms=", targetms, " restrictms=",restrict_ms; CFLST
         endif
-        if (allspinproject.eq.0) then
+        if (all_spinproject.eq.0) then
            OFLWR "WARNING: Wave function is not spin restricted (allspinproject=0).  No CG algebra.";CFL
         else
            if (targetspinproject.eq.0) then
               OFLWR "WARNING: N-1 electron state is not spin restricted (allspinproject=0).  No CG algebra.";CFL
            else
-              if (abs(targetspinval-spinrestrictval).gt.1) then
-                 OFLWR "Spin value of wave function and N-1 electron state differ by more than 1/2.",targetspinval,spinrestrictval; CFL !!ST
+              if (abs(targetspinval-spin_restrictval).gt.1) then
+                 OFLWR "Spin value of wave function and N-1 electron state differ by more than 1/2.",targetspinval,spin_restrictval; CFL !!ST
                  OFLWR "TEMP CONTINUE"; CFL
                  OFLWR "TEMP CONTINUE"; CFL
                  OFLWR "TEMP CONTINUE"; CFL
@@ -653,8 +654,8 @@ subroutine projeflux_single(mem)
 
   dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
 
-  allocate(mobio(spfsize,nspf),abio(firstconfig:lastconfig,mcscfnum),mymo(spfsize,nspf),&
-       myavec(numr,firstconfig:lastconfig,mcscfnum))
+  allocate(mobio(spfsize,nspf),abio(first_config:last_config,mcscfnum),mymo(spfsize,nspf),&
+       myavec(numr,first_config:last_config,mcscfnum))
 
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
@@ -662,7 +663,7 @@ subroutine projeflux_single(mem)
      else
         allocate(readmo(spfsize,nspf))
      endif
-     allocate(readavec(numr,numconfig,mcscfnum))
+     allocate(readavec(numr,num_config,mcscfnum))
   else
      allocate(readmo(1,nspf),readavec(1,numr,mcscfnum))
   endif
@@ -692,14 +693,14 @@ subroutine projeflux_single(mem)
            call splitscatterv(readmo(:,i),mymo(:,i))
         enddo
      endif
-     if (parconsplit.eq.0) then
+     if (par_consplit.eq.0) then
         if (myrank.eq.1) then
            myavec(:,:,:)=readavec(:,:,:)
         endif
-        call mympibcast(myavec(:,:,:),1,numr*numconfig*mcscfnum)
+        call mympibcast(myavec(:,:,:),1,numr*num_config*mcscfnum)
      else
         do i=1,mcscfnum
-           call myscatterv(readavec(:,:,i),myavec(:,:,i),configsperproc(:)*numr)
+           call myscatterv(readavec(:,:,i),myavec(:,:,i),configs_perproc(:)*numr)
         enddo
      endif
 
@@ -708,7 +709,7 @@ subroutine projeflux_single(mem)
      do ir=1,numr
 
         abio(:,:)=myavec(ir,:,:)
-        call bioset(projbiovar,smo,1); 
+        call bioset(projbiovar,smo,1,www); 
         call biortho(mymo,tmo(:,:,ir),mobio,abio(:,1),projbiovar)
         do imc=2,mcscfnum
            call biotransform(mymo,mobio,abio(:,imc),projbiovar)

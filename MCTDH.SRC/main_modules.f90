@@ -100,10 +100,8 @@ end module xxxmod
 
 module aarrmod
 contains
-  function aarr(xind,numspf)
-    use parameters
+  function aarr(xind)
     implicit none
-    integer :: numspf
     integer, dimension(2) :: aarr
     integer, save :: temp(2)
     integer :: ind,q, xind
@@ -114,10 +112,12 @@ contains
 !!$       temp(2)           = q+1
 !!$       aarr=temp
 !!$    else
+
        temp(2)           = mod(ind,2)+1
        q=(ind-mod(ind,2))/2
        temp(1)           = q+1
        aarr=temp
+
 !!$    endif
   end function aarr
 end module aarrmod
@@ -155,12 +155,157 @@ use configptrmod
 
   DATATYPE, allocatable ::   twoereduced(:,:,:)        !! numerad,lbig+1,-2*mbig:2*mbig,nspf,nspf 
                                                        !! that's reducedpotsize,nspf,nspf
- end module opmod
+end module opmod
+
+
+
+!!PREVIOUS:
+!! the sparse spin projector is done as follows.  For the configurations config1 which do 
+!! not have S^2 matrix elements with any other configuration, if their diagonal S^2 
+!! eigenvalue is equal to the desired one, then iispinset(config1) is set to 1.  
+!! iispinset is otherwise set to zero.  Then sum over all contributing spinsets using
+!! spinsetprojector.
+!!NOW KEEPING 1x1 , no iispinset
+
+module spinwalkmod
+  implicit none
+
+  type settype
+     DATATYPE, allocatable :: mat(:,:), vects(:,:)
+  end type settype
+
+  type spintype
+     integer, allocatable ::  &
+          spinsetsize(:,:),spinsets(:,:,:), spinsetrank(:,:), spindfsets(:,:,:), spindfsetindex(:,:)
+     integer :: maxspinsetsize=0,maxnumspinsets=0,maxnumspindfsets=0
+     integer,allocatable :: numspinsets(:),numspindfsets(:)
+     type(settype), allocatable :: spinsetprojector(:,:)
+
+     integer :: spinrestrictval=0
+
+     integer :: numspinconfig=0
+     integer, allocatable :: spinsperproc(:), alltopspins(:), allbotspins(:)
+     integer ::       maxspinsperproc
+     integer :: botspin=-1,topspin=-1
+     integer :: firstspinconfig,lastspinconfig,localnspin
+
+     integer :: numspindfconfig=0
+     integer, allocatable :: spindfsperproc(:), alltopspindfs(:), allbotspindfs(:)
+     integer ::       maxspindfsperproc
+     integer :: botdfspin=-1,topdfspin=-1
+
+  end type spintype
+
+end module spinwalkmod
+
+
+
+module dfconmod
+  implicit none
+
+type dfcontype
+  integer, allocatable :: dfincludedmask(:), dfincludedconfigs(:)
+
+!! careful!  parconfigsplit, configstart, configend, etc.
+
+  integer :: numdfwalks=-1    !! all walks, for all configurations
+  integer, allocatable :: dfwalkto(:)    !! excluded  
+  integer, allocatable :: dfwalkfrom(:)  !! included, out of numdfconfigs, but 
+                                         !!   only those on this processor if parconfigsplit=1.
+  integer, allocatable :: dfwalkphase(:) 
+  integer, allocatable :: includedorb(:), excludedorb(:)   !! this is the excitation
+end type dfcontype
+
+end module
+
+
+module walkmod
+  use dfconmod
+  use spinwalkmod
+  implicit none
+
+  type walktype
+
+     integer :: dflevel=0, dfwalklevel=0, dfrestrictflag=0
+
+     integer :: parconsplit=0
+
+     integer, allocatable ::   &
+       configlist(  :  ,   : )               !! LIST OF CONFIGURATIONS ndof, numconfig
+     integer, allocatable :: &
+       configmvals(  : ), &     !! if spfrestrict, their mvalues : numconfig
+       configugvals(  : )       !! ugvalues based on info in spfugvals
+
+     integer :: nspf=0, numelec=0, ndof=0
+     integer :: allspinproject=0
+     integer :: restrictms=0
+
+     integer :: numconfig=-1
+     integer,allocatable :: configsperproc(:), alltopconfigs(:), allbotconfigs(:)
+     integer :: maxconfigsperproc
+     integer :: botconfig=-1,topconfig=-1
+     integer :: configstart=-1,configend=-1
+     integer :: firstconfig,lastconfig,localnconfig
+     integer :: totadim=-1
+
+     integer :: numdfconfigs=-1
+     integer, allocatable :: dfconfsperproc(:), alltopdfconfigs(:), allbotdfconfigs(:)
+     integer ::       maxdfconfsperproc
+     integer :: botdfconfig=-1,topdfconfig=-1
+
+     integer :: numbasis=0
+     integer, allocatable :: basisperproc(:)
+     integer ::       maxbasisperproc
+     integer :: botbasis=-1,topbasis=-1
+     
+     integer :: numdfbasis=0
+     integer, allocatable :: dfbasisperproc(:)
+     integer ::       maxdfbasisperproc
+     integer :: botdfbasis=-1,topdfbasis=-1
+
+!!       WALKS         !!
+!!       WALKS         !!
+
+     integer :: maxsinglewalks=0,maxdoublewalks=0
+
+     ! gives config2 for (iwalk,config1)
+     integer, allocatable :: singlewalk(:,:)  
+     ! gives walk number for (1:numsinglediagwalks,config1), max numsinglediagwalks=numelec
+     integer, allocatable :: singlediag(:,:)  
+     
+     ! numconfig, numconfig - (iwalk, config1) - 
+     integer, allocatable :: singlewalkdirphase(:,:)
+     
+     ! indices on matrix element - 1:2, numconfig,numconfig
+     integer, allocatable :: singlewalkopspf(:,:,:)
+
+     integer, allocatable :: numsinglewalks(:) ! numconfig
+     integer, allocatable :: numsinglediagwalks(:) ! numconfig
+
+     ! 1:4, numconfig, numconfig - (1:4, iwalk, config1)
+     integer, allocatable :: doublewalkdirspf(:,:,:)
+
+     ! iwalk, config1
+     integer, allocatable :: doublewalkdirphase(:,:)
+
+     integer, allocatable :: doublewalk(:,:)
+     ! gives walk number for (1:numdoublediagwalks,config1), max numdoublediagwalks=numelec*(numelec-1)
+     integer, allocatable :: doublediag(:,:)
+     integer, allocatable :: numdoublewalks(:)
+     integer, allocatable :: numdoublediagwalks(:)
+
+     type(spintype) :: sss
+     type(dfcontype) :: ddd
+
+  end type walktype
+
+end module walkmod
+
 
 module configmod
+  use walkmod
   implicit none
-  integer, allocatable ::   &
-       configlist(  :  ,   : )               !! LIST OF CONFIGURATIONS ndof, numconfig
+  type(walktype),target :: www
 
 end module configmod
 
@@ -176,25 +321,26 @@ module configpropmod
 
 end module configpropmod
 
-subroutine configalloc()
+subroutine configpropalloc()
   use parameters
   use configpropmod
+  use configmod
   implicit none
 
-  call configptralloc(workconfigpointer)  !! nspf not used for regular walks (not walks2)
+  call configptralloc(workconfigpointer,www)  !! nspf not used for regular walks (not walks2)
   workconfigpointer%kefac=par_timestep     !! constant term in poly expansion goes with ke in R; will be set
 
   if (sparseopt.ne.0) then
-     call sparseptralloc(worksparsepointer)  !! nspf not used for regular walks (not walks2)
+     call sparseptralloc(worksparsepointer,www)  !! nspf not used for regular walks (not walks2)
      worksparsepointer%kefac=par_timestep     !! constant term in poly expansion goes with ke in R; will be set
   endif
 
-  allocate(workdrivingavec(numr,firstconfig:lastconfig)); workdrivingavec(:,:)=0d0
+  allocate(workdrivingavec(numr,first_config:last_config)); workdrivingavec(:,:)=0d0
 
-end subroutine configalloc
+end subroutine configpropalloc
 
 
-subroutine configdealloc()
+subroutine configpropdealloc()
   use parameters
   use configpropmod
   implicit none
@@ -203,62 +349,10 @@ subroutine configdealloc()
      call sparseptrdealloc(worksparsepointer)
   endif
   deallocate(workdrivingavec)
-end subroutine configdealloc
+end subroutine configpropdealloc
 
 
 
-!!PREVIOUS:
-!! the sparse spin projector is done as follows.  For the configurations config1 which do 
-!! not have S^2 matrix elements with any other configuration, if their diagonal S^2 
-!! eigenvalue is equal to the desired one, then iispinset(config1) is set to 1.  
-!! iispinset is otherwise set to zero.  Then sum over all contributing spinsets using
-!! spinsetprojector.
-!!NOW KEEPING 1x1 , no iispinset
-
-module spinwalkmod
-  implicit none
-  integer, allocatable ::  &
-       spinsetsize(:,:),spinsets(:,:,:), spinsetrank(:,:), spindfsets(:,:,:), spindfsetindex(:,:)
-  integer :: maxspinsetsize=0,maxnumspinsets=0,maxnumspindfsets=0
-  integer,allocatable :: numspinsets(:),numspindfsets(:)
-  type settype
-     DATATYPE, allocatable :: mat(:,:), vects(:,:)
-  end type settype
-  type(settype), allocatable :: spinsetprojector(:,:)
-end module
-
-
-module walkmod
-  implicit none
-
-
-  ! gives config2 for (iwalk,config1)
-  integer, allocatable :: singlewalk(:,:)  
-  ! gives walk number for (1:numsinglediagwalks,config1), max numsinglediagwalks=numelec
-  integer, allocatable :: singlediag(:,:)  
-
-  ! numconfig, numconfig - (iwalk, config1) - 
-  integer, allocatable :: singlewalkdirphase(:,:)
-
-  ! indices on matrix element - 1:2, numconfig,numconfig
-  integer, allocatable :: singlewalkopspf(:,:,:)
-
-  integer, allocatable :: numsinglewalks(:) ! numconfig
-  integer, allocatable :: numsinglediagwalks(:) ! numconfig
-
-  ! 1:4, numconfig, numconfig - (1:4, iwalk, config1)
-  integer, allocatable :: doublewalkdirspf(:,:,:)
-
-  ! iwalk, config1
-  integer, allocatable :: doublewalkdirphase(:,:)
-
-  integer, allocatable :: doublewalk(:,:)
-  ! gives walk number for (1:numdoublediagwalks,config1), max numdoublediagwalks=numelec*(numelec-1)
-  integer, allocatable :: doublediag(:,:)
-  integer, allocatable :: numdoublewalks(:)
-  integer, allocatable :: numdoublediagwalks(:)
-
-end module walkmod
 
 
 module orblabelmod
@@ -271,7 +365,7 @@ contains
     character (len=2) :: mslabels(2) =["a ","b "]
     character (len=6) :: orblabel, label
     label="      "
-    aarray=aarr(index,nspf)
+    aarray=aarr(index)
 
 !! does not work on FRANKLIN.
 #ifndef PGFFLAG
@@ -289,20 +383,6 @@ module natprojmod
   integer :: nnalloc=0
 end module natprojmod
 
-module dfconmod
-  implicit none
-
-  integer, allocatable :: dfincludedmask(:), dfincludedconfigs(:)
-
-!! careful!  parconfigsplit, configstart, configend, etc.
-
-  integer :: numdfwalks=-1    !! all walks, for all configurations
-  integer, allocatable :: dfwalkto(:)    !! excluded  
-  integer, allocatable :: dfwalkfrom(:)  !! included, out of numdfconfigs, but 
-                                         !!   only those on this processor if parconfigsplit=1.
-  integer, allocatable :: dfwalkphase(:) 
-  integer, allocatable :: includedorb(:), excludedorb(:)   !! this is the excitation
-end module
 
 
 subroutine add_cptr(aptr,bptr,sumptr,afac,bfac)
@@ -393,24 +473,24 @@ subroutine zero_cptr(outptr)
 end subroutine zero_cptr
 
 
-subroutine configptralloc(inptr)
+subroutine configptralloc(inptr,www)
   use configptrmod
-  use parameters
   use walkmod
   implicit none
+  type(walktype),intent(in) :: www
   Type(CONFIGPTR) :: inptr
 
-  allocate(inptr%xpotmatel(nspf,nspf))
-  allocate(inptr%xopmatel(nspf,nspf))
-  allocate(inptr%xpulsematelxx(nspf,nspf))
-  allocate(inptr%xpulsematelyy(nspf,nspf))
-  allocate(inptr%xpulsematelzz(nspf,nspf))
-  allocate(inptr%xconmatel(nspf,nspf))
-  allocate(inptr%xconmatelxx(nspf,nspf))
-  allocate(inptr%xconmatelyy(nspf,nspf))
-  allocate(inptr%xconmatelzz(nspf,nspf))
-  allocate(inptr%xymatel(nspf,nspf))
-  allocate(inptr%xtwoematel(nspf,nspf,nspf,nspf))
+  allocate(inptr%xpotmatel(www%nspf,www%nspf))
+  allocate(inptr%xopmatel(www%nspf,www%nspf))
+  allocate(inptr%xpulsematelxx(www%nspf,www%nspf))
+  allocate(inptr%xpulsematelyy(www%nspf,www%nspf))
+  allocate(inptr%xpulsematelzz(www%nspf,www%nspf))
+  allocate(inptr%xconmatel(www%nspf,www%nspf))
+  allocate(inptr%xconmatelxx(www%nspf,www%nspf))
+  allocate(inptr%xconmatelyy(www%nspf,www%nspf))
+  allocate(inptr%xconmatelzz(www%nspf,www%nspf))
+  allocate(inptr%xymatel(www%nspf,www%nspf))
+  allocate(inptr%xtwoematel(www%nspf,www%nspf,www%nspf,www%nspf))
 
   inptr%kefac=1
 
@@ -528,24 +608,24 @@ subroutine zero_sptr(outptr)
 end subroutine zero_sptr
 
 
-subroutine sparseptralloc(inptr)
+subroutine sparseptralloc(inptr,www)
   use sparseptrmod
-  use parameters
   use walkmod
   implicit none
+  type(walktype),intent(in) :: www
   Type(SPARSEPTR) :: inptr
 
-  allocate(inptr%xpotsparsemattr    (maxdoublewalks,configstart:configend))
-  allocate(inptr%xopsparsemattr     (maxsinglewalks,configstart:configend))
-  allocate(inptr%xonepotsparsemattr (maxsinglewalks,configstart:configend))
-  allocate(inptr%xpulsesparsemattrxx(maxsinglewalks,configstart:configend))
-  allocate(inptr%xpulsesparsemattryy(maxsinglewalks,configstart:configend))
-  allocate(inptr%xpulsesparsemattrzz(maxsinglewalks,configstart:configend))
-  allocate(inptr%xconsparsemattr    (maxsinglewalks,configstart:configend))
-  allocate(inptr%xconsparsemattrxx  (maxsinglewalks,configstart:configend))
-  allocate(inptr%xconsparsemattryy  (maxsinglewalks,configstart:configend))
-  allocate(inptr%xconsparsemattrzz  (maxsinglewalks,configstart:configend))
-  allocate(inptr%xysparsemattr      (maxsinglewalks,configstart:configend))
+  allocate(inptr%xpotsparsemattr    (www%maxdoublewalks,www%configstart:www%configend))
+  allocate(inptr%xopsparsemattr     (www%maxsinglewalks,www%configstart:www%configend))
+  allocate(inptr%xonepotsparsemattr (www%maxsinglewalks,www%configstart:www%configend))
+  allocate(inptr%xpulsesparsemattrxx(www%maxsinglewalks,www%configstart:www%configend))
+  allocate(inptr%xpulsesparsemattryy(www%maxsinglewalks,www%configstart:www%configend))
+  allocate(inptr%xpulsesparsemattrzz(www%maxsinglewalks,www%configstart:www%configend))
+  allocate(inptr%xconsparsemattr    (www%maxsinglewalks,www%configstart:www%configend))
+  allocate(inptr%xconsparsemattrxx  (www%maxsinglewalks,www%configstart:www%configend))
+  allocate(inptr%xconsparsemattryy  (www%maxsinglewalks,www%configstart:www%configend))
+  allocate(inptr%xconsparsemattrzz  (www%maxsinglewalks,www%configstart:www%configend))
+  allocate(inptr%xysparsemattr      (www%maxsinglewalks,www%configstart:www%configend))
 
 end subroutine sparseptralloc
 
@@ -572,14 +652,15 @@ end subroutine sparseptrdealloc
 
 
 subroutine opalloc()
-  use opmod
   use parameters
+  use opmod
+  use configmod
   implicit none
   allocate(rkemod(numr,numr), proderivmod(numr,numr))   
   rkemod=0.d0; proderivmod=0.d0; 
 
   if (drivingflag.ne.0) then
-     allocate(orbs_driving(spfsize,nspf),          avector_driving(numr,firstconfig:lastconfig,mcscfnum))
+     allocate(orbs_driving(spfsize,nspf),          avector_driving(numr,first_config:last_config,mcscfnum))
      orbs_driving=0d0;      avector_driving=0d0
   endif
 
@@ -606,12 +687,16 @@ subroutine opdealloc()
 end subroutine opdealloc
 
 subroutine natprojalloc
-  use natprojmod
   use parameters
+  use natprojmod
+  use configmod
   implicit none
+  if (par_consplit.ne.0) then
+     OFLWR "Error, no natproj parconsplit.ne.0"; CFLST
+  endif
   if (nnalloc==0) then
-  allocate( natproj(numr,numr,mcscfnum), natconfigs(firstconfig:lastconfig,numr), natderiv(firstconfig:lastconfig), &
-       natvals(firstconfig:lastconfig), natdot(numr,mcscfnum), curves(numr,numr))
+  allocate( natproj(numr,numr,mcscfnum), natconfigs(num_config,numr), natderiv(num_config),&
+       natvals(num_config), natdot(numr,mcscfnum), curves(numr,numr))
   endif
   nnalloc=1
 end subroutine
@@ -632,7 +717,6 @@ module configexpotimemod
   logical :: initialized = .false.
 end module configexpotimemod
 
-
 subroutine configexpotimeinit(intime)
   use configexpotimemod
   implicit none
@@ -642,11 +726,12 @@ end subroutine configexpotimeinit
 
 
 
+
 !!  NEVER CHANGE IGLOBALPROP WITHOUT CALLING XXXPTR_INIT !!!!!
 
 subroutine xalloc()
   use parameters
-  use walkmod   
+  use configmod
   use xxxmod
   implicit none
   integer :: ii
@@ -656,12 +741,12 @@ subroutine xalloc()
   
   allocate(yyy%cptr(0:numreduced))
   do ii=0,numreduced
-     call configptralloc(yyy%cptr(ii))
+     call configptralloc(yyy%cptr(ii),www)
   enddo
   allocate(yyy%sptr(0:numreduced))
   if (sparseopt.ne.0) then
      do ii=0,numreduced
-        call sparseptralloc(yyy%sptr(ii))
+        call sparseptralloc(yyy%sptr(ii),www)
      enddo
   endif
   allocate( yyy%denmat( nspf, nspf,0:numreduced), &
@@ -679,13 +764,17 @@ subroutine xalloc()
   endif
 
   if (drivingflag.ne.0) then
-     allocate(yyy%drivingavectorsxx(numr,firstconfig:lastconfig,mcscfnum,0:numreduced), yyy%drivingorbsxx(spfsize,nspf,0:numreduced))
-     allocate(yyy%drivingavectorsyy(numr,firstconfig:lastconfig,mcscfnum,0:numreduced), yyy%drivingorbsyy(spfsize,nspf,0:numreduced))
-     allocate(yyy%drivingavectorszz(numr,firstconfig:lastconfig,mcscfnum,0:numreduced), yyy%drivingorbszz(spfsize,nspf,0:numreduced))
+     allocate(yyy%drivingavectorsxx(numr,first_config:last_config,mcscfnum,0:numreduced), yyy%drivingorbsxx(spfsize,nspf,0:numreduced))
+     allocate(yyy%drivingavectorsyy(numr,first_config:last_config,mcscfnum,0:numreduced), yyy%drivingorbsyy(spfsize,nspf,0:numreduced))
+     allocate(yyy%drivingavectorszz(numr,first_config:last_config,mcscfnum,0:numreduced), yyy%drivingorbszz(spfsize,nspf,0:numreduced))
      yyy%drivingavectorsxx(:,:,:,:)=0d0; yyy%drivingorbsxx(:,:,:)=0d0
      yyy%drivingavectorsyy(:,:,:,:)=0d0; yyy%drivingorbsyy(:,:,:)=0d0
      yyy%drivingavectorszz(:,:,:,:)=0d0; yyy%drivingorbszz(:,:,:)=0d0
 
+  else
+     allocate(yyy%drivingavectorsxx(1,1,mcscfnum,0:numreduced), yyy%drivingorbsxx(1,1,0:numreduced))
+     allocate(yyy%drivingavectorsyy(1,1,mcscfnum,0:numreduced), yyy%drivingorbsyy(1,1,0:numreduced))
+     allocate(yyy%drivingavectorszz(1,1,mcscfnum,0:numreduced), yyy%drivingorbszz(1,1,0:numreduced))
   endif
 
 end subroutine xalloc
@@ -698,9 +787,7 @@ subroutine xdealloc()
   implicit none
   integer :: ii
 
-  if (drivingflag.ne.0) then
-     deallocate(yyy%drivingavectorsxx,yyy%drivingorbsxx,yyy%drivingavectorsyy,yyy%drivingorbsyy,yyy%drivingavectorszz,yyy%drivingorbszz)
-  endif
+  deallocate(yyy%drivingavectorsxx,yyy%drivingorbsxx,yyy%drivingavectorsyy,yyy%drivingorbsyy,yyy%drivingavectorszz,yyy%drivingorbszz)
 
   deallocate(yyy%denvects,  yyy%denvals)
   do ii=0,numreduced

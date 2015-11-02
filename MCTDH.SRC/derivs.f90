@@ -27,11 +27,12 @@ end subroutine gbs_derivs
 recursive subroutine all_derivs(thistime,xpsi, xpsip)
   use parameters
   use mpimod
+  use configmod
   use xxxmod
   implicit none
   DATATYPE,intent(in) :: xpsi(psilength)
   DATATYPE,intent(out) :: xpsip(psilength)
-  DATATYPE :: avector(totadim)   !! AUTOMATIC
+  DATATYPE :: avector(tot_adim)   !! AUTOMATIC
   real*8 :: thistime
   integer :: itime,jtime,getlen
   integer, save :: times(20)=0, numcalledhere=0,imc
@@ -72,11 +73,10 @@ recursive subroutine all_derivs(thistime,xpsi, xpsip)
   do imc=1,mcscfnum
      avector(:)=xpsi(astart(imc):aend(imc))
 
-     call basis_project(numr,avector)
+     call basis_project(www,numr,avector)
 
-     call sparseconfigmult(avector,xpsip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,1,thistime)
-
-     call basis_project(numr,xpsip(astart(imc)))
+     call sparseconfigmult(www,avector,xpsip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,1,thistime)
+     call basis_project(www,numr,xpsip(astart(imc)))
 
   enddo
   

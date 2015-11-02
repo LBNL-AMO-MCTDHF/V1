@@ -57,7 +57,7 @@ subroutine ovl_initial()
         OFLWR " *** WARNING *** WARNING *** WARNING *** WARNING *** WARNING *** "
         WRFL "  number of spfs for overlap states is LARGER than in calculation ", tnspf,nspf," REMOVING THOSE ORBITALS!!"; CFL
      endif
-     if (tnumconfig.gt.numconfig)  then
+     if (tnumconfig.gt.num_config)  then
         OFLWR " *** WARNING *** WARNING *** WARNING *** WARNING *** WARNING *** "
         WRFL "  number of configs on overlap file greater than for calculation!"; CFL
      endif
@@ -66,10 +66,10 @@ subroutine ovl_initial()
      endif
   enddo
 
-  allocate(overlaps(numovl,0:autosize,mcscfnum),orig_spfs(spfsize,nspf,numovl),orig_avectors(totadim,numovl))
+  allocate(overlaps(numovl,0:autosize,mcscfnum),orig_spfs(spfsize,nspf,numovl),orig_avectors(tot_adim,numovl))
 
   if (myrank.eq.1) then
-     allocate(read_avectors(numr*numconfig,numovl))
+     allocate(read_avectors(numr*num_config,numovl))
   else
      allocate(read_avectors(1,numovl))
   endif
@@ -101,14 +101,14 @@ subroutine ovl_initial()
         close(910)
      endif
 
-     if (parconsplit.eq.0) then
+     if (par_consplit.eq.0) then
         if (myrank.eq.1) then
            orig_avectors(:,jnumovl+1:jnumovl+nstate)=read_avectors(:,jnumovl+1:jnumovl+nstate)
         endif
-        call mympibcast(orig_avectors(:,jnumovl+1),1,numconfig*numr*nstate)
+        call mympibcast(orig_avectors(:,jnumovl+1),1,num_config*numr*nstate)
      else
         do kk=1,nstate
-           call myscatterv(read_avectors(:,jnumovl+kk),orig_avectors(:,jnumovl+kk),configsperproc(:)*numr)
+           call myscatterv(read_avectors(:,jnumovl+kk),orig_avectors(:,jnumovl+kk),configs_perproc(:)*numr)
         enddo
      endif
 
@@ -128,6 +128,7 @@ end subroutine ovl_initial
 subroutine getoverlaps(forceflag)
   use ovlmod
   use parameters
+  use configmod
   use xxxmod
   implicit none
   integer ::  i,imc,forceflag
@@ -137,7 +138,7 @@ subroutine getoverlaps(forceflag)
   if (mod(calledflag-1,autosteps).eq.0) then
      do imc=1,mcscfnum
         do i=1,numovl
-           call autocorrelate_one(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:,i), &
+           call autocorrelate_one(www,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:,i), &
                 orig_avectors(:,i), overlaps(i,xcalledflag,imc),numr)
         enddo
         xcalledflag=xcalledflag+1
@@ -156,13 +157,14 @@ end subroutine getoverlaps
  
 subroutine wfnovl()
   use parameters
+  use configmod
   use mpimod
   implicit none
   
   integer :: k,molength,alength,nt,ketbat,imc,ispf
   real*8 :: piover2,dt,angle(mcscfnum)
   DATATYPE :: dot,myovl(mcscfnum) , bradot,phase,ketdot,blah
-  DATATYPE :: bramo(spfsize,nspf),braavec(totadim,mcscfnum),ketmo(spfsize,nspf),ketavec(totadim,mcscfnum)
+  DATATYPE :: bramo(spfsize,nspf),braavec(tot_adim,mcscfnum),ketmo(spfsize,nspf),ketavec(tot_adim,mcscfnum)
   DATATYPE, allocatable :: read_bramo(:,:), read_braavec(:,:), read_ketmo(:,:), read_ketavec(:,:)
 
   if (myrank.eq.1) then
@@ -175,7 +177,7 @@ subroutine wfnovl()
      allocate(read_bramo(1,nspf),read_ketmo(1,nspf))
   endif
   if (myrank.eq.1) then
-     allocate(read_braavec(numr*numconfig,mcscfnum),read_ketavec(numr*numconfig,mcscfnum))
+     allocate(read_braavec(numr*num_config,mcscfnum),read_ketavec(numr*num_config,mcscfnum))
   else
      allocate(read_braavec(1,mcscfnum),read_ketavec(1,mcscfnum))
   endif
@@ -228,29 +230,29 @@ subroutine wfnovl()
            call splitscatterv(read_ketmo(:,ispf),ketmo(:,ispf))
         enddo
      endif
-     if (parconsplit.eq.0) then
+     if (par_consplit.eq.0) then
         if (myrank.eq.1) then
            braavec(:,:)=read_braavec(:,:)
            ketavec(:,:)=read_ketavec(:,:)
         endif
-        call mympibcast(braavec(:,:),1,numr*numconfig*mcscfnum)
-        call mympibcast(ketavec(:,:),1,numr*numconfig*mcscfnum)
+        call mympibcast(braavec(:,:),1,numr*num_config*mcscfnum)
+        call mympibcast(ketavec(:,:),1,numr*num_config*mcscfnum)
      else
         do imc=1,mcscfnum
-           call myscatterv(read_braavec(:,imc),braavec(:,imc),configsperproc(:)*numr)
-           call myscatterv(read_ketavec(:,imc),ketavec(:,imc),configsperproc(:)*numr)
+           call myscatterv(read_braavec(:,imc),braavec(:,imc),configs_perproc(:)*numr)
+           call myscatterv(read_ketavec(:,imc),ketavec(:,imc),configs_perproc(:)*numr)
         enddo
      endif
 
 
      do imc=1,mcscfnum
-        bradot=dot(braavec(:,imc),braavec(:,imc),totadim)
-        ketdot=dot(ketavec(:,imc),ketavec(:,imc),totadim)
-        if (parconsplit.ne.0) then
+        bradot=dot(braavec(:,imc),braavec(:,imc),tot_adim)
+        ketdot=dot(ketavec(:,imc),ketavec(:,imc),tot_adim)
+        if (par_consplit.ne.0) then
            call mympireduceone(bradot); call mympireduceone(ketdot)
         endif
         
-        call autocorrelate_one(braavec(:,imc),bramo,ketmo,ketavec(:,imc),myovl(imc),numr)
+        call autocorrelate_one(www,braavec(:,imc),bramo,ketmo,ketavec(:,imc),myovl(imc),numr)
        
         blah=myovl(imc)/sqrt(bradot*ketdot)
         angle(imc)=acos(abs(blah))

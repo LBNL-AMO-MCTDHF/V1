@@ -10,13 +10,14 @@
 !! (SPIN IS 1 (ALPHA) OR 2 (BETA))
 
 function iind(twoarr)
-  use parameters
   implicit none
   integer :: iind, twoarr(2)
 !!$  if (orderflag==1) then
 !!$     iind=twoarr(1) + (twoarr(2)-1)*nspf 
 !!$  else
+
      iind=(twoarr(1)-1)*2 + twoarr(2)
+
 !!$  endif
 end function
 
@@ -25,26 +26,22 @@ end function
 
 
 
-function getconfiguration(thisconfig)
-  use parameters
-  use configmod
+function getconfiguration(thisconfig,www)
+  use fileptrmod
+  use walkmod
   implicit none
-  integer :: getconfiguration, thisconfig(ndof),  j,flag,k, dir,newdir, step,aa,bb, ii,kk,jj,flag1,flag2
-  logical :: allowedconfig
+  type(walktype),intent(in) :: www
+  integer :: getconfiguration, thisconfig(www%ndof),  j,flag,k, dir,newdir, step,aa,bb, ii,kk,jj,flag1,flag2
 
   getconfiguration=-1
 
-  if (.not.allowedconfig(thisconfig)) then
-    return
-  endif
-
-  dir=1;  j=1;  step=max(1,numconfig/4);  flag=0
+  dir=1;  j=1;  step=max(1,www%numconfig/4);  flag=0
 
   do while (flag.eq.0)
      flag=1
-     do k=1,numelec
+     do k=1,www%numelec
 
-        aa=configlist(2*k-1,j);        bb=thisconfig(2*k-1)
+        aa=www%configlist(2*k-1,j);        bb=thisconfig(2*k-1)
 
         if (aa .ne. bb) then
            flag=0
@@ -60,8 +57,8 @@ function getconfiguration(thisconfig)
            if (j.le.1) then
               j=1;              dir=1
            endif
-           if (j.ge.numconfig) then
-              j=numconfig;              dir=-1
+           if (j.ge.www%numconfig) then
+              j=www%numconfig;              dir=-1
            endif
            exit
         endif
@@ -79,7 +76,7 @@ function getconfiguration(thisconfig)
         kk=kk+1
         do jj=0,1
            j=ii+kk*(-1)**jj
-           if (jj.eq.0.and.j.gt.numconfig) then
+           if (jj.eq.0.and.j.gt.www%numconfig) then
               flag1=1
               cycle
            endif
@@ -89,8 +86,8 @@ function getconfiguration(thisconfig)
            endif
 
            flag=1
-           do k=1,ndof
-              if (thisconfig(k).ne.configlist(k,j)) then
+           do k=1,www%ndof
+              if (thisconfig(k).ne.www%configlist(k,j)) then
                  flag=0
                  exit
               endif
@@ -102,7 +99,7 @@ function getconfiguration(thisconfig)
         enddo
      enddo
      OFLWR
-     call printconfig(thisconfig)
+     call printconfig(thisconfig,www)
      WRFL "NEWGETCONFIG NEWCONFIG ERROR"; CFLST
 
 end function getconfiguration
@@ -114,10 +111,10 @@ end function getconfiguration
 !! PUTS AN UN ORDERED CONFIGURATION INTO PROPER (INDEX INCREASING) ORDER
 !! AND RETURNS SIGN OF PERMUTATION
 
-function reorder(thisconfig)
-  use parameters
+function reorder(thisconfig,numelec)
   implicit none
-  integer :: reorder, thisconfig(1:ndof), phase, flag, jdof, temporb(2), iind
+  integer, intent(in) :: numelec
+  integer :: reorder, thisconfig(1:2*numelec), phase, flag, jdof, temporb(2), iind
 
   phase=1;  flag=0
   do while (flag==0)
@@ -139,47 +136,41 @@ end function
 
 !! INDICATES WHETHER A GIVEN CONFIG IS IN OUR CONFIGURATION LIST
 
-function allowedconfig(thisconfig)
-  use parameters
-  implicit none
-  integer,intent(in) :: thisconfig(ndof)
-  logical :: allowedconfig,allowedconfig0
-  allowedconfig=allowedconfig0(thisconfig,0)
-end function allowedconfig
 
-
-function allowedconfig0(thisconfig,in_df)
-  use parameters
+function allowedconfig0(www,thisconfig,in_df)
+  use basis_parameters
+  use walkmod
   implicit none
-  integer,intent(in) :: thisconfig(ndof), in_df
+  type(walktype),intent(in) :: www
+  integer,intent(in) :: thisconfig(www%ndof), in_df
   integer :: i, isum, j, tempcount, tempcount2, ishell, ii, k, iind, getugval,getmval
   logical :: allowedconfig0, tempflag
 
-  do j=1,numelec
-     do i=j+1,numelec
+  do j=1,www%numelec
+     do i=j+1,www%numelec
         if ( (thisconfig(2*i-1)==thisconfig(2*j-1)).and.(thisconfig(2*i)==thisconfig(2*j)) ) then
            allowedconfig0=.false.;           return
         endif
      enddo
   enddo
-  do j=1,numelec
+  do j=1,www%numelec
      i=thisconfig(j*2-1)
-     if ((i.lt.1).or.(i.gt.nspf)) then
+     if ((i.lt.1).or.(i.gt.www%nspf)) then
         allowedconfig0=.false.;        return
      endif
   enddo
   if (restrictflag==1) then    ! by m_s
      isum=0
-     do i=2,numelec*2,2
+     do i=2,www%numelec*2,2
         isum=isum+(thisconfig(i)*2-3)
      enddo
-     if (isum /= restrictms) then
+     if (isum /= www%restrictms) then
         allowedconfig0=.false.;        return
      endif
   end if
   if (spfrestrictflag==1) then
      if (mrestrictflag==1.or.mrestrictmin.gt.-99999.or.mrestrictmax.lt.99999) then    ! by m
-        isum=getmval(thisconfig)
+        isum=getmval(www,thisconfig)
         if ((mrestrictflag==1.and.isum /= mrestrictval).or.isum.lt.mrestrictmin.or.isum.gt.mrestrictmax) then
            allowedconfig0=.false.;        return
         endif
@@ -187,7 +178,7 @@ function allowedconfig0(thisconfig,in_df)
   end if
   
   if ((spfugrestrict==1).and.(ugrestrictflag==1)) then    ! by m
-     isum=getugval(thisconfig)
+     isum=getugval(www,thisconfig)
      if (isum /= ugrestrictval) then
         allowedconfig0=.false.
         return
@@ -198,7 +189,7 @@ function allowedconfig0(thisconfig,in_df)
   do i=allshelltop(numshells-1)+1,allshelltop(numshells)
      do ii=1,2
         k=iind((/ i,ii /));        tempflag=.false.
-        do j=1,numelec
+        do j=1,www%numelec
            if (iind(thisconfig((j*2)-1:j*2)) == k) then
               tempflag=.true.;              exit
            endif
@@ -221,7 +212,7 @@ function allowedconfig0(thisconfig,in_df)
 
            k=iind((/ i,ii /))  ! spin orbital
            tempflag=.false.
-           do j=1,numelec
+           do j=1,www%numelec
               if (iind(thisconfig((j*2)-1:j*2)) == k) then  ! got this spin orbital in the configuration
                  tempflag=.true.
                  exit
@@ -253,15 +244,17 @@ end function allowedconfig0
 
 !! RETURNS M-VALUE OF CONFIGURATION
 
-function getmval(thisconfig)
-  use parameters
+function getmval(www,thisconfig)
+  use walkmod
+  use basis_parameters
   implicit none
-  integer :: thisconfig(ndof), i, isum, getmval
+  type(walktype),intent(in) :: www
+  integer :: thisconfig(www%ndof), i, isum, getmval
   if ((spfrestrictflag==0)) then
      getmval=0;     return
   endif
   isum=0
-  do i=1,numelec*2-1,2
+  do i=1,www%numelec*2-1,2
      isum=isum+(spfmvals(thisconfig(i)))
   enddo
   getmval=isum
@@ -270,12 +263,14 @@ end function getmval
 !! RETURNS UGVAL OF CONFIGURATION (GOES FROM ORIGINAL UG VALUES)
 !!  IF UGVALS ARE ALL SPECIFIED (NONZERO)
 
-function getugval(thisconfig)
-  use parameters
+function getugval(www,thisconfig)
+  use walkmod
+  use basis_parameters
   implicit none
-  integer :: thisconfig(ndof), i, isum, getugval
+  type(walktype),intent(in) :: www
+  integer :: thisconfig(www%ndof), i, isum, getugval
   isum=1
-  do i=1,numelec*2-1,2
+  do i=1,www%numelec*2-1,2
      isum=isum*(spfugvals(thisconfig(i)))
   enddo
   getugval=isum
@@ -287,11 +282,15 @@ end function getugval
 !! GETS CONFIGURATION LIST (SLATER DETERMINANTS NOT SPIN EIGFUNCTS)
 !!  AT BEGINNING. 
 
-subroutine fast_newconfiglist()
-  use parameters
-  use configmod
+subroutine fast_newconfiglist(www)
+  use output_parameters
+  use fileptrmod
+  use basis_parameters
+  use sparse_parameters
+  use walkmod
   use mpimod
   implicit none
+  type(walktype) :: www
   logical :: alreadycounted
   integer, parameter :: max_numelec=80
   integer, pointer :: &
@@ -316,20 +315,21 @@ subroutine fast_newconfiglist()
   integer, target :: jjj(max_numelec)  !! no, it is set.
 
   integer,allocatable :: bigspinblockstart(:),bigspinblockend(:)
-  integer :: i, idof, ii , lowerarr(max_numelec),upperarr(max_numelec),  thisconfig(ndof),&
+  integer :: i, idof, ii , lowerarr(max_numelec),upperarr(max_numelec),  thisconfig(www%ndof),&
        reorder,nullint,kk,iconfig,mm, single(max_numelec),ishell,jj,maxssize=0,sss,nss,ssflag,numdoubly,&
        mynumexcite(numshells),isum,jshell,jsum,ppp,numspinblocks
-  logical :: allowedconfig
+  logical :: allowedconfig0
 
-  if (numelec.gt.max_numelec) then
+  if (www%numelec.gt.max_numelec) then
      OFLWR "Resize get_newconfiglist"; CFLST
   endif
+
 !!$ orderflag 0 hardwire
 !!$  if (orderflag.eq.1) then
 !!$     OFLWR "orderflag 1 not supported for fastconfig (would be trivial, a simplification, no sort I think)"; CFLST
 !!$  endif
 
-  allocate(configsperproc(nprocs),alltopconfigs(nprocs),allbotconfigs(nprocs))
+  allocate(www%configsperproc(nprocs),www%alltopconfigs(nprocs),www%allbotconfigs(nprocs))
 
 
 !! 10-2015 NOW INTERNAL LOOP
@@ -344,10 +344,10 @@ subroutine fast_newconfiglist()
   if (alreadycounted) then
      OFLWR "Go fast_newconfiglist, getting configurations";CFL
      deallocate(bigspinblockstart,bigspinblockend)
-     allocate(configlist(ndof,numconfig), configmvals(numconfig), configugvals(numconfig),&
+     allocate(www%configlist(www%ndof,www%numconfig), www%configmvals(www%numconfig), www%configugvals(www%numconfig),&
           bigspinblockstart(numspinblocks+2*nprocs),bigspinblockend(numspinblocks+2*nprocs))
 
-     configlist(:,:)=0; configmvals(:)=0;configugvals(:)=0
+     www%configlist(:,:)=0; www%configmvals(:)=0; www%configugvals(:)=0
   else
      allocate(bigspinblockstart(1),bigspinblockend(1))  !! avoid warn bounds
      OFLWR "Go fast_newconfiglist";CFL
@@ -398,7 +398,7 @@ subroutine fast_newconfiglist()
   lowerarr(:)=1000000
   upperarr(:)=1000000
 
-  numdoubly=numelec-abs(restrictms)
+  numdoubly=www%numelec-abs(www%restrictms)
 
   if (mod(numdoubly,2).ne.0) then
      OFLWR "OOGA NO!!"; CFLST
@@ -407,17 +407,17 @@ subroutine fast_newconfiglist()
   do ii=1,numdoubly
      lowerarr(ii)=(ii+1)/2
   enddo
-  do ii=1,abs(restrictms)
+  do ii=1,abs(www%restrictms)
      lowerarr(ii+numdoubly)=numdoubly/2+ii
   enddo
 
-  do ii=1,numelec
-     upperarr(ii)=nspf+1-lowerarr(numelec+1-ii)
+  do ii=1,www%numelec
+     upperarr(ii)=www%nspf+1-lowerarr(www%numelec+1-ii)
   enddo
 
-  do ii=numelec+3,max_numelec
-     upperarr(ii)=1000000+ii-numelec+2
-     lowerarr(ii)=1000000+ii-numelec+2
+  do ii=www%numelec+3,max_numelec
+     upperarr(ii)=1000000+ii-www%numelec+2
+     lowerarr(ii)=1000000+ii-www%numelec+2
   enddo
 
 !!#          min        max
@@ -465,7 +465,7 @@ subroutine fast_newconfiglist()
 !! maximum number of holes in shells 1 through ishell given maxocc is then 
 !!     2*allshelltop(ishell)-max(0,numelec-isum)
 
-     isum=max(0,2*allshelltop(ishell)-max(0,numelec-isum))
+     isum=max(0,2*allshelltop(ishell)-max(0,www%numelec-isum))
 
 !! count maximum number of holes in shells 1 through ishell, given minocc
      jsum=0
@@ -485,7 +485,7 @@ subroutine fast_newconfiglist()
 
   kk=0
   do ishell=1,numshells
-     mm=2*allshelltop(ishell)-min(mynumexcite(ishell),2*nspf-numelec)
+     mm=2*allshelltop(ishell)-min(mynumexcite(ishell),2*www%nspf-www%numelec)
      do jj=kk+1,mm
 
         upperarr(jj)=min(upperarr(jj),allshelltop(ishell)-(mm-jj)/2)
@@ -496,7 +496,7 @@ subroutine fast_newconfiglist()
 
   if (.not.alreadycounted) then
      OFLWR "UPPER/LOWER"
-     do ii=1,numelec
+     do ii=1,www%numelec
         WRFL lowerarr(ii),upperarr(ii)
      enddo
      WRFL; CFL
@@ -600,14 +600,14 @@ subroutine fast_newconfiglist()
      sss=0
      ssflag=0
 
-     do idof=1,numelec
+     do idof=1,www%numelec
         thisconfig(idof*2-1) = iii(idof)
      enddo
 
      single(:)=1
-     single(numelec+1:)=0
+     single(www%numelec+1:)=0
 
-     do idof=2,numelec
+     do idof=2,www%numelec
         if (iii(idof).eq.iii(idof-1)) then
            thisconfig((idof-1)*2)=1
            thisconfig(idof*2)=2
@@ -704,13 +704,13 @@ subroutine fast_newconfiglist()
      do jj79=0,single(79)
      do jj80=0,single(80)
 
-        do idof=1,numelec
+        do idof=1,www%numelec
            if (single(idof).eq.1) then
               thisconfig(idof*2)=jjj(idof)+1
            endif
         enddo
 
-        if (allowedconfig(thisconfig)) then
+        if (allowedconfig0(www,thisconfig,www%dflevel)) then
            sss=sss+1
            iconfig=iconfig+1
            if (ssflag.eq.0) then 
@@ -722,8 +722,8 @@ subroutine fast_newconfiglist()
            endif
            if (alreadycounted) then
               bigspinblockend(nss)=iconfig
-              configlist(:,iconfig)=thisconfig; 
-              nullint=reorder(configlist(:,iconfig))
+              www%configlist(:,iconfig)=thisconfig; 
+              nullint=reorder(www%configlist(:,iconfig),www%numelec)
            endif
         endif
 
@@ -753,15 +753,15 @@ endif
 
 
   if (alreadycounted) then
-     if (iconfig/=numconfig) then
-        OFLWR "Configlist err",iconfig,numconfig; CFLST
+     if (iconfig/=www%numconfig) then
+        OFLWR "Configlist err",iconfig,www%numconfig; CFLST
      endif
 
      OFLWR "     ...Done fast_newconfiglist"; CFL
   else
-     numconfig=iconfig
-     OFLWR; WRFL "FASTNEWCONFIG: NUMBER OF CONFIGURATIONS ",numconfig; WRFL; CFL
-     if (numconfig.le.0) then
+     www%numconfig=iconfig
+     OFLWR; WRFL "FASTNEWCONFIG: NUMBER OF CONFIGURATIONS ",www%numconfig; WRFL; CFL
+     if (www%numconfig.le.0) then
         OFLWR "NO configs."; CFLST
      endif
   endif
@@ -771,68 +771,68 @@ endif
         OFLWR "NUMSPINBLOCKS ERR",nss,numspinblocks; CFLST
      endif
 
-     alltopconfigs(:)=0
+     www%alltopconfigs(:)=0
      jj=1
      do ii=1,nprocs-1
-        do while (bigspinblockend(jj).lt.numconfig*ii/nprocs)
-           alltopconfigs(ii:)=bigspinblockend(jj)
+        do while (bigspinblockend(jj).lt.www%numconfig*ii/nprocs)
+           www%alltopconfigs(ii:)=bigspinblockend(jj)
            jj=jj+1
         enddo
      enddo
-     alltopconfigs(nprocs)=numconfig
-     allbotconfigs(1)=1
+     www%alltopconfigs(nprocs)=www%numconfig
+     www%allbotconfigs(1)=1
      do ii=2,nprocs
-        allbotconfigs(ii)=alltopconfigs(ii-1)+1
+        www%allbotconfigs(ii)=www%alltopconfigs(ii-1)+1
      enddo
      
-     OFLWR; WRFL "BOTWALKS /TOPWALKS",numconfig
+     OFLWR; WRFL "BOTWALKS /TOPWALKS",www%numconfig
      do ii=1,nprocs
-        WRFL allbotconfigs(ii),alltopconfigs(ii),alltopconfigs(ii)-allbotconfigs(ii)+1
+        WRFL www%allbotconfigs(ii),www%alltopconfigs(ii),www%alltopconfigs(ii)-www%allbotconfigs(ii)+1
      enddo
      WRFL; CFL
      do ii=1,nprocs     
-        if (allbotconfigs(ii).gt.alltopconfigs(ii)+1) then   
-           OFLWR "ERROR, NUMBER OF CONFIGS PROCESSOR ",ii," IS LESS THAN ZERO", alltopconfigs(ii)-allbotconfigs(ii)+1 ;CFLST
+        if (www%allbotconfigs(ii).gt.www%alltopconfigs(ii)+1) then   
+           OFLWR "ERROR, NUMBER OF CONFIGS PROCESSOR ",ii," IS LESS THAN ZERO", www%alltopconfigs(ii)-www%allbotconfigs(ii)+1 ;CFLST
         endif
      enddo
 
-     botconfig=allbotconfigs(myrank)
-     topconfig=alltopconfigs(myrank)
+     www%botconfig=www%allbotconfigs(myrank)
+     www%topconfig=www%alltopconfigs(myrank)
 
      if (sparseconfigflag.eq.0) then
-        configstart=1
-        configend=numconfig
-        parconsplit=0
+        www%configstart=1
+        www%configend=www%numconfig
+        www%parconsplit=0
      else
-        configstart=botconfig
-        configend=topconfig
+        www%configstart=www%botconfig
+        www%configend=www%topconfig
      endif
 
-     configsperproc(:)=alltopconfigs(:) - allbotconfigs(:) + 1
+     www%configsperproc(:)=www%alltopconfigs(:) - www%allbotconfigs(:) + 1
 
-     if (parconsplit.eq.0) then
-        firstconfig=1
-        lastconfig=numconfig
+     if (www%parconsplit.eq.0) then
+        www%firstconfig=1
+        www%lastconfig=www%numconfig
      else
-        firstconfig=botconfig
-        lastconfig=topconfig
+        www%firstconfig=www%botconfig
+        www%lastconfig=www%topconfig
      endif
 
-     localnconfig=lastconfig-firstconfig+1
+     www%localnconfig=www%lastconfig-www%firstconfig+1
 
      ii=0
-     maxconfigsperproc=0
+     www%maxconfigsperproc=0
      do i=1,nprocs
-        ii=ii+configsperproc(i)
-        if (configsperproc(i).gt.maxconfigsperproc) then
-           maxconfigsperproc=configsperproc(i)
+        ii=ii+www%configsperproc(i)
+        if (www%configsperproc(i).gt.www%maxconfigsperproc) then
+           www%maxconfigsperproc=www%configsperproc(i)
         endif
      enddo
-     if (ii.ne.numconfig) then
-        OFLWR "WTF EERRROROR", ii, numconfig; CFLST
+     if (ii.ne.www%numconfig) then
+        OFLWR "WTF EERRROROR", ii, www%numconfig; CFLST
      endif
      do i=1,nprocs
-        if (configsperproc(i).lt.0) then
+        if (www%configsperproc(i).lt.0) then
            OFLWR "Configs per proc lt 0 for proc ",i,"nprocs must be greater than numconfig???  Can't do."; CFLST
         endif
      enddo
@@ -844,10 +844,10 @@ endif
 
   if (alreadycounted.and.iprintconfiglist.ne.0) then
      OFLWR "CONFIGLIST"
-     do ii=1,numconfig
+     do ii=1,www%numconfig
 !        write(mpifileptr,'(A12,I12,A4)',advance='no') "  Config ", ii," is "
         write(mpifileptr,'(A12,I12,A4)',advance='no') "  Config ", 0," is "
-        call printconfig(configlist(:,ii))
+        call printconfig(www%configlist(:,ii),www)
      enddo
      WRFL; CFLST
   endif
@@ -856,7 +856,7 @@ endif
      deallocate(bigspinblockstart,bigspinblockend)
   endif
 
-  if (numconfig.eq.0) then
+  if (www%numconfig.eq.0) then
      OFLWR "No configs!! "; CFLST
   endif
   enddo !! ppp
@@ -866,11 +866,11 @@ contains
   function okexcite(jjj)
     implicit none
     logical :: okexcite
-    integer :: jjj(numelec),ii,ishell    !! numelec*2=ndof
-    integer :: numwithinshell(numshells),kkk(numelec)
+    integer :: jjj(www%numelec),ii,ishell    !! numelec*2=ndof
+    integer :: numwithinshell(numshells),kkk(www%numelec)
     numwithinshell(:)=0
     kkk(:)=(jjj(:)+1)/2   !! orderflag 0
-    do ii=1,numelec
+    do ii=1,www%numelec
        do ishell=1,numshells
           if (kkk(ii).gt.allshelltop(ishell)) then
              exit

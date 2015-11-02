@@ -11,7 +11,7 @@
 !! ON INPUT SOLUTION IS GUESS.
 
 subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, intolerance, indimension, inkrydim,parflag)
-  use parameters
+  use fileptrmod
   implicit none
   integer, parameter :: jacwrite=0
   integer :: indimension, inkrydim,parflag,itol, numiter, ierr, iunit, jjxx, preconflag,rgwkdim
@@ -188,32 +188,33 @@ end module
 
 
 
-subroutine aaonedinit(inavector) 
+subroutine aaonedinit(www,inavector) 
   use aaonedmod
   use xxxmod
-  use parameters
+  use r_parameters
+  use walkmod
   implicit none
-  DATATYPE,intent(in) :: inavector(totadim)
-  DATATYPE :: jacaa(totadim), jacaamult(totadim) !! AUTOMATIC
+  type(walktype),intent(in) :: www
+  DATATYPE,intent(in) :: inavector(www%totadim)
+  DATATYPE :: jacaa(www%totadim), jacaamult(www%totadim) !! AUTOMATIC
   DATATYPE :: dot, csum2
 
   jacaa(:)=inavector(:)
 
+  call basis_project(www,numr,jacaa)
 
-  call basis_project(numr,jacaa)
-
-  csum2=dot(jacaa,jacaa,totadim)
-  if (parconsplit.ne.0) then
+  csum2=dot(jacaa,jacaa,www%totadim)
+  if (www%parconsplit.ne.0) then
      call mympireduceone(csum2)
   endif
   jacaa(:)=jacaa(:)/sqrt(csum2)
 
-  call sparseconfigmult(jacaa, jacaamult, yyy%cptr(0), yyy%sptr(0),1,1,0,1,0d0)
+  call sparseconfigmult(www,jacaa, jacaamult, yyy%cptr(0), yyy%sptr(0),1,1,0,1,0d0)
 
-  call basis_project(numr,jacaamult)
-
-  quadexpect=dot(jacaa,jacaamult,totadim)
-  if (parconsplit.ne.0) then
+  call basis_project(www,numr,jacaamult)
+ 
+  quadexpect=dot(jacaa,jacaamult,www%totadim)
+  if (www%parconsplit.ne.0) then
      call mympireduceone(quadexpect)
   endif
 
@@ -223,28 +224,31 @@ end subroutine aaonedinit
 
 subroutine quadavector(inavector,jjcalls)
   use parameters
+  use configmod
   implicit none
-  DATATYPE :: inavector(totadim,mcscfnum)
+  DATATYPE :: inavector(tot_adim,mcscfnum)
   integer :: jjcalls,imc
   do imc=1,mcscfnum
      if (sparseconfigflag==0) then
-        call nonsparsequadavector(inavector(:,imc))
+        call nonsparsequadavector(www,inavector(:,imc))
         jjcalls=0
      else
-        call sparsequadavector(inavector(:,imc),jjcalls)
+        call sparsequadavector(www,inavector(:,imc),jjcalls)
      endif
   enddo
 end subroutine quadavector
 
 
-subroutine sparsequadavector(inavector,jjcalls0)
+subroutine sparsequadavector(www,inavector,jjcalls0)
   use parameters
   use mpimod
   use aaonedmod
   use xxxmod
+  use walkmod
   implicit none
+  type(walktype),intent(in) :: www
   EXTERNAL :: paraamult, parquadpreconsub
-  DATATYPE, intent(inout) ::  inavector(numr,firstconfig:lastconfig)
+  DATATYPE, intent(inout) ::  inavector(numr,www%firstconfig:www%lastconfig)
   integer :: jjcalls, ss,jjcalls0,maxdim,mysize
   real*8 ::  dev,  thisaerror
   DATATYPE :: dot, hermdot,csum 
@@ -259,9 +263,9 @@ subroutine sparsequadavector(inavector,jjcalls0)
      OFLWR "Error, set tolerance parameter arror at least 1d-7 for reliable performance sparse quad a-vector.  TEMP CONTINUE"; CFL
   endif
 
-  allocate(smallvectorspin(numr,botdfbasis:topdfbasis), smallvectorspin2(numr,botdfbasis:topdfbasis))
+  allocate(smallvectorspin(numr,www%botdfbasis:www%topdfbasis), smallvectorspin2(numr,www%botdfbasis:www%topdfbasis))
 
-  allocate( vector(numr,firstconfig:lastconfig), vector2(numr,firstconfig:lastconfig), vector3(numr,firstconfig:lastconfig))
+  allocate( vector(numr,www%firstconfig:www%lastconfig), vector2(numr,www%firstconfig:www%lastconfig), vector3(numr,www%firstconfig:www%lastconfig))
 
   vector(:,:)=inavector(:,:)
 
@@ -270,18 +274,18 @@ subroutine sparsequadavector(inavector,jjcalls0)
 
 333 continue
 
-  call basis_project(numr,vector)
+  call basis_project(www,numr,vector)
 
-  call aaonedinit(vector)
+  call aaonedinit(www,vector)
 
-  call sparseconfigmult(vector, vector2, yyy%cptr(0), yyy%sptr(0), 1,1,0,1,0d0)
+  call sparseconfigmult(www,vector, vector2, yyy%cptr(0), yyy%sptr(0), 1,1,0,1,0d0)
 
-  call basis_project(numr,vector2)
+  call basis_project(www,numr,vector2)
 
   vector3=vector2-quadexpect*vector              !! error term.
 
-  dev=abs(hermdot(vector3,vector3,totadim))
-  if (parconsplit.ne.0) then
+  dev=abs(hermdot(vector3,vector3,www%totadim))
+  if (www%parconsplit.ne.0) then
      call mympirealreduceone(dev)
   endif
   dev=sqrt(dev)
@@ -305,16 +309,16 @@ subroutine sparsequadavector(inavector,jjcalls0)
   endif
 
 !! zero dimension will fail in dgsolve, but putting this logic in anyway
-  if (topdfbasis-botdfbasis+1.ne.0) then
+  if (www%topdfbasis-www%botdfbasis+1.ne.0) then
      smallvectorspin(:,:)=0d0
   endif
-  call basis_transformto_local(numr,vector(:,botconfig),smallvectorspin(:,:))
-  if (topdfbasis-botdfbasis+1.ne.0) then
+  call basis_transformto_local(www,numr,vector(:,www%botconfig),smallvectorspin(:,:))
+  if (www%topdfbasis-www%botdfbasis+1.ne.0) then
      smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
   endif
 
-  maxdim=min(maxaorder,numr*numdfbasis)
-  mysize=numr*(topdfbasis-botdfbasis+1)
+  maxdim=min(maxaorder,numr*www%numdfbasis)
+  mysize=numr*(www%topdfbasis-www%botdfbasis+1)
 
   call dgsolve0( smallvectorspin(:,:), smallvectorspin2(:,:), jjcalls, paraamult,quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1)
 
@@ -323,14 +327,14 @@ subroutine sparsequadavector(inavector,jjcalls0)
 
   vector3(:,:)=0d0; 
 
-  call basis_transformfrom_local(numr,smallvectorspin2(:,:),vector3(:,botconfig))
+  call basis_transformfrom_local(www,numr,smallvectorspin2(:,:),vector3(:,www%botconfig))
 
-  if (parconsplit.eq.0) then
-     call mpiallgather(vector3(:,:),numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
+  if (www%parconsplit.eq.0) then
+     call mpiallgather(vector3(:,:),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
   endif
 
-  csum=dot(vector3,vector3,totadim)
-  if (parconsplit.ne.0) then
+  csum=dot(vector3,vector3,www%totadim)
+  if (www%parconsplit.ne.0) then
      call mympireduceone(csum)
   endif
   vector=vector3/sqrt(csum)
@@ -345,19 +349,21 @@ subroutine sparsequadavector(inavector,jjcalls0)
 end subroutine sparsequadavector
 
 
-subroutine nonsparsequadavector(avectorout)
+subroutine nonsparsequadavector(www,avectorout)
   use mpimod
   use aaonedmod
   use parameters
   use xxxmod
+  use walkmod
   implicit none
-  DATATYPE,intent(inout) :: avectorout(totadim)
+  type(walktype),intent(in) :: www
+  DATATYPE,intent(inout) :: avectorout(www%totadim)
   DATATYPE :: dot, hermdot
   CNORMTYPE :: norm
   real*8 :: dev
   integer :: k, info,ss
-  DATATYPE ::  spinmatel(numdfbasis*numr,numdfbasis*numr),spinavectorout(numdfbasis*numr),err(totadim)
-  integer :: ipiv(numdfbasis*numr)
+  DATATYPE ::  spinmatel(www%numdfbasis*numr,www%numdfbasis*numr),spinavectorout(www%numdfbasis*numr),err(www%totadim)
+  integer :: ipiv(www%numdfbasis*numr)
 
   if (sparseconfigflag/=0) then
      OFLWR "Error, nonsparsequadavector called but sparseconfigflag= ", sparseconfigflag; CFLST
@@ -366,16 +372,16 @@ subroutine nonsparsequadavector(avectorout)
   ss=0
 333 continue
 
-  call basis_project(numr,avectorout)
+  call basis_project(www,numr,avectorout)
 
-  call aaonedinit(avectorout)
-  call sparseconfigmult(avectorout(:),err(:),yyy%cptr(0),yyy%sptr(0),1,1,0,1,0d0)
+  call aaonedinit(www,avectorout)
+  call sparseconfigmult(www,avectorout(:),err(:),yyy%cptr(0),yyy%sptr(0),1,1,0,1,0d0)
 
-  call basis_project(numr,err(:))
+  call basis_project(www,numr,err(:))
 
   err(:)=err(:)-quadexpect*avectorout(:)              !! error term.
 
-  dev=sqrt(abs(hermdot(err(:),err(:),totadim)))
+  dev=sqrt(abs(hermdot(err(:),err(:),www%totadim)))
 
   OFL;write(mpifileptr,'(A22,E12.5,A6,E12.5,A7,100F14.7)') "   NONSPARSEQUAD: DEV", dev, " TOL ",aerror,"ENERGY",quadexpect; CFL
 
@@ -392,20 +398,20 @@ subroutine nonsparsequadavector(avectorout)
 
   spinmatel(:,:)=0d0
 
-  call assemble_dfbasismat(spinmatel, yyy%cptr(0),1,1,1,1, 0d0)
+  call assemble_dfbasismat(www, spinmatel, yyy%cptr(0),1,1,1,1, 0d0)
 
-  do k=1,numdfbasis*numr
+  do k=1,www%numdfbasis*numr
      spinmatel(k,k)=spinmatel(k,k)-quadexpect
   enddo
 
   spinavectorout(:)=0d0
 
-  call basis_transformto_all(numr,avectorout(:),spinavectorout(:))
+  call basis_transformto_all(www,numr,avectorout(:),spinavectorout(:))
 
 
   if (myrank.eq.1) then
-     call MYGESV(numdfbasis*numr,1,spinmatel,numdfbasis*numr,ipiv,spinavectorout,numdfbasis*numr,info)
-     spinavectorout=spinavectorout/sqrt(dot(spinavectorout,spinavectorout,numdfbasis*numr))
+     call MYGESV(www%numdfbasis*numr,1,spinmatel,www%numdfbasis*numr,ipiv,spinavectorout,www%numdfbasis*numr,info)
+     spinavectorout=spinavectorout/sqrt(dot(spinavectorout,spinavectorout,www%numdfbasis*numr))
      if (info/=0) then
         OFLWR "Info in dgesv nonsparsequadavector= ", info; CFLST
      endif
@@ -413,11 +419,11 @@ subroutine nonsparsequadavector(avectorout)
 
   call mpibarrier()
 
-  call mympibcast(spinavectorout,1,numdfbasis*numr)
+  call mympibcast(spinavectorout,1,www%numdfbasis*numr)
 
-  call basis_transformfrom_all(numr,spinavectorout(:),avectorout(:))
+  call basis_transformfrom_all(www,numr,spinavectorout(:),avectorout(:))
 
-  norm=sqrt(dot(avectorout,avectorout,totadim))  !ok conv
+  norm=sqrt(dot(avectorout,avectorout,www%totadim))  !ok conv
   avectorout=avectorout/norm
 
   ss=ss+1
@@ -428,12 +434,13 @@ end subroutine nonsparsequadavector
 
 
 recursive subroutine paraamult(notusedint,inavectorspin,outavectorspin)
-  use parameters
+  use r_parameters
   use aaonedmod
+  use configmod
   implicit none
   integer :: notusedint
-  DATATYPE,intent(in) :: inavectorspin(numr,botdfbasis:topdfbasis)
-  DATATYPE,intent(out) :: outavectorspin(numr,botdfbasis:topdfbasis)
+  DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
+  DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
 
   call parblockconfigmult(inavectorspin,outavectorspin)
 
@@ -445,24 +452,27 @@ end subroutine paraamult
 
 
 recursive subroutine parquadpreconsub(notusedint, inavectorspin,outavectorspin)
-  use parameters
+  use fileptrmod
+  use r_parameters
+  use sparse_parameters
   use aaonedmod
   use xxxmod
+  use configmod
   implicit none
   integer :: notusedint
-  DATATYPE,intent(in) :: inavectorspin(numr,botdfbasis:topdfbasis)
-  DATATYPE,intent(out) :: outavectorspin(numr,botdfbasis:topdfbasis)
-  DATATYPE :: inavector(numr,botconfig:topconfig),outavector(numr,botconfig:topconfig)
+  DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
+  DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
+  DATATYPE :: inavector(numr,www%botconfig:www%topconfig),outavector(numr,www%botconfig:www%topconfig)
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, no parquadpreconsub if sparseconfigflag=0"; CFLST
   endif
 
-  call basis_transformfrom_local(numr,inavectorspin,inavector)
+  call basis_transformfrom_local(www,numr,inavectorspin,inavector)
 
-  call parsparseconfigpreconmult(inavector, outavector, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0)
+  call parsparseconfigpreconmult(www,inavector, outavector, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0)
 
-  call basis_transformto_local(numr,outavector,outavectorspin)
+  call basis_transformto_local(www,numr,outavector,outavectorspin)
 
 end subroutine parquadpreconsub
 

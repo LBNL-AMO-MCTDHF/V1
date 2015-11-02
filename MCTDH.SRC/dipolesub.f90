@@ -18,6 +18,7 @@ end subroutine
 subroutine dipolesub()
   use dipolemod
   use parameters
+  use configmod
   use xxxmod
   implicit none
   DATATYPE :: xx,yy,zz
@@ -32,7 +33,7 @@ subroutine dipolesub()
      zdipoleexpect(calledflag)=0d0
 
      do imc=1,mcscfnum
-        call dipolesub_one(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0), xx,yy,zz)
+        call dipolesub_one(www,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0), xx,yy,zz)
 
 !! 101414 REAL-VALUED FOR HERM.
 
@@ -69,15 +70,16 @@ subroutine dipolesub()
 end subroutine dipolesub
 
 
-subroutine dipolesub_one(avector,inspfs,xdipole_expect,ydipole_expect,zdipole_expect)
-  use xxxmod
-  use parameters
+subroutine dipolesub_one(www,avector,inspfs,xdipole_expect,ydipole_expect,zdipole_expect)
+  use r_parameters
+  use spfsize_parameters
+  use walkmod
   implicit none
-
-  DATATYPE ::  inspfs(  spfsize, nspf ),  zdipole_expect, ydipole_expect, xdipole_expect, &
-       avector(numr,firstconfig:lastconfig),tempvector(numr,firstconfig:lastconfig)
+  type(walktype),intent(in) :: www
+  DATATYPE ::  inspfs(  spfsize, www%nspf ),  zdipole_expect, ydipole_expect, xdipole_expect, &
+       avector(numr,www%firstconfig:www%lastconfig),tempvector(numr,www%firstconfig:www%lastconfig)
   DATATYPE :: dot,nullcomplex(1),dipoles(3), &
-       tempspfs(spfsize,nspf), dipolemat(nspf,nspf),csum
+       tempspfs(spfsize,www%nspf), dipolemat(www%nspf,www%nspf),csum
   DATAECS :: rvector(numr)
   integer :: i
  
@@ -87,26 +89,26 @@ subroutine dipolesub_one(avector,inspfs,xdipole_expect,ydipole_expect,zdipole_ex
   do i=1,numr
      tempvector(i,:)=avector(i,:)*bondpoints(i)
   enddo
-  csum=dot(avector,tempvector,totadim)
-  if (parconsplit.ne.0) then
+  csum=dot(avector,tempvector,www%totadim)
+  if (www%parconsplit.ne.0) then
      call mympireduceone(csum)
   endif
   dipoles(:)=dipoles(:)*csum
 
 !! Z DIPOLE
 
-  do i=1,nspf
+  do i=1,www%nspf
      call mult_zdipole(inspfs(:,i),tempspfs(:,i))
   enddo
-  call MYGEMM(CNORMCHAR,'N',nspf,nspf,spfsize,DATAONE, inspfs, spfsize, tempspfs, spfsize, DATAZERO, dipolemat, nspf)
+  call MYGEMM(CNORMCHAR,'N',www%nspf,www%nspf,spfsize,DATAONE, inspfs, spfsize, tempspfs, spfsize, DATAZERO, dipolemat, www%nspf)
   if (parorbsplit.eq.3) then
-     call mympireduce(dipolemat(:,:),nspf**2)
+     call mympireduce(dipolemat(:,:),www%nspf**2)
   endif
 
   rvector(:)=bondpoints(:)
-  call arbitraryconfig_mult_singles(dipolemat,rvector,avector,tempvector,numr)
-  zdipole_expect=dot(avector,tempvector,totadim)
-  if (parconsplit.ne.0) then
+  call arbitraryconfig_mult_singles(www,dipolemat,rvector,avector,tempvector,numr)
+  zdipole_expect=dot(avector,tempvector,www%totadim)
+  if (www%parconsplit.ne.0) then
      call mympireduceone(zdipole_expect)
   endif
   zdipole_expect=zdipole_expect + dipoles(3)
@@ -114,18 +116,18 @@ subroutine dipolesub_one(avector,inspfs,xdipole_expect,ydipole_expect,zdipole_ex
 
 !! Y DIPOLE
 
-  do i=1,nspf
+  do i=1,www%nspf
      call mult_ydipole(inspfs(:,i),tempspfs(:,i))
   enddo
-  call MYGEMM(CNORMCHAR,'N',nspf,nspf,spfsize,DATAONE, inspfs, spfsize, tempspfs, spfsize, DATAZERO, dipolemat, nspf)
+  call MYGEMM(CNORMCHAR,'N',www%nspf,www%nspf,spfsize,DATAONE, inspfs, spfsize, tempspfs, spfsize, DATAZERO, dipolemat, www%nspf)
   if (parorbsplit.eq.3) then
-     call mympireduce(dipolemat(:,:),nspf**2)
+     call mympireduce(dipolemat(:,:),www%nspf**2)
   endif
 
   rvector(:)=bondpoints(:)
-  call arbitraryconfig_mult_singles(dipolemat,rvector,avector,tempvector,numr)
-  ydipole_expect=dot(avector,tempvector,totadim)
-  if (parconsplit.ne.0) then
+  call arbitraryconfig_mult_singles(www,dipolemat,rvector,avector,tempvector,numr)
+  ydipole_expect=dot(avector,tempvector,www%totadim)
+  if (www%parconsplit.ne.0) then
      call mympireduceone(ydipole_expect)
   endif
   ydipole_expect=ydipole_expect + dipoles(2)
@@ -133,18 +135,18 @@ subroutine dipolesub_one(avector,inspfs,xdipole_expect,ydipole_expect,zdipole_ex
 
 !! X DIPOLE
 
-  do i=1,nspf
+  do i=1,www%nspf
      call mult_xdipole(inspfs(:,i),tempspfs(:,i))
   enddo
-  call MYGEMM(CNORMCHAR,'N',nspf,nspf,spfsize,DATAONE, inspfs, spfsize, tempspfs, spfsize, DATAZERO, dipolemat, nspf)
+  call MYGEMM(CNORMCHAR,'N',www%nspf,www%nspf,spfsize,DATAONE, inspfs, spfsize, tempspfs, spfsize, DATAZERO, dipolemat, www%nspf)
   if (parorbsplit.eq.3) then
-     call mympireduce(dipolemat(:,:),nspf**2)
+     call mympireduce(dipolemat(:,:),www%nspf**2)
   endif
 
   rvector(:)=bondpoints(:)
-  call arbitraryconfig_mult_singles(dipolemat,rvector,avector,tempvector,numr)
-  xdipole_expect=dot(avector,tempvector,totadim)
-  if (parconsplit.ne.0) then
+  call arbitraryconfig_mult_singles(www,dipolemat,rvector,avector,tempvector,numr)
+  xdipole_expect=dot(avector,tempvector,www%totadim)
+  if (www%parconsplit.ne.0) then
      call mympireduceone(xdipole_expect)
   endif
   xdipole_expect=xdipole_expect + dipoles(1)
@@ -153,7 +155,6 @@ end subroutine dipolesub_one
 
 
 subroutine dipolesub_final()
-  use parameters
   use dipolemod
   implicit none
   deallocate( zdipoleexpect, xdipoleexpect,  ydipoleexpect)

@@ -2,14 +2,15 @@
 #include "Definitions.INC"
 
 
-subroutine keprojector(inavector,inspfs,infac)
+subroutine keprojector(inavector,inspfs,infac,www)
   use mpimod
   use parameters
+  use walkmod
   implicit none
-
-  DATATYPE,intent(in) :: inavector(totadim,mcscfnum), inspfs(spfsize,nspf)
+  type(walktype),intent(in) :: www
+  DATATYPE,intent(in) :: inavector(www%totadim,mcscfnum), inspfs(spfsize,nspf)
   DATATYPE :: tempelecweights(spfsize),rad, &
-       kedot(nspf),krval,dot,tempvector(totadim),csum,kedot2(nspf)
+       kedot(nspf),krval,dot,tempvector(www%totadim),csum,kedot2(nspf)
   DATATYPE, allocatable,save :: kevects(:,:),keproj(:,:,:),keproj2(:,:,:)
   real*8, allocatable, save ::  kesum(:),energy(:), kesum2(:)
   real*8 :: infac
@@ -68,9 +69,9 @@ subroutine keprojector(inavector,inspfs,infac)
   do ii=1,nkeproj
      ones(:)=1d0
 
-     call arbitraryconfig_mult_singles(keproj(:,:,ii),ones,inavector,tempvector,numr)
-     csum=dot(inavector(:,1),tempvector(:),totadim)
-     if (parconsplit.ne.0) then
+     call arbitraryconfig_mult_singles(www,keproj(:,:,ii),ones,inavector,tempvector,numr)
+     csum=dot(inavector(:,1),tempvector(:),www%totadim)
+     if (www%parconsplit.ne.0) then
         call mympireduceone(csum)
      endif
      if (real(csum).lt.1d6*abs(imag((0d0,0d0)+csum))) then     !! should be positive real  (um but not for cmctdhf, so don't use it then)
@@ -79,9 +80,9 @@ subroutine keprojector(inavector,inspfs,infac)
      kesum(ii)=kesum(ii)+real(csum)*infac
 
 
-     call arbitraryconfig_mult_singles(keproj2(:,:,ii),ones,inavector,tempvector,numr)
-     csum=dot(inavector(:,1),tempvector(:),totadim)
-     if (parconsplit.ne.0) then
+     call arbitraryconfig_mult_singles(www,keproj2(:,:,ii),ones,inavector,tempvector,numr)
+     csum=dot(inavector(:,1),tempvector(:),www%totadim)
+     if (www%parconsplit.ne.0) then
         call mympireduceone(csum)
      endif
      if (real(csum).lt.1d6*abs(imag((0d0,0d0)+csum))) then     !! should be positive real  (um but not for cmctdhf, so don't use it then)

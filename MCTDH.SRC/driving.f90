@@ -10,12 +10,12 @@ module drivingbiomod
 
 end module
 
-subroutine getdrivingoverlap(outdrivingoverlap)
+subroutine getdrivingoverlap(outdrivingoverlap,numvects)
   use drivingbiomod
-  use parameters
   implicit none
-  DATATYPE :: outdrivingoverlap(mcscfnum)
-  outdrivingoverlap(:)= drivingoverlap(1:mcscfnum)
+  integer,intent(in) :: numvects
+  DATATYPE :: outdrivingoverlap(numvects)
+  outdrivingoverlap(:)= drivingoverlap(1:numvects)
 end subroutine getdrivingoverlap
 
 subroutine drivingtrans(thistime)
@@ -23,7 +23,6 @@ subroutine drivingtrans(thistime)
   use drivingbiomod
   use configmod
   use xxxmod
-  use walkmod
   use biorthomod
   use opmod
   implicit none
@@ -31,7 +30,7 @@ subroutine drivingtrans(thistime)
   DATATYPE :: dipmatxx(nspf,nspf),dipmatyy(nspf,nspf),dipmatzz(nspf,nspf),scalarpotyy(nspf,nspf),scalarpotzz(nspf,nspf)
   DATATYPE :: tempinvden(nspf,nspf),tempdenmat2(nspf,nspf), dreducedpottally(nspf,nspf,nspf,nspf)
   DATATYPE ::  tempdenmat(nspf,nspf), tempdrivingorbs(spfsize,nspf), &
-       currentorbs(spfsize,nspf),tempdrivingavector(numr,firstconfig:lastconfig,mcscfnum), dot
+       currentorbs(spfsize,nspf),tempdrivingavector(numr,first_config:last_config,mcscfnum), dot
   DATATYPE :: scalarpotxx(nspf,nspf), multorbsxx(spfsize,nspf), multorbsyy(spfsize,nspf), multorbszz(spfsize,nspf)
   DATATYPE :: dtwoereduced(reducedpotsize,nspf,nspf), pots(3)=0d0
 
@@ -59,18 +58,18 @@ subroutine drivingtrans(thistime)
 
      tempdrivingavector(:,:,imc)=avector_driving(:,:,imc) * exp(timefac*drivingenergies(imc)*thistime)
 
-     call bioset(drivingbiovar,smo,numr)
+     call bioset(drivingbiovar,smo,numr,www)
      call biortho(orbs_driving(:,:),currentorbs(:,:),tempdrivingorbs(:,:),tempdrivingavector(:,:,imc),drivingbiovar)
 
 !! tempdrivingavector is vector in non-orthonormal tempdrivingorbs (which are bio to currentorbs)
 !!    also is vector in currentorbs corresponding to insertion of identity
 !!    so overlap is avector dot tempdrivingavector
 
-     drivingoverlap(imc)=dot(yyy%cmfpsivec(astart(imc),0),tempdrivingavector(:,:,imc),totadim)
+     drivingoverlap(imc)=dot(yyy%cmfpsivec(astart(imc),0),tempdrivingavector(:,:,imc),tot_adim)
 
   enddo
 
-  if (parconsplit.ne.0) then
+  if (par_consplit.ne.0) then
      call mympireduce(drivingoverlap,mcscfnum)
   endif
 
@@ -87,7 +86,7 @@ subroutine drivingtrans(thistime)
   endif
 
 
-  call configptralloc(drivingptr)
+  call configptralloc(drivingptr,www)
   call zero_cptr(drivingptr)
   call all_matel0(drivingptr,currentorbs,tempdrivingorbs,dtwoereduced,nulltimes)
 
@@ -124,12 +123,12 @@ subroutine drivingtrans(thistime)
      endif
 
 
-     call arbitraryconfig_mult_singles(dipmatxx,rvector,tempdrivingavector(:,:,imc),     yyy%drivingavectorsxx(:,:,imc,0),numr)
-     call arbitraryconfig_mult_singles(dipmatyy,rvector,tempdrivingavector(:,:,imc),     yyy%drivingavectorsyy(:,:,imc,0),numr)
-     call arbitraryconfig_mult_singles(dipmatzz,rvector,tempdrivingavector(:,:,imc),     yyy%drivingavectorszz(:,:,imc,0),numr)
+     call arbitraryconfig_mult_singles(www,dipmatxx,rvector,tempdrivingavector(:,:,imc),     yyy%drivingavectorsxx(:,:,imc,0),numr)
+     call arbitraryconfig_mult_singles(www,dipmatyy,rvector,tempdrivingavector(:,:,imc),     yyy%drivingavectorsyy(:,:,imc,0),numr)
+     call arbitraryconfig_mult_singles(www,dipmatzz,rvector,tempdrivingavector(:,:,imc),     yyy%drivingavectorszz(:,:,imc,0),numr)
   enddo
 
-  call get_tworeducedx( dreducedpottally, yyy%cmfpsivec(astart(1),0), tempdrivingavector)
+  call get_tworeducedx(www, dreducedpottally, yyy%cmfpsivec(astart(1),0), tempdrivingavector, mcscfnum)
 
   call MYGEMM('N','N', 1,nspf**2,nspf**2,(1.0d0,0.d0), dipmatxx,1,dreducedpottally,nspf**2, (0.d0,0.d0),scalarpotxx,1)
   call MYGEMM('N','N', 1,nspf**2,nspf**2,(1.0d0,0.d0), dipmatyy,1,dreducedpottally,nspf**2, (0.d0,0.d0),scalarpotyy,1)
@@ -138,13 +137,13 @@ subroutine drivingtrans(thistime)
 
 !! NOT DENMAT, REDUCED OPERATOR FOR PULSE (rvector)
 
-  call getdenmat00(tempdrivingavector(:,:,:),yyy%cmfpsivec(astart(1),0),rvector(:),tempdenmat(:,:),numr,mcscfnum)
+  call getdenmat00(www,tempdrivingavector(:,:,:),yyy%cmfpsivec(astart(1),0),rvector(:),tempdenmat(:,:),numr,mcscfnum)
 
 !!$  tempdenmat(:,:)=0.d0
 !!$
 !!$  do imc=1,mcscfnum
 !!$     bigavector(:,:)=0d0
-!!$     bigavector(:,firstconfig:lastconfig)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numr,localnconfig/))
+!!$     bigavector(:,first_config:last_config)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numr,local_nconfig/))
 !!$     if (parconsplit.ne.0) then
 !!$        call mpiallgather(bigavector,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
 !!$     endif
@@ -210,7 +209,7 @@ subroutine drivinginit(inenergies)
 
   orbs_driving(:,:)=RESHAPE(yyy%cmfpsivec(spfstart:spfend,0),(/spfsize,nspf/))
 
-  avector_driving(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numr,localnconfig,mcscfnum/))*drivingproportion
+  avector_driving(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numr,local_nconfig,mcscfnum/))*drivingproportion
 
   yyy%cmfpsivec(astart(1):aend(mcscfnum),0) = yyy%cmfpsivec(astart(1):aend(mcscfnum),0) * (1d0-drivingproportion)
 

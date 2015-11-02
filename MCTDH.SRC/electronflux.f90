@@ -15,7 +15,7 @@ subroutine fluxwrite(curtime,in_xmo,in_xa)
   use mpimod
   implicit none
   integer :: curtime,molength,alength,ispf,ii
-  DATATYPE,intent(in) :: in_xmo(spfsize,nspf),in_xa(numr,firstconfig:lastconfig,mcscfnum)
+  DATATYPE,intent(in) :: in_xmo(spfsize,nspf),in_xa(numr,first_config:last_config,mcscfnum)
   DATATYPE,allocatable :: xmo(:,:), xa(:,:,:)
 
   if (myrank.eq.1) then
@@ -38,15 +38,15 @@ subroutine fluxwrite(curtime,in_xmo,in_xa)
   endif
 
   if (myrank.eq.1) then
-     allocate(xa(numr,numconfig,mcscfnum))
+     allocate(xa(numr,num_config,mcscfnum))
   else
      allocate(xa(1,1,mcscfnum))
   endif
   xa(:,:,:)=0d0
 
-  if (parconsplit.ne.0) then
+  if (par_consplit.ne.0) then
      do ii=1,mcscfnum
-        call mygatherv(in_xa(:,:,ii),xa(:,:,ii), configsperproc(:)*numr,.false.)
+        call mygatherv(in_xa(:,:,ii),xa(:,:,ii), configs_perproc(:)*numr,.false.)
      enddo
   elseif(myrank.eq.1) then
      xa(:,:,:)=in_xa(:,:,:)
@@ -78,8 +78,9 @@ module fluxgtaubiomod
   type(biorthotype),target :: fluxgtaubiovar
 end module fluxgtaubiomod
 
-
-subroutine fluxgtau(alg)
+module fluxgtau0mod
+contains
+subroutine fluxgtau0(alg,www)
 !! actually compute the flux in a post processing kind of manner
 !! input :
 !! alg - determines how the memory management algorithm for loading up previous wavefunctions
@@ -95,6 +96,7 @@ subroutine fluxgtau(alg)
 !! 2       = use full one-e potential, no two-e 
 !! other   = only KE
 
+  type(walktype),target :: www
   integer :: alg,curtime,oldtime,k,nt,i,molength,alength,  BatchSize,NBat,brabat,brareadsize, &
        bratime,ketbat,ketreadsize,kettime,bratop, atime,btime,itime,jtime,times(1:7)=0, &
        imc, tau, ispf
@@ -127,7 +129,7 @@ subroutine fluxgtau(alg)
 
   allocate(ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf))
   allocate(reke(nspf,nspf),repe(nspf,nspf),reV2(nspf,nspf,nspf,nspf),reyderiv(nspf,nspf))
-  allocate(mobio(spfsize,nspf),abio(numr,firstconfig:lastconfig,mcscfnum), &
+  allocate(mobio(spfsize,nspf),abio(numr,www%firstconfig:www%lastconfig,mcscfnum), &
        keop(spfsize,nspf),peop(spfsize,nspf),   rekeop(spfsize,nspf),repeop(spfsize,nspf))
   allocate(yop(spfsize,nspf));  allocate(reyop(spfsize,nspf))
   
@@ -143,7 +145,7 @@ subroutine fluxgtau(alg)
   MemVal = 6.25d4
 #endif
   call openfile()
-  write(mpifileptr,'(A30,F9.3,A3)') " Guess at necessary memory is ",2d0*real((nt+1)*(localnconfig*numr*mcscfnum+spfsize*nspf),8)/MemVal," MB"
+  write(mpifileptr,'(A30,F9.3,A3)') " Guess at necessary memory is ",2d0*real((nt+1)*(www%localnconfig*numr*mcscfnum+spfsize*nspf),8)/MemVal," MB"
   if(alg.eq.0) then
     write(mpifileptr,*) "g(tau) will be computed with all of psi in core"
     BatchSize=nt+1
@@ -151,7 +153,7 @@ subroutine fluxgtau(alg)
     MemTot=real(alg,8)    
     write(mpifileptr,*) "g(tau) will be computed with all psi being read in batches"
     write(mpifileptr,'(A33,F9.3,A3)') " Desired amount of memory to use ",MemTot," MB"
-    BatchSize=floor(MemTot * MemVal / (2d0*real(localnconfig*numr*mcscfnum+spfsize*nspf,8)))
+    BatchSize=floor(MemTot * MemVal / (2d0*real(www%localnconfig*numr*mcscfnum+spfsize*nspf,8)))
     if(BatchSize.lt.1) then
       write(mpifileptr,*) "Tiny amount of memory or huge wavefunction, Batchsize is 1" 
       BatchSize=1
@@ -164,8 +166,8 @@ subroutine fluxgtau(alg)
   endif
   call closefile()
 
-  allocate(ketmo(spfsize,nspf,BatchSize),ketavec(numr,firstconfig:lastconfig,mcscfnum,BatchSize))
-  allocate(bramo(spfsize,nspf,BatchSize),braavec(numr,firstconfig:lastconfig,mcscfnum,BatchSize))
+  allocate(ketmo(spfsize,nspf,BatchSize),ketavec(numr,www%firstconfig:www%lastconfig,mcscfnum,BatchSize))
+  allocate(bramo(spfsize,nspf,BatchSize),braavec(numr,www%firstconfig:www%lastconfig,mcscfnum,BatchSize))
 
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
@@ -177,7 +179,7 @@ subroutine fluxgtau(alg)
      allocate(read_bramo(1,nspf,BatchSize),read_ketmo(1,nspf,BatchSize))
   endif
   if (myrank.eq.1) then
-     allocate(read_braavec(numr,numconfig,mcscfnum,BatchSize),read_ketavec(numr,numconfig,mcscfnum,BatchSize))
+     allocate(read_braavec(numr,www%numconfig,mcscfnum,BatchSize),read_ketavec(numr,www%numconfig,mcscfnum,BatchSize))
   else
      allocate(read_braavec(1,1,mcscfnum,BatchSize),read_ketavec(1,1,mcscfnum,BatchSize))
   endif
@@ -230,15 +232,15 @@ subroutine fluxgtau(alg)
            enddo
         enddo
      endif
-     if (parconsplit.eq.0) then
+     if (par_consplit.eq.0) then
         if (myrank.eq.1) then
            ketavec(:,:,:,1:ketreadsize)=read_ketavec(:,:,:,1:ketreadsize)
         endif
-        call mympibcast(ketavec(:,:,:,1:ketreadsize),1,numr*numconfig*mcscfnum*ketreadsize)
+        call mympibcast(ketavec(:,:,:,1:ketreadsize),1,numr*www%numconfig*mcscfnum*ketreadsize)
      else
         do i=1,ketreadsize
            do imc=1,mcscfnum
-              call myscatterv(read_ketavec(:,:,imc,i),ketavec(:,:,imc,i),configsperproc(:)*numr)
+              call myscatterv(read_ketavec(:,:,imc,i),ketavec(:,:,imc,i),configs_perproc(:)*numr)
            enddo
         enddo
      endif
@@ -276,15 +278,15 @@ subroutine fluxgtau(alg)
                  enddo
               enddo
            endif
-           if (parconsplit.eq.0) then
+           if (par_consplit.eq.0) then
               if (myrank.eq.1) then
                  braavec(:,:,:,1:brareadsize)=read_braavec(:,:,:,1:brareadsize)
               endif
-              call mympibcast(braavec(:,:,:,1:brareadsize),1,numr*numconfig*mcscfnum*brareadsize)
+              call mympibcast(braavec(:,:,:,1:brareadsize),1,numr*www%numconfig*mcscfnum*brareadsize)
            else
               do i=1,brareadsize
                  do imc=1,mcscfnum
-                    call myscatterv(read_braavec(:,:,imc,i),braavec(:,:,imc,i),configsperproc(:)*numr)
+                    call myscatterv(read_braavec(:,:,imc,i),braavec(:,:,imc,i),configs_perproc(:)*numr)
                  enddo
               enddo
            endif
@@ -334,7 +336,7 @@ subroutine fluxgtau(alg)
               mobra=>bramo(:,:,bratime)
               abio(:,:,:)=braavec(:,:,:,bratime)
               
-              call bioset(fluxgtaubiovar,smo,numr)
+              call bioset(fluxgtaubiovar,smo,numr,www)
               call biortho(mobra,moket,mobio,abio(:,:,1),fluxgtaubiovar)
               
               do imc=2,mcscfnum
@@ -520,7 +522,17 @@ subroutine fluxgtau(alg)
   deallocate(yop,reyop)
 
 
+end subroutine fluxgtau0
+end module fluxgtau0mod
+
+subroutine fluxgtau(alg)
+  use fluxgtau0mod
+  use configmod
+  implicit none
+  integer :: alg
+  call fluxgtau0(alg,www)
 end subroutine fluxgtau
+
 
 
 !! begin the flux matrix element and contraction routine section
@@ -641,17 +653,18 @@ end subroutine flux_op_twoe
 
 function fluxeval(abra,aket,ke,pe,V2,yderiv,flag,imc)   
   use parameters 
+  use configmod
   implicit none
   integer :: flag,imc
-  DATATYPE :: abra(numr,firstconfig:lastconfig,mcscfnum),aket(numr,firstconfig:lastconfig,mcscfnum),fluxeval,fluxeval00
+  DATATYPE :: abra(numr,first_config:last_config,mcscfnum),aket(numr,first_config:last_config,mcscfnum),fluxeval,fluxeval00
   DATATYPE :: ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf)
 
-  fluxeval=fluxeval00(abra(:,:,imc),aket(:,:,imc),ke,pe,V2,yderiv,flag,nucfluxflag)
+  fluxeval=fluxeval00(abra(:,:,imc),aket(:,:,imc),ke,pe,V2,yderiv,flag,nucfluxflag,www)
 
 end function fluxeval
 
 
-function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart)   
+function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart,www)   
 
 !! flag=1 means flux (take into account fluxoptype) otherwise whole thing
 
@@ -673,48 +686,49 @@ function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart)
   use opmod  !! rkemod & proderivmod
   use walkmod
   implicit none
-
+  type(walktype),intent(in) :: www
   integer :: bra,ket,r,flag,rr,ipart
-  DATATYPE,intent(in) :: abra(numr,firstconfig:lastconfig),in_aket(numr,firstconfig:lastconfig)
-  DATATYPE :: ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf)
+  DATATYPE,intent(in) :: abra(numr,www%firstconfig:www%lastconfig),in_aket(numr,www%firstconfig:www%lastconfig)
+  DATATYPE :: ke(www%nspf,www%nspf),pe(www%nspf,www%nspf),V2(www%nspf,www%nspf,www%nspf,www%nspf),&
+       yderiv(www%nspf,www%nspf)
   DATATYPE :: INVR,INVRSQ,fluxeval00,PRODERIV,BONDKE
-  DATATYPE :: aket(numr,numconfig)  !! AUTOMATIC
+  DATATYPE :: aket(numr,www%numconfig)  !! AUTOMATIC
 
   if (flag.ne.1.or.fluxoptype.ne.1.or.ipart.ne.0) then
      OFLWR "maybe checkme debug"; CFLST
   endif
 
-  aket(:,firstconfig:lastconfig)=in_aket(:,:)
+  aket(:,www%firstconfig:www%lastconfig)=in_aket(:,:)
 
 !! DO SUMMA
-  if (parconsplit.ne.0) then
-     call mpiallgather(aket,numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
+  if (www%parconsplit.ne.0) then
+     call mpiallgather(aket,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
   endif
 
   fluxeval00 = 0d0
 
-  do bra=botconfig,topconfig
+  do bra=www%botconfig,www%topconfig
 
-    do ket=1,numsinglewalks(bra)
+    do ket=1,www%numsinglewalks(bra)
 
       INVR=0d0;      INVRSQ=0d0
       do r=1,numr
          select case(flag)
          case(1)
-            INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,singlewalk(ket,bra)) * real(1d0/ (bondpoints(r)),8)
-            INVRSQ = INVRSQ + CONJUGATE(abra(r,bra)) * aket(r,singlewalk(ket,bra)) * real(1d0 / (bondpoints(r)**2),8)
+            INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) * real(1d0/ (bondpoints(r)),8)
+            INVRSQ = INVRSQ + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) * real(1d0 / (bondpoints(r)**2),8)
          case(2)
-            INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,singlewalk(ket,bra)) *imag((0d0,0d0)+1d0/bondpoints(r))
-            INVRSQ = INVRSQ + CONJUGATE(abra(r,bra)) * aket(r,singlewalk(ket,bra)) * imag((0d0,0d0)+1d0/ (bondpoints(r)**2))
+            INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) *imag((0d0,0d0)+1d0/bondpoints(r))
+            INVRSQ = INVRSQ + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) * imag((0d0,0d0)+1d0/ (bondpoints(r)**2))
          case default
-            INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,singlewalk(ket,bra)) / (bondpoints(r))
-            INVRSQ = INVRSQ + CONJUGATE(abra(r,bra)) * aket(r,singlewalk(ket,bra)) / (bondpoints(r)**2)
+            INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) / (bondpoints(r))
+            INVRSQ = INVRSQ + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) / (bondpoints(r)**2)
          end select
 
       enddo
 
-      INVR = INVR * singlewalkdirphase(ket,bra)
-      INVRSQ = INVRSQ * singlewalkdirphase(ket,bra)
+      INVR = INVR * www%singlewalkdirphase(ket,bra)
+      INVRSQ = INVRSQ * www%singlewalkdirphase(ket,bra)
       BONDKE=0d0;      PRODERIV=0d0
 
       if (ipart.eq.0.or.ipart.eq.2) then
@@ -723,40 +737,40 @@ function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart)
          case(1)
             do rr=1,numr
                do r=1,numr
-                  BONDKE = BONDKE + CONJUGATE(abra(r,bra)) * aket(rr,singlewalk(ket,bra)) * imag((0d0,0d0)+rkemod(r,rr))
-                  PRODERIV = PRODERIV + CONJUGATE(abra(r,bra)) * aket(rr,singlewalk(ket,bra)) * real(proderivmod(r,rr),8)
+                  BONDKE = BONDKE + CONJUGATE(abra(r,bra)) * aket(rr,www%singlewalk(ket,bra)) * imag((0d0,0d0)+rkemod(r,rr))
+                  PRODERIV = PRODERIV + CONJUGATE(abra(r,bra)) * aket(rr,www%singlewalk(ket,bra)) * real(proderivmod(r,rr),8)
                enddo
             enddo
          case(2)
             do rr=1,numr
                do r=1,numr
-                  PRODERIV = PRODERIV + CONJUGATE(abra(r,bra)) * aket(rr,singlewalk(ket,bra)) * imag((0d0,0d0)+proderivmod(r,rr))
+                  PRODERIV = PRODERIV + CONJUGATE(abra(r,bra)) * aket(rr,www%singlewalk(ket,bra)) * imag((0d0,0d0)+proderivmod(r,rr))
                enddo
             enddo
          case default
             do rr=1,numr
                do r=1,numr
-                  BONDKE = BONDKE + CONJUGATE(abra(r,bra)) * aket(rr,singlewalk(ket,bra)) * rkemod(r,rr)
-                  PRODERIV = PRODERIV + CONJUGATE(abra(r,bra)) * aket(rr,singlewalk(ket,bra)) * proderivmod(r,rr)
+                  BONDKE = BONDKE + CONJUGATE(abra(r,bra)) * aket(rr,www%singlewalk(ket,bra)) * rkemod(r,rr)
+                  PRODERIV = PRODERIV + CONJUGATE(abra(r,bra)) * aket(rr,www%singlewalk(ket,bra)) * proderivmod(r,rr)
                enddo
             enddo
          end select
 
-         BONDKE = BONDKE * singlewalkdirphase(ket,bra)
-         PRODERIV = PRODERIV * singlewalkdirphase(ket,bra)
+         BONDKE = BONDKE * www%singlewalkdirphase(ket,bra)
+         PRODERIV = PRODERIV * www%singlewalkdirphase(ket,bra)
 
          if (flag.eq.1.or.flag.eq.2) then
             fluxeval00 = fluxeval00 + BONDKE   * (-2d0)
          else
             fluxeval00 = fluxeval00 + BONDKE  
          endif
-         fluxeval00 = fluxeval00 + PRODERIV * yderiv(singlewalkopspf(1,ket,bra),singlewalkopspf(2,ket,bra))
+         fluxeval00 = fluxeval00 + PRODERIV * yderiv(www%singlewalkopspf(1,ket,bra),www%singlewalkopspf(2,ket,bra))
       endif
       endif
       if (ipart.eq.1.or.ipart.eq.0) then
 
-         fluxeval00 = fluxeval00 + INVRSQ * ke(singlewalkopspf(1,ket,bra),singlewalkopspf(2,ket,bra)) & !! conjugates OK
-              + INVR * pe(singlewalkopspf(1,ket,bra),singlewalkopspf(2,ket,bra))
+         fluxeval00 = fluxeval00 + INVRSQ * ke(www%singlewalkopspf(1,ket,bra),www%singlewalkopspf(2,ket,bra)) & !! conjugates OK
+              + INVR * pe(www%singlewalkopspf(1,ket,bra),www%singlewalkopspf(2,ket,bra))
 
       endif  !! ipart
     enddo
@@ -768,27 +782,27 @@ function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart)
 
        OFLWR "MAYBE DOUBLE CHECKME"; CFLST
 
-      do ket=1,numdoublewalks(bra)
+      do ket=1,www%numdoublewalks(bra)
         INVR=0d0
         select case(flag)
         case(1)
            do r=1,numr
-              INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,doublewalk(ket,bra)) *real(1d0/ (bondpoints(r)),8)
+              INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%doublewalk(ket,bra)) *real(1d0/ (bondpoints(r)),8)
            enddo
         case(2)
            do r=1,numr
-              INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,doublewalk(ket,bra)) *imag((0d0,0d0)+1d0/bondpoints(r))
+              INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%doublewalk(ket,bra)) *imag((0d0,0d0)+1d0/bondpoints(r))
            enddo
         case default
            do r=1,numr
-              INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,doublewalk(ket,bra)) / (bondpoints(r))
+              INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%doublewalk(ket,bra)) / (bondpoints(r))
            enddo
         end select
-          fluxeval00 = fluxeval00 + INVR * V2(doublewalkdirspf(1,ket,bra), &
-            doublewalkdirspf(2,ket,bra), &
-            doublewalkdirspf(3,ket,bra), &
-            doublewalkdirspf(4,ket,bra)) * &
-            doublewalkdirphase(ket,bra)
+          fluxeval00 = fluxeval00 + INVR * V2(www%doublewalkdirspf(1,ket,bra), &
+            www%doublewalkdirspf(2,ket,bra), &
+            www%doublewalkdirspf(3,ket,bra), &
+            www%doublewalkdirspf(4,ket,bra)) * &
+            www%doublewalkdirphase(ket,bra)
        enddo
     endif
     endif  !! ipart

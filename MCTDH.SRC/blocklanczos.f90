@@ -1,14 +1,18 @@
 
 #include "Definitions.INC"
 
-subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
-  use parameters
+subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
+  use r_parameters
+  use sparse_parameters
+  use lan_parameters
+  use fileptrmod
+  use configmod
   implicit none 
   integer, intent(in) :: order,inprintflag,guessflag
   integer :: printflag,maxdim,vdim,ii
   DATATYPE, intent(out) :: outvalues(order)
-  DATATYPE, intent(inout) :: outvectors(numr,firstconfig:lastconfig,order)
-  DATATYPE :: workvectorsspin(numr,botdfbasis:topdfbasis,order)  !! AUTOMATIC
+  DATATYPE, intent(inout) :: outvectors(numr,www%firstconfig:www%lastconfig,order)
+  DATATYPE :: workvectorsspin(numr,www%botdfbasis:www%topdfbasis,order)  !! AUTOMATIC
   external :: parblockconfigmult
 
   printflag=max(lanprintflag,inprintflag)
@@ -17,32 +21,32 @@ subroutine blocklanczos( order,outvectors, outvalues,inprintflag,guessflag)
      OFLWR "error, can't use blocklanczos for a-vector with sparseconfigflag=0"; CFLST
   endif
 
-  if (topdfbasis-botdfbasis+1.ne.0) then
+  if (www%topdfbasis-www%botdfbasis+1.ne.0) then
      workvectorsspin(:,:,:)=0d0
      if (guessflag.ne.0) then
         do ii=1,order
-           call basis_transformto_local(numr,outvectors(:,botconfig,ii),workvectorsspin(:,:,ii))
+           call basis_transformto_local(www,numr,outvectors(:,www%botconfig,ii),workvectorsspin(:,:,ii))
         enddo
      endif
   endif
 
-  maxdim=numdfbasis*numr
-  vdim=(topdfbasis-botdfbasis+1)*numr
+  maxdim=www%numdfbasis*numr
+  vdim=(www%topdfbasis-www%botdfbasis+1)*numr
 
   call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,workvectorsspin,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,.true.,0,DATAZERO)
 
 
   outvectors(:,:,:)=0d0
 
-  if (topdfbasis-botdfbasis+1.ne.0) then
+  if (www%topdfbasis-www%botdfbasis+1.ne.0) then
      do ii=1,order
-        call basis_transformfrom_local(numr,workvectorsspin(:,:,ii),outvectors(:,botconfig,ii))
+        call basis_transformfrom_local(www,numr,workvectorsspin(:,:,ii),outvectors(:,www%botconfig,ii))
      enddo
   endif
 
-  if (parconsplit.eq.0) then
+  if (www%parconsplit.eq.0) then
      do ii=1,order
-        call mpiallgather(outvectors(:,:,ii),numconfig*numr,configsperproc*numr,maxconfigsperproc*numr)
+        call mpiallgather(outvectors(:,:,ii),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
      enddo
   endif
 
@@ -50,7 +54,7 @@ end subroutine blocklanczos
 
 
 function nulldot(logpar)
-  use parameters
+  use fileptrmod
   implicit none
   logical :: logpar
   DATATYPE :: nulldot
@@ -63,7 +67,6 @@ function nulldot(logpar)
 end function nulldot
 
 function hdot(in,out,n,logpar)
-  use parameters
   implicit none
   integer :: n
   logical :: logpar
@@ -75,7 +78,6 @@ function hdot(in,out,n,logpar)
 end function hdot
 
 function thisdot(in,out,n,logpar)
-  use parameters
   implicit none
   integer :: n
   logical :: logpar
@@ -87,7 +89,6 @@ function thisdot(in,out,n,logpar)
 end function thisdot
 
 subroutine allhdots(bravectors,ketvectors,n,lda,num1,num2,outdots,logpar)
-  use parameters
   implicit none
   integer :: id,jd,num1,num2,lda,n
   logical :: logpar
@@ -103,7 +104,7 @@ subroutine allhdots(bravectors,ketvectors,n,lda,num1,num2,outdots,logpar)
 end subroutine allhdots
 
 subroutine nulldots(num1,num2,outdots,logpar)
-  use parameters
+  use fileptrmod
   implicit none
   integer :: num1,num2
   logical :: logpar
@@ -157,14 +158,18 @@ end subroutine nullgramschmidt_fast
 
 
 recursive subroutine parblockconfigmult(inavector,outavector)
-  use parameters
+  use fileptrmod
+  use r_parameters
+  use sparse_parameters
+  use ham_parameters
+  use configmod
   use mpimod
   use xxxmod
   implicit none
   integer :: ii
-  DATATYPE,intent(in) :: inavector(numr,botdfbasis:topdfbasis)
-  DATATYPE,intent(out) :: outavector(numr,botdfbasis:topdfbasis)
-  DATATYPE :: intemp(numr,numconfig),outwork(numr,botconfig:topconfig)
+  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
+  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
+  DATATYPE :: intemp(numr,www%numconfig),outwork(numr,www%botconfig:www%topconfig)
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parblockconfigmult"; CFLST
@@ -172,20 +177,20 @@ recursive subroutine parblockconfigmult(inavector,outavector)
 
   intemp(:,:)=0d0;   
 
-  call basis_transformfrom_local(numr,inavector,intemp(:,botconfig:topconfig))
+  call basis_transformfrom_local(www,numr,inavector,intemp(:,www%botconfig:www%topconfig))
 
 !! DO SUMMA
 
-  call mpiallgather(intemp,numconfig*numr,configsperproc(:)*numr,maxconfigsperproc*numr)
+  call mpiallgather(intemp,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
 
-  call sparseconfigmult_nompi(intemp,outwork, yyy%cptr(0), yyy%sptr(0), 1,1,1,0,0d0,0,1,numr,0)
+  call sparseconfigmult_nompi(www,intemp,outwork, yyy%cptr(0), yyy%sptr(0), 1,1,1,0,0d0,0,1,numr,0)
   if (mshift.ne.0d0) then 
-     do ii=botconfig,topconfig
-        outwork(:,ii)=outwork(:,ii)+ intemp(:,ii)*configmvals(ii)*mshift
+     do ii=www%botconfig,www%topconfig
+        outwork(:,ii)=outwork(:,ii)+ intemp(:,ii)*www%configmvals(ii)*mshift
      enddo
   endif
 
-  call basis_transformto_local(numr,outwork,outavector)
+  call basis_transformto_local(www,numr,outwork,outavector)
 
 end subroutine parblockconfigmult
 

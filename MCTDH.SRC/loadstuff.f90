@@ -35,17 +35,17 @@ subroutine save_vector(psi,afile,sfile)
   endif
 
 
-  if (parconsplit.ne.0.and.myrank.eq.1) then
-     allocate(paravec(numr,numconfig,mcscfnum)); paravec(:,:,:)=0d0
+  if (par_consplit.ne.0.and.myrank.eq.1) then
+     allocate(paravec(numr,num_config,mcscfnum)); paravec(:,:,:)=0d0
   else
      allocate(paravec(1,1,mcscfnum))
   endif
 
   call mpibarrier()
 
-  if (parconsplit.ne.0) then
+  if (par_consplit.ne.0) then
      do iprop=1,mcscfnum
-        call mygatherv(psi(astart(iprop)),paravec(:,:,iprop),configsperproc(:)*numr,.false.)
+        call mygatherv(psi(astart(iprop)),paravec(:,:,iprop),configs_perproc(:)*numr,.false.)
      enddo
   endif
 
@@ -62,7 +62,7 @@ subroutine save_vector(psi,afile,sfile)
      
      open(999,file=afile, status="unknown", form="unformatted")
      call avector_header_write(999,mcscfnum)
-     if (parconsplit.ne.0) then
+     if (par_consplit.ne.0) then
         do iprop=1,mcscfnum
            call write_avector(999,paravec(:,:,iprop))
         enddo

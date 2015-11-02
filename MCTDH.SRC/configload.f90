@@ -78,11 +78,11 @@ subroutine avector_header_write(iunit,numvects)
 
   array(1)=ndof
   array(2)=numr
-  array(3)=numconfig
+  array(3)=num_config
   array(4)=restrictflag
-  array(5)=restrictms
-  array(6)=allspinproject
-  array(7)=spinrestrictval
+  array(5)=restrict_ms
+  array(6)=all_spinproject
+  array(7)=spin_restrictval
 
   write(iunit) array(:)
 
@@ -100,12 +100,13 @@ end subroutine
 
 subroutine load_avector_productsub(myavector)
   use parameters
+  use configmod
   use mpimod
   implicit none
-  DATATYPE,intent(out) :: myavector(numr,firstconfig:lastconfig,mcscfnum)
+  DATATYPE,intent(out) :: myavector(numr,first_config:last_config,mcscfnum)
   integer :: readnumvects(numavectorfiles),readndof(numavectorfiles),readnumr(numavectorfiles),&
        readnumconfig(numavectorfiles),readcomplex(numavectorfiles),readunit(numavectorfiles)
-  integer :: configtable(numconfig),configphase(numconfig) !! AUTOMATIC
+  integer :: configtable(num_config),configphase(num_config) !! AUTOMATIC
   type threemat
      DATATYPE, allocatable :: mat(:,:,:)
   end type threemat
@@ -118,7 +119,7 @@ subroutine load_avector_productsub(myavector)
   integer,allocatable :: newconfiglist(:,:)
   integer :: ifile,tot_ndof,tot_numconfig,iconfig,jj,kk,dirphase,reorder,num_allowed,jconfig,iitop(6),&
        dofsum,thisconfig(ndof),ir,getconfiguration,tot_wfns,iwfn
-  logical :: allowedconfig
+  logical :: allowedconfig0
   integer, target :: ii(6)
   integer, pointer :: ii1,ii2,ii3,ii4,ii5,ii6
 
@@ -268,10 +269,10 @@ subroutine load_avector_productsub(myavector)
 
   num_allowed=0
   do iconfig=1,tot_numconfig
-     dirphase=reorder(newconfiglist(:,iconfig))
-     if (allowedconfig(newconfiglist(:,iconfig))) then
+     dirphase=reorder(newconfiglist(:,iconfig),numelec)
+     if (allowedconfig0(www,newconfiglist(:,iconfig),0)) then
         num_allowed=num_allowed+1
-        jconfig=getconfiguration(newconfiglist(:,iconfig))
+        jconfig=getconfiguration(newconfiglist(:,iconfig),www)
         if (configtable(jconfig).ne.(-99)) then
            OFLWR "PROGFAIL CONFIGTABEEE"; CFLST
         endif
@@ -353,7 +354,7 @@ subroutine load_avector_productsub(myavector)
 
      myavector(:,:,iwfn)=0d0
 
-     do jconfig=firstconfig,lastconfig
+     do jconfig=first_config,last_config
         if (configtable(jconfig).gt.0) then
            myavector(:,jconfig,iwfn)=productreshape(:,configtable(jconfig))*configphase(jconfig)
         endif
@@ -409,7 +410,7 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
   implicit none
   character :: filename*(*)
   integer :: readnumvects,readndof,readnumr,readnumconfig,readcomplex,mynumvects,numskip,ii
-  DATATYPE :: myavectors(numr,firstconfig:lastconfig,mynumvects)
+  DATATYPE :: myavectors(numr,first_config:last_config,mynumvects)
   external :: readavectorsubroutine,readavectorsubsimple
   DATATYPE, allocatable :: readavectors(:,:,:)
 
@@ -418,7 +419,7 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
  call avector_header_read_simple(999,readnumvects,readndof,readnumr,readnumconfig,readcomplex)  
 
  if (myrank.eq.1) then
-    allocate(readavectors(numr,numconfig,readnumvects))
+    allocate(readavectors(numr,num_config,readnumvects))
  else
     allocate(readavectors(1,1,readnumvects))
  endif
@@ -432,14 +433,14 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
   if (numr>readnumr) then
      write(mpifileptr, *) "WARNING, smaller numr.", numr, readnumr
   endif
-  if (numconfig>readnumconfig) then 
-    write(mpifileptr, *) "WARNING: smaller numconfigs.", numconfig,readnumconfig
+  if (num_config>readnumconfig) then 
+    write(mpifileptr, *) "WARNING: smaller numconfigs.", num_config,readnumconfig
   endif    
   if (numr<readnumr) then
      write(mpifileptr, *) "WARNING, bigger numr.", readnumr, numr
   endif
-  if (numconfig<readnumconfig) then 
-    write(mpifileptr, *) "WARNING: bigger numconfigs.", readnumconfig, numconfig
+  if (num_config<readnumconfig) then 
+    write(mpifileptr, *) "WARNING: bigger numconfigs.", readnumconfig, num_config
   endif    
 
 
@@ -453,7 +454,7 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
         call easy_load_avectors(999,readcomplex, readavectors(:,:,:), readnumr, readnumconfig, readnumvects)
 
      else
-        call load_avectors0(999,readcomplex,readavectors(:,:,:),numr,numconfig,ndof+2*numholes,readnumr,readnumconfig, readavectorsubroutine,readnumvects)
+        call load_avectors0(999,readcomplex,readavectors(:,:,:),numr,num_config,ndof+2*numholes,readnumr,readnumconfig, readavectorsubroutine,readnumvects)
      endif
 
      close(999)
@@ -462,14 +463,14 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
 
   endif
 
-  if (parconsplit.eq.0) then
+  if (par_consplit.eq.0) then
      if (myrank.eq.1) then
         myavectors(:,:,1:readnumvects) = readavectors(:,:, 1+numskip : numskip+readnumvects)
      endif
-     call mympibcast(myavectors(:,:,:),1,numconfig*numr*readnumvects)
+     call mympibcast(myavectors(:,:,:),1,num_config*numr*readnumvects)
   else
      do ii=1,readnumvects
-        call myscatterv(readavectors(:,:,ii+numskip),myavectors(:,:,ii),configsperproc(:)*numr)
+        call myscatterv(readavectors(:,:,ii+numskip),myavectors(:,:,ii),configs_perproc(:)*numr)
      enddo
   endif
 
@@ -552,18 +553,19 @@ end subroutine simple_load_avectors
 
 subroutine easy_load_avectors(iunit, qq, outavectors, mynumr, mynumconfig, mynumvects)
   use parameters
+  use configmod
   use mpimod
   implicit none
 
   integer ::  mynumconfig, mynumr,mynumvects,iunit,ivect,qq, config1, thatconfig(ndof), myiostat,&
        phase,reorder,myconfig,getconfiguration
-  DATATYPE :: outavectors(mynumr,numconfig,mynumvects)
+  DATATYPE :: outavectors(mynumr,num_config,mynumvects)
   real*8 :: rtempreadvect(mynumr)
-  logical :: allowedconfig
+  logical :: allowedconfig0
   complex*16 :: ctempreadvect(mynumr)
 
-  if (parconsplit.ne.0) then
-     OFLWR "dome parconsplit easy"; CFLST
+  if (par_consplit.ne.0) then
+     OFLWR "dome par_consplit easy"; CFLST
   endif
 
   if (mynumr.gt.numr) then
@@ -583,9 +585,9 @@ subroutine easy_load_avectors(iunit, qq, outavectors, mynumr, mynumconfig, mynum
         else
            read (iunit,iostat=myiostat) thatconfig(1:ndof), ctempreadvect(1:mynumr)
         endif
-        phase=reorder(thatconfig)
-        if (allowedconfig(thatconfig)) then
-           config1=getconfiguration(thatconfig)
+        phase=reorder(thatconfig,numelec)
+        if (allowedconfig0(www,thatconfig,0)) then
+           config1=getconfiguration(thatconfig,www)
            if (qq==0) then
               outavectors(1:mynumr,config1,ivect)=rtempreadvect(:)*phase
            else
@@ -609,15 +611,16 @@ end subroutine easy_load_avectors
 
 subroutine readavectorsubroutine(readconfig, outavector,ivect)
   use parameters
+  use configmod
   use aarrmod
   implicit none
   integer :: i,iihole,iloop,jloop,ivect
-  DATATYPE :: outavector(numconfig)
+  DATATYPE :: outavector(num_config)
   integer ::  readconfig(ndof+2*numholes),xflag,iexcite,config2
   integer :: thisconfig(ndof+400)
   integer :: jj,iind,phase,reorder
   integer :: getconfiguration
-  logical :: allowedconfig
+  logical :: allowedconfig0
   real*8 :: qfac,xphase
 
 !!!!!!!!!!!!!!   HOLES   !!!!!!!!!!!!!!
@@ -658,7 +661,7 @@ subroutine readavectorsubroutine(readconfig, outavector,ivect)
            do jj=1,numelec
               if (iind(thisconfig(2*jj-1:2*jj)).eq.abs(myavectorexcitefrom(iexcite,jloop,ivect))) then
                  xflag=0  
-                 thisconfig(2*jj-1:2*jj)=aarr(abs(myavectorexciteto(iexcite,jloop,ivect)),nspf)
+                 thisconfig(2*jj-1:2*jj)=aarr(abs(myavectorexciteto(iexcite,jloop,ivect)))
                  xphase=xphase*myavectorexciteto(iexcite,jloop,ivect)*myavectorexcitefrom(iexcite,jloop,ivect)/abs(myavectorexciteto(iexcite,jloop,ivect)*myavectorexcitefrom(iexcite,jloop,ivect))
                  exit
               endif
@@ -670,9 +673,9 @@ subroutine readavectorsubroutine(readconfig, outavector,ivect)
         if (xflag.eq.1) then
            cycle                     !! cycle jloop
         endif
-        phase=reorder(thisconfig)
-        if (allowedconfig(thisconfig)) then
-           config2=getconfiguration(thisconfig)
+        phase=reorder(thisconfig,numelec)
+        if (allowedconfig0(www,thisconfig,0)) then
+           config2=getconfiguration(thisconfig,www)
            if (config2.eq.-1) then
               write(mpifileptr,*) 
               OFLWR "Hmm, looks like avector on file is ordered differently?"; CFLST
@@ -688,20 +691,21 @@ end subroutine readavectorsubroutine
 
 subroutine readavectorsubsimple(readconfig, outavector,notusedint)
   use parameters
+  use configmod
   use aarrmod
   implicit none
   integer :: i,notusedint,phase,reorder,readconfig(ndof),config2,thisconfig(ndof),getconfiguration
-  logical :: allowedconfig
-  DATATYPE :: outavector(numconfig)
+  logical :: allowedconfig0
+  DATATYPE :: outavector(num_config)
 
   outavector(:)=0d0;  thisconfig(:)=readconfig(:)
   do i=1,numelec
      thisconfig(i*2-1)   = thisconfig(i*2-1)-numloadfrozen   
   enddo
-  phase=reorder(thisconfig)
+  phase=reorder(thisconfig,numelec)
   
-  if (allowedconfig(thisconfig)) then
-     config2=getconfiguration(thisconfig)
+  if (allowedconfig0(www,thisconfig,0)) then
+     config2=getconfiguration(thisconfig,www)
      if (config2.eq.-1) then
         write(mpifileptr,*) 
         OFLWR "Hmm, looks like avector on file is ordered differently?"; CFLST
@@ -716,12 +720,12 @@ subroutine write_avector(unit,avector)
   use mpimod
   implicit none
   integer :: unit, config1
-  DATATYPE :: avector(numr,numconfig)
+  DATATYPE :: avector(numr,num_config)
   if (myrank.ne.1) then
      OFLWR "only call write_avector on process 1 right????"; CFLST
   endif
-  do config1=1,numconfig
-     write (unit) configlist(:,config1), avector(:,config1)
+  do config1=1,num_config
+     write (unit) www%configlist(:,config1), avector(:,config1)
   enddo
 end subroutine write_avector
 

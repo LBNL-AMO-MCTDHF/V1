@@ -22,11 +22,11 @@ subroutine autocorrelate_initial()
   overlaps(:,:)=0d0
   calledflag=0;  xcalledflag=0
   
-  allocate(orig_avectors(numr,firstconfig:lastconfig,mcscfnum))
+  allocate(orig_avectors(numr,first_config:last_config,mcscfnum))
 
   orig_spfs(:,:)=RESHAPE(yyy%cmfpsivec(spfstart:spfend,0),(/spfsize,nspf/))
   do imc=1,mcscfnum
-     orig_avectors(:,:,imc)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numr,localnconfig/))
+     orig_avectors(:,:,imc)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numr,local_nconfig/))
   enddo
   
 end subroutine
@@ -36,6 +36,7 @@ subroutine autocorrelate()
   use parameters
   use mpimod
   use xxxmod
+  use configmod
   implicit none
   integer ::  i,imc,sflag
   integer, save :: lastouttime=0
@@ -43,7 +44,7 @@ subroutine autocorrelate()
 
   if (mod(xcalledflag,autosteps).eq.0) then
      do imc=1,mcscfnum
-        call autocorrelate_one(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:), &
+        call autocorrelate_one(www,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:), &
              orig_avectors(:,:,imc), overlaps(calledflag,imc),numr)
      enddo
 
@@ -72,6 +73,7 @@ subroutine autocorrelate()
   xcalledflag=xcalledflag+1
   
 end subroutine autocorrelate
+
 
 
 !!$function getval(jjj,which)
@@ -116,20 +118,22 @@ module autobiomod
   type(biorthotype),target :: autobiovar
 end module
 
-subroutine autocorrelate_one(avector,inspfs,orig_spf,orig_avector,inoverlaps,innr)
+subroutine autocorrelate_one(www,avector,inspfs,orig_spf,orig_avector,inoverlaps,innr)
+  use fileptrmod
+  use spfsize_parameters
+  use bio_parameters
   use autobiomod
   use biorthomod
-  use configmod
-  use parameters
+  use walkmod
   implicit none
-
+  type(walktype),intent(in) :: www
   DATATYPE, allocatable :: mobio(:,:),abio(:,:)
-  DATATYPE :: inspfs(  spfsize, nspf ), dot
-  DATATYPE :: orig_spf(  spfsize, nspf ), orig_avector(innr,firstconfig:lastconfig), inoverlaps, avector(innr,firstconfig:lastconfig)
-  DATATYPE,target :: smo(nspf,nspf)
+  DATATYPE :: inspfs(  spfsize, www%nspf ), dot
+  DATATYPE :: orig_spf(  spfsize, www%nspf ), orig_avector(innr,www%firstconfig:www%lastconfig), inoverlaps, avector(innr,www%firstconfig:www%lastconfig)
+  DATATYPE,target :: smo(www%nspf,www%nspf)
   integer :: innr
 
-  allocate(mobio(spfsize,nspf),abio(innr,firstconfig:lastconfig))
+  allocate(mobio(spfsize,www%nspf),abio(innr,www%firstconfig:www%lastconfig))
 
   if(auto_biortho.eq.0) then
      OFLWR "Permoverlaps disabled.  set auto_biortho=1"; CFLST
@@ -142,11 +146,11 @@ subroutine autocorrelate_one(avector,inspfs,orig_spf,orig_avector,inoverlaps,inn
 
      abio=orig_avector
 
-     call bioset(autobiovar,smo,innr)
+     call bioset(autobiovar,smo,innr,www)
      call biortho(orig_spf,inspfs,mobio,abio,autobiovar)
 
-     inoverlaps=dot(avector,abio,localnconfig*innr)
-     if (parconsplit.ne.0) then
+     inoverlaps=dot(avector,abio,www%localnconfig*innr)
+     if (www%parconsplit.ne.0) then
         call mympireduceone(inoverlaps)
      endif
   endif

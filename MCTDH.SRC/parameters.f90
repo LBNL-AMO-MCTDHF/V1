@@ -2,20 +2,22 @@
 #include "Definitions.INC"
 
 module fileptrmod
-implicit none
 integer :: mpifileptr
 integer,parameter :: nullfileptr=798  !! MUST MATCH COOLEYTUKEY_SHARED.F90
 end module
 
 module littleparmod
-  implicit none
-  integer, parameter :: MXF=5
+integer, parameter :: MXF=5
 end module littleparmod
+
+module r_parameters
+integer :: numr
+real*8 :: nucrepulsion
+DATATYPE, allocatable :: bondpoints(:),bondweights(:)
+end module r_parameters
 
 !!YYSNIPYY
 !!BB
-module parameters
-  use littleparmod;  use fileptrmod;  implicit none
 
 !! *********************************************************************************************************** !!
 !!   Parameters for MCTDHF calculation; parinp NAMELIST input from Input.Inp (default)
@@ -24,36 +26,154 @@ module parameters
 !! Type, variable, default       !! Command      !! Description 
 !!   value                       !!  line        !! 
                                  !!  option      !!
-!!EE
-!!{\large \quad MAIN PARAMETERS }
-!!BB
-integer :: numelec=2             !!              !! NUMBER OF ELECTRONS
-integer :: tdflag=0              !! Pulse        !! Use pulse?
-integer :: mcscfnum=1            !! MCSCF=       !! Number of A-vectors (state avgd mcscf or prop)
-integer :: sparseconfigflag=0    !! Sparse       !! Sparse configuration routines on or off (for large # configs)
-integer :: orbcompact=0          !!              !! Compact orbitals for expo prop with spfrestrictflag?  Probably ok.
-real*8 :: denreg=1d-10           !! Denreg=      !! density matrix regularization parameter.
-real*8 :: invtol=1d-12
-integer :: saveflag=1                            !! if zero does not save wave function at the end
-integer :: save_every=0                          !! if nonzero saves wave function every save_every mean field steps
-integer :: walkwriteflag=0                       !! Turning OFF writing of walks by default
-integer :: spf_flag=1            !!              !! IF ZERO, FREEZE SPFS. (for debugging, or TDCI)
-integer :: avector_flag=1        !!              !! IF ZERO, FREEZE AVECTOR. (for debugging)
-integer :: parorbsplit=1                         !!  Parallelize orbital calculation.  Might speed up, might
-                                                 !!   slow down; check timing.
-!! FOR TOTAL ORBITAL PARALLELIZATION with SINC DVR, SET PARORBSPLIT=3
-!!   and orbparflag=.true. in &sinc_params.  parorbsplit=3 not supported for atom or diatom.
 
-integer :: parconsplit=0
-character (len=200) :: &         !!              !! MAY BE SET BY COMMAND LINE OPTION ONLY: not namelist
-  inpfile="Input.Inp        "    !! Inp=filename !!  input.  (=name of input file where namelist input is)
+!!EE
+!!\textbf{\qquad SPARSE - if sparseconfigflag .ne. 0}
+!!BB
+module lan_parameters
+integer :: lanprintflag=0
+integer :: lanczosorder=200      !!              !!   lanczos order used in A-vector eigen.
+integer :: lancheckstep=20       !!              !! lanczos eigen routine checks for convergence every this # steps
+real*8 :: lanthresh=1.d-9       !!              !! convergence criterion.
+end module
+module sparse_parameters
+integer :: sparseconfigflag=0    !! Sparse       !! Sparse configuration routines on or off (for large # configs)
+integer :: sparseopt =1                          !! 0= direct CI  1= sparse matrix algebra (faster, more memory)
+integer :: nonsparsepropmode=1   !! 0 = ZGCHBV expokit; 1 = mine expmat
+end module sparse_parameters
+
+module ham_parameters
+integer :: nonuc_checkflag=1     !!              !! Turn off deriv operators in nuclear dofs.
+integer :: tdflag=0              !! Pulse        !! Use pulse?
+integer :: velflag=0             !!              !!  Length (V(t)) or velocity (A(t))       
+!!  Constraintflag=1: Density matrix constraint: assume nothing, keep constant off block diag 
+!!         (lioville solve)
+!!  2: Dirac-Frenkel (McLachlan/Lagrangian) variational principle.
+integer :: constraintflag=0      !! Constraint=  !! As described below (see CONSTRAINT)
+integer :: denmatfciflag=0                       !! If .ne. 0 then does denmat constrant as programmed
+                                                 !!  before Miyagi's help
+DATATYPE :: energyshift=0d0      !!              !! complex shift for making energy real for imperfect CAP/ECS
+integer :: drivingflag=0                         !!  Solve for the change in the wave function not wave function 
+real*8 :: drivingproportion=0.999999999999d0     !!   -- "psi-prime" treatment.
+integer :: offaxispulseflag=0   !! internal
+DATATYPE :: timefac=&            !! Prop/        !! d/dt psi = timefac * H * psi
+        DATANEGONE               !!  Relax       !!
+real*8 :: mshift=0d0                             !! shift configurations based on m-value.. to break 
+                                                 !!  degeneracy for state averaged sym restricted
+                                                 !!  (mrestrictmin, mrestrictmax) mcscf; good idea.
+end module ham_parameters
+
+module basis_parameters
+!!EE
+!! {\large \quad For restricted configuration lists (not full CI): SEE MANUAL about dfrestrictflag}
+!!BB
+integer :: numshells=1           !!              !! number of shells.  greater than one: possibly not full CI. 
+!!$ integer :: shelltop(100)=-1  !! Numfrozen=   !! shelltop is namelist input in parinp; the internal variable 
+                                                 !!    is allshelltop.   shelltop(1) only may be assigned via 
+                                                 !!    command line, with Numfrozen.
+integer :: numexcite(100)=999    !! Numexcite=   !! excitations from core shells (i.e. defined for shells 1 
+                                                 !!    through numshells-1).  Only numexcite(1) may be 
+                                                 !!    assigned via command line input.
+integer :: minocc(100)=-999      !!              !! minimum occupation, each shell
+integer :: maxocc(100)=999       !!              !!    maximum
+integer :: vexcite=999           !!              !! excitations INTO last shell. Use to restrict to doubles, etc.
+integer :: shells(100)=1
+integer :: allshelltop(0:100)=0           
+!!EE
+!!{\large \quad CONFIGURATIONS}
+!!BB
+integer :: mrestrictflag=0       !!              !! If spfrestrictflag=1, restrict wfn to given total M.
+integer :: mrestrictval=0        !!              !!    This is the value.
+integer :: mrestrictmax= 99999   !!              !! If doing state averaged MCSCF, can include a range of m vals;
+integer :: mrestrictmin=-99999   !!              !!    set these variables, with mrestrictflag=0, spfrestrictflag=1
+integer :: ugrestrictflag=0      !!              !! like mrestrictflag but for parity
+integer :: ugrestrictval=1       !!              !!    like mrestrictval but for parity (1=even,-1=odd)
+integer :: restrictflag=1        !!              !! Restrict spin projection of determinants?
+!!EE
+!!{\large \quad ORBITALS (SINGLE PARTICLE FUNCTIONS, SPFS)}
+!!BB
+integer :: spfrestrictflag=0     !!              !! Restrict m values of orbitals?  
+integer :: spfmvals(1000)=0      !!              !!   M-values of orbitals 
+integer :: spfugrestrict=0       !!              !! Restrict parity of orbitals? 
+integer :: spfugvals(1000)=0     !!              !!   Parity (+/-1; 0=either) of orbitals (ungerade/gerade)
+end module basis_parameters
+module walks_parameters
+integer :: sortwalks=1
+end module walks_parameters
+
+module output_parameters
+integer :: iprintconfiglist=0
+end module output_parameters
+module timing_parameters
+integer :: notiming=2            !!NoTiming=0,1,2!! 0=write all 1=write some 2= write none
+                                 !!  Timing=2,1,0!!     controls writing of all timing and some info files
+integer :: timingout=499         !!              !! various routines output to file (timing info) every this 
+                                 !!              !!   # of calls
+character(len=200):: timingdir="timing"                       !!
+end module timing_parameters
+module bio_parameters
 !!EE
 !!{\large \quad Biorthogonalization }
 !!BB
 integer ::      maxbiodim=100, &
      biodim=10                   !! Krylov dim for biorthogonalization
-real*8 :: lntol=1d-12, &
-     biotol=1.d-6
+real*8 ::     biotol=1.d-6
+real*8 :: lntol=1d-12
+integer :: biocomplex=0          !! 1=old way complex zg/hpiv  0=always real
+real*8 :: invtol=1d-12
+integer :: auto_biortho=1        !! do we want to use biorthonormalization or permutation overlaps? 0 perm overlaps, 1 biortho
+end module bio_parameters
+module spfsize_parameters
+integer :: spfsize,spfsmallsize
+integer :: parorbsplit=1                         !!  Parallelize orbital calculation.  Might speed up, might
+                                                 !!   slow down; check timing.
+integer :: reducedpotsize = -1
+end module spfsize_parameters
+module class_parameters
+integer :: numclasses=1
+integer, allocatable :: classorb(:,:),nperclass(:), orbclass(:)
+end module class_parameters
+module constraint_parameters
+!!EE
+!!{\large \quad CONSTRAINT: With constraintflag. NEED FOR RESTRICTED CONFIG LIST.}
+!!BB
+real*8 :: lioreg= 1d-9           !!              !! Regularization for linear solve constraint
+integer :: conway=0                              !! for constraintflag=2, dirac frenkel constraint
+                                                 !!   0=McLachlan 1=50/50 mix 2=Lagrangian
+                                                 !!   3=Lagrangian with epsilon times McLachlan
+real*8 :: conprop=1d-1                           !! epsilon for conway=3
+real*8 :: condamp=1
+integer :: connormflag=0  !! normalize columns for conway=1 or 3
+integer :: liosize
+end module constraint_parameters
+module denreg_parameters
+real*8 :: denreg=1d-10           !! Denreg=      !! density matrix regularization parameter.
+end module denreg_parameters
+
+
+module parameters
+  use littleparmod;  use fileptrmod;  use r_parameters; use sparse_parameters;  use ham_parameters;
+  use basis_parameters;  use timing_parameters;
+  use spfsize_parameters
+
+  implicit none
+!!EE
+!!{\large \quad MAIN PARAMETERS }
+!!BB
+integer :: mcscfnum=1            !! MCSCF=       !! Number of A-vectors (state avgd mcscf or prop)
+integer :: numelec=2             !!              !! NUMBER OF ELECTRONS
+integer :: orbcompact=0          !!              !! Compact orbitals for expo prop with spfrestrictflag?  Probably ok.
+integer :: saveflag=1                            !! if zero does not save wave function at the end
+integer :: save_every=0                          !! if nonzero saves wave function every save_every mean field steps
+integer :: walkwriteflag=0                       !! Turning OFF writing of walks by default
+integer :: spf_flag=1            !!              !! IF ZERO, FREEZE SPFS. (for debugging, or TDCI)
+integer :: avector_flag=1        !!              !! IF ZERO, FREEZE AVECTOR. (for debugging)
+!! FOR TOTAL ORBITAL PARALLELIZATION with SINC DVR, SET PARORBSPLIT=3
+!!   and orbparflag=.true. in &sinc_params.  parorbsplit=3 not supported for atom or diatom.
+
+integer :: par_consplit=0
+character (len=200) :: &         !!              !! MAY BE SET BY COMMAND LINE OPTION ONLY: not namelist
+  inpfile="Input.Inp        "    !! Inp=filename !!  input.  (=name of input file where namelist input is)
 !!EE
 !!{\large \quad PROPAGATION/RELAXATION}
 !!BB
@@ -63,12 +183,10 @@ integer :: threshflag=0          !!              !! Set to 1 for regular relaxat
 real*8 :: expotol=1d-8           !!              !! Orbital krylov convergence parameter
 integer :: maxexpodim=100        !!              !! Orbital maximum kry dimension OR DGMRES DIM improvedquad=2,3
 real*8  :: expostepfac=1.2d0     !!              !! Miscellaneous algorithm parameter
-DATATYPE :: energyshift=0d0      !!              !! complex shift for making energy real for imperfect CAP/ECS
 !!EE
 !!\textbf{\qquad SPARSE - if sparseconfigflag .ne. 0}
 !!BB
 integer :: maxaorder=100         !!              !!   lanczos order for sparse a-vector prop and improvedquad=1,3
-integer :: sparseopt =1                          !! 0= direct CI  1= sparse matrix algebra (faster, more memory)
 !!EE
 !!{\large \quad PROPAGATION}
 !!BB
@@ -89,9 +207,6 @@ real*8 :: stopthresh=1d-5        !!              !! Spf error tolerance for rela
 real*8 :: astoptol=1d-7                          !! Avector error tolerance for relax  (BACKUP - WAS STOPTHRESH)
 real*8 :: timestepfac=1d0                        !! accelerate relax. multiply par_timestep by this each time
 real*8 :: max_timestep=1d10                      !!    maximum time step (limit on exponential growth)
-real*8 :: mshift=0d0                             !! shift configurations based on m-value.. to break 
-                                                 !!  degeneracy for state averaged sym restricted
-                                                 !!  (mrestrictmin, mrestrictmax) mcscf; good idea.
 integer :: improvedquadflag=0    !!              !! Use newton iteration not diagonalization for improvedrelax.
                                                  !!     (1 = A-vector, 2 = orbitals, 3 = both)
 real*8 :: quadstarttime=-1d0                     !! Waits to turn on orbital quad (2 or 3) until this time
@@ -99,49 +214,22 @@ real*8 :: maxquadnorm=1d10                       !! brakes to use if improvedqua
 real*8 :: quadtol=1d-1           !!              !! Threshold for solution of Newton solve iterations orbitals.
 integer :: quadprecon=1          !!              !! Precondition newton iterations for A-vector?
 !!EE
-!!\textbf{\qquad SPARSE - if sparseconfigflag .ne. 0}
-!!BB
-integer :: lanprintflag=0
-integer :: lanczosorder=200      !!              !!   lanczos order used in A-vector eigen.
-integer :: lancheckstep=20       !!              !! lanczos eigen routine checks for convergence every this # steps
-real*8 :: lanthresh=1.d-9       !!              !! convergence criterion.
-!!EE
 !!{\large \quad ORBITALS (SINGLE PARTICLE FUNCTIONS, SPFS)}
 !!BB
 integer :: nspf=1                !! Nspf=        !! number of orbitals
 integer :: numfrozen=0           !!              !! number of doubly occ orbs (removed from calculation)
-integer :: spfrestrictflag=0     !!              !! Restrict m values of orbitals?  
-integer :: spfmvals(1000)=0      !!              !!   M-values of orbitals 
-integer :: spfugrestrict=0       !!              !! Restrict parity of orbitals? 
-integer :: spfugvals(1000)=0     !!              !!   Parity (+/-1; 0=either) of orbitals (ungerade/gerade)
 !!EE
 !!{\large \quad CONFIGURATIONS}
 !!BB
-integer :: mrestrictflag=0       !!              !! If spfrestrictflag=1, restrict wfn to given total M.
-integer :: mrestrictval=0        !!              !!    This is the value.
-integer :: mrestrictmax= 99999   !!              !! If doing state averaged MCSCF, can include a range of m vals;
-integer :: mrestrictmin=-99999   !!              !!    set these variables, with mrestrictflag=0, spfrestrictflag=1
-integer :: ugrestrictflag=0      !!              !! like mrestrictflag but for parity
-integer :: ugrestrictval=1       !!              !!    like mrestrictval but for parity (1=even,-1=odd)
-integer :: restrictflag=1        !!              !! Restrict spin projection of determinants?
-integer :: restrictms=0          !!              !! For restrictflag=1: 2*m_s: 2x total m_s (multiplicity of 
+integer :: df_restrictflag=0      !!              !! apply constraint to configuration list?  Must use this
+                                                 !!  option if constraintflag /= 0.  1 is sufficient;
+                                                 !!  dfrestrictflag=2 necessary for action 22. 
+                                                 !!  SEE MANUAL FOR PROPER USE OF dfrestrictflag/shell options.
+integer :: restrict_ms=0         !!              !! For restrictflag=1: 2*m_s: 2x total m_s (multiplicity of 
                                                  !!    lowest included spin states minus one)
-integer :: allspinproject=1      !!              !! Constrain S(S+1) for propagation?
-integer :: spinrestrictval=0     !!              !! For allspinproject=1: determines spin. Default high spin S=M_s.
+integer :: spin_restrictval=0    !!              !! For allspinproject=1: determines spin. Default high spin S=M_s.
                                                  !!  To override use this variable. Equals 2S if S^2 eigval is S(S+1)
-!!EE
-!! {\large \quad For restricted configuration lists (not full CI): SEE MANUAL about dfrestrictflag}
-!!BB
-integer :: numshells=1           !!              !! number of shells.  greater than one: possibly not full CI. 
-!!integer :: shelltop(100)=-1    !! Numfrozen=   !! shelltop is namelist input in parinp; the internal variable 
-                                                 !!    is allshelltop.   shelltop(1) only may be assigned via 
-                                                 !!    command line, with Numfrozen.
-integer :: numexcite(100)=999    !! Numexcite=   !! excitations from core shells (i.e. defined for shells 1 
-                                                 !!    through numshells-1).  Only numexcite(1) may be 
-                                                 !!    assigned via command line input.
-integer :: minocc(100)=-999      !!              !! minimum occupation, each shell
-integer :: maxocc(100)=999       !!              !!    maximum
-integer :: vexcite=999           !!              !! excitations INTO last shell. Use to restrict to doubles, etc.
+integer :: all_spinproject=1     !!              !! Constrain S(S+1) for propagation?
 !!EE
 !!{\large \quad INITIALIZATION}
 !!BB
@@ -178,35 +266,10 @@ integer,allocatable:: myavectorexciteto(:,:,:)   !!
                                                  !! 1=1alpha, 2=1beta, 3=1alpha, etc.
                                                  !! negative input -> negative coefficent
 !!EE
-!!{\large \quad CONSTRAINT: Constraintflag. NEED FOR RESTRICTED CONFIG LIST.}
-!!BB
-!!  1: Density matrix constraint: assume nothing, keep constant off block diag 
-!!         (lioville solve)
-!!  2: Dirac-Frenkel (McLachlan/Lagrangian) variational principle.
-
-integer :: constraintflag=0      !! Constraint=  !! As described immediately above
-integer :: denmatfciflag=0                       !! If .ne. 0 then does denmat constrant as programmed
-                                                 !!  before Miyagi's help
-real*8 :: lioreg= 1d-9           !!              !! Regularization for linear solve for both
-integer :: dfrestrictflag=0      !!              !! apply constraint to configuration list?  Must use this
-                                                 !!  option if constraintflag /= 0.  1 is sufficient;
-                                                 !!  dfrestrictflag=2 necessary for action 22. 
-                                                 !!  SEE MANUAL FOR PROPER USE OF dfrestrictflag/shell options.
-integer :: conway=0                              !! for constraintflag=2, dirac frenkel constraint
-                                                 !!   0=McLachlan 1=50/50 mix 2=Lagrangian
-                                                 !!   3=Lagrangian with epsilon times McLachlan
-real*8 :: conprop=1d-1                           !! epsilon for conway=3
-
-!!EE
 !!{\large \quad INPUT / OUTPUT }
 !!BB
 character(len=200):: finalstatsfile="Dat/finalstats.dat"      !! output for relaxation calculation
 real*8 :: pulseft_estep=0.01d0                   !! energy step in hartree for Pulseft.Dat output files
-integer :: notiming=2            !!NoTiming=0,1,2!! 0=write all 1=write some 2= write none
-                                 !!  Timing=2,1,0!!     controls writing of all timing and some info files
-integer :: timingout=499         !!              !! various routines output to file (timing info) every this 
-                                 !!              !!   # of calls
-character(len=200):: timingdir="timing"                       !!
 character (len=200) ::      avectoroutfile="Bin/avector.bin"  !! A-vector output file.        
 character (len=200) ::      spfoutfile="Bin/spfs.bin"         !! Spf output file.
 character(len=200):: psistatsfile="Dat/psistats.dat"          !! for action 25
@@ -245,7 +308,6 @@ character(len=200):: natprojplotbin="Bin/Natproj.bin"         !!  "
 !!{\large \quad PULSE.  (If tdflag=1) }
 !!BB
 integer :: numpulses=1
-integer :: velflag=0             !!              !!  Length (V(t)) or velocity (A(t))       
 integer ::  pulsetype(100)=1      !!              !!  Pulsetype=1:  A(t) = pulsestrength * sin(w t)^2,
 real*8  :: omega(100)=1.d0        !!              !!  2:  A(t) = strength * sin(w t)^2 
 real*8 :: omega2(100)=1.d0        !!              !!             * sin(w2 t + phaseshift),
@@ -347,13 +409,8 @@ logical :: readfullvector=.true.
 logical :: walksinturn=.false.   !!              !! if you have problems with MPI i/o, maybe try this
 integer :: turnbatchsize=5
 integer :: nosparseforce=0       !!              !! to override exit with large number of configs, no sparse
-integer :: iprintconfiglist=0
-integer :: drivingflag=0                         !!  Solve for the change in the wave function not wave function 
-real*8 :: drivingproportion=0.999999999999d0     !!   -- "psi-prime" treatment.
 integer :: noftflag=0            !!              !! turns off f.t. for flux. use for e.g. core hole propag'n.
 integer :: timefacforce=0        !!              !!  override defaults
-DATATYPE :: timefac=&            !! Prop/        !! d/dt psi = timefac * H * psi
-        DATANEGONE               !!  Relax       !!
 integer :: timedepexpect=0  !! expectation value of H_0(t) or H(t) reported
 integer :: dipolewindowpower=1   !!  multiply by cosine^dipolewindowpower for dipole ft
 integer :: diffdipoleflag=1 !! fourier transform derivative of dipole moment not dipole moment
@@ -367,10 +424,8 @@ integer :: jacprojorth=0         !! 1: projector = sum_i |phi_i> <phi_i|phi_i>^-
 integer :: jacsymflag=0          !! 1:  use WP - PW  not (1-P)W   0: default (1-P)W
 integer :: jacgmatthird=0        !! 0: default g (constraintflag.ne.0) is linear operator
                                  !! 1: g |phi_c> -> sum_ab |phi_a> g_ab <phi_b|phi_c>
-integer :: biocomplex=0          !! 1=old way complex zg/hpiv  0=always real
 integer :: debugflag=0
 real*8 :: debugfac=1d0
-integer :: nonsparsepropmode=1   !! 0 = ZGCHBV expokit; 1 = mine expmat
 !!EE
 !! XXSNIPXX
 
@@ -395,75 +450,47 @@ integer :: numfluxcurves(20)
 !!integer :: whichsideproj=0       !! 0 if want to project on N-1 e- state, 1 if on N e- state
 
 integer :: drivingmethod=0   !! 0 = V(t)  1 = H(t)-E
-integer :: connormflag=0  !! normalize columns for conway=1 or 3
-integer :: sortwalks=1
 integer :: nonatrotate=0
 
 !!!!!  integer :: whichquad=1           !!     0=my eqn 1=rayleigh quotient  WHICHQUAD 1 HARDWIRE
 
 integer,parameter :: orderflag=0           !! Order=       !! ordering of configs. 1= first all alphas,  then betas;  
                                                  !!    0= 1a1b2a2b etc.
-integer :: nonuc_checkflag=1     !!              !! Turn off deriv operators in nuclear dofs.
 
 !! INTERNAL
 
 integer :: eachloaded(MXF)=(-99)
 
 integer :: multmanyflag=0                     
-integer :: reducedpotsize = -1
 integer :: numpropsteps=1000000  !!              !! length of prop.  Overridden for pulse and relax.
-integer ::  maxsinglewalks=0, maxdoublewalks=0
-integer :: offaxispulseflag=0
 integer, parameter :: maxmc=100
 DATATYPE :: drivingenergies(maxmc)=0d0
-real*8 :: condamp=1
-integer :: numclasses=1
-integer, allocatable :: classorb(:,:),nperclass(:), orbclass(:)
 integer :: spfdims(3)=0   !! general - not numerad,lbig+1,2*mbig+1
 integer :: spfdimtype(3)=(/0,2,1/)    !! 0 = [0,infty];  1=[-infty,infty];     2=[-A,A] must match on read
-integer :: numr
 integer :: numcurves=1
-real*8 :: nucrepulsion
-DATATYPE, allocatable :: bondpoints(:),bondweights(:),elecweights(:,:,:), elecradii(:)
+DATATYPE, allocatable :: elecweights(:,:,:), elecradii(:)
 real*8 :: langramthresh=1d-9
 integer :: numreduced=1
 integer :: headersize=200
 
-integer :: numconfig=-1
-integer, allocatable :: configsperproc(:), alltopconfigs(:), allbotconfigs(:)
-integer ::       maxconfigsperproc
-integer :: botconfig=-1,topconfig=-1
-integer :: configend=-1,configstart=-1
-integer :: firstconfig,lastconfig,localnconfig
 
-integer :: numspinconfig=0
-integer, allocatable :: spinsperproc(:), alltopspins(:), allbotspins(:)
-integer ::       maxspinsperproc
-integer :: botspin=-1,topspin=-1
-integer :: firstspinconfig,lastspinconfig,localnspin
+integer :: psilength
+integer :: astart(1000)
+integer :: aend(1000)
+integer :: tot_adim
+integer :: spfstart
+integer :: spfend
 
-integer :: numdfconfigs=-1
-integer, allocatable :: dfconfsperproc(:), alltopdfconfigs(:), allbotdfconfigs(:)
-integer ::       maxdfconfsperproc
-integer :: botdfconfig=-1,topdfconfig=-1
+integer :: num_config=-1
+integer, allocatable :: configs_perproc(:)
+integer :: first_config,last_config,local_nconfig
 
-integer :: numspindfconfig=0
-integer, allocatable :: spindfsperproc(:), alltopspindfs(:), allbotspindfs(:)
-integer ::       maxspindfsperproc
-integer :: botdfspin=-1,topdfspin=-1
+integer ::  ndof
+integer :: totspfdim
 
-integer :: numbasis=0
-integer, allocatable :: basisperproc(:)
-integer ::       maxbasisperproc
-integer :: botbasis=-1,topbasis=-1
 
-integer :: numdfbasis=0
-integer, allocatable :: dfbasisperproc(:)
-integer ::       maxdfbasisperproc
-integer :: botdfbasis=-1,topdfbasis=-1
 
 integer :: autosize, autosteps
-integer :: auto_biortho=1        !! do we want to use biorthonormalization or permutation overlaps? 0 perm overlaps, 1 biortho
 integer :: cdenflag=0            !!              !! Calulate natconfig?  Not necessary if Act=6.
 integer :: rdenflag=0            !!              !! Calulate denmat in R? 
 integer :: lanagain = -1  !! Lanczos restart flag.  Default -1 (lanczos eigen restart until converged)
@@ -481,31 +508,13 @@ integer, parameter :: spfplotfile=303
 integer, parameter :: denfile=904
 integer, parameter :: denprojfile=597
 integer, parameter :: natprojfile=488
-integer :: psilength
-integer :: astart(1000)
-integer :: aend(1000)
-integer :: totadim
-integer :: spfstart
-integer :: spfend
 
-!!( internal to denmat )
-integer :: maxnspfshell
-integer :: liosize
-integer :: shells(100)=1
-integer :: allshelltop(0:100)=0           
-integer :: spfsize,spfsmallsize
+
 real*8 :: abserr
-integer ::  ndof
-integer :: spftot=2
-integer :: totspfdim
 integer :: messflag=0
 real*8 :: messamount=1.d-2
 integer :: skipflag=0
 
-integer, allocatable :: &
-       configmvals(  : ), &                     !! if spfrestrict, their mvalues : numconfig
-       configugvals(  : )                       !! ugvalues based on info in spfugvals which is not double checked by program in certain cases
-  !!  (i,j) gives spf number for dim i
 character (len=200) :: nullbuff="                                                                                                                                                                                                        ";;;;;;
 end module parameters
 

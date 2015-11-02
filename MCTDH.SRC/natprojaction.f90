@@ -11,6 +11,7 @@ subroutine save_natproj( thistime )
   use parameters
   use natprojmod
   use xxxmod !! denproj
+  use configmod
   implicit none
 
   DATATYPE :: csum, dot
@@ -26,8 +27,8 @@ subroutine save_natproj( thistime )
 &                                                                                                                                                                "
   DATATYPE :: tempdenmat(nspf,nspf,4)
 
-  if (parconsplit.ne.0) then
-     OFLWR "Error, no natproj parconsplit.ne.0"; CFLST
+  if (par_consplit.ne.0) then
+     OFLWR "Error, no natproj par_consplit.ne.0"; CFLST
   endif
 
   xcalledhere=xcalledhere+1
@@ -100,10 +101,10 @@ subroutine save_natproj( thistime )
         close(891) 
         do isplit=1,numr
            do i=1,korder
-                 call sparseconfigmultone(natconfigs(:,i),natderiv,yyy%cptr(0), yyy%sptr(0), 1,pulseflag,0, isplit ,thistime)
+                 call sparseconfigmultone(www,natconfigs(:,i),natderiv,yyy%cptr(0), yyy%sptr(0), 1,pulseflag,0, isplit ,thistime)
 
-              curves(isplit,i)=dot(natconfigs(:,i),natderiv,numconfig)/dot(natconfigs(:,i),natconfigs(:,i), &
-                   numconfig) !! ok implicit.
+              curves(isplit,i)=dot(natconfigs(:,i),natderiv,num_config)/dot(natconfigs(:,i),natconfigs(:,i), &
+                   num_config) !! ok implicit.
 
            enddo
         enddo
@@ -322,8 +323,8 @@ subroutine save_natproj( thistime )
 #endif
 
   tempdenmat(:,:,:)=0d0
-  do i=1,min(numr,min(numconfig,4))
-     call getdenmat00(natconfigs(:,i),natconfigs(:,i),(/DATAONE/),tempdenmat(:,:,i),1,1)
+  do i=1,min(numr,min(num_config,4))
+     call getdenmat00(www,natconfigs(:,i),natconfigs(:,i),(/DATAONE/),tempdenmat(:,:,i),1,1)
   enddo
   call save_denproj( 4, thistime, yyy%cmfpsivec(spfstart,0),  tempdenmat, denprojplotbin)
   

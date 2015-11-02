@@ -198,6 +198,7 @@ program mctdhf
   use mpimod
   use xxxmod
   use opmod !! frozenspfs
+  use configmod
   use parameters
   implicit none
 
@@ -283,43 +284,67 @@ program mctdhf
      call mpiorbsets()
 !!$  endif
 
-  call fast_newconfiglist();   
+     www%parconsplit=par_consplit
 
-  totspfdim=nspf*spfsize; totadim=localnconfig*numr;  
-  psilength=totadim*mcscfnum+totspfdim
+     www%numelec=numelec
+     www%ndof=ndof
+     www%nspf=nspf
+
+     www%allspinproject=all_spinproject
+     www%restrictms=restrict_ms
+     www%sss%spinrestrictval=spin_restrictval
+
+     www%dfrestrictflag=df_restrictflag
+     www%dflevel=0
+     www%dfwalklevel=0
+     
+  call fast_newconfiglist(www);   
+
+
+     call walkalloc(www);             call walks(www)
+
+     num_config=www%numconfig
+     allocate(configs_perproc(nprocs))
+     configs_perproc(:)=www%configsperproc(:)
+     first_config=www%firstconfig
+     last_config=www%lastconfig
+     local_nconfig=www%localnconfig
+
+
+     call init_dfcon(www)
+
+     call spinwalkinit(www); 
+     call spinwalks(www)
+     call spinsets_first(www)
+     call configspin_matel(www)
+     call configspinset_projector(www)
+     call spinwalkinternal_dealloc()
+
+     call basis_set(www)
+
+
+  totspfdim=nspf*spfsize; tot_adim=local_nconfig*numr;  
+  psilength=tot_adim*mcscfnum+totspfdim
 
   do i=1,mcscfnum
-     astart(i)=1+(i-1)*totadim;         ;     aend(i)=i*totadim;
+     astart(i)=1+(i-1)*tot_adim;         ;     aend(i)=i*tot_adim;
   enddo
-  spfstart=totadim*mcscfnum+1;           spfend=psilength
+  spfstart=tot_adim*mcscfnum+1;           spfend=psilength
 
-  if ((sparseconfigflag.eq.0).and.(numconfig.gt.1000).and.(nosparseforce.eq.0)) then
+  if ((sparseconfigflag.eq.0).and.(num_config.gt.1000).and.(nosparseforce.eq.0)) then
      OFLWR "You should really turn sparseconfigflag on, with ", &
-          numconfig*numr, "configurations.";     CFLST
+          num_config*numr, "configurations.";     CFLST
   endif
 
   call opalloc()
 
-  if ((skipflag.lt.2)) then
 
-     call walkalloc();             call walks()
 
-     call init_dfcon()
 
-     call spinwalkinit(); 
-     call spinwalks()
-     call spinsets_first()
-     call configspin_matel()
-     call configspinset_projector()
-     call spinwalkinternal_dealloc()
-     
-     call basis_set()
+     call configlistwrite(www,configlistfile)
 
-     call configlistwrite()
+     call configpropalloc()
 
-     call configalloc()
-
-  endif
 
   call myprojectalloc()      !! Initialize coordinate-dependent arrays.
 
@@ -378,7 +403,7 @@ program mctdhf
 
   if (skipflag.eq.0) then
 
-     allocate(bigavector(totadim,mcscfnum));  bigavector(:,:)=0d0
+     allocate(bigavector(tot_adim,mcscfnum));  bigavector(:,:)=0d0
 
      totread=0
 
@@ -408,8 +433,8 @@ program mctdhf
 
         OFLWR "Not enough avectors loaded! will diagonalize."; CFL
         do i=totread+1,mcscfnum
-           call staticvector(bigavector(:,i),totadim)
-           call gramschmidt(totadim,i-1,totadim,bigavector(:,:),bigavector(:,i),.false.)
+           call staticvector(bigavector(:,i),tot_adim)
+           call gramschmidt(tot_adim,i-1,tot_adim,bigavector(:,:),bigavector(:,i),.false.)
         enddo
         if (debugflag.gt.0) then
            call mpibarrier();     OFLWR "CALL ALL MATEL IN MAIN"; CFL;     call mpibarrier()
@@ -421,11 +446,11 @@ program mctdhf
            call mpibarrier();     OFLWR "AFTER CALL ALL MATEL IN MAIN"; CFL;     call mpibarrier()
         endif
         allocate(tempvals(mcscfnum))
-        call myconfigeig(bigavector,tempvals,mcscfnum,1,min(totread,1),0d0,max(0,improvedrelaxflag-1))
+        call myconfigeig(www,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,min(totread,1),0d0,max(0,improvedrelaxflag-1))
         deallocate(tempvals)
      endif  
 
-     yyy%cmfpsivec(astart(1):aend(mcscfnum),0) = RESHAPE(bigavector(:,:),(/totadim*mcscfnum/))
+     yyy%cmfpsivec(astart(1):aend(mcscfnum),0) = RESHAPE(bigavector(:,:),(/tot_adim*mcscfnum/))
 
      deallocate(bigavector)
   endif
@@ -480,6 +505,7 @@ end program mctdhf
 
 subroutine getclasses()
   use parameters
+  use class_parameters
   implicit none
   integer :: iclass,ispf,jspf,flag
 
