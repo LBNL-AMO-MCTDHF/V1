@@ -381,11 +381,13 @@ subroutine fast_newconfiglist()
 
   if (alreadycounted) then
      OFLWR "Go fast_newconfiglist, getting configurations";CFL
+     deallocate(bigspinblockstart,bigspinblockend)
      allocate(configlist(ndof,numconfig), configmvals(numconfig), configugvals(numconfig),&
           bigspinblockstart(numspinblocks+2*nprocs),bigspinblockend(numspinblocks+2*nprocs))
 
      configlist(:,:)=0; configmvals(:)=0;configugvals(:)=0
   else
+     allocate(bigspinblockstart(1),bigspinblockend(1))  !! avoid warn bounds
      OFLWR "Go fast_newconfiglist";CFL
   endif
 

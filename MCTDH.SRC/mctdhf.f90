@@ -304,10 +304,6 @@ program mctdhf
 
      call walkalloc();             call walks()
 
-     if (walkwriteflag.ne.0) then
-        OFLWR "Closing walks.BIN"; CFL; close(751);
-     endif
-
      call init_dfcon()
 
      call spinwalkinit(); 

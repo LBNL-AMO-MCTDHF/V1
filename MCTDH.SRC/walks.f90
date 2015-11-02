@@ -202,52 +202,7 @@ subroutine walks()
 
   !!  ***********   SINGLES  **********
 
-  if (walksonfile.ne.0) then
-
-     if (walksinturn) then 
-        call beforebarrier()
-     endif
-
-     OFLWR "Reading walks. Singles";  CFL
-
-     read(751,iostat=myiostat) &
-          singlewalkopspf, &
-          singlewalkdirphase, &
-          singlewalk, &
-          numsinglediagwalks, &
-          singlediag, &
-
-          doublewalkdirspf, &
-          doublewalkdirphase, &
-          doublewalk, &
-          numdoublediagwalks, &
-          doublediag
-
-     OFLWR "   ..read single walks this processor...";  CFL
-
-     if (walksinturn) then 
-        call afterbarrier()
-     endif
-
-     call mympiimax(myiostat)
-     if (myiostat.ne.0) then
-        OFLWR "Read error for savewalks.BIN!  Delete it to recompute walks!!", myiostat; CFLST
-     else
-        OFLWR "savewalks.BIN was found and read. SKIPPING WALK CALCULATION.";CFL
-        return
-!! RETURN
-        return
-!! RETURN
-        return
-!! RETURN
-        return
-!! RETURN
-        return
-     endif
-  else
-     OFLWR "No savewalks.BIN found.  Calculating walks.  Singles...";  CFL
-  endif
-
+  OFLWR "Calculating walks.  Singles...";  CFL
   
   do config1=botconfig,topconfig
 
@@ -515,30 +470,6 @@ subroutine walks()
   enddo
      
   
-  if (walkwriteflag.ne.0) then
-        if (walksinturn) then
-           call beforebarrier()
-        endif
-        OFLWR "    ... writing double walks ..."; CFL
-        write(751) &
-             singlewalkopspf, &
-             singlewalkdirphase, &
-             singlewalk, &
-             numsinglediagwalks, &
-             singlediag, &
-             
-             doublewalkdirspf, &
-             doublewalkdirphase, &
-             doublewalk, &
-             numdoublediagwalks, &
-             doublediag
-        OFLWR "    ... done writing double walks this processor..."; CFL
-        if (walksinturn) then 
-           call afterbarrier()
-        endif
-        OFLWR "    ... done writing double walks."; CFL
-  endif
-
 end subroutine walks
 
 
@@ -572,63 +503,6 @@ subroutine getnumwalks()
   !!  ***********   SINGLES  **********
 
   call mpibarrier()
-
-  flag=1
-  
-  open(751,file="WALKS/savewalks.BIN",status="old",iostat=myiostat, form="unformatted")
-  if (myiostat==0) then
-     if (myrank.ne.1) then
-        close(751)
-        open(751,file="WALKS/savewalks.BIN"//iilab,status="old",iostat=myiostat, form="unformatted")
-        myiostat=myiostat*myrank
-     endif
-     call mympiimax(myiostat)
-     if (myiostat.ne.0) then
-        OFLWR "error savewalks ", myiostat; CFLST
-     endif
-
-     if (walksinturn) then 
-        call beforebarrier()
-     endif
-
-     OFLWR "  ...reading walks...."; CFL
-     read(751,iostat=myiostat) inprocs, innumconfig
-     OFLWR "  ...ok reading walks...."; CFL
-
-     if (walksinturn) then 
-        call afterbarrier()
-     endif
-
-     call mympiimax(myiostat)
-
-     if (myiostat==0) then
-        if (inprocs.ne.nprocs) then
-           OFLWR "savewalks.BIN exists but is for nprocs=", inprocs," not current nprocs=",nprocs      ;     CFLST
-        endif
-        if (innumconfig.ne.numconfig) then
-           OFLWR "savewalks.BIN exists but has wrong number of configurations.  Current:", numconfig, " on file:", innumconfig;           CFLST
-        endif
-        OFLWR "savewalks.BIN exists; reading walks, not computing.";        CFL
-        walksonfile=1;        flag=0
-     endif
-
-     if (walksinturn) then 
-        call beforebarrier()
-     endif
-
-     read(751,iostat=myiostat) numsinglewalks,numdoublewalks
-
-     if (walksinturn) then 
-        call afterbarrier()
-     endif
-
-     call mympiimax(myiostat)
-     if (myiostat.ne.0) then
-        OFLWR "error savewalks xx", myiostat; CFLST
-     endif
-  endif
-
-  if (flag==1) then
 
      OFLWR "Counting walks. Singles";  CFL
 
@@ -783,27 +657,6 @@ subroutine getnumwalks()
         call mpiallgather_i(numdoublewalks(:),numconfig,configsperproc(:),maxconfigsperproc)
      endif
 
-     if (walkwriteflag.ne.0) then
-        if (walksinturn) then
-           OFLWR "OPENING WALKS and writing in turn...."; CFL
-           call beforebarrier()
-        else
-           OFLWR "OPENING WALKS...."; CFL
-        endif
-        if (myrank.eq.1) then
-           open(751,file="WALKS/walks.BIN",status="unknown", form="unformatted")
-        else
-           open(751,file="WALKS/walks.BIN"//iilab,status="unknown", form="unformatted")
-        endif
-
-        write(751) nprocs, numconfig;     write(751) numsinglewalks,numdoublewalks
-
-        if (walksinturn) then
-           call afterbarrier()
-        endif
-        OFLWR "    ...opened walks and wrote header info"; CFL
-     endif
-  endif
 
   maxsinglewalks=0;  maxdoublewalks=0
 

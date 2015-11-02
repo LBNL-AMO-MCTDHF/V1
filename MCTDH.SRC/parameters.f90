@@ -462,7 +462,6 @@ integer, allocatable :: dfbasisperproc(:)
 integer ::       maxdfbasisperproc
 integer :: botdfbasis=-1,topdfbasis=-1
 
-integer :: walksonfile=0       
 integer :: autosize, autosteps
 integer :: auto_biortho=1        !! do we want to use biorthonormalization or permutation overlaps? 0 perm overlaps, 1 biortho
 integer :: cdenflag=0            !!              !! Calulate natconfig?  Not necessary if Act=6.
