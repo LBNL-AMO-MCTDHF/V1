@@ -74,39 +74,39 @@ subroutine autocorrelate()
 end subroutine autocorrelate
 
 
-function getval(jjj,which)
-  use parameters
-  implicit none
-  
-  integer, parameter :: max_numelec=20
-  integer, save :: kkk(max_numelec)=0
-  integer :: jjj(max_numelec), mm,ll,nn, getval, which,kk
-
-  if (which .gt. numelec) then
-     OFLWR "Err which"; CFLST
-  endif
-
-  if (numelec.gt.max_numelec) then
-     OFLWR "Redim max_numelec in autocorrelate";  CFLST
-  endif
-
-  kkk(1)=jjj(1)     ! kkk is the permutation we're building
-  do kk=2,which   ! position in permutation
-     mm=0           
-     do ll=1,jjj(kk)
-        mm=mm+1
-        do nn=1,kk-1
-           if (kkk(nn).eq.mm) then
-              mm=mm+1
-           endif
-        enddo
-     enddo
-     kkk(kk)=mm
-  enddo
-
-  getval=kkk(which)
-
-end function getval
+!!$function getval(jjj,which)
+!!$  use parameters
+!!$  implicit none
+!!$  
+!!$  integer, parameter :: max_numelec=20
+!!$  integer, save :: kkk(max_numelec)=0
+!!$  integer :: jjj(max_numelec), mm,ll,nn, getval, which,kk
+!!$
+!!$  if (which .gt. numelec) then
+!!$     OFLWR "Err which"; CFLST
+!!$  endif
+!!$
+!!$  if (numelec.gt.max_numelec) then
+!!$     OFLWR "Redim max_numelec in autocorrelate";  CFLST
+!!$  endif
+!!$
+!!$  kkk(1)=jjj(1)     ! kkk is the permutation we're building
+!!$  do kk=2,which   ! position in permutation
+!!$     mm=0           
+!!$     do ll=1,jjj(kk)
+!!$        mm=mm+1
+!!$        do nn=1,kk-1
+!!$           if (kkk(nn).eq.mm) then
+!!$              mm=mm+1
+!!$           endif
+!!$        enddo
+!!$     enddo
+!!$     kkk(kk)=mm
+!!$  enddo
+!!$
+!!$  getval=kkk(which)
+!!$
+!!$end function getval
 
 !! CALCULATE THE AUTOCORRELATION FUNCTION.
 
