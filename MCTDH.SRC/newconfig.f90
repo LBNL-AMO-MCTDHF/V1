@@ -13,11 +13,11 @@ function iind(twoarr)
   use parameters
   implicit none
   integer :: iind, twoarr(2)
-  if (orderflag==1) then
-     iind=twoarr(1) + (twoarr(2)-1)*nspf 
-  else
+!!$  if (orderflag==1) then
+!!$     iind=twoarr(1) + (twoarr(2)-1)*nspf 
+!!$  else
      iind=(twoarr(1)-1)*2 + twoarr(2)
-  endif
+!!$  endif
 end function
 
 
@@ -363,9 +363,10 @@ subroutine fast_newconfiglist()
   if (numelec.gt.max_numelec) then
      OFLWR "Resize get_newconfiglist"; CFLST
   endif
-  if (orderflag.eq.1) then
-     OFLWR "orderflag 1 not supported for fastconfig (would be trivial, a simplification, no sort I think)"; CFLST
-  endif
+!!$ orderflag 0 hardwire
+!!$  if (orderflag.eq.1) then
+!!$     OFLWR "orderflag 1 not supported for fastconfig (would be trivial, a simplification, no sort I think)"; CFLST
+!!$  endif
 
   allocate(configsperproc(nprocs),alltopconfigs(nprocs),allbotconfigs(nprocs))
 

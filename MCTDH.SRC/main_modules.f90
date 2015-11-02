@@ -108,17 +108,17 @@ contains
     integer, save :: temp(2)
     integer :: ind,q, xind
     ind=xind-1
-    if (orderflag==1) then
-       temp(1)           = mod(ind,numspf)+1
-       q=(ind-mod(ind,numspf))/numspf
-       temp(2)           = q+1
-       aarr=temp
-    else
+!!$    if (orderflag==1) then
+!!$       temp(1)           = mod(ind,numspf)+1
+!!$       q=(ind-mod(ind,numspf))/numspf
+!!$       temp(2)           = q+1
+!!$       aarr=temp
+!!$    else
        temp(2)           = mod(ind,2)+1
        q=(ind-mod(ind,2))/2
        temp(1)           = q+1
        aarr=temp
-    endif
+!!$    endif
   end function aarr
 end module aarrmod
 

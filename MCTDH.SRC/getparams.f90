@@ -73,7 +73,7 @@ subroutine getparams()
        restrictflag,  restrictms,   loadspfflag,  loadavectorflag,  avectorhole, &
        par_timestep,  stopthresh ,  cmf_flag,  intopt, timedepexpect,  avector_flag, &
        numelec,  relerr,  myrelerr,  spf_flag,  denreg,  timingout, tdflag, finaltime, actions, numactions, &
-       messflag,  sparseconfigflag,  aorder, maxaorder, aerror, orderflag, shelltop, numexcite, povres, povrange,&
+       messflag,  sparseconfigflag,  aorder, maxaorder, aerror, shelltop, numexcite, povres, povrange,&
        numpovranges, povsparse,  povmult, vexcite, plotnum,lancheckstep,  plotview1, plotview2, &
        computeFlux, FluxInterval, FluxSkipMult, &
        numfrozen, nucfluxopt, natplotbin, spfplotbin, denplotbin, denprojplotbin, &
@@ -306,9 +306,6 @@ subroutine getparams()
      if (buffer(1:5) .eq. 'Step=') then
         read(buffer(6:len),*) par_timestep
         write(mpifileptr, *) "Timestep set to  ", par_timestep, " by command line option."
-     endif
-     if (buffer(1:6) .eq. 'Order=') then
-        read(buffer(7:len),*) orderflag
      endif
 
      if (buffer(1:10) .eq. 'Numfrozen=') then
@@ -688,9 +685,6 @@ subroutine getparams()
   if (numshells.eq.1) then
      write(mpifileptr, *) "Doing full CI: numshells=1.  Shells:"
   else
-     if (orderflag/=0) then
-        orderflag=0
-     endif
      write(mpifileptr, *) "Shells:"
   endif
   do ishell=1,numshells

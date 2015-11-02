@@ -401,7 +401,7 @@ integer :: nonatrotate=0
 
 !!!!!  integer :: whichquad=1           !!     0=my eqn 1=rayleigh quotient  WHICHQUAD 1 HARDWIRE
 
-integer :: orderflag=0           !! Order=       !! ordering of configs. 1= first all alphas,  then betas;  
+integer,parameter :: orderflag=0           !! Order=       !! ordering of configs. 1= first all alphas,  then betas;  
                                                  !!    0= 1a1b2a2b etc.
 integer :: nonuc_checkflag=1     !!              !! Turn off deriv operators in nuclear dofs.
 
