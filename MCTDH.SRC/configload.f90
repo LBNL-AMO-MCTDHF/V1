@@ -270,7 +270,7 @@ subroutine load_avector_productsub(myavector)
   num_allowed=0
   do iconfig=1,tot_numconfig
      dirphase=reorder(newconfiglist(:,iconfig),numelec)
-     if (allowedconfig0(www,newconfiglist(:,iconfig),0)) then
+     if (allowedconfig0(www,newconfiglist(:,iconfig),www%dflevel)) then
         num_allowed=num_allowed+1
         jconfig=getconfiguration(newconfiglist(:,iconfig),www)
         if (configtable(jconfig).ne.(-99)) then
@@ -586,7 +586,7 @@ subroutine easy_load_avectors(iunit, qq, outavectors, mynumr, mynumconfig, mynum
            read (iunit,iostat=myiostat) thatconfig(1:ndof), ctempreadvect(1:mynumr)
         endif
         phase=reorder(thatconfig,numelec)
-        if (allowedconfig0(www,thatconfig,0)) then
+        if (allowedconfig0(www,thatconfig,www%dflevel)) then
            config1=getconfiguration(thatconfig,www)
            if (qq==0) then
               outavectors(1:mynumr,config1,ivect)=rtempreadvect(:)*phase
@@ -674,7 +674,7 @@ subroutine readavectorsubroutine(readconfig, outavector,ivect)
            cycle                     !! cycle jloop
         endif
         phase=reorder(thisconfig,numelec)
-        if (allowedconfig0(www,thisconfig,0)) then
+        if (allowedconfig0(www,thisconfig,www%dflevel)) then
            config2=getconfiguration(thisconfig,www)
            if (config2.eq.-1) then
               write(mpifileptr,*) 
@@ -704,7 +704,7 @@ subroutine readavectorsubsimple(readconfig, outavector,notusedint)
   enddo
   phase=reorder(thisconfig,numelec)
   
-  if (allowedconfig0(www,thisconfig,0)) then
+  if (allowedconfig0(www,thisconfig,www%dflevel)) then
      config2=getconfiguration(thisconfig,www)
      if (config2.eq.-1) then
         write(mpifileptr,*) 

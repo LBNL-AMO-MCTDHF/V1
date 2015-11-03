@@ -227,6 +227,7 @@ module walkmod
   type walktype
 
      integer :: dflevel=0, dfwalklevel=0, dfrestrictflag=0
+     integer :: singlewalkflag=0, doublewalkflag=0
 
      integer :: parconsplit=0
 

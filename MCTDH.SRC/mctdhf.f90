@@ -297,7 +297,9 @@ program mctdhf
   www%dfrestrictflag=df_restrictflag
   www%dflevel=0
   www%dfwalklevel=0
-     
+  www%singlewalkflag=1
+  www%doublewalkflag=1
+
   call fast_newconfiglist(www);   
 
   num_config=www%numconfig

@@ -217,61 +217,66 @@ subroutine walks(www)
      endif
 
      iwalk=0
-     thisconfig=www%configlist(:,config1)
 
-     do idof=1,www%numelec   !! position in thisconfig that we're walking 
+     if (www%singlewalkflag.ne.0) then
 
-        temporb=thisconfig((idof-1)*2+1 : idof*2)
-        ispf=temporb(1)
-        ispin=temporb(2)
-        iindex=iind(temporb)
+        thisconfig=www%configlist(:,config1)
 
-        do jindex=1,2*www%nspf   !! the walk
+        do idof=1,www%numelec   !! position in thisconfig that we're walking 
 
-           temporb=aarr(jindex)
-           jspf=temporb(1)
-           jspin=temporb(2)
+           temporb=thisconfig((idof-1)*2+1 : idof*2)
+           ispf=temporb(1)
+           ispin=temporb(2)
+           iindex=iind(temporb)
 
-           if (ispin.ne.jspin) then
-              cycle
-           endif
-           
-           flag=0
-           do jdof=1,www%numelec
-              if (jdof.ne.idof) then !! INCLUDING DIAGONAL WALKS
-                 if (iind(thisconfig((jdof-1)*2+1:jdof*2)) == jindex) then 
-                    flag=1
-                 endif
+           do jindex=1,2*www%nspf   !! the walk
+
+              temporb=aarr(jindex)
+              jspf=temporb(1)
+              jspin=temporb(2)
+
+              if (ispin.ne.jspin) then
+                 cycle
               endif
-           enddo
-
-           if (flag.ne.0) then    ! pauli dis allowed configuration.
-              cycle
-           endif
-
-           thatconfig=thisconfig
-           thatconfig((idof-1)*2+1  : idof*2)=temporb
-
-           dirphase=reorder(thatconfig,www%numelec)
-
-           if (.not.allowedconfig0(www,thatconfig,www%dfwalklevel)) then
-              cycle
-           endif
-
-           if (offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
-              cycle
-           endif
-
-           iwalk=iwalk+1
-           www%singlewalkopspf(1:2,iwalk,config1)=[ ispf,jspf ]   !! ket, bra   bra is walk
-           www%singlewalkdirphase(iwalk,config1)=dirphase
            
-           config2=getconfiguration(thatconfig,www)
-           
-           www%singlewalk(iwalk,config1)=config2
+              flag=0
+              do jdof=1,www%numelec
+                 if (jdof.ne.idof) then !! INCLUDING DIAGONAL WALKS
+                    if (iind(thisconfig((jdof-1)*2+1:jdof*2)) == jindex) then 
+                       flag=1
+                    endif
+                 endif
+              enddo
 
-        enddo   ! the walk
-     enddo  ! position we're walking
+              if (flag.ne.0) then    ! pauli dis allowed configuration.
+                 cycle
+              endif
+
+              thatconfig=thisconfig
+              thatconfig((idof-1)*2+1  : idof*2)=temporb
+
+              dirphase=reorder(thatconfig,www%numelec)
+
+              if (.not.allowedconfig0(www,thatconfig,www%dfwalklevel)) then
+                 cycle
+              endif
+
+              if (offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
+                 cycle
+              endif
+
+              iwalk=iwalk+1
+
+              www%singlewalkopspf(1:2,iwalk,config1)=[ ispf,jspf ]   !! ket, bra   bra is walk
+              www%singlewalkdirphase(iwalk,config1)=dirphase
+           
+              config2=getconfiguration(thatconfig,www)
+           
+              www%singlewalk(iwalk,config1)=config2
+
+           enddo   ! the walk
+        enddo  ! position we're walking
+     endif  ! singlewalkflag
 
      if (     www%numsinglewalks(config1) /= iwalk ) then
         OFLWR "WALK ERROR SINGLES.";        CFLST
@@ -292,91 +297,92 @@ subroutine walks(www)
 
      iwalk=0
 
-     thisconfig=www%configlist(:,config1)
+     if (www%doublewalkflag.ne.0) then
 
-     do idof=1,www%numelec         !! positions in thisconfig that we're walking 
-        do iidof=idof+1,www%numelec   !! 
+        thisconfig=www%configlist(:,config1)
 
-           temporb=thisconfig((idof-1)*2+1 : idof*2)
-           ispf=temporb(1)
-           ispin=temporb(2)
-           iindex=iind(temporb)
+        do idof=1,www%numelec         !! positions in thisconfig that we're walking 
+           do iidof=idof+1,www%numelec   !! 
 
-           temporb=thisconfig((iidof-1)*2+1 : iidof*2)
-           iispf=temporb(1)
-           iispin=temporb(2)
-           iiindex=iind(temporb)
+              temporb=thisconfig((idof-1)*2+1 : idof*2)
+              ispf=temporb(1)
+              ispin=temporb(2)
+              iindex=iind(temporb)
 
-           do jindex=1,2*www%nspf   !! the walk
+              temporb=thisconfig((iidof-1)*2+1 : iidof*2)
+              iispf=temporb(1)
+              iispin=temporb(2)
+              iiindex=iind(temporb)
+
+              do jindex=1,2*www%nspf   !! the walk
               
-              temporb=aarr(jindex)
-              jspf=temporb(1) 
-              jspin=temporb(2)
+                 temporb=aarr(jindex)
+                 jspf=temporb(1) 
+                 jspin=temporb(2)
               
-              if (.not.ispin.eq.jspin) then
-                 cycle
-              endif
+                 if (.not.ispin.eq.jspin) then
+                    cycle
+                 endif
 
 !! no more exchange separately
 
-              do jjindex=1,2*www%nspf
-                 if (jjindex.eq.jindex) then
-                    cycle
-                 endif
-                 
-                 temporb2=aarr(jjindex)
-                 jjspf=temporb2(1)
-                 jjspin=temporb2(2)
-                 
-                 if (.not.iispin.eq.jjspin) then
-                    cycle
-                 endif
-
-                 flag=0
-                 do jdof=1,www%numelec
-                    if (jdof.ne.idof.and.jdof.ne.iidof) then !! INCLUDING DIAGONAL AND SINGLE WALKS
-                       if ((iind(thisconfig((jdof-1)*2+1:jdof*2)) == jindex).or. &
-                            (iind(thisconfig((jdof-1)*2+1:jdof*2)) == jjindex)) then
-                          flag=1
-                          exit
-                       endif
+                 do jjindex=1,2*www%nspf
+                    if (jjindex.eq.jindex) then
+                       cycle
                     endif
-                 enddo
                  
-                 if (flag.ne.0) then    ! pauli dis allowed configuration.
-                    cycle
-                 endif
+                    temporb2=aarr(jjindex)
+                    jjspf=temporb2(1)
+                    jjspin=temporb2(2)
+                 
+                    if (.not.iispin.eq.jjspin) then
+                       cycle
+                    endif
+
+                    flag=0
+                    do jdof=1,www%numelec
+                       if (jdof.ne.idof.and.jdof.ne.iidof) then !! INCLUDING DIAGONAL AND SINGLE WALKS
+                          if ((iind(thisconfig((jdof-1)*2+1:jdof*2)) == jindex).or. &
+                               (iind(thisconfig((jdof-1)*2+1:jdof*2)) == jjindex)) then
+                             flag=1
+                             exit
+                          endif
+                       endif
+                    enddo
+                 
+                    if (flag.ne.0) then    ! pauli dis allowed configuration.
+                       cycle
+                    endif
 
                  
-                 thatconfig=thisconfig
-                 thatconfig((idof-1)*2+1  : idof*2)=temporb
-                 thatconfig((iidof-1)*2+1  : iidof*2)=temporb2
+                    thatconfig=thisconfig
+                    thatconfig((idof-1)*2+1  : idof*2)=temporb
+                    thatconfig((iidof-1)*2+1  : iidof*2)=temporb2
 
-                 dirphase=reorder(thatconfig,www%numelec)
+                    dirphase=reorder(thatconfig,www%numelec)
 
-                 if (.not.allowedconfig0(www,thatconfig,www%dfwalklevel)) then
-                    cycle
-                 endif
+                    if (.not.allowedconfig0(www,thatconfig,www%dfwalklevel)) then
+                       cycle
+                    endif
 
-                 if (offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
-                    cycle
-                 endif
+                    if (offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
+                       cycle
+                    endif
 
-                 
-                 iwalk = iwalk+1
+                    iwalk = iwalk+1
             
 !!                                                      ket2   bra2   ket1   bra1
-                 www%doublewalkdirspf(1:4,iwalk,config1)=[ iispf, jjspf, ispf, jspf ]
-                 www%doublewalkdirphase(iwalk,config1)=dirphase
+                    www%doublewalkdirspf(1:4,iwalk,config1)=[ iispf, jjspf, ispf, jspf ]
+                    www%doublewalkdirphase(iwalk,config1)=dirphase
                  
-                 config2=getconfiguration(thatconfig,www)
-                 www%doublewalk(iwalk,config1)=config2
+                    config2=getconfiguration(thatconfig,www)
+                    www%doublewalk(iwalk,config1)=config2
 
-              enddo   ! the walk
-           enddo
-           
-        enddo  ! position we're walking
-     enddo
+                 enddo   ! the walk
+              enddo
+           enddo  ! position we're walking
+        enddo
+     endif  ! doublewalkflag
 
      if (     www%numdoublewalks(config1) /= iwalk ) then
         OFLWR "WALK ERROR DOUBLES.",config1,www%numdoublewalks(config1),iwalk; CFLST
@@ -388,16 +394,19 @@ subroutine walks(www)
 
   OFLWR "Sorting walks..."; CFL
   do config1=www%botconfig,www%topconfig
-        
-     call getlistorder(www%singlewalk(:,config1),listorder(:),www%numsinglewalks(config1))
-     call listreorder(www%singlewalkdirphase(:,config1),listorder(:),www%numsinglewalks(config1),1)
-     call listreorder(www%singlewalkopspf(:,:,config1),listorder(:),www%numsinglewalks(config1),2)
-     call listreorder(www%singlewalk(:,config1),listorder(:),www%numsinglewalks(config1),1)
 
-     call getlistorder(www%doublewalk(:,config1),listorder(:),www%numdoublewalks(config1))
-     call listreorder(www%doublewalkdirphase(:,config1),listorder(:),www%numdoublewalks(config1),1)
-     call listreorder(www%doublewalkdirspf(:,:,config1),listorder(:),www%numdoublewalks(config1),4)
-     call listreorder(www%doublewalk(:,config1),listorder(:),www%numdoublewalks(config1),1)
+     if (www%numsinglewalks(config1).gt.1) then
+        call getlistorder(www%singlewalk(:,config1),listorder(:),www%numsinglewalks(config1))
+        call listreorder(www%singlewalkdirphase(:,config1),listorder(:),www%numsinglewalks(config1),1)
+        call listreorder(www%singlewalkopspf(:,:,config1),listorder(:),www%numsinglewalks(config1),2)
+        call listreorder(www%singlewalk(:,config1),listorder(:),www%numsinglewalks(config1),1)
+     endif
+     if (www%numdoublewalks(config1).gt.1) then
+        call getlistorder(www%doublewalk(:,config1),listorder(:),www%numdoublewalks(config1))
+        call listreorder(www%doublewalkdirphase(:,config1),listorder(:),www%numdoublewalks(config1),1)
+        call listreorder(www%doublewalkdirspf(:,:,config1),listorder(:),www%numdoublewalks(config1),4)
+        call listreorder(www%doublewalk(:,config1),listorder(:),www%numdoublewalks(config1),1)
+     endif
   enddo
   OFLWR "    .... done sorting walks."; CFL
 
@@ -526,54 +535,58 @@ subroutine getnumwalks(www)
         endif
 
         iwalk=0
-        thisconfig=www%configlist(:,config1)
 
-        do idof=1,www%numelec   !! position in thisconfig that we're walking 
+        if (www%singlewalkflag.ne.0) then
+
+           thisconfig=www%configlist(:,config1)
+
+           do idof=1,www%numelec   !! position in thisconfig that we're walking 
            
-           temporb=thisconfig((idof-1)*2+1 : idof*2)
-           ispf=temporb(1)
-           ispin=temporb(2)
-           iindex=iind(temporb)
+              temporb=thisconfig((idof-1)*2+1 : idof*2)
+              ispf=temporb(1)
+              ispin=temporb(2)
+              iindex=iind(temporb)
            
-           do jindex=1,www%nspf * 2   !! the walk
+              do jindex=1,www%nspf * 2   !! the walk
               
-              temporb=aarr(jindex)
-              jspin=temporb(2)
-              if (ispin.ne.jspin) then  
-                 cycle
-              endif
-
-              flag=0
-              do jdof=1,www%numelec
-                 if (jdof.ne.idof) then !! INCLUDING DIAGONAL WALKS
-                    if (iind(thisconfig((jdof-1)*2+1:jdof*2)) == jindex) then 
-                       flag=1
-                    endif
+                 temporb=aarr(jindex)
+                 jspin=temporb(2)
+                 if (ispin.ne.jspin) then  
+                    cycle
                  endif
-              enddo
+
+                 flag=0
+                 do jdof=1,www%numelec
+                    if (jdof.ne.idof) then !! INCLUDING DIAGONAL WALKS
+                       if (iind(thisconfig((jdof-1)*2+1:jdof*2)) == jindex) then 
+                          flag=1
+                       endif
+                    endif
+                 enddo
               
-              if (flag.ne.0) then    ! pauli dis allowed configuration.
-                 cycle
-              endif
+                 if (flag.ne.0) then    ! pauli dis allowed configuration.
+                    cycle
+                 endif
 
-              thatconfig=thisconfig
-              thatconfig((idof-1)*2+1  : idof*2)=temporb
+                 thatconfig=thisconfig
+                 thatconfig((idof-1)*2+1  : idof*2)=temporb
 
-              dirphase=reorder(thatconfig,www%numelec)
+                 dirphase=reorder(thatconfig,www%numelec)
 
-              if (.not.allowedconfig0(www,thatconfig,www%dfwalklevel)) then
-                 cycle
-              endif
+                 if (.not.allowedconfig0(www,thatconfig,www%dfwalklevel)) then
+                    cycle
+                 endif
 
-              if (offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
-                 cycle
-              endif
+                 if (offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
+                    cycle
+                 endif
               
-              iwalk=iwalk+1
+                 iwalk=iwalk+1
 
-           enddo   ! the walk
-        enddo  ! position we're walking
-        
+              enddo   ! the walk
+           enddo  ! position we're walking
+        endif  ! singlewalkflag
+
         www%numsinglewalks(config1) = iwalk 
 
      enddo   ! config1
@@ -594,73 +607,77 @@ subroutine getnumwalks(www)
         endif
         
         iwalk=0
-        thisconfig=www%configlist(:,config1)
+
+        if (www%doublewalkflag.ne.0) then
+
+           thisconfig=www%configlist(:,config1)
         
-        do idof=1,www%numelec            !! positions in thisconfig that we're walking 
-           do iidof=idof+1,www%numelec   !! 
+           do idof=1,www%numelec            !! positions in thisconfig that we're walking 
+              do iidof=idof+1,www%numelec   !! 
               
-              temporb=thisconfig((idof-1)*2+1 : idof*2)
-              ispf=temporb(1)
-              ispin=temporb(2)
-              iindex=iind(temporb)
+                 temporb=thisconfig((idof-1)*2+1 : idof*2)
+                 ispf=temporb(1)
+                 ispin=temporb(2)
+                 iindex=iind(temporb)
               
-              temporb=thisconfig((iidof-1)*2+1 : iidof*2)
-              iispf=temporb(1)
-              iispin=temporb(2)
-              iiindex=iind(temporb)
+                 temporb=thisconfig((iidof-1)*2+1 : iidof*2)
+                 iispf=temporb(1)
+                 iispin=temporb(2)
+                 iiindex=iind(temporb)
               
-              do jindex=1,2*www%nspf   !! the walk
+                 do jindex=1,2*www%nspf   !! the walk
 
-                 temporb=aarr(jindex)
-                 jspin=temporb(2)
+                    temporb=aarr(jindex)
+                    jspin=temporb(2)
 
-                 if (.not.ispin.eq.jspin) then
-                    cycle
-                 endif
+                    if (.not.ispin.eq.jspin) then
+                       cycle
+                    endif
 
 !! no more exchange separately
-                 do jjindex=1,2*www%nspf   !! the walk
-                    if (jjindex.eq.jindex) then
-                       cycle
-                    endif
+                    do jjindex=1,2*www%nspf   !! the walk
+                       if (jjindex.eq.jindex) then
+                          cycle
+                       endif
 
-                    temporb2=aarr(jjindex)
-                    jjspin=temporb2(2)
+                       temporb2=aarr(jjindex)
+                       jjspin=temporb2(2)
+                       
+                       if (.not.iispin.eq.jjspin) then
+                          cycle
+                       endif
 
-                    if (.not.iispin.eq.jjspin) then
-                       cycle
-                    endif
+                       flag=0
+                       do jdof=1,www%numelec
+                          if (jdof.ne.idof.and.jdof.ne.iidof) then  !! INCLUDING DIAGONAL AND SINGLE WALKS
+                             if ((iind(thisconfig((jdof-1)*2+1:jdof*2)) == jindex).or. &
+                                  (iind(thisconfig((jdof-1)*2+1:jdof*2)) == jjindex)) then
+                                flag=1
+                             endif
+                          endif
+                       enddo
+                    
+                       if (flag.ne.0) then    ! pauli dis allowed configuration.
+                          cycle
+                       endif
+                    
+                       thatconfig=thisconfig
+                       thatconfig((idof-1)*2+1  : idof*2)=temporb
+                       thatconfig((iidof-1)*2+1  : iidof*2)=temporb2
+                       dirphase=reorder(thatconfig,www%numelec)
 
-                    flag=0
-                    do jdof=1,www%numelec
-                       if (jdof.ne.idof.and.jdof.ne.iidof) then  !! INCLUDING DIAGONAL AND SINGLE WALKS
-                          if ((iind(thisconfig((jdof-1)*2+1:jdof*2)) == jindex).or. &
-                               (iind(thisconfig((jdof-1)*2+1:jdof*2)) == jjindex)) then
-                             flag=1
+                       if (allowedconfig0(www,thatconfig,www%dfwalklevel)) then
+                          if (offaxispulseflag.ne.0.or.getmval(www,thatconfig).eq.getmval(www,thisconfig)) then
+                             iwalk = iwalk+1
                           endif
                        endif
-                    enddo
                     
-                    if (flag.ne.0) then    ! pauli dis allowed configuration.
-                       cycle
-                    endif
-                    
-                    thatconfig=thisconfig
-                    thatconfig((idof-1)*2+1  : idof*2)=temporb
-                    thatconfig((iidof-1)*2+1  : iidof*2)=temporb2
-                    dirphase=reorder(thatconfig,www%numelec)
+                    enddo   ! the walk
+                 enddo
+              enddo  ! position we're walking
+           enddo
+        endif   ! doublewalkflag
 
-                    if (allowedconfig0(www,thatconfig,www%dfwalklevel)) then
-                       if (offaxispulseflag.ne.0.or.getmval(www,thatconfig).eq.getmval(www,thisconfig)) then
-                          iwalk = iwalk+1
-                       endif
-                    endif
-                    
-                 enddo   ! the walk
-              enddo
-           enddo  ! position we're walking
-        enddo
-        
         www%numdoublewalks(config1)=iwalk
 
      enddo   ! config1
@@ -670,7 +687,8 @@ subroutine getnumwalks(www)
      endif
 
 
-  www%maxsinglewalks=0;  www%maxdoublewalks=0
+!!$  www%maxsinglewalks=0;  www%maxdoublewalks=0
+  www%maxsinglewalks=1;  www%maxdoublewalks=1      !! ensure always allocate
 
   totwalks=0
   do config1=www%configstart,www%configend

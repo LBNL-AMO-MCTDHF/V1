@@ -105,7 +105,7 @@ subroutine spinwalks(www)
               if (secondspin.ne.firstspin) then
                  thatconfig(jdof*2)=mod(thatconfig(jdof*2),2) + 1
                  dirphase=reorder(thatconfig,www%numelec)
-                 if (allowedconfig0(www,thatconfig,0)) then
+                 if (allowedconfig0(www,thatconfig,www%dflevel)) then
                     iwalk=iwalk+1
                     spinwalkdirphase(iwalk,config1)=dirphase
                     config2=getconfiguration(thatconfig,www)
@@ -320,7 +320,7 @@ subroutine getnumspinwalks(www)
               if (secondspin.ne.firstspin) then
                  thatconfig(jdof*2)=mod(thatconfig(jdof*2),2) + 1
                  dirphase=reorder(thatconfig,www%numelec)
-                 if (allowedconfig0(www,thatconfig,0)) then
+                 if (allowedconfig0(www,thatconfig,www%dflevel)) then
                     iwalk=iwalk+1
                  endif   ! allowedconfig
               endif
