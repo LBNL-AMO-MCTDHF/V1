@@ -16,17 +16,19 @@ real*8 :: nucrepulsion
 DATATYPE, allocatable :: bondpoints(:),bondweights(:)
 end module r_parameters
 
+module class_parameters
+integer :: numclasses=1
+integer, allocatable :: classorb(:,:),nperclass(:), orbclass(:)
+end module class_parameters
+
 !!YYSNIPYY
 !!BB
-
 !! *********************************************************************************************************** !!
 !!   Parameters for MCTDHF calculation; parinp NAMELIST input from Input.Inp (default)
 !! *********************************************************************************************************** !!
 !!
-!! Type, variable, default       !! Command      !! Description 
-!!   value                       !!  line        !! 
-                                 !!  option      !!
-
+!! Type, variable, default value !! Command-line !! Description 
+!!                               !!  option      !! 
 !!EE
 !!\textbf{\qquad SPARSE - if sparseconfigflag .ne. 0}
 !!BB
@@ -34,19 +36,20 @@ module lan_parameters
 integer :: lanprintflag=0
 integer :: lanczosorder=200      !!              !!   lanczos order used in A-vector eigen.
 integer :: lancheckstep=20       !!              !! lanczos eigen routine checks for convergence every this # steps
-real*8 :: lanthresh=1.d-9       !!              !! convergence criterion.
-end module
+real*8 :: lanthresh=1.d-9        !!              !! convergence criterion.
+end module lan_parameters
 module sparse_parameters
 integer :: sparseconfigflag=0    !! Sparse       !! Sparse configuration routines on or off (for large # configs)
 integer :: sparseopt =1                          !! 0= direct CI  1= sparse matrix algebra (faster, more memory)
 integer :: nonsparsepropmode=1   !! 0 = ZGCHBV expokit; 1 = mine expmat
 end module sparse_parameters
-
 module ham_parameters
+!!EE
+!!\textbf{\qquad HAMILTONIAN PARAMETERS}
+!!BB
 integer :: nonuc_checkflag=1     !!              !! Turn off deriv operators in nuclear dofs.
 integer :: tdflag=0              !! Pulse        !! Use pulse?
-integer :: velflag=0             !!              !!  Length (V(t)) or velocity (A(t))       
-!!  Constraintflag=1: Density matrix constraint: assume nothing, keep constant off block diag 
+integer :: velflag=0             !!              !!  Length (V(t)) or velocity (A(t))      !!  Constraintflag=1: Density matrix constraint: assume nothing, keep constant off block diag 
 !!         (lioville solve)
 !!  2: Dirac-Frenkel (McLachlan/Lagrangian) variational principle.
 integer :: constraintflag=0      !! Constraint=  !! As described below (see CONSTRAINT)
@@ -55,14 +58,13 @@ integer :: denmatfciflag=0                       !! If .ne. 0 then does denmat c
 DATATYPE :: energyshift=0d0      !!              !! complex shift for making energy real for imperfect CAP/ECS
 integer :: drivingflag=0                         !!  Solve for the change in the wave function not wave function 
 real*8 :: drivingproportion=0.999999999999d0     !!   -- "psi-prime" treatment.
-integer :: offaxispulseflag=0   !! internal
 DATATYPE :: timefac=&            !! Prop/        !! d/dt psi = timefac * H * psi
         DATANEGONE               !!  Relax       !!
 real*8 :: mshift=0d0                             !! shift configurations based on m-value.. to break 
                                                  !!  degeneracy for state averaged sym restricted
                                                  !!  (mrestrictmin, mrestrictmax) mcscf; good idea.
+integer :: offaxispulseflag=0                    !! internal (not namelist)
 end module ham_parameters
-
 module basis_parameters
 !!EE
 !! {\large \quad For restricted configuration lists (not full CI): SEE MANUAL about dfrestrictflag}
@@ -97,11 +99,13 @@ integer :: spfmvals(1000)=0      !!              !!   M-values of orbitals
 integer :: spfugrestrict=0       !!              !! Restrict parity of orbitals? 
 integer :: spfugvals(1000)=0     !!              !!   Parity (+/-1; 0=either) of orbitals (ungerade/gerade)
 end module basis_parameters
-
 module output_parameters
 integer :: iprintconfiglist=0
 end module output_parameters
 module timing_parameters
+!!EE
+!!{\large \quad Timing}
+!!BB
 integer :: notiming=2            !!NoTiming=0,1,2!! 0=write all 1=write some 2= write none
                                  !!  Timing=2,1,0!!     controls writing of all timing and some info files
 integer :: timingout=499         !!              !! various routines output to file (timing info) every this 
@@ -121,15 +125,11 @@ real*8 :: invtol=1d-12
 integer :: auto_biortho=1        !! do we want to use biorthonormalization or permutation overlaps? 0 perm overlaps, 1 biortho
 end module bio_parameters
 module spfsize_parameters
-integer :: spfsize,spfsmallsize
+integer :: spfsize,spfsmallsize                  !!internal
+integer :: reducedpotsize = -1                   !!internal
 integer :: parorbsplit=1                         !!  Parallelize orbital calculation.  Might speed up, might
                                                  !!   slow down; check timing.
-integer :: reducedpotsize = -1
 end module spfsize_parameters
-module class_parameters
-integer :: numclasses=1
-integer, allocatable :: classorb(:,:),nperclass(:), orbclass(:)
-end module class_parameters
 module constraint_parameters
 !!EE
 !!{\large \quad CONSTRAINT: With constraintflag. NEED FOR RESTRICTED CONFIG LIST.}
@@ -146,13 +146,9 @@ end module constraint_parameters
 module denreg_parameters
 real*8 :: denreg=1d-10           !! Denreg=      !! density matrix regularization parameter.
 end module denreg_parameters
-
-
 module parameters
-  use littleparmod;  use fileptrmod;  use r_parameters; use sparse_parameters;  use ham_parameters;
-  use basis_parameters;  use timing_parameters;
-  use spfsize_parameters
-
+  use littleparmod;  use fileptrmod;  use r_parameters; use sparse_parameters;
+  use ham_parameters;  use basis_parameters;  use timing_parameters; use spfsize_parameters
   implicit none
 !!EE
 !!{\large \quad MAIN PARAMETERS }
@@ -167,7 +163,6 @@ integer :: spf_flag=1            !!              !! IF ZERO, FREEZE SPFS. (for d
 integer :: avector_flag=1        !!              !! IF ZERO, FREEZE AVECTOR. (for debugging)
 !! FOR TOTAL ORBITAL PARALLELIZATION with SINC DVR, SET PARORBSPLIT=3
 !!   and orbparflag=.true. in &sinc_params.  parorbsplit=3 not supported for atom or diatom.
-
 integer :: par_consplit=0
 character (len=200) :: &         !!              !! MAY BE SET BY COMMAND LINE OPTION ONLY: not namelist
   inpfile="Input.Inp        "    !! Inp=filename !!  input.  (=name of input file where namelist input is)
@@ -326,7 +321,6 @@ real*8 :: minpulsetime=0.d0      !!              !!  By default calc stops after
 !!BB
 integer :: numactions=0          !! 
 integer :: actions(100)=0        !!              !! ACTIONS
-
 !!   Act=1    Autocorrelation; set corrflag=1 for fourier transform
 !!   Act=2    Save natorbs
 !!   Act=3    Save spfs
