@@ -49,8 +49,8 @@ module ham_parameters
 !!BB
 integer :: nonuc_checkflag=1     !!              !! Turn off deriv operators in nuclear dofs.
 integer :: tdflag=0              !! Pulse        !! Use pulse?
-integer :: velflag=0             !!              !!  Length (V(t)) or velocity (A(t))      !!  Constraintflag=1: Density matrix constraint: assume nothing, keep constant off block diag 
-!!         (lioville solve)
+integer :: velflag=0             !!              !!  Length (V(t)) or velocity (A(t))      
+!!  Constraintflag=1: Density matrix constraint: assume nothing, keep constant off block diag
 !!  2: Dirac-Frenkel (McLachlan/Lagrangian) variational principle.
 integer :: constraintflag=0      !! Constraint=  !! As described below (see CONSTRAINT)
 integer :: denmatfciflag=0                       !! If .ne. 0 then does denmat constrant as programmed
