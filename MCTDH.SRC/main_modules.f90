@@ -282,6 +282,8 @@ module walkmod
      integer, allocatable :: numsinglewalks(:) ! numconfig
      integer, allocatable :: numsinglediagwalks(:) ! numconfig
 
+     integer,allocatable :: firstsinglewalkbyproc(:,:), lastsinglewalkbyproc(:,:)
+
      ! 1:4, numconfig, numconfig - (1:4, iwalk, config1)
      integer, allocatable :: doublewalkdirspf(:,:,:)
 
@@ -294,6 +296,8 @@ module walkmod
      integer, allocatable :: numdoublewalks(:)
      integer, allocatable :: numdoublediagwalks(:)
 
+     integer,allocatable :: firstdoublewalkbyproc(:,:), lastdoublewalkbyproc(:,:)
+
      type(spintype) :: sss
      type(dfcontype) :: ddd
 
@@ -301,11 +305,13 @@ module walkmod
      integer,allocatable :: numsinglehops(:)
      integer,allocatable :: singlehop(:,:), singlehopwalkstart(:,:), singlehopwalkend(:,:)
      integer,allocatable :: singlediaghop(:)
+     integer,allocatable :: firstsinglehopbyproc(:,:), lastsinglehopbyproc(:,:)
 
      integer :: maxnumdoublehops=0
      integer,allocatable :: numdoublehops(:)
      integer,allocatable :: doublehop(:,:), doublehopwalkstart(:,:), doublehopwalkend(:,:)
      integer,allocatable :: doublediaghop(:)
+     integer,allocatable :: firstdoublehopbyproc(:,:), lastdoublehopbyproc(:,:)
 
      integer :: singlematsize=0,doublematsize=0
 

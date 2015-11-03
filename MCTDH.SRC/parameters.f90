@@ -38,6 +38,7 @@ real*8 :: lanthresh=1.d-9       !!              !! convergence criterion.
 end module
 module sparse_parameters
 integer :: sparsehopflag=1
+integer :: sparsesummaflag=1
 integer :: sparseconfigflag=0    !! Sparse       !! Sparse configuration routines on or off (for large # configs)
 integer :: sparseopt =1                          !! 0= direct CI  1= sparse matrix algebra (faster, more memory)
 integer :: nonsparsepropmode=1   !! 0 = ZGCHBV expokit; 1 = mine expmat
@@ -98,9 +99,6 @@ integer :: spfmvals(1000)=0      !!              !!   M-values of orbitals
 integer :: spfugrestrict=0       !!              !! Restrict parity of orbitals? 
 integer :: spfugvals(1000)=0     !!              !!   Parity (+/-1; 0=either) of orbitals (ungerade/gerade)
 end module basis_parameters
-module walks_parameters
-integer :: sortwalks=1
-end module walks_parameters
 
 module output_parameters
 integer :: iprintconfiglist=0

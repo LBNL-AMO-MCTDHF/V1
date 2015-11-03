@@ -231,7 +231,25 @@ end subroutine nonsparseprop
 
 !! NOTE BOUNDS !!  PADDED
 
-subroutine parconfigexpomult_padded(inavectorspin,outavectorspin)
+subroutine parconfigexpomult_padded(inavector,outavector)
+  use r_parameters
+  use sparse_parameters
+  use configmod
+  implicit none
+
+  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+
+  if (sparsesummaflag.eq.0) then
+     call parconfigexpomult_padded_gather(inavector,outavector)
+  else
+     call parconfigexpomult_padded_summa(inavector,outavector)
+  endif
+
+end subroutine parconfigexpomult_padded
+
+
+subroutine parconfigexpomult_padded_gather(inavector,outavector)
   use fileptrmod
   use r_parameters
   use sparse_parameters
@@ -242,9 +260,9 @@ subroutine parconfigexpomult_padded(inavectorspin,outavectorspin)
   use configmod
   implicit none
 
-  DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
-  DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
-  DATATYPE :: intemp(numr,www%numconfig), outavector(numr,www%botconfig:www%topconfig)
+  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+  DATATYPE :: intemp(numr,www%numconfig), outwork(numr,www%botconfig:www%topconfig)
 
   call avectortime(3)
 
@@ -254,22 +272,72 @@ subroutine parconfigexpomult_padded(inavectorspin,outavectorspin)
 
   intemp(:,:)=0d0;  
 
-  call basis_transformfrom_local(www,numr,inavectorspin,intemp(:,www%botconfig))
+  call basis_transformfrom_local(www,numr,inavector,intemp(:,www%botconfig))
 
-!! DO SUMMA  
   call mpiallgather(intemp,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
 
-  call sparseconfigmult_nompi(www,intemp(:,:),outavector(:,:), workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0)
+  call sparseconfigmult_nompi(www,intemp(:,:),outwork(:,:), workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0)
 
-  outavectorspin(:,:)=0d0
+  outavector(:,:)=0d0    !!PADDED
 
-  call basis_transformto_local(www,numr,outavector,outavectorspin)
+  call basis_transformto_local(www,numr,outwork,outavector)
 
-  outavectorspin=outavectorspin*timefac
+  outavector=outavector*timefac
   
   call avectortime(2)
 
-end subroutine parconfigexpomult_padded
+end subroutine parconfigexpomult_padded_gather
+
+
+
+subroutine parconfigexpomult_padded_summa(inavector,outavector)
+  use fileptrmod
+  use r_parameters
+  use sparse_parameters
+  use ham_parameters   !! timefac
+  use mpimod
+  use configexpotimemod
+  use configpropmod
+  use configmod
+  implicit none
+  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+  DATATYPE :: intemp(numr,www%maxconfigsperproc), outwork(numr,www%botconfig:www%topconfig),&
+       outtemp(numr,www%botconfig:www%topconfig)
+  integer :: iproc
+
+  call avectortime(3)
+
+  if (sparseconfigflag.eq.0) then
+     OFLWR "error, must use sparse for parconfigexpomult summa"; CFLST
+  endif
+
+  outwork(:,:)=0d0
+
+  do iproc=1,nprocs
+
+!! TRANSFORM SECOND TO REDUCE COMMUNICATION?
+
+     if (myrank.eq.iproc) then
+        call basis_transformfrom_local(www,numr,inavector,intemp)
+     endif
+     call mympibcast(intemp,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
+
+     call sparseconfigmult_byproc(iproc,www,intemp(:,:),outtemp(:,:), workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0)
+
+     outwork(:,:)=outwork(:,:)+outtemp(:,:)
+
+  enddo
+
+  outavector(:,:)=0d0   !! PADDED
+
+  call basis_transformto_local(www,numr,outwork,outavector)
+
+  outavector=outavector*timefac
+  
+  call avectortime(2)
+
+end subroutine parconfigexpomult_padded_summa
 
 
 

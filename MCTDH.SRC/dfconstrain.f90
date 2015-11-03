@@ -880,8 +880,6 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
         call system_clock(jtime);        times(8)=times(8)+jtime-itime;     itime=jtime
 
-!! DO SUMMA IN SPARSECONFIGMULT
-        
         if (iiyy.eq.1) then
            call sparseconfigmult(www,avector,avectorp,cptr,sptr,1,1,0,0,time)
         else

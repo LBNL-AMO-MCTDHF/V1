@@ -48,7 +48,6 @@ subroutine getparams()
   use constraint_parameters
   use lan_parameters
   use output_parameters
-  use walks_parameters !! sortwalks
   use mpimod
   use orblabelmod
   implicit none
@@ -95,13 +94,13 @@ subroutine getparams()
        expodim,timingdir, hanningflag, numspffiles, condamp,conway, &
        mrestrictmin,mrestrictmax,lntol,invtol,psistatsfile, psistatfreq, configlistfile, &
        parorbsplit,maxbiodim, nkeproj,keprojminenergy,keprojenergystep,keprojminrad,keprojmaxrad, &
-       sortwalks,  debugflag, drivingflag,drivingproportion, drivingmethod, eigprintflag, &
+       debugflag, drivingflag,drivingproportion, drivingmethod, eigprintflag, &
        avecloadskip,nonsparsepropmode,sparseopt,lanprintflag,dipmodtime,conprop,connormflag, &
        orbcompact,spin_restrictval,mshift,numskiporbs,orbskip,debugfac,denmatfciflag,&
        walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac, maxquadnorm,quadstarttime,&
        reinterp_orbflag,spf_gridshift,load_avector_product,projspifile,readfullvector,walksinturn,&
        turnbatchsize,energyshift, pulseft_estep, finalstatsfile, projgtaufile,gtaufile,&
-       sparsehopflag
+       sparsehopflag,sparsesummaflag
 
 
 

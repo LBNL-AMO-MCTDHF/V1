@@ -156,8 +156,22 @@ subroutine nullgramschmidt_fast(m,logpar)
 end subroutine nullgramschmidt_fast
 
 
-
 recursive subroutine parblockconfigmult(inavector,outavector)
+  use r_parameters
+  use sparse_parameters
+  use configmod
+  implicit none
+  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
+  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
+  if (sparsesummaflag.eq.0) then
+     call parblockconfigmult_gather(inavector,outavector)
+  else
+     call parblockconfigmult_summa(inavector,outavector)
+  endif
+end subroutine parblockconfigmult
+
+
+recursive subroutine parblockconfigmult_gather(inavector,outavector)
   use fileptrmod
   use r_parameters
   use sparse_parameters
@@ -179,8 +193,6 @@ recursive subroutine parblockconfigmult(inavector,outavector)
 
   call basis_transformfrom_local(www,numr,inavector,intemp(:,www%botconfig:www%topconfig))
 
-!! DO SUMMA
-
   call mpiallgather(intemp,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
 
   call sparseconfigmult_nompi(www,intemp,outwork, yyy%cptr(0), yyy%sptr(0), 1,1,1,0,0d0,0,1,numr,0)
@@ -192,7 +204,57 @@ recursive subroutine parblockconfigmult(inavector,outavector)
 
   call basis_transformto_local(www,numr,outwork,outavector)
 
-end subroutine parblockconfigmult
+end subroutine parblockconfigmult_gather
+
+
+
+recursive subroutine parblockconfigmult_summa(inavector,outavector)
+  use fileptrmod
+  use r_parameters
+  use sparse_parameters
+  use ham_parameters
+  use configmod
+  use mpimod
+  use xxxmod
+  implicit none
+  integer :: ii,iproc
+  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
+  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
+  DATATYPE :: intemp(numr,www%maxconfigsperproc),outwork(numr,www%botconfig:www%topconfig),&
+       outtemp(numr,www%botconfig:www%topconfig)
+
+  if (sparseconfigflag.eq.0) then
+     OFLWR "error, must use sparse for parblockconfigmult_summa"; CFLST
+  endif
+
+  outwork(:,:)=0d0
+
+  do iproc=1,nprocs
+
+!! TRANSFORM SECOND TO REDUCE COMMUNICATION
+
+     if (myrank.eq.iproc) then
+        call basis_transformfrom_local(www,numr,inavector,intemp)
+     endif
+     call mympibcast(intemp,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
+
+     call sparseconfigmult_byproc(iproc,www,intemp,outtemp, yyy%cptr(0), yyy%sptr(0), 1,1,1,0,0d0,0,1,numr,0)
+
+     if (myrank.eq.iproc) then
+        if (mshift.ne.0d0) then 
+           do ii=www%botconfig,www%topconfig
+              outtemp(:,ii)=outtemp(:,ii)+ intemp(:,ii-www%botconfig+1)*www%configmvals(ii)*mshift
+           enddo
+        endif
+     endif
+
+     outwork(:,:)=outwork(:,:) + outtemp(:,:)
+
+  enddo
+
+  call basis_transformto_local(www,numr,outwork,outavector)
+
+end subroutine parblockconfigmult_summa
 
 
 

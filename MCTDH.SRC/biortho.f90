@@ -616,7 +616,25 @@ end subroutine abio_nonsparse
 
 !! NOTE BOUNDS !!
 
+
 subroutine parbiomatvec(inavector,outavector)
+  use sparse_parameters
+  use biomatvecmod
+  implicit none
+
+  DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
+  DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
+
+  if (sparsesummaflag.eq.0) then
+     call parbiomatvec_gather(inavector,outavector)
+  else
+     call parbiomatvec_summa(inavector,outavector)
+  endif
+
+end subroutine parbiomatvec
+
+  
+subroutine parbiomatvec_gather(inavector,outavector)
   use fileptrmod
   use sparse_parameters
   use mpimod
@@ -638,17 +656,62 @@ subroutine parbiomatvec(inavector,outavector)
 
   call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector(:,:),intemp(:,biopointer%wwbio%botconfig))
 
-!! DO SUMMA INSTEAD BROADCAST FIRST THEN TRANSFORM?
-
   call mpiallgather(intemp,biopointer%wwbio%numconfig*biopointer%bionr,biopointer%wwbio%configsperproc*biopointer%bionr,biopointer%wwbio%maxconfigsperproc*biopointer%bionr)
 
   call biomatvec_nompi(intemp,workvector)
 
-  outavector(:,:)=0d0
+  outavector(:,:)=0d0  !! PADDED
 
   call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,workvector(:,:),outavector(:,:))
 
-end subroutine parbiomatvec
+end subroutine parbiomatvec_gather
+
+
+
+subroutine parbiomatvec_summa(inavector,outavector)
+  use fileptrmod
+  use sparse_parameters
+  use mpimod
+  use matvecsetmod
+  use biomatvecmod
+  implicit none
+
+  DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
+  DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
+  DATATYPE :: intemp(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&
+       outwork(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig),&
+       outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig)
+  integer :: iproc
+
+  if (sparseconfigflag.eq.0) then
+     OFLWR "error, must use sparse for parbiomatvec summa"; CFLST
+  endif
+
+  outwork(:,:)=0d0
+
+  do iproc=1,nprocs
+
+!! TRANSFORM SECOND TO REDUCE COMMUNICATION
+
+     if (myrank.eq.iproc) then
+        call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector(:,:),intemp(:,:))
+     endif
+
+     call mympibcast(intemp,iproc,(biopointer%wwbio%alltopconfigs(iproc)-biopointer%wwbio%allbotconfigs(iproc)+1) &
+          * biopointer%bionr)
+
+     call biomatvec_summa(iproc,intemp,outtemp)
+
+     outwork(:,:)=outwork(:,:)+outtemp(:,:)
+
+  enddo
+
+  outavector(:,:)=0d0   !! PADDED
+
+  call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,outwork(:,:),outavector(:,:))
+
+end subroutine parbiomatvec_summa
+
 
 
 
@@ -682,6 +745,42 @@ subroutine biomatvec_nompi(x,y)
   enddo
 
 end subroutine biomatvec_nompi
+
+
+
+subroutine biomatvec_summa(whichproc,x,y)
+  use biomatvecmod
+  implicit none
+  integer,intent(in) :: whichproc
+  integer :: i,j,ihop
+  DATATYPE,intent(in) :: x(biopointer%bionr,biopointer%wwbio%allbotconfigs(whichproc):biopointer%wwbio%alltopconfigs(whichproc))
+  DATATYPE,intent(out) :: y(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig)
+  DATATYPE :: csum
+
+  y(:,:)=0d0
+
+  do i=biopointer%wwbio%botconfig,biopointer%wwbio%topconfig
+!! summing over nonconjugated second index in s(:), good
+
+!!$     do j=biopointer%wwbio%firstsinglewalkbyproc(whichproc,i), &
+!!$          biopointer%wwbio%lastsinglewalkbyproc(whichproc,i) 
+!!$        y(:,i) = y(:,i) + biopointer%smo(biopointer%wwbio%singlewalkopspf(1,j,i),biopointer%wwbio%singlewalkopspf(2,j,i)) * biopointer%wwbio%singlewalkdirphase(j,i) * x(:,biopointer%wwbio%singlewalk(j,i)) 
+!!$     enddo
+
+     do ihop=biopointer%wwbio%firstsinglehopbyproc(whichproc,i), &
+          biopointer%wwbio%lastsinglehopbyproc(whichproc,i) 
+        csum=0d0
+        do j=biopointer%wwbio%singlehopwalkstart(ihop,i),  biopointer%wwbio%singlehopwalkend(ihop,i)
+           csum=csum + &
+                biopointer%smo(biopointer%wwbio%singlewalkopspf(1,j,i),&
+                biopointer%wwbio%singlewalkopspf(2,j,i)) * biopointer%wwbio%singlewalkdirphase(j,i)
+        enddo
+        y(:,i) = y(:,i) + csum * x(:,biopointer%wwbio%singlehop(ihop,i)) 
+     enddo
+
+  enddo
+
+end subroutine biomatvec_summa
 
 
 

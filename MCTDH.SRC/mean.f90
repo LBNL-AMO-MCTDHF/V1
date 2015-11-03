@@ -215,6 +215,8 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
      return
   endif
 
+!! DO SUMMA
+
   avector2(:,:,:)=0d0
   avector2(:,www%firstconfig:www%lastconfig,:) = in_avector2(:,:,:)
   if (www%parconsplit.ne.0) then
