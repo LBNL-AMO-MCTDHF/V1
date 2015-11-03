@@ -44,7 +44,7 @@ subroutine autocorrelate()
 
   if (mod(xcalledflag,autosteps).eq.0) then
      do imc=1,mcscfnum
-        call autocorrelate_one(www,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:), &
+        call autocorrelate_one(www,bioww,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:), &
              orig_avectors(:,:,imc), overlaps(calledflag,imc),numr)
      enddo
 
@@ -118,7 +118,7 @@ module autobiomod
   type(biorthotype),target :: autobiovar
 end module
 
-subroutine autocorrelate_one(www,avector,inspfs,orig_spf,orig_avector,inoverlaps,innr)
+subroutine autocorrelate_one(www,bioww,avector,inspfs,orig_spf,orig_avector,inoverlaps,innr)
   use fileptrmod
   use spfsize_parameters
   use bio_parameters
@@ -126,7 +126,7 @@ subroutine autocorrelate_one(www,avector,inspfs,orig_spf,orig_avector,inoverlaps
   use biorthomod
   use walkmod
   implicit none
-  type(walktype),intent(in) :: www
+  type(walktype),intent(in) :: www,bioww
   DATATYPE, allocatable :: mobio(:,:),abio(:,:)
   DATATYPE :: inspfs(  spfsize, www%nspf ), dot
   DATATYPE :: orig_spf(  spfsize, www%nspf ), orig_avector(innr,www%firstconfig:www%lastconfig), inoverlaps, avector(innr,www%firstconfig:www%lastconfig)
@@ -146,7 +146,7 @@ subroutine autocorrelate_one(www,avector,inspfs,orig_spf,orig_avector,inoverlaps
 
      abio=orig_avector
 
-     call bioset(autobiovar,smo,innr,www)
+     call bioset(autobiovar,smo,innr,bioww)
      call biortho(orig_spf,inspfs,mobio,abio,autobiovar)
 
      inoverlaps=dot(avector,abio,www%localnconfig*innr)

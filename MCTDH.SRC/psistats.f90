@@ -120,7 +120,7 @@ subroutine psistats( thistime )
 
   calledflag=1
 
-  call get_psistats(www,yyy%cmfpsivec(spfstart,0),mcscfnum,yyy%cmfpsivec(astart(1),0),&
+  call get_psistats(www,bioww,yyy%cmfpsivec(spfstart,0),mcscfnum,yyy%cmfpsivec(astart(1),0),&
        mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
        
   if (myrank.eq.1) then
@@ -135,11 +135,11 @@ end subroutine psistats
 
 
 
-subroutine get_psistats( www, myspfs, numvec, inavectors, mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
+subroutine get_psistats( www, bioww, myspfs, numvec, inavectors, mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
   use parameters
   use walkmod
   implicit none
-  type(walktype),intent(in) :: www
+  type(walktype),intent(in) :: www, bioww
   integer, intent(in) :: numvec
   DATATYPE,intent(in) :: myspfs(spfsize,www%nspf), inavectors(numr,www%firstconfig:www%lastconfig,numvec)       
   DATATYPE, intent(out) :: mexpect(numvec),ugexpect(numvec),m2expect(numvec),&
@@ -194,7 +194,7 @@ subroutine get_psistats( www, myspfs, numvec, inavectors, mexpect,m2expect,ugexp
         call op_reflectz(tempspfs2(:,i),tempspfs(:,i))
      enddo
      do imc=1,numvec
-        call autocorrelate_one(www,inavectors(:,:,imc),myspfs,tempspfs,inavectors(:,:,imc),ugexpect(imc),numr)
+        call autocorrelate_one(www,bioww,inavectors(:,:,imc),myspfs,tempspfs,inavectors(:,:,imc),ugexpect(imc),numr)
         ugexpect(imc)=ugexpect(imc)   /normsq(imc)
      enddo
 
@@ -257,7 +257,7 @@ subroutine get_psistats( www, myspfs, numvec, inavectors, mexpect,m2expect,ugexp
      call op_reflectz(myspfs(:,i),tempspfs(:,i))
   enddo
   do imc=1,numvec
-     call autocorrelate_one(www,inavectors(:,:,imc),myspfs,tempspfs,inavectors(:,:,imc),zreflect(imc),numr)
+     call autocorrelate_one(www,bioww,inavectors(:,:,imc),myspfs,tempspfs,inavectors(:,:,imc),zreflect(imc),numr)
      zreflect(imc)=zreflect(imc)   /normsq(imc)
   enddo
 
@@ -265,7 +265,7 @@ subroutine get_psistats( www, myspfs, numvec, inavectors, mexpect,m2expect,ugexp
      call op_reflecty(myspfs(:,i),tempspfs(:,i))
   enddo
   do imc=1,numvec
-     call autocorrelate_one(www,inavectors(:,:,imc),myspfs,tempspfs,inavectors(:,:,imc),yreflect(imc),numr)
+     call autocorrelate_one(www,bioww,inavectors(:,:,imc),myspfs,tempspfs,inavectors(:,:,imc),yreflect(imc),numr)
      yreflect(imc)=yreflect(imc)   /normsq(imc)
   enddo
 
@@ -273,7 +273,7 @@ subroutine get_psistats( www, myspfs, numvec, inavectors, mexpect,m2expect,ugexp
      call op_reflectx(myspfs(:,i),tempspfs(:,i))
   enddo
   do imc=1,numvec
-     call autocorrelate_one(www,inavectors(:,:,imc),myspfs,tempspfs,inavectors(:,:,imc),xreflect(imc),numr)
+     call autocorrelate_one(www,bioww,inavectors(:,:,imc),myspfs,tempspfs,inavectors(:,:,imc),xreflect(imc),numr)
      xreflect(imc)=xreflect(imc)   /normsq(imc)
   enddo
   
@@ -285,16 +285,16 @@ subroutine finalstats( )
   use configmod
   use xxxmod
   implicit none
-  call finalstats0(yyy%cmfpsivec(spfstart:spfend,0),yyy%cmfpsivec(astart(1):aend(mcscfnum),0),www)
+  call finalstats0(yyy%cmfpsivec(spfstart:spfend,0),yyy%cmfpsivec(astart(1):aend(mcscfnum),0),www,bioww)
 end subroutine finalstats
 
 
-subroutine finalstats0(myspfs,inavectors,www )
+subroutine finalstats0(myspfs,inavectors,www,bioww )
   use parameters
   use mpimod
   use walkmod
   implicit none
-  type(walktype),intent(in) :: www
+  type(walktype),intent(in) :: www,bioww
   DATATYPE,intent(in) :: myspfs(spfsize,www%nspf), inavectors(numr,www%firstconfig:www%lastconfig,mcscfnum)       
   DATATYPE :: mmatel(mcscfnum,mcscfnum),ugmatel(mcscfnum,mcscfnum),m2matel(mcscfnum,mcscfnum),&
        xrefmatel(mcscfnum,mcscfnum),yrefmatel(mcscfnum,mcscfnum),zrefmatel(mcscfnum,mcscfnum),&
@@ -370,7 +370,7 @@ subroutine finalstats0(myspfs,inavectors,www )
      enddo
      do imc=1,mcscfnum
         do jmc=1,mcscfnum
-           call autocorrelate_one(www,inavectors(:,:,jmc),myspfs,tempspfs,inavectors(:,:,imc),ugmatel(jmc,imc),numr)
+           call autocorrelate_one(www,bioww,inavectors(:,:,jmc),myspfs,tempspfs,inavectors(:,:,imc),ugmatel(jmc,imc),numr)
         enddo
      enddo
   endif
@@ -443,7 +443,7 @@ subroutine finalstats0(myspfs,inavectors,www )
   enddo
   do imc=1,mcscfnum
      do jmc=1,mcscfnum
-        call autocorrelate_one(www,inavectors(:,:,jmc),myspfs,tempspfs,inavectors(:,:,imc),zrefmatel(jmc,imc),numr)
+        call autocorrelate_one(www,bioww,inavectors(:,:,jmc),myspfs,tempspfs,inavectors(:,:,imc),zrefmatel(jmc,imc),numr)
      enddo
   enddo
 
@@ -452,7 +452,7 @@ subroutine finalstats0(myspfs,inavectors,www )
   enddo
   do imc=1,mcscfnum
      do jmc=1,mcscfnum
-        call autocorrelate_one(www,inavectors(:,:,jmc),myspfs,tempspfs,inavectors(:,:,imc),yrefmatel(jmc,imc),numr)
+        call autocorrelate_one(www,bioww,inavectors(:,:,jmc),myspfs,tempspfs,inavectors(:,:,imc),yrefmatel(jmc,imc),numr)
      enddo
   enddo
 
@@ -461,7 +461,7 @@ subroutine finalstats0(myspfs,inavectors,www )
   enddo
   do imc=1,mcscfnum
      do jmc=1,mcscfnum
-        call autocorrelate_one(www,inavectors(:,:,jmc),myspfs,tempspfs,inavectors(:,:,imc),xrefmatel(jmc,imc),numr)
+        call autocorrelate_one(www,bioww,inavectors(:,:,jmc),myspfs,tempspfs,inavectors(:,:,imc),xrefmatel(jmc,imc),numr)
      enddo
   enddo
 

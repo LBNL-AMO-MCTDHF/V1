@@ -80,7 +80,7 @@ end module fluxgtaubiomod
 
 module fluxgtau0mod
 contains
-subroutine fluxgtau0(alg,www)
+subroutine fluxgtau0(alg,www,bioww)
 !! actually compute the flux in a post processing kind of manner
 !! input :
 !! alg - determines how the memory management algorithm for loading up previous wavefunctions
@@ -96,7 +96,7 @@ subroutine fluxgtau0(alg,www)
 !! 2       = use full one-e potential, no two-e 
 !! other   = only KE
 
-  type(walktype),target :: www
+  type(walktype),target :: www,bioww
   integer :: alg,curtime,oldtime,k,nt,i,molength,alength,  BatchSize,NBat,brabat,brareadsize, &
        bratime,ketbat,ketreadsize,kettime,bratop, atime,btime,itime,jtime,times(1:7)=0, &
        imc, tau, ispf
@@ -336,7 +336,7 @@ subroutine fluxgtau0(alg,www)
               mobra=>bramo(:,:,bratime)
               abio(:,:,:)=braavec(:,:,:,bratime)
               
-              call bioset(fluxgtaubiovar,smo,numr,www)
+              call bioset(fluxgtaubiovar,smo,numr,bioww)
               call biortho(mobra,moket,mobio,abio(:,:,1),fluxgtaubiovar)
               
               do imc=2,mcscfnum
@@ -530,7 +530,7 @@ subroutine fluxgtau(alg)
   use configmod
   implicit none
   integer :: alg
-  call fluxgtau0(alg,www)
+  call fluxgtau0(alg,www,bioww)
 end subroutine fluxgtau
 
 

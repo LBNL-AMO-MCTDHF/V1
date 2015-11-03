@@ -583,7 +583,9 @@ recursive subroutine arbitrary_sparsemult_singles_byproc(whichproc,www,mattrans,
      enddo
   else
      do config1=www%botconfig,www%topconfig
-        outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(www%singlediaghop(config1),config1) * insmallvector(:,config1) * rvector(:)
+        if (www%singlehopdiagflag(config1).ne.0) then
+           outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(www%singlediaghop(config1),config1) * insmallvector(:,config1) * rvector(:)
+        endif
      enddo
   endif
 
@@ -622,7 +624,9 @@ recursive subroutine arbitrary_sparsemult_doubles_byproc(whichproc,www,mattrans,
      enddo
   else
      do config1=www%botconfig,www%topconfig
-        outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(www%doublediaghop(config1),config1) * insmallvector(:,config1) * rvector(:)
+        if (www%doublehopdiagflag(config1).ne.0) then
+           outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(www%doublediaghop(config1),config1) * insmallvector(:,config1) * rvector(:)
+        endif
      enddo
   endif
 

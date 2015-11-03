@@ -296,7 +296,7 @@ program mctdhf
 
   www%dfrestrictflag=df_restrictflag
   www%dflevel=0
-  www%dfwalklevel=0
+  www%dfwalklevel=www%dfrestrictflag
   www%singlewalkflag=1
   www%doublewalkflag=1
 
@@ -326,7 +326,6 @@ program mctdhf
 
   call basis_set(www)
 
-
   totspfdim=nspf*spfsize; tot_adim=local_nconfig*numr;  
   psilength=tot_adim*mcscfnum+totspfdim
 
@@ -339,6 +338,50 @@ program mctdhf
      OFLWR "You should really turn sparseconfigflag on, with ", &
           num_config*numr, "configurations.";     CFLST
   endif
+
+
+!! WALKTYPE VARIABLE BIOWW FOR BIORTHO
+
+  OFLWR "Setting BIORTHO walk variable...";CFL
+
+  bioww%parconsplit=par_consplit
+
+  bioww%numelec=numelec
+  bioww%ndof=ndof
+  bioww%nspf=nspf
+
+  bioww%allspinproject=all_spinproject
+  bioww%restrictms=restrict_ms
+  bioww%sss%spinrestrictval=spin_restrictval
+
+  bioww%dfrestrictflag=0
+  bioww%dflevel=0
+  bioww%dfwalklevel=0
+  bioww%singlewalkflag=1
+  bioww%doublewalkflag=0
+
+  call fast_newconfiglist(bioww);   
+
+  call walkalloc(bioww);             call walks(bioww)
+
+  call hops(bioww);
+
+  call set_matsize(bioww);
+
+  call init_dfcon(bioww)
+
+  call spinwalkinit(bioww); 
+  call spinwalks(bioww)
+  call spinsets_first(bioww)
+  call configspin_matel(bioww)
+  call configspinset_projector(bioww)
+  call spinwalkinternal_dealloc()
+
+  call basis_set(bioww)
+
+  OFLWR "   .. DONE setting BIORTHO walk variable.";CFL
+
+!!! END SET BIOWW !!
 
   call opalloc()
 

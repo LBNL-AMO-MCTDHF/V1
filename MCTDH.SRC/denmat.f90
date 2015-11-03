@@ -120,7 +120,7 @@ subroutine replace_withnat(printflag)
      WRFL; CFL
   endif
 
-  call bioset(natrepbiovar,smo,numr,www)
+  call bioset(natrepbiovar,smo,numr,bioww)
 
   do imc=1,mcscfnum
 

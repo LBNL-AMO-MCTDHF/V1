@@ -733,7 +733,12 @@ subroutine hops(www)
        www%numdoublehops(www%configstart:www%configend))
   allocate( www%singlediaghop(www%configstart:www%configend),&
        www%doublediaghop(www%configstart:www%configend))
-  
+  allocate( www%singlehopdiagflag(www%configstart:www%configend),&
+       www%doublehopdiagflag(www%configstart:www%configend))
+
+  www%singlediaghop(:)=(-999)
+  www%doublediaghop(:)=(-999)
+
   allocate( www%firstsinglehopbyproc(nprocs,www%configstart:www%configend), www%lastsinglehopbyproc(nprocs,www%configstart:www%configend) )
   allocate( www%firstdoublehopbyproc(nprocs,www%configstart:www%configend), www%lastdoublehopbyproc(nprocs,www%configstart:www%configend) )
 
@@ -761,27 +766,32 @@ subroutine hops(www)
      endif
 
      do iconfig=www%configstart,www%configend
-        ihop=1
-        if (ii.eq.1) then
-           www%singlehop(1,iconfig)=www%singlewalk(1,iconfig)
-           www%singlehopwalkstart(1,iconfig)=1
-        endif
-        do iwalk=2,www%numsinglewalks(iconfig)
-           if (www%singlewalk(iwalk,iconfig).ne.www%singlewalk(iwalk-1,iconfig)) then
-              if (ii.eq.1) then
-                 www%singlehopwalkend(ihop,iconfig)=iwalk-1
-              endif
-              ihop=ihop+1
-              if (ii.eq.1) then
-                 www%singlehop(ihop,iconfig)=www%singlewalk(iwalk,iconfig)
-                 www%singlehopwalkstart(ihop,iconfig)=iwalk
-              endif
+        ihop=0
+        if (www%numsinglewalks(iconfig).gt.0) then
+           ihop=1
+           if (ii.eq.1) then
+              www%singlehop(1,iconfig)=www%singlewalk(1,iconfig)
+              www%singlehopwalkstart(1,iconfig)=1
            endif
-        enddo
+           do iwalk=2,www%numsinglewalks(iconfig)
+              if (www%singlewalk(iwalk,iconfig).ne.www%singlewalk(iwalk-1,iconfig)) then
+                 if (ii.eq.1) then
+                    www%singlehopwalkend(ihop,iconfig)=iwalk-1
+                 endif
+                 ihop=ihop+1
+                 if (ii.eq.1) then
+                    www%singlehop(ihop,iconfig)=www%singlewalk(iwalk,iconfig)
+                    www%singlehopwalkstart(ihop,iconfig)=iwalk
+                 endif
+              endif
+           enddo
+        endif ! if numsinglewalks.gt.0
         if (ii.eq.0) then
            www%numsinglehops(iconfig)=ihop
         else
-           www%singlehopwalkend(ihop,iconfig)=www%numsinglewalks(iconfig)
+           if (www%numsinglewalks(iconfig).gt.0) then
+              www%singlehopwalkend(ihop,iconfig)=www%numsinglewalks(iconfig)
+           endif
            if (www%numsinglehops(iconfig).ne.ihop) then
               OFLWR "CHECKME SINGLEHOPW",www%numsinglehops(iconfig),ihop,iconfig; CFLST
            endif
@@ -796,27 +806,32 @@ subroutine hops(www)
      endif
 
      do iconfig=www%configstart,www%configend
-        ihop=1
-        if (ii.eq.1) then
-           www%doublehop(1,iconfig)=www%doublewalk(1,iconfig)
-           www%doublehopwalkstart(1,iconfig)=1
-        endif
-        do iwalk=2,www%numdoublewalks(iconfig)
-           if (www%doublewalk(iwalk,iconfig).ne.www%doublewalk(iwalk-1,iconfig)) then
-              if (ii.eq.1) then
-                 www%doublehopwalkend(ihop,iconfig)=iwalk-1
-              endif
-              ihop=ihop+1
-              if (ii.eq.1) then
-                 www%doublehop(ihop,iconfig)=www%doublewalk(iwalk,iconfig)
-                 www%doublehopwalkstart(ihop,iconfig)=iwalk
-              endif
+        ihop=0
+        if (www%numdoublewalks(iconfig).gt.0) then
+           ihop=1
+           if (ii.eq.1) then
+              www%doublehop(1,iconfig)=www%doublewalk(1,iconfig)
+              www%doublehopwalkstart(1,iconfig)=1
            endif
-        enddo
+           do iwalk=2,www%numdoublewalks(iconfig)
+              if (www%doublewalk(iwalk,iconfig).ne.www%doublewalk(iwalk-1,iconfig)) then
+                 if (ii.eq.1) then
+                    www%doublehopwalkend(ihop,iconfig)=iwalk-1
+                 endif
+                 ihop=ihop+1
+                 if (ii.eq.1) then
+                    www%doublehop(ihop,iconfig)=www%doublewalk(iwalk,iconfig)
+                    www%doublehopwalkstart(ihop,iconfig)=iwalk
+                 endif
+              endif
+           enddo
+        endif  !! if numdoublewalks.gt.0
         if (ii.eq.0) then
            www%numdoublehops(iconfig)=ihop
         else
-           www%doublehopwalkend(ihop,iconfig)=www%numdoublewalks(iconfig)
+           if (www%numdoublewalks(iconfig).gt.0) then
+              www%doublehopwalkend(ihop,iconfig)=www%numdoublewalks(iconfig)
+           endif
            if (www%numdoublehops(iconfig).ne.ihop) then
               OFLWR "CHECKME DOUBLEHOPW",www%numdoublehops(iconfig),ihop,iconfig; CFLST
            endif
@@ -824,8 +839,10 @@ subroutine hops(www)
      enddo
 
      if (ii.eq.0) then
-        www%maxnumsinglehops=0
-        www%maxnumdoublehops=0
+!!$        www%maxnumsinglehops=0
+!!$        www%maxnumdoublehops=0
+        www%maxnumsinglehops=1   !always allocate
+        www%maxnumdoublehops=1
         totsinglehops=0; totsinglewalks=0
         totdoublehops=0; totdoublewalks=0
         do iconfig=www%configstart,www%configend
@@ -847,35 +864,34 @@ subroutine hops(www)
   do iconfig=www%configstart,www%configend
 
      flag=0
-     do ihop=1,www%numsinglehops(iconfig)
-        if (www%singlehop(ihop,iconfig).eq.iconfig) then
-           if (flag.eq.1) then
-              OFLWR "EERRR HOPSSING"; CFLST
-           else
-              flag=1
-              www%singlediaghop(iconfig)=ihop
+     if (www%numsinglehops(iconfig).gt.0) then
+        do ihop=1,www%numsinglehops(iconfig)
+           if (www%singlehop(ihop,iconfig).eq.iconfig) then
+              if (flag.eq.1) then
+                 OFLWR "EERRR HOPSSING"; CFLST
+              else
+                 flag=1
+                 www%singlediaghop(iconfig)=ihop
+              endif
            endif
-        endif
-     enddo
-     if (flag.eq.0) then
-        OFLWR "ERRRORR HOPSSING"; CFLST
+        enddo
      endif
+     www%singlehopdiagflag(iconfig)=flag
 
      flag=0
-     do ihop=1,www%numdoublehops(iconfig)
-        if (www%doublehop(ihop,iconfig).eq.iconfig) then
-           if (flag.eq.1) then
-              OFLWR "EERRR HOPSDOUB"; CFLST
-           else
-              flag=1
-              www%doublediaghop(iconfig)=ihop
+     if (www%numdoublehops(iconfig).gt.0) then
+        do ihop=1,www%numdoublehops(iconfig)
+           if (www%doublehop(ihop,iconfig).eq.iconfig) then
+              if (flag.eq.1) then
+                 OFLWR "EERRR HOPSDOUB"; CFLST
+              else
+                 flag=1
+                 www%doublediaghop(iconfig)=ihop
+              endif
            endif
-        endif
-     enddo
-     if (flag.eq.0) then
-        OFLWR "ERRRORR HOPSDOUB"; CFLST
+        enddo
      endif
-
+     www%doublehopdiagflag(iconfig)=flag
   enddo
 
   call mpibarrier()
@@ -927,6 +943,8 @@ subroutine hops(www)
      call mpiallgather_i(www%numsinglehops(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
      call mpiallgather_i(www%singlediaghop(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
      call mpiallgather_i(www%doublediaghop(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%singlehopdiagflag(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%doublehopdiagflag(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
 
      ii=www%maxnumsinglehops
      call mpiallgather_i(www%singlehop(:,:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)

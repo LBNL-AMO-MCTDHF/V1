@@ -306,12 +306,14 @@ module walkmod
      integer,allocatable :: numsinglehops(:)
      integer,allocatable :: singlehop(:,:), singlehopwalkstart(:,:), singlehopwalkend(:,:)
      integer,allocatable :: singlediaghop(:)
+     integer,allocatable :: singlehopdiagflag(:)
      integer,allocatable :: firstsinglehopbyproc(:,:), lastsinglehopbyproc(:,:)
 
      integer :: maxnumdoublehops=0
      integer,allocatable :: numdoublehops(:)
      integer,allocatable :: doublehop(:,:), doublehopwalkstart(:,:), doublehopwalkend(:,:)
      integer,allocatable :: doublediaghop(:)
+     integer,allocatable :: doublehopdiagflag(:)
      integer,allocatable :: firstdoublehopbyproc(:,:), lastdoublehopbyproc(:,:)
 
      integer :: singlematsize=0,doublematsize=0
@@ -325,7 +327,7 @@ module configmod
   use walkmod
   implicit none
   type(walktype),target :: www
-
+  type(walktype),target :: bioww
 end module configmod
 
 
