@@ -232,65 +232,6 @@ end subroutine nonsparseprop
 !! NOTE BOUNDS !!  PADDED
 
 subroutine parconfigexpomult_padded(inavector,outavector)
-  use r_parameters
-  use sparse_parameters
-  use configmod
-  implicit none
-
-  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
-  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
-
-  if (sparsesummaflag.eq.0) then
-     call parconfigexpomult_padded_gather(inavector,outavector)
-  else
-     call parconfigexpomult_padded_summa(inavector,outavector)
-  endif
-
-end subroutine parconfigexpomult_padded
-
-
-subroutine parconfigexpomult_padded_gather(inavector,outavector)
-  use fileptrmod
-  use r_parameters
-  use sparse_parameters
-  use ham_parameters   !! timefac
-  use mpimod
-  use configexpotimemod
-  use configpropmod
-  use configmod
-  implicit none
-
-  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
-  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
-  DATATYPE :: intemp(numr,www%numconfig), outwork(numr,www%botconfig:www%topconfig)
-
-  call avectortime(3)
-
-  if (sparseconfigflag.eq.0) then
-     OFLWR "error, must use sparse for parconfigexpomult"; CFLST
-  endif
-
-  intemp(:,:)=0d0;  
-
-  call basis_transformfrom_local(www,numr,inavector,intemp(:,www%botconfig))
-
-  call mpiallgather(intemp,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
-
-  call sparseconfigmult_nompi(www,intemp(:,:),outwork(:,:), workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0)
-
-  outavector(:,:)=0d0    !!PADDED
-
-  call basis_transformto_local(www,numr,outwork,outavector)
-
-  outavector=outavector*timefac
-  
-  call avectortime(2)
-
-end subroutine parconfigexpomult_padded_gather
-
-
-
-subroutine parconfigexpomult_padded_summa(inavector,outavector)
   use fileptrmod
   use r_parameters
   use sparse_parameters
@@ -309,7 +250,7 @@ subroutine parconfigexpomult_padded_summa(inavector,outavector)
   call avectortime(3)
 
   if (sparseconfigflag.eq.0) then
-     OFLWR "error, must use sparse for parconfigexpomult summa"; CFLST
+     OFLWR "error, must use sparse for parconfigexpomult"; CFLST
   endif
 
   outwork(:,:)=0d0
@@ -337,7 +278,7 @@ subroutine parconfigexpomult_padded_summa(inavector,outavector)
   
   call avectortime(2)
 
-end subroutine parconfigexpomult_padded_summa
+end subroutine parconfigexpomult_padded
 
 
 

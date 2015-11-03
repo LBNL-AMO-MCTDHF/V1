@@ -279,11 +279,7 @@ subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixt
            if (sparseconfigflag.eq.0) then
               myind=www%singlewalk(iwalk,config1)
            else
-              if (sparsehopflag.eq.0) then
-                 myind=iwalk
-              else
-                 myind=ihop
-              endif
+              myind=ihop
            endif
            smallmatrixtr(myind,config1)=smallmatrixtr(myind,config1)+   &
                 onebodymat(www%singlewalkopspf(1,iwalk,config1), &
@@ -323,11 +319,7 @@ subroutine arbitraryconfig_matel_doubles00transpose(www,twobodymat, smallmatrixt
            if (sparseconfigflag.eq.0) then
               myind=www%doublewalk(iwalk,config1)
            else
-              if (sparsehopflag.eq.0) then
-                 myind=iwalk  
-              else
-                 myind=ihop
-              endif
+              myind=ihop
            endif
            smallmatrixtr(myind,config1)=smallmatrixtr(myind,config1) + &           
                 twobodymat(www%doublewalkdirspf(1,iwalk,config1), &
@@ -519,7 +511,7 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
 end subroutine assemble_configmat
 
 
-!! NO A-SQUARED TERM HERE; TIME IS NOT AN ARGUMENT.  A-squared in sparsesparsemult_nompi.
+!! NO A-SQUARED TERM HERE; TIME IS NOT AN ARGUMENT.  A-squared in sparsesparsemult_byproc.
 
 subroutine assemble_sparsemats(www,matrix_ptr, sparse_ptr,boflag, nucflag, pulseflag, conflag)
   use fileptrmod

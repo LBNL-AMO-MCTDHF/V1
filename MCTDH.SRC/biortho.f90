@@ -616,59 +616,7 @@ end subroutine abio_nonsparse
 
 !! NOTE BOUNDS !!
 
-
 subroutine parbiomatvec(inavector,outavector)
-  use sparse_parameters
-  use biomatvecmod
-  implicit none
-
-  DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
-  DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
-
-  if (sparsesummaflag.eq.0) then
-     call parbiomatvec_gather(inavector,outavector)
-  else
-     call parbiomatvec_summa(inavector,outavector)
-  endif
-
-end subroutine parbiomatvec
-
-  
-subroutine parbiomatvec_gather(inavector,outavector)
-  use fileptrmod
-  use sparse_parameters
-  use mpimod
-  use matvecsetmod
-  use biomatvecmod
-  implicit none
-
-  DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
-  DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
-
-  DATATYPE :: intemp(biopointer%bionr,biopointer%wwbio%numconfig),&
-       workvector(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig)
-
-  if (sparseconfigflag.eq.0) then
-     OFLWR "error, must use sparse for parbiomatvec"; CFLST
-  endif
-
-  intemp(:,:)=0d0
-
-  call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector(:,:),intemp(:,biopointer%wwbio%botconfig))
-
-  call mpiallgather(intemp,biopointer%wwbio%numconfig*biopointer%bionr,biopointer%wwbio%configsperproc*biopointer%bionr,biopointer%wwbio%maxconfigsperproc*biopointer%bionr)
-
-  call biomatvec_nompi(intemp,workvector)
-
-  outavector(:,:)=0d0  !! PADDED
-
-  call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,workvector(:,:),outavector(:,:))
-
-end subroutine parbiomatvec_gather
-
-
-
-subroutine parbiomatvec_summa(inavector,outavector)
   use fileptrmod
   use sparse_parameters
   use mpimod
@@ -710,9 +658,7 @@ subroutine parbiomatvec_summa(inavector,outavector)
 
   call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,outwork(:,:),outavector(:,:))
 
-end subroutine parbiomatvec_summa
-
-
+end subroutine parbiomatvec
 
 
 
@@ -728,23 +674,6 @@ end subroutine parbiomatvec_summa
 !! Smo - the overlap matrix containing -ln(s)
 !! the config and walk mod objects are pointers to the configlist and singlewalk arrays 
 !! that were passed to biortho when it was called this time
-
-
-subroutine biomatvec_nompi(x,y)
-  use biomatvecmod
-  implicit none
-  integer :: i,j
-  DATATYPE :: x(biopointer%bionr,biopointer%wwbio%numconfig),y(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig)
-
-  y(:,:)=0d0
-
-  do i=biopointer%wwbio%botconfig,biopointer%wwbio%topconfig
-     do j=1,biopointer%wwbio%numsinglewalks(i) !! summing over nonconjugated second index in s(:), good
-        y(:,i) = y(:,i) + biopointer%smo(biopointer%wwbio%singlewalkopspf(1,j,i),biopointer%wwbio%singlewalkopspf(2,j,i)) * biopointer%wwbio%singlewalkdirphase(j,i) * x(:,biopointer%wwbio%singlewalk(j,i)) 
-     enddo
-  enddo
-
-end subroutine biomatvec_nompi
 
 
 

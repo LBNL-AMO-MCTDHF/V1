@@ -949,13 +949,8 @@ subroutine set_matsize(www)
      www%singlematsize=www%numconfig
      www%doublematsize=www%numconfig
   else
-     if (sparsehopflag.eq.0) then
-        www%singlematsize=www%maxsinglewalks
-        www%doublematsize=www%maxdoublewalks
-     else
-        www%singlematsize=www%maxnumsinglehops
-        www%doublematsize=www%maxnumdoublehops
-     endif
+     www%singlematsize=www%maxnumsinglehops
+     www%doublematsize=www%maxnumdoublehops
   endif
 end subroutine set_matsize
 

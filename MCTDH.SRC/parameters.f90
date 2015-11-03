@@ -37,8 +37,6 @@ integer :: lancheckstep=20       !!              !! lanczos eigen routine checks
 real*8 :: lanthresh=1.d-9       !!              !! convergence criterion.
 end module
 module sparse_parameters
-integer :: sparsehopflag=1
-integer :: sparsesummaflag=1
 integer :: sparseconfigflag=0    !! Sparse       !! Sparse configuration routines on or off (for large # configs)
 integer :: sparseopt =1                          !! 0= direct CI  1= sparse matrix algebra (faster, more memory)
 integer :: nonsparsepropmode=1   !! 0 = ZGCHBV expokit; 1 = mine expmat
