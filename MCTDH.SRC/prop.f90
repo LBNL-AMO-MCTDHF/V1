@@ -558,7 +558,11 @@ subroutine cmf_prop_wfn(tin, tout)
   if (sparseopt.ne.0) then
      call assign_sptr(yyy%sptr(1),yyy%sptr(0),DATAONE)
   endif
-
+  if (df_restrictflag.ne.0.and.sparsedfflag.ne.0) then
+     if (sparseopt.ne.0) then
+        call assign_sptr(yyy%sdfptr(1),yyy%sdfptr(0),DATAONE)
+     endif
+  endif
   yyy%cmfpsivec(:,1)= yyy%cmfpsivec(:,0)
 
   call system_clock(jtime);  times(6)=times(6)+jtime-itime
@@ -882,6 +886,9 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
         call assign_cptr(workconfigpointer,yyy%cptr(1),thisstep*DATAONE)
      else
         call assign_sptr(worksparsepointer,yyy%sptr(1),thisstep*DATAONE)
+        if (df_restrictflag.ne.0.and.sparsedfflag.ne.0) then
+           call assign_sptr(workdfsparsepointer,yyy%sdfptr(1),thisstep*DATAONE)
+        endif
      endif
 
      if (drivingflag.ne.0) then
@@ -917,6 +924,9 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
         call add_cptr(yyy%cptr(1),yyy%cptr(0),workconfigpointer,sum1*thisstep,sum0*thisstep)
      else
         call add_sptr(yyy%sptr(1),yyy%sptr(0),worksparsepointer,sum1*thisstep,sum0*thisstep)
+        if (df_restrictflag.ne.0.and.sparsedfflag.ne.0) then
+           call add_sptr(yyy%sdfptr(1),yyy%sdfptr(0),workdfsparsepointer,sum1*thisstep,sum0*thisstep)
+        endif
      endif
   endif
 

@@ -26,6 +26,9 @@ recursive subroutine all_matel()
   call system_clock(itime)
   if (sparseopt.ne.0) then
      call assemble_sparsemats(www,yyy%cptr(0),yyy%sptr(0),1,1,1,1)
+     if (df_restrictflag.ne.0.and.sparsedfflag.ne.0) then
+        call assemble_sparsemats(dfww,yyy%cptr(0),yyy%sdfptr(0),1,1,1,1)
+     endif
   endif
   call system_clock(jtime); times(5)=times(5)+jtime-itime
 

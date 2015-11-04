@@ -73,6 +73,7 @@ module xmod
 
      Type(CONFIGPTR), allocatable :: cptr(:)
      Type(SPARSEPTR), allocatable :: sptr(:)
+     Type(SPARSEPTR), allocatable :: sdfptr(:)
 
      CNORMTYPE, allocatable :: &
           denvals(:)
@@ -328,6 +329,7 @@ module configmod
   implicit none
   type(walktype),target :: www
   type(walktype),target :: bioww
+  type(walktype),target :: dfww
 end module configmod
 
 
@@ -337,7 +339,7 @@ module configpropmod
   implicit none
   Type(CONFIGPTR) ::                   &     !! Pointers for pass to sparseconfigmult
        workconfigpointer
-  Type(SPARSEPTR) ::        worksparsepointer
+  Type(SPARSEPTR) ::        worksparsepointer, workdfsparsepointer
   DATATYPE, allocatable :: workdrivingavec(:,:)
 
 end module configpropmod
@@ -354,6 +356,10 @@ subroutine configpropalloc()
   if (sparseopt.ne.0) then  !! (sparseconfigflag is also 0, see getparams)
      call sparseptralloc(worksparsepointer,www)  !! nspf not used for regular walks (not walks2)
      worksparsepointer%kefac=par_timestep     !! constant term in poly expansion goes with ke in R; will be set
+     if (df_restrictflag.ne.0.and.sparsedfflag.ne.0) then
+        call sparseptralloc(workdfsparsepointer,dfww)
+        workdfsparsepointer%kefac=par_timestep
+     endif
   endif
 
   allocate(workdrivingavec(numr,first_config:last_config)); workdrivingavec(:,:)=0d0
@@ -368,6 +374,11 @@ subroutine configpropdealloc()
   call configptrdealloc(workconfigpointer)
   if (sparseopt.ne.0) then
      call sparseptrdealloc(worksparsepointer)
+  endif
+  if (df_restrictflag.ne.0.and.sparsedfflag.ne.0) then
+     if (sparseopt.ne.0) then
+        call sparseptrdealloc(workdfsparsepointer)
+     endif
   endif
   deallocate(workdrivingavec)
 end subroutine configpropdealloc
@@ -776,6 +787,15 @@ subroutine xalloc()
         call sparseptralloc(yyy%sptr(ii),www)
      enddo
   endif
+  if (df_restrictflag.ne.0.and.sparsedfflag.ne.0) then
+     allocate(yyy%sdfptr(0:numreduced))
+     if (sparseopt.ne.0) then
+        do ii=0,numreduced
+           call sparseptralloc(yyy%sdfptr(ii),dfww)
+        enddo
+     endif
+  endif
+
   allocate( yyy%denmat( nspf, nspf,0:numreduced), &
        yyy%invdenmat( nspf, nspf,0:numreduced) )  !, &
   allocate( &
@@ -825,7 +845,14 @@ subroutine xdealloc()
         call sparseptrdealloc(yyy%sptr(ii))
      enddo
   endif
-
+  if (df_restrictflag.ne.0.and.sparsedfflag.ne.0) then
+     if (sparseopt.ne.0) then
+        do ii=0,numreduced
+           call sparseptrdealloc(yyy%sdfptr(ii))
+        enddo
+     endif
+  endif
+  
   deallocate(yyy%denmat, yyy%invdenmat )
   deallocate(        yyy%reducedinvr)
   deallocate(       yyy%reducedr)

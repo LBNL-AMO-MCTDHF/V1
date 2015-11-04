@@ -155,16 +155,36 @@ subroutine nullgramschmidt_fast(m,logpar)
   enddo
 end subroutine nullgramschmidt_fast
 
-
 recursive subroutine parblockconfigmult(inavector,outavector)
+  use r_parameters
+  use sparse_parameters
+  use configmod
+  use xxxmod
+  implicit none
+  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
+  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
+
+  if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
+     call parblockconfigmult0(www,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
+  else
+     call parblockconfigmult0(dfww,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+  endif
+end subroutine parblockconfigmult
+
+
+recursive subroutine parblockconfigmult0(www,cptr,sptr,inavector,outavector)
   use fileptrmod
   use r_parameters
   use sparse_parameters
   use ham_parameters
-  use configmod
   use mpimod
-  use xxxmod
+  use walkmod
+  use sparseptrmod
+  use configptrmod
   implicit none
+  type(walktype),intent(in) :: www
+  type(CONFIGPTR),intent(in) :: cptr
+  type(SPARSEPTR),intent(in) :: sptr
   integer :: ii,iproc
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
@@ -186,7 +206,7 @@ recursive subroutine parblockconfigmult(inavector,outavector)
      endif
      call mympibcast(intemp,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
 
-     call sparseconfigmult_byproc(iproc,www,intemp,outtemp, yyy%cptr(0), yyy%sptr(0), 1,1,1,0,0d0,0,1,numr,0)
+     call sparseconfigmult_byproc(iproc,www,intemp,outtemp, cptr, sptr, 1,1,1,0,0d0,0,1,numr,0)
 
      if (myrank.eq.iproc) then
         if (mshift.ne.0d0) then 
@@ -202,7 +222,7 @@ recursive subroutine parblockconfigmult(inavector,outavector)
 
   call basis_transformto_local(www,numr,outwork,outavector)
 
-end subroutine parblockconfigmult
+end subroutine parblockconfigmult0
 
 
 

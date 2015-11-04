@@ -383,6 +383,53 @@ program mctdhf
 
 !!! END SET BIOWW !!
 
+  if (df_restrictflag.ne.0) then
+
+!! WALKTYPE VARIABLE DFWW FOR DFRESTRICT
+
+     OFLWR "Setting DF walk variable...";CFL
+
+     dfww%parconsplit=par_consplit
+
+     dfww%numelec=numelec
+     dfww%ndof=ndof
+     dfww%nspf=nspf
+
+     dfww%allspinproject=all_spinproject
+     dfww%restrictms=restrict_ms
+     dfww%sss%spinrestrictval=spin_restrictval
+
+     dfww%dfrestrictflag=df_restrictflag
+     dfww%dflevel=df_restrictflag
+     dfww%dfwalklevel=df_restrictflag
+     dfww%singlewalkflag=1
+     dfww%doublewalkflag=1
+
+     call fast_newconfiglist(dfww);   
+
+     call walkalloc(dfww);             call walks(dfww)
+
+     call hops(dfww);
+
+     call set_matsize(dfww);
+
+     call init_dfcon(dfww)
+
+     call spinwalkinit(dfww); 
+     call spinwalks(dfww)
+     call spinsets_first(dfww)
+     call configspin_matel(dfww)
+     call configspinset_projector(dfww)
+     call spinwalkinternal_dealloc()
+
+     call basis_set(dfww)
+
+     OFLWR "   .. DONE setting DF walk variable.";CFL
+
+!!! END SET DFWW !!
+
+  endif
+
   call opalloc()
 
   call configlistwrite(www,configlistfile)
