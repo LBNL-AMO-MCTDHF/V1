@@ -858,6 +858,9 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
      call zero_cptr(workconfigpointer)
   else
      call zero_sptr(worksparsepointer)
+     if (df_restrictflag.ne.0.and.sparsedfflag.ne.0) then
+        call zero_sptr(workdfsparsepointer)
+     endif
   endif
 
   thisstep=time2-time1; 
