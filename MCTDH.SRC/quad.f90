@@ -312,7 +312,7 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
   if (www%topdfbasis-www%botdfbasis+1.ne.0) then
      smallvectorspin(:,:)=0d0
   endif
-  call basis_transformto_local(www,numr,vector(:,www%botconfig),smallvectorspin(:,:))
+  call basis_transformto_local(www,numr,vector(:,www%botconfig),smallvectorspin)
   if (www%topdfbasis-www%botdfbasis+1.ne.0) then
      smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
   endif
@@ -320,14 +320,18 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
   maxdim=min(maxaorder,numr*www%numdfbasis)
   mysize=numr*(www%topdfbasis-www%botdfbasis+1)
 
-  call dgsolve0( smallvectorspin(:,:), smallvectorspin2(:,:), jjcalls, paraamult,quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1)
+  if (mysize.eq.0) then
+     print *, "ACK, CAN'T DO A-VECTOR QUAD WITH ZERO CONFIGS PER PROCESSOR RANK",myrank; stop
+  endif
+
+  call dgsolve0( smallvectorspin, smallvectorspin2, jjcalls, paraamult,quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1)
 
 !!$  call basicblocklansolve(1,mysize,maxdim,maxdim,smallvectorspin,smallvectorspin2,1,parhrmult,parhrdotsub,quadexpect)
 !!$  jjcalls=0
 
   vector3(:,:)=0d0; 
 
-  call basis_transformfrom_local(www,numr,smallvectorspin2(:,:),vector3(:,www%botconfig))
+  call basis_transformfrom_local(www,numr,smallvectorspin2,vector3(:,www%botconfig))
 
   if (www%parconsplit.eq.0) then
      call mpiallgather(vector3(:,:),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
@@ -462,6 +466,30 @@ recursive subroutine parquadpreconsub(notusedint, inavectorspin,outavectorspin)
   integer :: notusedint
   DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
+
+  if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
+     call parquadpreconsub0(www,yyy%cptr(0),yyy%sptr(0),notusedint,inavectorspin,outavectorspin)
+  else
+     call parquadpreconsub0(dfww,yyy%cptr(0),yyy%sdfptr(0),notusedint,inavectorspin,outavectorspin)
+  endif
+end subroutine parquadpreconsub
+
+
+recursive subroutine parquadpreconsub0(www,cptr,sptr,notusedint, inavectorspin,outavectorspin)
+  use fileptrmod
+  use r_parameters
+  use sparse_parameters
+  use aaonedmod
+  use walkmod
+  use configptrmod
+  use sparseptrmod
+  implicit none
+  type(walktype),intent(in) :: www
+  type(CONFIGPTR),intent(in) :: cptr
+  type(SPARSEPTR),intent(in) :: sptr
+  integer :: notusedint
+  DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
+  DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE :: inavector(numr,www%botconfig:www%topconfig),outavector(numr,www%botconfig:www%topconfig)
 
   if (sparseconfigflag.eq.0) then
@@ -470,11 +498,11 @@ recursive subroutine parquadpreconsub(notusedint, inavectorspin,outavectorspin)
 
   call basis_transformfrom_local(www,numr,inavectorspin,inavector)
 
-  call parsparseconfigpreconmult(www,inavector, outavector, yyy%cptr(0), yyy%sptr(0),1,1,1,1, quadexpect,0d0)
+  call parsparseconfigpreconmult(www,inavector, outavector, cptr, sptr,1,1,1,1, quadexpect,0d0)
 
   call basis_transformto_local(www,numr,outavector,outavectorspin)
 
-end subroutine parquadpreconsub
+end subroutine parquadpreconsub0
 
 
 
