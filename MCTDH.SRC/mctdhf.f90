@@ -452,7 +452,7 @@ program mctdhf
   WRFL "************************************"
   WRFL; CFL
 
-!!!!!! REINSTATE WALKS READ/WRITE !!!!!!
+!!!!!! REINSTATE WALKS READ/WRITE (walkwriteflag) !!!!!!
 
   call opalloc()
 

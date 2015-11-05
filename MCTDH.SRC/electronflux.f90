@@ -474,13 +474,17 @@ subroutine fluxgtau0(alg,www,bioww)
      enddo
      close(171)
   endif
-  
+
+  call mpibarrier()
+
   do imc=1,mcscfnum
      call zfftf_wrap(2*curtime+1,ftgtau(-curtime,imc))
   enddo
   do i=1,3
      call zfftf_wrap(2*curtime+1,pulseft(-curtime,i))
   enddo
+
+  call mpibarrier()
   
   ftgtau(-curtime:curtime,:)=ftgtau(-curtime:curtime,:)*par_timestep*FluxInterval*FluxSkipMult
   pulseft(-curtime:curtime,:)=pulseft(-curtime:curtime,:)*par_timestep*FluxInterval*FluxSkipMult
@@ -511,6 +515,8 @@ subroutine fluxgtau0(alg,www,bioww)
      enddo
      close(1004)
   endif
+
+  call mpibarrier()
 
   deallocate(ftgtau,pulseft,pulseftsq)
   deallocate(bramo,ketmo,braavec,ketavec)
