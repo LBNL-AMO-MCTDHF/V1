@@ -350,6 +350,12 @@ subroutine lnmat(A,N,lntol)
   call bothlnmat(A,N,+1,lntol)
 end subroutine lnmat
 
+function djhlog(incomplex)
+  implicit none
+  complex*16 :: djhlog,incomplex
+  djhlog = log((0d0,1d0)*incomplex)-log((0d0,1d0))
+end function djhlog
+
 
 subroutine bothlnmat(A,N, which ,lntol) 
 !! input :
@@ -360,7 +366,7 @@ subroutine bothlnmat(A,N, which ,lntol)
   implicit none
   real*8 :: time,lntol
   integer :: N,lwork,i,j,k,nscale,iflag,ipiv(2*N*N),which
-  complex*16 :: eig(N)   !!,saveeig(N)
+  complex*16 :: eig(N),djhlog   !!,saveeig(N)
   DATATYPE :: A(N,N),sum, tempmat(N,N), sum2,sum3,wsp(6*N*N),saveA(N,N)
   integer :: lwsp,ideg,iexph
   DATATYPE :: VL(N,N),VR(N,N),work(8*N),rwork(8*N)
@@ -429,16 +435,16 @@ endif
   do k=1,N
      if (eig(k).ne.0d0) then
         if (abs(eig(k)).lt.lntol) then
-           eig(k)= which * log(lntol*eig(k)/abs(eig(k)))
+           eig(k)= which * djhlog(lntol*eig(k)/abs(eig(k)))
         else
-           eig(k) = which * log( eig(k) )
+           eig(k) = which * djhlog( eig(k) )
         endif
      else
 !        print *,  "BAD! ZERO EIG LN.  FIXME."; call mpistop()
 
         print *,  "BAD! ZERO EIG LN.  FIXME. TEMP CONTINUE"
 
-        eig(k) = which * log(lntol)
+        eig(k) = which * djhlog((0d0,1d0)*lntol)
 
      endif
   enddo
