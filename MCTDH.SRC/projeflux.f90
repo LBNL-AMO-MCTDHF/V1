@@ -709,7 +709,11 @@ subroutine projeflux_single(mem)
      do ir=1,numr
 
         abio(:,:)=myavec(ir,:,:)
-        call bioset(projbiovar,smo,1,bioww); 
+        if (df_restrictflag.eq.0) then
+           call bioset(projbiovar,smo,1,www); 
+        else
+           call bioset(projbiovar,smo,1,bioww); 
+        endif
         call biortho(mymo,tmo(:,:,ir),mobio,abio(:,1),projbiovar)
         do imc=2,mcscfnum
            call biotransform(mymo,mobio,abio(:,imc),projbiovar)

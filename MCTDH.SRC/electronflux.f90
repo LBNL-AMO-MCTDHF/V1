@@ -534,9 +534,14 @@ end module fluxgtau0mod
 subroutine fluxgtau(alg)
   use fluxgtau0mod
   use configmod
+  use df_parameters
   implicit none
   integer :: alg
-  call fluxgtau0(alg,www,bioww)
+  if (df_restrictflag.eq.0) then
+     call fluxgtau0(alg,www,www)
+  else
+     call fluxgtau0(alg,www,bioww)
+  endif
 end subroutine fluxgtau
 
 

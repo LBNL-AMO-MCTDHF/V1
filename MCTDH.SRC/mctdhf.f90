@@ -350,52 +350,52 @@ program mctdhf
   endif
 
 
+  if (df_restrictflag.ne.0) then
+
 !! WALKTYPE VARIABLE BIOWW FOR BIORTHO
 
-  OFLWR
-  WRFL "************************************"
-  WRFL "** done main walks. BIORTHO WALKS **"
-  WRFL "************************************"
-  WRFL; CFL
+     OFLWR
+     WRFL "************************************"
+     WRFL "** done main walks. BIORTHO WALKS **"
+     WRFL "************************************"
+     WRFL; CFL
 
-  bioww%parconsplit=par_consplit
+     bioww%parconsplit=par_consplit
 
-  bioww%numelec=numelec
-  bioww%ndof=ndof
-  bioww%nspf=nspf
+     bioww%numelec=numelec
+     bioww%ndof=ndof
+     bioww%nspf=nspf
 
-  bioww%allspinproject=all_spinproject
-  bioww%restrictms=restrict_ms
-  bioww%sss%spinrestrictval=spin_restrictval
+     bioww%allspinproject=all_spinproject
+     bioww%restrictms=restrict_ms
+     bioww%sss%spinrestrictval=spin_restrictval
 
-  bioww%dfrestrictflag=0
-  bioww%dflevel=0
-  bioww%dfwalklevel=0
-  bioww%singlewalkflag=1
-  bioww%doublewalkflag=0
+     bioww%dfrestrictflag=0
+     bioww%dflevel=0
+     bioww%dfwalklevel=0
+     bioww%singlewalkflag=1
+     bioww%doublewalkflag=0
 
-  call fast_newconfiglist(bioww,notusedintarr,notusedintarr,0);   
+     call fast_newconfiglist(bioww,notusedintarr,notusedintarr,0);   
 
-  call walkalloc(bioww);             call walks(bioww)
+     call walkalloc(bioww);             call walks(bioww)
 
-  call hops(bioww);
+     call hops(bioww);
 
-  call set_matsize(bioww);
+     call set_matsize(bioww);
 
-  call init_dfcon(bioww)
+     call init_dfcon(bioww)
 
-  call spinwalkinit(bioww); 
-  call spinwalks(bioww)
-  call spinsets_first(bioww)
-  call configspin_matel(bioww)
-  call configspinset_projector(bioww)
-  call spinwalkinternal_dealloc()
+     call spinwalkinit(bioww); 
+     call spinwalks(bioww)
+     call spinsets_first(bioww)
+     call configspin_matel(bioww)
+     call configspinset_projector(bioww)
+     call spinwalkinternal_dealloc()
 
-  call basis_set(bioww)
+     call basis_set(bioww)
 
 !!! END SET BIOWW !!
-
-  if (df_restrictflag.ne.0) then
 
      OFLWR
      WRFL "************************************"

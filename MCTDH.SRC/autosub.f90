@@ -44,8 +44,13 @@ subroutine autocorrelate()
 
   if (mod(xcalledflag,autosteps).eq.0) then
      do imc=1,mcscfnum
-        call autocorrelate_one(www,bioww,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:), &
-             orig_avectors(:,:,imc), overlaps(calledflag,imc),numr)
+        if (df_restrictflag.eq.0) then
+           call autocorrelate_one(www,www,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:), &
+                orig_avectors(:,:,imc), overlaps(calledflag,imc),numr)
+        else
+           call autocorrelate_one(www,bioww,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:), &
+                orig_avectors(:,:,imc), overlaps(calledflag,imc),numr)
+        endif
      enddo
 
      if (mod(calledflag,dipmodtime).eq.0.and.calledflag.gt.0) then

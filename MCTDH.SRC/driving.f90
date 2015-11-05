@@ -58,7 +58,12 @@ subroutine drivingtrans(thistime)
 
      tempdrivingavector(:,:,imc)=avector_driving(:,:,imc) * exp(timefac*drivingenergies(imc)*thistime)
 
-     call bioset(drivingbiovar,smo,numr,bioww)
+     if (df_restrictflag.eq.0) then
+        call bioset(drivingbiovar,smo,numr,www)
+     else
+        call bioset(drivingbiovar,smo,numr,bioww)
+     endif
+
      call biortho(orbs_driving(:,:),currentorbs(:,:),tempdrivingorbs(:,:),tempdrivingavector(:,:,imc),drivingbiovar)
 
 !! tempdrivingavector is vector in non-orthonormal tempdrivingorbs (which are bio to currentorbs)

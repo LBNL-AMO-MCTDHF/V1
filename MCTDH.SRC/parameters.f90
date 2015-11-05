@@ -147,9 +147,18 @@ end module constraint_parameters
 module denreg_parameters
 real*8 :: denreg=1d-10           !! Denreg=      !! density matrix regularization parameter.
 end module denreg_parameters
+module df_parameters
+!!EE
+!!{\large \quad CONFIGURATIONS}
+!!BB
+integer :: df_restrictflag=0      !!              !! apply constraint to configuration list?  Must use this
+                                                 !!  option if constraintflag /= 0.  1 is sufficient;
+                                                 !!  dfrestrictflag=2 necessary for action 22. 
+                                                 !!  SEE MANUAL FOR PROPER USE OF dfrestrictflag/shell options.
+end module df_parameters
 module parameters
   use littleparmod;  use fileptrmod;  use r_parameters; use sparse_parameters;
-  use ham_parameters;  use basis_parameters;  use timing_parameters; use spfsize_parameters
+  use ham_parameters;  use basis_parameters;  use timing_parameters; use spfsize_parameters;use df_parameters
   implicit none
 !!EE
 !!{\large \quad MAIN PARAMETERS }
@@ -214,10 +223,6 @@ integer :: numfrozen=0           !!              !! number of doubly occ orbs (r
 !!EE
 !!{\large \quad CONFIGURATIONS}
 !!BB
-integer :: df_restrictflag=0      !!              !! apply constraint to configuration list?  Must use this
-                                                 !!  option if constraintflag /= 0.  1 is sufficient;
-                                                 !!  dfrestrictflag=2 necessary for action 22. 
-                                                 !!  SEE MANUAL FOR PROPER USE OF dfrestrictflag/shell options.
 integer :: restrict_ms=0         !!              !! For restrictflag=1: 2*m_s: 2x total m_s (multiplicity of 
                                                  !!    lowest included spin states minus one)
 integer :: spin_restrictval=0    !!              !! For allspinproject=1: determines spin. Default high spin S=M_s.
