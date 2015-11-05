@@ -205,6 +205,7 @@ program mctdhf
   integer :: i,spfsloaded,totread,ifile,readnum
   DATATYPE, allocatable ::  tempvals(:)
   DATATYPE, allocatable :: bigavector(:,:), bigspfs(:,:)
+  integer,allocatable :: notusedintarr(:)
   logical :: logcheckpar
 
   spfsloaded=0
@@ -217,7 +218,9 @@ program mctdhf
   open(nullfileptr,file="/dev/null",status="unknown")
 
   call MPIstart()
-  
+
+  allocate(notusedintarr(nprocs))
+
   call openfile()
   write(mpifileptr, *) " ****************************************************************************"     
   write(mpifileptr, *) " **********************  BEGIN LBNL-AMO-MCTDHF ******************************"
@@ -300,7 +303,7 @@ program mctdhf
   www%singlewalkflag=1
   www%doublewalkflag=1
 
-  call fast_newconfiglist(www);   
+  call fast_newconfiglist(www,notusedintarr,notusedintarr,0);   
 
   num_config=www%numconfig
   allocate(configs_perproc(nprocs))
@@ -360,7 +363,7 @@ program mctdhf
   bioww%singlewalkflag=1
   bioww%doublewalkflag=0
 
-  call fast_newconfiglist(bioww);   
+  call fast_newconfiglist(bioww,notusedintarr,notusedintarr,0);   
 
   call walkalloc(bioww);             call walks(bioww)
 
@@ -405,7 +408,7 @@ program mctdhf
      dfww%singlewalkflag=1
      dfww%doublewalkflag=1
 
-     call fast_newconfiglist(dfww);   
+     call fast_newconfiglist(dfww,www%allbotdfconfigs(:),www%alltopdfconfigs(:),1);   
 
      call walkalloc(dfww);             call walks(dfww)
 
@@ -536,7 +539,11 @@ program mctdhf
            call mpibarrier();     OFLWR "AFTER CALL ALL MATEL IN MAIN"; CFL;     call mpibarrier()
         endif
         allocate(tempvals(mcscfnum))
-        call myconfigeig(www,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,min(totread,1),0d0,max(0,improvedrelaxflag-1))
+        if (df_restrictflag.eq.0.or.sparsedfflag.eq.0) then
+           call myconfigeig(www,www,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,min(totread,1),0d0,max(0,improvedrelaxflag-1))
+        else
+           call myconfigeig(www,dfww,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,min(totread,1),0d0,max(0,improvedrelaxflag-1))
+        endif
         deallocate(tempvals)
      endif  
 

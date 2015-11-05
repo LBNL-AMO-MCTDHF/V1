@@ -282,7 +282,7 @@ end function getugval
 !! GETS CONFIGURATION LIST (SLATER DETERMINANTS NOT SPIN EIGFUNCTS)
 !!  AT BEGINNING. 
 
-subroutine fast_newconfiglist(www)
+subroutine fast_newconfiglist(www,inbotconfigs,intopconfigs,inbottopflag)
   use output_parameters
   use fileptrmod
   use basis_parameters
@@ -290,6 +290,7 @@ subroutine fast_newconfiglist(www)
   use walkmod
   use mpimod
   implicit none
+  integer,intent(in) :: inbottopflag,inbotconfigs(nprocs),intopconfigs(nprocs)
   type(walktype) :: www
   logical :: alreadycounted
   integer, parameter :: max_numelec=80
@@ -771,20 +772,25 @@ endif
         OFLWR "NUMSPINBLOCKS ERR",nss,numspinblocks; CFLST
      endif
 
-     www%alltopconfigs(:)=0
-     jj=1
-     do ii=1,nprocs-1
-        do while (bigspinblockend(jj).lt.www%numconfig*ii/nprocs)
-           www%alltopconfigs(ii:)=bigspinblockend(jj)
-           jj=jj+1
+     if (inbottopflag.ne.0) then
+        www%allbotconfigs(:)=inbotconfigs(:)
+        www%alltopconfigs(:)=intopconfigs(:)
+     else
+        www%alltopconfigs(:)=0
+        jj=1
+        do ii=1,nprocs-1
+           do while (bigspinblockend(jj).lt.www%numconfig*ii/nprocs)
+              www%alltopconfigs(ii:)=bigspinblockend(jj)
+              jj=jj+1
+           enddo
         enddo
-     enddo
-     www%alltopconfigs(nprocs)=www%numconfig
-     www%allbotconfigs(1)=1
-     do ii=2,nprocs
-        www%allbotconfigs(ii)=www%alltopconfigs(ii-1)+1
-     enddo
-     
+        www%alltopconfigs(nprocs)=www%numconfig
+        www%allbotconfigs(1)=1
+        do ii=2,nprocs
+           www%allbotconfigs(ii)=www%alltopconfigs(ii-1)+1
+        enddo
+     endif
+
      OFLWR; WRFL "BOTWALKS /TOPWALKS",www%numconfig
      do ii=1,nprocs
         WRFL www%allbotconfigs(ii),www%alltopconfigs(ii),www%alltopconfigs(ii)-www%allbotconfigs(ii)+1

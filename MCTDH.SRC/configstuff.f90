@@ -18,7 +18,7 @@ end subroutine printconfig
 !! NOT - this uses stopthresh as threshold to pass to laneigen.  is called for mcscf, and improved.
 
 
-subroutine myconfigeig(www,cptr,thisconfigvects,thisconfigvals,order,printflag, guessflag,time,numshift)
+subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printflag, guessflag,time,numshift)
   use fileptrmod
   use r_parameters
   use sparse_parameters
@@ -26,7 +26,7 @@ subroutine myconfigeig(www,cptr,thisconfigvects,thisconfigvals,order,printflag, 
   use configptrmod
   use walkmod
   implicit none
-  type(walktype),intent(in) :: www
+  type(walktype),intent(in) :: www,dfww
   type(CONFIGPTR),intent(in) :: cptr
   integer :: order, printflag,i, guessflag,  l,k,numshift,flag
   DATATYPE :: thisconfigvects(www%totadim,order),lastval,dot
@@ -42,6 +42,10 @@ subroutine myconfigeig(www,cptr,thisconfigvects,thisconfigvals,order,printflag, 
   endif
   if (numshift.lt.0) then
      OFLWR "GG ERROR.", numshift,guessflag; CFLST
+  endif
+
+  if (www%numdfbasis.ne.dfww%numdfbasis) then
+     OFLWR "ERROR DF SETS MYCONFIGEIG",www%numdfbasis,dfww%numdfbasis; CFLST
   endif
 
   if (sparseconfigflag/=0) then
@@ -73,7 +77,7 @@ subroutine myconfigeig(www,cptr,thisconfigvects,thisconfigvals,order,printflag, 
      allocate(tempconfigvects(www%numdfbasis*numr,www%numdfbasis*numr))
      fullconfigmatel=0.d0; fullconfigvects=0d0; fullconfigvals=0d0; tempconfigvects=0d0
 
-     call assemble_dfbasismat(www,fullconfigmatel,cptr,1,1,0,0, time)
+     call assemble_dfbasismat(dfww,fullconfigmatel,cptr,1,1,0,0, time)
 
      if (printflag.ne.0) then
         OFLWR " Call eig ",www%numdfbasis*numr; CFL
@@ -139,19 +143,19 @@ end subroutine myconfigeig
 
 !! PROPAGATE A-VECTOR 
 
-subroutine myconfigprop(www,avectorin,avectorout,time)
+subroutine myconfigprop(www,dfww,avectorin,avectorout,time)
   use r_parameters
   use sparse_parameters
   use walkmod 
   implicit none
-  type(walktype),intent(in) :: www
+  type(walktype),intent(in) :: www,dfww
   real*8 :: time
   DATATYPE :: avectorin(www%totadim), avectorout(www%totadim)
 
   if (sparseconfigflag/=0) then
      call exposparseprop(www,avectorin,avectorout,time)
   else
-     call nonsparseprop(www,avectorin,avectorout,time)
+     call nonsparseprop(www,dfww,avectorin,avectorout,time)
   endif
 
   call basis_project(www,numr,avectorout)
@@ -159,7 +163,7 @@ subroutine myconfigprop(www,avectorin,avectorout,time)
 end subroutine myconfigprop
 
 
-subroutine nonsparseprop(www,avectorin,avectorout,time)
+subroutine nonsparseprop(www,dfww,avectorin,avectorout,time)
   use fileptrmod
   use sparse_parameters
   use ham_parameters
@@ -168,7 +172,7 @@ subroutine nonsparseprop(www,avectorin,avectorout,time)
   use configpropmod
   use walkmod
   implicit none
-  type(walktype),intent(in) :: www
+  type(walktype),intent(in) :: www,dfww
   DATATYPE :: avectorin(www%totadim), avectorout(www%totadim),  &
        avectortemp(www%numdfbasis*numr), avectortemp2(www%numdfbasis*numr)
   DATATYPE, allocatable :: bigconfigmatel(:,:), bigconfigvects(:,:) !!,bigconfigvals(:)
@@ -185,11 +189,16 @@ subroutine nonsparseprop(www,avectorin,avectorout,time)
   if (drivingflag.ne.0) then
      OFLWR "Driving flag not implemented for nonsparse"; CFLST
   endif
+
+  if (www%numdfbasis.ne.dfww%numdfbasis) then
+     OFLWR "ERROR DF SETS NONSPARSEOPROP",www%numdfbasis,dfww%numdfbasis; CFLST
+  endif
+
   allocate(iiwork(www%numdfbasis*numr*2))
 
   allocate(bigconfigmatel(www%numdfbasis*numr,www%numdfbasis*numr), bigconfigvects(www%numdfbasis*numr,2*(www%numdfbasis*numr+2)))
 
-  call assemble_dfbasismat(www,bigconfigmatel, workconfigpointer,1,1,1,1, time)
+  call assemble_dfbasismat(dfww,bigconfigmatel, workconfigpointer,1,1,1,1, time)
 
   bigconfigmatel=bigconfigmatel*timefac
 
