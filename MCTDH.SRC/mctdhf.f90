@@ -287,6 +287,13 @@ program mctdhf
   call mpiorbsets()
 !!$  endif
 
+
+  OFLWR
+  WRFL "************************************"
+  WRFL "********  MAIN WALKS  **************"
+  WRFL "************************************"
+  WRFL; CFL
+
   www%parconsplit=par_consplit
 
   www%numelec=numelec
@@ -345,7 +352,11 @@ program mctdhf
 
 !! WALKTYPE VARIABLE BIOWW FOR BIORTHO
 
-  OFLWR "Setting BIORTHO walk variable...";CFL
+  OFLWR
+  WRFL "************************************"
+  WRFL "** done main walks. BIORTHO WALKS **"
+  WRFL "************************************"
+  WRFL; CFL
 
   bioww%parconsplit=par_consplit
 
@@ -382,15 +393,17 @@ program mctdhf
 
   call basis_set(bioww)
 
-  OFLWR "   .. DONE setting BIORTHO walk variable.";CFL
-
 !!! END SET BIOWW !!
 
   if (df_restrictflag.ne.0) then
 
-!! WALKTYPE VARIABLE DFWW FOR DFRESTRICT
+     OFLWR
+     WRFL "************************************"
+     WRFL "*** done biortho walks. DF WALKS ***"
+     WRFL "************************************"
+     WRFL; CFL
 
-     OFLWR "Setting DF walk variable...";CFL
+!! WALKTYPE VARIABLE DFWW FOR DFRESTRICT
 
      dfww%parconsplit=par_consplit
 
@@ -432,6 +445,14 @@ program mctdhf
 !!! END SET DFWW !!
 
   endif
+
+  OFLWR
+  WRFL "************************************"
+  WRFL "********** DONE WALKS. *************"
+  WRFL "************************************"
+  WRFL; CFL
+
+!!!!!! REINSTATE WALKS READ/WRITE !!!!!!
 
   call opalloc()
 
