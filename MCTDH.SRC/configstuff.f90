@@ -300,7 +300,7 @@ subroutine parconfigexpomult_padded0(www,workconfigpointer,worksparsepointer,ina
 
      call mympibcast(intemp,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
 
-     call sparseconfigmult_byproc(iproc,www,intemp,outtemp, workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0)
+     call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0)
      
      outwork(:,:)=outwork(:,:)+outtemp(:,:)
 

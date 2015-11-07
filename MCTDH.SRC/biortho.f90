@@ -648,7 +648,7 @@ subroutine parbiomatvec(inavector,outavector)
      call mympibcast(intemp,iproc,(biopointer%wwbio%alltopconfigs(iproc)-biopointer%wwbio%allbotconfigs(iproc)+1) &
           * biopointer%bionr)
 
-     call biomatvec_summa(iproc,intemp,outtemp)
+     call biomatvec_byproc(iproc,iproc,intemp,outtemp)
 
      outwork(:,:)=outwork(:,:)+outtemp(:,:)
 
@@ -677,12 +677,12 @@ end subroutine parbiomatvec
 
 
 
-subroutine biomatvec_summa(whichproc,x,y)
+subroutine biomatvec_byproc(firstproc,lastproc,x,y)
   use biomatvecmod
   implicit none
-  integer,intent(in) :: whichproc
+  integer,intent(in) :: firstproc,lastproc
   integer :: i,j,ihop
-  DATATYPE,intent(in) :: x(biopointer%bionr,biopointer%wwbio%allbotconfigs(whichproc):biopointer%wwbio%alltopconfigs(whichproc))
+  DATATYPE,intent(in) :: x(biopointer%bionr,biopointer%wwbio%allbotconfigs(firstproc):biopointer%wwbio%alltopconfigs(lastproc))
   DATATYPE,intent(out) :: y(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig)
   DATATYPE :: csum
 
@@ -691,13 +691,13 @@ subroutine biomatvec_summa(whichproc,x,y)
   do i=biopointer%wwbio%botconfig,biopointer%wwbio%topconfig
 !! summing over nonconjugated second index in s(:), good
 
-!!$     do j=biopointer%wwbio%firstsinglewalkbyproc(whichproc,i), &
-!!$          biopointer%wwbio%lastsinglewalkbyproc(whichproc,i) 
+!!$     do j=biopointer%wwbio%firstsinglewalkbyproc(firstproc,i), &
+!!$          biopointer%wwbio%lastsinglewalkbyproc(lastproc,i) 
 !!$        y(:,i) = y(:,i) + biopointer%smo(biopointer%wwbio%singlewalkopspf(1,j,i),biopointer%wwbio%singlewalkopspf(2,j,i)) * biopointer%wwbio%singlewalkdirphase(j,i) * x(:,biopointer%wwbio%singlewalk(j,i)) 
 !!$     enddo
 
-     do ihop=biopointer%wwbio%firstsinglehopbyproc(whichproc,i), &
-          biopointer%wwbio%lastsinglehopbyproc(whichproc,i) 
+     do ihop=biopointer%wwbio%firstsinglehopbyproc(firstproc,i), &
+          biopointer%wwbio%lastsinglehopbyproc(lastproc,i) 
         csum=0d0
         do j=biopointer%wwbio%singlehopwalkstart(ihop,i),  biopointer%wwbio%singlehopwalkend(ihop,i)
            csum=csum + &
@@ -709,7 +709,7 @@ subroutine biomatvec_summa(whichproc,x,y)
 
   enddo
 
-end subroutine biomatvec_summa
+end subroutine biomatvec_byproc
 
 
 

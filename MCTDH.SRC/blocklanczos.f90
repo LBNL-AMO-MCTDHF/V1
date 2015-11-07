@@ -206,7 +206,7 @@ recursive subroutine parblockconfigmult0(www,cptr,sptr,inavector,outavector)
      endif
      call mympibcast(intemp,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
 
-     call sparseconfigmult_byproc(iproc,www,intemp,outtemp, cptr, sptr, 1,1,1,0,0d0,0,1,numr,0)
+     call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, cptr, sptr, 1,1,1,0,0d0,0,1,numr,0)
 
      if (myrank.eq.iproc) then
         if (mshift.ne.0d0) then 

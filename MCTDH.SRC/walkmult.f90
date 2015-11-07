@@ -51,11 +51,11 @@ recursive subroutine sparseconfigmultone(www,invector,outvector,matrix_ptr,spars
            workvector(1:www%topconfig-www%botconfig+1)=invector(:)
         endif
         call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1))
-        call sparseconfigmult_byproc(iproc,www,workvector,workvector2,matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0)
+        call sparseconfigmult_byproc(iproc,iproc,www,workvector,workvector2,matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0)
 
      else
 
-        call sparseconfigmult_byproc(iproc,www,invector(www%allbotconfigs(iproc):www%alltopconfigs(iproc)),&
+        call sparseconfigmult_byproc(iproc,iproc,www,invector(www%allbotconfigs(iproc):www%alltopconfigs(iproc)),&
              workvector2,matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0)
 
      endif
@@ -122,11 +122,11 @@ recursive subroutine sparseconfigmultxxx(www,invector,outvector,matrix_ptr,spars
            workvector(:,1:www%topconfig-www%botconfig+1) = invector(:,:)
         endif
         call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
-        call sparseconfigmult_byproc(iproc,www,workvector,workvector2,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0)
+        call sparseconfigmult_byproc(iproc,iproc,www,workvector,workvector2,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0)
 
      else
 
-        call sparseconfigmult_byproc(iproc,www,invector(:,www%allbotconfigs(iproc):www%alltopconfigs(iproc)),&
+        call sparseconfigmult_byproc(iproc,iproc,www,invector(:,www%allbotconfigs(iproc):www%alltopconfigs(iproc)),&
              workvector2,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0)
 
      endif
@@ -164,7 +164,7 @@ recursive subroutine parsparseconfigpreconmult(www,invector,outvector,matrix_ptr
   endif
 
   workvector(:,:)=1d0; tempvector(:,:)=0d0
-  call sparseconfigmult_byproc(myrank,www,workvector,tempvector,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag,time,0,1,numr,1)
+  call sparseconfigmult_byproc(myrank,myrank,www,workvector,tempvector,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag,time,0,1,numr,1)
   
   outvector(:,:)=invector(:,:)/(tempvector(:,:)-inenergy)
 
@@ -194,11 +194,11 @@ recursive subroutine arbitraryconfig_mult_singles(www,onebodymat, rvector, avect
            workvector(:,1:www%topconfig-www%botconfig+1) = avectorin(:,:)
         endif
         call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*inrnum)
-        call arbitraryconfig_mult_singles_byproc(iproc,www,onebodymat, rvector, workvector, workvector2,inrnum,0)
+        call arbitraryconfig_mult_singles_byproc(iproc,iproc,www,onebodymat, rvector, workvector, workvector2,inrnum,0)
 
      else
      
-        call arbitraryconfig_mult_singles_byproc(iproc,www,onebodymat, rvector, avectorin(:,www%allbotconfigs(iproc):www%alltopconfigs(iproc)),&
+        call arbitraryconfig_mult_singles_byproc(iproc,iproc,www,onebodymat, rvector, avectorin(:,www%allbotconfigs(iproc):www%alltopconfigs(iproc)),&
              workvector2,inrnum,0)
 
      endif
@@ -222,7 +222,7 @@ end subroutine arbitraryconfig_mult_singles
 !!!!!!      BYPROC SUBROUTINES   !!!!!!!
 
 
-recursive subroutine sparseconfigmult_byproc(whichproc,www,invector,outvector,matrix_ptr,sparse_ptr,&
+recursive subroutine sparseconfigmult_byproc(firstproc,lastproc,www,invector,outvector,matrix_ptr,sparse_ptr,&
      boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag)
   use fileptrmod   !! TEMP
   use sparse_parameters
@@ -231,9 +231,9 @@ recursive subroutine sparseconfigmult_byproc(whichproc,www,invector,outvector,ma
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
-  integer,intent(in) :: whichproc
+  integer,intent(in) :: firstproc,lastproc
   integer,intent(in) :: conflag,boflag,nucflag,pulseflag,onlytdflag,botr,topr,diagflag
-  DATATYPE,intent(in) :: invector(botr:topr,www%allbotconfigs(whichproc):www%alltopconfigs(whichproc))
+  DATATYPE,intent(in) :: invector(botr:topr,www%allbotconfigs(firstproc):www%alltopconfigs(lastproc))
   DATATYPE,intent(out) :: outvector(botr:topr,www%botconfig:www%topconfig)
   real*8,intent(in) :: time
   Type(CONFIGPTR),intent(in) :: matrix_ptr
@@ -244,9 +244,9 @@ recursive subroutine sparseconfigmult_byproc(whichproc,www,invector,outvector,ma
   endif
 
   if (sparseopt.eq.0) then
-     call direct_sparseconfigmult_byproc(whichproc,www,invector,outvector,matrix_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag)
+     call direct_sparseconfigmult_byproc(firstproc,lastproc,www,invector,outvector,matrix_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag)
   else
-     call sparsesparsemult_byproc(whichproc,www,invector,outvector,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag)
+     call sparsesparsemult_byproc(firstproc,lastproc,www,invector,outvector,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag)
   endif
 
 end subroutine sparseconfigmult_byproc
@@ -254,7 +254,7 @@ end subroutine sparseconfigmult_byproc
 
 !! DIRECT MATVEC (with matrix_ptr not sparse_ptr)
 
-recursive subroutine direct_sparseconfigmult_byproc(whichproc,www,invector,outvector,matrix_ptr, &
+recursive subroutine direct_sparseconfigmult_byproc(firstproc,lastproc,www,invector,outvector,matrix_ptr, &
      boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag)
   use ham_parameters
   use r_parameters
@@ -264,9 +264,9 @@ recursive subroutine direct_sparseconfigmult_byproc(whichproc,www,invector,outve
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
-  integer,intent(in) :: whichproc
+  integer,intent(in) :: firstproc,lastproc
   integer,intent(in) :: conflag,boflag,nucflag,pulseflag,onlytdflag,botr,topr,diagflag
-  DATATYPE,intent(in) :: invector(botr:topr,www%allbotconfigs(whichproc):www%alltopconfigs(whichproc))
+  DATATYPE,intent(in) :: invector(botr:topr,www%allbotconfigs(firstproc):www%alltopconfigs(lastproc))
   DATATYPE,intent(out) :: outvector(botr:topr,www%botconfig:www%topconfig)
   Type(CONFIGPTR),intent(in) :: matrix_ptr
   real*8, intent(in) :: time
@@ -294,7 +294,7 @@ recursive subroutine direct_sparseconfigmult_byproc(whichproc,www,invector,outve
      
 !! easy nuclear repulsion, hardwired like this for now
 
-     if (myrank.eq.whichproc) then
+     if (myrank.ge.firstproc.and.myrank.le.lastproc) then
         do ir=botr,topr
            outvector(ir,:)=outvector(ir,:) + invector(ir,www%botconfig:www%topconfig) * ( &
                 energyshift + (nucrepulsion+frozenpotdiag)/bondpoints(ir) + &
@@ -303,14 +303,14 @@ recursive subroutine direct_sparseconfigmult_byproc(whichproc,www,invector,outve
      endif
 
      rvector(:)=1/bondpoints(botr:topr)
-     call arbitraryconfig_mult_doubles_byproc(whichproc,www,matrix_ptr%xtwoematel(:,:,:,:),rvector,invector,tempvector,mynumr,diagflag)
+     call arbitraryconfig_mult_doubles_byproc(firstproc,lastproc,www,matrix_ptr%xtwoematel(:,:,:,:),rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)+tempvector(:,:)
      
-     call arbitraryconfig_mult_singles_byproc(whichproc,www,matrix_ptr%xpotmatel(:,:),rvector,invector,tempvector,mynumr,diagflag)
+     call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,matrix_ptr%xpotmatel(:,:),rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)+tempvector(:,:)
      
      rvector(:)=1/bondpoints(botr:topr)**2
-     call arbitraryconfig_mult_singles_byproc(whichproc,www,matrix_ptr%xopmatel(:,:),rvector,invector,tempvector,mynumr,diagflag)
+     call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,matrix_ptr%xopmatel(:,:),rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)+tempvector(:,:)
      
   endif
@@ -324,7 +324,7 @@ recursive subroutine direct_sparseconfigmult_byproc(whichproc,www,invector,outve
         tempmatel(:,:)=tempmatel(:,:)+matrix_ptr%xconmatelyy(:,:)*facs(2)
         tempmatel(:,:)=tempmatel(:,:)+matrix_ptr%xconmatelzz(:,:)*facs(3)
      endif
-     call arbitraryconfig_mult_singles_byproc(whichproc,www,tempmatel,rvector,invector,tempvector,mynumr,diagflag)
+     call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,tempmatel,rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)-tempvector(:,:)
 
   endif
@@ -346,7 +346,7 @@ recursive subroutine direct_sparseconfigmult_byproc(whichproc,www,invector,outve
         tempmatel(:,:)= tempmatel(:,:) + matrix_ptr%xpulsematelzz*facs(3); flag=1
      endif
      if (flag.eq.1) then
-        call arbitraryconfig_mult_singles_byproc(whichproc,www,tempmatel,rvector,invector,tempvector,mynumr,diagflag)
+        call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,tempmatel,rvector,invector,tempvector,mynumr,diagflag)
         outvector(:,:)=outvector(:,:)+tempvector(:,:)
      endif
 
@@ -354,7 +354,7 @@ recursive subroutine direct_sparseconfigmult_byproc(whichproc,www,invector,outve
 
      gg=0.25d0
 
-     if (myrank.eq.whichproc) then
+     if (myrank.ge.firstproc.and.myrank.le.lastproc) then
 
 !!  A-squared term and nuclear dipole:  nuclear dipole always
         if (velflag.eq.0) then 
@@ -381,9 +381,9 @@ recursive subroutine direct_sparseconfigmult_byproc(whichproc,www,invector,outve
   if (nonuc_checkflag.eq.0.and.nucflag.eq.1.and.mynumr.eq.numr) then
      if (diagflag.eq.0) then
         rvector(:)=1d0
-        call arbitraryconfig_mult_singles_byproc(whichproc,www,matrix_ptr%xymatel,rvector,invector,tempvector,numr,0)
+        call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,matrix_ptr%xymatel,rvector,invector,tempvector,numr,0)
         call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE,            proderivmod,numr,     tempvector,           numr,DATAONE,outvector,numr)
-        if (myrank.eq.whichproc) then
+        if (myrank.ge.firstproc.and.myrank.le.lastproc) then
            call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE*matrix_ptr%kefac,rkemod,numr,     invector(:,www%botconfig),numr,DATAONE,outvector,numr)
         endif
 !!$     else
@@ -398,7 +398,7 @@ end subroutine direct_sparseconfigmult_byproc
 
 !! SPARSE MATVEC (with sparse_ptr not matrix_ptr)
 
-recursive subroutine sparsesparsemult_byproc(whichproc,www,invector,outvector,sparse_ptr,&
+recursive subroutine sparsesparsemult_byproc(firstproc,lastproc,www,invector,outvector,sparse_ptr,&
      boflag,nucflag,pulseflag,conflag,time,onlytdflag,botr,topr,diagflag)
   use sparse_parameters
   use ham_parameters
@@ -410,9 +410,9 @@ recursive subroutine sparsesparsemult_byproc(whichproc,www,invector,outvector,sp
   use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
-  integer,intent(in) :: whichproc
+  integer,intent(in) :: firstproc,lastproc
   integer,intent(in) :: boflag,nucflag,pulseflag,conflag,onlytdflag,botr,topr,diagflag
-  DATATYPE,intent(in)  :: invector(botr:topr,www%allbotconfigs(whichproc):www%alltopconfigs(whichproc))
+  DATATYPE,intent(in)  :: invector(botr:topr,www%allbotconfigs(firstproc):www%alltopconfigs(lastproc))
   DATATYPE,intent(out) :: outvector(botr:topr,www%botconfig:www%topconfig)
   Type(SPARSEPTR),intent(in) :: sparse_ptr
   real*8,intent(in) :: time
@@ -447,7 +447,7 @@ recursive subroutine sparsesparsemult_byproc(whichproc,www,invector,outvector,sp
 
   if (boflag==1) then
 
-     if (myrank.eq.whichproc) then
+     if (myrank.ge.firstproc.and.myrank.le.lastproc) then
         do ir=botr,topr
            outvector(ir,:)=outvector(ir,:) + invector(ir,www%botconfig:www%topconfig) * ( &
                 energyshift + (nucrepulsion+frozenpotdiag)/bondpoints(ir) + &
@@ -456,14 +456,14 @@ recursive subroutine sparsesparsemult_byproc(whichproc,www,invector,outvector,sp
      endif
 
      rvector(:)=1/bondpoints(botr:topr)
-     call arbitrary_sparsemult_doubles_byproc(whichproc,www,sparse_ptr%xpotsparsemattr(:,:),rvector,invector,tempvector,mynumr,diagflag)
+     call arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,sparse_ptr%xpotsparsemattr(:,:),rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)+tempvector(:,:)
 
-     call arbitrary_sparsemult_singles_byproc(whichproc,www,sparse_ptr%xonepotsparsemattr(:,:),rvector,invector,tempvector,mynumr,diagflag)
+     call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xonepotsparsemattr(:,:),rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)+tempvector(:,:)
 
      rvector(:)=1/bondpoints(botr:topr)**2
-     call arbitrary_sparsemult_singles_byproc(whichproc,www,sparse_ptr%xopsparsemattr(:,:),rvector,invector,tempvector,mynumr,diagflag)
+     call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xopsparsemattr(:,:),rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)+tempvector(:,:)
 
   endif
@@ -477,7 +477,7 @@ recursive subroutine sparsesparsemult_byproc(whichproc,www,invector,outvector,sp
         tempsparsemattr(:,:)=tempsparsemattr(:,:)+sparse_ptr%xconsparsemattryy(:,:)*facs(2)
         tempsparsemattr(:,:)=tempsparsemattr(:,:)+sparse_ptr%xconsparsemattrzz(:,:)*facs(3)
      endif
-     call arbitrary_sparsemult_singles_byproc(whichproc,www,tempsparsemattr,rvector,invector,tempvector,mynumr,diagflag)
+     call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,tempsparsemattr,rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)-tempvector(:,:)
 
   endif
@@ -499,7 +499,7 @@ recursive subroutine sparsesparsemult_byproc(whichproc,www,invector,outvector,sp
         tempsparsemattr(:,:)= tempsparsemattr(:,:) + sparse_ptr%xpulsesparsemattrzz*facs(3); flag=1
      endif
      if (flag.eq.1) then
-        call arbitrary_sparsemult_singles_byproc(whichproc,www,tempsparsemattr,rvector,invector,tempvector,mynumr,diagflag)
+        call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,tempsparsemattr,rvector,invector,tempvector,mynumr,diagflag)
         outvector(:,:)=outvector(:,:)+tempvector(:,:)
      endif
 
@@ -509,7 +509,7 @@ recursive subroutine sparsesparsemult_byproc(whichproc,www,invector,outvector,sp
 
      gg=0.25d0
      
-     if (myrank.eq.whichproc) then
+     if (myrank.ge.firstproc.and.myrank.le.lastproc) then
 
         if (velflag.eq.0) then 
            csum=0
@@ -535,9 +535,9 @@ recursive subroutine sparsesparsemult_byproc(whichproc,www,invector,outvector,sp
   if (nonuc_checkflag.eq.0.and.nucflag.eq.1.and.mynumr.eq.numr) then
      if (diagflag.eq.0) then
         rvector(:)=1d0
-        call arbitrary_sparsemult_singles_byproc(whichproc,www,sparse_ptr%xysparsemattr,rvector,invector,tempvector,numr,0)
+        call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xysparsemattr,rvector,invector,tempvector,numr,0)
         call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE,            proderivmod,numr,     tempvector,           numr,DATAONE,outvector,numr)
-        if (myrank.eq.whichproc) then
+        if (myrank.ge.firstproc.and.myrank.le.lastproc) then
            call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE*sparse_ptr%kefac,rkemod,numr,     invector(:,www%botconfig),numr,DATAONE,outvector,numr)
         endif
 !!$     else
@@ -551,15 +551,15 @@ end subroutine sparsesparsemult_byproc
 
 
 
-recursive subroutine arbitrary_sparsemult_singles_byproc(whichproc,www,mattrans, rvector,insmallvector,outsmallvector,mynumr,diagflag)
+recursive subroutine arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,mattrans, rvector,insmallvector,outsmallvector,mynumr,diagflag)
   use walkmod
   use sparse_parameters
   use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
-  integer,intent(in) :: whichproc
+  integer,intent(in) :: firstproc,lastproc
   integer,intent(in) :: mynumr,diagflag
-  DATATYPE,intent(in) :: insmallvector(mynumr,www%allbotconfigs(whichproc):www%alltopconfigs(whichproc)), &
+  DATATYPE,intent(in) :: insmallvector(mynumr,www%allbotconfigs(firstproc):www%alltopconfigs(lastproc)), &
        mattrans(www%singlematsize,www%botconfig:www%topconfig)
   DATATYPE,intent(out) :: outsmallvector(mynumr,www%botconfig:www%topconfig)
   DATAECS,intent(in) :: rvector(mynumr)
@@ -577,7 +577,7 @@ recursive subroutine arbitrary_sparsemult_singles_byproc(whichproc,www,mattrans,
 
   if (diagflag.eq.0) then
      do config1=www%botconfig,www%topconfig
-        do ihop=www%firstsinglehopbyproc(whichproc,config1),www%lastsinglehopbyproc(whichproc,config1)
+        do ihop=www%firstsinglehopbyproc(firstproc,config1),www%lastsinglehopbyproc(lastproc,config1)
            outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(ihop,config1) * insmallvector(:,www%singlehop(ihop,config1)) * rvector(:)
         enddo
      enddo
@@ -592,15 +592,15 @@ recursive subroutine arbitrary_sparsemult_singles_byproc(whichproc,www,mattrans,
 end subroutine arbitrary_sparsemult_singles_byproc
 
 
-recursive subroutine arbitrary_sparsemult_doubles_byproc(whichproc,www,mattrans,rvector,insmallvector,outsmallvector,mynumr,diagflag)
+recursive subroutine arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,mattrans,rvector,insmallvector,outsmallvector,mynumr,diagflag)
   use fileptrmod
   use sparse_parameters
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
-  integer,intent(in) :: whichproc
+  integer,intent(in) :: firstproc,lastproc
   integer,intent(in) :: mynumr,diagflag
-  DATATYPE,intent(in) :: insmallvector(mynumr,www%allbotconfigs(whichproc):www%alltopconfigs(whichproc)), &
+  DATATYPE,intent(in) :: insmallvector(mynumr,www%allbotconfigs(firstproc):www%alltopconfigs(lastproc)), &
        mattrans(www%doublematsize,www%botconfig:www%topconfig)
   DATATYPE,intent(out) :: outsmallvector(mynumr,www%botconfig:www%topconfig)
   DATAECS,intent(in) :: rvector(mynumr)
@@ -618,7 +618,7 @@ recursive subroutine arbitrary_sparsemult_doubles_byproc(whichproc,www,mattrans,
 
   if (diagflag.eq.0) then
      do config1=www%botconfig,www%topconfig
-        do ihop=www%firstdoublehopbyproc(whichproc,config1),www%lastdoublehopbyproc(whichproc,config1)
+        do ihop=www%firstdoublehopbyproc(firstproc,config1),www%lastdoublehopbyproc(lastproc,config1)
            outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(ihop,config1) * insmallvector(:,www%doublehop(ihop,config1)) * rvector(:)
         enddo
      enddo
@@ -633,13 +633,13 @@ recursive subroutine arbitrary_sparsemult_doubles_byproc(whichproc,www,mattrans,
 end subroutine arbitrary_sparsemult_doubles_byproc
 
 
-recursive subroutine arbitraryconfig_mult_singles_byproc(whichproc,www,onebodymat, rvector, avectorin, avectorout,inrnum,diagflag)
+recursive subroutine arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,onebodymat, rvector, avectorin, avectorout,inrnum,diagflag)
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
-  integer,intent(in) :: whichproc
+  integer,intent(in) :: firstproc,lastproc
   integer,intent(in) :: inrnum,diagflag
-  DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf), avectorin(inrnum,www%allbotconfigs(whichproc):www%alltopconfigs(whichproc))
+  DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf), avectorin(inrnum,www%allbotconfigs(firstproc):www%alltopconfigs(lastproc))
   DATATYPE,intent(out) :: avectorout(inrnum,www%botconfig:www%topconfig)
   DATAECS,intent(in) :: rvector(inrnum)
   DATATYPE :: csum
@@ -655,7 +655,7 @@ recursive subroutine arbitraryconfig_mult_singles_byproc(whichproc,www,onebodyma
 
      do config1=www%botconfig,www%topconfig
 
-        do ihop=www%firstsinglehopbyproc(whichproc,config1),www%lastsinglehopbyproc(whichproc,config1)
+        do ihop=www%firstsinglehopbyproc(firstproc,config1),www%lastsinglehopbyproc(lastproc,config1)
            config2=www%singlehop(ihop,config1)
            csum=0d0
            do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
@@ -687,13 +687,13 @@ end subroutine arbitraryconfig_mult_singles_byproc
 
 
 
-recursive subroutine arbitraryconfig_mult_doubles_byproc(whichproc,www,twobodymat, rvector, avectorin, avectorout,inrnum,diagflag)   
+recursive subroutine arbitraryconfig_mult_doubles_byproc(firstproc,lastproc,www,twobodymat, rvector, avectorin, avectorout,inrnum,diagflag)   
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
-  integer,intent(in) :: whichproc
+  integer,intent(in) :: firstproc,lastproc
   integer,intent(in) :: inrnum,diagflag
-  DATATYPE,intent(in) :: twobodymat(www%nspf,www%nspf,www%nspf,www%nspf), avectorin(inrnum,www%allbotconfigs(whichproc):www%alltopconfigs(whichproc))
+  DATATYPE,intent(in) :: twobodymat(www%nspf,www%nspf,www%nspf,www%nspf), avectorin(inrnum,www%allbotconfigs(firstproc):www%alltopconfigs(lastproc))
   DATATYPE,intent(out) :: avectorout(inrnum,www%botconfig:www%topconfig)
   DATAECS,intent(in) :: rvector(inrnum)
   DATATYPE :: csum
@@ -705,7 +705,7 @@ recursive subroutine arbitraryconfig_mult_doubles_byproc(whichproc,www,twobodyma
 
      do config1=www%botconfig,www%topconfig
 
-        do ihop=www%firstdoublehopbyproc(whichproc,config1),www%lastdoublehopbyproc(whichproc,config1)
+        do ihop=www%firstdoublehopbyproc(firstproc,config1),www%lastdoublehopbyproc(lastproc,config1)
            config2=www%doublehop(ihop,config1)
            csum=0d0
            do iwalk=www%doublehopwalkstart(ihop,config1),www%doublehopwalkend(ihop,config1)
