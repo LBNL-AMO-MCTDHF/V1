@@ -616,7 +616,70 @@ end subroutine abio_nonsparse
 
 !! NOTE BOUNDS !!
 
+
 subroutine parbiomatvec(inavector,outavector)
+  use fileptrmod
+  use sparse_parameters
+  use mpimod
+  use matvecsetmod
+  use biomatvecmod
+  implicit none
+
+  DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
+  DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
+
+  if (sparsesummaflag.eq.0) then
+     call parbiomatvec_gather(inavector,outavector)
+  else
+     call parbiomatvec_summa(inavector,outavector)
+  endif
+
+end subroutine parbiomatvec
+
+
+subroutine parbiomatvec_gather(inavector,outavector)
+  use fileptrmod
+  use sparse_parameters
+  use mpimod
+  use matvecsetmod
+  use biomatvecmod
+  implicit none
+
+  DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
+  DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
+  DATATYPE,allocatable :: intemp(:,:)
+  DATATYPE :: outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig)
+
+  if (sparseconfigflag.eq.0) then
+     OFLWR "error, must use sparse for parbiomatvec summa"; CFLST
+  endif
+
+  allocate(intemp(biopointer%bionr,biopointer%wwbio%numconfig))
+
+!! TRANSFORM SECOND TO REDUCE COMMUNICATION
+
+  if (biopointer%wwbio%topconfig-biopointer%wwbio%botconfig+1 .ne. 0) then
+     call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector,&
+          intemp(:,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig))
+  endif
+
+  call mpiallgather(intemp,biopointer%wwbio%numconfig*biopointer%bionr,&
+       biopointer%wwbio%configsperproc(:)*biopointer%bionr,&
+       biopointer%wwbio%maxconfigsperproc*biopointer%bionr)
+
+  call biomatvec_byproc(1,nprocs,intemp,outtemp)
+
+  outavector(:,:)=0d0   !! PADDED
+
+  call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,outtemp,outavector)
+
+  deallocate(intemp)
+
+end subroutine parbiomatvec_gather
+
+
+
+subroutine parbiomatvec_summa(inavector,outavector)
   use fileptrmod
   use sparse_parameters
   use mpimod
@@ -658,7 +721,7 @@ subroutine parbiomatvec(inavector,outavector)
 
   call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,outwork(:,:),outavector(:,:))
 
-end subroutine parbiomatvec
+end subroutine parbiomatvec_summa
 
 
 

@@ -40,6 +40,7 @@ real*8 :: lanthresh=1.d-9        !!              !! convergence criterion.
 end module lan_parameters
 module sparse_parameters
 integer :: sparseprime=1
+integer :: sparsesummaflag=0
 integer :: sparsedfflag=1
 integer :: sparseconfigflag=0    !! Sparse       !! Sparse configuration routines on or off (for large # configs)
 integer :: sparseopt =1                          !! 0= direct CI  1= sparse matrix algebra (faster, more memory)

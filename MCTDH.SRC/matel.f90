@@ -6,7 +6,7 @@
 #include "Definitions.INC"
 
 
-recursive subroutine all_matel()
+subroutine all_matel()
   use parameters
   use xxxmod
   use mpimod
@@ -54,7 +54,7 @@ recursive subroutine all_matel()
 
 end subroutine all_matel
 
-recursive subroutine all_matel0(matrix_ptr,inspfs1,inspfs2,twoereduced,times)
+subroutine all_matel0(matrix_ptr,inspfs1,inspfs2,twoereduced,times)
   use parameters
   use configptrmod
   implicit none
@@ -89,7 +89,7 @@ recursive subroutine all_matel0(matrix_ptr,inspfs1,inspfs2,twoereduced,times)
 
 end subroutine all_matel0
 
-recursive subroutine twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced)
+subroutine twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced)
   use parameters
   use mpimod
   use configptrmod

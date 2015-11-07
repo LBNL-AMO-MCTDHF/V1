@@ -155,6 +155,7 @@ subroutine nullgramschmidt_fast(m,logpar)
   enddo
 end subroutine nullgramschmidt_fast
 
+
 recursive subroutine parblockconfigmult(inavector,outavector)
   use r_parameters
   use sparse_parameters
@@ -164,15 +165,74 @@ recursive subroutine parblockconfigmult(inavector,outavector)
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
 
-  if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
-     call parblockconfigmult0(www,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
+  if (sparsesummaflag.eq.0) then
+     if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
+        call parblockconfigmult0_gather(www,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
+     else
+        call parblockconfigmult0_gather(dfww,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+     endif
   else
-     call parblockconfigmult0(dfww,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+     if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
+        call parblockconfigmult0_summa(www,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
+     else
+        call parblockconfigmult0_summa(dfww,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+     endif
   endif
+
 end subroutine parblockconfigmult
 
 
-recursive subroutine parblockconfigmult0(www,cptr,sptr,inavector,outavector)
+recursive subroutine parblockconfigmult0_gather(www,cptr,sptr,inavector,outavector)
+  use fileptrmod
+  use r_parameters
+  use sparse_parameters
+  use ham_parameters
+  use mpimod
+  use walkmod
+  use sparseptrmod
+  use configptrmod
+  implicit none
+  type(walktype),intent(in) :: www
+  type(CONFIGPTR),intent(in) :: cptr
+  type(SPARSEPTR),intent(in) :: sptr
+  integer :: ii
+  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
+  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
+  DATATYPE,allocatable :: intemp(:,:)
+  DATATYPE :: outtemp(numr,www%botconfig:www%topconfig)
+
+  if (sparseconfigflag.eq.0) then
+     OFLWR "error, must use sparse for parblockconfigmult"; CFLST
+  endif
+
+  allocate(intemp(numr,www%numconfig))
+  intemp(:,:)=0d0
+
+!! TRANSFORM SECOND TO REDUCE COMMUNICATION
+
+  if (www%topconfig-www%botconfig+1 .ne. 0) then
+     call basis_transformfrom_local(www,numr,inavector,intemp(:,www%botconfig:www%topconfig))
+  endif
+
+  call mpiallgather(intemp,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+
+  call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, cptr, sptr, 1,1,1,0,0d0,0,1,numr,0)
+
+  if (mshift.ne.0d0) then 
+     do ii=www%botconfig,www%topconfig
+        outtemp(:,ii)=outtemp(:,ii)+ intemp(:,ii)*www%configmvals(ii)*mshift
+     enddo
+  endif
+
+  call basis_transformto_local(www,numr,outtemp,outavector)
+
+  deallocate(intemp)
+
+end subroutine parblockconfigmult0_gather
+
+
+
+recursive subroutine parblockconfigmult0_summa(www,cptr,sptr,inavector,outavector)
   use fileptrmod
   use r_parameters
   use sparse_parameters
@@ -222,7 +282,7 @@ recursive subroutine parblockconfigmult0(www,cptr,sptr,inavector,outavector)
 
   call basis_transformto_local(www,numr,outwork,outavector)
 
-end subroutine parblockconfigmult0
+end subroutine parblockconfigmult0_summa
 
 
 

@@ -253,16 +253,76 @@ subroutine parconfigexpomult_padded(inavector,outavector)
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
 
-  if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
-     call parconfigexpomult_padded0(www,workconfigpointer,worksparsepointer,inavector,outavector)
+  if (sparsesummaflag.eq.0) then
+     if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
+        call parconfigexpomult_padded0_gather(www,workconfigpointer,worksparsepointer,inavector,outavector)
+     else
+        call parconfigexpomult_padded0_gather(dfww,workconfigpointer,workdfsparsepointer,inavector,outavector)
+     endif
   else
-     call parconfigexpomult_padded0(dfww,workconfigpointer,workdfsparsepointer,inavector,outavector)
+     if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
+        call parconfigexpomult_padded0_summa(www,workconfigpointer,worksparsepointer,inavector,outavector)
+     else
+        call parconfigexpomult_padded0_summa(dfww,workconfigpointer,workdfsparsepointer,inavector,outavector)
+     endif
   endif
 
 end subroutine parconfigexpomult_padded
 
 
-subroutine parconfigexpomult_padded0(www,workconfigpointer,worksparsepointer,inavector,outavector)
+
+subroutine parconfigexpomult_padded0_gather(www,workconfigpointer,worksparsepointer,inavector,outavector)
+  use fileptrmod
+  use r_parameters
+  use sparse_parameters
+  use ham_parameters   !! timefac
+  use mpimod
+  use configexpotimemod
+  use walkmod
+  use configptrmod
+  use sparseptrmod
+  implicit none
+  type(walktype),intent(in) :: www
+  type(CONFIGPTR),intent(in) :: workconfigpointer
+  type(SPARSEPTR),intent(in) :: worksparsepointer
+  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+  DATATYPE,allocatable :: intemp(:,:)
+  DATATYPE :: outtemp(numr,www%botconfig:www%topconfig)
+
+  call avectortime(3)
+
+  if (sparseconfigflag.eq.0) then
+     OFLWR "error, must use sparse for parconfigexpomult"; CFLST
+  endif
+  
+  allocate(intemp(numr,www%numconfig))
+
+!! TRANSFORM SECOND TO REDUCE COMMUNICATION?
+
+  if (www%topconfig-www%botconfig+1 .ne. 0) then
+     call basis_transformfrom_local(www,numr,inavector,intemp(:,www%botconfig:www%topconfig))
+  endif
+
+  call mpiallgather(intemp,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+
+  call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0)
+     
+  outavector(:,:)=0d0   !! PADDED
+
+  call basis_transformto_local(www,numr,outtemp,outavector)
+
+  outavector=outavector*timefac
+
+  deallocate(intemp)
+
+  call avectortime(2)
+
+end subroutine parconfigexpomult_padded0_gather
+
+
+
+subroutine parconfigexpomult_padded0_summa(www,workconfigpointer,worksparsepointer,inavector,outavector)
   use fileptrmod
   use r_parameters
   use sparse_parameters
@@ -314,7 +374,7 @@ subroutine parconfigexpomult_padded0(www,workconfigpointer,worksparsepointer,ina
   
   call avectortime(2)
 
-end subroutine parconfigexpomult_padded0
+end subroutine parconfigexpomult_padded0_summa
 
 
 
