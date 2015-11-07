@@ -514,19 +514,6 @@ subroutine configspinset_projector(www)
   enddo
 
 
-!!!TEMP
-!  print *, "TEMP OUTPUT",www%sss%numspinsets(:)
-!  do iproc=1,nprocs
-!     do iset=1,www%sss%numspinsets(iproc)
-!        print *, iset, www%sss%spinsetprojector(iset,iproc)%mat(:,:), www%sss%spinsetprojector(iset,iproc)%vects(:,:)
-!     enddo
-!  enddo
-!print *, "TEMPSTOP"
-!call mpistop()
-
-
-
-
   www%sss%maxspinsperproc=0
   ii=0
   do i=1,nprocs

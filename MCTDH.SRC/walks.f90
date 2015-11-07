@@ -425,8 +425,8 @@ subroutine walks(www)
         enddo
      enddo
      www%lastsinglewalkbyproc(iproc,config1)=www%numsinglewalks(config1)
-     www%firstsinglewalkbyproc(iproc+1:nprocs,config1)=www%numsinglewalks(config1)
-     www%lastsinglewalkbyproc(iproc+1:nprocs,config1)=www%numsinglewalks(config1)-1
+     www%firstsinglewalkbyproc(iproc+1:nprocs,config1)=www%numsinglewalks(config1)+1
+     www%lastsinglewalkbyproc(iproc+1:nprocs,config1)=www%numsinglewalks(config1)
 
      www%firstdoublewalkbyproc(1,config1)=1
      iproc=1
@@ -438,8 +438,8 @@ subroutine walks(www)
         enddo
      enddo
      www%lastdoublewalkbyproc(iproc,config1)=www%numdoublewalks(config1)
-     www%firstdoublewalkbyproc(iproc+1:nprocs,config1)=www%numdoublewalks(config1)
-     www%lastdoublewalkbyproc(iproc+1:nprocs,config1)=www%numdoublewalks(config1)-1
+     www%firstdoublewalkbyproc(iproc+1:nprocs,config1)=www%numdoublewalks(config1)+1
+     www%lastdoublewalkbyproc(iproc+1:nprocs,config1)=www%numdoublewalks(config1)
 
   end do
 
@@ -910,8 +910,8 @@ subroutine hops(www)
         enddo
      enddo
      www%lastsinglehopbyproc(iproc,iconfig)=www%numsinglehops(iconfig)
-     www%firstsinglehopbyproc(iproc+1:nprocs,iconfig)=www%numsinglehops(iconfig)
-     www%lastsinglehopbyproc(iproc+1:nprocs,iconfig)=www%numsinglehops(iconfig)-1
+     www%firstsinglehopbyproc(iproc+1:nprocs,iconfig)=www%numsinglehops(iconfig)+1
+     www%lastsinglehopbyproc(iproc+1:nprocs,iconfig)=www%numsinglehops(iconfig)
 
      www%firstdoublehopbyproc(1,iconfig)=1
      iproc=1
@@ -923,8 +923,8 @@ subroutine hops(www)
         enddo
      enddo
      www%lastdoublehopbyproc(iproc,iconfig)=www%numdoublehops(iconfig)
-     www%firstdoublehopbyproc(iproc+1:nprocs,iconfig)=www%numdoublehops(iconfig)
-     www%lastdoublehopbyproc(iproc+1:nprocs,iconfig)=www%numdoublehops(iconfig)-1
+     www%firstdoublehopbyproc(iproc+1:nprocs,iconfig)=www%numdoublehops(iconfig)+1
+     www%lastdoublehopbyproc(iproc+1:nprocs,iconfig)=www%numdoublehops(iconfig)
 
   end do
 
@@ -970,7 +970,7 @@ subroutine hops(www)
 
   call mpibarrier()
   if (myrank.eq.1) then
-     print *, "HOPS BY PROC :::::::::::::::::::::::"
+     print *, "HOPS BY PROC ON PROCESSOR 1 :::::::::::::::::::::::"
      print *, "   singles:"
      write(*,'(I5,A2,1000I7)') myrank,": ",numsinglehopsbyproc(:)/1000
      print *, "   doubles:"
