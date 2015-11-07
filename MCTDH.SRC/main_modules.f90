@@ -205,7 +205,7 @@ module dfconmod
   implicit none
 
 type dfcontype
-  integer, allocatable :: dfincludedmask(:), dfincludedconfigs(:)
+  integer, allocatable :: dfincludedmask(:), dfincludedconfigs(:), dfincludedindex(:)
 
 !! careful!  parconfigsplit, configstart, configend, etc.
 
@@ -236,7 +236,8 @@ module walkmod
        configlist(  :  ,   : )               !! LIST OF CONFIGURATIONS ndof, numconfig
      integer, allocatable :: &
        configmvals(  : ), &     !! if spfrestrict, their mvalues : numconfig
-       configugvals(  : )       !! ugvalues based on info in spfugvals
+       configugvals(  : ), &       !! ugvalues based on info in spfugvals
+       configorder(:)
 
      integer :: nspf=0, numelec=0, ndof=0
      integer :: allspinproject=0

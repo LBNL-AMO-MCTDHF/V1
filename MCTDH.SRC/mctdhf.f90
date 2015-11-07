@@ -205,7 +205,6 @@ program mctdhf
   integer :: i,spfsloaded,totread,ifile,readnum
   DATATYPE, allocatable ::  tempvals(:)
   DATATYPE, allocatable :: bigavector(:,:), bigspfs(:,:)
-  integer,allocatable :: notusedintarr(:)
   logical :: logcheckpar
 
   spfsloaded=0
@@ -218,8 +217,6 @@ program mctdhf
   open(nullfileptr,file="/dev/null",status="unknown")
 
   call MPIstart()
-
-  allocate(notusedintarr(nprocs))
 
   call openfile()
   write(mpifileptr, *) " ****************************************************************************"     
@@ -310,7 +307,7 @@ program mctdhf
   www%singlewalkflag=1
   www%doublewalkflag=1
 
-  call fast_newconfiglist(www,notusedintarr,notusedintarr,0);   
+  call fast_newconfiglist(www)
 
   num_config=www%numconfig
   allocate(configs_perproc(nprocs))
@@ -376,7 +373,7 @@ program mctdhf
      bioww%singlewalkflag=1
      bioww%doublewalkflag=0
 
-     call fast_newconfiglist(bioww,notusedintarr,notusedintarr,0);   
+     call fast_newconfiglist(bioww)
 
      call walkalloc(bioww);             call walks(bioww)
 
@@ -421,7 +418,7 @@ program mctdhf
      dfww%singlewalkflag=1
      dfww%doublewalkflag=1
 
-     call fast_newconfiglist(dfww,www%allbotdfconfigs(:),www%alltopdfconfigs(:),1);   
+     call set_newconfiglist(www,dfww)
 
      call walkalloc(dfww);             call walks(dfww)
 

@@ -476,10 +476,17 @@ subroutine fluxgtau0(alg,www,bioww)
   endif
 
   call mpibarrier()
+  OFLWR "   ....Go ft...."; CFL
+  call mpibarrier()
 
   do imc=1,mcscfnum
      call zfftf_wrap(2*curtime+1,ftgtau(-curtime:curtime,imc))
   enddo
+
+  call mpibarrier()
+  OFLWR "   ....Go ft pulse...."; CFL
+  call mpibarrier()
+
   do i=1,3
      call zfftf_wrap(2*curtime+1,pulseft(-curtime:curtime,i))
   enddo

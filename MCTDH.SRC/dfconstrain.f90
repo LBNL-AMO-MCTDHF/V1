@@ -99,6 +99,7 @@ subroutine init_dfcon(www)
   integer,allocatable :: dfnotconfigs(:)
 
   allocate(www%ddd%dfincludedmask(www%numconfig), www%ddd%dfincludedconfigs(www%numconfig), &
+       www%ddd%dfincludedindex(www%numconfig),&
        dfnotconfigs(www%numconfig),  www%dfconfsperproc(nprocs), &
        www%allbotdfconfigs(nprocs),www%alltopdfconfigs(nprocs))
 
@@ -110,6 +111,7 @@ subroutine init_dfcon(www)
      www%ddd%dfincludedmask(:)=1; dfnotconfigs(:)=(-1)
      do i=1,www%numconfig
         www%ddd%dfincludedconfigs(i)=i
+        www%ddd%dfincludedindex(i)=i
      enddo
      www%numdfconfigs=www%numconfig; nondfconfigs=0
      www%dfconfsperproc(:)=www%configsperproc(:)
@@ -121,12 +123,15 @@ subroutine init_dfcon(www)
   else
 
      www%ddd%dfincludedmask(:)=0;  www%ddd%dfincludedconfigs(:)=(-1);  dfnotconfigs(:)=(-1)
+     www%ddd%dfincludedindex(:)=(-999)
+
      www%numdfconfigs=0;  nondfconfigs=0
 
      do i=1,www%numconfig
         if (allowedconfig0(www,www%configlist(:,i),www%dfrestrictflag)) then 
            www%numdfconfigs=www%numdfconfigs+1
            www%ddd%dfincludedmask(i)=1;        www%ddd%dfincludedconfigs(www%numdfconfigs)=i
+           www%ddd%dfincludedindex(i)=www%numdfconfigs
         else
            nondfconfigs=nondfconfigs+1;        dfnotconfigs(nondfconfigs)=i
         endif

@@ -471,8 +471,7 @@ subroutine walks(www)
      call mpiallgather_i(www%doublewalk,        www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
   endif
 
-
-
+  call mpibarrier()
 
   do config1=www%configstart,www%configend
      idiag=0
@@ -729,6 +728,9 @@ subroutine hops(www)
   type(walktype) :: www
   integer :: ii,iwalk,iconfig,totsinglehops,totdoublehops,totsinglewalks,totdoublewalks,ihop,flag,iproc,isize
 
+  integer :: numsinglehopsbyproc(nprocs), numdoublehopsbyproc(nprocs)
+
+
   allocate(www%numsinglehops(www%configstart:www%configend),&
        www%numdoublehops(www%configstart:www%configend))
   allocate( www%singlediaghop(www%configstart:www%configend),&
@@ -957,6 +959,25 @@ subroutine hops(www)
   endif
 
 
+  numsinglehopsbyproc(:)=0;   numdoublehopsbyproc(:)=0
+
+  do iconfig=www%botconfig,www%topconfig
+     numsinglehopsbyproc(:)=numsinglehopsbyproc(:) + &
+          (www%lastsinglehopbyproc(:,iconfig)-www%firstsinglehopbyproc(:,iconfig)+1)
+     numdoublehopsbyproc(:)=numdoublehopsbyproc(:) + &
+          (www%lastdoublehopbyproc(:,iconfig)-www%firstdoublehopbyproc(:,iconfig)+1)
+  enddo
+
+  call mpibarrier()
+  if (myrank.eq.1) then
+     print *, "HOPS BY PROC :::::::::::::::::::::::"
+     print *, "   singles:"
+     write(*,'(I5,A2,1000I7)') myrank,": ",numsinglehopsbyproc(:)/1000
+     print *, "   doubles:"
+     write(*,'(I5,A2,1000I7)') myrank,": ",numdoublehopsbyproc(:)/1000
+     print *
+  endif
+  call mpibarrier()
 
 
   OFLWR "GOT HOPS:  "

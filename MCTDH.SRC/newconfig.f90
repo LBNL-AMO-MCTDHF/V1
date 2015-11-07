@@ -41,7 +41,7 @@ function getconfiguration(thisconfig,www)
      flag=1
      do k=1,www%numelec
 
-        aa=www%configlist(2*k-1,j);        bb=thisconfig(2*k-1)
+        aa=www%configlist(2*k-1,www%configorder(j));        bb=thisconfig(2*k-1)
 
         if (aa .ne. bb) then
            flag=0
@@ -87,13 +87,13 @@ function getconfiguration(thisconfig,www)
 
            flag=1
            do k=1,www%ndof
-              if (thisconfig(k).ne.www%configlist(k,j)) then
+              if (thisconfig(k).ne.www%configlist(k,www%configorder(j))) then
                  flag=0
                  exit
               endif
            enddo
            if (flag.eq.1) then
-              getconfiguration=j
+              getconfiguration=www%configorder(j)
               return
            endif
         enddo
@@ -278,11 +278,54 @@ function getugval(www,thisconfig)
 end function getugval
 
 
+subroutine re_order_configlist(configlist,configorder,ndof,numconfig,numspinblocks,spinblockstart,spinblockend)
+  use fileptrmod
+  use sparse_parameters
+  implicit none
+  integer,intent(in) :: numconfig, ndof, numspinblocks
+  integer,intent(inout) :: spinblockstart(numspinblocks),spinblockend(numspinblocks),&
+       configlist(ndof,numconfig),configorder(numconfig)
+  integer :: ii,jj,kk,iconfig
+  integer,allocatable :: newstart(:),newend(:),newlist(:,:),neworder(:)
+
+  allocate(newstart(numspinblocks),newend(numspinblocks),newlist(ndof,numconfig),&
+       neworder(numconfig))
+
+  iconfig=0
+  do ii=1,numspinblocks
+     jj=mod((ii-1)*sparseprime,numspinblocks)+1
+     newstart(ii)=iconfig+1
+     newend(ii)=newstart(ii) + (spinblockend(jj)-spinblockstart(jj))
+
+
+     newlist(:,newstart(ii):newend(ii)) = configlist(:,spinblockstart(jj):spinblockend(jj))
+
+!!     iconfig=iconfig+(spinblockend(jj)-spinblockstart(jj))+1
+
+     do kk=spinblockstart(jj),spinblockend(jj)
+        iconfig=iconfig+1
+        neworder(kk)=configorder(iconfig)
+     enddo
+  enddo
+  if (iconfig.ne.numconfig) then
+     OFLWR "CONFIGCHEK ERROR ",iconfig,numconfig; CFLST
+  endif
+
+  configlist(:,:)=newlist(:,:)
+  spinblockstart(:)=newstart(:)
+  spinblockend(:)=newend(:)
+  configorder(:)=neworder(:)
+
+  deallocate(newstart,newend,newlist,neworder)
+
+end subroutine re_order_configlist
+
+
 
 !! GETS CONFIGURATION LIST (SLATER DETERMINANTS NOT SPIN EIGFUNCTS)
 !!  AT BEGINNING. 
 
-subroutine fast_newconfiglist(www,inbotconfigs,intopconfigs,inbottopflag)
+subroutine fast_newconfiglist(www)
   use output_parameters
   use fileptrmod
   use basis_parameters
@@ -290,7 +333,6 @@ subroutine fast_newconfiglist(www,inbotconfigs,intopconfigs,inbottopflag)
   use walkmod
   use mpimod
   implicit none
-  integer,intent(in) :: inbottopflag,inbotconfigs(nprocs),intopconfigs(nprocs)
   type(walktype) :: www
   logical :: alreadycounted
   integer, parameter :: max_numelec=80
@@ -345,7 +387,8 @@ subroutine fast_newconfiglist(www,inbotconfigs,intopconfigs,inbottopflag)
   if (alreadycounted) then
      OFLWR "Go fast_newconfiglist, getting configurations";CFL
      deallocate(bigspinblockstart,bigspinblockend)
-     allocate(www%configlist(www%ndof,www%numconfig), www%configmvals(www%numconfig), www%configugvals(www%numconfig),&
+     allocate(www%configlist(www%ndof,www%numconfig), www%configmvals(www%numconfig), &
+          www%configugvals(www%numconfig), www%configorder(www%numconfig), &
           bigspinblockstart(numspinblocks+2*nprocs),bigspinblockend(numspinblocks+2*nprocs))
 
      www%configlist(:,:)=0; www%configmvals(:)=0; www%configugvals(:)=0
@@ -752,103 +795,110 @@ endif
   enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo
   enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo;  enddo
 
-
-  if (alreadycounted) then
-     if (iconfig/=www%numconfig) then
-        OFLWR "Configlist err",iconfig,www%numconfig; CFLST
-     endif
-
-     OFLWR "     ...Done fast_newconfiglist"; CFL
-  else
+  if (.not.alreadycounted) then
      www%numconfig=iconfig
      OFLWR; WRFL "FASTNEWCONFIG: NUMBER OF CONFIGURATIONS ",www%numconfig; WRFL; CFL
      if (www%numconfig.le.0) then
         OFLWR "NO configs."; CFLST
      endif
-  endif
 
-  if (alreadycounted) then
-     if (nss.ne.numspinblocks) then
-        OFLWR "NUMSPINBLOCKS ERR",nss,numspinblocks; CFLST
-     endif
-
-     if (inbottopflag.ne.0) then
-        www%allbotconfigs(:)=inbotconfigs(:)
-        www%alltopconfigs(:)=intopconfigs(:)
-     else
-        www%alltopconfigs(:)=0
-        jj=1
-        do ii=1,nprocs-1
-           do while (bigspinblockend(jj).lt.www%numconfig*ii/nprocs)
-              www%alltopconfigs(ii:)=bigspinblockend(jj)
-              jj=jj+1
-           enddo
-        enddo
-        www%alltopconfigs(nprocs)=www%numconfig
-        www%allbotconfigs(1)=1
-        do ii=2,nprocs
-           www%allbotconfigs(ii)=www%alltopconfigs(ii-1)+1
-        enddo
-     endif
-
-     OFLWR; WRFL "BOTWALKS /TOPWALKS",www%numconfig
-     do ii=1,nprocs
-        WRFL www%allbotconfigs(ii),www%alltopconfigs(ii),www%alltopconfigs(ii)-www%allbotconfigs(ii)+1
-     enddo
-     WRFL; CFL
-     do ii=1,nprocs     
-        if (www%allbotconfigs(ii).gt.www%alltopconfigs(ii)+1) then   
-           OFLWR "ERROR, NUMBER OF CONFIGS PROCESSOR ",ii," IS LESS THAN ZERO", www%alltopconfigs(ii)-www%allbotconfigs(ii)+1 ;CFLST
-        endif
-     enddo
-
-     www%botconfig=www%allbotconfigs(myrank)
-     www%topconfig=www%alltopconfigs(myrank)
-
-     if (sparseconfigflag.eq.0) then
-        www%configstart=1
-        www%configend=www%numconfig
-        www%parconsplit=0
-     else
-        www%configstart=www%botconfig
-        www%configend=www%topconfig
-     endif
-
-     www%configsperproc(:)=www%alltopconfigs(:) - www%allbotconfigs(:) + 1
-
-     if (www%parconsplit.eq.0) then
-        www%firstconfig=1
-        www%lastconfig=www%numconfig
-     else
-        www%firstconfig=www%botconfig
-        www%lastconfig=www%topconfig
-     endif
-
-     www%localnconfig=www%lastconfig-www%firstconfig+1
-
-     ii=0
-     www%maxconfigsperproc=0
-     do i=1,nprocs
-        ii=ii+www%configsperproc(i)
-        if (www%configsperproc(i).gt.www%maxconfigsperproc) then
-           www%maxconfigsperproc=www%configsperproc(i)
-        endif
-     enddo
-     if (ii.ne.www%numconfig) then
-        OFLWR "WTF EERRROROR", ii, www%numconfig; CFLST
-     endif
-     do i=1,nprocs
-        if (www%configsperproc(i).lt.0) then
-           OFLWR "Configs per proc lt 0 for proc ",i,"nprocs must be greater than numconfig???  Can't do."; CFLST
-        endif
-     enddo
-
-  else
      numspinblocks=nss
      OFLWR "NUMSPINBLOCKS, MAXSPINBLOCKSIZE FASTCONFIG",nss,maxssize;CFL
   endif
 
-  if (alreadycounted.and.iprintconfiglist.ne.0) then
+  if (www%numconfig.eq.0) then
+     OFLWR "No configs!! "; CFLST
+  endif
+
+  enddo !! ppp
+
+
+  if (iconfig/=www%numconfig) then
+     OFLWR "Configlist err",iconfig,www%numconfig; CFLST
+  endif
+
+  do iconfig=1,www%numconfig
+     www%configorder(iconfig)=iconfig
+  enddo
+  if (sparseprime.ne.1) then
+     OFLWR "Reordering configlist with sparseprime=",sparseprime; CFL
+
+     call re_order_configlist(www%configlist(:,:),www%configorder(:),www%ndof,www%numconfig,numspinblocks,bigspinblockstart(:),bigspinblockend(:))
+  endif
+
+  OFLWR "     ...Done fast_newconfiglist"; CFL
+
+  if (nss.ne.numspinblocks) then
+     OFLWR "NUMSPINBLOCKS ERR",nss,numspinblocks; CFLST
+  endif
+
+  www%alltopconfigs(:)=0
+  jj=1
+  do ii=1,nprocs-1
+     do while (bigspinblockend(jj).lt.www%numconfig*ii/nprocs)
+        www%alltopconfigs(ii:)=bigspinblockend(jj)
+        jj=jj+1
+     enddo
+  enddo
+  www%alltopconfigs(nprocs)=www%numconfig
+  www%allbotconfigs(1)=1
+  do ii=2,nprocs
+     www%allbotconfigs(ii)=www%alltopconfigs(ii-1)+1
+  enddo
+
+  OFLWR; WRFL "BOTWALKS /TOPWALKS",www%numconfig
+  do ii=1,nprocs
+     WRFL www%allbotconfigs(ii),www%alltopconfigs(ii),www%alltopconfigs(ii)-www%allbotconfigs(ii)+1
+  enddo
+  WRFL; CFL
+  do ii=1,nprocs     
+     if (www%allbotconfigs(ii).gt.www%alltopconfigs(ii)+1) then   
+        OFLWR "ERROR, NUMBER OF CONFIGS PROCESSOR ",ii," IS LESS THAN ZERO", www%alltopconfigs(ii)-www%allbotconfigs(ii)+1 ;CFLST
+     endif
+  enddo
+  
+  www%botconfig=www%allbotconfigs(myrank)
+  www%topconfig=www%alltopconfigs(myrank)
+  
+  if (sparseconfigflag.eq.0) then
+     www%configstart=1
+     www%configend=www%numconfig
+     www%parconsplit=0
+  else
+     www%configstart=www%botconfig
+     www%configend=www%topconfig
+  endif
+
+  www%configsperproc(:)=www%alltopconfigs(:) - www%allbotconfigs(:) + 1
+
+  if (www%parconsplit.eq.0) then
+     www%firstconfig=1
+     www%lastconfig=www%numconfig
+  else
+     www%firstconfig=www%botconfig
+     www%lastconfig=www%topconfig
+  endif
+
+  www%localnconfig=www%lastconfig-www%firstconfig+1
+
+  ii=0
+  www%maxconfigsperproc=0
+  do i=1,nprocs
+     ii=ii+www%configsperproc(i)
+     if (www%configsperproc(i).gt.www%maxconfigsperproc) then
+        www%maxconfigsperproc=www%configsperproc(i)
+     endif
+  enddo
+  if (ii.ne.www%numconfig) then
+     OFLWR "WTF EERRROROR", ii, www%numconfig; CFLST
+  endif
+  do i=1,nprocs
+     if (www%configsperproc(i).lt.0) then
+        OFLWR "Configs per proc lt 0 for proc ",i,"nprocs must be greater than numconfig???  Can't do."; CFLST
+     endif
+  enddo
+
+  if (iprintconfiglist.ne.0) then
      OFLWR "CONFIGLIST"
      do ii=1,www%numconfig
 !        write(mpifileptr,'(A12,I12,A4)',advance='no') "  Config ", ii," is "
@@ -858,14 +908,7 @@ endif
      WRFL; CFLST
   endif
 
-  if (alreadycounted) then
-     deallocate(bigspinblockstart,bigspinblockend)
-  endif
-
-  if (www%numconfig.eq.0) then
-     OFLWR "No configs!! "; CFLST
-  endif
-  enddo !! ppp
+  deallocate(bigspinblockstart,bigspinblockend)
 
 
 contains
@@ -914,4 +957,71 @@ end subroutine fast_newconfiglist
 
 
 
+subroutine set_newconfiglist(wwin,wwout)
+  use output_parameters
+  use fileptrmod
+  use basis_parameters
+  use sparse_parameters
+  use walkmod
+  use mpimod
+  implicit none
+  type(walktype),intent(in) :: wwin
+  type(walktype),intent(inout) :: wwout
+  integer :: iconfig,jconfig,ii
 
+  wwout%dflevel=wwin%dfrestrictflag
+
+  allocate(wwout%configsperproc(nprocs),wwout%alltopconfigs(nprocs),wwout%allbotconfigs(nprocs))
+
+  wwout%configsperproc(:)=wwin%dfconfsperproc(:)
+  wwout%allbotconfigs(:)=wwin%allbotdfconfigs(:)
+  wwout%alltopconfigs(:)=wwin%alltopdfconfigs(:)
+
+  wwout%numconfig=wwin%numdfconfigs
+
+  wwout%maxconfigsperproc=wwin%maxdfconfsperproc
+
+  allocate(wwout%configlist(wwout%ndof,wwout%numconfig),wwout%configmvals(wwout%numconfig),&
+       wwout%configugvals(wwout%numconfig), wwout%configorder(wwout%numconfig))
+
+  do iconfig=1,wwout%numconfig
+     wwout%configlist(:,iconfig)=wwin%configlist(:,wwin%ddd%dfincludedconfigs(iconfig))
+     wwout%configmvals(iconfig)=wwin%configmvals(wwin%ddd%dfincludedconfigs(iconfig))
+     wwout%configugvals(iconfig)=wwin%configugvals(wwin%ddd%dfincludedconfigs(iconfig))
+  enddo
+
+  jconfig=0
+  do iconfig=1,wwin%numconfig
+     if (wwin%ddd%dfincludedmask(wwin%configorder(iconfig)).ne.0) then
+        jconfig=jconfig+1
+        wwout%configorder(jconfig)=wwin%ddd%dfincludedindex(wwin%configorder(iconfig))
+     endif
+  enddo
+  if (jconfig.ne.wwout%numconfig) then
+     OFLWR "CHECKFAIL JCONFIG", jconfig,wwout%numconfig; CFLST
+  endif
+
+  wwout%botconfig=wwin%botdfconfig
+  wwout%topconfig=wwin%topdfconfig
+  
+  if (sparseconfigflag.eq.0) then
+     wwout%configstart=1
+     wwout%configend=wwin%numdfconfigs
+  else
+     wwout%configstart=wwin%botdfconfig
+     wwout%configend=wwin%topdfconfig
+  endif
+
+  wwout%parconsplit=wwin%parconsplit
+
+  if (wwout%parconsplit.eq.0) then
+     wwout%firstconfig=1
+     wwout%lastconfig=wwout%numconfig
+  else
+     wwout%firstconfig=wwout%botconfig
+     wwout%lastconfig=wwout%topconfig
+  endif
+
+  wwout%localnconfig=(wwout%lastconfig-wwout%firstconfig+1)
+
+end subroutine set_newconfiglist
