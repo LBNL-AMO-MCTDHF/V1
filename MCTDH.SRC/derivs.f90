@@ -14,7 +14,7 @@
 
 !! FOR ODEX PROPAGATION (NOT DEFAULT)
 
-recursive subroutine gbs_derivs(notusedint,thistime,psi,psip,notuseddbl,notusedint2)
+subroutine gbs_derivs(notusedint,thistime,psi,psip,notuseddbl,notusedint2)
   use parameters
   implicit none
   integer :: notusedint,notusedint2
@@ -24,7 +24,7 @@ recursive subroutine gbs_derivs(notusedint,thistime,psi,psip,notuseddbl,notusedi
 end subroutine gbs_derivs
 
 
-recursive subroutine all_derivs(thistime,xpsi, xpsip)
+subroutine all_derivs(thistime,xpsi, xpsip)
   use parameters
   use mpimod
   use configmod
@@ -99,7 +99,7 @@ recursive subroutine all_derivs(thistime,xpsi, xpsip)
 end subroutine all_derivs
 
 
-recursive subroutine gbs_linear_derivs(notusedint,thistime,spfsin,spfsout,notuseddbl,notusedint2)
+subroutine gbs_linear_derivs(notusedint,thistime,spfsin,spfsout,notuseddbl,notusedint2)
   use parameters
   implicit none
   DATATYPE :: spfsin(spfsize, nspf), spfsout(spfsize, nspf)
@@ -109,7 +109,7 @@ recursive subroutine gbs_linear_derivs(notusedint,thistime,spfsin,spfsout,notuse
 end subroutine gbs_linear_derivs
 
 
-recursive subroutine spf_linear_derivs(thistime,spfsin,spfsout)
+subroutine spf_linear_derivs(thistime,spfsin,spfsout)
   use parameters
   implicit none
   DATATYPE :: spfsin(spfsize, nspf), spfsout(spfsize, nspf)
@@ -120,7 +120,7 @@ end subroutine spf_linear_derivs
 
 !! MAIN DERIVATIVE ROUTINE FOR RK, EXPO
 
-recursive subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
+subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
   use linearmod
   use parameters
   use xxxmod  !! frozenexchange
@@ -183,7 +183,7 @@ recursive subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
 end subroutine spf_linear_derivs0
 
 
-recursive subroutine driving_linear_derivs(thistime,spfsin,spfsout)
+subroutine driving_linear_derivs(thistime,spfsin,spfsout)
   use linearmod
   use parameters
   use xxxmod  !! driving orbs
@@ -241,7 +241,7 @@ end subroutine driving_linear_derivs
 !! where P is projector onto opspfs
 !! H is inverse denmat times reducedham
 
-recursive subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,conflag)
+subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,conflag)
   use parameters
   use mpimod
   use configptrmod
@@ -525,7 +525,7 @@ end subroutine op_gmat_thirdorder
 !!     this is actually the conjugate-transpose of the operator, even if cmctdh
 !!     (not used)
 
-recursive subroutine actreducedconjg0(thistime,inspfs, projspfs, outspfs, ireduced, projflag,conflag)
+subroutine actreducedconjg0(thistime,inspfs, projspfs, outspfs, ireduced, projflag,conflag)
   use parameters
   implicit none
   DATATYPE, intent(in) :: inspfs(spfsize,nspf),projspfs(spfsize,nspf)
@@ -548,7 +548,7 @@ recursive subroutine actreducedconjg0(thistime,inspfs, projspfs, outspfs, ireduc
 end subroutine actreducedconjg0
 
 
-recursive subroutine wmult(inspfs, outspfs, ireduced)
+subroutine wmult(inspfs, outspfs, ireduced)
   use parameters
   use xxxmod
   implicit none
@@ -599,7 +599,7 @@ recursive subroutine wmult(inspfs, outspfs, ireduced)
 
 end subroutine wmult
 
-recursive subroutine denmult(inspfs, outspfs, ireduced)
+subroutine denmult(inspfs, outspfs, ireduced)
   use parameters
   use xxxmod
   implicit none

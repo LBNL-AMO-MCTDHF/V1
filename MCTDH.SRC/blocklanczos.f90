@@ -156,7 +156,7 @@ subroutine nullgramschmidt_fast(m,logpar)
 end subroutine nullgramschmidt_fast
 
 
-recursive subroutine parblockconfigmult(inavector,outavector)
+subroutine parblockconfigmult(inavector,outavector)
   use r_parameters
   use sparse_parameters
   use configmod
@@ -182,7 +182,7 @@ recursive subroutine parblockconfigmult(inavector,outavector)
 end subroutine parblockconfigmult
 
 
-recursive subroutine parblockconfigmult0_gather(www,cptr,sptr,inavector,outavector)
+subroutine parblockconfigmult0_gather(www,cptr,sptr,inavector,outavector)
   use fileptrmod
   use r_parameters
   use sparse_parameters
@@ -232,7 +232,7 @@ end subroutine parblockconfigmult0_gather
 
 
 
-recursive subroutine parblockconfigmult0_summa(www,cptr,sptr,inavector,outavector)
+subroutine parblockconfigmult0_summa(www,cptr,sptr,inavector,outavector)
   use fileptrmod
   use r_parameters
   use sparse_parameters

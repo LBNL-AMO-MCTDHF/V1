@@ -359,7 +359,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 end subroutine init_project
 
 
-recursive subroutine mult_bigspf(inbigspf,outbigspf)
+subroutine mult_bigspf(inbigspf,outbigspf)
   use myparams
   implicit none
   DATATYPE,intent(in) :: inbigspf(totpoints)
@@ -372,7 +372,7 @@ recursive subroutine mult_bigspf(inbigspf,outbigspf)
 end subroutine mult_bigspf
 
 
-recursive subroutine mult_bigspf0(inbigspf,outbigspf)
+subroutine mult_bigspf0(inbigspf,outbigspf)
   use myparams
   implicit none
   DATATYPE,intent(in) :: inbigspf(totpoints)
@@ -422,7 +422,7 @@ subroutine ivo_project(inbigspf,outbigspf)
 end subroutine ivo_project
 
   
-recursive subroutine mult_bigspf_ivo(inbigspf,outbigspf)
+subroutine mult_bigspf_ivo(inbigspf,outbigspf)
   use myparams
   use ivopotmod
   implicit none

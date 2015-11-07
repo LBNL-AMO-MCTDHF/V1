@@ -595,7 +595,7 @@ subroutine mult_reke() !in, out)
 print *, "DOME MULT reKE"; stop
 end subroutine mult_reke
 
-recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
+subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
   use myparams
   use pfileptrmod
   use myprojectmod
@@ -621,7 +621,7 @@ recursive subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,tim
 
 end subroutine call_twoe_matel
 
-recursive subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
+subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
   use myparams
   use pmpimod
   use pfileptrmod
@@ -852,7 +852,7 @@ end subroutine call_twoe_matelxxx
 
 
 
-recursive subroutine  op_tinv(twoeden03,twoereduced,allsize,circsize,&
+subroutine  op_tinv(twoeden03,twoereduced,allsize,circsize,&
      times1,times3,times4,times5,fttimes)
   use myparams
   use myprojectmod
@@ -895,7 +895,7 @@ end subroutine op_tinv
 !!
 !! ( c T-twiddle c T^-1) = 1 + (c T-twiddle c - T) T^-1
 
-recursive subroutine  op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,&
+subroutine  op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,&
      times1,times3,times4,times5,fttimes)
   use myparams
   use pfileptrmod
@@ -967,7 +967,7 @@ subroutine scaled_operate_sub(notusedint,in,out)
 end subroutine scaled_operate_sub
 
 
-recursive subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
+subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
           times1,times3,times4,times5,fttimes)
   use myparams
   use pmpimod
@@ -1465,7 +1465,7 @@ end subroutine mult_allpar
 !!  zke_paropt=0   mult_circ_z   sendrecv
 !!  zke_paropt=1   mult_summa_z  SUMMA  scalable universal matrix multiplication algorithm (broadcast before)
 
-recursive subroutine mult_circ_gen(indim,in, out,option,howmany,timingdir,notiming)
+subroutine mult_circ_gen(indim,in, out,option,howmany,timingdir,notiming)
   use myparams
   use pmpimod
   use pfileptrmod
@@ -1488,7 +1488,7 @@ recursive subroutine mult_circ_gen(indim,in, out,option,howmany,timingdir,notimi
 end subroutine mult_circ_gen
 
 
-recursive subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
+subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
   use myparams
   use pmpimod
   use pfileptrmod
@@ -1587,7 +1587,7 @@ end subroutine mult_circ_gen0
 
 
 
-recursive subroutine mult_summa_gen(indim,in, out,option,howmany,timingdir,notiming)
+subroutine mult_summa_gen(indim,in, out,option,howmany,timingdir,notiming)
   use myparams
   use pmpimod
   use pfileptrmod
@@ -1610,7 +1610,7 @@ recursive subroutine mult_summa_gen(indim,in, out,option,howmany,timingdir,notim
 end subroutine mult_summa_gen
 
 
-recursive subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
+subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
   use myparams
   use pmpimod
   use pfileptrmod
@@ -1723,7 +1723,7 @@ subroutine mult_allone(in, out,idim,option,howmany)
 end subroutine mult_allone
 
 
-recursive subroutine mult_all0(in, out,idim,nnn,mmm,option)
+subroutine mult_all0(in, out,idim,nnn,mmm,option)
   use myparams
   use pfileptrmod
   use myprojectmod  
@@ -1833,7 +1833,7 @@ subroutine reinterpolate_orbs_complex(cspfs,indims,outcspfs,outdims,num)
 
 end subroutine reinterpolate_orbs_complex
 
-recursive subroutine mult_all0_big_gen_complex(in, out,indim,outdim,mat,nnn,mmm)
+subroutine mult_all0_big_gen_complex(in, out,indim,outdim,mat,nnn,mmm)
   implicit none
   integer :: mmm,nnn,jj,indim,outdim
   complex*16 :: in(nnn,indim,mmm),out(nnn,outdim,mmm),mat(outdim,indim)

@@ -235,7 +235,7 @@ end module
 
 !! SUBROUTINE PASSED TO EXPOKIT FOR ORBITAL PROPAGATION
 
-recursive subroutine jacopcompact(com_inspfs,com_outspfs)
+subroutine jacopcompact(com_inspfs,com_outspfs)
   use parameters
   implicit none
 
@@ -249,7 +249,7 @@ end subroutine jacopcompact
 
      
 
-recursive subroutine jacoperate(inspfs,outspfs)
+subroutine jacoperate(inspfs,outspfs)
   use parameters
   use jacmod
   use mpimod
@@ -638,7 +638,7 @@ end subroutine exposparseprop
 !! for derivative of PROJECTOR using derivative of spfs.     
 !!      on call inspfs is for example jacvectout
 
-recursive subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
+subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
   use parameters
   implicit none
   DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
@@ -716,7 +716,7 @@ end subroutine derproject
 
 
 
-recursive subroutine der_gmat(inspfs, outspfs, ireduced,thistime,prospfs, prospfderivs)
+subroutine der_gmat(inspfs, outspfs, ireduced,thistime,prospfs, prospfderivs)
   use parameters
   implicit none
   integer, intent(in) :: ireduced

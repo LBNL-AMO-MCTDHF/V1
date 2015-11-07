@@ -18,7 +18,7 @@ end subroutine ftset
 
 !! Old version myzfft1d() for intel, should not be needed; see myzfft1d_not() below
 
-recursive subroutine myzfft1d(in,out,dim,howmany)
+subroutine myzfft1d(in,out,dim,howmany)
   use ftoutmod
   use, intrinsic :: iso_c_binding
   implicit none
@@ -104,7 +104,7 @@ subroutine myzfft1d_slowindex_local(in,out,dim1,dim2,howmany)
 end subroutine myzfft1d_slowindex_local
 
 
-recursive subroutine myzfft1d0(blockdim,in,out,dim,howmany)
+subroutine myzfft1d0(blockdim,in,out,dim,howmany)
   use ftoutmod
   use, intrinsic :: iso_c_binding
   implicit none
@@ -179,7 +179,7 @@ recursive subroutine myzfft1d0(blockdim,in,out,dim,howmany)
 end subroutine myzfft1d0
 
 
-recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
+subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
   use ftoutmod
   use, intrinsic :: iso_c_binding
   implicit none
@@ -248,7 +248,7 @@ end subroutine myzfft3d
 #else
 
 
-recursive subroutine myzfft1d(in,out,dim,howmany)
+subroutine myzfft1d(in,out,dim,howmany)
   implicit none
   integer, intent(in) :: dim,howmany
   integer :: k
@@ -288,7 +288,7 @@ subroutine myzfft1d_slowindex_local(in,out,dim1,dim2,howmany)
 end subroutine myzfft1d_slowindex_local
 
 
-recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
+subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
   implicit none
   integer :: dim1,dim2,dim3,howmany
   complex*16, intent(in) :: in(dim1,dim2,dim3,howmany)
@@ -300,7 +300,7 @@ recursive subroutine myzfft3d(in,out,dim1,dim2,dim3,howmany)
 end subroutine myzfft3d
 
 
-recursive subroutine fftblock_withtranspose(inout,dim1,dim2,dim3,howmany)
+subroutine fftblock_withtranspose(inout,dim1,dim2,dim3,howmany)
   implicit none
   integer :: dim1,dim2,dim3,howmany
 !!!!  is dimensioned (dim1,dim2,dim3) on input. !!!!
@@ -323,7 +323,7 @@ end subroutine fftblock_withtranspose
 
 module mytransposemod
 contains
-recursive subroutine mytranspose(in,out,blocksize,howmany,times,nprocs1,nprocs2)
+subroutine mytranspose(in,out,blocksize,howmany,times,nprocs1,nprocs2)
   use pmpimod  !! box_comm
   implicit none
   integer,intent(in) :: blocksize,howmany,nprocs1,nprocs2
@@ -450,7 +450,7 @@ subroutine checkdivisible(number,divisor)
 end subroutine checkdivisible
 
 
-recursive subroutine myzfft3d_mpiwrap_forward(in,out,dim,howmany,placeopt)
+subroutine myzfft3d_mpiwrap_forward(in,out,dim,howmany,placeopt)
   implicit none
   integer, intent(in) :: dim,howmany,placeopt
   complex*16, intent(in) :: in(*)
@@ -458,7 +458,7 @@ recursive subroutine myzfft3d_mpiwrap_forward(in,out,dim,howmany,placeopt)
   call myzfft3d_mpiwrap0(in,out,dim,howmany,1,placeopt)
 end subroutine myzfft3d_mpiwrap_forward
 
-recursive subroutine myzfft3d_mpiwrap_backward(in,out,dim,howmany,placeopt)
+subroutine myzfft3d_mpiwrap_backward(in,out,dim,howmany,placeopt)
   implicit none
   integer, intent(in) :: dim,howmany,placeopt
   complex*16, intent(in) :: in(*)
@@ -466,7 +466,7 @@ recursive subroutine myzfft3d_mpiwrap_backward(in,out,dim,howmany,placeopt)
   call myzfft3d_mpiwrap0(in,out,dim,howmany,-1,placeopt)
 end subroutine myzfft3d_mpiwrap_backward
 
-recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
+subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
   use pmpimod
   implicit none
   integer :: dim,nulltimes(10),howmany,ii,direction,placeopt
@@ -519,7 +519,7 @@ recursive subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
 end subroutine myzfft3d_mpiwrap0
 
 
-recursive subroutine myzfft3d_par_forward(in,out,dim,times,howmany)
+subroutine myzfft3d_par_forward(in,out,dim,times,howmany)
   use pmpimod
   implicit none
   integer, intent(in) :: dim,howmany
@@ -536,7 +536,7 @@ recursive subroutine myzfft3d_par_forward(in,out,dim,times,howmany)
   end select
 end subroutine myzfft3d_par_forward
 
-recursive subroutine myzfft3d_par_backward(in,out,dim,times,howmany)
+subroutine myzfft3d_par_backward(in,out,dim,times,howmany)
   use pmpimod
   implicit none
   integer, intent(in) :: dim,howmany
@@ -560,7 +560,7 @@ end subroutine myzfft3d_par_backward
 !!! times(1) = copy  times(2) = conjg  times(3) = ft
 !!! from mytranspose times(4) = transpose   times(5) = mpi  times(6) = copy
 
-recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs1,nprocs2,direction,oplevel)
+subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs1,nprocs2,direction,oplevel)
   use mytransposemod
   implicit none
   integer, intent(in) :: dim,howmany,nprocs1,nprocs2,direction,oplevel

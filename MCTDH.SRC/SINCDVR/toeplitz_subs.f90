@@ -258,7 +258,7 @@ subroutine all3transpose(in,out,len,howmany)
 end subroutine all3transpose
 
 
-recursive subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany,placeopt)
+subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany,placeopt)
   implicit none
   integer :: totdim,howmany,placeopt
   real*8 :: rmultvector(2*totdim,2*totdim,2*totdim,howmany), rffback(2*totdim,2*totdim,2*totdim,howmany),&
@@ -273,7 +273,7 @@ recursive subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany
 end subroutine circ3d_sub_real
 
 
-recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeopt)
+subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeopt)
   implicit none
   integer :: totdim,howmany,ii,placeopt
   complex*16 ::  bigcirc(2*totdim,2*totdim,2*totdim,1,1,1), multvector(2*totdim,2*totdim,2*totdim,howmany),&
@@ -314,7 +314,7 @@ recursive subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeop
 end subroutine circ3d_sub
 
 
-recursive subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,dim1,dim2,dim3,times,howmany,placeopt)
+subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,dim1,dim2,dim3,times,howmany,placeopt)
   implicit none
   integer :: dim1,dim2,dim3,times(*),atime,btime,howmany,placeopt
   real*8 :: rmultvector(2*dim1,2*dim2,2*dim3,howmany), &
@@ -352,7 +352,7 @@ end subroutine circ3d_sub_real_mpi
 !!! times(5) multiply
 !!! times(6) 3d f.t.
 
-recursive subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany,placeopt)
+subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany,placeopt)
   implicit none
   integer :: dim1,dim2,dim3,times(*),howmany,placeopt
   complex*16 ::  multvector(2*dim1,2*dim2,2*dim3,howmany), &
@@ -404,7 +404,7 @@ end subroutine circ3d_sub_mpi
 
 
 
-!!$recursive subroutine convolve_3d(vec1,vec2,outvec,nbig,nsmall,howmany)
+!!$subroutine convolve_3d(vec1,vec2,outvec,nbig,nsmall,howmany)
 !!$  implicit none
 !!$  integer,intent(in) :: nbig,nsmall,howmany
 !!$  real*8,intent(in) :: vec1(-nbig:nbig,-nbig:nbig,-nbig:nbig,howmany),&

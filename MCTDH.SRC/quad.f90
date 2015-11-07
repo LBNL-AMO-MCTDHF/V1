@@ -89,7 +89,7 @@ end subroutine dgsolve0
 !!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-recursive subroutine quadoperate(notusedint,inspfs,outspfs)
+subroutine quadoperate(notusedint,inspfs,outspfs)
    use parameters
    implicit none
    integer :: notusedint
@@ -437,7 +437,7 @@ end subroutine nonsparsequadavector
 
 
 
-recursive subroutine paraamult(notusedint,inavectorspin,outavectorspin)
+subroutine paraamult(notusedint,inavectorspin,outavectorspin)
   use r_parameters
   use aaonedmod
   use configmod
@@ -455,7 +455,7 @@ end subroutine paraamult
 
 
 
-recursive subroutine parquadpreconsub(notusedint, inavectorspin,outavectorspin)
+subroutine parquadpreconsub(notusedint, inavectorspin,outavectorspin)
   use fileptrmod
   use r_parameters
   use sparse_parameters
@@ -475,7 +475,7 @@ recursive subroutine parquadpreconsub(notusedint, inavectorspin,outavectorspin)
 end subroutine parquadpreconsub
 
 
-recursive subroutine parquadpreconsub0(www,cptr,sptr,notusedint, inavectorspin,outavectorspin)
+subroutine parquadpreconsub0(www,cptr,sptr,notusedint, inavectorspin,outavectorspin)
   use fileptrmod
   use r_parameters
   use sparse_parameters
@@ -507,7 +507,7 @@ end subroutine parquadpreconsub0
 
 
 !!$
-!!$recursive subroutine parhrmult(lanblocknum,inavectorspin,outavectorspin)
+!!$subroutine parhrmult(lanblocknum,inavectorspin,outavectorspin)
 !!$  use parameters
 !!$  use aaonedmod
 !!$  implicit none

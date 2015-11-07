@@ -14,7 +14,7 @@ subroutine oneminusproject(inspfs, outspfs, prospfs)
 end subroutine
 
 
-recursive subroutine project(inspfs, outspfs, prospfs)
+subroutine project(inspfs, outspfs, prospfs)
   use parameters
   use opmod !! frozenspfs
   implicit none
@@ -70,7 +70,7 @@ end subroutine project
 
 
 
-recursive subroutine project_onfrozen(inspf, outspf)
+subroutine project_onfrozen(inspf, outspf)
   use parameters
   use opmod !! frozenspfs
   implicit none
