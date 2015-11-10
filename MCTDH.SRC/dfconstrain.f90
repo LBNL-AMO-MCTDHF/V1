@@ -704,7 +704,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
        projector(:,:,:,:,:), realrhomat(:,:,:,:,:,:), bigprojector(:,:,:,:,:), rhomatpairsbig(:,:,:,:), &
        realrhs(:,:,:), sing(:), rwork(:), rhomatpairscopy(:,:,:,:), rhomatpairsbigcopy(:,:,:,:), &
        rhomatpairscopy2(:,:,:,:), rhspairstemp2(:,:),&
-       mattemp(:,:),pseudoinv(:,:), rhspairsbigtemp(:,:), walknorm(:), temppairs(:,:),temppairsbig(:,:)
+       mattemp(:,:),pseudoinv(:,:), rhspairsbigtemp(:,:), temppairs(:,:),temppairsbig(:,:)
   complex*16, allocatable :: work(:)
 #ifdef REALGO
   integer, parameter :: zzz=1
@@ -712,7 +712,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
   integer, parameter :: zzz=2
 #endif
   real*8 :: time,   myconjg(zzz,zzz)  , oneone(zzz,zzz), iimag(zzz,zzz), myperm(zzz,zzz)
-  real*8 :: rrcond,rsum
+  real*8 :: rrcond
 
   if (drivingflag.ne.0) then
      OFLWR "Driving with dfconstraint not implemented yet"; CFLST
@@ -728,6 +728,11 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 #endif
 
   call system_clock(itime)
+
+!  OFLWR "*** GO CON ****"
+!  WRFL real(inavectors)
+!  WRFL;  CFL
+
 
   if (www%dfrestrictflag.le.www%dflevel) then
      OFLWR "WTF DFRESTRICT IS  ", www%dfrestrictflag,www%dflevel; CFLST
@@ -787,7 +792,6 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
        rhomatpairscopy2(zzz,isize,zzz,isize),rhspairstemp2(zzz,isize), &
        rhomatpairsbig(zzz,2*isize,zzz,isize),rhspairsbig(zzz,2*isize),rhspairsbigtemp(zzz,2*isize), &
        rhomatpairsbigcopy(zzz,2*isize,zzz,isize))
-  allocate(walknorm(2*isize))
   allocate(temppairs(zzz*isize,zzz*www%nspf**2),temppairsbig(2*zzz*isize,zzz*www%nspf**2))
 
 
@@ -810,7 +814,6 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
      rhspairstemp(:,:)=0d0
      rhomatpairsbigcopy(:,:,:,:)=0d0
      rhspairsbigtemp(:,:)=0d0
-     walknorm(:)=0d0
 
      call system_clock(jtime);     times(1)=times(1)+jtime-itime
 
@@ -843,29 +846,6 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
         if (conway.eq.2.or.conway.eq.3) then
            rhomat(:,:,:,:)=rhomat(:,:,:,:)/timefac
         endif
-
-        if (conway.eq.1) then
-           do ii=1,isize
-              walknorm(ii)=walknorm(ii)+sqrt(abs(DOT_PRODUCT(&
-                   RESHAPE(smallwalkvects(:,:,ipairs(1,ii),ipairs(2,ii)),(/(www%configend-www%configstart+1)*numr/)), &
-                   RESHAPE(smallwalkvects(:,:,ipairs(1,ii),ipairs(2,ii)),(/(www%configend-www%configstart+1)*numr/))))) 
-              walknorm(ii+isize)=walknorm(ii+isize)+sqrt(abs(DOT_PRODUCT(&
-                   RESHAPE(smallwalkvects(:,:,ipairs(2,ii),ipairs(1,ii)),(/(www%configend-www%configstart+1)*numr/)), &
-                   RESHAPE(smallwalkvects(:,:,ipairs(2,ii),ipairs(1,ii)),(/(www%configend-www%configstart+1)*numr/))))) 
-           enddo
-        else
-           do ii=1,isize
-              rsum=sqrt(abs(DOT_PRODUCT(&
-                   RESHAPE(smallwalkvects(:,:,ipairs(1,ii),ipairs(2,ii)),(/(www%configend-www%configstart+1)*numr/)), &
-                   RESHAPE(smallwalkvects(:,:,ipairs(1,ii),ipairs(2,ii)),(/(www%configend-www%configstart+1)*numr/)))) &
-                   +abs(DOT_PRODUCT(&
-                   RESHAPE(smallwalkvects(:,:,ipairs(2,ii),ipairs(1,ii)),(/(www%configend-www%configstart+1)*numr/)), &
-                   RESHAPE(smallwalkvects(:,:,ipairs(2,ii),ipairs(1,ii)),(/(www%configend-www%configstart+1)*numr/)))))
-              walknorm(ii)=walknorm(ii)+rsum
-              walknorm(ii+isize)=walknorm(ii+isize)+rsum
-           enddo
-        endif
-
 
         call system_clock(jtime);        times(6)=times(6)+jtime-itime;     itime=jtime
         
@@ -910,6 +890,10 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
            call mympireduce(rhs,www%nspf**2)
         endif
 
+!        OFLWR "RHS"
+!        WRFL real(rhs)
+!        WRFL; CFL
+
         call system_clock(jtime);        times(11)=times(11)+jtime-itime;     itime=jtime
 
         call assigncomplexvec(realrhs(:,:,:),rhs(:,:), www%nspf**2)
@@ -934,8 +918,6 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
      enddo    !!! IMC
 
      call system_clock(itime)
-
-     walknorm(:)=sqrt(walknorm(:))
 
      if (conway.ne.1.and.conway.ne.3) then
 
@@ -963,17 +945,19 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
      else
         
-        if (connormflag.ne.0) then
-           do ii=1,2*isize
-              rhomatpairsbigcopy(:,ii,:,:)=rhomatpairsbigcopy(:,ii,:,:)/max(1d-12,walknorm(ii))
-              rhspairsbigtemp(:,ii)=rhspairsbigtemp(:,ii)/max(1d-12,walknorm(ii))
-           enddo
-        endif
-
         mattemp(:,:)= &
              MATMUL(TRANSPOSE(RESHAPE(rhomatpairsbigcopy(:,:,:,:),(/2*isize*zzz,isize*zzz/))),RESHAPE(rhomatpairsbigcopy(:,:,:,:),(/2*isize*zzz,isize*zzz/)))
 
+!        OFLWR "MATTEMP",lioreg
+!        WRFL real(mattemp)
+!        WRFL; CFL
+
         call realinvmatsmooth(mattemp,isize*zzz,lioreg)
+
+!        OFLWR "MATTEMPnow",lioreg
+!        WRFL real(mattemp)
+!        WRFL; CFL
+
         pseudoinv(:,:)=MATMUL(mattemp,TRANSPOSE(RESHAPE(rhomatpairsbigcopy(:,:,:,:),(/2*isize*zzz,isize*zzz/))))
         call DGEMV('N',zzz*isize,2*zzz*isize,1d0,pseudoinv(:,:),isize*zzz,rhspairsbigtemp,1,0d0,rhspairs(:,:),1)
 
@@ -997,6 +981,9 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
      select case(iiyy)
      case(1)
         cptr%xconmatel(:,:)=  tempmatel(:,:)
+
+!        OFLWR "****CON",cptr%xconmatel(1,3); CFL
+
      case(2)
         cptr%xconmatelxx(:,:)=  tempmatel(:,:)
      case(3)
@@ -1009,6 +996,8 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
   enddo
 
+!!  OFLWR "TEMPSTOP" ; CFLST
+
   deallocate(&
        avectorp,   avector,    &
        smallwalkvects,         rhs,          rhomat,  &
@@ -1018,7 +1007,6 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
        rhomatpairscopy2,rhspairstemp2, &
        rhomatpairsbig,  rhspairsbig, rhspairsbigtemp, &
        rhomatpairsbigcopy, &
-       walknorm, &
        sing,  work,  rwork,temppairs,temppairsbig)
 
 end subroutine get_dfconstraint0

@@ -143,7 +143,6 @@ integer :: conway=0                              !! for constraintflag=2, dirac 
                                                  !!   3=Lagrangian with epsilon times McLachlan
 real*8 :: conprop=1d-1                           !! epsilon for conway=3
 real*8 :: condamp=1
-integer :: connormflag=0  !! normalize columns for conway=1 or 3
 integer :: liosize
 end module constraint_parameters
 module denreg_parameters
