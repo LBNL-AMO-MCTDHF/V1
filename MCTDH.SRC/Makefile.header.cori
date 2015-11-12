@@ -1,0 +1,27 @@
+  
+MPIFLAG = -D MPIFLAG
+FFTFLAG = -D FFTWFLAG -D MPIFLAG
+PGFFLAG = 
+
+ARGO=arg.o
+
+AR=xiar
+CC = cc
+FC = ftn -openmp -par-affinity=compact
+F90 = ftn -openmp -par-affinity=compact
+
+LAPACK =   -mkl
+	
+LOADFLAGS = 
+
+MYINCLUDE=
+MYINCLUDE=/global/homes/d/djhaxton/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT/MCTDH.SRC/FFTW-INCLUDE
+MYINCLUDE=/project/projectdirs/mp74/git/V1.0BETA.030315.INTELFFT.git/MCTDH.SRC/FFTW-INCLUDE
+
+FFLAGS = -fast
+F77FLAGS = -fast
+
+# not sure about xHost.
+
+FFLAGS = -O2 -xHost
+F77FLAGS = -O2 -xHost
