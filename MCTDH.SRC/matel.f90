@@ -174,11 +174,9 @@ subroutine pulse_matel(matrix_ptr,inspfs1,inspfs2)
         call lenmultiply(inspfs2(:,ispf),ttempspfszz(:,ispf), DATAZERO,DATAZERO,DATAONE)
      enddo
   else
-     do ispf=1,nspf
-        call velmultiply(inspfs2(:,ispf),ttempspfsxx(:,ispf), DATAONE,DATAZERO,DATAZERO)
-        call velmultiply(inspfs2(:,ispf),ttempspfsyy(:,ispf), DATAZERO,DATAONE,DATAZERO)
-        call velmultiply(inspfs2(:,ispf),ttempspfszz(:,ispf), DATAZERO,DATAZERO,DATAONE)
-     enddo
+     call velmultiply(nspf,inspfs2(:,:),ttempspfsxx(:,:), DATAONE,DATAZERO,DATAZERO)
+     call velmultiply(nspf,inspfs2(:,:),ttempspfsyy(:,:), DATAZERO,DATAONE,DATAZERO)
+     call velmultiply(nspf,inspfs2(:,:),ttempspfszz(:,:), DATAZERO,DATAZERO,DATAONE)
   endif
 !! pulsematel is proper order.
 

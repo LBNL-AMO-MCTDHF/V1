@@ -1346,15 +1346,32 @@ end function xilobattoint
 
 !! all proddrhos are the same. (and asymmetric individually)
 
-
-subroutine velmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
+subroutine velmultiply(howmany,spfsin,spfsout, myxtdpot0,myytdpot0,myztdpot)
   use myparams
   use myprojectmod
   implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: spfsin(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: spfsout(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(in) :: myxtdpot0,myztdpot,myytdpot0
+  integer :: ii
+
+  do ii=1,howmany
+     call velmultiply_one(spfsin(:,:,:,ii),spfsout(:,:,:,ii),myxtdpot0,myytdpot0,myztdpot)
+  enddo
+
+end subroutine velmultiply
+
+
+subroutine velmultiply_one(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
+  use myparams
+  use myprojectmod
+  implicit none
+  DATATYPE,intent(in) :: spfin(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: spfout(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(in) :: myxtdpot0,myztdpot,myytdpot0
   integer :: imval, qq, ieta , ixi, i 
-  DATATYPE :: spfin(numerad,lbig+1,-mbig:mbig), spfout(numerad,lbig+1,-mbig:mbig)
   complex*16 :: csum1,csum2,cfacreal,cfacimag
-  DATATYPE :: myxtdpot0,myztdpot,myytdpot0
   real*8 :: myrhotdpotreal,myrhotdpotimag
   DATATYPE :: work(lbig+1)
 
@@ -1479,7 +1496,7 @@ OFLWR "Velocity gauge not available for real time propagation"; CFLST
 
 
 
-end subroutine velmultiply
+end subroutine velmultiply_one
 
 
 !! freaking cloogey, might be running slowly due to constant use of (0d0,0d0)+(0d0,1d0)*imag(...)

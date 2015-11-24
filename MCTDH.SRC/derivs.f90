@@ -256,7 +256,7 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
   DATATYPE :: myxtdpot=0,  myytdpot=0, myztdpot=0, pots(3)=0d0
   DATATYPE ::   inspfs(spfsize,nspf), tempmult(spfsize),spfmult(spfsize,nspf*2),&  !! AUTOMATIC
        myspf(spfsize), spfinvr( spfsize,nspf ), spfr( spfsize,nspf ),  &
-       spfinvrsq(  spfsize,nspf),spfproderiv(  spfsize,nspf )
+       spfinvrsq(  spfsize,nspf),spfproderiv(  spfsize,nspf ), spfmult2(spfsize,nspf)
 
   if (tdflag.eq.1) then
      call vectdpot(thistime,velflag,pots)
@@ -319,6 +319,12 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
      call system_clock(itime)
      call mult_ke(spfinvrsq(:,:),spfmult,nspf,timingdir,notiming)
      call system_clock(jtime);  times(2)=times(2)+jtime-itime
+     if (tdflag.eq.1.and.velflag.ne.0) then
+        call system_clock(itime)
+        call velmultiply(nspf,spfinvr(:,:),spfmult2(:,:), myxtdpot,myytdpot,myztdpot)
+        spfmult(:,1:nspf)=spfmult(:,1:nspf)+spfmult2(:,:)
+        call system_clock(jtime);        times(4)=times(4)+jtime-itime
+     endif  !! tdpot
   endif
 
   do ispf=lowspf,highspf
@@ -343,8 +349,10 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
            call lenmultiply(spfr(:,ispf),myspf(:), myxtdpot,myytdpot,myztdpot)
            spfmult(:,ispf)=spfmult(:,ispf)+myspf(:)
         case default
-           call velmultiply(spfinvr(:,ispf),myspf(:), myxtdpot,myytdpot,myztdpot)
-           spfmult(:,ispf)=spfmult(:,ispf)+myspf(:)
+           if (multmanyflag.eq.0) then
+              call velmultiply(1,spfinvr(:,ispf),myspf(:), myxtdpot,myytdpot,myztdpot)
+              spfmult(:,ispf)=spfmult(:,ispf)+myspf(:)
+           endif
         end select
      endif  !! tdpot
 
@@ -387,7 +395,7 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
   if (constraintflag/=0.and.conflag.ne.0) then
      call system_clock(itime)
      call op_gmat(inspfs,spfmult,ireduced,thistime,projspfs)
-     outspfs(:,:)=outspfs(:,:)+spfmult(:,:)
+     outspfs(:,:)=outspfs(:,:)+spfmult(:,1:nspf)
      call system_clock(jtime);        times(9)=times(9)+jtime-itime
   endif
 

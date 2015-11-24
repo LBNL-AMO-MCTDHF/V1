@@ -563,18 +563,20 @@ subroutine mexpand_spfs() !inspfs,outspfs,numspf,spfmvals)
 print *, "NOT APPLICABLE MEXPAND SINCDVR"; stop
 end subroutine mexpand_spfs
 
-subroutine velmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
+
+subroutine velmultiply(howmany,spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   use myparams
   implicit none
-  DATATYPE,intent(in) :: spfin(totpoints),myxtdpot0,myytdpot0,myztdpot
-  DATATYPE,intent(out) :: spfout(totpoints)
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: spfin(totpoints,howmany),myxtdpot0,myytdpot0,myztdpot
+  DATATYPE,intent(out) :: spfout(totpoints,howmany)
   DATATYPE :: cx,cy,cz
 
   cx=(0d0,-1d0) * myxtdpot0
   cy=(0d0,-1d0) * myytdpot0
   cz=(0d0,-1d0) * myztdpot
 
-  call mult_general(2,cx,cy,cz,spfin,spfout,1,"booga",2)
+  call mult_general(2,cx,cy,cz,spfin,spfout,howmany,"booga",2)
 
 end subroutine velmultiply
 
