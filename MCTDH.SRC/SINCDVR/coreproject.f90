@@ -881,90 +881,92 @@ subroutine  op_tinv(twoeden03,twoereduced,allsize,circsize,&
 end subroutine op_tinv
 
 
-!! w = weights e^3itheta
-!! c = weights^1/3
-!!
-!! reduced = w^-1/2 T-twiddle^-1 w^-1/2 den
-!!         = c^-3/2 T-twiddle^-1 c^-3/2 den
-!!
-!! T-twiddle c^3/2 reduced = c^-3/2 den
-!!
-!! c T-twiddle c c^1/2 reduced = c^-1/2 den
-!!
-!! ( c T-twiddle c T^-1) (T c^1/2 reduced) = c^-1/2 den
-!!
-!! ( c T-twiddle c T^-1) = 1 + (c T-twiddle c - T) T^-1
 
-subroutine  op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,&
-     times1,times3,times4,times5,fttimes)
-  use myparams
-  use pfileptrmod
-  use myprojectmod
-  implicit none
-  integer, intent(in) :: allsize,circsize
-  integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
-  DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
-  DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
-  DATATYPE :: temp(totpoints,allsize)
-  integer :: ii,numcalled
-  external :: scaled_operate_sub, dummysub
+!!$TINV  !! w = weights e^3itheta
+!!$TINV  !! c = weights^1/3
+!!$TINV  !!
+!!$TINV  !! reduced = w^-1/2 T-twiddle^-1 w^-1/2 den
+!!$TINV  !!         = c^-3/2 T-twiddle^-1 c^-3/2 den
+!!$TINV  !!
+!!$TINV  !! T-twiddle c^3/2 reduced = c^-3/2 den
+!!$TINV  !!
+!!$TINV  !! c T-twiddle c c^1/2 reduced = c^-1/2 den
+!!$TINV  !!
+!!$TINV  !! ( c T-twiddle c T^-1) (T c^1/2 reduced) = c^-1/2 den
+!!$TINV  !!
+!!$TINV  !! ( c T-twiddle c T^-1) = 1 + (c T-twiddle c - T) T^-1
+!!$TINV  
+!!$TINV  subroutine  op_tinv_scaled(twoeden03,twoereduced,allsize,circsize,&
+!!$TINV       times1,times3,times4,times5,fttimes)
+!!$TINV    use myparams
+!!$TINV    use pfileptrmod
+!!$TINV    use myprojectmod
+!!$TINV    implicit none
+!!$TINV    integer, intent(in) :: allsize,circsize
+!!$TINV    integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
+!!$TINV    DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
+!!$TINV    DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
+!!$TINV    DATATYPE :: temp(totpoints,allsize)
+!!$TINV    integer :: ii,numcalled
+!!$TINV    external :: scaled_operate_sub, dummysub
+!!$TINV  
+!!$TINV    do ii=1,allsize
+!!$TINV       temp(:,ii)=twoeden03(:,ii)*invscaleweights16(:)  
+!!$TINV    enddo
+!!$TINV    twoereduced(:,:)=temp(:,:)  !! guess
+!!$TINV  
+!!$TINV    do ii=1,allsize
+!!$TINV       if (orbparflag) then
+!!$TINV          call dgsolve0(temp(:,ii),twoereduced(:,ii),numcalled, scaled_operate_sub, 0, dummysub, tinv_tol, totpoints, orblanorder, 1)
+!!$TINV       else
+!!$TINV          call dgsolve0(temp(:,ii),twoereduced(:,ii),numcalled, scaled_operate_sub, 0, dummysub, tinv_tol, totpoints, orblanorder, 0)
+!!$TINV       endif
+!!$TINV    enddo
+!!$TINV  
+!!$TINV    call mpibarrier()   !!TEMP?
+!!$TINV  
+!!$TINV    if (debugflag.ne.0) then
+!!$TINV       OFLWR "op_tinv_scaled: iterations=",numcalled; CFL
+!!$TINV    endif
+!!$TINV  
+!!$TINV    call op_tinv_notscaled(twoereduced(:,:),temp(:,:),allsize,circsize,&
+!!$TINV         times1,times3,times4,times5,fttimes)
+!!$TINV  
+!!$TINV    do ii=1,allsize
+!!$TINV       twoereduced(:,ii)=temp(:,ii)*invscaleweights16(:)
+!!$TINV    enddo
+!!$TINV  
+!!$TINV  end subroutine op_tinv_scaled
+!!$TINV  
+!!$TINV  
+!!$TINV  !! Op =  1 + (c T-twiddle c - T) T^-1
+!!$TINV  
+!!$TINV  subroutine scaled_operate_sub(notusedint,in,out)
+!!$TINV    use myparams
+!!$TINV    use myprojectmod
+!!$TINV    implicit none
+!!$TINV    integer :: notusedint
+!!$TINV    DATATYPE, intent(in) :: in(totpoints)
+!!$TINV    DATATYPE, intent(out) :: out(totpoints)
+!!$TINV    DATATYPE :: work(totpoints),temp(totpoints),temp2(totpoints)
+!!$TINV    integer :: times1,times3,times4,times5,fttimes(10)
+!!$TINV    real*8 :: pi=3.141592653589793d0
+!!$TINV  
+!!$TINV    call op_tinv_notscaled(in(:),temp(:),1,1,&
+!!$TINV         times1,times3,times4,times5,fttimes)
+!!$TINV  
+!!$TINV    work(:)=temp(:)/2d0/pi
+!!$TINV  
+!!$TINV    temp(:)=work(:)*scaleweights13(:)
+!!$TINV    call mult_ke_scaled(temp(:),temp2(:),1,"booga",2)
+!!$TINV    out(:)=temp2(:)*scaleweights13(:)
+!!$TINV  
+!!$TINV    call mult_ke000(work(:),temp(:),1,"booga",2)
+!!$TINV  
+!!$TINV    out(:) = out(:) + in(:) - temp(:)
+!!$TINV  
+!!$TINV  end subroutine scaled_operate_sub
 
-  do ii=1,allsize
-     temp(:,ii)=twoeden03(:,ii)*invscaleweights16(:)  
-  enddo
-  twoereduced(:,:)=temp(:,:)  !! guess
-
-  do ii=1,allsize
-     if (orbparflag) then
-        call dgsolve0(temp(:,ii),twoereduced(:,ii),numcalled, scaled_operate_sub, 0, dummysub, tinv_tol, totpoints, orblanorder, 1)
-     else
-        call dgsolve0(temp(:,ii),twoereduced(:,ii),numcalled, scaled_operate_sub, 0, dummysub, tinv_tol, totpoints, orblanorder, 0)
-     endif
-  enddo
-
-  call mpibarrier()   !!TEMP?
-
-  if (debugflag.ne.0) then
-     OFLWR "op_tinv_scaled: iterations=",numcalled; CFL
-  endif
-
-  call op_tinv_notscaled(twoereduced(:,:),temp(:,:),allsize,circsize,&
-       times1,times3,times4,times5,fttimes)
-
-  do ii=1,allsize
-     twoereduced(:,ii)=temp(:,ii)*invscaleweights16(:)
-  enddo
-
-end subroutine op_tinv_scaled
-
-
-!! Op =  1 + (c T-twiddle c - T) T^-1
-
-subroutine scaled_operate_sub(notusedint,in,out)
-  use myparams
-  use myprojectmod
-  implicit none
-  integer :: notusedint
-  DATATYPE, intent(in) :: in(totpoints)
-  DATATYPE, intent(out) :: out(totpoints)
-  DATATYPE :: work(totpoints),temp(totpoints),temp2(totpoints)
-  integer :: times1,times3,times4,times5,fttimes(10)
-  real*8 :: pi=3.141592653589793d0
-
-  call op_tinv_notscaled(in(:),temp(:),1,1,&
-       times1,times3,times4,times5,fttimes)
-
-  work(:)=temp(:)/2d0/pi
-
-  temp(:)=work(:)*scaleweights13(:)
-  call mult_ke_scaled(temp(:),temp2(:),1,"booga",2)
-  out(:)=temp2(:)*scaleweights13(:)
-
-  call mult_ke000(work(:),temp(:),1,"booga",2)
-
-  out(:) = out(:) + in(:) - temp(:)
-
-end subroutine scaled_operate_sub
 
 
 subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
@@ -1214,67 +1216,52 @@ end subroutine get_one_dipole
 
 
 
-
-subroutine mult_ke(in,out,howmany,timingdir,notiming)
-  use myparams
-  implicit none
-  integer :: howmany,notiming
-  character :: timingdir*(*)
-  DATATYPE,intent(in) :: in(totpoints,howmany)
-  DATATYPE, intent(out) :: out(totpoints,howmany)
-
-  if (scalingflag.eq.0) then
-     if (maskflag.ne.0) then
-        call mult_ke_mask(in, out,howmany,timingdir,notiming)
-     else
-        call mult_ke000(in, out,howmany,timingdir,notiming)
-     endif
-  else
-     call mult_ke_scaled(in,out,howmany,timingdir,notiming)
-  endif
-
-end subroutine mult_ke
-
-
-
-subroutine mult_ke_mask(in,out,howmany,timingdir,notiming)
+subroutine divide_mask(in,out,howmany)
   use myparams
   use myprojectmod
   implicit none
-  integer :: howmany,notiming,ii
-  character :: timingdir*(*)
+  integer :: howmany,ii
   DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3),howmany)
   DATATYPE, intent(out) :: out(numpoints(1),numpoints(2),numpoints(3),howmany)
   DATATYPE :: work(numpoints(1),numpoints(2),numpoints(3),howmany)
 
-  work(:,:,:,:)=in(:,:,:,:)
-
   do ii=1,numpoints(1)
-     work(ii,:,:,:)=work(ii,:,:,:)/maskfunction(1)%rmat(ii)
+     out(ii,:,:,:)=in(ii,:,:,:)/maskfunction(1)%rmat(ii)
   enddo
   do ii=1,numpoints(2)
-     work(:,ii,:,:)=work(:,ii,:,:)/maskfunction(2)%rmat(ii)
+     work(:,ii,:,:)=out(:,ii,:,:)/maskfunction(2)%rmat(ii)
   enddo
   do ii=1,numpoints(3)
-     work(:,:,ii,:)=work(:,:,ii,:)/maskfunction(3)%rmat(ii)
+     out(:,:,ii,:)=work(:,:,ii,:)/maskfunction(3)%rmat(ii)
   enddo
  
-  call mult_ke000(work, out, howmany,timingdir,notiming)
+end subroutine divide_mask
+
+
+subroutine mult_mask(in,out,howmany)
+  use myparams
+  use myprojectmod
+  implicit none
+  integer :: howmany,ii
+  DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3),howmany)
+  DATATYPE, intent(out) :: out(numpoints(1),numpoints(2),numpoints(3),howmany)
+  DATATYPE :: work(numpoints(1),numpoints(2),numpoints(3),howmany)
 
   do ii=1,numpoints(1)
-     out(ii,:,:,:)=out(ii,:,:,:)*maskfunction(1)%rmat(ii)
+     out(ii,:,:,:)=in(ii,:,:,:)*maskfunction(1)%rmat(ii)
   enddo
   do ii=1,numpoints(2)
-     out(:,ii,:,:)=out(:,ii,:,:)*maskfunction(2)%rmat(ii)
+     work(:,ii,:,:)=out(:,ii,:,:)*maskfunction(2)%rmat(ii)
   enddo
   do ii=1,numpoints(3)
-     out(:,:,ii,:)=out(:,:,ii,:)*maskfunction(3)%rmat(ii)
+     out(:,:,ii,:)=work(:,:,ii,:)*maskfunction(3)%rmat(ii)
   enddo
+ 
+end subroutine mult_mask
 
-end subroutine mult_ke_mask
 
 
-subroutine mult_ke_scaled(in,out,howmany,timingdir,notiming)
+subroutine mult_ke(in,out,howmany,timingdir,notiming)
   use myparams
   use myprojectmod
   implicit none
@@ -1284,176 +1271,107 @@ subroutine mult_ke_scaled(in,out,howmany,timingdir,notiming)
   DATATYPE, intent(out) :: out(totpoints,howmany)
   DATATYPE :: temp(totpoints,howmany),temp2(totpoints,howmany)   !!AUTOMATIC
 
-  do jj=1,howmany
-     out(:,jj)=in(:,jj) * scalediag(:) 
-  enddo
+  out(:,:)=0d0
 
   do jj=1,3
+     if (scalingflag.ne.0) then
+        do ii=1,howmany
+           temp(:,ii)=in(:,ii)*invjacobian(:,jj)
+        enddo
+     else if (maskflag.ne.0) then
+        call divide_mask(in,temp,howmany)
+     else
+        temp(:,:)=in(:,:)
+     endif
 
-     do ii=1,howmany
-        temp(:,ii)=in(:,ii)*invjacobian(:,jj)
-     enddo
+     call mult_allpar(1,jj,temp(:,:), temp2(:,:),howmany,timingdir,notiming)
 
-     call mult_easyke(temp(:,:), temp2(:,:),howmany,jj)
+     if (scalingflag.ne.0) then
+        do ii=1,howmany
+           out(:,ii)=out(:,ii)+temp2(:,ii)*invjacobian(:,jj)
+        enddo
+     else if (maskflag.ne.0) then
+        call mult_mask(temp2,temp,howmany)
+        out(:,:)=out(:,:)+temp(:,:)
+     else
+        out(:,:)=out(:,:)+temp2(:,:)
+     endif
 
-     do ii=1,howmany
-        out(:,ii)=out(:,ii)+temp2(:,ii)*invjacobian(:,jj)
-     enddo
   enddo
 
-end subroutine mult_ke_scaled
-
-
-
-subroutine mult_ke000(in, out,howmany,timingdir,notiming)
-  use myparams
-  implicit none
-  integer :: howmany,notiming
-  character :: timingdir*(*)
-  DATATYPE,intent(in) :: in(totpoints,howmany)
-  DATATYPE, intent(out) :: out(totpoints,howmany)
-
-  call mult_allpar(in,out,1,howmany,timingdir,notiming)
-
-end subroutine mult_ke000
-
-
-subroutine mult_easyke(in,out,howmany,which)
-  use myparams
-  use pfileptrmod
-  implicit none
-  integer,intent(in) :: howmany,which
-  DATATYPE,intent(in) :: in(totpoints,howmany)
-  DATATYPE, intent(out) :: out(totpoints,howmany)
-  if (which.lt.1.or.which.gt.3) then
-     OFLWR "which error easyke",which; CFLST
+  if (scalingflag.ne.0) then
+     do ii=1,howmany
+        out(:,ii)=out(:,ii) + in(:,ii) * scalediag(:) 
+     enddo
   endif
-  call mult_allpar(in,out,4+which,howmany,"booga",2)
 
-end subroutine mult_easyke
+end subroutine mult_ke
+
 
 
 subroutine mult_xderiv(in, out,howmany)
   use myparams
   implicit none
   integer :: howmany
-  character (len=200) :: timingdir="booga"
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE, intent(out) :: out(totpoints,howmany)
-  call mult_allpar(in,out,2,howmany,timingdir,2)
+  call mult_allpar(2,1,in,out,howmany,"booga",2)
 end subroutine mult_xderiv
 
 subroutine mult_yderiv(in, out,howmany)
   use myparams
   implicit none
   integer :: howmany
-  character (len=200) :: timingdir="booga"
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE, intent(out) :: out(totpoints,howmany)
-  call mult_allpar(in,out,3,howmany,timingdir,2)
+  call mult_allpar(2,2,in,out,howmany,"booga",2)
 end subroutine mult_yderiv
 
 subroutine mult_zderiv(in, out,howmany)
   use myparams
   implicit none
   integer :: howmany
-  character (len=200) :: timingdir="booga"
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE, intent(out) :: out(totpoints,howmany)
-  call mult_allpar(in,out,4,howmany,timingdir,2)
+  call mult_allpar(2,3,in,out,howmany,"booga",2)
 end subroutine mult_zderiv
 
 
-subroutine mult_allpar(in, out,inoption,howmany,timingdir,notiming)
+!! option=1 ke    option=2 first derivative
+
+subroutine mult_allpar(option,idim, in, out,howmany,timingdir,notiming)
   use myparams
   use pmpimod
   use pfileptrmod
   implicit none
-  integer :: idim,inoption,option,howmany,notiming
+  integer :: idim,option,howmany,notiming
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE, intent(out) :: out(totpoints,howmany)
-  DATATYPE ::       temp(totpoints,howmany)   !! AUTOMATIC
-  logical :: dodim(3)
   character :: timingdir*(*)
 
   if (griddim.ne.3) then
      OFLWR "ERWRESTOPPP"; CFLST
   endif
 
-  if (inoption.lt.1.or.inoption.gt.7) then
-     OFLWR "OWWOWORE WHAT?"; CFLST
-     option=99
+  if (option.ne.1.and.option.ne.2) then
+     OFLWR "OWWOWORE WHAT?", option; CFLST
   endif
-  dodim(:)=.false.
 
-  if (inoption.eq.1.or.inoption.gt.4) then
-     option=1                    !! KE options 1, 5,6,7
+  if (.not.orbparflag.or.idim.lt.orbparlevel) then
+
+     call mult_allone(in,out,idim,option,howmany)
+
   else
-     option=2                    !! first derivative options 2,3,4
-  endif
 
-  if (inoption.eq.1) then
-     dodim(:)=.true.
-  else 
-     dodim(mod(inoption-2,3)+1)=.true.
-  endif
+     select case(zke_paropt)
+     case(0)
+        call mult_circ_gen(idim,in,out,option,howmany,timingdir,notiming)
+     case(1)
+        call mult_summa_gen(idim,in,out,option,howmany,timingdir,notiming)
+     case default
+        OFLWR "Error, zke_paropt not recognized",zke_paropt; CFLST
+     end select
 
-  out(:,:)=0d0
-
-  if (.not.orbparflag) then
-     if (nbox(1).ne.1.or.nbox(2).ne.1.or.nbox(3).ne.1) then
-        OFLWR "OOOFSSxxxF",nbox; CFLST
-     endif
-     do idim=1,griddim
-        if (dodim(idim)) then
-           call mult_allone(in,temp,idim,option,howmany)
-           out(:,:)=out(:,:)+temp(:,:)
-        endif
-     enddo
-  else
-!! CHECK
-     do idim=1,orbparlevel-1
-        if (nbox(idim).ne.1) then
-           OFLWR "OOOFSSFxx",idim,nbox(idim),1; CFLST
-        endif
-     enddo
-     do idim=orbparlevel,3
-        select case (orbparlevel)
-        case(3)
-           if (nbox(idim).ne.nprocs) then
-              OFLWR "OOOFSSF"; CFLST
-           endif
-        case(2)
-           if (nbox(idim).ne.sqnprocs) then
-              OFLWR "OOOFSSF"; CFLST
-           endif
-        case(1)
-           if (nbox(idim).ne.cbnprocs) then
-              OFLWR "OOOFSSF"; CFLST
-           endif
-        end select
-     enddo
-!! END CHECK
-     
-     do idim=1,orbparlevel-1
-        if (dodim(idim)) then
-           call mult_allone(in,temp,idim,option,howmany)
-           out(:,:)=out(:,:)+temp(:,:)
-        endif
-     enddo
-     do idim=orbparlevel,3
-        if (dodim(idim)) then
-           select case(zke_paropt)
-           case(0)
-              call mult_circ_gen(idim,in,temp,option,howmany,timingdir,notiming)
-           case(1)
-              call mult_summa_gen(idim,in,temp,option,howmany,timingdir,notiming)
-           case default
-              OFLWR "Error, zke_paropt not recognized",zke_paropt; CFLST
-           end select
-           out(:,:)=out(:,:)+temp(:,:)
-        endif
-     enddo
   endif
 
 end subroutine mult_allpar
