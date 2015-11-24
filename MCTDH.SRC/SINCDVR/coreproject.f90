@@ -566,22 +566,38 @@ end subroutine mexpand_spfs
 subroutine velmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   use myparams
   implicit none
-  DATATYPE :: spfin(totpoints),spfout(totpoints),myxtdpot0,myytdpot0,myztdpot,&
-       work(totpoints)
-  spfout(:)=0d0
-  if (abs(myxtdpot0).gt.0d0) then
-     call mult_xderiv(spfin,work,1)
-     spfout(:)=spfout(:)+work(:)*(0d0,1d0)*myxtdpot0  * (-1)
-  endif
-  if (abs(myytdpot0).gt.0d0) then
-     call mult_yderiv(spfin,work,1)
-     spfout(:)=spfout(:)+work(:)*(0d0,1d0)*myytdpot0  * (-1)
-  endif
-  if (abs(myztdpot).gt.0d0) then
-     call mult_zderiv(spfin,work,1)
-     spfout(:)=spfout(:)+work(:)*(0d0,1d0)*myztdpot   * (-1)
-  endif
+  DATATYPE,intent(in) :: spfin(totpoints),myxtdpot0,myytdpot0,myztdpot
+  DATATYPE,intent(out) :: spfout(totpoints)
+  DATATYPE :: cx,cy,cz
+
+  cx=(0d0,-1d0) * myxtdpot0
+  cy=(0d0,-1d0) * myytdpot0
+  cz=(0d0,-1d0) * myztdpot
+
+  call mult_general(2,cx,cy,cz,spfin,spfout,1,"booga",2)
+
 end subroutine velmultiply
+
+
+!subroutine velmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
+!  use myparams
+!  implicit none
+!  DATATYPE :: spfin(totpoints),spfout(totpoints),myxtdpot0,myytdpot0,myztdpot,&
+!       work(totpoints)
+!  spfout(:)=0d0
+!  if (abs(myxtdpot0).gt.0d0) then
+!     call mult_xderiv(spfin,work,1)
+!     spfout(:)=spfout(:)+work(:)*(0d0,1d0)*myxtdpot0  * (-1)
+!  endif
+!  if (abs(myytdpot0).gt.0d0) then
+!     call mult_yderiv(spfin,work,1)
+!     spfout(:)=spfout(:)+work(:)*(0d0,1d0)*myytdpot0  * (-1)
+!  endif
+!  if (abs(myztdpot).gt.0d0) then
+!     call mult_zderiv(spfin,work,1)
+!     spfout(:)=spfout(:)+work(:)*(0d0,1d0)*myztdpot   * (-1)
+!  endif
+!end subroutine velmultiply
 
 subroutine imvelmultiply() !spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
 print *, "DOME imVELMULTIPLY SINCDVR"; stop
@@ -1260,81 +1276,124 @@ subroutine mult_mask(in,out,howmany)
 end subroutine mult_mask
 
 
-
 subroutine mult_ke(in,out,howmany,timingdir,notiming)
   use myparams
   use myprojectmod
   implicit none
-  integer :: howmany,notiming,ii,jj
-  character :: timingdir*(*)
+  integer,intent(in) :: howmany,notiming
+  character,intent(in) :: timingdir*(*)
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE, intent(out) :: out(totpoints,howmany)
+
+  call mult_general(1,DATAONE,DATAONE,DATAONE,in,out,howmany,timingdir,notiming)
+
+end subroutine mult_ke
+
+
+!! option=1 ke   option=2 first deriv
+
+subroutine mult_general(option,xcoef,ycoef,zcoef,in,out,howmany,timingdir,notiming)
+  use myparams
+  use myprojectmod
+  implicit none
+  integer, intent(in) :: option,howmany,notiming
+  integer :: ii,jj
+  character,intent(in) :: timingdir*(*)
+  DATATYPE, intent(in) :: in(totpoints,howmany), xcoef, ycoef, zcoef
+  DATATYPE, intent(out) :: out(totpoints,howmany)
   DATATYPE :: temp(totpoints,howmany),temp2(totpoints,howmany)   !!AUTOMATIC
+  DATATYPE :: mycoefs(3)
 
   out(:,:)=0d0
 
+  if (option.eq.2) then 
+     mycoefs(:) = (/ xcoef,ycoef,zcoef /)
+  else
+     mycoefs(:) = (/ 1d0, 1d0, 1d0 /)
+  endif
+
   do jj=1,3
+
+  if (abs(mycoefs(jj)).gt.0d0) then
+
      if (scalingflag.ne.0) then
-        do ii=1,howmany
-           temp(:,ii)=in(:,ii)*invjacobian(:,jj)
-        enddo
+        if (option.eq.1) then        !! KE
+           do ii=1,howmany
+              temp(:,ii)=in(:,ii)*invjacobian(:,jj)
+           enddo
+        else                         !! FIRST DER
+           do ii=1,howmany
+              temp(:,ii)=in(:,ii)*invsqrtjacobian(:,jj)
+           enddo
+        endif
      else if (maskflag.ne.0) then
         call divide_mask(in,temp,howmany)
      else
         temp(:,:)=in(:,:)
      endif
 
-     call mult_allpar(1,jj,temp(:,:), temp2(:,:),howmany,timingdir,notiming)
+     call mult_allpar(option,jj,temp(:,:), temp2(:,:),howmany,timingdir,notiming)
 
      if (scalingflag.ne.0) then
-        do ii=1,howmany
-           out(:,ii)=out(:,ii)+temp2(:,ii)*invjacobian(:,jj)
-        enddo
+        if (option.eq.1) then        !! KE
+           do ii=1,howmany
+              out(:,ii)=out(:,ii)+temp2(:,ii)*invjacobian(:,jj)   * mycoefs(jj)
+           enddo
+        else                         !! FIRST DER
+           do ii=1,howmany
+              out(:,ii)=out(:,ii)+temp2(:,ii)*invsqrtjacobian(:,jj)   * mycoefs(jj)
+           enddo
+        endif
      else if (maskflag.ne.0) then
         call mult_mask(temp2,temp,howmany)
-        out(:,:)=out(:,:)+temp(:,:)
+        out(:,:)=out(:,:)+temp(:,:)   * mycoefs(jj)
      else
-        out(:,:)=out(:,:)+temp2(:,:)
+        out(:,:)=out(:,:)+temp2(:,:)   * mycoefs(jj)
      endif
+
+  endif
 
   enddo
 
-  if (scalingflag.ne.0) then
-     do ii=1,howmany
-        out(:,ii)=out(:,ii) + in(:,ii) * scalediag(:) 
-     enddo
+  if (option.eq.1) then
+     if (scalingflag.ne.0) then
+        do ii=1,howmany
+           out(:,ii)=out(:,ii) + in(:,ii) * scalediag(:) 
+        enddo
+     endif
   endif
 
-end subroutine mult_ke
+end subroutine mult_general
 
 
 
-subroutine mult_xderiv(in, out,howmany)
-  use myparams
-  implicit none
-  integer :: howmany
-  DATATYPE,intent(in) :: in(totpoints,howmany)
-  DATATYPE, intent(out) :: out(totpoints,howmany)
-  call mult_allpar(2,1,in,out,howmany,"booga",2)
-end subroutine mult_xderiv
+!subroutine mult_xderiv(in, out,howmany)
+!  use myparams
+!  implicit none
+!  integer :: howmany
+!  DATATYPE,intent(in) :: in(totpoints,howmany)
+!  DATATYPE, intent(out) :: out(totpoints,howmany)
+!  call mult_allpar(2,1,in,out,howmany,"booga",2)
+!end subroutine mult_xderiv
+!
+!subroutine mult_yderiv(in, out,howmany)
+!  use myparams
+!  implicit none
+!  integer :: howmany
+!  DATATYPE,intent(in) :: in(totpoints,howmany)
+!  DATATYPE, intent(out) :: out(totpoints,howmany)
+!  call mult_allpar(2,2,in,out,howmany,"booga",2)
+!end subroutine mult_yderiv
+!
+!subroutine mult_zderiv(in, out,howmany)
+!  use myparams
+!  implicit none
+!  integer :: howmany
+!  DATATYPE,intent(in) :: in(totpoints,howmany)
+!  DATATYPE, intent(out) :: out(totpoints,howmany)
+!  call mult_allpar(2,3,in,out,howmany,"booga",2)
+!end subroutine mult_zderiv
 
-subroutine mult_yderiv(in, out,howmany)
-  use myparams
-  implicit none
-  integer :: howmany
-  DATATYPE,intent(in) :: in(totpoints,howmany)
-  DATATYPE, intent(out) :: out(totpoints,howmany)
-  call mult_allpar(2,2,in,out,howmany,"booga",2)
-end subroutine mult_yderiv
-
-subroutine mult_zderiv(in, out,howmany)
-  use myparams
-  implicit none
-  integer :: howmany
-  DATATYPE,intent(in) :: in(totpoints,howmany)
-  DATATYPE, intent(out) :: out(totpoints,howmany)
-  call mult_allpar(2,3,in,out,howmany,"booga",2)
-end subroutine mult_zderiv
 
 
 !! option=1 ke    option=2 first derivative

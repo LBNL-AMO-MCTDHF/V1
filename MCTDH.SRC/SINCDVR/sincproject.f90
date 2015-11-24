@@ -32,6 +32,7 @@ module myprojectmod
 
        jacobian(:,:),&         !! jacobian(:,1) should only be a function of x, etc.
        invjacobian(:,:),&
+       invsqrtjacobian(:,:),&
        scalediag(:),&
        invsqrtscaleweights(:),&
        scaleweights13(:), &
@@ -65,6 +66,7 @@ subroutine myprojectalloc()
   
   if (scalingflag.ne.0) then
      allocate(          jacobian(totpoints,3),invjacobian(totpoints,3), &
+          invsqrtjacobian(totpoints,3), &
           scalediag(totpoints),&
           invsqrtscaleweights(totpoints),scaleweights13(totpoints),&
           invscaleweights13(totpoints),scaleweights16(totpoints),&
