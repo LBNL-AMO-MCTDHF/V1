@@ -1571,7 +1571,7 @@ subroutine mult_general_withtranspose(option,xcoef,ycoef,zcoef,in,out,howmany,ti
            temp(:,:)=inwork(:,:)
         endif
 
-        call mult_allpar(option,jj,temp(:,:), temp2(:,:),howmany,timingdir,notiming)
+        call mult_allpar(option,1,temp(:,:), temp2(:,:),howmany,timingdir,notiming)
 
         if (scalingflag.ne.0) then
            if (option.eq.1) then        !! KE
