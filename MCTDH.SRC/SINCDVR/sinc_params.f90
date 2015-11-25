@@ -68,6 +68,8 @@ real*8 :: loadedocc(200)=2d0
 !! XXSNIPXX 
 !! INTERNAL
 
+logical :: transmultflag=.true.
+
 integer :: orbtargetflag=0
 DATATYPE :: orbtarget=DATAZERO
 

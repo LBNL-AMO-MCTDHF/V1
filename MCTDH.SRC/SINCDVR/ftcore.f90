@@ -321,9 +321,7 @@ end subroutine fftblock_withtranspose
 !! times(1) = transpose   times(2) = mpi  times(3) = copy
 !!   (123) -> (231)
 
-module mytransposemod
-contains
-subroutine mytranspose(in,out,blocksize,howmany,times,nprocs1,nprocs2)
+subroutine mytranspose_complex(in,out,blocksize,howmany,times,nprocs1,nprocs2)
   use pmpimod  !! box_comm
   implicit none
   integer,intent(in) :: blocksize,howmany,nprocs1,nprocs2
@@ -437,8 +435,8 @@ subroutine mytranspose(in,out,blocksize,howmany,times,nprocs1,nprocs2)
 
   call myclock(btime); times(3)=times(3)+btime-atime;
 
-end subroutine mytranspose
-end module  
+end subroutine mytranspose_complex
+
   
 
 subroutine checkdivisible(number,divisor)
@@ -561,7 +559,6 @@ end subroutine myzfft3d_par_backward
 !!! from mytranspose times(4) = transpose   times(5) = mpi  times(6) = copy
 
 subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs1,nprocs2,direction,oplevel)
-  use mytransposemod
   implicit none
   integer, intent(in) :: dim,howmany,nprocs1,nprocs2,direction,oplevel
   complex*16, intent(in) :: in(dim**3/nprocs1/nprocs2,howmany)
@@ -598,13 +595,13 @@ subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs1,nprocs2,direction,ople
 
      select case(oplevel)
      case(3)
-        call mytranspose(&
+        call mytranspose_complex(&
              mywork,  &
              out,  &
              dim/nprocs1, &
              howmany,times(4:),nprocs1,nprocs1)
      case(2)
-        call mytranspose(&
+        call mytranspose_complex(&
              mywork,  &
              out,  &
              dim/nprocs1, &

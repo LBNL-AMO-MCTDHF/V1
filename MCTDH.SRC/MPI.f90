@@ -1324,11 +1324,9 @@ subroutine mympialltoall(input, output, count)
   return
   ierr=ierr; count=count  !! avoid warn unused
 #else
-#ifdef REALGO
-  call mpi_alltoall(input(:,:),count,MPI_DOUBLE_PRECISION,output(:,:),count,MPI_DOUBLE_PRECISION,MPI_COMM_WORLD,ierr)
-#else
-  call mpi_alltoall(input(:,:),count,MPI_DOUBLE_COMPLEX,output(:,:),count,MPI_DOUBLE_COMPLEX,MPI_COMM_WORLD,ierr)
-#endif
+
+  call mpi_alltoall(input(:,:),count,MPIDATATYPE,output(:,:),count,MPIDATATYPE,MPI_COMM_WORLD,ierr)
+
   if (ierr.ne.0) then
      OFLWR "ERROR ALLTOALL ", ierr; CFLST
   endif
@@ -1383,6 +1381,33 @@ subroutine mympialltoall_complex_local(input, output, count,INCOMM)
 #endif
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympialltoall_complex_local
+
+
+
+subroutine mympialltoall_local(input, output, count,INCOMM)
+  use fileptrmod
+  use mpimod
+  implicit none
+  integer :: ierr, count,INCOMM
+  DATATYPE, intent(in) :: input(count,nprocs)
+  DATATYPE, intent(out) :: output(count,nprocs)
+
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+#ifndef MPIFLAG
+  output(:,:)=input(:,:)
+  return
+  ierr=0;   !! avoid warn unused
+#else
+
+  call mpi_alltoall(input(:,:),count,MPIDATATYPE,output(:,:),count,MPIDATATYPE,INCOMM,ierr)
+
+  if (ierr.ne.0) then
+     OFLWR "ERROR ALLTOALL   local ", ierr; CFLST
+  endif
+#endif
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+
+end subroutine mympialltoall_local
 
 
 

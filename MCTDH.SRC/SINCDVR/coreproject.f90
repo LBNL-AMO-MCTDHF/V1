@@ -1297,6 +1297,36 @@ end subroutine mult_ke
 subroutine mult_general(option,xcoef,ycoef,zcoef,in,out,howmany,timingdir,notiming)
   use myparams
   use myprojectmod
+  use pmpimod
+  use pfileptrmod
+  implicit none
+  integer, intent(in) :: option,howmany,notiming
+  character,intent(in) :: timingdir*(*)
+  DATATYPE, intent(in) :: in(totpoints,howmany), xcoef, ycoef, zcoef
+  DATATYPE, intent(out) :: out(totpoints,howmany)
+
+#ifdef MPIFLAG
+  if (orbparflag.and.transmultflag) then
+     if (orbparlevel.eq.1) then
+        OFLWR "ERROR, transmultflag=.true. not possible with orbparlevel=1"; CFLST
+     endif
+     call mult_general_withtranspose(option,xcoef,ycoef,zcoef,in,out,howmany,timingdir,notiming)
+  else
+#endif
+
+     call mult_general_withbcast(option,xcoef,ycoef,zcoef,in,out,howmany,timingdir,notiming)
+
+#ifdef MPIFLAG
+  endif
+#endif
+
+end subroutine mult_general
+
+!! option=1 ke   option=2 first deriv
+
+subroutine mult_general_withbcast(option,xcoef,ycoef,zcoef,in,out,howmany,timingdir,notiming)
+  use myparams
+  use myprojectmod
   implicit none
   integer, intent(in) :: option,howmany,notiming
   integer :: ii,jj
@@ -1365,8 +1395,232 @@ subroutine mult_general(option,xcoef,ycoef,zcoef,in,out,howmany,timingdir,notimi
      endif
   endif
 
-end subroutine mult_general
+end subroutine mult_general_withbcast
 
+!! option=1 ke   option=2 first deriv
+
+!! ASSUMES CUBE (EVERYTHING THE SAME X,Y,Z)
+!! ASSUMES CUBE (EVERYTHING THE SAME X,Y,Z)
+!! ASSUMES CUBE (EVERYTHING THE SAME X,Y,Z)
+
+#ifdef MPIFLAG
+
+
+subroutine mytranspose(in,out,blocksize,howmany,times,nprocs1,nprocs2)
+  use pmpimod  !! box_comm
+  implicit none
+  integer,intent(in) :: blocksize,howmany,nprocs1,nprocs2
+  integer,intent(inout) :: times(3)
+  DATATYPE,intent(in) :: in(nprocs1*blocksize,nprocs2*blocksize,blocksize,howmany)
+  DATATYPE,intent(out) :: out(nprocs1*blocksize,nprocs2*blocksize,blocksize,howmany)
+  integer :: atime,btime,i,count,ii,iproc,j
+  DATATYPE :: intranspose(nprocs2*blocksize,blocksize,blocksize,howmany,nprocs1)  !!AUTOMATIC
+  DATATYPE :: outtemp(nprocs2*blocksize,blocksize,blocksize,howmany,nprocs1)      !!AUTOMATIC
+  DATATYPE :: outone(nprocs2*blocksize,blocksize,blocksize,nprocs1)               !!AUTOMATIC
+  DATATYPE :: inchop(blocksize,nprocs2*blocksize,blocksize,howmany)              !!AUTOMATIC
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!    (123)->(231)    !!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  
+  call myclock(atime)
+
+  intranspose(:,:,:,:,:)=0d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i)    !! IPROC IS SHARED (GOES WITH BARRIER, INCHOP SHARED)
+
+  do iproc=1,nprocs1
+
+     inchop(:,:,:,:)=in((iproc-1)*blocksize+1:iproc*blocksize,:,:,:)
+
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
+     do ii=1,howmany
+        do i=1,blocksize
+
+!! (123)->(231)  (:,:,7) -> (:,7,:)
+!! (123)->(231)  (:,5,7) -> (5,7,:)
+
+           intranspose(:,:,i,ii,iproc)=inchop(i,:,:,ii)
+
+        enddo
+     enddo
+!$OMP END DO
+!! *** OMP BARRIER *** !!   if inchop & iproc are shared
+!$OMP BARRIER
+  enddo
+
+!$OMP END PARALLEL
+
+  call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+
+  outtemp(:,:,:,:,:)=0d0
+  
+  count=blocksize**3 * nprocs2 * howmany
+
+  if (nprocs1.eq.nprocs2) then  !! orbparlevel=3
+
+!! 231  (:,7,:) -> (:,:,7)
+
+     call mympialltoall(intranspose,outtemp,count)
+
+  else
+
+!! 231  (5,7,:) -> (7,5,:)
+
+     call mympisendrecv(intranspose,outtemp,&
+          rankbybox(boxrank(1),boxrank(3),boxrank(2)), rankbybox(boxrank(1),boxrank(3),boxrank(2)), &
+          999,count*nprocs1)
+
+     intranspose(:,:,:,:,:)=outtemp(:,:,:,:,:)
+
+!! 231  (7,5,:) -> (:,5,7)
+
+     call mympialltoall_local(intranspose,outtemp,count,BOX_COMM(1,boxrank(2),3))
+
+  endif
+
+
+  call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)  !! ii IS SHARED (OUTTEMP IS SHARED; BARRIER)
+  do ii=1,howmany
+
+     outone(:,:,:,:)=outtemp(:,:,:,ii,:)
+     if (nprocs1.eq.nprocs2) then
+
+!! (231) collecting middle index, 3.. have first index,2
+
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
+        do i=1,blocksize
+           do j=1,nprocs1*blocksize
+              out(j,:,i,ii)=RESHAPE(outone(j,:,i,:),(/nprocs1*blocksize/))
+           enddo
+        enddo
+!$OMP END DO
+!! *** OMP BARRIER *** !!   if outone & ii are shared
+!$OMP BARRIER
+     else
+
+!! (231) collecting first index,2
+
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
+        do i=1,blocksize
+           do j=1,blocksize
+              out(:,j,i,ii)=RESHAPE(outone(:,j,i,:),(/nprocs1*blocksize/))
+           enddo
+        enddo
+!$OMP END DO
+!! *** OMP BARRIER *** !!   if outone & ii are shared
+!$OMP BARRIER
+        
+     endif
+  enddo
+!$OMP END PARALLEL
+
+  call myclock(btime); times(3)=times(3)+btime-atime;
+
+end subroutine mytranspose
+
+
+
+subroutine mult_general_withtranspose(option,xcoef,ycoef,zcoef,in,out,howmany,timingdir,notiming)
+  use myparams
+  use myprojectmod
+  use pmpimod
+  use pfileptrmod
+  implicit none
+  integer, intent(in) :: option,howmany,notiming
+  integer :: ii,jj,temptimes(3)=0
+  character,intent(in) :: timingdir*(*)
+  DATATYPE, intent(in) :: in(totpoints,howmany), xcoef, ycoef, zcoef
+  DATATYPE, intent(out) :: out(totpoints,howmany)
+  DATATYPE :: temp(totpoints,howmany),temp2(totpoints,howmany),inwork(totpoints,howmany)   !!AUTOMATIC
+  DATATYPE :: mycoefs(3)
+
+  out(:,:)=0d0
+  inwork(:,:)=in(:,:)
+
+  if (.not.orbparflag) then
+     OFLWR "ACK DONT CALLME MULT_GENERAL_WITHtRANSPOSE ORBPARFLAG FALSE"; CFLST
+  endif
+
+  if (option.eq.2) then 
+     mycoefs(:) = (/ xcoef,ycoef,zcoef /)
+  else
+     mycoefs(:) = (/ 1d0, 1d0, 1d0 /)
+  endif
+
+  do jj=1,3
+
+     if (abs(mycoefs(jj)).gt.0d0) then
+
+        if (scalingflag.ne.0) then
+           if (option.eq.1) then        !! KE
+              do ii=1,howmany
+                 temp(:,ii)=inwork(:,ii)*invjacobian(:,1)
+              enddo
+           else                         !! FIRST DER
+              do ii=1,howmany
+                 temp(:,ii)=inwork(:,ii)*invsqrtjacobian(:,1)
+              enddo
+           endif
+        else if (maskflag.ne.0) then
+           call divide_mask(inwork,temp,howmany)
+        else
+           temp(:,:)=inwork(:,:)
+        endif
+
+        call mult_allpar(option,jj,temp(:,:), temp2(:,:),howmany,timingdir,notiming)
+
+        if (scalingflag.ne.0) then
+           if (option.eq.1) then        !! KE
+              do ii=1,howmany
+                 out(:,ii)=out(:,ii)+temp2(:,ii)*invjacobian(:,1)   * mycoefs(jj)
+              enddo
+           else                         !! FIRST DER
+              do ii=1,howmany
+                 out(:,ii)=out(:,ii)+temp2(:,ii)*invsqrtjacobian(:,1)   * mycoefs(jj)
+              enddo
+           endif
+        else if (maskflag.ne.0) then
+           call mult_mask(temp2,temp,howmany)
+           out(:,:)=out(:,:)+temp(:,:)   * mycoefs(jj)
+        else
+           out(:,:)=out(:,:)+temp2(:,:)   * mycoefs(jj)
+        endif
+
+     endif
+
+!! TRANSPOSE
+     select case(orbparlevel)
+     case(3)
+        call mytranspose(out,temp,numpoints(3),howmany,temptimes,nprocs,nprocs)
+        out(:,:)=temp(:,:)
+        call mytranspose(inwork,temp,numpoints(3),howmany,temptimes,nprocs,nprocs)
+        inwork(:,:)=temp(:,:)
+     case(2)
+        call mytranspose(out,temp,numpoints(3),howmany,temptimes,sqnprocs,1)
+        out(:,:)=temp(:,:)
+        call mytranspose(inwork,temp,numpoints(3),howmany,temptimes,sqnprocs,1)
+        inwork(:,:)=temp(:,:)
+     case default
+        OFLWR "NOT SUPPP WITH THRANSPOSE ORBPARLEVEL=",orbparlevel; CFLST
+     end select
+
+  enddo
+
+  if (option.eq.1) then
+     if (scalingflag.ne.0) then
+        do ii=1,howmany
+           out(:,ii)=out(:,ii) + in(:,ii) * scalediag(:) 
+        enddo
+     endif
+  endif
+
+end subroutine mult_general_withtranspose
+
+#endif
 
 
 !subroutine mult_xderiv(in, out,howmany)

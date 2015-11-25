@@ -28,7 +28,8 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        fft_circbatchdim,maxcap,mincap,capmode, maskflag, masknumpoints,&
        scalingflag,scalingdistance,smoothness,scalingtheta,scalingstretch,tinv_tol,&
        orbparlevel, ivoflag, loadedocc, orbtargetflag,orbtarget,&
-       toepflag  !! toepflag deprecated
+       toepflag,&  !! toepflag deprecated
+       transmultflag
 
 #ifdef PGFFLAG
   integer :: myiargc
@@ -61,7 +62,11 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
      close(971)
 
 !! enforce defaults that depend on other variables
-!! (none currently)
+
+     transmultflag=.true.
+     if (orbparlevel.eq.1) then
+        transmultflag=.false.
+     endif
 
      open(971,file=inpfile, status="old", iostat=myiostat)
      read(971,nml=sincparinp)

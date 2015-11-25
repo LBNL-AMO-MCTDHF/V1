@@ -967,7 +967,7 @@ subroutine set_newconfiglist(wwin,wwout)
   implicit none
   type(walktype),intent(in) :: wwin
   type(walktype),intent(inout) :: wwout
-  integer :: iconfig,jconfig,ii
+  integer :: iconfig,jconfig
 
   wwout%dflevel=wwin%dfrestrictflag
 
