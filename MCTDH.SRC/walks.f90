@@ -968,15 +968,16 @@ subroutine hops(www)
           (www%lastdoublehopbyproc(:,iconfig)-www%firstdoublehopbyproc(:,iconfig)+1)
   enddo
 
-  call mpibarrier()
-  if (myrank.eq.1) then
-     print *, "HOPS BY PROC ON PROCESSOR 1 :::::::::::::::::::::::"
-     print *, "   singles:"
-     write(*,'(I5,A2,1000I7)') myrank,": ",numsinglehopsbyproc(:)/1000
-     print *, "   doubles:"
-     write(*,'(I5,A2,1000I7)') myrank,": ",numdoublehopsbyproc(:)/1000
-     print *
-  endif
+!  call mpibarrier()
+!  if (myrank.eq.1) then
+!     print *, "HOPS BY PROC ON PROCESSOR 1 :::::::::::::::::::::::"
+!     print *, "   singles:"
+!     write(*,'(I5,A2,1000I7)') myrank,": ",numsinglehopsbyproc(:)/1000
+!     print *, "   doubles:"
+!     write(*,'(I5,A2,1000I7)') myrank,": ",numdoublehopsbyproc(:)/1000
+!     print *
+!  endif
+
   call mpibarrier()
 
 
