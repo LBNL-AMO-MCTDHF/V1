@@ -29,7 +29,7 @@ subroutine ovl_initial()
 
   integer :: jnumovl, ifile,acomplex,spfcomplex,nstate,i,kk,tdims(3),tndof,tnumconfig,tnumr,tnspf
   external :: readavectorsubsimple
-  DATATYPE, allocatable :: read_avectors(:,:)
+  DATATYPE, allocatable :: read_avectors(:,:), read_spfs(:,:)
 
   if (numr.gt.1) then
      OFLWR "Need numr=1 for projone at this time TEMP CONTINUE.";CFL
@@ -53,9 +53,9 @@ subroutine ovl_initial()
 
      numovl=numovl+nstate
 
-     if (tnspf.gt.nspf) then
+     if (tnspf.gt.nspf+numfrozen) then
         OFLWR " *** WARNING *** WARNING *** WARNING *** WARNING *** WARNING *** "
-        WRFL "  number of spfs for overlap states is LARGER than in calculation ", tnspf,nspf," REMOVING THOSE ORBITALS!!"; CFL
+        WRFL "  number of spfs for overlap states is LARGER than in calculation ", tnspf,nspf+numfrozen," REMOVING THOSE ORBITALS!!"; CFL
      endif
      if (tnumconfig.gt.num_config)  then
         OFLWR " *** WARNING *** WARNING *** WARNING *** WARNING *** WARNING *** "
@@ -68,6 +68,8 @@ subroutine ovl_initial()
 
   allocate(overlaps(numovl,0:autosize,mcscfnum),orig_spfs(spfsize,nspf,numovl),orig_avectors(tot_adim,numovl))
 
+  allocate(read_spfs(spfsize,nspf+numfrozen))
+
   if (myrank.eq.1) then
      allocate(read_avectors(numr*num_config,numovl))
   else
@@ -79,9 +81,13 @@ subroutine ovl_initial()
 
   do ifile=1,numovlfiles
 
-     call load_spfs0(orig_spfs(:,:,jnumovl+1), spfdims, nspf, spfdimtype, ovlspffiles(ifile), tnspf, (/0,0,0/))
+!!     call load_spfs0(orig_spfs(:,:,jnumovl+1), spfdims, nspf, spfdimtype, ovlspffiles(ifile), tnspf, (/0,0,0/))
 
-     do i=tnspf+1,nspf
+     read_spfs(:,:)=0d0
+     call load_spfs0(read_spfs(:,:), spfdims, nspf+numfrozen, spfdimtype, ovlspffiles(ifile), tnspf, (/0,0,0/))
+     orig_spfs(:,:,jnumovl+1)=read_spfs(:,1+numfrozen:nspf+numfrozen)
+
+     do i=tnspf-numfrozen+1,nspf
         call staticvector(orig_spfs(:,i,jnumovl+1),spfsize)
         if (parorbsplit.eq.3) then
            call gramschmidt(spfsize,i-1,spfsize,orig_spfs(:,:,jnumovl+1),orig_spfs(:,i,jnumovl+1),.true.)
@@ -120,7 +126,7 @@ subroutine ovl_initial()
      
   enddo
   
-  deallocate(read_avectors)
+  deallocate(read_avectors, read_spfs)
 
 end subroutine ovl_initial
 
