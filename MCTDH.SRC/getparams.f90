@@ -100,7 +100,7 @@ subroutine getparams()
        walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac, maxquadnorm,quadstarttime,&
        reinterp_orbflag,spf_gridshift,load_avector_product,projspifile,readfullvector,walksinturn,&
        turnbatchsize,energyshift, pulseft_estep, finalstatsfile, projgtaufile,gtaufile,&
-       sparsedfflag,sparseprime,sparsesummaflag
+       sparsedfflag,sparseprime,sparsesummaflag, par_consplit
 
 
   OFL
