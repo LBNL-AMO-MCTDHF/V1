@@ -517,7 +517,11 @@ subroutine fluxgtau0(alg,www,bioww)
         wfi=(i+curtime)*Estep
 
 !! VELOCITY GAUGE WAS FT'ed divide not multiply by wfi
-        myfac = 5.291772108d0**2 / 3d0 * 2d0 * PI / 1.37036d2 / wfi
+!! NEVERMIND FACTOR OF 1/3
+!!        myfac = 5.291772108d0**2 / 3d0 * 2d0 * PI / 1.37036d2 / wfi
+
+!! WITH THIS FACTOR, NOW THE QUANTUM MECHANICAL CROSS SECTION IN MEGABARNS IS IN COLUMN 3 REAL PART
+        myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 / wfi
 
         write(1004,'(F8.4,100E18.6)') wfi, pulseftsq(i), FTgtau(i,:)/pulseftsq(i) * myfac, ftgtau(i,:)
 

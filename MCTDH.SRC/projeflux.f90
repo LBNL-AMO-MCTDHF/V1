@@ -470,7 +470,12 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
               wfi=(i+curtime)*estep
 
 !! VELOCITY GAUGE WAS FT'ed divide not multiply by wfi
-              myfac = 5.291772108d0**2 / 3d0 * 2d0 * PI / 1.37036d2 / wfi 
+!! NEVERMIND FACTOR OF 1/3
+!!              myfac = 5.291772108d0**2 / 3d0 * 2d0 * PI / 1.37036d2 / wfi 
+
+!! WITH THIS FACTOR, NOW THE QUANTUM MECHANICAL PHOTOIONIZATION CROSS SECTION IN MEGABARNS IS IN COLUMN 3 REAL PART
+              myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 / wfi 
+
 
               write(1004,'(F18.12, T22, 400E20.8)')  wfi,  pulseftsq(i), ftgtau(i)/pulseftsq(i) * cgfac * myfac, ftgtau(i)
            enddo
