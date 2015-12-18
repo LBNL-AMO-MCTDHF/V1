@@ -1,4 +1,0 @@
-
-
-paste Dat/Overlaps.xy.dat Dat/Overlaps.xz.dat Dat/Overlaps.yz.dat Dat/Overlaps.xyz.dat > Dat/Overlaps.some26.dat
-

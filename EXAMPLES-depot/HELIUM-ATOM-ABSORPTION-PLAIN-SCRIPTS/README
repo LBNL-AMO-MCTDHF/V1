@@ -1,8 +1,0 @@
-
-./Relax.Bat
-./Pulse.Bat
-./gnu.abs
-
-You can execute the gnu script while the Pulse step is running, as long as 
-it has reached T=100 atomic units.  It goes until 2000 atomic units (40fs).
-

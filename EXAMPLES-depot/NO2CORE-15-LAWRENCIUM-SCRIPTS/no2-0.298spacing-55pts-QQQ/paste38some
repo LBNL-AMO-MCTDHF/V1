@@ -1,4 +1,0 @@
-
-
-paste Dat/Overlaps.xxy.dat Dat/Overlaps.xxz.dat Dat/Overlaps.xyy.dat Dat/Overlaps.yyz.dat Dat/Overlaps.xzz.dat Dat/Overlaps.yzz.dat Dat/Overlaps.xyz.dat > Dat/Overlaps.some38.dat
-
