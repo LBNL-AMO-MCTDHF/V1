@@ -17,11 +17,11 @@ v1.16 FACTOR OF 1/3 REMOVED FROM PHOTOIONIZATION (Actions 16,17)
 
 ALSO v.16 ABSOLUTE UNITS (megabarns) IMPLEMENTED FOR ACTION 21
    emission/absorption.  Column 9 in ZDipoleft.Dat etc is cross 
-   section in Mb. See H2ABSORPTION and HE-ATOM-ABSORPTION examples.
+   section in Mb. See H2ABSORPTION and HEABSORPTION examples.
 
-ALSO v1.16 parconsplit.ne.0 attempted first time.  Total MPI 
+ALSO v1.16 par_consplit.ne.0 attempted first time.  Total MPI 
    parallelization of LBNL-AMO-MCTDHF calculation with
-   parconsplit.ne.0 and parorbsplit.eq.3 (parorbsplit.eq.3 for 
+   par_consplit.ne.0 and parorbsplit.eq.3 (parorbsplit.eq.3 for 
    polyatomic only)
 
 CHANGES TO PULSE FOURIER TRANSFORM SUBROUTINES IN VERSION 1.10.
