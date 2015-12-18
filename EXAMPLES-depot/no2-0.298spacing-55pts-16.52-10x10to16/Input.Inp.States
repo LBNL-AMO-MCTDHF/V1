@@ -1,8 +1,10 @@
 $parinp
 
+finalstatsfile="Dat/finalstats.dat.states"
+
 spf_flag=0
 
-mcscfnum=20
+mcscfnum=4
 
 sparseconfigflag=1
 
@@ -17,9 +19,6 @@ spfoutfile="Bin/spfs.bin.states"
 avectoroutfile="Bin/avector.bin.states"
 
 nspf=15
-numshells=2
-shelltop(1)=7
-numexcite(1)=1
 
 restrictflag=1
 restrictms=1
@@ -48,7 +47,7 @@ orblanorder=500
 orblancheckmod=50
 orblanthresh=1d-2
 
-numpoints=49
+numpoints=55
 spacing=0.2975614d0
 
 numcenters=3

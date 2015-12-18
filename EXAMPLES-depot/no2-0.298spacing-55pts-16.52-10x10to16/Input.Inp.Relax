@@ -1,8 +1,14 @@
 $parinp
 
+walkwriteflag=1
+
+aerror=1d-9
+
 notiming=0
 timingdir="timing.relax"
 timingout=100
+
+finalstatsfile="Dat/finalstats.dat.relax"
 
 jacsymflag=1
 
@@ -12,6 +18,7 @@ numelec=23
 
 improvedrelaxflag=1
 improvednatflag=1
+improvedquadflag=1
 
 loadspfflag=1
 spffile="Bin/spfs.bin.hf"
@@ -20,9 +27,6 @@ spfoutfile="Bin/spfs.bin.relax"
 avectoroutfile="Bin/avector.bin.relax"
 
 nspf=15
-numshells=2
-shelltop(1)=7
-numexcite(1)=1
 
 restrictflag=1
 restrictms=1
@@ -31,7 +35,7 @@ par_timestep=0.1d0
 timestepfac=1.05d0
 max_timestep=1d0
 
-stopthresh =  1.d-7
+stopthresh =  1.d-11
 
 parorbsplit=3
 
@@ -42,7 +46,7 @@ parorbsplit=3
 $sincparinp
 
 ivoflag=1
-loadedocc(8:11) = 1.75d0, 1.75d0, 1.75d0, 1.75d0
+loadedocc(7:11) = 1.8d0, 1.8d0, 1.8d0, 1.8d0, 1.8d0
 num_skip_orbs=1
 orb_skip=0
 
@@ -57,7 +61,7 @@ orblanorder=500
 orblancheckmod=50
 orblanthresh=1d-2
 
-numpoints=49
+numpoints=55
 spacing=0.2975614d0
 
 numcenters=3

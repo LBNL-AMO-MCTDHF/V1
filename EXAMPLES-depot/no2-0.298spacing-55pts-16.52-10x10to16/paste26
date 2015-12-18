@@ -1,0 +1,4 @@
+
+
+paste Dat/Overlaps.x.dat Dat/Overlaps.y.dat Dat/Overlaps.z.dat Dat/Overlaps.xy.dat Dat/Overlaps.xz.dat Dat/Overlaps.yz.dat Dat/Overlaps.xyz.dat > Dat/Overlaps.all26.dat
+

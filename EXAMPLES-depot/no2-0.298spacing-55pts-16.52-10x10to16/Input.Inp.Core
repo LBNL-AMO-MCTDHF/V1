@@ -1,5 +1,7 @@
 $parinp
 
+finalstatsfile="Dat/finalstats.dat.core"
+
 sparseconfigflag=0
 
 mcscfnum=11
@@ -43,7 +45,7 @@ fft_circbatchdim=1
 orblanorder=250
 orblanthresh=1d-1
 
-numpoints=49
+numpoints=55
 spacing=0.2975614d0
 
 numcenters=3
