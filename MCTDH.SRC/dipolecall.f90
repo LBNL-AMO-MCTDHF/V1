@@ -28,7 +28,7 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
 
   DATATYPE :: indipolearray(0:numdata), temparray(0:numdata),facfunct,pots(3)
   integer :: i, numdata, which,getlen,jj,sflag
-  real*8 :: estep, thistime, myenergy,sum1,sum2
+  real*8 :: estep, thistime, myenergy,sum1,sum2,xsecunits
   character (len=7) :: number
   character :: outftname*(*), outename*(*)
   complex*16 ::  fftrans(0:autosize), eft(0:autosize)
@@ -77,13 +77,13 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
      temparray(:)=temparray(:)/par_timestep/autosteps
      do i=0,numdata
         fftrans(i) = temparray(i)  *cos(pi/2d0 * real(i,8)/real(numdata,8))**dipolewindowpower
-        call vectdpot(i*par_timestep*autosteps,0,pots)
+        call vectdpot(i*par_timestep*autosteps,0,pots)   !! LENGTH GAUGE
         eft(i)=pots(which)
      enddo
   else
      do i=0,numdata
         fftrans(i) = (indipolearray(i)-indipolearray(0))  *cos(pi/2d0 * real(i,8)/real(numdata,8))**dipolewindowpower
-        call vectdpot(i*par_timestep*autosteps,0,pots)
+        call vectdpot(i*par_timestep*autosteps,0,pots)   !! LENGTH GAUGE
         eft(i)=pots(which)
      enddo
   endif
@@ -116,17 +116,45 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
 
   if (myrank.eq.1) then
      open(171,file=outftname,status="unknown")
+
+        write(171,*) "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9)" 
+        write(171,*) "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION ( 2 omega Im(D(omega)E(omega)*) ) IN COLUMN 7"
+        write(171,*) "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN 9"
+        write(171,*)
+
      do i=0,numdata
         myenergy=i*Estep
-        write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i)*facfunct(myenergy), eft(i), fftrans(i)*facfunct(myenergy)*ALLCON(eft(i))
+
+!! LENGTH GAUGE (electric field) WAS FT'ed , OK with usual formula multiply by wfi
+!! RESPONSE FUNCTION FOR ABSORPTION/EMISSION IN COLUMN 7
+!! QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE
+
+        xsecunits = 5.291772108d0**2 * 4d0 * PI / 1.37036d2 * myenergy
+
+!! NOW FACTOR (2 omega) IN COLUMNS 6,7   v1.16 12-2015
+
+        write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i)*facfunct(myenergy), eft(i), fftrans(i)*facfunct(myenergy)*ALLCON(eft(i)) * 2 * myenergy, &
+             fftrans(i)*facfunct(myenergy)*ALLCON(eft(i)) / abs(eft(i)**2) * xsecunits
      enddo
      close(171)
      if (sflag.ne.0) then
         write(number,'(I7)') 1000000+floor(thistime)
         open(171,file=outftname(1:getlen(outftname)-1)//number(2:7),status="unknown")
+
+        write(171,*) "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9)" 
+        write(171,*) "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION ( 2 omega Im(D(omega)E(omega)*) ) IN COLUMN 7"
+        write(171,*) "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN 9"
+     write(171,*)
+
         do i=0,numdata
            myenergy=i*Estep
-           write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i)*facfunct(myenergy), eft(i), fftrans(i)*facfunct(myenergy)*ALLCON(eft(i))
+
+           xsecunits = 5.291772108d0**2 * 4d0 * PI / 1.37036d2 * myenergy
+
+!! NOW FACTOR (2 omega) IN COLUMNS 6,7   v1.16 12-2015
+
+           write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i)*facfunct(myenergy), eft(i), fftrans(i)*facfunct(myenergy)*ALLCON(eft(i)) * 2 * myenergy, &
+                fftrans(i)*facfunct(myenergy)*ALLCON(eft(i)) / abs(eft(i)**2) * xsecunits
         enddo
         close(171)
      endif
