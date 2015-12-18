@@ -11,8 +11,9 @@ v1.16 FACTOR OF 1/3 REMOVED FROM PHOTOIONIZATION (Actions 16,17)
    Perform a 1:2 weighted average of parallel and perpendicular
    to obtain the cross section averaged over orientations
 
-   The ionization and absorption cross section for H2 and He is 
-   about 12 Mb at onset for both perpendicular and parallel.  Not 4.
+   The ionization and absorption cross section for H2 is about 12 Mb 
+   at ion onset for both perpendicular and parallel.  Not 4.  He xsec
+   is about 8.
 
 ALSO v.16 ABSOLUTE UNITS (megabarns) IMPLEMENTED FOR ACTION 21
    emission/absorption.  Column 9 in ZDipoleft.Dat etc is cross 
