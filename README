@@ -1,15 +1,39 @@
 
-  ** LBNL-AMO-MCTDHF VERSION 1.15 **
+  ** LBNL-AMO-MCTDHF VERSION 1.16 **
+
+v1.16 FACTOR OF 1/3 REMOVED FROM PHOTOIONIZATION (Actions 16,17)
+
+   **** photoionization RESULTS WILL BE 3x GREATER NOW - BEWARE ****
+
+   the factor of 1/3 is historical.  The cross section now reported
+   in column 3 of xsec.spi.dat, xsec.proj.spi.datXXXX, is
+   the quantum cross section in Megabarns for the problem at hand.
+   Perform a 1:2 weighted average of parallel and perpendicular
+   to obtain the cross section averaged over orientations
+
+   The ionization and absorption cross section for H2 and He is 
+   about 12 Mb at onset for both perpendicular and parallel.  Not 4.
+
+ALSO v.16 ABSOLUTE UNITS (megabarns) IMPLEMENTED FOR ACTION 21
+   emission/absorption.  Column 9 in ZDipoleft.Dat etc is cross 
+   section in Mb. See H2ABSORPTION and HE-ATOM-ABSORPTION examples.
+
+ALSO v1.16 parconsplit.ne.0 attempted first time.  Total MPI 
+   parallelization of LBNL-AMO-MCTDHF calculation with
+   parconsplit.ne.0 and parorbsplit.eq.3 (parorbsplit.eq.3 for 
+   polyatomic only)
 
 CHANGES TO PULSE FOURIER TRANSFORM SUBROUTINES IN VERSION 1.10.
 VARIABLES EFLUXLO, EFLUXHI, NEFLUX, FLUXNBINS, FLUXSINEOPT DEPRECATED.
 NOTE NEW VARIABLE pulseft_estep USED FOR Pulseft.Dat OUTPUT ONLY
 
+-----------------------------------------------------------------------
 Please watch the commits to stay notified about bugs and bug fixes:
      https://github.com/LBNL-AMO-MCTDHF/V1/commits/master
 
 Known bugs appear as issues:
      https://github.com/LBNL-AMO-MCTDHF/V1/issues
+-----------------------------------------------------------------------
 
 The scripts in the example directories use bash and gnuplot.  
 
