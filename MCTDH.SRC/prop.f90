@@ -415,26 +415,26 @@ end subroutine prop_wfn
 subroutine propspfs(inspfs,outspfs,tin, tout,inlinearflag,inspfflag,numiters)
   use parameters
   implicit none
-  DATATYPE :: inspfs(spfsize,nspf),outspfs(spfsize,nspf), tempspfs2(spfsize,nspf), tempspfs(spfsize,nspf)
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf)
+  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
+  DATATYPE :: tempspfs2(spfsize,nspf)            !! AUTOMATIC
   integer :: inlinearflag,numiters,jj,k,inspfflag
   real*8 :: tout, tin,timea,timeb
 
+  outspfs(:,:)=inspfs(:,:)
+  numiters=0
+
   if (spf_flag.eq.0.and.constraintflag.eq.0) then     !! no tau
-     outspfs(:,:)=inspfs(:,:)
      return
   endif
-
-  numiters=0
-  tempspfs(:,:)=inspfs(:,:)
 
   do k=1,littlesteps
      timea=tin+(tout-tin)*(k-1)/littlesteps;     timeb=tin+(tout-tin)*k/littlesteps
 
-     call propspfs0(tempspfs,tempspfs2,timea,timeb,inlinearflag,inspfflag,jj)
+     call propspfs0(outspfs,tempspfs2,timea,timeb,inlinearflag,inspfflag,jj)
      numiters=numiters+jj
-     tempspfs(:,:)=tempspfs2(:,:)
+     outspfs(:,:)=tempspfs2(:,:)
   enddo
-  outspfs(:,:)=tempspfs2(:,:)
 
 end subroutine propspfs
 
@@ -444,8 +444,8 @@ subroutine propspfs0(inspfs,outspfs,tin, tout,inlinearflag,inspfflag,numiters)
   use parameters
   use linearmod
   implicit none
-
-  DATATYPE :: inspfs(spfsize,nspf),outspfs(spfsize,nspf)
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf)
+  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
   integer ::  numiters,iflag,zzz, nullint, idid, inlinearflag,inspfflag,rkworkdim,rkiworkdim
   real*8, external ::   spf_linear_derivs , gbs_linear_derivs , dummysub
   real*8 :: tout, tin,nullreal, time1, time2, nulldouble,gbsstepsize
