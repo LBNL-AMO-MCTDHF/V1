@@ -1,0 +1,66 @@
+$parinp
+
+finalstatsfile="Dat/finalstats.dat.hf"
+
+sparseconfigflag=0
+
+mcscfnum=5
+
+numelec=21
+
+improvedrelaxflag=1
+improvednatflag=1
+
+messflag=1
+messamount=1d-4
+
+spfoutfile="Bin/spfs.bin.hf"
+avectoroutfile="Bin/avector.bin.hf"
+
+nspf=11
+
+restrictflag=1
+restrictms=1
+
+par_timestep=0.1d0
+timestepfac=1.05d0
+max_timestep=2d0
+
+stopthresh =  3d-2
+astoptol=1d0
+
+parorbsplit=3
+
+/
+
+
+
+$sincparinp
+
+orbparflag=.true.
+orbparlevel=2
+
+fft_mpi_inplaceflag=1
+fft_batchdim=1
+fft_circbatchdim=1
+
+orblanorder=250
+orblanthresh=1d-1
+
+numpoints=55
+spacing=0.2975614d0
+
+numcenters=3
+nuccharges(1:3) = 8,7,8
+
+centershift(1:3,1)= -14 ,-4 , 0 
+centershift(1:3,2)=   0 , 2 , 0 
+centershift(1:3,3)=  14 ,-4 , 0 
+
+scalingflag=1
+smoothness=3d0
+scalingdistance=4d0
+scalingstretch=2d0
+scalingtheta=0.5d0
+
+/
