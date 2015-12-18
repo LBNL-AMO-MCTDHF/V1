@@ -141,7 +141,7 @@ end subroutine myconfigeig
 
 
 
-!! PROPAGATE A-VECTOR 
+!! PROPAGATE A-VECTOR .  CALLED WITHIN LITTLESTEPS LOOP
 
 subroutine myconfigprop(www,dfww,avectorin,avectorout,time)
   use r_parameters
@@ -217,7 +217,7 @@ subroutine nonsparseprop(www,dfww,avectorin,avectorout,time)
         deallocate(realbigconfigmatel)
 #endif
      else
-        call EXPFULL(www%numdfbasis*numr, 1.d0, bigconfigmatel, www%numdfbasis*numr, avectortemp, bigconfigvects, iiwork, iflag)
+        call EXPFULL(www%numdfbasis*numr, DATAONE, bigconfigmatel, www%numdfbasis*numr, avectortemp, bigconfigvects, iiwork, iflag)
         
         if (iflag.ne.0) then
            OFLWR "Expo error A ", iflag; CFLST
