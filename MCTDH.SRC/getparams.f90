@@ -74,7 +74,10 @@ subroutine getparams()
        timefacforce, avectoroutfile, spfoutfile,  autopermthresh, messamount, numshells,   &
        lanthresh, lanczosorder,  lioreg, &   !! rcond
        autonormthresh,  saveflag, save_every, &
-       mrestrictflag, mrestrictval, fluxtimestep, autotimestep,  nucfluxflag, &
+
+!!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input)      fluxtimestep,   
+
+       mrestrictflag, mrestrictval, autotimestep,  nucfluxflag, &
        nosparseforce,  allspinproject,  numfluxfiles,  verletnum, &
        constraintflag, dfrestrictflag, improvedrelaxflag, mcscfnum,  improvednatflag, avectorfile, spffile, &
        quadprecon,  improvedquadflag, quadtol,  &
@@ -89,7 +92,7 @@ subroutine getparams()
        numfrozen, nucfluxopt, natplotbin, spfplotbin, denplotbin, denprojplotbin, &
        natprojplotbin, rnatplotbin, dendatfile, denrotfile, rdendatfile,   avectorexcitefrom, avectorexciteto,&
        numovlfiles, ovlavectorfiles, ovlspffiles, outovl,fluxmofile,fluxafile, spifile, astoptol,  &
-       zdftfile,zdipfile,ydftfile,ydipfile,xdftfile,xdipfile, dipolewindowpower, diffdipoleflag,  &
+       zdftfile,zdipfile,ydftfile,ydipfile,xdftfile,xdipfile, ftwindowpower, diffdipoleflag,  &
        diptime, fluxafile2,fluxmofile2, minocc,maxocc, corrdatfile,corrftfile,numavectorfiles,projfluxfile, &
        expodim,timingdir, hanningflag, numspffiles, condamp,conway, &
        mrestrictmin,mrestrictmax,lntol,invtol,psistatsfile, psistatfreq, configlistfile, &
@@ -100,7 +103,7 @@ subroutine getparams()
        walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac, maxquadnorm,quadstarttime,&
        reinterp_orbflag,spf_gridshift,load_avector_product,projspifile,readfullvector,walksinturn,&
        turnbatchsize,energyshift, pulseft_estep, finalstatsfile, projgtaufile,gtaufile,&
-       sparsedfflag,sparseprime,sparsesummaflag, par_consplit
+       sparsedfflag,sparseprime,sparsesummaflag, par_consplit, ftwindowlength
 
 
   OFL
@@ -585,7 +588,10 @@ subroutine getparams()
 !  call closefile()
 
   autosteps=floor(max(1.d0,autotimestep/par_timestep));  autosize=numpropsteps/autosteps+1
-  fluxsteps=floor(max(1.d0,fluxtimestep/par_timestep));  fluxtimestep=par_timestep*fluxsteps
+
+
+!!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input)   
+!!$ fluxsteps=floor(max(1.d0,fluxtimestep/par_timestep));  fluxtimestep=par_timestep*fluxsteps
 
   do i=1,nargs
      buffer=nullbuff;     call getarg(i,buffer)
@@ -891,7 +897,10 @@ subroutine getparams()
   write(mpifileptr, *) "****************************************************************************"
   write(mpifileptr, *)
   write(mpifileptr,*) "Autosteps is ", autosteps," Autosize is ", autosize, " Numpropsteps is ", numpropsteps
-  write(mpifileptr,*) "Fluxsteps is ", fluxsteps," Fluxtimestep is ", fluxtimestep
+
+!!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input)  
+!!$ write(mpifileptr,*) "Fluxsteps is ", fluxsteps," Fluxtimestep is ", fluxtimestep
+
   write(mpifileptr, *)
   write(mpifileptr, *) "*****************************************************************************"
   write(mpifileptr, *)

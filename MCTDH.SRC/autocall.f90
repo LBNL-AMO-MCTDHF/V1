@@ -13,7 +13,7 @@ subroutine autocall(numdata, forwardovl, sflag)
   integer, intent(in) :: numdata,sflag
   DATATYPE,intent(in) :: forwardovl(0:autosize,mcscfnum)
   integer :: i, totdim, imc,getlen,ibot
-  real*8 ::   estep, thistime, myenergy
+  real*8 ::   estep, thistime, myenergy, windowfunct
   character (len=7) :: number
   DATATYPE, allocatable :: fftrans(:,:),fftrans0(:,:)
 
@@ -41,7 +41,11 @@ subroutine autocall(numdata, forwardovl, sflag)
   IF(hanningflag .NE. 4) THEN
      do i=0,numdata
         fftrans0(i,:) = forwardovl(i,:)          * exp((0.d0,-1.d0)*ceground*par_timestep*autosteps*i)
-        fftrans(i,:) = fftrans0(i,:)           * cos(real(i,8)/real(numdata,8) * pi/2d0)
+
+!!        fftrans(i,:) = fftrans0(i,:)           * cos(real(i,8)/real(numdata,8) * pi/2d0)
+
+        fftrans(i,:) = fftrans0(i,:)           * windowfunct(i,numdata)
+
      enddo
      do i=1,numdata
         fftrans(-i,:) = conjg(fftrans(i,:))

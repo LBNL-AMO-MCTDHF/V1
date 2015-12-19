@@ -168,7 +168,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   integer :: i,k,tlen,mem,istate,curtime,tau,nt,ir ,imc,nstate
   integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,bratop,getlen
  !! bintimes and pulseftsq done outside so we don't have to redo over and over for each state
-  real*8 :: doubleclebschsq,aa,bb,cc,MemTot,MemVal,dt,wfi,cgfac,estep,myfac
+  real*8 :: doubleclebschsq,aa,bb,cc,MemTot,MemVal,dt,wfi,cgfac,estep,myfac,windowfunct
   DATATYPE, allocatable,target :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:)
   DATATYPE, allocatable :: read_bramo(:,:,:,:), read_ketmo(:,:,:,:)
   complex*16, allocatable :: ftgtau(:),pulseft(:,:)
@@ -431,7 +431,11 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
         ftgtau(:)=0d0;
 
         do i=0,curtime
-           ftgtau(i) = ALLCON(gtau(i,istate,imc))   * cos(real(i,8)/real(curtime,8) * pi/2) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
+
+!!           ftgtau(i) = ALLCON(gtau(i,istate,imc))   * cos(real(i,8)/real(curtime,8) * pi/2) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
+
+           ftgtau(i) = ALLCON(gtau(i,istate,imc))   * windowfunct(i,curtime) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
+
         enddo
         do i=1,curtime
            ftgtau(-i) = ALLCON(ftgtau(i))

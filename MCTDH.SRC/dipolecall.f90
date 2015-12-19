@@ -19,6 +19,29 @@ function facfunct(myenergy)
 end function facfunct
 
 
+function windowfunct(i,numdata)
+  use parameters
+  implicit none
+  real*8 :: windowfunct
+  integer,intent(in) :: i,numdata
+
+  if (i.lt.0.or.i.gt.numdata) then
+     OFLWR "ERROR, windowfunct ",i,numdata; CFLST
+  endif
+
+  if (ftwindowlength.ge.0) then
+     if (numdata-i.lt.ftwindowlength) then
+        windowfunct = cos( pi/2d0 * (i-(numdata-ftwindowlength)) / real(ftwindowlength,8) )**ftwindowpower      !! **2
+     else
+        windowfunct=1d0
+     endif
+  else
+     windowfunct = cos( pi/2d0 * i / real(numdata,8) )**ftwindowpower
+  endif
+
+end function windowfunct
+
+
 !! actually have numdata+1 data points in indipolearray
 
 subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   !! which=1,2,3  =  x,y,z
@@ -28,7 +51,7 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
 
   DATATYPE :: indipolearray(0:numdata), temparray(0:numdata),facfunct,pots(3)
   integer :: i, numdata, which,getlen,jj,sflag
-  real*8 :: estep, thistime, myenergy,sum1,sum2,xsecunits
+  real*8 :: estep, thistime, myenergy,sum1,sum2,xsecunits, windowfunct
   character (len=7) :: number
   character :: outftname*(*), outename*(*)
   complex*16 ::  fftrans(0:autosize), eft(0:autosize)
@@ -76,13 +99,15 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
      end do
      temparray(:)=temparray(:)/par_timestep/autosteps
      do i=0,numdata
-        fftrans(i) = temparray(i)  *cos(pi/2d0 * real(i,8)/real(numdata,8))**dipolewindowpower
+
+
+        fftrans(i) = temparray(i)  * windowfunct(i,numdata)
         call vectdpot(i*par_timestep*autosteps,0,pots)   !! LENGTH GAUGE
         eft(i)=pots(which)
      enddo
   else
      do i=0,numdata
-        fftrans(i) = (indipolearray(i)-indipolearray(0))  *cos(pi/2d0 * real(i,8)/real(numdata,8))**dipolewindowpower
+        fftrans(i) = (indipolearray(i)-indipolearray(0))  * windowfunct(i,numdata)
         call vectdpot(i*par_timestep*autosteps,0,pots)   !! LENGTH GAUGE
         eft(i)=pots(which)
      enddo

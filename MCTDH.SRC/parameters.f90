@@ -355,22 +355,35 @@ integer :: actions(100)=0        !!              !! ACTIONS
 !!                 between two time dependent wave functions
 !!   Act=24   keprojector
 !!   Act=25   make psistats.dat
-integer :: nkeproj=200           !!  For keprojector
+!!EE
+!!{\large \quad ACTION VARIABLES (also see filenames in INPUT/OUTPUT above)}
+!!BB
+integer :: numovlfiles=1         
+integer :: nkeproj=200           !!  For keprojector ACTION 24
 real*8 :: keprojminenergy=0.04d0 !!   "
 real*8 :: keprojenergystep=0.04d0!!   "
 real*8 :: keprojminrad=30        !!   "
 real*8 :: keprojmaxrad=40        !!   "
+real*8 :: eground=0.d0           !! Eground=     !! energy to shift fourier transform for ACTIONS 1 16 17
+                                                 !!   (AUTOCORRELATION AND PHOTOIONIZATION)
+complex*16 :: ceground=(0.d0,0d0)!!              !! input as complex-valued instead if you like
+real*8 :: autotimestep=1.d0      !! ACTIONS 1 and 21 (autocorrelation and emission/absorption):
+                                 !!   time step for fourier transform
+!!EE
+!!{\large \quad PHOTOIONIZATION and EMISSION/ABSORPTION (actions 16,17,21)}
+!!BB
+integer :: ftwindowlength=-99 !! FOR ACTIONS 15,16,21 options for damping function of time to be transformed
+                              !!    if .ge.0, only damp at end (high frequency cutoff): last ftwindowlength 
+                              !!    points in fourier transform are damped by cosine function
+integer :: ftwindowpower=1    !! if ftwindowlength not set, use previous (v1.16) windowing function: multiply
+                              !!    all points by cos(pi t / 2 / tmax)**ftwindowpower 
+!!EE
+!!{\large \quad EMISSION/ABSORPTION (action 21)}
+!!BB
+integer :: diffdipoleflag=1 !! fourier transform derivative of dipole moment not dipole moment
 integer :: hanningflag=0         !! for hanning window set nonzero action 1 autocorr
 integer :: diptime=100           !! For act=20, outputs copies every diptime atomic units
 integer :: dipmodtime=200        !! do ft every autotimestep*dipmodtime
-integer :: numovlfiles=1
-real*8 :: autopermthresh=0.001d0 !! Autoperm=
-real*8 :: autonormthresh=0.d0    !! 
-real*8 :: eground=0.d0           !! Eground=     !! energy to shift fourier transform 
-complex*16 :: ceground=(0.d0,0d0)!!              !! input as complex-valued instead if you like
-real*8 :: autotimestep=1.d0      !!
-real*8 :: fluxtimestep=0.1d0     !!
-integer :: nucfluxflag=0         !! 0 = both 1 =electronic 2= nuclear  NOT nuclear flux action 13,14
 !!EE
 !!{\large \quad PHOTOIONIZATION (actions 15,16,17)}
 !!BB
@@ -379,6 +392,8 @@ integer :: computeFlux=500, &      !! 0=All in memory other: MBs to allocate
      FluxSkipMult=1              !! Read every this number of time points.  Step=FluxInterval*FluxSkipMult
 integer :: nucfluxopt=0          !! Include imaginary part of hamiltonian from nuc ke 
 integer :: FluxOpType=1                !! 0=Full ham 1=halfnium 
+!!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input) 
+!!$ real*8 :: fluxtimestep=0.1d0
 !!EE
 !!{\large \quad PLOTTING OPTIONS }
 !!BB
@@ -403,6 +418,7 @@ real*8  :: povsparse=1.d-3       !!              !! Sparsity threshold for trans
 !!EE
 !!{\large \quad MISC AND EXPERIMENTAL}
 !!BB
+integer :: nucfluxflag=0         !! 0 = both 1 =electronic 2= nuclear  NOT nuclear flux action 13,14
 logical :: readfullvector=.true.
 logical :: walksinturn=.false.   !!              !! if you have problems with MPI i/o, maybe try this
 integer :: turnbatchsize=5
@@ -410,9 +426,6 @@ integer :: nosparseforce=0       !!              !! to override exit with large 
 integer :: noftflag=0            !!              !! turns off f.t. for flux. use for e.g. core hole propag'n.
 integer :: timefacforce=0        !!              !!  override defaults
 integer :: timedepexpect=0  !! expectation value of H_0(t) or H(t) reported
-integer :: dipolewindowpower=1   !!  multiply by cosine^dipolewindowpower for dipole ft
-integer :: diffdipoleflag=1 !! fourier transform derivative of dipole moment not dipole moment
-
 integer :: cmf_flag=1            !! CMF/VMF      !! CMF/LMF/QMF or VMF?
 integer :: intopt=3              !! RK, GBS      !! SPF/VMF Integrator: 0, RK; 1, GBS, 2, DLSODPK  
                                                  !!  for CMF: 3=expo 4=verlet
@@ -422,6 +435,8 @@ integer :: jacprojorth=0         !! 1: projector = sum_i |phi_i> <phi_i|phi_i>^-
 integer :: jacsymflag=0          !! 1:  use WP - PW  not (1-P)W   0: default (1-P)W
 integer :: jacgmatthird=0        !! 0: default g (constraintflag.ne.0) is linear operator
                                  !! 1: g |phi_c> -> sum_ab |phi_a> g_ab <phi_b|phi_c>
+real*8 :: autopermthresh=0.001d0 !! Autoperm=
+real*8 :: autonormthresh=0.d0    !! 
 integer :: debugflag=0
 real*8 :: debugfac=1d0
 !!EE
@@ -456,6 +471,9 @@ integer,parameter :: orderflag=0           !! Order=       !! ordering of config
                                                  !!    0= 1a1b2a2b etc.
 
 !! INTERNAL
+
+!!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input)   
+!!$ integer :: fluxsteps=1
 
 integer :: eachloaded(MXF)=(-99)
 
@@ -495,7 +513,6 @@ integer :: lanagain = -1  !! Lanczos restart flag.  Default -1 (lanczos eigen re
                           !!    Otherwise, max number of maxlanorder full builds of krylov spaces (# restarts + 1)
                           !! Improved relax: starts at 1.  Incremented every time energy goes up with an iteration.
                           !!   If subsequent iters are within stopthresh, turned to -1. 
-integer :: fluxsteps=1
 real*8 :: globaltime=0.d0   !! for ease of output
 !!! real*8 :: rcond=1.d-4      !! singular value for split operator cranck-nicholson
 real*8 :: pi

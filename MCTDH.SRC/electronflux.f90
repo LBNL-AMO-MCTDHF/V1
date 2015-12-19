@@ -100,7 +100,7 @@ subroutine fluxgtau0(alg,www,bioww)
   integer :: alg,curtime,oldtime,k,nt,i,molength,alength,  BatchSize,NBat,brabat,brareadsize, &
        bratime,ketbat,ketreadsize,kettime,bratop, atime,btime,itime,jtime,times(1:7)=0, &
        imc, tau, ispf
-  real*8 :: MemTot,MemVal,dt, myfac,wfi,estep
+  real*8 :: MemTot,MemVal,dt, myfac,wfi,estep,windowfunct
   complex*16, allocatable :: FTgtau(:,:), pulseft(:,:)
   real*8, allocatable :: pulseftsq(:)
   DATATYPE :: dot,fluxeval,fluxevalval(mcscfnum), pots1(3)=0d0  !!$, pots2(3)=0d0
@@ -457,7 +457,10 @@ subroutine fluxgtau0(alg,www,bioww)
   ftgtau(:,:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0
 
   do i=0,curtime
-     ftgtau(i,:) = ALLCON(gtau(i,:))   * cos(real(i,8)/real(curtime,8) * pi/2d0) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
+
+!!     ftgtau(i,:) = ALLCON(gtau(i,:))   * cos(real(i,8)/real(curtime,8) * pi/2d0) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
+
+     ftgtau(i,:) = ALLCON(gtau(i,:))   * windowfunct(i,curtime) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
 
      call vectdpot(i*par_timestep*fluxinterval*fluxskipmult,1,pots1)   !! VELOCITY GAUGE.
      pulseft(i,:)=pots1(:)
