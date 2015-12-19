@@ -17,7 +17,7 @@ subroutine prop_loop( starttime)
   DATAECS :: thisenergy(mcscfnum), lastenergy(mcscfnum) ,thisenergyavg,lastenergyavg,startenergy(mcscfnum)
   CNORMTYPE :: norms(mcscfnum)
   real*8 :: thistime, starttime, thattime,error=1d10,rsum,avecerror=1d10
-  DATATYPE :: dot,  sum2,sum, psip(psilength),outspfs(totspfdim),hermdot,drivingoverlap(mcscfnum)
+  DATATYPE :: dot,  sum2,sum, avectorp(tot_adim),outspfs(totspfdim),hermdot,drivingoverlap(mcscfnum)
 
   thistime=starttime;  flag=0
 
@@ -83,7 +83,7 @@ subroutine prop_loop( starttime)
 !! 06-2015 moved this down here
   do imc=1,mcscfnum
 
-     call sparseconfigmult(www,yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0)
+     call sparseconfigmult(www,yyy%cmfpsivec(astart(imc),0),avectorp(:),yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0)
 
      sum = dot(     yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),tot_adim)
      if (par_consplit.ne.0) then
@@ -91,7 +91,7 @@ subroutine prop_loop( starttime)
      endif
      OFLWR "IN PROP: VECTOR NORM ",sqrt(sum);CFL
 
-     sum2=dot(     yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),tot_adim)
+     sum2=dot(     yyy%cmfpsivec(astart(imc),0),avectorp(:),tot_adim)
      if (par_consplit.ne.0) then
         call mympireduceone(sum2)
      endif
@@ -159,12 +159,12 @@ subroutine prop_loop( starttime)
 
      do imc=1,mcscfnum
 
-        call sparseconfigmult(www,yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,timedepexpect,0,thattime)
+        call sparseconfigmult(www,yyy%cmfpsivec(astart(imc),0),avectorp(:),yyy%cptr(0),yyy%sptr(0),1,1,timedepexpect,0,thattime)
 
 
-        call basis_project(www,numr,psip(astart(imc)))
+        call basis_project(www,numr,avectorp(:))
 
-        sum=dot(yyy%cmfpsivec(astart(imc),0),psip(astart(imc)),tot_adim)
+        sum=dot(yyy%cmfpsivec(astart(imc),0),avectorp(:),tot_adim)
         sum2=dot(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),tot_adim)
         if (par_consplit.ne.0) then
            call mympireduceone(sum); call mympireduceone(sum2)
