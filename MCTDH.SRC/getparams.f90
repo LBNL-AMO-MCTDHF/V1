@@ -673,9 +673,15 @@ subroutine getparams()
      allocate(myavectorexcitefrom(1,1,1), myavectorexciteto(1,1,1))
   endif
 
+#ifndef MPIFLAG
+  if (par_consplit.ne.0.or.parorbsplit.ne.0) then
+     OFLWR "Error, this is not MPI chmctdhf; cannot use par_consplit or parorbsplit"; CFLST
+  endif
+#endif
 
   if (sparseconfigflag.eq.0) then
      sparseopt=0
+     par_consplit=0
   endif
 
   if (numavectorfiles.gt.MXF.or.numspffiles.gt.MXF) then

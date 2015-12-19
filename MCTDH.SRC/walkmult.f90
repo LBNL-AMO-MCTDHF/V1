@@ -40,23 +40,60 @@ subroutine sparseconfigmultone(www,invector,outvector,matrix_ptr,sparse_ptr, bof
   real*8,intent(in) :: time
 
 #ifdef MPIFLAG
-  select case(sparsesummaflag)
-  case(0)
+  if (www%par_consplit.eq.0) then
 #endif
 
-     call sparseconfigmultone_gather(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time)
+     call sparseconfigmultone_noparcon(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time)
 
 #ifdef MPIFLAG
-  case(1)
-     call sparseconfigmultone_summa(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time)
-  case(2)
-     call sparseconfigmultone_circ(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time)
-  case default
-     OFLWR "Error sparsesummaflag ",sparsesummaflag; CFLST
-  end select
+  else
+
+     select case(sparsesummaflag)
+     case(0)
+        call sparseconfigmultone_gather(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time)
+     case(1)
+        call sparseconfigmultone_summa(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time)
+     case(2)
+        call sparseconfigmultone_circ(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time)
+     case default
+        OFLWR "Error sparsesummaflag ",sparsesummaflag; CFLST
+     end select
+
+  endif
 #endif
 
 end subroutine sparseconfigmultone
+
+
+subroutine sparseconfigmultone_noparcon(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time)
+  use configptrmod
+  use sparseptrmod
+  use walkmod
+  use mpimod    !! nprocs,myrank
+  use fileptrmod
+  implicit none
+  type(walktype),intent(in) :: www
+  integer,intent(in) :: conflag, boflag, pulseflag, isplit
+  DATATYPE,intent(in) :: invector(www%firstconfig:www%lastconfig)
+  DATATYPE,intent(out) :: outvector(www%firstconfig:www%lastconfig)
+  Type(CONFIGPTR),intent(in) :: matrix_ptr
+  Type(SPARSEPTR),intent(in) :: sparse_ptr
+  real*8,intent(in) :: time
+
+  if (www%parconsplit.ne.0) then
+     OFLWR "ERROR NOPARCON", www%parconsplit; CFLST
+  endif
+
+  call sparseconfigmult_byproc(1,nprocs,www,invector,outvector(www%botconfig:www%topconfig),&
+       matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0)
+
+  call mpiallgather(outvector,www%numconfig,www%configsperproc(:),www%maxconfigsperproc)
+
+end subroutine sparseconfigmultone_noparcon
+
+
+
+#ifdef MPIFLAG
 
 
 subroutine sparseconfigmultone_gather(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time)
@@ -64,6 +101,7 @@ subroutine sparseconfigmultone_gather(www,invector,outvector,matrix_ptr,sparse_p
   use sparseptrmod
   use walkmod
   use mpimod    !! nprocs,myrank
+  use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: conflag, boflag, pulseflag, isplit
@@ -74,39 +112,31 @@ subroutine sparseconfigmultone_gather(www,invector,outvector,matrix_ptr,sparse_p
   real*8,intent(in) :: time
   DATATYPE,allocatable :: workvector(:)
 
-  if (www%parconsplit.ne.0) then     
-
-     allocate(workvector(www%numconfig))
-
-     workvector(www%botconfig:www%topconfig)=invector(:)
-
-     call mpiallgather(workvector,www%numconfig,www%configsperproc(:),www%maxconfigsperproc)
-
-     call sparseconfigmult_byproc(1,nprocs,www,workvector,outvector(www%botconfig:www%topconfig),&
-          matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0)
-
-     deallocate(workvector)
-
-  else
-
-     call sparseconfigmult_byproc(1,nprocs,www,invector,outvector(www%botconfig:www%topconfig),&
-          matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0)
-
-     call mpiallgather(outvector,www%numconfig,www%configsperproc(:),www%maxconfigsperproc)
-
+  if (www%parconsplit.eq.0) then
+     OFLWR "ERROR PARCON"; CFLST
   endif
+
+  allocate(workvector(www%numconfig))
+  
+  workvector(www%botconfig:www%topconfig)=invector(:)
+  
+  call mpiallgather(workvector,www%numconfig,www%configsperproc(:),www%maxconfigsperproc)
+  
+  call sparseconfigmult_byproc(1,nprocs,www,workvector,outvector(www%botconfig:www%topconfig),&
+       matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0)
+  
+  deallocate(workvector)
 
 end subroutine sparseconfigmultone_gather
 
 
-
-#ifdef MPIFLAG
 
 subroutine sparseconfigmultone_summa(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time)
   use configptrmod
   use sparseptrmod
   use walkmod
   use mpimod    !! nprocs,myrank
+  use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: conflag, boflag, pulseflag, isplit
@@ -118,32 +148,23 @@ subroutine sparseconfigmultone_summa(www,invector,outvector,matrix_ptr,sparse_pt
   DATATYPE :: workvector(www%maxconfigsperproc),outtemp(www%botconfig:www%topconfig)      !! AUTOMATIC
   integer :: iproc
 
+  if (www%parconsplit.eq.0) then
+     OFLWR "ERROR PARCON"; CFLST
+  endif
+
   outvector(www%botconfig:www%topconfig)=0d0
 
   do iproc=1,nprocs
 
-     if (www%parconsplit.ne.0) then     
-
-        if (myrank.eq.iproc) then
-           workvector(1:www%topconfig-www%botconfig+1)=invector(:)
-        endif
-        call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1))
-        call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0)
-
-     else
-
-        call sparseconfigmult_byproc(iproc,iproc,www,invector(www%allbotconfigs(iproc):www%alltopconfigs(iproc)),&
-             outtemp,matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0)
-
+     if (myrank.eq.iproc) then
+        workvector(1:www%topconfig-www%botconfig+1)=invector(:)
      endif
+     call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1))
+     call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0)
 
      outvector(www%botconfig:www%topconfig)=outvector(www%botconfig:www%topconfig)+outtemp(:)
 
   enddo
-
-  if (www%parconsplit.eq.0) then
-     call mpiallgather(outvector,www%numconfig,www%configsperproc(:),www%maxconfigsperproc)
-  endif
 
 end subroutine sparseconfigmultone_summa
 
@@ -154,6 +175,7 @@ subroutine sparseconfigmultone_circ(www,invector,outvector,matrix_ptr,sparse_ptr
   use sparseptrmod
   use walkmod
   use mpimod    !! nprocs,myrank
+  use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: conflag, boflag, pulseflag, isplit
@@ -166,14 +188,16 @@ subroutine sparseconfigmultone_circ(www,invector,outvector,matrix_ptr,sparse_ptr
        outtemp(www%botconfig:www%topconfig)      !! AUTOMATIC
   integer :: iproc,prevproc,nextproc,deltaproc
 
+  if (www%parconsplit.eq.0) then
+     OFLWR "ERROR PARCON"; CFLST
+  endif
+
 !! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 and ftcore.f90, 
 !!     holding hands in a circle, prevproc and nextproc, each chunk gets passed around the circle
   prevproc=mod(nprocs+myrank-2,nprocs)+1
   nextproc=mod(myrank,nprocs)+1
 
   outvector(www%botconfig:www%topconfig)=0d0
-
-!! NOTE REMOVAL OF PARCONSPLIT LOGIC, ALWAYS DOING CIRC.
 
   workvector(1:www%topconfig-www%botconfig+1)=invector(:)
 
@@ -195,10 +219,6 @@ subroutine sparseconfigmultone_circ(www,invector,outvector,matrix_ptr,sparse_ptr
      workvector(:)=workvector2(:)
 
   enddo
-
-  if (www%parconsplit.eq.0) then
-     call mpiallgather(outvector,www%numconfig,www%configsperproc(:),www%maxconfigsperproc)
-  endif
 
 end subroutine sparseconfigmultone_circ
 
@@ -227,8 +247,6 @@ subroutine sparseconfigpulsemult(www,invector,outvector,matrix_ptr, sparse_ptr,w
 end subroutine sparseconfigpulsemult
 
 
-!! MPI subroutine
-
 
 subroutine sparseconfigmultxxx(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag)
   use r_parameters
@@ -246,24 +264,60 @@ subroutine sparseconfigmultxxx(www,invector,outvector,matrix_ptr,sparse_ptr, bof
   real*8,intent(in) :: time
 
 #ifdef MPIFLAG
-  select case (sparsesummaflag)
-  case(0)
+  if (www%par_consplit.eq.0) then
 #endif
 
-     call sparseconfigmultxxx_gather(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag)
+     call sparseconfigmultxxx_noparcon(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag)
 
 #ifdef MPIFLAG
-  case(1)
-     call sparseconfigmultxxx_summa(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag)
-  case(2)
-     call sparseconfigmultxxx_circ(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag)
-  case default
-     OFLWR "Error sparsesummaflag ",sparsesummaflag; CFLST
-  end select
+  else
+
+     select case (sparsesummaflag)
+     case(0)
+        call sparseconfigmultxxx_gather(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag)
+     case(1)
+        call sparseconfigmultxxx_summa(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag)
+     case(2)
+        call sparseconfigmultxxx_circ(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag)
+     case default
+        OFLWR "Error sparsesummaflag ",sparsesummaflag; CFLST
+     end select
+
+  endif
 #endif
 
 end subroutine sparseconfigmultxxx
 
+
+subroutine sparseconfigmultxxx_noparcon(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag)
+  use r_parameters
+  use configptrmod
+  use sparseptrmod
+  use mpimod    !! myrank,nprocs
+  use walkmod
+  use fileptrmod
+  implicit none
+  type(walktype),intent(in) :: www
+  integer,intent(in) :: conflag,boflag,nucflag,pulseflag,onlytdflag
+  DATATYPE,intent(in) :: invector(numr,www%firstconfig:www%lastconfig)
+  DATATYPE,intent(out) :: outvector(numr,www%firstconfig:www%lastconfig)
+  Type(CONFIGPTR),intent(in) :: matrix_ptr
+  Type(SPARSEPTR),intent(in) :: sparse_ptr
+  real*8,intent(in) :: time
+
+  if (www%parconsplit.ne.0) then
+     OFLWR "ERROR NOPARCON XXX", www%parconsplit; CFLST
+  endif
+
+  call sparseconfigmult_byproc(1,nprocs,www,invector,outvector(:,www%botconfig:www%topconfig),&
+       matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0)
+
+  call mpiallgather(outvector,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+
+end subroutine sparseconfigmultxxx_noparcon
+
+
+#ifdef MPIFLAG
 
 subroutine sparseconfigmultxxx_gather(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag)
   use r_parameters
@@ -271,6 +325,7 @@ subroutine sparseconfigmultxxx_gather(www,invector,outvector,matrix_ptr,sparse_p
   use sparseptrmod
   use mpimod    !! myrank,nprocs
   use walkmod
+  use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: conflag,boflag,nucflag,pulseflag,onlytdflag
@@ -281,32 +336,23 @@ subroutine sparseconfigmultxxx_gather(www,invector,outvector,matrix_ptr,sparse_p
   real*8,intent(in) :: time
   DATATYPE, allocatable :: workvector(:,:)
 
-  if (www%parconsplit.ne.0) then
-
-     allocate(workvector(numr,www%numconfig))
-
-     workvector(:,1:www%botconfig:www%topconfig) = invector(:,:)
-
-     call mpiallgather(workvector,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
-
-     call sparseconfigmult_byproc(1,nprocs,www,workvector,outvector(:,www%botconfig:www%topconfig),&
-          matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0)
-
-     deallocate(workvector)
-
-  else
-
-     call sparseconfigmult_byproc(1,nprocs,www,invector,outvector(:,www%botconfig:www%topconfig),&
-          matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0)
-
-     call mpiallgather(outvector,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
-
+  if (www%parconsplit.eq.0) then
+     OFLWR "ERROR PARCON XXX"; CFLST
   endif
-     
+
+  allocate(workvector(numr,www%numconfig))
+
+  workvector(:,1:www%botconfig:www%topconfig) = invector(:,:)
+
+  call mpiallgather(workvector,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+  
+  call sparseconfigmult_byproc(1,nprocs,www,workvector,outvector(:,www%botconfig:www%topconfig),&
+       matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0)
+
+  deallocate(workvector)
+
 end subroutine sparseconfigmultxxx_gather
 
-
-#ifdef MPIFLAG
 
 subroutine sparseconfigmultxxx_summa(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag)
   use r_parameters
@@ -314,6 +360,7 @@ subroutine sparseconfigmultxxx_summa(www,invector,outvector,matrix_ptr,sparse_pt
   use sparseptrmod
   use mpimod    !! myrank,nprocs
   use walkmod
+  use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: conflag,boflag,nucflag,pulseflag,onlytdflag
@@ -326,39 +373,26 @@ subroutine sparseconfigmultxxx_summa(www,invector,outvector,matrix_ptr,sparse_pt
        outtemp(numr,www%botconfig:www%topconfig)    !!AUTOMATIC
   integer :: iproc
 
+  if (www%parconsplit.eq.0) then
+     OFLWR "ERROR PARCON XXX"; CFLST
+  endif
+
   outvector(:,www%botconfig:www%topconfig)=0d0
 
   do iproc=1,nprocs
 
-     if (www%parconsplit.ne.0) then
-
-        if (myrank.eq.iproc) then
-           workvector(:,1:www%topconfig-www%botconfig+1) = invector(:,:)
-        endif
-        call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
-        call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0)
-
-     else
-
-        call sparseconfigmult_byproc(iproc,iproc,www,invector(:,www%allbotconfigs(iproc):www%alltopconfigs(iproc)),&
-             outtemp,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0)
-
+     if (myrank.eq.iproc) then
+        workvector(:,1:www%topconfig-www%botconfig+1) = invector(:,:)
      endif
+     call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
+     call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0)
 
      outvector(:,www%botconfig:www%topconfig)=outvector(:,www%botconfig:www%topconfig) + outtemp(:,:)
 
   enddo
 
-  if (www%parconsplit.eq.0) then
-     call mpiallgather(outvector,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
-  endif
-     
 end subroutine sparseconfigmultxxx_summa
 
-
-
-
-!! NOTE REMOVAL OF PARCONSPLIT LOGIC, ALWAYS DOING CIRC.
 
 subroutine sparseconfigmultxxx_circ(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag)
   use r_parameters
@@ -366,6 +400,7 @@ subroutine sparseconfigmultxxx_circ(www,invector,outvector,matrix_ptr,sparse_ptr
   use sparseptrmod
   use mpimod    !! myrank,nprocs
   use walkmod
+  use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: conflag,boflag,nucflag,pulseflag,onlytdflag
@@ -378,14 +413,16 @@ subroutine sparseconfigmultxxx_circ(www,invector,outvector,matrix_ptr,sparse_ptr
        outtemp(numr,www%botconfig:www%topconfig)      !! AUTOMATIC
   integer :: iproc,deltaproc,prevproc,nextproc
 
+  if (www%parconsplit.eq.0) then
+     OFLWR "ERROR PARCON XXX"; CFLST
+  endif
+
 !! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 and ftcore.f90, 
 !!     holding hands in a circle, prevproc and nextproc, each chunk gets passed around the circle
   prevproc=mod(nprocs+myrank-2,nprocs)+1
   nextproc=mod(myrank,nprocs)+1
 
   outvector(:,www%botconfig:www%topconfig)=0d0
-
-!! NOTE REMOVAL OF PARCONSPLIT LOGIC, ALWAYS DOING CIRC.
 
   workvector(:,1:www%topconfig-www%botconfig+1)=invector(:,botconfig:topconfig)
 
@@ -408,10 +445,6 @@ subroutine sparseconfigmultxxx_circ(www,invector,outvector,matrix_ptr,sparse_ptr
 
   enddo
 
-  if (www%parconsplit.eq.0) then
-     call mpiallgather(outvector,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
-  endif
-     
 end subroutine sparseconfigmultxxx_circ
 
 #endif
@@ -459,28 +492,61 @@ subroutine arbitraryconfig_mult_singles(www,onebodymat, rvector, avectorin, avec
   DATAECS,intent(in) :: rvector(inrnum)
 
 #ifdef MPIFLAG
-  select case (sparsesummaflag)
-  case (0)
+  if (www%parconsplit.eq.0) then
 #endif
 
-     call arbitraryconfig_mult_singles_gather(www,onebodymat, rvector, avectorin, avectorout,inrnum)
+     call arbitraryconfig_mult_singles_noparcon(www,onebodymat, rvector, avectorin, avectorout,inrnum)
 
 #ifdef MPIFLAG
-  case (1)
-     call arbitraryconfig_mult_singles_summa(www,onebodymat, rvector, avectorin, avectorout,inrnum)
-  case (2)
-     call arbitraryconfig_mult_singles_circ(www,onebodymat, rvector, avectorin, avectorout,inrnum)
-  case default
-     OFLWR "Error sparsesummaflag ", sparsesummaflag; CFLST
-  end select
+  else
+
+     select case (sparsesummaflag)
+     case (0)
+        call arbitraryconfig_mult_singles_gather(www,onebodymat, rvector, avectorin, avectorout,inrnum)
+     case (1)
+        call arbitraryconfig_mult_singles_summa(www,onebodymat, rvector, avectorin, avectorout,inrnum)
+     case (2)
+        call arbitraryconfig_mult_singles_circ(www,onebodymat, rvector, avectorin, avectorout,inrnum)
+     case default
+        OFLWR "Error sparsesummaflag ", sparsesummaflag; CFLST
+     end select
+
+  endif
 #endif
 
 end subroutine arbitraryconfig_mult_singles
 
 
+subroutine arbitraryconfig_mult_singles_noparcon(www,onebodymat, rvector, avectorin, avectorout,inrnum)   
+  use walkmod
+  use mpimod   !! myrank,nprocs
+  use fileptrmod
+  implicit none
+  type(walktype),intent(in) :: www
+  integer,intent(in) :: inrnum
+  DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf), avectorin(inrnum,www%firstconfig:www%lastconfig)
+  DATATYPE,intent(out) :: avectorout(inrnum,www%firstconfig:www%lastconfig)
+  DATAECS,intent(in) :: rvector(inrnum)
+
+  if (www%parconsplit.ne.0) then
+     OFLWR "ERROR NOPARCON ARB"; CFLST
+  endif
+
+  call arbitraryconfig_mult_singles_byproc(1,nprocs,www,onebodymat, rvector, avectorin,&
+       avectorout(:,www%botconfig:www%topconfig),inrnum,0)
+  
+  call mpiallgather(avectorout,www%numconfig*inrnum,www%configsperproc(:)*inrnum,www%maxconfigsperproc*inrnum)
+
+end subroutine arbitraryconfig_mult_singles_noparcon
+
+
+
+#ifdef MPIFLAG
+
 subroutine arbitraryconfig_mult_singles_gather(www,onebodymat, rvector, avectorin, avectorout,inrnum)   
   use walkmod
   use mpimod   !! myrank,nprocs
+  use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: inrnum
@@ -489,36 +555,27 @@ subroutine arbitraryconfig_mult_singles_gather(www,onebodymat, rvector, avectori
   DATAECS,intent(in) :: rvector(inrnum)
   DATATYPE, allocatable :: workvector(:,:)
 
-  if (www%parconsplit.ne.0) then
-
-     allocate(workvector(inrnum,www%numconfig))
-
-     workvector(:,www%botconfig:www%topconfig) = avectorin(:,:)
-
-     call mpiallgather(workvector,www%numconfig*inrnum,www%configsperproc(:)*inrnum,www%maxconfigsperproc*inrnum)
-
-     call arbitraryconfig_mult_singles_byproc(1,nprocs,www,onebodymat, rvector, workvector, avectorout,inrnum,0)
-
-     deallocate(workvector)
-
-  else
-
-     call arbitraryconfig_mult_singles_byproc(1,nprocs,www,onebodymat, rvector, avectorin,&
-          avectorout(:,www%botconfig:www%topconfig),inrnum,0)
-
-     call mpiallgather(avectorout,www%numconfig*inrnum,www%configsperproc(:)*inrnum,www%maxconfigsperproc*inrnum)
-
+  if (www%parconsplit.eq.0) then
+     OFLWR "ERROR PARCON ARB"; CFLST
   endif
+
+  allocate(workvector(inrnum,www%numconfig))
+  
+  workvector(:,www%botconfig:www%topconfig) = avectorin(:,:)
+  
+  call mpiallgather(workvector,www%numconfig*inrnum,www%configsperproc(:)*inrnum,www%maxconfigsperproc*inrnum)
+  
+  call arbitraryconfig_mult_singles_byproc(1,nprocs,www,onebodymat, rvector, workvector, avectorout,inrnum,0)
+
+  deallocate(workvector)
 
 end subroutine arbitraryconfig_mult_singles_gather
 
 
-
-#ifdef MPIFLAG
-
 subroutine arbitraryconfig_mult_singles_summa(www,onebodymat, rvector, avectorin, avectorout,inrnum)   
   use walkmod
   use mpimod   !! myrank,nprocs
+  use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: inrnum
@@ -529,33 +586,24 @@ subroutine arbitraryconfig_mult_singles_summa(www,onebodymat, rvector, avectorin
        outtemp(inrnum,www%botconfig:www%topconfig)         !! AUTOMATIC
   integer :: iproc
 
+  if (www%parconsplit.eq.0) then
+     OFLWR "ERROR PARCON ARB"; CFLST
+  endif
+
   avectorout(:,www%botconfig:www%topconfig)=0d0
 
   do iproc=1,nprocs
 
-     if (www%parconsplit.ne.0) then
-
-        if (myrank.eq.iproc) then
-           workvector(:,1:www%topconfig-www%botconfig+1) = avectorin(:,:)
-        endif
-        call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*inrnum)
-        call arbitraryconfig_mult_singles_byproc(iproc,iproc,www,onebodymat, rvector, &
-             workvector, outtemp,inrnum,0)
-
-     else
-     
-        call arbitraryconfig_mult_singles_byproc(iproc,iproc,www,onebodymat, rvector, &
-             avectorin(:,www%allbotconfigs(iproc):www%alltopconfigs(iproc)),outtemp,inrnum,0)
-
+     if (myrank.eq.iproc) then
+        workvector(:,1:www%topconfig-www%botconfig+1) = avectorin(:,:)
      endif
+     call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*inrnum)
+     call arbitraryconfig_mult_singles_byproc(iproc,iproc,www,onebodymat, rvector, &
+          workvector, outtemp,inrnum,0)
 
      avectorout(:,www%botconfig:www%topconfig) = avectorout(:,www%botconfig:www%topconfig) + outtemp(:,:)
 
   enddo
-
-  if (www%parconsplit.eq.0) then
-     call mpiallgather(avectorout,www%numconfig*inrnum,www%configsperproc(:)*inrnum,www%maxconfigsperproc*inrnum)
-  endif
 
 end subroutine arbitraryconfig_mult_singles_summa
 
@@ -563,6 +611,7 @@ end subroutine arbitraryconfig_mult_singles_summa
 subroutine arbitraryconfig_mult_singles_circ(www,onebodymat, rvector, avectorin, avectorout,inrnum)   
   use walkmod
   use mpimod   !! myrank,nprocs
+  use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: inrnum
@@ -573,14 +622,16 @@ subroutine arbitraryconfig_mult_singles_circ(www,onebodymat, rvector, avectorin,
        outtemp(inrnum,www%botconfig:www%topconfig)         !! AUTOMATIC
   integer :: iproc
 
+  if (www%parconsplit.eq.0) then
+     OFLWR "ERROR PARCON ARB"; CFLST
+  endif
+
 !! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 and ftcore.f90, 
 !!     holding hands in a circle, prevproc and nextproc, each chunk gets passed around the circle
   prevproc=mod(nprocs+myrank-2,nprocs)+1
   nextproc=mod(myrank,nprocs)+1
 
   avectorout(:,www%botconfig:www%topconfig)=0d0
-
-!! NOTE REMOVAL OF PARCONSPLIT LOGIC, ALWAYS DOING CIRC.
 
   workvector(:,1:www%topconfig-www%botconfig+1) = avectorin(:,www%botconfig:www%topconfig)
 
@@ -602,10 +653,6 @@ subroutine arbitraryconfig_mult_singles_circ(www,onebodymat, rvector, avectorin,
      workvector(:,:)=workvector2(:,:)
 
   enddo
-
-  if (www%parconsplit.eq.0) then
-     call mpiallgather(avectorout,www%numconfig*inrnum,www%configsperproc(:)*inrnum,www%maxconfigsperproc*inrnum)
-  endif
 
 end subroutine arbitraryconfig_mult_singles_circ
 
