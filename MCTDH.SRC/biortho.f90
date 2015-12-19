@@ -628,11 +628,22 @@ subroutine parbiomatvec(inavector,outavector)
   DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
   DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
 
-  if (sparsesummaflag.eq.0) then
+#ifdef MPIFLAG
+  select case (sparseummaflag)
+  case(0)
+#endif
+
      call parbiomatvec_gather(inavector,outavector)
-  else
+
+#ifdef MPIFLAG
+  case(1)
      call parbiomatvec_summa(inavector,outavector)
-  endif
+  case(2)
+     call parbiomatvec_circ(inavector,outavector)
+  case default
+     OFLWR "Error sparsesummaflag ",sparsesummaflag; CFLST
+  end select
+#endif
 
 end subroutine parbiomatvec
 
@@ -678,6 +689,8 @@ subroutine parbiomatvec_gather(inavector,outavector)
 end subroutine parbiomatvec_gather
 
 
+#ifdef MPIFLAG
+
 
 subroutine parbiomatvec_summa(inavector,outavector)
   use fileptrmod
@@ -722,6 +735,63 @@ subroutine parbiomatvec_summa(inavector,outavector)
   call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,outwork(:,:),outavector(:,:))
 
 end subroutine parbiomatvec_summa
+
+
+
+subroutine parbiomatvec_circ(inavector,outavector)
+  use fileptrmod
+  use sparse_parameters
+  use mpimod
+  use matvecsetmod
+  use biomatvecmod
+  implicit none
+
+  DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
+  DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
+  DATATYPE :: workvector(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&
+       workvector2(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&
+       outwork(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig),&
+       outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig)
+  integer :: iproc,prevproc,nextproc,deltaproc
+
+  if (sparseconfigflag.eq.0) then
+     OFLWR "error, must use sparse for parbiomatvec summa"; CFLST
+  endif
+
+!! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 and ftcore.f90, 
+!!     holding hands in a circle, prevproc and nextproc, each chunk gets passed around the circle
+  prevproc=mod(nprocs+myrank-2,nprocs)+1
+  nextproc=mod(myrank,nprocs)+1
+
+  outwork(:,:)=0d0
+
+  call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector(:,:),workvector(:,:))
+
+  do deltaproc=0,nprocs-1
+
+!! PASSING BACKWARD (plus deltaproc)
+     iproc=mod(myrank-1+deltaproc,nprocs)+1
+
+     call biomatvec_byproc(iproc,iproc,workvector,outtemp)
+
+     outwork(:,:)=outwork(:,:)+outtemp(:,:)
+
+!! PASSING BACKWARD
+!! mympisendrecv(sendbuf,recvbuf,dest,source,...)
+
+     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,&
+          biopointer%bionr * biopointer%wwbio%maxconfigsperproc)
+     workvector(:,:)=workvector2(:,:)
+
+  enddo
+
+  outavector(:,:)=0d0   !! PADDED
+
+  call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,outwork(:,:),outavector(:,:))
+
+end subroutine parbiomatvec_circ
+
+#endif
 
 
 

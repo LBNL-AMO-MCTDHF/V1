@@ -165,19 +165,32 @@ subroutine parblockconfigmult(inavector,outavector)
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
 
-  if (sparsesummaflag.eq.0) then
+#ifdef MPIFLAG
+  select case (sparseummaflag)
+  case(0)
+#endif
      if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
         call parblockconfigmult0_gather(www,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
      else
         call parblockconfigmult0_gather(dfww,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
      endif
-  else
+#ifdef MPIFLAG
+  case(1)
      if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
         call parblockconfigmult0_summa(www,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
      else
         call parblockconfigmult0_summa(dfww,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
      endif
-  endif
+  case(2)
+     if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
+        call parblockconfigmult0_circ(www,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
+     else
+        call parblockconfigmult0_circ(dfww,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+     endif
+  case default
+     OFLWR "Error sparsesummaflag ", sparsesummaflag; CFLST
+  end select
+#endif
 
 end subroutine parblockconfigmult
 
@@ -231,6 +244,7 @@ subroutine parblockconfigmult0_gather(www,cptr,sptr,inavector,outavector)
 end subroutine parblockconfigmult0_gather
 
 
+#ifdef MPIFLAG
 
 subroutine parblockconfigmult0_summa(www,cptr,sptr,inavector,outavector)
   use fileptrmod
@@ -284,6 +298,73 @@ subroutine parblockconfigmult0_summa(www,cptr,sptr,inavector,outavector)
 
 end subroutine parblockconfigmult0_summa
 
+
+
+subroutine parblockconfigmult0_circ(www,cptr,sptr,inavector,outavector)
+  use fileptrmod
+  use r_parameters
+  use sparse_parameters
+  use ham_parameters
+  use mpimod
+  use walkmod
+  use sparseptrmod
+  use configptrmod
+  implicit none
+  type(walktype),intent(in) :: www
+  type(CONFIGPTR),intent(in) :: cptr
+  type(SPARSEPTR),intent(in) :: sptr
+  integer :: ii,iproc,prevproc,nextproc,deltaproc
+  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
+  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
+  DATATYPE :: workvector(numr,www%maxconfigsperproc), workvector2(numr,www%maxconfigsperproc),&
+       outwork(numr,www%botconfig:www%topconfig),&
+       outtemp(numr,www%botconfig:www%topconfig)
+
+  if (sparseconfigflag.eq.0) then
+     OFLWR "error, must use sparse for parblockconfigmult"; CFLST
+  endif
+
+!! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 and ftcore.f90, 
+!!     holding hands in a circle, prevproc and nextproc, each chunk gets passed around the circle
+  prevproc=mod(nprocs+myrank-2,nprocs)+1
+  nextproc=mod(myrank,nprocs)+1
+
+  outwork(:,:)=0d0
+
+  call basis_transformfrom_local(www,numr,inavector,workvector)
+
+  if (mshift.ne.0d0) then 
+     do ii=www%botconfig,www%topconfig
+        outwork(:,ii)=outwork(:,ii)+ workvector(:,ii-www%botconfig+1)*www%configmvals(ii)*mshift
+     enddo
+  endif
+
+  do deltaproc=0,nprocs-1
+
+!! PASSING BACKWARD (plus deltaproc)
+     iproc=mod(myrank-1+deltaproc,nprocs)+1
+
+     call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp, cptr, sptr, &
+          1,1,1,0,0d0,0,1,numr,0)
+
+     outwork(:,:)=outwork(:,:) + outtemp(:,:)
+
+!! PASSING BACKWARD
+!! mympisendrecv(sendbuf,recvbuf,dest,source,...)
+
+     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltabox,&
+          numr * www%maxconfigsperproc)
+     workvector(:,:)=workvector2(:,:)
+
+  enddo
+
+  call basis_transformto_local(www,numr,outwork,outavector)
+
+end subroutine parblockconfigmult0_circ
+
+
+
+#endif
 
 
 subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,  outvectors,outvectorlda, outvalues,inprintflag,guessflag,lancheckmod,lanthresh,multsub,logpar,targetflag,etarget)
