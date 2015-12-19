@@ -29,14 +29,19 @@ function windowfunct(i,numdata)
      OFLWR "ERROR, windowfunct ",i,numdata; CFLST
   endif
 
-  if (ftwindowlength.ge.0) then
-     if (numdata-i.lt.ftwindowlength) then
-        windowfunct = cos( pi/2d0 * (i-(numdata-ftwindowlength)) / real(ftwindowlength,8) )**ftwindowpower      !! **2
-     else
-        windowfunct=1d0
-     endif
+  if (fttriwindow.ne.0) then
+     windowfunct = real(numdata-i,8) / real(numdata,8) 
   else
-     windowfunct = cos( pi/2d0 * i / real(numdata,8) )**ftwindowpower
+
+     if (ftwindowlength.ge.0) then
+        if (numdata-i.lt.ftwindowlength) then
+           windowfunct = cos( pi/2d0 * (i-(numdata-ftwindowlength)) / real(ftwindowlength,8) )**ftwindowpower      !! **2
+        else
+           windowfunct=1d0
+        endif
+     else
+        windowfunct = cos( pi/2d0 * i / real(numdata,8) )**ftwindowpower
+     endif
   endif
 
 end function windowfunct

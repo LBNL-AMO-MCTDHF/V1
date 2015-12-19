@@ -370,13 +370,14 @@ complex*16 :: ceground=(0.d0,0d0)!!              !! input as complex-valued inst
 real*8 :: autotimestep=1.d0      !! ACTIONS 1 and 21 (autocorrelation and emission/absorption):
                                  !!   time step for fourier transform
 !!EE
-!!{\large \quad PHOTOIONIZATION and EMISSION/ABSORPTION (actions 16,17,21)}
+!!{\large \quad AUTOCORRELATION, PHOTOIONIZATION and EMISSION/ABSORPTION (actions 1,16,17,21)}
 !!BB
-integer :: ftwindowlength=-99 !! FOR ACTIONS 15,16,21 options for damping function of time to be transformed
+integer :: ftwindowlength=-99 !! FOR ACTIONS 1,16,17,21 options for damping function of time to be transformed
                               !!    if .ge.0, only damp at end (high frequency cutoff): last ftwindowlength 
                               !!    points in fourier transform are damped by cosine function
 integer :: ftwindowpower=1    !! if ftwindowlength not set, use previous (v1.16) windowing function: multiply
                               !!    all points by cos(pi t / 2 / tmax)**ftwindowpower 
+integer :: fttriwindow=0      !! If nonzero override other two options, do straight linear damping function
 !!EE
 !!{\large \quad EMISSION/ABSORPTION (action 21)}
 !!BB
