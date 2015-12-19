@@ -4,7 +4,8 @@ directory is private, available to users only, at repo
 
    https://github.com/LBNL-AMO-MCTDHF/EXAMPLES-DEPOT
 
-You can simply git pull it right here to restore the original directory
+You can git pull the private EXAMPLES-DEPOT repo into the empty 
+V1/EXAMPLES-DEPOT subdirectory, to restore the original directory
 structure.
 
 To become a user and gain access to the EXAMPLES-DEPOT subdirectory with
