@@ -377,7 +377,8 @@ integer :: ftwindowlength=-99 !! FOR ACTIONS 1,16,17,21 options for damping func
                               !!    points in fourier transform are damped by cosine function
 integer :: ftwindowpower=1    !! if ftwindowlength not set, use previous (v1.16) windowing function: multiply
                               !!    all points by cos(pi t / 2 / tmax)**ftwindowpower 
-integer :: fttriwindow=0      !! If nonzero override other two options, do straight linear damping function
+integer :: fttriwindow=1      !! If nonzero override other two options, do straight linear damping function
+                              !!    NOW DEFAULT linear damping looks best v1.16
 !!EE
 !!{\large \quad EMISSION/ABSORPTION (action 21)}
 !!BB
