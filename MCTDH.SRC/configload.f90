@@ -549,7 +549,7 @@ subroutine simple_load_avectors(iunit, qq, myavectors, myndof, mynumr, mynumconf
 end subroutine simple_load_avectors
 
 
-!! outavectors = numconfig
+!! outavectors = numconfig   RANK 1 calls this subroutine, THEN DO PARCONSPLIT LOGIC
 
 subroutine easy_load_avectors(iunit, qq, outavectors, mynumr, mynumconfig, mynumvects)
   use parameters
@@ -563,10 +563,6 @@ subroutine easy_load_avectors(iunit, qq, outavectors, mynumr, mynumconfig, mynum
   real*8 :: rtempreadvect(mynumr)
   logical :: allowedconfig0
   complex*16 :: ctempreadvect(mynumr)
-
-  if (par_consplit.ne.0) then
-     OFLWR "dome par_consplit easy"; CFLST
-  endif
 
   if (mynumr.gt.numr) then
      OFLWR "error numr on file greater than calc",mynumr,numr; CFLST
