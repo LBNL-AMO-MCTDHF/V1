@@ -445,7 +445,8 @@ subroutine parconfigexpomult_padded0_circ(www,workconfigpointer,worksparsepointe
 
      call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,&
           numr * www%maxconfigsperproc)
- 
+     workvector(:,:)=workvector2(:,:)
+
   enddo
 
   outavector(:,:)=0d0   !! PADDED
