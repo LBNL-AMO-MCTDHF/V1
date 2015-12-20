@@ -629,7 +629,7 @@ subroutine parbiomatvec(inavector,outavector)
   DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
 
 #ifdef MPIFLAG
-  select case (sparseummaflag)
+  select case (sparsesummaflag)
   case(0)
 #endif
 

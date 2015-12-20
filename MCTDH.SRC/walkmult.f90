@@ -30,6 +30,7 @@ subroutine sparseconfigmultone(www,invector,outvector,matrix_ptr,sparse_ptr, bof
   use configptrmod
   use sparseptrmod
   use walkmod
+  use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: conflag, boflag, pulseflag, isplit
@@ -40,7 +41,7 @@ subroutine sparseconfigmultone(www,invector,outvector,matrix_ptr,sparse_ptr, bof
   real*8,intent(in) :: time
 
 #ifdef MPIFLAG
-  if (www%par_consplit.eq.0) then
+  if (www%parconsplit.eq.0) then
 #endif
 
      call sparseconfigmultone_noparcon(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time)
@@ -254,6 +255,7 @@ subroutine sparseconfigmultxxx(www,invector,outvector,matrix_ptr,sparse_ptr, bof
   use sparseptrmod
   use sparse_parameters
   use walkmod
+  use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: conflag,boflag,nucflag,pulseflag,onlytdflag
@@ -264,7 +266,7 @@ subroutine sparseconfigmultxxx(www,invector,outvector,matrix_ptr,sparse_ptr, bof
   real*8,intent(in) :: time
 
 #ifdef MPIFLAG
-  if (www%par_consplit.eq.0) then
+  if (www%parconsplit.eq.0) then
 #endif
 
      call sparseconfigmultxxx_noparcon(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag)
@@ -424,7 +426,7 @@ subroutine sparseconfigmultxxx_circ(www,invector,outvector,matrix_ptr,sparse_ptr
 
   outvector(:,www%botconfig:www%topconfig)=0d0
 
-  workvector(:,1:www%topconfig-www%botconfig+1)=invector(:,botconfig:topconfig)
+  workvector(:,1:www%topconfig-www%botconfig+1)=invector(:,www%botconfig:www%topconfig)
 
   do deltaproc=0,nprocs-1
 
@@ -484,6 +486,7 @@ end subroutine parsparseconfigpreconmult
 subroutine arbitraryconfig_mult_singles(www,onebodymat, rvector, avectorin, avectorout,inrnum)   
   use walkmod
   use sparse_parameters
+  use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: inrnum
@@ -620,7 +623,7 @@ subroutine arbitraryconfig_mult_singles_circ(www,onebodymat, rvector, avectorin,
   DATAECS,intent(in) :: rvector(inrnum)
   DATATYPE :: workvector(inrnum,www%maxconfigsperproc),workvector2(inrnum,www%maxconfigsperproc),&
        outtemp(inrnum,www%botconfig:www%topconfig)         !! AUTOMATIC
-  integer :: iproc
+  integer :: iproc,prevproc,nextproc,deltaproc
 
   if (www%parconsplit.eq.0) then
      OFLWR "ERROR PARCON ARB"; CFLST
@@ -649,7 +652,7 @@ subroutine arbitraryconfig_mult_singles_circ(www,onebodymat, rvector, avectorin,
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
 
      call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,&
-          inrnum * www%maxconfigpserproc)
+          inrnum * www%maxconfigsperproc)
      workvector(:,:)=workvector2(:,:)
 
   enddo

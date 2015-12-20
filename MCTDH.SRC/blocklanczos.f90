@@ -161,12 +161,13 @@ subroutine parblockconfigmult(inavector,outavector)
   use sparse_parameters
   use configmod
   use xxxmod
+  use fileptrmod
   implicit none
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
 
 #ifdef MPIFLAG
-  select case (sparseummaflag)
+  select case (sparsesummaflag)
   case(0)
 #endif
      if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
@@ -352,7 +353,7 @@ subroutine parblockconfigmult0_circ(www,cptr,sptr,inavector,outavector)
 !! PASSING BACKWARD
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
 
-     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltabox,&
+     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,&
           numr * www%maxconfigsperproc)
      workvector(:,:)=workvector2(:,:)
 

@@ -52,11 +52,7 @@ main_modules.o: Definitions.INC Definitions.ALL parameters.o main_modules.F90
 	$(F90) $(FFLAGS) $(PGFFLAG) -c main_modules.F90
 
 biortho.o:      Definitions.INC  Definitions.ALL parameters.o main_modules.o biortho.F90 
-	$(F90) $(FFLAGS)  -c biortho.F90 
-
-biortho2.o:      Definitions.INC  Definitions.ALL parameters.o main_modules.o biortho2.F90 
-	$(F90) $(FFLAGS)  -c biortho2.F90 
-
+	$(F90) $(MPIFLAG) $(FFLAGS)  -c biortho.F90 
 
 
 second_derivs.o: $(DEPEND) second_derivs.F90
@@ -173,13 +169,13 @@ newconfig.o: $(DEPEND) newconfig.F90
 	$(F90) $(FFLAGS)  -c newconfig.F90
 
 configstuff.o: $(DEPEND) configstuff.F90
-	$(F90) $(FFLAGS)  -c configstuff.F90
+	$(F90) $(MPIFLAG) $(FFLAGS)  -c configstuff.F90
 
 walks.o: $(DEPEND) walks.F90 
 	$(F90) $(FFLAGS)  -c walks.F90
 
 walkmult.o: $(DEPEND) walkmult.F90 
-	$(F90) $(FFLAGS)  -c walkmult.F90
+	$(F90) $(MPIFLAG) $(FFLAGS)  -c walkmult.F90
 
 spinwalks.o: $(DEPEND) spinwalks.F90
 	$(F90) $(FFLAGS)  -c spinwalks.F90
@@ -202,7 +198,7 @@ dipolecall.o: $(DEPEND)  dipolecall.F90
 
 
 blocklanczos.o: $(DEPEND) blocklanczos.F90
-	$(F90) $(FFLAGS) -c blocklanczos.F90
+	$(F90) $(MPIFLAG) $(FFLAGS) -c blocklanczos.F90
 
 eigen.o: eigen.F90  Definitions.ALL
 	$(F90) $(FFLAGS) -c eigen.F90 
