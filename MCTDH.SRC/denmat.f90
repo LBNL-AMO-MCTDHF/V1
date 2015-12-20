@@ -815,6 +815,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   endif
 
   allocate(bigavector(numr,www%numconfig,numvects), bigavectorp(numr,www%numconfig,numvects))
+  bigavector(:,:,:)=0d0; bigavectorp(:,:,:)=0d0
 
   rhomat(:,:,:,:)=0d0
 
