@@ -666,6 +666,7 @@ subroutine parbiomatvec_gather(inavector,outavector)
   endif
 
   allocate(intemp(biopointer%bionr,biopointer%wwbio%numconfig))
+  intemp(:,:)=0d0
 
 !! TRANSFORM SECOND TO REDUCE COMMUNICATION
 

@@ -28,11 +28,11 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
   implicit none
   type(walktype),intent(in) :: www,dfww
   type(CONFIGPTR),intent(in) :: cptr
-  integer :: order, printflag,i, guessflag,  l,k,numshift,flag
+  integer :: order, printflag,i, guessflag,numshift,flag
   DATATYPE :: thisconfigvects(www%totadim,order),lastval,dot
   DATAECS :: thisconfigvals(order), tempconfigvals(order+numshift)
   real*8 :: realconfigvect(www%totadim)
-  real*8 :: sum,time
+  real*8 :: time    !!$ sum
   DATATYPE, allocatable :: fullconfigmatel(:,:), fullconfigvects(:,:), &
        tempconfigvects(:,:)
   DATAECS, allocatable :: fullconfigvals(:)
@@ -120,22 +120,24 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
 
   endif
 
-!! this is called from either eigs (for which is irrelevant) or from 
-!! config_eigen, which is used to start avectors as improved relax or at
-!! start of prop with eigenflag.  Leave as c-normed; in config_eigen, 
-!! herm-norm.
-!! fix phase for chmctdh/pmctdh debug check
-
-  l=-99
-  do i=1,order
-     sum=(-999d0)
-     do k=1,www%totadim
-        if (abs(thisconfigvects(k,i)).gt.sum) then
-           sum=abs(thisconfigvects(k,i));           l=k
-        endif
-     enddo
-     thisconfigvects(:,i)=thisconfigvects(:,i)*abs(thisconfigvects(l,i))/thisconfigvects(l,i)
-  enddo
+!!$ REMOVED THIS FOR PARCONSPLIT 12-2015 v1.16 REINSTATE?
+!!$  
+!!$  !! this is called from either eigs (for which is irrelevant) or from 
+!!$  !! config_eigen, which is used to start avectors as improved relax or at
+!!$  !! start of prop with eigenflag.  Leave as c-normed; in config_eigen, 
+!!$  !! herm-norm.
+!!$  !! fix phase for chmctdh/pmctdh debug check
+!!$  
+!!$    l=-99
+!!$    do i=1,order
+!!$       sum=(-999d0)
+!!$       do k=1,www%totadim
+!!$          if (abs(thisconfigvects(k,i)).gt.sum) then
+!!$             sum=abs(thisconfigvects(k,i));           l=k
+!!$          endif
+!!$       enddo
+!!$       thisconfigvects(:,i)=thisconfigvects(:,i)*abs(thisconfigvects(l,i))/thisconfigvects(l,i)
+!!$    enddo
 
 end subroutine myconfigeig
 
@@ -312,6 +314,7 @@ subroutine parconfigexpomult_padded0_gather(www,workconfigpointer,worksparsepoin
   endif
   
   allocate(intemp(numr,www%numconfig))
+  intemp(:,:)=0d0
 
 !! TRANSFORM SECOND TO REDUCE COMMUNICATION?
 

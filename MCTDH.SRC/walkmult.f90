@@ -118,7 +118,8 @@ subroutine sparseconfigmultone_gather(www,invector,outvector,matrix_ptr,sparse_p
   endif
 
   allocate(workvector(www%numconfig))
-  
+  workvector(:)=0d0
+
   workvector(www%botconfig:www%topconfig)=invector(:)
   
   call mpiallgather(workvector,www%numconfig,www%configsperproc(:),www%maxconfigsperproc)
@@ -343,11 +344,12 @@ subroutine sparseconfigmultxxx_gather(www,invector,outvector,matrix_ptr,sparse_p
   endif
 
   allocate(workvector(numr,www%numconfig))
+  workvector(:,:)=0d0
 
-  workvector(:,1:www%botconfig:www%topconfig) = invector(:,:)
+  workvector(:,www%botconfig:www%topconfig) = invector(:,:)
 
   call mpiallgather(workvector,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
-  
+
   call sparseconfigmult_byproc(1,nprocs,www,workvector,outvector(:,www%botconfig:www%topconfig),&
        matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0)
 
@@ -563,6 +565,7 @@ subroutine arbitraryconfig_mult_singles_gather(www,onebodymat, rvector, avectori
   endif
 
   allocate(workvector(inrnum,www%numconfig))
+  workvector(:,:)=0d0
   
   workvector(:,www%botconfig:www%topconfig) = avectorin(:,:)
   
