@@ -445,7 +445,8 @@ subroutine fast_newconfiglist(www)
   numdoubly=www%numelec-abs(www%restrictms)
 
   if (mod(numdoubly,2).ne.0) then
-     OFLWR "OOGA NO!!"; CFLST
+     OFLWR "Looks like restrictms not compatible with numelec - need both even or both odd ",&
+          www%restrictms,www%numelec; CFLST
   endif
 
   do ii=1,numdoubly
