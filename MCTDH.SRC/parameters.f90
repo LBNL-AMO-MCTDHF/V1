@@ -385,7 +385,7 @@ integer :: fttriwindow=1      !! If nonzero override other two options, do strai
 integer :: diffdipoleflag=1 !! fourier transform derivative of dipole moment not dipole moment
 integer :: hanningflag=0         !! for hanning window set nonzero action 1 autocorr
 integer :: diptime=100           !! For act=20, outputs copies every diptime atomic units
-integer :: dipmodtime=200        !! do ft every autotimestep*dipmodtime
+integer :: dipmodtime=100        !! do ft every autotimestep*dipmodtime
 !!EE
 !!{\large \quad PHOTOIONIZATION (actions 15,16,17)}
 !!BB
