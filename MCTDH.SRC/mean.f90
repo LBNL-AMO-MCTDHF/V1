@@ -90,10 +90,11 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
   integer ::   ispf, jspf, iispf, jjspf ,  config2, config1,dirphase, iwalk, qq
   DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects),  in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE,intent(out) :: reducedpottally(www%nspf,www%nspf,www%nspf,www%nspf)
-  DATATYPE :: avector2(numr,www%numconfig,numvects)             !! AUTOMATIC
+  DATATYPE,allocatable :: avector2(:,:,:)
   DATATYPE ::  a1(numvects), a2(numvects), dot
   DATAECS :: thisrvalue
 
+  allocate(avector2(numr,www%numconfig,numvects))
   avector2(:,:,:)=0d0
   avector2(:,www%firstconfig:www%lastconfig,:)=in_avector2(:,:,:)
 
@@ -140,6 +141,8 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
      enddo   ! config1
   enddo  !! qq
 
+  deallocate(avector2)
+
   call mympireduce(reducedpottally(:,:,:,:), www%nspf**4)
 
 end subroutine get_tworeducedx
@@ -157,10 +160,11 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects), in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE,intent(out) :: reducedproderiv(www%nspf,www%nspf)
-  DATATYPE :: avector2(numr,www%numconfig,numvects)     !! AUTOMATIC
+  DATATYPE,allocatable :: avector2(:,:,:)
   DATATYPE :: a1(numvects), a2(numvects), dot
   integer ::  config1,config2,  ispf,jspf,  dirphase,     iwalk,ii,jj
 
+  allocate(avector2(numr,www%numconfig,numvects))
   avector2(:,:,:)=0d0
   avector2(:,www%firstconfig:www%lastconfig,:)=in_avector2(:,:,:)
 
@@ -191,6 +195,8 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
      enddo
   enddo
 
+  deallocate(avector2)
+
   call mympireduce(reducedproderiv(:,:), www%nspf**2)
 
 end subroutine get_reducedproderiv
@@ -205,7 +211,7 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects), in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE,intent(out) :: reducedinvr(www%nspf,www%nspf),reducedr(www%nspf,www%nspf),  reducedinvrsq(www%nspf,www%nspf)
-  DATATYPE :: avector2(numr,www%numconfig,numvects)      !! AUTOMATIC
+  DATATYPE,allocatable :: avector2(:,:,:)
   DATATYPE ::  a1(numvects), a2(numvects), dot
   integer ::  config1,config2,   ispf,jspf,  dirphase,    iwalk,ii
   DATAECS :: thisrvalue,  csum,csum2
@@ -214,6 +220,8 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
   if (numr.eq.1) then
      return
   endif
+
+  allocate(avector2(numr,www%numconfig,numvects))
 
 !! DO SUMMA
 
@@ -246,6 +254,8 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
         enddo
      enddo
   enddo !! numr
+
+  deallocate(avector2)
   
   call mympireduce(reducedr(:,:), www%nspf**2);  call mympireduce(reducedinvr(:,:), www%nspf**2)
   call mympireduce(reducedinvrsq(:,:), www%nspf**2)

@@ -188,8 +188,11 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
   DATAECS,intent(in) :: rvector(numpoints)
   DATATYPE,intent(out) :: denmat(www%nspf,www%nspf)
   DATATYPE :: a1(numpoints,howmany), a2(numpoints,howmany), dot
-  DATATYPE :: avector2(numpoints,www%numconfig,howmany)   !! AUTOMATIC
+  DATATYPE, allocatable :: avector2(:,:,:)
   integer :: config1,config2,  ispf,jspf,  dirphase, iwalk, ii
+
+  allocate(avector2(numpoints,www%numconfig,howmany))
+  avector2(:,:,:)=0d0
 
   avector2(:,www%firstconfig:www%lastconfig,:) = in_avector2(:,:,:)
 
@@ -230,6 +233,8 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
 
      enddo
   enddo
+
+  deallocate(avector2)
 
   call mympireduce(denmat,www%nspf**2)
 
@@ -293,7 +298,10 @@ subroutine getoccupations(www,in_avector, numpoints, occupations)
   integer :: config1,  ispf,jspf,  iwalk,idiag
   DATATYPE, intent(in) :: in_avector(numpoints,www%firstconfig:www%lastconfig)
   DATATYPE :: dot
-  DATATYPE :: avector(numpoints,www%numconfig)   !! AUTOMATIC
+  DATATYPE, allocatable :: avector(:,:)
+
+  allocate(avector(numpoints,www%numconfig))
+  avector(:,:)=0d0
 
   avector(:,www%firstconfig:www%lastconfig) = in_avector(:,:)
 
@@ -315,6 +323,8 @@ subroutine getoccupations(www,in_avector, numpoints, occupations)
 
      enddo
   enddo
+
+  deallocate(avector)
 
 #ifndef REALGO
 #ifndef CNORMFLAG
@@ -481,8 +491,8 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
        drivingavectorszz(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a1p(numr,numvects), a2p(numr,numvects),&
        tempconmatels(www%nspf,www%nspf),dot
-  DATATYPE :: bigavector(numr,www%numconfig,numvects), bigavectorp(numr,www%numconfig,numvects)
-  DATATYPE :: avectorp(numr,www%firstconfig:www%lastconfig,numvects)
+  DATATYPE,allocatable :: bigavector(:,:,:),bigavectorp(:,:,:)
+  DATATYPE :: avectorp(numr,www%firstconfig:www%lastconfig,numvects)  !! AUTOMATIC
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,     iwalk, info, kspf, lspf, ind, jind, &
        lind, llind, flag, isize, iwhich,  iiyy,maxii,imc
   integer :: ipiv(liosize)
@@ -497,6 +507,9 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
   if (real(timefac) /= 0.0) then
      OFLWR "Err, get_denconstraint1 (with lioden) can only be used for forward time propagation. "; CFLST
   endif
+
+  allocate(bigavector(numr,www%numconfig,numvects), bigavectorp(numr,www%numconfig,numvects))
+  bigavector(:,:,:)=0d0; bigavectorp(:,:,:)=0d0
 
   lioden=0.d0
 
@@ -744,6 +757,8 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
   end do
 
 
+  deallocate(bigavector,bigavectorp)
+
 end subroutine get_denconstraint1_0
 
 
@@ -785,8 +800,8 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   integer :: ipairs(2,www%nspf*(www%nspf-1))
   DATATYPE ::  a1(numvects), a2(numvects), a1p(numvects), a2p(numvects),dot
   DATATYPE :: tempconmatels(www%nspf,www%nspf), rhomat(www%nspf,www%nspf,www%nspf,www%nspf)
-  DATATYPE :: bigavector(numr,www%numconfig,numvects), bigavectorp(numr,www%numconfig,numvects)
-  DATATYPE :: avectorp(numr,www%firstconfig:www%lastconfig,numvects)
+  DATATYPE,allocatable :: bigavector(:,:,:), bigavectorp(:,:,:)
+  DATATYPE :: avectorp(numr,www%firstconfig:www%lastconfig,numvects)    !! AUTOMATIC
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,  iwalk,ii,  info, kspf, &
        lspf, ind, jind, llind, flag, isize,   iiyy,maxii,imc,j
   integer,allocatable :: ipiv(:)
@@ -798,6 +813,8 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   if ((numshells.eq.1)) then
      return
   endif
+
+  allocate(bigavector(numr,www%numconfig,numvects), bigavectorp(numr,www%numconfig,numvects))
 
   rhomat(:,:,:,:)=0d0
 
@@ -1006,6 +1023,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      
   end do
 
+  deallocate(bigavector,bigavectorp)
 
 end subroutine new_get_denconstraint1_0
 
