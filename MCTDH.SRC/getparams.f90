@@ -674,8 +674,8 @@ subroutine getparams()
   endif
 
 #ifndef MPIFLAG
-  if (par_consplit.ne.0.or.parorbsplit.ne.0) then
-     OFLWR "Error, this is not MPI chmctdhf; cannot use par_consplit or parorbsplit"; CFLST
+  if (par_consplit.ne.0.or.parorbsplit.eq.3) then
+     OFLWR "Error, this is not MPI chmctdhf; cannot use par_consplit.ne.0 or parorbsplit.eq.3"; CFLST
   endif
 #endif
 
