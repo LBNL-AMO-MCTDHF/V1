@@ -211,7 +211,7 @@ utils.o: $(DEPEND) utils.F90
 	$(F90) $(FFLAGS) -c utils.F90 
 
 getparams.o: Definitions.ALL Definitions.INC parameters.o main_modules.o getparams.F90 
-	$(F90) $(FFLAGS) $(SAFEFLAG) $(PGFFLAG) -c getparams.F90 
+	$(F90)  $(MPIFLAG) $(FFLAGS) $(SAFEFLAG) $(PGFFLAG) -c getparams.F90 
 
 electronflux.o: $(DEPEND) electronflux.F90  biortho.o
 	$(F90) $(FFLAGS) -c electronflux.F90
