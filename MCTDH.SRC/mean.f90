@@ -94,11 +94,13 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
   DATATYPE ::  a1(numvects), a2(numvects), dot
   DATAECS :: thisrvalue
 
+!! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
+!! AND DO HOPS
+
   allocate(avector2(numr,www%numconfig,numvects))
   avector2(:,:,:)=0d0
   avector2(:,www%firstconfig:www%lastconfig,:)=in_avector2(:,:,:)
 
-!! DO SUMMA
   if (www%parconsplit.ne.0) then
      do qq=1,numvects
         call mpiallgather(avector2(:,:,qq),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
@@ -164,11 +166,13 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
   DATATYPE :: a1(numvects), a2(numvects), dot
   integer ::  config1,config2,  ispf,jspf,  dirphase,     iwalk,ii,jj
 
+!! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
+!! AND DO HOPS
+
   allocate(avector2(numr,www%numconfig,numvects))
   avector2(:,:,:)=0d0
   avector2(:,www%firstconfig:www%lastconfig,:)=in_avector2(:,:,:)
 
-!! DO SUMMA
   if (www%parconsplit.ne.0) then
      do ii=1,numvects
         call mpiallgather(avector2(:,:,ii),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
@@ -221,11 +225,12 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
      return
   endif
 
+!! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
+!! AND DO HOPS
+
   allocate(avector2(numr,www%numconfig,numvects))
-
-!! DO SUMMA
-
   avector2(:,:,:)=0d0
+
   avector2(:,www%firstconfig:www%lastconfig,:) = in_avector2(:,:,:)
   if (www%parconsplit.ne.0) then
      do ii=1,numvects

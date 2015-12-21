@@ -727,7 +727,9 @@ function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart,www)
 
   aket(:,www%firstconfig:www%lastconfig)=in_aket(:,:)
 
-!! DO SUMMA
+!! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
+!! AND DO HOPS
+
   if (www%parconsplit.ne.0) then
      call mpiallgather(aket,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
   endif

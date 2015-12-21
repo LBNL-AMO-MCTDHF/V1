@@ -1029,7 +1029,9 @@ subroutine get_smallwalkvects(www,avector, smallwalkvects,nblock,howmany)
      OFLWR "WTF DFRESTRICT IS  ", www%dfrestrictflag,www%dflevel; CFLST
   endif
   
-!! DO SUMMA
+!! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
+!! AND DO HOPS
+
   allocate(bigavector(nblock,www%numconfig,howmany))
   bigavector(:,:,:)=0d0
   bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)

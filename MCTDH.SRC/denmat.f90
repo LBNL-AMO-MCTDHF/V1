@@ -196,7 +196,9 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
 
   avector2(:,www%firstconfig:www%lastconfig,:) = in_avector2(:,:,:)
 
-!! DO SUMMA
+!! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
+!! AND DO HOPS
+
   if (www%parconsplit.ne.0) then
      do ii=1,howmany
         call mpiallgather(avector2(:,:,ii),www%numconfig*numpoints,www%configsperproc(:)*numpoints,www%maxconfigsperproc*numpoints)
@@ -305,7 +307,9 @@ subroutine getoccupations(www,in_avector, numpoints, occupations)
 
   avector(:,www%firstconfig:www%lastconfig) = in_avector(:,:)
 
-!! DO SUMMA
+!! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
+!! AND DO HOPS
+
   if (www%parconsplit.ne.0) then
      call mpiallgather(avector,www%numconfig*numpoints,www%configsperproc(:)*numpoints,www%maxconfigsperproc*numpoints)
   endif
@@ -594,7 +598,9 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
         end select
      enddo
 
-!! DO SUMMA
+!! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
+!! AND DO HOPS
+
      bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
      bigavectorp(:,www%firstconfig:www%lastconfig,:)=avectorp(:,:,:)
 
@@ -900,7 +906,9 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
         enddo
      endif
 
-!! DO SUMMA
+!! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
+!! AND DO HOPS
+
      bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
      bigavectorp(:,www%firstconfig:www%lastconfig,:)=avectorp(:,:,:)
 
