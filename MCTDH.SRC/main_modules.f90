@@ -227,6 +227,8 @@ module walkmod
 
   type walktype
 
+     logical :: domflags = .true.
+
      integer :: dflevel=0, dfwalklevel=0, dfrestrictflag=0
      integer :: singlewalkflag=0, doublewalkflag=0
 

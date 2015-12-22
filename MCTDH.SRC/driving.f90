@@ -58,11 +58,9 @@ subroutine drivingtrans(thistime)
 
      tempdrivingavector(:,:,imc)=avector_driving(:,:,imc) * exp(timefac*drivingenergies(imc)*thistime)
 
-     if (df_restrictflag.eq.0) then
-        call bioset(drivingbiovar,smo,numr,www)
-     else
+
         call bioset(drivingbiovar,smo,numr,bioww)
-     endif
+
 
      call biortho(orbs_driving(:,:),currentorbs(:,:),tempdrivingorbs(:,:),tempdrivingavector(:,:,imc),drivingbiovar)
 

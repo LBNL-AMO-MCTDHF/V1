@@ -144,13 +144,10 @@ subroutine getoverlaps(forceflag)
   if (mod(calledflag-1,autosteps).eq.0) then
      do imc=1,mcscfnum
         do i=1,numovl
-           if (df_restrictflag.eq.0) then
-              call autocorrelate_one(www,www,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:,i), &
-                   orig_avectors(:,i), overlaps(i,xcalledflag,imc),numr)
-           else
+
               call autocorrelate_one(www,bioww,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:,i), &
                    orig_avectors(:,i), overlaps(i,xcalledflag,imc),numr)
-           endif
+
         enddo
         xcalledflag=xcalledflag+1
      enddo
@@ -263,11 +260,7 @@ subroutine wfnovl()
            call mympireduceone(bradot); call mympireduceone(ketdot)
         endif
         
-        if (df_restrictflag.eq.0) then
-           call autocorrelate_one(www,www,braavec(:,imc),bramo,ketmo,ketavec(:,imc),myovl(imc),numr)
-        else
            call autocorrelate_one(www,bioww,braavec(:,imc),bramo,ketmo,ketavec(:,imc),myovl(imc),numr)
-        endif
        
         blah=myovl(imc)/sqrt(bradot*ketdot)
         angle(imc)=acos(abs(blah))

@@ -120,11 +120,7 @@ subroutine replace_withnat(printflag)
      WRFL; CFL
   endif
 
-  if (df_restrictflag.eq.0) then
-     call bioset(natrepbiovar,smo,numr,www)
-  else
      call bioset(natrepbiovar,smo,numr,bioww)
-  endif
 
   do imc=1,mcscfnum
 

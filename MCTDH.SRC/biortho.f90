@@ -365,16 +365,17 @@ end module abiosparsemod
 
 module biorthomod
 contains
-  subroutine bioset(biotypevar,insmo,innumr,www)
+  subroutine bioset(biotypevar,insmo,innumr,wwbio)
     use bio_parameters
     use biorthotypemod
     implicit none
-    type(walktype),target :: www
+    type(walktype),target :: wwbio
     Type(biorthotype) :: biotypevar
-    DATATYPE,target :: insmo(www%nspf,www%nspf)
+    DATATYPE,target :: insmo(wwbio%nspf,wwbio%nspf)
     integer :: innumr
 
-    biotypevar%wwbio=>www
+    biotypevar%wwbio=>wwbio
+
 
     biotypevar%smo=>insmo
     biotypevar%biomaxdim=min(maxbiodim,biotypevar%wwbio%numbasis*innumr-1)

@@ -553,11 +553,9 @@ subroutine fluxgtau(alg)
   use df_parameters
   implicit none
   integer :: alg
-  if (df_restrictflag.eq.0) then
-     call fluxgtau0(alg,www,www)
-  else
+
      call fluxgtau0(alg,www,bioww)
-  endif
+
 end subroutine fluxgtau
 
 

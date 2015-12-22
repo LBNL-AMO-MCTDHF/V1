@@ -291,6 +291,8 @@ program mctdhf
   WRFL "************************************"
   WRFL; CFL
 
+  www%domflags=.true.
+
   www%parconsplit=par_consplit
 
   www%numelec=numelec
@@ -347,8 +349,6 @@ program mctdhf
   endif
 
 
-  if (df_restrictflag.ne.0) then
-
 !! WALKTYPE VARIABLE BIOWW FOR BIORTHO
 
      OFLWR
@@ -356,6 +356,8 @@ program mctdhf
      WRFL "** done main walks. BIORTHO WALKS **"
      WRFL "************************************"
      WRFL; CFL
+
+     bioww%domflags=.false.
 
      bioww%parconsplit=par_consplit
 
@@ -394,6 +396,9 @@ program mctdhf
 
 !!! END SET BIOWW !!
 
+
+  if (df_restrictflag.ne.0) then
+
      OFLWR
      WRFL "************************************"
      WRFL "*** done biortho walks. DF WALKS ***"
@@ -401,6 +406,8 @@ program mctdhf
      WRFL; CFL
 
 !! WALKTYPE VARIABLE DFWW FOR DFRESTRICT
+
+     dfww%domflags=.true.
 
      dfww%parconsplit=par_consplit
 

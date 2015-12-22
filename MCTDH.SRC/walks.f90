@@ -261,7 +261,7 @@ subroutine walks(www)
                  cycle
               endif
 
-              if (offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
+              if (www%domflags.and.offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
                  cycle
               endif
 
@@ -365,7 +365,7 @@ subroutine walks(www)
                        cycle
                     endif
 
-                    if (offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
+                    if (www%domflags.and.offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
                        cycle
                     endif
 
@@ -576,7 +576,7 @@ subroutine getnumwalks(www)
                     cycle
                  endif
 
-                 if (offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
+                 if (www%domflags.and.offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
                     cycle
                  endif
               
@@ -665,11 +665,15 @@ subroutine getnumwalks(www)
                        thatconfig((iidof-1)*2+1  : iidof*2)=temporb2
                        dirphase=reorder(thatconfig,www%numelec)
 
-                       if (allowedconfig0(www,thatconfig,www%dfwalklevel)) then
-                          if (offaxispulseflag.ne.0.or.getmval(www,thatconfig).eq.getmval(www,thisconfig)) then
-                             iwalk = iwalk+1
-                          endif
+                       if (.not.allowedconfig0(www,thatconfig,www%dfwalklevel)) then
+                          cycle
                        endif
+
+                       if (www%domflags.and.offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
+                          cycle
+                       endif
+
+                       iwalk = iwalk+1
                     
                     enddo   ! the walk
                  enddo

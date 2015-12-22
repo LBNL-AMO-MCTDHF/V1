@@ -120,13 +120,9 @@ subroutine psistats( thistime )
 
   calledflag=1
 
-  if (df_restrictflag.eq.0) then
-     call get_psistats(www,www,yyy%cmfpsivec(spfstart,0),mcscfnum,yyy%cmfpsivec(astart(1),0),&
-          mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
-  else
+
      call get_psistats(www,bioww,yyy%cmfpsivec(spfstart,0),mcscfnum,yyy%cmfpsivec(astart(1),0),&
           mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
-  endif
 
   if (myrank.eq.1) then
      open(662, file=psistatsfile, status="old", position="append")
@@ -290,11 +286,9 @@ subroutine finalstats( )
   use configmod
   use xxxmod
   implicit none
-  if (df_restrictflag.eq.0) then
-     call finalstats0(yyy%cmfpsivec(spfstart:spfend,0),yyy%cmfpsivec(astart(1):aend(mcscfnum),0),www,www)
-  else
+
      call finalstats0(yyy%cmfpsivec(spfstart:spfend,0),yyy%cmfpsivec(astart(1):aend(mcscfnum),0),www,bioww)
-  endif
+
 end subroutine finalstats
 
 
@@ -318,11 +312,14 @@ subroutine finalstats0(myspfs,inavectors,www,bioww )
   integer :: i,j,imc,jmc
 
   call mpibarrier()
+  OFLWR "   ...GO finalstats."; CFL
+  call mpibarrier()
 
   tempvector(:,:)=0d0; tempspfs(:,:)=0d0; tempspfs2(:,:)=0d0
 
   ugmat=0; xdipmat=0; ydipmat=0; zdipmat=0; xrefmat=0; yrefmat=0; zrefmat=0
   call get_orbmats( myspfs,  www%nspf,  ugmat,   xdipmat,ydipmat,zdipmat,   xrefmat,yrefmat,zrefmat)
+
 
   do imc=1,mcscfnum
      call getoccupations(www,inavectors(:,:,imc),numr,occupations(:,imc))
@@ -385,7 +382,6 @@ subroutine finalstats0(myspfs,inavectors,www,bioww )
   endif
 
   call mpibarrier()
-
 
 !! independent of R for now.  multiply by R for prolate  (R set to 1 for atom)
   call nucdipvalue(nullcomplex,dipoles)
@@ -473,8 +469,6 @@ subroutine finalstats0(myspfs,inavectors,www,bioww )
         call autocorrelate_one(www,bioww,inavectors(:,:,jmc),myspfs,tempspfs,inavectors(:,:,imc),xrefmatel(jmc,imc),numr)
      enddo
   enddo
-
-
 
   if (myrank.eq.1) then
      open(662, file=finalstatsfile, status="unknown")
