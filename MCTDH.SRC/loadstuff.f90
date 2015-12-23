@@ -14,12 +14,15 @@ subroutine save_vector(psi,afile,sfile)
 !! always allocate avoid warn bounds
 
   if (parorbsplit.eq.3.and.myrank.eq.1) then
-     allocate(parorbitals(spfsize*nprocs,nspf)); parorbitals(:,:)=0d0
-     allocate(parfrozen(spfsize*nprocs,max(numfrozen,1))); parfrozen(:,:)=0d0
+     allocate(parorbitals(spfsize*nprocs,nspf))
+     allocate(parfrozen(spfsize*nprocs,max(numfrozen,1)))
   else
      allocate(parorbitals(1,nspf), parfrozen(1,max(numfrozen,1)))
   endif
+  parorbitals(:,:)=0d0; parfrozen(:,:)=0d0
 
+  call mpibarrier()
+  OFLWR "  ... go save vectors..."; CFL
   call mpibarrier()
 
   if (parorbsplit.eq.3) then     
@@ -36,11 +39,14 @@ subroutine save_vector(psi,afile,sfile)
 
 
   if (par_consplit.ne.0.and.myrank.eq.1) then
-     allocate(paravec(numr,num_config,mcscfnum)); paravec(:,:,:)=0d0
+     allocate(paravec(numr,num_config,mcscfnum))
   else
      allocate(paravec(1,1,mcscfnum))
   endif
+  paravec(:,:,:)=0d0
 
+  call mpibarrier()
+  OFLWR "  ... gathered orbs, now gather avector..."; CFL
   call mpibarrier()
 
   if (par_consplit.ne.0) then
@@ -48,6 +54,10 @@ subroutine save_vector(psi,afile,sfile)
         call mygatherv(psi(astart(iprop)),paravec(:,:,iprop),configs_perproc(:)*numr,.false.)
      enddo
   endif
+
+  call mpibarrier()
+  OFLWR "  ... ok, now write"; CFL
+  call mpibarrier()
 
   if (myrank.eq.1) then
      open(998,file=sfile, status="unknown", form="unformatted")
