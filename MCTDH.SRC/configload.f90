@@ -122,6 +122,7 @@ subroutine load_avector_productsub(myavector)
   logical :: allowedconfig0
   integer, target :: ii(6)
   integer, pointer :: ii1,ii2,ii3,ii4,ii5,ii6
+!  DATATYPE :: dot
 
   if (numspffiles.ne.numavectorfiles) then
      OFLWR "numavectorfiles and numspffiles should be the same for load_avector_product"; CFLST
@@ -179,7 +180,7 @@ subroutine load_avector_productsub(myavector)
   call mpibarrier()
 
   do ifile=1,numavectorfiles
-     allocate(readavectors(ifile)%mat(numr,readnumconfig(ifile),mcscfnum))
+     allocate(readavectors(ifile)%mat(numr,readnumconfig(ifile),readnumvects(ifile)))
      allocate(readconfiglist(ifile)%mat(readndof(ifile),readnumconfig(ifile)))
   enddo
 
@@ -208,8 +209,12 @@ subroutine load_avector_productsub(myavector)
   call mpibarrier()
 
   do ifile=1,numavectorfiles
-     call mympibcast(readavectors(ifile)%mat(:,:,:),1,readnumconfig(ifile)*numr*mcscfnum)
+     call mympibcast(readavectors(ifile)%mat(:,:,:),1,readnumconfig(ifile)*numr*readnumvects(ifile))
      call mympiibcast(readconfiglist(ifile)%mat(:,:),1,readndof(ifile)*readnumconfig(ifile))
+!     do iwfn=1,readnumvects(ifile)
+!        OFLWR "    Vector norm on read",ifile,iwfn,dot(readavectors(ifile)%mat(:,:,iwfn), &
+!             readavectors(ifile)%mat(:,:,iwfn), readnumconfig(ifile)*numr); CFL
+!     enddo
   enddo
 
   if (numavectorfiles.gt.6) then
@@ -227,12 +232,13 @@ subroutine load_avector_productsub(myavector)
 
   iconfig=0
 
-  do ii1=1,iitop(1)
-  do ii2=1,iitop(2)
-  do ii3=1,iitop(3)
-  do ii4=1,iitop(4)
-  do ii5=1,iitop(5)
+!! BUGFIX 12-2015 v1.16
   do ii6=1,iitop(6)
+  do ii5=1,iitop(5)
+  do ii4=1,iitop(4)
+  do ii3=1,iitop(3)
+  do ii2=1,iitop(2)
+  do ii1=1,iitop(1)
 
      jj=0
      dofsum=0
@@ -278,6 +284,10 @@ subroutine load_avector_productsub(myavector)
         endif
         configtable(jconfig)=iconfig
         configphase(jconfig)=dirphase
+!     else
+!        OFLWR "WARN NOT ALLOWED PRODUCT CONFIG"
+!        call printconfig(newconfiglist(:,iconfig),www)
+!        CFL
      endif
   enddo
 
@@ -352,6 +362,10 @@ subroutine load_avector_productsub(myavector)
      
      productreshape(:,:)=RESHAPE(productvector,(/numr,tot_numconfig/))
 
+!     OFLWR "check norm productreshape"
+!     WRFL dot(productreshape,productreshape,numr*tot_numconfig)
+!     CFL
+
      myavector(:,:,iwfn)=0d0
 
      do jconfig=first_config,last_config
@@ -359,6 +373,10 @@ subroutine load_avector_productsub(myavector)
            myavector(:,jconfig,iwfn)=productreshape(:,configtable(jconfig))*configphase(jconfig)
         endif
      enddo
+
+!     OFLWR "check norm myavector product"
+!     WRFL dot(myavector,myavector,num_config*numr)
+!     CFL
 
   enddo
   enddo
