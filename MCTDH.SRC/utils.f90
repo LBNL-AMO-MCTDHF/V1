@@ -5,6 +5,79 @@
 
 #include "Definitions.INC"
 
+function facfunct(myindex,diffdflag)
+  implicit none
+  integer, intent(in) :: myindex,diffdflag
+  complex*16 :: facfunct,ccsum
+  ccsum=1d0
+  if (diffdflag.ne.0) then
+     if (myindex.ne.0) then
+        ccsum=1d0/((0d0,1d0)*myindex)
+     else
+        ccsum=0d0
+     endif
+  endif
+  facfunct=ccsum
+end function facfunct
+
+
+subroutine zfftf_wrap_diff(size,inout,diffdflag)
+  implicit none
+  integer, intent(in) :: size,diffdflag
+  complex*16, intent(inout) :: inout(size)
+  complex*16 :: work(size) !! AUTOMATIC
+  complex*16 :: facfunct
+  integer :: i,jj
+
+  if (diffdflag.eq.0) then
+     call zfftf_wrap(size,inout)
+  else
+     work(:)=0d0
+     do i=2,size-1
+        jj=min(min(i-1,size-i),4)
+        select case(jj)
+        case(1)
+           work(i)= &
+                - 1d0/2d0 * inout(i-1) &
+                + 1d0/2d0 * inout(i+1)
+        case(2)
+           work(i)= &
+                1d0/12d0 * inout(i-2) &
+                - 2d0/3d0 * inout(i-1) &
+                + 2d0/3d0 * inout(i+1) &
+                - 1d0/12d0 * inout(i+2)
+        case(3)
+           work(i)= &
+                - 1d0/60d0 * inout(i-3) &
+                + 3d0/20d0 * inout(i-2) &
+                - 3d0/4d0 * inout(i-1) &
+                + 3d0/4d0 * inout(i+1) &
+                - 3d0/20d0 * inout(i+2) &
+                + 1d0/60d0 * inout(i+3)
+        case(4)
+           work(i)= &
+                1d0/280d0 * inout(i-4) &
+                - 4d0/105d0 * inout(i-3) &
+                + 1d0/5d0 * inout(i-2) &
+                - 4d0/5d0 * inout(i-1) &
+                + 4d0/5d0 * inout(i+1) &
+                - 1d0/5d0 * inout(i+2) &
+                + 4d0/105d0 * inout(i+3) &
+                - 1d0/280d0 * inout(i+4)
+        end select
+     end do
+     
+     call zfftf_wrap(size,work)
+
+     do i=1,size
+        inout(i)=work(i)*facfunct(i-1,diffdflag)
+     enddo
+
+  endif
+
+end subroutine zfftf_wrap_diff
+
+
 subroutine zfftf_wrap(size,inout)
   implicit none
   integer, intent(in) :: size
@@ -561,7 +634,11 @@ subroutine invmatsmooth(A,N,LDA,tol)  !! inverse of ANY matrix.
   integer :: N,lwork,i,j,k,LDA
   real*8 :: SV(N),tol
   DATATYPE :: A(LDA,N), SAVEA(LDA,N)
-  DATATYPE :: U(N,N),VT(N,N),work(5*N),zwork(5*N)
+  DATATYPE :: U(N,N),VT(N,N),work(5*N)
+#ifndef REALGO
+  DATATYPE :: zwork(5*N)
+#endif
+
   lwork=5*N
 
   SAVEA=A
