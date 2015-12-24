@@ -452,13 +452,12 @@ subroutine fluxgtau0(alg,www,bioww)
 !! create the xsec as it should be now
 
   OFLWR " Taking the FT of g(tau) to get xsection at T= ",curtime*dt; CFL
-           
+
   allocate(ftgtau(-curtime:curtime,mcscfnum), pulseft(-curtime:curtime,3), pulseftsq(-curtime:curtime))
+
   ftgtau(:,:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0
 
   do i=0,curtime
-
-!!     ftgtau(i,:) = ALLCON(gtau(i,:))   * cos(real(i,8)/real(curtime,8) * pi/2d0) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
 
      ftgtau(i,:) = ALLCON(gtau(i,:))   * windowfunct(i,curtime) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
 
@@ -466,6 +465,7 @@ subroutine fluxgtau0(alg,www,bioww)
      pulseft(i,:)=pots1(:)
 
   enddo
+
   do i=1,curtime
      ftgtau(-i,:) = ALLCON(ftgtau(i,:))
   enddo
@@ -483,7 +483,7 @@ subroutine fluxgtau0(alg,www,bioww)
   call mpibarrier()
 
   do imc=1,mcscfnum
-     call zfftf_wrap(2*curtime+1,ftgtau(-curtime:curtime,imc))
+     call zfftf_wrap_diff(2*curtime+1,ftgtau(-curtime:curtime,imc),diffdipoleflag)
   enddo
 
   call mpibarrier()
@@ -498,9 +498,9 @@ subroutine fluxgtau0(alg,www,bioww)
   OFLWR "   ....Done with ft...."; CFL
   call mpibarrier()
 
-  ftgtau(-curtime:curtime,:)=ftgtau(-curtime:curtime,:)*par_timestep*FluxInterval*FluxSkipMult
-  pulseft(-curtime:curtime,:)=pulseft(-curtime:curtime,:)*par_timestep*FluxInterval*FluxSkipMult
-  
+  ftgtau(:,:)=ftgtau(:,:)*par_timestep*FluxInterval*FluxSkipMult
+  pulseft(:,:)=pulseft(:,:)*par_timestep*FluxInterval*FluxSkipMult
+
   do i=-curtime,curtime
      ftgtau(i,:)=ftgtau(i,:)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))
      pulseft(i,:)=pulseft(i,:)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))

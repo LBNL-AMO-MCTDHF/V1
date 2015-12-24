@@ -404,6 +404,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   OFLWR "Taking the fourier transform of g(tau) to get cross section at T= ",curtime*dt; CFL
 
   allocate(ftgtau(-curtime:curtime), pulseft(-curtime:curtime,3),pulseftsq(-curtime:curtime))
+
   ftgtau(:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0
 
   do i=0,curtime
@@ -412,18 +413,18 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   enddo
   
   do i=1,3
-     call zfftf_wrap(2*curtime+1,pulseft(-curtime,i))
+     call zfftf_wrap(2*curtime+1,pulseft(-curtime:curtime,i))
   enddo
 
   pulseft(:,:)=pulseft(:,:)*par_timestep*FluxInterval*FluxSkipMult
-  
+
   do i=-curtime,curtime
      pulseft(i,:)=pulseft(i,:)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))
   enddo
 
   pulseftsq(:) = abs(pulseft(:,1)**2) + abs(pulseft(:,2)**2) + abs(pulseft(:,3)**2)
 
-  estep=2*pi/par_timestep/fluxinterval/fluxskipmult/(2*curtime+1)      
+  estep=2*pi/par_timestep/fluxinterval/fluxskipmult/(2*curtime+1)
   
   do imc=1,mcscfnum
      do istate=1,nstate
@@ -432,11 +433,10 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
         do i=0,curtime
 
-!!           ftgtau(i) = ALLCON(gtau(i,istate,imc))   * cos(real(i,8)/real(curtime,8) * pi/2) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
-
            ftgtau(i) = ALLCON(gtau(i,istate,imc))   * windowfunct(i,curtime) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
 
         enddo
+
         do i=1,curtime
            ftgtau(-i) = ALLCON(ftgtau(i))
         enddo
@@ -451,15 +451,15 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            enddo
            close(171)
         endif
+
+        call zfftf_wrap_diff(2*curtime+1,ftgtau(-curtime:curtime),diffdipoleflag)
         
-        call zfftf_wrap(2*curtime+1,ftgtau(-curtime))
-        
-        ftgtau(-curtime:curtime)=ftgtau(-curtime:curtime)*par_timestep*FluxInterval*FluxSkipMult
-        
+        ftgtau(:)=ftgtau(:)*par_timestep*FluxInterval*FluxSkipMult
+
         do i=-curtime,curtime
            ftgtau(i)=ftgtau(i)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))
         enddo
-        
+
 !! cross section reported in units of 10^-18 cm^2
 !! equals 1/3 times quantum mechanical cross section for fixed nuclei problem
 
