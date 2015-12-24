@@ -2,15 +2,15 @@
 
 #include "Definitions.INC"
 
-function facfunct(myenergy)
+function facfunct(myindex)
   use parameters
   implicit none
-  real*8 :: myenergy
+  integer, intent(in) :: myindex
   DATATYPE :: facfunct,ccsum
   ccsum=1d0
   if (diffdipoleflag.ne.0) then
-     if (myenergy.ne.0d0) then
-        ccsum=1d0/((0d0,1d0)*myenergy)
+     if (myindex.ne.0) then
+        ccsum=1d0/((0d0,1d0)*myindex)
      else
         ccsum=0d0
      endif
@@ -102,7 +102,7 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
                 - 1d0/280d0 * indipolearray(i+4)
         end select
      end do
-     temparray(:)=temparray(:)/par_timestep/autosteps
+     temparray(:)=temparray(:)   !!!FAC  /par_timestep/autosteps
      do i=0,numdata
 
 
@@ -163,8 +163,8 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
 
 !! NOW FACTOR (2 omega) IN COLUMNS 6,7   v1.16 12-2015
 
-        write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i)*facfunct(myenergy), eft(i), fftrans(i)*facfunct(myenergy)*ALLCON(eft(i)) * 2 * myenergy, &
-             fftrans(i)*facfunct(myenergy)*ALLCON(eft(i)) / abs(eft(i)**2) * xsecunits
+        write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i)*facfunct(i), eft(i), fftrans(i)*facfunct(i)*ALLCON(eft(i)) * 2 * myenergy, &
+             fftrans(i)*facfunct(i)*ALLCON(eft(i)) / abs(eft(i)**2) * xsecunits
      enddo
      close(171)
      if (sflag.ne.0) then
@@ -183,8 +183,8 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
 
 !! NOW FACTOR (2 omega) IN COLUMNS 6,7   v1.16 12-2015
 
-           write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i)*facfunct(myenergy), eft(i), fftrans(i)*facfunct(myenergy)*ALLCON(eft(i)) * 2 * myenergy, &
-                fftrans(i)*facfunct(myenergy)*ALLCON(eft(i)) / abs(eft(i)**2) * xsecunits
+           write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i)*facfunct(i), eft(i), fftrans(i)*facfunct(i)*ALLCON(eft(i)) * 2 * myenergy, &
+                fftrans(i)*facfunct(i)*ALLCON(eft(i)) / abs(eft(i)**2) * xsecunits
         enddo
         close(171)
      endif
