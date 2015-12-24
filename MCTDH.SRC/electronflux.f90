@@ -461,9 +461,12 @@ subroutine fluxgtau0(alg,www,bioww)
 
      ftgtau(i,:) = ALLCON(gtau(i,:))   * windowfunct(i,curtime) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
 
-     call vectdpot(i*par_timestep*fluxinterval*fluxskipmult,1,pots1)   !! VELOCITY GAUGE.
+     call vectdpot(i*par_timestep*fluxinterval*fluxskipmult,0,pots1)   !! LENGTH GAUGE.
+     if (pulsewindowtoo == 0) then
      pulseft(i,:)=pots1(:)
-
+     else
+     pulseft(i,:)=pots1(:) * windowfunct(i,curtime)
+     endif
   enddo
 
   do i=1,curtime
@@ -519,12 +522,12 @@ subroutine fluxgtau0(alg,www,bioww)
      do i=-curtime,curtime
         wfi=(i+curtime)*Estep
 
-!! VELOCITY GAUGE WAS FT'ed divide not multiply by wfi
+!! LENGTH GAUGE WAS FT'ed multiply by wfi dont divide
 !! NEVERMIND FACTOR OF 1/3
-!!        myfac = 5.291772108d0**2 / 3d0 * 2d0 * PI / 1.37036d2 / wfi
+!!        myfac = 5.291772108d0**2 / 3d0 * 2d0 * PI / 1.37036d2 * wfi
 
 !! WITH THIS FACTOR, NOW THE QUANTUM MECHANICAL CROSS SECTION IN MEGABARNS IS IN COLUMN 3 REAL PART
-        myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 / wfi
+        myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
 
         write(1004,'(F8.4,100E18.6)') wfi, pulseftsq(i), FTgtau(i,:)/pulseftsq(i) * myfac, ftgtau(i,:)
 

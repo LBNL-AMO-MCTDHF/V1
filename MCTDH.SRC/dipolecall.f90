@@ -61,7 +61,11 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
      do i=0,numdata
         fftrans(i) = (indipolearray(i)-indipolearray(0))  * windowfunct(i,numdata)
         call vectdpot(i*par_timestep*autosteps,0,pots)   !! LENGTH GAUGE
+        if (pulsewindowtoo == 0) then
         eft(i)=pots(which)
+        else
+        eft(i)=pots(which) * windowfunct(i,numdata)
+        endif
      enddo
 
   if (myrank.eq.1) then
