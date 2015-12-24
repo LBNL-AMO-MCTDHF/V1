@@ -79,7 +79,7 @@ subroutine autocall(numdata, forwardovl, sflag)
   do imc=1,mcscfnum
 
      if (hanningflag.ne.4) then
-        call zfftf_wrap_diff(totdim,fftrans(:,imc),diffdipoleflag)
+        call zfftf_wrap_diff(totdim,fftrans(:,imc),ftdiff)
         fftrans(:,imc)=fftrans(:,imc)*autosteps*par_timestep
         do i=-numdata,numdata
            fftrans(i,imc)=fftrans(i,imc)*exp((0.d0,1.d0)*(numdata+i)*numdata*2*pi/real(2*numdata+1))

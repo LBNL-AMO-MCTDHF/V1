@@ -71,7 +71,7 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
      sum1=sum1+abs(fftrans(i))**2
   enddo
 
-  call zfftf_wrap_diff(numdata+1,fftrans(0:),diffdipoleflag)
+  call zfftf_wrap_diff(numdata+1,fftrans(0:),ftdiff)
   call zfftf_wrap(numdata+1,eft(0:))
 
   sum2=0d0

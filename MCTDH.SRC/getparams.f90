@@ -92,7 +92,7 @@ subroutine getparams()
        numfrozen, nucfluxopt, natplotbin, spfplotbin, denplotbin, denprojplotbin, &
        natprojplotbin, rnatplotbin, dendatfile, denrotfile, rdendatfile,   avectorexcitefrom, avectorexciteto,&
        numovlfiles, ovlavectorfiles, ovlspffiles, outovl,fluxmofile,fluxafile, spifile, astoptol,  &
-       zdftfile,zdipfile,ydftfile,ydipfile,xdftfile,xdipfile, ftwindowpower, diffdipoleflag,  &
+       zdftfile,zdipfile,ydftfile,ydipfile,xdftfile,xdipfile, ftwindowpower, ftdiff,  &
        diptime, fluxafile2,fluxmofile2, minocc,maxocc, corrdatfile,corrftfile,numavectorfiles,projfluxfile, &
        expodim,timingdir, hanningflag, numspffiles, condamp,conway, &
        mrestrictmin,mrestrictmax,lntol,invtol,psistatsfile, psistatfreq, configlistfile, &

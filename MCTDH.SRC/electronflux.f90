@@ -483,7 +483,7 @@ subroutine fluxgtau0(alg,www,bioww)
   call mpibarrier()
 
   do imc=1,mcscfnum
-     call zfftf_wrap_diff(2*curtime+1,ftgtau(-curtime:curtime,imc),diffdipoleflag)
+     call zfftf_wrap_diff(2*curtime+1,ftgtau(-curtime:curtime,imc),ftdiff)
   enddo
 
   call mpibarrier()

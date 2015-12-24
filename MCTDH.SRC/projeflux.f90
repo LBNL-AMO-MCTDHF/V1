@@ -452,7 +452,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            close(171)
         endif
 
-        call zfftf_wrap_diff(2*curtime+1,ftgtau(-curtime:curtime),diffdipoleflag)
+        call zfftf_wrap_diff(2*curtime+1,ftgtau(-curtime:curtime),ftdiff)
         
         ftgtau(:)=ftgtau(:)*par_timestep*FluxInterval*FluxSkipMult
 

@@ -379,10 +379,10 @@ integer :: ftwindowpower=1    !! if ftwindowlength not set, use previous (v1.16)
                               !!    all points by cos(pi t / 2 / tmax)**ftwindowpower 
 integer :: fttriwindow=1      !! If nonzero override other two options, do straight linear damping function
                               !!    NOW DEFAULT linear damping looks best v1.16
+integer :: ftdiff=0           !! fourier transform derivative of dipole moment not dipole moment
 !!EE
 !!{\large \quad EMISSION/ABSORPTION (action 21)}
 !!BB
-integer :: diffdipoleflag=0 !! fourier transform derivative of dipole moment not dipole moment
 integer :: hanningflag=0         !! for hanning window set nonzero action 1 autocorr
 integer :: diptime=100           !! For act=20, outputs copies every diptime atomic units
 integer :: dipmodtime=100        !! do ft every autotimestep*dipmodtime
