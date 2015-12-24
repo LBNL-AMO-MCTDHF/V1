@@ -5,14 +5,21 @@
 
 #include "Definitions.INC"
 
-function facfunct(myindex,diffdflag)
+function facfunct(myindex,numdata,diffdflag)
+  use fileptrmod
   implicit none
-  integer, intent(in) :: myindex,diffdflag
+  integer, intent(in) :: myindex,diffdflag,numdata
   complex*16 :: facfunct,ccsum
+  real*8, parameter :: twopi = 6.28318530717958647688d0
+
+  if (myindex.lt.0.or.myindex.gt.numdata) then
+     OFLWR "FACFUNCT ERR", myindex,0,numdata; CFLST
+  endif
+
   ccsum=1d0
   if (diffdflag.ne.0) then
      if (myindex.ne.0) then
-        ccsum=1d0/((0d0,1d0)*myindex)
+        ccsum= 1d0 / ((0d0,1d0)*myindex) / twopi * (numdata+1)
      else
         ccsum=0d0
      endif
@@ -32,6 +39,24 @@ subroutine zfftf_wrap_diff(size,inout,diffdflag)
   if (diffdflag.eq.0) then
      call zfftf_wrap(size,inout)
   else
+#define DOCIRC
+#ifdef DOCIRC
+!! guarantees F.T. at zero is zero, right?
+
+     do i=1,size
+        work(i)= &
+             1d0/280d0 * inout(cindex(i-4)) &
+             - 4d0/105d0 * inout(cindex(i-3)) &
+             + 1d0/5d0 * inout(cindex(i-2)) &
+             - 4d0/5d0 * inout(cindex(i-1)) &
+             + 4d0/5d0 * inout(cindex(i+1)) &
+             - 1d0/5d0 * inout(cindex(i+2)) &
+             + 4d0/105d0 * inout(cindex(i+3)) &
+             - 1d0/280d0 * inout(cindex(i+4))
+     enddo
+
+#else
+
      work(:)=0d0
      do i=2,size-1
         jj=min(min(i-1,size-i),4)
@@ -66,14 +91,22 @@ subroutine zfftf_wrap_diff(size,inout,diffdflag)
                 - 1d0/280d0 * inout(i+4)
         end select
      end do
+
+#endif
      
      call zfftf_wrap(size,work)
 
      do i=1,size
-        inout(i)=work(i)*facfunct(i-1,diffdflag)
+        inout(i)=work(i)*facfunct(i-1,size-1,diffdflag)
      enddo
 
   endif
+
+contains
+  function cindex(inindex)
+    integer :: cindex,inindex
+    cindex=mod(2*size+inindex-1,size)+1
+  end function cindex
 
 end subroutine zfftf_wrap_diff
 
