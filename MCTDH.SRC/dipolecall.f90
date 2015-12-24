@@ -15,17 +15,23 @@ function windowfunct(i,numdata)
   endif
 
   if (fttriwindow.ne.0) then
-     windowfunct = real(numdata-i,8) / real(numdata,8) 
+
+     windowfunct = ( real(numdata-i,8) / real(numdata,8) )**ftwindowpower
+
   else
 
      if (ftwindowlength.ge.0) then
         if (numdata-i.lt.ftwindowlength) then
-           windowfunct = cos( pi/2d0 * (i-(numdata-ftwindowlength)) / real(ftwindowlength,8) )**ftwindowpower      !! **2
+           windowfunct = cos( pi/2d0 * (i-(numdata-ftwindowlength)) / real(ftwindowlength,8) )**ftwindowpower
         else
            windowfunct=1d0
         endif
      else
-        windowfunct = cos( pi/2d0 * i / real(numdata,8) )**ftwindowpower
+        if (ftwindowpower.eq.0) then
+           windowfunct = ( 1 - sin( pi/2d0 * i / real(numdata,8) ) )
+        else
+           windowfunct = cos( pi/2d0 * i / real(numdata,8) )**ftwindowpower
+        endif
      endif
   endif
 
