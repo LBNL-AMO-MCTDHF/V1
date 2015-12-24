@@ -420,7 +420,7 @@ real*8  :: povsparse=1.d-3       !!              !! Sparsity threshold for trans
 !!EE
 !!{\large \quad MISC AND EXPERIMENTAL}
 !!BB
-integer :: pulsewindowtoo=0     !! use window function for E(omega) as well
+integer :: pulsewindowtoo=1     !! use window function for E(omega) as well
 integer :: nucfluxflag=0         !! 0 = both 1 =electronic 2= nuclear  NOT nuclear flux action 13,14
 logical :: readfullvector=.true.
 logical :: walksinturn=.false.   !!              !! if you have problems with MPI i/o, maybe try this
