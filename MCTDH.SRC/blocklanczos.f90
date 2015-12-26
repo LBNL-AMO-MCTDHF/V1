@@ -56,7 +56,7 @@ end subroutine blocklanczos
 function nulldot(logpar)
   use fileptrmod
   implicit none
-  logical :: logpar
+  logical,intent(in) :: logpar
   DATATYPE :: nulldot
   if (logpar) then
      nulldot=0d0
@@ -68,9 +68,11 @@ end function nulldot
 
 function hdot(in,out,n,logpar)
   implicit none
-  integer :: n
-  logical :: logpar
-  DATATYPE :: in(n),out(n),hdot
+  integer,intent(in) :: n
+  logical,intent(in) :: logpar
+  DATATYPE,intent(in) :: in(n),out(n)
+  DATATYPE :: hdot
+
   hdot=DOT_PRODUCT(in,out)
   if (logpar) then
      call mympireduceone(hdot)
@@ -79,9 +81,11 @@ end function hdot
 
 function thisdot(in,out,n,logpar)
   implicit none
-  integer :: n
-  logical :: logpar
-  DATATYPE :: in(n),out(n),thisdot,dot
+  integer,intent(in) :: n
+  logical,intent(in) :: logpar
+  DATATYPE,intent(in) :: in(n), out(n)
+  DATATYPE :: thisdot,dot
+
   thisdot=dot(in,out,n)
   if (logpar) then
      call mympireduceone(thisdot)
@@ -90,48 +94,125 @@ end function thisdot
 
 subroutine allhdots(bravectors,ketvectors,n,lda,num1,num2,outdots,logpar)
   implicit none
-  integer :: id,jd,num1,num2,lda,n
-  logical :: logpar
-  DATATYPE :: bravectors(lda,num1), ketvectors(lda,num2), outdots(num1,num2)
+  integer,intent(in) :: num1,num2,lda,n
+  logical,intent(in) :: logpar
+  integer :: id,jd
+
+  DATATYPE,intent(in) :: bravectors(lda,num1), ketvectors(lda,num2)
+  DATATYPE,intent(out) :: outdots(num1,num2)
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(id,jd)
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
   do id=1,num1
      do jd=1,num2
         outdots(id,jd)= DOT_PRODUCT(bravectors(1:n,id),ketvectors(1:n,jd))
      enddo
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
   if (logpar) then
      call mympireduce(outdots,num1*num2)
   endif
 end subroutine allhdots
 
-subroutine nulldots(num1,num2,outdots,logpar)
+subroutine allnulldots(num1,num2,outdots,logpar)
   use fileptrmod
   implicit none
-  integer :: num1,num2
-  logical :: logpar
-  DATATYPE :: outdots(num1,num2)
+  integer,intent(in) :: num1,num2
+  logical,intent(in) :: logpar
+  DATATYPE,intent(out) :: outdots(num1,num2)
+
   if (logpar) then
      outdots(:,:)=0d0
      call mympireduce(outdots,num1*num2)
   else
-     OFLWR "WHAT? nulldots called but not doing parallel calc... dimension zero???"; CFLST
+     OFLWR "WHAT? allnulldots called but not doing parallel calc... dimension zero???"; CFLST
   endif
-end subroutine nulldots
+end subroutine allnulldots
+
+
+subroutine vechdots(bravectors,ketvectors,n,ldabra,ldaket,num,outdots,logpar)
+  implicit none
+  integer,intent(in) :: num,ldabra,ldaket,n
+  logical,intent(in) :: logpar
+  DATATYPE,intent(in) :: bravectors(ldabra,num), ketvectors(ldaket,num)
+  DATATYPE,intent(out) :: outdots(num)
+  integer :: id
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(id)
+!$OMP DO SCHEDULE(STATIC)
+  do id=1,num
+        outdots(id)= DOT_PRODUCT(bravectors(1:n,id),ketvectors(1:n,id))
+  enddo
+!$OMP END DO
+!$OMP END PARALLEL
+  if (logpar) then
+     call mympireduce(outdots,num)
+  endif
+end subroutine vechdots
+
+
+subroutine vecthisdots(bravectors,ketvectors,n,ldabra,ldaket,num,outdots,logpar)
+  implicit none
+  integer,intent(in) :: num,ldabra,ldaket,n
+  logical,intent(in) :: logpar
+  DATATYPE,intent(in) :: bravectors(ldabra,num), ketvectors(ldaket,num)
+  DATATYPE,intent(out) :: outdots(num)
+  DATATYPE :: dot
+  integer :: id
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(id)
+!$OMP DO SCHEDULE(STATIC)
+  do id=1,num
+        outdots(id)= dot(bravectors(:,id),ketvectors(:,id),n)
+  enddo
+!$OMP END DO
+!$OMP END PARALLEL
+  if (logpar) then
+     call mympireduce(outdots,num)
+  endif
+end subroutine vecthisdots
+
+
+subroutine vecnulldots(num,outdots,logpar)
+  use fileptrmod
+  implicit none
+  integer,intent(in) :: num
+  logical,intent(in) :: logpar
+  DATATYPE,intent(out) :: outdots(num)
+
+  if (logpar) then
+     outdots(:)=0d0
+     call mympireduce(outdots,num)
+  else
+     OFLWR "WHAT? vecnulldots called but not doing parallel calc... dimension zero???"; CFLST
+  endif
+end subroutine vecnulldots
+
+
 
 ! n is the length of the vectors; m is how many to orthogonalize to
 subroutine myhgramschmidt_fast(n, m, lda, previous, vector,logpar)
   use fileptrmod
   implicit none
-  integer :: n,m,lda, i,j
-  DATATYPE :: previous(lda,m), vector(n),hdot, myhdots(m), norm
-  logical :: logpar
+  integer,intent(in) :: n,m,lda
+  DATATYPE,intent(in) :: previous(lda,m)
+  DATATYPE,intent(inout) :: vector(n)
+  DATATYPE :: hdot, norm
+  logical,intent(in) :: logpar
+  integer :: i,j
+
   do j=1,2
-     if (m.ne.0) then
-        call allhdots(previous(:,:),vector,n,lda,m,1,myhdots,logpar)
-     endif
+
+!!$ 12-2015 v1.16 reverting to separate dot products for less numerical error
+!!$?     if (m.ne.0) then
+!!$?        call allhdots(previous(:,:),vector,n,lda,m,1,myhdots,logpar)
+!!$?     endif
+
      do i=1,m
-!!$?       vector=vector-previous(1:n,i)* hdot(previous(1:n,i),vector,n) 
+        vector=vector-previous(1:n,i)* hdot(previous(1:n,i),vector(1:n),n,logpar) 
 !!$? only the same with previous perfectly orth
-        vector=vector-previous(1:n,i)*myhdots(i)                            
+!!$?        vector=vector-previous(1:n,i)*myhdots(i)                            
      enddo
      norm=sqrt(hdot(vector,vector,n,logpar))
      vector=vector/norm
@@ -144,13 +225,22 @@ end subroutine myhgramschmidt_fast
 subroutine nullgramschmidt_fast(m,logpar)
   use fileptrmod
   implicit none
-  integer :: m,j
-  DATATYPE :: myhdots(m),norm,nulldot
-  logical :: logpar
+  integer,intent(in) :: m
+  logical,intent(in) :: logpar
+  DATATYPE :: norm,nulldot
+  integer :: i,j
+
   do j=1,2
-     if (m.ne.0) then
-        call nulldots(m,1,myhdots,logpar)
-     endif
+
+!!$ 12-2015 v1.16 reverting to separate dot products for less numerical error
+!!$?     if (m.ne.0) then
+!!$?        call allnulldots(m,1,myhdots,logpar)
+!!$?     endif
+
+     do i=1,m
+        norm=nulldot(logpar)
+     enddo
+
      norm=sqrt(nulldot(logpar))
   enddo
 end subroutine nullgramschmidt_fast
@@ -382,7 +472,7 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
        thislanblocknum, thisdim,ii,nfirst,nlast,myrank,nprocs,thisout
   real*8 :: error(numout), stopsum,rsum,nextran
   DATATYPE :: alpha(lanblocknum,lanblocknum),beta(lanblocknum,lanblocknum), csum, &
-       thisdot ,nulldot , hdot,        nullvector1(1), nullvector2(1) , &
+       nullvector1(1), nullvector2(1) , &
        lastvalue(numout), thisvalue(numout), valdot(numout),normsq(numout),sqdot(numout)
 !! made these allocatable to fix lawrencium segfault 04-15
   DATATYPE, allocatable  ::       lanham(:,:,:,:),      laneigvects(:,:,:),&
@@ -460,7 +550,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
   outvectors(lansize+1:,:)=0d0  ! why not
 
   flag=0
-!  do while (flag==0)
   do while (flag.ne.1)
      flag=0
 
@@ -475,23 +564,23 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
      enddo
 
      error(:)=1000d0
-     
+
+     if (lansize.eq.0) then
+        call vecnulldots(numout,normsq,logpar)
+        call vecnulldots(numout,valdot,logpar)
+        call vecnulldots(numout,sqdot,logpar)
+     else
+        call vechdots(outvectors(:,:),outvectors(:,:),lansize,outvectorlda,outvectorlda,numout,normsq,logpar)
+        call vechdots(outvectors(:,:),tempvectors(:,:),lansize,outvectorlda,maxlansize,numout,valdot,logpar)
+        call vechdots(outvectors(:,:),tempvectors2(:,:),lansize,outvectorlda,maxlansize,numout,sqdot,logpar)
+     endif
+
      do j=1,numout
-        if (lansize.eq.0) then
-           normsq(j)=nulldot(logpar)
-           valdot(j)=nulldot(logpar)
-           sqdot(j)=nulldot(logpar)
-        else
-           normsq(j)=hdot(outvectors(:,j),outvectors(:,j),lansize,logpar)  !! yes should be normed, whatever
-           valdot(j)=hdot(outvectors(:,j),tempvectors(:,j),lansize,logpar)
-           sqdot(j)= hdot(outvectors(:,j),tempvectors2(:,j),lansize,logpar)
-        endif
         values(j)=valdot(j)/normsq(j)
         
         error(j)=abs(&
              valdot(j)**2 / normsq(j)**2 - &
              sqdot(j)/normsq(j))
-        
      enddo
      if (printflag.ne.0) then
         OFL; write(mpifileptr,'(A10,100E8.1)') " FIRST ERRORS ", error(1:numout); CFL
@@ -512,11 +601,10 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
         endif
      endif
 
-!!!!!!!
-
      if (lansize.gt.0) then
         lanvects(1:lansize,:,1)=outvectors(1:lansize,1:lanblocknum)
      endif
+
      lanham(:,:,:,:)=0.0d0
      do i=1,lanblocknum
         if (lansize.eq.0) then
@@ -536,7 +624,7 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
      lanmultvects(:,:,1)=multvectors(:,:)
 
      if (lansize.eq.0) then
-        call nulldots(lanblocknum,lanblocknum,alpha,logpar)
+        call allnulldots(lanblocknum,lanblocknum,alpha,logpar)
      else
         call allhdots(lanvects(:,:,1),multvectors(:,:),lansize,maxlansize,lanblocknum,lanblocknum,alpha,logpar)
      endif
@@ -546,9 +634,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
      if (printflag.ne.0) then
         OFLWR "FIRST ALPHA ", alpha(1,1); CFL
      endif
-
-
-!!!!!!!!
 
 
      iorder=1
@@ -592,7 +677,7 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
         lanmultvects(:,:,iorder)=multvectors(:,:)
         
         if (lansize.eq.0) then
-           call nulldots(lanblocknum,lanblocknum,alpha,logpar)
+           call allnulldots(lanblocknum,lanblocknum,alpha,logpar)
         else
            call allhdots(lanvects(:,:,iorder),multvectors(:,:),lansize,maxlansize,lanblocknum,lanblocknum,alpha,logpar)
         endif
@@ -601,8 +686,8 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
         allocate(betas(lanblocknum,iorder-1,lanblocknum), betastr(lanblocknum,lanblocknum,iorder-1))
 
         if (lansize.eq.0) then
-           call nulldots(lanblocknum*(iorder-1),lanblocknum,betas(:,:,:),logpar)
-           call nulldots(lanblocknum,lanblocknum*(iorder-1),betastr(:,:,:),logpar)
+           call allnulldots(lanblocknum*(iorder-1),lanblocknum,betas(:,:,:),logpar)
+           call allnulldots(lanblocknum,lanblocknum*(iorder-1),betastr(:,:,:),logpar)
         else
            call allhdots(lanvects(:,:,:),lanmultvects(:,:,iorder),lansize,maxlansize,&
                 lanblocknum*(iorder-1),lanblocknum,betas(:,:,:),logpar)
@@ -657,8 +742,8 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
               endif
 
               outvectors = 0.0d0
-              do  j=1, numout
-                 if (lansize.gt.0) then
+              if (lansize.gt.0) then
+                 do  j=1, numout
                     do k=1, iorder
                        do id=1,lanblocknum
                           if ((k-1)*lanblocknum+id.le.maxiter) then
@@ -666,10 +751,16 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
                           endif
                        enddo
                     enddo
-                    outvectors(:,j)=outvectors(:,j)/sqrt(thisdot(outvectors(:,j),outvectors(:,j),lansize,logpar))
-                 else
-                    outvectors(:,j)=outvectors(:,j)/sqrt(nulldot(logpar))
-                 endif
+                 enddo
+              endif
+
+              if (lansize.eq.0) then
+                 call vecnulldots(numout,normsq,logpar)
+              else
+                 call vecthisdots(outvectors(:,:),outvectors(:,:),lansize,outvectorlda,outvectorlda,numout,normsq,logpar)
+              endif
+              do  j=1, numout
+                 outvectors(:,j)=outvectors(:,j)/sqrt(normsq(j))
               enddo
 
               tempvectors=0d0
@@ -683,18 +774,18 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
                  endif
               enddo
 
-              do j=1,numout
-                 if (lansize.eq.0) then
-                    normsq(j)=nulldot(logpar)
-                    valdot(j)=nulldot(logpar)
-                    sqdot(j)=nulldot(logpar)
-                 else
-                    normsq(j)=hdot(outvectors(:,j),outvectors(:,j),lansize,logpar)
-                    valdot(j)=hdot(outvectors(:,j),tempvectors(:,j),lansize,logpar)
-                    sqdot(j)= hdot(outvectors(:,j),tempvectors2(:,j),lansize,logpar)
-                 endif
-                 values(j)=valdot(j)/normsq(j)
+              if (lansize.eq.0) then
+                 call vecnulldots(numout,normsq,logpar)
+                 call vecnulldots(numout,valdot,logpar)
+                 call vecnulldots(numout,sqdot,logpar)
+              else
+                 call vechdots(outvectors(:,:),outvectors(:,:),lansize,outvectorlda,outvectorlda,numout,normsq,logpar)
+                 call vechdots(outvectors(:,:),tempvectors(:,:),lansize,outvectorlda,maxlansize,numout,valdot,logpar)
+                 call vechdots(outvectors(:,:),tempvectors2(:,:),lansize,outvectorlda,maxlansize,numout,sqdot,logpar)
+              endif
 
+              do j=1,numout
+                 values(j)=valdot(j)/normsq(j)
                  error(j)=abs(&
                       valdot(j)**2 / normsq(j)**2 - &
                       sqdot(j)/normsq(j))
@@ -706,9 +797,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
               enddo
               if (printflag.ne.0) then
                  OFL; write(mpifileptr,'(A10,100E9.2)') " ERRORS ", error(1:numout); CFL
-!                 OFL; write(mpifileptr,'(A10,100E9.2)') " ERRORv ", abs(valdot(1:numout)); CFL
-!                 OFL; write(mpifileptr,'(A10,100E9.2)') " ERRORn ", abs(normsq(1:numout)); CFL
-!                 OFL; write(mpifileptr,'(A10,100E9.2)') " ERRORs ", abs(sqdot(1:numout)); CFL
               endif
               stopsum=0d0
               do nn=1,numout
@@ -724,9 +812,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
                     OFLWR "MAX DIM REACHED, NO CONVERGENCE -- THRESHOLDS TOO HIGH? BUG?",stopsum,lanthresh; CFLST
                  endif
               else
-!!$                 if (printflag.ne.0) then
-!!$                    OFLWR "Converged", stopsum, lanthresh; CFL
-!!$                 endif
                  flag=1
               endif
            endif
