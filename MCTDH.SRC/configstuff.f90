@@ -37,9 +37,8 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
        tempconfigvects(:,:)
   DATAECS, allocatable :: fullconfigvals(:)
 
-!! error not correct par_consplit.ne.0
-  if (order+numshift.gt.www%totadim) then
-     OFLWR "Error, want ",order," plus ",numshift," vectors but totadim= ",www%totadim;CFLST
+  if (order+numshift.gt.www%numconfig*numr) then
+     OFLWR "Error, want ",order," plus ",numshift," vectors but totadim= ",www%numconfig*numr;CFLST
   endif
   if (numshift.lt.0) then
      OFLWR "GG ERROR.", numshift,guessflag; CFLST
