@@ -103,10 +103,10 @@ subroutine get_eigen_cnorm(inmat, n, lda, outmat,values)
 
      outmat(:,i)=outmat(:,i)/sqrt(DOT_PRODUCT(CONJG(outmat(:,i)),outmat(:,i)))
      rrealdot=sqrt(real(DOT_PRODUCT(outmat(:,i),outmat(:,i))))
-     if (rrealdot.gt.1.d3) then
-        print *, "large!", rrealdot
-        outmat(:,i)=outmat(:,i)*1.d3/rrealdot
-     endif
+!     if (rrealdot.gt.1.d5) then
+!        print *, "large!", rrealdot
+!        outmat(:,i)=outmat(:,i)*1.d3/rrealdot
+!     endif
   enddo
 
 
