@@ -6,9 +6,9 @@
 subroutine oneminusproject(inspfs, outspfs, prospfs)
   use parameters
   implicit none  
-  DATATYPE :: inspfs(spfsize,nspf), &
-       outspfs(spfsize,nspf), &
-       prospfs(spfsize,nspf)
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf),  prospfs(spfsize,nspf)
+  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
+
   call project(inspfs, outspfs, prospfs)
   outspfs=inspfs-outspfs
 end subroutine
@@ -19,12 +19,11 @@ subroutine project(inspfs, outspfs, prospfs)
   use opmod !! frozenspfs
   implicit none
 
-  DATATYPE :: inspfs(spfsize, nspf), &
-       outspfs(spfsize, nspf), &
-       prospfs(spfsize, nspf)
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf),  prospfs(spfsize,nspf)
+  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
   integer :: i,j
   DATATYPE :: dot,mydot(nspf+numfrozen,nspf)
-  DATATYPE :: tempprospfs(spfsize,nspf+numfrozen)
+  DATATYPE :: tempprospfs(spfsize,nspf+numfrozen)  !! AUTOMATIC
 
   tempprospfs(:,1:nspf)=prospfs(:,:)
 
@@ -74,7 +73,8 @@ subroutine project_onfrozen(inspf, outspf)
   use parameters
   use opmod !! frozenspfs
   implicit none
-  DATATYPE :: inspf(spfsize),outspf(spfsize)
+  DATATYPE,intent(in) :: inspf(spfsize)
+  DATATYPE,intent(out) :: outspf(spfsize)
   integer :: j
   DATATYPE :: dot,mydot(numfrozen)
 
@@ -168,7 +168,8 @@ subroutine mult_impot(in, out)
   use parameters
   use opmod 
   implicit none
-  DATATYPE :: in(spfsize), out(spfsize)
+  DATATYPE,intent(in) :: in(spfsize)
+  DATATYPE,intent(out) :: out(spfsize)
   out(:)=in(:)*imag((0d0,0d0)+pot(:))   !! NO INTERNUCLEAR REPULSION !!
 end subroutine mult_impot
 
@@ -180,7 +181,8 @@ subroutine mult_repot(in, out)
   use parameters
   use opmod 
   implicit none
-  DATATYPE :: out(spfsize), in(spfsize)
+  DATATYPE,intent(in) :: in(spfsize)
+  DATATYPE,intent(out) :: out(spfsize)
   out(:)=in(:)*real(pot(:),8)   !! NO INTERNUCLEAR REPULSION !!
 end subroutine mult_repot
 
@@ -189,7 +191,8 @@ subroutine mult_pot(in, out)
   use parameters
   use opmod 
   implicit none
-  DATATYPE :: in(spfsize),out(spfsize)
+  DATATYPE,intent(in) :: in(spfsize)
+  DATATYPE,intent(out) :: out(spfsize)
   out(:)=in(:)*pot(:)   !! NO INTERNUCLEAR REPULSION !!
 end subroutine mult_pot
 
@@ -200,7 +203,8 @@ subroutine mult_imhalfniumpot(in, out)
   use parameters
   use opmod  
   implicit none
-  DATATYPE :: in(spfsize),out(spfsize)
+  DATATYPE,intent(in) :: in(spfsize)
+  DATATYPE,intent(out) :: out(spfsize)
   out(:)=in(:)*imag((0d0,0d0)+halfniumpot(:))
 end subroutine mult_imhalfniumpot
 
@@ -209,7 +213,8 @@ subroutine mult_rehalfniumpot(in, out)
   use parameters
   use opmod  
   implicit none
-  DATATYPE :: in(spfsize),out(spfsize)
+  DATATYPE,intent(in) :: in(spfsize)
+  DATATYPE,intent(out) :: out(spfsize)
   out(:)=in(:)*real(halfniumpot(:),8)
 end subroutine mult_rehalfniumpot
 
@@ -218,7 +223,9 @@ subroutine lenmultiply(spfin,spfout, myxtdpot,myytdpot,myztdpot)
   use mpimod
   use parameters
   implicit none
-  DATATYPE :: ttempspf(spfsize), spfin(spfsize), spfout(spfsize)
+  DATATYPE,intent(in) :: spfin(spfsize)
+  DATATYPE,intent(out) :: spfout(spfsize)
+  DATATYPE :: ttempspf(spfsize)              !! AUTOMATIC
   DATATYPE :: myxtdpot,myztdpot,myytdpot
 
   spfout(:)=0d0
