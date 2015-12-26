@@ -17,6 +17,9 @@ v1.16 FACTOR OF 1/3 REMOVED FROM PHOTOIONIZATION (Actions 16,17)
 
 ALSO v1.16 linear damping (fttriwindow=1) NEW DEFAULT actions 1,16,17,21
    RESULTS WILL BE DIFFERENT (hopefully better)
+   Probably better results for absorption/emission, action 21.
+   CONSIDER fttriwindow=0, ftwindowpower=2 in namelist &parinp
+     to invoke old windowing function for actions 1,16,17.
 
 ALSO v1.16 ABSOLUTE UNITS (megabarns) IMPLEMENTED FOR ACTION 21
    emission/absorption.  Column 9 in ZDipoleft.Dat etc is cross 
