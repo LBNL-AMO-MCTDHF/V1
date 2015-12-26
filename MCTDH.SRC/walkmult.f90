@@ -1011,6 +1011,8 @@ subroutine arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,mattrans, 
        mattrans(www%singlematsize,www%botconfig:www%topconfig)
   DATATYPE,intent(out) :: outsmallvector(mynumr,www%botconfig:www%topconfig)
   DATAECS,intent(in) :: rvector(mynumr)
+  DATATYPE :: outsum(mynumr)
+  DATAECS :: myrvector(mynumr)
   integer :: config1,ihop
 
   if (sparseconfigflag.eq.0) then
@@ -1024,17 +1026,35 @@ subroutine arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,mattrans, 
   outsmallvector(:,:)=0d0
 
   if (diagflag.eq.0) then
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ihop,outsum,myrvector)
+     myrvector(:)=rvector(:)
+!$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
+        outsum(:)=0d0
+
         do ihop=www%firstsinglehopbyproc(firstproc,config1),www%lastsinglehopbyproc(lastproc,config1)
-           outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(ihop,config1) * insmallvector(:,www%singlehop(ihop,config1)) * rvector(:)
+           outsum(:)=outsum(:)+mattrans(ihop,config1) * insmallvector(:,www%singlehop(ihop,config1)) * myrvector(:)
         enddo
+        outsmallvector(:,config1)=outsum(:)
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
   else
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,myrvector)
+     myrvector(:)=rvector(:)
+!$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
+
         if (www%singlehopdiagflag(config1).ne.0) then
-           outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(www%singlediaghop(config1),config1) * insmallvector(:,config1) * rvector(:)
+           outsmallvector(:,config1)=mattrans(www%singlediaghop(config1),config1) * insmallvector(:,config1) * myrvector(:)
         endif
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
   endif
 
 end subroutine arbitrary_sparsemult_singles_byproc
@@ -1052,6 +1072,8 @@ subroutine arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,mattrans,r
        mattrans(www%doublematsize,www%botconfig:www%topconfig)
   DATATYPE,intent(out) :: outsmallvector(mynumr,www%botconfig:www%topconfig)
   DATAECS,intent(in) :: rvector(mynumr)
+  DATATYPE :: outsum(mynumr)
+  DATAECS :: myrvector(mynumr)
   integer :: config1,ihop
 
   if (sparseconfigflag.eq.0) then
@@ -1065,17 +1087,34 @@ subroutine arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,mattrans,r
   outsmallvector(:,:)=0d0
 
   if (diagflag.eq.0) then
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ihop,outsum,myrvector)
+     myrvector(:)=rvector(:)
+!$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
+        outsum(:)=0d0
+
         do ihop=www%firstdoublehopbyproc(firstproc,config1),www%lastdoublehopbyproc(lastproc,config1)
-           outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(ihop,config1) * insmallvector(:,www%doublehop(ihop,config1)) * rvector(:)
+           outsum(:)=outsum(:)+mattrans(ihop,config1) * insmallvector(:,www%doublehop(ihop,config1)) * myrvector(:)
         enddo
+        outsmallvector(:,config1)=outsum(:)
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
   else
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,myrvector)
+     myrvector(:)=rvector(:)
+!$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
         if (www%doublehopdiagflag(config1).ne.0) then
-           outsmallvector(:,config1)=outsmallvector(:,config1)+mattrans(www%doublediaghop(config1),config1) * insmallvector(:,config1) * rvector(:)
+           outsmallvector(:,config1)=mattrans(www%doublediaghop(config1),config1) * insmallvector(:,config1) * myrvector(:)
         endif
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
   endif
 
 end subroutine arbitrary_sparsemult_doubles_byproc
@@ -1090,7 +1129,8 @@ subroutine arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,onebodymat
   DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf), avectorin(inrnum,www%allbotconfigs(firstproc):www%alltopconfigs(lastproc))
   DATATYPE,intent(out) :: avectorout(inrnum,www%botconfig:www%topconfig)
   DATAECS,intent(in) :: rvector(inrnum)
-  DATATYPE :: csum
+  DATATYPE :: csum, outsum(inrnum)
+  DATAECS :: myrvector(inrnum)
   integer ::    config2, config1, iwalk, idiag,ihop
 
   if (www%topconfig-www%botconfig+1.eq.0) then
@@ -1101,7 +1141,11 @@ subroutine arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,onebodymat
 
   if (diagflag.eq.0) then
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ihop,iwalk,config2,csum,outsum,myrvector)
+        myrvector(:)=rvector(:)
+!$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
+        outsum(:)=0d0
 
         do ihop=www%firstsinglehopbyproc(firstproc,config1),www%lastsinglehopbyproc(lastproc,config1)
            config2=www%singlehop(ihop,config1)
@@ -1111,12 +1155,19 @@ subroutine arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,onebodymat
                    www%singlewalkopspf(2,iwalk,config1)) *  &
                    www%singlewalkdirphase(iwalk,config1)
            enddo
-           avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config2) * csum * rvector(:)
+           outsum(:)=outsum(:)+avectorin(:,config2) * csum * myrvector(:)
         enddo
+        avectorout(:,config1)=outsum(:)
+
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
   else
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,idiag,iwalk,csum,myrvector)
+        myrvector(:)=rvector(:)
+!$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
         csum=0d0
         do idiag=1,www%numsinglediagwalks(config1)
@@ -1126,8 +1177,10 @@ subroutine arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,onebodymat
                 www%singlewalkopspf(2,iwalk,config1)) *  &
                 www%singlewalkdirphase(iwalk,config1)
         enddo
-        avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config1) * csum * rvector(:)
+        avectorout(:,config1)=avectorin(:,config1) * csum * myrvector(:)
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
   endif
 
@@ -1144,14 +1197,19 @@ subroutine arbitraryconfig_mult_doubles_byproc(firstproc,lastproc,www,twobodymat
   DATATYPE,intent(in) :: twobodymat(www%nspf,www%nspf,www%nspf,www%nspf), avectorin(inrnum,www%allbotconfigs(firstproc):www%alltopconfigs(lastproc))
   DATATYPE,intent(out) :: avectorout(inrnum,www%botconfig:www%topconfig)
   DATAECS,intent(in) :: rvector(inrnum)
-  DATATYPE :: csum
+  DATATYPE :: csum, outsum(inrnum)
+  DATAECS :: myrvector(inrnum)
   integer ::   config2, config1, iwalk, idiag, ihop
 
   avectorout(:,:)=0.d0
 
   if (diagflag.eq.0) then
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ihop,iwalk,config2,csum,outsum,myrvector)
+        myrvector(:)=rvector(:)
+!$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
+        outsum(:)=0d0
 
         do ihop=www%firstdoublehopbyproc(firstproc,config1),www%lastdoublehopbyproc(lastproc,config1)
            config2=www%doublehop(ihop,config1)
@@ -1164,12 +1222,18 @@ subroutine arbitraryconfig_mult_doubles_byproc(firstproc,lastproc,www,twobodymat
                 www%doublewalkdirspf(4,iwalk,config1))* &
                 www%doublewalkdirphase(iwalk,config1)
            enddo
-           avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config2) *  csum * rvector(:)
+           outsum(:)=outsum(:)+avectorin(:,config2) *  csum * myrvector(:)
         enddo
+        avectorout(:,config1)=outsum(:)
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
   else
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,idiag,iwalk,csum,myrvector)
+        myrvector(:)=rvector(:)
+!$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
         csum=0d0
         do idiag=1,www%numdoublediagwalks(config1)
@@ -1181,8 +1245,10 @@ subroutine arbitraryconfig_mult_doubles_byproc(firstproc,lastproc,www,twobodymat
                 www%doublewalkdirspf(4,iwalk,config1))* &
                 www%doublewalkdirphase(iwalk,config1)
         enddo
-        avectorout(:,config1)=avectorout(:,config1)+avectorin(:,config1) * csum * rvector(:)
+        avectorout(:,config1)=avectorin(:,config1) * csum * myrvector(:)
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
   endif
 
