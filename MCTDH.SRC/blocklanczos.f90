@@ -198,21 +198,22 @@ subroutine myhgramschmidt_fast(n, m, lda, previous, vector,logpar)
   integer,intent(in) :: n,m,lda
   DATATYPE,intent(in) :: previous(lda,m)
   DATATYPE,intent(inout) :: vector(n)
-  DATATYPE :: hdot, norm
+  DATATYPE :: norm,hdot,myhdots(m)
   logical,intent(in) :: logpar
   integer :: i,j
 
   do j=1,2
 
-!!$ 12-2015 v1.16 reverting to separate dot products for less numerical error
-!!$?     if (m.ne.0) then
-!!$?        call allhdots(previous(:,:),vector,n,lda,m,1,myhdots,logpar)
-!!$?     endif
+!!$ separate dot products for less numerical error; allhdots for speed
+
+     if (m.ne.0) then
+        call allhdots(previous(:,:),vector,n,lda,m,1,myhdots,logpar)
+     endif
 
      do i=1,m
-        vector=vector-previous(1:n,i)* hdot(previous(1:n,i),vector(1:n),n,logpar) 
-!!$? only the same with previous perfectly orth
-!!$?        vector=vector-previous(1:n,i)*myhdots(i)                            
+!!$        vector=vector-previous(1:n,i)* hdot(previous(1:n,i),vector(1:n),n,logpar) 
+!!$  only the same with previous perfectly orth
+        vector=vector-previous(1:n,i)*myhdots(i)                            
      enddo
      norm=sqrt(hdot(vector,vector,n,logpar))
      vector=vector/norm
@@ -227,19 +228,18 @@ subroutine nullgramschmidt_fast(m,logpar)
   implicit none
   integer,intent(in) :: m
   logical,intent(in) :: logpar
-  DATATYPE :: norm,nulldot
-  integer :: i,j
+  DATATYPE :: norm,nulldot,myhdots(m)
+  integer :: j
 
   do j=1,2
 
-!!$ 12-2015 v1.16 reverting to separate dot products for less numerical error
-!!$?     if (m.ne.0) then
-!!$?        call allnulldots(m,1,myhdots,logpar)
-!!$?     endif
+     if (m.ne.0) then
+        call allnulldots(m,1,myhdots,logpar)
+     endif
 
-     do i=1,m
-        norm=nulldot(logpar)
-     enddo
+!!$     do i=1,m
+!!$        norm=nulldot(logpar)
+!!$     enddo
 
      norm=sqrt(nulldot(logpar))
   enddo
