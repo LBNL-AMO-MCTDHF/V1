@@ -449,13 +449,23 @@ end subroutine op_reflectx
 
 
 
-subroutine mult_zdipole(in,out)
+subroutine mult_zdipole(in,out,realflag)
   use myparams
   use myprojectmod
   implicit none
   DATATYPE,intent(in) :: in(totpoints)
   DATATYPE,intent(out) :: out(totpoints)
+  integer,intent(in) :: realflag
+#ifndef CNORMFLAG
+  if (realflag.ne.0) then
+     out(:)=in(:)*real(dipoles(:,3),8)
+  else
+#endif
   out(:)=in(:)*dipoles(:,3)
+#ifndef CNORMFLAG
+  endif
+#endif
+
 end subroutine mult_zdipole
 
 subroutine mult_imzdipole(in, out)
@@ -471,13 +481,23 @@ subroutine mult_imzdipole(in, out)
 #endif
 end subroutine mult_imzdipole
 
-subroutine mult_ydipole(in,out)
+subroutine mult_ydipole(in,out,realflag)
   use myparams
   use myprojectmod
   implicit none
   DATATYPE,intent(in) :: in(totpoints)
   DATATYPE,intent(out) :: out(totpoints)
+  integer,intent(in) :: realflag
+#ifndef CNORMFLAG
+  if (realflag.ne.0) then
+     out(:)=in(:)*real(dipoles(:,2),8)
+  else
+#endif
   out(:)=in(:)*dipoles(:,2)
+#ifndef CNORMFLAG
+  endif
+#endif
+
 end subroutine mult_ydipole
 
 subroutine mult_imydipole(in, out)
@@ -493,13 +513,23 @@ subroutine mult_imydipole(in, out)
 #endif
 end subroutine mult_imydipole
 
-subroutine mult_xdipole(in,out)
+subroutine mult_xdipole(in,out,realflag)
   use myparams
   use myprojectmod
   implicit none
   DATATYPE,intent(in) :: in(totpoints)
   DATATYPE,intent(out) :: out(totpoints)
+  integer,intent(in) :: realflag
+#ifndef CNORMFLAG
+  if (realflag.ne.0) then
+     out(:)=in(:)*real(dipoles(:,1),8)
+  else
+#endif
   out(:)=in(:)*dipoles(:,1)
+#ifndef CNORMFLAG
+  endif
+#endif
+  
 end subroutine mult_xdipole
 
 subroutine mult_imxdipole(in, out)

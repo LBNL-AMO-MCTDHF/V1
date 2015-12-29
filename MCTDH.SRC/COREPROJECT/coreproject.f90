@@ -726,16 +726,30 @@ subroutine op_reflectx(in, out)
 end subroutine op_reflectx
 
 
-subroutine mult_zdipole(in, out)
+subroutine mult_zdipole(in, out, realflag)
   use myparams
   use myprojectmod
   implicit none
   DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
   DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
   integer :: i
+  integer,intent(in) :: realflag
+  i=realflag ! avoid warn unused
+
+#ifndef CNORMFLAG
+  if (realflag.ne.0) then
+     do i=-mbig,mbig
+        out(:,:,i)=in(:,:,i)*real(zdipole(:,:),8)
+     enddo
+  else
+#endif
   do i=-mbig,mbig
      out(:,:,i)=in(:,:,i)*zdipole(:,:)
   enddo
+#ifndef CNORMFLAG
+  endif
+#endif
+
 end subroutine mult_zdipole
 
 subroutine mult_imzdipole(in, out)
@@ -754,20 +768,38 @@ subroutine mult_imzdipole(in, out)
 #endif
 end subroutine mult_imzdipole
 
-subroutine mult_xdipole(in, out)
+subroutine mult_xdipole(in, out,realflag)
   use myparams
   use myprojectmod
   implicit none
   DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
   DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
   integer :: i
+  integer,intent(in) :: realflag
+  i=realflag !! avoid warn unused
+
   out(:,:,:)=0d0
+
+#ifndef CNORMFLAG
+  if (realflag.ne.0) then
+     do i=-mbig+1,mbig
+        out(:,:,i)=in(:,:,i-1)*real(xydipole(:,:),8) /2 !!TWOFIX
+     enddo
+     do i=-mbig,mbig-1
+        out(:,:,i)=out(:,:,i)+in(:,:,i+1)*real(xydipole(:,:),8) /2  !!TWOFIX
+     enddo
+  else
+#endif
   do i=-mbig+1,mbig
      out(:,:,i)=in(:,:,i-1)*xydipole(:,:) /2 !!TWOFIX
   enddo
   do i=-mbig,mbig-1
      out(:,:,i)=out(:,:,i)+in(:,:,i+1)*xydipole(:,:) /2  !!TWOFIX
   enddo
+#ifndef CNORMFLAG
+  endif
+#endif
+
 end subroutine mult_xdipole
 
 subroutine mult_imxdipole(in, out)
@@ -791,20 +823,37 @@ subroutine mult_imxdipole(in, out)
 
 end subroutine mult_imxdipole
 
-subroutine mult_ydipole(in, out)
+subroutine mult_ydipole(in, out, realflag)
   use myparams
   use myprojectmod
   implicit none
   DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
   DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
   integer :: i
+  integer,intent(in) :: realflag
+  i=realflag  ! avoid warn unused
+
   out(:,:,:)=0d0
+
+#ifndef CNORMFLAG
+  if (realflag.ne.0) then
+     do i=-mbig+1,mbig
+        out(:,:,i)=in(:,:,i-1)*real(xydipole(:,:),8)*(0d0,1d0)  /2 !!TWOFIX
+     enddo
+     do i=-mbig,mbig-1
+        out(:,:,i)=out(:,:,i)+in(:,:,i+1)*real(xydipole(:,:),8)*(0d0,-1d0)  /2 !!TWOFIX
+     enddo
+  else
+#endif
   do i=-mbig+1,mbig
      out(:,:,i)=in(:,:,i-1)*xydipole(:,:)*(0d0,1d0)  /2 !!TWOFIX
   enddo
   do i=-mbig,mbig-1
      out(:,:,i)=out(:,:,i)+in(:,:,i+1)*xydipole(:,:)*(0d0,-1d0)  /2 !!TWOFIX
   enddo
+#ifndef CNORMFLAG
+  endif
+#endif
 
 end subroutine mult_ydipole
 

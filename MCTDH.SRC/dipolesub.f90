@@ -61,7 +61,8 @@ subroutine dipolesub()
            dipolenormsq(calledflag) = dipolenormsq(calledflag) + dd(imc)
 
 !! 101414 REAL-VALUED FOR HERM.
-
+!! 1-2016 v1.17 should not be necessary with realflag in mult_zdipole(in,out,realflag) etc.
+ 
 #ifndef CNORMFLAG
            xdipoleexpect(calledflag) = xdipoleexpect(calledflag) + real(xx(imc),8)
            ydipoleexpect(calledflag) = ydipoleexpect(calledflag) + real(yy(imc),8)
@@ -132,7 +133,7 @@ subroutine dipolesub_one(www,abra,aket,inspfs,xdipole_expect,ydipole_expect,zdip
 !! Z DIPOLE
 
   do i=1,www%nspf
-     call mult_zdipole(inspfs(:,i),tempspfs(:,i))
+     call mult_zdipole(inspfs(:,i),tempspfs(:,i),1)
   enddo
   call MYGEMM(CNORMCHAR,'N',www%nspf,www%nspf,spfsize,DATAONE, inspfs, spfsize, tempspfs, spfsize, DATAZERO, dipolemat, www%nspf)
   if (parorbsplit.eq.3) then
@@ -151,7 +152,7 @@ subroutine dipolesub_one(www,abra,aket,inspfs,xdipole_expect,ydipole_expect,zdip
 !! Y DIPOLE
 
   do i=1,www%nspf
-     call mult_ydipole(inspfs(:,i),tempspfs(:,i))
+     call mult_ydipole(inspfs(:,i),tempspfs(:,i),1)
   enddo
   call MYGEMM(CNORMCHAR,'N',www%nspf,www%nspf,spfsize,DATAONE, inspfs, spfsize, tempspfs, spfsize, DATAZERO, dipolemat, www%nspf)
   if (parorbsplit.eq.3) then
@@ -170,7 +171,7 @@ subroutine dipolesub_one(www,abra,aket,inspfs,xdipole_expect,ydipole_expect,zdip
 !! X DIPOLE
 
   do i=1,www%nspf
-     call mult_xdipole(inspfs(:,i),tempspfs(:,i))
+     call mult_xdipole(inspfs(:,i),tempspfs(:,i),1)
   enddo
   call MYGEMM(CNORMCHAR,'N',www%nspf,www%nspf,spfsize,DATAONE, inspfs, spfsize, tempspfs, spfsize, DATAZERO, dipolemat, www%nspf)
   if (parorbsplit.eq.3) then

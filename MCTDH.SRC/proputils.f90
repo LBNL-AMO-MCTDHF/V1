@@ -231,15 +231,15 @@ subroutine lenmultiply(spfin,spfout, myxtdpot,myytdpot,myztdpot)
   spfout(:)=0d0
 
   if (abs(myztdpot).ne.0d0) then
-     call mult_zdipole(spfin(:),ttempspf(:))
+     call mult_zdipole(spfin(:),ttempspf(:),0)
      spfout(:)=spfout(:)+ttempspf(:)*myztdpot
   endif
   if (abs(myytdpot).ne.0d0) then
-     call mult_ydipole(spfin(:),ttempspf(:))
+     call mult_ydipole(spfin(:),ttempspf(:),0)
      spfout(:)=spfout(:)+ttempspf(:)*myytdpot
   endif
   if (abs(myxtdpot).ne.0d0) then
-     call mult_xdipole(spfin(:),ttempspf(:))
+     call mult_xdipole(spfin(:),ttempspf(:),0)
      spfout(:)=spfout(:)+ttempspf(:)*myxtdpot
   endif
 

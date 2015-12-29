@@ -31,7 +31,7 @@ subroutine get_orbmats( myspfs,  numspf,  ugmat,   xdipmat,ydipmat,zdipmat,   xr
 !! Z DIPOLE
 
   do i=1,numspf
-     call mult_zdipole(myspfs(:,i),tempspfs(:,i))
+     call mult_zdipole(myspfs(:,i),tempspfs(:,i),0)
   enddo
   call MYGEMM(CNORMCHAR,'N',numspf,numspf,spfsize,DATAONE, myspfs, spfsize, tempspfs, spfsize, DATAZERO, zdipmat, numspf)
   if (parorbsplit.eq.3) then
@@ -41,7 +41,7 @@ subroutine get_orbmats( myspfs,  numspf,  ugmat,   xdipmat,ydipmat,zdipmat,   xr
 !! Y DIPOLE
 
   do i=1,numspf
-     call mult_ydipole(myspfs(:,i),tempspfs(:,i))
+     call mult_ydipole(myspfs(:,i),tempspfs(:,i),0)
   enddo
   call MYGEMM(CNORMCHAR,'N',numspf,numspf,spfsize,DATAONE, myspfs, spfsize, tempspfs, spfsize, DATAZERO, ydipmat, numspf)
   if (parorbsplit.eq.3) then
@@ -51,7 +51,7 @@ subroutine get_orbmats( myspfs,  numspf,  ugmat,   xdipmat,ydipmat,zdipmat,   xr
 !! X DIPOLE
 
   do i=1,numspf
-     call mult_xdipole(myspfs(:,i),tempspfs(:,i))
+     call mult_xdipole(myspfs(:,i),tempspfs(:,i),0)
   enddo
   call MYGEMM(CNORMCHAR,'N',numspf,numspf,spfsize,DATAONE, myspfs, spfsize, tempspfs, spfsize, DATAZERO, xdipmat, numspf)
   if (parorbsplit.eq.3) then
