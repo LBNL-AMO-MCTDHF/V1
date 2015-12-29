@@ -39,33 +39,33 @@ subroutine dipolesub()
 
      else
 
-     do imc=1,mcscfnum
-        dd(imc) = dot(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),tot_adim)
-        call dipolesub_one(www,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0), xx(imc),yy(imc),zz(imc))
-     enddo
+        do imc=1,mcscfnum
+           dd(imc) = dot(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),tot_adim)
+           call dipolesub_one(www,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0), xx(imc),yy(imc),zz(imc))
+        enddo
 
-     xdipoleexpect(calledflag)=0d0
-     ydipoleexpect(calledflag)=0d0
-     zdipoleexpect(calledflag)=0d0
-     dipolenormsq(calledflag)=0d0
+        xdipoleexpect(calledflag)=0d0
+        ydipoleexpect(calledflag)=0d0
+        zdipoleexpect(calledflag)=0d0
+        dipolenormsq(calledflag)=0d0
 
-     do imc=1,mcscfnum
+        do imc=1,mcscfnum
 
-        dipolenormsq(calledflag) = dipolenormsq(calledflag) + dd(imc)
+           dipolenormsq(calledflag) = dipolenormsq(calledflag) + dd(imc)
 
 !! 101414 REAL-VALUED FOR HERM.
 
 #ifndef CNORMFLAG
-        xdipoleexpect(calledflag) = xdipoleexpect(calledflag) + real(xx(imc),8)
-        ydipoleexpect(calledflag) = ydipoleexpect(calledflag) + real(yy(imc),8)
-        zdipoleexpect(calledflag) = zdipoleexpect(calledflag) + real(zz(imc),8)
+           xdipoleexpect(calledflag) = xdipoleexpect(calledflag) + real(xx(imc),8)
+           ydipoleexpect(calledflag) = ydipoleexpect(calledflag) + real(yy(imc),8)
+           zdipoleexpect(calledflag) = zdipoleexpect(calledflag) + real(zz(imc),8)
 #else
-        xdipoleexpect(calledflag) = xdipoleexpect(calledflag) + xx(imc)
-        ydipoleexpect(calledflag) = ydipoleexpect(calledflag) + yy(imc)
-        zdipoleexpect(calledflag) = zdipoleexpect(calledflag) + zz(imc)
+           xdipoleexpect(calledflag) = xdipoleexpect(calledflag) + xx(imc)
+           ydipoleexpect(calledflag) = ydipoleexpect(calledflag) + yy(imc)
+           zdipoleexpect(calledflag) = zdipoleexpect(calledflag) + zz(imc)
 #endif
 
-     enddo
+        enddo
 
      endif  !! conjgpropflag complex Domcke
 
