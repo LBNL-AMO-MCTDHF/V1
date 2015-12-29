@@ -44,6 +44,10 @@ subroutine dipolesub()
 
         do imc=1,mcscfnum
            dd(imc) = dot(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),tot_adim)
+        if (par_consplit.ne.0) then
+           call mympireduceone(dd(imc))
+        endif
+
            call dipolesub_one(www,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0), xx(imc),yy(imc),zz(imc))
         enddo
 
