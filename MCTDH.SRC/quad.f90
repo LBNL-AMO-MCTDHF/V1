@@ -209,7 +209,7 @@ subroutine aaonedinit(www,inavector)
   endif
   jacaa(:)=jacaa(:)/sqrt(csum2)
 
-  call sparseconfigmult(www,jacaa, jacaamult, yyy%cptr(0), yyy%sptr(0),1,1,0,1,0d0)
+  call sparseconfigmult(www,jacaa, jacaamult, yyy%cptr(0), yyy%sptr(0),1,1,0,1,0d0,-1)
 
   call basis_project(www,numr,jacaamult)
  
@@ -278,7 +278,7 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
 
   call aaonedinit(www,vector)
 
-  call sparseconfigmult(www,vector, vector2, yyy%cptr(0), yyy%sptr(0), 1,1,0,1,0d0)
+  call sparseconfigmult(www,vector, vector2, yyy%cptr(0), yyy%sptr(0), 1,1,0,1,0d0,-1)
 
   call basis_project(www,numr,vector2)
 
@@ -379,7 +379,7 @@ subroutine nonsparsequadavector(www,avectorout)
   call basis_project(www,numr,avectorout)
 
   call aaonedinit(www,avectorout)
-  call sparseconfigmult(www,avectorout(:),err(:),yyy%cptr(0),yyy%sptr(0),1,1,0,1,0d0)
+  call sparseconfigmult(www,avectorout(:),err(:),yyy%cptr(0),yyy%sptr(0),1,1,0,1,0d0,-1)
 
   call basis_project(www,numr,err(:))
 
@@ -402,7 +402,7 @@ subroutine nonsparsequadavector(www,avectorout)
 
   spinmatel(:,:)=0d0
 
-  call assemble_dfbasismat(www, spinmatel, yyy%cptr(0),1,1,1,1, 0d0)
+  call assemble_dfbasismat(www, spinmatel, yyy%cptr(0),1,1,1,1, 0d0,-1)
 
   do k=1,www%numdfbasis*numr
      spinmatel(k,k)=spinmatel(k,k)-quadexpect

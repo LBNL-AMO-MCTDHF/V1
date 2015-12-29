@@ -408,7 +408,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   ftgtau(:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0
 
   do i=0,curtime
-     call vectdpot(i*par_timestep*fluxinterval*fluxskipmult,0,pots1)  !! LENGTH GAUGE
+     call vectdpot(i*par_timestep*fluxinterval*fluxskipmult,0,pots1,-1)  !! LENGTH GAUGE
      if (pulsewindowtoo == 0) then
      pulseft(i,:)=pots1(:)
      else

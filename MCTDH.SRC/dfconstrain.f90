@@ -571,7 +571,7 @@ subroutine dferror(www,cptr,sptr,avector,numvects,outerror,time)
      if (www%numdfconfigs.gt.0) then
 
         temp1(:,:)=avector(:,:,imc)
-        call sparseconfigmult(www,temp1,temp2,cptr,sptr,1,1,1,1,time)
+        call sparseconfigmult(www,temp1,temp2,cptr,sptr,1,1,1,1,time,imc)
         do i=www%firstconfig,www%lastconfig
            temp1(:,i)=temp2(:,i)*(1-www%ddd%dfincludedmask(i))
         enddo
@@ -866,9 +866,9 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
         call system_clock(jtime);        times(8)=times(8)+jtime-itime;     itime=jtime
 
         if (iiyy.eq.1) then
-           call sparseconfigmult(www,avector,avectorp,cptr,sptr,1,1,0,0,time)
+           call sparseconfigmult(www,avector,avectorp,cptr,sptr,1,1,0,0,time,imc)
         else
-           call sparseconfigpulsemult(www,avector,avectorp,cptr,sptr,iiyy-1)
+           call sparseconfigpulsemult(www,avector,avectorp,cptr,sptr,iiyy-1,imc)
         endif
 
         call system_clock(jtime);        times(9)=times(9)+jtime-itime;     itime=jtime

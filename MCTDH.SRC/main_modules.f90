@@ -756,14 +756,17 @@ module configexpotimemod
   implicit none
   real*8 :: configexpotime = 0d0
   logical :: initialized = .false.
+  integer :: imc = -99
 end module configexpotimemod
 
-subroutine configexpotimeinit(intime)
+subroutine configexpoinit(intime,inmc)
   use configexpotimemod
   implicit none
-  real*8 :: intime
+  real*8,intent(in) :: intime
+  integer,intent(in) :: inmc
   configexpotime=intime;  initialized=.true.
-end subroutine configexpotimeinit
+  imc=inmc
+end subroutine configexpoinit
 
 
 

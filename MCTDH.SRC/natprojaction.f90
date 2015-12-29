@@ -101,7 +101,7 @@ subroutine save_natproj( thistime )
         close(891) 
         do isplit=1,numr
            do i=1,korder
-                 call sparseconfigmultone(www,natconfigs(:,i),natderiv,yyy%cptr(0), yyy%sptr(0), 1,pulseflag,0, isplit ,thistime)
+                 call sparseconfigmultone(www,natconfigs(:,i),natderiv,yyy%cptr(0), yyy%sptr(0), 1,pulseflag,0, isplit ,thistime,-1)
 
               curves(isplit,i)=dot(natconfigs(:,i),natderiv,num_config)/dot(natconfigs(:,i),natconfigs(:,i), &
                    num_config) !! ok implicit.

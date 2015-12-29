@@ -104,7 +104,7 @@ subroutine getparams()
        reinterp_orbflag,spf_gridshift,load_avector_product,projspifile,readfullvector,walksinturn,&
        turnbatchsize,energyshift, pulseft_estep, finalstatsfile, projgtaufile,gtaufile,&
        sparsedfflag,sparseprime,sparsesummaflag, par_consplit, ftwindowlength, fttriwindow,&
-       pulsewindowtoo
+       pulsewindowtoo,conjgpropflag
 
 
   OFL
@@ -689,6 +689,10 @@ subroutine getparams()
      OFLWR "PROGRAMMER REDIM littleparmod",numavectorfiles,numspffiles,MXF; CFLST
   endif
 
+  if (conjgpropflag.ne.0.and.mcscfnum.ne.2) then
+     OFLWR "For conjgpropflag, please set mcscfnum=2"; CFLST
+  endif
+
   call openfile()
   write(mpifileptr, *)
   write(mpifileptr, *) " ****************************************************************************"     
@@ -1069,11 +1073,11 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
 
 !! checking that E(t) = d/dt A(t)   and  A(t) = integral E(t)
 
-           call vectdpot(time,                  0,pots1)
-           call vectdpot(time,                  1,pots2)
-           call vectdpot(time-epsilon,          1,pots3)
-           call vectdpot(time+epsilon,          1,pots4)
-           call vectdpot(time+pulse_end/neflux ,0,pots5)
+           call vectdpot(time,                  0,pots1,1)
+           call vectdpot(time,                  1,pots2,1)
+           call vectdpot(time-epsilon,          1,pots3,1)
+           call vectdpot(time+epsilon,          1,pots4,1)
+           call vectdpot(time+pulse_end/neflux ,0,pots5,1)
 
            lenpot(i,:)=pots1(:)
            velpot(i,:)=pots2(:)

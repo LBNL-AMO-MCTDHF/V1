@@ -579,9 +579,9 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
      do imc=1,numvects
         select case(iiyy)
         case(1)
-           call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,1,1,0,0,time)
+           call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,1,1,0,0,time,imc)
         case default
-           call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,iiyy-1)
+           call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,iiyy-1,imc)
            if (drivingflag.ne.0) then
               if (iiyy.eq.2) then
                  avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsxx(:,:,imc)
@@ -881,9 +881,9 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      do imc=1,numvects
         select case(iiyy)
         case(1)
-           call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,1,1,0,0,time)
+           call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,1,1,0,0,time,imc)
         case default
-           call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,iiyy-1)
+           call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,iiyy-1,imc)
            if (drivingflag.ne.0) then
               if (iiyy.eq.2) then
                  avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsxx(:,:,imc)

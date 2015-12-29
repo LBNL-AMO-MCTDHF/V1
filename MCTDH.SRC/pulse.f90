@@ -2,8 +2,32 @@
 #include "Definitions.INC"
 
 
+subroutine vectdpot(myintime,invelflag,tdpotsout,imc)
+  use parameters
+  implicit none
+  real*8,intent(in) :: myintime
+  integer, intent(in) :: invelflag,imc
+  DATATYPE,intent(out) :: tdpotsout(3)
 
-subroutine vectdpot(myintime,invelflag,tdpotsout)
+  call vectdpot0(myintime,invelflag,tdpotsout)
+
+  if (conjgpropflag.ne.0) then
+     select case (imc)
+     case(-1)
+        tdpotsout(:)=real(tdpotsout(:),8)
+     case(1)
+     case(2)
+        tdpotsout(:)=ALLCON(tdpotsout(:))
+     case default
+        OFLWR "WHOOPS?? conjgprop",imc; CFLST
+     end select
+  endif
+
+end subroutine vectdpot
+
+
+
+subroutine vectdpot0(myintime,invelflag,tdpotsout)
   implicit none
   real*8,intent(in) :: myintime
   integer, intent(in) :: invelflag
@@ -16,7 +40,7 @@ subroutine vectdpot(myintime,invelflag,tdpotsout)
      tdpotsout(1)=tdpotvel(myintime,1)  ;  tdpotsout(2)=tdpotvel(myintime,2);  tdpotsout(3)=tdpotvel(myintime,3)
   endif
 
-end subroutine vectdpot
+end subroutine vectdpot0
 
 
 

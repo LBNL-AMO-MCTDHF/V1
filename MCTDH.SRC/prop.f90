@@ -83,7 +83,7 @@ subroutine prop_loop( starttime)
 !! 06-2015 moved this down here
   do imc=1,mcscfnum
 
-     call sparseconfigmult(www,yyy%cmfpsivec(astart(imc),0),avectorp(:),yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0)
+     call sparseconfigmult(www,yyy%cmfpsivec(astart(imc),0),avectorp(:),yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0,imc)
 
      sum = dot(     yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),tot_adim)
      if (par_consplit.ne.0) then
@@ -159,7 +159,7 @@ subroutine prop_loop( starttime)
 
      do imc=1,mcscfnum
 
-        call sparseconfigmult(www,yyy%cmfpsivec(astart(imc),0),avectorp(:),yyy%cptr(0),yyy%sptr(0),1,1,timedepexpect,0,thattime)
+        call sparseconfigmult(www,yyy%cmfpsivec(astart(imc),0),avectorp(:),yyy%cptr(0),yyy%sptr(0),1,1,timedepexpect,0,thattime,imc)
 
 
         call basis_project(www,numr,avectorp(:))
@@ -816,9 +816,13 @@ end subroutine cmf_prop_wfn
 subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc)
   use parameters
   implicit none
-  DATATYPE :: avectorin(tot_adim), avectorout(tot_adim),tempvector(tot_adim),dot,csum
-  integer :: k, linearflag,imc
-  real*8 :: time1,time2,timea,timeb
+  DATATYPE,intent(in) :: avectorin(tot_adim)
+  DATATYPE,intent(out) :: avectorout(tot_adim)
+  integer,intent(in) :: linearflag,imc
+  real*8,intent(in) :: time1,time2
+  DATATYPE :: tempvector(tot_adim),dot,csum
+  integer :: k
+  real*8 :: timea,timeb
 
   if (avector_flag.eq.0) then
      avectorout(:)=avectorin(:)
@@ -851,9 +855,13 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
   use configpropmod
   implicit none
 
-  DATATYPE :: avectorin(tot_adim), avectorout(tot_adim),sum1,sum0,pots(3)=0d0
-  integer :: linearflag,imc,itime,jtime,getlen,ii,iflag
-  real*8 :: time1,time2,thisstep,midtime,rsum
+  DATATYPE,intent(in) :: avectorin(tot_adim)
+  DATATYPE,intent(out) :: avectorout(tot_adim)
+  integer,intent(in) :: imc,linearflag
+  real*8, intent(in) :: time1,time2
+  DATATYPE :: sum1,sum0,pots(3)=0d0
+  integer :: itime,jtime,getlen,ii,iflag
+  real*8 :: thisstep,midtime,rsum
   integer, save :: times(2)=0, icalled=0
 
   call system_clock(itime)
@@ -874,7 +882,7 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
 
   iflag=0
   if (drivingflag.ne.0) then
-     call vectdpot(midtime,velflag,pots)
+     call vectdpot(midtime,velflag,pots,imc)
      rsum=0d0
      do ii=1,3
         rsum=rsum+abs(pots(ii))**2
@@ -940,9 +948,9 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
   call system_clock(jtime); times(1)=times(1)+jtime-itime; itime=jtime
 
   if (df_restrictflag.eq.0.or.sparsedfflag.eq.0) then  
-     call myconfigprop(www,www,avectorin,avectorout,midtime)
+     call myconfigprop(www,www,avectorin,avectorout,midtime,imc)
   else
-     call myconfigprop(www,dfww,avectorin,avectorout,midtime)
+     call myconfigprop(www,dfww,avectorin,avectorout,midtime,imc)
   endif
 
   call system_clock(jtime); times(2)=times(2)+jtime-itime;

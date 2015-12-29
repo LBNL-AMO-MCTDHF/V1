@@ -77,7 +77,7 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
      allocate(tempconfigvects(www%numdfbasis*numr,www%numdfbasis*numr))
      fullconfigmatel=0.d0; fullconfigvects=0d0; fullconfigvals=0d0; tempconfigvects=0d0
 
-     call assemble_dfbasismat(dfww,fullconfigmatel,cptr,1,1,0,0, time)
+     call assemble_dfbasismat(dfww,fullconfigmatel,cptr,1,1,0,0, time,-1)
 
      if (printflag.ne.0) then
         OFLWR " Call eig ",www%numdfbasis*numr; CFL
@@ -145,19 +145,20 @@ end subroutine myconfigeig
 
 !! PROPAGATE A-VECTOR .  CALLED WITHIN LITTLESTEPS LOOP
 
-subroutine myconfigprop(www,dfww,avectorin,avectorout,time)
+subroutine myconfigprop(www,dfww,avectorin,avectorout,time,imc)
   use r_parameters
   use sparse_parameters
   use walkmod 
   implicit none
   type(walktype),intent(in) :: www,dfww
+  integer,intent(in) :: imc
   real*8 :: time
   DATATYPE :: avectorin(www%totadim), avectorout(www%totadim)
 
   if (sparseconfigflag/=0) then
-     call exposparseprop(www,avectorin,avectorout,time)
+     call exposparseprop(www,avectorin,avectorout,time,imc)
   else
-     call nonsparseprop(www,dfww,avectorin,avectorout,time)
+     call nonsparseprop(www,dfww,avectorin,avectorout,time,imc)
   endif
 
   call basis_project(www,numr,avectorout)
@@ -165,7 +166,7 @@ subroutine myconfigprop(www,dfww,avectorin,avectorout,time)
 end subroutine myconfigprop
 
 
-subroutine nonsparseprop(www,dfww,avectorin,avectorout,time)
+subroutine nonsparseprop(www,dfww,avectorin,avectorout,time,imc)
   use fileptrmod
   use sparse_parameters
   use ham_parameters
@@ -175,6 +176,7 @@ subroutine nonsparseprop(www,dfww,avectorin,avectorout,time)
   use walkmod
   implicit none
   type(walktype),intent(in) :: www,dfww
+  integer, intent(in) :: imc
   DATATYPE :: avectorin(www%totadim), avectorout(www%totadim),  &
        avectortemp(www%numdfbasis*numr), avectortemp2(www%numdfbasis*numr)
   DATATYPE, allocatable :: bigconfigmatel(:,:), bigconfigvects(:,:) !!,bigconfigvals(:)
@@ -200,7 +202,7 @@ subroutine nonsparseprop(www,dfww,avectorin,avectorout,time)
 
   allocate(bigconfigmatel(www%numdfbasis*numr,www%numdfbasis*numr), bigconfigvects(www%numdfbasis*numr,2*(www%numdfbasis*numr+2)))
 
-  call assemble_dfbasismat(dfww,bigconfigmatel, workconfigpointer,1,1,1,1, time)
+  call assemble_dfbasismat(dfww,bigconfigmatel, workconfigpointer,1,1,1,1, time,imc)
 
   bigconfigmatel=bigconfigmatel*timefac
 
@@ -324,7 +326,7 @@ subroutine parconfigexpomult_padded0_gather(www,workconfigpointer,worksparsepoin
 
   call mpiallgather(intemp,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
 
-  call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0)
+  call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0,imc)
      
   outavector(:,:)=0d0   !! PADDED
 
@@ -380,7 +382,7 @@ subroutine parconfigexpomult_padded0_summa(www,workconfigpointer,worksparsepoint
 
      call mympibcast(intemp,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
 
-     call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0)
+     call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0,imc)
      
      outwork(:,:)=outwork(:,:)+outtemp(:,:)
 
@@ -439,7 +441,7 @@ subroutine parconfigexpomult_padded0_circ(www,workconfigpointer,worksparsepointe
      iproc=mod(myrank-1+deltaproc,nprocs)+1
 
      call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp, workconfigpointer, worksparsepointer, &
-          1,1,1,1,configexpotime,0,1,numr,0)
+          1,1,1,1,configexpotime,0,1,numr,0,imc)
      
      outwork(:,:)=outwork(:,:)+outtemp(:,:)
 

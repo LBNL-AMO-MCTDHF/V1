@@ -357,7 +357,7 @@ subroutine jacoperate(inspfs,outspfs)
         if (drivingflag.eq.1.or.drivingflag.eq.3) then
            call system_clock(itime)
            
-           call vectdpot(jactime,velflag,pots)
+           call vectdpot(jactime,velflag,pots,-1)
            
            temporbs(:,:)=pots(1)*yyy%drivingorbsxx(:,:,ii)+pots(2)*yyy%drivingorbsyy(:,:,ii)+pots(3)*yyy%drivingorbszz(:,:,ii)
            call derproject(temporbs,tempspfs,jacvect,inspfs)
@@ -480,13 +480,14 @@ subroutine avectortime(which)
 end subroutine
 
 
-subroutine exposparseprop(www,inavector,outavector,time)
+subroutine exposparseprop(www,inavector,outavector,time,imc)
   use parameters
   use configpropmod
   use walkmod
   use mpimod
   implicit none
   type(walktype),intent(in) :: www
+  integer,intent(in) :: imc
   DATATYPE,intent(in) :: inavector(numr,www%firstconfig:www%lastconfig)
   DATATYPE,intent(out) :: outavector(numr,www%firstconfig:www%lastconfig)
   DATATYPE :: smallvector(numr,www%maxdfbasisperproc),smallvectorout(numr,www%maxdfbasisperproc), &
@@ -527,7 +528,7 @@ subroutine exposparseprop(www,inavector,outavector,time)
      exposet=0
   endif
   
-  call configexpotimeinit(time)
+  call configexpoinit(time,imc)
 
   if (thisexpodim.lt.my_maxaorder) then
      tempstepsize=tempstepsize*4

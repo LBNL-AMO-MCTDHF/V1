@@ -75,7 +75,7 @@ subroutine all_derivs(thistime,xpsi, xpsip)
 
      call basis_project(www,numr,avector)
 
-     call sparseconfigmult(www,avector,xpsip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,1,thistime)
+     call sparseconfigmult(www,avector,xpsip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,1,thistime,imc)
      call basis_project(www,numr,xpsip(astart(imc)))
 
   enddo
@@ -206,7 +206,7 @@ subroutine driving_linear_derivs(thistime,spfsin,spfsout)
      return
   endif
 
-  call vectdpot(thistime,velflag,pots)
+  call vectdpot(thistime,velflag,pots,-1)
   rsum=0
   do jjj=1,3
      rsum=rsum+abs(pots(jjj))**2
@@ -259,7 +259,7 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
        spfinvrsq(  spfsize,nspf),spfproderiv(  spfsize,nspf ), spfmult2(spfsize,nspf)
 
   if (tdflag.eq.1) then
-     call vectdpot(thistime,velflag,pots)
+     call vectdpot(thistime,velflag,pots,-1)
      myxtdpot=pots(1);  myytdpot=pots(2);  myztdpot=pots(3);
   endif
 
@@ -451,7 +451,7 @@ subroutine getconmat(thistime,ireduced,conmat)
 
   conmat(:,:) =   yyy%cptr(ireduced)%xconmatel(:,:) * timefac
   if (tdflag.eq.1) then
-     call vectdpot(thistime,velflag,pots)
+     call vectdpot(thistime,velflag,pots,-1)
      conmat(:,:) =   conmat(:,:) + &
           yyy%cptr(ireduced)%xconmatelxx(:,:) *pots(1) * timefac + &
           yyy%cptr(ireduced)%xconmatelyy(:,:) *pots(2) * timefac + &

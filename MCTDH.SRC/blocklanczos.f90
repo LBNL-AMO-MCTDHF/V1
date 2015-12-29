@@ -320,7 +320,7 @@ subroutine parblockconfigmult0_gather(www,cptr,sptr,inavector,outavector)
 
   call mpiallgather(intemp,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
 
-  call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, cptr, sptr, 1,1,1,0,0d0,0,1,numr,0)
+  call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, cptr, sptr, 1,1,1,0,0d0,0,1,numr,0,-1)
 
   if (mshift.ne.0d0) then 
      do ii=www%botconfig,www%topconfig
@@ -371,7 +371,7 @@ subroutine parblockconfigmult0_summa(www,cptr,sptr,inavector,outavector)
      endif
      call mympibcast(intemp,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
 
-     call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, cptr, sptr, 1,1,1,0,0d0,0,1,numr,0)
+     call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, cptr, sptr, 1,1,1,0,0d0,0,1,numr,0,-1)
 
      if (myrank.eq.iproc) then
         if (mshift.ne.0d0) then 
@@ -436,7 +436,7 @@ subroutine parblockconfigmult0_circ(www,cptr,sptr,inavector,outavector)
      iproc=mod(myrank-1+deltaproc,nprocs)+1
 
      call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp, cptr, sptr, &
-          1,1,1,0,0d0,0,1,numr,0)
+          1,1,1,0,0d0,0,1,numr,0,-1)
 
      outwork(:,:)=outwork(:,:) + outtemp(:,:)
 

@@ -461,7 +461,7 @@ subroutine fluxgtau0(alg,www,bioww)
 
      ftgtau(i,:) = ALLCON(gtau(i,:))   * windowfunct(i,curtime) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
 
-     call vectdpot(i*par_timestep*fluxinterval*fluxskipmult,0,pots1)   !! LENGTH GAUGE.
+     call vectdpot(i*par_timestep*fluxinterval*fluxskipmult,0,pots1,-1)   !! LENGTH GAUGE.
      if (pulsewindowtoo == 0) then
      pulseft(i,:)=pots1(:)
      else

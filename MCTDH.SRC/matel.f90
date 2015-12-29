@@ -340,19 +340,19 @@ end subroutine arbitraryconfig_matel_doubles00transpose
 
 
 
-subroutine assemble_dfbasismat(www,outmatrix, matrix_ptr, boflag, nucflag, pulseflag, conflag, time)
+subroutine assemble_dfbasismat(www,outmatrix, matrix_ptr, boflag, nucflag, pulseflag, conflag, time,imc)
   use sparse_parameters
   use r_parameters
   use fileptrmod
   use configptrmod
   use walkmod
   implicit none
-  type(walktype) :: www
-  Type(configptr) :: matrix_ptr
-  DATATYPE ::        outmatrix(www%numdfbasis*numr,www%numdfbasis*numr)
+  type(walktype),intent(in) :: www
+  Type(configptr),intent(in) :: matrix_ptr
+  integer,intent(in) :: nucflag, pulseflag, conflag, boflag,imc
+  DATATYPE,intent(out) ::        outmatrix(www%numdfbasis*numr,www%numdfbasis*numr)
+  real*8,intent(in) :: time
   DATATYPE, allocatable ::        bigmatrix(:,:),halfmatrix(:,:),halfmatrix2(:,:),donematrix(:,:)
-  integer :: nucflag, pulseflag, conflag, boflag
-  real*8 :: time
 
   if (sparseconfigflag/=0) then
      OFLWR "Error, assemble_full_config_matel called when sparseconfigflag/=0";CFLST
@@ -362,7 +362,7 @@ subroutine assemble_dfbasismat(www,outmatrix, matrix_ptr, boflag, nucflag, pulse
 
   bigmatrix(:,:)=0d0; halfmatrix(:,:)=0d0; halfmatrix2(:,:)=0d0; donematrix(:,:)=0d0; outmatrix(:,:)=0d0
 
-  call assemble_configmat(www,bigmatrix,matrix_ptr,boflag,nucflag,pulseflag,conflag,time)
+  call assemble_configmat(www,bigmatrix,matrix_ptr,boflag,nucflag,pulseflag,conflag,time,imc)
 
 !! obviously not good to transform for each r; should transform earlier. 
 
@@ -379,7 +379,7 @@ end subroutine assemble_dfbasismat
 
 !! FOR NONSPARSE (HERE, ASSEMBLE_CONFIGMAT) INCLUDE A-SQUARED TERM.
 
-subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, pulseflag, conflag,time)
+subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, pulseflag, conflag,time,imc)
   use fileptrmod
   use sparse_parameters
   use ham_parameters
@@ -389,12 +389,15 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
   use opmod   !! rkemod, proderivmod, frozenkediag, frozenpotdiag, bondpoints, bondweights
   implicit none
   type(walktype),intent(in) :: www
-  integer :: conflag,boflag,nucflag,pulseflag,ir,jr,i
-  DATATYPE :: bigconfigmat(numr,www%numconfig,numr,www%numconfig), tempmatel(www%nspf,www%nspf)
+  Type(CONFIGPTR),intent(in) :: matrix_ptr
+  integer,intent(in) :: conflag,boflag,nucflag,pulseflag,imc
+  real*8,intent(in) :: time
+  DATATYPE,intent(out) :: bigconfigmat(numr,www%numconfig,numr,www%numconfig)
+  DATATYPE :: tempmatel(www%nspf,www%nspf)
   DATATYPE, allocatable :: tempconfigmat(:,:),tempconfigmat2(:,:),diagmat(:,:,:)
-  Type(CONFIGPTR) :: matrix_ptr
-  real*8 :: time,gg
+  real*8 :: gg
   DATATYPE :: facs(3), csum0,csum
+  integer :: ir,jr,i
 
   if (sparseconfigflag.ne.0) then
      OFLWR "BADDDCALLL"; CFLST
@@ -405,7 +408,7 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
 
   diagmat(:,:,:)=0d0
 
-  call vectdpot(time,velflag,facs)
+  call vectdpot(time,velflag,facs,imc)
 
   if (boflag==1) then
      do ir=1,numr
