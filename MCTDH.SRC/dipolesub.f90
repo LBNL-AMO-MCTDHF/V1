@@ -34,6 +34,9 @@ subroutine dipolesub()
            OFLWR "Whoot? conjgpropflag mcscfnum",mcscfnum; CFLST
         endif
         dipolenormsq(calledflag) = dot(yyy%cmfpsivec(astart(2),0),yyy%cmfpsivec(astart(1),0),tot_adim)
+        if (par_consplit.ne.0) then
+           call mympireduceone(dipolenormsq(calledflag))
+        endif
 
         call dipolesub_one(www,yyy%cmfpsivec(astart(2),0),yyy%cmfpsivec(astart(1),0),yyy%cmfpsivec(spfstart,0), xdipoleexpect(calledflag),ydipoleexpect(calledflag),zdipoleexpect(calledflag))
 
@@ -83,11 +86,12 @@ subroutine dipolesub()
         call dipolecall(calledflag, zdipoleexpect(0:),zdipfile,zdftfile,3,sflag)
 
      endif
-     calledflag=calledflag+1
 
      if (conjgpropflag.ne.0) then
         OFLWR "   complex Domcke - off diagonal norm-squared ", dipolenormsq(calledflag)
      endif
+
+     calledflag=calledflag+1
 
   endif
   xcalledflag=xcalledflag+1
