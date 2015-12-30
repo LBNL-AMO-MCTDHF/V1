@@ -259,9 +259,9 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
      OFLWR "Error, must use sparseconfigflag.ne.0 for sparsequadavector"; CFLST
   endif
 
-  if (aerror.lt.1d-7) then
-     OFLWR "Error, set tolerance parameter arror at least 1d-7 for reliable performance sparse quad a-vector.  TEMP CONTINUE"; CFL
-  endif
+!!$  if (aerror.lt.1d-7) then
+!!$     OFLWR "Error, set tolerance parameter arror at least 1d-7 for reliable performance sparse quad a-vector.  TEMP CONTINUE"; CFL
+!!$  endif
 
   allocate(smallvectorspin(numr,www%botdfbasis:www%topdfbasis), smallvectorspin2(numr,www%botdfbasis:www%topdfbasis))
 
@@ -292,6 +292,9 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
 
 !! 10-2015
   thisaerror=min(0.1d0,aerror/min(dev,1d0))
+
+!! TEMP?
+  thisaerror=min(0.1d0,sqrt(aerror/min(dev,1d0)))
 
   OFL;write(mpifileptr,'(A20,E12.5,A6,2E12.5,A7,100F14.7)') "   SPARSEQUAD: DEV", dev, " TOL ",aerror,thisaerror,"ENERGY",quadexpect; CFL
 
