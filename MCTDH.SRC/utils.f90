@@ -1000,6 +1000,92 @@ end function doubleclebschsq
 
   
 
+#ifdef REALGO
+subroutine assigncomplex(realmat,complexf)
+  implicit none
+  real*8 :: realmat,complexf
+  realmat=complexf
+end subroutine assigncomplex
+subroutine assigncomplexmat(realmat,complexf,m,n)
+  implicit none
+  integer :: n,m
+  real*8 :: realmat(m,n),complexf(m,n)
+  realmat(:,:)=complexf(:,:)
+end subroutine assigncomplexmat
+subroutine assigncomplexvec(realmat,complexf,m)
+  implicit none
+  integer :: m
+  real*8 :: realmat(m),complexf(m)
+  realmat(:)=complexf(:)
+end subroutine assigncomplexvec
+subroutine assignrealvec(complexf,realmat,m)
+  implicit none
+  integer :: m
+  real*8 :: realmat(m),complexf(m)
+  complexf(:)=realmat(:)
+end subroutine assignrealvec
+
+#else
+
+subroutine assigncomplex(realmat,complexf)
+  implicit none
+  complex*16 :: complexf
+  real*8 :: realmat(2,2)
+  realmat(1,1)=real(complexf,8);  realmat(2,2)=real(complexf,8)
+  realmat(2,1)=imag(complexf);  realmat(1,2)=(-1)*imag(complexf)
+end subroutine assigncomplex
+
+subroutine assigncomplexmat(realmat,complexf,m,n)
+  implicit none
+  integer :: n,m
+  complex*16 :: complexf(m,n)
+  real*8 :: realmat(2,m,2,n)
+  realmat(1,:,1,:)=real(complexf(:,:),8);  realmat(2,:,2,:)=real(complexf(:,:),8)
+  realmat(2,:,1,:)=imag(complexf(:,:));  realmat(1,:,2,:)=(-1)*imag(complexf(:,:))
+end subroutine assigncomplexmat
+
+subroutine assigncomplexvec(realmat,complexf,m)
+  implicit none
+  integer :: m
+  complex*16 :: complexf(m)
+  real*8 :: realmat(2,m)
+  realmat(1,:)=real(complexf(:),8);  realmat(2,:)=imag(complexf(:))
+end subroutine assigncomplexvec
+subroutine assignrealvec(complexf,realmat,m)
+  implicit none
+  integer :: m
+  complex*16 :: complexf(m)
+  real*8 :: realmat(2,m)
+  complexf(:)=realmat(1,:)+realmat(2,:)*(0d0,1d0)
+end subroutine assignrealvec
+
+#endif
 
 
 
+subroutine checksym(mat,dim)
+  use fileptrmod
+  implicit none
+  integer :: dim,i,j
+  real*8 :: mat(dim,dim),sym,asym,tot
+  integer, save :: icalled=0
+
+  sym=0; asym=0;tot=0
+
+  do i=1,dim
+     do j=1,dim
+        tot=tot+ (2*mat(i,j))**2
+        sym=sym+ (mat(i,j)+mat(j,i))**2
+        asym=asym+ (mat(i,j)-mat(j,i))**2
+     enddo
+  enddo
+  if (tot.gt.1d-10) then
+     if (asym.gt.sym*1d-10) then
+        icalled=icalled+1
+!        if (icalled.lt.10) then
+           OFLWR "SYM,ASYM,MAG ", sym/tot,asym/tot,tot; CFLST
+!        endif
+     endif
+  endif
+
+end subroutine checksym

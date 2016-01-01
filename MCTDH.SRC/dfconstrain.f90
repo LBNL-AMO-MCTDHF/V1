@@ -2,36 +2,37 @@
 #include "Definitions.INC"
 
 !! SUBROUTINES FOR RESTRICTED CONFIG LIST
-!!   for constraintflag=2, dirac-frenkel.
-!!   For constraintflag=1, density matrix, see denmat.f90
+!!
+!!   if constraintflag=2, dirac-frenkel.
+!!   if constraintflag=1, density matrix.
 !!   
+!!  g_ij = < phi_i| d/dt | phi_j >    , that's variable conmatel, should be hermitian
+!!
+!!   where i is virtual ("excluded") and j is active ("included")   (other g_ij undefined, 0=0)
+!! hermitian g matrix can then be immediattely gotten by fiat
+!!
 
-subroutine checksym(mat,dim)
+
+subroutine get_constraint(time)
   use fileptrmod
+  use ham_parameters
   implicit none
-  integer :: dim,i,j
-  real*8 :: mat(dim,dim),sym,asym,tot
-  integer, save :: icalled=0
+  real*8 :: time
 
-  sym=0; asym=0;tot=0
-
-  do i=1,dim
-     do j=1,dim
-        tot=tot+ (2*mat(i,j))**2
-        sym=sym+ (mat(i,j)+mat(j,i))**2
-        asym=asym+ (mat(i,j)-mat(j,i))**2
-     enddo
-  enddo
-  if (tot.gt.1d-10) then
-     if (asym.gt.sym*1d-10) then
-        icalled=icalled+1
-!        if (icalled.lt.10) then
-           OFLWR "SYM,ASYM,MAG ", sym/tot,asym/tot,tot; CFLST
-!        endif
-     endif
+  if (constraintflag.eq.1) then
+     call get_denconstraint(time)
+  else if (constraintflag.eq.2) then
+  if (drivingflag.ne.0) then
+     OFLWR "Driving with dfconstraint not implemented yet"; CFLST
+  endif
+     call get_dfconstraint(time)
+  else 
+     OFLWR "CONSTRAINTFLAG ERROR  ", constraintflag; CFLST
   endif
 
-end subroutine checksym
+end subroutine get_constraint
+
+
 
 
 subroutine dferror(www,cptr,sptr,avector,numvects,outerror,time)
@@ -83,73 +84,85 @@ subroutine dferror(www,cptr,sptr,avector,numvects,outerror,time)
 end subroutine dferror
 
 
-#ifdef REALGO
-subroutine assigncomplex(realmat,complexf)
-  implicit none
-  real*8 :: realmat,complexf
-  realmat=complexf
-end subroutine assigncomplex
-subroutine assigncomplexmat(realmat,complexf,m,n)
-  implicit none
-  integer :: n,m
-  real*8 :: realmat(m,n),complexf(m,n)
-  realmat(:,:)=complexf(:,:)
-end subroutine assigncomplexmat
-subroutine assigncomplexvec(realmat,complexf,m)
-  implicit none
-  integer :: m
-  real*8 :: realmat(m),complexf(m)
-  realmat(:)=complexf(:)
-end subroutine assigncomplexvec
-subroutine assignrealvec(complexf,realmat,m)
-  implicit none
-  integer :: m
-  real*8 :: realmat(m),complexf(m)
-  complexf(:)=realmat(:)
-end subroutine assignrealvec
 
-#else
-
-subroutine assigncomplex(realmat,complexf)
+subroutine get_smallwalkvects(www,avector, smallwalkvects,nblock,howmany)
+  use fileptrmod
+  use walkmod
   implicit none
-  complex*16 :: complexf
-  real*8 :: realmat(2,2)
-  realmat(1,1)=real(complexf,8);  realmat(2,2)=real(complexf,8)
-  realmat(2,1)=imag(complexf);  realmat(1,2)=(-1)*imag(complexf)
-end subroutine assigncomplex
+  type(walktype),intent(in) :: www
+  integer ::    i,ii,ix,nblock,howmany
+  DATATYPE,intent(in) ::  avector(nblock,www%firstconfig:www%lastconfig,howmany)
+  DATATYPE,intent(out) :: smallwalkvects(nblock,www%configstart:www%configend,howmany,www%nspf,www%nspf)
+  DATATYPE, allocatable ::  bigavector(:,:,:)
 
-subroutine assigncomplexmat(realmat,complexf,m,n)
+  if (www%dfrestrictflag.le.www%dflevel) then
+     OFLWR "WTF DFRESTRICT IS  ", www%dfrestrictflag,www%dflevel; CFLST
+  endif
+  
+!! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
+!! AND DO HOPS
+
+  allocate(bigavector(nblock,www%numconfig,howmany))
+  bigavector(:,:,:)=0d0
+  bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
+
+  if (www%parconsplit.ne.0) then
+     do ii=1,howmany
+        call mpiallgather(bigavector(:,:,ii),nblock*www%numconfig,nblock*www%configsperproc(:),nblock*www%maxconfigsperproc)
+     enddo
+  endif
+
+  smallwalkvects(:,:,:,:,:)=0d0
+  
+  do i=1,www%ddd%numdfwalks
+     ii=www%ddd%includedorb(i);     ix=www%ddd%excludedorb(i)
+     smallwalkvects(:,www%ddd%dfwalkto(i),:,ii,ix)=smallwalkvects(:,www%ddd%dfwalkto(i),:,ii,ix) + bigavector(:,www%ddd%dfwalkfrom(i),:) * www%ddd%dfwalkphase(i)
+  enddo
+
+  deallocate(bigavector)
+
+end subroutine get_smallwalkvects
+
+
+
+subroutine get_rhomat(www,avector, rhomat,nblock,howmany)
+  use fileptrmod
+  use sparse_parameters
+  use walkmod
   implicit none
-  integer :: n,m
-  complex*16 :: complexf(m,n)
-  real*8 :: realmat(2,m,2,n)
-  realmat(1,:,1,:)=real(complexf(:,:),8);  realmat(2,:,2,:)=real(complexf(:,:),8)
-  realmat(2,:,1,:)=imag(complexf(:,:));  realmat(1,:,2,:)=(-1)*imag(complexf(:,:))
-end subroutine assigncomplexmat
+  type(walktype),intent(in) :: www
+  integer ::    ii,nblock,howmany
+  DATATYPE,intent(in) ::  avector(nblock,www%firstconfig:www%lastconfig,howmany)
+  DATATYPE,intent(out) :: rhomat(www%nspf,www%nspf,www%nspf,www%nspf)
+  DATATYPE, allocatable ::  &
+       smallwalkvects(:,:,:,:,:)   !! nblock,configstart:configend,howmany,alpha,beta  alpha=included beta=excluded
 
-subroutine assigncomplexvec(realmat,complexf,m)
-  implicit none
-  integer :: m
-  complex*16 :: complexf(m)
-  real*8 :: realmat(2,m)
-  realmat(1,:)=real(complexf(:),8);  realmat(2,:)=imag(complexf(:))
-end subroutine assigncomplexvec
-subroutine assignrealvec(complexf,realmat,m)
-  implicit none
-  integer :: m
-  complex*16 :: complexf(m)
-  real*8 :: realmat(2,m)
-  complexf(:)=realmat(1,:)+realmat(2,:)*(0d0,1d0)
-end subroutine assignrealvec
+  if (www%dfrestrictflag.le.www%dflevel) then
+     OFLWR "WTF DFRESTRICT IS  ", www%dfrestrictflag,www%dflevel; CFLST
+  endif
+  
+  allocate(smallwalkvects(nblock,www%configstart:www%configend,howmany,www%nspf,www%nspf))
 
-#endif
+  call get_smallwalkvects(www,avector,smallwalkvects,nblock,howmany)
 
-!!  g_ij = < phi_i| d/dt | phi_j >    , that's conmatel, should be hermitian
-!!
-!!   where i is virtual ("excluded") and j is active ("included")   (other g_ij undefined, 0=0)
-!! hermitian g matrix can then be immediattely gotten by fiat
-!!
-!!
+!! THIS TAKES A LONG TIME.
+  
+  ii=(www%configend-www%configstart+1)*nblock*howmany
+  call MYGEMM(CNORMCHAR,'N',www%nspf**2,www%nspf**2,ii,DATAONE,smallwalkvects,ii,smallwalkvects,ii,DATAZERO,rhomat,www%nspf**2)
+
+  if (sparseconfigflag.ne.0) then
+     call mympireduce(rhomat,www%nspf**4)  !! BAD REDUCE
+  endif
+
+  deallocate(smallwalkvects)
+
+end subroutine get_rhomat
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!   DIRAC FRENKEL (constraintflag=2) !!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
 subroutine get_dfconstraint(time)
   use parameters
@@ -499,77 +512,641 @@ end subroutine get_dfconstraint0
 
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!  DENSITY MATRIX (constraintflag=1) !!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine get_smallwalkvects(www,avector, smallwalkvects,nblock,howmany)
-  use fileptrmod
-  use walkmod
+
+
+subroutine get_denconstraint(time)
+  use ham_parameters
   implicit none
-  type(walktype),intent(in) :: www
-  integer ::    i,ii,ix,nblock,howmany
-  DATATYPE,intent(in) ::  avector(nblock,www%firstconfig:www%lastconfig,howmany)
-  DATATYPE,intent(out) :: smallwalkvects(nblock,www%configstart:www%configend,howmany,www%nspf,www%nspf)
-  DATATYPE, allocatable ::  bigavector(:,:,:)
+  real*8 :: time
 
-  if (www%dfrestrictflag.le.www%dflevel) then
-     OFLWR "WTF DFRESTRICT IS  ", www%dfrestrictflag,www%dflevel; CFLST
+  !! assume nothing, keep constant off block diag (lio solve)
+
+  if (denmatfciflag.ne.0) then
+!! "denmat FCI", wrong equation, as per restricted configuration paper
+     call get_denconstraint1(2,time)    
+  else
+!! correct formula
+     call new_get_denconstraint1(time)    
   endif
-  
+
+end subroutine get_denconstraint
+
+
+!! lioden.    111510 WAS C-order.  1)  change refs to denmat because denmat is now denmat not transpose denmat
+!!                                 2)  change C-order because think that also has to do with denmat transpose and not just internal to these subroutines
+!!                                   
+!! 111510 WAS function lind(ispf,jspf)
+
+function lind(jspf,ispf)
+  use parameters
+  implicit none
+  integer :: ispf,jspf,lind
+  print *, "CHECK LIODEN CODE. (SEE COMMENTS)"
+  stop
+  if (jspf.gt.ispf) then
+     lind=(ispf-1)*(nspf-1)+jspf-1
+  else
+     lind=(ispf-1)*(nspf-1)+jspf
+  endif
+end function lind
+
+
+function llind(ispf,jspf)
+  use parameters
+  implicit none
+  integer :: ispf,jspf,llind, lll, i
+
+  lll=0
+  do i=1,shells(ispf)-1
+     lll=lll+ (nspf - allshelltop(i)+allshelltop(i-1)) * (allshelltop(i)-allshelltop(i-1))
+  enddo
+
+  lll=lll + (nspf-allshelltop(shells(ispf))+allshelltop(shells(ispf)-1)) * (ispf-allshelltop(shells(ispf)-1)-1) + jspf
+
+  if (shells(jspf).gt.shells(ispf)) then
+     lll=lll-(allshelltop(shells(ispf))-allshelltop(shells(ispf)-1))
+  endif
+  llind=lll
+
+end function llind
+
+
+subroutine get_denconstraint1(iwhich,time)
+  use parameters
+  use xxxmod
+  use configmod
+  implicit none
+  integer,intent(in) :: iwhich
+  real*8,intent(in) :: time
+  call get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,yyy%cmfpsivec(astart(1):aend(mcscfnum),0),&
+       yyy%drivingavectorsxx(:,:,:,0),yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
+       yyy%denmat(:,:,0),iwhich,time)
+end subroutine get_denconstraint1
+
+
+subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx, &
+     drivingavectorsyy,drivingavectorszz,denmat,iwhich,time)
+  use fileptrmod
+  use r_parameters
+  use basis_parameters
+  use ham_parameters
+  use constraint_parameters
+  use walkmod
+  use configptrmod
+  use sparseptrmod
+  implicit none
+  integer,intent(in) :: numvects
+  type(walktype),intent(in) :: www
+  type(CONFIGPTR) :: cptr
+  type(SPARSEPTR) :: sptr
+  DATATYPE,intent(in) :: denmat(www%nspf,www%nspf),avector(numr,www%firstconfig:www%lastconfig,numvects),&
+       drivingavectorsxx(numr,www%firstconfig:www%lastconfig,numvects),&
+       drivingavectorsyy(numr,www%firstconfig:www%lastconfig,numvects),&
+       drivingavectorszz(numr,www%firstconfig:www%lastconfig,numvects)
+  DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a1p(numr,numvects), a2p(numr,numvects),&
+       tempconmatels(www%nspf,www%nspf),dot
+  DATATYPE,allocatable :: bigavector(:,:,:),bigavectorp(:,:,:)
+  DATATYPE :: avectorp(numr,www%firstconfig:www%lastconfig,numvects)  !! AUTOMATIC
+  integer ::  config1,config2,   ispf,jspf,  dirphase,  i,     iwalk, info, kspf, lspf, ind, jind, &
+       lind, llind, flag, isize, iwhich,  iiyy,maxii,imc
+  integer :: ipiv(liosize)
+  real*8 :: denom,time,rsum,rsum2,maxval,maxanti
+  DATATYPE :: liosolve(liosize),lioden(liosize, liosize),liodencopy(liosize,liosize),liosolvetemp(liosize)
+
+  cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
+
+  if ((iwhich.eq.2).and.(numshells.eq.1)) then
+     return
+  endif
+  if (real(timefac) /= 0.0) then
+     OFLWR "Err, get_denconstraint1 (with lioden) can only be used for forward time propagation. "; CFLST
+  endif
+
+  allocate(bigavector(numr,www%numconfig,numvects), bigavectorp(numr,www%numconfig,numvects))
+  bigavector(:,:,:)=0d0; bigavectorp(:,:,:)=0d0
+
+  lioden=0.d0
+
+  do ispf=1,www%nspf
+     do kspf=1,www%nspf
+        do lspf=1,www%nspf
+           flag=0
+           select case (iwhich)
+           case (1)
+              if ((ispf/=lspf).and.(kspf/=lspf)) then
+                 ind=lind(ispf,lspf);                 jind=lind(kspf,lspf);          flag=1
+              endif
+           case (2)
+              if ( (shells(ispf).ne.shells(lspf) ) .and. (shells(kspf).ne.shells(lspf) ) ) then
+                 ind=llind(ispf,lspf);             jind=llind(kspf,lspf);              flag=1
+              endif
+           case default
+              ind=0;     jind=0
+              call openfile(); write(mpifileptr,*) 
+              OFLWR "get_denconstraint1 error"; CFLST
+           end select
+
+           if (flag==1) then
+              lioden(ind, jind) = lioden(ind, jind) + &
+!!PREV                   denmat(kspf,ispf)      * (0d0,1d0)          !!!!   NO, timefac goes in RHS   * CONJUGATE(timefac)
+                   denmat(ispf,kspf)      * (0d0,1d0)          !!!!   NO, timefac goes in RHS   * CONJUGATE(timefac)
+           endif
+        enddo
+     enddo
+  enddo
+
+  do jspf=1,www%nspf
+     do kspf=1,www%nspf
+        do lspf=1,www%nspf
+           flag=0
+           select case (iwhich)
+           case (1)
+              if ((kspf/=jspf).and.(kspf/=lspf)) then
+                 ind=lind(kspf,jspf);                 jind=lind(kspf,lspf);                 flag=1
+              endif
+           case (2)
+              if ( (shells(kspf).ne.shells(jspf) ) .and. (shells(kspf).ne.shells(lspf) ) ) then
+                 ind=llind(kspf,jspf);                 jind=llind(kspf,lspf);                 flag=1
+              endif
+           case default
+              ind=0
+              jind=0
+              OFLWR "get_denconstraint1 error"; CFLST
+           end select
+
+           if (flag==1) then
+              lioden(ind,jind) = lioden(ind,jind) + &
+!!PREV                   denmat(jspf,lspf)    * (0d0, -1d0)      !!!! NO, timefac goes in RHS  * timefac
+                   denmat(lspf,jspf)    * (0d0, -1d0)      !!!! NO, timefac goes in RHS  * timefac
+           endif
+        enddo
+     enddo
+  enddo
+
+
+  maxii=1
+  if (tdflag.ne.0) then
+     maxii=4
+  endif
+
+  do iiyy=1,maxii
+     do imc=1,numvects
+        select case(iiyy)
+        case(1)
+           call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,1,1,0,0,time,imc)
+        case default
+           call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,iiyy-1,imc)
+           if (drivingflag.ne.0) then
+              if (iiyy.eq.2) then
+                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsxx(:,:,imc)
+              else if (iiyy.eq.3) then
+                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsyy(:,:,imc)
+              else if (iiyy.eq.4) then
+                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorszz(:,:,imc)
+              endif
+           endif
+        end select
+     enddo
+
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 !! AND DO HOPS
 
-  allocate(bigavector(nblock,www%numconfig,howmany))
-  bigavector(:,:,:)=0d0
-  bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
+     bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
+     bigavectorp(:,www%firstconfig:www%lastconfig,:)=avectorp(:,:,:)
 
-  if (www%parconsplit.ne.0) then
-     do ii=1,howmany
-        call mpiallgather(bigavector(:,:,ii),nblock*www%numconfig,nblock*www%configsperproc(:),nblock*www%maxconfigsperproc)
+     if (www%parconsplit.ne.0) then
+        do i=1,numvects
+           call mpiallgather(bigavector(:,:,i),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+           call mpiallgather(bigavectorp(:,:,i),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+        enddo
+     endif
+
+     liosolve=0.d0
+
+  !! single off diagonal walks
+
+     do config1=www%botconfig,www%topconfig
+
+        a1(:,:)=avector(:,config1,:)
+        a1p(:,:)=avectorp(:,config1,:)
+
+        do iwalk=1,www%numsinglewalks(config1)
+           
+           config2=www%singlewalk(iwalk,config1)
+           dirphase=www%singlewalkdirphase(iwalk,config1)
+           a2(:,:)=bigavector(:,config2,:)
+           a2p(:,:)=bigavectorp(:,config2,:)
+
+           ispf=www%singlewalkopspf(1,iwalk,config1)
+           jspf=www%singlewalkopspf(2,iwalk,config1)
+              
+           flag=0
+           select case (iwhich)
+           case (1)
+              ind=lind(ispf,jspf) ; flag=1  !!unfuck this
+           case (2)
+              if (shells(ispf).ne.shells(jspf)) then
+!! FIRSTWAY
+                 ind=llind(ispf,jspf);                 flag=1
+              endif
+           case default
+              ind=0
+              OFLWR "get_denconstraint1 error"; CFLST
+           end select
+
+           if (flag==1) then
+              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:,:)*timefac,a1(:,:),numr*numvects)
+              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:,:),a1p(:,:)*timefac,numr*numvects)
+           endif
+        enddo
      enddo
+
+     call mympireduce(liosolve,liosize)
+
+     select case (iwhich)
+     case (1)
+        isize=liosize
+     case (2)
+        isize=www%nspf**2
+        do i=1,numshells
+           isize=isize-(allshelltop(i)-allshelltop(i-1))**2
+        enddo
+     case default
+        OFLWR "get_denconstraint1 error"; CFLST
+     end select
+
+
+     liodencopy(:,:)=lioden(:,:)
+     if (lioreg.le.0.d0) then
+        call MYGESV(isize, 1, liodencopy, liosize, ipiv, liosolve, liosize, info)
+        if (info/=0) then
+           OFLWR "Errx  mygesv lioden", info, " size ", liosize, isize ; CFLST
+        endif
+     else
+
+        call invmatsmooth(liodencopy,liosize,liosize,lioreg)
+        call MYGEMV('N',liosize,liosize,DATAONE,liodencopy,liosize,liosolve,1,DATAZERO,liosolvetemp,1)
+        liosolve(:)=liosolvetemp(:)
+
+!        mylwork=20*isize
+!        allocate(sing(10*isize), rwork(50*isize), mywork(mylwork))
+!#ifndef REALGO
+!        call zgelss(isize,isize,1, liodencopy, liosize, liosolve, liosize, sing, lioreg, rank, mywork, mylwork, rwork, info)
+!#else
+!        call dgelss(isize,isize,1, liodencopy, liosize, liosolve, liosize, sing, lioreg, rank, mywork, mylwork, info)
+!#endif
+!        deallocate(sing,rwork,mywork)
+!     if (info/=0) then
+!        OFLWR "Errx  mygelss lioden", info, " size ", liosize, isize ; CFLST
+!     endif
+
+     endif
+
+     
+     tempconmatels(:,:)=0d0
+     
+     do ispf=1,www%nspf
+        do jspf=1,www%nspf
+           select case (iwhich)
+           case (1)
+              if (ispf/=jspf) then
+                 ind=lind(ispf,jspf)   
+                 tempconmatels(ispf,jspf)=liosolve(ind)
+              endif
+           case (2)
+              if (shells(ispf)/=shells(jspf)) then
+                 ind=llind(ispf,jspf)
+                 tempconmatels(ispf,jspf)=liosolve(ind)
+              endif
+           case default
+              OFLWR "get_denconstraint1 error"; CFLST
+           end select
+        enddo
+     enddo
+     
+
+!! 111510   REGARDLESS!  #ifndef ECSFLAG
+!! may require you to define constraint via hermitian part of hamiltonian for chmctdh.  Don't want conmatels to be non-antiherm (chmctdh) or non real (cmctdh)
+
+     maxval=0d0
+     maxanti=0d0
+
+     do ispf=1,www%nspf
+        do jspf=ispf+1,www%nspf
+           
+           rsum=abs(timefac*tempconmatels(ispf,jspf)+CONJUGATE(timefac*tempconmatels(jspf,ispf)))
+
+           rsum2=max(abs(tempconmatels(ispf,jspf)),abs(tempconmatels(jspf,ispf)))
+
+           denom=  max(1d-5,rsum2)
+
+           if (rsum / denom .gt.1.d-6) then
+              OFLWR "Err herm incmatel temp continue"
+              WRFL ispf, jspf, rsum, denom,iiyy; WRFL; CFL !!ST
+           endif
+
+           if (rsum.gt.maxanti) then
+              maxanti=rsum
+           endif
+           if (rsum2.gt.maxval) then
+              maxval=rsum2
+           endif
+        enddo
+     enddo
+
+!!!     OFLWR "MAXVAL,MAXANTI",maxval,maxanti,iiyy; CFL
+
+!! 070414     
+     tempconmatels(:,:)=0.5d0*(tempconmatels(:,:)+TRANSPOSE(CONJUGATE(tempconmatels(:,:))))
+
+     select case(iiyy)
+     case(1)
+        cptr%xconmatel(:,:)=tempconmatels(:,:)
+     case(2)
+        cptr%xconmatelxx(:,:)=tempconmatels(:,:)
+     case(3)
+        cptr%xconmatelyy(:,:)=tempconmatels(:,:)
+     case(4)
+        cptr%xconmatelzz(:,:)=tempconmatels(:,:)
+     end select
+     
+  end do
+
+
+  deallocate(bigavector,bigavectorp)
+
+end subroutine get_denconstraint1_0
+
+
+
+
+subroutine new_get_denconstraint1(time)
+  use parameters
+  use xxxmod
+  use configmod
+  implicit none
+  real*8,intent(in) :: time
+
+  call new_get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,yyy%cmfpsivec(astart(1):aend(mcscfnum),0),&
+       yyy%drivingavectorsxx(:,:,:,0),yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
+       yyy%denmat(:,:,0),time)
+end subroutine new_get_denconstraint1
+
+
+subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx, &
+     drivingavectorsyy,drivingavectorszz,denmat,time)
+  use fileptrmod
+  use constraint_parameters
+  use ham_parameters
+  use basis_parameters
+  use sparse_parameters
+  use r_parameters
+  use walkmod
+  use configptrmod
+  use sparseptrmod
+  implicit none
+  integer,intent(in) :: numvects
+  type(walktype),intent(in) :: www
+  type(CONFIGPTR) :: cptr
+  type(SPARSEPTR) :: sptr
+  DATATYPE,intent(in) :: denmat(www%nspf,www%nspf),avector(numr,www%firstconfig:www%lastconfig,numvects),&
+       drivingavectorsxx(numr,www%firstconfig:www%lastconfig,numvects),&
+       drivingavectorsyy(numr,www%firstconfig:www%lastconfig,numvects),&
+       drivingavectorszz(numr,www%firstconfig:www%lastconfig,numvects)
+  integer :: ipairs(2,www%nspf*(www%nspf-1))
+  DATATYPE ::  a1(numvects), a2(numvects), a1p(numvects), a2p(numvects),dot
+  DATATYPE :: tempconmatels(www%nspf,www%nspf), rhomat(www%nspf,www%nspf,www%nspf,www%nspf)
+  DATATYPE,allocatable :: bigavector(:,:,:), bigavectorp(:,:,:)
+  DATATYPE :: avectorp(numr,www%firstconfig:www%lastconfig,numvects)    !! AUTOMATIC
+  integer ::  config1,config2,   ispf,jspf,  dirphase,  i,  iwalk,ii,  info, kspf, &
+       lspf, ind, jind, llind, flag, isize,   iiyy,maxii,imc,j
+  integer,allocatable :: ipiv(:)
+  real*8 :: denom,time,rsum,rsum2,maxval,maxanti
+  DATATYPE, allocatable :: liosolve(:),lioden(:, :),liodencopy(:,:),liosolvetemp(:)
+
+  cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
+
+  if ((numshells.eq.1)) then
+     return
   endif
 
-  smallwalkvects(:,:,:,:,:)=0d0
-  
-  do i=1,www%ddd%numdfwalks
-     ii=www%ddd%includedorb(i);     ix=www%ddd%excludedorb(i)
-     smallwalkvects(:,www%ddd%dfwalkto(i),:,ii,ix)=smallwalkvects(:,www%ddd%dfwalkto(i),:,ii,ix) + bigavector(:,www%ddd%dfwalkfrom(i),:) * www%ddd%dfwalkphase(i)
+  allocate(bigavector(numr,www%numconfig,numvects), bigavectorp(numr,www%numconfig,numvects))
+  bigavector(:,:,:)=0d0; bigavectorp(:,:,:)=0d0
+
+  rhomat(:,:,:,:)=0d0
+
+  if (www%dfrestrictflag.gt.www%dflevel) then
+     call get_rhomat(www,avector,rhomat,numr,numvects)
+  endif
+
+
+  isize=0
+  do i=1,www%nspf
+     do j=1,www%nspf
+        if (shells(i).ne.shells(j)) then
+           isize=isize+1
+           ipairs(:,isize)=(/ i,j /)
+        endif
+     enddo
   enddo
 
-  deallocate(bigavector)
+  allocate(liosolve(isize),lioden(isize, isize),liodencopy(isize,isize),liosolvetemp(isize),ipiv(isize))  
 
-end subroutine get_smallwalkvects
+  lioden=0.d0
+
+  do ind=1,isize
+     ispf=ipairs(1,ind)
+     jspf=ipairs(2,ind)
+     do jind=1,isize
+        kspf=ipairs(1,jind)
+        lspf=ipairs(2,jind)
+
+        rsum= abs(rhomat(ispf,jspf,kspf,lspf)-CONJUGATE(rhomat(kspf,lspf,ispf,jspf)))
+        if (rsum.gt.1d-10) then
+           OFLWR "DOOG",rsum,rhomat(ispf,jspf,kspf,lspf),CONJUGATE(rhomat(kspf,lspf,ispf,jspf)); CFLST
+        endif
+
+!! rhomat included,excluded
+
+        lioden(ind,jind)=  rhomat(kspf,lspf,ispf,jspf) - rhomat(jspf,ispf,lspf,kspf)   
+
+        if (jspf.eq.lspf) then
+
+           lioden(ind, jind) = lioden(ind, jind) - &
+                denmat(ispf,kspf)  
+
+        endif
+        if (ispf.eq.kspf) then
+
+           lioden(ind,jind) = lioden(ind,jind) + &
+                denmat(lspf,jspf)  
+
+        endif
+     enddo
+  enddo
 
 
-
-subroutine get_rhomat(www,avector, rhomat,nblock,howmany)
-  use fileptrmod
-  use sparse_parameters
-  use walkmod
-  implicit none
-  type(walktype),intent(in) :: www
-  integer ::    ii,nblock,howmany
-  DATATYPE,intent(in) ::  avector(nblock,www%firstconfig:www%lastconfig,howmany)
-  DATATYPE,intent(out) :: rhomat(www%nspf,www%nspf,www%nspf,www%nspf)
-  DATATYPE, allocatable ::  &
-       smallwalkvects(:,:,:,:,:)   !! nblock,configstart:configend,howmany,alpha,beta  alpha=included beta=excluded
-
-  if (www%dfrestrictflag.le.www%dflevel) then
-     OFLWR "WTF DFRESTRICT IS  ", www%dfrestrictflag,www%dflevel; CFLST
+  maxii=1
+  if (tdflag.ne.0) then
+     maxii=4
   endif
-  
-  allocate(smallwalkvects(nblock,www%configstart:www%configend,howmany,www%nspf,www%nspf))
 
-  call get_smallwalkvects(www,avector,smallwalkvects,nblock,howmany)
+  do iiyy=1,maxii
+     do imc=1,numvects
+        select case(iiyy)
+        case(1)
+           call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,1,1,0,0,time,imc)
+        case default
+           call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,iiyy-1,imc)
+           if (drivingflag.ne.0) then
+              if (iiyy.eq.2) then
+                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsxx(:,:,imc)
+              else if (iiyy.eq.3) then
+                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsyy(:,:,imc)
+              else if (iiyy.eq.4) then
+                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorszz(:,:,imc)
+              endif
+           endif
+        end select
+     enddo
 
-!! THIS TAKES A LONG TIME.
-  
-  ii=(www%configend-www%configstart+1)*nblock*howmany
-  call MYGEMM(CNORMCHAR,'N',www%nspf**2,www%nspf**2,ii,DATAONE,smallwalkvects,ii,smallwalkvects,ii,DATAZERO,rhomat,www%nspf**2)
+     if (www%dfrestrictflag.gt.www%dflevel) then
+        do imc=1,numvects
+           call df_project(www,numr,avectorp(:,:,imc))
+        enddo
+     endif
 
-  if (sparseconfigflag.ne.0) then
-     call mympireduce(rhomat,www%nspf**4)  !! BAD REDUCE
-  endif
+!! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
+!! AND DO HOPS
 
-  deallocate(smallwalkvects)
+     bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
+     bigavectorp(:,www%firstconfig:www%lastconfig,:)=avectorp(:,:,:)
 
-end subroutine get_rhomat
+     if (www%parconsplit.ne.0) then
+        do i=1,numvects
+           call mpiallgather(bigavector(:,:,i),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+           call mpiallgather(bigavectorp(:,:,i),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+        enddo
+     endif
+
+     liosolve=0.d0
+
+  !! single off diagonal walks
+     do ii=1,numr
+
+         do config1=www%botconfig,www%topconfig
+
+           a1(:)=avector(ii,config1,:)
+           a1p(:)=avectorp(ii,config1,:)
+           
+           do iwalk=1,www%numsinglewalks(config1)
+              
+              config2=www%singlewalk(iwalk,config1)
+              dirphase=www%singlewalkdirphase(iwalk,config1)
+              a2(:)=bigavector(ii,config2,:)
+              a2p(:)=bigavectorp(ii,config2,:)
+              
+              ispf=www%singlewalkopspf(1,iwalk,config1)
+              jspf=www%singlewalkopspf(2,iwalk,config1)
+              
+              flag=0
+              if (shells(ispf).ne.shells(jspf)) then
+!! FIRSTWAY
+                 ind=llind(ispf,jspf);                 flag=1
+              endif
+              
+              if (flag==1) then
+                 
+                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:)*timefac,a1(:),numvects)
+                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:),a1p(:)*timefac,numvects)
+                 
+              endif
+           enddo
+        enddo
+
+     enddo
+
+     call mympireduce(liosolve,isize)
+
+     liodencopy(:,:)=lioden(:,:)       
+
+     if (lioreg.le.0.d0) then
+        call MYGESV(isize, 1, liodencopy, isize, ipiv, liosolve, isize, info)
+        if (info/=0) then
+           OFLWR "Errx  mygesv lioden", info, " size ", isize ; CFLST
+        endif
+     else
+
+        call invmatsmooth(liodencopy,isize,isize,lioreg)
+        call MYGEMV('N',isize,isize,DATAONE,liodencopy,isize,liosolve,1,DATAZERO,liosolvetemp,1)
+        liosolve(:)=liosolvetemp(:)
+
+     endif
+
+     tempconmatels(:,:)=0d0
+     
+     do ispf=1,www%nspf
+        do jspf=1,www%nspf
+           if (shells(ispf)/=shells(jspf)) then
+              ind=llind(ispf,jspf)
+              tempconmatels(ispf,jspf)=liosolve(ind)/timefac 
+           endif
+        enddo
+     enddo
+     
+
+!! 111510   REGARDLESS!  #ifndef ECSFLAG
+!! may require you to define constraint via hermitian part of hamiltonian for chmctdh.  Don't want conmatels to be non-antiherm (chmctdh) or non real (cmctdh)
+
+     maxval=0d0
+     maxanti=0d0
+
+     do ispf=1,www%nspf
+        do jspf=ispf+1,www%nspf
+           
+           rsum=abs(tempconmatels(ispf,jspf)-CONJUGATE(tempconmatels(jspf,ispf)))
+
+           rsum2=max(abs(tempconmatels(ispf,jspf)),abs(tempconmatels(jspf,ispf)))
+
+           denom=  max(1d-5,rsum2)
+
+           if (rsum / denom .gt.1.d-6) then
+              OFLWR "Err herm incmatel temp continue"
+              WRFL ispf, jspf, rsum, denom,iiyy; WRFL; CFL !!ST
+           endif
+
+           if (rsum.gt.maxanti) then
+              maxanti=rsum
+           endif
+           if (rsum2.gt.maxval) then
+              maxval=rsum2
+           endif
+        enddo
+     enddo
+
+!!!     OFLWR "MAXVAL,MAXANTI",maxval,maxanti,iiyy; CFL
+
+!! 070414     
+     tempconmatels(:,:)=0.5d0*(tempconmatels(:,:)+TRANSPOSE(CONJUGATE(tempconmatels(:,:))))
+
+     select case(iiyy)
+     case(1)
+        cptr%xconmatel(:,:)=tempconmatels(:,:)
+     case(2)
+        cptr%xconmatelxx(:,:)=tempconmatels(:,:)
+     case(3)
+        cptr%xconmatelyy(:,:)=tempconmatels(:,:)
+     case(4)
+        cptr%xconmatelzz(:,:)=tempconmatels(:,:)
+     end select
+     
+  end do
+
+  deallocate(bigavector,bigavectorp)
+
+end subroutine new_get_denconstraint1_0
 
