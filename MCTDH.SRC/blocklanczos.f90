@@ -312,7 +312,8 @@ subroutine parblockconfigmult0_gather(www,cptr,sptr,inavector,outavector)
   allocate(intemp(numr,www%numconfig))
   intemp(:,:)=0d0
 
-!! TRANSFORM SECOND TO REDUCE COMMUNICATION
+!! transform second to reduce communication?
+!!   no, spin transformations done locally now.
 
   if (www%topconfig-www%botconfig+1 .ne. 0) then
      call basis_transformfrom_local(www,numr,inavector,intemp(:,www%botconfig:www%topconfig))
@@ -364,7 +365,8 @@ subroutine parblockconfigmult0_summa(www,cptr,sptr,inavector,outavector)
 
   do iproc=1,nprocs
 
-!! TRANSFORM SECOND TO REDUCE COMMUNICATION
+!! transform second to reduce communication?
+!!   no, spin transformations done locally now.
 
      if (myrank.eq.iproc) then
         call basis_transformfrom_local(www,numr,inavector,intemp)

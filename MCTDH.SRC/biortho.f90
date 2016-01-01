@@ -669,7 +669,8 @@ subroutine parbiomatvec_gather(inavector,outavector)
   allocate(intemp(biopointer%bionr,biopointer%wwbio%numconfig))
   intemp(:,:)=0d0
 
-!! TRANSFORM SECOND TO REDUCE COMMUNICATION
+!! transform second to reduce communication?
+!!   no, spin transformations done locally now.
 
   if (biopointer%wwbio%topconfig-biopointer%wwbio%botconfig+1 .ne. 0) then
      call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector,&
@@ -717,7 +718,8 @@ subroutine parbiomatvec_summa(inavector,outavector)
 
   do iproc=1,nprocs
 
-!! TRANSFORM SECOND TO REDUCE COMMUNICATION
+!! transform second to reduce communication?
+!!   no, spin transformations done locally now.
 
      if (myrank.eq.iproc) then
         call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector(:,:),intemp(:,:))
