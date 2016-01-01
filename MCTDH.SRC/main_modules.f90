@@ -331,6 +331,7 @@ module configmod
   type(walktype),target :: www
   type(walktype),pointer:: bwwptr
   type(walktype),target :: bioww
+  logical :: use_dfwalktype=.false.
   type(walktype),pointer:: dwwptr
   type(walktype),target :: dfww
 end module configmod
@@ -359,7 +360,7 @@ subroutine configpropalloc()
   if (sparseopt.ne.0) then  !! (sparseconfigflag is also 0, see getparams)
      call sparseptralloc(worksparsepointer,www)  !! nspf not used for regular walks (not walks2)
      worksparsepointer%kefac=par_timestep/littlesteps     !! constant term in poly expansion goes with ke in R; will be set
-     if (df_restrictflag.ne.0.and.sparsedfflag.ne.0) then
+     if (use_dfwalktype) then
         call sparseptralloc(workdfsparsepointer,dfww)
         workdfsparsepointer%kefac=par_timestep/littlesteps
      endif
@@ -793,7 +794,7 @@ subroutine xalloc()
         call sparseptralloc(yyy%sptr(ii),www)
      enddo
   endif
-  if (df_restrictflag.ne.0.and.sparsedfflag.ne.0) then
+  if (use_dfwalktype) then
      allocate(yyy%sdfptr(0:numreduced))
      if (sparseopt.ne.0) then
         do ii=0,numreduced

@@ -263,25 +263,13 @@ subroutine parconfigexpomult_padded(inavector,outavector)
   case(0)
 #endif
 
-     if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
-        call parconfigexpomult_padded0_gather(www,workconfigpointer,worksparsepointer,inavector,outavector)
-     else
-        call parconfigexpomult_padded0_gather(dfww,workconfigpointer,workdfsparsepointer,inavector,outavector)
-     endif
+        call parconfigexpomult_padded0_gather(dwwptr,workconfigpointer,workdfsparsepointer,inavector,outavector)
 
 #ifdef MPIFLAG
   case(1)
-     if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
-        call parconfigexpomult_padded0_summa(www,workconfigpointer,worksparsepointer,inavector,outavector)
-     else
-        call parconfigexpomult_padded0_summa(dfww,workconfigpointer,workdfsparsepointer,inavector,outavector)
-     endif
+        call parconfigexpomult_padded0_summa(dwwptr,workconfigpointer,workdfsparsepointer,inavector,outavector)
   case(2)
-     if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
-        call parconfigexpomult_padded0_circ(www,workconfigpointer,worksparsepointer,inavector,outavector)
-     else
-        call parconfigexpomult_padded0_circ(dfww,workconfigpointer,workdfsparsepointer,inavector,outavector)
-     endif
+        call parconfigexpomult_padded0_circ(dwwptr,workconfigpointer,workdfsparsepointer,inavector,outavector)
   case default
      OFLWR "Error sparsesummaflag ",sparsesummaflag; CFLST
   end select

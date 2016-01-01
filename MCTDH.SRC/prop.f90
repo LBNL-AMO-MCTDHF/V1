@@ -597,11 +597,7 @@ subroutine cmf_prop_wfn(tin, tout)
         if (improvedquadflag.eq.1.or.improvedquadflag.eq.3) then
            call quadavector(yyy%cmfpsivec(astart(1),0),qq)
         else
-           if (df_restrictflag.eq.0.or.sparsedfflag.eq.0) then
-              call myconfigeig(www,www,yyy%cptr(0),yyy%cmfpsivec(astart(1),0),myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
-           else
-              call myconfigeig(www,dfww,yyy%cptr(0),yyy%cmfpsivec(astart(1),0),myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
-           endif
+           call myconfigeig(www,dwwptr,yyy%cptr(0),yyy%cmfpsivec(astart(1),0),myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
         endif
      endif
      call system_clock(jtime);     times(5)=times(5)+jtime-itime;     call system_clock(itime)
@@ -947,11 +943,7 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
 
   call system_clock(jtime); times(1)=times(1)+jtime-itime; itime=jtime
 
-  if (df_restrictflag.eq.0.or.sparsedfflag.eq.0) then  
-     call myconfigprop(www,www,avectorin,avectorout,midtime,imc)
-  else
-     call myconfigprop(www,dfww,avectorin,avectorout,midtime,imc)
-  endif
+  call myconfigprop(www,dwwptr,avectorin,avectorout,midtime,imc)
 
   call system_clock(jtime); times(2)=times(2)+jtime-itime;
 

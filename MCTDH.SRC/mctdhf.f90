@@ -402,9 +402,11 @@ program mctdhf
      bwwptr => www
   endif
 
-  if (df_restrictflag.eq.0) then
+  if (df_restrictflag.eq.0.or.sparsedfflag.eq.0) then
+     use_dfwalktype=.false.
      dwwptr => www
   else
+     use_dfwalktype=.true.
      dwwptr => dfww
 
      OFLWR
@@ -572,11 +574,9 @@ program mctdhf
            call mpibarrier();     OFLWR "AFTER CALL ALL MATEL IN MAIN"; CFL;     call mpibarrier()
         endif
         allocate(tempvals(mcscfnum))
-        if (df_restrictflag.eq.0.or.sparsedfflag.eq.0) then
-           call myconfigeig(www,www,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,min(totread,1),0d0,max(0,improvedrelaxflag-1))
-        else
-           call myconfigeig(www,dfww,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,min(totread,1),0d0,max(0,improvedrelaxflag-1))
-        endif
+
+        call myconfigeig(www,dwwptr,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,min(totread,1),0d0,max(0,improvedrelaxflag-1))
+
         deallocate(tempvals)
      endif  
 

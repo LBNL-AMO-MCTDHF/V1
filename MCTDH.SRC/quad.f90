@@ -470,11 +470,8 @@ subroutine parquadpreconsub(notusedint, inavectorspin,outavectorspin)
   DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
 
-  if (www%dfrestrictflag.eq.0.or.sparsedfflag.eq.0) then
-     call parquadpreconsub0(www,yyy%cptr(0),yyy%sptr(0),notusedint,inavectorspin,outavectorspin)
-  else
-     call parquadpreconsub0(dfww,yyy%cptr(0),yyy%sdfptr(0),notusedint,inavectorspin,outavectorspin)
-  endif
+  call parquadpreconsub0(dwwptr,yyy%cptr(0),yyy%sdfptr(0),notusedint,inavectorspin,outavectorspin)
+
 end subroutine parquadpreconsub
 
 
