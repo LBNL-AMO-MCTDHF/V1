@@ -724,7 +724,7 @@ subroutine projeflux_single(mem)
 
         abio(:,:)=myavec(ir,:,:)
 
-        call bioset(projbiovar,smo,1,bioww); 
+        call bioset(projbiovar,smo,1,bwwptr); 
 
         call biortho(mymo,tmo(:,:,ir),mobio,abio(:,1),projbiovar)
         do imc=2,mcscfnum

@@ -350,6 +350,8 @@ program mctdhf
 
 
 !! WALKTYPE VARIABLE BIOWW FOR BIORTHO
+  if (df_restrictflag.ne.0.or.(spfrestrictflag.eq.1.and.mrestrictflag.eq.0)) then
+     bwwptr => bioww
 
      OFLWR
      WRFL "************************************"
@@ -396,8 +398,14 @@ program mctdhf
 
 !!! END SET BIOWW !!
 
+  else
+     bwwptr => www
+  endif
 
-  if (df_restrictflag.ne.0) then
+  if (df_restrictflag.eq.0) then
+     dwwptr => www
+  else
+     dwwptr => dfww
 
      OFLWR
      WRFL "************************************"

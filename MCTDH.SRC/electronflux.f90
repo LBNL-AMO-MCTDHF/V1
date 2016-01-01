@@ -557,7 +557,7 @@ subroutine fluxgtau(alg)
   implicit none
   integer :: alg
 
-     call fluxgtau0(alg,www,bioww)
+     call fluxgtau0(alg,www,bwwptr)
 
 end subroutine fluxgtau
 

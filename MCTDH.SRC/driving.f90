@@ -59,7 +59,7 @@ subroutine drivingtrans(thistime)
      tempdrivingavector(:,:,imc)=avector_driving(:,:,imc) * exp(timefac*drivingenergies(imc)*thistime)
 
 
-        call bioset(drivingbiovar,smo,numr,bioww)
+        call bioset(drivingbiovar,smo,numr,bwwptr)
 
 
      call biortho(orbs_driving(:,:),currentorbs(:,:),tempdrivingorbs(:,:),tempdrivingavector(:,:,imc),drivingbiovar)

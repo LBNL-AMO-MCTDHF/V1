@@ -329,7 +329,9 @@ module configmod
   use walkmod
   implicit none
   type(walktype),target :: www
+  type(walktype),pointer:: bwwptr
   type(walktype),target :: bioww
+  type(walktype),pointer:: dwwptr
   type(walktype),target :: dfww
 end module configmod
 
