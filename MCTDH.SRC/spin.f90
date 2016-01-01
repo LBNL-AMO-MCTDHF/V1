@@ -10,28 +10,16 @@ subroutine configspin_project(www,nr, vector)
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: nr
-  DATATYPE :: vector(nr,www%firstconfig:www%lastconfig)
+  DATATYPE,intent(inout) :: vector(nr,www%firstconfig:www%lastconfig)
+
+  call configspin_project_local(www,nr,vector(:,www%botconfig))
 
   if (www%parconsplit.eq.0) then
-     call configspin_project_all(www,nr,vector(:,:))
-  else
-     call configspin_project_local(www,nr,vector(:,:))
+     call mpiallgather(vector,www%numconfig*nr,www%configsperproc(:)*nr,www%maxconfigsperproc*nr)
   endif
 
 end subroutine configspin_project
 
-
-subroutine configspin_project_all(www,nr,vector)
-  use walkmod
-  use mpimod   !! nprocs
-  implicit none
-  type(walktype),intent(in) :: www
-  integer,intent(in) :: nr
-  DATATYPE :: vector(nr,www%numconfig)
-
-  call configspin_project_general(www,nr,vector,1,nprocs)
-
-end subroutine configspin_project_all
 
 
 subroutine configspin_project_local(www,nr,vector)
@@ -40,7 +28,7 @@ subroutine configspin_project_local(www,nr,vector)
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: nr
-  DATATYPE :: vector(nr,www%botconfig:www%topconfig)
+  DATATYPE,intent(inout) :: vector(nr,www%botconfig:www%topconfig)
 
   call configspin_project_general(www,nr,vector,myrank,myrank)
 
@@ -50,12 +38,17 @@ end subroutine configspin_project_local
 
 subroutine configspin_project_general(www,nr,vector,iproc,jproc)
   use walkmod
+  use fileptrmod
   implicit none
   type(walktype),intent(in) :: www
   integer :: iset, ii, iproc, jproc, nr, pp
-  DATATYPE :: vector(nr,www%allbotconfigs(iproc):www%alltopconfigs(jproc))
+  DATATYPE,intent(inout) :: vector(nr,www%allbotconfigs(iproc):www%alltopconfigs(jproc))
   DATATYPE :: smallvect(nr,www%sss%maxspinsetsize), smalltemp(nr,www%sss%maxspinsetsize), &
-       outvector(nr,www%allbotconfigs(iproc):www%alltopconfigs(jproc))
+       outvector(nr,www%allbotconfigs(iproc):www%alltopconfigs(jproc))      !! AUTOMATIC
+
+  if (iproc.lt.www%startrank.or.jproc.gt.www%endrank) then
+     OFLWR "STARTRANK ERR PROJGEN ",iproc,www%startrank,www%endrank; CFLST
+  endif
 
   outvector(:,:) = 0.d0
 
@@ -77,38 +70,6 @@ subroutine configspin_project_general(www,nr,vector,iproc,jproc)
   vector(:,:)=outvector(:,:)
 
 end subroutine configspin_project_general
-
-
-
-subroutine configspin_transformto(www,nblock,invector,outvector)
-  use walkmod
-  implicit none
-  type(walktype),intent(in) :: www
-  integer,intent(in) :: nblock
-  DATATYPE,intent(in) :: invector(nblock,www%localnconfig)
-  DATATYPE,intent(out) :: outvector(nblock,www%sss%localnspin)
-  if (www%parconsplit.eq.0) then
-     call configspin_transformto_all(www,nblock,invector,outvector)
-  else
-     call configspin_transformto_local(www,nblock,invector,outvector)
-  endif
-end subroutine configspin_transformto
-
-
-!! ALL NUMCONFIG.
-
-subroutine configspin_transformto_all(www,nblock,invector,outvector)
-  use walkmod
-  use mpimod !! nprocs
-  implicit none
-  type(walktype),intent(in) :: www
-  integer :: nblock
-  DATATYPE,intent(in) :: invector(nblock,www%numconfig)
-  DATATYPE,intent(out) :: outvector(nblock,www%sss%numspinconfig)
-
-  call configspin_transformto_general(www,nblock,invector,outvector,1,nprocs)
-
-end subroutine configspin_transformto_all
 
 
 
@@ -138,6 +99,10 @@ subroutine configspin_transformto_general(www,nblock,invector,outvector,iproc,jp
 
   DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)
 
+  if (iproc.lt.www%startrank.or.jproc.gt.www%endrank) then
+     OFLWR "STARTRANK ERR tRANSTO GEN ",iproc,www%startrank,www%endrank; CFLST
+  endif
+
   outvector(:,:)=0d0
 
   do pp=iproc,jproc
@@ -160,20 +125,6 @@ subroutine configspin_transformto_general(www,nblock,invector,outvector,iproc,jp
   enddo
 
 end subroutine configspin_transformto_general
-
-
-subroutine dfspin_transformto_all(www,nblock,invector,outvector)
-  use walkmod
-  use mpimod  !! nprocs
-  implicit none
-  type(walktype),intent(in) :: www
-  integer :: nblock
-  DATATYPE,intent(in) :: invector(nblock,www%numdfconfigs)
-  DATATYPE,intent(out) :: outvector(nblock,www%sss%numspindfconfig)
-
-  call dfspin_transformto_general(www,nblock,invector,outvector,1,nprocs)
-
-end subroutine dfspin_transformto_all
 
 
 
@@ -203,6 +154,10 @@ subroutine dfspin_transformto_general(www,nblock,invector,outvector,iproc,jproc)
 
   DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)
 
+  if (iproc.lt.www%startrank.or.jproc.gt.www%endrank) then
+     OFLWR "STARTRANK ERR DFTRANSTO GEN ",iproc,www%startrank,www%endrank; CFLST
+  endif
+
   outvector(:,:)=0d0
 
   do pp=iproc,jproc
@@ -231,35 +186,6 @@ end subroutine dfspin_transformto_general
 
 
 
-subroutine configspin_transformfrom(www,nblock,invector,outvector)
-  use walkmod
-  implicit none
-  type(walktype),intent(in) :: www
-  integer :: nblock
-  DATATYPE,intent(out) :: outvector(nblock,www%localnconfig)
-  DATATYPE,intent(in) :: invector(nblock,www%sss%localnspin)
-  if (www%parconsplit.eq.0) then
-     call configspin_transformfrom_all(www,nblock,invector,outvector)
-  else
-     call configspin_transformfrom_local(www,nblock,invector,outvector)
-  endif
-end subroutine configspin_transformfrom
-
-
-subroutine configspin_transformfrom_all(www,nblock,invector,outvector)
-  use walkmod
-  use mpimod !! nprocs
-  implicit none
-  type(walktype),intent(in) :: www
-  integer :: nblock
-  DATATYPE,intent(out) :: outvector(nblock,www%numconfig)
-  DATATYPE,intent(in) :: invector(nblock,www%sss%numspinconfig)
-
-  call configspin_transformfrom_general(www,nblock,invector,outvector,1,nprocs)
-
-end subroutine configspin_transformfrom_all
-
-
 subroutine configspin_transformfrom_local(www,nblock,invector,outvector)
   use walkmod
   use mpimod !! nprocs
@@ -284,6 +210,10 @@ subroutine configspin_transformfrom_general(www,nblock,invector,outvector,iproc,
   DATATYPE,intent(out) :: outvector(nblock,www%allbotconfigs(iproc):www%alltopconfigs(jproc))
   DATATYPE,intent(in) :: invector(nblock,www%sss%allbotspins(iproc):www%sss%alltopspins(jproc))
   DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)
+
+  if (iproc.lt.www%startrank.or.jproc.gt.www%endrank) then
+     OFLWR "STARTRANK ERR TRANSFROM GEN ",iproc,www%startrank,www%endrank; CFLST
+  endif
 
   outvector(:,:)=0d0
 
@@ -312,21 +242,6 @@ end subroutine configspin_transformfrom_general
 
 
 
-subroutine dfspin_transformfrom_all(www,nblock,invector,outvector)
-  use walkmod
-  use mpimod  !! nprocs
-  implicit none
-  type(walktype),intent(in) :: www
-  integer :: nblock
-  DATATYPE,intent(in) :: invector(nblock,www%sss%numspindfconfig)
-  DATATYPE,intent(out) :: outvector(nblock,www%numdfconfigs)
-
-  call dfspin_transformfrom_general(www,nblock,invector,outvector,1,nprocs)
-
-end subroutine dfspin_transformfrom_all
-
-
-
 subroutine dfspin_transformfrom_local(www,nblock,invector,outvector)
   use walkmod
   use mpimod  !! myrank
@@ -350,6 +265,10 @@ subroutine dfspin_transformfrom_general(www,nblock,invector,outvector,iproc,jpro
   DATATYPE,intent(out) :: outvector(nblock,www%allbotdfconfigs(iproc):www%alltopdfconfigs(jproc))
   DATATYPE,intent(in) :: invector(nblock,www%sss%allbotspindfs(iproc):www%sss%alltopspindfs(jproc))
   DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)
+
+  if (iproc.lt.www%startrank.or.jproc.gt.www%endrank) then
+     OFLWR "STARTRANK ERR DFTRANSfrom GEN ",iproc,www%startrank,www%endrank; CFLST
+  endif
 
   outvector(:,:)=0d0
 

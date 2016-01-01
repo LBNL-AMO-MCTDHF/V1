@@ -274,21 +274,6 @@ subroutine df_project_local(www,howmany,avector)
 end subroutine df_project_local
 
 
-subroutine df_transformto_all(www,howmany,avectorin,avectorout)
-  use walkmod
-  implicit none
-  type(walktype),intent(in) :: www
-  integer :: howmany,i
-  DATATYPE,intent(in) :: avectorin(howmany,www%numconfig)
-  DATATYPE,intent(out) :: avectorout(howmany,www%numdfconfigs)
-
-  do i=1,www%numdfconfigs
-     avectorout(:,i)=avectorin(:,www%ddd%dfincludedconfigs(i))
-  enddo
-
-end subroutine df_transformto_all
-
-
 subroutine df_transformto_local(www,howmany,avectorin,avectorout)
   use walkmod
   implicit none
@@ -302,24 +287,6 @@ subroutine df_transformto_local(www,howmany,avectorin,avectorout)
   enddo
 
 end subroutine df_transformto_local
-
-
-
-subroutine df_transformfrom_all(www,howmany,avectorin,avectorout)
-  use walkmod
-  implicit none
-  type(walktype),intent(in) :: www
-  integer :: howmany,i
-  DATATYPE,intent(in) :: avectorin(howmany,www%numdfconfigs)
-  DATATYPE,intent(out) :: avectorout(howmany,www%numconfig)
-
-  avectorout(:,:)=0d0
-
-  do i=1,www%numdfconfigs
-     avectorout(:,www%ddd%dfincludedconfigs(i))=avectorin(:,i)
-  enddo
-
-end subroutine df_transformfrom_all
 
 
 
@@ -356,6 +323,8 @@ subroutine basis_project(www,howmany,avector)
 
 end subroutine basis_project
 
+
+
 subroutine basis_transformto_all(www,howmany,avectorin,avectorout)
   use walkmod
   implicit none
@@ -363,22 +332,11 @@ subroutine basis_transformto_all(www,howmany,avectorin,avectorout)
   integer :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,www%numconfig)
   DATATYPE,intent(out) :: avectorout(howmany,www%numdfbasis)
-  DATATYPE :: workvec(howmany,www%numdfconfigs)
 
-  if (www%dfrestrictflag.ne.www%dflevel) then
-     if (www%allspinproject.ne.0) then
-        call df_transformto_all(www,howmany,avectorin(:,:),workvec(:,:))
-        call dfspin_transformto_all(www,howmany,workvec(:,:),avectorout(:,:))
-     else
-        call df_transformto_all(www,howmany,avectorin(:,:),avectorout(:,:))
-     endif
-  else
-     if (www%allspinproject.ne.0) then
-        call configspin_transformto_all(www,howmany,avectorin(:,:),avectorout(:,:))
-     else
-        avectorout(:,:)=avectorin(:,:)
-     endif
-  endif
+  call basis_transformto_local(www,howmany,avectorin(:,www%botconfig),avectorout(:,www%botdfbasis))
+
+  call mpiallgather(avectorout(:,:),www%numdfbasis*howmany,www%dfbasisperproc(:)*howmany,&
+       www%maxdfbasisperproc*howmany)
 
 end subroutine basis_transformto_all
 
@@ -421,22 +379,11 @@ subroutine basis_transformfrom_all(www,howmany,avectorin,avectorout)
   integer :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,www%numdfbasis)
   DATATYPE,intent(out) :: avectorout(howmany,www%numconfig)
-  DATATYPE :: workvec(howmany,www%numdfconfigs)
 
-  if (www%dfrestrictflag.ne.www%dflevel) then
-     if (www%allspinproject.ne.0) then
-        call dfspin_transformfrom_all(www,howmany,avectorin(:,:),workvec(:,:))
-        call df_transformfrom_all(www,howmany,workvec(:,:),avectorout(:,:))
-     else
-        call df_transformfrom_all(www,howmany,avectorin(:,:),avectorout(:,:))
-     endif
-  else
-     if (www%allspinproject.ne.0) then
-        call configspin_transformfrom_all(www,howmany,avectorin(:,:),avectorout(:,:))
-     else
-        avectorout(:,:)=avectorin(:,:)
-     endif
-  endif
+  call basis_transformfrom_local(www,howmany,avectorin(:,www%botdfbasis),avectorout(:,www%botconfig))
+
+  call mpiallgather(avectorout(:,:),www%numconfig*howmany,www%configsperproc(:)*howmany,&
+       www%maxconfigsperproc*howmany)
 
 end subroutine basis_transformfrom_all
 

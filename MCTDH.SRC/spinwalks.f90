@@ -31,37 +31,43 @@ subroutine spinwalkinit(www)
 
   OFLWR "Go spinwalks. "; CFL
   
-  allocate(www%sss%numspinsets(nprocs),www%sss%numspindfsets(nprocs))
+  allocate(www%sss%numspinsets(www%startrank:www%endrank),&
+       www%sss%numspindfsets(www%startrank:www%endrank))
 
-  allocate(unpaired(www%numelec,www%numconfig), numunpaired(www%numconfig), msvalue(www%numconfig), numspinwalks(www%numconfig))
+  allocate(unpaired(www%numelec,www%configstart:www%configend), &
+       numunpaired(www%configstart:www%configend), &
+       msvalue(www%configstart:www%configend), &
+       numspinwalks(www%configstart:www%configend))
 
   call getnumspinwalks(www)
 
-  allocate(spinwalk(maxspinwalks,www%numconfig),spinwalkdirphase(maxspinwalks,www%numconfig))
-  allocate(configspinmatel(maxspinwalks+1,www%numconfig))
+  allocate(spinwalk(maxspinwalks,www%configstart:www%configend), &
+       spinwalkdirphase(maxspinwalks,www%configstart:www%configend))
+  allocate(configspinmatel(maxspinwalks+1,www%configstart:www%configend))
 
-  allocate(www%sss%spinsetsize(www%maxconfigsperproc,nprocs),www%sss%spinsetrank(www%maxconfigsperproc,nprocs))
+  allocate(www%sss%spinsetsize(www%maxconfigsperproc,www%startrank:www%endrank), &
+       www%sss%spinsetrank(www%maxconfigsperproc,www%startrank:www%endrank))
 
 end subroutine spinwalkinit
 
 
-subroutine spinwalkdealloc(sss)
-  use mpimod  !! nprocs
-  use spinwalkmod
-  implicit none
-  type(spintype) :: sss
-  integer :: i,iproc
-
-  deallocate(sss%spinsets, sss%spinsetsize, sss%spinsetrank)
-
-  do iproc=1,nprocs
-     do i=1,sss%numspinsets(iproc)
-        deallocate(sss%spinsetprojector(i,iproc)%mat,sss%spinsetprojector(i,iproc)%vects)
-     enddo
-  enddo
-  deallocate(sss%spinsetprojector)
-
-end subroutine spinwalkdealloc
+!subroutine spinwalkdealloc(sss)
+!  use mpimod  !! nprocs
+!  use spinwalkmod
+!  implicit none
+!  type(spintype) :: sss
+!  integer :: i,iproc
+!
+!  deallocate(sss%spinsets, sss%spinsetsize, sss%spinsetrank)
+!
+!  do iproc=www%startrank,www%endrank             !! oops
+!     do i=1,sss%numspinsets(iproc)
+!        deallocate(sss%spinsetprojector(i,iproc)%mat,sss%spinsetprojector(i,iproc)%vects)
+!     enddo
+!  enddo
+!  deallocate(sss%spinsetprojector)
+!
+!end subroutine spinwalkdealloc
 
 
 
@@ -82,7 +88,7 @@ subroutine spinwalks(www)
 
   OFLWR "Calculating spin walks.";  CFL
 
-  do iproc=1,nprocs
+  do iproc=www%startrank,www%endrank
 
      do config1=www%allbotconfigs(iproc),www%alltopconfigs(iproc)
 
@@ -150,7 +156,7 @@ subroutine spinsets_first(www)
 
   OFLWR "   ... go spinsets ..."; CFL
 
-  allocate(taken(www%numconfig), tempwalks(www%maxconfigsperproc))
+  allocate(taken(www%configstart:www%configend), tempwalks(www%maxconfigsperproc))
 
   www%sss%maxspinsetsize=0
 
@@ -158,7 +164,7 @@ subroutine spinsets_first(www)
 
      taken(:)=0
 
-     do iproc=1,nprocs
+     do iproc=www%startrank,www%endrank
 
         iset=0;    jset=0
 
@@ -225,17 +231,21 @@ subroutine spinsets_first(www)
               OFLWR "NUMSPINdfSETS ERROR ", www%sss%numspindfsets(iproc), jset;CFLST
            endif
         endif
-     enddo  !! iproc
+     enddo  !! iproc = startrank,endrank
 
-     do i=1,www%numconfig
+     if (www%sparseconfigflag.ne.0) then
+        call mympiimax(www%sss%maxspinsetsize)
+     endif
+
+     do i=www%configstart,www%configend
         if (taken(i).ne.1) then
-           OFLWR "TAKEN ERROR!!!!", i,taken(i);CFLST
+           print *, "TAKEN ERROR!!!!", myrank,i,taken(i); call mpistop()
         endif
      enddo
 
      j=0
      www%sss%maxnumspinsets=0; www%sss%maxnumspindfsets=0
-     do iproc=1,nprocs
+     do iproc=www%startrank,www%endrank
         if (www%sss%maxnumspinsets.lt.www%sss%numspinsets(iproc)) then
            www%sss%maxnumspinsets=www%sss%numspinsets(iproc)
         endif
@@ -246,16 +256,22 @@ subroutine spinsets_first(www)
            j=j+www%sss%spinsetsize(i,iproc)
         enddo
      enddo
+     if (www%sparseconfigflag.ne.0) then
+        call mympiimax(www%sss%maxnumspinsets)
+        call mympiimax(www%sss%maxnumspindfsets)
+        call mympiireduceone(j)
+     endif
      if (j.ne.www%numconfig) then
         OFLWR "SPINSETSIZE ERROR!! ", j, www%numconfig; CFLST
      endif
 
      if (jj==0) then
-        allocate(www%sss%spinsets(www%sss%maxspinsetsize,www%sss%maxnumspinsets,nprocs),www%sss%spindfsets(www%sss%maxspinsetsize,www%sss%maxnumspindfsets,nprocs),&
-             www%sss%spindfsetindex(www%sss%maxnumspindfsets,nprocs))
+        allocate(www%sss%spinsets(www%sss%maxspinsetsize,www%sss%maxnumspinsets,www%startrank:www%endrank), &
+             www%sss%spindfsets(www%sss%maxspinsetsize,www%sss%maxnumspindfsets,www%startrank:www%endrank),&
+             www%sss%spindfsetindex(www%sss%maxnumspindfsets,www%startrank:www%endrank))
      endif
 
-  enddo
+  enddo  !! jj
 
   deallocate(taken, tempwalks)
 
@@ -280,7 +296,7 @@ subroutine getnumspinwalks(www)
 
      OFLWR "Doing spin projector.";  CFL
 
-     do config1=1,www%numconfig
+     do config1=www%configstart,www%configend
         unpaired(:,config1)=0;    numunpaired(config1)=0;   msvalue(config1)=0
         thisconfig=www%configlist(:,config1)
         do idof=1,www%numelec
@@ -300,13 +316,13 @@ subroutine getnumspinwalks(www)
         enddo
      enddo
 
-     do config1=1,www%numconfig
+     do config1=www%configstart,www%configend
         iwalk=0
         do ii=1,numunpaired(config1)
            thisconfig=www%configlist(:,config1)
            idof=unpaired(ii,config1)
            if (idof==0) then
-              call openfile(); write(mpifileptr,*) "Unpaired error"; call closefile(); call mpistop()
+              OFLWR "Unpaired error"; CFLST
            endif
            firstspin=thisconfig(idof*2)
            thisconfig(idof*2)=mod(thisconfig(idof*2),2) + 1
@@ -314,7 +330,7 @@ subroutine getnumspinwalks(www)
               thatconfig=thisconfig
               jdof=unpaired(jj,config1)
               if (jdof==0) then
-                 call openfile(); write(mpifileptr,*) "Unpaired error"; call closefile(); call mpistop()
+                 OFLWR "Unpaired error"; CFLST
               endif
               secondspin=thatconfig(jdof*2)
               if (secondspin.ne.firstspin) then
@@ -332,12 +348,17 @@ subroutine getnumspinwalks(www)
 
   maxspinwalks=0
   avgspinwalks=0.d0
-  do config1=1,www%numconfig
+  do config1=www%configstart,www%configend
      avgspinwalks = avgspinwalks + numspinwalks(config1)
      if (maxspinwalks.lt.numspinwalks(config1)) then
         maxspinwalks=numspinwalks(config1)
      endif
   enddo
+
+  if (www%sparseconfigflag.ne.0) then
+     call mympirealreduceone(avgspinwalks)
+     call mympiimax(maxspinwalks)
+  endif
 
   avgspinwalks=avgspinwalks/www%numconfig
 
@@ -358,7 +379,8 @@ subroutine configspin_matel(www)
   integer ::     config2, config1,   iwalk, myind
 
      configspinmatel(:,:)=0.d0
-     do config1=1,www%numconfig
+
+     do config1=www%configstart,www%configend
         myind=1
         
 !! msvalue is 2x ms quantum number
@@ -410,7 +432,7 @@ subroutine configspinset_projector(www)
   OFLWR "Getting Spinset Projectors.  Numspinsets this process is ", www%sss%numspinsets(myrank)
   WRFL "                                        maxspinsetsize is ", www%sss%maxspinsetsize; CFL
 
-  allocate(www%sss%spinsetprojector(www%sss%maxnumspinsets,nprocs))
+  allocate(www%sss%spinsetprojector(www%sss%maxnumspinsets,www%startrank:www%endrank))
   allocate(spinvects(www%sss%maxspinsetsize,www%sss%maxspinsetsize), spinvals(www%sss%maxspinsetsize), &
        realprojector(www%sss%maxspinsetsize,www%sss%maxspinsetsize))
 
@@ -423,7 +445,7 @@ subroutine configspinset_projector(www)
 
   elim=0;  elimsets=0;  
 
-  do iproc=1,nprocs
+  do iproc=www%startrank,www%endrank
 
      iset=1
   
@@ -500,19 +522,30 @@ subroutine configspinset_projector(www)
   enddo
 
   deallocate(spinvects, spinvals, realprojector, work)
-  
+
+  if (www%sparseconfigflag.ne.0) then
+     call mympiireduceone(elim)
+     call mympiireduceone(elimsets)
+  endif
+
   OFLWR "...done.  Eliminated ", elimsets, " sets with total rank ", elim   ; CFL
 
-  do iproc=1,nprocs
+  do iproc=www%startrank,www%endrank
      i=0
      do ii=1,www%sss%numspinsets(iproc)
         i=i+www%sss%spinsetrank(ii,iproc)
      enddo
      if (i.ne.www%sss%spinsperproc(iproc)) then
-        OFLWR "CHECKMEERRR",iproc,i; CFLST
+        print *, " SPIN CHECKMEERRR",myrank,iproc,i; call mpistop()
      endif
   enddo
 
+  if (www%sparseconfigflag.ne.0) then
+     do iproc=1,nprocs
+        call mympiibcastone(www%sss%spinsperproc(iproc),iproc)
+        call mympiibcastone(www%sss%spindfsperproc(iproc),iproc)
+     enddo
+  endif
 
   www%sss%maxspinsperproc=0
   ii=0

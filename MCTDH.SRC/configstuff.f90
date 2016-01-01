@@ -84,13 +84,14 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
      endif
      if (myrank.eq.1) then
         call CONFIGEIG(fullconfigmatel(:,:),www%numdfbasis*numr,www%numdfbasis*numr, tempconfigvects, fullconfigvals)
+     endif
+
+     call mympibcast(tempconfigvects,1,www%numdfbasis*numr*www%numdfbasis*numr)
+     call mympibcast(fullconfigvals,1,www%numdfbasis*numr)
+
         do i=1,www%numdfbasis*numr
            call basis_transformfrom_all(www,numr,tempconfigvects(:,i),fullconfigvects(:,i))
         enddo
-     endif
-
-     call mympibcast(fullconfigvects,1,www%numdfbasis*numr*www%numconfig*numr)
-     call mympibcast(fullconfigvals,1,www%numdfbasis*numr)
 
      if (printflag.ne.0) then
         OFLWR "  -- Nonsparse eigenvals --"

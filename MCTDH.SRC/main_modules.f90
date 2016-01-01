@@ -245,11 +245,13 @@ module walkmod
      integer :: allspinproject=0
      integer :: restrictms=0
 
+     integer :: sparseconfigflag=0
+
      integer :: numconfig=-1
      integer,allocatable :: configsperproc(:), alltopconfigs(:), allbotconfigs(:)
      integer :: maxconfigsperproc
      integer :: botconfig=-1,topconfig=-1
-     integer :: configstart=-1,configend=-1
+     integer :: configstart=-1,configend=-1, startrank,endrank
      integer :: firstconfig,lastconfig,localnconfig
      integer :: totadim=-1
 

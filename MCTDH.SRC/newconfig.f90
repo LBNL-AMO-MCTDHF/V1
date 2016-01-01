@@ -860,14 +860,20 @@ endif
   
   www%botconfig=www%allbotconfigs(myrank)
   www%topconfig=www%alltopconfigs(myrank)
-  
+
+  www%sparseconfigflag=sparseconfigflag
+
   if (sparseconfigflag.eq.0) then
      www%configstart=1
      www%configend=www%numconfig
      www%parconsplit=0
+     www%startrank=1
+     www%endrank=nprocs
   else
      www%configstart=www%botconfig
      www%configend=www%topconfig
+     www%startrank=myrank
+     www%endrank=myrank
   endif
 
   www%configsperproc(:)=www%alltopconfigs(:) - www%allbotconfigs(:) + 1
