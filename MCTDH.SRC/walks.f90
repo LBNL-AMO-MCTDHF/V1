@@ -114,8 +114,6 @@ subroutine walkalloc(www)
 
   allocate( www%numsinglewalks(www%configstart:www%configend) , www%numdoublewalks(www%configstart:www%configend) )
   allocate( www%numsinglediagwalks(www%configstart:www%configend) , www%numdoublediagwalks(www%configstart:www%configend) )
-  allocate( www%firstsinglewalkbyproc(nprocs,www%configstart:www%configend), www%lastsinglewalkbyproc(nprocs,www%configstart:www%configend) )
-  allocate( www%firstdoublewalkbyproc(nprocs,www%configstart:www%configend), www%lastdoublewalkbyproc(nprocs,www%configstart:www%configend) )
 
 
   call getnumwalks(www)
@@ -413,47 +411,6 @@ subroutine walks(www)
 
   call mpibarrier()
   
-  do config1=www%botconfig,www%topconfig
-
-     www%firstsinglewalkbyproc(1,config1)=1
-     iproc=1
-     do iwalk=1,www%numsinglewalks(config1)
-        do while (www%singlewalk(iwalk,config1).gt.www%alltopconfigs(iproc))
-           www%lastsinglewalkbyproc(iproc,config1)=iwalk-1
-           iproc=iproc+1
-           www%firstsinglewalkbyproc(iproc,config1)=iwalk
-        enddo
-     enddo
-     www%lastsinglewalkbyproc(iproc,config1)=www%numsinglewalks(config1)
-     www%firstsinglewalkbyproc(iproc+1:nprocs,config1)=www%numsinglewalks(config1)+1
-     www%lastsinglewalkbyproc(iproc+1:nprocs,config1)=www%numsinglewalks(config1)
-
-     www%firstdoublewalkbyproc(1,config1)=1
-     iproc=1
-     do iwalk=1,www%numdoublewalks(config1)
-        do while (www%doublewalk(iwalk,config1).gt.www%alltopconfigs(iproc))
-           www%lastdoublewalkbyproc(iproc,config1)=iwalk-1
-           iproc=iproc+1
-           www%firstdoublewalkbyproc(iproc,config1)=iwalk
-        enddo
-     enddo
-     www%lastdoublewalkbyproc(iproc,config1)=www%numdoublewalks(config1)
-     www%firstdoublewalkbyproc(iproc+1:nprocs,config1)=www%numdoublewalks(config1)+1
-     www%lastdoublewalkbyproc(iproc+1:nprocs,config1)=www%numdoublewalks(config1)
-
-  end do
-
-  call mpibarrier()
-
-
-  if (sparseconfigflag.eq.0) then
-     isize=nprocs
-     call mpiallgather_i(www%firstsinglewalkbyproc(:,:),   www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
-     call mpiallgather_i(www%lastsinglewalkbyproc(:,:),   www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
-     call mpiallgather_i(www%firstdoublewalkbyproc(:,:),   www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
-     call mpiallgather_i(www%lastdoublewalkbyproc(:,:),   www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
-  endif
-
   if (sparseconfigflag.eq.0.and.www%maxsinglewalks.ne.0) then
      isize=2*www%maxsinglewalks
      call mpiallgather_i(www%singlewalkopspf,   www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)

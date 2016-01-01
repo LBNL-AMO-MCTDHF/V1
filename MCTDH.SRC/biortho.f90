@@ -828,11 +828,6 @@ subroutine biomatvec_byproc(firstproc,lastproc,x,y)
   do i=biopointer%wwbio%botconfig,biopointer%wwbio%topconfig
 !! summing over nonconjugated second index in s(:), good
 
-!!$     do j=biopointer%wwbio%firstsinglewalkbyproc(firstproc,i), &
-!!$          biopointer%wwbio%lastsinglewalkbyproc(lastproc,i) 
-!!$        y(:,i) = y(:,i) + biopointer%smo(biopointer%wwbio%singlewalkopspf(1,j,i),biopointer%wwbio%singlewalkopspf(2,j,i)) * biopointer%wwbio%singlewalkdirphase(j,i) * x(:,biopointer%wwbio%singlewalk(j,i)) 
-!!$     enddo
-
      do ihop=biopointer%wwbio%firstsinglehopbyproc(firstproc,i), &
           biopointer%wwbio%lastsinglehopbyproc(lastproc,i) 
         csum=0d0
