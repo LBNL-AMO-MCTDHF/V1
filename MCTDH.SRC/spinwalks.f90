@@ -29,7 +29,7 @@ subroutine spinwalkinit(www)
   implicit none
   type(walktype) :: www
 
-  OFLWR "Go spinwalks. "; CFL
+  OFLWR "Go spinwalk init. "; CFL
   
   allocate(www%sss%numspinsets(www%startrank:www%endrank),&
        www%sss%numspindfsets(www%startrank:www%endrank))
@@ -39,6 +39,10 @@ subroutine spinwalkinit(www)
        msvalue(www%configstart:www%configend), &
        numspinwalks(www%configstart:www%configend))
 
+  www%sss%numspinsets(:)=(-99);   www%sss%numspindfsets(:)=(-99)
+  unpaired(:,:)=(-99);   numunpaired(:)=(-99)
+  msvalue(:)=(-99);   numspinwalks(:)=(-99)
+
   call getnumspinwalks(www)
 
   allocate(spinwalk(maxspinwalks,www%configstart:www%configend), &
@@ -47,6 +51,14 @@ subroutine spinwalkinit(www)
 
   allocate(www%sss%spinsetsize(www%maxconfigsperproc,www%startrank:www%endrank), &
        www%sss%spinsetrank(www%maxconfigsperproc,www%startrank:www%endrank))
+
+  spinwalk(:,:)=(-99);  spinwalkdirphase(:,:)=(-99)
+  configspinmatel(:,:)=(-99)
+  www%sss%spinsetsize(:,:)=(-99);   www%sss%spinsetrank(:,:)=(-99)
+
+  call mpibarrier()
+
+  OFLWR "Done spinwalk init."; CFL
 
 end subroutine spinwalkinit
 
@@ -269,6 +281,9 @@ subroutine spinsets_first(www)
         allocate(www%sss%spinsets(www%sss%maxspinsetsize,www%sss%maxnumspinsets,www%startrank:www%endrank), &
              www%sss%spindfsets(www%sss%maxspinsetsize,www%sss%maxnumspindfsets,www%startrank:www%endrank),&
              www%sss%spindfsetindex(www%sss%maxnumspindfsets,www%startrank:www%endrank))
+        www%sss%spinsets(:,:,:)=(-99)
+        www%sss%spindfsets(:,:,:)=(-99)
+        www%sss%spindfsetindex(:,:)=(-99)
      endif
 
   enddo  !! jj
