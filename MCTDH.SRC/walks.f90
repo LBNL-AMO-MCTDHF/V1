@@ -113,8 +113,9 @@ subroutine walkalloc(www)
 !! 06-2015 configpserproc also in newconfig.f90
 
   allocate( www%numsinglewalks(www%configstart:www%configend) , www%numdoublewalks(www%configstart:www%configend) )
+  www%numsinglewalks(:)=(-1);  www%numdoublewalks(:)=(-1)
   allocate( www%numsinglediagwalks(www%configstart:www%configend) , www%numdoublediagwalks(www%configstart:www%configend) )
-
+  www%numsinglediagwalks(:)=(-1);  www%numdoublediagwalks(:)=(-1)
 
   call getnumwalks(www)
   OFLWR "Allocating singlewalks"; CFL
@@ -201,7 +202,7 @@ subroutine walks(www)
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, jspf, iispf, jjspf, config2, config1, dirphase, &
        iind, flag, idof, iidof, jdof, iwalk, reorder, getconfiguration,getmval,idiag
   logical :: allowedconfig0
-  integer :: thisconfig(www%ndof), thatconfig(www%ndof), temporb(2), temporb2(2), isize, iproc, &
+  integer :: thisconfig(www%ndof), thatconfig(www%ndof), temporb(2), temporb2(2), isize, &
        listorder(www%maxdoublewalks+www%maxsinglewalks)
 
   !!  ***********   SINGLES  **********
@@ -470,10 +471,6 @@ subroutine getnumwalks(www)
   character(len=3) :: iilab
   character(len=4) :: iilab0
 
-  if (nprocs.gt.999) then
-  print *, "redim getnumwalks";  call mpistop()
-  endif
-
   write(iilab0,'(I4)') myrank+1000
   iilab(:)=iilab0(2:4)
   
@@ -699,11 +696,15 @@ subroutine hops(www)
   allocate( www%singlehopdiagflag(www%configstart:www%configend),&
        www%doublehopdiagflag(www%configstart:www%configend))
 
-  www%singlediaghop(:)=(-999)
-  www%doublediaghop(:)=(-999)
+  www%numsinglehops(:)=(-99);  www%numdoublehops(:)=(-99)
+  www%singlediaghop(:)=(-99);  www%doublediaghop(:)=(-99)
+  www%singlehopdiagflag(:)=(-99);  www%doublehopdiagflag(:)=(-99)
 
   allocate( www%firstsinglehopbyproc(nprocs,www%configstart:www%configend), www%lastsinglehopbyproc(nprocs,www%configstart:www%configend) )
   allocate( www%firstdoublehopbyproc(nprocs,www%configstart:www%configend), www%lastdoublehopbyproc(nprocs,www%configstart:www%configend) )
+
+  www%firstsinglehopbyproc(:,:)=(-99);  www%lastsinglehopbyproc(:,:)=(-99)
+  www%firstdoublehopbyproc(:,:)=(-99);  www%lastdoublehopbyproc(:,:)=(-99)
 
   do ii=0,1
 
@@ -720,6 +721,11 @@ subroutine hops(www)
              www%doublehop(www%maxnumdoublehops,www%configstart:www%configend),&
              www%doublehopwalkstart(www%maxnumdoublehops,www%configstart:www%configend),&
              www%doublehopwalkend(www%maxnumdoublehops,www%configstart:www%configend))
+        www%singlehop(:,:)=(-99)
+        www%singlehopwalkstart(:,:)=(-99) 
+        www%doublehop(:,:)=(-99)
+        www%doublehopwalkstart(:,:)=(-99)
+        www%doublehopwalkend(:,:)=(-99)
      endif
 
      if (ii.eq.0) then
