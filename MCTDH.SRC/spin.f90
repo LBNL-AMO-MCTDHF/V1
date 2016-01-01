@@ -12,27 +12,13 @@ subroutine configspin_project(www,nr, vector)
   integer,intent(in) :: nr
   DATATYPE,intent(inout) :: vector(nr,www%firstconfig:www%lastconfig)
 
-  call configspin_project_local(www,nr,vector(:,www%botconfig))
+  call configspin_project_general(www,nr,vector(:,www%configstart),www%startrank,www%endrank)
 
-  if (www%parconsplit.eq.0) then
+  if (www%parconsplit.eq.0.and.www%sparseconfigflag.ne.0) then
      call mpiallgather(vector,www%numconfig*nr,www%configsperproc(:)*nr,www%maxconfigsperproc*nr)
   endif
 
 end subroutine configspin_project
-
-
-
-subroutine configspin_project_local(www,nr,vector)
-  use walkmod
-  use mpimod   !! myrank
-  implicit none
-  type(walktype),intent(in) :: www
-  integer,intent(in) :: nr
-  DATATYPE,intent(inout) :: vector(nr,www%botconfig:www%topconfig)
-
-  call configspin_project_general(www,nr,vector,myrank,myrank)
-
-end subroutine configspin_project_local
 
 
 
@@ -73,21 +59,6 @@ end subroutine configspin_project_general
 
 
 
-subroutine configspin_transformto_local(www,nblock,invector,outvector)
-  use walkmod
-  use mpimod !! myrank
-  implicit none
-  type(walktype),intent(in) :: www
-  integer :: nblock
-  DATATYPE,intent(in) :: invector(nblock,www%botconfig:www%topconfig)
-  DATATYPE,intent(out) :: outvector(nblock,www%sss%botspin:www%sss%topspin)
-
-  call configspin_transformto_general(www,nblock,invector,outvector,myrank,myrank)
-
-end subroutine configspin_transformto_local
-
-
-
 subroutine configspin_transformto_general(www,nblock,invector,outvector,iproc,jproc)
   use fileptrmod
   use walkmod
@@ -125,21 +96,6 @@ subroutine configspin_transformto_general(www,nblock,invector,outvector,iproc,jp
   enddo
 
 end subroutine configspin_transformto_general
-
-
-
-subroutine dfspin_transformto_local(www,nblock,invector,outvector)
-  use walkmod
-  use mpimod  !! myrank
-  implicit none
-  type(walktype),intent(in) :: www
-  integer :: nblock
-  DATATYPE,intent(in) :: invector(nblock,www%botdfconfig:www%topdfconfig)
-  DATATYPE,intent(out) :: outvector(nblock,www%sss%botdfspin:www%sss%topdfspin)
-
-  call dfspin_transformto_general(www,nblock,invector,outvector,myrank,myrank)
-
-end subroutine dfspin_transformto_local
 
 
 
@@ -186,21 +142,6 @@ end subroutine dfspin_transformto_general
 
 
 
-subroutine configspin_transformfrom_local(www,nblock,invector,outvector)
-  use walkmod
-  use mpimod !! nprocs
-  implicit none
-  type(walktype),intent(in) :: www
-  integer :: nblock
-  DATATYPE,intent(out) :: outvector(nblock,www%botconfig:www%topconfig)
-  DATATYPE,intent(in) :: invector(nblock,www%sss%botspin:www%sss%topspin)
-
-  call configspin_transformfrom_general(www,nblock,invector,outvector,myrank,myrank)
-
-end subroutine configspin_transformfrom_local
-
-
-
 subroutine configspin_transformfrom_general(www,nblock,invector,outvector,iproc,jproc)
   use fileptrmod
   use walkmod
@@ -240,20 +181,6 @@ subroutine configspin_transformfrom_general(www,nblock,invector,outvector,iproc,
 
 end subroutine configspin_transformfrom_general
 
-
-
-subroutine dfspin_transformfrom_local(www,nblock,invector,outvector)
-  use walkmod
-  use mpimod  !! myrank
-  implicit none
-  type(walktype),intent(in) :: www
-  integer :: nblock
-  DATATYPE,intent(in) :: invector(nblock,www%sss%botdfspin:www%sss%topdfspin)
-  DATATYPE,intent(out) :: outvector(nblock,www%botdfconfig:www%topdfconfig)
-
-  call dfspin_transformfrom_general(www,nblock,invector,outvector,myrank,myrank)
-
-end subroutine dfspin_transformfrom_local
 
 
 subroutine dfspin_transformfrom_general(www,nblock,invector,outvector,iproc,jproc)

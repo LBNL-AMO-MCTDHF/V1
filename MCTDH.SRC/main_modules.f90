@@ -261,12 +261,12 @@ module walkmod
      integer :: botdfconfig=-1,topdfconfig=-1
 
      integer :: numbasis=0
-     integer, allocatable :: basisperproc(:)
+     integer, allocatable :: basisperproc(:), allbotbasis(:), alltopbasis(:)
      integer ::       maxbasisperproc
      integer :: botbasis=-1,topbasis=-1
      
      integer :: numdfbasis=0
-     integer, allocatable :: dfbasisperproc(:)
+     integer, allocatable :: dfbasisperproc(:), allbotdfbasis(:), alltopdfbasis(:)
      integer ::       maxdfbasisperproc
      integer :: botdfbasis=-1,topdfbasis=-1
 
