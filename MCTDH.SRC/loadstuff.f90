@@ -230,12 +230,19 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
   integer, intent(in) :: iunit, dimtypes(3),outdims(3),readnspf,outnspf,readcflag,&
        bigreaddims(3),in_gridshift(3)
   DATATYPE,intent(out) :: outspfs(outdims(1),outdims(2),outdims(3),outnspf)
-  real*8,allocatable :: realspfs(:,:,:,:), bigoutrealspfs(:,:,:,:)
-  complex*16,allocatable :: cspfs(:,:,:,:), bigoutcspfs(:,:,:,:)
-  real*8 :: outrealspfs(outdims(1),outdims(2),outdims(3),outnspf)  !!AUTOMATIC
-  complex*16 :: outcspfs(outdims(1),outdims(2),outdims(3),outnspf) !!AUTOMATIC
+  real*8,allocatable :: realspfs(:,:,:,:), bigoutrealspfs(:,:,:,:), outrealspfs(:,:,:,:)
+  complex*16,allocatable :: cspfs(:,:,:,:), bigoutcspfs(:,:,:,:), outcspfs(:,:,:,:)
   integer :: numloaded,itop(3),ibot(3),otop(3),obot(3),idim,flag, amin(3),amax(3),bmin(3),bmax(3),&
        ispf, bigoutdims(3),ooshift,rrshift
+
+  if (readcflag.eq.0) then
+     allocate(outrealspfs(outdims(1),outdims(2),outdims(3),outnspf),&
+          outcspfs(1,1,1,1))
+  else
+     allocate(outrealspfs(1,1,1,1),&
+          outcspfs(outdims(1),outdims(2),outdims(3),outnspf))
+  endif
+  outrealspfs=0; outcspfs=0
 
   numloaded = min(outnspf,readnspf)
 
@@ -434,7 +441,7 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
      enddo
   endif
 
-  deallocate(realspfs,bigoutrealspfs,cspfs,bigoutcspfs)
+  deallocate(realspfs,bigoutrealspfs,cspfs,bigoutcspfs,outrealspfs,outcspfs)
 
 end subroutine spf_read0
 

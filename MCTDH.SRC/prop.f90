@@ -417,7 +417,7 @@ subroutine propspfs(inspfs,outspfs,tin, tout,inlinearflag,inspfflag,numiters)
   implicit none
   DATATYPE,intent(in) :: inspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-  DATATYPE :: tempspfs2(spfsize,nspf)            !! AUTOMATIC
+  DATATYPE,allocatable :: tempspfs2(:,:)
   integer :: inlinearflag,numiters,jj,k,inspfflag
   real*8 :: tout, tin,timea,timeb
 
@@ -428,6 +428,9 @@ subroutine propspfs(inspfs,outspfs,tin, tout,inlinearflag,inspfflag,numiters)
      return
   endif
 
+  allocate(tempspfs2(spfsize,nspf))
+  tempspfs2(:,:)=0
+
   do k=1,littlesteps
      timea=tin+(tout-tin)*(k-1)/littlesteps;     timeb=tin+(tout-tin)*k/littlesteps
 
@@ -435,6 +438,8 @@ subroutine propspfs(inspfs,outspfs,tin, tout,inlinearflag,inspfflag,numiters)
      numiters=numiters+jj
      outspfs(:,:)=tempspfs2(:,:)
   enddo
+
+  deallocate(tempspfs2)
 
 end subroutine propspfs
 

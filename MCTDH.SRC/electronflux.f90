@@ -720,12 +720,14 @@ function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart,www)
   DATATYPE :: ke(www%nspf,www%nspf),pe(www%nspf,www%nspf),V2(www%nspf,www%nspf,www%nspf,www%nspf),&
        yderiv(www%nspf,www%nspf)
   DATATYPE :: INVR,INVRSQ,fluxeval00,PRODERIV,BONDKE
-  DATATYPE :: aket(numr,www%numconfig)  !! AUTOMATIC
+  DATATYPE,allocatable :: aket(:,:)
 
   if (flag.ne.1.or.fluxoptype.ne.1.or.ipart.ne.0) then
      OFLWR "maybe checkme debug"; CFLST
   endif
 
+  allocate(aket(numr,www%numconfig))
+  aket(:,:)=0d0
   aket(:,www%firstconfig:www%lastconfig)=in_aket(:,:)
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
@@ -838,6 +840,7 @@ function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart,www)
     endif  !! ipart
   enddo
 
+  deallocate(aket)
   call mympireduceone(fluxeval00)
 
 end function fluxeval00

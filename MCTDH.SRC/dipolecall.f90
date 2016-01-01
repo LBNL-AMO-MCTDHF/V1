@@ -50,7 +50,9 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
   real*8 :: estep, thistime, myenergy,sum1,sum2,xsecunits, windowfunct
   character (len=7) :: number
   character :: outftname*(*), outename*(*)
-  complex*16 ::  fftrans(0:numdata), eft(0:numdata)   !! AUTOMATIC
+  complex*16,allocatable ::  fftrans(:),eft(:)
+
+  allocate(fftrans(0:numdata), eft(0:numdata))
 
   fftrans=0.d0; eft=0d0
 
@@ -140,6 +142,8 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
         close(171)
      endif
   endif
+
+  deallocate(fftrans,eft)
 
 end subroutine dipolecall
 

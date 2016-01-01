@@ -609,8 +609,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
        drivingavectorszz(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a1p(numr,numvects), a2p(numr,numvects),&
        tempconmatels(www%nspf,www%nspf),dot
-  DATATYPE,allocatable :: bigavector(:,:,:),bigavectorp(:,:,:)
-  DATATYPE :: avectorp(numr,www%firstconfig:www%lastconfig,numvects)  !! AUTOMATIC
+  DATATYPE,allocatable :: bigavector(:,:,:),bigavectorp(:,:,:), avectorp(:,:,:)
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,     iwalk, info, kspf, lspf, ind, jind, &
        lind, llind, flag, isize, iwhich,  iiyy,maxii,imc
   integer :: ipiv(liosize)
@@ -626,8 +625,9 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
      OFLWR "Err, get_denconstraint1 (with lioden) can only be used for forward time propagation. "; CFLST
   endif
 
-  allocate(bigavector(numr,www%numconfig,numvects), bigavectorp(numr,www%numconfig,numvects))
-  bigavector(:,:,:)=0d0; bigavectorp(:,:,:)=0d0
+  allocate(bigavector(numr,www%numconfig,numvects), bigavectorp(numr,www%numconfig,numvects), &
+       avectorp(numr,www%firstconfig:www%lastconfig,numvects))
+  bigavector(:,:,:)=0d0; bigavectorp(:,:,:)=0d0; avectorp(:,:,:)=0d0
 
   lioden=0.d0
 
@@ -877,7 +877,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
   end do
 
 
-  deallocate(bigavector,bigavectorp)
+  deallocate(bigavector,bigavectorp,avectorp)
 
 end subroutine get_denconstraint1_0
 
@@ -920,8 +920,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   integer :: ipairs(2,www%nspf*(www%nspf-1))
   DATATYPE ::  a1(numvects), a2(numvects), a1p(numvects), a2p(numvects),dot
   DATATYPE :: tempconmatels(www%nspf,www%nspf), rhomat(www%nspf,www%nspf,www%nspf,www%nspf)
-  DATATYPE,allocatable :: bigavector(:,:,:), bigavectorp(:,:,:)
-  DATATYPE :: avectorp(numr,www%firstconfig:www%lastconfig,numvects)    !! AUTOMATIC
+  DATATYPE,allocatable :: bigavector(:,:,:), bigavectorp(:,:,:),avectorp(:,:,:)
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,  iwalk,ii,  info, kspf, &
        lspf, ind, jind, llind, flag, isize,   iiyy,maxii,imc,j
   integer,allocatable :: ipiv(:)
@@ -934,8 +933,9 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      return
   endif
 
-  allocate(bigavector(numr,www%numconfig,numvects), bigavectorp(numr,www%numconfig,numvects))
-  bigavector(:,:,:)=0d0; bigavectorp(:,:,:)=0d0
+  allocate(bigavector(numr,www%numconfig,numvects), bigavectorp(numr,www%numconfig,numvects),&
+       avectorp(numr,www%firstconfig:www%lastconfig,numvects))
+  bigavector(:,:,:)=0d0; bigavectorp(:,:,:)=0d0; avectorp(:,:,:)=0d0
 
   rhomat(:,:,:,:)=0d0
 
@@ -1146,7 +1146,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      
   end do
 
-  deallocate(bigavector,bigavectorp)
+  deallocate(bigavector,bigavectorp,avectorp)
 
 end subroutine new_get_denconstraint1_0
 

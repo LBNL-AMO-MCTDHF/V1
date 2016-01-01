@@ -196,9 +196,11 @@ subroutine aaonedinit(www,inavector)
   implicit none
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: inavector(www%totadim)
-  DATATYPE :: jacaa(www%totadim), jacaamult(www%totadim) !! AUTOMATIC
+  DATATYPE,allocatable :: jacaa(:),jacaamult(:)
   DATATYPE :: dot, csum2
 
+  allocate(jacaa(www%totadim), jacaamult(www%totadim))
+  jacaamult(:)=0
   jacaa(:)=inavector(:)
 
   call basis_project(www,numr,jacaa)
@@ -217,6 +219,8 @@ subroutine aaonedinit(www,inavector)
   if (www%parconsplit.ne.0) then
      call mympireduceone(quadexpect)
   endif
+
+  deallocate(jacaa,jacaamult)
 
 end subroutine aaonedinit
 

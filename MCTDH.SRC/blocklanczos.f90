@@ -12,7 +12,7 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
   integer :: printflag,maxdim,vdim,ii
   DATATYPE, intent(out) :: outvalues(order)
   DATATYPE, intent(inout) :: outvectors(numr,www%firstconfig:www%lastconfig,order)
-  DATATYPE :: workvectorsspin(numr,www%botdfbasis:www%topdfbasis,order)  !! AUTOMATIC
+  DATATYPE,allocatable :: workvectorsspin(:,:,:)
   external :: parblockconfigmult
 
   printflag=max(lanprintflag,inprintflag)
@@ -20,6 +20,8 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
   if (sparseconfigflag.eq.0) then
      OFLWR "error, can't use blocklanczos for a-vector with sparseconfigflag=0"; CFLST
   endif
+
+  allocate(workvectorsspin(numr,www%botdfbasis:www%topdfbasis,order))
 
   if (www%topdfbasis-www%botdfbasis+1.ne.0) then
      workvectorsspin(:,:,:)=0d0
@@ -43,6 +45,8 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
         call basis_transformfrom_local(www,numr,workvectorsspin(:,:,ii),outvectors(:,www%botconfig,ii))
      enddo
   endif
+
+  deallocate(workvectorsspin)
 
   if (www%parconsplit.eq.0) then
      do ii=1,order

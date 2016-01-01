@@ -99,6 +99,8 @@ end subroutine mpiorbsets
 
 #ifdef MPIFLAG
 
+!! NOTE DOUBLE DIMENSION orbvector !!
+
 subroutine mpiorbgather(orbvector,insize)    !! insize=spfsize except debug
   use mpimod
   use mpi_orbsetmod
@@ -232,20 +234,33 @@ subroutine mpistop()
 end subroutine mpistop
 
 
+subroutine mpiabort()
+  use mpimod
+  use fileptrmod
+  implicit none
+  integer :: ierr
+  call mpi_abort(ierr)
+  OFLWR "MCTDHF ABORT!";CFL
+  stop
+end subroutine mpiabort
+
+
 subroutine mympireduce(input, isize)
   use mpimod
   use fileptrmod
   implicit none
   integer :: ierr, isize
   DATATYPE,intent(inout) :: input(isize)
-  DATATYPE :: output(isize)           !! AUTOMATIC
+  DATATYPE,allocatable :: output(:)
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  allocate(output(isize))
   ierr=0
   call MPI_allreduce( input, output, isize, MPIDATATYPE, MPI_SUM, MPI_COMM_WORLD , ierr)
   input=output
   if (ierr/=0) then
      OFLWR "ERR mympireduce!";   CFLST
   endif
+  deallocate(output)
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympireduce
 
@@ -256,14 +271,16 @@ subroutine mympirealreduce(input, isize)
   implicit none
   integer :: ierr, isize
   real*8,intent(inout) :: input(isize)
-  real*8 :: output(isize)           !! AUTOMATIC
+  real*8,allocatable :: output(:)
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  allocate(output(isize))
   ierr=0
   call MPI_allreduce( input, output, isize, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD , ierr)
   input=output
   if (ierr/=0) then
      OFLWR "ERR mympireduce!";   CFLST
   endif
+  deallocate(output)
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympirealreduce
 
