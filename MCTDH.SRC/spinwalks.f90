@@ -442,10 +442,10 @@ subroutine configspinset_projector(www)
   logical :: spinallowed,allowedconfig0
 !  DATATYPE :: doublevects(maxspinsetsize**2)
 !  real*8 :: doublevals(maxspinsetsize)
-  
-  OFLWR "Getting Spinset Projectors.  Numspinsets this process is ", www%sss%numspinsets(myrank)
-  WRFL "                                        maxspinsetsize is ", www%sss%maxspinsetsize; CFL
 
+  call mpibarrier()
+  OFLWR "Getting Spinset Projectors.  Numspinsets this process is ", www%sss%numspinsets(myrank);CFL
+  call mpibarrier()
   allocate(www%sss%spinsetprojector(www%sss%maxnumspinsets,www%startrank:www%endrank))
   allocate(spinvects(www%sss%maxspinsetsize,www%sss%maxspinsetsize), spinvals(www%sss%maxspinsetsize), &
        realprojector(www%sss%maxspinsetsize,www%sss%maxspinsetsize))
@@ -458,6 +458,10 @@ subroutine configspinset_projector(www)
   www%sss%spinsperproc(:)=0; www%sss%spindfsperproc(:)=0
 
   elim=0;  elimsets=0;  
+
+  call mpibarrier()
+  OFLWR "                                       maxspinsetsize is ", www%sss%maxspinsetsize; CFL
+  call mpibarrier()
 
   do iproc=www%startrank,www%endrank
 
@@ -536,13 +540,16 @@ subroutine configspinset_projector(www)
   enddo
 
   deallocate(spinvects, spinvals, realprojector, work)
+  call mpibarrier()
 
   if (www%sparseconfigflag.ne.0) then
      call mympiireduceone(elim)
      call mympiireduceone(elimsets)
   endif
 
+  call mpibarrier()
   OFLWR "...done.  Eliminated ", elimsets, " sets with total rank ", elim   ; CFL
+  call mpibarrier()
 
   do iproc=www%startrank,www%endrank
      i=0
@@ -601,7 +608,7 @@ subroutine configspinset_projector(www)
      www%sss%localnspin=www%sss%spinsperproc(myrank)
   endif
 
-
+  call mpibarrier()
   OFLWR
   WRFL  "This processor: "
   WRFL "      spin sets        ", www%sss%numspinsets(myrank)
@@ -613,7 +620,7 @@ subroutine configspinset_projector(www)
   WRFL "      spin rank, S^2 = ", (www%sss%spinrestrictval/2.d0*(www%sss%spinrestrictval/2.d0+1)), " is ", www%sss%numspinconfig, " out of ", www%numconfig
   WRFL "      df spin rank         ", www%sss%numspindfconfig, " of ", www%numdfconfigs
   WRFL; CFL
-
+  call mpibarrier()
   
 end subroutine configspinset_projector
 
