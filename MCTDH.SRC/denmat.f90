@@ -186,9 +186,9 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
        avector1(numpoints,www%firstconfig:www%lastconfig,howmany)
   DATAECS,intent(in) :: rvector(numpoints)
   DATATYPE,intent(out) :: denmat(www%nspf,www%nspf)
-  DATATYPE :: a1(numpoints,howmany), a2(numpoints,howmany), mydenmat(www%nspf,www%nspf), dot
+  DATATYPE :: a1(numpoints,howmany), a2(numpoints,howmany), mydenmat(www%nspf,www%nspf), dot, csum
   DATATYPE, allocatable :: avector2(:,:,:)
-  integer :: config1,config2,  ispf,jspf,  dirphase, iwalk, ii
+  integer :: config1,config2,  ispf,jspf,  dirphase, iwalk, ii, ihop
 
   allocate(avector2(numpoints,www%numconfig,howmany))
   avector2(:,:,:)=0d0
@@ -196,7 +196,6 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
   avector2(:,www%firstconfig:www%lastconfig,:) = in_avector2(:,:,:)
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
-!! AND DO HOPS
 
   if (www%parconsplit.ne.0) then
      do ii=1,howmany
@@ -208,7 +207,7 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
 
   !! single off diagonal walks
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ii,iwalk,config2,dirphase,ispf,jspf,mydenmat,a1,a2) REDUCTION(+:denmat)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ii,iwalk,config2,dirphase,ispf,jspf,mydenmat,a1,a2,csum,ihop) REDUCTION(+:denmat)
 
   mydenmat(:,:)=0.d0
 
@@ -219,16 +218,22 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
         a1(:,ii)=avector1(:,config1,ii) * rvector(:)
      enddo
 
-     do iwalk=1,www%numsinglewalks(config1)
-        config2=www%singlewalk(iwalk,config1)
-        dirphase=www%singlewalkdirphase(iwalk,config1)
+!!$      do iwalk=1,www%numsinglewalks(config1)
+!!$        config2=www%singlewalk(iwalk,config1)
+     do ihop=1,www%numsinglehops(config1)
+        config2=www%singlehop(ihop,config1)
+
         a2(:,:)=avector2(:,config2,:)
+        csum=dot(a2(:,:),a1(:,:),numpoints*howmany)
+
+        do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
+
+        dirphase=www%singlewalkdirphase(iwalk,config1)
         ispf=www%singlewalkopspf(1,iwalk,config1)  !! goes with config1
         jspf=www%singlewalkopspf(2,iwalk,config1)  !! goes with config2
 
-
         mydenmat(ispf,jspf)=mydenmat(ispf,jspf)+ &
-             dot(a2(:,:),a1(:,:),numpoints*howmany)*dirphase
+             csum*dirphase
 
 !!$!!  ONCE AND FOR ALL 2014           :                     RIGHT MULTIPLYING!!!
 !!$           denmat(ispf,jspf)=denmat(ispf,jspf)+ &
@@ -236,6 +241,8 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
 !!$!! NOT
 !!$!!           denmat(jspf,ispf)=denmat(jspf,ispf)+ &
 !!$!!                dirphase*a1*CONJUGATE(a2)
+
+        enddo
 
      enddo
   enddo
@@ -315,7 +322,6 @@ subroutine getoccupations(www,in_avector, numpoints, occupations)
   avector(:,www%firstconfig:www%lastconfig) = in_avector(:,:)
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
-!! AND DO HOPS
 
   if (www%parconsplit.ne.0) then
      call mpiallgather(avector,www%numconfig*numpoints,www%configsperproc(:)*numpoints,www%maxconfigsperproc*numpoints)
