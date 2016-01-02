@@ -505,7 +505,7 @@ end subroutine projeflux_double_time_int
 subroutine projeflux_op_onee(inspfs)
   use parameters
   implicit none
-  DATATYPE,intent(in) :: inspfs(spfsize,numr)
+  DATATYPE,intent(inout) :: inspfs(spfsize,numr)
   DATATYPE,allocatable :: outspfs(:,:),ttempspf(:)
   integer :: r
 
@@ -517,7 +517,7 @@ subroutine projeflux_op_onee(inspfs)
      outspfs(:,r)=outspfs(:,r)+ttempspf(:);     outspfs(:,r) = outspfs(:,r) / bondpoints(r)
   enddo
 !! scale correctly and clear memory
-  outspfs=outspfs*(-2d0)               !! bugfix v1.17?  was inspfs=outspfs*(-2d0)
+  inspfs=outspfs*(-2d0)             !! OK.
 
   deallocate(outspfs,ttempspf)
 
