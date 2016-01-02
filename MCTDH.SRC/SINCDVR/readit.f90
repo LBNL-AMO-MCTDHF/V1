@@ -9,12 +9,13 @@ subroutine get_3dpoisson(pot)
   use pfileptrmod
   use myprojectmod
   implicit none
-  integer :: i,k,j,ii,jj,kk,qq(3),pp(3)
-  real*8 :: rval,pot(totpoints)
+  real*8,intent(out) :: pot(totpoints)
+  real*8 :: rval
   real*8, allocatable :: tempcoulomb(:,:,:)
   real*8, allocatable :: xcoulomb(:,:,:,:,:,:)
   real*8, allocatable :: threed_two_big(:,:,:)
   integer :: ldims(3),udims(3),istart(3),gridoffset(3)
+  integer :: i,k,j,ii,jj,kk,qq(3),pp(3)
 
   if (griddim.ne.3) then
      OFLWR "WTF! should not happen."; CFLST
@@ -148,12 +149,14 @@ subroutine get_3dpoisson_scaledoption(cpot)
   use pfileptrmod
   use myprojectmod
   implicit none
+  DATATYPE,intent(out) :: cpot(numpoints(1),numpoints(2),numpoints(3))
   integer :: i,jj,qq(3)
-  DATATYPE :: cpot(numpoints(1),numpoints(2),numpoints(3))
-  DATATYPE :: sourceterm(numpoints(1),numpoints(2),numpoints(3))
+  DATATYPE,allocatable :: sourceterm(:,:,:)
   integer :: null1,null2,null3,null4,nullft(10)
 
   OFLWR "    ... go scaled option ..."; CFL
+
+  allocate(sourceterm(numpoints(1),numpoints(2),numpoints(3)))
 
   sourceterm(:,:,:)=0d0; cpot(:,:,:)=0d0
 
@@ -176,6 +179,8 @@ subroutine get_3dpoisson_scaledoption(cpot)
   enddo
 
   call op_tinv(sourceterm,cpot,1,1,null1,null2,null3,null4,nullft)
+
+  deallocate(sourceterm)
 
   OFLWR "    ... done scaledoption."; CFL
 

@@ -111,15 +111,17 @@ subroutine get_twoe_new(pot)
   use pfileptrmod
   use myprojectmod  
   implicit none
-  real*8 :: realpot(totpoints)
-  DATATYPE :: pot(totpoints)
+  DATATYPE,intent(out) :: pot(totpoints)
+  real*8,allocatable :: realpot(:)
 
   if (griddim.ne.3) then
      OFLWR "griddim.ne.3 not supported get_twoe_new"; CFLST
   endif
 
+  allocate(realpot(totpoints))
   call get_3dpoisson(realpot)        
   pot(:)=realpot(:)
+  deallocate(realpot)
 
   if (notwoflag.eq.1) then
      threed_two(:,:,:)=0d0

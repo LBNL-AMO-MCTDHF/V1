@@ -13,11 +13,13 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   use pmpimod
   implicit none
 
-  integer :: spfdims(3),spfdimtype(3),inmpifileptr,nonuc_checkflag,myiostat, reducedpotsize, outnumr,&
-       nargs, idim ,i,j,len,getlen,iproc,k,ierr,ii
+  integer,intent(in) :: inmpifileptr
+  character,intent(in) :: inpfile*(*)
+  integer,intent(out) :: spfdims(3),spfdimtype(3),nonuc_checkflag,reducedpotsize, outnumr
+  real*8,intent(out) :: outnucrepulsion
+  integer :: nargs, idim ,i,j,len,getlen,iproc,k,ierr,ii,myiostat
   integer :: toepflag  !! toepflag deprecated; dummy
-  character :: inpfile*(*)
-  real*8 :: outnucrepulsion, rsq(griddim)
+  real*8 :: rsq(griddim)
   character (len=200) :: buffer
   character (len=200) :: nullbuff="                                                                                "
   integer, allocatable :: proclist(:,:,:),newproclist(:,:,:)

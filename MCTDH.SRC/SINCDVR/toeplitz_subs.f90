@@ -198,98 +198,36 @@ subroutine myclock(mytime)
   mytime=values(8)+values(7)*fac(7)+values(6)*fac(6)+values(5)*fac(5)
 end subroutine myclock
 
-subroutine switchit(out,odddim,dim,howmany)
-  implicit none
-  integer, intent(in) :: odddim,dim,howmany
-  complex*16 :: out(-dim:dim,howmany), outwork(-dim:dim,howmany)
-  if (mod(odddim,2).ne.1) then
-     print *, "Switchit error", odddim; stop
-  endif
-  outwork(0:dim,:)=out(-dim:0,:)
-  outwork(-dim:-1,:)=out(1:dim,:)
-  out(:,:)=outwork(:,:)
-end subroutine switchit
 
-subroutine switchit_3d(out,odddim,dim,howmany)
+subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany)
   implicit none
-  integer, intent(in) :: odddim,dim,howmany
-  complex*16 :: out(-dim:dim,-dim:dim,-dim:dim,howmany), outwork(-dim:dim,-dim:dim,-dim:dim,howmany)
-  integer :: ii
-  outwork(:,:,:,:)=out(:,:,:,:)
-  do ii=1,3
-     call switchit(outwork,odddim,dim,(2*dim+1)**2*howmany)
-     call all3transpose(outwork,out,2*dim+1,howmany)         !! order doesn't matter
-     outwork(:,:,:,:)=out(:,:,:,:)
-  enddo
-end subroutine switchit_3d
-
-subroutine switch2(out,odddim,dim,howmany)
-  implicit none
-  integer, intent(in) :: odddim,dim,howmany
-  complex*16 :: out(-dim:dim,howmany), outwork(-dim:dim,howmany)
-  if (mod(odddim,2).ne.1) then
-     print *, "Switchit error", odddim; stop
-  endif
-  outwork(1:dim,:)= out(0:dim,:)
-  outwork(-dim:0,:)= out(-dim:-1,:)
-  out(:,:)=outwork(:,:)
-end subroutine switch2
-
-subroutine switch2_3d(out,odddim,dim,howmany)
-  implicit none
-  integer, intent(in) :: odddim,dim,howmany
-  complex*16 :: out(-dim:dim,-dim:dim,-dim:dim,howmany), outwork(-dim:dim,-dim:dim,-dim:dim,howmany)
-  integer :: ii
-  outwork(:,:,:,:)=out(:,:,:,:)
-  do ii=1,3
-     call switch2(outwork,odddim,dim,(2*dim+1)**2*howmany)
-     call all3transpose(outwork,out,2*dim+1,howmany)         !! order doesn't matter
-     outwork(:,:,:,:)=out(:,:,:,:)
-  enddo
-end subroutine switch2_3d
-
-subroutine all3transpose(in,out,len,howmany)
-  implicit none
-  integer :: len,howmany,ii
-  complex*16 :: out(len,len,len,howmany), in(len,len,len,howmany)
-  do ii=1,len
-     out(:,:,ii,:)=in(ii,:,:,:)
-  enddo
-end subroutine all3transpose
-
-
-subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany,placeopt)
-  implicit none
-  integer :: totdim,howmany,placeopt
-  real*8 :: rmultvector(2*totdim,2*totdim,2*totdim,howmany), rffback(2*totdim,2*totdim,2*totdim,howmany),&
+  integer,intent(in) :: totdim,howmany
+  real*8,intent(in) :: rmultvector(2*totdim,2*totdim,2*totdim,howmany), &
        rbigcirc(2*totdim,2*totdim,2*totdim)
-  complex*16 :: multvector(2*totdim,2*totdim,2*totdim,howmany), &   
+  real*8,intent(out) :: rffback(2*totdim,2*totdim,2*totdim,howmany)
+  complex*16 :: multvector(2*totdim,2*totdim,2*totdim,howmany), &              !! AUTOMATIC
        ffback(2*totdim,2*totdim,2*totdim,howmany),   bigcirc(2*totdim,2*totdim,2*totdim)
 
   bigcirc(:,:,:)=rbigcirc(:,:,:)
   multvector(:,:,:,:)=rmultvector(:,:,:,:)
-  call circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeopt)
+  call circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
   rffback(:,:,:,:)=real(ffback(:,:,:,:),8)
+
 end subroutine circ3d_sub_real
 
 
-subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeopt)
+subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
   implicit none
-  integer :: totdim,howmany,ii,placeopt
-  complex*16 ::  bigcirc(2*totdim,2*totdim,2*totdim,1,1,1), multvector(2*totdim,2*totdim,2*totdim,howmany),&
-       ffback(2*totdim,2*totdim,2*totdim,howmany)
+  integer,intent(in) :: totdim,howmany
+  complex*16,intent(in) ::  bigcirc(2*totdim,2*totdim,2*totdim,1,1,1), &
+       multvector(2*totdim,2*totdim,2*totdim,howmany)
+  complex*16,intent(out) :: ffback(2*totdim,2*totdim,2*totdim,howmany)
   complex*16 :: ffmat(2*totdim,2*totdim,2*totdim),ffvec(2*totdim,2*totdim,2*totdim,howmany),& 
-       ffprod(2*totdim,2*totdim,2*totdim,howmany)
-
-!!$MPIWRAP  #ifdef MPIFLAG
-!!$MPIWRAP    call myzfft3d_mpiwrap_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,howmany,placeopt)
-!!$MPIWRAP    call myzfft3d_mpiwrap_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,1,placeopt)
-!!$MPIWRAP  #else
+       ffprod(2*totdim,2*totdim,2*totdim,howmany)                            !! AUTOMATIC
+  integer :: ii
 
   call myzfft3d(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,2*totdim,2*totdim,howmany)
   call myzfft3d(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,2*totdim,2*totdim,1)
-
-!!$MPIWRAP  #endif
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)  
 !$OMP DO SCHEDULE(STATIC)
@@ -299,27 +237,22 @@ subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany,placeopt)
 !$OMP END DO
 !$OMP END PARALLEL
 
-!!$MPIWRAP  #ifdef MPIFLAG
-!!$MPIWRAP    call myzfft3d_mpiwrap_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,howmany,placeopt)
-!!$MPIWRAP  #else
-
   ffprod(:,:,:,:)=CONJG(ffprod(:,:,:,:))
   call myzfft3d(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,2*totdim,2*totdim,howmany)
   ffback(:,:,:,:)=CONJG(ffback(:,:,:,:))
   return
-  placeopt=placeopt  !! avoid warn unused
-
-!!$MPIWRAP  #endif
 
 end subroutine circ3d_sub
 
 
 subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,dim1,dim2,dim3,times,howmany,placeopt)
   implicit none
-  integer :: dim1,dim2,dim3,times(*),atime,btime,howmany,placeopt
-  real*8 :: rmultvector(2*dim1,2*dim2,2*dim3,howmany), &
-       rbigcirc(2*dim1,2*dim2,2*dim3), rffback(2*dim1,2*dim2,2*dim3,howmany)
-  complex*16 :: multvector(2*dim1,2*dim2,2*dim3,howmany), & 
+  integer,intent(in) :: dim1,dim2,dim3,howmany,placeopt
+  integer,intent(inout) :: times(*)
+  integer :: atime,btime
+  real*8,intent(in) :: rmultvector(2*dim1,2*dim2,2*dim3,howmany),   rbigcirc(2*dim1,2*dim2,2*dim3)
+  real*8,intent(out) :: rffback(2*dim1,2*dim2,2*dim3,howmany)
+  complex*16 :: multvector(2*dim1,2*dim2,2*dim3,howmany), &                    !! AUTOMATIC
         ffback(2*dim1,2*dim2,2*dim3,howmany),  bigcirc(2*dim1,2*dim2,2*dim3)
 
   call myclock(atime)
@@ -354,12 +287,14 @@ end subroutine circ3d_sub_real_mpi
 
 subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany,placeopt)
   implicit none
-  integer :: dim1,dim2,dim3,times(*),howmany,placeopt
-  complex*16 ::  multvector(2*dim1,2*dim2,2*dim3,howmany), &
-       ffback(2*dim1,2*dim2,2*dim3,howmany),  bigcirc(2*dim1,2*dim2,2*dim3,1,1,1)
+  integer,intent(in) :: dim1,dim2,dim3,howmany,placeopt
+  integer,intent(inout) :: times(*)
+  complex*16,intent(in) ::  multvector(2*dim1,2*dim2,2*dim3,howmany), bigcirc(2*dim1,2*dim2,2*dim3,1,1,1)
+  complex*16,intent(out) :: ffback(2*dim1,2*dim2,2*dim3,howmany)
+  integer :: ii
 #ifdef MPIFLAG
-  integer :: atime,btime,ii,myrank,nprocs
-  complex*16 :: ffmat(2*dim1,2*dim2,2*dim3), &  
+  integer :: atime,btime,myrank,nprocs
+  complex*16 :: ffmat(2*dim1,2*dim2,2*dim3), &                                     !! AUTOMATIC
        ffvec(2*dim1,2*dim2,2*dim3,howmany),  ffprod(2*dim1,2*dim2,2*dim3,howmany)
 
   call getmyranknprocs(myrank,nprocs)  
@@ -395,7 +330,7 @@ subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany
 
 #else
   print *, "ACKKKK!!! MPIFLAG NOT SET circ3d_sub_mpi"; stop
-  bigcirc=0; multvector=0; ffback=0; times(1)=0; placeopt=placeopt
+  ffback=0; times(1)=0; ii=placeopt
 #endif
 end subroutine circ3d_sub_mpi
 

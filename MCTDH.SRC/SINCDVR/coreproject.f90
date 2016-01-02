@@ -231,16 +231,19 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   integer, intent(in) :: numfrozen
   DATATYPE, intent(in) :: infrozens(totpoints,numfrozen)
   DATATYPE, intent(out) :: frozenkediag, frozenpotdiag
-  DATATYPE :: frodensity(totpoints), work(totpoints), tempreduced(totpoints), &
-       tempmatel(numfrozen,numfrozen,numfrozen,numfrozen), temppotmatel(numfrozen,numfrozen), &
-       tempmult(totpoints,numfrozen), &
-       csum,direct,exch
+  DATATYPE,allocatable :: frodensity(:), work(:), tempreduced(:), &
+       tempmatel(:,:,:,:), temppotmatel(:,:),    tempmult(:,:)
+  DATATYPE :: csum,direct,exch
   integer :: times1,times3,times4,times5,fttimes(10), i, ii, spf1a,spf2a,spf1b,spf2b, &
        ispin,iispin,ispf,iispf
 
   if (numfrozen.eq.0) then
      return
   endif
+
+  allocate(frodensity(totpoints), work(totpoints), tempreduced(totpoints), &
+       tempmatel(numfrozen,numfrozen,numfrozen,numfrozen), temppotmatel(numfrozen,numfrozen), &
+       tempmult(totpoints,numfrozen))
 
   frodensity(:)=0d0
   do ii=1,numfrozen
@@ -323,6 +326,8 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
      frozenkediag=frozenkediag+2*temppotmatel(i,i)
   enddo
 
+  deallocate(frodensity,work,tempreduced,tempmatel,temppotmatel,tempmult)
+
 end subroutine call_frozen_matels0
 
 
@@ -338,12 +343,14 @@ subroutine call_frozen_exchange0(inspfs,outspfs,infrozens,numfrozen)
   integer, intent(in) :: numfrozen
   DATATYPE, intent(in) :: infrozens(totpoints,numfrozen), inspfs(totpoints,numspf)
   DATATYPE, intent(inout) :: outspfs(totpoints,numspf)
-  DATATYPE :: frodensity(totpoints), tempreduced(totpoints)
+  DATATYPE,allocatable :: frodensity(:), tempreduced(:)
   integer :: times1,times3,times4,times5,fttimes(10),spf2a,spf2b
 
   if (numfrozen.eq.0) then
      return
   endif
+
+  allocate(frodensity(totpoints), tempreduced(totpoints))
 
   do spf2b=1,numfrozen
      do spf2a=1,numspf
@@ -359,6 +366,8 @@ subroutine call_frozen_exchange0(inspfs,outspfs,infrozens,numfrozen)
      enddo
   enddo
 
+  deallocate(frodensity, tempreduced)
+
 end subroutine call_frozen_exchange0
 
 
@@ -373,8 +382,10 @@ subroutine op_reflectz(in,out)
   implicit none
   DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3))
   DATATYPE,intent(out) :: out(numpoints(1),numpoints(2),numpoints(3))
-  DATATYPE :: work(numpoints(1),numpoints(2),numpoints(3))
+  DATATYPE,allocatable :: work(:,:,:)
   integer :: partrank(3),partner,i
+
+  allocate(work(numpoints(1),numpoints(2),numpoints(3)))
 
   if (orbparflag) then
      partrank(:)=boxrank(:)
@@ -385,11 +396,15 @@ subroutine op_reflectz(in,out)
      else
         call mympisendrecv(in,work,partner,partner,0,totpoints)
      endif
+  else
+     work(:,:,:)=in(:,:,:)
   endif
 
   do i=1,numpoints(3)
      out(:,:,numpoints(3)+1-i)=work(:,:,i)
   enddo
+
+  deallocate(work)
 
 end subroutine op_reflectz
 
@@ -400,8 +415,10 @@ subroutine op_reflecty(in,out)
   implicit none
   DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3))
   DATATYPE,intent(out) :: out(numpoints(1),numpoints(2),numpoints(3))
-  DATATYPE :: work(numpoints(1),numpoints(2),numpoints(3))
+  DATATYPE,allocatable :: work(:,:,:)
   integer :: partrank(3),partner,i
+
+  allocate(work(numpoints(1),numpoints(2),numpoints(3)))
 
   if (orbparflag) then
      partrank(:)=boxrank(:)
@@ -412,11 +429,15 @@ subroutine op_reflecty(in,out)
      else
         call mympisendrecv(in,work,partner,partner,0,totpoints)
      endif
+  else
+     work(:,:,:)=in(:,:,:)
   endif
 
   do i=1,numpoints(2)
      out(:,numpoints(2)+1-i,:)=work(:,i,:)
   enddo
+
+  deallocate(work)
 
 end subroutine op_reflecty
 
@@ -427,8 +448,10 @@ subroutine op_reflectx(in,out)
   implicit none
   DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3))
   DATATYPE,intent(out) :: out(numpoints(1),numpoints(2),numpoints(3))
-  DATATYPE :: work(numpoints(1),numpoints(2),numpoints(3))
+  DATATYPE,allocatable :: work(:,:,:)
   integer :: partrank(3),partner,i
+
+  allocate(work(numpoints(1),numpoints(2),numpoints(3)))
 
   if (orbparflag) then
      partrank(:)=boxrank(:)
@@ -439,11 +462,15 @@ subroutine op_reflectx(in,out)
      else
         call mympisendrecv(in,work,partner,partner,0,totpoints)
      endif
+  else
+     work(:,:,:)=in(:,:,:)
   endif
 
   do i=1,numpoints(1)
      out(numpoints(1)+1-i,:,:)=work(i,:,:)
   enddo
+
+  deallocate(work)
 
 end subroutine op_reflectx
 
@@ -611,26 +638,6 @@ subroutine velmultiply(howmany,spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
 end subroutine velmultiply
 
 
-!subroutine velmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
-!  use myparams
-!  implicit none
-!  DATATYPE :: spfin(totpoints),spfout(totpoints),myxtdpot0,myytdpot0,myztdpot,&
-!       work(totpoints)
-!  spfout(:)=0d0
-!  if (abs(myxtdpot0).gt.0d0) then
-!     call mult_xderiv(spfin,work,1)
-!     spfout(:)=spfout(:)+work(:)*(0d0,1d0)*myxtdpot0  * (-1)
-!  endif
-!  if (abs(myytdpot0).gt.0d0) then
-!     call mult_yderiv(spfin,work,1)
-!     spfout(:)=spfout(:)+work(:)*(0d0,1d0)*myytdpot0  * (-1)
-!  endif
-!  if (abs(myztdpot).gt.0d0) then
-!     call mult_zderiv(spfin,work,1)
-!     spfout(:)=spfout(:)+work(:)*(0d0,1d0)*myztdpot   * (-1)
-!  endif
-!end subroutine velmultiply
-
 subroutine imvelmultiply() !spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
 print *, "DOME imVELMULTIPLY SINCDVR"; stop
 end subroutine imvelmultiply
@@ -652,8 +659,6 @@ subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,not
   DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,numspf),twoereduced(totpoints,numspf,numspf)
   character,intent(in) :: timingdir*(*)
   integer, intent(in) :: notiming
-
-
 
   if (fft_batchdim.lt.0.or.fft_batchdim.gt.2) then
      OFLWR "fft_batchdim error", fft_batchdim; CFLST
@@ -682,8 +687,9 @@ subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,
   integer ::  spf1a, spf1b, spf2a, spf2b, itime,jtime,getlen,&
        spf2low,spf2high,index2b,index2low,index2high, firsttime,lasttime
   integer, save :: xcount=0, times(10)=0,fttimes(10)=0,qqcount=0
-  DATATYPE :: twoeden03(numpoints(1),numpoints(2),numpoints(3),numspf**fft_batchdim), &
-       tempden03(numpoints(1),numpoints(2),numpoints(3),numspf**fft_batchdim),twoemattemp(numspf,numspf)
+  DATATYPE :: twoemattemp(numspf,numspf), twoeden03(numpoints(1),numpoints(2),numpoints(3),numspf**fft_batchdim), &
+       tempden03(numpoints(1),numpoints(2),numpoints(3),numspf**fft_batchdim)          !! AUTOMATIC
+
 !!$!!$
 !!$!!$  DATATYPE ::  myden(totpoints)         !! I WAS GETTING SEGFAULTS THIS WAY 
 !!$                                           !!
@@ -1153,9 +1159,9 @@ subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
      do icirc=1,circhigh
         circindex=(icirc-1)*circsize+1
 #ifdef REALGO
-        call circ3d_sub_real(threed_two(:,:,:),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag)
+        call circ3d_sub_real(threed_two(:,:,:),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize)
 #else
-        call circ3d_sub(threed_two(:,:,:),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize,fft_mpi_inplaceflag)
+        call circ3d_sub(threed_two(:,:,:),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize)
 #endif
      enddo
      
@@ -1181,10 +1187,10 @@ end subroutine op_tinv_notscaled
 subroutine mult_reducedpot(inspfs,outspf,whichspf,reducedpot)
   use myparams
   implicit none
-
-  integer :: ispf,kspf,whichspf
-  DATATYPE :: reducedpot(totpoints, numspf,numspf),  outspf(totpoints)
-  DATATYPE, intent(in) :: inspfs(totpoints, numspf)
+  integer,intent(in) :: whichspf
+  DATATYPE,intent(out) :: outspf(totpoints)
+  DATATYPE,intent(in) :: inspfs(totpoints, numspf),reducedpot(totpoints, numspf,numspf)
+  integer :: ispf,kspf
 
   outspf(:)=0d0
 
@@ -1253,8 +1259,10 @@ subroutine get_one_dipole(out,idim,whichbox,nnn,mmm)
   use myparams
   use myprojectmod
   implicit none
-  integer :: mmm,idim,nnn,jj,whichbox,ii
-  DATATYPE :: out(nnn,numpoints(idim),mmm)
+  integer,intent(in) :: mmm,idim,nnn,whichbox
+  DATATYPE,intent(out) :: out(nnn,numpoints(idim),mmm)
+  integer :: jj,ii
+
   do jj=1,mmm
      do ii=1,numpoints(idim)
         out(:,ii,jj)=sinepoints(idim)%mat(ii,whichbox)
@@ -1268,10 +1276,11 @@ subroutine divide_mask(in,out,howmany)
   use myparams
   use myprojectmod
   implicit none
-  integer :: howmany,ii
+  integer,intent(in) :: howmany
   DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3),howmany)
   DATATYPE, intent(out) :: out(numpoints(1),numpoints(2),numpoints(3),howmany)
-  DATATYPE :: work(numpoints(1),numpoints(2),numpoints(3),howmany)
+  DATATYPE :: work(numpoints(1),numpoints(2),numpoints(3),howmany)        !! AUTOMATIC
+  integer :: ii
 
   do ii=1,numpoints(1)
      out(ii,:,:,:)=in(ii,:,:,:)/maskfunction(1)%rmat(ii)
@@ -1290,10 +1299,11 @@ subroutine mult_mask(in,out,howmany)
   use myparams
   use myprojectmod
   implicit none
-  integer :: howmany,ii
+  integer,intent(in) :: howmany
   DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3),howmany)
   DATATYPE, intent(out) :: out(numpoints(1),numpoints(2),numpoints(3),howmany)
-  DATATYPE :: work(numpoints(1),numpoints(2),numpoints(3),howmany)
+  DATATYPE :: work(numpoints(1),numpoints(2),numpoints(3),howmany)     !! AUTOMATIC
+  integer :: ii
 
   do ii=1,numpoints(1)
      out(ii,:,:,:)=in(ii,:,:,:)*maskfunction(1)%rmat(ii)
@@ -1561,12 +1571,12 @@ subroutine mult_general_withtranspose(option,xcoef,ycoef,zcoef,in,out,howmany,ti
   use pfileptrmod
   implicit none
   integer, intent(in) :: option,howmany,notiming
-  integer :: ii,jj,temptimes(3)=0
   character,intent(in) :: timingdir*(*)
   DATATYPE, intent(in) :: in(totpoints,howmany), xcoef, ycoef, zcoef
   DATATYPE, intent(out) :: out(totpoints,howmany)
   DATATYPE :: temp(totpoints,howmany),temp2(totpoints,howmany),inwork(totpoints,howmany)   !!AUTOMATIC
   DATATYPE :: mycoefs(3)
+  integer :: ii,jj,temptimes(3)=0
 
   out(:,:)=0d0
   inwork(:,:)=in(:,:)
@@ -1689,10 +1699,10 @@ subroutine mult_allpar(option,idim, in, out,howmany,timingdir,notiming)
   use pmpimod
   use pfileptrmod
   implicit none
-  integer :: idim,option,howmany,notiming
+  integer,intent(in) :: idim,option,howmany,notiming
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE, intent(out) :: out(totpoints,howmany)
-  character :: timingdir*(*)
+  character,intent(in) :: timingdir*(*)
 
   if (griddim.ne.3) then
      OFLWR "ERWRESTOPPP"; CFLST
@@ -1757,12 +1767,12 @@ subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
   use pfileptrmod
   use myprojectmod  
   implicit none
-  integer,intent(in) :: nnn,option,howmany,indim
+  integer,intent(in) :: nnn,option,howmany,indim,notiming
   DATATYPE,intent(in) :: in(nnn*numpoints(indim),howmany)
   DATATYPE,intent(out) :: out(nnn*numpoints(indim),howmany)
   character,intent(in) :: timingdir*(*)
   DATATYPE ::     work(nnn*numpoints(indim),howmany),       work2(nnn*numpoints(indim),howmany) !! AUTOMATIC
-  integer :: atime,btime,notiming,getlen,ibox,jbox,deltabox,ii,totsize
+  integer :: atime,btime,getlen,ibox,jbox,deltabox,ii,totsize
   integer, save :: xcount=0, times(10)=0
   
   totsize=nnn*numpoints(indim)*howmany
@@ -1970,9 +1980,10 @@ subroutine mult_allone(in, out,idim,option,howmany)
   use myparams
   use pfileptrmod
   implicit none
-  integer :: mmm,idim,nnn,jdim,option,howmany
+  integer,intent(in) :: option,howmany,idim
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE, intent(out) :: out(totpoints,howmany)
+  integer :: mmm,nnn,jdim
 
   nnn=1; mmm=1
   do jdim=1,idim-1
@@ -1991,9 +2002,10 @@ subroutine mult_all0(in, out,idim,nnn,mmm,option)
   use pfileptrmod
   use myprojectmod  
   implicit none
-  integer :: mmm,idim,nnn,jj,option
+  integer,intent(in) :: idim,nnn,mmm,option
   DATATYPE,intent(in) :: in(nnn,numpoints(idim),mmm)
   DATATYPE,intent(out) :: out(nnn,numpoints(idim),mmm)
+  integer :: jj
 
 !! OMP PROBLEMS LAWRENCIUM - OBSERVE ERRORS IN BLOCKLANCZOS ORBITALS THREADS > 1 - 07-2015
 !! COMMENTING THIS OUT!!  REINSTATE ONLY WITH TESTING LARGE NUMBER OF THREADS BOXES PENCILS AND SHEETS
@@ -2026,15 +2038,20 @@ end subroutine mult_all0
 subroutine hatom_matel(inspfs1, inspfs2, hatommatel,numberspf) 
   use myparams
   implicit none
-  integer :: numberspf
-  DATATYPE :: inspfs1(totpoints,numberspf), inspfs2(totpoints,numberspf),hatommatel(numberspf,numberspf),qq
+  integer,intent(in) :: numberspf
+  DATATYPE,intent(in) :: inspfs1(totpoints,numberspf), inspfs2(totpoints,numberspf)
+  DATATYPE,intent(out) :: hatommatel(numberspf,numberspf)
+  DATATYPE :: qq
   hatommatel(:,:)=0d0; qq=inspfs2(1,1); qq=inspfs1(1,1)
 end subroutine hatom_matel
+
 
 subroutine hatom_op(inspf, outspf)
   use myparams
   implicit none
-  DATATYPE :: inspf(totpoints),outspf(totpoints),qq
+  DATATYPE,intent(out) :: outspf(totpoints)
+  DATATYPE,intent(in) :: inspf(totpoints)
+  DATATYPE :: qq
   outspf(:)=0d0
   qq=inspf(1)
 end subroutine hatom_op
@@ -2042,8 +2059,9 @@ end subroutine hatom_op
 
 function mysinc(input)
   implicit none
-  real*8 :: input,mysinc
-  real*8 :: pi=3.141592653589793d0
+  real*8,intent(in) :: input
+  real*8 :: mysinc
+  real*8,parameter :: pi=3.141592653589793d0
   if (abs(input).lt.1d-6) then
      mysinc=1d0
   else
@@ -2059,19 +2077,23 @@ subroutine reinterpolate_orbs_complex(cspfs,indims,outcspfs,outdims,num)
   use pfileptrmod
   implicit none
   integer, intent(in) :: indims(3),outdims(3),num
+  complex*16,intent(in) :: cspfs(indims(1),indims(2),indims(3),num)
+  complex*16,intent(out) ::outcspfs(outdims(1),outdims(2),outdims(3),num)
+  complex*16,allocatable ::       newspfs1(:,:,:,:),newspfs2(:,:,:,:),transform(:,:)
+  real*8,allocatable :: distance(:),&  !! new index minus 2 times old  
+       sincval(:)
+  real*8 :: mysinc,current_interval,old_interval
   integer :: indim,i,j,outdim
-  complex*16 :: cspfs(indims(1),indims(2),indims(3),num), &
-       newspfs1(outdims(1),indims(2),indims(3),num), &
-       newspfs2(outdims(1),outdims(2),indims(3),num), &
-       outcspfs(outdims(1),outdims(2),outdims(3),num), &
-       transform(outdims(1),indims(1))
-  real*8 :: distance(1-2*indims(1):outdims(1)-2),&  !! new index minus 2 times old  
-       sincval(1-2*indims(1):outdims(1)-2),mysinc,current_interval,old_interval
   
   if ((indims(1).ne.indims(2).or.indims(1).ne.indims(3)).or.&
        outdims(1).ne.outdims(2).or.outdims(1).ne.outdims(3)) then
      OFLWR "reinterpolate not supported noncube",indims,outdims; CFLST
   endif
+
+  allocate(newspfs1(outdims(1),indims(2),indims(3),num), &
+       newspfs2(outdims(1),outdims(2),indims(3),num),    transform(outdims(1),indims(1)),&
+       distance(1-2*indims(1):outdims(1)-2),&  !! new index minus 2 times old  
+       sincval(1-2*indims(1):outdims(1)-2))
   
   indim=indims(1); outdim=outdims(1)
 
@@ -2094,12 +2116,17 @@ subroutine reinterpolate_orbs_complex(cspfs,indims,outcspfs,outdims,num)
   call mult_all0_big_gen_complex(newspfs1,newspfs2,indim,outdim,transform,outdim,indim*num)
   call mult_all0_big_gen_complex(newspfs2,outcspfs,indim,outdim,transform,outdim**2,num)
 
+  deallocate(newspfs1,newspfs2,transform,distance,sincval)
+
 end subroutine reinterpolate_orbs_complex
 
 subroutine mult_all0_big_gen_complex(in, out,indim,outdim,mat,nnn,mmm)
   implicit none
-  integer :: mmm,nnn,jj,indim,outdim
-  complex*16 :: in(nnn,indim,mmm),out(nnn,outdim,mmm),mat(outdim,indim)
+  integer,intent(in) :: indim,outdim,nnn,mmm
+  complex*16,intent(in) :: in(nnn,indim,mmm),mat(outdim,indim)
+  complex*16,intent(out) :: out(nnn,outdim,mmm)
+  integer :: jj
+
 !$OxMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
 !$OxMP DO SCHEDULE(STATIC)
   do jj=1,mmm
@@ -2108,6 +2135,7 @@ subroutine mult_all0_big_gen_complex(in, out,indim,outdim,mat,nnn,mmm)
 !$OxMP END DO
 !$OxMP END PARALLEL
 end subroutine mult_all0_big_gen_complex
+
 
 subroutine reinterpolate_orbs_real(rspfs,dims,num)
   use myparams

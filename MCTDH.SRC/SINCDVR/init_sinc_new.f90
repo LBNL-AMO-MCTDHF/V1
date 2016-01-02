@@ -172,19 +172,26 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   use myprojectmod
   implicit none
   integer, intent(in) :: skipflag,notused
-  integer ::  i,   spfsloaded,j,ii,jj,k,l,idim,ilow(3),ihigh(3)
-  DATATYPE :: inspfs(totpoints, numspf),pot(totpoints),proderivmod(numr,numr),rkemod(numr,numr),&
+  integer,intent(inout) :: spfsloaded
+  DATATYPE,intent(inout) :: inspfs(totpoints, numspf)
+  DATATYPE,intent(out) :: pot(totpoints),proderivmod(numr,numr),rkemod(numr,numr),&
        bondpoints(numr),bondweights(numr), elecweights(totpoints),elecradii(totpoints),&
        halfniumpot(totpoints)
 #ifndef REALGO
-  real*8 :: temppot(totpoints) !! AUTOMATIC
+  real*8,allocatable :: temppot(:)
 #endif
   real*8 :: rsum,pi
   character (len=2) :: th(4)
+  integer ::  i,   j,ii,jj,k,l,idim,ilow(3),ihigh(3)
 
 !! smooth exterior scaling
-  DATATYPE :: scalefunction(totpoints,3), djacobian(totpoints,3), ddjacobian(totpoints,3)
+  DATATYPE,allocatable :: scalefunction(:,:), djacobian(:,:), ddjacobian(:,:)
   DATATYPE :: ffunct, djfunct, ddjfunct, jfunct
+
+#ifndef REALGO
+  allocate(temppot(totpoints))
+#endif
+  allocate(scalefunction(totpoints,3), djacobian(totpoints,3), ddjacobian(totpoints,3))
 
   if (fft_mpi_inplaceflag.eq.0) then
      call ct_init(fft_ct_paropt)
@@ -358,6 +365,11 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      OFLWR "TEMPSTOP init_project debugflag 90210"; CFLST
   endif
 
+#ifndef REALGO
+  deallocate(temppot)
+#endif
+  deallocate(scalefunction, djacobian, ddjacobian)
+
 end subroutine init_project
 
 
@@ -379,7 +391,7 @@ subroutine mult_bigspf0(inbigspf,outbigspf)
   implicit none
   DATATYPE,intent(in) :: inbigspf(totpoints)
   DATATYPE, intent(out) :: outbigspf(totpoints)
-  DATATYPE :: tempspf(totpoints)
+  DATATYPE :: tempspf(totpoints)   !! AUTOMATIC
 
   call mult_ke(inbigspf(:),outbigspf(:),1,"booga",2)
   call mult_pot(inbigspf(:),tempspf(:))
@@ -431,7 +443,7 @@ subroutine mult_bigspf_ivo(inbigspf,outbigspf)
   DATATYPE,intent(in) :: inbigspf(totpoints)
   DATATYPE, intent(out) :: outbigspf(totpoints)
   DATATYPE :: tempspf(totpoints),inwork(totpoints),inwork2(totpoints),&
-       workspf(totpoints)
+       workspf(totpoints)   !! AUTOMATIC
 
   call ivo_project(inbigspf,outbigspf)
   call project_onfrozen(inbigspf,workspf)
@@ -581,9 +593,10 @@ end subroutine init_spfs
 subroutine nucdipvalue(notused,dipoles)
   use myparams
   implicit none
-  DATATYPE :: notused(1),dipoles(3)
+  DATATYPE,intent(in) :: notused(1)
+  DATATYPE,intent(out) :: dipoles(3)
   integer :: i
-  dipoles(:)=0d0
+  dipoles(:)=0d0 * notused(1)   !! avoid warn unused
   do i=1,numcenters
      dipoles(:)=dipoles(:) + nuccharges(i) * centershift(:,i)/2d0 * spacing
   enddo

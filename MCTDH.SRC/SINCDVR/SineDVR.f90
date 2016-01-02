@@ -4,13 +4,12 @@
 
 subroutine sineDVR(ketot,fdtot, points,gridpoints,spacing)
   implicit none
-
-  integer :: i,gridpoints
-
-  real*8 :: ketot(1-gridpoints:gridpoints-1),points(gridpoints),&
+  integer,intent(in) :: gridpoints
+  real*8,intent(in) :: spacing
+  real*8,intent(out) :: ketot(1-gridpoints:gridpoints-1),points(gridpoints),&
        fdtot(1-gridpoints:gridpoints-1)
-
-  real*8 ::  mypi,spacing
+  integer :: i
+  real*8 ::  mypi
 
   myPi   = 4d0*atan(1d0)
 
