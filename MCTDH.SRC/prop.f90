@@ -33,6 +33,8 @@ subroutine prop_loop( starttime)
 
   lastenergy(:)=1.d+3;  lastenergyavg=1.d+3
 
+  call system_clock(itime)
+
   if (skipflag.eq.0) then
      do imc=1,mcscfnum
         call basis_project(www,numr,yyy%cmfpsivec(astart(imc),0))
@@ -58,16 +60,16 @@ subroutine prop_loop( starttime)
 
      if ((myrank.eq.1).and.(notiming.le.1)) then
         call system("echo -n > "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
-        !! times(1:5)
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="unknown")
-        write(853,'(T16,100A15)')  "Spfs ", "Prop ", "Act ", "Final ", "MPI", "Non MPI";        close(853)
+        write(853,'(T16,100A15)')  "Prop ", "Act ", "After ", "Init", "Save", "MPI", "Non MPI"
+        close(853)
      endif
   endif
 
-  call system_clock(itime)
+  call system_clock(jtime)  ;  times(5)=times(5)+jtime-itime; itime=jtime
   call actions_initial()                 !!   ACTIONS_INITIAL: PUT ANALYSIS ROUTINES HERE; THEN TERMINATES.
                                          !! ***************************************************************
-  call system_clock(jtime)  ;  times(3)=times(3)+jtime-itime
+  call system_clock(jtime)  ;  times(3)=times(3)+jtime-itime; itime=jtime
 
   if (skipflag.ne.0) then
      OFLWR "Stopping"; CFLST
@@ -75,9 +77,7 @@ subroutine prop_loop( starttime)
 
 !! 06-2015 ADDING THIS HERE
   if (improvedrelaxflag.ne.0.and.improvednatflag.ne.0) then
-     call system_clock(itime)
      call replace_withnat(1)
-     call system_clock(jtime);        times(7)=times(7)+jtime-itime;
   endif
 !! allowing that actions_initial could change psi.  OR replace_withnat!  drivinginit ok.
 
@@ -108,9 +108,13 @@ subroutine prop_loop( starttime)
      OFLWR "Stopping due to debugflag=956"; CFLST
   endif
 
+  call system_clock(jtime)  ;  times(5)=times(5)+jtime-itime
+
   jj=0
   do while (flag==0)
      jj=jj+1
+
+     call system_clock(itime)
 
      if (save_every.ne.0.and.mod(jj,save_every).eq.0) then
         call save_vector(yyy%cmfpsivec(:,0),avectoroutfile,spfoutfile)  
@@ -129,14 +133,16 @@ subroutine prop_loop( starttime)
      endif
 
      thattime=thistime+par_timestep
-     call system_clock(itime)  
+
+     call system_clock(jtime)  ;  times(6)=times(6)+jtime-itime; itime=jtime
+
 
                                   !! *****************************************************************************
                                   !!    ACTIONS.
      call actionsub( thistime)    !! actions may not change yyy%cmfpsivec   !! what? screw it, trying action_replacenat
                                   !! *****************************************************************************
      call system_clock(jtime)  
-     times(3)=times(3)+jtime-itime
+     times(3)=times(3)+jtime-itime; itime=jtime
 
 !!! (Not used for exponential propagation default - abserr thus myrelerr not used then)
 
@@ -145,8 +151,6 @@ subroutine prop_loop( starttime)
         rsum=rsum+norms(imc)**2
      enddo
      rsum=sqrt(rsum);     abserr=sqrt(rsum)*myrelerr
-
-     call system_clock(itime)  
 
      if ((cmf_flag==1)) then
         call cmf_prop_wfn(thistime, thattime)
@@ -158,7 +162,7 @@ subroutine prop_loop( starttime)
         call basis_project(www,numr,yyy%cmfpsivec(astart(imc),0))
      enddo
 
-     call system_clock(jtime)  ;     times(2)=times(2)+jtime-itime;     call system_clock(itime)  
+     call system_clock(jtime)  ;     times(2)=times(2)+jtime-itime; itime=jtime
 
      do imc=1,mcscfnum
 
@@ -223,7 +227,6 @@ subroutine prop_loop( starttime)
            CFL
         endif
 
-        call system_clock(jtime)  ;        times(4)=times(4)+jtime-itime
      enddo  !! imc
 
      thisenergyavg=0
@@ -234,7 +237,7 @@ subroutine prop_loop( starttime)
      if ((myrank.eq.1).and.(notiming.le.1)) then
         call system("date >> "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="old", position="append")
-        write(853,'(F13.3,T16,100I15)')  thistime, times(1:4)/1000, mpitime/1000, nonmpitime/1000;     close(853)
+        write(853,'(F13.3,T16,100I15)')  thistime, times(2:6)/1000, mpitime/1000, nonmpitime/1000;     close(853)
      endif
 
      if (debugflag.eq.42) then
@@ -299,6 +302,9 @@ subroutine prop_loop( starttime)
         endif
 
      endif
+
+     call system_clock(jtime)  ;        times(4)=times(4)+jtime-itime
+
   enddo
   do imc=1,mcscfnum
      norms(imc)=dot(yyy%cmfpsivec(astart(imc),0),& !! ok implicit
