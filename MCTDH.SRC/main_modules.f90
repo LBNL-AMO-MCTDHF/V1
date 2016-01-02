@@ -331,7 +331,6 @@ module configmod
   type(walktype),target :: www
   type(walktype),pointer:: bwwptr
   type(walktype),target :: bioww
-  logical :: use_dfwalktype=.false.
   type(walktype),pointer:: dwwptr
   type(walktype),target :: dfww
 end module configmod
@@ -379,7 +378,7 @@ subroutine configpropdealloc()
   if (sparseopt.ne.0) then
      call sparseptrdealloc(worksparsepointer)
   endif
-  if (df_restrictflag.ne.0.and.sparsedfflag.ne.0) then
+  if (use_dfwalktype) then
      if (sparseopt.ne.0) then
         call sparseptrdealloc(workdfsparsepointer)
      endif
@@ -427,7 +426,7 @@ subroutine add_cptr(aptr,bptr,sumptr,afac,bfac)
   implicit none
   DATATYPE,intent(in) :: afac,bfac
   Type(CONFIGPTR),intent(in) :: aptr,bptr
-  Type(CONFIGPTR),intent(out) :: sumptr
+  Type(CONFIGPTR),intent(inout) :: sumptr
   call add_cptr0(aptr,bptr,sumptr, afac,bfac, afac,bfac, afac,bfac, afac,bfac )
 end subroutine
 
@@ -439,7 +438,7 @@ subroutine assign_cptr(outptr,inptr,fac)
   implicit none
   DATATYPE,intent(in) :: fac
   Type(CONFIGPTR),intent(in) :: inptr
-  Type(CONFIGPTR),intent(out) :: outptr
+  Type(CONFIGPTR),intent(inout) :: outptr
 
   outptr%kefac = inptr%kefac   * fac
 
@@ -464,7 +463,7 @@ subroutine add_cptr0(aptr,bptr,sumptr,afacbo,bfacbo,  afacnuc,bfacnuc,   afacpul
   use parameters
   implicit none
   Type(CONFIGPTR),intent(in) :: aptr,bptr
-  Type(CONFIGPTR),intent(out) :: sumptr
+  Type(CONFIGPTR),intent(inout) :: sumptr
   DATATYPE,intent(in) :: afacbo,bfacbo,  afacnuc,bfacnuc,   afacpulse,bfacpulse, afaccon,bfaccon
 
   sumptr%kefac = afacnuc*aptr%kefac + bfacnuc*bptr%kefac
@@ -490,7 +489,7 @@ subroutine zero_cptr(outptr)
   use configptrmod
   use parameters
   implicit none
-  Type(CONFIGPTR),intent(out) :: outptr
+  Type(CONFIGPTR),intent(inout) :: outptr
 
   outptr%kefac=0d0
 
@@ -563,7 +562,7 @@ subroutine add_sptr(aptr,bptr,sumptr,afac,bfac)
   implicit none
   DATATYPE,intent(in) :: afac,bfac
   Type(SPARSEPTR),intent(in) :: aptr,bptr
-  Type(SPARSEPTR),intent(out) :: sumptr
+  Type(SPARSEPTR),intent(inout) :: sumptr
   call add_sptr0(aptr,bptr,sumptr, afac,bfac, afac,bfac, afac,bfac, afac,bfac )
 end subroutine
 
@@ -575,7 +574,7 @@ subroutine assign_sptr(outptr,inptr,fac)
   implicit none
   DATATYPE,intent(in) :: fac
   Type(SPARSEPTR),intent(in) :: inptr
-  Type(SPARSEPTR),intent(out) :: outptr
+  Type(SPARSEPTR),intent(inout) :: outptr
 
   outptr%kefac = inptr%kefac   * fac
 
@@ -600,7 +599,7 @@ subroutine add_sptr0(aptr,bptr,sumptr,afacbo,bfacbo,  afacnuc,bfacnuc,   afacpul
   use parameters
   implicit none
   Type(SPARSEPTR),intent(in) :: aptr,bptr
-  Type(SPARSEPTR),intent(out) :: sumptr
+  Type(SPARSEPTR),intent(inout) :: sumptr
   DATATYPE,intent(in) :: afacbo,bfacbo,  afacnuc,bfacnuc,   afacpulse,bfacpulse, afaccon,bfaccon
 
   sumptr%kefac = afacnuc*aptr%kefac + bfacnuc*bptr%kefac
@@ -854,7 +853,7 @@ subroutine xdealloc()
         call sparseptrdealloc(yyy%sptr(ii))
      enddo
   endif
-  if (df_restrictflag.ne.0.and.sparsedfflag.ne.0) then
+  if (use_dfwalktype) then
      if (sparseopt.ne.0) then
         do ii=0,numreduced
            call sparseptrdealloc(yyy%sdfptr(ii))

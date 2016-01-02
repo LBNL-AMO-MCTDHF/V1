@@ -17,8 +17,10 @@ subroutine all_matel()
   integer :: itime,jtime,getlen
   xcalled=xcalled+1
 
+  if (debugflag.eq.42) then
+     call mpibarrier();     OFLWR "     Call all_matel0 in all_matel"; CFL; call mpibarrier()
+  endif
   call all_matel0(yyy%cptr(0), yyy%cmfpsivec(spfstart,0), yyy%cmfpsivec(spfstart,0), twoereduced,times)
-
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     ...called all_matel0 in all_matel"; CFL; call mpibarrier()
   endif
@@ -58,7 +60,7 @@ subroutine all_matel0(matrix_ptr,inspfs1,inspfs2,twoereduced,times)
   use parameters
   use configptrmod
   implicit none
-  Type(CONFIGPTR),intent(out) :: matrix_ptr
+  Type(CONFIGPTR),intent(inout) :: matrix_ptr
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   DATATYPE,intent(out) :: twoereduced(reducedpotsize,nspf,nspf)
   integer :: times(*), i,j
@@ -96,7 +98,7 @@ subroutine twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced)
   use configptrmod
   implicit none
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf),inspfs2(spfsize,nspf)
-  Type(CONFIGPTR),intent(out) :: matrix_ptr
+  Type(CONFIGPTR),intent(inout) :: matrix_ptr
   DATATYPE,intent(out) :: twoereduced(reducedpotsize,nspf,nspf)
 
   if (debugflag.eq.42) then
@@ -120,7 +122,7 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
   use configptrmod
   implicit none
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
-  Type(CONFIGPTR),intent(out) :: matrix_ptr
+  Type(CONFIGPTR),intent(inout) :: matrix_ptr
   DATATYPE,allocatable :: ttempspfs(:,:),tempmatel(:,:)
   integer :: j
 
@@ -168,7 +170,7 @@ subroutine pulse_matel(matrix_ptr,inspfs1,inspfs2)
   use configptrmod
   implicit none
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
-  Type(CONFIGPTR),intent(out) :: matrix_ptr
+  Type(CONFIGPTR),intent(inout) :: matrix_ptr
   DATATYPE :: nullcomplex(1), dipoles(3)
   DATATYPE,allocatable :: ttempspfsxx(:,:), ttempspfsyy(:,:), ttempspfszz(:,:)
   integer :: ispf
@@ -218,7 +220,7 @@ subroutine sparseops_matel(matrix_ptr,inspfs1,inspfs2)
   use configptrmod
   implicit none
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
-  Type(CONFIGPTR),intent(out) :: matrix_ptr
+  Type(CONFIGPTR),intent(inout) :: matrix_ptr
   DATATYPE,allocatable :: ttempspfs(:,:)
   integer :: ispf  
 
@@ -549,7 +551,7 @@ subroutine assemble_sparsemats(www,matrix_ptr, sparse_ptr,boflag, nucflag, pulse
   type(walktype),intent(in) :: www
   integer,intent(in) :: conflag,boflag,nucflag,pulseflag
   Type(CONFIGPTR),intent(in) :: matrix_ptr
-  Type(SPARSEPTR),intent(out) :: sparse_ptr
+  Type(SPARSEPTR),intent(inout) :: sparse_ptr
 
   if (sparseconfigflag.eq.0) then
      OFLWR "BADDDCAL555LL"; CFLST

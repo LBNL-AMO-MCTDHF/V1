@@ -39,12 +39,13 @@ integer :: lancheckstep=20       !!              !! lanczos eigen routine checks
 real*8 :: lanthresh=1.d-9        !!              !! convergence criterion.
 end module lan_parameters
 module sparse_parameters
-integer :: sparseprime=1
-integer :: sparsesummaflag=0
-integer :: sparsedfflag=1
+integer :: sparseprime=1                         !! For reordering config list (experimental)
+integer :: sparsesummaflag=0                     !! 0=gather 1=summa(bad) 2=sendrecv(ok)
+integer :: sparsedfflag=1                        !! If zero disable separate restricted config walk list
 integer :: sparseconfigflag=0    !! Sparse       !! Sparse configuration routines on or off (for large # configs)
 integer :: sparseopt =1                          !! 0= direct CI  1= sparse matrix algebra (faster, more memory)
 integer :: nonsparsepropmode=1   !! 0 = ZGCHBV expokit; 1 = mine expmat
+logical :: use_dfwalktype=.false.                !! internal
 end module sparse_parameters
 module ham_parameters
 !!EE
