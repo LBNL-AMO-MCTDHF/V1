@@ -288,28 +288,43 @@ subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixt
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf)
   DATATYPE,intent(out) :: smallmatrixtr(www%singlematsize,www%configstart:www%configend)
+  DATATYPE :: csum
   integer ::    config1,  iwalk,myind,ihop
 
   smallmatrixtr=0d0; 
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ihop,iwalk,myind,csum) REDUCTION(+:smallmatrixtr)
+
+!$OMP DO SCHEDULE(DYNAMIC)
   do config1=www%botconfig,www%topconfig
      do ihop=1,www%numsinglehops(config1)
+
+           if (sparseconfigflag.eq.0) then
+!!              myind=www%singlewalk(iwalk,config1)
+              myind=www%singlehop(ihop,config1)
+           else
+              myind=ihop
+           endif
+
+        csum=0d0
         do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
 
 !!$     do iwalk=1,www%numsinglewalks(config1)
 
-           if (sparseconfigflag.eq.0) then
-              myind=www%singlewalk(iwalk,config1)
-           else
-              myind=ihop
-           endif
-           smallmatrixtr(myind,config1)=smallmatrixtr(myind,config1)+   &
+           csum=csum+&
                 onebodymat(www%singlewalkopspf(1,iwalk,config1), &
                 www%singlewalkopspf(2,iwalk,config1)) *  &
                 www%singlewalkdirphase(iwalk,config1)
+
         enddo
+
+           smallmatrixtr(myind,config1)=smallmatrixtr(myind,config1)+   &
+                csum
+  
      enddo
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
   if (sparseconfigflag.eq.0) then
      call mpiallgather(smallmatrixtr(:,:),www%numconfig**2,www%configsperproc(:)*www%numconfig,www%maxconfigsperproc*www%numconfig)
