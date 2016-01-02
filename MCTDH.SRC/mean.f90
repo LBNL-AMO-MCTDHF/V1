@@ -87,12 +87,12 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
-  integer ::   ispf, jspf, iispf, jjspf ,  config2, config1,dirphase, iwalk, qq
+  integer ::   ispf, jspf, iispf, jjspf ,  config2, config1,dirphase, iwalk,ii
   DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects),  in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE,intent(out) :: reducedpottally(www%nspf,www%nspf,www%nspf,www%nspf)
   DATATYPE,allocatable :: avector2(:,:,:)
-  DATATYPE ::  a1(numvects), a2(numvects), dot
-  DATAECS :: thisrvalue
+  DATATYPE ::  a1(numr,numvects), a2(numr,numvects), dot
+  DATAECS :: rvalues(numr)
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 !! AND DO HOPS
@@ -102,29 +102,31 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
   avector2(:,www%firstconfig:www%lastconfig,:)=in_avector2(:,:,:)
 
   if (www%parconsplit.ne.0) then
-     do qq=1,numvects
-        call mpiallgather(avector2(:,:,qq),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+     do ii=1,numvects
+        call mpiallgather(avector2(:,:,ii),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
      enddo
   endif
 
   reducedpottally(:,:,:,:)=0.d0
 
-  !! by configurations; following matel.f90
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(rvalues,config1,a1,a2,iwalk,dirphase,config2,ii,ispf,iispf,jspf,jjspf) REDUCTION(+:reducedpottally)
 
-  do qq=1,numr
-     thisrvalue=bondpoints(qq)
+  rvalues(:)=bondpoints(:)
 
         !! doubly off diagonal walks
-        
+
+!$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
 
-        a1(:)=avector1(qq,config1,:)   !! NO MORE
+        a1(:,:)=avector1(:,config1,:)
         
         do iwalk=1,www%numdoublewalks(config1)
            
            dirphase=www%doublewalkdirphase(iwalk,config1)
            config2=www%doublewalk(iwalk,config1)
-           a2(:)=avector2(qq,config2,:)
+           do ii=1,numvects
+              a2(:,ii)=avector2(:,config2,ii)/rvalues(:)
+           enddo
            
            ispf=www%doublewalkdirspf(1,iwalk,config1)   !BRA2 
            jspf=www%doublewalkdirspf(2,iwalk,config1)   !KET2 (walk)
@@ -133,15 +135,16 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
            
            reducedpottally(ispf,jspf,iispf,jjspf) =  &    
                 reducedpottally(ispf,jspf,iispf,jjspf) +  &
-                dirphase*dot(a1,a2,numvects)/thisrvalue
+                dirphase*dot(a1,a2,numvects*numr)           !! 1/R factor above
            
            reducedpottally(iispf,jjspf,ispf,jspf) =  &
                 reducedpottally(iispf,jjspf,ispf,jspf) + &
-                dirphase*dot(a1,a2,numvects)/thisrvalue
+                dirphase*dot(a1,a2,numvects*numr)           !! 1/R factor above
 
         enddo
      enddo   ! config1
-  enddo  !! qq
+!$OMP END DO
+!$OMP END PARALLEL
 
   deallocate(avector2)
 
@@ -163,8 +166,9 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
   DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects), in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE,intent(out) :: reducedproderiv(www%nspf,www%nspf)
   DATATYPE,allocatable :: avector2(:,:,:)
-  DATATYPE :: a1(numvects), a2(numvects), dot
-  integer ::  config1,config2,  ispf,jspf,  dirphase,     iwalk,ii,jj
+  DATATYPE :: a1(numr,numvects), a2(numr,numvects), a2mult(numr,numvects), mypro(numr,numr), &
+       myredpro(www%nspf,www%nspf),dot
+  integer ::  config1,config2,  ispf,jspf,  dirphase,     iwalk,ii
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 !! AND DO HOPS
@@ -181,23 +185,43 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
 
   reducedproderiv(:,:)=0.d0
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(mypro,myredpro,config1,iwalk,config2,dirphase,ispf,jspf,a2mult) REDUCTION(+:reducedproderiv)
+
+  mypro(:,:)=proderivmod(:,:)
+  myredpro(:,:)=0d0
+
+!$OMP DO SCHEDULE(DYNAMIC)
   do config1=www%botconfig,www%topconfig
 
      do iwalk=1,www%numsinglewalks(config1)
         config2=www%singlewalk(iwalk,config1);        dirphase=www%singlewalkdirphase(iwalk,config1)
         ispf=www%singlewalkopspf(1,iwalk,config1);        jspf=www%singlewalkopspf(2,iwalk,config1)
 
-        do jj=1,numr
-           do ii=1,numr
-              a1(:)=avector1(ii,config1,:)
-              a2(:)=avector2(jj,config2,:)
-              
-              reducedproderiv(jspf,ispf)=reducedproderiv(jspf,ispf)+ &
-                   dirphase*dot(a1,a2,numvects)*proderivmod(ii,jj)
-           enddo
-        enddo
+        a1(:,:)=avector1(:,config1,:)
+        a2(:,:)=avector2(:,config2,:)
+
+        call MYGEMM('N','N',numr,numvects,numr,DATAONE,mypro(:,:),numr,a2(:,:),numr,DATAZERO,a2mult(:,:),numr)
+
+        myredpro(jspf,ispf)=myredpro(jspf,ispf)+ &
+             dirphase*dot(a1,a2mult,numvects*numr)
+
+! PREVIOUS (jj,ii private)
+!        do jj=1,numr
+!           do ii=1,numr
+!              a1(:)=avector1(ii,config1,:)
+!              a2(:)=avector2(jj,config2,:)
+!              
+!              reducedproderiv(jspf,ispf)=reducedproderiv(jspf,ispf)+ &
+!                   dirphase*dot(a1,a2,numvects)*proderivmod(ii,jj)
+!           enddo
+!        enddo
+
+
      enddo
   enddo
+!$OMP END DO
+  reducedproderiv(:,:)=reducedproderiv(:,:)+myredpro(:,:)
+!$OMP END PARALLEL
 
   deallocate(avector2)
 
@@ -216,11 +240,14 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
   DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects), in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE,intent(out) :: reducedinvr(www%nspf,www%nspf),reducedr(www%nspf,www%nspf),  reducedinvrsq(www%nspf,www%nspf)
   DATATYPE,allocatable :: avector2(:,:,:)
-  DATATYPE ::  a1(numvects), a2(numvects), dot
+  DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a2r(numr,numvects), &
+       a2inv(numr,numvects), a2invsq(numr,numvects), dot
   integer ::  config1,config2,   ispf,jspf,  dirphase,    iwalk,ii
-  DATAECS :: thisrvalue,  csum,csum2
+  DATAECS ::  invrvalues(numr),invrsqvalues(numr),rvalues(numr)
+  DATATYPE :: myinvr(www%nspf,www%nspf),myr(www%nspf,www%nspf),  myinvrsq(www%nspf,www%nspf)
 
   reducedinvr(:,:)=0.d0;  reducedr(:,:)=0.d0;  reducedinvrsq(:,:)=0.d0
+
   if (numr.eq.1) then
      return
   endif
@@ -238,27 +265,34 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
      enddo
   endif
 
-  do ii=1,numr
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(rvalues,invrvalues,invrsqvalues,config1,a1,a2,a2r,a2inv,a2invsq,iwalk,config2,dirphase,ispf,jspf,myinvr,myr,myinvrsq) REDUCTION(+:reducedinvr,reducedr,reducedinvrsq)
 
-     thisrvalue=bondpoints(ii);        csum=(1.d0/thisrvalue);        csum2=(1.d0/thisrvalue**2)
+  rvalues(:)=bondpoints(:);    invrvalues(:)=(1.d0/bondpoints(:));   invrsqvalues(:)=(1.d0/bondpoints(:)**2)
 
+  myinvr(:,:)=0.d0;  myr(:,:)=0.d0;  myinvrsq(:,:)=0.d0
+
+!$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
-
-        a1(:)=avector1(ii,config1,:)
-        
+        a1(:,:)=avector1(:,config1,:)
         do iwalk=1,www%numsinglewalks(config1)
            config2=www%singlewalk(iwalk,config1);              dirphase=www%singlewalkdirphase(iwalk,config1)
-           a2(:)=avector2(ii,config2,:)
-           
+           a2(:,:)=avector2(:,config2,:)
+           do ii=1,numvects
+              a2r(:,ii)=a2(:,ii)*rvalues(:)
+              a2inv(:,ii)=a2(:,ii)*invrvalues(:)
+              a2invsq(:,ii)=a2(:,ii)*invrsqvalues(:)
+           enddo
            ispf=www%singlewalkopspf(1,iwalk,config1);              jspf=www%singlewalkopspf(2,iwalk,config1)
-           
-           
-           reducedinvr(jspf,ispf)=reducedinvr(jspf,ispf)+         dirphase*dot(a1,a2,numvects)*csum
-           reducedr(jspf,ispf)=reducedr(jspf,ispf)+         dirphase*dot(a1,a2,numvects)*thisrvalue
-           reducedinvrsq(jspf,ispf)=reducedinvrsq(jspf,ispf)+     dirphase*dot(a1,a2,numvects)*csum2
+           myinvr(jspf,ispf)=myinvr(jspf,ispf)+         dirphase*dot(a1,a2inv,numvects)
+           myr(jspf,ispf)=myr(jspf,ispf)+         dirphase*dot(a1,a2r,numvects)
+           myinvrsq(jspf,ispf)=myinvrsq(jspf,ispf)+     dirphase*dot(a1,a2invsq,numvects)
         enddo
      enddo
-  enddo !! numr
+!$OMP END DO
+     reducedinvr(:,:)=reducedinvr(:,:)+myinvr(:,:)
+     reducedinvrsq(:,:)=reducedinvrsq(:,:)+myinvrsq(:,:)
+     reducedr(:,:)=reducedr(:,:)+myr(:,:)
+!$OMP END PARALLEL
 
   deallocate(avector2)
   

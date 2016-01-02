@@ -186,7 +186,7 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
        avector1(numpoints,www%firstconfig:www%lastconfig,howmany)
   DATAECS,intent(in) :: rvector(numpoints)
   DATATYPE,intent(out) :: denmat(www%nspf,www%nspf)
-  DATATYPE :: a1(numpoints,howmany), a2(numpoints,howmany), dot
+  DATATYPE :: a1(numpoints,howmany), a2(numpoints,howmany), mydenmat(www%nspf,www%nspf), dot
   DATATYPE, allocatable :: avector2(:,:,:)
   integer :: config1,config2,  ispf,jspf,  dirphase, iwalk, ii
 
@@ -208,6 +208,11 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
 
   !! single off diagonal walks
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ii,iwalk,config2,dirphase,ispf,jspf,mydenmat,a1,a2) REDUCTION(+:denmat)
+
+  mydenmat(:,:)=0.d0
+
+!$OMP DO SCHEDULE(DYNAMIC)
   do config1=www%botconfig,www%topconfig
 
      do ii=1,howmany
@@ -222,7 +227,7 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
         jspf=www%singlewalkopspf(2,iwalk,config1)  !! goes with config2
 
 
-        denmat(ispf,jspf)=denmat(ispf,jspf)+ &
+        mydenmat(ispf,jspf)=mydenmat(ispf,jspf)+ &
              dot(a2(:,:),a1(:,:),numpoints*howmany)*dirphase
 
 !!$!!  ONCE AND FOR ALL 2014           :                     RIGHT MULTIPLYING!!!
@@ -234,6 +239,9 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
 
      enddo
   enddo
+!$OMP END DO
+  denmat(:,:)=denmat(:,:)+mydenmat(:,:)
+!$OMP END PARALLEL
 
   deallocate(avector2)
 
