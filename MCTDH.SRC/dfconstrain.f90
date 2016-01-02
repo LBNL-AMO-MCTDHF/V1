@@ -107,7 +107,6 @@ subroutine get_smallwalkvects(www,avector, smallwalkvects,nblock,howmany)
   endif
   
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
-!! AND DO HOPS
 
   allocate(bigavector(nblock,www%numconfig,howmany))
   bigavector(:,:,:)=0d0
@@ -602,10 +601,10 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
        tempconmatels(www%nspf,www%nspf),dot
   DATATYPE,allocatable :: bigavector(:,:,:),bigavectorp(:,:,:), avectorp(:,:,:)
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,     iwalk, info, kspf, lspf, ind, jind, &
-       lind, llind, flag, isize, iwhich,  iiyy,maxii,imc
+       lind, llind, flag, isize, iwhich,  iiyy,maxii,imc,ihop
   integer :: ipiv(liosize)
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
-  DATATYPE :: liosolve(liosize),lioden(liosize, liosize),liodencopy(liosize,liosize),liosolvetemp(liosize)
+  DATATYPE :: liosolve(liosize),lioden(liosize, liosize),liodencopy(liosize,liosize),liosolvetemp(liosize), csum
 
   cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
 
@@ -704,7 +703,6 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
      enddo
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
-!! AND DO HOPS
 
      bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
      bigavectorp(:,www%firstconfig:www%lastconfig,:)=avectorp(:,:,:)
@@ -716,22 +714,31 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
         enddo
      endif
 
-     liosolve=0.d0
+     liosolve(:)=0.d0
 
-  !! single off diagonal walks
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,a1,a1p,ihop,iwalk,csum,config2,dirphase,a2,a2p,ispf,jspf,flag,ind) REDUCTION(+:liosolve)
 
+!$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
 
         a1(:,:)=avector(:,config1,:)
         a1p(:,:)=avectorp(:,config1,:)
 
-        do iwalk=1,www%numsinglewalks(config1)
-           
-           config2=www%singlewalk(iwalk,config1)
-           dirphase=www%singlewalkdirphase(iwalk,config1)
+!!$        do iwalk=1,www%numsinglewalks(config1)
+!!$           config2=www%singlewalk(iwalk,config1)
+
+        do ihop=1,www%numsinglehops(config1)
+           config2=www%singlehop(ihop,config1)
+
            a2(:,:)=bigavector(:,config2,:)
            a2p(:,:)=bigavectorp(:,config2,:)
 
+           csum = dot(a2p(:,:)*timefac,a1(:,:),numr*numvects) + &
+                dot(a2(:,:),a1p(:,:)*timefac,numr*numvects)
+
+           do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
+
+           dirphase=www%singlewalkdirphase(iwalk,config1)
            ispf=www%singlewalkopspf(1,iwalk,config1)
            jspf=www%singlewalkopspf(2,iwalk,config1)
               
@@ -750,11 +757,17 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
            end select
 
            if (flag==1) then
-              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:,:)*timefac,a1(:,:),numr*numvects)
-              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:,:),a1p(:,:)*timefac,numr*numvects)
+
+!!$              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:,:)*timefac,a1(:,:),numr*numvects)
+!!$              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:,:),a1p(:,:)*timefac,numr*numvects)
+
+              liosolve(ind)=liosolve(ind)+                   dirphase*csum
            endif
-        enddo
+           enddo  !! iwalk
+        enddo     !! ihop
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
      call mympireduce(liosolve,liosize)
 
@@ -907,11 +920,11 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
        drivingavectorsyy(numr,www%firstconfig:www%lastconfig,numvects),&
        drivingavectorszz(numr,www%firstconfig:www%lastconfig,numvects)
   integer :: ipairs(2,www%nspf*(www%nspf-1))
-  DATATYPE ::  a1(numvects), a2(numvects), a1p(numvects), a2p(numvects),dot
+  DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a1p(numr,numvects), a2p(numr,numvects),dot, csum
   DATATYPE :: tempconmatels(www%nspf,www%nspf), rhomat(www%nspf,www%nspf,www%nspf,www%nspf)
   DATATYPE,allocatable :: bigavector(:,:,:), bigavectorp(:,:,:),avectorp(:,:,:)
-  integer ::  config1,config2,   ispf,jspf,  dirphase,  i,  iwalk,ii,  info, kspf, &
-       lspf, ind, jind, llind, flag, isize,   iiyy,maxii,imc,j
+  integer ::  config1,config2,   ispf,jspf,  dirphase,  i,  iwalk,  info, kspf, &
+       lspf, ind, jind, llind, flag, isize,   iiyy,maxii,imc,j,ihop
   integer,allocatable :: ipiv(:)
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
   DATATYPE, allocatable :: liosolve(:),lioden(:, :),liodencopy(:,:),liosolvetemp(:)
@@ -1010,7 +1023,6 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      endif
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
-!! AND DO HOPS
 
      bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
      bigavectorp(:,www%firstconfig:www%lastconfig,:)=avectorp(:,:,:)
@@ -1024,21 +1036,29 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
 
      liosolve=0.d0
 
-  !! single off diagonal walks
-     do ii=1,numr
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,a1,a1p,ihop,iwalk,csum,config2,dirphase,a2,a2p,ispf,jspf,flag,ind) REDUCTION(+:liosolve)
 
+!$OMP DO SCHEDULE(DYNAMIC)
          do config1=www%botconfig,www%topconfig
 
-           a1(:)=avector(ii,config1,:)
-           a1p(:)=avectorp(ii,config1,:)
+           a1(:,:)=avector(:,config1,:)
+           a1p(:,:)=avectorp(:,config1,:)
            
-           do iwalk=1,www%numsinglewalks(config1)
+!!$           do iwalk=1,www%numsinglewalks(config1)
+!!$              config2=www%singlewalk(iwalk,config1)
+
+           do ihop=1,www%numsinglehops(config1)
+              config2=www%singlehop(ihop,config1)
+
+              a2(:,:)=bigavector(:,config2,:)
+              a2p(:,:)=bigavectorp(:,config2,:)
+
+              csum = dot(a2p(:,:)*timefac,a1(:,:),numvects*numr) + &
+                   dot(a2(:,:),a1p(:,:)*timefac,numvects*numr)
+
+              do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
               
-              config2=www%singlewalk(iwalk,config1)
               dirphase=www%singlewalkdirphase(iwalk,config1)
-              a2(:)=bigavector(ii,config2,:)
-              a2p(:)=bigavectorp(ii,config2,:)
-              
               ispf=www%singlewalkopspf(1,iwalk,config1)
               jspf=www%singlewalkopspf(2,iwalk,config1)
               
@@ -1050,14 +1070,17 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
               
               if (flag==1) then
                  
-                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:)*timefac,a1(:),numvects)
-                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:),a1p(:)*timefac,numvects)
-                 
-              endif
-           enddo
-        enddo
+!!$                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:)*timefac,a1(:),numvects)
+!!$                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:),a1p(:)*timefac,numvects)
 
+                 liosolve(ind)=liosolve(ind) + dirphase*csum
+
+              endif
+           enddo  !! iwalk
+        enddo     !! ihop
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
      call mympireduce(liosolve,isize)
 
