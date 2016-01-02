@@ -420,7 +420,7 @@ real*8  :: povsparse=1.d-3       !!              !! Sparsity threshold for trans
 !!EE
 !!{\large \quad MISC AND EXPERIMENTAL}
 !!BB
-integer :: conjgpropflag=0       !! for complex Domcke (see Helium.transient.absorption example)
+integer :: conjgpropflag=0       !! for complex Domcke
 integer :: pulsewindowtoo=1      !! use window function for E(omega) as well
 integer :: nucfluxflag=0         !! 0 = both 1 =electronic 2= nuclear  NOT nuclear flux action 13,14
 logical :: readfullvector=.true.
