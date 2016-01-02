@@ -270,14 +270,25 @@ subroutine parconfigexpomult_padded(inavector,outavector)
   select case (sparsesummaflag)
   case(0)
 #endif
-
+     if (use_dfwalktype) then
         call parconfigexpomult_padded0_gather(dwwptr,workconfigpointer,workdfsparsepointer,inavector,outavector)
+     else
+        call parconfigexpomult_padded0_gather(dwwptr,workconfigpointer,worksparsepointer,inavector,outavector)
+     endif
 
 #ifdef MPIFLAG
   case(1)
+     if (use_dfwalktype) then
         call parconfigexpomult_padded0_summa(dwwptr,workconfigpointer,workdfsparsepointer,inavector,outavector)
+     else
+        call parconfigexpomult_padded0_summa(dwwptr,workconfigpointer,worksparsepointer,inavector,outavector)
+     endif
   case(2)
+     if (use_dfwalktype) then
         call parconfigexpomult_padded0_circ(dwwptr,workconfigpointer,workdfsparsepointer,inavector,outavector)
+     else
+        call parconfigexpomult_padded0_circ(dwwptr,workconfigpointer,worksparsepointer,inavector,outavector)
+     endif
   case default
      OFLWR "Error sparsesummaflag ",sparsesummaflag; CFLST
   end select

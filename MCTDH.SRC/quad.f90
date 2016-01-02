@@ -492,7 +492,11 @@ subroutine parquadpreconsub(notusedint, inavectorspin,outavectorspin)
   DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
 
-  call parquadpreconsub0(dwwptr,yyy%cptr(0),yyy%sdfptr(0),notusedint,inavectorspin,outavectorspin)
+  if (use_dfwalktype) then
+     call parquadpreconsub0(dwwptr,yyy%cptr(0),yyy%sdfptr(0),notusedint,inavectorspin,outavectorspin)
+  else
+     call parquadpreconsub0(dwwptr,yyy%cptr(0),yyy%sptr(0),notusedint,inavectorspin,outavectorspin)
+  endif
 
 end subroutine parquadpreconsub
 

@@ -264,14 +264,26 @@ subroutine parblockconfigmult(inavector,outavector)
   select case (sparsesummaflag)
   case(0)
 #endif
+     if (use_dfwalktype) then
+        call parblockconfigmult0_gather(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+     else
+        call parblockconfigmult0_gather(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
+     endif
 
-     call parblockconfigmult0_gather(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
 
 #ifdef MPIFLAG
   case(1)
-     call parblockconfigmult0_summa(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+     if (use_dfwalktype) then
+        call parblockconfigmult0_summa(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+     else
+        call parblockconfigmult0_summa(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
+     endif
   case(2)
-     call parblockconfigmult0_circ(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+     if (use_dfwalktype) then
+        call parblockconfigmult0_circ(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+     else
+        call parblockconfigmult0_circ(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
+     endif
   case default
      OFLWR "Error sparsesummaflag ", sparsesummaflag; CFLST
   end select
