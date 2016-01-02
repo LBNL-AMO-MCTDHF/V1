@@ -816,13 +816,19 @@ subroutine biomatvec_byproc(firstproc,lastproc,x,y)
   integer :: i,j,ihop
   DATATYPE,intent(in) :: x(biopointer%bionr,biopointer%wwbio%allbotconfigs(firstproc):biopointer%wwbio%alltopconfigs(lastproc))
   DATATYPE,intent(out) :: y(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig)
-  DATATYPE :: csum
+  DATATYPE :: csum,myout(biopointer%bionr)
 
   y(:,:)=0d0
 
+!! Hopefully no problems.  If problems try REDUCTION(+:y)
+!!
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,ihop,csum,j,myout) 
+
+!$OMP DO SCHEDULE(DYNAMIC)
   do i=biopointer%wwbio%botconfig,biopointer%wwbio%topconfig
 !! summing over nonconjugated second index in s(:), good
 
+     myout(:)=0d0
      do ihop=biopointer%wwbio%firstsinglehopbyproc(firstproc,i), &
           biopointer%wwbio%lastsinglehopbyproc(lastproc,i) 
         csum=0d0
@@ -831,10 +837,12 @@ subroutine biomatvec_byproc(firstproc,lastproc,x,y)
                 biopointer%smo(biopointer%wwbio%singlewalkopspf(1,j,i),&
                 biopointer%wwbio%singlewalkopspf(2,j,i)) * biopointer%wwbio%singlewalkdirphase(j,i)
         enddo
-        y(:,i) = y(:,i) + csum * x(:,biopointer%wwbio%singlehop(ihop,i)) 
+        myout(:) = myout(:) + csum * x(:,biopointer%wwbio%singlehop(ihop,i)) 
      enddo
-
+     y(:,i)=myout(:)
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
 end subroutine biomatvec_byproc
 
