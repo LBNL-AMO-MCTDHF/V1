@@ -1787,30 +1787,35 @@ subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
     
 !! OMP PROBLEMS LAWRENCIUM - OBSERVE ERRORS IN BLOCKLANCZOS ORBITALS THREADS > 1 - 07-2015
 !! COMMENTING THIS OUT!!  REINSTATE ONLY WITH TESTING LARGE NUMBER OF THREADS BOXES PENCILS AND SHEETS
- 
-!$OxMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
+!! 01-2016 - going for it again without testing.  zeroing work and work2
+
+     work(:,:)=0d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
      select case(option)
      case(1)  !! KE
-!$OxMP DO SCHEDULE(STATIC)
+!$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,ketot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
         enddo
-!$OxMP END DO
+!$OMP END DO
      case(2) 
-!$OxMP DO SCHEDULE(STATIC)
+!$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,fdtot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
         enddo
-!$OxMP END DO
+!$OMP END DO
      case default 
         OFLWR "WHAAAAT"; CFLST
      end select
 
 ! (Implied barrier at end parallel)
-!$OxMP END PARALLEL
+!$OMP END PARALLEL
      call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
      
      if (deltabox.ne.0) then
+
+        work2(:,:)=0d0
 
         select case (indim)
         case(3)
@@ -1905,6 +1910,8 @@ subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
 
   do ibox=1,nbox(indim)
      call myclock(atime)
+
+     work(:,:)=0d0
      if (boxrank(indim).eq.ibox) then
         work(:,:)=in(:,:)
      endif
@@ -1932,27 +1939,28 @@ subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
 
 !! OMP PROBLEMS LAWRENCIUM - OBSERVE ERRORS IN BLOCKLANCZOS ORBITALS THREADS > 1 - 07-2015
 !! COMMENTING THIS OUT!!  REINSTATE ONLY WITH TESTING LARGE NUMBER OF THREADS BOXES PENCILS AND SHEETS
+!! 01-2016 - going for it again without testing.
 
-!$OxMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
      select case(option)
      case(1)  !! KE
-!$OxMP DO SCHEDULE(STATIC)
+!$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,work(:,ii),nnn,ketot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
         enddo
-!$OxMP END DO
+!$OMP END DO
      case(2) 
-!$OxMP DO SCHEDULE(STATIC)
+!$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,work(:,ii),nnn,fdtot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
         enddo
-!$OxMP END DO
+!$OMP END DO
      case default 
         OFLWR "WHAAAAT"; CFLST
      end select
 
 ! (Implied barrier at end parallel)
-!$OxMP END PARALLEL
+!$OMP END PARALLEL
      call myclock(btime); times(3)=times(3)+btime-atime
   enddo
 
@@ -2009,27 +2017,30 @@ subroutine mult_all0(in, out,idim,nnn,mmm,option)
 
 !! OMP PROBLEMS LAWRENCIUM - OBSERVE ERRORS IN BLOCKLANCZOS ORBITALS THREADS > 1 - 07-2015
 !! COMMENTING THIS OUT!!  REINSTATE ONLY WITH TESTING LARGE NUMBER OF THREADS BOXES PENCILS AND SHEETS
+!! 01-2016 - going for it again without testing.  zeroing out(:,:,:) now:
+
+  out(:,:,:)=0d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
 
   select case(option)
   case(1)  !! KE
-!$OxMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
-!$OxMP DO SCHEDULE(STATIC)
+!$OMP DO SCHEDULE(STATIC)
      do jj=1,mmm
         call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,ketot(idim)%mat,gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
      enddo
-!$OxMP END DO
-!$OxMP END PARALLEL
+!$OMP END DO
   case(2)  !! X Y or Z derivative (real valued antisymmetric)
-!$OxMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
-!$OxMP DO SCHEDULE(STATIC)
+!$OMP DO SCHEDULE(STATIC)
      do jj=1,mmm
         call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,fdtot(idim)%mat,gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
      enddo
-!$OxMP END DO
-!$OxMP END PARALLEL
+!$OMP END DO
   case default 
-     OFLWR "WHAAAAT"; CFLST
+     OFLWR "WHAAAAT",option; CFLST
   end select
+!$OMP END PARALLEL
+
 end subroutine mult_all0
 
 
@@ -2127,13 +2138,14 @@ subroutine mult_all0_big_gen_complex(in, out,indim,outdim,mat,nnn,mmm)
   complex*16,intent(out) :: out(nnn,outdim,mmm)
   integer :: jj
 
-!$OxMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
-!$OxMP DO SCHEDULE(STATIC)
+  out(:,:,:)=0d0
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
+!$OMP DO SCHEDULE(STATIC)
   do jj=1,mmm
      call ZGEMM('N','T',nnn,outdim,indim,(1d0,0d0),in(:,:,jj),nnn,mat,outdim,(0d0,0d0), out(:,:,jj), nnn)
   enddo
-!$OxMP END DO
-!$OxMP END PARALLEL
+!$OMP END DO
+!$OMP END PARALLEL
 end subroutine mult_all0_big_gen_complex
 
 
