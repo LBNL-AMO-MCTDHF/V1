@@ -17,7 +17,7 @@ end subroutine noparorbsupport
 subroutine apply_spf_constraints(outspfs)
   use parameters
   implicit none
-  DATATYPE :: outspfs(spfsize,nspf)
+  DATATYPE,intent(inout) :: outspfs(spfsize,nspf)
 
   if (spfrestrictflag==1) then
      call restrict_spfs0(outspfs,nspf,spfmvals,0)   
@@ -31,7 +31,8 @@ end subroutine apply_spf_constraints
 subroutine spfs_expand(inspfs,outspfs)
   use parameters
   implicit none
-  DATATYPE :: outspfs(spfsize,nspf),inspfs(spfsmallsize,nspf)
+  DATATYPE,intent(in) :: inspfs(spfsmallsize,nspf)
+  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
 
   if (spfugrestrict.ne.0) then
      call bothexpand_spfs(inspfs,outspfs,nspf,spfmvals,spfugvals)
@@ -47,7 +48,8 @@ end subroutine spfs_expand
 subroutine spfs_compact(inspfs,outspfs)
   use parameters
   implicit none
-  DATATYPE :: outspfs(spfsmallsize,nspf),inspfs(spfsize,nspf)
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf)
+  DATATYPE,intent(out) :: outspfs(spfsmallsize,nspf)
 
   if (spfugrestrict.ne.0) then
      call bothcompact_spfs(inspfs,outspfs,nspf,spfmvals,spfugvals)
@@ -65,7 +67,7 @@ subroutine orthog_tofrozen(inspf)
   use parameters
   use opmod !! frozenspfs
   implicit none
-  DATATYPE :: inspf(spfsize)
+  DATATYPE,intent(inout) :: inspf(spfsize)
   logical :: orbparflag
   orbparflag=.false.
   if (parorbsplit.eq.3) then
@@ -82,11 +84,13 @@ subroutine spf_orthogit(inspfs,error)
   use opmod !! frozenspfs
   implicit none
 
-  integer :: i,j,ii
-  real*8 :: error
-  DATATYPE :: inspfs(spfsize,nspf),  dot, sum, &
-       tempspfs(spfsize,nspf), ovl(nspf,nspf)
+  real*8,intent(out) :: error
+  DATATYPE,intent(inout) :: inspfs(spfsize,nspf)
+  DATATYPE :: tempspfs(spfsize,nspf), ovl(nspf,nspf)  !! AUTOMATIC
+  DATATYPE ::   dot, sum
   logical :: orbparflag
+  integer :: i,j,ii
+
   orbparflag=.false.
   if (parorbsplit.eq.3) then
      orbparflag=.true.
@@ -148,7 +152,7 @@ subroutine spf_orthogit_gs(inspfs)
   use parameters
   use opmod !! frozenspfs
   implicit none
-  DATATYPE :: inspfs(  spfsize, nspf   )
+  DATATYPE,intent(inout) :: inspfs(  spfsize, nspf   )
   integer :: i 
   logical :: orbparflag
   orbparflag=.false.
@@ -173,7 +177,7 @@ end subroutine spf_orthogit_gs
 subroutine mess_with_spfs(inspfs)
   use parameters
   implicit none
-  DATATYPE :: inspfs(  spfsize, nspf   )
+  DATATYPE,intent(inout) :: inspfs(  spfsize, nspf   )
   integer :: ispf, ii
   real*8 :: nextran, nulldouble
 

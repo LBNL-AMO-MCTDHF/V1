@@ -113,11 +113,13 @@ subroutine dipolesub_one(www,abra,aket,inspfs,xdipole_expect,ydipole_expect,zdip
   DATATYPE, intent(in) :: inspfs(  spfsize, www%nspf ), abra(numr,www%firstconfig:www%lastconfig),&
        aket(numr,www%firstconfig:www%lastconfig)
   DATATYPE,intent(out) ::    zdipole_expect, ydipole_expect, xdipole_expect
-  DATATYPE :: tempvector(numr,www%firstconfig:www%lastconfig), dot,nullcomplex(1),dipoles(3), &
-       tempspfs(spfsize,www%nspf), dipolemat(www%nspf,www%nspf),csum
+  DATATYPE :: dot,nullcomplex(1),dipoles(3), dipolemat(www%nspf,www%nspf),csum
+  DATATYPE,allocatable :: tempvector(:,:),tempspfs(:,:)
   DATAECS :: rvector(numr)
   integer :: i
  
+  allocate(tempvector(numr,www%firstconfig:www%lastconfig), tempspfs(spfsize,www%nspf))
+
 !! independent of R for now.  multiply by R for prolate  (R set to 1 for atom)
   call nucdipvalue(nullcomplex,dipoles)
 
@@ -185,6 +187,8 @@ subroutine dipolesub_one(www,abra,aket,inspfs,xdipole_expect,ydipole_expect,zdip
      call mympireduceone(xdipole_expect)
   endif
   xdipole_expect=xdipole_expect + dipoles(1)
+
+  deallocate(tempvector,tempspfs)
 
 end subroutine dipolesub_one
 

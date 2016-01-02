@@ -7,9 +7,10 @@ subroutine printconfig(thisconfig,www)
   implicit none
 
   type(walktype),intent(in) :: www
-  integer :: thisconfig(www%ndof),i
+  integer,intent(in) :: thisconfig(www%ndof)
   character (len=4) :: mslabels(2) =["a ","b "]
-  
+  integer :: i
+
   write(mpifileptr,'(100(I3,A2))') (thisconfig((i-1)*2+1), mslabels(thisconfig(i*2)), i=1,www%numelec)
 
 end subroutine printconfig
@@ -28,14 +29,17 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
   implicit none
   type(walktype),intent(in) :: www,dfww
   type(CONFIGPTR),intent(in) :: cptr
-  integer :: order, printflag,i, guessflag,numshift,flag
-  DATATYPE :: thisconfigvects(www%totadim,order),lastval,dot
-  DATAECS :: thisconfigvals(order), tempconfigvals(order+numshift)
-  real*8 :: realconfigvect(www%totadim)
-  real*8 :: time    !!$ sum
+  integer,intent(in) :: order,printflag,guessflag,numshift
+  DATATYPE,intent(out) :: thisconfigvects(www%totadim,order)
+  DATAECS,intent(out) :: thisconfigvals(order)
+  real*8,intent(in) :: time
+  real*8,allocatable :: realconfigvect(:)
   DATATYPE, allocatable :: fullconfigmatel(:,:), fullconfigvects(:,:), &
        tempconfigvects(:,:)
   DATAECS, allocatable :: fullconfigvals(:)
+  DATAECS ::  tempconfigvals(order+numshift)
+  DATATYPE :: lastval,dot
+  integer :: i,flag
 
   if (order+numshift.gt.www%numconfig*numr) then
      OFLWR "Error, want ",order," plus ",numshift," vectors but totadim= ",www%numconfig*numr;CFLST
@@ -53,11 +57,13 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
      allocate(tempconfigvects(www%totadim,order+numshift))
      tempconfigvects(:,:)=0d0
      if (guessflag.ne.0) then
+        allocate(realconfigvect(www%totadim))
         do i=1,numshift
            call RANDOM_NUMBER(realconfigvect(:))
            tempconfigvects(:,i)=realconfigvect(:)
         enddo
         tempconfigvects(:,numshift+1:order+numshift)=thisconfigvects(:,1:order)
+        deallocate(realconfigvect)
      endif
      call blocklanczos(order+numshift,tempconfigvects,tempconfigvals,printflag,guessflag)
      
@@ -153,8 +159,9 @@ subroutine myconfigprop(www,dfww,avectorin,avectorout,time,imc)
   implicit none
   type(walktype),intent(in) :: www,dfww
   integer,intent(in) :: imc
-  real*8 :: time
-  DATATYPE :: avectorin(www%totadim), avectorout(www%totadim)
+  real*8,intent(in) :: time
+  DATATYPE,intent(in) :: avectorin(www%totadim)
+  DATATYPE,intent(out) :: avectorout(www%totadim)
 
   if (sparseconfigflag/=0) then
      call exposparseprop(www,avectorin,avectorout,time,imc)
@@ -178,8 +185,9 @@ subroutine nonsparseprop(www,dfww,avectorin,avectorout,time,imc)
   implicit none
   type(walktype),intent(in) :: www,dfww
   integer, intent(in) :: imc
-  DATATYPE :: avectorin(www%totadim), avectorout(www%totadim),  &
-       avectortemp(www%numdfbasis*numr), avectortemp2(www%numdfbasis*numr)
+  DATATYPE,intent(in) :: avectorin(www%totadim)
+  DATATYPE,intent(out) :: avectorout(www%totadim)
+  DATATYPE :: avectortemp(www%numdfbasis*numr), avectortemp2(www%numdfbasis*numr) !! AUTOMATIC
   DATATYPE, allocatable :: bigconfigmatel(:,:), bigconfigvects(:,:) !!,bigconfigvals(:)
 #ifndef REALGO
   real*8, allocatable :: realbigconfigmatel(:,:,:,:)
@@ -296,7 +304,7 @@ subroutine parconfigexpomult_padded0_gather(www,workconfigpointer,worksparsepoin
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
   DATATYPE,allocatable :: intemp(:,:)
-  DATATYPE :: outtemp(numr,www%botconfig:www%topconfig)
+  DATATYPE :: outtemp(numr,www%botconfig:www%topconfig)  !! AUTOMATIC
 
   call avectortime(3)
 
@@ -351,7 +359,7 @@ subroutine parconfigexpomult_padded0_summa(www,workconfigpointer,worksparsepoint
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
   DATATYPE :: intemp(numr,www%maxconfigsperproc), outwork(numr,www%botconfig:www%topconfig),&
-       outtemp(numr,www%botconfig:www%topconfig)
+       outtemp(numr,www%botconfig:www%topconfig)   !! AUTOMATIC
   integer :: iproc
 
   call avectortime(3)
@@ -408,7 +416,7 @@ subroutine parconfigexpomult_padded0_circ(www,workconfigpointer,worksparsepointe
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
   DATATYPE :: workvector(numr,www%maxconfigsperproc), workvector2(numr,www%maxconfigsperproc),&
-       outwork(numr,www%botconfig:www%topconfig),  outtemp(numr,www%botconfig:www%topconfig)
+       outwork(numr,www%botconfig:www%topconfig),  outtemp(numr,www%botconfig:www%topconfig)  !! AUTOMATIC
   integer :: iproc,prevproc,nextproc,deltaproc
 
   call avectortime(3)

@@ -50,8 +50,8 @@ subroutine get_reducedpot0(www,intwoden,outpot,twoereduced)
   use spfsize_parameters
   implicit none
   type(walktype),intent(in) :: www
-  DATATYPE :: TWOEreduced(reducedpotsize, www%nspf,www%nspf)
-  DATATYPE :: intwoden(www%nspf,www%nspf,www%nspf,www%nspf),outpot(reducedpotsize,www%nspf,www%nspf)
+  DATATYPE,intent(in) :: twoereduced(reducedpotsize, www%nspf,www%nspf),intwoden(www%nspf,www%nspf,www%nspf,www%nspf)
+  DATATYPE,intent(out) :: outpot(reducedpotsize,www%nspf,www%nspf)
   integer :: ii
 
 ! I have bra2,ket2,bra1,ket1. (chemists' notation for contraction)

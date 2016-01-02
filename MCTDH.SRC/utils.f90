@@ -32,13 +32,17 @@ subroutine zfftf_wrap_diff(size,inout,diffdflag)
   implicit none
   integer, intent(in) :: size,diffdflag
   complex*16, intent(inout) :: inout(size)
-  complex*16 :: work(size) !! AUTOMATIC
+  complex*16,allocatable :: work(:)
   complex*16 :: facfunct
   integer :: i,jj
+
 
   if (diffdflag.eq.0) then
      call zfftf_wrap(size,inout)
   else
+
+     allocate(work(size)); work=0
+
 #define DOCIRC
 #ifdef DOCIRC
 !! guarantees F.T. at zero is zero, right?
@@ -100,6 +104,8 @@ subroutine zfftf_wrap_diff(size,inout,diffdflag)
         inout(i)=work(i)*facfunct(i-1,size-1,diffdflag)
      enddo
 
+     deallocate(work)
+
   endif
 
 contains
@@ -115,9 +121,11 @@ subroutine zfftf_wrap(size,inout)
   implicit none
   integer, intent(in) :: size
   complex*16, intent(inout) :: inout(size)
-  complex*16 :: wsave(4*size+15)             !! AUTOMATIC
+  complex*16,allocatable :: wsave(:)
+  allocate(wsave(4*size+15))
   call zffti(size,wsave)
   call zfftf(size,inout,wsave)
+  deallocate(wsave)
 end subroutine zfftf_wrap
 
 
@@ -125,9 +133,11 @@ subroutine zfftb_wrap(size,inout)
   implicit none
   integer, intent(in) :: size
   complex*16, intent(inout) :: inout(size)
-  complex*16 :: wsave(4*size+15)             !! AUTOMATIC
+  complex*16,allocatable :: wsave(:)
+  allocate(wsave(4*size+15))
   call zffti(size,wsave)
   call zfftb(size,inout,wsave)
+  deallocate(wsave)
 end subroutine zfftb_wrap
 
 
@@ -155,8 +165,10 @@ end function getlen2
 
 function hermdot(one,two,n)
   implicit none
-  integer :: n,i
-  DATATYPE :: one(n), two(n), hermdot, sum
+  integer,intent(in) :: n
+  DATATYPE,intent(in) :: one(n), two(n)
+  DATATYPE :: hermdot, sum
+  integer :: i
   sum=0.d0
   do i=1,n
      sum =   sum + ALLCON(one(i)) *  two(i) 
@@ -166,7 +178,8 @@ end function
 
 function floatfac(in)
   implicit none
-  integer ::  in, i
+  integer,intent(in) :: in
+  integer ::  i
   real*8 :: floatfac, sum
   sum=1.d0
   do i=1,in
@@ -178,8 +191,10 @@ end function floatfac
 !! USE THIS FOR C-NORM DOT
 function cdot(one,two,n)
   implicit none
-  integer :: n,i
-  DATATYPE :: one(n), two(n), cdot, sum
+  integer,intent(in) :: n
+  DATATYPE,intent(in) :: one(n), two(n)
+  DATATYPE :: cdot, sum
+  integer :: i
   sum=0.d0
   do i=1,n
      sum = sum + one(i) * two(i) 
@@ -190,8 +205,10 @@ end function cdot
 !! USE THIS FOR CNORM DOT OF DATAECS TYPE
 function ecsdot(one,two,n)
   implicit none
-  integer :: n,i
-  DATAECS :: one(n), two(n), ecsdot, sum
+  integer,intent(in) :: n
+  DATAECS,intent(in) :: one(n), two(n)
+  DATAECS :: ecsdot, sum
+  integer :: i
   sum=0.d0
   do i=1,n
      sum = sum + one(i) * two(i) 
@@ -201,7 +218,7 @@ end function ecsdot
 
 function myisnan(input)
   implicit none
-  real*8 :: input
+  real*8,intent(in) :: input
   logical :: myisnan
   if ((input+1.0d0.eq.input)) then
      myisnan=.true.
@@ -218,8 +235,9 @@ end subroutine dummysub
 
 function pardot(one,two,n)
   implicit none
-  DATATYPE :: csum,dot,pardot,one(n),two(n)
-  integer :: n
+  integer,intent(in) :: n
+  DATATYPE,intent(in) :: one(n),two(n)
+  DATATYPE :: csum,dot,pardot
   csum=dot(one,two,n)
   call mympireduceone(csum)
   pardot=csum
@@ -228,8 +246,9 @@ end function
 
 function realpardot(one,two,n)
   implicit none
-  real*8 :: sum,realdot,realpardot,one(n),two(n)
-  integer :: n
+  integer,intent(in) :: n
+  real*8,intent(in) :: one(n),two(n)
+  real*8 :: sum,realdot,realpardot
   sum=realdot(one,two,n)
   call mympirealreduceone(sum)
   realpardot=sum
@@ -237,8 +256,10 @@ end function
 
 subroutine realpardotsub(one,two,n,out)
   implicit none
-  real*8 :: sum,realdot,out,one(n),two(n)
-  integer :: n
+  integer,intent(in) :: n
+  real*8,intent(in) :: one(n),two(n)
+  real*8,intent(out) :: out
+  real*8 :: sum,realdot
   sum=realdot(one,two,n)
   call mympirealreduceone(sum)
   out=sum
@@ -246,8 +267,10 @@ end subroutine realpardotsub
 
 subroutine pardotsub(one,two,n,out)
   implicit none
-  DATATYPE :: sum,dot,out,one(n),two(n)
-  integer :: n
+  integer,intent(in) :: n
+  DATATYPE,intent(in) :: one(n),two(n)
+  DATATYPE,intent(out) :: out
+  DATATYPE :: sum,dot
   sum=dot(one,two,n)
   call mympireduceone(sum)
   out=sum
@@ -256,8 +279,10 @@ end subroutine pardotsub
 !! CALLED INSIDE OMP LOOPS
 recursive function dot(one,two,n)
   implicit none
-  integer :: n,i
-  DATATYPE :: one(n), two(n), dot, sum
+  integer,intent(in) :: n
+  DATATYPE,intent(in) :: one(n), two(n)
+  DATATYPE :: dot, sum
+  integer :: i
   sum=0.d0
   do i=1,n
      sum = sum + CONJUGATE(one(i)) * two(i) 
@@ -267,8 +292,10 @@ end function dot
 
 function realdot(one,two,n)
   implicit none
-  integer :: n,i
-  real*8 :: one(n), two(n), realdot, sum
+  integer,intent(in) :: n
+  real*8,intent(in) :: one(n), two(n)
+  real*8 :: realdot, sum
+  integer :: i
   sum=0.d0
   do i=1,n
      sum = sum + one(i) * two(i) 
@@ -279,8 +306,10 @@ end function realdot
 
 subroutine realdotsub(one,two,n,out)
   implicit none
-  integer :: n,i
-  real*8 :: one(n), two(n), out, sum
+  integer,intent(in) :: n
+  real*8,intent(in) :: one(n), two(n)
+  real*8 :: out, sum
+  integer :: i
   sum=0.d0
   do i=1,n
      sum = sum + one(i) * two(i) 
@@ -292,11 +321,13 @@ end subroutine realdotsub
 subroutine realgramschmidt(n, m, lda, previous, vector)
   use fileptrmod
   implicit none
-
   ! n is the length of the vectors; m is how many to orthogonalize to
+  integer,intent(in) :: n,m,lda
+  real*8,intent(in) :: previous(lda,m)
+  real*8,intent(inout) :: vector(n)
+  real*8 :: norm, realdot
+  integer :: i
 
-  integer :: n,m,lda, i
-  real*8 :: norm,previous(lda,m), vector(n), realdot
   do i=1,m
      vector=vector-previous(1:n,i)* realdot(previous(1:n,i),vector,n) 
   enddo
@@ -310,11 +341,13 @@ end subroutine realgramschmidt
 subroutine gramschmidt(n, m, lda, previous, vector,parflag)
   implicit none
   ! n is the length of the vectors; m is how many to orthogonalize to
-
-  integer :: n,m,lda, i,j
-  logical :: parflag
-  DATATYPE :: previous(lda,m), vector(n)
+  integer,intent(in) :: n,m,lda
+  logical,intent(in) :: parflag
+  DATATYPE,intent(in) :: previous(lda,m)
+  DATATYPE,intent(inout) :: vector(n)
   CNORMTYPE :: norm
+  integer ::  i,j
+
   do j=1,2
      do i=1,m
         vector=vector-previous(1:n,i)* heredot(previous(1:n,i),vector,n) 
@@ -326,10 +359,12 @@ subroutine gramschmidt(n, m, lda, previous, vector,parflag)
 !!     endif
   enddo
 contains
+
   function heredot(bra,ket,size)
     implicit none
-    integer :: size
-    DATATYPE :: ket(size),bra(size),heredot,dot,pardot
+    integer,intent(in) :: size
+    DATATYPE,intent(in) :: ket(size),bra(size)
+    DATATYPE :: heredot,dot,pardot
     if (parflag) then
        heredot=pardot(bra,ket,size)
     else
@@ -342,9 +377,13 @@ end subroutine gramschmidt
 subroutine ecsgramschmidt(n, m, lda, previous, vector, kdoneflag)
   implicit none
   ! n is the length of the vectors; m is how many to orthogonalize to
+  integer,intent(in) :: n,m,lda
+  integer,intent(out) :: kdoneflag
+  DATAECS,intent(in) :: previous(lda,m)
+  DATAECS,intent(inout) :: vector(n)
+  DATAECS :: norm, ecsdot
+  integer :: i
 
-  integer :: n,m,lda, i, kdoneflag
-  DATAECS :: previous(lda,m), vector(n), norm, ecsdot
   do i=1,m
      vector=vector-previous(1:n,i)* ecsdot(previous(1:n,i),vector,n) 
   enddo
@@ -382,9 +421,12 @@ function matdet(N,A)
 !! output :
 !! matdet - the determinat of A, if anything goes bad, it just returns a value of 0d0
   implicit none
-  integer :: N,info,i,pow
+  integer,intent(in) :: N
+  integer :: info,i,pow
   integer :: ipiv(N)
-  DATATYPE :: A(N,N),matdet
+  DATATYPE,intent(in) :: A(N,N)
+  DATATYPE :: matdet
+
 !! rank 0 or less is not sufficient for a matrix, boo to your input!
   if(N.le.0) then
     matdet=0d0
@@ -429,8 +471,11 @@ subroutine get_petite_mat(M,N,A,B,left,right)
 !! output : 
 !! B - an N by N matrix that is a subset of A
   implicit none
-  integer :: i,j,M,N,left(N),right(N)
-  DATATYPE :: A(M,M),B(N,N)
+  integer,intent(in) :: M,N,left(N),right(N)
+  DATATYPE,intent(in) :: A(M,M)
+  DATATYPE,intent(out) :: B(N,N)
+  integer :: i,j
+
   do i=1,N
     do j=1,N
       B(i,j)=A(left(i),right(j))
@@ -441,18 +486,18 @@ end subroutine get_petite_mat
 
 subroutine neglnmat(A,N,lntol)
   implicit none
-  integer :: N
-  real*8 :: lntol
-  DATATYPE :: A(N,N)
+  integer,intent(in) :: N
+  real*8,intent(in) :: lntol
+  DATATYPE,intent(inout) :: A(N,N)
   call bothlnmat(A,N,-1,lntol)
 end subroutine neglnmat
 
 
 subroutine lnmat(A,N,lntol)
   implicit none
-  integer :: N
-  real*8 :: lntol
-  DATATYPE :: A(N,N)
+  integer,intent(in) :: N
+  real*8,intent(in) :: lntol
+  DATATYPE,intent(inout) :: A(N,N)
   call bothlnmat(A,N,+1,lntol)
 end subroutine lnmat
 
@@ -470,13 +515,19 @@ subroutine bothlnmat(A,N, which ,lntol)
 !! output:
 !! A - an N by N matrix that is A=-ln(A_in)
   implicit none
-  real*8 :: time,lntol
-  integer :: N,lwork,i,j,k,nscale,iflag,ipiv(2*N*N),which
-  complex*16 :: eig(N),djhlog   !!,saveeig(N)
-  DATATYPE :: A(N,N),sum, tempmat(N,N), sum2,sum3,wsp(6*N*N),saveA(N,N)
-  integer :: lwsp,ideg,iexph
-  DATATYPE :: VL(N,N),VR(N,N),work(8*N),rwork(8*N)
+  integer,intent(in) :: N,which
+  real*8,intent(in) :: lntol
+  DATATYPE,intent(inout) :: A(N,N)
   integer, save :: ierr=0
+  real*8 :: time
+  integer :: lwork,i,j,k,nscale,iflag
+  complex*16 :: eig(N),djhlog 
+  DATATYPE :: sum,sum2,sum3
+  integer :: lwsp,ideg,iexph
+  DATATYPE,allocatable :: VL(:,:),VR(:,:),work(:),rwork(:), tempmat(:,:),wsp(:),saveA(:,:)
+  integer,allocatable :: ipiv(:)
+
+  allocate(VL(N,N),VR(N,N),work(8*N),rwork(8*N), tempmat(N,N),wsp(6*N*N),saveA(N,N),ipiv(2*N*N))
 
   lwork=8*N
 
@@ -503,7 +554,7 @@ subroutine bothlnmat(A,N, which ,lntol)
 !    return
 !  endif
 
-!! get the eigenvalues / eigenvectors
+
 #ifdef REALGO 
   call dgeev('V','V',N,A,N,rwork(1),rwork(1+N),VL,N,VR,N,work,lwork,i)
   do j=1,N
@@ -514,27 +565,10 @@ subroutine bothlnmat(A,N, which ,lntol)
   VL(1:N,1:N)=ALLCON(VL(1:N,1:N))
 #endif
 
-!!  saveeig(:)=eig(:)
-
-!!! normalize the eigenvectors to each other    NO NEED BETTER PROPER SPECTRAL EXPANSION, THE RIGHT WAY, BUT CHECKING.
-if (1==0) then
-  do j=1,N
-    sum=0d0
-    do i=1,N
-      sum=sum+VL(i,j)*VR(i,j)
-    enddo
-    VL(:,j)=VL(:,j)/sqrt(sum)
-    VR(:,j)=VR(:,j)/sqrt(sum)
-  enddo
-
-else
 
 !! MAY 2014
   VL(:,:)=TRANSPOSE(VR(:,:))
   call invmatsmooth(VL,N,N,0d0)
-
-endif
-
 
 
 !! apply the function
@@ -546,14 +580,11 @@ endif
            eig(k) = which * djhlog( eig(k) )
         endif
      else
-!        print *,  "BAD! ZERO EIG LN.  FIXME."; call mpistop()
-
         print *,  "BAD! ZERO EIG LN.  FIXME. TEMP CONTINUE"
-
         eig(k) = which * djhlog((0d0,1d0)*lntol)
-
      endif
   enddo
+
 !! rebuild the matrix
   do j=1,N
     do i=1,N
@@ -602,8 +633,8 @@ endif
         print *, "FURTHER NEGLN ERRS SUPPRESSED"
      endif
   endif
-  
 
+  deallocate(VL,VR,work,rwork,tempmat,wsp,saveA,ipiv)
 
 end subroutine bothlnmat
 
@@ -618,10 +649,13 @@ subroutine expmat(A,N)
 !! output:
 !! A - an N by N matrix that is A=exp(A_in)
   implicit none
-  integer :: N,lwork,i,k,j
-  complex*16 :: eig(N)  ,CVL(N,N),CVR(N,N),CA(N,N)
-  DATATYPE :: A(N,N)
-  DATATYPE :: VL(N,N),VR(N,N),work(8*N),rwork(4*N)
+  integer,intent(in) :: N
+  DATATYPE,intent(inout) :: A(N,N)
+  integer :: lwork,i,k,j
+  complex*16,allocatable :: eig(:), CVL(:,:),CVR(:,:),CA(:,:)
+  DATATYPE,allocatable :: VL(:,:),VR(:,:),work(:),rwork(:)
+
+  allocate( eig(N), CVL(N,N),CVR(N,N),CA(N,N), VL(N,N),VR(N,N),work(8*N),rwork(4*N) )
 
   lwork=8*N
 
@@ -653,6 +687,8 @@ subroutine expmat(A,N)
   call ZGEMM('N','T',N,N,N,(1d0,0d0),CVR,N,CVL,N,(0d0,0d0),CA,N)
   A(:,:)=CA(:,:)  !! OK IMP CONV
 
+  deallocate( eig,cvl,cvr,ca,vl,vr,work,rwork )
+
 end subroutine expmat
 
 
@@ -664,13 +700,18 @@ subroutine invmatsmooth(A,N,LDA,tol)  !! inverse of ANY matrix.
 !! output:
 !! A - an N by N matrix that is A=(A_in)**-1
   implicit none
-  integer :: N,lwork,i,j,k,LDA
-  real*8 :: SV(N),tol
-  DATATYPE :: A(LDA,N), SAVEA(LDA,N)
-  DATATYPE :: U(N,N),VT(N,N),work(5*N)
+  integer,intent(in) :: N,LDA
+  real*8,intent(in) :: tol
+  DATATYPE,intent(inout) :: A(LDA,N)
+  integer :: lwork,i,j,k
+  real*8,allocatable :: SV(:)
+  DATATYPE,allocatable :: SAVEA(:,:),U(:,:),VT(:,:),work(:)
 #ifndef REALGO
-  DATATYPE :: zwork(5*N)
+  DATATYPE,allocatable :: zwork(:)
+
+  allocate(zwork(5*N))
 #endif
+  allocate(SV(N),SAVEA(LDA,N),U(N,N),VT(N,N),work(5*N))
 
   lwork=5*N
 
@@ -715,6 +756,11 @@ subroutine invmatsmooth(A,N,LDA,tol)  !! inverse of ANY matrix.
     enddo
   enddo
 
+#ifndef REALGO
+  deallocate(zwork)
+#endif
+  deallocate(SV,SAVEA,U,VT,work)
+
 end subroutine invmatsmooth
 
 
@@ -728,10 +774,14 @@ subroutine realinvmatsmooth(A,N,tol)  !! inverse of ANY matrix.
 !! output:
 !! A - an N by N matrix that is A=(A_in)**-1
   implicit none
-  integer :: N,lwork,i,j,k
-  real*8 :: SV(N),tol
-  real*8 :: A(N,N)
-  real*8 :: U(N,N),VT(N,N),work(5*N)
+  integer,intent(in) :: N
+  real*8,intent(in) :: tol 
+  real*8,intent(inout) :: A(N,N)
+  real*8,allocatable :: U(:,:),VT(:,:),work(:),SV(:)
+  integer :: lwork,i,j,k
+
+  allocate( U(N,N),VT(N,N),work(5*N),SV(N) )
+
   lwork=5*N
 
 !! do the svd
@@ -763,6 +813,8 @@ subroutine realinvmatsmooth(A,N,tol)  !! inverse of ANY matrix.
     enddo
   enddo
 
+  deallocate( U,VT,work,SV)
+
 end subroutine realinvmatsmooth
 
 
@@ -775,8 +827,8 @@ end subroutine realinvmatsmooth
 
 subroutine biorthogmat(A,N)
   implicit none
-  integer :: N
-  DATATYPE :: A(N,N)
+  integer,intent(in) :: N
+  DATATYPE,intent(inout) :: A(N,N)
 #ifdef CNORMFLAG
   call symorthogmat(A,N,2)
 #else
@@ -787,8 +839,8 @@ end subroutine biorthogmat
 
 subroutine orthogmat(A,N)
   implicit none
-  integer :: N
-  DATATYPE :: A(N,N)
+  integer,intent(in) :: N
+  DATATYPE,intent(inout) :: A(N,N)
 #ifdef CNORMFLAG
   call cnormorthogmat(A,N)
 #else
@@ -799,28 +851,28 @@ end subroutine orthogmat
 
 subroutine symorthogmat(A,N,flag)  
   implicit none
-  integer :: N,lwork,i,j,k,flag
-  real*8, allocatable :: SV(:)
-  DATATYPE :: A(N,N),Asave(N,N)
-  DATATYPE, allocatable :: U(:,:),VT(:,:),work(:),zwork(:)
-  real*8, allocatable :: rwork(:)
+  integer,intent(in) :: N,flag
+  DATATYPE,intent(inout) :: A(N,N)
+  real*8, allocatable :: SV(:),rwork(:)
+  DATATYPE, allocatable :: U(:,:),VT(:,:),work(:),zwork(:),Asave(:,:)
+  integer :: lwork,i,j,k
+
   if ((flag.ne.1).and.(flag.ne.2)) then
      print *, "bad flag",flag
      stop
   endif
-if (flag.ne.2) then !! for sqrt, using eigen; must be herm.
-  do i=1,N;  do j=1,i
-     if (abs((CONJUGATE(A(i,j)))-A(j,i)).gt.1.d-7) then
-        print *, "SYM ERR ORTHOG", abs((A(i,j))-A(j,i));           stop
-     endif
-  enddo;  enddo
-endif
+  if (flag.ne.2) then !! for sqrt, using eigen; must be herm.
+     do i=1,N;  do j=1,i
+        if (abs((CONJUGATE(A(i,j)))-A(j,i)).gt.1.d-7) then
+           print *, "SYM ERR ORTHOG", abs((A(i,j))-A(j,i));           stop
+        endif
+     enddo;  enddo
+  endif
 
-Asave(:,:)=A(:,:)
-
-!! do the svd
   lwork=5*N
-  allocate(U(N,N),VT(N,N),SV(N),work(lwork),zwork(lwork),rwork(lwork))
+  allocate(U(N,N),VT(N,N),SV(N),work(lwork),zwork(lwork),rwork(lwork),Asave(N,N))
+  Asave(:,:)=A(:,:)
+
 #ifdef REALGO 
   call dgesvd('A','A',N,N,A,N,SV,U,N,VT,N,work,lwork,i)
 #else
@@ -864,7 +916,7 @@ Asave(:,:)=A(:,:)
         enddo
      enddo
   enddo
-  deallocate(U,VT,SV,work,zwork,rwork)
+  deallocate(U,VT,SV,work,zwork,rwork,Asave)
 
 end subroutine symorthogmat
 
@@ -890,12 +942,13 @@ subroutine allpurposemat(A,N,flag)
 !! output:
 !! A - an N by N matrix that is A=sqrt^-1(A_in) if flag=1 or sqrt(A_in) if flag=2
   implicit none
-  integer,intent(in) :: N
+  integer,intent(in) :: N,flag
   DATATYPE,intent(inout) :: A(N,N)
-  integer :: lwork,i,k,j,flag
-  complex*16 :: eig(N)  ,CVL(N,N),CVR(N,N),CA(N,N)
-  DATATYPE :: VL(N,N),VR(N,N),work(8*N),rwork(4*N)
+  complex*16,allocatable :: eig(:), CVL(:,:),CVR(:,:),CA(:,:)
+  DATATYPE,allocatable :: VL(:,:),VR(:,:),work(:),rwork(:)
+  integer :: lwork,i,k,j
 
+  allocate(eig(N), CVL(N,N),CVR(N,N),CA(N,N), VL(N,N),VR(N,N),work(8*N),rwork(4*N))
   lwork=8*N
 
 #ifdef REALGO 
@@ -910,9 +963,7 @@ subroutine allpurposemat(A,N,flag)
 
 
   VL(:,:)=TRANSPOSE(VR(:,:))
-
   call invmatsmooth(VL,N,N,0d0)
-
 
 !! apply the function
   do k=1,N
@@ -933,6 +984,8 @@ subroutine allpurposemat(A,N,flag)
   call ZGEMM('N','T',N,N,N,(1d0,0d0),CVR,N,CVL,N,(0d0,0d0),CA,N)
   A(:,:)=CA(:,:)  !! OK IMP CONV
 
+  deallocate(eig, CVL,CVR,CA, VL,VR,work,rwork)
+
 end subroutine allpurposemat
 
 
@@ -941,9 +994,8 @@ end subroutine allpurposemat
 
 function doubleclebschsq (l2,l1,m2,m1,l3)
   implicit none
-
-  integer :: l1,l2,m1,m2,l3,ierr,l3min,l3max
-
+  integer,intent(in) :: l1,l2,m1,m2,l3
+  integer :: ierr,l3min,l3max
   real*8 :: dl1, dl2, dm1,dm2, dl3min, dl3max,dl3,dm3
   real*8 ::  doubleclebschsq, thrcof(100), sum
   integer, save :: ndim=100
@@ -1001,27 +1053,35 @@ end function doubleclebschsq
   
 
 #ifdef REALGO
+
 subroutine assigncomplex(realmat,complexf)
   implicit none
-  real*8 :: realmat,complexf
+  real*8,intent(out) :: realmat
+  real*8,intent(in) :: complexf
   realmat=complexf
 end subroutine assigncomplex
+
 subroutine assigncomplexmat(realmat,complexf,m,n)
   implicit none
-  integer :: n,m
-  real*8 :: realmat(m,n),complexf(m,n)
+  integer,intent(in) :: n,m
+  real*8,intent(out) :: realmat(m,n)
+  real*8,intent(in) :: complexf(m,n)
   realmat(:,:)=complexf(:,:)
 end subroutine assigncomplexmat
+
 subroutine assigncomplexvec(realmat,complexf,m)
   implicit none
-  integer :: m
-  real*8 :: realmat(m),complexf(m)
+  integer,intent(in) :: m
+  real*8,intent(out) :: realmat(m)
+  real*8,intent(in) :: complexf(m)
   realmat(:)=complexf(:)
 end subroutine assigncomplexvec
+
 subroutine assignrealvec(complexf,realmat,m)
   implicit none
-  integer :: m
-  real*8 :: realmat(m),complexf(m)
+  integer,intent(in) :: m
+  real*8,intent(in) :: realmat(m)
+  real*8,intent(out) :: complexf(m)
   complexf(:)=realmat(:)
 end subroutine assignrealvec
 
@@ -1029,33 +1089,34 @@ end subroutine assignrealvec
 
 subroutine assigncomplex(realmat,complexf)
   implicit none
-  complex*16 :: complexf
-  real*8 :: realmat(2,2)
+  complex*16,intent(in) :: complexf
+  real*8,intent(out) :: realmat(2,2)
   realmat(1,1)=real(complexf,8);  realmat(2,2)=real(complexf,8)
   realmat(2,1)=imag(complexf);  realmat(1,2)=(-1)*imag(complexf)
 end subroutine assigncomplex
 
 subroutine assigncomplexmat(realmat,complexf,m,n)
   implicit none
-  integer :: n,m
-  complex*16 :: complexf(m,n)
-  real*8 :: realmat(2,m,2,n)
+  integer,intent(in) :: n,m
+  complex*16,intent(in) :: complexf(m,n)
+  real*8,intent(out) :: realmat(2,m,2,n)
   realmat(1,:,1,:)=real(complexf(:,:),8);  realmat(2,:,2,:)=real(complexf(:,:),8)
   realmat(2,:,1,:)=imag(complexf(:,:));  realmat(1,:,2,:)=(-1)*imag(complexf(:,:))
 end subroutine assigncomplexmat
 
 subroutine assigncomplexvec(realmat,complexf,m)
   implicit none
-  integer :: m
-  complex*16 :: complexf(m)
-  real*8 :: realmat(2,m)
+  integer,intent(in) :: m
+  complex*16,intent(in) :: complexf(m)
+  real*8,intent(out) :: realmat(2,m)
   realmat(1,:)=real(complexf(:),8);  realmat(2,:)=imag(complexf(:))
 end subroutine assigncomplexvec
+
 subroutine assignrealvec(complexf,realmat,m)
   implicit none
-  integer :: m
-  complex*16 :: complexf(m)
-  real*8 :: realmat(2,m)
+  integer,intent(in) :: m
+  complex*16,intent(out) :: complexf(m)
+  real*8,intent(in) :: realmat(2,m)
   complexf(:)=realmat(1,:)+realmat(2,:)*(0d0,1d0)
 end subroutine assignrealvec
 
@@ -1066,8 +1127,10 @@ end subroutine assignrealvec
 subroutine checksym(mat,dim)
   use fileptrmod
   implicit none
-  integer :: dim,i,j
-  real*8 :: mat(dim,dim),sym,asym,tot
+  integer,intent(in) :: dim
+  real*8,intent(in) :: mat(dim,dim)
+  integer :: i,j
+  real*8 :: sym,asym,tot
   integer, save :: icalled=0
 
   sym=0; asym=0;tot=0

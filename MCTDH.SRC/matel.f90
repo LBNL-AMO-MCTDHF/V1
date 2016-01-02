@@ -58,8 +58,9 @@ subroutine all_matel0(matrix_ptr,inspfs1,inspfs2,twoereduced,times)
   use parameters
   use configptrmod
   implicit none
-  Type(CONFIGPTR) :: matrix_ptr
-  DATATYPE :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf), twoereduced(reducedpotsize,nspf,nspf)
+  Type(CONFIGPTR),intent(out) :: matrix_ptr
+  DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
+  DATATYPE,intent(out) :: twoereduced(reducedpotsize,nspf,nspf)
   integer :: times(*), i,j
 
   if (debugflag.eq.42) then
@@ -94,8 +95,9 @@ subroutine twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced)
   use mpimod
   use configptrmod
   implicit none
-  Type(CONFIGPTR) :: matrix_ptr
-  DATATYPE :: inspfs1(spfsize,nspf),inspfs2(spfsize,nspf),twoereduced(reducedpotsize,nspf,nspf)
+  DATATYPE,intent(in) :: inspfs1(spfsize,nspf),inspfs2(spfsize,nspf)
+  Type(CONFIGPTR),intent(out) :: matrix_ptr
+  DATATYPE,intent(out) :: twoereduced(reducedpotsize,nspf,nspf)
 
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "         In twoe_matel.  Calling call_twoe_matel"; CFL; call mpibarrier()
@@ -117,9 +119,13 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
   use parameters
   use configptrmod
   implicit none
-  Type(CONFIGPTR) :: matrix_ptr
+  DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
+  Type(CONFIGPTR),intent(out) :: matrix_ptr
+  DATATYPE,allocatable :: ttempspfs(:,:),tempmatel(:,:)
   integer :: j
-  DATATYPE :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf),  ttempspfs(spfsize,nspf),tempmatel(nspf,nspf)
+
+  allocate(ttempspfs(spfsize,nspf),tempmatel(nspf,nspf))
+  ttempspfs=0; tempmatel=0
 
   matrix_ptr%xpotmatel(:,:)=0d0
 
@@ -151,6 +157,8 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
      call mympireduce(matrix_ptr%xpotmatel(:,:),nspf**2)
   endif
 
+  deallocate(ttempspfs,tempmatel)
+
 end subroutine pot_matel
 
 
@@ -159,10 +167,14 @@ subroutine pulse_matel(matrix_ptr,inspfs1,inspfs2)
   use parameters
   use configptrmod
   implicit none
-  Type(CONFIGPTR) :: matrix_ptr
+  DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
+  Type(CONFIGPTR),intent(out) :: matrix_ptr
+  DATATYPE :: nullcomplex(1), dipoles(3)
+  DATATYPE,allocatable :: ttempspfsxx(:,:), ttempspfsyy(:,:), ttempspfszz(:,:)
   integer :: ispf
-  DATATYPE :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf), nullcomplex(1), dipoles(3)
-  DATATYPE :: ttempspfsxx(spfsize,nspf), ttempspfsyy(spfsize,nspf), ttempspfszz(spfsize,nspf)
+
+  allocate(ttempspfsxx(spfsize,nspf), ttempspfsyy(spfsize,nspf), ttempspfszz(spfsize,nspf))
+  ttempspfsxx=0; ttempspfsyy=0; ttempspfszz=0
 
   matrix_ptr%xpulsematelxx=0.d0;     matrix_ptr%xpulsematelyy=0.d0;     matrix_ptr%xpulsematelzz=0.d0
 
@@ -196,6 +208,8 @@ subroutine pulse_matel(matrix_ptr,inspfs1,inspfs2)
      call mympireduce(matrix_ptr%xpulsematelzz(:,:),nspf**2)
   endif
 
+  deallocate(ttempspfsxx, ttempspfsyy, ttempspfszz)
+
 end subroutine pulse_matel
 
 
@@ -203,9 +217,12 @@ subroutine sparseops_matel(matrix_ptr,inspfs1,inspfs2)
   use parameters
   use configptrmod
   implicit none
-  Type(CONFIGPTR) :: matrix_ptr
+  DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
+  Type(CONFIGPTR),intent(out) :: matrix_ptr
+  DATATYPE,allocatable :: ttempspfs(:,:)
   integer :: ispf  
-  DATATYPE :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)  , ttempspfs(spfsize,nspf)  
+
+  allocate(ttempspfs(spfsize,nspf)); ttempspfs=0
 
   matrix_ptr%xopmatel=0d0;  matrix_ptr%xymatel=0d0;  
 
@@ -232,6 +249,8 @@ subroutine sparseops_matel(matrix_ptr,inspfs1,inspfs2)
      call mympireduce(matrix_ptr%xopmatel(:,:),nspf**2)
   endif
 
+  deallocate(ttempspfs)
+
 end subroutine sparseops_matel
 
 
@@ -251,8 +270,8 @@ end subroutine frozen_matels
 subroutine op_frozen_exchange(inspfs,outspfs)
   use parameters
   implicit none
-  DATATYPE :: inspfs(spfsize,nspf)
-  DATATYPE :: outspfs(spfsize,nspf)
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf)
+  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
 
   call call_frozen_exchange(inspfs,outspfs)
 
@@ -265,9 +284,9 @@ subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixt
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
+  DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf)
+  DATATYPE,intent(out) :: smallmatrixtr(www%singlematsize,www%configstart:www%configend)
   integer ::    config1,  iwalk,myind,ihop
-  DATATYPE :: onebodymat(www%nspf,www%nspf), &
-       smallmatrixtr(www%singlematsize,www%configstart:www%configend)
 
   smallmatrixtr=0d0; 
 
@@ -304,9 +323,9 @@ subroutine arbitraryconfig_matel_doubles00transpose(www,twobodymat, smallmatrixt
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
+  DATATYPE,intent(in) :: twobodymat(www%nspf,www%nspf,www%nspf,www%nspf)
+  DATATYPE,intent(out) :: smallmatrixtr(www%doublematsize,www%configstart:www%configend)
   integer ::    config1, iwalk,myind,ihop
-  DATATYPE :: twobodymat(www%nspf,www%nspf,www%nspf,www%nspf), &
-       smallmatrixtr(www%doublematsize,www%configstart:www%configend)
 
   smallmatrixtr=0d0;
 
@@ -393,7 +412,7 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
   integer,intent(in) :: conflag,boflag,nucflag,pulseflag,imc
   real*8,intent(in) :: time
   DATATYPE,intent(out) :: bigconfigmat(numr,www%numconfig,numr,www%numconfig)
-  DATATYPE :: tempmatel(www%nspf,www%nspf)
+  DATATYPE :: tempmatel(www%nspf,www%nspf)   !! AUTOMATIC
   DATATYPE, allocatable :: tempconfigmat(:,:),tempconfigmat2(:,:),diagmat(:,:,:)
   real*8 :: gg
   DATATYPE :: facs(3), csum0,csum
@@ -528,9 +547,9 @@ subroutine assemble_sparsemats(www,matrix_ptr, sparse_ptr,boflag, nucflag, pulse
   use opmod   !! rkemod, proderivmod
   implicit none
   type(walktype),intent(in) :: www
-  integer :: conflag,boflag,nucflag,pulseflag
-  Type(CONFIGPTR) :: matrix_ptr
-  Type(SPARSEPTR) :: sparse_ptr
+  integer,intent(in) :: conflag,boflag,nucflag,pulseflag
+  Type(CONFIGPTR),intent(in) :: matrix_ptr
+  Type(SPARSEPTR),intent(out) :: sparse_ptr
 
   if (sparseconfigflag.eq.0) then
      OFLWR "BADDDCAL555LL"; CFLST

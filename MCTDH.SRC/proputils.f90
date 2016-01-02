@@ -114,7 +114,7 @@ end subroutine get_frexchange
 
 subroutine get_stuff(thistime)
   implicit none
-  real*8 :: thistime
+  real*8,intent(in) :: thistime
   integer :: times(20)=0
   call get_stuff0(thistime,times)
 end subroutine get_stuff
@@ -124,8 +124,7 @@ subroutine get_stuff0(thistime,times)
   use parameters
   use xxxmod !! frozenexchange
   implicit none
-
-  real*8 :: thistime
+  real*8,intent(in) :: thistime
   integer :: times(20),itime,jtime
 
   call system_clock(itime)
@@ -258,7 +257,8 @@ subroutine call_frozen_exchange(inspfs,outspfs)
   use opmod
   use parameters
   implicit none
-  DATATYPE :: inspfs(totspfdim), outspfs(totspfdim)
+  DATATYPE,intent(in) :: inspfs(totspfdim)
+  DATATYPE,intent(out) :: outspfs(totspfdim)
   call call_frozen_exchange0(inspfs,outspfs,frozenspfs,numfrozen)
 end subroutine call_frozen_exchange
 

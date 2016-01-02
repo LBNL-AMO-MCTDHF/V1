@@ -10,9 +10,10 @@ subroutine get_orbmats( myspfs,  numspf,  ugmat,   xdipmat,ydipmat,zdipmat,   xr
   DATATYPE,intent(in) :: myspfs(spfsize,numspf)
   DATATYPE, intent(out) :: ugmat(numspf,numspf), xdipmat(numspf,numspf), ydipmat(numspf,numspf), zdipmat(numspf,numspf), &
        xrefmat(numspf,numspf), yrefmat(numspf,numspf), zrefmat(numspf,numspf)
-  DATATYPE ::  tempspfs(spfsize,numspf),tempspfs2(spfsize,numspf)
+  DATATYPE,allocatable ::  tempspfs(:,:),tempspfs2(:,:)
   integer :: i
 
+  allocate(tempspfs(spfsize,numspf),tempspfs2(spfsize,numspf))
   tempspfs(:,:)=0; tempspfs2(:,:)=0
 
 !! M & U/G
@@ -84,7 +85,8 @@ subroutine get_orbmats( myspfs,  numspf,  ugmat,   xdipmat,ydipmat,zdipmat,   xr
      call mympireduce(xrefmat(:,:),numspf**2)
   endif
 
-  
+  deallocate(tempspfs,tempspfs2)
+
 end subroutine get_orbmats
 
 
@@ -145,13 +147,16 @@ subroutine get_psistats( www, bioww, myspfs, numvec, inavectors, mexpect,m2expec
   DATATYPE,intent(in) :: myspfs(spfsize,www%nspf), inavectors(numr,www%firstconfig:www%lastconfig,numvec)       
   DATATYPE, intent(out) :: mexpect(numvec),ugexpect(numvec),m2expect(numvec),&
        xreflect(numvec),yreflect(numvec),zreflect(numvec),xdipole(numvec),ydipole(numvec),zdipole(numvec)
-  DATATYPE :: ugmat(www%nspf,www%nspf), xdipmat(www%nspf,www%nspf), ydipmat(www%nspf,www%nspf), zdipmat(www%nspf,www%nspf), &
-       xrefmat(www%nspf,www%nspf), yrefmat(www%nspf,www%nspf), zrefmat(www%nspf,www%nspf),&
-       dot,normsq(numvec),nullcomplex,dipoles(3),tempvector(numr,www%firstconfig:www%lastconfig),&
-       tempspfs(spfsize,www%nspf),tempspfs2(spfsize,www%nspf), nucdipexpect(numvec,3),csum
+  DATATYPE,allocatable :: ugmat(:,:), xdipmat(:,:), ydipmat(:,:), zdipmat(:,:), &
+       xrefmat(:,:), yrefmat(:,:), zrefmat(:,:),     tempvector(:,:), tempspfs(:,:),tempspfs2(:,:)
+  DATATYPE ::  dot,normsq(numvec),nullcomplex,dipoles(3),nucdipexpect(numvec,3),csum
   DATAECS :: rvector(numr)
   integer :: i,imc
 
+  allocate(ugmat(www%nspf,www%nspf), xdipmat(www%nspf,www%nspf), ydipmat(www%nspf,www%nspf), zdipmat(www%nspf,www%nspf), &
+       xrefmat(www%nspf,www%nspf), yrefmat(www%nspf,www%nspf), zrefmat(www%nspf,www%nspf),&
+       tempvector(numr,www%firstconfig:www%lastconfig), tempspfs(spfsize,www%nspf),tempspfs2(spfsize,www%nspf))
+  
   ugmat=0; xdipmat=0; ydipmat=0; zdipmat=0; xrefmat=0; yrefmat=0; zrefmat=0
   call get_orbmats( myspfs,  www%nspf,  ugmat,   xdipmat,ydipmat,zdipmat,   xrefmat,yrefmat,zrefmat)
 
@@ -277,6 +282,8 @@ subroutine get_psistats( www, bioww, myspfs, numvec, inavectors, mexpect,m2expec
      call autocorrelate_one(www,bioww,inavectors(:,:,imc),myspfs,tempspfs,inavectors(:,:,imc),xreflect(imc),numr)
      xreflect(imc)=xreflect(imc)   /normsq(imc)
   enddo
+
+  deallocate(ugmat, xdipmat, ydipmat, zdipmat,     xrefmat, yrefmat, zrefmat,   tempvector,tempspfs,tempspfs2)
   
 end subroutine get_psistats
 
@@ -302,11 +309,10 @@ subroutine finalstats0(myspfs,inavectors,www,bioww )
   DATATYPE :: mmatel(mcscfnum,mcscfnum),ugmatel(mcscfnum,mcscfnum),m2matel(mcscfnum,mcscfnum),&
        xrefmatel(mcscfnum,mcscfnum),yrefmatel(mcscfnum,mcscfnum),zrefmatel(mcscfnum,mcscfnum),&
        xdipmatel(mcscfnum,mcscfnum),ydipmatel(mcscfnum,mcscfnum),zdipmatel(mcscfnum,mcscfnum),&
-       ovlmatel(mcscfnum,mcscfnum), nucdipmatel(mcscfnum,mcscfnum,3)
-  DATATYPE :: ugmat(www%nspf,www%nspf), xdipmat(www%nspf,www%nspf), ydipmat(www%nspf,www%nspf), zdipmat(www%nspf,www%nspf), &
-       xrefmat(www%nspf,www%nspf), yrefmat(www%nspf,www%nspf), zrefmat(www%nspf,www%nspf),&
-       dot,nullcomplex,dipoles(3),tempvector(numr,www%firstconfig:www%lastconfig),&
-       tempspfs(spfsize,www%nspf),tempspfs2(spfsize,www%nspf)
+       ovlmatel(mcscfnum,mcscfnum), nucdipmatel(mcscfnum,mcscfnum,3),&
+       dot,nullcomplex,dipoles(3)
+  DATATYPE,allocatable :: ugmat(:,:), xdipmat(:,:), ydipmat(:,:), zdipmat(:,:), &
+       xrefmat(:,:), yrefmat(:,:), zrefmat(:,:), tempvector(:,:), tempspfs(:,:),tempspfs2(:,:)
   CNORMTYPE :: occupations(www%nspf,mcscfnum)
   DATAECS :: rvector(numr)
   integer :: i,j,imc,jmc
@@ -314,6 +320,10 @@ subroutine finalstats0(myspfs,inavectors,www,bioww )
   call mpibarrier()
   OFLWR "   ...GO finalstats."; CFL
   call mpibarrier()
+
+  allocate(ugmat(www%nspf,www%nspf), xdipmat(www%nspf,www%nspf), ydipmat(www%nspf,www%nspf), zdipmat(www%nspf,www%nspf), &
+       xrefmat(www%nspf,www%nspf), yrefmat(www%nspf,www%nspf), zrefmat(www%nspf,www%nspf),&
+       tempvector(numr,www%firstconfig:www%lastconfig), tempspfs(spfsize,www%nspf),tempspfs2(spfsize,www%nspf))
 
   tempvector(:,:)=0d0; tempspfs(:,:)=0d0; tempspfs2(:,:)=0d0
 
@@ -690,6 +700,7 @@ subroutine finalstats0(myspfs,inavectors,www,bioww )
      close(662)
   endif
 
+  deallocate(ugmat, xdipmat, ydipmat, zdipmat,     xrefmat, yrefmat, zrefmat,    tempvector,tempspfs,tempspfs2)
   call mpibarrier()
 
 end subroutine finalstats0

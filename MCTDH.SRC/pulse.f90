@@ -48,8 +48,10 @@ end subroutine vectdpot0
 function tdpotlen(myintime, which)
   use parameters
   implicit none
-  integer :: which, ipulse
-  real*8 :: myintime,fac
+  integer,intent(in) :: which
+  real*8,intent(in) :: myintime
+  integer :: ipulse
+  real*8 :: fac
   DATATYPE :: tdpotlen, simplepulselen,pulselen, longpulselen,cwpulselen
 
   tdpotlen=0.d0
@@ -90,8 +92,10 @@ function tdpotvel(myintime,which)
   use parameters
 
   implicit none
-  integer :: which, ipulse
-  real*8 :: myintime,fac
+  integer,intent(in) :: which
+  real*8,intent(in) :: myintime
+  integer :: ipulse
+  real*8 :: fac
   DATATYPE :: tdpotvel, simplepulsevel, pulsevel, longpulsevel,cwpulsevel
 
   tdpotvel=0.d0
@@ -132,8 +136,9 @@ end function tdpotvel
 function simplepulselen(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse
-  real*8 :: time, myintime
+  integer,intent(in) :: ipulse
+  real*8,intent(in) :: myintime
+  real*8 :: time
   DATATYPE :: simplepulselen
 
   simplepulselen=0.d0
@@ -153,8 +158,9 @@ end function simplepulselen
 function simplepulsevel(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse
-  real*8 :: time, myintime
+  integer,intent(in) :: ipulse
+  real*8,intent(in) :: myintime
+  real*8 :: time
   DATATYPE :: simplepulsevel
 
   simplepulsevel=0.d0
@@ -175,8 +181,8 @@ end function simplepulsevel
 function cwpulselen(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse
-  real*8 :: myintime
+  integer,intent(in) :: ipulse
+  real*8,intent(in) :: myintime
   DATATYPE :: cwpulselen
 
   cwpulselen=0d0
@@ -190,8 +196,8 @@ end function cwpulselen
 function cwpulsevel(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse
-  real*8 :: myintime
+  integer,intent(in) :: ipulse
+  real*8,intent(in) :: myintime
   DATATYPE :: cwpulsevel
 
   cwpulsevel=0.d0
@@ -205,8 +211,9 @@ end function cwpulsevel
 function pulselen(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse
-  real*8 :: time, myintime
+  integer,intent(in) :: ipulse
+  real*8,intent(in) :: myintime
+  real*8 :: time
   DATATYPE :: pulselen
 
   pulselen=0.d0
@@ -229,8 +236,9 @@ end function pulselen
 function pulsevel(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse
-  real*8 :: time, myintime, thisomega2
+  integer,intent(in) :: ipulse
+  real*8,intent(in) :: myintime
+  real*8 :: time,thisomega2
   DATATYPE :: pulsevel, thisstrength
 
   pulsevel=0.d0
@@ -260,8 +268,9 @@ end function pulsevel
 function longpulselen(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse
-  real*8 :: time, myintime, fac, fac2
+  integer,intent(in) :: ipulse
+  real*8,intent(in) :: myintime
+  real*8 :: time, fac, fac2
   DATATYPE :: longpulselen
 
   longpulselen=0.d0
@@ -294,8 +303,9 @@ end function longpulselen
 function longpulsevel(myintime, ipulse)
   use parameters
   implicit none
-  integer :: ipulse
-  real*8 :: time, myintime, thisomega2
+  integer,intent(in) :: ipulse
+  real*8,intent(in) :: myintime
+  real*8 :: time, thisomega2
   DATATYPE :: longpulsevel,thisstrength
 
   longpulsevel=0.d0

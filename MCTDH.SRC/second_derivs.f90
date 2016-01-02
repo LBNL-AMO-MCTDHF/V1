@@ -11,11 +11,14 @@ subroutine second_derivs(thistime,inspfs,sdspfs)
   use parameters
   use linearmod
   implicit none
-  real*8 :: thistime, gridtime
-  DATATYPE :: inspfs(spfsize,nspf), sdspfs(spfsize,nspf), nullspfs(1)
+  real*8,intent(in) :: thistime
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf)
+  DATATYPE,intent(out) :: sdspfs(spfsize,nspf)
+  DATATYPE :: nullspfs(1)
   integer,save :: allocated=0
   DATATYPE, save, allocatable :: workoutspfs0(:,:), workoutspfs2(:,:), workspfs2(:,:), &
        workspfs0(:,:), derspfs0(:,:)
+  real*8 :: gridtime
 
   gridtime=(thistime-firsttime)/(lasttime-firsttime) 
   if (jacprojorth.ne.0) then
@@ -84,21 +87,21 @@ end subroutine second_derivs
 subroutine verlet(inspfs0, time1,time2,outiter)
   use parameters
   implicit none
-
+  real*8,intent(in) :: time1,time2
+  integer,intent(out) :: outiter
+  DATATYPE,intent(inout) :: inspfs0(spfsize,nspf)
   DATATYPE, allocatable, save :: prevspfs(:,:)
   integer, save :: jstep=0
-  DATATYPE :: inspfs(spfsize,nspf), inspfs0(spfsize,nspf)
-  DATATYPE :: tempspfs(spfsize,nspf),  sdspfs(spfsize,nspf)
-  real*8 :: time1,time2, thistime, cstep, orthogerror
-  integer :: istep,outiter
-  real*8, external :: spf_linear_derivs
+  DATATYPE,allocatable :: inspfs(:,:), tempspfs(:,:),  sdspfs(:,:)
+  real*8 :: thistime, cstep, orthogerror
+  integer :: istep
+  external :: spf_linear_derivs
 
-!  OFLWR "GO VERLET!"; CFL
-
-  outiter=verletnum
-
+  allocate(inspfs(spfsize,nspf), tempspfs(spfsize,nspf),  sdspfs(spfsize,nspf))
+  tempspfs=0; sdspfs=0
   inspfs(:,:)=inspfs0(:,:)
 
+  outiter=verletnum
 
   cstep = (time2-time1)/real(verletnum,8)
 
@@ -133,9 +136,9 @@ subroutine verlet(inspfs0, time1,time2,outiter)
 
   inspfs0(:,:)=inspfs(:,:)
 
+  deallocate(inspfs,tempspfs,sdspfs)
+  
   OFLWR "final ORTHOGERROR VERLET : ", orthogerror; CFL
-
-
 
 end subroutine verlet
 

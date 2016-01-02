@@ -309,56 +309,56 @@ subroutine getnumspinwalks(www)
   logical :: allowedconfig0
 
 
-     OFLWR "Doing spin projector.";  CFL
+  OFLWR "Doing spin projector.";  CFL
 
-     do config1=www%configstart,www%configend
-        unpaired(:,config1)=0;    numunpaired(config1)=0;   msvalue(config1)=0
-        thisconfig=www%configlist(:,config1)
-        do idof=1,www%numelec
-           msvalue(config1)=msvalue(config1) + thisconfig(idof*2)*2-3
-           ispf=thisconfig(idof*2-1)
-           flag=0
-           do jdof=1,www%numelec
-              if ((jdof.ne.idof).and.(thisconfig(jdof*2-1).eq.ispf)) then
-                 flag=1
-                 exit
-              endif
-           enddo
-           if (flag==0) then
-              numunpaired(config1)=numunpaired(config1)+1
-              unpaired(numunpaired(config1),config1)=idof
+  do config1=www%configstart,www%configend
+     unpaired(:,config1)=0;    numunpaired(config1)=0;   msvalue(config1)=0
+     thisconfig=www%configlist(:,config1)
+     do idof=1,www%numelec
+        msvalue(config1)=msvalue(config1) + thisconfig(idof*2)*2-3
+        ispf=thisconfig(idof*2-1)
+        flag=0
+        do jdof=1,www%numelec
+           if ((jdof.ne.idof).and.(thisconfig(jdof*2-1).eq.ispf)) then
+              flag=1
+              exit
            endif
         enddo
+        if (flag==0) then
+           numunpaired(config1)=numunpaired(config1)+1
+           unpaired(numunpaired(config1),config1)=idof
+        endif
      enddo
+  enddo
 
-     do config1=www%configstart,www%configend
-        iwalk=0
-        do ii=1,numunpaired(config1)
-           thisconfig=www%configlist(:,config1)
-           idof=unpaired(ii,config1)
-           if (idof==0) then
+  do config1=www%configstart,www%configend
+     iwalk=0
+     do ii=1,numunpaired(config1)
+        thisconfig=www%configlist(:,config1)
+        idof=unpaired(ii,config1)
+        if (idof==0) then
+           OFLWR "Unpaired error"; CFLST
+        endif
+        firstspin=thisconfig(idof*2)
+        thisconfig(idof*2)=mod(thisconfig(idof*2),2) + 1
+        do jj=ii+1,numunpaired(config1)
+           thatconfig=thisconfig
+           jdof=unpaired(jj,config1)
+           if (jdof==0) then
               OFLWR "Unpaired error"; CFLST
            endif
-           firstspin=thisconfig(idof*2)
-           thisconfig(idof*2)=mod(thisconfig(idof*2),2) + 1
-           do jj=ii+1,numunpaired(config1)
-              thatconfig=thisconfig
-              jdof=unpaired(jj,config1)
-              if (jdof==0) then
-                 OFLWR "Unpaired error"; CFLST
-              endif
-              secondspin=thatconfig(jdof*2)
-              if (secondspin.ne.firstspin) then
-                 thatconfig(jdof*2)=mod(thatconfig(jdof*2),2) + 1
-                 dirphase=reorder(thatconfig,www%numelec)
-                 if (allowedconfig0(www,thatconfig,www%dflevel)) then
-                    iwalk=iwalk+1
-                 endif   ! allowedconfig
-              endif
-           enddo   ! jj
-        enddo  ! ii
-        numspinwalks(config1) = iwalk 
-     enddo   ! config1
+           secondspin=thatconfig(jdof*2)
+           if (secondspin.ne.firstspin) then
+              thatconfig(jdof*2)=mod(thatconfig(jdof*2),2) + 1
+              dirphase=reorder(thatconfig,www%numelec)
+              if (allowedconfig0(www,thatconfig,www%dflevel)) then
+                 iwalk=iwalk+1
+              endif   ! allowedconfig
+           endif
+        enddo   ! jj
+     enddo  ! ii
+     numspinwalks(config1) = iwalk 
+  enddo   ! config1
 
 
   maxspinwalks=0
@@ -393,23 +393,22 @@ subroutine configspin_matel(www)
   type(walktype) :: www
   integer ::     config2, config1,   iwalk, myind
 
-     configspinmatel(:,:)=0.d0
+  configspinmatel(:,:)=0.d0
 
-     do config1=www%configstart,www%configend
-        myind=1
+  do config1=www%configstart,www%configend
+     myind=1
         
 !! msvalue is 2x ms quantum number
 
-        configspinmatel(myind,config1) = msvalue(config1)**2/4.d0 + numunpaired(config1)/2.d0
-        
-        do iwalk=1,numspinwalks(config1)
-           config2=spinwalk(iwalk,config1)
-           myind=1+iwalk
-           configspinmatel(myind,config1) = configspinmatel(myind,config1) + &
-                spinwalkdirphase(iwalk,config1)
-        enddo
-     enddo
+     configspinmatel(myind,config1) = msvalue(config1)**2/4.d0 + numunpaired(config1)/2.d0
 
+     do iwalk=1,numspinwalks(config1)
+        config2=spinwalk(iwalk,config1)
+        myind=1+iwalk
+        configspinmatel(myind,config1) = configspinmatel(myind,config1) + &
+             spinwalkdirphase(iwalk,config1)
+     enddo
+  enddo
 
 end subroutine configspin_matel
 
@@ -419,7 +418,7 @@ function spinallowed(spinval,sss)
   use spinwalkmod
   implicit none
   type(spintype),intent(in) :: sss
-  real*8 :: spinval
+  real*8,intent(in) :: spinval
   logical :: spinallowed
   if (abs(spinval-(sss%spinrestrictval/2.d0*(sss%spinrestrictval/2.d0+1))).lt.1.d-3) then
      spinallowed=.true.

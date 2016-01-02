@@ -505,16 +505,21 @@ end subroutine projeflux_double_time_int
 subroutine projeflux_op_onee(inspfs)
   use parameters
   implicit none
-  DATATYPE :: inspfs(spfsize,numr),outspfs(spfsize,numr),ttempspfs(spfsize)
+  DATATYPE,intent(in) :: inspfs(spfsize,numr)
+  DATATYPE,allocatable :: outspfs(:,:),ttempspf(:)
   integer :: r
 
-  outspfs=0d0
+  allocate(outspfs(spfsize,numr),ttempspf(spfsize))
+  outspfs=0d0; ttempspf=0
+
   do r=1,numr
-     call mult_imke(inspfs(:,r),ttempspfs(:))
-     outspfs(:,r)=outspfs(:,r)+ttempspfs(:);     outspfs(:,r) = outspfs(:,r) / bondpoints(r)
+     call mult_imke(inspfs(:,r),ttempspf(:))
+     outspfs(:,r)=outspfs(:,r)+ttempspf(:);     outspfs(:,r) = outspfs(:,r) / bondpoints(r)
   enddo
 !! scale correctly and clear memory
-  inspfs=outspfs*(-2d0)
+  outspfs=outspfs*(-2d0)               !! bugfix v1.17?  was inspfs=outspfs*(-2d0)
+
+  deallocate(outspfs,ttempspf)
 
 end subroutine projeflux_op_onee
 

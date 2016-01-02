@@ -212,6 +212,8 @@ module biorthotypemod
      DATATYPE, pointer :: smo(:,:)
      integer :: thisbiodim=100000000, biomaxdim=-1, bionr=-1
      logical :: started=.false.
+     real*8 :: tempstepsize=-1d0
+     integer :: icalled=0
   end type biorthotype
 end module biorthotypemod
 
@@ -245,13 +247,13 @@ subroutine abio_sparse(abio,aout,inbiovar)
   use biorthotypemod
   implicit none
   type(biorthotype),target :: inbiovar
+  DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
+  DATATYPE,intent(out) :: aout(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
   integer :: liwsp,lwsp,itrace,iflag,ixx,getlen
   integer, allocatable :: iwsp(:)
-  integer*8, save :: icalled=0
+  integer*8, save :: icalledhere=0
   integer :: biofileptr=6719
   real*8 :: t,anorm, tol
-  real*8,save :: tempstepsize=-1d0
-  DATATYPE :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig), aout(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
   DATATYPE, allocatable :: wsp(:), smallvector(:,:), smallvectorout(:,:)
   external parbiomatvec,realpardotsub
 
@@ -259,26 +261,29 @@ subroutine abio_sparse(abio,aout,inbiovar)
      OFLWR "Error, can't use abio_sparse if sparseconfigflag=0"; CFLST
   endif
 
-  t=1d0;  anorm=1d0 ;  itrace=0;   iflag=0; tol=biotol;   icalled=icalled+1
-  if (icalled.eq.1) then
-     tempstepsize=1d0
+  t=1d0;  anorm=1d0 ;  itrace=0;   iflag=0; tol=biotol;   
+  icalledhere=icalledhere+1
+  inbiovar%icalled=inbiovar%icalled+1
+
+  if (inbiovar%icalled.eq.1) then
+     inbiovar%tempstepsize=1d0
   endif
 
   if (inbiovar%thisbiodim.lt.inbiovar%biomaxdim) then
-     tempstepsize=tempstepsize*4
+     inbiovar%tempstepsize=inbiovar%tempstepsize*4
   else
-     tempstepsize=tempstepsize*1.1
+     inbiovar%tempstepsize=inbiovar%tempstepsize*1.1
   endif
 
   if ((myrank.eq.1).and.(notiming==0)) then
-     if (icalled.eq.1) then
+     if (icalledhere.eq.1) then
         open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="unknown")
         write(biofileptr,*) 
         write(biofileptr,*);        close(biofileptr)
      endif
 
 !     open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="old", position="append")
-!     write(biofileptr,*) " BIORTHO. numr",inbiovar%bionr," biodim ",inbiovar%thisbiodim, "step ",min(1d0,tempstepsize)
+!     write(biofileptr,*) " BIORTHO. numr",inbiovar%bionr," biodim ",inbiovar%thisbiodim, "step ",min(1d0,inbiovar%tempstepsize)
 !     close(biofileptr)
   endif
 
@@ -301,10 +306,10 @@ subroutine abio_sparse(abio,aout,inbiovar)
   call fullbasis_transformto_local(inbiovar%wwbio,inbiovar%bionr,abio(:,inbiovar%wwbio%botconfig),smallvector(:,:))
 
 #ifdef REALGO
-  call DGEXPVxxx2(ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec,itrace,iflag,biofileptr,tempstepsize,realpardotsub,inbiovar%wwbio%maxbasisperproc*nprocs*inbiovar%bionr)
+  call DGEXPVxxx2(ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec,itrace,iflag,biofileptr,inbiovar%tempstepsize,realpardotsub,inbiovar%wwbio%maxbasisperproc*nprocs*inbiovar%bionr)
 #else
   lwsp=2*lwsp
-  call DGEXPVxxx2(2*ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec,itrace,iflag,biofileptr,tempstepsize,realpardotsub,2*inbiovar%wwbio%maxbasisperproc*nprocs*inbiovar%bionr)
+  call DGEXPVxxx2(2*ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec,itrace,iflag,biofileptr,inbiovar%tempstepsize,realpardotsub,2*inbiovar%wwbio%maxbasisperproc*nprocs*inbiovar%bionr)
   lwsp=lwsp/2
 #endif
   if(iflag.eq.1) then
@@ -323,7 +328,7 @@ subroutine abio_sparse(abio,aout,inbiovar)
 
   if (myrank.eq.1.and.notiming.eq.0) then
      open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="old", position="append")
-     write(biofileptr,*) " Bio: steps, iter, stepsize", iwsp(4),iwsp(1),tempstepsize; 
+     write(biofileptr,*) " Bio: steps, iter, stepsize", iwsp(4),iwsp(1),inbiovar%tempstepsize; 
      if ((iwsp(4).gt.1)) then
         write(biofileptr,*) "Warning - biorthogonalization restarting. Ddim, tol: ", inbiovar%thisbiodim, biotol; 
      endif
@@ -331,8 +336,7 @@ subroutine abio_sparse(abio,aout,inbiovar)
   endif
 
 
-!!  if (mod(icalled,4000)==0.and.iwsp(4).eq.1) then
-  if (mod(icalled,20)==0.and.iwsp(4).eq.1) then
+  if (mod(inbiovar%icalled,20)==0.and.iwsp(4).eq.1) then
      inbiovar%thisbiodim=max(min(4,inbiovar%biomaxdim),inbiovar%thisbiodim-1)
   endif
   if (iwsp(4).gt.1) then
@@ -405,11 +409,8 @@ contains
     implicit none
     type(biorthotype),target :: inbiovar
     integer :: i,j
-    integer, save :: icalled=0
     DATATYPE :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf),mobio(spfsize,inbiovar%wwbio%nspf),abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),dot,data0,data1
     DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),smosave(inbiovar%wwbio%nspf,inbiovar%wwbio%nspf)
-    
-    icalled=icalled+1
     
     do i=1,inbiovar%wwbio%nspf                 !! Start by finding S**-1 of the original orbitals
        do j=1,inbiovar%wwbio%nspf
@@ -469,11 +470,8 @@ contains
     implicit none
     type(biorthotype),target :: inbiovar
     integer :: i,j
-    integer, save :: icalled=0
     DATATYPE :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf),abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),dot
     DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
-    
-    icalled=icalled+1
     
     do i=1,inbiovar%wwbio%nspf         
        do j=1,inbiovar%wwbio%nspf
@@ -510,11 +508,8 @@ contains
     implicit none
     type(biorthotype),target :: inbiovar
     integer :: i,j
-    integer, save :: icalled=0
     DATATYPE :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf),abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),dot
     DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
-    
-    icalled=icalled+1
     
     do i=1,inbiovar%wwbio%nspf         
        do j=1,inbiovar%wwbio%nspf

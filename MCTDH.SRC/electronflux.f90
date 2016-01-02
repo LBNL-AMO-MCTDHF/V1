@@ -14,9 +14,10 @@ subroutine fluxwrite(curtime,in_xmo,in_xa)
   use parameters
   use mpimod
   implicit none
-  integer :: curtime,molength,alength,ispf,ii
+  integer,intent(in) :: curtime
   DATATYPE,intent(in) :: in_xmo(spfsize,nspf),in_xa(numr,first_config:last_config,mcscfnum)
   DATATYPE,allocatable :: xmo(:,:), xa(:,:,:)
+  integer :: molength,alength,ispf,ii
 
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
@@ -97,7 +98,8 @@ subroutine fluxgtau0(alg,www,bioww)
 !! other   = only KE
 
   type(walktype),target :: www,bioww
-  integer :: alg,curtime,oldtime,k,nt,i,molength,alength,  BatchSize,NBat,brabat,brareadsize, &
+  integer,intent(in) :: alg
+  integer :: curtime,oldtime,k,nt,i,molength,alength,  BatchSize,NBat,brabat,brareadsize, &
        bratime,ketbat,ketreadsize,kettime,bratop, atime,btime,itime,jtime,times(1:7)=0, &
        imc, tau, ispf
   real*8 :: MemTot,MemVal,dt, myfac,wfi,estep,windowfunct
@@ -555,9 +557,9 @@ subroutine fluxgtau(alg)
   use configmod
   use df_parameters
   implicit none
-  integer :: alg
+  integer,intent(in) :: alg
 
-     call fluxgtau0(alg,www,bwwptr)
+  call fluxgtau0(alg,www,bwwptr)
 
 end subroutine fluxgtau
 
@@ -570,8 +572,9 @@ subroutine flux_op_onee(inspfs,keop,peop,flag) !! flag=1, flux (imag); flag=2, f
   use parameters
   implicit none
   DATATYPE, intent(in) :: inspfs(spfsize,nspf)
-  DATATYPE ::  keop(spfsize,nspf),peop(spfsize,nspf)
-  integer :: ispf,flag
+  DATATYPE,intent(out) ::  keop(spfsize,nspf),peop(spfsize,nspf)
+  integer,intent(in) :: flag
+  integer :: ispf
 
 !! initialize
   keop=0d0; peop=0d0
@@ -629,8 +632,9 @@ subroutine flux_op_nuc(inspfs,yop,flag) !! flag=1, flux (imag); flag=0, all    2
   use parameters
   implicit none
   DATATYPE, intent(in) :: inspfs(spfsize,nspf)
-  DATATYPE ::  yop(spfsize,nspf)
-  integer :: ispf,flag
+  DATATYPE,intent(out) ::  yop(spfsize,nspf)
+  integer,intent(in) :: flag
+  integer :: ispf
 
   call noparorbsupport("in flux_op_nuc")
 
@@ -658,9 +662,9 @@ end subroutine flux_op_nuc
 subroutine flux_op_twoe(mobra,moket,V2,flag)  !! flag=1 means flux, otherwise whole op
   use parameters
   implicit none
-  DATATYPE :: mobra(spfsize,nspf),moket(spfsize,nspf)
-  DATATYPE :: V2(nspf,nspf,nspf,nspf)
-  integer :: flag
+  DATATYPE,intent(in) :: mobra(spfsize,nspf),moket(spfsize,nspf)
+  DATATYPE,intent(out) :: V2(nspf,nspf,nspf,nspf)
+  integer,intent(in) :: flag
 
   if (flag.ne.1) then
      OFLWR "Doublecheck flag.ne.1 ok in flux_op_twoe"; CFLST
@@ -683,9 +687,10 @@ function fluxeval(abra,aket,ke,pe,V2,yderiv,flag,imc)
   use parameters 
   use configmod
   implicit none
-  integer :: flag,imc
-  DATATYPE :: abra(numr,first_config:last_config,mcscfnum),aket(numr,first_config:last_config,mcscfnum),fluxeval,fluxeval00
-  DATATYPE :: ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf)
+  integer,intent(in) :: flag,imc
+  DATATYPE,intent(in) :: abra(numr,first_config:last_config,mcscfnum),aket(numr,first_config:last_config,mcscfnum)
+  DATATYPE :: fluxeval,fluxeval00
+  DATATYPE :: ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf)  !! AUTOMATIC
 
   fluxeval=fluxeval00(abra(:,:,imc),aket(:,:,imc),ke,pe,V2,yderiv,flag,nucfluxflag,www)
 
@@ -714,13 +719,13 @@ function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart,www)
   use opmod  !! rkemod & proderivmod
   use walkmod
   implicit none
+  integer,intent(in) :: flag,ipart
   type(walktype),intent(in) :: www
-  integer :: bra,ket,r,flag,rr,ipart
-  DATATYPE,intent(in) :: abra(numr,www%firstconfig:www%lastconfig),in_aket(numr,www%firstconfig:www%lastconfig)
-  DATATYPE :: ke(www%nspf,www%nspf),pe(www%nspf,www%nspf),V2(www%nspf,www%nspf,www%nspf,www%nspf),&
-       yderiv(www%nspf,www%nspf)
+  DATATYPE,intent(in) :: abra(numr,www%firstconfig:www%lastconfig),in_aket(numr,www%firstconfig:www%lastconfig),&
+       ke(www%nspf,www%nspf),pe(www%nspf,www%nspf),V2(www%nspf,www%nspf,www%nspf,www%nspf),yderiv(www%nspf,www%nspf)
   DATATYPE :: INVR,INVRSQ,fluxeval00,PRODERIV,BONDKE
   DATATYPE,allocatable :: aket(:,:)
+  integer :: bra,ket,r,rr
 
   if (flag.ne.1.or.fluxoptype.ne.1.or.ipart.ne.0) then
      OFLWR "maybe checkme debug"; CFLST

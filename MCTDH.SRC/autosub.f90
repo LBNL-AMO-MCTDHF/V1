@@ -120,7 +120,7 @@ module autobiomod
   type(biorthotype),target :: autobiovar
 end module
 
-subroutine autocorrelate_one(www,bioww,avector,inspfs,orig_spf,orig_avector,inoverlaps,innr)
+subroutine autocorrelate_one(www,bioww,avector,inspfs,orig_spf,orig_avector,outoverlap,innr)
   use fileptrmod
   use spfsize_parameters
   use bio_parameters
@@ -130,9 +130,12 @@ subroutine autocorrelate_one(www,bioww,avector,inspfs,orig_spf,orig_avector,inov
   implicit none
   type(walktype),intent(in) :: www,bioww
   DATATYPE, allocatable :: mobio(:,:),abio(:,:)
-  DATATYPE :: inspfs(  spfsize, www%nspf ), dot
-  DATATYPE :: orig_spf(  spfsize, www%nspf ), orig_avector(innr,www%firstconfig:www%lastconfig), inoverlaps, avector(innr,www%firstconfig:www%lastconfig)
+  DATATYPE,intent(in) :: inspfs(  spfsize, www%nspf ), orig_spf(  spfsize, www%nspf ), &
+       orig_avector(innr,www%firstconfig:www%lastconfig), &
+       avector(innr,www%firstconfig:www%lastconfig)
+  DATATYPE,intent(out) :: outoverlap
   DATATYPE,target :: smo(www%nspf,www%nspf)
+  DATATYPE :: dot
   integer :: innr
 
   allocate(mobio(spfsize,www%nspf),abio(innr,www%firstconfig:www%lastconfig))
@@ -140,7 +143,7 @@ subroutine autocorrelate_one(www,bioww,avector,inspfs,orig_spf,orig_avector,inov
   if(auto_biortho.eq.0) then
      OFLWR "Permoverlaps disabled.  set auto_biortho=1"; CFLST
 
-!!$     call permoverlaps(innr, numelec, spfsize, inspfs, orig_spf, avector,orig_avector,inoverlaps, 1, &
+!!$     call permoverlaps(innr, numelec, spfsize, inspfs, orig_spf, avector,orig_avector,outoverlap, 1, &
 !!$          autopermthresh, autonormthresh, nspf, nspf, numconfig, numconfig, configlist, ndof, configlist,&
 !!$          ndof, 0, parorbsplit)
 
@@ -151,9 +154,9 @@ subroutine autocorrelate_one(www,bioww,avector,inspfs,orig_spf,orig_avector,inov
      call bioset(autobiovar,smo,innr,bioww)
      call biortho(orig_spf,inspfs,mobio,abio,autobiovar)
 
-     inoverlaps=dot(avector,abio,www%localnconfig*innr)
+     outoverlap=dot(avector,abio,www%localnconfig*innr)
      if (www%parconsplit.ne.0) then
-        call mympireduceone(inoverlaps)
+        call mympireduceone(outoverlap)
      endif
   endif
 

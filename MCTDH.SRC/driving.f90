@@ -14,7 +14,7 @@ subroutine getdrivingoverlap(outdrivingoverlap,numvects)
   use drivingbiomod
   implicit none
   integer,intent(in) :: numvects
-  DATATYPE :: outdrivingoverlap(numvects)
+  DATATYPE,intent(out) :: outdrivingoverlap(numvects)
   outdrivingoverlap(:)= drivingoverlap(1:numvects)
 end subroutine getdrivingoverlap
 
@@ -27,14 +27,12 @@ subroutine drivingtrans(thistime)
   use opmod
   implicit none
 
-  DATATYPE :: dipmatxx(nspf,nspf),dipmatyy(nspf,nspf),dipmatzz(nspf,nspf),scalarpotyy(nspf,nspf),scalarpotzz(nspf,nspf)
-  DATATYPE :: tempinvden(nspf,nspf),tempdenmat2(nspf,nspf), dreducedpottally(nspf,nspf,nspf,nspf)
-  DATATYPE ::  tempdenmat(nspf,nspf), tempdrivingorbs(spfsize,nspf), &
-       currentorbs(spfsize,nspf),tempdrivingavector(numr,first_config:last_config,mcscfnum), dot
-  DATATYPE :: scalarpotxx(nspf,nspf), multorbsxx(spfsize,nspf), multorbsyy(spfsize,nspf), multorbszz(spfsize,nspf)
-  DATATYPE :: dtwoereduced(reducedpotsize,nspf,nspf), pots(3)=0d0
-
-  Type(CONFIGPTR) :: drivingptr     !!, nullptr
+  DATATYPE :: dipmatxx(nspf,nspf),dipmatyy(nspf,nspf),dipmatzz(nspf,nspf),scalarpotyy(nspf,nspf),scalarpotzz(nspf,nspf),&
+       tempinvden(nspf,nspf),tempdenmat2(nspf,nspf), scalarpotxx(nspf,nspf),  tempdenmat(nspf,nspf)  !! AUTOMATIC
+  DATATYPE,allocatable :: currentorbs(:,:),tempdrivingorbs(:,:),tempdrivingavector(:,:,:),&
+       dtwoereduced(:,:,:),dreducedpottally(:,:,:,:),multorbsxx(:,:),multorbsyy(:,:),multorbszz(:,:)
+  DATATYPE :: dot, pots(3)=0d0
+   Type(CONFIGPTR) :: drivingptr
   integer ::  i, imc,j, nulltimes(10)
   real*8 :: thistime,rsum
   DATATYPE, target :: smo(nspf,nspf)
@@ -52,16 +50,16 @@ subroutine drivingtrans(thistime)
      OFLWR "NOT SUPPORTED 558"; CFLST
   endif
 
+  allocate(currentorbs(spfsize,nspf), tempdrivingorbs(spfsize,nspf),&
+       tempdrivingavector(numr,first_config:last_config,mcscfnum))
+
   currentorbs(:,:)=RESHAPE(yyy%cmfpsivec(spfstart:spfend,0),(/spfsize,nspf/))
   
   do imc=1,mcscfnum
 
      tempdrivingavector(:,:,imc)=avector_driving(:,:,imc) * exp(timefac*drivingenergies(imc)*thistime)
 
-
-        call bioset(drivingbiovar,smo,numr,bwwptr)
-
-
+     call bioset(drivingbiovar,smo,numr,bwwptr)
      call biortho(orbs_driving(:,:),currentorbs(:,:),tempdrivingorbs(:,:),tempdrivingavector(:,:,imc),drivingbiovar)
 
 !! tempdrivingavector is vector in non-orthonormal tempdrivingorbs (which are bio to currentorbs)
@@ -77,6 +75,7 @@ subroutine drivingtrans(thistime)
   endif
 
   if (tdflag.ne.1) then
+     deallocate(currentorbs,tempdrivingorbs,tempdrivingavector)
      return
   endif
 
@@ -86,9 +85,12 @@ subroutine drivingtrans(thistime)
      rsum=rsum+abs(pots(i))**2
   enddo
   if (rsum.eq.0d0) then
+     deallocate(currentorbs,tempdrivingorbs,tempdrivingavector)
      return
   endif
 
+  allocate(dtwoereduced(reducedpotsize,nspf,nspf), dreducedpottally(nspf,nspf,nspf,nspf),&
+       multorbsxx(spfsize,nspf), multorbsyy(spfsize,nspf), multorbszz(spfsize,nspf))
 
   call configptralloc(drivingptr,www)
   call zero_cptr(drivingptr)
@@ -195,6 +197,9 @@ subroutine drivingtrans(thistime)
   call MYGEMM('T','N', nspf,nspf,nspf,DATAONE, scalarpotzz,  nspf, tempinvden, nspf, DATAZERO, tempdenmat2, nspf)
   call MYGEMM('N','N', spfsize,nspf,nspf,DATAONE, tempdrivingorbs,spfsize, tempdenmat2, nspf, DATAONE, yyy%drivingorbszz(:,:,0),spfsize)
 
+  call configptrdealloc(drivingptr)
+  deallocate(currentorbs,tempdrivingorbs,tempdrivingavector)
+  deallocate(dtwoereduced, dreducedpottally,  multorbsxx,multorbsyy,multorbszz)
   
 end subroutine drivingtrans
 
@@ -209,12 +214,12 @@ subroutine drivinginit(inenergies)
   use xxxmod
   use opmod
   implicit none
-
   DATATYPE,intent(in) :: inenergies(mcscfnum)
 
   orbs_driving(:,:)=RESHAPE(yyy%cmfpsivec(spfstart:spfend,0),(/spfsize,nspf/))
 
-  avector_driving(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numr,local_nconfig,mcscfnum/))*drivingproportion
+  avector_driving(:,:,:)=&
+       RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numr,local_nconfig,mcscfnum/))*drivingproportion
 
   yyy%cmfpsivec(astart(1):aend(mcscfnum),0) = yyy%cmfpsivec(astart(1):aend(mcscfnum),0) * (1d0-drivingproportion)
 

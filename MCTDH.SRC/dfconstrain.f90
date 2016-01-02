@@ -17,7 +17,7 @@ subroutine get_constraint(time)
   use fileptrmod
   use ham_parameters
   implicit none
-  real*8 :: time
+  real*8,intent(in) :: time
 
   if (constraintflag.eq.1) then
      call get_denconstraint(time)
@@ -46,11 +46,15 @@ subroutine dferror(www,cptr,sptr,avector,numvects,outerror,time)
   type(walktype),intent(in) :: www
   type(configptr),intent(in) :: cptr
   type(sparseptr),intent(in) :: sptr
+  real*8,intent(in) :: time
+  DATATYPE,intent(in) :: avector(numr,www%firstconfig:www%lastconfig,numvects)
+  CNORMTYPE,intent(out) :: outerror
+  DATATYPE :: dot
+  DATATYPE,allocatable :: temp1(:,:),temp2(:,:)
   integer :: i,imc
-  DATATYPE :: avector(numr,www%firstconfig:www%lastconfig,numvects), dot
-  DATATYPE :: temp1(numr,www%firstconfig:www%lastconfig), temp2(numr,www%firstconfig:www%lastconfig)
-  CNORMTYPE :: outerror
-  real *8 :: time
+
+  allocate(temp1(numr,www%firstconfig:www%lastconfig), temp2(numr,www%firstconfig:www%lastconfig))
+  temp1=0; temp2=0
 
   outerror=0d0
   do imc=1,numvects
@@ -81,6 +85,8 @@ subroutine dferror(www,cptr,sptr,avector,numvects,outerror,time)
 #endif
   endif
 
+  deallocate(temp1,temp2)
+
 end subroutine dferror
 
 
@@ -90,10 +96,11 @@ subroutine get_smallwalkvects(www,avector, smallwalkvects,nblock,howmany)
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
-  integer ::    i,ii,ix,nblock,howmany
+  integer,intent(in) :: nblock,howmany
   DATATYPE,intent(in) ::  avector(nblock,www%firstconfig:www%lastconfig,howmany)
   DATATYPE,intent(out) :: smallwalkvects(nblock,www%configstart:www%configend,howmany,www%nspf,www%nspf)
   DATATYPE, allocatable ::  bigavector(:,:,:)
+  integer ::    i,ii,ix
 
   if (www%dfrestrictflag.le.www%dflevel) then
      OFLWR "WTF DFRESTRICT IS  ", www%dfrestrictflag,www%dflevel; CFLST
@@ -131,11 +138,12 @@ subroutine get_rhomat(www,avector, rhomat,nblock,howmany)
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
-  integer ::    ii,nblock,howmany
+  integer,intent(in) :: nblock,howmany
   DATATYPE,intent(in) ::  avector(nblock,www%firstconfig:www%lastconfig,howmany)
   DATATYPE,intent(out) :: rhomat(www%nspf,www%nspf,www%nspf,www%nspf)
-  DATATYPE, allocatable ::  &
-       smallwalkvects(:,:,:,:,:)   !! nblock,configstart:configend,howmany,alpha,beta  alpha=included beta=excluded
+!! nblock,configstart:configend,howmany,alpha,beta  alpha=included beta=excluded  :
+  DATATYPE, allocatable ::  smallwalkvects(:,:,:,:,:)   
+  integer :: ii
 
   if (www%dfrestrictflag.le.www%dflevel) then
      OFLWR "WTF DFRESTRICT IS  ", www%dfrestrictflag,www%dflevel; CFLST
@@ -226,11 +234,6 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 #endif
 
   call system_clock(itime)
-
-!  OFLWR "*** GO CON ****"
-!  WRFL real(inavectors)
-!  WRFL;  CFL
-
 
   if (www%dfrestrictflag.le.www%dflevel) then
      OFLWR "WTF DFRESTRICT IS  ", www%dfrestrictflag,www%dflevel; CFLST
@@ -388,10 +391,6 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
            call mympireduce(rhs,www%nspf**2)
         endif
 
-!        OFLWR "RHS"
-!        WRFL real(rhs)
-!        WRFL; CFL
-
         call system_clock(jtime);        times(11)=times(11)+jtime-itime;     itime=jtime
 
         call assigncomplexvec(realrhs(:,:,:),rhs(:,:), www%nspf**2)
@@ -446,15 +445,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
         mattemp(:,:)= &
              MATMUL(TRANSPOSE(RESHAPE(rhomatpairsbigcopy(:,:,:,:),(/2*isize*zzz,isize*zzz/))),RESHAPE(rhomatpairsbigcopy(:,:,:,:),(/2*isize*zzz,isize*zzz/)))
 
-!        OFLWR "MATTEMP",lioreg
-!        WRFL real(mattemp)
-!        WRFL; CFL
-
         call realinvmatsmooth(mattemp,isize*zzz,lioreg)
-
-!        OFLWR "MATTEMPnow",lioreg
-!        WRFL real(mattemp)
-!        WRFL; CFL
 
         pseudoinv(:,:)=MATMUL(mattemp,TRANSPOSE(RESHAPE(rhomatpairsbigcopy(:,:,:,:),(/2*isize*zzz,isize*zzz/))))
         call DGEMV('N',zzz*isize,2*zzz*isize,1d0,pseudoinv(:,:),isize*zzz,rhspairsbigtemp,1,0d0,rhspairs(:,:),1)
@@ -494,8 +485,6 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
   enddo
 
-!!  OFLWR "TEMPSTOP" ; CFLST
-
   deallocate(&
        avectorp,   avector,    &
        smallwalkvects,         rhs,          rhomat,  &
@@ -521,7 +510,7 @@ end subroutine get_dfconstraint0
 subroutine get_denconstraint(time)
   use ham_parameters
   implicit none
-  real*8 :: time
+  real*8,intent(in) :: time
 
   !! assume nothing, keep constant off block diag (lio solve)
 
@@ -544,7 +533,8 @@ end subroutine get_denconstraint
 function lind(jspf,ispf)
   use parameters
   implicit none
-  integer :: ispf,jspf,lind
+  integer,intent(in) :: ispf,jspf
+  integer :: lind
   print *, "CHECK LIODEN CODE. (SEE COMMENTS)"
   stop
   if (jspf.gt.ispf) then
@@ -558,7 +548,8 @@ end function lind
 function llind(ispf,jspf)
   use parameters
   implicit none
-  integer :: ispf,jspf,llind, lll, i
+  integer,intent(in) :: ispf,jspf
+  integer :: llind, lll, i
 
   lll=0
   do i=1,shells(ispf)-1
@@ -858,8 +849,6 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
         enddo
      enddo
 
-!!!     OFLWR "MAXVAL,MAXANTI",maxval,maxanti,iiyy; CFL
-
 !! 070414     
      tempconmatels(:,:)=0.5d0*(tempconmatels(:,:)+TRANSPOSE(CONJUGATE(tempconmatels(:,:))))
 
@@ -1127,8 +1116,6 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
            endif
         enddo
      enddo
-
-!!!     OFLWR "MAXVAL,MAXANTI",maxval,maxanti,iiyy; CFL
 
 !! 070414     
      tempconmatels(:,:)=0.5d0*(tempconmatels(:,:)+TRANSPOSE(CONJUGATE(tempconmatels(:,:))))

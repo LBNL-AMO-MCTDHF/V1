@@ -9,10 +9,10 @@ subroutine keprojector(inavector,inspfs,infac,www)
   implicit none
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: inavector(www%totadim,mcscfnum), inspfs(spfsize,nspf)
-  DATATYPE :: tempelecweights(spfsize),rad, &
-       kedot(nspf),krval,dot,tempvector(www%totadim),csum,kedot2(nspf)
+  DATATYPE :: rad, kedot(nspf),krval,dot,csum,kedot2(nspf)
   DATATYPE, allocatable,save :: kevects(:,:),keproj(:,:,:),keproj2(:,:,:)
   real*8, allocatable, save ::  kesum(:),energy(:), kesum2(:)
+  DATATYPE,allocatable :: tempelecweights(:),tempvector(:)
   real*8 :: infac
   DATAECS :: ones(numr)
   integer, save :: allocd=0
@@ -21,6 +21,8 @@ subroutine keprojector(inavector,inspfs,infac,www)
   if(numr.gt.1) then
      OFLWR "KEPROJ NOT SUPPORTED NUMR>1"; CFLST
   endif
+
+  allocate( tempelecweights(spfsize),tempvector(www%totadim) )
 
   if (allocd.eq.0) then
      allocd=1
@@ -100,6 +102,8 @@ subroutine keprojector(inavector,inspfs,infac,www)
      enddo
      close(1986)
   endif
+
+  deallocate(tempelecweights,tempvector)
 
 end subroutine keprojector
   

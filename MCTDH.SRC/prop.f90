@@ -17,9 +17,12 @@ subroutine prop_loop( starttime)
   DATAECS :: thisenergy(mcscfnum), lastenergy(mcscfnum) ,thisenergyavg,lastenergyavg,startenergy(mcscfnum)
   CNORMTYPE :: norms(mcscfnum)
   real*8 :: thistime, starttime, thattime,error=1d10,rsum,avecerror=1d10
-  DATATYPE :: dot,  sum2,sum, avectorp(tot_adim),outspfs(totspfdim),hermdot,drivingoverlap(mcscfnum)
+  DATATYPE :: dot,  sum2,sum,hermdot,drivingoverlap(mcscfnum)
+  DATATYPE, allocatable :: avectorp(:),outspfs(:)
 
   thistime=starttime;  flag=0
+
+  allocate(avectorp(tot_adim),outspfs(totspfdim))
 
 !!GOING TO FULL ORDER.
 !  if (improvedrelaxflag.ne.0.and.spf_fl ag.ne.0.and.sparseconfigflag.ne.0) then
@@ -338,6 +341,8 @@ subroutine prop_loop( starttime)
      lanagain=-1 !! reset to original value -- should already be -1 in all cases, redundant
   endif
 
+  deallocate(avectorp,outspfs)
+
 end subroutine prop_loop
 
 
@@ -350,9 +355,9 @@ subroutine prop_wfn(tin, tout)
   use xxxmod
   use mpimod
   implicit none
-
   real*8, external :: all_derivs, gbs_derivs, dummysub 
-  real*8 :: tout, tin, mytime,nullreal, nulldouble,gbsstepsize
+  real*8,intent(in) :: tout, tin
+  real*8 :: mytime,nullreal, nulldouble,gbsstepsize
   integer ::  iflag,zzz, nullint, idid, itime, jtime, time=0,  time2=0 , numiters=0,rkworkdim,rkiworkdim
   real*8, allocatable :: rkwork(:)
   integer, allocatable :: rkiwork(:)
@@ -517,9 +522,9 @@ subroutine cmf_prop_wfn(tin, tout)
   use configmod
   use mpimod
   implicit none
-
+  real*8,intent(in) :: tout, tin
   integer ::  itime,jtime,times(0:20)=0,numiters=0,linearflag,imc,printflag=1,getlen,qq
-  real*8 :: tout, tin, time1, time2
+  real*8 :: time1, time2
   integer, save :: xxcount=0 
   DATATYPE :: myvalues(mcscfnum)
 
@@ -821,7 +826,8 @@ subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc)
   DATATYPE,intent(out) :: avectorout(tot_adim)
   integer,intent(in) :: linearflag,imc
   real*8,intent(in) :: time1,time2
-  DATATYPE :: tempvector(tot_adim),dot,csum
+  DATATYPE :: dot,csum
+  DATATYPE,allocatable :: tempvector(:)
   integer :: k
   real*8 :: timea,timeb
 
@@ -829,6 +835,8 @@ subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc)
      avectorout(:)=avectorin(:)
      return
   endif
+
+  allocate(tempvector(tot_adim))
 
   tempvector(:)=avectorin(:)
   do k=1,littlesteps
@@ -844,6 +852,8 @@ subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc)
      endif
      avectorout(:)=avectorout(:)/sqrt(csum)
   endif
+
+  deallocate(tempvector)
 
 end subroutine cmf_prop_avector
 

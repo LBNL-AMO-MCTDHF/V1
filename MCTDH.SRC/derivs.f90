@@ -17,9 +17,10 @@
 subroutine gbs_derivs(notusedint,thistime,psi,psip,notuseddbl,notusedint2)
   use parameters
   implicit none
-  integer :: notusedint,notusedint2
-  real*8 :: thistime,notuseddbl
-  DATATYPE :: psi(psilength), psip(psilength)
+  integer,intent(in) :: notusedint,notusedint2
+  real*8,intent(in) :: thistime,notuseddbl
+  DATATYPE,intent(in) :: psi(psilength)
+  DATATYPE,intent(out) :: psip(psilength)
   call all_derivs(thistime,psi,psip)
 end subroutine gbs_derivs
 
@@ -102,9 +103,10 @@ end subroutine all_derivs
 subroutine gbs_linear_derivs(notusedint,thistime,spfsin,spfsout,notuseddbl,notusedint2)
   use parameters
   implicit none
-  DATATYPE :: spfsin(spfsize, nspf), spfsout(spfsize, nspf)
-  integer :: notusedint,notusedint2
-  real*8 :: thistime,notuseddbl
+  DATATYPE,intent(in) :: spfsin(spfsize, nspf)
+  DATATYPE,intent(out) :: spfsout(spfsize, nspf)
+  integer,intent(in) :: notusedint,notusedint2
+  real*8,intent(in) :: thistime,notuseddbl
   call spf_linear_derivs(thistime,spfsin,spfsout)
 end subroutine gbs_linear_derivs
 
@@ -112,8 +114,9 @@ end subroutine gbs_linear_derivs
 subroutine spf_linear_derivs(thistime,spfsin,spfsout)
   use parameters
   implicit none
-  DATATYPE :: spfsin(spfsize, nspf), spfsout(spfsize, nspf)
-  real*8 :: thistime
+  DATATYPE,intent(in) :: spfsin(spfsize, nspf)
+  DATATYPE,intent(out) :: spfsout(spfsize, nspf)
+  real*8,intent(in) :: thistime
   call spf_linear_derivs0(thistime,spfsin,spfsout,1)
 end subroutine spf_linear_derivs
 
@@ -125,17 +128,13 @@ subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
   use parameters
   use xxxmod  !! frozenexchange
   implicit none
-  DATATYPE :: spfsin(spfsize, nspf), spfsout(spfsize, nspf)
-  real*8 :: thistime,facs(0:1)
-  integer ::  jjj, allflag, ispf,jspf,ibot
+  DATATYPE,intent(in) :: spfsin(spfsize, nspf)
+  DATATYPE,intent(out) :: spfsout(spfsize, nspf)
+  integer,intent(in) :: allflag
+  real*8,intent(in) :: thistime
+  real*8 :: facs(0:1)
+  integer ::  jjj, ispf,jspf,ibot
   DATATYPE ::   spfmult(spfsize,nspf), spfmult2(spfsize,nspf), spfmult3(spfsize,nspf) !!AUTOMATIC
-
-!!$  integer, save :: allochere=0
-!!$  DATATYPE,save,allocatable ::   spfmult(:,:),spfmult2(:,:),spfmult3(:,:)
-!!$  if (allochere.eq.0) then
-!!$     allocate(spfmult(spfsize,nspf), spfmult2(spfsize,nspf), spfmult3(spfsize,nspf))
-!!$  endif
-!!$  allochere=1
 
   if (effective_cmf_linearflag.eq.1) then
      ibot=0;     facs(0)=(thistime-firsttime)/(lasttime-firsttime);     facs(1)=1d0-facs(0)
@@ -188,17 +187,12 @@ subroutine driving_linear_derivs(thistime,spfsin,spfsout)
   use parameters
   use xxxmod  !! driving orbs
   implicit none
-  DATATYPE :: spfsin(spfsize, nspf),spfsout(spfsize, nspf),pots(3)
-  real*8 :: thistime,facs(0:1),rsum
+  DATATYPE,intent(in) :: spfsin(spfsize, nspf)
+  DATATYPE,intent(out) :: spfsout(spfsize, nspf)
+  real*8,intent(in) :: thistime
+  real*8 :: facs(0:1),rsum
   integer ::  jjj, ibot
-  DATATYPE :: spfmult(spfsize,nspf)  !! AUTOMATIC
-
-!!$  DATATYPE,save,allocatable :: spfmult(:,:)
-!!$  integer, save :: allochere=0
-!!$  if (allochere.eq.0) then
-!!$     allocate(spfmult(spfsize,nspf))
-!!$  endif
-!!$  allochere=1
+  DATATYPE :: spfmult(spfsize,nspf),pots(3)  !! AUTOMATIC
 
   spfsout(:,:)=0d0
 
@@ -538,16 +532,9 @@ subroutine actreducedconjg0(thistime,inspfs, projspfs, outspfs, ireduced, projfl
   implicit none
   DATATYPE, intent(in) :: inspfs(spfsize,nspf),projspfs(spfsize,nspf)
   DATATYPE, intent(out) ::  outspfs(spfsize,nspf)
+  integer,intent(in) :: ireduced,projflag,conflag
+  real*8,intent(in) :: thistime
   DATATYPE :: ttempspfs(spfsize,nspf) !! AUTOMATIC
-  integer :: ireduced,projflag,conflag
-  real*8 :: thistime
-
-!!$  integer, save :: allochere=0
-!!$  DATATYPE,save,allocatable ::  ttempspfs(:,:)
-!!$  if (allochere.eq.0) then
-!!$     allocate(ttempspfs(spfsize,nspf))
-!!$  endif
-!!$  allochere=1
 
   ttempspfs(:,:)=ALLCON(inspfs(:,:))
   call actreduced0(thistime,ttempspfs, projspfs, outspfs, ireduced, projflag,conflag)
@@ -562,9 +549,10 @@ subroutine wmult(inspfs, outspfs, ireduced)
   implicit none
   DATATYPE, intent(in) :: inspfs(spfsize,nspf)
   DATATYPE, intent(out) :: outspfs(spfsize,nspf)
-  DATATYPE :: spfmult(spfsize,nspf), tempbigmult(spfsize,nspf), tempmult(spfsize) !!AUTOMATIC
-  integer :: ispf,ireduced
-  DATATYPE :: spfinvr( spfsize,nspf ), spfinvrsq(  spfsize,nspf),spfproderiv(  spfsize,nspf )
+  integer,intent(in) :: ireduced
+  DATATYPE :: spfmult(spfsize,nspf), tempbigmult(spfsize,nspf), tempmult(spfsize),& !!AUTOMATIC
+       spfinvr( spfsize,nspf ), spfinvrsq(  spfsize,nspf),spfproderiv(  spfsize,nspf )
+  integer :: ispf
 
 !! sum over fast index reduced matrices, because doing spfinvrsq= reducedinvrsq * inspfs BUT 1) store in transposed order and 2) have to reverse the call in BLAS
 
@@ -611,8 +599,9 @@ subroutine denmult(inspfs, outspfs, ireduced)
   use parameters
   use xxxmod
   implicit none
-  integer :: ireduced
-  DATATYPE  :: inspfs(spfsize,nspf),outspfs(spfsize,nspf)
+  integer,intent(in) :: ireduced
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf)
+  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
 
   call MYGEMM('N','N', spfsize,nspf,nspf,DATAONE, inspfs,spfsize, yyy%denmat(:,:,ireduced), nspf, DATAZERO, outspfs, spfsize)  !! ADDS TO OUTSPFS
 

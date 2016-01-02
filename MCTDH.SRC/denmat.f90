@@ -93,12 +93,13 @@ subroutine replace_withnat(printflag)
   use xxxmod
   implicit none
 
-  DATATYPE :: outspfs(spfsize,nspf), nullspfs(spfsize,nspf)
+  DATATYPE,allocatable :: outspfs(:,:)
   integer :: i,j,printflag,imc
   real*8 :: errorval
   DATATYPE,target :: smo(nspf,nspf)
 
-  outspfs=0d0;nullspfs=0d0
+  allocate(outspfs(spfsize,nspf))
+  outspfs=0d0
 
   do j=1,nspf  ! which natorb
      do i=1,nspf  ! which original
@@ -147,6 +148,8 @@ subroutine replace_withnat(printflag)
   enddo
 
   yyy%cmfpsivec(spfstart:spfend,0)=RESHAPE(outspfs,(/totspfdim/))
+
+  deallocate(outspfs)
 
 end subroutine replace_withnat
 

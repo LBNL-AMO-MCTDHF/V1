@@ -297,7 +297,7 @@ subroutine parblockconfigmult0_gather(www,cptr,sptr,inavector,outavector)
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,allocatable :: intemp(:,:)
-  DATATYPE :: outtemp(numr,www%botconfig:www%topconfig)
+  DATATYPE :: outtemp(numr,www%botconfig:www%topconfig)   !! AUTOMATIC
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parblockconfigmult"; CFLST
@@ -349,7 +349,7 @@ subroutine parblockconfigmult0_summa(www,cptr,sptr,inavector,outavector)
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE :: intemp(numr,www%maxconfigsperproc),outwork(numr,www%botconfig:www%topconfig),&
-       outtemp(numr,www%botconfig:www%topconfig)
+       outtemp(numr,www%botconfig:www%topconfig)  !! AUTOMATIC
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parblockconfigmult"; CFLST
@@ -404,8 +404,7 @@ subroutine parblockconfigmult0_circ(www,cptr,sptr,inavector,outavector)
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE :: workvector(numr,www%maxconfigsperproc), workvector2(numr,www%maxconfigsperproc),&
-       outwork(numr,www%botconfig:www%topconfig),&
-       outtemp(numr,www%botconfig:www%topconfig)
+       outwork(numr,www%botconfig:www%topconfig), outtemp(numr,www%botconfig:www%topconfig)  !! AUTOMATIC
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parblockconfigmult"; CFLST
@@ -842,9 +841,13 @@ subroutine mysort2(inout, values,n,lda,etarget)
   implicit none
   integer,intent(in) :: lda, n
   DATATYPE, intent(in) :: etarget
-  DATATYPE :: inout(lda,n), out(lda,n), values(lda), newvals(lda)
+  DATATYPE,intent(inout) :: inout(lda,n), values(lda)
+  DATATYPE,allocatable :: out(:,:), newvals(:)
+  integer,allocatable :: taken(:), order(:)
   real*8 :: lowval 
-  integer :: taken(lda), order(lda),i,j,whichlowest, flag
+  integer :: i,j,whichlowest, flag
+
+  allocate(out(lda,n), newvals(lda), taken(lda), order(lda))
 
   taken=0;  order=-1
   do j=1,n
@@ -869,5 +872,7 @@ subroutine mysort2(inout, values,n,lda,etarget)
 
   values(1:n)=newvals(1:n)
   inout(1:n,1:n)=out(1:n,1:n)
+
+  deallocate(out, newvals, taken, order)
 
 end subroutine mysort2

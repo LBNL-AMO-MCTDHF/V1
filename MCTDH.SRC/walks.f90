@@ -8,9 +8,9 @@
 
 function highspinorder(thisconfig,ndof,numelec)
   implicit none
-  integer,intent(in) :: ndof,numelec
+  integer,intent(in) :: ndof,numelec,thisconfig(ndof)
   logical :: highspinorder
-  integer :: thisconfig(ndof),ii,unpaired(numelec),flag,jj
+  integer :: ii,unpaired(numelec),flag,jj
 
   highspinorder=.true.
 
@@ -50,9 +50,9 @@ end function highspinorder
 
 function lowspinorder(thisconfig,ndof,numelec)
   implicit none
-  integer,intent(in) :: ndof,numelec
+  integer,intent(in) :: ndof,numelec,thisconfig(ndof)
   logical :: lowspinorder
-  integer :: thisconfig(ndof),ii,unpaired(numelec),flag,jj
+  integer :: ii,unpaired(numelec),flag,jj
 
   lowspinorder=.true.
 
@@ -160,7 +160,7 @@ subroutine configlistwrite(www,inconfiglistfile)
   use mpimod
   implicit none
   type(walktype),intent(in) :: www
-  character :: inconfiglistfile*(*)
+  character,intent(in) :: inconfiglistfile*(*)
   if (myrank.eq.1) then
      open(1088,file=inconfiglistfile,status="unknown",form="unformatted")
      write(1088) www%numconfig,www%ndof
@@ -172,7 +172,8 @@ end subroutine configlistwrite
 
 subroutine configlistheaderread(iunit,readnumconfig,readndof)
   implicit none
-  integer :: iunit,readnumconfig,readndof
+  integer,intent(in) :: iunit
+  integer,intent(out) :: readnumconfig,readndof
 
   read(iunit) readnumconfig,readndof
 
@@ -180,9 +181,9 @@ end subroutine configlistheaderread
 
 
 subroutine configlistread(iunit,readnumconfig,readndof, readconfiglist)
-
   implicit none
-  integer :: iunit,readnumconfig,readndof, readconfiglist(readndof,readnumconfig)
+  integer,intent(in) :: iunit,readnumconfig,readndof
+  integer,intent(out) :: readconfiglist(readndof,readnumconfig)
   
   read(iunit) readconfiglist(:,:)
 
@@ -685,9 +686,7 @@ subroutine hops(www)
   implicit none
   type(walktype) :: www
   integer :: ii,iwalk,iconfig,totsinglehops,totdoublehops,totsinglewalks,totdoublewalks,ihop,flag,iproc,isize
-
-  integer :: numsinglehopsbyproc(nprocs), numdoublehopsbyproc(nprocs)
-
+!!$  integer :: numsinglehopsbyproc(nprocs), numdoublehopsbyproc(nprocs)
 
   allocate(www%numsinglehops(www%configstart:www%configend),&
        www%numdoublehops(www%configstart:www%configend))
@@ -926,24 +925,24 @@ subroutine hops(www)
   endif
 
 
-  numsinglehopsbyproc(:)=0;   numdoublehopsbyproc(:)=0
-
-  do iconfig=www%botconfig,www%topconfig
-     numsinglehopsbyproc(:)=numsinglehopsbyproc(:) + &
-          (www%lastsinglehopbyproc(:,iconfig)-www%firstsinglehopbyproc(:,iconfig)+1)
-     numdoublehopsbyproc(:)=numdoublehopsbyproc(:) + &
-          (www%lastdoublehopbyproc(:,iconfig)-www%firstdoublehopbyproc(:,iconfig)+1)
-  enddo
-
-!  call mpibarrier()
-!  if (myrank.eq.1) then
-!     print *, "HOPS BY PROC ON PROCESSOR 1 :::::::::::::::::::::::"
-!     print *, "   singles:"
-!     write(*,'(I5,A2,1000I7)') myrank,": ",numsinglehopsbyproc(:)/1000
-!     print *, "   doubles:"
-!     write(*,'(I5,A2,1000I7)') myrank,": ",numdoublehopsbyproc(:)/1000
-!     print *
-!  endif
+!!$  numsinglehopsbyproc(:)=0;   numdoublehopsbyproc(:)=0
+!!$
+!!$  do iconfig=www%botconfig,www%topconfig
+!!$     numsinglehopsbyproc(:)=numsinglehopsbyproc(:) + &
+!!$          (www%lastsinglehopbyproc(:,iconfig)-www%firstsinglehopbyproc(:,iconfig)+1)
+!!$     numdoublehopsbyproc(:)=numdoublehopsbyproc(:) + &
+!!$          (www%lastdoublehopbyproc(:,iconfig)-www%firstdoublehopbyproc(:,iconfig)+1)
+!!$  enddo
+!!$
+!!$  call mpibarrier()
+!!$  if (myrank.eq.1) then
+!!$     print *, "HOPS BY PROC ON PROCESSOR 1 :::::::::::::::::::::::"
+!!$     print *, "   singles:"
+!!$     write(*,'(I5,A2,1000I7)') myrank,": ",numsinglehopsbyproc(:)/1000
+!!$     print *, "   doubles:"
+!!$     write(*,'(I5,A2,1000I7)') myrank,": ",numdoublehopsbyproc(:)/1000
+!!$     print *
+!!$  endif
 
   call mpibarrier()
 
@@ -983,8 +982,9 @@ end subroutine set_matsize
 subroutine getlistorder(values, order,num)
   use fileptrmod
   implicit none
-  integer :: num, values(num),taken(num), order(num)
-  integer :: i,j,whichlowest, flag, lowval
+  integer,intent(in) :: num,values(num)
+  integer,intent(out) :: order(num)
+  integer :: taken(num),i,j,whichlowest, flag, lowval
 
   taken=0;  order=-1
   do j=1,num
@@ -1010,13 +1010,20 @@ end subroutine getlistorder
 
 subroutine listreorder(list, order,num,numper)
   implicit none
-  integer :: num, numper, list(numper,num),order(num),newvals(numper,num),j
+  integer,intent(in) :: num, numper, order(num)
+  integer,intent(inout) :: list(numper,num)
+  integer,allocatable :: newvals(:,:)
+  integer :: j
+
+  allocate(newvals(numper,num))
 
   do j=1,num
      newvals(:,j)=list(:,order(j))
   enddo
 
   list(:,:)=newvals(:,:)
+
+  deallocate(newvals)
 
 end subroutine listreorder
 

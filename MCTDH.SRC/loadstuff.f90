@@ -6,7 +6,7 @@ subroutine save_vector(psi,afile,sfile)
   use opmod !! frozenspfs
   use mpimod
   implicit none
-  DATATYPE :: psi(psilength) 
+  DATATYPE,intent(in) :: psi(psilength) 
   character :: afile*(*), sfile*(*)
   integer :: iprop,ispf
   DATATYPE, allocatable :: parorbitals(:,:), parfrozen(:,:), paravec(:,:,:)
@@ -102,21 +102,25 @@ end subroutine save_vector
 subroutine write_spf(unit,spfin,frozenin,inspfsize)
   use parameters
   implicit none
-  integer :: unit,inspfsize
-  DATATYPE :: allspf(inspfsize,nspf+numfrozen), spfin(inspfsize, nspf   ),&
-       frozenin(inspfsize, numfrozen)
+  integer,intent(in) :: unit,inspfsize
+  DATATYPE,intent(in) :: spfin(inspfsize, nspf   ),  frozenin(inspfsize, numfrozen)
+  DATATYPE,allocatable :: allspf(:,:)
+  allocate(allspf(inspfsize,nspf+numfrozen))
   if (numfrozen.gt.0) then
      allspf(:,1:numfrozen)=frozenin(:,:)
   endif
   allspf(:,numfrozen+1:nspf+numfrozen) = spfin(:,:)
   write (unit) allspf
-end subroutine
+  deallocate(allspf)
+end subroutine write_spf
+
 
 
 subroutine spf_header_write(iunit,num)
   use parameters
   implicit none
-  integer ::  cflag,iunit,num,qqq(3),ppp(3)
+  integer,intent(in) :: iunit,num
+  integer ::  cflag,qqq(3),ppp(3)
 #ifdef REALGO
   cflag=0
 #else
@@ -132,7 +136,8 @@ end subroutine
 
 subroutine spf_header_read(iunit,outdims,outnspf,cflag)
   implicit none
-  integer ::  cflag,outdims(3),outnspf,iunit
+  integer,intent(in) :: iunit
+  integer,intent(out) :: outdims(3),outnspf,cflag
 #ifdef REALGO
   cflag=0
 #else
@@ -146,8 +151,12 @@ end subroutine
 subroutine load_spfs(inspfs, numloaded)    !! both output
   use parameters
   implicit none
-  integer :: numloaded,ii,jj,kk,ll,flag
-  DATATYPE :: inspfs(spfsize,nspf+numfrozen), inspfs0(spfsize,nspf+numfrozen+numskiporbs)
+  integer,intent(out) :: numloaded
+  DATATYPE,intent(out) :: inspfs(spfsize,nspf+numfrozen)
+  integer :: ii,jj,kk,ll,flag
+  DATATYPE,allocatable :: inspfs0(:,:)
+
+  allocate(inspfs0(spfsize,nspf+numfrozen+numskiporbs))
 
   numloaded=0
 
@@ -182,6 +191,8 @@ subroutine load_spfs(inspfs, numloaded)    !! both output
         numloaded=numloaded-1
      endif
   enddo
+
+  deallocate(inspfs0)
 
 end subroutine load_spfs
 

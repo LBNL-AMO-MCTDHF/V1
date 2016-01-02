@@ -106,7 +106,7 @@ subroutine load_avector_productsub(myavector)
   DATATYPE,intent(out) :: myavector(numr,first_config:last_config,mcscfnum)
   integer :: readnumvects(numavectorfiles),readndof(numavectorfiles),readnumr(numavectorfiles),&
        readnumconfig(numavectorfiles),readcomplex(numavectorfiles),readunit(numavectorfiles)
-  integer :: configtable(num_config),configphase(num_config) !! AUTOMATIC
+  integer,allocatable :: configtable(:),configphase(:)
   type threemat
      DATATYPE, allocatable :: mat(:,:,:)
   end type threemat
@@ -127,6 +127,9 @@ subroutine load_avector_productsub(myavector)
   if (numspffiles.ne.numavectorfiles) then
      OFLWR "numavectorfiles and numspffiles should be the same for load_avector_product"; CFLST
   endif
+
+  allocate(configtable(num_config),configphase(num_config))
+
   do ifile=1,numavectorfiles
      if (eachloaded(ifile).le.0) then
         OFLWR "Error Eachloaded:", eachloaded(1:numavectorfiles); CFLST
@@ -389,6 +392,7 @@ subroutine load_avector_productsub(myavector)
      deallocate(readavectors(ifile)%mat,readconfiglist(ifile)%mat)
   enddo
 
+  deallocate(configtable,configphase)
   deallocate(productvector,productreshape)
 
   OFLWR "   ... done load_avector_product."; CFL
@@ -428,7 +432,7 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
   implicit none
   character :: filename*(*)
   integer :: readnumvects,readndof,readnumr,readnumconfig,readcomplex,mynumvects,numskip,ii
-  DATATYPE :: myavectors(numr,first_config:last_config,mynumvects)
+  DATATYPE,intent(out) :: myavectors(numr,first_config:last_config,mynumvects)
   external :: readavectorsubroutine,readavectorsubsimple
   DATATYPE, allocatable :: readavectors(:,:,:)
 
@@ -507,11 +511,15 @@ subroutine load_avectors0(iunit, qq, myavectors, mynumr, mynumconfig, readndof, 
   external :: mysubroutine
   integer :: mynumconfig, mynumr, mynumvects,iunit,i,  readndof, readnumr, readnumconfig
   integer :: qq, config1,  thatconfig(readndof),  myiostat, ivect
-  DATATYPE :: myavectors(mynumr,mynumconfig,mynumvects),  mytempavector(mynumconfig), readvect(readnumr)
+  DATATYPE,intent(out) :: myavectors(mynumr,mynumconfig,mynumvects)
+  DATATYPE,allocatable :: mytempavector(:)
+  DATATYPE :: readvect(readnumr)
   real*8 :: rtempreadvect(readnumr)
   complex*16 :: ctempreadvect(readnumr)
 
   myavectors=0d0
+
+  allocate(mytempavector(mynumconfig)); mytempavector(:)=0
 
   do ivect=1,mynumvects
      myavectors(:,:,ivect)=0d0
@@ -536,6 +544,9 @@ subroutine load_avectors0(iunit, qq, myavectors, mynumr, mynumconfig, readndof, 
         enddo
      enddo
   enddo
+
+  deallocate(mytempavector)
+
 end subroutine load_avectors0
   
 
@@ -544,7 +555,7 @@ subroutine simple_load_avectors(iunit, qq, myavectors, myndof, mynumr, mynumconf
   implicit none
 
   integer :: myndof, mynumconfig, mynumr,mynumvects,iunit,ivect,qq, config1, thatconfig(myndof), myiostat
-  DATATYPE :: myavectors(mynumr,mynumconfig,mynumvects)
+  DATATYPE,intent(out) :: myavectors(mynumr,mynumconfig,mynumvects)
   real*8 :: rtempreadvect(mynumr)
   complex*16 :: ctempreadvect(mynumr)
 
@@ -577,7 +588,7 @@ subroutine easy_load_avectors(iunit, qq, outavectors, mynumr, mynumconfig, mynum
 
   integer ::  mynumconfig, mynumr,mynumvects,iunit,ivect,qq, config1, thatconfig(ndof), myiostat,&
        phase,reorder,myconfig,getconfiguration
-  DATATYPE :: outavectors(mynumr,num_config,mynumvects)
+  DATATYPE,intent(out) :: outavectors(mynumr,num_config,mynumvects)
   real*8 :: rtempreadvect(mynumr)
   logical :: allowedconfig0
   complex*16 :: ctempreadvect(mynumr)
@@ -629,7 +640,7 @@ subroutine readavectorsubroutine(readconfig, outavector,ivect)
   use aarrmod
   implicit none
   integer :: i,iihole,iloop,jloop,ivect
-  DATATYPE :: outavector(num_config)
+  DATATYPE,intent(out) :: outavector(num_config)
   integer ::  readconfig(ndof+2*numholes),xflag,iexcite,config2
   integer :: thisconfig(ndof+400)
   integer :: jj,iind,phase,reorder
@@ -710,7 +721,7 @@ subroutine readavectorsubsimple(readconfig, outavector,notusedint)
   implicit none
   integer :: i,notusedint,phase,reorder,readconfig(ndof),config2,thisconfig(ndof),getconfiguration
   logical :: allowedconfig0
-  DATATYPE :: outavector(num_config)
+  DATATYPE,intent(out) :: outavector(num_config)
 
   outavector(:)=0d0;  thisconfig(:)=readconfig(:)
   do i=1,numelec
@@ -734,7 +745,7 @@ subroutine write_avector(unit,avector)
   use mpimod
   implicit none
   integer :: unit, config1
-  DATATYPE :: avector(numr,num_config)
+  DATATYPE,intent(in) :: avector(numr,num_config)
   if (myrank.ne.1) then
      OFLWR "only call write_avector on process 1 right????"; CFLST
   endif

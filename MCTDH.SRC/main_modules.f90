@@ -425,8 +425,9 @@ subroutine add_cptr(aptr,bptr,sumptr,afac,bfac)
   use configptrmod
   use parameters
   implicit none
-  DATATYPE :: afac,bfac
-  Type(CONFIGPTR) :: aptr,bptr,sumptr
+  DATATYPE,intent(in) :: afac,bfac
+  Type(CONFIGPTR),intent(in) :: aptr,bptr
+  Type(CONFIGPTR),intent(out) :: sumptr
   call add_cptr0(aptr,bptr,sumptr, afac,bfac, afac,bfac, afac,bfac, afac,bfac )
 end subroutine
 
@@ -436,8 +437,9 @@ subroutine assign_cptr(outptr,inptr,fac)
   use configptrmod
   use parameters
   implicit none
-  DATATYPE :: fac
-  Type(CONFIGPTR) :: inptr,outptr
+  DATATYPE,intent(in) :: fac
+  Type(CONFIGPTR),intent(in) :: inptr
+  Type(CONFIGPTR),intent(out) :: outptr
 
   outptr%kefac = inptr%kefac   * fac
 
@@ -461,10 +463,9 @@ subroutine add_cptr0(aptr,bptr,sumptr,afacbo,bfacbo,  afacnuc,bfacnuc,   afacpul
   use configptrmod
   use parameters
   implicit none
-
-  Type(CONFIGPTR) :: aptr,bptr,sumptr
-  DATATYPE :: afacbo,bfacbo,  afacnuc,bfacnuc,   afacpulse,bfacpulse, afaccon,bfaccon
-
+  Type(CONFIGPTR),intent(in) :: aptr,bptr
+  Type(CONFIGPTR),intent(out) :: sumptr
+  DATATYPE,intent(in) :: afacbo,bfacbo,  afacnuc,bfacnuc,   afacpulse,bfacpulse, afaccon,bfaccon
 
   sumptr%kefac = afacnuc*aptr%kefac + bfacnuc*bptr%kefac
 
@@ -489,7 +490,7 @@ subroutine zero_cptr(outptr)
   use configptrmod
   use parameters
   implicit none
-  Type(CONFIGPTR) :: outptr
+  Type(CONFIGPTR),intent(out) :: outptr
 
   outptr%kefac=0d0
 
@@ -560,8 +561,9 @@ subroutine add_sptr(aptr,bptr,sumptr,afac,bfac)
   use sparseptrmod
   use parameters
   implicit none
-  DATATYPE :: afac,bfac
-  Type(SPARSEPTR) :: aptr,bptr,sumptr
+  DATATYPE,intent(in) :: afac,bfac
+  Type(SPARSEPTR),intent(in) :: aptr,bptr
+  Type(SPARSEPTR),intent(out) :: sumptr
   call add_sptr0(aptr,bptr,sumptr, afac,bfac, afac,bfac, afac,bfac, afac,bfac )
 end subroutine
 
@@ -571,8 +573,9 @@ subroutine assign_sptr(outptr,inptr,fac)
   use sparseptrmod
   use parameters
   implicit none
-  DATATYPE :: fac
-  Type(SPARSEPTR) :: inptr,outptr
+  DATATYPE,intent(in) :: fac
+  Type(SPARSEPTR),intent(in) :: inptr
+  Type(SPARSEPTR),intent(out) :: outptr
 
   outptr%kefac = inptr%kefac   * fac
 
@@ -596,10 +599,9 @@ subroutine add_sptr0(aptr,bptr,sumptr,afacbo,bfacbo,  afacnuc,bfacnuc,   afacpul
   use sparseptrmod
   use parameters
   implicit none
-
-  Type(SPARSEPTR) :: aptr,bptr,sumptr
-  DATATYPE :: afacbo,bfacbo,  afacnuc,bfacnuc,   afacpulse,bfacpulse, afaccon,bfaccon
-
+  Type(SPARSEPTR),intent(in) :: aptr,bptr
+  Type(SPARSEPTR),intent(out) :: sumptr
+  DATATYPE,intent(in) :: afacbo,bfacbo,  afacnuc,bfacnuc,   afacpulse,bfacpulse, afaccon,bfaccon
 
   sumptr%kefac = afacnuc*aptr%kefac + bfacnuc*bptr%kefac
 

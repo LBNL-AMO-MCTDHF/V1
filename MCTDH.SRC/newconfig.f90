@@ -11,7 +11,9 @@
 
 function iind(twoarr)
   implicit none
-  integer :: iind, twoarr(2)
+  integer :: iind
+  integer,intent(in) :: twoarr(2)
+
 !!$  if (orderflag==1) then
 !!$     iind=twoarr(1) + (twoarr(2)-1)*nspf 
 !!$  else
@@ -31,7 +33,8 @@ function getconfiguration(thisconfig,www)
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
-  integer :: getconfiguration, thisconfig(www%ndof),  j,flag,k, dir,newdir, step,aa,bb, ii,kk,jj,flag1,flag2
+  integer,intent(in) :: thisconfig(www%ndof)
+  integer :: getconfiguration,  j,flag,k, dir,newdir, step,aa,bb, ii,kk,jj,flag1,flag2
 
   getconfiguration=-1
 
@@ -114,7 +117,8 @@ end function getconfiguration
 function reorder(thisconfig,numelec)
   implicit none
   integer, intent(in) :: numelec
-  integer :: reorder, thisconfig(1:2*numelec), phase, flag, jdof, temporb(2), iind
+  integer, intent(inout) :: thisconfig(1:2*numelec)
+  integer :: reorder, phase, flag, jdof, temporb(2), iind
 
   phase=1;  flag=0
   do while (flag==0)
@@ -249,7 +253,8 @@ function getmval(www,thisconfig)
   use basis_parameters
   implicit none
   type(walktype),intent(in) :: www
-  integer :: thisconfig(www%ndof), i, isum, getmval
+  integer,intent(in) :: thisconfig(www%ndof)
+  integer :: i, isum, getmval
   if ((spfrestrictflag==0)) then
      getmval=0;     return
   endif
@@ -268,7 +273,8 @@ function getugval(www,thisconfig)
   use basis_parameters
   implicit none
   type(walktype),intent(in) :: www
-  integer :: thisconfig(www%ndof), i, isum, getugval
+  integer,intent(in) :: thisconfig(www%ndof)
+  integer :: i, isum, getugval
   isum=1
   do i=1,www%numelec*2-1,2
      isum=isum*(spfugvals(thisconfig(i)))
@@ -922,8 +928,8 @@ contains
   function okexcite(jjj)
     implicit none
     logical :: okexcite
-    integer :: jjj(www%numelec),ii,ishell    !! numelec*2=ndof
-    integer :: numwithinshell(numshells),kkk(www%numelec)
+    integer,intent(in) :: jjj(www%numelec)   !! numelec*2=ndof
+    integer :: numwithinshell(numshells),kkk(www%numelec),ii,ishell 
     numwithinshell(:)=0
     kkk(:)=(jjj(:)+1)/2   !! orderflag 0
     do ii=1,www%numelec
@@ -948,7 +954,8 @@ contains
     implicit none
     integer, dimension(2) :: quickaarr
     integer, save :: temp(2)
-    integer :: ind,q, xind
+    integer,intent(in) :: xind
+    integer :: ind,q
 
     ind=xind-1
 !orderflag 0

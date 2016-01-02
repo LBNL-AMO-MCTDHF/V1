@@ -28,11 +28,13 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   use parameters
   use mpimod
   implicit none
-
-  real*8 :: time1,time2,midtime, tdiff, error, norm
-  DATATYPE :: inspfs(spfsize,nspf),tempspfs(spfsize,nspf)
+  real*8,intent(in) :: time1,time2
+  DATATYPE,intent(inout) :: inspfs(spfsize,nspf)
+  integer,intent(out) :: numiters
+  DATATYPE :: tempspfs(spfsize,nspf)   !! AUTOMATIC
   real*8, save :: tempstepsize = -1d0
-  integer :: itrace, iflag,  numiters,getlen
+  real*8 :: midtime, tdiff, error, norm
+  integer :: itrace, iflag,getlen
   integer :: expofileptr=805
   external :: jacoperate,jacopcompact ,realpardotsub
 
@@ -238,8 +240,9 @@ end module
 subroutine jacopcompact(com_inspfs,com_outspfs)
   use parameters
   implicit none
-
-  DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf), com_inspfs(spfsmallsize,nspf), com_outspfs(spfsmallsize,nspf)
+  DATATYPE,intent(in) :: com_inspfs(spfsmallsize,nspf)
+  DATATYPE,intent(out) :: com_outspfs(spfsmallsize,nspf)
+  DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf)  !! AUTOMATIC
 
   call spfs_expand(com_inspfs,inspfs)
   call jacoperate(inspfs,outspfs)
@@ -256,9 +259,11 @@ subroutine jacoperate(inspfs,outspfs)
   use xxxmod    !! drivingorbs.... hmmm could just make wrapper but whatever
   use linearmod
   implicit none
+  DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
+  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
   integer :: ii,ibot,getlen
   integer, save :: times(20), numcalledhere=0,itime,jtime
-  DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf), nulldouble(2),pots(3)
+  DATATYPE ::  nulldouble(2),pots(3)
   real*8 :: facs(0:1)
   DATATYPE :: jactemp3(spfsize,nspf),   jactemp2(spfsize,nspf), &  !! AUTOMATIC
        tempspfs(spfsize,nspf),temporbs(spfsize,nspf)
@@ -415,8 +420,9 @@ subroutine jacinit(inspfs, thistime) !!, timestep)
   use linearmod
   use jacmod
   implicit none
-  DATATYPE :: inspfs(spfsize,nspf) 
-  DATATYPE :: nulldouble(2), jactemp(spfsize,nspf)
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf) 
+  DATATYPE :: nulldouble(2)
+  DATATYPE,allocatable :: jactemp(:,:)
   real*8 :: thistime,gridtime
 
   if (allocated.eq.0) then
@@ -431,6 +437,7 @@ subroutine jacinit(inspfs, thistime) !!, timestep)
   call actreduced0(jactime,jacvect,nulldouble,jacvectout,1,0,0)
 
   if (effective_cmf_linearflag.ne.0) then
+     allocate( jactemp(spfsize,nspf) )
      gridtime=(jactime-firsttime)/(lasttime-firsttime) 
      if ((gridtime.lt.0.d0).or.(gridtime.gt.1)) then
         print *, "GGGRIDTIME ERR ", gridtime, jactime, firsttime, lasttime
@@ -439,7 +446,10 @@ subroutine jacinit(inspfs, thistime) !!, timestep)
      jacvectout=jacvectout*(1.d0-gridtime)
      call actreduced0(jactime,jacvect,jacvect,jactemp,0,0,0)
      jacvectout=jacvectout+gridtime*jactemp
+     deallocate(jactemp)
   endif
+
+
 
 end subroutine jacinit
 
@@ -462,14 +472,14 @@ end subroutine
 subroutine avectortimewrite(fileptr)
   use avectortimemod
   implicit none
-  integer :: fileptr
+  integer,intent(in) :: fileptr
   write(fileptr,'(10(A13,I15))') "Start/end",times(1)/1000,"mult",times(2)/1000,"expokit",times(3)/1000
 end subroutine avectortimewrite
 
 subroutine avectortime(which)
   use avectortimemod
   implicit none
-  integer :: which
+  integer,intent(in) :: which
 
 !! times(1) = miscellaneous.  
 !! times(2) = parconfigexpomult
@@ -492,7 +502,7 @@ subroutine exposparseprop(www,inavector,outavector,time,imc)
   DATATYPE,intent(out) :: outavector(numr,www%firstconfig:www%lastconfig)
   DATATYPE :: smallvector(numr,www%maxdfbasisperproc),smallvectorout(numr,www%maxdfbasisperproc), &
        zerovector(numr,www%maxdfbasisperproc),smallvectortemp(numr,www%maxdfbasisperproc), &
-       workdrivingavecdfbasis(numr,www%botdfbasis:www%topdfbasis)
+       workdrivingavecdfbasis(numr,www%botdfbasis:www%topdfbasis)    !! AUTOMATIC
   external :: parconfigexpomult_padded,realpardotsub
   real*8 :: one,time
   real*8, save :: tempstepsize=-1d0

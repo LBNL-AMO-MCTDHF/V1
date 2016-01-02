@@ -2,7 +2,8 @@
 
 #include "Definitions.INC"
 
-
+!! Subroutines for action 21 emission/absorption.  Windowfunct for actions 1 16 17 21.
+!!   See also dipolesub.f90
 
 function windowfunct(i,numdata)
   use parameters

@@ -1146,19 +1146,6 @@ subroutine mpiorbgather(orbvector,insize)
 end subroutine mpiorbgather
 
 
-subroutine mympireduceto(input, output, isize, dest)
-  use mpimod
-  use fileptrmod
-  implicit none
-  integer :: isize ,dest
-  DATATYPE :: input(isize), output(isize)
-  if (dest.ne.1) then
-     OFLWR "Error nonpar mympireduceto wrapper",dest; CFLST
-  endif
-  output(:)=input(:)
-end subroutine mympireduceto
-
-
 subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
   use mpimod
   use fileptrmod
@@ -1166,7 +1153,7 @@ subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
   integer :: isize, dest, source,tag
   DATATYPE :: sendbuf(isize),recvbuf(isize)
   if (dest.ne.1.or.source.ne.1) then
-     OFLWR "Error nonpar mympireduceto wrapper",dest,source; CFLST
+     OFLWR "Error nonpar mympisendrecv wrapper",dest,source; CFLST
   endif
   recvbuf(:)=sendbuf(:)
   return
@@ -1181,7 +1168,7 @@ subroutine mympisendrecv_local(sendbuf, recvbuf, dest, source, tag, isize,INCOMM
   integer :: isize, dest, source,tag,incomm
   DATATYPE :: sendbuf(isize),recvbuf(isize)
   if (dest.ne.1.or.source.ne.1) then
-     OFLWR "Error nonpar mympireduceto wrapper",dest,source; CFLST
+     OFLWR "Error nonpar mympisendrecv_local wrapper",dest,source; CFLST
   endif
   recvbuf(:)=sendbuf(:)
   return

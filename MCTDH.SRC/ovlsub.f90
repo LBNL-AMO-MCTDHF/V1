@@ -172,8 +172,10 @@ subroutine wfnovl()
   integer :: k,molength,alength,nt,ketbat,imc,ispf
   real*8 :: piover2,dt,angle(mcscfnum)
   DATATYPE :: dot,myovl(mcscfnum) , bradot,phase,ketdot,blah
-  DATATYPE :: bramo(spfsize,nspf),braavec(tot_adim,mcscfnum),ketmo(spfsize,nspf),ketavec(tot_adim,mcscfnum)
-  DATATYPE, allocatable :: read_bramo(:,:), read_braavec(:,:), read_ketmo(:,:), read_ketavec(:,:)
+  DATATYPE, allocatable :: read_bramo(:,:), read_braavec(:,:), read_ketmo(:,:), read_ketavec(:,:),&
+       bramo(:,:),braavec(:,:),ketmo(:,:),ketavec(:,:)
+
+  allocate(bramo(spfsize,nspf),braavec(tot_adim,mcscfnum),ketmo(spfsize,nspf),ketavec(tot_adim,mcscfnum))
 
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
@@ -269,6 +271,8 @@ subroutine wfnovl()
      
      OFL; write(mpifileptr,'(A30,1000F18.10)') "ERRDOT,ABSERRDOT,ANGLE T= ",dt*ketbat,myovl,(abs(myovl(imc)),angle(imc),imc=1,mcscfnum); CFL
   enddo
+
+  deallocate(bramo,braavec,ketmo,ketavec)
 
 end subroutine wfnovl
 

@@ -9,8 +9,9 @@
 function getdfindex(www,config1)
   use walkmod
   implicit none
-  type(walktype) :: www
-  integer :: getdfindex, config1,j,flag, dir,newdir, step
+  type(walktype),intent(in) :: www
+  integer,intent(in) :: config1
+  integer :: getdfindex, j,flag, dir,newdir, step
 
   getdfindex=-1
 
@@ -102,7 +103,7 @@ subroutine init_dfcon(www)
   use walkmod
   use mpimod
   implicit none
-  type(walktype) :: www
+  type(walktype),intent(inout) :: www
   integer :: i,j,iconfig,nondfconfigs,dfrank,ii
   logical :: allowedconfig0
   integer,allocatable :: dfnotconfigs(:)
@@ -265,11 +266,12 @@ subroutine configspin_project_general(www,nr,vector,iproc,jproc)
   use walkmod
   use fileptrmod
   implicit none
+  integer,intent(in) :: nr,iproc,jproc
   type(walktype),intent(in) :: www
-  integer :: iset, ii, iproc, jproc, nr, pp
   DATATYPE,intent(inout) :: vector(nr,www%allbotconfigs(iproc):www%alltopconfigs(jproc))
   DATATYPE :: smallvect(nr,www%sss%maxspinsetsize), smalltemp(nr,www%sss%maxspinsetsize), &
        outvector(nr,www%allbotconfigs(iproc):www%alltopconfigs(jproc))      !! AUTOMATIC
+  integer :: iset, ii, pp
 
   if (iproc.lt.www%startrank.or.jproc.gt.www%endrank) then
      OFLWR "STARTRANK ERR PROJGEN ",iproc,www%startrank,www%endrank; CFLST
@@ -302,12 +304,12 @@ subroutine configspin_transformto_general(www,nblock,invector,outvector,iproc,jp
   use fileptrmod
   use walkmod
   implicit none
+  integer,intent(in) :: nblock,iproc,jproc
   type(walktype),intent(in) :: www
-  integer :: nblock, iset, iind,ii,iproc,jproc,pp
   DATATYPE,intent(in) :: invector(nblock,www%allbotconfigs(iproc):www%alltopconfigs(jproc))
   DATATYPE,intent(out) :: outvector(nblock,www%sss%allbotspins(iproc):www%sss%alltopspins(jproc))
-
-  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)
+  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)  !! AUTOMATIC
+  integer :: iset, iind,ii,pp
 
   if (iproc.lt.www%startrank.or.jproc.gt.www%endrank) then
      OFLWR "STARTRANK ERR tRANSTO GEN ",iproc,www%startrank,www%endrank; CFLST
@@ -342,12 +344,12 @@ subroutine dfspin_transformto_general(www,nblock,invector,outvector,iproc,jproc)
   use fileptrmod
   use walkmod
   implicit none
+  integer,intent(in) :: nblock,iproc,jproc
   type(walktype),intent(in) :: www
-  integer :: nblock, iset, iind,ii,jset,iproc,jproc,pp
+  integer :: iset, iind,ii,jset,pp
   DATATYPE,intent(in) :: invector(nblock,www%allbotdfconfigs(iproc):www%alltopdfconfigs(jproc))
   DATATYPE,intent(out) :: outvector(nblock,www%sss%allbotspindfs(iproc):www%sss%alltopspindfs(jproc))
-
-  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)
+  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)    !! AUTOMATIC
 
   if (iproc.lt.www%startrank.or.jproc.gt.www%endrank) then
      OFLWR "STARTRANK ERR DFTRANSTO GEN ",iproc,www%startrank,www%endrank; CFLST
@@ -385,11 +387,12 @@ subroutine configspin_transformfrom_general(www,nblock,invector,outvector,iproc,
   use fileptrmod
   use walkmod
   implicit none
+  integer,intent(in) :: nblock,iproc,jproc
   type(walktype),intent(in) :: www
-  integer :: nblock,iset, iind, ii, iproc, jproc, pp
+  integer :: iset, iind, ii, pp
   DATATYPE,intent(out) :: outvector(nblock,www%allbotconfigs(iproc):www%alltopconfigs(jproc))
   DATATYPE,intent(in) :: invector(nblock,www%sss%allbotspins(iproc):www%sss%alltopspins(jproc))
-  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)
+  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)  !! AUTOMATIC
 
   if (iproc.lt.www%startrank.or.jproc.gt.www%endrank) then
      OFLWR "STARTRANK ERR TRANSFROM GEN ",iproc,www%startrank,www%endrank; CFLST
@@ -426,11 +429,12 @@ subroutine dfspin_transformfrom_general(www,nblock,invector,outvector,iproc,jpro
   use fileptrmod
   use walkmod
   implicit none
+  integer,intent(in) :: nblock,iproc,jproc
   type(walktype),intent(in) :: www
-  integer :: nblock,iset, iind, ii, jset, iproc, jproc, pp
+  integer :: iset, iind, ii, jset, pp
   DATATYPE,intent(out) :: outvector(nblock,www%allbotdfconfigs(iproc):www%alltopdfconfigs(jproc))
   DATATYPE,intent(in) :: invector(nblock,www%sss%allbotspindfs(iproc):www%sss%alltopspindfs(jproc))
-  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)
+  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)  !! AUTOMATIC
 
   if (iproc.lt.www%startrank.or.jproc.gt.www%endrank) then
      OFLWR "STARTRANK ERR DFTRANSfrom GEN ",iproc,www%startrank,www%endrank; CFLST
@@ -467,8 +471,8 @@ subroutine df_project(www,howmany,avector)
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
-  integer :: howmany
-  DATATYPE :: avector(howmany,www%firstconfig:www%lastconfig)
+  integer,intent(in) :: howmany
+  DATATYPE,intent(inout) :: avector(howmany,www%firstconfig:www%lastconfig)
 
   if (www%parconsplit.eq.0) then
      call df_project_all(www,howmany,avector)
@@ -482,9 +486,10 @@ end subroutine df_project
 subroutine df_project_all(www,howmany,avector)
   use walkmod
   implicit none
-  integer :: howmany,i
+  integer,intent(in) :: howmany
   type(walktype),intent(in) :: www
-  DATATYPE :: avector(howmany,www%numconfig)
+  DATATYPE,intent(inout) :: avector(howmany,www%numconfig)
+  integer :: i
   do i=1,www%numconfig
      avector(:,i)=avector(:,i)*www%ddd%dfincludedmask(i)
   enddo
@@ -494,9 +499,10 @@ end subroutine df_project_all
 subroutine df_project_local(www,howmany,avector)
   use walkmod
   implicit none
+  integer,intent(in) :: howmany
   type(walktype),intent(in) :: www
-  integer :: howmany,i
-  DATATYPE :: avector(howmany,www%botconfig:www%topconfig)
+  DATATYPE,intent(inout) :: avector(howmany,www%botconfig:www%topconfig)
+  integer :: i
   do i=www%botconfig,www%topconfig
      avector(:,i)=avector(:,i)*www%ddd%dfincludedmask(i)
   enddo
@@ -508,9 +514,9 @@ subroutine df_transformto_general(www,howmany,avectorin,avectorout,iproc,jproc)
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: howmany,iproc,jproc
-  integer :: i
   DATATYPE,intent(in) :: avectorin(howmany,www%allbotconfigs(iproc):www%alltopconfigs(jproc))
   DATATYPE,intent(out) :: avectorout(howmany,www%allbotdfconfigs(iproc):www%alltopdfconfigs(jproc))
+  integer :: i
 
   do i=www%allbotdfconfigs(iproc),www%alltopdfconfigs(jproc)
      avectorout(:,i)=avectorin(:,www%ddd%dfincludedconfigs(i))
@@ -525,9 +531,9 @@ subroutine df_transformfrom_general(www,howmany,avectorin,avectorout,iproc,jproc
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: howmany,iproc,jproc
-  integer :: i
   DATATYPE,intent(in) :: avectorin(howmany,www%allbotdfconfigs(iproc):www%alltopdfconfigs(jproc))
   DATATYPE,intent(out) :: avectorout(howmany,www%allbotconfigs(iproc):www%alltopconfigs(jproc))
+  integer :: i
 
   avectorout(:,:)=0d0
 
@@ -542,7 +548,7 @@ subroutine basis_project(www,howmany,avector)
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
-  integer :: howmany
+  integer,intent(in) :: howmany
   DATATYPE,intent(inout) :: avector(howmany,www%firstconfig:www%lastconfig)
 
   if (www%allspinproject==1) then
@@ -561,7 +567,7 @@ subroutine basis_transformto_all(www,howmany,avectorin,avectorout)
   use mpimod   !! myrank,nprocs ( not perfect )
   implicit none
   type(walktype),intent(in) :: www
-  integer :: howmany
+  integer,intent(in) :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,www%numconfig)
   DATATYPE,intent(out) :: avectorout(howmany,www%numdfbasis)
 
@@ -580,7 +586,7 @@ subroutine basis_transformto_local(www,howmany,avectorin,avectorout)
   use mpimod   !! myrank
   implicit none
   type(walktype),intent(in) :: www
-  integer :: howmany
+  integer,intent(in) :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,www%botconfig:www%topconfig)
   DATATYPE,intent(out) :: avectorout(howmany,www%botdfbasis:www%topdfbasis)
 
@@ -624,7 +630,7 @@ subroutine basis_transformfrom_all(www,howmany,avectorin,avectorout)
   use mpimod    !! myrank,nprocs ( not perfect )
   implicit none
   type(walktype),intent(in) :: www
-  integer :: howmany
+  integer,intent(in) :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,www%numdfbasis)
   DATATYPE,intent(out) :: avectorout(howmany,www%numconfig)
 
@@ -645,7 +651,7 @@ subroutine basis_transformfrom_local(www,howmany,avectorin,avectorout)
   use mpimod   !! myrank
   implicit none
   type(walktype),intent(in) :: www
-  integer :: howmany
+  integer,intent(in) :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: avectorout(howmany,www%botconfig:www%topconfig)
 
@@ -694,7 +700,7 @@ subroutine fullbasis_transformto_local(www,howmany,avectorin,avectorout)
   use mpimod    !! myrank
   implicit none
   type(walktype),intent(in) :: www
-  integer :: howmany
+  integer,intent(in) :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,www%botconfig:www%topconfig)
   DATATYPE,intent(out) :: avectorout(howmany,www%botbasis:www%topbasis)
 
@@ -714,7 +720,7 @@ subroutine fullbasis_transformfrom_local(www,howmany,avectorin,avectorout)
   use mpimod    !! myrank
   implicit none
   type(walktype),intent(in) :: www
-  integer :: howmany
+  integer,intent(in) :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,www%botbasis:www%topbasis)
   DATATYPE,intent(out) :: avectorout(howmany,www%botconfig:www%topconfig)
 

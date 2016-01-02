@@ -13,18 +13,22 @@
 subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, intolerance, indimension, inkrydim,parflag)
   use fileptrmod
   implicit none
-  integer, parameter :: jacwrite=0
-  integer :: indimension, inkrydim,parflag,itol, numiter, ierr, iunit, jjxx, preconflag,rgwkdim
-  DATATYPE :: rhs(indimension), solution(indimension)
+  integer,intent(in) :: indimension,inkrydim,parflag,preconflag
+  real*8,intent(in) :: intolerance
+  DATATYPE,intent(in) :: rhs(indimension)
+  integer,intent(out) :: numiter
+  DATATYPE,intent(out) :: solution(indimension)
+  integer :: itol, ierr, iunit, jjxx, rgwkdim
   external :: inmult, dummysub, inprecon
   integer :: igwk(20), ligwk=20, nullint1,nullint2,nullint3,nullint4, nullint5
-  real*8 :: nulldouble1, errest, nulldouble2, nulldouble3, nulldouble4, tol, intolerance
+  real*8 :: nulldouble1, errest, nulldouble2, nulldouble3, nulldouble4, tol
   real*8, allocatable :: rgwk(:)
 #ifdef REALGO
   integer, parameter :: zzz=1
 #else
   integer, parameter :: zzz=2
 #endif
+  integer, parameter :: jacwrite=0
 
 !!$  looks ok now dgmres bugfix 10-2015
 !!$  mindim=indimension; maxdim=indimension
@@ -93,7 +97,8 @@ subroutine quadoperate(notusedint,inspfs,outspfs)
    use parameters
    implicit none
    integer :: notusedint
-   DATATYPE ::  inspfs(totspfdim), outspfs(totspfdim)
+   DATATYPE,intent(in) ::  inspfs(totspfdim)
+   DATATYPE,intent(out) :: outspfs(totspfdim)
 
    call jacoperate(inspfs,outspfs)
 
@@ -105,11 +110,16 @@ subroutine quadspfs(inspfs,jjcalls)
   use mpimod
   use linearmod
   implicit none
-  EXTERNAL :: quadoperate,dummysub
-  integer :: jjcalls,icount,maxdim
+  DATATYPE,intent(inout) :: inspfs(totspfdim)  
+  integer,intent(out) :: jjcalls
+  integer :: icount,maxdim
   real*8 :: orthogerror,dev,mynorm
-  DATATYPE ::  hermdot,inspfs(totspfdim)  
-  DATATYPE ::       vector(totspfdim), vector2(totspfdim), vector3(totspfdim)
+  DATATYPE :: hermdot
+  DATATYPE, allocatable ::  vector(:), vector2(:), vector3(:)
+  EXTERNAL :: quadoperate,dummysub
+
+  allocate( vector(totspfdim), vector2(totspfdim), vector3(totspfdim) )
+  vector=0; vector2=0; vector3=0
 
   if (jacsymflag.ne.1) then
      OFLWR "setting jacsymflag=1 for orbital quad"; CFL
@@ -147,6 +157,8 @@ subroutine quadspfs(inspfs,jjcalls)
   if (dev.lt.stopthresh.or.icount.gt.1) then
      inspfs = vector
      OFLWR "    --> Converged newton"; CFL
+     deallocate( vector,vector2,vector3)
+     call mpibarrier()
      return
   else
      vector3=vector   !! guess
@@ -230,8 +242,9 @@ subroutine quadavector(inavector,jjcalls)
   use parameters
   use configmod
   implicit none
-  DATATYPE :: inavector(tot_adim,mcscfnum)
-  integer :: jjcalls,imc
+  DATATYPE,intent(inout) :: inavector(tot_adim,mcscfnum)
+  integer,intent(out) :: jjcalls
+  integer :: imc
   do imc=1,mcscfnum
      if (sparseconfigflag==0) then
         call nonsparsequadavector(www,inavector(:,imc))
@@ -253,7 +266,8 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
   type(walktype),intent(in) :: www
   EXTERNAL :: paraamult, parquadpreconsub
   DATATYPE, intent(inout) ::  inavector(numr,www%firstconfig:www%lastconfig)
-  integer :: jjcalls, ss,jjcalls0,maxdim,mysize
+  integer,intent(out) :: jjcalls0
+  integer :: jjcalls, ss, maxdim, mysize
   real*8 ::  dev,  thisaerror
   DATATYPE :: dot, hermdot,csum 
   DATATYPE, allocatable ::  vector(:,:), vector2(:,:), vector3(:,:), &
@@ -373,12 +387,15 @@ subroutine nonsparsequadavector(www,avectorout)
   CNORMTYPE :: norm
   real*8 :: dev
   integer :: k, info,ss
-  DATATYPE ::  spinmatel(www%numdfbasis*numr,www%numdfbasis*numr),spinavectorout(www%numdfbasis*numr),err(www%totadim)
-  integer :: ipiv(www%numdfbasis*numr)
+  DATATYPE,allocatable ::  spinmatel(:,:),spinavectorout(:),err(:)
+  integer,allocatable :: ipiv(:)
 
   if (sparseconfigflag/=0) then
      OFLWR "Error, nonsparsequadavector called but sparseconfigflag= ", sparseconfigflag; CFLST
   endif
+
+  allocate(spinmatel(www%numdfbasis*numr,www%numdfbasis*numr),spinavectorout(www%numdfbasis*numr), &
+       err(www%totadim),ipiv(www%numdfbasis*numr))
 
   ss=0
 333 continue
@@ -397,6 +414,8 @@ subroutine nonsparsequadavector(www,avectorout)
   OFL;write(mpifileptr,'(A22,E12.5,A6,E12.5,A7,100F14.7)') "   NONSPARSEQUAD: DEV", dev, " TOL ",aerror,"ENERGY",quadexpect; CFL
 
   if (abs(dev).lt.aerror.or.(ss.gt.10)) then
+
+     deallocate(spinmatel,spinavectorout,err,ipiv)
 
 !#ifdef REALGO
 !  OFL; write(mpifileptr,'(A40,F15.10, A5,1F18.10,A5,1E6.1)') "      Converged nonsparse quad: dev ", dev, "  E= ", quadexpect, " tol ", aerror; CFL
@@ -449,14 +468,13 @@ subroutine paraamult(notusedint,inavectorspin,outavectorspin)
   use aaonedmod
   use configmod
   implicit none
-  integer :: notusedint
+  integer,intent(in) :: notusedint
   DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
 
   call parblockconfigmult(inavectorspin,outavectorspin)
 
-  outavectorspin(:,:)= outavectorspin(:,:) &
-       - quadexpect*inavectorspin(:,:)
+  outavectorspin(:,:)= outavectorspin(:,:) - quadexpect*inavectorspin(:,:)
 
 end subroutine paraamult
 
@@ -470,7 +488,7 @@ subroutine parquadpreconsub(notusedint, inavectorspin,outavectorspin)
   use xxxmod
   use configmod
   implicit none
-  integer :: notusedint
+  integer,intent(in) :: notusedint
   DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
 
@@ -491,10 +509,10 @@ subroutine parquadpreconsub0(www,cptr,sptr,notusedint, inavectorspin,outavectors
   type(walktype),intent(in) :: www
   type(CONFIGPTR),intent(in) :: cptr
   type(SPARSEPTR),intent(in) :: sptr
-  integer :: notusedint
+  integer,intent(in) :: notusedint
   DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE :: inavector(numr,www%botconfig:www%topconfig),outavector(numr,www%botconfig:www%topconfig)
+  DATATYPE :: inavector(numr,www%botconfig:www%topconfig),outavector(numr,www%botconfig:www%topconfig)  !!AUTOMATIC
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, no parquadpreconsub if sparseconfigflag=0"; CFLST

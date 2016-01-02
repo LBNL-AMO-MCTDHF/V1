@@ -31,15 +31,15 @@ subroutine save_density( thistime, inspfs, indenmat, iprop, denfilename)
   use parameters
   use mpimod
   implicit none
-
-  DATATYPE :: inspfs(spfdims(1),spfdims(2),spfdims(3),nspf), indenmat(nspf,nspf)
-  character :: denfilename*(*)
-  integer :: i,j, iprop, imval,jj
-  real*8 :: thistime
+  DATATYPE,intent(in) :: inspfs(spfdims(1),spfdims(2),spfdims(3),nspf), indenmat(nspf,nspf)
+  real*8,intent(in) :: thistime
+  character,intent(in) :: denfilename*(*)
+  integer,intent(in) :: iprop
+  integer :: i,j, imval,jj
   character (len=headersize) :: header
-  complex*16 ::     cmdensity(spfdims(1),spfdims(2),spfdims(3)),     mtrans(spfdims(3),spfdims(3))
-  DATATYPE :: mdensity(spfdims(1),spfdims(2),spfdims(3))
-  complex*16 ::      density(spfdims(1),spfdims(2),spfdims(3))
+  complex*16 ::     cmdensity(spfdims(1),spfdims(2),spfdims(3)),     mtrans(spfdims(3),spfdims(3))   !! AUTOMATIC
+  DATATYPE :: mdensity(spfdims(1),spfdims(2),spfdims(3))                                             !! AUTOMATIC
+  complex*16 ::      density(spfdims(1),spfdims(2),spfdims(3))                                       !! AUTOMATIC
 
   if (spfdimtype(3).eq.1) then  !! assume fourier basis (-mbig:mbig)
      if (mod(spfdims(3),2).ne.1) then
@@ -73,11 +73,12 @@ end subroutine save_density
 subroutine save_natorb( thistime, inspfs, indenvects, indenvals, iprop)
   use parameters
   implicit none
-  DATATYPE :: inspfs(spfsize,nspf), indenvects(nspf,nspf)
-  CNORMTYPE :: indenvals(nspf)
-  DATATYPE :: tempspfs(spfsize,nspf)
-  integer :: i,j,iprop, ispf
-  real*8 :: thistime
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf), indenvects(nspf,nspf)
+  CNORMTYPE,intent(in) :: indenvals(nspf)
+  integer,intent(in) :: iprop
+  real*8,intent(in) :: thistime
+  DATATYPE :: tempspfs(spfsize,nspf)  !! AUTOMATIC
+  integer :: i,j,ispf
   character (len=headersize) :: header
   DATATYPE :: csum
 
@@ -101,11 +102,11 @@ end subroutine save_natorb
 subroutine save_spf( thistime, inspfs, iprop)
   use parameters
   implicit none
-
-  DATATYPE :: inspfs(spfsize,nspf)
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf)
+  real*8,intent(in) :: thistime
+  integer,intent(in) :: iprop
   character (len=headersize) :: header
-  integer :: iprop, ispf
-  real*8 :: thistime
+  integer :: ispf
 
   open(spfplotfile,file=spfplotbin, status="old", form="unformatted",position="append")
   do ispf=1,nspf
@@ -119,11 +120,12 @@ end subroutine save_spf
 subroutine save_rnatorb( thistime, inrdenvects, inrdenvals, iprop)
   use parameters
   implicit none
+  DATATYPE,intent(in) :: inrdenvects(numr,numr)
+  CNORMTYPE,intent(in) :: inrdenvals(numr)
+  real*8,intent(in) :: thistime
   integer :: iorb,iprop
   character (len=headersize) :: header
-  CNORMTYPE :: inrdenvals(numr)
-  real*8 :: thistime
-  DATATYPE :: csum, inrdenvects(numr,numr), tempvects(numr,numr)
+  DATATYPE :: csum, tempvects(numr,numr)
 
   tempvects=inrdenvects
 
@@ -144,18 +146,18 @@ end subroutine save_rnatorb
 
 subroutine write_den_header(header,thistime,readprop)
   implicit none
-  character :: header*(*)
-  real*8 :: thistime
-  integer :: readprop
+  character,intent(out) :: header*(*)
+  real*8,intent(in) :: thistime
+  integer,intent(in) :: readprop
   write(header,*) thistime,readprop
 end subroutine
 
 subroutine write_nat_header(header,thistime,readprop,ispf,mydenval)
   implicit none
-  character :: header*(*)
-  real*8 :: thistime
-  integer :: readprop, ispf
-  DATATYPE :: mydenval
+  character,intent(out) :: header*(*)
+  real*8,intent(in) :: thistime
+  integer,intent(in) :: readprop, ispf
+  DATATYPE,intent(in) :: mydenval
   complex*16 :: csum
   csum=mydenval
   write(header,*) thistime,readprop, ispf, csum
@@ -163,26 +165,26 @@ end subroutine
 
 subroutine write_spf_header(header,thistime,readprop,ispf)
   implicit none
-  character :: header*(*)
-  real*8 :: thistime
-  integer :: readprop, ispf
+  character,intent(out) :: header*(*)
+  real*8,intent(in) :: thistime
+  integer,intent(in) :: readprop, ispf
   write(header,*) thistime,readprop,ispf
 end subroutine write_spf_header
 
 subroutine read_den_header(header,thistime,readprop)
   implicit none
-  character :: header*(*)
-  real*8 :: thistime
-  integer :: readprop
+  character,intent(in) :: header*(*)
+  real*8,intent(out) :: thistime
+  integer,intent(out) :: readprop
   read(header,*) thistime,readprop
 end subroutine
 
 subroutine read_nat_header(header,thistime,readprop,ispf,mydenval)
   implicit none
-  character :: header*(*)
-  real*8 :: thistime
-  integer :: readprop, ispf
-  DATATYPE :: mydenval
+  character,intent(in) :: header*(*)
+  real*8,intent(out) :: thistime
+  integer,intent(out) :: readprop, ispf
+  DATATYPE,intent(out) :: mydenval
   complex*16 :: csum
   read(header,*) thistime,readprop, ispf, csum
   mydenval=csum !! ok imp conv mctdh
@@ -190,9 +192,9 @@ end subroutine read_nat_header
 
 subroutine read_spf_header(header,thistime,readprop,ispf)
   implicit none
-  character :: header*(*)
-  real*8 :: thistime
-  integer :: readprop, ispf
+  character,intent(in) :: header*(*)
+  real*8,intent(out) :: thistime
+  integer,intent(out) :: readprop, ispf
   read(header,*) thistime,readprop,ispf
 end subroutine read_spf_header
 
@@ -233,7 +235,7 @@ subroutine save_density_initial(denfilename)
   use parameters
   use xxxmod
   implicit none
-  character :: denfilename*(*)
+  character,intent(in) :: denfilename*(*)
   open(denfile,file=denfilename, status="replace", form="unformatted")
   close(denfile)
   call save_density( -1.d0, yyy%cmfpsivec(spfstart,0), yyy%denmat(:,:,0) , 1, denfilename)
