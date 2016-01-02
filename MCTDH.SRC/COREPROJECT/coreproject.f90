@@ -13,7 +13,6 @@ module twoemod
   implicit none
 
   DATATYPE, allocatable :: frozenreduced(:,:,:), hatomtwoemat2(:,:,:)
-!!  DATATYPE, allocatable ::   twoereduced(:,:,:,:,:)        !! numerad,lbig+1,-2*mbig:2*mbig,nspf,nspf 
 
 end module twoemod
 
@@ -21,8 +20,9 @@ subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,
   use twoemod
   use myparams
   implicit none
-  integer :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,inspfugvals(innumspf), &
-       outspfsmallsize,ii,multmanyflag
+  integer,intent(in) :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,inspfugvals(innumspf)
+  integer,intent(out) :: outspfsmallsize,multmanyflag
+  integer :: ii
   logical, intent(out) :: logorbpar
 
   multmanyflag=0
@@ -58,11 +58,10 @@ subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,
   allocate(spfmvals(numspf));  spfmvals(:)=inspfmvals(:)
   allocate(spfugvals(numspf));  spfugvals(:)=inspfugvals(:)
   allocate(frozenreduced(numerad,lbig+1,-2*mbig:2*mbig))
-!!, TWOEreduced(numerad,lbig+1,-2*mbig:2*mbig, numspf,numspf))
   if (numhatoms.gt.0) then
      allocate(hatomtwoemat2(numerad,lbig+1,-2*mbig:2*mbig))
   endif
-!!  twoereduced=0.d0
+
 end subroutine transferparams
 
 
@@ -70,7 +69,6 @@ subroutine twoedealloc
   use twoemod
   use myparams
   implicit none
-!!  deallocate(  TWOEreduced)
   if (numhatoms.gt.0) then
      deallocate(hatomtwoemat2)
   endif
@@ -86,13 +84,14 @@ subroutine call_flux_op_twoe(mobra,moket,V2,flag)
 !! V2 - the 2-electron matrix elements corresponding with potential energy (contract with 1/R) 
   use myparams
   use twoemod
+  use myprojectmod   !! rmatrix,ylmvals
   implicit none
-  integer :: i,a,j,b,mvali,mvala,mvalj,mvalb,flag, ixi,ieta,deltam,lsum,qq,rr,qq2,rr2 
-  DATAECS :: rmatrix(numerad,numerad,mseriesmax+1,lseriesmax+1)
-  real*8 :: ylmvals(0:2*mbig, 1:lbig+1, lseriesmax+1)
-  DATATYPE :: mobra(numerad,lbig+1,-mbig:mbig,numspf),moket(numerad,lbig+1,-mbig:mbig,numspf), &
-       V2(numspf,numspf,numspf,numspf), twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),&
+  integer,intent(in) :: flag
+  DATATYPE,intent(in) :: mobra(numerad,lbig+1,-mbig:mbig,numspf),moket(numerad,lbig+1,-mbig:mbig,numspf)
+  DATATYPE,intent(out) :: V2(numspf,numspf,numspf,numspf)
+  DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),&   !! AUTOMATIC
        twoeden2(numerad),twoeden3(numerad)
+  integer :: i,a,j,b,mvali,mvala,mvalj,mvalb,ixi,ieta,deltam,lsum,qq,rr,qq2,rr2 
 
   V2=0d0
 !! The bra determinant is <ij|
@@ -214,13 +213,16 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
   use twoemod
   use myprojectmod
   implicit none
-  DATATYPE :: TWOEreduced(numerad,lbig+1,-2*mbig:2*mbig, numspf,numspf)
-  DATATYPE :: inspfs1(numerad,lbig+1,-mbig:mbig,numspf),inspfs2(numerad,lbig+1,-mbig:mbig,numspf), &
-       twoematel(numspf,numspf,numspf,numspf),sum
-  integer :: mvalue2a, mvalue1b, mvalue2b, mvalue1a, itime, jtime,xnotiming,  &
+  DATATYPE,intent(out) :: twoereduced(numerad,lbig+1,-2*mbig:2*mbig, numspf,numspf),&
+       twoematel(numspf,numspf,numspf,numspf)
+  DATATYPE,intent(in) :: inspfs1(numerad,lbig+1,-mbig:mbig,numspf),inspfs2(numerad,lbig+1,-mbig:mbig,numspf)
+  integer, intent(in) :: xnotiming
+  character,intent(in) :: xtimingdir*(*)
+  DATATYPE :: sum
+  integer :: mvalue2a, mvalue1b, mvalue2b, mvalue1a, itime, jtime, &
        i1,i2,j1,j2,spf1a,spf1b,spf2a,spf2b, deltam,k1,lsum,qq,rr,qq2,rr2,times(100)
-  DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),twoeden2(numerad),twoeden3(numerad)
-  character :: xtimingdir*(*)
+  DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),&     !! AUTOMATIC
+       twoeden2(numerad),twoeden3(numerad)
 
   twoematel(:,:,:,:)=0d0
 
@@ -330,9 +332,10 @@ subroutine hatom_matel(inspfs1, inspfs2, hatommatel,numberspf)   !!!rmatrix,ylmv
   use myprojectmod
   implicit none
 
-  integer :: numberspf
-  DATATYPE :: inspfs1(numerad,lbig+1,-mbig:mbig,numberspf),inspfs2(numerad,lbig+1,-mbig:mbig,numberspf), &
-       hatommatel(numberspf,numberspf),sum
+  integer,intent(in) :: numberspf
+  DATATYPE,intent(in) :: inspfs1(numerad,lbig+1,-mbig:mbig,numberspf),inspfs2(numerad,lbig+1,-mbig:mbig,numberspf)
+  DATATYPE,intent(out) :: hatommatel(numberspf,numberspf)
+  DATATYPE :: sum
   integer :: mvalue1b, mvalue1a,    i1,i2,spf1a,spf1b,deltam
 
   hatommatel(:,:)=0d0
@@ -380,9 +383,9 @@ subroutine hatom_op(inspfs, outspfs)    !! , rmatrix,ylmvals
   use myprojectmod
   implicit none
 
-  DATATYPE :: inspfs(numerad,lbig+1,-mbig:mbig), outspfs(numerad,lbig+1,-mbig:mbig)
-  integer ::  mvalue1b, mvalue1a,  &
-       i1,i2,deltam
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig)
+  integer ::  mvalue1b, mvalue1a,   i1,i2,deltam
 
   outspfs(:,:,:)=0d0
 
@@ -419,22 +422,24 @@ subroutine hatom_op(inspfs, outspfs)    !! , rmatrix,ylmvals
 end subroutine hatom_op
 
 
+!!  DATAECS :: rmatrix(numerad,numerad,mseriesmax+1,lseriesmax+1)
+!!  real*8 :: ylmvals(0:2*mbig, 1:lbig+1, lseriesmax+1)
 
 subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  !! returns last two.  a little cloogey
   use myparams
   use twoemod
   use myprojectmod
   implicit none
-
-!!  DATAECS :: rmatrix(numerad,numerad,mseriesmax+1,lseriesmax+1)
-!!  real*8 :: ylmvals(0:2*mbig, 1:lbig+1, lseriesmax+1)
-
-  DATATYPE :: frozenkediag,frozenpotdiag, sum, direct, exch, infrozens(numerad,lbig+1,-mbig:mbig,numfrozen)
-  integer :: mvalue2a, mvalue1b, mvalue2b, mvalue1a, numfrozen, &
+  integer,intent(in) :: numfrozen
+  DATATYPE,intent(out) :: frozenkediag,frozenpotdiag
+  DATATYPE,intent(in) :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen)
+  DATATYPE :: sum, direct, exch
+  integer :: mvalue2a, mvalue1b, mvalue2b, mvalue1a, &
        i1,i2,j1,j2,spf1a,spf1b,spf2a,spf2b, deltam,k1,lsum,qq,rr,qq2,rr2,i,ii, &
        iispf,ispf,ispin,iispin, kk,sizespf
   DATATYPE, allocatable :: tempreduced(:,:,:,:,:), tempmatel(:,:,:,:), temppotmatel(:,:),tempmult(:,:), temppotmatel2(:,:)
-  DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),twoeden2(numerad),   twoeden3(numerad)
+  DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1), &     !! AUTOMATIC
+       twoeden2(numerad),   twoeden3(numerad)
 
   if (numfrozen.eq.0) then
      return
@@ -571,13 +576,12 @@ subroutine call_frozen_exchange0(inspfs,outspfs,infrozens,numfrozen)   !! rmatri
   use twoemod
   use myprojectmod
   implicit none
-
-  integer :: mvalue2a, mvalue2b,  numfrozen, &
-       spf2a,spf2b, deltam,k1,lsum,qq,rr,qq2,rr2,j1,j2
-  DATATYPE :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen), inspfs(numerad,lbig+1,-mbig:mbig,numspf)
-  DATATYPE :: outspfs(numerad,lbig+1,-mbig:mbig,numspf)
+  integer,intent(in) :: numfrozen
+  DATATYPE,intent(in) :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen), inspfs(numerad,lbig+1,-mbig:mbig,numspf)
+  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig,numspf)
   DATATYPE, allocatable :: twoemat2(:,:,:),  &              !! numerad,lbig+1,-2*mbig:2*mbig
        twoeden(:,:), twoeden2(:), twoeden3(:)
+  integer :: mvalue2a, mvalue2b, spf2a,spf2b, deltam,k1,lsum,qq,rr,qq2,rr2,j1,j2
 
   if (numfrozen.eq.0) then
      return
@@ -653,10 +657,10 @@ end subroutine call_frozen_exchange0
 subroutine getdensity(density, indenmat, inspfs,in_numspf)
   use myparams
   implicit none
-
-  integer :: in_numspf, i,j,ii,jj,kk, mm,nn
-  DATATYPE :: indenmat(in_numspf,in_numspf), inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)
-  complex*16 :: density(numerad,lbig+1,2*mbig+1)
+  integer,intent(in) :: in_numspf
+  DATATYPE,intent(in) :: indenmat(in_numspf,in_numspf), inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)
+  complex*16,intent(out) :: density(numerad,lbig+1,2*mbig+1)
+  integer :: i,j,ii,jj,kk, mm,nn
   real*8 :: phi,pi
 
   pi=4d0*atan(1d0)
@@ -897,9 +901,11 @@ subroutine mult_reducedpot(inspfs,outspf,whichspf,reducedpot)
   use myparams
   use twoemod
   implicit none
-  DATATYPE :: reducedpot(numerad,lbig+1,-2*mbig:2*mbig,  numspf,numspf),  outspf(numerad,lbig+1, -mbig:mbig)
-  DATATYPE, intent(in) :: inspfs(numerad,lbig+1, -mbig:mbig, numspf)
-  integer :: ispf,imval,flag,kspf,kmval,whichspf
+  integer,intent(in) :: whichspf
+  DATATYPE,intent(out) :: outspf(numerad,lbig+1, -mbig:mbig)
+  DATATYPE, intent(in) :: inspfs(numerad,lbig+1, -mbig:mbig, numspf),&
+       reducedpot(numerad,lbig+1,-2*mbig:2*mbig,  numspf,numspf)
+  integer :: ispf,imval,flag,kspf,kmval
 
   outspf(:,:,:)=0d0
 
@@ -931,10 +937,10 @@ subroutine hatomcalc()
   use myprojectmod
   use twoemod
   implicit none
-  DATATYPE :: interpolate, hatomden(numerad,lbig+1,-mbig:mbig,-mbig:mbig)
-  DATATYPE :: twoeden(numerad,lbig+1),twoeden2(numerad),twoeden3(numerad)
-  integer :: mvalue2a, mvalue2b,       iatom, &
-       j1,j2,deltam,k1,lsum,  ixi,ieta
+  DATATYPE :: interpolate
+  DATATYPE :: twoeden(numerad,lbig+1),twoeden2(numerad),twoeden3(numerad), &
+       hatomden(numerad,lbig+1,-mbig:mbig,-mbig:mbig)   !! AUTOMATIC
+  integer :: mvalue2a, mvalue2b, iatom,  j1,j2,deltam,k1,lsum,  ixi,ieta
 
   if (numhatoms.eq.0) then
      return
@@ -1018,14 +1024,16 @@ end subroutine hatomcalc
 subroutine op_frozenreduced(inspfs,outspfs)
   use myparams
   use twoemod
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig)
   integer :: kmval,imval
-  DATATYPE :: inspfs(numerad,lbig+1,-mbig:mbig),outspfs(numerad,lbig+1,-mbig:mbig)
-     do imval=-mbig,mbig
-        do kmval=-mbig,mbig
-           outspfs(:,:,imval) = outspfs(:,:,imval) + 2* & 
-                frozenreduced(:,:,imval-kmval) * inspfs(:,:,kmval)
-        enddo
+
+  do imval=-mbig,mbig
+     do kmval=-mbig,mbig
+        outspfs(:,:,imval) = outspfs(:,:,imval) + 2* & 
+             frozenreduced(:,:,imval-kmval) * inspfs(:,:,kmval)
      enddo
+  enddo
 
 end subroutine op_frozenreduced
 
@@ -1045,18 +1053,21 @@ end function lobatto
 subroutine restrict_spfs(inspfs,in_numspf,in_spfmvals)
   use myparams
   implicit none
-  integer :: in_numspf,in_spfmvals(in_numspf)
-  DATATYPE :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)  !! using hermdot; want to see if wfn
+  integer,intent(in) :: in_numspf,in_spfmvals(in_numspf)
+  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)  !! using hermdot; want to see if wfn
   call restrict_spfs0(inspfs,in_numspf,in_spfmvals,1)
 end subroutine restrict_spfs
 
 subroutine restrict_spfs0(inspfs,in_numspf,in_spfmvals,printflag)
   use myparams
   implicit none
-  integer :: ispf,in_numspf,in_spfmvals(in_numspf),printflag
-  real*8 :: normsq1, normsq2
+  integer,intent(in) :: in_numspf,in_spfmvals(in_numspf),printflag
+  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)  
 !! using hermdot; want to see if wfn has been chopped.
-  DATATYPE :: hermdot, inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)  
+  DATATYPE :: hermdot
+  integer :: ispf
+  real*8 :: normsq1, normsq2
+
   normsq1=real(hermdot(inspfs,inspfs,in_numspf*edim*(2*mbig+1)),8)  !! ok hermdot
   do ispf=1,in_numspf
      inspfs(:,:,-mbig:in_spfmvals(ispf)-1,ispf)=0.d0
@@ -1074,18 +1085,20 @@ end subroutine restrict_spfs0
 subroutine ugrestrict_spfs(inspfs,in_numspf,in_spfugvals)
   use myparams
   implicit none
-  integer :: in_numspf,in_spfugvals(in_numspf)
-  DATATYPE :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)  
+  integer,intent(in) :: in_numspf,in_spfugvals(in_numspf)
+  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)  
   call ugrestrict_spfs0(inspfs,in_numspf,in_spfugvals,1)
 end subroutine ugrestrict_spfs
 
 subroutine ugrestrict_spfs0(inspfs,in_numspf,in_spfugvals,printflag)
   use myparams
   implicit none
-  integer :: ispf,in_numspf,in_spfugvals(in_numspf),printflag
-  DATATYPE :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)  !! using hermdot; want to see if wfn has been chopped.
+  integer,intent(in) :: in_numspf,in_spfugvals(in_numspf),printflag
+  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)  !! using hermdot; want to see if wfn has been chopped.
+  integer :: ispf
   real*8 :: normsq1,normsq2
-  DATATYPE :: hermdot, outspfs(numerad,lbig+1,-mbig:mbig,in_numspf)
+  DATATYPE :: hermdot
+  DATATYPE :: outspfs(numerad,lbig+1,-mbig:mbig,in_numspf)   !! AUTOMATIC
 
   normsq1=real(hermdot(inspfs,inspfs,in_numspf*edim*(2*mbig+1)),8)  !! ok hermdot
   do ispf=1,in_numspf
@@ -1106,8 +1119,11 @@ end subroutine ugrestrict_spfs0
 function getsmallugvalue(inspf,inmval)
   use myparams
   implicit none
-  DATAECS :: inspf(numerad,lbig+1),mytempspf(numerad,lbig+1), ecsdot  !! mytempspf AUTOMATIC
-  integer :: k,getsmallugvalue, inmval
+  integer,intent(in) :: inmval
+  DATAECS,intent(in) :: inspf(numerad,lbig+1)
+  DATAECS :: mytempspf(numerad,lbig+1)   !! AUTOMATIC
+  DATAECS :: ecsdot
+  integer :: k,getsmallugvalue
 
 !! g or u: reflection then phi <-> -phi for these m eigenfuncts    
 !!  yes I know (-1)^-1 = (-1)^1 who cares its an absolute value
@@ -1122,8 +1138,10 @@ end function getsmallugvalue
 subroutine ugrestrict(inspfs,outspfs,ugval)
   use myparams
   implicit none
-  DATAECS :: inspfs(numerad,lbig+1,-mbig:mbig),outspfs(numerad,lbig+1,-mbig:mbig)
-  integer :: k, inmval,ugval
+  integer,intent(in) :: ugval
+  DATAECS,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig)
+  DATAECS,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig)
+  integer :: k, inmval
 
   if (abs(ugval).ne.1) then
      OFLWR " Error, ugrestrictflag when ugval is not 1 or -1 : ", ugval; CFLST
@@ -1145,9 +1163,10 @@ end subroutine ugrestrict
 subroutine bothcompact_spfs(inspfs,outspfs,in_numspf,in_spfmvals,in_spfugvals)
   use myparams
   implicit none
-  integer :: in_numspf,in_spfmvals(in_numspf),in_spfugvals(in_numspf)
-  DATATYPE :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf), midspfs(numerad,lbig+1,in_numspf), &
-       outspfs(numerad,(lbig+1)/2,in_numspf)
+  integer,intent(in) :: in_numspf,in_spfmvals(in_numspf),in_spfugvals(in_numspf)
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)
+  DATATYPE,intent(out) :: outspfs(numerad,(lbig+1)/2,in_numspf)
+  DATATYPE :: midspfs(numerad,lbig+1,in_numspf)
 
   call mcompact_spfs(inspfs,midspfs,in_numspf,in_spfmvals)
   call ugcompact_spfs(midspfs,outspfs,in_numspf,in_spfmvals,in_spfugvals)
@@ -1157,9 +1176,10 @@ end subroutine bothcompact_spfs
 subroutine bothexpand_spfs(inspfs,outspfs,in_numspf,in_spfmvals,in_spfugvals)
   use myparams
   implicit none
-  integer :: in_numspf,in_spfmvals(in_numspf),in_spfugvals(in_numspf)
-  DATATYPE :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf), midspfs(numerad,lbig+1,in_numspf), &
-       outspfs(numerad,(lbig+1)/2,in_numspf)
+  integer,intent(in) :: in_numspf,in_spfmvals(in_numspf),in_spfugvals(in_numspf)
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)
+  DATATYPE,intent(out) :: outspfs(numerad,(lbig+1)/2,in_numspf)
+  DATATYPE :: midspfs(numerad,lbig+1,in_numspf)
 
   call ugexpand_spfs(inspfs,midspfs,in_numspf,in_spfmvals,in_spfugvals)
   call mexpand_spfs(midspfs,outspfs,in_numspf,in_spfmvals)
@@ -1170,8 +1190,10 @@ end subroutine bothexpand_spfs
 subroutine mcompact_spfs(inspfs,outspfs,in_numspf,in_spfmvals)
   use myparams
   implicit none
-  integer :: ispf,in_numspf,in_spfmvals(in_numspf)
-  DATATYPE :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf), outspfs(numerad,lbig+1,in_numspf)
+  integer,intent(in) :: in_numspf,in_spfmvals(in_numspf)
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)
+  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,in_numspf)
+  integer :: ispf
   do ispf=1,in_numspf
      outspfs(:,:,ispf)=inspfs(:,:,in_spfmvals(ispf),ispf)
   enddo
@@ -1180,8 +1202,10 @@ end subroutine mcompact_spfs
 subroutine mexpand_spfs(inspfs,outspfs,in_numspf,in_spfmvals)
   use myparams
   implicit none
-  integer :: ispf,in_numspf,in_spfmvals(in_numspf)
-  DATATYPE :: outspfs(numerad,lbig+1,-mbig:mbig,in_numspf), inspfs(numerad,lbig+1,in_numspf)
+  integer,intent(in) :: in_numspf,in_spfmvals(in_numspf)
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,in_numspf)
+  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig,in_numspf)
+  integer :: ispf
 
   outspfs(:,:,:,:)=0d0
 
@@ -1195,9 +1219,10 @@ end subroutine mexpand_spfs
 subroutine ugcompact_spfs(inspfs,outspfs,in_numspf,in_spfmvals,in_spfugvals)
   use myparams
   implicit none
-  integer :: ispf,in_numspf,in_spfugvals(in_numspf),in_spfmvals(in_numspf),k
-  DATATYPE :: inspfs(numerad,lbig+1,in_numspf)
-  DATATYPE :: outspfs(numerad,(lbig+1)/2,in_numspf)
+  integer,intent(in) :: in_numspf,in_spfugvals(in_numspf),in_spfmvals(in_numspf)
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,in_numspf)
+  DATATYPE,intent(out) :: outspfs(numerad,(lbig+1)/2,in_numspf)
+  integer :: ispf,k
 
   if (mod(lbig+1,2).ne.0) then
      OFLWR "GGG))))iiiiiERROROAAAAUGHGGHG"; CFLST
@@ -1216,9 +1241,10 @@ end subroutine ugcompact_spfs
 subroutine ugexpand_spfs(inspfs,outspfs,in_numspf,in_spfmvals,in_spfugvals)
   use myparams
   implicit none
-  integer :: ispf,in_numspf,in_spfugvals(in_numspf),in_spfmvals(in_numspf),k
-  DATATYPE :: outspfs(numerad,lbig+1,in_numspf)
-  DATATYPE :: inspfs(numerad,(lbig+1)/2,in_numspf)
+  integer,intent(in) :: in_numspf,in_spfugvals(in_numspf),in_spfmvals(in_numspf)
+  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,in_numspf)
+  DATATYPE,intent(in) :: inspfs(numerad,(lbig+1)/2,in_numspf)
+  integer :: ispf,k
 
   if (mod(lbig+1,2).ne.0) then
      OFLWR "GGG))))iiiiiERROROAAAAUGHGGHG"; CFLST
@@ -1560,8 +1586,10 @@ subroutine imvelmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE :: spfin(numerad,lbig+1,-mbig:mbig), spfout(numerad,lbig+1,-mbig:mbig)
-  real *8 :: myxtdpot0,myztdpot,myytdpot0,myrhotdpot
+  DATATYPE,intent(in) :: spfin(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: spfout(numerad,lbig+1,-mbig:mbig)
+  real*8,intent(in) :: myxtdpot0,myztdpot,myytdpot0
+  real*8 :: myrhotdpot
 #ifdef REALGO
   OFLWR "Velocity gauge not available for real time propagation"; CFLST
   myrhotdpot=myztdpot; myrhotdpot=myytdpot0; myrhotdpot=myxtdpot0
@@ -1704,9 +1732,11 @@ subroutine mult_ke(in, out,howmanyNOT)
   use myparams
   use myprojectmod  
   implicit none
-
-  integer :: m2val, ixi,ieta, i,howmanyNOT
-  DATATYPE :: work(lbig+1), work2(lbig+1)   , in(numerad,lbig+1,-mbig:mbig),out(numerad,lbig+1,-mbig:mbig)
+  integer,intent(in) :: howmanyNOT
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
+  integer :: m2val, ixi,ieta, i
+  DATATYPE :: work(lbig+1), work2(lbig+1)
 
   if (howmanyNOT.ne.1) then
      OFLWR "howmany not supported for atom/diatom mult_ke (multmanyflag)"; CFLST
@@ -1738,9 +1768,10 @@ subroutine mult_imke(in, out)
   use myparams
   use myprojectmod  
   implicit none
-
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
+  DATATYPE :: work(lbig+1), work2(lbig+1)  
   integer :: m2val, ixi,ieta, i
-  DATATYPE :: in(numerad,lbig+1,-mbig:mbig), out(numerad,lbig+1,-mbig:mbig), work(lbig+1), work2(lbig+1)  
 
   out=0.d0
   do m2val=-mbig,mbig
@@ -1766,8 +1797,10 @@ subroutine mult_reke(in, out)
   use myparams
   use myprojectmod  
   implicit none
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
+  DATATYPE :: work(lbig+1), work2(lbig+1)
   integer :: m2val, ixi,ieta, i
-  DATATYPE :: work(lbig+1), work2(lbig+1)   , in(numerad,lbig+1,-mbig:mbig),out(numerad,lbig+1,-mbig:mbig)
 
   out=0.d0
   do m2val=-mbig,mbig

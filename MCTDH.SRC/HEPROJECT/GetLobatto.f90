@@ -4,21 +4,22 @@
 #include "Definitions.INC"
 
 
-!!subroutine getlobatto(points,weights,points2d,weights2d,ketot, numpoints, numelements, elementsizes, gridpoints, celement, ecstheta, firstdertot)  
-
 subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,numelements,elementsizes, gridpoints, celement, ecstheta,  xi_derivs, xi_rhoderivs, evenodd)
   implicit none
-
-  integer :: numelements,gridpoints, celement,numpoints, one=1, izero=0, two=2, i,j,k,l,jj, qq, evenodd, extraorder
-  real*8 :: elementsizes(numelements), ecstheta, endpoints(2), zero = 0.0,rsum
+  integer,intent(in) :: numelements,gridpoints,celement, numpoints, evenodd
+  real*8, intent(in) :: elementsizes(numelements), ecstheta
+  DATAECS,intent(out) :: points(gridpoints),  weights(gridpoints),  xi_derivs(gridpoints,gridpoints), &
+       xi_rhoderivs(gridpoints,gridpoints)
+  integer ::  one=1, izero=0, two=2, i,j,k,l,jj, qq, extraorder
+  real*8 :: endpoints(2), zero = 0.0,rsum
   integer, parameter :: numextra=11
   real*8 :: extrapoints0(numpoints+numextra), extraweights0(numpoints+numextra),&
        firstder(numpoints+numextra,numpoints),  points2d(numpoints), weights2d(numpoints), &
        scratch(2*numpoints+numextra), xivals0(numpoints+numextra,numpoints)
   DATAECS :: extrapoints(numpoints+numextra,numelements), extraweights(numextra+numpoints,numelements), &
-       firstdertot(numpoints+numextra,numelements,gridpoints), ketot(gridpoints,gridpoints), points(gridpoints), &
-       weights(gridpoints),  xi_derivs(gridpoints,gridpoints),xi_rhoderivs(gridpoints,gridpoints), &
+       firstdertot(numpoints+numextra,numelements,gridpoints), ketot(gridpoints,gridpoints), &
        xivals(numpoints+numextra,numelements,gridpoints),  cweight, sum
+
   i=celement; sum=ecstheta !! avoid warn unused
 
   if (evenodd.ne.0.and.evenodd.ne.1) then

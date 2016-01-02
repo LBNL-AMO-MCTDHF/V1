@@ -12,11 +12,12 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   implicit none
 
   integer,intent(in) :: skipflag, numelec
-  
-  DATATYPE :: inspfs(numerad,lbig+1, -mbig:mbig, numspf),proderivmod(numr,numr),rkemod(numr,numr), &
+  integer,intent(inout) :: spfsloaded
+  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1, -mbig:mbig, numspf)
+  DATATYPE,intent(out) :: proderivmod(numr,numr),rkemod(numr,numr), &
        bondpoints(numr),bondweights(numr), halfniumpot(numerad,lbig+1, -mbig:mbig),pot(numerad,lbig+1, -mbig:mbig), &
        elecweights(numerad,lbig+1, -mbig:mbig), elecradii(numerad,lbig+1, -mbig:mbig)
-  integer :: i,ii,j,    taken(200)=0, flag, jj, jflag,spfsloaded, xiug, iug, ugvalue(200,0:30), getsmallugvalue
+  integer :: i,ii,j,    taken(200)=0, flag, jj, jflag, xiug, iug, ugvalue(200,0:30), getsmallugvalue
   DATAECS :: thisrvalue  
   character (len=2) :: th(4)
   DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:) !, regvects(:,:,:,:)

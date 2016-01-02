@@ -5,16 +5,18 @@
 
 #include "Definitions.INC"
 
-subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,outnumr,nucrepulsion,nonuc_checkflag)   !! inpfile input, others output dummy variables
+!! inpfile input, others output dummy variables
+
+subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,outnumr,nucrepulsion,nonuc_checkflag)
   use myparams
   implicit none
-
-  integer :: spfdims(3),spfdimtype(3),inmpifileptr,nonuc_checkflag,myiostat, reducedpotsize, outnumr,&
-       nargs, getlen, i, len
-  real*8 :: nucrepulsion
+  integer,intent(in) :: inmpifileptr
+  character,intent(in) :: inpfile*(*)
+  integer,intent(out) :: spfdims(3),spfdimtype(3),nonuc_checkflag,reducedpotsize, outnumr
+  real*8,intent(out) :: nucrepulsion
   character (len=200) :: buffer
   character (len=200) :: nullbuff="                                                                                "
-  character :: inpfile*(*)
+  integer ::        nargs, getlen, i, len,myiostat
 
   NAMELIST /heparinp/  &
        henumpoints,  henumelements,  hecelement,  heecstheta,   heelementsizes, numhatoms, hlocs,hlocrealflag,&
@@ -103,8 +105,9 @@ end subroutine checkmyopts
 function  radiallobatto(n,x, mvalue)
   use myparams
   use myprojectmod
-  integer :: mvalue,   n
-  real*8 :: x
+  implicit none
+  integer,intent(in) :: mvalue,   n
+  real*8,intent(in) :: x
   DATAECS :: xilobatto, radiallobatto
   radiallobatto=xilobatto(n,x,mvalue,henumpoints,glpoints2d(:,1),glpoints2d(:,2),glpoints,glweights,heelementsizes,henumelements,0)
 end function radiallobatto
@@ -113,8 +116,9 @@ function  angularlobatto(n,x, mvalue)
   use myparams
   use myprojectmod
   implicit none
-  integer :: mvalue,   n
-  real*8 :: x,angularlobatto, etalobatto
+  integer,intent(in) :: mvalue,   n
+  real*8,intent(in) :: x
+  real*8 :: angularlobatto, etalobatto
      angularlobatto=etalobatto(n,x,mvalue,jacobipoints,jacobiweights)
 end function angularlobatto
 
@@ -122,10 +126,14 @@ function cylindricalvalue(radpoint, thetapoint,nullrvalue,mvalue, invector)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE ::  cylindricalvalue, sum,invector(numerad,lbig+1)
-  real*8 :: radpoint,thetapoint,nullrvalue, angularlobatto
+  integer,intent(in) :: mvalue
+  DATATYPE,intent(in) :: invector(numerad,lbig+1)
+  real*8,intent(in) :: radpoint, thetapoint, nullrvalue
+  DATATYPE ::  cylindricalvalue, sum
+  real*8 ::  angularlobatto
   DATAECS :: radiallobatto
-  integer :: mvalue, ixi,lvalue
+  integer :: ixi,lvalue
+
   sum=0.d0*nullrvalue !! avoid warn unused
   do ixi=1,numerad
      do lvalue=1,lbig+1
@@ -142,9 +150,11 @@ subroutine get_maxsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,povsparse)
    use myparams
    use myprojectmod
    implicit none
-
-   integer :: nx,ny,nz, maxsparse,  mvalue, ixi,lvalue, ix,iy,iz, iii, jjj
-   real*8 :: xvals(nx),yvals(ny),zvals(nz),povsparse, xval,yval,zval, angularlobatto, costhetaval,phival, rhoval
+   integer,intent(in) :: nx,ny,nz
+   integer,intent(out) :: maxsparse
+   real*8, intent(in) :: xvals(nx),yvals(ny),zvals(nz), povsparse
+   integer :: mvalue, ixi,lvalue, ix,iy,iz, iii, jjj
+   real*8 :: xval,yval,zval, angularlobatto, costhetaval,phival, rhoval
    DATAECS :: radiallobatto
    complex*16 :: csum
 
@@ -198,12 +208,15 @@ subroutine get_sphericalsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,sparsetrans
    use myparams
    use myprojectmod
    implicit none
-   integer :: nx,ny,nz, maxsparse, sparsexyz(maxsparse,3), iflag
-   integer :: mvalue, ixi,lvalue, ix,iy,iz, iii, sparsestart(numerad,lbig+1,-mbig:mbig), &
+   integer,intent(in) :: nx,ny,nz,maxsparse
+   real*8,intent(in) :: xvals(nx),yvals(ny),zvals(nz),povsparse
+   complex*16,intent(out) :: sparsetransmat(maxsparse)
+   integer,intent(out) :: sparsexyz(maxsparse,3),  sparsestart(numerad,lbig+1,-mbig:mbig), &
         sparseend(numerad,lbig+1,-mbig:mbig)
-   real*8 :: xvals(nx),yvals(ny),zvals(nz),povsparse, xval,yval,zval, angularlobatto, costhetaval,phival, rhoval
+   real*8 :: xval,yval,zval, angularlobatto, costhetaval,phival, rhoval
    DATAECS :: radiallobatto
-   complex*16 :: sparsetransmat(maxsparse),  csum
+   complex*16 :: csum
+   integer :: mvalue, ixi,lvalue, ix,iy,iz, iii, iflag
 
    iii=0;   sparsestart=-1;   sparseend=-100
    do mvalue=-mbig,mbig
@@ -260,10 +273,12 @@ function interpolate(radpoint, thetapoint,nullrvalue,mvalue, ixi,lvalue)
   use myparams
   use myprojectmod
   implicit none
+  integer,intent(in) :: mvalue, ixi,lvalue
+  real*8,intent(in) :: radpoint,thetapoint
   DATATYPE ::  interpolate, sum
-  real*8 :: radpoint,thetapoint, angularlobattoint,nullrvalue
+  real*8 :: angularlobattoint,nullrvalue
   DATAECS :: radiallobattoint
-  integer :: mvalue, ixi,lvalue
+
   sum=0.d0* nullrvalue !! avoid warn unused
   sum=sum +    radiallobattoint(ixi,radpoint, mvalue) * angularlobattoint(lvalue,thetapoint, mvalue)
   interpolate=sum
@@ -275,18 +290,19 @@ function  radiallobattoint(n,x, mvalue)
   use myparams
   use myprojectmod
   implicit none
-  integer :: mvalue,   n
-  real*8 :: x
+  integer,intent(in) :: mvalue, n
+  real*8,intent(in) :: x
   DATAECS :: xilobattoint, radiallobattoint
-     radiallobattoint=xilobattoint(n,x,mvalue,henumpoints,glpoints2d(:,1),glpoints2d(:,2),glpoints,glweights,heelementsizes,henumelements,0)
+  radiallobattoint=xilobattoint(n,x,mvalue,henumpoints,glpoints2d(:,1),glpoints2d(:,2),glpoints,glweights,heelementsizes,henumelements,0)
 end function radiallobattoint
 
 function  angularlobattoint(n,x, mvalue)
   use myparams
   use myprojectmod
   implicit none
-  integer :: mvalue,   n
-  real*8 :: x,angularlobattoint, etalobattoint
+  integer,intent(in) :: mvalue,   n
+  real*8,intent(in) :: x
+  real*8 :: angularlobattoint, etalobattoint
      angularlobattoint=etalobattoint(n,x,mvalue,jacobipoints,jacobiweights)
 end function angularlobattoint
 
@@ -297,7 +313,8 @@ function radiusvalue(spfindex,notused)
   use myparams
   use myprojectmod
   implicit none
-  integer :: spfindex,ir
+  integer,intent(in) :: spfindex
+  integer :: ir
   DATATYPE :: radiusvalue, notused,notused2
   notused2=notused*0 !! avoid warn unused
   ir=mod(spfindex-1,numerad)+1

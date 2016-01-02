@@ -8,10 +8,11 @@
 subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,outnumr,nucrepulsion,nonuc_checkflag)   !! inpfile input, others output dummy variables
   use myparams
   implicit none
-
-  integer :: spfdims(3),spfdimtype(3),inmpifileptr, myiostat, i,reducedpotsize, outnumr
-  real*8 :: nucrepulsion
-  integer :: nargs, getlen, len,nonuc_checkflag
+  integer,intent(in) :: inmpifileptr
+  character,intent(in) :: inpfile*(*)
+  integer,intent(out) :: spfdims(3),spfdimtype(3), reducedpotsize, outnumr, nonuc_checkflag
+  real*8,intent(out) :: nucrepulsion
+  integer :: nargs, getlen, len, myiostat, i
   character (len=200) :: buffer
   character (len=200) :: nullbuff="                                                                                "
 #ifdef PGFFLAG
@@ -23,7 +24,6 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        relementsize ,  rstart ,xielementsizes, xiecstheta, bornopflag, capflag, capstrength, cappower, &
        numhatoms, hlocs,hlocrealflag,hlocreal,mbig,lbig,nuccharge1,nuccharge2, &
        num_skip_orbs, orb_skip_mvalue, orb_skip,twoeattractflag,debugflag
-  character :: inpfile*(*)
 
 #ifdef PGFFLAG
   nargs=myiargc()
@@ -194,13 +194,16 @@ end subroutine printmyopts
 function cylindricalvalue(radpoint, thetapoint,rvalue,mvalue, invector)
   use myparams
   use myprojectmod
-
   implicit none
-  DATATYPE ::  cylindricalvalue, sum,invector(numerad,lbig+1)
-  real*8 :: radpoint,thetapoint,rvalue, angularlobatto, xifunct, etafunct
+  integer,intent(in) :: mvalue
+  DATATYPE,intent(in) :: invector(numerad,lbig+1)
+  real*8,intent(in) :: radpoint,thetapoint,rvalue
+  real*8 :: angularlobatto, xifunct, etafunct
+  DATATYPE ::  cylindricalvalue, sum
   DATAECS :: radiallobatto
-  integer :: mvalue, ixi,lvalue
+  integer :: ixi,lvalue
   sum=0.d0
+
   do ixi=1,numerad
      do lvalue=1,lbig+1
         sum=sum + &
@@ -218,9 +221,10 @@ function sphericalvalue(xval,yval,zval,  inspf)
    use myprojectmod
    use myparams
    implicit none
+   real*8,intent(in) :: xval,yval,zval
+   DATATYPE,intent(in) ::  inspf(numerad,lbig+1,-mbig:mbig)
    complex*16 :: sphericalvalue, csum,csum2
-   DATATYPE ::  inspf(numerad,lbig+1,-mbig:mbig)
-   real*8 :: xval,yval,zval, angularlobatto, xival, etaval,phival, rhoval
+   real*8 :: angularlobatto, xival, etaval,phival, rhoval
    DATAECS :: radiallobatto
    integer :: mvalue, ixi,lvalue
 
@@ -259,8 +263,11 @@ subroutine get_maxsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,povsparse)
    use myprojectmod
    use myparams
    implicit none
-   integer :: nx,ny,nz, maxsparse,mvalue, ixi,lvalue, ix,iy,iz, iii, jjj
-   real*8 :: xvals(nx),yvals(ny),zvals(nz),povsparse,xval,yval,zval, angularlobatto, xival, etaval,phival, rhoval
+   integer,intent(in) :: nx,ny,nz
+   integer,intent(out) :: maxsparse
+   real*8,intent(in) :: xvals(nx),yvals(ny),zvals(nz),povsparse
+   integer :: ixi,lvalue, ix,iy,iz, iii, jjj, mvalue
+   real*8 :: xval,yval,zval, angularlobatto, xival, etaval,phival, rhoval
    DATAECS :: radiallobatto
    complex*16 :: csum
 
@@ -314,13 +321,14 @@ subroutine get_sphericalsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,sparsetrans
    use myprojectmod
    use myparams
    implicit none
-
-   integer :: nx,ny,nz, maxsparse, sparsexyz(maxsparse,3), iflag
-   real*8 :: xvals(nx),yvals(ny),zvals(nz),xval,yval,zval, angularlobatto, xival, etaval,phival, rhoval,povsparse
+   integer,intent(in) :: nx,ny,nz, maxsparse
+   integer,intent(out) :: sparsexyz(maxsparse,3),  sparsestart(numerad,lbig+1,-mbig:mbig), sparseend(numerad,lbig+1,-mbig:mbig)
+   real*8,intent(in) :: xvals(nx),yvals(ny),zvals(nz), povsparse
+   complex*16,intent(out) :: sparsetransmat(maxsparse)
+   real*8 :: xval,yval,zval, angularlobatto, xival, etaval,phival, rhoval
    DATAECS :: radiallobatto
-   integer :: mvalue, ixi,lvalue, ix,iy,iz, iii, sparsestart(numerad,lbig+1,-mbig:mbig), &
-        sparseend(numerad,lbig+1,-mbig:mbig)
-   complex*16 :: sparsetransmat(maxsparse),  csum
+   integer :: mvalue, ixi,lvalue, ix,iy,iz, iii, iflag
+   complex*16 :: csum
 
    iii=0;   sparsestart=-1;   sparseend=-100
 
@@ -382,10 +390,12 @@ function interpolate(radpoint, thetapoint,rvalue,mvalue,ixi,lvalue)
   use myprojectmod
   use myparams
   implicit none
+  integer,intent(in) :: mvalue, ixi,lvalue
+  real*8,intent(in) :: radpoint,thetapoint,rvalue
   DATATYPE ::  interpolate, sum
-  real*8 :: radpoint,thetapoint,rvalue, angularlobattoint, xifunct, etafunct
+  real*8 :: angularlobattoint, xifunct, etafunct
   DATAECS :: radiallobattoint
-  integer :: mvalue, ixi,lvalue
+
   sum=0.d0
   sum=sum + &
        radiallobattoint(ixi,xifunct(radpoint,thetapoint,rvalue), mvalue) * &
@@ -397,20 +407,21 @@ end function interpolate
 function  radiallobatto(n,x, mvalue)
   use myprojectmod
   use myparams
-  integer :: mvalue,   n
-  real*8 :: x
+  integer,intent(in) :: mvalue,   n
+  real*8,intent(in) :: x
   DATAECS :: xilobatto, radiallobatto
-     radiallobatto=xilobatto(n,x,mvalue,xinumpoints,xipoints2d(:,1), xipoints2d(:,2), xipoints,&
-          xiweights,xielementsizes,xinumelements,1)
+  radiallobatto=xilobatto(n,x,mvalue,xinumpoints,xipoints2d(:,1), xipoints2d(:,2), xipoints,&
+       xiweights,xielementsizes,xinumelements,1)
 end function radiallobatto
 
 function  angularlobatto(n,x, mvalue)
   use myparams
   use myprojectmod
   implicit none
-  integer :: mvalue,   n
-  real*8 :: x,angularlobatto, etalobatto
-     angularlobatto=etalobatto(n,x,mvalue,etapoints,etaweights)
+  integer,intent(in) :: mvalue,   n
+  real*8,intent(in) :: x
+  real*8 :: angularlobatto, etalobatto
+  angularlobatto=etalobatto(n,x,mvalue,etapoints,etaweights)
 end function angularlobatto
 
 !!  PASS ARGUMENTS AS REAL (e.g. for xi) !!
@@ -419,8 +430,8 @@ function  radiallobattoint(n,x, mvalue)
   use myprojectmod
   use myparams
   implicit none
-  integer :: mvalue,   n
-  real*8 :: x
+  integer,intent(in) :: mvalue,   n
+  real*8,intent(in) :: x
   DATAECS :: xilobattoint, radiallobattoint
      radiallobattoint=xilobattoint(n,x,mvalue,xinumpoints,xipoints2d(:,1), xipoints2d(:,2), xipoints,xiweights,xielementsizes,xinumelements,1)
 end function radiallobattoint
@@ -429,16 +440,19 @@ function  angularlobattoint(n,x, mvalue)
   use myparams
   use myprojectmod
   implicit none
-  integer :: mvalue,   n
-  real*8 :: x,angularlobattoint, etalobattoint
-     angularlobattoint=etalobattoint(n,x,mvalue,etapoints,etaweights)
+  integer,intent(in) :: mvalue,   n
+  real*8,intent(in) :: x
+  real*8 :: angularlobattoint, etalobattoint
+  angularlobattoint=etalobattoint(n,x,mvalue,etapoints,etaweights)
 end function angularlobattoint
 
 
 function xifunct(radpoint,thetapoint,rvalue)
   use myparams
   implicit none
-  real*8 :: radpoint,thetapoint,rvalue, sum1, sum2,xifunct
+  real*8,intent(in) :: radpoint,thetapoint,rvalue
+  real*8 ::  sum1, sum2,xifunct
+
   sum1 = 0.25d0 + ( radpoint / rvalue )**2
   sum2 = radpoint / rvalue * thetapoint     !! thetapoint is costheta
   xifunct=sqrt(sum1+sum2) + sqrt(sum1-sum2) + 0.0000000001d0
@@ -454,7 +468,9 @@ end function xifunct
 function etafunct(radpoint,thetapoint,rvalue)
   use myparams
   implicit none
-  real*8 :: radpoint,thetapoint,rvalue, sum1, sum2, etafunct
+  real*8,intent(in) :: radpoint,thetapoint,rvalue
+  real*8 :: sum1, sum2, etafunct
+
   sum1 = 0.25d0 + ( radpoint / rvalue )**2
   sum2 = radpoint / rvalue * thetapoint     !! thetapoint is costheta
   etafunct=sqrt(sum1+sum2) - sqrt(sum1-sum2) 
@@ -468,8 +484,10 @@ function radiusvalue(spfindex,rvalue)
   use myparams
   use myprojectmod
   implicit none
-  integer :: spfindex,ixi,ieta,jindex
-  DATATYPE :: radiusvalue, radiusfun,rvalue
+  integer,intent(in) :: spfindex
+  DATATYPE,intent(in) :: rvalue
+  integer :: ixi,ieta,jindex
+  DATATYPE :: radiusvalue, radiusfun
 
 
   ixi=mod(spfindex-1,numerad)+1
@@ -487,8 +505,9 @@ end function radiusvalue
   
 function radiusfun(xivalue,etavalue,rvalue)
   implicit none
-  DATATYPE :: radiusfun,xivalue,rvalue
-  real*8 :: etavalue
+  DATATYPE,intent(in) :: xivalue,rvalue
+  real*8,intent(in) :: etavalue
+  DATATYPE :: radiusfun
 
   radiusfun=sqrt(etavalue**2+xivalue**2-1)*rvalue
 end function radiusfun

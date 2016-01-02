@@ -11,16 +11,15 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   use myparams
   use myprojectmod
   implicit none
-
   integer, intent(in) ::  skipflag, numelec
-  integer ::  i,ii,k,j,   taken(200)=0, flag,xiug, iug, ugvalue(200,0:10), getsmallugvalue,  spfsloaded
-  DATATYPE :: inspfs(numerad,lbig+1, -mbig:mbig, numspf),proderivmod(numr,numr),rkemod(numr,numr),bondpoints(numr),&
+  integer,intent(inout) :: spfsloaded
+  DATATYPE,intent(inout) ::       inspfs(numerad,lbig+1, -mbig:mbig, numspf)
+  DATATYPE,intent(out) :: proderivmod(numr,numr),rkemod(numr,numr),bondpoints(numr),&
        bondweights(numr),  halfniumpot(numerad,lbig+1, -mbig:mbig),pot(numerad,lbig+1, -mbig:mbig), &
        elecweights(numerad,lbig+1, -mbig:mbig),elecradii(numerad,lbig+1, -mbig:mbig)
   character (len=2) :: th(4)
   DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:)
-
-
+  integer ::  i,ii,k,j,   taken(200)=0, flag,xiug, iug, ugvalue(200,0:10), getsmallugvalue
 
   halfniumpot=0d0
   do i=1,numspf
@@ -138,12 +137,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
 
 !! for centrifugal term add value of derivative of bra and ket at zero multiplied together
-
-!print *, "GLFIRST"
-!print *, glfirstdertot(:,1,0)
-!print *, "FDS"
-!print *, glfirstdertot(:,1,1)
-!stop
 
 !! with setup analogous to prolate I don't get degeneracies even/odd m for sparse radial grid.
 !!   seeing if this (accurate 1/r^2 integration for even m) will fix.
@@ -300,6 +293,7 @@ end subroutine init_project
 subroutine nucdipvalue(nullrvalue,dipoles)
   use myparams
   implicit none
-  DATATYPE :: nullrvalue(1),dipoles(3)
+  DATATYPE,intent(in) :: nullrvalue(1)
+  DATATYPE,intent(out) :: dipoles(3)
   dipoles(:)=0d0*nullrvalue(1)  !! avoid warn unused
 end subroutine nucdipvalue

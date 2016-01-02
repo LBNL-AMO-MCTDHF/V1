@@ -119,15 +119,16 @@ subroutine get_twoe_new()
 
   DATAECS, allocatable :: work(:),kearray(:,:,:,:), invkearray(:,:,:,:)
   integer, allocatable :: ipiv(:)
-!!$  logical :: checknan2, checknan2real
   integer ::  j1a,lsum,deltam,  i,k,ii,m,j, lwork, info
-  complex*16 :: pval(mseriesmax+1,lseriesmax+mseriesmax+1, xigridpoints), &
-       qval(mseriesmax+1,lseriesmax+mseriesmax+1, xigridpoints), pder(mseriesmax+1,lseriesmax+mseriesmax+1), &
-       qder(mseriesmax+1,lseriesmax+mseriesmax+1)
+  complex*16,allocatable :: pval(:,:,:), qval(:,:,:), pder(:,:),qder(:,:)
   DATAECS :: surface, wronsk
   real*8 :: dgamma, floatfac, rsum
 
   OFLWR "   Calc two electron.";CFL
+
+  allocate(pval(mseriesmax+1,lseriesmax+mseriesmax+1, xigridpoints), &
+       qval(mseriesmax+1,lseriesmax+mseriesmax+1, xigridpoints), pder(mseriesmax+1,lseriesmax+mseriesmax+1), &
+       qder(mseriesmax+1,lseriesmax+mseriesmax+1))
 
   lwork=xigridpoints*(lbig+1)*(2*mbig+1) * 10
   allocate(work(lwork), ipiv(lwork))
@@ -238,14 +239,19 @@ subroutine get_twoe_new()
      rmatrix(:,:,:,:)=(-1)*rmatrix(:,:,:,:)
   endif
 
+  deallocate(pval,qval,pder,qder)
+
 end subroutine get_twoe_new
 
 
 subroutine op_lsquaredone(in,out,m2val)   !! right now used just to check operators.
   use myparams
   implicit none
-  DATATYPE :: out(numerad,lbig+1),in(numerad,lbig+1),temp2(numerad,lbig+1),temp3(numerad,lbig+1)
+  DATATYPE,intent(out) :: out(numerad,lbig+1)
+  DATATYPE,intent(in) :: in(numerad,lbig+1)
+  DATATYPE :: temp2(numerad,lbig+1),temp3(numerad,lbig+1)  !!AUTOMATIC
   integer :: m2val
+
   out=0.d0
   call op_lplusminus_one(in,temp2,1,m2val)      !!lplus
   call op_lplusminus_one(temp2,temp3,2,m2val+1)   !!lminus
@@ -259,16 +265,6 @@ end subroutine
 
 !! kind=1: lplus; 2, lminus 
 
-subroutine op_lplusminus_one(in,out,inkind,m2val)
-  use myparams
-  implicit none
-  DATATYPE :: out(numerad,lbig+1),in(numerad,lbig+1)
-  integer, intent (in) :: inkind, m2val
-  call  op_lplusminus_one_sparse(in,out,inkind,m2val)
-end subroutine
-
-!! kind=1: lplus; 2, lminus 
-
 #ifndef REALGO
 #define XXMVXX zgemv 
 #define XXBBXX zgbmv 
@@ -277,13 +273,15 @@ end subroutine
 #define XXBBXX dgbmv 
 #endif
 
-subroutine op_lplusminus_one_sparse(in,out,inkind,m2val)
+subroutine op_lplusminus_one(in,out,inkind,m2val)
   use myparams
   use myprojectmod
   implicit none
-  integer, intent(in) :: m2val
-  integer :: ieta,i,ixi, inkind
-  DATATYPE :: in(numerad,lbig+1),out(numerad,lbig+1),work(lbig+1) 
+  integer, intent(in) :: m2val,inkind
+  DATATYPE,intent(in) :: in(numerad,lbig+1)
+  DATATYPE,intent(out) :: out(numerad,lbig+1)
+  DATATYPE :: work(lbig+1) 
+  integer :: ieta,i,ixi
 
   out=0.d0
 
@@ -325,7 +323,7 @@ subroutine op_lplusminus_one_sparse(in,out,inkind,m2val)
      print *, "AAUGH!!!";     call mpistop()
   end select
   
-end subroutine op_lplusminus_one_sparse
+end subroutine op_lplusminus_one
   
 
 subroutine op_yderiv(in,out)
@@ -334,8 +332,8 @@ subroutine op_yderiv(in,out)
   implicit none
   DATATYPE, intent(in) :: in(numerad,lbig+1,-mbig:mbig)
   DATATYPE, intent(out) :: out(numerad,lbig+1,-mbig:mbig)
-  integer ::  ixi, ieta, i,m2val
   DATATYPE :: work(lbig+1),work2(lbig+1)  !!AUTOMATIC
+  integer ::  ixi, ieta, i,m2val
 
   out=0.d0
   if (bornopflag==1) then
@@ -365,8 +363,8 @@ subroutine op_reyderiv(in,out)
   implicit none
   DATATYPE, intent(in) :: in(numerad,lbig+1,-mbig:mbig)
   DATATYPE, intent(out) :: out(numerad,lbig+1,-mbig:mbig)
-  integer ::  ixi, ieta, i,m2val
   DATATYPE ::work2(lbig+1), work(lbig+1)  !!AUTOMATIC
+  integer ::  ixi, ieta, i,m2val
 
   out=0.d0
   if (bornopflag==1) then
@@ -396,8 +394,8 @@ subroutine op_imyderiv(in,out)
   implicit none
   DATATYPE, intent(in) :: in(numerad,lbig+1,-mbig:mbig)
   DATATYPE, intent(out) :: out(numerad,lbig+1,-mbig:mbig)
-  integer ::  ixi, ieta, i,m2val
   DATATYPE :: work(lbig+1),work2(lbig+1)  !!AUTOMATIC
+  integer ::  ixi, ieta, i,m2val
 
   out=0.d0
   if (bornopflag==1) then

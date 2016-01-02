@@ -5,13 +5,14 @@
 !! adapted from eta_init
 subroutine GetJacobiKE(points,weights,ketot, lbig, eta_derivs,eta_rhoderivs,evenodd)
   implicit none
-
+  integer,intent(in) :: lbig, evenodd
+  real*8,intent(out) :: points((lbig+1)), weights((lbig+1)),ketot((lbig+1),(lbig+1)),&
+       eta_derivs((lbig+1),(lbig+1)),eta_rhoderivs(lbig+1,lbig+1)
   integer, parameter :: numextra=6
-  integer :: numpoints,  one=1, two=2, izero=0, i,j,k,jj , extraorder, evenodd,lbig
+  integer :: numpoints,  one=1, two=2, izero=0, i,j,k,jj , extraorder
   real*8 :: extrapoints((lbig+1)+numextra), extraweights(numextra+(lbig+1)), &
-       firstdertot((lbig+1)+numextra,(lbig+1)), points((lbig+1)), weights((lbig+1)), scratch(numextra+(lbig+1)), &
-       ketot((lbig+1),(lbig+1))  ,etavals((lbig+1)+numextra,(lbig+1)),eta_derivs((lbig+1),(lbig+1)),&
-       eta_rhoderivs(lbig+1,lbig+1), endpoints(2)=[-1.0d0,1.0d0] , zero = 0.0, sum
+       firstdertot((lbig+1)+numextra,(lbig+1)), scratch(numextra+(lbig+1)), &
+       etavals((lbig+1)+numextra,(lbig+1)), endpoints(2)=[-1.0d0,1.0d0] , zero = 0.0, sum
 
   numpoints=lbig+1
   one=1;two=2

@@ -132,43 +132,6 @@ subroutine get_twoe_new()
 end subroutine get_twoe_new
 
 
-!! TO USE THESE IN MCTDH YOU WILL WANT TO EMPLOY DATATYPES... CHECK xGEMV
-
-subroutine mult_heonebody0_one(in, out,m2val)
-  use myparams
-  implicit none
-
-  integer :: m2val
-  complex*16 :: in(numerad,lbig+1), out(numerad,lbig+1)
-
-  call mult_heonebody0sparse_one(in,out,m2val)
-
-end subroutine mult_heonebody0_one
-
-
-subroutine mult_heonebody0sparse_one(in, out,m2val)
-  use myparams
-  use myprojectmod  
-  implicit none
-
-  integer :: m2val, ixi, qq,ieta, i
-  complex*16 :: in(numerad,lbig+1), out(numerad,lbig+1), work(lbig+1), work2(lbig+1)  
-
-  out=0.d0
-  qq=lbig+1
-  do ixi=1,numerad
-     work2=in(ixi,:)
-     call zgemv('N',qq,qq,(1.d0,0.d0),sparseops_eta(:,:,ixi,abs(m2val)+1),qq,work2,1,(0.d0,0.d0), work, 1)
-     out(ixi,:)=out(ixi,:)+work(1:lbig+1)
-  enddo
-  i=2*bandwidth+1
-  do ieta=1,lbig+1
-     call zgbmv('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),sparseops_xi_banded(:,:,ieta,abs(m2val)+1),i,in(:,ieta),1,(1.d0,0.d0), out(:,ieta), 1)
-  enddo
-  out(:,:) = out(:,:) - sparseops_diag(:,:,abs(m2val)+1) * in(:,:)
-
-end subroutine mult_heonebody0sparse_one
-
 
 subroutine op_yderiv(notusedin,notusedout)
   use myparams
