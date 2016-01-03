@@ -738,31 +738,31 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
 
            do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
 
-           dirphase=www%singlewalkdirphase(iwalk,config1)
-           ispf=www%singlewalkopspf(1,iwalk,config1)
-           jspf=www%singlewalkopspf(2,iwalk,config1)
+              dirphase=www%singlewalkdirphase(iwalk,config1)
+              ispf=www%singlewalkopspf(1,iwalk,config1)
+              jspf=www%singlewalkopspf(2,iwalk,config1)
               
-           flag=0
-           select case (iwhich)
-           case (1)
-              ind=lind(ispf,jspf) ; flag=1  !!unfuck this
-           case (2)
-              if (shells(ispf).ne.shells(jspf)) then
+              flag=0
+              select case (iwhich)
+              case (1)
+                 ind=lind(ispf,jspf) ; flag=1  !!unfuck this
+              case (2)
+                 if (shells(ispf).ne.shells(jspf)) then
 !! FIRSTWAY
-                 ind=llind(ispf,jspf);                 flag=1
-              endif
-           case default
-              ind=0
-              OFLWR "get_denconstraint1 error"; CFLST
-           end select
+                    ind=llind(ispf,jspf);                 flag=1
+                 endif
+              case default
+                 ind=0
+                 OFLWR "get_denconstraint1 error"; CFLST
+              end select
 
-           if (flag==1) then
+              if (flag==1) then
 
 !!$              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:,:)*timefac,a1(:,:),numr*numvects)
 !!$              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:,:),a1p(:,:)*timefac,numr*numvects)
 
-              liosolve(ind)=liosolve(ind)+                   dirphase*csum
-           endif
+                 liosolve(ind)=liosolve(ind)+                   dirphase*csum
+              endif
            enddo  !! iwalk
         enddo     !! ihop
      enddo
@@ -1039,24 +1039,24 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,a1,a1p,ihop,iwalk,csum,config2,dirphase,a2,a2p,ispf,jspf,flag,ind) REDUCTION(+:liosolve)
 
 !$OMP DO SCHEDULE(DYNAMIC)
-         do config1=www%botconfig,www%topconfig
+     do config1=www%botconfig,www%topconfig
 
-           a1(:,:)=avector(:,config1,:)
-           a1p(:,:)=avectorp(:,config1,:)
+        a1(:,:)=avector(:,config1,:)
+        a1p(:,:)=avectorp(:,config1,:)
            
 !!$           do iwalk=1,www%numsinglewalks(config1)
 !!$              config2=www%singlewalk(iwalk,config1)
 
-           do ihop=1,www%numsinglehops(config1)
-              config2=www%singlehop(ihop,config1)
+        do ihop=1,www%numsinglehops(config1)
+           config2=www%singlehop(ihop,config1)
 
-              a2(:,:)=bigavector(:,config2,:)
-              a2p(:,:)=bigavectorp(:,config2,:)
+           a2(:,:)=bigavector(:,config2,:)
+           a2p(:,:)=bigavectorp(:,config2,:)
 
-              csum = dot(a2p(:,:)*timefac,a1(:,:),numvects*numr) + &
-                   dot(a2(:,:),a1p(:,:)*timefac,numvects*numr)
+           csum = dot(a2p(:,:)*timefac,a1(:,:),numvects*numr) + &
+                dot(a2(:,:),a1p(:,:)*timefac,numvects*numr)
 
-              do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
+           do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
               
               dirphase=www%singlewalkdirphase(iwalk,config1)
               ispf=www%singlewalkopspf(1,iwalk,config1)
@@ -1069,7 +1069,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
               endif
               
               if (flag==1) then
-                 
+
 !!$                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:)*timefac,a1(:),numvects)
 !!$                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:),a1p(:)*timefac,numvects)
 

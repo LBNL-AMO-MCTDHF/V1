@@ -115,23 +115,23 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
         !! doubly off diagonal walks
 
 !$OMP DO SCHEDULE(DYNAMIC)
-     do config1=www%botconfig,www%topconfig
+  do config1=www%botconfig,www%topconfig
 
-        a1(:,:)=avector1(:,config1,:)
+     a1(:,:)=avector1(:,config1,:)
         
 !!$        do iwalk=1,www%numdoublewalks(config1)
 !!$           config2=www%doublewalk(iwalk,config1)
 
-        do ihop=1,www%numdoublehops(config1)
-           config2=www%doublehop(ihop,config1)
+     do ihop=1,www%numdoublehops(config1)
+        config2=www%doublehop(ihop,config1)
 
-           do ii=1,numvects
-              a2(:,ii)=avector2(:,config2,ii)/rvalues(:)
-           enddo
+        do ii=1,numvects
+           a2(:,ii)=avector2(:,config2,ii)/rvalues(:)
+        enddo
 
-           csum=dot(a1,a2,numvects*numr)           !! 1/R factor above
+        csum=dot(a1,a2,numvects*numr)           !! 1/R factor above
 
-           do iwalk=www%doublehopwalkstart(ihop,config1),www%doublehopwalkend(ihop,config1)
+        do iwalk=www%doublehopwalkstart(ihop,config1),www%doublehopwalkend(ihop,config1)
            
            dirphase=www%doublewalkdirphase(iwalk,config1)
            
@@ -148,10 +148,10 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
                 reducedpottally(iispf,jjspf,ispf,jspf) + &
                 dirphase*csum           !! 1/R factor above
 
-           enddo
-
         enddo
-     enddo   ! config1
+
+     enddo
+  enddo   ! config1
 !$OMP END DO
 !$OMP END PARALLEL
 
@@ -216,11 +216,11 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
 
         do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
 
-        dirphase=www%singlewalkdirphase(iwalk,config1)
-        ispf=www%singlewalkopspf(1,iwalk,config1);        jspf=www%singlewalkopspf(2,iwalk,config1)
+           dirphase=www%singlewalkdirphase(iwalk,config1)
+           ispf=www%singlewalkopspf(1,iwalk,config1);        jspf=www%singlewalkopspf(2,iwalk,config1)
 
-        myredpro(jspf,ispf)=myredpro(jspf,ispf)+ &
-             dirphase*csum
+           myredpro(jspf,ispf)=myredpro(jspf,ispf)+ &
+                dirphase*csum
 
         enddo
 
@@ -290,27 +290,27 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
   myinvr(:,:)=0.d0;  myr(:,:)=0.d0;  myinvrsq(:,:)=0.d0
 
 !$OMP DO SCHEDULE(DYNAMIC)
-     do config1=www%botconfig,www%topconfig
-        a1(:,:)=avector1(:,config1,:)
+  do config1=www%botconfig,www%topconfig
+     a1(:,:)=avector1(:,config1,:)
 
 !!$        do iwalk=1,www%numsinglewalks(config1)
 !!$           config2=www%singlewalk(iwalk,config1)
 
-        do ihop=1,www%numsinglehops(config1)
-           config2=www%singlehop(ihop,config1)
+     do ihop=1,www%numsinglehops(config1)
+        config2=www%singlehop(ihop,config1)
 
-           a2(:,:)=avector2(:,config2,:)
-           do ii=1,numvects
-              a2r(:,ii)=a2(:,ii)*rvalues(:)
-              a2inv(:,ii)=a2(:,ii)*invrvalues(:)
-              a2invsq(:,ii)=a2(:,ii)*invrsqvalues(:)
-           enddo
+        a2(:,:)=avector2(:,config2,:)
+        do ii=1,numvects
+           a2r(:,ii)=a2(:,ii)*rvalues(:)
+           a2inv(:,ii)=a2(:,ii)*invrvalues(:)
+           a2invsq(:,ii)=a2(:,ii)*invrsqvalues(:)
+        enddo
 
-           invdot=dot(a1,a2inv,numvects*numr)
-           rdot=dot(a1,a2r,numvects*numr)
-           invsqdot=dot(a1,a2invsq,numvects*numr)
+        invdot=dot(a1,a2inv,numvects*numr)
+        rdot=dot(a1,a2r,numvects*numr)
+        invsqdot=dot(a1,a2invsq,numvects*numr)
 
-           do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
+        do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
 
            dirphase=www%singlewalkdirphase(iwalk,config1)
            ispf=www%singlewalkopspf(1,iwalk,config1);              jspf=www%singlewalkopspf(2,iwalk,config1)
@@ -319,14 +319,14 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
            myr(jspf,ispf)=myr(jspf,ispf)+         dirphase*rdot
            myinvrsq(jspf,ispf)=myinvrsq(jspf,ispf)+     dirphase*invsqdot
 
-           enddo
-
         enddo
+
      enddo
+  enddo
 !$OMP END DO
-     reducedinvr(:,:)=reducedinvr(:,:)+myinvr(:,:)
-     reducedinvrsq(:,:)=reducedinvrsq(:,:)+myinvrsq(:,:)
-     reducedr(:,:)=reducedr(:,:)+myr(:,:)
+  reducedinvr(:,:)=reducedinvr(:,:)+myinvr(:,:)
+  reducedinvrsq(:,:)=reducedinvrsq(:,:)+myinvrsq(:,:)
+  reducedr(:,:)=reducedr(:,:)+myr(:,:)
 !$OMP END PARALLEL
 
   deallocate(avector2)
@@ -335,6 +335,4 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
   call mympireduce(reducedinvrsq(:,:), www%nspf**2)
 
 end subroutine get_reducedr
-
-
 

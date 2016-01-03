@@ -45,8 +45,8 @@ subroutine autocorrelate()
   if (mod(xcalledflag,autosteps).eq.0) then
      do imc=1,mcscfnum
 
-           call autocorrelate_one(www,bwwptr,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:), &
-                orig_avectors(:,:,imc), overlaps(calledflag,imc),numr)
+        call autocorrelate_one(www,bwwptr,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:), &
+             orig_avectors(:,:,imc), overlaps(calledflag,imc),numr)
 
      enddo
 

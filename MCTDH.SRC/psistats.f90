@@ -123,8 +123,8 @@ subroutine psistats( thistime )
   calledflag=1
 
 
-     call get_psistats(www,bwwptr,yyy%cmfpsivec(spfstart,0),mcscfnum,yyy%cmfpsivec(astart(1),0),&
-          mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
+  call get_psistats(www,bwwptr,yyy%cmfpsivec(spfstart,0),mcscfnum,yyy%cmfpsivec(astart(1),0),&
+       mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
 
   if (myrank.eq.1) then
      open(662, file=psistatsfile, status="old", position="append")
@@ -294,7 +294,7 @@ subroutine finalstats( )
   use xxxmod
   implicit none
 
-     call finalstats0(yyy%cmfpsivec(spfstart:spfend,0),yyy%cmfpsivec(astart(1):aend(mcscfnum),0),www,bwwptr)
+  call finalstats0(yyy%cmfpsivec(spfstart:spfend,0),yyy%cmfpsivec(astart(1):aend(mcscfnum),0),www,bwwptr)
 
 end subroutine finalstats
 

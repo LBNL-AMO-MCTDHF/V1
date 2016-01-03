@@ -299,12 +299,12 @@ subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixt
   do config1=www%botconfig,www%topconfig
      do ihop=1,www%numsinglehops(config1)
 
-           if (sparseconfigflag.eq.0) then
+        if (sparseconfigflag.eq.0) then
 !!              myind=www%singlewalk(iwalk,config1)
-              myind=www%singlehop(ihop,config1)
-           else
-              myind=ihop
-           endif
+           myind=www%singlehop(ihop,config1)
+        else
+           myind=ihop
+        endif
 
         csum=0d0
         do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
@@ -318,8 +318,8 @@ subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixt
 
         enddo
 
-           smallmatrixtr(myind,config1)=smallmatrixtr(myind,config1)+   &
-                csum
+        smallmatrixtr(myind,config1)=smallmatrixtr(myind,config1)+   &
+             csum
   
      enddo
   enddo

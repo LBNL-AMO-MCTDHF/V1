@@ -121,7 +121,7 @@ subroutine replace_withnat(printflag)
      WRFL; CFL
   endif
 
-     call bioset(natrepbiovar,smo,numr,bwwptr)
+  call bioset(natrepbiovar,smo,numr,bwwptr)
 
   do imc=1,mcscfnum
 
@@ -228,12 +228,12 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
 
         do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
 
-        dirphase=www%singlewalkdirphase(iwalk,config1)
-        ispf=www%singlewalkopspf(1,iwalk,config1)  !! goes with config1
-        jspf=www%singlewalkopspf(2,iwalk,config1)  !! goes with config2
+           dirphase=www%singlewalkdirphase(iwalk,config1)
+           ispf=www%singlewalkopspf(1,iwalk,config1)  !! goes with config1
+           jspf=www%singlewalkopspf(2,iwalk,config1)  !! goes with config2
 
-        mydenmat(ispf,jspf)=mydenmat(ispf,jspf)+ &
-             csum*dirphase
+           mydenmat(ispf,jspf)=mydenmat(ispf,jspf)+ &
+                csum*dirphase
 
 !!$!!  ONCE AND FOR ALL 2014           :                     RIGHT MULTIPLYING!!!
 !!$           denmat(ispf,jspf)=denmat(ispf,jspf)+ &
