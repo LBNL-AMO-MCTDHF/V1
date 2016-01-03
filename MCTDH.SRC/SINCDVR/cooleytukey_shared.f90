@@ -398,18 +398,19 @@ subroutine getallprimefactors(dim,factormax,numfactors,allfactors)
   thisdim=dim
   flag=0
 
-798 if (numfactors.eq.factormax) then
-     allfactors(factormax)=thisdim
-     return
-  else
-     call getprimefactor(thisdim,allfactors(numfactors))
-     if (allfactors(numfactors).eq.thisdim) then
-        return
+  do while (42.eq.42)
+     if (numfactors.eq.factormax) then
+        allfactors(factormax)=thisdim
+        return  !! RETURN
+     else
+        call getprimefactor(thisdim,allfactors(numfactors))
+        if (allfactors(numfactors).eq.thisdim) then
+           return  !! RETURN
+        endif
+        thisdim=thisdim/allfactors(numfactors)
+        numfactors=numfactors+1
      endif
-     thisdim=thisdim/allfactors(numfactors)
-     numfactors=numfactors+1
-  endif
-go to 798
+  enddo
 end subroutine getallprimefactors
 
 
