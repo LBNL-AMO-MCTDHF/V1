@@ -842,7 +842,10 @@ endif
   www%alltopconfigs(:)=0
   jj=1
   do ii=1,nprocs-1
-     do while (bigspinblockend(jj).lt.www%numconfig*ii/nprocs)
+
+!!     do while (bigspinblockend(jj).lt.www%numconfig*ii/nprocs)
+
+     do while (bigspinblockend(jj).lt.floor(1d0*www%numconfig*ii/nprocs))
         www%alltopconfigs(ii:)=bigspinblockend(jj)
         jj=jj+1
      enddo
