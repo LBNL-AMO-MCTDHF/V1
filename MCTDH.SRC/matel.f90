@@ -288,19 +288,23 @@ subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixt
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf)
   DATATYPE,intent(out) :: smallmatrixtr(www%singlematsize,www%configstart:www%configend)
-  DATATYPE :: csum
+  DATATYPE :: csum, myvec(www%singlematsize)
   integer ::    config1,  iwalk,myind,ihop
 
   smallmatrixtr=0d0; 
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ihop,iwalk,myind,csum) REDUCTION(+:smallmatrixtr)
+!! try adding REDUCTION(+:smallmatrixtr) if problems
+!!
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ihop,iwalk,myind,csum,myvec)
 
 !$OMP DO SCHEDULE(DYNAMIC)
   do config1=www%botconfig,www%topconfig
+
+     myvec(:)=0d0
+
      do ihop=1,www%numsinglehops(config1)
 
         if (sparseconfigflag.eq.0) then
-!!              myind=www%singlewalk(iwalk,config1)
            myind=www%singlehop(ihop,config1)
         else
            myind=ihop
@@ -309,8 +313,6 @@ subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixt
         csum=0d0
         do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
 
-!!$     do iwalk=1,www%numsinglewalks(config1)
-
            csum=csum+&
                 onebodymat(www%singlewalkopspf(1,iwalk,config1), &
                 www%singlewalkopspf(2,iwalk,config1)) *  &
@@ -318,10 +320,10 @@ subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixt
 
         enddo
 
-        smallmatrixtr(myind,config1)=smallmatrixtr(myind,config1)+   &
-             csum
+        myvec(myind)=csum
   
      enddo
+     smallmatrixtr(:,config1)=myvec(:)
   enddo
 !$OMP END DO
 !$OMP END PARALLEL
@@ -342,31 +344,45 @@ subroutine arbitraryconfig_matel_doubles00transpose(www,twobodymat, smallmatrixt
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: twobodymat(www%nspf,www%nspf,www%nspf,www%nspf)
   DATATYPE,intent(out) :: smallmatrixtr(www%doublematsize,www%configstart:www%configend)
+  DATATYPE :: csum, myvec(www%doublematsize)
   integer ::    config1, iwalk,myind,ihop
 
   smallmatrixtr=0d0;
 
+!! try adding REDUCTION(+:smallmatrixtr) if problems
+!!
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ihop,iwalk,myind,csum,myvec) 
+
+!$OMP DO SCHEDULE(DYNAMIC)
   do config1=www%botconfig,www%topconfig
 
+     myvec(:)=0d0
+
      do ihop=1,www%numdoublehops(config1)
+        if (sparseconfigflag.eq.0) then
+           myind=www%doublehop(ihop,config1)
+        else
+           myind=ihop
+        endif
+
+        csum=0d0
         do iwalk=www%doublehopwalkstart(ihop,config1),www%doublehopwalkend(ihop,config1)
 
 !!$     do iwalk=1,www%numdoublewalks(config1)
 
-           if (sparseconfigflag.eq.0) then
-              myind=www%doublewalk(iwalk,config1)
-           else
-              myind=ihop
-           endif
-           smallmatrixtr(myind,config1)=smallmatrixtr(myind,config1) + &           
+           csum=csum+&
                 twobodymat(www%doublewalkdirspf(1,iwalk,config1), &
                 www%doublewalkdirspf(2,iwalk,config1),   &
                 www%doublewalkdirspf(3,iwalk,config1),   &
                 www%doublewalkdirspf(4,iwalk,config1))* &
                 www%doublewalkdirphase(iwalk,config1) 
         enddo
+        myvec(myind)=csum
      enddo
+     smallmatrixtr(:,config1)=myvec(:)
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
   if (sparseconfigflag.eq.0) then
      call mpiallgather(smallmatrixtr(:,:),www%numconfig**2,www%configsperproc(:)*www%numconfig,www%maxconfigsperproc*www%numconfig)
