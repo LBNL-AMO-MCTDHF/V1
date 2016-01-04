@@ -649,18 +649,7 @@ subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,
   integer, save :: xcount=0, times(10)=0,fttimes(10)=0,qqcount=0
   DATATYPE :: twoemattemp(numspf,numspf), twoeden03(numpoints(1),numpoints(2),numpoints(3),numspf**fft_batchdim), &
        tempden03(numpoints(1),numpoints(2),numpoints(3),numspf**fft_batchdim)          !! AUTOMATIC
-
-!!$!!$
-!!$!!$  DATATYPE ::  myden(totpoints)         !! I WAS GETTING SEGFAULTS THIS WAY 
-!!$                                           !!
-!!$DATATYPE,allocatable,save ::  myden(:)     !! OR THIS WAY (save)  if I don't allocate extra
-!!$!OxMP THREADPRIVATE(myden)                 !!     regardless of whether or not this is added   04-26-15
-!!$!!$                                           !!
-!!$!!$    DATATYPE,allocatable ::  myden(:)   !! ONLY WAY THAT DIDN'T SEGFAULT BEFORE (with private)
-!!$!!$                                        !!     04-28 might be good now, but leaving it this way (factor of ten)
-!!$
-  DATATYPE ::  myden(2*totpoints)
-!!$
+  DATATYPE ::  myden(totpoints)
 
   times(:)=0; fttimes(:)=0;   !! ZEROING TIMES... not cumulative
 
@@ -691,11 +680,7 @@ subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,
      return
   endif
 
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP MASTER
   tempden03(:,:,:,:)=0; twoeden03(:,:,:,:)=0
-!$OMP END MASTER
-!$OMP END PARALLEL
 
   call myclock(jtime); times(1)=times(1)+jtime-itime;  
   
@@ -744,33 +729,20 @@ subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,
   enddo  !! DO INDEX2B
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!! reduction is performed in main MCTDHF routines NOT HERE !!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!! MYDEN IS NO LONGER THREADPRIVATE CROSSING FINGERS
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,spf2b,twoemattemp,myden)   
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!! MPI reduction is performed in main MCTDHF routines NOT HERE !!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   twoemattemp(:,:)=0
 
-!!$CROSSINGFINGERS !!$ LEAVING IT THIS WAY
-!!$CROSSINGFINGERS  allocate(myden(totpoints*10))
-
-!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
   do spf1b=1,numspf
   do spf1a=1,numspf
-     myden(1:totpoints)=CONJUGATE(inspfs10(:,spf1a)) * inspfs20(:,spf1b)
+     myden(:)=CONJUGATE(inspfs10(:,spf1a)) * inspfs20(:,spf1b)
 
      call MYGEMV('T',totpoints,numspf**2,DATAONE,twoereduced,totpoints,myden,1,DATAZERO,twoemattemp(:,:),1)
      twoematel(:,:,spf1a,spf1b)=twoemattemp(:,:)
   enddo
   enddo
-!$OMP END DO
-
-!!$CROSSINGFINGERS  deallocate(myden)
-
-!$OMP END PARALLEL
 
   call myclock(jtime); times(6)=times(6)+jtime-itime;  
   lasttime=jtime
@@ -1010,13 +982,8 @@ subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
 
   circhigh=allsize/circsize
 
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP MASTER
   twoereduced(:,:)=0d0;  reducedwork3d(:,:,:,:)=0d0;
   reducedhuge(:,:,:,:,:,:,:)=0;  twoeden03huge(:,:,:,:,:,:,:)=0
-!$OMP END MASTER
-!$OMP END PARALLEL
-
 
   do ii=2,griddim
      if (gridpoints(ii).ne.gridpoints(1)) then
@@ -1754,32 +1721,22 @@ subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
      ibox=mod(nbox(indim)+boxrank(indim)-1+deltabox,nbox(indim))+1
      jbox=mod(nbox(indim)+boxrank(indim)-1-deltabox,nbox(indim))+1
     
-!! OMP PROBLEMS LAWRENCIUM - OBSERVE ERRORS IN BLOCKLANCZOS ORBITALS THREADS > 1 - 07-2015
-!! COMMENTING THIS OUT!!  REINSTATE ONLY WITH TESTING LARGE NUMBER OF THREADS BOXES PENCILS AND SHEETS
-!! 01-2016 - going for it again without testing.  zeroing work and work2
-
      work(:,:)=0d0
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
      select case(option)
      case(1)  !! KE
-!$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,ketot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
         enddo
-!$OMP END DO
      case(2) 
-!$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,fdtot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
         enddo
-!$OMP END DO
      case default 
         OFLWR "WHAAAAT"; CFLST
      end select
 
 ! (Implied barrier at end parallel)
-!$OMP END PARALLEL
      call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
      
      if (deltabox.ne.0) then
@@ -1906,30 +1863,20 @@ subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
 
      call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
 
-!! OMP PROBLEMS LAWRENCIUM - OBSERVE ERRORS IN BLOCKLANCZOS ORBITALS THREADS > 1 - 07-2015
-!! COMMENTING THIS OUT!!  REINSTATE ONLY WITH TESTING LARGE NUMBER OF THREADS BOXES PENCILS AND SHEETS
-!! 01-2016 - going for it again without testing.
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
      select case(option)
      case(1)  !! KE
-!$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,work(:,ii),nnn,ketot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
         enddo
-!$OMP END DO
      case(2) 
-!$OMP DO SCHEDULE(STATIC)
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,work(:,ii),nnn,fdtot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
         enddo
-!$OMP END DO
      case default 
         OFLWR "WHAAAAT"; CFLST
      end select
 
 ! (Implied barrier at end parallel)
-!$OMP END PARALLEL
      call myclock(btime); times(3)=times(3)+btime-atime
   enddo
 
@@ -1984,31 +1931,20 @@ subroutine mult_all0(in, out,idim,nnn,mmm,option)
   DATATYPE,intent(out) :: out(nnn,numpoints(idim),mmm)
   integer :: jj
 
-!! OMP PROBLEMS LAWRENCIUM - OBSERVE ERRORS IN BLOCKLANCZOS ORBITALS THREADS > 1 - 07-2015
-!! COMMENTING THIS OUT!!  REINSTATE ONLY WITH TESTING LARGE NUMBER OF THREADS BOXES PENCILS AND SHEETS
-!! 01-2016 - going for it again without testing.  zeroing out(:,:,:) now:
-
   out(:,:,:)=0d0
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
 
   select case(option)
   case(1)  !! KE
-!$OMP DO SCHEDULE(STATIC)
      do jj=1,mmm
         call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,ketot(idim)%mat,gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
      enddo
-!$OMP END DO
   case(2)  !! X Y or Z derivative (real valued antisymmetric)
-!$OMP DO SCHEDULE(STATIC)
      do jj=1,mmm
         call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,fdtot(idim)%mat,gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
      enddo
-!$OMP END DO
   case default 
      OFLWR "WHAAAAT",option; CFLST
   end select
-!$OMP END PARALLEL
 
 end subroutine mult_all0
 
@@ -2097,13 +2033,10 @@ subroutine mult_all0_big_gen_complex(in, out,indim,outdim,mat,nnn,mmm)
   integer :: jj
 
   out(:,:,:)=0d0
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(jj)
-!$OMP DO SCHEDULE(STATIC)
   do jj=1,mmm
      call ZGEMM('N','T',nnn,outdim,indim,(1d0,0d0),in(:,:,jj),nnn,mat,outdim,(0d0,0d0), out(:,:,jj), nnn)
   enddo
-!$OMP END DO
-!$OMP END PARALLEL
+
 end subroutine mult_all0_big_gen_complex
 
 
