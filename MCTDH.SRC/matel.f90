@@ -123,43 +123,38 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
   implicit none
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
-  DATATYPE,allocatable :: ttempspfs(:,:),tempmatel(:,:)
-  integer :: j
+  DATATYPE,allocatable :: ttempspfs(:,:),workspfs(:,:)
 
-  allocate(ttempspfs(spfsize,nspf),tempmatel(nspf,nspf))
-  ttempspfs=0; tempmatel=0
+  allocate(ttempspfs(spfsize,nspf),workspfs(spfsize,nspf))
+
+  ttempspfs=0; workspfs=0
 
   matrix_ptr%xpotmatel(:,:)=0d0
 
-  do j=1,nspf
-     call mult_pot(inspfs2(:,j),ttempspfs(:,j))
-  enddo
+  call mult_pot(nspf,inspfs2(:,:),workspfs(:,:))
+
+!! usually just adding zeroes here
+  call hatom_op(nspf,inspfs2(:,:),ttempspfs(:,:))
+  workspfs(:,:)=workspfs(:,:)+ttempspfs(:,:)
 
 !! potmatel is proper ordering.  fast index is conjg.
 
-  call MYGEMM(CNORMCHAR,'N',nspf,nspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfs, spfsize, DATAZERO, matrix_ptr%xpotmatel(:,:), nspf)
-
-  call hatom_matel(inspfs1,inspfs2,tempmatel, nspf)
-
-  matrix_ptr%xpotmatel(:,:)=matrix_ptr%xpotmatel(:,:)+ tempmatel(:,:)
-
   if (numfrozen.gt.0) then
-!! only call of op_frozen_exchange.
 
-     ttempspfs=0d0
-     call op_frozen_exchange(inspfs2,ttempspfs)
-     do j=1,nspf
-        call op_frozenreduced(inspfs2(:,j),ttempspfs(:,j))   !! ADDS to ttempspfs
-     enddo
-
-     call MYGEMM(CNORMCHAR,'N',nspf,nspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfs, spfsize, DATAONE, matrix_ptr%xpotmatel(:,:) ,nspf)
+     call op_frozen_exchange(nspf,inspfs2(:,:),ttempspfs(:,:))
+     workspfs(:,:)=workspfs(:,:)+ttempspfs(:,:)
+     call op_frozenreduced(nspf,inspfs2(:,:),ttempspfs(:,:))
+     workspfs(:,:)=workspfs(:,:)+ttempspfs(:,:)
   endif
+
+  call MYGEMM(CNORMCHAR,'N',nspf,nspf, spfsize, DATAONE, inspfs1, spfsize, workspfs, &
+       spfsize, DATAZERO, matrix_ptr%xpotmatel(:,:), nspf)
+
+  deallocate(ttempspfs,workspfs)
 
   if (parorbsplit.eq.3) then
      call mympireduce(matrix_ptr%xpotmatel(:,:),nspf**2)
   endif
-
-  deallocate(ttempspfs,tempmatel)
 
 end subroutine pot_matel
 
@@ -173,7 +168,6 @@ subroutine pulse_matel(matrix_ptr,inspfs1,inspfs2)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
   DATATYPE :: nullcomplex(1), dipoles(3)
   DATATYPE,allocatable :: ttempspfsxx(:,:), ttempspfsyy(:,:), ttempspfszz(:,:)
-  integer :: ispf
 
   allocate(ttempspfsxx(spfsize,nspf), ttempspfsyy(spfsize,nspf), ttempspfszz(spfsize,nspf))
   ttempspfsxx=0; ttempspfsyy=0; ttempspfszz=0
@@ -181,12 +175,9 @@ subroutine pulse_matel(matrix_ptr,inspfs1,inspfs2)
   matrix_ptr%xpulsematelxx=0.d0;     matrix_ptr%xpulsematelyy=0.d0;     matrix_ptr%xpulsematelzz=0.d0
 
   if (velflag.eq.0) then
-
-     do ispf=1,nspf
-        call lenmultiply(inspfs2(:,ispf),ttempspfsxx(:,ispf), DATAONE,DATAZERO,DATAZERO)
-        call lenmultiply(inspfs2(:,ispf),ttempspfsyy(:,ispf), DATAZERO,DATAONE,DATAZERO)
-        call lenmultiply(inspfs2(:,ispf),ttempspfszz(:,ispf), DATAZERO,DATAZERO,DATAONE)
-     enddo
+     call lenmultiply(nspf,inspfs2(:,:),ttempspfsxx(:,:), DATAONE,DATAZERO,DATAZERO)
+     call lenmultiply(nspf,inspfs2(:,:),ttempspfsyy(:,:), DATAZERO,DATAONE,DATAZERO)
+     call lenmultiply(nspf,inspfs2(:,:),ttempspfszz(:,:), DATAZERO,DATAZERO,DATAONE)
   else
      call velmultiply(nspf,inspfs2(:,:),ttempspfsxx(:,:), DATAONE,DATAZERO,DATAZERO)
      call velmultiply(nspf,inspfs2(:,:),ttempspfsyy(:,:), DATAZERO,DATAONE,DATAZERO)
@@ -260,18 +251,6 @@ subroutine frozen_matels()
 
 end subroutine frozen_matels
 
-
-!! ADDS TO OUTSPFS
-
-subroutine op_frozen_exchange(inspfs,outspfs)
-  use parameters
-  implicit none
-  DATATYPE,intent(in) :: inspfs(spfsize,nspf)
-  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-
-  call call_frozen_exchange(inspfs,outspfs)
-
-end subroutine op_frozen_exchange
 
 
 subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixtr)

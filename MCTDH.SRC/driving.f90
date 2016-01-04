@@ -104,11 +104,9 @@ subroutine drivingtrans(thistime)
 
   do imc=1,mcscfnum
      if (velflag.eq.0) then
-        do i=1,nspf
-           call lenmultiply(tempdrivingorbs(:,i),multorbsxx(:,i),DATAONE,DATAZERO,DATAZERO)
-           call lenmultiply(tempdrivingorbs(:,i),multorbsyy(:,i),DATAZERO,DATAONE,DATAZERO)
-           call lenmultiply(tempdrivingorbs(:,i),multorbszz(:,i),DATAZERO,DATAZERO,DATAONE)
-        enddo
+        call lenmultiply(nspf,tempdrivingorbs(:,:),multorbsxx(:,:),DATAONE,DATAZERO,DATAZERO)
+        call lenmultiply(nspf,tempdrivingorbs(:,:),multorbsyy(:,:),DATAZERO,DATAONE,DATAZERO)
+        call lenmultiply(nspf,tempdrivingorbs(:,:),multorbszz(:,:),DATAZERO,DATAZERO,DATAONE)
      else
         call velmultiply(nspf,tempdrivingorbs(:,:),multorbsxx(:,:),DATAONE,DATAZERO,DATAZERO)
         call velmultiply(nspf,tempdrivingorbs(:,:),multorbsyy(:,:),DATAZERO,DATAONE,DATAZERO)

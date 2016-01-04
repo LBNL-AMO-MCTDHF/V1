@@ -133,25 +133,12 @@ end subroutine get_twoe_new
 
 
 
-subroutine op_yderiv(notusedin,notusedout)
+subroutine op_yderiv(howmanynotused,notusedin,notusedout)
   use myparams
   implicit none
+  integer :: howmanynotused
   DATATYPE :: notusedin(*), notusedout(*)
   OFLWR "WHAT! no op_yderiv atom."; CFLST
-  notusedout(1)=notusedin(1)
+  notusedout(1)=notusedin(1)*howmanynotused
 end subroutine op_yderiv
-subroutine op_reyderiv(notusedin,notusedout)
-  use myparams
-  implicit none
-  DATATYPE :: notusedin(*), notusedout(*)
-  OFLWR "WHAT! no op_yderiv atom."; CFLST
-  notusedout(1)=notusedin(1)
-end subroutine op_reyderiv
-subroutine op_imyderiv(notusedin,notusedout)
-  use myparams
-  implicit none
-  DATATYPE :: notusedin(*), notusedout(*)
-  OFLWR "WHAT! no op_yderiv atom."; CFLST
-  notusedout(1)=notusedin(1)
-end subroutine op_imyderiv
 

@@ -326,95 +326,40 @@ subroutine op_lplusminus_one(in,out,inkind,m2val)
 end subroutine op_lplusminus_one
   
 
-subroutine op_yderiv(in,out)
+subroutine op_yderiv(howmany,in,out)
   use myprojectmod
   use myparams
   implicit none
-  DATATYPE, intent(in) :: in(numerad,lbig+1,-mbig:mbig)
-  DATATYPE, intent(out) :: out(numerad,lbig+1,-mbig:mbig)
+  integer,intent(in) :: howmany
+  DATATYPE, intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE, intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE :: work(lbig+1),work2(lbig+1)  !!AUTOMATIC
-  integer ::  ixi, ieta, i,m2val
+  integer ::  ixi, ieta, i,m2val,ii
 
   out=0.d0
   if (bornopflag==1) then
      return
   endif
 
+  do ii=1,howmany
   do m2val=-mbig,mbig
      do ixi=1,numerad
-        work2=in(ixi,:,m2val)
-        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),sparseyops_eta(:,:,ixi,abs(m2val)+1),lbig+1,work2,1,(0.d0,0.d0), work, 1)
-        out(ixi,:,m2val)= out(ixi,:,m2val) + work(1:lbig+1)  
+        work2=in(ixi,:,m2val,ii)
+        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),sparseyops_eta(:,:,ixi,abs(m2val)+1),lbig+1,&
+             work2,1,(0.d0,0.d0), work, 1)
+        out(ixi,:,m2val,ii)= out(ixi,:,m2val,ii) + work(1:lbig+1)  
      enddo
 
      i=2*bandwidth+1
      do ieta=1,lbig+1
-        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),sparseyops_xi_banded(:,:,ieta,abs(m2val)+1),i, in(:,ieta,m2val),1,(1.d0,0.d0), out(:,ieta,m2val), 1)
+        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),&
+             sparseyops_xi_banded(:,:,ieta,abs(m2val)+1),i, &
+             in(:,ieta,m2val,ii),1,(1.d0,0.d0), out(:,ieta,m2val,ii), 1)
      enddo
-     out(:,:,m2val) = out(:,:,m2val) - sparseyops_diag(:,:,abs(m2val)+1) * in(:,:,m2val) 
+     out(:,:,m2val,ii) = out(:,:,m2val,ii) - sparseyops_diag(:,:,abs(m2val)+1) * in(:,:,m2val,ii) 
+  enddo
   enddo
 
 end subroutine op_yderiv
 
-
-subroutine op_reyderiv(in,out)
-  use myprojectmod
-  use myparams
-  implicit none
-  DATATYPE, intent(in) :: in(numerad,lbig+1,-mbig:mbig)
-  DATATYPE, intent(out) :: out(numerad,lbig+1,-mbig:mbig)
-  DATATYPE ::work2(lbig+1), work(lbig+1)  !!AUTOMATIC
-  integer ::  ixi, ieta, i,m2val
-
-  out=0.d0
-  if (bornopflag==1) then
-     return
-  endif
-
-  do m2val=-mbig,mbig
-     do ixi=1,numerad
-        work2=in(ixi,:,m2val)
-        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),sparseyops_eta(:,:,ixi,abs(m2val)+1),lbig+1,work2,1,(0.d0,0.d0), work, 1)
-        out(ixi,:,m2val)= out(ixi,:,m2val) + work(1:lbig+1)  
-     enddo
-
-     i=2*bandwidth+1
-     do ieta=1,lbig+1
-        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),(0d0,0d0)+real(sparseyops_xi_banded(:,:,ieta,abs(m2val)+1),8),i, in(:,ieta,m2val),1,(1.d0,0.d0), out(:,ieta,m2val), 1)
-     enddo
-     out(:,:,m2val) = out(:,:,m2val) - real(sparseyops_diag(:,:,abs(m2val)+1),8) * in(:,:,m2val) 
-  enddo
-
-end subroutine op_reyderiv
-
-
-subroutine op_imyderiv(in,out)
-  use myprojectmod
-  use myparams
-  implicit none
-  DATATYPE, intent(in) :: in(numerad,lbig+1,-mbig:mbig)
-  DATATYPE, intent(out) :: out(numerad,lbig+1,-mbig:mbig)
-  DATATYPE :: work(lbig+1),work2(lbig+1)  !!AUTOMATIC
-  integer ::  ixi, ieta, i,m2val
-
-  out=0.d0
-  if (bornopflag==1) then
-     return
-  endif
-
-  do m2val=-mbig,mbig
-     do ixi=1,numerad
-        work2=in(ixi,:,m2val)
-        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),sparseyops_eta(:,:,ixi,abs(m2val)+1),lbig+1,work2,1,(0.d0,0.d0), work, 1)
-        out(ixi,:,m2val)= out(ixi,:,m2val) + work(1:lbig+1)  
-     enddo
-
-     i=2*bandwidth+1
-     do ieta=1,lbig+1
-        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),(0d0,0d0)+imag((0d0,0d0)+sparseyops_xi_banded(:,:,ieta,abs(m2val)+1)),i, in(:,ieta,m2val),1,(1.d0,0.d0), out(:,ieta,m2val), 1)
-     enddo
-     out(:,:,m2val) = out(:,:,m2val) - imag((0d0,0d0)+sparseyops_diag(:,:,abs(m2val)+1)) * in(:,:,m2val) 
-  enddo
-
-end subroutine op_imyderiv
 

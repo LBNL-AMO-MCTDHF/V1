@@ -506,20 +506,19 @@ subroutine projeflux_op_onee(inspfs)
   use parameters
   implicit none
   DATATYPE,intent(inout) :: inspfs(spfsize,numr)
-  DATATYPE,allocatable :: outspfs(:,:),ttempspf(:)
+  DATATYPE,allocatable :: outspfs(:,:)
   integer :: r
 
-  allocate(outspfs(spfsize,numr),ttempspf(spfsize))
-  outspfs=0d0; ttempspf=0
-
+  allocate(outspfs(spfsize,numr))
+  outspfs=0d0;
+  call mult_imke(numr,inspfs(:,:),outspfs(:,:))
   do r=1,numr
-     call mult_imke(inspfs(:,r),ttempspf(:))
-     outspfs(:,r)=outspfs(:,r)+ttempspf(:);     outspfs(:,r) = outspfs(:,r) / bondpoints(r)
+     outspfs(:,r) = outspfs(:,r) / bondpoints(r)
   enddo
 !! scale correctly and clear memory
   inspfs=outspfs*(-2d0)             !! OK.
 
-  deallocate(outspfs,ttempspf)
+  deallocate(outspfs)
 
 end subroutine projeflux_op_onee
 

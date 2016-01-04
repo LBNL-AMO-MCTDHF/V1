@@ -101,14 +101,15 @@ end subroutine mpiorbsets
 
 !! NOTE DOUBLE DIMENSION orbvector !!
 
-subroutine mpiorbgather(orbvector,insize)    !! insize=spfsize except debug
+subroutine mpiorbgather(inoutvector,insize)    !! insize=spfsize except debug
   use mpimod
   use mpi_orbsetmod
   use fileptrmod
   use parameters
   implicit none
   integer :: ierr,insize
-  DATATYPE :: orbvector(insize,nspf*2)
+  DATATYPE,intent(inout) :: inoutvector(insize,nspf)
+  DATATYPE :: orbvector(insize,nspf*2)   !! AUTOMATIC
   if (mpi_orbset_init.ne.1) then
      OFLWR "Programmer fail, mpiorbgather called but mpiorbsets() appears "
      WRFL "   not to have been called."; CFLST
@@ -116,20 +117,29 @@ subroutine mpiorbgather(orbvector,insize)    !! insize=spfsize except debug
   if (nprocs.eq.1) then
      return
   endif
+
+  orbvector(:,:)=0d0
+  orbvector(:,1:nspf)=inoutvector(:,:)
+
   if (firstmpiorb+orbsperproc-1.gt.nspf*2 .or. orbsperproc*min(nspf,nprocs).gt.nspf*2) then
      OFLWR "YYY ERROR",firstmpiorb,orbsperproc; CFLST
   endif
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 #ifdef REALGO
-  call mpi_allgather(orbvector(:,firstmpiorb:firstmpiorb+orbsperproc-1),&
-       insize*orbsperproc,MPI_DOUBLE_PRECISION,orbvector(:,:),insize*orbsperproc,MPI_DOUBLE_PRECISION,MPI_COMM_ORB(myorbset),ierr)
+  call mpi_allgather(orbvector(:,firstmpiorb),insize*orbsperproc,&
+       MPI_DOUBLE_PRECISION,orbvector(:,:),insize*orbsperproc,&
+       MPI_DOUBLE_PRECISION,MPI_COMM_ORB(myorbset),ierr)
 #else
-  call mpi_allgather(orbvector(:,firstmpiorb:firstmpiorb+orbsperproc-1),&
-       insize*orbsperproc,MPI_DOUBLE_COMPLEX,orbvector(:,:),insize*orbsperproc,MPI_DOUBLE_COMPLEX,MPI_COMM_ORB(myorbset),ierr)
+  call mpi_allgather(orbvector(:,firstmpiorb),insize*orbsperproc,&
+       MPI_DOUBLE_COMPLEX,orbvector(:,:),insize*orbsperproc,&
+       MPI_DOUBLE_COMPLEX,MPI_COMM_ORB(myorbset),ierr)
 #endif
   if (ierr.ne.0) then
      OFLWR "ORBGATHER ERR ", ierr; CFLST
   endif
+
+  inoutvector(:,:)=orbvector(:,1:nspf)
+
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mpiorbgather
 

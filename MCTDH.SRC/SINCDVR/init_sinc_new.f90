@@ -394,7 +394,7 @@ subroutine mult_bigspf0(inbigspf,outbigspf)
   DATATYPE :: tempspf(totpoints)   !! AUTOMATIC
 
   call mult_ke(inbigspf(:),outbigspf(:),1,"booga",2)
-  call mult_pot(inbigspf(:),tempspf(:))
+  call mult_pot(1,inbigspf(:),tempspf(:))
   outbigspf(:)=outbigspf(:)+tempspf(:)
 
 end subroutine mult_bigspf0
@@ -455,7 +455,7 @@ subroutine mult_bigspf_ivo(inbigspf,outbigspf)
 
   call mult_ke(inwork2(:),inwork(:),1,"booga",2)
 
-  call mult_pot(inwork2(:),tempspf(:))
+  call mult_pot(1,inwork2(:),tempspf(:))
 
   inwork(:) = inwork(:) + tempspf(:) + ivopot(:)*inwork2(:)
 

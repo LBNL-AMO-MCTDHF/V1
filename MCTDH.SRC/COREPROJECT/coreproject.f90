@@ -322,100 +322,97 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
 end subroutine call_twoe_matel
 
 
-!! ADDS TO matrix hatommatel  NO NEVERMIND
 
-subroutine hatom_matel(inspfs1, inspfs2, hatommatel,numberspf)   !!!rmatrix,ylmvals, 
+!!$!! ADDS TO matrix hatommatel  NO NEVERMIND
+!!$
+!!$subroutine hatom_matel(inspfs1, inspfs2, hatommatel,numberspf)   !!!rmatrix,ylmvals, 
+!!$  use myparams
+!!$  use twoemod
+!!$  use myprojectmod
+!!$  implicit none
+!!$
+!!$  integer,intent(in) :: numberspf
+!!$  DATATYPE,intent(in) :: inspfs1(numerad,lbig+1,-mbig:mbig,numberspf),inspfs2(numerad,lbig+1,-mbig:mbig,numberspf)
+!!$  DATATYPE,intent(out) :: hatommatel(numberspf,numberspf)
+!!$  DATATYPE :: opspfs(numerad,lbig+1,-mbig:mbig,numberspf)   !! AUTOMATIC
+!!$  DATATYPE :: sum
+!!$  integer :: mvalue1b, mvalue1a,    i1,i2,spf1a,spf1b,deltam
+!!$
+!!$  hatommatel(:,:)=0d0
+!!$
+!!$  if (numhatoms.eq.0) then
+!!$     return
+!!$  endif
+!!$  if (spfrestrictflag==1) then
+!!$     OFLWR "Hey, don't use spfrestrictflag if you have hatoms!";CFLST
+!!$  endif
+!!$  if (numr.gt.1) then
+!!$     print *, "Hatom not for calc with multiple r gridpoints.sorry.";     stop
+!!$  endif
+!!$  if (numhatoms.eq.0) then
+!!$     return
+!!$  endif
+!!$
+!!$  call hatom_op(numberspf,inspfs2,opspfs)
+!!$
+!!$  call MYGEMM(CNORMCHAR, 'N',numberspf,numberspf,sizespf,DATAONE, inspfs1, sizespf, opspfs, sizespf, DATAZERO, hatommatel(:,:), numberspf)
+!!$
+!!$!  do spf1b=1,numberspf
+!!$!     do spf1a=1,numberspf
+!!$!        sum=0.d0
+!!$!        do mvalue1a=-mbig,mbig
+!!$!           do mvalue1b=-mbig,mbig
+!!$!              deltam=mvalue1a-mvalue1b
+!!$!
+!!$!!!$ if (1==1) then  ! is faster when optimized, much slower when not.
+!!$!                       
+!!$!              do i1=1,lbig+1
+!!$!                 do i2=1,numerad
+!!$!                    sum = sum + CONJUGATE(inspfs1(i2,i1,mvalue1a,spf1a)) * inspfs2(i2,i1,mvalue1b,spf1b) * hatomtwoemat2(i2,i1,deltam)
+!!$!                 enddo
+!!$!              enddo
+!!$!           enddo
+!!$!        enddo
+!!$!        hatommatel(spf1a,spf1b) = hatommatel(spf1a,spf1b) -  sum
+!!$!     enddo
+!!$!  enddo
+!!$  
+!!$end subroutine hatom_matel
+
+
+subroutine hatom_op(howmany,inspfs, outspfs)
   use myparams
   use twoemod
   use myprojectmod
   implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig,howmany)
+  integer ::  mvalue1b, mvalue1a,deltam,ivect
 
-  integer,intent(in) :: numberspf
-  DATATYPE,intent(in) :: inspfs1(numerad,lbig+1,-mbig:mbig,numberspf),inspfs2(numerad,lbig+1,-mbig:mbig,numberspf)
-  DATATYPE,intent(out) :: hatommatel(numberspf,numberspf)
-  DATATYPE :: sum
-  integer :: mvalue1b, mvalue1a,    i1,i2,spf1a,spf1b,deltam
-
-  hatommatel(:,:)=0d0
+  outspfs(:,:,:,:)=0d0
 
   if (numhatoms.eq.0) then
      return
   endif
+
   if (spfrestrictflag==1) then
      OFLWR "Hey, don't use spfrestrictflag if you have hatoms!";CFLST
   endif
   if (numr.gt.1) then
      print *, "Hatom not for calc with multiple r gridpoints.sorry.";     stop
   endif
-  if (numhatoms.eq.0) then
-     return
-  endif
 
-  
-  do spf1b=1,numberspf
-     do spf1a=1,numberspf
-        sum=0.d0
-        do mvalue1a=-mbig,mbig
-           do mvalue1b=-mbig,mbig
-              deltam=mvalue1a-mvalue1b
-
-!!$ if (1==1) then  ! is faster when optimized, much slower when not.
-                       
-              do i1=1,lbig+1
-                 do i2=1,numerad
-                    sum = sum + CONJUGATE(inspfs1(i2,i1,mvalue1a,spf1a)) * inspfs2(i2,i1,mvalue1b,spf1b) * hatomtwoemat2(i2,i1,deltam)
-                 enddo
-              enddo
-           enddo
-        enddo
-        hatommatel(spf1a,spf1b) = hatommatel(spf1a,spf1b) -  sum
-     enddo
-  enddo
-  
-end subroutine hatom_matel
-
-
-subroutine hatom_op(inspfs, outspfs)    !! , rmatrix,ylmvals
-  use myparams
-  use twoemod
-  use myprojectmod
-  implicit none
-
-  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig)
-  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig)
-  integer ::  mvalue1b, mvalue1a,   i1,i2,deltam
-
-  outspfs(:,:,:)=0d0
-
-  if (numhatoms.eq.0) then
-     return
-  endif
-
-  if (spfrestrictflag==1) then
-     OFLWR "Hey, don't use spfrestrictflag if you have hatoms!";CFLST
-  endif
-  if (numr.gt.1) then
-     print *, "Hatom not for calc with multiple r gridpoints.sorry.";     stop
-  endif
-
-
-
+  do ivect=1,howmany
      do mvalue1a=-mbig,mbig
         do mvalue1b=-mbig,mbig
            deltam=mvalue1a-mvalue1b
-
-!!$ if (1==1) then  ! is faster when optimized, much slower when not.
-                       
-           do i1=1,lbig+1
-              do i2=1,numerad
-                 outspfs(i2,i1,mvalue1a)= &
-                 outspfs(i2,i1,mvalue1a)- &
-                 inspfs(i2,i1,mvalue1b) * hatomtwoemat2(i2,i1,deltam)
-              enddo
-           enddo
+           outspfs(:,:,mvalue1a,ivect)= &
+                outspfs(:,:,mvalue1a,ivect)- &
+                inspfs(:,:,mvalue1b,ivect) * hatomtwoemat2(:,:,deltam)
         enddo
      enddo
-
+  enddo
 
 end subroutine hatom_op
 
@@ -434,8 +431,9 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   DATATYPE :: sum, direct, exch
   integer :: mvalue2a, mvalue1b, mvalue2b, mvalue1a, &
        i1,i2,j1,j2,spf1a,spf1b,spf2a,spf2b, deltam,k1,lsum,qq,rr,qq2,rr2,i,ii, &
-       iispf,ispf,ispin,iispin, kk,sizespf
-  DATATYPE, allocatable :: tempreduced(:,:,:,:,:), tempmatel(:,:,:,:), temppotmatel(:,:),tempmult(:,:), temppotmatel2(:,:)
+       iispf,ispf,ispin,iispin, sizespf
+  DATATYPE, allocatable :: tempreduced(:,:,:,:,:), tempmatel(:,:,:,:), temppotmatel(:,:),&
+       tempmult(:,:), temppotmatel2(:,:), tempmult2(:,:)
   DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1), &     !! AUTOMATIC
        twoeden2(numerad),   twoeden3(numerad)
 
@@ -446,7 +444,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   sizespf=numerad*(lbig+1)*(2*mbig+1)
   allocate(tempreduced(numerad,lbig+1,-2*mbig:2*mbig,numfrozen,numfrozen), tempmult(sizespf,numfrozen), &
        tempmatel(numfrozen,numfrozen,numfrozen,numfrozen),       temppotmatel(numfrozen,numfrozen),   &
-       temppotmatel2(numfrozen,numfrozen))
+       temppotmatel2(numfrozen,numfrozen), tempmult2(sizespf,numfrozen))
 
   do spf2b=1,numfrozen
      do spf2a=1,numfrozen
@@ -534,15 +532,14 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   frozenpotdiag=sum
   temppotmatel=0d0
 
-  do i=1,numfrozen
-     call mult_pot(infrozens(:,:,:,i),tempmult(:,i))
-  enddo
+  call mult_pot(numfrozen,infrozens(:,:,:,:),tempmult(:,:))
+  if (numhatoms.gt.0) then
+     call hatom_op(numfrozen,infrozens(:,:,:,:),tempmult2(:,:))
+     tempmult(:,:)=tempmult(:,:)+tempmult2(:,:)
+  endif
 
   call MYGEMM(CNORMCHAR,'N',numfrozen,numfrozen, sizespf, DATAONE, infrozens, sizespf, tempmult, sizespf, DATAONE, temppotmatel(:,:) ,numfrozen)
 
-  if (numhatoms.gt.0) then
-     call hatom_matel(infrozens,infrozens,temppotmatel2,numfrozen)  ; temppotmatel(:,:)=temppotmatel(:,:)+temppotmatel2(:,:)
-  endif
   do i=1,numfrozen
      frozenpotdiag=frozenpotdiag+2*temppotmatel(i,i)
   enddo
@@ -551,9 +548,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   endif
   temppotmatel=0d0
 
-  do kk=1,numfrozen
-     call mult_ke(infrozens(:,:,:,kk),tempmult(:,kk),1)
-  enddo
+  call mult_ke(infrozens(:,:,:,:),tempmult(:,:),numfrozen)
 
   call MYGEMM(CNORMCHAR,'N',numfrozen,numfrozen, sizespf, DATAONE, infrozens(:,:,:,:), sizespf, tempmult(:,:), sizespf, DATAZERO, temppotmatel(:,:) ,numfrozen)
   
@@ -562,21 +557,22 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
      frozenkediag=frozenkediag+2*temppotmatel(i,i)
   enddo
 
-  deallocate(tempreduced,       tempmatel,       temppotmatel,tempmult,temppotmatel2)
+  deallocate(tempreduced,       tempmatel,       temppotmatel,tempmult,temppotmatel2,tempmult2)
 
 end subroutine call_frozen_matels0
 
 
 !! ADDS TO OUTSPFS
 
-subroutine call_frozen_exchange0(inspfs,outspfs,infrozens,numfrozen)   !! rmatrix ylmvals
+subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen)
   use myparams
   use twoemod
   use myprojectmod
   implicit none
-  integer,intent(in) :: numfrozen
-  DATATYPE,intent(in) :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen), inspfs(numerad,lbig+1,-mbig:mbig,numspf)
-  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig,numspf)
+  integer,intent(in) :: numfrozen,howmany
+  DATATYPE,intent(in) :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen), &
+       inspfs(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE, allocatable :: twoemat2(:,:,:),  &              !! numerad,lbig+1,-2*mbig:2*mbig
        twoeden(:,:), twoeden2(:), twoeden3(:)
   integer :: mvalue2a, mvalue2b, spf2a,spf2b, deltam,k1,lsum,qq,rr,qq2,rr2,j1,j2
@@ -587,7 +583,7 @@ subroutine call_frozen_exchange0(inspfs,outspfs,infrozens,numfrozen)   !! rmatri
   allocate(twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),twoeden2(numerad),twoeden3(numerad))
 
   do spf2b=1,numfrozen
-     do spf2a=1,numspf
+     do spf2a=1,howmany
         twoemat2=0.d0
 
         ! integrating over electron 2
@@ -649,7 +645,7 @@ subroutine call_frozen_exchange0(inspfs,outspfs,infrozens,numfrozen)   !! rmatri
   enddo
   deallocate(twoemat2,twoeden,twoeden2,twoeden3)
   
-end subroutine call_frozen_exchange0
+end subroutine op_frozen_exchange0
 
 
 subroutine getdensity(density, indenmat, inspfs,in_numspf)
@@ -728,25 +724,28 @@ subroutine op_reflectx(in, out)
 end subroutine op_reflectx
 
 
-subroutine mult_zdipole(in, out, realflag)
+subroutine mult_zdipole(howmany,in, out, realflag)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
-  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
-  integer :: i
-  integer,intent(in) :: realflag
-  i=realflag ! avoid warn unused
+  integer,intent(in) :: realflag,howmany
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
+  integer :: i,ii
 
 #ifndef CNORMFLAG
   if (realflag.ne.0) then
+     do ii=1,howmany
      do i=-mbig,mbig
-        out(:,:,i)=in(:,:,i)*real(zdipole(:,:),8)
+        out(:,:,i,ii)=in(:,:,i,ii)*real(zdipole(:,:),8)
+     enddo
      enddo
   else
 #endif
+  do ii=1,howmany
   do i=-mbig,mbig
-     out(:,:,i)=in(:,:,i)*zdipole(:,:)
+     out(:,:,i,ii)=in(:,:,i,ii)*zdipole(:,:)
+  enddo
   enddo
 #ifndef CNORMFLAG
   endif
@@ -754,49 +753,37 @@ subroutine mult_zdipole(in, out, realflag)
 
 end subroutine mult_zdipole
 
-subroutine mult_imzdipole(in, out)
+
+subroutine mult_xdipole(howmany,in, out,realflag)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
-  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
-#ifndef REALGO
-  integer :: i
-  do i=-mbig,mbig
-  out(:,:,i)=in(:,:,i)*imag(zdipole(:,:))
-  enddo
-#else
-  out(:,:,:)=0d0*in(:,:,:) !! avoid warn unused
-#endif
-end subroutine mult_imzdipole
+  integer,intent(in) :: realflag,howmany
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
+  integer :: i,ii
 
-subroutine mult_xdipole(in, out,realflag)
-  use myparams
-  use myprojectmod
-  implicit none
-  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
-  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
-  integer :: i
-  integer,intent(in) :: realflag
-  i=realflag !! avoid warn unused
-
-  out(:,:,:)=0d0
+  out(:,:,:,:)=0d0
 
 #ifndef CNORMFLAG
   if (realflag.ne.0) then
+     do ii=1,howmany
      do i=-mbig+1,mbig
-        out(:,:,i)=in(:,:,i-1)*real(xydipole(:,:),8) /2 !!TWOFIX
+        out(:,:,i,ii)=in(:,:,i-1,ii)*real(xydipole(:,:),8) /2 !!TWOFIX
      enddo
      do i=-mbig,mbig-1
-        out(:,:,i)=out(:,:,i)+in(:,:,i+1)*real(xydipole(:,:),8) /2  !!TWOFIX
+        out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*real(xydipole(:,:),8) /2  !!TWOFIX
+     enddo
      enddo
   else
 #endif
+  do ii=1,howmany
   do i=-mbig+1,mbig
-     out(:,:,i)=in(:,:,i-1)*xydipole(:,:) /2 !!TWOFIX
+     out(:,:,i,ii)=in(:,:,i-1,ii)*xydipole(:,:) /2 !!TWOFIX
   enddo
   do i=-mbig,mbig-1
-     out(:,:,i)=out(:,:,i)+in(:,:,i+1)*xydipole(:,:) /2  !!TWOFIX
+     out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*xydipole(:,:) /2  !!TWOFIX
+  enddo
   enddo
 #ifndef CNORMFLAG
   endif
@@ -804,54 +791,37 @@ subroutine mult_xdipole(in, out,realflag)
 
 end subroutine mult_xdipole
 
-subroutine mult_imxdipole(in, out)
+
+subroutine mult_ydipole(howmany,in, out, realflag)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
-  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
-#ifndef REALGO
-  integer :: i
-  out(:,:,:)=0d0
-  do i=-mbig+1,mbig
-     out(:,:,i)=in(:,:,i-1)*imag(xydipole(:,:))  /2 !!TWOFIX
-  enddo
-  do i=-mbig,mbig-1
-     out(:,:,i)=out(:,:,i)+in(:,:,i+1)*imag(xydipole(:,:))  /2 !!TWOFIX
-  enddo
-#else
-  out(:,:,:)=0d0*in(:,:,:) !! avoid warn unused
-#endif
+  integer,intent(in) :: realflag,howmany
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
+  integer :: i,ii
 
-end subroutine mult_imxdipole
-
-subroutine mult_ydipole(in, out, realflag)
-  use myparams
-  use myprojectmod
-  implicit none
-  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
-  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
-  integer :: i
-  integer,intent(in) :: realflag
-  i=realflag  ! avoid warn unused
-
-  out(:,:,:)=0d0
+  out(:,:,:,:)=0d0
 
 #ifndef CNORMFLAG
   if (realflag.ne.0) then
+     do ii=1,howmany
      do i=-mbig+1,mbig
-        out(:,:,i)=in(:,:,i-1)*real(xydipole(:,:),8)*(0d0,1d0)  /2 !!TWOFIX
+        out(:,:,i,ii)=in(:,:,i-1,ii)*real(xydipole(:,:),8)*(0d0,1d0)  /2 !!TWOFIX
      enddo
      do i=-mbig,mbig-1
-        out(:,:,i)=out(:,:,i)+in(:,:,i+1)*real(xydipole(:,:),8)*(0d0,-1d0)  /2 !!TWOFIX
+        out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*real(xydipole(:,:),8)*(0d0,-1d0)  /2 !!TWOFIX
+     enddo
      enddo
   else
 #endif
+  do ii=1,howmany
   do i=-mbig+1,mbig
-     out(:,:,i)=in(:,:,i-1)*xydipole(:,:)*(0d0,1d0)  /2 !!TWOFIX
+     out(:,:,i,ii)=in(:,:,i-1,ii)*xydipole(:,:)*(0d0,1d0)  /2 !!TWOFIX
   enddo
   do i=-mbig,mbig-1
-     out(:,:,i)=out(:,:,i)+in(:,:,i+1)*xydipole(:,:)*(0d0,-1d0)  /2 !!TWOFIX
+     out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*xydipole(:,:)*(0d0,-1d0)  /2 !!TWOFIX
+  enddo
   enddo
 #ifndef CNORMFLAG
   endif
@@ -859,25 +829,6 @@ subroutine mult_ydipole(in, out, realflag)
 
 end subroutine mult_ydipole
 
-subroutine mult_imydipole(in, out)
-  use myparams
-  use myprojectmod
-  implicit none
-  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
-  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
-#ifndef REALGO
-  integer :: i
-  out(:,:,:)=0d0
-  do i=-mbig+1,mbig
-     out(:,:,i)=in(:,:,i-1)*imag(xydipole(:,:))*(0d0,1d0)  /2 !!TWOFIX
-  enddo
-  do i=-mbig,mbig-1
-     out(:,:,i)=out(:,:,i)+in(:,:,i+1)*imag(xydipole(:,:))*(0d0,-1d0)  /2 !!TWOFIX
-  enddo
-#else
-  out(:,:,:)=0d0*in(:,:,:) !! avoid warn unused
-#endif
-end subroutine mult_imydipole
 
 !subroutine get_reducedpot0(intwoden,outpot,twoereduced)
 !  use myparams
@@ -895,36 +846,44 @@ end subroutine mult_imydipole
 !end subroutine get_reducedpot0
 
 !! NOW ONLY OUTPUTS ONE. CALL IN LOOP. FOR OPENMPI TRY.
-subroutine mult_reducedpot(inspfs,outspf,whichspf,reducedpot)
+subroutine mult_reducedpot(firstspf,lastspf,inspfs,outspfs,reducedpot)
   use myparams
   use twoemod
   implicit none
-  integer,intent(in) :: whichspf
-  DATATYPE,intent(out) :: outspf(numerad,lbig+1, -mbig:mbig)
+  integer,intent(in) :: firstspf,lastspf
+  DATATYPE,intent(out) :: outspfs(numerad,lbig+1, -mbig:mbig,firstspf:lastspf)
   DATATYPE, intent(in) :: inspfs(numerad,lbig+1, -mbig:mbig, numspf),&
        reducedpot(numerad,lbig+1,-2*mbig:2*mbig,  numspf,numspf)
+  DATATYPE :: mine(numerad,lbig+1)      !! AUTOMATIC
   integer :: ispf,imval,flag,kspf,kmval
 
-  outspf(:,:,:)=0d0
+  outspfs(:,:,:,:)=0d0
 
-  do ispf=whichspf,whichspf
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ispf,imval,flag,kspf,kmval,mine)
+!$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC)
+  do ispf=firstspf,lastspf
      do imval=-mbig,mbig
         flag=1
         if ((spfrestrictflag.eq.1).and.(imval.ne.spfmvals(ispf))) then
            flag=0
         endif
         if (flag==1) then
+           mine(:,:)=0d0
            do kspf=1,numspf
               do kmval=-mbig,mbig
 !! reducedpot is usual notation: <ispf | kspf> so so sum over slow index kspf
                     
-                 outspf(:,:,imval) = outspf(:,:,imval) + & 
+                 mine(:,:) = mine(:,:) + & 
                       reducedpot(:,:,imval-kmval,ispf,kspf) * inspfs(:,:,kmval,kspf)
               enddo
            enddo
+           outspfs(:,:,imval,ispf) = mine(:,:)
         endif
      enddo
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
 end subroutine mult_reducedpot
 
 
@@ -1015,23 +974,33 @@ subroutine hatomcalc()
 end subroutine hatomcalc
 
 
-!! ADDS TO OUTSPFS
-
 !! DIRECT ONLY
 
-subroutine op_frozenreduced(inspfs,outspfs)
+subroutine op_frozenreduced(howmany,inspfs,outspfs)
   use myparams
   use twoemod
-  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig)
-  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig)
-  integer :: kmval,imval
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE :: mine(numerad,lbig+1)
+  integer :: kmval,imval,ii
 
+  outspfs(:,:,:,:)=0d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,imval,kmval,mine) 
+!$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC)
+  do ii=1,howmany
   do imval=-mbig,mbig
+     mine(:,:)=0d0
      do kmval=-mbig,mbig
-        outspfs(:,:,imval) = outspfs(:,:,imval) + 2* & 
-             frozenreduced(:,:,imval-kmval) * inspfs(:,:,kmval)
+        mine(:,:) = mine(:,:) + 2* & 
+             frozenreduced(:,:,imval-kmval) * inspfs(:,:,kmval,ii)
      enddo
+     outspfs(:,:,imval,ii)=mine(:,:)
   enddo
+  enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
 end subroutine op_frozenreduced
 
@@ -1568,148 +1537,6 @@ OFLWR "Velocity gauge not available for real time propagation"; CFLST
 end subroutine velmultiply
 
 
-!! freaking cloogey, might be running slowly due to constant use of (0d0,0d0)+(0d0,1d0)*imag(...)
-!! adds to spfout
-
-!! deriv ops  complex antisymmetric (derivative op sparseddz etc, antihermitian for no ecs), 
-!!     times i (making it hermitian)  
-!!   imag part(complex antisymmetric ddz) is hermitian  times i is antihermitian
-!! imag() returns real value
-
-subroutine imvelmultiply(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
-  use myparams
-  use myprojectmod
-  implicit none
-  DATATYPE,intent(in) :: spfin(numerad,lbig+1,-mbig:mbig)
-  DATATYPE,intent(out) :: spfout(numerad,lbig+1,-mbig:mbig)
-  real*8,intent(in) :: myxtdpot0,myztdpot,myytdpot0
-  real*8 :: myrhotdpot
-#ifdef REALGO
-  OFLWR "Velocity gauge not available for real time propagation"; CFLST
-  myrhotdpot=myztdpot; myrhotdpot=myytdpot0; myrhotdpot=myxtdpot0
-  spfout(:,:,:)=0d0*spfin(:,:,:)  !! avoid warn unused
-#else
-  integer :: imval, qq, ieta , ixi, i 
-  DATATYPE :: work(lbig+1)
-  complex*16 :: csum, cfac
-
-  OFLWR "PROGRAM YPOT IMVELMULTIPLY"; CFLST
-
-!! REMEMBER FACTOR OF /2 !!!!   (TWOFIX)  (checkme)
-
-  spfout=0d0
-  if (abs(myztdpot).gt.1.d-10) then
-
-     do imval=-mbig,mbig
-        qq=lbig+1
-        do ixi=1,numerad
-           call MYGEMV('N',qq,qq,DATAONE,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddz_eta(:,:,ixi,abs(imval)+1)),qq,spfin(ixi,:,imval),1,DATAZERO, work, 1)
-           spfout(ixi,:,imval)= spfout(ixi,:,imval) + work(1:lbig+1) * myztdpot * (0.d0,1.d0) 
-        enddo
-
-        i=2*bandwidth+1
-        csum=myztdpot * (0.d0,1.d0) 
-        do ieta=1,lbig+1
-           call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddz_xi_banded(:,:,ieta,abs(imval)+1)),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval), 1)
-        enddo
-
-        spfout(:,:,imval) = spfout(:,:,imval) - (0d0,1d0)*imag((0d0,0d0)+sparseddz_diag(:,:,abs(imval)+1)) * spfin(:,:,imval) * myztdpot * (0.0d0, 1.d0) 
-     enddo
-  endif
-
-  cfac=0d0
-  myrhotdpot=sqrt(myytdpot0**2+myxtdpot0**2)
-  if (myrhotdpot.ne.0d0) then
-     cfac=exp((0d0,-1d0)*atan2(myytdpot0,myxtdpot0))       / 2 !!TWOFIX
-  endif
-
-  if (abs(myrhotdpot).gt.1.d-10) then
-     do imval = -mbig,mbig
-        if (mod(imval,2).eq.0) then  !! even.  no transpose.
-           qq=lbig+1
-           do ixi=1,numerad
-              call MYGEMV('N',qq,qq,DATAONE,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_eta(:,:,ixi,1)),qq,spfin(ixi,:,imval),1,DATAZERO, work, 1)
-              if (imval.gt.-mbig) then
-                 spfout(ixi,:,imval-1)= spfout(ixi,:,imval-1) + work(1:lbig+1) * myrhotdpot * (0.d0,1.d0)  *cfac
-              endif
-              if (imval .lt. mbig) then
-                 spfout(ixi,:,imval+1)= spfout(ixi,:,imval+1) + work(1:lbig+1) * myrhotdpot * (0.d0,1.d0)  * CONJG(cfac)
-              endif
-           enddo
-
-           i=2*bandwidth+1
-           csum=myrhotdpot * (0.d0,1.d0) 
-           do ieta=1,lbig+1
-              if (imval.gt.-mbig) then
-                 call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum*cfac,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_xi_banded(:,:,ieta,1)),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval-1), 1)
-              endif
-              if (imval.lt.mbig) then
-                 call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum* CONJG(cfac),(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_xi_banded(:,:,ieta,1)),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval+1), 1)
-              endif
-           enddo
-           if (imval.gt.-mbig) then                       
-              spfout(:,:,imval-1) = spfout(:,:,imval-1) - (0d0,1d0)*imag((0d0,0d0)+sparseddrho_diag(:,:,1)) * spfin(:,:,imval) * myrhotdpot * (0.0d0, 1.d0) *cfac
-           endif
-           if (imval.lt.mbig) then                       
-              spfout(:,:,imval+1) = spfout(:,:,imval+1) - (0d0,1d0)*imag((0d0,0d0)+sparseddrho_diag(:,:,1)) * spfin(:,:,imval) * myrhotdpot * (0.0d0, 1.d0) * CONJG(cfac)
-           endif
-
-           !! lowering
-           if (imval.gt.-mbig) then
-              spfout(:,:,imval-1)= spfout(:,:,imval-1) + (0d0,1d0)*imag((0d0,0d0)+ddrhopot) * myrhotdpot * (0.d0,1.d0)  * (imval-1) * spfin(:,:,imval) *cfac
-           endif
-           
-           !! raising
-           if (imval.lt.mbig) then
-              spfout(:,:,imval+1)= spfout(:,:,imval+1) - (0d0,1d0)*imag((0d0,0d0)+ddrhopot) * myrhotdpot * (0.d0,1.d0)  * (imval+1) * spfin(:,:,imval) * CONJG(cfac)
-           endif
-           
-        else  !! even or odd:  odd. transpose.
-
-           qq=lbig+1
-           do ixi=1,numerad
-              call MYGEMV('T',qq,qq,DATANEGONE,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_eta(:,:,ixi,1)),qq,spfin(ixi,:,imval),1,DATAZERO, work, 1)
-              if (imval.gt.-mbig) then
-                 spfout(ixi,:,imval-1)= spfout(ixi,:,imval-1) + work(1:lbig+1) * myrhotdpot * (0.d0,1.d0)  *cfac
-              endif
-              if (imval .lt. mbig) then
-                 spfout(ixi,:,imval+1)= spfout(ixi,:,imval+1) + work(1:lbig+1) * myrhotdpot * (0.d0,1.d0)  * CONJG(cfac)
-              endif
-           enddo
-           
-           i=2*bandwidth+1
-           csum=   (-1)   *   myrhotdpot * (0.d0,1.d0) 
-           do ieta=1,lbig+1
-              if (imval.gt.-mbig) then
-                 call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum*cfac,(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_xi_banded(:,:,ieta,1)),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval-1), 1)
-              endif
-              if (imval.lt.mbig) then
-                 call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum* CONJG(cfac),(0d0,0d0)+(0d0,1d0)*imag((0d0,0d0)+sparseddrho_xi_banded(:,:,ieta,1)),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval+1), 1)
-              endif
-           enddo
-           if (imval.gt.-mbig) then                       
-              spfout(:,:,imval-1) = spfout(:,:,imval-1) + (0d0,1d0)*imag((0d0,0d0)+sparseddrho_diag(:,:,1)) * spfin(:,:,imval) * myrhotdpot * (0.0d0, 1.d0) *cfac
-           endif
-           if (imval.lt.mbig) then                       
-              spfout(:,:,imval+1) = spfout(:,:,imval+1) + (0d0,1d0)*imag((0d0,0d0)+sparseddrho_diag(:,:,1)) * spfin(:,:,imval) * myrhotdpot * (0.0d0, 1.d0) * CONJG(cfac)
-           endif
-
-           !! lowering
-           if (imval.gt.-mbig) then
-              spfout(:,:,imval-1)= spfout(:,:,imval-1) + (0d0,1d0)*imag((0d0,0d0)+ddrhopot) * myrhotdpot * (0.d0,1.d0)  * (imval) * spfin(:,:,imval) *cfac
-           endif
-           
-           !! raising
-           if (imval.lt.mbig) then
-              spfout(:,:,imval+1)= spfout(:,:,imval+1) - (0d0,1d0)*imag((0d0,0d0)+ddrhopot) * myrhotdpot * (0.d0,1.d0)  * (imval) * spfin(:,:,imval)* CONJG(cfac)
-           endif
-        endif  ! mval even or odd
-     enddo
-  endif
-#endif
-
-end subroutine imvelmultiply
-
 
 #ifndef REALGO
 #define XXMVXX zgemv 
@@ -1734,8 +1561,6 @@ subroutine mult_ke(in, out,howmany)
 
   out=0.d0
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(jj,m2val,ixi,work,work2,i,ieta,myin,myout)
-!$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC)
   do jj=1,howmany
   do m2val=-mbig,mbig
      myin(:,:)=in(:,:,m2val,jj)
@@ -1752,70 +1577,8 @@ subroutine mult_ke(in, out,howmany)
      out(:,:,m2val,jj) = myout(:,:) - sparseops_diag(:,:,abs(m2val)+1) * myin(:,:)
   enddo
   enddo
-!$OMP END DO
-!$OMP END PARALLEL
 
 end subroutine mult_ke
-
-
-!! needs factor of 1/r  for hamiltonian
-
-
-!! needs factor of 1/r^2 for ham
-
-subroutine mult_imke(in, out)
-  use myparams
-  use myprojectmod  
-  implicit none
-  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
-  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
-  DATATYPE :: work(lbig+1), work2(lbig+1)  
-  integer :: m2val, ixi,ieta, i
-
-  out=0.d0
-  do m2val=-mbig,mbig
-     do ixi=1,numerad
-        work2=in(ixi,:,m2val)
-        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),DATAZERO+imag((0d0,0d0)+sparseops_eta(:,:,ixi,abs(m2val)+1)),lbig+1,work2,1,(0.d0,0.d0), work, 1)
-        out(ixi,:,m2val)=out(ixi,:,m2val)+work(1:lbig+1)
-     enddo
-     i=2*bandwidth+1
-     do ieta=1,lbig+1
-        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),DATAZERO+imag((0d0,0d0)+sparseops_xi_banded(:,:,ieta,abs(m2val)+1)),i,in(:,ieta,m2val),1,(1.d0,0.d0), out(:,ieta,m2val), 1)
-        
-     enddo
-     out(:,:,m2val) = out(:,:,m2val) - imag((0d0,0d0)+sparseops_diag(:,:,abs(m2val)+1)) * in(:,:,m2val)
-  enddo
-
-end subroutine mult_imke
-
-
-!! needs factor of 1/r^2 for ham
-
-subroutine mult_reke(in, out)
-  use myparams
-  use myprojectmod  
-  implicit none
-  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
-  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
-  DATATYPE :: work(lbig+1), work2(lbig+1)
-  integer :: m2val, ixi,ieta, i
-
-  out=0.d0
-  do m2val=-mbig,mbig
-     do ixi=1,numerad
-        work2=in(ixi,:,m2val)
-        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),DATAZERO+real(sparseops_eta(:,:,ixi,abs(m2val)+1),8),lbig+1,work2,1,(0.d0,0.d0), work, 1)
-        out(ixi,:,m2val)=out(ixi,:,m2val)+work(1:lbig+1)
-     enddo
-     i=2*bandwidth+1
-     do ieta=1,lbig+1
-        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),DATAZERO+real(sparseops_xi_banded(:,:,ieta,abs(m2val)+1),8),i,in(:,ieta,m2val),1,(1.d0,0.d0), out(:,ieta,m2val), 1)
-        
-     enddo
-     out(:,:,m2val) = out(:,:,m2val) - real(sparseops_diag(:,:,abs(m2val)+1),8) * in(:,:,m2val)
-  enddo
-end subroutine mult_reke
 
 
 

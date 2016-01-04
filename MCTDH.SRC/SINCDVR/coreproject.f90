@@ -295,9 +295,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   enddo
   frozenpotdiag=csum
 
-  do ii=1,numfrozen
-     call mult_pot(infrozens(:,ii),tempmult(:,ii))
-  enddo
+  call mult_pot(numfrozen,infrozens(:,:),tempmult(:,:))
 
   call MYGEMM(CNORMCHAR,'N',numfrozen,numfrozen, totpoints, DATAONE, infrozens, totpoints, tempmult, totpoints, DATAZERO, temppotmatel(:,:) ,numfrozen)
 
@@ -309,9 +307,8 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
      frozenpotdiag=frozenpotdiag+2*temppotmatel(i,i)
   enddo
 
-  do ii=1,numfrozen
-     call mult_ke(infrozens(:,ii),tempmult(:,ii),1,"booga",2)
-  enddo
+  call mult_ke(infrozens(:,:),tempmult(:,:),numfrozen,"booga",2)
+
 
   call MYGEMM(CNORMCHAR,'N',numfrozen,numfrozen, totpoints, DATAONE, infrozens(:,:), totpoints, tempmult(:,:), totpoints, DATAZERO, temppotmatel(:,:) ,numfrozen)
 
@@ -330,19 +327,21 @@ end subroutine call_frozen_matels0
 
 
 
-!! ADDS TO OUTSPFS
+!! EXCHANGE (direct is op_frozenreduced)
 
-subroutine call_frozen_exchange0(inspfs,outspfs,infrozens,numfrozen)
+subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen)
   use twoemod
   use myparams
   use pmpimod
   use pfileptrmod
   implicit none
-  integer, intent(in) :: numfrozen
-  DATATYPE, intent(in) :: infrozens(totpoints,numfrozen), inspfs(totpoints,numspf)
-  DATATYPE, intent(inout) :: outspfs(totpoints,numspf)
+  integer, intent(in) :: numfrozen,howmany
+  DATATYPE, intent(in) :: infrozens(totpoints,numfrozen), inspfs(totpoints,howmany)
+  DATATYPE, intent(out) :: outspfs(totpoints,howmany)
   DATATYPE,allocatable :: frodensity(:), tempreduced(:)
   integer :: times1,times3,times4,times5,fttimes(10),spf2a,spf2b
+
+  outspfs(:,:)=0d0
 
   if (numfrozen.eq.0) then
      return
@@ -351,7 +350,7 @@ subroutine call_frozen_exchange0(inspfs,outspfs,infrozens,numfrozen)
   allocate(frodensity(totpoints), tempreduced(totpoints))
 
   do spf2b=1,numfrozen
-     do spf2a=1,numspf
+     do spf2a=1,howmany
 
         frodensity(:) = CONJUGATE(infrozens(:,spf2b)) * inspfs(:,spf2a)
 
@@ -366,7 +365,7 @@ subroutine call_frozen_exchange0(inspfs,outspfs,infrozens,numfrozen)
 
   deallocate(frodensity, tempreduced)
 
-end subroutine call_frozen_exchange0
+end subroutine op_frozen_exchange0
 
 
 subroutine getdensity() !density, indenmat, inspfs,numspf)
@@ -474,118 +473,93 @@ end subroutine op_reflectx
 
 
 
-subroutine mult_zdipole(in,out,realflag)
+subroutine mult_zdipole(howmany,in,out,realflag)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE,intent(in) :: in(totpoints)
-  DATATYPE,intent(out) :: out(totpoints)
-  integer,intent(in) :: realflag
+  integer,intent(in) :: realflag,howmany
+  DATATYPE,intent(in) :: in(totpoints,howmany)
+  DATATYPE,intent(out) :: out(totpoints,howmany)
+  integer :: ii
+  do ii=1,howmany
 #ifndef CNORMFLAG
   if (realflag.ne.0) then
-     out(:)=in(:)*real(dipoles(:,3),8)
+     out(:,ii)=in(:,ii)*real(dipoles(:,3),8)
   else
 #endif
-  out(:)=in(:)*dipoles(:,3)
+  out(:,ii)=in(:,ii)*dipoles(:,3)
 #ifndef CNORMFLAG
   endif
 #endif
-
+  enddo
 end subroutine mult_zdipole
 
-subroutine mult_imzdipole(in, out)
-  use myparams
-  use myprojectmod
-  implicit none
-  DATATYPE,intent(in) :: in(totpoints)
-  DATATYPE,intent(out) :: out(totpoints)
-#ifdef REALGO
-  out(:)=in(:)*0d0  !! avoid warn unused
-#else
-  out(:)=in(:)*imag(dipoles(:,3))
-#endif
-end subroutine mult_imzdipole
 
-subroutine mult_ydipole(in,out,realflag)
+subroutine mult_ydipole(howmany,in,out,realflag)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE,intent(in) :: in(totpoints)
-  DATATYPE,intent(out) :: out(totpoints)
-  integer,intent(in) :: realflag
+  integer,intent(in) :: realflag,howmany
+  DATATYPE,intent(in) :: in(totpoints,howmany)
+  DATATYPE,intent(out) :: out(totpoints,howmany)
+  integer :: ii
+  do ii=1,howmany
 #ifndef CNORMFLAG
   if (realflag.ne.0) then
-     out(:)=in(:)*real(dipoles(:,2),8)
+     out(:,ii)=in(:,ii)*real(dipoles(:,2),8)
   else
 #endif
-  out(:)=in(:)*dipoles(:,2)
+  out(:,ii)=in(:,ii)*dipoles(:,2)
 #ifndef CNORMFLAG
   endif
 #endif
-
+  enddo
 end subroutine mult_ydipole
 
-subroutine mult_imydipole(in, out)
-  use myparams
-  use myprojectmod
-  implicit none
-  DATATYPE,intent(in) :: in(totpoints)
-  DATATYPE,intent(out) :: out(totpoints)
-#ifdef REALGO
-  out(:)=in(:)*0d0  !! avoid warn unused
-#else
-  out(:)=in(:)*imag(dipoles(:,2))
-#endif
-end subroutine mult_imydipole
 
-subroutine mult_xdipole(in,out,realflag)
+subroutine mult_xdipole(howmany,in,out,realflag)
   use myparams
   use myprojectmod
   implicit none
-  DATATYPE,intent(in) :: in(totpoints)
-  DATATYPE,intent(out) :: out(totpoints)
-  integer,intent(in) :: realflag
+  integer,intent(in) :: realflag,howmany
+  DATATYPE,intent(in) :: in(totpoints,howmany)
+  DATATYPE,intent(out) :: out(totpoints,howmany)
+  integer :: ii
+  do ii=1,howmany
 #ifndef CNORMFLAG
   if (realflag.ne.0) then
-     out(:)=in(:)*real(dipoles(:,1),8)
+     out(:,ii)=in(:,ii)*real(dipoles(:,1),8)
   else
 #endif
-  out(:)=in(:)*dipoles(:,1)
+  out(:,ii)=in(:,ii)*dipoles(:,1)
 #ifndef CNORMFLAG
   endif
 #endif
-  
+  enddo
+
 end subroutine mult_xdipole
 
-subroutine mult_imxdipole(in, out)
-  use myparams
-  use myprojectmod
-  implicit none
-  DATATYPE,intent(in) :: in(totpoints)
-  DATATYPE,intent(out) :: out(totpoints)
-#ifdef REALGO
-  out(:)=in(:)*0d0  !! avoid warn unused
-#else
-  out(:)=in(:)*imag(dipoles(:,1))
-#endif
-end subroutine mult_imxdipole
 
 subroutine hatomcalc()
 end subroutine hatomcalc
 
 
-!! ADDS TO SPFS !!
+!! DIRECT (exchange is op_frozen_exchange)
 
-subroutine op_frozenreduced(inspfs,outspfs)
+subroutine op_frozenreduced(howmany,inspfs,outspfs)
   use twoemod
   use myparams
   use pmpimod
   use pfileptrmod
   implicit none
-  DATATYPE,intent(in) :: inspfs(totpoints)
-  DATATYPE,intent(inout) :: outspfs(totpoints)
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: inspfs(totpoints,howmany)
+  DATATYPE,intent(out) :: outspfs(totpoints,howmany)
+  integer :: ii
 
-  outspfs(:)=outspfs(:) + frozenreduced(:) * inspfs(:) * 2d0
+  do ii=1,howmany
+     outspfs(:,ii) = frozenreduced(:) * inspfs(:,ii) * 2d0
+  enddo
 
 end subroutine op_frozenreduced
 
@@ -635,18 +609,6 @@ subroutine velmultiply(howmany,spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
 
 end subroutine velmultiply
 
-
-subroutine imvelmultiply() !spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
-print *, "DOME imVELMULTIPLY SINCDVR"; stop
-end subroutine imvelmultiply
-
-subroutine mult_imke() !in, out)
-print *, "DOME MULT IMKE"; stop
-end subroutine mult_imke
-
-subroutine mult_reke() !in, out)
-print *, "DOME MULT reKE"; stop
-end subroutine mult_reke
 
 subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
   use myparams
@@ -1182,29 +1144,38 @@ end subroutine op_tinv_notscaled
 
 !! NOW ONLY OUTPUTS ONE. CALL IN LOOP. FOR OPENMPI TRY.
 
-subroutine mult_reducedpot(inspfs,outspf,whichspf,reducedpot)
+subroutine mult_reducedpot(firstspf,lastspf,inspfs,outspfs,reducedpot)
   use myparams
   implicit none
-  integer,intent(in) :: whichspf
-  DATATYPE,intent(out) :: outspf(totpoints)
+  integer,intent(in) :: firstspf,lastspf
+  DATATYPE,intent(out) :: outspfs(totpoints,firstspf:lastspf)
   DATATYPE,intent(in) :: inspfs(totpoints, numspf),reducedpot(totpoints, numspf,numspf)
+  DATATYPE :: myspf(totpoints)         !! AUTOMATIC
   integer :: ispf,kspf
 
-  outspf(:)=0d0
+  outspfs(:,:)=0d0
 
-  do ispf=whichspf,whichspf
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ispf,kspf,myspf)
+!$OMP DO SCHEDULE(DYNAMIC)
+  do ispf=firstspf,lastspf
+     myspf(:)=0d0
      do kspf=1,numspf
 
 !!$ CLASSES?
 !!$        if (she lls(kspf).eq.ish ell) then
 !!$ reducedpot is usual notation: <ispf | kspf> so so sum over slow index kspf
                     
-        outspf(:) = outspf(:) + &
+        myspf(:) = myspf(:) + &
              reducedpot(:,ispf,kspf) * inspfs(:,kspf)
 
 !!$        endif
+
      enddo
+     outspfs(:,ispf)=myspf(:)
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
 end subroutine mult_reducedpot
 
 
@@ -2043,26 +2014,15 @@ end subroutine mult_all0
 
 
 
-!! (do need this -- set to zero)
-subroutine hatom_matel(inspfs1, inspfs2, hatommatel,numberspf) 
+subroutine hatom_op(howmany,inspfs, outspfs)
   use myparams
   implicit none
-  integer,intent(in) :: numberspf
-  DATATYPE,intent(in) :: inspfs1(totpoints,numberspf), inspfs2(totpoints,numberspf)
-  DATATYPE,intent(out) :: hatommatel(numberspf,numberspf)
+  integer,intent(in) :: howmany
+  DATATYPE,intent(out) :: outspfs(totpoints,howmany)
+  DATATYPE,intent(in) :: inspfs(totpoints,howmany)
   DATATYPE :: qq
-  hatommatel(:,:)=0d0; qq=inspfs2(1,1); qq=inspfs1(1,1)
-end subroutine hatom_matel
-
-
-subroutine hatom_op(inspf, outspf)
-  use myparams
-  implicit none
-  DATATYPE,intent(out) :: outspf(totpoints)
-  DATATYPE,intent(in) :: inspf(totpoints)
-  DATATYPE :: qq
-  outspf(:)=0d0
-  qq=inspf(1)
+  outspfs(:,:)=0d0
+  qq=inspfs(1,1)
 end subroutine hatom_op
 
 

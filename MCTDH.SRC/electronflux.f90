@@ -574,43 +574,40 @@ subroutine flux_op_onee(inspfs,keop,peop,flag) !! flag=1, flux (imag); flag=2, f
   DATATYPE, intent(in) :: inspfs(spfsize,nspf)
   DATATYPE,intent(out) ::  keop(spfsize,nspf),peop(spfsize,nspf)
   integer,intent(in) :: flag
-  integer :: ispf
 
 !! initialize
   keop=0d0; peop=0d0
 
 !! the kinetic energy
-  do ispf=1,nspf
+
      select case(flag)
      case(1)
-        call mult_imke(inspfs(:,ispf),keop(:,ispf))
+        call mult_imke(nspf,inspfs(:,:),keop(:,:))
      case(2)
-        call mult_reke(inspfs(:,ispf),keop(:,ispf))
+        call mult_reke(nspf,inspfs(:,:),keop(:,:))
      case default
-        call mult_ke(inspfs(:,ispf),keop(:,ispf),1,"booga",2)
+        call mult_ke(inspfs(:,:),keop(:,:),nspf,"booga",2)
      end select
-  enddo
+
 
 !! the one-e potential energy 
-  do ispf=1,nspf
+
      select case(flag)
      case(1)
         if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
-           call mult_impot(inspfs(:,ispf),peop(:,ispf))
+           call mult_impot(nspf,inspfs(:,:),peop(:,:))
         else if(FluxOpType.eq.1) then
-           call mult_imhalfniumpot(inspfs(:,ispf),peop(:,ispf))
+           call mult_imhalfniumpot(nspf,inspfs(:,:),peop(:,:))
         endif 
      case(2)
         if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
-           call mult_repot(inspfs(:,ispf),peop(:,ispf))
+           call mult_repot(nspf,inspfs(:,:),peop(:,:))
         else if(FluxOpType.eq.1) then
-           call mult_rehalfniumpot(inspfs(:,ispf),peop(:,ispf))
+           call mult_rehalfniumpot(nspf,inspfs(:,:),peop(:,:))
         endif 
      case default
-        call mult_pot(inspfs(:,ispf),peop(:,ispf))
+        call mult_pot(nspf,inspfs(:,:),peop(:,:))
      end select
-
-  enddo
 
 !! scale correctly and clear memory
   if(flag.ne.0) then
@@ -634,21 +631,20 @@ subroutine flux_op_nuc(inspfs,yop,flag) !! flag=1, flux (imag); flag=0, all    2
   DATATYPE, intent(in) :: inspfs(spfsize,nspf)
   DATATYPE,intent(out) ::  yop(spfsize,nspf)
   integer,intent(in) :: flag
-  integer :: ispf
 
   call noparorbsupport("in flux_op_nuc")
 
 !! the kinetic energy
-  do ispf=1,nspf
+
      select case(flag)
      case(1)
-        call op_imyderiv(inspfs(:,ispf),yop(:,ispf))
+        call op_imyderiv(nspf,inspfs(:,:),yop(:,:))
      case(2)
-        call op_reyderiv(inspfs(:,ispf),yop(:,ispf))
+        call op_reyderiv(nspf,inspfs(:,:),yop(:,:))
      case default
-        call op_yderiv(inspfs(:,ispf),yop(:,ispf))
+        call op_yderiv(nspf,inspfs(:,:),yop(:,:))
      end select
-  end do
+
 
 !! scale correctly and clear memory
   if(flag.ne.0) then

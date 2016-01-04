@@ -132,9 +132,9 @@ subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
   DATATYPE,intent(out) :: spfsout(spfsize, nspf)
   integer,intent(in) :: allflag
   real*8,intent(in) :: thistime
-  real*8 :: facs(0:1)
-  integer ::  jjj, ispf,jspf,ibot
-  DATATYPE ::   spfmult(spfsize,nspf), spfmult2(spfsize,nspf), spfmult3(spfsize,nspf) !!AUTOMATIC
+  DATATYPE :: facs(0:1)
+  integer ::  jjj, ibot
+  DATATYPE ::   spfmult(spfsize,nspf), spfmult2(spfsize,nspf)  !!AUTOMATIC
 
   if (effective_cmf_linearflag.eq.1) then
      ibot=0;     facs(0)=(thistime-firsttime)/(lasttime-firsttime);     facs(1)=1d0-facs(0)
@@ -159,23 +159,32 @@ subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
      spfsout(:,:)=spfsout(:,:)+spfmult(:,:)*facs(jjj)
   enddo
 
+!! EXCHANGE IS TREATED AS A DRIVING TERM.  DOES NOT GO IN LINEAR OPERATOR ACTREDUCED.
+!!  (it is prohibitive to call op_frozen_exchange repeatedly)
+!!  DOES NOT CONTRIBUTE TO JACOBIAN (jacoperate)
+
   if (numfrozen.gt.0) then
-     spfmult3(:,:)=0d0
+
+     spfmult2(:,:)=0d0
      do jjj=ibot,1
-        spfmult(:,:)=0d0
-        do ispf=1,nspf
-           do jspf=1,nspf
-              spfmult(:,ispf) = spfmult(:,ispf) + &
-                   yyy%frozenexchange(:,jspf,jjj) * yyy%reducedinvr(jspf,ispf,jjj) 
-           enddo
-        enddo
 
+! previous
+!        spfmult(:,:)=0d0
+!        do ispf=1,nspf
+!           do jspf=1,nspf
+!              spfmult(:,ispf) = spfmult(:,ispf) + &
+!                   yyy%frozenexchange(:,jspf,jjj) * yyy%reducedinvr(jspf,ispf,jjj) 
+!           enddo
+!        enddo
+
+!! facs(jjj) here
+        call MYGEMM('N','N',spfsize,nspf,nspf,facs(jjj), yyy%frozenexchange(:,:,jjj),spfsize,&
+             yyy%reducedinvr(:,:,jjj),nspf, DATAZERO, spfmult,spfsize)
 !! TIMEFAC HERE
-        call MYGEMM('N','N', spfsize,nspf,nspf,timefac, spfmult(:,:),spfsize, yyy%invdenmat(:,:,jjj), nspf, DATAZERO, spfmult2(:,:), spfsize)
-        spfmult3(:,:)=spfmult3(:,:)+spfmult2(:,:)*facs(jjj)
+        call MYGEMM('N','N', spfsize,nspf,nspf,timefac, spfmult(:,:),spfsize, &
+             yyy%invdenmat(:,:,jjj), nspf, DATAONE, spfmult2(:,:), spfsize)
      enddo
-
-     call oneminusproject(spfmult3(:,:),spfmult(:,:),spfsin)
+     call oneminusproject(spfmult2(:,:),spfmult(:,:),spfsin)
      spfsout(:,:)=spfsout(:,:)+spfmult(:,:)
   endif
 
@@ -245,12 +254,12 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
   real*8, intent(in) :: thistime
   DATATYPE, intent(in) :: inspfs0(spfsize, nspf), projspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-  integer :: ispf, itime, jtime, getlen, lowspf,highspf
+  integer :: itime, jtime, getlen, lowspf,highspf,numspf
   integer, save :: times(0:20)=0,numcalledhere=0
   DATATYPE :: myxtdpot=0,  myytdpot=0, myztdpot=0, pots(3)=0d0
-  DATATYPE ::   inspfs(spfsize,nspf), tempmult(spfsize),spfmult(spfsize,nspf*2),&  !! AUTOMATIC
-       myspf(spfsize), spfinvr( spfsize,nspf ), spfr( spfsize,nspf ),  &
-       spfinvrsq(  spfsize,nspf),spfproderiv(  spfsize,nspf ), spfmult2(spfsize,nspf)
+  DATATYPE ::   inspfs(spfsize,nspf), workmult(spfsize,nspf),spfmult(spfsize,nspf),&  !! AUTOMATIC
+       spfinvr( spfsize,nspf ), spfr( spfsize,nspf ),  &
+       spfinvrsq(  spfsize,nspf),spfproderiv(  spfsize,nspf )
 
   if (tdflag.eq.1) then
      call vectdpot(thistime,velflag,pots,-1)
@@ -290,46 +299,39 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
   call system_clock(jtime);  times(1)=times(1)+jtime-itime
 
   lowspf=1; highspf=nspf
-  if (parorbsplit.eq.1) then
-
-!!$ 05-01-2015 DJH
+  if (parorbsplit.eq.1.and.nprocs.gt.1) then
      lowspf=1; highspf=nspf
-     if (parorbsplit.eq.1) then
-        call getOrbSetRange(lowspf,highspf)
-     endif
-
-!!$ 05-01-2015 DJH
-!!$     lowspf=firstmpiorb;     highspf=min(nspf,firstmpiorb+orbsperproc-1)
-!!$
-
+     call getOrbSetRange(lowspf,highspf)
   endif
+  numspf=highspf-lowspf+1
 
   spfmult=0.d0
 
-  do ispf=lowspf,highspf
      call system_clock(itime)
 
-     call mult_ke(spfinvrsq(:,ispf),tempmult,1,timingdir,notiming)
-     spfmult(:,ispf) = spfmult(:,ispf) + tempmult(:)
+     call mult_ke(spfinvrsq(:,lowspf:highspf),workmult(:,lowspf:highspf),numspf,timingdir,notiming)
+     spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
      call system_clock(jtime);  times(2)=times(2)+jtime-itime;  call system_clock(itime)
 
-     call mult_pot(spfinvr(:,ispf),tempmult)
-     spfmult(:,ispf) = spfmult(:,ispf) + tempmult(:)
-     call hatom_op(spfinvr(:,ispf),tempmult)
-     spfmult(:,ispf)=spfmult(:,ispf)+tempmult(:)
+     call mult_pot(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
+     spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
+     call hatom_op(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
+     spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
      if (numfrozen.gt.0) then
-        call op_frozenreduced(spfinvr(:,ispf),spfmult(:,ispf))  !! adds to spfmult DIRECT ONLY
+!! DIRECT ONLY.
+        call op_frozenreduced(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
+        spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
      endif
      call system_clock(jtime);     times(3)=times(3)+jtime-itime;         call system_clock(itime)
 
      if (tdflag.eq.1) then
         select case (velflag)
         case (0)
-           call lenmultiply(spfr(:,ispf),myspf(:), myxtdpot,myytdpot,myztdpot)
-           spfmult(:,ispf)=spfmult(:,ispf)+myspf(:)
+           call lenmultiply(numspf,spfr(:,lowspf:highspf),workmult(:,lowspf:highspf), myxtdpot,myytdpot,myztdpot)
+           spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
         case default
-           call velmultiply(1,spfinvr(:,ispf),myspf(:), myxtdpot,myytdpot,myztdpot)
-           spfmult(:,ispf)=spfmult(:,ispf)+myspf(:)
+           call velmultiply(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf), myxtdpot,myytdpot,myztdpot)
+           spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
         end select
      endif  !! tdpot
 
@@ -337,19 +339,19 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
   
      if (nonuc_checkflag.eq.0) then
         call noparorbsupport("another call mult_yderiv!!")
-        call op_yderiv(spfproderiv(:,ispf),tempmult(:))
-        spfmult(:,ispf)=spfmult(:,ispf)+tempmult(:)
+        call op_yderiv(numspf,spfproderiv(:,lowspf:highspf),workmult(:,lowspf:highspf))
+        spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
      endif
      call system_clock(jtime);     times(5)=times(5)+jtime-itime; call system_clock(itime)
 
 !! NOW ONLY OUTPUTS ONE, TAKES ALL
-     call mult_reducedpot(inspfs(:,:),tempmult(:),ispf,yyy%reducedpot(:,:,:,ireduced))
-     spfmult(:,ispf)=spfmult(:,ispf) + tempmult(:)
+     call mult_reducedpot(lowspf,highspf,inspfs(:,:),workmult(:,lowspf:highspf),yyy%reducedpot(:,:,:,ireduced))
+     spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
      call system_clock(jtime);  times(6)=times(6)+jtime-itime;  
 
-  enddo
 
-  if (parorbsplit.eq.1) then
+
+  if (parorbsplit.eq.1.and.nprocs.gt.1) then
      call system_clock(itime)
      call mpiorbgather(spfmult,spfsize)
      call system_clock(jtime);  times(10)=times(10)+jtime-itime
@@ -365,14 +367,14 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
   if (projflag==1) then
      call system_clock(itime)
      call project(outspfs, spfmult, projspfs)
-     outspfs(:,:) = outspfs(:,:) - spfmult(:,1:nspf)
+     outspfs(:,:) = outspfs(:,:) - spfmult(:,:)
      call system_clock(jtime);     times(8)=times(8)+jtime-itime;      
   endif  
      
   if (constraintflag/=0.and.conflag.ne.0) then
      call system_clock(itime)
      call op_gmat(inspfs,spfmult,ireduced,thistime,projspfs)
-     outspfs(:,:)=outspfs(:,:)+spfmult(:,1:nspf)
+     outspfs(:,:)=outspfs(:,:)+spfmult(:,:)
      call system_clock(jtime);        times(9)=times(9)+jtime-itime
   endif
 
@@ -533,9 +535,8 @@ subroutine wmult(inspfs, outspfs, ireduced)
   DATATYPE, intent(in) :: inspfs(spfsize,nspf)
   DATATYPE, intent(out) :: outspfs(spfsize,nspf)
   integer,intent(in) :: ireduced
-  DATATYPE :: spfmult(spfsize,nspf), tempbigmult(spfsize,nspf), tempmult(spfsize),& !!AUTOMATIC
+  DATATYPE :: spfmult(spfsize,nspf), workmult(spfsize,nspf),& !!AUTOMATIC
        spfinvr( spfsize,nspf ), spfinvrsq(  spfsize,nspf),spfproderiv(  spfsize,nspf )
-  integer :: ispf
 
 !! sum over fast index reduced matrices, because doing spfinvrsq= reducedinvrsq * inspfs BUT 1) store in transposed order and 2) have to reverse the call in BLAS
 
@@ -550,24 +551,22 @@ subroutine wmult(inspfs, outspfs, ireduced)
   
   spfmult=0.d0
 
-  call mult_ke(spfinvrsq(:,:),spfmult(:,:),nspf,timingdir,notiming); 
+  call mult_ke(spfinvrsq(:,:),spfmult(:,:),nspf,timingdir,notiming)
 
-  do ispf=1,nspf
-     call mult_pot(spfinvr(:,ispf),tempmult(:));     spfmult(:,ispf)=spfmult(:,ispf)+tempmult(:)
-  enddo
+  call mult_pot(nspf,spfinvr(:,:),workmult(:,:))
+  spfmult(:,:)=spfmult(:,:)+workmult(:,:)
+
   if ((nonuc_checkflag/=1)) then
      call noparorbsupport("another call op_yderiv")
-     do ispf=1,nspf
-        call op_yderiv(spfproderiv(:,ispf),tempmult(:));        spfmult(:,ispf)=spfmult(:,ispf) + tempmult(:)
-     enddo
+
+     call op_yderiv(nspf,spfproderiv(:,:),workmult(:,:))
+     spfmult(:,:)=spfmult(:,:) + workmult(:,:)
+
   endif
 
-  do ispf=1,nspf
+  call mult_reducedpot(1,nspf,inspfs(:,:),workmult(:,:),yyy%reducedpot(:,:,:,ireduced))
 
-!! NOW OUTPUTS ONLY ONE (TAKES ALL)
-     call mult_reducedpot(inspfs,tempbigmult(:,ispf),ispf,yyy%reducedpot(:,:,:,ireduced))
-  enddo
-  spfmult(:,:)=spfmult(:,:)+tempbigmult(:,:)
+  spfmult(:,:)=spfmult(:,:)+workmult(:,:)
 
   call MYGEMM('N','N', spfsize,nspf,nspf,timefac, spfmult,spfsize, yyy%invdenmat(:,:,ireduced), nspf, DATAZERO, outspfs, spfsize)
 

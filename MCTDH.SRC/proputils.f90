@@ -108,7 +108,7 @@ subroutine get_frexchange()
   implicit none
   if (numfrozen.gt.0) then
      yyy%frozenexchange(:,:,0)=0
-     call op_frozen_exchange(yyy%cmfpsivec(spfstart,0),yyy%frozenexchange(:,:,0))
+     call op_frozen_exchange(nspf,yyy%cmfpsivec(spfstart:spfend,0),yyy%frozenexchange(:,:,0))
   endif
 end subroutine get_frexchange
 
@@ -159,87 +159,169 @@ subroutine get_stuff0(thistime,times)
 end subroutine get_stuff0
 
 
+subroutine mult_reke(howmany,in,out)
+  use parameters
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  DATATYPE :: work(spfsize,howmany)
+  work(:,:)=ALLCON(in(:,:))
+  call mult_ke(work,out,howmany,"booga",2)
+  work=ALLCON(out)
+  call mult_ke(in,out,howmany,"booga",2)  
+  work=work+out
+  out=work/2d0
+end subroutine mult_reke
+
+
+subroutine mult_imke(howmany,in,out)
+  use parameters
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  DATATYPE :: work(spfsize,howmany)
+  work(:,:)=ALLCON(in(:,:))
+  call mult_ke(work,out,howmany,"booga",2)
+  work=ALLCON(out)
+  call mult_ke(in,out,howmany,"booga",2)  
+  work=out-work
+  out=work/(0d0,2d0)
+end subroutine mult_imke
+
+subroutine op_reyderiv(howmany,in,out)
+  use parameters
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  DATATYPE :: work(spfsize,howmany)
+  work(:,:)=ALLCON(in(:,:))
+  call op_yderiv(howmany,work,out)
+  work=ALLCON(out)
+  call op_yderiv(howmany,in,out)
+  work=work+out
+  out=work/2d0
+end subroutine op_reyderiv
+
+
+subroutine op_imyderiv(howmany,in,out)
+  use parameters
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  DATATYPE :: work(spfsize,howmany)
+  work(:,:)=ALLCON(in(:,:))
+  call op_yderiv(howmany,work,out)
+  work=ALLCON(out)
+  call op_yderiv(howmany,in,out)
+  work=out-work
+  out=work/(0d0,2d0)
+end subroutine op_imyderiv
 
 
 !! needs factor of 1/r  for hamiltonian
 
-subroutine mult_impot(in, out)
+subroutine mult_impot(howmany,in, out)
   use parameters
   use opmod 
   implicit none
-  DATATYPE,intent(in) :: in(spfsize)
-  DATATYPE,intent(out) :: out(spfsize)
-  out(:)=in(:)*imag((0d0,0d0)+pot(:))   !! NO INTERNUCLEAR REPULSION !!
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  integer :: ii
+  do ii=1,howmany
+     out(:,ii)=in(:,ii)*imag((0d0,0d0)+pot(:))   !! NO INTERNUCLEAR REPULSION !!
+  enddo
 end subroutine mult_impot
 
 
 
 !! needs factor of 1/r  for hamiltonian
 
-subroutine mult_repot(in, out)
+subroutine mult_repot(howmany,in, out)
   use parameters
   use opmod 
   implicit none
-  DATATYPE,intent(in) :: in(spfsize)
-  DATATYPE,intent(out) :: out(spfsize)
-  out(:)=in(:)*real(pot(:),8)   !! NO INTERNUCLEAR REPULSION !!
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  integer :: ii
+  do ii=1,howmany
+     out(:,ii)=in(:,ii)*real(pot(:),8)   !! NO INTERNUCLEAR REPULSION !!
+  enddo
 end subroutine mult_repot
 
 
-subroutine mult_pot(in, out)
+subroutine mult_pot(howmany,in, out)
   use parameters
   use opmod 
   implicit none
-  DATATYPE,intent(in) :: in(spfsize)
-  DATATYPE,intent(out) :: out(spfsize)
-  out(:)=in(:)*pot(:)   !! NO INTERNUCLEAR REPULSION !!
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  integer :: ii
+  do ii=1,howmany
+     out(:,ii)=in(:,ii)*pot(:)   !! NO INTERNUCLEAR REPULSION !!
+  enddo
 end subroutine mult_pot
 
 
 !! needs factor of 1/r  for hamiltonian
 
-subroutine mult_imhalfniumpot(in, out)
+subroutine mult_imhalfniumpot(howmany,in, out)
   use parameters
   use opmod  
   implicit none
-  DATATYPE,intent(in) :: in(spfsize)
-  DATATYPE,intent(out) :: out(spfsize)
-  out(:)=in(:)*imag((0d0,0d0)+halfniumpot(:))
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  integer :: ii
+  do ii=1,howmany
+     out(:,ii)=in(:,ii)*imag((0d0,0d0)+halfniumpot(:))
+  enddo
 end subroutine mult_imhalfniumpot
 
 
-subroutine mult_rehalfniumpot(in, out)
+subroutine mult_rehalfniumpot(howmany,in, out)
   use parameters
   use opmod  
   implicit none
-  DATATYPE,intent(in) :: in(spfsize)
-  DATATYPE,intent(out) :: out(spfsize)
-  out(:)=in(:)*real(halfniumpot(:),8)
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  integer :: ii
+  do ii=1,howmany
+     out(:,ii)=in(:,ii)*real(halfniumpot(:),8)
+  enddo
 end subroutine mult_rehalfniumpot
 
 
-subroutine lenmultiply(spfin,spfout, myxtdpot,myytdpot,myztdpot)
+subroutine lenmultiply(howmany,spfin,spfout, myxtdpot,myytdpot,myztdpot)
   use mpimod
   use parameters
   implicit none
-  DATATYPE,intent(in) :: spfin(spfsize)
-  DATATYPE,intent(out) :: spfout(spfsize)
-  DATATYPE :: ttempspf(spfsize)              !! AUTOMATIC
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: spfin(spfsize,howmany)
+  DATATYPE,intent(out) :: spfout(spfsize,howmany)
+  DATATYPE :: ttempspf(spfsize,howmany)              !! AUTOMATIC
   DATATYPE :: myxtdpot,myztdpot,myytdpot
 
-  spfout(:)=0d0
+  spfout(:,:)=0d0
 
   if (abs(myztdpot).ne.0d0) then
-     call mult_zdipole(spfin(:),ttempspf(:),0)
-     spfout(:)=spfout(:)+ttempspf(:)*myztdpot
+     call mult_zdipole(howmany,spfin(:,:),ttempspf(:,:),0)
+     spfout(:,:)=spfout(:,:)+ttempspf(:,:)*myztdpot
   endif
   if (abs(myytdpot).ne.0d0) then
-     call mult_ydipole(spfin(:),ttempspf(:),0)
-     spfout(:)=spfout(:)+ttempspf(:)*myytdpot
+     call mult_ydipole(howmany,spfin(:,:),ttempspf(:,:),0)
+     spfout(:,:)=spfout(:,:)+ttempspf(:,:)*myytdpot
   endif
   if (abs(myxtdpot).ne.0d0) then
-     call mult_xdipole(spfin(:),ttempspf(:),0)
-     spfout(:)=spfout(:)+ttempspf(:)*myxtdpot
+     call mult_xdipole(howmany,spfin(:,:),ttempspf(:,:),0)
+     spfout(:,:)=spfout(:,:)+ttempspf(:,:)*myxtdpot
   endif
 
 end subroutine lenmultiply
@@ -253,14 +335,15 @@ subroutine call_frozen_matels()
 end subroutine call_frozen_matels
 
 
-subroutine call_frozen_exchange(inspfs,outspfs)
+subroutine op_frozen_exchange(howmany,inspfs,outspfs)
   use opmod
   use parameters
   implicit none
-  DATATYPE,intent(in) :: inspfs(totspfdim)
-  DATATYPE,intent(out) :: outspfs(totspfdim)
-  call call_frozen_exchange0(inspfs,outspfs,frozenspfs,numfrozen)
-end subroutine call_frozen_exchange
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: inspfs(spfsize,howmany)
+  DATATYPE,intent(out) :: outspfs(spfsize,howmany)
+  call op_frozen_exchange0(howmany,inspfs,outspfs,frozenspfs,numfrozen)
+end subroutine op_frozen_exchange
 
 
 

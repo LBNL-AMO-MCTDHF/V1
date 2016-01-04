@@ -134,9 +134,9 @@ subroutine dipolesub_one(www,abra,aket,inspfs,xdipole_expect,ydipole_expect,zdip
 
 !! Z DIPOLE
 
-  do i=1,www%nspf
-     call mult_zdipole(inspfs(:,i),tempspfs(:,i),1)
-  enddo
+
+  call mult_zdipole(www%nspf,inspfs(:,:),tempspfs(:,:),1)
+
   call MYGEMM(CNORMCHAR,'N',www%nspf,www%nspf,spfsize,DATAONE, inspfs, spfsize, tempspfs, spfsize, DATAZERO, dipolemat, www%nspf)
   if (parorbsplit.eq.3) then
      call mympireduce(dipolemat(:,:),www%nspf**2)
@@ -153,9 +153,8 @@ subroutine dipolesub_one(www,abra,aket,inspfs,xdipole_expect,ydipole_expect,zdip
 
 !! Y DIPOLE
 
-  do i=1,www%nspf
-     call mult_ydipole(inspfs(:,i),tempspfs(:,i),1)
-  enddo
+  call mult_ydipole(www%nspf,inspfs(:,:),tempspfs(:,:),1)
+
   call MYGEMM(CNORMCHAR,'N',www%nspf,www%nspf,spfsize,DATAONE, inspfs, spfsize, tempspfs, spfsize, DATAZERO, dipolemat, www%nspf)
   if (parorbsplit.eq.3) then
      call mympireduce(dipolemat(:,:),www%nspf**2)
@@ -172,9 +171,8 @@ subroutine dipolesub_one(www,abra,aket,inspfs,xdipole_expect,ydipole_expect,zdip
 
 !! X DIPOLE
 
-  do i=1,www%nspf
-     call mult_xdipole(inspfs(:,i),tempspfs(:,i),1)
-  enddo
+  call mult_xdipole(www%nspf,inspfs(:,:),tempspfs(:,:),1)
+
   call MYGEMM(CNORMCHAR,'N',www%nspf,www%nspf,spfsize,DATAONE, inspfs, spfsize, tempspfs, spfsize, DATAZERO, dipolemat, www%nspf)
   if (parorbsplit.eq.3) then
      call mympireduce(dipolemat(:,:),www%nspf**2)
