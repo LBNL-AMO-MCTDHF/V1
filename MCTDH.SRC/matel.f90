@@ -228,7 +228,7 @@ subroutine sparseops_matel(matrix_ptr,inspfs1,inspfs2)
 
   matrix_ptr%xopmatel=0d0;  matrix_ptr%xymatel=0d0;  
 
-     call mult_ke(inspfs2(:,:),ttempspfs(:,:),nspf,timingdir,notiming)
+  call mult_ke(inspfs2(:,:),ttempspfs(:,:),nspf,timingdir,notiming)
 
   call MYGEMM(CNORMCHAR,'N',nspf,nspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfs, spfsize, DATAZERO, matrix_ptr%xopmatel(:,:) ,nspf)
 

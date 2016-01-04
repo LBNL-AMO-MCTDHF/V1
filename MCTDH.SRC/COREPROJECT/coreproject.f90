@@ -1419,54 +1419,44 @@ end function xilobattoint
 
 !! all proddrhos are the same. (and asymmetric individually)
 
-subroutine velmultiply(howmany,spfsin,spfsout, myxtdpot0,myytdpot0,myztdpot)
+subroutine velmultiply(howmany,spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   use myparams
   use myprojectmod
   implicit none
   integer,intent(in) :: howmany
-  DATATYPE,intent(in) :: spfsin(numerad,lbig+1,-mbig:mbig,howmany)
-  DATATYPE,intent(out) :: spfsout(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(in) :: spfin(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: spfout(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE,intent(in) :: myxtdpot0,myztdpot,myytdpot0
-  integer :: ii
-
-  do ii=1,howmany
-     call velmultiply_one(spfsin(:,:,:,ii),spfsout(:,:,:,ii),myxtdpot0,myytdpot0,myztdpot)
-  enddo
-
-end subroutine velmultiply
-
-
-subroutine velmultiply_one(spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
-  use myparams
-  use myprojectmod
-  implicit none
-  DATATYPE,intent(in) :: spfin(numerad,lbig+1,-mbig:mbig)
-  DATATYPE,intent(out) :: spfout(numerad,lbig+1,-mbig:mbig)
-  DATATYPE,intent(in) :: myxtdpot0,myztdpot,myytdpot0
-  integer :: imval, qq, ieta , ixi, i 
+  integer :: imval, qq, ieta , ixi, i ,ivect
   complex*16 :: csum1,csum2,cfacreal,cfacimag
   real*8 :: myrhotdpotreal,myrhotdpotimag
-  DATATYPE :: work(lbig+1)
+  DATATYPE :: work(lbig+1),work2(lbig+1)
 
 #ifdef REALGO
 OFLWR "Velocity gauge not available for real time propagation"; CFLST
 #endif
 
-  spfout=0d0
+  spfout(:,:,:,:)=0d0
+
   if (abs(myztdpot).gt.1.d-10) then
+     do ivect=1,howmany
      do imval=-mbig,mbig
         qq=lbig+1
         do ixi=1,numerad
-           call MYGEMV('N',qq,qq,DATAONE,sparseddz_eta(:,:,ixi,abs(imval)+1),qq,spfin(ixi,:,imval),1,DATAZERO, work, 1)
-           spfout(ixi,:,imval)= spfout(ixi,:,imval) + work(1:lbig+1) * myztdpot * (0.d0,1.d0)  
+           work2(:)=spfin(ixi,:,imval,ivect)
+           call MYGEMV('N',qq,qq,DATAONE,sparseddz_eta(:,:,ixi,abs(imval)+1),qq,work2,1,DATAZERO, work, 1)
+           spfout(ixi,:,imval,ivect)= spfout(ixi,:,imval,ivect) + work(1:lbig+1) * myztdpot * (0.d0,1.d0)  
         enddo
 
         i=2*bandwidth+1
         csum1=myztdpot * (0.d0,1.d0) 
         do ieta=1,lbig+1
-           call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum1,sparseddz_xi_banded(:,:,ieta,abs(imval)+1),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval), 1)
+           call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum1,sparseddz_xi_banded(:,:,ieta,abs(imval)+1),i,&
+                spfin(:,ieta,imval,ivect),1,DATAONE, spfout(:,ieta,imval,ivect), 1)
         enddo
-        spfout(:,:,imval) = spfout(:,:,imval) - sparseddz_diag(:,:,abs(imval)+1) * spfin(:,:,imval) * myztdpot * (0.0d0, 1.d0) 
+        spfout(:,:,imval,ivect) = spfout(:,:,imval,ivect) - &
+             sparseddz_diag(:,:,abs(imval)+1) * spfin(:,:,imval,ivect) * myztdpot * (0.0d0, 1.d0) 
+     enddo
      enddo
   endif
 
@@ -1484,92 +1474,98 @@ OFLWR "Velocity gauge not available for real time propagation"; CFLST
      csum1= (0.d0,1.d0) * ( myrhotdpotreal *cfacreal + (0d0,1d0) * myrhotdpotimag *cfacimag )                     /2 !!TWOFIX
      csum2= (0.d0,1.d0) * ( myrhotdpotreal * CONJG(cfacreal) + (0d0,1d0) * myrhotdpotimag * CONJG(cfacimag))      /2 !!TWOFIX
 
+     do ivect=1,howmany
      do imval = -mbig,mbig
         if (mod(imval,2).eq.0) then  !! even.  no transpose.
            qq=lbig+1
            do ixi=1,numerad
-              call MYGEMV('N',qq,qq,DATAONE,sparseddrho_eta(:,:,ixi,1),qq,spfin(ixi,:,imval),1,DATAZERO, work, 1)
+              work2(:)=spfin(ixi,:,imval,ivect)
+              call MYGEMV('N',qq,qq,DATAONE,sparseddrho_eta(:,:,ixi,1),qq,work2,1,DATAZERO, work, 1)
               if (imval.gt.-mbig) then
-                 spfout(ixi,:,imval-1)= spfout(ixi,:,imval-1) + work(1:lbig+1) * csum1
+                 spfout(ixi,:,imval-1,ivect)= spfout(ixi,:,imval-1,ivect) + work(1:lbig+1) * csum1
               endif
               if (imval .lt. mbig) then
-                 spfout(ixi,:,imval+1)= spfout(ixi,:,imval+1) + work(1:lbig+1) * csum2
+                 spfout(ixi,:,imval+1,ivect)= spfout(ixi,:,imval+1,ivect) + work(1:lbig+1) * csum2
               endif
            enddo
            i=2*bandwidth+1
            do ieta=1,lbig+1
               if (imval.gt.-mbig) then
-                 call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum1,sparseddrho_xi_banded(:,:,ieta,1),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval-1), 1)
+                 call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum1,sparseddrho_xi_banded(:,:,ieta,1),i,&
+                      spfin(:,ieta,imval,ivect),1,DATAONE, spfout(:,ieta,imval-1,ivect), 1)
               endif
 
               if (imval.lt.mbig) then
-                 call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum2,sparseddrho_xi_banded(:,:,ieta,1),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval+1), 1)
+                 call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum2,sparseddrho_xi_banded(:,:,ieta,1),i,&
+                      spfin(:,ieta,imval,ivect),1,DATAONE, spfout(:,ieta,imval+1,ivect), 1)
               endif
            enddo
            if (imval.gt.-mbig) then                       
-              spfout(:,:,imval-1) = spfout(:,:,imval-1) - sparseddrho_diag(:,:,1) * spfin(:,:,imval) *csum1
+              spfout(:,:,imval-1,ivect) = spfout(:,:,imval-1,ivect) - sparseddrho_diag(:,:,1) * spfin(:,:,imval,ivect) *csum1
            endif
            if (imval.lt.mbig) then                       
-              spfout(:,:,imval+1) = spfout(:,:,imval+1) - sparseddrho_diag(:,:,1) * spfin(:,:,imval) *csum2
+              spfout(:,:,imval+1,ivect) = spfout(:,:,imval+1,ivect) - sparseddrho_diag(:,:,1) * spfin(:,:,imval,ivect) *csum2
            endif
 
            !! lowering
            if (imval.gt.-mbig) then
-              spfout(:,:,imval-1)= spfout(:,:,imval-1) + ddrhopot * (imval-1) * spfin(:,:,imval) * csum1
+              spfout(:,:,imval-1,ivect)= spfout(:,:,imval-1,ivect) + ddrhopot * (imval-1) * spfin(:,:,imval,ivect) * csum1
            endif
            
            !! raising
            if (imval.lt.mbig) then
-              spfout(:,:,imval+1)= spfout(:,:,imval+1) - ddrhopot * (imval+1) * spfin(:,:,imval) * csum2 
+              spfout(:,:,imval+1,ivect)= spfout(:,:,imval+1,ivect) - ddrhopot * (imval+1) * spfin(:,:,imval,ivect) * csum2 
            endif
 
         else  !! even or odd:  odd. transpose.
 
            qq=lbig+1
            do ixi=1,numerad
-              call MYGEMV('T',qq,qq,DATANEGONE,sparseddrho_eta(:,:,ixi,1),qq,spfin(ixi,:,imval),1,DATAZERO, work, 1)
+              work2(:)=spfin(ixi,:,imval,ivect)
+              call MYGEMV('T',qq,qq,DATANEGONE,sparseddrho_eta(:,:,ixi,1),qq,work2,1,DATAZERO, work, 1)
               if (imval.gt.-mbig) then
-                 spfout(ixi,:,imval-1)= spfout(ixi,:,imval-1) + work(1:lbig+1) * csum1
+                 spfout(ixi,:,imval-1,ivect)= spfout(ixi,:,imval-1,ivect) + work(1:lbig+1) * csum1
               endif
               if (imval .lt. mbig) then
-                 spfout(ixi,:,imval+1)= spfout(ixi,:,imval+1) + work(1:lbig+1) * csum2
+                 spfout(ixi,:,imval+1,ivect)= spfout(ixi,:,imval+1,ivect) + work(1:lbig+1) * csum2
               endif
            enddo
 
            i=2*bandwidth+1
            do ieta=1,lbig+1
               if (imval.gt.-mbig) then
-                 call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum1*(-1),sparseddrho_xi_banded(:,:,ieta,1),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval-1), 1)
+                 call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum1*(-1),sparseddrho_xi_banded(:,:,ieta,1),i,&
+                      spfin(:,ieta,imval,ivect),1,DATAONE, spfout(:,ieta,imval-1,ivect), 1)
               endif
 
               if (imval.lt.mbig) then
-                 call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum2*(-1),sparseddrho_xi_banded(:,:,ieta,1),i,spfin(:,ieta,imval),1,DATAONE, spfout(:,ieta,imval+1), 1)
+                 call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum2*(-1),sparseddrho_xi_banded(:,:,ieta,1),i,&
+                      spfin(:,ieta,imval,ivect),1,DATAONE, spfout(:,ieta,imval+1,ivect), 1)
 
               endif
            enddo
            if (imval.gt.-mbig) then                       
-              spfout(:,:,imval-1) = spfout(:,:,imval-1) + sparseddrho_diag(:,:,1) * spfin(:,:,imval) * csum1
+              spfout(:,:,imval-1,ivect) = spfout(:,:,imval-1,ivect) + sparseddrho_diag(:,:,1) * spfin(:,:,imval,ivect) * csum1
            endif
            if (imval.lt.mbig) then                       
-              spfout(:,:,imval+1) = spfout(:,:,imval+1) + sparseddrho_diag(:,:,1) * spfin(:,:,imval) * csum2
+              spfout(:,:,imval+1,ivect) = spfout(:,:,imval+1,ivect) + sparseddrho_diag(:,:,1) * spfin(:,:,imval,ivect) * csum2
            endif
 
            !! lowering
            if (imval.gt.-mbig) then
-              spfout(:,:,imval-1)= spfout(:,:,imval-1) + ddrhopot * (imval) * spfin(:,:,imval) * csum1
+              spfout(:,:,imval-1,ivect)= spfout(:,:,imval-1,ivect) + ddrhopot * (imval) * spfin(:,:,imval,ivect) * csum1
            endif
            
            !! raising
            if (imval.lt.mbig) then
-              spfout(:,:,imval+1)= spfout(:,:,imval+1) - ddrhopot  * (imval) * spfin(:,:,imval) * csum2
+              spfout(:,:,imval+1,ivect)= spfout(:,:,imval+1,ivect) - ddrhopot  * (imval) * spfin(:,:,imval,ivect) * csum2
            endif
         endif  ! mval even or odd
      enddo
+     enddo
   endif
 
-
-
-end subroutine velmultiply_one
+end subroutine velmultiply
 
 
 !! freaking cloogey, might be running slowly due to constant use of (0d0,0d0)+(0d0,1d0)*imag(...)

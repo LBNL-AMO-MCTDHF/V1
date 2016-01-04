@@ -309,9 +309,9 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
   do ispf=lowspf,highspf
      call system_clock(itime)
 
-        call mult_ke(spfinvrsq(:,ispf),tempmult,1,timingdir,notiming)
-        spfmult(:,ispf) = spfmult(:,ispf) + tempmult(:)
-        call system_clock(jtime);  times(2)=times(2)+jtime-itime;  call system_clock(itime)
+     call mult_ke(spfinvrsq(:,ispf),tempmult,1,timingdir,notiming)
+     spfmult(:,ispf) = spfmult(:,ispf) + tempmult(:)
+     call system_clock(jtime);  times(2)=times(2)+jtime-itime;  call system_clock(itime)
 
      call mult_pot(spfinvr(:,ispf),tempmult)
      spfmult(:,ispf) = spfmult(:,ispf) + tempmult(:)
@@ -328,10 +328,8 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
            call lenmultiply(spfr(:,ispf),myspf(:), myxtdpot,myytdpot,myztdpot)
            spfmult(:,ispf)=spfmult(:,ispf)+myspf(:)
         case default
-
-              call velmultiply(1,spfinvr(:,ispf),myspf(:), myxtdpot,myytdpot,myztdpot)
-              spfmult(:,ispf)=spfmult(:,ispf)+myspf(:)
-
+           call velmultiply(1,spfinvr(:,ispf),myspf(:), myxtdpot,myytdpot,myztdpot)
+           spfmult(:,ispf)=spfmult(:,ispf)+myspf(:)
         end select
      endif  !! tdpot
 
@@ -552,7 +550,7 @@ subroutine wmult(inspfs, outspfs, ireduced)
   
   spfmult=0.d0
 
-     call mult_ke(spfinvrsq(:,:),spfmult(:,:),nspf,timingdir,notiming); 
+  call mult_ke(spfinvrsq(:,:),spfmult(:,:),nspf,timingdir,notiming); 
 
   do ispf=1,nspf
      call mult_pot(spfinvr(:,ispf),tempmult(:));     spfmult(:,ispf)=spfmult(:,ispf)+tempmult(:)
