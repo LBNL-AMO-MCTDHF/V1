@@ -482,7 +482,6 @@ integer,parameter :: orderflag=0           !! Order=       !! ordering of config
 
 integer :: eachloaded(MXF)=(-99)
 
-integer :: multmanyflag=0                     
 integer :: numpropsteps=1000000  !!              !! length of prop.  Overridden for pulse and relax.
 integer, parameter :: maxmc=100
 DATATYPE :: drivingenergies(maxmc)=0d0

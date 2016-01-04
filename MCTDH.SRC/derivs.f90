@@ -302,32 +302,17 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
 !!$     lowspf=firstmpiorb;     highspf=min(nspf,firstmpiorb+orbsperproc-1)
 !!$
 
-     if (multmanyflag.ne.0) then
-        OFLWR "PARORBSPLIT=1/MULTMANY not compatible"; CFLST
-     endif
   endif
 
   spfmult=0.d0
 
-  if (multmanyflag.ne.0) then
-     call system_clock(itime)
-     call mult_ke(spfinvrsq(:,:),spfmult,nspf,timingdir,notiming)
-     call system_clock(jtime);  times(2)=times(2)+jtime-itime
-     if (tdflag.eq.1.and.velflag.ne.0) then
-        call system_clock(itime)
-        call velmultiply(nspf,spfinvr(:,:),spfmult2(:,:), myxtdpot,myytdpot,myztdpot)
-        spfmult(:,1:nspf)=spfmult(:,1:nspf)+spfmult2(:,:)
-        call system_clock(jtime);        times(4)=times(4)+jtime-itime
-     endif  !! tdpot
-  endif
-
   do ispf=lowspf,highspf
      call system_clock(itime)
-     if (multmanyflag.eq.0) then
+
         call mult_ke(spfinvrsq(:,ispf),tempmult,1,timingdir,notiming)
         spfmult(:,ispf) = spfmult(:,ispf) + tempmult(:)
         call system_clock(jtime);  times(2)=times(2)+jtime-itime;  call system_clock(itime)
-     endif
+
      call mult_pot(spfinvr(:,ispf),tempmult)
      spfmult(:,ispf) = spfmult(:,ispf) + tempmult(:)
      call hatom_op(spfinvr(:,ispf),tempmult)
@@ -343,10 +328,10 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
            call lenmultiply(spfr(:,ispf),myspf(:), myxtdpot,myytdpot,myztdpot)
            spfmult(:,ispf)=spfmult(:,ispf)+myspf(:)
         case default
-           if (multmanyflag.eq.0) then
+
               call velmultiply(1,spfinvr(:,ispf),myspf(:), myxtdpot,myytdpot,myztdpot)
               spfmult(:,ispf)=spfmult(:,ispf)+myspf(:)
-           endif
+
         end select
      endif  !! tdpot
 
@@ -567,13 +552,8 @@ subroutine wmult(inspfs, outspfs, ireduced)
   
   spfmult=0.d0
 
-  if (multmanyflag.ne.0) then
      call mult_ke(spfinvrsq(:,:),spfmult(:,:),nspf,timingdir,notiming); 
-  else
-     do ispf=1,nspf
-        call mult_ke(spfinvrsq(:,ispf),spfmult(:,ispf),1,timingdir,notiming); 
-     enddo
-  endif
+
   do ispf=1,nspf
      call mult_pot(spfinvr(:,ispf),tempmult(:));     spfmult(:,ispf)=spfmult(:,ispf)+tempmult(:)
   enddo

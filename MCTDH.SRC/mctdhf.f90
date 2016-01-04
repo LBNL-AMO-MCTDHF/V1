@@ -261,7 +261,7 @@ program mctdhf
   call getparams()
   call system("mkdir -p "//timingdir)  
 
-  call transferparams(nspf,spfrestrictflag,spfmvals,spfugrestrict,spfugvals,spfsmallsize,logcheckpar,multmanyflag);
+  call transferparams(nspf,spfrestrictflag,spfmvals,spfugrestrict,spfugvals,spfsmallsize,logcheckpar)
   if (logcheckpar) then
      if (parorbsplit.ne.3) then
         OFLWR "Setting parorbsplit=3 - you have orbital parallelization in your project";CFL

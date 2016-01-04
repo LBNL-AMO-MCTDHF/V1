@@ -16,16 +16,14 @@ module twoemod
 
 end module twoemod
 
-subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,logorbpar,multmanyflag)
+subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,logorbpar)
   use twoemod
   use myparams
   implicit none
   integer,intent(in) :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,inspfugvals(innumspf)
-  integer,intent(out) :: outspfsmallsize,multmanyflag
+  integer,intent(out) :: outspfsmallsize
   integer :: ii
   logical, intent(out) :: logorbpar
-
-  multmanyflag=0
 
   logorbpar=.false.
 
@@ -1728,33 +1726,38 @@ end subroutine imvelmultiply
 
 !! needs factor of 1/r^2 for ham
 
-subroutine mult_ke(in, out,howmanyNOT)
+subroutine mult_ke(in, out,howmany)
   use myparams
   use myprojectmod  
   implicit none
-  integer,intent(in) :: howmanyNOT
-  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
-  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
-  integer :: m2val, ixi,ieta, i
-  DATATYPE :: work(lbig+1), work2(lbig+1)
-
-  if (howmanyNOT.ne.1) then
-     OFLWR "howmany not supported for atom/diatom mult_ke (multmanyflag)"; CFLST
-  endif
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
+  integer :: m2val, ixi,ieta, i,jj
+  DATATYPE :: work(lbig+1), work2(lbig+1),myin(numerad,lbig+1),myout(numerad,lbig+1)
 
   out=0.d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(jj,m2val,ixi,work,work2,i,ieta,myin,myout)
+!$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC)
+  do jj=1,howmany
   do m2val=-mbig,mbig
+     myin(:,:)=in(:,:,m2val,jj)
+     myout(:,:)=0d0
      do ixi=1,numerad
-        work2=in(ixi,:,m2val)
-        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),sparseops_eta(:,:,ixi,abs(m2val)+1),lbig+1,work2,1,(0.d0,0.d0), work, 1)
-        out(ixi,:,m2val)=out(ixi,:,m2val)+work(1:lbig+1)
+        work2=myin(ixi,:)
+        call XXMVXX('N',lbig+1,lbig+1,DATAONE,sparseops_eta(:,:,ixi,abs(m2val)+1),lbig+1,work2,1,DATAZERO, work, 1)
+        myout(ixi,:)=work(1:lbig+1)
      enddo
      i=2*bandwidth+1
      do ieta=1,lbig+1
-        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),sparseops_xi_banded(:,:,ieta,abs(m2val)+1),i,in(:,ieta,m2val),1,(1.d0,0.d0), out(:,ieta,m2val), 1)
+        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,DATAONE,sparseops_xi_banded(:,:,ieta,abs(m2val)+1),i,myin(:,ieta),1,DATAONE, myout(:,ieta), 1)
      enddo
-     out(:,:,m2val) = out(:,:,m2val) - sparseops_diag(:,:,abs(m2val)+1) * in(:,:,m2val)
+     out(:,:,m2val,jj) = myout(:,:) - sparseops_diag(:,:,abs(m2val)+1) * myin(:,:)
   enddo
+  enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
 end subroutine mult_ke
 

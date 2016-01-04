@@ -194,19 +194,17 @@
 #include "Definitions.INC"
 
 
-subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,outorbparflag,multmanyflag) 
+subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,outorbparflag)
   use myparams
   use twoemod
   implicit none
-  integer :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,inspfugvals(innumspf), outspfsmallsize,multmanyflag,ii
+  integer :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,inspfugvals(innumspf), outspfsmallsize,ii
   logical, intent(out) :: outorbparflag
+
   numspf=innumspf;  
   outspfsmallsize=totpoints
   outorbparflag=orbparflag
-  multmanyflag=0
-  if (orbparflag) then
-     multmanyflag=1
-  endif
+
   ii=inspfrestrictflag; ii=inspfmvals(1); ii=inspfugvals(1); ii=inspfugrestrict;
 
   allocate(frozenreduced(totpoints))

@@ -228,13 +228,7 @@ subroutine sparseops_matel(matrix_ptr,inspfs1,inspfs2)
 
   matrix_ptr%xopmatel=0d0;  matrix_ptr%xymatel=0d0;  
 
-  if (multmanyflag.ne.0) then
      call mult_ke(inspfs2(:,:),ttempspfs(:,:),nspf,timingdir,notiming)
-  else
-     do ispf=1,nspf
-        call mult_ke(inspfs2(:,ispf),ttempspfs(:,ispf),1,timingdir,notiming)
-     enddo
-  endif
 
   call MYGEMM(CNORMCHAR,'N',nspf,nspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfs, spfsize, DATAZERO, matrix_ptr%xopmatel(:,:) ,nspf)
 
