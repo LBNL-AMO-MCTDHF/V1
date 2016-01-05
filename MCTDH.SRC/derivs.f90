@@ -307,6 +307,8 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
 
   spfmult=0.d0
 
+  if (numspf.ne.0) then
+
      call system_clock(itime)
 
      call mult_ke(spfinvrsq(:,lowspf:highspf),workmult(:,lowspf:highspf),numspf,timingdir,notiming)
@@ -349,7 +351,7 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
      spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
      call system_clock(jtime);  times(6)=times(6)+jtime-itime;  
 
-
+  endif
 
   if (parorbsplit.eq.1.and.nprocs.gt.1) then
      call system_clock(itime)
