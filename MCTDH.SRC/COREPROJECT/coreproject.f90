@@ -484,8 +484,7 @@ subroutine hatom_op(howmany,inspfs, outspfs)
      do mvalue1a=-mbig,mbig
         do mvalue1b=-mbig,mbig
            deltam=mvalue1a-mvalue1b
-           outspfs(:,:,mvalue1a,ivect)= &
-                outspfs(:,:,mvalue1a,ivect)- &
+           outspfs(:,:,mvalue1a,ivect)= outspfs(:,:,mvalue1a,ivect)- &
                 inspfs(:,:,mvalue1b,ivect) * hatomreduced(:,:,deltam)
         enddo
      enddo
@@ -511,8 +510,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
        tempmult(:,:), temppotmatel2(:,:), tempmult2(:,:), twoeden(:,:,:,:)
   DATATYPE :: myden(numerad,lbig+1,-2*mbig:2*mbig),myred(numerad,lbig+1,-2*mbig:2*mbig)        !! AUTOMATIC
 
-  frozenkediag=0
-  frozenpotdiag=0
+  frozenkediag=0;    frozenpotdiag=0
 
   if (numfrozen.eq.0) then
      return
@@ -556,29 +554,29 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf1a,spf1b,spf2a,spf2b,qq,qq2,rr,rr2,myden,myred,mvalue1a,mvalue1b,deltam)
 !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC)
-        do spf1b=1,numfrozen
-           do spf1a=1,numfrozen
+  do spf1b=1,numfrozen
+     do spf1a=1,numfrozen
 
-              qq=-mbig;              rr=mbig
-              qq2=-mbig;              rr2=mbig
+        qq=-mbig;              rr=mbig
+        qq2=-mbig;              rr2=mbig
 
-              myden(:,:,:)=0d0
-              do mvalue1a=qq,rr
-                 do mvalue1b=qq2,rr2
-                    deltam=mvalue1a-mvalue1b
-                    myden(:,:,deltam)=myden(:,:,deltam) + &
-                         CONJUGATE(infrozens(:,:,mvalue1a,spf1a)) * infrozens(:,:,mvalue1b,spf1b)
-                 enddo
-              enddo
-
-              do spf2b=1,numfrozen
-                 do spf2a=1,numfrozen
-                    myred(:,:,:)=tempreduced(:,:,:,spf2a,spf2b)
-                    tempmatel(spf2a,spf2b,spf1a,spf1b) = mycdot(myden(:,:,:),myred(:,:,:),numerad*(lbig+1)*(4*mbig+1))
-                 enddo
-              enddo
+        myden(:,:,:)=0d0
+        do mvalue1a=qq,rr
+           do mvalue1b=qq2,rr2
+              deltam=mvalue1a-mvalue1b
+              myden(:,:,deltam)=myden(:,:,deltam) + &
+                   CONJUGATE(infrozens(:,:,mvalue1a,spf1a)) * infrozens(:,:,mvalue1b,spf1b)
            enddo
         enddo
+
+        do spf2b=1,numfrozen
+           do spf2a=1,numfrozen
+              myred(:,:,:)=tempreduced(:,:,:,spf2a,spf2b)
+              tempmatel(spf2a,spf2b,spf1a,spf1b) = mycdot(myden(:,:,:),myred(:,:,:),numerad*(lbig+1)*(4*mbig+1))
+           enddo
+        enddo
+     enddo
+  enddo
 !$OMP END DO
 !$OMP END PARALLEL
 
@@ -632,8 +630,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
      frozenkediag=frozenkediag+2*temppotmatel(i,i)
   enddo
 
-  deallocate(twoeden)
-  deallocate(tempreduced,       tempmatel,       temppotmatel,tempmult,temppotmatel2,tempmult2)
+  deallocate(twoeden, tempreduced,  tempmatel,  temppotmatel,tempmult,temppotmatel2,tempmult2)
 
 end subroutine call_frozen_matels0
 
@@ -1010,7 +1007,8 @@ subroutine hatomcalc()
               do ieta=1,lbig+1
                  do ixi=1,numerad
                     hatomden(ixi,ieta,deltam) = hatomden(ixi,ieta,deltam) + &
-                         1.d0/(real(2*mbig+1,8))*hlocs(3,iatom)**(mvalue2a+mvalue2b) * interpolate(hlocreal(1,iatom),hlocreal(2,iatom),real(rpoints(1),8), abs(deltam),ixi,ieta)
+                         1.d0/(real(2*mbig+1,8))*hlocs(3,iatom)**(mvalue2a+mvalue2b) * &
+                         interpolate(hlocreal(1,iatom),hlocreal(2,iatom),real(rpoints(1),8), abs(deltam),ixi,ieta)
                  enddo
               enddo
            else
