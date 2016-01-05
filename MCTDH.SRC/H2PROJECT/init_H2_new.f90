@@ -21,7 +21,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   integer :: i,ii,j,    taken(200)=0, flag, jj, jflag, xiug, iug, ugvalue(200,0:30), getsmallugvalue
   DATAECS :: thisrvalue  
   character (len=2) :: th(4)
-  DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:) !, regvects(:,:,:,:)
+  DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:), mydensity(:,:),ivopot(:,:)
   th=(/ "st", "nd", "rd", "th" /)
 
   if ((mbig.gt.30).or.(numspf.gt.25)) then
@@ -96,6 +96,23 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
               bigham(j,i,j,i) = bigham(j,i,j,i) + frozenreduced(j,i,0) / thisrvalue * 2
            enddo
         enddo
+
+        if (ivoflag.ne.0) then
+           allocate(mydensity(numerad,lbig+1),ivopot(numerad,lbig+1))
+           mydensity(:,:)=0d0; ivopot(:,:)=0d0
+           do i=1,spfsloaded
+              do j=-mbig,mbig
+                 mydensity(:,:)=mydensity(:,:)+inspfs(:,:,j,i)*CONJUGATE(inspfs(:,:,j,i))*loadedocc(i)
+              enddo
+           enddo
+           call op_tinv(0,0,1,mydensity,ivopot)
+           do i=1,lbig+1
+              do j=1,numerad
+                 bigham(j,i,j,i) = bigham(j,i,j,i) + ivopot(j,i) / thisrvalue
+              enddo
+           enddo
+           deallocate(mydensity,ivopot)
+        endif
         
 
         OFLWR "Calculating orbitals.  Electronic dim, mval  ",edim, numerad,lbig+1, ii; CFL

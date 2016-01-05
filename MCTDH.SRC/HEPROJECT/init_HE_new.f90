@@ -19,7 +19,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
        bondweights(numr),  halfniumpot(numerad,lbig+1, -mbig:mbig),pot(numerad,lbig+1, -mbig:mbig), &
        elecweights(numerad,lbig+1, -mbig:mbig),elecradii(numerad,lbig+1, -mbig:mbig)
   character (len=2) :: th(4)
-  DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:)
+  DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:), mydensity(:,:), ivopot(:,:)
   integer ::  i,ii,k,j,   taken(200)=0, flag,xiug, iug, ugvalue(200,0:10), getsmallugvalue
 
   halfniumpot=0d0
@@ -179,7 +179,24 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
               bigham(i,k,i,k) = bigham(i,k,i,k) + frozenreduced(i,k,0) * 2
            enddo
         enddo
-     
+
+        if (ivoflag.ne.0) then
+           allocate(mydensity(numerad,lbig+1),ivopot(numerad,lbig+1))
+           mydensity(:,:)=0d0; ivopot(:,:)=0d0
+           do i=1,spfsloaded
+              do j=-mbig,mbig
+                 mydensity(:,:)=mydensity(:,:)+inspfs(:,:,j,i)*CONJUGATE(inspfs(:,:,j,i))*loadedocc(i)
+              enddo
+           enddo
+           call op_tinv(0,0,1,mydensity,ivopot)
+           do i=1,lbig+1
+              do j=1,numerad
+                 bigham(j,i,j,i) = bigham(j,i,j,i) + ivopot(j,i)
+              enddo
+           enddo
+           deallocate(mydensity,ivopot)
+        endif
+
         OFLWR "Get spfs.  Electronic dim, mval  ",edim, numerad,lbig+1, ii;CFL
         call ECSEIG(bigham,edim,edim,bigvects(:,:,:,ii),bigvals)
 

@@ -18,6 +18,8 @@ real*8 :: nuccharge1=1d0
 
 !! ORBITAL INITIALIZATION
 
+integer :: ivoflag=0
+real*8 :: loadedocc(200)=2d0
 integer :: num_skip_orbs=0                       !! For skipping core orbitals for initial diagonalization.
 integer :: orb_skip_mvalue(100)= 99              !! Input how many you want to skip, their index (orb_skip)
 integer :: orb_skip(20)= -1                      !!   (order in energy, each m value) and m-value

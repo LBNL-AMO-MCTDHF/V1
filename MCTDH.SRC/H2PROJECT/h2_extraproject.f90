@@ -23,7 +23,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        pro_Hmass, pro_Dmass,  rnumelements,  rnumpoints,  numr, &
        relementsize ,  rstart ,xielementsizes, xiecstheta, bornopflag, capflag, capstrength, cappower, &
        numhatoms, hlocs,hlocrealflag,hlocreal,mbig,lbig,nuccharge1,nuccharge2, &
-       num_skip_orbs, orb_skip_mvalue, orb_skip,twoeattractflag,debugflag
+       num_skip_orbs, orb_skip_mvalue, orb_skip,twoeattractflag,debugflag,ivoflag,loadedocc
 
 #ifdef PGFFLAG
   nargs=myiargc()
