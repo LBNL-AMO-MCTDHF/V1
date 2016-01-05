@@ -9,6 +9,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      bondpoints,bondweights,elecweights,elecradii,numelec)
   use myparams
   use myprojectmod
+  use twoemod      !! frozenreduced
   implicit none
 
   integer,intent(in) :: skipflag, numelec
@@ -32,6 +33,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      endif
   enddo
 
+  OFLWR "Go init_project diatomic.   PSC..."; CFL
+
   call PSC()
 
   bondpoints(:)=rpoints(2:rgridpoints-1)
@@ -54,6 +57,11 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   rkemod=rketot(2:numr+1,2:numr+1)
   proderivmod(:,:) = prolate_derivs(2:numr+1,2:numr+1)
+
+!! 01-2016 now here for frozen
+  OFLWR "   ... ok PSC. call get_twoe_new"; CFL
+  call get_twoe_new()
+  OFLWR "   ... ok called get twoe_new"; CFL
 
 !!$  if (skipflag.gt.1) then
 !!$     return
@@ -81,6 +89,14 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
               bigham(j,i,j,i) = bigham(j,i,j,i) + propot(j,i) / thisrvalue
            enddo
         enddo
+
+        call frozen_matels()
+        do i=1,lbig+1
+           do j=1,numerad
+              bigham(j,i,j,i) = bigham(j,i,j,i) + frozenreduced(j,i,0) / thisrvalue * 2
+           enddo
+        enddo
+        
 
         OFLWR "Calculating orbitals.  Electronic dim, mval  ",edim, numerad,lbig+1, ii; CFL
         call ECSEIG(bigham,edim,edim,bigvects(:,:,:,ii),bigvals)
@@ -177,9 +193,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   deallocate(bigham );  deallocate( bigvects, bigvals)   !! twoe
   call openfile();  write(mpifileptr,*) "Done init_h2.";  write(mpifileptr, *);  call closefile()
 
-  OFLWR "Ok init project.  Call get_twoe new"; CFL
-  call get_twoe_new()
-  OFLWR "Ok called get twoe_new"; CFL
+  OFLWR "Done init project."; WRFL; CFL
 
 end subroutine init_project
 

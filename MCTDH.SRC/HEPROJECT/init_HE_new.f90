@@ -10,6 +10,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      bondpoints,bondweights,elecweights,elecradii,numelec )
   use myparams
   use myprojectmod
+  use twoemod      !! frozenreduced
   implicit none
   integer, intent(in) ::  skipflag, numelec
   integer,intent(inout) :: spfsloaded
@@ -27,6 +28,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         OFLWR "MBIG INSUFFICIENT FOR SPFMVAL ",i,spfmvals(i),mbig; CFLST
      endif
   enddo
+
+  OFLWR "Go init project atomic."; CFL
 
   call getjacobiKE(jacobipoints,jacobiweights, jacobike(:,:,0), lbig, jacobideriv(:,:,0),jacobirhoderiv(:,:),0)
   if (mbig.ge.1) then
@@ -78,6 +81,10 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   rkemod(:,:)=0d0
   proderivmod(:,:)=0d0
 
+!!
+  OFLWR "   ... call get_twoe_new"; CFL
+  call get_twoe_new()
+  OFLWR "   ... called get_twoe_new"; CFL
 
 !!$  if (skipflag.gt.1) then
 !!$     return
@@ -160,9 +167,16 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         do i=1,lbig+1
            bigham(:,i,:,i) = bigham(:,i,:,i) + (-0.5d0)*glke(2:hegridpoints-1, 2:hegridpoints-1,mod(ii,2))
         enddo
-        do i=1,hegridpoints-2
-           do k=1,lbig+1
+        do k=1,lbig+1
+           do i=1,hegridpoints-2
               bigham(i,k,i,k) = bigham(i,k,i,k) - nuccharge1 /glpoints(i+1)
+           enddo
+        enddo
+        
+        call frozen_matels()
+        do k=1,lbig+1
+           do i=1,hegridpoints-2
+              bigham(i,k,i,k) = bigham(i,k,i,k) + frozenreduced(i,k,0) * 2
            enddo
         enddo
      
@@ -284,9 +298,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   WRFL; CFL
   deallocate(bigham, bigvects,  bigvals)   !! twoe
 
-  OFLWR "Ok init project.  Call get_twoe new"; CFL
-  call get_twoe_new()
-  OFLWR "Ok called get twoe_new"; CFL
+  OFLWR "Done init project."; WRFL; CFL
 
 end subroutine init_project
 
