@@ -275,21 +275,23 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
   DATATYPE,intent(in) :: inspfs1(numerad,lbig+1,-mbig:mbig,numspf),inspfs2(numerad,lbig+1,-mbig:mbig,numspf)
   integer, intent(in) :: xnotiming
   character,intent(in) :: xtimingdir*(*)
-  DATATYPE :: sum
   integer :: mvalue2a, mvalue1b, mvalue2b, mvalue1a, itime, jtime, &
-       i1,i2,j1,j2,spf1a,spf1b,spf2a,spf2b, deltam,k1,lsum,qq,rr,qq2,rr2,times(100)
-  DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),&     !! AUTOMATIC
-       twoeden2(numerad),twoeden3(numerad)
+       spf1a,spf1b,spf2a,spf2b, deltam,qq,rr,qq2,rr2,times(100)
+  DATATYPE :: myden(numerad,lbig+1,-2*mbig:2*mbig),myred(numerad,lbig+1,-2*mbig:2*mbig)        !! AUTOMATIC
+  DATATYPE,allocatable :: twoemat2(:,:,:,:),twoeden(:,:,:,:)
 
-  twoematel(:,:,:,:)=0d0
+  allocate(twoemat2(numerad,lbig+1,-2*mbig:2*mbig,numspf),twoeden(numerad,lbig+1,-2*mbig:2*mbig,numspf))
+  twoemat2(:,:,:,:)=0d0; twoeden(:,:,:,:)=0d0
+  twoematel(:,:,:,:)=0d0; twoereduced(:,:,:,:,:)=0d0
+
+  call system_clock(itime)
 
   do spf2b=1,numspf
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,qq,qq2,rr,rr2,myden,mvalue2a,mvalue2b,deltam)
+!$OMP DO SCHEDULE(DYNAMIC)
      do spf2a=1,numspf
-        twoemat2=0.d0
-
         ! integrating over electron 2
 
-        call system_clock(itime)
         if (spfrestrictflag==1) then
            qq=spfmvals(spf2a);           rr=spfmvals(spf2a)
            qq2=spfmvals(spf2b);           rr2=spfmvals(spf2b)
@@ -297,37 +299,57 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
            qq=-mbig;           rr=mbig
            qq2=-mbig;           rr2=mbig
         endif
+
+        myden(:,:,:)=0d0
         do mvalue2a=qq,rr
            do mvalue2b=qq2,rr2
               deltam=mvalue2b-mvalue2a
-              twoeden(:,:) = CONJUGATE(inspfs1(:,:,mvalue2a,spf2a)) * inspfs2(:,:,mvalue2b,spf2b)
-              do lsum=1+abs(deltam),jacobisummax+1
-                 twoeden2=0.d0
-                 do j1=1,lbig+1
-                    twoeden2(:)=twoeden2(:) + twoeden(:,j1) * ylmvals(abs(deltam),j1,lsum-abs(deltam))
-                 enddo
-                 twoeden3=0.d0
-                 do j2=1,numerad
-                    if (atomflag==0) then
-                       twoeden3(:)=twoeden3(:) + twoeden2(j2) * rmatrix(:,j2,abs(deltam)+1,lsum-abs(deltam)) * 4.d0
-                    else
-                       twoeden3(:)=twoeden3(:) + twoeden2(j2) * rmatrix(:,j2,1,lsum) 
-                    endif
-                 enddo
-                 do k1=1,lbig+1
-                    twoemat2(:,k1,deltam) = twoemat2(:,k1,deltam) - &
-                         twoeden3(:)*ylmvals(abs(deltam),k1,lsum-abs(deltam))
-                 enddo
-              enddo
+              myden(:,:,deltam) = myden(:,:,deltam) + &
+                   CONJUGATE(inspfs1(:,:,mvalue2a,spf2a)) * inspfs2(:,:,mvalue2b,spf2b)
            enddo
         enddo
-        twoereduced(:,:,:,spf2a,spf2b) = twoemat2    !! bra,ket
+        twoeden(:,:,:,spf2a)=myden(:,:,:)
+     enddo  !! spf2a
+!$OMP END DO
+!$OMP END PARALLEL
 
-        call system_clock(jtime);           times(1)=times(1)+jtime-itime
+     call op_tinv(-2*mbig,2*mbig,numspf,twoeden,twoemat2)
 
+     twoereduced(:,:,:,:,spf2b) = twoemat2(:,:,:,:)    !! bra,ket
+
+!        do mvalue2a=qq,rr
+!           do mvalue2b=qq2,rr2
+!              deltam=mvalue2b-mvalue2a
+!              twoeden(:,:) = CONJUGATE(inspfs1(:,:,mvalue2a,spf2a)) * inspfs2(:,:,mvalue2b,spf2b)
+!              do lsum=1+abs(deltam),jacobisummax+1
+!                 twoeden2=0.d0
+!                 do j1=1,lbig+1
+!                    twoeden2(:)=twoeden2(:) + twoeden(:,j1) * ylmvals(abs(deltam),j1,lsum-abs(deltam))
+!                 enddo
+!                 twoeden3=0.d0
+!                 do j2=1,numerad
+!                    if (atomflag==0) then
+!                       twoeden3(:)=twoeden3(:) + twoeden2(j2) * rmatrix(:,j2,abs(deltam)+1,lsum-abs(deltam)) * 4.d0
+!                    else
+!                       twoeden3(:)=twoeden3(:) + twoeden2(j2) * rmatrix(:,j2,1,lsum) 
+!                    endif
+!                 enddo
+!                 do k1=1,lbig+1
+!                    twoemat2(:,k1,deltam) = twoemat2(:,k1,deltam) - &
+!                         twoeden3(:)*ylmvals(abs(deltam),k1,lsum-abs(deltam))
+!                 enddo
+!              enddo
+!           enddo
+!        enddo
+
+  enddo
+
+  call system_clock(jtime);           times(1)=times(1)+jtime-itime;    itime=jtime
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf1a,spf1b,spf2a,spf2b,qq,qq2,rr,rr2,myden,myred,mvalue1a,mvalue1b,deltam)
+!$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC)
         do spf1b=1,numspf
            do spf1a=1,numspf
-              sum=0.d0
               
               if (spfrestrictflag==1) then
                  qq=spfmvals(spf1a);                    rr=spfmvals(spf1a)
@@ -337,26 +359,31 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
                  qq2=-mbig;                 rr2=mbig
               endif
 
+              myden(:,:,:)=0d0
               do mvalue1a=qq,rr
                  do mvalue1b=qq2,rr2
                     
                     deltam=mvalue1a-mvalue1b
-                    
-!!$ if (1==1) then  ! is faster when optimized, much slower when not.
-
-                    do i1=1,lbig+1
-                       do i2=1,numerad
-                          sum = sum + CONJUGATE(inspfs1(i2,i1,mvalue1a,spf1a)) * inspfs2(i2,i1,mvalue1b,spf1b) * twoemat2(i2,i1,deltam)
-                       enddo
-                    enddo
+                    myden(:,:,deltam) = myden(:,:,deltam) + &
+                         CONJUGATE(inspfs1(:,:,mvalue1a,spf1a)) * inspfs2(:,:,mvalue1b,spf1b)
                  enddo
               enddo
-              twoematel(spf2a,spf2b,spf1a,spf1b) = sum
-           enddo
-        enddo
-        call system_clock(itime);   times(2)=times(2)+itime-jtime
+
+              do spf2b=1,numspf
+                 do spf2a=1,numspf
+                    myred(:,:,:)=twoereduced(:,:,:,spf2a,spf2b)
+                    twoematel(spf2a,spf2b,spf1a,spf1b) = mycdot(myden(:,:,:),myred(:,:,:),numerad*(lbig+1)*(4*mbig+1))
+
+                 enddo
+              enddo
      enddo
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
+  call system_clock(itime);   times(2)=times(2)+itime-jtime
+
+  deallocate(twoemat2,twoeden)
 
 !  if ((myrank.eq.1).and.(notiming.eq.0)) then
 !     if (timingflag==1) then
@@ -377,6 +404,20 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
 !        CFLST
 !     endif
 !  endif
+
+contains
+recursive function mycdot(one,two,n)
+  implicit none
+  integer,intent(in) :: n
+  DATATYPE,intent(in) :: one(n), two(n)
+  DATATYPE :: mycdot, sum
+  integer :: i
+  sum=0.d0
+  do i=1,n
+     sum = sum + one(i) * two(i) 
+  enddo
+  mycdot=sum
+end function mycdot
 
 end subroutine call_twoe_matel
 
