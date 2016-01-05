@@ -368,7 +368,7 @@ subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen)
 end subroutine op_frozen_exchange0
 
 
-subroutine getdensity() !density, indenmat, inspfs,numspf)
+subroutine getdensity() !density, indenmat, inspfs,howmany)
 print *, "DOME GETDENSITY"; stop
 end subroutine getdensity
 
@@ -564,31 +564,31 @@ subroutine op_frozenreduced(howmany,inspfs,outspfs)
 end subroutine op_frozenreduced
 
 
-subroutine restrict_spfs() !inspfs,numspf,spfmvals)
+subroutine restrict_spfs() !inspfs,howmany,spfmvals)
 end subroutine restrict_spfs
 
-subroutine ugrestrict_spfs() !inspfs,numspf,spfmvals)
+subroutine ugrestrict_spfs() !inspfs,howmany,spfmvals)
 end subroutine ugrestrict_spfs
 
-subroutine restrict_spfs0() !inspfs,numspf,spfmvals,printflag)
+subroutine restrict_spfs0() !inspfs,howmany,spfmvals,printflag)
 end subroutine restrict_spfs0
 
-subroutine ugrestrict_spfs0() !inspfs,numspf,spfmvals,printflag)
+subroutine ugrestrict_spfs0() !inspfs,howmany,spfmvals,printflag)
 end subroutine ugrestrict_spfs0
 
-subroutine bothcompact_spfs() !inspfs,outspfs,numspf,spfmvals,spfugvals)
+subroutine bothcompact_spfs() !inspfs,outspfs,howmany,spfmvals,spfugvals)
 print *, "NOT APPLICABLE BOTHCOMPACT SINCDVR"
 end subroutine bothcompact_spfs
 
-subroutine bothexpand_spfs() !inspfs,outspfs,numspf,spfmvals,spfugvals)
+subroutine bothexpand_spfs() !inspfs,outspfs,howmany,spfmvals,spfugvals)
 print *, "NOT APPLICABLE BOTHEXPAND SINCDVR"
 end subroutine bothexpand_spfs
 
-subroutine mcompact_spfs() !inspfs,outspfs,numspf,spfmvals)
+subroutine mcompact_spfs() !inspfs,outspfs,howmany,spfmvals)
 print *, "NOT APPLICABLE MCOMPACT SINCDVR"; stop
 end subroutine mcompact_spfs
 
-subroutine mexpand_spfs() !inspfs,outspfs,numspf,spfmvals)
+subroutine mexpand_spfs() !inspfs,outspfs,howmany,spfmvals)
 print *, "NOT APPLICABLE MEXPAND SINCDVR"; stop
 end subroutine mexpand_spfs
 
@@ -1109,7 +1109,7 @@ end subroutine op_tinv_notscaled
 
 
 
-!! NOW ONLY OUTPUTS ONE. CALL IN LOOP. FOR OPENMPI TRY.
+!! OUTPUTS orbitals from firstspf to lastspf (out of numspf)
 
 subroutine mult_reducedpot(firstspf,lastspf,inspfs,outspfs,reducedpot)
   use myparams

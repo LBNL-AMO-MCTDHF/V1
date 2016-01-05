@@ -241,16 +241,12 @@ subroutine sparseops_matel(matrix_ptr,inspfs1,inspfs2)
 end subroutine sparseops_matel
 
 
-!! direct (not exchange)
-
 subroutine frozen_matels()
+  use opmod
   use parameters
   implicit none
-
-  call call_frozen_matels()
-
+  call call_frozen_matels0(frozenspfs(:,:),numfrozen,frozenkediag,frozenpotdiag)  !! returns diags; has matels in twoemod
 end subroutine frozen_matels
-
 
 
 subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixtr)

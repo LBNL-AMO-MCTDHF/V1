@@ -327,13 +327,6 @@ subroutine lenmultiply(howmany,spfin,spfout, myxtdpot,myytdpot,myztdpot)
 end subroutine lenmultiply
 
 
-subroutine call_frozen_matels()
-  use opmod
-  use parameters
-  implicit none
-  call call_frozen_matels0(frozenspfs(:,:),numfrozen,frozenkediag,frozenpotdiag)  !! returns diags; has matels in twoemod
-end subroutine call_frozen_matels
-
 
 subroutine op_frozen_exchange(howmany,inspfs,outspfs)
   use opmod

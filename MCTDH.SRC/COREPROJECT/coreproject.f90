@@ -12,7 +12,7 @@ end function qbox
 module twoemod
   implicit none
 
-  DATATYPE, allocatable :: frozenreduced(:,:,:), hatomtwoemat2(:,:,:)
+  DATATYPE, allocatable :: frozenreduced(:,:,:), hatomreduced(:,:,:)
 
 end module twoemod
 
@@ -56,8 +56,10 @@ subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,
   allocate(spfmvals(numspf));  spfmvals(:)=inspfmvals(:)
   allocate(spfugvals(numspf));  spfugvals(:)=inspfugvals(:)
   allocate(frozenreduced(numerad,lbig+1,-2*mbig:2*mbig))
+  frozenreduced(:,:,:)=0d0
   if (numhatoms.gt.0) then
-     allocate(hatomtwoemat2(numerad,lbig+1,-2*mbig:2*mbig))
+     allocate(hatomreduced(numerad,lbig+1,-2*mbig:2*mbig))
+     hatomreduced(:,:,:)=0d0
   endif
 
 end subroutine transferparams
@@ -68,7 +70,7 @@ subroutine twoedealloc
   use myparams
   implicit none
   if (numhatoms.gt.0) then
-     deallocate(hatomtwoemat2)
+     deallocate(hatomreduced)
   endif
 end subroutine twoedealloc
 
@@ -368,7 +370,7 @@ end subroutine call_twoe_matel
 !!$!                       
 !!$!              do i1=1,lbig+1
 !!$!                 do i2=1,numerad
-!!$!                    sum = sum + CONJUGATE(inspfs1(i2,i1,mvalue1a,spf1a)) * inspfs2(i2,i1,mvalue1b,spf1b) * hatomtwoemat2(i2,i1,deltam)
+!!$!                    sum = sum + CONJUGATE(inspfs1(i2,i1,mvalue1a,spf1a)) * inspfs2(i2,i1,mvalue1b,spf1b) * hatomreduced(i2,i1,deltam)
 !!$!                 enddo
 !!$!              enddo
 !!$!           enddo
@@ -409,7 +411,7 @@ subroutine hatom_op(howmany,inspfs, outspfs)
            deltam=mvalue1a-mvalue1b
            outspfs(:,:,mvalue1a,ivect)= &
                 outspfs(:,:,mvalue1a,ivect)- &
-                inspfs(:,:,mvalue1b,ivect) * hatomtwoemat2(:,:,deltam)
+                inspfs(:,:,mvalue1b,ivect) * hatomreduced(:,:,deltam)
         enddo
      enddo
   enddo
@@ -648,11 +650,11 @@ subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen)
 end subroutine op_frozen_exchange0
 
 
-subroutine getdensity(density, indenmat, inspfs,in_numspf)
+subroutine getdensity(density, indenmat, inspfs,howmany)
   use myparams
   implicit none
-  integer,intent(in) :: in_numspf
-  DATATYPE,intent(in) :: indenmat(in_numspf,in_numspf), inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: indenmat(howmany,howmany), inspfs(numerad,lbig+1,-mbig:mbig,howmany)
   complex*16,intent(out) :: density(numerad,lbig+1,2*mbig+1)
   integer :: i,j,ii,jj,kk, mm,nn
   real*8 :: phi,pi
@@ -662,8 +664,8 @@ subroutine getdensity(density, indenmat, inspfs,in_numspf)
 
   do mm=-mbig,mbig
   do nn=-mbig,mbig
-     do i=1,in_numspf
-        do j=1,in_numspf
+     do i=1,howmany
+        do j=1,howmany
            
            do kk =  1,2*mbig+1
               phi = 2*pi*kk/real(2*mbig+1,8)
@@ -830,22 +832,9 @@ subroutine mult_ydipole(howmany,in, out, realflag)
 end subroutine mult_ydipole
 
 
-!subroutine get_reducedpot0(intwoden,outpot,twoereduced)
-!  use myparams
-!  use twoemod
-!  implicit none
-!  DATATYPE :: TWOEreduced(numerad,lbig+1,-2*mbig:2*mbig, numspf,numspf)
-!  DATATYPE :: intwoden(numspf,numspf,numspf,numspf),outpot(numerad,lbig+1,-2*mbig:2*mbig,numspf,numspf)
-!  integer :: ii
 
-!since I conjugated a1 not a2 I have bra2,ket2,bra1,ket1.  twoereduced is usual notation:  bra,ket.  contract.  reducedpot usual notation.
-!
-!  ii=edim*(4*mbig+1)
-!  call MYGEMM('N','N', ii,numspf**2,numspf**2,(1.0d0,0.d0), twoereduced,ii,intwoden,numspf**2, (0.d0,0.d0),outpot,ii)
-!
-!end subroutine get_reducedpot0
+!! OUTPUTS orbitals from firstspf to lastspf (out of numspf)
 
-!! NOW ONLY OUTPUTS ONE. CALL IN LOOP. FOR OPENMPI TRY.
 subroutine mult_reducedpot(firstspf,lastspf,inspfs,outspfs,reducedpot)
   use myparams
   use twoemod
@@ -937,7 +926,7 @@ subroutine hatomcalc()
      enddo
   enddo
 
-  hatomtwoemat2=0.d0
+  hatomreduced=0.d0
   do mvalue2a=-mbig,mbig
      do mvalue2b=-mbig,mbig
         deltam=mvalue2b-mvalue2a
@@ -963,7 +952,7 @@ subroutine hatomcalc()
               endif
            enddo
            do k1=1,lbig+1
-              hatomtwoemat2(:,k1,deltam) = hatomtwoemat2(:,k1,deltam) - &
+              hatomreduced(:,k1,deltam) = hatomreduced(:,k1,deltam) - &
                    twoeden3(:)*ylmvals(abs(deltam),k1,lsum-abs(deltam))
            enddo
         enddo
@@ -1017,64 +1006,64 @@ function lobatto(numpoints,points2d,n,x)
 end function lobatto
 
 
-subroutine restrict_spfs(inspfs,in_numspf,in_spfmvals)
+subroutine restrict_spfs(inspfs,howmany,in_spfmvals)
   use myparams
   implicit none
-  integer,intent(in) :: in_numspf,in_spfmvals(in_numspf)
-  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)  !! using hermdot; want to see if wfn
-  call restrict_spfs0(inspfs,in_numspf,in_spfmvals,1)
+  integer,intent(in) :: howmany,in_spfmvals(howmany)
+  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)  !! using hermdot; want to see if wfn
+  call restrict_spfs0(inspfs,howmany,in_spfmvals,1)
 end subroutine restrict_spfs
 
-subroutine restrict_spfs0(inspfs,in_numspf,in_spfmvals,printflag)
+subroutine restrict_spfs0(inspfs,howmany,in_spfmvals,printflag)
   use myparams
   implicit none
-  integer,intent(in) :: in_numspf,in_spfmvals(in_numspf),printflag
-  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)  
+  integer,intent(in) :: howmany,in_spfmvals(howmany),printflag
+  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)  
 !! using hermdot; want to see if wfn has been chopped.
   DATATYPE :: hermdot
   integer :: ispf
   real*8 :: normsq1, normsq2
 
-  normsq1=real(hermdot(inspfs,inspfs,in_numspf*edim*(2*mbig+1)),8)  !! ok hermdot
-  do ispf=1,in_numspf
+  normsq1=real(hermdot(inspfs,inspfs,howmany*edim*(2*mbig+1)),8)  !! ok hermdot
+  do ispf=1,howmany
      inspfs(:,:,-mbig:in_spfmvals(ispf)-1,ispf)=0.d0
      inspfs(:,:,in_spfmvals(ispf)+1:mbig,ispf)=0.d0
   enddo
 if (printflag.ne.0) then
-  normsq2=real(hermdot(inspfs,inspfs,in_numspf*edim*(2*mbig+1)),8)  !! ok hermdot
-  if (abs(normsq1-normsq2)/in_numspf.gt.1.d-7) then
+  normsq2=real(hermdot(inspfs,inspfs,howmany*edim*(2*mbig+1)),8)  !! ok hermdot
+  if (abs(normsq1-normsq2)/howmany.gt.1.d-7) then
      OFLWR "   WARNING, in restrict_spfs I lost norm.", normsq1,normsq2;     call closefile()
   endif
 endif
 end subroutine restrict_spfs0
 
 
-subroutine ugrestrict_spfs(inspfs,in_numspf,in_spfugvals)
+subroutine ugrestrict_spfs(inspfs,howmany,in_spfugvals)
   use myparams
   implicit none
-  integer,intent(in) :: in_numspf,in_spfugvals(in_numspf)
-  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)  
-  call ugrestrict_spfs0(inspfs,in_numspf,in_spfugvals,1)
+  integer,intent(in) :: howmany,in_spfugvals(howmany)
+  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)  
+  call ugrestrict_spfs0(inspfs,howmany,in_spfugvals,1)
 end subroutine ugrestrict_spfs
 
-subroutine ugrestrict_spfs0(inspfs,in_numspf,in_spfugvals,printflag)
+subroutine ugrestrict_spfs0(inspfs,howmany,in_spfugvals,printflag)
   use myparams
   implicit none
-  integer,intent(in) :: in_numspf,in_spfugvals(in_numspf),printflag
-  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)  !! using hermdot; want to see if wfn has been chopped.
+  integer,intent(in) :: howmany,in_spfugvals(howmany),printflag
+  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)  !! using hermdot; want to see if wfn has been chopped.
   integer :: ispf
   real*8 :: normsq1,normsq2
   DATATYPE :: hermdot
-  DATATYPE :: outspfs(numerad,lbig+1,-mbig:mbig,in_numspf)   !! AUTOMATIC
+  DATATYPE :: outspfs(numerad,lbig+1,-mbig:mbig,howmany)   !! AUTOMATIC
 
-  normsq1=real(hermdot(inspfs,inspfs,in_numspf*edim*(2*mbig+1)),8)  !! ok hermdot
-  do ispf=1,in_numspf
+  normsq1=real(hermdot(inspfs,inspfs,howmany*edim*(2*mbig+1)),8)  !! ok hermdot
+  do ispf=1,howmany
      call ugrestrict(inspfs(:,:,:,ispf),outspfs(:,:,:,ispf), in_spfugvals(ispf))     
   enddo
   inspfs=outspfs
   if (printflag.ne.0) then
-     normsq2=real(hermdot(inspfs,inspfs,in_numspf*edim*(2*mbig+1)),8)  !! ok hermdot
-     if (abs(normsq1-normsq2)/in_numspf/max(normsq1,1d0).gt.1.d-3) then
+     normsq2=real(hermdot(inspfs,inspfs,howmany*edim*(2*mbig+1)),8)  !! ok hermdot
+     if (abs(normsq1-normsq2)/howmany/max(normsq1,1d0).gt.1.d-3) then
         OFLWR "   WARNING, in UG restrict_spfs I lost norm.", normsq1,normsq2;     call closefile()
      endif
   endif
@@ -1127,75 +1116,75 @@ subroutine ugrestrict(inspfs,outspfs,ugval)
 end subroutine ugrestrict
   
 
-subroutine bothcompact_spfs(inspfs,outspfs,in_numspf,in_spfmvals,in_spfugvals)
+subroutine bothcompact_spfs(inspfs,outspfs,howmany,in_spfmvals,in_spfugvals)
   use myparams
   implicit none
-  integer,intent(in) :: in_numspf,in_spfmvals(in_numspf),in_spfugvals(in_numspf)
-  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)
-  DATATYPE,intent(out) :: outspfs(numerad,(lbig+1)/2,in_numspf)
-  DATATYPE :: midspfs(numerad,lbig+1,in_numspf)
+  integer,intent(in) :: howmany,in_spfmvals(howmany),in_spfugvals(howmany)
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: outspfs(numerad,(lbig+1)/2,howmany)
+  DATATYPE :: midspfs(numerad,lbig+1,howmany)
 
-  call mcompact_spfs(inspfs,midspfs,in_numspf,in_spfmvals)
-  call ugcompact_spfs(midspfs,outspfs,in_numspf,in_spfmvals,in_spfugvals)
+  call mcompact_spfs(inspfs,midspfs,howmany,in_spfmvals)
+  call ugcompact_spfs(midspfs,outspfs,howmany,in_spfmvals,in_spfugvals)
 
 end subroutine bothcompact_spfs
 
-subroutine bothexpand_spfs(inspfs,outspfs,in_numspf,in_spfmvals,in_spfugvals)
+subroutine bothexpand_spfs(inspfs,outspfs,howmany,in_spfmvals,in_spfugvals)
   use myparams
   implicit none
-  integer,intent(in) :: in_numspf,in_spfmvals(in_numspf),in_spfugvals(in_numspf)
-  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)
-  DATATYPE,intent(out) :: outspfs(numerad,(lbig+1)/2,in_numspf)
-  DATATYPE :: midspfs(numerad,lbig+1,in_numspf)
+  integer,intent(in) :: howmany,in_spfmvals(howmany),in_spfugvals(howmany)
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: outspfs(numerad,(lbig+1)/2,howmany)
+  DATATYPE :: midspfs(numerad,lbig+1,howmany)
 
-  call ugexpand_spfs(inspfs,midspfs,in_numspf,in_spfmvals,in_spfugvals)
-  call mexpand_spfs(midspfs,outspfs,in_numspf,in_spfmvals)
+  call ugexpand_spfs(inspfs,midspfs,howmany,in_spfmvals,in_spfugvals)
+  call mexpand_spfs(midspfs,outspfs,howmany,in_spfmvals)
 
 end subroutine bothexpand_spfs
 
 
-subroutine mcompact_spfs(inspfs,outspfs,in_numspf,in_spfmvals)
+subroutine mcompact_spfs(inspfs,outspfs,howmany,in_spfmvals)
   use myparams
   implicit none
-  integer,intent(in) :: in_numspf,in_spfmvals(in_numspf)
-  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,in_numspf)
-  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,in_numspf)
+  integer,intent(in) :: howmany,in_spfmvals(howmany)
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,howmany)
   integer :: ispf
-  do ispf=1,in_numspf
+  do ispf=1,howmany
      outspfs(:,:,ispf)=inspfs(:,:,in_spfmvals(ispf),ispf)
   enddo
 end subroutine mcompact_spfs
 
-subroutine mexpand_spfs(inspfs,outspfs,in_numspf,in_spfmvals)
+subroutine mexpand_spfs(inspfs,outspfs,howmany,in_spfmvals)
   use myparams
   implicit none
-  integer,intent(in) :: in_numspf,in_spfmvals(in_numspf)
-  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,in_numspf)
-  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig,in_numspf)
+  integer,intent(in) :: howmany,in_spfmvals(howmany)
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,howmany)
+  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig,howmany)
   integer :: ispf
 
   outspfs(:,:,:,:)=0d0
 
-  do ispf=1,in_numspf
+  do ispf=1,howmany
      outspfs(:,:,in_spfmvals(ispf),ispf)=inspfs(:,:,ispf)
   enddo
 end subroutine mexpand_spfs
 
 !! g or u: reflection then phi <-> -phi for these m eigenfuncts   
 
-subroutine ugcompact_spfs(inspfs,outspfs,in_numspf,in_spfmvals,in_spfugvals)
+subroutine ugcompact_spfs(inspfs,outspfs,howmany,in_spfmvals,in_spfugvals)
   use myparams
   implicit none
-  integer,intent(in) :: in_numspf,in_spfugvals(in_numspf),in_spfmvals(in_numspf)
-  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,in_numspf)
-  DATATYPE,intent(out) :: outspfs(numerad,(lbig+1)/2,in_numspf)
+  integer,intent(in) :: howmany,in_spfugvals(howmany),in_spfmvals(howmany)
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,howmany)
+  DATATYPE,intent(out) :: outspfs(numerad,(lbig+1)/2,howmany)
   integer :: ispf,k
 
   if (mod(lbig+1,2).ne.0) then
      OFLWR "GGG))))iiiiiERROROAAAAUGHGGHG"; CFLST
   endif
   outspfs=0d0
-  do ispf=1,in_numspf
+  do ispf=1,howmany
      do k=1,(lbig+1)/2
         outspfs(:,k,ispf)=inspfs(:,lbig+2-k,ispf)*(-1)**abs(in_spfmvals(ispf)) * in_spfugvals(ispf)
      enddo
@@ -1205,12 +1194,12 @@ subroutine ugcompact_spfs(inspfs,outspfs,in_numspf,in_spfmvals,in_spfugvals)
 end subroutine ugcompact_spfs
 
 
-subroutine ugexpand_spfs(inspfs,outspfs,in_numspf,in_spfmvals,in_spfugvals)
+subroutine ugexpand_spfs(inspfs,outspfs,howmany,in_spfmvals,in_spfugvals)
   use myparams
   implicit none
-  integer,intent(in) :: in_numspf,in_spfugvals(in_numspf),in_spfmvals(in_numspf)
-  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,in_numspf)
-  DATATYPE,intent(in) :: inspfs(numerad,(lbig+1)/2,in_numspf)
+  integer,intent(in) :: howmany,in_spfugvals(howmany),in_spfmvals(howmany)
+  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,howmany)
+  DATATYPE,intent(in) :: inspfs(numerad,(lbig+1)/2,howmany)
   integer :: ispf,k
 
   if (mod(lbig+1,2).ne.0) then
@@ -1219,7 +1208,7 @@ subroutine ugexpand_spfs(inspfs,outspfs,in_numspf,in_spfmvals,in_spfugvals)
   outspfs(:,:,:)=0d0
   outspfs(:,1:(lbig+1)/2,:)=inspfs(:,:,:)
 
-  do ispf=1,in_numspf
+  do ispf=1,howmany
      do k=1,(lbig+1)/2
         outspfs(:,lbig+2-k,ispf)=inspfs(:,k,ispf)*(-1)**abs(in_spfmvals(ispf)) * in_spfugvals(ispf)
      enddo
