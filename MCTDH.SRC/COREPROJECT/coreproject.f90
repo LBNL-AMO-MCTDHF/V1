@@ -74,6 +74,62 @@ subroutine twoedealloc
   endif
 end subroutine twoedealloc
 
+
+
+!  DATAECS :: rmatrix(numerad,numerad,mseriesmax+1,lseriesmax+1)
+!  real*8 :: ylmvals(0:2*mbig, 1:lbig+1, lseriesmax+1)
+
+subroutine op_tinv(mlow,mhigh,howmany,indensity,outpotential)
+  use myparams
+  use twoemod
+  use myprojectmod
+  implicit none
+  integer, intent(in) :: mlow,mhigh,howmany
+  DATATYPE,intent(in) :: indensity(numerad,lbig+1,mlow:mhigh,howmany)
+  DATATYPE,intent(out) :: outpotential(numerad,lbig+1,mlow:mhigh,howmany)
+  integer :: deltam,lsum,j1,j2,k1,ii
+  DATATYPE :: twoeden2(numerad),twoeden3(numerad),mydensity(numerad,lbig+1),&
+       mypotential(numerad,lbig+1)    !! AUTOMATIC
+
+  outpotential(:,:,:,:)=0d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(deltam,lsum,j1,j2,k1,ii,twoeden2,twoeden3,mydensity,mypotential)
+
+!$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC)
+  do ii=1,howmany
+     do deltam=mlow,mhigh
+        mydensity(:,:)=indensity(:,:,deltam,ii)
+        mypotential(:,:)=0d0
+        do lsum=1+abs(deltam),jacobisummax+1
+           twoeden2(:)=0d0
+           do j1=1,lbig+1
+              twoeden2(:)=twoeden2(:) + mydensity(:,j1) * ylmvals(abs(deltam),j1,lsum-abs(deltam))
+           enddo
+           twoeden3(:)=0d0
+           do j2=1,numerad
+              if (atomflag==0) then
+                 twoeden3(:)=twoeden3(:) + twoeden2(j2) * rmatrix(:,j2,abs(deltam)+1,lsum-abs(deltam)) * 4.d0
+              else
+                 twoeden3(:)=twoeden3(:) + twoeden2(j2) * rmatrix(:,j2,1,lsum) 
+              endif
+           enddo
+
+           do k1=1,lbig+1
+              mypotential(:,k1) = mypotential(:,k1) - &
+                   twoeden3(:)*ylmvals(abs(deltam),k1,lsum-abs(deltam))
+           enddo
+        enddo
+        outpotential(:,:,deltam,ii)=mypotential(:,:)
+     enddo
+  enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
+end subroutine op_tinv
+        
+
+
+
 !! flag=1 means flux, otherwise whole op
 subroutine call_flux_op_twoe(mobra,moket,V2,flag) 
 !! determine the 2-electron matrix elements in the orbital basis for the flux operator i(H-H^{\dag}) 
@@ -203,6 +259,7 @@ subroutine call_flux_op_twoe(mobra,moket,V2,flag)
 
 
 end subroutine call_flux_op_twoe
+
 
 
 !  DATAECS :: rmatrix(numerad,numerad,mseriesmax+1,lseriesmax+1)
