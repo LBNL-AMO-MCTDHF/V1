@@ -346,7 +346,6 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
      endif
      call system_clock(jtime);     times(5)=times(5)+jtime-itime; call system_clock(itime)
 
-!! NOW ONLY OUTPUTS ONE, TAKES ALL
      call mult_reducedpot(lowspf,highspf,inspfs(:,:),workmult(:,lowspf:highspf),yyy%reducedpot(:,:,:,ireduced))
      spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
      call system_clock(jtime);  times(6)=times(6)+jtime-itime;  
