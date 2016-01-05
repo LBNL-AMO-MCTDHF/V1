@@ -124,33 +124,54 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
   DATATYPE,allocatable :: ttempspfs(:,:),workspfs(:,:)
-
-  allocate(ttempspfs(spfsize,nspf),workspfs(spfsize,nspf))
-
-  ttempspfs=0; workspfs=0
+  integer :: lowspf,highspf,numspf
 
   matrix_ptr%xpotmatel(:,:)=0d0
 
-  call mult_pot(nspf,inspfs2(:,:),workspfs(:,:))
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getorbsetrange(lowspf,highspf)
+  endif
+  numspf=highspf-lowspf+1
+  if (numspf.lt.0) then
+     print *, "DOOGGDSeeeF"; stop
+  endif
+
+
+  if (numspf.ne.0) then
+
+  allocate(ttempspfs(spfsize,lowspf:highspf),workspfs(spfsize,lowspf:highspf))
+
+  ttempspfs=0; workspfs=0
+
+  call mult_pot(numspf,inspfs2(:,lowspf:highspf),workspfs(:,lowspf:highspf))
 
 !! usually just adding zeroes here
-  call hatom_op(nspf,inspfs2(:,:),ttempspfs(:,:))
-  workspfs(:,:)=workspfs(:,:)+ttempspfs(:,:)
+  call hatom_op(numspf,inspfs2(:,lowspf:highspf),ttempspfs(:,lowspf:highspf))
+  workspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)+ttempspfs(:,lowspf:highspf)
 
 !! potmatel is proper ordering.  fast index is conjg.
 
   if (numfrozen.gt.0) then
 
-     call op_frozen_exchange(nspf,inspfs2(:,:),ttempspfs(:,:))
-     workspfs(:,:)=workspfs(:,:)+ttempspfs(:,:)
-     call op_frozenreduced(nspf,inspfs2(:,:),ttempspfs(:,:))
-     workspfs(:,:)=workspfs(:,:)+ttempspfs(:,:)
+     call op_frozen_exchange(lowspf,highspf,inspfs2(:,lowspf:highspf),ttempspfs(:,lowspf:highspf))
+     workspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)+ttempspfs(:,lowspf:highspf)
+
+     call op_frozenreduced(numspf,inspfs2(:,lowspf:highspf),ttempspfs(:,lowspf:highspf))
+     workspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)+ttempspfs(:,lowspf:highspf)
+
   endif
 
-  call MYGEMM(CNORMCHAR,'N',nspf,nspf, spfsize, DATAONE, inspfs1, spfsize, workspfs, &
-       spfsize, DATAZERO, matrix_ptr%xpotmatel(:,:), nspf)
+  call MYGEMM(CNORMCHAR,'N',nspf,numspf, spfsize, DATAONE, inspfs1, spfsize, workspfs(:,lowspf:highspf), &
+       spfsize, DATAZERO, matrix_ptr%xpotmatel(:,lowspf:highspf), nspf)
 
   deallocate(ttempspfs,workspfs)
+
+  endif
+
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(matrix_ptr%xpotmatel(:,:),nspf)
+  endif
 
   if (parorbsplit.eq.3) then
      call mympireduce(matrix_ptr%xpotmatel(:,:),nspf**2)
@@ -168,40 +189,63 @@ subroutine pulse_matel(matrix_ptr,inspfs1,inspfs2)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
   DATATYPE :: nullcomplex(1), dipoles(3)
   DATATYPE,allocatable :: ttempspfsxx(:,:), ttempspfsyy(:,:), ttempspfszz(:,:)
-
-  allocate(ttempspfsxx(spfsize,nspf), ttempspfsyy(spfsize,nspf), ttempspfszz(spfsize,nspf))
-  ttempspfsxx=0; ttempspfsyy=0; ttempspfszz=0
+  integer :: lowspf,highspf,numspf
 
   matrix_ptr%xpulsematelxx=0.d0;     matrix_ptr%xpulsematelyy=0.d0;     matrix_ptr%xpulsematelzz=0.d0
 
-  if (velflag.eq.0) then
-     call lenmultiply(nspf,inspfs2(:,:),ttempspfsxx(:,:), DATAONE,DATAZERO,DATAZERO)
-     call lenmultiply(nspf,inspfs2(:,:),ttempspfsyy(:,:), DATAZERO,DATAONE,DATAZERO)
-     call lenmultiply(nspf,inspfs2(:,:),ttempspfszz(:,:), DATAZERO,DATAZERO,DATAONE)
-  else
-     call velmultiply(nspf,inspfs2(:,:),ttempspfsxx(:,:), DATAONE,DATAZERO,DATAZERO)
-     call velmultiply(nspf,inspfs2(:,:),ttempspfsyy(:,:), DATAZERO,DATAONE,DATAZERO)
-     call velmultiply(nspf,inspfs2(:,:),ttempspfszz(:,:), DATAZERO,DATAZERO,DATAONE)
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getorbsetrange(lowspf,highspf)
   endif
-!! pulsematel is proper order.
+  numspf=highspf-lowspf+1
+  if (numspf.lt.0) then
+     print *, "DOOGeeeGDSF"; stop
+  endif
 
   dipoles(:)=0d0
   if (velflag.eq.0) then
      call nucdipvalue(nullcomplex,dipoles)
   endif
-
-  call MYGEMM(CNORMCHAR,'N',nspf,nspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfsxx, spfsize, DATAONE, matrix_ptr%xpulsematelxx(:,:) ,nspf)
-  call MYGEMM(CNORMCHAR,'N',nspf,nspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfsyy, spfsize, DATAONE, matrix_ptr%xpulsematelyy(:,:) ,nspf)
-  call MYGEMM(CNORMCHAR,'N',nspf,nspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfszz, spfsize, DATAONE, matrix_ptr%xpulsematelzz(:,:) ,nspf)
   matrix_ptr%xpulsenuc(:)=dipoles(:)
+
+  if (numspf.ne.0) then
+
+  allocate(ttempspfsxx(spfsize,lowspf:highspf), ttempspfsyy(spfsize,lowspf:highspf), ttempspfszz(spfsize,lowspf:highspf))
+  ttempspfsxx=0; ttempspfsyy=0; ttempspfszz=0
+
+  if (velflag.eq.0) then
+     call lenmultiply(numspf,inspfs2(:,lowspf:highspf),ttempspfsxx(:,lowspf:highspf), DATAONE,DATAZERO,DATAZERO)
+     call lenmultiply(numspf,inspfs2(:,lowspf:highspf),ttempspfsyy(:,lowspf:highspf), DATAZERO,DATAONE,DATAZERO)
+     call lenmultiply(numspf,inspfs2(:,lowspf:highspf),ttempspfszz(:,lowspf:highspf), DATAZERO,DATAZERO,DATAONE)
+  else
+     call velmultiply(numspf,inspfs2(:,lowspf:highspf),ttempspfsxx(:,lowspf:highspf), DATAONE,DATAZERO,DATAZERO)
+     call velmultiply(numspf,inspfs2(:,lowspf:highspf),ttempspfsyy(:,lowspf:highspf), DATAZERO,DATAONE,DATAZERO)
+     call velmultiply(numspf,inspfs2(:,lowspf:highspf),ttempspfszz(:,lowspf:highspf), DATAZERO,DATAZERO,DATAONE)
+  endif
+!! pulsematel is proper order.
+
+  call MYGEMM(CNORMCHAR,'N',nspf,numspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfsxx(:,lowspf:highspf), &
+       spfsize, DATAONE, matrix_ptr%xpulsematelxx(:,lowspf:highspf) ,nspf)
+  call MYGEMM(CNORMCHAR,'N',nspf,numspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfsyy(:,lowspf:highspf), &
+       spfsize, DATAONE, matrix_ptr%xpulsematelyy(:,lowspf:highspf) ,nspf)
+  call MYGEMM(CNORMCHAR,'N',nspf,numspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfszz(:,lowspf:highspf), &
+       spfsize, DATAONE, matrix_ptr%xpulsematelzz(:,lowspf:highspf) ,nspf)
+
+  deallocate(ttempspfsxx, ttempspfsyy, ttempspfszz)
+
+  endif
+
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(matrix_ptr%xpulsematelxx(:,:),nspf)
+     call mpiorbgather(matrix_ptr%xpulsematelyy(:,:),nspf)
+     call mpiorbgather(matrix_ptr%xpulsematelzz(:,:),nspf)
+  endif
 
   if (parorbsplit.eq.3) then
      call mympireduce(matrix_ptr%xpulsematelxx(:,:),nspf**2)
      call mympireduce(matrix_ptr%xpulsematelyy(:,:),nspf**2)
      call mympireduce(matrix_ptr%xpulsematelzz(:,:),nspf**2)
   endif
-
-  deallocate(ttempspfsxx, ttempspfsyy, ttempspfszz)
 
 end subroutine pulse_matel
 
@@ -213,30 +257,54 @@ subroutine sparseops_matel(matrix_ptr,inspfs1,inspfs2)
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
   DATATYPE,allocatable :: ttempspfs(:,:)
-  integer :: ispf  
-
-  allocate(ttempspfs(spfsize,nspf)); ttempspfs=0
+  integer :: lowspf,highspf,numspf
 
   matrix_ptr%xopmatel=0d0;  matrix_ptr%xymatel=0d0;  
 
-  call mult_ke(inspfs2(:,:),ttempspfs(:,:),nspf,timingdir,notiming)
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getorbsetrange(lowspf,highspf)
+  endif
+  numspf=highspf-lowspf+1
+  if (numspf.lt.0) then
+     print *, "DOOeeeGGDSF",lowspf,highspf,nspf; stop
+  endif
 
-  call MYGEMM(CNORMCHAR,'N',nspf,nspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfs, spfsize, DATAZERO, matrix_ptr%xopmatel(:,:) ,nspf)
+  if (numspf.ne.0) then
+
+  allocate(ttempspfs(spfsize,lowspf:highspf)); ttempspfs=0
+
+  call mult_ke(inspfs2(:,lowspf:highspf),ttempspfs(:,lowspf:highspf),numspf,timingdir,notiming)
+
+  call MYGEMM(CNORMCHAR,'N',nspf,numspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfs(:,lowspf:highspf), &
+       spfsize, DATAZERO, matrix_ptr%xopmatel(:,lowspf:highspf) ,nspf)
 
   if (nonuc_checkflag/=1) then
-     call noparorbsupport("op_yderiv")
-     do ispf=1,nspf
-        call op_yderiv(inspfs2(:,ispf),ttempspfs(:,ispf))
-     enddo
-     call MYGEMM(CNORMCHAR,'N',nspf,nspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfs, &
-          spfsize, DATAZERO, matrix_ptr%xymatel(:,:) ,nspf)
+     call op_yderiv(numspf,inspfs2(:,lowspf:highspf),ttempspfs(:,lowspf:highspf))
+     
+     call MYGEMM(CNORMCHAR,'N',nspf,numspf, spfsize, DATAONE, inspfs1, spfsize, ttempspfs(:,lowspf:highspf), &
+          spfsize, DATAZERO, matrix_ptr%xymatel(:,lowspf:highspf) ,nspf)
+  endif
+
+  deallocate(ttempspfs)
+
+  endif
+
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(matrix_ptr%xopmatel(:,:),nspf)
+     if (nonuc_checkflag/=1) then
+        call mpiorbgather(matrix_ptr%xymatel(:,:),nspf)
+     endif
   endif
 
   if (parorbsplit.eq.3) then
      call mympireduce(matrix_ptr%xopmatel(:,:),nspf**2)
+     if (nonuc_checkflag/=1) then
+        call mympireduce(matrix_ptr%xymatel(:,:),nspf**2)
+     endif
   endif
 
-  deallocate(ttempspfs)
+
 
 end subroutine sparseops_matel
 

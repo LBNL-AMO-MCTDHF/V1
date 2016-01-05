@@ -329,13 +329,13 @@ end subroutine call_frozen_matels0
 
 !! EXCHANGE (direct is op_frozenreduced)
 
-subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen)
+subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen,notusedarr)
   use twoemod
   use myparams
   use pmpimod
   use pfileptrmod
   implicit none
-  integer, intent(in) :: numfrozen,howmany
+  integer, intent(in) :: numfrozen,howmany,notusedarr(howmany)
   DATATYPE, intent(in) :: infrozens(totpoints,numfrozen), inspfs(totpoints,howmany)
   DATATYPE, intent(out) :: outspfs(totpoints,howmany)
   DATATYPE,allocatable :: frodensity(:), tempreduced(:)

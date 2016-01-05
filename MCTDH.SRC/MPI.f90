@@ -62,6 +62,8 @@ subroutine mpiorbsets()
 #else
   allocate(process_ranks(nspf*2,norbsets)); process_ranks(:,:)=(-1)
   allocate(MPI_GROUP_ORB(norbsets), MPI_COMM_ORB(norbsets)); MPI_GROUP_ORB(:)=0; MPI_COMM_ORB(:)=0
+
+  firstmpiorb=nspf+1
   iproc=0
   do iset=1,norbsets
      jproc=0
@@ -110,12 +112,14 @@ subroutine mpiorbgather(inoutvector,insize)    !! insize=spfsize except debug
   integer :: ierr,insize
   DATATYPE,intent(inout) :: inoutvector(insize,nspf)
   DATATYPE :: orbvector(insize,nspf*2)   !! AUTOMATIC
+
+  if (nprocs.eq.1.or.parorbsplit.ne.1) then
+     return
+  endif
+
   if (mpi_orbset_init.ne.1) then
      OFLWR "Programmer fail, mpiorbgather called but mpiorbsets() appears "
      WRFL "   not to have been called."; CFLST
-  endif
-  if (nprocs.eq.1) then
-     return
   endif
 
   orbvector(:,:)=0d0

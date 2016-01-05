@@ -551,11 +551,16 @@ subroutine getOrbSetRange(out_lowspf,out_highspf)
   use mpi_orbsetmod
   implicit none
   integer, intent(out) :: out_lowspf, out_highspf
-  if (mpi_orbset_init.ne.1) then
-     OFLWR "error, mpiorbset init.ne.1",mpi_orbset_init; CFLST
+  if (parorbsplit.ne.1) then
+     out_lowspf=1
+     out_highspf=nspf
+  else
+     if (mpi_orbset_init.ne.1) then
+        OFLWR "error, mpiorbset init.ne.1",mpi_orbset_init; CFLST
+     endif
+     out_lowspf=min(firstmpiorb,nspf+1)
+     out_highspf=min(nspf,firstmpiorb+orbsperproc-1)
   endif
-  out_lowspf=firstmpiorb
-  out_highspf=min(nspf,firstmpiorb+orbsperproc-1)
 end subroutine getOrbSetRange
 
 

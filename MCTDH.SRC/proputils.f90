@@ -106,10 +106,21 @@ subroutine get_frexchange()
   use parameters
   use xxxmod !! frozenexchange
   implicit none
+  integer :: lowspf,highspf
   if (numfrozen.gt.0) then
+     lowspf=1; highspf=nspf
+     if (parorbsplit.eq.1) then
+        call getorbsetrange(lowspf,highspf)
+     endif
      yyy%frozenexchange(:,:,0)=0
-     call op_frozen_exchange(nspf,yyy%cmfpsivec(spfstart:spfend,0),yyy%frozenexchange(:,:,0))
+     call op_frozen_exchange(lowspf,highspf,&
+          yyy%cmfpsivec(spfstart+(lowspf-1)*spfsize:spfstart+highspf*spfsize-1,0),&
+          yyy%frozenexchange(:,lowspf:highspf,0))
+     if (parorbsplit.eq.1) then
+        call mpiorbgather(yyy%frozenexchange(:,:,0),spfsize)
+     endif
   endif
+  
 end subroutine get_frexchange
 
 subroutine get_stuff(thistime)
@@ -328,14 +339,16 @@ end subroutine lenmultiply
 
 
 
-subroutine op_frozen_exchange(howmany,inspfs,outspfs)
+subroutine op_frozen_exchange(lowspf,highspf,inspfs,outspfs)
   use opmod
   use parameters
   implicit none
-  integer,intent(in) :: howmany
-  DATATYPE,intent(in) :: inspfs(spfsize,howmany)
-  DATATYPE,intent(out) :: outspfs(spfsize,howmany)
-  call op_frozen_exchange0(howmany,inspfs,outspfs,frozenspfs,numfrozen)
+  integer,intent(in) :: lowspf,highspf
+  DATATYPE,intent(in) :: inspfs(spfsize,lowspf:highspf)
+  DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
+  integer :: numspf
+  numspf=highspf-lowspf+1
+  call op_frozen_exchange0(numspf,inspfs,outspfs,frozenspfs,numfrozen,spfmvals(lowspf:highspf))
 end subroutine op_frozen_exchange
 
 

@@ -300,7 +300,6 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
 
   lowspf=1; highspf=nspf
   if (parorbsplit.eq.1.and.nprocs.gt.1) then
-     lowspf=1; highspf=nspf
      call getOrbSetRange(lowspf,highspf)
   endif
   numspf=highspf-lowspf+1

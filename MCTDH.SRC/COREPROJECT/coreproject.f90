@@ -293,7 +293,7 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
   integer, intent(in) :: xnotiming
   character,intent(in) :: xtimingdir*(*)
   integer :: mvalue2a, mvalue1b, mvalue2b, mvalue1a, itime, jtime, &
-       spf1a,spf1b,spf2a,spf2b, deltam,qq,rr,qq2,rr2,times(100)
+       spf1a,spf1b,spf2a,spf2b, deltam,qq,rr,qq2,rr2,times(100),lowspf,highspf
   DATATYPE :: myden(numerad,lbig+1,-2*mbig:2*mbig),myred(numerad,lbig+1,-2*mbig:2*mbig)        !! AUTOMATIC
   DATATYPE,allocatable :: twoeden(:,:,:,:)
 
@@ -303,7 +303,13 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
 
   call system_clock(itime)
 
-  do spf2b=1,numspf
+  lowspf=1; highspf=numspf
+  call getorbsetrange(lowspf,highspf)
+  if (highspf.gt.numspf.or.lowspf.lt.1) then
+     print *, "programmer fail xxx",lowspf,highspf,numspf; stop
+  endif
+
+  do spf2b=lowspf,highspf
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,qq,qq2,rr,rr2,myden,mvalue2a,mvalue2b,deltam)
 !$OMP DO SCHEDULE(DYNAMIC)
      do spf2a=1,numspf
@@ -334,11 +340,14 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
 
   enddo
 
+!! does nothing unless parorbsplit=1 in main program
+  call mpiorbgather(twoereduced,numerad*(lbig+1)*(4*mbig+1)*numspf)
+
   call system_clock(jtime);           times(1)=times(1)+jtime-itime;    itime=jtime
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf1a,spf1b,spf2a,spf2b,qq,qq2,rr,rr2,myden,myred,mvalue1a,mvalue1b,deltam)
 !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC)
-  do spf1b=1,numspf
+  do spf1b=lowspf,highspf
      do spf1a=1,numspf
               
         if (spfrestrictflag==1) then
@@ -370,6 +379,9 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
   enddo
 !$OMP END DO
 !$OMP END PARALLEL
+
+!! does nothing unless parorbsplit=1 in main program
+  call mpiorbgather(twoematel(:,:,:,:),numspf**3)
 
   call system_clock(itime);   times(2)=times(2)+itime-jtime
 
@@ -637,12 +649,10 @@ end subroutine call_frozen_matels0
 
 !! EXCHANGE (direct is op_frozenreduced)
 
-subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen)
+subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen,inspfmvals)
   use myparams
-  use twoemod
-  use myprojectmod
   implicit none
-  integer,intent(in) :: numfrozen,howmany
+  integer,intent(in) :: numfrozen,howmany,inspfmvals(howmany)
   DATATYPE,intent(in) :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen), &
        inspfs(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig,howmany)
@@ -667,8 +677,8 @@ subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen)
         ! integrating over electron 2
 
         if (spfrestrictflag.eq.1) then
-           qq=spfmvals(spf2a)
-           rr=spfmvals(spf2a)
+           qq=inspfmvals(spf2a)
+           rr=inspfmvals(spf2a)
         else
            qq=-mbig
            rr=mbig
@@ -705,8 +715,8 @@ subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen)
         twoemat2(:,:,:)=tempreduced(:,:,:,spf2a)
 
         if (spfrestrictflag.eq.1) then
-           qq=spfmvals(spf2a)
-           rr=spfmvals(spf2a)
+           qq=inspfmvals(spf2a)
+           rr=inspfmvals(spf2a)
         else
            qq=-mbig
            rr=mbig
