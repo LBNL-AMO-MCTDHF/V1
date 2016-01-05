@@ -76,6 +76,22 @@ end subroutine twoedealloc
 
 
 
+module mycdotmod
+contains
+recursive function mycdot(one,two,n)
+  implicit none
+  integer,intent(in) :: n
+  DATATYPE,intent(in) :: one(n), two(n)
+  DATATYPE :: mycdot, sum
+  integer :: i
+  sum=0.d0
+  do i=1,n
+     sum = sum + one(i) * two(i) 
+  enddo
+  mycdot=sum
+end function mycdot
+end module
+
 !  DATAECS :: rmatrix(numerad,numerad,mseriesmax+1,lseriesmax+1)
 !  real*8 :: ylmvals(0:2*mbig, 1:lbig+1, lseriesmax+1)
 
@@ -269,6 +285,7 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
   use myparams
   use twoemod
   use myprojectmod
+  use mycdotmod
   implicit none
   DATATYPE,intent(out) :: twoereduced(numerad,lbig+1,-2*mbig:2*mbig, numspf,numspf),&
        twoematel(numspf,numspf,numspf,numspf)
@@ -278,10 +295,10 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
   integer :: mvalue2a, mvalue1b, mvalue2b, mvalue1a, itime, jtime, &
        spf1a,spf1b,spf2a,spf2b, deltam,qq,rr,qq2,rr2,times(100)
   DATATYPE :: myden(numerad,lbig+1,-2*mbig:2*mbig),myred(numerad,lbig+1,-2*mbig:2*mbig)        !! AUTOMATIC
-  DATATYPE,allocatable :: twoemat2(:,:,:,:),twoeden(:,:,:,:)
+  DATATYPE,allocatable :: twoeden(:,:,:,:)
 
-  allocate(twoemat2(numerad,lbig+1,-2*mbig:2*mbig,numspf),twoeden(numerad,lbig+1,-2*mbig:2*mbig,numspf))
-  twoemat2(:,:,:,:)=0d0; twoeden(:,:,:,:)=0d0
+  allocate(twoeden(numerad,lbig+1,-2*mbig:2*mbig,numspf))
+  twoeden(:,:,:,:)=0d0
   twoematel(:,:,:,:)=0d0; twoereduced(:,:,:,:,:)=0d0
 
   call system_clock(itime)
@@ -313,34 +330,7 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
 !$OMP END DO
 !$OMP END PARALLEL
 
-     call op_tinv(-2*mbig,2*mbig,numspf,twoeden,twoemat2)
-
-     twoereduced(:,:,:,:,spf2b) = twoemat2(:,:,:,:)    !! bra,ket
-
-!        do mvalue2a=qq,rr
-!           do mvalue2b=qq2,rr2
-!              deltam=mvalue2b-mvalue2a
-!              twoeden(:,:) = CONJUGATE(inspfs1(:,:,mvalue2a,spf2a)) * inspfs2(:,:,mvalue2b,spf2b)
-!              do lsum=1+abs(deltam),jacobisummax+1
-!                 twoeden2=0.d0
-!                 do j1=1,lbig+1
-!                    twoeden2(:)=twoeden2(:) + twoeden(:,j1) * ylmvals(abs(deltam),j1,lsum-abs(deltam))
-!                 enddo
-!                 twoeden3=0.d0
-!                 do j2=1,numerad
-!                    if (atomflag==0) then
-!                       twoeden3(:)=twoeden3(:) + twoeden2(j2) * rmatrix(:,j2,abs(deltam)+1,lsum-abs(deltam)) * 4.d0
-!                    else
-!                       twoeden3(:)=twoeden3(:) + twoeden2(j2) * rmatrix(:,j2,1,lsum) 
-!                    endif
-!                 enddo
-!                 do k1=1,lbig+1
-!                    twoemat2(:,k1,deltam) = twoemat2(:,k1,deltam) - &
-!                         twoeden3(:)*ylmvals(abs(deltam),k1,lsum-abs(deltam))
-!                 enddo
-!              enddo
-!           enddo
-!        enddo
+     call op_tinv(-2*mbig,2*mbig,numspf,twoeden,twoereduced(:,:,:,:,spf2b))
 
   enddo
 
@@ -348,34 +338,34 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf1a,spf1b,spf2a,spf2b,qq,qq2,rr,rr2,myden,myred,mvalue1a,mvalue1b,deltam)
 !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC)
-        do spf1b=1,numspf
-           do spf1a=1,numspf
+  do spf1b=1,numspf
+     do spf1a=1,numspf
               
-              if (spfrestrictflag==1) then
-                 qq=spfmvals(spf1a);                    rr=spfmvals(spf1a)
-                 qq2=spfmvals(spf1b);                    rr2=spfmvals(spf1b)
-              else
-                 qq=-mbig;                 rr=mbig
-                 qq2=-mbig;                 rr2=mbig
-              endif
+        if (spfrestrictflag==1) then
+           qq=spfmvals(spf1a);                    rr=spfmvals(spf1a)
+           qq2=spfmvals(spf1b);                    rr2=spfmvals(spf1b)
+        else
+           qq=-mbig;                 rr=mbig
+           qq2=-mbig;                 rr2=mbig
+        endif
 
-              myden(:,:,:)=0d0
-              do mvalue1a=qq,rr
-                 do mvalue1b=qq2,rr2
-                    
-                    deltam=mvalue1a-mvalue1b
-                    myden(:,:,deltam) = myden(:,:,deltam) + &
-                         CONJUGATE(inspfs1(:,:,mvalue1a,spf1a)) * inspfs2(:,:,mvalue1b,spf1b)
-                 enddo
-              enddo
+        myden(:,:,:)=0d0
+        do mvalue1a=qq,rr
+           do mvalue1b=qq2,rr2
 
-              do spf2b=1,numspf
-                 do spf2a=1,numspf
-                    myred(:,:,:)=twoereduced(:,:,:,spf2a,spf2b)
-                    twoematel(spf2a,spf2b,spf1a,spf1b) = mycdot(myden(:,:,:),myred(:,:,:),numerad*(lbig+1)*(4*mbig+1))
+              deltam=mvalue1a-mvalue1b
+              myden(:,:,deltam) = myden(:,:,deltam) + &
+                   CONJUGATE(inspfs1(:,:,mvalue1a,spf1a)) * inspfs2(:,:,mvalue1b,spf1b)
+           enddo
+        enddo
 
-                 enddo
-              enddo
+        do spf2b=1,numspf
+           do spf2a=1,numspf
+              myred(:,:,:)=twoereduced(:,:,:,spf2a,spf2b)
+              twoematel(spf2a,spf2b,spf1a,spf1b) = mycdot(myden(:,:,:),myred(:,:,:),numerad*(lbig+1)*(4*mbig+1))
+              
+           enddo
+        enddo
      enddo
   enddo
 !$OMP END DO
@@ -383,7 +373,7 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
 
   call system_clock(itime);   times(2)=times(2)+itime-jtime
 
-  deallocate(twoemat2,twoeden)
+  deallocate(twoeden)
 
 !  if ((myrank.eq.1).and.(notiming.eq.0)) then
 !     if (timingflag==1) then
@@ -405,19 +395,6 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
 !     endif
 !  endif
 
-contains
-recursive function mycdot(one,two,n)
-  implicit none
-  integer,intent(in) :: n
-  DATATYPE,intent(in) :: one(n), two(n)
-  DATATYPE :: mycdot, sum
-  integer :: i
-  sum=0.d0
-  do i=1,n
-     sum = sum + one(i) * two(i) 
-  enddo
-  mycdot=sum
-end function mycdot
 
 end subroutine call_twoe_matel
 
@@ -425,7 +402,7 @@ end subroutine call_twoe_matel
 
 !!$!! ADDS TO matrix hatommatel  NO NEVERMIND
 !!$
-!!$subroutine hatom_matel(inspfs1, inspfs2, hatommatel,numberspf)   !!!rmatrix,ylmvals, 
+!!$subroutine hatom_matel(inspfs1, inspfs2, hatommatel,numberspf)
 !!$  use myparams
 !!$  use twoemod
 !!$  use myprojectmod
@@ -517,95 +494,93 @@ subroutine hatom_op(howmany,inspfs, outspfs)
 end subroutine hatom_op
 
 
-!!  DATAECS :: rmatrix(numerad,numerad,mseriesmax+1,lseriesmax+1)
-!!  real*8 :: ylmvals(0:2*mbig, 1:lbig+1, lseriesmax+1)
-
 subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  !! returns last two.  a little cloogey
   use myparams
   use twoemod
   use myprojectmod
+  use mycdotmod
   implicit none
   integer,intent(in) :: numfrozen
   DATATYPE,intent(out) :: frozenkediag,frozenpotdiag
   DATATYPE,intent(in) :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen)
   DATATYPE :: sum, direct, exch
   integer :: mvalue2a, mvalue1b, mvalue2b, mvalue1a, &
-       i1,i2,j1,j2,spf1a,spf1b,spf2a,spf2b, deltam,k1,lsum,qq,rr,qq2,rr2,i,ii, &
+       spf1a,spf1b,spf2a,spf2b, deltam,qq,rr,qq2,rr2,i,ii, &
        iispf,ispf,ispin,iispin, sizespf
   DATATYPE, allocatable :: tempreduced(:,:,:,:,:), tempmatel(:,:,:,:), temppotmatel(:,:),&
-       tempmult(:,:), temppotmatel2(:,:), tempmult2(:,:)
-  DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1), &     !! AUTOMATIC
-       twoeden2(numerad),   twoeden3(numerad)
+       tempmult(:,:), temppotmatel2(:,:), tempmult2(:,:), twoeden(:,:,:,:)
+  DATATYPE :: myden(numerad,lbig+1,-2*mbig:2*mbig),myred(numerad,lbig+1,-2*mbig:2*mbig)        !! AUTOMATIC
+
+  frozenkediag=0
+  frozenpotdiag=0
 
   if (numfrozen.eq.0) then
      return
   endif
 
+  allocate(twoeden(numerad,lbig+1,-2*mbig:2*mbig,numfrozen))
+  twoeden(:,:,:,:)=0d0
+
   sizespf=numerad*(lbig+1)*(2*mbig+1)
+
   allocate(tempreduced(numerad,lbig+1,-2*mbig:2*mbig,numfrozen,numfrozen), tempmult(sizespf,numfrozen), &
        tempmatel(numfrozen,numfrozen,numfrozen,numfrozen),       temppotmatel(numfrozen,numfrozen),   &
        temppotmatel2(numfrozen,numfrozen), tempmult2(sizespf,numfrozen))
+  tempreduced=0; tempmult=0; tempmatel=0; temppotmatel=0; temppotmatel2=0; tempmult2=0
 
   do spf2b=1,numfrozen
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,qq,qq2,rr,rr2,myden,mvalue2a,mvalue2b,deltam)
+!$OMP DO SCHEDULE(DYNAMIC)
      do spf2a=1,numfrozen
-        twoemat2=0.d0
-
         ! integrating over electron 2
 
         qq=-mbig;        rr=mbig
         qq2=-mbig;        rr2=mbig
-        
+
+        myden(:,:,:)=0d0
         do mvalue2a=qq,rr
            do mvalue2b=qq2,rr2
               deltam=mvalue2b-mvalue2a
-              twoeden(:,:) = CONJUGATE(infrozens(:,:,mvalue2a,spf2a)) * infrozens(:,:,mvalue2b,spf2b)
-              do lsum=1+abs(deltam),jacobisummax+1
-                 twoeden2=0.d0
-                 do j1=1,lbig+1
-                    twoeden2(:)=twoeden2(:) + twoeden(:,j1) * ylmvals(abs(deltam),j1,lsum-abs(deltam))
-                 enddo
-                 twoeden3=0.d0
-                 do j2=1,numerad
-                    if (atomflag==0) then
-                       twoeden3(:)=twoeden3(:) + twoeden2(j2) * rmatrix(:,j2,abs(deltam)+1,lsum-abs(deltam)) * 4.d0
-                    else
-                       twoeden3(:)=twoeden3(:) + twoeden2(j2) * rmatrix(:,j2,1,lsum) 
-                    endif
-                 enddo
-                 do k1=1,lbig+1
-                    twoemat2(:,k1,deltam) = twoemat2(:,k1,deltam) - &
-                         twoeden3(:)*ylmvals(abs(deltam),k1,lsum-abs(deltam))
-                 enddo
-              enddo
+              myden(:,:,deltam) = myden(:,:,deltam) + &
+                   CONJUGATE(infrozens(:,:,mvalue2a,spf2a)) * infrozens(:,:,mvalue2b,spf2b)
            enddo
         enddo
-        tempreduced(:,:,:,spf2a,spf2b) = twoemat2    !! bra,ket
+        twoeden(:,:,:,spf2a)=myden(:,:,:)
+     enddo  !! spf2a
+!$OMP END DO
+!$OMP END PARALLEL
 
+     call op_tinv(-2*mbig,2*mbig,numfrozen,twoeden,tempreduced(:,:,:,:,spf2b))
+
+  enddo
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf1a,spf1b,spf2a,spf2b,qq,qq2,rr,rr2,myden,myred,mvalue1a,mvalue1b,deltam)
+!$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC)
         do spf1b=1,numfrozen
            do spf1a=1,numfrozen
-              sum=0.d0
+
               qq=-mbig;              rr=mbig
               qq2=-mbig;              rr2=mbig
-              
+
+              myden(:,:,:)=0d0
               do mvalue1a=qq,rr
                  do mvalue1b=qq2,rr2
                     deltam=mvalue1a-mvalue1b
-
-!!$ if (1==1) then  ! is faster when optimized, much slower when not.
-
-                    do i1=1,lbig+1
-                       do i2=1,numerad
-
-                          sum = sum + CONJUGATE(infrozens(i2,i1,mvalue1a,spf1a)) * infrozens(i2,i1,mvalue1b,spf1b) * twoemat2(i2,i1,deltam)
-                       enddo
-                    enddo
+                    myden(:,:,deltam)=myden(:,:,deltam) + &
+                         CONJUGATE(infrozens(:,:,mvalue1a,spf1a)) * infrozens(:,:,mvalue1b,spf1b)
                  enddo
               enddo
-              tempmatel(spf2a,spf2b,spf1a,spf1b) = sum
+
+              do spf2b=1,numfrozen
+                 do spf2a=1,numfrozen
+                    myred(:,:,:)=tempreduced(:,:,:,spf2a,spf2b)
+                    tempmatel(spf2a,spf2b,spf1a,spf1b) = mycdot(myden(:,:,:),myred(:,:,:),numerad*(lbig+1)*(4*mbig+1))
+                 enddo
+              enddo
            enddo
         enddo
-     enddo
-  enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
 !! THIS WAY
   frozenreduced(:,:,:)=0d0
@@ -657,12 +632,13 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
      frozenkediag=frozenkediag+2*temppotmatel(i,i)
   enddo
 
+  deallocate(twoeden)
   deallocate(tempreduced,       tempmatel,       temppotmatel,tempmult,temppotmatel2,tempmult2)
 
 end subroutine call_frozen_matels0
 
 
-!! ADDS TO OUTSPFS
+!! EXCHANGE (direct is op_frozenreduced)
 
 subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen)
   use myparams
@@ -673,19 +649,24 @@ subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen)
   DATATYPE,intent(in) :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen), &
        inspfs(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig,howmany)
-  DATATYPE, allocatable :: twoemat2(:,:,:),  &              !! numerad,lbig+1,-2*mbig:2*mbig
-       twoeden(:,:), twoeden2(:), twoeden3(:)
-  integer :: mvalue2a, mvalue2b, spf2a,spf2b, deltam,k1,lsum,qq,rr,qq2,rr2,j1,j2
+  DATATYPE, allocatable :: tempreduced(:,:,:,:),twoeden(:,:,:,:)
+  DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig), myspf(numerad,lbig+1,-mbig:mbig)   !! AUTOMATIC
+  integer :: mvalue2a, mvalue2b, spf2a,spf2b, deltam, qq,rr,qq2,rr2
+
+  outspfs(:,:,:,:)=0d0
 
   if (numfrozen.eq.0) then
      return
   endif
-  allocate(twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),twoeden2(numerad),twoeden3(numerad))
+
+  allocate(tempreduced(numerad,lbig+1,-2*mbig:2*mbig,howmany),&
+       twoeden(numerad,lbig+1,-2*mbig:2*mbig,howmany))
+  tempreduced(:,:,:,:)=0d0; twoeden(:,:,:,:)=0d0
 
   do spf2b=1,numfrozen
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,qq,qq2,rr,rr2,twoemat2,mvalue2a,mvalue2b,deltam)
+!$OMP DO SCHEDULE(DYNAMIC)
      do spf2a=1,howmany
-        twoemat2=0.d0
-
         ! integrating over electron 2
 
         if (spfrestrictflag.eq.1) then
@@ -698,7 +679,8 @@ subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen)
 
         qq2=-mbig
         rr2=mbig
-        
+
+        twoemat2(:,:,:)=0d0
         do mvalue2a=qq,rr
            do mvalue2b=qq2,rr2
 
@@ -706,44 +688,55 @@ subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen)
               deltam=mvalue2b-mvalue2a
 
 !! THIS WAY (CONJG FROZEN, NO CONJG INSPFS)
-              twoeden(:,:) = inspfs(:,:,mvalue2a,spf2a) * CONJUGATE(infrozens(:,:,mvalue2b,spf2b))
-
-              do lsum=1+abs(deltam),jacobisummax+1
-                 twoeden2=0.d0
-                 do j1=1,lbig+1
-                    twoeden2(:)=twoeden2(:) + twoeden(:,j1) * ylmvals(abs(deltam),j1,lsum-abs(deltam))
-                 enddo
-                 twoeden3=0.d0
-                 do j2=1,numerad
-                    if (atomflag==0) then
-                       twoeden3(:)=twoeden3(:) + twoeden2(j2) * rmatrix(:,j2,abs(deltam)+1,lsum-abs(deltam)) * 4.d0
-                    else
-                       twoeden3(:)=twoeden3(:) + twoeden2(j2) * rmatrix(:,j2,1,lsum) 
-                    endif
-                 enddo
-                 do k1=1,lbig+1
-                    twoemat2(:,k1,deltam) = twoemat2(:,k1,deltam) - &
-                         twoeden3(:)*ylmvals(abs(deltam),k1,lsum-abs(deltam))
-                 enddo
-              enddo
+              twoemat2(:,:,deltam) = twoemat2(:,:,deltam) + &
+                   inspfs(:,:,mvalue2a,spf2a) * CONJUGATE(infrozens(:,:,mvalue2b,spf2b))
            enddo
         enddo
+        twoeden(:,:,:,spf2a)=twoemat2(:,:,:)
+     enddo   !! spf2a
+!$OMP END DO
+!$OMP END PARALLEL
+
+     call op_tinv(-2*mbig,2*mbig,howmany,twoeden,tempreduced(:,:,:,:))
 
 !! deltam (twoemat2 index) is frozen m (not conjugated above) minus spf m (conjugated above)
-        
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,myspf,twoemat2,mvalue2a,mvalue2b,qq,qq2,rr,rr2)
+!$OMP DO SCHEDULE(DYNAMIC)
+     do spf2a=1,howmany
+
+        twoemat2(:,:,:)=tempreduced(:,:,:,spf2a)
+
+        if (spfrestrictflag.eq.1) then
+           qq=spfmvals(spf2a)
+           rr=spfmvals(spf2a)
+        else
+           qq=-mbig
+           rr=mbig
+        endif
+
+        qq2=-mbig
+        rr2=mbig
+
+        myspf(:,:,:)=0d0
         do mvalue2a=qq,rr   !! spf
            do mvalue2b=qq2,rr2  !! frozen
 
 !! YES MINUS 1 TIMES              
-              outspfs(:,:,mvalue2a,spf2a) = outspfs(:,:,mvalue2a,spf2a) -    & 
+              myspf(:,:,mvalue2a) = myspf(:,:,mvalue2a) -    & 
 !!NO                   twoemat2(:,:,mvalue2b-mvalue2a) * CONJUGATE(infrozens(:,:,mvalue2b,spf2b))
 !! THIS WAY
                    twoemat2(:,:,mvalue2b-mvalue2a) * (infrozens(:,:,mvalue2b,spf2b))
            enddo
         enddo
+        outspfs(:,:,:,spf2a) = outspfs(:,:,:,spf2a) + myspf(:,:,:)
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
   enddo
-  deallocate(twoemat2,twoeden,twoeden2,twoeden3)
+
+  deallocate(tempreduced,twoeden)
   
 end subroutine op_frozen_exchange0
 
@@ -982,9 +975,8 @@ subroutine hatomcalc()
   use twoemod
   implicit none
   DATATYPE :: interpolate
-  DATATYPE :: twoeden(numerad,lbig+1),twoeden2(numerad),twoeden3(numerad), &
-       hatomden(numerad,lbig+1,-mbig:mbig,-mbig:mbig)   !! AUTOMATIC
-  integer :: mvalue2a, mvalue2b, iatom,  j1,j2,deltam,k1,lsum,  ixi,ieta
+  DATATYPE ::  hatomden(numerad,lbig+1,-2*mbig:2*mbig)   !! AUTOMATIC
+  integer :: mvalue2a, mvalue2b, iatom, deltam, ixi,ieta
 
   if (numhatoms.eq.0) then
      return
@@ -1007,7 +999,9 @@ subroutine hatomcalc()
      return
   endif
 
-  hatomden=0d0
+  hatomreduced=0.d0
+  hatomden(:,:,:)=0d0
+
   do mvalue2a=-mbig,mbig
      do mvalue2b=-mbig,mbig
         deltam=mvalue2b-mvalue2a
@@ -1015,48 +1009,20 @@ subroutine hatomcalc()
            if (hlocrealflag.ne.0) then
               do ieta=1,lbig+1
                  do ixi=1,numerad
-                    hatomden(ixi,ieta,mvalue2a,mvalue2b) = hatomden(ixi,ieta,mvalue2a,mvalue2b) + &
+                    hatomden(ixi,ieta,deltam) = hatomden(ixi,ieta,deltam) + &
                          1.d0/(real(2*mbig+1,8))*hlocs(3,iatom)**(mvalue2a+mvalue2b) * interpolate(hlocreal(1,iatom),hlocreal(2,iatom),real(rpoints(1),8), abs(deltam),ixi,ieta)
                  enddo
               enddo
+           else
+              hatomden(hlocs(1,iatom),hlocs(2,iatom),deltam) = &
+                   hatomden(hlocs(1,iatom),hlocs(2,iatom),deltam) + &
+                   1.d0/(real(2*mbig+1,8))*hlocs(3,iatom)**(mvalue2a+mvalue2b)
            endif
         enddo
      enddo
   enddo
 
-  hatomreduced=0.d0
-  do mvalue2a=-mbig,mbig
-     do mvalue2b=-mbig,mbig
-        deltam=mvalue2b-mvalue2a
-        twoeden=0d0
-        if (hlocrealflag.ne.0) then
-           twoeden(:,:)=hatomden(:,:,mvalue2a,mvalue2b)
-        else
-           do iatom=1,numhatoms
-              twoeden(hlocs(1,iatom),hlocs(2,iatom)) = 1.d0/(real(2*mbig+1,8))*hlocs(3,iatom)**(mvalue2a+mvalue2b)
-           enddo
-        endif
-        do lsum=1+abs(deltam),jacobisummax+1
-           twoeden2=0.d0
-           do j1=1,lbig+1
-              twoeden2(:)=twoeden2(:) + twoeden(:,j1) * ylmvals(abs(deltam),j1,lsum-abs(deltam))
-           enddo
-           twoeden3=0.d0
-           do j2=1,numerad
-              if (atomflag==0) then
-                 twoeden3(:)=twoeden3(:) + twoeden2(j2) * rmatrix(:,j2,abs(deltam)+1,lsum-abs(deltam)) * 4.d0
-              else
-                 twoeden3(:)=twoeden3(:) + twoeden2(j2) * rmatrix(:,j2,1,lsum) 
-              endif
-           enddo
-           do k1=1,lbig+1
-              hatomreduced(:,k1,deltam) = hatomreduced(:,k1,deltam) - &
-                   twoeden3(:)*ylmvals(abs(deltam),k1,lsum-abs(deltam))
-           enddo
-        enddo
-     enddo
-  enddo
-
+  call op_tinv(-2*mbig,2*mbig,1,hatomden,hatomreduced)
 
 end subroutine hatomcalc
 
