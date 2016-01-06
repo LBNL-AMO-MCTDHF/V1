@@ -514,13 +514,11 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   integer,intent(in) :: numfrozen
   DATATYPE,intent(out) :: frozenkediag,frozenpotdiag
   DATATYPE,intent(in) :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen)
-  DATATYPE :: sum, direct, exch
-  integer :: mvalue2a, mvalue1b, mvalue2b, mvalue1a, &
-       spf1a,spf1b,spf2a,spf2b, deltam,qq,rr,qq2,rr2,i, &
-       iispf,ispf, sizespf
-  DATATYPE, allocatable :: tempreduced(:,:,:,:,:), tempmatel(:,:,:,:), temppotmatel(:,:),&
-       tempmult(:,:), temppotmatel2(:,:), tempmult2(:,:), twoeden(:,:,:,:)
-  DATATYPE :: myden(numerad,lbig+1,-2*mbig:2*mbig),myred(numerad,lbig+1,-2*mbig:2*mbig)        !! AUTOMATIC
+  DATATYPE :: direct(numfrozen,numfrozen), exch(numfrozen,numfrozen)
+  integer :: mvalue2a, mvalue2b,  spf2a,spf2b, deltam,i,  iispf,ispf, sizespf
+  DATATYPE, allocatable :: frodensity(:,:,:,:), tempreduced(:,:,:,:), cfrodensity(:,:,:,:), &
+       temppotmatel(:,:),   tempmult(:,:), tempmult2(:,:)
+  DATATYPE :: myden(numerad,lbig+1,-2*mbig:2*mbig)
 
   frozenkediag=0;    frozenpotdiag=0
 
@@ -528,85 +526,90 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
      return
   endif
 
-  allocate(twoeden(numerad,lbig+1,-2*mbig:2*mbig,numfrozen))
-  twoeden(:,:,:,:)=0d0
-
   sizespf=numerad*(lbig+1)*(2*mbig+1)
 
-  allocate(tempreduced(numerad,lbig+1,-2*mbig:2*mbig,numfrozen,numfrozen), tempmult(sizespf,numfrozen), &
-       tempmatel(numfrozen,numfrozen,numfrozen,numfrozen),       temppotmatel(numfrozen,numfrozen),   &
-       temppotmatel2(numfrozen,numfrozen), tempmult2(sizespf,numfrozen))
-  tempreduced=0; tempmult=0; tempmatel=0; temppotmatel=0; temppotmatel2=0; tempmult2=0
+  allocate(frodensity(numerad,lbig+1,-2*mbig:2*mbig,numfrozen),&
+       tempreduced(numerad,lbig+1,-2*mbig:2*mbig,numfrozen), &
+       cfrodensity(numerad,lbig+1,-2*mbig:2*mbig,numfrozen), &
+       temppotmatel(numfrozen,numfrozen), tempmult(sizespf,numfrozen), tempmult2(sizespf,numfrozen))
+  frodensity=0d0;  tempreduced=0; cfrodensity=0; tempmult=0; temppotmatel=0; tempmult2=0
 
+  frodensity(:,:,:,1)=0d0
+  do spf2a=1,numfrozen
+     myden(:,:,:)=0d0
+     do mvalue2a=-mbig,mbig
+        do mvalue2b=-mbig,mbig
+           deltam=mvalue2b-mvalue2a
+           myden(:,:,deltam) = myden(:,:,deltam) + &
+                CONJUGATE(infrozens(:,:,mvalue2a,spf2a)) * infrozens(:,:,mvalue2b,spf2a)
+        enddo
+     enddo
+     frodensity(:,:,:,1)=frodensity(:,:,:,1)+myden(:,:,:) * 2
+  enddo  !! spf2a
+
+  call op_tinv(-2*mbig,2*mbig,1,frodensity(:,:,:,1),frozenreduced(:,:,:))
+
+  exch(:,:)=0d0
   do spf2b=1,numfrozen
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,qq,qq2,rr,rr2,myden,mvalue2a,mvalue2b,deltam)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,myden,mvalue2a,mvalue2b,deltam)
 !$OMP DO SCHEDULE(DYNAMIC)
      do spf2a=1,numfrozen
         ! integrating over electron 2
 
-        qq=-mbig;        rr=mbig
-        qq2=-mbig;        rr2=mbig
-
         myden(:,:,:)=0d0
-        do mvalue2a=qq,rr
-           do mvalue2b=qq2,rr2
+        do mvalue2a=-mbig,mbig
+           do mvalue2b=-mbig,mbig
               deltam=mvalue2b-mvalue2a
               myden(:,:,deltam) = myden(:,:,deltam) + &
                    CONJUGATE(infrozens(:,:,mvalue2a,spf2a)) * infrozens(:,:,mvalue2b,spf2b)
            enddo
         enddo
-        twoeden(:,:,:,spf2a)=myden(:,:,:)
+        frodensity(:,:,:,spf2a)=myden(:,:,:)
      enddo  !! spf2a
 !$OMP END DO
 !$OMP END PARALLEL
 
-     call op_tinv(-2*mbig,2*mbig,numfrozen,twoeden,tempreduced(:,:,:,:,spf2b))
+     cfrodensity(:,:,:,:)=CONJUGATE(frodensity(:,:,:,:))
 
-  enddo
+     call op_tinv(-2*mbig,2*mbig,numfrozen,frodensity(:,:,:,:),tempreduced(:,:,:,:))
+     do spf2a=1,numfrozen
+        exch(spf2a,spf2b)=mycdot(cfrodensity(:,:,:,spf2a),tempreduced(:,:,:,spf2a),&
+             numerad*(lbig+1)*(4*mbig+1))
+     enddo
+  enddo  !! spf2b
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf1a,spf1b,spf2a,spf2b,qq,qq2,rr,rr2,myden,myred,mvalue1a,mvalue1b,deltam)
-!$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC)
-  do spf1b=1,numfrozen
-     do spf1a=1,numfrozen
 
-        qq=-mbig;              rr=mbig
-        qq2=-mbig;              rr2=mbig
-
-        myden(:,:,:)=0d0
-        do mvalue1a=qq,rr
-           do mvalue1b=qq2,rr2
-              deltam=mvalue1a-mvalue1b
-              myden(:,:,deltam)=myden(:,:,deltam) + &
-                   CONJUGATE(infrozens(:,:,mvalue1a,spf1a)) * infrozens(:,:,mvalue1b,spf1b)
-           enddo
-        enddo
-
-        do spf2b=1,numfrozen
-           do spf2a=1,numfrozen
-              myred(:,:,:)=tempreduced(:,:,:,spf2a,spf2b)
-              tempmatel(spf2a,spf2b,spf1a,spf1b) = mycdot(myden(:,:,:),myred(:,:,:),numerad*(lbig+1)*(4*mbig+1))
-           enddo
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a,myden,mvalue2a,mvalue2b,deltam)
+!$OMP DO SCHEDULE(DYNAMIC)
+  do spf2a=1,numfrozen
+     myden(:,:,:)=0d0
+     do mvalue2a=-mbig,mbig
+        do mvalue2b=-mbig,mbig
+           deltam=mvalue2b-mvalue2a
+           myden(:,:,deltam) = myden(:,:,deltam) + &
+                CONJUGATE(infrozens(:,:,mvalue2a,spf2a)) * infrozens(:,:,mvalue2b,spf2a)
         enddo
      enddo
-  enddo
+     frodensity(:,:,:,spf2a)=myden(:,:,:)
+  enddo  !! spf2a
 !$OMP END DO
 !$OMP END PARALLEL
 
-!! THIS WAY
-  frozenreduced(:,:,:)=0d0
-  do i=1,numfrozen
-     frozenreduced(:,:,:)=frozenreduced(:,:,:)+tempreduced(:,:,:,i,i)  * 2
-  enddo
+  call op_tinv(-2*mbig,2*mbig,numfrozen,frodensity(:,:,:,:),tempreduced(:,:,:,:))
 
-  sum=0d0
+  direct(:,:)=0d0
+  call MYGEMM('T','N',numfrozen,numfrozen,numerad*(lbig+1)*(4*mbig+1),DATAONE,&
+       frodensity(:,:,:,:),numerad*(lbig+1)*(4*mbig+1),tempreduced(:,:,:,:),&
+       numerad*(lbig+1)*(4*mbig+1),DATAZERO,direct(:,:),numfrozen)
+
+  frozenpotdiag=0
   do ispf=1,numfrozen
      do iispf=1,numfrozen
-        direct = tempmatel(iispf,iispf,ispf,ispf)
-        exch = tempmatel(iispf,ispf,ispf,iispf)
-        sum=sum+2*direct-exch
+        frozenpotdiag=frozenpotdiag+2*direct(iispf,ispf)-exch(iispf,ispf)
      enddo
   enddo
-  frozenpotdiag=sum
+
+
   temppotmatel=0d0
 
   call mult_pot(numfrozen,infrozens(:,:,:,:),tempmult(:,:))
@@ -634,7 +637,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
      frozenkediag=frozenkediag+2*temppotmatel(i,i)
   enddo
 
-  deallocate(twoeden, tempreduced,  tempmatel,  temppotmatel,tempmult,temppotmatel2,tempmult2)
+  deallocate(frodensity,cfrodensity,tempreduced,temppotmatel,tempmult,tempmult2)
 
 end subroutine call_frozen_matels0
 

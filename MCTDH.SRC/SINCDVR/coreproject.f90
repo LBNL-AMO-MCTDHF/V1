@@ -220,72 +220,97 @@ subroutine call_flux_op_twoe() !mobra,moket,V2,flag)
 print *, "DOME flux_op_twoe"; stop
 end subroutine call_flux_op_twoe
 
+
+module mycdotmod
+contains
+recursive function mycdot(one,two,n)
+  implicit none
+  integer,intent(in) :: n
+  DATATYPE,intent(in) :: one(n), two(n)
+  DATATYPE :: mycdot, sum
+  integer :: i
+  sum=0.d0
+  do i=1,n
+     sum = sum + one(i) * two(i) 
+  enddo
+  mycdot=sum
+end function mycdot
+end module
+
+
 subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  !! returns last two.  a little cloogey
   use twoemod
   use myparams
   use pmpimod
   use pfileptrmod
+  use mycdotmod
   implicit none
   integer, intent(in) :: numfrozen
   DATATYPE, intent(in) :: infrozens(totpoints,numfrozen)
   DATATYPE, intent(out) :: frozenkediag, frozenpotdiag
-  DATATYPE,allocatable :: frodensity(:), work(:), tempreduced(:), &
-       tempmatel(:,:,:,:), temppotmatel(:,:),    tempmult(:,:)
-  DATATYPE :: csum,direct,exch
-  integer :: times1,times3,times4,times5,fttimes(10), i, ii, spf1a,spf2a,spf1b,spf2b, &
+  DATATYPE,allocatable :: frodensity(:,:), tempreduced(:,:), cfrodensity(:,:), &
+       temppotmatel(:,:),    tempmult(:,:)
+  DATATYPE :: direct(numfrozen,numfrozen),exch(numfrozen,numfrozen)
+  integer :: times1,times3,times4,times5,fttimes(10), i, ii, spf2a,spf2b, &
        ispf,iispf
 
   if (numfrozen.eq.0) then
      return
   endif
 
-  allocate(frodensity(totpoints), work(totpoints), tempreduced(totpoints), &
-       tempmatel(numfrozen,numfrozen,numfrozen,numfrozen), temppotmatel(numfrozen,numfrozen), &
+  allocate(frodensity(totpoints,numfrozen), tempreduced(totpoints,numfrozen), &
+       cfrodensity(totpoints,numfrozen), temppotmatel(numfrozen,numfrozen), &
        tempmult(totpoints,numfrozen))
 
-  frodensity(:)=0d0
+  frodensity=0; tempreduced=0; cfrodensity=0; temppotmatel=0; tempmult=0
+
+  frodensity(:,1)=0d0
   do ii=1,numfrozen
-     frodensity(:)=frodensity(:) + infrozens(:,ii)*CONJUGATE(infrozens(:,ii)) * 2
+     frodensity(:,1)=frodensity(:,1) + infrozens(:,ii)*CONJUGATE(infrozens(:,ii)) * 2
   enddo
 
-  call op_tinv(frodensity(:),frozenreduced(:),1,1,&
+  call op_tinv(frodensity(:,1),frozenreduced(:),1,1,&
        times1,times3,times4,times5,fttimes)
 
+  exch(:,:)=0d0
   do spf2b=1,numfrozen
      do spf2a=1,numfrozen
-
-        frodensity(:) = CONJUGATE(infrozens(:,spf2a)) * infrozens(:,spf2b)
-
-        call op_tinv(frodensity(:),tempreduced(:),1,1,&
-             times1,times3,times4,times5,fttimes)
-
-        do spf1b=1,numfrozen
-           do spf1a=1,numfrozen
-              work(:) = CONJUGATE(infrozens(:,spf1a)) * infrozens(:,spf1b) * tempreduced(:)
-              csum=0d0
-              do ii=1,totpoints
-                 csum=csum + work(ii)
-              enddo
-              tempmatel(spf2a,spf2b,spf1a,spf1b) = csum
-
-           enddo
-        enddo
+        frodensity(:,spf2a) = CONJUGATE(infrozens(:,spf2a)) * infrozens(:,spf2b)
      enddo
+     cfrodensity(:,:)=CONJUGATE(frodensity(:,:))
+     call op_tinv(frodensity(:,:),tempreduced(:,:),numfrozen,numfrozen, &
+          times1,times3,times4,times5,fttimes)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a)
+!$OMP DO SCHEDULE(DYNAMIC)
+     do spf2a=1,numfrozen
+        exch(spf2a,spf2b)=mycdot(cfrodensity(:,spf2a),tempreduced(:,spf2a),totpoints)
+     enddo
+!$OMP END DO
+!$OMP END PARALLEL
   enddo
+
+  do spf2a=1,numfrozen
+     frodensity(:,spf2a) = CONJUGATE(infrozens(:,spf2a)) * infrozens(:,spf2a)
+  enddo
+
+  call op_tinv(frodensity(:,:),tempreduced(:,:),numfrozen,numfrozen, &
+       times1,times3,times4,times5,fttimes)
+
+  direct(:,:)=0d0
+  call MYGEMM('T','N',numfrozen,numfrozen,totpoints,DATAONE,frodensity(:,:),totpoints,&
+       tempreduced(:,:),totpoints,DATAZERO,direct(:,:),numfrozen)
 
   if (orbparflag) then
-     call mympireduce(tempmatel,numfrozen**4)
+     call mympireduce(direct(:,:),numfrozen**2)
+     call mympireduce(exch(:,:),numfrozen**2)
   endif
-
-  csum=0d0
+       
+  frozenpotdiag=0d0
   do ispf=1,numfrozen
      do iispf=1,numfrozen
-        direct = tempmatel(iispf,iispf,ispf,ispf)
-        exch = tempmatel(iispf,ispf,ispf,iispf)
-        csum=csum+2*direct-exch
+        frozenpotdiag=frozenpotdiag+2*direct(iispf,ispf)-exch(iispf,ispf)
      enddo
   enddo
-  frozenpotdiag=csum
 
   call mult_pot(numfrozen,infrozens(:,:),tempmult(:,:))
 
@@ -313,7 +338,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
      frozenkediag=frozenkediag+2*temppotmatel(i,i)
   enddo
 
-  deallocate(frodensity,work,tempreduced,tempmatel,temppotmatel,tempmult)
+  deallocate(frodensity, tempreduced, cfrodensity, temppotmatel, tempmult)
 
 end subroutine call_frozen_matels0
 
