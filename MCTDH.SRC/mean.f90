@@ -119,9 +119,6 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
 
      a1(:,:)=avector1(:,config1,:)
         
-!!$        do iwalk=1,www%numdoublewalks(config1)
-!!$           config2=www%doublewalk(iwalk,config1)
-
      do ihop=1,www%numdoublehops(config1)
         config2=www%doublehop(ihop,config1)
 
@@ -201,9 +198,6 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
 !$OMP DO SCHEDULE(DYNAMIC)
   do config1=www%botconfig,www%topconfig
 
-!!$     do iwalk=1,www%numsinglewalks(config1)
-!!$        config2=www%singlewalk(iwalk,config1);        
-
      do ihop=1,www%numsinglehops(config1)
         config2=www%singlehop(ihop,config1)
 
@@ -235,7 +229,6 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
 !           enddo
 !        enddo
 
-
      enddo
   enddo
 !$OMP END DO
@@ -256,7 +249,8 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
-  DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects), in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
+  DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects), &
+       in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE,intent(out) :: reducedinvr(www%nspf,www%nspf),reducedr(www%nspf,www%nspf),  reducedinvrsq(www%nspf,www%nspf)
   DATATYPE,allocatable :: avector2(:,:,:)
   DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a2r(numr,numvects), &
@@ -292,9 +286,6 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
 !$OMP DO SCHEDULE(DYNAMIC)
   do config1=www%botconfig,www%topconfig
      a1(:,:)=avector1(:,config1,:)
-
-!!$        do iwalk=1,www%numsinglewalks(config1)
-!!$           config2=www%singlewalk(iwalk,config1)
 
      do ihop=1,www%numsinglehops(config1)
         config2=www%singlehop(ihop,config1)

@@ -591,8 +591,6 @@ subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs1,nprocs2,direction,ople
      
 !!! from mytranspose times(4) = transpose   times(5) = mpi  times(6) = copy
 
-!! QQQQ  ok?
-
      select case(oplevel)
      case(3)
         call mytranspose_complex(&

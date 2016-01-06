@@ -378,7 +378,6 @@ subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen,notuse
   DATATYPE, intent(in) :: infrozens(totpoints,numfrozen), inspfs(totpoints,howmany)
   DATATYPE, intent(out) :: outspfs(totpoints,howmany)
   DATATYPE,allocatable :: frodensity(:,:), tempreduced(:,:)
-  DATATYPE :: myspf(totpoints)      !! AUTOMATIC
   integer :: times1,times3,times4,times5,fttimes(10),spf2a,spf2b
 
   outspfs(:,:)=0d0
@@ -685,9 +684,8 @@ subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,
   integer ::  spf1a, spf1b, spf2a, spf2b, itime,jtime,getlen,&
        spf2low,spf2high,index2b,index2low,index2high, firsttime,lasttime
   integer, save :: xcount=0, times(10)=0,fttimes(10)=0,qqcount=0
-  DATATYPE :: twoemattemp(numspf,numspf), twoeden03(numpoints(1),numpoints(2),numpoints(3),numspf**fft_batchdim), &
-       tempden03(numpoints(1),numpoints(2),numpoints(3),numspf**fft_batchdim)          !! AUTOMATIC
-  DATATYPE ::  myden(totpoints)
+  DATATYPE, allocatable :: twoeden03(:,:,:,:) 
+  DATATYPE :: twoemattemp(numspf,numspf),  myden(totpoints)
 
   times(:)=0; fttimes(:)=0;   !! ZEROING TIMES... not cumulative
 
@@ -718,7 +716,8 @@ subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,
      return
   endif
 
-  tempden03(:,:,:,:)=0; twoeden03(:,:,:,:)=0
+  allocate(twoeden03(numpoints(1),numpoints(2),numpoints(3),numspf**fft_batchdim))
+  twoeden03(:,:,:,:)=0
 
   call myclock(jtime); times(1)=times(1)+jtime-itime;  
   
@@ -744,7 +743,6 @@ subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,
         spf2low=42; spf2high=(-999)   !! avoid warn unused
      end select
      
-
  ! integrating over electron 2
 
      call myclock(itime)
@@ -756,16 +754,12 @@ subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,
         enddo
      enddo
      call myclock(jtime); times(2)=times(2)+jtime-itime;
-
      
      call op_tinv(twoeden03(:,:,:,batchindex(1,spf2low)),twoereduced(:,1,spf2low),&
           numspf**fft_batchdim,numspf**fft_circbatchdim,&
           times(1),times(3),times(4),times(5),fttimes)
 
-
-
   enddo  !! DO INDEX2B
-
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!! MPI reduction is performed in main MCTDHF routines NOT HERE !!!!!
@@ -781,6 +775,8 @@ subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,
      twoematel(:,:,spf1a,spf1b)=twoemattemp(:,:)
   enddo
   enddo
+
+  deallocate(twoeden03)
 
   call myclock(jtime); times(6)=times(6)+jtime-itime;  
   lasttime=jtime
@@ -1007,12 +1003,11 @@ subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
   integer ::   ii, itime,jtime
 #ifdef MPIFLAG
   integer ::  ibox1,ibox2,ibox3,jbox1,jbox2,jbox3,jproc,iproc
-  DATATYPE :: tempden03(numpoints(1),numpoints(2),numpoints(3),allsize)
+  DATATYPE,allocatable :: tempden03(:,:,:,:)
 #endif
   integer :: circhigh,circindex,icirc
-  DATATYPE :: twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,allsize),&
-       reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,allsize),&
-       reducedwork3d(numpoints(1),numpoints(2),numpoints(3),allsize)
+  DATATYPE,allocatable :: twoeden03huge(:,:,:,:,:,:,:), reducedhuge(:,:,:,:,:,:,:),&
+       reducedwork3d(:,:,:,:)
 
   if (mod(allsize,circsize).ne.0) then
      OFLWR "SIZE ERROR OP_TINV",allsize,circsize; CFLST
@@ -1020,8 +1015,17 @@ subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
 
   circhigh=allsize/circsize
 
-  twoereduced(:,:)=0d0;  reducedwork3d(:,:,:,:)=0d0;
-  reducedhuge(:,:,:,:,:,:,:)=0;  twoeden03huge(:,:,:,:,:,:,:)=0
+#ifdef MPIFLAG
+  allocate(tempden03(numpoints(1),numpoints(2),numpoints(3),allsize))
+  tempden03(:,:,:,:)=0d0
+#endif
+  allocate(twoeden03huge(numpoints(1),2,numpoints(2),2,numpoints(3),2,allsize),&
+       reducedhuge(numpoints(1),2,numpoints(2),2,numpoints(3),2,allsize),&
+       reducedwork3d(numpoints(1),numpoints(2),numpoints(3),allsize))
+
+  twoeden03huge(:,:,:,:,:,:,:)=0d0;  reducedhuge(:,:,:,:,:,:,:)=0; reducedwork3d(:,:,:,:)=0d0;
+
+  twoereduced(:,:)=0d0;  
 
   do ii=2,griddim
      if (gridpoints(ii).ne.gridpoints(1)) then
@@ -1136,8 +1140,14 @@ subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
 #ifdef MPIFLAG
   endif
 #endif
+
      
   twoereduced(:,:) =RESHAPE(reducedwork3d(:,:,:,:),(/totpoints,allsize/))
+
+#ifdef MPIFLAG
+  deallocate(tempden03)
+#endif
+  deallocate(twoeden03huge,       reducedhuge,       reducedwork3d)
 
   call myclock(jtime); times1=times1+jtime-itime; itime=jtime
   
@@ -1182,37 +1192,6 @@ subroutine mult_reducedpot(firstspf,lastspf,inspfs,outspfs,reducedpot)
 !$OMP END PARALLEL
 
 end subroutine mult_reducedpot
-
-
-
-!!$subroutine get_rad(outpot)
-!!$  use myparams
-!!$  implicit none
-!!$  integer :: jj,ii,kk
-!!$  DATATYPE :: outpot(totpoints)
-!!$  outpot(:)=0d0
-!!$  ii=1;  kk=totpoints
-!!$  do jj=1,griddim 
-!!$     kk=kk/numpoints(jj)
-!!$     call get_rsq_onedim(outpot,jj,qbox(jj),ii,kk)
-!!$     ii=ii*numpoints(jj)
-!!$  enddo
-!!$  outpot(:)=sqrt(outpot)
-!!$end subroutine get_rad
-!!$
-!!$
-!!$subroutine get_rsq_onedim(out,idim,whichbox,nnn,mmm)
-!!$  use myparams
-!!$  use myprojectmod  
-!!$  implicit none
-!!$  integer :: mmm,idim,nnn,jj,whichbox,ii
-!!$  DATATYPE :: out(nnn,numpoints(idim),mmm)
-!!$  do jj=1,mmm
-!!$     do ii=1,numpoints(idim)
-!!$        out(:,ii,jj)=out(:,ii,jj) + sinepoints(idim)%mat(ii,whichbox)**2
-!!$     enddo
-!!$  enddo
-!!$end subroutine get_rsq_onedim
 
 
 subroutine get_dipoles()
@@ -1681,17 +1660,13 @@ subroutine mult_allpar(option,idim, in, out,howmany,timingdir,notiming)
   if (griddim.ne.3) then
      OFLWR "ERWRESTOPPP"; CFLST
   endif
-
   if (option.ne.1.and.option.ne.2) then
      OFLWR "OWWOWORE WHAT?", option; CFLST
   endif
 
   if (.not.orbparflag.or.idim.lt.orbparlevel) then
-
      call mult_allone(in,out,idim,option,howmany)
-
   else
-
      select case(zke_paropt)
      case(0)
         call mult_circ_gen(idim,in,out,option,howmany,timingdir,notiming)
@@ -1700,7 +1675,6 @@ subroutine mult_allpar(option,idim, in, out,howmany,timingdir,notiming)
      case default
         OFLWR "Error, zke_paropt not recognized",zke_paropt; CFLST
      end select
-
   endif
 
 end subroutine mult_allpar
@@ -1798,8 +1772,6 @@ subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
         case default 
            print *, "ACK dim"; stop
         end select
-
-              
 
         call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
         out(:,:)=out(:,:)+work2(:,:)

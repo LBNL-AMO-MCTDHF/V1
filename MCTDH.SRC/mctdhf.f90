@@ -512,8 +512,6 @@ program mctdhf
      yyy%cmfpsivec(spfstart:spfend,0) = RESHAPE(bigspfs(:,1:nspf),(/totspfdim/))
      
      call apply_spf_constraints(yyy%cmfpsivec(spfstart,0))
-
-
      call spf_orthogit_gs(yyy%cmfpsivec(spfstart,0))
 
      if (numfrozen.ne.0) then
@@ -536,7 +534,6 @@ program mctdhf
      totread=0
 
      if (loadavectorflag.eq.1) then
-
         if (load_avector_product.ne.0) then
            OFLWR "Reading product avector!" ; CFL
            call load_avector_productsub(bigavector(:,:))
@@ -551,7 +548,6 @@ program mctdhf
         enddo
         endif
         OFLWR "Read ",totread," A-vectors"; CFL
-
      endif
 
      if (totread.lt.mcscfnum) then

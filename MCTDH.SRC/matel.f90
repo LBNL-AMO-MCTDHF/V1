@@ -137,11 +137,9 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
      print *, "DOOGGDSeeeF"; stop
   endif
 
-
   if (numspf.ne.0) then
 
      allocate(ttempspfs(spfsize,lowspf:highspf),workspfs(spfsize,lowspf:highspf))
-
      ttempspfs=0; workspfs=0
 
      call mult_pot(numspf,inspfs2(:,lowspf:highspf),workspfs(:,lowspf:highspf))
@@ -153,13 +151,11 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
 !! potmatel is proper ordering.  fast index is conjg.
 
      if (numfrozen.gt.0) then
-
         call op_frozen_exchange(lowspf,highspf,inspfs2(:,lowspf:highspf),ttempspfs(:,lowspf:highspf))
         workspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)+ttempspfs(:,lowspf:highspf)
 
         call op_frozenreduced(numspf,inspfs2(:,lowspf:highspf),ttempspfs(:,lowspf:highspf))
         workspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)+ttempspfs(:,lowspf:highspf)
-
      endif
 
      call MYGEMM(CNORMCHAR,'N',nspf,numspf, spfsize, DATAONE, inspfs1, spfsize, workspfs(:,lowspf:highspf), &
@@ -172,7 +168,6 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
   if (parorbsplit.eq.1) then
      call mpiorbgather(matrix_ptr%xpotmatel(:,:),nspf)
   endif
-
   if (parorbsplit.eq.3) then
      call mympireduce(matrix_ptr%xpotmatel(:,:),nspf**2)
   endif
@@ -240,7 +235,6 @@ subroutine pulse_matel(matrix_ptr,inspfs1,inspfs2)
      call mpiorbgather(matrix_ptr%xpulsematelyy(:,:),nspf)
      call mpiorbgather(matrix_ptr%xpulsematelzz(:,:),nspf)
   endif
-
   if (parorbsplit.eq.3) then
      call mympireduce(matrix_ptr%xpulsematelxx(:,:),nspf**2)
      call mympireduce(matrix_ptr%xpulsematelyy(:,:),nspf**2)
@@ -296,15 +290,12 @@ subroutine sparseops_matel(matrix_ptr,inspfs1,inspfs2)
         call mpiorbgather(matrix_ptr%xymatel(:,:),nspf)
      endif
   endif
-
   if (parorbsplit.eq.3) then
      call mympireduce(matrix_ptr%xopmatel(:,:),nspf**2)
      if (nonuc_checkflag/=1) then
         call mympireduce(matrix_ptr%xymatel(:,:),nspf**2)
      endif
   endif
-
-
 
 end subroutine sparseops_matel
 
@@ -340,7 +331,6 @@ subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixt
      myvec(:)=0d0
 
      do ihop=1,www%numsinglehops(config1)
-
         if (sparseconfigflag.eq.0) then
            myind=www%singlehop(ihop,config1)
         else
@@ -349,16 +339,12 @@ subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixt
 
         csum=0d0
         do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
-
            csum=csum+&
                 onebodymat(www%singlewalkopspf(1,iwalk,config1), &
                 www%singlewalkopspf(2,iwalk,config1)) *  &
                 www%singlewalkdirphase(iwalk,config1)
-
         enddo
-
         myvec(myind)=csum
-  
      enddo
      smallmatrixtr(:,config1)=myvec(:)
   enddo
@@ -404,9 +390,6 @@ subroutine arbitraryconfig_matel_doubles00transpose(www,twobodymat, smallmatrixt
 
         csum=0d0
         do iwalk=www%doublehopwalkstart(ihop,config1),www%doublehopwalkend(ihop,config1)
-
-!!$     do iwalk=1,www%numdoublewalks(config1)
-
            csum=csum+&
                 twobodymat(www%doublewalkdirspf(1,iwalk,config1), &
                 www%doublewalkdirspf(2,iwalk,config1),   &
@@ -447,8 +430,8 @@ subroutine assemble_dfbasismat(www,outmatrix, matrix_ptr, boflag, nucflag, pulse
      OFLWR "Error, assemble_full_config_matel called when sparseconfigflag/=0";CFLST
   endif
   
-  allocate(  bigmatrix(www%numconfig*numr,www%numconfig*numr), halfmatrix(www%numdfbasis*numr,www%numconfig*numr),halfmatrix2(www%numconfig*numr,www%numdfbasis*numr), donematrix(www%numdfbasis*numr,www%numdfbasis*numr))
-
+  allocate(  bigmatrix(www%numconfig*numr,www%numconfig*numr), halfmatrix(www%numdfbasis*numr,www%numconfig*numr),&
+       halfmatrix2(www%numconfig*numr,www%numdfbasis*numr), donematrix(www%numdfbasis*numr,www%numdfbasis*numr))
   bigmatrix(:,:)=0d0; halfmatrix(:,:)=0d0; halfmatrix2(:,:)=0d0; donematrix(:,:)=0d0; outmatrix(:,:)=0d0
 
   call assemble_configmat(www,bigmatrix,matrix_ptr,boflag,nucflag,pulseflag,conflag,time,imc)
@@ -502,9 +485,8 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
   if (boflag==1) then
      do ir=1,numr
         do i=1,www%numconfig
-
-         diagmat(i,i,ir)=( frozenkediag/bondpoints(ir)**2 + (nucrepulsion+frozenpotdiag)/bondpoints(ir) + energyshift ) * matrix_ptr%kefac 
-
+         diagmat(i,i,ir)=( frozenkediag/bondpoints(ir)**2 + &
+              (nucrepulsion+frozenpotdiag)/bondpoints(ir) + energyshift ) * matrix_ptr%kefac 
         enddo
      enddo
 

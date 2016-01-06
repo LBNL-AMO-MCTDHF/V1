@@ -257,16 +257,9 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
 
   numloaded = min(outnspf,readnspf)
 
-!!$  bigreaddims(:)=readdims(:)
   bigoutdims(:)=outdims(:)
-
   if (parorbsplit.eq.3) then                !! see spf_header_read:
-
-!!!!$     bigreaddims(3)=readdims(3)*nprocs      !! it is this variable bigreaddims not readdims that will not
-!!     bigoutdims(3)=outdims(3)*nprocs        !!   change as nprocs is varied; likewise bigoutdims/outdims.
-
      call bigdimsub(outdims,bigoutdims)
-
   endif 
 
   if (myrank.ne.1) then
@@ -299,9 +292,6 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
         if (reinterp_orbflag.eq.0) then
            ooshift=0; rrshift=0
            if (mod(bigreaddims(idim)+bigoutdims(idim),2).eq.1) then
-
-!!$              OFLWR "On read must have both even or both odd points for dimension ",idim," they are ", &
-!!$                   bigreaddims(idim),bigoutdims(idim); CFLST
 
 !!$ chop odd-valued grid at the positive end of xyz 
 !!$ that means an even numbered grid with a nucleus at centershift=-1,-1,-1 (location 1/2,1/2,1/2 times spacing)
@@ -396,10 +386,6 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
      allocate(bigoutcspfs(1,1,1,numloaded))
   endif
   bigoutrealspfs=0; bigoutcspfs=0
-
-!!$ (code above)
-!!$     numloaded = min(outnspf,readnspf)
-!!$
 
   if (myrank.eq.1) then
      if (reinterp_orbflag.ne.0) then

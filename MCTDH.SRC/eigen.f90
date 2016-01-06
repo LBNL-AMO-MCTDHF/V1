@@ -64,12 +64,6 @@ subroutine get_eigen_c(inmat, n, lda, outmat,values)
 !!! should be left hermitian normed in c0
   call get_eigen_c0(inmat, n, lda, outmat,values)
 
-!  allocatE(onemat(lda,n)); onemat(:,:)=0d0
-!  do i=1,n
-!     onemat(i,i)=1d0
-!  enddo
-!  call get_eigen_gen(inmat, onemat, n, lda, outmat, values)
-!  deallocate(onemat)
 #endif
 end subroutine get_eigen_c
 
@@ -109,6 +103,7 @@ subroutine get_eigen_cnorm(inmat, n, lda, outmat,values)
 
      outmat(:,i)=outmat(:,i)/sqrt(DOT_PRODUCT(CONJG(outmat(:,i)),outmat(:,i)))
      rrealdot=sqrt(real(DOT_PRODUCT(outmat(:,i),outmat(:,i))))
+
 !     if (rrealdot.gt.1.d5) then
 !        print *, "large!", rrealdot
 !        outmat(:,i)=outmat(:,i)*1.d3/rrealdot

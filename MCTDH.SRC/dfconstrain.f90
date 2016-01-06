@@ -389,7 +389,6 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
         if (sparseconfigflag.ne.0) then
            call mympireduce(rhs,www%nspf**2)
         endif
-
         call system_clock(jtime);        times(11)=times(11)+jtime-itime;     itime=jtime
 
         call assigncomplexvec(realrhs(:,:,:),rhs(:,:), www%nspf**2)
@@ -400,13 +399,11 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
              RESHAPE(realrhs(:,:,:),(/zzz*www%nspf**2,1/))),(/zzz,2*isize/))
         
         if (conway.ne.1.and.conway.ne.3) then
-           
            rhomatpairscopy(:,:,:,:)=rhomatpairscopy(:,:,:,:)+rhomatpairs(:,:,:,:)
            rhspairstemp(:,:)=rhspairstemp(:,:)+rhspairs(:,:)
         else
            rhomatpairsbigcopy(:,:,:,:)=rhomatpairsbigcopy(:,:,:,:)+rhomatpairsbig(:,:,:,:)
            rhspairsbigtemp(:,:)=rhspairsbigtemp(:,:)+rhspairsbig(:,:)
-           
         endif
 
         call system_clock(jtime);        times(12)=times(12)+jtime-itime;     
@@ -442,10 +439,9 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
      else
         
         mattemp(:,:)= &
-             MATMUL(TRANSPOSE(RESHAPE(rhomatpairsbigcopy(:,:,:,:),(/2*isize*zzz,isize*zzz/))),RESHAPE(rhomatpairsbigcopy(:,:,:,:),(/2*isize*zzz,isize*zzz/)))
-
+             MATMUL(TRANSPOSE(RESHAPE(rhomatpairsbigcopy(:,:,:,:),(/2*isize*zzz,isize*zzz/))),&
+             RESHAPE(rhomatpairsbigcopy(:,:,:,:),(/2*isize*zzz,isize*zzz/)))
         call realinvmatsmooth(mattemp,isize*zzz,lioreg)
-
         pseudoinv(:,:)=MATMUL(mattemp,TRANSPOSE(RESHAPE(rhomatpairsbigcopy(:,:,:,:),(/2*isize*zzz,isize*zzz/))))
         call DGEMV('N',zzz*isize,2*zzz*isize,1d0,pseudoinv(:,:),isize*zzz,rhspairsbigtemp,1,0d0,rhspairs(:,:),1)
 
@@ -469,9 +465,6 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
      select case(iiyy)
      case(1)
         cptr%xconmatel(:,:)=  tempmatel(:,:)
-
-!        OFLWR "****CON",cptr%xconmatel(1,3); CFL
-
      case(2)
         cptr%xconmatelxx(:,:)=  tempmatel(:,:)
      case(3)
@@ -484,8 +477,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
   enddo
 
-  deallocate(&
-       avectorp,   avector,    &
+  deallocate( avectorp,   avector,    &
        smallwalkvects,         rhs,          rhomat,  &
         projector,  bigprojector, mattemp,pseudoinv, &
           realrhs,  realrhomat,  &
@@ -499,11 +491,9 @@ end subroutine get_dfconstraint0
 
 
 
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!  DENSITY MATRIX (constraintflag=1) !!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 
 
 subroutine get_denconstraint(time)
@@ -511,7 +501,7 @@ subroutine get_denconstraint(time)
   implicit none
   real*8,intent(in) :: time
 
-  !! assume nothing, keep constant off block diag (lio solve)
+!! assume nothing, keep constant off block diag (lio solve)
 
   if (denmatfciflag.ne.0) then
 !! "denmat FCI", wrong equation, as per restricted configuration paper
@@ -677,7 +667,6 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
      enddo
   enddo
 
-
   maxii=1
   if (tdflag.ne.0) then
      maxii=4
@@ -717,15 +706,11 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
      liosolve(:)=0.d0
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,a1,a1p,ihop,iwalk,csum,config2,dirphase,a2,a2p,ispf,jspf,flag,ind) REDUCTION(+:liosolve)
-
 !$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
 
         a1(:,:)=avector(:,config1,:)
         a1p(:,:)=avectorp(:,config1,:)
-
-!!$        do iwalk=1,www%numsinglewalks(config1)
-!!$           config2=www%singlewalk(iwalk,config1)
 
         do ihop=1,www%numsinglehops(config1)
            config2=www%singlehop(ihop,config1)
@@ -757,10 +742,6 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
               end select
 
               if (flag==1) then
-
-!!$              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:,:)*timefac,a1(:,:),numr*numvects)
-!!$              liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:,:),a1p(:,:)*timefac,numr*numvects)
-
                  liosolve(ind)=liosolve(ind)+                   dirphase*csum
               endif
            enddo  !! iwalk
@@ -783,7 +764,6 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
         OFLWR "get_denconstraint1 error"; CFLST
      end select
 
-
      liodencopy(:,:)=lioden(:,:)
      if (lioreg.le.0.d0) then
         call MYGESV(isize, 1, liodencopy, liosize, ipiv, liosolve, liosize, info)
@@ -791,28 +771,12 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
            OFLWR "Errx  mygesv lioden", info, " size ", liosize, isize ; CFLST
         endif
      else
-
         call invmatsmooth(liodencopy,liosize,liosize,lioreg)
         call MYGEMV('N',liosize,liosize,DATAONE,liodencopy,liosize,liosolve,1,DATAZERO,liosolvetemp,1)
         liosolve(:)=liosolvetemp(:)
-
-!        mylwork=20*isize
-!        allocate(sing(10*isize), rwork(50*isize), mywork(mylwork))
-!#ifndef REALGO
-!        call zgelss(isize,isize,1, liodencopy, liosize, liosolve, liosize, sing, lioreg, rank, mywork, mylwork, rwork, info)
-!#else
-!        call dgelss(isize,isize,1, liodencopy, liosize, liosolve, liosize, sing, lioreg, rank, mywork, mylwork, info)
-!#endif
-!        deallocate(sing,rwork,mywork)
-!     if (info/=0) then
-!        OFLWR "Errx  mygelss lioden", info, " size ", liosize, isize ; CFLST
-!     endif
-
      endif
 
-     
      tempconmatels(:,:)=0d0
-     
      do ispf=1,www%nspf
         do jspf=1,www%nspf
            select case (iwhich)
@@ -831,7 +795,6 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
            end select
         enddo
      enddo
-     
 
 !! 111510   REGARDLESS!  #ifndef ECSFLAG
 !! may require you to define constraint via hermitian part of hamiltonian for chmctdh.  Don't want conmatels to be non-antiherm (chmctdh) or non real (cmctdh)
@@ -852,7 +815,6 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
               OFLWR "Err herm incmatel temp continue"
               WRFL ispf, jspf, rsum, denom,iiyy; WRFL; CFL !!ST
            endif
-
            if (rsum.gt.maxanti) then
               maxanti=rsum
            endif
@@ -878,11 +840,9 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
      
   end do
 
-
   deallocate(bigavector,bigavectorp,avectorp)
 
 end subroutine get_denconstraint1_0
-
 
 
 
@@ -892,7 +852,6 @@ subroutine new_get_denconstraint1(time)
   use configmod
   implicit none
   real*8,intent(in) :: time
-
   call new_get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,yyy%cmfpsivec(astart(1):aend(mcscfnum),0),&
        yyy%drivingavectorsxx(:,:,:,0),yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
        yyy%denmat(:,:,0),time)
@@ -945,7 +904,6 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      call get_rhomat(www,avector,rhomat,numr,numvects)
   endif
 
-
   isize=0
   do i=1,www%nspf
      do j=1,www%nspf
@@ -977,20 +935,15 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
         lioden(ind,jind)=  rhomat(kspf,lspf,ispf,jspf) - rhomat(jspf,ispf,lspf,kspf)   
 
         if (jspf.eq.lspf) then
-
            lioden(ind, jind) = lioden(ind, jind) - &
                 denmat(ispf,kspf)  
-
         endif
         if (ispf.eq.kspf) then
-
            lioden(ind,jind) = lioden(ind,jind) + &
                 denmat(lspf,jspf)  
-
         endif
      enddo
   enddo
-
 
   maxii=1
   if (tdflag.ne.0) then
@@ -1044,9 +997,6 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
         a1(:,:)=avector(:,config1,:)
         a1p(:,:)=avectorp(:,config1,:)
            
-!!$           do iwalk=1,www%numsinglewalks(config1)
-!!$              config2=www%singlewalk(iwalk,config1)
-
         do ihop=1,www%numsinglehops(config1)
            config2=www%singlehop(ihop,config1)
 
@@ -1069,12 +1019,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
               endif
               
               if (flag==1) then
-
-!!$                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2p(:)*timefac,a1(:),numvects)
-!!$                 liosolve(ind)=liosolve(ind)+                   dirphase*dot(a2(:),a1p(:)*timefac,numvects)
-
                  liosolve(ind)=liosolve(ind) + dirphase*csum
-
               endif
            enddo  !! iwalk
         enddo     !! ihop
@@ -1092,15 +1037,12 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
            OFLWR "Errx  mygesv lioden", info, " size ", isize ; CFLST
         endif
      else
-
         call invmatsmooth(liodencopy,isize,isize,lioreg)
         call MYGEMV('N',isize,isize,DATAONE,liodencopy,isize,liosolve,1,DATAZERO,liosolvetemp,1)
         liosolve(:)=liosolvetemp(:)
-
      endif
 
      tempconmatels(:,:)=0d0
-     
      do ispf=1,www%nspf
         do jspf=1,www%nspf
            if (shells(ispf)/=shells(jspf)) then
@@ -1110,7 +1052,6 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
         enddo
      enddo
      
-
 !! 111510   REGARDLESS!  #ifndef ECSFLAG
 !! may require you to define constraint via hermitian part of hamiltonian for chmctdh.  Don't want conmatels to be non-antiherm (chmctdh) or non real (cmctdh)
 
