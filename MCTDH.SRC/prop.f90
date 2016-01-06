@@ -162,6 +162,14 @@ subroutine prop_loop( starttime)
         call basis_project(www,numr,yyy%cmfpsivec(astart(imc),0))
      enddo
 
+!! prevent drift
+     if (parorbsplit.ne.3) then
+        call mympibcast(yyy%cmfpsivec(spfstart:spfend,0),1,totspfdim)
+     endif
+     if (par_consplit.eq.0) then
+        call mympibcast(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),1,tot_adim*mcscfnum)
+     endif
+
      call system_clock(jtime)  ;     times(2)=times(2)+jtime-itime; itime=jtime
 
      do imc=1,mcscfnum

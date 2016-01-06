@@ -208,7 +208,7 @@ subroutine mpistart()
         mpifileptr=nullfileptr
         mpioutfile="garmonbozia"
      else
-        open(mpifileptr,file=mpioutfile,status="unknown"); CFL
+        open(mpifileptr,file=mpioutfile,status="unknown"); WRFL; CFL
      endif
   endif
   OFLWR; CFL
