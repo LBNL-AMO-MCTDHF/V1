@@ -235,6 +235,18 @@ recursive function mycdot(one,two,n)
   enddo
   mycdot=sum
 end function mycdot
+recursive function mydot(one,two,n)
+  implicit none
+  integer,intent(in) :: n
+  DATATYPE,intent(in) :: one(n), two(n)
+  DATATYPE :: mydot, sum
+  integer :: i
+  sum=0.d0
+  do i=1,n
+     sum = sum + CONJUGATE(one(i)) * two(i) 
+  enddo
+  mydot=sum
+end function mydot
 end module
 
 
@@ -249,8 +261,8 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   DATATYPE, intent(in) :: infrozens(totpoints,numfrozen)
   DATATYPE, intent(out) :: frozenkediag, frozenpotdiag
   DATATYPE,allocatable :: frodensity(:,:), tempreduced(:,:), cfrodensity(:,:), &
-       temppotmatel(:,:),    tempmult(:,:)
-  DATATYPE :: direct(numfrozen,numfrozen),exch(numfrozen,numfrozen)
+       tempmult(:,:)
+  DATATYPE :: direct(numfrozen,numfrozen),exch(numfrozen,numfrozen),temppotmatel(numfrozen)
   integer :: times1,times3,times4,times5,fttimes(10), i, ii, spf2a,spf2b, &
        ispf,iispf
 
@@ -259,8 +271,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   endif
 
   allocate(frodensity(totpoints,numfrozen), tempreduced(totpoints,numfrozen), &
-       cfrodensity(totpoints,numfrozen), temppotmatel(numfrozen,numfrozen), &
-       tempmult(totpoints,numfrozen))
+       cfrodensity(totpoints,numfrozen),   tempmult(totpoints,numfrozen))
 
   frodensity=0; tempreduced=0; cfrodensity=0; temppotmatel=0; tempmult=0
 
@@ -314,31 +325,42 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
 
   call mult_pot(numfrozen,infrozens(:,:),tempmult(:,:))
 
-  call MYGEMM(CNORMCHAR,'N',numfrozen,numfrozen, totpoints, DATAONE, infrozens, totpoints, tempmult, totpoints, DATAZERO, temppotmatel(:,:) ,numfrozen)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a)
+!$OMP DO SCHEDULE(DYNAMIC)
+  do spf2a=1,numfrozen
+     temppotmatel(spf2a)=mydot(infrozens(:,spf2a),tempmult(:,spf2a),totpoints)
+  enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
   if (orbparflag) then
-     call mympireduce(temppotmatel,numfrozen**2)
+     call mympireduce(temppotmatel,numfrozen)
   endif
 
   do i=1,numfrozen
-     frozenpotdiag=frozenpotdiag+2*temppotmatel(i,i)
+     frozenpotdiag=frozenpotdiag+2*temppotmatel(i)
   enddo
 
   call mult_ke(infrozens(:,:),tempmult(:,:),numfrozen,"booga",2)
 
-
-  call MYGEMM(CNORMCHAR,'N',numfrozen,numfrozen, totpoints, DATAONE, infrozens(:,:), totpoints, tempmult(:,:), totpoints, DATAZERO, temppotmatel(:,:) ,numfrozen)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a)
+!$OMP DO SCHEDULE(DYNAMIC)
+  do spf2a=1,numfrozen
+     temppotmatel(spf2a)=mydot(infrozens(:,spf2a),tempmult(:,spf2a),totpoints)
+  enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
   if (orbparflag) then
-     call mympireduce(temppotmatel,numfrozen**2)
+     call mympireduce(temppotmatel,numfrozen)
   endif
 
   frozenkediag=0d0
   do i=1,numfrozen
-     frozenkediag=frozenkediag+2*temppotmatel(i,i)
+     frozenkediag=frozenkediag+2*temppotmatel(i)
   enddo
 
-  deallocate(frodensity, tempreduced, cfrodensity, temppotmatel, tempmult)
+  deallocate(frodensity, tempreduced, cfrodensity, tempmult)
 
 end subroutine call_frozen_matels0
 
@@ -355,7 +377,8 @@ subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen,notuse
   integer, intent(in) :: numfrozen,howmany,notusedarr(howmany)
   DATATYPE, intent(in) :: infrozens(totpoints,numfrozen), inspfs(totpoints,howmany)
   DATATYPE, intent(out) :: outspfs(totpoints,howmany)
-  DATATYPE,allocatable :: frodensity(:), tempreduced(:)
+  DATATYPE,allocatable :: frodensity(:,:), tempreduced(:,:)
+  DATATYPE :: myspf(totpoints)      !! AUTOMATIC
   integer :: times1,times3,times4,times5,fttimes(10),spf2a,spf2b
 
   outspfs(:,:)=0d0
@@ -364,19 +387,17 @@ subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen,notuse
      return
   endif
 
-  allocate(frodensity(totpoints), tempreduced(totpoints))
+  allocate(frodensity(totpoints,howmany), tempreduced(totpoints,howmany))
 
   do spf2b=1,numfrozen
      do spf2a=1,howmany
-
-        frodensity(:) = CONJUGATE(infrozens(:,spf2b)) * inspfs(:,spf2a)
-
-        call op_tinv(frodensity(:),tempreduced(:),1,1,&
-             times1,times3,times4,times5,fttimes)
-
+        frodensity(:,spf2a) = CONJUGATE(infrozens(:,spf2b)) * inspfs(:,spf2a)
+     enddo
+     call op_tinv(frodensity(:,:),tempreduced(:,:),howmany,howmany,&
+          times1,times3,times4,times5,fttimes)
 !! ADDS TO OUTSPFS
-        outspfs(:,spf2a) = outspfs(:,spf2a) - tempreduced(:)*infrozens(:,spf2b)
-
+     do spf2a=1,howmany
+        outspfs(:,spf2a) = outspfs(:,spf2a) - tempreduced(:,spf2a)*infrozens(:,spf2b)
      enddo
   enddo
 

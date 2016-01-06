@@ -90,6 +90,18 @@ recursive function mycdot(one,two,n)
   enddo
   mycdot=sum
 end function mycdot
+recursive function mydot(one,two,n)
+  implicit none
+  integer,intent(in) :: n
+  DATATYPE,intent(in) :: one(n), two(n)
+  DATATYPE :: mydot, sum
+  integer :: i
+  sum=0.d0
+  do i=1,n
+     sum = sum + CONJUGATE(one(i)) * two(i) 
+  enddo
+  mydot=sum
+end function mydot
 end module
 
 !  DATAECS :: rmatrix(numerad,numerad,mseriesmax+1,lseriesmax+1)
@@ -515,10 +527,10 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   DATATYPE,intent(out) :: frozenkediag,frozenpotdiag
   DATATYPE,intent(in) :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen)
   DATATYPE :: direct(numfrozen,numfrozen), exch(numfrozen,numfrozen)
-  integer :: mvalue2a, mvalue2b,  spf2a,spf2b, deltam,i,  iispf,ispf, sizespf
+  integer :: mvalue2a, mvalue2b,  spf2a,spf2b, deltam,i,  iispf,ispf, sizespf, bigsize
   DATATYPE, allocatable :: frodensity(:,:,:,:), tempreduced(:,:,:,:), cfrodensity(:,:,:,:), &
-       temppotmatel(:,:),   tempmult(:,:), tempmult2(:,:)
-  DATATYPE :: myden(numerad,lbig+1,-2*mbig:2*mbig)
+       tempmult(:,:), tempmult2(:,:)
+  DATATYPE :: myden(numerad,lbig+1,-2*mbig:2*mbig),temppotmatel(numfrozen)
 
   frozenkediag=0;    frozenpotdiag=0
 
@@ -527,12 +539,13 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   endif
 
   sizespf=numerad*(lbig+1)*(2*mbig+1)
+  bigsize=numerad*(lbig+1)*(4*mbig+1)
 
   allocate(frodensity(numerad,lbig+1,-2*mbig:2*mbig,numfrozen),&
        tempreduced(numerad,lbig+1,-2*mbig:2*mbig,numfrozen), &
        cfrodensity(numerad,lbig+1,-2*mbig:2*mbig,numfrozen), &
-       temppotmatel(numfrozen,numfrozen), tempmult(sizespf,numfrozen), tempmult2(sizespf,numfrozen))
-  frodensity=0d0;  tempreduced=0; cfrodensity=0; tempmult=0; temppotmatel=0; tempmult2=0
+       tempmult(sizespf,numfrozen), tempmult2(sizespf,numfrozen))
+  frodensity=0d0;  tempreduced=0; cfrodensity=0; tempmult=0; tempmult2=0
 
   frodensity(:,:,:,1)=0d0
   do spf2a=1,numfrozen
@@ -573,8 +586,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
 
      call op_tinv(-2*mbig,2*mbig,numfrozen,frodensity(:,:,:,:),tempreduced(:,:,:,:))
      do spf2a=1,numfrozen
-        exch(spf2a,spf2b)=mycdot(cfrodensity(:,:,:,spf2a),tempreduced(:,:,:,spf2a),&
-             numerad*(lbig+1)*(4*mbig+1))
+        exch(spf2a,spf2b)=mycdot(cfrodensity(:,:,:,spf2a),tempreduced(:,:,:,spf2a),bigsize)
      enddo
   enddo  !! spf2b
 
@@ -598,9 +610,8 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   call op_tinv(-2*mbig,2*mbig,numfrozen,frodensity(:,:,:,:),tempreduced(:,:,:,:))
 
   direct(:,:)=0d0
-  call MYGEMM('T','N',numfrozen,numfrozen,numerad*(lbig+1)*(4*mbig+1),DATAONE,&
-       frodensity(:,:,:,:),numerad*(lbig+1)*(4*mbig+1),tempreduced(:,:,:,:),&
-       numerad*(lbig+1)*(4*mbig+1),DATAZERO,direct(:,:),numfrozen)
+  call MYGEMM('T','N',numfrozen,numfrozen,bigsize,DATAONE,frodensity(:,:,:,:),bigsize, &
+       tempreduced(:,:,:,:),bigsize,DATAZERO,direct(:,:),numfrozen)
 
   frozenpotdiag=0
   do ispf=1,numfrozen
@@ -618,10 +629,16 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
      tempmult(:,:)=tempmult(:,:)+tempmult2(:,:)
   endif
 
-  call MYGEMM(CNORMCHAR,'N',numfrozen,numfrozen, sizespf, DATAONE, infrozens, sizespf, tempmult, sizespf, DATAONE, temppotmatel(:,:) ,numfrozen)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a)
+!$OMP DO SCHEDULE(DYNAMIC)
+  do spf2a=1,numfrozen
+     temppotmatel(spf2a)=mydot(infrozens(:,:,:,spf2a),tempmult(:,spf2a),sizespf)
+  enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
   do i=1,numfrozen
-     frozenpotdiag=frozenpotdiag+2*temppotmatel(i,i)
+     frozenpotdiag=frozenpotdiag+2*temppotmatel(i)
   enddo
   if (bornopflag/=1) then
      print *, "nuclear not done for frozen.";     stop
@@ -630,14 +647,20 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
 
   call mult_ke(infrozens(:,:,:,:),tempmult(:,:),numfrozen)
 
-  call MYGEMM(CNORMCHAR,'N',numfrozen,numfrozen, sizespf, DATAONE, infrozens(:,:,:,:), sizespf, tempmult(:,:), sizespf, DATAZERO, temppotmatel(:,:) ,numfrozen)
-  
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a)
+!$OMP DO SCHEDULE(DYNAMIC)
+  do spf2a=1,numfrozen
+     temppotmatel(spf2a)=mydot(infrozens(:,:,:,spf2a),tempmult(:,spf2a),sizespf)
+  enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
   frozenkediag=0d0
   do i=1,numfrozen
-     frozenkediag=frozenkediag+2*temppotmatel(i,i)
+     frozenkediag=frozenkediag+2*temppotmatel(i)
   enddo
 
-  deallocate(frodensity,cfrodensity,tempreduced,temppotmatel,tempmult,tempmult2)
+  deallocate(frodensity,cfrodensity,tempreduced,tempmult,tempmult2)
 
 end subroutine call_frozen_matels0
 
