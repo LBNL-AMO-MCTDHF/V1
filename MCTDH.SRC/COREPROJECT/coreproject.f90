@@ -585,9 +585,13 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
      cfrodensity(:,:,:,:)=CONJUGATE(frodensity(:,:,:,:))
 
      call op_tinv(-2*mbig,2*mbig,numfrozen,frodensity(:,:,:,:),tempreduced(:,:,:,:))
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf2a)
+!$OMP DO SCHEDULE(DYNAMIC)
      do spf2a=1,numfrozen
         exch(spf2a,spf2b)=mycdot(cfrodensity(:,:,:,spf2a),tempreduced(:,:,:,spf2a),bigsize)
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
   enddo  !! spf2b
 
 
