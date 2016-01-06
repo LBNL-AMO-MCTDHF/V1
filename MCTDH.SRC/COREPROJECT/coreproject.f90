@@ -516,8 +516,8 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   DATATYPE,intent(in) :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen)
   DATATYPE :: sum, direct, exch
   integer :: mvalue2a, mvalue1b, mvalue2b, mvalue1a, &
-       spf1a,spf1b,spf2a,spf2b, deltam,qq,rr,qq2,rr2,i,ii, &
-       iispf,ispf,ispin,iispin, sizespf
+       spf1a,spf1b,spf2a,spf2b, deltam,qq,rr,qq2,rr2,i, &
+       iispf,ispf, sizespf
   DATATYPE, allocatable :: tempreduced(:,:,:,:,:), tempmatel(:,:,:,:), temppotmatel(:,:),&
        tempmult(:,:), temppotmatel2(:,:), tempmult2(:,:), twoeden(:,:,:,:)
   DATATYPE :: myden(numerad,lbig+1,-2*mbig:2*mbig),myred(numerad,lbig+1,-2*mbig:2*mbig)        !! AUTOMATIC
@@ -599,19 +599,11 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   enddo
 
   sum=0d0
-  do i=1,numfrozen*2
-     do ii=i+1,numfrozen*2
-        ispf=(i-1-mod(i-1,2))/2+1            !! elec 1
-        iispf=(ii-1-mod(ii-1,2))/2+1            !! elec 2
-        ispin=mod(i-1,2)+1           !! elec 1
-        iispin=mod(ii-1,2)+1           !! elec 2
+  do ispf=1,numfrozen
+     do iispf=1,numfrozen
         direct = tempmatel(iispf,iispf,ispf,ispf)
-        if (ispin==iispin) then
-           exch = tempmatel(iispf,ispf,ispf,iispf)
-        else
-           exch=0.d0
-        endif
-        sum=sum+direct-exch
+        exch = tempmatel(iispf,ispf,ispf,iispf)
+        sum=sum+2*direct-exch
      enddo
   enddo
   frozenpotdiag=sum

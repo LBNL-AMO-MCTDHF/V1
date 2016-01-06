@@ -233,7 +233,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
        tempmatel(:,:,:,:), temppotmatel(:,:),    tempmult(:,:)
   DATATYPE :: csum,direct,exch
   integer :: times1,times3,times4,times5,fttimes(10), i, ii, spf1a,spf2a,spf1b,spf2b, &
-       ispin,iispin,ispf,iispf
+       ispf,iispf
 
   if (numfrozen.eq.0) then
      return
@@ -278,19 +278,11 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   endif
 
   csum=0d0
-  do i=1,numfrozen*2
-     do ii=i+1,numfrozen*2
-        ispf=(i-1-mod(i-1,2))/2+1            !! elec 1
-        iispf=(ii-1-mod(ii-1,2))/2+1            !! elec 2
-        ispin=mod(i-1,2)+1           !! elec 1
-        iispin=mod(ii-1,2)+1           !! elec 2
+  do ispf=1,numfrozen
+     do iispf=1,numfrozen
         direct = tempmatel(iispf,iispf,ispf,ispf)
-        if (ispin==iispin) then
-           exch = tempmatel(iispf,ispf,ispf,iispf)
-        else
-           exch=0.d0
-        endif
-        csum=csum+direct-exch
+        exch = tempmatel(iispf,ispf,ispf,iispf)
+        csum=csum+2*direct-exch
      enddo
   enddo
   frozenpotdiag=csum
