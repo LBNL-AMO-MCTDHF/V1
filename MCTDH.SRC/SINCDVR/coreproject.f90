@@ -245,7 +245,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
 
   frodensity(:)=0d0
   do ii=1,numfrozen
-     frodensity(:)=frodensity(:) + infrozens(:,ii)*CONJUGATE(infrozens(:,ii))
+     frodensity(:)=frodensity(:) + infrozens(:,ii)*CONJUGATE(infrozens(:,ii)) * 2
   enddo
 
   call op_tinv(frodensity(:),frozenreduced(:),1,1,&
@@ -558,7 +558,7 @@ subroutine op_frozenreduced(howmany,inspfs,outspfs)
   integer :: ii
 
   do ii=1,howmany
-     outspfs(:,ii) = frozenreduced(:) * inspfs(:,ii) * 2d0
+     outspfs(:,ii) = frozenreduced(:) * inspfs(:,ii)
   enddo
 
 end subroutine op_frozenreduced

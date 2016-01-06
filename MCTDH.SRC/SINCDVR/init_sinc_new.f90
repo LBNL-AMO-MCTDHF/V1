@@ -553,7 +553,7 @@ subroutine init_spfs(inspfs,numloaded)
      call op_tinv(density,ivopot,1,1,null1,null2,null3,null4,null10)
      deallocate(density)
 
-     ivopot(:)=ivopot(:)+frozenreduced(:)*2
+     ivopot(:)=ivopot(:)+frozenreduced(:)
 
   endif
 

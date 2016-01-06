@@ -93,7 +93,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         call frozen_matels()
         do i=1,lbig+1
            do j=1,numerad
-              bigham(j,i,j,i) = bigham(j,i,j,i) + frozenreduced(j,i,0) / thisrvalue * 2
+              bigham(j,i,j,i) = bigham(j,i,j,i) + frozenreduced(j,i,0) / thisrvalue 
            enddo
         enddo
 

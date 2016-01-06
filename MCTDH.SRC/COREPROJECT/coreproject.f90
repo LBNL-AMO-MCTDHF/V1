@@ -595,7 +595,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
 !! THIS WAY
   frozenreduced(:,:,:)=0d0
   do i=1,numfrozen
-     frozenreduced(:,:,:)=frozenreduced(:,:,:)+tempreduced(:,:,:,i,i)
+     frozenreduced(:,:,:)=frozenreduced(:,:,:)+tempreduced(:,:,:,i,i)  * 2
   enddo
 
   sum=0d0
@@ -1054,7 +1054,7 @@ subroutine op_frozenreduced(howmany,inspfs,outspfs)
      do imval=-mbig,mbig
         mine(:,:)=0d0
         do kmval=-mbig,mbig
-           mine(:,:) = mine(:,:) + 2* & 
+           mine(:,:) = mine(:,:) + & 
                 frozenreduced(:,:,imval-kmval) * inspfs(:,:,kmval,ii)
         enddo
         outspfs(:,:,imval,ii)=mine(:,:)
