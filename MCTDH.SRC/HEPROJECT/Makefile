@@ -22,7 +22,7 @@ He_params.o: $(DEPEND) He_params.F90
 heproject.o: $(DEPEND) heproject.F90 He_params.o
 	$(F90) $(FFLAGS)  -c heproject.F90
 
-init_HE_new.o: $(DEPEND)  He_params.o heproject.o init_HE_new.F90
+init_HE_new.o: $(DEPEND)  He_params.o heproject.o coreproject.o init_HE_new.F90
 	$(F90) $(FFLAGS)  -c init_HE_new.F90
 
 coreproject.o: $(DEPEND)  He_params.o heproject.o coreproject.F90

@@ -22,7 +22,7 @@ H2_params.o: $(DEPEND) H2_params.F90
 h2project.o: $(DEPEND) h2project.F90 H2_params.o
 	$(F90) $(FFLAGS)  -c h2project.F90
 
-init_H2_new.o: $(DEPEND)  H2_params.o h2project.o init_H2_new.F90
+init_H2_new.o: $(DEPEND)  H2_params.o h2project.o coreproject.o init_H2_new.F90
 	$(F90) $(FFLAGS)  -c init_H2_new.F90
 
 coreproject.o: $(DEPEND)  H2_params.o h2project.o coreproject.F90
