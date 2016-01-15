@@ -127,7 +127,6 @@ subroutine quadspfs(inspfs,jjcalls)
   endif
 
   effective_cmf_linearflag=0
-  effective_cmf_spfflag=1
 
   vector=inspfs
 

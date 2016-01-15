@@ -129,10 +129,9 @@ subroutine prop_loop( starttime)
 
      call system_clock(jtime)  ;  times(6)=times(6)+jtime-itime; itime=jtime
 
-
-                                  !! ********************** !!
-     call actionsub( thistime)    !!    ACTIONS.
-                                  !! ********************** !!
+                                 !! ************************************************************* !!
+     call actionsub( thistime)   !! ACTIONS.  IF ACTION CHANGES PSI THEN CALL GET_STUFF AFTER ACTION.
+                                 !! ************************************************************* !!
      call system_clock(jtime)  
      times(3)=times(3)+jtime-itime; itime=jtime
 
@@ -408,7 +407,6 @@ subroutine prop_wfn(tin, tout)
 
   call apply_spf_constraints(yyy%cmfpsivec(spfstart,0))
 
-!! when would you have onlyspfflag with more than orbital?  with one this just norms; don't want to do that
   call spf_orthogit(yyy%cmfpsivec(spfstart,0), nulldouble)
   call get_stuff(tout) 
 
@@ -423,21 +421,17 @@ subroutine prop_wfn(tin, tout)
 end subroutine prop_wfn
 
 
-subroutine propspfs(inspfs,outspfs,tin, tout,inlinearflag,inspfflag,numiters)
+subroutine propspfs(inspfs,outspfs,tin, tout,inlinearflag,numiters)
   use parameters
   implicit none
   DATATYPE,intent(in) :: inspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,nspf)
   DATATYPE,allocatable :: tempspfs2(:,:)
-  integer :: inlinearflag,numiters,jj,k,inspfflag
+  integer :: inlinearflag,numiters,jj,k
   real*8 :: tout, tin,timea,timeb
 
   outspfs(:,:)=inspfs(:,:)
   numiters=0
-
-  if (inspfflag.eq.0.and.constraintflag.eq.0) then
-     return
-  endif
 
   allocate(tempspfs2(spfsize,nspf))
   tempspfs2(:,:)=0
@@ -445,7 +439,7 @@ subroutine propspfs(inspfs,outspfs,tin, tout,inlinearflag,inspfflag,numiters)
   do k=1,littlesteps
      timea=tin+(tout-tin)*(k-1)/littlesteps;     timeb=tin+(tout-tin)*k/littlesteps
 
-     call propspfs0(outspfs,tempspfs2,timea,timeb,inlinearflag,inspfflag,jj)
+     call propspfs0(outspfs,tempspfs2,timea,timeb,inlinearflag,jj)
      numiters=numiters+jj
      outspfs(:,:)=tempspfs2(:,:)
   enddo
@@ -456,13 +450,13 @@ end subroutine propspfs
 
 
 
-subroutine propspfs0(inspfs,outspfs,tin, tout,inlinearflag,inspfflag,numiters)
+subroutine propspfs0(inspfs,outspfs,tin, tout,inlinearflag,numiters)
   use parameters
   use linearmod
   implicit none
   DATATYPE,intent(in) :: inspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-  integer ::  numiters,iflag,zzz, nullint, idid, inlinearflag,inspfflag,rkworkdim,rkiworkdim
+  integer ::  numiters,iflag,zzz, nullint, idid, inlinearflag,rkworkdim,rkiworkdim
   real*8, external ::   spf_linear_derivs , gbs_linear_derivs , dummysub
   real*8 :: tout, tin,nullreal, time1, time2, nulldouble,gbsstepsize
   real*8, allocatable :: rkwork(:)
@@ -476,8 +470,6 @@ subroutine propspfs0(inspfs,outspfs,tin, tout,inlinearflag,inspfflag,numiters)
 #endif
 
   effective_cmf_linearflag=inlinearflag     !!LINEARMOD
-
-  effective_cmf_spfflag=inspfflag
 
   outspfs(:,:)=inspfs(:,:)
 
@@ -585,16 +577,18 @@ subroutine cmf_prop_wfn(tin, tout)
 
   if (improvedrelaxflag.ne.0) then
 
+     if (spf_flag.ne.0) then
      call system_clock(itime)
-     if (improvedquadflag.gt.1.and.tin.gt.quadstarttime.and.spf_flag.ne.0) then
+     if (improvedquadflag.gt.1.and.tin.gt.quadstarttime) then
         call quadspfs(yyy%cmfpsivec(spfstart,0), qq)
         numiters=numiters+qq
      else
         time1=tin;        time2=tout
-        call propspfs(yyy%cmfpsivec(spfstart,1), yyy%cmfpsivec(spfstart,0), time1,time2,0,spf_flag,qq)
+        call propspfs(yyy%cmfpsivec(spfstart,1), yyy%cmfpsivec(spfstart,0), time1,time2,0,qq)
         numiters=numiters+qq
      endif
      call system_clock(jtime);     times(4)=times(4)+jtime-itime;     
+     endif
 
      if (improvednatflag.ne.0) then
         call system_clock(itime)
@@ -633,22 +627,29 @@ subroutine cmf_prop_wfn(tin, tout)
 
   else  !! IMPROVEDRELAX
 
-        
+!! ******* CMF PREDICTOR ***** !!
+!!            and              !!
+!! ******* LMF CORRECTOR ***** !!
+
      do linearflag=0,1
 
+        if (spf_flag.ne.0) then
         call system_clock(itime)
         time1=tin;        time2=tout
-        call propspfs(yyy%cmfpsivec(spfstart,1),yyy%cmfpsivec(spfstart,0), time1,time2,linearflag,spf_flag,qq)
+        call propspfs(yyy%cmfpsivec(spfstart,1),yyy%cmfpsivec(spfstart,0), time1,time2,linearflag,qq)
         numiters=numiters+qq
-        call system_clock(jtime);     times(4)=times(4)+jtime-itime;       call system_clock(itime)
-
+        call system_clock(jtime);     times(4)=times(4)+jtime-itime
+        endif
+        if(avector_flag.ne.0) then
+        call system_clock(itime)
         do imc=1,mcscfnum
            call cmf_prop_avector(yyy%cmfpsivec(astart(imc),1), yyy%cmfpsivec(astart(imc),0), linearflag,tin,tout,imc)
         enddo
-        call system_clock(jtime);     times(5)=times(5)+jtime-itime;     call system_clock(itime)
+        call system_clock(jtime);     times(5)=times(5)+jtime-itime
+        endif
 
         call get_stuff0(tout,times)
-     
+
      enddo
 
   endif  !!improvedrelax

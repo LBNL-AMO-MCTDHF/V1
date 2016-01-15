@@ -41,36 +41,22 @@ subroutine all_derivs(thistime,xpsi, xpsip)
   numcalledhere=numcalledhere+1
 
   yyy%cmfpsivec(:,0)=xpsi(:)
+  xpsip(:)=0d0
 
-  call system_clock(itime)
-  call get_allden()
-  call system_clock(jtime);  times(3)=times(3)+jtime-itime
-  
-  call system_clock(itime)
-  call all_matel()
-  call system_clock(jtime);  times(2)=times(2)+jtime-itime
-  
-     call system_clock(itime)     
-     call get_reducedpot()
-     call system_clock(jtime);     times(4)=times(4)+jtime-itime
+  call get_stuff0(thistime,times)
 
-     call system_clock(itime)
-     if (constraintflag.eq.1) then
-        OFLWR "CHECK/FIX GETDENCONSTRAINT"; CFLST
-!!        call get_den const raint(xpsi(astart(1)))
-     endif
-     if (constraintflag.eq.2) then
-        OFLWR "CHECK/FIX GETDFCONSTRAINT"; CFLST
-!!        call get_dfc onstra int(xpsi(astart(1)))
-     endif
 !! ireduced should be zero right   07-2015
+
+  if (spf_flag.ne.0) then
+     call system_clock(itime)
      call actreduced0(thistime,xpsi(spfstart),xpsi(spfstart),xpsip(spfstart),0,1,1)
      call system_clock(jtime);     times(5)=times(5)+jtime-itime
-
-  call system_clock(itime)
+  endif
 
   !! AVECTOR PART.
 
+  if (avector_flag.ne.0) then
+  call system_clock(itime)
   do imc=1,mcscfnum
      avector(:)=xpsi(astart(imc):aend(imc))
 
@@ -80,7 +66,8 @@ subroutine all_derivs(thistime,xpsi, xpsip)
      call basis_project(www,numr,xpsip(astart(imc)))
 
   enddo
-  
+  endif
+
   xpsip(astart(1):aend(mcscfnum))=xpsip(astart(1):aend(mcscfnum))*timefac
 
   call system_clock(jtime);  times(6)=times(6)+jtime-itime
@@ -143,17 +130,6 @@ subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
   endif
   spfsout(:,:) = 0.d0
 
-  if (effective_cmf_spfflag.eq.0) then
-     if (constraintflag==0) then
-        return
-     endif
-     do jjj=ibot,1
-        call op_gmat(spfsin(:,:),spfmult(:,:),jjj,thistime,spfsin(:,:))
-        spfsout(:,:)=spfsout(:,:)+spfmult(:,:)*facs(jjj)
-     enddo
-     return
-  endif
-
   do jjj=ibot,1
      call actreduced0(thistime,spfsin,spfsin,spfmult(:,:),jjj, allflag,allflag)
      spfsout(:,:)=spfsout(:,:)+spfmult(:,:)*facs(jjj)
@@ -204,10 +180,6 @@ subroutine driving_linear_derivs(thistime,spfsin,spfsout)
   DATATYPE :: spfmult(spfsize,nspf),pots(3)  !! AUTOMATIC
 
   spfsout(:,:)=0d0
-
-  if (effective_cmf_spfflag.eq.0) then
-     return
-  endif
 
   call vectdpot(thistime,velflag,pots,-1)
   rsum=0

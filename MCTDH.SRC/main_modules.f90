@@ -128,7 +128,7 @@ end module aarrmod
 module linearmod
   implicit none
   real*8 :: lasttime, firsttime
-  integer :: effective_cmf_linearflag, effective_cmf_spfflag
+  integer :: effective_cmf_linearflag
 
 end module linearmod
 

@@ -289,8 +289,6 @@ subroutine jacoperate(inspfs,outspfs)
 
   do ii=1,ibot,-1
      
-     if (effective_cmf_spfflag.ne.0) then
-        
         if (jacsymflag.ne.0) then
            call system_clock(itime)
            
@@ -344,8 +342,6 @@ subroutine jacoperate(inspfs,outspfs)
            call system_clock(jtime); times(1)=times(1)+jtime-itime;  
         endif
         
-     endif !! spfflag
-     
 !!  CONSTRAINT!!  FORGOTTEN I GUESS !! APR 2014
 
      if (constraintflag.ne.0) then
@@ -358,8 +354,6 @@ subroutine jacoperate(inspfs,outspfs)
         endif
         call system_clock(jtime); times(1)=times(1)+jtime-itime;
      endif
-
-     if (effective_cmf_spfflag.ne.0) then
 
         if (drivingflag.ne.0) then
            call system_clock(itime)
@@ -375,8 +369,6 @@ subroutine jacoperate(inspfs,outspfs)
            call system_clock(jtime); times(3)=times(3)+jtime-itime;
         endif
         
-     endif
-
   enddo
   
   if ((myrank.eq.1).and.(notiming.eq.0)) then
