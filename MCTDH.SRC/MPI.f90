@@ -109,9 +109,9 @@ subroutine mpiorbgather(inoutvector,insize)    !! insize=spfsize except debug
   use fileptrmod
   use parameters
   implicit none
-  integer :: ierr,insize
+  integer :: ierr,insize,lastmpiorb
   DATATYPE,intent(inout) :: inoutvector(insize,nspf)
-  DATATYPE :: orbvector(insize,nspf*2)   !! AUTOMATIC
+  DATATYPE :: orbvector(insize,nspf*2),workvector(insize,orbsperproc)   !! AUTOMATIC
 
   if (nprocs.eq.1.or.parorbsplit.ne.1) then
      return
@@ -122,19 +122,25 @@ subroutine mpiorbgather(inoutvector,insize)    !! insize=spfsize except debug
      WRFL "   not to have been called."; CFLST
   endif
 
-  orbvector(:,:)=0d0
-  orbvector(:,1:nspf)=inoutvector(:,:)
-
   if (firstmpiorb+orbsperproc-1.gt.nspf*2 .or. orbsperproc*min(nspf,nprocs).gt.nspf*2) then
      OFLWR "YYY ERROR",firstmpiorb,orbsperproc; CFLST
   endif
+
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+
+  orbvector(:,:)=0d0
+  workvector(:,:)=0d0
+  if (firstmpiorb.le.nspf) then
+     lastmpiorb=min(nspf,firstmpiorb+orbsperproc-1)
+     workvector(:,1:lastmpiorb-firstmpiorb+1)=inoutvector(:,firstmpiorb:lastmpiorb)
+  endif
+
 #ifdef REALGO
-  call mpi_allgather(orbvector(:,firstmpiorb),insize*orbsperproc,&
+  call mpi_allgather(workvector(:,:),insize*orbsperproc,&
        MPI_DOUBLE_PRECISION,orbvector(:,:),insize*orbsperproc,&
        MPI_DOUBLE_PRECISION,MPI_COMM_ORB(myorbset),ierr)
 #else
-  call mpi_allgather(orbvector(:,firstmpiorb),insize*orbsperproc,&
+  call mpi_allgather(workvector(:,:),insize*orbsperproc,&
        MPI_DOUBLE_COMPLEX,orbvector(:,:),insize*orbsperproc,&
        MPI_DOUBLE_COMPLEX,MPI_COMM_ORB(myorbset),ierr)
 #endif
