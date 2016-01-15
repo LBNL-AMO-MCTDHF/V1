@@ -35,55 +35,19 @@ subroutine prop_loop( starttime)
 
   call system_clock(itime)
 
-  if (skipflag.eq.0) then
-     do imc=1,mcscfnum
-        call basis_project(www,numr,yyy%cmfpsivec(astart(imc),0))
-     enddo
+  do imc=1,mcscfnum
+     call basis_project(www,numr,yyy%cmfpsivec(astart(imc),0))
+  enddo
 
-!!$ 06-2015
-!!$     call all_matel()      ! initial
-!!$     if (drivingflag.ne.0.and.1==1) then
-!!$        OFLWR "call drivinginit"; CFL
-!!$        call drivinginit(startenergy)
-!!$        OFLWR "called drivinginit"; CFL
-!!$     endif
+  call get_allden()
 
-     call get_stuff(0.0d0)  !initial
-
-!!$ 06-2015
-     if (drivingflag.ne.0.and.1==1) then
-        OFLWR "call drivinginit"; CFL
-        call drivinginit(startenergy)
-        OFLWR "called drivinginit"; CFL
-        call get_stuff(0.0d0)  ! for actions_initial
-     endif
-
-     if ((myrank.eq.1).and.(notiming.le.1)) then
-        call system("echo -n > "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="unknown")
-        write(853,'(T16,100A15)')  "Prop ", "Act ", "After ", "Init", "Save", "MPI", "Non MPI"
-        close(853)
-     endif
-  endif
-
-  call system_clock(jtime)  ;  times(5)=times(5)+jtime-itime; itime=jtime
-  call actions_initial()                 !!   ACTIONS_INITIAL: PUT ANALYSIS ROUTINES HERE; THEN TERMINATES.
-                                         !! ***************************************************************
-  call system_clock(jtime)  ;  times(3)=times(3)+jtime-itime; itime=jtime
-
-  if (skipflag.ne.0) then
-     OFLWR "Stopping"; CFLST
-  endif
-
-!! 06-2015 ADDING THIS HERE
   if (improvedrelaxflag.ne.0.and.improvednatflag.ne.0) then
      call replace_withnat(1)
+     call basis_project(www,numr,yyy%cmfpsivec(astart(imc),0))  !! shouldnt be necessary
   endif
-!! allowing that actions_initial could change psi.  OR replace_withnat!  drivinginit ok.
 
-  call get_stuff(0.d0)
+  call all_matel()
 
-!! 06-2015 moved this down here
   do imc=1,mcscfnum
 
      call sparseconfigmult(www,yyy%cmfpsivec(astart(imc),0),avectorp(:),yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0,imc)
@@ -101,14 +65,43 @@ subroutine prop_loop( starttime)
 
      startenergy(imc)=sum2/sum
      OFLWR "         ENERGY ", startenergy(imc); CFL
-     
+
   enddo
+
+  if (drivingflag.ne.0) then
+     OFLWR "call drivinginit"; CFL
+     call drivinginit(startenergy)
+     OFLWR "called drivinginit"; CFL
+  endif
+  
+  call get_stuff(0.0d0)
+
+  if ((myrank.eq.1).and.(notiming.le.1)) then
+     call system("echo -n > "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
+     open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="unknown")
+     write(853,'(T16,100A15)')  "Prop ", "Act ", "After ", "Init", "Save", "MPI", "Non MPI"
+     close(853)
+  endif
+
+  call system_clock(jtime)  ;  times(5)=times(5)+jtime-itime; itime=jtime
+  call actions_initial()                 !!   ACTIONS_INITIAL: PUT ANALYSIS ROUTINES HERE; THEN TERMINATES.
+                                         !! ***************************************************************
+  call system_clock(jtime)  ;  times(3)=times(3)+jtime-itime; itime=jtime
+
+  if (skipflag.ne.0) then
+     OFLWR "Stopping"; CFLST
+  endif
+
+!! allowing that actions_initial could change psi.  OR replace_withnat!  drivinginit ok.
+
+  call get_stuff(0.d0)
 
   if (debugflag.eq.956) then
      OFLWR "Stopping due to debugflag=956"; CFLST
   endif
 
   call system_clock(jtime)  ;  times(5)=times(5)+jtime-itime
+
 
   jj=0
   do while (flag==0)
@@ -137,10 +130,9 @@ subroutine prop_loop( starttime)
      call system_clock(jtime)  ;  times(6)=times(6)+jtime-itime; itime=jtime
 
 
-                                  !! *****************************************************************************
-                                  !!    ACTIONS.
-     call actionsub( thistime)    !! actions may not change yyy%cmfpsivec   !! what? screw it, trying action_replacenat
-                                  !! *****************************************************************************
+                                  !! ********************** !!
+     call actionsub( thistime)    !!    ACTIONS.
+                                  !! ********************** !!
      call system_clock(jtime)  
      times(3)=times(3)+jtime-itime; itime=jtime
 
@@ -443,7 +435,7 @@ subroutine propspfs(inspfs,outspfs,tin, tout,inlinearflag,inspfflag,numiters)
   outspfs(:,:)=inspfs(:,:)
   numiters=0
 
-  if (spf_flag.eq.0.and.constraintflag.eq.0) then     !! no tau
+  if (inspfflag.eq.0.and.constraintflag.eq.0) then
      return
   endif
 
@@ -606,9 +598,7 @@ subroutine cmf_prop_wfn(tin, tout)
 
      if (improvednatflag.ne.0) then
         call system_clock(itime)
-!! IT WORKS
         call replace_withnat(printflag)
-!! 06-2015        call system_clock(jtime);        times(2)=times(2)+jtime-itime;
         call system_clock(jtime);        times(7)=times(7)+jtime-itime;
      endif
 
@@ -644,165 +634,23 @@ subroutine cmf_prop_wfn(tin, tout)
   else  !! IMPROVEDRELAX
 
         
-!! ******* CMF PREDICTOR ***** !!
-
-     linearflag=0
-     
-     if (threshflag.eq.0.and.(constraintflag.ne.0.or.drivingflag.ne.0)) then   !!.and.tempnoconguess.eq.0) then
-        call system_clock(itime)
-     
-        time1=tin;        time2=tout
-        call propspfs(yyy%cmfpsivec(spfstart,1),yyy%cmfpsivec(spfstart,0), time1,time2,linearflag,0,qq)
-        numiters=numiters+qq
-        call system_clock(jtime);     times(4)=times(4)+jtime-itime;     call system_clock(itime)
-
-        do imc=1,mcscfnum
-           call cmf_prop_avector(yyy%cmfpsivec(astart(imc),1), yyy%cmfpsivec(astart(imc),0), linearflag,tin,tout,imc)
-        enddo
-        
-        call system_clock(jtime);        times(5)=times(5)+jtime-itime
+     do linearflag=0,1
 
         call system_clock(itime)
-        call all_matel()
-        call system_clock(jtime);     times(1)=times(1)+jtime-itime;   
-        
-        call system_clock(itime)
-        call get_allden()
-        call system_clock(jtime);     times(2)=times(2)+jtime-itime
-        
-        if (constraintflag.ne.0) then
-           call system_clock(itime)
-           call get_constraint(tout);          
-           call system_clock(jtime);        times(7)=times(7)+jtime-itime
-        endif
-        if (drivingflag.ne.0) then
-           call system_clock(itime)
-           call drivingtrans(tout);         
-           call system_clock(jtime);        times(8)=times(8)+jtime-itime
-        endif
-     
-        call system_clock(itime)
-        call get_reducedpot()
-        if (numfrozen.gt.0) then
-           call get_frexchange()
-        endif
-        call system_clock(jtime);     times(3)=times(3)+jtime-itime;     call system_clock(itime)  
-
-        linearflag=1
-
-     endif
-     
-
-     call system_clock(itime)     
-     
-     time1=tin;        time2=tout
-     call propspfs(yyy%cmfpsivec(spfstart,1),yyy%cmfpsivec(spfstart,0), time1,time2,linearflag,spf_flag,qq)
-     numiters=numiters+qq
-     call system_clock(jtime);     times(4)=times(4)+jtime-itime;     
-
-     call system_clock(itime)
-     call all_matel()
-     call system_clock(jtime);     times(1)=times(1)+jtime-itime
-
-     if (threshflag.ne.0) then
-
-        call system_clock(itime)
-        do imc=1,mcscfnum
-           call cmf_prop_avector(yyy%cmfpsivec(astart(imc),1), yyy%cmfpsivec(astart(imc),0), linearflag,tin,tout,imc)
-        enddo
-        call system_clock(jtime);     times(5)=times(5)+jtime-itime;     call system_clock(itime)
-        call get_allden()
-        call system_clock(jtime);     times(2)=times(2)+jtime-itime
-        
-     endif
-
-     if (constraintflag.ne.0) then
-        call system_clock(itime)
-        call get_constraint(tout);         
-        call system_clock(jtime);        times(7)=times(7)+jtime-itime
-     endif
-     
-     if (drivingflag.ne.0) then
-        call system_clock(itime)
-        call drivingtrans(tout);         
-        call system_clock(jtime);        times(8)=times(8)+jtime-itime
-     endif
-
-     
-!! ******* LMF CORRECTOR ***** !!
-
-     if (threshflag.ne.0) then
-
-        call get_reducedpot()
-        if (numfrozen.gt.0) then
-           call get_frexchange()
-        endif
-        call system_clock(jtime);     times(3)=times(3)+jtime-itime;     call system_clock(itime)  
-        
-     else
-
-        linearflag=1
-        
-        call system_clock(itime)
-        do imc=1,mcscfnum
-           call cmf_prop_avector(yyy%cmfpsivec(astart(imc),1), yyy%cmfpsivec(astart(imc),0), linearflag,tin,tout,imc)
-        enddo
-        call system_clock(jtime);     times(5)=times(5)+jtime-itime;     call system_clock(itime)
-        
-        call get_allden()
-        call system_clock(jtime);     times(2)=times(2)+jtime-itime
-        
-        if (constraintflag.ne.0) then
-           call system_clock(itime)
-           call get_constraint(tout);          
-           call system_clock(jtime);        times(7)=times(7)+jtime-itime
-        endif
-        if (drivingflag.ne.0) then
-           call system_clock(itime)
-           call drivingtrans(tout);         
-           call system_clock(jtime);        times(8)=times(8)+jtime-itime
-        endif
-        
-        call system_clock(itime)
-
-     
-        call get_reducedpot()
-        if (numfrozen.gt.0) then
-           call get_frexchange()
-        endif
-        call system_clock(jtime);     times(3)=times(3)+jtime-itime;     call system_clock(itime)  
-        
-
         time1=tin;        time2=tout
         call propspfs(yyy%cmfpsivec(spfstart,1),yyy%cmfpsivec(spfstart,0), time1,time2,linearflag,spf_flag,qq)
         numiters=numiters+qq
-        
-        call system_clock(jtime);     times(4)=times(4)+jtime-itime;     call system_clock(itime)
-        
-        call all_matel()
-        
-        call system_clock(jtime);     times(1)=times(1)+jtime-itime;   
-        
-        if (constraintflag.ne.0) then
-           call system_clock(itime)
-           call get_constraint(tout);           
-           call system_clock(jtime);     times(7)=times(7)+jtime-itime
-        endif
-        if (drivingflag.ne.0) then
-           call system_clock(itime)
-           call drivingtrans(tout);         
-           call system_clock(jtime);        times(8)=times(8)+jtime-itime
-        endif
-        
-        call system_clock(itime)
-        
-        call get_reducedpot()
-        if (numfrozen.gt.0) then
-           call get_frexchange()
-        endif
-        call system_clock(jtime);     times(3)=times(3)+jtime-itime
+        call system_clock(jtime);     times(4)=times(4)+jtime-itime;       call system_clock(itime)
+
+        do imc=1,mcscfnum
+           call cmf_prop_avector(yyy%cmfpsivec(astart(imc),1), yyy%cmfpsivec(astart(imc),0), linearflag,tin,tout,imc)
+        enddo
+        call system_clock(jtime);     times(5)=times(5)+jtime-itime;     call system_clock(itime)
+
+        call get_stuff0(tout,times)
      
-     endif  !!threshflag
+     enddo
+
   endif  !!improvedrelax
 
 

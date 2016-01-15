@@ -147,9 +147,11 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 
      call spf_linear_derivs(midtime,inspfs,aspfs) 
 
-     if (drivingflag.eq.1.or.drivingflag.eq.2) then
+     if (drivingflag.ne.0) then
+
         call driving_linear_derivs(midtime,inspfs,tempspfs)
         aspfs(:,:)=aspfs(:,:)+tempspfs(:,:)
+
      endif
 
      call apply_spf_constraints(aspfs)
@@ -265,7 +267,7 @@ subroutine jacoperate(inspfs,outspfs)
   integer, save :: times(20), numcalledhere=0,itime,jtime
   DATATYPE ::  nulldouble(2),pots(3)
   real*8 :: facs(0:1)
-  DATATYPE :: jactemp3(spfsize,nspf),   jactemp2(spfsize,nspf), &  !! AUTOMATIC
+  DATATYPE :: jactemp3(spfsize,nspf),   jactemp2(spfsize,nspf),&   !! AUTOMATIC
        tempspfs(spfsize,nspf),temporbs(spfsize,nspf)
 
   numcalledhere=numcalledhere+1
@@ -359,12 +361,14 @@ subroutine jacoperate(inspfs,outspfs)
 
      if (effective_cmf_spfflag.ne.0) then
 
-        if (drivingflag.eq.1.or.drivingflag.eq.3) then
+        if (drivingflag.ne.0) then
            call system_clock(itime)
            
            call vectdpot(jactime,velflag,pots,-1)
-           
-           temporbs(:,:)=pots(1)*yyy%drivingorbsxx(:,:,ii)+pots(2)*yyy%drivingorbsyy(:,:,ii)+pots(3)*yyy%drivingorbszz(:,:,ii)
+           temporbs(:,:)=&
+                pots(1)*yyy%drivingorbsxx(:,:,ii)+&
+                pots(2)*yyy%drivingorbsyy(:,:,ii)+&
+                pots(3)*yyy%drivingorbszz(:,:,ii)
            call derproject(temporbs,tempspfs,jacvect,inspfs)
            
            outspfs(:,:)=outspfs(:,:)-tempspfs(:,:)*facs(ii)*timefac
@@ -582,7 +586,9 @@ subroutine exposparseprop(www,inavector,outavector,time,imc)
 !! par_timestep is a-norm estimate, ok, whatever
 
   if (drivingflag.ne.0) then
+     smallvectortemp(:,:)=0d0
      call parconfigexpomult_padded(smallvector,smallvectortemp)
+
      call basis_transformto_local(www,numr,workdrivingavec(:,www%botconfig),workdrivingavecdfbasis(:,:))
      smallvectortemp(:,1:www%topdfbasis-www%botdfbasis+1)=  smallvectortemp(:,1:www%topdfbasis-www%botdfbasis+1) + workdrivingavecdfbasis(:,:) * timefac 
 
@@ -705,9 +711,9 @@ subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
 !$OMP END DO
 !$OMP END PARALLEL
 
-  if (parorbsplit.eq.3) then
-     call mympireduce(prodot,nspf**2)
-  endif
+     if (parorbsplit.eq.3) then
+        call mympireduce(prodot,nspf**2)
+     endif
 
 !prodot  (pro,der) x mydot (pro,in)   : pro is in;    in is out
 !
