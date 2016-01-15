@@ -289,58 +289,58 @@ subroutine jacoperate(inspfs,outspfs)
 
   do ii=1,ibot,-1
      
-        if (jacsymflag.ne.0) then
-           call system_clock(itime)
-           
-           call project(inspfs,jactemp2,jacvect) 
-           
-           call system_clock(jtime); times(1)=times(1)+jtime-itime;   call system_clock(itime)
-           
-           call actreduced0(jactime,jactemp2,nulldouble,jactemp3,ii,0,0)
-           
-           call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
-           
-           outspfs=outspfs+jactemp3*facs(ii)
-           
-           call system_clock(jtime); times(1)=times(1)+jtime-itime
-        else
-           
-           call system_clock(itime)
-           
-           call actreduced0(jactime, inspfs,nulldouble, jactemp3,ii,0,0)
-           
-           call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
-           
-           outspfs=outspfs+jactemp3*facs(ii)
-           
-           call system_clock(jtime); times(1)=times(1)+jtime-itime;      
-        endif
-        
+     if (jacsymflag.ne.0) then
         call system_clock(itime)
-        
-        call actreduced0(jactime,inspfs,nulldouble,jactemp3,ii,0,0)
-        
+           
+        call project(inspfs,jactemp2,jacvect) 
+           
+        call system_clock(jtime); times(1)=times(1)+jtime-itime;   call system_clock(itime)
+           
+        call actreduced0(jactime,jactemp2,nulldouble,jactemp3,ii,0,0)
+           
         call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
+           
+        outspfs=outspfs+jactemp3*facs(ii)
+           
+        call system_clock(jtime); times(1)=times(1)+jtime-itime
+     else
+           
+        call system_clock(itime)
+           
+        call actreduced0(jactime, inspfs,nulldouble, jactemp3,ii,0,0)
+           
+        call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
+           
+        outspfs=outspfs+jactemp3*facs(ii)
+           
+        call system_clock(jtime); times(1)=times(1)+jtime-itime;      
+     endif
         
-        call project(jactemp3,jactemp2,jacvect)
-        outspfs=outspfs-jactemp2*facs(ii)
+     call system_clock(itime)
+        
+     call actreduced0(jactime,inspfs,nulldouble,jactemp3,ii,0,0)
+        
+     call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
+        
+     call project(jactemp3,jactemp2,jacvect)
+     outspfs=outspfs-jactemp2*facs(ii)
         
 !! terms from projector
 
-        call derproject(jacvectout,jactemp2,jacvect,inspfs)
-        outspfs=outspfs-jactemp2*facs(ii)
+     call derproject(jacvectout,jactemp2,jacvect,inspfs)
+     outspfs=outspfs-jactemp2*facs(ii)
         
-        call system_clock(jtime); times(1)=times(1)+jtime-itime
+     call system_clock(jtime); times(1)=times(1)+jtime-itime
         
-        if (jacsymflag.ne.0) then
-           call system_clock(itime)
-           call derproject(jacvect,jactemp3,jacvect,inspfs) 
-           call system_clock(jtime); times(1)=times(1)+jtime-itime;   call system_clock(itime)
-           call actreduced0(jactime,jactemp3,nulldouble,jactemp2,ii,0,0)
-           call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
-           outspfs=outspfs+jactemp2*facs(ii)
-           call system_clock(jtime); times(1)=times(1)+jtime-itime;  
-        endif
+     if (jacsymflag.ne.0) then
+        call system_clock(itime)
+        call derproject(jacvect,jactemp3,jacvect,inspfs) 
+        call system_clock(jtime); times(1)=times(1)+jtime-itime;   call system_clock(itime)
+        call actreduced0(jactime,jactemp3,nulldouble,jactemp2,ii,0,0)
+        call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
+        outspfs=outspfs+jactemp2*facs(ii)
+        call system_clock(jtime); times(1)=times(1)+jtime-itime;  
+     endif
         
 !!  CONSTRAINT!!  FORGOTTEN I GUESS !! APR 2014
 
@@ -355,19 +355,19 @@ subroutine jacoperate(inspfs,outspfs)
         call system_clock(jtime); times(1)=times(1)+jtime-itime;
      endif
 
-        if (drivingflag.ne.0) then
-           call system_clock(itime)
+     if (drivingflag.ne.0) then
+        call system_clock(itime)
            
-           call vectdpot(jactime,velflag,pots,-1)
-           temporbs(:,:)=&
-                pots(1)*yyy%drivingorbsxx(:,:,ii)+&
-                pots(2)*yyy%drivingorbsyy(:,:,ii)+&
-                pots(3)*yyy%drivingorbszz(:,:,ii)
-           call derproject(temporbs,tempspfs,jacvect,inspfs)
+        call vectdpot(jactime,velflag,pots,-1)
+        temporbs(:,:)=&
+             pots(1)*yyy%drivingorbsxx(:,:,ii)+&
+             pots(2)*yyy%drivingorbsyy(:,:,ii)+&
+             pots(3)*yyy%drivingorbszz(:,:,ii)
+        call derproject(temporbs,tempspfs,jacvect,inspfs)
            
-           outspfs(:,:)=outspfs(:,:)-tempspfs(:,:)*facs(ii)*timefac
-           call system_clock(jtime); times(3)=times(3)+jtime-itime;
-        endif
+        outspfs(:,:)=outspfs(:,:)-tempspfs(:,:)*facs(ii)*timefac
+        call system_clock(jtime); times(3)=times(3)+jtime-itime;
+     endif
         
   enddo
   

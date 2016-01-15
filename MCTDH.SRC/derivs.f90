@@ -56,16 +56,16 @@ subroutine all_derivs(thistime,xpsi, xpsip)
   !! AVECTOR PART.
 
   if (avector_flag.ne.0) then
-  call system_clock(itime)
-  do imc=1,mcscfnum
-     avector(:)=xpsi(astart(imc):aend(imc))
+     call system_clock(itime)
+     do imc=1,mcscfnum
+        avector(:)=xpsi(astart(imc):aend(imc))
 
-     call basis_project(www,numr,avector)
+        call basis_project(www,numr,avector)
 
-     call sparseconfigmult(www,avector,xpsip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,1,thistime,imc)
-     call basis_project(www,numr,xpsip(astart(imc)))
+        call sparseconfigmult(www,avector,xpsip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,1,thistime,imc)
+        call basis_project(www,numr,xpsip(astart(imc)))
 
-  enddo
+     enddo
   endif
 
   xpsip(astart(1):aend(mcscfnum))=xpsip(astart(1):aend(mcscfnum))*timefac

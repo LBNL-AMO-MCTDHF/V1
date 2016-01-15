@@ -578,16 +578,16 @@ subroutine cmf_prop_wfn(tin, tout)
   if (improvedrelaxflag.ne.0) then
 
      if (spf_flag.ne.0) then
-     call system_clock(itime)
-     if (improvedquadflag.gt.1.and.tin.gt.quadstarttime) then
-        call quadspfs(yyy%cmfpsivec(spfstart,0), qq)
-        numiters=numiters+qq
-     else
-        time1=tin;        time2=tout
-        call propspfs(yyy%cmfpsivec(spfstart,1), yyy%cmfpsivec(spfstart,0), time1,time2,0,qq)
-        numiters=numiters+qq
-     endif
-     call system_clock(jtime);     times(4)=times(4)+jtime-itime;     
+        call system_clock(itime)
+        if (improvedquadflag.gt.1.and.tin.gt.quadstarttime) then
+           call quadspfs(yyy%cmfpsivec(spfstart,0), qq)
+           numiters=numiters+qq
+        else
+           time1=tin;        time2=tout
+           call propspfs(yyy%cmfpsivec(spfstart,1), yyy%cmfpsivec(spfstart,0), time1,time2,0,qq)
+           numiters=numiters+qq
+        endif
+        call system_clock(jtime);     times(4)=times(4)+jtime-itime;     
      endif
 
      if (improvednatflag.ne.0) then
@@ -600,16 +600,17 @@ subroutine cmf_prop_wfn(tin, tout)
      call all_matel()
      call system_clock(jtime);     times(1)=times(1)+jtime-itime;    
 
-     call system_clock(itime)
      if (avector_flag.ne.0) then
+        call system_clock(itime)
         if (improvedquadflag.eq.1.or.improvedquadflag.eq.3) then
            call quadavector(yyy%cmfpsivec(astart(1),0),qq)
         else
            call myconfigeig(www,dwwptr,yyy%cptr(0),yyy%cmfpsivec(astart(1),0),myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
         endif
+        call system_clock(jtime);     times(5)=times(5)+jtime-itime
      endif
-     call system_clock(jtime);     times(5)=times(5)+jtime-itime;     call system_clock(itime)
 
+     call system_clock(itime)
      call get_allden()
      call system_clock(jtime);        times(2)=times(2)+jtime-itime;             call system_clock(itime)
      
@@ -634,18 +635,18 @@ subroutine cmf_prop_wfn(tin, tout)
      do linearflag=0,1
 
         if (spf_flag.ne.0) then
-        call system_clock(itime)
-        time1=tin;        time2=tout
-        call propspfs(yyy%cmfpsivec(spfstart,1),yyy%cmfpsivec(spfstart,0), time1,time2,linearflag,qq)
-        numiters=numiters+qq
-        call system_clock(jtime);     times(4)=times(4)+jtime-itime
+           call system_clock(itime)
+           time1=tin;        time2=tout
+           call propspfs(yyy%cmfpsivec(spfstart,1),yyy%cmfpsivec(spfstart,0), time1,time2,linearflag,qq)
+           numiters=numiters+qq
+           call system_clock(jtime);     times(4)=times(4)+jtime-itime
         endif
         if(avector_flag.ne.0) then
-        call system_clock(itime)
-        do imc=1,mcscfnum
-           call cmf_prop_avector(yyy%cmfpsivec(astart(imc),1), yyy%cmfpsivec(astart(imc),0), linearflag,tin,tout,imc)
-        enddo
-        call system_clock(jtime);     times(5)=times(5)+jtime-itime
+           call system_clock(itime)
+           do imc=1,mcscfnum
+              call cmf_prop_avector(yyy%cmfpsivec(astart(imc),1), yyy%cmfpsivec(astart(imc),0), linearflag,tin,tout,imc)
+           enddo
+           call system_clock(jtime);     times(5)=times(5)+jtime-itime
         endif
 
         call get_stuff0(tout,times)
