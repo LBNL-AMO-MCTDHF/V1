@@ -43,7 +43,9 @@ subroutine prop_loop( starttime)
 
   if (improvedrelaxflag.ne.0.and.improvednatflag.ne.0) then
      call replace_withnat(1)
-     call basis_project(www,numr,yyy%cmfpsivec(astart(imc),0))  !! shouldnt be necessary
+     do imc=1,mcscfnum
+        call basis_project(www,numr,yyy%cmfpsivec(astart(imc),0))  !! shouldnt be necessary
+     enddo
   endif
 
   call all_matel()
