@@ -470,8 +470,10 @@ program mctdhf
 
   call opalloc()
 
-  call configlistwrite(www,configlistfile)
-  
+  if (writeconfiglist.ne.0) then
+     call configlistwrite(www,configlistfile)
+  endif
+
   call configpropalloc()
 
   call myprojectalloc()      !! Initialize coordinate-dependent arrays.

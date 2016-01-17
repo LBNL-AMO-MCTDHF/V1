@@ -1,5 +1,8 @@
 
-  ** LBNL-AMO-MCTDHF VERSION 1.17 **
+  ** LBNL-AMO-MCTDHF VERSION 1.18 **
+
+v1.18 predictor/corrector algorithm modified; results will be different,
+   depending on stepsize par_timestep
 
 v1.16 FACTOR OF 1/3 REMOVED FROM PHOTOIONIZATION (Actions 16,17)
 

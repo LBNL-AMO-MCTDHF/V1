@@ -104,7 +104,7 @@ subroutine getparams()
        reinterp_orbflag,spf_gridshift,load_avector_product,projspifile,readfullvector,walksinturn,&
        turnbatchsize,energyshift, pulseft_estep, finalstatsfile, projgtaufile,gtaufile,&
        sparsedfflag,sparseprime,sparsesummaflag, par_consplit, ftwindowlength, fttriwindow,&
-       pulsewindowtoo,conjgpropflag
+       pulsewindowtoo,conjgpropflag,writeconfiglist
 
 
   OFL

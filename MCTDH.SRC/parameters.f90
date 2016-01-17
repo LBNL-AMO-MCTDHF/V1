@@ -395,6 +395,7 @@ integer :: computeFlux=500, &      !! 0=All in memory other: MBs to allocate
      FluxSkipMult=1              !! Read every this number of time points.  Step=FluxInterval*FluxSkipMult
 integer :: nucfluxopt=0          !! Include imaginary part of hamiltonian from nuc ke 
 integer :: FluxOpType=1                !! 0=Full ham 1=halfnium 
+integer :: writeconfiglist=0     !! NOW MUST SPECIFY configlistwrite=1 for cation calc for action 17
 !!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input) 
 !!$ real*8 :: fluxtimestep=0.1d0
 !!EE
