@@ -90,6 +90,7 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
   DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects),  in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE,intent(out) :: reducedpottally(www%nspf,www%nspf,www%nspf,www%nspf)
   DATATYPE,allocatable :: avector2(:,:,:)
+  DATATYPE,allocatable :: mytally(:,:,:,:)
   DATATYPE ::  a1(numr,numvects), a2(numr,numvects), dot, csum
   DATAECS :: rvalues(numr)
   integer ::   ispf, jspf, iispf, jjspf ,  config2, config1,dirphase, iwalk,ii,ihop
@@ -108,9 +109,12 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
 
   reducedpottally(:,:,:,:)=0.d0
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(rvalues,config1,a1,a2,iwalk,dirphase,config2,ii,ispf,iispf,jspf,jjspf,ihop,csum)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(rvalues,config1,a1,a2,iwalk,dirphase,config2,ii,ispf,iispf,jspf,jjspf,ihop,csum,mytally)
 
 !! REDUCTION(+:reducedpottally) caused crashes!  OMP CRITICAL instead below.
+
+  allocate(mytally(www%nspf,www%nspf,www%nspf,www%nspf))
+  mytally(:,:,:,:)=0d0
 
   rvalues(:)=bondpoints(:)
 
@@ -139,21 +143,23 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
            iispf=www%doublewalkdirspf(3,iwalk,config1)  !BRA1
            jjspf=www%doublewalkdirspf(4,iwalk,config1)  !KET1 (walk)
            
-!$OMP CRITICAL           
-           reducedpottally(ispf,jspf,iispf,jjspf) =  &    
-                reducedpottally(ispf,jspf,iispf,jjspf) +  &
+           mytally(ispf,jspf,iispf,jjspf) =  &    
+                mytally(ispf,jspf,iispf,jjspf) +  &
                 dirphase*csum           !! 1/R factor above
            
-           reducedpottally(iispf,jjspf,ispf,jspf) =  &
-                reducedpottally(iispf,jjspf,ispf,jspf) + &
+           mytally(iispf,jjspf,ispf,jspf) =  &
+                mytally(iispf,jjspf,ispf,jspf) + &
                 dirphase*csum           !! 1/R factor above
-!$OMP END CRITICAL
 
         enddo
 
      enddo
   enddo   ! config1
 !$OMP END DO
+!$OMP CRITICAL
+  reducedpottally(:,:,:,:)=reducedpottally(:,:,:,:)+mytally(:,:,:,:)
+!$OMP END CRITICAL
+  deallocate(mytally)
 !$OMP END PARALLEL
 
   deallocate(avector2)
