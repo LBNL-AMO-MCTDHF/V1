@@ -509,12 +509,12 @@ subroutine fast_newconfiglist(www)
 
 !! count maximum number of electrons in shells greater than ishell, given maxocc
      isum=0
-     do jshell=2,numshells
+     do jshell=ishell+1,numshells
         isum=isum+min(maxocc(jshell),2*(allshelltop(jshell)-allshelltop(jshell-1)))
      enddo
-!! minimum number of electrons in shells 1 through ishell is then max(0,numelec-isum)
+!! minimum number of electrons in shells 1 through ishell given maxocc is then max(0,numelec-isum)
 !! maximum number of holes in shells 1 through ishell given maxocc is then 
-!!     2*allshelltop(ishell)-max(0,numelec-isum)
+!!     2*allshelltop(ishell)-max(0,numelec-isum) :
 
      isum=max(0,2*allshelltop(ishell)-max(0,www%numelec-isum))
 
@@ -928,19 +928,19 @@ endif
 
 
 contains
-  function okexcite(jjj)
+  function okexcite(kkk)
     implicit none
     logical :: okexcite
-    integer,intent(in) :: jjj(www%numelec)   !! numelec*2=ndof
-    integer :: numwithinshell(numshells),kkk(www%numelec),ii,ishell 
-    numwithinshell(:)=0
-    kkk(:)=(jjj(:)+1)/2   !! orderflag 0
+    integer,intent(in) :: kkk(www%numelec)
+    integer :: numwithinshell(numshells),ii,ishell,numinshell(numshells)
+
+    numwithinshell(:)=0; numinshell(:)=0
     do ii=1,www%numelec
        do ishell=1,numshells
-          if (kkk(ii).gt.allshelltop(ishell)) then
+          if (kkk(ii).gt.allshelltop(ishell-1).and.kkk(ii).le.allshelltop(ishell)) then
+             numinshell(ishell)=numinshell(ishell)+1
+             numwithinshell(ishell:numshells)=numwithinshell(ishell:numshells)+1
              exit
-          else
-             numwithinshell(ishell)=numwithinshell(ishell)+1
           endif
        enddo
     enddo
@@ -949,7 +949,15 @@ contains
           okexcite=.false.
           return
        endif
+       if ( numinshell(ishell).lt.minocc(ishell) .or. numinshell(ishell).gt.maxocc(ishell)) then
+          okexcite=.false.
+          return
+       endif
     enddo
+    if (numinshell(numshells).gt.vexcite) then
+       okexcite=.false.
+       return
+    endif
     okexcite=.true.
   end function okexcite
 

@@ -153,7 +153,7 @@ subroutine load_spfs(inspfs, numloaded)    !! both output
   implicit none
   integer,intent(out) :: numloaded
   DATATYPE,intent(out) :: inspfs(spfsize,nspf+numfrozen)
-  integer :: ii,jj,kk,ll,flag
+  integer :: ii,jj,kk,flag
   DATATYPE,allocatable :: inspfs0(:,:)
 
   allocate(inspfs0(spfsize,nspf+numfrozen+numskiporbs))
@@ -172,8 +172,7 @@ subroutine load_spfs(inspfs, numloaded)    !! both output
      OFLWR "Loaded ", jj, " spfs from file ",spffile(ii); CFL
   enddo
   jj=0
-  ll=numloaded
-  do ii=1,ll
+  do ii=1,numloaded
      flag=0
      do kk=1,numskiporbs
         if (orbskip(kk).eq.ii) then
