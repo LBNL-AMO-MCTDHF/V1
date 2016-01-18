@@ -983,10 +983,7 @@ end subroutine fast_newconfiglist
 
 
 subroutine set_newconfiglist(wwin,wwout)
-  use output_parameters
   use fileptrmod
-  use basis_parameters
-  use sparse_parameters
   use walkmod
   use mpimod
   implicit none
@@ -1029,13 +1026,18 @@ subroutine set_newconfiglist(wwin,wwout)
   wwout%botconfig=wwin%botdfconfig
   wwout%topconfig=wwin%topdfconfig
   
-  if (sparseconfigflag.eq.0) then
+  wwout%sparseconfigflag=wwin%sparseconfigflag
+
+  if (wwout%sparseconfigflag.eq.0) then
      wwout%configstart=1
      wwout%configend=wwin%numdfconfigs
   else
      wwout%configstart=wwin%botdfconfig
      wwout%configend=wwin%topdfconfig
   endif
+
+  wwout%startrank=wwin%startrank
+  wwout%endrank=wwin%endrank
 
   wwout%parconsplit=wwin%parconsplit
 

@@ -256,7 +256,7 @@ subroutine spinsets_first(www)
 
      do i=www%configstart,www%configend
         if (taken(i).ne.1) then
-           print *, "TAKEN ERROR!!!!", myrank,i,taken(i); call mpistop()
+           print *, "TAKEN ERROR!!!!", myrank,i,taken(i),www%startrank,www%endrank; call mpistop()
         endif
      enddo
 
