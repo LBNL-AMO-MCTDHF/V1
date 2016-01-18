@@ -903,8 +903,6 @@ subroutine biomatvec_byproc(firstproc,lastproc,x,y)
 
   y(:,:)=0d0
 
-!! Hopefully no problems.  If problems try REDUCTION(+:y)
-!!
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,ihop,csum,j,myout) 
 
 !$OMP DO SCHEDULE(DYNAMIC)

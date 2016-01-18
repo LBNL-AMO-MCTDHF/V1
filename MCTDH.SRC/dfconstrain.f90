@@ -705,7 +705,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
 
      liosolve(:)=0.d0
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,a1,a1p,ihop,iwalk,csum,config2,dirphase,a2,a2p,ispf,jspf,flag,ind) REDUCTION(+:liosolve)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,a1,a1p,ihop,iwalk,csum,config2,dirphase,a2,a2p,ispf,jspf,flag,ind)
 !$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
 
@@ -742,7 +742,9 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
               end select
 
               if (flag==1) then
+!$OMP CRITICAL
                  liosolve(ind)=liosolve(ind)+                   dirphase*csum
+!$OMP END CRITICAL
               endif
            enddo  !! iwalk
         enddo     !! ihop
@@ -989,8 +991,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
 
      liosolve=0.d0
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,a1,a1p,ihop,iwalk,csum,config2,dirphase,a2,a2p,ispf,jspf,flag,ind) REDUCTION(+:liosolve)
-
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,a1,a1p,ihop,iwalk,csum,config2,dirphase,a2,a2p,ispf,jspf,flag,ind)
 !$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
 
@@ -1019,7 +1020,9 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
               endif
               
               if (flag==1) then
+!$OMP CRITICAL
                  liosolve(ind)=liosolve(ind) + dirphase*csum
+!$OMP END CRITICAL
               endif
            enddo  !! iwalk
         enddo     !! ihop

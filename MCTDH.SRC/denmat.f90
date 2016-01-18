@@ -207,7 +207,9 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
 
   !! single off diagonal walks
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ii,iwalk,config2,dirphase,ispf,jspf,mydenmat,a1,a2,csum,ihop) REDUCTION(+:denmat)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ii,iwalk,config2,dirphase,ispf,jspf,mydenmat,a1,a2,csum,ihop)
+
+!! removed  REDUCTION(+:denmat) after problems in get_twoereduced, OMP CRITICAL instead
 
   mydenmat(:,:)=0.d0
 
@@ -247,7 +249,9 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
      enddo
   enddo
 !$OMP END DO
+!$OMP CRITICAL
   denmat(:,:)=denmat(:,:)+mydenmat(:,:)
+!$OMP END CRITICAL
 !$OMP END PARALLEL
 
   deallocate(avector2)

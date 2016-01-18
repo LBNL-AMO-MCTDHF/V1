@@ -108,7 +108,9 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
 
   reducedpottally(:,:,:,:)=0.d0
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(rvalues,config1,a1,a2,iwalk,dirphase,config2,ii,ispf,iispf,jspf,jjspf,ihop,csum) REDUCTION(+:reducedpottally)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(rvalues,config1,a1,a2,iwalk,dirphase,config2,ii,ispf,iispf,jspf,jjspf,ihop,csum)
+
+!! REDUCTION(+:reducedpottally) caused crashes!  OMP CRITICAL instead below.
 
   rvalues(:)=bondpoints(:)
 
@@ -131,12 +133,13 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
         do iwalk=www%doublehopwalkstart(ihop,config1),www%doublehopwalkend(ihop,config1)
            
            dirphase=www%doublewalkdirphase(iwalk,config1)
-           
+
            ispf=www%doublewalkdirspf(1,iwalk,config1)   !BRA2 
            jspf=www%doublewalkdirspf(2,iwalk,config1)   !KET2 (walk)
            iispf=www%doublewalkdirspf(3,iwalk,config1)  !BRA1
            jjspf=www%doublewalkdirspf(4,iwalk,config1)  !KET1 (walk)
            
+!$OMP CRITICAL           
            reducedpottally(ispf,jspf,iispf,jjspf) =  &    
                 reducedpottally(ispf,jspf,iispf,jjspf) +  &
                 dirphase*csum           !! 1/R factor above
@@ -144,6 +147,7 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
            reducedpottally(iispf,jjspf,ispf,jspf) =  &
                 reducedpottally(iispf,jjspf,ispf,jspf) + &
                 dirphase*csum           !! 1/R factor above
+!$OMP END CRITICAL
 
         enddo
 
@@ -190,7 +194,9 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
 
   reducedproderiv(:,:)=0.d0
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(mypro,myredpro,config1,iwalk,config2,dirphase,ispf,jspf,a2mult,ihop,csum) REDUCTION(+:reducedproderiv)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(mypro,myredpro,config1,iwalk,config2,dirphase,ispf,jspf,a2mult,ihop,csum) 
+
+!! removing REDUCTION(+:reducedproderiv) due to get_twoereducedx problems OMP CRITICAL instead
 
   mypro(:,:)=proderivmod(:,:)
   myredpro(:,:)=0d0
@@ -232,7 +238,9 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
      enddo
   enddo
 !$OMP END DO
+!$OMP CRITICAL
   reducedproderiv(:,:)=reducedproderiv(:,:)+myredpro(:,:)
+!$OMP END CRITICAL
 !$OMP END PARALLEL
 
   deallocate(avector2)
@@ -277,7 +285,9 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
      enddo
   endif
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(rvalues,invrvalues,invrsqvalues,config1,a1,a2,a2r,a2inv,a2invsq,iwalk,config2,dirphase,ispf,jspf,myinvr,myr,myinvrsq,ihop,invdot,rdot,invsqdot) REDUCTION(+:reducedinvr,reducedr,reducedinvrsq)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(rvalues,invrvalues,invrsqvalues,config1,a1,a2,a2r,a2inv,a2invsq,iwalk,config2,dirphase,ispf,jspf,myinvr,myr,myinvrsq,ihop,invdot,rdot,invsqdot) 
+
+!! removing REDUCTION(+:reducedinvr,reducedr,reducedinvrsq) due to get_twoereducedx problems CRITICAL instead
 
   rvalues(:)=bondpoints(:);    invrvalues(:)=(1.d0/bondpoints(:));   invrsqvalues(:)=(1.d0/bondpoints(:)**2)
 
@@ -315,9 +325,11 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
      enddo
   enddo
 !$OMP END DO
+!$OMP CRITICAL
   reducedinvr(:,:)=reducedinvr(:,:)+myinvr(:,:)
   reducedinvrsq(:,:)=reducedinvrsq(:,:)+myinvrsq(:,:)
   reducedr(:,:)=reducedr(:,:)+myr(:,:)
+!$OMP END CRITICAL
 !$OMP END PARALLEL
 
   deallocate(avector2)

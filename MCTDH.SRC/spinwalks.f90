@@ -29,8 +29,10 @@ subroutine spinwalkinit(www)
   implicit none
   type(walktype) :: www
 
+  call mpibarrier()
   OFLWR "Go spinwalk init. "; CFL
-  
+  call mpibarrier()
+
   allocate(www%sss%numspinsets(www%startrank:www%endrank),&
        www%sss%numspindfsets(www%startrank:www%endrank))
 
@@ -43,6 +45,9 @@ subroutine spinwalkinit(www)
   unpaired(:,:)=(-99);   numunpaired(:)=(-99)
   msvalue(:)=(-99);   numspinwalks(:)=(-99)
 
+  call mpibarrier()
+  OFLWR "Go get numspinwalks."; CFL
+  
   call getnumspinwalks(www)
 
   allocate(spinwalk(maxspinwalks,www%configstart:www%configend), &

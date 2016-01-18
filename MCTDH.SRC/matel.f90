@@ -321,8 +321,6 @@ subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixt
 
   smallmatrixtr=0d0; 
 
-!! try adding REDUCTION(+:smallmatrixtr) if problems
-!!
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ihop,iwalk,myind,csum,myvec)
 
 !$OMP DO SCHEDULE(DYNAMIC)
@@ -372,8 +370,6 @@ subroutine arbitraryconfig_matel_doubles00transpose(www,twobodymat, smallmatrixt
 
   smallmatrixtr=0d0;
 
-!! try adding REDUCTION(+:smallmatrixtr) if problems
-!!
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ihop,iwalk,myind,csum,myvec) 
 
 !$OMP DO SCHEDULE(DYNAMIC)
