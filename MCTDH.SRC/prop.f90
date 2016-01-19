@@ -75,6 +75,13 @@ subroutine prop_loop( starttime)
      call drivinginit(startenergy)
      OFLWR "called drivinginit"; CFL
   endif
+
+  if (debugflag.eq.956) then
+     OFLWR "Stopping due to debugflag=956"; CFLST
+  endif
+
+!! in case actions_initial or any of the previous things changed psi call
+!!    get_stuff again
   
   call get_stuff(0.0d0)
 
@@ -83,23 +90,6 @@ subroutine prop_loop( starttime)
      open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="unknown")
      write(853,'(T16,100A15)')  "Prop ", "Act ", "After ", "Init", "Save", "MPI", "Non MPI"
      close(853)
-  endif
-
-  call system_clock(jtime)  ;  times(5)=times(5)+jtime-itime; itime=jtime
-  call actions_initial()                 !!   ACTIONS_INITIAL: PUT ANALYSIS ROUTINES HERE; THEN TERMINATES.
-                                         !! ***************************************************************
-  call system_clock(jtime)  ;  times(3)=times(3)+jtime-itime; itime=jtime
-
-  if (skipflag.ne.0) then
-     OFLWR "Stopping"; CFLST
-  endif
-
-!! allowing that actions_initial could change psi.  OR replace_withnat!  drivinginit ok.
-
-  call get_stuff(0.d0)
-
-  if (debugflag.eq.956) then
-     OFLWR "Stopping due to debugflag=956"; CFLST
   endif
 
   call system_clock(jtime)  ;  times(5)=times(5)+jtime-itime

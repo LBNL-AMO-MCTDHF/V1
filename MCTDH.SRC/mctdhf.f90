@@ -587,11 +587,24 @@ program mctdhf
      call natprojalloc()
   endif
 
-!! ****  CORE ROUTINE **** !!
+!! *************************************************************** !!
+!!   ACTIONS_INITIAL: PUT ANALYSIS ROUTINES HERE; THEN TERMINATES. !!
+!! *************************************************************** !!
+
+  if (skipflag.eq.0) then
+     call get_stuff(0d0)
+  endif
+  call actions_initial()                 
+  if (skipflag.ne.0) then
+     OFLWR "Stopping after actions_initial"; CFLST
+  endif
+                                         
+!! *************************************************************** !!
+!! ************************* CORE ROUTINE ************************ !!
 
   call prop_loop( 0.d0 )
 
-!! *********************** !!
+!! *************************************************************** !!
 
   if (threshflag.ne.0) then
      OFLWR "   ...getting state expectation values etcetera..."; CFL
