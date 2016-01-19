@@ -408,9 +408,10 @@ subroutine getparams()
   if (improvedrelaxflag.ne.0.and.constraintflag.eq.1) then
      OFLWR "FOR DEN CONSTRAINT, USE IMPROVEDNATFLAG FOR RELAX, NO CONSTRAINTFLAG."; CFLST
   endif
-  if (improvedrelaxflag.ne.0.and.constraintflag.eq.2.and.improvedquadflag.ne.3.and.improvedquadflag.ne.1) then  
-     OFLWR "FOR DF CONSTRAINT, DO NOT DIAGONALIZE FOR A-VECTOR - GET WRONG ANSWER"; CFLST
-  endif
+
+!!$   if (improvedrelaxflag.ne.0.and.constraintflag.eq.2.and.improvedquadflag.ne.3.and.improvedquadflag.ne.1) then  
+!!$     OFLWR "FOR DF CONSTRAINT, DO NOT DIAGONALIZE FOR A-VECTOR - GET WRONG ANSWER TEMP CONTINUE"; CFL
+!!$  endif
   
   if ((sparseconfigflag.ne.0).and.(stopthresh.lt.lanthresh).and.(improvedquadflag.eq.0.or.improvedquadflag.eq.2)) then
      OFLWR "Enforcing lanthresh.le.stopthresh"

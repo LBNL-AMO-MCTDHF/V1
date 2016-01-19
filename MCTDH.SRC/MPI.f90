@@ -1218,8 +1218,18 @@ end subroutine mpibarrier
 
 
 subroutine mpistop()
+  use fileptrmod
+  implicit none
+  OFLWR "MCTDHF STOP!";CFL
   stop
 end subroutine mpistop
+
+subroutine mpiabort()
+  use fileptrmod
+  implicit none
+  OFLWR "MCTDHF ABORT!";CFL
+  stop
+end subroutine mpiabort
 
 
 #endif
