@@ -366,7 +366,7 @@ subroutine fast_newconfiglist(www)
   integer,allocatable :: bigspinblockstart(:),bigspinblockend(:)
   integer :: i, idof, ii , lowerarr(max_numelec),upperarr(max_numelec),  thisconfig(www%ndof),&
        reorder,nullint,kk,iconfig,mm, single(max_numelec),ishell,jj,maxssize=0,sss,nss,ssflag,numdoubly,&
-       mynumexcite(numshells),isum,jshell,jsum,ppp,numspinblocks
+       mynumexcite(numshells),isum,jshell,jsum,ppp,numspinblocks,getmval,getugval
   logical :: allowedconfig0
 
   if (www%numelec.gt.max_numelec) then
@@ -833,8 +833,6 @@ endif
      call re_order_configlist(www%configlist(:,:),www%configorder(:),www%ndof,www%numconfig,numspinblocks,bigspinblockstart(:),bigspinblockend(:))
   endif
 
-  OFLWR "     ...Done fast_newconfiglist"; CFL
-
   if (nss.ne.numspinblocks) then
      OFLWR "NUMSPINBLOCKS ERR",nss,numspinblocks; CFLST
   endif
@@ -926,6 +924,21 @@ endif
 
   deallocate(bigspinblockstart,bigspinblockend)
 
+  if (spfrestrictflag.ne.0) then
+     do ii=1,www%numconfig
+        www%configmvals(ii)=getmval(www,www%configlist(:,ii))
+     enddo
+     if (spfugrestrict.ne.0) then
+        do ii=1,www%numconfig
+           www%configugvals(ii)=getugval(www,www%configlist(:,ii))
+        enddo
+     endif
+  endif
+
+  OFLWR "     ...Done fast_newconfiglist"; CFL
+  return
+  return
+  return
 
 contains
   function okexcite(kkk)
