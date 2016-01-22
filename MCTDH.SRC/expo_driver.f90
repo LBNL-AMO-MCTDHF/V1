@@ -31,7 +31,6 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   real*8,intent(in) :: time1,time2
   DATATYPE,intent(inout) :: inspfs(spfsize,nspf)
   integer,intent(out) :: numiters
-  DATATYPE :: tempspfs(spfsize,nspf)   !! AUTOMATIC
   real*8, save :: tempstepsize = -1d0
   real*8 :: midtime, tdiff, error, norm
   integer :: itrace, iflag,getlen
@@ -47,8 +46,8 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   integer, save :: exposet=0   
 !! 0 = not set; reduce to minimum      !! 1 = minimum found; don't decrease
 
-  DATATYPE :: aspfs(spfsize,nspf), propspfs(spfsize,nspf),   outspfs(spfsize,nspf), &
-       com_aspfs(spfsmallsize,nspf), com_propspfs(spfsmallsize,nspf),   com_outspfs(spfsmallsize,nspf)
+  DATATYPE,allocatable :: aspfs(:,:), propspfs(:,:),   outspfs(:,:), &
+       com_aspfs(:,:), com_propspfs(:,:),   com_outspfs(:,:),  tempspfs(:,:)
   integer :: idim, liwsp=0, lwsp=0,ttott
   real*8, allocatable :: wsp(:)
   integer, allocatable :: iwsp(:)
@@ -77,6 +76,10 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   allocate(wsp(lwsp)); wsp=0
   liwsp=maxexpodim*2+3;   
   allocate(iwsp(liwsp)); iwsp=0
+
+  allocate(aspfs(spfsize,nspf), propspfs(spfsize,nspf),   outspfs(spfsize,nspf), &
+       com_aspfs(spfsmallsize,nspf), com_propspfs(spfsmallsize,nspf),   com_outspfs(spfsmallsize,nspf),&
+       tempspfs(spfsize,nspf))
 
 
   icalled=icalled+1
@@ -217,6 +220,7 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 
 
   deallocate(wsp,iwsp)
+  deallocate(aspfs, propspfs, outspfs, com_aspfs, com_propspfs, com_outspfs, tempspfs)
 
 end subroutine expoprop
 
