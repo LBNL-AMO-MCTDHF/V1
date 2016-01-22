@@ -32,16 +32,7 @@ subroutine prop_loop( starttime)
      call basis_project(www,numr,yyy%cmfpsivec(astart(imc),0))
   enddo
 
-  call get_allden()
-
-  if (improvedrelaxflag.ne.0.and.improvednatflag.ne.0) then
-     call replace_withnat(1)
-     do imc=1,mcscfnum
-        call basis_project(www,numr,yyy%cmfpsivec(astart(imc),0))  !! shouldnt be necessary
-     enddo
-  endif
-
-  call all_matel()
+  call get_stuff(0.0d0)
 
   do imc=1,mcscfnum
 
@@ -72,11 +63,6 @@ subroutine prop_loop( starttime)
   if (debugflag.eq.956) then
      OFLWR "Stopping due to debugflag=956"; CFLST
   endif
-
-!! in case actions_initial or any of the previous things changed psi call
-!!    get_stuff again
-  
-  call get_stuff(0.0d0)
 
   if ((myrank.eq.1).and.(notiming.le.1)) then
      call system("echo -n > "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
@@ -248,7 +234,6 @@ subroutine prop_loop( starttime)
            call mympirealreduceone(error)
         endif
         error=sqrt(error)
-
 
         OFL; write(mpifileptr,'(A24,2E10.2,A10,2E10.2)') &
              " STOPTEST : ORBITALS ", error,stopthresh, " AVECTOR ",avecerror,astoptol;CFL

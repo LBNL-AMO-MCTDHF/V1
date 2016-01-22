@@ -573,7 +573,22 @@ program mctdhf
         endif
         allocate(tempvals(mcscfnum))
 
-        call myconfigeig(www,dwwptr,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,min(totread,1),0d0,max(0,improvedrelaxflag-1))
+        call myconfigeig(www,dwwptr,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
+             min(totread,1),0d0,max(0,improvedrelaxflag-1))
+
+        if (improvednatflag.ne.0) then
+           yyy%cmfpsivec(astart(1):aend(mcscfnum),0) = &
+                RESHAPE(bigavector(:,:),(/tot_adim*mcscfnum/))
+           call get_allden()
+           call replace_withnat(1)
+           call all_matel()
+!! since biorthogonalization is imperfect with restricted configuration spaces
+!!  and subject to tolerance criteria in any case, go ahead and rediagonalize
+           bigavector(:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),&
+                (/tot_adim,mcscfnum/))
+           call myconfigeig(www,dwwptr,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
+                1,0d0,max(0,improvedrelaxflag-1))
+        endif
 
         deallocate(tempvals)
      endif  
