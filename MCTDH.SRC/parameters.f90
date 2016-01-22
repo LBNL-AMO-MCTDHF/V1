@@ -514,10 +514,6 @@ integer :: totspfdim
 integer :: autosize, autosteps
 integer :: cdenflag=0            !!              !! Calulate natconfig?  Not necessary if Act=6.
 integer :: rdenflag=0            !!              !! Calulate denmat in R? 
-integer :: lanagain = -1  !! Lanczos restart flag.  Default -1 (lanczos eigen restart until converged)
-                          !!    Otherwise, max number of maxlanorder full builds of krylov spaces (# restarts + 1)
-                          !! Improved relax: starts at 1.  Incremented every time energy goes up with an iteration.
-                          !!   If subsequent iters are within stopthresh, turned to -1. 
 real*8 :: globaltime=0.d0   !! for ease of output
 !!! real*8 :: rcond=1.d-4      !! singular value for split operator cranck-nicholson
 real*8 :: pi

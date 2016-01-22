@@ -924,12 +924,8 @@ subroutine getparams()
   write(mpifileptr,*) ;  call closefile()
   call write_actions()
   
-  lanagain = (-1)
-
-
-
-
 end subroutine getparams
+
 
 subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse is not read
   use parameters

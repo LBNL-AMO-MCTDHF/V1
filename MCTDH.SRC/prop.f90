@@ -24,13 +24,6 @@ subroutine prop_loop( starttime)
 
   allocate(avectorp(tot_adim),outspfs(totspfdim))
 
-!!GOING TO FULL ORDER.
-!  if (improvedrelaxflag.ne.0.and.spf_fl ag.ne.0.and.sparseconfigflag.ne.0) then
-!     lanagain=1   !! max number of builds of krylov space for eigen (#restarts + 1)
-!  else
-     lanagain=-1
-!  endif
-
   lastenergy(:)=1.d+3;  lastenergyavg=1.d+3
 
   call system_clock(itime)
@@ -260,17 +253,7 @@ subroutine prop_loop( starttime)
         OFL; write(mpifileptr,'(A24,2E10.2,A10,2E10.2)') &
              " STOPTEST : ORBITALS ", error,stopthresh, " AVECTOR ",avecerror,astoptol;CFL
         
-        if ( real(thisenergyavg).gt.real(lastenergyavg).and.lanagain.ne.-1 ) then
-           OFLWR "  !! Incrementing lanagain !! ", lanagain, lanagain*2; CFL
-           lanagain = lanagain * 2
-           if (lanagain.gt.128) then
-              lanagain=-1
-           endif
-        endif
-        if (( error.lt.stopthresh.or.spf_flag.eq.0) .and. lanagain.ne.-1) then
-           OFLWR "  !! --> Orbitals near converged, going to full A-vector order"; CFL
-           lanagain=-1
-        else if ( error.lt.stopthresh .or.spf_flag.eq.0) then
+        if ( error.lt.stopthresh .or.spf_flag.eq.0) then
            if (avecerror.gt.astoptol) then
               OFL; write(mpifileptr,'(A67,2E12.5)') "   Orbitals Converged, Avector not necessarily converged "; CFL
            else
@@ -333,10 +316,6 @@ subroutine prop_loop( starttime)
   endif
   OFLWR "   ...end prop..."; CFL
   call mpibarrier()
-
-  if (improvedrelaxflag.ne.0) then
-     lanagain=-1 !! reset to original value -- should already be -1 in all cases, redundant
-  endif
 
   deallocate(avectorp,outspfs)
 
