@@ -77,10 +77,13 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   liwsp=maxexpodim*2+3;   
   allocate(iwsp(liwsp)); iwsp=0
 
-  allocate(aspfs(spfsize,nspf), propspfs(spfsize,nspf),   outspfs(spfsize,nspf), &
-       com_aspfs(spfsmallsize,nspf), com_propspfs(spfsmallsize,nspf),   com_outspfs(spfsmallsize,nspf),&
-       tempspfs(spfsize,nspf))
+  allocate(aspfs(spfsize,nspf), propspfs(spfsize,nspf),   outspfs(spfsize,nspf), tempspfs(spfsize,nspf))
+  aspfs=0; propspfs=0; outspfs=0; tempspfs=0
 
+  if (orbcompact.ne.0) then
+     allocate(com_aspfs(spfsmallsize,nspf), com_propspfs(spfsmallsize,nspf),   com_outspfs(spfsmallsize,nspf))
+     com_aspfs=0; com_propspfs=0; com_outspfs=0
+  endif
 
   icalled=icalled+1
   if (icalled.eq.1) then
@@ -220,7 +223,10 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 
 
   deallocate(wsp,iwsp)
-  deallocate(aspfs, propspfs, outspfs, com_aspfs, com_propspfs, com_outspfs, tempspfs)
+  deallocate(aspfs, propspfs, outspfs, tempspfs)
+  if (orbcompact.ne.0) then
+     deallocate(com_aspfs, com_propspfs, com_outspfs)
+  endif
 
 end subroutine expoprop
 

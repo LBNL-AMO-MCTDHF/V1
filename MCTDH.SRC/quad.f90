@@ -105,6 +105,18 @@ subroutine quadoperate(notusedint,inspfs,outspfs)
 end subroutine quadoperate
 
 
+subroutine quadopcompact(notusedint,inspfs,outspfs)
+   use parameters
+   implicit none
+   integer :: notusedint
+   DATATYPE,intent(in) ::  inspfs(spfsmallsize*nspf)
+   DATATYPE,intent(out) :: outspfs(spfsmallsize*nspf)
+
+   call jacopcompact(inspfs,outspfs)
+
+end subroutine quadopcompact
+
+
 subroutine quadspfs(inspfs,jjcalls)
   use parameters
   use mpimod
@@ -115,11 +127,15 @@ subroutine quadspfs(inspfs,jjcalls)
   integer :: icount,maxdim
   real*8 :: orthogerror,dev,mynorm
   DATATYPE :: hermdot
-  DATATYPE, allocatable ::  vector(:), vector2(:), vector3(:)
-  EXTERNAL :: quadoperate,dummysub
+  DATATYPE, allocatable ::  vector(:), vector2(:), vector3(:), com_vector2(:), com_vector3(:)
+  EXTERNAL :: quadoperate,dummysub,quadopcompact
 
   allocate( vector(totspfdim), vector2(totspfdim), vector3(totspfdim) )
   vector=0; vector2=0; vector3=0
+  if (orbcompact.ne.0) then
+     allocate( com_vector2(spfsmallsize*nspf), com_vector3(spfsmallsize*nspf) )
+     com_vector2=0; com_vector3=0
+  endif
 
   if (jacsymflag.ne.1) then
      OFLWR "setting jacsymflag=1 for orbital quad"; CFL
@@ -155,16 +171,33 @@ subroutine quadspfs(inspfs,jjcalls)
         inspfs = vector
         OFLWR "    --> Converged newton"; CFL
         deallocate( vector,vector2,vector3)
+        if (orbcompact.ne.0) then
+           deallocate(com_vector2,com_vector3)
+        endif
         call mpibarrier()
         return  !! RETURN
      else
         vector3=vector   !! guess
-        if (parorbsplit.eq.3) then
-           maxdim=min(totspfdim*nprocs,maxexpodim)
-           call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, quadtol,totspfdim,maxdim,1)
+
+        if (orbcompact.ne.0) then
+           call spfs_compact(vector2,com_vector2)
+           call spfs_compact(vector3,com_vector3)
+           if (parorbsplit.eq.3) then
+              maxdim=min(spfsmallsize*nspf*nprocs,maxexpodim)
+              call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, quadtol,spfsmallsize*nspf,maxdim,1)
+           else
+              maxdim=min(spfsmallsize*nspf,maxexpodim)
+              call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, quadtol,spfsmallsize*nspf,maxdim,0)
+           endif
+           call spfs_expand(com_vector3,vector3)
         else
-           maxdim=min(totspfdim,maxexpodim)
-           call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, quadtol,totspfdim,maxdim,0)
+           if (parorbsplit.eq.3) then
+              maxdim=min(totspfdim*nprocs,maxexpodim)
+              call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, quadtol,totspfdim,maxdim,1)
+           else
+              maxdim=min(totspfdim,maxexpodim)
+              call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, quadtol,totspfdim,maxdim,0)
+           endif
         endif
 
         mynorm=abs(hermdot(vector3,vector3,totspfdim))
