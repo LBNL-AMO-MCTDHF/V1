@@ -331,15 +331,17 @@ end subroutine re_order_configlist
 !! GETS CONFIGURATION LIST (SLATER DETERMINANTS NOT SPIN EIGFUNCTS)
 !!  AT BEGINNING. 
 
-subroutine fast_newconfiglist(www)
+subroutine fast_newconfiglist(www,domflags)
   use output_parameters
   use fileptrmod
   use basis_parameters
   use sparse_parameters
   use walkmod
   use mpimod
+  use ham_parameters  !! tdflag and offaxispulseflag for configtypes
   implicit none
   type(walktype) :: www
+  logical,intent(in) :: domflags
   logical :: alreadycounted
   integer, parameter :: max_numelec=80
   integer, pointer :: &
@@ -391,13 +393,14 @@ subroutine fast_newconfiglist(www)
      endif
 
   if (alreadycounted) then
-     OFLWR "Go fast_newconfiglist, getting configurations";CFL
+     OFLWR "Go fast_newconfiglist.  Allocating...";CFL
      deallocate(bigspinblockstart,bigspinblockend)
      allocate(www%configlist(www%ndof,www%numconfig), www%configmvals(www%numconfig), &
-          www%configugvals(www%numconfig), www%configorder(www%numconfig), &
+          www%configugvals(www%numconfig), www%configtypes(www%numconfig),www%configorder(www%numconfig), &
           bigspinblockstart(numspinblocks+2*nprocs),bigspinblockend(numspinblocks+2*nprocs))
 
-     www%configlist(:,:)=0; www%configmvals(:)=0; www%configugvals(:)=0
+     www%configlist(:,:)=0; www%configmvals(:)=0; www%configugvals(:)=0; www%configtypes(:)=0
+     OFLWR "   getting configurations."; CFL
   else
      allocate(bigspinblockstart(1),bigspinblockend(1))  !! avoid warn bounds
      OFLWR "Go fast_newconfiglist";CFL
@@ -935,6 +938,16 @@ endif
      endif
   endif
 
+  if (domflags.and.(tdflag.eq.0.or.offaxispulseflag.eq.0)) then
+     if (spfrestrictflag.ne.0) then
+        if (spfugrestrict.ne.0.and.tdflag.eq.0) then
+           www%configtypes(:)=www%configmvals(:)*www%configugvals(:)
+        else
+           www%configtypes(:)=www%configmvals(:)
+        endif
+     endif
+  endif
+
   OFLWR "     ...Done fast_newconfiglist"; CFL
   return
   return
@@ -1017,12 +1030,14 @@ subroutine set_newconfiglist(wwin,wwout)
   wwout%maxconfigsperproc=wwin%maxdfconfsperproc
 
   allocate(wwout%configlist(wwout%ndof,wwout%numconfig),wwout%configmvals(wwout%numconfig),&
-       wwout%configugvals(wwout%numconfig), wwout%configorder(wwout%numconfig))
+       wwout%configugvals(wwout%numconfig), wwout%configtypes(wwout%numconfig), &
+       wwout%configorder(wwout%numconfig))
 
   do iconfig=1,wwout%numconfig
      wwout%configlist(:,iconfig)=wwin%configlist(:,wwin%ddd%dfincludedconfigs(iconfig))
      wwout%configmvals(iconfig)=wwin%configmvals(wwin%ddd%dfincludedconfigs(iconfig))
      wwout%configugvals(iconfig)=wwin%configugvals(wwin%ddd%dfincludedconfigs(iconfig))
+     wwout%configtypes(iconfig)=wwin%configtypes(wwin%ddd%dfincludedconfigs(iconfig))
   enddo
 
   jconfig=0

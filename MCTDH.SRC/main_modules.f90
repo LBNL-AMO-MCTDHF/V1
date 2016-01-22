@@ -227,8 +227,6 @@ module walkmod
 
   type walktype
 
-     logical :: domflags = .true.
-
      integer :: dflevel=0, dfwalklevel=0, dfrestrictflag=0
      integer :: singlewalkflag=0, doublewalkflag=0
 
@@ -239,6 +237,7 @@ module walkmod
      integer, allocatable :: &
        configmvals(  : ), &     !! if spfrestrict, their mvalues : numconfig
        configugvals(  : ), &       !! ugvalues based on info in spfugvals
+       configtypes( : ),&          !! Hamiltonian matrix elements only among same type
        configorder(:)
 
      integer :: nspf=0, numelec=0, ndof=0

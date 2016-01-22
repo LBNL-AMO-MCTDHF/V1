@@ -193,15 +193,13 @@ end subroutine configlistread
 
 subroutine walks(www)
   use fileptrmod
-  use sparse_parameters
   use walkmod
   use mpimod !! nprocs
-  use ham_parameters !! offaxispulseflag
   use aarrmod
   implicit none
   type(walktype) :: www
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, jspf, iispf, jjspf, config2, config1, dirphase, &
-       iind, flag, idof, iidof, jdof, iwalk, reorder, getconfiguration,getmval,idiag
+       iind, flag, idof, iidof, jdof, iwalk, reorder, getconfiguration,idiag
   logical :: allowedconfig0
   integer :: thisconfig(www%ndof), thatconfig(www%ndof), temporb(2), temporb2(2), isize, &
        listorder(www%maxdoublewalks+www%maxsinglewalks)
@@ -261,7 +259,9 @@ subroutine walks(www)
                  cycle
               endif
 
-              if (www%domflags.and.offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
+              config2=getconfiguration(thatconfig,www)
+           
+              if (www%configtypes(config1).ne.www%configtypes(config2)) then
                  cycle
               endif
 
@@ -269,8 +269,6 @@ subroutine walks(www)
 
               www%singlewalkopspf(1:2,iwalk,config1)=[ ispf,jspf ]   !! ket, bra   bra is walk
               www%singlewalkdirphase(iwalk,config1)=dirphase
-           
-              config2=getconfiguration(thatconfig,www)
            
               www%singlewalk(iwalk,config1)=config2
 
@@ -365,7 +363,9 @@ subroutine walks(www)
                        cycle
                     endif
 
-                    if (www%domflags.and.offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
+                    config2=getconfiguration(thatconfig,www)
+
+                    if (www%configtypes(config1).ne.www%configtypes(config2)) then
                        cycle
                     endif
 
@@ -375,7 +375,6 @@ subroutine walks(www)
                     www%doublewalkdirspf(1:4,iwalk,config1)=[ iispf, jjspf, ispf, jspf ]
                     www%doublewalkdirphase(iwalk,config1)=dirphase
                  
-                    config2=getconfiguration(thatconfig,www)
                     www%doublewalk(iwalk,config1)=config2
 
                  enddo   ! the walk
@@ -413,7 +412,7 @@ subroutine walks(www)
 
   call mpibarrier()
   
-  if (sparseconfigflag.eq.0.and.www%maxsinglewalks.ne.0) then
+  if (www%sparseconfigflag.eq.0.and.www%maxsinglewalks.ne.0) then
      isize=2*www%maxsinglewalks
      call mpiallgather_i(www%singlewalkopspf,   www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
      isize=www%maxsinglewalks
@@ -422,7 +421,7 @@ subroutine walks(www)
   endif
 
 
-  if (sparseconfigflag.eq.0.and.www%maxdoublewalks.ne.0) then
+  if (www%sparseconfigflag.eq.0.and.www%maxdoublewalks.ne.0) then
      isize=4*www%maxdoublewalks
      call mpiallgather_i(www%doublewalkdirspf,  www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
      isize=www%maxdoublewalks
@@ -458,15 +457,13 @@ end subroutine walks
 
 subroutine getnumwalks(www)
   use fileptrmod
-  use ham_parameters
-  use sparse_parameters
   use walkmod
   use mpimod
   use aarrmod
   implicit none
   type(walktype) :: www
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, iispf,  config1,  &
-       dirphase, iind, flag, idof, iidof, jdof,iwalk , reorder, getmval
+       dirphase, iind, flag, idof, iidof, jdof,iwalk , reorder, config2, getconfiguration
   logical :: allowedconfig0
   integer :: thisconfig(www%ndof), thatconfig(www%ndof), temporb(2), temporb2(2),totwalks
   character(len=3) :: iilab
@@ -531,10 +528,12 @@ subroutine getnumwalks(www)
                     cycle
                  endif
 
-                 if (www%domflags.and.offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
+                 config2=getconfiguration(thatconfig,www)
+
+                 if (www%configtypes(config1).ne.www%configtypes(config2)) then
                     cycle
                  endif
-              
+
                  iwalk=iwalk+1
 
               enddo   ! the walk
@@ -545,7 +544,7 @@ subroutine getnumwalks(www)
 
      enddo   ! config1
 
-     if (sparseconfigflag.eq.0) then
+     if (www%sparseconfigflag.eq.0) then
         call mpiallgather_i(www%numsinglewalks(:),www%numconfig,www%configsperproc(:),www%maxconfigsperproc)
      endif
 
@@ -624,7 +623,9 @@ subroutine getnumwalks(www)
                           cycle
                        endif
 
-                       if (www%domflags.and.offaxispulseflag.eq.0.and.getmval(www,thatconfig).ne.getmval(www,thisconfig)) then
+                       config2=getconfiguration(thatconfig,www)
+
+                       if (www%configtypes(config1).ne.www%configtypes(config2)) then
                           cycle
                        endif
 
@@ -640,7 +641,7 @@ subroutine getnumwalks(www)
 
      enddo   ! config1
 
-     if (sparseconfigflag.eq.0) then
+     if (www%sparseconfigflag.eq.0) then
         call mpiallgather_i(www%numdoublewalks(:),www%numconfig,www%configsperproc(:),www%maxconfigsperproc)
      endif
 
@@ -662,7 +663,7 @@ subroutine getnumwalks(www)
 
   enddo
 
-  if (sparseconfigflag.ne.0) then
+  if (www%sparseconfigflag.ne.0) then
      call mympiireduceone(totwalks)
      call mympiimax(www%maxsinglewalks);  call mympiimax(www%maxdoublewalks)
   endif
@@ -678,8 +679,6 @@ end subroutine getnumwalks
 
 subroutine hops(www)
   use fileptrmod
-  use ham_parameters
-  use sparse_parameters
   use walkmod
   use mpimod
   use aarrmod
@@ -896,7 +895,7 @@ subroutine hops(www)
 
   call mpibarrier()
 
-  if (sparseconfigflag.eq.0) then
+  if (www%sparseconfigflag.eq.0) then
      isize=nprocs
      call mpiallgather_i(www%firstsinglehopbyproc(:,:),   www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
      call mpiallgather_i(www%lastsinglehopbyproc(:,:),   www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
@@ -905,7 +904,7 @@ subroutine hops(www)
   endif
 
 
-  if (sparseconfigflag.eq.0) then
+  if (www%sparseconfigflag.eq.0) then
      ii=1
      call mpiallgather_i(www%numdoublehops(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
      call mpiallgather_i(www%numsinglehops(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
@@ -950,7 +949,7 @@ subroutine hops(www)
   OFLWR "GOT HOPS:  "
   WRFL " Single hops this processor ",totsinglehops, " of ", totsinglewalks
   WRFL " Double hops this processor ",totdoublehops, " of ", totdoublewalks; CFL
-  if (sparseconfigflag.ne.0) then
+  if (www%sparseconfigflag.ne.0) then
      call mympiireduceone(totsinglehops);  call mympiireduceone(totdoublehops)
      call mympiireduceone(totsinglewalks);  call mympiireduceone(totdoublewalks)
      call mympiimax(www%maxnumsinglehops);  call mympiimax(www%maxnumdoublehops)
@@ -965,11 +964,10 @@ end subroutine hops
 
 subroutine set_matsize(www)
   use walkmod
-  use sparse_parameters
   implicit none
   type(walktype),intent(inout) :: www
 
-  if (sparseconfigflag.eq.0) then
+  if (www%sparseconfigflag.eq.0) then
      www%singlematsize=www%numconfig
      www%doublematsize=www%numconfig
   else

@@ -291,8 +291,6 @@ program mctdhf
   WRFL "************************************"
   WRFL; CFL
 
-  www%domflags=.true.
-
   www%parconsplit=par_consplit
 
   www%numelec=numelec
@@ -309,7 +307,7 @@ program mctdhf
   www%singlewalkflag=1
   www%doublewalkflag=1
 
-  call fast_newconfiglist(www)
+  call fast_newconfiglist(www,.true.)
 
   num_config=www%numconfig
   allocate(configs_perproc(nprocs))
@@ -359,8 +357,6 @@ program mctdhf
      WRFL "************************************"
      WRFL; CFL
 
-     bioww%domflags=.false.
-
      bioww%parconsplit=par_consplit
 
      bioww%numelec=numelec
@@ -377,7 +373,7 @@ program mctdhf
      bioww%singlewalkflag=1
      bioww%doublewalkflag=0
 
-     call fast_newconfiglist(bioww)
+     call fast_newconfiglist(bioww,.false.)
 
      call walkalloc(bioww);             call walks(bioww)
 
@@ -416,8 +412,6 @@ program mctdhf
      WRFL; CFL
 
 !! WALKTYPE VARIABLE DFWW FOR DFRESTRICT
-
-     dfww%domflags=.true.
 
      dfww%parconsplit=par_consplit
 
