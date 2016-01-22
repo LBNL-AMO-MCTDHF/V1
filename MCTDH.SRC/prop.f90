@@ -57,6 +57,7 @@ subroutine prop_loop( starttime)
   if (drivingflag.ne.0) then
      OFLWR "call drivinginit"; CFL
      call drivinginit(startenergy)
+     call get_stuff(0.0d0)
      OFLWR "called drivinginit"; CFL
   endif
 
