@@ -33,18 +33,13 @@ subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,
      if (spfrestrictflag.eq.0) then
         OFLWR "spfugrestrict requires spfrestrictflag ", spfugrestrict, spfrestrictflag; CFLST
      endif
-! no, will enforce if smallsize actually used, expand and contract subroutines
-!
-!        if (mod(lbig+1,2).ne.0) then
-!           OFLWR "For UG Restrict, must use even number of angular points (odd lbig)"; CFLST
-!        endif
-     
      do ii=1,numspf
         if (abs(inspfugvals(ii)).ne.1) then
            OFLWR "TWOECHECK UG ",ii,inspfugvals(:); CFLST
         endif
      enddo
-     outspfsmallsize=(lbig+1)/2*numerad
+!!     outspfsmallsize=(lbig+1)/2*numerad
+     outspfsmallsize=(lbig+2)/2*numerad     !! lbig even ok
   else
      if (spfrestrictflag.ne.0) then
         outspfsmallsize=(lbig+1)*numerad
@@ -1215,7 +1210,7 @@ subroutine bothcompact_spfs(inspfs,outspfs,howmany,in_spfmvals,in_spfugvals)
   implicit none
   integer,intent(in) :: howmany,in_spfmvals(howmany),in_spfugvals(howmany)
   DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)
-  DATATYPE,intent(out) :: outspfs(numerad,(lbig+1)/2,howmany)
+  DATATYPE,intent(out) :: outspfs(numerad,(lbig+2)/2,howmany)  !! lbig even ok
   DATATYPE :: midspfs(numerad,lbig+1,howmany)
 
   call mcompact_spfs(inspfs,midspfs,howmany,in_spfmvals)
@@ -1228,7 +1223,7 @@ subroutine bothexpand_spfs(inspfs,outspfs,howmany,in_spfmvals,in_spfugvals)
   implicit none
   integer,intent(in) :: howmany,in_spfmvals(howmany),in_spfugvals(howmany)
   DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)
-  DATATYPE,intent(out) :: outspfs(numerad,(lbig+1)/2,howmany)
+  DATATYPE,intent(out) :: outspfs(numerad,(lbig+2)/2,howmany)   !! lbig even ok
   DATATYPE :: midspfs(numerad,lbig+1,howmany)
 
   call ugexpand_spfs(inspfs,midspfs,howmany,in_spfmvals,in_spfugvals)
@@ -1271,19 +1266,20 @@ subroutine ugcompact_spfs(inspfs,outspfs,howmany,in_spfmvals,in_spfugvals)
   implicit none
   integer,intent(in) :: howmany,in_spfugvals(howmany),in_spfmvals(howmany)
   DATATYPE,intent(in) :: inspfs(numerad,lbig+1,howmany)
-  DATATYPE,intent(out) :: outspfs(numerad,(lbig+1)/2,howmany)
+  DATATYPE,intent(out) :: outspfs(numerad,(lbig+2)/2,howmany)   !! lbig even ok
   integer :: ispf,k
 
-  if (mod(lbig+1,2).ne.0) then
-     OFLWR "GGG))))iiiiiERROROAAAAUGHGGHG"; CFLST
-  endif
+!!$  if (mod(lbig+1,2).ne.0) then
+!!$     OFLWR "GGG))))iiiiiERROROAAAAUGHGGHG"; CFLST
+!!$  endif
+
   outspfs=0d0
   do ispf=1,howmany
-     do k=1,(lbig+1)/2
+     do k=1,(lbig+2)/2
         outspfs(:,k,ispf)=inspfs(:,lbig+2-k,ispf)*(-1)**abs(in_spfmvals(ispf)) * in_spfugvals(ispf)
      enddo
   enddo
-  outspfs(:,:,:)= sqrt(0.5d0) * (outspfs(:,:,:) + inspfs(:,1:(lbig+1)/2,:))
+  outspfs(:,:,:)= sqrt(0.5d0) * (outspfs(:,:,:) + inspfs(:,1:(lbig+2)/2,:))
 
 end subroutine ugcompact_spfs
 
@@ -1293,17 +1289,18 @@ subroutine ugexpand_spfs(inspfs,outspfs,howmany,in_spfmvals,in_spfugvals)
   implicit none
   integer,intent(in) :: howmany,in_spfugvals(howmany),in_spfmvals(howmany)
   DATATYPE,intent(out) :: outspfs(numerad,lbig+1,howmany)
-  DATATYPE,intent(in) :: inspfs(numerad,(lbig+1)/2,howmany)
+  DATATYPE,intent(in) :: inspfs(numerad,(lbig+2)/2,howmany)    !! lbig even ok
   integer :: ispf,k
 
-  if (mod(lbig+1,2).ne.0) then
-     OFLWR "GGG))))iiiiiERROROAAAAUGHGGHG"; CFLST
-  endif
+!!$  if (mod(lbig+1,2).ne.0) then
+!!$     OFLWR "GGG))))iiiiiERROROAAAAUGHGGHG"; CFLST
+!!$  endif
+
   outspfs(:,:,:)=0d0
-  outspfs(:,1:(lbig+1)/2,:)=inspfs(:,:,:)
+  outspfs(:,1:(lbig+2)/2,:)=inspfs(:,:,:)
 
   do ispf=1,howmany
-     do k=1,(lbig+1)/2
+     do k=1,(lbig+2)/2
         outspfs(:,lbig+2-k,ispf)=inspfs(:,k,ispf)*(-1)**abs(in_spfmvals(ispf)) * in_spfugvals(ispf)
      enddo
   enddo
