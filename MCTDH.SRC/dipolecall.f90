@@ -100,8 +100,6 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
 
   if (myrank.eq.1) then
      open(171,file=outftname,status="unknown")
-
-     write(171,*) "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9)" 
      write(171,*) "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 
      write(171,*) "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
      write(171,*) "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
