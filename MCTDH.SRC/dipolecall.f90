@@ -48,7 +48,7 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
 
   DATATYPE :: indipolearray(0:numdata),pots(3)
   integer :: i, numdata, which,getlen,sflag
-  real*8 :: estep, thistime, myenergy,sum1,sum2,xsecunits, windowfunct
+  real*8 :: estep, thistime, myenergy,sum1,sum2,xsecunits, windowfunct, xsum
   character (len=7) :: number
   character :: outftname*(*), outename*(*)
   complex*16,allocatable ::  fftrans(:),eft(:)
@@ -101,44 +101,60 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
   if (myrank.eq.1) then
      open(171,file=outftname,status="unknown")
 
-        write(171,*) "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9)" 
-        write(171,*) "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION ( 2 omega Im(D(omega)E(omega)*) ) IN COLUMN 7"
-        write(171,*) "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN 9"
-        write(171,*)
+     write(171,*) "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9)" 
+     write(171,*) "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 
+     write(171,*) "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
+     write(171,*) "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
+     write(171,*) "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (CUMULATIVE EXCITATION PROBABILITY FOR SUM RULE) IN COLUMN 10"
+     write(171,*)
 
+     xsum=0d0
      do i=0,numdata
         myenergy=i*Estep
 
+!! sums to 1 for 1 electron
+        if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
+           xsum=xsum + Estep * imag(fftrans(i)*conjg(eft(i))) / abs(eft(i)**2) * myenergy * 2 / PI
+        endif
+
 !! LENGTH GAUGE (electric field) WAS FT'ed , OK with usual formula multiply by wfi
-!! RESPONSE FUNCTION FOR ABSORPTION/EMISSION IN COLUMN 7
+!! UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7
 !! QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE
+!! INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (CUMULATIVE EXCITATION PROBABILITY FOR SUM RULE) IN COLUMN 10
 
         xsecunits = 5.291772108d0**2 * 4d0 * PI / 1.37036d2 * myenergy
 
 !! NOW FACTOR (2 omega) IN COLUMNS 6,7   v1.16 12-2015
 
-        write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i), eft(i), fftrans(i)*ALLCON(eft(i)) * 2 * myenergy, &
-             fftrans(i)*ALLCON(eft(i)) / abs(eft(i)**2) * xsecunits
+        write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i), eft(i), fftrans(i)*conjg(eft(i)) * 2 * myenergy, &
+             fftrans(i)*conjg(eft(i)) / abs(eft(i)**2) * xsecunits, xsum
      enddo
      close(171)
      if (sflag.ne.0) then
         write(number,'(I7)') 1000000+floor(thistime)
         open(171,file=outftname(1:getlen(outftname)-1)//number(2:7),status="unknown")
 
-        write(171,*) "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9)" 
-        write(171,*) "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION ( 2 omega Im(D(omega)E(omega)*) ) IN COLUMN 7"
-        write(171,*) "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN 9"
-     write(171,*)
+        write(171,*) "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 
+        write(171,*) "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
+        write(171,*) "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
+        write(171,*) "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (CUMULATIVE EXCITATION PROBABILITY FOR SUM RULE) IN COLUMN 10"
+        write(171,*)
 
+        xsum=0d0
         do i=0,numdata
            myenergy=i*Estep
+
+!! sums to 1 for 1 electron
+           if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
+              xsum=xsum + Estep * imag(fftrans(i)*conjg(eft(i))) / abs(eft(i)**2) * myenergy * 2 / PI
+           endif
 
            xsecunits = 5.291772108d0**2 * 4d0 * PI / 1.37036d2 * myenergy
 
 !! NOW FACTOR (2 omega) IN COLUMNS 6,7   v1.16 12-2015
 
-           write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i), eft(i), fftrans(i)*ALLCON(eft(i)) * 2 * myenergy, &
-                fftrans(i)*ALLCON(eft(i)) / abs(eft(i)**2) * xsecunits
+           write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i), eft(i), fftrans(i)*conjg(eft(i)) * 2 * myenergy, &
+                fftrans(i)*conjg(eft(i)) / abs(eft(i)**2) * xsecunits, xsum
         enddo
         close(171)
      endif

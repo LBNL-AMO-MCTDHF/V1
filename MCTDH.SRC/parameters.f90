@@ -387,6 +387,8 @@ integer :: ftdiff=0           !! fourier transform derivative of dipole moment n
 integer :: hanningflag=0         !! for hanning window set nonzero action 1 autocorr
 integer :: diptime=100           !! For act=20, outputs copies every diptime atomic units
 integer :: dipmodtime=100        !! do ft every autotimestep*dipmodtime
+real*8 :: dipolesumstart=1d10,&  !! range for integration of oscillator strength (e.g. for sum rule)
+     dipolesumend=1d9            !!    photon energy, atomic units (Hartree), start and end
 !!EE
 !!{\large \quad PHOTOIONIZATION (actions 15,16,17)}
 !!BB
