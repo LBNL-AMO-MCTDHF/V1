@@ -167,7 +167,14 @@ subroutine getparams()
         aorder=max(300,aorder)
         maxaorder=max(aorder,maxaorder)
      endif
-     close(971);     open(971,file=inpfile, status="old");     read(971,nml=parinp)
+     if (spfrestrictflag.eq.0) then
+        orbcompact=0
+     endif
+
+     close(971)     
+     open(971,file=inpfile, status="old")
+     read(971,nml=parinp)
+
   endif
   close(971)
 
