@@ -167,7 +167,7 @@ module parameters
 !!BB
 integer :: mcscfnum=1            !! MCSCF=       !! Number of A-vectors (state avgd mcscf or prop)
 integer :: numelec=2             !!              !! NUMBER OF ELECTRONS
-integer :: orbcompact=0          !!              !! Compact orbitals for expo prop with spfrestrictflag?  Probably ok.
+integer :: orbcompact=1          !!              !! Compact orbitals for expo prop with spfrestrictflag?  Probably ok.
 integer :: saveflag=1                            !! if zero does not save wave function at the end
 integer :: save_every=0                          !! if nonzero saves wave function every save_every mean field steps
 integer :: walkwriteflag=0                       !! Turning OFF writing of walks by default
