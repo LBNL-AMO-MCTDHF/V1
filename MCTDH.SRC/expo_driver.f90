@@ -247,6 +247,18 @@ module jacmod
 end module
 
 
+!! attempt for quad
+
+subroutine jacorth(inspfs,outspfs)
+  use parameters
+  use jacmod
+  implicit none
+  DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
+  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
+  call oneminusproject(inspfs,outspfs,jacvect)
+end subroutine jacorth
+
+
 !! SUBROUTINE PASSED TO EXPOKIT FOR ORBITAL PROPAGATION
 
 subroutine jacopcompact(com_inspfs,com_outspfs)
@@ -717,18 +729,9 @@ subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
         call mympireduce(prodot,nspf**2)
      endif
 
-!prodot  (pro,der) x mydot (pro,in)   : pro is in;    in is out
-!
-! multiply prodot -> multdot(pro,in)  by gemm(n,n,prom,my,mult)
-!
+     call MYGEMM('N', 'N', nspf, nspf, nspf, DATAONE, prodot, nspf, mydot, nspf, DATAZERO, multdot, nspf)
+     call MYGEMM('N','N',spfsize,nspf,nspf,DATANEGONE,prospfs,spfsize,multdot,nspf,DATAONE,outspfs,spfsize)
 
-     call MYGEMM('N', 'N', nspf, nspf, nspf, DATANEGONE, prodot, nspf, mydot, nspf, DATAZERO, multdot, nspf)
-
-     do i=1,nspf
-        do j=1,nspf
-           outspfs(:,i) = outspfs(:,i) + prospfs(:,j) * multdot(j,i)        !!multdot
-        enddo
-     enddo
   endif
 
 end subroutine derproject

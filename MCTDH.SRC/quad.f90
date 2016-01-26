@@ -99,20 +99,28 @@ subroutine quadoperate(notusedint,inspfs,outspfs)
    integer :: notusedint
    DATATYPE,intent(in) ::  inspfs(totspfdim)
    DATATYPE,intent(out) :: outspfs(totspfdim)
-
-   call jacoperate(inspfs,outspfs)
+   DATATYPE :: workspfs(totspfdim)              !! AUTOMATIC
+   
+   call jacorth(inspfs,outspfs)
+   call jacoperate(outspfs,workspfs)
+   call jacorth(workspfs,outspfs)
 
 end subroutine quadoperate
 
 
-subroutine quadopcompact(notusedint,inspfs,outspfs)
+subroutine quadopcompact(notusedint,com_inspfs,com_outspfs)
    use parameters
    implicit none
    integer :: notusedint
-   DATATYPE,intent(in) ::  inspfs(spfsmallsize*nspf)
-   DATATYPE,intent(out) :: outspfs(spfsmallsize*nspf)
+   DATATYPE,intent(in) ::  com_inspfs(spfsmallsize*nspf)
+   DATATYPE,intent(out) :: com_outspfs(spfsmallsize*nspf)
+   DATATYPE :: inspfs(spfsize*nspf),outspfs(spfsize*nspf)  !! AUTOMATIC
 
-   call jacopcompact(inspfs,outspfs)
+   call spfs_expand(com_inspfs,inspfs)
+   call jacorth(inspfs,outspfs)
+   call jacoperate(outspfs,inspfs)
+   call jacorth(inspfs,outspfs)
+   call spfs_compact(outspfs,com_outspfs)
 
 end subroutine quadopcompact
 
@@ -137,7 +145,7 @@ subroutine quadspfs(inspfs,jjcalls)
      com_vector2=0; com_vector3=0
   endif
 
-  if (jacsymflag.ne.1) then
+  if (jacsymflag.ne.1.and.jacprojorth.eq.0) then
      OFLWR "setting jacsymflag=1 for orbital quad"; CFL
      jacsymflag=1
   endif
@@ -210,7 +218,9 @@ subroutine quadspfs(inspfs,jjcalls)
         if (mynorm.gt.maxquadnorm*nspf) then
            vector3=vector3*maxquadnorm*nspf/mynorm
         endif
+
         vector=vector+vector3
+
      endif
   enddo
 
