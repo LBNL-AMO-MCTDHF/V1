@@ -100,10 +100,14 @@ subroutine quadoperate(notusedint,inspfs,outspfs)
    DATATYPE,intent(in) ::  inspfs(totspfdim)
    DATATYPE,intent(out) :: outspfs(totspfdim)
    DATATYPE :: workspfs(totspfdim)              !! AUTOMATIC
-   
-   call jacorth(inspfs,outspfs)
-   call jacoperate(outspfs,workspfs)
-   call jacorth(workspfs,outspfs)
+
+   if (jacprojorth.ne.0) then   
+      call jacorth(inspfs,outspfs)
+      call jacoperate(outspfs,workspfs)
+      call jacorth(workspfs,outspfs)
+   else
+      call jacoperate(inspfs,outspfs)
+   endif
 
 end subroutine quadoperate
 
@@ -117,9 +121,13 @@ subroutine quadopcompact(notusedint,com_inspfs,com_outspfs)
    DATATYPE :: inspfs(spfsize*nspf),outspfs(spfsize*nspf)  !! AUTOMATIC
 
    call spfs_expand(com_inspfs,inspfs)
-   call jacorth(inspfs,outspfs)
-   call jacoperate(outspfs,inspfs)
-   call jacorth(inspfs,outspfs)
+   if (jacprojorth.ne.0) then   
+      call jacorth(inspfs,outspfs)
+      call jacoperate(outspfs,inspfs)
+      call jacorth(inspfs,outspfs)
+   else
+      call jacoperate(inspfs,outspfs)
+   endif
    call spfs_compact(outspfs,com_outspfs)
 
 end subroutine quadopcompact
