@@ -171,7 +171,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   real*8 :: doubleclebschsq,aa,bb,cc,MemTot,MemVal,dt,wfi,cgfac,estep,myfac,windowfunct
   DATATYPE, allocatable,target :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:)
   DATATYPE, allocatable :: read_bramo(:,:,:,:), read_ketmo(:,:,:,:)
-  complex*16, allocatable :: ftgtau(:),pulseft(:,:)
+  complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:)
   real*8, allocatable :: pulseftsq(:)
   DATATYPE :: dot, pots1(3)
   character (len=4) :: xstate0,xmc0
@@ -403,9 +403,9 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
   OFLWR "Taking the fourier transform of g(tau) to get cross section at T= ",curtime*dt; CFL
 
-  allocate(ftgtau(-curtime:curtime), pulseft(-curtime:curtime,3),pulseftsq(-curtime:curtime))
+  allocate(ftgtau(-curtime:curtime), pulseft(-curtime:curtime,3),pulseftsq(-curtime:curtime),total(-curtime:curtime))
 
-  ftgtau(:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0
+  ftgtau(:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0; total(:)=0
 
   do i=0,curtime
      call vectdpot(i*par_timestep*fluxinterval*fluxskipmult,0,pots1,-1)  !! LENGTH GAUGE
@@ -465,10 +465,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            ftgtau(i)=ftgtau(i)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))
         enddo
 
-!! cross section reported in units of 10^-18 cm^2
-!! equals 1/3 times quantum mechanical cross section for fixed nuclei problem
-
-!! missing factor 2/pi?  See old projeflux before aug 2015
+        total(:)=total(:)+ftgtau(:)
 
         if(myrank.eq.1) then
 
@@ -482,9 +479,12 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 !! NEVERMIND FACTOR OF 1/3
 !!              myfac = 5.291772108d0**2 / 3d0 * 2d0 * PI / 1.37036d2 * wfi 
 
-!! WITH THIS FACTOR, NOW THE QUANTUM MECHANICAL PHOTOIONIZATION CROSS SECTION IN MEGABARNS IS IN COLUMN 3 REAL PART
-              myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi 
+!! WITH THIS FACTOR, NOW THE QUANTUM MECHANICAL PHOTOIONIZATION CROSS SECTION IN MEGABARNS (10^-18 cm^2) IS IN COLUMN 3 REAL PART
+!!              myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi 
 
+!! Factor 2/pi was removed AUG 2015 still unresolved JAN 2016.
+!! JAN 2016 Putting factor of 2/pi back here; now projeflux should give the correct absolute cross section.
+              myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi * 2 / PI
 
               write(1004,'(F18.12, T22, 400E20.8)')  wfi,  pulseftsq(i), ftgtau(i)/pulseftsq(i) * cgfac * myfac, ftgtau(i)
            enddo
@@ -493,7 +493,18 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
      enddo  !! do istate
   enddo  !! do imc
 
-  deallocate(ftgtau,pulseft,pulseftsq)
+  if(myrank.eq.1) then
+     open(1004,file=projspifile(1:getlen(projspifile)-1)//"_all.dat",status="replace",action="readwrite",position="rewind")
+     write(1004,*);write(1004,*) "# Omega; pulse ft; projected flux at t= ",finaltime
+     do i=-curtime,curtime
+        wfi=(i+curtime)*estep
+        myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi * 2 / PI
+        write(1004,'(F18.12, T22, 400E20.8)')  wfi,  pulseftsq(i), total(i)/pulseftsq(i) * cgfac * myfac, total(i)
+     enddo
+     close(1004)
+  endif
+
+  deallocate(ftgtau,pulseft,pulseftsq,total)
 
   deallocate(gtau,ketmo,bramo)
 

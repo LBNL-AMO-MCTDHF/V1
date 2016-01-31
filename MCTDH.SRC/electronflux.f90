@@ -528,7 +528,7 @@ subroutine fluxgtau0(alg,www,bioww)
 !! NEVERMIND FACTOR OF 1/3
 !!        myfac = 5.291772108d0**2 / 3d0 * 2d0 * PI / 1.37036d2 * wfi
 
-!! WITH THIS FACTOR, NOW THE QUANTUM MECHANICAL CROSS SECTION IN MEGABARNS IS IN COLUMN 3 REAL PART
+!! WITH THIS FACTOR, NOW THE QUANTUM MECHANICAL CROSS SECTION IN MEGABARNS (10^-18 cm^2) IS IN COLUMN 3 REAL PART
         myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
 
         write(1004,'(F8.4,100E18.6)') wfi, pulseftsq(i), FTgtau(i,:)/pulseftsq(i) * myfac, ftgtau(i,:)
