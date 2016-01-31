@@ -269,20 +269,32 @@ subroutine jacopcompact(com_inspfs,com_outspfs)
   DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf)  !! AUTOMATIC
 
   call spfs_expand(com_inspfs,inspfs)
-  call jacoperate(inspfs,outspfs)
+  call jacoperate0(1,inspfs,outspfs)
   call spfs_compact(outspfs,com_outspfs)
 
 end subroutine jacopcompact
 
-     
 
 subroutine jacoperate(inspfs,outspfs)
+  use parameters
+  implicit none
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf)
+  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
+
+  call jacoperate0(1,inspfs,outspfs)
+
+end subroutine jacoperate
+
+     
+
+subroutine jacoperate0(dentimeflag,inspfs,outspfs)
   use parameters
   use jacmod
   use mpimod
   use xxxmod    !! drivingorbs.... hmmm could just make wrapper but whatever
   use linearmod
   implicit none
+  integer,intent(in) :: dentimeflag
   DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,nspf)
   integer :: ii,ibot,getlen
@@ -318,7 +330,7 @@ subroutine jacoperate(inspfs,outspfs)
            
         call system_clock(jtime); times(1)=times(1)+jtime-itime;   call system_clock(itime)
            
-        call actreduced0(jactime,jactemp2,nulldouble,jactemp3,ii,0,0)
+        call actreduced0(dentimeflag,jactime,jactemp2,nulldouble,jactemp3,ii,0,0)
            
         call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
            
@@ -329,7 +341,7 @@ subroutine jacoperate(inspfs,outspfs)
            
         call system_clock(itime)
            
-        call actreduced0(jactime, inspfs,nulldouble, jactemp3,ii,0,0)
+        call actreduced0(dentimeflag,jactime, inspfs,nulldouble, jactemp3,ii,0,0)
            
         call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
            
@@ -340,7 +352,7 @@ subroutine jacoperate(inspfs,outspfs)
         
      call system_clock(itime)
         
-     call actreduced0(jactime,inspfs,nulldouble,jactemp3,ii,0,0)
+     call actreduced0(dentimeflag,jactime,inspfs,nulldouble,jactemp3,ii,0,0)
         
      call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
         
@@ -358,7 +370,7 @@ subroutine jacoperate(inspfs,outspfs)
         call system_clock(itime)
         call derproject(jacvect,jactemp3,jacvect,inspfs) 
         call system_clock(jtime); times(1)=times(1)+jtime-itime;   call system_clock(itime)
-        call actreduced0(jactime,jactemp3,nulldouble,jactemp2,ii,0,0)
+        call actreduced0(dentimeflag,jactime,jactemp3,nulldouble,jactemp2,ii,0,0)
         call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
         outspfs=outspfs+jactemp2*facs(ii)
         call system_clock(jtime); times(1)=times(1)+jtime-itime;  
@@ -405,7 +417,7 @@ subroutine jacoperate(inspfs,outspfs)
      endif
   endif
 
-end subroutine jacoperate
+end subroutine jacoperate0
 
 
 !! KEEPME
@@ -424,24 +436,28 @@ function checknan2(input,size)
 end function
 
 
-subroutine jacmodalloc()
-  use jacmod
-  use parameters
-  implicit none
-end subroutine jacmodalloc
-
-
 !! SETS UP JACOBIAN FOR ORBITAL EXPO PROP
 
-subroutine jacinit(inspfs, thistime) !!, timestep)
+subroutine jacinit(inspfs, thistime)
+  use parameters
+  implicit none
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf) 
+  real*8,intent(in) :: thistime
+  call jacinit0(1,inspfs,thistime)
+end subroutine jacinit
+
+
+subroutine jacinit0(dentimeflag,inspfs, thistime)
   use parameters
   use linearmod
   use jacmod
   implicit none
+  integer,intent(in) :: dentimeflag
   DATATYPE,intent(in) :: inspfs(spfsize,nspf) 
+  real*8,intent(in) :: thistime
   DATATYPE :: nulldouble(2)
   DATATYPE,allocatable :: jactemp(:,:)
-  real*8 :: thistime,gridtime
+  real*8 :: gridtime
 
   if (allocated.eq.0) then
      allocate(jacvect(spfsize,nspf), jacvectout(spfsize,nspf))
@@ -452,7 +468,7 @@ subroutine jacinit(inspfs, thistime) !!, timestep)
 
 !! ONLY GOOD FOR CMF, LMF !!
 
-  call actreduced0(jactime,jacvect,nulldouble,jacvectout,1,0,0)
+  call actreduced0(dentimeflag,jactime,jacvect,nulldouble,jacvectout,1,0,0)
 
   if (effective_cmf_linearflag.ne.0) then
      allocate( jactemp(spfsize,nspf) )
@@ -462,14 +478,12 @@ subroutine jacinit(inspfs, thistime) !!, timestep)
         stop
      endif
      jacvectout=jacvectout*(1.d0-gridtime)
-     call actreduced0(jactime,jacvect,jacvect,jactemp,0,0,0)
+     call actreduced0(dentimeflag,jactime,jacvect,jacvect,jactemp,0,0,0)
      jacvectout=jacvectout+gridtime*jactemp
      deallocate(jactemp)
   endif
 
-
-
-end subroutine jacinit
+end subroutine jacinit0
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

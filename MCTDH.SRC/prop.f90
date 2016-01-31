@@ -219,7 +219,7 @@ subroutine prop_loop( starttime)
 
      if (threshflag.eq.1) then
 
-        call actreduced0(0d0,yyy%cmfpsivec(spfstart,0),yyy%cmfpsivec(spfstart,0),outspfs,0,1,1)
+        call actreduced0(1,0d0,yyy%cmfpsivec(spfstart,0),yyy%cmfpsivec(spfstart,0),outspfs,0,1,1)
 
         call apply_spf_constraints(outspfs)
 

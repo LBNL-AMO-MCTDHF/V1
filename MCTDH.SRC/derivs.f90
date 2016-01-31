@@ -49,7 +49,7 @@ subroutine all_derivs(thistime,xpsi, xpsip)
 
   if (spf_flag.ne.0) then
      call system_clock(itime)
-     call actreduced0(thistime,xpsi(spfstart),xpsi(spfstart),xpsip(spfstart),0,1,1)
+     call actreduced0(1,thistime,xpsi(spfstart),xpsi(spfstart),xpsip(spfstart),0,1,1)
      call system_clock(jtime);     times(5)=times(5)+jtime-itime
   endif
 
@@ -131,7 +131,7 @@ subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
   spfsout(:,:) = 0.d0
 
   do jjj=ibot,1
-     call actreduced0(thistime,spfsin,spfsin,spfmult(:,:),jjj, allflag,allflag)
+     call actreduced0(1,thistime,spfsin,spfsin,spfmult(:,:),jjj, allflag,allflag)
      spfsout(:,:)=spfsout(:,:)+spfmult(:,:)*facs(jjj)
   enddo
 
@@ -216,13 +216,13 @@ end subroutine driving_linear_derivs
 !! where P is projector onto opspfs
 !! H is inverse denmat times reducedham
 
-subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,conflag)
+subroutine actreduced0(dentimeflag,thistime,inspfs0, projspfs, outspfs, ireduced, projflag,conflag)
   use parameters
   use mpimod
   use configptrmod
   use xxxmod
   implicit none
-  integer, intent(in) :: ireduced,projflag,conflag
+  integer, intent(in) :: dentimeflag,ireduced,projflag,conflag
   real*8, intent(in) :: thistime
   DATATYPE, intent(in) :: inspfs0(spfsize, nspf), projspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,nspf)
@@ -330,11 +330,13 @@ subroutine actreduced0(thistime,inspfs0, projspfs, outspfs, ireduced, projflag,c
   endif
 
 !! WITH TIMEFAC
-
-  call system_clock(itime)
-  call MYGEMM('N','N', spfsize,nspf,nspf,timefac, spfmult,spfsize, yyy%invdenmat(:,:,ireduced), nspf, DATAZERO, outspfs, spfsize)
-  call system_clock(jtime);  times(7)=times(7)+jtime-itime
-
+  if (dentimeflag.ne.0) then
+     call system_clock(itime)
+     call MYGEMM('N','N', spfsize,nspf,nspf,timefac, spfmult,spfsize, yyy%invdenmat(:,:,ireduced), nspf, DATAZERO, outspfs, spfsize)
+     call system_clock(jtime);  times(7)=times(7)+jtime-itime
+  else
+     outspfs(:,:) = spfmult(:,:) * (-1)
+  endif
 
   if (projflag==1) then
      call system_clock(itime)
@@ -494,7 +496,7 @@ subroutine actreducedconjg0(thistime,inspfs, projspfs, outspfs, ireduced, projfl
   DATATYPE :: ttempspfs(spfsize,nspf) !! AUTOMATIC
 
   ttempspfs(:,:)=ALLCON(inspfs(:,:))
-  call actreduced0(thistime,ttempspfs, projspfs, outspfs, ireduced, projflag,conflag)
+  call actreduced0(1,thistime,ttempspfs, projspfs, outspfs, ireduced, projflag,conflag)
   outspfs=ALLCON(outspfs)
 
 end subroutine actreducedconjg0

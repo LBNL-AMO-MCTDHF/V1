@@ -41,11 +41,11 @@ subroutine second_derivs(thistime,inspfs,sdspfs)
 
 !! First derivative.
 
-  call actreduced0(thistime, inspfs, nullspfs, workspfs0, 1, 0,1)
+  call actreduced0(1,thistime, inspfs, nullspfs, workspfs0, 1, 0,1)
   if (effective_cmf_linearflag.eq.0) then
      call oneminusproject(workspfs0, derspfs0, inspfs)
   else
-     call actreduced0(thistime, inspfs, nullspfs, workspfs2, 0, 0,1)
+     call actreduced0(1,thistime, inspfs, nullspfs, workspfs2, 0, 0,1)
      workoutspfs0=(1.d0-gridtime)*workspfs0 + gridtime*workspfs2
      call oneminusproject(workoutspfs0, derspfs0, inspfs)
   endif
@@ -56,10 +56,10 @@ subroutine second_derivs(thistime,inspfs,sdspfs)
 
  !! second term    
 
-  call actreduced0(thistime, derspfs0, nullspfs, workoutspfs0, 1, 0,1) 
+  call actreduced0(1,thistime, derspfs0, nullspfs, workoutspfs0, 1, 0,1) 
 
   if (effective_cmf_linearflag.eq.0) then
-     call actreduced0(thistime, derspfs0, nullspfs, workoutspfs2, 0, 0,1)  !! second term
+     call actreduced0(1,thistime, derspfs0, nullspfs, workoutspfs2, 0, 0,1)  !! second term
      workoutspfs0 = (1-gridtime)*workoutspfs0 + gridtime*workoutspfs2
 
 !! d/dt Q term

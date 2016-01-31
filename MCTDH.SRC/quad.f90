@@ -92,6 +92,14 @@ end subroutine dgsolve0
 !!! NEWTON SOLVE (IMPROVEDQUADFLAG) FOR ORBITALS
 !!!!!!!!!!!!!!!!!!!!!!!!!!
 
+subroutine quadinit(inspfs, thistime)
+  use parameters
+  implicit none
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf) 
+  real*8,intent(in) :: thistime
+  call jacinit0(0,inspfs,thistime)
+end subroutine quadinit
+
 
 subroutine quadoperate(notusedint,inspfs,outspfs)
    use parameters
@@ -103,10 +111,10 @@ subroutine quadoperate(notusedint,inspfs,outspfs)
 
    if (jacprojorth.ne.0) then   
       call jacorth(inspfs,outspfs)
-      call jacoperate(outspfs,workspfs)
+      call jacoperate0(0,outspfs,workspfs)
       call jacorth(workspfs,outspfs)
    else
-      call jacoperate(inspfs,outspfs)
+      call jacoperate0(0,inspfs,outspfs)
    endif
 
 end subroutine quadoperate
@@ -123,10 +131,10 @@ subroutine quadopcompact(notusedint,com_inspfs,com_outspfs)
    call spfs_expand(com_inspfs,inspfs)
    if (jacprojorth.ne.0) then   
       call jacorth(inspfs,outspfs)
-      call jacoperate(outspfs,inspfs)
+      call jacoperate0(0,outspfs,inspfs)
       call jacorth(inspfs,outspfs)
    else
-      call jacoperate(inspfs,outspfs)
+      call jacoperate0(0,inspfs,outspfs)
    endif
    call spfs_compact(outspfs,com_outspfs)
 
@@ -170,9 +178,10 @@ subroutine quadspfs(inspfs,jjcalls)
 
      call spf_orthogit(vector,orthogerror)
 
-     call jacinit(vector,0d0)
+     call quadinit(vector,0d0)
 
-     call spf_linear_derivs(0d0,vector,vector2)
+     call actreduced0(0,0d0,vector,vector,vector2,1,1,0)
+!     call spf_linear_derivs(0d0,vector,vector2)
 
      dev=abs(hermdot(vector2,vector2,totspfdim))
      if (parorbsplit.eq.3) then
@@ -185,7 +194,7 @@ subroutine quadspfs(inspfs,jjcalls)
 
      if (dev.lt.stopthresh.or.icount.gt.1) then
         inspfs = vector
-        OFLWR "    --> Converged newton"; CFL
+!!$        OFLWR "    --> Converged newton"; CFL
         deallocate( vector,vector2,vector3)
         if (orbcompact.ne.0) then
            deallocate(com_vector2,com_vector3)
