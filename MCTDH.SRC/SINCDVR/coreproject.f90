@@ -614,19 +614,27 @@ subroutine ugrestrict_spfs0() !inspfs,howmany,spfmvals,printflag)
 end subroutine ugrestrict_spfs0
 
 subroutine bothcompact_spfs() !inspfs,outspfs,howmany,spfmvals,spfugvals)
-print *, "NOT APPLICABLE BOTHCOMPACT SINCDVR"
+use pfileptrmod
+implicit none
+OFLWR "NOT APPLICABLE BOTHCOMPACT SINCDVR"; CFLST
 end subroutine bothcompact_spfs
 
 subroutine bothexpand_spfs() !inspfs,outspfs,howmany,spfmvals,spfugvals)
-print *, "NOT APPLICABLE BOTHEXPAND SINCDVR"
+use pfileptrmod
+implicit none
+OFLWR "NOT APPLICABLE BOTHEXPAND SINCDVR"; CFLST
 end subroutine bothexpand_spfs
 
 subroutine mcompact_spfs() !inspfs,outspfs,howmany,spfmvals)
-print *, "NOT APPLICABLE MCOMPACT SINCDVR"; stop
+use pfileptrmod
+implicit none
+OFLWR "NOT APPLICABLE MCOMPACT SINCDVR"; CFLST
 end subroutine mcompact_spfs
 
 subroutine mexpand_spfs() !inspfs,outspfs,howmany,spfmvals)
-print *, "NOT APPLICABLE MEXPAND SINCDVR"; stop
+use pfileptrmod
+implicit none
+OFLWR "NOT APPLICABLE MEXPAND SINCDVR"; CFLST
 end subroutine mexpand_spfs
 
 
