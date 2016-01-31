@@ -73,6 +73,24 @@
 !!$   http://www.expokit.org/paper.pdf
 !!$  
 
+!!$  ---------- Forwarded message ----------
+!!$  From: Sidje, Roger <roger.b.sidje@ua.edu>
+!!$  Date: Sat, Jan 30, 2016 at 1:11 AM
+!!$  Subject: Re: License for Expokit
+!!$  To: Daniel Haxton <djhaxton@lbl.gov>
+!!$  
+!!$  
+!!$  I confirm that Expokit can be used either in an open-source,
+!!$  closed-source, or commercial software.
+!!$  
+!!$  Because I have moved from UQ (in Australia) to UA (in the USA), making
+!!$  changes to Expokit haven¹t been convenient for a while. Please consider
+!!$  this response as a plain acknowledgment that Expokit can be
+!!$  embedded/released any way.
+!!$
+
+!!$  This version of expokit.f is modified by DJH.
+
 
 *----------------------------------------------------------------------|
       subroutine DMEXPV( n, m, t, v, w, tol, anorm,
