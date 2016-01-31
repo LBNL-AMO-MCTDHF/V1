@@ -1,5 +1,8 @@
 
-  ** LBNL-AMO-MCTDHF VERSION 1.18 **
+  ** LBNL-AMO-MCTDHF VERSION 1.19 **
+
+v1.19 better improvedquadflag=2 and 3 (orbitals).  Excited states
+   may be calculated more easily.
 
 v1.18 predictor/corrector algorithm modified; results will be different,
    depending on stepsize par_timestep

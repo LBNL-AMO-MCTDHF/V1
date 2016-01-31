@@ -7,7 +7,7 @@
 
 module actionlistmod
   
-  character (len=15) :: action_list(25) = (/ &
+  character (len=15) :: action_list(26) = (/ &
        "Autocorr       ", &      !! 1
        "Save nat       ", &      !! 2
        "Save spf       ", &      !! 3
@@ -33,7 +33,8 @@ module actionlistmod
        "Check D-F error", &      !! 22
        "Wfn ovls       ", &      !! 23
        "KE projector   ", &      !! 24
-       "psistats.dat   " /)      !! 25
+       "psistats.dat   ", &      !! 25
+       "Matrix elements" /)      !! 26
 
 end module actionlistmod
 
@@ -46,7 +47,7 @@ subroutine actionsub(thistime)
   use actionlistmod
   implicit none
   
-  integer :: i, calledhere=0, atime, btime, times(25)=0,getlen
+  integer :: i, calledhere=0, atime, btime, times(26)=0,getlen
   real*8 :: thistime
   CNORMTYPE :: error
 
@@ -174,7 +175,7 @@ subroutine write_actions()
   integer :: i,j
 
   do i=1,numactions
-     if ((actions(i).gt.25).or.(actions(i).lt.1)) then
+     if ((actions(i).gt.26).or.(actions(i).lt.1)) then
         OFLWR "ACTION NOT SUPPORTED!!!! ", actions(i); CFLST
      endif
   enddo
@@ -359,6 +360,9 @@ subroutine actions_initial()
         call wfnovl()
      case(24)
      case(25)
+     case(26)
+        call ovl_initial()
+        call mcscf_matel()
      case default
         OFLWR "Action not supported: ", actions(i); CFLST
      end select

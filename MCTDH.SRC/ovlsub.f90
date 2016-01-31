@@ -162,6 +162,35 @@ subroutine getoverlaps(forceflag)
   endif
 
 end subroutine getoverlaps
+
+
+subroutine mcscf_matel()
+  use ovlmod
+  use parameters
+  use configmod
+  use xxxmod
+  implicit none
+  integer ::  i,j
+  DATATYPE :: myovl(numovl,numovl)
+
+!! REPLACE THIS - ADAPT FINALSTATS0.
+!!   Make dual-purpose subroutine (finalstats00) contatining the guts of finalstats0 
+!!   and call finalstats00 here and in finalstats0.  For now just overlaps
+
+  do j=1,numovl
+     do i=1,numovl
+        call autocorrelate_one(www,bwwptr, orig_avectors(:,i), orig_spfs(:,:,i), orig_spfs(:,:,j), orig_avectors(:,j), myovl(i,j), numr)
+     enddo
+  enddo
+
+  open(881,file=outmatel, status="unknown")
+  do i=1,numovl
+     write(881,'(1000F17.10)') abs(myovl(i,:))**2, myovl(i,:)
+  enddo
+  close(881)
+
+end subroutine mcscf_matel
+
  
 subroutine wfnovl()
   use parameters

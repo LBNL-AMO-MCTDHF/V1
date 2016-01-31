@@ -104,7 +104,7 @@ subroutine getparams()
        reinterp_orbflag,spf_gridshift,load_avector_product,projspifile,readfullvector,walksinturn,&
        turnbatchsize,energyshift, pulseft_estep, finalstatsfile, projgtaufile,gtaufile,&
        sparsedfflag,sparseprime,sparsesummaflag, par_consplit, ftwindowlength, fttriwindow,&
-       pulsewindowtoo,conjgpropflag,writeconfiglist,dipolesumstart,dipolesumend
+       pulsewindowtoo,conjgpropflag,writeconfiglist,dipolesumstart,dipolesumend,outmatel
 
 
   OFL
@@ -501,7 +501,7 @@ subroutine getparams()
      if (((actions(j).gt.7).and.(actions(j).lt.13)).or.(actions(j).eq.14).or.(actions(j).eq.18)) then
         skipflag=2
      endif
-     if ((actions(j).eq.16).or.(actions(j).eq.17).or.(actions(j).eq.23)) then   !! KVL FLUX CALC
+     if ((actions(j).eq.16).or.(actions(j).eq.17).or.(actions(j).eq.23).or.(actions(j).eq.26)) then
         skipflag=1
      endif
   enddo

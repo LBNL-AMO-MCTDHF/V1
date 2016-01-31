@@ -277,9 +277,10 @@ integer :: psistatfreq=1                                      !!  "
 character(len=200):: dendatfile="Dat/denmat.eigs.dat"         !! if notiming=0
 character(len=200):: denrotfile="Dat/denmat.rotate.dat"       !!  "
 character(len=200):: rdendatfile="Dat/rdenmat.eigs.dat"       !! deprecated
-character (len=200) :: ovlspffiles(50)="ovl.spfs.bin"         !! for action 20
+character (len=200) :: ovlspffiles(50)="ovl.spfs.bin"         !! for actions 20 and 26
 character (len=200) :: ovlavectorfiles(50)="ovl.avector.bin"  !!  "
-character(len=200):: outovl="Dat/Overlaps.dat"                !! 
+character(len=200):: outovl="Dat/Overlaps.dat"                !! for action 20
+character(len=200):: outmatel="Dat/Matel.dat"                 !! for action 20
 character(len=200):: zdipfile="Dat/ZDipoleexpect.Dat"         !! for action 21
 character(len=200):: zdftfile="Dat/ZDipoleft.Dat"             !!  "
 character(len=200):: ydipfile="Dat/YDipoleexpect.Dat"         !!  "
@@ -356,6 +357,7 @@ integer :: actions(100)=0        !!              !! ACTIONS
 !!                 between two time dependent wave functions
 !!   Act=24   keprojector
 !!   Act=25   make psistats.dat
+!!   Act=26   mcscf_matel with supplied eigenfunctions 
 !!EE
 !!{\large \quad ACTION VARIABLES (also see filenames in INPUT/OUTPUT above)}
 !!BB
