@@ -140,8 +140,8 @@ you will need to do if the Makeme step fails -- visit
      as per the README in that H2PHOTO directory.  Also see the H2ABSORPTION
      example directory to start.
  
-If you want to update the code and EXAMPLES-depot directories then perform 
-step 5, like steps 1-4, in the V1 working directory,
+If you want to update the code then perform step 5, like steps 1-4, in the 
+V1 working directory,
 
 5)   git pull https://github.com/LBNL-AMO-MCTDHF/V1 master
      ... then ./Makeme should be sufficient, in the BIN directories,
