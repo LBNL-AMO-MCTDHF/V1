@@ -173,7 +173,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   DATATYPE, allocatable :: read_bramo(:,:,:,:), read_ketmo(:,:,:,:)
   complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:)
   real*8, allocatable :: pulseftsq(:)
-  DATATYPE :: dot, pots1(3)
+  DATATYPE :: dot, pots1(3), csum
   character (len=4) :: xstate0,xmc0
   character (len=3) :: xstate1,xmc1
 
@@ -381,9 +381,13 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
 !! only do this after we are sure we've gone through every bra
                  if(brabat.eq.ketbat) then
+                    csum=gtau(0,istate,imc)
+                    if (parorbsplit.eq.3) then
+                       call mympireduceone(csum)
+                    endif
                     if (myrank.eq.1) then
                        open(454, file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat", status="old", position="append")
-                       write(454,'(I5,100F18.12)') curtime, curtime*dt, gtau(0,istate,imc);    
+                       write(454,'(I5,100F18.12)') curtime, curtime*dt, csum
                        close(454)
                     endif
                  endif
@@ -400,6 +404,11 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
      enddo
   enddo
+
+  if (parorbsplit.eq.3) then
+     call mympireduce(gtau(:,:,:), (nt+1)*nstate*mcscfnum)
+  endif
+
 
   OFLWR "Taking the fourier transform of g(tau) to get cross section at T= ",curtime*dt; CFL
 
@@ -567,15 +576,22 @@ subroutine projeflux_single(mem)
 
 !! read in the data from mcscf for our target cation state
 
-  open(909,file="Bin/cation.spfs.bin",status="unknown",form="unformatted")
-  open(910,file="Bin/cation.avector.bin",status="unknown",form="unformatted")
-
-  call avector_header_read(910,nstate,tndof,tnumr,tnumconfig,targetrestrictflag,targetms,targetspinproject,targetspinval,acomplex,ierr)
+  if (myrank.eq.1) then
+     open(909,file="Bin/cation.spfs.bin",status="unknown",form="unformatted")
+     open(910,file="Bin/cation.avector.bin",status="unknown",form="unformatted")
+     call avector_header_read(910,nstate,tndof,tnumr,tnumconfig,targetrestrictflag,targetms,targetspinproject,targetspinval,acomplex,ierr)
+  endif
+  call mympiibcastone(nstate,1); call mympiibcastone(tndof,1); call mympiibcastone(tnumr,1); call mympiibcastone(tnumconfig,1); 
+  call mympiibcastone(targetrestrictflag,1);  call mympiibcastone(targetms,1);  call mympiibcastone(targetspinproject,1);  
+  call mympiibcastone(targetspinval,1);  call mympiibcastone(acomplex,1);  call mympiibcastone(ierr,1)
   if (ierr.ne.0) then
      OFLWR "Avector header read error; redone 09/29/2014; recompute vector on disk."; CFLST
   endif
 
-  call spf_header_read(909,tdims,tnspf,spfcomplex)
+  if (myrank.eq.1) then
+     call spf_header_read(909,tdims,tnspf,spfcomplex)
+  endif
+  call mympiibcast(tdims,1,3);  call mympiibcastone(tnspf,1);  call mympiibcastone(spfcomplex,1)
 
 !! have to project on BO wfns.  Otherwise doesn't make sense in prolate.  Not supported anymore, will support
 !!   again, mcscf mode w/many r's on file
@@ -608,10 +624,7 @@ subroutine projeflux_single(mem)
               OFLWR "WARNING: N-1 electron state is not spin restricted (allspinproject=0).  No CG algebra.";CFL
            else
               if (abs(targetspinval-spin_restrictval).gt.1) then
-                 OFLWR "Spin value of wave function and N-1 electron state differ by more than 1/2.",targetspinval,spin_restrictval; CFL !!ST
-                 OFLWR "TEMP CONTINUE"; CFL
-                 OFLWR "TEMP CONTINUE"; CFL
-                 OFLWR "TEMP CONTINUE"; CFL
+                 OFLWR "ERROR: Spin value of wave function and N-1 electron state differ by more than 1/2.",targetspinval,spin_restrictval; CFLST
               else
                  OFLWR "Spin adapted wave functions for propagation and projection. doing CG algebra.";CFL
                  cgflag=1
@@ -629,9 +642,14 @@ subroutine projeflux_single(mem)
 
   tmo=0d0;  ta=0d0
 
-  call simple_load_avectors(910,acomplex,ta(:,:,1),ndof-2,1,tnumconfig,nstate)
-
-  call spf_read0(909,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,tmotemp(:,:),(/0,0,0/))
+  if (myrank.eq.1) then
+     call simple_load_avectors(910,acomplex,ta(:,:,1),ndof-2,1,tnumconfig,nstate)
+     call spf_read0(909,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,tmotemp(:,:),(/0,0,0/))
+     close(909);  close(910)
+  else
+     call spf_read0(-42,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,tmotemp(:,:),(/0,0,0/))
+  endif
+  call mympibcast(ta(:,:,1),1,tnumconfig*nstate)
 
   tmo(:,1:tnspf-numfrozen,1) = tmotemp(:,numfrozen+1:tnspf)
   deallocate(tmotemp)
