@@ -480,11 +480,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 !!              myfac = 5.291772108d0**2 / 3d0 * 2d0 * PI / 1.37036d2 * wfi 
 
 !! WITH THIS FACTOR, NOW THE QUANTUM MECHANICAL PHOTOIONIZATION CROSS SECTION IN MEGABARNS (10^-18 cm^2) IS IN COLUMN 3 REAL PART
-!!              myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi 
-
-!! Factor 2/pi was removed AUG 2015 still unresolved JAN 2016.
-!! JAN 2016 Putting factor of 2/pi back here; now projeflux should give the correct absolute cross section.
-              myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi * 2 / PI
+              myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi 
 
               write(1004,'(F18.12, T22, 400E20.8)')  wfi,  pulseftsq(i), ftgtau(i)/pulseftsq(i) * cgfac * myfac, ftgtau(i)
            enddo
@@ -498,7 +494,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
      write(1004,*);write(1004,*) "# Omega; pulse ft; projected flux at t= ",finaltime
      do i=-curtime,curtime
         wfi=(i+curtime)*estep
-        myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi * 2 / PI
+        myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
         write(1004,'(F18.12, T22, 400E20.8)')  wfi,  pulseftsq(i), total(i)/pulseftsq(i) * cgfac * myfac, total(i)
      enddo
      close(1004)
@@ -517,19 +513,28 @@ subroutine projeflux_op_onee(inspfs)
   use parameters
   implicit none
   DATATYPE,intent(inout) :: inspfs(spfsize,numr)
-  DATATYPE,allocatable :: outspfs(:,:)
+  DATATYPE :: workspfs(spfsize,numr), workspfs2(spfsize,numr)
   integer :: r
 
-  allocate(outspfs(spfsize,numr))
-  outspfs=0d0;
-  call mult_imke(numr,inspfs(:,:),outspfs(:,:))
-  do r=1,numr
-     outspfs(:,r) = outspfs(:,r) / bondpoints(r)
-  enddo
-!! scale correctly and clear memory
-  inspfs=outspfs*(-2d0)             !! OK.
+!! NOT ACCOUNTING FOR SCALING IN BOND LENGTH (assuming bondpoints is real)
 
-  deallocate(outspfs)
+  call mult_imke(numr,inspfs(:,:),workspfs(:,:))
+  do r=1,numr
+     workspfs(:,r) = workspfs(:,r) / bondpoints(r)**2   !! bugfix 01-2016 wasn't squared
+  enddo
+
+  workspfs2(:,:)=0d0
+  if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
+     call mult_impot(numr,inspfs(:,:),workspfs2(:,:))
+  else if(FluxOpType.eq.1) then
+     call mult_imhalfniumpot(numr,inspfs(:,:),workspfs2(:,:))
+  endif
+  do r=1,numr
+     workspfs2(:,r) = workspfs2(:,r) / bondpoints(r)
+  enddo
+
+!! scale correctly and clear memory
+  inspfs=(workspfs+workspfs2)*(-2d0)
 
 end subroutine projeflux_op_onee
 
