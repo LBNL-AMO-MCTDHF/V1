@@ -594,7 +594,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
        lind, llind, flag, isize, iwhich,  iiyy,maxii,imc,ihop
   integer :: ipiv(liosize)
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
-  DATATYPE :: liosolve(liosize),lioden(liosize, liosize),liodencopy(liosize,liosize),liosolvetemp(liosize), csum
+  DATATYPE :: liosolve(liosize),lioden(liosize, liosize),liodencopy(liosize,liosize),liosolvetemp(liosize), csum, myliosolve(liosize)
 
   cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
 
@@ -705,7 +705,10 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
 
      liosolve(:)=0.d0
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,a1,a1p,ihop,iwalk,csum,config2,dirphase,a2,a2p,ispf,jspf,flag,ind)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,a1,a1p,ihop,iwalk,csum,config2,dirphase,a2,a2p,ispf,jspf,flag,ind, myliosolve)
+
+     myliosolve(:)=0d0
+
 !$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
 
@@ -742,14 +745,15 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
               end select
 
               if (flag==1) then
-!$OMP CRITICAL
-                 liosolve(ind)=liosolve(ind)+                   dirphase*csum
-!$OMP END CRITICAL
+                 myliosolve(ind) = myliosolve(ind) +     dirphase*csum
               endif
            enddo  !! iwalk
         enddo     !! ihop
      enddo
 !$OMP END DO
+!$OMP CRITICAL
+     liosolve(:)=liosolve(:)+myliosolve(:)
+!$OMP END CRITICAL
 !$OMP END PARALLEL
 
      call mympireduce(liosolve,liosize)
@@ -888,7 +892,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
        lspf, ind, jind, llind, flag, isize,   iiyy,maxii,imc,j,ihop
   integer,allocatable :: ipiv(:)
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
-  DATATYPE, allocatable :: liosolve(:),lioden(:, :),liodencopy(:,:),liosolvetemp(:)
+  DATATYPE, allocatable :: liosolve(:),lioden(:, :),liodencopy(:,:),liosolvetemp(:),myliosolve(:)
 
   cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
 
@@ -989,9 +993,13 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
         enddo
      endif
 
-     liosolve=0.d0
+     liosolve(:)=0d0
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,a1,a1p,ihop,iwalk,csum,config2,dirphase,a2,a2p,ispf,jspf,flag,ind)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,a1,a1p,ihop,iwalk,csum,config2,dirphase,a2,a2p,ispf,jspf,flag,ind,myliosolve)
+
+     allocate(myliosolve(isize))
+     myliosolve(:)=0d0
+
 !$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
 
@@ -1020,14 +1028,16 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
               endif
               
               if (flag==1) then
-!$OMP CRITICAL
-                 liosolve(ind)=liosolve(ind) + dirphase*csum
-!$OMP END CRITICAL
+                 myliosolve(ind)=myliosolve(ind) + dirphase*csum
               endif
            enddo  !! iwalk
         enddo     !! ihop
      enddo
 !$OMP END DO
+!$OMP CRITICAL
+     liosolve(:)=liosolve(:) + myliosolve(:)
+!$OMP END CRITICAL
+     deallocate(myliosolve)
 !$OMP END PARALLEL
 
      call mympireduce(liosolve,isize)
