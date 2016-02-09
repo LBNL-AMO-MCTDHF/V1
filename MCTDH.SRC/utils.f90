@@ -618,6 +618,8 @@ subroutine expmat(A,N)
 end subroutine expmat
 
 
+!!$  For invmatsmooth, tol is the maximum ratio of smallest to biggest eigenvalue
+!!$   i.e. tol is relative not absolute
 
 subroutine invmatsmooth(A,N,LDA,tol)  !! inverse of ANY matrix.
 !! input :
@@ -665,7 +667,13 @@ subroutine invmatsmooth(A,N,LDA,tol)  !! inverse of ANY matrix.
   do k=1,N
      if (SV(k).ne.0d0) then
         if(SV(k).lt.tol*SV(1)) then    !! it is positive ,whatever
+
+!!$ NAAAH              SV(k)= 1d0 / tol / SV(1) * (3 * (SV(k) / tol / SV(1)) - 2 *( SV(k) / tol / SV(1))**2)
+
+!!$    SVD so SV is real, keeping old regularization for now v1.19
+
            SV(k)= 1d0 / tol / SV(1)
+
         else
            SV(k) = 1d0 / SV(k)
         endif
@@ -691,7 +699,7 @@ end subroutine invmatsmooth
 
 
 
-
+!!$  For realinvmatsmooth, tol is absolute not relative (refers to absolute mag of eigenvalue)
 
 subroutine realinvmatsmooth(A,N,tol)  !! inverse of ANY matrix.
 !! input :
@@ -719,11 +727,15 @@ subroutine realinvmatsmooth(A,N,tol)  !! inverse of ANY matrix.
   endif
 !! apply the function
   do k=1,N
-     if (SV(k).eq.0d0) then
-        SV(k)=0d0
-     else
+     if (SV(k).ne.0d0) then
         if(abs(SV(k)).lt.tol) then
+
+!!$ NAAAH           SV(k)= 1d0 / tol * (3 * (SV(k) / tol) - 2 *( SV(k) / tol )**2)
+
+!!$    SVD so SV is real, keeping old regularization for now v1.19
+
            SV(k) = 1d0 / tol 
+
         else
            SV(k) = 1d0 / SV(k)
         endif
