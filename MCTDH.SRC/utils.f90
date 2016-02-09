@@ -410,21 +410,19 @@ end subroutine ecsgramschmidt
 
 !! Begin KVL routines
 
-subroutine neglnmat(A,N,lntol)
+subroutine neglnmat(A,N)
   implicit none
   integer,intent(in) :: N
-  real*8,intent(in) :: lntol
   DATATYPE,intent(inout) :: A(N,N)
-  call bothlnmat(A,N,-1,lntol)
+  call bothlnmat(A,N,-1)
 end subroutine neglnmat
 
 
-subroutine lnmat(A,N,lntol)
+subroutine lnmat(A,N)
   implicit none
   integer,intent(in) :: N
-  real*8,intent(in) :: lntol
   DATATYPE,intent(inout) :: A(N,N)
-  call bothlnmat(A,N,+1,lntol)
+  call bothlnmat(A,N,+1)
 end subroutine lnmat
 
 function djhlog(incomplex)
@@ -434,15 +432,15 @@ function djhlog(incomplex)
 end function djhlog
 
 
-subroutine bothlnmat(A,N, which ,lntol) 
+subroutine bothlnmat(A,N, which) 
 !! input :
 !! A - an N by N matrix
 !! N - the dimension of A
 !! output:
 !! A - an N by N matrix that is A=-ln(A_in)
+  use tol_parameters
   implicit none
   integer,intent(in) :: N,which
-  real*8,intent(in) :: lntol
   DATATYPE,intent(inout) :: A(N,N)
   integer, save :: ierr=0
   real*8 :: time
@@ -494,8 +492,7 @@ subroutine bothlnmat(A,N, which ,lntol)
 
 !! MAY 2014
   VL(:,:)=TRANSPOSE(VR(:,:))
-  call invmatsmooth(VL,N,N,0d0)
-
+  call invmatsmooth(VL,N,N,invtol)
 
 !! apply the function
   do k=1,N
@@ -574,6 +571,7 @@ subroutine expmat(A,N)
 !! N - the dimension of A
 !! output:
 !! A - an N by N matrix that is A=exp(A_in)
+  use tol_parameters
   implicit none
   integer,intent(in) :: N
   DATATYPE,intent(inout) :: A(N,N)
@@ -598,7 +596,7 @@ subroutine expmat(A,N)
 
   VL(:,:)=TRANSPOSE(VR(:,:))
 
-  call invmatsmooth(VL,N,N,0d0)
+  call invmatsmooth(VL,N,N,invtol)
 
 
 !! apply the function
@@ -873,6 +871,7 @@ end subroutine cnormorthogmat
 
 
 subroutine allpurposemat(A,N,flag)
+  use tol_parameters
   use fileptrmod
 !! input :
 !! A - an N by N matrix
@@ -901,7 +900,7 @@ subroutine allpurposemat(A,N,flag)
 
 
   VL(:,:)=TRANSPOSE(VR(:,:))
-  call invmatsmooth(VL,N,N,0d0)
+  call invmatsmooth(VL,N,N,invtol)
 
 !! apply the function
   do k=1,N

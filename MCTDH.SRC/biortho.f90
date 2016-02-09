@@ -371,6 +371,7 @@ module biorthomod
 contains
   subroutine bioset(biotypevar,insmo,innumr,wwbio)
     use bio_parameters
+    use tol_parameters
     use biorthotypemod
     implicit none
     type(walktype),target :: wwbio
@@ -402,6 +403,7 @@ contains
 
   subroutine biortho(origmo,oppmo,mobio,abio,inbiovar)
     use bio_parameters
+    use tol_parameters
     use sparse_parameters
     use spfsize_parameters
     use biorthotypemod
@@ -448,7 +450,7 @@ contains
        call abio_nonsparse(abio,atmp,inbiovar)
     else
        inbiovar%smo(:,:)=smosave(:,:)
-       call lnmat(inbiovar%smo(:,:),inbiovar%wwbio%nspf,lntol) 
+       call lnmat(inbiovar%smo(:,:),inbiovar%wwbio%nspf) 
        call abio_sparse(abio,atmp,inbiovar)
     endif
     
@@ -494,7 +496,7 @@ contains
     if(sparseconfigflag.eq.0) then
        call abio_nonsparse(abio,atmp,inbiovar)
     else
-       call neglnmat(inbiovar%smo,inbiovar%wwbio%nspf,lntol)    !! transform s to -ln(s)
+       call neglnmat(inbiovar%smo,inbiovar%wwbio%nspf)    !! transform s to -ln(s)
        call abio_sparse(abio,atmp,inbiovar)
     endif
     
@@ -536,7 +538,7 @@ contains
     if(sparseconfigflag.eq.0) then
        call abio_nonsparse(abio,atmp,inbiovar)
     else
-       call lnmat(inbiovar%smo,inbiovar%wwbio%nspf,lntol)    !! transform s to ln(s)
+       call lnmat(inbiovar%smo,inbiovar%wwbio%nspf)    !! transform s to ln(s)
        call abio_sparse(abio,atmp,inbiovar)
     endif
     

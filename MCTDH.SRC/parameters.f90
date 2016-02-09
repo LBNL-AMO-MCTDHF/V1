@@ -116,6 +116,10 @@ integer :: timingout=499         !!              !! various routines output to f
                                  !!              !!   # of calls
 character(len=200):: timingdir="timing"                       !!
 end module timing_parameters
+module tol_parameters
+real*8 :: lntol=1d-12
+real*8 :: invtol=1d-12
+end module tol_parameters
 module bio_parameters
 !!EE
 !!{\large \quad Biorthogonalization }
@@ -123,9 +127,7 @@ module bio_parameters
 integer ::      maxbiodim=100, &
      biodim=10                   !! Krylov dim for biorthogonalization
 real*8 ::     biotol=1.d-6
-real*8 :: lntol=1d-12
 integer :: biocomplex=0          !! 1=old way complex zg/hpiv  0=always real
-real*8 :: invtol=1d-12
 integer :: auto_biortho=1        !! do we want to use biorthonormalization or permutation overlaps? 0 perm overlaps, 1 biortho
 end module bio_parameters
 module spfsize_parameters
@@ -159,7 +161,7 @@ integer :: df_restrictflag=0      !!              !! apply constraint to configu
                                                  !!  SEE MANUAL FOR PROPER USE OF dfrestrictflag/shell options.
 end module df_parameters
 module parameters
-  use littleparmod;  use fileptrmod;  use r_parameters; use sparse_parameters;
+  use littleparmod;  use fileptrmod;  use r_parameters; use sparse_parameters; use tol_parameters
   use ham_parameters;  use basis_parameters;  use timing_parameters; use spfsize_parameters;use df_parameters
   implicit none
 !!EE
@@ -457,7 +459,6 @@ integer, parameter :: nodgexpthirdflag=1  !! =1 HARDWIRE 10-2015 not sure about 
 !integer :: noorthogflag=1        !! 082010 NOW TURNING THIS ON !!
 !     hardwire.  eliminated realproject for quad which didn't have the 
 !     call to orthog.  don't remember if that was purposeful.
-!!integer :: cmfmode=0    !! experimental 1=new 0=old attempt 2=old with additional a-vector
 integer :: eigprintflag=0
 !integer :: intopt=3              !! RK, GBS      !! SPF/VMF Integrator: 0, RK; 1, GBS, 2, DLSODPK  
 !                                                 !!  for CMF: 3=expo 4=verlet
