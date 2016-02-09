@@ -1,9 +1,9 @@
 
 
-#include "Definitions.INC"
-
 !! Subroutines for action 21 emission/absorption.  Windowfunct for actions 1 16 17 21.
 !!   See also dipolesub.f90
+
+#include "Definitions.INC"
 
 function windowfunct(i,numdata)
   use parameters
@@ -110,7 +110,7 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
      do i=0,numdata
         myenergy=i*Estep
 
-!! sums to 1 for 1 electron
+!! sums to N for N electrons
         if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
            xsum=xsum + Estep * imag(fftrans(i)*conjg(eft(i))) / abs(eft(i)**2) * myenergy * 2 / PI
         endif

@@ -1,8 +1,9 @@
 
 
+!!   Initialization subroutines for walks and hops which refer to the indexing of nonzero matrix 
+!!   elements between pairs of configurations (matrix elements in the Hamiltonian matrix for the 
+!!   Slater determinant representation) -- initialization of derived type walktype variables.
 
-!! DETERMINES WHICH CONFIGURATIONS HAVE NONZERO MATRIX ELEMENTS WITH WHICH OTHERS, AND STORES INFORMATION
-!!  ABOUT THE ORBITAL MATRIX ELEMENTS OF WHICH THEY ARE COMPRISED
 
 #include "Definitions.INC"
 

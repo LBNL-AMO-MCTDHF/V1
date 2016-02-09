@@ -1,31 +1,8 @@
 
-#include "Definitions.INC"
 
-!!$module savedenmod
-!!$  implicit none
-!!$  complex*16, allocatable :: density(:,:,:)
-!!$  DATATYPE, allocatable :: mdensity(:,:,:)
-!!$  complex*16, allocatable :: cmdensity(:,:,:)
-!!$  complex*16, allocatable :: mtrans(:,:)
-!!$end module savedenmod
-!!$
-!!$subroutine savedenalloc()
-!!$  use parameters
-!!$  use savedenmod
-!!$  implicit none
-!!$  allocate( &
-!!$       density(numerad,lbig+1,2*mbig+1), &   !! last index is phi
-!!$       mdensity(numerad,lbig+1,-mbig:mbig), &  !! last index is m
-!!$       cmdensity(numerad,lbig+1,-mbig:mbig), &  !! last index is m
-!!$       mtrans(2*mbig+1,-mbig:mbig) )
-!!$end subroutine
-!!$
-!!$subroutine savedendealloc()
-!!$  use parameters
-!!$  use savedenmod
-!!$  implicit none
-!!$  deallocate(        density,        mdensity,        cmdensity,        mtrans)
-!!$end subroutine
+!! FOR SAVING/PLOTTING ACTIONS 2-12
+
+#include "Definitions.INC"
 
 subroutine save_density( thistime, inspfs, indenmat, iprop, denfilename)
   use parameters

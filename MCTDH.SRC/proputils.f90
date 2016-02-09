@@ -35,14 +35,6 @@ subroutine project(inspfs, outspfs, prospfs)
 !     call spf_orthogi t(tempprospfs,nspf+numfrozen, nulldouble)
 !  endif
 
-!!$  do i=1,nspf
-!!$     outspfs(:,i)=0.d0
-!!$     do j=1,nspf+numfrozen
-!!$        outspfs(:,i) = outspfs(:,i) + tempprospfs(:,j) * &
-!!$             dot(tempprospfs(:,j),inspfs(:,i),spfsize)
-!!$     enddo
-!!$  enddo
-
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
   do i=1,nspf

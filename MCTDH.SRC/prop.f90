@@ -1,11 +1,12 @@
   
+
+!! SUBROUTINES FOR WAVE FUNCTION PROPAGATION including core prop_loop subroutine
+!! prop_loop calls cmf_prop_wfn which calls cmf_prop_avector and propspfs
+!! for regular forward time propagation (improvedrelaxflag=0)
+
+
 #include "Definitions.INC"
 
-!! SUBROUTINES FOR WAVE FUNCTION PROPAGATION
-!! THESE ROUTINES  do not have any dummy psi(:)'s .  They use yyy%cmfpsivec(:,0) and for cmf, the others yyy%cmfpsivec(:,0:).
-    
-!! at the start of cmf_prop_wfn and prop_wfn the convention is that everything must be initialized to the proper values at that time.  
-  
 subroutine prop_loop( starttime)
   use parameters
   use mpimod

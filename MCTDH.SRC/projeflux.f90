@@ -1,7 +1,7 @@
 
-!! NOT DONE PARORBSPLIT=3
 
-!! PROJECTED FLUX BY KVL
+!! PROJECTED FLUX (partial photoionization ACTION 17)
+
 
 #include "Definitions.INC"
 

@@ -1,4 +1,9 @@
 
+!! subroutines for sparse matrix multiplication of Slater determinant coefficient vectors
+!! the matrices are represented by derived type configptr or sparseptr depending on sparseopt
+!! these derived types are handled using derived type walktype - their indexing etc is stored there
+
+
 #include "Definitions.INC"
 
 !! All purpose subroutine.

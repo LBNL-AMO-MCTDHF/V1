@@ -100,10 +100,6 @@ subroutine spf_orthogit(inspfs,error)
 
   error=0.d0
 
-
-  !! WTF.  if numfrozen is 0 this gives an error "Null pointer for frozenspfs"
-  !!  on carver with pgf90.  Even though frozenspfs is never referenced.  Hmm.
-
   if (numfrozen.gt.0) then
      do i=1,nspf
         call gramschmidt(spfsize, numfrozen, spfsize, frozenspfs(:,:), inspfs(:,i),orbparflag)

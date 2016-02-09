@@ -8,10 +8,6 @@
 
 #include "Definitions.INC"
 
-!! NEVERMIND FOR CONFIGURATIONS -- NEWCOORDS 011514
-!!!!   yyy%cmfpsivec  should NOT appear in these routines -- called with psi arguments
-!!! nor should iglobalprop (iglobalmod)
-
 !! FOR ODEX PROPAGATION (NOT DEFAULT)
 
 subroutine gbs_derivs(notusedint,thistime,psi,psip,notuseddbl,notusedint2)
@@ -24,6 +20,8 @@ subroutine gbs_derivs(notusedint,thistime,psi,psip,notuseddbl,notusedint2)
   call all_derivs(thistime,psi,psip)
 end subroutine gbs_derivs
 
+
+!! VMF SUBROUTINE (possibly broken, not used for a while)
 
 subroutine all_derivs(thistime,xpsi, xpsip)
   use parameters
@@ -143,15 +141,6 @@ subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
 
      spfmult2(:,:)=0d0
      do jjj=ibot,1
-
-! previous
-!        spfmult(:,:)=0d0
-!        do ispf=1,nspf
-!           do jspf=1,nspf
-!              spfmult(:,ispf) = spfmult(:,ispf) + &
-!                   yyy%frozenexchange(:,jspf,jjj) * yyy%reducedinvr(jspf,ispf,jjj) 
-!           enddo
-!        enddo
 
 !! facs(jjj) here
         call MYGEMM('N','N',spfsize,nspf,nspf,facs(jjj), yyy%frozenexchange(:,:,jjj),spfsize,&
@@ -433,12 +422,6 @@ subroutine op_gmat_firstorder(inspfs, outspfs, ireduced,thistime)
 
   call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,inspfs,spfsize,conmat,nspf,DATAZERO,outspfs,spfsize)
 
-!!  do ispf=1,nspf
-!!     do jspf=1,nspf
-!!        outspfs(:,ispf) = outspfs(:,ispf) + inspfs(:,jspf) * conmat(jspf,ispf)
-!!     enddo
-!!  enddo
-
 end subroutine op_gmat_firstorder
 
 
@@ -477,8 +460,6 @@ subroutine op_gmat_thirdorder(inspfs, outspfs, ireduced,thistime,projspfs)
   call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,projspfs,spfsize,mymat,nspf,DATAZERO,outspfs,spfsize)
 
 end subroutine op_gmat_thirdorder
-
-
 
 
 
@@ -545,6 +526,7 @@ subroutine wmult(inspfs, outspfs, ireduced)
   call MYGEMM('N','N', spfsize,nspf,nspf,timefac, spfmult,spfsize, yyy%invdenmat(:,:,ireduced), nspf, DATAZERO, outspfs, spfsize)
 
 end subroutine wmult
+
 
 subroutine denmult(inspfs, outspfs, ireduced)
   use parameters

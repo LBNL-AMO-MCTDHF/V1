@@ -7,7 +7,7 @@
 !!!   contain, mutually exclusively.  In order, in this file:
 !!!   1) expomod files, for orbital propagation.  These are for expoprop, called from prop.f90, driver
 !!!     for expokit subroutines.  These expokit subroutines for the orbital equation call 
-!!!   2) jacmod files, for operation of jacobian, called by expokit, for orbital equation.
+!!!   2) jacmod files, for operation of jacobian, called by expokit, for orbital equation, and improvedquadflag=2,3
 !!!   3) configexpomod files, for A-vector propagation
 !!!   4) utilities that do not use any modules (besides mpimod and parameters)
 !!!

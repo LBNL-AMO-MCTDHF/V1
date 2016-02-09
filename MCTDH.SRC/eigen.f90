@@ -89,6 +89,7 @@ subroutine get_eigen_cnorm(inmat, n, lda, outmat,values)
   do i=1,n
 
 ! this is screwing stuff up  DANGER DANGER .... IS NEEDED sometimes
+!  (attempt to deal with linear dependence in degenerate eigs)
 !     do j=low,i-1
 !        if (real(values(j)-values(i),8).gt.lowthresh*valnorm) then
 !           low=low+1

@@ -1,4 +1,9 @@
 
+
+!! ACTIONS 20 and 26 - overlaps 
+!! (with time-dependent wfn, action 20, and between eigenfunctions, MCSCF-matel action 26)
+
+
 #include "Definitions.INC"
 
 module ovlmod
@@ -80,8 +85,6 @@ subroutine ovl_initial()
   jnumovl=0
 
   do ifile=1,numovlfiles
-
-!!     call load_spfs0(orig_spfs(:,:,jnumovl+1), spfdims, nspf, spfdimtype, ovlspffiles(ifile), tnspf, (/0,0,0/))
 
      read_spfs(:,:)=0d0
      call load_spfs0(read_spfs(:,:), spfdims, nspf+numfrozen, spfdimtype, ovlspffiles(ifile), tnspf, (/0,0,0/))

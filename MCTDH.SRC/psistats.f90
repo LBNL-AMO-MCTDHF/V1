@@ -1,4 +1,8 @@
 
+
+!! FOR finalstats.dat (after relaxation) or psistats.dat (action 25 for time-dependent calculation)
+
+
 #include "Definitions.INC"
 
 

@@ -4,7 +4,10 @@
 #include "Definitions.INC"
 
 
-!! INDICATES WHETHER A GIVEN CONFIG is included in the restricted configuration list.
+!! Returns df configuration index (dfrestricted) up to numdfconfigs
+!! given configuration index config1 (full list, numconfig)
+!! if config1 is included in the dfrestricted list
+!! or -1 if config1 is not in the dfrestricted config list
 
 function getdfindex(www,config1)
   use walkmod

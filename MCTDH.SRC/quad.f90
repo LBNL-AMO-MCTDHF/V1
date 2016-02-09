@@ -89,7 +89,7 @@ end subroutine dgsolve0
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!
-!!! NEWTON SOLVE (IMPROVEDQUADFLAG) FOR ORBITALS
+!!! NEWTON SOLVE (IMPROVEDQUADFLAG=1,2) FOR ORBITALS
 !!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine quadinit(inspfs, thistime)
@@ -170,18 +170,13 @@ subroutine quadspfs(inspfs,jjcalls)
 
   vector=inspfs
 
-  icount=0
-
-  do while (42.eq.42)
-
-     icount=icount+1
+  do icount=0,0
 
      call spf_orthogit(vector,orthogerror)
 
      call quadinit(vector,0d0)
 
      call actreduced0(0,0d0,vector,vector,vector2,1,1,0)
-!     call spf_linear_derivs(0d0,vector,vector2)
 
      dev=abs(hermdot(vector2,vector2,totspfdim))
      if (parorbsplit.eq.3) then
@@ -189,63 +184,72 @@ subroutine quadspfs(inspfs,jjcalls)
      endif
      dev=sqrt(dev)
   
-     OFLWR "   Quad orbitals: Deviation is     ", dev
-     WRFL  "                  Orthog error is  ", orthogerror; CFL
+     OFLWR "   Quad orbitals: Deviation is     ", dev; CFL
 
-     if (dev.lt.stopthresh.or.icount.gt.1) then
-        inspfs = vector
-!!$        OFLWR "    --> Converged newton"; CFL
-        deallocate( vector,vector2,vector3)
-        if (orbcompact.ne.0) then
-           deallocate(com_vector2,com_vector3)
-        endif
-        call mpibarrier()
-        return  !! RETURN
-     else
-        vector3=vector   !! guess
+     vector3=vector   !! guess
 
-        if (orbcompact.ne.0) then
-           call spfs_compact(vector2,com_vector2)
-           call spfs_compact(vector3,com_vector3)
-           if (parorbsplit.eq.3) then
-              maxdim=min(spfsmallsize*nspf*nprocs,maxexpodim)
-              call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, quadtol,spfsmallsize*nspf,maxdim,1)
-           else
-              maxdim=min(spfsmallsize*nspf,maxexpodim)
-              call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, quadtol,spfsmallsize*nspf,maxdim,0)
-           endif
-           call spfs_expand(com_vector3,vector3)
-        else
-           if (parorbsplit.eq.3) then
-              maxdim=min(totspfdim*nprocs,maxexpodim)
-              call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, quadtol,totspfdim,maxdim,1)
-           else
-              maxdim=min(totspfdim,maxexpodim)
-              call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, quadtol,totspfdim,maxdim,0)
-           endif
-        endif
-
-        mynorm=abs(hermdot(vector3,vector3,totspfdim))
-     
+     if (orbcompact.ne.0) then
+        call spfs_compact(vector2,com_vector2)
+        call spfs_compact(vector3,com_vector3)
         if (parorbsplit.eq.3) then
-           call mympirealreduceone(mynorm)
+           maxdim=min(spfsmallsize*nspf*nprocs,maxexpodim)
+           call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, quadtol,spfsmallsize*nspf,maxdim,1)
+        else
+           maxdim=min(spfsmallsize*nspf,maxexpodim)
+           call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, quadtol,spfsmallsize*nspf,maxdim,0)
         endif
-        mynorm=sqrt(mynorm)
-
-        if (mynorm.gt.maxquadnorm*nspf) then
-           vector3=vector3*maxquadnorm*nspf/mynorm
+        call spfs_expand(com_vector3,vector3)
+     else
+        if (parorbsplit.eq.3) then
+           maxdim=min(totspfdim*nprocs,maxexpodim)
+           call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, quadtol,totspfdim,maxdim,1)
+        else
+           maxdim=min(totspfdim,maxexpodim)
+           call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, quadtol,totspfdim,maxdim,0)
         endif
-
-        vector=vector+vector3
-
      endif
+
+     mynorm=abs(hermdot(vector3,vector3,totspfdim))
+     
+     if (parorbsplit.eq.3) then
+        call mympirealreduceone(mynorm)
+     endif
+     mynorm=sqrt(mynorm)
+
+     if (mynorm.gt.maxquadnorm*nspf) then
+        vector3=vector3*maxquadnorm*nspf/mynorm
+     endif
+
+     vector=vector+vector3
+
   enddo
+
+  call spf_orthogit(vector,orthogerror)
+
+  inspfs = vector
+
+  call actreduced0(0,0d0,vector,vector,vector2,1,1,0)
+
+  dev=abs(hermdot(vector2,vector2,totspfdim))
+  if (parorbsplit.eq.3) then
+     call mympirealreduceone(dev)
+  endif
+  dev=sqrt(dev)
+  
+  OFLWR "   Quad orbitals: Deviation is now ", dev;
+  WRFL  "                  Orthog error is  ", orthogerror; CFL
+
+  deallocate( vector,vector2,vector3)
+  
+  if (orbcompact.ne.0) then
+     deallocate(com_vector2,com_vector3)
+  endif
 
 end subroutine quadspfs
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!
-!!! NEWTON SOLVE (IMPROVEDQUADFLAG) FOR AVECTOR
+!!! NEWTON SOLVE (IMPROVEDQUADFLAG=1,3) FOR AVECTOR
 !!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -334,10 +338,6 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
   if (sparseconfigflag.eq.0) then
      OFLWR "Error, must use sparseconfigflag.ne.0 for sparsequadavector"; CFLST
   endif
-
-!!$  if (aerror.lt.1d-7) then
-!!$     OFLWR "Error, set tolerance parameter arror at least 1d-7 for reliable performance sparse quad a-vector.  TEMP CONTINUE"; CFL
-!!$  endif
 
   allocate(smallvectorspin(numr,www%botdfbasis:www%topdfbasis), smallvectorspin2(numr,www%botdfbasis:www%topdfbasis))
 

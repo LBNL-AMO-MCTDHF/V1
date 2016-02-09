@@ -139,10 +139,6 @@ subroutine getparams()
 
 !! input dependent defaults
 
-!     if (constraintflag.eq.2) then
-!        lioreg=1d-4
-!     endif
-
      if (improvedrelaxflag.ne.0) then
         maxexpodim=max(300,maxexpodim)
         expodim=max(40,expodim)
@@ -179,10 +175,6 @@ subroutine getparams()
   close(971)
 
   
-!  if (num_skip_orbs.gt.10) then
-!     OFLWR " Redimension skip orbs arrays in parameters.f90."; CFLST
-!  endif
-
   !!   ************************************************************************************************************************
   !!
   !!    Coord-Dependent Namelist Input and Command Line Options are SUBSERVIENT to MCTDHF Options  (but bo_checkflag=1 
@@ -404,10 +396,6 @@ subroutine getparams()
   write(mpifileptr, *) " ****************************************************************************"     
   write(mpifileptr,*);  call closefile()
   
-!  if (lioreg.lt.1d-13) then    !! really needs to be 1d-11 or greater for stability, at least dfcon
-!     lioreg=1d-13
-!  endif
-
   if (constraintflag > 2) then
      OFLWR "Constraintflag not supported: ", constraintflag;     CFLST
   endif
@@ -416,10 +404,6 @@ subroutine getparams()
      OFLWR "FOR DEN CONSTRAINT, USE IMPROVEDNATFLAG FOR RELAX, NO CONSTRAINTFLAG."; CFLST
   endif
 
-!!$   if (improvedrelaxflag.ne.0.and.constraintflag.eq.2.and.improvedquadflag.ne.3.and.improvedquadflag.ne.1) then  
-!!$     OFLWR "FOR DF CONSTRAINT, DO NOT DIAGONALIZE FOR A-VECTOR - GET WRONG ANSWER TEMP CONTINUE"; CFL
-!!$  endif
-  
   if ((sparseconfigflag.ne.0).and.(stopthresh.lt.lanthresh).and.(improvedquadflag.eq.0.or.improvedquadflag.eq.2)) then
      OFLWR "Enforcing lanthresh.le.stopthresh"
      lanthresh=stopthresh
@@ -586,18 +570,7 @@ subroutine getparams()
 
   numpropsteps=floor((finaltime+0.0000000001d0)/par_timestep)
 
-!  call openfile()
-!  if (numpropsteps*par_timestep - 0.000000001d0 .gt. finaltime) then
-!     write(mpifileptr, *) "Resetting numpropsteps to agree with finaltime"
-!     numpropsteps=floor((finaltime+0.0000000001d0)/par_timestep)
-!  else if (numpropsteps*par_timestep + 0.000000001d0 .lt. finaltime) then
-!     write(mpifileptr, *) "Resetting finaltime to agree with numpropsteps"
-!     finaltime = numpropsteps*par_timestep
-!  endif
-!  call closefile()
-
   autosteps=floor(max(1.d0,autotimestep/par_timestep));  autosize=numpropsteps/autosteps+1
-
 
 !!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input)   
 !!$ fluxsteps=floor(max(1.d0,fluxtimestep/par_timestep));  fluxtimestep=par_timestep*fluxsteps
@@ -612,9 +585,6 @@ subroutine getparams()
   enddo
 
   ndof=2*numelec
-
-  !! make it convenient - turn on nonuc_checkflag if numr=1
-  !! THIS IS BAD.  makes default improved adiabatic hamiltonian.
 
   if (stopthresh.lt.1.d-12) then
      OFLWR "Error, stopthresh cannot be less than 1d-12"; CFLST  !! then would send hgram 1d-14
@@ -632,11 +602,11 @@ subroutine getparams()
   endif
 
 
-! no, turning this on in quadspfs.
-!  if (improvedquadflag.gt.1.and.jacsymflag.eq.0) then
-!     jacsymflag=1
-!     OFLWR "enforcing jacsymflag=1 for improved quad orbitals"; CFL
-!  endif
+!!$ no, turning this on in quadspfs (quadstarttime)
+!!$  if (improvedquadflag.gt.1.and.jacsymflag.eq.0) then
+!!$     jacsymflag=1
+!!$     OFLWR "enforcing jacsymflag=1 for improved quad orbitals"; CFL
+!!$  endif
 
 
 !! 121912
@@ -769,11 +739,11 @@ subroutine getparams()
   write(mpifileptr, *) 
   if (loadspfflag.eq.1) then
      write(mpifileptr, *) "Spfs will be loaded from files "
+     if (numskiporbs.gt.0) then
+        write(mpifileptr,*) "Skipping orbitals on file.  Orbitals ", (orbskip(i),i=1,numskiporbs)
+     endif
   else
      write(mpifileptr, *) "Spfs will be one-electron eigfuncts."
-!     if (num_skip_orbs.gt.0) then
-!        write(mpifileptr,*) "Skipping orbitals.  Orbital indices and m values:", (orb_skip(i),orb_skip_mvalue(i),i=1,num_skip_orbs)
-!     endif
   endif
   write(mpifileptr, *) 
   if (threshflag.ne.0) then
@@ -810,7 +780,6 @@ subroutine getparams()
   write(mpifileptr, *) 
   write(mpifileptr, *) "***********************    Parameters: propagation    ***********************   "
   write(mpifileptr, *)
-!  write(mpifileptr, *) " CMFMODE : ", cmfmode
   write(mpifileptr,*)  " PAR_TIMESTEP IS ", par_timestep, " LITTLESTEPS IS ", littlesteps
   write(mpifileptr,*)
   if (messflag.ne.0) then
@@ -864,18 +833,15 @@ subroutine getparams()
      write(mpifileptr,*) "    Maxexpodim=", maxexpodim
   case(0)
      write(mpifileptr, *) "RK integration.  Recommend errors 1.d-8"
-     write(mpifileptr, *) "Myrelerr=", myrelerr;      iiflag=1
+     write(mpifileptr, *) "Relerr, Myrelerr=", relerr, myrelerr;      iiflag=1
   case(1)
      write(mpifileptr, *) "GBS integration.  Recommend errors 1.d-8";     iiflag=1
+     write(mpifileptr, *) "Relerr, Myrelerr=", relerr, myrelerr;      iiflag=1
   case(2)
-     write(mpifileptr, *) "DLSODPK integration.  Recommend errors 1.d-10";  iiflag=1
+     write(mpifileptr, *) "DLSODPK integration disabled (intopt=2) !!!"; CFLST
   case default
      write(mpifileptr,*) "Intopt not recognized: ", intopt; CFLST
   end select
-!  if (iiflag==1) then
-!     write(mpifileptr,*) "Relative and (scaled to norm) absolute errors relerr, myrelerr: "
-!     write(mpifileptr,*) "      Relerr=", relerr, 
-!  endif
   write(mpifileptr,*) 
   write(mpifileptr, '(A40, E10.3)') " Density matrix regularized with denreg= ", denreg
   write(mpifileptr,*) 

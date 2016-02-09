@@ -1,7 +1,9 @@
 
 #include "Definitions.INC"
 
-!! SUBROUTINES FOR RESTRICTED CONFIG LIST
+!! SUBROUTINES FOR RESTRICTED CONFIG LIST (dfrestrictflag>0)
+!! and constraint (constraintflag>0, for proper propagation according to variational
+!! principle when using restricted configuration spaces
 !!
 !!   if constraintflag=2, dirac-frenkel.
 !!   if constraintflag=1, density matrix.

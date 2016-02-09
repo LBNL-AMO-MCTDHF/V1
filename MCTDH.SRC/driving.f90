@@ -1,6 +1,8 @@
 
-#include "Definitions.INC"
 
+!! subroutines for PSI-PRIME method (still unstable) using drivingflag
+
+#include "Definitions.INC"
 
 module drivingbiomod
   use biorthotypemod
@@ -200,10 +202,6 @@ subroutine drivingtrans(thistime)
   deallocate(dtwoereduced, dreducedpottally,  multorbsxx,multorbsyy,multorbszz)
   
 end subroutine drivingtrans
-
-
-
-
 
 
 

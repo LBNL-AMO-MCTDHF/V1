@@ -1,7 +1,8 @@
 
-!! NOT DONE PARORBFLAG=3
 
-!! KVL ELECTRON FLUX ROUTINES
+!! ELECTRON FLUX ROUTINES - ACTION 16 analysis total photoionization, 
+!! ACTION 15 save file, saved file may be used for actions 16 17 23)
+
 
 #include "Definitions.INC"
 

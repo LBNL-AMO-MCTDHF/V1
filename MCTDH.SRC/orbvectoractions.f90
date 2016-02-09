@@ -1,4 +1,6 @@
 
+!! FOR PLOTTING ACTIONS (2-12)
+
 #include "Definitions.INC"
 
 
@@ -54,7 +56,7 @@ subroutine save_orbvector(outvec, isize, ifile, filename, header)
   use mpimod
   implicit none
 
-  integer :: isize, ifile  !!, returnval
+  integer :: isize, ifile
   character :: filename*(*)
   character (len=headersize) :: header
   DATATYPE :: outvec(isize)
@@ -68,16 +70,6 @@ subroutine save_orbvector(outvec, isize, ifile, filename, header)
      open(ifile,file=filename, form="unformatted");     myopened(ifile)=.true.
   endif
   write(ifile) header
-
-!  if (returnval/=0) then
-!     call openfile()
-!     write(mpifileptr,*) "Error on write for header, iostat= ", returnval, "  Filename= ", filename
-!     call closefile()
-!     myopened(ifile)=.false.
-!     close(ifile)
-!     call mpistop()
-!  endif
-
   write(ifile) outvec
 
 end subroutine save_orbvector

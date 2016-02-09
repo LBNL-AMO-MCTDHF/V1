@@ -1,4 +1,6 @@
 
+!! ACTIONS 6,12
+
 #include "Definitions.INC"
 
 subroutine save_natproj_final()

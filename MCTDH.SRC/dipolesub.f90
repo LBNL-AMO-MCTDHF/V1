@@ -1,5 +1,7 @@
 
 
+!! ACTION 21 (emission/absorption) subroutine
+
 #include "Definitions.INC"
 
 module dipolemod
