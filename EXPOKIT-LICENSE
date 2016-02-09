@@ -1,3 +1,25 @@
+!!$   
+!!$   ---------- Forwarded message ----------
+!!$   From: Sidje, Roger <roger.b.sidje@ua.edu>
+!!$   Date: Mon, Feb 8, 2016 at 5:19 PM
+!!$   Subject: Re: License for Expokit
+!!$   To: "danhax@gmail.com" <danhax@gmail.com>
+!!$  
+!!$  
+!!$   Dan,
+!!$  
+!!$   Feel free to use Expokit under the terms of the Apache license version 2.0
+!!$
+!!$  
+!!$
+!!$   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!$   This version of expokit.f is modified by Daniel J Haxton
+!!$       danhax@gmail.com
+!!$   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!$   
+!!$   copyright notice http://www.maths.uq.edu.au/expokit/copyright
+!!$   follows:
+!!$
 !!$                                 NOTICE
 !!$   
 !!$   Permission to use, copy, modify, and distribute EXPOKIT and its
@@ -72,22 +94,3 @@
 !!$   =========================================================================
 !!$   http://www.expokit.org/paper.pdf
 !!$  
-
-!!$  ---------- Forwarded message ----------
-!!$  From: Sidje, Roger <roger.b.sidje@ua.edu>
-!!$  Date: Sat, Jan 30, 2016 at 1:11 AM
-!!$  Subject: Re: License for Expokit
-!!$  To: Daniel Haxton <djhaxton@lbl.gov>
-!!$  
-!!$  
-!!$  I confirm that Expokit can be used either in an open-source,
-!!$  closed-source, or commercial software.
-!!$  
-!!$  Because I have moved from UQ (in Australia) to UA (in the USA), making
-!!$  changes to Expokit haven¹t been convenient for a while. Please consider
-!!$  this response as a plain acknowledgment that Expokit can be
-!!$  embedded/released any way.
-!!$
-
-!!$  This version of expokit.f is modified by DJH.
-
