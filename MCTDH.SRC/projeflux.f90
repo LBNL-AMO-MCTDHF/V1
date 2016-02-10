@@ -104,7 +104,7 @@ subroutine projeflux_doproj(cata,neuta,mo,offset)
   integer,intent(in) :: offset 
   DATATYPE,intent(in) :: cata(tnumconfig),neuta(first_config:last_config),mo(spfsize,nspf)
   DATATYPE :: projwfn(spfsize,2),  projcoefs(nspf,2)
-  integer :: jconfig,iwalk,iconfig,ispf,ispin,iphase
+  integer :: jconfig,iwalk,iconfig,ispf,ispin,iphase,mylength
   DATATYPE,allocatable:: bigprojwfn(:,:)
 
 !! make the single electron wfn
@@ -147,8 +147,8 @@ subroutine projeflux_doproj(cata,neuta,mo,offset)
   endif
 
   if (myrank.eq.1) then
-     inquire (iolength=ispf) bigprojwfn
-     open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=ispf)
+     inquire (iolength=mylength) bigprojwfn
+     open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=mylength)
      write(1003,rec=offset) bigprojwfn(:,:) 
      close(1003)
   endif
@@ -164,11 +164,13 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   use parameters
   use projefluxmod  !! targetms, ..
   use mpimod
-  implicit none  
-  integer :: i,k,tlen,mem,istate,curtime,tau,nt,ir ,imc,nstate
+  implicit none
+  integer,intent(in) :: mem,nstate,nt
+  real*8,intent(in) :: dt
+  integer :: i,k,tlen,istate,curtime,tau,ir ,imc,ioffset
   integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,bratop,getlen
  !! bintimes and pulseftsq done outside so we don't have to redo over and over for each state
-  real*8 :: doubleclebschsq,aa,bb,cc,MemTot,MemVal,dt,wfi,cgfac,estep,myfac,windowfunct
+  real*8 :: doubleclebschsq,aa,bb,cc,MemTot,MemVal,wfi,cgfac,estep,myfac,windowfunct
   DATATYPE, allocatable,target :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:)
   DATATYPE, allocatable :: read_bramo(:,:,:,:), read_ketmo(:,:,:,:)
   complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:)
@@ -310,8 +312,12 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            if(myrank.eq.1) then
               do i=1,ketreadsize !! loop over times in this batch
                  do ir=1,numr !! loop over all the r's for this time           
-                    k = (imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + ((ketbat-1)*BatchSize+i-1)*numr + ir
-                    read(1003,rec=k) read_ketmo(:,ir,:,i)
+
+!!$                    k = (imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + ((ketbat-1)*BatchSize+i-1)*numr + ir
+
+                    ioffset=(istate-1)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + ((ketbat-1)*BatchSize+i-1)*numr + ir
+
+                    read(1003,rec=ioffset) read_ketmo(:,ir,:,i)
                  enddo
               enddo
            endif
@@ -554,7 +560,7 @@ module projbiomod
   type(biorthotype),target :: projbiovar
 end module projbiomod
 
-subroutine projeflux_single0(nt,nstate)
+subroutine projeflux_single0(nt,alreadystate,nstate)
   use projbiomod
   use biorthomod
   use parameters
@@ -563,10 +569,10 @@ subroutine projeflux_single0(nt,nstate)
   use mpimod
   implicit none
 !! necessary working variables
-  integer,intent(in) :: nt
+  integer,intent(in) :: nt,alreadystate
   integer,intent(out) :: nstate
   integer :: tau, i,ir,tndof,tnspf,tnumr,istate,ierr
-  integer :: spfcomplex, acomplex, tdims(3),imc
+  integer :: spfcomplex, acomplex, tdims(3),imc,ioffset
   DATATYPE, allocatable :: readmo(:,:),readavec(:,:,:),mobio(:,:),abio(:,:),&
        tmotemp(:,:),mymo(:,:),myavec(:,:,:)
 
@@ -754,8 +760,12 @@ subroutine projeflux_single0(nt,nstate)
         enddo
         do imc=1,mcscfnum
            do istate=1,nstate
-              i=(imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + tau*numr + ir
-              call projeflux_doproj(ta(:,istate,ir),abio(:,imc),mobio(:,:),i)
+
+!!$              ioffset=(imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + tau*numr + ir
+
+              ioffset=(istate-1+alreadystate)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + tau*numr + ir
+
+              call projeflux_doproj(ta(:,istate,ir),abio(:,imc),mobio(:,:),ioffset)
 
            enddo
         enddo
@@ -791,9 +801,10 @@ subroutine projeflux_single(mem)
 
   dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  
   nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
+
   nstate=0
 
-  call projeflux_single0(nt,eachstate)
+  call projeflux_single0(nt,nstate,eachstate)
   
   nstate=nstate+eachstate
 

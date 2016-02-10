@@ -295,7 +295,6 @@ character(len=200):: fluxmofile="Flux/flux.mo.bin"            !! for actions 15,
 character(len=200):: fluxafile="Flux/flux.avec.bin"           !!  "
 character(len=200):: spifile="Dat/xsec.spi.dat"               !! for action 16 (cross section)
 character(len=200):: gtaufile="Dat/gtau.dat"                  !!  " (total flux(t) without e_ke resolution)
-character(len=200):: catavectorfile
 character(len=200):: projspifile="Dat/xsec.proj.spi"          !! for action 17 (partial cross section)
 character(len=200):: projgtaufile="Dat/gtau.dat"              !!  " (projected flux(t))
 character(len=200):: projfluxfile="Flux/proj.flux.wfn.bin"    !!  "
