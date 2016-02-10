@@ -279,8 +279,8 @@ integer :: psistatfreq=1                                      !!  "
 character(len=200):: dendatfile="Dat/denmat.eigs.dat"         !! if notiming=0
 character(len=200):: denrotfile="Dat/denmat.rotate.dat"       !!  "
 character(len=200):: rdendatfile="Dat/rdenmat.eigs.dat"       !! deprecated
-character (len=200) :: ovlspffiles(50)="ovl.spfs.bin"         !! for actions 20 and 26
-character (len=200) :: ovlavectorfiles(50)="ovl.avector.bin"  !!  "
+character (len=200) :: ovlspffiles(50)="ovl.spfs.bin"         !! for actions 20 and 26 
+character (len=200) :: ovlavectorfiles(50)="ovl.avector.bin"  !!      (see numovlfiles in ACTIONS)
 character(len=200):: outovl="Dat/Overlaps.dat"                !! for action 20
 character(len=200):: outmatel="Dat/Matel.dat"                 !! for action 20
 character(len=200):: zdipfile="Dat/ZDipoleexpect.Dat"         !! for action 21
@@ -295,9 +295,12 @@ character(len=200):: fluxmofile="Flux/flux.mo.bin"            !! for actions 15,
 character(len=200):: fluxafile="Flux/flux.avec.bin"           !!  "
 character(len=200):: spifile="Dat/xsec.spi.dat"               !! for action 16 (cross section)
 character(len=200):: gtaufile="Dat/gtau.dat"                  !!  " (total flux(t) without e_ke resolution)
+character(len=200):: catavectorfile
 character(len=200):: projspifile="Dat/xsec.proj.spi"          !! for action 17 (partial cross section)
 character(len=200):: projgtaufile="Dat/gtau.dat"              !!  " (projected flux(t))
 character(len=200):: projfluxfile="Flux/proj.flux.wfn.bin"    !!  "
+character (len=200):: catspffiles(50)="cation.spfs.bin"       !!  " (see numcatfiles in ACTIONS)
+character (len=200):: catavectorfiles(50)="cation.avector.bin"!!  "
 character(len=200):: fluxafile2="Flux/flux.avec.bin"          !! for action 23
 character(len=200):: fluxmofile2="Flux/flux.mo.bin"           !!  "
 character(len=200):: natplotbin="Bin/Natlorb.bin"             !! for actions 2,8
@@ -362,7 +365,7 @@ integer :: actions(100)=0        !!              !! ACTIONS
 !!EE
 !!{\large \quad ACTION VARIABLES (also see filenames in INPUT/OUTPUT above)}
 !!BB
-integer :: numovlfiles=1         
+integer :: numovlfiles=1         !!  see ovlspffiles and ovlavectorfiles in INPUT/OUTPUT
 integer :: nkeproj=200           !!  For keprojector ACTION 24
 real*8 :: keprojminenergy=0.04d0 !!   "
 real*8 :: keprojenergystep=0.04d0!!   "
@@ -395,11 +398,12 @@ real*8 :: dipolesumstart=1d10,&  !! range for integration of oscillator strength
 !!EE
 !!{\large \quad PHOTOIONIZATION (actions 15,16,17)}
 !!BB
-integer :: computeFlux=500, &      !! 0=All in memory other: MBs to allocate
+integer :: computeFlux=500, &    ! 0=All in memory other: MBs to allocate
      FluxInterval=50,&           !! Multiple of par_timestep at which to save flux
      FluxSkipMult=1              !! Read every this number of time points.  Step=FluxInterval*FluxSkipMult
 integer :: nucfluxopt=0          !! Include imaginary part of hamiltonian from nuc ke 
-integer :: FluxOpType=1                !! 0=Full ham 1=halfnium 
+integer :: FluxOpType=1          !! 0=Full ham 1=halfnium 
+integer :: numcatfiles=1         !! see catspffiles and catavectorfiles in INPUT/OUTPUT for action 17
 !!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input) 
 !!$ real*8 :: fluxtimestep=0.1d0
 !!EE

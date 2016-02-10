@@ -104,7 +104,8 @@ subroutine getparams()
        reinterp_orbflag,spf_gridshift,load_avector_product,projspifile,readfullvector,walksinturn,&
        turnbatchsize,energyshift, pulseft_estep, finalstatsfile, projgtaufile,gtaufile,&
        sparsedfflag,sparseprime,sparsesummaflag, par_consplit, ftwindowlength, fttriwindow,&
-       pulsewindowtoo,conjgpropflag,dipolesumstart,dipolesumend,outmatel
+       pulsewindowtoo,conjgpropflag,dipolesumstart,dipolesumend,outmatel,numcatfiles,&
+       catspffiles,catavectorfiles
 
 
   OFL

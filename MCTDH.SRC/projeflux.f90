@@ -554,7 +554,7 @@ module projbiomod
   type(biorthotype),target :: projbiovar
 end module projbiomod
 
-subroutine projeflux_single(mem)
+subroutine projeflux_single0(nt,nstate)
   use projbiomod
   use biorthomod
   use parameters
@@ -563,16 +563,15 @@ subroutine projeflux_single(mem)
   use mpimod
   implicit none
 !! necessary working variables
-  integer :: mem,tau, i,nt ,ir,tndof,tnspf,nstate,tnumr,istate,ierr
+  integer,intent(in) :: nt
+  integer,intent(out) :: nstate
+  integer :: tau, i,ir,tndof,tnspf,tnumr,istate,ierr
   integer :: spfcomplex, acomplex, tdims(3),imc
-  real*8 :: dt
   DATATYPE, allocatable :: readmo(:,:),readavec(:,:,:),mobio(:,:),abio(:,:),&
        tmotemp(:,:),mymo(:,:),myavec(:,:,:)
 
 !! mcscf specific read variables
   DATATYPE,target :: smo(nspf,nspf)
-
-  OFLWR ;  WRFL   "   *** DOING PROJECTED FLUX. ***    ";  WRFL; CFL
 
 !! read in the data from mcscf for our target cation state
 
@@ -691,10 +690,6 @@ subroutine projeflux_single(mem)
 
 !! allocate all necessary extra memory and io params to do this looping business
 
-!!  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  nt=floor(final time/dt)
-
-  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
-
   allocate(mobio(spfsize,nspf),abio(first_config:last_config,mcscfnum),mymo(spfsize,nspf),&
        myavec(numr,first_config:last_config,mcscfnum))
 
@@ -780,10 +775,32 @@ subroutine projeflux_single(mem)
   deallocate(numpwalk1,pwalk1,pspf1,pphase1) !!,num pw alk2,pwal k2,ps pf2,ppha se2)
 
 
+end subroutine projeflux_single0
+
+
+
+subroutine projeflux_single(mem)
+  use parameters
+  use projefluxmod
+  implicit none
+  integer,intent(in) :: mem
+  integer :: nt,nstate,eachstate
+  real*8 :: dt
+
+  OFLWR ;  WRFL   "   *** DOING PROJECTED FLUX. ***    ";  WRFL; CFL
+
+  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  
+  nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
+  nstate=0
+
+  call projeflux_single0(nt,eachstate)
+  
+  nstate=nstate+eachstate
+
 !! do the double time integral
     call projeflux_double_time_int(mem,nstate,nt,dt)
 
   OFLWR "Cross Section acquired, cleaning and closing";CFLST
-end subroutine projeflux_single
 
+end subroutine projeflux_single
 
