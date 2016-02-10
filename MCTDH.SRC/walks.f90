@@ -156,39 +156,39 @@ subroutine walkdealloc(www)
 end subroutine walkdealloc
 
 
-subroutine configlistwrite(www,inconfiglistfile)
-  use walkmod
-  use mpimod
-  implicit none
-  type(walktype),intent(in) :: www
-  character,intent(in) :: inconfiglistfile*(*)
-  if (myrank.eq.1) then
-     open(1088,file=inconfiglistfile,status="unknown",form="unformatted")
-     write(1088) www%numconfig,www%ndof
-     write(1088) www%configlist(:,:)
-     close(1088)
-  endif
-
-end subroutine configlistwrite
-
-subroutine configlistheaderread(iunit,readnumconfig,readndof)
-  implicit none
-  integer,intent(in) :: iunit
-  integer,intent(out) :: readnumconfig,readndof
-
-  read(iunit) readnumconfig,readndof
-
-end subroutine configlistheaderread
-
-
-subroutine configlistread(iunit,readnumconfig,readndof, readconfiglist)
-  implicit none
-  integer,intent(in) :: iunit,readnumconfig,readndof
-  integer,intent(out) :: readconfiglist(readndof,readnumconfig)
-  
-  read(iunit) readconfiglist(:,:)
-
-end subroutine configlistread
+!!$  subroutine configlistwrite(www,inconfiglistfile)
+!!$    use walkmod
+!!$    use mpimod
+!!$    implicit none
+!!$    type(walktype),intent(in) :: www
+!!$    character,intent(in) :: inconfiglistfile*(*)
+!!$    if (myrank.eq.1) then
+!!$       open(1088,file=inconfiglistfile,status="unknown",form="unformatted")
+!!$       write(1088) www%numconfig,www%ndof
+!!$       write(1088) www%configlist(:,:)
+!!$       close(1088)
+!!$    endif
+!!$  
+!!$  end subroutine configlistwrite
+!!$
+!!$  subroutine configlistheaderread(iunit,readnumconfig,readndof)
+!!$    implicit none
+!!$    integer,intent(in) :: iunit
+!!$    integer,intent(out) :: readnumconfig,readndof
+!!$  
+!!$    read(iunit) readnumconfig,readndof
+!!$  
+!!$  end subroutine configlistheaderread
+!!$
+!!$
+!!$  subroutine configlistread(iunit,readnumconfig,readndof, readconfiglist)
+!!$    implicit none
+!!$    integer,intent(in) :: iunit,readnumconfig,readndof
+!!$    integer,intent(out) :: readconfiglist(readndof,readnumconfig)
+!!$    
+!!$    read(iunit) readconfiglist(:,:)
+!!$  
+!!$  end subroutine configlistread
 
 
 

@@ -563,8 +563,8 @@ subroutine projeflux_single(mem)
   use mpimod
   implicit none
 !! necessary working variables
-  integer :: mem,tau, i,nt ,ir,tndof,tnspf,nstate,tnumr,istate,myiostat,ierr
-  integer :: spfcomplex, acomplex, tdims(3),ttndof,ttnumconfig,imc
+  integer :: mem,tau, i,nt ,ir,tndof,tnspf,nstate,tnumr,istate,ierr
+  integer :: spfcomplex, acomplex, tdims(3),imc
   real*8 :: dt
   DATATYPE, allocatable :: readmo(:,:),readavec(:,:,:),mobio(:,:),abio(:,:),&
        tmotemp(:,:),mymo(:,:),myavec(:,:,:)
@@ -674,26 +674,15 @@ subroutine projeflux_single(mem)
      ta(:,:,ir)=ta(:,:,1)
   enddo
 
+  allocate(tconfiglist(tndof,tnumconfig))
+
   if (myrank.eq.1) then
-     open(676,file="WALKS/cation.configlist.BIN",status="old",form="unformatted",iostat=myiostat)
-  endif
-  call mympiibcastone(myiostat,1)
-  if (myiostat.ne.0) then
-     OFLWR "iostat ",myiostat," in open of cation.configlist.BIN"; CFLST
-  endif
-  if (myrank.eq.1) then
-     call configlistheaderread(676,ttnumconfig,ttndof)
-  endif
-  call mympiibcastone(ttnumconfig,1); call mympiibcastone(ttndof,1)
-  if (ttnumconfig.ne.tnumconfig.or.tndof.ne.ttndof) then
-     OFLWR "TTTYQ ERROR"; CFLST
+     open(910,file="Bin/cation.avector.bin",status="unknown",form="unformatted")
+     call avector_header_read_simple(910,nstate,tndof,tnumr,tnumconfig,acomplex)
+     call get_avectorfile_configlist(910,acomplex,tconfiglist,tndof,tnumr,tnumconfig)
+     close(910)
   endif
 
-  allocate(tconfiglist(tndof,tnumconfig))
-  if (myrank.eq.1) then
-     call configlistread(676,tnumconfig,tndof,tconfiglist)
-     close(676)
-  endif
   call mympiibcast(tconfiglist,1,tndof*tnumconfig)
 
 !! do the walks from the target state into our final state

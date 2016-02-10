@@ -293,7 +293,6 @@ character(len=200):: corrdatfile="Dat/Correlation.Dat"        !! for action 1
 character(len=200):: corrftfile="Dat/Corrft.Dat"              !!  "
 character(len=200):: fluxmofile="Flux/flux.mo.bin"            !! for actions 15,16,17,23
 character(len=200):: fluxafile="Flux/flux.avec.bin"           !!  "
-character(len=200):: configlistfile="WALKS/configlist.BIN"    !! need cation.configlist.BIN action 17
 character(len=200):: spifile="Dat/xsec.spi.dat"               !! for action 16 (cross section)
 character(len=200):: gtaufile="Dat/gtau.dat"                  !!  " (total flux(t) without e_ke resolution)
 character(len=200):: projspifile="Dat/xsec.proj.spi"          !! for action 17 (partial cross section)
@@ -401,7 +400,6 @@ integer :: computeFlux=500, &      !! 0=All in memory other: MBs to allocate
      FluxSkipMult=1              !! Read every this number of time points.  Step=FluxInterval*FluxSkipMult
 integer :: nucfluxopt=0          !! Include imaginary part of hamiltonian from nuc ke 
 integer :: FluxOpType=1                !! 0=Full ham 1=halfnium 
-integer :: writeconfiglist=0     !! NOW MUST SPECIFY configlistwrite=1 for cation calc for action 17
 !!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input) 
 !!$ real*8 :: fluxtimestep=0.1d0
 !!EE

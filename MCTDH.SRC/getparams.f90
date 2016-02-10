@@ -95,7 +95,7 @@ subroutine getparams()
        zdftfile,zdipfile,ydftfile,ydipfile,xdftfile,xdipfile, ftwindowpower, ftdiff,  &
        diptime, fluxafile2,fluxmofile2, minocc,maxocc, corrdatfile,corrftfile,numavectorfiles,projfluxfile, &
        expodim,timingdir, hanningflag, numspffiles, condamp,conway, &
-       mrestrictmin,mrestrictmax,lntol,invtol,psistatsfile, psistatfreq, configlistfile, &
+       mrestrictmin,mrestrictmax,lntol,invtol,psistatsfile, psistatfreq, &
        parorbsplit,maxbiodim, nkeproj,keprojminenergy,keprojenergystep,keprojminrad,keprojmaxrad, &
        debugflag, drivingflag,drivingproportion, drivingmethod, eigprintflag, &
        avecloadskip,nonsparsepropmode,sparseopt,lanprintflag,dipmodtime,conprop,&
@@ -104,7 +104,7 @@ subroutine getparams()
        reinterp_orbflag,spf_gridshift,load_avector_product,projspifile,readfullvector,walksinturn,&
        turnbatchsize,energyshift, pulseft_estep, finalstatsfile, projgtaufile,gtaufile,&
        sparsedfflag,sparseprime,sparsesummaflag, par_consplit, ftwindowlength, fttriwindow,&
-       pulsewindowtoo,conjgpropflag,writeconfiglist,dipolesumstart,dipolesumend,outmatel
+       pulsewindowtoo,conjgpropflag,dipolesumstart,dipolesumend,outmatel
 
 
   OFL

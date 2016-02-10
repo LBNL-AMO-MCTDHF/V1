@@ -464,9 +464,9 @@ program mctdhf
 
   call opalloc()
 
-  if (writeconfiglist.ne.0) then
-     call configlistwrite(www,configlistfile)
-  endif
+!!$  if (writeconfiglist.ne.0) then
+!!$     call configlistwrite(www,configlistfile)
+!!$  endif
 
   call configpropalloc()
 
