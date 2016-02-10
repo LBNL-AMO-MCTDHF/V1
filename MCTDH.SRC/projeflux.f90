@@ -560,7 +560,7 @@ module projbiomod
   type(biorthotype),target :: projbiovar
 end module projbiomod
 
-subroutine projeflux_single0(nt,alreadystate,nstate)
+subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   use projbiomod
   use biorthomod
   use parameters
@@ -569,7 +569,7 @@ subroutine projeflux_single0(nt,alreadystate,nstate)
   use mpimod
   implicit none
 !! necessary working variables
-  integer,intent(in) :: nt,alreadystate
+  integer,intent(in) :: nt,alreadystate,ifile
   integer,intent(out) :: nstate
   integer :: tau, i,ir,tndof,tnspf,tnumr,istate,ierr
   integer :: spfcomplex, acomplex, tdims(3),imc,ioffset
@@ -582,8 +582,8 @@ subroutine projeflux_single0(nt,alreadystate,nstate)
 !! read in the data from mcscf for our target cation state
 
   if (myrank.eq.1) then
-     open(909,file="Bin/cation.spfs.bin",status="unknown",form="unformatted")
-     open(910,file="Bin/cation.avector.bin",status="unknown",form="unformatted")
+     open(909,file=catspffiles(ifile),status="unknown",form="unformatted")
+     open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted")
      call avector_header_read(910,nstate,tndof,tnumr,tnumconfig,targetrestrictflag,targetms,targetspinproject,targetspinval,acomplex,ierr)
   endif
   call mympiibcastone(nstate,1); call mympiibcastone(tndof,1); call mympiibcastone(tnumr,1); call mympiibcastone(tnumconfig,1); 
@@ -779,10 +779,11 @@ subroutine projeflux_single0(nt,alreadystate,nstate)
 !      write(mpifileptr,'(A10,100I10)') " ", times(1:8)/100
 !    endif
   enddo
+
 !! clean up
   close(1001);  close(1002)
   deallocate(mobio,abio,readmo,readavec,mymo,myavec,ta,tconfiglist,tmo)
-  deallocate(numpwalk1,pwalk1,pspf1,pphase1) !!,num pw alk2,pwal k2,ps pf2,ppha se2)
+  deallocate(numpwalk1,pwalk1,pspf1,pphase1)
 
 
 end subroutine projeflux_single0
@@ -794,7 +795,7 @@ subroutine projeflux_single(mem)
   use projefluxmod
   implicit none
   integer,intent(in) :: mem
-  integer :: nt,nstate,eachstate
+  integer :: nt,nstate,eachstate,ifile
   real*8 :: dt
 
   OFLWR ;  WRFL   "   *** DOING PROJECTED FLUX. ***    ";  WRFL; CFL
@@ -804,9 +805,10 @@ subroutine projeflux_single(mem)
 
   nstate=0
 
-  call projeflux_single0(nt,nstate,eachstate)
-  
-  nstate=nstate+eachstate
+  do ifile=1,numcatfiles
+     call projeflux_single0(ifile,nt,nstate,eachstate)
+     nstate=nstate+eachstate
+  enddo
 
 !! do the double time integral
     call projeflux_double_time_int(mem,nstate,nt,dt)

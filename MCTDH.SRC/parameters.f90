@@ -279,8 +279,8 @@ integer :: psistatfreq=1                                      !!  "
 character(len=200):: dendatfile="Dat/denmat.eigs.dat"         !! if notiming=0
 character(len=200):: denrotfile="Dat/denmat.rotate.dat"       !!  "
 character(len=200):: rdendatfile="Dat/rdenmat.eigs.dat"       !! deprecated
-character (len=200) :: ovlspffiles(50)="ovl.spfs.bin"         !! for actions 20 and 26 
-character (len=200) :: ovlavectorfiles(50)="ovl.avector.bin"  !!      (see numovlfiles in ACTIONS)
+character (len=200) :: ovlspffiles(50)="Bin/ovl.spfs.bin"     !! for actions 20 and 26 
+character (len=200) :: ovlavectorfiles(50)="Bin/ovl.avector.bin"!!      (see numovlfiles in ACTIONS)
 character(len=200):: outovl="Dat/Overlaps.dat"                !! for action 20
 character(len=200):: outmatel="Dat/Matel.dat"                 !! for action 20
 character(len=200):: zdipfile="Dat/ZDipoleexpect.Dat"         !! for action 21
@@ -298,8 +298,8 @@ character(len=200):: gtaufile="Dat/gtau.dat"                  !!  " (total flux(
 character(len=200):: projspifile="Dat/xsec.proj.spi"          !! for action 17 (partial cross section)
 character(len=200):: projgtaufile="Dat/gtau.dat"              !!  " (projected flux(t))
 character(len=200):: projfluxfile="Flux/proj.flux.wfn.bin"    !!  "
-character (len=200):: catspffiles(50)="cation.spfs.bin"       !!  " (see numcatfiles in ACTIONS)
-character (len=200):: catavectorfiles(50)="cation.avector.bin"!!  "
+character (len=200):: catspffiles(50)="Bin/cation.spfs.bin"       !!  " (see numcatfiles in ACTIONS)
+character (len=200):: catavectorfiles(50)="Bin/cation.avector.bin"!!  "
 character(len=200):: fluxafile2="Flux/flux.avec.bin"          !! for action 23
 character(len=200):: fluxmofile2="Flux/flux.mo.bin"           !!  "
 character(len=200):: natplotbin="Bin/Natlorb.bin"             !! for actions 2,8
