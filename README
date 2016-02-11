@@ -79,7 +79,7 @@ you will need to do if the Makeme step fails -- visit
 
      https://gcc.gnu.org/wiki/GFortranBinariesMacOS
 
-0)   git clone https://github.com/LBNL-AMO-MCTDHF/V1 master
+00)   git clone https://github.com/LBNL-AMO-MCTDHF/V1 master
 
           or download using a web browser
 
@@ -93,7 +93,18 @@ you will need to do if the Makeme step fails -- visit
          or
      cd ./V1-master
 
-     and PERFORM ALL OTHER STEPS IN THIS V1 DIRECTORY.
+     PERFORM ALL OTHER STEPS IN THIS V1 DIRECTORY.
+
+0)   You must get the examples now separately.
+
+     cd EXAMPLES-DEPOT 
+
+     git clone https://github.com/LBNL-AMO-MCTDHF/EXAMPLES-DEPOT master
+
+          or download using a web browser
+
+     https://github.com/LBNL-AMO-MCTDHF/EXAMPLES-DEPOT/archive/master.zip
+          and unzip this file to get the EXAMPLES-DEPOT examples files.
 
 1)   cd COMPDIRS/BIN.ecs.hermnorm.mac
      ./Makeme
@@ -132,17 +143,17 @@ you will need to do if the Makeme step fails -- visit
 
 3)   mkdir EXAMPLES          (you can also make other directories e.g. 
      mkdir MYRUNS            )
-     cp -R -p EXAMPLES-depot/H2PHOTO EXAMPLES
+     cp -R -p EXAMPLES-depot/H2-EXAMPLE-PLAIN-SCRIPTS EXAMPLES
 
-4)   cd EXAMPLES/H2PHOTO
+4)   cd EXAMPLES/H2-EXAMPLE-PLAIN-SCRIPTS
+     follow the README; 
+
      ./Relax.Bat
-     ./Pulse.Bat
      ./Fourier.Bat 
      ./Flux.Bat 500
      ./gnu.xsec
 
-     as per the README in that H2PHOTO directory.  Also see the H2ABSORPTION
-     example directory to start.
+     for total photoionization; see the README for more.
  
 If you want to update the code then perform step 5, like steps 1-4, in the 
 V1 working directory,
