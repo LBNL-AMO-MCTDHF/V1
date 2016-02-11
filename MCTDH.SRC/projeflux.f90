@@ -447,6 +447,9 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   estep=2*pi/par_timestep/fluxinterval/fluxskipmult/(2*curtime+1)
   
   do imc=1,mcscfnum
+
+     total(:)=0d0
+
      do istate=1,nstate
 
         ftgtau(:)=0d0;
@@ -502,18 +505,20 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            close(1004)
         endif
      enddo  !! do istate
-  enddo  !! do imc
 
-  if(myrank.eq.1) then
-     open(1004,file=projspifile(1:getlen(projspifile)-1)//"_all.dat",status="replace",action="readwrite",position="rewind")
-     write(1004,*);write(1004,*) "# Omega; pulse ft; projected flux at t= ",finaltime
-     do i=-curtime,curtime
-        wfi=(i+curtime)*estep
-        myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
-        write(1004,'(F18.12, T22, 400E20.8)')  wfi,  pulseftsq(i), total(i)/pulseftsq(i) * cgfac * myfac, total(i)
-     enddo
-     close(1004)
-  endif
+     if(myrank.eq.1) then
+        open(1004,file=projspifile(1:getlen(projspifile)-1)//"_all_"//xmc1//".dat",&
+             status="replace",action="readwrite",position="rewind")
+        write(1004,*);write(1004,*) "# Omega; pulse ft; projected flux at t= ",finaltime
+        do i=-curtime,curtime
+           wfi=(i+curtime)*estep
+           myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
+           write(1004,'(F18.12, T22, 400E20.8)')  wfi,  pulseftsq(i), total(i)/pulseftsq(i) * cgfac * myfac, total(i)
+        enddo
+        close(1004)
+     endif
+
+  enddo  !! do imc
 
   deallocate(ftgtau,pulseft,pulseftsq,total)
 
@@ -682,7 +687,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   allocate(tconfiglist(tndof,tnumconfig))
 
   if (myrank.eq.1) then
-     open(910,file="Bin/cation.avector.bin",status="unknown",form="unformatted")
+     open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted")
      call avector_header_read_simple(910,nstate,tndof,tnumr,tnumconfig,acomplex)
      call get_avectorfile_configlist(910,acomplex,tconfiglist,tndof,tnumr,tnumconfig)
      close(910)
