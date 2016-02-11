@@ -560,7 +560,7 @@ subroutine cmf_prop_wfn(tin, tout)
 
      if (avector_flag.ne.0) then
         call system_clock(itime)
-        if (improvedquadflag.eq.1.or.improvedquadflag.eq.3) then
+        if ((improvedquadflag.eq.1.or.improvedquadflag.eq.3).and.tin.gt.aquadstarttime) then
            call quadavector(yyy%cmfpsivec(astart(1),0),qq)
         else
            call myconfigeig(www,dwwptr,yyy%cptr(0),yyy%cmfpsivec(astart(1),0),myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
