@@ -312,9 +312,19 @@ subroutine quadavector(inavector,jjcalls)
   use parameters
   use configmod
   implicit none
-  DATATYPE,intent(inout) :: inavector(tot_adim,mcscfnum)
+  DATATYPE,intent(inout) :: inavector(www%totadim,mcscfnum)
   integer,intent(out) :: jjcalls
   integer :: imc
+
+  if (quadorthflag.ne.0) then
+     do imc=1,mcscfnum
+        if (www%parconsplit.eq.0) then
+           call gramschmidt(www%totadim,imc-1,www%totadim,inavector(:,:),inavector(:,imc),.false.)
+        else
+           call gramschmidt(www%totadim,imc-1,www%totadim,inavector(:,:),inavector(:,imc),.true.)
+        endif
+     enddo
+  endif
   do imc=1,mcscfnum
      if (sparseconfigflag==0) then
         call nonsparsequadavector(www,inavector(:,imc))

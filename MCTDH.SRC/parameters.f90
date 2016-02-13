@@ -220,6 +220,7 @@ real*8 :: aquadstarttime=-1d0                    !! Waits to turn on avector qua
 real*8 :: maxquadnorm=1d10                       !! brakes to use if improvedquadflag=2 or 3 is diverging
 real*8 :: quadtol=1d-1           !!              !! Threshold for solution of Newton solve iterations orbitals.
 integer :: quadprecon=1          !!              !! Precondition newton iterations for A-vector?
+integer :: quadorthflag=0        !!              !! If eigenfunctions are becoming linearly dependent try this
 !!EE
 !!{\large \quad ORBITALS (SINGLE PARTICLE FUNCTIONS, SPFS)}
 !!BB
