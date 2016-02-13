@@ -470,7 +470,7 @@ subroutine jacinit0(dentimeflag,inspfs, thistime)
 
   call actreduced0(dentimeflag,jactime,jacvect,nulldouble,jacvectout,1,0,0)
 
-  if (effective_cmf_linearflag.ne.0) then
+  if (effective_cmf_linearflag.eq.1) then
      allocate( jactemp(spfsize,nspf) )
      gridtime=(jactime-firsttime)/(lasttime-firsttime) 
      if ((gridtime.lt.0.d0).or.(gridtime.gt.1)) then

@@ -85,6 +85,8 @@ subroutine all_derivs(thistime,xpsi, xpsip)
 end subroutine all_derivs
 
 
+!! MAIN DERIVATIVE ROUTINE FOR ODEX
+
 subroutine gbs_linear_derivs(notusedint,thistime,spfsin,spfsout,notuseddbl,notusedint2)
   use parameters
   implicit none
@@ -96,32 +98,33 @@ subroutine gbs_linear_derivs(notusedint,thistime,spfsin,spfsout,notuseddbl,notus
 end subroutine gbs_linear_derivs
 
 
+!! MAIN DERIVATIVE ROUTINE FOR RK, EXPO
+
 subroutine spf_linear_derivs(thistime,spfsin,spfsout)
   use parameters
+  use linearmod   !! effective_cmf_linearflag
   implicit none
   DATATYPE,intent(in) :: spfsin(spfsize, nspf)
   DATATYPE,intent(out) :: spfsout(spfsize, nspf)
   real*8,intent(in) :: thistime
-  call spf_linear_derivs0(thistime,spfsin,spfsout,1)
+  call spf_linear_derivs0(effective_cmf_linearflag,1,thistime,spfsin,spfsout,1,1)
 end subroutine spf_linear_derivs
 
 
-!! MAIN DERIVATIVE ROUTINE FOR RK, EXPO
-
-subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
-  use linearmod
+subroutine spf_linear_derivs0(inlinearflag,dentimeflag,thistime,spfsin,spfsout, projflag,conflag)
   use parameters
+  use linearmod    !! firsttime,lasttime
   use xxxmod  !! frozenexchange
   implicit none
+  integer,intent(in) :: inlinearflag,dentimeflag,projflag,conflag
+  real*8,intent(in) :: thistime
   DATATYPE,intent(in) :: spfsin(spfsize, nspf)
   DATATYPE,intent(out) :: spfsout(spfsize, nspf)
-  integer,intent(in) :: allflag
-  real*8,intent(in) :: thistime
   DATATYPE :: facs(0:1)
   integer ::  jjj, ibot
   DATATYPE ::   spfmult(spfsize,nspf), spfmult2(spfsize,nspf)  !!AUTOMATIC
 
-  if (effective_cmf_linearflag.eq.1) then
+  if (inlinearflag.eq.1) then
      ibot=0;     facs(0)=(thistime-firsttime)/(lasttime-firsttime);     facs(1)=1d0-facs(0)
   else
      ibot=1;     facs(0)=0d0;     facs(1)=1d0
@@ -129,7 +132,7 @@ subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
   spfsout(:,:) = 0.d0
 
   do jjj=ibot,1
-     call actreduced0(1,thistime,spfsin,spfsin,spfmult(:,:),jjj, allflag,allflag)
+     call actreduced0(dentimeflag,thistime,spfsin,spfsin,spfmult(:,:),jjj, projflag,conflag)
      spfsout(:,:)=spfsout(:,:)+spfmult(:,:)*facs(jjj)
   enddo
 
@@ -145,25 +148,47 @@ subroutine spf_linear_derivs0(thistime,spfsin,spfsout, allflag)
 !! facs(jjj) here
         call MYGEMM('N','N',spfsize,nspf,nspf,facs(jjj), yyy%frozenexchange(:,:,jjj),spfsize,&
              yyy%reducedinvr(:,:,jjj),nspf, DATAZERO, spfmult,spfsize)
+        if (dentimeflag.ne.0) then
 !! TIMEFAC HERE
-        call MYGEMM('N','N', spfsize,nspf,nspf,timefac, spfmult(:,:),spfsize, &
-             yyy%invdenmat(:,:,jjj), nspf, DATAONE, spfmult2(:,:), spfsize)
+           call MYGEMM('N','N', spfsize,nspf,nspf,timefac, spfmult(:,:),spfsize, &
+                yyy%invdenmat(:,:,jjj), nspf, DATAONE, spfmult2(:,:), spfsize)
+        else
+           spfmult2(:,:)=spfmult2(:,:)-spfmult(:,:)   !! factor (-1)
+        endif
      enddo
-     call oneminusproject(spfmult2(:,:),spfmult(:,:),spfsin)
-     spfsout(:,:)=spfsout(:,:)+spfmult(:,:)
+     if (projflag.ne.0) then
+        call oneminusproject(spfmult2(:,:),spfmult(:,:),spfsin)
+        spfsout(:,:)=spfsout(:,:)+spfmult(:,:)
+     else
+        spfsout(:,:)=spfsout(:,:)+spfmult2(:,:)
+     endif
   endif
 
 end subroutine spf_linear_derivs0
 
 
 subroutine driving_linear_derivs(thistime,spfsin,spfsout)
-  use linearmod
   use parameters
-  use xxxmod  !! driving orbs
+  use linearmod    !! effective_cmf_linearflag
   implicit none
+  real*8,intent(in) :: thistime
   DATATYPE,intent(in) :: spfsin(spfsize, nspf)
   DATATYPE,intent(out) :: spfsout(spfsize, nspf)
+
+  call driving_linear_derivs0(effective_cmf_linearflag,thistime,spfsin,spfsout)
+
+end subroutine driving_linear_derivs
+
+
+subroutine driving_linear_derivs0(inlinearflag,thistime,spfsin,spfsout)
+  use parameters
+  use linearmod    !! firsttime,lasttime
+  use xxxmod  !! driving orbs
+  implicit none
+  integer,intent(in) :: inlinearflag
   real*8,intent(in) :: thistime
+  DATATYPE,intent(in) :: spfsin(spfsize, nspf)
+  DATATYPE,intent(out) :: spfsout(spfsize, nspf)
   real*8 :: facs(0:1),rsum
   integer ::  jjj, ibot
   DATATYPE :: spfmult(spfsize,nspf),pots(3)  !! AUTOMATIC
@@ -179,7 +204,7 @@ subroutine driving_linear_derivs(thistime,spfsin,spfsout)
      return
   endif
 
-  if (effective_cmf_linearflag.eq.1) then
+  if (inlinearflag.eq.1) then
      ibot=0;     facs(0)=(thistime-firsttime)/(lasttime-firsttime);     facs(1)=1d0-facs(0)
   else
      ibot=1;     facs(0)=0d0;     facs(1)=1d0
@@ -196,7 +221,7 @@ subroutine driving_linear_derivs(thistime,spfsin,spfsout)
 
   call oneminusproject(spfmult(:,:),spfsout(:,:),spfsin(:,:))
 
-end subroutine driving_linear_derivs
+end subroutine driving_linear_derivs0
 
 
 !! MAIN ROUTINE TO OPERATE WITH REDUCED HAMILTONIAN (TIMES TIMEFAC!)

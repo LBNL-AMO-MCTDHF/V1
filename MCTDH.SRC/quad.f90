@@ -176,7 +176,11 @@ subroutine quadspfs(inspfs,jjcalls)
 
      call quadinit(vector,0d0)
 
-     call actreduced0(0,0d0,vector,vector,vector2,1,1,0)
+     call spf_linear_derivs0(0,0,0d0,vector,vector2,1,0)
+
+!!     call actreduced0(0,0d0,vector,vector,vector2,1,1,0)
+
+     call apply_spf_constraints(vector2)
 
      dev=abs(hermdot(vector2,vector2,totspfdim))
      if (parorbsplit.eq.3) then
@@ -228,7 +232,11 @@ subroutine quadspfs(inspfs,jjcalls)
 
   inspfs = vector
 
-  call actreduced0(0,0d0,vector,vector,vector2,1,1,0)
+  call spf_linear_derivs0(0,0,0d0,vector,vector2,1,0)
+
+!!  call actreduced0(0,0d0,vector,vector,vector2,1,1,0)
+
+  call apply_spf_constraints(vector2)
 
   dev=abs(hermdot(vector2,vector2,totspfdim))
   if (parorbsplit.eq.3) then
