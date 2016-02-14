@@ -21,7 +21,7 @@ subroutine project(inspfs, outspfs, prospfs)
 
   DATATYPE,intent(in) :: inspfs(spfsize,nspf),  prospfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-  integer :: i,j
+  integer :: i,j,lowspf,highspf
   DATATYPE :: dot,mydot(nspf+numfrozen,nspf)
   DATATYPE :: tempprospfs(spfsize,nspf+numfrozen)  !! AUTOMATIC
 
@@ -35,15 +35,24 @@ subroutine project(inspfs, outspfs, prospfs)
 !     call spf_orthogi t(tempprospfs,nspf+numfrozen, nulldouble)
 !  endif
 
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getOrbSetRange(lowspf,highspf)
+  endif
+
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
-  do i=1,nspf
+  do i=lowspf,highspf
      do j=1,nspf+numfrozen
         mydot(j,i)=   dot(tempprospfs(:,j),inspfs(:,i),spfsize)
      enddo
   enddo
 !$OMP END DO
 !$OMP END PARALLEL
+
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(mydot,nspf+numfrozen)
+  endif
 
   if (parorbsplit.eq.3) then
      call mympireduce(mydot,nspf*(nspf+numfrozen))
