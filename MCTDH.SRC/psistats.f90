@@ -152,21 +152,23 @@ subroutine psistats( thistime )
 
   real*8,intent(in) :: thistime
   integer, save :: calledflag=0
-  integer :: i
+  integer :: i,myiostat
   DATATYPE :: mexpect(mcscfnum),ugexpect(mcscfnum),m2expect(mcscfnum),&
        xreflect(mcscfnum),yreflect(mcscfnum),zreflect(mcscfnum),xdipole(mcscfnum),&
        ydipole(mcscfnum),zdipole(mcscfnum)
 
   if (calledflag==0) then
      if (myrank.eq.1) then
-        open(662, file=psistatsfile, status="unknown")
+        open(662, file=psistatsfile, status="unknown",iostat=myiostat)
+        call checkiostat(myiostat,"opening "//psistatsfile)
 #ifdef REALGO        
-        write(662,'(A16,200A14)') &
+        write(662,'(A16,200A14)',iostat=myiostat) &
              " Time     ", " M        ", " M2       ", " UG       ", " XDipole  ", " YDipole  ", " ZDipole  ", " XReflect ", " YReflect ", " ZReflect "
 #else
-        write(662,'(A16,A14,200A28)') &
+        write(662,'(A16,A14,200A28)',iostat=myiostat) &
              " Time     ", " M        ", " M2       ", " UG       ", " XDipole  ", " YDipole  ", " ZDipole  ", " XReflect ", " YReflect ", " ZReflect "
 #endif
+        call checkiostat(myiostat,"writing "//psistatsfile)
         close(662)
      endif
   endif
@@ -178,10 +180,12 @@ subroutine psistats( thistime )
        mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
 
   if (myrank.eq.1) then
-     open(662, file=psistatsfile, status="old", position="append")
+     open(662, file=psistatsfile, status="old", position="append",iostat=myiostat)
+     call checkiostat(myiostat,"opening "//psistatsfile)
      do i=1,mcscfnum
-        write(662,'(F13.5,I3,2000F14.8)') thistime, i, mexpect(i),m2expect(i),ugexpect(i),  xdipole(i),ydipole(i),zdipole(i),  xreflect(i),yreflect(i),zreflect(i)
+        write(662,'(F13.5,I3,2000F14.8)',iostat=myiostat) thistime, i, mexpect(i),m2expect(i),ugexpect(i),  xdipole(i),ydipole(i),zdipole(i),  xreflect(i),yreflect(i),zreflect(i)
      enddo
+     call checkiostat(myiostat,"writing "//psistatsfile)
      close(662)
   endif
 
@@ -366,7 +370,7 @@ subroutine finalstats0(myspfs,inavectors,www,bioww )
        xrefmat(:,:), yrefmat(:,:), zrefmat(:,:), tempvector(:,:), tempspfs(:,:),tempspfs2(:,:)
   CNORMTYPE :: occupations(www%nspf,mcscfnum)
   DATAECS :: rvector(numr)
-  integer :: i,j,imc,jmc
+  integer :: i,j,imc,jmc,myiostat
 
   call mpibarrier()
   OFLWR "   ...GO finalstats."; CFL
@@ -532,9 +536,12 @@ subroutine finalstats0(myspfs,inavectors,www,bioww )
   enddo
 
   if (myrank.eq.1) then
-     open(662, file=finalstatsfile, status="unknown")
+     open(662, file=finalstatsfile, status="unknown",iostat=myiostat)
+     call checkiostat(myiostat,"opening "//finalstatsfile)
+     write(662,*,iostat=myiostat);     
+     call checkiostat(myiostat,"writing "//finalstatsfile)
+     write(662,*)
 
-     write(662,*);     write(662,*)
      write(662,*) "--- EXPECTATION VALUES PSI VECTORS ---"
 
      write(662,*);     write(662,*)

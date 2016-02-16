@@ -14,7 +14,7 @@ subroutine prop_loop( starttime)
   use configmod
   implicit none
 
-  integer ::  jj,flag,  iii, itime, jtime, times(20)=0, qq,imc,getlen
+  integer ::  jj,flag,  iii, itime, jtime, times(20)=0, qq,imc,getlen,myiostat
   DATAECS :: thisenergy(mcscfnum), lastenergy(mcscfnum) ,thisenergyavg,lastenergyavg,startenergy(mcscfnum)
   CNORMTYPE :: norms(mcscfnum)
   real*8 :: thistime, starttime, thattime,error=1d10,rsum,avecerror=1d10
@@ -68,7 +68,8 @@ subroutine prop_loop( starttime)
 
   if ((myrank.eq.1).and.(notiming.le.1)) then
      call system("echo -n > "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
-     open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="unknown")
+     open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="unknown",iostat=myiostat)
+     call checkiostat(myiostat," opening abstiming.dat")
      write(853,'(T16,100A15)')  "Prop ", "Act ", "After ", "Init", "Save", "MPI", "Non MPI"
      close(853)
   endif
@@ -208,8 +209,10 @@ subroutine prop_loop( starttime)
      
      if ((myrank.eq.1).and.(notiming.le.1)) then
         call system("date >> "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="old", position="append")
-        write(853,'(F13.3,T16,100I15)')  thistime, times(2:6)/1000, mpitime/1000, nonmpitime/1000;     close(853)
+        open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="old", position="append",iostat=myiostat)
+        call checkiostat(myiostat," opening abstiming.dat")
+        write(853,'(F13.3,T16,100I15)',iostat=myiostat)  thistime, times(2:6)/1000, mpitime/1000, nonmpitime/1000;     close(853)
+        call checkiostat(myiostat," writing abstiming.dat")
      endif
 
      if (debugflag.eq.42) then
@@ -479,7 +482,7 @@ subroutine cmf_prop_wfn(tin, tout)
   use mpimod
   implicit none
   real*8,intent(in) :: tout, tin
-  integer ::  itime,jtime,times(0:20)=0,numiters=0,linearflag,imc,printflag=1,getlen,qq
+  integer ::  itime,jtime,times(0:20)=0,numiters=0,linearflag,imc,printflag=1,getlen,qq,myiostat
   real*8 :: time1, time2
   integer, save :: xxcount=0 
   DATATYPE :: myvalues(mcscfnum)
@@ -632,13 +635,17 @@ subroutine cmf_prop_wfn(tin, tout)
 
   if ((myrank.eq.1).and.(notiming.le.1)) then
      if (xxcount==1) then
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/cmf_prop.time.dat", status="unknown")
-        write(853,'(A15,100A11)')  "Time",  "matel", "denmat", "reduced", "spfprop", "aprop",  "advance", "constrain", "driving", "#DERIVS"
+        open(853, file=timingdir(1:getlen(timingdir)-1)//"/cmf_prop.time.dat", status="unknown",iostat=myiostat)
+        call checkiostat(myiostat," opening cmf_prop_time.dat")
+        write(853,'(A15,100A11)',iostat=myiostat)  "Time",  "matel", "denmat", "reduced", "spfprop", "aprop",  "advance", "constrain", "driving", "#DERIVS"
+        call checkiostat(myiostat," writing cmf_prop_time.dat")
         close(853)
      endif
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/cmf_prop.time.dat", status="unknown", position="append")
-        write(853,'(A3,F12.3,T16, 100I11)')  "T=", tout, times(1:8)/1000, numiters;        close(853)
-
+        open(853, file=timingdir(1:getlen(timingdir)-1)//"/cmf_prop.time.dat", status="unknown", position="append",iostat=myiostat)
+        call checkiostat(myiostat," opening cmf_prop_time.dat")
+        write(853,'(A3,F12.3,T16, 100I11)',iostat=myiostat)  "T=", tout, times(1:8)/1000, numiters
+        call checkiostat(myiostat," writing cmf_prop_time.dat")
+        close(853)
   endif
 
 end subroutine cmf_prop_wfn
@@ -700,7 +707,7 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
   integer,intent(in) :: imc,linearflag
   real*8, intent(in) :: time1,time2
   DATATYPE :: sum1,sum0,pots(3)=0d0
-  integer :: itime,jtime,getlen,ii,iflag
+  integer :: itime,jtime,getlen,ii,iflag,myiostat
   real*8 :: thisstep,midtime,rsum
   integer, save :: times(2)=0, icalled=0
 
@@ -794,12 +801,16 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
   if (notiming.eq.0.and.myrank.eq.1) then
 
      if (icalled.eq.0) then
-        open(11766, file=timingdir(1:getlen(timingdir)-1)//"/aprop.time.dat", status="unknown")
-        write(11766,'(100A11)')  "init", "prop"
+        open(11766, file=timingdir(1:getlen(timingdir)-1)//"/aprop.time.dat", status="unknown",iostat=myiostat)
+        call checkiostat(myiostat," writing aprop.time.dat")
+        write(11766,'(100A11)',iostat=myiostat)  "init", "prop"
+        call checkiostat(myiostat," writing aprop.time.dat")
         close(11766)
      endif
-     open(11766, file=timingdir(1:getlen(timingdir)-1)//"/aprop.time.dat", status="unknown", position="append")
-     write(11766,'(100I11)')  times(1:2)
+     open(11766, file=timingdir(1:getlen(timingdir)-1)//"/aprop.time.dat", status="unknown", position="append",iostat=myiostat)
+        call checkiostat(myiostat," writing aprop.time.dat")
+     write(11766,'(100I11)',iostat=myiostat)  times(1:2)
+        call checkiostat(myiostat," writing aprop.time.dat")
      close(11766)
   endif
 

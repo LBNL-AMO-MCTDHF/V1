@@ -249,11 +249,11 @@ subroutine abio_sparse(abio,aout,inbiovar)
   type(biorthotype),target :: inbiovar
   DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
   DATATYPE,intent(out) :: aout(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
-  integer :: liwsp,lwsp,itrace,iflag,ixx,getlen
   integer, allocatable :: iwsp(:)
   integer*8, save :: icalledhere=0
   integer :: biofileptr=6719
   real*8 :: t,anorm, tol
+  integer :: liwsp,lwsp,itrace,iflag,ixx,getlen,myiostat
   DATATYPE, allocatable :: wsp(:), smallvector(:,:), smallvectorout(:,:)
   external parbiomatvec,realpardotsub
 
@@ -277,8 +277,10 @@ subroutine abio_sparse(abio,aout,inbiovar)
 
   if ((myrank.eq.1).and.(notiming==0)) then
      if (icalledhere.eq.1) then
-        open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="unknown")
-        write(biofileptr,*) 
+        open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="unknown",iostat=myiostat)
+        call checkiostat(myiostat,"opening biortho timing file")
+        write(biofileptr,*,iostat=myiostat) 
+        call checkiostat(myiostat,"writing biortho timing file")
         write(biofileptr,*);        close(biofileptr)
      endif
 
@@ -288,7 +290,8 @@ subroutine abio_sparse(abio,aout,inbiovar)
   endif
 
   if (myrank.eq.1.and.notiming.eq.0) then
-     open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="old", position="append")
+     open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="old", position="append",iostat=myiostat)
+     call checkiostat(myiostat,"opening biortho timing file")
   else
 !!$ opening /dev/null multiple times not allowed :<       open(biofileptr,file="/dev/null",status="unknown")
      biofileptr=nullfileptr
@@ -327,8 +330,11 @@ subroutine abio_sparse(abio,aout,inbiovar)
   deallocate(smallvector,smallvectorout)
 
   if (myrank.eq.1.and.notiming.eq.0) then
-     open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="old", position="append")
-     write(biofileptr,*) " Bio: steps, iter, stepsize", iwsp(4),iwsp(1),inbiovar%tempstepsize; 
+     open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="old", position="append",iostat=myiostat)
+     call checkiostat(myiostat,"opening biortho timing file")
+
+     write(biofileptr,*,iostat=myiostat) " Bio: steps, iter, stepsize", iwsp(4),iwsp(1),inbiovar%tempstepsize; 
+     call checkiostat(myiostat,"writing biortho timing file")
      if ((iwsp(4).gt.1)) then
         write(biofileptr,*) "Warning - biorthogonalization restarting. Ddim, tol: ", inbiovar%thisbiodim, biotol; 
      endif

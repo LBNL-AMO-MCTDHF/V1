@@ -18,7 +18,7 @@ subroutine fluxwrite(curtime,in_xmo,in_xa)
   integer,intent(in) :: curtime
   DATATYPE,intent(in) :: in_xmo(spfsize,nspf),in_xa(numr,first_config:last_config,mcscfnum)
   DATATYPE,allocatable :: xmo(:,:), xa(:,:,:)
-  integer :: molength,alength,ispf,ii
+  integer :: molength,alength,ispf,ii,myiostat
 
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
@@ -60,10 +60,14 @@ subroutine fluxwrite(curtime,in_xmo,in_xa)
      call openfile
      write(mpifileptr,'(A27,F11.4)') " Saving wavefunction at T= ",curtime*FluxInterval*par_timestep
      call closefile
-     open(1001,file=fluxmofile,status="unknown",form="unformatted",access="direct",recl=molength)
-     open(1002,file=fluxafile,status="unknown",form="unformatted",access="direct",recl=alength)
-     
-     write(1001,rec=curtime+1) xmo;  write(1002,rec=curtime+1) xa
+     open(1001,file=fluxmofile,status="unknown",form="unformatted",access="direct",recl=molength,iostat=myiostat)
+     call checkiostat(myiostat,"opening "//fluxmofile)
+     open(1002,file=fluxafile,status="unknown",form="unformatted",access="direct",recl=alength,iostat=myiostat)
+     call checkiostat(myiostat,"opening "//fluxafile)
+     write(1001,rec=curtime+1,iostat=myiostat) xmo
+     call checkiostat(myiostat,"writing "//fluxmofile)
+     write(1002,rec=curtime+1,iostat=myiostat) xa
+     call checkiostat(myiostat,"writing "//fluxafile)
      close(1001);  close(1002)
   endif
 
@@ -102,7 +106,7 @@ subroutine fluxgtau0(alg,www,bioww)
   integer,intent(in) :: alg
   integer :: curtime,oldtime,k,nt,i,molength,alength,  BatchSize,NBat,brabat,brareadsize, &
        bratime,ketbat,ketreadsize,kettime,bratop, atime,btime,itime,jtime,times(1:7)=0, &
-       imc, tau, ispf
+       imc, tau, ispf, myiostat
   real*8 :: MemTot,MemVal,dt, myfac,wfi,estep,windowfunct
   complex*16, allocatable :: FTgtau(:,:), pulseft(:,:)
   real*8, allocatable :: pulseftsq(:)
@@ -203,8 +207,10 @@ subroutine fluxgtau0(alg,www,bioww)
 
 
   if (myrank.eq.1) then
-     open(454, file="Dat/KVLsum.dat", status="unknown")
-     write(454,*) "#KVL flux sum: itime, time, flux sum"
+     open(454, file="Dat/KVLsum.dat", status="unknown",iostat=myiostat)
+     call checkiostat(myiostat,"opening kvlsum file")
+     write(454,*,iostat=myiostat) "#KVL flux sum: itime, time, flux sum"
+     call checkiostat(myiostat,"writing kvl sum file")
      write(454,*);  close(454)
   endif
 
@@ -214,12 +220,20 @@ subroutine fluxgtau0(alg,www,bioww)
      OFLWR "Reading ket batch ", ketbat, " of ", NBat; CFL
      ketreadsize=min(BatchSize,nt+1-(ketbat-1)*BatchSize)
      if(myrank.eq.1) then
-        open(1001,file=fluxmofile,status="old",form="unformatted",access="direct",recl=molength)
-        open(1002,file=fluxafile,status="old",form="unformatted",access="direct",recl=alength)
+        open(1001,file=fluxmofile,status="old",form="unformatted",access="direct",recl=molength,iostat=myiostat)
+        call checkiostat(myiostat,"opening "//fluxmofile)
+        open(1002,file=fluxafile,status="old",form="unformatted",access="direct",recl=alength,iostat=myiostat)
+        call checkiostat(myiostat,"opening "//fluxafile)
         do i=1,ketreadsize
            k=FluxSkipMult*((ketbat-1)*BatchSize+i-1)+1
-           read(1001,rec=k) read_ketmo(:,:,i) ;        read(1002,rec=k) read_ketavec(:,:,:,i) 
+           read(1001,rec=k,iostat=myiostat) read_ketmo(:,:,i) 
         enddo
+        call checkiostat(myiostat,"writing "//fluxmofile)
+        do i=1,ketreadsize
+           k=FluxSkipMult*((ketbat-1)*BatchSize+i-1)+1
+           read(1002,rec=k,iostat=myiostat) read_ketavec(:,:,:,i) 
+        enddo
+        call checkiostat(myiostat,"writing "//fluxafile)
         close(1001);      close(1002)
      endif
 
@@ -260,12 +274,20 @@ subroutine fluxgtau0(alg,www,bioww)
            bramo=ketmo;        braavec=ketavec
         else 
            if(myrank.eq.1) then
-              open(1001,file=fluxmofile,status="old",form="unformatted",access="direct",recl=molength)
-              open(1002,file=fluxafile,status="old",form="unformatted",access="direct",recl=alength)
+              open(1001,file=fluxmofile,status="old",form="unformatted",access="direct",recl=molength,iostat=myiostat)
+              call checkiostat(myiostat,"opening "//fluxmofile)
+              open(1002,file=fluxafile,status="old",form="unformatted",access="direct",recl=alength,iostat=myiostat)
+              call checkiostat(myiostat,"opening "//fluxafile)
               do i=1,brareadsize
                  k=FluxSkipMult*((brabat-1)*BatchSize+i-1)+1
-                 read(1001,rec=k) read_bramo(:,:,i) ;            read(1002,rec=k) read_braavec(:,:,:,i) 
+                 read(1001,rec=k,iostat=myiostat) read_bramo(:,:,i)
               enddo
+              call checkiostat(myiostat,"reading "//fluxmofile)
+              do i=1,brareadsize
+                 k=FluxSkipMult*((brabat-1)*BatchSize+i-1)+1
+                 read(1002,rec=k,iostat=myiostat) read_braavec(:,:,:,i) 
+              enddo
+              call checkiostat(myiostat,"reading"//fluxafile)
               close(1001);          close(1002)
            endif
 
@@ -426,8 +448,10 @@ subroutine fluxgtau0(alg,www,bioww)
 !! only do this after we are sure we've gone through every bra
            if (brabat.eq.ketbat) then
               if (myrank.eq.1) then
-                 open(454, file="Dat/KVLsum.dat", status="old", position="append")
-                 write(454,'(I5,100F18.12)') curtime, curtime*dt, gtau(0,:);    
+                 open(454, file="Dat/KVLsum.dat", status="old", position="append",iostat=myiostat)
+                 call checkiostat(myiostat,"opening kvlsum file")
+                 write(454,'(I5,100F18.12)',iostat=myiostat) curtime, curtime*dt, gtau(0,:);    
+                 call checkiostat(myiostat,"writing kvlsum file")
                  close(454)
               endif
            endif
@@ -474,10 +498,14 @@ subroutine fluxgtau0(alg,www,bioww)
   enddo
   
   if (myrank.eq.1) then
-     open(171,file=gtaufile,status="unknown");          write(171,*) "#   ", curtime
+     open(171,file=gtaufile,status="unknown",iostat=myiostat)
+     call checkiostat(myiostat,"opening gtaufile")
+     write(171,*,iostat=myiostat) "#   ", curtime
+     call checkiostat(myiostat,"writing gtaufile")
      do i=0,curtime
-        write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*FluxInterval*FluxSkipMult, ftgtau(i,:)
+        write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  i*par_timestep*FluxInterval*FluxSkipMult, ftgtau(i,:)
      enddo
+     call checkiostat(myiostat,"writing gtaufile")
      close(171)
   endif
 
@@ -514,8 +542,10 @@ subroutine fluxgtau0(alg,www,bioww)
   estep=2*pi/par_timestep/fluxinterval/fluxskipmult/(2*curtime+1)
 
   if(myrank.eq.1) then
-     open(1004,file=spifile,status="replace",action="readwrite",position="rewind")
-     write(1004,*)
+     open(1004,file=spifile,status="replace",action="readwrite",position="rewind",iostat=myiostat)
+     call checkiostat(myiostat,"opening "//spifile)
+     write(1004,*,iostat=myiostat)
+     call checkiostat(myiostat,"writing "//spifile)
      write(1004,*) "# six columns."
      write(1004,*) "# Omega (column 1); |pulse ft|^2 (2); cross section (Mb) (3); flux (column 5)"
      write(1004,*)
@@ -529,9 +559,9 @@ subroutine fluxgtau0(alg,www,bioww)
 !! WITH THIS FACTOR, NOW THE QUANTUM MECHANICAL CROSS SECTION IN MEGABARNS (10^-18 cm^2) IS IN COLUMN 3 REAL PART
         myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
 
-        write(1004,'(F8.4,100E18.6)') wfi, pulseftsq(i), FTgtau(i,:)/pulseftsq(i) * myfac, ftgtau(i,:)
-
+        write(1004,'(F8.4,100E18.6)',iostat=myiostat) wfi, pulseftsq(i), FTgtau(i,:)/pulseftsq(i) * myfac, ftgtau(i,:)
      enddo
+     call checkiostat(myiostat,"writing "//spifile)
      close(1004)
   endif
 

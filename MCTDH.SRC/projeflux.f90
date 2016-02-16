@@ -103,7 +103,7 @@ subroutine projeflux_doproj(cata,neuta,mo,offset)
   integer,intent(in) :: offset 
   DATATYPE,intent(in) :: cata(tnumconfig),neuta(first_config:last_config),mo(spfsize,nspf)
   DATATYPE :: projwfn(spfsize,2),  projcoefs(nspf,2)
-  integer :: jconfig,iwalk,iconfig,ispf,ispin,iphase,mylength
+  integer :: jconfig,iwalk,iconfig,ispf,ispin,iphase,mylength,myiostat
   DATATYPE,allocatable:: bigprojwfn(:,:)
 
 !! make the single electron wfn
@@ -147,8 +147,10 @@ subroutine projeflux_doproj(cata,neuta,mo,offset)
 
   if (myrank.eq.1) then
      inquire (iolength=mylength) bigprojwfn
-     open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=mylength)
-     write(1003,rec=offset) bigprojwfn(:,:) 
+     open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=mylength,iostat=myiostat)
+     call checkiostat(myiostat,"opening projfluxfile")
+     write(1003,rec=offset,iostat=myiostat) bigprojwfn(:,:) 
+     call checkiostat(myiostat,"writing projfluxfile")
      close(1003)
   endif
 
@@ -167,7 +169,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   integer,intent(in) :: mem,nstate,nt
   real*8,intent(in) :: dt
   integer :: i,k,tlen,istate,curtime,tau,ir ,imc,ioffset
-  integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,bratop,getlen
+  integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,bratop,getlen,myiostat
  !! bintimes and pulseftsq done outside so we don't have to redo over and over for each state
   real*8 :: doubleclebschsq,aa,bb,cc,MemTot,MemVal,wfi,cgfac,estep,myfac,windowfunct
   DATATYPE, allocatable,target :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:)
@@ -295,9 +297,13 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
         xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
 
         if (myrank.eq.1) then
-           open(454,file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat",status="unknown")
-           write(454,*) "#KVL flux sum: itime, time, flux sum";  write(454,*); close(454)
-           open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=tlen)
+           open(454,file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat",status="unknown",iostat=myiostat)
+           call checkiostat(myiostat,"opening proj kvlsumfile")
+           write(454,*,iostat=myiostat) "#KVL flux sum: itime, time, flux sum"
+           call checkiostat(myiostat,"writing proj kvlsumfile")
+           write(454,*); close(454)
+           open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=tlen,iostat=myiostat)
+           call checkiostat(myiostat,"opening "//projfluxfile)
         endif
 
 !! lets do this double time integral double batched monster loop here. 
@@ -316,7 +322,8 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
                     ioffset=(istate-1)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + ((ketbat-1)*BatchSize+i-1)*numr + ir
 
-                    read(1003,rec=ioffset) read_ketmo(:,ir,:,i)
+                    read(1003,rec=ioffset,iostat=myiostat) read_ketmo(:,ir,:,i)
+                    call checkiostat(myiostat,"reading ketmo")
                  enddo
               enddo
            endif
@@ -351,7 +358,8 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
                        ioffset = (imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + ((brabat-1)*BatchSize+i-1)*numr + ir
 
-                       read(1003,rec=ioffset) read_bramo(:,ir,:,i)
+                       read(1003,rec=ioffset,iostat=myiostat) read_bramo(:,ir,:,i)
+                       call checkiostat(myiostat,"reading bramo")
                     enddo
                  enddo
               endif
@@ -393,9 +401,11 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
                        call mympireduceone(csum)
                     endif
                     if (myrank.eq.1) then
-                       open(454, file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat", status="old", position="append")
-                       write(454,'(I5,100F18.12)') curtime, curtime*dt, csum
-                       close(454)
+  open(454, file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat", status="old", position="append",iostat=myiostat)
+  call checkiostat(myiostat,"opening proj kvlsumfile")
+  write(454,'(I5,100F18.12)',iostat=myiostat) curtime, curtime*dt, csum
+  call checkiostat(myiostat,"writing proj kvlsumfile")
+  close(454)
                     endif
                  endif
 
@@ -469,10 +479,15 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
         xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
         
         if (myrank.eq.1) then
-           open(171,file=projgtaufile(1:getlen(projgtaufile)-1)//xstate1//"_"//xmc1//".dat"  ,status="unknown");          write(171,*) "#   ", curtime
+           open(171,file=projgtaufile(1:getlen(projgtaufile)-1)//xstate1//"_"//xmc1//".dat"  ,status="unknown",iostat=myiostat)
+           call checkiostat(myiostat,"opening proj gtau file")
+           write(171,*,iostat=myiostat) "#   ", curtime
+           call checkiostat(myiostat,"writing proj gtau file")
            do i=0,curtime
-              write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*FluxInterval*FluxSkipMult, pulseft(i,:), gtau(i,istate,imc), ftgtau(i)
+              write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat) &
+                   i*par_timestep*FluxInterval*FluxSkipMult, pulseft(i,:), gtau(i,istate,imc), ftgtau(i)
            enddo
+           call checkiostat(myiostat,"writing proj gtau file")
            close(171)
         endif
 
@@ -488,8 +503,11 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
         if(myrank.eq.1) then
 
-           open(1004,file=projspifile(1:getlen(projspifile)-1)//"_"//xstate1//"_"//xmc1//".dat",status="replace",action="readwrite",position="rewind")
-           write(1004,*);write(1004,*) "# Omega; pulse ft; projected flux at t= ",finaltime
+           open(1004,file=projspifile(1:getlen(projspifile)-1)//"_"//xstate1//"_"//xmc1//".dat",status="replace",action="readwrite",position="rewind",iostat=myiostat)
+           call checkiostat(myiostat,"opening proj spi file")
+           write(1004,*,iostat=myiostat)
+           call checkiostat(myiostat,"writing proj spi file")
+           write(1004,*) "# Omega; pulse ft; projected flux at t= ",finaltime
 
            do i=-curtime,curtime
               wfi=(i+curtime)*estep
@@ -501,21 +519,26 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 !! WITH THIS FACTOR, NOW THE QUANTUM MECHANICAL PHOTOIONIZATION CROSS SECTION IN MEGABARNS (10^-18 cm^2) IS IN COLUMN 3 REAL PART
               myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi 
 
-              write(1004,'(F18.12, T22, 400E20.8)')  wfi,  pulseftsq(i), ftgtau(i)/pulseftsq(i) * cgfac * myfac, ftgtau(i)
+              write(1004,'(F18.12, T22, 400E20.8)',iostat=myiostat)  wfi,  pulseftsq(i), ftgtau(i)/pulseftsq(i) * cgfac * myfac, ftgtau(i)
            enddo
+           call checkiostat(myiostat,"writing proj spi file")
            close(1004)
         endif
      enddo  !! do istate
 
      if(myrank.eq.1) then
         open(1004,file=projspifile(1:getlen(projspifile)-1)//"_all_"//xmc1//".dat",&
-             status="replace",action="readwrite",position="rewind")
-        write(1004,*);write(1004,*) "# Omega; pulse ft; projected flux at t= ",finaltime
+             status="replace",action="readwrite",position="rewind",iostat=myiostat)
+        call checkiostat(myiostat,"opening proj spi file")
+        write(1004,*,iostat=myiostat)
+        call checkiostat(myiostat,"writing proj spi file")
+        write(1004,*) "# Omega; pulse ft; projected flux at t= ",finaltime
         do i=-curtime,curtime
            wfi=(i+curtime)*estep
            myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
-           write(1004,'(F18.12, T22, 400E20.8)')  wfi,  pulseftsq(i), total(i)/pulseftsq(i) * cgfac * myfac, total(i)
+           write(1004,'(F18.12, T22, 400E20.8)',iostat=myiostat)  wfi,  pulseftsq(i), total(i)/pulseftsq(i) * cgfac * myfac, total(i)
         enddo
+        call checkiostat(myiostat,"writing proj spi file")
         close(1004)
      endif
 
@@ -578,7 +601,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   integer,intent(in) :: nt,alreadystate,ifile
   integer,intent(out) :: nstate
   integer :: tau, i,ir,tndof,tnspf,tnumr,istate,ierr
-  integer :: spfcomplex, acomplex, tdims(3),imc,ioffset
+  integer :: spfcomplex, acomplex, tdims(3),imc,ioffset,myiostat
   DATATYPE :: dot
   DATATYPE, allocatable :: &
        tmo(:,:),tavec(:,:,:),tmotemp(:,:),readta(:,:,:),&
@@ -591,8 +614,10 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 !! read in the data from mcscf for our target cation state
 
   if (myrank.eq.1) then
-     open(909,file=catspffiles(ifile),status="unknown",form="unformatted")
-     open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted")
+     open(909,file=catspffiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
+     call checkiostat(myiostat,"opening "//catspffiles(ifile))
+     open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
+     call checkiostat(myiostat,"opening "//catavectorfiles(ifile))
      call avector_header_read(910,nstate,tndof,tnumr,tnumconfig,targetrestrictflag,targetms,targetspinproject,targetspinval,acomplex,ierr)
   endif
   call mympiibcastone(nstate,1); call mympiibcastone(tndof,1); call mympiibcastone(tnumr,1); call mympiibcastone(tnumconfig,1); 
@@ -694,7 +719,8 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   allocate(tconfiglist(tndof,tnumconfig))
 
   if (myrank.eq.1) then
-     open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted")
+     open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
+     call checkiostat(myiostat,"opening "//catavectorfiles(ifile))
      call avector_header_read_simple(910,nstate,tndof,tnumr,tnumconfig,acomplex)
      call get_avectorfile_configlist(910,acomplex,tconfiglist,tndof,tnumr,tnumconfig)
      close(910)
@@ -724,9 +750,11 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
   if (myrank.eq.1) then
      inquire (iolength=i) readmo
-     open(1001,file=fluxmofile,status="unknown",form="unformatted",access="direct",recl=i)
+     open(1001,file=fluxmofile,status="unknown",form="unformatted",access="direct",recl=i,iostat=myiostat)
+     call checkiostat(myiostat,"opening "//fluxmofile)
      inquire (iolength=i) readavec
-     open(1002,file=fluxafile,status="unknown",form="unformatted",access="direct",recl=i)
+     open(1002,file=fluxafile,status="unknown",form="unformatted",access="direct",recl=i,iostat=myiostat)
+     call checkiostat(myiostat,"opening "//fluxafile)
   endif
 
 !! do the loop over all time, ALL TIME and now in parallel-o-vision
@@ -735,7 +763,10 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 !! read in this time's wavefucntion
 
      if (myrank.eq.1) then
-        read(1001,rec=FluxSkipMult*tau+1) readmo(:,:);     read(1002,rec=FluxSkipMult*tau+1) readavec(:,:,:)
+        read(1001,rec=FluxSkipMult*tau+1,iostat=myiostat) readmo(:,:)
+        call checkiostat(myiostat,"reading fluxmofile")
+        read(1002,rec=FluxSkipMult*tau+1,iostat=myiostat) readavec(:,:,:)
+        call checkiostat(myiostat,"reading fluxafile")
      endif
      if (parorbsplit.ne.3) then
         if (myrank.eq.1) then

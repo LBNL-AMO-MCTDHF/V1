@@ -38,7 +38,7 @@ subroutine autocorrelate()
   use xxxmod
   use configmod
   implicit none
-  integer ::  i,imc,sflag
+  integer ::  i,imc,sflag,myiostat
   integer, save :: lastouttime=0
   real*8 :: thistime
 
@@ -60,10 +60,12 @@ subroutine autocorrelate()
         endif
      
         if (myrank.eq.1) then
-           open(881,file="Dat/ovl.dat", status="unknown")
+           open(881,file="Dat/ovl.dat", status="unknown",iostat=myiostat)
+           call checkiostat(myiostat," opening Dat/ovl.dat")
            do i=0,calledflag
-              write(881,'(I10,100F20.10)') i,overlaps(i,:)
+              write(881,'(I10,100F20.10)',iostat=myiostat) i,overlaps(i,:)
            enddo
+           call checkiostat(myiostat," writing Dat/ovl.dat")
            close(881)
         endif
         

@@ -48,7 +48,7 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 
   DATATYPE,allocatable :: aspfs(:,:), propspfs(:,:),   outspfs(:,:), &
        com_aspfs(:,:), com_propspfs(:,:),   com_outspfs(:,:),  tempspfs(:,:)
-  integer :: idim, liwsp=0, lwsp=0,ttott
+  integer :: idim, liwsp=0, lwsp=0,ttott,myiostat
   real*8, allocatable :: wsp(:)
   integer, allocatable :: iwsp(:)
 
@@ -93,8 +93,10 @@ subroutine expoprop(time1,time2,inspfs, numiters)
      endif
      thisexpodim=expodim
      if ((myrank.eq.1).and.(notiming==0)) then
-        open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="unknown")
-        write(expofileptr,*) " Exponential propagator output.  expotol=",expotol
+        open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="unknown",iostat=myiostat)
+        call checkiostat(myiostat,"opening expo.dat timing file")
+        write(expofileptr,*,iostat=myiostat) " Exponential propagator output.  expotol=",expotol
+        call checkiostat(myiostat,"writing expo.dat timing file")
         write(expofileptr,*);        close(expofileptr)
      endif
   endif
@@ -115,8 +117,10 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   endif
 
   if ((myrank.eq.1).and.(notiming.eq.0)) then
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="old", position="append")
-     write(expofileptr,*) "Go Orbital Expoprop.  Tinit=", time1, " thisexpodim=",thisexpodim, " step ", min(par_timestep/littlesteps,tempstepsize)
+     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="old", position="append",iostat=myiostat)
+     call checkiostat(myiostat,"opening expo.dat timing file")
+     write(expofileptr,*,iostat=myiostat) "Go Orbital Expoprop.  Tinit=", time1, " thisexpodim=",thisexpodim, " step ", min(par_timestep/littlesteps,tempstepsize)
+     call checkiostat(myiostat,"writing expo.dat timing file")
      close(expofileptr)
   endif
 
@@ -128,7 +132,8 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 
 
   if (myrank.eq.1.and.notiming.eq.0) then
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="old", position="append")
+     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="old", position="append",iostat=myiostat)
+     call checkiostat(myiostat,"opening expo.dat timing file")
   else
 !!$ opening /dev/null multiple times not allowed :<       open(expofileptr,file="/dev/null",status="unknown")
      expofileptr=nullfileptr
@@ -202,8 +207,10 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   call spf_orthogit(inspfs, error)
   
   if ((myrank.eq.1).and.(notiming.eq.0)) then
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="old", position="append")
-     write(expofileptr,*) "   End expo. Orthog error, steps, stepsize, iterations", error,iwsp(4),tempstepsize,iwsp(1); 
+     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="old", position="append",iostat=myiostat)
+     call checkiostat(myiostat,"opening expo.dat timing file")
+     write(expofileptr,*,iostat=myiostat) "   End expo. Orthog error, steps, stepsize, iterations", error,iwsp(4),tempstepsize,iwsp(1); 
+     call checkiostat(myiostat,"writing expo.dat timing file")
      if (abs(error).gt.1d-5) then
         write(expofileptr,*) "    **** THATSA BIG ERROR I THINK! ***"
      endif
@@ -313,7 +320,7 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
   integer,intent(in) :: lowspf,highspf,dentimeflag,conflag
   DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
-  integer :: ii,ibot,getlen,numspf
+  integer :: ii,ibot,getlen,numspf,myiostat
   integer, save :: times(20), numcalledhere=0,itime,jtime,jjj
   DATATYPE :: csum, nulldouble(2),pots(3)
   real*8 :: facs(0:1),rsum
@@ -495,12 +502,16 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
   
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (numcalledhere==1) then
-        open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", status="unknown")
-        write(8577,'(T16,100A9)') "other ", "actreduced ", "driving"; close(8577)
+        open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", status="unknown",iostat=myiostat)
+        call checkiostat(myiostat,"opening jacoperate timing file")
+        write(8577,'(T16,100A9)',iostat=myiostat) "other ", "actreduced ", "driving"; close(8577)
+        call checkiostat(myiostat,"writing jacoperate timing file")
      endif
      if (mod(numcalledhere,timingout).eq.0) then
-        open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", status="unknown", position="append")
-        write(8577,'(A3,F12.4,15I9)') "T= ", jactime,  times(1:3)/1000
+        open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", status="unknown", position="append",iostat=myiostat)
+        call checkiostat(myiostat,"opening jacoperate timing file")
+        write(8577,'(A3,F12.4,15I9)',iostat=myiostat) "T= ", jactime,  times(1:3)/1000
+        call checkiostat(myiostat,"writing jacoperate timing file")
         close(8577);        close(8577)
      endif
   endif
@@ -593,7 +604,9 @@ subroutine avectortimewrite(fileptr)
   use avectortimemod
   implicit none
   integer,intent(in) :: fileptr
-  write(fileptr,'(10(A13,I15))') "Start/end",times(1)/1000,"mult",times(2)/1000,"expokit",times(3)/1000
+  integer :: myiostat
+  write(fileptr,'(10(A13,I15))',iostat=myiostat) "Start/end",times(1)/1000,"mult",times(2)/1000,"expokit",times(3)/1000
+  call checkiostat(myiostat," writing in subroutine avectortimewrite")
 end subroutine avectortimewrite
 
 subroutine avectortime(which)
@@ -626,7 +639,7 @@ subroutine exposparseprop(www,inavector,outavector,time,imc)
   external :: parconfigexpomult_padded,realpardotsub
   real*8 :: one,time
   real*8, save :: tempstepsize=-1d0
-  integer :: itrace, iflag, numsteps, numiters,expofileptr=61142, liwsp=0, lwsp=0,getlen
+  integer :: itrace, iflag, numsteps, numiters,expofileptr=61142, liwsp=0, lwsp=0,getlen,myiostat
 #ifdef REALGO
   integer, parameter :: zzz=1
 #else
@@ -668,18 +681,23 @@ subroutine exposparseprop(www,inavector,outavector,time,imc)
 
   if ((myrank.eq.1).and.(notiming==0)) then
      if (icalled.eq.1) then
-        open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",status="unknown")
-        write(expofileptr,*) " Avector lanczos propagator.  Order =",thisexpodim," Aerror= ",aerror
+        open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",status="unknown",iostat=myiostat)
+        call checkiostat(myiostat,"opening avecexpo timing file")
+        write(expofileptr,*,iostat=myiostat) " Avector lanczos propagator.  Order =",thisexpodim," Aerror= ",aerror
+        call checkiostat(myiostat,"writing avecexpo timing file")
         write(expofileptr,*);        close(expofileptr)
      endif
 
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",status="old", position="append")
-     write(expofileptr,*) "Go Avector Lanczos.  time=", time, " Order =",thisexpodim, "step ",min(par_timestep/littlesteps,tempstepsize)
+     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",status="old", position="append",iostat=myiostat)
+     call checkiostat(myiostat,"opening avecexpo timing file")
+     write(expofileptr,*,iostat=myiostat) "Go Avector Lanczos.  time=", time, " Order =",thisexpodim, "step ",min(par_timestep/littlesteps,tempstepsize)
+     call checkiostat(myiostat,"writing avecexpo timing file")
      close(expofileptr)
   endif
 
   if (myrank.eq.1.and.notiming.eq.0) then
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",status="old", position="append")
+     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",status="old", position="append",iostat=myiostat)
+     call checkiostat(myiostat,"opening avecexpo timing file")
   else
 !!$ opening /dev/null multiple times not allowed :<       open(expofileptr,file="/dev/null",status="unknown")
      expofileptr=nullfileptr
@@ -744,8 +762,10 @@ subroutine exposparseprop(www,inavector,outavector,time,imc)
    endif
    
    if (myrank.eq.1.and.notiming.eq.0) then
-      open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",status="old", position="append")
-      write(expofileptr,*) "   End avector prop.  steps, iterations, stepsize", iwsp(4),iwsp(1),tempstepsize; 
+      open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",status="old", position="append",iostat=myiostat)
+      call checkiostat(myiostat,"opening avecexpo timing file")
+      write(expofileptr,*,iostat=myiostat) "   End avector prop.  steps, iterations, stepsize", iwsp(4),iwsp(1),tempstepsize; 
+      call checkiostat(myiostat,"writing avecexpo timing file")
       write(expofileptr,*);    
       call avectortimewrite(expofileptr)
       close(expofileptr)

@@ -141,12 +141,22 @@ subroutine zfftb_wrap(size,inout)
 end subroutine zfftb_wrap
 
 
-subroutine checkiostat(iniostat)
+subroutine checkiostat(iniostat,intext)
   use fileptrmod
   implicit none
-  integer :: iniostat
+  integer,intent(in) :: iniostat
+  character*(*),intent(in) :: intext
+  integer :: i,j
   if (iniostat /=0 ) then
-     OFLWR "IOSTAT = ", iniostat; CFLST
+     print *, "MCTDHF ABORT: I/O error ", iniostat,intext
+     OFLWR "MCTDHF ABORT: I/O error ", iniostat,intext; CFL
+     j=1
+     do i=1,1000
+        j=j*i
+     enddo
+     stop
+     stop   !!   STOP.   !!
+     stop
   endif
 end subroutine checkiostat
 

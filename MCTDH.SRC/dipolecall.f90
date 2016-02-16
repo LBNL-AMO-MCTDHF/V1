@@ -47,7 +47,7 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
   implicit none
 
   DATATYPE :: indipolearray(0:numdata),pots(3)
-  integer :: i, numdata, which,getlen,sflag
+  integer :: i, numdata, which,getlen,sflag,myiostat
   real*8 :: estep, thistime, myenergy,sum1,sum2,xsecunits, windowfunct, xsum
   character (len=7) :: number
   character :: outftname*(*), outename*(*)
@@ -72,10 +72,14 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
      enddo
 
   if (myrank.eq.1) then
-     open(171,file=outename,status="unknown");     write(171,*) "#   ", numdata
+     open(171,file=outename,status="unknown",iostat=myiostat)
+     call checkiostat(myiostat,"opening "//outename)
+     write(171,*,iostat=myiostat) "#   ", numdata
+     call checkiostat(myiostat,"writing "//outename)
      do i=0,numdata
-        write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*autosteps, fftrans(i),indipolearray(i),eft(i)
+        write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  i*par_timestep*autosteps, fftrans(i),indipolearray(i),eft(i)
      enddo
+     call checkiostat(myiostat,"writing "//outename)
      close(171)
   endif
 
@@ -99,8 +103,10 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
   thistime=numdata*par_timestep*autosteps
 
   if (myrank.eq.1) then
-     open(171,file=outftname,status="unknown")
-     write(171,*) "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 
+     open(171,file=outftname,status="unknown",iostat=myiostat)
+     call checkiostat(myiostat,"opening "//outftname)
+     write(171,*,iostat=myiostat) "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 
+     call checkiostat(myiostat,"writing "//outftname)
      write(171,*) "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
      write(171,*) "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
      write(171,*) "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (CUMULATIVE EXCITATION PROBABILITY FOR SUM RULE) IN COLUMN 10"
@@ -124,15 +130,17 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
 
 !! NOW FACTOR (2 omega) IN COLUMNS 6,7   v1.16 12-2015
 
-        write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i), eft(i), fftrans(i)*conjg(eft(i)) * 2 * myenergy, &
+        write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, fftrans(i), eft(i), fftrans(i)*conjg(eft(i)) * 2 * myenergy, &
              fftrans(i)*conjg(eft(i)) / abs(eft(i)**2) * xsecunits, xsum
      enddo
+     call checkiostat(myiostat,"writing "//outftname)
      close(171)
      if (sflag.ne.0) then
         write(number,'(I7)') 1000000+floor(thistime)
-        open(171,file=outftname(1:getlen(outftname)-1)//number(2:7),status="unknown")
-
-        write(171,*) "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 
+        open(171,file=outftname(1:getlen(outftname)-1)//number(2:7),status="unknown",iostat=myiostat)
+        call checkiostat(myiostat,"opening "//outftname)
+        write(171,*,iostat=myiostat) "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 
+        call checkiostat(myiostat,"writing "//outftname)
         write(171,*) "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
         write(171,*) "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
         write(171,*) "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (CUMULATIVE EXCITATION PROBABILITY FOR SUM RULE) IN COLUMN 10"
@@ -151,9 +159,10 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)   
 
 !! NOW FACTOR (2 omega) IN COLUMNS 6,7   v1.16 12-2015
 
-           write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i), eft(i), fftrans(i)*conjg(eft(i)) * 2 * myenergy, &
+           write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, fftrans(i), eft(i), fftrans(i)*conjg(eft(i)) * 2 * myenergy, &
                 fftrans(i)*conjg(eft(i)) / abs(eft(i)**2) * xsecunits, xsum
         enddo
+        call checkiostat(myiostat,"writing "//outftname)
         close(171)
      endif
   endif

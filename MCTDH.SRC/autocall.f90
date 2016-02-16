@@ -12,7 +12,7 @@ subroutine autocall(numdata, forwardovl, sflag)
   implicit none
   integer, intent(in) :: numdata,sflag
   DATATYPE,intent(in) :: forwardovl(0:autosize,mcscfnum)
-  integer :: i, totdim, imc,getlen,ibot
+  integer :: i, totdim, imc,getlen,ibot,myiostat
   real*8 ::   estep, thistime, myenergy, windowfunct
   character (len=7) :: number
   DATATYPE, allocatable :: fftrans(:,:),fftrans0(:,:)
@@ -68,8 +68,10 @@ subroutine autocall(numdata, forwardovl, sflag)
 !Specify the dimension of the transform
 
   if (myrank.eq.1) then
-     open(171,file=corrdatfile,status="unknown")
-     write(171,*) "#   ", totdim
+     open(171,file=corrdatfile,status="unknown",iostat=myiostat)
+     call checkiostat(myiostat,"opening corrdatfile")
+     write(171,*,iostat=myiostat) "#   ", totdim
+     call checkiostat(myiostat,"writing corrdatfile")
      do i=ibot,numdata
         write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*autosteps, (fftrans0(i,imc),fftrans(i,imc),imc=1,mcscfnum)
      enddo
@@ -97,8 +99,10 @@ subroutine autocall(numdata, forwardovl, sflag)
      if (sflag.ne.0) then
         thistime=numdata*par_timestep*autosteps
         write(number,'(I7)') 1000000+floor(thistime)
-        open(1711,file=corrftfile(1:getlen(corrftfile)-1)//number(2:7),status="unknown")
-        write(1711,*) "#   ", totdim
+        open(1711,file=corrftfile(1:getlen(corrftfile)-1)//number(2:7),status="unknown",iostat=myiostat)
+     call checkiostat(myiostat,"opening corrftfile")
+        write(1711,*,iostat=myiostat) "#   ", totdim
+     call checkiostat(myiostat,"opening corrftfile")
         do i=ibot,numdata
            myenergy=(i-ibot)*Estep
            write(1711,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i,:)
@@ -106,8 +110,10 @@ subroutine autocall(numdata, forwardovl, sflag)
         close(1711)
      endif
 
-     open(171,file=corrftfile,status="unknown")
-     write(171,*) "#   ", totdim
+     open(171,file=corrftfile,status="unknown",iostat=myiostat)
+     call checkiostat(myiostat,"opening corrftfile")
+     write(171,*,iostat=myiostat) "#   ", totdim
+     call checkiostat(myiostat,"opening corrftfile")
      do i=ibot,numdata
         myenergy=(i-ibot)*Estep
         write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i,:)

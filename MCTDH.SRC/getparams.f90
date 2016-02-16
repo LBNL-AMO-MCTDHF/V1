@@ -133,7 +133,8 @@ subroutine getparams()
      OFLWR "No Input.Inp found for parinp, iostat=",myiostat; CFL
   else
      OFLWR "Reading ",inpfile; CFL
-     read(971,nml=parinp)
+     read(971,nml=parinp,iostat=myiostat)
+     call checkiostat(myiostat," reading namelist PARINP")
      restrict_ms=restrictms
      all_spinproject=allspinproject
      df_restrictflag=dfrestrictflag
@@ -170,8 +171,8 @@ subroutine getparams()
 
      close(971)     
      open(971,file=inpfile, status="old")
-     read(971,nml=parinp)
-
+     read(971,nml=parinp,iostat=myiostat)
+     call checkiostat(myiostat," reading namelist PARINP")
   endif
   close(971)
 
@@ -184,16 +185,6 @@ subroutine getparams()
   !!   ************************************************************************************************************************
 
 
-!! These are options that cannot be superceded in geth2opts (including in mcloop)
-  do i=1,nargs
-     buffer=nullbuff;    call getarg(i,buffer);     len=getlen(buffer)
-
-     if (buffer(1:5) .eq. 'Nspf=') then
-        read(buffer(6:len),*) nspf;   
-        OFLWR "Nspf set to  ", nspf, " by command line option."; CFL
-     endif
-  enddo
-
   !!   NOW TAKE MCTDHF NAMELIST AND COMMAND LINE INPUT
 
   call openfile()
@@ -202,43 +193,48 @@ subroutine getparams()
 
   do i=1,nargs
      buffer=nullbuff;     call getarg(i,buffer);     len=getlen(buffer)
+     myiostat=0
+     if (buffer(1:5) .eq. 'Nspf=') then
+        read(buffer(6:len),*,iostat=myiostat) nspf;   
+        write(mpifileptr,*) "Nspf set to  ", nspf, " by command line option."
+     endif
 
      if (buffer(1:9) .eq. 'NoTiming=') then
-        read(buffer(10:len),*) notiming
+        read(buffer(10:len),*,iostat=myiostat) notiming
         write(mpifileptr, *) "notiming variable set to ",notiming," by command line input."
      endif
      if (buffer(1:7) .eq. 'Timing=') then
-        read(buffer(8:len),*) j
+        read(buffer(8:len),*,iostat=myiostat) j
         notiming=2-j
         write(mpifileptr, *) "notiming variable set to ",notiming," by command line input."
      endif
      if (buffer(1:4) .eq. 'Rel=') then
-        read(buffer(5:len),*) relerr
+        read(buffer(5:len),*,iostat=myiostat) relerr
         write(mpifileptr, *) "Relative error for spf prop set to ", relerr, " by command line option."
      endif
      if (buffer(1:9) .eq. 'FluxSkip=') then
-        read(buffer(10:len),*) fluxskipmult
+        read(buffer(10:len),*,iostat=myiostat) fluxskipmult
         write(mpifileptr, *) "Fluxskipmult set to ", fluxskipmult, " by command line option."
      endif
      if (buffer(1:6) .eq. 'Myrel=') then
-        read(buffer(7:len),*) myrelerr
+        read(buffer(7:len),*,iostat=myiostat) myrelerr
         write(mpifileptr, *) "Absolute error (myrelerr) for spf prop set to ", myrelerr, " by command line option."
      endif
      if (buffer(1:9) .eq. 'PovRange=') then
-        read(buffer(10:len),*) tempreal
+        read(buffer(10:len),*,iostat=myiostat) tempreal
         write(mpifileptr, *) "Povrange set to ", tempreal
         povrange=tempreal  !! all of them
      endif
      if (buffer(1:2) .eq. 'M=') then
         mrestrictflag=1
-        read(buffer(3:len),*) mrestrictval
+        read(buffer(3:len),*,iostat=myiostat) mrestrictval
         write(mpifileptr, *) "Restricting configs to ", mrestrictval, " by command line option."
      endif
      if (buffer(1:5) .eq. 'Debug') then
         if (.not.buffer(1:6) .eq. 'Debug=') then
            WRFL "Please specify debug flag option N with command line Debug=N not just Debug"; CFLST
         endif
-        read(buffer(7:len),*) debugflag
+        read(buffer(7:len),*,iostat=myiostat) debugflag
         write(mpifileptr, *) "Debugflag set to ",debugflag," by command line option"
      endif
      if (buffer(1:5) .eq. 'Walks') then
@@ -282,7 +278,7 @@ subroutine getparams()
      endif
 #endif
      if (buffer(1:6) .eq. 'Relax=') then
-        read(buffer(7:len),*) improvedrelaxflag
+        read(buffer(7:len),*,iostat=myiostat) improvedrelaxflag
         write(mpifileptr, *) "  Forcing improved relaxation by command line option.  Relaxing to state ", improvedrelaxflag
      else
         if (buffer(1:5) .eq. 'Relax') then
@@ -303,16 +299,16 @@ subroutine getparams()
         write(mpifileptr,*) " Setting all specified actions on: they are ", actions(1:numactions)
      endif
      if (buffer(1:4) .eq. 'Act=') then
-        numactions=numactions+1;        read(buffer(5:len),*) actions(numactions)
+        numactions=numactions+1;        read(buffer(5:len),*,iostat=myiostat) actions(numactions)
      endif
      if (buffer(1:4) .eq. 'Mess') then
         messflag=1;        messamount=1.d-3
         if (buffer(1:5) .eq. 'Mess=') then
-           read(buffer(6:len),*) messamount
+           read(buffer(6:len),*,iostat=myiostat) messamount
         endif
      endif
      if (buffer(1:9) .eq. 'Autoperm=') then
-        read(buffer(10:len),*) autopermthresh
+        read(buffer(10:len),*,iostat=myiostat) autopermthresh
         write(mpifileptr,*) "Permutation threshold for autocorr set to ", autopermthresh
      endif
 
@@ -321,27 +317,27 @@ subroutine getparams()
      endif
 
      if (buffer(1:5) .eq. 'Step=') then
-        read(buffer(6:len),*) par_timestep
+        read(buffer(6:len),*,iostat=myiostat) par_timestep
         write(mpifileptr, *) "Timestep set to  ", par_timestep, " by command line option."
      endif
 
      if (buffer(1:10) .eq. 'Numfrozen=') then
         numshells=2
-        read(buffer(11:len),*) shelltop(1)
+        read(buffer(11:len),*,iostat=myiostat) shelltop(1)
         shelltop(2)=nspf
         write(mpifileptr, *) "Numshells set to 2 with  ", shelltop(1), " in the first shell by command line option."
      endif
      if (buffer(1:10) .eq. 'Numexcite=') then
-        read(buffer(11:len),*) numexcite(1)
+        read(buffer(11:len),*,iostat=myiostat) numexcite(1)
         write(mpifileptr, *) "Numexcite for first shell set to  ", numexcite(1), " by command line option."
      endif
 
      if (buffer(1:9) .eq. 'PlotSkip=') then
-        read(buffer(10:len),*) plotskip
+        read(buffer(10:len),*,iostat=myiostat) plotskip
         write(mpifileptr, *) "Plotskip set to ", plotskip, " by command line option."
      endif
      if (buffer(1:7) .eq. 'PlotXY=') then
-        read(buffer(8:len),*) plotxyrange
+        read(buffer(8:len),*,iostat=myiostat) plotxyrange
         write(mpifileptr, *) "Plot xy-range set to ", plotxyrange, " bohr by command line option."
      endif
 
@@ -349,23 +345,23 @@ subroutine getparams()
         pm3d=1;        write(mpifileptr, *) "PM3D set to on."
      endif
      if (buffer(1:6) .eq. 'PlotZ=') then
-        read(buffer(7:len),*) plotrange
+        read(buffer(7:len),*,iostat=myiostat) plotrange
         write(mpifileptr, *) "Plot z-range set to ", plotrange, " bohr by command line option."
      endif
      if (buffer(1:8) .eq. 'PlotNum=') then
-        read(buffer(9:len),*) plotnum
+        read(buffer(9:len),*,iostat=myiostat) plotnum
         write(mpifileptr, *) "Plotnum set to ", plotnum, " bohr by command line option."
      endif
      if (buffer(1:8) .eq. 'PlotRes=') then
-        read(buffer(9:len),*) plotres
+        read(buffer(9:len),*,iostat=myiostat) plotres
         write(mpifileptr, *) "Plot resolution set to ", plotres, " bohr by command line option."
      endif
      if (buffer(1:10) .eq. 'PlotPause=') then
-        read(buffer(11:len),*) plotpause
+        read(buffer(11:len),*,iostat=myiostat) plotpause
         write(mpifileptr, *) "Plotpause set to ", plotpause, " seconds by command line option."
      endif
      if (buffer(1:11) .eq. 'Stopthresh=') then
-        read(buffer(12:len),*) stopthresh
+        read(buffer(12:len),*,iostat=myiostat) stopthresh
         write(mpifileptr, *) "Stopthresh set to  ", stopthresh, " by command line option."
      endif
      if (buffer(1:6) .eq. 'Sparse') then
@@ -377,7 +373,7 @@ subroutine getparams()
         sparseconfigflag=0
      endif
      if (buffer(1:7) .eq. 'Denreg=') then
-        read(buffer(8:len),*) denreg
+        read(buffer(8:len),*,iostat=myiostat) denreg
         write(mpifileptr, *) "Denreg set by command line option to ", denreg
      endif
      if (buffer(1:3) .eq. 'GBS') then
@@ -389,9 +385,11 @@ subroutine getparams()
         write(mpifileptr, *) "RK integration set by command line option."
      endif
      if (buffer(1:8) .eq. 'Eground=') then
-        read(buffer(9:len),*) eground
+        read(buffer(9:len),*,iostat=myiostat) eground
         write(mpifileptr, *) "Eground for autoft set to  ", eground, " by command line option."
      endif
+
+     call checkiostat(myiostat," command line argument "//buffer)
      
   enddo
   write(mpifileptr, *) " ****************************************************************************"     
@@ -556,17 +554,19 @@ subroutine getparams()
   endif
   do i=1,nargs
      buffer=nullbuff
+     myiostat=0
      !!     call mygetarg(i,buffer)
      call getarg(i,buffer)
      len=getlen(buffer)
      if (buffer(1:2) .eq. 'T=') then
-        read(buffer(3:len),*) finaltime 
+        read(buffer(3:len),*,iostat=myiostat) finaltime 
         OFLWR "Finaltime set by command line option to ", finaltime
         numpropsteps=floor((finaltime+0.0000000001d0)/par_timestep) +1
         finaltime=numpropsteps*par_timestep
         write(mpifileptr, *) "     numpropsteps now   ", numpropsteps
         write(mpifileptr, *) "     finaltime    now   ", finaltime;        call closefile()
      endif
+     call checkiostat(myiostat,"Reading finaltime command line input "//buffer)
   enddo
 
   numpropsteps=floor((finaltime+0.0000000001d0)/par_timestep)
@@ -578,11 +578,13 @@ subroutine getparams()
 
   do i=1,nargs
      buffer=nullbuff;     call getarg(i,buffer)
+     myiostat=0
      len=getlen(buffer)
      if (buffer(1:12) .eq. 'PlotModulus=') then
-        read(buffer(13:len),*) plotmodulus
+        read(buffer(13:len),*,iostat=myiostat) plotmodulus
         write(mpifileptr, *) "Plotmodulus set to ", plotmodulus, " steps by command line option."
      endif
+     call checkiostat(myiostat," command line argument plotmodulus "//buffer)
   enddo
 
   ndof=2*numelec
@@ -1034,7 +1036,8 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
      CFL
 
      if (myrank.eq.1) then
-        open(886, file="Dat/Pulse.Datx", status="unknown")
+        open(886, file="Dat/Pulse.Datx", status="unknown",iostat=myiostat)
+        call checkiostat(myiostat," opening Dat/Pulse.Datx")
         open(887, file="Dat/Pulse.Daty", status="unknown")
         open(888, file="Dat/Pulse.Datz", status="unknown")
 
@@ -1084,7 +1087,8 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
 !! PREVIOUS OUTPUT IN Pulseft.Dat was vpulseftsq / 4
 
         do i=0,neflux
-           write(885,'(100F30.12)') i*estep, pulseftsq(i), vpulseftsq(i)
+           write(885,'(100F30.12)',iostat=myiostat) i*estep, pulseftsq(i), vpulseftsq(i)
+           call checkiostat(myiostat," wrting Dat/Pulse.Dat file")
            write(886,'(100F30.12)') i*estep, lenpot(i,1),velpot(i,1)
            write(887,'(100F30.12)') i*estep, lenpot(i,2),velpot(i,2)
            write(888,'(100F30.12)') i*estep, lenpot(i,3),velpot(i,3)

@@ -7,8 +7,8 @@ subroutine save_vector(psi,afile,sfile)
   use mpimod
   implicit none
   DATATYPE,intent(in) :: psi(psilength) 
-  character :: afile*(*), sfile*(*)
-  integer :: iprop,ispf
+  character,intent(in) :: afile*(*), sfile*(*)
+  integer :: iprop,ispf,myiostat
   DATATYPE, allocatable :: parorbitals(:,:), parfrozen(:,:), paravec(:,:,:)
 
 !! always allocate avoid warn bounds
@@ -60,7 +60,9 @@ subroutine save_vector(psi,afile,sfile)
   call mpibarrier()
 
   if (myrank.eq.1) then
-     open(998,file=sfile, status="unknown", form="unformatted")
+     open(998,file=sfile, status="unknown", form="unformatted",iostat=myiostat)
+     call checkiostat(myiostat,"opening "//sfile)
+
      call spf_header_write(998,nspf+numfrozen)
      
      if (parorbsplit.eq.3) then
@@ -70,7 +72,8 @@ subroutine save_vector(psi,afile,sfile)
      endif
      close(998)
      
-     open(999,file=afile, status="unknown", form="unformatted")
+     open(999,file=afile, status="unknown", form="unformatted",iostat=myiostat)
+     call checkiostat(myiostat,"opening "//afile)
      call avector_header_write(999,mcscfnum)
      if (par_consplit.ne.0) then
         do iprop=1,mcscfnum
@@ -101,26 +104,36 @@ end subroutine save_vector
 
 subroutine write_spf(unit,spfin,frozenin,inspfsize)
   use parameters
+  use mpimod   !! myrank
   implicit none
   integer,intent(in) :: unit,inspfsize
   DATATYPE,intent(in) :: spfin(inspfsize, nspf   ),  frozenin(inspfsize, numfrozen)
   DATATYPE,allocatable :: allspf(:,:)
+  integer :: myiostat
+  if (myrank.ne.1) then
+     print *, "programmer error, only call write_spf on root process"; stop
+  endif
   allocate(allspf(inspfsize,nspf+numfrozen))
   if (numfrozen.gt.0) then
      allspf(:,1:numfrozen)=frozenin(:,:)
   endif
   allspf(:,numfrozen+1:nspf+numfrozen) = spfin(:,:)
-  write (unit) allspf
+  write (unit,iostat=myiostat) allspf
   deallocate(allspf)
+  call checkiostat(myiostat," writing spf")
 end subroutine write_spf
 
 
 
 subroutine spf_header_write(iunit,num)
   use parameters
+  use mpimod   !! myrank
   implicit none
   integer,intent(in) :: iunit,num
-  integer ::  cflag,qqq(3),ppp(3)
+  integer ::  cflag,qqq(3),ppp(3),myiostat
+  if (myrank.ne.1) then
+     print *, "programmer error, only call spf_header_write on root process"; stop
+  endif
 #ifdef REALGO
   cflag=0
 #else
@@ -130,20 +143,27 @@ subroutine spf_header_write(iunit,num)
   if (parorbsplit.eq.3) then
      ppp(:)=1; call bigdimsub(ppp,qqq)
   endif
-  write(iunit) spfdims(:)*qqq(:),num,cflag
+  write(iunit,iostat=myiostat) spfdims(:)*qqq(:),num,cflag
+  call checkiostat(myiostat," writing spf")
 end subroutine
 
 
 subroutine spf_header_read(iunit,outdims,outnspf,cflag)
+  use mpimod   !! myrank
   implicit none
   integer,intent(in) :: iunit
   integer,intent(out) :: outdims(3),outnspf,cflag
+  integer :: myiostat
+  if (myrank.ne.1) then
+     print *, "programmer error, only call spf_header_read on root process"; stop
+  endif
 #ifdef REALGO
   cflag=0
 #else
   cflag=1
 #endif
-  read(iunit) outdims(:),outnspf,cflag
+  read(iunit,iostat=myiostat) outdims(:),outnspf,cflag
+  call checkiostat(myiostat," reading spf")
 end subroutine
 
 
@@ -243,7 +263,7 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
   real*8,allocatable :: realspfs(:,:,:,:), bigoutrealspfs(:,:,:,:), outrealspfs(:,:,:,:)
   complex*16,allocatable :: cspfs(:,:,:,:), bigoutcspfs(:,:,:,:), outcspfs(:,:,:,:)
   integer :: numloaded,itop(3),ibot(3),otop(3),obot(3),idim,flag, amin(3),amax(3),bmin(3),bmax(3),&
-       ispf, bigoutdims(3),ooshift,rrshift
+       ispf, bigoutdims(3),ooshift,rrshift,myiostat
 
   if (readcflag.eq.0) then
      allocate(outrealspfs(outdims(1),outdims(2),outdims(3),outnspf),&
@@ -329,10 +349,12 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
   if (myrank.eq.1) then
      if (readcflag.eq.0) then
         OFLWR "Read real spfs"; CFL
-        read(iunit) realspfs(:,:,:, 1:numloaded )
+        read(iunit,iostat=myiostat) realspfs(:,:,:, 1:numloaded )
+        call checkiostat(myiostat," reading real spfs")
      else
         OFLWR "Read complex spfs"; CFL
-        read(iunit) cspfs(:,:,:, 1:numloaded)
+        read(iunit,iostat=myiostat) cspfs(:,:,:, 1:numloaded)
+        call checkiostat(myiostat," reading complex spfs")
      endif
      close(iunit)
      OFLWR "   ...rank 1 read from file"; CFL     

@@ -32,7 +32,7 @@ subroutine ovl_initial()
   use mpimod
   implicit none
 
-  integer :: jnumovl, ifile,acomplex,spfcomplex,nstate,i,kk,tdims(3),tndof,tnumconfig,tnumr,tnspf
+  integer :: jnumovl, ifile,acomplex,spfcomplex,nstate,i,kk,tdims(3),tndof,tnumconfig,tnumr,tnspf,myiostat
   external :: readavectorsubsimple
   DATATYPE, allocatable :: read_avectors(:,:), read_spfs(:,:)
 
@@ -45,9 +45,10 @@ subroutine ovl_initial()
   numovl=0
   do ifile=1,numovlfiles
      if (myrank.eq.1) then
-        open(909,file=ovlspffiles(ifile),status="unknown",form="unformatted")
-        open(910,file=ovlavectorfiles(ifile),status="unknown",form="unformatted")
-
+        open(909,file=ovlspffiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
+        call checkiostat(myiostat,"opening "//ovlspffiles(ifile))
+        open(910,file=ovlavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
+        call checkiostat(myiostat,"opening "//ovlavectorfiles(ifile))
         call avector_header_read_simple(910,nstate,tndof,tnumr,tnumconfig,acomplex)
         call spf_header_read(909,tdims,tnspf,spfcomplex)
         close(909);     close(910)
@@ -100,7 +101,8 @@ subroutine ovl_initial()
      enddo
 
      if (myrank.eq.1) then
-        open(910,file=ovlavectorfiles(ifile),status="unknown",form="unformatted")
+        open(910,file=ovlavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
+        call checkiostat(myiostat,"opening "//ovlavectorfiles(ifile))
         call avector_header_read_simple(910,nstate,tndof,tnumr,tnumconfig,acomplex)
      endif
      call mympiibcastone(nstate,1); call mympiibcastone(tndof,1); call mympiibcastone(tnumr,1);
@@ -139,8 +141,9 @@ subroutine getoverlaps(forceflag)
   use parameters
   use configmod
   use xxxmod
+  use mpimod   !! myrank
   implicit none
-  integer ::  i,imc,forceflag
+  integer ::  i,imc,forceflag,myiostat
 
   calledflag = calledflag+1
 
@@ -155,13 +158,14 @@ subroutine getoverlaps(forceflag)
         xcalledflag=xcalledflag+1
      enddo
   endif
-  if (mod(calledflag-1,autosteps).eq.0.or.forceflag.ne.0) then
-     open(881,file=outovl, status="unknown")
+  if (mod(calledflag-1,autosteps).eq.0.or.forceflag.ne.0.and.myrank.eq.1) then
+     open(881,file=outovl, status="unknown",iostat=myiostat)
+     call checkiostat(myiostat,"opening "//outovl)
      do i=0,xcalledflag-1
-        write(881,'(F12.3, 1000E20.10)') i*autotimestep,abs(overlaps(:,i,:))**2
+        write(881,'(F12.3, 1000E20.10)',iostat=myiostat) i*autotimestep,abs(overlaps(:,i,:))**2
      enddo
+     call checkiostat(myiostat,"writing "//outovl)
      close(881)
-
   endif
 
 end subroutine getoverlaps
@@ -172,8 +176,9 @@ subroutine mcscf_matel()
   use parameters
   use configmod
   use xxxmod
+  use mpimod   !! myrank
   implicit none
-  integer ::  i,j
+  integer ::  i,j,myiostat
   DATATYPE :: myovl(numovl,numovl)
 
 !! REPLACE THIS - ADAPT FINALSTATS0.
@@ -186,11 +191,17 @@ subroutine mcscf_matel()
      enddo
   enddo
 
-  open(881,file=outmatel, status="unknown")
-  do i=1,numovl
-     write(881,'(1000F17.10)') abs(myovl(i,:))**2, myovl(i,:)
-  enddo
-  close(881)
+  if (myrank.eq.1) then
+     open(881,file=outmatel, status="unknown",iostat=myiostat)
+     call checkiostat(myiostat,"opening "//outmatel)
+     do i=1,numovl
+        write(881,'(1000F17.10)',iostat=myiostat) abs(myovl(i,:))**2, myovl(i,:)
+     enddo
+     call checkiostat(myiostat,"writing "//outmatel)
+     close(881)
+  endif
+
+  call mpibarrier()
 
 end subroutine mcscf_matel
 
@@ -201,7 +212,7 @@ subroutine wfnovl()
   use mpimod
   implicit none
   
-  integer :: k,molength,alength,nt,ketbat,imc,ispf
+  integer :: k,molength,alength,nt,ketbat,imc,ispf,myiostat
   real*8 :: piover2,dt,angle(mcscfnum)
   DATATYPE :: dot,myovl(mcscfnum) , bradot,phase,ketdot,blah
   DATATYPE, allocatable :: read_bramo(:,:), read_braavec(:,:), read_ketmo(:,:), read_ketavec(:,:),&
@@ -247,14 +258,24 @@ subroutine wfnovl()
      
      OFLWR "Reading ket batch ", ketbat, " of ", nt+1; CFL
      if (myrank.eq.1) then
-        open(11001,file=fluxmofile2,status="old",form="unformatted",access="direct",recl=molength)
-        open(11002,file=fluxafile2,status="old",form="unformatted",access="direct",recl=alength)
-        open(1001,file=fluxmofile,status="old",form="unformatted",access="direct",recl=molength)
-        open(1002,file=fluxafile,status="old",form="unformatted",access="direct",recl=alength)
+        open(11001,file=fluxmofile2,status="old",form="unformatted",access="direct",recl=molength,iostat=myiostat)
+        call checkiostat(myiostat,"opening "//fluxmofile2)
+        open(11002,file=fluxafile2,status="old",form="unformatted",access="direct",recl=alength,iostat=myiostat)
+        call checkiostat(myiostat,"opening "//fluxafile2)
+        open(1001,file=fluxmofile,status="old",form="unformatted",access="direct",recl=molength,iostat=myiostat)
+        call checkiostat(myiostat,"opening "//fluxmofile)
+        open(1002,file=fluxafile,status="old",form="unformatted",access="direct",recl=alength,iostat=myiostat)
+        call checkiostat(myiostat,"opening "//fluxafile)
         
         k=FluxSkipMult*(ketbat-1)+1
-        read(1001,rec=k) read_ketmo(:,:) ;    read(1002,rec=k) read_ketavec(:,:) 
-        read(11001,rec=k) read_bramo(:,:) ;    read(11002,rec=k) read_braavec(:,:) 
+        read(1001,rec=k,iostat=myiostat) read_ketmo(:,:) 
+        call checkiostat(myiostat,"reading "//fluxmofile2)
+        read(1002,rec=k,iostat=myiostat) read_ketavec(:,:) 
+        call checkiostat(myiostat,"reading "//fluxafile2)
+        read(11001,rec=k,iostat=myiostat) read_bramo(:,:) 
+        call checkiostat(myiostat,"reading "//fluxmofile)
+        read(11002,rec=k,iostat=myiostat) read_braavec(:,:) 
+        call checkiostat(myiostat,"reading "//fluxafile)
         
         close(1001);    close(1002);    close(11001);    close(11002)
      endif

@@ -227,7 +227,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
   DATATYPE ::  dot,tempmatel(www%nspf,www%nspf)
   integer, save :: times(20)=0, icalled=0
   integer ::    i,     j,  ii, lwork,isize,ishell,iiyy,maxii,imc,itime,jtime,getlen,&
-       lowspf,highspf,numspf,flag
+       lowspf,highspf,numspf,flag,myiostat
   integer :: ipairs(2,www%nspf*(www%nspf-1))
   DATATYPE, allocatable :: avectorp(:,:), rhs(:,:), avector(:,:), rhomat(:,:,:,:), &
        smallwalkvects(:,:,:,:)   !! numconfig,numr,alpha,beta  alpha=included beta=excluded
@@ -268,11 +268,17 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
   if (notiming.eq.0.and.myrank.eq.1) then
      if (icalled.eq.1) then
-        open(8712,file=timingdir(1:getlen(timingdir)-1)//"/dfconstrain.dat",status="unknown")
-        write(8712,*) "DF timings."; close(8712)
+        open(8712,file=timingdir(1:getlen(timingdir)-1)//"/dfconstrain.dat",status="unknown",iostat=myiostat)
+        call checkiostat(myiostat,"opening dfconstrain timing file")
+        write(8712,*,iostat=myiostat) "DF timings."
+        call checkiostat(myiostat,"writing dfconstrain timing file")
+        close(8712)
      else if (mod(icalled,30).eq.0) then
-        open(8712,file=timingdir(1:getlen(timingdir)-1)//"/dfconstrain.dat",status="old", position="append")
-        write(8712,'(100I12)') times(1:14)/1000; close(8712)
+        open(8712,file=timingdir(1:getlen(timingdir)-1)//"/dfconstrain.dat",status="old", position="append",iostat=myiostat)
+        call checkiostat(myiostat,"opening dfconstrain timing file")
+        write(8712,'(100I12)',iostat=myiostat) times(1:14)/1000
+        call checkiostat(myiostat,"writing dfconstrain timing file")
+        close(8712)
      endif
   endif
 

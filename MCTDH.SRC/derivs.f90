@@ -33,7 +33,7 @@ subroutine all_derivs(thistime,xpsi, xpsip)
   DATATYPE,intent(out) :: xpsip(psilength)
   DATATYPE :: avector(tot_adim)   !! AUTOMATIC
   real*8 :: thistime
-  integer :: itime,jtime,getlen
+  integer :: itime,jtime,getlen,myiostat
   integer, save :: times(20)=0, numcalledhere=0,imc
 
   numcalledhere=numcalledhere+1
@@ -72,13 +72,14 @@ subroutine all_derivs(thistime,xpsi, xpsip)
   
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (numcalledhere==1) then
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/all_deriv.time.dat", status="unknown")
-
+        open(853, file=timingdir(1:getlen(timingdir)-1)//"/all_deriv.time.dat", status="unknown",iostat=myiostat)
+        call checkiostat(myiostat,"opening all_deriv timing file")
         write(853,'( T16, 100A15)') " init ", " matel ", " denmat ", " getredham ", " actreduced ", " amult "
         close(853)
      endif
      if (mod(numcalledhere,timingout).eq.0) then
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/all_deriv.time.dat", status="unknown", position="append")
+        open(853, file=timingdir(1:getlen(timingdir)-1)//"/all_deriv.time.dat", status="unknown", position="append",iostat=myiostat)
+        call checkiostat(myiostat,"writing all_deriv timing file")
         write(853,'(A3,F12.3,100I15)') "T= ", thistime,  times(1:6)/1000;        close(853)
      endif
   endif
@@ -257,7 +258,7 @@ subroutine actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, ou
   real*8, intent(in) :: thistime
   DATATYPE, intent(in) :: inspfs(spfsize, nspf), projspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
-  integer :: itime, jtime, getlen,numspf
+  integer :: itime, jtime, getlen,numspf,myiostat
   integer, save :: times(0:20)=0,numcalledhere=0
   DATATYPE :: myxtdpot=0,  myytdpot=0, myztdpot=0, pots(3)=0d0
   DATATYPE :: spfmult(spfsize,nspf),workmult(spfsize,lowspf:highspf+1), &      !! AUTOMATIC
@@ -396,15 +397,19 @@ subroutine actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, ou
 
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (numcalledhere==1) then
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/actreduced.time.dat", status="unknown")
-        write(853,'(T16,100A9)') " rmult "," ke "," pot ","pulse", " nuc "," twoe "," invdenmat ",&
+        open(853, file=timingdir(1:getlen(timingdir)-1)//"/actreduced.time.dat", status="unknown",iostat=myiostat)
+        call checkiostat(myiostat,"opening actreduced timing file")
+        write(853,'(T16,100A9)',iostat=myiostat) " rmult "," ke "," pot ","pulse", " nuc "," twoe "," invdenmat ",&
              " project ", " constrain ", " MPI ";        close(853)
+        call checkiostat(myiostat,"writing actreduced timing file")
      endif
 
      if (mod(numcalledhere,timingout).eq.0) then
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/actreduced.time.dat", status="unknown", position="append")
-        write(853,'(A3,F12.4,15I9)') "T= ", thistime,  times(1:10)/1000
-        close(853);        close(853)
+        open(853, file=timingdir(1:getlen(timingdir)-1)//"/actreduced.time.dat", status="unknown", position="append",iostat=myiostat)
+        call checkiostat(myiostat,"opening actreduced timing file")
+        write(853,'(A3,F12.4,15I9)',iostat=myiostat) "T= ", thistime,  times(1:10)/1000
+        call checkiostat(myiostat,"writing actreduced timing file")
+        close(853)
      endif
   endif
 

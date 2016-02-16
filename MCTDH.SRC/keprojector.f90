@@ -18,7 +18,7 @@ subroutine keprojector(inavector,inspfs,infac,www)
   real*8 :: infac
   DATAECS :: ones(numr)
   integer, save :: allocd=0
-  integer :: ispf,ii,jj,jspf,lowspf,highspf,numspf
+  integer :: ispf,ii,jj,jspf,lowspf,highspf,numspf,myiostat
 
   if(numr.gt.1) then
      OFLWR "KEPROJ NOT SUPPORTED NUMR>1"; CFLST
@@ -109,10 +109,12 @@ subroutine keprojector(inavector,inspfs,infac,www)
   OFLWR "KEPROJ DONE.";CFL
 
   if (myrank.eq.1) then
-     open(1986,file="Dat/Keprojector.Dat", status="unknown")
+     open(1986,file="Dat/Keprojector.Dat", status="unknown",iostat=myiostat)
+     call checkiostat(myiostat," opening keprojector.dat")
      do ii=1,nkeproj
-        write(1986,'(100F30.20)') energy(ii), kesum(ii),kesum2(ii)
+        write(1986,'(100F30.20)',iostat=myiostat) energy(ii), kesum(ii),kesum2(ii)
      enddo
+     call checkiostat(myiostat," writing keprojector.dat")
      close(1986)
   endif
 
