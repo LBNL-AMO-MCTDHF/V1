@@ -408,26 +408,39 @@ contains
     use spfsize_parameters
     use biorthotypemod
     use abiosparsemod
+    use fileptrmod
     implicit none
     type(biorthotype),target :: inbiovar
-    integer :: i,j
     DATATYPE :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf),mobio(spfsize,inbiovar%wwbio%nspf),abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),dot,data0,data1
     DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),smosave(inbiovar%wwbio%nspf,inbiovar%wwbio%nspf)
-    
-    do i=1,inbiovar%wwbio%nspf                 !! Start by finding S**-1 of the original orbitals
+    integer :: i,j,lowspf,highspf,numspf,flag
+
+    lowspf=1;highspf=inbiovar%wwbio%nspf
+    if (parorbsplit.eq.1) then
+       call checkorbsetrange(inbiovar%wwbio%nspf,flag)
+       if (flag.ne.0) then
+          OFLWR "error exit, can't do biortho parorbsplit.eq.1 with ",inbiovar%wwbio%nspf," orbitals";CFLST
+       endif
+       call getOrbSetRange(lowspf,highspf)
+    endif
+    numspf=highspf-lowspf+1
+ 
+    do i=lowspf,highspf                 !! Start by finding S**-1 of the original orbitals
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j)
 !$OMP DO SCHEDULE(DYNAMIC)
        do j=1,inbiovar%wwbio%nspf
-          inbiovar%smo(i,j)=dot(oppmo(:,i),origmo(:,j),spfsize)
+          inbiovar%smo(j,i)=dot(oppmo(:,j),origmo(:,i),spfsize)
        enddo
 !$OMP END DO
 !$OMP END PARALLEL
     enddo
 
+    if (parorbsplit.eq.1) then
+       call mpiorbgather(inbiovar%smo(:,:),inbiovar%wwbio%nspf)
+    endif
     if (parorbsplit.eq.3) then
        call mympireduce(inbiovar%smo,inbiovar%wwbio%nspf**2)
     endif
-
     
 !! make the  bi-orthonormal orbitals 
     smosave(:,:)=inbiovar%smo(:,:)
@@ -475,20 +488,33 @@ contains
     use abiosparsemod
     implicit none
     type(biorthotype),target :: inbiovar
-    integer :: i,j
     DATATYPE :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf),abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),dot
     DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
-    
-    do i=1,inbiovar%wwbio%nspf         
+    integer :: i,j,lowspf,highspf,numspf,flag
+
+    lowspf=1;highspf=inbiovar%wwbio%nspf
+    if (parorbsplit.eq.1) then
+       call checkorbsetrange(inbiovar%wwbio%nspf,flag)
+       if (flag.ne.0) then
+          OFLWR "error exit, can't do biortho parorbsplit.eq.1 with ",inbiovar%wwbio%nspf," orbitals";CFLST
+       endif
+       call getOrbSetRange(lowspf,highspf)
+    endif
+    numspf=highspf-lowspf+1
+ 
+    do i=lowspf,highspf
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j)
 !$OMP DO SCHEDULE(DYNAMIC)
        do j=1,inbiovar%wwbio%nspf
-          inbiovar%smo(i,j)=dot(origmo(:,i),oppmo(:,j),spfsize)
+          inbiovar%smo(j,i)=dot(origmo(:,j),oppmo(:,i),spfsize)
        enddo
 !$OMP END DO
 !$OMP END PARALLEL
     enddo
 
+    if (parorbsplit.eq.1) then
+       call mpiorbgather(inbiovar%smo(:,:),inbiovar%wwbio%nspf)
+    endif
     if (parorbsplit.eq.3) then
        call mympireduce(inbiovar%smo,inbiovar%wwbio%nspf**2)
     endif
@@ -516,20 +542,33 @@ contains
     use abiosparsemod
     implicit none
     type(biorthotype),target :: inbiovar
-    integer :: i,j
     DATATYPE :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf),abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),dot
     DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
-    
-    do i=1,inbiovar%wwbio%nspf         
+    integer :: i,j,lowspf,highspf,numspf,flag
+
+    lowspf=1;highspf=inbiovar%wwbio%nspf
+    if (parorbsplit.eq.1) then
+       call checkorbsetrange(inbiovar%wwbio%nspf,flag)
+       if (flag.ne.0) then
+          OFLWR "error exit, can't do biortho parorbsplit.eq.1 with ",inbiovar%wwbio%nspf," orbitals";CFLST
+       endif
+       call getOrbSetRange(lowspf,highspf)
+    endif
+    numspf=highspf-lowspf+1
+ 
+    do i=lowspf,highspf
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j)
 !$OMP DO SCHEDULE(DYNAMIC)
        do j=1,inbiovar%wwbio%nspf
-          inbiovar%smo(i,j)=dot(origmo(:,i),oppmo(:,j),spfsize)
+          inbiovar%smo(j,i)=dot(origmo(:,j),oppmo(:,i),spfsize)
        enddo
 !$OMP END DO
 !$OMP END PARALLEL
     enddo
 
+    if (parorbsplit.eq.1) then
+       call mpiorbgather(inbiovar%smo(:,:),inbiovar%wwbio%nspf)
+    endif
     if (parorbsplit.eq.3) then
        call mympireduce(inbiovar%smo,inbiovar%wwbio%nspf**2)
     endif

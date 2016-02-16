@@ -6,85 +6,134 @@
 #include "Definitions.INC"
 
 
-subroutine get_orbmats( myspfs,  numspf,  ugmat,   xdipmat,ydipmat,zdipmat,   xrefmat,yrefmat,zrefmat)
+subroutine get_orbmats( myspfs,  howmany,  ugmat,   xdipmat,ydipmat,zdipmat,   xrefmat,yrefmat,zrefmat)
   use parameters
   implicit none
 
-  integer, intent(in) :: numspf
-  DATATYPE,intent(in) :: myspfs(spfsize,numspf)
-  DATATYPE, intent(out) :: ugmat(numspf,numspf), xdipmat(numspf,numspf), ydipmat(numspf,numspf), zdipmat(numspf,numspf), &
-       xrefmat(numspf,numspf), yrefmat(numspf,numspf), zrefmat(numspf,numspf)
+  integer, intent(in) :: howmany
+  DATATYPE,intent(in) :: myspfs(spfsize,howmany)
+  DATATYPE, intent(out) :: ugmat(howmany,howmany), xdipmat(howmany,howmany), ydipmat(howmany,howmany), zdipmat(howmany,howmany), &
+       xrefmat(howmany,howmany), yrefmat(howmany,howmany), zrefmat(howmany,howmany)
   DATATYPE,allocatable ::  tempspfs(:,:),tempspfs2(:,:)
-  integer :: i
+  integer :: i,lowspf,highspf,numspf
 
-  allocate(tempspfs(spfsize,numspf),tempspfs2(spfsize,numspf))
+  allocate(tempspfs(spfsize,howmany),tempspfs2(spfsize,howmany))
   tempspfs(:,:)=0; tempspfs2(:,:)=0
+
+  lowspf=1; highspf=howmany
+  if (parorbsplit.eq.1) then
+     if (howmany.ne.nspf) then
+        OFLWR "In get_orbmats can't do parorbsplit.eq.1 with howmany.ne.nspf, error exit",howmany,nspf; CFLST
+     endif
+     call getOrbSetRange(lowspf,highspf)
+  endif
+  numspf=highspf-lowspf+1
 
 !! M & U/G
 
-  do i=1,numspf
+  do i=lowspf,highspf
      call op_reflectx(myspfs(:,i),tempspfs(:,i))
      call op_reflecty(tempspfs(:,i),tempspfs2(:,i))
      call op_reflectz(tempspfs2(:,i),tempspfs(:,i))
   enddo
-  call MYGEMM(CNORMCHAR,'N',numspf,numspf,spfsize,DATAONE, myspfs, spfsize, tempspfs, spfsize, DATAZERO, ugmat, numspf)
+
+  if (numspf.gt.0) then
+     call MYGEMM(CNORMCHAR,'N',howmany,numspf,spfsize,DATAONE, myspfs, spfsize, &
+          tempspfs(:,lowspf:highspf), spfsize, DATAZERO, ugmat(:,lowspf:highspf), howmany)
+  endif
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(ugmat,nspf)
+  endif
   if (parorbsplit.eq.3) then
-     call mympireduce(ugmat(:,:),numspf**2)
+     call mympireduce(ugmat(:,:),howmany**2)
   endif
 
-
 !! Z DIPOLE
+  if (numspf.gt.0) then
+     call mult_zdipole(numspf,myspfs(:,lowspf:highspf),tempspfs(:,lowspf:highspf),0)
 
-  call mult_zdipole(numspf,myspfs(:,:),tempspfs(:,:),0)
-
-  call MYGEMM(CNORMCHAR,'N',numspf,numspf,spfsize,DATAONE, myspfs, spfsize, tempspfs, spfsize, DATAZERO, zdipmat, numspf)
+     call MYGEMM(CNORMCHAR,'N',howmany,numspf,spfsize,DATAONE, myspfs, spfsize, &
+          tempspfs(:,lowspf:highspf), spfsize, DATAZERO, zdipmat(:,lowspf:highspf), howmany)
+  endif
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(zdipmat,nspf)
+  endif
   if (parorbsplit.eq.3) then
-     call mympireduce(zdipmat(:,:),numspf**2)
+     call mympireduce(zdipmat(:,:),howmany**2)
   endif
 
 !! Y DIPOLE
+  if (numspf.gt.0) then
+     call mult_ydipole(numspf,myspfs(:,lowspf:highspf),tempspfs(:,lowspf:highspf),0)
 
-  call mult_ydipole(numspf,myspfs(:,:),tempspfs(:,:),0)
-
-  call MYGEMM(CNORMCHAR,'N',numspf,numspf,spfsize,DATAONE, myspfs, spfsize, tempspfs, spfsize, DATAZERO, ydipmat, numspf)
+     call MYGEMM(CNORMCHAR,'N',howmany,numspf,spfsize,DATAONE, myspfs, spfsize, &
+          tempspfs(:,lowspf:highspf), spfsize, DATAZERO, ydipmat(:,lowspf:highspf), howmany)
+  endif
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(ydipmat,nspf)
+  endif
   if (parorbsplit.eq.3) then
-     call mympireduce(ydipmat(:,:),numspf**2)
+     call mympireduce(ydipmat(:,:),howmany**2)
   endif
 
 !! X DIPOLE
+  if (numspf.gt.0) then
+     call mult_xdipole(numspf,myspfs(:,lowspf:highspf),tempspfs(:,lowspf:highspf),0)
 
-
-  call mult_xdipole(numspf,myspfs(:,:),tempspfs(:,:),0)
-
-  call MYGEMM(CNORMCHAR,'N',numspf,numspf,spfsize,DATAONE, myspfs, spfsize, tempspfs, spfsize, DATAZERO, xdipmat, numspf)
-  if (parorbsplit.eq.3) then
-     call mympireduce(xdipmat(:,:),numspf**2)
+     call MYGEMM(CNORMCHAR,'N',howmany,numspf,spfsize,DATAONE, myspfs, spfsize, &
+          tempspfs(:,lowspf:highspf), spfsize, DATAZERO, xdipmat(:,lowspf:highspf), howmany)
   endif
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(xdipmat,nspf)
+  endif
+  if (parorbsplit.eq.3) then
+     call mympireduce(xdipmat(:,:),howmany**2)
+  endif
+
+
 
 !! REFLECTIONS
 
-  do i=1,numspf
+  do i=lowspf,highspf
      call op_reflectz(myspfs(:,i),tempspfs(:,i))
   enddo
-  call MYGEMM(CNORMCHAR,'N',numspf,numspf,spfsize,DATAONE, myspfs, spfsize, tempspfs, spfsize, DATAZERO, zrefmat, numspf)
+  if (numspf.gt.0) then
+     call MYGEMM(CNORMCHAR,'N',howmany,numspf,spfsize,DATAONE, myspfs, spfsize, &
+          tempspfs(:,lowspf:highspf), spfsize, DATAZERO, zrefmat(:,lowspf:highspf), howmany)
+  endif
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(zrefmat,nspf)
+  endif
   if (parorbsplit.eq.3) then
-     call mympireduce(zrefmat(:,:),numspf**2)
+     call mympireduce(zrefmat(:,:),howmany**2)
   endif
 
-  do i=1,numspf
+  do i=lowspf,highspf
      call op_reflecty(myspfs(:,i),tempspfs(:,i))
   enddo
-  call MYGEMM(CNORMCHAR,'N',numspf,numspf,spfsize,DATAONE, myspfs, spfsize, tempspfs, spfsize, DATAZERO, yrefmat, numspf)
+  if (numspf.gt.0) then
+     call MYGEMM(CNORMCHAR,'N',howmany,numspf,spfsize,DATAONE, myspfs, spfsize, &
+          tempspfs(:,lowspf:highspf), spfsize, DATAZERO, yrefmat(:,lowspf:highspf), howmany)
+  endif
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(yrefmat,nspf)
+  endif
   if (parorbsplit.eq.3) then
-     call mympireduce(yrefmat(:,:),numspf**2)
+     call mympireduce(yrefmat(:,:),howmany**2)
   endif
 
-  do i=1,numspf
+  do i=lowspf,highspf
      call op_reflectx(myspfs(:,i),tempspfs(:,i))
   enddo
-  call MYGEMM(CNORMCHAR,'N',numspf,numspf,spfsize,DATAONE, myspfs, spfsize, tempspfs, spfsize, DATAZERO, xrefmat, numspf)
+  if (numspf.gt.0) then
+     call MYGEMM(CNORMCHAR,'N',howmany,numspf,spfsize,DATAONE, myspfs, spfsize, &
+          tempspfs(:,lowspf:highspf), spfsize, DATAZERO, xrefmat(:,lowspf:highspf), howmany)
+  endif
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(xrefmat,nspf)
+  endif
   if (parorbsplit.eq.3) then
-     call mympireduce(xrefmat(:,:),numspf**2)
+     call mympireduce(xrefmat(:,:),howmany**2)
   endif
 
   deallocate(tempspfs,tempspfs2)

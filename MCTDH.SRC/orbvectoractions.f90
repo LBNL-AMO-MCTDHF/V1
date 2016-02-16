@@ -12,11 +12,14 @@ end module
 
 subroutine close_orbvector(ifile)
   use orbvecmod
+  use mpimod
   implicit none
   integer :: ifile
-  if (myopened(ifile)) then
-     close(ifile)
-     myopened(ifile)=.false.
+  if (myrank.eq.1) then
+     if (myopened(ifile)) then
+        close(ifile)
+        myopened(ifile)=.false.
+     endif
   endif
 end subroutine
 
@@ -28,24 +31,41 @@ subroutine read_orbvector(returnval,outvec, isize, ifile, filename, header)
   integer :: returnval, isize, ifile
   character :: filename*(*)
   character (len=headersize) :: header
-  DATATYPE :: outvec(isize)
+  DATATYPE,intent(out) :: outvec(isize)
 
   if (ifile.gt.maxsavefile) then
      OFLWR "Error: programmer, please use file numbers less than ", maxsavefile;CFLST
   endif
-  if (.not.myopened(ifile)) then
-     open(ifile,file=filename, status="unknown", form="unformatted")
-     myopened(ifile)=.true.
+  if (myrank.eq.1) then
+     if (.not.myopened(ifile)) then
+        open(ifile,file=filename, status="unknown", form="unformatted")
+        myopened(ifile)=.true.
+     endif
+     read(ifile,iostat=returnval) header
   endif
-  read(ifile,iostat=returnval) header
+  call mympiibcastone(returnval,1)
+
   if (returnval/=0) then
      OFLWR "Done with vectors on file for header, iostat= ", returnval, " Filename= ", filename;CFL
-     myopened(ifile)=.false.;     close(ifile);     return
+     if (myrank.eq.1) then
+        myopened(ifile)=.false.;     
+        close(ifile);
+     endif
+     return
   endif
-  read(ifile,iostat=returnval) outvec
+  if (myrank.eq.1) then
+     read(ifile,iostat=returnval) outvec
+  endif
+  call mympibcast(outvec,1,isize)
+  call mympiibcastone(returnval,1)
+
   if (returnval/=0) then
      OFLWR "Done with vectors on file, iostat= ", returnval, " Filename= ", filename, "  Size=", isize
-     call closefile();     myopened(ifile)=.false.;     close(ifile);     return
+     call closefile(); 
+     if (myrank.eq.1) then
+        myopened(ifile)=.false.;
+        close(ifile);
+     endif
   endif
 
 end subroutine read_orbvector
@@ -61,16 +81,18 @@ subroutine save_orbvector(outvec, isize, ifile, filename, header)
   character (len=headersize) :: header
   DATATYPE :: outvec(isize)
 
-  call noparorbsupport("save_orbvector")
-
   if (ifile.gt.maxsavefile) then
      OFLWR "Error: programmer, please use file numbers less than ", maxsavefile;CFLST
   endif
-  if (.not.myopened(ifile)) then
-     open(ifile,file=filename, form="unformatted");     myopened(ifile)=.true.
+  if (myrank.eq.1) then
+     if (.not.myopened(ifile)) then
+        open(ifile,file=filename, form="unformatted")
+        myopened(ifile)=.true.
+     endif
+     write(ifile) header
+     write(ifile) outvec
   endif
-  write(ifile) header
-  write(ifile) outvec
+  call mpibarrier()
 
 end subroutine save_orbvector
 

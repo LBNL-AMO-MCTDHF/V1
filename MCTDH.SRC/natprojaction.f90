@@ -343,9 +343,13 @@ end subroutine save_denproj_final
 
 subroutine save_denproj_initial(denfilename)
   use parameters
+  use mpimod   !! myrank
   implicit none
   character :: denfilename*(*)
-  open(denprojfile,file=denfilename, status="replace", form="unformatted");  close(denprojfile)
+  if (myrank.eq.1) then
+     open(denprojfile,file=denfilename, status="replace", form="unformatted"); 
+     close(denprojfile)
+  endif
 end subroutine save_denproj_initial
 
 subroutine save_denproj( nproj, thistime, inspfs, indenmats, denfilename)

@@ -112,22 +112,25 @@ subroutine get_smallwalkvects(www,avector, smallwalkvects,nblock,howmany)
 
   allocate(bigavector(nblock,www%numconfig,howmany))
   bigavector(:,:,:)=0d0
-  bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
-
+  if (www%lastconfig.ge.www%firstconfig) then
+     bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
+  endif
   if (www%parconsplit.ne.0) then
      do ii=1,howmany
         call mpiallgather(bigavector(:,:,ii),nblock*www%numconfig,nblock*www%configsperproc(:),nblock*www%maxconfigsperproc)
      enddo
   endif
-
-  smallwalkvects(:,:,:,:,:)=0d0
-  
+  if (www%configend.ge.www%configstart) then
+     smallwalkvects(:,:,:,:,:)=0d0
+  endif
   do i=1,www%ddd%numdfwalks
      ii=www%ddd%includedorb(i);     ix=www%ddd%excludedorb(i)
      smallwalkvects(:,www%ddd%dfwalkto(i),:,ii,ix)=smallwalkvects(:,www%ddd%dfwalkto(i),:,ii,ix) + bigavector(:,www%ddd%dfwalkfrom(i),:) * www%ddd%dfwalkphase(i)
   enddo
 
   deallocate(bigavector)
+
+  call mpibarrier()
 
 end subroutine get_smallwalkvects
 
@@ -136,6 +139,7 @@ end subroutine get_smallwalkvects
 subroutine get_rhomat(www,avector, rhomat,nblock,howmany)
   use fileptrmod
   use sparse_parameters
+  use spfsize_parameters !! parorbsplit
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
@@ -144,7 +148,7 @@ subroutine get_rhomat(www,avector, rhomat,nblock,howmany)
   DATATYPE,intent(out) :: rhomat(www%nspf,www%nspf,www%nspf,www%nspf)
 !! nblock,configstart:configend,howmany,alpha,beta  alpha=included beta=excluded  :
   DATATYPE, allocatable ::  smallwalkvects(:,:,:,:,:)   
-  integer :: ii
+  integer :: ii,lowspf,highspf,numspf,flag
 
   if (www%dfrestrictflag.le.www%dflevel) then
      OFLWR "WTF DFRESTRICT IS  ", www%dfrestrictflag,www%dflevel; CFLST
@@ -152,15 +156,33 @@ subroutine get_rhomat(www,avector, rhomat,nblock,howmany)
   
   allocate(smallwalkvects(nblock,www%configstart:www%configend,howmany,www%nspf,www%nspf))
 
+!! call always
   call get_smallwalkvects(www,avector,smallwalkvects,nblock,howmany)
 
 !! THIS TAKES A LONG TIME.
+
+  lowspf=1; highspf=www%nspf
+  if (parorbsplit.eq.1.and.sparseconfigflag.eq.0) then
+     call checkorbsetrange(www%nspf,flag)
+     if (flag.ne.0) then
+        OFLWR "error exit, can't do get_rhomat with ",www%nspf," orbitals sparse mode"; CFLST
+     endif
+     call getOrbSetRange(lowspf,highspf)
+  endif
+  numspf=highspf-lowspf+1
   
   ii=(www%configend-www%configstart+1)*nblock*howmany
-  call MYGEMM(CNORMCHAR,'N',www%nspf**2,www%nspf**2,ii,DATAONE,smallwalkvects,ii,smallwalkvects,ii,DATAZERO,rhomat,www%nspf**2)
-
+  if (ii.gt.0.and.numspf.gt.0) then
+     call MYGEMM(CNORMCHAR,'N',www%nspf**2,www%nspf*numspf,ii,DATAONE,&
+          smallwalkvects,ii,smallwalkvects(:,:,:,:,lowspf),ii,DATAZERO,rhomat(:,:,:,lowspf),www%nspf**2)
+  else if (numspf.gt.0) then
+     rhomat(:,:,:,lowspf:highspf)=0d0
+  endif
+  if (parorbsplit.eq.1.and.sparseconfigflag.eq.0) then
+     call mpiorbgather(rhomat,www%nspf**3)
+  endif
   if (sparseconfigflag.ne.0) then
-     call mympireduce(rhomat,www%nspf**4)  !! BAD REDUCE
+     call mympireduce(rhomat,www%nspf**4)  !! BAD REDUCE.  REDUCE BEFORE ORBGATHER (need new communicators)
   endif
 
   deallocate(smallwalkvects)
@@ -187,6 +209,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
   use fileptrmod
   use timing_parameters
   use sparse_parameters
+  use spfsize_parameters   !! parorbsplit
   use basis_parameters
   use r_parameters
   use constraint_parameters
@@ -203,7 +226,8 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
   type(SPARSEPTR),intent(in) :: sptr
   DATATYPE ::  dot,tempmatel(www%nspf,www%nspf)
   integer, save :: times(20)=0, icalled=0
-  integer ::    i,     j,  ii, lwork,isize,ishell,iiyy,maxii,imc,itime,jtime,getlen
+  integer ::    i,     j,  ii, lwork,isize,ishell,iiyy,maxii,imc,itime,jtime,getlen,&
+       lowspf,highspf,numspf,flag
   integer :: ipairs(2,www%nspf*(www%nspf-1))
   DATATYPE, allocatable :: avectorp(:,:), rhs(:,:), avector(:,:), rhomat(:,:,:,:), &
        smallwalkvects(:,:,:,:)   !! numconfig,numr,alpha,beta  alpha=included beta=excluded
@@ -303,6 +327,16 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
   call system_clock(jtime);   times(1)=times(1)+jtime-itime
 
+  lowspf=1; highspf=www%nspf
+  if (parorbsplit.eq.1.and.sparseconfigflag.eq.0) then
+     call checkorbsetrange(www%nspf,flag)
+     if (flag.ne.0) then
+        OFLWR "error exit, can't do get_dfconstraint0 with ",www%nspf," orbitals sparse mode"; CFLST
+     endif
+     call getOrbSetRange(lowspf,highspf)
+  endif
+  numspf=highspf-lowspf+1
+
   maxii=1
   if (tdflag.ne.0) then
      maxii=4
@@ -331,24 +365,29 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
         
         call system_clock(jtime);        times(3)=times(3)+jtime-itime;     itime=jtime
 
-!! THIS TAKES A LONG TIME.        !! should only need to do off diagonal blocks but doing all to check
+!! THIS TAKES A LONG TIME.
+!! should only need to do off diagonal blocks but doing all to check
 !!   ...no for general case do all I think (Except for diag, whatever)
 
         ii=(www%configend-www%configstart+1)*numr
-        call MYGEMM(CNORMCHAR,'N',www%nspf**2,www%nspf**2,ii,DATAONE,smallwalkvects,ii,smallwalkvects,ii,DATAZERO,rhomat,www%nspf**2)
-
-        call system_clock(jtime);        times(4)=times(4)+jtime-itime;     itime=jtime
-
-        if (sparseconfigflag.ne.0) then
-           call mympireduce(rhomat,www%nspf**4)  !! BAD REDUCE
+        if (ii.gt.0.and.numspf.gt.0) then
+           call MYGEMM(CNORMCHAR,'N',www%nspf**2,www%nspf*numspf,ii,DATAONE,&
+                smallwalkvects,ii,smallwalkvects(:,:,:,lowspf),ii,DATAZERO,rhomat(:,:,:,lowspf),www%nspf**2)
+        else if (numspf.gt.0) then
+           rhomat(:,:,:,lowspf:highspf)=0d0
         endif
-
+        call system_clock(jtime);        times(4)=times(4)+jtime-itime;     itime=jtime
+        if (parorbsplit.eq.1.and.sparseconfigflag.eq.0) then
+           call mpiorbgather(rhomat,www%nspf**3)
+        endif
+        if (sparseconfigflag.ne.0) then
+           call mympireduce(rhomat,www%nspf**4)  !! BAD REDUCE.  REDUCE BEFORE ORBGATHER (need new communicators)
+        endif
         call system_clock(jtime);        times(5)=times(5)+jtime-itime;     itime=jtime
         
         if (conway.eq.2.or.conway.eq.3) then
            rhomat(:,:,:,:)=rhomat(:,:,:,:)/timefac
         endif
-
         call system_clock(jtime);        times(6)=times(6)+jtime-itime;     itime=jtime
         
         call assigncomplexmat(realrhomat,rhomat, www%nspf**2,www%nspf**2)
@@ -380,14 +419,18 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
         endif
 
         rhs(:,:)=0d0
-        do j=1,www%nspf
-           do i=1,www%nspf
-              rhs(i,j)=dot(smallwalkvects(:,:,i,j),avectorp(:,www%configstart:www%configend),(www%configend-www%configstart+1)*numr)
+        if (www%configend.ge.www%configstart) then
+           do j=lowspf,highspf
+              do i=1,www%nspf
+                 rhs(i,j)=dot(smallwalkvects(:,:,i,j),avectorp(:,www%configstart:www%configend),(www%configend-www%configstart+1)*numr)
+              enddo
            enddo
-        enddo
+        endif
 
         call system_clock(jtime);        times(10)=times(10)+jtime-itime;     itime=jtime
-
+        if (parorbsplit.eq.1.and.sparseconfigflag.eq.0) then
+           call mpiorbgather(rhs,www%nspf)
+        endif
         if (sparseconfigflag.ne.0) then
            call mympireduce(rhs,www%nspf**2)
         endif
@@ -578,6 +621,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
   use ham_parameters
   use constraint_parameters
   use walkmod
+  use spfsize_parameters   !! parorbsplit
   use configptrmod
   use sparseptrmod
   implicit none
@@ -593,7 +637,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
        tempconmatels(www%nspf,www%nspf),dot
   DATATYPE,allocatable :: bigavector(:,:,:),bigavectorp(:,:,:), avectorp(:,:,:)
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,     iwalk, info, kspf, lspf, ind, jind, &
-       lind, llind, flag, isize, iwhich,  iiyy,maxii,imc,ihop
+       lind, llind, flag, isize, iwhich,  iiyy,maxii,imc,ihop,       lowspf,highspf
   integer :: ipiv(liosize)
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
   DATATYPE :: liosolve(liosize),lioden(liosize, liosize),liodencopy(liosize,liosize),liosolvetemp(liosize), csum, myliosolve(liosize)
@@ -613,7 +657,16 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
 
   lioden=0.d0
 
-  do ispf=1,www%nspf
+  lowspf=1; highspf=www%nspf
+  if (parorbsplit.eq.1) then
+     call checkorbsetrange(www%nspf,flag)
+     if (flag.ne.0) then
+        OFLWR "error exit, can't do get_denconstraint1_0 with ",www%nspf," orbitals sparse mode"; CFLST
+     endif
+     call getOrbSetRange(lowspf,highspf)
+  endif
+
+  do ispf=lowspf,highspf
      do kspf=1,www%nspf
         do lspf=1,www%nspf
            flag=0
@@ -641,7 +694,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
      enddo
   enddo
 
-  do jspf=1,www%nspf
+  do jspf=lowspf,highspf
      do kspf=1,www%nspf
         do lspf=1,www%nspf
            flag=0
@@ -668,6 +721,10 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
         enddo
      enddo
   enddo
+
+  if (parorbsplit.eq.1) then
+     call mpiorbreduce(lioden,liosize**2)
+  endif
 
   maxii=1
   if (tdflag.ne.0) then
@@ -873,6 +930,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   use ham_parameters
   use basis_parameters
   use sparse_parameters
+  use spfsize_parameters !! parorbsplit
   use r_parameters
   use walkmod
   use configptrmod
@@ -891,7 +949,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   DATATYPE :: tempconmatels(www%nspf,www%nspf), rhomat(www%nspf,www%nspf,www%nspf,www%nspf)
   DATATYPE,allocatable :: bigavector(:,:,:), bigavectorp(:,:,:),avectorp(:,:,:)
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,  iwalk,  info, kspf, &
-       lspf, ind, jind, llind, flag, isize,   iiyy,maxii,imc,j,ihop
+       lspf, ind, jind, llind, flag, isize,   iiyy,maxii,imc,j,ihop,lowspf,highspf,lowsize,highsize
   integer,allocatable :: ipiv(:)
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
   DATATYPE, allocatable :: liosolve(:),lioden(:, :),liodencopy(:,:),liosolvetemp(:),myliosolve(:)
@@ -912,6 +970,15 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      call get_rhomat(www,avector,rhomat,numr,numvects)
   endif
 
+  lowspf=1; highspf=www%nspf
+  if (parorbsplit.eq.1) then
+     call checkorbsetrange(www%nspf,flag)
+     if (flag.ne.0) then
+        OFLWR "error exit, can't do get_denconstraint1_0 with ",www%nspf," orbitals sparse mode"; CFLST
+     endif
+     call getOrbSetRange(lowspf,highspf)
+  endif
+
   isize=0
   do i=1,www%nspf
      do j=1,www%nspf
@@ -922,11 +989,30 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      enddo
   enddo
 
+  highsize=0
+  lowsize=isize+1
+
+  isize=0
+  do i=1,www%nspf
+     if (i.eq.lowspf) then
+        lowsize=isize+1
+     endif
+     do j=1,www%nspf
+        if (shells(i).ne.shells(j)) then
+           isize=isize+1
+           ipairs(:,isize)=(/ i,j /)
+        endif
+     enddo
+     if (i.eq.highspf) then
+        highsize=isize
+     endif
+  enddo
+
   allocate(liosolve(isize),lioden(isize, isize),liodencopy(isize,isize),liosolvetemp(isize),ipiv(isize))  
 
   lioden=0.d0
 
-  do ind=1,isize
+  do ind=lowsize,highsize
      ispf=ipairs(1,ind)
      jspf=ipairs(2,ind)
      do jind=1,isize
@@ -952,6 +1038,10 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
         endif
      enddo
   enddo
+
+  if (parorbsplit.eq.1) then
+     call mpiorbreduce(lioden,isize**2)
+  endif
 
   maxii=1
   if (tdflag.ne.0) then
@@ -1115,4 +1205,5 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   deallocate(bigavector,bigavectorp,avectorp)
 
 end subroutine new_get_denconstraint1_0
+
 

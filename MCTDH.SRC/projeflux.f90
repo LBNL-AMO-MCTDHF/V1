@@ -9,7 +9,6 @@ module projefluxmod !! needed for cation walks and bi-orthonormalization
   implicit none
   integer :: targetms, targetrestrictflag, targetspinproject, tnumconfig,targetspinval,cgflag=0
   integer, allocatable :: tconfiglist(:,:),pphase1(:,:) ,pspf1(:,:,:) ,numpwalk1(:) ,pwalk1(:,:)
-  DATATYPE, allocatable :: tmo(:,:,:),ta(:,:,:)
   integer :: maxpwalk1 
 end module projefluxmod
 
@@ -349,8 +348,10 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
               if(myrank.eq.1) then
                  do i=1,brareadsize
                     do ir=1,numr 
-                       k = (imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + ((brabat-1)*BatchSize+i-1)*numr + ir
-                       read(1003,rec=k) read_bramo(:,ir,:,i)
+
+                       ioffset = (imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + ((brabat-1)*BatchSize+i-1)*numr + ir
+
+                       read(1003,rec=ioffset) read_bramo(:,ir,:,i)
                     enddo
                  enddo
               endif
@@ -521,7 +522,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   enddo  !! do imc
 
   deallocate(ftgtau,pulseft,pulseftsq,total)
-
+  deallocate(read_bramo,read_ketmo)
   deallocate(gtau,ketmo,bramo)
 
 end subroutine projeflux_double_time_int
@@ -578,8 +579,11 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   integer,intent(out) :: nstate
   integer :: tau, i,ir,tndof,tnspf,tnumr,istate,ierr
   integer :: spfcomplex, acomplex, tdims(3),imc,ioffset
-  DATATYPE, allocatable :: readmo(:,:),readavec(:,:,:),mobio(:,:),abio(:,:),&
-       tmotemp(:,:),mymo(:,:),myavec(:,:,:)
+  DATATYPE :: dot
+  DATATYPE, allocatable :: &
+       tmo(:,:),tavec(:,:,:),tmotemp(:,:),readta(:,:,:),&
+       mobio(:,:),abio(:,:),mymo(:,:),myavec(:,:,:), &
+       readmo(:,:),readavec(:,:,:)
 
 !! mcscf specific read variables
   DATATYPE,target :: smo(nspf,nspf)
@@ -644,44 +648,47 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
      endif
   endif
 
-  allocate(tmo(spfsize,nspf,numr),ta(tnumconfig,nstate,numr),tmotemp(spfsize,nspf+numfrozen))
+  allocate(tmo(spfsize,nspf),tavec(tnumconfig,nstate,numr),tmotemp(spfsize,nspf+numfrozen),readta(tnumr,tnumconfig,nstate))
 
   OFLWR "Reading", nstate," Born-Oppenheimer states."; CFL
 
-!! no should be ok  call noparorbsupport("in projeflux_single")
-
-  tmo=0d0;  ta=0d0
+  tmo=0d0;  tavec=0d0; tmotemp=0d0; readta=0d0
 
   if (myrank.eq.1) then
-     call simple_load_avectors(910,acomplex,ta(:,:,1),ndof-2,1,tnumconfig,nstate)
+     call simple_load_avectors(910,acomplex,readta(:,:,:),ndof-2,tnumr,tnumconfig,nstate)
+     do ir=1,min(tnumr,numr)
+        tavec(:,:,ir)=readta(ir,:,:)
+     enddo
+     do ir=min(tnumr,numr)+1,numr
+        call staticvector(tavec(:,:,ir),tnumconfig*nstate)
+     enddo
+     do ir=1,numr
+
+!! projecting on normalized electronic wfn at each R
+!! we go to war with the army we've got
+
+        do istate=1,nstate
+           tavec(:,istate,ir)=tavec(:,istate,ir)/dot(tavec(:,istate,ir),tavec(:,istate,ir),tnumconfig)
+        enddo
+     enddo
      call spf_read0(909,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,tmotemp(:,:),(/0,0,0/))
      close(909);  close(910)
   else
      call spf_read0(-42,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,tmotemp(:,:),(/0,0,0/))
   endif
-  call mympibcast(ta(:,:,1),1,tnumconfig*nstate)
+  call mympibcast(tavec(:,:,:),1,tnumconfig*nstate*numr)
 
-  tmo(:,1:tnspf-numfrozen,1) = tmotemp(:,numfrozen+1:tnspf)
-  deallocate(tmotemp)
+  tmo(:,1:tnspf-numfrozen) = tmotemp(:,numfrozen+1:tnspf)
   tnspf=tnspf-numfrozen
 
   do i=tnspf+1,nspf
-     tmo(:,i,1)=0d0
-     call staticvector(tmo(:,i,1),spfsize)
+     tmo(:,i)=0d0
+     call staticvector(tmo(:,i),spfsize)
      if (parorbsplit.eq.3) then
-        call gramschmidt(spfsize,i-1,spfsize,tmo(:,:,1),tmo(:,i,1),.true.)
+        call gramschmidt(spfsize,i-1,spfsize,tmo(:,:),tmo(:,i),.true.)
      else
-        call gramschmidt(spfsize,i-1,spfsize,tmo(:,:,1),tmo(:,i,1),.false.)
+        call gramschmidt(spfsize,i-1,spfsize,tmo(:,:),tmo(:,i),.false.)
      endif
-  enddo
-
-
-
-!! only one r point on file supported..temporary.. should project on BO states at each r
-
-  do ir=1,numr
-     tmo(:,:,ir)=tmo(:,:,1)
-     ta(:,:,ir)=ta(:,:,1)
   enddo
 
   allocate(tconfiglist(tndof,tnumconfig))
@@ -759,7 +766,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
         call bioset(projbiovar,smo,1,bwwptr); 
 
-        call biortho(mymo,tmo(:,:,ir),mobio,abio(:,1),projbiovar)
+        call biortho(mymo,tmo(:,:),mobio,abio(:,1),projbiovar)
         do imc=2,mcscfnum
            call biotransform(mymo,mobio,abio(:,imc),projbiovar)
         enddo
@@ -770,7 +777,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
               ioffset=(istate-1+alreadystate)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + tau*numr + ir
 
-              call projeflux_doproj(ta(:,istate,ir),abio(:,imc),mobio(:,:),ioffset)
+              call projeflux_doproj(tavec(:,istate,ir),abio(:,imc),mobio(:,:),ioffset)
 
            enddo
         enddo
@@ -787,8 +794,10 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
 !! clean up
   close(1001);  close(1002)
-  deallocate(mobio,abio,readmo,readavec,mymo,myavec,ta,tconfiglist,tmo)
-  deallocate(numpwalk1,pwalk1,pspf1,pphase1)
+  deallocate(readmo,readavec)
+  deallocate(mobio,abio,mymo,myavec)
+  deallocate(tavec,tmotemp,tmo,readta)
+  deallocate(tconfiglist,numpwalk1,pwalk1,pspf1,pphase1)
 
 
 end subroutine projeflux_single0

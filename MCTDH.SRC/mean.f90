@@ -200,7 +200,7 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
 
   reducedproderiv(:,:)=0.d0
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(mypro,myredpro,config1,iwalk,config2,dirphase,ispf,jspf,a2mult,ihop,csum) 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(a1,a2,mypro,myredpro,config1,iwalk,config2,dirphase,ispf,jspf,a2mult,ihop,csum) 
 
 !! removing REDUCTION(+:reducedproderiv) due to get_twoereducedx problems OMP CRITICAL instead
 

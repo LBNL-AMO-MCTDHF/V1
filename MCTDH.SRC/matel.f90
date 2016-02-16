@@ -100,13 +100,30 @@ subroutine twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced)
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf),inspfs2(spfsize,nspf)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
   DATATYPE,intent(out) :: twoereduced(reducedpotsize,nspf,nspf)
+  integer :: lowspf,highspf,numspf
+
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getorbsetrange(lowspf,highspf)
+  endif
+  numspf=highspf-lowspf+1
+  if (numspf.lt.0) then
+     print *, "DOOGGDSeeeF555"; stop
+  endif
 
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "         In twoe_matel.  Calling call_twoe_matel"; CFL; call mpibarrier()
   endif
-  call call_twoe_matel(inspfs1,inspfs2,matrix_ptr%xtwoematel(:,:,:,:),twoereduced,timingdir,notiming)
+  if (numspf.gt.0) then
+     call call_twoe_matel00(lowspf,highspf,inspfs1,inspfs2,matrix_ptr%xtwoematel(:,:,:,lowspf:highspf),&
+          twoereduced(:,:,lowspf:highspf),timingdir,notiming)
+  endif
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "         Done call_twoe_matel.  Reduce"; CFL; call mpibarrier()
+  endif
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(matrix_ptr%xtwoematel(:,:,:,:),nspf**3)
+     call mpiorbgather(twoereduced(:,:,:),nspf*reducedpotsize)
   endif
   if (parorbsplit.eq.3) then
      call mympireduce(matrix_ptr%xtwoematel(:,:,:,:),nspf**4)

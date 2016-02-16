@@ -113,29 +113,31 @@ subroutine walkalloc(www)
 
 !! 06-2015 configpserproc also in newconfig.f90
 
-  allocate( www%numsinglewalks(www%configstart:www%configend) , www%numdoublewalks(www%configstart:www%configend) )
+  allocate( www%numsinglewalks(www%configstart:www%configend+1) , &
+       www%numdoublewalks(www%configstart:www%configend+1) )
   www%numsinglewalks(:)=(-1);  www%numdoublewalks(:)=(-1)
-  allocate( www%numsinglediagwalks(www%configstart:www%configend) , www%numdoublediagwalks(www%configstart:www%configend) )
+  allocate( www%numsinglediagwalks(www%configstart:www%configend+1) , &
+       www%numdoublediagwalks(www%configstart:www%configend+1) )
   www%numsinglediagwalks(:)=(-1);  www%numdoublediagwalks(:)=(-1)
 
   call getnumwalks(www)
   OFLWR "Allocating singlewalks"; CFL
-  allocate( www%singlewalk(www%maxsinglewalks,www%configstart:www%configend))
+  allocate( www%singlewalk(www%maxsinglewalks,www%configstart:www%configend+1))
   www%singlewalk=-1
-  allocate(www%singlediag(www%numelec,www%configstart:www%configend) )
+  allocate(www%singlediag(www%numelec,www%configstart:www%configend+1) )
   www%singlediag=-1
-  allocate( www%singlewalkdirphase(www%maxsinglewalks,www%configstart:www%configend) )
+  allocate( www%singlewalkdirphase(www%maxsinglewalks,www%configstart:www%configend+1) )
   www%singlewalkdirphase=0
-  allocate( www%singlewalkopspf(1:2,www%maxsinglewalks,www%configstart:www%configend) )
+  allocate( www%singlewalkopspf(1:2,www%maxsinglewalks,www%configstart:www%configend+1) )
   www%singlewalkopspf=-1
   OFLWR "Allocating doublewalks"; CFL
-  allocate( www%doublewalkdirspf(1:4,www%maxdoublewalks,www%configstart:www%configend ) )
+  allocate( www%doublewalkdirspf(1:4,www%maxdoublewalks,www%configstart:www%configend+1 ) )
   www%doublewalkdirspf=-1
-  allocate( www%doublewalkdirphase(www%maxdoublewalks,www%configstart:www%configend) )
+  allocate( www%doublewalkdirphase(www%maxdoublewalks,www%configstart:www%configend+1) )
   www%doublewalkdirphase=0
-  allocate( www%doublewalk(www%maxdoublewalks,www%configstart:www%configend))
+  allocate( www%doublewalk(www%maxdoublewalks,www%configstart:www%configend+1))
   www%doublewalk=-1
-  allocate(www%doublediag(www%numelec*(www%numelec-1),www%configstart:www%configend))
+  allocate(www%doublediag(www%numelec*(www%numelec-1),www%configstart:www%configend+1))
   www%doublediag=-1
   OFLWR "     ..done walkalloc."; CFL
 end subroutine walkalloc
@@ -688,19 +690,21 @@ subroutine hops(www)
   integer :: ii,iwalk,iconfig,totsinglehops,totdoublehops,totsinglewalks,totdoublewalks,ihop,flag,iproc,isize
 !!$  integer :: numsinglehopsbyproc(nprocs), numdoublehopsbyproc(nprocs)
 
-  allocate(www%numsinglehops(www%configstart:www%configend),&
-       www%numdoublehops(www%configstart:www%configend))
-  allocate( www%singlediaghop(www%configstart:www%configend),&
-       www%doublediaghop(www%configstart:www%configend))
-  allocate( www%singlehopdiagflag(www%configstart:www%configend),&
-       www%doublehopdiagflag(www%configstart:www%configend))
+  allocate(www%numsinglehops(www%configstart:www%configend+1),&
+       www%numdoublehops(www%configstart:www%configend+1))
+  allocate( www%singlediaghop(www%configstart:www%configend+1),&
+       www%doublediaghop(www%configstart:www%configend+1))
+  allocate( www%singlehopdiagflag(www%configstart:www%configend+1),&
+       www%doublehopdiagflag(www%configstart:www%configend+1))
 
   www%numsinglehops(:)=(-99);  www%numdoublehops(:)=(-99)
   www%singlediaghop(:)=(-99);  www%doublediaghop(:)=(-99)
   www%singlehopdiagflag(:)=(-99);  www%doublehopdiagflag(:)=(-99)
 
-  allocate( www%firstsinglehopbyproc(nprocs,www%configstart:www%configend), www%lastsinglehopbyproc(nprocs,www%configstart:www%configend) )
-  allocate( www%firstdoublehopbyproc(nprocs,www%configstart:www%configend), www%lastdoublehopbyproc(nprocs,www%configstart:www%configend) )
+  allocate( www%firstsinglehopbyproc(nprocs,www%configstart:www%configend+1), &
+       www%lastsinglehopbyproc(nprocs,www%configstart:www%configend+1) )
+  allocate( www%firstdoublehopbyproc(nprocs,www%configstart:www%configend+1), &
+       www%lastdoublehopbyproc(nprocs,www%configstart:www%configend+1) )
 
   www%firstsinglehopbyproc(:,:)=(-99);  www%lastsinglehopbyproc(:,:)=(-99)
   www%firstdoublehopbyproc(:,:)=(-99);  www%lastdoublehopbyproc(:,:)=(-99)
@@ -714,12 +718,12 @@ subroutine hops(www)
      else
         deallocate(www%singlehop,www%singlehopwalkstart,www%singlehopwalkend,&
              www%doublehop,www%doublehopwalkstart,www%doublehopwalkend)
-        allocate(www%singlehop(www%maxnumsinglehops,www%configstart:www%configend),&
-             www%singlehopwalkstart(www%maxnumsinglehops,www%configstart:www%configend),&
-             www%singlehopwalkend(www%maxnumsinglehops,www%configstart:www%configend),&
-             www%doublehop(www%maxnumdoublehops,www%configstart:www%configend),&
-             www%doublehopwalkstart(www%maxnumdoublehops,www%configstart:www%configend),&
-             www%doublehopwalkend(www%maxnumdoublehops,www%configstart:www%configend))
+        allocate(www%singlehop(www%maxnumsinglehops,www%configstart:www%configend+1),&
+             www%singlehopwalkstart(www%maxnumsinglehops,www%configstart:www%configend+1),&
+             www%singlehopwalkend(www%maxnumsinglehops,www%configstart:www%configend+1),&
+             www%doublehop(www%maxnumdoublehops,www%configstart:www%configend+1),&
+             www%doublehopwalkstart(www%maxnumdoublehops,www%configstart:www%configend+1),&
+             www%doublehopwalkend(www%maxnumdoublehops,www%configstart:www%configend+1))
         www%singlehop(:,:)=(-99)
         www%singlehopwalkstart(:,:)=(-99) 
         www%doublehop(:,:)=(-99)

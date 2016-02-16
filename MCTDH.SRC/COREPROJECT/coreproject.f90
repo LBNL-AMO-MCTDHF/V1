@@ -154,7 +154,7 @@ end subroutine op_tinv
 
 
 !! flag=1 means flux, otherwise whole op
-subroutine call_flux_op_twoe(mobra,moket,V2,flag) 
+subroutine call_flux_op_twoe00(lowspf,highspf,mobra,moket,V2,flag) 
 !! determine the 2-electron matrix elements in the orbital basis for the flux operator i(H-H^{\dag}) 
 !! input :
 !! mobra - the orbitals that contained in the bra 
@@ -165,19 +165,23 @@ subroutine call_flux_op_twoe(mobra,moket,V2,flag)
   use twoemod
   use myprojectmod   !! rmatrix,ylmvals
   implicit none
-  integer,intent(in) :: flag
+  integer,intent(in) :: flag,lowspf,highspf
   DATATYPE,intent(in) :: mobra(numerad,lbig+1,-mbig:mbig,numspf),moket(numerad,lbig+1,-mbig:mbig,numspf)
-  DATATYPE,intent(out) :: V2(numspf,numspf,numspf,numspf)
+  DATATYPE,intent(out) :: V2(numspf,numspf,numspf,lowspf:highspf)
   DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),&   !! AUTOMATIC
        twoeden2(numerad),twoeden3(numerad)
   integer :: i,a,j,b,mvali,mvala,mvalj,mvalb,ixi,ieta,deltam,lsum,qq,rr,qq2,rr2 
 
-  V2=0d0
+  if (highspf-lowspf+1.gt.0) then
+     V2=0d0
+  endif
+
 !! The bra determinant is <ij|
 !! The ket determinant is |ab>
 !! without the ecs rmatrix and ylm are real, sooooooo V-V^dagger is zero by def...
 !! ALWAYS USING ALLLCON TO MAKE SURE ITS ALWAYS hermitian elements of V-V^\dagger and V\dagger must have transpose 
-  do b=1,numspf !! ket vector
+
+  do b=lowspf,highspf
     do j=1,numspf !! bra vector
 !! integrating over electron 2
       twoemat2=0d0
@@ -274,46 +278,51 @@ subroutine call_flux_op_twoe(mobra,moket,V2,flag)
       enddo
     enddo
   enddo
-  if(flag.eq.1) then
-    V2=(0d0,1d0)*V2       !!! yes because I got the imaginary part above with conjugates...  returns imaginary... mult by i to get -2 x imag part (real valued number) like others
- else if (flag.eq.2) then
-    V2=(-1)*V2
+
+  if (highspf-lowspf+1.gt.0) then
+     if(flag.eq.1) then
+        V2=(0d0,1d0)*V2       !!! yes because I got the imaginary part above with conjugates...  returns imaginary... mult by i to get -2 x imag part (real valued number) like others
+     else if (flag.eq.2) then
+        V2=(-1)*V2
+     endif
   endif
 
 
-end subroutine call_flux_op_twoe
+end subroutine call_flux_op_twoe00
 
 
 
 !  DATAECS :: rmatrix(numerad,numerad,mseriesmax+1,lseriesmax+1)
 !  real*8 :: ylmvals(0:2*mbig, 1:lbig+1, lseriesmax+1)
 
-subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnotiming) !! ok unused
+subroutine call_twoe_matel00(lowspf,highspf,inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnotiming) !! ok unused
   use myparams
   use twoemod
   use myprojectmod
   use mycdotmod
   implicit none
-  DATATYPE,intent(out) :: twoereduced(numerad,lbig+1,-2*mbig:2*mbig, numspf,numspf),&
-       twoematel(numspf,numspf,numspf,numspf)
+  integer, intent(in) :: xnotiming,lowspf,highspf
+  DATATYPE,intent(out) :: twoereduced(numerad,lbig+1,-2*mbig:2*mbig, numspf,lowspf:highspf),&
+       twoematel(numspf,numspf,numspf,lowspf:highspf)
   DATATYPE,intent(in) :: inspfs1(numerad,lbig+1,-mbig:mbig,numspf),inspfs2(numerad,lbig+1,-mbig:mbig,numspf)
-  integer, intent(in) :: xnotiming
   character,intent(in) :: xtimingdir*(*)
   integer :: mvalue2a, mvalue1b, mvalue2b, mvalue1a, itime, jtime, &
-       spf1a,spf1b,spf2a,spf2b, deltam,qq,rr,qq2,rr2,times(100),lowspf,highspf
+       spf1a,spf1b,spf2a,spf2b, deltam,qq,rr,qq2,rr2,times(100),nnnspf
   DATATYPE :: myden(numerad,lbig+1,-2*mbig:2*mbig),myred(numerad,lbig+1,-2*mbig:2*mbig)        !! AUTOMATIC
   DATATYPE,allocatable :: twoeden(:,:,:,:)
 
-  allocate(twoeden(numerad,lbig+1,-2*mbig:2*mbig,numspf))
-  twoeden(:,:,:,:)=0d0
-  twoematel(:,:,:,:)=0d0; twoereduced(:,:,:,:,:)=0d0
+  nnnspf=highspf-lowspf+1
 
   call system_clock(itime)
 
-  lowspf=1; highspf=numspf
-  call getorbsetrange(lowspf,highspf)
   if (highspf.gt.numspf.or.lowspf.lt.1) then
      print *, "programmer fail xxx",lowspf,highspf,numspf; stop
+  endif
+
+  allocate(twoeden(numerad,lbig+1,-2*mbig:2*mbig,numspf))
+  twoeden(:,:,:,:)=0d0
+  if (nnnspf.gt.0) then
+     twoematel(:,:,:,:)=0d0; twoereduced(:,:,:,:,:)=0d0
   endif
 
   do spf2b=lowspf,highspf
@@ -347,14 +356,11 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
 
   enddo
 
-!! does nothing unless parorbsplit=1 in main program
-  call mpiorbgather(twoereduced,numerad*(lbig+1)*(4*mbig+1)*numspf)
-
   call system_clock(jtime);           times(1)=times(1)+jtime-itime;    itime=jtime
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf1a,spf1b,spf2a,spf2b,qq,qq2,rr,rr2,myden,myred,mvalue1a,mvalue1b,deltam)
 !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC)
-  do spf1b=lowspf,highspf
+  do spf1b=1,numspf
      do spf1a=1,numspf
               
         if (spfrestrictflag==1) then
@@ -375,10 +381,13 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
            enddo
         enddo
 
-        do spf2b=1,numspf
+        do spf2b=lowspf,highspf
            do spf2a=1,numspf
               myred(:,:,:)=twoereduced(:,:,:,spf2a,spf2b)
-              twoematel(spf2a,spf2b,spf1a,spf1b) = mycdot(myden(:,:,:),myred(:,:,:),numerad*(lbig+1)*(4*mbig+1))
+
+!! same diff it's symmetric         twoematel(spf2a,spf2b,spf1a,spf1b) = ...
+
+              twoematel(spf1a,spf1b,spf2a,spf2b) = mycdot(myden(:,:,:),myred(:,:,:),numerad*(lbig+1)*(4*mbig+1))
               
            enddo
         enddo
@@ -386,9 +395,6 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
   enddo
 !$OMP END DO
 !$OMP END PARALLEL
-
-!! does nothing unless parorbsplit=1 in main program
-  call mpiorbgather(twoematel(:,:,:,:),numspf**3)
 
   call system_clock(itime);   times(2)=times(2)+itime-jtime
 
@@ -415,7 +421,7 @@ subroutine call_twoe_matel(inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnot
 !  endif
 
 
-end subroutine call_twoe_matel
+end subroutine call_twoe_matel00
 
 
 

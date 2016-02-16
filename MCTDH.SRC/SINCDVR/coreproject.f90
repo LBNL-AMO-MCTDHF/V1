@@ -216,9 +216,9 @@ end subroutine transferparams
 subroutine twoedealloc()
 end subroutine twoedealloc
 
-subroutine call_flux_op_twoe() !mobra,moket,V2,flag) 
+subroutine call_flux_op_twoe00() !mobra,moket,V2,flag) 
 print *, "DOME flux_op_twoe"; stop
-end subroutine call_flux_op_twoe
+end subroutine call_flux_op_twoe00
 
 
 module mycdotmod
@@ -655,17 +655,19 @@ subroutine velmultiply(howmany,spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
 end subroutine velmultiply
 
 
-subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
+subroutine call_twoe_matel00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
   use myparams
   use pfileptrmod
   use myprojectmod
   implicit none
+  integer, intent(in) :: notiming,lowspf,highspf
   DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
-  DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,numspf),twoereduced(totpoints,numspf,numspf)
+  DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,lowspf:highspf),&
+       twoereduced(totpoints,numspf,lowspf:highspf)
   character,intent(in) :: timingdir*(*)
-  integer, intent(in) :: notiming
+  integer :: nnnspf
 
-  if (fft_batchdim.lt.0.or.fft_batchdim.gt.2) then
+  if (fft_batchdim.lt.1.or.fft_batchdim.gt.2) then
      OFLWR "fft_batchdim error", fft_batchdim; CFLST
   endif
   if (fft_circbatchdim.gt.fft_batchdim) then
@@ -675,25 +677,36 @@ subroutine call_twoe_matel(inspfs10,inspfs20,twoematel,twoereduced,timingdir,not
      OFLWR "circbatchdim error", fft_circbatchdim; CFLST
   endif
 
-  call call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
+  nnnspf=highspf-lowspf+1
+  if (nnnspf.gt.0) then
+     call call_twoe_matelxxx00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
+  endif
 
-end subroutine call_twoe_matel
+end subroutine call_twoe_matel00
 
-subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
+
+subroutine call_twoe_matelxxx00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
   use myparams
   use pmpimod
   use pfileptrmod
   use myprojectmod
   implicit none
+  integer, intent(in) :: lowspf,highspf,notiming
   DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
-  DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,numspf),twoereduced(totpoints,numspf,numspf)
+  DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,lowspf:highspf),&
+       twoereduced(totpoints,numspf,lowspf:highspf)
   character,intent(in) :: timingdir*(*)
-  integer, intent(in) :: notiming
   integer ::  spf1a, spf1b, spf2a, spf2b, itime,jtime,getlen,&
-       spf2low,spf2high,index2b,index2low,index2high, firsttime,lasttime
+       spf2low,spf2high,index2b,index2low,index2high, firsttime,lasttime,nnnspf,qq
   integer, save :: xcount=0, times(10)=0,fttimes(10)=0,qqcount=0
   DATATYPE, allocatable :: twoeden03(:,:,:,:) 
   DATATYPE :: twoemattemp(numspf,numspf),  myden(totpoints)
+
+  nnnspf=highspf-lowspf+1
+
+  if (highspf.gt.numspf.or.lowspf.lt.1) then
+     OFLWR "programmer fail!!! YYY",lowspf,highspf,numspf; CFLST
+  endif
 
   times(:)=0; fttimes(:)=0;   !! ZEROING TIMES... not cumulative
 
@@ -711,12 +724,6 @@ subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,
   if (griddim.ne.3) then
      OFLWR "OOGA DIM"; CFLST
   endif
-  if (fft_circbatchdim.gt.fft_batchdim) then
-     OFLWR "Error, fft_circbatchdim can't be greater than fft_batchdim",fft_circbatchdim,fft_batchdim; CFLST
-  endif
-  if (fft_circbatchdim.lt.0.or.fft_circbatchdim.gt.2) then
-     OFLWR "circbatchdim error", fft_circbatchdim; CFLST
-  endif
 
   twoereduced(:,:,:)=0d0;   twoematel(:,:,:,:)=0
 
@@ -724,14 +731,17 @@ subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,
      return
   endif
 
-  allocate(twoeden03(numpoints(1),numpoints(2),numpoints(3),numspf**fft_batchdim))
+!!$  allocate(twoeden03(numpoints(1),numpoints(2),numpoints(3),numspf**fft_batchdim))
+
+  allocate(twoeden03(numpoints(1),numpoints(2),numpoints(3),batchindex(1,lowspf):batchindex(numspf,highspf)))
+
   twoeden03(:,:,:,:)=0
 
   call myclock(jtime); times(1)=times(1)+jtime-itime;  
   
   select case(fft_batchdim)
   case(1)
-     index2low=1; index2high=numspf
+     index2low=lowspf; index2high=highspf
   case(2)
      index2low=1; index2high=1
   case default
@@ -745,7 +755,7 @@ subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,
      case(1)
         spf2low=index2b;        spf2high=index2b
      case(2)
-        spf2low=1; spf2high=numspf
+        spf2low=lowspf; spf2high=highspf
      case default
         OFLWR "ACK BACTCHDIM", fft_batchdim; CFLST
         spf2low=42; spf2high=(-999)   !! avoid warn unused
@@ -762,10 +772,19 @@ subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,
         enddo
      enddo
      call myclock(jtime); times(2)=times(2)+jtime-itime;
-     
-     call op_tinv(twoeden03(:,:,:,batchindex(1,spf2low)),twoereduced(:,1,spf2low),&
-          numspf**fft_batchdim,numspf**fft_circbatchdim,&
-          times(1),times(3),times(4),times(5),fttimes)
+
+     select case(fft_circbatchdim)
+     case(0)
+        qq=1
+     case(1)
+        qq=numspf
+     case(2)
+        qq=nnnspf*numspf
+     case default
+        OFLWR "AUUGUGUGH circbatchdim not allowed",fft_circbatchdim; CFLST
+     end select
+     call op_tinv(twoeden03(:,:,:,batchindex(1,spf2low)), twoereduced(:,1,spf2low),&
+          nnnspf**(fft_batchdim-1)*numspf, qq, times(1),times(3),times(4),times(5),fttimes)
 
   enddo  !! DO INDEX2B
 
@@ -775,15 +794,17 @@ subroutine call_twoe_matelxxx(inspfs10,inspfs20,twoematel,twoereduced,timingdir,
 
   twoemattemp(:,:)=0
 
-  do spf1b=1,numspf
-  do spf1a=1,numspf
-     myden(:)=CONJUGATE(inspfs10(:,spf1a)) * inspfs20(:,spf1b)
+  if (nnnspf.gt.0) then
+     do spf1b=1,numspf
+        do spf1a=1,numspf
+           myden(:)=CONJUGATE(inspfs10(:,spf1a)) * inspfs20(:,spf1b)
 
-     call MYGEMV('T',totpoints,numspf**2,DATAONE,twoereduced,totpoints,myden,1,DATAZERO,twoemattemp(:,:),1)
-     twoematel(:,:,spf1a,spf1b)=twoemattemp(:,:)
-  enddo
-  enddo
-
+           call MYGEMV('T',totpoints,numspf*nnnspf,DATAONE,twoereduced(:,:,lowspf:highspf),totpoints,myden,1,&
+                DATAZERO,twoemattemp(:,lowspf:highspf),1)
+           twoematel(spf1a,spf1b,:,lowspf:highspf)=twoemattemp(:,lowspf:highspf)
+        enddo
+     enddo
+  endif
   deallocate(twoeden03)
 
   call myclock(jtime); times(6)=times(6)+jtime-itime;  
@@ -875,7 +896,7 @@ contains
 !    call date_and_time(values=values)
 !    mytime=values(8)+values(7)*fac(7)+values(6)*fac(6)+values(5)*fac(5)
 !  end subroutine myclock
-end subroutine call_twoe_matelxxx
+end subroutine call_twoe_matelxxx00
 
 
 
@@ -1622,34 +1643,6 @@ subroutine mult_general_withtranspose(option,xcoef,ycoef,zcoef,in,out,howmany,ti
 end subroutine mult_general_withtranspose
 
 #endif
-
-
-!subroutine mult_xderiv(in, out,howmany)
-!  use myparams
-!  implicit none
-!  integer :: howmany
-!  DATATYPE,intent(in) :: in(totpoints,howmany)
-!  DATATYPE, intent(out) :: out(totpoints,howmany)
-!  call mult_allpar(2,1,in,out,howmany,"booga",2)
-!end subroutine mult_xderiv
-!
-!subroutine mult_yderiv(in, out,howmany)
-!  use myparams
-!  implicit none
-!  integer :: howmany
-!  DATATYPE,intent(in) :: in(totpoints,howmany)
-!  DATATYPE, intent(out) :: out(totpoints,howmany)
-!  call mult_allpar(2,2,in,out,howmany,"booga",2)
-!end subroutine mult_yderiv
-!
-!subroutine mult_zderiv(in, out,howmany)
-!  use myparams
-!  implicit none
-!  integer :: howmany
-!  DATATYPE,intent(in) :: in(totpoints,howmany)
-!  DATATYPE, intent(out) :: out(totpoints,howmany)
-!  call mult_allpar(2,3,in,out,howmany,"booga",2)
-!end subroutine mult_zderiv
 
 
 

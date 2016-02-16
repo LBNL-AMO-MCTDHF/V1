@@ -516,7 +516,7 @@ subroutine cmf_prop_wfn(tin, tout)
   endif
 
   if (numfrozen.ne.0) then
-     yyy%frozenexchange(:,:,1) = yyy%frozenexchange(:,:,0)
+     yyy%frozenexchinvr(:,:,1) = yyy%frozenexchinvr(:,:,0)
   endif
 
   call assign_cptr(yyy%cptr(1),yyy%cptr(0),DATAONE)
@@ -533,11 +533,18 @@ subroutine cmf_prop_wfn(tin, tout)
 
   call system_clock(jtime);  times(6)=times(6)+jtime-itime
 
+  if ( (threshflag.ne.0.and.improvedrelaxflag.eq.0).and.&
+       ( ( (improvedquadflag.eq.1.or.improvedquadflag.eq.3).and.tin.ge.aquadstarttime ).or.&
+       ( (improvedquadflag.gt.2).and.tin.ge.quadstarttime ) ) ) then
+     OFLWR " ** SETTING IMPROVEDRELAXFLAG=1 ** "; CFL
+     improvedrelaxflag=1
+  endif
+
   if (improvedrelaxflag.ne.0) then
 
      if (spf_flag.ne.0) then
         call system_clock(itime)
-        if (improvedquadflag.gt.1.and.tin.gt.quadstarttime) then
+        if (improvedquadflag.gt.1.and.tin.ge.quadstarttime) then
            call quadspfs(yyy%cmfpsivec(spfstart,0), qq)
            numiters=numiters+qq
         else
@@ -560,7 +567,7 @@ subroutine cmf_prop_wfn(tin, tout)
 
      if (avector_flag.ne.0) then
         call system_clock(itime)
-        if ((improvedquadflag.eq.1.or.improvedquadflag.eq.3).and.tin.gt.aquadstarttime) then
+        if ((improvedquadflag.eq.1.or.improvedquadflag.eq.3).and.tin.ge.aquadstarttime) then
            call quadavector(yyy%cmfpsivec(astart(1),0),qq)
         else
            call myconfigeig(www,dwwptr,yyy%cptr(0),yyy%cmfpsivec(astart(1),0),myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))

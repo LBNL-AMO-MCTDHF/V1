@@ -3,16 +3,6 @@
 
 #include "Definitions.INC"
 
-subroutine noparorbsupport(intext)
-  use parameters
-  implicit none
-  character*(*) :: intext
-  if (parorbsplit.eq.3) then
-     OFLWR "parorbsplit=3 not yet supported for ",intext; CFLST
-  endif
-end subroutine noparorbsupport
-
-
 
 subroutine apply_spf_constraints(outspfs)
   use parameters
@@ -89,7 +79,7 @@ subroutine spf_orthogit(inspfs,error)
   DATATYPE :: tempspfs(spfsize,nspf), ovl(nspf,nspf)  !! AUTOMATIC
   DATATYPE ::   dot, sum
   logical :: orbparflag
-  integer :: i,j,ii
+  integer :: i,j,ii,lowspf,highspf,numspf
 
   orbparflag=.false.
   if (parorbsplit.eq.3) then
@@ -132,7 +122,19 @@ subroutine spf_orthogit(inspfs,error)
      if (ii.lt.3) then
         call orthogmat(ovl,nspf)
         tempspfs=inspfs
-        call MYGEMM('N', 'N', spfsize, nspf, nspf, DATAONE, tempspfs, spfsize, ovl, nspf, DATAZERO, inspfs, spfsize)   
+
+        lowspf=1; highspf=nspf
+        if (parorbsplit.eq.1) then
+           call getOrbSetRange(lowspf,highspf)
+        endif
+        numspf=highspf-lowspf+1
+        if (numspf.gt.0) then
+           call MYGEMM('N', 'N', spfsize, numspf, nspf, DATAONE, tempspfs, spfsize, &
+                ovl(:,lowspf:highspf), nspf, DATAZERO, inspfs(:,lowspf:highspf), spfsize)   
+        endif
+        if (parorbsplit.eq.1) then
+           call mpiorbgather(inspfs,spfsize)
+        endif
      endif
   enddo
   

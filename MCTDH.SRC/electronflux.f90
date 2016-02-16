@@ -391,9 +391,6 @@ subroutine fluxgtau0(alg,www,bioww)
               
               V2=0d0
               if(FluxOpType.eq.0) then  !!.and.onee_checkflag/=1) then
-
-                 call noparorbsupport("call flux_op_twoe")
-
                  call flux_op_twoe(mobio,moket,V2,1) !! one means flux
                  if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
                     call flux_op_twoe(mobio,moket,reV2,2)  !! one means flux
@@ -567,54 +564,69 @@ end subroutine fluxgtau
 
 
 !! begin the flux matrix element and contraction routine section
+!! flag=1, flux (imag); flag=2, flux (real); flag=0, all  0 not used
 
-
-subroutine flux_op_onee(inspfs,keop,peop,flag) !! flag=1, flux (imag); flag=2, flux (real); flag=0, all  0 not used
+subroutine flux_op_onee(inspfs,keop,peop,flag)
   use parameters
   implicit none
+  integer,intent(in) :: flag
   DATATYPE, intent(in) :: inspfs(spfsize,nspf)
   DATATYPE,intent(out) ::  keop(spfsize,nspf),peop(spfsize,nspf)
-  integer,intent(in) :: flag
+  integer :: lowspf,highspf,numspf
+
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getOrbSetRange(lowspf,highspf)
+  endif
+  numspf=highspf-lowspf+1
 
 !! initialize
   keop=0d0; peop=0d0
 
 !! the kinetic energy
 
+  if (numspf.gt.0) then
      select case(flag)
      case(1)
-        call mult_imke(nspf,inspfs(:,:),keop(:,:))
+        call mult_imke(numspf,inspfs(:,lowspf:highspf),keop(:,lowspf:highspf))
      case(2)
-        call mult_reke(nspf,inspfs(:,:),keop(:,:))
+        call mult_reke(numspf,inspfs(:,lowspf:highspf),keop(:,lowspf:highspf))
      case default
-        call mult_ke(inspfs(:,:),keop(:,:),nspf,"booga",2)
+        call mult_ke(inspfs(:,lowspf:highspf),keop(:,lowspf:highspf),numspf,"booga",2)
      end select
-
 
 !! the one-e potential energy 
 
      select case(flag)
      case(1)
         if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
-           call mult_impot(nspf,inspfs(:,:),peop(:,:))
+           call mult_impot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
         else if(FluxOpType.eq.1) then
-           call mult_imhalfniumpot(nspf,inspfs(:,:),peop(:,:))
+           call mult_imhalfniumpot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
         endif 
      case(2)
         if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
-           call mult_repot(nspf,inspfs(:,:),peop(:,:))
+           call mult_repot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
         else if(FluxOpType.eq.1) then
-           call mult_rehalfniumpot(nspf,inspfs(:,:),peop(:,:))
+           call mult_rehalfniumpot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
         endif 
      case default
-        call mult_pot(nspf,inspfs(:,:),peop(:,:))
+        call mult_pot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
      end select
+  endif
+
 
 !! scale correctly and clear memory
-  if(flag.ne.0) then
-    peop=peop*(-2d0)
-    keop=keop*(-2d0)
+  if(flag.ne.0.and.numspf.ne.0) then
+    peop(:,lowspf:highspf)=peop(:,lowspf:highspf)*(-2d0)
+    keop(:,lowspf:highspf)=keop(:,lowspf:highspf)*(-2d0)
   endif
+
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(peop,spfsize)
+     call mpiorbgather(keop,spfsize)
+  endif
+
 end subroutine flux_op_onee
 
 
@@ -632,25 +644,36 @@ subroutine flux_op_nuc(inspfs,yop,flag) !! flag=1, flux (imag); flag=0, all    2
   DATATYPE, intent(in) :: inspfs(spfsize,nspf)
   DATATYPE,intent(out) ::  yop(spfsize,nspf)
   integer,intent(in) :: flag
+  integer :: lowspf,highspf,numspf
 
-  call noparorbsupport("in flux_op_nuc")
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getOrbSetRange(lowspf,highspf)
+  endif
+  numspf=highspf-lowspf+1
 
 !! the kinetic energy
 
+  if (numspf.gt.0) then
      select case(flag)
      case(1)
-        call op_imyderiv(nspf,inspfs(:,:),yop(:,:))
+        call op_imyderiv(nspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
      case(2)
-        call op_reyderiv(nspf,inspfs(:,:),yop(:,:))
+        call op_reyderiv(nspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
      case default
-        call op_yderiv(nspf,inspfs(:,:),yop(:,:))
+        call op_yderiv(nspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
      end select
-
+  endif
 
 !! scale correctly and clear memory
-  if(flag.ne.0) then
-    yop=yop*(-2d0)
+  if(flag.ne.0.and.numspf.gt.0) then
+    yop(:,lowspf:highspf)=yop(:,lowspf:highspf)*(-2d0)
   endif
+
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(yop,spfsize)
+  endif
+
 end subroutine flux_op_nuc
 
 
@@ -662,14 +685,24 @@ subroutine flux_op_twoe(mobra,moket,V2,flag)  !! flag=1 means flux, otherwise wh
   DATATYPE,intent(in) :: mobra(spfsize,nspf),moket(spfsize,nspf)
   DATATYPE,intent(out) :: V2(nspf,nspf,nspf,nspf)
   integer,intent(in) :: flag
+  integer :: lowspf,highspf,numspf
+
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getOrbSetRange(lowspf,highspf)
+  endif
+  numspf=highspf-lowspf+1
 
   if (flag.ne.1) then
      OFLWR "Doublecheck flag.ne.1 ok in flux_op_twoe"; CFLST
   endif
+  if (numspf.gt.0) then
+     call call_flux_op_twoe00(lowspf,highspf,mobra,moket,V2(:,:,:,lowspf:highspf),flag)
+  endif
 
-  call noparorbsupport("call call_flux_op_twoe")
-
-  call call_flux_op_twoe(mobra,moket,V2,flag)
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(V2,nspf**3)
+  endif
 
 end subroutine flux_op_twoe
 
@@ -734,6 +767,7 @@ function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart,www)
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 !! AND DO HOPS
+!! AND DO OPENMP
 
   if (www%parconsplit.ne.0) then
      call mpiallgather(aket,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)

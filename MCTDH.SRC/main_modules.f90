@@ -80,7 +80,7 @@ module xmod
      DATATYPE, allocatable ::    &
           cmfpsivec(:,:), &
           denvects(:,:) 
-     DATATYPE, allocatable :: frozenexchange(:,:,:)
+     DATATYPE, allocatable :: frozenexchinvr(:,:,:)
   end type xarr
 end module xmod
 
@@ -814,7 +814,7 @@ subroutine xalloc()
        yyy%reducedproderiv(nspf,nspf, 0:numreduced)  )   !!,  &
   allocate(yyy%cmfpsivec(psilength,0:numreduced))
   if (numfrozen.gt.0) then
-     allocate(yyy%frozenexchange(spfsize,nspf,0:numreduced))
+     allocate(yyy%frozenexchinvr(spfsize,nspf,0:numreduced))
   endif
 
   if (drivingflag.ne.0) then
@@ -869,7 +869,7 @@ subroutine xdealloc()
   deallocate(       yyy%reducedproderiv)
   deallocate(yyy%cmfpsivec)
   if (numfrozen.gt.0) then
-     deallocate(yyy%frozenexchange)
+     deallocate(yyy%frozenexchinvr)
   endif
 end subroutine xdealloc
 

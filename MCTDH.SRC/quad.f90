@@ -111,10 +111,10 @@ subroutine quadoperate(notusedint,inspfs,outspfs)
 
    if (jacprojorth.ne.0) then   
       call jacorth(inspfs,outspfs)
-      call jacoperate0(0,outspfs,workspfs)
+      call jacoperate0(0,0,outspfs,workspfs)
       call jacorth(workspfs,outspfs)
    else
-      call jacoperate0(0,inspfs,outspfs)
+      call jacoperate0(0,0,inspfs,outspfs)
    endif
 
 end subroutine quadoperate
@@ -131,10 +131,10 @@ subroutine quadopcompact(notusedint,com_inspfs,com_outspfs)
    call spfs_expand(com_inspfs,inspfs)
    if (jacprojorth.ne.0) then   
       call jacorth(inspfs,outspfs)
-      call jacoperate0(0,outspfs,inspfs)
+      call jacoperate0(0,0,outspfs,inspfs)
       call jacorth(inspfs,outspfs)
    else
-      call jacoperate0(0,inspfs,outspfs)
+      call jacoperate0(0,0,inspfs,outspfs)
    endif
    call spfs_compact(outspfs,com_outspfs)
 
@@ -176,9 +176,7 @@ subroutine quadspfs(inspfs,jjcalls)
 
      call quadinit(vector,0d0)
 
-     call spf_linear_derivs0(0,0,0d0,vector,vector2,1,0)
-
-!!     call actreduced0(0,0d0,vector,vector,vector2,1,1,0)
+     call spf_linear_derivs0(0,0,0d0,vector,vector2,1,1)
 
      call apply_spf_constraints(vector2)
 
@@ -232,9 +230,7 @@ subroutine quadspfs(inspfs,jjcalls)
 
   inspfs = vector
 
-  call spf_linear_derivs0(0,0,0d0,vector,vector2,1,0)
-
-!!  call actreduced0(0,0d0,vector,vector,vector2,1,1,0)
+  call spf_linear_derivs0(0,0,0d0,vector,vector2,1,1)
 
   call apply_spf_constraints(vector2)
 
@@ -347,7 +343,7 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
   EXTERNAL :: paraamult, parquadpreconsub
   DATATYPE, intent(inout) ::  inavector(numr,www%firstconfig:www%lastconfig)
   integer,intent(out) :: jjcalls0
-  integer :: jjcalls, ss, maxdim, mysize
+  integer :: jjcalls, ss, maxdim, mysize,flag
   real*8 ::  dev,  thisaerror
   DATATYPE :: dot, hermdot,csum 
   DATATYPE, allocatable ::  vector(:,:), vector2(:,:), vector3(:,:), &
@@ -413,8 +409,14 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
      maxdim=min(maxaorder,numr*www%numdfbasis)
      mysize=numr*(www%topdfbasis-www%botdfbasis+1)
 
+     flag=0
      if (mysize.eq.0) then
-        print *, "ACK, CAN'T DO A-VECTOR QUAD WITH ZERO CONFIGS PER PROCESSOR RANK",myrank; call mpiabort()
+        print *, "ACK, CAN'T DO A-VECTOR QUAD WITH ZERO CONFIGS PER PROCESSOR RANK",myrank,mysize; 
+        flag=99
+     endif
+     call mympiireduceone(flag)
+     if (flag.ne.0) then
+        call mpistop()
      endif
 
      call dgsolve0( smallvectorspin, smallvectorspin2, jjcalls, paraamult,quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1)

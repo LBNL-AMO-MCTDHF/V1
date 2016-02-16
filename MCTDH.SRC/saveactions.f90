@@ -85,7 +85,6 @@ subroutine save_spf( thistime, inspfs, iprop)
   character (len=headersize) :: header
   integer :: ispf
 
-  open(spfplotfile,file=spfplotbin, status="old", form="unformatted",position="append")
   do ispf=1,nspf
      call write_spf_header(header,thistime,iprop,ispf)
      call save_orbvector(inspfs(:,ispf), spfsize, spfplotfile, spfplotbin, header)
@@ -202,25 +201,32 @@ end subroutine save_density_final
 subroutine save_natorb_initial()
   use parameters
   use xxxmod
+  use mpimod
   implicit none
-  open(natorbfile,file=natplotbin, status="replace", form="unformatted")
-  close(natorbfile)
+  if (myrank.eq.1) then
+     open(natorbfile,file=natplotbin, status="replace", form="unformatted")
+     close(natorbfile)
+  endif
   call save_natorb( -1.d0, yyy%cmfpsivec(spfstart,0), yyy%denvects, yyy%denvals , 1)
 end subroutine save_natorb_initial
 
 subroutine save_density_initial(denfilename)
   use parameters
   use xxxmod
+  use mpimod
   implicit none
   character,intent(in) :: denfilename*(*)
-  open(denfile,file=denfilename, status="replace", form="unformatted")
-  close(denfile)
+  if (myrank.eq.1) then
+     open(denfile,file=denfilename, status="replace", form="unformatted")
+     close(denfile)
+  endif
   call save_density( -1.d0, yyy%cmfpsivec(spfstart,0), yyy%denmat(:,:,0) , 1, denfilename)
 end subroutine save_density_initial
 
 subroutine save_rnatorb_initial()
   use parameters
   use xxxmod
+  use mpimod
   implicit none
   OFLWR "REDO SAVE RNAT - NEED TO CALC"; CFLST
 !  open(rnatorbfile,file=rnatplotbin, status="replace", form="unformatted");  close(rnatorbfile)
@@ -230,8 +236,12 @@ end subroutine save_rnatorb_initial
 subroutine save_spf_initial()
   use parameters
   use xxxmod
+  use mpimod
   implicit none
-  open(spfplotfile,file=spfplotbin, status="replace", form="unformatted");  close(spfplotfile)
+  if (myrank.eq.1) then
+     open(spfplotfile,file=spfplotbin, status="replace", form="unformatted");  close(spfplotfile)
+     close(spfplotfile)
+  endif
   call save_spf( -1.d0, yyy%cmfpsivec(spfstart,0), 1)
 end subroutine save_spf_initial
 

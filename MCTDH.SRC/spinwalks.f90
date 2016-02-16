@@ -33,13 +33,13 @@ subroutine spinwalkinit(www)
   OFLWR "Go spinwalk init. "; CFL
   call mpibarrier()
 
-  allocate(www%sss%numspinsets(www%startrank:www%endrank),&
-       www%sss%numspindfsets(www%startrank:www%endrank))
+  allocate(www%sss%numspinsets(www%startrank:www%endrank+1),&
+       www%sss%numspindfsets(www%startrank:www%endrank+1))
 
-  allocate(unpaired(www%numelec,www%configstart:www%configend), &
-       numunpaired(www%configstart:www%configend), &
-       msvalue(www%configstart:www%configend), &
-       numspinwalks(www%configstart:www%configend))
+  allocate(unpaired(www%numelec,www%configstart:www%configend+1), &
+       numunpaired(www%configstart:www%configend+1), &
+       msvalue(www%configstart:www%configend+1), &
+       numspinwalks(www%configstart:www%configend+1))
 
   www%sss%numspinsets(:)=(-99);   www%sss%numspindfsets(:)=(-99)
   unpaired(:,:)=(-99);   numunpaired(:)=(-99)
@@ -50,12 +50,12 @@ subroutine spinwalkinit(www)
   
   call getnumspinwalks(www)
 
-  allocate(spinwalk(maxspinwalks,www%configstart:www%configend), &
-       spinwalkdirphase(maxspinwalks,www%configstart:www%configend))
-  allocate(configspinmatel(maxspinwalks+1,www%configstart:www%configend))
+  allocate(spinwalk(maxspinwalks,www%configstart:www%configend+1), &
+       spinwalkdirphase(maxspinwalks,www%configstart:www%configend+1))
+  allocate(configspinmatel(maxspinwalks+1,www%configstart:www%configend+1))
 
-  allocate(www%sss%spinsetsize(www%maxconfigsperproc,www%startrank:www%endrank), &
-       www%sss%spinsetrank(www%maxconfigsperproc,www%startrank:www%endrank))
+  allocate(www%sss%spinsetsize(www%maxconfigsperproc,www%startrank:www%endrank+1), &
+       www%sss%spinsetrank(www%maxconfigsperproc,www%startrank:www%endrank+1))
 
   spinwalk(:,:)=(-99);  spinwalkdirphase(:,:)=(-99)
   configspinmatel(:,:)=(-99)
@@ -173,7 +173,7 @@ subroutine spinsets_first(www)
 
   OFLWR "   ... go spinsets ..."; CFL
 
-  allocate(taken(www%configstart:www%configend), tempwalks(www%maxconfigsperproc))
+  allocate(taken(www%configstart:www%configend+1), tempwalks(www%maxconfigsperproc))
 
   www%sss%maxspinsetsize=0
 
@@ -283,9 +283,9 @@ subroutine spinsets_first(www)
      endif
 
      if (jj==0) then
-        allocate(www%sss%spinsets(www%sss%maxspinsetsize,www%sss%maxnumspinsets,www%startrank:www%endrank), &
-             www%sss%spindfsets(www%sss%maxspinsetsize,www%sss%maxnumspindfsets,www%startrank:www%endrank),&
-             www%sss%spindfsetindex(www%sss%maxnumspindfsets,www%startrank:www%endrank))
+        allocate(www%sss%spinsets(www%sss%maxspinsetsize,www%sss%maxnumspinsets,www%startrank:www%endrank+1), &
+             www%sss%spindfsets(www%sss%maxspinsetsize,www%sss%maxnumspindfsets,www%startrank:www%endrank+1),&
+             www%sss%spindfsetindex(www%sss%maxnumspindfsets,www%startrank:www%endrank+1))
         www%sss%spinsets(:,:,:)=(-99)
         www%sss%spindfsets(:,:,:)=(-99)
         www%sss%spindfsetindex(:,:)=(-99)
@@ -451,7 +451,7 @@ subroutine configspinset_projector(www)
   call mpibarrier()
   OFLWR "Getting Spinset Projectors.  Numspinsets this process is ", www%sss%numspinsets(myrank);CFL
   call mpibarrier()
-  allocate(www%sss%spinsetprojector(www%sss%maxnumspinsets,www%startrank:www%endrank))
+  allocate(www%sss%spinsetprojector(www%sss%maxnumspinsets,www%startrank:www%endrank+1))
   allocate(spinvects(www%sss%maxspinsetsize,www%sss%maxspinsetsize), spinvals(www%sss%maxspinsetsize), &
        realprojector(www%sss%maxspinsetsize,www%sss%maxspinsetsize))
 

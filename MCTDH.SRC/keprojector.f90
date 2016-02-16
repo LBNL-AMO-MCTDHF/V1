@@ -18,7 +18,7 @@ subroutine keprojector(inavector,inspfs,infac,www)
   real*8 :: infac
   DATAECS :: ones(numr)
   integer, save :: allocd=0
-  integer :: ispf,ii,jj,jspf
+  integer :: ispf,ii,jj,jspf,lowspf,highspf,numspf
 
   if(numr.gt.1) then
      OFLWR "KEPROJ NOT SUPPORTED NUMR>1"; CFLST
@@ -34,8 +34,6 @@ subroutine keprojector(inavector,inspfs,infac,www)
 !! elec weights has spfdims for m value support
      tempelecweights=RESHAPE(elecweights(:,:,:),(/spfsize/))
      
-     call noparorbsupport("in keprojector")
-
      do ii=1,nkeproj
         energy(ii)=keprojminenergy+ ii*keprojenergystep
         do jj=1,spfsize
@@ -54,12 +52,26 @@ subroutine keprojector(inavector,inspfs,infac,www)
      OFLWR "KEVECTS GOTTEN."; CFL
   endif
 
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getOrbSetRange(lowspf,highspf)
+  endif
+  numspf=highspf-lowspf+1
+
   do ii=1,nkeproj
-     do ispf=1,nspf
+     do ispf=lowspf,highspf
         kedot(ispf)=dot(inspfs(:,ispf),kevects(:,ii),spfsize)
         kedot2(ispf)=dot(inspfs(:,ispf),ALLCON(kevects(:,ii)),spfsize)
 !        OFLWR "KEDOT", ispf,kedot(ispf); CFL
      enddo
+     if (parorbsplit.eq.1) then
+        call mpiorbgather(kedot,1)
+        call mpiorbgather(kedot2,1)
+     endif
+     if (parorbsplit.eq.3) then
+        call mympireduce(kedot,nspf)
+        call mympireduce(kedot2,nspf)
+     endif
      do ispf=1,nspf
         do jspf=1,nspf
            keproj(ispf,jspf,ii)=kedot(ispf)*CONJUGATE(kedot(jspf)) 
@@ -82,7 +94,6 @@ subroutine keprojector(inavector,inspfs,infac,www)
         OFLWR "SUMERRKEPRJOFS", csum; CFL
      endif
      kesum(ii)=kesum(ii)+real(csum)*infac
-
 
      call arbitraryconfig_mult_singles(www,keproj2(:,:,ii),ones,inavector,tempvector,numr)
      csum=dot(inavector(:,1),tempvector(:),www%totadim)

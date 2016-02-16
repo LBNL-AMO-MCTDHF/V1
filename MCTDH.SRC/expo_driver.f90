@@ -153,13 +153,6 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 
      call spf_linear_derivs(midtime,inspfs,aspfs) 
 
-     if (drivingflag.ne.0) then
-
-        call driving_linear_derivs(midtime,inspfs,tempspfs)
-        aspfs(:,:)=aspfs(:,:)+tempspfs(:,:)
-
-     endif
-
      call apply_spf_constraints(aspfs)
 
      propspfs=0.d0
@@ -255,7 +248,8 @@ subroutine jacorth(inspfs,outspfs)
   implicit none
   DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-  call oneminusproject(inspfs,outspfs,jacvect)
+  call project(inspfs,outspfs,jacvect)
+  outspfs(:,:)=inspfs(:,:)-outspfs(:,:)
 end subroutine jacorth
 
 
@@ -269,7 +263,7 @@ subroutine jacopcompact(com_inspfs,com_outspfs)
   DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf)  !! AUTOMATIC
 
   call spfs_expand(com_inspfs,inspfs)
-  call jacoperate0(1,inspfs,outspfs)
+  call jacoperate0(1,1,inspfs,outspfs)
   call spfs_compact(outspfs,com_outspfs)
 
 end subroutine jacopcompact
@@ -281,30 +275,54 @@ subroutine jacoperate(inspfs,outspfs)
   DATATYPE,intent(in) :: inspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,nspf)
 
-  call jacoperate0(1,inspfs,outspfs)
+  call jacoperate0(1,1,inspfs,outspfs)
 
 end subroutine jacoperate
 
-     
 
-subroutine jacoperate0(dentimeflag,inspfs,outspfs)
+subroutine jacoperate0(dentimeflag,conflag,inspfs,outspfs)
+  use parameters
+  implicit none
+  integer,intent(in) :: dentimeflag,conflag
+  DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
+  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
+  integer :: lowspf,highspf
+
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getOrbSetRange(lowspf,highspf)
+  endif
+
+!! call always even if numspf=0
+  call jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs(:,min(nspf,lowspf):highspf))
+
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(outspfs,spfsize)
+  endif
+
+end subroutine jacoperate0
+
+
+subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
   use parameters
   use jacmod
   use mpimod
   use xxxmod    !! drivingorbs.... hmmm could just make wrapper but whatever
   use linearmod
   implicit none
-  integer,intent(in) :: dentimeflag
+  integer,intent(in) :: lowspf,highspf,dentimeflag,conflag
   DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
-  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-  integer :: ii,ibot,getlen
-  integer, save :: times(20), numcalledhere=0,itime,jtime
-  DATATYPE ::  nulldouble(2),pots(3)
-  real*8 :: facs(0:1)
-  DATATYPE :: jactemp3(spfsize,nspf),   jactemp2(spfsize,nspf),&   !! AUTOMATIC
-       tempspfs(spfsize,nspf),temporbs(spfsize,nspf)
+  DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
+  integer :: ii,ibot,getlen,numspf
+  integer, save :: times(20), numcalledhere=0,itime,jtime,jjj
+  DATATYPE :: csum, nulldouble(2),pots(3)
+  real*8 :: facs(0:1),rsum
+  DATATYPE :: bigwork(spfsize,nspf),   workspfs(spfsize,lowspf:highspf+1),&   !! AUTOMATIC
+       tempspfs(spfsize,lowspf:highspf+1)
 
   numcalledhere=numcalledhere+1
+
+  numspf=highspf-lowspf+1
 
   call system_clock(itime)
 
@@ -315,94 +333,164 @@ subroutine jacoperate0(dentimeflag,inspfs,outspfs)
      ibot=1;     facs(0)=0d0;     facs(1)=1d0
   endif
 
-  outspfs=0.d0
+  if (numspf.gt.0) then
+     outspfs(:,lowspf:highspf)=0.d0
+  endif
 
   call system_clock(jtime); times(1)=times(1)+jtime-itime; 
 
 !! ** term with inspfs on far right ** !!
 
+!! call actreduced00 even if numspf=0
+
   do ii=1,ibot,-1
      
      if (jacsymflag.ne.0) then
+
         call system_clock(itime)
-           
-        call project(inspfs,jactemp2,jacvect) 
-           
-        call system_clock(jtime); times(1)=times(1)+jtime-itime;   call system_clock(itime)
-           
-        call actreduced0(dentimeflag,jactime,jactemp2,nulldouble,jactemp3,ii,0,0)
-           
-        call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
-           
-        outspfs=outspfs+jactemp3*facs(ii)
-           
-        call system_clock(jtime); times(1)=times(1)+jtime-itime
+        if (numspf.gt.0) then
+           call project00(lowspf,highspf,inspfs(:,lowspf:highspf),bigwork(:,lowspf:highspf),jacvect) 
+        endif
+        if (parorbsplit.eq.1) then
+           call mpiorbgather(bigwork,spfsize)
+        endif
+        call system_clock(jtime); times(1)=times(1)+jtime-itime;   itime=jtime
+
+!! call always even if numspf=0
+        call actreduced00(lowspf,highspf,dentimeflag,jactime,bigwork,nulldouble,&
+             workspfs,ii,0,0)
+
+        call system_clock(jtime); times(2)=times(2)+jtime-itime;   itime=jtime
+        if (numspf.gt.0) then
+           outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
+        endif
+        call system_clock(jtime); times(1)=times(1)+jtime-itime;    itime=jtime
+
+        call actreduced00(lowspf,highspf,dentimeflag,jactime,inspfs,nulldouble,tempspfs,ii,0,0)
+
+        call system_clock(jtime); times(2)=times(2)+jtime-itime; 
+
      else
            
         call system_clock(itime)
+        call actreduced00(lowspf,highspf,dentimeflag,jactime, inspfs,nulldouble, workspfs,ii,0,0)
+        if (numspf.gt.0) then
+           tempspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)
+        endif
+        call system_clock(jtime); times(2)=times(2)+jtime-itime;   itime=jtime
            
-        call actreduced0(dentimeflag,jactime, inspfs,nulldouble, jactemp3,ii,0,0)
-           
-        call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
-           
-        outspfs=outspfs+jactemp3*facs(ii)
-           
+        if (numspf.gt.0) then
+           outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
+        endif
         call system_clock(jtime); times(1)=times(1)+jtime-itime;      
      endif
-        
+
      call system_clock(itime)
-        
-     call actreduced0(dentimeflag,jactime,inspfs,nulldouble,jactemp3,ii,0,0)
-        
-     call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
-        
-     call project(jactemp3,jactemp2,jacvect)
-     outspfs=outspfs-jactemp2*facs(ii)
-        
+
+     if (numspf.gt.0) then
+        call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),workspfs(:,lowspf:highspf),jacvect)
+        outspfs(:,:)=outspfs(:,:)-workspfs(:,lowspf:highspf)*facs(ii)
+     endif
+
 !! terms from projector
 
-     call derproject(jacvectout,jactemp2,jacvect,inspfs)
-     outspfs=outspfs-jactemp2*facs(ii)
-        
+!! always call derproject00
+     call derproject00(lowspf,highspf,jacvectout(:,min(lowspf,nspf):highspf),workspfs,jacvect,inspfs)
+     if (numspf.gt.0) then
+        outspfs(:,:)=outspfs(:,:)-workspfs(:,lowspf:highspf)*facs(ii)
+     endif
+
      call system_clock(jtime); times(1)=times(1)+jtime-itime
         
      if (jacsymflag.ne.0) then
         call system_clock(itime)
-        call derproject(jacvect,jactemp3,jacvect,inspfs) 
-        call system_clock(jtime); times(1)=times(1)+jtime-itime;   call system_clock(itime)
-        call actreduced0(dentimeflag,jactime,jactemp3,nulldouble,jactemp2,ii,0,0)
-        call system_clock(jtime); times(2)=times(2)+jtime-itime;   call system_clock(itime)
-        outspfs=outspfs+jactemp2*facs(ii)
+!! always call derproject00
+        call derproject00(lowspf,highspf,jacvect(:,min(lowspf,nspf):highspf),&
+             bigwork(:,min(lowspf,nspf):highspf),jacvect,inspfs)
+
+        if (parorbsplit.eq.1) then
+           call mpiorbgather(bigwork,spfsize)
+        endif
+
+        call system_clock(jtime); times(1)=times(1)+jtime-itime;   itime=jtime
+
+        call actreduced00(lowspf,highspf,dentimeflag,jactime,bigwork,nulldouble,workspfs,ii,0,0)
+        
+        call system_clock(jtime); times(2)=times(2)+jtime-itime;   itime=jtime
+        if (numspf.gt.0) then
+           outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
+        endif
         call system_clock(jtime); times(1)=times(1)+jtime-itime;  
      endif
         
 !!  CONSTRAINT!!  FORGOTTEN I GUESS !! APR 2014
 
-     if (constraintflag.ne.0) then
+     if (constraintflag.ne.0.and.numspf.gt.0.and.conflag.ne.0) then
         call system_clock(itime)
-        call op_gmat(inspfs,jactemp2,ii,jactime,jacvect)
-        outspfs=outspfs+jactemp2*facs(ii)
+        call op_gmat00(lowspf,highspf,inspfs,workspfs(:,lowspf:highspf),ii,jactime,jacvect)
+        outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
         if (jacgmatthird.ne.0) then
-           call der_gmat(jacvect,jactemp2,ii,jactime,jacvect,inspfs)
-           outspfs=outspfs+jactemp2*facs(ii)
+           call der_gmat00(lowspf,highspf,jacvect,workspfs(:,lowspf:highspf),ii,jactime,jacvect,inspfs)
+           outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
         endif
         call system_clock(jtime); times(1)=times(1)+jtime-itime;
      endif
 
-     if (drivingflag.ne.0) then
-        call system_clock(itime)
-           
-        call vectdpot(jactime,velflag,pots,-1)
-        temporbs(:,:)=&
-             pots(1)*yyy%drivingorbsxx(:,:,ii)+&
-             pots(2)*yyy%drivingorbsyy(:,:,ii)+&
-             pots(3)*yyy%drivingorbszz(:,:,ii)
-        call derproject(temporbs,tempspfs,jacvect,inspfs)
-           
-        outspfs(:,:)=outspfs(:,:)-tempspfs(:,:)*facs(ii)*timefac
-        call system_clock(jtime); times(3)=times(3)+jtime-itime;
+
+     if (numfrozen.gt.0) then
+        if (numspf.gt.0) then
+
+!! EXCHANGE
+           if (dentimeflag.ne.0) then
+!! TIMEFAC and facs HERE
+              csum=timefac*facs(ii)
+              call MYGEMM('N','N', spfsize,numspf,nspf,csum, yyy%frozenexchinvr(:,:,ii),spfsize, &
+                   yyy%invdenmat(:,lowspf:highspf,ii), nspf, DATAZERO, tempspfs(:,lowspf:highspf), spfsize)
+           else
+              tempspfs(:,lowspf:highspf)=(-1)*yyy%frozenexchinvr(:,lowspf:highspf,ii)*facs(ii) !! factor (-1)
+           endif
+        endif
+
+!! always call derproject00
+        call derproject00(lowspf,highspf,tempspfs,workspfs,jacvect,inspfs)
+
+        if (numspf.gt.0) then
+           outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf)+tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
+        endif
      endif
-        
+
+!! DRIVING (PSI-PRIME)
+
+     if (drivingflag.ne.0) then
+        if (dentimeflag.eq.0) then
+           OFLWR "error, no driving for quad!!"; CFLST     !! invdenmat already in drivingorbs
+        endif
+        rsum=0
+        if (numspf.gt.0) then
+
+           call system_clock(itime)
+
+           call vectdpot(jactime,velflag,pots,-1)
+           do jjj=1,3
+              rsum=rsum+abs(pots(jjj))**2
+           enddo
+        endif
+        if (rsum.ne.0d0) then
+           if (numspf.gt.0) then
+              workspfs(:,lowspf:highspf)=&
+                   pots(1)*yyy%drivingorbsxx(:,lowspf:highspf,ii)+&
+                   pots(2)*yyy%drivingorbsyy(:,lowspf:highspf,ii)+&
+                   pots(3)*yyy%drivingorbszz(:,lowspf:highspf,ii)
+           endif
+!! always call derproject00
+           call derproject00(lowspf,highspf,workspfs,tempspfs,jacvect,inspfs)
+           if (numspf.gt.0) then           
+              outspfs(:,:)=outspfs(:,:)-tempspfs(:,lowspf:highspf)*facs(ii)*timefac
+           endif
+           call system_clock(jtime); times(3)=times(3)+jtime-itime;
+        endif
+     endif
+
   enddo
   
   if ((myrank.eq.1).and.(notiming.eq.0)) then
@@ -417,7 +505,7 @@ subroutine jacoperate0(dentimeflag,inspfs,outspfs)
      endif
   endif
 
-end subroutine jacoperate0
+end subroutine jacoperate00
 
 
 !! KEEPME
@@ -688,18 +776,48 @@ subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
   implicit none
   DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
   DATATYPE, intent(out) :: outspfs(spfsize, nspf)
-  integer :: i,j
-  DATATYPE :: dot
-  DATATYPE ::    mydot(nspf,nspf), prodot(nspf,nspf), multdot(nspf,nspf), derdot(nspf,nspf) !! AUTOMATIC
+  integer :: lowspf,highspf
 
-  outspfs(:,:)=0.d0
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getOrbSetRange(lowspf,highspf)
+  endif
+
+!! always call derproject00
+  call derproject00(lowspf,highspf,inspfs(:,min(lowspf,nspf):highspf),&
+       outspfs(:,min(lowspf,nspf):highspf),prospfs,prospfderivs)
+
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(outspfs,spfsize)
+  endif
+
+end subroutine derproject
+
+
+subroutine derproject00(lowspf,highspf,inspfs, outspfs, prospfs, prospfderivs)
+  use parameters
+  implicit none
+  integer,intent(in) :: lowspf,highspf
+  DATATYPE, intent(in) :: inspfs(spfsize, lowspf:highspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
+  DATATYPE, intent(out) :: outspfs(spfsize, lowspf:highspf)
+  DATATYPE :: dot,csum
+  DATATYPE :: mydot(nspf,lowspf:highspf+1), prodot(nspf,nspf), derdot(nspf,lowspf:highspf+1) !! AUTOMATIC
+  integer :: i,j,numspf
+
+  numspf=highspf-lowspf+1
+
+  if (numspf.gt.0) then
+     outspfs(:,:)=0.d0
+  endif
+
+  mydot(:,:)=0d0; derdot(:,:)=0d0
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
-  do i=1,nspf
+  do i=lowspf,highspf
      do j=1,nspf
-        mydot(i,j) = dot(prospfs(:,i),inspfs(:,j),spfsize)
-        derdot(i,j) = dot(prospfderivs(:,i),inspfs(:,j),spfsize)
+        mydot(j,i) = dot(prospfs(:,j),inspfs(:,i),spfsize)
+        derdot(j,i) = dot(prospfderivs(:,j),inspfs(:,i),spfsize)
      enddo
   enddo
 !$OMP END DO
@@ -710,8 +828,12 @@ subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
      call mympireduce(derdot,nspf**2)
   endif
 
-  call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,prospfs,     spfsize,derdot,nspf,DATAONE,outspfs,spfsize)
-  call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,prospfderivs,spfsize,mydot, nspf,DATAONE,outspfs,spfsize)
+  if (numspf.gt.0) then
+     call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfs,spfsize,&
+          derdot(:,lowspf:highspf),nspf,DATAONE,outspfs,spfsize)
+     call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfderivs,spfsize,&
+          mydot(:,lowspf:highspf), nspf,DATAONE,outspfs,spfsize)
+  endif
 
   if (jacprojorth.ne.0) then
 
@@ -728,28 +850,39 @@ subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
 
 !        prodot is     (pro/proder,pro/proder)
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
+! need all nspf^2 even if parorbsplit.eq.1
+
+     prodot(:,:)=0d0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j,csum)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
-     do i=1,nspf
+     do i=lowspf,highspf
         do j=1,nspf
-           prodot(i,j) = dot(prospfs(:,i),prospfderivs(:,j),spfsize) 
-           prodot(i,j) = prodot(i,j) + dot(prospfderivs(:,i),prospfs(:,j),spfsize)
+           csum = dot(prospfs(:,j),prospfderivs(:,i),spfsize) + &
+                dot(prospfderivs(:,j),prospfs(:,i),spfsize)
+           prodot(j,i) = csum
         enddo
      enddo
 !$OMP END DO
 !$OMP END PARALLEL
 
+     if (parorbsplit.eq.1) then
+        call mpiorbgather(prodot,nspf)
+     endif
      if (parorbsplit.eq.3) then
         call mympireduce(prodot,nspf**2)
      endif
 
-     call MYGEMM('N', 'N', nspf, nspf, nspf, DATAONE, prodot, nspf, mydot, nspf, DATAZERO, multdot, nspf)
-     call MYGEMM('N','N',spfsize,nspf,nspf,DATANEGONE,prospfs,spfsize,multdot,nspf,DATAONE,outspfs,spfsize)
+     if (numspf.gt.0) then
+        call MYGEMM('N', 'N', nspf, numspf, nspf, DATAONE, prodot, nspf, &
+             mydot(:,lowspf:highspf), nspf, DATAZERO, derdot(:,lowspf:highspf), nspf)
 
+        call MYGEMM('N', 'N', spfsize, numspf, nspf, DATANEGONE, prospfs, spfsize, &
+             derdot(:,lowspf:highspf), nspf, DATAONE, outspfs, spfsize)
+     endif
   endif
 
-end subroutine derproject
-
+end subroutine derproject00
 
 
 subroutine der_gmat(inspfs, outspfs, ireduced,thistime,prospfs, prospfderivs)
@@ -759,23 +892,57 @@ subroutine der_gmat(inspfs, outspfs, ireduced,thistime,prospfs, prospfderivs)
   real*8, intent(in) :: thistime
   DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
   DATATYPE, intent(out) :: outspfs(spfsize, nspf)
-  integer :: i,j
-  DATATYPE :: dot
-  DATATYPE ::    mydot(nspf,nspf), derdot(nspf,nspf), mydot0(nspf,nspf), &  !!  AUTOMATIC
-       derdot0(nspf,nspf), conmat(nspf,nspf)
+  integer :: lowspf,highspf,numspf
 
-  outspfs(:,:)=0.d0
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getOrbSetRange(lowspf,highspf)
+  endif
+
+  numspf=highspf-lowspf+1
+
+  if (numspf.gt.0) then
+     call der_gmat00(lowspf,highspf,inspfs,outspfs(:,lowspf:highspf),ireduced,thistime,prospfs,prospfderivs)
+  endif
+
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(outspfs,spfsize)
+  endif
+
+end subroutine der_gmat
+
+
+
+subroutine der_gmat00(lowspf,highspf,inspfs, outspfs, ireduced,thistime,prospfs, prospfderivs)
+  use parameters
+  implicit none
+  integer, intent(in) :: ireduced,lowspf,highspf
+  real*8, intent(in) :: thistime
+  DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
+  DATATYPE, intent(out) :: outspfs(spfsize, lowspf:highspf)
+  integer :: i,j,numspf
+  DATATYPE :: dot
+  DATATYPE :: mydot(nspf,lowspf:highspf+1), derdot(nspf,lowspf:highspf+1), &            !!  AUTOMATIC
+       mydot0(nspf,lowspf:highspf+1), derdot0(nspf,lowspf:highspf+1), conmat(nspf,nspf)
+
+  numspf=highspf-lowspf+1
+
+  if (numspf.gt.0) then
+     outspfs(:,:)=0.d0
+  endif
 
   if (constraintflag.eq.0) then
      return
   endif
 
+  mydot0(:,:)=0d0; derdot0(:,:)=0d0
+
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
-  do i=1,nspf
+  do i=lowspf,highspf
      do j=1,nspf
-        mydot0(i,j) = dot(prospfs(:,i),inspfs(:,j),spfsize)
-        derdot0(i,j) = dot(prospfderivs(:,i),inspfs(:,j),spfsize)
+        mydot0(j,i) = dot(prospfs(:,j),inspfs(:,i),spfsize)
+        derdot0(j,i) = dot(prospfderivs(:,j),inspfs(:,i),spfsize)
      enddo
   enddo
 !$OMP END DO
@@ -788,13 +955,19 @@ subroutine der_gmat(inspfs, outspfs, ireduced,thistime,prospfs, prospfderivs)
 
   call getconmat(thistime,ireduced,conmat)
 
-  call MYGEMM('N','N',nspf,nspf,nspf,DATAONE,conmat,nspf,mydot0,nspf,DATAZERO,mydot,nspf)
-  call MYGEMM('N','N',nspf,nspf,nspf,DATAONE,conmat,nspf,derdot0,nspf,DATAZERO,derdot,nspf)
+  if (numspf.gt.0) then
+     call MYGEMM('N','N',nspf,numspf,nspf,DATAONE,conmat,nspf,&
+          mydot0(:,lowspf:highspf),nspf,DATAZERO,mydot(:,lowspf:highspf),nspf)
+     call MYGEMM('N','N',nspf,numspf,nspf,DATAONE,conmat,nspf,&
+          derdot0(:,lowspf:highspf),nspf,DATAZERO,derdot(:,lowspf:highspf),nspf)
 
-  call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,prospfs,     spfsize,derdot,nspf,DATAONE,outspfs,spfsize)
-  call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,prospfderivs,spfsize,mydot, nspf,DATAONE,outspfs,spfsize)
+     call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfs,     spfsize,&
+          derdot(:,lowspf:highspf),nspf,DATAZERO,outspfs,spfsize)
+     call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfderivs,spfsize,&
+          mydot(:,lowspf:highspf), nspf,DATAONE,outspfs,spfsize)
+  endif
 
-end subroutine der_gmat
+end subroutine der_gmat00
 
 
 

@@ -3,27 +3,41 @@
 #include "Definitions.INC"
 
 
-subroutine oneminusproject(inspfs, outspfs, prospfs)
-  use parameters
-  implicit none  
-  DATATYPE,intent(in) :: inspfs(spfsize,nspf),  prospfs(spfsize,nspf)
-  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-
-  call project(inspfs, outspfs, prospfs)
-  outspfs=inspfs-outspfs
-end subroutine
-
-
 subroutine project(inspfs, outspfs, prospfs)
   use parameters
   use opmod !! frozenspfs
   implicit none
-
   DATATYPE,intent(in) :: inspfs(spfsize,nspf),  prospfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-  integer :: i,j,lowspf,highspf
-  DATATYPE :: dot,mydot(nspf+numfrozen,nspf)
-  DATATYPE :: tempprospfs(spfsize,nspf+numfrozen)  !! AUTOMATIC
+  integer :: lowspf,highspf
+
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getOrbSetRange(lowspf,highspf)
+  endif
+  if (highspf-lowspf+1.gt.0) then
+     call  project00(lowspf,highspf,inspfs(:,lowspf:highspf), outspfs(:,lowspf:highspf), prospfs)
+  endif
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(outspfs,spfsize)
+  endif
+
+end subroutine project
+  
+
+subroutine project00(lowspf,highspf,inspfs, outspfs, prospfs)
+  use parameters
+  use opmod !! frozenspfs
+  implicit none
+  integer,intent(in) :: lowspf,highspf
+  DATATYPE,intent(in) :: inspfs(spfsize,lowspf:highspf),  prospfs(spfsize,nspf)
+  DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
+  integer :: i,j,numspf
+  DATATYPE :: dot
+  DATATYPE :: mydot(nspf+numfrozen,lowspf:highspf+1),&
+       tempprospfs(spfsize,nspf+numfrozen)            !! AUTOMATIC
+
+  numspf=highspf-lowspf+1
 
   tempprospfs(:,1:nspf)=prospfs(:,:)
 
@@ -35,10 +49,7 @@ subroutine project(inspfs, outspfs, prospfs)
 !     call spf_orthogi t(tempprospfs,nspf+numfrozen, nulldouble)
 !  endif
 
-  lowspf=1; highspf=nspf
-  if (parorbsplit.eq.1) then
-     call getOrbSetRange(lowspf,highspf)
-  endif
+  mydot(:,:)=0d0
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
@@ -50,23 +61,16 @@ subroutine project(inspfs, outspfs, prospfs)
 !$OMP END DO
 !$OMP END PARALLEL
 
-  if (parorbsplit.eq.1) then
-     call mpiorbgather(mydot,nspf+numfrozen)
-  endif
-
   if (parorbsplit.eq.3) then
      call mympireduce(mydot,nspf*(nspf+numfrozen))
   endif
 
-  outspfs(:,:)=0
-  do i=1,nspf
-     do j=1,nspf+numfrozen
-        outspfs(:,i) = outspfs(:,i) + tempprospfs(:,j) * &
-             mydot(j,i)
-     enddo
-  enddo
-
-end subroutine project
+  if (numspf.gt.0) then
+     call MYGEMM('N','N',spfsize,numspf,nspf+numfrozen,DATAONE,tempprospfs(:,:),spfsize,&
+          mydot(:,lowspf:highspf),nspf+numfrozen,DATAZERO,outspfs(:,lowspf:highspf),spfsize)
+  endif
+     
+end subroutine project00
 
 
 
@@ -79,7 +83,7 @@ subroutine project_onfrozen(inspf, outspf)
   integer :: j
   DATATYPE :: dot,mydot(numfrozen)
 
-  outspf(:)=0
+  outspf(:)=0;   mydot(:)=0
 
   if (numfrozen.gt.1) then
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j)
@@ -105,22 +109,42 @@ end subroutine project_onfrozen
 
 subroutine get_frexchange()
   use parameters
-  use xxxmod !! frozenexchange
+  use xxxmod !! frozenexchinvr
   implicit none
-  integer :: lowspf,highspf
+  integer :: lowspf,highspf,numspf
+  DATATYPE,allocatable :: frozenexchange(:,:)
+
   if (numfrozen.gt.0) then
+
+     allocate(frozenexchange(spfsize,nspf))
+
      lowspf=1; highspf=nspf
      if (parorbsplit.eq.1) then
         call getorbsetrange(lowspf,highspf)
      endif
-     yyy%frozenexchange(:,:,0)=0
-     call op_frozen_exchange(lowspf,highspf,&
-          yyy%cmfpsivec(spfstart+(lowspf-1)*spfsize:spfstart+highspf*spfsize-1,0),&
-          yyy%frozenexchange(:,lowspf:highspf,0))
-     if (parorbsplit.eq.1) then
-        call mpiorbgather(yyy%frozenexchange(:,:,0),spfsize)
+     numspf=highspf-lowspf+1
+     frozenexchange(:,:)=0
+     if (numspf.gt.0) then
+        call op_frozen_exchange(lowspf,highspf,&
+             yyy%cmfpsivec(spfstart+(lowspf-1)*spfsize:spfstart+highspf*spfsize-1,0),&
+             frozenexchange(:,lowspf:highspf))
      endif
+     if (parorbsplit.eq.1) then
+        call mpiorbgather(frozenexchange(:,:),spfsize)
+     endif
+     if (numspf.gt.0) then
+        call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE, frozenexchange(:,:),spfsize,&
+             yyy%reducedinvr(:,lowspf:highspf,0),nspf, DATAZERO, yyy%frozenexchinvr(:,lowspf:highspf,0),spfsize)
+     endif
+     if (parorbsplit.eq.1) then
+        call mpiorbgather(yyy%frozenexchinvr(:,:,0),spfsize)
+     endif
+
+     deallocate(frozenexchange)
+
   endif
+
+
   
 end subroutine get_frexchange
 
@@ -134,7 +158,6 @@ end subroutine get_stuff
 
 subroutine get_stuff0(thistime,times)
   use parameters
-  use xxxmod !! frozenexchange
   implicit none
   real*8,intent(in) :: thistime
   integer :: times(20),itime,jtime
@@ -349,7 +372,9 @@ subroutine op_frozen_exchange(lowspf,highspf,inspfs,outspfs)
   DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
   integer :: numspf
   numspf=highspf-lowspf+1
-  call op_frozen_exchange0(numspf,inspfs,outspfs,frozenspfs,numfrozen,spfmvals(lowspf:highspf))
+  if (numspf.gt.0) then
+     call op_frozen_exchange0(numspf,inspfs,outspfs,frozenspfs,numfrozen,spfmvals(lowspf:highspf))
+  endif
 end subroutine op_frozen_exchange
 
 

@@ -154,6 +154,27 @@ subroutine mpiorbgather(inoutvector,insize)    !! insize=spfsize except debug
 end subroutine mpiorbgather
 
 
+subroutine mpiorbreduce(input, isize)
+  use mpimod
+  use mpi_orbsetmod
+  use fileptrmod
+  implicit none
+  integer :: ierr, isize
+  DATATYPE,intent(inout) :: input(isize)
+  DATATYPE,allocatable :: output(:)
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  allocate(output(isize))
+  ierr=0
+  call MPI_allreduce( input, output, isize, MPIDATATYPE, MPI_SUM, MPI_COMM_ORB(myorbset), ierr)
+  input=output
+  if (ierr/=0) then
+     OFLWR "ERR mympireduce!";   CFLST
+  endif
+  deallocate(output)
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+end subroutine mpiorbreduce
+
+
 subroutine mpistart()
   use mpimod
   use fileptrmod
@@ -1164,6 +1185,15 @@ subroutine mpiorbgather(orbvector,insize)
   return
   orbvector(1)=orbvector(1)
 end subroutine mpiorbgather
+
+
+subroutine mpiorbreduce(orbvector,insize)
+  implicit none
+  integer :: insize
+  DATATYPE :: orbvector(insize)
+  return
+  orbvector(1)=orbvector(1)
+end subroutine mpiorbreduce
 
 
 subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)

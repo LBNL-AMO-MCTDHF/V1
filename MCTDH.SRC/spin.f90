@@ -255,8 +255,9 @@ subroutine configspin_project(www,nr, vector)
   integer,intent(in) :: nr
   DATATYPE,intent(inout) :: vector(nr,www%firstconfig:www%lastconfig)
 
-  call configspin_project_general(www,nr,vector(:,www%configstart),www%startrank,www%endrank)
-
+  if (www%configend.ge.www%configstart) then
+     call configspin_project_general(www,nr,vector(:,www%configstart),www%startrank,www%endrank)
+  endif
   if (www%parconsplit.eq.0.and.www%sparseconfigflag.ne.0) then
      call mpiallgather(vector,www%numconfig*nr,www%configsperproc(:)*nr,www%maxconfigsperproc*nr)
   endif
@@ -273,7 +274,7 @@ subroutine configspin_project_general(www,nr,vector,iproc,jproc)
   type(walktype),intent(in) :: www
   DATATYPE,intent(inout) :: vector(nr,www%allbotconfigs(iproc):www%alltopconfigs(jproc))
   DATATYPE :: smallvect(nr,www%sss%maxspinsetsize), smalltemp(nr,www%sss%maxspinsetsize), &
-       outvector(nr,www%allbotconfigs(iproc):www%alltopconfigs(jproc))      !! AUTOMATIC
+       outvector(nr,www%allbotconfigs(iproc):www%alltopconfigs(jproc)+1)      !! AUTOMATIC
   integer :: iset, ii, pp
 
   if (iproc.lt.www%startrank.or.jproc.gt.www%endrank) then
@@ -297,7 +298,9 @@ subroutine configspin_project_general(www,nr,vector,iproc,jproc)
      enddo
   enddo
 
-  vector(:,:)=outvector(:,:)
+  if (www%alltopconfigs(jproc).ge.www%allbotconfigs(iproc)) then
+     vector(:,:)=outvector(:,www%allbotconfigs(iproc):www%alltopconfigs(jproc))
+  endif
 
 end subroutine configspin_project_general
 
@@ -318,7 +321,9 @@ subroutine configspin_transformto_general(www,nblock,invector,outvector,iproc,jp
      OFLWR "STARTRANK ERR tRANSTO GEN ",iproc,www%startrank,www%endrank; CFLST
   endif
 
-  outvector(:,:)=0d0
+  if (www%sss%alltopspins(jproc).ge.www%sss%allbotspins(iproc)) then
+     outvector(:,:)=0d0
+  endif
 
   do pp=iproc,jproc
      iind=www%sss%allbotspins(pp)
@@ -358,7 +363,9 @@ subroutine dfspin_transformto_general(www,nblock,invector,outvector,iproc,jproc)
      OFLWR "STARTRANK ERR DFTRANSTO GEN ",iproc,www%startrank,www%endrank; CFLST
   endif
 
-  outvector(:,:)=0d0
+  if (www%sss%alltopspindfs(jproc).ge.www%sss%allbotspindfs(iproc)) then
+     outvector(:,:)=0d0
+  endif
 
   do pp=iproc,jproc
      iind=www%sss%allbotspindfs(pp)
@@ -401,7 +408,9 @@ subroutine configspin_transformfrom_general(www,nblock,invector,outvector,iproc,
      OFLWR "STARTRANK ERR TRANSFROM GEN ",iproc,www%startrank,www%endrank; CFLST
   endif
 
-  outvector(:,:)=0d0
+  if (www%alltopconfigs(jproc).ge.www%allbotconfigs(iproc)) then
+     outvector(:,:)=0d0
+  endif
 
   do pp=iproc,jproc
 
@@ -443,7 +452,9 @@ subroutine dfspin_transformfrom_general(www,nblock,invector,outvector,iproc,jpro
      OFLWR "STARTRANK ERR DFTRANSfrom GEN ",iproc,www%startrank,www%endrank; CFLST
   endif
 
-  outvector(:,:)=0d0
+  if (www%alltopdfconfigs(jproc).ge.www%allbotdfconfigs(iproc)) then
+     outvector(:,:)=0d0
+  endif
 
   do pp=iproc,jproc
 
@@ -521,6 +532,9 @@ subroutine df_transformto_general(www,howmany,avectorin,avectorout,iproc,jproc)
   DATATYPE,intent(out) :: avectorout(howmany,www%allbotdfconfigs(iproc):www%alltopdfconfigs(jproc))
   integer :: i
 
+  if (www%alltopdfconfigs(jproc).ge.www%allbotdfconfigs(iproc)) then
+     avectorout(:,:)=0d0
+  endif
   do i=www%allbotdfconfigs(iproc),www%alltopdfconfigs(jproc)
      avectorout(:,i)=avectorin(:,www%ddd%dfincludedconfigs(i))
   enddo
@@ -538,8 +552,9 @@ subroutine df_transformfrom_general(www,howmany,avectorin,avectorout,iproc,jproc
   DATATYPE,intent(out) :: avectorout(howmany,www%allbotconfigs(iproc):www%alltopconfigs(jproc))
   integer :: i
 
-  avectorout(:,:)=0d0
-
+  if (www%alltopconfigs(jproc).ge.www%allbotconfigs(iproc)) then
+     avectorout(:,:)=0d0
+  endif
   do i=www%allbotdfconfigs(iproc),www%alltopdfconfigs(jproc)
      avectorout(:,www%ddd%dfincludedconfigs(i))=avectorin(:,i)
   enddo
@@ -575,11 +590,13 @@ subroutine basis_transformto_all(www,howmany,avectorin,avectorout)
   DATATYPE,intent(out) :: avectorout(howmany,www%numdfbasis)
 
   if (www%sparseconfigflag.ne.0) then
-     call basis_transformto_local(www,howmany,avectorin(:,www%botconfig),avectorout(:,www%botdfbasis))
-     call mpiallgather(avectorout(:,:),www%numdfbasis*howmany,www%dfbasisperproc(:)*howmany,&
+     if (www%topdfbasis.ge.www%botdfbasis) then
+        call basis_transformto_local(www,howmany,avectorin(:,www%botconfig),avectorout(:,www%botdfbasis))
+     endif
+     call mpiallgather(avectorout,www%numdfbasis*howmany,www%dfbasisperproc(:)*howmany,&
           www%maxdfbasisperproc*howmany)
   else
-     call basis_transformto_general(www,howmany,avectorin(:,:),avectorout(:,:),1,nprocs)
+     call basis_transformto_general(www,howmany,avectorin,avectorout,1,nprocs)
   endif
 end subroutine basis_transformto_all
 
@@ -610,16 +627,18 @@ subroutine basis_transformto_general(www,howmany,avectorin,avectorout,iproc,jpro
   if (www%alltopdfbasis(jproc)-www%allbotdfbasis(iproc)+1.ne.0) then
      if (www%dfrestrictflag.ne.www%dflevel) then
         if (www%allspinproject.ne.0) then
-           call df_transformto_general(www,howmany,avectorin(:,:),workvec(:,:),iproc,jproc)
-           call dfspin_transformto_general(www,howmany,workvec(:,:),avectorout(:,:),iproc,jproc)
+           call df_transformto_general(www,howmany,avectorin,workvec,iproc,jproc)
+           call dfspin_transformto_general(www,howmany,workvec,avectorout,iproc,jproc)
         else
-           call df_transformto_general(www,howmany,avectorin(:,:),avectorout(:,:),iproc,jproc)
+           call df_transformto_general(www,howmany,avectorin,avectorout,iproc,jproc)
         endif
      else
         if (www%allspinproject.ne.0) then
-           call configspin_transformto_general(www,howmany,avectorin(:,:),avectorout(:,:),iproc,jproc)
+           call configspin_transformto_general(www,howmany,avectorin,avectorout,iproc,jproc)
         else
-           avectorout(:,:)=avectorin(:,:)
+           if (www%alltopdfbasis(jproc).ge.www%allbotdfbasis(iproc)) then
+              avectorout(:,:)=avectorin(:,:)
+           endif
         endif
      endif
   endif
@@ -638,11 +657,13 @@ subroutine basis_transformfrom_all(www,howmany,avectorin,avectorout)
   DATATYPE,intent(out) :: avectorout(howmany,www%numconfig)
 
   if (www%sparseconfigflag.ne.0) then
-     call basis_transformfrom_local(www,howmany,avectorin(:,www%botdfbasis),avectorout(:,www%botconfig))
-     call mpiallgather(avectorout(:,:),www%numconfig*howmany,www%configsperproc(:)*howmany,&
+     if (www%topconfig.ge.www%botconfig) then
+        call basis_transformfrom_local(www,howmany,avectorin(:,www%botdfbasis),avectorout(:,www%botconfig))
+     endif
+     call mpiallgather(avectorout,www%numconfig*howmany,www%configsperproc(:)*howmany,&
           www%maxconfigsperproc*howmany)
   else
-     call basis_transformfrom_general(www,howmany,avectorin(:,:),avectorout(:,:),1,nprocs)
+     call basis_transformfrom_general(www,howmany,avectorin,avectorout,1,nprocs)
   endif
 
 end subroutine basis_transformfrom_all
@@ -679,16 +700,18 @@ subroutine basis_transformfrom_general(www,howmany,avectorin,avectorout,iproc,jp
   if (www%alltopdfbasis(jproc)-www%allbotdfbasis(iproc)+1.ne.0) then
      if (www%dfrestrictflag.ne.www%dflevel) then
         if (www%allspinproject.ne.0) then
-           call dfspin_transformfrom_general(www,howmany,avectorin(:,:),workvec(:,:),iproc,jproc)
-           call df_transformfrom_general(www,howmany,workvec(:,:),avectorout(:,:),iproc,jproc)
+           call dfspin_transformfrom_general(www,howmany,avectorin,workvec,iproc,jproc)
+           call df_transformfrom_general(www,howmany,workvec,avectorout,iproc,jproc)
         else
-           call df_transformfrom_general(www,howmany,avectorin(:,:),avectorout(:,:),iproc,jproc)
+           call df_transformfrom_general(www,howmany,avectorin,avectorout,iproc,jproc)
         endif
      else
         if (www%allspinproject.ne.0) then
-           call configspin_transformfrom_general(www,howmany,avectorin(:,:),avectorout(:,:),iproc,jproc)
+           call configspin_transformfrom_general(www,howmany,avectorin,avectorout,iproc,jproc)
         else
-           avectorout(:,:)=avectorin(:,:)
+           if (www%alltopconfigs(jproc).ge.www%allbotconfigs(iproc)) then
+              avectorout(:,:)=avectorin(:,:)
+           endif
         endif
      endif
   endif
@@ -709,10 +732,12 @@ subroutine fullbasis_transformto_local(www,howmany,avectorin,avectorout)
 
   if (www%topbasis-www%botbasis+1.ne.0) then
      if (www%allspinproject.ne.0) then
-        call configspin_transformto_general(www,howmany,avectorin(:,:),avectorout(:,:),myrank,myrank)
+        call configspin_transformto_general(www,howmany,avectorin,avectorout,myrank,myrank)
      else
-        avectorout(:,:)=avectorin(:,:)
+        if (www%topbasis.ge.www%botbasis) then
+           avectorout(:,:)=avectorin(:,:)
         endif
+     endif
   endif
 
 end subroutine fullbasis_transformto_local
@@ -733,9 +758,11 @@ subroutine fullbasis_transformfrom_local(www,howmany,avectorin,avectorout)
 
   if (www%topbasis-www%botbasis+1.ne.0) then
      if (www%allspinproject.ne.0) then
-        call configspin_transformfrom_general(www,howmany,avectorin(:,:),avectorout(:,:),myrank,myrank)
+        call configspin_transformfrom_general(www,howmany,avectorin,avectorout,myrank,myrank)
      else
-        avectorout(:,:)=avectorin(:,:)
+        if (www%topconfig.ge.www%botconfig) then
+           avectorout(:,:)=avectorin(:,:)
+        endif
      endif
   endif
 

@@ -9,20 +9,54 @@
 
 subroutine second_derivs(thistime,inspfs,sdspfs)
   use parameters
-  use linearmod
   implicit none
   real*8,intent(in) :: thistime
   DATATYPE,intent(in) :: inspfs(spfsize,nspf)
   DATATYPE,intent(out) :: sdspfs(spfsize,nspf)
+  integer :: lowspf,highspf
+
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getOrbSetRange(lowspf,highspf)
+  endif
+
+!! call always even if numspf=0
+  call second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs(:,min(lowspf,nspf):highspf))
+
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(sdspfs,spfsize)
+  endif
+
+end subroutine second_derivs
+
+
+subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
+  use parameters
+  use linearmod
+  implicit none
+  integer,intent(in) :: lowspf,highspf
+  real*8,intent(in) :: thistime
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf)
+  DATATYPE,intent(out) :: sdspfs(spfsize,lowspf:highspf)
   DATATYPE :: nullspfs(1)
-  integer,save :: allocated=0
-  DATATYPE, save, allocatable :: workoutspfs0(:,:), workoutspfs2(:,:), workspfs2(:,:), &
-       workspfs0(:,:), derspfs0(:,:)
+  DATATYPE :: workoutspfs0(spfsize,lowspf:highspf+1), &       !! AUTOMATIC
+          workspfs0(spfsize,lowspf:highspf+1), workspfs2(spfsize,lowspf:highspf+1),&
+          workoutspfs2(spfsize,lowspf:highspf+1),  derspfs0(spfsize,nspf)
   real*8 :: gridtime
+  integer :: numspf
+
+  if (numfrozen.gt.0) then
+     OFLWR "second_derivs not done for frozen orbitals",numfrozen; CFLST
+  endif
+  if (drivingflag.ne.0) then
+     OFLWR "second_derivs not done for drivingflag"; CFLST
+  endif
+
+  numspf=highspf-lowspf+1
 
   gridtime=(thistime-firsttime)/(lasttime-firsttime) 
   if (jacprojorth.ne.0) then
-     OFLWR "program jacprojorth secondderivs???"; CFLST
+     OFLWR "program jacprojorth secondderivs"; CFLST
   endif
   if (jacsymflag.ne.0) then
      OFLWR "program jacsym secondderivs"; CFLST
@@ -33,21 +67,27 @@ subroutine second_derivs(thistime,inspfs,sdspfs)
   if (constraintflag.ne.0) then
      OFLWR "constraintflag with verlet not checked"; CFLST
   endif
-  if (allocated==0) then
-     allocate(workoutspfs0(spfsize,nspf),workoutspfs2(spfsize,nspf), &
-          workspfs0(spfsize,nspf), workspfs2(spfsize,nspf),derspfs0(spfsize,nspf))
-     allocated=1
-  endif
 
 !! First derivative.
 
-  call actreduced0(1,thistime, inspfs, nullspfs, workspfs0, 1, 0,1)
+  call actreduced00(lowspf,highspf,1,thistime, inspfs, nullspfs, workspfs0, 1, 0,1)
+
   if (effective_cmf_linearflag.eq.0) then
-     call oneminusproject(workspfs0, derspfs0, inspfs)
+     if (numspf.gt.0) then
+        call project00(lowspf,highspf,workspfs0(:,lowspf:highspf), derspfs0(:,lowspf:highspf), inspfs)
+        derspfs0(:,lowspf:highspf)=workspfs0(:,lowspf:highspf)-derspfs0(:,lowspf:highspf)
+    endif
   else
-     call actreduced0(1,thistime, inspfs, nullspfs, workspfs2, 0, 0,1)
-     workoutspfs0=(1.d0-gridtime)*workspfs0 + gridtime*workspfs2
-     call oneminusproject(workoutspfs0, derspfs0, inspfs)
+     call actreduced00(lowspf,highspf,1,thistime, inspfs, nullspfs, workspfs2, 0, 0,1)
+     if (numspf.gt.0) then
+        workoutspfs0=(1.d0-gridtime)*workspfs0 + gridtime*workspfs2
+        call project00(lowspf,highspf,workoutspfs0(:,lowspf:highspf), derspfs0(:,lowspf:highspf), inspfs)
+        derspfs0(:,lowspf:highspf)=workoutspfs0(:,lowspf:highspf)-derspfs0(:,lowspf:highspf)
+     endif
+  endif
+
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(derspfs0,spfsize)
   endif
 
 !! d/dt phi = (1-P) Q phi
@@ -56,48 +96,68 @@ subroutine second_derivs(thistime,inspfs,sdspfs)
 
  !! second term    
 
-  call actreduced0(1,thistime, derspfs0, nullspfs, workoutspfs0, 1, 0,1) 
+  call actreduced00(lowspf,highspf,1,thistime, derspfs0, nullspfs, workoutspfs0, 1, 0,1) 
 
   if (effective_cmf_linearflag.eq.0) then
-     call actreduced0(1,thistime, derspfs0, nullspfs, workoutspfs2, 0, 0,1)  !! second term
-     workoutspfs0 = (1-gridtime)*workoutspfs0 + gridtime*workoutspfs2
+
+     call actreduced00(lowspf,highspf,1,thistime, derspfs0, nullspfs, workoutspfs2, 0, 0,1)
+     if (numspf.gt.0) then
+        workoutspfs0 = (1-gridtime)*workoutspfs0 + gridtime*workoutspfs2
 
 !! d/dt Q term
+        workoutspfs0 = workoutspfs0 + 1.d0/(lasttime-firsttime) * (workspfs2-workspfs0)
+     endif
 
-     workoutspfs0 = workoutspfs0 + 1.d0/(lasttime-firsttime) * (workspfs2-workspfs0)
   endif
-  call oneminusproject(workoutspfs0, sdspfs, inspfs)
+
+  if (numspf.gt.0) then
+     call project00(lowspf,highspf,workoutspfs0(:,lowspf:highspf), sdspfs(:,lowspf:highspf), inspfs)
+     sdspfs(:,lowspf:highspf)=workoutspfs0(:,lowspf:highspf)-sdspfs(:,lowspf:highspf)
+  endif
 
 !! first term.
 
-  if (effective_cmf_linearflag.eq.0) then
+  if (effective_cmf_linearflag.eq.0.and.numspf.gt.0) then
      workspfs0 = (1-gridtime)*workspfs0 + gridtime*workspfs2
   endif
 
-  !!   Projector is just sum_i |phi_i><phi_i| without regard to orthonorm (consistent with noorthogflag=1)
+!!   Projector is just sum_i |phi_i><phi_i| without regard to orthonorm (consistent with noorthogflag=1)
 
-  call derproject(workspfs0, workoutspfs0, derspfs0, inspfs)
-  sdspfs=sdspfs-workoutspfs0
+!! always call derproject00
+  call derproject00(lowspf,highspf,workspfs0, workoutspfs0, derspfs0, inspfs)
+  if (numspf.gt.0) then
+     sdspfs(:,lowspf:highspf)=sdspfs(:,lowspf:highspf)-workoutspfs0(:,lowspf:highspf)
+  endif
+
+end subroutine second_derivs00
 
 
-end subroutine second_derivs
 
-
+module verletmod
+  implicit none
+  integer :: jstep=0
+  DATATYPE, allocatable :: prevspfs(:,:)
+end module verletmod
+  
   
 subroutine verlet(inspfs0, time1,time2,outiter)
   use parameters
+  use verletmod
   implicit none
   real*8,intent(in) :: time1,time2
   integer,intent(out) :: outiter
   DATATYPE,intent(inout) :: inspfs0(spfsize,nspf)
-  DATATYPE, allocatable, save :: prevspfs(:,:)
-  integer, save :: jstep=0
   DATATYPE,allocatable :: inspfs(:,:), tempspfs(:,:),  sdspfs(:,:)
   real*8 :: thistime, cstep, orthogerror
-  integer :: istep
-  external :: spf_linear_derivs
+  integer :: istep,lowspf,highspf,numspf
 
-  allocate(inspfs(spfsize,nspf), tempspfs(spfsize,nspf),  sdspfs(spfsize,nspf))
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getOrbSetRange(lowspf,highspf)
+  endif
+  numspf=highspf-lowspf+1
+
+  allocate(inspfs(spfsize,nspf), tempspfs(spfsize,nspf),  sdspfs(spfsize,lowspf:highspf+1))
   tempspfs=0; sdspfs=0
   inspfs(:,:)=inspfs0(:,:)
 
@@ -110,22 +170,27 @@ subroutine verlet(inspfs0, time1,time2,outiter)
      jstep=jstep+1
      
      thistime=(istep-1)*cstep + time1
-     call second_derivs(thistime,inspfs,sdspfs)
+     call second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
 
      if (jstep.eq.1) then
         allocate(prevspfs(spfsize,nspf))
      endif
 
      if (istep.eq.1) then
-
-        tempspfs=inspfs
+        tempspfs(:,:)=inspfs0(:,:)
         call expoprop(time1,time2,tempspfs,outiter)
      else
-        tempspfs = 2*inspfs - prevspfs + cstep**2 * sdspfs 
+        if (numspf.gt.0) then
+           tempspfs(:,lowspf:highspf) = 2*inspfs(:,lowspf:highspf) - prevspfs(:,lowspf:highspf) &
+                + cstep**2 * sdspfs(:,lowspf:highspf)
+        endif
+        if (parorbsplit.eq.1) then
+           call mpiorbgather(tempspfs,spfsize)
+        endif
      endif
+
      prevspfs=inspfs
      inspfs=tempspfs
-
 
 !     if (orthogerror.gt.1d-6) then
 !        OFLWR "ORTHOGERROR VERLET : ", orthogerror; CFLST
