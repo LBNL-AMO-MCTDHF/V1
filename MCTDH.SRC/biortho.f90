@@ -417,8 +417,12 @@ contains
     use fileptrmod
     implicit none
     type(biorthotype),target :: inbiovar
-    DATATYPE :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf),mobio(spfsize,inbiovar%wwbio%nspf),abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),dot,data0,data1
-    DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),smosave(inbiovar%wwbio%nspf,inbiovar%wwbio%nspf)
+    DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)
+    DATATYPE,intent(out) :: mobio(spfsize,inbiovar%wwbio%nspf)
+    DATATYPE,intent(inout) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
+    DATATYPE :: dot,data0,data1
+    DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),&
+         smosave(inbiovar%wwbio%nspf,inbiovar%wwbio%nspf)                                  !! AUTOMATIC
     integer :: i,j,lowspf,highspf,numspf,flag
 
     lowspf=1;highspf=inbiovar%wwbio%nspf
@@ -494,8 +498,10 @@ contains
     use abiosparsemod
     implicit none
     type(biorthotype),target :: inbiovar
-    DATATYPE :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf),abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),dot
-    DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
+    DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)
+    DATATYPE,intent(inout) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
+    DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)    !! AUTOMATIC
+    DATATYPE :: dot
     integer :: i,j,lowspf,highspf,numspf,flag
 
     lowspf=1;highspf=inbiovar%wwbio%nspf
@@ -548,8 +554,10 @@ contains
     use abiosparsemod
     implicit none
     type(biorthotype),target :: inbiovar
-    DATATYPE :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf),abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),dot
-    DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
+    DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)
+    DATATYPE,intent(inout) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
+    DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)   !! AUTOMATIC
+    DATATYPE :: dot
     integer :: i,j,lowspf,highspf,numspf,flag
 
     lowspf=1;highspf=inbiovar%wwbio%nspf
@@ -607,9 +615,12 @@ subroutine abio_nonsparse(abio,aout,inbiovar)
     Type(biorthotype) :: inbiovar
   integer :: i,j,iflag,clow,chigh,jproc,cnum,nnn(2),iind,mmm(2)
   integer :: ipiv(inbiovar%wwbio%numconfig),bioconfiglist(inbiovar%wwbio%numelec,inbiovar%wwbio%numconfig)
-  DATATYPE :: abio(inbiovar%bionr,inbiovar%wwbio%numconfig),aout(inbiovar%bionr,inbiovar%wwbio%numconfig),&
-       smobig(inbiovar%wwbio%nspf*2,inbiovar%wwbio%nspf*2),Stmpbig(inbiovar%wwbio%numelec,inbiovar%wwbio%numelec)
-  DATATYPE  :: Sconfig(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig), aouttr(inbiovar%wwbio%numconfig,inbiovar%bionr)
+  DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%numconfig)
+  DATATYPE,intent(out) :: aout(inbiovar%bionr,inbiovar%wwbio%numconfig)
+  DATATYPE :: smobig(inbiovar%wwbio%nspf*2,inbiovar%wwbio%nspf*2),&
+       Stmpbig(inbiovar%wwbio%numelec,inbiovar%wwbio%numelec), &       !! AUTOMATIC
+       Sconfig(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig), &
+       aouttr(inbiovar%wwbio%numconfig,inbiovar%bionr)
   
 !! for the nonsparse routine this builds the full nonsparse configuration overlap matrix
 !! this relies on the unique properties of the Doolittle algorithm of LU factorization

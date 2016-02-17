@@ -605,7 +605,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   DATATYPE :: dot
   DATATYPE, allocatable :: &
        tmo(:,:),tavec(:,:,:),tmotemp(:,:),readta(:,:,:),&
-       mobio(:,:),abio(:,:),mymo(:,:),myavec(:,:,:), &
+       mobio(:,:,:),abio(:,:,:),mymo(:,:),myavec(:,:,:), &
        readmo(:,:),readavec(:,:,:)
 
 !! mcscf specific read variables
@@ -635,9 +635,6 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 !! have to project on BO wfns.  Otherwise doesn't make sense in prolate.  Not supported anymore, will support
 !!   again, mcscf mode w/many r's on file
 
-  if (tnumr.ne.1) then
-     OFLWR "projecting only one r value... input numr>1... numr>1 proj not supported yet"; CFLST
-  endif
   if (tnspf.gt.nspf+numfrozen) then
      OFLWR "ERROR, for now can't do more orbs in projection than in calculation",tnspf,nspf+numfrozen; CFLST
   endif
@@ -693,7 +690,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 !! we go to war with the army we've got
 
         do istate=1,nstate
-           tavec(:,istate,ir)=tavec(:,istate,ir)/dot(tavec(:,istate,ir),tavec(:,istate,ir),tnumconfig)
+           tavec(:,istate,ir)=tavec(:,istate,ir)/sqrt(dot(tavec(:,istate,ir),tavec(:,istate,ir),tnumconfig)) !! no * bondweights(ir)
         enddo
      enddo
      call spf_read0(909,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,tmotemp(:,:),(/0,0,0/))
@@ -734,7 +731,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
 !! allocate all necessary extra memory and io params to do this looping business
 
-  allocate(mobio(spfsize,nspf),abio(first_config:last_config,mcscfnum),mymo(spfsize,nspf),&
+  allocate(mobio(spfsize,nspf,numr),abio(first_config:last_config,mcscfnum,numr),mymo(spfsize,nspf),&
        myavec(numr,first_config:last_config,mcscfnum))
 
   if (myrank.eq.1) then
@@ -791,16 +788,36 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
 !! do biortho and construct the single particle function
 
-     do ir=1,numr
 
-        abio(:,:)=myavec(ir,:,:)
-
-        call bioset(projbiovar,smo,1,bwwptr); 
-
-        call biortho(mymo,tmo(:,:),mobio,abio(:,1),projbiovar)
-        do imc=2,mcscfnum
-           call biotransform(mymo,mobio,abio(:,imc),projbiovar)
+     if (1==0) then
+        do ir=1,numr
+           abio(:,:,ir)=myavec(ir,:,:)
         enddo
+        do ir=1,numr
+           call bioset(projbiovar,smo,1,bwwptr); 
+
+           call biortho(mymo,tmo(:,:),mobio(:,:,ir),abio(:,1,ir),projbiovar)
+           do imc=2,mcscfnum
+              call biotransform(mymo,mobio(:,:,ir),abio(:,imc,ir),projbiovar)
+           enddo
+        enddo
+     else
+
+!! this should do the same and it looks like it does
+
+        call bioset(projbiovar,smo,numr,bwwptr); 
+
+        call biortho(mymo,tmo(:,:),mobio(:,:,1),myavec(:,:,1),projbiovar)
+        do imc=2,mcscfnum
+           call biotransform(mymo,mobio(:,:,1),myavec(:,:,imc),projbiovar)
+        enddo
+        do ir=1,numr
+           mobio(:,:,ir)=mobio(:,:,1)
+           abio(:,:,ir)=myavec(ir,:,:)
+        enddo
+     endif
+
+     do ir=1,numr
         do imc=1,mcscfnum
            do istate=1,nstate
 
@@ -808,7 +825,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
               ioffset=(istate-1+alreadystate)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + tau*numr + ir
 
-              call projeflux_doproj(tavec(:,istate,ir),abio(:,imc),mobio(:,:),ioffset)
+              call projeflux_doproj(tavec(:,istate,ir),abio(:,imc,ir),mobio(:,:,ir),ioffset)
 
            enddo
         enddo

@@ -781,7 +781,7 @@ subroutine direct_sparseconfigmult_byproc(firstproc,lastproc,www,invector,outvec
      outvector(:,:)=outvector(:,:)-tempvector(:,:)
 
   endif
-  if (pulseflag.eq.1.and.tdflag.eq.1.or.onlytdflag.ne.0) then
+  if (pulseflag.eq.1.and.tdflag.ne.0.or.onlytdflag.ne.0) then
      if (velflag.eq.0) then
         rvector(:)=bondpoints(botr:topr)
      else
@@ -934,7 +934,7 @@ subroutine sparsesparsemult_byproc(firstproc,lastproc,www,invector,outvector,spa
      outvector(:,:)=outvector(:,:)-tempvector(:,:)
 
   endif
-  if (pulseflag.eq.1.and.tdflag.eq.1.or.onlytdflag.ne.0) then
+  if (pulseflag.eq.1.and.tdflag.ne.0.or.onlytdflag.ne.0) then
      if (velflag.eq.0) then
         rvector(:)=bondpoints(botr:topr)
      else

@@ -76,7 +76,7 @@ subroutine drivingtrans(thistime)
      call mympireduce(drivingoverlap,mcscfnum)
   endif
 
-  if (tdflag.ne.1) then
+  if (tdflag.eq.0) then
      deallocate(currentorbs,tempdrivingorbs,tempdrivingavector)
      return
   endif

@@ -535,7 +535,7 @@ subroutine getparams()
 
 
   needpulse=0
-  if (tdflag.eq.1) then
+  if (tdflag.ne.0) then
      needpulse=1
   else 
      if (noftflag.eq.0) then

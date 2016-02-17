@@ -531,7 +531,7 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
      enddo
   endif
 
-  if ((pulseflag.eq.1.and.tdflag.eq.1)) then
+  if ((pulseflag.eq.1.and.tdflag.ne.0)) then
      tempmatel(:,:)= matrix_ptr%xpulsematelxx*facs(1)+ &
           matrix_ptr%xpulsematelyy*facs(2)+ &
           matrix_ptr%xpulsematelzz*facs(3)
@@ -635,7 +635,7 @@ subroutine assemble_sparsemats(www,matrix_ptr, sparse_ptr,boflag, nucflag, pulse
      endif
   endif
 
-  if ((pulseflag.eq.1.and.tdflag.eq.1)) then
+  if ((pulseflag.eq.1.and.tdflag.ne.0)) then
      call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xpulsematelxx,sparse_ptr%xpulsesparsemattrxx)
      call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xpulsematelyy,sparse_ptr%xpulsesparsemattryy)
      call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xpulsematelzz,sparse_ptr%xpulsesparsemattrzz)

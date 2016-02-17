@@ -267,7 +267,7 @@ subroutine actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, ou
   
   numspf=highspf-lowspf+1
 
-  if (tdflag.eq.1) then
+  if (tdflag.ne.0) then
      call vectdpot(thistime,velflag,pots,-1)
      myxtdpot=pots(1);  myytdpot=pots(2);  myztdpot=pots(3);
   endif
@@ -283,8 +283,8 @@ subroutine actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, ou
 !!   order and 2) have to reverse the call in BLAS
 
      if (numr.eq.1) then
-        call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, yyy%denmat(:,lowspf:highspf,ireduced),&
-             nspf, DATAZERO, spfinvrsq(:,lowspf:highspf), spfsize)
+        call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
+             yyy%denmat(:,lowspf:highspf,ireduced),nspf, DATAZERO, spfinvrsq(:,lowspf:highspf), spfsize)
 
         spfinvr(:,lowspf:highspf)=spfinvrsq(:,lowspf:highspf)/bondpoints(1)
 
@@ -292,14 +292,19 @@ subroutine actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, ou
            spfr(:,lowspf:highspf)=spfinvrsq(:,lowspf:highspf)*bondpoints(1)
         endif
 
+        if (nonuc_checkflag.eq.0) then
+           spfproderiv(:,lowspf:highspf)=spfinvrsq(:,lowspf:highspf)*bondpoints(1)
+        endif
+
         spfinvrsq(:,lowspf:highspf)=spfinvrsq(:,lowspf:highspf)/bondpoints(1)**2
+
      else
         call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, yyy%reducedinvrsq(:,lowspf:highspf,ireduced),&
              nspf, DATAZERO, spfinvrsq(:,lowspf:highspf), spfsize)
         call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, yyy%reducedinvr(:,lowspf:highspf,ireduced),&
              nspf, DATAZERO, spfinvr(:,lowspf:highspf), spfsize)
         
-        if (tdflag.eq.1) then
+        if (tdflag.ne.0) then
            call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, yyy%reducedr(:,lowspf:highspf,ireduced),&
                 nspf, DATAZERO, spfr(:,lowspf:highspf), spfsize)
         endif
@@ -329,7 +334,7 @@ subroutine actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, ou
      endif
      call system_clock(jtime);     times(3)=times(3)+jtime-itime;         call system_clock(itime)
 
-     if (tdflag.eq.1) then
+     if (tdflag.ne.0) then
         select case (velflag)
         case (0)
            call lenmultiply(numspf,spfr(:,lowspf:highspf),workmult(:,lowspf:highspf), myxtdpot,myytdpot,myztdpot)
@@ -478,7 +483,7 @@ subroutine getconmat(thistime,ireduced,conmat)
   endif
 
   conmat(:,:) =   yyy%cptr(ireduced)%xconmatel(:,:) * timefac
-  if (tdflag.eq.1) then
+  if (tdflag.ne.0) then
      call vectdpot(thistime,velflag,pots,-1)
      conmat(:,:) =   conmat(:,:) + &
           yyy%cptr(ireduced)%xconmatelxx(:,:) *pots(1) * timefac + &
@@ -638,7 +643,7 @@ subroutine wmult00(lowspf,highspf,inspfs, outspfs, ireduced)
      call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, yyy%reducedinvr(:,lowspf:highspf,ireduced),&
           nspf, DATAZERO, spfinvr(:,lowspf:highspf), spfsize)
 
-     if ((nonuc_checkflag/=1)) then
+     if ((nonuc_checkflag.eq.0)) then
         call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, yyy%reducedproderiv(:,lowspf:highspf,ireduced),&
              nspf, DATAZERO, spfproderiv(:,lowspf:highspf), spfsize)
      endif
@@ -650,7 +655,7 @@ subroutine wmult00(lowspf,highspf,inspfs, outspfs, ireduced)
      call mult_pot(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
      outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf)+workmult(:,lowspf:highspf)
 
-     if ((nonuc_checkflag/=1)) then
+     if ((nonuc_checkflag.eq.0)) then
         call op_yderiv(numspf,spfproderiv(:,lowspf:highspf),workmult(:,lowspf:highspf))
         outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) + workmult(:,lowspf:highspf)
      endif

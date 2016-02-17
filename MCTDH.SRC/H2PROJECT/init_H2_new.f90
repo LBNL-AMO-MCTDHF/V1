@@ -38,7 +38,11 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   call PSC()
 
   bondpoints(:)=rpoints(2:rgridpoints-1)
-  bondweights(:)=rweights(2:rgridpoints-1)
+  if (bornopflag.eq.0) then
+     bondweights(:)=rweights(2:rgridpoints-1)
+  else
+     bondweights(:)=1d0
+  endif
 
   do i=1,lbig+1
      elecradii(:,i,:)=etapoints(i)**2
