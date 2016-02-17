@@ -454,7 +454,7 @@ contains
     
 !! make the  bi-orthonormal orbitals 
     smosave(:,:)=inbiovar%smo(:,:)
-    call invmatsmooth(inbiovar%smo,inbiovar%wwbio%nspf,inbiovar%wwbio%nspf,invtol);   data1=1d0;  data0=0d0   
+    call invmatsmooth(inbiovar%smo,inbiovar%wwbio%nspf,inbiovar%wwbio%nspf,lntol);   data1=1d0;  data0=0d0   
 
     call MYGEMM('N','N',spfsize,inbiovar%wwbio%nspf,inbiovar%wwbio%nspf,data1,origmo,spfsize,inbiovar%smo,inbiovar%wwbio%nspf,data0,mobio,spfsize)
     

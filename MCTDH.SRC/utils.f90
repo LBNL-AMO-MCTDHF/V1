@@ -509,6 +509,8 @@ subroutine bothlnmat(A,N, which)
      if (eig(k).ne.0d0) then
         if (abs(eig(k)).lt.lntol) then
            eig(k)= which * djhlog(lntol*eig(k)/abs(eig(k)))
+        elseif (abs(eig(k)).gt.1d0/lntol) then
+           eig(k)= which * djhlog(eig(k)/abs(eig(k))/lntol)
         else
            eig(k) = which * djhlog( eig(k) )
         endif
