@@ -509,25 +509,15 @@ subroutine fluxgtau0(alg,www,bioww)
      close(171)
   endif
 
-  call mpibarrier()
   OFLWR "   ....Go ft...."; CFL
-  call mpibarrier()
-
   do imc=1,mcscfnum
      call zfftf_wrap_diff(2*curtime+1,ftgtau(-curtime:curtime,imc),ftdiff)
   enddo
-
-  call mpibarrier()
   OFLWR "   ....Go ft pulse...."; CFL
-  call mpibarrier()
-
   do i=1,3
      call zfftf_wrap(2*curtime+1,pulseft(-curtime:curtime,i))
   enddo
-
-  call mpibarrier()
   OFLWR "   ....Done with ft...."; CFL
-  call mpibarrier()
 
   ftgtau(:,:)=ftgtau(:,:)*par_timestep*FluxInterval*FluxSkipMult
   pulseft(:,:)=pulseft(:,:)*par_timestep*FluxInterval*FluxSkipMult
@@ -565,7 +555,11 @@ subroutine fluxgtau0(alg,www,bioww)
      close(1004)
   endif
 
+
   call mpibarrier()
+  OFLWR "  finished electronflux, stopping."; CFL
+  call mpibarrier()
+  call mpistop()
 
   deallocate(ftgtau,pulseft,pulseftsq)
   deallocate(bramo,ketmo,braavec,ketavec)

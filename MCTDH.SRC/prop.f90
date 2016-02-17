@@ -20,6 +20,7 @@ subroutine prop_loop( starttime)
   real*8 :: thistime, starttime, thattime,error=1d10,rsum,avecerror=1d10
   DATATYPE :: dot,  sum2,sum,hermdot,drivingoverlap(mcscfnum)
   DATATYPE, allocatable :: avectorp(:),outspfs(:)
+  DATATYPE :: savenorms(numr,mcscfnum)
 
   thistime=starttime;  flag=0
 
@@ -30,26 +31,32 @@ subroutine prop_loop( starttime)
   call system_clock(itime)
 
   do imc=1,mcscfnum
-     call basis_project(www,numr,yyy%cmfpsivec(astart(imc),0))
+     call basis_project(www,numr,yyy%cmfpsivec(astart(imc):aend(imc),0))
   enddo
 
   call get_stuff(0.0d0)
 
+  savenorms(:,:)=1d0
+
   do imc=1,mcscfnum
 
-     call sparseconfigmult(www,yyy%cmfpsivec(astart(imc),0),avectorp(:),yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0,imc)
+     call sparseconfigmult(www,yyy%cmfpsivec(astart(imc):aend(imc),0),avectorp(:),yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0,imc)
 
-     sum = dot(     yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),tot_adim)
+     sum = dot(     yyy%cmfpsivec(astart(imc):aend(imc),0),yyy%cmfpsivec(astart(imc):aend(imc),0),tot_adim)
      if (par_consplit.ne.0) then
         call mympireduceone(sum)
      endif
      OFLWR "IN PROP: VECTOR NORM ",sqrt(sum);CFL
 
-     sum2=dot(     yyy%cmfpsivec(astart(imc),0),avectorp(:),tot_adim)
+     sum2=dot(     yyy%cmfpsivec(astart(imc):aend(imc),0),avectorp(:),tot_adim)
      if (par_consplit.ne.0) then
         call mympireduceone(sum2)
      endif
 
+     if (normboflag.ne.0) then
+        OFLWR "    ... will enforce BO norms due to normboflag"; CFL
+        call get_bonorms(1,yyy%cmfpsivec(astart(imc):aend(imc),0),savenorms(:,imc))
+     endif
      startenergy(imc)=sum2/sum
      OFLWR "         ENERGY ", startenergy(imc); CFL
 
@@ -124,8 +131,13 @@ subroutine prop_loop( starttime)
      endif
 
      do imc=1,mcscfnum
-        call basis_project(www,numr,yyy%cmfpsivec(astart(imc),0))
+        call basis_project(www,numr,yyy%cmfpsivec(astart(imc):aend(imc),0))
      enddo
+
+     if (normboflag.ne.0) then
+!!        OFLWR "    ... enforcing BO norms due to normboflag"; CFL
+        call enforce_bonorms(mcscfnum,yyy%cmfpsivec(astart(1):aend(mcscfnum),0),savenorms(:,:))
+     endif
 
 !! prevent drift
      if (parorbsplit.ne.3) then
@@ -139,13 +151,13 @@ subroutine prop_loop( starttime)
 
      do imc=1,mcscfnum
 
-        call sparseconfigmult(www,yyy%cmfpsivec(astart(imc),0),avectorp(:),yyy%cptr(0),yyy%sptr(0),1,1,timedepexpect,0,thattime,imc)
+        call sparseconfigmult(www,yyy%cmfpsivec(astart(imc):aend(imc),0),avectorp(:),yyy%cptr(0),yyy%sptr(0),1,1,timedepexpect,0,thattime,imc)
 
 
         call basis_project(www,numr,avectorp(:))
 
-        sum=dot(yyy%cmfpsivec(astart(imc),0),avectorp(:),tot_adim)
-        sum2=dot(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),tot_adim)
+        sum=dot(yyy%cmfpsivec(astart(imc):aend(imc),0),avectorp(:),tot_adim)
+        sum2=dot(yyy%cmfpsivec(astart(imc):aend(imc),0),yyy%cmfpsivec(astart(imc):aend(imc),0),tot_adim)
         if (par_consplit.ne.0) then
            call mympireduceone(sum); call mympireduceone(sum2)
         endif
@@ -153,12 +165,6 @@ subroutine prop_loop( starttime)
         thisenergy(imc) = sum/sum2   !! ok implicit pmctdh
         norms(imc)=sqrt(sum2)   !! ok implicit p/chmctdh
         
-!        if (threshflag.eq.1) then
-!           yyy%cmfpsivec(astart(imc):aend(imc),0)=yyy%cmfpsivec(astart(imc):aend(imc),0)/norms(imc)
-!           norms(imc)=1.d0
-!        endif
-
-
         OFL
 #ifdef ECSFLAG     
         write(mpifileptr,'(A3,F16.5, 2(A10, 2E18.10))') "T= ",thattime, "Energy: ", thisenergy(imc), "Norm: ", norms(imc)
@@ -271,8 +277,8 @@ subroutine prop_loop( starttime)
 
   enddo
   do imc=1,mcscfnum
-     norms(imc)=dot(yyy%cmfpsivec(astart(imc),0),& !! ok implicit
-          yyy%cmfpsivec(astart(imc),0),tot_adim)   !! ok implicit
+     norms(imc)=dot(yyy%cmfpsivec(astart(imc):aend(imc),0),& !! ok implicit
+          yyy%cmfpsivec(astart(imc):aend(imc),0),tot_adim)   !! ok implicit
   enddo
   if (par_consplit.ne.0) then
 #ifndef REALGO
@@ -309,6 +315,41 @@ subroutine prop_loop( starttime)
 
   deallocate(avectorp,outspfs)
 
+contains
+  subroutine get_bonorms(howmany,vectors,outnorms)
+    implicit none
+    integer,intent(in) :: howmany
+    DATATYPE,intent(in) :: vectors(numr,first_config:last_config,howmany)
+    DATATYPE,intent(out) :: outnorms(numr,howmany)
+    DATATYPE :: tempnorms(numr,howmany),tempvec(first_config:last_config)   !! AUTOMATIC
+    DATATYPE :: dot
+    integer :: kk,mm
+    do mm=1,howmany
+       do kk=1,numr
+          tempvec(:)=vectors(kk,:,mm)
+          tempnorms(kk,mm)=dot(tempvec,tempvec,local_nconfig)
+       enddo
+    enddo
+    if (par_consplit.ne.0) then
+       call mympireduce(tempnorms,howmany*numr)
+    endif
+    outnorms(:,:)=sqrt(tempnorms)
+  end subroutine get_bonorms
+  subroutine enforce_bonorms(howmany,vectors,innorms)
+    implicit none
+    integer,intent(in) :: howmany
+    DATATYPE,intent(inout) :: vectors(numr,first_config:last_config,howmany)
+    DATATYPE,intent(in) :: innorms(numr,howmany)
+    DATATYPE :: tempnorms(numr,howmany),tempvec(first_config:last_config)   !! AUTOMATIC
+    integer :: kk,mm
+    call get_bonorms(howmany,vectors,tempnorms)
+    do mm=1,howmany
+       do kk=1,numr
+          tempvec(:)=vectors(kk,:,mm)
+          vectors(kk,:,mm)=tempvec(:)/tempnorms(kk,mm)*innorms(kk,mm)
+       enddo
+    enddo
+  end subroutine enforce_bonorms
 end subroutine prop_loop
 
 
@@ -571,9 +612,10 @@ subroutine cmf_prop_wfn(tin, tout)
      if (avector_flag.ne.0) then
         call system_clock(itime)
         if ((improvedquadflag.eq.1.or.improvedquadflag.eq.3).and.tin.ge.aquadstarttime) then
-           call quadavector(yyy%cmfpsivec(astart(1),0),qq)
+           call quadavector(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),qq)
         else
-           call myconfigeig(www,dwwptr,yyy%cptr(0),yyy%cmfpsivec(astart(1),0),myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
+           call myconfigeig(www,dwwptr,yyy%cptr(0),yyy%cmfpsivec(astart(1):aend(mcscfnum),0),myvalues,mcscfnum,&
+                eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
         endif
         call system_clock(jtime);     times(5)=times(5)+jtime-itime
      endif
@@ -612,7 +654,7 @@ subroutine cmf_prop_wfn(tin, tout)
         if(avector_flag.ne.0) then
            call system_clock(itime)
            do imc=1,mcscfnum
-              call cmf_prop_avector(yyy%cmfpsivec(astart(imc),1), yyy%cmfpsivec(astart(imc),0), linearflag,tin,tout,imc)
+              call cmf_prop_avector(yyy%cmfpsivec(astart(imc):aend(imc),1), yyy%cmfpsivec(astart(imc):aend(imc),0), linearflag,tin,tout,imc)
            enddo
            call system_clock(jtime);     times(5)=times(5)+jtime-itime
         endif

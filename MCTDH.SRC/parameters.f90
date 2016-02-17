@@ -221,6 +221,7 @@ real*8 :: maxquadnorm=1d10                       !! brakes to use if improvedqua
 real*8 :: quadtol=1d-1           !!              !! Threshold for solution of Newton solve iterations orbitals.
 integer :: quadprecon=1          !!              !! Precondition newton iterations for A-vector?
 integer :: quadorthflag=0        !!              !! If eigenfunctions are becoming linearly dependent try this
+integer :: normboflag=0          !!              !! Enforce norm at each r value
 !!EE
 !!{\large \quad ORBITALS (SINGLE PARTICLE FUNCTIONS, SPFS)}
 !!BB
