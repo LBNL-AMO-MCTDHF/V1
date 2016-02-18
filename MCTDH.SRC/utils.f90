@@ -436,9 +436,19 @@ subroutine lnmat(A,N)
 end subroutine lnmat
 
 function djhlog(incomplex)
+  use bio_parameters
   implicit none
   complex*16 :: djhlog,incomplex
-  djhlog = log((0d0,1d0)*incomplex)-log((0d0,1d0))
+  select case(logbranch)
+  case(0)
+     djhlog = log(incomplex)
+  case(1)
+     djhlog = log((0d0,1d0)*incomplex)-log((0d0,1d0))
+  case (2)
+     djhlog = log((-0.8d0,-0.6d0)*incomplex)-log((-0.8d0,-0.6d0))
+  case default
+     djhlog = log((-0.8d0,0.6d0)*incomplex)-log((-0.8d0,0.6d0))
+  end select
 end function djhlog
 
 

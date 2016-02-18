@@ -129,6 +129,7 @@ integer ::      maxbiodim=100, &
 real*8 ::     biotol=1.d-6
 integer :: biocomplex=0          !! 1=old way complex zg/hpiv  0=always real
 integer :: auto_biortho=1        !! do we want to use biorthonormalization or permutation overlaps? 0 perm overlaps, 1 biortho
+integer :: logbranch=1           !! branch of logarithm 3 options 0,1,2
 end module bio_parameters
 module spfsize_parameters
 integer :: spfsize,spfsmallsize                  !!internal
