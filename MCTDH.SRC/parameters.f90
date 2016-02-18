@@ -117,8 +117,8 @@ integer :: timingout=499         !!              !! various routines output to f
 character(len=200):: timingdir="timing"                       !!
 end module timing_parameters
 module tol_parameters
-real*8 :: lntol=1d-12
-real*8 :: invtol=1d-12
+real*8 :: lntol=1d-8
+real*8 :: invtol=1d-8
 end module tol_parameters
 module bio_parameters
 !!EE
