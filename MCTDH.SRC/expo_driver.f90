@@ -302,7 +302,7 @@ subroutine jacoperate0(dentimeflag,conflag,inspfs,outspfs)
   integer :: lowspf,highspf,itime,jtime,atime,btime
 
 !! zeroing this now, timing not cumulative
-  times(:)=0
+!!  times(:)=0
 
   call system_clock(atime)
 

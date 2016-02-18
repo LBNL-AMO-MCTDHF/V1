@@ -37,7 +37,7 @@ subroutine all_derivs(thistime,xpsi, xpsip)
   integer, save :: times(20)=0, numcalledhere=0,imc
 
   numcalledhere=numcalledhere+1
-  times(:)=0       !! zeroing this now, timing each step.
+!!  times(:)=0       !! zeroing this now, timing each step.
 
   yyy%cmfpsivec(:,0)=xpsi(:)
   xpsip(:)=0d0
@@ -134,7 +134,7 @@ subroutine spf_linear_derivs0(inlinearflag,dentimeflag,thistime,spfsin,spfsout, 
   real*8 :: rsum
   integer ::  jjj, ibot,lowspf,highspf,numspf,itime,jtime
 
-  times(:)=0       !! zeroing this now here in spf_linear_derivs0.
+!!  times(:)=0       !! zeroing this now here in spf_linear_derivs0.
 
   if (inlinearflag.eq.1) then
      ibot=0;     facs(0)=(thistime-firsttime)/(lasttime-firsttime);     facs(1)=1d0-facs(0)
