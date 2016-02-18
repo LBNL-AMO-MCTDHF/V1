@@ -160,29 +160,26 @@ subroutine get_stuff0(thistime,times)
   use parameters
   implicit none
   real*8,intent(in) :: thistime
-  integer :: times(20),itime,jtime
+  integer,intent(inout) :: times(20)
+  integer :: itime,jtime
 
   call system_clock(itime)
 
   call get_allden()
-  call system_clock(jtime);  times(2)=times(2)+jtime-itime;  call system_clock(itime)
+  call system_clock(jtime);  times(2)=times(2)+jtime-itime;    itime=jtime
 
   call all_matel()
-
-  call system_clock(jtime);  times(1)=times(1)+jtime-itime;
+  call system_clock(jtime);  times(1)=times(1)+jtime-itime;    itime=jtime
 
   if (constraintflag.ne.0) then
-     call system_clock(itime)
      call get_constraint(thistime)
-     call system_clock(jtime); times(7)=times(7)+jtime-itime;     
   endif
-  if (drivingflag.ne.0) then
-     call system_clock(itime)
-     call drivingtrans(thistime)
-     call system_clock(jtime); times(8)=times(8)+jtime-itime;     
-  endif
+  call system_clock(jtime); times(7)=times(7)+jtime-itime;     itime=jtime
 
-  call system_clock(itime)
+  if (drivingflag.ne.0) then
+     call drivingtrans(thistime)
+  endif
+  call system_clock(jtime); times(8)=times(8)+jtime-itime;     itime=jtime
 
   call get_reducedpot()
   if (numfrozen.gt.0) then

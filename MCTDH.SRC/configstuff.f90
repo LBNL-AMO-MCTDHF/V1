@@ -152,19 +152,21 @@ end subroutine myconfigeig
 
 !! PROPAGATE A-VECTOR .  CALLED WITHIN LITTLESTEPS LOOP
 
-subroutine myconfigprop(www,dfww,avectorin,avectorout,time,imc)
+subroutine myconfigprop(www,dfww,avectorin,avectorout,time,imc,numiters)
   use r_parameters
   use sparse_parameters
   use walkmod 
   implicit none
   type(walktype),intent(in) :: www,dfww
   integer,intent(in) :: imc
+  integer,intent(out) :: numiters
   real*8,intent(in) :: time
   DATATYPE,intent(in) :: avectorin(www%totadim)
   DATATYPE,intent(out) :: avectorout(www%totadim)
 
+  numiters=0
   if (sparseconfigflag/=0) then
-     call exposparseprop(www,avectorin,avectorout,time,imc)
+     call exposparseprop(www,avectorin,avectorout,time,imc,numiters)
   else
      call nonsparseprop(www,dfww,avectorin,avectorout,time,imc)
   endif

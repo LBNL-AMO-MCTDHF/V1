@@ -25,6 +25,7 @@ subroutine prop_loop( starttime)
   thistime=starttime;  flag=0
 
   allocate(avectorp(tot_adim),outspfs(totspfdim))
+  avectorp=0; outspfs=0
 
   lastenergy(:)=1.d+3;  lastenergyavg=1.d+3
 
@@ -76,16 +77,22 @@ subroutine prop_loop( starttime)
   if ((myrank.eq.1).and.(notiming.le.1)) then
      call system("echo -n > "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
      open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="unknown",iostat=myiostat)
-     call checkiostat(myiostat," opening abstiming.dat")
-     write(853,'(T16,100A15)')  "Prop ", "Act ", "After ", "Init", "Save", "MPI", "Non MPI"
+     call checkiostat(myiostat," opening Main.time.dat")
+     write(853,'(T16,100A15)')  &
+          "Prop ", &     !! (1)
+          "Act ", &      !! (2)
+          "After ", &    !! (3)
+          "Init", &      !! (4)
+          "Save",&       !! (5)
+          "MPI",&        !! (6)
+          "Non MPI"      !! (7)
      close(853)
   endif
 
-  call system_clock(jtime)  ;  times(5)=times(5)+jtime-itime
-
+  call system_clock(jtime)  ;  times(4)=times(4)+jtime-itime
 
   jj=0
-  do while (flag==0)
+  do while (flag==0)      !! BEGIN MAIN LOOP
      jj=jj+1
 
      call system_clock(itime)
@@ -103,18 +110,18 @@ subroutine prop_loop( starttime)
      endif
      if (iii==0) then
         flag=1
-        call openfile();        write(mpifileptr, *) "Stopping due to stopfile!";CFLST
+        OFLWR "Stopping due to stopfile!"; CFLST
      endif
 
      thattime=thistime+par_timestep
 
-     call system_clock(jtime)  ;  times(6)=times(6)+jtime-itime; itime=jtime
+     call system_clock(jtime)  ;  times(5)=times(5)+jtime-itime;    itime=jtime
 
                                  !! ************************************************************* !!
      call actionsub( thistime)   !! ACTIONS.  IF ACTION CHANGES PSI THEN CALL GET_STUFF AFTER ACTION.
                                  !! ************************************************************* !!
-     call system_clock(jtime)  
-     times(3)=times(3)+jtime-itime; itime=jtime
+
+     call system_clock(jtime)  ;     times(2)=times(2)+jtime-itime;     itime=jtime
 
 !!! (Not used for exponential propagation default - abserr thus myrelerr not used then)
 
@@ -139,6 +146,8 @@ subroutine prop_loop( starttime)
         call enforce_bonorms(mcscfnum,yyy%cmfpsivec(astart(1):aend(mcscfnum),0),savenorms(:,:))
      endif
 
+     call system_clock(jtime)  ;  times(1)=times(1)+jtime-itime;    itime=jtime
+
 !! prevent drift
      if (parorbsplit.ne.3) then
         call mympibcast(yyy%cmfpsivec(spfstart:spfend,0),1,totspfdim)
@@ -146,8 +155,6 @@ subroutine prop_loop( starttime)
      if (par_consplit.eq.0) then
         call mympibcast(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),1,tot_adim*mcscfnum)
      endif
-
-     call system_clock(jtime)  ;     times(2)=times(2)+jtime-itime; itime=jtime
 
      do imc=1,mcscfnum
 
@@ -216,9 +223,10 @@ subroutine prop_loop( starttime)
      if ((myrank.eq.1).and.(notiming.le.1)) then
         call system("date >> "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="old", position="append",iostat=myiostat)
-        call checkiostat(myiostat," opening abstiming.dat")
-        write(853,'(F13.3,T16,100I15)',iostat=myiostat)  thistime, times(2:6)/1000, mpitime/1000, nonmpitime/1000;     close(853)
-        call checkiostat(myiostat," writing abstiming.dat")
+        call checkiostat(myiostat," opening Main.time.dat")
+        write(853,'(F13.3,T16,100I15)',iostat=myiostat)  thistime, times(1:5)/1000, mpitime/1000, nonmpitime/1000
+        call checkiostat(myiostat," writing Main.time.dat")
+        close(853)
      endif
 
      if (debugflag.eq.42) then
@@ -273,9 +281,10 @@ subroutine prop_loop( starttime)
 
      endif
 
-     call system_clock(jtime)  ;        times(4)=times(4)+jtime-itime
+     call system_clock(jtime)  ;        times(3)=times(3)+jtime-itime
 
-  enddo
+  enddo    !! END MAIN LOOP
+
   do imc=1,mcscfnum
      norms(imc)=dot(yyy%cmfpsivec(astart(imc):aend(imc),0),& !! ok implicit
           yyy%cmfpsivec(astart(imc):aend(imc),0),tot_adim)   !! ok implicit
@@ -368,6 +377,8 @@ subroutine prop_wfn(tin, tout)
   integer ::  iflag,zzz, nullint, idid, itime, jtime, time=0,  time2=0 , numiters=0,rkworkdim,rkiworkdim
   real*8, allocatable :: rkwork(:)
   integer, allocatable :: rkiwork(:)
+
+  call system_clock(itime)
 
   if (numfrozen.gt.0) then
      print *, "program frozen in all_derivs for VMF.";     stop
@@ -523,14 +534,16 @@ subroutine cmf_prop_wfn(tin, tout)
   use mpimod
   implicit none
   real*8,intent(in) :: tout, tin
-  integer ::  itime,jtime,times(0:20)=0,numiters=0,linearflag,imc,printflag=1,getlen,qq,myiostat
-  real*8 :: time1, time2
+  integer ::  itime,jtime
+  integer,save :: times(0:20)=0
   integer, save :: xxcount=0 
+  integer :: numaiters,numiters,linearflag,imc,printflag=1,getlen,qq,myiostat
+  real*8 :: time1, time2
   DATATYPE :: myvalues(mcscfnum)
 
   firsttime=tin;   lasttime=tout
 
-  numiters=0
+  numiters=0;   numaiters=0
 
   xxcount=xxcount+1
 
@@ -585,9 +598,8 @@ subroutine cmf_prop_wfn(tin, tout)
   endif
 
   if (improvedrelaxflag.ne.0) then
-
+     call system_clock(itime)
      if (spf_flag.ne.0) then
-        call system_clock(itime)
         if (improvedquadflag.gt.1.and.tin.ge.quadstarttime) then
            call quadspfs(yyy%cmfpsivec(spfstart,0), qq)
            numiters=numiters+qq
@@ -596,45 +608,41 @@ subroutine cmf_prop_wfn(tin, tout)
            call propspfs(yyy%cmfpsivec(spfstart,1), yyy%cmfpsivec(spfstart,0), time1,time2,0,qq)
            numiters=numiters+qq
         endif
-        call system_clock(jtime);     times(4)=times(4)+jtime-itime;     
      endif
+     call system_clock(jtime);     times(4)=times(4)+jtime-itime;     itime=jtime
 
      if (improvednatflag.ne.0) then
-        call system_clock(itime)
         call replace_withnat(printflag)
-        call system_clock(jtime);        times(7)=times(7)+jtime-itime;
      endif
+     call system_clock(jtime);     times(7)=times(7)+jtime-itime;     itime=jtime
 
-     call system_clock(itime)
      call all_matel()
-     call system_clock(jtime);     times(1)=times(1)+jtime-itime;    
+     call system_clock(jtime);     times(1)=times(1)+jtime-itime;    itime=jtime
 
      if (avector_flag.ne.0) then
-        call system_clock(itime)
         if ((improvedquadflag.eq.1.or.improvedquadflag.eq.3).and.tin.ge.aquadstarttime) then
            call quadavector(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),qq)
+           numaiters=numaiters+qq
         else
-           call myconfigeig(www,dwwptr,yyy%cptr(0),yyy%cmfpsivec(astart(1):aend(mcscfnum),0),myvalues,mcscfnum,&
-                eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
+           call myconfigeig(www,dwwptr,yyy%cptr(0),yyy%cmfpsivec(astart(1):aend(mcscfnum),0),&
+                myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
         endif
-        call system_clock(jtime);     times(5)=times(5)+jtime-itime
      endif
+     call system_clock(jtime);     times(5)=times(5)+jtime-itime;    itime=jtime
 
-     call system_clock(itime)
      call get_allden()
-     call system_clock(jtime);        times(2)=times(2)+jtime-itime;             call system_clock(itime)
+     call system_clock(jtime);        times(2)=times(2)+jtime-itime;     itime=jtime
      
      call get_reducedpot()
      if (numfrozen.gt.0) then
         call get_frexchange()
      endif
-     call system_clock(jtime);        times(3)=times(3)+jtime-itime;           
+     call system_clock(jtime);        times(3)=times(3)+jtime-itime;       itime=jtime
      
      if (constraintflag.ne.0) then    !! probably need denmat right
-        call system_clock(itime)
         call get_constraint(tout);      
-        call system_clock(jtime);        times(7)=times(7)+jtime-itime
      endif
+     call system_clock(jtime);        times(7)=times(7)+jtime-itime;    itime=jtime
 
   else  !! IMPROVEDRELAX
 
@@ -643,21 +651,21 @@ subroutine cmf_prop_wfn(tin, tout)
 !! ******* LMF CORRECTOR ***** !!
 
      do linearflag=0,1
-
+        call system_clock(itime)
         if (spf_flag.ne.0) then
-           call system_clock(itime)
            time1=tin;        time2=tout
            call propspfs(yyy%cmfpsivec(spfstart,1),yyy%cmfpsivec(spfstart,0), time1,time2,linearflag,qq)
            numiters=numiters+qq
-           call system_clock(jtime);     times(4)=times(4)+jtime-itime
         endif
+        call system_clock(jtime);     times(4)=times(4)+jtime-itime;   itime=jtime
+
         if(avector_flag.ne.0) then
-           call system_clock(itime)
            do imc=1,mcscfnum
-              call cmf_prop_avector(yyy%cmfpsivec(astart(imc):aend(imc),1), yyy%cmfpsivec(astart(imc):aend(imc),0), linearflag,tin,tout,imc)
+              call cmf_prop_avector(yyy%cmfpsivec(astart(imc):aend(imc),1), yyy%cmfpsivec(astart(imc):aend(imc),0), linearflag,tin,tout,imc,qq)
+              numaiters=numaiters+qq
            enddo
-           call system_clock(jtime);     times(5)=times(5)+jtime-itime
         endif
+        call system_clock(jtime);     times(5)=times(5)+jtime-itime
 
         call get_stuff0(tout,times)
 
@@ -679,13 +687,24 @@ subroutine cmf_prop_wfn(tin, tout)
      if (xxcount==1) then
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/cmf_prop.time.dat", status="unknown",iostat=myiostat)
         call checkiostat(myiostat," opening cmf_prop_time.dat")
-        write(853,'(A15,100A11)',iostat=myiostat)  "Time",  "matel", "denmat", "reduced", "spfprop", "aprop",  "advance", "constrain", "driving", "#DERIVS"
+        write(853,'(A15,100A11)',iostat=myiostat) &
+             "Time", &      !! 
+             "matel", &     !! (1)
+             "denmat", &    !! (2)
+             "reduced",&    !! (3)
+             "spfprop",&    !! (4)
+             "aprop", &     !! (5)
+             "advance", &   !! (6)
+             "constrain", & !! (7)
+             "driving",&    !! (8)
+             "#SDERIVS",&   !!
+             "#ADERIVS"     !!
         call checkiostat(myiostat," writing cmf_prop_time.dat")
         close(853)
      endif
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/cmf_prop.time.dat", status="unknown", position="append",iostat=myiostat)
         call checkiostat(myiostat," opening cmf_prop_time.dat")
-        write(853,'(A3,F12.3,T16, 100I11)',iostat=myiostat)  "T=", tout, times(1:8)/1000, numiters
+        write(853,'(A3,F12.3,T16, 100I11)',iostat=myiostat)  "T=", tout, times(1:8)/1000, numiters,numaiters
         call checkiostat(myiostat," writing cmf_prop_time.dat")
         close(853)
   endif
@@ -697,16 +716,17 @@ end subroutine cmf_prop_wfn
 
 !! now just cmf and lmf.
 
-subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc)
+subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc,numiters)
   use parameters
   implicit none
   DATATYPE,intent(in) :: avectorin(tot_adim)
   DATATYPE,intent(out) :: avectorout(tot_adim)
   integer,intent(in) :: linearflag,imc
+  integer,intent(out) :: numiters
   real*8,intent(in) :: time1,time2
   DATATYPE :: dot,csum
   DATATYPE,allocatable :: tempvector(:)
-  integer :: k
+  integer :: k,qq
   real*8 :: timea,timeb
 
   if (avector_flag.eq.0) then
@@ -717,10 +737,12 @@ subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc)
   allocate(tempvector(tot_adim))
 
   tempvector(:)=avectorin(:)
+  numiters=0
   do k=1,littlesteps
      timea=time1+(time2-time1)*(k-1)/littlesteps;     timeb=time1+(time2-time1)*k/littlesteps
-     call cmf_prop_avector0(tempvector,avectorout,linearflag,timea,timeb,imc)
+     call cmf_prop_avector0(tempvector,avectorout,linearflag,timea,timeb,imc,qq)
      tempvector(:)=avectorout(:)
+     numiters=numiters+qq
   enddo
 
   if (threshflag.ne.0) then
@@ -735,7 +757,7 @@ subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc)
 
 end subroutine cmf_prop_avector
 
-subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
+subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,numiters)
   use linearmod
   use parameters
   use mpimod
@@ -747,6 +769,7 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
   DATATYPE,intent(in) :: avectorin(tot_adim)
   DATATYPE,intent(out) :: avectorout(tot_adim)
   integer,intent(in) :: imc,linearflag
+  integer,intent(out) :: numiters
   real*8, intent(in) :: time1,time2
   DATATYPE :: sum1,sum0,pots(3)=0d0
   integer :: itime,jtime,getlen,ii,iflag,myiostat
@@ -836,7 +859,7 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc)
 
   call system_clock(jtime); times(1)=times(1)+jtime-itime; itime=jtime
 
-  call myconfigprop(www,dwwptr,avectorin,avectorout,midtime,imc)
+  call myconfigprop(www,dwwptr,avectorin,avectorout,midtime,imc,numiters)
 
   call system_clock(jtime); times(2)=times(2)+jtime-itime;
 

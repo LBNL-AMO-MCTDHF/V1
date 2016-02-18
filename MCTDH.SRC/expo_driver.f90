@@ -627,7 +627,7 @@ subroutine avectortime(which)
 end subroutine
 
 
-subroutine exposparseprop(www,inavector,outavector,time,imc)
+subroutine exposparseprop(www,inavector,outavector,time,imc,numiters)
   use parameters
   use configpropmod
   use walkmod
@@ -635,6 +635,7 @@ subroutine exposparseprop(www,inavector,outavector,time,imc)
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: imc
+  integer,intent(out) :: numiters
   DATATYPE,intent(in) :: inavector(numr,www%firstconfig:www%lastconfig)
   DATATYPE,intent(out) :: outavector(numr,www%firstconfig:www%lastconfig)
   DATATYPE :: smallvector(numr,www%maxdfbasisperproc),smallvectorout(numr,www%maxdfbasisperproc), &
@@ -643,7 +644,7 @@ subroutine exposparseprop(www,inavector,outavector,time,imc)
   external :: parconfigexpomult_padded,realpardotsub
   real*8 :: one,time
   real*8, save :: tempstepsize=-1d0
-  integer :: itrace, iflag, numsteps, numiters,expofileptr=61142, liwsp=0, lwsp=0,getlen,myiostat
+  integer :: itrace, iflag, numsteps,expofileptr=61142, liwsp=0, lwsp=0,getlen,myiostat
 #ifdef REALGO
   integer, parameter :: zzz=1
 #else
