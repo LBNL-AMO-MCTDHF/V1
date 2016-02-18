@@ -301,6 +301,9 @@ subroutine jacoperate0(dentimeflag,conflag,inspfs,outspfs)
   DATATYPE,intent(out) :: outspfs(spfsize,nspf)
   integer :: lowspf,highspf,itime,jtime,atime,btime
 
+!! zeroing this now, timing not cumulative
+  times(:)=0
+
   call system_clock(atime)
 
   lowspf=1; highspf=nspf

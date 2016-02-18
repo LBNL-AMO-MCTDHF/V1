@@ -37,6 +37,7 @@ subroutine all_derivs(thistime,xpsi, xpsip)
   integer, save :: times(20)=0, numcalledhere=0,imc
 
   numcalledhere=numcalledhere+1
+  times(:)=0       !! zeroing this now, timing each step.
 
   yyy%cmfpsivec(:,0)=xpsi(:)
   xpsip(:)=0d0
@@ -114,7 +115,7 @@ end subroutine spf_linear_derivs
 
 module derivtimingmod
   implicit none
-  integer :: times(0:20)=0,numcalledhere=0
+  integer :: times(20)=0,numcalledhere=0
 end module derivtimingmod
 
 
@@ -132,6 +133,8 @@ subroutine spf_linear_derivs0(inlinearflag,dentimeflag,thistime,spfsin,spfsout, 
   DATATYPE,allocatable :: tempspfs(:,:),workspfs(:,:)
   real*8 :: rsum
   integer ::  jjj, ibot,lowspf,highspf,numspf,itime,jtime
+
+  times(:)=0       !! zeroing this now here in spf_linear_derivs0.
 
   if (inlinearflag.eq.1) then
      ibot=0;     facs(0)=(thistime-firsttime)/(lasttime-firsttime);     facs(1)=1d0-facs(0)
@@ -202,7 +205,7 @@ subroutine spf_linear_derivs0(inlinearflag,dentimeflag,thistime,spfsin,spfsout, 
                 yyy%drivingorbszz(:,lowspf:highspf,jjj) * pots(3) ) &
                 *facs(jjj) * timefac                                     !! WITH TIMEFAC
         enddo
-     call system_clock(itime)
+        call system_clock(itime)
         if (projflag.ne.0) then
            call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),workspfs(:,lowspf:highspf),spfsin)
            spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf)+&
@@ -210,8 +213,8 @@ subroutine spf_linear_derivs0(inlinearflag,dentimeflag,thistime,spfsin,spfsout, 
         else
            spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf)+tempspfs(:,lowspf:highspf)
         endif
+        call system_clock(jtime);        times(8)=times(8)+jtime-itime
      endif
-     call system_clock(jtime);        times(8)=times(8)+jtime-itime
   endif
 
 
