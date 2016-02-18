@@ -611,17 +611,22 @@ subroutine abio_nonsparse(abio,aout,inbiovar)
   use mpimod
   use aarrmod
   use biorthotypemod
+  use tol_parameters
   implicit none
     Type(biorthotype) :: inbiovar
-  integer :: i,j,iflag,clow,chigh,jproc,cnum,nnn(2),iind,mmm(2)
-  integer :: ipiv(inbiovar%wwbio%numconfig),bioconfiglist(inbiovar%wwbio%numelec,inbiovar%wwbio%numconfig)
+  integer :: i,j,iflag,clow,chigh,jproc,cnum,nnn(2),iind,mmm(2),rank,lwork
+  integer :: bioconfiglist(inbiovar%wwbio%numelec,inbiovar%wwbio%numconfig)
   DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%numconfig)
   DATATYPE,intent(out) :: aout(inbiovar%bionr,inbiovar%wwbio%numconfig)
   DATATYPE :: smobig(inbiovar%wwbio%nspf*2,inbiovar%wwbio%nspf*2),&
        Stmpbig(inbiovar%wwbio%numelec,inbiovar%wwbio%numelec), &       !! AUTOMATIC
        Sconfig(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig), &
        aouttr(inbiovar%wwbio%numconfig,inbiovar%bionr)
-  
+!!  integer :: ipiv(inbiovar%wwbio%numconfig)
+  real*8 :: sing(inbiovar%wwbio%numconfig),rwork(5*inbiovar%wwbio%numconfig)
+  DATATYPE :: work(20*inbiovar%wwbio%numconfig)
+  lwork=20*inbiovar%wwbio%numconfig
+
 !! for the nonsparse routine this builds the full nonsparse configuration overlap matrix
 !! this relies on the unique properties of the Doolittle algorithm of LU factorization
 !! to take the overlap matrices of the ith and jth configs alpha and beta orbitals and get their determinant that way 
@@ -662,7 +667,18 @@ subroutine abio_nonsparse(abio,aout,inbiovar)
 
   clow = (myrank-1)*inbiovar%bionr/nprocs+1;  chigh = myrank*inbiovar%bionr/nprocs
 
-  call MYGESV(inbiovar%wwbio%numconfig,chigh-clow+1,Sconfig,inbiovar%wwbio%numconfig,ipiv,aouttr(:,clow),inbiovar%wwbio%numconfig,iflag)
+!!  call MYGESV(inbiovar%wwbio%numconfig,chigh-clow+1,Sconfig,inbiovar%wwbio%numconfig,&
+!!       ipiv,aouttr(:,clow),inbiovar%wwbio%numconfig,iflag)
+
+#ifdef REALGO
+  call dgelss(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig,chigh-clow+1,&
+       Sconfig,inbiovar%wwbio%numconfig,&
+       aouttr(:,clow),inbiovar%wwbio%numconfig,sing,lntol,rank,work,lwork,iflag)
+#else
+  call zgelss(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig,chigh-clow+1,&
+       Sconfig,inbiovar%wwbio%numconfig,&
+       aouttr(:,clow),inbiovar%wwbio%numconfig,sing,lntol,rank,work,lwork,rwork,iflag)
+#endif
 
   if(iflag.ne.0) then
      OFLWR "Stopping due to bad iflag in nonsparsebiortho: ",iflag; CFLST
