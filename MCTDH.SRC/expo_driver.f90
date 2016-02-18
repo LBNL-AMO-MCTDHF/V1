@@ -286,14 +286,22 @@ subroutine jacoperate(inspfs,outspfs)
 
 end subroutine jacoperate
 
+module jactimingmod
+  implicit none
+  integer :: times(20), numcalledhere=0
+end module jactimingmod
+
 
 subroutine jacoperate0(dentimeflag,conflag,inspfs,outspfs)
   use parameters
+  use jactimingmod
   implicit none
   integer,intent(in) :: dentimeflag,conflag
   DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-  integer :: lowspf,highspf
+  integer :: lowspf,highspf,itime,jtime,atime,btime
+
+  call system_clock(atime)
 
   lowspf=1; highspf=nspf
   if (parorbsplit.eq.1) then
@@ -304,9 +312,13 @@ subroutine jacoperate0(dentimeflag,conflag,inspfs,outspfs)
   call jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs(:,min(nspf,lowspf):highspf))
 
   if (parorbsplit.eq.1) then
+     call system_clock(itime)
      call mpiorbgather(outspfs,spfsize)
+     call system_clock(jtime);      times(4)=times(4)+jtime-itime;      itime=jtime
   endif
 
+  call system_clock(btime); times(7)=times(7)+btime-atime;
+  
 end subroutine jacoperate0
 
 
@@ -316,12 +328,12 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
   use mpimod
   use xxxmod    !! drivingorbs.... hmmm could just make wrapper but whatever
   use linearmod
+  use jactimingmod
   implicit none
   integer,intent(in) :: lowspf,highspf,dentimeflag,conflag
   DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
-  integer :: ii,ibot,getlen,numspf,myiostat
-  integer, save :: times(20), numcalledhere=0,itime,jtime,jjj
+  integer :: ii,ibot,getlen,numspf,myiostat,itime,jtime,jjj
   DATATYPE :: csum, nulldouble(2),pots(3)
   real*8 :: facs(0:1),rsum
   DATATYPE :: bigwork(spfsize,nspf),   workspfs(spfsize,lowspf:highspf+1),&   !! AUTOMATIC
@@ -330,8 +342,6 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
   numcalledhere=numcalledhere+1
 
   numspf=highspf-lowspf+1
-
-  call system_clock(itime)
 
   if (effective_cmf_linearflag.eq.1) then
      ibot=0
@@ -343,8 +353,6 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
   if (numspf.gt.0) then
      outspfs(:,lowspf:highspf)=0.d0
   endif
-
-  call system_clock(jtime); times(1)=times(1)+jtime-itime; 
 
 !! ** term with inspfs on far right ** !!
 
@@ -358,24 +366,21 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
         if (numspf.gt.0) then
            call project00(lowspf,highspf,inspfs(:,lowspf:highspf),bigwork(:,lowspf:highspf),jacvect) 
         endif
+        call system_clock(jtime); times(2)=times(2)+jtime-itime;   itime=jtime
         if (parorbsplit.eq.1) then
            call mpiorbgather(bigwork,spfsize)
         endif
-        call system_clock(jtime); times(1)=times(1)+jtime-itime;   itime=jtime
+        call system_clock(jtime); times(4)=times(4)+jtime-itime;   itime=jtime
 
 !! call always even if numspf=0
         call actreduced00(lowspf,highspf,dentimeflag,jactime,bigwork,nulldouble,&
              workspfs,ii,0,0)
 
-        call system_clock(jtime); times(2)=times(2)+jtime-itime;   itime=jtime
         if (numspf.gt.0) then
            outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
         endif
-        call system_clock(jtime); times(1)=times(1)+jtime-itime;    itime=jtime
-
         call actreduced00(lowspf,highspf,dentimeflag,jactime,inspfs,nulldouble,tempspfs,ii,0,0)
-
-        call system_clock(jtime); times(2)=times(2)+jtime-itime; 
+        call system_clock(jtime); times(1)=times(1)+jtime-itime; 
 
      else
            
@@ -384,8 +389,6 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
         if (numspf.gt.0) then
            tempspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)
         endif
-        call system_clock(jtime); times(2)=times(2)+jtime-itime;   itime=jtime
-           
         if (numspf.gt.0) then
            outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
         endif
@@ -393,37 +396,32 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
      endif
 
      call system_clock(itime)
-
      if (numspf.gt.0) then
         call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),workspfs(:,lowspf:highspf),jacvect)
         outspfs(:,:)=outspfs(:,:)-workspfs(:,lowspf:highspf)*facs(ii)
      endif
+     call system_clock(jtime); times(2)=times(2)+jtime-itime;
 
 !! terms from projector
 
-!! always call derproject00
+!! always call derproject00   timing in derproject00
      call derproject00(lowspf,highspf,jacvectout(:,min(lowspf,nspf):highspf),workspfs,jacvect,inspfs)
      if (numspf.gt.0) then
         outspfs(:,:)=outspfs(:,:)-workspfs(:,lowspf:highspf)*facs(ii)
      endif
-
-     call system_clock(jtime); times(1)=times(1)+jtime-itime
         
      if (jacsymflag.ne.0) then
-        call system_clock(itime)
 !! always call derproject00
         call derproject00(lowspf,highspf,jacvect(:,min(lowspf,nspf):highspf),&
              bigwork(:,min(lowspf,nspf):highspf),jacvect,inspfs)
 
+        call system_clock(itime)
         if (parorbsplit.eq.1) then
            call mpiorbgather(bigwork,spfsize)
         endif
-
-        call system_clock(jtime); times(1)=times(1)+jtime-itime;   itime=jtime
+        call system_clock(jtime); times(4)=times(4)+jtime-itime;   itime=jtime
 
         call actreduced00(lowspf,highspf,dentimeflag,jactime,bigwork,nulldouble,workspfs,ii,0,0)
-        
-        call system_clock(jtime); times(2)=times(2)+jtime-itime;   itime=jtime
         if (numspf.gt.0) then
            outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
         endif
@@ -440,13 +438,13 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
            call der_gmat00(lowspf,highspf,jacvect,workspfs(:,lowspf:highspf),ii,jactime,jacvect,inspfs)
            outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
         endif
-        call system_clock(jtime); times(1)=times(1)+jtime-itime;
+        call system_clock(jtime); times(5)=times(5)+jtime-itime;
      endif
 
 
      if (numfrozen.gt.0) then
         if (numspf.gt.0) then
-
+           call system_clock(itime)
 !! EXCHANGE
            if (dentimeflag.ne.0) then
 !! TIMEFAC and facs HERE
@@ -456,9 +454,10 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
            else
               tempspfs(:,lowspf:highspf)=(-1)*yyy%frozenexchinvr(:,lowspf:highspf,ii)*facs(ii) !! factor (-1)
            endif
+           call system_clock(jtime); times(6)=times(6)+jtime-itime;
         endif
 
-!! always call derproject00
+!! always call derproject00 timing in derproject00
         call derproject00(lowspf,highspf,tempspfs,workspfs,jacvect,inspfs)
 
         if (numspf.gt.0) then
@@ -474,9 +473,6 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
         endif
         rsum=0
         if (numspf.gt.0) then
-
-           call system_clock(itime)
-
            call vectdpot(jactime,velflag,pots,-1)
            do jjj=1,3
               rsum=rsum+abs(pots(jjj))**2
@@ -494,25 +490,33 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
            if (numspf.gt.0) then           
               outspfs(:,:)=outspfs(:,:)-tempspfs(:,lowspf:highspf)*facs(ii)*timefac
            endif
-           call system_clock(jtime); times(3)=times(3)+jtime-itime;
         endif
      endif
 
   enddo
-  
+
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (numcalledhere==1) then
         open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", status="unknown",iostat=myiostat)
         call checkiostat(myiostat,"opening jacoperate timing file")
-        write(8577,'(T16,100A9)',iostat=myiostat) "other ", "actreduced ", "driving"; close(8577)
+        write(8577,'(T16,100A9)',iostat=myiostat) &
+             "actreduced ", &
+             "project", &
+             "derproject", &
+             "MPI", &
+             "constraint", &
+             "frozen", &
+             "total"
+
+        close(8577)
         call checkiostat(myiostat,"writing jacoperate timing file")
      endif
      if (mod(numcalledhere,timingout).eq.0) then
         open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", status="unknown", position="append",iostat=myiostat)
         call checkiostat(myiostat,"opening jacoperate timing file")
-        write(8577,'(A3,F12.4,15I9)',iostat=myiostat) "T= ", jactime,  times(1:3)/1000
+        write(8577,'(A3,F12.4,15I9)',iostat=myiostat) "T= ", jactime,  times(1:7)/1000
         call checkiostat(myiostat,"writing jacoperate timing file")
-        close(8577);        close(8577)
+        close(8577)
      endif
   endif
 
@@ -791,6 +795,8 @@ end subroutine exposparseprop
 !! for derivative of PROJECTOR using derivative of spfs.     
 !!      on call inspfs is for example jacvectout
 
+!! subroutine derproject not used currently only derproject00
+
 subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
   use parameters
   implicit none
@@ -816,19 +822,22 @@ end subroutine derproject
 
 subroutine derproject00(lowspf,highspf,inspfs, outspfs, prospfs, prospfderivs)
   use parameters
+  use jactimingmod
   implicit none
   integer,intent(in) :: lowspf,highspf
   DATATYPE, intent(in) :: inspfs(spfsize, lowspf:highspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
   DATATYPE, intent(out) :: outspfs(spfsize, lowspf:highspf)
   DATATYPE :: dot,csum
   DATATYPE :: mydot(nspf,lowspf:highspf+1), prodot(nspf,nspf), derdot(nspf,lowspf:highspf+1) !! AUTOMATIC
-  integer :: i,j,numspf
+  integer :: i,j,numspf,itime,jtime
 
   numspf=highspf-lowspf+1
 
   if (numspf.gt.0) then
      outspfs(:,:)=0.d0
   endif
+
+  call system_clock(itime)
 
   mydot(:,:)=0d0; derdot(:,:)=0d0
 
@@ -843,10 +852,14 @@ subroutine derproject00(lowspf,highspf,inspfs, outspfs, prospfs, prospfderivs)
 !$OMP END DO
 !$OMP END PARALLEL
 
+  call system_clock(jtime); times(3)=times(3)+jtime-itime;     itime=jtime
+
   if (parorbsplit.eq.3) then
      call mympireduce(mydot,nspf**2)
      call mympireduce(derdot,nspf**2)
   endif
+
+  call system_clock(jtime); times(4)=times(4)+jtime-itime;     itime=jtime
 
   if (numspf.gt.0) then
      call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfs,spfsize,&
@@ -855,7 +868,11 @@ subroutine derproject00(lowspf,highspf,inspfs, outspfs, prospfs, prospfderivs)
           mydot(:,lowspf:highspf), nspf,DATAONE,outspfs,spfsize)
   endif
 
+  call system_clock(jtime); times(3)=times(3)+jtime-itime;
+
   if (jacprojorth.ne.0) then
+
+     call system_clock(itime)
 
 !! Proj in always-orthogonal-derivative form,
 !!
@@ -886,12 +903,16 @@ subroutine derproject00(lowspf,highspf,inspfs, outspfs, prospfs, prospfderivs)
 !$OMP END DO
 !$OMP END PARALLEL
 
+     call system_clock(jtime); times(3)=times(3)+jtime-itime;     itime=jtime
+
      if (parorbsplit.eq.1) then
         call mpiorbgather(prodot,nspf)
      endif
      if (parorbsplit.eq.3) then
         call mympireduce(prodot,nspf**2)
      endif
+
+     call system_clock(jtime); times(4)=times(4)+jtime-itime;     itime=jtime
 
      if (numspf.gt.0) then
         call MYGEMM('N', 'N', nspf, numspf, nspf, DATAONE, prodot, nspf, &
@@ -900,6 +921,9 @@ subroutine derproject00(lowspf,highspf,inspfs, outspfs, prospfs, prospfderivs)
         call MYGEMM('N', 'N', spfsize, numspf, nspf, DATANEGONE, prospfs, spfsize, &
              derdot(:,lowspf:highspf), nspf, DATAONE, outspfs, spfsize)
      endif
+
+     call system_clock(jtime); times(3)=times(3)+jtime-itime
+
   endif
 
 end subroutine derproject00

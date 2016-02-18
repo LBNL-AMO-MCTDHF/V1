@@ -112,7 +112,14 @@ subroutine spf_linear_derivs(thistime,spfsin,spfsout)
 end subroutine spf_linear_derivs
 
 
+module derivtimingmod
+  implicit none
+  integer :: times(0:20)=0,numcalledhere=0
+end module derivtimingmod
+
+
 subroutine spf_linear_derivs0(inlinearflag,dentimeflag,thistime,spfsin,spfsout, projflag,conflag)
+  use derivtimingmod
   use parameters
   use linearmod    !! firsttime,lasttime
   use xxxmod  !! frozenexchange and driving orbs
@@ -124,7 +131,7 @@ subroutine spf_linear_derivs0(inlinearflag,dentimeflag,thistime,spfsin,spfsout, 
   DATATYPE :: facs(0:1),csum,pots(3)
   DATATYPE,allocatable :: tempspfs(:,:),workspfs(:,:)
   real*8 :: rsum
-  integer ::  jjj, ibot,lowspf,highspf,numspf
+  integer ::  jjj, ibot,lowspf,highspf,numspf,itime,jtime
 
   if (inlinearflag.eq.1) then
      ibot=0;     facs(0)=(thistime-firsttime)/(lasttime-firsttime);     facs(1)=1d0-facs(0)
@@ -154,9 +161,8 @@ subroutine spf_linear_derivs0(inlinearflag,dentimeflag,thistime,spfsin,spfsout, 
 !! EXCHANGE AND DRIVING CONTRIBUTE TO JACOBIAN (jacoperate) via projector.
 
   if (numfrozen.gt.0.and.numspf.gt.0) then
-
+     call system_clock(itime)
      do jjj=ibot,1
-
         if (dentimeflag.ne.0) then
 !! TIMEFAC and facs HERE
            csum=timefac*facs(jjj)
@@ -166,12 +172,14 @@ subroutine spf_linear_derivs0(inlinearflag,dentimeflag,thistime,spfsin,spfsout, 
            tempspfs(:,lowspf:highspf)=(-1)*yyy%frozenexchinvr(:,lowspf:highspf,jjj)*facs(jjj) !! factor (-1)
         endif
      enddo
+     call system_clock(jtime);        times(7)=times(7)+jtime-itime;       itime=jtime
      if (projflag.ne.0) then
         call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),workspfs(:,lowspf:highspf),spfsin)
         spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf)+tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
      else
         spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf)+tempspfs(:,lowspf:highspf)
      endif
+     call system_clock(jtime);        times(8)=times(8)+jtime-itime
   endif
 
 !! DRIVING (PSI-PRIME)
@@ -194,7 +202,7 @@ subroutine spf_linear_derivs0(inlinearflag,dentimeflag,thistime,spfsin,spfsout, 
                 yyy%drivingorbszz(:,lowspf:highspf,jjj) * pots(3) ) &
                 *facs(jjj) * timefac                                     !! WITH TIMEFAC
         enddo
-
+     call system_clock(itime)
         if (projflag.ne.0) then
            call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),workspfs(:,lowspf:highspf),spfsin)
            spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf)+&
@@ -203,13 +211,16 @@ subroutine spf_linear_derivs0(inlinearflag,dentimeflag,thistime,spfsin,spfsout, 
            spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf)+tempspfs(:,lowspf:highspf)
         endif
      endif
+     call system_clock(jtime);        times(8)=times(8)+jtime-itime
   endif
 
 
   deallocate(tempspfs,workspfs)
 
   if (parorbsplit.eq.1) then
+     call system_clock(itime)
      call mpiorbgather(spfsout,spfsize)
+     call system_clock(jtime);        times(10)=times(10)+jtime-itime
   endif
 
 end subroutine spf_linear_derivs0
@@ -226,12 +237,13 @@ end subroutine spf_linear_derivs0
 
 subroutine actreduced0(dentimeflag,thistime,inspfs, projspfs, outspfs, ireduced, projflag,conflag)
   use parameters
+  use derivtimingmod
   implicit none
   integer, intent(in) :: dentimeflag,ireduced,projflag,conflag
   real*8, intent(in) :: thistime
   DATATYPE, intent(in) :: inspfs(spfsize, nspf), projspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-  integer :: lowspf,highspf
+  integer :: lowspf,highspf,itime,jtime
 
   lowspf=1; highspf=nspf
   if (parorbsplit.eq.1) then
@@ -243,7 +255,9 @@ subroutine actreduced0(dentimeflag,thistime,inspfs, projspfs, outspfs, ireduced,
        ireduced, projflag,conflag)
 
   if (parorbsplit.eq.1) then
+     call system_clock(itime)
      call mpiorbgather(outspfs,spfsize)
+     call system_clock(jtime);        times(10)=times(10)+jtime-itime
   endif
 
 end subroutine actreduced0
@@ -253,13 +267,13 @@ subroutine actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, ou
   use parameters
   use mpimod
   use xxxmod
+  use derivtimingmod
   implicit none
   integer, intent(in) :: lowspf,highspf,dentimeflag,ireduced,projflag,conflag
   real*8, intent(in) :: thistime
   DATATYPE, intent(in) :: inspfs(spfsize, nspf), projspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
   integer :: itime, jtime, getlen,numspf,myiostat
-  integer, save :: times(0:20)=0,numcalledhere=0
   DATATYPE :: myxtdpot=0,  myytdpot=0, myztdpot=0, pots(3)=0d0
   DATATYPE :: spfmult(spfsize,nspf),workmult(spfsize,lowspf:highspf+1), &      !! AUTOMATIC
        spfinvr( spfsize,lowspf:highspf+1), spfr( spfsize,lowspf:highspf+1 ),  &
@@ -273,7 +287,6 @@ subroutine actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, ou
   endif
 
   numcalledhere=numcalledhere+1
-  call system_clock(itime)
 
   spfmult(:,:)=0.d0
 
@@ -281,7 +294,7 @@ subroutine actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, ou
 
 !! sum over fast index reduced matrices, because doing spfinvrsq= reducedinvrsq * inspfs BUT 1) store in transposed 
 !!   order and 2) have to reverse the call in BLAS
-
+     call system_clock(itime)
      if (numr.eq.1) then
         call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
              yyy%denmat(:,lowspf:highspf,ireduced),nspf, DATAZERO, spfinvrsq(:,lowspf:highspf), spfsize)
@@ -314,13 +327,11 @@ subroutine actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, ou
                 yyy%reducedproderiv(:,lowspf:highspf,ireduced),nspf, DATAZERO, spfproderiv(:,lowspf:highspf), spfsize)
         endif
      endif
-
      call system_clock(jtime);  times(1)=times(1)+jtime-itime; itime=jtime
 
      call mult_ke(spfinvrsq(:,lowspf:highspf),workmult(:,lowspf:highspf),numspf,timingdir,notiming)
      spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
-
-     call system_clock(jtime);  times(2)=times(2)+jtime-itime;  call system_clock(itime)
+     call system_clock(jtime);  times(2)=times(2)+jtime-itime;      itime=jtime
 
      call mult_pot(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
      spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
@@ -332,7 +343,7 @@ subroutine actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, ou
         call op_frozenreduced(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
         spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
      endif
-     call system_clock(jtime);     times(3)=times(3)+jtime-itime;         call system_clock(itime)
+     call system_clock(jtime);     times(3)=times(3)+jtime-itime;      itime=jtime
 
      if (tdflag.ne.0) then
         select case (velflag)
@@ -344,14 +355,13 @@ subroutine actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, ou
            spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
         end select
      endif  !! tdpot
-
-     call system_clock(jtime);        times(4)=times(4)+jtime-itime;        call system_clock(itime)
+     call system_clock(jtime);        times(4)=times(4)+jtime-itime;        itime=jtime
   
      if (nonuc_checkflag.eq.0) then
         call op_yderiv(numspf,spfproderiv(:,lowspf:highspf),workmult(:,lowspf:highspf))
         spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
      endif
-     call system_clock(jtime);     times(5)=times(5)+jtime-itime; call system_clock(itime)
+     call system_clock(jtime);     times(5)=times(5)+jtime-itime;         itime=jtime
 
      call mult_reducedpot(lowspf,highspf,inspfs,workmult(:,lowspf:highspf),yyy%reducedpot(:,:,:,ireduced))
      spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
@@ -363,10 +373,9 @@ subroutine actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, ou
   if (dentimeflag.ne.0) then
      call system_clock(itime)
      if (parorbsplit.eq.1) then
-        call system_clock(itime)
         call mpiorbgather(spfmult,spfsize)
-        call system_clock(jtime);  times(10)=times(10)+jtime-itime
      endif
+     call system_clock(jtime);        times(10)=times(10)+jtime-itime;      itime=jtime
      if (numspf.gt.0) then
         call MYGEMM('N','N', spfsize,numspf,nspf,timefac, spfmult,spfsize, &
              yyy%invdenmat(:,lowspf:highspf,ireduced), nspf, DATAZERO, workmult, spfsize)
@@ -380,10 +389,9 @@ subroutine actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, ou
   if (projflag==1) then
      call system_clock(itime)
      if (parorbsplit.eq.1) then
-        call system_clock(itime)
         call mpiorbgather(spfmult,spfsize)
-        call system_clock(jtime);  times(10)=times(10)+jtime-itime
      endif
+     call system_clock(jtime);  times(10)=times(10)+jtime-itime;    itime=jtime
      if (numspf.gt.0) then
         call project00(lowspf,highspf,spfmult(:,lowspf:highspf), workmult, projspfs)
         outspfs(:,:) = spfmult(:,lowspf:highspf) - workmult(:,lowspf:highspf)
@@ -404,8 +412,18 @@ subroutine actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, ou
      if (numcalledhere==1) then
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/actreduced.time.dat", status="unknown",iostat=myiostat)
         call checkiostat(myiostat,"opening actreduced timing file")
-        write(853,'(T16,100A9)',iostat=myiostat) " rmult "," ke "," pot ","pulse", " nuc "," twoe "," invdenmat ",&
-             " project ", " constrain ", " MPI ";        close(853)
+        write(853,'(T16,100A9)',iostat=myiostat) &
+             " rmult ",&     !   (1)
+             " ke ",&        !   (2)
+             " pot ",&       !   (3)
+             " pulse",&       !   (4)
+             " nuc ",&       !   (5)
+             " twoe ",&      !   (6)
+             " invdenmat ",& !   (7)
+             " project ", &  !   (8)
+             " constrain ", &!   (9)
+             " MPI "         !  (10)
+        close(853)
         call checkiostat(myiostat,"writing actreduced timing file")
      endif
 
