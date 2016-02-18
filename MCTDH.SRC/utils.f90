@@ -507,16 +507,21 @@ subroutine bothlnmat(A,N, which)
 !! apply the function
   do k=1,N
      if (eig(k).ne.0d0) then
-        if (abs(eig(k)).lt.lntol) then
-           eig(k)= which * djhlog(lntol*eig(k)/abs(eig(k)))
-        elseif (abs(eig(k)).gt.1d0/lntol) then
-           eig(k)= which * djhlog(eig(k)/abs(eig(k))/lntol)
+        if (real(djhlog(eig(k)**which),8).gt.log(1d0/lntol)) then
+           eig(k)= djhlog((eig(k)/abs(eig(k)))**which/lntol)
+        elseif (real(djhlog(eig(k)**which),8).lt.log(invtol)) then
+           eig(k)= djhlog(invtol*(eig(k)/abs(eig(k)))**which)
         else
-           eig(k) = which * djhlog( eig(k) )
+           eig(k) = djhlog( eig(k)**which )
         endif
      else
-        print *,  "BAD! ZERO EIG LN.  FIXME. TEMP CONTINUE"
-        eig(k) = which * djhlog((0d0,1d0)*lntol)
+        if (which.eq.1) then
+           eig(k) = log(invtol)
+        elseif (which.eq.-1) then
+           eig(k) = log(1d0/lntol)
+        else
+           print *, "oogablah"; stop
+        endif
      endif
   enddo
 

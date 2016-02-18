@@ -344,7 +344,13 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
      case default
         OFLWR "spfdimtype not recognized for dim", idim," it is ", dimtypes(idim); CFLST
      end select
-  end do
+  enddo
+
+  do idim=1,3
+     if (bigoutdims(idim).lt.bigreaddims(idim)) then
+        OFLWR "WARNING, on orbital read dimension ",idim," will be chopped",bigoutdims(idim),bigreaddims(idim); CFL
+     endif
+  enddo
 
   if (myrank.eq.1) then
      if (readcflag.eq.0) then

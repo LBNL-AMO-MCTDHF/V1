@@ -420,7 +420,7 @@ contains
     DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)
     DATATYPE,intent(out) :: mobio(spfsize,inbiovar%wwbio%nspf)
     DATATYPE,intent(inout) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
-    DATATYPE :: dot,data0,data1
+    DATATYPE :: dot
     DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),&
          smosave(inbiovar%wwbio%nspf,inbiovar%wwbio%nspf)                                  !! AUTOMATIC
     integer :: i,j,lowspf,highspf,numspf,flag
@@ -454,9 +454,9 @@ contains
     
 !! make the  bi-orthonormal orbitals 
     smosave(:,:)=inbiovar%smo(:,:)
-    call invmatsmooth(inbiovar%smo,inbiovar%wwbio%nspf,inbiovar%wwbio%nspf,lntol);   data1=1d0;  data0=0d0   
-
-    call MYGEMM('N','N',spfsize,inbiovar%wwbio%nspf,inbiovar%wwbio%nspf,data1,origmo,spfsize,inbiovar%smo,inbiovar%wwbio%nspf,data0,mobio,spfsize)
+    call invmatsmooth(inbiovar%smo,inbiovar%wwbio%nspf,inbiovar%wwbio%nspf,lntol);   
+    call MYGEMM('N','N',spfsize,inbiovar%wwbio%nspf,inbiovar%wwbio%nspf,DATAONE,origmo,spfsize,&
+         inbiovar%smo,inbiovar%wwbio%nspf,DATAZERO,mobio,spfsize)
     
 !! check the biorthonormalization to be within hardwired tolerance 1d-10
 !! training wheels turned off by KVL for speed on larger jobs
