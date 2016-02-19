@@ -1,5 +1,5 @@
 
-  ** LBNL-AMO-MCTDHF VERSION 1.22 **
+  ** LBNL-AMO-MCTDHF VERSION 1.23 **
 
 v1.20 multiple cation files for partial photoionization action 17
    using numcatfiles, catspffiles, catavectorfiles in namelist &parinp
