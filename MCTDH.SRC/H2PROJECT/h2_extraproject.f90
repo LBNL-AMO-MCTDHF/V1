@@ -480,36 +480,34 @@ function etafunct(radpoint,thetapoint,rvalue)
 end function etafunct
 
 
-function radiusvalue(spfindex,rvalue)
-  use myparams
-  use myprojectmod
-  implicit none
-  integer,intent(in) :: spfindex
-  DATATYPE,intent(in) :: rvalue
-  integer :: ixi,ieta,jindex
-  DATATYPE :: radiusvalue, radiusfun
-
-
-  ixi=mod(spfindex-1,numerad)+1
-  jindex=(spfindex-ixi)/numerad+1
-
-  if (jindex*numerad.ne.spfindex-ixi) then
-     OFLWR "ERRRR"; CFLST
-  endif
-
-  ieta=mod(jindex-1,numeta)+1
-
-  radiusvalue=radiusfun(xipoints(ixi),etapoints(ieta),rvalue)
-
-end function radiusvalue
-  
-function radiusfun(xivalue,etavalue,rvalue)
-  implicit none
-  DATATYPE,intent(in) :: xivalue,rvalue
-  real*8,intent(in) :: etavalue
-  DATATYPE :: radiusfun
-
-  radiusfun=sqrt(etavalue**2+xivalue**2-1)*rvalue
-end function radiusfun
-
-
+!!$  function radiusvalue(spfindex,rvalue)
+!!$    use myparams
+!!$    use myprojectmod
+!!$    implicit none
+!!$    integer,intent(in) :: spfindex
+!!$    DATAECS,intent(in) :: rvalue
+!!$    integer :: ixi,ieta,jindex
+!!$    DATATYPE :: radiusvalue
+!!$    DATAECS :: radiusfun
+!!$  
+!!$    ixi=mod(spfindex-1,numerad)+1
+!!$    jindex=(spfindex-ixi)/numerad+1
+!!$  
+!!$    if (jindex*numerad.ne.spfindex-ixi) then
+!!$       OFLWR "ERRRR"; CFLST
+!!$    endif
+!!$  
+!!$    ieta=mod(jindex-1,numeta)+1
+!!$  
+!!$    radiusvalue=radiusfun(xipoints(ixi),etapoints(ieta),rvalue)
+!!$  
+!!$  end function radiusvalue
+!!$    
+!!$  function radiusfun(xivalue,etavalue,rvalue)
+!!$    implicit none
+!!$    DATAECS,intent(in) :: xivalue,rvalue
+!!$    real*8,intent(in) :: etavalue
+!!$    DATAECS :: radiusfun
+!!$  
+!!$    radiusfun=sqrt(etavalue**2+xivalue**2-1)*rvalue
+!!$  end function radiusfun

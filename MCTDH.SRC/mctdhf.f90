@@ -203,7 +203,7 @@ program mctdhf
   implicit none
 
   integer :: i,spfsloaded,totread,ifile,readnum
-  DATATYPE, allocatable ::  tempvals(:)
+  DATAECS, allocatable ::  tempvals(:)
   DATATYPE, allocatable :: bigavector(:,:), bigspfs(:,:)
   logical :: logcheckpar
 

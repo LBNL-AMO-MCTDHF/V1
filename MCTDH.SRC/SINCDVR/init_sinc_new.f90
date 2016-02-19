@@ -478,7 +478,8 @@ subroutine init_spfs(inspfs,numloaded)
   use twoemod
   implicit none
   DATATYPE :: inspfs(totpoints,numspf)
-  DATATYPE,allocatable :: lanspfs(:,:),density(:), energies(:)
+  DATATYPE,allocatable :: lanspfs(:,:),density(:)
+  DATAECS,allocatable :: energies(:)
   integer, intent(in) :: numloaded
   integer :: ibig,iorder,ispf,ppfac,ii,jj,kk,olist(numspf),flag
   integer :: null1,null2,null3,null4,null10(10),numcompute

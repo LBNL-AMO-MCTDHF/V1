@@ -21,7 +21,9 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   integer :: i,ii,j,    taken(200)=0, flag, jj, jflag, xiug, iug, ugvalue(200,0:30), getsmallugvalue
   DATAECS :: thisrvalue  
   character (len=2) :: th(4)
-  DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:), mydensity(:,:),ivopot(:,:)
+  DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:)
+  DATATYPE,allocatable  ::  mydensity(:,:),ivopot(:,:)
+
   th=(/ "st", "nd", "rd", "th" /)
 
   if ((mbig.gt.30).or.(numspf.gt.25)) then
@@ -97,7 +99,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         call frozen_matels()
         do i=1,lbig+1
            do j=1,numerad
-              bigham(j,i,j,i) = bigham(j,i,j,i) + frozenreduced(j,i,0) / thisrvalue 
+              bigham(j,i,j,i) = bigham(j,i,j,i) + &   !! ok conversion
+                   frozenreduced(j,i,0) / thisrvalue  !! ok conversion
            enddo
         enddo
 
@@ -112,7 +115,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
            call op_tinv(0,0,1,mydensity,ivopot)
            do i=1,lbig+1
               do j=1,numerad
-                 bigham(j,i,j,i) = bigham(j,i,j,i) + ivopot(j,i) / thisrvalue
+                 bigham(j,i,j,i) = bigham(j,i,j,i) + ivopot(j,i) / thisrvalue  !! ok conversion
               enddo
            enddo
            deallocate(mydensity,ivopot)

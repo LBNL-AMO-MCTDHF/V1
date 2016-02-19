@@ -10,7 +10,7 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
   implicit none 
   integer, intent(in) :: order,inprintflag,guessflag
   integer :: printflag,maxdim,vdim,ii
-  DATATYPE, intent(out) :: outvalues(order)
+  DATAECS, intent(out) :: outvalues(order)
   DATATYPE, intent(inout) :: outvectors(numr,www%firstconfig:www%lastconfig,order)
   DATATYPE,allocatable :: workvectorsspin(:,:,:)
   external :: parblockconfigmult
@@ -472,7 +472,7 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
   integer,intent(in) :: lansize,maxlansize,maxiter,lanblocknum,inprintflag,order,&
        lancheckmod,outvectorlda,numout,targetflag,guessflag
   DATATYPE, intent(in) :: etarget
-  DATATYPE, intent(out) :: outvalues(numout)  
+  DATAECS, intent(out) :: outvalues(numout)  
   DATATYPE, intent(inout) :: outvectors(outvectorlda,numout)
   real*8, intent(in) :: lanthresh
   integer :: printflag, iorder,k,flag,j,id,nn,i,&
@@ -482,8 +482,8 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
        nullvector1(1), nullvector2(1) , &
        lastvalue(numout), thisvalue(numout), valdot(numout),normsq(numout),sqdot(numout)
 !! made these allocatable to fix lawrencium segfault 04-15
-  DATATYPE, allocatable  ::       lanham(:,:,:,:),      laneigvects(:,:,:),&
-       values(:),       templanham(:,:)
+  DATATYPE, allocatable :: lanham(:,:,:,:), laneigvects(:,:,:), templanham(:,:)
+  DATAECS, allocatable :: values(:)
   DATATYPE, allocatable :: betas(:,:,:),betastr(:,:,:)
 !! made these allocatable to fix carver segfault djh 03-30-15
   DATATYPE, allocatable :: &   
@@ -583,7 +583,7 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
      endif
 
      do j=1,numout
-        values(j)=valdot(j)/normsq(j)
+        values(j)=valdot(j)/normsq(j)  !! ok conversion
         
         error(j)=abs(&
              valdot(j)**2 / normsq(j)**2 - &
@@ -792,7 +792,7 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
               endif
 
               do j=1,numout
-                 values(j)=valdot(j)/normsq(j)
+                 values(j)=valdot(j)/normsq(j)  !! ok conversion
                  error(j)=abs(&
                       valdot(j)**2 / normsq(j)**2 - &
                       sqdot(j)/normsq(j))
@@ -848,13 +848,15 @@ end subroutine blocklanczos0
 
 
 
-
+!! DATAECS data type for values
 subroutine mysort2(inout, values,n,lda,etarget)
   implicit none
   integer,intent(in) :: lda, n
   DATATYPE, intent(in) :: etarget
-  DATATYPE,intent(inout) :: inout(lda,n), values(lda)
-  DATATYPE,allocatable :: out(:,:), newvals(:)
+  DATATYPE,intent(inout) :: inout(lda,n)
+  DATAECS,intent(inout) :: values(lda)
+  DATAECS,allocatable ::  newvals(:)
+  DATATYPE,allocatable :: out(:,:)
   integer,allocatable :: taken(:), order(:)
   real*8 :: lowval 
   integer :: i,j,whichlowest, flag

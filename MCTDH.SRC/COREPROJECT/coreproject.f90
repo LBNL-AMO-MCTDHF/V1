@@ -1190,8 +1190,8 @@ subroutine ugrestrict(inspfs,outspfs,ugval)
   use myparams
   implicit none
   integer,intent(in) :: ugval
-  DATAECS,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig)
-  DATAECS,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig)
   integer :: k, inmval
 
   if (abs(ugval).ne.1) then

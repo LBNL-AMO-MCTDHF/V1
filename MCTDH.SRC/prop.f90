@@ -539,7 +539,7 @@ subroutine cmf_prop_wfn(tin, tout)
   integer, save :: xxcount=0 
   integer :: numaiters,numiters,linearflag,imc,printflag=1,getlen,qq,myiostat
   real*8 :: time1, time2
-  DATATYPE :: myvalues(mcscfnum)
+  DATAECS :: myvalues(mcscfnum)
 
   firsttime=tin;   lasttime=tout
 
@@ -592,7 +592,7 @@ subroutine cmf_prop_wfn(tin, tout)
 
   if ( (threshflag.ne.0.and.improvedrelaxflag.eq.0).and.&
        ( ( (improvedquadflag.eq.1.or.improvedquadflag.eq.3).and.tin.ge.aquadstarttime ).or.&
-       ( (improvedquadflag.gt.2).and.tin.ge.quadstarttime ) ) ) then
+       ( (improvedquadflag.ge.2).and.tin.ge.quadstarttime ) ) ) then
      OFLWR " ** SETTING IMPROVEDRELAXFLAG=1 ** "; CFL
      improvedrelaxflag=1
   endif

@@ -93,11 +93,20 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
      endif
 
      call mympibcast(tempconfigvects,1,www%numdfbasis*numr*www%numdfbasis*numr)
+#ifndef ECSFLAG
+#ifndef REALGO
+     call mympirealbcast(fullconfigvals,1,www%numdfbasis*numr)
+#else
      call mympibcast(fullconfigvals,1,www%numdfbasis*numr)
+#endif
+#else
+     call mympibcast(fullconfigvals,1,www%numdfbasis*numr)
+#endif
+     do i=1,www%numdfbasis*numr
+        call basis_transformfrom_all(www,numr,tempconfigvects(:,i),fullconfigvects(:,i))
+     enddo
 
-        do i=1,www%numdfbasis*numr
-           call basis_transformfrom_all(www,numr,tempconfigvects(:,i),fullconfigvects(:,i))
-        enddo
+     call mpibarrier()
 
      if (printflag.ne.0) then
         OFLWR "  -- Nonsparse eigenvals --"

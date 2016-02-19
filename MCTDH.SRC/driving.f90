@@ -210,7 +210,7 @@ subroutine drivinginit(inenergies)
   use xxxmod
   use opmod
   implicit none
-  DATATYPE,intent(in) :: inenergies(mcscfnum)
+  DATAECS,intent(in) :: inenergies(mcscfnum)
 
   orbs_driving(:,:)=RESHAPE(yyy%cmfpsivec(spfstart:spfend,0),(/spfsize,nspf/))
 

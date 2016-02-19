@@ -499,6 +499,7 @@ subroutine nonsparsequadavector(www,avectorout)
 !  OFL; write(mpifileptr,'(A40,F15.10, A5,2F18.10,A5,1E6.1)') "      Converged nonsparse quad: dev ", dev, "  E= ", quadexpect, " tol ", aerror; CFL
 !#endif
 
+        call mpibarrier()
         return   !! RETURN
      endif
 
@@ -536,8 +537,8 @@ subroutine nonsparsequadavector(www,avectorout)
 
      ss=ss+1
 
-  enddo
-  
+  enddo  !! INFINITE LOOOP
+
 end subroutine nonsparsequadavector
 
 

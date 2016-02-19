@@ -200,7 +200,7 @@ subroutine get_eigen_herm(inmat, n, lda, outmat,values)
   lwork=5*lda;  outmat(:,:)=inmat(:,:)
   call zheev( jobz, uplo, n, outmat, lda, values, work, lwork, rwork, info)
   if (info /= 0) then
-    write(*, *) "AAAUGH, info in get_eigen_c:",info;     call mpistop()
+    write(*, *) "AAAUGH, info in get_eigen_herm:",info;     call mpistop()
   endif
   deallocate(work,rwork)
 

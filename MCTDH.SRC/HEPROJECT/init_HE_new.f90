@@ -19,7 +19,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
        bondweights(numr),  halfniumpot(numerad,lbig+1, -mbig:mbig),pot(numerad,lbig+1, -mbig:mbig), &
        elecweights(numerad,lbig+1, -mbig:mbig),elecradii(numerad,lbig+1, -mbig:mbig)
   character (len=2) :: th(4)
-  DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:), mydensity(:,:), ivopot(:,:)
+  DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:)
+  DATATYPE,allocatable :: mydensity(:,:), ivopot(:,:)
   integer ::  i,ii,k,j,   taken(200)=0, flag,xiug, iug, ugvalue(200,0:10), getsmallugvalue
 
   halfniumpot=0d0
@@ -176,7 +177,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         call frozen_matels()
         do k=1,lbig+1
            do i=1,hegridpoints-2
-              bigham(i,k,i,k) = bigham(i,k,i,k) + frozenreduced(i,k,0)
+              bigham(i,k,i,k) = bigham(i,k,i,k) + frozenreduced(i,k,0)  !! ok conversion
            enddo
         enddo
 
@@ -191,7 +192,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
            call op_tinv(0,0,1,mydensity,ivopot)
            do i=1,lbig+1
               do j=1,numerad
-                 bigham(j,i,j,i) = bigham(j,i,j,i) + ivopot(j,i)
+                 bigham(j,i,j,i) = bigham(j,i,j,i) + ivopot(j,i)  !! ok conversion
               enddo
            enddo
            deallocate(mydensity,ivopot)
