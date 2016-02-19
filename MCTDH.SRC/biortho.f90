@@ -672,12 +672,12 @@ subroutine abio_nonsparse(abio,aout,inbiovar)
 
 #ifdef REALGO
   call dgelss(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig,chigh-clow+1,&
-       Sconfig,inbiovar%wwbio%numconfig,&
-       aouttr(:,clow),inbiovar%wwbio%numconfig,sing,lntol,rank,work,lwork,iflag)
+       Sconfig,inbiovar%wwbio%numconfig,aouttr(:,clow),inbiovar%wwbio%numconfig,&
+       sing,max(invtol,lntol**inbiovar%wwbio%numelec),rank,work,lwork,iflag)
 #else
   call zgelss(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig,chigh-clow+1,&
-       Sconfig,inbiovar%wwbio%numconfig,&
-       aouttr(:,clow),inbiovar%wwbio%numconfig,sing,lntol,rank,work,lwork,rwork,iflag)
+       Sconfig,inbiovar%wwbio%numconfig,aouttr(:,clow),inbiovar%wwbio%numconfig,&
+       sing,max(invtol,lntol**inbiovar%wwbio%numelec),rank,work,lwork,rwork,iflag)
 #endif
 
   if(iflag.ne.0) then
