@@ -302,7 +302,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            open(454,file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat",status="unknown",iostat=myiostat)
            call checkiostat(myiostat,"opening proj kvlsumfile")
            write(454,*,iostat=myiostat) "#KVL flux sum: itime, time, flux sum"
-           call checkiostat(myiostat,"writing proj kvlsumfile "//xstate1)
+           call checkiostat(myiostat,"writing proj kvlsumfile ")
            write(454,*); close(454)
            open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=tlen,iostat=myiostat)
            call checkiostat(myiostat,"opening "//projfluxfile)
@@ -404,7 +404,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   open(454, file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat", status="old", position="append",iostat=myiostat)
   call checkiostat(myiostat,"opening proj kvlsumfile")
   write(454,'(I5,100F18.12)',iostat=myiostat) curtime, curtime*dt, csum
-  call checkiostat(myiostat,"writing proj kvlsumfile!  "//xstate1)
+  call checkiostat(myiostat,"writing proj kvlsumfile")
   close(454)
                     endif
                  endif

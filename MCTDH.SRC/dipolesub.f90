@@ -159,7 +159,7 @@ subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_ex
  
   allocate(tempvector(numr,www%firstconfig:www%lastconfig), tempspfs(spfsize,lowspf:highspf+1),&
        abra(numr,www%firstconfig:www%lastconfig),workspfs(spfsize,www%nspf))
-  tempvector=0; tempspfs=0; abra=0
+  tempvector=0; tempspfs=0; abra=0; workspfs=0
 
   abra(:,:)=in_abra(:,:)
 

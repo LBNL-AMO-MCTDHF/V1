@@ -190,7 +190,7 @@ autosub.o: $(DEPEND) autosub.F90 biortho.o
 autocall.o: $(DEPEND)  autocall.F90
 	$(F90) $(FFLAGS)  -c autocall.F90
 
-dipolesub.o: $(DEPEND) dipolesub.F90
+dipolesub.o: $(DEPEND) dipolesub.F90 biortho.o
 	$(F90) $(FFLAGS)  -c dipolesub.F90
 
 dipolecall.o: $(DEPEND)  dipolecall.F90
