@@ -213,7 +213,6 @@ end subroutine autocorrelate_final
 !!$    print *, "AUTOCORRELATE_ONE DISABLED....  NOT AGREEING W/BIORTHO IN REPLACE_WITHNAT"; call mpistop()
 !!$  
 !!$  !  replace_withnat works because leads to krylov termination at order 1 with spfflag=0
-!!$  !     that's using biotransform.
 !!$  
 !!$    do i=1,in_nspf
 !!$       do j=1,orig_nspf

@@ -176,7 +176,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   DATATYPE, allocatable :: read_bramo(:,:,:,:), read_ketmo(:,:,:,:)
   complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:)
   real*8, allocatable :: pulseftsq(:)
-  DATATYPE :: dot, pots1(3), csum
+  DATATYPE :: hermdot, pots1(3), csum
   character (len=4) :: xstate0,xmc0
   character (len=3) :: xstate1,xmc1
 
@@ -283,10 +283,12 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
   OFLWR "Projected 1e- function record length is ",tlen;  CFL
 
-  gtau=0d0
+  gtau(:,:,:)=0d0
 
 !! looping here now 08-2015
+
   do imc=1,mcscfnum
+
      do istate=1,nstate
 
         OFLWR "Computing the CrossSection for state ",istate,"wfn",imc; CFL
@@ -300,7 +302,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            open(454,file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat",status="unknown",iostat=myiostat)
            call checkiostat(myiostat,"opening proj kvlsumfile")
            write(454,*,iostat=myiostat) "#KVL flux sum: itime, time, flux sum"
-           call checkiostat(myiostat,"writing proj kvlsumfile")
+           call checkiostat(myiostat,"writing proj kvlsumfile "//xstate1)
            write(454,*); close(454)
            open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=tlen,iostat=myiostat)
            call checkiostat(myiostat,"opening "//projfluxfile)
@@ -317,8 +319,6 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            if(myrank.eq.1) then
               do i=1,ketreadsize !! loop over times in this batch
                  do ir=1,numr !! loop over all the r's for this time           
-
-!!$                    k = (imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + ((ketbat-1)*BatchSize+i-1)*numr + ir
 
                     ioffset=(istate-1)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + ((ketbat-1)*BatchSize+i-1)*numr + ir
 
@@ -356,7 +356,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
                  do i=1,brareadsize
                     do ir=1,numr 
 
-                       ioffset = (imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + ((brabat-1)*BatchSize+i-1)*numr + ir
+                       ioffset = (istate-1)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + ((brabat-1)*BatchSize+i-1)*numr + ir
 
                        read(1003,rec=ioffset,iostat=myiostat) read_bramo(:,ir,:,i)
                        call checkiostat(myiostat,"reading bramo")
@@ -391,7 +391,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
                  endif
                  do bratime=1,bratop
                     tau=curtime-((brabat-1)*BatchSize+bratime-1)
-                    gtau(tau,istate,imc) = gtau(tau,istate,imc) + dot(bramo(:,:,:,bratime),ketmo(:,:,:,kettime),2*spfsize*numr) * dt
+                    gtau(tau,istate,imc) = gtau(tau,istate,imc) + hermdot(bramo(:,:,:,bratime),ketmo(:,:,:,kettime),2*spfsize*numr) * dt
                  enddo
 
 !! only do this after we are sure we've gone through every bra
@@ -404,7 +404,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   open(454, file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat", status="old", position="append",iostat=myiostat)
   call checkiostat(myiostat,"opening proj kvlsumfile")
   write(454,'(I5,100F18.12)',iostat=myiostat) curtime, curtime*dt, csum
-  call checkiostat(myiostat,"writing proj kvlsumfile")
+  call checkiostat(myiostat,"writing proj kvlsumfile!  "//xstate1)
   close(454)
                     endif
                  endif
@@ -798,7 +798,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
            call biortho(mymo,tmo(:,:),mobio(:,:,ir),abio(:,1,ir),projbiovar)
            do imc=2,mcscfnum
-              call biotransform(mymo,mobio(:,:,ir),abio(:,imc,ir),projbiovar)
+              call biotransform(mymo,tmo(:,:),abio(:,imc,ir),projbiovar)
            enddo
         enddo
      else
@@ -808,9 +808,11 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
         call bioset(projbiovar,smo,numr,bwwptr); 
 
         call biortho(mymo,tmo(:,:),mobio(:,:,1),myavec(:,:,1),projbiovar)
+
         do imc=2,mcscfnum
-           call biotransform(mymo,mobio(:,:,1),myavec(:,:,imc),projbiovar)
+           call biotransform(mymo,tmo(:,:),myavec(:,:,imc),projbiovar)
         enddo
+
         do ir=1,numr
            mobio(:,:,ir)=mobio(:,:,1)
            abio(:,:,ir)=myavec(ir,:,:)
@@ -820,8 +822,6 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
      do ir=1,numr
         do imc=1,mcscfnum
            do istate=1,nstate
-
-!!$              ioffset=(imc-1)*nstate*(nt+1)*numr + (istate-1)*(nt+1)*numr + tau*numr + ir
 
               ioffset=(istate-1+alreadystate)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + tau*numr + ir
 

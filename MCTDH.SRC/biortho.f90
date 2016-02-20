@@ -214,6 +214,7 @@ module biorthotypemod
      logical :: started=.false.
      real*8 :: tempstepsize=-1d0
      integer :: icalled=0
+     logical :: hermonly=.false.
   end type biorthotype
 end module biorthotypemod
 
@@ -420,7 +421,7 @@ contains
     DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)
     DATATYPE,intent(out) :: mobio(spfsize,inbiovar%wwbio%nspf)
     DATATYPE,intent(inout) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
-    DATATYPE :: dot
+    DATATYPE :: dot,hermdot
     DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),&
          smosave(inbiovar%wwbio%nspf,inbiovar%wwbio%nspf)                                  !! AUTOMATIC
     integer :: i,j,lowspf,highspf,numspf,flag
@@ -435,15 +436,27 @@ contains
     endif
     numspf=highspf-lowspf+1
  
-    do i=lowspf,highspf                 !! Start by finding S**-1 of the original orbitals
+    if (inbiovar%hermonly) then
+       do i=lowspf,highspf                 !! Start by finding S**-1 of the original orbitals
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j)
 !$OMP DO SCHEDULE(DYNAMIC)
-       do j=1,inbiovar%wwbio%nspf
-          inbiovar%smo(j,i)=dot(oppmo(:,j),origmo(:,i),spfsize)
-       enddo
+          do j=1,inbiovar%wwbio%nspf
+             inbiovar%smo(j,i)=hermdot(oppmo(:,j),origmo(:,i),spfsize)
+          enddo
 !$OMP END DO
 !$OMP END PARALLEL
-    enddo
+       enddo
+    else
+       do i=lowspf,highspf                 !! Start by finding S**-1 of the original orbitals
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j)
+!$OMP DO SCHEDULE(DYNAMIC)
+          do j=1,inbiovar%wwbio%nspf
+             inbiovar%smo(j,i)=dot(oppmo(:,j),origmo(:,i),spfsize)
+          enddo
+!$OMP END DO
+!$OMP END PARALLEL
+       enddo
+    endif
 
     if (parorbsplit.eq.1) then
        call mpiorbgather(inbiovar%smo(:,:),inbiovar%wwbio%nspf)
@@ -486,7 +499,7 @@ contains
     
   end subroutine biortho
 
-!! given origmo and abio wave function, transform abio such that it is now coefficients of oppmo.
+!! given origmo and abio wave function, transform abio such that it is now coefficients of mobio.
 !!   i.e. operate with S-inverse on a-vector from s computed from input orbs
 
   subroutine biotransform(origmo,oppmo,abio,inbiovar)
@@ -494,6 +507,7 @@ contains
     use spfsize_parameters
     use sparse_parameters
     use bio_parameters
+    use tol_parameters
     use biorthotypemod
     use abiosparsemod
     implicit none
@@ -501,7 +515,7 @@ contains
     DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)
     DATATYPE,intent(inout) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
     DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)    !! AUTOMATIC
-    DATATYPE :: dot
+    DATATYPE :: dot,hermdot
     integer :: i,j,lowspf,highspf,numspf,flag
 
     lowspf=1;highspf=inbiovar%wwbio%nspf
@@ -513,16 +527,28 @@ contains
        call getOrbSetRange(lowspf,highspf)
     endif
     numspf=highspf-lowspf+1
- 
-    do i=lowspf,highspf
+
+    if (inbiovar%hermonly) then
+       do i=lowspf,highspf                 !! Start by finding S**-1 of the original orbitals
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j)
 !$OMP DO SCHEDULE(DYNAMIC)
-       do j=1,inbiovar%wwbio%nspf
-          inbiovar%smo(j,i)=dot(origmo(:,j),oppmo(:,i),spfsize)
-       enddo
+          do j=1,inbiovar%wwbio%nspf
+             inbiovar%smo(j,i)=hermdot(oppmo(:,j),origmo(:,i),spfsize)
+          enddo
 !$OMP END DO
 !$OMP END PARALLEL
-    enddo
+       enddo
+    else
+       do i=lowspf,highspf
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j)
+!$OMP DO SCHEDULE(DYNAMIC)
+          do j=1,inbiovar%wwbio%nspf
+             inbiovar%smo(j,i)=dot(oppmo(:,j),origmo(:,i),spfsize)
+          enddo
+!$OMP END DO
+!$OMP END PARALLEL
+       enddo
+    endif
 
     if (parorbsplit.eq.1) then
        call mpiorbgather(inbiovar%smo(:,:),inbiovar%wwbio%nspf)
@@ -532,9 +558,10 @@ contains
     endif
 
     if(sparseconfigflag.eq.0) then
+       call invmatsmooth(inbiovar%smo,inbiovar%wwbio%nspf,inbiovar%wwbio%nspf,lntol);   
        call abio_nonsparse(abio,atmp,inbiovar)
     else
-       call neglnmat(inbiovar%smo,inbiovar%wwbio%nspf)    !! transform s to -ln(s)
+       call lnmat(inbiovar%smo,inbiovar%wwbio%nspf)    !! transform s to -ln(s)
        call abio_sparse(abio,atmp,inbiovar)
     endif
     
@@ -542,65 +569,6 @@ contains
     
   end subroutine biotransform
 
-
-!! operate with S
-
-  subroutine biooverlap(origmo,oppmo,abio,inbiovar)
-    use fileptrmod
-    use spfsize_parameters
-    use sparse_parameters
-    use bio_parameters
-    use biorthotypemod
-    use abiosparsemod
-    implicit none
-    type(biorthotype),target :: inbiovar
-    DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)
-    DATATYPE,intent(inout) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
-    DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)   !! AUTOMATIC
-    DATATYPE :: dot
-    integer :: i,j,lowspf,highspf,numspf,flag
-
-    lowspf=1;highspf=inbiovar%wwbio%nspf
-    if (parorbsplit.eq.1) then
-       call checkorbsetrange(inbiovar%wwbio%nspf,flag)
-       if (flag.ne.0) then
-          OFLWR "error exit, can't do biortho parorbsplit.eq.1 with ",inbiovar%wwbio%nspf," orbitals";CFLST
-       endif
-       call getOrbSetRange(lowspf,highspf)
-    endif
-    numspf=highspf-lowspf+1
- 
-    do i=lowspf,highspf
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j)
-!$OMP DO SCHEDULE(DYNAMIC)
-       do j=1,inbiovar%wwbio%nspf
-          inbiovar%smo(j,i)=dot(origmo(:,j),oppmo(:,i),spfsize)
-       enddo
-!$OMP END DO
-!$OMP END PARALLEL
-    enddo
-
-    if (parorbsplit.eq.1) then
-       call mpiorbgather(inbiovar%smo(:,:),inbiovar%wwbio%nspf)
-    endif
-    if (parorbsplit.eq.3) then
-       call mympireduce(inbiovar%smo,inbiovar%wwbio%nspf**2)
-    endif
-
-
-    if(sparseconfigflag.eq.0) then
-       call abio_nonsparse(abio,atmp,inbiovar)
-    else
-       call lnmat(inbiovar%smo,inbiovar%wwbio%nspf)    !! transform s to ln(s)
-       call abio_sparse(abio,atmp,inbiovar)
-    endif
-    
-    abio(:,:)=atmp
-    
-  end subroutine biooverlap
-
-
-  
 end module biorthomod
 
 

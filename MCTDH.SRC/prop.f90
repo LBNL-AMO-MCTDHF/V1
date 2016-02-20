@@ -174,7 +174,11 @@ subroutine prop_loop( starttime)
         
         OFL
 #ifdef ECSFLAG     
+#ifdef CNORMFLAG
+        write(mpifileptr,'(A3,F16.5, 2(A10, 2E18.10),E18.10)') "T= ",thattime, "Energy: ", thisenergy(imc), "Norm: ", abs(norms(imc)),norms(imc)
+#else
         write(mpifileptr,'(A3,F16.5, 2(A10, 2E18.10))') "T= ",thattime, "Energy: ", thisenergy(imc), "Norm: ", norms(imc)
+#endif
 #else 
         write(mpifileptr,'(A3,F16.5, 2(A10, E18.10))') "T= ", thattime, "Energy: ", thisenergy(imc), "Norm: ", norms(imc)
 #endif     

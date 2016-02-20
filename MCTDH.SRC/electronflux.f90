@@ -60,15 +60,18 @@ subroutine fluxwrite(curtime,in_xmo,in_xa)
      call openfile
      write(mpifileptr,'(A27,F11.4)') " Saving wavefunction at T= ",curtime*FluxInterval*par_timestep
      call closefile
+
+
      open(1001,file=fluxmofile,status="unknown",form="unformatted",access="direct",recl=molength,iostat=myiostat)
      call checkiostat(myiostat,"opening "//fluxmofile)
-     open(1002,file=fluxafile,status="unknown",form="unformatted",access="direct",recl=alength,iostat=myiostat)
-     call checkiostat(myiostat,"opening "//fluxafile)
      write(1001,rec=curtime+1,iostat=myiostat) xmo
      call checkiostat(myiostat,"writing "//fluxmofile)
+     close(1001)
+     open(1002,file=fluxafile,status="unknown",form="unformatted",access="direct",recl=alength,iostat=myiostat)
+     call checkiostat(myiostat,"opening "//fluxafile)
      write(1002,rec=curtime+1,iostat=myiostat) xa
      call checkiostat(myiostat,"writing "//fluxafile)
-     close(1001);  close(1002)
+     close(1002)
   endif
 
   deallocate(xmo,xa)
@@ -110,7 +113,7 @@ subroutine fluxgtau0(alg,www,bioww)
   real*8 :: MemTot,MemVal,dt, myfac,wfi,estep,windowfunct
   complex*16, allocatable :: FTgtau(:,:), pulseft(:,:)
   real*8, allocatable :: pulseftsq(:)
-  DATATYPE :: dot,fluxeval,fluxevalval(mcscfnum), pots1(3)=0d0  !!$, pots2(3)=0d0
+  DATATYPE :: hermdot,fluxeval,fluxevalval(mcscfnum), pots1(3)=0d0  !!$, pots2(3)=0d0
   DATATYPE, allocatable :: gtau(:,:), mobio(:,:),abio(:,:,:)
   DATATYPE, allocatable, target :: bramo(:,:,:),braavec(:,:,:,:), ketmo(:,:,:),ketavec(:,:,:,:)
   DATATYPE,allocatable :: read_bramo(:,:,:),read_braavec(:,:,:,:),read_ketmo(:,:,:),read_ketavec(:,:,:,:)
@@ -315,7 +318,6 @@ subroutine fluxgtau0(alg,www,bioww)
                  enddo
               enddo
            endif
-
         endif
 
         call system_clock(btime)
@@ -362,34 +364,41 @@ subroutine fluxgtau0(alg,www,bioww)
               abio(:,:,:)=braavec(:,:,:,bratime)
               
               call bioset(fluxgtaubiovar,smo,numr,bioww)
+#ifdef CNORMFLAG
+              fluxgtaubiovar%hermonly=.true.
+#endif
               call biortho(mobra,moket,mobio,abio(:,:,1),fluxgtaubiovar)
               
               do imc=2,mcscfnum
-                 call biotransform(mobra,mobio,abio(:,:,imc),fluxgtaubiovar)
+                 call biotransform(mobra,moket,abio(:,:,imc),fluxgtaubiovar)
               enddo
-              
+#ifdef CNORMFLAG
+              fluxgtaubiovar%hermonly=.false.   !! in case fluxgtaubiovar is reused
+              abio(:,:,:)=conjg(abio(:,:,:))
+#endif
+
               call system_clock(jtime);          times(3)=times(3)+jtime-itime
 
 !! complete the one-e potential and kinetic energy matrix elements           
               do i=1,nspf
                  do k=1,nspf
-                    ke(k,i) = dot(mobio(:,k),keop(:,i),spfsize)
-                    pe(k,i) = dot(mobio(:,k),peop(:,i),spfsize)
+                    ke(k,i) = hermdot(mobio(:,k),keop(:,i),spfsize)
+                    pe(k,i) = hermdot(mobio(:,k),peop(:,i),spfsize)
                     if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
-                       reke(k,i) = dot(mobio(:,k),rekeop(:,i),spfsize)
-                       repe(k,i) = dot(mobio(:,k),repeop(:,i),spfsize)
+                       reke(k,i) = hermdot(mobio(:,k),rekeop(:,i),spfsize)
+                       repe(k,i) = hermdot(mobio(:,k),repeop(:,i),spfsize)
                     endif
                  enddo
               enddo
               if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
                  do i=1,nspf
                     do k=1,nspf
-                       yderiv(k,i) = dot(mobio(:,k),yop(:,i),spfsize)
+                       yderiv(k,i) = hermdot(mobio(:,k),yop(:,i),spfsize)
                     enddo
                  enddo
                  do i=1,nspf
                     do k=1,nspf
-                       reyderiv(k,i) = dot(mobio(:,k),reyop(:,i),spfsize)
+                       reyderiv(k,i) = hermdot(mobio(:,k),reyop(:,i),spfsize)
                     enddo
                  enddo
               endif
@@ -424,12 +433,12 @@ subroutine fluxgtau0(alg,www,bioww)
 !! evaluate the actual g(tau) expression
 
               do imc=1,mcscfnum
-                 fluxevalval(imc) = fluxeval(abio,aket,ke,pe,V2,yderiv,1,imc) * dt  !! 1 means flux
+                 fluxevalval(imc) = fluxeval(abio(:,:,imc),aket(:,:,imc),ke,pe,V2,yderiv,1) * dt  !! 1 means flux
               enddo
           
               if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
                  do imc=1,mcscfnum
-                    fluxevalval(imc) = fluxevalval(imc)+fluxeval(abio,aket,reke,repe,reV2,reyderiv,2,imc) * dt  !! 2 means flux
+                    fluxevalval(imc) = fluxevalval(imc)+fluxeval(abio(:,:,imc),aket(:,:,imc),reke,repe,reV2,reyderiv,2) * dt  !! 2 means flux
                  enddo
               endif
 
@@ -737,16 +746,16 @@ end subroutine flux_op_twoe
 !! with flag=0 does full hamiltonian no real or imag part
 
 
-function fluxeval(abra,aket,ke,pe,V2,yderiv,flag,imc)   
+function fluxeval(abra,aket,ke,pe,V2,yderiv,flag)   
   use parameters 
   use configmod
   implicit none
-  integer,intent(in) :: flag,imc
-  DATATYPE,intent(in) :: abra(numr,first_config:last_config,mcscfnum),aket(numr,first_config:last_config,mcscfnum)
+  integer,intent(in) :: flag
+  DATATYPE,intent(in) :: abra(numr,first_config:last_config),aket(numr,first_config:last_config)
   DATATYPE :: fluxeval,fluxeval00
   DATATYPE :: ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf)  !! AUTOMATIC
 
-  fluxeval=fluxeval00(abra(:,:,imc),aket(:,:,imc),ke,pe,V2,yderiv,flag,nucfluxflag,www)
+  fluxeval=fluxeval00(abra,aket,ke,pe,V2,yderiv,flag,nucfluxflag,www)
 
 end function fluxeval
 

@@ -175,7 +175,8 @@ function getlen2(buffer)
 end function getlen2
 
 
-function hermdot(one,two,n)
+!! CALLED INSIDE OMP LOOPS
+recursive function hermdot(one,two,n)
   implicit none
   integer,intent(in) :: n
   DATATYPE,intent(in) :: one(n), two(n)
@@ -186,7 +187,7 @@ function hermdot(one,two,n)
      sum =   sum + ALLCON(one(i)) *  two(i) 
   enddo
   hermdot=sum
-end function
+end function hermdot
 
 function floatfac(in)
   implicit none

@@ -317,7 +317,7 @@ subroutine jacoperate0(dentimeflag,conflag,inspfs,outspfs)
   if (parorbsplit.eq.1) then
      call system_clock(itime)
      call mpiorbgather(outspfs,spfsize)
-     call system_clock(jtime);      times(4)=times(4)+jtime-itime;      itime=jtime
+     call system_clock(jtime);      times(4)=times(4)+jtime-itime
   endif
 
   call system_clock(btime); times(7)=times(7)+btime-atime;
