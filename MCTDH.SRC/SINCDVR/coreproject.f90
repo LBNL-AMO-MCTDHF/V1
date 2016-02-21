@@ -387,6 +387,7 @@ subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen,notuse
   endif
 
   allocate(frodensity(totpoints,howmany), tempreduced(totpoints,howmany))
+  frodensity=0; tempreduced=0
 
   do spf2b=1,numfrozen
      do spf2a=1,howmany
@@ -420,6 +421,7 @@ subroutine op_reflectz(in,out)
   integer :: partrank(3),partner,i
 
   allocate(work(numpoints(1),numpoints(2),numpoints(3)))
+  work=0
 
   if (orbparflag) then
      partrank(:)=boxrank(:)
@@ -453,6 +455,7 @@ subroutine op_reflecty(in,out)
   integer :: partrank(3),partner,i
 
   allocate(work(numpoints(1),numpoints(2),numpoints(3)))
+  work=0
 
   if (orbparflag) then
      partrank(:)=boxrank(:)
@@ -486,6 +489,7 @@ subroutine op_reflectx(in,out)
   integer :: partrank(3),partner,i
 
   allocate(work(numpoints(1),numpoints(2),numpoints(3)))
+  work=0
 
   if (orbparflag) then
      partrank(:)=boxrank(:)
@@ -1270,6 +1274,8 @@ subroutine divide_mask(in,out,howmany)
   DATATYPE :: work(numpoints(1),numpoints(2),numpoints(3),howmany)        !! AUTOMATIC
   integer :: ii
 
+  work=0
+
   do ii=1,numpoints(1)
      out(ii,:,:,:)=in(ii,:,:,:)/maskfunction(1)%rmat(ii)
   enddo
@@ -1292,6 +1298,8 @@ subroutine mult_mask(in,out,howmany)
   DATATYPE, intent(out) :: out(numpoints(1),numpoints(2),numpoints(3),howmany)
   DATATYPE :: work(numpoints(1),numpoints(2),numpoints(3),howmany)     !! AUTOMATIC
   integer :: ii
+
+  work=0
 
   do ii=1,numpoints(1)
      out(ii,:,:,:)=in(ii,:,:,:)*maskfunction(1)%rmat(ii)
@@ -1364,7 +1372,7 @@ subroutine mult_general_withbcast(option,xcoef,ycoef,zcoef,in,out,howmany,timing
   DATATYPE :: temp(totpoints,howmany),temp2(totpoints,howmany)   !!AUTOMATIC
   DATATYPE :: mycoefs(3)
 
-  out(:,:)=0d0
+  temp(:,:)=0;  temp2(:,:)=0;  out(:,:)=0d0
 
   if (option.eq.2) then 
      mycoefs(:) = (/ xcoef,ycoef,zcoef /)
@@ -1454,7 +1462,7 @@ subroutine mytranspose(in,out,blocksize,howmany,times,nprocs1,nprocs2)
   
   call myclock(atime)
 
-  intranspose(:,:,:,:,:)=0d0
+  intranspose=0; outtemp=0; outone=0; inchop=0
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i)    !! IPROC IS SHARED (GOES WITH BARRIER, INCHOP SHARED)
 
@@ -1566,7 +1574,7 @@ subroutine mult_general_withtranspose(option,xcoef,ycoef,zcoef,in,out,howmany,ti
   DATATYPE :: mycoefs(3)
   integer :: ii,jj,temptimes(3)=0
 
-  out(:,:)=0d0
+  out(:,:)=0d0; temp=0; temp2=0;
   inwork(:,:)=in(:,:)
 
   if (.not.orbparflag) then
@@ -1732,7 +1740,7 @@ subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
   
   totsize=nnn*numpoints(indim)*howmany
 
-  out(:,:)=0
+  out(:,:)=0; work=0; work2=0
 
   do deltabox=0,nbox(indim)-1
      call myclock(atime)
@@ -1853,7 +1861,9 @@ subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
   totsize=numpoints(indim)*nnn*howmany
 
   call myclock(atime)
-  out(:,:)=0d0
+
+  out(:,:)=0d0;   work=0
+
   call myclock(btime); times(1)=times(1)+btime-atime
 
   do ibox=1,nbox(indim)
@@ -2026,6 +2036,8 @@ subroutine reinterpolate_orbs_complex(cspfs,indims,outcspfs,outdims,num)
        newspfs2(outdims(1),outdims(2),indims(3),num),    transform(outdims(1),indims(1)),&
        distance(1-2*indims(1):outdims(1)-2),&  !! new index minus 2 times old  
        sincval(1-2*indims(1):outdims(1)-2))
+
+  newspfs1=0; newspfs2=0; distance=0; sincval=0
   
   indim=indims(1); outdim=outdims(1)
 
@@ -2098,6 +2110,7 @@ subroutine splitgatherv(inlocal,outbig,bcastflag)
      allocate(ingather(1,1,1,1,1,1))
   endif
 
+  ingather=0
   qqblocks(:)=totpoints
   call mygatherv(inlocal,ingather,qqblocks,.false.)
 
@@ -2137,6 +2150,7 @@ subroutine splitgatherv_real(inlocal,outbig,bcastflag)
      allocate(ingather(1,1,1,1,1,1))
   endif
 
+  ingather=0
   qqblocks(:)=totpoints
   call mygatherv_real(inlocal,ingather,qqblocks,.false.)
 
@@ -2177,6 +2191,7 @@ subroutine splitgatherv_complex(inlocal,outbig,bcastflag)
      allocate(ingather(1,1,1,1,1,1))
   endif
 
+  ingather=0
   qqblocks(:)=totpoints
   call mygatherv_complex(inlocal,ingather,qqblocks,.false.)
 
@@ -2224,12 +2239,9 @@ subroutine splitscatterv(inbig,outlocal)
      allocate(inscatter(1,1,1,1,1,1))
   endif
 
-  call mpibarrier()
-
+  inscatter=0
   qqblocks(:)=totpoints
   call myscatterv(inscatter,outlocal,qqblocks)
-
-  call mpibarrier()
 
   deallocate(inscatter)
 
@@ -2260,12 +2272,9 @@ subroutine splitscatterv_real(inbig,outlocal)
      allocate(inscatter(1,1,1,1,1,1))
   endif
 
-  call mpibarrier()
-
+  inscatter=0
   qqblocks(:)=totpoints
   call myscatterv_real(inscatter,outlocal,qqblocks)
-
-  call mpibarrier()
 
   deallocate(inscatter)
 
@@ -2298,12 +2307,9 @@ subroutine splitscatterv_complex(inbig,outlocal)
      allocate(inscatter(1,1,1,1,1,1))
   endif
 
-  call mpibarrier()
-
+  inscatter=0
   qqblocks(:)=totpoints
   call myscatterv_complex(inscatter,outlocal,qqblocks)
-
-  call mpibarrier()
 
   deallocate(inscatter)
 

@@ -190,8 +190,10 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
 #ifndef REALGO
   allocate(temppot(totpoints))
+  temppot=0
 #endif
   allocate(scalefunction(totpoints,3), djacobian(totpoints,3), ddjacobian(totpoints,3))
+  scalefunction=0; djacobian=0; ddjacobian=0
 
   if (fft_mpi_inplaceflag.eq.0) then
      call ct_init(fft_ct_paropt)
@@ -393,6 +395,7 @@ subroutine mult_bigspf0(inbigspf,outbigspf)
   DATATYPE, intent(out) :: outbigspf(totpoints)
   DATATYPE :: tempspf(totpoints)   !! AUTOMATIC
 
+  tempspf=0
   call mult_ke(inbigspf(:),outbigspf(:),1,"booga",2)
   call mult_pot(1,inbigspf(:),tempspf(:))
   outbigspf(:)=outbigspf(:)+tempspf(:)
@@ -444,6 +447,8 @@ subroutine mult_bigspf_ivo(inbigspf,outbigspf)
   DATATYPE, intent(out) :: outbigspf(totpoints)
   DATATYPE :: tempspf(totpoints),inwork(totpoints),inwork2(totpoints),&
        workspf(totpoints)   !! AUTOMATIC
+
+  tempspf=0; inwork=0; inwork2=0; workspf=0
 
   call ivo_project(inbigspf,outbigspf)
   call project_onfrozen(inbigspf,workspf)
@@ -541,7 +546,7 @@ subroutine init_spfs(inspfs,numloaded)
      WRFL loadedocc(1:numloaded); CFL
 
      allocate(ivopot(totpoints), density(totpoints),ivo_occupied(totpoints,numloaded))
-     ivopot(:)=0d0; density(:)=0d0
+     ivopot(:)=0d0; density(:)=0d0; ivo_occupied=0d0
 
      numocc=numloaded
      ivo_occupied(:,:)=inspfs(:,1:numloaded)
@@ -559,6 +564,7 @@ subroutine init_spfs(inspfs,numloaded)
   endif
 
   allocate(lanspfs(totpoints,numcompute),energies(numcompute))
+  lanspfs=0; energies=0
 
   ibig=totpoints
   iorder=min(ibig,orblanorder)
@@ -569,7 +575,8 @@ subroutine init_spfs(inspfs,numloaded)
 
   OFLWR "CALL BLOCK LAN FOR ORBS, ",numcompute," VECTORS"; CFL
 
-  call blocklanczos0(min(3,numspf),numcompute,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,energies,1,0,orblancheckmod,orblanthresh,mult_bigspf,orbparflag,orbtargetflag,orbtarget)
+  call blocklanczos0(min(3,numspf),numcompute,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,&
+       energies,1,0,orblancheckmod,orblanthresh,mult_bigspf,orbparflag,orbtargetflag,orbtarget)
 
   if (ivoflag.ne.0) then
      deallocate(ivopot,ivo_occupied)

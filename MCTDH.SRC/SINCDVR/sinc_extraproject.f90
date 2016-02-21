@@ -157,6 +157,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
 
   allocate(rankbybox(procsplit(1),procsplit(2),procsplit(3)),proclist(procsplit(1),procsplit(2),procsplit(3)),&
        newproclist(procsplit(1),procsplit(2),procsplit(3)))
+  rankbybox=0; proclist=0; newproclist=0
 
   iproc=0
   do i=1,procsplit(3)

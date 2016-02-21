@@ -240,6 +240,7 @@ subroutine twiddlemult_mpi(blocksize,in,out,dim1,howmany,rdd,oplevel)
   complex*16 :: twiddle1(dim1,ct_maxposition(rdd)),tt1(dim1)
   integer :: ii,n1
 
+  twiddle1=0; tt1=0
   call gettwiddlesmall(twiddle1(:,:),dim1*ct_maxposition(rdd),ct_pf(rdd))
 
   tt1(:)=twiddle1(:,ct_myposition(rdd,oplevel))**(ct_myrank(rdd,oplevel)-1)
@@ -262,6 +263,8 @@ subroutine myzfft1d_slowindex_mpi(in,out,totsize,rdd,oplevel)
   complex*16, intent(out) :: out(totsize)
   complex*16 :: fouriermatrix(ct_pf(rdd),ct_pf(rdd)),twiddle(ct_pf(rdd))
   integer :: ii
+
+  fouriermatrix=0; ct_pf=0; twiddle=0
 
   call gettwiddlesmall(twiddle,ct_pf(rdd),1)
   do ii=1,ct_pf(rdd)
@@ -290,6 +293,7 @@ subroutine simple_circ(in, out,mat,howmany,rdd,oplevel)
 #ifdef MPIFLAG
   complex*16 :: work2(howmany),work(howmany)
   integer :: ibox,jbox,deltabox,nnn
+  work2=0;work=0
 #endif
 
   thisfileptr=6
@@ -336,6 +340,7 @@ subroutine simple_summa(in, out,mat,howmany,rdd,oplevel)
 #ifdef MPIFLAG
   complex*16 :: work(howmany)
   integer :: ibox,nnn
+  work=0
 #endif
 
   thisfileptr=6
@@ -440,6 +445,8 @@ subroutine ct_getprimeset()
   implicit none
   integer :: ii, allprocs0(procsplit(1),procsplit(2),procsplit(3)),jj,kk,iproc
 
+  allprocs0=0
+
   if (ct_called.ne.0) then
      OFLWR "ONLY CALL CT_GETPRIMESET ONCE (programmer fail)"; CFLST
   endif
@@ -521,7 +528,7 @@ subroutine ct_construct(allprocs0)
   use pfileptrmod
   use ct_primesetmod
   implicit none
-  integer :: allprocs0(procsplit(1),procsplit(2),procsplit(3))
+  integer,intent(in) :: allprocs0(procsplit(1),procsplit(2),procsplit(3))
 #ifdef MPIFLAG
   integer :: thisfileptr,procshift(ct_maxprime),ierr,iprime,&
        proc_check, ii, icomm, ilevel, &

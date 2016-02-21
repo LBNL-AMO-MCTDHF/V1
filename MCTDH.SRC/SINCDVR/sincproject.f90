@@ -51,6 +51,7 @@ subroutine myprojectalloc()
   integer :: idim
 
   allocate(dipoles(totpoints,griddim))
+  dipoles=0
   if (maskflag.ne.0) then
      if (masknumpoints.lt.0.or.&
           masknumpoints.gt.gridpoints(1).or.&
@@ -61,6 +62,7 @@ subroutine myprojectalloc()
      allocate(maskfunction(3))
      do idim=1,griddim
         allocate(maskfunction(idim)%rmat(numpoints(idim)))
+        maskfunction(idim)%rmat=0
      enddo
   endif
   
@@ -71,10 +73,13 @@ subroutine myprojectalloc()
           invsqrtscaleweights(totpoints),scaleweights13(totpoints),&
           invscaleweights13(totpoints),scaleweights16(totpoints),&
           invscaleweights16(totpoints))
-
+     jacobian=0; invjacobian=0; invsqrtjacobian=0; scalediag=0;
+     invsqrtscaleweights=0;scaleweights13=0;invscaleweights13=0;
+     scaleweights16=0;invscaleweights16=0;
   endif
   
   allocate(ketot(griddim),sinepoints(griddim),kevect(griddim),fdtot(griddim),fdvect(griddim))
+
   do idim=1,griddim
      allocate( &
 
@@ -89,6 +94,8 @@ subroutine myprojectalloc()
           fdvect(idim)%rmat(1-gridpoints(idim):gridpoints(idim)-1),&
           fdvect(idim)%cmat(1-gridpoints(idim):gridpoints(idim)-1),&
           sinepoints(idim)%mat(numpoints(idim),nbox(idim)))
+     fdtot(idim)%mat=0; ketot(idim)%mat=0; kevect(idim)%rmat=0; kevect(idim)%cmat=0;
+     fdvect(idim)%rmat=0; kevect(idim)%cmat=0
   enddo
 
   if (griddim.ne.3) then
@@ -96,6 +103,7 @@ subroutine myprojectalloc()
   endif
 
   allocate(threed_two(0-numpoints(1):numpoints(1)-1,0-numpoints(2):numpoints(2)-1,0-numpoints(3):numpoints(3)-1))
+  threed_two=0
 
 end subroutine myprojectalloc
 
@@ -119,6 +127,7 @@ subroutine get_twoe_new(pot)
   endif
 
   allocate(realpot(totpoints))
+  realpot=0
   call get_3dpoisson(realpot)        
   pot(:)=realpot(:)
   deallocate(realpot)

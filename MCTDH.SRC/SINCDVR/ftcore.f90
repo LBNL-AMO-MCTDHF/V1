@@ -259,6 +259,7 @@ subroutine myzfft1d(in,out,dim,howmany)
 !$OMP PARALLEL DEFAULT(PRIVATE) SHARED(in,out,dim,howmany,wsave)
 !$OMP DO SCHEDULE(STATIC)
   do k=1,howmany
+     wsave(:,k)=0d0
      call zffti(dim,wsave(:,k))
      call zfftf(dim,out(:,k),wsave(:,k))
   enddo
@@ -276,15 +277,29 @@ subroutine myzfft1d_slowindex_local(in,out,dim1,dim2,howmany)
   integer, intent(in) :: dim1,dim2,howmany
   complex*16, intent(in) :: in(dim1,dim2,howmany)
   complex*16, intent(out) :: out(dim1,dim2,howmany)
-  complex*16 :: intrans(dim2,dim1,howmany),outtrans(dim2,dim1,howmany)
+  complex*16 :: intrans(dim2,dim1,howmany),outtrans(dim2,dim1,howmany)  !! AUTOMATIC
   integer :: ii
+
+  intrans=0; outtrans=0
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
+!$OMP DO SCHEDULE(DYNAMIC)
   do ii=1,howmany
      intrans(:,:,ii)=TRANSPOSE(in(:,:,ii))
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
   call myzfft1d(intrans,outtrans,dim2,dim1*howmany)
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
+!$OMP DO SCHEDULE(DYNAMIC)
   do ii=1,howmany
      out(:,:,ii)=TRANSPOSE(outtrans(:,:,ii))
   enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
 end subroutine myzfft1d_slowindex_local
 
 
@@ -307,6 +322,8 @@ subroutine fftblock_withtranspose(inout,dim1,dim2,dim3,howmany)
   complex*16,intent(inout) :: inout(dim2,dim3,dim1,howmany) 
   complex*16 :: work1(dim1,dim2,dim3,howmany)  !! AUTOMATIC
   integer :: i
+
+  work1=0
   call myzfft1d(inout,work1,dim1,dim2*dim3*howmany)
   do i=1,dim1
      inout(:,:,i,:)=work1(i,:,:,:)
@@ -341,7 +358,7 @@ subroutine mytranspose_complex(in,out,blocksize,howmany,times,nprocs1,nprocs2)
   
   call myclock(atime)
 
-  intranspose(:,:,:,:,:)=0d0
+  intranspose=0d0; outtemp=0; outone=0; inchop=0
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,i)    !! IPROC IS SHARED (GOES WITH BARRIER, INCHOP SHARED)
 
@@ -486,6 +503,7 @@ subroutine myzfft3d_mpiwrap0(in,out,dim,howmany,direction,placeopt)
   allocate(inlocal(mystart:myend,howmany), outlocal(mystart:myend,howmany),&
        outgather(mystart:myend,howmany,nprocs))
 
+  outlocal=0; outgather=0
   inlocal(:,:)=in(mystart:myend,:)
 
 
@@ -567,10 +585,11 @@ subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs1,nprocs2,direction,ople
   integer :: ii,atime,btime
   complex*16 :: mywork(dim**3/nprocs1/nprocs2,howmany) !! AUTOMATIC
 
+  mywork=0
+
   if (oplevel.ne.2.and.oplevel.ne.3) then
      print *, "OPLEVEL NOT SUP",oplevel; call mpistop()
   endif
-
 
   call myclock(atime)
   select case(direction)

@@ -27,6 +27,8 @@ subroutine get_3dpoisson(pot)
        1-gridpoints(2):gridpoints(2)-1,&
        1-gridpoints(3):gridpoints(3)-1))
 
+  tempcoulomb=0
+
   if (gridpoints(1).ne.gridpoints(2).or.gridpoints(1).ne.gridpoints(3)) then
      OFLWR" NEED CUBE"; CFLST
   endif

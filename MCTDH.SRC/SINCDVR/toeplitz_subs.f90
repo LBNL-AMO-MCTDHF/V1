@@ -208,6 +208,7 @@ subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany)
   complex*16 :: multvector(2*totdim,2*totdim,2*totdim,howmany), &              !! AUTOMATIC
        ffback(2*totdim,2*totdim,2*totdim,howmany),   bigcirc(2*totdim,2*totdim,2*totdim)
 
+  ffback=0
   bigcirc(:,:,:)=rbigcirc(:,:,:)
   multvector(:,:,:,:)=rmultvector(:,:,:,:)
   call circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
@@ -226,6 +227,7 @@ subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
        ffprod(2*totdim,2*totdim,2*totdim,howmany)                            !! AUTOMATIC
   integer :: ii
 
+  ffvec=0; ffmat=0
   call myzfft3d(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,2*totdim,2*totdim,howmany)
   call myzfft3d(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,2*totdim,2*totdim,1)
 
@@ -256,6 +258,7 @@ subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,dim1,dim2,dim3,times
         ffback(2*dim1,2*dim2,2*dim3,howmany),  bigcirc(2*dim1,2*dim2,2*dim3)
 
   call myclock(atime)
+  ffback=0
   bigcirc(:,:,:)=rbigcirc(:,:,:)
   multvector(:,:,:,:)=rmultvector(:,:,:,:)
   call myclock(btime); times(7)=times(7)+btime-atime
@@ -296,6 +299,8 @@ subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany
   integer :: atime,btime,myrank,nprocs
   complex*16 :: ffmat(2*dim1,2*dim2,2*dim3), &                                     !! AUTOMATIC
        ffvec(2*dim1,2*dim2,2*dim3,howmany),  ffprod(2*dim1,2*dim2,2*dim3,howmany)
+
+  ffvec=0; ffmat=0
 
   call getmyranknprocs(myrank,nprocs)  
 
