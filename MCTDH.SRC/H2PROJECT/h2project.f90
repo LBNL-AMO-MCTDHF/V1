@@ -157,7 +157,7 @@ subroutine get_twoe_new()
 
   lwork=xigridpoints*(lbig+1)*(2*mbig+1) * 10
   allocate(work(lwork), ipiv(lwork))
-  lwork=0; ipiv=0
+  work=0; ipiv=0
 
   allocate( kearray(numerad,numerad,mseriesmax+1,lseriesmax+1), &
        invkearray(numerad,numerad,mseriesmax+1, lseriesmax+1))
