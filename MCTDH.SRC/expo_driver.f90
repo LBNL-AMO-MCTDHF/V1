@@ -62,6 +62,9 @@ subroutine expoprop(time1,time2,inspfs, numiters)
      com_aspfs=0; com_propspfs=0; com_outspfs=0
   endif
 
+  tdiff=(time2-time1)
+  midtime=(time2+time1)/2d0
+
   call jacinit(inspfs,midtime)
 
 !!$ PREPARE FOR CALL TO DGEXPVxxx2
@@ -105,9 +108,6 @@ subroutine expoprop(time1,time2,inspfs, numiters)
      exposet=0
   endif
   numiters=0;  
-
-  tdiff=(time2-time1)
-  midtime=(time2+time1)/2d0
 
   if (thisexpodim.lt.maxexpodim) then
      tempstepsize=tempstepsize*4
