@@ -1,8 +1,6 @@
 
 !! ACTION DRIVER SUBROUTINES AND SEVERAL ACTIONS LIKE PLOTTING
 
-!! actions_initial may change yyy%cmfpsivec; actions may not!!!
-
 #include "Definitions.INC"
 
 module actionlistmod
@@ -63,7 +61,7 @@ subroutine actionsub(thistime)
         call system_clock(atime)
         if (myrank.eq.1) then
            if (mod(calledhere-1,plotmodulus).eq.0) then
-                 call save_natorb( thistime, yyy%cmfpsivec(spfstart,0), yyy%denvects, yyy%denvals , 1)
+                 call save_natorb( thistime, yyy%cmfspfs(:,0), yyy%denvects, yyy%denvals , 1)
            endif
         endif
         call system_clock(btime);        times(2)=times(2)+btime-atime
@@ -71,7 +69,7 @@ subroutine actionsub(thistime)
         call system_clock(atime)
         if (myrank.eq.1) then
            if (mod(calledhere-1,plotmodulus).eq.0) then
-                 call save_spf( thistime, yyy%cmfpsivec(spfstart,0), 1)
+                 call save_spf( thistime, yyy%cmfspfs(:,0), 1)
            endif
         endif
         call system_clock(btime);        times(3)=times(3)+btime-atime
@@ -79,7 +77,7 @@ subroutine actionsub(thistime)
         call system_clock(atime)
         if (myrank.eq.1) then
            if (mod(calledhere-1,plotmodulus).eq.0) then
-                 call save_density( thistime, yyy%cmfpsivec(spfstart,0),  yyy%denmat(:,:,0), 1, denplotbin)
+                 call save_density( thistime, yyy%cmfspfs(:,0),  yyy%denmat(:,:,0), 1, denplotbin)
            endif
         endif
         call system_clock(btime);        times(4)=times(4)+btime-atime
@@ -96,7 +94,7 @@ subroutine actionsub(thistime)
         call system_clock(atime)
         if (myrank.eq.1) then
            if (mod(calledhere-1,plotmodulus).eq.0) then
-              call save_natproj( thistime )  !!, yyy%cmfpsivec(astart(1),0))
+              call save_natproj( thistime )
            endif
         endif
         call system_clock(btime);        times(6)=times(6)+btime-atime
@@ -111,7 +109,7 @@ subroutine actionsub(thistime)
 
         call system_clock(atime)
         if(mod(calledhere-1,FluxInterval).eq.0) then  !! writes all mcscfnum
-           call fluxwrite((calledhere-1)/FluxInterval,yyy%cmfpsivec(spfstart,0),yyy%cmfpsivec(astart(1),0))
+           call fluxwrite((calledhere-1)/FluxInterval,yyy%cmfspfs(:,0), yyy%cmfavec(:,:,0))
        endif
         call system_clock(btime);        times(15)=times(15)+btime-atime
 
@@ -129,13 +127,14 @@ subroutine actionsub(thistime)
         call system_clock(btime);        times(21)=times(21)+btime-atime
      case (22)    
         call system_clock(atime)
-        call dferror(www,yyy%cptr(0),yyy%sptr(0),yyy%cmfpsivec(astart(1),0),mcscfnum,error,thistime)  !! does all mcscfnum
+        call dferror(www,yyy%cptr(0),yyy%sptr(0),yyy%cmfavec(:,:,0),&
+             mcscfnum,error,thistime)  !! does all mcscfnum
         OFL; write(mpifileptr,'(A15,2F25.10)') " DF error is ", error; CFL
         call system_clock(btime);        times(22)=times(22)+btime-atime
      case (24)    
         if(mod(calledhere-1,FluxInterval).eq.0) then 
            call system_clock(atime)
-           call keprojector(yyy%cmfpsivec(astart(1),0),yyy%cmfpsivec(spfstart,0),par_timestep*FluxInterval,www)
+           call keprojector(yyy%cmfavec(:,:,0),yyy%cmfspfs(:,0),par_timestep*FluxInterval,www)
            call system_clock(btime);        times(24)=times(24)+btime-atime
         endif
      case (25)
@@ -262,7 +261,7 @@ subroutine actions_final()
         endif
      case(15)
         if(mod(numpropsteps,FluxInterval).eq.0) then
-          call fluxwrite(numpropsteps/FluxInterval,yyy%cmfpsivec(spfstart,0),yyy%cmfpsivec(astart(1),0))
+          call fluxwrite(numpropsteps/FluxInterval,yyy%cmfspfs(:,0), yyy%cmfavec(:,:,0))
        endif
     case(20)
         call getoverlaps(1)

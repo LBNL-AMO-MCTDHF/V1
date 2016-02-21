@@ -126,7 +126,7 @@ subroutine get_frexchange()
      frozenexchange(:,:)=0
      if (numspf.gt.0) then
         call op_frozen_exchange(lowspf,highspf,&
-             yyy%cmfpsivec(spfstart+(lowspf-1)*spfsize:spfstart+highspf*spfsize-1,0),&
+             yyy%cmfspfs((lowspf-1)*spfsize+1:highspf*spfsize,0),&
              frozenexchange(:,lowspf:highspf))
      endif
      if (parorbsplit.eq.1) then

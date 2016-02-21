@@ -38,8 +38,8 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
        tempconfigvects(:,:)
   DATAECS, allocatable :: fullconfigvals(:)
   DATAECS ::  tempconfigvals(order+numshift)
-  DATATYPE :: lastval,dot
-  integer :: i,flag
+!!$  DATATYPE :: lastval,dot,csum
+  integer :: i
 
   if (order+numshift.gt.www%numconfig*numr) then
      OFLWR "Error, want ",order," plus ",numshift," vectors but totadim= ",www%numconfig*numr;CFLST
@@ -55,22 +55,30 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
   if (sparseconfigflag/=0) then
      
      allocate(tempconfigvects(www%totadim,order+numshift))
-     tempconfigvects(:,:)=0d0
+     if (www%totadim.gt.0) then
+        tempconfigvects(:,:)=0d0
+     endif
      if (guessflag.ne.0) then
-        allocate(realconfigvect(www%totadim))
+        allocate(realconfigvect(www%numconfig))
         do i=1,numshift
            call RANDOM_NUMBER(realconfigvect(:))
-           tempconfigvects(:,i)=realconfigvect(:)
+           if (www%totadim.gt.0) then
+              tempconfigvects(:,i)=realconfigvect(www%firstconfig*numr:www%lastconfig*numr)
+           endif
         enddo
-        tempconfigvects(:,numshift+1:order+numshift)=thisconfigvects(:,1:order)
         deallocate(realconfigvect)
+        if (www%totadim.gt.0) then
+           tempconfigvects(:,numshift+1:order+numshift)=thisconfigvects(:,1:order)
+        endif
      endif
      call blocklanczos(order+numshift,tempconfigvects,tempconfigvals,printflag,guessflag)
      
         !! so if guessflag=1, numshift is 0.
 
      thisconfigvals(1:order)=tempconfigvals(numshift+1:numshift+order)
-     thisconfigvects(:,1:order)=tempconfigvects(:,numshift+1:numshift+order)
+     if (www%totadim.gt.0) then
+        thisconfigvects(:,1:order)=tempconfigvects(:,numshift+1:numshift+order)
+     endif
      deallocate(tempconfigvects)
 
   else
@@ -81,7 +89,7 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
      allocate(fullconfigvals(www%numdfbasis*numr))
      allocate(fullconfigmatel(www%numdfbasis*numr,www%numdfbasis*numr), fullconfigvects(www%numconfig*numr,www%numdfbasis*numr))
      allocate(tempconfigvects(www%numdfbasis*numr,www%numdfbasis*numr))
-     fullconfigmatel=0.d0; fullconfigvects=0d0; fullconfigvals=0d0; tempconfigvects=0d0
+     fullconfigvects=0d0; tempconfigvects=0d0; fullconfigmatel=0.d0; fullconfigvals=0d0
 
      call assemble_dfbasismat(dfww,fullconfigmatel,cptr,1,1,0,0, time,-1)
 
@@ -119,22 +127,40 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
      thisconfigvects(:,1:order) = fullconfigvects(:,1+numshift:order+numshift)
      thisconfigvals(1:order) = fullconfigvals(1+numshift:order+numshift)
 
-     lastval = -99999999d0
-     flag=0
-     do i=1,order
-        thisconfigvects(:,i)=thisconfigvects(:,i) / sqrt(dot(thisconfigvects(:,i),thisconfigvects(:,i),www%totadim))
-        if (abs(thisconfigvals(i)-lastval).lt.1d-7) then
-           flag=flag+1
-           call gramschmidt(www%totadim,flag,www%totadim,thisconfigvects(:,i-flag),thisconfigvects(:,i),.false.)
-        else
-           flag=0
-        endif
-        lastval=thisconfigvals(i)
-     enddo
+
+!!$  REMOVED THIS 2-2016 was buggy par_conplit.ne.0 logic was not implemented
+!!$   implemented now but commented out.  only valid for pmchtdhf and cmctdhf not chmctdhf
+!!$   if degeneracy is accidental (unlikely) as opposed to due to symmetry
+!!$   in which case this orthogonality enforcement is fine.  But eigenvectors should
+!!$   come out of diagonalization routines properly orthogonalized.
+!!$  
+!!$       lastval = -99999999d0
+!!$       flag=0
+!!$       do i=1,order
+!!$  
+!!$          csum=dot(thisconfigvects(:,i),thisconfigvects(:,i),www%totadim)
+!!$          if (par_consplit.ne.0) then
+!!$             call mympireduceone(csum)
+!!$          endif
+!!$          thisconfigvects(:,i)=thisconfigvects(:,i) / sqrt(csum)
+!!$  
+!!$          if (abs(thisconfigvals(i)-lastval).lt.1d-7) then
+!!$             flag=flag+1
+!!$             if (par_consplit.ne.0) then
+!!$                call gramschmidt(www%totadim,flag,www%totadim,thisconfigvects(:,i-flag),thisconfigvects(:,i),.true.)
+!!$             else
+!!$                call gramschmidt(www%totadim,flag,www%totadim,thisconfigvects(:,i-flag),thisconfigvects(:,i),.false.)
+!!$             endif
+!!$  
+!!$          else
+!!$             flag=0
+!!$          endif
+!!$          lastval=thisconfigvals(i)
+!!$       enddo
 
      deallocate(fullconfigmatel, fullconfigvects, fullconfigvals,tempconfigvects)
 
-  endif
+  endif   !! sparseconfigflag
 
 !!$ REMOVED THIS FOR PARCONSPLIT 12-2015 v1.16 REINSTATE?
 !!$  
@@ -172,10 +198,14 @@ subroutine myconfigprop(www,dfww,avectorin,avectorout,time,imc,numiters)
   real*8,intent(in) :: time
   DATATYPE,intent(in) :: avectorin(www%totadim)
   DATATYPE,intent(out) :: avectorout(www%totadim)
-
+  DATATYPE :: nullvector1(numr),nullvector2(numr)
   numiters=0
   if (sparseconfigflag/=0) then
-     call exposparseprop(www,avectorin,avectorout,time,imc,numiters)
+     if (www%totadim.gt.0) then
+        call exposparseprop(www,avectorin,avectorout,time,imc,numiters)
+     else
+        call exposparseprop(www,nullvector1,nullvector2,time,imc,numiters)
+     endif
   else
      call nonsparseprop(www,dfww,avectorin,avectorout,time,imc)
   endif
@@ -307,7 +337,24 @@ subroutine parconfigexpomult_padded(inavector,outavector)
 
 end subroutine parconfigexpomult_padded
 
+subroutine paddedmult(in,out,www)
+  use parameters
+  use walkmod
+  use mpimod
+  implicit none
+  type(walktype),intent(in) :: www
+  DATATYPE,intent(in) :: in(numr,www%maxdfbasisperproc)
+  DATATYPE,intent(out) :: out(numr,www%maxdfbasisperproc)
+  integer :: ii
 
+!!  out(:,:)=0d0
+!!  return  !! RETURN
+
+  do ii=1,www%maxdfbasisperproc
+     out(:,ii)=in(:,ii)*(ii+(myrank-1)*www%maxdfbasisperproc)*par_timestep
+  enddo
+
+end subroutine paddedmult
 
 subroutine parconfigexpomult_padded0_gather(www,workconfigpointer,worksparsepointer,inavector,outavector)
   use fileptrmod
@@ -326,31 +373,37 @@ subroutine parconfigexpomult_padded0_gather(www,workconfigpointer,worksparsepoin
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
   DATATYPE,allocatable :: intemp(:,:)
-  DATATYPE :: outtemp(numr,www%botconfig:www%topconfig)  !! AUTOMATIC
+  DATATYPE :: outtemp(numr,www%botconfig:www%topconfig+1)  !! AUTOMATIC
 
   call avectortime(3)
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parconfigexpomult"; CFLST
   endif
-  
-  allocate(intemp(numr,www%numconfig))
-  intemp(:,:)=0d0
+
+  outtemp=0d0
+
+  allocate(intemp(numr,www%numconfig));    intemp(:,:)=0d0
 
 !! transform second to reduce communication?
 !!   no, spin transformations done locally now.
 
-  if (www%topconfig-www%botconfig+1 .ne. 0) then
+  if (www%topconfig.ge.www%botconfig) then
      call basis_transformfrom_local(www,numr,inavector,intemp(:,www%botconfig:www%topconfig))
   endif
 
   call mpiallgather(intemp,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
 
-  call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0,imc)
-     
-  outavector(:,:)=0d0   !! PADDED
+!!  call paddedmult(inavector,outavector,www)    !! PADDED
 
-  call basis_transformto_local(www,numr,outtemp,outavector)
+  outavector(:,:)=0d0    !!     inavector(:,:)   !! PADDED
+
+  if (www%topconfig.ge.www%botconfig) then
+     call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0,imc)
+     
+
+     call basis_transformto_local(www,numr,outtemp,outavector)
+  endif
 
   outavector=outavector*timefac
 
@@ -380,8 +433,8 @@ subroutine parconfigexpomult_padded0_summa(www,workconfigpointer,worksparsepoint
   type(SPARSEPTR),intent(in) :: worksparsepointer
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
-  DATATYPE :: intemp(numr,www%maxconfigsperproc), outwork(numr,www%botconfig:www%topconfig),&
-       outtemp(numr,www%botconfig:www%topconfig)   !! AUTOMATIC
+  DATATYPE :: intemp(numr,www%maxconfigsperproc), outwork(numr,www%botconfig:www%topconfig+1),&
+       outtemp(numr,www%botconfig:www%topconfig+1)   !! AUTOMATIC
   integer :: iproc
 
   call avectortime(3)
@@ -390,7 +443,7 @@ subroutine parconfigexpomult_padded0_summa(www,workconfigpointer,worksparsepoint
      OFLWR "error, must use sparse for parconfigexpomult"; CFLST
   endif
   
-  outwork(:,:)=0d0
+  outwork=0d0; outtemp=0; intemp=0
 
   do iproc=1,nprocs
 
@@ -401,15 +454,20 @@ subroutine parconfigexpomult_padded0_summa(www,workconfigpointer,worksparsepoint
         call basis_transformfrom_local(www,numr,inavector,intemp)
      endif
 
-     call mympibcast(intemp,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
+     if (www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
+        call mympibcast(intemp,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
 
-     call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0,imc)
+        call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0,imc)
      
-     outwork(:,:)=outwork(:,:)+outtemp(:,:)
+        outwork(:,:)=outwork(:,:)+outtemp(:,:)
+
+     endif
 
   enddo
 
-  outavector(:,:)=0d0   !! PADDED
+!!  call paddedmult(inavector,outavector,www)    !! PADDED
+
+  outavector(:,:)=0d0   !!     inavector(:,:)   !! PADDED
 
   call basis_transformto_local(www,numr,outwork,outavector)
 
@@ -438,7 +496,7 @@ subroutine parconfigexpomult_padded0_circ(www,workconfigpointer,worksparsepointe
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
   DATATYPE :: workvector(numr,www%maxconfigsperproc), workvector2(numr,www%maxconfigsperproc),&
-       outwork(numr,www%botconfig:www%topconfig),  outtemp(numr,www%botconfig:www%topconfig)  !! AUTOMATIC
+       outwork(numr,www%botconfig:www%topconfig+1),  outtemp(numr,www%botconfig:www%topconfig+1)  !! AUTOMATIC
   integer :: iproc,prevproc,nextproc,deltaproc
 
   call avectortime(3)
@@ -452,7 +510,7 @@ subroutine parconfigexpomult_padded0_circ(www,workconfigpointer,worksparsepointe
   prevproc=mod(nprocs+myrank-2,nprocs)+1
   nextproc=mod(myrank,nprocs)+1
 
-  outwork(:,:)=0d0
+  outwork=0d0; outtemp=0; workvector=0; workvector2=0
 
   call basis_transformfrom_local(www,numr,inavector,workvector)
 
@@ -461,21 +519,23 @@ subroutine parconfigexpomult_padded0_circ(www,workconfigpointer,worksparsepointe
 !! PASSING BACKWARD (plus deltaproc)
      iproc=mod(myrank-1+deltaproc,nprocs)+1
 
-     call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp, workconfigpointer, worksparsepointer, &
-          1,1,1,1,configexpotime,0,1,numr,0,imc)
-     
-     outwork(:,:)=outwork(:,:)+outtemp(:,:)
+     if (www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
+        call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp, workconfigpointer, worksparsepointer, &
+             1,1,1,1,configexpotime,0,1,numr,0,imc)
+        outwork(:,:)=outwork(:,:)+outtemp(:,:)
+     endif
 
 !! PASSING BACKWARD
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
 
-     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,&
-          numr * www%maxconfigsperproc)
+     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,numr*www%maxconfigsperproc)
      workvector(:,:)=workvector2(:,:)
 
   enddo
 
-  outavector(:,:)=0d0   !! PADDED
+!!  call paddedmult(inavector,outavector,www)    !! PADDED
+
+  outavector(:,:)=0d0    !!     inavector(:,:)   !! PADDED
 
   call basis_transformto_local(www,numr,outwork,outavector)
 

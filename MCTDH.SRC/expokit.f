@@ -1914,7 +1914,7 @@
       if ( lwsp.lt.n*(m+2)+5*(m+2)**2+ideg+1 ) iflag = -1
       if ( liwsp.lt.m+2 ) iflag = -2
       if ( m.ge.n .or. m.le.0 ) iflag = -3
-      if ( iflag.ne.0 ) stop 'bad sizes (in input of DGEXPV)'
+      if ( iflag.ne.0 ) stop 'bad sizes (in input of DGEXPVxxx)'
 *
 *---  initialisations ...
 *
@@ -2326,9 +2326,8 @@
 !!DJHPAR!!      if ( m.ge.n .or. m.le.0 ) iflag = -3
       if ( m.ge.maxdim .or. m.le.0 ) iflag = -3
 
-!!djhtemp      if ( iflag.ne.0 ) stop 'bad sizes (in input of DGEXPV)'
       if ( iflag.ne.0 ) then
-         print *, 'bad sizes (in input of DGEXPV)', iflag
+         print *, 'bad sizes (in input of DGEXPVxxx2)', iflag
          print *, m,n,maxdim
          print *, lwsp,n*(m+2)+5*(m+2)**2+ideg+1 
          print *, liwsp, m+2 

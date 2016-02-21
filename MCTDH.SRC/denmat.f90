@@ -104,7 +104,7 @@ subroutine replace_withnat(printflag)
   do j=1,nspf  ! which natorb
      do i=1,nspf  ! which original
         outspfs(:,j)=outspfs(:,j)+ &
-             yyy%cmfpsivec(spfstart+(i-1)*spfsize:spfstart+i*spfsize-1,0)*yyy%denvects(i,j)
+             yyy%cmfspfs((i-1)*spfsize+1:i*spfsize,0)*yyy%denvects(i,j)
      enddo
   enddo
 
@@ -125,29 +125,29 @@ subroutine replace_withnat(printflag)
 
   do imc=1,mcscfnum
 
-!!$     tempavector(:)=yyy%cmfpsivec(astart(imc):aend(imc),0)
+!!$     tempavector(:)=yyy%cmfavec(:,imc,0)
 
-     call biotransform(yyy%cmfpsivec(spfstart,0),outspfs,yyy%cmfpsivec(astart(imc),0),natrepbiovar)
+     call biotransform(yyy%cmfspfs(:,0),outspfs, yyy%cmfavec(:,imc,0),natrepbiovar)
 
 !!$! doesn't work.  permoverlaps broken presumably.
 !!$#ifdef NOWAYDUDE
-!!$     call autocorrelate_one(yyy%cmfpsivec(astart(imc),0), outspfs, yyy%cmfpsivec(spfstart,0), tempavector, sum,1)
+!!$     call autocorrelate_one(yyy%cmfavec(:,imc,0), outspfs, yyy%cmfspfs(:,0), tempavector, sum,1)
 !!$!! CHECK
-!!$     tempavector2(:)=yyy%cmfpsivec(astart(imc):aend(imc),0)
-!!$     call biotransform(outspfs,yyy%cmfpsivec(spfstart,0),tempavector2(:),natrepbiovar)
+!!$     tempavector2(:)=yyy%cmfavec(:,imc,0)
+!!$     call biotransform(outspfs,yyy%cmfspfs(:,0),tempavector2(:),natrepbiovar)
 !!$     print *, DOT_PRODUCT(tempavector,tempavector),"AAAAAA"
 !!$     tempavector2(:)=     tempavector2(:) - tempavector(:)
 !!$     print *, DOT_PRODUCT(tempavector2,tempavector2),"BBBBB";
 !!$     nullspfs(:,:)=0d0
 !!$nullspfs(:,:)=nullspfs(:,:)-outspfs(:,:)
 !!$print *, "BIOCHECK ", DOT_PRODUCT(RESHAPE(nullspfs, (/spfsize*nspf/)), RESHAPE(nullspfs, (/spfsize*nspf/)))
-!!$!     call checkbio(yyy%cmfpsivec(spfstart,0),outspfs,tempavector,yyy%cmfpsivec(astart(imc),0))
-!!$!     call checkbio(yyy%cmfpsivec(spfstart,0),nullspfs,tempavector,yyy%cmfpsivec(astart(imc),0))
+!!$!     call checkbio(yyy%cmfspfs(:,0),outspfs,tempavector,yyy%cmfavec(:,imc,0))
+!!$!     call checkbio(yyy%cmfspfs(:,0),nullspfs,tempavector,yyy%cmfavec(:,imc,0))
 !!$#endif
 
   enddo
 
-  yyy%cmfpsivec(spfstart:spfend,0)=RESHAPE(outspfs,(/totspfdim/))
+  yyy%cmfspfs(:,0)=RESHAPE(outspfs,(/totspfdim/))
 
   deallocate(outspfs)
 
@@ -161,7 +161,7 @@ subroutine getdenmatx()
   use xxxmod
   implicit none
 
-  call getdenmatstuff(www,yyy%cmfpsivec(astart(1),0), yyy%denmat(:,:,0) , yyy%invdenmat(:,:,0) , yyy%denvals(:) , yyy%denvects(:,:), numr, mcscfnum)
+  call getdenmatstuff(www,yyy%cmfavec(:,:,0), yyy%denmat(:,:,0) , yyy%invdenmat(:,:,0) , yyy%denvals(:) , yyy%denvects(:,:), numr, mcscfnum)
 
 !!$  if (rdenflag==1) then
 !!$     call getrdenmat()
@@ -366,15 +366,16 @@ end subroutine getoccupations
 !!$  use xxxmod
 !!$  implicit none
 !!$
-!!$  DATATYPE :: avector(numconfig,numr,mcscfnum), a1(mcscfnum), a2(mcscfnum), csum, csum2, sum,dot
+!!$  DATATYPE :: avector(numr,numconfig,mcscfnum), a1(mcscfnum), a2(mcscfnum), csum, csum2, sum,dot
 !!$  integer ::     ii,jj, config1
 !!$
-!!$  avector(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numconfig,numr,mcscfnum/))
+!!$  avector(:,:,:)=RESHAPE(yyy%cmfavec(:,:,0),(/numr,numconfig,mcscfnum/))
 !!$  do ii=1,numr
 !!$     do jj=1,numr
 !!$        sum=0.d0
 !!$        do config1=1,numconfig  !! ok walks
-!!$           a1(:)=avector(config1,ii,:);           a2(:)=avector(config1,jj,:)
+!!$           a1(:)=avector(ii,config1,:);           
+!!$           a2(:)=avector(jj,config1,:)
 !!$           sum=sum+dot(a2(:),a1(:),mcscfnum)
 !!$        enddo
 !!$        yyy%rdenmat(ii,jj)=sum
@@ -469,11 +470,11 @@ end subroutine getoccupations
 !!$  use xxxmod
 !!$  implicit none
 !!$
-!!$  DATATYPE :: avector(numconfig,numr,mcscfnum), a1(mcscfnum), a2(mcscfnum),dot
+!!$  DATATYPE :: avector(numr,numconfig,mcscfnum), a1(mcscfnum), a2(mcscfnum),dot
 !!$  integer ::  config1,config2,     ii,imc,i,ir,numvects
-!!$  DATATYPE :: natmat(numconfig,numconfig), natvects(numconfig,numconfig)
+!!$  DATATYPE :: natmat(numconfig,numconfig), natvects(numconfig,numconfig),tempconfig(numconfig)
 !!$
-!!$  avector(:,:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),(/numconfig,numr,mcscfnum/))
+!!$  avector(:,:,:)=RESHAPE(yyy%cmfavec(:,:,0),(/numr,numconfig,numr,mcscfnum/))
 !!$
 !!$  if (numconfig.gt.2000) then
 !!$     OFLWR "Error: getting natconfigs but numconfig gt 2000: ", numconfig; CFLST
@@ -481,9 +482,9 @@ end subroutine getoccupations
 !!$  natmat=0.d0
 !!$  do ii=1,numr
 !!$     do config1=1,numconfig    !! ok walks
-!!$        a1(:)=avector(config1,ii,:)
+!!$        a1(:)=avector(ii,config1,:)
 !!$        do config2=1,numconfig !! ok walks
-!!$           a2(:)=avector(config2,ii,:)
+!!$           a2(:)=avector(ii,config2,:)
 !!$           natmat(config1,config2) = natmat(config1,config2) + dot(a2,a1,mcscfnum)
 !!$        enddo
 !!$     enddo
@@ -498,8 +499,9 @@ end subroutine getoccupations
 !!$  do imc=1,mcscfnum
 !!$     do i=1,numvects
 !!$        do ir=1,numr
+!!$        tempvector(:)=avector(ir,:,imc)
 !!$           natproj(ir,i,imc)=dot(natvects(:,i),  & !! ok imp conv (p,ch)
-!!$                avector(:,ir,imc),numconfig)
+!!$                tempvector(:),numconfig)
 !!$        enddo
 !!$        natdot(i,imc)=dot(natproj(:,i,imc),       & !! ok imp conv (p,ch)
 !!$             natproj(:,i,imc),numr)

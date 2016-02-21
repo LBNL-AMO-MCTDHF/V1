@@ -204,7 +204,7 @@ program mctdhf
 
   integer :: i,spfsloaded,totread,ifile,readnum
   DATAECS, allocatable ::  tempvals(:)
-  DATATYPE, allocatable :: bigavector(:,:), bigspfs(:,:)
+  DATATYPE, allocatable :: bigavector(:,:,:), bigspfs(:,:),hugeavector(:,:),nullvector(:,:,:)
   logical :: logcheckpar
 
   spfsloaded=0
@@ -333,13 +333,8 @@ program mctdhf
 
   call basis_set(www)
 
-  totspfdim=nspf*spfsize; tot_adim=local_nconfig*numr;  
-  psilength=tot_adim*mcscfnum+totspfdim
-
-  do i=1,mcscfnum
-     astart(i)=1+(i-1)*tot_adim;         ;     aend(i)=i*tot_adim;
-  enddo
-  spfstart=tot_adim*mcscfnum+1;           spfend=psilength
+  totspfdim=nspf*spfsize
+  tot_adim=local_nconfig*numr;  
 
   if ((sparseconfigflag.eq.0).and.(num_config.gt.1000).and.(nosparseforce.eq.0)) then
      OFLWR "You should really turn sparseconfigflag on, with ", &
@@ -486,9 +481,6 @@ program mctdhf
            spfsloaded=spfsloaded-numfrozen
            bigspfs(:,1:nspf)=bigspfs(:,numfrozen+1:numfrozen+nspf)
         endif
-
-!! hold it this is done below 041114           yyy%cmfpsivec(spfstart:spfend,0) = RESHAPE(bigspfs(:,:),(/totspfdim/))
-
      endif  ! loadspfflag
   endif
 
@@ -505,10 +497,10 @@ program mctdhf
         call spf_orthogit_gs(bigspfs(:,:))
      endif
 
-     yyy%cmfpsivec(spfstart:spfend,0) = RESHAPE(bigspfs(:,1:nspf),(/totspfdim/))
+     yyy%cmfspfs(:,0) = RESHAPE(bigspfs(:,1:nspf),(/totspfdim/))
      
-     call apply_spf_constraints(yyy%cmfpsivec(spfstart,0))
-     call spf_orthogit_gs(yyy%cmfpsivec(spfstart,0))
+     call apply_spf_constraints(yyy%cmfspfs(:,0))
+     call spf_orthogit_gs(yyy%cmfspfs(:,0))
 
      if (numfrozen.ne.0) then
         call frozen_matels()
@@ -518,27 +510,35 @@ program mctdhf
 
   deallocate(bigspfs)
 
-  yyy%cmfpsivec(astart(1):aend(mcscfnum),0) = 0d0
-
+  if (tot_adim.gt.0) then
+     yyy%cmfavec(:,:,0)=0d0
+  endif
 
 !! MAY 2014 now not doing load avector if skipflag=1 (flux)
 
   if (skipflag.eq.0) then
 
-     allocate(bigavector(tot_adim,mcscfnum));  bigavector(:,:)=0d0
-
+     allocate(bigavector(numr,first_config:last_config,mcscfnum),nullvector(1,1,mcscfnum))
+     nullvector=0d0
+     if (tot_adim.gt.0) then
+        bigavector(:,:,:)=0d0
+     endif
      totread=0
 
      if (loadavectorflag.eq.1) then
         if (load_avector_product.ne.0) then
            OFLWR "Reading product avector!" ; CFL
-           call load_avector_productsub(bigavector(:,:))
+           call load_avector_productsub(bigavector)
            readnum=mcscfnum; totread=mcscfnum
         else
         do ifile=1,numavectorfiles
            if (totread.lt.mcscfnum) then
               OFLWR "Reading avector..." ; CFL
-              call load_avectors(avectorfile(ifile),bigavector(:,totread+1),mcscfnum-totread,readnum,avecloadskip(ifile))
+              if (tot_adim.gt.0) then
+                 call load_avectors(avectorfile(ifile),bigavector(:,:,totread+1),mcscfnum-totread,readnum,avecloadskip(ifile))
+              else
+                 call load_avectors(avectorfile(ifile),nullvector(:,:,totread+1),mcscfnum-totread,readnum,avecloadskip(ifile))
+              endif
            endif
            totread=totread+readnum
         enddo
@@ -552,10 +552,25 @@ program mctdhf
         endif
 
         OFLWR "Not enough avectors loaded! will diagonalize."; CFL
+        allocate(hugeavector(numr,num_config))
         do i=totread+1,mcscfnum
-           call staticvector(bigavector(:,i),tot_adim)
-           call gramschmidt(tot_adim,i-1,tot_adim,bigavector(:,:),bigavector(:,i),.false.)
+           call staticvector(hugeavector(:,:),num_config*numr)
+           if (tot_adim.gt.0) then
+              bigavector(:,:,i)=hugeavector(:,first_config:last_config)
+           endif
+!! gram-schmidt might not be valid if vectors are not orthog but whatever it does not really matter
+           if (par_consplit.ne.0) then
+              if (tot_adim.gt.0) then
+                 call gramschmidt(tot_adim,i-1,tot_adim,bigavector(:,:,:),bigavector(:,:,i),.true.)
+              else
+                 call gramschmidt(tot_adim,i-1,tot_adim,nullvector(:,:,:),nullvector(:,:,i),.true.)
+              endif
+           else
+              call gramschmidt(tot_adim,i-1,tot_adim,bigavector(:,:,:),bigavector(:,:,i),.false.)
+           endif
         enddo
+
+        deallocate(hugeavector)
         if (debugflag.gt.0) then
            call mpibarrier();     OFLWR "CALL ALL MATEL IN MAIN"; CFL;     call mpibarrier()
         endif
@@ -565,30 +580,33 @@ program mctdhf
         if (debugflag.gt.0) then
            call mpibarrier();     OFLWR "AFTER CALL ALL MATEL IN MAIN"; CFL;     call mpibarrier()
         endif
-        allocate(tempvals(mcscfnum))
 
+        allocate(tempvals(mcscfnum))
         call myconfigeig(www,dwwptr,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
-             min(totread,1),0d0,max(0,improvedrelaxflag-1))
+             min(totread,1),0d0,max(0,abs(improvedrelaxflag)-1))
 
         if (improvednatflag.ne.0) then
-           yyy%cmfpsivec(astart(1):aend(mcscfnum),0) = &
-                RESHAPE(bigavector(:,:),(/tot_adim*mcscfnum/))
+           if (tot_adim.gt.0) then
+              yyy%cmfavec(:,:,0) = RESHAPE(bigavector(:,:,:),(/tot_adim,mcscfnum/))
+           endif
            call get_allden()
            call replace_withnat(1)
            call all_matel()
+
 !! since biorthogonalization is imperfect with restricted configuration spaces
 !!  and subject to tolerance criteria in any case, go ahead and rediagonalize
-           bigavector(:,:)=RESHAPE(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),&
-                (/tot_adim,mcscfnum/))
-           call myconfigeig(www,dwwptr,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
-                1,0d0,max(0,improvedrelaxflag-1))
-        endif
 
+           if (tot_adim.gt.0) then
+              bigavector(:,:,:)=RESHAPE(yyy%cmfavec(:,:,0),(/numr,local_nconfig,mcscfnum/))
+           endif
+           call myconfigeig(www,dwwptr,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
+                1,0d0,max(0,abs(improvedrelaxflag)-1))
+        endif
         deallocate(tempvals)
      endif  
-
-     yyy%cmfpsivec(astart(1):aend(mcscfnum),0) = RESHAPE(bigavector(:,:),(/tot_adim*mcscfnum/))
-
+     if (tot_adim.gt.0) then
+        yyy%cmfavec(:,:,0) = RESHAPE(bigavector(:,:,:),(/tot_adim,mcscfnum/))
+     endif
      deallocate(bigavector)
   endif
 

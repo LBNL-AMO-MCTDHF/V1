@@ -127,7 +127,6 @@ module bio_parameters
 integer ::      maxbiodim=100, &
      biodim=10                   !! Krylov dim for biorthogonalization
 real*8 ::     biotol=1.d-6
-integer :: biocomplex=0          !! 1=old way complex zg/hpiv  0=always real
 integer :: auto_biortho=1        !! do we want to use biorthonormalization or permutation overlaps? 0 perm overlaps, 1 biortho
 integer :: logbranch=1           !! branch of logarithm 3 options 0,1,2
 end module bio_parameters
@@ -483,8 +482,8 @@ integer :: nonatrotate=0
 
 !!!!!  integer :: whichquad=1           !!     0=my eqn 1=rayleigh quotient  WHICHQUAD 1 HARDWIRE
 
-integer,parameter :: orderflag=0           !! Order=       !! ordering of configs. 1= first all alphas,  then betas;  
-                                                 !!    0= 1a1b2a2b etc.
+!!$ integer,parameter :: orderflag=0           !! Order=       !! ordering of configs. 1= first all alphas,  then betas;  
+!!$                                                 !!    0= 1a1b2a2b etc.
 
 !! INTERNAL
 
@@ -504,13 +503,7 @@ real*8 :: langramthresh=1d-9
 integer :: numreduced=1
 integer :: headersize=200
 
-
-integer :: psilength
-integer :: astart(1000)
-integer :: aend(1000)
 integer :: tot_adim
-integer :: spfstart
-integer :: spfend
 
 integer :: num_config=-1
 integer, allocatable :: configs_perproc(:)
@@ -518,8 +511,6 @@ integer :: first_config,last_config,local_nconfig
 
 integer ::  ndof
 integer :: totspfdim
-
-
 
 integer :: autosize, autosteps
 integer :: cdenflag=0            !!              !! Calulate natconfig?  Not necessary if Act=6.
@@ -534,7 +525,6 @@ integer, parameter :: spfplotfile=303
 integer, parameter :: denfile=904
 integer, parameter :: denprojfile=597
 integer, parameter :: natprojfile=488
-
 
 real*8 :: abserr
 integer :: messflag=0

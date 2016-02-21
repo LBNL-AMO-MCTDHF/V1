@@ -176,7 +176,7 @@ subroutine psistats( thistime )
   calledflag=1
 
 
-  call get_psistats(www,bwwptr,yyy%cmfpsivec(spfstart,0),mcscfnum,yyy%cmfpsivec(astart(1),0),&
+  call get_psistats(www,bwwptr,yyy%cmfspfs(:,0),mcscfnum,yyy%cmfavec(:,:,0),&
        mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
 
   if (myrank.eq.1) then
@@ -193,20 +193,28 @@ end subroutine psistats
 
 
 
-subroutine get_psistats( www, bioww, myspfs, numvec, inavectors, mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
+subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
   use parameters
   use walkmod
   implicit none
   type(walktype),intent(in) :: www, bioww
   integer, intent(in) :: numvec
-  DATATYPE,intent(in) :: myspfs(spfsize,www%nspf), inavectors(numr,www%firstconfig:www%lastconfig,numvec)       
+  DATATYPE,intent(in) :: myspfs(spfsize,www%nspf), in_inavectors(numr,www%firstconfig:www%lastconfig,numvec)       
   DATATYPE, intent(out) :: mexpect(numvec),ugexpect(numvec),m2expect(numvec),&
        xreflect(numvec),yreflect(numvec),zreflect(numvec),xdipole(numvec),ydipole(numvec),zdipole(numvec)
-  DATATYPE,allocatable :: ugmat(:,:), xdipmat(:,:), ydipmat(:,:), zdipmat(:,:), &
+  DATATYPE,allocatable :: ugmat(:,:), xdipmat(:,:), ydipmat(:,:), zdipmat(:,:), inavectors(:,:,:), &
        xrefmat(:,:), yrefmat(:,:), zrefmat(:,:),     tempvector(:,:), tempspfs(:,:),tempspfs2(:,:)
   DATATYPE ::  dot,normsq(numvec),nullcomplex,dipoles(3),nucdipexpect(numvec,3),csum
   DATAECS :: rvector(numr)
   integer :: i,imc
+
+  if (www%lastconfig.ge.www%firstconfig) then
+     allocate(inavectors(numr,www%firstconfig:www%lastconfig,numvec))
+     inavectors(:,:,:)=in_inavectors(:,:,:)
+  else
+     allocate(inavectors(numr,1,numvec))
+     inavectors=0
+  endif
 
   allocate(ugmat(www%nspf,www%nspf), xdipmat(www%nspf,www%nspf), ydipmat(www%nspf,www%nspf), zdipmat(www%nspf,www%nspf), &
        xrefmat(www%nspf,www%nspf), yrefmat(www%nspf,www%nspf), zrefmat(www%nspf,www%nspf),&
@@ -217,30 +225,36 @@ subroutine get_psistats( www, bioww, myspfs, numvec, inavectors, mexpect,m2expec
 
 !! M & U/G
 
-  do imc=1,numvec
-     normsq(imc)=dot(inavectors(:,:,imc),inavectors(:,:,imc),www%totadim)
-  enddo
+  normsq(:)=0
+  if (www%totadim.gt.0) then
+     do imc=1,numvec
+        normsq(imc)=dot(inavectors(:,:,imc),inavectors(:,:,imc),www%totadim)
+     enddo
+  endif
   if (www%parconsplit.ne.0) then
      call mympireduce(normsq,numvec)
   endif
 
   if (spfrestrictflag.eq.1) then
-     do imc=1,numvec      
-        do i=1,numr
-           tempvector(i,:)=inavectors(i,:,imc) * www%configmvals(www%firstconfig:www%lastconfig)
-        enddo
-        mexpect(imc)=dot(inavectors(:,:,imc),tempvector(:,:),www%totadim)   /normsq(imc)
+     mexpect(:)=0; ugexpect(:)=0; m2expect(:)=0
+     if (www%totadim.gt.0) then
+        do imc=1,numvec      
+           do i=1,numr
+              tempvector(i,:)=inavectors(i,:,imc) * www%configmvals(www%firstconfig:www%lastconfig)
+           enddo
+           mexpect(imc)=dot(inavectors(:,:,imc),tempvector(:,:),www%totadim)   /normsq(imc)
         
-        do i=1,numr
-           tempvector(i,:)=inavectors(i,:,imc) * www%configugvals(www%firstconfig:www%lastconfig)
-        enddo
-        ugexpect(imc)=dot(inavectors(:,:,imc),tempvector(:,:),www%totadim)   /normsq(imc)
+           do i=1,numr
+              tempvector(i,:)=inavectors(i,:,imc) * www%configugvals(www%firstconfig:www%lastconfig)
+           enddo
+           ugexpect(imc)=dot(inavectors(:,:,imc),tempvector(:,:),www%totadim)   /normsq(imc)
         
-        do i=1,numr
-           tempvector(i,:)=inavectors(i,:,imc) * www%configmvals(www%firstconfig:www%lastconfig)**2
+           do i=1,numr
+              tempvector(i,:)=inavectors(i,:,imc) * www%configmvals(www%firstconfig:www%lastconfig)**2
+           enddo
+           m2expect(imc)=dot(inavectors(:,:,imc),tempvector(:,:),www%totadim)   /normsq(imc)
         enddo
-        m2expect(imc)=dot(inavectors(:,:,imc),tempvector(:,:),www%totadim)   /normsq(imc)
-     enddo
+     endif
      if (www%parconsplit.ne.0) then
         call mympireduce(mexpect,numvec)
         call mympireduce(ugexpect,numvec)
@@ -267,10 +281,13 @@ subroutine get_psistats( www, bioww, myspfs, numvec, inavectors, mexpect,m2expec
   call nucdipvalue(nullcomplex,dipoles)
 
   do imc=1,mcscfnum
-     do i=1,numr
-        tempvector(i,:)=inavectors(i,:,imc)*bondpoints(i)
-     enddo
-     csum=dot(inavectors(:,:,imc),tempvector,www%totadim)
+     csum=0
+     if (www%totadim.gt.0) then
+        do i=1,numr
+           tempvector(i,:)=inavectors(i,:,imc)*bondpoints(i)
+        enddo
+        csum=dot(inavectors(:,:,imc),tempvector,www%totadim)
+     endif
      if (www%parconsplit.ne.0) then
         call mympireduceone(csum)
      endif
@@ -279,11 +296,15 @@ subroutine get_psistats( www, bioww, myspfs, numvec, inavectors, mexpect,m2expec
 
   rvector(:)=bondpoints(:)
 
+  zdipole(:)=0; ydipole(:)=0; xdipole(:)=0
+
 !! Z DIPOLE
 
   do imc=1,numvec
      call arbitraryconfig_mult_singles(www,zdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
-     zdipole(imc)=dot(inavectors(:,:,imc),tempvector,www%totadim)
+     if (www%totadim.gt.0) then
+        zdipole(imc)=dot(inavectors(:,:,imc),tempvector,www%totadim)
+     endif
   enddo
   if (www%parconsplit.ne.0) then
      call mympireduce(zdipole,numvec)
@@ -294,7 +315,9 @@ subroutine get_psistats( www, bioww, myspfs, numvec, inavectors, mexpect,m2expec
 
   do imc=1,numvec
      call arbitraryconfig_mult_singles(www,ydipmat,rvector,inavectors(:,:,imc),tempvector,numr)
-     ydipole(imc)=dot(inavectors(:,:,imc),tempvector,www%totadim)
+     if (www%totadim.gt.0) then
+        ydipole(imc)=dot(inavectors(:,:,imc),tempvector,www%totadim)
+     endif
   enddo
   if (www%parconsplit.ne.0) then
      call mympireduce(ydipole,numvec)
@@ -305,7 +328,9 @@ subroutine get_psistats( www, bioww, myspfs, numvec, inavectors, mexpect,m2expec
 
   do imc=1,numvec
      call arbitraryconfig_mult_singles(www,xdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
-     xdipole(imc)=dot(inavectors(:,:,imc),tempvector,www%totadim)
+     if (www%totadim.gt.0) then
+        xdipole(imc)=dot(inavectors(:,:,imc),tempvector,www%totadim)
+     endif
   enddo
   if (www%parconsplit.ne.0) then
      call mympireduce(xdipole,numvec)
@@ -338,7 +363,7 @@ subroutine get_psistats( www, bioww, myspfs, numvec, inavectors, mexpect,m2expec
      xreflect(imc)=xreflect(imc)   /normsq(imc)
   enddo
 
-  deallocate(ugmat, xdipmat, ydipmat, zdipmat,     xrefmat, yrefmat, zrefmat,   tempvector,tempspfs,tempspfs2)
+  deallocate(ugmat, xdipmat, ydipmat, zdipmat,     xrefmat, yrefmat, zrefmat,   tempvector,tempspfs,tempspfs2,inavectors)
   
 end subroutine get_psistats
 
@@ -349,24 +374,24 @@ subroutine finalstats( )
   use xxxmod
   implicit none
 
-  call finalstats0(yyy%cmfpsivec(spfstart:spfend,0),yyy%cmfpsivec(astart(1):aend(mcscfnum),0),www,bwwptr)
+  call finalstats0(yyy%cmfspfs(:,0),  yyy%cmfavec(:,:,0),www,bwwptr)
 
 end subroutine finalstats
 
 
-subroutine finalstats0(myspfs,inavectors,www,bioww )
+subroutine finalstats0(myspfs,in_inavectors,www,bioww )
   use parameters
   use mpimod
   use walkmod
   implicit none
   type(walktype),intent(in) :: www,bioww
-  DATATYPE,intent(in) :: myspfs(spfsize,www%nspf), inavectors(numr,www%firstconfig:www%lastconfig,mcscfnum)       
+  DATATYPE,intent(in) :: myspfs(spfsize,www%nspf), in_inavectors(numr,www%firstconfig:www%lastconfig,mcscfnum)       
   DATATYPE :: mmatel(mcscfnum,mcscfnum),ugmatel(mcscfnum,mcscfnum),m2matel(mcscfnum,mcscfnum),&
        xrefmatel(mcscfnum,mcscfnum),yrefmatel(mcscfnum,mcscfnum),zrefmatel(mcscfnum,mcscfnum),&
        xdipmatel(mcscfnum,mcscfnum),ydipmatel(mcscfnum,mcscfnum),zdipmatel(mcscfnum,mcscfnum),&
        ovlmatel(mcscfnum,mcscfnum), nucdipmatel(mcscfnum,mcscfnum,3),&
        dot,nullcomplex,dipoles(3)
-  DATATYPE,allocatable :: ugmat(:,:), xdipmat(:,:), ydipmat(:,:), zdipmat(:,:), &
+  DATATYPE,allocatable :: ugmat(:,:), xdipmat(:,:), ydipmat(:,:), zdipmat(:,:), inavectors(:,:,:), &
        xrefmat(:,:), yrefmat(:,:), zrefmat(:,:), tempvector(:,:), tempspfs(:,:),tempspfs2(:,:)
   CNORMTYPE :: occupations(www%nspf,mcscfnum)
   DATAECS :: rvector(numr)
@@ -375,6 +400,14 @@ subroutine finalstats0(myspfs,inavectors,www,bioww )
   call mpibarrier()
   OFLWR "   ...GO finalstats."; CFL
   call mpibarrier()
+
+  if (www%lastconfig.ge.www%firstconfig) then
+     allocate(inavectors(numr,www%firstconfig:www%lastconfig,mcscfnum))
+     inavectors(:,:,:)=in_inavectors(:,:,:)
+  else
+     allocate(inavectors(numr,1,mcscfnum))
+     inavectors=0
+  endif
 
   allocate(ugmat(www%nspf,www%nspf), xdipmat(www%nspf,www%nspf), ydipmat(www%nspf,www%nspf), zdipmat(www%nspf,www%nspf), &
        xrefmat(www%nspf,www%nspf), yrefmat(www%nspf,www%nspf), zrefmat(www%nspf,www%nspf),&
@@ -394,36 +427,42 @@ subroutine finalstats0(myspfs,inavectors,www,bioww )
 
   call mpibarrier()
 
-  do imc=1,mcscfnum
-     do jmc=1,mcscfnum
-        ovlmatel(jmc,imc)=dot(inavectors(:,:,jmc),inavectors(:,:,imc),www%totadim)
+  ovlmatel(:,:)=0
+  if (www%totadim.gt.0) then
+     do imc=1,mcscfnum
+        do jmc=1,mcscfnum
+           ovlmatel(jmc,imc)=dot(inavectors(:,:,jmc),inavectors(:,:,imc),www%totadim)
+        enddo
      enddo
-  enddo
+  endif
   if (www%parconsplit.ne.0) then
      call mympireduce(ovlmatel,mcscfnum**2)
   endif
 
+  mmatel(:,:)=0; ugmatel(:,:)=0; m2matel(:,:)=0
   if (spfrestrictflag.eq.1) then
-     do imc=1,mcscfnum
-        do i=1,numr
-           tempvector(i,:)=inavectors(i,:,imc) * www%configmvals(:)
+     if (www%totadim.gt.0) then
+        do imc=1,mcscfnum
+           do i=1,numr
+              tempvector(i,:)=inavectors(i,:,imc) * www%configmvals(:)
+           enddo
+           do jmc=1,mcscfnum
+              mmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector(:,:),www%totadim)
+           enddo
+           do i=1,numr
+              tempvector(i,:)=inavectors(i,:,imc) * www%configugvals(:)
+           enddo
+           do jmc=1,mcscfnum
+              ugmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector(:,:),www%totadim)
+           enddo
+           do i=1,numr
+              tempvector(i,:)=inavectors(i,:,imc) * www%configmvals(:)**2
+           enddo
+           do jmc=1,mcscfnum
+              m2matel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector(:,:),www%totadim)
+           enddo
         enddo
-        do jmc=1,mcscfnum
-           mmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector(:,:),www%totadim)
-        enddo
-        do i=1,numr
-           tempvector(i,:)=inavectors(i,:,imc) * www%configugvals(:)
-        enddo
-        do jmc=1,mcscfnum
-           ugmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector(:,:),www%totadim)
-        enddo
-        do i=1,numr
-           tempvector(i,:)=inavectors(i,:,imc) * www%configmvals(:)**2
-        enddo
-        do jmc=1,mcscfnum
-           m2matel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector(:,:),www%totadim)
-        enddo
-     enddo
+     endif
      if (www%parconsplit.ne.0) then
         call mympireduce(mmatel,mcscfnum**2)
         call mympireduce(ugmatel,mcscfnum**2)
@@ -451,27 +490,34 @@ subroutine finalstats0(myspfs,inavectors,www,bioww )
 !! independent of R for now.  multiply by R for prolate  (R set to 1 for atom)
   call nucdipvalue(nullcomplex,dipoles)
 
-  do imc=1,mcscfnum
-     do i=1,numr
-        tempvector(i,:)=inavectors(i,:,imc)*bondpoints(i)
+  nucdipmatel(:,:,:)=0
+  if (www%totadim.gt.0) then
+     do imc=1,mcscfnum
+        do i=1,numr
+           tempvector(i,:)=inavectors(i,:,imc)*bondpoints(i)
+        enddo
+        do jmc=1,mcscfnum
+           nucdipmatel(jmc,imc,:)=dipoles(:)*dot(inavectors(:,:,jmc),tempvector,www%totadim)
+        enddo
      enddo
-     do jmc=1,mcscfnum
-        nucdipmatel(jmc,imc,:)=dipoles(:)*dot(inavectors(:,:,jmc),tempvector,www%totadim)
-     enddo
-  enddo
+  endif
   if (www%parconsplit.ne.0) then
      call mympireduce(nucdipmatel,3*mcscfnum**2)
   endif
 
   rvector(:)=bondpoints(:)
 
+  zdipmatel(:,:)=0; xdipmatel(:,:)=0; ydipmatel(:,:)=0
+
 !! Z DIPOLE
 
   do imc=1,mcscfnum
      call arbitraryconfig_mult_singles(www,zdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
-     do jmc=1,mcscfnum
-        zdipmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector,www%totadim)
-     enddo
+     if (www%totadim.gt.0) then
+        do jmc=1,mcscfnum
+           zdipmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector,www%totadim)
+        enddo
+     endif
   enddo
   if (www%parconsplit.ne.0) then
      call mympireduce(zdipmatel(:,:),mcscfnum**2)
@@ -482,9 +528,11 @@ subroutine finalstats0(myspfs,inavectors,www,bioww )
 
   do imc=1,mcscfnum
      call arbitraryconfig_mult_singles(www,ydipmat,rvector,inavectors(:,:,imc),tempvector,numr)
-     do jmc=1,mcscfnum
-        ydipmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector,www%totadim)
-     enddo
+     if (www%totadim.gt.0) then
+        do jmc=1,mcscfnum
+           ydipmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector,www%totadim)
+        enddo
+     endif
   enddo
   if (www%parconsplit.ne.0) then
      call mympireduce(ydipmatel(:,:),mcscfnum**2)
@@ -495,9 +543,11 @@ subroutine finalstats0(myspfs,inavectors,www,bioww )
 
   do imc=1,mcscfnum
      call arbitraryconfig_mult_singles(www,xdipmat,rvector,inavectors(:,:,imc),tempvector,numr)
-     do jmc=1,mcscfnum
-        xdipmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector,www%totadim)
-     enddo
+     if (www%totadim.gt.0) then
+        do jmc=1,mcscfnum
+           xdipmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector,www%totadim)
+        enddo
+     endif
   enddo
   if (www%parconsplit.ne.0) then
      call mympireduce(xdipmatel(:,:),mcscfnum**2)
@@ -758,7 +808,7 @@ subroutine finalstats0(myspfs,inavectors,www,bioww )
      close(662)
   endif
 
-  deallocate(ugmat, xdipmat, ydipmat, zdipmat,     xrefmat, yrefmat, zrefmat,    tempvector,tempspfs,tempspfs2)
+  deallocate(ugmat, xdipmat, ydipmat, zdipmat,     xrefmat, yrefmat, zrefmat,    tempvector,tempspfs,tempspfs2,inavectors)
   call mpibarrier()
 
 end subroutine finalstats0

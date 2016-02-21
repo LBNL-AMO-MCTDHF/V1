@@ -256,7 +256,7 @@ subroutine configspin_project(www,nr, vector)
   DATATYPE,intent(inout) :: vector(nr,www%firstconfig:www%lastconfig)
 
   if (www%configend.ge.www%configstart) then
-     call configspin_project_general(www,nr,vector(:,www%configstart),www%startrank,www%endrank)
+     call configspin_project_general(www,nr,vector(:,www%configstart:www%configend),www%startrank,www%endrank)
   endif
   if (www%parconsplit.eq.0.and.www%sparseconfigflag.ne.0) then
      call mpiallgather(vector,www%numconfig*nr,www%configsperproc(:)*nr,www%maxconfigsperproc*nr)
@@ -281,7 +281,7 @@ subroutine configspin_project_general(www,nr,vector,iproc,jproc)
      OFLWR "STARTRANK ERR PROJGEN ",iproc,www%startrank,www%endrank; CFLST
   endif
 
-  outvector(:,:) = 0.d0
+  outvector(:,:) = 0d0
 
   do pp=iproc,jproc
      do iset=1,www%sss%numspinsets(pp)
@@ -591,7 +591,7 @@ subroutine basis_transformto_all(www,howmany,avectorin,avectorout)
 
   if (www%sparseconfigflag.ne.0) then
      if (www%topdfbasis.ge.www%botdfbasis) then
-        call basis_transformto_local(www,howmany,avectorin(:,www%botconfig),avectorout(:,www%botdfbasis))
+        call basis_transformto_local(www,howmany,avectorin(:,www%botconfig:www%topconfig),avectorout(:,www%botdfbasis:www%topdfbasis))
      endif
      call mpiallgather(avectorout,www%numdfbasis*howmany,www%dfbasisperproc(:)*howmany,&
           www%maxdfbasisperproc*howmany)
@@ -658,7 +658,8 @@ subroutine basis_transformfrom_all(www,howmany,avectorin,avectorout)
 
   if (www%sparseconfigflag.ne.0) then
      if (www%topconfig.ge.www%botconfig) then
-        call basis_transformfrom_local(www,howmany,avectorin(:,www%botdfbasis),avectorout(:,www%botconfig))
+        call basis_transformfrom_local(www,howmany,avectorin(:,www%botdfbasis:www%topdfbasis),&
+             avectorout(:,www%botconfig:www%topconfig))
      endif
      call mpiallgather(avectorout,www%numconfig*howmany,www%configsperproc(:)*howmany,&
           www%maxconfigsperproc*howmany)

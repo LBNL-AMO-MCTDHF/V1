@@ -24,11 +24,12 @@ subroutine autocorrelate_initial()
   
   allocate(orig_avectors(numr,first_config:last_config,mcscfnum))
 
-  orig_spfs(:,:)=RESHAPE(yyy%cmfpsivec(spfstart:spfend,0),(/spfsize,nspf/))
-  do imc=1,mcscfnum
-     orig_avectors(:,:,imc)=RESHAPE(yyy%cmfpsivec(astart(imc):aend(imc),0),(/numr,local_nconfig/))
-  enddo
-  
+  orig_spfs(:,:)=RESHAPE(yyy%cmfspfs(:,0),(/spfsize,nspf/))
+  if (tot_adim.gt.0) then
+     do imc=1,mcscfnum
+        orig_avectors(:,:,imc)=RESHAPE(yyy%cmfavec(:,imc,0),(/numr,local_nconfig/))
+     enddo
+  endif
 end subroutine
 
 subroutine autocorrelate()
@@ -45,7 +46,7 @@ subroutine autocorrelate()
   if (mod(xcalledflag,autosteps).eq.0) then
      do imc=1,mcscfnum
 
-        call autocorrelate_one(www,bwwptr,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:), &
+        call autocorrelate_one(www,bwwptr,yyy%cmfavec(:,imc,0),yyy%cmfspfs(:,0),orig_spfs(:,:), &
              orig_avectors(:,:,imc), overlaps(calledflag,imc),numr)
 
      enddo

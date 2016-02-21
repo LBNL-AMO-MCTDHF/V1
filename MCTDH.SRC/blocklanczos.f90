@@ -37,8 +37,9 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
 
   call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,workvectorsspin,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,.true.,0,DATAZERO)
 
-
-  outvectors(:,:,:)=0d0
+  if (www%lastconfig.ge.www%firstconfig) then
+     outvectors(:,:,:)=0d0
+  endif
 
   if (www%topdfbasis-www%botdfbasis+1.ne.0) then
      do ii=1,order
@@ -105,6 +106,10 @@ subroutine allhdots(bravectors,ketvectors,n,lda,num1,num2,outdots,logpar)
   DATATYPE,intent(in) :: bravectors(lda,num1), ketvectors(lda,num2)
   DATATYPE,intent(out) :: outdots(num1,num2)
 
+  if (n.le.0) then
+     print *, "progerrrr"; stop
+  endif
+
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(id,jd)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
   do id=1,num1
@@ -143,6 +148,10 @@ subroutine vechdots(bravectors,ketvectors,n,ldabra,ldaket,num,outdots,logpar)
   DATATYPE,intent(out) :: outdots(num)
   integer :: id
 
+  if (n.le.0) then
+     print *, "progerrrrOR"; stop
+  endif
+
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(id)
 !$OMP DO SCHEDULE(STATIC)
   do id=1,num
@@ -164,6 +173,10 @@ subroutine vecthisdots(bravectors,ketvectors,n,ldabra,ldaket,num,outdots,logpar)
   DATATYPE,intent(out) :: outdots(num)
   DATATYPE :: dot
   integer :: id
+
+  if (n.le.0) then
+     print *, "progerrrrxxx"; stop
+  endif
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(id)
 !$OMP DO SCHEDULE(STATIC)
@@ -205,6 +218,10 @@ subroutine myhgramschmidt_fast(n, m, lda, previous, vector,logpar)
   DATATYPE :: norm,hdot,myhdots(m)
   logical,intent(in) :: logpar
   integer :: i,j
+
+  if (n.le.0) then
+     print *, "progerrrreeee"; stop
+  endif
 
   do j=1,2
 
@@ -479,7 +496,7 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
        thislanblocknum, thisdim,ii,nfirst,nlast,myrank,nprocs,thisout
   real*8 :: error(numout), stopsum,rsum,nextran
   DATATYPE :: alpha(lanblocknum,lanblocknum),beta(lanblocknum,lanblocknum), csum, &
-       nullvector1(1), nullvector2(1) , &
+       nullvector1(100), nullvector2(100) , &
        lastvalue(numout), thisvalue(numout), valdot(numout),normsq(numout),sqdot(numout)
 !! made these allocatable to fix lawrencium segfault 04-15
   DATATYPE, allocatable :: lanham(:,:,:,:), laneigvects(:,:,:), templanham(:,:)

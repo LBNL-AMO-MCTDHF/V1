@@ -90,9 +90,10 @@ subroutine sparseconfigmultone_noparcon(www,invector,outvector,matrix_ptr,sparse
      OFLWR "ERROR NOPARCON", www%parconsplit; CFLST
   endif
 
-  call sparseconfigmult_byproc(1,nprocs,www,invector,outvector(www%botconfig:www%topconfig),&
-       matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0,imc)
-
+  if (www%topconfig.ge.www%botconfig) then
+     call sparseconfigmult_byproc(1,nprocs,www,invector,outvector(www%botconfig:www%topconfig),&
+          matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0,imc)
+  endif
   call mpiallgather(outvector,www%numconfig,www%configsperproc(:),www%maxconfigsperproc)
 
 end subroutine sparseconfigmultone_noparcon
@@ -120,18 +121,20 @@ subroutine sparseconfigmultone_gather(www,invector,outvector,matrix_ptr,sparse_p
 
   if (www%parconsplit.eq.0) then
      OFLWR "ERROR PARCON"; CFLST
-  endif
+  endif    !! now botconfig:topconfig = firstconfig:lastconfig
 
   allocate(workvector(www%numconfig))
   workvector(:)=0d0
 
-  workvector(www%botconfig:www%topconfig)=invector(:)
-  
+  if (www%topconfig.ge.www%botconfig) then
+     workvector(www%botconfig:www%topconfig)=invector(:)
+  endif
   call mpiallgather(workvector,www%numconfig,www%configsperproc(:),www%maxconfigsperproc)
   
-  call sparseconfigmult_byproc(1,nprocs,www,workvector,outvector(www%botconfig:www%topconfig),&
-       matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0,imc)
-  
+  if (www%topconfig.ge.www%botconfig) then
+     call sparseconfigmult_byproc(1,nprocs,www,workvector,outvector,&
+          matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0,imc)
+  endif
   deallocate(workvector)
 
 end subroutine sparseconfigmultone_gather
@@ -152,25 +155,30 @@ subroutine sparseconfigmultone_summa(www,invector,outvector,matrix_ptr,sparse_pt
   Type(CONFIGPTR),intent(in) :: matrix_ptr
   Type(SPARSEPTR),intent(in) :: sparse_ptr
   real*8,intent(in) :: time
-  DATATYPE :: workvector(www%maxconfigsperproc),outtemp(www%botconfig:www%topconfig)      !! AUTOMATIC
+  DATATYPE :: workvector(www%maxconfigsperproc),outtemp(www%botconfig:www%topconfig+1)      !! AUTOMATIC
   integer :: iproc
 
   if (www%parconsplit.eq.0) then
      OFLWR "ERROR PARCON"; CFLST
+  endif    !! now botconfig:topconfig = firstconfig:lastconfig
+
+  workvector=0; outtemp=0
+
+  if (www%lastconfig.ge.www%firstconfig) then
+     outvector(:)=0d0
   endif
 
-  outvector(www%botconfig:www%topconfig)=0d0
-
   do iproc=1,nprocs
-
-     if (myrank.eq.iproc) then
+     if (myrank.eq.iproc.and.www%lastconfig.ge.www%firstconfig) then
         workvector(1:www%topconfig-www%botconfig+1)=invector(:)
      endif
-     call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1))
-     call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0,imc)
-
-     outvector(www%botconfig:www%topconfig)=outvector(www%botconfig:www%topconfig)+outtemp(:)
-
+     if (www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
+        call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1))
+        if (www%lastconfig.ge.www%firstconfig) then
+           call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0,imc)
+           outvector(:)=outvector(:)+outtemp(www%botconfig:www%topconfig)
+        endif
+     endif
   enddo
 
 end subroutine sparseconfigmultone_summa
@@ -192,37 +200,40 @@ subroutine sparseconfigmultone_circ(www,invector,outvector,matrix_ptr,sparse_ptr
   Type(SPARSEPTR),intent(in) :: sparse_ptr
   real*8,intent(in) :: time
   DATATYPE :: workvector(www%maxconfigsperproc), workvector2(www%maxconfigsperproc),&
-       outtemp(www%botconfig:www%topconfig)      !! AUTOMATIC
+       outtemp(www%botconfig:www%topconfig+1)      !! AUTOMATIC
   integer :: iproc,prevproc,nextproc,deltaproc
 
   if (www%parconsplit.eq.0) then
      OFLWR "ERROR PARCON"; CFLST
-  endif
+  endif     !! now botconfig:topconfig = firstconfig:lastconfig
 
 !! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 and ftcore.f90, 
 !!     holding hands in a circle, prevproc and nextproc, each chunk gets passed around the circle
   prevproc=mod(nprocs+myrank-2,nprocs)+1
   nextproc=mod(myrank,nprocs)+1
 
-  outvector(www%botconfig:www%topconfig)=0d0
+  workvector=0; workvector2=0; outtemp=0
 
-  workvector(1:www%topconfig-www%botconfig+1)=invector(:)
+  if (www%topconfig.ge.www%botconfig) then
+     outvector(:)=0d0
+     workvector(1:www%topconfig-www%botconfig+1)=invector(:)
+  endif
 
   do deltaproc=0,nprocs-1
 
 !! PASSING BACKWARD (plus deltaproc)
      iproc=mod(myrank-1+deltaproc,nprocs)+1
 
-     call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, &
-          boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0,imc)
-
-     outvector(www%botconfig:www%topconfig)=outvector(www%botconfig:www%topconfig)+outtemp(:)
+     if (www%topconfig.ge.www%botconfig.and.www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
+        call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, &
+             boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0,imc)
+        outvector(:)=outvector(:)+outtemp(www%botconfig:www%topconfig)
+     endif
 
 !! PASSING BACKWARD
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
 
-     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,&
-          www%maxconfigsperproc)
+     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,www%maxconfigsperproc)
      workvector(:)=workvector2(:)
 
   enddo
@@ -317,9 +328,10 @@ subroutine sparseconfigmultxxx_noparcon(www,invector,outvector,matrix_ptr,sparse
      OFLWR "ERROR NOPARCON XXX", www%parconsplit; CFLST
   endif
 
-  call sparseconfigmult_byproc(1,nprocs,www,invector,outvector(:,www%botconfig:www%topconfig),&
-       matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0,imc)
-
+  if (www%topconfig.ge.www%botconfig) then
+     call sparseconfigmult_byproc(1,nprocs,www,invector,outvector(:,www%botconfig:www%topconfig),&
+          matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0,imc)
+  endif
   call mpiallgather(outvector,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
 
 end subroutine sparseconfigmultxxx_noparcon
@@ -346,18 +358,20 @@ subroutine sparseconfigmultxxx_gather(www,invector,outvector,matrix_ptr,sparse_p
 
   if (www%parconsplit.eq.0) then
      OFLWR "ERROR PARCON XXX"; CFLST
-  endif
+  endif   !! now botconfig:topconfig = firstconfig:lastconfig
 
   allocate(workvector(numr,www%numconfig))
   workvector(:,:)=0d0
 
-  workvector(:,www%botconfig:www%topconfig) = invector(:,:)
-
+  if (www%topconfig.ge.www%botconfig) then
+     workvector(:,www%botconfig:www%topconfig) = invector(:,:)
+  endif
   call mpiallgather(workvector,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
 
-  call sparseconfigmult_byproc(1,nprocs,www,workvector,outvector(:,www%botconfig:www%topconfig),&
-       matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0,imc)
-
+  if (www%topconfig.ge.www%botconfig) then
+     call sparseconfigmult_byproc(1,nprocs,www,workvector,outvector,&
+          matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0,imc)
+  endif
   deallocate(workvector)
 
 end subroutine sparseconfigmultxxx_gather
@@ -379,25 +393,31 @@ subroutine sparseconfigmultxxx_summa(www,invector,outvector,matrix_ptr,sparse_pt
   Type(SPARSEPTR),intent(in) :: sparse_ptr
   real*8,intent(in) :: time
   DATATYPE :: workvector(numr,www%maxconfigsperproc), &
-       outtemp(numr,www%botconfig:www%topconfig)    !!AUTOMATIC
+       outtemp(numr,www%botconfig:www%topconfig+1)    !!AUTOMATIC
   integer :: iproc
 
   if (www%parconsplit.eq.0) then
      OFLWR "ERROR PARCON XXX"; CFLST
-  endif
+  endif   !! now botconfig:topconfig = firstconfig:lastconfig
 
-  outvector(:,www%botconfig:www%topconfig)=0d0
+  workvector=0; outtemp=0
+
+  if (www%lastconfig.ge.www%firstconfig) then
+     outvector=0d0
+  endif
 
   do iproc=1,nprocs
 
-     if (myrank.eq.iproc) then
+     if (myrank.eq.iproc.and.www%lastconfig.ge.www%firstconfig) then
         workvector(:,1:www%topconfig-www%botconfig+1) = invector(:,:)
      endif
-     call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
-     call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0,imc)
-
-     outvector(:,www%botconfig:www%topconfig)=outvector(:,www%botconfig:www%topconfig) + outtemp(:,:)
-
+     if (www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
+        call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
+        if (www%lastconfig.ge.www%firstconfig) then
+           call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0,imc)
+           outvector(:,:)=outvector(:,:) + outtemp(:,www%botconfig:www%topconfig)
+        endif
+     endif
   enddo
 
 end subroutine sparseconfigmultxxx_summa
@@ -419,37 +439,40 @@ subroutine sparseconfigmultxxx_circ(www,invector,outvector,matrix_ptr,sparse_ptr
   Type(SPARSEPTR),intent(in) :: sparse_ptr
   real*8,intent(in) :: time
   DATATYPE :: workvector(numr,www%maxconfigsperproc), workvector2(numr,www%maxconfigsperproc),&
-       outtemp(numr,www%botconfig:www%topconfig)      !! AUTOMATIC
+       outtemp(numr,www%botconfig:www%topconfig+1)      !! AUTOMATIC
   integer :: iproc,deltaproc,prevproc,nextproc
 
   if (www%parconsplit.eq.0) then
      OFLWR "ERROR PARCON XXX"; CFLST
-  endif
+  endif   !! now botconfig:topconfig = firstconfig:lastconfig
 
 !! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 and ftcore.f90, 
 !!     holding hands in a circle, prevproc and nextproc, each chunk gets passed around the circle
   prevproc=mod(nprocs+myrank-2,nprocs)+1
   nextproc=mod(myrank,nprocs)+1
 
-  outvector(:,www%botconfig:www%topconfig)=0d0
+  workvector=0; workvector2=0; outtemp=0
 
-  workvector(:,1:www%topconfig-www%botconfig+1)=invector(:,www%botconfig:www%topconfig)
+  if (www%topconfig.ge.www%botconfig) then
+     outvector(:,:)=0d0
+     workvector(:,1:www%topconfig-www%botconfig+1)=invector(:,:)
+  endif
 
   do deltaproc=0,nprocs-1
 
 !! PASSING BACKWARD (plus deltaproc)
      iproc=mod(myrank-1+deltaproc,nprocs)+1
 
-     call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, &
-          boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0,imc)
-
-     outvector(:,www%botconfig:www%topconfig)=outvector(:,www%botconfig:www%topconfig) + outtemp(:,:)
+     if (www%topconfig.ge.www%botconfig.and.www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
+        call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, &
+             boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0,imc)
+        outvector(:,:)=outvector(:,:) + outtemp(:,www%botconfig:www%topconfig)
+     endif
 
 !! PASSING BACKWARD
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
 
-     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,&
-          numr * www%maxconfigsperproc)
+     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,numr*www%maxconfigsperproc)
      workvector(:,:)=workvector2(:,:)
 
   enddo
@@ -475,7 +498,7 @@ subroutine parsparseconfigpreconmult(www,invector,outvector,matrix_ptr, sparse_p
   Type(SPARSEPTR),intent(in) :: sparse_ptr
   integer,intent(in) ::  conflag,boflag,nucflag,pulseflag
   real*8,intent(in) :: time
-  DATATYPE :: workvector(numr,www%botconfig:www%topconfig),tempvector(numr,www%botconfig:www%topconfig)     !!AUTOMATIC
+  DATATYPE :: workvector(numr,www%botconfig:www%topconfig+1),tempvector(numr,www%botconfig:www%topconfig+1)     !!AUTOMATIC
 
   if (www%topconfig-www%botconfig+1.eq.0) then
      return
@@ -484,7 +507,7 @@ subroutine parsparseconfigpreconmult(www,invector,outvector,matrix_ptr, sparse_p
   workvector(:,:)=1d0; tempvector(:,:)=0d0
   call sparseconfigmult_byproc(myrank,myrank,www,workvector,tempvector,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag,time,0,1,numr,1,-1)
   
-  outvector(:,:)=invector(:,:)/(tempvector(:,:)-inenergy)
+  outvector(:,:)=invector(:,:)/(tempvector(:,www%botconfig:www%topconfig)-inenergy)
 
 end subroutine parsparseconfigpreconmult
 
@@ -540,7 +563,7 @@ subroutine arbitraryconfig_mult_singles_noparcon(www,onebodymat, rvector, avecto
 
   if (www%parconsplit.ne.0) then
      OFLWR "ERROR NOPARCON ARB"; CFLST
-  endif
+  endif   !! now botconfig:topconfig = firstconfig:lastconfig
 
   call arbitraryconfig_mult_singles_byproc(1,nprocs,www,onebodymat, rvector, avectorin,&
        avectorout(:,www%botconfig:www%topconfig),inrnum,0)
@@ -567,17 +590,19 @@ subroutine arbitraryconfig_mult_singles_gather(www,onebodymat, rvector, avectori
 
   if (www%parconsplit.eq.0) then
      OFLWR "ERROR PARCON ARB"; CFLST
-  endif
+  endif   !! now botconfig:topconfig = firstconfig:lastconfig
 
   allocate(workvector(inrnum,www%numconfig))
   workvector(:,:)=0d0
-  
-  workvector(:,www%botconfig:www%topconfig) = avectorin(:,:)
-  
-  call mpiallgather(workvector,www%numconfig*inrnum,www%configsperproc(:)*inrnum,www%maxconfigsperproc*inrnum)
-  
-  call arbitraryconfig_mult_singles_byproc(1,nprocs,www,onebodymat, rvector, workvector, avectorout,inrnum,0)
 
+  if (www%topconfig.ge.www%botconfig) then
+     workvector(:,www%botconfig:www%topconfig) = avectorin(:,:)
+  endif
+  call mpiallgather(workvector,www%numconfig*inrnum,www%configsperproc(:)*inrnum,www%maxconfigsperproc*inrnum)
+
+  if (www%lastconfig.ge.www%firstconfig) then
+     call arbitraryconfig_mult_singles_byproc(1,nprocs,www,onebodymat, rvector, workvector, avectorout,inrnum,0)
+  endif
   deallocate(workvector)
 
 end subroutine arbitraryconfig_mult_singles_gather
@@ -594,26 +619,32 @@ subroutine arbitraryconfig_mult_singles_summa(www,onebodymat, rvector, avectorin
   DATATYPE,intent(out) :: avectorout(inrnum,www%firstconfig:www%lastconfig)
   DATAECS,intent(in) :: rvector(inrnum)
   DATATYPE :: workvector(inrnum,www%maxconfigsperproc),&
-       outtemp(inrnum,www%botconfig:www%topconfig)         !! AUTOMATIC
+       outtemp(inrnum,www%botconfig:www%topconfig+1)         !! AUTOMATIC
   integer :: iproc
 
   if (www%parconsplit.eq.0) then
      OFLWR "ERROR PARCON ARB"; CFLST
-  endif
+  endif   !! now botconfig:topconfig = firstconfig:lastconfig
 
-  avectorout(:,www%botconfig:www%topconfig)=0d0
+  workvector=0; outtemp=0
+
+  if (www%lastconfig.ge.www%firstconfig) then
+     avectorout(:,:)=0d0
+  endif
 
   do iproc=1,nprocs
 
-     if (myrank.eq.iproc) then
+     if (myrank.eq.iproc.and.www%lastconfig.ge.www%firstconfig) then
         workvector(:,1:www%topconfig-www%botconfig+1) = avectorin(:,:)
      endif
-     call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*inrnum)
-     call arbitraryconfig_mult_singles_byproc(iproc,iproc,www,onebodymat, rvector, &
-          workvector, outtemp,inrnum,0)
-
-     avectorout(:,www%botconfig:www%topconfig) = avectorout(:,www%botconfig:www%topconfig) + outtemp(:,:)
-
+     if (www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
+        call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*inrnum)
+        if (www%lastconfig.ge.www%firstconfig) then
+           call arbitraryconfig_mult_singles_byproc(iproc,iproc,www,onebodymat, rvector, &
+                workvector, outtemp,inrnum,0)           
+           avectorout(:,:) = avectorout(:,:) + outtemp(:,www%botconfig:www%topconfig)
+        endif
+     endif
   enddo
 
 end subroutine arbitraryconfig_mult_singles_summa
@@ -630,37 +661,40 @@ subroutine arbitraryconfig_mult_singles_circ(www,onebodymat, rvector, avectorin,
   DATATYPE,intent(out) :: avectorout(inrnum,www%firstconfig:www%lastconfig)
   DATAECS,intent(in) :: rvector(inrnum)
   DATATYPE :: workvector(inrnum,www%maxconfigsperproc),workvector2(inrnum,www%maxconfigsperproc),&
-       outtemp(inrnum,www%botconfig:www%topconfig)         !! AUTOMATIC
+       outtemp(inrnum,www%botconfig:www%topconfig+1)         !! AUTOMATIC
   integer :: iproc,prevproc,nextproc,deltaproc
 
   if (www%parconsplit.eq.0) then
      OFLWR "ERROR PARCON ARB"; CFLST
-  endif
+  endif   !! now botconfig:topconfig = firstconfig:lastconfig
 
 !! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 and ftcore.f90, 
 !!     holding hands in a circle, prevproc and nextproc, each chunk gets passed around the circle
   prevproc=mod(nprocs+myrank-2,nprocs)+1
   nextproc=mod(myrank,nprocs)+1
 
-  avectorout(:,www%botconfig:www%topconfig)=0d0
+  workvector=0; workvector2=0; outtemp=0
 
-  workvector(:,1:www%topconfig-www%botconfig+1) = avectorin(:,www%botconfig:www%topconfig)
+  if (www%topconfig.ge.www%botconfig) then
+     avectorout=0d0
+     workvector(:,1:www%topconfig-www%botconfig+1) = avectorin(:,:)
+  endif
 
   do deltaproc=0,nprocs-1
 
 !! PASSING BACKWARD (plus deltaproc)
      iproc=mod(myrank-1+deltaproc,nprocs)+1
 
-     call arbitraryconfig_mult_singles_byproc(iproc,iproc,www,onebodymat, rvector, &
-          workvector, outtemp,inrnum,0)
-
-     avectorout(:,www%botconfig:www%topconfig) = avectorout(:,www%botconfig:www%topconfig) + outtemp(:,:)
+     if (www%topconfig.ge.www%botconfig.and.www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
+        call arbitraryconfig_mult_singles_byproc(iproc,iproc,www,onebodymat, rvector, &
+             workvector, outtemp,inrnum,0)
+        avectorout(:,:) = avectorout(:,:) + outtemp(:,www%botconfig:www%topconfig)
+     endif
 
 !! PASSING BACKWARD
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
 
-     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,&
-          inrnum * www%maxconfigsperproc)
+     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,inrnum * www%maxconfigsperproc)
      workvector(:,:)=workvector2(:,:)
 
   enddo
@@ -734,6 +768,10 @@ subroutine direct_sparseconfigmult_byproc(firstproc,lastproc,www,invector,outvec
   endif
 
   outvector(:,:)=0d0
+
+  if (www%alltopconfigs(lastproc).lt.www%allbotconfigs(firstproc)) then
+     return
+  endif
 
   if (onlytdflag.ne.0) then
      facs(:)=0;     facs(onlytdflag)=1d0
@@ -890,6 +928,10 @@ subroutine sparsesparsemult_byproc(firstproc,lastproc,www,invector,outvector,spa
 
   outvector(:,:)=0d0
 
+  if (www%alltopconfigs(lastproc).lt.www%allbotconfigs(firstproc)) then
+     return
+  endif
+
   if (onlytdflag.ne.0) then
      facs(:)=0;     facs(onlytdflag)=1d0
   else
@@ -1030,6 +1072,10 @@ subroutine arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,mattrans, 
 
   outsmallvector(:,:)=0d0
 
+  if (www%alltopconfigs(lastproc).lt.www%allbotconfigs(firstproc)) then
+     return
+  endif
+
   if (diagflag.eq.0) then
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ihop,outsum,myrvector)
@@ -1091,6 +1137,10 @@ subroutine arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,mattrans,r
 
   outsmallvector(:,:)=0d0
 
+  if (www%alltopconfigs(lastproc).lt.www%allbotconfigs(firstproc)) then
+     return
+  endif
+
   if (diagflag.eq.0) then
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ihop,outsum,myrvector)
@@ -1143,6 +1193,10 @@ subroutine arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,onebodymat
   endif
 
   avectorout(:,:)=0.d0
+
+  if (www%alltopconfigs(lastproc).lt.www%allbotconfigs(firstproc)) then
+     return
+  endif
 
   if (diagflag.eq.0) then
 
@@ -1206,7 +1260,15 @@ subroutine arbitraryconfig_mult_doubles_byproc(firstproc,lastproc,www,twobodymat
   DATAECS :: myrvector(inrnum)
   integer ::   config2, config1, iwalk, idiag, ihop
 
+  if (www%topconfig-www%botconfig+1.eq.0) then
+     return
+  endif
+
   avectorout(:,:)=0.d0
+
+  if (www%alltopconfigs(lastproc).lt.www%allbotconfigs(firstproc)) then
+     return
+  endif
 
   if (diagflag.eq.0) then
 

@@ -18,6 +18,7 @@ subroutine fluxwrite(curtime,in_xmo,in_xa)
   integer,intent(in) :: curtime
   DATATYPE,intent(in) :: in_xmo(spfsize,nspf),in_xa(numr,first_config:last_config,mcscfnum)
   DATATYPE,allocatable :: xmo(:,:), xa(:,:,:)
+  DATATYPE :: nullvector(numr,1)
   integer :: molength,alength,ispf,ii,myiostat
 
   if (myrank.eq.1) then
@@ -48,7 +49,11 @@ subroutine fluxwrite(curtime,in_xmo,in_xa)
 
   if (par_consplit.ne.0) then
      do ii=1,mcscfnum
-        call mygatherv(in_xa(:,:,ii),xa(:,:,ii), configs_perproc(:)*numr,.false.)
+        if (tot_adim.gt.0) then
+           call mygatherv(in_xa(:,:,ii),xa(:,:,ii), configs_perproc(:)*numr,.false.)
+        else
+           call mygatherv(nullvector(:,:),xa(:,:,ii), configs_perproc(:)*numr,.false.)
+        endif
      enddo
   elseif(myrank.eq.1) then
      xa(:,:,:)=in_xa(:,:,:)
@@ -123,7 +128,7 @@ subroutine fluxgtau0(alg,www,bioww)
   DATATYPE, allocatable :: reke(:,:),repe(:,:),reV2(:,:,:,:), reyderiv(:,:)
   DATATYPE, allocatable :: rekeop(:,:),repeop(:,:),  reyop(:,:)
   DATATYPE,target :: smo(nspf,nspf)
-
+  DATATYPE :: nullvector(numr,1)
   if (ceground.eq.(0d0,0d0)) then
      OFLWR "Eground is ZERO.  Are you sure?  If want zero just make it small. \n     Otherwise need eground: initial state energy."; CFLST
   endif
@@ -260,7 +265,11 @@ subroutine fluxgtau0(alg,www,bioww)
      else
         do i=1,ketreadsize
            do imc=1,mcscfnum
-              call myscatterv(read_ketavec(:,:,imc,i),ketavec(:,:,imc,i),configs_perproc(:)*numr)
+              if (tot_adim.gt.0) then
+                 call myscatterv(read_ketavec(:,:,imc,i),ketavec(:,:,imc,i),configs_perproc(:)*numr)
+              else
+                 call myscatterv(read_ketavec(:,:,imc,i),nullvector(:,:),configs_perproc(:)*numr)
+              endif
            enddo
         enddo
      endif
@@ -274,7 +283,10 @@ subroutine fluxgtau0(alg,www,bioww)
         OFLWR "Reading bra batch ", brabat, " of ", ketbat; CFL
         brareadsize=min(BatchSize,nt+1-(brabat-1)*BatchSize)
         if(brabat.eq.ketbat) then
-           bramo=ketmo;        braavec=ketavec
+           bramo=ketmo;        
+           if (tot_adim.gt.0) then
+              braavec=ketavec
+           endif
         else 
            if(myrank.eq.1) then
               open(1001,file=fluxmofile,status="old",form="unformatted",access="direct",recl=molength,iostat=myiostat)
@@ -314,7 +326,11 @@ subroutine fluxgtau0(alg,www,bioww)
            else
               do i=1,brareadsize
                  do imc=1,mcscfnum
-                    call myscatterv(read_braavec(:,:,imc,i),braavec(:,:,imc,i),configs_perproc(:)*numr)
+                    if (tot_adim.gt.0) then
+                       call myscatterv(read_braavec(:,:,imc,i),braavec(:,:,imc,i),configs_perproc(:)*numr)
+                    else
+                       call myscatterv(read_braavec(:,:,imc,i),nullvector(:,:),configs_perproc(:)*numr)
+                    endif
                  enddo
               enddo
            endif
@@ -361,21 +377,28 @@ subroutine fluxgtau0(alg,www,bioww)
 !! biortho this pair of times!        
               call system_clock(itime)
               mobra=>bramo(:,:,bratime)
-              abio(:,:,:)=braavec(:,:,:,bratime)
-              
+              if (tot_adim.gt.0) then
+                 abio(:,:,:)=braavec(:,:,:,bratime)
+              endif
               call bioset(fluxgtaubiovar,smo,numr,bioww)
 #ifdef CNORMFLAG
               fluxgtaubiovar%hermonly=.true.
 #endif
-              call biortho(mobra,moket,mobio,abio(:,:,1),fluxgtaubiovar)
-              
-              do imc=2,mcscfnum
-                 call biotransform(mobra,moket,abio(:,:,imc),fluxgtaubiovar)
-              enddo
+              if (tot_adim.gt.0) then
+                 call biortho(mobra,moket,mobio,abio(:,:,1),fluxgtaubiovar)
+                 do imc=2,mcscfnum
+                    call biotransform(mobra,moket,abio(:,:,imc),fluxgtaubiovar)
+                 enddo
 #ifdef CNORMFLAG
-              fluxgtaubiovar%hermonly=.false.   !! in case fluxgtaubiovar is reused
-              abio(:,:,:)=conjg(abio(:,:,:))
+                 abio(:,:,:)=conjg(abio(:,:,:))
 #endif
+              else
+                 call biortho(mobra,moket,mobio,nullvector(:,:),fluxgtaubiovar)
+                 do imc=2,mcscfnum
+                    call biotransform(mobra,moket,nullvector(:,:),fluxgtaubiovar)
+                 enddo
+              endif
+              fluxgtaubiovar%hermonly=.false.   !! in case fluxgtaubiovar is reused
 
               call system_clock(jtime);          times(3)=times(3)+jtime-itime
 
@@ -433,12 +456,21 @@ subroutine fluxgtau0(alg,www,bioww)
 !! evaluate the actual g(tau) expression
 
               do imc=1,mcscfnum
-                 fluxevalval(imc) = fluxeval(abio(:,:,imc),aket(:,:,imc),ke,pe,V2,yderiv,1) * dt  !! 1 means flux
+                 if (tot_adim.gt.0) then
+                    fluxevalval(imc) = fluxeval(abio(:,:,imc),aket(:,:,imc),ke,pe,V2,yderiv,1) * dt  !! 1 means flux
+                 else
+                    fluxevalval(imc) = fluxeval(nullvector(:,:),nullvector(:,:),ke,pe,V2,yderiv,1) * dt  !! 1 means flux
+                 endif
               enddo
-          
               if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
                  do imc=1,mcscfnum
-                    fluxevalval(imc) = fluxevalval(imc)+fluxeval(abio(:,:,imc),aket(:,:,imc),reke,repe,reV2,reyderiv,2) * dt  !! 2 means flux
+                    if (tot_adim.gt.0) then
+                       fluxevalval(imc) = fluxevalval(imc)+fluxeval(abio(:,:,imc),aket(:,:,imc),&
+                            reke,repe,reV2,reyderiv,2) * dt  !! 2 means flux
+                    else
+                       fluxevalval(imc) = fluxevalval(imc)+fluxeval(nullvector(:,:),nullvector(:,:),&
+                            reke,repe,reV2,reyderiv,2) * dt  !! 2 means flux
+                    endif
                  enddo
               endif
 
@@ -646,13 +678,12 @@ subroutine flux_op_onee(inspfs,keop,peop,flag)
      case default
         call mult_pot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
      end select
-  endif
-
 
 !! scale correctly and clear memory
-  if(flag.ne.0.and.numspf.ne.0) then
-    peop(:,lowspf:highspf)=peop(:,lowspf:highspf)*(-2d0)
-    keop(:,lowspf:highspf)=keop(:,lowspf:highspf)*(-2d0)
+     if(flag.ne.0) then
+        peop(:,lowspf:highspf)=peop(:,lowspf:highspf)*(-2d0)
+        keop(:,lowspf:highspf)=keop(:,lowspf:highspf)*(-2d0)
+     endif
   endif
 
   if (parorbsplit.eq.1) then
@@ -696,11 +727,10 @@ subroutine flux_op_nuc(inspfs,yop,flag) !! flag=1, flux (imag); flag=0, all    2
      case default
         call op_yderiv(nspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
      end select
-  endif
-
 !! scale correctly and clear memory
-  if(flag.ne.0.and.numspf.gt.0) then
-    yop(:,lowspf:highspf)=yop(:,lowspf:highspf)*(-2d0)
+     if(flag.ne.0) then
+        yop(:,lowspf:highspf)=yop(:,lowspf:highspf)*(-2d0)
+     endif
   endif
 
   if (parorbsplit.eq.1) then
@@ -735,6 +765,9 @@ subroutine flux_op_twoe(mobra,moket,V2,flag)  !! flag=1 means flux, otherwise wh
 
   if (parorbsplit.eq.1) then
      call mpiorbgather(V2,nspf**3)
+  endif
+  if (parorbsplit.eq.3) then
+     call mympireduce(V2,nspf**4)
   endif
 
 end subroutine flux_op_twoe

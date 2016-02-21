@@ -34,7 +34,7 @@ subroutine zfftf_wrap_diff(size,inout,diffdflag)
   complex*16, intent(inout) :: inout(size)
   complex*16,allocatable :: work(:)
   complex*16 :: facfunct
-  integer :: i,jj
+  integer :: i
 
 
   if (diffdflag.eq.0) then
@@ -384,7 +384,43 @@ contains
        heredot=dot(bra,ket,size)
     endif
   end function heredot
+
 end subroutine gramschmidt
+
+
+subroutine nullgramschmidt(m,parflag)
+  implicit none
+  ! n is the length of the vectors; m is how many to orthogonalize to
+  integer,intent(in) :: m
+  logical,intent(in) :: parflag
+  CNORMTYPE :: norm
+  integer ::  i,j
+
+  if (.not.parflag) then
+     print *, "parflag error dude"; stop
+  endif
+  do j=1,2
+     do i=1,m
+        norm=mynulldot()
+     enddo
+     norm=sqrt(mynulldot())
+  enddo
+
+contains
+
+  function mynulldot()
+    implicit none
+    DATATYPE :: mynulldot,csum
+    if (parflag) then
+       csum=0d0
+       call mympireduceone(csum)
+       mynulldot=csum
+    else
+       print *, "heredot error"; stop
+    endif
+  end function mynulldot
+
+end subroutine nullgramschmidt
 
 
 subroutine ecsgramschmidt(n, m, lda, previous, vector, kdoneflag)

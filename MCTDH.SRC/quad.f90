@@ -276,24 +276,33 @@ subroutine aaonedinit(www,inavector)
   DATATYPE :: dot, csum2
 
   allocate(jacaa(www%totadim), jacaamult(www%totadim))
-  jacaamult(:)=0
-  jacaa(:)=inavector(:)
-
+  if (www%totadim.gt.0) then
+     jacaamult(:)=0
+     jacaa(:)=inavector(:)
+  endif
   call basis_project(www,numr,jacaa)
 
-  csum2=dot(jacaa,jacaa,www%totadim)
+  csum2=0d0
+  if (www%totadim.gt.0) then
+     csum2=dot(jacaa,jacaa,www%totadim)
+  endif
   if (www%parconsplit.ne.0) then
      call mympireduceone(csum2)
   endif
-  jacaa(:)=jacaa(:)/sqrt(csum2)
+  if (www%totadim.gt.0) then
+     jacaa(:)=jacaa(:)/sqrt(csum2)
+  endif
 
 !! 01-2016 setting conflag to zero here too.  Tau not used in avector quad equations.
 !!   here (defining quadexpect) perhaps it could be set to 1
   call sparseconfigmult(www,jacaa, jacaamult, yyy%cptr(0), yyy%sptr(0),1,1,1,0,0d0,-1)
 
   call basis_project(www,numr,jacaamult)
- 
-  quadexpect=dot(jacaa,jacaamult,www%totadim)
+
+  quadexpect=0
+  if (www%totadim.gt.0) then
+     quadexpect=dot(jacaa,jacaamult,www%totadim)
+  endif
   if (www%parconsplit.ne.0) then
      call mympireduceone(quadexpect)
   endif
@@ -309,6 +318,7 @@ subroutine quadavector(inavector,jjcalls)
   use configmod
   implicit none
   DATATYPE,intent(inout) :: inavector(www%totadim,mcscfnum)
+  DATATYPE :: nullvector(numr)
   integer,intent(out) :: jjcalls
   integer :: imc
 
@@ -317,18 +327,28 @@ subroutine quadavector(inavector,jjcalls)
         if (www%parconsplit.eq.0) then
            call gramschmidt(www%totadim,imc-1,www%totadim,inavector(:,:),inavector(:,imc),.false.)
         else
-           call gramschmidt(www%totadim,imc-1,www%totadim,inavector(:,:),inavector(:,imc),.true.)
+           if (www%totadim.gt.0) then
+              call gramschmidt(www%totadim,imc-1,www%totadim,inavector(:,:),inavector(:,imc),.true.)
+           else
+              call nullgramschmidt(imc-1,.true.)
+           endif
         endif
      enddo
   endif
+
   do imc=1,mcscfnum
      if (sparseconfigflag==0) then
         call nonsparsequadavector(www,inavector(:,imc))
         jjcalls=0
      else
-        call sparsequadavector(www,inavector(:,imc),jjcalls)
+        if (www%totadim.gt.0) then
+           call sparsequadavector(www,inavector(:,imc),jjcalls)
+        else
+           call sparsequadavector(www,nullvector(:),jjcalls)
+        endif
      endif
   enddo
+
 end subroutine quadavector
 
 
@@ -353,11 +373,18 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
      OFLWR "Error, must use sparseconfigflag.ne.0 for sparsequadavector"; CFLST
   endif
 
-  allocate(smallvectorspin(numr,www%botdfbasis:www%topdfbasis), smallvectorspin2(numr,www%botdfbasis:www%topdfbasis))
+  allocate(smallvectorspin(numr,www%botdfbasis:www%topdfbasis+1), &
+       smallvectorspin2(numr,www%botdfbasis:www%topdfbasis+1))
+  smallvectorspin=0; smallvectorspin2=0
+  
+  allocate( vector(numr,www%firstconfig:www%lastconfig+1), &
+       vector2(numr,www%firstconfig:www%lastconfig+1), &
+       vector3(numr,www%firstconfig:www%lastconfig+1))
+  vector=0; vector2=0; vector3=0
 
-  allocate( vector(numr,www%firstconfig:www%lastconfig), vector2(numr,www%firstconfig:www%lastconfig), vector3(numr,www%firstconfig:www%lastconfig))
-
-  vector(:,:)=inavector(:,:)
+  if (www%lastconfig.ge.www%firstconfig) then
+     vector(:,www%firstconfig:www%lastconfig)=inavector(:,:)
+  endif
 
   jjcalls0=0
   ss=0
@@ -375,7 +402,10 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
 
      vector3=vector2-quadexpect*vector              !! error term.
 
-     dev=abs(hermdot(vector3,vector3,www%totadim))
+     dev=0
+     if (www%totadim.gt.0) then
+        dev=abs(hermdot(vector3,vector3,www%totadim))
+     endif
      if (www%parconsplit.ne.0) then
         call mympirealreduceone(dev)
      endif
@@ -387,7 +417,9 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
      OFL;write(mpifileptr,'(A20,E12.5,A6,2E12.5,A7,100F14.7)') "   SPARSEQUAD: DEV", dev, " TOL ",aerror,thisaerror,"ENERGY",quadexpect; CFL
 
      if (abs(dev).lt.aerror.or.ss.ge.10) then
-        inavector = vector
+        if (www%lastconfig.ge.www%firstconfig) then
+           inavector(:,:) = vector(:,www%firstconfig:www%lastconfig)
+        endif
         if (ss.ge.10) then
            OFLWR "10 iterations, quad aborting"; CFL
         endif
@@ -397,14 +429,11 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
         return  !! RETURN
      endif
 
-!! zero dimension will fail in dgsolve, but putting this logic in anyway
-     if (www%topdfbasis-www%botdfbasis+1.ne.0) then
-        smallvectorspin(:,:)=0d0
+     smallvectorspin(:,:)=0d0
+     if (www%topconfig.ge.www%botconfig) then
+        call basis_transformto_local(www,numr,vector(:,www%botconfig:www%topconfig),smallvectorspin)
      endif
-     call basis_transformto_local(www,numr,vector(:,www%botconfig),smallvectorspin)
-     if (www%topdfbasis-www%botdfbasis+1.ne.0) then
-        smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
-     endif
+     smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
 
      maxdim=min(maxaorder,numr*www%numdfbasis)
      mysize=numr*(www%topdfbasis-www%botdfbasis+1)
@@ -426,24 +455,29 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
 
      vector3(:,:)=0d0; 
 
-     call basis_transformfrom_local(www,numr,smallvectorspin2,vector3(:,www%botconfig))
-
+     if (www%topconfig.ge.www%botconfig) then
+        call basis_transformfrom_local(www,numr,smallvectorspin2,vector3(:,www%botconfig:www%topconfig))
+     endif
      if (www%parconsplit.eq.0) then
         call mpiallgather(vector3(:,:),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
      endif
 
-     csum=dot(vector3,vector3,www%totadim)
+     csum=0d0
+     if (www%totadim.gt.0) then
+        csum=dot(vector3,vector3,www%totadim)
+     endif
      if (www%parconsplit.ne.0) then
         call mympireduceone(csum)
      endif
      vector=vector3/sqrt(csum)
-     
+
 !!  OFLWR "    ITERATIONS ***  ",jjcalls
 
      jjcalls0=jjcalls0+jjcalls
 
      ss=ss+1
-  enddo
+
+  enddo  !! INFINITE LOOP
 
 end subroutine sparsequadavector
 
@@ -457,7 +491,7 @@ subroutine nonsparsequadavector(www,avectorout)
   implicit none
   type(walktype),intent(in) :: www
   DATATYPE,intent(inout) :: avectorout(www%totadim)
-  DATATYPE :: dot, hermdot
+  DATATYPE :: dot, hermdot,csum
   CNORMTYPE :: norm
   real*8 :: dev
   integer :: k, info,ss
@@ -532,8 +566,17 @@ subroutine nonsparsequadavector(www,avectorout)
 
      call basis_transformfrom_all(www,numr,spinavectorout(:),avectorout(:))
 
-     norm=sqrt(dot(avectorout,avectorout,www%totadim))  !ok conv
-     avectorout=avectorout/norm
+     csum=0
+     if (www%totadim.gt.0) then
+        csum=dot(avectorout,avectorout,www%totadim)  !ok conv
+     endif
+     if (www%parconsplit.ne.0) then
+        call mympireduceone(csum)
+     endif
+     norm=sqrt(csum)  !! ok conversion
+     if (www%totadim.gt.0) then
+        avectorout=avectorout/norm
+     endif
 
      ss=ss+1
 
@@ -554,7 +597,9 @@ subroutine paraamult(notusedint,inavectorspin,outavectorspin)
 
   call parblockconfigmult(inavectorspin,outavectorspin)
 
-  outavectorspin(:,:)= outavectorspin(:,:) - quadexpect*inavectorspin(:,:)
+  if (www%topdfbasis.ge.www%botdfbasis) then
+     outavectorspin(:,:)= outavectorspin(:,:) - quadexpect*inavectorspin(:,:)
+  endif
 
 end subroutine paraamult
 
@@ -596,7 +641,8 @@ subroutine parquadpreconsub0(www,cptr,sptr,notusedint, inavectorspin,outavectors
   integer,intent(in) :: notusedint
   DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE :: inavector(numr,www%botconfig:www%topconfig),outavector(numr,www%botconfig:www%topconfig)  !!AUTOMATIC
+  DATATYPE :: inavector(numr,www%botconfig:www%topconfig+1),&
+       outavector(numr,www%botconfig:www%topconfig+1)  !!AUTOMATIC
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, no parquadpreconsub if sparseconfigflag=0"; CFLST

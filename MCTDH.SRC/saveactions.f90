@@ -207,7 +207,7 @@ subroutine save_natorb_initial()
      open(natorbfile,file=natplotbin, status="replace", form="unformatted")
      close(natorbfile)
   endif
-  call save_natorb( -1.d0, yyy%cmfpsivec(spfstart,0), yyy%denvects, yyy%denvals , 1)
+  call save_natorb( -1.d0, yyy%cmfspfs(:,0), yyy%denvects, yyy%denvals , 1)
 end subroutine save_natorb_initial
 
 subroutine save_density_initial(denfilename)
@@ -220,7 +220,7 @@ subroutine save_density_initial(denfilename)
      open(denfile,file=denfilename, status="replace", form="unformatted")
      close(denfile)
   endif
-  call save_density( -1.d0, yyy%cmfpsivec(spfstart,0), yyy%denmat(:,:,0) , 1, denfilename)
+  call save_density( -1.d0, yyy%cmfspfs(:,0), yyy%denmat(:,:,0) , 1, denfilename)
 end subroutine save_density_initial
 
 subroutine save_rnatorb_initial()
@@ -242,6 +242,6 @@ subroutine save_spf_initial()
      open(spfplotfile,file=spfplotbin, status="replace", form="unformatted");  close(spfplotfile)
      close(spfplotfile)
   endif
-  call save_spf( -1.d0, yyy%cmfpsivec(spfstart,0), 1)
+  call save_spf( -1.d0, yyy%cmfspfs(:,0), 1)
 end subroutine save_spf_initial
 

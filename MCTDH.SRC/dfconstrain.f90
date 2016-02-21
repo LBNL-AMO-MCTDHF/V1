@@ -201,7 +201,7 @@ subroutine get_dfconstraint(time)
   use configmod
   implicit none
   real*8, intent(in) :: time
-  call get_dfconstraint0(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),mcscfnum,yyy%cptr(0),yyy%sptr(0),www,time)
+  call get_dfconstraint0(yyy%cmfavec(:,:,0),mcscfnum,yyy%cptr(0),yyy%sptr(0),www,time)
 end subroutine get_dfconstraint
 
 
@@ -613,7 +613,7 @@ subroutine get_denconstraint1(iwhich,time)
   implicit none
   integer,intent(in) :: iwhich
   real*8,intent(in) :: time
-  call get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,yyy%cmfpsivec(astart(1):aend(mcscfnum),0),&
+  call get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,yyy%cmfavec(:,:,0),&
        yyy%drivingavectorsxx(:,:,:,0),yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
        yyy%denmat(:,:,0),iwhich,time)
 end subroutine get_denconstraint1
@@ -923,7 +923,7 @@ subroutine new_get_denconstraint1(time)
   use configmod
   implicit none
   real*8,intent(in) :: time
-  call new_get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,yyy%cmfpsivec(astart(1):aend(mcscfnum),0),&
+  call new_get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,yyy%cmfavec(:,:,0),&
        yyy%drivingavectorsxx(:,:,:,0),yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
        yyy%denmat(:,:,0),time)
 end subroutine new_get_denconstraint1

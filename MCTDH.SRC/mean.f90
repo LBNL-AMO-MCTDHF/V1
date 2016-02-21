@@ -20,15 +20,16 @@ subroutine get_reducedham()
   integer :: itime,jtime,times(100)
 
   call system_clock(itime)
-  call get_tworeducedx(www,yyy%reducedpottally,yyy%cmfpsivec(astart(1),0),yyy%cmfpsivec(astart(1),0),mcscfnum)
+  call get_tworeducedx(www,yyy%reducedpottally,yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
   call system_clock(jtime);  times(4)=times(4)+jtime-itime
 
   call system_clock(itime)
-  call get_reducedproderiv(www,yyy%reducedproderiv,yyy%cmfpsivec(astart(1),0),yyy%cmfpsivec(astart(1),0),mcscfnum)
+  call get_reducedproderiv(www,yyy%reducedproderiv,yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
   call system_clock(jtime);  times(6)=times(6)+jtime-itime
 
   call system_clock(itime)
-  call get_reducedr(www,yyy%reducedinvr,yyy%reducedinvrsq,yyy%reducedr,yyy%cmfpsivec(astart(1),0),yyy%cmfpsivec(astart(1),0),mcscfnum)
+  call get_reducedr(www,yyy%reducedinvr,yyy%reducedinvrsq,yyy%reducedr,&
+       yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
   call system_clock(itime);  times(7)=times(7)+itime-jtime
 
 end subroutine get_reducedham

@@ -328,7 +328,7 @@ subroutine save_natproj( thistime )
   do i=1,min(numr,min(num_config,4))
      call getdenmat00(www,natconfigs(:,i),natconfigs(:,i),(/ECSONE/),tempdenmat(:,:,i),1,1)
   enddo
-  call save_denproj( 4, thistime, yyy%cmfpsivec(spfstart,0),  tempdenmat, denprojplotbin)
+  call save_denproj( 4, thistime, yyy%cmfspfs(:,0),  tempdenmat, denprojplotbin)
   
 end subroutine save_natproj
 

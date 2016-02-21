@@ -25,14 +25,17 @@ subroutine prop_loop( starttime)
   thistime=starttime;  flag=0
 
   allocate(avectorp(tot_adim),outspfs(totspfdim))
-  avectorp=0; outspfs=0
+  outspfs=0
+  if (tot_adim.gt.0) then
+     avectorp=0; 
+  endif
 
   lastenergy(:)=1.d+3;  lastenergyavg=1.d+3
 
   call system_clock(itime)
 
   do imc=1,mcscfnum
-     call basis_project(www,numr,yyy%cmfpsivec(astart(imc):aend(imc),0))
+     call basis_project(www,numr,yyy%cmfavec(:,imc,0))
   enddo
 
   call get_stuff(0.0d0)
@@ -41,25 +44,24 @@ subroutine prop_loop( starttime)
 
   do imc=1,mcscfnum
 
-     call sparseconfigmult(www,yyy%cmfpsivec(astart(imc):aend(imc),0),avectorp(:),yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0,imc)
+     call sparseconfigmult(www,yyy%cmfavec(:,imc,0),avectorp,yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0,imc)
 
-     sum = dot(     yyy%cmfpsivec(astart(imc):aend(imc),0),yyy%cmfpsivec(astart(imc):aend(imc),0),tot_adim)
+     sum=0;     sum2=0
+     if (tot_adim.gt.0) then
+        sum = dot(yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),tot_adim)
+        sum2=dot(yyy%cmfavec(:,imc,0),avectorp,tot_adim)
+     endif
      if (par_consplit.ne.0) then
-        call mympireduceone(sum)
+        call mympireduceone(sum);        call mympireduceone(sum2)
      endif
      OFLWR "IN PROP: VECTOR NORM ",sqrt(sum);CFL
-
-     sum2=dot(     yyy%cmfpsivec(astart(imc):aend(imc),0),avectorp(:),tot_adim)
-     if (par_consplit.ne.0) then
-        call mympireduceone(sum2)
-     endif
+     startenergy(imc)=sum2/sum
+     OFLWR "         ENERGY ", startenergy(imc); CFL
 
      if (normboflag.ne.0) then
         OFLWR "    ... will enforce BO norms due to normboflag"; CFL
-        call get_bonorms(1,yyy%cmfpsivec(astart(imc):aend(imc),0),savenorms(:,imc))
+        call get_bonorms(1,yyy%cmfavec(:,imc,0),savenorms(:,imc))
      endif
-     startenergy(imc)=sum2/sum
-     OFLWR "         ENERGY ", startenergy(imc); CFL
 
   enddo
 
@@ -98,7 +100,7 @@ subroutine prop_loop( starttime)
      call system_clock(itime)
 
      if (save_every.ne.0.and.mod(jj,save_every).eq.0) then
-        call save_vector(yyy%cmfpsivec(:,0),avectoroutfile,spfoutfile)  
+        call save_vector(yyy%cmfavec(:,:,0),yyy%cmfspfs(:,0),avectoroutfile,spfoutfile)  
      endif
 
      if ((jj==numpropsteps) .and. (threshflag/=1)) then
@@ -138,33 +140,37 @@ subroutine prop_loop( starttime)
      endif
 
      do imc=1,mcscfnum
-        call basis_project(www,numr,yyy%cmfpsivec(astart(imc):aend(imc),0))
+        call basis_project(www,numr,yyy%cmfavec(:,imc,0))
      enddo
 
      if (normboflag.ne.0) then
 !!        OFLWR "    ... enforcing BO norms due to normboflag"; CFL
-        call enforce_bonorms(mcscfnum,yyy%cmfpsivec(astart(1):aend(mcscfnum),0),savenorms(:,:))
+        call enforce_bonorms(mcscfnum,  yyy%cmfavec(:,:,0),savenorms(:,:))
      endif
 
      call system_clock(jtime)  ;  times(1)=times(1)+jtime-itime;    itime=jtime
 
 !! prevent drift
      if (parorbsplit.ne.3) then
-        call mympibcast(yyy%cmfpsivec(spfstart:spfend,0),1,totspfdim)
+        call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
      endif
      if (par_consplit.eq.0) then
-        call mympibcast(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),1,tot_adim*mcscfnum)
+        call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
      endif
 
      do imc=1,mcscfnum
 
-        call sparseconfigmult(www,yyy%cmfpsivec(astart(imc):aend(imc),0),avectorp(:),yyy%cptr(0),yyy%sptr(0),1,1,timedepexpect,0,thattime,imc)
+        call sparseconfigmult(www,yyy%cmfavec(:,imc,0),avectorp,&
+             yyy%cptr(0),yyy%sptr(0),1,1,timedepexpect,0,thattime,imc)
 
 
-        call basis_project(www,numr,avectorp(:))
+        call basis_project(www,numr,avectorp)
 
-        sum=dot(yyy%cmfpsivec(astart(imc):aend(imc),0),avectorp(:),tot_adim)
-        sum2=dot(yyy%cmfpsivec(astart(imc):aend(imc),0),yyy%cmfpsivec(astart(imc):aend(imc),0),tot_adim)
+        sum=0; sum2=0
+        if (tot_adim.gt.0) then
+           sum=dot(yyy%cmfavec(:,imc,0),avectorp(:),tot_adim)
+           sum2=dot(yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),tot_adim)
+        endif
         if (par_consplit.ne.0) then
            call mympireduceone(sum); call mympireduceone(sum2)
         endif
@@ -241,7 +247,7 @@ subroutine prop_loop( starttime)
 
      if (threshflag.eq.1) then
 
-        call actreduced0(1,0d0,yyy%cmfpsivec(spfstart,0),yyy%cmfpsivec(spfstart,0),outspfs,0,1,1)
+        call actreduced0(1,0d0,yyy%cmfspfs(:,0),yyy%cmfspfs(:,0),outspfs,0,1,1)
 
         call apply_spf_constraints(outspfs)
 
@@ -289,10 +295,12 @@ subroutine prop_loop( starttime)
 
   enddo    !! END MAIN LOOP
 
-  do imc=1,mcscfnum
-     norms(imc)=dot(yyy%cmfpsivec(astart(imc):aend(imc),0),& !! ok implicit
-          yyy%cmfpsivec(astart(imc):aend(imc),0),tot_adim)   !! ok implicit
-  enddo
+  norms=0
+  if (tot_adim.gt.0) then
+     do imc=1,mcscfnum
+        norms(imc)=dot(yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),tot_adim)   !! ok implicit
+     enddo
+  endif
   if (par_consplit.ne.0) then
 #ifndef REALGO
 #ifndef CNORMFLAG     
@@ -307,10 +315,12 @@ subroutine prop_loop( starttime)
   norms(:)=sqrt(norms(:))
 
   if (threshflag.eq.1) then
-     do imc=1,mcscfnum
-        yyy%cmfpsivec(astart(imc):aend(imc),0)=yyy%cmfpsivec(astart(imc):aend(imc),0)/norms(imc)
-        norms(imc)=1.d0
-     enddo
+     if (tot_adim.gt.0) then
+        do imc=1,mcscfnum
+           yyy%cmfavec(:,imc,0)=yyy%cmfavec(:,imc,0)/norms(imc)
+        enddo
+     endif
+     norms(:)=1d0 
   endif
   
   call actions_final()
@@ -321,7 +331,7 @@ subroutine prop_loop( starttime)
   if (saveflag.ne.0) then
      OFLWR "  ...saving vector..."; CFL
      call mpibarrier()
-     call save_vector(yyy%cmfpsivec(:,0),avectoroutfile,spfoutfile)  
+     call save_vector(yyy%cmfavec(:,:,0),yyy%cmfspfs(:,0),avectoroutfile,spfoutfile)  
   endif
   OFLWR "   ...end prop..."; CFL
   call mpibarrier()
@@ -378,9 +388,11 @@ subroutine prop_wfn(tin, tout)
   real*8, external :: all_derivs, gbs_derivs, dummysub 
   real*8,intent(in) :: tout, tin
   real*8 :: mytime,nullreal, nulldouble,gbsstepsize
-  integer ::  iflag,zzz, nullint, idid, itime, jtime, time=0,  time2=0 , numiters=0,rkworkdim,rkiworkdim
+  integer ::  iflag,zzz, nullint, idid, itime, jtime, time=0,  time2=0 , numiters=0,rkworkdim,&
+       rkiworkdim,psilength
   real*8, allocatable :: rkwork(:)
   integer, allocatable :: rkiwork(:)
+  DATATYPE,allocatable :: psivec(:)
 
   call system_clock(itime)
 
@@ -394,13 +406,20 @@ subroutine prop_wfn(tin, tout)
   zzz=1
 #endif
 
+  psilength=totspfdim+tot_adim*mcscfnum
+  allocate(psivec(psilength))
+  psivec(tot_adim*mcscfnum+1:tot_adim*mcscfnum+totspfdim)=yyy%cmfspfs(:,0)
+  if (tot_adim.gt.0) then
+     psivec(1:tot_adim*mcscfnum)=RESHAPE(yyy%cmfavec(:,:,0),(/tot_adim*mcscfnum/))
+  endif
+
   if (intopt==0) then
      rkworkdim=(3+6*psilength)*zzz; rkiworkdim=100
      allocate(rkwork(rkworkdim),rkiwork(rkiworkdim))
      rkiwork(:)=0
      rkwork(psilength*zzz+1)=0.00001d0
      iflag=1
-     call rkf45(all_derivs, psilength*zzz, yyy%cmfpsivec(:,0), mytime, tout, relerr, abserr, iflag, rkwork, rkiwork)
+     call rkf45(all_derivs, psilength*zzz, psivec(:), mytime, tout, relerr, abserr, iflag, rkwork, rkiwork)
      if (iflag/=2) then
         OFLWR; WRFL "RK45F ERR   Iflag = ", iflag, abserr, rkiwork(1); CFLST
      endif
@@ -409,7 +428,7 @@ subroutine prop_wfn(tin, tout)
   else if (intopt.eq.1) then
      rkworkdim=20*psilength*zzz; rkiworkdim=20*psilength*zzz
      allocate(rkwork(rkworkdim),rkiwork(rkiworkdim))
-     call odex(psilength*zzz,gbs_derivs,mytime,yyy%cmfpsivec(:,0),tout,gbsstepsize,relerr,abserr,0,dummysub,0,rkwork,rkworkdim,rkiwork,rkiworkdim,nullreal,nullint,idid)
+     call odex(psilength*zzz,gbs_derivs,mytime,psivec(:),tout,gbsstepsize,relerr,abserr,0,dummysub,0,rkwork,rkworkdim,rkiwork,rkiworkdim,nullreal,nullint,idid)
      if (.not.(idid.eq.1)) then
        OFLWR; WRFL "ERR ODEX", idid; CFLST
      endif
@@ -420,11 +439,17 @@ subroutine prop_wfn(tin, tout)
   endif
   OFLWR "       Number of evaluations: ", numiters;  CFL
 
+  yyy%cmfspfs(:,0)=psivec(tot_adim*mcscfnum+1:tot_adim*mcscfnum+totspfdim)
+  if (tot_adim.gt.0) then
+     yyy%cmfavec(:,:,0)=RESHAPE(psivec(1:tot_adim*mcscfnum),(/tot_adim,mcscfnum/))
+  endif
+  deallocate(psivec)
+
   call system_clock(jtime);  time=time+jtime-itime;  call system_clock(itime)
 
-  call apply_spf_constraints(yyy%cmfpsivec(spfstart,0))
+  call apply_spf_constraints(yyy%cmfspfs(:,0))
 
-  call spf_orthogit(yyy%cmfpsivec(spfstart,0), nulldouble)
+  call spf_orthogit(yyy%cmfspfs(:,0), nulldouble)
   call get_stuff(tout) 
 
   call system_clock(jtime);  time2=time2+jtime-itime
@@ -491,7 +516,7 @@ subroutine propspfs0(inspfs,outspfs,tin, tout,inlinearflag,numiters)
   outspfs(:,:)=inspfs(:,:)
 
   if (intopt==0) then
-     rkworkdim=(3+6*totspfdim)*zzz;      rkiworkdim=20
+     rkworkdim=(3+6*totspfdim)*zzz;      rkiworkdim=100
      allocate(rkwork(rkworkdim),rkiwork(rkiworkdim))
      iflag=1           
      call rkf45(spf_linear_derivs, totspfdim*zzz, outspfs, time1, time2, relerr, abserr, iflag, rkwork, rkiwork)
@@ -502,7 +527,7 @@ subroutine propspfs0(inspfs,outspfs,tin, tout,inlinearflag,numiters)
      deallocate(rkwork,rkiwork)
   else if (intopt==1) then 
      gbsstepsize=1.d-6
-     rkworkdim=20*psilength*zzz; rkiworkdim=20*psilength*zzz
+     rkworkdim=20*totspfdim*zzz; rkiworkdim=20*totspfdim*zzz
      allocate(rkwork(rkworkdim),rkiwork(rkiworkdim))
      call odex(totspfdim*zzz,gbs_linear_derivs,time1,outspfs,time2,gbsstepsize,relerr,abserr,0,dummysub,0,rkwork,rkworkdim,rkiwork,rkiworkdim,nullreal,nullint,idid)
      numiters=rkiwork(17)
@@ -567,7 +592,7 @@ subroutine cmf_prop_wfn(tin, tout)
   endif
   yyy%reducedpot(:,:,:,1) = yyy%reducedpot(:,:,:,0)
   yyy%reducedpottally(:,:,:,:,1) = yyy%reducedpottally(:,:,:,:,0)
-  if (drivingflag.ne.0) then
+  if (drivingflag.ne.0.and.tot_adim.gt.0) then
      yyy%drivingavectorsxx(:,:,:,1)=yyy%drivingavectorsxx(:,:,:,0)
      yyy%drivingavectorsyy(:,:,:,1)=yyy%drivingavectorsyy(:,:,:,0)
      yyy%drivingavectorszz(:,:,:,1)=yyy%drivingavectorszz(:,:,:,0)
@@ -583,33 +608,36 @@ subroutine cmf_prop_wfn(tin, tout)
   call assign_cptr(yyy%cptr(1),yyy%cptr(0),DATAONE)
 
   if (sparseopt.ne.0) then
-     call assign_sptr(yyy%sptr(1),yyy%sptr(0),DATAONE)
+     call assign_sptr(yyy%sptr(1),yyy%sptr(0),DATAONE,www)
   endif
   if (use_dfwalktype) then
      if (sparseopt.ne.0) then
-        call assign_sptr(yyy%sdfptr(1),yyy%sdfptr(0),DATAONE)
+        call assign_sptr(yyy%sdfptr(1),yyy%sdfptr(0),DATAONE,www)
      endif
   endif
-  yyy%cmfpsivec(:,1)= yyy%cmfpsivec(:,0)
+  yyy%cmfspfs(:,1)= yyy%cmfspfs(:,0)
+  if (tot_adim.gt.0) then
+     yyy%cmfavec(:,:,1)= yyy%cmfavec(:,:,0)
+  endif
 
   call system_clock(jtime);  times(6)=times(6)+jtime-itime
 
-  if ( (threshflag.ne.0.and.improvedrelaxflag.eq.0).and.&
+  if ( (threshflag.ne.0.and.improvedrelaxflag.le.0).and.&
        ( ( (improvedquadflag.eq.1.or.improvedquadflag.eq.3).and.tin.ge.aquadstarttime ).or.&
        ( (improvedquadflag.ge.2).and.tin.ge.quadstarttime ) ) ) then
      OFLWR " ** SETTING IMPROVEDRELAXFLAG=1 ** "; CFL
-     improvedrelaxflag=1
+     improvedrelaxflag=max(1,(-1)*improvedrelaxflag)
   endif
 
-  if (improvedrelaxflag.ne.0) then
+  if (improvedrelaxflag.gt.0) then
      call system_clock(itime)
      if (spf_flag.ne.0) then
         if (improvedquadflag.gt.1.and.tin.ge.quadstarttime) then
-           call quadspfs(yyy%cmfpsivec(spfstart,0), qq)
+           call quadspfs(yyy%cmfspfs(:,0), qq)
            numiters=numiters+qq
         else
            time1=tin;        time2=tout
-           call propspfs(yyy%cmfpsivec(spfstart,1), yyy%cmfpsivec(spfstart,0), time1,time2,0,qq)
+           call propspfs(yyy%cmfspfs(:,1), yyy%cmfspfs(:,0), time1,time2,0,qq)
            numiters=numiters+qq
         endif
      endif
@@ -625,10 +653,10 @@ subroutine cmf_prop_wfn(tin, tout)
 
      if (avector_flag.ne.0) then
         if ((improvedquadflag.eq.1.or.improvedquadflag.eq.3).and.tin.ge.aquadstarttime) then
-           call quadavector(yyy%cmfpsivec(astart(1):aend(mcscfnum),0),qq)
+           call quadavector(yyy%cmfavec(:,:,0),qq)
            numaiters=numaiters+qq
         else
-           call myconfigeig(www,dwwptr,yyy%cptr(0),yyy%cmfpsivec(astart(1):aend(mcscfnum),0),&
+           call myconfigeig(www,dwwptr,yyy%cptr(0),yyy%cmfavec(:,:,0),&
                 myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
         endif
      endif
@@ -654,18 +682,19 @@ subroutine cmf_prop_wfn(tin, tout)
 !!            and              !!
 !! ******* LMF CORRECTOR ***** !!
 
+
      do linearflag=0,1
         call system_clock(itime)
         if (spf_flag.ne.0) then
            time1=tin;        time2=tout
-           call propspfs(yyy%cmfpsivec(spfstart,1),yyy%cmfpsivec(spfstart,0), time1,time2,linearflag,qq)
+           call propspfs(yyy%cmfspfs(:,1),yyy%cmfspfs(:,0), time1,time2,linearflag,qq)
            numiters=numiters+qq
         endif
         call system_clock(jtime);     times(4)=times(4)+jtime-itime;   itime=jtime
 
         if(avector_flag.ne.0) then
            do imc=1,mcscfnum
-              call cmf_prop_avector(yyy%cmfpsivec(astart(imc):aend(imc),1), yyy%cmfpsivec(astart(imc):aend(imc),0), linearflag,tin,tout,imc,qq)
+              call cmf_prop_avector(yyy%cmfavec(:,imc,1),  yyy%cmfavec(:,imc,0), linearflag,tin,tout,imc,qq)
               numaiters=numaiters+qq
            enddo
         endif
@@ -734,27 +763,38 @@ subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc,numi
   real*8 :: timea,timeb
 
   if (avector_flag.eq.0) then
-     avectorout(:)=avectorin(:)
+     if (tot_adim.gt.0) then
+        avectorout(:)=avectorin(:)
+     endif
      return
   endif
 
   allocate(tempvector(tot_adim))
 
-  tempvector(:)=avectorin(:)
+  if (tot_adim.gt.0) then
+     tempvector(:)=avectorin(:)
+  endif
   numiters=0
   do k=1,littlesteps
      timea=time1+(time2-time1)*(k-1)/littlesteps;     timeb=time1+(time2-time1)*k/littlesteps
      call cmf_prop_avector0(tempvector,avectorout,linearflag,timea,timeb,imc,qq)
-     tempvector(:)=avectorout(:)
+     if (tot_adim.gt.0) then
+        tempvector(:)=avectorout(:)
+     endif
      numiters=numiters+qq
   enddo
 
   if (threshflag.ne.0) then
-     csum=dot(avectorout,avectorout,tot_adim)
+     csum=0d0
+     if (tot_adim.gt.0) then
+        csum=dot(avectorout,avectorout,tot_adim)
+     endif
      if (par_consplit.ne.0) then
         call mympireduceone(csum)
      endif
-     avectorout(:)=avectorout(:)/sqrt(csum)
+     if (tot_adim.gt.0) then
+        avectorout(:)=avectorout(:)/sqrt(csum)
+     endif
   endif
 
   deallocate(tempvector)
@@ -776,6 +816,7 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
   integer,intent(out) :: numiters
   real*8, intent(in) :: time1,time2
   DATATYPE :: sum1,sum0,pots(3)=0d0
+  DATATYPE :: nullvector1(numr),nullvector2(numr)
   integer :: itime,jtime,getlen,ii,iflag,myiostat
   real*8 :: thisstep,midtime,rsum
   integer, save :: times(2)=0, icalled=0
@@ -785,9 +826,9 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
   if (sparseopt.eq.0) then
      call zero_cptr(workconfigpointer)
   else
-     call zero_sptr(worksparsepointer)
+     call zero_sptr(worksparsepointer,www)
      if (use_dfwalktype) then
-        call zero_sptr(workdfsparsepointer)
+        call zero_sptr(workdfsparsepointer,www)
      endif
   endif
 
@@ -816,13 +857,13 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
      if (sparseopt.eq.0) then
         call assign_cptr(workconfigpointer,yyy%cptr(1),thisstep*DATAONE)
      else
-        call assign_sptr(worksparsepointer,yyy%sptr(1),thisstep*DATAONE)
+        call assign_sptr(worksparsepointer,yyy%sptr(1),thisstep*DATAONE,www)
         if (use_dfwalktype) then
-           call assign_sptr(workdfsparsepointer,yyy%sdfptr(1),thisstep*DATAONE)
+           call assign_sptr(workdfsparsepointer,yyy%sdfptr(1),thisstep*DATAONE,www)
         endif
      endif
 
-     if (drivingflag.ne.0) then
+     if (drivingflag.ne.0.and.tot_adim.gt.0) then
         workdrivingavec(:,:)=0d0
 
         if (iflag.eq.1) then
@@ -838,7 +879,7 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
      sum0=(midtime-firsttime)/(lasttime-firsttime) 
      sum1=(lasttime-midtime)/(lasttime-firsttime) 
 
-     if (drivingflag.ne.0) then
+     if (drivingflag.ne.0.and.tot_adim.gt.0) then
         workdrivingavec(:,:)=0d0
 
         if (iflag.eq.1) then
@@ -854,16 +895,20 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
      if (sparseopt.eq.0) then
         call add_cptr(yyy%cptr(1),yyy%cptr(0),workconfigpointer,sum1*thisstep,sum0*thisstep)
      else
-        call add_sptr(yyy%sptr(1),yyy%sptr(0),worksparsepointer,sum1*thisstep,sum0*thisstep)
+        call add_sptr(yyy%sptr(1),yyy%sptr(0),worksparsepointer,sum1*thisstep,sum0*thisstep,www)
         if (use_dfwalktype) then
-           call add_sptr(yyy%sdfptr(1),yyy%sdfptr(0),workdfsparsepointer,sum1*thisstep,sum0*thisstep)
+           call add_sptr(yyy%sdfptr(1),yyy%sdfptr(0),workdfsparsepointer,sum1*thisstep,sum0*thisstep,www)
         endif
      endif
   endif
 
   call system_clock(jtime); times(1)=times(1)+jtime-itime; itime=jtime
 
-  call myconfigprop(www,dwwptr,avectorin,avectorout,midtime,imc,numiters)
+  if (tot_adim.gt.0) then
+     call myconfigprop(www,dwwptr,avectorin(:),avectorout(:),midtime,imc,numiters)
+  else
+     call myconfigprop(www,dwwptr,nullvector1(:),nullvector2(:),midtime,imc,numiters)
+  endif
 
   call system_clock(jtime); times(2)=times(2)+jtime-itime;
 

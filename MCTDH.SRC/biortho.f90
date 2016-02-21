@@ -255,7 +255,8 @@ subroutine abio_sparse(abio,aout,inbiovar)
   integer :: biofileptr=6719
   real*8 :: t,anorm, tol
   integer :: liwsp,lwsp,itrace,iflag,ixx,getlen,myiostat
-  DATATYPE, allocatable :: wsp(:), smallvector(:,:), smallvectorout(:,:)
+  DATATYPE, allocatable :: smallvector(:,:), smallvectorout(:,:)
+  real*8,allocatable :: wsp(:)
   external parbiomatvec,realpardotsub
 
   if (sparseconfigflag.eq.0) then
@@ -300,31 +301,38 @@ subroutine abio_sparse(abio,aout,inbiovar)
 
   call biomatvecset(inbiovar)
 
+#ifdef REALGO
   ixx=inbiovar%wwbio%maxbasisperproc*inbiovar%bionr
-  liwsp=max(12,inbiovar%thisbiodim+3);  lwsp=ixx*(liwsp+1) + 6*(liwsp)**2 + 6+1
+#else
+  ixx=inbiovar%wwbio%maxbasisperproc*inbiovar%bionr*2
+#endif
+  lwsp = ixx*(inbiovar%thisbiodim+4) + 6*(inbiovar%thisbiodim+3)**2 + 100
+
+  liwsp = inbiovar%thisbiodim+100
+
   
   allocate(wsp(lwsp),iwsp(liwsp))
   allocate(smallvector(inbiovar%bionr,inbiovar%wwbio%maxbasisperproc),smallvectorout(inbiovar%bionr,inbiovar%wwbio%maxbasisperproc))
   smallvector(:,:)=0; smallvectorout(:,:)=0
 
-  call fullbasis_transformto_local(inbiovar%wwbio,inbiovar%bionr,abio(:,inbiovar%wwbio%botconfig),smallvector(:,:))
+  if (inbiovar%wwbio%topconfig.ge.inbiovar%wwbio%botconfig) then
+     call fullbasis_transformto_local(inbiovar%wwbio,inbiovar%bionr,abio(:,inbiovar%wwbio%botconfig:inbiovar%wwbio%topconfig),smallvector(:,:))
+  endif
 
-#ifdef REALGO
-  call DGEXPVxxx2(ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec,itrace,iflag,biofileptr,inbiovar%tempstepsize,realpardotsub,inbiovar%wwbio%maxbasisperproc*nprocs*inbiovar%bionr)
-#else
-  lwsp=2*lwsp
-  call DGEXPVxxx2(2*ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,liwsp,parbiomatvec,itrace,iflag,biofileptr,inbiovar%tempstepsize,realpardotsub,2*inbiovar%wwbio%maxbasisperproc*nprocs*inbiovar%bionr)
-  lwsp=lwsp/2
-#endif
+  call DGEXPVxxx2(ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,&
+       liwsp,parbiomatvec,itrace,iflag,biofileptr,inbiovar%tempstepsize,realpardotsub,ixx*nprocs)
+
   if(iflag.eq.1) then
      OFLWR "Solution did not converge in sparsebiortho - TEMP CONTINUE",iflag,tol,inbiovar%thisbiodim; CFL
   elseif(iflag.ne.0) then
      OFLWR "Stopping due to bad iflag in sparsebiortho: ",iflag,tol,inbiovar%thisbiodim; CFLST
   endif
-  aout(:,:)=0d0
-
-  call fullbasis_transformfrom_local(inbiovar%wwbio,inbiovar%bionr,smallvectorout(:,:),aout(:,inbiovar%wwbio%botconfig))
-
+  if (inbiovar%wwbio%lastconfig.ge.inbiovar%wwbio%firstconfig) then
+     aout(:,:)=0d0
+  endif
+  if (inbiovar%wwbio%topconfig.ge.inbiovar%wwbio%botconfig) then
+     call fullbasis_transformfrom_local(inbiovar%wwbio,inbiovar%bionr,smallvectorout(:,:),aout(:,inbiovar%wwbio%botconfig:inbiovar%wwbio%topconfig))
+  endif
   if (inbiovar%wwbio%parconsplit.eq.0) then
      call mpiallgather(aout,inbiovar%wwbio%numconfig*inbiovar%bionr,inbiovar%wwbio%configsperproc(:)*inbiovar%bionr,inbiovar%wwbio%maxconfigsperproc*inbiovar%bionr)
   endif
@@ -385,23 +393,23 @@ contains
     Type(biorthotype) :: biotypevar
     DATATYPE,target :: insmo(wwbio%nspf,wwbio%nspf)
     integer :: innumr
+#ifdef REALGO
+    integer,parameter :: zzz=1
+#else
+    integer,parameter :: zzz=2
+#endif
 
     biotypevar%wwbio=>wwbio
-
-
     biotypevar%smo=>insmo
-    biotypevar%biomaxdim=min(maxbiodim,biotypevar%wwbio%numbasis*innumr-1)
-
-#ifndef REALGO
-    if (biocomplex.eq.0) then
-       biotypevar%biomaxdim=biotypevar%wwbio%numbasis*innumr*2-1
-    endif
-#endif
     biotypevar%bionr=innumr
+
+    biotypevar%biomaxdim=min(maxbiodim*zzz,biotypevar%wwbio%maxconfigsperproc*biotypevar%bionr*zzz)
+
     if (.not.biotypevar%started) then
        biotypevar%thisbiodim=min(biodim,biotypevar%biomaxdim)
     endif
     biotypevar%started=.true.
+
   end subroutine bioset
 
 
@@ -422,7 +430,7 @@ contains
     DATATYPE,intent(out) :: mobio(spfsize,inbiovar%wwbio%nspf)
     DATATYPE,intent(inout) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
     DATATYPE :: dot,hermdot
-    DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig),&
+    DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig+1),&
          smosave(inbiovar%wwbio%nspf,inbiovar%wwbio%nspf)                                  !! AUTOMATIC
     integer :: i,j,lowspf,highspf,numspf,flag
 
@@ -495,8 +503,10 @@ contains
 ! call checkbio(origmo,mobio,abio,atmp,biospfsize,inbiovar%wwbio%nspf,nr)
 !  endif
     
-    abio(:,:)=atmp
-    
+    if (inbiovar%wwbio%lastconfig.ge.inbiovar%wwbio%firstconfig) then
+       abio(:,:)=atmp(:,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
+    endif
+
   end subroutine biortho
 
 !! given origmo and abio wave function, transform abio such that it is now coefficients of mobio.
@@ -514,7 +524,7 @@ contains
     type(biorthotype),target :: inbiovar
     DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)
     DATATYPE,intent(inout) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
-    DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)    !! AUTOMATIC
+    DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig+1)    !! AUTOMATIC
     DATATYPE :: dot,hermdot
     integer :: i,j,lowspf,highspf,numspf,flag
 
@@ -564,9 +574,9 @@ contains
        call lnmat(inbiovar%smo,inbiovar%wwbio%nspf)    !! transform s to -ln(s)
        call abio_sparse(abio,atmp,inbiovar)
     endif
-    
-    abio(:,:)=atmp
-    
+    if (inbiovar%wwbio%lastconfig.ge.inbiovar%wwbio%firstconfig) then
+       abio(:,:)=atmp(:,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
+    endif
   end subroutine biotransform
 
 end module biorthomod
@@ -782,7 +792,7 @@ subroutine parbiomatvec_gather(inavector,outavector)
   DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
   DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
   DATATYPE,allocatable :: intemp(:,:)
-  DATATYPE :: outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig)
+  DATATYPE :: outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1)
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parbiomatvec summa"; CFLST
@@ -827,32 +837,32 @@ subroutine parbiomatvec_summa(inavector,outavector)
   DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
   DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
   DATATYPE :: intemp(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&
-       outwork(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig),&
-       outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig)
+       outwork(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1),&   !!AUTOMATIC
+       outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1)
   integer :: iproc
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parbiomatvec summa"; CFLST
   endif
 
-  outwork(:,:)=0d0
+  outwork=0d0; outtemp=0; intemp=0
 
   do iproc=1,nprocs
 
 !! transform second to reduce communication?
 !!   no, spin transformations done locally now.
 
-     if (myrank.eq.iproc) then
-        call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector(:,:),intemp(:,:))
+     if(biopointer%wwbio%alltopconfigs(iproc).ge.biopointer%wwbio%allbotconfigs(iproc)) then
+        if (myrank.eq.iproc) then
+           call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector(:,:),intemp(:,:))
+        endif
+
+        call mympibcast(intemp,iproc,(biopointer%wwbio%alltopconfigs(iproc)-biopointer%wwbio%allbotconfigs(iproc)+1)*biopointer%bionr)
+
+        call biomatvec_byproc(iproc,iproc,intemp,outtemp)
+
+        outwork(:,:)=outwork(:,:)+outtemp(:,:)
      endif
-
-     call mympibcast(intemp,iproc,(biopointer%wwbio%alltopconfigs(iproc)-biopointer%wwbio%allbotconfigs(iproc)+1) &
-          * biopointer%bionr)
-
-     call biomatvec_byproc(iproc,iproc,intemp,outtemp)
-
-     outwork(:,:)=outwork(:,:)+outtemp(:,:)
-
   enddo
 
   outavector(:,:)=0d0   !! PADDED
@@ -874,8 +884,8 @@ subroutine parbiomatvec_circ(inavector,outavector)
   DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
   DATATYPE :: workvector(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&
        workvector2(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&
-       outwork(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig),&
-       outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig)
+       outwork(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1),&    !!AUTOMATIC
+       outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1)
   integer :: iproc,prevproc,nextproc,deltaproc
 
   if (sparseconfigflag.eq.0) then
@@ -887,18 +897,22 @@ subroutine parbiomatvec_circ(inavector,outavector)
   prevproc=mod(nprocs+myrank-2,nprocs)+1
   nextproc=mod(myrank,nprocs)+1
 
-  outwork(:,:)=0d0
+  workvector=0; workvector2=0; outwork=0; outtemp=0
 
-  call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector(:,:),workvector(:,:))
+  if (biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
+     call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector(:,:),workvector(:,:))
+  endif
 
   do deltaproc=0,nprocs-1
 
 !! PASSING BACKWARD (plus deltaproc)
      iproc=mod(myrank-1+deltaproc,nprocs)+1
 
+  if (biopointer%wwbio%alltopconfigs(iproc).ge.biopointer%wwbio%allbotconfigs(iproc).and.&
+       biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
      call biomatvec_byproc(iproc,iproc,workvector,outtemp)
-
      outwork(:,:)=outwork(:,:)+outtemp(:,:)
+  endif
 
 !! PASSING BACKWARD
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
@@ -911,7 +925,9 @@ subroutine parbiomatvec_circ(inavector,outavector)
 
   outavector(:,:)=0d0   !! PADDED
 
-  call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,outwork(:,:),outavector(:,:))
+  if (biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
+     call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,outwork(:,:),outavector(:,:))
+  endif
 
 end subroutine parbiomatvec_circ
 
@@ -943,7 +959,9 @@ subroutine biomatvec_byproc(firstproc,lastproc,x,y)
   DATATYPE,intent(out) :: y(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig)
   DATATYPE :: csum,myout(biopointer%bionr)
 
-  y(:,:)=0d0
+  if (biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
+     y(:,:)=0d0
+  endif
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,ihop,csum,j,myout) 
 

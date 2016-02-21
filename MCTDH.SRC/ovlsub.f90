@@ -151,7 +151,8 @@ subroutine getoverlaps(forceflag)
      do imc=1,mcscfnum
         do i=1,numovl
 
-           call autocorrelate_one(www,bwwptr,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0),orig_spfs(:,:,i), &
+           call autocorrelate_one(www,bwwptr,yyy%cmfavec(:,imc,0),&
+                yyy%cmfspfs(:,0),orig_spfs(:,:,i), &
                 orig_avectors(:,i), overlaps(i,xcalledflag,imc),numr)
 
         enddo

@@ -68,7 +68,7 @@ subroutine getparams()
   integer :: dfrestrictflag=0
   integer :: allspinproject=1
 
-  NAMELIST/parinp/  noftflag, biodim,biotol,biocomplex, rdenflag,cdenflag, notiming, littlesteps, &
+  NAMELIST/parinp/  noftflag, biodim,biotol, rdenflag,cdenflag, notiming, littlesteps, &
        expotol, eground,  ceground, maxexpodim, numloadfrozen, numholecombo, numholes, excitations, &
        excitecombos, jacsymflag, jacprojorth,jacgmatthird,  fluxoptype, timefac, threshflag, &
        timefacforce, avectoroutfile, spfoutfile,  autopermthresh, messamount, numshells,   &

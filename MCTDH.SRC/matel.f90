@@ -20,7 +20,7 @@ subroutine all_matel()
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     Call all_matel0 in all_matel"; CFL; call mpibarrier()
   endif
-  call all_matel0(yyy%cptr(0), yyy%cmfpsivec(spfstart,0), yyy%cmfpsivec(spfstart,0), twoereduced,times)
+  call all_matel0(yyy%cptr(0), yyy%cmfspfs(:,0), yyy%cmfspfs(:,0), twoereduced,times)
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     ...called all_matel0 in all_matel"; CFL; call mpibarrier()
   endif

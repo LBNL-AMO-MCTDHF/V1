@@ -35,22 +35,30 @@ subroutine dipolesub()
         if (mcscfnum.ne.2) then
            OFLWR "Whoot? conjgpropflag mcscfnum",mcscfnum; CFLST
         endif
-        dipolenormsq(calledflag) = hermdot(yyy%cmfpsivec(astart(2),0),yyy%cmfpsivec(astart(1),0),tot_adim)
+        dipolenormsq(calledflag)=0
+        if (tot_adim.gt.0) then
+           dipolenormsq(calledflag) = hermdot(yyy%cmfavec(:,2,0),yyy%cmfavec(:,1,0),tot_adim)
+        endif
         if (par_consplit.ne.0) then
            call mympireduceone(dipolenormsq(calledflag))
         endif
 
-        call dipolesub_one(www,bwwptr,yyy%cmfpsivec(astart(2),0),yyy%cmfpsivec(astart(1),0),yyy%cmfpsivec(spfstart,0), xdipoleexpect(calledflag),ydipoleexpect(calledflag),zdipoleexpect(calledflag))
+        call dipolesub_one(www,bwwptr,yyy%cmfavec(:,2,0),yyy%cmfavec(:,1,0), yyy%cmfspfs(:,0),&
+             xdipoleexpect(calledflag),ydipoleexpect(calledflag),zdipoleexpect(calledflag))
 
      else
 
         do imc=1,mcscfnum
-           dd(imc) = hermdot(yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),tot_adim)
+           dd(imc)=0
+           if (tot_adim.gt.0) then
+              dd(imc) = hermdot(yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),tot_adim)
+           endif
            if (par_consplit.ne.0) then
               call mympireduceone(dd(imc))
            endif
 
-           call dipolesub_one(www,bwwptr,yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(astart(imc),0),yyy%cmfpsivec(spfstart,0), xx(imc),yy(imc),zz(imc))
+           call dipolesub_one(www,bwwptr,yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),&
+                yyy%cmfspfs(:,0), xx(imc),yy(imc),zz(imc))
         enddo
 
         xdipoleexpect(calledflag)=0d0
@@ -66,13 +74,13 @@ subroutine dipolesub()
 !! 1-2016 v1.17 should not be necessary with realflag in mult_zdipole(in,out,realflag) etc.
  
 #ifndef CNORMFLAG
-           xdipoleexpect(calledflag) = xdipoleexpect(calledflag) + real(xx(imc),8)
-           ydipoleexpect(calledflag) = ydipoleexpect(calledflag) + real(yy(imc),8)
-           zdipoleexpect(calledflag) = zdipoleexpect(calledflag) + real(zz(imc),8)
+           xdipoleexpect(calledflag) = xdipoleexpect(calledflag) + real(xx(imc),8) / mcscfnum
+           ydipoleexpect(calledflag) = ydipoleexpect(calledflag) + real(yy(imc),8) / mcscfnum
+           zdipoleexpect(calledflag) = zdipoleexpect(calledflag) + real(zz(imc),8) / mcscfnum
 #else
-           xdipoleexpect(calledflag) = xdipoleexpect(calledflag) + xx(imc)
-           ydipoleexpect(calledflag) = ydipoleexpect(calledflag) + yy(imc)
-           zdipoleexpect(calledflag) = zdipoleexpect(calledflag) + zz(imc)
+           xdipoleexpect(calledflag) = xdipoleexpect(calledflag) + xx(imc) / mcscfnum
+           ydipoleexpect(calledflag) = ydipoleexpect(calledflag) + yy(imc) / mcscfnum
+           zdipoleexpect(calledflag) = zdipoleexpect(calledflag) + zz(imc) / mcscfnum
 #endif
 
         enddo
@@ -159,6 +167,7 @@ subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_ex
  
   allocate(tempvector(numr,www%firstconfig:www%lastconfig), tempspfs(spfsize,lowspf:highspf+1),&
        abra(numr,www%firstconfig:www%lastconfig),workspfs(spfsize,www%nspf))
+
   tempvector=0; tempspfs=0; abra=0; workspfs=0
 
   abra(:,:)=in_abra(:,:)
@@ -185,7 +194,10 @@ subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_ex
   do i=1,numr
      tempvector(i,:)=aket(i,:)*bondpoints(i)
   enddo
-  csum=hermdot(abra,tempvector,www%totadim)
+  csum=0d0
+  if (www%totadim.gt.0) then
+     csum=hermdot(abra,tempvector,www%totadim)
+  endif
   if (www%parconsplit.ne.0) then
      call mympireduceone(csum)
   endif
@@ -193,6 +205,7 @@ subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_ex
 
 !! Z DIPOLE
 
+  dipolemat(:,:)=0d0
   if (numspf.gt.0) then
      call mult_zdipole(numspf,inspfs(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
      call MYGEMM('C','N',www%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
@@ -207,7 +220,10 @@ subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_ex
 
   rvector(:)=bondpoints(:)
   call arbitraryconfig_mult_singles(www,dipolemat,rvector,aket,tempvector,numr)
-  zdipole_expect=hermdot(abra,tempvector,www%totadim)
+  zdipole_expect=0d0
+  if (www%totadim.gt.0) then
+     zdipole_expect=hermdot(abra,tempvector,www%totadim)
+  endif
   if (www%parconsplit.ne.0) then
      call mympireduceone(zdipole_expect)
   endif
@@ -215,6 +231,7 @@ subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_ex
 
 !! Y DIPOLE
 
+  dipolemat(:,:)=0d0
   if (numspf.gt.0) then
      call mult_ydipole(numspf,inspfs(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
 
@@ -230,7 +247,10 @@ subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_ex
 
   rvector(:)=bondpoints(:)
   call arbitraryconfig_mult_singles(www,dipolemat,rvector,aket,tempvector,numr)
-  ydipole_expect=hermdot(abra,tempvector,www%totadim)
+  ydipole_expect=0d0
+  if (www%totadim.gt.0) then
+     ydipole_expect=hermdot(abra,tempvector,www%totadim)
+  endif
   if (www%parconsplit.ne.0) then
      call mympireduceone(ydipole_expect)
   endif
@@ -238,6 +258,7 @@ subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_ex
 
 !! X DIPOLE
 
+  dipolemat(:,:)=0d0
   if (numspf.gt.0) then
      call mult_xdipole(numspf,inspfs(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
 
@@ -253,7 +274,10 @@ subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_ex
 
   rvector(:)=bondpoints(:)
   call arbitraryconfig_mult_singles(www,dipolemat,rvector,aket,tempvector,numr)
-  xdipole_expect=hermdot(abra,tempvector,www%totadim)
+  xdipole_expect=0d0
+  if (www%totadim.gt.0) then
+     xdipole_expect=hermdot(abra,tempvector,www%totadim)
+  endif
   if (www%parconsplit.ne.0) then
      call mympireduceone(xdipole_expect)
   endif

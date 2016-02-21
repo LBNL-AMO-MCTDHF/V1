@@ -1,15 +1,16 @@
 
 #include "Definitions.INC"
 
-subroutine save_vector(psi,afile,sfile)
+subroutine save_vector(avectors,spfs,afile,sfile)
   use parameters
   use opmod !! frozenspfs
   use mpimod
   implicit none
-  DATATYPE,intent(in) :: psi(psilength) 
+  DATATYPE,intent(in) :: spfs(spfsize,nspf),avectors(numr,first_config:last_config,mcscfnum)
   character,intent(in) :: afile*(*), sfile*(*)
   integer :: iprop,ispf,myiostat
   DATATYPE, allocatable :: parorbitals(:,:), parfrozen(:,:), paravec(:,:,:)
+  DATATYPE :: nullvector(1,1)
 
 !! always allocate avoid warn bounds
 
@@ -27,7 +28,7 @@ subroutine save_vector(psi,afile,sfile)
 
   if (parorbsplit.eq.3) then     
      do ispf=1,nspf
-        call splitgatherv(psi(spfstart+(ispf-1)*spfsize),parorbitals(:,ispf), .false.)
+        call splitgatherv(spfs(:,ispf),parorbitals(:,ispf), .false.)
      enddo
      
      if (numfrozen.gt.0) then
@@ -51,12 +52,16 @@ subroutine save_vector(psi,afile,sfile)
 
   if (par_consplit.ne.0) then
      do iprop=1,mcscfnum
-        call mygatherv(psi(astart(iprop)),paravec(:,:,iprop),configs_perproc(:)*numr,.false.)
+        if (tot_adim.gt.0) then
+           call mygatherv(avectors(:,:,iprop),paravec(:,:,iprop),configs_perproc(:)*numr,.false.)
+        else
+           call mygatherv(nullvector(:,:),paravec(:,:,iprop),configs_perproc(:)*numr,.false.)
+        endif
      enddo
   endif
 
   call mpibarrier()
-  OFLWR "  ... ok, now write"; CFL
+  OFLWR "  ... ok, now write!"; CFL
   call mpibarrier()
 
   if (myrank.eq.1) then
@@ -68,23 +73,25 @@ subroutine save_vector(psi,afile,sfile)
      if (parorbsplit.eq.3) then
         call write_spf(998,parorbitals(:,:),parfrozen(:,:),spfsize*nprocs)
      else
-        call write_spf(998,psi(spfstart),frozenspfs(:,:),spfsize)
+        call write_spf(998,spfs(:,:),frozenspfs(:,:),spfsize)
      endif
      close(998)
-     
+
      open(999,file=afile, status="unknown", form="unformatted",iostat=myiostat)
      call checkiostat(myiostat,"opening "//afile)
      call avector_header_write(999,mcscfnum)
+
      if (par_consplit.ne.0) then
         do iprop=1,mcscfnum
            call write_avector(999,paravec(:,:,iprop))
         enddo
      else
         do iprop=1,mcscfnum
-           call write_avector(999,psi(astart(iprop)))
+           call write_avector(999,avectors(:,:,iprop))
         enddo
      endif
      close(999)
+
   endif
   
   call mpibarrier()

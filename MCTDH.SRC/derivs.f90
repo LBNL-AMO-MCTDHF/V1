@@ -15,40 +15,54 @@ subroutine gbs_derivs(notusedint,thistime,psi,psip,notuseddbl,notusedint2)
   implicit none
   integer,intent(in) :: notusedint,notusedint2
   real*8,intent(in) :: thistime,notuseddbl
-  DATATYPE,intent(in) :: psi(psilength)
-  DATATYPE,intent(out) :: psip(psilength)
+  DATATYPE,intent(in) :: psi(tot_adim*mcscfnum+totspfdim)
+  DATATYPE,intent(out) :: psip(tot_adim*mcscfnum+totspfdim)
   call all_derivs(thistime,psi,psip)
 end subroutine gbs_derivs
 
 
 !! VMF SUBROUTINE (possibly broken, not used for a while)
-
-subroutine all_derivs(thistime,xpsi, xpsip)
+subroutine all_derivs(thistime,in_xpsi, out_xpsip)
   use parameters
   use mpimod
   use configmod
   use xxxmod
   implicit none
-  DATATYPE,intent(in) :: xpsi(psilength)
-  DATATYPE,intent(out) :: xpsip(psilength)
+  DATATYPE,intent(in) :: in_xpsi(tot_adim*mcscfnum+totspfdim)
+  DATATYPE,intent(out) :: out_xpsip(tot_adim*mcscfnum+totspfdim)
+  DATATYPE :: xspfs(totspfdim),xavec(tot_adim,mcscfnum),&
+       xspfsp(totspfdim),xavecp(tot_adim,mcscfnum)
+!  DATATYPE :: outspfs(totspfdim),outavec(tot_adim,mcscfnum),avector(tot_adim)   !! AUTOMATIC
   DATATYPE :: avector(tot_adim)   !! AUTOMATIC
   real*8 :: thistime
-  integer :: itime,jtime,getlen,myiostat
+  integer :: itime,jtime,getlen,myiostat,spfstart,spfend
   integer, save :: times(20)=0, numcalledhere=0,imc
 
   numcalledhere=numcalledhere+1
 !!  times(:)=0       !! zeroing this now, timing each step.
 
-  yyy%cmfpsivec(:,0)=xpsi(:)
-  xpsip(:)=0d0
+  if (tot_adim.gt.0) then
+     xavec(:,:)=RESHAPE(in_xpsi(1:tot_adim*mcscfnum),(/tot_adim,mcscfnum/))
+     yyy%cmfavec(:,:,0)=xavec(:,:)
+  endif
+
+  spfstart=tot_adim*mcscfnum+1;     spfend=tot_adim*mcscfnum+totspfdim
+
+  xspfs(:)=in_xpsi(spfstart:spfend)
+  yyy%cmfspfs(:,0)=xspfs(:)
 
   call get_stuff0(thistime,times)
+
+  xspfsp(:)=0d0
+  if (tot_adim.gt.0) then
+     xavecp(:,:)=0d0
+  endif
 
 !! ireduced should be zero right   07-2015
 
   if (spf_flag.ne.0) then
      call system_clock(itime)
-     call actreduced0(1,thistime,xpsi(spfstart),xpsi(spfstart),xpsip(spfstart),0,1,1)
+     call actreduced0(1,thistime,xspfs,xspfs,xspfsp,0,1,1)
      call system_clock(jtime);     times(5)=times(5)+jtime-itime
   endif
 
@@ -57,17 +71,19 @@ subroutine all_derivs(thistime,xpsi, xpsip)
   if (avector_flag.ne.0) then
      call system_clock(itime)
      do imc=1,mcscfnum
-        avector(:)=xpsi(astart(imc):aend(imc))
-
+        if (tot_adim.gt.0) then
+           avector(:)=xavec(:,imc)
+        endif
         call basis_project(www,numr,avector)
-
-        call sparseconfigmult(www,avector,xpsip(astart(imc)),yyy%cptr(0),yyy%sptr(0),1,1,1,1,thistime,imc)
-        call basis_project(www,numr,xpsip(astart(imc)))
-
+        call sparseconfigmult(www,avector,xavecp(:,imc),&
+             yyy%cptr(0),yyy%sptr(0),1,1,1,1,thistime,imc)
+        call basis_project(www,numr,xavecp(:,imc))
      enddo
   endif
 
-  xpsip(astart(1):aend(mcscfnum))=xpsip(astart(1):aend(mcscfnum))*timefac
+  if (tot_adim.gt.0) then
+     xavecp(:,:)=xavecp(:,:)*timefac
+  endif
 
   call system_clock(jtime);  times(6)=times(6)+jtime-itime
   
@@ -84,6 +100,11 @@ subroutine all_derivs(thistime,xpsi, xpsip)
         write(853,'(A3,F12.3,100I15)') "T= ", thistime,  times(1:6)/1000;        close(853)
      endif
   endif
+
+
+  out_xpsip(spfstart:spfend)=xspfsp(:)
+  out_xpsip(1:tot_adim*mcscfnum)=RESHAPE(xavecp(:,:),(/tot_adim*mcscfnum/))
+
 end subroutine all_derivs
 
 

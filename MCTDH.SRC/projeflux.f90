@@ -607,6 +607,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
        tmo(:,:),tavec(:,:,:),tmotemp(:,:),readta(:,:,:),&
        mobio(:,:,:),abio(:,:,:),mymo(:,:),myavec(:,:,:), &
        readmo(:,:),readavec(:,:,:)
+  DATATYPE :: nullvector(numr,1)
 
 !! mcscf specific read variables
   DATATYPE,target :: smo(nspf,nspf)
@@ -782,40 +783,47 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
         call mympibcast(myavec(:,:,:),1,numr*num_config*mcscfnum)
      else
         do i=1,mcscfnum
-           call myscatterv(readavec(:,:,i),myavec(:,:,i),configs_perproc(:)*numr)
+           if (tot_adim.gt.0) then
+              call myscatterv(readavec(:,:,i),myavec(:,:,i),configs_perproc(:)*numr)
+           else
+              call myscatterv(readavec(:,:,i),nullvector(:,:),configs_perproc(:)*numr)
+           endif
         enddo
      endif
 
 !! do biortho and construct the single particle function
 
 
-     if (1==0) then
-        do ir=1,numr
-           abio(:,:,ir)=myavec(ir,:,:)
-        enddo
-        do ir=1,numr
-           call bioset(projbiovar,smo,1,bwwptr); 
-
-           call biortho(mymo,tmo(:,:),mobio(:,:,ir),abio(:,1,ir),projbiovar)
-           do imc=2,mcscfnum
-              call biotransform(mymo,tmo(:,:),abio(:,imc,ir),projbiovar)
-           enddo
-        enddo
-     else
+!!$       if (1==0) then
+!!$          do ir=1,numr
+!!$             abio(:,:,ir)=myavec(ir,:,:)
+!!$          enddo
+!!$          do ir=1,numr
+!!$             call bioset(projbiovar,smo,1,bwwptr); 
+!!$             call biortho(mymo,tmo(:,:),mobio(:,:,ir),abio(:,1,ir),projbiovar)
+!!$             do imc=2,mcscfnum
+!!$                call biotransform(mymo,tmo(:,:),abio(:,imc,ir),projbiovar)
+!!$             enddo
+!!$          enddo
+!!$       else
 
 !! this should do the same and it looks like it does
+     
+     call bioset(projbiovar,smo,numr,bwwptr); 
 
-        call bioset(projbiovar,smo,numr,bwwptr); 
-
+     if (tot_adim.gt.0) then
         call biortho(mymo,tmo(:,:),mobio(:,:,1),myavec(:,:,1),projbiovar)
-
         do imc=2,mcscfnum
            call biotransform(mymo,tmo(:,:),myavec(:,:,imc),projbiovar)
         enddo
-
         do ir=1,numr
            mobio(:,:,ir)=mobio(:,:,1)
            abio(:,:,ir)=myavec(ir,:,:)
+        enddo
+     else
+        call biortho(mymo,tmo(:,:),mobio(:,:,1),nullvector(:,:),projbiovar)
+        do imc=2,mcscfnum
+           call biotransform(mymo,tmo(:,:),nullvector(:,:),projbiovar)
         enddo
      endif
 
@@ -825,8 +833,11 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
               ioffset=(istate-1+alreadystate)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + tau*numr + ir
 
-              call projeflux_doproj(tavec(:,istate,ir),abio(:,imc,ir),mobio(:,:,ir),ioffset)
-
+              if (tot_adim.gt.0) then
+                 call projeflux_doproj(tavec(:,istate,ir),abio(:,imc,ir),mobio(:,:,ir),ioffset)
+              else
+                 call projeflux_doproj(tavec(:,istate,ir),nullvector(:,:),mobio(:,:,ir),ioffset)
+              endif
            enddo
         enddo
      enddo
