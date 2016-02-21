@@ -419,11 +419,12 @@ subroutine eta_init(points,weights,ketot, numpoints, etadeg1, etadeg2, eta_deriv
   real*8,intent(out) :: ketot(numpoints,numpoints)  , points(numpoints),&
        etadeg1(numpoints,numpoints),        eta_second(numpoints,numpoints), &
        etadeg2(numpoints,numpoints), eta_fourth(numpoints,numpoints), &
-       eta_third(numpoints,numpoints),       eta_derivs(numpoints,numpoints)
+       eta_third(numpoints,numpoints),       eta_derivs(numpoints,numpoints),&
+       eta_rhoderivs(numpoints,numpoints), weights(numpoints)
 
   real*8 :: extrapoints(numpoints+numextra), extraweights(numextra+numpoints), &
        firstdertot(numpoints+numextra,numpoints),&
-       weights(numpoints), scratch(numextra+numpoints), eta_rhoderivs(numpoints,numpoints),&
+        scratch(numextra+numpoints), &
        etavals(numpoints+numextra, numpoints), &
        endpoints(2)=[-1.0d0,1.0d0] , zero = 0.0, sum, sum2, sum3, sum4
 
@@ -618,10 +619,11 @@ subroutine xi_init(points,weights,points2d,ketot, numpoints,numelements,elements
        xi_rhoderivs(gridpoints,gridpoints),&
        xi_derivs(gridpoints,gridpoints), xideg1(gridpoints,gridpoints),xideg2(gridpoints,gridpoints), &
        xi_fourth(gridpoints,gridpoints), xi_third(gridpoints,gridpoints), xi_second(gridpoints,gridpoints)
+  real*8, intent(out) :: points2d(numpoints,2)
   integer ::   one=1, izero=0, two=2, i,j,k,l,jj, qq, extraorder
   integer, parameter :: numextra=11
   real*8 :: extrapoints0(numpoints+numextra), extraweights0(numpoints+numextra), &
-       firstder(numpoints+numextra,numpoints,2),  points2d(numpoints,2), weights2d(numpoints,2), &
+       firstder(numpoints+numextra,numpoints,2),  weights2d(numpoints,2), &
        scratch(2*numpoints+numextra), xivals0(numpoints+numextra,numpoints,2),  endpoints(2), &
        zero = 0.0,rsum,rsum2
   DATAECS :: extrapoints(numpoints+numextra,numelements), extraweights(numextra+numpoints,numelements), &
@@ -922,12 +924,12 @@ subroutine prolate_init_new(points,weights, numpoints,numelements,elementsize,gr
   implicit none
   integer, parameter :: numextra=20
   integer,intent(in) :: numpoints,numelements,gridpoints,celement
-  real*8,intent(in) :: elementsize,start
+  real*8,intent(in) :: elementsize,start,ecstheta
   integer ::one=1, two=2, izero=0, i,j,k,l,jj,kk, qq, extraorder
-  DATAECS,intent(out) ::  prolate_derivs(gridpoints,gridpoints)
-  DATAECS,intent(out) :: points(gridpoints), weights(gridpoints), ketot(gridpoints,gridpoints)
+  DATAECS,intent(out) ::  prolate_derivs(gridpoints,gridpoints),&
+       points(gridpoints), weights(gridpoints), ketot(gridpoints,gridpoints)
   DATAECS :: sum, cweight
-  real*8 ::  endpoints(2)=[-1.0d0,1.0d0],  zero = 0.0, ecstheta, rsum, rsum2
+  real*8 ::  endpoints(2)=[-1.0d0,1.0d0],  zero = 0.0, rsum, rsum2
   real*8, allocatable :: firstderiv(:,:), ke(:,:), points2d(:), weights2d(:), scratch(:), &  
        extrapoints0(:), extraweights0(:), rvals0(:,:), firstder(:,:)
   DATAECS, allocatable :: extrapoints(:,:), extraweights(:,:), rvals(:,:,:), firstdertot(:,:,:), &
