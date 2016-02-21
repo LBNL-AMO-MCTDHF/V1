@@ -166,7 +166,7 @@ subroutine mpiorbreduce(input, isize)
   DATATYPE,allocatable :: output(:)
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   allocate(output(isize))
-  ierr=0
+  output=0;  ierr=0
   call MPI_allreduce( input, output, isize, MPIDATATYPE, MPI_SUM, &
        MPI_COMM_ORB(myorbset), ierr)
   input=output
@@ -298,7 +298,7 @@ subroutine mympireduce(input, isize)
   DATATYPE,allocatable :: output(:)
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   allocate(output(isize))
-  ierr=0
+  output=0; ierr=0
   call MPI_allreduce( input, output, isize, MPIDATATYPE, MPI_SUM, &
        MPI_COMM_WORLD , ierr)
   input=output
@@ -319,7 +319,7 @@ subroutine mympirealreduce(input, isize)
   real*8,allocatable :: output(:)
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   allocate(output(isize))
-  ierr=0
+  ierr=0; output=0
   call MPI_allreduce( input, output, isize, MPI_DOUBLE_PRECISION, MPI_SUM, &
        MPI_COMM_WORLD , ierr)
   input=output

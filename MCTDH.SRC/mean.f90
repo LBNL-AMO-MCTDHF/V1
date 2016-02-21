@@ -105,10 +105,10 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 
-  allocate(avector2(numr,www%numconfig,numvects))
-  avector2(:,:,:)=0d0
-  avector2(:,www%firstconfig:www%lastconfig,:)=in_avector2(:,:,:)
-
+  allocate(avector2(numr,www%numconfig,numvects));    avector2(:,:,:)=0d0
+  if (www%lastconfig.ge.www%firstconfig) then
+     avector2(:,www%firstconfig:www%lastconfig,:)=in_avector2(:,:,:)
+  endif
   if (www%parconsplit.ne.0) then
      do ii=1,numvects
         call mpiallgather(avector2(:,:,ii),www%numconfig*numr,&
@@ -200,7 +200,9 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
 
   allocate(avector2(numr,www%numconfig,numvects))
   avector2(:,:,:)=0d0
-  avector2(:,www%firstconfig:www%lastconfig,:)=in_avector2(:,:,:)
+  if (www%lastconfig.ge.www%firstconfig) then
+     avector2(:,www%firstconfig:www%lastconfig,:)=in_avector2(:,:,:)
+  endif
 
   if (www%parconsplit.ne.0) then
      do ii=1,numvects
@@ -298,7 +300,9 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
   allocate(avector2(numr,www%numconfig,numvects))
   avector2(:,:,:)=0d0
 
-  avector2(:,www%firstconfig:www%lastconfig,:) = in_avector2(:,:,:)
+  if (www%lastconfig.ge.www%firstconfig) then
+     avector2(:,www%firstconfig:www%lastconfig,:) = in_avector2(:,:,:)
+  endif
   if (www%parconsplit.ne.0) then
      do ii=1,numvects
         call mpiallgather(avector2(:,:,ii),www%numconfig*numr,&

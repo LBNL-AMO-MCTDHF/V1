@@ -76,19 +76,18 @@ subroutine ovl_initial()
 
   allocate(overlaps(numovl,0:autosize,mcscfnum),&
        orig_spfs(spfsize,nspf,numovl),orig_avectors(tot_adim,numovl))
-
-  allocate(read_spfs(spfsize,nspf+numfrozen))
+  overlaps=0; orig_spfs=0
+  if (tot_adim.gt.0) then
+     orig_avectors=0
+  endif
+  allocate(read_spfs(spfsize,nspf+numfrozen));    read_spfs=0
 
   if (myrank.eq.1) then
      allocate(read_avectors(numr*num_config,numovl))
   else
      allocate(read_avectors(1,numovl))
   endif
-
-  orig_spfs=0d0;  overlaps=0d0; read_avectors=0d0
-  if (tot_adim.gt.0) then
-     orig_avectors=0d0; 
-  endif
+  read_avectors=0d0
 
   jnumovl=0
 
@@ -254,6 +253,10 @@ subroutine wfnovl()
 
   allocate(bramo(spfsize,nspf),braavec(tot_adim,mcscfnum),&
        ketmo(spfsize,nspf),ketavec(tot_adim,mcscfnum))
+  bramo=0; ketmo=0
+  if (tot_adim.gt.0) then
+     braavec=0; ketavec=0
+  endif
 
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
@@ -269,6 +272,7 @@ subroutine wfnovl()
   else
      allocate(read_braavec(1,mcscfnum),read_ketavec(1,mcscfnum))
   endif
+  read_bramo=0; read_ketmo=0; read_braavec=0; read_ketavec=0
 
 !!  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  nt=floor(final time/dt)
 

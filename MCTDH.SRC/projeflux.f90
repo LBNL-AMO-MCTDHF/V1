@@ -28,9 +28,7 @@ subroutine projeflux_singlewalks()
 !! get the number of single walks from the target N-1 e- state to our regular N e- state
   OFLWR "Getting cation single walks"; CFL
 
-  allocate(numpwalk1(tnumconfig))
-
-  numpwalk1(:)=0
+  allocate(numpwalk1(tnumconfig));    numpwalk1(:)=0
 
   do iconfig=1,tnumconfig
     iwalk=0
@@ -62,8 +60,6 @@ subroutine projeflux_singlewalks()
 
   allocate(pphase1(maxpwalk1,tnumconfig),pwalk1(maxpwalk1,tnumconfig),&
        pspf1(2,maxpwalk1,tnumconfig))
-
-
   pwalk1=0;  pspf1=0;  pphase1=0
 
   do iconfig=1,tnumconfig
@@ -132,14 +128,12 @@ subroutine projeflux_doproj(cata,neuta,mo,offset)
 
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
-        allocate(bigprojwfn(spfsize*nprocs,2))
-        bigprojwfn(:,:)=0d0
+        allocate(bigprojwfn(spfsize*nprocs,2));        bigprojwfn(:,:)=0d0
      else
-        allocate(bigprojwfn(spfsize,2))
-        bigprojwfn(:,:)=projwfn(:,:)
+        allocate(bigprojwfn(spfsize,2));        bigprojwfn(:,:)=projwfn(:,:)
      endif
   else
-     allocate(bigprojwfn(1,2))
+     allocate(bigprojwfn(1,2));   bigprojwfn(:,:)=0d0
   endif
 
   if (parorbsplit.eq.3) then
@@ -276,6 +270,8 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
   allocate(gtau(0:nt,nstate,mcscfnum),ketmo(spfsize,numr,2,BatchSize),&
        bramo(spfsize,numr,2,BatchSize))
+  gtau=0; ketmo=0; bramo=0
+
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
         allocate(read_ketmo(spfsize*nprocs,numr,2,BatchSize),&
@@ -287,7 +283,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   else
      allocate(read_ketmo(1,numr,2,batchsize),read_bramo(1,numr,2,batchsize))
   endif
-
+  read_ketmo=0; read_bramo=0
 
   NBat=ceiling(real(nt+1)/real(BatchSize))
   ketreadsize=0;  brareadsize=0
@@ -716,10 +712,9 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
   allocate(tmo(spfsize,nspf),tavec(tnumconfig,nstate,numr),&
        tmotemp(spfsize,nspf+numfrozen),readta(tnumr,tnumconfig,nstate))
+  tmo=0d0;  tavec=0d0; tmotemp=0d0; readta=0d0
 
   OFLWR "Reading", nstate," Born-Oppenheimer states."; CFL
-
-  tmo=0d0;  tavec=0d0; tmotemp=0d0; readta=0d0
 
   if (myrank.eq.1) then
      call simple_load_avectors(910,acomplex,readta(:,:,:),ndof-2,tnumr,tnumconfig,nstate)
@@ -761,7 +756,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
      endif
   enddo
 
-  allocate(tconfiglist(tndof,tnumconfig))
+  allocate(tconfiglist(tndof,tnumconfig));    tconfiglist=0
 
   if (myrank.eq.1) then
      open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
@@ -781,7 +776,10 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
   allocate(mobio(spfsize,nspf,numr),abio(first_config:last_config,mcscfnum,numr),&
        mymo(spfsize,nspf),  myavec(numr,first_config:last_config,mcscfnum))
-
+  mobio=0; mymo=0
+  if (last_config.ge.first_config) then
+     abio=0; myavec=0
+  endif
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
         allocate(readmo(spfsize*nprocs,nspf))
@@ -792,6 +790,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   else
      allocate(readmo(1,nspf),readavec(1,numr,mcscfnum))
   endif
+  readmo=0; readavec=0
 
   if (myrank.eq.1) then
      inquire (iolength=i) readmo

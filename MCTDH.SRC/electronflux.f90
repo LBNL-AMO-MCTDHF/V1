@@ -145,14 +145,17 @@ subroutine fluxgtau0(alg,www,bioww)
   allocate(gtau(0:nt,mcscfnum))
   gtau(:,:)=0d0
 
-  allocate(ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf))
-  allocate(reke(nspf,nspf),repe(nspf,nspf),reV2(nspf,nspf,nspf,nspf),reyderiv(nspf,nspf))
-  allocate(mobio(spfsize,nspf),abio(numr,www%firstconfig:www%lastconfig,mcscfnum), &
-       keop(spfsize,nspf),peop(spfsize,nspf),   rekeop(spfsize,nspf),repeop(spfsize,nspf))
-  allocate(yop(spfsize,nspf));  allocate(reyop(spfsize,nspf))
-  
-  reke=0d0;repe=0d0;rev2=0d0;reyderiv=0d0;rekeop=0d0;repeop=0d0
-  ke=0d0;pe=0d0;v2=0d0;yderiv=0d0;keop=0d0;peop=0d0
+  allocate(ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf),&
+       reke(nspf,nspf),repe(nspf,nspf),reV2(nspf,nspf,nspf,nspf),reyderiv(nspf,nspf),&
+       mobio(spfsize,nspf),abio(numr,www%firstconfig:www%lastconfig,mcscfnum), &
+       keop(spfsize,nspf),peop(spfsize,nspf),   rekeop(spfsize,nspf),repeop(spfsize,nspf),&
+       yop(spfsize,nspf), reyop(spfsize,nspf))
+
+  ke=0; pe=0; V2=0; yderiv=0;   reke=0; repe=0; reV2=0; reyderiv=0
+  mobio=0; keop=0; peop=0; rekeop=0; repeop=0; yop=0; reyop=0
+  if (www%lastconfig.ge.www%firstconfig) then
+     abio=0
+  endif
 
 !! determine if we should do batching or not
 !! 250,000 words/MB, real*8 2words/#, complex*16 4words/#
@@ -185,9 +188,12 @@ subroutine fluxgtau0(alg,www,bioww)
   endif
   call closefile()
 
-  allocate(ketmo(spfsize,nspf,BatchSize),ketavec(numr,www%firstconfig:www%lastconfig,mcscfnum,BatchSize))
-  allocate(bramo(spfsize,nspf,BatchSize),braavec(numr,www%firstconfig:www%lastconfig,mcscfnum,BatchSize))
-
+  allocate(ketmo(spfsize,nspf,BatchSize),ketavec(numr,www%firstconfig:www%lastconfig,mcscfnum,BatchSize),&
+       bramo(spfsize,nspf,BatchSize),braavec(numr,www%firstconfig:www%lastconfig,mcscfnum,BatchSize))
+  ketmo=0; bramo=0
+  if (www%lastconfig.ge.www%firstconfig) then
+     ketavec=0; braavec=0
+  endif
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
         allocate(read_bramo(spfsize*nprocs,nspf,BatchSize),read_ketmo(spfsize*nprocs,nspf,BatchSize))
@@ -197,12 +203,15 @@ subroutine fluxgtau0(alg,www,bioww)
   else
      allocate(read_bramo(1,nspf,BatchSize),read_ketmo(1,nspf,BatchSize))
   endif
+  read_bramo=0; read_ketmo=0
+
   if (myrank.eq.1) then
-     allocate(read_braavec(numr,www%numconfig,mcscfnum,BatchSize),read_ketavec(numr,www%numconfig,mcscfnum,BatchSize))
+     allocate(read_braavec(numr,www%numconfig,mcscfnum,BatchSize),&
+          read_ketavec(numr,www%numconfig,mcscfnum,BatchSize))
   else
      allocate(read_braavec(1,1,mcscfnum,BatchSize),read_ketavec(1,1,mcscfnum,BatchSize))
   endif
-
+  read_braavec=0; read_ketavec=0
 
   NBat=ceiling(real(nt+1)/real(BatchSize))
   ketreadsize=0;  brareadsize=0
@@ -539,7 +548,6 @@ subroutine fluxgtau0(alg,www,bioww)
 
   allocate(ftgtau(-curtime:curtime,mcscfnum), pulseft(-curtime:curtime,3), &
        pulseftsq(-curtime:curtime))
-
   ftgtau(:,:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0
 
   do i=0,curtime

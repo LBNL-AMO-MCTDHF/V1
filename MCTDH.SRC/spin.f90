@@ -115,6 +115,8 @@ subroutine init_dfcon(www)
        www%ddd%dfincludedindex(www%numconfig),&
        dfnotconfigs(www%numconfig),  www%dfconfsperproc(nprocs), &
        www%allbotdfconfigs(nprocs),www%alltopdfconfigs(nprocs))
+  www%ddd%dfincludedmask=0; www%ddd%dfincludedconfigs=0; www%ddd%dfincludedindex=0;
+  dfnotconfigs=0; www%dfconfsperproc=0; www%allbotdfconfigs=0; www%alltopdfconfigs=0
 
   if (www%dfrestrictflag.lt.www%dflevel) then
      OFLWR "error, set dfrestrictflag .ge. dflevel",www%dfrestrictflag,www%dflevel; CFLST
@@ -209,6 +211,10 @@ subroutine init_dfcon(www)
      allocate(www%ddd%dfwalkfrom(www%ddd%numdfwalks), www%ddd%dfwalkto(www%ddd%numdfwalks),&
           www%ddd%includedorb(www%ddd%numdfwalks), www%ddd%excludedorb(www%ddd%numdfwalks), &
           www%ddd%dfwalkphase(www%ddd%numdfwalks))
+     if (www%ddd%numdfwalks.gt.0) then
+        www%ddd%dfwalkfrom=0; www%ddd%dfwalkto=0; www%ddd%includedorb=0; 
+        www%ddd%excludedorb=0; www%ddd%dfwalkphase=0
+     endif
 
      www%ddd%numdfwalks=0
      do i=1,NONdfconfigs

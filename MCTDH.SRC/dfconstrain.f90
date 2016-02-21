@@ -57,7 +57,9 @@ subroutine dferror(www,cptr,sptr,avector,numvects,outerror,time)
 
   allocate(temp1(numr,www%firstconfig:www%lastconfig), &
        temp2(numr,www%firstconfig:www%lastconfig))
-  temp1=0; temp2=0
+  if (www%lastconfig.ge.www%firstconfig) then
+     temp1=0; temp2=0
+  endif
 
   outerror=0d0
   do imc=1,numvects
@@ -161,7 +163,9 @@ subroutine get_rhomat(www,avector, rhomat,nblock,howmany)
   
   allocate(smallwalkvects(nblock,www%configstart:www%configend,&
        howmany,www%nspf,www%nspf))
-  smallwalkvects=0
+  if (www%configend.ge.www%configstart) then
+     smallwalkvects=0
+  endif
 
 !! call always
   call get_smallwalkvects(www,avector,smallwalkvects,nblock,howmany)
@@ -304,7 +308,13 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
        avector(numr,www%firstconfig:www%lastconfig), &
        smallwalkvects(numr,www%configstart:www%configend,www%nspf,www%nspf), &
        rhs(www%nspf,www%nspf),  rhomat(www%nspf,www%nspf,www%nspf,www%nspf))
-  avectorp=0; avector=0; smallwalkvects=0; rhs=0; rhomat=0
+  if (www%lastconfig.ge.www%firstconfig) then
+     avectorp=0; avector=0; 
+  endif
+  if (www%configend.ge.www%configstart) then
+     smallwalkvects=0;
+  endif
+  rhs=0; rhomat=0
 
   isize=0
   do ishell=1,numshells-1
@@ -709,7 +719,10 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
   allocate(bigavector(numr,www%numconfig,numvects), &
        bigavectorp(numr,www%numconfig,numvects), &
        avectorp(numr,www%firstconfig:www%lastconfig,numvects))
-  bigavector(:,:,:)=0d0; bigavectorp(:,:,:)=0d0; avectorp(:,:,:)=0d0
+  bigavector(:,:,:)=0d0; bigavectorp(:,:,:)=0d0; 
+  if (www%lastconfig.ge.www%firstconfig) then
+     avectorp(:,:,:)=0d0
+  endif
 
   lioden=0.d0
 
@@ -1014,9 +1027,8 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   integer :: ipairs(2,www%nspf*(www%nspf-1))
   DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a1p(numr,numvects), &
        a2p(numr,numvects),dot, csum
-  DATATYPE :: tempconmatels(www%nspf,www%nspf), &
-       rhomat(www%nspf,www%nspf,www%nspf,www%nspf)
-  DATATYPE,allocatable :: bigavector(:,:,:), bigavectorp(:,:,:),avectorp(:,:,:)
+  DATATYPE,allocatable :: bigavector(:,:,:), bigavectorp(:,:,:),avectorp(:,:,:),&
+       rhomat(:,:,:,:),tempconmatels(:,:) 
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,  iwalk,  info, kspf, &
        lspf, ind, jind, llind, flag, isize,   &
        iiyy,maxii,imc,j,ihop,lowspf,highspf,lowsize,highsize
@@ -1034,10 +1046,15 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
 
   allocate(bigavector(numr,www%numconfig,numvects), &
        bigavectorp(numr,www%numconfig,numvects),&
-       avectorp(numr,www%firstconfig:www%lastconfig,numvects))
-  bigavector(:,:,:)=0d0; bigavectorp(:,:,:)=0d0; avectorp(:,:,:)=0d0
+       avectorp(numr,www%firstconfig:www%lastconfig,numvects),&
+       rhomat(www%nspf,www%nspf,www%nspf,www%nspf),&
+       tempconmatels(www%nspf,www%nspf))
+  bigavector(:,:,:)=0d0; bigavectorp(:,:,:)=0d0;   rhomat(:,:,:,:)=0d0;
+  tempconmatels=0
+  if (www%lastconfig.ge.www%firstconfig) then
+     avectorp(:,:,:)=0d0
+  endif
 
-  rhomat(:,:,:,:)=0d0
 
   if (www%dfrestrictflag.gt.www%dflevel) then
      call get_rhomat(www,avector,rhomat,numr,numvects)
@@ -1084,8 +1101,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
 
   allocate(liosolve(isize),lioden(isize, isize),liodencopy(isize,isize),&
        liosolvetemp(isize),ipiv(isize))  
-
-  lioden=0.d0
+  liosolve=0; liodencopy=0; liosolvetemp=0;  lioden=0.d0
 
   do ind=lowsize,highsize
      ispf=ipairs(1,ind)
@@ -1169,8 +1185,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,a1,a1p,ihop,iwalk,csum,config2,dirphase,a2,a2p,ispf,jspf,flag,ind,myliosolve)
 
-     allocate(myliosolve(isize))
-     myliosolve(:)=0d0
+     allocate(myliosolve(isize));     myliosolve(:)=0d0
 
 !$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
@@ -1284,7 +1299,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      
   end do
 
-  deallocate(bigavector,bigavectorp,avectorp)
+  deallocate(bigavector,bigavectorp,avectorp,rhomat,tempconmatels)
 
 end subroutine new_get_denconstraint1_0
 

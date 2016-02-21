@@ -366,7 +366,10 @@ subroutine configpropalloc()
      endif
   endif
 
-  allocate(workdrivingavec(numr,first_config:last_config)); workdrivingavec(:,:)=0d0
+  allocate(workdrivingavec(numr,first_config:last_config))
+  if (last_config.ge.first_config) then
+     workdrivingavec(:,:)=0d0
+  endif
 
 end subroutine configpropalloc
 
@@ -528,6 +531,9 @@ subroutine configptralloc(inptr,www)
   allocate(inptr%xconmatelzz(www%nspf,www%nspf))
   allocate(inptr%xymatel(www%nspf,www%nspf))
   allocate(inptr%xtwoematel(www%nspf,www%nspf,www%nspf,www%nspf))
+  inptr%xpotmatel=0;  inptr%xopmatel=0;  inptr%xpulsematelxx=0;  inptr%xpulsematelyy=0;
+  inptr%xpulsematelzz=0;   inptr%xconmatel=0;  inptr%xconmatelxx=0;  inptr%xconmatelyy=0;
+  inptr%xconmatelzz=0;   inptr%xymatel=0;  inptr%xtwoematel=0; 
 
   inptr%kefac=1
 
@@ -673,6 +679,9 @@ subroutine sparseptralloc(inptr,www)
      OFLWR "error, sparseptralloc called when sparseconfigflag.eq.0"; CFLST
   endif
 
+  OFLWR "  ... go alloc sparsopt=1 .. "; CFL
+  call mpibarrier()
+
   allocate(inptr%xpotsparsemattr    (www%doublematsize,www%configstart:www%configend))
   allocate(inptr%xopsparsemattr     (www%singlematsize,www%configstart:www%configend))
   allocate(inptr%xonepotsparsemattr (www%singlematsize,www%configstart:www%configend))
@@ -684,6 +693,16 @@ subroutine sparseptralloc(inptr,www)
   allocate(inptr%xconsparsemattryy  (www%singlematsize,www%configstart:www%configend))
   allocate(inptr%xconsparsemattrzz  (www%singlematsize,www%configstart:www%configend))
   allocate(inptr%xysparsemattr      (www%singlematsize,www%configstart:www%configend))
+
+  if (www%configend.ge.www%configstart) then
+     inptr%xpotsparsemattr=0; inptr%xopsparsemattr=0; inptr%xonepotsparsemattr=0; 
+     inptr%xpulsesparsemattrxx=0; inptr%xpulsesparsemattryy=0; inptr%xpulsesparsemattrzz=0; 
+     inptr%xconsparsemattr=0; inptr%xconsparsemattrxx=0; inptr%xconsparsemattryy=0; 
+     inptr%xconsparsemattrzz=0; inptr%xysparsemattr=0
+  endif
+
+  call mpibarrier()
+  OFLWR "   ... ok alloc sparseopt=1"; CFL
 
 end subroutine sparseptralloc
 
@@ -714,13 +733,17 @@ subroutine opalloc()
   use opmod
   use configmod
   implicit none
+
   allocate(rkemod(numr,numr), proderivmod(numr,numr))   
   rkemod=0.d0; proderivmod=0.d0; 
 
   if (drivingflag.ne.0) then
-     allocate(orbs_driving(spfsize,nspf),          &
+     allocate(orbs_driving(spfsize,nspf), &
           avector_driving(numr,first_config:last_config,mcscfnum))
-     orbs_driving=0d0;      avector_driving=0d0
+     orbs_driving=0d0
+     if (last_config.ge.first_config) then
+        avector_driving=0d0
+     endif
   endif
 
   allocate(twoereduced(reducedpotsize,nspf,nspf))
@@ -741,8 +764,7 @@ subroutine opdealloc()
   if (drivingflag.ne.0) then
      deallocate(orbs_driving,avector_driving)
   endif
-  deallocate(rkemod,proderivmod)
-  deallocate(   pot, halfniumpot)
+  deallocate(rkemod,proderivmod,   pot, halfniumpot)
 end subroutine opdealloc
 
 subroutine natprojalloc
@@ -754,8 +776,9 @@ subroutine natprojalloc
      OFLWR "Error, no natproj parconsplit.ne.0"; CFLST
   endif
   if (nnalloc==0) then
-  allocate( natproj(numr,numr,mcscfnum), natconfigs(num_config,numr), natderiv(num_config),&
-       natvals(num_config), natdot(numr,mcscfnum), curves(numr,numr))
+     allocate( natproj(numr,numr,mcscfnum), natconfigs(num_config,numr), natderiv(num_config),&
+          natvals(num_config), natdot(numr,mcscfnum), curves(numr,numr))
+     natproj=0; natconfigs=0; natderiv=0; natvals=0; natdot=0; curves=0
   endif
   nnalloc=1
 end subroutine
@@ -798,10 +821,9 @@ subroutine xalloc()
   implicit none
   integer :: ii
 
-  allocate(yyy%denvals(nspf))
-  allocate(yyy%denvects(nspf,nspf))
-  
-  allocate(yyy%cptr(0:numreduced))
+  allocate(yyy%denvals(nspf), yyy%denvects(nspf,nspf),yyy%cptr(0:numreduced))
+  yyy%denvals=0; yyy%denvects=0
+
   do ii=0,numreduced
      call configptralloc(yyy%cptr(ii),www)
   enddo
@@ -821,34 +843,45 @@ subroutine xalloc()
   endif
 
   allocate( yyy%denmat( nspf, nspf,0:numreduced), &
-       yyy%invdenmat( nspf, nspf,0:numreduced) )  !, &
-  allocate( &
+       yyy%invdenmat( nspf, nspf,0:numreduced), &
        yyy%reducedinvr( nspf, nspf, 0:numreduced), &
        yyy%reducedr( nspf, nspf, 0:numreduced),&
        yyy%reducedinvrsq( nspf, nspf, 0:numreduced),&
        yyy%reducedpot(reducedpotsize,  nspf,nspf, 0:numreduced), &
        yyy%reducedpottally(nspf,nspf, nspf,nspf, 0:numreduced), &
-       yyy%reducedproderiv(nspf,nspf, 0:numreduced)  )   !!,  &
-  allocate(yyy%cmfspfs(totspfdim,0:numreduced))
-  allocate(yyy%cmfavec(tot_adim,mcscfnum,0:numreduced))
+       yyy%reducedproderiv(nspf,nspf, 0:numreduced),  &
+       yyy%cmfspfs(totspfdim,0:numreduced),&
+       yyy%cmfavec(tot_adim,mcscfnum,0:numreduced))
+  yyy%denmat=0; yyy%invdenmat=0; yyy%reducedr=0; yyy%reducedinvrsq=0; yyy%reducedpot=0;
+  yyy%reducedpottally=0; yyy%reducedproderiv=0; yyy%cmfspfs=0; 
+  if (tot_adim.gt.0) then
+     yyy%cmfavec=0
+  endif
   if (numfrozen.gt.0) then
      allocate(yyy%frozenexchinvr(spfsize,nspf,0:numreduced))
+     yyy%frozenexchinvr=0
   endif
 
   if (drivingflag.ne.0) then
-     allocate(yyy%drivingavectorsxx(numr,first_config:last_config,mcscfnum,0:numreduced), yyy%drivingorbsxx(spfsize,nspf,0:numreduced))
-     allocate(yyy%drivingavectorsyy(numr,first_config:last_config,mcscfnum,0:numreduced), yyy%drivingorbsyy(spfsize,nspf,0:numreduced))
-     allocate(yyy%drivingavectorszz(numr,first_config:last_config,mcscfnum,0:numreduced), yyy%drivingorbszz(spfsize,nspf,0:numreduced))
-     yyy%drivingavectorsxx(:,:,:,:)=0d0; yyy%drivingorbsxx(:,:,:)=0d0
-     yyy%drivingavectorsyy(:,:,:,:)=0d0; yyy%drivingorbsyy(:,:,:)=0d0
-     yyy%drivingavectorszz(:,:,:,:)=0d0; yyy%drivingorbszz(:,:,:)=0d0
-
+     allocate(yyy%drivingavectorsxx(numr,first_config:last_config,mcscfnum,0:numreduced), &
+          yyy%drivingorbsxx(spfsize,nspf,0:numreduced),&
+          yyy%drivingavectorsyy(numr,first_config:last_config,mcscfnum,0:numreduced), &
+          yyy%drivingorbsyy(spfsize,nspf,0:numreduced),&
+          yyy%drivingavectorszz(numr,first_config:last_config,mcscfnum,0:numreduced), &
+          yyy%drivingorbszz(spfsize,nspf,0:numreduced))
+     if (last_config.ge.first_config) then
+        yyy%drivingavectorsxx(:,:,:,:)=0d0; yyy%drivingorbsxx(:,:,:)=0d0
+        yyy%drivingavectorsyy(:,:,:,:)=0d0; yyy%drivingorbsyy(:,:,:)=0d0
+        yyy%drivingavectorszz(:,:,:,:)=0d0; yyy%drivingorbszz(:,:,:)=0d0
+     endif
   else
      allocate(yyy%drivingavectorsxx(1,1,mcscfnum,0:numreduced), yyy%drivingorbsxx(1,1,0:numreduced))
      allocate(yyy%drivingavectorsyy(1,1,mcscfnum,0:numreduced), yyy%drivingorbsyy(1,1,0:numreduced))
      allocate(yyy%drivingavectorszz(1,1,mcscfnum,0:numreduced), yyy%drivingorbszz(1,1,0:numreduced))
+     yyy%drivingavectorsxx(:,:,:,:)=0d0; yyy%drivingorbsxx(:,:,:)=0d0
+     yyy%drivingavectorsyy(:,:,:,:)=0d0; yyy%drivingorbsyy(:,:,:)=0d0
+     yyy%drivingavectorszz(:,:,:,:)=0d0; yyy%drivingorbszz(:,:,:)=0d0
   endif
-
 end subroutine xalloc
 
 
@@ -859,7 +892,8 @@ subroutine xdealloc()
   implicit none
   integer :: ii
 
-  deallocate(yyy%drivingavectorsxx,yyy%drivingorbsxx,yyy%drivingavectorsyy,yyy%drivingorbsyy,yyy%drivingavectorszz,yyy%drivingorbszz)
+  deallocate(yyy%drivingavectorsxx,yyy%drivingorbsxx,yyy%drivingavectorsyy,&
+       yyy%drivingorbsyy,yyy%drivingavectorszz,yyy%drivingorbszz)
 
   deallocate(yyy%denvects,  yyy%denvals)
   do ii=0,numreduced
@@ -877,18 +911,15 @@ subroutine xdealloc()
         enddo
      endif
   endif
-  
-  deallocate(yyy%denmat, yyy%invdenmat )
-  deallocate(        yyy%reducedinvr)
-  deallocate(       yyy%reducedr)
-  deallocate(       yyy%reducedinvrsq)
-  deallocate(       yyy%reducedpot)
-  deallocate(       yyy%reducedpottally)
-  deallocate(       yyy%reducedproderiv)
-  deallocate(yyy%cmfspfs,yyy%cmfavec)
+
+  deallocate(yyy%denmat, yyy%invdenmat, yyy%reducedinvr, yyy%reducedr,&
+       yyy%reducedinvrsq, yyy%reducedpot, yyy%reducedpottally, yyy%reducedproderiv,&
+       yyy%cmfspfs,yyy%cmfavec)
+
   if (numfrozen.gt.0) then
      deallocate(yyy%frozenexchinvr)
   endif
+
 end subroutine xdealloc
 
 

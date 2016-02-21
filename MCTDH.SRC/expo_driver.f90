@@ -606,6 +606,7 @@ subroutine jacinit0(dentimeflag,inspfs, thistime)
 
   if (allocated.eq.0) then
      allocate(jacvect(spfsize,nspf), jacvectout(spfsize,nspf))
+     jacvect=0;jacvectout=0
   endif
   allocated=1
 
@@ -616,7 +617,7 @@ subroutine jacinit0(dentimeflag,inspfs, thistime)
   call actreduced0(dentimeflag,jactime,jacvect,nulldouble,jacvectout,1,0,0)
 
   if (effective_cmf_linearflag.eq.1) then
-     allocate( jactemp(spfsize,nspf) )
+     allocate( jactemp(spfsize,nspf) );   jactemp=0
      gridtime=(jactime-firsttime)/(lasttime-firsttime) 
      if ((gridtime.lt.0.d0).or.(gridtime.gt.1)) then
         print *, "GGGRIDTIME ERR ", gridtime, jactime, firsttime, lasttime

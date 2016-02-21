@@ -316,7 +316,7 @@ subroutine abio_sparse(abio,aout,inbiovar)
   liwsp = inbiovar%thisbiodim+100
 
   
-  allocate(wsp(lwsp),iwsp(liwsp))
+  allocate(wsp(lwsp),iwsp(liwsp));  wsp=0; iwsp=0
   allocate(smallvector(inbiovar%bionr,inbiovar%wwbio%maxbasisperproc),&
        smallvectorout(inbiovar%bionr,inbiovar%wwbio%maxbasisperproc))
   smallvector(:,:)=0; smallvectorout(:,:)=0

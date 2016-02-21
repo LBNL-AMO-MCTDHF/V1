@@ -59,7 +59,7 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
         tempconfigvects(:,:)=0d0
      endif
      if (guessflag.ne.0) then
-        allocate(realconfigvect(www%numconfig))
+        allocate(realconfigvect(www%numconfig));    realconfigvect=0
         do i=1,numshift
            call RANDOM_NUMBER(realconfigvect(:))
            if (www%totadim.gt.0) then
@@ -86,10 +86,10 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
      if (printflag.ne.0) then
         OFLWR "Construct big matrix:  ", www%numdfbasis*numr; CFL
      endif
-     allocate(fullconfigvals(www%numdfbasis*numr))
-     allocate(fullconfigmatel(www%numdfbasis*numr,www%numdfbasis*numr), &
-          fullconfigvects(www%numconfig*numr,www%numdfbasis*numr))
-     allocate(tempconfigvects(www%numdfbasis*numr,www%numdfbasis*numr))
+     allocate(fullconfigvals(www%numdfbasis*numr),&
+          fullconfigmatel(www%numdfbasis*numr,www%numdfbasis*numr), &
+          fullconfigvects(www%numconfig*numr,www%numdfbasis*numr),&
+          tempconfigvects(www%numdfbasis*numr,www%numdfbasis*numr))
      fullconfigvects=0d0; tempconfigvects=0d0; fullconfigmatel=0.d0; fullconfigvals=0d0
 
      call assemble_dfbasismat(dfww,fullconfigmatel,cptr,1,1,0,0, time,-1)
@@ -253,10 +253,11 @@ subroutine nonsparseprop(www,dfww,avectorin,avectorout,time,imc)
      OFLWR "ERROR DF SETS NONSPARSEOPROP",www%numdfbasis,dfww%numdfbasis; CFLST
   endif
 
-  allocate(iiwork(www%numdfbasis*numr*2))
+  allocate(iiwork(www%numdfbasis*numr*2));     iiwork=0
 
   allocate(bigconfigmatel(www%numdfbasis*numr,www%numdfbasis*numr), &
        bigconfigvects(www%numdfbasis*numr,2*(www%numdfbasis*numr+2)))
+  bigconfigmatel=0; bigconfigvects=0
 
   call assemble_dfbasismat(dfww,bigconfigmatel, workconfigpointer,1,1,1,1, time,imc)
 
@@ -273,6 +274,7 @@ subroutine nonsparseprop(www,dfww,avectorin,avectorout,time,imc)
 #ifndef REALGO
      else if (nonsparsepropmode.eq.2) then
         allocate(realbigconfigmatel(2,www%numdfbasis*numr,2,www%numdfbasis*numr))
+        realbigconfigmatel=0
         call assigncomplexmat(realbigconfigmatel,bigconfigmatel,&
              www%numdfbasis*numr,www%numdfbasis*numr)
         call DGCHBV(www%numdfbasis*numr*2, 1.d0, realbigconfigmatel, &

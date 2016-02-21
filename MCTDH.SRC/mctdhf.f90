@@ -259,6 +259,7 @@ program mctdhf
   
   allocate(bondpoints(numr),bondweights(numr),elecweights(spfdims(1),&
        spfdims(2),spfdims(3)),elecradii(spfsize))
+  bondpoints=0; bondweights=0; elecweights=0; elecradii=0
 
   call getparams()
   call system("mkdir -p "//timingdir)  
@@ -472,7 +473,7 @@ program mctdhf
 
   call xalloc() !!   INITIALIZE XXX/YYY VECTORS!  
 
-  allocate(bigspfs(spfsize,nspf+numfrozen))
+  allocate(bigspfs(spfsize,nspf+numfrozen));    bigspfs=0
 
 !! oct 2015 loading orbitals if skipflag equals 1 (in case need frozen)
 
@@ -557,7 +558,7 @@ program mctdhf
         endif
 
         OFLWR "Not enough avectors loaded! will diagonalize."; CFL
-        allocate(hugeavector(numr,num_config))
+        allocate(hugeavector(numr,num_config));   hugeavector=0
         do i=totread+1,mcscfnum
            call staticvector(hugeavector(:,:),num_config*numr)
            if (tot_adim.gt.0) then
@@ -574,8 +575,8 @@ program mctdhf
               call gramschmidt(tot_adim,i-1,tot_adim,bigavector(:,:,:),bigavector(:,:,i),.false.)
            endif
         enddo
-
         deallocate(hugeavector)
+
         if (debugflag.gt.0) then
            call mpibarrier();     OFLWR "CALL ALL MATEL IN MAIN"; CFL;     call mpibarrier()
         endif
@@ -586,7 +587,7 @@ program mctdhf
            call mpibarrier();     OFLWR "AFTER CALL ALL MATEL IN MAIN"; CFL;     call mpibarrier()
         endif
 
-        allocate(tempvals(mcscfnum))
+        allocate(tempvals(mcscfnum)); tempvals=0
         call myconfigeig(www,dwwptr,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
              min(totread,1),0d0,max(0,abs(improvedrelaxflag)-1))
 
@@ -682,7 +683,7 @@ subroutine getclasses()
   implicit none
   integer :: iclass,ispf,jspf,flag
 
-  allocate(orbclass(nspf))
+  allocate(orbclass(nspf));   orbclass=0
 
   iclass=0
   do ispf=1,nspf
@@ -704,7 +705,8 @@ subroutine getclasses()
 
   numclasses=iclass
   allocate(classorb(nspf,numclasses),nperclass(numclasses))
-  
+  classorb=0; nperclass=0
+
   do iclass=1,numclasses
      jspf=0
      do ispf=1,nspf

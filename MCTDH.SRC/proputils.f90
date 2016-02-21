@@ -118,8 +118,7 @@ subroutine get_frexchange()
 
   if (numfrozen.gt.0) then
 
-     allocate(frozenexchange(spfsize,nspf))
-
+     allocate(frozenexchange(spfsize,nspf));     frozenexchange=0
      lowspf=1; highspf=nspf
      if (parorbsplit.eq.1) then
         call getorbsetrange(lowspf,highspf)

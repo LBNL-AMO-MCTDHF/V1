@@ -294,8 +294,8 @@ subroutine re_order_configlist(configlist,configorder,ndof,numconfig,numspinbloc
   integer :: ii,jj,kk,iconfig
   integer,allocatable :: newstart(:),newend(:),newlist(:,:),neworder(:)
 
-  allocate(newstart(numspinblocks),newend(numspinblocks),newlist(ndof,numconfig),&
-       neworder(numconfig))
+  allocate(newstart(numspinblocks),newend(numspinblocks),newlist(ndof,numconfig), neworder(numconfig))
+  newstart=0; newend=0; newlist=0; neworder=0
 
   iconfig=0
   do ii=1,numspinblocks
@@ -381,7 +381,7 @@ subroutine fast_newconfiglist(www,domflags)
 !!$  endif
 
   allocate(www%configsperproc(nprocs),www%alltopconfigs(nprocs),www%allbotconfigs(nprocs))
-
+  www%configsperproc=0; www%alltopconfigs=0; www%allbotconfigs=0
 
 !! 10-2015 NOW INTERNAL LOOP
 
@@ -394,13 +394,15 @@ subroutine fast_newconfiglist(www,domflags)
 
   if (alreadycounted) then
      OFLWR "Go fast_newconfiglist.  Allocating...";CFL
+     call mpibarrier()
      deallocate(bigspinblockstart,bigspinblockend)
      allocate(www%configlist(www%ndof,www%numconfig), www%configmvals(www%numconfig), &
           www%configugvals(www%numconfig), www%configtypes(www%numconfig),www%configorder(www%numconfig), &
           bigspinblockstart(numspinblocks+2*nprocs),bigspinblockend(numspinblocks+2*nprocs))
-
+     bigspinblockstart=0; bigspinblockend=0; www%configorder=0;
      www%configlist(:,:)=0; www%configmvals(:)=0; www%configugvals(:)=0; www%configtypes(:)=0
-     OFLWR "   getting configurations."; CFL
+     call mpibarrier()
+     OFLWR "   Allocated.  getting configurations."; CFL
   else
      allocate(bigspinblockstart(1),bigspinblockend(1))  !! avoid warn bounds
      OFLWR "Go fast_newconfiglist";CFL
@@ -1020,7 +1022,6 @@ subroutine set_newconfiglist(wwin,wwout)
   wwout%dflevel=wwin%dfrestrictflag
 
   allocate(wwout%configsperproc(nprocs),wwout%alltopconfigs(nprocs),wwout%allbotconfigs(nprocs))
-
   wwout%configsperproc(:)=wwin%dfconfsperproc(:)
   wwout%allbotconfigs(:)=wwin%allbotdfconfigs(:)
   wwout%alltopconfigs(:)=wwin%alltopdfconfigs(:)
@@ -1032,6 +1033,8 @@ subroutine set_newconfiglist(wwin,wwout)
   allocate(wwout%configlist(wwout%ndof,wwout%numconfig),wwout%configmvals(wwout%numconfig),&
        wwout%configugvals(wwout%numconfig), wwout%configtypes(wwout%numconfig), &
        wwout%configorder(wwout%numconfig))
+  wwout%configlist=0; wwout%configmvals=0; wwout%configugvals=0; wwout%configtypes=0;
+  wwout%configorder=0
 
   do iconfig=1,wwout%numconfig
      wwout%configlist(:,iconfig)=wwin%configlist(:,wwin%ddd%dfincludedconfigs(iconfig))

@@ -426,7 +426,7 @@ subroutine prop_wfn(tin, tout)
   if (intopt==0) then
      rkworkdim=(3+6*psilength)*zzz; rkiworkdim=100
      allocate(rkwork(rkworkdim),rkiwork(rkiworkdim))
-     rkiwork(:)=0
+     rkiwork(:)=0; rkwork=0
      rkwork(psilength*zzz+1)=0.00001d0
      iflag=1
      call rkf45(all_derivs, psilength*zzz, psivec(:), mytime, tout, &
@@ -439,6 +439,7 @@ subroutine prop_wfn(tin, tout)
   else if (intopt.eq.1) then
      rkworkdim=20*psilength*zzz; rkiworkdim=20*psilength*zzz
      allocate(rkwork(rkworkdim),rkiwork(rkiworkdim))
+     rkwork=0; rkiwork=0
      call odex(psilength*zzz,gbs_derivs,mytime,psivec(:),tout,gbsstepsize,relerr,abserr,&
           0,dummysub,0,rkwork,rkworkdim,rkiwork,rkiworkdim,nullreal,nullint,idid)
      if (.not.(idid.eq.1)) then
@@ -489,8 +490,7 @@ subroutine propspfs(inspfs,outspfs,tin, tout,inlinearflag,numiters)
   outspfs(:,:)=inspfs(:,:)
   numiters=0
 
-  allocate(tempspfs2(spfsize,nspf))
-  tempspfs2(:,:)=0
+  allocate(tempspfs2(spfsize,nspf));   tempspfs2(:,:)=0
 
   do k=1,littlesteps
      timea=tin+(tout-tin)*(k-1)/littlesteps;     timeb=tin+(tout-tin)*k/littlesteps
@@ -532,7 +532,7 @@ subroutine propspfs0(inspfs,outspfs,tin, tout,inlinearflag,numiters)
   if (intopt==0) then
      rkworkdim=(3+6*totspfdim)*zzz;      rkiworkdim=100
      allocate(rkwork(rkworkdim),rkiwork(rkiworkdim))
-     iflag=1           
+     iflag=1    ; rkwork=0;  rkiwork=0       
      call rkf45(spf_linear_derivs, totspfdim*zzz, outspfs, time1, time2, &
           relerr, abserr, iflag, rkwork, rkiwork)
      if (iflag/=2) then
@@ -544,6 +544,7 @@ subroutine propspfs0(inspfs,outspfs,tin, tout,inlinearflag,numiters)
      gbsstepsize=1.d-6
      rkworkdim=20*totspfdim*zzz; rkiworkdim=20*totspfdim*zzz
      allocate(rkwork(rkworkdim),rkiwork(rkiworkdim))
+     rkwork=0; rkiwork=0
      call odex(totspfdim*zzz,gbs_linear_derivs,time1,outspfs,time2,gbsstepsize,relerr,abserr,&
           0,dummysub,0,rkwork,rkworkdim,rkiwork,rkiworkdim,nullreal,nullint,idid)
      numiters=rkiwork(17)
@@ -790,7 +791,6 @@ subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc,numi
   endif
 
   allocate(tempvector(tot_adim))
-
   if (tot_adim.gt.0) then
      tempvector(:)=avectorin(:)
   endif

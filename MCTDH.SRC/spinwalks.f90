@@ -35,13 +35,12 @@ subroutine spinwalkinit(www)
 
   allocate(www%sss%numspinsets(www%startrank:www%endrank+1),&
        www%sss%numspindfsets(www%startrank:www%endrank+1))
+  www%sss%numspinsets(:)=(-99);   www%sss%numspindfsets(:)=(-99)
 
   allocate(unpaired(www%numelec,www%configstart:www%configend+1), &
        numunpaired(www%configstart:www%configend+1), &
        msvalue(www%configstart:www%configend+1), &
        numspinwalks(www%configstart:www%configend+1))
-
-  www%sss%numspinsets(:)=(-99);   www%sss%numspindfsets(:)=(-99)
   unpaired(:,:)=(-99);   numunpaired(:)=(-99)
   msvalue(:)=(-99);   numspinwalks(:)=(-99)
 
@@ -51,10 +50,9 @@ subroutine spinwalkinit(www)
   call getnumspinwalks(www)
 
   allocate(spinwalk(maxspinwalks,www%configstart:www%configend+1), &
-       spinwalkdirphase(maxspinwalks,www%configstart:www%configend+1))
-  allocate(configspinmatel(maxspinwalks+1,www%configstart:www%configend+1))
-
-  allocate(www%sss%spinsetsize(www%maxconfigsperproc,www%startrank:www%endrank+1), &
+       spinwalkdirphase(maxspinwalks,www%configstart:www%configend+1),&
+       configspinmatel(maxspinwalks+1,www%configstart:www%configend+1),&
+       www%sss%spinsetsize(www%maxconfigsperproc,www%startrank:www%endrank+1), &
        www%sss%spinsetrank(www%maxconfigsperproc,www%startrank:www%endrank+1))
 
   spinwalk(:,:)=(-99);  spinwalkdirphase(:,:)=(-99)
@@ -175,8 +173,8 @@ subroutine spinsets_first(www)
   OFLWR "   ... go spinsets ..."; CFL
 
   allocate(taken(www%configstart:www%configend+1), tempwalks(www%maxconfigsperproc))
-
-  www%sss%maxspinsetsize=0
+  
+  www%sss%maxspinsetsize=0;    tempwalks=0
 
   do jj=0,1
 
@@ -457,14 +455,19 @@ subroutine configspinset_projector(www)
   allocate(www%sss%spinsetprojector(www%sss%maxnumspinsets,www%startrank:www%endrank+1))
   allocate(spinvects(www%sss%maxspinsetsize,www%sss%maxspinsetsize), spinvals(www%sss%maxspinsetsize), &
        realprojector(www%sss%maxspinsetsize,www%sss%maxspinsetsize))
+  if (www%sss%maxspinsetsize.gt.0) then
+     spinvects=0; spinvals=0; realprojector=0
+  endif
 
-  lwork=10*www%sss%maxspinsetsize;  allocate(work(lwork))
+  lwork=10*www%sss%maxspinsetsize;  allocate(work(lwork));    work=0
   
   allocate(www%sss%spinsperproc(nprocs),www%sss%spindfsperproc(nprocs), &
        www%sss%allbotspins(nprocs),www%sss%alltopspins(nprocs),&
        www%sss%allbotspindfs(nprocs), www%sss%alltopspindfs(nprocs))
 
   www%sss%spinsperproc(:)=0; www%sss%spindfsperproc(:)=0
+  www%sss%allbotspins=0; www%sss%alltopspins=0
+  www%sss%allbotspindfs=0; www%sss%alltopspindfs=0
 
   elim=0;  elimsets=0;  
 

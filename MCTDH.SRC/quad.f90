@@ -531,6 +531,7 @@ subroutine nonsparsequadavector(www,avectorout)
 
   allocate(spinmatel(www%numdfbasis*numr,www%numdfbasis*numr),&
        spinavectorout(www%numdfbasis*numr), err(www%totadim),ipiv(www%numdfbasis*numr))
+  spinmatel=0; spinavectorout=0; ipiv=0;     err=0; 
 
   ss=0
   do while (42.eq.42)
