@@ -4,12 +4,13 @@
 #include "Definitions.INC"
 
 
-subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,numelements,elementsizes, gridpoints, celement, ecstheta,  xi_derivs, xi_rhoderivs, evenodd)
+subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,&
+     numelements,elementsizes, gridpoints, celement, ecstheta,  xi_derivs, xi_rhoderivs, evenodd)
   implicit none
   integer,intent(in) :: numelements,gridpoints,celement, numpoints, evenodd
   real*8, intent(in) :: elementsizes(numelements), ecstheta
   DATAECS,intent(out) :: points(gridpoints),  weights(gridpoints),  xi_derivs(gridpoints,gridpoints), &
-       xi_rhoderivs(gridpoints,gridpoints)
+       xi_rhoderivs(gridpoints,gridpoints), ketot(gridpoints,gridpoints)
   integer ::  one=1, izero=0, two=2, i,j,k,l,jj, qq, extraorder
   real*8 :: endpoints(2), zero = 0.0,rsum
   integer, parameter :: numextra=11
@@ -17,8 +18,11 @@ subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,numele
        firstder(numpoints+numextra,numpoints),  points2d(numpoints), weights2d(numpoints), &
        scratch(2*numpoints+numextra), xivals0(numpoints+numextra,numpoints)
   DATAECS :: extrapoints(numpoints+numextra,numelements), extraweights(numextra+numpoints,numelements), &
-       firstdertot(numpoints+numextra,numelements,gridpoints), ketot(gridpoints,gridpoints), &
+       firstdertot(numpoints+numextra,numelements,gridpoints), &
        xivals(numpoints+numextra,numelements,gridpoints),  cweight, sum
+
+  extrapoints0=0; extraweights0=0; firstder=0; points2d=0; weights2d=0;
+  scratch=0; xivals0=0; extrapoints=0; extraweights=0; firstdertot=0; xivals=0
 
   i=celement; sum=ecstheta !! avoid warn unused
 
@@ -114,7 +118,8 @@ subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,numele
         else
            do l=1,numelements
               do k=1,extraorder
-                 sum=sum + extraweights(k,l) * xivals(k,l,i) * (extrapoints(k,l)**2*firstdertot(k,l,j) + extrapoints(k,l)*xivals(k,l,j))
+                 sum=sum + extraweights(k,l) * xivals(k,l,i) * &
+                      (extrapoints(k,l)**2*firstdertot(k,l,j) + extrapoints(k,l)*xivals(k,l,j))
               enddo
            enddo
            sum=sum/(points(i)*points(j))
@@ -123,7 +128,8 @@ subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,numele
         sum=0
         do l=1,numelements
            do k=1,extraorder
-              sum=sum + extraweights(k,l) * xivals(k,l,i) * ( extrapoints(k,l) * firstdertot(k,l,j) + 0.5d0 * xivals(k,l,j) )
+              sum=sum + extraweights(k,l) * xivals(k,l,i) * &
+                   ( extrapoints(k,l) * firstdertot(k,l,j) + 0.5d0 * xivals(k,l,j) )
            enddo
         enddo
         xi_rhoderivs(i,j)=sum

@@ -7,7 +7,8 @@
 
 !! inpfile input, others output dummy variables
 
-subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,outnumr,nucrepulsion,nonuc_checkflag)
+subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,outnumr,nucrepulsion,&
+     nonuc_checkflag)
   use myparams
   implicit none
   integer,intent(in) :: inmpifileptr
@@ -111,7 +112,8 @@ function  radiallobatto(n,x, mvalue)
   integer,intent(in) :: mvalue,   n
   real*8,intent(in) :: x
   DATAECS :: xilobatto, radiallobatto
-  radiallobatto=xilobatto(n,x,mvalue,henumpoints,glpoints2d(:,1),glpoints2d(:,2),glpoints,glweights,heelementsizes,henumelements,0)
+  radiallobatto=xilobatto(n,x,mvalue,henumpoints,glpoints2d(:,1),glpoints2d(:,2),&
+       glpoints,glweights,heelementsizes,henumelements,0)
 end function radiallobatto
 
 function  angularlobatto(n,x, mvalue)
@@ -206,7 +208,8 @@ end subroutine get_maxsparse
 
 
 
-subroutine get_sphericalsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,sparsetransmat,sparsestart,sparseend,sparsexyz,povsparse)
+subroutine get_sphericalsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,sparsetransmat,&
+     sparsestart,sparseend,sparsexyz,povsparse)
    use myparams
    use myprojectmod
    implicit none
@@ -259,7 +262,8 @@ OFLWR "CHECK RADIALLOBATTO"; CFLST
             OFLWR"Sparse error!";         CFLST
             stop
       endif
-      sparsexyz(iii,1) = ix;      sparsexyz(iii,2) = iy;      sparsexyz(iii,3) = iz;      sparsetransmat(iii) = csum
+      sparsexyz(iii,1) = ix;      sparsexyz(iii,2) = iy;     
+      sparsexyz(iii,3) = iz;      sparsetransmat(iii) = csum
    endif
   enddo
   enddo
@@ -295,7 +299,8 @@ function  radiallobattoint(n,x, mvalue)
   integer,intent(in) :: mvalue, n
   real*8,intent(in) :: x
   DATAECS :: xilobattoint, radiallobattoint
-  radiallobattoint=xilobattoint(n,x,mvalue,henumpoints,glpoints2d(:,1),glpoints2d(:,2),glpoints,glweights,heelementsizes,henumelements,0)
+  radiallobattoint=xilobattoint(n,x,mvalue,henumpoints,glpoints2d(:,1),glpoints2d(:,2),&
+       glpoints,glweights,heelementsizes,henumelements,0)
 end function radiallobattoint
 
 function  angularlobattoint(n,x, mvalue)
@@ -310,15 +315,15 @@ end function angularlobattoint
 
 
 
-!! rvalue not used for atom
-function radiusvalue(spfindex,notused)
-  use myparams
-  use myprojectmod
-  implicit none
-  integer,intent(in) :: spfindex
-  integer :: ir
-  DATATYPE :: radiusvalue, notused,notused2
-  notused2=notused*0 !! avoid warn unused
-  ir=mod(spfindex-1,numerad)+1
-  radiusvalue=glpoints(ir+1)
-end function radiusvalue
+!!$  !! rvalue not used for atom
+!!$  function radiusvalue(spfindex,notused)
+!!$    use myparams
+!!$    use myprojectmod
+!!$    implicit none
+!!$    integer,intent(in) :: spfindex
+!!$    integer :: ir
+!!$    DATATYPE :: radiusvalue, notused,notused2
+!!$    notused2=notused*0 !! avoid warn unused
+!!$    ir=mod(spfindex-1,numerad)+1
+!!$    radiusvalue=glpoints(ir+1)
+!!$  end function radiusvalue

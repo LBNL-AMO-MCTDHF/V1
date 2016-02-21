@@ -14,6 +14,8 @@ subroutine GetJacobiKE(points,weights,ketot, lbig, eta_derivs,eta_rhoderivs,even
        firstdertot((lbig+1)+numextra,(lbig+1)), scratch(numextra+(lbig+1)), &
        etavals((lbig+1)+numextra,(lbig+1)), endpoints(2)=[-1.0d0,1.0d0] , zero = 0.0, sum
 
+  extrapoints=0; extraweights=0; firstdertot=0; scratch=0; etavals=0
+
   numpoints=lbig+1
   one=1;two=2
   extraorder=numextra+numpoints
@@ -60,7 +62,8 @@ subroutine GetJacobiKE(points,weights,ketot, lbig, eta_derivs,eta_rhoderivs,even
      do j=1,numpoints
         sum=0
         do k=1,extraorder
-           sum=sum + extraweights(k) * etavals(k,i) * ( extrapoints(k)*(1-extrapoints(k)**2) * firstdertot(k,j) + (0.5d0 - 3d0/2d0 * extrapoints(k)**2) * etavals(k,j) )
+           sum=sum + extraweights(k) * etavals(k,i) * ( extrapoints(k)*(1-extrapoints(k)**2) * &
+                firstdertot(k,j) + (0.5d0 - 3d0/2d0 * extrapoints(k)**2) * etavals(k,j) )
         enddo
         eta_rhoderivs(i,j)=sum
         
@@ -74,7 +77,8 @@ subroutine GetJacobiKE(points,weights,ketot, lbig, eta_derivs,eta_rhoderivs,even
         else
            do k=1,extraorder
               sum= sum + etavals(k,i) &
-                   * (firstdertot(k,j)* (1-extrapoints(k)**2)**2 - 2*etavals(k,j) * (1-extrapoints(k)**2)*extrapoints(k) )  &
+                   * (firstdertot(k,j)* (1-extrapoints(k)**2)**2 - 2*etavals(k,j) * &
+                   (1-extrapoints(k)**2)*extrapoints(k) )  &
                    * extraweights(k) 
            enddo
            sum=sum/sqrt((1-points(i)**2)*(1-points(j)**2))

@@ -52,7 +52,9 @@ subroutine myprojectalloc()
        glfirstdertot(hegridpoints,hegridpoints,0:1), glrhoderivs(hegridpoints,hegridpoints), &
        glpoints(hegridpoints), glweights(hegridpoints), glpoints2d(henumpoints,2), glweights2d(henumpoints,2) , &
        xydipole(numerad,lbig+1),zdipole(numerad,lbig+1), ddrhopot(numerad,lbig+1));
-  ddrhopot=0d0
+  jacobike=0; jacobideriv=0; jacobirhoderiv=0; jacobiweights=0; jacobipoints=0; glke=0; glfirstdertot=0; 
+  glrhoderivs=0; glpoints=0; glweights=0; glpoints2d=0; glweights2d=0; xydipole=0; zdipole=0; ddrhopot=0
+
   allocate(sparseddz_xi_banded(2*bandwidth+1,numerad,lbig+1,mbig+1), &
        sparseddz_eta(  lbig+1,lbig+1,numerad,mbig+1 ) ,  &
        sparseddz_diag(  numerad,lbig+1,mbig+1 )  , &
@@ -64,6 +66,11 @@ subroutine myprojectalloc()
        sparseops_diag(  numerad,lbig+1,mbig+1),&
        rmatrix(numerad,numerad,mseriesmax+1,lseriesmax+1)  , &
        ylmvals(0:2*mbig, 1:lbig+1, lseriesmax+1))
+
+  sparseddz_xi_banded = 0;       sparseddz_eta = 0;       sparseddz_diag = 0;  
+  sparseddrho_xi_banded = 0;         sparseddrho_eta = 0;         sparseddrho_diag = 0;  
+  sparseops_xi_banded = 0;         sparseops_eta = 0;         sparseops_diag = 0;  
+  rmatrix=0    ;   ylmvals=0
 
 end subroutine myprojectalloc
 
@@ -84,7 +91,9 @@ subroutine get_twoe_new()
   real*8 :: sum
 
   lwork=hegridpoints*(lbig+1)*(2*mbig+1) * 10
-  allocate(work(lwork),ipiv(lwork),kearray(numerad,numerad,lseriesmax+1), invkearray(numerad,numerad,lseriesmax+1))
+  allocate(work(lwork),ipiv(lwork),kearray(numerad,numerad,lseriesmax+1), &
+       invkearray(numerad,numerad,lseriesmax+1))
+  work=0; ipiv=0; kearray=0; invkearray=0
 
   do i=0,lseriesmax
     ii=numerad
@@ -105,7 +114,9 @@ subroutine get_twoe_new()
 
     do j=1,numerad
     do k=1,numerad
-       rmatrix(j,k,1,i+1) = (2*i+1) / (glpoints(j+1)*glpoints(k+1)*sqrt(glweights(j+1)*glweights(k+1))) * invkearray(j,k,i+1) - (glpoints(j+1)*glpoints(k+1))**i / glpoints(hegridpoints)**(2*i+1)
+       rmatrix(j,k,1,i+1) = (2*i+1) / (glpoints(j+1)*glpoints(k+1)*&
+            sqrt(glweights(j+1)*glweights(k+1))) * invkearray(j,k,i+1) &
+            - (glpoints(j+1)*glpoints(k+1))**i / glpoints(hegridpoints)**(2*i+1)
     enddo
     enddo
   enddo
