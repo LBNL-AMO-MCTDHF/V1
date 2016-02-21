@@ -8,7 +8,8 @@
 
 !! All purpose subroutine.
 
-subroutine sparseconfigmult(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,imc)
+subroutine sparseconfigmult(www,invector,outvector,matrix_ptr,sparse_ptr, &
+     boflag, nucflag, pulseflag, conflag,time,imc)
   use r_parameters
   use configptrmod
   use sparseptrmod
@@ -22,7 +23,8 @@ subroutine sparseconfigmult(www,invector,outvector,matrix_ptr,sparse_ptr, boflag
   Type(SPARSEPTR),intent(in) :: sparse_ptr
   real*8,intent(in) :: time
 
-  call sparseconfigmultxxx(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,0,imc)
+  call sparseconfigmultxxx(www,invector,outvector,matrix_ptr,sparse_ptr,&
+       boflag, nucflag, pulseflag, conflag,time,0,imc)
 
 end subroutine sparseconfigmult
 
@@ -30,7 +32,8 @@ end subroutine sparseconfigmult
 !! For one bond length, born oppenheimer Hamiltonian
 
 
-subroutine sparseconfigmultone(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time,imc)
+subroutine sparseconfigmultone(www,invector,outvector,matrix_ptr,sparse_ptr, &
+     boflag,pulseflag,conflag,isplit,time,imc)
   use sparse_parameters
   use configptrmod
   use sparseptrmod
@@ -49,18 +52,22 @@ subroutine sparseconfigmultone(www,invector,outvector,matrix_ptr,sparse_ptr, bof
   if (www%parconsplit.eq.0) then
 #endif
 
-     call sparseconfigmultone_noparcon(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time,imc)
+     call sparseconfigmultone_noparcon(www,invector,outvector,matrix_ptr,sparse_ptr, &
+          boflag,pulseflag,conflag,isplit,time,imc)
 
 #ifdef MPIFLAG
   else
 
      select case(sparsesummaflag)
      case(0)
-        call sparseconfigmultone_gather(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time,imc)
+        call sparseconfigmultone_gather(www,invector,outvector,matrix_ptr,sparse_ptr, &
+             boflag,pulseflag,conflag,isplit,time,imc)
      case(1)
-        call sparseconfigmultone_summa(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time,imc)
+        call sparseconfigmultone_summa(www,invector,outvector,matrix_ptr,sparse_ptr, &
+             boflag,pulseflag,conflag,isplit,time,imc)
      case(2)
-        call sparseconfigmultone_circ(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time,imc)
+        call sparseconfigmultone_circ(www,invector,outvector,matrix_ptr,sparse_ptr, &
+             boflag,pulseflag,conflag,isplit,time,imc)
      case default
         OFLWR "Error sparsesummaflag ",sparsesummaflag; CFLST
      end select
@@ -71,7 +78,8 @@ subroutine sparseconfigmultone(www,invector,outvector,matrix_ptr,sparse_ptr, bof
 end subroutine sparseconfigmultone
 
 
-subroutine sparseconfigmultone_noparcon(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time,imc)
+subroutine sparseconfigmultone_noparcon(www,invector,outvector,matrix_ptr,sparse_ptr, &
+     boflag,pulseflag,conflag,isplit,time,imc)
   use configptrmod
   use sparseptrmod
   use walkmod
@@ -103,7 +111,8 @@ end subroutine sparseconfigmultone_noparcon
 #ifdef MPIFLAG
 
 
-subroutine sparseconfigmultone_gather(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time,imc)
+subroutine sparseconfigmultone_gather(www,invector,outvector,matrix_ptr,sparse_ptr, &
+     boflag,pulseflag,conflag,isplit,time,imc)
   use configptrmod
   use sparseptrmod
   use walkmod
@@ -141,7 +150,8 @@ end subroutine sparseconfigmultone_gather
 
 
 
-subroutine sparseconfigmultone_summa(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time,imc)
+subroutine sparseconfigmultone_summa(www,invector,outvector,matrix_ptr,sparse_ptr, &
+     boflag,pulseflag,conflag,isplit,time,imc)
   use configptrmod
   use sparseptrmod
   use walkmod
@@ -155,7 +165,7 @@ subroutine sparseconfigmultone_summa(www,invector,outvector,matrix_ptr,sparse_pt
   Type(CONFIGPTR),intent(in) :: matrix_ptr
   Type(SPARSEPTR),intent(in) :: sparse_ptr
   real*8,intent(in) :: time
-  DATATYPE :: workvector(www%maxconfigsperproc),outtemp(www%botconfig:www%topconfig+1)      !! AUTOMATIC
+  DATATYPE :: workvector(www%maxconfigsperproc),outtemp(www%botconfig:www%topconfig+1)  !! AUTOMATIC
   integer :: iproc
 
   if (www%parconsplit.eq.0) then
@@ -175,7 +185,8 @@ subroutine sparseconfigmultone_summa(www,invector,outvector,matrix_ptr,sparse_pt
      if (www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
         call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1))
         if (www%lastconfig.ge.www%firstconfig) then
-           call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0,imc)
+           call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, &
+                boflag, 0, pulseflag, conflag,time,0,isplit,isplit,0,imc)
            outvector(:)=outvector(:)+outtemp(www%botconfig:www%topconfig)
         endif
      endif
@@ -185,7 +196,8 @@ end subroutine sparseconfigmultone_summa
 
 
 
-subroutine sparseconfigmultone_circ(www,invector,outvector,matrix_ptr,sparse_ptr, boflag,pulseflag,conflag,isplit,time,imc)
+subroutine sparseconfigmultone_circ(www,invector,outvector,matrix_ptr,sparse_ptr, &
+     boflag,pulseflag,conflag,isplit,time,imc)
   use configptrmod
   use sparseptrmod
   use walkmod
@@ -207,8 +219,9 @@ subroutine sparseconfigmultone_circ(www,invector,outvector,matrix_ptr,sparse_ptr
      OFLWR "ERROR PARCON"; CFLST
   endif     !! now botconfig:topconfig = firstconfig:lastconfig
 
-!! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 and ftcore.f90, 
-!!     holding hands in a circle, prevproc and nextproc, each chunk gets passed around the circle
+!! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 
+!!     and ftcore.f90, holding hands in a circle, prevproc and nextproc, 
+!!     each chunk gets passed around the circle
   prevproc=mod(nprocs+myrank-2,nprocs)+1
   nextproc=mod(myrank,nprocs)+1
 
@@ -266,7 +279,8 @@ end subroutine sparseconfigpulsemult
 
 
 
-subroutine sparseconfigmultxxx(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
+subroutine sparseconfigmultxxx(www,invector,outvector,matrix_ptr,sparse_ptr, &
+     boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
   use r_parameters
   use configptrmod
   use sparseptrmod
@@ -286,18 +300,22 @@ subroutine sparseconfigmultxxx(www,invector,outvector,matrix_ptr,sparse_ptr, bof
   if (www%parconsplit.eq.0) then
 #endif
 
-     call sparseconfigmultxxx_noparcon(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
+     call sparseconfigmultxxx_noparcon(www,invector,outvector,matrix_ptr,sparse_ptr, &
+          boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
 
 #ifdef MPIFLAG
   else
 
      select case (sparsesummaflag)
      case(0)
-        call sparseconfigmultxxx_gather(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
+        call sparseconfigmultxxx_gather(www,invector,outvector,matrix_ptr,sparse_ptr, &
+             boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
      case(1)
-        call sparseconfigmultxxx_summa(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
+        call sparseconfigmultxxx_summa(www,invector,outvector,matrix_ptr,sparse_ptr, &
+             boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
      case(2)
-        call sparseconfigmultxxx_circ(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
+        call sparseconfigmultxxx_circ(www,invector,outvector,matrix_ptr,sparse_ptr, &
+             boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
      case default
         OFLWR "Error sparsesummaflag ",sparsesummaflag; CFLST
      end select
@@ -308,7 +326,8 @@ subroutine sparseconfigmultxxx(www,invector,outvector,matrix_ptr,sparse_ptr, bof
 end subroutine sparseconfigmultxxx
 
 
-subroutine sparseconfigmultxxx_noparcon(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
+subroutine sparseconfigmultxxx_noparcon(www,invector,outvector,matrix_ptr,sparse_ptr, &
+     boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
   use r_parameters
   use configptrmod
   use sparseptrmod
@@ -339,7 +358,8 @@ end subroutine sparseconfigmultxxx_noparcon
 
 #ifdef MPIFLAG
 
-subroutine sparseconfigmultxxx_gather(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
+subroutine sparseconfigmultxxx_gather(www,invector,outvector,matrix_ptr,sparse_ptr, &
+     boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
   use r_parameters
   use configptrmod
   use sparseptrmod
@@ -366,18 +386,21 @@ subroutine sparseconfigmultxxx_gather(www,invector,outvector,matrix_ptr,sparse_p
   if (www%topconfig.ge.www%botconfig) then
      workvector(:,www%botconfig:www%topconfig) = invector(:,:)
   endif
-  call mpiallgather(workvector,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+  call mpiallgather(workvector,www%numconfig*numr,www%configsperproc(:)*numr,&
+       www%maxconfigsperproc*numr)
 
   if (www%topconfig.ge.www%botconfig) then
      call sparseconfigmult_byproc(1,nprocs,www,workvector,outvector,&
-          matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0,imc)
+          matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,&
+          onlytdflag,1,numr,0,imc)
   endif
   deallocate(workvector)
 
 end subroutine sparseconfigmultxxx_gather
 
 
-subroutine sparseconfigmultxxx_summa(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
+subroutine sparseconfigmultxxx_summa(www,invector,outvector,matrix_ptr,sparse_ptr, &
+     boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
   use r_parameters
   use configptrmod
   use sparseptrmod
@@ -412,9 +435,11 @@ subroutine sparseconfigmultxxx_summa(www,invector,outvector,matrix_ptr,sparse_pt
         workvector(:,1:www%topconfig-www%botconfig+1) = invector(:,:)
      endif
      if (www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
-        call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
+        call mympibcast(workvector,iproc,&
+             (www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
         if (www%lastconfig.ge.www%firstconfig) then
-           call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0,imc)
+           call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp,matrix_ptr,sparse_ptr, &
+                boflag, nucflag, pulseflag, conflag,time,onlytdflag,1,numr,0,imc)
            outvector(:,:)=outvector(:,:) + outtemp(:,www%botconfig:www%topconfig)
         endif
      endif
@@ -423,7 +448,8 @@ subroutine sparseconfigmultxxx_summa(www,invector,outvector,matrix_ptr,sparse_pt
 end subroutine sparseconfigmultxxx_summa
 
 
-subroutine sparseconfigmultxxx_circ(www,invector,outvector,matrix_ptr,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
+subroutine sparseconfigmultxxx_circ(www,invector,outvector,matrix_ptr,sparse_ptr, &
+     boflag, nucflag, pulseflag, conflag,time,onlytdflag,imc)
   use r_parameters
   use configptrmod
   use sparseptrmod
@@ -446,8 +472,9 @@ subroutine sparseconfigmultxxx_circ(www,invector,outvector,matrix_ptr,sparse_ptr
      OFLWR "ERROR PARCON XXX"; CFLST
   endif   !! now botconfig:topconfig = firstconfig:lastconfig
 
-!! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 and ftcore.f90, 
-!!     holding hands in a circle, prevproc and nextproc, each chunk gets passed around the circle
+!! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 
+!!     and ftcore.f90, holding hands in a circle, prevproc and nextproc, 
+!!     each chunk gets passed around the circle
   prevproc=mod(nprocs+myrank-2,nprocs)+1
   nextproc=mod(myrank,nprocs)+1
 
@@ -472,7 +499,8 @@ subroutine sparseconfigmultxxx_circ(www,invector,outvector,matrix_ptr,sparse_ptr
 !! PASSING BACKWARD
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
 
-     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,numr*www%maxconfigsperproc)
+     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,&
+          numr*www%maxconfigsperproc)
      workvector(:,:)=workvector2(:,:)
 
   enddo
@@ -483,7 +511,8 @@ end subroutine sparseconfigmultxxx_circ
 
 
 
-subroutine parsparseconfigpreconmult(www,invector,outvector,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag, inenergy,time)
+subroutine parsparseconfigpreconmult(www,invector,outvector,matrix_ptr, sparse_ptr, &
+     boflag, nucflag, pulseflag, conflag, inenergy,time)
   use r_parameters
   use configptrmod
   use sparseptrmod
@@ -498,14 +527,16 @@ subroutine parsparseconfigpreconmult(www,invector,outvector,matrix_ptr, sparse_p
   Type(SPARSEPTR),intent(in) :: sparse_ptr
   integer,intent(in) ::  conflag,boflag,nucflag,pulseflag
   real*8,intent(in) :: time
-  DATATYPE :: workvector(numr,www%botconfig:www%topconfig+1),tempvector(numr,www%botconfig:www%topconfig+1)     !!AUTOMATIC
+  DATATYPE :: workvector(numr,www%botconfig:www%topconfig+1),&
+       tempvector(numr,www%botconfig:www%topconfig+1)     !!AUTOMATIC
 
   if (www%topconfig-www%botconfig+1.eq.0) then
      return
   endif
 
   workvector(:,:)=1d0; tempvector(:,:)=0d0
-  call sparseconfigmult_byproc(myrank,myrank,www,workvector,tempvector,matrix_ptr, sparse_ptr, boflag, nucflag, pulseflag, conflag,time,0,1,numr,1,-1)
+  call sparseconfigmult_byproc(myrank,myrank,www,workvector,tempvector,matrix_ptr, sparse_ptr, &
+       boflag, nucflag, pulseflag, conflag,time,0,1,numr,1,-1)
   
   outvector(:,:)=invector(:,:)/(tempvector(:,www%botconfig:www%topconfig)-inenergy)
 
@@ -520,7 +551,8 @@ subroutine arbitraryconfig_mult_singles(www,onebodymat, rvector, avectorin, avec
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: inrnum
-  DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf), avectorin(inrnum,www%firstconfig:www%lastconfig)
+  DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf), &
+       avectorin(inrnum,www%firstconfig:www%lastconfig)
   DATATYPE,intent(out) :: avectorout(inrnum,www%firstconfig:www%lastconfig)
   DATAECS,intent(in) :: rvector(inrnum)
 
@@ -568,7 +600,8 @@ subroutine arbitraryconfig_mult_singles_noparcon(www,onebodymat, rvector, avecto
   call arbitraryconfig_mult_singles_byproc(1,nprocs,www,onebodymat, rvector, avectorin,&
        avectorout(:,www%botconfig:www%topconfig),inrnum,0)
   
-  call mpiallgather(avectorout,www%numconfig*inrnum,www%configsperproc(:)*inrnum,www%maxconfigsperproc*inrnum)
+  call mpiallgather(avectorout,www%numconfig*inrnum,www%configsperproc(:)*inrnum,&
+       www%maxconfigsperproc*inrnum)
 
 end subroutine arbitraryconfig_mult_singles_noparcon
 
@@ -598,7 +631,8 @@ subroutine arbitraryconfig_mult_singles_gather(www,onebodymat, rvector, avectori
   if (www%topconfig.ge.www%botconfig) then
      workvector(:,www%botconfig:www%topconfig) = avectorin(:,:)
   endif
-  call mpiallgather(workvector,www%numconfig*inrnum,www%configsperproc(:)*inrnum,www%maxconfigsperproc*inrnum)
+  call mpiallgather(workvector,www%numconfig*inrnum,www%configsperproc(:)*inrnum,&
+       www%maxconfigsperproc*inrnum)
 
   if (www%lastconfig.ge.www%firstconfig) then
      call arbitraryconfig_mult_singles_byproc(1,nprocs,www,onebodymat, rvector, workvector, avectorout,inrnum,0)
@@ -615,7 +649,8 @@ subroutine arbitraryconfig_mult_singles_summa(www,onebodymat, rvector, avectorin
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: inrnum
-  DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf), avectorin(inrnum,www%firstconfig:www%lastconfig)
+  DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf), &
+       avectorin(inrnum,www%firstconfig:www%lastconfig)
   DATATYPE,intent(out) :: avectorout(inrnum,www%firstconfig:www%lastconfig)
   DATAECS,intent(in) :: rvector(inrnum)
   DATATYPE :: workvector(inrnum,www%maxconfigsperproc),&
@@ -638,7 +673,8 @@ subroutine arbitraryconfig_mult_singles_summa(www,onebodymat, rvector, avectorin
         workvector(:,1:www%topconfig-www%botconfig+1) = avectorin(:,:)
      endif
      if (www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
-        call mympibcast(workvector,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*inrnum)
+        call mympibcast(workvector,iproc,&
+             (www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*inrnum)
         if (www%lastconfig.ge.www%firstconfig) then
            call arbitraryconfig_mult_singles_byproc(iproc,iproc,www,onebodymat, rvector, &
                 workvector, outtemp,inrnum,0)           
@@ -657,7 +693,8 @@ subroutine arbitraryconfig_mult_singles_circ(www,onebodymat, rvector, avectorin,
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: inrnum
-  DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf), avectorin(inrnum,www%firstconfig:www%lastconfig)
+  DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf),&
+       avectorin(inrnum,www%firstconfig:www%lastconfig)
   DATATYPE,intent(out) :: avectorout(inrnum,www%firstconfig:www%lastconfig)
   DATAECS,intent(in) :: rvector(inrnum)
   DATATYPE :: workvector(inrnum,www%maxconfigsperproc),workvector2(inrnum,www%maxconfigsperproc),&
@@ -668,8 +705,9 @@ subroutine arbitraryconfig_mult_singles_circ(www,onebodymat, rvector, avectorin,
      OFLWR "ERROR PARCON ARB"; CFLST
   endif   !! now botconfig:topconfig = firstconfig:lastconfig
 
-!! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 and ftcore.f90, 
-!!     holding hands in a circle, prevproc and nextproc, each chunk gets passed around the circle
+!! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 
+!!     and ftcore.f90, holding hands in a circle, prevproc and nextproc, 
+!!     each chunk gets passed around the circle
   prevproc=mod(nprocs+myrank-2,nprocs)+1
   nextproc=mod(myrank,nprocs)+1
 
@@ -694,7 +732,8 @@ subroutine arbitraryconfig_mult_singles_circ(www,onebodymat, rvector, avectorin,
 !! PASSING BACKWARD
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
 
-     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,inrnum * www%maxconfigsperproc)
+     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,&
+          inrnum * www%maxconfigsperproc)
      workvector(:,:)=workvector2(:,:)
 
   enddo
@@ -731,9 +770,11 @@ subroutine sparseconfigmult_byproc(firstproc,lastproc,www,invector,outvector,mat
   endif
 
   if (sparseopt.eq.0) then
-     call direct_sparseconfigmult_byproc(firstproc,lastproc,www,invector,outvector,matrix_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag,imc)
+     call direct_sparseconfigmult_byproc(firstproc,lastproc,www,invector,outvector,matrix_ptr, &
+          boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag,imc)
   else
-     call sparsesparsemult_byproc(firstproc,lastproc,www,invector,outvector,sparse_ptr, boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag,imc)
+     call sparsesparsemult_byproc(firstproc,lastproc,www,invector,outvector,sparse_ptr, &
+          boflag, nucflag, pulseflag, conflag,time,onlytdflag,botr,topr,diagflag,imc)
   endif
 
 end subroutine sparseconfigmult_byproc
@@ -794,14 +835,17 @@ subroutine direct_sparseconfigmult_byproc(firstproc,lastproc,www,invector,outvec
      endif
 
      rvector(:)=1/bondpoints(botr:topr)
-     call arbitraryconfig_mult_doubles_byproc(firstproc,lastproc,www,matrix_ptr%xtwoematel(:,:,:,:),rvector,invector,tempvector,mynumr,diagflag)
+     call arbitraryconfig_mult_doubles_byproc(firstproc,lastproc,www,matrix_ptr%xtwoematel(:,:,:,:),&
+          rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)+tempvector(:,:)
      
-     call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,matrix_ptr%xpotmatel(:,:),rvector,invector,tempvector,mynumr,diagflag)
+     call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,matrix_ptr%xpotmatel(:,:),&
+          rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)+tempvector(:,:)
      
      rvector(:)=1/bondpoints(botr:topr)**2
-     call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,matrix_ptr%xopmatel(:,:),rvector,invector,tempvector,mynumr,diagflag)
+     call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,matrix_ptr%xopmatel(:,:),&
+          rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)+tempvector(:,:)
      
   endif
@@ -815,7 +859,8 @@ subroutine direct_sparseconfigmult_byproc(firstproc,lastproc,www,invector,outvec
         tempmatel(:,:)=tempmatel(:,:)+matrix_ptr%xconmatelyy(:,:)*facs(2)
         tempmatel(:,:)=tempmatel(:,:)+matrix_ptr%xconmatelzz(:,:)*facs(3)
      endif
-     call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,tempmatel,rvector,invector,tempvector,mynumr,diagflag)
+     call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,tempmatel,&
+          rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)-tempvector(:,:)
 
   endif
@@ -837,7 +882,8 @@ subroutine direct_sparseconfigmult_byproc(firstproc,lastproc,www,invector,outvec
         tempmatel(:,:)= tempmatel(:,:) + matrix_ptr%xpulsematelzz*facs(3); flag=1
      endif
      if (flag.eq.1) then
-        call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,tempmatel,rvector,invector,tempvector,mynumr,diagflag)
+        call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,tempmatel,&
+             rvector,invector,tempvector,mynumr,diagflag)
         outvector(:,:)=outvector(:,:)+tempvector(:,:)
      endif
 
@@ -859,9 +905,10 @@ subroutine direct_sparseconfigmult_byproc(firstproc,lastproc,www,invector,outvec
               outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*csum*bondpoints(ir)
            enddo
         else if (onlytdflag.eq.0) then
-           csum=matrix_ptr%kefac * www%numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2 ) * 2  * gg   !! a-squared
+!! a-squared
+           csum=matrix_ptr%kefac * www%numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2 ) * 2  * gg
            do ir=botr,topr
-              outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*csum     !! NO R FACTOR !!
+              outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*csum   !! NO R FACTOR !!
            enddo
         endif
 
@@ -872,14 +919,18 @@ subroutine direct_sparseconfigmult_byproc(firstproc,lastproc,www,invector,outvec
   if (nonuc_checkflag.eq.0.and.nucflag.eq.1.and.mynumr.eq.numr) then
      if (diagflag.eq.0) then
         rvector(:)=1d0
-        call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,matrix_ptr%xymatel,rvector,invector,tempvector,numr,0)
-        call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE,            proderivmod,numr,     tempvector,           numr,DATAONE,outvector,numr)
+        call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,matrix_ptr%xymatel,&
+             rvector,invector,tempvector,numr,0)
+        call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE, &
+             proderivmod,numr,     tempvector,           numr,DATAONE,outvector,numr)
         if (myrank.ge.firstproc.and.myrank.le.lastproc) then
-           call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE*matrix_ptr%kefac,rkemod,numr,     invector(:,www%botconfig),numr,DATAONE,outvector,numr)
+           call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE*matrix_ptr%kefac,&
+                rkemod,numr,     invector(:,www%botconfig),numr,DATAONE,outvector,numr)
         endif
 !!$     else
 !!$        do ir=1,numr
-!!$           outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*matrix_ptr%kefac*rkemod(ir,ir)
+!!$           outvector(ir,:)=outvector(ir,:)+&
+!!$                invector(ir,www%botconfig:www%topconfig)*matrix_ptr%kefac*rkemod(ir,ir)
 !!$        enddo
      endif
   endif
@@ -951,14 +1002,17 @@ subroutine sparsesparsemult_byproc(firstproc,lastproc,www,invector,outvector,spa
      endif
 
      rvector(:)=1/bondpoints(botr:topr)
-     call arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,sparse_ptr%xpotsparsemattr(:,:),rvector,invector,tempvector,mynumr,diagflag)
+     call arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,sparse_ptr%xpotsparsemattr(:,:),&
+          rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)+tempvector(:,:)
 
-     call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xonepotsparsemattr(:,:),rvector,invector,tempvector,mynumr,diagflag)
+     call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xonepotsparsemattr(:,:),&
+          rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)+tempvector(:,:)
 
      rvector(:)=1/bondpoints(botr:topr)**2
-     call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xopsparsemattr(:,:),rvector,invector,tempvector,mynumr,diagflag)
+     call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xopsparsemattr(:,:),&
+          rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)+tempvector(:,:)
 
   endif
@@ -972,7 +1026,8 @@ subroutine sparsesparsemult_byproc(firstproc,lastproc,www,invector,outvector,spa
         tempsparsemattr(:,:)=tempsparsemattr(:,:)+sparse_ptr%xconsparsemattryy(:,:)*facs(2)
         tempsparsemattr(:,:)=tempsparsemattr(:,:)+sparse_ptr%xconsparsemattrzz(:,:)*facs(3)
      endif
-     call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,tempsparsemattr,rvector,invector,tempvector,mynumr,diagflag)
+     call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,tempsparsemattr,&
+          rvector,invector,tempvector,mynumr,diagflag)
      outvector(:,:)=outvector(:,:)-tempvector(:,:)
 
   endif
@@ -994,7 +1049,8 @@ subroutine sparsesparsemult_byproc(firstproc,lastproc,www,invector,outvector,spa
         tempsparsemattr(:,:)= tempsparsemattr(:,:) + sparse_ptr%xpulsesparsemattrzz*facs(3); flag=1
      endif
      if (flag.eq.1) then
-        call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,tempsparsemattr,rvector,invector,tempvector,mynumr,diagflag)
+        call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,tempsparsemattr,&
+             rvector,invector,tempvector,mynumr,diagflag)
         outvector(:,:)=outvector(:,:)+tempvector(:,:)
      endif
 
@@ -1017,9 +1073,10 @@ subroutine sparsesparsemult_byproc(firstproc,lastproc,www,invector,outvector,spa
               outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*csum*bondpoints(ir)
            enddo
         else if (onlytdflag.eq.0) then
-           csum= sparse_ptr%kefac * www%numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2 ) * 2 * gg  !! a-squared
+!! a-squared
+           csum= sparse_ptr%kefac * www%numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2 ) * 2 * gg
            do ir=botr,topr
-              outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*csum     !! NO R FACTOR !!
+              outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*csum  !! NO R FACTOR !!
            enddo
         endif
 
@@ -1030,14 +1087,18 @@ subroutine sparsesparsemult_byproc(firstproc,lastproc,www,invector,outvector,spa
   if (nonuc_checkflag.eq.0.and.nucflag.eq.1.and.mynumr.eq.numr) then
      if (diagflag.eq.0) then
         rvector(:)=1d0
-        call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xysparsemattr,rvector,invector,tempvector,numr,0)
-        call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE,            proderivmod,numr,     tempvector,           numr,DATAONE,outvector,numr)
+        call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xysparsemattr,&
+             rvector,invector,tempvector,numr,0)
+        call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE, &
+             proderivmod,numr,     tempvector,           numr,DATAONE,outvector,numr)
         if (myrank.ge.firstproc.and.myrank.le.lastproc) then
-           call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE*sparse_ptr%kefac,rkemod,numr,     invector(:,www%botconfig),numr,DATAONE,outvector,numr)
+           call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE*sparse_ptr%kefac,&
+                rkemod,numr,     invector(:,www%botconfig),numr,DATAONE,outvector,numr)
         endif
 !!$     else
 !!$        do ir=1,numr
-!!$           outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*sparse_ptr%kefac*rkemod(ir,ir)
+!!$           outvector(ir,:)=outvector(ir,:)+&
+!!$             invector(ir,www%botconfig:www%topconfig)*sparse_ptr%kefac*rkemod(ir,ir)
 !!$        enddo
      endif
   endif
@@ -1046,7 +1107,8 @@ end subroutine sparsesparsemult_byproc
 
 
 
-subroutine arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,mattrans, rvector,insmallvector,outsmallvector,mynumr,diagflag)
+subroutine arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,mattrans, &
+     rvector,insmallvector,outsmallvector,mynumr,diagflag)
   use walkmod
   use sparse_parameters
   use fileptrmod
@@ -1085,7 +1147,8 @@ subroutine arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,mattrans, 
         outsum(:)=0d0
 
         do ihop=www%firstsinglehopbyproc(firstproc,config1),www%lastsinglehopbyproc(lastproc,config1)
-           outsum(:)=outsum(:)+mattrans(ihop,config1) * insmallvector(:,www%singlehop(ihop,config1)) * myrvector(:)
+           outsum(:)=outsum(:)+mattrans(ihop,config1) * &
+                insmallvector(:,www%singlehop(ihop,config1)) * myrvector(:)
         enddo
         outsmallvector(:,config1)=outsum(:)
      enddo
@@ -1100,7 +1163,8 @@ subroutine arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,mattrans, 
      do config1=www%botconfig,www%topconfig
 
         if (www%singlehopdiagflag(config1).ne.0) then
-           outsmallvector(:,config1)=mattrans(www%singlediaghop(config1),config1) * insmallvector(:,config1) * myrvector(:)
+           outsmallvector(:,config1)=mattrans(www%singlediaghop(config1),config1) * &
+                insmallvector(:,config1) * myrvector(:)
         endif
      enddo
 !$OMP END DO
@@ -1111,7 +1175,8 @@ subroutine arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,mattrans, 
 end subroutine arbitrary_sparsemult_singles_byproc
 
 
-subroutine arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,mattrans,rvector,insmallvector,outsmallvector,mynumr,diagflag)
+subroutine arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,mattrans,&
+     rvector,insmallvector,outsmallvector,mynumr,diagflag)
   use fileptrmod
   use sparse_parameters
   use walkmod
@@ -1150,7 +1215,8 @@ subroutine arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,mattrans,r
         outsum(:)=0d0
 
         do ihop=www%firstdoublehopbyproc(firstproc,config1),www%lastdoublehopbyproc(lastproc,config1)
-           outsum(:)=outsum(:)+mattrans(ihop,config1) * insmallvector(:,www%doublehop(ihop,config1)) * myrvector(:)
+           outsum(:)=outsum(:)+mattrans(ihop,config1) * &
+                insmallvector(:,www%doublehop(ihop,config1)) * myrvector(:)
         enddo
         outsmallvector(:,config1)=outsum(:)
      enddo
@@ -1164,7 +1230,8 @@ subroutine arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,mattrans,r
 !$OMP DO SCHEDULE(DYNAMIC)
      do config1=www%botconfig,www%topconfig
         if (www%doublehopdiagflag(config1).ne.0) then
-           outsmallvector(:,config1)=mattrans(www%doublediaghop(config1),config1) * insmallvector(:,config1) * myrvector(:)
+           outsmallvector(:,config1)=mattrans(www%doublediaghop(config1),config1) * &
+                insmallvector(:,config1) * myrvector(:)
         endif
      enddo
 !$OMP END DO
@@ -1175,13 +1242,15 @@ subroutine arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,mattrans,r
 end subroutine arbitrary_sparsemult_doubles_byproc
 
 
-subroutine arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,onebodymat, rvector, avectorin, avectorout,inrnum,diagflag)
+subroutine arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,onebodymat, &
+     rvector, avectorin, avectorout,inrnum,diagflag)
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: firstproc,lastproc
   integer,intent(in) :: inrnum,diagflag
-  DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf), avectorin(inrnum,www%allbotconfigs(firstproc):www%alltopconfigs(lastproc))
+  DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf), &
+       avectorin(inrnum,www%allbotconfigs(firstproc):www%alltopconfigs(lastproc))
   DATATYPE,intent(out) :: avectorout(inrnum,www%botconfig:www%topconfig)
   DATAECS,intent(in) :: rvector(inrnum)
   DATATYPE :: csum, outsum(inrnum)
@@ -1247,13 +1316,15 @@ end subroutine arbitraryconfig_mult_singles_byproc
 
 
 
-subroutine arbitraryconfig_mult_doubles_byproc(firstproc,lastproc,www,twobodymat, rvector, avectorin, avectorout,inrnum,diagflag)   
+subroutine arbitraryconfig_mult_doubles_byproc(firstproc,lastproc,www,twobodymat, &
+     rvector, avectorin, avectorout,inrnum,diagflag)   
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: firstproc,lastproc
   integer,intent(in) :: inrnum,diagflag
-  DATATYPE,intent(in) :: twobodymat(www%nspf,www%nspf,www%nspf,www%nspf), avectorin(inrnum,www%allbotconfigs(firstproc):www%alltopconfigs(lastproc))
+  DATATYPE,intent(in) :: twobodymat(www%nspf,www%nspf,www%nspf,www%nspf), &
+       avectorin(inrnum,www%allbotconfigs(firstproc):www%alltopconfigs(lastproc))
   DATATYPE,intent(out) :: avectorout(inrnum,www%botconfig:www%topconfig)
   DATAECS,intent(in) :: rvector(inrnum)
   DATATYPE :: csum, outsum(inrnum)

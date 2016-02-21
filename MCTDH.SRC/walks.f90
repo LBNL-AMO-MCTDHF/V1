@@ -201,7 +201,8 @@ subroutine walks(www)
   use aarrmod
   implicit none
   type(walktype) :: www
-  integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, jspf, iispf, jjspf, config2, config1, dirphase, &
+  integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, jspf, &
+       iispf, jjspf, config2, config1, dirphase, &
        iind, flag, idof, iidof, jdof, iwalk, reorder, getconfiguration,idiag
   logical :: allowedconfig0
   integer :: thisconfig(www%ndof), thatconfig(www%ndof), temporb(2), temporb2(2), isize, &
@@ -270,7 +271,8 @@ subroutine walks(www)
 
               iwalk=iwalk+1
 
-              www%singlewalkopspf(1:2,iwalk,config1)=[ ispf,jspf ]   !! ket, bra   bra is walk
+!! ket, bra   bra is walk
+              www%singlewalkopspf(1:2,iwalk,config1)=[ ispf,jspf ] 
               www%singlewalkdirphase(iwalk,config1)=dirphase
            
               www%singlewalk(iwalk,config1)=config2
@@ -340,9 +342,10 @@ subroutine walks(www)
                        cycle
                     endif
 
+!! INCLUDING DIAGONAL AND SINGLE WALKS
                     flag=0
                     do jdof=1,www%numelec
-                       if (jdof.ne.idof.and.jdof.ne.iidof) then !! INCLUDING DIAGONAL AND SINGLE WALKS
+                       if (jdof.ne.idof.and.jdof.ne.iidof) then 
                           if ((iind(thisconfig((jdof-1)*2+1:jdof*2)) == jindex).or. &
                                (iind(thisconfig((jdof-1)*2+1:jdof*2)) == jjindex)) then
                              flag=1
@@ -417,19 +420,25 @@ subroutine walks(www)
   
   if (www%sparseconfigflag.eq.0.and.www%maxsinglewalks.ne.0) then
      isize=2*www%maxsinglewalks
-     call mpiallgather_i(www%singlewalkopspf,   www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
+     call mpiallgather_i(www%singlewalkopspf,   www%numconfig*isize,&
+          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
      isize=www%maxsinglewalks
-     call mpiallgather_i(www%singlewalkdirphase,www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
-     call mpiallgather_i(www%singlewalk,        www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
+     call mpiallgather_i(www%singlewalkdirphase,www%numconfig*isize,&
+          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
+     call mpiallgather_i(www%singlewalk,        www%numconfig*isize,&
+          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
   endif
 
 
   if (www%sparseconfigflag.eq.0.and.www%maxdoublewalks.ne.0) then
      isize=4*www%maxdoublewalks
-     call mpiallgather_i(www%doublewalkdirspf,  www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
+     call mpiallgather_i(www%doublewalkdirspf,  www%numconfig*isize,&
+          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
      isize=www%maxdoublewalks
-     call mpiallgather_i(www%doublewalkdirphase,www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
-     call mpiallgather_i(www%doublewalk,        www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
+     call mpiallgather_i(www%doublewalkdirphase,www%numconfig*isize,&
+          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
+     call mpiallgather_i(www%doublewalk,        www%numconfig*isize,&
+          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
   endif
 
   call mpibarrier()
@@ -548,7 +557,8 @@ subroutine getnumwalks(www)
      enddo   ! config1
 
      if (www%sparseconfigflag.eq.0) then
-        call mpiallgather_i(www%numsinglewalks(:),www%numconfig,www%configsperproc(:),www%maxconfigsperproc)
+        call mpiallgather_i(www%numsinglewalks(:),www%numconfig,&
+             www%configsperproc(:),www%maxconfigsperproc)
      endif
 
 
@@ -603,9 +613,11 @@ subroutine getnumwalks(www)
                           cycle
                        endif
 
+!! INCLUDING DIAGONAL AND SINGLE WALKS
+
                        flag=0
                        do jdof=1,www%numelec
-                          if (jdof.ne.idof.and.jdof.ne.iidof) then  !! INCLUDING DIAGONAL AND SINGLE WALKS
+                          if (jdof.ne.idof.and.jdof.ne.iidof) then  
                              if ((iind(thisconfig((jdof-1)*2+1:jdof*2)) == jindex).or. &
                                   (iind(thisconfig((jdof-1)*2+1:jdof*2)) == jjindex)) then
                                 flag=1
@@ -645,7 +657,8 @@ subroutine getnumwalks(www)
      enddo   ! config1
 
      if (www%sparseconfigflag.eq.0) then
-        call mpiallgather_i(www%numdoublewalks(:),www%numconfig,www%configsperproc(:),www%maxconfigsperproc)
+        call mpiallgather_i(www%numdoublewalks(:),www%numconfig,www%configsperproc(:),&
+             www%maxconfigsperproc)
      endif
 
 
@@ -687,7 +700,8 @@ subroutine hops(www)
   use aarrmod
   implicit none
   type(walktype) :: www
-  integer :: ii,iwalk,iconfig,totsinglehops,totdoublehops,totsinglewalks,totdoublewalks,ihop,flag,iproc,isize
+  integer :: ii,iwalk,iconfig,totsinglehops,totdoublehops,&
+       totsinglewalks,totdoublewalks,ihop,flag,iproc,isize
 !!$  integer :: numsinglehopsbyproc(nprocs), numdoublehopsbyproc(nprocs)
 
   allocate(www%numsinglehops(www%configstart:www%configend+1),&
@@ -902,32 +916,47 @@ subroutine hops(www)
 
   if (www%sparseconfigflag.eq.0) then
      isize=nprocs
-     call mpiallgather_i(www%firstsinglehopbyproc(:,:),   www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
-     call mpiallgather_i(www%lastsinglehopbyproc(:,:),   www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
-     call mpiallgather_i(www%firstdoublehopbyproc(:,:),   www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
-     call mpiallgather_i(www%lastdoublehopbyproc(:,:),   www%numconfig*isize,www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
+     call mpiallgather_i(www%firstsinglehopbyproc(:,:),   www%numconfig*isize,&
+          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
+     call mpiallgather_i(www%lastsinglehopbyproc(:,:),   www%numconfig*isize,&
+          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
+     call mpiallgather_i(www%firstdoublehopbyproc(:,:),   www%numconfig*isize,&
+          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
+     call mpiallgather_i(www%lastdoublehopbyproc(:,:),   www%numconfig*isize,&
+          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
   endif
 
 
   if (www%sparseconfigflag.eq.0) then
      ii=1
-     call mpiallgather_i(www%numdoublehops(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
-     call mpiallgather_i(www%numsinglehops(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
-     call mpiallgather_i(www%singlediaghop(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
-     call mpiallgather_i(www%doublediaghop(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
-     call mpiallgather_i(www%singlehopdiagflag(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
-     call mpiallgather_i(www%doublehopdiagflag(:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%numdoublehops(:),www%numconfig*ii,www%configsperproc(:)*ii,&
+          www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%numsinglehops(:),www%numconfig*ii,www%configsperproc(:)*ii,&
+          www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%singlediaghop(:),www%numconfig*ii,www%configsperproc(:)*ii,&
+          www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%doublediaghop(:),www%numconfig*ii,www%configsperproc(:)*ii,&
+          www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%singlehopdiagflag(:),www%numconfig*ii,www%configsperproc(:)*ii,&
+          www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%doublehopdiagflag(:),www%numconfig*ii,www%configsperproc(:)*ii,&
+          www%maxconfigsperproc*ii)
 
      ii=www%maxnumsinglehops
-     call mpiallgather_i(www%singlehop(:,:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
-     call mpiallgather_i(www%singlehopwalkstart(:,:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
-     call mpiallgather_i(www%singlehopwalkend(:,:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%singlehop(:,:),www%numconfig*ii,www%configsperproc(:)*ii,&
+          www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%singlehopwalkstart(:,:),www%numconfig*ii,www%configsperproc(:)*ii,&
+          www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%singlehopwalkend(:,:),www%numconfig*ii,www%configsperproc(:)*ii,&
+          www%maxconfigsperproc*ii)
      ii=www%maxnumdoublehops
-     call mpiallgather_i(www%doublehop(:,:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
-     call mpiallgather_i(www%doublehopwalkstart(:,:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
-     call mpiallgather_i(www%doublehopwalkend(:,:),www%numconfig*ii,www%configsperproc(:)*ii,www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%doublehop(:,:),www%numconfig*ii,www%configsperproc(:)*ii,&
+          www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%doublehopwalkstart(:,:),www%numconfig*ii,www%configsperproc(:)*ii,&
+          www%maxconfigsperproc*ii)
+     call mpiallgather_i(www%doublehopwalkend(:,:),www%numconfig*ii,www%configsperproc(:)*ii,&
+          www%maxconfigsperproc*ii)
   endif
-
 
 !!$  numsinglehopsbyproc(:)=0;   numdoublehopsbyproc(:)=0
 !!$

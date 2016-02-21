@@ -135,7 +135,8 @@ subroutine spinwalks(www)
                     spinwalk(iwalk,config1)=config2
 
   if ((config2.lt.www%allbotconfigs(iproc).or.config2.gt.www%alltopconfigs(iproc))) then
-     OFLWR "BOT TOP NEWCONFIG ERR", config1,config2,iproc,www%allbotconfigs(iproc),www%alltopconfigs(iproc); CFLST
+     OFLWR "BOT TOP NEWCONFIG ERR", config1,config2,iproc,www%allbotconfigs(iproc),&
+          www%alltopconfigs(iproc);     CFLST
   endif
                  endif
               endif
@@ -167,8 +168,8 @@ subroutine spinsets_first(www)
   use mpimod
   implicit none
   type(walktype) :: www
-  integer ::  iwalk, jj,  iset, ilevel, currentnumwalks, prevnumwalks, flag, iflag, addwalks, &
-       i, j, jwalk, jset, getdfindex, iproc
+  integer ::  iwalk, jj,  iset, ilevel, currentnumwalks, prevnumwalks, flag, iflag, &
+       addwalks, i, j, jwalk, jset, getdfindex, iproc
   integer, allocatable :: taken(:), tempwalks(:)
 
   OFLWR "   ... go spinsets ..."; CFL
@@ -224,7 +225,8 @@ subroutine spinsets_first(www)
                     www%sss%maxspinsetsize=currentnumwalks
                  endif
               else
-                 if ((currentnumwalks.gt.www%sss%maxspinsetsize).or.(www%sss%spinsetsize(iset,iproc).ne.currentnumwalks)) then
+                 if ((currentnumwalks.gt.www%sss%maxspinsetsize).or.&
+                      (www%sss%spinsetsize(iset,iproc).ne.currentnumwalks)) then
                     OFLWR "WALK ERROR";CFLST
                  endif
                  www%sss%spinsets(1:currentnumwalks,iset,iproc)=tempwalks(1:currentnumwalks)
@@ -256,7 +258,7 @@ subroutine spinsets_first(www)
 
      do i=www%configstart,www%configend
         if (taken(i).ne.1) then
-           print *, "TAKEN ERROR!!!!", myrank,i,taken(i),www%startrank,www%endrank; call mpistop()
+           print *, "TAKEN ERROR!!!!", myrank,i,taken(i),www%startrank,www%endrank; stop
         endif
      enddo
 
@@ -295,7 +297,8 @@ subroutine spinsets_first(www)
 
   deallocate(taken, tempwalks)
 
-  OFLWR "Numspinsets this processor is ", www%sss%numspinsets(myrank),"  maxspinset size is ", www%sss%maxspinsetsize; CFL
+  OFLWR "Numspinsets this processor is ", www%sss%numspinsets(myrank),"  maxspinset size is ", www%sss%maxspinsetsize
+  CFL
 
 end subroutine spinsets_first
 
@@ -308,8 +311,8 @@ subroutine getnumspinwalks(www)
   use spinwalkinternal
   implicit none
   type(walktype) :: www
-  integer ::   ispf,  config1, flag, idof, jdof,iwalk , thisconfig(www%ndof),  thatconfig(www%ndof), &
-       ii, jj, dirphase, reorder, firstspin, secondspin
+  integer ::   ispf,  config1, flag, idof, jdof,iwalk , thisconfig(www%ndof), &
+       thatconfig(www%ndof), ii, jj, dirphase, reorder, firstspin, secondspin
   real*8 :: avgspinwalks
   logical :: allowedconfig0
 
@@ -457,7 +460,8 @@ subroutine configspinset_projector(www)
 
   lwork=10*www%sss%maxspinsetsize;  allocate(work(lwork))
   
-  allocate(www%sss%spinsperproc(nprocs),www%sss%spindfsperproc(nprocs), www%sss%allbotspins(nprocs),www%sss%alltopspins(nprocs),&
+  allocate(www%sss%spinsperproc(nprocs),www%sss%spindfsperproc(nprocs), &
+       www%sss%allbotspins(nprocs),www%sss%alltopspins(nprocs),&
        www%sss%allbotspindfs(nprocs), www%sss%alltopspindfs(nprocs))
 
   www%sss%spinsperproc(:)=0; www%sss%spindfsperproc(:)=0
@@ -492,7 +496,8 @@ subroutine configspinset_projector(www)
            enddo
         enddo
      
-        call dsyev('V','U', www%sss%spinsetsize(iset,iproc), spinvects, www%sss%maxspinsetsize, spinvals, work, lwork, info)
+        call dsyev('V','U', www%sss%spinsetsize(iset,iproc), spinvects, &
+             www%sss%maxspinsetsize, spinvals, work, lwork, info)
         if (info/=0) then
            OFLWR  "INFO SSYEV", info; CFLST
         endif
@@ -515,22 +520,30 @@ subroutine configspinset_projector(www)
         if (www%sss%spinsetrank(iset,iproc)==0) then 
            elimsets=elimsets+1
            elim=elim+www%sss%spinsetsize(iset,iproc)
-           www%sss%spinsetsize(iset:www%sss%numspinsets(iproc)-1,iproc)=www%sss%spinsetsize(iset+1:www%sss%numspinsets(iproc),iproc)
-           www%sss%spinsets(:,iset:www%sss%numspinsets(iproc)-1,iproc)=www%sss%spinsets(:,iset+1:www%sss%numspinsets(iproc),iproc)
+           www%sss%spinsetsize(iset:www%sss%numspinsets(iproc)-1,iproc)=&
+                www%sss%spinsetsize(iset+1:www%sss%numspinsets(iproc),iproc)
+           www%sss%spinsets(:,iset:www%sss%numspinsets(iproc)-1,iproc)=&
+                www%sss%spinsets(:,iset+1:www%sss%numspinsets(iproc),iproc)
            www%sss%numspinsets(iproc)=www%sss%numspinsets(iproc)-1
         else
-           allocate(www%sss%spinsetprojector(iset,iproc)%mat(www%sss%spinsetsize(iset,iproc), www%sss%spinsetsize(iset,iproc)))
-           allocate(www%sss%spinsetprojector(iset,iproc)%vects(www%sss%spinsetsize(iset,iproc), www%sss%spinsetrank(iset,iproc)))
+           allocate(www%sss%spinsetprojector(iset,iproc)%mat(www%sss%spinsetsize(iset,iproc),&
+                www%sss%spinsetsize(iset,iproc)))
+           allocate(www%sss%spinsetprojector(iset,iproc)%vects(www%sss%spinsetsize(iset,iproc), &
+                www%sss%spinsetrank(iset,iproc)))
            
-           www%sss%spinsetprojector(iset,iproc)%vects(:,:)=spinvects(1:www%sss%spinsetsize(iset,iproc), 1:www%sss%spinsetrank(iset,iproc))
+           www%sss%spinsetprojector(iset,iproc)%vects(:,:)=spinvects(1:www%sss%spinsetsize(iset,iproc), &
+                1:www%sss%spinsetrank(iset,iproc))
            
-           call dgemm('N', 'T', www%sss%spinsetsize(iset,iproc), www%sss%spinsetsize(iset,iproc),www%sss%spinsetrank(iset,iproc),1.0d0, spinvects, www%sss%maxspinsetsize, &
+           call dgemm('N', 'T', www%sss%spinsetsize(iset,iproc), www%sss%spinsetsize(iset,iproc),&
+                www%sss%spinsetrank(iset,iproc),1.0d0, spinvects, www%sss%maxspinsetsize, &
                 spinvects, www%sss%maxspinsetsize ,0.0d0,realprojector, www%sss%maxspinsetsize)
            
-           www%sss%spinsetprojector(iset,iproc)%mat(:,:) = realprojector(1:www%sss%spinsetsize(iset,iproc), 1:www%sss%spinsetsize(iset,iproc))
+           www%sss%spinsetprojector(iset,iproc)%mat(:,:) = realprojector(1:www%sss%spinsetsize(iset,iproc), &
+                1:www%sss%spinsetsize(iset,iproc))
 
 !just checking right
-!        call CONFIGHERM(www%sss%spinsetprojector(iset,iproc)%mat,www%sss%spinsetsize(iset,iproc),www%sss%spinsetsize(iset,iproc), doublevects,doublevals)
+!        call CONFIGHERM(www%sss%spinsetprojector(iset,iproc)%mat,www%sss%spinsetsize(iset,iproc),&
+!              www%sss%spinsetsize(iset,iproc), doublevects,doublevals)
 !        do i=1,www%sss%spinsetsize(iset,iproc)
 !           if (abs(doublevals(i)*2-1.d0)-1.d0 .gt. 1.d-9) then
 !              OFLWR "SPIN PROJECTOR ERROR", doublevals(i); CFLST
@@ -622,7 +635,8 @@ subroutine configspinset_projector(www)
   WRFL "      df spin rank         ", www%sss%spindfsperproc(myrank), " of ", www%dfconfsperproc(myrank) 
   WRFL "      botdfspin,topdfspin: ", www%sss%botdfspin,www%sss%topdfspin
   WRFL "All processors:"
-  WRFL "      spin rank, S^2 = ", (www%sss%spinrestrictval/2.d0*(www%sss%spinrestrictval/2.d0+1)), " is ", www%sss%numspinconfig, " out of ", www%numconfig
+  WRFL "      spin rank, S^2 = ", (www%sss%spinrestrictval/2.d0*(www%sss%spinrestrictval/2.d0+1)), &
+       " is ", www%sss%numspinconfig, " out of ", www%numconfig
   WRFL "      df spin rank         ", www%sss%numspindfconfig, " of ", www%numdfconfigs
   WRFL; CFL
   call mpibarrier()

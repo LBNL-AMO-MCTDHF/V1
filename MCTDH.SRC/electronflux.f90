@@ -63,16 +63,19 @@ subroutine fluxwrite(curtime,in_xmo,in_xa)
      inquire (iolength=molength) xmo
      inquire (iolength=alength) xa
      call openfile
-     write(mpifileptr,'(A27,F11.4)') " Saving wavefunction at T= ",curtime*FluxInterval*par_timestep
+     write(mpifileptr,'(A27,F11.4)') " Saving wavefunction at T= ",&
+          curtime*FluxInterval*par_timestep
      call closefile
 
 
-     open(1001,file=fluxmofile,status="unknown",form="unformatted",access="direct",recl=molength,iostat=myiostat)
+     open(1001,file=fluxmofile,status="unknown",form="unformatted",&
+          access="direct",recl=molength,iostat=myiostat)
      call checkiostat(myiostat,"opening "//fluxmofile)
      write(1001,rec=curtime+1,iostat=myiostat) xmo
      call checkiostat(myiostat,"writing "//fluxmofile)
      close(1001)
-     open(1002,file=fluxafile,status="unknown",form="unformatted",access="direct",recl=alength,iostat=myiostat)
+     open(1002,file=fluxafile,status="unknown",form="unformatted",&
+          access="direct",recl=alength,iostat=myiostat)
      call checkiostat(myiostat,"opening "//fluxafile)
      write(1002,rec=curtime+1,iostat=myiostat) xa
      call checkiostat(myiostat,"writing "//fluxafile)
@@ -160,7 +163,8 @@ subroutine fluxgtau0(alg,www,bioww)
   MemVal = 6.25d4
 #endif
   call openfile()
-  write(mpifileptr,'(A30,F9.3,A3)') " Guess at necessary memory is ",2d0*real((nt+1)*(www%localnconfig*numr*mcscfnum+spfsize*nspf),8)/MemVal," MB"
+  write(mpifileptr,'(A30,F9.3,A3)') " Guess at necessary memory is ",&
+       2d0*real((nt+1)*(www%localnconfig*numr*mcscfnum+spfsize*nspf),8)/MemVal," MB"
   if(alg.eq.0) then
     write(mpifileptr,*) "g(tau) will be computed with all of psi in core"
     BatchSize=nt+1
@@ -228,9 +232,11 @@ subroutine fluxgtau0(alg,www,bioww)
      OFLWR "Reading ket batch ", ketbat, " of ", NBat; CFL
      ketreadsize=min(BatchSize,nt+1-(ketbat-1)*BatchSize)
      if(myrank.eq.1) then
-        open(1001,file=fluxmofile,status="old",form="unformatted",access="direct",recl=molength,iostat=myiostat)
+        open(1001,file=fluxmofile,status="old",form="unformatted",&
+             access="direct",recl=molength,iostat=myiostat)
         call checkiostat(myiostat,"opening "//fluxmofile)
-        open(1002,file=fluxafile,status="old",form="unformatted",access="direct",recl=alength,iostat=myiostat)
+        open(1002,file=fluxafile,status="old",form="unformatted",&
+             access="direct",recl=alength,iostat=myiostat)
         call checkiostat(myiostat,"opening "//fluxafile)
         do i=1,ketreadsize
            k=FluxSkipMult*((ketbat-1)*BatchSize+i-1)+1
@@ -266,9 +272,11 @@ subroutine fluxgtau0(alg,www,bioww)
         do i=1,ketreadsize
            do imc=1,mcscfnum
               if (tot_adim.gt.0) then
-                 call myscatterv(read_ketavec(:,:,imc,i),ketavec(:,:,imc,i),configs_perproc(:)*numr)
+                 call myscatterv(read_ketavec(:,:,imc,i),&
+                      ketavec(:,:,imc,i),configs_perproc(:)*numr)
               else
-                 call myscatterv(read_ketavec(:,:,imc,i),nullvector(:,:),configs_perproc(:)*numr)
+                 call myscatterv(read_ketavec(:,:,imc,i),&
+                      nullvector(:,:),configs_perproc(:)*numr)
               endif
            enddo
         enddo
@@ -289,9 +297,11 @@ subroutine fluxgtau0(alg,www,bioww)
            endif
         else 
            if(myrank.eq.1) then
-              open(1001,file=fluxmofile,status="old",form="unformatted",access="direct",recl=molength,iostat=myiostat)
+              open(1001,file=fluxmofile,status="old",form="unformatted",&
+                   access="direct",recl=molength,iostat=myiostat)
               call checkiostat(myiostat,"opening "//fluxmofile)
-              open(1002,file=fluxafile,status="old",form="unformatted",access="direct",recl=alength,iostat=myiostat)
+              open(1002,file=fluxafile,status="old",form="unformatted",&
+                   access="direct",recl=alength,iostat=myiostat)
               call checkiostat(myiostat,"opening "//fluxafile)
               do i=1,brareadsize
                  k=FluxSkipMult*((brabat-1)*BatchSize+i-1)+1
@@ -322,14 +332,17 @@ subroutine fluxgtau0(alg,www,bioww)
               if (myrank.eq.1) then
                  braavec(:,:,:,1:brareadsize)=read_braavec(:,:,:,1:brareadsize)
               endif
-              call mympibcast(braavec(:,:,:,1:brareadsize),1,numr*www%numconfig*mcscfnum*brareadsize)
+              call mympibcast(braavec(:,:,:,1:brareadsize),1,&
+                   numr*www%numconfig*mcscfnum*brareadsize)
            else
               do i=1,brareadsize
                  do imc=1,mcscfnum
                     if (tot_adim.gt.0) then
-                       call myscatterv(read_braavec(:,:,imc,i),braavec(:,:,imc,i),configs_perproc(:)*numr)
+                       call myscatterv(read_braavec(:,:,imc,i),&
+                            braavec(:,:,imc,i),configs_perproc(:)*numr)
                     else
-                       call myscatterv(read_braavec(:,:,imc,i),nullvector(:,:),configs_perproc(:)*numr)
+                       call myscatterv(read_braavec(:,:,imc,i),&
+                            nullvector(:,:),configs_perproc(:)*numr)
                     endif
                  enddo
               enddo
@@ -457,18 +470,22 @@ subroutine fluxgtau0(alg,www,bioww)
 
               do imc=1,mcscfnum
                  if (tot_adim.gt.0) then
-                    fluxevalval(imc) = fluxeval(abio(:,:,imc),aket(:,:,imc),ke,pe,V2,yderiv,1) * dt  !! 1 means flux
+                    fluxevalval(imc) = fluxeval(abio(:,:,imc),&
+                         aket(:,:,imc),ke,pe,V2,yderiv,1) * dt  !! 1 means flux
                  else
-                    fluxevalval(imc) = fluxeval(nullvector(:,:),nullvector(:,:),ke,pe,V2,yderiv,1) * dt  !! 1 means flux
+                    fluxevalval(imc) = fluxeval(nullvector(:,:),&
+                         nullvector(:,:),ke,pe,V2,yderiv,1) * dt  !! 1 means flux
                  endif
               enddo
               if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
                  do imc=1,mcscfnum
                     if (tot_adim.gt.0) then
-                       fluxevalval(imc) = fluxevalval(imc)+fluxeval(abio(:,:,imc),aket(:,:,imc),&
+                       fluxevalval(imc) = fluxevalval(imc) + &
+                            fluxeval(abio(:,:,imc),aket(:,:,imc),&
                             reke,repe,reV2,reyderiv,2) * dt  !! 2 means flux
                     else
-                       fluxevalval(imc) = fluxevalval(imc)+fluxeval(nullvector(:,:),nullvector(:,:),&
+                       fluxevalval(imc) = fluxevalval(imc) + &
+                            fluxeval(nullvector(:,:),nullvector(:,:),&
                             reke,repe,reV2,reyderiv,2) * dt  !! 2 means flux
                     endif
                  enddo
@@ -489,7 +506,8 @@ subroutine fluxgtau0(alg,www,bioww)
 !! only do this after we are sure we've gone through every bra
            if (brabat.eq.ketbat) then
               if (myrank.eq.1) then
-                 open(454, file="Dat/KVLsum.dat", status="old", position="append",iostat=myiostat)
+                 open(454, file="Dat/KVLsum.dat", status="old", &
+                      position="append",iostat=myiostat)
                  call checkiostat(myiostat,"opening kvlsum file")
                  write(454,'(I5,100F18.12)',iostat=myiostat) curtime, curtime*dt, gtau(0,:);    
                  call checkiostat(myiostat,"writing kvlsum file")
@@ -503,7 +521,8 @@ subroutine fluxgtau0(alg,www,bioww)
            if (notiming.ne.2) then
               OFL
               write(mpifileptr,'(A28,F10.4)') " Timing statistics as of T= ",real(curtime,8)*dt
-              write(mpifileptr,'(100A10)') "Times: ", "All", "Read","Biorth", "One-e", "Two-e", "Fluxeval", "FT gtau"
+              write(mpifileptr,'(100A10)') "Times: ", "All", "Read",&
+                   "Biorth", "One-e", "Two-e", "Fluxeval", "FT gtau"
               write(mpifileptr,'(A10,100I10)') " ", times(1:7)/100; CFL
            endif
         endif
@@ -518,13 +537,15 @@ subroutine fluxgtau0(alg,www,bioww)
 
   OFLWR " Taking the FT of g(tau) to get xsection at T= ",curtime*dt; CFL
 
-  allocate(ftgtau(-curtime:curtime,mcscfnum), pulseft(-curtime:curtime,3), pulseftsq(-curtime:curtime))
+  allocate(ftgtau(-curtime:curtime,mcscfnum), pulseft(-curtime:curtime,3), &
+       pulseftsq(-curtime:curtime))
 
   ftgtau(:,:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0
 
   do i=0,curtime
 
-     ftgtau(i,:) = ALLCON(gtau(i,:))   * windowfunct(i,curtime) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
+     ftgtau(i,:) = ALLCON(gtau(i,:))   * windowfunct(i,curtime) * &
+          exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
 
      call vectdpot(i*par_timestep*fluxinterval*fluxskipmult,0,pots1,-1)   !! LENGTH GAUGE.
      if (pulsewindowtoo == 0) then
@@ -544,7 +565,8 @@ subroutine fluxgtau0(alg,www,bioww)
      write(171,*,iostat=myiostat) "#   ", curtime
      call checkiostat(myiostat,"writing gtaufile")
      do i=0,curtime
-        write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  i*par_timestep*FluxInterval*FluxSkipMult, ftgtau(i,:)
+        write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  &
+             i*par_timestep*FluxInterval*FluxSkipMult, ftgtau(i,:)
      enddo
      call checkiostat(myiostat,"writing gtaufile")
      close(171)
@@ -573,7 +595,8 @@ subroutine fluxgtau0(alg,www,bioww)
   estep=2*pi/par_timestep/fluxinterval/fluxskipmult/(2*curtime+1)
 
   if(myrank.eq.1) then
-     open(1004,file=spifile,status="replace",action="readwrite",position="rewind",iostat=myiostat)
+     open(1004,file=spifile,status="replace",action="readwrite",&
+          position="rewind",iostat=myiostat)
      call checkiostat(myiostat,"opening "//spifile)
      write(1004,*,iostat=myiostat)
      call checkiostat(myiostat,"writing "//spifile)
@@ -587,10 +610,12 @@ subroutine fluxgtau0(alg,www,bioww)
 !! NEVERMIND FACTOR OF 1/3
 !!        myfac = 5.291772108d0**2 / 3d0 * 2d0 * PI / 1.37036d2 * wfi
 
-!! WITH THIS FACTOR, NOW THE QUANTUM MECHANICAL CROSS SECTION IN MEGABARNS (10^-18 cm^2) IS IN COLUMN 3 REAL PART
+!! WITH THIS FACTOR, NOW THE QUANTUM MECHANICAL CROSS SECTION IN 
+!! MEGABARNS (10^-18 cm^2) IS IN COLUMN 3 REAL PART
         myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
 
-        write(1004,'(F8.4,100E18.6)',iostat=myiostat) wfi, pulseftsq(i), FTgtau(i,:)/pulseftsq(i) * myfac, ftgtau(i,:)
+        write(1004,'(F8.4,100E18.6)',iostat=myiostat) wfi, pulseftsq(i), &
+             FTgtau(i,:)/pulseftsq(i) * myfac, ftgtau(i,:)
      enddo
      call checkiostat(myiostat,"writing "//spifile)
      close(1004)
@@ -694,15 +719,18 @@ subroutine flux_op_onee(inspfs,keop,peop,flag)
 end subroutine flux_op_onee
 
 
-!! operates with y derivative cross term.  Assumes y^2 and l^2 are in the one electron hamiltonian.
+!! operates with y derivative cross term.  
+!! Assumes y^2 and l^2 are in the one electron hamiltonian.
 
-!!  yop complex antisymmetric  hermitian part is imaginary   times antihermitian op in R (assuming no R ecs scaling, 
-!!    as in all these routines)
+!!  yop complex antisymmetric  hermitian part is imaginary   
+!!  times antihermitian op in R (assuming no R ecs scaling, 
+!!  as in all these routines)
 
 !! fortran imag() returns real value so multiply by i
 
+!! flag=1, flux (imag); flag=0, all    2 flux (imag)
 
-subroutine flux_op_nuc(inspfs,yop,flag) !! flag=1, flux (imag); flag=0, all    2 flux (imag)
+subroutine flux_op_nuc(inspfs,yop,flag)
   use parameters
   implicit none
   DATATYPE, intent(in) :: inspfs(spfsize,nspf)
@@ -742,7 +770,9 @@ end subroutine flux_op_nuc
 
 !! maybe double check if flag.ne.1.
 
-subroutine flux_op_twoe(mobra,moket,V2,flag)  !! flag=1 means flux, otherwise whole op
+!! flag=1 means flux, otherwise whole op
+
+subroutine flux_op_twoe(mobra,moket,V2,flag)
   use parameters
   implicit none
   DATATYPE,intent(in) :: mobra(spfsize,nspf),moket(spfsize,nspf)
@@ -773,7 +803,8 @@ subroutine flux_op_twoe(mobra,moket,V2,flag)  !! flag=1 means flux, otherwise wh
 end subroutine flux_op_twoe
 
 
-!! with flag=1 is sent matrix elements of imaginary part of electronic operators (real valued; function "imaginary part" returns real)
+!! with flag=1 is sent matrix elements of imaginary part of electronic operators 
+!! (real valued; function "imaginary part" returns real)
 !!      multiply these by the real part of the bond operators
 !! with flag=2 vice versa
 !! with flag=0 does full hamiltonian no real or imag part
@@ -817,8 +848,10 @@ function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart,www)
   implicit none
   integer,intent(in) :: flag,ipart
   type(walktype),intent(in) :: www
-  DATATYPE,intent(in) :: abra(numr,www%firstconfig:www%lastconfig),in_aket(numr,www%firstconfig:www%lastconfig),&
-       ke(www%nspf,www%nspf),pe(www%nspf,www%nspf),V2(www%nspf,www%nspf,www%nspf,www%nspf),yderiv(www%nspf,www%nspf)
+  DATATYPE,intent(in) :: abra(numr,www%firstconfig:www%lastconfig),&
+       in_aket(numr,www%firstconfig:www%lastconfig),&
+       ke(www%nspf,www%nspf),pe(www%nspf,www%nspf),&
+       V2(www%nspf,www%nspf,www%nspf,www%nspf),yderiv(www%nspf,www%nspf)
   DATATYPE :: INVR,INVRSQ,fluxeval00,PRODERIV,BONDKE
   DATATYPE,allocatable :: aket(:,:)
   integer :: bra,ket,r,rr

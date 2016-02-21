@@ -346,7 +346,7 @@ subroutine realgramschmidt(n, m, lda, previous, vector)
   enddo
   norm=real(sqrt(realdot(vector,vector,n)),8)  !! ok for imp conv (c/p/ch)
   if (abs(norm).lt.1.d-8) then
-     call openfile();    write(mpifileptr,*) "Warning, small norm in realgramschmidt: ", norm;     call closefile()
+     OFLWR "Warning, small norm in realgramschmidt: ", norm;  CFL
   endif
   vector=vector/norm
 end subroutine realgramschmidt
@@ -368,7 +368,8 @@ subroutine gramschmidt(n, m, lda, previous, vector,parflag)
      norm=sqrt(heredot(vector,vector,n))  !! ok for impconv (chmctdh,pmctdh)
      vector=vector/norm
 !!     if (nancheck.and.((.not.(abs(norm).gt.1e-6)).or.(.not.(abs(norm).lt.1e+10)))) then
-!!        call openfile();    write(mpifileptr, *) "TE MP NOSTOP  Gram schmidt norm",norm, heredot(vector,vector,n), m; !!    call closefile()
+!!        call openfile();    write(mpifileptr, *) &
+!!   "TE MP NOSTOP  Gram schmidt norm",norm, heredot(vector,vector,n), m; !!    call closefile()
 !!     endif
   enddo
 contains
@@ -600,7 +601,9 @@ subroutine bothlnmat(A,N, which)
   sum=0;sum2=0;sum3=0
   do i=1,N
      do j=1,N
-        sum=sum+abs(tempmat(i,j)**2);        sum2=sum2+abs(A(i,j)**2); sum3=sum3+abs(tempmat(i,j)**2)
+        sum=sum+abs(tempmat(i,j)**2)
+        sum2=sum2+abs(A(i,j)**2)
+        sum3=sum3+abs(tempmat(i,j)**2)
      enddo
   enddo
   if (ierr.lt.10.and.((abs(sum/sum2).gt.1.d-7.and.abs(sum2).gt.1d-22).or.(iflag.ne.0))) then
@@ -732,7 +735,7 @@ subroutine invmatsmooth(A,N,LDA,tol)  !! inverse of ANY matrix.
      if (SV(k).ne.0d0) then
         if(SV(k).lt.tol*SV(1)) then    !! it is positive ,whatever
 
-!!$ NAAAH              SV(k)= 1d0 / tol / SV(1) * (3 * (SV(k) / tol / SV(1)) - 2 *( SV(k) / tol / SV(1))**2)
+!!$ NAAAH    SV(k)= 1d0 / tol / SV(1) * (3 * (SV(k) / tol / SV(1)) - 2 *( SV(k) / tol / SV(1))**2)
 
 !!$    SVD so SV is real, keeping old regularization for now v1.19
 
@@ -794,7 +797,7 @@ subroutine realinvmatsmooth(A,N,tol)  !! inverse of ANY matrix.
      if (SV(k).ne.0d0) then
         if(abs(SV(k)).lt.tol) then
 
-!!$ NAAAH           SV(k)= 1d0 / tol * (3 * (SV(k) / tol) - 2 *( SV(k) / tol )**2)
+!!$ NAAAH         SV(k)= 1d0 / tol * (3 * (SV(k) / tol) - 2 *( SV(k) / tol )**2)
 
 !!$    SVD so SV is real, keeping old regularization for now v1.19
 

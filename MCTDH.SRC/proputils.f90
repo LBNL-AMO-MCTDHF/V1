@@ -16,7 +16,8 @@ subroutine project(inspfs, outspfs, prospfs)
      call getOrbSetRange(lowspf,highspf)
   endif
   if (highspf-lowspf+1.gt.0) then
-     call  project00(lowspf,highspf,inspfs(:,lowspf:highspf), outspfs(:,lowspf:highspf), prospfs)
+     call  project00(lowspf,highspf,inspfs(:,lowspf:highspf), &
+          outspfs(:,lowspf:highspf), prospfs)
   endif
   if (parorbsplit.eq.1) then
      call mpiorbgather(outspfs,spfsize)
@@ -66,8 +67,9 @@ subroutine project00(lowspf,highspf,inspfs, outspfs, prospfs)
   endif
 
   if (numspf.gt.0) then
-     call MYGEMM('N','N',spfsize,numspf,nspf+numfrozen,DATAONE,tempprospfs(:,:),spfsize,&
-          mydot(:,lowspf:highspf),nspf+numfrozen,DATAZERO,outspfs(:,lowspf:highspf),spfsize)
+     call MYGEMM('N','N',spfsize,numspf,nspf+numfrozen,DATAONE,&
+          tempprospfs(:,:),spfsize,mydot(:,lowspf:highspf),&
+          nspf+numfrozen,DATAZERO,outspfs(:,lowspf:highspf),spfsize)
   endif
      
 end subroutine project00
@@ -133,8 +135,9 @@ subroutine get_frexchange()
         call mpiorbgather(frozenexchange(:,:),spfsize)
      endif
      if (numspf.gt.0) then
-        call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE, frozenexchange(:,:),spfsize,&
-             yyy%reducedinvr(:,lowspf:highspf,0),nspf, DATAZERO, yyy%frozenexchinvr(:,lowspf:highspf,0),spfsize)
+        call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE, frozenexchange(:,:),&
+             spfsize,yyy%reducedinvr(:,lowspf:highspf,0),nspf, DATAZERO, &
+             yyy%frozenexchinvr(:,lowspf:highspf,0),spfsize)
      endif
      if (parorbsplit.eq.1) then
         call mpiorbgather(yyy%frozenexchinvr(:,:,0),spfsize)
@@ -370,7 +373,8 @@ subroutine op_frozen_exchange(lowspf,highspf,inspfs,outspfs)
   integer :: numspf
   numspf=highspf-lowspf+1
   if (numspf.gt.0) then
-     call op_frozen_exchange0(numspf,inspfs,outspfs,frozenspfs,numfrozen,spfmvals(lowspf:highspf))
+     call op_frozen_exchange0(numspf,inspfs,outspfs,frozenspfs,&
+          numfrozen,spfmvals(lowspf:highspf))
   endif
 end subroutine op_frozen_exchange
 

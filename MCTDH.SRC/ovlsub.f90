@@ -32,7 +32,8 @@ subroutine ovl_initial()
   use mpimod
   implicit none
 
-  integer :: jnumovl, ifile,acomplex,spfcomplex,nstate,i,kk,tdims(3),tndof,tnumconfig,tnumr,tnspf,myiostat
+  integer :: jnumovl, ifile,acomplex,spfcomplex,nstate,i,kk,tdims(3),&
+       tndof,tnumconfig,tnumr,tnspf,myiostat
   external :: readavectorsubsimple
   DATATYPE, allocatable :: read_avectors(:,:), read_spfs(:,:)
 
@@ -45,23 +46,27 @@ subroutine ovl_initial()
   numovl=0
   do ifile=1,numovlfiles
      if (myrank.eq.1) then
-        open(909,file=ovlspffiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
+        open(909,file=ovlspffiles(ifile),status="unknown",&
+             form="unformatted",iostat=myiostat)
         call checkiostat(myiostat,"opening "//ovlspffiles(ifile))
-        open(910,file=ovlavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
+        open(910,file=ovlavectorfiles(ifile),status="unknown",&
+             form="unformatted",iostat=myiostat)
         call checkiostat(myiostat,"opening "//ovlavectorfiles(ifile))
         call avector_header_read_simple(910,nstate,tndof,tnumr,tnumconfig,acomplex)
         call spf_header_read(909,tdims,tnspf,spfcomplex)
         close(909);     close(910)
      endif
 
-     call mympiibcastone(nstate,1); call mympiibcastone(tnspf,1); call mympiibcastone(tnumconfig,1); 
+     call mympiibcastone(nstate,1)
+     call mympiibcastone(tnspf,1); call mympiibcastone(tnumconfig,1); 
      call mympiibcastone(tnumr,1)
 
      numovl=numovl+nstate
 
      if (tnspf.gt.nspf+numfrozen) then
         OFLWR " *** WARNING *** WARNING *** WARNING *** WARNING *** WARNING *** "
-        WRFL "  number of spfs for overlap states is LARGER than in calculation ", tnspf,nspf+numfrozen," REMOVING THOSE ORBITALS!!"; CFL
+        WRFL "  number of spfs for overlap states is LARGER than in calculation ", &
+             tnspf,nspf+numfrozen," REMOVING THOSE ORBITALS!!"; CFL
      endif
      if (tnumconfig.gt.num_config)  then
         OFLWR " *** WARNING *** WARNING *** WARNING *** WARNING *** WARNING *** "
@@ -72,7 +77,8 @@ subroutine ovl_initial()
      endif
   enddo
 
-  allocate(overlaps(numovl,0:autosize,mcscfnum),orig_spfs(spfsize,nspf,numovl),orig_avectors(tot_adim,numovl))
+  allocate(overlaps(numovl,0:autosize,mcscfnum),&
+       orig_spfs(spfsize,nspf,numovl),orig_avectors(tot_adim,numovl))
 
   allocate(read_spfs(spfsize,nspf+numfrozen))
 
@@ -88,38 +94,46 @@ subroutine ovl_initial()
   do ifile=1,numovlfiles
 
      read_spfs(:,:)=0d0
-     call load_spfs0(read_spfs(:,:), spfdims, nspf+numfrozen, spfdimtype, ovlspffiles(ifile), tnspf, (/0,0,0/))
+     call load_spfs0(read_spfs(:,:), spfdims, nspf+numfrozen, &
+          spfdimtype, ovlspffiles(ifile), tnspf, (/0,0,0/))
      orig_spfs(:,:,jnumovl+1)=read_spfs(:,1+numfrozen:nspf+numfrozen)
 
      do i=tnspf-numfrozen+1,nspf
         call staticvector(orig_spfs(:,i,jnumovl+1),spfsize)
         if (parorbsplit.eq.3) then
-           call gramschmidt(spfsize,i-1,spfsize,orig_spfs(:,:,jnumovl+1),orig_spfs(:,i,jnumovl+1),.true.)
+           call gramschmidt(spfsize,i-1,spfsize,&
+                orig_spfs(:,:,jnumovl+1),orig_spfs(:,i,jnumovl+1),.true.)
         else
-           call gramschmidt(spfsize,i-1,spfsize,orig_spfs(:,:,jnumovl+1),orig_spfs(:,i,jnumovl+1),.false.)
+           call gramschmidt(spfsize,i-1,spfsize,&
+                orig_spfs(:,:,jnumovl+1),orig_spfs(:,i,jnumovl+1),.false.)
         endif
      enddo
 
      if (myrank.eq.1) then
-        open(910,file=ovlavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
+        open(910,file=ovlavectorfiles(ifile),status="unknown",&
+             form="unformatted",iostat=myiostat)
         call checkiostat(myiostat,"opening "//ovlavectorfiles(ifile))
         call avector_header_read_simple(910,nstate,tndof,tnumr,tnumconfig,acomplex)
      endif
-     call mympiibcastone(nstate,1); call mympiibcastone(tndof,1); call mympiibcastone(tnumr,1);
+     call mympiibcastone(nstate,1); call mympiibcastone(tndof,1); 
+     call mympiibcastone(tnumr,1);
      call mympiibcastone(tnumconfig,1); call mympiibcastone(acomplex,1)
      if (myrank.eq.1) then
-        call easy_load_avectors(910,acomplex,read_avectors(:,jnumovl+1),tnumr,tnumconfig,nstate)
+        call easy_load_avectors(910,acomplex,read_avectors(:,jnumovl+1),&
+             tnumr,tnumconfig,nstate)
         close(910)
      endif
 
      if (par_consplit.eq.0) then
         if (myrank.eq.1) then
-           orig_avectors(:,jnumovl+1:jnumovl+nstate)=read_avectors(:,jnumovl+1:jnumovl+nstate)
+           orig_avectors(:,jnumovl+1:jnumovl+nstate) = &
+                read_avectors(:,jnumovl+1:jnumovl+nstate)
         endif
         call mympibcast(orig_avectors(:,jnumovl+1),1,num_config*numr*nstate)
      else
         do kk=1,nstate
-           call myscatterv(read_avectors(:,jnumovl+kk),orig_avectors(:,jnumovl+kk),configs_perproc(:)*numr)
+           call myscatterv(read_avectors(:,jnumovl+kk),&
+                orig_avectors(:,jnumovl+kk),configs_perproc(:)*numr)
         enddo
      endif
 
@@ -163,7 +177,8 @@ subroutine getoverlaps(forceflag)
      open(881,file=outovl, status="unknown",iostat=myiostat)
      call checkiostat(myiostat,"opening "//outovl)
      do i=0,xcalledflag-1
-        write(881,'(F12.3, 1000E20.10)',iostat=myiostat) i*autotimestep,abs(overlaps(:,i,:))**2
+        write(881,'(F12.3, 1000E20.10)',iostat=myiostat) &
+             i*autotimestep,abs(overlaps(:,i,:))**2
      enddo
      call checkiostat(myiostat,"writing "//outovl)
      close(881)
@@ -188,7 +203,8 @@ subroutine mcscf_matel()
 
   do j=1,numovl
      do i=1,numovl
-        call autocorrelate_one(www,bwwptr, orig_avectors(:,i), orig_spfs(:,:,i), orig_spfs(:,:,j), orig_avectors(:,j), myovl(i,j), numr)
+        call autocorrelate_one(www,bwwptr, orig_avectors(:,i), orig_spfs(:,:,i), &
+             orig_spfs(:,:,j), orig_avectors(:,j), myovl(i,j), numr)
      enddo
   enddo
 
@@ -216,10 +232,12 @@ subroutine wfnovl()
   integer :: k,molength,alength,nt,ketbat,imc,ispf,myiostat
   real*8 :: piover2,dt,angle(mcscfnum)
   DATATYPE :: dot,myovl(mcscfnum) , bradot,phase,ketdot,blah
-  DATATYPE, allocatable :: read_bramo(:,:), read_braavec(:,:), read_ketmo(:,:), read_ketavec(:,:),&
+  DATATYPE, allocatable :: read_bramo(:,:), read_braavec(:,:), &
+       read_ketmo(:,:), read_ketavec(:,:),&
        bramo(:,:),braavec(:,:),ketmo(:,:),ketavec(:,:)
 
-  allocate(bramo(spfsize,nspf),braavec(tot_adim,mcscfnum),ketmo(spfsize,nspf),ketavec(tot_adim,mcscfnum))
+  allocate(bramo(spfsize,nspf),braavec(tot_adim,mcscfnum),&
+       ketmo(spfsize,nspf),ketavec(tot_adim,mcscfnum))
 
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
@@ -238,19 +256,22 @@ subroutine wfnovl()
 
 !!  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  nt=floor(final time/dt)
 
-  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
+  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  
+  nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
 
   piover2=atan2(1d0,1d0)*2
 
 !! initial setup
 
   if (myrank.eq.1) then
-     inquire (iolength=molength) read_ketmo(:,:);  inquire (iolength=alength) read_ketavec(:,:)
+     inquire (iolength=molength) read_ketmo(:,:)
+     inquire (iolength=alength) read_ketavec(:,:)
   endif
   call mympiibcastone(molength,1); call mympiibcastone(alength,1)
 
   OFL
-  write(mpifileptr,*) "MO record length is ",molength;  write(mpifileptr,*) "AVEC record length is ",alength
+  write(mpifileptr,*) "MO record length is ",molength
+  write(mpifileptr,*) "AVEC record length is ",alength
   CFL
 
   phase=(1d0,0d0)
@@ -259,13 +280,17 @@ subroutine wfnovl()
      
      OFLWR "Reading ket batch ", ketbat, " of ", nt+1; CFL
      if (myrank.eq.1) then
-        open(11001,file=fluxmofile2,status="old",form="unformatted",access="direct",recl=molength,iostat=myiostat)
+        open(11001,file=fluxmofile2,status="old",form="unformatted",&
+             access="direct",recl=molength,iostat=myiostat)
         call checkiostat(myiostat,"opening "//fluxmofile2)
-        open(11002,file=fluxafile2,status="old",form="unformatted",access="direct",recl=alength,iostat=myiostat)
+        open(11002,file=fluxafile2,status="old",form="unformatted",&
+             access="direct",recl=alength,iostat=myiostat)
         call checkiostat(myiostat,"opening "//fluxafile2)
-        open(1001,file=fluxmofile,status="old",form="unformatted",access="direct",recl=molength,iostat=myiostat)
+        open(1001,file=fluxmofile,status="old",form="unformatted",&
+             access="direct",recl=molength,iostat=myiostat)
         call checkiostat(myiostat,"opening "//fluxmofile)
-        open(1002,file=fluxafile,status="old",form="unformatted",access="direct",recl=alength,iostat=myiostat)
+        open(1002,file=fluxafile,status="old",form="unformatted",&
+             access="direct",recl=alength,iostat=myiostat)
         call checkiostat(myiostat,"opening "//fluxafile)
         
         k=FluxSkipMult*(ketbat-1)+1
@@ -316,14 +341,16 @@ subroutine wfnovl()
            call mympireduceone(bradot); call mympireduceone(ketdot)
         endif
         
-           call autocorrelate_one(www,bwwptr,braavec(:,imc),bramo,ketmo,ketavec(:,imc),myovl(imc),numr)
+           call autocorrelate_one(www,bwwptr,braavec(:,imc),bramo,ketmo,&
+                ketavec(:,imc),myovl(imc),numr)
        
         blah=myovl(imc)/sqrt(bradot*ketdot)
         angle(imc)=acos(abs(blah))
         myovl(imc)=bradot+ketdot-myovl(imc)-CONJUGATE(myovl(imc))
      enddo
      
-     OFL; write(mpifileptr,'(A30,1000F18.10)') "ERRDOT,ABSERRDOT,ANGLE T= ",dt*ketbat,myovl,(abs(myovl(imc)),angle(imc),imc=1,mcscfnum); CFL
+     OFL; write(mpifileptr,'(A30,1000F18.10)') "ERRDOT,ABSERRDOT,ANGLE T= ",&
+          dt*ketbat,myovl,(abs(myovl(imc)),angle(imc),imc=1,mcscfnum); CFL
   enddo
 
   deallocate(bramo,braavec,ketmo,ketavec)

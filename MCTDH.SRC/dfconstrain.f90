@@ -10,7 +10,7 @@
 !!   
 !!  g_ij = < phi_i| d/dt | phi_j >    , that's variable conmatel, should be hermitian
 !!
-!!   where i is virtual ("excluded") and j is active ("included")   (other g_ij undefined, 0=0)
+!! where i is virtual ("excluded") and j is active ("included") (other g_ij undefined, 0=0)
 !! hermitian g matrix can then be immediattely gotten by fiat
 !!
 
@@ -55,7 +55,8 @@ subroutine dferror(www,cptr,sptr,avector,numvects,outerror,time)
   DATATYPE,allocatable :: temp1(:,:),temp2(:,:)
   integer :: i,imc
 
-  allocate(temp1(numr,www%firstconfig:www%lastconfig), temp2(numr,www%firstconfig:www%lastconfig))
+  allocate(temp1(numr,www%firstconfig:www%lastconfig), &
+       temp2(numr,www%firstconfig:www%lastconfig))
   temp1=0; temp2=0
 
   outerror=0d0
@@ -100,7 +101,8 @@ subroutine get_smallwalkvects(www,avector, smallwalkvects,nblock,howmany)
   type(walktype),intent(in) :: www
   integer,intent(in) :: nblock,howmany
   DATATYPE,intent(in) ::  avector(nblock,www%firstconfig:www%lastconfig,howmany)
-  DATATYPE,intent(out) :: smallwalkvects(nblock,www%configstart:www%configend,howmany,www%nspf,www%nspf)
+  DATATYPE,intent(out) :: smallwalkvects(nblock,www%configstart:www%configend,&
+       howmany,www%nspf,www%nspf)
   DATATYPE, allocatable ::  bigavector(:,:,:)
   integer ::    i,ii,ix
 
@@ -117,7 +119,8 @@ subroutine get_smallwalkvects(www,avector, smallwalkvects,nblock,howmany)
   endif
   if (www%parconsplit.ne.0) then
      do ii=1,howmany
-        call mpiallgather(bigavector(:,:,ii),nblock*www%numconfig,nblock*www%configsperproc(:),nblock*www%maxconfigsperproc)
+        call mpiallgather(bigavector(:,:,ii),nblock*www%numconfig,&
+             nblock*www%configsperproc(:),nblock*www%maxconfigsperproc)
      enddo
   endif
   if (www%configend.ge.www%configstart) then
@@ -125,7 +128,9 @@ subroutine get_smallwalkvects(www,avector, smallwalkvects,nblock,howmany)
   endif
   do i=1,www%ddd%numdfwalks
      ii=www%ddd%includedorb(i);     ix=www%ddd%excludedorb(i)
-     smallwalkvects(:,www%ddd%dfwalkto(i),:,ii,ix)=smallwalkvects(:,www%ddd%dfwalkto(i),:,ii,ix) + bigavector(:,www%ddd%dfwalkfrom(i),:) * www%ddd%dfwalkphase(i)
+     smallwalkvects(:,www%ddd%dfwalkto(i),:,ii,ix) = &
+          smallwalkvects(:,www%ddd%dfwalkto(i),:,ii,ix) + &
+          bigavector(:,www%ddd%dfwalkfrom(i),:) * www%ddd%dfwalkphase(i)
   enddo
 
   deallocate(bigavector)
@@ -154,7 +159,9 @@ subroutine get_rhomat(www,avector, rhomat,nblock,howmany)
      OFLWR "WTF DFRESTRICT IS  ", www%dfrestrictflag,www%dflevel; CFLST
   endif
   
-  allocate(smallwalkvects(nblock,www%configstart:www%configend,howmany,www%nspf,www%nspf))
+  allocate(smallwalkvects(nblock,www%configstart:www%configend,&
+       howmany,www%nspf,www%nspf))
+  smallwalkvects=0
 
 !! call always
   call get_smallwalkvects(www,avector,smallwalkvects,nblock,howmany)
@@ -165,7 +172,8 @@ subroutine get_rhomat(www,avector, rhomat,nblock,howmany)
   if (parorbsplit.eq.1.and.sparseconfigflag.eq.0) then
      call checkorbsetrange(www%nspf,flag)
      if (flag.ne.0) then
-        OFLWR "error exit, can't do get_rhomat with ",www%nspf," orbitals sparse mode"; CFLST
+        OFLWR "error exit, can't do get_rhomat with ",www%nspf,&
+             " orbitals sparse mode"; CFLST
      endif
      call getOrbSetRange(lowspf,highspf)
   endif
@@ -174,15 +182,17 @@ subroutine get_rhomat(www,avector, rhomat,nblock,howmany)
   ii=(www%configend-www%configstart+1)*nblock*howmany
   if (ii.gt.0.and.numspf.gt.0) then
      call MYGEMM(CNORMCHAR,'N',www%nspf**2,www%nspf*numspf,ii,DATAONE,&
-          smallwalkvects,ii,smallwalkvects(:,:,:,:,lowspf),ii,DATAZERO,rhomat(:,:,:,lowspf),www%nspf**2)
+          smallwalkvects,ii,smallwalkvects(:,:,:,:,lowspf),ii,DATAZERO,&
+          rhomat(:,:,:,lowspf),www%nspf**2)
   else if (numspf.gt.0) then
      rhomat(:,:,:,lowspf:highspf)=0d0
   endif
   if (parorbsplit.eq.1.and.sparseconfigflag.eq.0) then
      call mpiorbgather(rhomat,www%nspf**3)
   endif
+!! BAD REDUCE.  REDUCE BEFORE ORBGATHER (need new communicators)
   if (sparseconfigflag.ne.0) then
-     call mympireduce(rhomat,www%nspf**4)  !! BAD REDUCE.  REDUCE BEFORE ORBGATHER (need new communicators)
+     call mympireduce(rhomat,www%nspf**4) 
   endif
 
   deallocate(smallwalkvects)
@@ -230,19 +240,22 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
        lowspf,highspf,numspf,flag,myiostat
   integer :: ipairs(2,www%nspf*(www%nspf-1))
   DATATYPE, allocatable :: avectorp(:,:), rhs(:,:), avector(:,:), rhomat(:,:,:,:), &
-       smallwalkvects(:,:,:,:)   !! numconfig,numr,alpha,beta  alpha=included beta=excluded
-  real*8, allocatable :: rhomatpairs(:,:,:,:),rhspairs(:,:), rhspairstemp(:,:), rhspairsbig(:,:), &
-       projector(:,:,:,:,:), realrhomat(:,:,:,:,:,:), bigprojector(:,:,:,:,:), rhomatpairsbig(:,:,:,:), &
-       realrhs(:,:,:), sing(:), rwork(:), rhomatpairscopy(:,:,:,:), rhomatpairsbigcopy(:,:,:,:), &
-       rhomatpairscopy2(:,:,:,:), rhspairstemp2(:,:),&
-       mattemp(:,:),pseudoinv(:,:), rhspairsbigtemp(:,:), temppairs(:,:),temppairsbig(:,:)
+!! numconfig,numr,alpha,beta  alpha=included beta=excluded
+       smallwalkvects(:,:,:,:)  
+  real*8, allocatable :: rhomatpairs(:,:,:,:),rhspairs(:,:), rhspairstemp(:,:), &
+       rhspairsbig(:,:), projector(:,:,:,:,:), realrhomat(:,:,:,:,:,:), &
+       bigprojector(:,:,:,:,:), rhomatpairsbig(:,:,:,:), &
+       realrhs(:,:,:), sing(:), rwork(:), rhomatpairscopy(:,:,:,:), &
+       rhomatpairsbigcopy(:,:,:,:), rhomatpairscopy2(:,:,:,:), rhspairstemp2(:,:),&
+       mattemp(:,:),pseudoinv(:,:), rhspairsbigtemp(:,:), temppairs(:,:), &
+       temppairsbig(:,:)
   complex*16, allocatable :: work(:)
 #ifdef REALGO
   integer, parameter :: zzz=1
 #else
   integer, parameter :: zzz=2
 #endif
-  real*8 :: time,   myconjg(zzz,zzz)  , oneone(zzz,zzz), iimag(zzz,zzz), myperm(zzz,zzz)
+  real*8 :: time, myconjg(zzz,zzz), oneone(zzz,zzz), iimag(zzz,zzz), myperm(zzz,zzz)
   real*8 :: rrcond
 
   if (drivingflag.ne.0) then
@@ -268,13 +281,15 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
   if (notiming.eq.0.and.myrank.eq.1) then
      if (icalled.eq.1) then
-        open(8712,file=timingdir(1:getlen(timingdir)-1)//"/dfconstrain.dat",status="unknown",iostat=myiostat)
+        open(8712,file=timingdir(1:getlen(timingdir)-1)//"/dfconstrain.dat",&
+             status="unknown",iostat=myiostat)
         call checkiostat(myiostat,"opening dfconstrain timing file")
         write(8712,*,iostat=myiostat) "DF timings."
         call checkiostat(myiostat,"writing dfconstrain timing file")
         close(8712)
      else if (mod(icalled,30).eq.0) then
-        open(8712,file=timingdir(1:getlen(timingdir)-1)//"/dfconstrain.dat",status="old", position="append",iostat=myiostat)
+        open(8712,file=timingdir(1:getlen(timingdir)-1)//"/dfconstrain.dat",&
+             status="old", position="append",iostat=myiostat)
         call checkiostat(myiostat,"opening dfconstrain timing file")
         write(8712,'(100I12)',iostat=myiostat) times(1:14)/1000
         call checkiostat(myiostat,"writing dfconstrain timing file")
@@ -282,10 +297,14 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
      endif
   endif
 
-  cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
+  cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   
+  cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
 
-  allocate(avectorp(numr,www%firstconfig:www%lastconfig), avector(numr,www%firstconfig:www%lastconfig), &
-       smallwalkvects(numr,www%configstart:www%configend,www%nspf,www%nspf), rhs(www%nspf,www%nspf),  rhomat(www%nspf,www%nspf,www%nspf,www%nspf))
+  allocate(avectorp(numr,www%firstconfig:www%lastconfig), &
+       avector(numr,www%firstconfig:www%lastconfig), &
+       smallwalkvects(numr,www%configstart:www%configend,www%nspf,www%nspf), &
+       rhs(www%nspf,www%nspf),  rhomat(www%nspf,www%nspf,www%nspf,www%nspf))
+  avectorp=0; avector=0; smallwalkvects=0; rhs=0; rhomat=0
 
   isize=0
   do ishell=1,numshells-1
@@ -300,7 +319,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
   allocate(projector(zzz,isize,zzz,www%nspf,www%nspf), &
        bigprojector(zzz,2*isize,zzz,www%nspf,www%nspf), &
        mattemp(zzz*isize,zzz*isize),pseudoinv(zzz*isize,2*zzz*isize))
-  projector=0d0;   bigprojector=0d0;
+  projector=0d0;   bigprojector=0d0;; mattemp=0; pseudoinv=0
 
 
   do ii=1,isize
@@ -319,16 +338,23 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
   enddo
 
-  allocate(realrhs(zzz,www%nspf,www%nspf),realrhomat(zzz,www%nspf,www%nspf,zzz,www%nspf,www%nspf), &
-       rhomatpairs(zzz,isize,zzz,isize),rhspairs(zzz,isize),rhspairstemp(zzz,isize), rhomatpairscopy(zzz,isize,zzz,isize), &
+  allocate(realrhs(zzz,www%nspf,www%nspf),&
+       realrhomat(zzz,www%nspf,www%nspf,zzz,www%nspf,www%nspf), &
+       rhomatpairs(zzz,isize,zzz,isize),rhspairs(zzz,isize),&
+       rhspairstemp(zzz,isize), rhomatpairscopy(zzz,isize,zzz,isize), &
        rhomatpairscopy2(zzz,isize,zzz,isize),rhspairstemp2(zzz,isize), &
-       rhomatpairsbig(zzz,2*isize,zzz,isize),rhspairsbig(zzz,2*isize),rhspairsbigtemp(zzz,2*isize), &
-       rhomatpairsbigcopy(zzz,2*isize,zzz,isize))
-  allocate(temppairs(zzz*isize,zzz*www%nspf**2),temppairsbig(2*zzz*isize,zzz*www%nspf**2))
-
+       rhomatpairsbig(zzz,2*isize,zzz,isize),rhspairsbig(zzz,2*isize),&
+       rhspairsbigtemp(zzz,2*isize),rhomatpairsbigcopy(zzz,2*isize,zzz,isize),&
+       temppairs(zzz*isize,zzz*www%nspf**2),temppairsbig(2*zzz*isize,zzz*www%nspf**2))
+  realrhs=0; realrhomat=0; rhomatpairs=0; rhspairstemp=0;
+  rhomatpairscopy=0; rhomatpairscopy2=0; rhspairstemp2=0; rhomatpairsbig=0;
+  rhomatpairsbig=0; rhspairsbig=0; rhspairsbigtemp=0; rhomatpairsbigcopy=0;
+  temppairs=0; temppairsbig=0
 
   lwork=100*isize*zzz
   allocate(sing(2*isize*zzz),work(lwork), rwork(lwork))
+  sing=0; work=0; rwork=0
+
   rrcond=lioreg
 
   call system_clock(jtime);   times(1)=times(1)+jtime-itime
@@ -337,7 +363,8 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
   if (parorbsplit.eq.1.and.sparseconfigflag.eq.0) then
      call checkorbsetrange(www%nspf,flag)
      if (flag.ne.0) then
-        OFLWR "error exit, can't do get_dfconstraint0 with ",www%nspf," orbitals sparse mode"; CFLST
+        OFLWR "error exit, can't do get_dfconstraint0 with ",www%nspf,&
+             " orbitals sparse mode"; CFLST
      endif
      call getOrbSetRange(lowspf,highspf)
   endif
@@ -378,39 +405,41 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
         ii=(www%configend-www%configstart+1)*numr
         if (ii.gt.0.and.numspf.gt.0) then
            call MYGEMM(CNORMCHAR,'N',www%nspf**2,www%nspf*numspf,ii,DATAONE,&
-                smallwalkvects,ii,smallwalkvects(:,:,:,lowspf),ii,DATAZERO,rhomat(:,:,:,lowspf),www%nspf**2)
+                smallwalkvects,ii,smallwalkvects(:,:,:,lowspf),ii,DATAZERO,&
+                rhomat(:,:,:,lowspf),www%nspf**2)
         else if (numspf.gt.0) then
            rhomat(:,:,:,lowspf:highspf)=0d0
         endif
-        call system_clock(jtime);        times(4)=times(4)+jtime-itime;     itime=jtime
+        call system_clock(jtime);    times(4)=times(4)+jtime-itime;     itime=jtime
         if (parorbsplit.eq.1.and.sparseconfigflag.eq.0) then
            call mpiorbgather(rhomat,www%nspf**3)
         endif
+!! BAD REDUCE.  REDUCE BEFORE ORBGATHER (need new communicators)
         if (sparseconfigflag.ne.0) then
-           call mympireduce(rhomat,www%nspf**4)  !! BAD REDUCE.  REDUCE BEFORE ORBGATHER (need new communicators)
+           call mympireduce(rhomat,www%nspf**4)  
         endif
-        call system_clock(jtime);        times(5)=times(5)+jtime-itime;     itime=jtime
+        call system_clock(jtime);     times(5)=times(5)+jtime-itime;     itime=jtime
         
         if (conway.eq.2.or.conway.eq.3) then
            rhomat(:,:,:,:)=rhomat(:,:,:,:)/timefac
         endif
-        call system_clock(jtime);        times(6)=times(6)+jtime-itime;     itime=jtime
+        call system_clock(jtime);     times(6)=times(6)+jtime-itime;     itime=jtime
         
         call assigncomplexmat(realrhomat,rhomat, www%nspf**2,www%nspf**2)
      
-        call system_clock(jtime);        times(7)=times(7)+jtime-itime;     itime=jtime
+        call system_clock(jtime);     times(7)=times(7)+jtime-itime;     itime=jtime
 
-        call DGEMM('N','N',zzz*isize,zzz*www%nspf**2,zzz*www%nspf**2,1d0,projector,zzz*isize,&
-             realrhomat,zzz*www%nspf**2,0d0,temppairs,zzz*isize)
+        call DGEMM('N','N',zzz*isize,zzz*www%nspf**2,zzz*www%nspf**2,1d0,projector,&
+             zzz*isize,realrhomat,zzz*www%nspf**2,0d0,temppairs,zzz*isize)
         call DGEMM('N','T',zzz*isize,zzz*isize,zzz*www%nspf**2,1d0,temppairs,zzz*isize,&
              projector,zzz*isize,0d0,rhomatpairs,zzz*isize)
 
-        call DGEMM('N','N',2*zzz*isize,zzz*www%nspf**2,zzz*www%nspf**2,1d0,bigprojector,2*zzz*isize,&
-             realrhomat,zzz*www%nspf**2,0d0,temppairsbig,2*zzz*isize)
-        call DGEMM('N','T',2*zzz*isize,zzz*isize,zzz*www%nspf**2,1d0,temppairsbig,2*zzz*isize,&
-             projector,zzz*isize,0d0,rhomatpairsbig,2*zzz*isize)
+        call DGEMM('N','N',2*zzz*isize,zzz*www%nspf**2,zzz*www%nspf**2,1d0,bigprojector,&
+             2*zzz*isize,realrhomat,zzz*www%nspf**2,0d0,temppairsbig,2*zzz*isize)
+        call DGEMM('N','T',2*zzz*isize,zzz*isize,zzz*www%nspf**2,1d0,temppairsbig,&
+             2*zzz*isize,projector,zzz*isize,0d0,rhomatpairsbig,2*zzz*isize)
 
-        call system_clock(jtime);        times(8)=times(8)+jtime-itime;     itime=jtime
+        call system_clock(jtime);     times(8)=times(8)+jtime-itime;     itime=jtime
 
         if (iiyy.eq.1) then
            call sparseconfigmult(www,avector,avectorp,cptr,sptr,1,1,0,0,time,imc)
@@ -418,7 +447,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
            call sparseconfigpulsemult(www,avector,avectorp,cptr,sptr,iiyy-1,imc)
         endif
 
-        call system_clock(jtime);        times(9)=times(9)+jtime-itime;     itime=jtime
+        call system_clock(jtime);    times(9)=times(9)+jtime-itime;     itime=jtime
         
         if (conway.ne.2.and.conway.ne.3) then
            avectorp(:,:)=avectorp(:,:)*timefac   
@@ -428,32 +457,36 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
         if (www%configend.ge.www%configstart) then
            do j=lowspf,highspf
               do i=1,www%nspf
-                 rhs(i,j)=dot(smallwalkvects(:,:,i,j),avectorp(:,www%configstart:www%configend),(www%configend-www%configstart+1)*numr)
+                 rhs(i,j)=dot(smallwalkvects(:,:,i,j),&
+                      avectorp(:,www%configstart:www%configend),&
+                      (www%configend-www%configstart+1)*numr)
               enddo
            enddo
         endif
 
-        call system_clock(jtime);        times(10)=times(10)+jtime-itime;     itime=jtime
+        call system_clock(jtime);    times(10)=times(10)+jtime-itime;   itime=jtime
         if (parorbsplit.eq.1.and.sparseconfigflag.eq.0) then
            call mpiorbgather(rhs,www%nspf)
         endif
         if (sparseconfigflag.ne.0) then
            call mympireduce(rhs,www%nspf**2)
         endif
-        call system_clock(jtime);        times(11)=times(11)+jtime-itime;     itime=jtime
+        call system_clock(jtime);    times(11)=times(11)+jtime-itime;   itime=jtime
 
         call assigncomplexvec(realrhs(:,:,:),rhs(:,:), www%nspf**2)
         
         rhspairs(:,:)=RESHAPE(MATMUL(RESHAPE(projector,(/zzz*isize,zzz*www%nspf**2/)), &
              RESHAPE(realrhs(:,:,:),(/zzz*www%nspf**2,1/))),(/zzz,isize/))
-        rhspairsbig(:,:)=RESHAPE(MATMUL(RESHAPE(bigprojector,(/2*zzz*isize,zzz*www%nspf**2/)), &
+        rhspairsbig(:,:)=RESHAPE(MATMUL(RESHAPE(bigprojector,&
+             (/2*zzz*isize,zzz*www%nspf**2/)), &
              RESHAPE(realrhs(:,:,:),(/zzz*www%nspf**2,1/))),(/zzz,2*isize/))
         
         if (conway.ne.1.and.conway.ne.3) then
            rhomatpairscopy(:,:,:,:)=rhomatpairscopy(:,:,:,:)+rhomatpairs(:,:,:,:)
            rhspairstemp(:,:)=rhspairstemp(:,:)+rhspairs(:,:)
         else
-           rhomatpairsbigcopy(:,:,:,:)=rhomatpairsbigcopy(:,:,:,:)+rhomatpairsbig(:,:,:,:)
+           rhomatpairsbigcopy(:,:,:,:)=rhomatpairsbigcopy(:,:,:,:) + &
+                rhomatpairsbig(:,:,:,:)
            rhspairsbigtemp(:,:)=rhspairsbigtemp(:,:)+rhspairsbig(:,:)
         endif
 
@@ -485,20 +518,24 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
         call checksym(rhomatpairscopy,isize*zzz)
 
         call realinvmatsmooth(rhomatpairscopy,isize*zzz,lioreg)
-        call dgemv('N',isize*zzz,isize*zzz,1d0,rhomatpairscopy,isize*zzz,rhspairstemp,1,0d0,rhspairs,1)
+        call dgemv('N',isize*zzz,isize*zzz,1d0,rhomatpairscopy,&
+             isize*zzz,rhspairstemp,1,0d0,rhspairs,1)
 
      else
         
         mattemp(:,:)= &
-             MATMUL(TRANSPOSE(RESHAPE(rhomatpairsbigcopy(:,:,:,:),(/2*isize*zzz,isize*zzz/))),&
+             MATMUL(TRANSPOSE(RESHAPE(rhomatpairsbigcopy(:,:,:,:),&
+             (/2*isize*zzz,isize*zzz/))),&
              RESHAPE(rhomatpairsbigcopy(:,:,:,:),(/2*isize*zzz,isize*zzz/)))
         call realinvmatsmooth(mattemp,isize*zzz,lioreg)
-        pseudoinv(:,:)=MATMUL(mattemp,TRANSPOSE(RESHAPE(rhomatpairsbigcopy(:,:,:,:),(/2*isize*zzz,isize*zzz/))))
-        call DGEMV('N',zzz*isize,2*zzz*isize,1d0,pseudoinv(:,:),isize*zzz,rhspairsbigtemp,1,0d0,rhspairs(:,:),1)
+        pseudoinv(:,:)=MATMUL(mattemp,TRANSPOSE(RESHAPE(rhomatpairsbigcopy(:,:,:,:),&
+             (/2*isize*zzz,isize*zzz/))))
+        call DGEMV('N',zzz*isize,2*zzz*isize,1d0,pseudoinv(:,:),isize*zzz,&
+             rhspairsbigtemp,1,0d0,rhspairs(:,:),1)
 
      endif
 
-     call system_clock(jtime);        times(13)=times(13)+jtime-itime;    itime=jtime
+     call system_clock(jtime);   times(13)=times(13)+jtime-itime;    itime=jtime
 
      tempmatel(:,:)=0d0
 
@@ -511,7 +548,8 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 #endif
      enddo
 
-    tempmatel(:,:)=  ( tempmatel(:,:) -TRANSPOSE(CONJUGATE(tempmatel(:,:)))  ) / timefac  * condamp
+    tempmatel(:,:)=  ( tempmatel(:,:) -TRANSPOSE(CONJUGATE(tempmatel(:,:)))  ) &
+         / timefac  * condamp
 
      select case(iiyy)
      case(1)
@@ -565,8 +603,10 @@ subroutine get_denconstraint(time)
 end subroutine get_denconstraint
 
 
-!! lioden.    111510 WAS C-order.  1)  change refs to denmat because denmat is now denmat not transpose denmat
-!!                                 2)  change C-order because think that also has to do with denmat transpose and not just internal to these subroutines
+!! lioden.    111510 WAS C-order.  1)  change refs to denmat because 
+!!                                     denmat is now denmat not transpose denmat
+!!                                 2)  change C-order because think that also has 
+!!        to do with denmat transpose and not just internal to these subroutines
 !!                                   
 !! 111510 WAS function lind(ispf,jspf)
 
@@ -593,10 +633,12 @@ function llind(ispf,jspf)
 
   lll=0
   do i=1,shells(ispf)-1
-     lll=lll+ (nspf - allshelltop(i)+allshelltop(i-1)) * (allshelltop(i)-allshelltop(i-1))
+     lll=lll+ (nspf - allshelltop(i)+allshelltop(i-1)) &
+          * (allshelltop(i)-allshelltop(i-1))
   enddo
 
-  lll=lll + (nspf-allshelltop(shells(ispf))+allshelltop(shells(ispf)-1)) * (ispf-allshelltop(shells(ispf)-1)-1) + jspf
+  lll=lll + (nspf-allshelltop(shells(ispf))+allshelltop(shells(ispf)-1)) &
+       * (ispf-allshelltop(shells(ispf)-1)-1) + jspf
 
   if (shells(jspf).gt.shells(ispf)) then
      lll=lll-(allshelltop(shells(ispf))-allshelltop(shells(ispf)-1))
@@ -613,8 +655,9 @@ subroutine get_denconstraint1(iwhich,time)
   implicit none
   integer,intent(in) :: iwhich
   real*8,intent(in) :: time
-  call get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,yyy%cmfavec(:,:,0),&
-       yyy%drivingavectorsxx(:,:,:,0),yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
+  call get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,&
+       yyy%cmfavec(:,:,0),yyy%drivingavectorsxx(:,:,:,0),&
+       yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
        yyy%denmat(:,:,0),iwhich,time)
 end subroutine get_denconstraint1
 
@@ -635,29 +678,36 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
   type(walktype),intent(in) :: www
   type(CONFIGPTR) :: cptr
   type(SPARSEPTR) :: sptr
-  DATATYPE,intent(in) :: denmat(www%nspf,www%nspf),avector(numr,www%firstconfig:www%lastconfig,numvects),&
+  DATATYPE,intent(in) :: denmat(www%nspf,www%nspf),&
+       avector(numr,www%firstconfig:www%lastconfig,numvects),&
        drivingavectorsxx(numr,www%firstconfig:www%lastconfig,numvects),&
        drivingavectorsyy(numr,www%firstconfig:www%lastconfig,numvects),&
        drivingavectorszz(numr,www%firstconfig:www%lastconfig,numvects)
-  DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a1p(numr,numvects), a2p(numr,numvects),&
+  DATATYPE ::  a1(numr,numvects), a2(numr,numvects), &
+       a1p(numr,numvects), a2p(numr,numvects),&
        tempconmatels(www%nspf,www%nspf),dot
   DATATYPE,allocatable :: bigavector(:,:,:),bigavectorp(:,:,:), avectorp(:,:,:)
-  integer ::  config1,config2,   ispf,jspf,  dirphase,  i,     iwalk, info, kspf, lspf, ind, jind, &
-       lind, llind, flag, isize, iwhich,  iiyy,maxii,imc,ihop,       lowspf,highspf
+  integer ::  config1,config2,   ispf,jspf,  dirphase,  i,   &
+       iwalk, info, kspf, lspf, ind, jind,  lowspf,highspf, &
+       lind, llind, flag, isize, iwhich,  iiyy,maxii,imc,ihop
   integer :: ipiv(liosize)
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
-  DATATYPE :: liosolve(liosize),lioden(liosize, liosize),liodencopy(liosize,liosize),liosolvetemp(liosize), csum, myliosolve(liosize)
+  DATATYPE :: liosolve(liosize),lioden(liosize, liosize),&
+       liodencopy(liosize,liosize),liosolvetemp(liosize), csum, myliosolve(liosize)
 
-  cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
+  cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   
+  cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
 
   if ((iwhich.eq.2).and.(numshells.eq.1)) then
      return
   endif
   if (real(timefac) /= 0.0) then
-     OFLWR "Err, get_denconstraint1 (with lioden) can only be used for forward time propagation. "; CFLST
+     OFLWR "Err, get_denconstraint1 (with lioden) can only be used for forward time propagation. "
+     CFLST
   endif
 
-  allocate(bigavector(numr,www%numconfig,numvects), bigavectorp(numr,www%numconfig,numvects), &
+  allocate(bigavector(numr,www%numconfig,numvects), &
+       bigavectorp(numr,www%numconfig,numvects), &
        avectorp(numr,www%firstconfig:www%lastconfig,numvects))
   bigavector(:,:,:)=0d0; bigavectorp(:,:,:)=0d0; avectorp(:,:,:)=0d0
 
@@ -667,7 +717,8 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
   if (parorbsplit.eq.1) then
      call checkorbsetrange(www%nspf,flag)
      if (flag.ne.0) then
-        OFLWR "error exit, can't do get_denconstraint1_0 with ",www%nspf," orbitals sparse mode"; CFLST
+        OFLWR "error exit, can't do get_denconstraint1_0 with ",www%nspf,&
+             " orbitals sparse mode"; CFLST
      endif
      call getOrbSetRange(lowspf,highspf)
   endif
@@ -679,11 +730,12 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
            select case (iwhich)
            case (1)
               if ((ispf/=lspf).and.(kspf/=lspf)) then
-                 ind=lind(ispf,lspf);                 jind=lind(kspf,lspf);          flag=1
+                 ind=lind(ispf,lspf);      jind=lind(kspf,lspf);    flag=1
               endif
            case (2)
-              if ( (shells(ispf).ne.shells(lspf) ) .and. (shells(kspf).ne.shells(lspf) ) ) then
-                 ind=llind(ispf,lspf);             jind=llind(kspf,lspf);              flag=1
+              if ( (shells(ispf).ne.shells(lspf) ) .and. &
+                   (shells(kspf).ne.shells(lspf) ) ) then
+                 ind=llind(ispf,lspf);    jind=llind(kspf,lspf);       flag=1
               endif
            case default
               ind=0;     jind=0
@@ -693,8 +745,8 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
 
            if (flag==1) then
               lioden(ind, jind) = lioden(ind, jind) + &
-!!PREV                   denmat(kspf,ispf)      * (0d0,1d0)          !!!!   NO, timefac goes in RHS   * CONJUGATE(timefac)
-                   denmat(ispf,kspf)      * (0d0,1d0)          !!!!   NO, timefac goes in RHS   * CONJUGATE(timefac)
+!!PREV             denmat(kspf,ispf) * (0d0,1d0) !!!! NO, timefac goes in RHS   * CONJUGATE(timefac)
+                   denmat(ispf,kspf) * (0d0,1d0) !!!! NO, timefac goes in RHS   * CONJUGATE(timefac)
            endif
         enddo
      enddo
@@ -707,11 +759,12 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
            select case (iwhich)
            case (1)
               if ((kspf/=jspf).and.(kspf/=lspf)) then
-                 ind=lind(kspf,jspf);                 jind=lind(kspf,lspf);                 flag=1
+                 ind=lind(kspf,jspf);    jind=lind(kspf,lspf);    flag=1
               endif
            case (2)
-              if ( (shells(kspf).ne.shells(jspf) ) .and. (shells(kspf).ne.shells(lspf) ) ) then
-                 ind=llind(kspf,jspf);                 jind=llind(kspf,lspf);                 flag=1
+              if ( (shells(kspf).ne.shells(jspf) ) .and. &
+                   (shells(kspf).ne.shells(lspf) ) ) then
+                 ind=llind(kspf,jspf);   jind=llind(kspf,lspf);     flag=1
               endif
            case default
               ind=0
@@ -721,8 +774,8 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
 
            if (flag==1) then
               lioden(ind,jind) = lioden(ind,jind) + &
-!!PREV                   denmat(jspf,lspf)    * (0d0, -1d0)      !!!! NO, timefac goes in RHS  * timefac
-                   denmat(lspf,jspf)    * (0d0, -1d0)      !!!! NO, timefac goes in RHS  * timefac
+!!PREV             denmat(jspf,lspf) * (0d0, -1d0) !!!! NO, timefac goes in RHS  * timefac
+                   denmat(lspf,jspf) * (0d0, -1d0) !!!! NO, timefac goes in RHS  * timefac
            endif
         enddo
      enddo
@@ -741,9 +794,11 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
      do imc=1,numvects
         select case(iiyy)
         case(1)
-           call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,1,1,0,0,time,imc)
+           call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,&
+                1,1,0,0,time,imc)
         case default
-           call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,iiyy-1,imc)
+           call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,&
+                sptr,iiyy-1,imc)
            if (drivingflag.ne.0) then
               if (iiyy.eq.2) then
                  avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsxx(:,:,imc)
@@ -763,8 +818,10 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
 
      if (www%parconsplit.ne.0) then
         do i=1,numvects
-           call mpiallgather(bigavector(:,:,i),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
-           call mpiallgather(bigavectorp(:,:,i),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+           call mpiallgather(bigavector(:,:,i),www%numconfig*numr,&
+                www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+           call mpiallgather(bigavectorp(:,:,i),www%numconfig*numr,&
+                www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
         enddo
      endif
 
@@ -843,7 +900,8 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
         endif
      else
         call invmatsmooth(liodencopy,liosize,liosize,lioreg)
-        call MYGEMV('N',liosize,liosize,DATAONE,liodencopy,liosize,liosolve,1,DATAZERO,liosolvetemp,1)
+        call MYGEMV('N',liosize,liosize,DATAONE,liodencopy,liosize,liosolve,1,&
+             DATAZERO,liosolvetemp,1)
         liosolve(:)=liosolvetemp(:)
      endif
 
@@ -868,7 +926,8 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
      enddo
 
 !! 111510   REGARDLESS!  #ifndef ECSFLAG
-!! may require you to define constraint via hermitian part of hamiltonian for chmctdh.  Don't want conmatels to be non-antiherm (chmctdh) or non real (cmctdh)
+!! may require you to define constraint via hermitian part of hamiltonian for chmctdh.  
+!! Don't want conmatels to be non-antiherm (chmctdh) or non real (cmctdh)
 
      maxval=0d0
      maxanti=0d0
@@ -923,8 +982,9 @@ subroutine new_get_denconstraint1(time)
   use configmod
   implicit none
   real*8,intent(in) :: time
-  call new_get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,yyy%cmfavec(:,:,0),&
-       yyy%drivingavectorsxx(:,:,:,0),yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
+  call new_get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,&
+       yyy%cmfavec(:,:,0),yyy%drivingavectorsxx(:,:,:,0),&
+       yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
        yyy%denmat(:,:,0),time)
 end subroutine new_get_denconstraint1
 
@@ -946,27 +1006,34 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   type(walktype),intent(in) :: www
   type(CONFIGPTR) :: cptr
   type(SPARSEPTR) :: sptr
-  DATATYPE,intent(in) :: denmat(www%nspf,www%nspf),avector(numr,www%firstconfig:www%lastconfig,numvects),&
+  DATATYPE,intent(in) :: denmat(www%nspf,www%nspf),&
+       avector(numr,www%firstconfig:www%lastconfig,numvects),&
        drivingavectorsxx(numr,www%firstconfig:www%lastconfig,numvects),&
        drivingavectorsyy(numr,www%firstconfig:www%lastconfig,numvects),&
        drivingavectorszz(numr,www%firstconfig:www%lastconfig,numvects)
   integer :: ipairs(2,www%nspf*(www%nspf-1))
-  DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a1p(numr,numvects), a2p(numr,numvects),dot, csum
-  DATATYPE :: tempconmatels(www%nspf,www%nspf), rhomat(www%nspf,www%nspf,www%nspf,www%nspf)
+  DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a1p(numr,numvects), &
+       a2p(numr,numvects),dot, csum
+  DATATYPE :: tempconmatels(www%nspf,www%nspf), &
+       rhomat(www%nspf,www%nspf,www%nspf,www%nspf)
   DATATYPE,allocatable :: bigavector(:,:,:), bigavectorp(:,:,:),avectorp(:,:,:)
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,  iwalk,  info, kspf, &
-       lspf, ind, jind, llind, flag, isize,   iiyy,maxii,imc,j,ihop,lowspf,highspf,lowsize,highsize
+       lspf, ind, jind, llind, flag, isize,   &
+       iiyy,maxii,imc,j,ihop,lowspf,highspf,lowsize,highsize
   integer,allocatable :: ipiv(:)
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
-  DATATYPE, allocatable :: liosolve(:),lioden(:, :),liodencopy(:,:),liosolvetemp(:),myliosolve(:)
+  DATATYPE, allocatable :: liosolve(:),lioden(:, :),liodencopy(:,:),&
+       liosolvetemp(:),myliosolve(:)
 
-  cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
+  cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   
+  cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
 
   if ((numshells.eq.1)) then
      return
   endif
 
-  allocate(bigavector(numr,www%numconfig,numvects), bigavectorp(numr,www%numconfig,numvects),&
+  allocate(bigavector(numr,www%numconfig,numvects), &
+       bigavectorp(numr,www%numconfig,numvects),&
        avectorp(numr,www%firstconfig:www%lastconfig,numvects))
   bigavector(:,:,:)=0d0; bigavectorp(:,:,:)=0d0; avectorp(:,:,:)=0d0
 
@@ -980,7 +1047,8 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   if (parorbsplit.eq.1) then
      call checkorbsetrange(www%nspf,flag)
      if (flag.ne.0) then
-        OFLWR "error exit, can't do get_denconstraint1_0 with ",www%nspf," orbitals sparse mode"; CFLST
+        OFLWR "error exit, can't do get_denconstraint1_0 with ",www%nspf,&
+             " orbitals sparse mode"; CFLST
      endif
      call getOrbSetRange(lowspf,highspf)
   endif
@@ -1014,7 +1082,8 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      endif
   enddo
 
-  allocate(liosolve(isize),lioden(isize, isize),liodencopy(isize,isize),liosolvetemp(isize),ipiv(isize))  
+  allocate(liosolve(isize),lioden(isize, isize),liodencopy(isize,isize),&
+       liosolvetemp(isize),ipiv(isize))  
 
   lioden=0.d0
 
@@ -1027,7 +1096,8 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
 
         rsum= abs(rhomat(ispf,jspf,kspf,lspf)-CONJUGATE(rhomat(kspf,lspf,ispf,jspf)))
         if (rsum.gt.1d-10) then
-           OFLWR "DOOG",rsum,rhomat(ispf,jspf,kspf,lspf),CONJUGATE(rhomat(kspf,lspf,ispf,jspf)); CFLST
+           OFLWR "DOOG",rsum,rhomat(ispf,jspf,kspf,lspf),&
+                CONJUGATE(rhomat(kspf,lspf,ispf,jspf)); CFLST
         endif
 
 !! rhomat included,excluded
@@ -1058,9 +1128,11 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      do imc=1,numvects
         select case(iiyy)
         case(1)
-           call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,1,1,0,0,time,imc)
+           call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,&
+                1,1,0,0,time,imc)
         case default
-           call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,iiyy-1,imc)
+           call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,&
+                sptr,iiyy-1,imc)
            if (drivingflag.ne.0) then
               if (iiyy.eq.2) then
                  avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsxx(:,:,imc)
@@ -1086,8 +1158,10 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
 
      if (www%parconsplit.ne.0) then
         do i=1,numvects
-           call mpiallgather(bigavector(:,:,i),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
-           call mpiallgather(bigavectorp(:,:,i),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+           call mpiallgather(bigavector(:,:,i),www%numconfig*numr,&
+                www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+           call mpiallgather(bigavectorp(:,:,i),www%numconfig*numr,&
+                www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
         enddo
      endif
 
@@ -1149,7 +1223,8 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
         endif
      else
         call invmatsmooth(liodencopy,isize,isize,lioreg)
-        call MYGEMV('N',isize,isize,DATAONE,liodencopy,isize,liosolve,1,DATAZERO,liosolvetemp,1)
+        call MYGEMV('N',isize,isize,DATAONE,liodencopy,isize,&
+             liosolve,1,DATAZERO,liosolvetemp,1)
         liosolve(:)=liosolvetemp(:)
      endif
 
@@ -1164,7 +1239,8 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      enddo
      
 !! 111510   REGARDLESS!  #ifndef ECSFLAG
-!! may require you to define constraint via hermitian part of hamiltonian for chmctdh.  Don't want conmatels to be non-antiherm (chmctdh) or non real (cmctdh)
+!! may require you to define constraint via hermitian part of hamiltonian for chmctdh.  
+!! Don't want conmatels to be non-antiherm (chmctdh) or non real (cmctdh)
 
      maxval=0d0
      maxanti=0d0

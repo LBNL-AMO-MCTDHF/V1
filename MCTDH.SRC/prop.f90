@@ -15,7 +15,8 @@ subroutine prop_loop( starttime)
   implicit none
 
   integer ::  jj,flag,  iii, itime, jtime, times(20)=0, qq,imc,getlen,myiostat
-  DATAECS :: thisenergy(mcscfnum), lastenergy(mcscfnum) ,thisenergyavg,lastenergyavg,startenergy(mcscfnum)
+  DATAECS :: thisenergy(mcscfnum), lastenergy(mcscfnum) ,thisenergyavg,&
+       lastenergyavg,startenergy(mcscfnum)
   CNORMTYPE :: norms(mcscfnum)
   real*8 :: thistime, starttime, thattime,error=1d10,rsum,avecerror=1d10
   DATATYPE :: dot,  sum2,sum,hermdot,drivingoverlap(mcscfnum)
@@ -44,7 +45,8 @@ subroutine prop_loop( starttime)
 
   do imc=1,mcscfnum
 
-     call sparseconfigmult(www,yyy%cmfavec(:,imc,0),avectorp,yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0,imc)
+     call sparseconfigmult(www,yyy%cmfavec(:,imc,0),avectorp,&
+          yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0,imc)
 
      sum=0;     sum2=0
      if (tot_adim.gt.0) then
@@ -78,7 +80,8 @@ subroutine prop_loop( starttime)
 
   if ((myrank.eq.1).and.(notiming.le.1)) then
      call system("echo -n > "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
-     open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="unknown",iostat=myiostat)
+     open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", &
+          status="unknown",iostat=myiostat)
      call checkiostat(myiostat," opening Main.time.dat")
      write(853,'(T16,100A15)')  &
           "Prop ", &     !! (1)
@@ -181,12 +184,15 @@ subroutine prop_loop( starttime)
         OFL
 #ifdef ECSFLAG     
 #ifdef CNORMFLAG
-        write(mpifileptr,'(A3,F16.5, 2(A10, 2E18.10),E18.10)') "T= ",thattime, "Energy: ", thisenergy(imc), "Norm: ", abs(norms(imc)),norms(imc)
+        write(mpifileptr,'(A3,F16.5, 2(A10, 2E18.10),E18.10)') "T= ",thattime,&
+             "Energy: ", thisenergy(imc), "Norm: ", abs(norms(imc)),norms(imc)
 #else
-        write(mpifileptr,'(A3,F16.5, 2(A10, 2E18.10))') "T= ",thattime, "Energy: ", thisenergy(imc), "Norm: ", norms(imc)
+        write(mpifileptr,'(A3,F16.5, 2(A10, 2E18.10))') "T= ",thattime, &
+             "Energy: ", thisenergy(imc), "Norm: ", norms(imc)
 #endif
 #else 
-        write(mpifileptr,'(A3,F16.5, 2(A10, E18.10))') "T= ", thattime, "Energy: ", thisenergy(imc), "Norm: ", norms(imc)
+        write(mpifileptr,'(A3,F16.5, 2(A10, E18.10))') "T= ", thattime, &
+             "Energy: ", thisenergy(imc), "Norm: ", norms(imc)
 #endif     
         CFL
 
@@ -199,12 +205,14 @@ subroutine prop_loop( starttime)
 #else 
            write(mpifileptr,'(A3,F16.5, 2(A10, E18.10))') "t= ", thattime, "DEnergy ", &
 #endif
-                (    (drivingenergies(imc)*drivingproportion**2 + CONJUGATE(drivingenergies(imc) * drivingoverlap(imc)) + &
-                drivingenergies(imc)*drivingoverlap(imc) + thisenergy(imc)*norms(imc)**2)     )/  &
-                (drivingproportion**2 + drivingoverlap(imc) + CONJUGATE(drivingoverlap(imc)) + norms(imc)**2), &
-                "DNorm ", (sqrt &
-                (drivingproportion**2 + drivingoverlap(imc) + CONJUGATE(drivingoverlap(imc)) + norms(imc)**2))
 
+    (    (drivingenergies(imc)*drivingproportion**2 + CONJUGATE(drivingenergies(imc) * drivingoverlap(imc)) + &
+    drivingenergies(imc)*drivingoverlap(imc) + thisenergy(imc)*norms(imc)**2)     )/  &
+    (drivingproportion**2 + drivingoverlap(imc) + CONJUGATE(drivingoverlap(imc)) + norms(imc)**2), &
+    "DNorm ", (sqrt &
+    (drivingproportion**2 + drivingoverlap(imc) + CONJUGATE(drivingoverlap(imc)) + norms(imc)**2))
+
+           CFL
 
 !! ok so < Psi(t) | H | Psi(t) > =
 
@@ -220,7 +228,6 @@ subroutine prop_loop( starttime)
 !!   < Psi' | Psi_0 > +          = < Psi' | Psi_0 >     !!  ditto   * drivingproportion
 !!   < Psi' | Psi' >               in code
 
-           CFL
         endif
 
      enddo  !! imc
@@ -232,9 +239,11 @@ subroutine prop_loop( starttime)
      
      if ((myrank.eq.1).and.(notiming.le.1)) then
         call system("date >> "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", status="old", position="append",iostat=myiostat)
+        open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", &
+             status="old", position="append",iostat=myiostat)
         call checkiostat(myiostat," opening Main.time.dat")
-        write(853,'(F13.3,T16,100I15)',iostat=myiostat)  thistime, times(1:5)/1000, mpitime/1000, nonmpitime/1000
+        write(853,'(F13.3,T16,100I15)',iostat=myiostat)  thistime, &
+             times(1:5)/1000, mpitime/1000, nonmpitime/1000
         call checkiostat(myiostat," writing Main.time.dat")
         close(853)
      endif
@@ -269,7 +278,8 @@ subroutine prop_loop( starttime)
         
         if ( error.lt.stopthresh .or.spf_flag.eq.0) then
            if (avecerror.gt.astoptol) then
-              OFL; write(mpifileptr,'(A67,2E12.5)') "   Orbitals Converged, Avector not necessarily converged "; CFL
+              OFL; write(mpifileptr,'(A67,2E12.5)') &
+                   "   Orbitals Converged, Avector not necessarily converged "; CFL
            else
               flag=1
               OFLWR; WRFL "   ***  CONVERGED *** "; WRFL
@@ -419,7 +429,8 @@ subroutine prop_wfn(tin, tout)
      rkiwork(:)=0
      rkwork(psilength*zzz+1)=0.00001d0
      iflag=1
-     call rkf45(all_derivs, psilength*zzz, psivec(:), mytime, tout, relerr, abserr, iflag, rkwork, rkiwork)
+     call rkf45(all_derivs, psilength*zzz, psivec(:), mytime, tout, &
+          relerr, abserr, iflag, rkwork, rkiwork)
      if (iflag/=2) then
         OFLWR; WRFL "RK45F ERR   Iflag = ", iflag, abserr, rkiwork(1); CFLST
      endif
@@ -428,7 +439,8 @@ subroutine prop_wfn(tin, tout)
   else if (intopt.eq.1) then
      rkworkdim=20*psilength*zzz; rkiworkdim=20*psilength*zzz
      allocate(rkwork(rkworkdim),rkiwork(rkiworkdim))
-     call odex(psilength*zzz,gbs_derivs,mytime,psivec(:),tout,gbsstepsize,relerr,abserr,0,dummysub,0,rkwork,rkworkdim,rkiwork,rkiworkdim,nullreal,nullint,idid)
+     call odex(psilength*zzz,gbs_derivs,mytime,psivec(:),tout,gbsstepsize,relerr,abserr,&
+          0,dummysub,0,rkwork,rkworkdim,rkiwork,rkiworkdim,nullreal,nullint,idid)
      if (.not.(idid.eq.1)) then
        OFLWR; WRFL "ERR ODEX", idid; CFLST
      endif
@@ -456,8 +468,10 @@ subroutine prop_wfn(tin, tout)
 
 ! rkiwork!
 !  if ((myrank.eq.1).and.(notiming.eq.0)) then
-!     open(853, file=timingdir(1:getlen(timingdir)-1)//"/vmf_prop.time.dat", status="unknown", position="append")
-!     write(853,'(A3,F12.3,100I15)') "T=",  tout, time/1000, time2/1000,rkiwork(1);     close(853)
+!     open(853, file=timingdir(1:getlen(timingdir)-1)//"/vmf_prop.time.dat", &
+!             status="unknown", position="append")
+!     write(853,'(A3,F12.3,100I15)') "T=",  tout, time/1000, time2/1000,rkiwork(1);     
+!     close(853)
 !  endif
 
 end subroutine prop_wfn
@@ -519,7 +533,8 @@ subroutine propspfs0(inspfs,outspfs,tin, tout,inlinearflag,numiters)
      rkworkdim=(3+6*totspfdim)*zzz;      rkiworkdim=100
      allocate(rkwork(rkworkdim),rkiwork(rkiworkdim))
      iflag=1           
-     call rkf45(spf_linear_derivs, totspfdim*zzz, outspfs, time1, time2, relerr, abserr, iflag, rkwork, rkiwork)
+     call rkf45(spf_linear_derivs, totspfdim*zzz, outspfs, time1, time2, &
+          relerr, abserr, iflag, rkwork, rkiwork)
      if (iflag/=2) then
         OFLWR "RK45F ERR   Iflag = ", iflag, abserr, relerr; CFLST
      endif
@@ -529,7 +544,8 @@ subroutine propspfs0(inspfs,outspfs,tin, tout,inlinearflag,numiters)
      gbsstepsize=1.d-6
      rkworkdim=20*totspfdim*zzz; rkiworkdim=20*totspfdim*zzz
      allocate(rkwork(rkworkdim),rkiwork(rkiworkdim))
-     call odex(totspfdim*zzz,gbs_linear_derivs,time1,outspfs,time2,gbsstepsize,relerr,abserr,0,dummysub,0,rkwork,rkworkdim,rkiwork,rkiworkdim,nullreal,nullint,idid)
+     call odex(totspfdim*zzz,gbs_linear_derivs,time1,outspfs,time2,gbsstepsize,relerr,abserr,&
+          0,dummysub,0,rkwork,rkworkdim,rkiwork,rkiworkdim,nullreal,nullint,idid)
      numiters=rkiwork(17)
      if (.not.(idid.eq.1)) then
         OFLWR "ERR ODEX", idid; CFLST
@@ -694,7 +710,8 @@ subroutine cmf_prop_wfn(tin, tout)
 
         if(avector_flag.ne.0) then
            do imc=1,mcscfnum
-              call cmf_prop_avector(yyy%cmfavec(:,imc,1),  yyy%cmfavec(:,imc,0), linearflag,tin,tout,imc,qq)
+              call cmf_prop_avector(yyy%cmfavec(:,imc,1),  &
+                   yyy%cmfavec(:,imc,0), linearflag,tin,tout,imc,qq)
               numaiters=numaiters+qq
            enddo
         endif
@@ -718,7 +735,8 @@ subroutine cmf_prop_wfn(tin, tout)
 
   if ((myrank.eq.1).and.(notiming.le.1)) then
      if (xxcount==1) then
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/cmf_prop.time.dat", status="unknown",iostat=myiostat)
+        open(853, file=timingdir(1:getlen(timingdir)-1)//"/cmf_prop.time.dat", &
+             status="unknown",iostat=myiostat)
         call checkiostat(myiostat," opening cmf_prop_time.dat")
         write(853,'(A15,100A11)',iostat=myiostat) &
              "Time", &      !! 
@@ -735,9 +753,11 @@ subroutine cmf_prop_wfn(tin, tout)
         call checkiostat(myiostat," writing cmf_prop_time.dat")
         close(853)
      endif
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/cmf_prop.time.dat", status="unknown", position="append",iostat=myiostat)
+        open(853, file=timingdir(1:getlen(timingdir)-1)//"/cmf_prop.time.dat", &
+             status="unknown", position="append",iostat=myiostat)
         call checkiostat(myiostat," opening cmf_prop_time.dat")
-        write(853,'(A3,F12.3,T16, 100I11)',iostat=myiostat)  "T=", tout, times(1:8)/1000, numiters,numaiters
+        write(853,'(A3,F12.3,T16, 100I11)',iostat=myiostat)  "T=", tout, &
+             times(1:8)/1000, numiters,numaiters
         call checkiostat(myiostat," writing cmf_prop_time.dat")
         close(853)
   endif
@@ -776,7 +796,8 @@ subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc,numi
   endif
   numiters=0
   do k=1,littlesteps
-     timea=time1+(time2-time1)*(k-1)/littlesteps;     timeb=time1+(time2-time1)*k/littlesteps
+     timea=time1+(time2-time1)*(k-1)/littlesteps
+     timeb=time1+(time2-time1)*k/littlesteps
      call cmf_prop_avector0(tempvector,avectorout,linearflag,timea,timeb,imc,qq)
      if (tot_adim.gt.0) then
         tempvector(:)=avectorout(:)
@@ -868,7 +889,8 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
 
         if (iflag.eq.1) then
            workdrivingavec(:,:)=( yyy%drivingavectorsxx(:,:,imc,1)*pots(1) + &
-                yyy%drivingavectorsyy(:,:,imc,1)*pots(2) + yyy%drivingavectorszz(:,:,imc,1)*pots(3) )*thisstep
+                yyy%drivingavectorsyy(:,:,imc,1)*pots(2) + &
+                yyy%drivingavectorszz(:,:,imc,1)*pots(3) )*thisstep
 
         endif
      endif
@@ -885,9 +907,9 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
         if (iflag.eq.1) then
 
            workdrivingavec(:,:) = thisstep*( &
-                (sum1*yyy%drivingavectorsxx(:,:,imc,1)+ sum0*yyy%drivingavectorsxx(:,:,imc,0))*pots(1) + &
-                (sum1*yyy%drivingavectorsyy(:,:,imc,1)+ sum0*yyy%drivingavectorsyy(:,:,imc,0))*pots(2) + &
-                (sum1*yyy%drivingavectorszz(:,:,imc,1)+ sum0*yyy%drivingavectorszz(:,:,imc,0))*pots(3) )
+   (sum1*yyy%drivingavectorsxx(:,:,imc,1)+ sum0*yyy%drivingavectorsxx(:,:,imc,0))*pots(1) + &
+   (sum1*yyy%drivingavectorsyy(:,:,imc,1)+ sum0*yyy%drivingavectorsyy(:,:,imc,0))*pots(2) + &
+   (sum1*yyy%drivingavectorszz(:,:,imc,1)+ sum0*yyy%drivingavectorszz(:,:,imc,0))*pots(3) )
 
         endif
      endif
@@ -897,7 +919,8 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
      else
         call add_sptr(yyy%sptr(1),yyy%sptr(0),worksparsepointer,sum1*thisstep,sum0*thisstep,www)
         if (use_dfwalktype) then
-           call add_sptr(yyy%sdfptr(1),yyy%sdfptr(0),workdfsparsepointer,sum1*thisstep,sum0*thisstep,www)
+           call add_sptr(yyy%sdfptr(1),yyy%sdfptr(0),workdfsparsepointer,sum1*thisstep,&
+                sum0*thisstep,www)
         endif
      endif
   endif
@@ -915,13 +938,15 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
   if (notiming.eq.0.and.myrank.eq.1) then
 
      if (icalled.eq.0) then
-        open(11766, file=timingdir(1:getlen(timingdir)-1)//"/aprop.time.dat", status="unknown",iostat=myiostat)
+        open(11766, file=timingdir(1:getlen(timingdir)-1)//"/aprop.time.dat", &
+             status="unknown",iostat=myiostat)
         call checkiostat(myiostat," writing aprop.time.dat")
         write(11766,'(100A11)',iostat=myiostat)  "init", "prop"
         call checkiostat(myiostat," writing aprop.time.dat")
         close(11766)
      endif
-     open(11766, file=timingdir(1:getlen(timingdir)-1)//"/aprop.time.dat", status="unknown", position="append",iostat=myiostat)
+     open(11766, file=timingdir(1:getlen(timingdir)-1)//"/aprop.time.dat", &
+          status="unknown", position="append",iostat=myiostat)
         call checkiostat(myiostat," writing aprop.time.dat")
      write(11766,'(100I11)',iostat=myiostat)  times(1:2)
         call checkiostat(myiostat," writing aprop.time.dat")

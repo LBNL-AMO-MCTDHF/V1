@@ -10,7 +10,8 @@
 
 !! ON INPUT SOLUTION IS GUESS.
 
-subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, intolerance, indimension, inkrydim,parflag)
+subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, &
+     intolerance, indimension, inkrydim,parflag)
   use fileptrmod
   implicit none
   integer,intent(in) :: indimension,inkrydim,parflag,preconflag
@@ -34,7 +35,8 @@ subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, intole
 !!$  mindim=indimension; maxdim=indimension
 !!$  call mympiimax(maxdim); call mympiimin(mindim)
 !!$  if (mindim.ne.maxdim) then
-!!$     OFLWR "Error, for dgsolve now must use same dimension all processors", mindim,maxdim; CFLST
+!!$     OFLWR "Error, for dgsolve now must use same dimension all processors", &
+!!$         mindim,maxdim; CFLST
 !!$  endif
 
   jjxx = zzz * indimension
@@ -42,7 +44,8 @@ subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, intole
   rgwkdim= (42 + jjxx*(inkrydim*zzz + 6) + inkrydim*zzz*(inkrydim*zzz + 3)) / 5 * 6
 
   if (rgwkdim.lt.0) then
-     OFLWR "OOPS, integer overflow, decrease maxexpodim or reduce size of orbitals (per processor)",rgwkdim; CFLST
+     OFLWR "OOPS, integer overflow, decrease maxexpodim or reduce size of orbitals (per processor)",&
+          rgwkdim; CFLST
   endif
 
   allocate(rgwk(rgwkdim)); rgwk(:)=0d0
@@ -60,9 +63,13 @@ subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, intole
   tol=intolerance
 
   if (parflag.eq.0) then
-     call dgmres(jjxx, rhs, solution, nullint1, nullint2, nullint3, nulldouble1, nullint3, inmult, inprecon,itol , tol, nullint4, numiter, errest, ierr, iunit, nulldouble2, nulldouble3, rgwk, rgwkdim, igwk, ligwk, nulldouble4, nullint5)
+     call dgmres(jjxx, rhs, solution, nullint1, nullint2, nullint3, nulldouble1, nullint3, inmult, &
+          inprecon,itol , tol, nullint4, numiter, errest, ierr, iunit, nulldouble2, nulldouble3, rgwk, &
+          rgwkdim, igwk, ligwk, nulldouble4, nullint5)
   else
-     call dgmrespar(jjxx, rhs, solution, nullint1, nullint2, nullint3, nulldouble1, nullint3, inmult, inprecon,itol , tol, nullint4, numiter, errest, ierr, iunit, nulldouble2, nulldouble3, rgwk, rgwkdim, igwk, ligwk, nulldouble4, nullint5)
+     call dgmrespar(jjxx, rhs, solution, nullint1, nullint2, nullint3, nulldouble1, nullint3, inmult, &
+          inprecon,itol , tol, nullint4, numiter, errest, ierr, iunit, nulldouble2, nulldouble3, rgwk, &
+          rgwkdim, igwk, ligwk, nulldouble4, nullint5)
   endif
 
 !!$  if (debugflag.ne.0) then
@@ -72,7 +79,9 @@ subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, intole
   if (jacwrite==1) then
      OFLWR "   NEWTON: numiter ", numiter, " error ", errest;     call closefile()
   endif
-  if (ierr.eq.1) then     !! AUTHOR COMMENTS ARE WRONG IN DGMRES.F ierr=1 denotes max restarts (zero) reached !! 
+
+!! AUTHOR COMMENTS ARE WRONG IN DGMRES.F ierr=1 denotes max restarts (zero) reached !! 
+  if (ierr.eq.1) then 
      OFLWR "WARNING! dgmres did not converge. increase krylov order?",inkrydim; CFL
   else if (ierr.eq.2) then
      OFLWR "WARNING! dgmres stalled."; CFL
@@ -195,19 +204,23 @@ subroutine quadspfs(inspfs,jjcalls)
         call spfs_compact(vector3,com_vector3)
         if (parorbsplit.eq.3) then
            maxdim=min(spfsmallsize*nspf*nprocs,maxexpodim)
-           call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, quadtol,spfsmallsize*nspf,maxdim,1)
+           call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
+                quadtol,spfsmallsize*nspf,maxdim,1)
         else
            maxdim=min(spfsmallsize*nspf,maxexpodim)
-           call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, quadtol,spfsmallsize*nspf,maxdim,0)
+           call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
+                quadtol,spfsmallsize*nspf,maxdim,0)
         endif
         call spfs_expand(com_vector3,vector3)
      else
         if (parorbsplit.eq.3) then
            maxdim=min(totspfdim*nprocs,maxexpodim)
-           call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, quadtol,totspfdim,maxdim,1)
+           call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
+                quadtol,totspfdim,maxdim,1)
         else
            maxdim=min(totspfdim,maxexpodim)
-           call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, quadtol,totspfdim,maxdim,0)
+           call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
+                quadtol,totspfdim,maxdim,0)
         endif
      endif
 
@@ -325,10 +338,12 @@ subroutine quadavector(inavector,jjcalls)
   if (quadorthflag.ne.0) then
      do imc=1,mcscfnum
         if (www%parconsplit.eq.0) then
-           call gramschmidt(www%totadim,imc-1,www%totadim,inavector(:,:),inavector(:,imc),.false.)
+           call gramschmidt(www%totadim,imc-1,www%totadim,&
+                inavector(:,:),inavector(:,imc),.false.)
         else
            if (www%totadim.gt.0) then
-              call gramschmidt(www%totadim,imc-1,www%totadim,inavector(:,:),inavector(:,imc),.true.)
+              call gramschmidt(www%totadim,imc-1,www%totadim,&
+                   inavector(:,:),inavector(:,imc),.true.)
            else
               call nullgramschmidt(imc-1,.true.)
            endif
@@ -396,7 +411,8 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
      call aaonedinit(www,vector)
 
 !! CONSISTENT WITH PARAAMULT/PARBLOCKCONFIGMULT yes pulse no tau
-     call sparseconfigmult(www,vector, vector2, yyy%cptr(0), yyy%sptr(0), 1,1,1,0,0d0,-1)
+     call sparseconfigmult(www,vector, vector2, yyy%cptr(0), yyy%sptr(0), &
+          1,1,1,0,0d0,-1)
 
      call basis_project(www,numr,vector2)
 
@@ -414,7 +430,8 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
 !! 12-2015 sqrt
      thisaerror=min(0.1d0,sqrt(aerror/min(dev,1d0)))
 
-     OFL;write(mpifileptr,'(A20,E12.5,A6,2E12.5,A7,100F14.7)') "   SPARSEQUAD: DEV", dev, " TOL ",aerror,thisaerror,"ENERGY",quadexpect; CFL
+     OFL;write(mpifileptr,'(A20,E12.5,A6,2E12.5,A7,100F14.7)') &
+          "   SPARSEQUAD: DEV", dev, " TOL ",aerror,thisaerror,"ENERGY",quadexpect; CFL
 
      if (abs(dev).lt.aerror.or.ss.ge.10) then
         if (www%lastconfig.ge.www%firstconfig) then
@@ -448,18 +465,22 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
         call mpistop()
      endif
 
-     call dgsolve0( smallvectorspin, smallvectorspin2, jjcalls, paraamult,quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1)
+     call dgsolve0( smallvectorspin, smallvectorspin2, jjcalls, paraamult,&
+          quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1)
 
-!!$  call basicblocklansolve(1,mysize,maxdim,maxdim,smallvectorspin,smallvectorspin2,1,parhrmult,parhrdotsub,quadexpect)
+!!$  call basicblocklansolve(1,mysize,maxdim,maxdim,smallvectorspin,smallvectorspin2,1,&
+!!$     parhrmult,parhrdotsub,quadexpect)
 !!$  jjcalls=0
 
      vector3(:,:)=0d0; 
 
      if (www%topconfig.ge.www%botconfig) then
-        call basis_transformfrom_local(www,numr,smallvectorspin2,vector3(:,www%botconfig:www%topconfig))
+        call basis_transformfrom_local(www,numr,smallvectorspin2,&
+             vector3(:,www%botconfig:www%topconfig))
      endif
      if (www%parconsplit.eq.0) then
-        call mpiallgather(vector3(:,:),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+        call mpiallgather(vector3(:,:),www%numconfig*numr,&
+             www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
      endif
 
      csum=0d0
@@ -499,11 +520,12 @@ subroutine nonsparsequadavector(www,avectorout)
   integer,allocatable :: ipiv(:)
 
   if (sparseconfigflag/=0) then
-     OFLWR "Error, nonsparsequadavector called but sparseconfigflag= ", sparseconfigflag; CFLST
+     OFLWR "Error, nonsparsequadavector called but sparseconfigflag= ", sparseconfigflag
+     CFLST
   endif
 
-  allocate(spinmatel(www%numdfbasis*numr,www%numdfbasis*numr),spinavectorout(www%numdfbasis*numr), &
-       err(www%totadim),ipiv(www%numdfbasis*numr))
+  allocate(spinmatel(www%numdfbasis*numr,www%numdfbasis*numr),&
+       spinavectorout(www%numdfbasis*numr), err(www%totadim),ipiv(www%numdfbasis*numr))
 
   ss=0
   do while (42.eq.42)
@@ -521,16 +543,19 @@ subroutine nonsparsequadavector(www,avectorout)
 
      dev=sqrt(abs(hermdot(err(:),err(:),www%totadim)))
 
-     OFL;write(mpifileptr,'(A22,E12.5,A6,E12.5,A7,100F14.7)') "   NONSPARSEQUAD: DEV", dev, " TOL ",aerror,"ENERGY",quadexpect; CFL
+     OFL;write(mpifileptr,'(A22,E12.5,A6,E12.5,A7,100F14.7)') &
+          "   NONSPARSEQUAD: DEV", dev, " TOL ",aerror,"ENERGY",quadexpect; CFL
 
      if (abs(dev).lt.aerror.or.(ss.gt.10)) then
 
         deallocate(spinmatel,spinavectorout,err,ipiv)
 
 !#ifdef REALGO
-!  OFL; write(mpifileptr,'(A40,F15.10, A5,1F18.10,A5,1E6.1)') "      Converged nonsparse quad: dev ", dev, "  E= ", quadexpect, " tol ", aerror; CFL
+!  OFL; write(mpifileptr,'(A40,F15.10, A5,1F18.10,A5,1E6.1)') &
+!      "      Converged nonsparse quad: dev ", dev, "  E= ", quadexpect, " tol ", aerror; CFL
 !#else
-!  OFL; write(mpifileptr,'(A40,F15.10, A5,2F18.10,A5,1E6.1)') "      Converged nonsparse quad: dev ", dev, "  E= ", quadexpect, " tol ", aerror; CFL
+!  OFL; write(mpifileptr,'(A40,F15.10, A5,2F18.10,A5,1E6.1)') &
+!      "      Converged nonsparse quad: dev ", dev, "  E= ", quadexpect, " tol ", aerror; CFL
 !#endif
 
         call mpibarrier()
@@ -553,8 +578,10 @@ subroutine nonsparsequadavector(www,avectorout)
 
 
      if (myrank.eq.1) then
-        call MYGESV(www%numdfbasis*numr,1,spinmatel,www%numdfbasis*numr,ipiv,spinavectorout,www%numdfbasis*numr,info)
-        spinavectorout=spinavectorout/sqrt(dot(spinavectorout,spinavectorout,www%numdfbasis*numr))
+        call MYGESV(www%numdfbasis*numr,1,spinmatel,www%numdfbasis*numr,&
+             ipiv,spinavectorout,www%numdfbasis*numr,info)
+        spinavectorout=spinavectorout/&
+             sqrt(dot(spinavectorout,spinavectorout,www%numdfbasis*numr))
         if (info/=0) then
            OFLWR "Info in dgesv nonsparsequadavector= ", info; CFLST
         endif
@@ -618,9 +645,11 @@ subroutine parquadpreconsub(notusedint, inavectorspin,outavectorspin)
   DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
 
   if (use_dfwalktype) then
-     call parquadpreconsub0(dwwptr,yyy%cptr(0),yyy%sdfptr(0),notusedint,inavectorspin,outavectorspin)
+     call parquadpreconsub0(dwwptr,yyy%cptr(0),yyy%sdfptr(0),&
+          notusedint,inavectorspin,outavectorspin)
   else
-     call parquadpreconsub0(dwwptr,yyy%cptr(0),yyy%sptr(0),notusedint,inavectorspin,outavectorspin)
+     call parquadpreconsub0(dwwptr,yyy%cptr(0),yyy%sptr(0),&
+          notusedint,inavectorspin,outavectorspin)
   endif
 
 end subroutine parquadpreconsub
@@ -650,7 +679,8 @@ subroutine parquadpreconsub0(www,cptr,sptr,notusedint, inavectorspin,outavectors
 
   call basis_transformfrom_local(www,numr,inavectorspin,inavector)
 
-  call parsparseconfigpreconmult(www,inavector, outavector, cptr, sptr,1,1,1,1, quadexpect,0d0)
+  call parsparseconfigpreconmult(www,inavector, outavector, cptr, sptr,&
+       1,1,1,1, quadexpect,0d0)
 
   call basis_transformto_local(www,numr,outavector,outavectorspin)
 

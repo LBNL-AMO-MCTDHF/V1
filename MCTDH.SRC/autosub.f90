@@ -8,7 +8,7 @@
 module automod
   implicit none
   DATATYPE, allocatable :: overlaps(:,:), orig_spfs(:,:), orig_avectors(:,:,:)
-  integer, allocatable :: xcalledflag,  calledflag
+  integer :: xcalledflag=0,  calledflag=0
 end module automod
 
 subroutine autocorrelate_initial()
@@ -18,19 +18,19 @@ subroutine autocorrelate_initial()
   implicit none
   integer :: imc
   
-  allocate(overlaps(0:autosize,mcscfnum),  orig_spfs(  spfsize, nspf ),  calledflag,  xcalledflag)
-  overlaps(:,:)=0d0
-  calledflag=0;  xcalledflag=0
+  allocate(overlaps(0:autosize,mcscfnum),  orig_spfs(  spfsize, nspf ),&
+       orig_avectors(numr,first_config:last_config,mcscfnum))
+  overlaps(:,:)=0d0;  orig_spfs=0; orig_avectors=0;  calledflag=0;  xcalledflag=0
   
-  allocate(orig_avectors(numr,first_config:last_config,mcscfnum))
-
   orig_spfs(:,:)=RESHAPE(yyy%cmfspfs(:,0),(/spfsize,nspf/))
   if (tot_adim.gt.0) then
      do imc=1,mcscfnum
         orig_avectors(:,:,imc)=RESHAPE(yyy%cmfavec(:,imc,0),(/numr,local_nconfig/))
      enddo
   endif
+
 end subroutine
+
 
 subroutine autocorrelate()
   use automod
@@ -45,10 +45,8 @@ subroutine autocorrelate()
 
   if (mod(xcalledflag,autosteps).eq.0) then
      do imc=1,mcscfnum
-
-        call autocorrelate_one(www,bwwptr,yyy%cmfavec(:,imc,0),yyy%cmfspfs(:,0),orig_spfs(:,:), &
-             orig_avectors(:,:,imc), overlaps(calledflag,imc),numr)
-
+        call autocorrelate_one(www,bwwptr,yyy%cmfavec(:,imc,0),yyy%cmfspfs(:,0),&
+             orig_spfs(:,:), orig_avectors(:,:,imc), overlaps(calledflag,imc),numr)
      enddo
 
      if (mod(calledflag,dipmodtime).eq.0.and.calledflag.gt.0) then
@@ -146,8 +144,10 @@ subroutine autocorrelate_one(www,bioww,avector,inspfs,orig_spf,orig_avector,outo
   if(auto_biortho.eq.0) then
      OFLWR "Permoverlaps disabled.  set auto_biortho=1"; CFLST
 
-!!$     call permoverlaps(innr, numelec, spfsize, inspfs, orig_spf, avector,orig_avector,outoverlap, 1, &
-!!$          autopermthresh, autonormthresh, nspf, nspf, numconfig, numconfig, configlist, ndof, configlist,&
+!!$     call permoverlaps(innr, numelec, spfsize, inspfs, orig_spf, avector,&
+!!$          orig_avector,outoverlap, 1, &
+!!$          autopermthresh, autonormthresh, nspf, nspf, numconfig, numconfig, &
+!!$          configlist, ndof, configlist,&
 !!$          ndof, 0, parorbsplit)
 
   else

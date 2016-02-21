@@ -25,8 +25,10 @@ subroutine output_denmat( incmf, time)
      mytimingout=timingout
   endif
   if (numcalledhere==1) then
-     open(853,file=dendatfile,status="unknown");   write(853,*) ;           close(853)
-     open(853,file=denrotfile,status="unknown");     write(853,*) ;           close(853)
+     open(853,file=dendatfile,status="unknown")
+     write(853,*) ;           close(853)
+     open(853,file=denrotfile,status="unknown")
+     write(853,*) ;           close(853)
   endif
   
   if (mod(numcalledhere,mytimingout).eq.0)  then
@@ -161,7 +163,8 @@ subroutine getdenmatx()
   use xxxmod
   implicit none
 
-  call getdenmatstuff(www,yyy%cmfavec(:,:,0), yyy%denmat(:,:,0) , yyy%invdenmat(:,:,0) , yyy%denvals(:) , yyy%denvects(:,:), numr, mcscfnum)
+  call getdenmatstuff(www,yyy%cmfavec(:,:,0), yyy%denmat(:,:,0) , &
+       yyy%invdenmat(:,:,0) , yyy%denvals(:) , yyy%denvects(:,:), numr, mcscfnum)
 
 !!$  if (rdenflag==1) then
 !!$     call getrdenmat()
@@ -186,7 +189,8 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
        avector1(numpoints,www%firstconfig:www%lastconfig,howmany)
   DATAECS,intent(in) :: rvector(numpoints)
   DATATYPE,intent(out) :: denmat(www%nspf,www%nspf)
-  DATATYPE :: a1(numpoints,howmany), a2(numpoints,howmany), mydenmat(www%nspf,www%nspf), dot, csum
+  DATATYPE :: a1(numpoints,howmany), a2(numpoints,howmany), &
+       mydenmat(www%nspf,www%nspf), dot, csum
   DATATYPE, allocatable :: avector2(:,:,:)
   integer :: config1,config2,  ispf,jspf,  dirphase, iwalk, ii, ihop
 
@@ -199,13 +203,12 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
 
   if (www%parconsplit.ne.0) then
      do ii=1,howmany
-        call mpiallgather(avector2(:,:,ii),www%numconfig*numpoints,www%configsperproc(:)*numpoints,www%maxconfigsperproc*numpoints)
+        call mpiallgather(avector2(:,:,ii),www%numconfig*numpoints,&
+             www%configsperproc(:)*numpoints,www%maxconfigsperproc*numpoints)
      enddo
   endif
 
   denmat(:,:)=0.d0
-
-  !! single off diagonal walks
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ii,iwalk,config2,dirphase,ispf,jspf,mydenmat,a1,a2,csum,ihop)
 
@@ -220,8 +223,6 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
         a1(:,ii)=avector1(:,config1,ii) * rvector(:)
      enddo
 
-!!$      do iwalk=1,www%numsinglewalks(config1)
-!!$        config2=www%singlewalk(iwalk,config1)
      do ihop=1,www%numsinglehops(config1)
         config2=www%singlehop(ihop,config1)
 
@@ -262,7 +263,8 @@ end subroutine getdenmat00
 
 
 
-subroutine getdenmatstuff(www,avector, denmat, invdenmat, denvals, denvects, numpoints,howmany)
+subroutine getdenmatstuff(www,avector, denmat, invdenmat, denvals, &
+     denvects, numpoints,howmany)
   use class_parameters
   use denreg_parameters
   use walkmod
@@ -271,9 +273,11 @@ subroutine getdenmatstuff(www,avector, denmat, invdenmat, denvals, denvects, num
   integer,intent(in) ::  numpoints,howmany
   CNORMTYPE,intent(out) :: denvals(www%nspf)
   DATATYPE, intent(in) :: avector(numpoints,www%firstconfig:www%lastconfig,howmany)
-  DATATYPE,intent(out) :: denmat(www%nspf,www%nspf),invdenmat(www%nspf,www%nspf),denvects(www%nspf,www%nspf)
+  DATATYPE,intent(out) :: denmat(www%nspf,www%nspf),&
+       invdenmat(www%nspf,www%nspf),denvects(www%nspf,www%nspf)
   CNORMTYPE :: tempdenvals(www%nspf,numclasses)
-  DATATYPE :: tempinvden(www%nspf,www%nspf,numclasses),tempdenvects(www%nspf,www%nspf,numclasses)
+  DATATYPE :: tempinvden(www%nspf,www%nspf,numclasses),&
+       tempdenvects(www%nspf,www%nspf,numclasses)
   integer :: ispf,jspf,iclass
   DATAECS :: rvector(numpoints)
 
@@ -287,11 +291,13 @@ subroutine getdenmatstuff(www,avector, denmat, invdenmat, denvals, denvects, num
   do iclass=1,numclasses
      do ispf=1,nperclass(iclass)
         do jspf=1,nperclass(iclass)
-           tempinvden(ispf,jspf,iclass)=denmat(classorb(ispf,iclass),classorb(jspf,iclass))
+           tempinvden(ispf,jspf,iclass) = &
+                denmat(classorb(ispf,iclass),classorb(jspf,iclass))
         enddo
      enddo
      tempinvden(:,:,iclass)= (-1) * tempinvden(:,:,iclass)
-     call EIGEN(tempinvden(:,:,iclass),nperclass(iclass), www%nspf, tempdenvects(:,:,iclass),tempdenvals(:,iclass))
+     call EIGEN(tempinvden(:,:,iclass),nperclass(iclass), www%nspf, &
+          tempdenvects(:,:,iclass),tempdenvals(:,iclass))
      tempinvden(:,:,iclass)= (-1) * tempinvden(:,:,iclass)
      tempdenvals(:,iclass)= (-1) * tempdenvals(:,iclass)
 
@@ -299,8 +305,10 @@ subroutine getdenmatstuff(www,avector, denmat, invdenmat, denvals, denvects, num
      do ispf=1,nperclass(iclass)
         denvals(classorb(ispf,iclass))=tempdenvals(ispf,iclass)
         do jspf=1,nperclass(iclass)
-           denvects(classorb(ispf,iclass),classorb(jspf,iclass))=tempdenvects(ispf,jspf,iclass)
-           invdenmat(classorb(ispf,iclass),classorb(jspf,iclass))=tempinvden(ispf,jspf,iclass)
+           denvects(classorb(ispf,iclass),classorb(jspf,iclass)) = &
+                tempdenvects(ispf,jspf,iclass)
+           invdenmat(classorb(ispf,iclass),classorb(jspf,iclass)) = &
+                tempinvden(ispf,jspf,iclass)
         enddo
      enddo
   enddo
@@ -328,7 +336,8 @@ subroutine getoccupations(www,in_avector, numpoints, occupations)
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 
   if (www%parconsplit.ne.0) then
-     call mpiallgather(avector,www%numconfig*numpoints,www%configsperproc(:)*numpoints,www%maxconfigsperproc*numpoints)
+     call mpiallgather(avector,www%numconfig*numpoints,&
+          www%configsperproc(:)*numpoints,www%maxconfigsperproc*numpoints)
   endif
 
   occupations(:)=0d0
@@ -340,7 +349,8 @@ subroutine getoccupations(www,in_avector, numpoints, occupations)
         ispf=www%singlewalkopspf(1,iwalk,config1)  !! goes with config1
         jspf=www%singlewalkopspf(2,iwalk,config1)  !! goes with config2
 
-        occupations(ispf)=occupations(ispf) + dot(avector(:,config1),avector(:,config1),numpoints)
+        occupations(ispf)=occupations(ispf) + &
+             dot(avector(:,config1),avector(:,config1),numpoints)
 
      enddo
   enddo
@@ -366,7 +376,8 @@ end subroutine getoccupations
 !!$  use xxxmod
 !!$  implicit none
 !!$
-!!$  DATATYPE :: avector(numr,numconfig,mcscfnum), a1(mcscfnum), a2(mcscfnum), csum, csum2, sum,dot
+!!$  DATATYPE :: avector(numr,numconfig,mcscfnum), a1(mcscfnum), a2(mcscfnum), &
+!!$       csum, csum2, sum,dot
 !!$  integer ::     ii,jj, config1
 !!$
 !!$  avector(:,:,:)=RESHAPE(yyy%cmfavec(:,:,0),(/numr,numconfig,mcscfnum/))
@@ -390,7 +401,8 @@ end subroutine getoccupations
 !!$     csum=0.d0;     csum2=0.d0
 !!$     do jj=1,numr
 !!$        
-!!$!! 111510 this is just for output, no big deal, but rdenexpect should be CNORMTYPE, really DATATYPE if want complex expect for chmctdh
+!!$!! 111510 this is just for output, no big deal, but rdenexpect should be 
+!!$        CNORMTYPE, really DATATYPE if want complex expect for chmctdh
 !!$
 !!$        csum=csum+              ALLCON(yyy%rdenvects(jj,ii))*     yyy%rdenvects(jj,ii)  
 !!$        csum2=csum2+ ALLCON(yyy%rdenvects(jj,ii))*yyy%rdenvects(jj,ii)*bondpoints(ii) 
@@ -405,8 +417,10 @@ end subroutine getoccupations
 
 !!$  KEEPME KEEPME KEEMPE
 !!$
-!!$!! checks whether projections of natural configurations are proportional to natural orbitals in r
-!!$!! only valid for mcscfnum=1....   projections are for each state, r natorbs are averaged
+!!$!! checks whether projections of natural configurations are 
+!!$!! proportional to natural orbitals in r
+!!$!! only valid for mcscfnum=1....   projections are for each state,
+!!$!! r natorbs are averaged
 !!$
 !!$subroutine schmidtcheck(schmidtprint)
 !!$  use parameters

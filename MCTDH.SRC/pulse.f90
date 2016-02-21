@@ -35,9 +35,13 @@ subroutine vectdpot0(myintime,invelflag,tdpotsout)
   DATATYPE :: tdpotlen,tdpotvel
 
   if (invelflag.eq.0) then
-     tdpotsout(1)=tdpotlen(myintime,1)  ;  tdpotsout(2)=tdpotlen(myintime,2);  tdpotsout(3)=tdpotlen(myintime,3)
+     tdpotsout(1)=tdpotlen(myintime,1)  ;
+     tdpotsout(2)=tdpotlen(myintime,2)
+     tdpotsout(3)=tdpotlen(myintime,3)
   else
-     tdpotsout(1)=tdpotvel(myintime,1)  ;  tdpotsout(2)=tdpotvel(myintime,2);  tdpotsout(3)=tdpotvel(myintime,3)
+     tdpotsout(1)=tdpotvel(myintime,1)  
+     tdpotsout(2)=tdpotvel(myintime,2)
+     tdpotsout(3)=tdpotvel(myintime,3)
   endif
 
 end subroutine vectdpot0
@@ -148,7 +152,8 @@ function simplepulselen(myintime, ipulse)
      if (time.le.pi/omega(ipulse)) then
 
         simplepulselen = pulsestrength(ipulse) * omega(ipulse) * &
-             ( sin(time*omega(ipulse))*cos(time*omega(ipulse) + phaseshift(ipulse)) + sin(time*omega(ipulse) + phaseshift(ipulse))*cos(time*omega(ipulse)) )
+             ( sin(time*omega(ipulse))*cos(time*omega(ipulse) + phaseshift(ipulse)) &
+             + sin(time*omega(ipulse) + phaseshift(ipulse))*cos(time*omega(ipulse)) )
 
      endif
   endif
@@ -169,7 +174,8 @@ function simplepulsevel(myintime, ipulse)
      time=myintime-pulsestart(ipulse)
      if (time.le.pi/omega(ipulse)) then
 
-        simplepulsevel = pulsestrength(ipulse) * sin(time*omega(ipulse)) * sin(time*omega(ipulse) + phaseshift(ipulse) )
+        simplepulsevel = pulsestrength(ipulse) * &
+             sin(time*omega(ipulse)) * sin(time*omega(ipulse) + phaseshift(ipulse) )
 
      endif
   endif
@@ -187,7 +193,8 @@ function cwpulselen(myintime, ipulse)
 
   cwpulselen=0d0
   if (myintime.lt.pi/omega(ipulse)) then
-     cwpulselen = pulsestrength(ipulse) * omega2(ipulse)*cos(myintime*omega2(ipulse)+phaseshift(ipulse))
+     cwpulselen = pulsestrength(ipulse) * omega2(ipulse) * &
+          cos(myintime*omega2(ipulse)+phaseshift(ipulse))
   endif
 
 end function cwpulselen
@@ -225,8 +232,10 @@ function pulselen(myintime, ipulse)
      time=myintime-pulsestart(ipulse)
      if (time.le.pi/omega(ipulse)) then
         pulselen = pulsestrength(ipulse) * ( &
-             2*omega(ipulse)*sin(time*omega(ipulse))*cos(time*omega(ipulse)) * sin((time-pi/omega(ipulse)/2)*omega2(ipulse) + phaseshift(ipulse)) &
-             + sin(time*omega(ipulse))**2 * omega2(ipulse) * cos((time-pi/omega(ipulse)/2)*omega2(ipulse) + phaseshift(ipulse)) )
+             2*omega(ipulse)*sin(time*omega(ipulse))*cos(time*omega(ipulse)) * &
+             sin((time-pi/omega(ipulse)/2)*omega2(ipulse) + phaseshift(ipulse)) &
+             + sin(time*omega(ipulse))**2 * omega2(ipulse) * &
+             cos((time-pi/omega(ipulse)/2)*omega2(ipulse) + phaseshift(ipulse)) )
      endif
   endif
 
@@ -253,10 +262,12 @@ function pulsevel(myintime, ipulse)
 
      thisomega2=omega2(ipulse)+chirp(ipulse)*(time-pi/omega(ipulse)/2)/(pi/omega(ipulse)/2)   /2
 
-     thisstrength=pulsestrength(ipulse)*(1d0+ramp(ipulse)*(time-pi/omega(ipulse)/2)/(pi/omega(ipulse)/2))
+     thisstrength=pulsestrength(ipulse)*(1d0+ramp(ipulse) * &
+          (time-pi/omega(ipulse)/2)/(pi/omega(ipulse)/2))
 
      if (time.le.pi/omega(ipulse)) then
-        pulsevel = thisstrength * sin(time*omega(ipulse))**2 * sin((time-pi/omega(ipulse)/2)*thisomega2 + phaseshift(ipulse))
+        pulsevel = thisstrength * sin(time*omega(ipulse))**2 * &
+             sin((time-pi/omega(ipulse)/2)*thisomega2 + phaseshift(ipulse))
      endif
   endif
 
@@ -283,8 +294,10 @@ function longpulselen(myintime, ipulse)
 
      if (time.le.pi/omega(ipulse)) then
 
-        if ( (time.le.pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) .or. (time.ge.pi/omega(ipulse) - pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) ) then
-           fac=2*omega(ipulse)*(2*longstep(ipulse)+1)*sin(time*omega(ipulse)*(2*longstep(ipulse)+1))*cos(time*omega(ipulse)*(2*longstep(ipulse)+1))
+        if ( (time.le.pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) .or.&
+             (time.ge.pi/omega(ipulse) - pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) ) then
+           fac=2*omega(ipulse)*(2*longstep(ipulse)+1)*sin(time*omega(ipulse)*(2*longstep(ipulse)+1)) * &
+                cos(time*omega(ipulse)*(2*longstep(ipulse)+1))
            fac2=sin(time*omega(ipulse)*(2*longstep(ipulse)+1))**2
         else
            fac=0.d0
@@ -317,15 +330,21 @@ function longpulsevel(myintime, ipulse)
 
 !! this is right I think  goes to chirp/2  when 2*logstep+1 / 4*longstep+2 -way before half time
 
-        thisomega2=omega2(ipulse)+chirp(ipulse)/2 *(time-pi/omega(ipulse)/2)/(pi/omega(ipulse)/2*(2*longstep(ipulse)+1)/(4*longstep(ipulse)+2))
-        thisstrength=pulsestrength(ipulse)*(1d0 +ramp(ipulse) *(time-pi/omega(ipulse)/2)/(pi/omega(ipulse)/2))
+        thisomega2=omega2(ipulse)+chirp(ipulse)/2 *(time-pi/omega(ipulse)/2)/&
+             (pi/omega(ipulse)/2*(2*longstep(ipulse)+1)/(4*longstep(ipulse)+2))
+        thisstrength=pulsestrength(ipulse)*(1d0 +ramp(ipulse) * &
+             (time-pi/omega(ipulse)/2)/(pi/omega(ipulse)/2))
 
 !!(2*longstep(ipulse)+1)/(4*longstep(ipulse)+2)))
 
-        if ( (time.le.pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) .or. (time.ge.pi/omega(ipulse) - pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) ) then
-          longpulsevel = thisstrength  * sin((time-pi/omega(ipulse)/2)*thisomega2 + phaseshift(ipulse)) * sin(time*omega(ipulse)*(2*longstep(ipulse)+1))**2 
+        if ( (time.le.pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) .or. &
+             (time.ge.pi/omega(ipulse) - pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) ) then
+          longpulsevel = thisstrength  * &
+               sin((time-pi/omega(ipulse)/2)*thisomega2 + phaseshift(ipulse)) * &
+               sin(time*omega(ipulse)*(2*longstep(ipulse)+1))**2 
         else
-           longpulsevel = thisstrength * sin((time-pi/omega(ipulse)/2)*thisomega2 + phaseshift(ipulse))
+           longpulsevel = thisstrength * &
+                sin((time-pi/omega(ipulse)/2)*thisomega2 + phaseshift(ipulse))
         endif
      endif
   endif

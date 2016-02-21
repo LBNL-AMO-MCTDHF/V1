@@ -187,7 +187,9 @@ end function zerorecord
 end module zerorecmod
 
 
-subroutine read_orb(inspf,imvalue, iprop, iwhich)   !! iwhich: 1=spf 2=natorb 3=density  4=denproj   denproj not debugged
+!! iwhich: 1=spf 2=natorb 3=density  4=denproj   denproj not debugged
+
+subroutine read_orb(inspf,imvalue, iprop, iwhich)   
   use parameters
   use mpimod
   use zerorecmod

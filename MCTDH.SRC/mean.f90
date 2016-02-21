@@ -35,7 +35,9 @@ subroutine get_reducedham()
 end subroutine get_reducedham
 
 
-!! IN THE END reducedpottally is bra2,ket2,bra1,ket1 ; I sum it up by conjugating ket2 bra2 ket1 bra1.  Notice a1 is conjg not a2.
+!! IN THE END reducedpottally is bra2,ket2,bra1,ket1 ; 
+!! I sum it up by conjugating ket2 bra2 ket1 bra1.  Notice a1 is conjg not a2.
+!! reducedpottally is the TWO ELECTRON REDUCED DENSITY MATRIX.
 
 subroutine get_reducedpot()
   use xxxmod
@@ -51,13 +53,15 @@ subroutine get_reducedpot0(www,intwoden,outpot,twoereduced)
   use spfsize_parameters
   implicit none
   type(walktype),intent(in) :: www
-  DATATYPE,intent(in) :: twoereduced(reducedpotsize, www%nspf,www%nspf),intwoden(www%nspf,www%nspf,www%nspf,www%nspf)
+  DATATYPE,intent(in) :: twoereduced(reducedpotsize, www%nspf,www%nspf),&
+       intwoden(www%nspf,www%nspf,www%nspf,www%nspf)
   DATATYPE,intent(out) :: outpot(reducedpotsize,www%nspf,www%nspf)
   integer :: ii
 
 ! I have bra2,ket2,bra1,ket1. (chemists' notation for contraction)
 
-! e.g. M= -2, -1, 2, 1 all different classes.  no zeroed entries even if constraining, in general, I believe.
+! e.g. M= -2, -1, 2, 1 all different classes. 
+!   no zeroed entries even if constraining, in general, I believe.
 
   ii=reducedpotsize
 
@@ -71,10 +75,12 @@ subroutine get_reducedpot0(www,intwoden,outpot,twoereduced)
 !           endif
 !        enddo
 !     enddo
-!     call MYGEMM('N','N', ii,www%nspf**2,www%nspf**2,(1.0d0,0.d0), twoereduced,ii,temptwoden,www%nspf**2, (0.d0,0.d0),outpot,ii)
+!     call MYGEMM('N','N', ii,www%nspf**2,www%nspf**2,(1.0d0,0.d0), &
+!         twoereduced,ii,temptwoden,www%nspf**2, (0.d0,0.d0),outpot,ii)
 !  else
 
-     call MYGEMM('N','N', ii,www%nspf**2,www%nspf**2,(1.0d0,0.d0), twoereduced,ii,intwoden,www%nspf**2, (0.d0,0.d0),outpot,ii)
+     call MYGEMM('N','N', ii,www%nspf**2,www%nspf**2,(1.0d0,0.d0), &
+          twoereduced,ii,intwoden,www%nspf**2, (0.d0,0.d0),outpot,ii)
 
 
 end subroutine get_reducedpot0
@@ -88,7 +94,8 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
-  DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects),  in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
+  DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects),  &
+       in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE,intent(out) :: reducedpottally(www%nspf,www%nspf,www%nspf,www%nspf)
   DATATYPE,allocatable :: avector2(:,:,:)
   DATATYPE,allocatable :: mytally(:,:,:,:)
@@ -104,7 +111,8 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
 
   if (www%parconsplit.ne.0) then
      do ii=1,numvects
-        call mpiallgather(avector2(:,:,ii),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+        call mpiallgather(avector2(:,:,ii),www%numconfig*numr,&
+             www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
      enddo
   endif
 
@@ -180,7 +188,8 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
-  DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects), in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
+  DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects), &
+       in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE,intent(out) :: reducedproderiv(www%nspf,www%nspf)
   DATATYPE,allocatable :: avector2(:,:,:)
   DATATYPE :: a1(numr,numvects), a2(numr,numvects), a2mult(numr,numvects), mypro(numr,numr), &
@@ -195,7 +204,8 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
 
   if (www%parconsplit.ne.0) then
      do ii=1,numvects
-        call mpiallgather(avector2(:,:,ii),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+        call mpiallgather(avector2(:,:,ii),www%numconfig*numr,&
+             www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
      enddo
   endif
 
@@ -217,14 +227,16 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
         a1(:,:)=avector1(:,config1,:)
         a2(:,:)=avector2(:,config2,:)
 
-        call MYGEMM('N','N',numr,numvects,numr,DATAONE,mypro(:,:),numr,a2(:,:),numr,DATAZERO,a2mult(:,:),numr)
+        call MYGEMM('N','N',numr,numvects,numr,DATAONE,&
+             mypro(:,:),numr,a2(:,:),numr,DATAZERO,a2mult(:,:),numr)
 
         csum=dot(a1,a2mult,numvects*numr)
 
         do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
 
            dirphase=www%singlewalkdirphase(iwalk,config1)
-           ispf=www%singlewalkopspf(1,iwalk,config1);        jspf=www%singlewalkopspf(2,iwalk,config1)
+           ispf=www%singlewalkopspf(1,iwalk,config1)
+           jspf=www%singlewalkopspf(2,iwalk,config1)
 
            myredpro(jspf,ispf)=myredpro(jspf,ispf)+ &
                 dirphase*csum
@@ -266,7 +278,8 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects), &
        in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
-  DATATYPE,intent(out) :: reducedinvr(www%nspf,www%nspf),reducedr(www%nspf,www%nspf),  reducedinvrsq(www%nspf,www%nspf)
+  DATATYPE,intent(out) :: reducedinvr(www%nspf,www%nspf),reducedr(www%nspf,www%nspf), &
+       reducedinvrsq(www%nspf,www%nspf)
   DATATYPE,allocatable :: avector2(:,:,:)
   DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a2r(numr,numvects), &
        a2inv(numr,numvects), a2invsq(numr,numvects), dot, rdot,invdot,invsqdot
@@ -288,7 +301,8 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
   avector2(:,www%firstconfig:www%lastconfig,:) = in_avector2(:,:,:)
   if (www%parconsplit.ne.0) then
      do ii=1,numvects
-        call mpiallgather(avector2(:,:,ii),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+        call mpiallgather(avector2(:,:,ii),www%numconfig*numr,&
+             www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
      enddo
   endif
 
@@ -296,7 +310,9 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
 
 !! removing REDUCTION(+:reducedinvr,reducedr,reducedinvrsq) due to get_twoereducedx problems CRITICAL instead
 
-  rvalues(:)=bondpoints(:);    invrvalues(:)=(1.d0/bondpoints(:));   invrsqvalues(:)=(1.d0/bondpoints(:)**2)
+  rvalues(:)=bondpoints(:)
+  invrvalues(:)=(1.d0/bondpoints(:))
+  invrsqvalues(:)=(1.d0/bondpoints(:)**2)
 
   myinvr(:,:)=0.d0;  myr(:,:)=0.d0;  myinvrsq(:,:)=0.d0
 
@@ -321,7 +337,8 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
         do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
 
            dirphase=www%singlewalkdirphase(iwalk,config1)
-           ispf=www%singlewalkopspf(1,iwalk,config1);              jspf=www%singlewalkopspf(2,iwalk,config1)
+           ispf=www%singlewalkopspf(1,iwalk,config1)
+           jspf=www%singlewalkopspf(2,iwalk,config1)
 
            myinvr(jspf,ispf)=myinvr(jspf,ispf)+         dirphase*invdot
            myr(jspf,ispf)=myr(jspf,ispf)+         dirphase*rdot
@@ -341,7 +358,8 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
 
   deallocate(avector2)
   
-  call mympireduce(reducedr(:,:), www%nspf**2);  call mympireduce(reducedinvr(:,:), www%nspf**2)
+  call mympireduce(reducedr(:,:), www%nspf**2)
+  call mympireduce(reducedinvr(:,:), www%nspf**2)
   call mympireduce(reducedinvrsq(:,:), www%nspf**2)
 
 end subroutine get_reducedr

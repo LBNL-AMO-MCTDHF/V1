@@ -77,11 +77,13 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   liwsp=maxexpodim + 100
   allocate(iwsp(liwsp)); iwsp=0
 
-  allocate(aspfs(spfsize,nspf), propspfs(spfsize,nspf),   outspfs(spfsize,nspf), tempspfs(spfsize,nspf))
+  allocate(aspfs(spfsize,nspf), propspfs(spfsize,nspf),   &
+       outspfs(spfsize,nspf), tempspfs(spfsize,nspf))
   aspfs=0; propspfs=0; outspfs=0; tempspfs=0
 
   if (orbcompact.ne.0) then
-     allocate(com_aspfs(spfsmallsize,nspf), com_propspfs(spfsmallsize,nspf),   com_outspfs(spfsmallsize,nspf))
+     allocate(com_aspfs(spfsmallsize,nspf), com_propspfs(spfsmallsize,nspf),   &
+          com_outspfs(spfsmallsize,nspf))
      com_aspfs=0; com_propspfs=0; com_outspfs=0
   endif
 
@@ -93,7 +95,8 @@ subroutine expoprop(time1,time2,inspfs, numiters)
      endif
      thisexpodim=expodim
      if ((myrank.eq.1).and.(notiming==0)) then
-        open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="unknown",iostat=myiostat)
+        open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",&
+             status="unknown",iostat=myiostat)
         call checkiostat(myiostat,"opening expo.dat timing file")
         write(expofileptr,*,iostat=myiostat) " Exponential propagator output.  expotol=",expotol
         call checkiostat(myiostat,"writing expo.dat timing file")
@@ -117,9 +120,11 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   endif
 
   if ((myrank.eq.1).and.(notiming.eq.0)) then
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="old", position="append",iostat=myiostat)
+     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",&
+          status="old", position="append",iostat=myiostat)
      call checkiostat(myiostat,"opening expo.dat timing file")
-     write(expofileptr,*,iostat=myiostat) "Go Orbital Expoprop.  Tinit=", time1, " thisexpodim=",thisexpodim, " step ", min(par_timestep/littlesteps,tempstepsize)
+     write(expofileptr,*,iostat=myiostat) "Go Orbital Expoprop.  Tinit=", time1, &
+          " thisexpodim=",thisexpodim, " step ", min(par_timestep/littlesteps,tempstepsize)
      call checkiostat(myiostat,"writing expo.dat timing file")
      close(expofileptr)
   endif
@@ -132,21 +137,29 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 
 
   if (myrank.eq.1.and.notiming.eq.0) then
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="old", position="append",iostat=myiostat)
+     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",&
+          status="old", position="append",iostat=myiostat)
      call checkiostat(myiostat,"opening expo.dat timing file")
   else
-!!$ opening /dev/null multiple times not allowed :<       open(expofileptr,file="/dev/null",status="unknown")
+!!$ opening /dev/null multiple times not allowed :<       
+!!$ open(expofileptr,file="/dev/null",status="unknown")
+
      expofileptr=nullfileptr
   endif
   
 !! nodgexpthirdflag=1 HARDWIRE 10-2015  NOT SURE ABOUT DGEXPTHIRD SUBROUTINES
 
-  if  ((jacsymflag.ne.0).and.(jacprojorth.eq.0).and.(constraintflag.eq.0.or.jacgmatthird.ne.0).and.(nodgexpthirdflag.eq.0)) then  !! homogeneous third order.  Simpler expression for propagator.
+  if  ((jacsymflag.ne.0).and.(jacprojorth.eq.0).and.&
+       (constraintflag.eq.0.or.jacgmatthird.ne.0).and.(nodgexpthirdflag.eq.0)) then
+
+!! homogeneous third order.  Simpler expression for propagator.
+
      aspfs=inspfs
 
      if (parorbsplit.eq.3) then
         call dgexpthirdxxx2(idim, thisexpodim, tdiff, aspfs, inspfs, expotol, norm, &
-             wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,tempstepsize,realpardotsub,idim*nprocs)
+             wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,&
+             tempstepsize,realpardotsub,idim*nprocs)
      else
         call dgexpthird(idim, thisexpodim, tdiff, aspfs, inspfs, expotol, norm, &
              wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,tempstepsize)
@@ -163,22 +176,29 @@ subroutine expoprop(time1,time2,inspfs, numiters)
      propspfs=0.d0
 
      if (orbcompact.ne.0) then
-        call spfs_compact(aspfs,com_aspfs); call spfs_compact(propspfs,com_propspfs);
+        call spfs_compact(aspfs,com_aspfs); 
+        call spfs_compact(propspfs,com_propspfs);
         if (parorbsplit.eq.3) then
-           call dgphivxxx2(idim, thisexpodim, tdiff, com_aspfs, com_propspfs, com_outspfs, expotol, norm, &
-                wsp, lwsp, iwsp, liwsp, jacopcompact, itrace, iflag,expofileptr,tempstepsize,realpardotsub,idim*nprocs)
+           call dgphivxxx2(idim, thisexpodim, tdiff, com_aspfs, &
+                com_propspfs, com_outspfs, expotol, norm, &
+                wsp, lwsp, iwsp, liwsp, jacopcompact, itrace, iflag,&
+                expofileptr,tempstepsize,realpardotsub,idim*nprocs)
         else
-           call dgphiv(idim, thisexpodim, tdiff, com_aspfs, com_propspfs, com_outspfs, expotol, norm, &
-                wsp, lwsp, iwsp, liwsp, jacopcompact, itrace, iflag,expofileptr,tempstepsize)
+           call dgphiv(idim, thisexpodim, tdiff, com_aspfs, &
+                com_propspfs, com_outspfs, expotol, norm, &
+                wsp, lwsp, iwsp, liwsp, jacopcompact, itrace, iflag,&
+                expofileptr,tempstepsize)
         endif
         call spfs_expand(com_outspfs,outspfs);
      else
         if (parorbsplit.eq.3) then
-           call dgphivxxx2(idim, thisexpodim, tdiff, aspfs, propspfs, outspfs, expotol, norm, &
-                wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,tempstepsize,realpardotsub,idim*nprocs)
+           call dgphivxxx2(idim, thisexpodim, tdiff, aspfs, propspfs, &
+                outspfs, expotol, norm, wsp, lwsp, iwsp, liwsp, jacoperate, &
+                itrace, iflag,expofileptr,tempstepsize,realpardotsub,idim*nprocs)
         else
-           call dgphiv(idim, thisexpodim, tdiff, aspfs, propspfs, outspfs, expotol, norm, &
-                wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,tempstepsize)
+           call dgphiv(idim, thisexpodim, tdiff, aspfs, propspfs, &
+                outspfs, expotol, norm, wsp, lwsp, iwsp, liwsp, jacoperate, &
+                itrace, iflag,expofileptr,tempstepsize)
         endif
      endif
 
@@ -207,9 +227,12 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   call spf_orthogit(inspfs, error)
   
   if ((myrank.eq.1).and.(notiming.eq.0)) then
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",status="old", position="append",iostat=myiostat)
+     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",&
+          status="old", position="append",iostat=myiostat)
      call checkiostat(myiostat,"opening expo.dat timing file")
-     write(expofileptr,*,iostat=myiostat) "   End expo. Orthog error, steps, stepsize, iterations", error,iwsp(4),tempstepsize,iwsp(1); 
+     write(expofileptr,*,iostat=myiostat) &
+          "   End expo. Orthog error, steps, stepsize, iterations",&
+          error,iwsp(4),tempstepsize,iwsp(1); 
      call checkiostat(myiostat,"writing expo.dat timing file")
      if (abs(error).gt.1d-5) then
         write(expofileptr,*) "    **** THATSA BIG ERROR I THINK! ***"
@@ -312,7 +335,8 @@ subroutine jacoperate0(dentimeflag,conflag,inspfs,outspfs)
   endif
 
 !! call always even if numspf=0
-  call jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs(:,min(nspf,lowspf):highspf))
+  call jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,&
+       outspfs(:,min(nspf,lowspf):highspf))
 
   if (parorbsplit.eq.1) then
      call system_clock(itime)
@@ -339,8 +363,8 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
   integer :: ii,ibot,getlen,numspf,myiostat,itime,jtime,jjj
   DATATYPE :: csum, nulldouble(2),pots(3)
   real*8 :: facs(0:1),rsum
-  DATATYPE :: bigwork(spfsize,nspf),   workspfs(spfsize,lowspf:highspf+1),&   !! AUTOMATIC
-       tempspfs(spfsize,lowspf:highspf+1)
+  DATATYPE :: bigwork(spfsize,nspf),   workspfs(spfsize,lowspf:highspf+1),& 
+       tempspfs(spfsize,lowspf:highspf+1)       !! AUTOMATIC
 
   numcalledhere=numcalledhere+1
 
@@ -367,7 +391,8 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
 
         call system_clock(itime)
         if (numspf.gt.0) then
-           call project00(lowspf,highspf,inspfs(:,lowspf:highspf),bigwork(:,lowspf:highspf),jacvect) 
+           call project00(lowspf,highspf,inspfs(:,lowspf:highspf),&
+                bigwork(:,lowspf:highspf),jacvect) 
         endif
         call system_clock(jtime); times(2)=times(2)+jtime-itime;   itime=jtime
         if (parorbsplit.eq.1) then
@@ -382,13 +407,15 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
         if (numspf.gt.0) then
            outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
         endif
-        call actreduced00(lowspf,highspf,dentimeflag,jactime,inspfs,nulldouble,tempspfs,ii,0,0)
+        call actreduced00(lowspf,highspf,dentimeflag,jactime,inspfs,&
+             nulldouble,tempspfs,ii,0,0)
         call system_clock(jtime); times(1)=times(1)+jtime-itime; 
 
      else
            
         call system_clock(itime)
-        call actreduced00(lowspf,highspf,dentimeflag,jactime, inspfs,nulldouble, workspfs,ii,0,0)
+        call actreduced00(lowspf,highspf,dentimeflag,jactime, inspfs,&
+             nulldouble, workspfs,ii,0,0)
         if (numspf.gt.0) then
            tempspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)
         endif
@@ -400,7 +427,8 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
 
      call system_clock(itime)
      if (numspf.gt.0) then
-        call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),workspfs(:,lowspf:highspf),jacvect)
+        call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),&
+             workspfs(:,lowspf:highspf),jacvect)
         outspfs(:,:)=outspfs(:,:)-workspfs(:,lowspf:highspf)*facs(ii)
      endif
      call system_clock(jtime); times(2)=times(2)+jtime-itime;
@@ -408,7 +436,8 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
 !! terms from projector
 
 !! always call derproject00   timing in derproject00
-     call derproject00(lowspf,highspf,jacvectout(:,min(lowspf,nspf):highspf),workspfs,jacvect,inspfs)
+     call derproject00(lowspf,highspf,jacvectout(:,min(lowspf,nspf):highspf),&
+          workspfs,jacvect,inspfs)
      if (numspf.gt.0) then
         outspfs(:,:)=outspfs(:,:)-workspfs(:,lowspf:highspf)*facs(ii)
      endif
@@ -424,7 +453,8 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
         endif
         call system_clock(jtime); times(4)=times(4)+jtime-itime;   itime=jtime
 
-        call actreduced00(lowspf,highspf,dentimeflag,jactime,bigwork,nulldouble,workspfs,ii,0,0)
+        call actreduced00(lowspf,highspf,dentimeflag,jactime,bigwork,nulldouble,&
+             workspfs,ii,0,0)
         if (numspf.gt.0) then
            outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
         endif
@@ -435,10 +465,12 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
 
      if (constraintflag.ne.0.and.numspf.gt.0.and.conflag.ne.0) then
         call system_clock(itime)
-        call op_gmat00(lowspf,highspf,inspfs,workspfs(:,lowspf:highspf),ii,jactime,jacvect)
+        call op_gmat00(lowspf,highspf,inspfs,&
+             workspfs(:,lowspf:highspf),ii,jactime,jacvect)
         outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
         if (jacgmatthird.ne.0) then
-           call der_gmat00(lowspf,highspf,jacvect,workspfs(:,lowspf:highspf),ii,jactime,jacvect,inspfs)
+           call der_gmat00(lowspf,highspf,jacvect,&
+                workspfs(:,lowspf:highspf),ii,jactime,jacvect,inspfs)
            outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
         endif
         call system_clock(jtime); times(5)=times(5)+jtime-itime;
@@ -452,10 +484,13 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
            if (dentimeflag.ne.0) then
 !! TIMEFAC and facs HERE
               csum=timefac*facs(ii)
-              call MYGEMM('N','N', spfsize,numspf,nspf,csum, yyy%frozenexchinvr(:,:,ii),spfsize, &
-                   yyy%invdenmat(:,lowspf:highspf,ii), nspf, DATAZERO, tempspfs(:,lowspf:highspf), spfsize)
+              call MYGEMM('N','N', spfsize,numspf,nspf,csum, &
+                   yyy%frozenexchinvr(:,:,ii),spfsize, &
+                   yyy%invdenmat(:,lowspf:highspf,ii), nspf, DATAZERO, &
+                   tempspfs(:,lowspf:highspf), spfsize)
            else
-              tempspfs(:,lowspf:highspf)=(-1)*yyy%frozenexchinvr(:,lowspf:highspf,ii)*facs(ii) !! factor (-1)
+              tempspfs(:,lowspf:highspf)=(-1) * &
+                   yyy%frozenexchinvr(:,lowspf:highspf,ii)*facs(ii) !! factor (-1)
            endif
            call system_clock(jtime); times(6)=times(6)+jtime-itime;
         endif
@@ -464,7 +499,8 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
         call derproject00(lowspf,highspf,tempspfs,workspfs,jacvect,inspfs)
 
         if (numspf.gt.0) then
-           outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf)+tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
+           outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) + &
+                tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
         endif
      endif
 
@@ -472,7 +508,7 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
 
      if (drivingflag.ne.0) then
         if (dentimeflag.eq.0) then
-           OFLWR "error, no driving for quad!!"; CFLST     !! invdenmat already in drivingorbs
+           OFLWR "error, no driving for quad!!"; CFLST !! invdenmat already in drivingorbs
         endif
         rsum=0
         if (numspf.gt.0) then
@@ -500,7 +536,8 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
 
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (numcalledhere==1) then
-        open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", status="unknown",iostat=myiostat)
+        open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", &
+             status="unknown",iostat=myiostat)
         call checkiostat(myiostat,"opening jacoperate timing file")
         write(8577,'(T16,100A9)',iostat=myiostat) &
              "actreduced ", &
@@ -515,7 +552,8 @@ subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
         call checkiostat(myiostat,"writing jacoperate timing file")
      endif
      if (mod(numcalledhere,timingout).eq.0) then
-        open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", status="unknown", position="append",iostat=myiostat)
+        open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", &
+             status="unknown", position="append",iostat=myiostat)
         call checkiostat(myiostat,"opening jacoperate timing file")
         write(8577,'(A3,F12.4,15I9)',iostat=myiostat) "T= ", jactime,  times(1:7)/1000
         call checkiostat(myiostat,"writing jacoperate timing file")
@@ -612,7 +650,8 @@ subroutine avectortimewrite(fileptr)
   implicit none
   integer,intent(in) :: fileptr
   integer :: myiostat
-  write(fileptr,'(10(A13,I15))',iostat=myiostat) "Start/end",times(1)/1000,"mult",times(2)/1000,"expokit",times(3)/1000
+  write(fileptr,'(10(A13,I15))',iostat=myiostat) "Start/end",times(1)/1000,&
+       "mult",times(2)/1000,"expokit",times(3)/1000
   call checkiostat(myiostat," writing in subroutine avectortimewrite")
 end subroutine avectortimewrite
 
@@ -641,8 +680,10 @@ subroutine exposparseprop(www,inavector,outavector,time,imc,numiters)
   integer,intent(out) :: numiters
   DATATYPE,intent(in) :: inavector(numr,www%firstconfig:www%lastconfig)
   DATATYPE,intent(out) :: outavector(numr,www%firstconfig:www%lastconfig)
-  DATATYPE :: smallvector(numr,www%maxdfbasisperproc),smallvectorout(numr,www%maxdfbasisperproc), &
-       zerovector(numr,www%maxdfbasisperproc),smallvectortemp(numr,www%maxdfbasisperproc), &
+  DATATYPE :: smallvector(numr,www%maxdfbasisperproc),&
+       smallvectorout(numr,www%maxdfbasisperproc), &
+       zerovector(numr,www%maxdfbasisperproc),&
+       smallvectortemp(numr,www%maxdfbasisperproc), &
        workdrivingavecdfbasis(numr,www%botdfbasis:www%topdfbasis)    !! AUTOMATIC
   external :: parconfigexpomult_padded,realpardotsub
   real*8 :: one,time
@@ -691,25 +732,32 @@ subroutine exposparseprop(www,inavector,outavector,time,imc,numiters)
 
   if ((myrank.eq.1).and.(notiming==0)) then
      if (icalled.eq.1) then
-        open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",status="unknown",iostat=myiostat)
+        open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",&
+             status="unknown",iostat=myiostat)
         call checkiostat(myiostat,"opening avecexpo timing file")
-        write(expofileptr,*,iostat=myiostat) " Avector lanczos propagator.  Order =",thisexpodim," Aerror= ",aerror
+        write(expofileptr,*,iostat=myiostat) " Avector lanczos propagator.  Order =",&
+             thisexpodim," Aerror= ",aerror
         call checkiostat(myiostat,"writing avecexpo timing file")
         write(expofileptr,*);        close(expofileptr)
      endif
 
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",status="old", position="append",iostat=myiostat)
+     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",&
+          status="old", position="append",iostat=myiostat)
      call checkiostat(myiostat,"opening avecexpo timing file")
-     write(expofileptr,*,iostat=myiostat) "Go Avector Lanczos.  time=", time, " Order =",thisexpodim, "step ",min(par_timestep/littlesteps,tempstepsize)
+     write(expofileptr,*,iostat=myiostat) "Go Avector Lanczos.  time=", time, &
+          " Order =",thisexpodim, "step ",min(par_timestep/littlesteps,tempstepsize)
      call checkiostat(myiostat,"writing avecexpo timing file")
      close(expofileptr)
   endif
 
   if (myrank.eq.1.and.notiming.eq.0) then
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",status="old", position="append",iostat=myiostat)
+     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",&
+          status="old", position="append",iostat=myiostat)
      call checkiostat(myiostat,"opening avecexpo timing file")
   else
-!!$ opening /dev/null multiple times not allowed :<       open(expofileptr,file="/dev/null",status="unknown")
+!!$ opening /dev/null multiple times not allowed :<       
+!!$ open(expofileptr,file="/dev/null",status="unknown")
+
      expofileptr=nullfileptr
   endif
   
@@ -768,7 +816,8 @@ subroutine exposparseprop(www,inavector,outavector,time,imc,numiters)
    endif
 
    if (www%parconsplit.eq.0) then
-      call mpiallgather(outavector,www%numconfig*numr,www%configsperproc*numr,www%maxconfigsperproc*numr)
+      call mpiallgather(outavector,www%numconfig*numr,&
+           www%configsperproc*numr,www%maxconfigsperproc*numr)
    endif
 
    if (expofileptr.ne.nullfileptr) then
@@ -785,9 +834,12 @@ subroutine exposparseprop(www,inavector,outavector,time,imc,numiters)
    endif
    
    if (myrank.eq.1.and.notiming.eq.0) then
-      open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",status="old", position="append",iostat=myiostat)
+      open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",&
+           status="old", position="append",iostat=myiostat)
       call checkiostat(myiostat,"opening avecexpo timing file")
-      write(expofileptr,*,iostat=myiostat) "   End avector prop.  steps, iterations, stepsize", iwsp(4),iwsp(1),tempstepsize; 
+      write(expofileptr,*,iostat=myiostat) &
+           "   End avector prop.  steps, iterations, stepsize", &
+           iwsp(4),iwsp(1),tempstepsize; 
       call checkiostat(myiostat,"writing avecexpo timing file")
       write(expofileptr,*);    
       call avectortimewrite(expofileptr)
@@ -819,7 +871,8 @@ end subroutine exposparseprop
 subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
   use parameters
   implicit none
-  DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
+  DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),&
+       prospfderivs(spfsize, nspf)
   DATATYPE, intent(out) :: outspfs(spfsize, nspf)
   integer :: lowspf,highspf
 
@@ -844,10 +897,12 @@ subroutine derproject00(lowspf,highspf,inspfs, outspfs, prospfs, prospfderivs)
   use jactimingmod
   implicit none
   integer,intent(in) :: lowspf,highspf
-  DATATYPE, intent(in) :: inspfs(spfsize, lowspf:highspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
+  DATATYPE, intent(in) :: inspfs(spfsize, lowspf:highspf), &
+       prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
   DATATYPE, intent(out) :: outspfs(spfsize, lowspf:highspf)
   DATATYPE :: dot,csum
-  DATATYPE :: mydot(nspf,lowspf:highspf+1), prodot(nspf,nspf), derdot(nspf,lowspf:highspf+1) !! AUTOMATIC
+  DATATYPE :: mydot(nspf,lowspf:highspf+1), prodot(nspf,nspf), &
+       derdot(nspf,lowspf:highspf+1) !! AUTOMATIC
   integer :: i,j,numspf,itime,jtime
 
   numspf=highspf-lowspf+1
@@ -953,7 +1008,8 @@ subroutine der_gmat(inspfs, outspfs, ireduced,thistime,prospfs, prospfderivs)
   implicit none
   integer, intent(in) :: ireduced
   real*8, intent(in) :: thistime
-  DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
+  DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  &
+       prospfderivs(spfsize, nspf)
   DATATYPE, intent(out) :: outspfs(spfsize, nspf)
   integer :: lowspf,highspf,numspf
 
@@ -965,7 +1021,8 @@ subroutine der_gmat(inspfs, outspfs, ireduced,thistime,prospfs, prospfderivs)
   numspf=highspf-lowspf+1
 
   if (numspf.gt.0) then
-     call der_gmat00(lowspf,highspf,inspfs,outspfs(:,lowspf:highspf),ireduced,thistime,prospfs,prospfderivs)
+     call der_gmat00(lowspf,highspf,inspfs,outspfs(:,lowspf:highspf),&
+          ireduced,thistime,prospfs,prospfderivs)
   endif
 
   if (parorbsplit.eq.1) then
@@ -976,17 +1033,21 @@ end subroutine der_gmat
 
 
 
-subroutine der_gmat00(lowspf,highspf,inspfs, outspfs, ireduced,thistime,prospfs, prospfderivs)
+subroutine der_gmat00(lowspf,highspf,inspfs, outspfs, &
+     ireduced,thistime,prospfs, prospfderivs)
   use parameters
   implicit none
   integer, intent(in) :: ireduced,lowspf,highspf
   real*8, intent(in) :: thistime
-  DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
+  DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  &
+       prospfderivs(spfsize, nspf)
   DATATYPE, intent(out) :: outspfs(spfsize, lowspf:highspf)
   integer :: i,j,numspf
   DATATYPE :: dot
-  DATATYPE :: mydot(nspf,lowspf:highspf+1), derdot(nspf,lowspf:highspf+1), &            !!  AUTOMATIC
-       mydot0(nspf,lowspf:highspf+1), derdot0(nspf,lowspf:highspf+1), conmat(nspf,nspf)
+  DATATYPE :: mydot(nspf,lowspf:highspf+1), &
+       derdot(nspf,lowspf:highspf+1), &            !!  AUTOMATIC
+       mydot0(nspf,lowspf:highspf+1), &
+       derdot0(nspf,lowspf:highspf+1), conmat(nspf,nspf)
 
   numspf=highspf-lowspf+1
 

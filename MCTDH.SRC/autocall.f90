@@ -40,11 +40,9 @@ subroutine autocall(numdata, forwardovl, sflag)
 
   IF(hanningflag .NE. 4) THEN
      do i=0,numdata
-        fftrans0(i,:) = forwardovl(i,:)          * exp((0.d0,-1.d0)*ceground*par_timestep*autosteps*i)
+        fftrans0(i,:) = forwardovl(i,:)  * exp((0.d0,-1.d0)*ceground*par_timestep*autosteps*i)
 
-!!        fftrans(i,:) = fftrans0(i,:)           * cos(real(i,8)/real(numdata,8) * pi/2d0)
-
-        fftrans(i,:) = fftrans0(i,:)           * windowfunct(i,numdata)
+        fftrans(i,:) = fftrans0(i,:) * windowfunct(i,numdata)
 
      enddo
      do i=1,numdata
@@ -59,7 +57,8 @@ subroutine autocall(numdata, forwardovl, sflag)
 ! This is fixed.
 
      do i=0,numdata
-        fftrans0(i,:) = conjg(forwardovl(i,:)) * exp((0.d0,-1.d0)*ceground*par_timestep*autosteps*i)
+        fftrans0(i,:) = conjg(forwardovl(i,:)) * &
+             exp((0.d0,-1.d0)*ceground*par_timestep*autosteps*i)
         fftrans(i,:) = fftrans0(i,:) * (1-cos(pi*2*real(i,8)/real(numdata,8)))
      enddo
 
@@ -73,7 +72,8 @@ subroutine autocall(numdata, forwardovl, sflag)
      write(171,*,iostat=myiostat) "#   ", totdim
      call checkiostat(myiostat,"writing corrdatfile")
      do i=ibot,numdata
-        write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*autosteps, (fftrans0(i,imc),fftrans(i,imc),imc=1,mcscfnum)
+        write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*autosteps, &
+             (fftrans0(i,imc),fftrans(i,imc),imc=1,mcscfnum)
      enddo
      close(171)
   ENDIF
@@ -84,7 +84,8 @@ subroutine autocall(numdata, forwardovl, sflag)
         call zfftf_wrap_diff(totdim,fftrans(:,imc),ftdiff)
         fftrans(:,imc)=fftrans(:,imc)*autosteps*par_timestep
         do i=-numdata,numdata
-           fftrans(i,imc)=fftrans(i,imc)*exp((0.d0,1.d0)*(numdata+i)*numdata*2*pi/real(2*numdata+1))
+           fftrans(i,imc)=fftrans(i,imc) * &
+                exp((0.d0,1.d0)*(numdata+i)*numdata*2*pi/real(2*numdata+1))
         enddo
      else
         CALL ZFFTB_wrap(totdim,fftrans(:,imc))
@@ -99,7 +100,8 @@ subroutine autocall(numdata, forwardovl, sflag)
      if (sflag.ne.0) then
         thistime=numdata*par_timestep*autosteps
         write(number,'(I7)') 1000000+floor(thistime)
-        open(1711,file=corrftfile(1:getlen(corrftfile)-1)//number(2:7),status="unknown",iostat=myiostat)
+        open(1711,file=corrftfile(1:getlen(corrftfile)-1)//number(2:7),&
+             status="unknown",iostat=myiostat)
      call checkiostat(myiostat,"opening corrftfile")
         write(1711,*,iostat=myiostat) "#   ", totdim
      call checkiostat(myiostat,"opening corrftfile")

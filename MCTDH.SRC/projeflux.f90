@@ -60,7 +60,8 @@ subroutine projeflux_singlewalks()
   enddo
   OFLWR "Max # single walks from cation state on this processor is ",maxpwalk1;CFL
 
-  allocate(pphase1(maxpwalk1,tnumconfig),pwalk1(maxpwalk1,tnumconfig),pspf1(2,maxpwalk1,tnumconfig))
+  allocate(pphase1(maxpwalk1,tnumconfig),pwalk1(maxpwalk1,tnumconfig),&
+       pspf1(2,maxpwalk1,tnumconfig))
 
 
   pwalk1=0;  pspf1=0;  pphase1=0
@@ -101,7 +102,8 @@ subroutine projeflux_doproj(cata,neuta,mo,offset)
   use mpimod
   implicit none
   integer,intent(in) :: offset 
-  DATATYPE,intent(in) :: cata(tnumconfig),neuta(first_config:last_config),mo(spfsize,nspf)
+  DATATYPE,intent(in) :: cata(tnumconfig),&
+       neuta(first_config:last_config),mo(spfsize,nspf)
   DATATYPE :: projwfn(spfsize,2),  projcoefs(nspf,2)
   integer :: jconfig,iwalk,iconfig,ispf,ispin,iphase,mylength,myiostat
   DATATYPE,allocatable:: bigprojwfn(:,:)
@@ -114,7 +116,8 @@ subroutine projeflux_doproj(cata,neuta,mo,offset)
       iconfig=pwalk1(iwalk,jconfig);      ispf=pspf1(1,iwalk,jconfig)
       ispin=pspf1(2,iwalk,jconfig);      iphase=pphase1(iwalk,jconfig)
 
-      projcoefs(ispf,ispin)=projcoefs(ispf,ispin) + CONJUGATE(cata(jconfig)) * neuta(iconfig) * iphase
+      projcoefs(ispf,ispin)=projcoefs(ispf,ispin) + &
+           CONJUGATE(cata(jconfig)) * neuta(iconfig) * iphase
     enddo
   enddo
 
@@ -147,7 +150,8 @@ subroutine projeflux_doproj(cata,neuta,mo,offset)
 
   if (myrank.eq.1) then
      inquire (iolength=mylength) bigprojwfn
-     open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=mylength,iostat=myiostat)
+     open(1003,file=projfluxfile,status="unknown",form="unformatted",&
+          access="direct",recl=mylength,iostat=myiostat)
      call checkiostat(myiostat,"opening projfluxfile")
      write(1003,rec=offset,iostat=myiostat) bigprojwfn(:,:) 
      call checkiostat(myiostat,"writing projfluxfile")
@@ -169,8 +173,8 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   integer,intent(in) :: mem,nstate,nt
   real*8,intent(in) :: dt
   integer :: i,k,tlen,istate,curtime,tau,ir ,imc,ioffset
-  integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,bratop,getlen,myiostat
- !! bintimes and pulseftsq done outside so we don't have to redo over and over for each state
+  integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,&
+       bratop,getlen,myiostat
   real*8 :: doubleclebschsq,aa,bb,cc,MemTot,MemVal,wfi,cgfac,estep,myfac,windowfunct
   DATATYPE, allocatable,target :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:)
   DATATYPE, allocatable :: read_bramo(:,:,:,:), read_ketmo(:,:,:,:)
@@ -181,12 +185,14 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   character (len=3) :: xstate1,xmc1
 
   if (ceground.eq.(0d0,0d0)) then
-     OFLWR "Eground is ZERO.  Are you sure?  If want zero just make it small. \n     Otherwise need eground: initial state energy."; CFLST
+     OFLWR "Eground is ZERO.  Are you sure?  If want zero just make it small."
+     WRFL  "  Otherwise need eground: initial state energy."; CFLST
   endif
 
 !!!!  100912 NEED CG COEFFICIENT RATIO 
               
-!! programmed this with restrict_ms, targetms.  Do have option to change spinrestrictval; should use this.
+!! programmed this with restrict_ms, targetms.  
+!! Do have option to change spinrestrictval; should use this.
 !!
 !!    have high spin cation and high spin neutral.
 !!
@@ -207,14 +213,17 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 !!  
 !!         so mult cross section by ( A^2 + B^2 / A^2 )
 !!    
-!!   BUT if restrictflag is off, can't do this.  Must realize that you are only projecting one component of C.G. sum.  
-!!     that would be a problem.  But if you were to calculate say the 3 lowest states for a triplet, you'd get all components.
+!!   BUT if restrictflag is off, can't do this.  Must realize that you are only projecting one 
+!!     component of C.G. sum.  that would be a problem.  But if you were to calculate say the 
+!!     3 lowest states for a triplet, you'd get all components.
 !!     otherwise cross section is meaningless.
 !! all arguments are x 2, integers for half spin.
 
 !!$                 if (restrict_ms.lt.targetms.and.restrictflag.eq.1) then
-!!$                    aa= doubleclebschsq(targetms,1,targetms,restrict_ms-targetms,restrict_ms)      !! what we're calculating  targetms-restrict_ms=+/-1
-!!$                    bb= doubleclebschsq(targetms,1,targetms-2,restrict_ms-targetms+2,restrict_ms)      !! only one could be nonzero obviously
+!!$  !! what we're calculating  targetms-restrict_ms=+/-1
+!!$                    aa= doubleclebschsq(targetms,1,targetms,restrict_ms-targetms,restrict_ms) 
+!!$  !! only one could be nonzero obviously
+!!$                   bb= doubleclebschsq(targetms,1,targetms-2,restrict_ms-targetms+2,restrict_ms)  
 !!$                    cc= doubleclebschsq(targetms,1,targetms+2,restrict_ms-targetms-2,restrict_ms)      
 !!$                    cgfac = (aa+bb+cc)/aa
 !!$                 else
@@ -224,8 +233,10 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   if (cgflag.eq.0) then
      cgfac=1
   else
-     aa= doubleclebschsq(targetspinval,1,targetms,restrict_ms-targetms,spin_restrictval)      !! what we're calculating  targetms-restrict_ms=+/-1
-     bb= doubleclebschsq(targetspinval,1,targetms-2,restrict_ms-targetms+2,spin_restrictval)      !! only one could be nonzero obviously
+!! what we're calculating  targetms-restrict_ms=+/-1
+     aa= doubleclebschsq(targetspinval,1,targetms,restrict_ms-targetms,spin_restrictval)
+!! only one could be nonzero obviously
+     bb= doubleclebschsq(targetspinval,1,targetms-2,restrict_ms-targetms+2,spin_restrictval)
      cc= doubleclebschsq(targetspinval,1,targetms+2,restrict_ms-targetms-2,spin_restrictval)      
      cgfac = (aa+bb+cc)/aa
   endif
@@ -239,7 +250,8 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   MemVal = 6.25d4
 #endif
   call openfile()
-  write(mpifileptr,'(A30,F9.3,A3)') " Guess at necessary memory is ",2d0*real((nt+1)*2*spfsize*numr,8)/MemVal," MB"
+  write(mpifileptr,'(A30,F9.3,A3)') " Guess at necessary memory is ",&
+       2d0*real((nt+1)*2*spfsize*numr,8)/MemVal," MB"
   if(mem.eq.0) then
      write(mpifileptr,*) "g(tau) will be computed with all of psi in core"
      BatchSize=nt+1
@@ -248,7 +260,8 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
      write(mpifileptr,*) "g(tau) will be computed with all psi being read in batches"
      write(mpifileptr,'(A33,F9.3,A3)') " Desired amount of memory to use ",MemTot," MB"
      
-     BatchSize=floor(MemTot * MemVal / (2d0*real(2*spfsize*numr,8))) !! for each time pair we need both spun orbitals in each r
+!! for each time pair we need both spun orbitals in each r
+     BatchSize=floor(MemTot * MemVal / (2d0*real(2*spfsize*numr,8))) 
      if(BatchSize.lt.1) then
         write(mpifileptr,*) "Tiny amount of memory or huge wavefunction, Batchsize is 1" 
         BatchSize=1
@@ -261,12 +274,15 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   endif
   call closefile()
 
-  allocate(gtau(0:nt,nstate,mcscfnum),ketmo(spfsize,numr,2,BatchSize),bramo(spfsize,numr,2,BatchSize))
+  allocate(gtau(0:nt,nstate,mcscfnum),ketmo(spfsize,numr,2,BatchSize),&
+       bramo(spfsize,numr,2,BatchSize))
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
-        allocate(read_ketmo(spfsize*nprocs,numr,2,BatchSize),read_bramo(spfsize*nprocs,numr,2,BatchSize))
+        allocate(read_ketmo(spfsize*nprocs,numr,2,BatchSize),&
+             read_bramo(spfsize*nprocs,numr,2,BatchSize))
      else
-        allocate(read_ketmo(spfsize,numr,2,BatchSize),read_bramo(spfsize,numr,2,BatchSize))
+        allocate(read_ketmo(spfsize,numr,2,BatchSize),&
+             read_bramo(spfsize,numr,2,BatchSize))
      endif
   else
      allocate(read_ketmo(1,numr,2,batchsize),read_bramo(1,numr,2,batchsize))
@@ -299,12 +315,14 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
         xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
 
         if (myrank.eq.1) then
-           open(454,file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat",status="unknown",iostat=myiostat)
+           open(454,file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat",&
+                status="unknown",iostat=myiostat)
            call checkiostat(myiostat,"opening proj kvlsumfile")
            write(454,*,iostat=myiostat) "#KVL flux sum: itime, time, flux sum"
            call checkiostat(myiostat,"writing proj kvlsumfile ")
            write(454,*); close(454)
-           open(1003,file=projfluxfile,status="unknown",form="unformatted",access="direct",recl=tlen,iostat=myiostat)
+           open(1003,file=projfluxfile,status="unknown",form="unformatted",&
+                access="direct",recl=tlen,iostat=myiostat)
            call checkiostat(myiostat,"opening "//projfluxfile)
         endif
 
@@ -320,7 +338,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
               do i=1,ketreadsize !! loop over times in this batch
                  do ir=1,numr !! loop over all the r's for this time           
 
-                    ioffset=(istate-1)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + ((ketbat-1)*BatchSize+i-1)*numr + ir
+  ioffset=(istate-1)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + ((ketbat-1)*BatchSize+i-1)*numr + ir
 
                     read(1003,rec=ioffset,iostat=myiostat) read_ketmo(:,ir,:,i)
                     call checkiostat(myiostat,"reading ketmo")
@@ -356,7 +374,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
                  do i=1,brareadsize
                     do ir=1,numr 
 
-                       ioffset = (istate-1)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + ((brabat-1)*BatchSize+i-1)*numr + ir
+   ioffset = (istate-1)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + ((brabat-1)*BatchSize+i-1)*numr + ir
 
                        read(1003,rec=ioffset,iostat=myiostat) read_bramo(:,ir,:,i)
                        call checkiostat(myiostat,"reading bramo")
@@ -379,7 +397,9 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
                  enddo
               endif
 
-!! loop over the specific ket indices & over all previous times & evaluate the actual g(tau) expression           
+!! loop over the specific ket indices & over all previous 
+!! times & evaluate the actual g(tau) expression           
+
               do kettime=1,ketreadsize
 
                  curtime=(ketbat-1)*BatchSize+kettime-1 
@@ -391,7 +411,8 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
                  endif
                  do bratime=1,bratop
                     tau=curtime-((brabat-1)*BatchSize+bratime-1)
-                    gtau(tau,istate,imc) = gtau(tau,istate,imc) + hermdot(bramo(:,:,:,bratime),ketmo(:,:,:,kettime),2*spfsize*numr) * dt
+                    gtau(tau,istate,imc) = gtau(tau,istate,imc) + &
+                         hermdot(bramo(:,:,:,bratime),ketmo(:,:,:,kettime),2*spfsize*numr) * dt
                  enddo
 
 !! only do this after we are sure we've gone through every bra
@@ -401,7 +422,8 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
                        call mympireduceone(csum)
                     endif
                     if (myrank.eq.1) then
-  open(454, file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat", status="old", position="append",iostat=myiostat)
+  open(454, file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat", &
+       status="old", position="append",iostat=myiostat)
   call checkiostat(myiostat,"opening proj kvlsumfile")
   write(454,'(I5,100F18.12)',iostat=myiostat) curtime, curtime*dt, csum
   call checkiostat(myiostat,"writing proj kvlsumfile")
@@ -429,7 +451,8 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
   OFLWR "Taking the fourier transform of g(tau) to get cross section at T= ",curtime*dt; CFL
 
-  allocate(ftgtau(-curtime:curtime), pulseft(-curtime:curtime,3),pulseftsq(-curtime:curtime),total(-curtime:curtime))
+  allocate(ftgtau(-curtime:curtime), pulseft(-curtime:curtime,3),&
+       pulseftsq(-curtime:curtime),total(-curtime:curtime))
 
   ftgtau(:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0; total(:)=0
 
@@ -467,7 +490,8 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
         do i=0,curtime
 
-           ftgtau(i) = ALLCON(gtau(i,istate,imc))   * windowfunct(i,curtime) * exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
+           ftgtau(i) = ALLCON(gtau(i,istate,imc))   * windowfunct(i,curtime) * &
+                exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
 
         enddo
 
@@ -479,13 +503,15 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
         xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
         
         if (myrank.eq.1) then
-           open(171,file=projgtaufile(1:getlen(projgtaufile)-1)//xstate1//"_"//xmc1//".dat"  ,status="unknown",iostat=myiostat)
+           open(171,file=projgtaufile(1:getlen(projgtaufile)-1)//xstate1//"_"//xmc1//".dat", &
+                status="unknown",iostat=myiostat)
            call checkiostat(myiostat,"opening proj gtau file")
            write(171,*,iostat=myiostat) "#   ", curtime
            call checkiostat(myiostat,"writing proj gtau file")
            do i=0,curtime
               write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat) &
-                   i*par_timestep*FluxInterval*FluxSkipMult, pulseft(i,:), gtau(i,istate,imc), ftgtau(i)
+                   i*par_timestep*FluxInterval*FluxSkipMult, &
+                   pulseft(i,:), gtau(i,istate,imc), ftgtau(i)
            enddo
            call checkiostat(myiostat,"writing proj gtau file")
            close(171)
@@ -503,7 +529,8 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
         if(myrank.eq.1) then
 
-           open(1004,file=projspifile(1:getlen(projspifile)-1)//"_"//xstate1//"_"//xmc1//".dat",status="replace",action="readwrite",position="rewind",iostat=myiostat)
+           open(1004,file=projspifile(1:getlen(projspifile)-1)//"_"//xstate1//"_"//xmc1//".dat",&
+                status="replace",action="readwrite",position="rewind",iostat=myiostat)
            call checkiostat(myiostat,"opening proj spi file")
            write(1004,*,iostat=myiostat)
            call checkiostat(myiostat,"writing proj spi file")
@@ -516,10 +543,12 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 !! NEVERMIND FACTOR OF 1/3
 !!              myfac = 5.291772108d0**2 / 3d0 * 2d0 * PI / 1.37036d2 * wfi 
 
-!! WITH THIS FACTOR, NOW THE QUANTUM MECHANICAL PHOTOIONIZATION CROSS SECTION IN MEGABARNS (10^-18 cm^2) IS IN COLUMN 3 REAL PART
+!! WITH THIS FACTOR, NOW THE QUANTUM MECHANICAL PHOTOIONIZATION CROSS SECTION IN 
+!! MEGABARNS (10^-18 cm^2) IS IN COLUMN 3 REAL PART
               myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi 
 
-              write(1004,'(F18.12, T22, 400E20.8)',iostat=myiostat)  wfi,  pulseftsq(i), ftgtau(i)/pulseftsq(i) * cgfac * myfac, ftgtau(i)
+              write(1004,'(F18.12, T22, 400E20.8)',iostat=myiostat)  wfi,  &
+                   pulseftsq(i), ftgtau(i)/pulseftsq(i) * cgfac * myfac, ftgtau(i)
            enddo
            call checkiostat(myiostat,"writing proj spi file")
            close(1004)
@@ -536,7 +565,8 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
         do i=-curtime,curtime
            wfi=(i+curtime)*estep
            myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
-           write(1004,'(F18.12, T22, 400E20.8)',iostat=myiostat)  wfi,  pulseftsq(i), total(i)/pulseftsq(i) * cgfac * myfac, total(i)
+           write(1004,'(F18.12, T22, 400E20.8)',iostat=myiostat)  wfi,  pulseftsq(i), &
+                total(i)/pulseftsq(i) * cgfac * myfac, total(i)
         enddo
         call checkiostat(myiostat,"writing proj spi file")
         close(1004)
@@ -552,7 +582,9 @@ end subroutine projeflux_double_time_int
 
 
 
-!! get the contraction of the flux operator (iH-H^\dag) with our current set of orbitals F*inspfs=outspfs
+!! get the contraction of the flux operator (iH-H^\dag) with our current set of orbitals 
+!! F*inspfs=outspfs
+
 subroutine projeflux_op_onee(inspfs)
   use parameters
   implicit none
@@ -619,11 +651,15 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
      call checkiostat(myiostat,"opening "//catspffiles(ifile))
      open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
      call checkiostat(myiostat,"opening "//catavectorfiles(ifile))
-     call avector_header_read(910,nstate,tndof,tnumr,tnumconfig,targetrestrictflag,targetms,targetspinproject,targetspinval,acomplex,ierr)
+     call avector_header_read(910,nstate,tndof,tnumr,tnumconfig,targetrestrictflag,targetms,&
+          targetspinproject,targetspinval,acomplex,ierr)
   endif
-  call mympiibcastone(nstate,1); call mympiibcastone(tndof,1); call mympiibcastone(tnumr,1); call mympiibcastone(tnumconfig,1); 
-  call mympiibcastone(targetrestrictflag,1);  call mympiibcastone(targetms,1);  call mympiibcastone(targetspinproject,1);  
-  call mympiibcastone(targetspinval,1);  call mympiibcastone(acomplex,1);  call mympiibcastone(ierr,1)
+  call mympiibcastone(nstate,1); call mympiibcastone(tndof,1); 
+  call mympiibcastone(tnumr,1); call mympiibcastone(tnumconfig,1); 
+  call mympiibcastone(targetrestrictflag,1);  call mympiibcastone(targetms,1);  
+  call mympiibcastone(targetspinproject,1);  call mympiibcastone(targetspinval,1); 
+  call mympiibcastone(acomplex,1);  call mympiibcastone(ierr,1)
+
   if (ierr.ne.0) then
      OFLWR "Avector header read error; redone 09/29/2014; recompute vector on disk."; CFLST
   endif
@@ -631,9 +667,12 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   if (myrank.eq.1) then
      call spf_header_read(909,tdims,tnspf,spfcomplex)
   endif
-  call mympiibcast(tdims,1,3);  call mympiibcastone(tnspf,1);  call mympiibcastone(spfcomplex,1)
+  call mympiibcast(tdims,1,3);
+  call mympiibcastone(tnspf,1);
+  call mympiibcastone(spfcomplex,1)
 
-!! have to project on BO wfns.  Otherwise doesn't make sense in prolate.  Not supported anymore, will support
+!! have to project on BO wfns.  Otherwise doesn't make sense in prolate.  
+!! Not supported anymore, will support
 !!   again, mcscf mode w/many r's on file
 
   if (tnspf.gt.nspf+numfrozen) then
@@ -645,10 +684,12 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
   cgflag=0
   if (restrictflag.eq.0) then
-     OFLWR " WARNING: propagated state is not spin projection restricted.  No CG algebra."; CFL
+     OFLWR " WARNING: propagated state is not spin projection restricted.  No CG algebra."
+     CFL
   else
      if (targetrestrictflag.eq.0) then
-        OFLWR "WARNING: N-1 electron state is not spin projection restricted (restrictflag=0).  No CG algebra.";CFL
+        OFLWR "WARNING: N-1 electron state is not spin projection restricted (restrictflag=0).  No CG algebra."
+        CFL
      else
         if (abs(targetms-restrict_ms).ne.1) then
            OFLWR "Targetms should differ from restrictms by 1.  Cation and neutral have no dyson orbital"
@@ -658,10 +699,12 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
            OFLWR "WARNING: Wave function is not spin restricted (allspinproject=0).  No CG algebra.";CFL
         else
            if (targetspinproject.eq.0) then
-              OFLWR "WARNING: N-1 electron state is not spin restricted (allspinproject=0).  No CG algebra.";CFL
+              OFLWR "WARNING: N-1 electron state is not spin restricted (allspinproject=0).  No CG algebra."
+              CFL
            else
               if (abs(targetspinval-spin_restrictval).gt.1) then
-                 OFLWR "ERROR: Spin value of wave function and N-1 electron state differ by more than 1/2.",targetspinval,spin_restrictval; CFLST
+                 OFLWR "ERROR: Spin value of wave function and N-1 electron state differ by more than 1/2.",&
+                      targetspinval,spin_restrictval; CFLST
               else
                  OFLWR "Spin adapted wave functions for propagation and projection. doing CG algebra.";CFL
                  cgflag=1
@@ -671,7 +714,8 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
      endif
   endif
 
-  allocate(tmo(spfsize,nspf),tavec(tnumconfig,nstate,numr),tmotemp(spfsize,nspf+numfrozen),readta(tnumr,tnumconfig,nstate))
+  allocate(tmo(spfsize,nspf),tavec(tnumconfig,nstate,numr),&
+       tmotemp(spfsize,nspf+numfrozen),readta(tnumr,tnumconfig,nstate))
 
   OFLWR "Reading", nstate," Born-Oppenheimer states."; CFL
 
@@ -691,13 +735,16 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 !! we go to war with the army we've got
 
         do istate=1,nstate
-           tavec(:,istate,ir)=tavec(:,istate,ir)/sqrt(dot(tavec(:,istate,ir),tavec(:,istate,ir),tnumconfig)) !! no * bondweights(ir)
+           tavec(:,istate,ir)=tavec(:,istate,ir)/&
+                sqrt(dot(tavec(:,istate,ir),tavec(:,istate,ir),tnumconfig)) !! no * bondweights(ir)
         enddo
      enddo
-     call spf_read0(909,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,tmotemp(:,:),(/0,0,0/))
+     call spf_read0(909,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,&
+          tmotemp(:,:),(/0,0,0/))
      close(909);  close(910)
   else
-     call spf_read0(-42,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,tmotemp(:,:),(/0,0,0/))
+     call spf_read0(-42,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,&
+          tmotemp(:,:),(/0,0,0/))
   endif
   call mympibcast(tavec(:,:,:),1,tnumconfig*nstate*numr)
 
@@ -732,8 +779,8 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
 !! allocate all necessary extra memory and io params to do this looping business
 
-  allocate(mobio(spfsize,nspf,numr),abio(first_config:last_config,mcscfnum,numr),mymo(spfsize,nspf),&
-       myavec(numr,first_config:last_config,mcscfnum))
+  allocate(mobio(spfsize,nspf,numr),abio(first_config:last_config,mcscfnum,numr),&
+       mymo(spfsize,nspf),  myavec(numr,first_config:last_config,mcscfnum))
 
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
@@ -748,10 +795,12 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
   if (myrank.eq.1) then
      inquire (iolength=i) readmo
-     open(1001,file=fluxmofile,status="unknown",form="unformatted",access="direct",recl=i,iostat=myiostat)
+     open(1001,file=fluxmofile,status="unknown",form="unformatted",&
+          access="direct",recl=i,iostat=myiostat)
      call checkiostat(myiostat,"opening "//fluxmofile)
      inquire (iolength=i) readavec
-     open(1002,file=fluxafile,status="unknown",form="unformatted",access="direct",recl=i,iostat=myiostat)
+     open(1002,file=fluxafile,status="unknown",form="unformatted",&
+          access="direct",recl=i,iostat=myiostat)
      call checkiostat(myiostat,"opening "//fluxafile)
   endif
 
@@ -831,7 +880,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
         do imc=1,mcscfnum
            do istate=1,nstate
 
-              ioffset=(istate-1+alreadystate)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + tau*numr + ir
+   ioffset=(istate-1+alreadystate)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + tau*numr + ir
 
               if (tot_adim.gt.0) then
                  call projeflux_doproj(tavec(:,istate,ir),abio(:,imc,ir),mobio(:,:,ir),ioffset)
@@ -846,7 +895,8 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 !    if(mod(tau,100).eq.0.or.tau.eq.nt) then
 !      call openfile
 !      write(mpifileptr,'(A52,F10.4)') " Timing Statistics: producing 1e- proj wfn as of T= ",tau*dt
-!      write(mpifileptr,'(100A10)') "Times: ", "All", "IO", "Walks", "Biorth", "1e Bld", "1e Op", "Fluxeval", "FT g!tau"
+!      write(mpifileptr,'(100A10)') "Times: ", "All", "IO", "Walks", "Biorth", "1e Bld", "1e Op", &
+!          "Fluxeval", "FT g!tau"
 !      write(mpifileptr,'(A10,100I10)') " ", times(1:8)/100
 !    endif
   enddo

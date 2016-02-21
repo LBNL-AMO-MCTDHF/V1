@@ -29,7 +29,8 @@ subroutine mysort(in, values,n,lda,out)
      enddo
      if ((whichlowest.gt.n).or.(whichlowest.lt.1)) then
         write(*,*) taken;        write(*,*) 
-         write(*,*) "WHICHLOWEST ERROR, J=",j," WHICHLOWEST=", whichlowest;        call mpistop()
+         write(*,*) "WHICHLOWEST ERROR, J=",j," WHICHLOWEST=", whichlowest;        
+         call mpistop()
      endif
      if (taken(whichlowest).ne.0) then
         write(*,*) "TAKEN ERROR.";        call mpistop()
@@ -44,7 +45,8 @@ subroutine mysort(in, values,n,lda,out)
 
 end subroutine mysort
 
-!! this wrapper orthogonalizes WRT dot(): it is for complex symmetric cmctdh, or complex unsymmetric 
+!! this wrapper orthogonalizes WRT dot(): it is for 
+!!  complex symmetric cmctdh, or complex unsymmetric 
 !!  chmctdh matrices like configuration matrices.  
 !!  for cmctdh, may be linearly dep if degenerate.  could gs-orthog somehow.
 
@@ -134,9 +136,11 @@ subroutine get_eigen_c0(inmat, n, lda, outmat,values)
 
   lwork=5*lda;  tempmat(1:n,1:n)=inmat(1:n,1:n)
 
-  call zgeev( jobvl, jobvr, n, tempmat, lda, values, vl,lda,vr,lda,work, lwork, rwork, info)
+  call zgeev( jobvl, jobvr, n, tempmat, lda, values, vl,lda,vr,lda,&
+       work, lwork, rwork, info)
   if (info /= 0) then
-     write(*, *) "AAAUGH, info in get_eigen_c:",info;     call mpistop()
+     write(*, *) "AAAUGH, info in get_eigen_c:",info;     
+     call mpistop()
   endif
 
   call mysort(vr, values ,n,lda,outmat)
@@ -161,7 +165,8 @@ subroutine get_eigen_two(inmat, n, lda, outvects, outvals)
   lwork=5*lda;  outvects(:,:) = inmat(:,:)
   call dsyev( job, uplo, n, outvects, lda, outvals, work, lwork, info)
   if (info /= 0) then
-       write(*, *)"AAAUGH, in get_eigen_two dsyev info = ",info;     call mpistop()
+       write(*, *)"AAAUGH, in get_eigen_two dsyev info = ",info;    
+       call mpistop()
   endif
   deallocate(work)
 
@@ -179,7 +184,8 @@ subroutine get_eigen_tri(indiag,insubdiag, n, lda, outvects, outvals)
   outvals = indiag;  subdiag = insubdiag
   call dstev( job, n, outvals, subdiag, outvects, lda, work, info )
   if (info /= 0) then
-    write(*, *)"AAAUGH, in get_eigen_tri dstev info = ",info;     call mpistop()
+    write(*, *)"AAAUGH, in get_eigen_tri dstev info = ",info;    
+    call mpistop()
   endif
 end subroutine 
 
@@ -200,7 +206,8 @@ subroutine get_eigen_herm(inmat, n, lda, outmat,values)
   lwork=5*lda;  outmat(:,:)=inmat(:,:)
   call zheev( jobz, uplo, n, outmat, lda, values, work, lwork, rwork, info)
   if (info /= 0) then
-    write(*, *) "AAAUGH, info in get_eigen_herm:",info;     call mpistop()
+    write(*, *) "AAAUGH, info in get_eigen_herm:",info;    
+    call mpistop()
   endif
   deallocate(work,rwork)
 
@@ -226,7 +233,8 @@ subroutine get_eigen_asym(inmat, n, lda, leftvects, rightvects,values)
 !      SUBROUTINE DGEEV( JOBVL, JOBVR, N, A, LDA, WR, WI, VL, LDVL, VR,
 !     $                  LDVR, WORK, LWORK, INFO )
 
-  call dgeev( 'V', 'V', n, tempmat, lda, values, ivalues, leftvects,lda,rightvects,lda,work, lwork, info)
+  call dgeev( 'V', 'V', n, tempmat, lda, values, ivalues, leftvects,&
+       lda,rightvects,lda,work, lwork, info)
   if (info /= 0) then
      print *, "AAAUGH, info in get_eigen_asym:",info;     stop
   endif
@@ -248,14 +256,17 @@ subroutine get_eigen_gen(inmat, ovlmat, n, lda, outvects, outvals)
   complex*16,intent(out) :: outvects(lda,n), outvals(n)
   integer :: info, lwork
   character*1 :: jobvr="N", jobvl="V" !! uplo="U"
-  complex*16,allocatable :: work(:),tempovl(:,:), alpha(:), beta(:), tempvects(:,:)
+  complex*16,allocatable :: work(:),tempovl(:,:), &
+       alpha(:), beta(:), tempvects(:,:)
   real*8,allocatable :: rwork(:)
 
-  allocate(work(5*lda),tempovl(lda,n), alpha(n), beta(n), tempvects(lda,n),rwork(8*n))
+  allocate(work(5*lda),tempovl(lda,n), alpha(n), beta(n), &
+       tempvects(lda,n),rwork(8*n))
   lwork=5*lda;  outvects(:,:) = inmat(:,:);  tempovl(:,:)=ovlmat(:,:)
   work=0; alpha=0; beta=0; tempvects=0; rwork=0
  
-  call zggev( jobvl,jobvr, n, outvects, lda, tempovl,lda, alpha,beta, tempvects, lda, outvects,lda, work, lwork, rwork, info)
+  call zggev( jobvl,jobvr, n, outvects, lda, tempovl,lda, alpha,beta, &
+       tempvects, lda, outvects,lda, work, lwork, rwork, info)
 
   outvals=alpha/beta
 

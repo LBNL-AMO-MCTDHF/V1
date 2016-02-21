@@ -27,7 +27,8 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
      workvectorsspin(:,:,:)=0d0
      if (guessflag.ne.0) then
         do ii=1,order
-           call basis_transformto_local(www,numr,outvectors(:,www%botconfig,ii),workvectorsspin(:,:,ii))
+           call basis_transformto_local(www,numr,outvectors(:,www%botconfig,ii),&
+                workvectorsspin(:,:,ii))
         enddo
      endif
   endif
@@ -35,7 +36,9 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
   maxdim=www%numdfbasis*numr
   vdim=(www%topdfbasis-www%botdfbasis+1)*numr
 
-  call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,workvectorsspin,vdim,outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,.true.,0,DATAZERO)
+  call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,workvectorsspin,vdim,&
+       outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,&
+       .true.,0,DATAZERO)
 
   if (www%lastconfig.ge.www%firstconfig) then
      outvectors(:,:,:)=0d0
@@ -43,7 +46,8 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
 
   if (www%topdfbasis-www%botdfbasis+1.ne.0) then
      do ii=1,order
-        call basis_transformfrom_local(www,numr,workvectorsspin(:,:,ii),outvectors(:,www%botconfig,ii))
+        call basis_transformfrom_local(www,numr,workvectorsspin(:,:,ii),&
+             outvectors(:,www%botconfig,ii))
      enddo
   endif
 
@@ -51,7 +55,8 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
 
   if (www%parconsplit.eq.0) then
      do ii=1,order
-        call mpiallgather(outvectors(:,:,ii),www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+        call mpiallgather(outvectors(:,:,ii),www%numconfig*numr,&
+             www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
      enddo
   endif
 
@@ -339,12 +344,15 @@ subroutine parblockconfigmult0_gather(www,cptr,sptr,inavector,outavector)
 !!   no, spin transformations done locally now.
 
   if (www%topconfig-www%botconfig+1 .ne. 0) then
-     call basis_transformfrom_local(www,numr,inavector,intemp(:,www%botconfig:www%topconfig))
+     call basis_transformfrom_local(www,numr,inavector,&
+          intemp(:,www%botconfig:www%topconfig))
   endif
 
-  call mpiallgather(intemp,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+  call mpiallgather(intemp,www%numconfig*numr,&
+       www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
 
-  call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, cptr, sptr, 1,1,1,0,0d0,0,1,numr,0,-1)
+  call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, cptr, sptr, &
+       1,1,1,0,0d0,0,1,numr,0,-1)
 
   if (mshift.ne.0d0) then 
      do ii=www%botconfig,www%topconfig
@@ -377,7 +385,8 @@ subroutine parblockconfigmult0_summa(www,cptr,sptr,inavector,outavector)
   integer :: ii,iproc
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE :: intemp(numr,www%maxconfigsperproc),outwork(numr,www%botconfig:www%topconfig),&
+  DATATYPE :: intemp(numr,www%maxconfigsperproc),&
+       outwork(numr,www%botconfig:www%topconfig),&
        outtemp(numr,www%botconfig:www%topconfig)  !! AUTOMATIC
 
   if (sparseconfigflag.eq.0) then
@@ -394,14 +403,17 @@ subroutine parblockconfigmult0_summa(www,cptr,sptr,inavector,outavector)
      if (myrank.eq.iproc) then
         call basis_transformfrom_local(www,numr,inavector,intemp)
      endif
-     call mympibcast(intemp,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
+     call mympibcast(intemp,iproc,&
+          (www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
 
-     call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, cptr, sptr, 1,1,1,0,0d0,0,1,numr,0,-1)
+     call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, cptr, sptr, &
+          1,1,1,0,0d0,0,1,numr,0,-1)
 
      if (myrank.eq.iproc) then
         if (mshift.ne.0d0) then 
            do ii=www%botconfig,www%topconfig
-              outtemp(:,ii)=outtemp(:,ii)+ intemp(:,ii-www%botconfig+1)*www%configmvals(ii)*mshift
+              outtemp(:,ii)=outtemp(:,ii) + &
+                   intemp(:,ii-www%botconfig+1)*www%configmvals(ii)*mshift
            enddo
         endif
      endif
@@ -432,15 +444,18 @@ subroutine parblockconfigmult0_circ(www,cptr,sptr,inavector,outavector)
   integer :: ii,iproc,prevproc,nextproc,deltaproc
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE :: workvector(numr,www%maxconfigsperproc), workvector2(numr,www%maxconfigsperproc),&
-       outwork(numr,www%botconfig:www%topconfig), outtemp(numr,www%botconfig:www%topconfig)  !! AUTOMATIC
+  DATATYPE :: workvector(numr,www%maxconfigsperproc), &
+       workvector2(numr,www%maxconfigsperproc), &
+       outwork(numr,www%botconfig:www%topconfig), &
+       outtemp(numr,www%botconfig:www%topconfig)  !! AUTOMATIC
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, must use sparse for parblockconfigmult"; CFLST
   endif
 
-!! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 and ftcore.f90, 
-!!     holding hands in a circle, prevproc and nextproc, each chunk gets passed around the circle
+!! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 
+!!     and ftcore.f90, holding hands in a circle, prevproc and nextproc, 
+!!     each chunk gets passed around the circle
   prevproc=mod(nprocs+myrank-2,nprocs)+1
   nextproc=mod(myrank,nprocs)+1
 
@@ -450,7 +465,8 @@ subroutine parblockconfigmult0_circ(www,cptr,sptr,inavector,outavector)
 
   if (mshift.ne.0d0) then 
      do ii=www%botconfig,www%topconfig
-        outwork(:,ii)=outwork(:,ii)+ workvector(:,ii-www%botconfig+1)*www%configmvals(ii)*mshift
+        outwork(:,ii)=outwork(:,ii) + &
+             workvector(:,ii-www%botconfig+1)*www%configmvals(ii)*mshift
      enddo
   endif
 
@@ -482,7 +498,9 @@ end subroutine parblockconfigmult0_circ
 #endif
 
 
-subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,  outvectors,outvectorlda, outvalues,inprintflag,guessflag,lancheckmod,lanthresh,multsub,logpar,targetflag,etarget)
+subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter, &
+     outvectors,outvectorlda, outvalues,inprintflag,guessflag,lancheckmod,lanthresh,&
+     multsub,logpar,targetflag,etarget)
   use fileptrmod
   implicit none 
   logical,intent(in) :: logpar
@@ -496,8 +514,8 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
        thislanblocknum, thisdim,ii,nfirst,nlast,myrank,nprocs,thisout
   real*8 :: error(numout), stopsum,rsum,nextran
   DATATYPE :: alpha(lanblocknum,lanblocknum),beta(lanblocknum,lanblocknum), csum, &
-       nullvector1(100), nullvector2(100) , &
-       lastvalue(numout), thisvalue(numout), valdot(numout),normsq(numout),sqdot(numout)
+       nullvector1(100), nullvector2(100), lastvalue(numout), thisvalue(numout), &
+       valdot(numout),normsq(numout),sqdot(numout)
 !! made these allocatable to fix lawrencium segfault 04-15
   DATATYPE, allocatable :: lanham(:,:,:,:), laneigvects(:,:,:), templanham(:,:)
   DATAECS, allocatable :: values(:)
@@ -594,9 +612,12 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
         call vecnulldots(numout,valdot,logpar)
         call vecnulldots(numout,sqdot,logpar)
      else
-        call vechdots(outvectors(:,:),outvectors(:,:),lansize,outvectorlda,outvectorlda,numout,normsq,logpar)
-        call vechdots(outvectors(:,:),tempvectors(:,:),lansize,outvectorlda,maxlansize,numout,valdot,logpar)
-        call vechdots(outvectors(:,:),tempvectors2(:,:),lansize,outvectorlda,maxlansize,numout,sqdot,logpar)
+        call vechdots(outvectors(:,:),outvectors(:,:),lansize,outvectorlda,&
+             outvectorlda,numout,normsq,logpar)
+        call vechdots(outvectors(:,:),tempvectors(:,:),lansize,outvectorlda,&
+             maxlansize,numout,valdot,logpar)
+        call vechdots(outvectors(:,:),tempvectors2(:,:),lansize,outvectorlda,&
+             maxlansize,numout,sqdot,logpar)
      endif
 
      do j=1,numout
@@ -634,7 +655,8 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
         if (lansize.eq.0) then
            call nullgramschmidt_fast(i-1, logpar)
         else
-           call myhgramschmidt_fast(lansize, i-1, maxlansize, lanvects(:,:,1),lanvects(:,i,1),logpar)
+           call myhgramschmidt_fast(lansize, i-1, maxlansize, &
+                lanvects(:,:,1),lanvects(:,i,1),logpar)
         endif
      enddo
      do j=1,lanblocknum
@@ -650,7 +672,8 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
      if (lansize.eq.0) then
         call allnulldots(lanblocknum,lanblocknum,alpha,logpar)
      else
-        call allhdots(lanvects(:,:,1),multvectors(:,:),lansize,maxlansize,lanblocknum,lanblocknum,alpha,logpar)
+        call allhdots(lanvects(:,:,1),multvectors(:,:),lansize,&
+             maxlansize,lanblocknum,lanblocknum,alpha,logpar)
      endif
 
      lanham(:,1,:,1)= alpha(:,:)
@@ -684,7 +707,8 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
            if (lansize.eq.0) then
               call nullgramschmidt_fast((iorder-1)*lanblocknum+i-1,logpar)
            else
-              call myhgramschmidt_fast(lansize, (iorder-1)*lanblocknum+i-1, maxlansize, lanvects,lanvects(:,i,iorder),logpar)
+              call myhgramschmidt_fast(lansize, (iorder-1)*lanblocknum+i-1, &
+                   maxlansize, lanvects,lanvects(:,i,iorder),logpar)
            endif
         enddo
 
@@ -703,11 +727,13 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
         if (lansize.eq.0) then
            call allnulldots(lanblocknum,lanblocknum,alpha,logpar)
         else
-           call allhdots(lanvects(:,:,iorder),multvectors(:,:),lansize,maxlansize,lanblocknum,lanblocknum,alpha,logpar)
+           call allhdots(lanvects(:,:,iorder),multvectors(:,:),lansize,&
+                maxlansize,lanblocknum,lanblocknum,alpha,logpar)
         endif
         lanham(:,iorder,:,iorder)=alpha(:,:)
 
-        allocate(betas(lanblocknum,iorder-1,lanblocknum), betastr(lanblocknum,lanblocknum,iorder-1))
+        allocate(betas(lanblocknum,iorder-1,lanblocknum), &
+             betastr(lanblocknum,lanblocknum,iorder-1))
 
         if (lansize.eq.0) then
            call allnulldots(lanblocknum*(iorder-1),lanblocknum,betas(:,:,:),logpar)
@@ -719,7 +745,8 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
                 lanblocknum,lanblocknum*(iorder-1),betastr(:,:,:),logpar)
         endif
 
-!!$        call allhdots(lanvects(:,:,iorder),lanmultvects(:,:,iorder-1),lansize,maxlansize,lanblocknum,lanblocknum,betastr(:,:,iorder-1),logpar)
+!!$        call allhdots(lanvects(:,:,iorder),lanmultvects(:,:,iorder-1),lansize,&
+!!$            maxlansize,lanblocknum,lanblocknum,betastr(:,:,iorder-1),logpar)
 
         do i=1,iorder-1
            lanham(:,i,:,iorder)=betas(:,i,:)
@@ -730,11 +757,13 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
         enddo
         deallocate(betas,betastr)
 
-        if (mod(iorder,lancheckmod).eq.0.or.flag.ne.0) then  ! flag.ne.0 for maxiter, iorder
+!!! flag.ne.0 for maxiter, iorder
+        if (mod(iorder,lancheckmod).eq.0.or.flag.ne.0) then
 
            templanham(:,:)=0d0
            templanham(1:lanblocknum*iorder,1:lanblocknum*iorder)=&
-                RESHAPE(lanham(:,1:iorder,:,1:iorder),(/lanblocknum*iorder,lanblocknum*iorder/))
+                RESHAPE(lanham(:,1:iorder,:,1:iorder),&
+                (/lanblocknum*iorder,lanblocknum*iorder/))
            thisdim=min(maxiter,iorder*lanblocknum)
            call CONFIGEIG(templanham,thisdim,order*lanblocknum,laneigvects,values)
            if (targetflag.ne.0) then
@@ -760,9 +789,11 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
 ! so lanthresh is for error of HPsi...  empirically make guess (divided by 4) as to 
 !  when it might be converged based on change in energy
 
-           if ((thisout.eq.numout.and.stopsum.lt.lanthresh/4).or.flag.ne.0) then   ! flag=1 for maxiter,maxorder
+!!! flag=1 for maxiter,maxorder
+           if ((thisout.eq.numout.and.stopsum.lt.lanthresh/4).or.flag.ne.0) then
               if (printflag.ne.0) then
-                 OFL; write(mpifileptr,'(A25,2E12.5,I10)')  "checking convergence.",stopsum,lanthresh/10,thisdim; CFL
+                 OFL; write(mpifileptr,'(A25,2E12.5,I10)')  "checking convergence.",&
+                      stopsum,lanthresh/10,thisdim; CFL
               endif
 
               outvectors = 0.0d0
@@ -771,7 +802,8 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
                     do k=1, iorder
                        do id=1,lanblocknum
                           if ((k-1)*lanblocknum+id.le.maxiter) then
-                             outvectors(1:lansize,j) = outvectors(1:lansize,j) + laneigvects(id,k,j) * lanvects(1:lansize,id,k)
+                             outvectors(1:lansize,j) = outvectors(1:lansize,j) + &
+                                  laneigvects(id,k,j) * lanvects(1:lansize,id,k)
                           endif
                        enddo
                     enddo
@@ -781,7 +813,8 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
               if (lansize.eq.0) then
                  call vecnulldots(numout,normsq,logpar)
               else
-                 call vecthisdots(outvectors(:,:),outvectors(:,:),lansize,outvectorlda,outvectorlda,numout,normsq,logpar)
+                 call vecthisdots(outvectors(:,:),outvectors(:,:),lansize,&
+                      outvectorlda,outvectorlda,numout,normsq,logpar)
               endif
               do  j=1, numout
                  outvectors(:,j)=outvectors(:,j)/sqrt(normsq(j))
@@ -803,9 +836,12 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
                  call vecnulldots(numout,valdot,logpar)
                  call vecnulldots(numout,sqdot,logpar)
               else
-                 call vechdots(outvectors(:,:),outvectors(:,:),lansize,outvectorlda,outvectorlda,numout,normsq,logpar)
-                 call vechdots(outvectors(:,:),tempvectors(:,:),lansize,outvectorlda,maxlansize,numout,valdot,logpar)
-                 call vechdots(outvectors(:,:),tempvectors2(:,:),lansize,outvectorlda,maxlansize,numout,sqdot,logpar)
+                 call vechdots(outvectors(:,:),outvectors(:,:),lansize,outvectorlda,&
+                      outvectorlda,numout,normsq,logpar)
+                 call vechdots(outvectors(:,:),tempvectors(:,:),lansize,outvectorlda,&
+                      maxlansize,numout,valdot,logpar)
+                 call vechdots(outvectors(:,:),tempvectors2(:,:),lansize,outvectorlda,&
+                      maxlansize,numout,sqdot,logpar)
               endif
 
               do j=1,numout
@@ -814,7 +850,8 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
                       valdot(j)**2 / normsq(j)**2 - &
                       sqdot(j)/normsq(j))
 
-!!$                 tempvectors(1:lansize,j) = tempvectors(1:lansize,j) - values(j) * outvectors(1:lansize,j)
+!!$                 tempvectors(1:lansize,j) = tempvectors(1:lansize,j) - &
+!!$                      values(j) * outvectors(1:lansize,j)
 !!$                 error(j)=sqrt(abs(hdot(tempvectors(:,j),tempvectors(:,j),lansize,logpar)))/ &
 !!$                      sqrt(abs(hdot(outvectors(:,j),outvectors(:,j),lansize,logpar)))
 
@@ -833,7 +870,8 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
                     OFLWR "Not converged", stopsum, lanthresh; CFL
                  endif
                  if (thisdim.ge.maxiter) then
-                    OFLWR "MAX DIM REACHED, NO CONVERGENCE -- THRESHOLDS TOO HIGH? BUG?",stopsum,lanthresh; CFLST
+                    OFLWR "MAX DIM REACHED, NO CONVERGENCE -- THRESHOLDS TOO HIGH? BUG?",&
+                         stopsum,lanthresh; CFLST
                  endif
               else
                  flag=1
@@ -846,7 +884,8 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
         if (printflag.ne.0) then
            OFLWR "Converged. ",stopsum,lanthresh  !!, "HDOTS:"
 !!$           do i=1,numout
-!!$              write(mpifileptr,'(10000F8.3)') (hdot(outvectors(:,i),outvectors(:,j),lansize,logpar),j=1,numout)
+!!$              write(mpifileptr,'(10000F8.3)') &
+!!$                  (hdot(outvectors(:,i),outvectors(:,j),lansize,logpar),j=1,numout)
 !!$           enddo
            CFL
         endif
@@ -857,7 +896,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
   enddo
 
   deallocate(  invector,multvectors, lanvects, tempvectors, lanmultvects,tempvectors2)
-
   deallocate( lanham,       laneigvects,       values,       templanham)
 
 end subroutine blocklanczos0
@@ -892,7 +930,8 @@ subroutine mysort2(inout, values,n,lda,etarget)
      enddo
      if ((whichlowest.gt.n).or.(whichlowest.lt.1)) then
         write(*,*) taken;        write(*,*) 
-         write(*,*) "WHICHLOWEST ERROR, J=",j," WHICHLOWEST=", whichlowest;        call mpistop()
+         write(*,*) "WHICHLOWEST ERROR, J=",j," WHICHLOWEST=", whichlowest
+         call mpistop()
      endif
      if (taken(whichlowest).ne.0) then
         write(*,*) "TAKEN ERROR.";        call mpistop()

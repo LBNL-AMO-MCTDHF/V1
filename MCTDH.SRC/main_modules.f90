@@ -94,7 +94,8 @@ end module xxxmod
 
 !! USE THIS MODULE FOR ACCESS TO WAVE FUNCTION AND ASSOCIATED DATA IN DATA TYPE XARR, VIA YYY%CMFSPFS() FOR INSTANCE
 
-!! CONFIGPTRs are used to pass pieces of configuration matrix elements, for sparseconfigflag=1, or whole R x elec configuration matel for sparseconfigflag=0
+!! CONFIGPTRs are used to pass pieces of configuration matrix elements, for sparseconfigflag=1, 
+!!  or whole R x elec configuration matel for sparseconfigflag=0
 
 
 !! AARR returns the 2D space, spin index from condensed spinorbital index (which determines slater determinant order)
@@ -613,17 +614,17 @@ subroutine add_sptr0(aptr,bptr,sumptr,afacbo,bfacbo,  afacnuc,bfacnuc,   afacpul
   sumptr%kefac = afacnuc*aptr%kefac + bfacnuc*bptr%kefac
 
   if (www%configend.ge.www%configstart) then
-     sumptr%xpotsparsemattr(:,:)=aptr%xpotsparsemattr(:,:)*afacbo                +bptr%xpotsparsemattr(:,:)*bfacbo
-     sumptr%xopsparsemattr(:,:)=aptr%xopsparsemattr(:,:)*afacbo                  +bptr%xopsparsemattr(:,:)*bfacbo
-     sumptr%xonepotsparsemattr(:,:)=aptr%xonepotsparsemattr(:,:)*afacbo                  +bptr%xonepotsparsemattr(:,:)*bfacbo
-     sumptr%xconsparsemattr(:,:)=aptr%xconsparsemattr(:,:)*afaccon               +bptr%xconsparsemattr(:,:)*bfaccon
-     sumptr%xconsparsemattrxx(:,:)=aptr%xconsparsemattrxx(:,:)*afaccon               +bptr%xconsparsemattrxx(:,:)*bfaccon
-     sumptr%xconsparsemattryy(:,:)=aptr%xconsparsemattryy(:,:)*afaccon               +bptr%xconsparsemattryy(:,:)*bfaccon
-     sumptr%xconsparsemattrzz(:,:)=aptr%xconsparsemattrzz(:,:)*afaccon               +bptr%xconsparsemattrzz(:,:)*bfaccon
-     sumptr%xysparsemattr(:,:)=aptr%xysparsemattr(:,:)*afacnuc                   +bptr%xysparsemattr(:,:)*bfacnuc
-     sumptr%xpulsesparsemattrxx(:,:)=aptr%xpulsesparsemattrxx(:,:)*afacpulse         +bptr%xpulsesparsemattrxx(:,:)*bfacpulse
-     sumptr%xpulsesparsemattryy(:,:)=aptr%xpulsesparsemattryy(:,:)*afacpulse         +bptr%xpulsesparsemattryy(:,:)*bfacpulse
-     sumptr%xpulsesparsemattrzz(:,:)=aptr%xpulsesparsemattrzz(:,:)*afacpulse         +bptr%xpulsesparsemattrzz(:,:)*bfacpulse
+     sumptr%xpotsparsemattr(:,:)=aptr%xpotsparsemattr(:,:)*afacbo    +bptr%xpotsparsemattr(:,:)*bfacbo
+     sumptr%xopsparsemattr(:,:)=aptr%xopsparsemattr(:,:)*afacbo      +bptr%xopsparsemattr(:,:)*bfacbo
+     sumptr%xonepotsparsemattr(:,:)=aptr%xonepotsparsemattr(:,:)*afacbo      +bptr%xonepotsparsemattr(:,:)*bfacbo
+     sumptr%xconsparsemattr(:,:)=aptr%xconsparsemattr(:,:)*afaccon   +bptr%xconsparsemattr(:,:)*bfaccon
+     sumptr%xconsparsemattrxx(:,:)=aptr%xconsparsemattrxx(:,:)*afaccon   +bptr%xconsparsemattrxx(:,:)*bfaccon
+     sumptr%xconsparsemattryy(:,:)=aptr%xconsparsemattryy(:,:)*afaccon   +bptr%xconsparsemattryy(:,:)*bfaccon
+     sumptr%xconsparsemattrzz(:,:)=aptr%xconsparsemattrzz(:,:)*afaccon   +bptr%xconsparsemattrzz(:,:)*bfaccon
+     sumptr%xysparsemattr(:,:)=aptr%xysparsemattr(:,:)*afacnuc       +bptr%xysparsemattr(:,:)*bfacnuc
+     sumptr%xpulsesparsemattrxx(:,:)=aptr%xpulsesparsemattrxx(:,:)*afacpulse  +bptr%xpulsesparsemattrxx(:,:)*bfacpulse
+     sumptr%xpulsesparsemattryy(:,:)=aptr%xpulsesparsemattryy(:,:)*afacpulse  +bptr%xpulsesparsemattryy(:,:)*bfacpulse
+     sumptr%xpulsesparsemattrzz(:,:)=aptr%xpulsesparsemattrzz(:,:)*afacpulse  +bptr%xpulsesparsemattrzz(:,:)*bfacpulse
      sumptr%xpulsenuc=aptr%xpulsenuc*afacpulse         +bptr%xpulsenuc*bfacpulse
   endif
 
@@ -717,7 +718,8 @@ subroutine opalloc()
   rkemod=0.d0; proderivmod=0.d0; 
 
   if (drivingflag.ne.0) then
-     allocate(orbs_driving(spfsize,nspf),          avector_driving(numr,first_config:last_config,mcscfnum))
+     allocate(orbs_driving(spfsize,nspf),          &
+          avector_driving(numr,first_config:last_config,mcscfnum))
      orbs_driving=0d0;      avector_driving=0d0
   endif
 

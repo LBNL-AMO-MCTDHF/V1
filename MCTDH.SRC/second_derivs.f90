@@ -74,14 +74,16 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
 
   if (effective_cmf_linearflag.eq.0) then
      if (numspf.gt.0) then
-        call project00(lowspf,highspf,workspfs0(:,lowspf:highspf), derspfs0(:,lowspf:highspf), inspfs)
+        call project00(lowspf,highspf,workspfs0(:,lowspf:highspf), &
+             derspfs0(:,lowspf:highspf), inspfs)
         derspfs0(:,lowspf:highspf)=workspfs0(:,lowspf:highspf)-derspfs0(:,lowspf:highspf)
     endif
   else
      call actreduced00(lowspf,highspf,1,thistime, inspfs, nullspfs, workspfs2, 0, 0,1)
      if (numspf.gt.0) then
         workoutspfs0=(1.d0-gridtime)*workspfs0 + gridtime*workspfs2
-        call project00(lowspf,highspf,workoutspfs0(:,lowspf:highspf), derspfs0(:,lowspf:highspf), inspfs)
+        call project00(lowspf,highspf,workoutspfs0(:,lowspf:highspf), &
+             derspfs0(:,lowspf:highspf), inspfs)
         derspfs0(:,lowspf:highspf)=workoutspfs0(:,lowspf:highspf)-derspfs0(:,lowspf:highspf)
      endif
   endif
@@ -111,7 +113,8 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
   endif
 
   if (numspf.gt.0) then
-     call project00(lowspf,highspf,workoutspfs0(:,lowspf:highspf), sdspfs(:,lowspf:highspf), inspfs)
+     call project00(lowspf,highspf,workoutspfs0(:,lowspf:highspf), &
+          sdspfs(:,lowspf:highspf), inspfs)
      sdspfs(:,lowspf:highspf)=workoutspfs0(:,lowspf:highspf)-sdspfs(:,lowspf:highspf)
   endif
 
@@ -121,7 +124,8 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
      workspfs0 = (1-gridtime)*workspfs0 + gridtime*workspfs2
   endif
 
-!!   Projector is just sum_i |phi_i><phi_i| without regard to orthonorm (consistent with noorthogflag=1)
+!!   Projector is just sum_i |phi_i><phi_i| without regard to orthonorm 
+!!      (consistent with noorthogflag=1)
 
 !! always call derproject00
   call derproject00(lowspf,highspf,workspfs0, workoutspfs0, derspfs0, inspfs)
@@ -157,7 +161,7 @@ subroutine verlet(inspfs0, time1,time2,outiter)
   endif
   numspf=highspf-lowspf+1
 
-  allocate(inspfs(spfsize,nspf), tempspfs(spfsize,nspf),  sdspfs(spfsize,lowspf:highspf+1))
+  allocate(inspfs(spfsize,nspf), tempspfs(spfsize,nspf), sdspfs(spfsize,lowspf:highspf+1))
   tempspfs=0; sdspfs=0
   inspfs(:,:)=inspfs0(:,:)
 

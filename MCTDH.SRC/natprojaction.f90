@@ -17,7 +17,8 @@ subroutine save_natproj( thistime )
   implicit none
 
   DATATYPE :: csum, dot
-  integer :: xcalledhere=0,  iflag, korder, pulseflag, isplit, i, imc, getlen2, ilen, iii, nn, getlen, iorb
+  integer :: xcalledhere=0,  iflag, korder, pulseflag, isplit, i, &
+       imc, getlen2, ilen, iii, nn, getlen, iorb
   real*8 :: thistime, rsum
   real*8, save :: mmax,mmin
   character (len=headersize) :: header
@@ -103,10 +104,11 @@ subroutine save_natproj( thistime )
         close(891) 
         do isplit=1,numr
            do i=1,korder
-                 call sparseconfigmultone(www,natconfigs(:,i),natderiv,yyy%cptr(0), yyy%sptr(0), 1,pulseflag,0, isplit ,thistime,-1)
+                 call sparseconfigmultone(www,natconfigs(:,i),natderiv,&
+                      yyy%cptr(0), yyy%sptr(0), 1,pulseflag,0, isplit ,thistime,-1)
 
-              curves(isplit,i)=dot(natconfigs(:,i),natderiv,num_config)/dot(natconfigs(:,i),natconfigs(:,i), &
-                   num_config) !! ok implicit.
+              curves(isplit,i)=dot(natconfigs(:,i),natderiv,num_config)/&
+                   dot(natconfigs(:,i),natconfigs(:,i), num_config) !! ok conversion.
 
            enddo
         enddo
@@ -326,7 +328,8 @@ subroutine save_natproj( thistime )
 
   tempdenmat(:,:,:)=0d0
   do i=1,min(numr,min(num_config,4))
-     call getdenmat00(www,natconfigs(:,i),natconfigs(:,i),(/ECSONE/),tempdenmat(:,:,i),1,1)
+     call getdenmat00(www,natconfigs(:,i),natconfigs(:,i),&
+          (/ECSONE/),tempdenmat(:,:,i),1,1)
   enddo
   call save_denproj( 4, thistime, yyy%cmfspfs(:,0),  tempdenmat, denprojplotbin)
   
@@ -358,7 +361,8 @@ subroutine save_denproj( nproj, thistime, inspfs, indenmats, denfilename)
   use mpimod
   implicit none
 
-  DATATYPE :: inspfs(spfdims(1),spfdims(2),spfdims(3),nspf), indenmats(nspf,nspf,nproj), csum
+  DATATYPE :: inspfs(spfdims(1),spfdims(2),spfdims(3),nspf), &
+       indenmats(nspf,nspf,nproj), csum
   character :: denfilename*(*)
   integer :: i,j, imval, iproj, nproj,jj
   real*8 :: thistime
@@ -366,7 +370,8 @@ subroutine save_denproj( nproj, thistime, inspfs, indenmats, denfilename)
 
   complex*16 ::        mtrans(spfdims(3),spfdims(3))
   DATATYPE :: mdensity(spfdims(1),spfdims(2),spfdims(3))
-  complex*16 ::     cmdensity(spfdims(1),spfdims(2),spfdims(3)), density(spfdims(1),spfdims(2),spfdims(3))
+  complex*16 ::     cmdensity(spfdims(1),spfdims(2),spfdims(3)), &
+       density(spfdims(1),spfdims(2),spfdims(3))
 
   if (spfdimtype(3).eq.1) then  !! assume fourier basis (-mbig:mbig)
      if (mod(spfdims(3),2).ne.1) then
@@ -374,7 +379,8 @@ subroutine save_denproj( nproj, thistime, inspfs, indenmats, denfilename)
      endif
      do i=1,spfdims(3)
         do j=1,spfdims(3)
-           jj=j-(spfdims(3)+1)/2;           mtrans(i,j) = exp((0.d0,1.d0)*jj*2*pi*i/real(spfdims(3)))
+           jj=j-(spfdims(3)+1)/2;
+           mtrans(i,j) = exp((0.d0,1.d0)*jj*2*pi*i/real(spfdims(3)))
         enddo
      enddo
   else
@@ -386,7 +392,9 @@ subroutine save_denproj( nproj, thistime, inspfs, indenmats, denfilename)
 
   do iproj=1,nproj
      call getdensity(density, indenmats(:,:,iproj), inspfs,nspf)
-     call zgemm('N', 'N', spfdims(1)*spfdims(2),spfdims(3),spfdims(3), (1.d0,0.d0), density, spfdims(1)*spfdims(2), mtrans,spfdims(3), (0.d0,0.d0), cmdensity, spfdims(1)*spfdims(2))
+     call zgemm('N', 'N', spfdims(1)*spfdims(2),spfdims(3),spfdims(3), &
+          (1.d0,0.d0), density, spfdims(1)*spfdims(2), mtrans,spfdims(3), &
+          (0.d0,0.d0), cmdensity, spfdims(1)*spfdims(2))
 
      do imval=1,spfdims(3)
         mdensity(:,:,imval)=  cmdensity(:,:,imval) / &

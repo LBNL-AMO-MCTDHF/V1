@@ -203,7 +203,8 @@ subroutine init_dfcon(www)
         endif
      enddo
 
-     OFLWR "numdfwalks:  ", www%ddd%numdfwalks," is total number DF single excitations on this processor"; WRFL; CFL
+     OFLWR "numdfwalks:  ", www%ddd%numdfwalks," is total number DF single excitations on this processor"
+     WRFL; CFL
 
      allocate(www%ddd%dfwalkfrom(www%ddd%numdfwalks), www%ddd%dfwalkto(www%ddd%numdfwalks),&
           www%ddd%includedorb(www%ddd%numdfwalks), www%ddd%excludedorb(www%ddd%numdfwalks), &
@@ -228,7 +229,8 @@ subroutine init_dfcon(www)
         endif
      enddo
 
-     OFLWR "numdfwalks:  ", www%ddd%numdfwalks," is really number DF single excitations on this processor"; WRFL; CFL
+     OFLWR "numdfwalks:  ", www%ddd%numdfwalks," is really number DF single excitations on this processor"
+     WRFL; CFL
      
   endif
 
@@ -256,7 +258,8 @@ subroutine configspin_project(www,nr, vector)
   DATATYPE,intent(inout) :: vector(nr,www%firstconfig:www%lastconfig)
 
   if (www%configend.ge.www%configstart) then
-     call configspin_project_general(www,nr,vector(:,www%configstart:www%configend),www%startrank,www%endrank)
+     call configspin_project_general(www,nr,&
+          vector(:,www%configstart:www%configend),www%startrank,www%endrank)
   endif
   if (www%parconsplit.eq.0.and.www%sparseconfigflag.ne.0) then
      call mpiallgather(vector,www%numconfig*nr,www%configsperproc(:)*nr,www%maxconfigsperproc*nr)
@@ -314,7 +317,8 @@ subroutine configspin_transformto_general(www,nblock,invector,outvector,iproc,jp
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: invector(nblock,www%allbotconfigs(iproc):www%alltopconfigs(jproc))
   DATATYPE,intent(out) :: outvector(nblock,www%sss%allbotspins(iproc):www%sss%alltopspins(jproc))
-  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)  !! AUTOMATIC
+  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), &
+       smalltemp(nblock,www%sss%maxspinsetsize)  !! AUTOMATIC
   integer :: iset, iind,ii,pp
 
   if (iproc.lt.www%startrank.or.jproc.gt.www%endrank) then
@@ -335,7 +339,8 @@ subroutine configspin_transformto_general(www,nblock,invector,outvector,iproc,jp
         call MYGEMM('N', 'N', nblock, www%sss%spinsetrank(iset,pp), www%sss%spinsetsize(iset,pp),&
              DATAONE, smallvect,nblock, www%sss%spinsetprojector(iset,pp)%vects, &
              www%sss%spinsetsize(iset,pp), DATAZERO,smalltemp, nblock)
-        outvector(:,iind:iind+www%sss%spinsetrank(iset,pp)-1) = smalltemp(:,1:www%sss%spinsetrank(iset,pp))
+        outvector(:,iind:iind+www%sss%spinsetrank(iset,pp)-1) = &
+             smalltemp(:,1:www%sss%spinsetrank(iset,pp))
         iind=iind+www%sss%spinsetrank(iset,pp)
      enddo
      
@@ -357,7 +362,8 @@ subroutine dfspin_transformto_general(www,nblock,invector,outvector,iproc,jproc)
   integer :: iset, iind,ii,jset,pp
   DATATYPE,intent(in) :: invector(nblock,www%allbotdfconfigs(iproc):www%alltopdfconfigs(jproc))
   DATATYPE,intent(out) :: outvector(nblock,www%sss%allbotspindfs(iproc):www%sss%alltopspindfs(jproc))
-  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)    !! AUTOMATIC
+  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), &
+       smalltemp(nblock,www%sss%maxspinsetsize)    !! AUTOMATIC
 
   if (iproc.lt.www%startrank.or.jproc.gt.www%endrank) then
      OFLWR "STARTRANK ERR DFTRANSTO GEN ",iproc,www%startrank,www%endrank; CFLST
@@ -380,7 +386,8 @@ subroutine dfspin_transformto_general(www,nblock,invector,outvector,iproc,jproc)
         call MYGEMM('N', 'N', nblock, www%sss%spinsetrank(iset,pp), www%sss%spinsetsize(iset,pp),&
              DATAONE, smallvect,nblock, www%sss%spinsetprojector(iset,pp)%vects, &
              www%sss%spinsetsize(iset,pp), DATAZERO,smalltemp, nblock)
-        outvector(:,iind:iind+www%sss%spinsetrank(iset,pp)-1) = smalltemp(:,1:www%sss%spinsetrank(iset,pp))
+        outvector(:,iind:iind+www%sss%spinsetrank(iset,pp)-1) = &
+             smalltemp(:,1:www%sss%spinsetrank(iset,pp))
         iind=iind+www%sss%spinsetrank(iset,pp)
      enddo
 
@@ -402,7 +409,8 @@ subroutine configspin_transformfrom_general(www,nblock,invector,outvector,iproc,
   integer :: iset, iind, ii, pp
   DATATYPE,intent(out) :: outvector(nblock,www%allbotconfigs(iproc):www%alltopconfigs(jproc))
   DATATYPE,intent(in) :: invector(nblock,www%sss%allbotspins(iproc):www%sss%alltopspins(jproc))
-  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)  !! AUTOMATIC
+  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), &
+       smalltemp(nblock,www%sss%maxspinsetsize)  !! AUTOMATIC
 
   if (iproc.lt.www%startrank.or.jproc.gt.www%endrank) then
      OFLWR "STARTRANK ERR TRANSFROM GEN ",iproc,www%startrank,www%endrank; CFLST
@@ -417,7 +425,8 @@ subroutine configspin_transformfrom_general(www,nblock,invector,outvector,iproc,
      iind=www%sss%allbotspins(pp)
 
      do iset=1,www%sss%numspinsets(pp)
-        smallvect(:,1:www%sss%spinsetrank(iset,pp))=invector(:,iind:iind+www%sss%spinsetrank(iset,pp)-1)
+        smallvect(:,1:www%sss%spinsetrank(iset,pp))=&
+             invector(:,iind:iind+www%sss%spinsetrank(iset,pp)-1)
         call MYGEMM('N', 'T', nblock, www%sss%spinsetsize(iset,pp), www%sss%spinsetrank(iset,pp), &
              DATAONE, smallvect, nblock, www%sss%spinsetprojector(iset,pp)%vects, &
              www%sss%spinsetsize(iset,pp), DATAZERO,smalltemp, nblock)
@@ -446,7 +455,8 @@ subroutine dfspin_transformfrom_general(www,nblock,invector,outvector,iproc,jpro
   integer :: iset, iind, ii, jset, pp
   DATATYPE,intent(out) :: outvector(nblock,www%allbotdfconfigs(iproc):www%alltopdfconfigs(jproc))
   DATATYPE,intent(in) :: invector(nblock,www%sss%allbotspindfs(iproc):www%sss%alltopspindfs(jproc))
-  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), smalltemp(nblock,www%sss%maxspinsetsize)  !! AUTOMATIC
+  DATATYPE :: smallvect(nblock,www%sss%maxspinsetsize), &
+       smalltemp(nblock,www%sss%maxspinsetsize)  !! AUTOMATIC
 
   if (iproc.lt.www%startrank.or.jproc.gt.www%endrank) then
      OFLWR "STARTRANK ERR DFTRANSfrom GEN ",iproc,www%startrank,www%endrank; CFLST
@@ -461,7 +471,8 @@ subroutine dfspin_transformfrom_general(www,nblock,invector,outvector,iproc,jpro
      iind=www%sss%allbotspindfs(pp)
      do jset=1,www%sss%numspindfsets(pp)
         iset=www%sss%spindfsetindex(jset,pp)
-        smallvect(:,1:www%sss%spinsetrank(iset,pp))=invector(:,iind:iind+www%sss%spinsetrank(iset,pp)-1)
+        smallvect(:,1:www%sss%spinsetrank(iset,pp))=&
+             invector(:,iind:iind+www%sss%spinsetrank(iset,pp)-1)
         call MYGEMM('N', 'T', nblock, www%sss%spinsetsize(iset,pp), www%sss%spinsetrank(iset,pp),&
              DATAONE, smallvect, nblock, www%sss%spinsetprojector(iset,pp)%vects, &
              www%sss%spinsetsize(iset,pp), DATAZERO,smalltemp, nblock)
@@ -591,7 +602,8 @@ subroutine basis_transformto_all(www,howmany,avectorin,avectorout)
 
   if (www%sparseconfigflag.ne.0) then
      if (www%topdfbasis.ge.www%botdfbasis) then
-        call basis_transformto_local(www,howmany,avectorin(:,www%botconfig:www%topconfig),avectorout(:,www%botdfbasis:www%topdfbasis))
+        call basis_transformto_local(www,howmany,avectorin(:,www%botconfig:www%topconfig),&
+             avectorout(:,www%botdfbasis:www%topdfbasis))
      endif
      call mpiallgather(avectorout,www%numdfbasis*howmany,www%dfbasisperproc(:)*howmany,&
           www%maxdfbasisperproc*howmany)

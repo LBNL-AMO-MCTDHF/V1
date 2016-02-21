@@ -252,16 +252,19 @@ program mctdhf
 !! inpfile input; others output
 
   call getinpfile()
-  call getmyparams(mpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,numr,nucrepulsion,nonuc_checkflag) 
+  call getmyparams(mpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,&
+       numr,nucrepulsion,nonuc_checkflag) 
   spfsize=spfdims(1)*spfdims(2)*spfdims(3)
 
   
-  allocate(bondpoints(numr),bondweights(numr),elecweights(spfdims(1),spfdims(2),spfdims(3)),elecradii(spfsize))
+  allocate(bondpoints(numr),bondweights(numr),elecweights(spfdims(1),&
+       spfdims(2),spfdims(3)),elecradii(spfsize))
 
   call getparams()
   call system("mkdir -p "//timingdir)  
 
-  call transferparams(nspf,spfrestrictflag,spfmvals,spfugrestrict,spfugvals,spfsmallsize,logcheckpar)
+  call transferparams(nspf,spfrestrictflag,spfmvals,spfugrestrict,&
+       spfugvals,spfsmallsize,logcheckpar)
   if (logcheckpar) then
      if (parorbsplit.ne.3) then
         OFLWR "Setting parorbsplit=3 - you have orbital parallelization in your project";CFL
@@ -535,9 +538,11 @@ program mctdhf
            if (totread.lt.mcscfnum) then
               OFLWR "Reading avector..." ; CFL
               if (tot_adim.gt.0) then
-                 call load_avectors(avectorfile(ifile),bigavector(:,:,totread+1),mcscfnum-totread,readnum,avecloadskip(ifile))
+                 call load_avectors(avectorfile(ifile),bigavector(:,:,totread+1),&
+                      mcscfnum-totread,readnum,avecloadskip(ifile))
               else
-                 call load_avectors(avectorfile(ifile),nullvector(:,:,totread+1),mcscfnum-totread,readnum,avecloadskip(ifile))
+                 call load_avectors(avectorfile(ifile),nullvector(:,:,totread+1),&
+                      mcscfnum-totread,readnum,avecloadskip(ifile))
               endif
            endif
            totread=totread+readnum

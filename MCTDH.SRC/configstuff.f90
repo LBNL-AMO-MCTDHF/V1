@@ -11,15 +11,14 @@ subroutine printconfig(thisconfig,www)
   character (len=4) :: mslabels(2) =["a ","b "]
   integer :: i
 
-  write(mpifileptr,'(100(I3,A2))') (thisconfig((i-1)*2+1), mslabels(thisconfig(i*2)), i=1,www%numelec)
+  write(mpifileptr,'(100(I3,A2))') (thisconfig((i-1)*2+1), &
+       mslabels(thisconfig(i*2)), i=1,www%numelec)
 
 end subroutine printconfig
 
 
-!! NOT - this uses stopthresh as threshold to pass to laneigen.  is called for mcscf, and improved.
-
-
-subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printflag, guessflag,time,numshift)
+subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printflag, &
+     guessflag,time,numshift)
   use fileptrmod
   use r_parameters
   use sparse_parameters
@@ -42,7 +41,8 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
   integer :: i
 
   if (order+numshift.gt.www%numconfig*numr) then
-     OFLWR "Error, want ",order," plus ",numshift," vectors but totadim= ",www%numconfig*numr;CFLST
+     OFLWR "Error, want ",order," plus ",numshift,&
+          " vectors but totadim= ",www%numconfig*numr;CFLST
   endif
   if (numshift.lt.0) then
      OFLWR "GG ERROR.", numshift,guessflag; CFLST
@@ -87,7 +87,8 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
         OFLWR "Construct big matrix:  ", www%numdfbasis*numr; CFL
      endif
      allocate(fullconfigvals(www%numdfbasis*numr))
-     allocate(fullconfigmatel(www%numdfbasis*numr,www%numdfbasis*numr), fullconfigvects(www%numconfig*numr,www%numdfbasis*numr))
+     allocate(fullconfigmatel(www%numdfbasis*numr,www%numdfbasis*numr), &
+          fullconfigvects(www%numconfig*numr,www%numdfbasis*numr))
      allocate(tempconfigvects(www%numdfbasis*numr,www%numdfbasis*numr))
      fullconfigvects=0d0; tempconfigvects=0d0; fullconfigmatel=0.d0; fullconfigvals=0d0
 
@@ -97,7 +98,8 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
         OFLWR " Call eig ",www%numdfbasis*numr; CFL
      endif
      if (myrank.eq.1) then
-        call CONFIGEIG(fullconfigmatel(:,:),www%numdfbasis*numr,www%numdfbasis*numr, tempconfigvects, fullconfigvals)
+        call CONFIGEIG(fullconfigmatel(:,:),www%numdfbasis*numr,www%numdfbasis*numr, &
+             tempconfigvects, fullconfigvals)
      endif
 
      call mympibcast(tempconfigvects,1,www%numdfbasis*numr*www%numdfbasis*numr)
@@ -147,9 +149,11 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
 !!$          if (abs(thisconfigvals(i)-lastval).lt.1d-7) then
 !!$             flag=flag+1
 !!$             if (par_consplit.ne.0) then
-!!$                call gramschmidt(www%totadim,flag,www%totadim,thisconfigvects(:,i-flag),thisconfigvects(:,i),.true.)
+!!$                call gramschmidt(www%totadim,flag,www%totadim,&
+!!$                   thisconfigvects(:,i-flag),thisconfigvects(:,i),.true.)
 !!$             else
-!!$                call gramschmidt(www%totadim,flag,www%totadim,thisconfigvects(:,i-flag),thisconfigvects(:,i),.false.)
+!!$                call gramschmidt(www%totadim,flag,www%totadim,&
+!!$                   thisconfigvects(:,i-flag),thisconfigvects(:,i),.false.)
 !!$             endif
 !!$  
 !!$          else
@@ -228,8 +232,9 @@ subroutine nonsparseprop(www,dfww,avectorin,avectorout,time,imc)
   integer, intent(in) :: imc
   DATATYPE,intent(in) :: avectorin(www%totadim)
   DATATYPE,intent(out) :: avectorout(www%totadim)
-  DATATYPE :: avectortemp(www%numdfbasis*numr), avectortemp2(www%numdfbasis*numr) !! AUTOMATIC
-  DATATYPE, allocatable :: bigconfigmatel(:,:), bigconfigvects(:,:) !!,bigconfigvals(:)
+  DATATYPE :: avectortemp(www%numdfbasis*numr), &
+       avectortemp2(www%numdfbasis*numr) !! AUTOMATIC
+  DATATYPE, allocatable :: bigconfigmatel(:,:), bigconfigvects(:,:)
 #ifndef REALGO
   real*8, allocatable :: realbigconfigmatel(:,:,:,:)
 #endif
@@ -250,7 +255,8 @@ subroutine nonsparseprop(www,dfww,avectorin,avectorout,time,imc)
 
   allocate(iiwork(www%numdfbasis*numr*2))
 
-  allocate(bigconfigmatel(www%numdfbasis*numr,www%numdfbasis*numr), bigconfigvects(www%numdfbasis*numr,2*(www%numdfbasis*numr+2)))
+  allocate(bigconfigmatel(www%numdfbasis*numr,www%numdfbasis*numr), &
+       bigconfigvects(www%numdfbasis*numr,2*(www%numdfbasis*numr+2)))
 
   call assemble_dfbasismat(dfww,bigconfigmatel, workconfigpointer,1,1,1,1, time,imc)
 
@@ -262,16 +268,20 @@ subroutine nonsparseprop(www,dfww,avectorin,avectorout,time,imc)
      if (nonsparsepropmode.eq.1) then
         avectortemp2(:)=avectortemp(:)
         call expmat(bigconfigmatel,www%numdfbasis*numr) 
-        call MYGEMV('N',www%numdfbasis*numr,www%numdfbasis*numr,DATAONE,bigconfigmatel,www%numdfbasis*numr,avectortemp2,1,DATAZERO,avectortemp,1)
+        call MYGEMV('N',www%numdfbasis*numr,www%numdfbasis*numr,DATAONE,&
+             bigconfigmatel,www%numdfbasis*numr,avectortemp2,1,DATAZERO,avectortemp,1)
 #ifndef REALGO
      else if (nonsparsepropmode.eq.2) then
         allocate(realbigconfigmatel(2,www%numdfbasis*numr,2,www%numdfbasis*numr))
-        call assigncomplexmat(realbigconfigmatel,bigconfigmatel,www%numdfbasis*numr,www%numdfbasis*numr)
-        call DGCHBV(www%numdfbasis*numr*2, 1.d0, realbigconfigmatel, www%numdfbasis*numr*2, avectortemp, bigconfigvects, iiwork, iflag)           
+        call assigncomplexmat(realbigconfigmatel,bigconfigmatel,&
+             www%numdfbasis*numr,www%numdfbasis*numr)
+        call DGCHBV(www%numdfbasis*numr*2, 1.d0, realbigconfigmatel, &
+             www%numdfbasis*numr*2, avectortemp, bigconfigvects, iiwork, iflag)           
         deallocate(realbigconfigmatel)
 #endif
      else
-        call EXPFULL(www%numdfbasis*numr, DATAONE, bigconfigmatel, www%numdfbasis*numr, avectortemp, bigconfigvects, iiwork, iflag)
+        call EXPFULL(www%numdfbasis*numr, DATAONE, bigconfigmatel, &
+             www%numdfbasis*numr, avectortemp, bigconfigvects, iiwork, iflag)
         
         if (iflag.ne.0) then
            OFLWR "Expo error A ", iflag; CFLST
@@ -312,23 +322,29 @@ subroutine parconfigexpomult_padded(inavector,outavector)
   case(0)
 #endif
      if (use_dfwalktype) then
-        call parconfigexpomult_padded0_gather(dwwptr,workconfigpointer,workdfsparsepointer,inavector,outavector)
+        call parconfigexpomult_padded0_gather(dwwptr,workconfigpointer,&
+             workdfsparsepointer,inavector,outavector)
      else
-        call parconfigexpomult_padded0_gather(dwwptr,workconfigpointer,worksparsepointer,inavector,outavector)
+        call parconfigexpomult_padded0_gather(dwwptr,workconfigpointer,&
+             worksparsepointer,inavector,outavector)
      endif
 
 #ifdef MPIFLAG
   case(1)
      if (use_dfwalktype) then
-        call parconfigexpomult_padded0_summa(dwwptr,workconfigpointer,workdfsparsepointer,inavector,outavector)
+        call parconfigexpomult_padded0_summa(dwwptr,workconfigpointer,&
+             workdfsparsepointer,inavector,outavector)
      else
-        call parconfigexpomult_padded0_summa(dwwptr,workconfigpointer,worksparsepointer,inavector,outavector)
+        call parconfigexpomult_padded0_summa(dwwptr,workconfigpointer,&
+             worksparsepointer,inavector,outavector)
      endif
   case(2)
      if (use_dfwalktype) then
-        call parconfigexpomult_padded0_circ(dwwptr,workconfigpointer,workdfsparsepointer,inavector,outavector)
+        call parconfigexpomult_padded0_circ(dwwptr,workconfigpointer,&
+             workdfsparsepointer,inavector,outavector)
      else
-        call parconfigexpomult_padded0_circ(dwwptr,workconfigpointer,worksparsepointer,inavector,outavector)
+        call parconfigexpomult_padded0_circ(dwwptr,workconfigpointer,&
+             worksparsepointer,inavector,outavector)
      endif
   case default
      OFLWR "Error sparsesummaflag ",sparsesummaflag; CFLST
@@ -337,26 +353,10 @@ subroutine parconfigexpomult_padded(inavector,outavector)
 
 end subroutine parconfigexpomult_padded
 
-subroutine paddedmult(in,out,www)
-  use parameters
-  use walkmod
-  use mpimod
-  implicit none
-  type(walktype),intent(in) :: www
-  DATATYPE,intent(in) :: in(numr,www%maxdfbasisperproc)
-  DATATYPE,intent(out) :: out(numr,www%maxdfbasisperproc)
-  integer :: ii
 
-!!  out(:,:)=0d0
-!!  return  !! RETURN
 
-  do ii=1,www%maxdfbasisperproc
-     out(:,ii)=in(:,ii)*(ii+(myrank-1)*www%maxdfbasisperproc)*par_timestep
-  enddo
-
-end subroutine paddedmult
-
-subroutine parconfigexpomult_padded0_gather(www,workconfigpointer,worksparsepointer,inavector,outavector)
+subroutine parconfigexpomult_padded0_gather(www,workconfigpointer,&
+     worksparsepointer,inavector,outavector)
   use fileptrmod
   use r_parameters
   use sparse_parameters
@@ -389,17 +389,19 @@ subroutine parconfigexpomult_padded0_gather(www,workconfigpointer,worksparsepoin
 !!   no, spin transformations done locally now.
 
   if (www%topconfig.ge.www%botconfig) then
-     call basis_transformfrom_local(www,numr,inavector,intemp(:,www%botconfig:www%topconfig))
+     call basis_transformfrom_local(www,numr,inavector,&
+          intemp(:,www%botconfig:www%topconfig))
   endif
 
-  call mpiallgather(intemp,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
-
-!!  call paddedmult(inavector,outavector,www)    !! PADDED
+  call mpiallgather(intemp,www%numconfig*numr,www%configsperproc(:)*numr,&
+       www%maxconfigsperproc*numr)
 
   outavector(:,:)=0d0    !!     inavector(:,:)   !! PADDED
 
   if (www%topconfig.ge.www%botconfig) then
-     call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0,imc)
+     call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, &
+          workconfigpointer, worksparsepointer, 1,1,1,1,&
+          configexpotime,0,1,numr,0,imc)
      
 
      call basis_transformto_local(www,numr,outtemp,outavector)
@@ -417,7 +419,8 @@ end subroutine parconfigexpomult_padded0_gather
 
 #ifdef MPIFLAG
 
-subroutine parconfigexpomult_padded0_summa(www,workconfigpointer,worksparsepointer,inavector,outavector)
+subroutine parconfigexpomult_padded0_summa(www,workconfigpointer,&
+     worksparsepointer,inavector,outavector)
   use fileptrmod
   use r_parameters
   use sparse_parameters
@@ -455,17 +458,18 @@ subroutine parconfigexpomult_padded0_summa(www,workconfigpointer,worksparsepoint
      endif
 
      if (www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
-        call mympibcast(intemp,iproc,(www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
+        call mympibcast(intemp,iproc,&
+             (www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
 
-        call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, workconfigpointer, worksparsepointer, 1,1,1,1,configexpotime,0,1,numr,0,imc)
+        call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, &
+             workconfigpointer, worksparsepointer, 1,1,1,1,&
+             configexpotime,0,1,numr,0,imc)
      
         outwork(:,:)=outwork(:,:)+outtemp(:,:)
 
      endif
 
   enddo
-
-!!  call paddedmult(inavector,outavector,www)    !! PADDED
 
   outavector(:,:)=0d0   !!     inavector(:,:)   !! PADDED
 
@@ -479,7 +483,8 @@ end subroutine parconfigexpomult_padded0_summa
 
 
 
-subroutine parconfigexpomult_padded0_circ(www,workconfigpointer,worksparsepointer,inavector,outavector)
+subroutine parconfigexpomult_padded0_circ(www,workconfigpointer,&
+     worksparsepointer,inavector,outavector)
   use fileptrmod
   use r_parameters
   use sparse_parameters
@@ -496,7 +501,8 @@ subroutine parconfigexpomult_padded0_circ(www,workconfigpointer,worksparsepointe
   DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
   DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
   DATATYPE :: workvector(numr,www%maxconfigsperproc), workvector2(numr,www%maxconfigsperproc),&
-       outwork(numr,www%botconfig:www%topconfig+1),  outtemp(numr,www%botconfig:www%topconfig+1)  !! AUTOMATIC
+       outwork(numr,www%botconfig:www%topconfig+1),  &
+       outtemp(numr,www%botconfig:www%topconfig+1)             !! AUTOMATIC
   integer :: iproc,prevproc,nextproc,deltaproc
 
   call avectortime(3)
@@ -505,8 +511,9 @@ subroutine parconfigexpomult_padded0_circ(www,workconfigpointer,worksparsepointe
      OFLWR "error, must use sparse for parconfigexpomult"; CFLST
   endif
 
-!! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 and ftcore.f90, 
-!!     holding hands in a circle, prevproc and nextproc, each chunk gets passed around the circle
+!! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 
+!!     and ftcore.f90, holding hands in a circle, prevproc and nextproc, 
+!!     each chunk gets passed around the circle
   prevproc=mod(nprocs+myrank-2,nprocs)+1
   nextproc=mod(myrank,nprocs)+1
 
@@ -520,7 +527,8 @@ subroutine parconfigexpomult_padded0_circ(www,workconfigpointer,worksparsepointe
      iproc=mod(myrank-1+deltaproc,nprocs)+1
 
      if (www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
-        call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp, workconfigpointer, worksparsepointer, &
+        call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp, &
+             workconfigpointer, worksparsepointer, &
              1,1,1,1,configexpotime,0,1,numr,0,imc)
         outwork(:,:)=outwork(:,:)+outtemp(:,:)
      endif
@@ -528,12 +536,11 @@ subroutine parconfigexpomult_padded0_circ(www,workconfigpointer,worksparsepointe
 !! PASSING BACKWARD
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
 
-     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,numr*www%maxconfigsperproc)
+     call mympisendrecv(workvector,workvector2,prevproc,&
+          nextproc,deltaproc,numr*www%maxconfigsperproc)
      workvector(:,:)=workvector2(:,:)
 
   enddo
-
-!!  call paddedmult(inavector,outavector,www)    !! PADDED
 
   outavector(:,:)=0d0    !!     inavector(:,:)   !! PADDED
 

@@ -29,10 +29,12 @@ subroutine drivingtrans(thistime)
   use opmod
   implicit none
 
-  DATATYPE :: dipmatxx(nspf,nspf),dipmatyy(nspf,nspf),dipmatzz(nspf,nspf),scalarpotyy(nspf,nspf),scalarpotzz(nspf,nspf),&
-       tempinvden(nspf,nspf),tempdenmat2(nspf,nspf), scalarpotxx(nspf,nspf),  tempdenmat(nspf,nspf)  !! AUTOMATIC
-  DATATYPE,allocatable :: currentorbs(:,:),tempdrivingorbs(:,:),tempdrivingavector(:,:,:),&
-       dtwoereduced(:,:,:),dreducedpottally(:,:,:,:),multorbsxx(:,:),multorbsyy(:,:),multorbszz(:,:)
+  DATATYPE :: dipmatxx(nspf,nspf),dipmatyy(nspf,nspf),dipmatzz(nspf,nspf),&
+       scalarpotyy(nspf,nspf),scalarpotzz(nspf,nspf),tempinvden(nspf,nspf),&
+       tempdenmat2(nspf,nspf), scalarpotxx(nspf,nspf),  tempdenmat(nspf,nspf)  !! AUTOMATIC
+  DATATYPE,allocatable :: currentorbs(:,:),tempdrivingorbs(:,:),&
+       tempdrivingavector(:,:,:),dtwoereduced(:,:,:),&
+       dreducedpottally(:,:,:,:),multorbsxx(:,:),multorbsyy(:,:),multorbszz(:,:)
   DATATYPE :: dot, pots(3)=0d0
    Type(CONFIGPTR) :: drivingptr
   integer ::  i, imc,j, nulltimes(10)
@@ -60,11 +62,13 @@ subroutine drivingtrans(thistime)
   do imc=1,mcscfnum
 
      if (tot_adim.gt.0) then
-        tempdrivingavector(:,:,imc)=avector_driving(:,:,imc) * exp(timefac*drivingenergies(imc)*thistime)
+        tempdrivingavector(:,:,imc)=avector_driving(:,:,imc) &
+             * exp(timefac*drivingenergies(imc)*thistime)
      endif
 
      call bioset(drivingbiovar,smo,numr,bwwptr)
-     call biortho(orbs_driving(:,:),currentorbs(:,:),tempdrivingorbs(:,:),tempdrivingavector(:,:,imc),drivingbiovar)
+     call biortho(orbs_driving(:,:),currentorbs(:,:),&
+          tempdrivingorbs(:,:),tempdrivingavector(:,:,imc),drivingbiovar)
 
 !! tempdrivingavector is vector in non-orthonormal tempdrivingorbs (which are bio to currentorbs)
 !!    also is vector in currentorbs corresponding to insertion of identity
@@ -133,21 +137,28 @@ subroutine drivingtrans(thistime)
      endif
 
 
-     call arbitraryconfig_mult_singles(www,dipmatxx,rvector,tempdrivingavector(:,:,imc),     yyy%drivingavectorsxx(:,:,imc,0),numr)
-     call arbitraryconfig_mult_singles(www,dipmatyy,rvector,tempdrivingavector(:,:,imc),     yyy%drivingavectorsyy(:,:,imc,0),numr)
-     call arbitraryconfig_mult_singles(www,dipmatzz,rvector,tempdrivingavector(:,:,imc),     yyy%drivingavectorszz(:,:,imc,0),numr)
+     call arbitraryconfig_mult_singles(www,dipmatxx,rvector,&
+          tempdrivingavector(:,:,imc),     yyy%drivingavectorsxx(:,:,imc,0),numr)
+     call arbitraryconfig_mult_singles(www,dipmatyy,rvector,&
+          tempdrivingavector(:,:,imc),     yyy%drivingavectorsyy(:,:,imc,0),numr)
+     call arbitraryconfig_mult_singles(www,dipmatzz,rvector,&
+          tempdrivingavector(:,:,imc),     yyy%drivingavectorszz(:,:,imc,0),numr)
   enddo
 
   call get_tworeducedx(www, dreducedpottally, yyy%cmfavec(:,:,0),  tempdrivingavector, mcscfnum)
 
-  call MYGEMM('N','N', 1,nspf**2,nspf**2,(1.0d0,0.d0), dipmatxx,1,dreducedpottally,nspf**2, (0.d0,0.d0),scalarpotxx,1)
-  call MYGEMM('N','N', 1,nspf**2,nspf**2,(1.0d0,0.d0), dipmatyy,1,dreducedpottally,nspf**2, (0.d0,0.d0),scalarpotyy,1)
-  call MYGEMM('N','N', 1,nspf**2,nspf**2,(1.0d0,0.d0), dipmatzz,1,dreducedpottally,nspf**2, (0.d0,0.d0),scalarpotzz,1)
+  call MYGEMM('N','N', 1,nspf**2,nspf**2,(1.0d0,0.d0), dipmatxx,1,&
+       dreducedpottally,nspf**2, (0.d0,0.d0),scalarpotxx,1)
+  call MYGEMM('N','N', 1,nspf**2,nspf**2,(1.0d0,0.d0), dipmatyy,1,&
+       dreducedpottally,nspf**2, (0.d0,0.d0),scalarpotyy,1)
+  call MYGEMM('N','N', 1,nspf**2,nspf**2,(1.0d0,0.d0), dipmatzz,1,&
+       dreducedpottally,nspf**2, (0.d0,0.d0),scalarpotzz,1)
 
 
 !! NOT DENMAT, REDUCED OPERATOR FOR PULSE (rvector)
 
-  call getdenmat00(www,tempdrivingavector(:,:,:),yyy%cmfavec(:,:,0),rvector(:),tempdenmat(:,:),numr,mcscfnum)
+  call getdenmat00(www,tempdrivingavector(:,:,:),yyy%cmfavec(:,:,0),&
+       rvector(:),tempdenmat(:,:),numr,mcscfnum)
 
 !!$  tempdenmat(:,:)=0.d0
 !!$
@@ -182,23 +193,33 @@ subroutine drivingtrans(thistime)
 
   tempinvden(:,:)=yyy%invdenmat(:,:,0) 
 
-  call MYGEMM('N','N', nspf,nspf,nspf,DATAONE, tempdenmat, nspf, tempinvden, nspf, DATAZERO, tempdenmat2, nspf)
+  call MYGEMM('N','N', nspf,nspf,nspf,DATAONE, tempdenmat, nspf, &
+       tempinvden, nspf, DATAZERO, tempdenmat2, nspf)
 
-  call MYGEMM('N','N', spfsize,nspf,nspf,DATAONE, multorbsxx,       spfsize, tempdenmat2, nspf, DATAZERO, yyy%drivingorbsxx(:,:,0),spfsize)
-  call MYGEMM('N','N', spfsize,nspf,nspf,DATAONE, multorbsyy,       spfsize, tempdenmat2, nspf, DATAZERO, yyy%drivingorbsyy(:,:,0),spfsize)
-  call MYGEMM('N','N', spfsize,nspf,nspf,DATAONE, multorbszz,       spfsize, tempdenmat2, nspf, DATAZERO, yyy%drivingorbszz(:,:,0),spfsize)
+  call MYGEMM('N','N', spfsize,nspf,nspf,DATAONE, multorbsxx,     &
+       spfsize, tempdenmat2, nspf, DATAZERO, yyy%drivingorbsxx(:,:,0),spfsize)
+  call MYGEMM('N','N', spfsize,nspf,nspf,DATAONE, multorbsyy,     &
+       spfsize, tempdenmat2, nspf, DATAZERO, yyy%drivingorbsyy(:,:,0),spfsize)
+  call MYGEMM('N','N', spfsize,nspf,nspf,DATAONE, multorbszz,    &
+       spfsize, tempdenmat2, nspf, DATAZERO, yyy%drivingorbszz(:,:,0),spfsize)
 
 
 !! LIKE REDUCEDPOT, SCALARPOT SHOULD LEFT MULTIPLY INVECTORS-TRANSPOSE TO GET OUTVECTORS-TRANSPOSE
 
-  call MYGEMM('T','N', nspf,nspf,nspf,DATAONE, scalarpotxx,  nspf, tempinvden, nspf, DATAZERO, tempdenmat2, nspf)
-  call MYGEMM('N','N', spfsize,nspf,nspf,DATAONE, tempdrivingorbs,spfsize, tempdenmat2, nspf, DATAONE, yyy%drivingorbsxx(:,:,0),spfsize)
+  call MYGEMM('T','N', nspf,nspf,nspf,DATAONE, scalarpotxx,  nspf, &
+       tempinvden, nspf, DATAZERO, tempdenmat2, nspf)
+  call MYGEMM('N','N', spfsize,nspf,nspf,DATAONE, tempdrivingorbs,&
+       spfsize, tempdenmat2, nspf, DATAONE, yyy%drivingorbsxx(:,:,0),spfsize)
 
-  call MYGEMM('T','N', nspf,nspf,nspf,DATAONE, scalarpotyy,  nspf, tempinvden, nspf, DATAZERO, tempdenmat2, nspf)
-  call MYGEMM('N','N', spfsize,nspf,nspf,DATAONE, tempdrivingorbs,spfsize, tempdenmat2, nspf, DATAONE, yyy%drivingorbsyy(:,:,0),spfsize)
+  call MYGEMM('T','N', nspf,nspf,nspf,DATAONE, scalarpotyy,  nspf, &
+       tempinvden, nspf, DATAZERO, tempdenmat2, nspf)
+  call MYGEMM('N','N', spfsize,nspf,nspf,DATAONE, tempdrivingorbs, &
+       spfsize, tempdenmat2, nspf, DATAONE, yyy%drivingorbsyy(:,:,0),spfsize)
 
-  call MYGEMM('T','N', nspf,nspf,nspf,DATAONE, scalarpotzz,  nspf, tempinvden, nspf, DATAZERO, tempdenmat2, nspf)
-  call MYGEMM('N','N', spfsize,nspf,nspf,DATAONE, tempdrivingorbs,spfsize, tempdenmat2, nspf, DATAONE, yyy%drivingorbszz(:,:,0),spfsize)
+  call MYGEMM('T','N', nspf,nspf,nspf,DATAONE, scalarpotzz,  nspf, &
+       tempinvden, nspf, DATAZERO, tempdenmat2, nspf)
+  call MYGEMM('N','N', spfsize,nspf,nspf,DATAONE, tempdrivingorbs, &
+       spfsize, tempdenmat2, nspf, DATAONE, yyy%drivingorbszz(:,:,0),spfsize)
 
   call configptrdealloc(drivingptr)
   deallocate(currentorbs,tempdrivingorbs,tempdrivingavector)

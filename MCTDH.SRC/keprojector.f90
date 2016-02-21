@@ -28,7 +28,8 @@ subroutine keprojector(inavector,inspfs,infac,www)
 
   if (allocd.eq.0) then
      allocd=1
-     allocate(keproj(nspf,nspf,nkeproj),kevects(spfsize,nkeproj),kesum2(nkeproj),kesum(nkeproj),energy(nkeproj), keproj2(nspf,nspf,nkeproj)); 
+     allocate(keproj(nspf,nspf,nkeproj),kevects(spfsize,nkeproj),&
+          kesum2(nkeproj),kesum(nkeproj),energy(nkeproj), keproj2(nspf,nspf,nkeproj)); 
      kevects(:,:)=0d0; keproj(:,:,:)=0d0; kesum=0d0; kesum2=0d0; keproj2(:,:,:)=0d0
 
 !! elec weights has spfdims for m value support
@@ -43,7 +44,8 @@ subroutine keprojector(inavector,inspfs,infac,www)
                  OFLWR "AAUGH keprojector is in scaled region i think", rad; CFLST
               endif
               krval=sqrt(2*energy(ii))*rad
-              kevects(jj,ii)=sin((rad-keprojminrad)*pi/(keprojmaxrad-keprojminrad))**2 * exp((0d0,1d0)*krval)*sqrt(tempelecweights(jj))
+              kevects(jj,ii)=sin((rad-keprojminrad)*pi/(keprojmaxrad-keprojminrad))**2 &
+                   * exp((0d0,1d0)*krval)*sqrt(tempelecweights(jj))
            endif
         enddo
         kevects(:,ii)=kevects(:,ii)/sqrt(dot(kevects(:,ii),kevects(:,ii),spfsize))
@@ -90,7 +92,8 @@ subroutine keprojector(inavector,inspfs,infac,www)
      if (www%parconsplit.ne.0) then
         call mympireduceone(csum)
      endif
-     if (real(csum).lt.1d6*abs(imag((0d0,0d0)+csum))) then     !! should be positive real  (um but not for cmctdhf, so don't use it then)
+!! should be positive real  (um but not for cmctdhf, so don't use it then)
+     if (real(csum).lt.1d6*abs(imag((0d0,0d0)+csum))) then     
         OFLWR "SUMERRKEPRJOFS", csum; CFL
      endif
      kesum(ii)=kesum(ii)+real(csum)*infac
@@ -100,7 +103,8 @@ subroutine keprojector(inavector,inspfs,infac,www)
      if (www%parconsplit.ne.0) then
         call mympireduceone(csum)
      endif
-     if (real(csum).lt.1d6*abs(imag((0d0,0d0)+csum))) then     !! should be positive real  (um but not for cmctdhf, so don't use it then)
+!! should be positive real  (um but not for cmctdhf, so don't use it then)
+     if (real(csum).lt.1d6*abs(imag((0d0,0d0)+csum))) then     
         OFLWR "SUMERRKEPRJOFS", csum; CFL
      endif
      kesum2(ii)=kesum2(ii)+real(csum)*infac

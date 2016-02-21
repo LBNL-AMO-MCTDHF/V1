@@ -199,11 +199,11 @@
 !! this is the bad boy that does biorthonormalization
 !! it gets fed in all the parameters it way need to eschew parameters and the mods
 !! pointers are used to save on memory slightly for the external routine needed in expokit 
-!! and the sparse algorithm     they are instanced only once for the call to abio_sparse and then dropped 
-!! so we don't leave any unwanted dangling pointers
+!! and the sparse algorithm     they are instanced only once for the call to 
+!! abio_sparse and then dropped so we don't leave any unwanted dangling pointers
 !! the main thing is verifying that biortho's self-re-initializer is functioning properly
-!! it should be for all electron flux subroutine needs, but in case of added functionality that uses 
-!! this routine double check this    kvl
+!! it should be for all electron flux subroutine needs, but in case of added functionality 
+!! that uses this routine double check this    kvl
 
 module biorthotypemod
   use walkmod
@@ -286,16 +286,21 @@ subroutine abio_sparse(abio,aout,inbiovar)
         write(biofileptr,*);        close(biofileptr)
      endif
 
-!     open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="old", position="append")
-!     write(biofileptr,*) " BIORTHO. numr",inbiovar%bionr," biodim ",inbiovar%thisbiodim, "step ",min(1d0,inbiovar%tempstepsize)
+!     open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="old", &
+!          position="append")
+!     write(biofileptr,*) " BIORTHO. numr",inbiovar%bionr," biodim ",&
+!          inbiovar%thisbiodim, "step ",min(1d0,inbiovar%tempstepsize)
 !     close(biofileptr)
   endif
 
   if (myrank.eq.1.and.notiming.eq.0) then
-     open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="old", position="append",iostat=myiostat)
+     open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",&
+          status="old", position="append",iostat=myiostat)
      call checkiostat(myiostat,"opening biortho timing file")
   else
-!!$ opening /dev/null multiple times not allowed :<       open(biofileptr,file="/dev/null",status="unknown")
+!!$ opening /dev/null multiple times not allowed :<      
+!!$ open(biofileptr,file="/dev/null",status="unknown")
+
      biofileptr=nullfileptr
   endif
 
@@ -312,11 +317,13 @@ subroutine abio_sparse(abio,aout,inbiovar)
 
   
   allocate(wsp(lwsp),iwsp(liwsp))
-  allocate(smallvector(inbiovar%bionr,inbiovar%wwbio%maxbasisperproc),smallvectorout(inbiovar%bionr,inbiovar%wwbio%maxbasisperproc))
+  allocate(smallvector(inbiovar%bionr,inbiovar%wwbio%maxbasisperproc),&
+       smallvectorout(inbiovar%bionr,inbiovar%wwbio%maxbasisperproc))
   smallvector(:,:)=0; smallvectorout(:,:)=0
 
   if (inbiovar%wwbio%topconfig.ge.inbiovar%wwbio%botconfig) then
-     call fullbasis_transformto_local(inbiovar%wwbio,inbiovar%bionr,abio(:,inbiovar%wwbio%botconfig:inbiovar%wwbio%topconfig),smallvector(:,:))
+     call fullbasis_transformto_local(inbiovar%wwbio,inbiovar%bionr,&
+          abio(:,inbiovar%wwbio%botconfig:inbiovar%wwbio%topconfig),smallvector(:,:))
   endif
 
   call DGEXPVxxx2(ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,&
@@ -331,21 +338,27 @@ subroutine abio_sparse(abio,aout,inbiovar)
      aout(:,:)=0d0
   endif
   if (inbiovar%wwbio%topconfig.ge.inbiovar%wwbio%botconfig) then
-     call fullbasis_transformfrom_local(inbiovar%wwbio,inbiovar%bionr,smallvectorout(:,:),aout(:,inbiovar%wwbio%botconfig:inbiovar%wwbio%topconfig))
+     call fullbasis_transformfrom_local(inbiovar%wwbio,inbiovar%bionr,&
+          smallvectorout(:,:),aout(:,inbiovar%wwbio%botconfig:inbiovar%wwbio%topconfig))
   endif
   if (inbiovar%wwbio%parconsplit.eq.0) then
-     call mpiallgather(aout,inbiovar%wwbio%numconfig*inbiovar%bionr,inbiovar%wwbio%configsperproc(:)*inbiovar%bionr,inbiovar%wwbio%maxconfigsperproc*inbiovar%bionr)
+     call mpiallgather(aout,inbiovar%wwbio%numconfig*inbiovar%bionr,&
+          inbiovar%wwbio%configsperproc(:)*inbiovar%bionr,&
+          inbiovar%wwbio%maxconfigsperproc*inbiovar%bionr)
   endif
   deallocate(smallvector,smallvectorout)
 
   if (myrank.eq.1.and.notiming.eq.0) then
-     open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="old", position="append",iostat=myiostat)
+     open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",&
+          status="old", position="append",iostat=myiostat)
      call checkiostat(myiostat,"opening biortho timing file")
 
-     write(biofileptr,*,iostat=myiostat) " Bio: steps, iter, stepsize", iwsp(4),iwsp(1),inbiovar%tempstepsize; 
+     write(biofileptr,*,iostat=myiostat) " Bio: steps, iter, stepsize", &
+          iwsp(4),iwsp(1),inbiovar%tempstepsize; 
      call checkiostat(myiostat,"writing biortho timing file")
      if ((iwsp(4).gt.1)) then
-        write(biofileptr,*) "Warning - biorthogonalization restarting. Ddim, tol: ", inbiovar%thisbiodim, biotol; 
+        write(biofileptr,*) "Warning - biorthogonalization restarting. Ddim, tol: ", &
+             inbiovar%thisbiodim, biotol; 
      endif
      close(biofileptr)
   endif
@@ -372,10 +385,10 @@ end module abiosparsemod
 !! the program takes a ton of inputs so it needs not ever use a module other than it's own and mpi
 !! the code is also set to be self-resetting if a sour input is passed to it
 !! right now if the number of configurations or electrons changes it resets, 
-!! this is because the only variables not instanced just once are the spin config lists (alpha, beta, etc) 
-!! that are needed for nonsparse routines, and the depend on the number of congigs and electrons  
-!! the sparse algorithm needs no lingering variables as everything is passed and pointed to 
-!! for just the duration of the call to biortho
+!! this is because the only variables not instanced just once are the spin config lists 
+!! (alpha, beta, etc) that are needed for nonsparse routines, and the depend on the number of 
+!! congigs and electrons the sparse algorithm needs no lingering variables as everything is 
+!! passed and pointed to for just the duration of the call to biortho
 !! xoxo -KVL 
 
 !! all the global variables needed to do biothonormalization without any mod save this one and mpi
@@ -431,7 +444,7 @@ contains
     DATATYPE,intent(inout) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
     DATATYPE :: dot,hermdot
     DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig+1),&
-         smosave(inbiovar%wwbio%nspf,inbiovar%wwbio%nspf)                                  !! AUTOMATIC
+         smosave(inbiovar%wwbio%nspf,inbiovar%wwbio%nspf)                           !! AUTOMATIC
     integer :: i,j,lowspf,highspf,numspf,flag
 
     lowspf=1;highspf=inbiovar%wwbio%nspf
@@ -445,7 +458,7 @@ contains
     numspf=highspf-lowspf+1
  
     if (inbiovar%hermonly) then
-       do i=lowspf,highspf                 !! Start by finding S**-1 of the original orbitals
+       do i=lowspf,highspf
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j)
 !$OMP DO SCHEDULE(DYNAMIC)
           do j=1,inbiovar%wwbio%nspf
@@ -455,7 +468,7 @@ contains
 !$OMP END PARALLEL
        enddo
     else
-       do i=lowspf,highspf                 !! Start by finding S**-1 of the original orbitals
+       do i=lowspf,highspf
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j)
 !$OMP DO SCHEDULE(DYNAMIC)
           do j=1,inbiovar%wwbio%nspf
@@ -498,10 +511,10 @@ contains
        call abio_sparse(abio,atmp,inbiovar)
     endif
     
-! hangs sometimes (n2) uncertain why yet
-!  if (mod(icalled,1000).eq.0) then
-! call checkbio(origmo,mobio,abio,atmp,biospfsize,inbiovar%wwbio%nspf,nr)
-!  endif
+!!$ hangs sometimes (n2) uncertain why yet
+!!$  if (mod(icalled,1000).eq.0) then
+!!$ call checkbio(origmo,mobio,abio,atmp,biospfsize,inbiovar%wwbio%nspf,nr)
+!!$  endif
     
     if (inbiovar%wwbio%lastconfig.ge.inbiovar%wwbio%firstconfig) then
        abio(:,:)=atmp(:,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
@@ -532,14 +545,15 @@ contains
     if (parorbsplit.eq.1) then
        call checkorbsetrange(inbiovar%wwbio%nspf,flag)
        if (flag.ne.0) then
-          OFLWR "error exit, can't do biortho parorbsplit.eq.1 with ",inbiovar%wwbio%nspf," orbitals";CFLST
+          OFLWR "error exit, can't do biortho parorbsplit.eq.1 with ",&
+               inbiovar%wwbio%nspf," orbitals";CFLST
        endif
        call getOrbSetRange(lowspf,highspf)
     endif
     numspf=highspf-lowspf+1
 
     if (inbiovar%hermonly) then
-       do i=lowspf,highspf                 !! Start by finding S**-1 of the original orbitals
+       do i=lowspf,highspf
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j)
 !$OMP DO SCHEDULE(DYNAMIC)
           do j=1,inbiovar%wwbio%nspf
@@ -607,8 +621,9 @@ subroutine abio_nonsparse(abio,aout,inbiovar)
 
 !! for the nonsparse routine this builds the full nonsparse configuration overlap matrix
 !! this relies on the unique properties of the Doolittle algorithm of LU factorization
-!! to take the overlap matrices of the ith and jth configs alpha and beta orbitals and get their determinant that way 
-!! this is very much so a brute force way to approach this problem
+!! to take the overlap matrices of the ith and jth configs alpha and beta orbitals and 
+!! get their determinant that way this is very much so a brute force way to approach 
+!! this problem
 
   smobig(:,:)=0d0
 
@@ -630,12 +645,14 @@ subroutine abio_nonsparse(abio,aout,inbiovar)
   
   do j=inbiovar%wwbio%botconfig,inbiovar%wwbio%topconfig
      do i=1,inbiovar%wwbio%numconfig
-        call get_petite_mat(inbiovar%wwbio%nspf*2,inbiovar%wwbio%numelec,Smobig,Stmpbig,bioconfiglist(:,i),bioconfiglist(:,j))
+        call get_petite_mat(inbiovar%wwbio%nspf*2,inbiovar%wwbio%numelec,Smobig,&
+             Stmpbig,bioconfiglist(:,i),bioconfiglist(:,j))
         sconfig(i,j) = matdet(inbiovar%wwbio%numelec,Stmpbig)
      enddo
   enddo
 
-  call mpiallgather(sconfig,inbiovar%wwbio%numconfig**2,inbiovar%wwbio%configsperproc(:)*inbiovar%wwbio%numconfig,&
+  call mpiallgather(sconfig,inbiovar%wwbio%numconfig**2,&
+       inbiovar%wwbio%configsperproc(:)*inbiovar%wwbio%numconfig,&
        inbiovar%wwbio%maxconfigsperproc*inbiovar%wwbio%numconfig)
 
 !! this is where the linear equation solver is called to solve S*abio'=abio to get our  abio'
@@ -663,7 +680,9 @@ subroutine abio_nonsparse(abio,aout,inbiovar)
   endif
 
   do jproc=1,nprocs
-     clow = (jproc-1)*inbiovar%bionr/nprocs+1;      chigh = jproc*inbiovar%bionr/nprocs;      cnum = (chigh-clow+1)*inbiovar%wwbio%numconfig
+     clow = (jproc-1)*inbiovar%bionr/nprocs+1
+     chigh = jproc*inbiovar%bionr/nprocs
+     cnum = (chigh-clow+1)*inbiovar%wwbio%numconfig
      call mympibcast(aouttr(:,clow:),jproc,cnum)
   enddo
 
@@ -836,8 +855,8 @@ subroutine parbiomatvec_summa(inavector,outavector)
   implicit none
   DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
   DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
-  DATATYPE :: intemp(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&
-       outwork(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1),&   !!AUTOMATIC
+  DATATYPE :: intemp(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&   !!AUTOMATIC
+       outwork(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1),&
        outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1)
   integer :: iproc
 
@@ -854,10 +873,12 @@ subroutine parbiomatvec_summa(inavector,outavector)
 
      if(biopointer%wwbio%alltopconfigs(iproc).ge.biopointer%wwbio%allbotconfigs(iproc)) then
         if (myrank.eq.iproc) then
-           call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector(:,:),intemp(:,:))
+           call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,&
+                inavector(:,:),intemp(:,:))
         endif
 
-        call mympibcast(intemp,iproc,(biopointer%wwbio%alltopconfigs(iproc)-biopointer%wwbio%allbotconfigs(iproc)+1)*biopointer%bionr)
+        call mympibcast(intemp,iproc,(biopointer%wwbio%alltopconfigs(iproc) &
+             - biopointer%wwbio%allbotconfigs(iproc)+1)*biopointer%bionr)
 
         call biomatvec_byproc(iproc,iproc,intemp,outtemp)
 
@@ -867,7 +888,8 @@ subroutine parbiomatvec_summa(inavector,outavector)
 
   outavector(:,:)=0d0   !! PADDED
 
-  call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,outwork(:,:),outavector(:,:))
+  call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,&
+       outwork(:,:),outavector(:,:))
 
 end subroutine parbiomatvec_summa
 
@@ -883,8 +905,8 @@ subroutine parbiomatvec_circ(inavector,outavector)
   DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
   DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
   DATATYPE :: workvector(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&
-       workvector2(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&
-       outwork(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1),&    !!AUTOMATIC
+       workvector2(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&    !!AUTOMATIC
+       outwork(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1),&
        outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1)
   integer :: iproc,prevproc,nextproc,deltaproc
 
@@ -892,15 +914,17 @@ subroutine parbiomatvec_circ(inavector,outavector)
      OFLWR "error, must use sparse for parbiomatvec summa"; CFLST
   endif
 
-!! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 and ftcore.f90, 
-!!     holding hands in a circle, prevproc and nextproc, each chunk gets passed around the circle
+!! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 
+!!     and ftcore.f90, holding hands in a circle, prevproc and nextproc, 
+!!     each chunk gets passed around the circle
   prevproc=mod(nprocs+myrank-2,nprocs)+1
   nextproc=mod(myrank,nprocs)+1
 
   workvector=0; workvector2=0; outwork=0; outtemp=0
 
   if (biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
-     call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector(:,:),workvector(:,:))
+     call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,&
+          inavector(:,:),workvector(:,:))
   endif
 
   do deltaproc=0,nprocs-1
@@ -926,7 +950,8 @@ subroutine parbiomatvec_circ(inavector,outavector)
   outavector(:,:)=0d0   !! PADDED
 
   if (biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
-     call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,outwork(:,:),outavector(:,:))
+     call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,&
+          outwork(:,:),outavector(:,:))
   endif
 
 end subroutine parbiomatvec_circ
@@ -955,8 +980,10 @@ subroutine biomatvec_byproc(firstproc,lastproc,x,y)
   implicit none
   integer,intent(in) :: firstproc,lastproc
   integer :: i,j,ihop
-  DATATYPE,intent(in) :: x(biopointer%bionr,biopointer%wwbio%allbotconfigs(firstproc):biopointer%wwbio%alltopconfigs(lastproc))
-  DATATYPE,intent(out) :: y(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig)
+  DATATYPE,intent(in) :: x(biopointer%bionr,biopointer%wwbio%allbotconfigs(firstproc):&
+       biopointer%wwbio%alltopconfigs(lastproc))
+  DATATYPE,intent(out) :: y(biopointer%bionr,biopointer%wwbio%botconfig:&
+       biopointer%wwbio%topconfig)
   DATATYPE :: csum,myout(biopointer%bionr)
 
   if (biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
@@ -973,10 +1000,12 @@ subroutine biomatvec_byproc(firstproc,lastproc,x,y)
      do ihop=biopointer%wwbio%firstsinglehopbyproc(firstproc,i), &
           biopointer%wwbio%lastsinglehopbyproc(lastproc,i) 
         csum=0d0
-        do j=biopointer%wwbio%singlehopwalkstart(ihop,i),  biopointer%wwbio%singlehopwalkend(ihop,i)
+        do j=biopointer%wwbio%singlehopwalkstart(ihop,i), &
+             biopointer%wwbio%singlehopwalkend(ihop,i)
            csum=csum + &
                 biopointer%smo(biopointer%wwbio%singlewalkopspf(1,j,i),&
-                biopointer%wwbio%singlewalkopspf(2,j,i)) * biopointer%wwbio%singlewalkdirphase(j,i)
+                biopointer%wwbio%singlewalkopspf(2,j,i)) &
+                * biopointer%wwbio%singlewalkdirphase(j,i)
         enddo
         myout(:) = myout(:) + csum * x(:,biopointer%wwbio%singlehop(ihop,i)) 
      enddo
@@ -1000,13 +1029,18 @@ end subroutine biomatvec_byproc
 !!$    real*8 :: err
 !!$    icalled=icalled+1
 !!$  
-!!$    OFLWR "SOMETHING IS UP.  BIOTRANSFORM DEFINITELY WORKS BUT CHECKBIO DOES NOT AGREE. AUTOCORRELATE_ONE LIKELY BROKEN."; CFLST
+!!$    OFLWR "SOMETHING IS UP.  BIOTRANSFORM DEFINITELY WORKS BUT CHECKBIO 
+!!$        DOES NOT AGREE. AUTOCORRELATE_ONE LIKELY BROKEN."; CFLST
 !!$  
 !!$    call openfile(); write(mpifileptr,*) "   .... check biortho perm " ; call closefile()
 !!$  
-!!$    call permoverlaps(numr,numelec,spfsize,origmo,mobio,abio,atmp,checkoverlap,0,0.d-8,0.d-8,nspf,nspf,num_config,num_config,configlist,numelec*2,configlist,numelec*2,0,parorbsplit)
-!!$    call permoverlaps(numr,numelec,spfsize,origmo,origmo,abio,abio,check1,0,0.d-8,0.d-8,nspf,nspf,num_config,num_config,configlist,numelec*2,configlist,numelec*2,0,parorbsplit)
-!!$    call permoverlaps(numr,numelec,spfsize,mobio,mobio,atmp,atmp,check2,0,0.d-8,0.d-8,nspf,nspf,num_config,num_config,configlist,numelec*2,configlist,numelec*2,0,parorbsplit)
+!!$    call permoverlaps(numr,numelec,spfsize,origmo,mobio,abio,atmp,checkoverlap,&
+!!$          0,0.d-8,0.d-8,nspf,nspf,num_config,num_config,configlist,numelec*2,&
+!!$          configlist,numelec*2,0,parorbsplit)
+!!$    call permoverlaps(numr,numelec,spfsize,origmo,origmo,abio,abio,check1,0,0.d-8,0.d-8,&
+!!$          nspf,nspf,num_config,num_config,configlist,numelec*2,configlist,numelec*2,0,parorbsplit)
+!!$    call permoverlaps(numr,numelec,spfsize,mobio,mobio,atmp,atmp,check2,0,0.d-8,0.d-8,&
+!!$          nspf,nspf,num_config,num_config,configlist,numelec*2,configlist,numelec*2,0,parorbsplit)
 !!$  
 !!$    err=abs((checkoverlap-sqrt(check1*check2))/checkoverlap)
 !!$    if (err.gt.1.d-7) then
@@ -1025,7 +1059,8 @@ end subroutine biomatvec_byproc
 !!$   use biorthomod
 !!$   use mpimod
 !!$   implicit none
-!!$   DATATYPE :: mobio(insize,norb), origmo(insize,norb), atmp(num_config,nr), abio(num_config,nr), checkoverlap, check1,check2
+!!$   DATATYPE :: mobio(insize,norb), origmo(insize,norb), atmp(num_config,nr), abio(num_config,nr),&
+!!$        checkoverlap, check1,check2
 !!$   integer, save :: icalled=-1
 !!$   integer :: nr,insize,norb
 !!$   real*8 :: err
@@ -1033,9 +1068,12 @@ end subroutine biomatvec_byproc
 !!$ 
 !!$ !!  call openfile(); write(mpifileptr,*) "   .... check biortho perm " ; call closefile()
 !!$ 
-!!$   call permoverlaps(nr,numelec,insize,origmo,mobio,abio,atmp,checkoverlap,0,0.d-8,0.d-8,norb,norb,num_config,num_config,configlist,numelec*2,configlist,numelec*2,0)
-!!$   call permoverlaps(nr,numelec,insize,origmo,origmo,abio,abio,check1,0,0.d-8,0.d-8,norb,norb,num_config,num_config,configlist,numelec*2,configlist,numelec*2,0)
-!!$   call permoverlaps(nr,numelec,insize,mobio,mobio,atmp,atmp,check2,0,0.d-8,0.d-8,norb,norb,num_config,num_config,configlist,numelec*2,configlist,numelec*2,0)
+!!$   call permoverlaps(nr,numelec,insize,origmo,mobio,abio,atmp,checkoverlap,0,0.d-8,0.d-8,&
+!!$         norb,norb,num_config,num_config,configlist,numelec*2,configlist,numelec*2,0)
+!!$   call permoverlaps(nr,numelec,insize,origmo,origmo,abio,abio,check1,0,0.d-8,0.d-8,&
+!!$         norb,norb,num_config,num_config,configlist,numelec*2,configlist,numelec*2,0)
+!!$   call permoverlaps(nr,numelec,insize,mobio,mobio,atmp,atmp,check2,0,0.d-8,0.d-8,norb,norb,&
+!!$         num_config,num_config,configlist,numelec*2,configlist,numelec*2,0)
 !!$ 
 !!$   err=abs((checkoverlap-sqrt(check1*check2))/checkoverlap)
 !!$   if (err.gt.1.d-6) then

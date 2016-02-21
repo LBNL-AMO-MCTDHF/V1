@@ -14,9 +14,9 @@ subroutine save_density( thistime, inspfs, indenmat, iprop, denfilename)
   integer,intent(in) :: iprop
   integer :: i,j, imval,jj
   character (len=headersize) :: header
-  complex*16 ::     cmdensity(spfdims(1),spfdims(2),spfdims(3)),     mtrans(spfdims(3),spfdims(3))   !! AUTOMATIC
-  DATATYPE :: mdensity(spfdims(1),spfdims(2),spfdims(3))                                             !! AUTOMATIC
-  complex*16 ::      density(spfdims(1),spfdims(2),spfdims(3))                                       !! AUTOMATIC
+  complex*16 :: cmdensity(spfdims(1),spfdims(2),spfdims(3)),mtrans(spfdims(3),spfdims(3)) 
+  DATATYPE :: mdensity(spfdims(1),spfdims(2),spfdims(3))                       
+  complex*16 :: density(spfdims(1),spfdims(2),spfdims(3))                         !! AUTOMATIC
 
   if (spfdimtype(3).eq.1) then  !! assume fourier basis (-mbig:mbig)
      if (mod(spfdims(3),2).ne.1) then
@@ -35,7 +35,9 @@ subroutine save_density( thistime, inspfs, indenmat, iprop, denfilename)
      enddo
   endif
   call getdensity(density, indenmat, inspfs,nspf)
-  call zgemm('N', 'N', spfdims(1)*spfdims(2),spfdims(3),spfdims(3), (1.d0,0.d0), density, spfdims(1)*spfdims(2), mtrans,spfdims(3), (0.d0,0.d0), cmdensity, spfdims(1)*spfdims(2))
+  call zgemm('N', 'N', spfdims(1)*spfdims(2),spfdims(3),spfdims(3), (1.d0,0.d0), &
+       density, spfdims(1)*spfdims(2), mtrans,spfdims(3), (0.d0,0.d0),&
+       cmdensity, spfdims(1)*spfdims(2))
 
   do imval=1,spfdims(3)
      mdensity(:,:,imval)=  cmdensity(:,:,imval) / &
@@ -229,7 +231,8 @@ subroutine save_rnatorb_initial()
   use mpimod
   implicit none
   OFLWR "REDO SAVE RNAT - NEED TO CALC"; CFLST
-!  open(rnatorbfile,file=rnatplotbin, status="replace", form="unformatted");  close(rnatorbfile)
+!  open(rnatorbfile,file=rnatplotbin, status="replace", form="unformatted")
+!  close(rnatorbfile)
 !  call save_rnatorb(-1.d0, yyy%rdenvects(:,:), yyy%rdenvals(:), 1)
 end subroutine save_rnatorb_initial
 
@@ -239,7 +242,7 @@ subroutine save_spf_initial()
   use mpimod
   implicit none
   if (myrank.eq.1) then
-     open(spfplotfile,file=spfplotbin, status="replace", form="unformatted");  close(spfplotfile)
+     open(spfplotfile,file=spfplotbin, status="replace", form="unformatted")
      close(spfplotfile)
   endif
   call save_spf( -1.d0, yyy%cmfspfs(:,0), 1)
