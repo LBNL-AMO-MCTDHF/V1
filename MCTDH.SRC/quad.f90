@@ -11,15 +11,16 @@
 !! ON INPUT SOLUTION IS GUESS.
 
 subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, &
-     intolerance, indimension, inkrydim,parflag)
+     intolerance, indimension, inkrydim,parflag,ierr)
   use fileptrmod
   implicit none
   integer,intent(in) :: indimension,inkrydim,parflag,preconflag
+  integer,intent(out) :: ierr
   real*8,intent(in) :: intolerance
   DATATYPE,intent(in) :: rhs(indimension)
   integer,intent(out) :: numiter
   DATATYPE,intent(out) :: solution(indimension)
-  integer :: itol, ierr, iunit, jjxx, rgwkdim
+  integer :: itol, iunit, jjxx, rgwkdim
   external :: inmult, dummysub, inprecon
   integer :: igwk(20), ligwk=20, nullint1,nullint2,nullint3,nullint4, nullint5
   real*8 :: nulldouble1, errest, nulldouble2, nulldouble3, nulldouble4, tol
@@ -157,7 +158,7 @@ subroutine quadspfs(inspfs,jjcalls)
   implicit none
   DATATYPE,intent(inout) :: inspfs(totspfdim)  
   integer,intent(out) :: jjcalls
-  integer :: icount,maxdim
+  integer :: icount,maxdim,ierr
   real*8 :: orthogerror,dev,mynorm
   DATATYPE :: hermdot
   DATATYPE, allocatable ::  vector(:), vector2(:), vector3(:), com_vector2(:), com_vector3(:)
@@ -205,23 +206,27 @@ subroutine quadspfs(inspfs,jjcalls)
         if (parorbsplit.eq.3) then
            maxdim=min(spfsmallsize*nspf*nprocs,maxexpodim)
            call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
-                quadtol,spfsmallsize*nspf,maxdim,1)
+                quadtol,spfsmallsize*nspf,maxdim,1,ierr)
         else
            maxdim=min(spfsmallsize*nspf,maxexpodim)
            call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
-                quadtol,spfsmallsize*nspf,maxdim,0)
+                quadtol,spfsmallsize*nspf,maxdim,0,ierr)
         endif
         call spfs_expand(com_vector3,vector3)
      else
         if (parorbsplit.eq.3) then
            maxdim=min(totspfdim*nprocs,maxexpodim)
            call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
-                quadtol,totspfdim,maxdim,1)
+                quadtol,totspfdim,maxdim,1,ierr)
         else
            maxdim=min(totspfdim,maxexpodim)
            call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
-                quadtol,totspfdim,maxdim,0)
+                quadtol,totspfdim,maxdim,0,ierr)
         endif
+     endif
+
+     if (ierr.eq.1) then
+        vector3(:)=0d0
      endif
 
      mynorm=abs(hermdot(vector3,vector3,totspfdim))
@@ -378,7 +383,7 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
   EXTERNAL :: paraamult, parquadpreconsub
   DATATYPE, intent(inout) ::  inavector(numr,www%firstconfig:www%lastconfig)
   integer,intent(out) :: jjcalls0
-  integer :: jjcalls, ss, maxdim, mysize,flag
+  integer :: jjcalls, ss, maxdim, mysize,flag,ierr
   real*8 ::  dev,  thisaerror
   DATATYPE :: dot, hermdot,csum 
   DATATYPE, allocatable ::  vector(:,:), vector2(:,:), vector3(:,:), &
@@ -466,7 +471,7 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
      endif
 
      call dgsolve0( smallvectorspin, smallvectorspin2, jjcalls, paraamult,&
-          quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1)
+          quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1,ierr)
 
 !!$  call basicblocklansolve(1,mysize,maxdim,maxdim,smallvectorspin,smallvectorspin2,1,&
 !!$     parhrmult,parhrdotsub,quadexpect)

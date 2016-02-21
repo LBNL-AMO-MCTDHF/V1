@@ -966,7 +966,7 @@ end subroutine op_tinv
 !!$TINV    DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
 !!$TINV    DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
 !!$TINV    DATATYPE :: temp(totpoints,allsize)
-!!$TINV    integer :: ii,numcalled
+!!$TINV    integer :: ii,numcalled,ierr
 !!$TINV    external :: scaled_operate_sub, dummysub
 !!$TINV  
 !!$TINV    do ii=1,allsize
@@ -976,9 +976,11 @@ end subroutine op_tinv
 !!$TINV  
 !!$TINV    do ii=1,allsize
 !!$TINV       if (orbparflag) then
-!!$TINV          call dgsolve0(temp(:,ii),twoereduced(:,ii),numcalled, scaled_operate_sub, 0, dummysub, tinv_tol, totpoints, orblanorder, 1)
+!!$TINV          call dgsolve0(temp(:,ii),twoereduced(:,ii),numcalled, scaled_operate_sub, 0, &
+!!$TINV             dummysub, tinv_tol, totpoints, orblanorder, 1,ierr)
 !!$TINV       else
-!!$TINV          call dgsolve0(temp(:,ii),twoereduced(:,ii),numcalled, scaled_operate_sub, 0, dummysub, tinv_tol, totpoints, orblanorder, 0)
+!!$TINV          call dgsolve0(temp(:,ii),twoereduced(:,ii),numcalled, scaled_operate_sub, 0, &
+!!$TINV             dummysub, tinv_tol, totpoints, orblanorder, 0,ierr)
 !!$TINV       endif
 !!$TINV    enddo
 !!$TINV  
