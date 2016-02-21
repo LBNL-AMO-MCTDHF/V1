@@ -16,9 +16,11 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   integer,intent(inout) :: spfsloaded
   DATATYPE,intent(inout) :: inspfs(numerad,lbig+1, -mbig:mbig, numspf)
   DATATYPE,intent(out) :: proderivmod(numr,numr),rkemod(numr,numr), &
-       bondpoints(numr),bondweights(numr), halfniumpot(numerad,lbig+1, -mbig:mbig),pot(numerad,lbig+1, -mbig:mbig), &
+       bondpoints(numr),bondweights(numr), halfniumpot(numerad,lbig+1, -mbig:mbig),&
+       pot(numerad,lbig+1, -mbig:mbig), &
        elecweights(numerad,lbig+1, -mbig:mbig), elecradii(numerad,lbig+1, -mbig:mbig)
-  integer :: i,ii,j,    taken(200)=0, flag, jj, jflag, xiug, iug, ugvalue(200,0:30), getsmallugvalue
+  integer :: i,ii,j,    taken(200)=0, flag, jj, jflag, xiug, iug, ugvalue(200,0:30), &
+       getsmallugvalue
   DATAECS :: thisrvalue  
   character (len=2) :: th(4)
   DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:)
@@ -78,6 +80,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   thisrvalue=(rpoints(2)+rpoints(rgridpoints-1))/2d0
 
   allocate(bigham(numerad, lbig+1, numerad, lbig+1),bigvects(numerad,lbig+1, edim,0:mbig), bigvals(edim))
+  bigham=0; bigvals=0
 
   do ii=0,mbig
      jflag=0
@@ -215,9 +218,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   WRFL; CFL
 
   deallocate(bigham );  deallocate( bigvects, bigvals)   !! twoe
-  call openfile();  write(mpifileptr,*) "Done init_h2.";  write(mpifileptr, *);  call closefile()
 
-  OFLWR "Done init project."; WRFL; CFL
+  OFLWR "Done init h2 project."; WRFL; CFL
 
 end subroutine init_project
 

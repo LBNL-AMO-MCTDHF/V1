@@ -5,7 +5,8 @@
 
 #include "Definitions.INC"
 
-subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,outnumr,nucrepulsion,nonuc_checkflag)   !! inpfile input, others output dummy variables
+subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,&
+     outnumr,nucrepulsion,nonuc_checkflag)   !! inpfile input, others output dummy variables
   use myparams
   implicit none
   integer,intent(in) :: inmpifileptr
@@ -97,7 +98,8 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
 
   if (numhatoms.gt.1) then
      do i=1,numhatoms
-        if ( (hlocs(1,i).lt.0).or.(hlocs(2,i).lt.0).or.(hlocs(1,i).gt.numerad).or.(hlocs(2,i).gt.lbig+1) .or. (abs(hlocs(3,i)).ne.1) ) then
+        if ( (hlocs(1,i).lt.0).or.(hlocs(2,i).lt.0).or.(hlocs(1,i).gt.numerad).or.&
+             (hlocs(2,i).gt.lbig+1) .or. (abs(hlocs(3,i)).ne.1) ) then
            OFLWR "Error, numhatoms set to ", numhatoms
            write(mpifileptr,*) "  but hlocs assigned wrong for atom ", i
            write(mpifileptr,*) "  ", hlocs(:,i);CFLST
@@ -124,7 +126,8 @@ end subroutine getmyparams
 !subroutine checkmyopts()
 !  use myparams
 !  implicit none
-!  if ((nonuc_checkflag.eq.0) .and. (tdflag.eq.1) .and. (velflag/=0) .and. (abs (NucCharge1*pro_dmass - NucCharge2*pro_hmass) .gt. 1.d-3 ) ) then
+!  if ((nonuc_checkflag.eq.0) .and. (tdflag.eq.1) .and. (velflag/=0) .and. &
+!        (abs (NucCharge1*pro_dmass - NucCharge2*pro_hmass) .gt. 1.d-3 ) ) then
 !     call openfile()
 !     write(mpifileptr,*) " Velocity with nuclear motion not available for hetero, only homo   - TEMP CONTINUE"
 !     call closefile()
@@ -317,12 +320,14 @@ subroutine get_maxsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,povsparse)
 end subroutine get_maxsparse
 
 
-subroutine get_sphericalsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,sparsetransmat,sparsestart,sparseend,sparsexyz,povsparse)
+subroutine get_sphericalsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,sparsetransmat,&
+     sparsestart,sparseend,sparsexyz,povsparse)
    use myprojectmod
    use myparams
    implicit none
    integer,intent(in) :: nx,ny,nz, maxsparse
-   integer,intent(out) :: sparsexyz(maxsparse,3),  sparsestart(numerad,lbig+1,-mbig:mbig), sparseend(numerad,lbig+1,-mbig:mbig)
+   integer,intent(out) :: sparsexyz(maxsparse,3),  sparsestart(numerad,lbig+1,-mbig:mbig), &
+        sparseend(numerad,lbig+1,-mbig:mbig)
    real*8,intent(in) :: xvals(nx),yvals(ny),zvals(nz), povsparse
    complex*16,intent(out) :: sparsetransmat(maxsparse)
    real*8 :: xval,yval,zval, angularlobatto, xival, etaval,phival, rhoval
@@ -373,7 +378,8 @@ subroutine get_sphericalsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,sparsetrans
             call openfile();         write(mpifileptr,*) "Sparse error!";         call closefile()
             stop
       endif
-      sparsexyz(iii,1) = ix;      sparsexyz(iii,2) = iy;      sparsexyz(iii,3) = iz;      sparsetransmat(iii) = csum
+      sparsexyz(iii,1) = ix;      sparsexyz(iii,2) = iy;   
+      sparsexyz(iii,3) = iz;      sparsetransmat(iii) = csum
    endif
   enddo
   enddo
@@ -433,7 +439,8 @@ function  radiallobattoint(n,x, mvalue)
   integer,intent(in) :: mvalue,   n
   real*8,intent(in) :: x
   DATAECS :: xilobattoint, radiallobattoint
-     radiallobattoint=xilobattoint(n,x,mvalue,xinumpoints,xipoints2d(:,1), xipoints2d(:,2), xipoints,xiweights,xielementsizes,xinumelements,1)
+     radiallobattoint=xilobattoint(n,x,mvalue,xinumpoints,xipoints2d(:,1), &
+          xipoints2d(:,2), xipoints,xiweights,xielementsizes,xinumelements,1)
 end function radiallobattoint
 
 function  angularlobattoint(n,x, mvalue)

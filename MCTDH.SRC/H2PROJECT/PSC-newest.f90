@@ -23,20 +23,24 @@ subroutine PSCtempalloc()
   allocate( xi_derivs(xigridpoints,xigridpoints,0:1), xi_rhoderivs(xigridpoints,xigridpoints), &
        xi_elderivs(xinumpoints*xinumelements,xigridpoints),       eta_derivs(numeta,numeta,0:1), &
        eta_rhoderivs(numeta,numeta))
+  xi_derivs=0; xi_rhoderivs=0; xi_elderivs=0; eta_derivs=0; eta_rhoderivs=0
 
   if (bornopflag.eq.0) then
      allocate( &
        Yderivs(xigridpoints,numeta,xigridpoints,numeta,0:1) , &
        Ydiag(xigridpoints,numeta,xigridpoints,numeta,0:1), &
-       Ytemp2(numeta,xigridpoints,numeta,xigridpoints))
-     allocate(pro_lop(xigridpoints,numeta,xigridpoints,numeta,0:1))
-     allocate(pro_ldiag(xigridpoints,numeta),pro_both(numerad,numeta,numerad,numeta,0:1))
+       Ytemp2(numeta,xigridpoints,numeta,xigridpoints),&
+       pro_lop(xigridpoints,numeta,xigridpoints,numeta,0:1),&
+       pro_ldiag(xigridpoints,numeta),pro_both(numerad,numeta,numerad,numeta,0:1))
+     yderivs=0; ydiag=0; ytemp2=0; pro_lop=0; pro_ldiag=0
   endif
   allocate( etadeg1(numeta,numeta, 0:1),  etadeg2(numeta,numeta, 0:1), eta_second(numeta,numeta, 0:1), &
-       eta_third(numeta,numeta, 0:1),  eta_fourth(numeta,numeta, 0:1))
-  allocate( xideg1(xigridpoints, xigridpoints,0:1),  xideg2(xigridpoints, xigridpoints,0:1))
-  allocate( xi_fourth(xigridpoints, xigridpoints,0:1),  xi_third(xigridpoints, xigridpoints,0:1),  &
+       eta_third(numeta,numeta, 0:1),  eta_fourth(numeta,numeta, 0:1),&
+       xideg1(xigridpoints, xigridpoints,0:1),  xideg2(xigridpoints, xigridpoints,0:1),&
+       xi_fourth(xigridpoints, xigridpoints,0:1),  xi_third(xigridpoints, xigridpoints,0:1),  &
        xi_second(xigridpoints, xigridpoints,0:1))
+  etadeg1=0; etadeg2=0; eta_second=0; eta_third=0; eta_fourth=0; 
+  xideg1=0; xideg2=0; xi_fourth=0; xi_third=0; xi_second=0
 
 end subroutine PSCtempalloc
 
@@ -61,20 +65,23 @@ subroutine PSC()
   integer :: i,k,m,iii,  j, thismval
   real*8 :: eta1,eta2,xi1,xi2, dummypoints(rgridpoints), dummyweights(rgridpoints) 
 
+  dummypoints=0; dummyweights=0
+
   call PSCtempalloc()
   call r_init(dummypoints,dummyweights, usualke, rnumpoints,rnumelements,relementsize,rgridpoints,rstart)
   usualke=usualke*(-0.5d0)/Rmass
 
-  call prolate_init(rpoints,rweights, rnumpoints,rnumelements,relementsize,rgridpoints,rstart, prolate_derivs, rketot, rcelement, rthetaecs)
+  call prolate_init(rpoints,rweights, rnumpoints,rnumelements,relementsize,rgridpoints,rstart, &
+       prolate_derivs, rketot, rcelement, rthetaecs)
   rketot=rketot*(-0.5d0/Rmass)
 
   if (capflag.eq.1) then
-     call openfile();      write(mpifileptr,*) "Doing CAP. ";      call closefile()
+     OFLWR "Doing CAP. "; CFL
      do i=1,rgridpoints
         
         if (abs(imag(rpoints(i)+(0.d0,0.d0))).gt.1.d-10) then
            OFLWR "Error, looks like you have scaling on with cap. "
-           write(mpifileptr,*) i,rpoints(i);CFLST
+           write(mpifileptr,*) i,rpoints(i);  CFLST
         endif
         
         if (real(rpoints(i)).gt.capstart) then
@@ -85,13 +92,20 @@ subroutine PSC()
 
 !!!      ELECTRONIC      !!!
   
-  call xi_init(xipoints,xiweights,xipoints2d,xike(:,:,0),xinumpoints,xinumelements,xielementsizes,xigridpoints,xicelement,xiecstheta, lobattoopt, xideg1(:,:,0),xideg2(:,:,0),xi_derivs(:,:,0),xi_rhoderivs(:,:),xi_fourth(:,:,0), xi_third(:,:,0), xi_second(:,:,0), 0)
-  call eta_init(etapoints,etaweights,etake(:,:,0),numeta, etadeg1(:,:,0),etadeg2(:,:,0),eta_derivs(:,:,0),eta_rhoderivs(:,:),eta_fourth(:,:,0), eta_third(:,:,0),eta_second(:,:,0),0)
+  call xi_init(xipoints,xiweights,xipoints2d,xike(:,:,0),xinumpoints,xinumelements,xielementsizes,&
+       xigridpoints,xicelement,xiecstheta, lobattoopt, xideg1(:,:,0),xideg2(:,:,0),xi_derivs(:,:,0),&
+       xi_rhoderivs(:,:),xi_fourth(:,:,0), xi_third(:,:,0), xi_second(:,:,0), 0)
+  call eta_init(etapoints,etaweights,etake(:,:,0),numeta, etadeg1(:,:,0),etadeg2(:,:,0),&
+       eta_derivs(:,:,0),eta_rhoderivs(:,:),eta_fourth(:,:,0), eta_third(:,:,0),eta_second(:,:,0),0)
+  
+  call xi_init(xipoints,xiweights,xipoints2d,xike(:,:,1),xinumpoints,xinumelements,xielementsizes,&
+       xigridpoints,xicelement,xiecstheta, lobattoopt, xideg1(:,:,1),xideg2(:,:,1),xi_derivs(:,:,1),&
+       xi_rhoderivs(:,:),xi_fourth(:,:,1), xi_third(:,:,1), xi_second(:,:,1), 1)
+  call eta_init(etapoints,etaweights,etake(:,:,1),numeta, etadeg1(:,:,1),etadeg2(:,:,1),&
+       eta_derivs(:,:,1),eta_rhoderivs(:,:),eta_fourth(:,:,1), eta_third(:,:,1),eta_second(:,:,1),1)
 
-  call xi_init(xipoints,xiweights,xipoints2d,xike(:,:,1),xinumpoints,xinumelements,xielementsizes,xigridpoints,xicelement,xiecstheta, lobattoopt, xideg1(:,:,1),xideg2(:,:,1),xi_derivs(:,:,1),xi_rhoderivs(:,:),xi_fourth(:,:,1), xi_third(:,:,1), xi_second(:,:,1), 1)
-  call eta_init(etapoints,etaweights,etake(:,:,1),numeta, etadeg1(:,:,1),etadeg2(:,:,1),eta_derivs(:,:,1),eta_rhoderivs(:,:),eta_fourth(:,:,1), eta_third(:,:,1),eta_second(:,:,1),1)
-
-! valid for odd because of cancellation of inverse rho squared; valid for M=0 due to zero; valid for higher, no l'hospital term.
+! valid for odd because of cancellation of inverse rho squared; valid for M=0 due to zero;
+!    valid for higher, no l'hospital term.
 
   do thismval=mbig+1,0,-1    !!!mbig+1
      etake(:,:,thismval)=etake(:,:,mod(thismval,2))
@@ -170,7 +184,8 @@ subroutine PSC()
         proham(:,:,:,:,thismval+1)=proham(:,:,:,:,thismval+1) + pro_both(:,:,:,:,mod(thismval,2))*(-0.5d0/Rmass)
         do i=1,numeta
            do j=1,numerad
-              proham(j,i,j,i,thismval+1) = proham(j,i,j,i,thismval+1) + 0.5d0/Rmass * thismval**2 * (1+ (etapoints(i)*xipoints(j)+mass_asym)**2/(xipoints(j)**2-1)/(1-etapoints(i)**2))
+              proham(j,i,j,i,thismval+1) = proham(j,i,j,i,thismval+1) + 0.5d0/Rmass * thismval**2 * &
+                   (1+ (etapoints(i)*xipoints(j)+mass_asym)**2/(xipoints(j)**2-1)/(1-etapoints(i)**2))
            enddo
         enddo
      enddo
@@ -248,8 +263,10 @@ subroutine pro_ham()
         
 !! this multiplies 1/r to be the potential
 
-        propot(j,k) = (nuccharge1+nuccharge2)/2.d0 *  (-4.d0)* xipoints(j) / (xipoints(j)**2 - etapoints(k)**2) + &
-             (nuccharge1-nuccharge2)/2.d0 * (-4.d0)* etapoints(k) / (xipoints(j)**2 - etapoints(k)**2) 
+        propot(j,k) = (nuccharge1+nuccharge2)/2.d0 *  &
+             (-4.d0)* xipoints(j) / (xipoints(j)**2 - etapoints(k)**2) + &
+             (nuccharge1-nuccharge2)/2.d0 * &
+             (-4.d0)* etapoints(k) / (xipoints(j)**2 - etapoints(k)**2) 
 
 ! similarly  - but halfpot depends on numelec; multiply this by
 !   (nuccharge1+nuccharge2-numelec+1)
@@ -273,14 +290,14 @@ subroutine pro_ham()
      do j=1,numeta
         do m=1,numerad
            do n=1,numerad
-              proham(n,j,m,j,mvalue+1) = proham(n,j,m,j,mvalue+1) + xike(n,m,mvalue) * 4.d0 * fac
+              proham(n,j,m,j,mvalue+1) = proham(n,j,m,j,mvalue+1) + xike(n,m,mvalue) * 4 * fac
            enddo
         enddo
      enddo
      do j=1,numerad
         do m=1,numeta
            do n=1,numeta
-              proham(j,n,j,m,mvalue+1) = proham(j,n,j,m,mvalue+1) + etake(n,m,mvalue) * 4.d0 * fac
+              proham(j,n,j,m,mvalue+1) = proham(j,n,j,m,mvalue+1) + etake(n,m,mvalue) * 4 * fac
            enddo
         enddo
      enddo
@@ -366,10 +383,10 @@ subroutine pro_ham()
      enddo
   enddo
   
-!  nucfac=( (1.d0-mass_asym)*NucCharge2 - (1.d0+mass_asym)*NucCharge1 )/2.d0
-!OFLWR "WARNING: FOR CALCULATION WITH NUCLEAR MOTION, NEED EXTRA TERM IN PROZDIPOLE !! REMOVED FOR EXPEDIENCY"; CFL
-!!!!  zdipole=zdipole+nucfac/numelec
-!! now - see below  
+!!$  nucfac=( (1.d0-mass_asym)*NucCharge2 - (1.d0+mass_asym)*NucCharge1 )/2.d0
+!!$ OFLWR "WARNING: FOR CALCULATION WITH NUCLEAR MOTION, NEED EXTRA TERM IN PROZDIPOLE !! REMOVED FOR EXPEDIENCY"; CFL
+!!$!!  zdipole=zdipole+nucfac/numelec
+!!$ now - see below  
 
 end subroutine pro_ham
 
@@ -380,7 +397,9 @@ subroutine nucdipvalue(rvaluenotused,dipoles)
   use myparams
   implicit none
   real*8 :: nucfac
-  DATATYPE :: rvaluenotused(1),dipoles(3)
+
+  DATATYPE,intent(in) :: rvaluenotused(1)
+  DATATYPE,intent(out) :: dipoles(3)
 
   nucfac=( (1.d0-mass_asym)*NucCharge2 - (1.d0+mass_asym)*NucCharge1 )/2.d0
   dipoles(:)=0d0
@@ -390,18 +409,25 @@ subroutine nucdipvalue(rvaluenotused,dipoles)
 end subroutine nucdipvalue
 
 
-subroutine eta_init(points,weights,ketot, numpoints, etadeg1, etadeg2, eta_derivs, eta_rhoderivs, eta_fourth, eta_third, eta_second, evenodd)   !! 0=even 1=odd
+subroutine eta_init(points,weights,ketot, numpoints, etadeg1, etadeg2, eta_derivs, &
+     eta_rhoderivs, eta_fourth, eta_third, eta_second, evenodd)   !! 0=even 1=odd
   implicit none
 
   integer, parameter :: numextra=6
-  integer :: numpoints,  one=1, two=2, izero=0, i,j,k,jj , extraorder, evenodd
+  integer,intent(in) :: numpoints,evenodd
+  integer :: one=1, two=2, izero=0, i,j,k,jj , extraorder
+  real*8,intent(out) :: ketot(numpoints,numpoints)  , points(numpoints),&
+       etadeg1(numpoints,numpoints),        eta_second(numpoints,numpoints), &
+       etadeg2(numpoints,numpoints), eta_fourth(numpoints,numpoints), &
+       eta_third(numpoints,numpoints),       eta_derivs(numpoints,numpoints)
+
   real*8 :: extrapoints(numpoints+numextra), extraweights(numextra+numpoints), &
-       firstdertot(numpoints+numextra,numpoints),ketot(numpoints,numpoints)  , points(numpoints),&
+       firstdertot(numpoints+numextra,numpoints),&
        weights(numpoints), scratch(numextra+numpoints), eta_rhoderivs(numpoints,numpoints),&
-       eta_derivs(numpoints,numpoints), etadeg1(numpoints,numpoints), &
-       etadeg2(numpoints,numpoints), eta_fourth(numpoints,numpoints), eta_third(numpoints,numpoints), &
-       eta_second(numpoints,numpoints),  etavals(numpoints+numextra, numpoints), &
+       etavals(numpoints+numextra, numpoints), &
        endpoints(2)=[-1.0d0,1.0d0] , zero = 0.0, sum, sum2, sum3, sum4
+
+  extrapoints=0; extraweights=0; firstdertot=0; weights=0; scratch=0; eta_rhoderivs=0; etavals=0;
 
   if (evenodd.ne.0.and.evenodd.ne.1) then
      print *, "evenodd error", evenodd
@@ -481,8 +507,8 @@ else
          else
             do k=1,extraorder
                sum= sum + etavals(k,i) &
-                    * (firstdertot(k,j)* (1-extrapoints(k)**2)**2 - 2*etavals(k,j)*(1-extrapoints(k)**2) * extrapoints(k) )  &
-                    * extraweights(k) 
+                    * (firstdertot(k,j)* (1-extrapoints(k)**2)**2 - &
+                    2*etavals(k,j)*(1-extrapoints(k)**2) * extrapoints(k) ) * extraweights(k) 
             enddo
             sum=sum/sqrt((1-points(i)**2)*(1-points(j)**2))
          endif
@@ -491,7 +517,8 @@ endif
 
          sum=0
          do k=1,extraorder
-            sum=sum + extraweights(k) * etavals(k,i) * ( extrapoints(k)*(1-extrapoints(k)**2) * firstdertot(k,j) + (0.5d0 - 3d0/2d0 * extrapoints(k)**2) * etavals(k,j) )
+            sum=sum + extraweights(k) * etavals(k,i) * ( extrapoints(k)*(1-extrapoints(k)**2) * &
+                 firstdertot(k,j) + (0.5d0 - 3d0/2d0 * extrapoints(k)**2) * etavals(k,j) )
          enddo
          eta_rhoderivs(i,j)=sum
 
@@ -518,12 +545,14 @@ endif
                     * extraweights(k) 
 
 !! (1-x^2)**2 
-               sum2= sum2 - (firstdertot(k,j)* (1-extrapoints(k)**2) - etavals(k,j) * extrapoints(k) )  * (1-extrapoints(k)**2) &
+               sum2= sum2 - (firstdertot(k,j)* (1-extrapoints(k)**2) - etavals(k,j) * extrapoints(k) ) &
+                    * (1-extrapoints(k)**2) &
                     * (firstdertot(k,i)* (1-extrapoints(k)**2) - etavals(k,i) * extrapoints(k) )  &
                     * extraweights(k) 
 
 !! (x-x^3)
-              sum3= sum3 + (firstdertot(k,j)* (1-extrapoints(k)**2) - etavals(k,j) * extrapoints(k) )  * extrapoints(k) &
+               sum3= sum3 + (firstdertot(k,j)* (1-extrapoints(k)**2) - etavals(k,j) * extrapoints(k) ) &
+                    * extrapoints(k) &
                     * (firstdertot(k,i)* (1-extrapoints(k)**2) - etavals(k,i) * extrapoints(k) )  &
                     * extraweights(k)  
 
@@ -554,13 +583,20 @@ endif
          sum=0.d0;         sum2=0.d0
          if (evenodd.eq.0) then
             do k=1,extraorder
-               sum=sum + extraweights(k) * etavals(k,i) * ( (extrapoints(k)**2-1d0) * firstdertot(k,j) + extrapoints(k) * etavals(k,j) )
-               sum2=sum2 + extraweights(k) * etavals(k,i) * ( extrapoints(k)*(extrapoints(k)**2-1d0) * firstdertot(k,j) + ((-0.5d0) + 3d0/2d0 * extrapoints(k)**2) * etavals(k,j) )
+               sum=sum + extraweights(k) * etavals(k,i) * &
+                    ( (extrapoints(k)**2-1d0) * firstdertot(k,j) + extrapoints(k) * etavals(k,j) )
+               sum2=sum2 + extraweights(k) * etavals(k,i) * &
+                    ( extrapoints(k)*(extrapoints(k)**2-1d0) * firstdertot(k,j) + &
+                    ((-0.5d0) + 3d0/2d0 * extrapoints(k)**2) * etavals(k,j) )
             enddo
          else
             do k=1,extraorder
-               sum=sum + extraweights(k) * etavals(k,i) * ( (extrapoints(k)**2-1d0)**2 * firstdertot(k,j) - 2*extrapoints(k)*(1-extrapoints(k)**2) * etavals(k,j) )
-               sum2=sum2 + extraweights(k) * etavals(k,i) * ( extrapoints(k)*(extrapoints(k)**2-1d0)**2 * firstdertot(k,j) + (1d0/2d0 - 3 * extrapoints(k)**2 + 5./2.*extrapoints(k)**4) * etavals(k,j) )
+               sum=sum + extraweights(k) * etavals(k,i) * &
+                    ( (extrapoints(k)**2-1d0)**2 * firstdertot(k,j) &
+                    - 2*extrapoints(k)*(1-extrapoints(k)**2) * etavals(k,j) )
+               sum2=sum2 + extraweights(k) * etavals(k,i) * &
+                    ( extrapoints(k)*(extrapoints(k)**2-1d0)**2 * firstdertot(k,j) + &
+                    (1d0/2d0 - 3 * extrapoints(k)**2 + 5./2.*extrapoints(k)**4) * etavals(k,j) )
             enddo
             sum=sum/sqrt((1-points(i)**2)*(1-points(j)**2))
             sum2=sum2/sqrt((1-points(i)**2)*(1-points(j)**2))
@@ -573,29 +609,36 @@ end subroutine eta_init
 
 
 
-subroutine xi_init(points,weights,points2d,ketot, numpoints,numelements,elementsizes, gridpoints, celement, ecstheta, lobattoopt, xideg1,xideg2, xi_derivs, xi_rhoderivs, xi_fourth, xi_third, xi_second, evenodd)
+subroutine xi_init(points,weights,points2d,ketot, numpoints,numelements,elementsizes, gridpoints, celement,&
+     ecstheta, lobattoopt, xideg1,xideg2, xi_derivs, xi_rhoderivs, xi_fourth, xi_third, xi_second, evenodd)
   implicit none
-  integer ::   lobattoopt,numelements,gridpoints, celement,numpoints, one=1, izero=0, two=2, i,j,k,l,jj, qq,&
-       evenodd, extraorder
+  integer,intent(in) :: numpoints,numelements,gridpoints,celement,lobattoopt,evenodd
+  real*8,intent(in) ::  elementsizes(numelements), ecstheta
+  DATAECS, intent(out) ::        ketot(gridpoints,gridpoints),points(gridpoints), weights(gridpoints),&
+       xi_rhoderivs(gridpoints,gridpoints),&
+       xi_derivs(gridpoints,gridpoints), xideg1(gridpoints,gridpoints),xideg2(gridpoints,gridpoints), &
+       xi_fourth(gridpoints,gridpoints), xi_third(gridpoints,gridpoints), xi_second(gridpoints,gridpoints)
+  integer ::   one=1, izero=0, two=2, i,j,k,l,jj, qq, extraorder
   integer, parameter :: numextra=11
   real*8 :: extrapoints0(numpoints+numextra), extraweights0(numpoints+numextra), &
        firstder(numpoints+numextra,numpoints,2),  points2d(numpoints,2), weights2d(numpoints,2), &
        scratch(2*numpoints+numextra), xivals0(numpoints+numextra,numpoints,2),  endpoints(2), &
-       elementsizes(numelements), ecstheta,zero = 0.0,rsum,rsum2
+       zero = 0.0,rsum,rsum2
   DATAECS :: extrapoints(numpoints+numextra,numelements), extraweights(numextra+numpoints,numelements), &
-       ketot(gridpoints,gridpoints),points(gridpoints), weights(gridpoints),&
-       firstdertot(numpoints+numextra,numelements,gridpoints), xi_rhoderivs(gridpoints,gridpoints),&
-       xi_derivs(gridpoints,gridpoints), xideg1(gridpoints,gridpoints),xideg2(gridpoints,gridpoints), &
-       xi_fourth(gridpoints,gridpoints), xi_third(gridpoints,gridpoints), xi_second(gridpoints,gridpoints), &
+       firstdertot(numpoints+numextra,numelements,gridpoints), &
        xivals(numpoints+numextra,numelements,gridpoints), xi_test(gridpoints,gridpoints), &
        xi_vects(gridpoints,gridpoints), xi_vals(gridpoints) 
   DATAECS :: cweight, sum, sum2, sum3, sum4, sum5
   i=celement; sum=ecstheta !! avoid warn unused
 
+  extrapoints0=0; extraweights0=0; firstder=0; points2d=0; weights2d=0; scratch=0;
+  xivals0=0; extrapoints=0; extraweights=0; firstdertot=0; xivals=0; xi_test=0; 
+  xi_vals=0; xi_vects=0
+
   if (evenodd.ne.0.and.evenodd.ne.1) then
      print *, "evenodd error", evenodd
   endif
-  xi_vals=0.d0; xi_vects=0.d0
+
   extraorder=numextra+numpoints
 
   if (gridpoints.ne.(numelements*(numpoints-1)+1)) then
@@ -744,7 +787,8 @@ subroutine xi_init(points,weights,points2d,ketot, numpoints,numelements,elements
               do l=1,numelements
                  do k=1,extraorder
                     sum= sum + xivals(k,l,i) &
-                         * (firstdertot(k,l,j)* (extrapoints(k,l)**2-1)**2 + 2*xivals(k,l,j)*(extrapoints(k,l)**2-1) * extrapoints(k,l) )  &
+                         * (firstdertot(k,l,j)* (extrapoints(k,l)**2-1)**2 + &
+                         2*xivals(k,l,j)*(extrapoints(k,l)**2-1) * extrapoints(k,l) )  &
                          * extraweights(k,l) 
                  enddo
               enddo
@@ -756,7 +800,9 @@ subroutine xi_init(points,weights,points2d,ketot, numpoints,numelements,elements
         sum=0
         do l=1,numelements
            do k=1,extraorder
-              sum=sum + extraweights(k,l) * xivals(k,l,i) * ( extrapoints(k,l)*(extrapoints(k,l)**2-1d0) * firstdertot(k,l,j) + ((-0.5d0) + 3d0/2d0 * extrapoints(k,l)**2) * xivals(k,l,j) )
+              sum=sum + extraweights(k,l) * xivals(k,l,i) * &
+                   ( extrapoints(k,l)*(extrapoints(k,l)**2-1d0) * firstdertot(k,l,j) + &
+                   ((-0.5d0) + 3d0/2d0 * extrapoints(k,l)**2) * xivals(k,l,j) )
            enddo
         enddo
         xi_rhoderivs(i,j)=sum
@@ -768,17 +814,21 @@ subroutine xi_init(points,weights,points2d,ketot, numpoints,numelements,elements
   do j=1,gridpoints
      do i=1,gridpoints
         if (evenodd.eq.0) then !! even, d/dx (1-x^2)**2 d/dx
-           sum=0.0d0;           sum2=0.d0;           sum3=0.d0;           sum4=0.d0;           sum5=0.d0
+           sum=0.0d0;           sum2=0.d0;     sum3=0.d0;    sum4=0.d0;      sum5=0.d0
            do l=1,numelements
               do k=1,extraorder
 
-                 sum  = sum  - firstdertot(k,l,j) * firstdertot(k,l,i) * extraweights(k,l) * (extrapoints(k,l)**2-1)
+                 sum  = sum  - firstdertot(k,l,j) * firstdertot(k,l,i) * &
+                      extraweights(k,l) * (extrapoints(k,l)**2-1)
 !! (x^2-1)^2                 
-                 sum2 = sum2 - firstdertot(k,l,j) * firstdertot(k,l,i) * extraweights(k,l) * (extrapoints(k,l)**2-1)**2
+                 sum2 = sum2 - firstdertot(k,l,j) * firstdertot(k,l,i) * &
+                      extraweights(k,l) * (extrapoints(k,l)**2-1)**2
 !! (x^3-x)
-                 sum3 = sum3 - firstdertot(k,l,j) * firstdertot(k,l,i) * extraweights(k,l) * (extrapoints(k,l)**3-extrapoints(k,l)) 
+                 sum3 = sum3 - firstdertot(k,l,j) * firstdertot(k,l,i) * &
+                      extraweights(k,l) * (extrapoints(k,l)**3-extrapoints(k,l)) 
 !! (x^2-1)
-                 sum4 = sum4 - firstdertot(k,l,j) * firstdertot(k,l,i) * extraweights(k,l) * (extrapoints(k,l)**2-1)
+                 sum4 = sum4 - firstdertot(k,l,j) * firstdertot(k,l,i) * &
+                      extraweights(k,l) * (extrapoints(k,l)**2-1)
 
                  sum5  = sum5  - firstdertot(k,l,j) * firstdertot(k,l,i) * extraweights(k,l) 
               enddo
@@ -794,11 +844,13 @@ subroutine xi_init(points,weights,points2d,ketot, numpoints,numelements,elements
                       * extraweights(k,l) 
 
 !! (x^2-1)**2 
-                 sum2= sum2 - (firstdertot(k,l,j)* (extrapoints(k,l)**2-1) + xivals(k,l,j) * extrapoints(k,l) )  * (extrapoints(k,l)**2 -1) &
+                 sum2= sum2 - (firstdertot(k,l,j)* (extrapoints(k,l)**2-1) + xivals(k,l,j) * extrapoints(k,l) ) &
+                      * (extrapoints(k,l)**2 -1) &
                       * (firstdertot(k,l,i)* (extrapoints(k,l)**2-1) + xivals(k,l,i) * extrapoints(k,l) )  &
                       * extraweights(k,l) 
 !!  (x^3-x)
-                 sum3= sum3 - (firstdertot(k,l,j)* (extrapoints(k,l)**2-1) + xivals(k,l,j) * extrapoints(k,l) )  * extrapoints(k,l) &
+                 sum3= sum3 - (firstdertot(k,l,j)* (extrapoints(k,l)**2-1) + xivals(k,l,j) * extrapoints(k,l) ) &
+                      * extrapoints(k,l) &
                       * (firstdertot(k,l,i)* (extrapoints(k,l)**2-1) + xivals(k,l,i) * extrapoints(k,l) )  &
                       * extraweights(k,l) 
 !!  (x^2-1)
@@ -827,15 +879,20 @@ subroutine xi_init(points,weights,points2d,ketot, numpoints,numelements,elements
         if (evenodd.eq.0) then
            do l=1,numelements
               do k=1,extraorder
-                 sum=sum + extraweights(k,l) * xivals(k,l,i) * ( (extrapoints(k,l)**2-1d0) * firstdertot(k,l,j) + extrapoints(k,l) * xivals(k,l,j) )
-                 sum2=sum2 + extraweights(k,l) * xivals(k,l,i) * ( extrapoints(k,l)*(extrapoints(k,l)**2-1d0) * firstdertot(k,l,j) - (0.5d0 - 3d0/2d0 * extrapoints(k,l)**2) * xivals(k,l,j) )
+                 sum=sum + extraweights(k,l) * xivals(k,l,i) * ( (extrapoints(k,l)**2-1d0) * &
+                      firstdertot(k,l,j) + extrapoints(k,l) * xivals(k,l,j) )
+                 sum2=sum2 + extraweights(k,l) * xivals(k,l,i) * ( extrapoints(k,l)*(extrapoints(k,l)**2-1d0) * &
+                      firstdertot(k,l,j) - (0.5d0 - 3d0/2d0 * extrapoints(k,l)**2) * xivals(k,l,j) )
               enddo
            enddo
         else
            do l=1,numelements
               do k=1,extraorder
-                 sum=sum + extraweights(k,l) * xivals(k,l,i) * ( (extrapoints(k,l)**2-1d0)**2 * firstdertot(k,l,j) - 2*extrapoints(k,l)*(1-extrapoints(k,l)**2) * xivals(k,l,j) )
-                 sum2=sum2 + extraweights(k,l) * xivals(k,l,i) * ( extrapoints(k,l)*(extrapoints(k,l)**2-1d0)**2 * firstdertot(k,l,j) + (1d0/2d0 - 3 * extrapoints(k,l)**2 + 5./2.*extrapoints(k,l)**4) * xivals(k,l,j) )
+                 sum=sum + extraweights(k,l) * xivals(k,l,i) * ( (extrapoints(k,l)**2-1d0)**2 * &
+                      firstdertot(k,l,j) - 2*extrapoints(k,l)*(1-extrapoints(k,l)**2) * xivals(k,l,j) )
+                 sum2=sum2 + extraweights(k,l) * xivals(k,l,i) * ( extrapoints(k,l)*(extrapoints(k,l)**2-1d0)**2 * &
+                      firstdertot(k,l,j) + &
+                      (1d0/2d0 - 3 * extrapoints(k,l)**2 + 5./2.*extrapoints(k,l)**4) * xivals(k,l,j) )
               enddo
            enddo
            sum=sum/sqrt((1-points(i)**2)*(1-points(j)**2))
@@ -847,24 +904,30 @@ subroutine xi_init(points,weights,points2d,ketot, numpoints,numelements,elements
 
 end subroutine xi_init
 
-subroutine prolate_init(points,weights, numpoints,numelements,elementsize,gridpoints,start, prolate_derivs, ketot, celement, ecstheta)
+subroutine prolate_init(points,weights, numpoints,numelements,elementsize,gridpoints,start, &
+     prolate_derivs, ketot, celement, ecstheta)
   implicit none
-  integer :: numpoints,numelements,gridpoints, celement
-  DATAECS ::  prolate_derivs(gridpoints,gridpoints), points(gridpoints), weights(gridpoints), &
+  integer,intent(in) :: numpoints,numelements,gridpoints, celement
+  DATAECS,intent(out) ::  prolate_derivs(gridpoints,gridpoints), points(gridpoints), weights(gridpoints), &
        ketot(gridpoints,gridpoints)
-  real*8 ::  elementsize,start, ecstheta
-  call prolate_init_new(points,weights, numpoints,numelements,elementsize,gridpoints,start, prolate_derivs, ketot, celement, ecstheta)
+  real*8,intent(in) ::  elementsize,start, ecstheta
+  call prolate_init_new(points,weights, numpoints,numelements,elementsize,gridpoints,start, &
+       prolate_derivs, ketot, celement, ecstheta)
 end subroutine prolate_init
 
 
-subroutine prolate_init_new(points,weights, numpoints,numelements,elementsize,gridpoints,start, prolate_derivs, ketot, celement, ecstheta)
+subroutine prolate_init_new(points,weights, numpoints,numelements,elementsize,gridpoints,start, &
+     prolate_derivs, ketot, celement, ecstheta)
   use myparams
   implicit none
   integer, parameter :: numextra=20
-  integer :: numpoints,numelements,gridpoints, one=1, two=2, izero=0, i,j,k,l,jj,kk, qq, celement, extraorder
-  DATAECS ::  prolate_derivs(gridpoints,gridpoints)
-  DATAECS :: points(gridpoints), weights(gridpoints), ketot(gridpoints,gridpoints), sum, cweight
-  real*8 ::  elementsize,start,   endpoints(2)=[-1.0d0,1.0d0],  zero = 0.0, ecstheta, rsum, rsum2
+  integer,intent(in) :: numpoints,numelements,gridpoints,celement
+  real*8,intent(in) :: elementsize,start
+  integer ::one=1, two=2, izero=0, i,j,k,l,jj,kk, qq, extraorder
+  DATAECS,intent(out) ::  prolate_derivs(gridpoints,gridpoints)
+  DATAECS,intent(out) :: points(gridpoints), weights(gridpoints), ketot(gridpoints,gridpoints)
+  DATAECS :: sum, cweight
+  real*8 ::  endpoints(2)=[-1.0d0,1.0d0],  zero = 0.0, ecstheta, rsum, rsum2
   real*8, allocatable :: firstderiv(:,:), ke(:,:), points2d(:), weights2d(:), scratch(:), &  
        extrapoints0(:), extraweights0(:), rvals0(:,:), firstder(:,:)
   DATAECS, allocatable :: extrapoints(:,:), extraweights(:,:), rvals(:,:,:), firstdertot(:,:,:), &
@@ -874,11 +937,15 @@ subroutine prolate_init_new(points,weights, numpoints,numelements,elementsize,gr
   extraorder=numpoints+numextra
 
   allocate(points2d(numpoints), weights2d(numpoints), scratch(extraorder),  &
-       firstderiv(numpoints,numpoints), ke(numpoints,numpoints))
-  allocate(extrapoints(extraorder,numelements), extraweights(extraorder,numelements), rvals0(extraorder,numpoints), &
+       firstderiv(numpoints,numpoints), ke(numpoints,numpoints),&
+       extrapoints(extraorder,numelements), extraweights(extraorder,numelements), rvals0(extraorder,numpoints), &
        rvals(extraorder,numelements,gridpoints), firstder(extraorder,numpoints), &
-       firstdertot(extraorder,numelements,gridpoints), extrapoints0(extraorder), extraweights0(extraorder))
-  allocate(cextrapoints(extraorder,numelements), cextraweights(extraorder,numelements))
+       firstdertot(extraorder,numelements,gridpoints), extrapoints0(extraorder), extraweights0(extraorder),&
+       cextrapoints(extraorder,numelements), cextraweights(extraorder,numelements))
+
+  points2d=0; weights2d=0; firstderiv=0; ke=0; extrapoints=0; extraweights=0; rvals0=0;
+  rvals=0; firstder=0; firstdertot=0; extrapoints0=0; extraweights0=0;
+  cextrapoints=0; cextraweights=0
 
   call gaussq(one,numpoints,zero,zero,two,endpoints,scratch,points2d,weights2d)
   call gaussq(one,extraorder,zero,zero,izero,endpoints,scratch,extrapoints0(:),extraweights0(:))
@@ -1022,9 +1089,11 @@ subroutine prolate_init_new(points,weights, numpoints,numelements,elementsize,gr
         do l=1,numelements
            do k=1,extraorder
               
-!!!              sum = sum -  rvals(k,l,j) * ( 2.d0/extrapoints(k,l) * firstdertot(k,l,i) - 1.d0/extrapoints(k,l)**2 * rvals(k,l,i) ) * extraweights(k,l) 
+!!!              sum = sum -  rvals(k,l,j) * ( 2.d0/extrapoints(k,l) * firstdertot(k,l,i) - &
+!!!!               1.d0/extrapoints(k,l)**2 * rvals(k,l,i) ) * extraweights(k,l) 
 
-              sum = sum -  rvals(k,l,j) * ( 2.d0/cextrapoints(k,l) * firstdertot(k,l,i) - 1.d0/cextrapoints(k,l)**2 * rvals(k,l,i) ) * cextraweights(k,l) 
+              sum = sum -  rvals(k,l,j) * ( 2.d0/cextrapoints(k,l) * firstdertot(k,l,i) - &
+                   1.d0/cextrapoints(k,l)**2 * rvals(k,l,i) ) * cextraweights(k,l) 
 
 !!              sum = sum -  rvals(k,l,j) * firstdertot(k,l,i)  * extraweights(k,l) 
 
@@ -1054,13 +1123,17 @@ end subroutine prolate_init_new
 
 subroutine r_init(points,weights,ketot,  numpoints,numelements,elementsize,gridpoints,start)
   implicit none
-
-  integer :: numpoints,numelements, gridpoints, one=1, two=2, i,j,k,l,jj,kk
-  real*8 :: start, elementsize,points2d(numpoints), weights2d(numpoints), &
-       scratch(numpoints),endpoints(2)=[-1.0d0,1.0d0],zero = 0.0,points(gridpoints), weights(gridpoints)
+  integer,intent(in) :: numpoints,numelements, gridpoints
+  integer :: one=1, two=2, i,j,k,l,jj,kk
+  real*8,intent(in) :: start, elementsize
+  real*8, intent(out) :: points(gridpoints), weights(gridpoints),ketot(gridpoints,gridpoints)
+  real*8 :: points2d(numpoints), weights2d(numpoints), &
+       scratch(numpoints),endpoints(2)=[-1.0d0,1.0d0],zero = 0.0
  ! ke(i,j,k) is the i,j-th matrix element of the ke 
  !              matrix for the kth finite element
-  real*8 :: ke(numpoints,numpoints), firstderiv(numpoints,numpoints), ketot(gridpoints,gridpoints)
+  real*8 :: ke(numpoints,numpoints), firstderiv(numpoints,numpoints)
+
+  points2d=0; weights2d=0; scratch=0; ke=0; firstderiv=0
 
   call gaussq(one,numpoints,zero,zero,two,endpoints,scratch,points2d,weights2d)
 

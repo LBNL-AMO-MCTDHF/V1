@@ -12,8 +12,8 @@ module myprojectmod
   DATAECS, allocatable :: usualke2(:,:)
   DATAECS, allocatable :: usualvects(:,:,:)
   DATAECS, allocatable :: usualvals(:,:)
-  DATAECS, allocatable :: myYderivs(:,:,:,:,   :)  ! for operating with (streamline this later) with mvalue
-  DATAECS, allocatable  :: proham(:,:,:,:,   :),     propot(:,:), halfpot(:,:)
+  DATAECS, allocatable :: myYderivs(:,:,:,:, :) ! for operating with mvalue (streamline this later)
+  DATAECS, allocatable  :: proham(:,:,:,:,   :),    propot(:,:), halfpot(:,:)
 
 !! dimensioning these xigridpoints now!!  check nonsparse mult!! 
 
@@ -38,7 +38,7 @@ module myprojectmod
        sparseops_xi_banded(:,:,:,:),sparseyops_xi_banded(:,:,:,:),&
        sparseops_eta(:,:,:,:),sparseyops_eta(:,:,:,:),&
        sparseops_diag(:,:,:),sparseyops_diag(:,:,:),&
-       sparselplus_xi_banded(  :,   :,    :,   :), sparselminus_xi_banded(  :,   :,    :,     :), &
+       sparselplus_xi_banded( :,  :,  :,  :), sparselminus_xi_banded( :, :,  :,   :), &
        sparselplus_eta(  :,   :, :,   :    ), sparselminus_eta(:,:,:,:), &
        sparselplus_diag(   :,  :,  :), sparselminus_diag(:,:,:), &
        sparseddz_xi_banded(  :,   :,    :,     :), &
@@ -61,15 +61,24 @@ subroutine myprojectalloc()
   use myparams
   use myprojectmod  
   implicit none
+
+  call mpibarrier()
+  OFLWR "allocating for h2 project.... "; CFL
+  call mpibarrier()
+
   allocate( usualke(rgridpoints,rgridpoints) , usualke2(rgridpoints,rgridpoints) )
   allocate( usualvects(rgridpoints,rgridpoints,0:mbig) ,usualvals(rgridpoints,0:mbig) )
   allocate( xiKE(xigridpoints, xigridpoints,0:max(mbig+2,mseriesmax+1)) )
-  allocate(proham(numerad,numeta,numerad,numeta,mbig+1),     propot(numerad,numeta), halfpot(numerad,numeta) )
+  allocate(proham(numerad,numeta,numerad,numeta,mbig+1),     &
+       propot(numerad,numeta), halfpot(numerad,numeta) )
+  usualke=0; usualke2=0;  usualvects=0; usualvals=0; xike=0; proham=0; propot=0; halfpot=0
+
   if (bornopflag.eq.0) then
      allocate(pro_lplus(numerad,numeta,numerad,numeta,-mbig-1:mbig+1))
      allocate(pro_lminus(numerad,numeta,numerad,numeta,-mbig-1:mbig+1))
      allocate(pro_lsquared(numerad,numeta,numerad,numeta,-mbig-1:mbig+1))
      allocate( myYderivs(numerad,numeta,numerad,numeta, mbig+1) )
+     pro_lplus=0; pro_lminus=0; myyderivs=0
   endif
   allocate( rketot(rgridpoints,rgridpoints),    rpoints(rgridpoints),  &
        prolate_derivs(rgridpoints,rgridpoints) , rweights(rgridpoints))
@@ -89,21 +98,35 @@ subroutine myprojectalloc()
   allocate(sparseops_xi_banded(2*bandwidth+1,numerad,lbig+1,mbig+1), &
        sparseops_eta(  lbig+1,lbig+1,numerad,mbig+1), &
        sparseops_diag(  numerad,lbig+1,mbig+1))
+  rketot=0; rpoints=0; prolate_derivs=0; rweights=0; etaweights=0; etapoints=0;
+  etake=0; xiweights=0; xipoints=0; xipoints2d=0; proddz=0; proddrho=0; ddrhopot=0;
+  xydipole=0; sparseddz_xi_banded=0; sparseddz_eta=0; sparseddrho_xi_banded=0;
+  sparseddrho_eta=0; sparseddrho_diag=0; sparseops_xi_banded=0; 
+  sparseops_eta=0; sparseops_diag=0
+
   if (bornopflag==0) then
      allocate(&   
           sparseyops_xi_banded(2*bandwidth+1,numerad,lbig+1,mbig+1),   &
           sparseyops_eta(lbig+1,lbig+1,numerad,mbig+1),  &
-          sparseyops_diag(numerad,lbig+1,mbig+1))
-     allocate(&   
+          sparseyops_diag(numerad,lbig+1,mbig+1),&
           sparselplus_xi_banded(2*bandwidth+1,numerad,lbig+1,-mbig-1:mbig+1),   &
           sparselplus_eta(lbig+1,lbig+1,numerad,-mbig-1:mbig+1),  &
           sparselplus_diag(numerad,lbig+1,-mbig-1:mbig+1),&
           sparselminus_xi_banded(2*bandwidth+1,numerad,lbig+1,-mbig-1:mbig+1),   &
           sparselminus_eta(lbig+1,lbig+1,numerad,-mbig-1:mbig+1),  &
           sparselminus_diag(numerad,lbig+1,-mbig-1:mbig+1))
+     sparseyops_xi_banded=0; sparseyops_eta=0; sparseyops_diag=0; 
+     sparselplus_xi_banded=0; sparselplus_eta=0; sparselplus_diag=0;
+     sparselminus_xi_banded=0; sparselminus_eta=0; sparselminus_diag=0
   endif
   allocate( rmatrix(numerad,numerad,mseriesmax+1,lseriesmax+1)   )
   allocate(ylmvals(0:2*mbig, 1:lbig+1, lseriesmax+1))
+  rmatrix=0; ylmvals=0
+
+  call mpibarrier()
+  OFLWR "    ...allocated for h2 project. "; CFL
+  call mpibarrier()
+
 end subroutine myprojectalloc
 
 
@@ -127,20 +150,26 @@ subroutine get_twoe_new()
   OFLWR "   Calc two electron.";CFL
 
   allocate(pval(mseriesmax+1,lseriesmax+mseriesmax+1, xigridpoints), &
-       qval(mseriesmax+1,lseriesmax+mseriesmax+1, xigridpoints), pder(mseriesmax+1,lseriesmax+mseriesmax+1), &
+       qval(mseriesmax+1,lseriesmax+mseriesmax+1, xigridpoints), &
+       pder(mseriesmax+1,lseriesmax+mseriesmax+1), &
        qder(mseriesmax+1,lseriesmax+mseriesmax+1))
+  pval=0; qval=0; pder=0; qder=0
 
   lwork=xigridpoints*(lbig+1)*(2*mbig+1) * 10
   allocate(work(lwork), ipiv(lwork))
-  allocate( kearray(numerad,numerad,mseriesmax+1,lseriesmax+1), invkearray(numerad,numerad,mseriesmax+1, lseriesmax+1))
+  lwork=0; ipiv=0
 
-  pval=0.d0;  qval=0.d0
+  allocate( kearray(numerad,numerad,mseriesmax+1,lseriesmax+1), &
+       invkearray(numerad,numerad,mseriesmax+1, lseriesmax+1))
+  kearray=0; invkearray=0
 
   do j=1,xigridpoints
 
 #ifdef ECSFLAG
-     call clpmn(mseriesmax,mseriesmax,lseriesmax+mseriesmax,real(xipoints(j),8), imag(xipoints(j)-(0.d0,0.000000000000001d0)), pval(:,:,j), pder(:,:))
-     call clqmn(mseriesmax,mseriesmax,lseriesmax+mseriesmax,real(xipoints(j),8), imag(xipoints(j)-(0.d0,0.000000000000001d0)), qval(:,:,j),qder(:,:))
+     call clpmn(mseriesmax,mseriesmax,lseriesmax+mseriesmax,real(xipoints(j),8), &
+          imag(xipoints(j)-(0.d0,0.000000000000001d0)), pval(:,:,j), pder(:,:))
+     call clqmn(mseriesmax,mseriesmax,lseriesmax+mseriesmax,real(xipoints(j),8), &
+          imag(xipoints(j)-(0.d0,0.000000000000001d0)), qval(:,:,j),qder(:,:))
 #else
      call clpmn(mseriesmax,mseriesmax,lseriesmax+mseriesmax,xipoints(j), 0.d0, pval(:,:,j), pder(:,:))
      call clqmn(mseriesmax,mseriesmax,lseriesmax+mseriesmax,xipoints(j), 0.d0, qval(:,:,j),qder(:,:))
@@ -252,7 +281,8 @@ subroutine op_lsquaredone(in,out,m2val)   !! right now used just to check operat
   DATATYPE :: temp2(numerad,lbig+1),temp3(numerad,lbig+1)  !!AUTOMATIC
   integer :: m2val
 
-  out=0.d0
+  out=0.d0; temp2=0; temp3=0
+
   call op_lplusminus_one(in,temp2,1,m2val)      !!lplus
   call op_lplusminus_one(temp2,temp3,2,m2val+1)   !!lminus
   out=out+temp3(:,:)*(0.5d0)
@@ -283,7 +313,7 @@ subroutine op_lplusminus_one(in,out,inkind,m2val)
   DATATYPE :: work(lbig+1) 
   integer :: ieta,i,ixi
 
-  out=0.d0
+  out=0.d0; work=0
 
   if ( (inkind/=1) .and. (inkind/=2) ) then
      OFLWR "kind error", inkind; CFLST
@@ -292,9 +322,11 @@ subroutine op_lplusminus_one(in,out,inkind,m2val)
   do ixi=1,numerad
      select case(inkind)  
      case (1)           
-        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),sparselplus_eta(:,:,ixi,m2val),lbig+1,in(ixi,:),1,(0.d0,0.d0), work, 1)
+        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),sparselplus_eta(:,:,ixi,m2val),lbig+1,&
+             in(ixi,:),1,(0.d0,0.d0), work, 1)
      case (2)
-        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),sparselminus_eta(:,:,ixi,m2val),lbig+1,in(ixi,:),1,(0.d0,0.d0), work, 1)
+        call XXMVXX('N',lbig+1,lbig+1,(1.d0,0.d0),sparselminus_eta(:,:,ixi,m2val),lbig+1,&
+             in(ixi,:),1,(0.d0,0.d0), work, 1)
      case default
         print *, "AAUGH!!!"
         call mpistop()
@@ -306,9 +338,11 @@ subroutine op_lplusminus_one(in,out,inkind,m2val)
   do ieta=1,lbig+1
      select case(inkind)
      case (1)           
-        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),sparselplus_xi_banded(:,:,ieta,m2val),i, in(:,ieta),1,(1.d0,0.d0), out(:,ieta), 1)
+        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),&
+             sparselplus_xi_banded(:,:,ieta,m2val),i, in(:,ieta),1,(1.d0,0.d0), out(:,ieta), 1)
      case (2)
-        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),sparselminus_xi_banded(:,:,ieta,m2val),i, in(:,ieta),1,(1.d0,0.d0), out(:,ieta), 1)
+        call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),&
+             sparselminus_xi_banded(:,:,ieta,m2val),i, in(:,ieta),1,(1.d0,0.d0), out(:,ieta), 1)
      case default
         print *, "AAUGH!!!";        call mpistop()
      end select
@@ -336,10 +370,13 @@ subroutine op_yderiv(howmany,in,out)
   DATATYPE :: work(lbig+1),work2(lbig+1)  !!AUTOMATIC
   integer ::  ixi, ieta, i,m2val,ii
 
-  out=0.d0
+  out=0.d0;
+
   if (bornopflag==1) then
      return
   endif
+
+ work=0; work2=0
 
   do ii=1,howmany
   do m2val=-mbig,mbig
@@ -356,7 +393,8 @@ subroutine op_yderiv(howmany,in,out)
              sparseyops_xi_banded(:,:,ieta,abs(m2val)+1),i, &
              in(:,ieta,m2val,ii),1,(1.d0,0.d0), out(:,ieta,m2val,ii), 1)
      enddo
-     out(:,:,m2val,ii) = out(:,:,m2val,ii) - sparseyops_diag(:,:,abs(m2val)+1) * in(:,:,m2val,ii) 
+     out(:,:,m2val,ii) = out(:,:,m2val,ii) - &
+          sparseyops_diag(:,:,abs(m2val)+1) * in(:,:,m2val,ii) 
   enddo
   enddo
 
