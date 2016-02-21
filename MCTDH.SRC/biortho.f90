@@ -363,7 +363,6 @@ subroutine abio_sparse(abio,aout,inbiovar)
      close(biofileptr)
   endif
 
-
   if (mod(inbiovar%icalled,20)==0.and.iwsp(4).eq.1) then
      inbiovar%thisbiodim=max(min(4,inbiovar%biomaxdim),inbiovar%thisbiodim-1)
   endif
@@ -401,6 +400,8 @@ contains
     use bio_parameters
     use tol_parameters
     use biorthotypemod
+    use mpimod   !! nprocs
+    use fileptrmod   !! TEMP
     implicit none
     type(walktype),target :: wwbio
     Type(biorthotype) :: biotypevar
@@ -416,7 +417,9 @@ contains
     biotypevar%smo=>insmo
     biotypevar%bionr=innumr
 
-    biotypevar%biomaxdim=min(maxbiodim*zzz,biotypevar%wwbio%maxconfigsperproc*biotypevar%bionr*zzz)
+!!$    biotypevar%biomaxdim=min(maxbiodim*zzz,biotypevar%wwbio%maxbasisperproc*biotypevar%bionr*zzz*nprocs-1)
+
+    biotypevar%biomaxdim=min(maxbiodim*zzz,zzz*biotypevar%wwbio%numdfbasis*biotypevar%bionr-1)
 
     if (.not.biotypevar%started) then
        biotypevar%thisbiodim=min(biodim,biotypevar%biomaxdim)

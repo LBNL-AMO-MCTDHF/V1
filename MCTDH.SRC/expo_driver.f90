@@ -52,31 +52,6 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   real*8, allocatable :: wsp(:)
   integer, allocatable :: iwsp(:)
 
-  if (orbcompact.ne.0) then
-     ttott=spfsmallsize*nspf
-  else
-     ttott=totspfdim
-  endif
-
-#ifdef REALGO
-  idim=ttott  !!totspfdim
-#else
-  idim=2*ttott  !!2*totspfdim
-#endif
-
-  if (maxexpodim.gt.idim) then
-     OFLWR "Maxexpodim too big, resetting to", idim, " totspfdim is ", totspfdim; CFL
-     maxexpodim=idim
-  endif
-  lwsp = idim*(maxexpodim+4)  + 6*(maxexpodim+3)**2 + 100
-  if (lwsp.lt.0) then
-     OFLWR "Oops, integer overflow, reduce maxexpodim", lwsp
-     WRFL "      it's ",maxexpodim," now."; CFLST
-  endif
-  allocate(wsp(lwsp)); wsp=0
-  liwsp=maxexpodim + 100
-  allocate(iwsp(liwsp)); iwsp=0
-
   allocate(aspfs(spfsize,nspf), propspfs(spfsize,nspf),   &
        outspfs(spfsize,nspf), tempspfs(spfsize,nspf))
   aspfs=0; propspfs=0; outspfs=0; tempspfs=0
@@ -85,6 +60,28 @@ subroutine expoprop(time1,time2,inspfs, numiters)
      allocate(com_aspfs(spfsmallsize,nspf), com_propspfs(spfsmallsize,nspf),   &
           com_outspfs(spfsmallsize,nspf))
      com_aspfs=0; com_propspfs=0; com_outspfs=0
+  endif
+
+  call jacinit(inspfs,midtime)
+
+!!$ PREPARE FOR CALL TO DGEXPVxxx2
+
+  if (orbcompact.ne.0) then
+     ttott=spfsmallsize*nspf
+  else
+     ttott=totspfdim
+  endif
+#ifndef REALGO
+  ttott=ttott*2
+#endif
+
+  idim=ttott
+  if (parorbsplit.eq.3) then
+     ttott=ttott*nprocs
+  endif
+  if (maxexpodim.gt.ttott-1) then
+     OFLWR "Maxexpodim too big, resetting to", ttott-1; CFL
+     maxexpodim=ttott-1
   endif
 
   icalled=icalled+1
@@ -129,13 +126,6 @@ subroutine expoprop(time1,time2,inspfs, numiters)
      close(expofileptr)
   endif
 
-  call jacinit(inspfs,midtime)
-  
-
-  itrace=0   !! 1=print info
-  norm=1.d0
-
-
   if (myrank.eq.1.and.notiming.eq.0) then
      open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",&
           status="old", position="append",iostat=myiostat)
@@ -146,6 +136,18 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 
      expofileptr=nullfileptr
   endif
+
+  itrace=0   !! 1=print info
+  norm=1.d0
+  
+  lwsp = idim*(thisexpodim+4)  + 6*(thisexpodim+3)**2 + 100
+  if (lwsp.lt.0) then
+     OFLWR "Oops, integer overflow, reduce maxexpodim", thisexpodim,lwsp
+     WRFL "      it's ",maxexpodim," now."; CFLST
+  endif
+  allocate(wsp(lwsp)); wsp=0
+  liwsp=thisexpodim + 100
+  allocate(iwsp(liwsp)); iwsp=0
   
 !! nodgexpthirdflag=1 HARDWIRE 10-2015  NOT SURE ABOUT DGEXPTHIRD SUBROUTINES
 
@@ -159,7 +161,7 @@ subroutine expoprop(time1,time2,inspfs, numiters)
      if (parorbsplit.eq.3) then
         call dgexpthirdxxx2(idim, thisexpodim, tdiff, aspfs, inspfs, expotol, norm, &
              wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,&
-             tempstepsize,realpardotsub,idim*nprocs)
+             tempstepsize,realpardotsub,ttott)
      else
         call dgexpthird(idim, thisexpodim, tdiff, aspfs, inspfs, expotol, norm, &
              wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,tempstepsize)
@@ -182,7 +184,7 @@ subroutine expoprop(time1,time2,inspfs, numiters)
            call dgphivxxx2(idim, thisexpodim, tdiff, com_aspfs, &
                 com_propspfs, com_outspfs, expotol, norm, &
                 wsp, lwsp, iwsp, liwsp, jacopcompact, itrace, iflag,&
-                expofileptr,tempstepsize,realpardotsub,idim*nprocs)
+                expofileptr,tempstepsize,realpardotsub,ttott)
         else
            call dgphiv(idim, thisexpodim, tdiff, com_aspfs, &
                 com_propspfs, com_outspfs, expotol, norm, &
@@ -203,7 +205,6 @@ subroutine expoprop(time1,time2,inspfs, numiters)
      endif
 
      inspfs=inspfs+outspfs
-
      
   endif
 
@@ -216,7 +217,7 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   endif
 
   if (iwsp(4).gt.1) then
-        thisexpodim=min(maxexpodim,max(thisexpodim+5,ceiling(thisexpodim*1.2)))
+     thisexpodim=min(maxexpodim,max(thisexpodim+5,ceiling(thisexpodim*1.2)))
      exposet=1
   endif
 
@@ -710,11 +711,15 @@ subroutine exposparseprop(www,inavector,outavector,time,imc,numiters)
 
   icalled=icalled+1
 
-  ixx = zzz * www%maxdfbasisperproc*numr
+  ixx = zzz * www%maxdfbasisperproc * numr
 
   if (icalled.eq.1) then
      tempstepsize=par_timestep/littlesteps
-     my_maxaorder=min(ixx,maxaorder)
+
+!!$     my_maxaorder=min(ixx*nprocs-1,maxaorder)
+
+     my_maxaorder=min(zzz*www%numdfbasis*numr-1,maxaorder)
+
      thisexpodim=min(my_maxaorder,aorder)
   endif
   
