@@ -401,7 +401,6 @@ contains
     use tol_parameters
     use biorthotypemod
     use mpimod   !! nprocs
-    use fileptrmod   !! TEMP
     implicit none
     type(walktype),target :: wwbio
     Type(biorthotype) :: biotypevar

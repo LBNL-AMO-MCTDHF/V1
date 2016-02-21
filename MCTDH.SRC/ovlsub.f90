@@ -36,10 +36,7 @@ subroutine ovl_initial()
        tndof,tnumconfig,tnumr,tnspf,myiostat
   external :: readavectorsubsimple
   DATATYPE, allocatable :: read_avectors(:,:), read_spfs(:,:)
-
-  if (numr.gt.1) then
-     OFLWR "Need numr=1 for projone at this time TEMP CONTINUE.";CFL
-  endif
+  DATATYPE :: nullvector(numr)
 
 !! read in the data from mcscf for our target cation state
 
@@ -88,7 +85,11 @@ subroutine ovl_initial()
      allocate(read_avectors(1,numovl))
   endif
 
-  orig_spfs=0d0;  orig_avectors=0d0; overlaps=0d0; read_avectors=0d0
+  orig_spfs=0d0;  overlaps=0d0; read_avectors=0d0
+  if (tot_adim.gt.0) then
+     orig_avectors=0d0; 
+  endif
+
   jnumovl=0
 
   do ifile=1,numovlfiles
@@ -132,8 +133,13 @@ subroutine ovl_initial()
         call mympibcast(orig_avectors(:,jnumovl+1),1,num_config*numr*nstate)
      else
         do kk=1,nstate
-           call myscatterv(read_avectors(:,jnumovl+kk),&
-                orig_avectors(:,jnumovl+kk),configs_perproc(:)*numr)
+           if (tot_adim.gt.0) then
+              call myscatterv(read_avectors(:,jnumovl+kk),&
+                   orig_avectors(:,jnumovl+kk),configs_perproc(:)*numr)
+           else
+              call myscatterv(read_avectors(:,jnumovl+kk),&
+                   nullvector(:),configs_perproc(:)*numr)
+           endif
         enddo
      endif
 
@@ -158,17 +164,22 @@ subroutine getoverlaps(forceflag)
   use mpimod   !! myrank
   implicit none
   integer ::  i,imc,forceflag,myiostat
+  DATATYPE :: nullvector1(numr),nullvector2(numr)
 
   calledflag = calledflag+1
 
   if (mod(calledflag-1,autosteps).eq.0) then
      do imc=1,mcscfnum
         do i=1,numovl
-
-           call autocorrelate_one(www,bwwptr,yyy%cmfavec(:,imc,0),&
-                yyy%cmfspfs(:,0),orig_spfs(:,:,i), &
-                orig_avectors(:,i), overlaps(i,xcalledflag,imc),numr)
-
+           if (tot_adim.gt.0) then
+              call autocorrelate_one(www,bwwptr,yyy%cmfavec(:,imc,0),&
+                   yyy%cmfspfs(:,0),orig_spfs(:,:,i), &
+                   orig_avectors(:,i), overlaps(i,xcalledflag,imc),numr)
+           else
+              call autocorrelate_one(www,bwwptr,nullvector1(:),&
+                   yyy%cmfspfs(:,0),orig_spfs(:,:,i), &
+                   nullvector2(:), overlaps(i,xcalledflag,imc),numr)
+           endif
         enddo
         xcalledflag=xcalledflag+1
      enddo
@@ -195,7 +206,7 @@ subroutine mcscf_matel()
   use mpimod   !! myrank
   implicit none
   integer ::  i,j,myiostat
-  DATATYPE :: myovl(numovl,numovl)
+  DATATYPE :: myovl(numovl,numovl),nullvector1(numr),nullvector2(numr)
 
 !! REPLACE THIS - ADAPT FINALSTATS0.
 !!   Make dual-purpose subroutine (finalstats00) contatining the guts of finalstats0 
@@ -203,8 +214,13 @@ subroutine mcscf_matel()
 
   do j=1,numovl
      do i=1,numovl
-        call autocorrelate_one(www,bwwptr, orig_avectors(:,i), orig_spfs(:,:,i), &
-             orig_spfs(:,:,j), orig_avectors(:,j), myovl(i,j), numr)
+        if (tot_adim.gt.0) then
+           call autocorrelate_one(www,bwwptr, orig_avectors(:,i), orig_spfs(:,:,i), &
+                orig_spfs(:,:,j), orig_avectors(:,j), myovl(i,j), numr)
+        else
+           call autocorrelate_one(www,bwwptr, nullvector1(:), orig_spfs(:,:,i), &
+                orig_spfs(:,:,j), nullvector2(:), myovl(i,j), numr)
+        endif
      enddo
   enddo
 
