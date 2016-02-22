@@ -679,8 +679,8 @@ subroutine sparseptralloc(inptr,www)
      OFLWR "error, sparseptralloc called when sparseconfigflag.eq.0"; CFLST
   endif
 
-  OFLWR "  ... go alloc sparsopt=1 .. "; CFL
-  call mpibarrier()
+!!  OFLWR "  ... go alloc sparsopt=1 .. "; CFL
+!!  call mpibarrier()
 
   allocate(inptr%xpotsparsemattr    (www%doublematsize,www%configstart:www%configend))
   allocate(inptr%xopsparsemattr     (www%singlematsize,www%configstart:www%configend))
@@ -701,8 +701,8 @@ subroutine sparseptralloc(inptr,www)
      inptr%xconsparsemattrzz=0; inptr%xysparsemattr=0
   endif
 
-  call mpibarrier()
-  OFLWR "   ... ok alloc sparseopt=1"; CFL
+!!  call mpibarrier()
+!!  OFLWR "   ... ok alloc sparseopt=1"; CFL
 
 end subroutine sparseptralloc
 
