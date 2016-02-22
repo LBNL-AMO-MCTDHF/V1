@@ -33,58 +33,6 @@ end module
 module jacopmod
 contains
 
-!! SUBROUTINE PASSED TO EXPOKIT FOR ORBITAL PROPAGATION
-
-  subroutine jacopcompact(com_inspfs,com_outspfs)
-    use parameters
-    implicit none
-    DATATYPE,intent(in) :: com_inspfs(spfsmallsize,nspf)
-    DATATYPE,intent(out) :: com_outspfs(spfsmallsize,nspf)
-    DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf)  !! AUTOMATIC
-    call spfs_expand(com_inspfs,inspfs)
-    call jacoperate0(1,1,inspfs,outspfs)
-    call spfs_compact(outspfs,com_outspfs)
-  end subroutine jacopcompact
-
-  subroutine jacoperate(inspfs,outspfs)
-    use parameters
-    implicit none
-    DATATYPE,intent(in) :: inspfs(spfsize,nspf)
-    DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-    call jacoperate0(1,1,inspfs,outspfs)
-  end subroutine jacoperate
-
-  subroutine jacoperate0(dentimeflag,conflag,inspfs,outspfs)
-    use parameters
-    use jactimingmod
-    implicit none
-    integer,intent(in) :: dentimeflag,conflag
-    DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
-    DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-    integer :: lowspf,highspf,itime,jtime,atime,btime
-
-    call system_clock(atime)
-
-    lowspf=1; highspf=nspf
-    if (parorbsplit.eq.1) then
-       call getOrbSetRange(lowspf,highspf)
-    endif
-
-!! call always even if numspf=0
-    call jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,&
-         outspfs(:,min(nspf,lowspf):highspf))
-
-    if (parorbsplit.eq.1) then
-       call system_clock(itime)
-       call mpiorbgather(outspfs,spfsize)
-       call system_clock(jtime);      times(4)=times(4)+jtime-itime
-    endif
-
-    call system_clock(btime); times(7)=times(7)+btime-atime;
-  
-  end subroutine jacoperate0
-
-
   subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
     use parameters
     use jacmod
@@ -300,6 +248,59 @@ contains
     endif
 
   end subroutine jacoperate00
+
+  subroutine jacoperate0(dentimeflag,conflag,inspfs,outspfs)
+    use parameters
+    use jactimingmod
+    implicit none
+    integer,intent(in) :: dentimeflag,conflag
+    DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
+    DATATYPE,intent(out) :: outspfs(spfsize,nspf)
+    integer :: lowspf,highspf,itime,jtime,atime,btime
+
+    call system_clock(atime)
+
+    lowspf=1; highspf=nspf
+    if (parorbsplit.eq.1) then
+       call getOrbSetRange(lowspf,highspf)
+    endif
+
+!! call always even if numspf=0
+    call jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,&
+         outspfs(:,min(nspf,lowspf):highspf))
+
+    if (parorbsplit.eq.1) then
+       call system_clock(itime)
+       call mpiorbgather(outspfs,spfsize)
+       call system_clock(jtime);      times(4)=times(4)+jtime-itime
+    endif
+
+    call system_clock(btime); times(7)=times(7)+btime-atime;
+  
+  end subroutine jacoperate0
+
+!! SUBROUTINE PASSED TO EXPOKIT FOR ORBITAL PROPAGATION
+
+  subroutine jacopcompact(com_inspfs,com_outspfs)
+    use parameters
+    implicit none
+    DATATYPE,intent(in) :: com_inspfs(spfsmallsize,nspf)
+    DATATYPE,intent(out) :: com_outspfs(spfsmallsize,nspf)
+    DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf)  !! AUTOMATIC
+    call spfs_expand(com_inspfs,inspfs)
+    call jacoperate0(1,1,inspfs,outspfs)
+    call spfs_compact(outspfs,com_outspfs)
+  end subroutine jacopcompact
+
+!! SUBROUTINE PASSED TO EXPOKIT FOR ORBITAL PROPAGATION
+
+  subroutine jacoperate(inspfs,outspfs)
+    use parameters
+    implicit none
+    DATATYPE,intent(in) :: inspfs(spfsize,nspf)
+    DATATYPE,intent(out) :: outspfs(spfsize,nspf)
+    call jacoperate0(1,1,inspfs,outspfs)
+  end subroutine jacoperate
 
 !! attempt for quad
 
