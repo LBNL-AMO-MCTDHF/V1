@@ -552,9 +552,9 @@ subroutine init_spfs(inspfs,numloaded)
      ivo_occupied(:,:)=inspfs(:,1:numloaded)
      do ispf=1,numloaded
 
-        call myhgramschmidt_fast(totpoints,ispf-1,totpoints,ivo_occupied(:,:),ivo_occupied(:,ispf),orbparflag)
+        call gramschmidt(totpoints,ispf-1,totpoints,ivo_occupied(:,:),ivo_occupied(:,ispf),orbparflag)
 
-        density(:)=density(:)+abs(ivo_occupied(:,ispf)**2)*loadedocc(ispf)
+        density(:)=density(:)+ivo_occupied(:,ispf)*CONJUGATE(ivo_occupied(:,ispf))*loadedocc(ispf)
      enddo
      call op_tinv(density,ivopot,1,1,null1,null2,null3,null4,null10)
      deallocate(density)

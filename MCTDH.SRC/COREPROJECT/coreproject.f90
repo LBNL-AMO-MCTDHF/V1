@@ -1173,7 +1173,6 @@ function getsmallugvalue(inspf,inmval)
   integer,intent(in) :: inmval
   DATAECS,intent(in) :: inspf(numerad,lbig+1)
   DATAECS :: mytempspf(numerad,lbig+1)   !! AUTOMATIC
-  DATAECS :: ecsdot
   integer :: k,getsmallugvalue
 
 !! g or u: reflection then phi <-> -phi for these m eigenfuncts    
@@ -1183,6 +1182,21 @@ function getsmallugvalue(inspf,inmval)
      mytempspf(:,lbig+2-k)=inspf(:,k)*(-1)**abs(inmval)   
   enddo
   getsmallugvalue=nint(real(ecsdot(mytempspf,inspf,edim),4))
+
+contains
+  function ecsdot(one,two,n)
+    implicit none
+    integer,intent(in) :: n
+    DATAECS,intent(in) :: one(n), two(n)
+    DATAECS :: ecsdot, sum
+    integer :: i
+    sum=0.d0
+    do i=1,n
+       sum = sum + one(i) * two(i) 
+    enddo
+    ecsdot=sum
+  end function ecsdot
+
 end function getsmallugvalue
 
 

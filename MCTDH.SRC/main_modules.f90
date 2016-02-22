@@ -249,12 +249,14 @@ module walkmod
      integer :: sparseconfigflag=0
 
      integer :: numconfig=-1
-     integer,allocatable :: configsperproc(:), alltopconfigs(:), allbotconfigs(:)
+     integer,allocatable :: configsperproc(:), alltopconfigs(:), allbotconfigs(:),&
+          nzconfsperproc(:)
      integer :: maxconfigsperproc
      integer :: botconfig=-1,topconfig=-1
      integer :: configstart=-1,configend=-1, startrank,endrank
      integer :: firstconfig,lastconfig,localnconfig
      integer :: totadim=-1
+     integer :: NZ_COMM=(-1), nzprocs=(-1), nzrank=(-798)
 
      integer :: numdfconfigs=-1
      integer, allocatable :: dfconfsperproc(:), alltopdfconfigs(:), allbotdfconfigs(:)

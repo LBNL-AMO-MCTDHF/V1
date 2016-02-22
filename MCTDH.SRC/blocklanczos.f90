@@ -1,317 +1,8 @@
 
 #include "Definitions.INC"
 
-subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
-  use r_parameters
-  use sparse_parameters
-  use lan_parameters
-  use fileptrmod
-  use configmod
-  implicit none 
-  integer, intent(in) :: order,inprintflag,guessflag
-  integer :: printflag,maxdim,vdim,ii
-  DATAECS, intent(out) :: outvalues(order)
-  DATATYPE, intent(inout) :: outvectors(numr,www%firstconfig:www%lastconfig,order)
-  DATATYPE,allocatable :: workvectorsspin(:,:,:)
-  external :: parblockconfigmult
-
-  printflag=max(lanprintflag,inprintflag)
-
-  if (sparseconfigflag.eq.0) then
-     OFLWR "error, can't use blocklanczos for a-vector with sparseconfigflag=0"; CFLST
-  endif
-
-  allocate(workvectorsspin(numr,www%botdfbasis:www%topdfbasis,order))
-
-  if (www%topdfbasis-www%botdfbasis+1.ne.0) then
-     workvectorsspin(:,:,:)=0d0
-     if (guessflag.ne.0) then
-        do ii=1,order
-           call basis_transformto_local(www,numr,outvectors(:,www%botconfig,ii),&
-                workvectorsspin(:,:,ii))
-        enddo
-     endif
-  endif
-
-  maxdim=www%numdfbasis*numr
-  vdim=(www%topdfbasis-www%botdfbasis+1)*numr
-
-  call blocklanczos0(order,order,vdim,vdim,lanczosorder,maxdim,workvectorsspin,vdim,&
-       outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,&
-       .true.,0,DATAZERO)
-
-  if (www%lastconfig.ge.www%firstconfig) then
-     outvectors(:,:,:)=0d0
-  endif
-
-  if (www%topdfbasis-www%botdfbasis+1.ne.0) then
-     do ii=1,order
-        call basis_transformfrom_local(www,numr,workvectorsspin(:,:,ii),&
-             outvectors(:,www%botconfig,ii))
-     enddo
-  endif
-
-  deallocate(workvectorsspin)
-
-  if (www%parconsplit.eq.0) then
-     do ii=1,order
-        call mpiallgather(outvectors(:,:,ii),www%numconfig*numr,&
-             www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
-     enddo
-  endif
-
-end subroutine blocklanczos
 
 
-function nulldot(logpar)
-  use fileptrmod
-  implicit none
-  logical,intent(in) :: logpar
-  DATATYPE :: nulldot
-  if (logpar) then
-     nulldot=0d0
-     call mympireduceone(nulldot)
-  else
-     OFLWR "WHAT? nulldot called but not doing parallel calc... dimension zero???"; CFLST
-  endif
-end function nulldot
-
-function hdot(in,out,n,logpar)
-  implicit none
-  integer,intent(in) :: n
-  logical,intent(in) :: logpar
-  DATATYPE,intent(in) :: in(n),out(n)
-  DATATYPE :: hdot
-
-  hdot=DOT_PRODUCT(in,out)
-  if (logpar) then
-     call mympireduceone(hdot)
-  endif
-end function hdot
-
-function thisdot(in,out,n,logpar)
-  implicit none
-  integer,intent(in) :: n
-  logical,intent(in) :: logpar
-  DATATYPE,intent(in) :: in(n), out(n)
-  DATATYPE :: thisdot,dot
-
-  thisdot=dot(in,out,n)
-  if (logpar) then
-     call mympireduceone(thisdot)
-  endif
-end function thisdot
-
-subroutine allhdots(bravectors,ketvectors,n,lda,num1,num2,outdots,logpar)
-  implicit none
-  integer,intent(in) :: num1,num2,lda,n
-  logical,intent(in) :: logpar
-  integer :: id,jd
-
-  DATATYPE,intent(in) :: bravectors(lda,num1), ketvectors(lda,num2)
-  DATATYPE,intent(out) :: outdots(num1,num2)
-
-  if (n.le.0) then
-     print *, "progerrrr"; stop
-  endif
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(id,jd)
-!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
-  do id=1,num1
-     do jd=1,num2
-        outdots(id,jd)= DOT_PRODUCT(bravectors(1:n,id),ketvectors(1:n,jd))
-     enddo
-  enddo
-!$OMP END DO
-!$OMP END PARALLEL
-  if (logpar) then
-     call mympireduce(outdots,num1*num2)
-  endif
-end subroutine allhdots
-
-subroutine allnulldots(num1,num2,outdots,logpar)
-  use fileptrmod
-  implicit none
-  integer,intent(in) :: num1,num2
-  logical,intent(in) :: logpar
-  DATATYPE,intent(out) :: outdots(num1,num2)
-
-  if (logpar) then
-     outdots(:,:)=0d0
-     call mympireduce(outdots,num1*num2)
-  else
-     OFLWR "WHAT? allnulldots called but not doing parallel calc... dimension zero???"; CFLST
-  endif
-end subroutine allnulldots
-
-
-subroutine vechdots(bravectors,ketvectors,n,ldabra,ldaket,num,outdots,logpar)
-  implicit none
-  integer,intent(in) :: num,ldabra,ldaket,n
-  logical,intent(in) :: logpar
-  DATATYPE,intent(in) :: bravectors(ldabra,num), ketvectors(ldaket,num)
-  DATATYPE,intent(out) :: outdots(num)
-  integer :: id
-
-  if (n.le.0) then
-     print *, "progerrrrOR"; stop
-  endif
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(id)
-!$OMP DO SCHEDULE(STATIC)
-  do id=1,num
-        outdots(id)= DOT_PRODUCT(bravectors(1:n,id),ketvectors(1:n,id))
-  enddo
-!$OMP END DO
-!$OMP END PARALLEL
-  if (logpar) then
-     call mympireduce(outdots,num)
-  endif
-end subroutine vechdots
-
-
-subroutine vecthisdots(bravectors,ketvectors,n,ldabra,ldaket,num,outdots,logpar)
-  implicit none
-  integer,intent(in) :: num,ldabra,ldaket,n
-  logical,intent(in) :: logpar
-  DATATYPE,intent(in) :: bravectors(ldabra,num), ketvectors(ldaket,num)
-  DATATYPE,intent(out) :: outdots(num)
-  DATATYPE :: dot
-  integer :: id
-
-  if (n.le.0) then
-     print *, "progerrrrxxx"; stop
-  endif
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(id)
-!$OMP DO SCHEDULE(STATIC)
-  do id=1,num
-        outdots(id)= dot(bravectors(:,id),ketvectors(:,id),n)
-  enddo
-!$OMP END DO
-!$OMP END PARALLEL
-  if (logpar) then
-     call mympireduce(outdots,num)
-  endif
-end subroutine vecthisdots
-
-
-subroutine vecnulldots(num,outdots,logpar)
-  use fileptrmod
-  implicit none
-  integer,intent(in) :: num
-  logical,intent(in) :: logpar
-  DATATYPE,intent(out) :: outdots(num)
-
-  if (logpar) then
-     outdots(:)=0d0
-     call mympireduce(outdots,num)
-  else
-     OFLWR "WHAT? vecnulldots called but not doing parallel calc... dimension zero???"; CFLST
-  endif
-end subroutine vecnulldots
-
-
-
-! n is the length of the vectors; m is how many to orthogonalize to
-subroutine myhgramschmidt_fast(n, m, lda, previous, vector,logpar)
-  use fileptrmod
-  implicit none
-  integer,intent(in) :: n,m,lda
-  DATATYPE,intent(in) :: previous(lda,m)
-  DATATYPE,intent(inout) :: vector(n)
-  DATATYPE :: norm,hdot,myhdots(m)
-  logical,intent(in) :: logpar
-  integer :: i,j
-
-  if (n.le.0) then
-     print *, "progerrrreeee"; stop
-  endif
-
-  do j=1,2
-
-!!$ separate dot products for less numerical error; allhdots for speed
-
-     if (m.ne.0) then
-        call allhdots(previous(:,:),vector,n,lda,m,1,myhdots,logpar)
-     endif
-
-     do i=1,m
-!!$        vector=vector-previous(1:n,i)* hdot(previous(1:n,i),vector(1:n),n,logpar) 
-!!$  only the same with previous perfectly orth
-        vector=vector-previous(1:n,i)*myhdots(i)                            
-     enddo
-     norm=sqrt(hdot(vector,vector,n,logpar))
-     vector=vector/norm
-     if (abs(norm).lt.1e-7) then
-        OFLWR "Gram schmidt norm",norm,m; CFL
-     endif
-  enddo
-end subroutine myhgramschmidt_fast
-
-subroutine nullgramschmidt_fast(m,logpar)
-  use fileptrmod
-  implicit none
-  integer,intent(in) :: m
-  logical,intent(in) :: logpar
-  DATATYPE :: norm,nulldot,myhdots(m)
-  integer :: j
-
-  do j=1,2
-
-     if (m.ne.0) then
-        call allnulldots(m,1,myhdots,logpar)
-     endif
-
-!!$     do i=1,m
-!!$        norm=nulldot(logpar)
-!!$     enddo
-
-     norm=sqrt(nulldot(logpar))
-  enddo
-end subroutine nullgramschmidt_fast
-
-
-subroutine parblockconfigmult(inavector,outavector)
-  use r_parameters
-  use sparse_parameters
-  use configmod
-  use xxxmod
-  use fileptrmod
-  implicit none
-  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
-
-#ifdef MPIFLAG
-  select case (sparsesummaflag)
-  case(0)
-#endif
-     if (use_dfwalktype) then
-        call parblockconfigmult0_gather(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
-     else
-        call parblockconfigmult0_gather(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
-     endif
-
-
-#ifdef MPIFLAG
-  case(1)
-     if (use_dfwalktype) then
-        call parblockconfigmult0_summa(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
-     else
-        call parblockconfigmult0_summa(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
-     endif
-  case(2)
-     if (use_dfwalktype) then
-        call parblockconfigmult0_circ(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
-     else
-        call parblockconfigmult0_circ(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
-     endif
-  case default
-     OFLWR "Error sparsesummaflag ", sparsesummaflag; CFLST
-  end select
-#endif
-
-end subroutine parblockconfigmult
 
 
 subroutine parblockconfigmult0_gather(www,cptr,sptr,inavector,outavector)
@@ -498,10 +189,53 @@ end subroutine parblockconfigmult0_circ
 #endif
 
 
+subroutine parblockconfigmult(inavector,outavector)
+  use r_parameters
+  use sparse_parameters
+  use configmod
+  use xxxmod
+  use fileptrmod
+  implicit none
+  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
+  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
+
+#ifdef MPIFLAG
+  select case (sparsesummaflag)
+  case(0)
+#endif
+     if (use_dfwalktype) then
+        call parblockconfigmult0_gather(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+     else
+        call parblockconfigmult0_gather(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
+     endif
+
+
+#ifdef MPIFLAG
+  case(1)
+     if (use_dfwalktype) then
+        call parblockconfigmult0_summa(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+     else
+        call parblockconfigmult0_summa(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
+     endif
+  case(2)
+     if (use_dfwalktype) then
+        call parblockconfigmult0_circ(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+     else
+        call parblockconfigmult0_circ(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
+     endif
+  case default
+     OFLWR "Error sparsesummaflag ", sparsesummaflag; CFLST
+  end select
+#endif
+
+end subroutine parblockconfigmult
+
+
+
 subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter, &
      outvectors,outvectorlda, outvalues,inprintflag,guessflag,lancheckmod,lanthresh,&
      multsub,logpar,targetflag,etarget)
-  use fileptrmod
+  use mpimod
   implicit none 
   logical,intent(in) :: logpar
   integer,intent(in) :: lansize,maxlansize,maxiter,lanblocknum,inprintflag,order,&
@@ -510,10 +244,31 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
   DATAECS, intent(out) :: outvalues(numout)  
   DATATYPE, intent(inout) :: outvectors(outvectorlda,numout)
   real*8, intent(in) :: lanthresh
-  integer :: printflag, iorder,k,flag,j,id,nn,i,&
-       thislanblocknum, thisdim,ii,nfirst,nlast,myrank,nprocs,thisout
+  external :: multsub
+
+  call blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,maxiter, &
+       outvectors,outvectorlda, outvalues,inprintflag,guessflag,lancheckmod,lanthresh,&
+       multsub,logpar,targetflag,etarget,MPI_COMM_WORLD)
+
+end subroutine blocklanczos0
+
+
+subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,maxiter, &
+     outvectors,outvectorlda, outvalues,inprintflag,guessflag,lancheckmod,lanthresh,&
+     multsub,logpar,targetflag,etarget,IN_COMM)
+  use fileptrmod
+  implicit none 
+  logical,intent(in) :: logpar
+  integer,intent(in) :: lansize,maxlansize,maxiter,lanblocknum,inprintflag,order,&
+       lancheckmod,outvectorlda,numout,targetflag,guessflag,IN_COMM
+  DATATYPE, intent(in) :: etarget
+  DATAECS, intent(out) :: outvalues(numout)  
+  DATATYPE, intent(inout) :: outvectors(outvectorlda,numout)
+  real*8, intent(in) :: lanthresh
+  external :: multsub
+  integer :: printflag, iorder,k,flag,j,id,nn,i,thislanblocknum, thisdim,thisout
   real*8 :: error(numout), stopsum,rsum,nextran
-  DATATYPE :: alpha(lanblocknum,lanblocknum),beta(lanblocknum,lanblocknum), csum, &
+  DATATYPE :: alpha(lanblocknum,lanblocknum),beta(lanblocknum,lanblocknum), &
        nullvector1(100), nullvector2(100), lastvalue(numout), thisvalue(numout), &
        valdot(numout),normsq(numout),sqdot(numout)
 !! made these allocatable to fix lawrencium segfault 04-15
@@ -525,7 +280,6 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
        invector(:), multvectors(:,:), &
        lanvects(:,:,:), tempvectors(:,:), &
        lanmultvects(:,:,:), tempvectors2(:,:)
-  external :: multsub
 
   if (numout.lt.lanblocknum) then
      OFLWR "numout >= lanblocknum please",numout,lanblocknum; CFLST
@@ -554,37 +308,10 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
   call rand_init(1731.d0) 
 
   if (guessflag==0) then
-
      outvectors=0.0d0
-
      do k=1,numout
-
-!! want to be sure to have exactly the same calc regardless of nprocs.
-!!    but doesn't seem to work
-!!
-
-!! attempt to make runs exactly the same, for parorbsplit=3 (orbparflag in sincproject)
-!!   regardless of nprocs
-
-        if (logpar) then   
-           call getmyranknprocs(myrank,nprocs)
-           nfirst=myrank-1;           nlast=nprocs-myrank
-        else
-           nfirst=0; nlast=0
-        endif
-
-        do ii=1,nfirst
-           do i=1,lansize
-              csum=nextran() + (0d0,1d0) * nextran()
-           enddo
-        enddo
         do i=1,lansize
            outvectors(i,k)=nextran() + (0d0,1d0) * nextran()
-        enddo
-        do ii=1,nlast
-           do i=1,lansize
-              csum=nextran() + (0d0,1d0) * nextran()
-           enddo
         enddo
      enddo
   endif
@@ -767,7 +494,7 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
            thisdim=min(maxiter,iorder*lanblocknum)
            call CONFIGEIG(templanham,thisdim,order*lanblocknum,laneigvects,values)
            if (targetflag.ne.0) then
-              call mysort2(laneigvects,values,thisdim,order*lanblocknum,etarget)
+              call mysort2(laneigvects,values,thisdim,order*lanblocknum)
            endif
 
            thisout=min(numout,thisdim)
@@ -898,51 +625,319 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
   deallocate(  invector,multvectors, lanvects, tempvectors, lanmultvects,tempvectors2)
   deallocate( lanham,       laneigvects,       values,       templanham)
 
-end subroutine blocklanczos0
+contains
+
+  function nulldot(logpar)
+    implicit none
+    logical,intent(in) :: logpar
+    DATATYPE :: nulldot
+    if (logpar) then
+       nulldot=0d0
+       call mympireduceone(nulldot)
+    else
+       OFLWR "WHAT? nulldot called but not doing parallel calc... dimension zero???"; CFLST
+    endif
+  end function nulldot
+
+  function hdot(in,out,n,logpar)
+    implicit none
+    integer,intent(in) :: n
+    logical,intent(in) :: logpar
+    DATATYPE,intent(in) :: in(n),out(n)
+    DATATYPE :: hdot
+
+    hdot=DOT_PRODUCT(in,out)
+    if (logpar) then
+       call mympireduceone(hdot)
+    endif
+  end function hdot
+
+  function thisdot(in,out,n,logpar)
+    implicit none
+    integer,intent(in) :: n
+    logical,intent(in) :: logpar
+    DATATYPE,intent(in) :: in(n), out(n)
+    DATATYPE :: thisdot,dot
+
+    thisdot=dot(in,out,n)
+    if (logpar) then
+       call mympireduceone(thisdot)
+    endif
+  end function thisdot
 
 
+  subroutine allhdots(bravectors,ketvectors,n,lda,num1,num2,outdots,logpar)
+    implicit none
+    integer,intent(in) :: num1,num2,lda,n
+    logical,intent(in) :: logpar
+    integer :: id,jd
+
+    DATATYPE,intent(in) :: bravectors(lda,num1), ketvectors(lda,num2)
+    DATATYPE,intent(out) :: outdots(num1,num2)
+
+    if (n.le.0) then
+       print *, "progerrrr"; stop
+    endif
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(id,jd)
+!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
+    do id=1,num1
+       do jd=1,num2
+          outdots(id,jd)= DOT_PRODUCT(bravectors(1:n,id),ketvectors(1:n,jd))
+       enddo
+    enddo
+!$OMP END DO
+!$OMP END PARALLEL
+    if (logpar) then
+       call mympireduce(outdots,num1*num2)
+    endif
+  end subroutine allhdots
+
+  subroutine allnulldots(num1,num2,outdots,logpar)
+    implicit none
+    integer,intent(in) :: num1,num2
+    logical,intent(in) :: logpar
+    DATATYPE,intent(out) :: outdots(num1,num2)
+    
+    if (logpar) then
+       outdots(:,:)=0d0
+       call mympireduce(outdots,num1*num2)
+    else
+       OFLWR "WHAT? allnulldots called but not doing parallel calc... dimension zero???"; CFLST
+    endif
+  end subroutine allnulldots
+
+
+  subroutine vechdots(bravectors,ketvectors,n,ldabra,ldaket,num,outdots,logpar)
+    implicit none
+    integer,intent(in) :: num,ldabra,ldaket,n
+    logical,intent(in) :: logpar
+    DATATYPE,intent(in) :: bravectors(ldabra,num), ketvectors(ldaket,num)
+    DATATYPE,intent(out) :: outdots(num)
+    integer :: id
+
+    if (n.le.0) then
+       print *, "progerrrrOR"; stop
+    endif
+    
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(id)
+!$OMP DO SCHEDULE(STATIC)
+    do id=1,num
+       outdots(id)= DOT_PRODUCT(bravectors(1:n,id),ketvectors(1:n,id))
+    enddo
+!$OMP END DO
+!$OMP END PARALLEL
+    if (logpar) then
+       call mympireduce(outdots,num)
+    endif
+  end subroutine vechdots
+
+
+  subroutine vecthisdots(bravectors,ketvectors,n,ldabra,ldaket,num,outdots,logpar)
+    implicit none
+    integer,intent(in) :: num,ldabra,ldaket,n
+    logical,intent(in) :: logpar
+    DATATYPE,intent(in) :: bravectors(ldabra,num), ketvectors(ldaket,num)
+    DATATYPE,intent(out) :: outdots(num)
+    DATATYPE :: dot
+    integer :: id
+
+    if (n.le.0) then
+       print *, "progerrrrxxx"; stop
+    endif
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(id)
+!$OMP DO SCHEDULE(STATIC)
+    do id=1,num
+       outdots(id)= dot(bravectors(:,id),ketvectors(:,id),n)
+    enddo
+!$OMP END DO
+!$OMP END PARALLEL
+    if (logpar) then
+       call mympireduce(outdots,num)
+    endif
+  end subroutine vecthisdots
+
+
+  subroutine vecnulldots(num,outdots,logpar)
+    implicit none
+    integer,intent(in) :: num
+    logical,intent(in) :: logpar
+    DATATYPE,intent(out) :: outdots(num)
+
+    if (logpar) then
+       outdots(:)=0d0
+       call mympireduce(outdots,num)
+    else
+       OFLWR "WHAT? vecnulldots called but not doing parallel calc... dimension zero???"; CFLST
+    endif
+  end subroutine vecnulldots
+
+
+! n is the length of the vectors; m is how many to orthogonalize to
+  subroutine myhgramschmidt_fast(n, m, lda, previous, vector,logpar)
+    implicit none
+    integer,intent(in) :: n,m,lda
+    DATATYPE,intent(in) :: previous(lda,m)
+    DATATYPE,intent(inout) :: vector(n)
+    DATATYPE :: norm,myhdots(m)
+    logical,intent(in) :: logpar
+    integer :: i,j
+
+    if (n.le.0) then
+       print *, "progerrrreeee"; stop
+    endif
+
+    do j=1,2
+
+!!$ separate dot products for less numerical error; allhdots for speed
+
+       if (m.ne.0) then
+          call allhdots(previous(:,:),vector,n,lda,m,1,myhdots,logpar)
+       endif
+
+       do i=1,m
+!!$        vector=vector-previous(1:n,i)* hdot(previous(1:n,i),vector(1:n),n,logpar) 
+!!$  only the same with previous perfectly orth
+          vector=vector-previous(1:n,i)*myhdots(i)                            
+       enddo
+       norm=sqrt(hdot(vector,vector,n,logpar))
+       vector=vector/norm
+       if (abs(norm).lt.1e-7) then
+          OFLWR "Gram schmidt norm",norm,m; CFL
+       endif
+    enddo
+  end subroutine myhgramschmidt_fast
+
+  subroutine nullgramschmidt_fast(m,logpar)
+    implicit none
+    integer,intent(in) :: m
+    logical,intent(in) :: logpar
+    DATATYPE :: norm,mynulldots(m)
+    integer :: j
+
+    do j=1,2
+
+       if (m.ne.0) then
+          call allnulldots(m,1,mynulldots,logpar)
+       endif
+
+!!$     do i=1,m
+!!$        norm=nulldot(logpar)
+!!$     enddo
+
+       norm=sqrt(nulldot(logpar))
+    enddo
+  end subroutine nullgramschmidt_fast
 
 
 !! DATAECS data type for values
-subroutine mysort2(inout, values,n,lda,etarget)
-  implicit none
-  integer,intent(in) :: lda, n
-  DATATYPE, intent(in) :: etarget
-  DATATYPE,intent(inout) :: inout(lda,n)
-  DATAECS,intent(inout) :: values(lda)
-  DATAECS,allocatable ::  newvals(:)
-  DATATYPE,allocatable :: out(:,:)
-  integer,allocatable :: taken(:), order(:)
-  real*8 :: lowval 
-  integer :: i,j,whichlowest, flag
+  subroutine mysort2(inout, values,n,lda)
+    implicit none
+    integer,intent(in) :: lda, n
+    DATATYPE,intent(inout) :: inout(lda,n)
+    DATAECS,intent(inout) :: values(lda)
+    DATAECS,allocatable ::  newvals(:)
+    DATATYPE,allocatable :: out(:,:)
+    integer,allocatable :: taken(:), order(:)
+    real*8 :: lowval 
+    integer :: i,j,whichlowest, flag
 
-  allocate(out(lda,n), newvals(lda), taken(lda), order(lda))
+    allocate(out(lda,n), newvals(lda), taken(lda), order(lda))
 
-  taken=0;  order=-1
-  do j=1,n
-     whichlowest=-1; flag=0;     lowval=1.d+30  !! is not used (see flag)
-     do i=1,n
-        if ( taken(i) .eq. 0 ) then
-           if ((flag.eq.0) .or.(abs(values(i)-etarget) .le. lowval)) then
-              flag=1;              lowval=abs(values(i)-etarget); whichlowest=i
-           endif
-        endif
+    taken=0;  order=-1
+    do j=1,n
+       whichlowest=-1; flag=0;     lowval=1.d+30  !! is not used (see flag)
+       do i=1,n
+          if ( taken(i) .eq. 0 ) then
+             if ((flag.eq.0) .or.(abs(values(i)-etarget) .le. lowval)) then
+                flag=1;              lowval=abs(values(i)-etarget); whichlowest=i
+             endif
+          endif
+       enddo
+       if ((whichlowest.gt.n).or.(whichlowest.lt.1)) then
+          write(*,*) taken;        write(*,*) 
+          write(*,*) "WHICHLOWEST ERROR, J=",j," WHICHLOWEST=", whichlowest
+          call mpistop()
+       endif
+       if (taken(whichlowest).ne.0) then
+          write(*,*) "TAKEN ERROR.";        call mpistop()
+       endif
+       taken(whichlowest)=1;     order(j)=whichlowest
+       out(:,j)=inout(:,order(j));     newvals(j)=values(order(j))
+    enddo
+
+    values(1:n)=newvals(1:n)
+    inout(1:n,1:n)=out(1:n,1:n)
+
+    deallocate(out, newvals, taken, order)
+
+  end subroutine mysort2
+
+end subroutine blocklanczos0_local
+
+
+
+subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
+  use r_parameters
+  use sparse_parameters
+  use lan_parameters
+  use fileptrmod
+  use configmod
+  implicit none 
+  integer, intent(in) :: order,inprintflag,guessflag
+  integer :: printflag,maxdim,vdim,ii
+  DATAECS, intent(out) :: outvalues(order)
+  DATATYPE, intent(inout) :: outvectors(numr,www%firstconfig:www%lastconfig,order)
+  DATATYPE,allocatable :: workvectorsspin(:,:,:)
+  external :: parblockconfigmult
+
+  printflag=max(lanprintflag,inprintflag)
+
+  if (sparseconfigflag.eq.0) then
+     OFLWR "error, can't use blocklanczos for a-vector with sparseconfigflag=0"; CFLST
+  endif
+
+  allocate(workvectorsspin(numr,www%botdfbasis:www%topdfbasis,order))
+
+  if (www%topdfbasis-www%botdfbasis+1.ne.0) then
+     workvectorsspin(:,:,:)=0d0
+     if (guessflag.ne.0) then
+        do ii=1,order
+           call basis_transformto_local(www,numr,outvectors(:,www%botconfig,ii),&
+                workvectorsspin(:,:,ii))
+        enddo
+     endif
+  endif
+
+  maxdim=www%numdfbasis*numr
+  vdim=(www%topdfbasis-www%botdfbasis+1)*numr
+
+  call blocklanczos0_local(order,order,vdim,vdim,lanczosorder,maxdim,workvectorsspin,vdim,&
+       outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,&
+       .true.,0,DATAZERO,www%NZ_COMM)
+
+  if (www%lastconfig.ge.www%firstconfig) then
+     outvectors(:,:,:)=0d0
+  endif
+
+  if (www%topdfbasis-www%botdfbasis+1.ne.0) then
+     do ii=1,order
+        call basis_transformfrom_local(www,numr,workvectorsspin(:,:,ii),&
+             outvectors(:,www%botconfig,ii))
      enddo
-     if ((whichlowest.gt.n).or.(whichlowest.lt.1)) then
-        write(*,*) taken;        write(*,*) 
-         write(*,*) "WHICHLOWEST ERROR, J=",j," WHICHLOWEST=", whichlowest
-         call mpistop()
-     endif
-     if (taken(whichlowest).ne.0) then
-        write(*,*) "TAKEN ERROR.";        call mpistop()
-     endif
-     taken(whichlowest)=1;     order(j)=whichlowest
-     out(:,j)=inout(:,order(j));     newvals(j)=values(order(j))
-  enddo
+  endif
 
-  values(1:n)=newvals(1:n)
-  inout(1:n,1:n)=out(1:n,1:n)
+  deallocate(workvectorsspin)
 
-  deallocate(out, newvals, taken, order)
+  if (www%parconsplit.eq.0) then
+     do ii=1,order
+        call mpiallgather(outvectors(:,:,ii),www%numconfig*numr,&
+             www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+     enddo
+  endif
 
-end subroutine mysort2
+end subroutine blocklanczos
+
+
+

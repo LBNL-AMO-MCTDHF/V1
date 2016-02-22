@@ -25,6 +25,37 @@ subroutine getWorldCommGroup(outcommunicator,outgroup)
 end subroutine getWorldCommGroup
 
 
+subroutine make_mpi_comm(grpsize,inranks,OUTCOMM)
+  use mpimod
+  use fileptrmod
+  implicit none
+  integer,intent(in) :: grpsize, inranks(grpsize)
+  integer,intent(out) :: OUTCOMM
+#ifndef MPIFLAG
+  outcomm=(-798)
+#else
+  integer :: ranks(grpsize),ii,MYGROUP,ierr
+
+  do ii=1,grpsize
+     if (inranks(grpsize).gt.nprocs.or.inranks(grpsize).lt.1) then
+        OFLWR "rank error",inranks(:); CFLST
+     endif
+  enddo
+
+  ranks(:)=inranks(:)-1
+  call MPI_group_incl(MPI_GROUP_WORLD,grpsize,ranks(:),MYGROUP,ierr)
+  if (ierr.ne.0) then
+     OFLWR "make_comm group_incl ERR ", ierr; CFLST
+  endif
+  call MPI_comm_create(MPI_COMM_WORLD,MYGROUP,OUTCOMM,ierr)
+  if (ierr.ne.0) then
+     OFLWR "make_comm group_create err ", ierr; CFLST
+  endif
+#endif
+
+end subroutine make_mpi_comm
+
+
 subroutine mpiorbsets()
   use mpimod
   use mpi_orbsetmod

@@ -52,12 +52,14 @@ function getdfindex(www,config1)
 end function getdfindex
 
 
-subroutine basis_set(www)
+subroutine basis_set(www,innzflag)
   use r_parameters
   use walkmod
-  use mpimod !! nprocs
+  use mpimod !! nprocs, MPI_COMM_WORLD
   implicit none
   type(walktype),intent(inout) :: www
+  integer,intent(in) :: innzflag
+  integer :: ii,jj,nzranks(nprocs)
 
   allocate(www%basisperproc(nprocs),www%dfbasisperproc(nprocs))
   allocate(www%allbotbasis(nprocs),www%allbotdfbasis(nprocs))
@@ -95,6 +97,31 @@ subroutine basis_set(www)
   endif
 
   www%totadim=www%localnconfig*numr
+
+  allocate(www%nzconfsperproc(nprocs))
+  www%nzconfsperproc(:)=(-99)
+  www%nzrank=(-99)
+  jj=0
+  do ii=1,nprocs
+     if (www%configsperproc(ii).gt.0.or.innzflag.eq.0) then
+        jj=jj+1
+        www%nzconfsperproc(jj)=www%configsperproc(ii)
+        nzranks(jj)=ii
+        if (ii.eq.myrank) then
+           www%nzrank=jj
+        endif
+     endif
+  enddo
+  www%nzprocs=jj
+  if (innzflag.eq.0) then
+     www%NZ_COMM = MPI_COMM_WORLD
+     if (www%nzprocs.ne.nprocs) then
+        print*, "FAILFAIL FAIL",myrank,www%nzprocs; stop
+     endif
+  else
+     call make_mpi_comm(www%nzprocs,nzranks(:),www%NZ_COMM)
+  endif
+
 end subroutine basis_set
 
 

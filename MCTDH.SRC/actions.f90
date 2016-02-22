@@ -383,10 +383,8 @@ subroutine fixphase0(invector,isize)
   use parameters
   implicit none
   integer :: isize,ii
-!  integer, save :: icount=0
   DATATYPE :: invector(isize),csum
   real*8 :: rsum
-
 
   rsum=0d0; csum=0d0
   do ii=1,isize
@@ -402,12 +400,6 @@ subroutine fixphase0(invector,isize)
         invector(:)=invector(:)*abs(csum)/csum
      endif
   endif
-
-
-!  icount=icount+1
-!  if (icount.lt.10) then
-!     OFLWR "FIXPHASE DEPRECATED"; CFL
-!  endif
 
 end subroutine fixphase0
 

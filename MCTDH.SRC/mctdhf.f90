@@ -335,7 +335,7 @@ program mctdhf
   call configspinset_projector(www)
   call spinwalkinternal_dealloc()
 
-  call basis_set(www)
+  call basis_set(www,nzflag)
 
   totspfdim=nspf*spfsize
   tot_adim=local_nconfig*numr;  
@@ -389,7 +389,7 @@ program mctdhf
      call configspinset_projector(bioww)
      call spinwalkinternal_dealloc()
 
-     call basis_set(bioww)
+     call basis_set(bioww,nzflag)
 
 !!! END SET BIOWW !!
 
@@ -445,7 +445,7 @@ program mctdhf
      call configspinset_projector(dfww)
      call spinwalkinternal_dealloc()
 
-     call basis_set(dfww)
+     call basis_set(dfww,nzflag)
 
      OFLWR "   .. DONE setting DF walk variable.";CFL
 

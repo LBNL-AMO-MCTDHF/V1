@@ -5,35 +5,11 @@
 
 #include "Definitions.INC"
 
-function facfunct(myindex,numdata,diffdflag)
-  use fileptrmod
-  implicit none
-  integer, intent(in) :: myindex,diffdflag,numdata
-  complex*16 :: facfunct,ccsum
-  real*8, parameter :: twopi = 6.28318530717958647688d0
-
-  if (myindex.lt.0.or.myindex.gt.numdata) then
-     OFLWR "FACFUNCT ERR", myindex,0,numdata; CFLST
-  endif
-
-  ccsum=1d0
-  if (diffdflag.ne.0) then
-     if (myindex.ne.0) then
-        ccsum= 1d0 / ((0d0,1d0)*myindex) / twopi * (numdata+1)
-     else
-        ccsum=0d0
-     endif
-  endif
-  facfunct=ccsum
-end function facfunct
-
-
 subroutine zfftf_wrap_diff(size,inout,diffdflag)
   implicit none
   integer, intent(in) :: size,diffdflag
   complex*16, intent(inout) :: inout(size)
   complex*16,allocatable :: work(:)
-  complex*16 :: facfunct
   integer :: i
 
 
@@ -109,6 +85,27 @@ subroutine zfftf_wrap_diff(size,inout,diffdflag)
   endif
 
 contains
+
+  function facfunct(myindex,numdata,diffdflag)
+    use fileptrmod
+    implicit none
+    integer, intent(in) :: myindex,diffdflag,numdata
+    complex*16 :: facfunct,ccsum
+    real*8, parameter :: twopi = 6.28318530717958647688d0
+    if (myindex.lt.0.or.myindex.gt.numdata) then
+       OFLWR "FACFUNCT ERR", myindex,0,numdata; CFLST
+    endif
+    ccsum=1d0
+    if (diffdflag.ne.0) then
+       if (myindex.ne.0) then
+          ccsum= 1d0 / ((0d0,1d0)*myindex) / twopi * (numdata+1)
+       else
+          ccsum=0d0
+       endif
+    endif
+    facfunct=ccsum
+  end function facfunct
+
   function cindex(inindex)
     integer :: cindex,inindex
     cindex=mod(2*size+inindex-1,size)+1
@@ -175,19 +172,6 @@ function getlen2(buffer)
 end function getlen2
 
 
-!! CALLED INSIDE OMP LOOPS
-recursive function hermdot(one,two,n)
-  implicit none
-  integer,intent(in) :: n
-  DATATYPE,intent(in) :: one(n), two(n)
-  DATATYPE :: hermdot, sum
-  integer :: i
-  sum=0.d0
-  do i=1,n
-     sum =   sum + ALLCON(one(i)) *  two(i) 
-  enddo
-  hermdot=sum
-end function hermdot
 
 function floatfac(in)
   implicit none
@@ -201,33 +185,6 @@ function floatfac(in)
   floatfac=sum
 end function floatfac
 
-!! USE THIS FOR C-NORM DOT
-function cdot(one,two,n)
-  implicit none
-  integer,intent(in) :: n
-  DATATYPE,intent(in) :: one(n), two(n)
-  DATATYPE :: cdot, sum
-  integer :: i
-  sum=0.d0
-  do i=1,n
-     sum = sum + one(i) * two(i) 
-  enddo
-  cdot=sum
-end function cdot
-
-!! USE THIS FOR CNORM DOT OF DATAECS TYPE
-function ecsdot(one,two,n)
-  implicit none
-  integer,intent(in) :: n
-  DATAECS,intent(in) :: one(n), two(n)
-  DATAECS :: ecsdot, sum
-  integer :: i
-  sum=0.d0
-  do i=1,n
-     sum = sum + one(i) * two(i) 
-  enddo
-  ecsdot=sum
-end function ecsdot
 
 function myisnan(input)
   implicit none
@@ -244,52 +201,22 @@ subroutine dummysub()
 end subroutine dummysub
 
 
-!! CHOSEN DOT PRODUCT!! USE FOR <A|B> if A and B are orbs or A-vectors
-
-function pardot(one,two,n)
-  implicit none
-  integer,intent(in) :: n
-  DATATYPE,intent(in) :: one(n),two(n)
-  DATATYPE :: csum,dot,pardot
-  csum=dot(one,two,n)
-  call mympireduceone(csum)
-  pardot=csum
-end function
-
-
-function realpardot(one,two,n)
-  implicit none
-  integer,intent(in) :: n
-  real*8,intent(in) :: one(n),two(n)
-  real*8 :: sum,realdot,realpardot
-  sum=realdot(one,two,n)
-  call mympirealreduceone(sum)
-  realpardot=sum
-end function
+!! real-valued dot product for expokit
 
 subroutine realpardotsub(one,two,n,out)
   implicit none
   integer,intent(in) :: n
   real*8,intent(in) :: one(n),two(n)
   real*8,intent(out) :: out
-  real*8 :: sum,realdot
-  sum=realdot(one,two,n)
+  real*8 :: sum
+  sum=DOT_PRODUCT(one,two)
   call mympirealreduceone(sum)
   out=sum
 end subroutine realpardotsub
 
-subroutine pardotsub(one,two,n,out)
-  implicit none
-  integer,intent(in) :: n
-  DATATYPE,intent(in) :: one(n),two(n)
-  DATATYPE,intent(out) :: out
-  DATATYPE :: sum,dot
-  sum=dot(one,two,n)
-  call mympireduceone(sum)
-  out=sum
-end subroutine pardotsub
 
 !! CALLED INSIDE OMP LOOPS
+
 recursive function dot(one,two,n)
   implicit none
   integer,intent(in) :: n
@@ -303,53 +230,23 @@ recursive function dot(one,two,n)
   dot=sum
 end function dot
 
-function realdot(one,two,n)
+
+!! CALLED INSIDE OMP LOOPS
+
+recursive function hermdot(one,two,n)
   implicit none
   integer,intent(in) :: n
-  real*8,intent(in) :: one(n), two(n)
-  real*8 :: realdot, sum
+  DATATYPE,intent(in) :: one(n), two(n)
+  DATATYPE :: hermdot, sum
   integer :: i
   sum=0.d0
   do i=1,n
-     sum = sum + one(i) * two(i) 
+     sum =   sum + ALLCON(one(i)) *  two(i) 
   enddo
-  realdot=sum
-end function realdot
+  hermdot=sum
+end function hermdot
 
 
-subroutine realdotsub(one,two,n,out)
-  implicit none
-  integer,intent(in) :: n
-  real*8,intent(in) :: one(n), two(n)
-  real*8 :: out, sum
-  integer :: i
-  sum=0.d0
-  do i=1,n
-     sum = sum + one(i) * two(i) 
-  enddo
-  out=sum
-end subroutine realdotsub
-
-
-subroutine realgramschmidt(n, m, lda, previous, vector)
-  use fileptrmod
-  implicit none
-  ! n is the length of the vectors; m is how many to orthogonalize to
-  integer,intent(in) :: n,m,lda
-  real*8,intent(in) :: previous(lda,m)
-  real*8,intent(inout) :: vector(n)
-  real*8 :: norm, realdot
-  integer :: i
-
-  do i=1,m
-     vector=vector-previous(1:n,i)* realdot(previous(1:n,i),vector,n) 
-  enddo
-  norm=real(sqrt(realdot(vector,vector,n)),8)  !! ok for imp conv (c/p/ch)
-  if (abs(norm).lt.1.d-8) then
-     OFLWR "Warning, small norm in realgramschmidt: ", norm;  CFL
-  endif
-  vector=vector/norm
-end subroutine realgramschmidt
 
 subroutine gramschmidt(n, m, lda, previous, vector,parflag)
   implicit none
@@ -367,23 +264,20 @@ subroutine gramschmidt(n, m, lda, previous, vector,parflag)
      enddo
      norm=sqrt(heredot(vector,vector,n))  !! ok for impconv (chmctdh,pmctdh)
      vector=vector/norm
-!!     if (nancheck.and.((.not.(abs(norm).gt.1e-6)).or.(.not.(abs(norm).lt.1e+10)))) then
-!!        call openfile();    write(mpifileptr, *) &
-!!   "TE MP NOSTOP  Gram schmidt norm",norm, heredot(vector,vector,n), m; !!    call closefile()
-!!     endif
   enddo
+
 contains
 
   function heredot(bra,ket,size)
     implicit none
     integer,intent(in) :: size
     DATATYPE,intent(in) :: ket(size),bra(size)
-    DATATYPE :: heredot,dot,pardot
+    DATATYPE :: heredot,dot,csum
+    csum=dot(bra,ket,size)
     if (parflag) then
-       heredot=pardot(bra,ket,size)
-    else
-       heredot=dot(bra,ket,size)
+       call mympireduceone(csum)
     endif
+    heredot=csum
   end function heredot
 
 end subroutine gramschmidt
@@ -424,41 +318,6 @@ contains
 end subroutine nullgramschmidt
 
 
-subroutine ecsgramschmidt(n, m, lda, previous, vector, kdoneflag)
-  implicit none
-  ! n is the length of the vectors; m is how many to orthogonalize to
-  integer,intent(in) :: n,m,lda
-  integer,intent(out) :: kdoneflag
-  DATAECS,intent(in) :: previous(lda,m)
-  DATAECS,intent(inout) :: vector(n)
-  DATAECS :: norm, ecsdot
-  integer :: i
-
-  do i=1,m
-     vector=vector-previous(1:n,i)* ecsdot(previous(1:n,i),vector,n) 
-  enddo
-  norm=sqrt(ecsdot(vector,vector,n));  vector=vector/norm
-  if ((abs(norm).lt.1e-7)) then
-     kdoneflag=1
-  endif
-end subroutine ecsgramschmidt
-
-
-
-!!$function hermnormsq(one,n)
-!!$  implicit none
-!!$  integer :: n,i
-!!$  DATATYPE :: one(n)
-!!$  real*8 :: hermnormsq, sum
-!!$  sum=0.d0
-!!$  do i=1,n
-!!$     sum = sum + abs(one(i)**2)
-!!$  enddo
-!!$  hermnormsq=sum
-!!$end function hermnormsq
-
-
-!! Begin KVL routines
 
 subroutine neglnmat(A,N)
   implicit none
@@ -474,6 +333,7 @@ subroutine lnmat(A,N)
   DATATYPE,intent(inout) :: A(N,N)
   call bothlnmat(A,N,+1)
 end subroutine lnmat
+
 
 function djhlog(incomplex)
   use bio_parameters
@@ -632,8 +492,6 @@ end subroutine bothlnmat
 
 
 
-
-
 subroutine expmat(A,N)
 !! input :
 !! A - an N by N matrix
@@ -649,7 +507,6 @@ subroutine expmat(A,N)
   DATATYPE,allocatable :: VL(:,:),VR(:,:),work(:),rwork(:)
 
   allocate( eig(N), CVL(N,N),CVR(N,N),CA(N,N), VL(N,N),VR(N,N),work(8*N),rwork(4*N) )
-
   lwork=8*N
 
 #ifdef REALGO 
@@ -662,11 +519,8 @@ subroutine expmat(A,N)
   call zgeev('V','V',N,A,N,eig,VL,N,VR,N,work,lwork,rwork,i)
 #endif
 
-
   VL(:,:)=TRANSPOSE(VR(:,:))
-
   call invmatsmooth(VL,N,N,invtol)
-
 
 !! apply the function
   do k=1,N
@@ -712,16 +566,11 @@ subroutine invmatsmooth(A,N,LDA,tol)  !! inverse of ANY matrix.
 
   SAVEA=A
 
-!! do the svd
-
-
 #ifdef REALGO 
   call dgesvd('A','A',N,N,A,LDA,SV,U,N,VT,N,work,lwork,i)
 #else
   call zgesvd('A','A',N,N,A,LDA,SV,U,N,VT,N,zwork,lwork,work,i)
 #endif
-
-!  print *, SV, "SV";
 
   if (i.ne.0) then
      print *, "ERR SVD",i;
@@ -730,6 +579,7 @@ subroutine invmatsmooth(A,N,LDA,tol)  !! inverse of ANY matrix.
      enddo
      stop
   endif
+
 !! apply the function
   do k=1,N
      if (SV(k).ne.0d0) then
@@ -747,6 +597,7 @@ subroutine invmatsmooth(A,N,LDA,tol)  !! inverse of ANY matrix.
      endif
 
   enddo
+
 !! rebuild the matrix
   do j=1,N
     do i=1,N
@@ -765,8 +616,9 @@ subroutine invmatsmooth(A,N,LDA,tol)  !! inverse of ANY matrix.
 end subroutine invmatsmooth
 
 
-
-!!$  For realinvmatsmooth, tol is absolute not relative (refers to absolute mag of eigenvalue)
+!!$  realinvmatsmooth used for constraintflag.ne.0
+!!$  For realinvmatsmooth, tol is absolute not relative 
+!!$  (refers to absolute mag of eigenvalue)
 
 subroutine realinvmatsmooth(A,N,tol)  !! inverse of ANY matrix.
 !! input :
@@ -802,7 +654,6 @@ subroutine realinvmatsmooth(A,N,tol)  !! inverse of ANY matrix.
 !!$    SVD so SV is real, keeping old regularization for now v1.19
 
            SV(k) = 1d0 / tol 
-
         else
            SV(k) = 1d0 / SV(k)
         endif
@@ -895,6 +746,7 @@ subroutine symorthogmat(A,N,flag)
      enddo
      stop
   endif
+
 !! apply the function
   do k=1,N
     if(abs(SV(k)).lt.1d-10) then
@@ -906,6 +758,7 @@ subroutine symorthogmat(A,N,flag)
       SV(k) = 1d0 / sqrt(SV(k))     
     endif
   enddo
+
 !! rebuild the matrix
   do j=1,N
      do i=1,N
@@ -966,7 +819,6 @@ subroutine allpurposemat(A,N,flag)
   j=0
   call zgeev('V','V',N,A,N,eig,VL,N,VR,N,work,lwork,rwork,i)
 #endif
-
 
   VL(:,:)=TRANSPOSE(VR(:,:))
   call invmatsmooth(VL,N,N,invtol)
@@ -1151,9 +1003,7 @@ subroutine checksym(mat,dim)
   if (tot.gt.1d-10) then
      if (asym.gt.sym*1d-10) then
         icalled=icalled+1
-!        if (icalled.lt.10) then
-           OFLWR "SYM,ASYM,MAG ", sym/tot,asym/tot,tot; CFLST
-!        endif
+        OFLWR "SYM,ASYM,MAG ", sym/tot,asym/tot,tot; CFLST
      endif
   endif
 
