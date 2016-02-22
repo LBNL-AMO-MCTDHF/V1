@@ -355,14 +355,17 @@ subroutine wfnovl()
 
 
      do imc=1,mcscfnum
-        bradot=dot(braavec(:,imc),braavec(:,imc),tot_adim)
-        ketdot=dot(ketavec(:,imc),ketavec(:,imc),tot_adim)
+        bradot=0; ketdot=0
+        if (tot_adim.gt.0) then
+           bradot=dot(braavec(:,imc),braavec(:,imc),tot_adim)
+           ketdot=dot(ketavec(:,imc),ketavec(:,imc),tot_adim)
+        endif
         if (par_consplit.ne.0) then
            call mympireduceone(bradot); call mympireduceone(ketdot)
         endif
         
-           call autocorrelate_one(www,bwwptr,braavec(:,imc),bramo,ketmo,&
-                ketavec(:,imc),myovl(imc),numr)
+        call autocorrelate_one(www,bwwptr,braavec(:,imc),bramo,ketmo,&
+             ketavec(:,imc),myovl(imc),numr)
        
         blah=myovl(imc)/sqrt(bradot*ketdot)
         angle(imc)=acos(abs(blah))

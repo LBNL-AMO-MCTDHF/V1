@@ -20,10 +20,10 @@ subroutine autocorrelate_initial()
   
   allocate(overlaps(0:autosize,mcscfnum),  orig_spfs(  spfsize, nspf ),&
        orig_avectors(numr,first_config:last_config,mcscfnum))
-  overlaps(:,:)=0d0;  orig_spfs=0; orig_avectors=0;  calledflag=0;  xcalledflag=0
-  
+  overlaps(:,:)=0d0;  orig_spfs=0; calledflag=0;  xcalledflag=0
   orig_spfs(:,:)=RESHAPE(yyy%cmfspfs(:,0),(/spfsize,nspf/))
   if (tot_adim.gt.0) then
+     orig_avectors=0
      do imc=1,mcscfnum
         orig_avectors(:,:,imc)=RESHAPE(yyy%cmfavec(:,imc,0),(/numr,local_nconfig/))
      enddo
@@ -152,12 +152,17 @@ subroutine autocorrelate_one(www,bioww,avector,inspfs,orig_spf,orig_avector,outo
 
   else
 
-     abio=orig_avector
+     if (www%lastconfig.ge.www%firstconfig) then
+        abio(:,:)=orig_avector(:,:)
+     endif
 
      call bioset(autobiovar,smo,innr,bioww)
      call biortho(orig_spf,inspfs,mobio,abio,autobiovar)
 
-     outoverlap=dot(avector,abio,www%localnconfig*innr)
+     outoverlap=0d0
+     if (www%localnconfig.gt.0) then
+        outoverlap=dot(avector,abio,www%localnconfig*innr)
+     endif
      if (www%parconsplit.ne.0) then
         call mympireduceone(outoverlap)
      endif

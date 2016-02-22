@@ -449,6 +449,8 @@ contains
          smosave(inbiovar%wwbio%nspf,inbiovar%wwbio%nspf)                           !! AUTOMATIC
     integer :: i,j,lowspf,highspf,numspf,flag
 
+    atmp=0; smosave=0
+
     lowspf=1;highspf=inbiovar%wwbio%nspf
     if (parorbsplit.eq.1) then
        call checkorbsetrange(inbiovar%wwbio%nspf,flag)
@@ -458,7 +460,7 @@ contains
        call getOrbSetRange(lowspf,highspf)
     endif
     numspf=highspf-lowspf+1
- 
+
     if (inbiovar%hermonly) then
        do i=lowspf,highspf
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j)
@@ -542,6 +544,8 @@ contains
     DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig+1)    !! AUTOMATIC
     DATATYPE :: dot,hermdot
     integer :: i,j,lowspf,highspf,numspf,flag
+
+    atmp=0
 
     lowspf=1;highspf=inbiovar%wwbio%nspf
     if (parorbsplit.eq.1) then
@@ -627,7 +631,7 @@ subroutine abio_nonsparse(abio,aout,inbiovar)
 !! get their determinant that way this is very much so a brute force way to approach 
 !! this problem
 
-  smobig(:,:)=0d0
+  smobig=0d0; stmpbig=0; sconfig=0; aouttr=0;  sing=0; rwork=0; work=0
 
   do i=1,inbiovar%wwbio%nspf*2
      mmm(:)=aarr(i)
@@ -813,6 +817,7 @@ subroutine parbiomatvec_gather(inavector,outavector)
   DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
   DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
   DATATYPE,allocatable :: intemp(:,:)
+!! AUTOMATIC
   DATATYPE :: outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1)
 
   if (sparseconfigflag.eq.0) then
@@ -820,12 +825,12 @@ subroutine parbiomatvec_gather(inavector,outavector)
   endif
 
   allocate(intemp(biopointer%bionr,biopointer%wwbio%numconfig))
-  intemp(:,:)=0d0
+  intemp(:,:)=0d0;  outtemp=0
 
 !! transform second to reduce communication?
 !!   no, spin transformations done locally now.
 
-  if (biopointer%wwbio%topconfig-biopointer%wwbio%botconfig+1 .ne. 0) then
+  if (biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
      call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector,&
           intemp(:,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig))
   endif
@@ -879,8 +884,7 @@ subroutine parbiomatvec_summa(inavector,outavector)
                 inavector(:,:),intemp(:,:))
         endif
 
-        call mympibcast(intemp,iproc,(biopointer%wwbio%alltopconfigs(iproc) &
-             - biopointer%wwbio%allbotconfigs(iproc)+1)*biopointer%bionr)
+        call mympibcast(intemp,iproc,biopointer%wwbio%configsperproc(iproc)*biopointer%bionr)
 
         call biomatvec_byproc(iproc,iproc,intemp,outtemp)
 
@@ -934,11 +938,11 @@ subroutine parbiomatvec_circ(inavector,outavector)
 !! PASSING BACKWARD (plus deltaproc)
      iproc=mod(myrank-1+deltaproc,nprocs)+1
 
-  if (biopointer%wwbio%alltopconfigs(iproc).ge.biopointer%wwbio%allbotconfigs(iproc).and.&
-       biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
-     call biomatvec_byproc(iproc,iproc,workvector,outtemp)
-     outwork(:,:)=outwork(:,:)+outtemp(:,:)
-  endif
+     if (biopointer%wwbio%alltopconfigs(iproc).ge.biopointer%wwbio%allbotconfigs(iproc).and.&
+          biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
+        call biomatvec_byproc(iproc,iproc,workvector,outtemp)
+        outwork(:,:)=outwork(:,:)+outtemp(:,:)
+     endif
 
 !! PASSING BACKWARD
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
