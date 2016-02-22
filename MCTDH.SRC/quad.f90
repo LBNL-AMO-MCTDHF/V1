@@ -160,7 +160,6 @@ subroutine quadspfs(inspfs,jjcalls)
   integer,intent(out) :: jjcalls
   integer :: icount,maxdim,ierr
   real*8 :: orthogerror,dev,mynorm
-  DATATYPE :: hermdot
   DATATYPE, allocatable ::  vector(:), vector2(:), vector3(:), com_vector2(:), com_vector3(:)
   EXTERNAL :: quadoperate,dummysub,quadopcompact
 
@@ -287,11 +286,12 @@ subroutine aaonedinit(www,inavector)
   use xxxmod
   use r_parameters
   use walkmod
+  use dotmod
   implicit none
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: inavector(www%totadim)
   DATATYPE,allocatable :: jacaa(:),jacaamult(:)
-  DATATYPE :: dot, csum2
+  DATATYPE :: csum2
 
   allocate(jacaa(www%totadim), jacaamult(www%totadim))
   if (www%totadim.gt.0) then
@@ -385,7 +385,7 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
   integer,intent(out) :: jjcalls0
   integer :: jjcalls, ss, maxdim, mysize,flag,ierr
   real*8 ::  dev,  thisaerror
-  DATATYPE :: dot, hermdot,csum 
+  DATATYPE :: csum 
   DATATYPE, allocatable ::  vector(:,:), vector2(:,:), vector3(:,:), &
        smallvectorspin(:,:),smallvectorspin2(:,:)
 
@@ -517,7 +517,7 @@ subroutine nonsparsequadavector(www,avectorout)
   implicit none
   type(walktype),intent(in) :: www
   DATATYPE,intent(inout) :: avectorout(www%totadim)
-  DATATYPE :: dot, hermdot,csum
+  DATATYPE :: csum
   CNORMTYPE :: norm
   real*8 :: dev
   integer :: k, info,ss

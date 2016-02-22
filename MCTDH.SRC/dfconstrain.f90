@@ -43,6 +43,7 @@ subroutine dferror(www,cptr,sptr,avector,numvects,outerror,time)
   use walkmod
   use r_parameters
   use fileptrmod
+  use dotmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -51,7 +52,6 @@ subroutine dferror(www,cptr,sptr,avector,numvects,outerror,time)
   real*8,intent(in) :: time
   DATATYPE,intent(in) :: avector(numr,www%firstconfig:www%lastconfig,numvects)
   CNORMTYPE,intent(out) :: outerror
-  DATATYPE :: dot
   DATATYPE,allocatable :: temp1(:,:),temp2(:,:)
   integer :: i,imc
 
@@ -232,13 +232,14 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
   use sparseptrmod
   use walkmod
   use mpimod
+  use dotmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: inavectors(numr,www%firstconfig:www%lastconfig,numvects)
   type(CONFIGPTR),intent(inout) :: cptr
   type(SPARSEPTR),intent(in) :: sptr
-  DATATYPE ::  dot,tempmatel(www%nspf,www%nspf)
+  DATATYPE :: tempmatel(www%nspf,www%nspf)
   integer, save :: times(20)=0, icalled=0
   integer ::    i,     j,  ii, lwork,isize,ishell,iiyy,maxii,imc,itime,jtime,getlen,&
        lowspf,highspf,numspf,flag,myiostat
@@ -683,6 +684,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
   use spfsize_parameters   !! parorbsplit
   use configptrmod
   use sparseptrmod
+  use dotmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -695,7 +697,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
        drivingavectorszz(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE ::  a1(numr,numvects), a2(numr,numvects), &
        a1p(numr,numvects), a2p(numr,numvects),&
-       tempconmatels(www%nspf,www%nspf),dot
+       tempconmatels(www%nspf,www%nspf)
   DATATYPE,allocatable :: bigavector(:,:,:),bigavectorp(:,:,:), avectorp(:,:,:)
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,   &
        iwalk, info, kspf, lspf, ind, jind,  lowspf,highspf, &
@@ -1014,6 +1016,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   use walkmod
   use configptrmod
   use sparseptrmod
+  use dotmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -1026,7 +1029,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
        drivingavectorszz(numr,www%firstconfig:www%lastconfig,numvects)
   integer :: ipairs(2,www%nspf*(www%nspf-1))
   DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a1p(numr,numvects), &
-       a2p(numr,numvects),dot, csum
+       a2p(numr,numvects), csum
   DATATYPE,allocatable :: bigavector(:,:,:), bigavectorp(:,:,:),avectorp(:,:,:),&
        rhomat(:,:,:,:),tempconmatels(:,:) 
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,  iwalk,  info, kspf, &

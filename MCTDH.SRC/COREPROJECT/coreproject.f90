@@ -1105,17 +1105,30 @@ subroutine restrict_spfs(inspfs,howmany,in_spfmvals)
   use myparams
   implicit none
   integer,intent(in) :: howmany,in_spfmvals(howmany)
-  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)  !! using hermdot; want to see if wfn
+  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)
   call restrict_spfs0(inspfs,howmany,in_spfmvals,1)
 end subroutine restrict_spfs
 
+
+module hermdotmod
+contains
+  function hermdot(one,two,n)
+    implicit none
+    integer,intent(in) :: n
+    DATATYPE,intent(in) :: one(n), two(n)
+    DATATYPE :: hermdot
+    hermdot=DOT_PRODUCT(one,two)
+  end function hermdot
+end module hermdotmod
+
+
 subroutine restrict_spfs0(inspfs,howmany,in_spfmvals,printflag)
+!! using hermdot; want to see if wfn has been chopped.
+  use hermdotmod
   use myparams
   implicit none
   integer,intent(in) :: howmany,in_spfmvals(howmany),printflag
   DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)  
-!! using hermdot; want to see if wfn has been chopped.
-  DATATYPE :: hermdot
   integer :: ispf
   real*8 :: normsq1, normsq2
 
@@ -1127,7 +1140,7 @@ subroutine restrict_spfs0(inspfs,howmany,in_spfmvals,printflag)
 if (printflag.ne.0) then
   normsq2=real(hermdot(inspfs,inspfs,howmany*edim*(2*mbig+1)),8)  !! ok hermdot
   if (abs(normsq1-normsq2)/howmany.gt.1.d-7) then
-     OFLWR "   WARNING, in restrict_spfs I lost norm.", normsq1,normsq2;     call closefile()
+     OFLWR "   WARNING, in restrict_spfs I lost norm.", normsq1,normsq2;  CFL
   endif
 endif
 end subroutine restrict_spfs0
@@ -1142,13 +1155,14 @@ subroutine ugrestrict_spfs(inspfs,howmany,in_spfugvals)
 end subroutine ugrestrict_spfs
 
 subroutine ugrestrict_spfs0(inspfs,howmany,in_spfugvals,printflag)
+!! using hermdot; want to see if wfn has been chopped.
+  use hermdotmod
   use myparams
   implicit none
   integer,intent(in) :: howmany,in_spfugvals(howmany),printflag
-  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)  !! using hermdot; want to see if wfn has been chopped.
+  DATATYPE,intent(inout) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)  
   integer :: ispf
   real*8 :: normsq1,normsq2
-  DATATYPE :: hermdot
   DATATYPE :: outspfs(numerad,lbig+1,-mbig:mbig,howmany)   !! AUTOMATIC
 
   normsq1=real(hermdot(inspfs,inspfs,howmany*edim*(2*mbig+1)),8)  !! ok hermdot
@@ -1159,7 +1173,7 @@ subroutine ugrestrict_spfs0(inspfs,howmany,in_spfugvals,printflag)
   if (printflag.ne.0) then
      normsq2=real(hermdot(inspfs,inspfs,howmany*edim*(2*mbig+1)),8)  !! ok hermdot
      if (abs(normsq1-normsq2)/howmany/max(normsq1,1d0).gt.1.d-3) then
-        OFLWR "   WARNING, in UG restrict_spfs I lost norm.", normsq1,normsq2;     call closefile()
+        OFLWR "   WARNING, in UG restrict_spfs I lost norm.", normsq1,normsq2;  CFL
      endif
   endif
 

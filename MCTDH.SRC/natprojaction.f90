@@ -16,7 +16,7 @@ subroutine save_natproj( thistime )
   use configmod
   implicit none
 
-  DATATYPE :: csum, dot
+  DATATYPE :: csum
   integer :: xcalledhere=0,  iflag, korder, pulseflag, isplit, i, &
        imc, getlen2, ilen, iii, nn, getlen, iorb
   real*8 :: thistime, rsum

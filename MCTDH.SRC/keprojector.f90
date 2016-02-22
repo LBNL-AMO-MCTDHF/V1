@@ -11,7 +11,7 @@ subroutine keprojector(inavector,inspfs,infac,www)
   implicit none
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: inavector(www%totadim,mcscfnum), inspfs(spfsize,nspf)
-  DATATYPE :: rad, kedot(nspf),krval,dot,csum,kedot2(nspf)
+  DATATYPE :: rad, kedot(nspf),krval,csum,kedot2(nspf)
   DATATYPE, allocatable,save :: kevects(:,:),keproj(:,:,:),keproj2(:,:,:)
   real*8, allocatable, save ::  kesum(:),energy(:), kesum2(:)
   DATATYPE,allocatable :: tempelecweights(:),tempvector(:)

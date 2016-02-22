@@ -24,7 +24,7 @@ subroutine dipolesub()
   use configmod
   use xxxmod
   implicit none
-  DATATYPE :: xx(mcscfnum),yy(mcscfnum),zz(mcscfnum),dd(mcscfnum),hermdot
+  DATATYPE :: xx(mcscfnum),yy(mcscfnum),zz(mcscfnum),dd(mcscfnum)
   integer :: imc,sflag
   integer, save :: lastouttime=0
   real*8 :: thistime
@@ -138,6 +138,7 @@ subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_ex
   use spfsize_parameters
   use walkmod
   use fileptrmod
+  use dotmod
   use dipbiomod
   use biorthomod
   implicit none
@@ -147,7 +148,7 @@ subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_ex
        aket(numr,www%firstconfig:www%lastconfig)
   DATATYPE,intent(out) ::    zdipole_expect, ydipole_expect, xdipole_expect
   DATATYPE,allocatable :: tempvector(:,:),tempspfs(:,:),abra(:,:),workspfs(:,:)
-  DATATYPE :: hermdot,nullcomplex(1),dipoles(3), dipolemat(www%nspf,www%nspf),csum
+  DATATYPE :: nullcomplex(1),dipoles(3), dipolemat(www%nspf,www%nspf),csum
   DATAECS :: rvector(numr)
 !!$  DATATYPE :: norm   !! datatype in case abra.ne.aket
   integer :: i,lowspf,highspf,numspf

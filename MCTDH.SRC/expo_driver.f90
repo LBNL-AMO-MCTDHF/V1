@@ -35,7 +35,7 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   real*8 :: midtime, tdiff, error, norm
   integer :: itrace, iflag,getlen
   integer :: expofileptr=805
-  external :: jacoperate,jacopcompact ,realpardotsub
+  external :: jacoperate,jacopcompact
 
 !! lowers thisexpodim until number of internal expokit steps is 2 or less, 
 !!  then goes back and sets
@@ -687,7 +687,7 @@ subroutine exposparseprop(www,inavector,outavector,time,imc,numiters)
        zerovector(numr,www%maxdfbasisperproc),&
        smallvectortemp(numr,www%maxdfbasisperproc), &
        workdrivingavecdfbasis(numr,www%botdfbasis:www%topdfbasis)    !! AUTOMATIC
-  external :: parconfigexpomult_padded,realpardotsub
+  external :: parconfigexpomult_padded
   real*8 :: one,time
   real*8, save :: tempstepsize=-1d0
   integer :: itrace, iflag, numsteps,expofileptr=61142, liwsp=0, lwsp=0,getlen,myiostat,ixx
@@ -906,7 +906,7 @@ subroutine derproject00(lowspf,highspf,inspfs, outspfs, prospfs, prospfderivs)
   DATATYPE, intent(in) :: inspfs(spfsize, lowspf:highspf), &
        prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
   DATATYPE, intent(out) :: outspfs(spfsize, lowspf:highspf)
-  DATATYPE :: dot,csum
+  DATATYPE :: csum
   DATATYPE :: mydot(nspf,lowspf:highspf+1), prodot(nspf,nspf), &
        derdot(nspf,lowspf:highspf+1) !! AUTOMATIC
   integer :: i,j,numspf,itime,jtime
@@ -1049,7 +1049,6 @@ subroutine der_gmat00(lowspf,highspf,inspfs, outspfs, &
        prospfderivs(spfsize, nspf)
   DATATYPE, intent(out) :: outspfs(spfsize, lowspf:highspf)
   integer :: i,j,numspf
-  DATATYPE :: dot
   DATATYPE :: mydot(nspf,lowspf:highspf+1), &
        derdot(nspf,lowspf:highspf+1), &            !!  AUTOMATIC
        mydot0(nspf,lowspf:highspf+1), &

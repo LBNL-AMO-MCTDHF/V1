@@ -216,7 +216,7 @@ subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2ex
        ydipmat(:,:), zdipmat(:,:), inavectors(:,:,:), &
        xrefmat(:,:), yrefmat(:,:), zrefmat(:,:),     &
        tempvector(:,:), tempspfs(:,:),tempspfs2(:,:)
-  DATATYPE ::  dot,normsq(numvec),nullcomplex,dipoles(3),nucdipexpect(numvec,3),csum
+  DATATYPE :: normsq(numvec),nullcomplex,dipoles(3),nucdipexpect(numvec,3),csum
   DATAECS :: rvector(numr)
   integer :: i,imc
 
@@ -416,7 +416,7 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
        xrefmatel(mcscfnum,mcscfnum),yrefmatel(mcscfnum,mcscfnum),zrefmatel(mcscfnum,mcscfnum),&
        xdipmatel(mcscfnum,mcscfnum),ydipmatel(mcscfnum,mcscfnum),zdipmatel(mcscfnum,mcscfnum),&
        ovlmatel(mcscfnum,mcscfnum), nucdipmatel(mcscfnum,mcscfnum,3),&
-       dot,nullcomplex,dipoles(3)
+       nullcomplex,dipoles(3)
   DATATYPE,allocatable :: ugmat(:,:), xdipmat(:,:), ydipmat(:,:), zdipmat(:,:), inavectors(:,:,:), &
        xrefmat(:,:), yrefmat(:,:), zrefmat(:,:), tempvector(:,:), tempspfs(:,:),tempspfs2(:,:)
   CNORMTYPE :: occupations(www%nspf,mcscfnum)

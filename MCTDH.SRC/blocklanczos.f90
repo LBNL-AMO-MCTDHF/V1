@@ -639,30 +639,41 @@ contains
     endif
   end function nulldot
 
-  function hdot(in,out,n,logpar)
+  function hdot(bra,ket,n,logpar)
     implicit none
     integer,intent(in) :: n
     logical,intent(in) :: logpar
-    DATATYPE,intent(in) :: in(n),out(n)
+    DATATYPE,intent(in) :: bra(n),ket(n)
     DATATYPE :: hdot
-
-    hdot=DOT_PRODUCT(in,out)
+    hdot=DOT_PRODUCT(bra,ket)
     if (logpar) then
        call mympireduceone(hdot)
     endif
   end function hdot
 
-  function thisdot(in,out,n,logpar)
+  function thisdot(bra,ket,n,logpar)
     implicit none
     integer,intent(in) :: n
     logical,intent(in) :: logpar
-    DATATYPE,intent(in) :: in(n), out(n)
-    DATATYPE :: thisdot,dot
-
-    thisdot=dot(in,out,n)
+    DATATYPE,intent(in) :: bra(n), ket(n)
+    DATATYPE :: thisdot,csum,csum2
+    integer :: ii
+    csum2=0
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,csum)
+    csum=0
+!$OMP DO SCHEDULE(DYNAMIC)
+    do ii=1,n
+       csum=csum+CONJUGATE(bra(ii))*ket(ii)
+    enddo
+!$OMP END DO
+!$OMP CRITICAL
+    csum2=csum2+csum
+!$OMP END CRITICAL
+!$OMP END PARALLEL
     if (logpar) then
-       call mympireduceone(thisdot)
+       call mympireduceone(csum2)
     endif
+    thisdot=csum2
   end function thisdot
 
 
@@ -739,19 +750,26 @@ contains
     logical,intent(in) :: logpar
     DATATYPE,intent(in) :: bravectors(ldabra,num), ketvectors(ldaket,num)
     DATATYPE,intent(out) :: outdots(num)
-    DATATYPE :: dot
-    integer :: id
+    DATATYPE :: tempdots(num)
+    integer :: ii,id
 
     if (n.le.0) then
        print *, "progerrrrxxx"; stop
     endif
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(id)
-!$OMP DO SCHEDULE(STATIC)
+    outdots(:)=0
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,id,tempdots)
+    tempdots(:)=0
+!$OMP DO SCHEDULE(DYNAMIC) COLLAPSE(2)
     do id=1,num
-       outdots(id)= dot(bravectors(:,id),ketvectors(:,id),n)
+       do ii=1,n
+          tempdots(id)=tempdots(id)+CONJUGATE(bravectors(ii,id))*ketvectors(ii,id)
+       enddo
     enddo
 !$OMP END DO
+!$OMP CRITICAL
+    outdots(:)=outdots(:)+tempdots(:)
+!$OMP END CRITICAL
 !$OMP END PARALLEL
     if (logpar) then
        call mympireduce(outdots,num)

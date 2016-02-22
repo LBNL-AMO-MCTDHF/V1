@@ -246,7 +246,7 @@ subroutine wfnovl()
   
   integer :: k,molength,alength,nt,ketbat,imc,ispf,myiostat
   real*8 :: piover2,dt,angle(mcscfnum)
-  DATATYPE :: dot,myovl(mcscfnum) , bradot,phase,ketdot,blah
+  DATATYPE :: myovl(mcscfnum) , bradot,phase,ketdot,blah
   DATATYPE, allocatable :: read_bramo(:,:), read_braavec(:,:), &
        read_ketmo(:,:), read_ketavec(:,:),&
        bramo(:,:),braavec(:,:),ketmo(:,:),ketavec(:,:)

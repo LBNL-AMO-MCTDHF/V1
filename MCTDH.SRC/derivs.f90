@@ -608,7 +608,6 @@ subroutine op_gmat_thirdorder00(lowspf,highspf,inspfs, outspfs, &
   DATATYPE, intent(in) :: inspfs(spfsize,nspf), projspfs(spfsize,nspf)
   DATATYPE, intent(out) :: outspfs(spfsize,lowspf:highspf)
   DATATYPE :: conmat(nspf,nspf), mydot(nspf,nspf), mymat(nspf,nspf)    !! AUTOMATIC
-  DATATYPE :: dot
   integer :: i,j,numspf
 
   numspf=highspf-lowspf+1

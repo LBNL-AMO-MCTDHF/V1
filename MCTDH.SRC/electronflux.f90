@@ -121,7 +121,7 @@ subroutine fluxgtau0(alg,www,bioww)
   real*8 :: MemTot,MemVal,dt, myfac,wfi,estep,windowfunct
   complex*16, allocatable :: FTgtau(:,:), pulseft(:,:)
   real*8, allocatable :: pulseftsq(:)
-  DATATYPE :: hermdot,fluxeval,fluxevalval(mcscfnum), pots1(3)=0d0  !!$, pots2(3)=0d0
+  DATATYPE :: fluxeval,fluxevalval(mcscfnum), pots1(3)=0d0  !!$, pots2(3)=0d0
   DATATYPE, allocatable :: gtau(:,:), mobio(:,:),abio(:,:,:)
   DATATYPE, allocatable, target :: bramo(:,:,:),braavec(:,:,:,:), ketmo(:,:,:),ketavec(:,:,:,:)
   DATATYPE,allocatable :: read_bramo(:,:,:),read_braavec(:,:,:,:),read_ketmo(:,:,:),read_ketavec(:,:,:,:)

@@ -91,6 +91,7 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
   use fileptrmod
   use r_parameters
   use walkmod
+  use dotmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -99,7 +100,7 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
   DATATYPE,intent(out) :: reducedpottally(www%nspf,www%nspf,www%nspf,www%nspf)
   DATATYPE,allocatable :: avector2(:,:,:)
   DATATYPE,allocatable :: mytally(:,:,:,:)
-  DATATYPE ::  a1(numr,numvects), a2(numr,numvects), dot, csum
+  DATATYPE ::  a1(numr,numvects), a2(numr,numvects), csum
   DATAECS :: rvalues(numr)
   integer ::   ispf, jspf, iispf, jjspf ,  config2, config1,dirphase, iwalk,ii,ihop
 
@@ -185,6 +186,7 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
   use r_parameters
   use opmod   !! rkemod, proderivmod
   use walkmod
+  use dotmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -193,7 +195,7 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
   DATATYPE,intent(out) :: reducedproderiv(www%nspf,www%nspf)
   DATATYPE,allocatable :: avector2(:,:,:)
   DATATYPE :: a1(numr,numvects), a2(numr,numvects), a2mult(numr,numvects), mypro(numr,numr), &
-       myredpro(www%nspf,www%nspf),dot,csum
+       myredpro(www%nspf,www%nspf),csum
   integer ::  config1,config2,  ispf,jspf,  dirphase,     iwalk,ii,ihop
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
@@ -275,6 +277,7 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
   use fileptrmod
   use r_parameters
   use walkmod
+  use dotmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -284,7 +287,7 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
        reducedinvrsq(www%nspf,www%nspf)
   DATATYPE,allocatable :: avector2(:,:,:)
   DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a2r(numr,numvects), &
-       a2inv(numr,numvects), a2invsq(numr,numvects), dot, rdot,invdot,invsqdot
+       a2inv(numr,numvects), a2invsq(numr,numvects), rdot,invdot,invsqdot
   integer ::  config1,config2,   ispf,jspf,  dirphase,    iwalk,ii, ihop
   DATAECS ::  invrvalues(numr),invrsqvalues(numr),rvalues(numr)
   DATATYPE :: myinvr(www%nspf,www%nspf),myr(www%nspf,www%nspf),  myinvrsq(www%nspf,www%nspf)

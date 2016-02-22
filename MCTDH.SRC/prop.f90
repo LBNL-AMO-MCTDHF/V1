@@ -19,7 +19,7 @@ subroutine prop_loop( starttime)
        lastenergyavg,startenergy(mcscfnum)
   CNORMTYPE :: norms(mcscfnum)
   real*8 :: thistime, starttime, thattime,error=1d10,rsum,avecerror=1d10
-  DATATYPE :: dot,  sum2,sum,hermdot,drivingoverlap(mcscfnum)
+  DATATYPE :: sum2,sum,drivingoverlap(mcscfnum)
   DATATYPE, allocatable :: avectorp(:),outspfs(:)
   DATATYPE :: savenorms(numr,mcscfnum)
 
@@ -355,7 +355,6 @@ contains
     DATATYPE,intent(in) :: vectors(numr,first_config:last_config,howmany)
     DATATYPE,intent(out) :: outnorms(numr,howmany)
     DATATYPE :: tempnorms(numr,howmany),tempvec(first_config:last_config)   !! AUTOMATIC
-    DATATYPE :: dot
     integer :: kk,mm
     do mm=1,howmany
        do kk=1,numr
@@ -778,7 +777,7 @@ subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc,numi
   integer,intent(in) :: linearflag,imc
   integer,intent(out) :: numiters
   real*8,intent(in) :: time1,time2
-  DATATYPE :: dot,csum
+  DATATYPE :: csum
   DATATYPE,allocatable :: tempvector(:)
   integer :: k,qq
   real*8 :: timea,timeb

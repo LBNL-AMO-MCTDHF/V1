@@ -246,6 +246,7 @@ subroutine abio_sparse(abio,aout,inbiovar)
   use mpimod
   use matvecsetmod
   use biorthotypemod
+  use dotmod
   implicit none
   type(biorthotype),target :: inbiovar
   DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
@@ -257,7 +258,7 @@ subroutine abio_sparse(abio,aout,inbiovar)
   integer :: liwsp,lwsp,itrace,iflag,ixx,getlen,myiostat
   DATATYPE, allocatable :: smallvector(:,:), smallvectorout(:,:)
   real*8,allocatable :: wsp(:)
-  external parbiomatvec,realpardotsub
+  external parbiomatvec
 
   if (sparseconfigflag.eq.0) then
      OFLWR "Error, can't use abio_sparse if sparseconfigflag=0"; CFLST
@@ -439,12 +440,12 @@ contains
     use biorthotypemod
     use abiosparsemod
     use fileptrmod
+    use dotmod
     implicit none
     type(biorthotype),target :: inbiovar
     DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)
     DATATYPE,intent(out) :: mobio(spfsize,inbiovar%wwbio%nspf)
     DATATYPE,intent(inout) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
-    DATATYPE :: dot,hermdot
     DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig+1),&
          smosave(inbiovar%wwbio%nspf,inbiovar%wwbio%nspf)                           !! AUTOMATIC
     integer :: i,j,lowspf,highspf,numspf,flag
@@ -537,12 +538,12 @@ contains
     use tol_parameters
     use biorthotypemod
     use abiosparsemod
+    use dotmod
     implicit none
     type(biorthotype),target :: inbiovar
     DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)
     DATATYPE,intent(inout) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
     DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig+1)    !! AUTOMATIC
-    DATATYPE :: dot,hermdot
     integer :: i,j,lowspf,highspf,numspf,flag
 
     atmp=0

@@ -203,50 +203,6 @@ end subroutine dummysub
 
 !! real-valued dot product for expokit
 
-subroutine realpardotsub(one,two,n,out)
-  implicit none
-  integer,intent(in) :: n
-  real*8,intent(in) :: one(n),two(n)
-  real*8,intent(out) :: out
-  real*8 :: sum
-  sum=DOT_PRODUCT(one,two)
-  call mympirealreduceone(sum)
-  out=sum
-end subroutine realpardotsub
-
-
-!! CALLED INSIDE OMP LOOPS
-
-recursive function dot(one,two,n)
-  implicit none
-  integer,intent(in) :: n
-  DATATYPE,intent(in) :: one(n), two(n)
-  DATATYPE :: dot, sum
-  integer :: i
-  sum=0.d0
-  do i=1,n
-     sum = sum + CONJUGATE(one(i)) * two(i) 
-  enddo
-  dot=sum
-end function dot
-
-
-!! CALLED INSIDE OMP LOOPS
-
-recursive function hermdot(one,two,n)
-  implicit none
-  integer,intent(in) :: n
-  DATATYPE,intent(in) :: one(n), two(n)
-  DATATYPE :: hermdot, sum
-  integer :: i
-  sum=0.d0
-  do i=1,n
-     sum =   sum + ALLCON(one(i)) *  two(i) 
-  enddo
-  hermdot=sum
-end function hermdot
-
-
 
 subroutine gramschmidt(n, m, lda, previous, vector,parflag)
   implicit none
@@ -272,12 +228,24 @@ contains
     implicit none
     integer,intent(in) :: size
     DATATYPE,intent(in) :: ket(size),bra(size)
-    DATATYPE :: heredot,dot,csum
-    csum=dot(bra,ket,size)
+    DATATYPE :: heredot,csum,csum2
+    integer :: ii
+    csum2=0
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii,csum)
+    csum=0
+!$OMP DO SCHEDULE(DYNAMIC)
+    do ii=1,size
+       csum=csum+CONJUGATE(bra(ii))*ket(ii)
+    enddo
+!$OMP END DO
+!$OMP CRITICAL
+    csum2=csum2+csum
+!$OMP END CRITICAL
+!$OMP END PARALLEL
     if (parflag) then
-       call mympireduceone(csum)
+       call mympireduceone(csum2)
     endif
-    heredot=csum
+    heredot=csum2
   end function heredot
 
 end subroutine gramschmidt

@@ -77,7 +77,7 @@ subroutine spf_orthogit(inspfs,error)
   real*8,intent(out) :: error
   DATATYPE,intent(inout) :: inspfs(spfsize,nspf)
   DATATYPE :: tempspfs(spfsize,nspf), ovl(nspf,nspf)  !! AUTOMATIC
-  DATATYPE ::   dot, sum
+  DATATYPE :: sum
   logical :: orbparflag
   integer :: i,j,ii,lowspf,highspf,numspf
 

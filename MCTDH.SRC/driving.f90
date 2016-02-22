@@ -35,7 +35,7 @@ subroutine drivingtrans(thistime)
   DATATYPE,allocatable :: currentorbs(:,:),tempdrivingorbs(:,:),&
        tempdrivingavector(:,:,:),dtwoereduced(:,:,:),&
        dreducedpottally(:,:,:,:),multorbsxx(:,:),multorbsyy(:,:),multorbszz(:,:)
-  DATATYPE :: dot, pots(3)=0d0
+  DATATYPE :: pots(3)=0d0
    Type(CONFIGPTR) :: drivingptr
   integer ::  i, imc,j, nulltimes(10)
   real*8 :: thistime,rsum

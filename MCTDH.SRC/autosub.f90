@@ -127,6 +127,7 @@ subroutine autocorrelate_one(www,bioww,avector,inspfs,orig_spf,orig_avector,outo
   use bio_parameters
   use autobiomod
   use biorthomod
+  use dotmod
   use walkmod
   implicit none
   type(walktype),intent(in) :: www,bioww
@@ -136,7 +137,6 @@ subroutine autocorrelate_one(www,bioww,avector,inspfs,orig_spf,orig_avector,outo
        avector(innr,www%firstconfig:www%lastconfig)
   DATATYPE,intent(out) :: outoverlap
   DATATYPE,target :: smo(www%nspf,www%nspf)
-  DATATYPE :: dot
   integer :: innr
 
   allocate(mobio(spfsize,www%nspf),abio(innr,www%firstconfig:www%lastconfig))

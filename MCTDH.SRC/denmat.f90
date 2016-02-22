@@ -182,6 +182,7 @@ end subroutine getdenmatx
 
 subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howmany)
   use walkmod
+  use dotmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) ::  numpoints,howmany
@@ -190,7 +191,7 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
   DATAECS,intent(in) :: rvector(numpoints)
   DATATYPE,intent(out) :: denmat(www%nspf,www%nspf)
   DATATYPE :: a1(numpoints,howmany), a2(numpoints,howmany), &
-       mydenmat(www%nspf,www%nspf), dot, csum
+       mydenmat(www%nspf,www%nspf), csum
   DATATYPE, allocatable :: avector2(:,:,:)
   integer :: config1,config2,  ispf,jspf,  dirphase, iwalk, ii, ihop
 
@@ -319,13 +320,13 @@ end subroutine getdenmatstuff
 
 subroutine getoccupations(www,in_avector, numpoints, occupations)
   use walkmod
+  use dotmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) ::  numpoints
   CNORMTYPE, intent(out) :: occupations(www%nspf)
   integer :: config1,  ispf,jspf,  iwalk,idiag
   DATATYPE, intent(in) :: in_avector(numpoints,www%firstconfig:www%lastconfig)
-  DATATYPE :: dot
   DATATYPE, allocatable :: avector(:,:)
 
   allocate(avector(numpoints,www%numconfig))

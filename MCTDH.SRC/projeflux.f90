@@ -174,7 +174,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   DATATYPE, allocatable :: read_bramo(:,:,:,:), read_ketmo(:,:,:,:)
   complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:)
   real*8, allocatable :: pulseftsq(:)
-  DATATYPE :: hermdot, pots1(3), csum
+  DATATYPE :: pots1(3), csum
   character (len=4) :: xstate0,xmc0
   character (len=3) :: xstate1,xmc1
 
@@ -630,7 +630,6 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   integer,intent(out) :: nstate
   integer :: tau, i,ir,tndof,tnspf,tnumr,istate,ierr
   integer :: spfcomplex, acomplex, tdims(3),imc,ioffset,myiostat
-  DATATYPE :: dot
   DATATYPE, allocatable :: &
        tmo(:,:),tavec(:,:,:),tmotemp(:,:),readta(:,:,:),&
        mobio(:,:,:),abio(:,:,:),mymo(:,:),myavec(:,:,:), &

@@ -34,7 +34,6 @@ subroutine project00(lowspf,highspf,inspfs, outspfs, prospfs)
   DATATYPE,intent(in) :: inspfs(spfsize,lowspf:highspf),  prospfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
   integer :: i,j,numspf
-  DATATYPE :: dot
   DATATYPE :: mydot(nspf+numfrozen,lowspf:highspf+1),&
        tempprospfs(spfsize,nspf+numfrozen)            !! AUTOMATIC
 
@@ -83,7 +82,7 @@ subroutine project_onfrozen(inspf, outspf)
   DATATYPE,intent(in) :: inspf(spfsize)
   DATATYPE,intent(out) :: outspf(spfsize)
   integer :: j
-  DATATYPE :: dot,mydot(numfrozen)
+  DATATYPE :: mydot(numfrozen)
 
   outspf(:)=0;   mydot(:)=0
 
