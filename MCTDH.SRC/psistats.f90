@@ -204,6 +204,7 @@ subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2ex
      xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
   use parameters
   use walkmod
+  use arbitrarymultmod
   implicit none
   type(walktype),intent(in) :: www, bioww
   integer, intent(in) :: numvec
@@ -408,6 +409,7 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
   use parameters
   use mpimod
   use walkmod
+  use arbitrarymultmod
   implicit none
   type(walktype),intent(in) :: www,bioww
   DATATYPE,intent(in) :: myspfs(spfsize,www%nspf), &

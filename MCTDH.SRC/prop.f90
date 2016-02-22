@@ -12,8 +12,9 @@ subroutine prop_loop( starttime)
   use mpimod
   use xxxmod
   use configmod
+  use derivativemod
+  use sparsemultmod
   implicit none
-
   integer ::  jj,flag,  iii, itime, jtime, times(20)=0, qq,imc,getlen,myiostat
   DATAECS :: thisenergy(mcscfnum), lastenergy(mcscfnum) ,thisenergyavg,&
        lastenergyavg,startenergy(mcscfnum)
@@ -393,8 +394,8 @@ subroutine prop_wfn(tin, tout)
   use parameters
   use xxxmod
   use mpimod
+  use orbdermod
   implicit none
-  real*8, external :: all_derivs, gbs_derivs, dummysub 
   real*8,intent(in) :: tout, tin
   real*8 :: mytime,nullreal, nulldouble,gbsstepsize
   integer ::  iflag,zzz, nullint, idid, itime, jtime, time=0,  time2=0 , numiters=0,rkworkdim,&
@@ -474,6 +475,9 @@ subroutine prop_wfn(tin, tout)
 !     close(853)
 !  endif
 
+contains
+  subroutine dummysub()
+  end subroutine dummysub
 end subroutine prop_wfn
 
 
@@ -508,11 +512,11 @@ end subroutine propspfs
 subroutine propspfs0(inspfs,outspfs,tin, tout,inlinearflag,numiters)
   use parameters
   use linearmod
+  use orbdermod
   implicit none
   DATATYPE,intent(in) :: inspfs(spfsize,nspf)
   DATATYPE,intent(out) :: outspfs(spfsize,nspf)
   integer ::  numiters,iflag,zzz, nullint, idid, inlinearflag,rkworkdim,rkiworkdim
-  real*8, external ::   spf_linear_derivs , gbs_linear_derivs , dummysub
   real*8 :: tout, tin,nullreal, time1, time2, nulldouble,gbsstepsize
   real*8, allocatable :: rkwork(:)
   integer, allocatable :: rkiwork(:)
@@ -562,6 +566,10 @@ subroutine propspfs0(inspfs,outspfs,tin, tout,inlinearflag,numiters)
   call apply_spf_constraints(outspfs)
 
   call spf_orthogit(outspfs, nulldouble)
+
+contains
+  subroutine dummysub()
+  end subroutine dummysub
 
 end subroutine propspfs0
 

@@ -44,6 +44,7 @@ subroutine dferror(www,cptr,sptr,avector,numvects,outerror,time)
   use r_parameters
   use fileptrmod
   use dotmod
+  use sparsemultmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -233,6 +234,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
   use walkmod
   use mpimod
   use dotmod
+  use sparsemultmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -685,6 +687,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
   use configptrmod
   use sparseptrmod
   use dotmod
+  use sparsemultmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -1017,6 +1020,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   use configptrmod
   use sparseptrmod
   use dotmod
+  use sparsemultmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www

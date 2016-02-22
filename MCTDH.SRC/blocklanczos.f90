@@ -3,233 +3,231 @@
 
 
 
+module parblocklanmod
+contains
 
+  subroutine parblockconfigmult0_gather(www,cptr,sptr,inavector,outavector)
+    use fileptrmod
+    use r_parameters
+    use sparse_parameters
+    use ham_parameters
+    use mpimod
+    use walkmod
+    use sparseptrmod
+    use configptrmod
+    use sparsemultmod
+    implicit none
+    type(walktype),intent(in) :: www
+    type(CONFIGPTR),intent(in) :: cptr
+    type(SPARSEPTR),intent(in) :: sptr
+    integer :: ii
+    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
+    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
+    DATATYPE,allocatable :: intemp(:,:)
+    DATATYPE :: outtemp(numr,www%botconfig:www%topconfig)   !! AUTOMATIC
 
-subroutine parblockconfigmult0_gather(www,cptr,sptr,inavector,outavector)
-  use fileptrmod
-  use r_parameters
-  use sparse_parameters
-  use ham_parameters
-  use mpimod
-  use walkmod
-  use sparseptrmod
-  use configptrmod
-  implicit none
-  type(walktype),intent(in) :: www
-  type(CONFIGPTR),intent(in) :: cptr
-  type(SPARSEPTR),intent(in) :: sptr
-  integer :: ii
-  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE,allocatable :: intemp(:,:)
-  DATATYPE :: outtemp(numr,www%botconfig:www%topconfig)   !! AUTOMATIC
+    if (sparseconfigflag.eq.0) then
+       OFLWR "error, must use sparse for parblockconfigmult"; CFLST
+    endif
 
-  if (sparseconfigflag.eq.0) then
-     OFLWR "error, must use sparse for parblockconfigmult"; CFLST
-  endif
-
-  allocate(intemp(numr,www%numconfig))
-  intemp(:,:)=0d0
+    allocate(intemp(numr,www%numconfig))
+    intemp(:,:)=0d0
 
 !! transform second to reduce communication?
 !!   no, spin transformations done locally now.
 
-  if (www%topconfig-www%botconfig+1 .ne. 0) then
-     call basis_transformfrom_local(www,numr,inavector,&
-          intemp(:,www%botconfig:www%topconfig))
-  endif
+    if (www%topconfig-www%botconfig+1 .ne. 0) then
+       call basis_transformfrom_local(www,numr,inavector,&
+            intemp(:,www%botconfig:www%topconfig))
+    endif
 
-  call mpiallgather(intemp,www%numconfig*numr,&
-       www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+    call mpiallgather(intemp,www%numconfig*numr,&
+         www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
 
-  call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, cptr, sptr, &
-       1,1,1,0,0d0,0,1,numr,0,-1)
+    call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, cptr, sptr, &
+         1,1,1,0,0d0,0,1,numr,0,-1)
 
-  if (mshift.ne.0d0) then 
-     do ii=www%botconfig,www%topconfig
-        outtemp(:,ii)=outtemp(:,ii)+ intemp(:,ii)*www%configmvals(ii)*mshift
-     enddo
-  endif
+    if (mshift.ne.0d0) then 
+       do ii=www%botconfig,www%topconfig
+          outtemp(:,ii)=outtemp(:,ii)+ intemp(:,ii)*www%configmvals(ii)*mshift
+       enddo
+    endif
 
-  call basis_transformto_local(www,numr,outtemp,outavector)
+    call basis_transformto_local(www,numr,outtemp,outavector)
 
-  deallocate(intemp)
+    deallocate(intemp)
 
-end subroutine parblockconfigmult0_gather
-
+  end subroutine parblockconfigmult0_gather
 
 #ifdef MPIFLAG
 
-subroutine parblockconfigmult0_summa(www,cptr,sptr,inavector,outavector)
-  use fileptrmod
-  use r_parameters
-  use sparse_parameters
-  use ham_parameters
-  use mpimod
-  use walkmod
-  use sparseptrmod
-  use configptrmod
-  implicit none
-  type(walktype),intent(in) :: www
-  type(CONFIGPTR),intent(in) :: cptr
-  type(SPARSEPTR),intent(in) :: sptr
-  integer :: ii,iproc
-  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE :: intemp(numr,www%maxconfigsperproc),&
-       outwork(numr,www%botconfig:www%topconfig),&
-       outtemp(numr,www%botconfig:www%topconfig)  !! AUTOMATIC
+  subroutine parblockconfigmult0_summa(www,cptr,sptr,inavector,outavector)
+    use fileptrmod
+    use r_parameters
+    use sparse_parameters
+    use ham_parameters
+    use mpimod
+    use walkmod
+    use sparseptrmod
+    use configptrmod
+    use sparsemultmod
+    implicit none
+    type(walktype),intent(in) :: www
+    type(CONFIGPTR),intent(in) :: cptr
+    type(SPARSEPTR),intent(in) :: sptr
+    integer :: ii,iproc
+    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
+    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
+    DATATYPE :: intemp(numr,www%maxconfigsperproc),&
+         outwork(numr,www%botconfig:www%topconfig),&
+         outtemp(numr,www%botconfig:www%topconfig)  !! AUTOMATIC
 
-  if (sparseconfigflag.eq.0) then
-     OFLWR "error, must use sparse for parblockconfigmult"; CFLST
-  endif
+    if (sparseconfigflag.eq.0) then
+       OFLWR "error, must use sparse for parblockconfigmult"; CFLST
+    endif
 
-  outwork(:,:)=0d0
+    outwork(:,:)=0d0
 
-  do iproc=1,nprocs
+    do iproc=1,nprocs
 
 !! transform second to reduce communication?
 !!   no, spin transformations done locally now.
 
-     if (myrank.eq.iproc) then
-        call basis_transformfrom_local(www,numr,inavector,intemp)
-     endif
-     call mympibcast(intemp,iproc,&
-          (www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
+       if (myrank.eq.iproc) then
+          call basis_transformfrom_local(www,numr,inavector,intemp)
+       endif
+       call mympibcast(intemp,iproc,&
+            (www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
 
-     call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, cptr, sptr, &
-          1,1,1,0,0d0,0,1,numr,0,-1)
+       call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, cptr, sptr, &
+            1,1,1,0,0d0,0,1,numr,0,-1)
 
-     if (myrank.eq.iproc) then
-        if (mshift.ne.0d0) then 
-           do ii=www%botconfig,www%topconfig
-              outtemp(:,ii)=outtemp(:,ii) + &
-                   intemp(:,ii-www%botconfig+1)*www%configmvals(ii)*mshift
-           enddo
-        endif
-     endif
+       if (myrank.eq.iproc) then
+          if (mshift.ne.0d0) then 
+             do ii=www%botconfig,www%topconfig
+                outtemp(:,ii)=outtemp(:,ii) + &
+                     intemp(:,ii-www%botconfig+1)*www%configmvals(ii)*mshift
+             enddo
+          endif
+       endif
 
-     outwork(:,:)=outwork(:,:) + outtemp(:,:)
+       outwork(:,:)=outwork(:,:) + outtemp(:,:)
 
-  enddo
+    enddo
 
-  call basis_transformto_local(www,numr,outwork,outavector)
+    call basis_transformto_local(www,numr,outwork,outavector)
 
-end subroutine parblockconfigmult0_summa
+  end subroutine parblockconfigmult0_summa
 
+  subroutine parblockconfigmult0_circ(www,cptr,sptr,inavector,outavector)
+    use fileptrmod
+    use r_parameters
+    use sparse_parameters
+    use ham_parameters
+    use mpimod
+    use walkmod
+    use sparseptrmod
+    use configptrmod
+    use sparsemultmod
+    implicit none
+    type(walktype),intent(in) :: www
+    type(CONFIGPTR),intent(in) :: cptr
+    type(SPARSEPTR),intent(in) :: sptr
+    integer :: ii,iproc,prevproc,nextproc,deltaproc
+    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
+    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
+    DATATYPE :: workvector(numr,www%maxconfigsperproc), &
+         workvector2(numr,www%maxconfigsperproc), &
+         outwork(numr,www%botconfig:www%topconfig), &
+         outtemp(numr,www%botconfig:www%topconfig)  !! AUTOMATIC
 
-
-subroutine parblockconfigmult0_circ(www,cptr,sptr,inavector,outavector)
-  use fileptrmod
-  use r_parameters
-  use sparse_parameters
-  use ham_parameters
-  use mpimod
-  use walkmod
-  use sparseptrmod
-  use configptrmod
-  implicit none
-  type(walktype),intent(in) :: www
-  type(CONFIGPTR),intent(in) :: cptr
-  type(SPARSEPTR),intent(in) :: sptr
-  integer :: ii,iproc,prevproc,nextproc,deltaproc
-  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE :: workvector(numr,www%maxconfigsperproc), &
-       workvector2(numr,www%maxconfigsperproc), &
-       outwork(numr,www%botconfig:www%topconfig), &
-       outtemp(numr,www%botconfig:www%topconfig)  !! AUTOMATIC
-
-  if (sparseconfigflag.eq.0) then
-     OFLWR "error, must use sparse for parblockconfigmult"; CFLST
-  endif
+    if (sparseconfigflag.eq.0) then
+       OFLWR "error, must use sparse for parblockconfigmult"; CFLST
+    endif
 
 !! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 
 !!     and ftcore.f90, holding hands in a circle, prevproc and nextproc, 
 !!     each chunk gets passed around the circle
-  prevproc=mod(nprocs+myrank-2,nprocs)+1
-  nextproc=mod(myrank,nprocs)+1
+    prevproc=mod(nprocs+myrank-2,nprocs)+1
+    nextproc=mod(myrank,nprocs)+1
 
-  outwork(:,:)=0d0
+    outwork(:,:)=0d0
 
-  call basis_transformfrom_local(www,numr,inavector,workvector)
+    call basis_transformfrom_local(www,numr,inavector,workvector)
 
-  if (mshift.ne.0d0) then 
-     do ii=www%botconfig,www%topconfig
-        outwork(:,ii)=outwork(:,ii) + &
-             workvector(:,ii-www%botconfig+1)*www%configmvals(ii)*mshift
-     enddo
-  endif
-
-  do deltaproc=0,nprocs-1
+    if (mshift.ne.0d0) then 
+       do ii=www%botconfig,www%topconfig
+          outwork(:,ii)=outwork(:,ii) + &
+               workvector(:,ii-www%botconfig+1)*www%configmvals(ii)*mshift
+       enddo
+    endif
+    
+    do deltaproc=0,nprocs-1
 
 !! PASSING BACKWARD (plus deltaproc)
-     iproc=mod(myrank-1+deltaproc,nprocs)+1
+       iproc=mod(myrank-1+deltaproc,nprocs)+1
 
-     call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp, cptr, sptr, &
-          1,1,1,0,0d0,0,1,numr,0,-1)
+       call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp, cptr, sptr, &
+            1,1,1,0,0d0,0,1,numr,0,-1)
 
-     outwork(:,:)=outwork(:,:) + outtemp(:,:)
+       outwork(:,:)=outwork(:,:) + outtemp(:,:)
 
 !! PASSING BACKWARD
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
 
-     call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,&
-          numr * www%maxconfigsperproc)
-     workvector(:,:)=workvector2(:,:)
+       call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,&
+            numr * www%maxconfigsperproc)
+       workvector(:,:)=workvector2(:,:)
 
-  enddo
+    enddo
 
-  call basis_transformto_local(www,numr,outwork,outavector)
+    call basis_transformto_local(www,numr,outwork,outavector)
 
-end subroutine parblockconfigmult0_circ
-
-
+  end subroutine parblockconfigmult0_circ
 
 #endif
 
-
-subroutine parblockconfigmult(inavector,outavector)
-  use r_parameters
-  use sparse_parameters
-  use configmod
-  use xxxmod
-  use fileptrmod
-  implicit none
-  DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
+  subroutine parblockconfigmult(inavector,outavector)
+    use r_parameters
+    use sparse_parameters
+    use configmod
+    use xxxmod
+    use fileptrmod
+    implicit none
+    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
+    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
 
 #ifdef MPIFLAG
-  select case (sparsesummaflag)
-  case(0)
+    select case (sparsesummaflag)
+    case(0)
 #endif
-     if (use_dfwalktype) then
-        call parblockconfigmult0_gather(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
-     else
-        call parblockconfigmult0_gather(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
-     endif
-
+       if (use_dfwalktype) then
+          call parblockconfigmult0_gather(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+       else
+          call parblockconfigmult0_gather(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
+       endif
 
 #ifdef MPIFLAG
-  case(1)
-     if (use_dfwalktype) then
-        call parblockconfigmult0_summa(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
-     else
-        call parblockconfigmult0_summa(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
-     endif
-  case(2)
-     if (use_dfwalktype) then
-        call parblockconfigmult0_circ(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
-     else
-        call parblockconfigmult0_circ(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
-     endif
-  case default
-     OFLWR "Error sparsesummaflag ", sparsesummaflag; CFLST
-  end select
+    case(1)
+       if (use_dfwalktype) then
+          call parblockconfigmult0_summa(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+       else
+          call parblockconfigmult0_summa(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
+       endif
+    case(2)
+       if (use_dfwalktype) then
+          call parblockconfigmult0_circ(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
+       else
+          call parblockconfigmult0_circ(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
+       endif
+    case default
+       OFLWR "Error sparsesummaflag ", sparsesummaflag; CFLST
+    end select
 #endif
 
-end subroutine parblockconfigmult
+  end subroutine parblockconfigmult
 
+end module parblocklanmod
 
 
 subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter, &
@@ -272,14 +270,10 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
        nullvector1(100), nullvector2(100), lastvalue(numout), thisvalue(numout), &
        valdot(numout),normsq(numout),sqdot(numout)
 !! made these allocatable to fix lawrencium segfault 04-15
-  DATATYPE, allocatable :: lanham(:,:,:,:), laneigvects(:,:,:), templanham(:,:)
+  DATATYPE, allocatable :: lanham(:,:,:,:), laneigvects(:,:,:), templanham(:,:),&
+       betas(:,:,:),betastr(:,:,:),       invector(:), multvectors(:,:), &
+       lanvects(:,:,:), tempvectors(:,:),  lanmultvects(:,:,:), tempvectors2(:,:)
   DATAECS, allocatable :: values(:)
-  DATATYPE, allocatable :: betas(:,:,:),betastr(:,:,:)
-!! made these allocatable to fix carver segfault djh 03-30-15
-  DATATYPE, allocatable :: &   
-       invector(:), multvectors(:,:), &
-       lanvects(:,:,:), tempvectors(:,:), &
-       lanmultvects(:,:,:), tempvectors2(:,:)
 
   if (numout.lt.lanblocknum) then
      OFLWR "numout >= lanblocknum please",numout,lanblocknum; CFLST
@@ -902,13 +896,13 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
   use lan_parameters
   use fileptrmod
   use configmod
+  use parblocklanmod
   implicit none 
   integer, intent(in) :: order,inprintflag,guessflag
   integer :: printflag,maxdim,vdim,ii
   DATAECS, intent(out) :: outvalues(order)
   DATATYPE, intent(inout) :: outvectors(numr,www%firstconfig:www%lastconfig,order)
   DATATYPE,allocatable :: workvectorsspin(:,:,:)
-  external :: parblockconfigmult
 
   printflag=max(lanprintflag,inprintflag)
 

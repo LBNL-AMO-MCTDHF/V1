@@ -197,9 +197,6 @@ function myisnan(input)
   endif
 end function myisnan
 
-subroutine dummysub()
-end subroutine dummysub
-
 
 !! real-valued dot product for expokit
 

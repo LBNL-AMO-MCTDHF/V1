@@ -127,6 +127,13 @@ end module aarrmod
 
 
 
+module jactimingmod
+  implicit none
+  integer :: times(20), numcalledhere=0
+end module jactimingmod
+
+
+
 module linearmod
   implicit none
   real*8 :: lasttime, firsttime

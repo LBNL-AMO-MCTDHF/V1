@@ -141,6 +141,7 @@ subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_ex
   use dotmod
   use dipbiomod
   use biorthomod
+  use arbitrarymultmod
   implicit none
   type(walktype),intent(in) :: www,bioww
   DATATYPE, intent(in) :: inspfs(  spfsize, www%nspf ), &

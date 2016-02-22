@@ -3,76 +3,80 @@
 #include "Definitions.INC"
 
 
-subroutine project(inspfs, outspfs, prospfs)
-  use parameters
-  use opmod !! frozenspfs
-  implicit none
-  DATATYPE,intent(in) :: inspfs(spfsize,nspf),  prospfs(spfsize,nspf)
-  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-  integer :: lowspf,highspf
+module orbprojectmod
+contains
 
-  lowspf=1; highspf=nspf
-  if (parorbsplit.eq.1) then
-     call getOrbSetRange(lowspf,highspf)
-  endif
-  if (highspf-lowspf+1.gt.0) then
-     call  project00(lowspf,highspf,inspfs(:,lowspf:highspf), &
-          outspfs(:,lowspf:highspf), prospfs)
-  endif
-  if (parorbsplit.eq.1) then
-     call mpiorbgather(outspfs,spfsize)
-  endif
+  subroutine project00(lowspf,highspf,inspfs, outspfs, prospfs)
+    use parameters
+    use opmod !! frozenspfs
+    implicit none
+    integer,intent(in) :: lowspf,highspf
+    DATATYPE,intent(in) :: inspfs(spfsize,lowspf:highspf),  prospfs(spfsize,nspf)
+    DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
+    integer :: i,j,numspf
+    DATATYPE :: mydot(nspf+numfrozen,lowspf:highspf+1),&
+         tempprospfs(spfsize,nspf+numfrozen)            !! AUTOMATIC
 
-end subroutine project
-  
+    numspf=highspf-lowspf+1
 
-subroutine project00(lowspf,highspf,inspfs, outspfs, prospfs)
-  use parameters
-  use opmod !! frozenspfs
-  implicit none
-  integer,intent(in) :: lowspf,highspf
-  DATATYPE,intent(in) :: inspfs(spfsize,lowspf:highspf),  prospfs(spfsize,nspf)
-  DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
-  integer :: i,j,numspf
-  DATATYPE :: mydot(nspf+numfrozen,lowspf:highspf+1),&
-       tempprospfs(spfsize,nspf+numfrozen)            !! AUTOMATIC
+    tempprospfs(:,1:nspf)=prospfs(:,:)
 
-  numspf=highspf-lowspf+1
-
-  tempprospfs(:,1:nspf)=prospfs(:,:)
-
-  if (numfrozen.ne.0) then
-     tempprospfs(:,nspf+1:nspf+numfrozen)=frozenspfs(:,:)
-  endif
+    if (numfrozen.ne.0) then
+       tempprospfs(:,nspf+1:nspf+numfrozen)=frozenspfs(:,:)
+    endif
 
 !  if (noorthogflag.eq.0) then   !hardwire.  eliminated realproject.
 !     call spf_orthogi t(tempprospfs,nspf+numfrozen, nulldouble)
 !  endif
 
-  mydot(:,:)=0d0
+    mydot(:,:)=0d0
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
-  do i=lowspf,highspf
-     do j=1,nspf+numfrozen
-        mydot(j,i)=   dot(tempprospfs(:,j),inspfs(:,i),spfsize)
-     enddo
-  enddo
+    do i=lowspf,highspf
+       do j=1,nspf+numfrozen
+          mydot(j,i)=   dot(tempprospfs(:,j),inspfs(:,i),spfsize)
+       enddo
+    enddo
 !$OMP END DO
 !$OMP END PARALLEL
 
-  if (parorbsplit.eq.3) then
-     call mympireduce(mydot,nspf*(nspf+numfrozen))
-  endif
+    if (parorbsplit.eq.3) then
+       call mympireduce(mydot,nspf*(nspf+numfrozen))
+    endif
 
-  if (numspf.gt.0) then
-     call MYGEMM('N','N',spfsize,numspf,nspf+numfrozen,DATAONE,&
-          tempprospfs(:,:),spfsize,mydot(:,lowspf:highspf),&
-          nspf+numfrozen,DATAZERO,outspfs(:,lowspf:highspf),spfsize)
-  endif
+    if (numspf.gt.0) then
+       call MYGEMM('N','N',spfsize,numspf,nspf+numfrozen,DATAONE,&
+            tempprospfs(:,:),spfsize,mydot(:,lowspf:highspf),&
+            nspf+numfrozen,DATAZERO,outspfs(:,lowspf:highspf),spfsize)
+    endif
      
-end subroutine project00
+  end subroutine project00
 
+
+  subroutine project(inspfs, outspfs, prospfs)
+    use parameters
+    use opmod !! frozenspfs
+    implicit none
+    DATATYPE,intent(in) :: inspfs(spfsize,nspf),  prospfs(spfsize,nspf)
+    DATATYPE,intent(out) :: outspfs(spfsize,nspf)
+    integer :: lowspf,highspf
+
+    lowspf=1; highspf=nspf
+    if (parorbsplit.eq.1) then
+       call getOrbSetRange(lowspf,highspf)
+    endif
+    if (highspf-lowspf+1.gt.0) then
+       call  project00(lowspf,highspf,inspfs(:,lowspf:highspf), &
+            outspfs(:,lowspf:highspf), prospfs)
+    endif
+    if (parorbsplit.eq.1) then
+       call mpiorbgather(outspfs,spfsize)
+    endif
+
+  end subroutine project
+
+end module orbprojectmod
 
 
 subroutine project_onfrozen(inspf, outspf)
@@ -105,7 +109,6 @@ subroutine project_onfrozen(inspf, outspf)
   endif
 
 end subroutine project_onfrozen
-
 
 
 subroutine get_frexchange()

@@ -27,8 +27,8 @@ subroutine drivingtrans(thistime)
   use xxxmod
   use biorthomod
   use opmod
+  use arbitrarymultmod
   implicit none
-
   DATATYPE :: dipmatxx(nspf,nspf),dipmatyy(nspf,nspf),dipmatzz(nspf,nspf),&
        scalarpotyy(nspf,nspf),scalarpotzz(nspf,nspf),tempinvden(nspf,nspf),&
        tempdenmat2(nspf,nspf), scalarpotxx(nspf,nspf),  tempdenmat(nspf,nspf)  !! AUTOMATIC

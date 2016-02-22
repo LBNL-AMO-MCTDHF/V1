@@ -13,20 +13,375 @@
 !!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!   JACMOD SUBROUTINES, ETC 
+!!   JACOPERATE IS THE SUBROUTINE PASSED TO EXPOKIT
+!!   FOR ORBITAL PROPAGATION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+module jacmod
+  implicit none
+  DATATYPE, allocatable :: jacvect(:,:)     !! orbitals used to construct jacobian
+  DATATYPE, allocatable :: jacvectout(:,:)  !! rho^-1 W jacvect = Q jacvect
+  real*8 :: jactime
+  integer :: allocated=0
+
+end module
+
+
+module jacopmod
+contains
+
+!! SUBROUTINE PASSED TO EXPOKIT FOR ORBITAL PROPAGATION
+
+  subroutine jacopcompact(com_inspfs,com_outspfs)
+    use parameters
+    implicit none
+    DATATYPE,intent(in) :: com_inspfs(spfsmallsize,nspf)
+    DATATYPE,intent(out) :: com_outspfs(spfsmallsize,nspf)
+    DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf)  !! AUTOMATIC
+    call spfs_expand(com_inspfs,inspfs)
+    call jacoperate0(1,1,inspfs,outspfs)
+    call spfs_compact(outspfs,com_outspfs)
+  end subroutine jacopcompact
+
+  subroutine jacoperate(inspfs,outspfs)
+    use parameters
+    implicit none
+    DATATYPE,intent(in) :: inspfs(spfsize,nspf)
+    DATATYPE,intent(out) :: outspfs(spfsize,nspf)
+    call jacoperate0(1,1,inspfs,outspfs)
+  end subroutine jacoperate
+
+  subroutine jacoperate0(dentimeflag,conflag,inspfs,outspfs)
+    use parameters
+    use jactimingmod
+    implicit none
+    integer,intent(in) :: dentimeflag,conflag
+    DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
+    DATATYPE,intent(out) :: outspfs(spfsize,nspf)
+    integer :: lowspf,highspf,itime,jtime,atime,btime
+
+    call system_clock(atime)
+
+    lowspf=1; highspf=nspf
+    if (parorbsplit.eq.1) then
+       call getOrbSetRange(lowspf,highspf)
+    endif
+
+!! call always even if numspf=0
+    call jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,&
+         outspfs(:,min(nspf,lowspf):highspf))
+
+    if (parorbsplit.eq.1) then
+       call system_clock(itime)
+       call mpiorbgather(outspfs,spfsize)
+       call system_clock(jtime);      times(4)=times(4)+jtime-itime
+    endif
+
+    call system_clock(btime); times(7)=times(7)+btime-atime;
+  
+  end subroutine jacoperate0
+
+
+  subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
+    use parameters
+    use jacmod
+    use mpimod
+    use xxxmod    !! drivingorbs.... hmmm could just make wrapper but whatever
+    use linearmod
+    use jactimingmod
+    use orbprojectmod
+    use derivativemod
+    implicit none
+    integer,intent(in) :: lowspf,highspf,dentimeflag,conflag
+    DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
+    DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
+    integer :: ii,ibot,getlen,numspf,myiostat,itime,jtime,jjj
+    DATATYPE :: csum, nulldouble(2),pots(3)
+    real*8 :: facs(0:1),rsum
+    DATATYPE :: bigwork(spfsize,nspf),   workspfs(spfsize,lowspf:highspf+1),& 
+         tempspfs(spfsize,lowspf:highspf+1)       !! AUTOMATIC
+
+    numcalledhere=numcalledhere+1
+
+    numspf=highspf-lowspf+1
+
+    if (effective_cmf_linearflag.eq.1) then
+       ibot=0
+       facs(0)=(jactime-firsttime)/(lasttime-firsttime);     facs(1)=1d0-facs(0)
+    else
+       ibot=1;     facs(0)=0d0;     facs(1)=1d0
+    endif
+
+    if (numspf.gt.0) then
+       outspfs(:,lowspf:highspf)=0.d0
+    endif
+
+!! ** term with inspfs on far right ** !!
+
+!! call actreduced00 even if numspf=0
+
+    do ii=1,ibot,-1
+     
+       if (jacsymflag.ne.0) then
+
+          call system_clock(itime)
+          if (numspf.gt.0) then
+             call project00(lowspf,highspf,inspfs(:,lowspf:highspf),&
+                  bigwork(:,lowspf:highspf),jacvect) 
+          endif
+          call system_clock(jtime); times(2)=times(2)+jtime-itime;   itime=jtime
+          if (parorbsplit.eq.1) then
+             call mpiorbgather(bigwork,spfsize)
+          endif
+          call system_clock(jtime); times(4)=times(4)+jtime-itime;   itime=jtime
+
+!! call always even if numspf=0
+          call actreduced00(lowspf,highspf,dentimeflag,jactime,bigwork,nulldouble,&
+               workspfs,ii,0,0)
+
+          if (numspf.gt.0) then
+             outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
+          endif
+          call actreduced00(lowspf,highspf,dentimeflag,jactime,inspfs,&
+               nulldouble,tempspfs,ii,0,0)
+          call system_clock(jtime); times(1)=times(1)+jtime-itime; 
+
+       else
+           
+          call system_clock(itime)
+          call actreduced00(lowspf,highspf,dentimeflag,jactime, inspfs,&
+               nulldouble, workspfs,ii,0,0)
+          if (numspf.gt.0) then
+             tempspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)
+          endif
+          if (numspf.gt.0) then
+             outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
+          endif
+          call system_clock(jtime); times(1)=times(1)+jtime-itime;      
+       endif
+
+       call system_clock(itime)
+       if (numspf.gt.0) then
+          call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),&
+               workspfs(:,lowspf:highspf),jacvect)
+          outspfs(:,:)=outspfs(:,:)-workspfs(:,lowspf:highspf)*facs(ii)
+       endif
+       call system_clock(jtime); times(2)=times(2)+jtime-itime;
+
+!! terms from projector
+
+!! always call derproject00   timing in derproject00
+       call derproject00(lowspf,highspf,jacvectout(:,min(lowspf,nspf):highspf),&
+            workspfs,jacvect,inspfs)
+       if (numspf.gt.0) then
+          outspfs(:,:)=outspfs(:,:)-workspfs(:,lowspf:highspf)*facs(ii)
+       endif
+        
+       if (jacsymflag.ne.0) then
+!! always call derproject00
+          call derproject00(lowspf,highspf,jacvect(:,min(lowspf,nspf):highspf),&
+               bigwork(:,min(lowspf,nspf):highspf),jacvect,inspfs)
+
+          call system_clock(itime)
+          if (parorbsplit.eq.1) then
+             call mpiorbgather(bigwork,spfsize)
+          endif
+          call system_clock(jtime); times(4)=times(4)+jtime-itime;   itime=jtime
+
+          call actreduced00(lowspf,highspf,dentimeflag,jactime,bigwork,nulldouble,&
+               workspfs,ii,0,0)
+          if (numspf.gt.0) then
+             outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
+          endif
+          call system_clock(jtime); times(1)=times(1)+jtime-itime;  
+       endif
+        
+!!  CONSTRAINT!!  FORGOTTEN I GUESS !! APR 2014
+
+       if (constraintflag.ne.0.and.numspf.gt.0.and.conflag.ne.0) then
+          call system_clock(itime)
+          call op_gmat00(lowspf,highspf,inspfs,&
+               workspfs(:,lowspf:highspf),ii,jactime,jacvect)
+          outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
+          if (jacgmatthird.ne.0) then
+             call der_gmat00(lowspf,highspf,jacvect,&
+                  workspfs(:,lowspf:highspf),ii,jactime,jacvect,inspfs)
+             outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
+          endif
+          call system_clock(jtime); times(5)=times(5)+jtime-itime;
+       endif
+
+
+       if (numfrozen.gt.0) then
+          if (numspf.gt.0) then
+             call system_clock(itime)
+!! EXCHANGE
+             if (dentimeflag.ne.0) then
+!! TIMEFAC and facs HERE
+                csum=timefac*facs(ii)
+                call MYGEMM('N','N', spfsize,numspf,nspf,csum, &
+                     yyy%frozenexchinvr(:,:,ii),spfsize, &
+                     yyy%invdenmat(:,lowspf:highspf,ii), nspf, DATAZERO, &
+                     tempspfs(:,lowspf:highspf), spfsize)
+             else
+                tempspfs(:,lowspf:highspf)=(-1) * &
+                     yyy%frozenexchinvr(:,lowspf:highspf,ii)*facs(ii) !! factor (-1)
+             endif
+             call system_clock(jtime); times(6)=times(6)+jtime-itime;
+          endif
+
+!! always call derproject00 timing in derproject00
+          call derproject00(lowspf,highspf,tempspfs,workspfs,jacvect,inspfs)
+
+          if (numspf.gt.0) then
+             outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) + &
+                  tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
+          endif
+       endif
+
+!! DRIVING (PSI-PRIME)
+
+       if (drivingflag.ne.0) then
+          if (dentimeflag.eq.0) then
+             OFLWR "error, no driving for quad!!"; CFLST !! invdenmat already in drivingorbs
+          endif
+          rsum=0
+          if (numspf.gt.0) then
+             call vectdpot(jactime,velflag,pots,-1)
+             do jjj=1,3
+                rsum=rsum+abs(pots(jjj))**2
+             enddo
+          endif
+          if (rsum.ne.0d0) then
+             if (numspf.gt.0) then
+                workspfs(:,lowspf:highspf)=&
+                     pots(1)*yyy%drivingorbsxx(:,lowspf:highspf,ii)+&
+                     pots(2)*yyy%drivingorbsyy(:,lowspf:highspf,ii)+&
+                     pots(3)*yyy%drivingorbszz(:,lowspf:highspf,ii)
+             endif
+!! always call derproject00
+             call derproject00(lowspf,highspf,workspfs,tempspfs,jacvect,inspfs)
+             if (numspf.gt.0) then           
+                outspfs(:,:)=outspfs(:,:)-tempspfs(:,lowspf:highspf)*facs(ii)*timefac
+             endif
+          endif
+       endif
+
+    enddo
+
+    if ((myrank.eq.1).and.(notiming.eq.0)) then
+       if (numcalledhere==1) then
+          open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", &
+               status="unknown",iostat=myiostat)
+          call checkiostat(myiostat,"opening jacoperate timing file")
+          write(8577,'(T16,100A9)',iostat=myiostat) &
+               "actreduced ", &
+               "project", &
+               "derproject", &
+               "MPI", &
+               "constraint", &
+               "frozen", &
+               "total"
+
+          close(8577)
+          call checkiostat(myiostat,"writing jacoperate timing file")
+       endif
+       if (mod(numcalledhere,timingout).eq.0) then
+          open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", &
+               status="unknown", position="append",iostat=myiostat)
+          call checkiostat(myiostat,"opening jacoperate timing file")
+          write(8577,'(A3,F12.4,15I9)',iostat=myiostat) "T= ", jactime,  times(1:7)/1000
+          call checkiostat(myiostat,"writing jacoperate timing file")
+          close(8577)
+       endif
+    endif
+
+  end subroutine jacoperate00
+
+!! attempt for quad
+
+  subroutine jacorth(inspfs,outspfs)
+    use parameters
+    use jacmod
+    use orbprojectmod
+    implicit none
+    DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
+    DATATYPE,intent(out) :: outspfs(spfsize,nspf)
+    call project(inspfs,outspfs,jacvect)
+    outspfs(:,:)=inspfs(:,:)-outspfs(:,:)
+  end subroutine jacorth
+  
+end module jacopmod
+
+
+!! SETS UP JACOBIAN FOR ORBITAL EXPO PROP
+
+subroutine jacinit(inspfs, thistime)
+  use parameters
+  implicit none
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf) 
+  real*8,intent(in) :: thistime
+  call jacinit0(1,inspfs,thistime)
+end subroutine jacinit
+
+
+subroutine jacinit0(dentimeflag,inspfs, thistime)
+  use parameters
+  use linearmod
+  use jacmod
+  use derivativemod
+  implicit none
+  integer,intent(in) :: dentimeflag
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf) 
+  real*8,intent(in) :: thistime
+  DATATYPE :: nulldouble(2)
+  DATATYPE,allocatable :: jactemp(:,:)
+  real*8 :: gridtime
+
+  if (allocated.eq.0) then
+     allocate(jacvect(spfsize,nspf), jacvectout(spfsize,nspf))
+     jacvect=0;jacvectout=0
+  endif
+  allocated=1
+
+  jactime=thistime;  jacvect=inspfs; 
+
+!! ONLY GOOD FOR CMF, LMF !!
+
+  call actreduced0(dentimeflag,jactime,jacvect,nulldouble,jacvectout,1,0,0)
+
+  if (effective_cmf_linearflag.eq.1) then
+     allocate( jactemp(spfsize,nspf) );   jactemp=0
+     gridtime=(jactime-firsttime)/(lasttime-firsttime) 
+     if ((gridtime.lt.0.d0).or.(gridtime.gt.1)) then
+        print *, "GGGRIDTIME ERR ", gridtime, jactime, firsttime, lasttime
+        stop
+     endif
+     jacvectout=jacvectout*(1.d0-gridtime)
+     call actreduced0(dentimeflag,jactime,jacvect,jacvect,jactemp,0,0,0)
+     jacvectout=jacvectout+gridtime*jactemp
+     deallocate(jactemp)
+  endif
+
+end subroutine jacinit0
+
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!   EXPOMOD SUBROUTINES, ETC !!
+!!   EXPOPROP SUBROUTINE FOR ORBITAL PROPAGATION
 !!   Driver for expokit call (z/dgphiv) for orbital equation
 !!   z/dghpiv uses jacoperate and jacmod subroutines
 !!   (at bottom of this file; expomod are at top)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-
-!! EXPONENTIAL PROPAGATION OF ORBITALS !!
-
 subroutine expoprop(time1,time2,inspfs, numiters)
   use parameters
   use mpimod
+  use jacopmod
+  use orbdermod
   implicit none
   real*8,intent(in) :: time1,time2
   DATATYPE,intent(inout) :: inspfs(spfsize,nspf)
@@ -35,7 +390,6 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   real*8 :: midtime, tdiff, error, norm
   integer :: itrace, iflag,getlen
   integer :: expofileptr=805
-  external :: jacoperate,jacopcompact
 
 !! lowers thisexpodim until number of internal expokit steps is 2 or less, 
 !!  then goes back and sets
@@ -170,7 +524,6 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   else
      !! this does phi_1 = phi_0 + (exp(J t)-1)/J f(phi_0)
 
-
      call spf_linear_derivs(midtime,inspfs,aspfs) 
 
      call apply_spf_constraints(aspfs)
@@ -255,316 +608,6 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 end subroutine expoprop
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!   JACMOD SUBROUTINES, ETC 
-!!   JACOPERATE IS THE SUBROUTINE PASSED TO EXPOKIT
-!!   FOR ORBITAL PROPAGATION
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-module jacmod
-  implicit none
-  DATATYPE, allocatable :: jacvect(:,:)     !! orbitals used to construct jacobian
-  DATATYPE, allocatable :: jacvectout(:,:)  !! rho^-1 W jacvect = Q jacvect
-  real*8 :: jactime
-  integer :: allocated=0
-
-end module
-
-
-!! attempt for quad
-
-subroutine jacorth(inspfs,outspfs)
-  use parameters
-  use jacmod
-  implicit none
-  DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
-  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-  call project(inspfs,outspfs,jacvect)
-  outspfs(:,:)=inspfs(:,:)-outspfs(:,:)
-end subroutine jacorth
-
-
-!! SUBROUTINE PASSED TO EXPOKIT FOR ORBITAL PROPAGATION
-
-subroutine jacopcompact(com_inspfs,com_outspfs)
-  use parameters
-  implicit none
-  DATATYPE,intent(in) :: com_inspfs(spfsmallsize,nspf)
-  DATATYPE,intent(out) :: com_outspfs(spfsmallsize,nspf)
-  DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf)  !! AUTOMATIC
-
-  call spfs_expand(com_inspfs,inspfs)
-  call jacoperate0(1,1,inspfs,outspfs)
-  call spfs_compact(outspfs,com_outspfs)
-
-end subroutine jacopcompact
-
-
-subroutine jacoperate(inspfs,outspfs)
-  use parameters
-  implicit none
-  DATATYPE,intent(in) :: inspfs(spfsize,nspf)
-  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-
-  call jacoperate0(1,1,inspfs,outspfs)
-
-end subroutine jacoperate
-
-module jactimingmod
-  implicit none
-  integer :: times(20), numcalledhere=0
-end module jactimingmod
-
-
-subroutine jacoperate0(dentimeflag,conflag,inspfs,outspfs)
-  use parameters
-  use jactimingmod
-  implicit none
-  integer,intent(in) :: dentimeflag,conflag
-  DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
-  DATATYPE,intent(out) :: outspfs(spfsize,nspf)
-  integer :: lowspf,highspf,itime,jtime,atime,btime
-
-!! zeroing this now, timing not cumulative
-!!  times(:)=0
-
-  call system_clock(atime)
-
-  lowspf=1; highspf=nspf
-  if (parorbsplit.eq.1) then
-     call getOrbSetRange(lowspf,highspf)
-  endif
-
-!! call always even if numspf=0
-  call jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,&
-       outspfs(:,min(nspf,lowspf):highspf))
-
-  if (parorbsplit.eq.1) then
-     call system_clock(itime)
-     call mpiorbgather(outspfs,spfsize)
-     call system_clock(jtime);      times(4)=times(4)+jtime-itime
-  endif
-
-  call system_clock(btime); times(7)=times(7)+btime-atime;
-  
-end subroutine jacoperate0
-
-
-subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
-  use parameters
-  use jacmod
-  use mpimod
-  use xxxmod    !! drivingorbs.... hmmm could just make wrapper but whatever
-  use linearmod
-  use jactimingmod
-  implicit none
-  integer,intent(in) :: lowspf,highspf,dentimeflag,conflag
-  DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
-  DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
-  integer :: ii,ibot,getlen,numspf,myiostat,itime,jtime,jjj
-  DATATYPE :: csum, nulldouble(2),pots(3)
-  real*8 :: facs(0:1),rsum
-  DATATYPE :: bigwork(spfsize,nspf),   workspfs(spfsize,lowspf:highspf+1),& 
-       tempspfs(spfsize,lowspf:highspf+1)       !! AUTOMATIC
-
-  numcalledhere=numcalledhere+1
-
-  numspf=highspf-lowspf+1
-
-  if (effective_cmf_linearflag.eq.1) then
-     ibot=0
-     facs(0)=(jactime-firsttime)/(lasttime-firsttime);     facs(1)=1d0-facs(0)
-  else
-     ibot=1;     facs(0)=0d0;     facs(1)=1d0
-  endif
-
-  if (numspf.gt.0) then
-     outspfs(:,lowspf:highspf)=0.d0
-  endif
-
-!! ** term with inspfs on far right ** !!
-
-!! call actreduced00 even if numspf=0
-
-  do ii=1,ibot,-1
-     
-     if (jacsymflag.ne.0) then
-
-        call system_clock(itime)
-        if (numspf.gt.0) then
-           call project00(lowspf,highspf,inspfs(:,lowspf:highspf),&
-                bigwork(:,lowspf:highspf),jacvect) 
-        endif
-        call system_clock(jtime); times(2)=times(2)+jtime-itime;   itime=jtime
-        if (parorbsplit.eq.1) then
-           call mpiorbgather(bigwork,spfsize)
-        endif
-        call system_clock(jtime); times(4)=times(4)+jtime-itime;   itime=jtime
-
-!! call always even if numspf=0
-        call actreduced00(lowspf,highspf,dentimeflag,jactime,bigwork,nulldouble,&
-             workspfs,ii,0,0)
-
-        if (numspf.gt.0) then
-           outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
-        endif
-        call actreduced00(lowspf,highspf,dentimeflag,jactime,inspfs,&
-             nulldouble,tempspfs,ii,0,0)
-        call system_clock(jtime); times(1)=times(1)+jtime-itime; 
-
-     else
-           
-        call system_clock(itime)
-        call actreduced00(lowspf,highspf,dentimeflag,jactime, inspfs,&
-             nulldouble, workspfs,ii,0,0)
-        if (numspf.gt.0) then
-           tempspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)
-        endif
-        if (numspf.gt.0) then
-           outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
-        endif
-        call system_clock(jtime); times(1)=times(1)+jtime-itime;      
-     endif
-
-     call system_clock(itime)
-     if (numspf.gt.0) then
-        call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),&
-             workspfs(:,lowspf:highspf),jacvect)
-        outspfs(:,:)=outspfs(:,:)-workspfs(:,lowspf:highspf)*facs(ii)
-     endif
-     call system_clock(jtime); times(2)=times(2)+jtime-itime;
-
-!! terms from projector
-
-!! always call derproject00   timing in derproject00
-     call derproject00(lowspf,highspf,jacvectout(:,min(lowspf,nspf):highspf),&
-          workspfs,jacvect,inspfs)
-     if (numspf.gt.0) then
-        outspfs(:,:)=outspfs(:,:)-workspfs(:,lowspf:highspf)*facs(ii)
-     endif
-        
-     if (jacsymflag.ne.0) then
-!! always call derproject00
-        call derproject00(lowspf,highspf,jacvect(:,min(lowspf,nspf):highspf),&
-             bigwork(:,min(lowspf,nspf):highspf),jacvect,inspfs)
-
-        call system_clock(itime)
-        if (parorbsplit.eq.1) then
-           call mpiorbgather(bigwork,spfsize)
-        endif
-        call system_clock(jtime); times(4)=times(4)+jtime-itime;   itime=jtime
-
-        call actreduced00(lowspf,highspf,dentimeflag,jactime,bigwork,nulldouble,&
-             workspfs,ii,0,0)
-        if (numspf.gt.0) then
-           outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
-        endif
-        call system_clock(jtime); times(1)=times(1)+jtime-itime;  
-     endif
-        
-!!  CONSTRAINT!!  FORGOTTEN I GUESS !! APR 2014
-
-     if (constraintflag.ne.0.and.numspf.gt.0.and.conflag.ne.0) then
-        call system_clock(itime)
-        call op_gmat00(lowspf,highspf,inspfs,&
-             workspfs(:,lowspf:highspf),ii,jactime,jacvect)
-        outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
-        if (jacgmatthird.ne.0) then
-           call der_gmat00(lowspf,highspf,jacvect,&
-                workspfs(:,lowspf:highspf),ii,jactime,jacvect,inspfs)
-           outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
-        endif
-        call system_clock(jtime); times(5)=times(5)+jtime-itime;
-     endif
-
-
-     if (numfrozen.gt.0) then
-        if (numspf.gt.0) then
-           call system_clock(itime)
-!! EXCHANGE
-           if (dentimeflag.ne.0) then
-!! TIMEFAC and facs HERE
-              csum=timefac*facs(ii)
-              call MYGEMM('N','N', spfsize,numspf,nspf,csum, &
-                   yyy%frozenexchinvr(:,:,ii),spfsize, &
-                   yyy%invdenmat(:,lowspf:highspf,ii), nspf, DATAZERO, &
-                   tempspfs(:,lowspf:highspf), spfsize)
-           else
-              tempspfs(:,lowspf:highspf)=(-1) * &
-                   yyy%frozenexchinvr(:,lowspf:highspf,ii)*facs(ii) !! factor (-1)
-           endif
-           call system_clock(jtime); times(6)=times(6)+jtime-itime;
-        endif
-
-!! always call derproject00 timing in derproject00
-        call derproject00(lowspf,highspf,tempspfs,workspfs,jacvect,inspfs)
-
-        if (numspf.gt.0) then
-           outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) + &
-                tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
-        endif
-     endif
-
-!! DRIVING (PSI-PRIME)
-
-     if (drivingflag.ne.0) then
-        if (dentimeflag.eq.0) then
-           OFLWR "error, no driving for quad!!"; CFLST !! invdenmat already in drivingorbs
-        endif
-        rsum=0
-        if (numspf.gt.0) then
-           call vectdpot(jactime,velflag,pots,-1)
-           do jjj=1,3
-              rsum=rsum+abs(pots(jjj))**2
-           enddo
-        endif
-        if (rsum.ne.0d0) then
-           if (numspf.gt.0) then
-              workspfs(:,lowspf:highspf)=&
-                   pots(1)*yyy%drivingorbsxx(:,lowspf:highspf,ii)+&
-                   pots(2)*yyy%drivingorbsyy(:,lowspf:highspf,ii)+&
-                   pots(3)*yyy%drivingorbszz(:,lowspf:highspf,ii)
-           endif
-!! always call derproject00
-           call derproject00(lowspf,highspf,workspfs,tempspfs,jacvect,inspfs)
-           if (numspf.gt.0) then           
-              outspfs(:,:)=outspfs(:,:)-tempspfs(:,lowspf:highspf)*facs(ii)*timefac
-           endif
-        endif
-     endif
-
-  enddo
-
-  if ((myrank.eq.1).and.(notiming.eq.0)) then
-     if (numcalledhere==1) then
-        open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", &
-             status="unknown",iostat=myiostat)
-        call checkiostat(myiostat,"opening jacoperate timing file")
-        write(8577,'(T16,100A9)',iostat=myiostat) &
-             "actreduced ", &
-             "project", &
-             "derproject", &
-             "MPI", &
-             "constraint", &
-             "frozen", &
-             "total"
-
-        close(8577)
-        call checkiostat(myiostat,"writing jacoperate timing file")
-     endif
-     if (mod(numcalledhere,timingout).eq.0) then
-        open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", &
-             status="unknown", position="append",iostat=myiostat)
-        call checkiostat(myiostat,"opening jacoperate timing file")
-        write(8577,'(A3,F12.4,15I9)',iostat=myiostat) "T= ", jactime,  times(1:7)/1000
-        call checkiostat(myiostat,"writing jacoperate timing file")
-        close(8577)
-     endif
-  endif
-
-end subroutine jacoperate00
-
-
 !! KEEPME
 function checknan2(input,size)
   implicit none
@@ -579,57 +622,6 @@ function checknan2(input,size)
   enddo
   checknan2=.false.
 end function
-
-
-!! SETS UP JACOBIAN FOR ORBITAL EXPO PROP
-
-subroutine jacinit(inspfs, thistime)
-  use parameters
-  implicit none
-  DATATYPE,intent(in) :: inspfs(spfsize,nspf) 
-  real*8,intent(in) :: thistime
-  call jacinit0(1,inspfs,thistime)
-end subroutine jacinit
-
-
-subroutine jacinit0(dentimeflag,inspfs, thistime)
-  use parameters
-  use linearmod
-  use jacmod
-  implicit none
-  integer,intent(in) :: dentimeflag
-  DATATYPE,intent(in) :: inspfs(spfsize,nspf) 
-  real*8,intent(in) :: thistime
-  DATATYPE :: nulldouble(2)
-  DATATYPE,allocatable :: jactemp(:,:)
-  real*8 :: gridtime
-
-  if (allocated.eq.0) then
-     allocate(jacvect(spfsize,nspf), jacvectout(spfsize,nspf))
-     jacvect=0;jacvectout=0
-  endif
-  allocated=1
-
-  jactime=thistime;  jacvect=inspfs; 
-
-!! ONLY GOOD FOR CMF, LMF !!
-
-  call actreduced0(dentimeflag,jactime,jacvect,nulldouble,jacvectout,1,0,0)
-
-  if (effective_cmf_linearflag.eq.1) then
-     allocate( jactemp(spfsize,nspf) );   jactemp=0
-     gridtime=(jactime-firsttime)/(lasttime-firsttime) 
-     if ((gridtime.lt.0.d0).or.(gridtime.gt.1)) then
-        print *, "GGGRIDTIME ERR ", gridtime, jactime, firsttime, lasttime
-        stop
-     endif
-     jacvectout=jacvectout*(1.d0-gridtime)
-     call actreduced0(dentimeflag,jactime,jacvect,jacvect,jactemp,0,0,0)
-     jacvectout=jacvectout+gridtime*jactemp
-     deallocate(jactemp)
-  endif
-
-end subroutine jacinit0
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -671,11 +663,263 @@ subroutine avectortime(which)
 end subroutine
 
 
+!! MULTIPLY BY A-VECTOR HAMILTONIAN MATRIX
+
+!! NOTE BOUNDS !!  PADDED
+
+module parconfigexpomod
+contains
+
+  subroutine parconfigexpomult_padded0_gather(www,workconfigpointer,&
+       worksparsepointer,inavector,outavector)
+    use fileptrmod
+    use r_parameters
+    use sparse_parameters
+    use ham_parameters   !! timefac
+    use mpimod
+    use configexpotimemod
+    use walkmod
+    use configptrmod
+    use sparseptrmod
+    use sparsemultmod
+    implicit none
+    type(walktype),intent(in) :: www
+    type(CONFIGPTR),intent(in) :: workconfigpointer
+    type(SPARSEPTR),intent(in) :: worksparsepointer
+    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+    DATATYPE,allocatable :: intemp(:,:)
+    DATATYPE :: outtemp(numr,www%botconfig:www%topconfig+1)  !! AUTOMATIC
+
+    call avectortime(3)
+
+    if (sparseconfigflag.eq.0) then
+       OFLWR "error, must use sparse for parconfigexpomult"; CFLST
+    endif
+
+    allocate(intemp(numr,www%numconfig));    intemp(:,:)=0d0;   outtemp=0
+
+!! transform second to reduce communication?
+!!   no, spin transformations done locally now.
+
+    if (www%topconfig.ge.www%botconfig) then
+       call basis_transformfrom_local(www,numr,inavector,&
+            intemp(:,www%botconfig:www%topconfig))
+    endif
+
+    call mpiallgather(intemp,www%numconfig*numr,www%configsperproc(:)*numr,&
+         www%maxconfigsperproc*numr)
+
+    outavector(:,:)=0d0    !!     inavector(:,:)   !! PADDED
+
+    if (www%topconfig.ge.www%botconfig) then
+       call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, &
+            workconfigpointer, worksparsepointer, 1,1,1,1,&
+            configexpotime,0,1,numr,0,imc)
+       call basis_transformto_local(www,numr,outtemp,outavector)
+    endif
+
+    outavector=outavector*timefac
+
+    deallocate(intemp)
+
+    call avectortime(2)
+
+  end subroutine parconfigexpomult_padded0_gather
+
+#ifdef MPIFLAG
+
+  subroutine parconfigexpomult_padded0_summa(www,workconfigpointer,&
+       worksparsepointer,inavector,outavector)
+    use fileptrmod
+    use r_parameters
+    use sparse_parameters
+    use ham_parameters   !! timefac
+    use mpimod
+    use configexpotimemod
+    use walkmod
+    use configptrmod
+    use sparseptrmod
+    use sparsemultmod
+    implicit none
+    type(walktype),intent(in) :: www
+    type(CONFIGPTR),intent(in) :: workconfigpointer
+    type(SPARSEPTR),intent(in) :: worksparsepointer
+    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+    DATATYPE :: intemp(numr,www%maxconfigsperproc), outwork(numr,www%botconfig:www%topconfig+1),&
+         outtemp(numr,www%botconfig:www%topconfig+1)   !! AUTOMATIC
+    integer :: iproc
+
+    call avectortime(3)
+
+    if (sparseconfigflag.eq.0) then
+       OFLWR "error, must use sparse for parconfigexpomult"; CFLST
+    endif
+  
+    outwork=0d0; outtemp=0; intemp=0
+
+    do iproc=1,nprocs
+
+!! transform second to reduce communication?
+!!   no, spin transformations done locally now.
+
+       if (myrank.eq.iproc) then
+          call basis_transformfrom_local(www,numr,inavector,intemp)
+       endif
+
+       if (www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
+          call mympibcast(intemp,iproc,&
+               (www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
+
+          call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, &
+               workconfigpointer, worksparsepointer, 1,1,1,1,&
+               configexpotime,0,1,numr,0,imc)
+     
+          outwork(:,:)=outwork(:,:)+outtemp(:,:)
+
+       endif
+    enddo
+
+    outavector(:,:)=0d0   !!     inavector(:,:)   !! PADDED
+
+    call basis_transformto_local(www,numr,outwork,outavector)
+
+    outavector=outavector*timefac
+  
+    call avectortime(2)
+
+  end subroutine parconfigexpomult_padded0_summa
+
+  subroutine parconfigexpomult_padded0_circ(www,workconfigpointer,&
+       worksparsepointer,inavector,outavector)
+    use fileptrmod
+    use r_parameters
+    use sparse_parameters
+    use ham_parameters   !! timefac
+    use mpimod
+    use configexpotimemod
+    use walkmod
+    use configptrmod
+    use sparseptrmod
+    use sparsemultmod
+    implicit none
+    type(walktype),intent(in) :: www
+    type(CONFIGPTR),intent(in) :: workconfigpointer
+    type(SPARSEPTR),intent(in) :: worksparsepointer
+    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+    DATATYPE :: workvector(numr,www%maxconfigsperproc), workvector2(numr,www%maxconfigsperproc),&
+         outwork(numr,www%botconfig:www%topconfig+1),  &
+         outtemp(numr,www%botconfig:www%topconfig+1)             !! AUTOMATIC
+    integer :: iproc,prevproc,nextproc,deltaproc
+
+    call avectortime(3)
+
+    if (sparseconfigflag.eq.0) then
+       OFLWR "error, must use sparse for parconfigexpomult"; CFLST
+    endif
+
+!! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 
+!!     and ftcore.f90, holding hands in a circle, prevproc and nextproc, 
+!!     each chunk gets passed around the circle
+    prevproc=mod(nprocs+myrank-2,nprocs)+1
+    nextproc=mod(myrank,nprocs)+1
+
+    outwork=0d0; outtemp=0; workvector=0; workvector2=0
+
+    call basis_transformfrom_local(www,numr,inavector,workvector)
+
+    do deltaproc=0,nprocs-1
+
+!! PASSING BACKWARD (plus deltaproc)
+       iproc=mod(myrank-1+deltaproc,nprocs)+1
+
+       if (www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
+          call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp, &
+               workconfigpointer, worksparsepointer, &
+               1,1,1,1,configexpotime,0,1,numr,0,imc)
+          outwork(:,:)=outwork(:,:)+outtemp(:,:)
+       endif
+
+!! PASSING BACKWARD
+!! mympisendrecv(sendbuf,recvbuf,dest,source,...)
+
+       call mympisendrecv(workvector,workvector2,prevproc,&
+            nextproc,deltaproc,numr*www%maxconfigsperproc)
+       workvector(:,:)=workvector2(:,:)
+    enddo
+
+    outavector(:,:)=0d0    !!     inavector(:,:)   !! PADDED
+
+    call basis_transformto_local(www,numr,outwork,outavector)
+
+    outavector=outavector*timefac
+  
+    call avectortime(2)
+
+  end subroutine parconfigexpomult_padded0_circ
+
+#endif
+
+  subroutine parconfigexpomult_padded(inavector,outavector)
+    use fileptrmod
+    use r_parameters
+    use sparse_parameters
+    use ham_parameters   !! timefac
+    use mpimod
+    use configexpotimemod
+    use configpropmod
+    use configmod
+    implicit none
+    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+
+#ifdef MPIFLAG
+    select case (sparsesummaflag)
+    case(0)
+#endif
+       if (use_dfwalktype) then
+          call parconfigexpomult_padded0_gather(dwwptr,workconfigpointer,&
+               workdfsparsepointer,inavector,outavector)
+       else
+          call parconfigexpomult_padded0_gather(dwwptr,workconfigpointer,&
+               worksparsepointer,inavector,outavector)
+       endif
+
+#ifdef MPIFLAG
+    case(1)
+       if (use_dfwalktype) then
+          call parconfigexpomult_padded0_summa(dwwptr,workconfigpointer,&
+               workdfsparsepointer,inavector,outavector)
+       else
+          call parconfigexpomult_padded0_summa(dwwptr,workconfigpointer,&
+               worksparsepointer,inavector,outavector)
+       endif
+    case(2)
+       if (use_dfwalktype) then
+          call parconfigexpomult_padded0_circ(dwwptr,workconfigpointer,&
+               workdfsparsepointer,inavector,outavector)
+       else
+          call parconfigexpomult_padded0_circ(dwwptr,workconfigpointer,&
+               worksparsepointer,inavector,outavector)
+       endif
+    case default
+       OFLWR "Error sparsesummaflag ",sparsesummaflag; CFLST
+    end select
+#endif
+
+  end subroutine parconfigexpomult_padded
+
+end module parconfigexpomod
+
+
 subroutine exposparseprop(www,inavector,outavector,time,imc,numiters)
   use parameters
   use configpropmod
   use walkmod
   use mpimod
+  use parconfigexpomod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: imc
@@ -687,7 +931,6 @@ subroutine exposparseprop(www,inavector,outavector,time,imc,numiters)
        zerovector(numr,www%maxdfbasisperproc),&
        smallvectortemp(numr,www%maxdfbasisperproc), &
        workdrivingavecdfbasis(numr,www%botdfbasis:www%topdfbasis)    !! AUTOMATIC
-  external :: parconfigexpomult_padded
   real*8 :: one,time
   real*8, save :: tempstepsize=-1d0
   integer :: itrace, iflag, numsteps,expofileptr=61142, liwsp=0, lwsp=0,getlen,myiostat,ixx
@@ -862,241 +1105,5 @@ subroutine exposparseprop(www,inavector,outavector,time,imc,numiters)
    call avectortime(1)
    
 end subroutine exposparseprop
-
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!   ALL SUBROUTINES BELOW HERE US NO MODULES BUT MPIMOD AND PARAMETERS !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!! for derivative of PROJECTOR using derivative of spfs.     
-!!      on call inspfs is for example jacvectout
-
-!! subroutine derproject not used currently only derproject00
-
-subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
-  use parameters
-  implicit none
-  DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),&
-       prospfderivs(spfsize, nspf)
-  DATATYPE, intent(out) :: outspfs(spfsize, nspf)
-  integer :: lowspf,highspf
-
-  lowspf=1; highspf=nspf
-  if (parorbsplit.eq.1) then
-     call getOrbSetRange(lowspf,highspf)
-  endif
-
-!! always call derproject00
-  call derproject00(lowspf,highspf,inspfs(:,min(lowspf,nspf):highspf),&
-       outspfs(:,min(lowspf,nspf):highspf),prospfs,prospfderivs)
-
-  if (parorbsplit.eq.1) then
-     call mpiorbgather(outspfs,spfsize)
-  endif
-
-end subroutine derproject
-
-
-subroutine derproject00(lowspf,highspf,inspfs, outspfs, prospfs, prospfderivs)
-  use parameters
-  use jactimingmod
-  implicit none
-  integer,intent(in) :: lowspf,highspf
-  DATATYPE, intent(in) :: inspfs(spfsize, lowspf:highspf), &
-       prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
-  DATATYPE, intent(out) :: outspfs(spfsize, lowspf:highspf)
-  DATATYPE :: csum
-  DATATYPE :: mydot(nspf,lowspf:highspf+1), prodot(nspf,nspf), &
-       derdot(nspf,lowspf:highspf+1) !! AUTOMATIC
-  integer :: i,j,numspf,itime,jtime
-
-  numspf=highspf-lowspf+1
-
-  if (numspf.gt.0) then
-     outspfs(:,:)=0.d0
-  endif
-
-  call system_clock(itime)
-
-  mydot(:,:)=0d0; derdot(:,:)=0d0
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
-!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
-  do i=lowspf,highspf
-     do j=1,nspf
-        mydot(j,i) = dot(prospfs(:,j),inspfs(:,i),spfsize)
-        derdot(j,i) = dot(prospfderivs(:,j),inspfs(:,i),spfsize)
-     enddo
-  enddo
-!$OMP END DO
-!$OMP END PARALLEL
-
-  call system_clock(jtime); times(3)=times(3)+jtime-itime;     itime=jtime
-
-  if (parorbsplit.eq.3) then
-     call mympireduce(mydot,nspf**2)
-     call mympireduce(derdot,nspf**2)
-  endif
-
-  call system_clock(jtime); times(4)=times(4)+jtime-itime;     itime=jtime
-
-  if (numspf.gt.0) then
-     call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfs,spfsize,&
-          derdot(:,lowspf:highspf),nspf,DATAONE,outspfs,spfsize)
-     call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfderivs,spfsize,&
-          mydot(:,lowspf:highspf), nspf,DATAONE,outspfs,spfsize)
-  endif
-
-  call system_clock(jtime); times(3)=times(3)+jtime-itime;
-
-  if (jacprojorth.ne.0) then
-
-     call system_clock(itime)
-
-!! Proj in always-orthogonal-derivative form,
-!!
-!!  P = sum_ij | prospf_i > (S^-1)_ij < prospf_j |
-!!
-!!  where S=delta_ij = <jacvect_i | jacvect_j>
-!!
-!!  (dS)_ij = <dphi_i | jacvect_j> + <jacvect_i | dphi_j>
-!!
-!!  (dS^-1)_ij = - <dphi_i | jacvect_j> - <jacvect_i | dphi_j>  at S=1
-!!
-
-!        prodot is     (pro/proder,pro/proder)
-
-! need all nspf^2 even if parorbsplit.eq.1
-
-     prodot(:,:)=0d0
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j,csum)
-!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
-     do i=lowspf,highspf
-        do j=1,nspf
-           csum = dot(prospfs(:,j),prospfderivs(:,i),spfsize) + &
-                dot(prospfderivs(:,j),prospfs(:,i),spfsize)
-           prodot(j,i) = csum
-        enddo
-     enddo
-!$OMP END DO
-!$OMP END PARALLEL
-
-     call system_clock(jtime); times(3)=times(3)+jtime-itime;     itime=jtime
-
-     if (parorbsplit.eq.1) then
-        call mpiorbgather(prodot,nspf)
-     endif
-     if (parorbsplit.eq.3) then
-        call mympireduce(prodot,nspf**2)
-     endif
-
-     call system_clock(jtime); times(4)=times(4)+jtime-itime;     itime=jtime
-
-     if (numspf.gt.0) then
-        call MYGEMM('N', 'N', nspf, numspf, nspf, DATAONE, prodot, nspf, &
-             mydot(:,lowspf:highspf), nspf, DATAZERO, derdot(:,lowspf:highspf), nspf)
-
-        call MYGEMM('N', 'N', spfsize, numspf, nspf, DATANEGONE, prospfs, spfsize, &
-             derdot(:,lowspf:highspf), nspf, DATAONE, outspfs, spfsize)
-     endif
-
-     call system_clock(jtime); times(3)=times(3)+jtime-itime
-
-  endif
-
-end subroutine derproject00
-
-
-subroutine der_gmat(inspfs, outspfs, ireduced,thistime,prospfs, prospfderivs)
-  use parameters
-  implicit none
-  integer, intent(in) :: ireduced
-  real*8, intent(in) :: thistime
-  DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  &
-       prospfderivs(spfsize, nspf)
-  DATATYPE, intent(out) :: outspfs(spfsize, nspf)
-  integer :: lowspf,highspf,numspf
-
-  lowspf=1; highspf=nspf
-  if (parorbsplit.eq.1) then
-     call getOrbSetRange(lowspf,highspf)
-  endif
-
-  numspf=highspf-lowspf+1
-
-  if (numspf.gt.0) then
-     call der_gmat00(lowspf,highspf,inspfs,outspfs(:,lowspf:highspf),&
-          ireduced,thistime,prospfs,prospfderivs)
-  endif
-
-  if (parorbsplit.eq.1) then
-     call mpiorbgather(outspfs,spfsize)
-  endif
-
-end subroutine der_gmat
-
-
-
-subroutine der_gmat00(lowspf,highspf,inspfs, outspfs, &
-     ireduced,thistime,prospfs, prospfderivs)
-  use parameters
-  implicit none
-  integer, intent(in) :: ireduced,lowspf,highspf
-  real*8, intent(in) :: thistime
-  DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),  &
-       prospfderivs(spfsize, nspf)
-  DATATYPE, intent(out) :: outspfs(spfsize, lowspf:highspf)
-  integer :: i,j,numspf
-  DATATYPE :: mydot(nspf,lowspf:highspf+1), &
-       derdot(nspf,lowspf:highspf+1), &            !!  AUTOMATIC
-       mydot0(nspf,lowspf:highspf+1), &
-       derdot0(nspf,lowspf:highspf+1), conmat(nspf,nspf)
-
-  numspf=highspf-lowspf+1
-
-  if (numspf.gt.0) then
-     outspfs(:,:)=0.d0
-  endif
-
-  if (constraintflag.eq.0) then
-     return
-  endif
-
-  mydot0(:,:)=0d0; derdot0(:,:)=0d0
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
-!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
-  do i=lowspf,highspf
-     do j=1,nspf
-        mydot0(j,i) = dot(prospfs(:,j),inspfs(:,i),spfsize)
-        derdot0(j,i) = dot(prospfderivs(:,j),inspfs(:,i),spfsize)
-     enddo
-  enddo
-!$OMP END DO
-!$OMP END PARALLEL
-
-  if (parorbsplit.eq.3) then
-     call mympireduce(mydot0,nspf**2)
-     call mympireduce(derdot0,nspf**2)
-  endif
-
-  call getconmat(thistime,ireduced,conmat)
-
-  if (numspf.gt.0) then
-     call MYGEMM('N','N',nspf,numspf,nspf,DATAONE,conmat,nspf,&
-          mydot0(:,lowspf:highspf),nspf,DATAZERO,mydot(:,lowspf:highspf),nspf)
-     call MYGEMM('N','N',nspf,numspf,nspf,DATAONE,conmat,nspf,&
-          derdot0(:,lowspf:highspf),nspf,DATAZERO,derdot(:,lowspf:highspf),nspf)
-
-     call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfs,     spfsize,&
-          derdot(:,lowspf:highspf),nspf,DATAZERO,outspfs,spfsize)
-     call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfderivs,spfsize,&
-          mydot(:,lowspf:highspf), nspf,DATAONE,outspfs,spfsize)
-  endif
-
-end subroutine der_gmat00
-
 
 

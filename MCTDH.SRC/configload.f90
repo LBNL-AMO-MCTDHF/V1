@@ -478,18 +478,141 @@ subroutine get_avectorfile_configlist(iunit, qq, myconfiglist, myndof, mynumr, m
 end subroutine get_avectorfile_configlist
 
 
+!!                                !!
+!!      MODULE READAVECTORMOD     !!
+!!                                !!
+
+
+module readavectormod
+contains
+
+!! does conversion for initial a-vector read (excitations and holes).  
+!!   N electron wfn output.
+
+  subroutine readavectorsubroutine(readconfig, outavector,ivect)
+    use parameters
+    use configmod
+    use aarrmod
+    implicit none
+    integer :: i,iihole,iloop,jloop,ivect
+    DATATYPE,intent(out) :: outavector(num_config)
+    integer ::  readconfig(ndof+2*numholes),xflag,iexcite,config2
+    integer :: thisconfig(ndof+400)
+    integer :: jj,iind,phase,reorder
+    integer :: getconfiguration
+    logical :: allowedconfig0
+    real*8 :: qfac,xphase
+
+!!!!!!!!!!!!!!   HOLES   !!!!!!!!!!!!!!
+
+    outavector(:)=0d0;  qfac=sqrt(1d0/numholecombo/excitecombos)
+
+    do iloop=1,numholecombo   !! default numholecombo=1  with -1 entry for no avectorhole.
+       thisconfig(1:ndof+2*numholes)=readconfig(1:ndof+2*numholes)
+       xphase=1;     xflag=0
+
+       do iihole=1,numholes
+          xflag=1
+          do jj=1,numelec+numholes-iihole+1
+             if (iind(thisconfig(2*jj-1:2*jj)).eq.abs(myavectorhole(iihole,iloop,ivect))) then
+                xflag=0
+                xphase=xphase*myavectorhole(iihole,iloop,ivect) / &
+                     abs(myavectorhole(iihole,iloop,ivect))
+                thisconfig(2*jj-1:ndof+298)=thisconfig(2*jj+1:ndof+300)
+                exit
+             endif
+          enddo
+          if (xflag==1) then
+             exit
+          endif
+       enddo
+       if (xflag==1) then
+          cycle                   !! cycle iloop
+       endif
+       do i=1,numelec+numholes
+          thisconfig(i*2-1)   = thisconfig(i*2-1)-numloadfrozen   
+       enddo
+
+!!!!!!!!!!!!!!!!!!!      EXCITATIONS   !!!!!!!!!!!!!!!!!!!!!
+
+       do jloop=1,excitecombos   
+          xflag=0
+          do iexcite=1,excitations  
+             xflag=1
+             do jj=1,numelec
+                if (iind(thisconfig(2*jj-1:2*jj)).eq.&
+                     abs(myavectorexcitefrom(iexcite,jloop,ivect))) then
+                   xflag=0  
+                   thisconfig(2*jj-1:2*jj)=aarr(abs(myavectorexciteto(iexcite,jloop,ivect)))
+                   xphase=xphase*myavectorexciteto(iexcite,jloop,ivect) * &
+                        myavectorexcitefrom(iexcite,jloop,ivect) / &
+                        abs(myavectorexciteto(iexcite,jloop,ivect) * &
+                        myavectorexcitefrom(iexcite,jloop,ivect))
+                   exit
+                endif
+             enddo
+             if (xflag.eq.1) then
+                exit
+             endif
+          enddo
+          if (xflag.eq.1) then
+             cycle                     !! cycle jloop
+          endif
+          phase=reorder(thisconfig,numelec)
+          if (allowedconfig0(www,thisconfig,www%dflevel)) then
+             config2=getconfiguration(thisconfig,www)
+             if (config2.eq.-1) then
+                write(mpifileptr,*) 
+                OFLWR "Hmm, looks like avector on file is ordered differently?"; CFLST
+             endif
+             outavector(config2) = outavector(config2) + phase * qfac * xphase
+          endif
+       enddo ! jloop (excitecombos)
+    enddo ! iloop
+
+  end subroutine readavectorsubroutine
+
+!! N electron wfn, no conversion
+
+  subroutine readavectorsubsimple(readconfig, outavector,notusedint)
+    use parameters
+    use configmod
+    use aarrmod
+    implicit none
+    integer :: i,notusedint,phase,reorder,readconfig(ndof),config2,&
+         thisconfig(ndof),getconfiguration
+    logical :: allowedconfig0
+    DATATYPE,intent(out) :: outavector(num_config)
+
+    outavector(:)=0d0;  thisconfig(:)=readconfig(:)
+    do i=1,numelec
+       thisconfig(i*2-1)   = thisconfig(i*2-1)-numloadfrozen   
+    enddo
+    phase=reorder(thisconfig,numelec)
+  
+    if (allowedconfig0(www,thisconfig,www%dflevel)) then
+       config2=getconfiguration(thisconfig,www)
+       if (config2.eq.-1) then
+          write(mpifileptr,*) 
+          OFLWR "Hmm, looks like avector on file is ordered differently?"; CFLST
+       endif
+       outavector(config2) = outavector(config2) + phase 
+    endif
+  end subroutine readavectorsubsimple
+
+end module readavectormod
 
 
 
 subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
   use parameters
   use mpimod    !! myrank
+  use readavectormod
   implicit none
   character :: filename*(*)
   integer :: readnumvects,readndof,readnumr,readnumconfig,readcomplex,&
        mynumvects,numskip,ii,myiostat
   DATATYPE,intent(out) :: myavectors(numr,first_config:last_config,mynumvects)
-  external :: readavectorsubroutine,readavectorsubsimple
   DATATYPE :: nullvector(numr,1)
   DATATYPE, allocatable :: readavectors(:,:,:)
 
@@ -573,64 +696,64 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
 
   deallocate(readavectors)
 
-end subroutine load_avectors
-
+contains
 
 !! general subroutine, for loading vectors with some manipulating on read
 !!     used in load_avectors (main load routine) and ovlsub.
 
-subroutine load_avectors0(iunit, qq, myavectors, mynumr, mynumconfig, readndof, &
-     readnumr, readnumconfig, mysubroutine, mynumvects )
-  use fileptrmod
-  use mpimod   !! myrank
-  implicit none
- 
-  external :: mysubroutine
-  integer :: mynumconfig, mynumr, mynumvects,iunit,i,  readndof, readnumr, readnumconfig
-  integer :: qq, config1,  thatconfig(readndof),  myiostat, ivect
-  DATATYPE,intent(out) :: myavectors(mynumr,mynumconfig,mynumvects)
-  DATATYPE,allocatable :: mytempavector(:)
-  DATATYPE :: readvect(readnumr)
-  real*8 :: rtempreadvect(readnumr)
-  complex*16 :: ctempreadvect(readnumr)
+  subroutine load_avectors0(iunit, qq, myavectors, mynumr, mynumconfig, readndof, &
+       readnumr, readnumconfig, mysubroutine, mynumvects )
+    use fileptrmod
+    use mpimod   !! myrank
+    implicit none
+    external :: mysubroutine
+    integer :: mynumconfig, mynumr, mynumvects,iunit,i,  readndof, readnumr, readnumconfig
+    integer :: qq, config1,  thatconfig(readndof),  myiostat, ivect
+    DATATYPE,intent(out) :: myavectors(mynumr,mynumconfig,mynumvects)
+    DATATYPE,allocatable :: mytempavector(:)
+    DATATYPE :: readvect(readnumr)
+    real*8 :: rtempreadvect(readnumr)
+    complex*16 :: ctempreadvect(readnumr)
 
-  if (myrank.ne.1) then
-     print *, "programmer error, only call load_avectors0 on root process"; stop
-  endif
+    if (myrank.ne.1) then
+       print *, "programmer error, only call load_avectors0 on root process"; stop
+    endif
 
-  myavectors=0d0
+    myavectors=0d0
 
-  allocate(mytempavector(mynumconfig)); mytempavector(:)=0
+    allocate(mytempavector(mynumconfig)); mytempavector(:)=0
 
-  do ivect=1,mynumvects
-     myavectors(:,:,ivect)=0d0
-     do config1=1,readnumconfig
-        if (qq==0) then
-           read (iunit,iostat=myiostat) thatconfig(1:readndof), rtempreadvect(1:readnumr)
-           readvect(:)=rtempreadvect(:)
-        else
-           read (iunit,iostat=myiostat) thatconfig(1:readndof), ctempreadvect(1:readnumr)
-           readvect(:)=ctempreadvect(:)
-        endif
-        if (myiostat.ne.0) then
-           OFLWR "err read config "; CFLST
-        endif
+    do ivect=1,mynumvects
+       myavectors(:,:,ivect)=0d0
+       do config1=1,readnumconfig
+          if (qq==0) then
+             read (iunit,iostat=myiostat) thatconfig(1:readndof), rtempreadvect(1:readnumr)
+             readvect(:)=rtempreadvect(:)
+          else
+             read (iunit,iostat=myiostat) thatconfig(1:readndof), ctempreadvect(1:readnumr)
+             readvect(:)=ctempreadvect(:)
+          endif
+          if (myiostat.ne.0) then
+             OFLWR "err read config "; CFLST
+          endif
 !! mysubroutine takes input slater determinant with readndof electrons 
 !!    mysubroutine may give a linear combo of slaters
 !!       so is programmed to return entire A-vector
 !!  and checks validity and does its action and returns configuration index 
 !!    for myavectors (with possible +/- phase)
 
-        call mysubroutine(thatconfig,mytempavector(:),ivect)
-        do i=1,min(mynumr,readnumr)
-           myavectors(i,:,ivect)= myavectors(i,:,ivect) +  readvect(i) * mytempavector(:)
-        enddo
-     enddo
-  enddo
+          call mysubroutine(thatconfig,mytempavector(:),ivect)
+          do i=1,min(mynumr,readnumr)
+             myavectors(i,:,ivect)= myavectors(i,:,ivect) +  readvect(i) * mytempavector(:)
+          enddo
+       enddo
+    enddo
 
-  deallocate(mytempavector)
+    deallocate(mytempavector)
 
-end subroutine load_avectors0
+  end subroutine load_avectors0
+
+end subroutine load_avectors
   
 
 subroutine simple_load_avectors(iunit, qq, myavectors, myndof, mynumr, &
@@ -719,120 +842,6 @@ subroutine easy_load_avectors(iunit, qq, outavectors, mynumr, mynumconfig, mynum
 end subroutine easy_load_avectors
   
 
-
-!! does conversion for initial a-vector read (excitations and holes).  
-!!   N electron wfn output.
-
-subroutine readavectorsubroutine(readconfig, outavector,ivect)
-  use parameters
-  use configmod
-  use aarrmod
-  implicit none
-  integer :: i,iihole,iloop,jloop,ivect
-  DATATYPE,intent(out) :: outavector(num_config)
-  integer ::  readconfig(ndof+2*numholes),xflag,iexcite,config2
-  integer :: thisconfig(ndof+400)
-  integer :: jj,iind,phase,reorder
-  integer :: getconfiguration
-  logical :: allowedconfig0
-  real*8 :: qfac,xphase
-
-!!!!!!!!!!!!!!   HOLES   !!!!!!!!!!!!!!
-
-  outavector(:)=0d0;  qfac=sqrt(1d0/numholecombo/excitecombos)
-
-  do iloop=1,numholecombo   !! default numholecombo=1  with -1 entry for no avectorhole.
-     thisconfig(1:ndof+2*numholes)=readconfig(1:ndof+2*numholes)
-     xphase=1;     xflag=0
-
-     do iihole=1,numholes
-        xflag=1
-        do jj=1,numelec+numholes-iihole+1
-           if (iind(thisconfig(2*jj-1:2*jj)).eq.abs(myavectorhole(iihole,iloop,ivect))) then
-              xflag=0
-              xphase=xphase*myavectorhole(iihole,iloop,ivect) / &
-                   abs(myavectorhole(iihole,iloop,ivect))
-              thisconfig(2*jj-1:ndof+298)=thisconfig(2*jj+1:ndof+300)
-              exit
-           endif
-        enddo
-        if (xflag==1) then
-           exit
-        endif
-     enddo
-     if (xflag==1) then
-        cycle                   !! cycle iloop
-     endif
-     do i=1,numelec+numholes
-        thisconfig(i*2-1)   = thisconfig(i*2-1)-numloadfrozen   
-     enddo
-
-!!!!!!!!!!!!!!!!!!!      EXCITATIONS   !!!!!!!!!!!!!!!!!!!!!
-
-     do jloop=1,excitecombos   
-        xflag=0
-        do iexcite=1,excitations  
-           xflag=1
-           do jj=1,numelec
-              if (iind(thisconfig(2*jj-1:2*jj)).eq.&
-                   abs(myavectorexcitefrom(iexcite,jloop,ivect))) then
-                 xflag=0  
-                 thisconfig(2*jj-1:2*jj)=aarr(abs(myavectorexciteto(iexcite,jloop,ivect)))
-                 xphase=xphase*myavectorexciteto(iexcite,jloop,ivect) * &
-                      myavectorexcitefrom(iexcite,jloop,ivect) / &
-                      abs(myavectorexciteto(iexcite,jloop,ivect) * &
-                      myavectorexcitefrom(iexcite,jloop,ivect))
-                 exit
-              endif
-           enddo
-           if (xflag.eq.1) then
-              exit
-           endif
-        enddo
-        if (xflag.eq.1) then
-           cycle                     !! cycle jloop
-        endif
-        phase=reorder(thisconfig,numelec)
-        if (allowedconfig0(www,thisconfig,www%dflevel)) then
-           config2=getconfiguration(thisconfig,www)
-           if (config2.eq.-1) then
-              write(mpifileptr,*) 
-              OFLWR "Hmm, looks like avector on file is ordered differently?"; CFLST
-           endif
-           outavector(config2) = outavector(config2) + phase * qfac * xphase
-        endif
-     enddo ! jloop (excitecombos)
-  enddo ! iloop
-
-end subroutine readavectorsubroutine
-
-!! N electron wfn, no conversion
-
-subroutine readavectorsubsimple(readconfig, outavector,notusedint)
-  use parameters
-  use configmod
-  use aarrmod
-  implicit none
-  integer :: i,notusedint,phase,reorder,readconfig(ndof),config2,&
-       thisconfig(ndof),getconfiguration
-  logical :: allowedconfig0
-  DATATYPE,intent(out) :: outavector(num_config)
-
-  outavector(:)=0d0;  thisconfig(:)=readconfig(:)
-  do i=1,numelec
-     thisconfig(i*2-1)   = thisconfig(i*2-1)-numloadfrozen   
-  enddo
-  phase=reorder(thisconfig,numelec)
-  
-  if (allowedconfig0(www,thisconfig,www%dflevel)) then
-     config2=getconfiguration(thisconfig,www)
-     if (config2.eq.-1) then
-        write(mpifileptr,*) 
-        OFLWR "Hmm, looks like avector on file is ordered differently?"; CFLST
-     endif
-     outavector(config2) = outavector(config2) + phase 
-  endif
-end subroutine readavectorsubsimple
 
 subroutine write_avector(unit,avector)
   use configmod

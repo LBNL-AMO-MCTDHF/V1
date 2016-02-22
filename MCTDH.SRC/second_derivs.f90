@@ -7,32 +7,11 @@
 
 !! jacunitflag, jacsymflag not implementd
 
-subroutine second_derivs(thistime,inspfs,sdspfs)
-  use parameters
-  implicit none
-  real*8,intent(in) :: thistime
-  DATATYPE,intent(in) :: inspfs(spfsize,nspf)
-  DATATYPE,intent(out) :: sdspfs(spfsize,nspf)
-  integer :: lowspf,highspf
-
-  lowspf=1; highspf=nspf
-  if (parorbsplit.eq.1) then
-     call getOrbSetRange(lowspf,highspf)
-  endif
-
-!! call always even if numspf=0
-  call second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs(:,min(lowspf,nspf):highspf))
-
-  if (parorbsplit.eq.1) then
-     call mpiorbgather(sdspfs,spfsize)
-  endif
-
-end subroutine second_derivs
-
-
 subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
   use parameters
   use linearmod
+  use derivativemod
+  use orbprojectmod
   implicit none
   integer,intent(in) :: lowspf,highspf
   real*8,intent(in) :: thistime
@@ -135,6 +114,28 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
 
 end subroutine second_derivs00
 
+
+subroutine second_derivs(thistime,inspfs,sdspfs)
+  use parameters
+  implicit none
+  real*8,intent(in) :: thistime
+  DATATYPE,intent(in) :: inspfs(spfsize,nspf)
+  DATATYPE,intent(out) :: sdspfs(spfsize,nspf)
+  integer :: lowspf,highspf
+
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getOrbSetRange(lowspf,highspf)
+  endif
+
+!! call always even if numspf=0
+  call second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs(:,min(lowspf,nspf):highspf))
+
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(sdspfs,spfsize)
+  endif
+
+end subroutine second_derivs
 
 
 module verletmod

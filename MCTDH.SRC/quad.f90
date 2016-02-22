@@ -10,27 +10,30 @@
 
 !! ON INPUT SOLUTION IS GUESS.
 
-subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, &
-     intolerance, indimension, inkrydim,parflag,ierr)
-  use fileptrmod
-  implicit none
-  integer,intent(in) :: indimension,inkrydim,parflag,preconflag
-  integer,intent(out) :: ierr
-  real*8,intent(in) :: intolerance
-  DATATYPE,intent(in) :: rhs(indimension)
-  integer,intent(out) :: numiter
-  DATATYPE,intent(out) :: solution(indimension)
-  integer :: itol, iunit, jjxx, rgwkdim
-  external :: inmult, dummysub, inprecon
-  integer :: igwk(20), ligwk=20, nullint1,nullint2,nullint3,nullint4, nullint5
-  real*8 :: nulldouble1, errest, nulldouble2, nulldouble3, nulldouble4, tol
-  real*8, allocatable :: rgwk(:)
+module dgsolvemod
+contains
+
+  subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, &
+       intolerance, indimension, inkrydim,parflag,ierr)
+    use fileptrmod
+    implicit none
+    integer,intent(in) :: indimension,inkrydim,parflag,preconflag
+    integer,intent(out) :: ierr
+    real*8,intent(in) :: intolerance
+    DATATYPE,intent(in) :: rhs(indimension)
+    integer,intent(out) :: numiter
+    DATATYPE,intent(out) :: solution(indimension)
+    integer :: itol, iunit, jjxx, rgwkdim
+    external :: inmult, inprecon
+    integer :: igwk(20), ligwk=20, nullint1,nullint2,nullint3,nullint4, nullint5
+    real*8 :: nulldouble1, errest, nulldouble2, nulldouble3, nulldouble4, tol
+    real*8, allocatable :: rgwk(:)
 #ifdef REALGO
-  integer, parameter :: zzz=1
+    integer, parameter :: zzz=1
 #else
-  integer, parameter :: zzz=2
+    integer, parameter :: zzz=2
 #endif
-  integer, parameter :: jacwrite=0
+    integer, parameter :: jacwrite=0
 
 !!$  looks ok now dgmres bugfix 10-2015
 !!$  mindim=indimension; maxdim=indimension
@@ -40,62 +43,64 @@ subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, &
 !!$         mindim,maxdim; CFLST
 !!$  endif
 
-  jjxx = zzz * indimension
+    jjxx = zzz * indimension
 
-  rgwkdim= (42 + jjxx*(inkrydim*zzz + 6) + inkrydim*zzz*(inkrydim*zzz + 3)) / 5 * 6
+    rgwkdim= (42 + jjxx*(inkrydim*zzz + 6) + inkrydim*zzz*(inkrydim*zzz + 3)) / 5 * 6
 
-  if (rgwkdim.lt.0) then
-     OFLWR "OOPS, integer overflow, decrease maxexpodim or reduce size of orbitals (per processor)",&
-          rgwkdim; CFLST
-  endif
+    if (rgwkdim.lt.0) then
+       OFLWR "OOPS, integer overflow, decrease maxexpodim or reduce size of orbitals (per processor)",&
+            rgwkdim; CFLST
+    endif
 
-  allocate(rgwk(rgwkdim)); rgwk(:)=0d0
+    allocate(rgwk(rgwkdim)); rgwk(:)=0d0
 
-  itol=0;  iunit=0
+    itol=0;  iunit=0
 
-  igwk=0
-  igwk(1) = inkrydim*zzz    !! max krylov dim
-  igwk(2) = inkrydim*zzz    !! max orthog
-  igwk(3) = 0             !! scaling (nulldouble 2 and 3)
-  igwk(4) = preconflag  !!  preconditioning
-  igwk(5)=100  !! max restarts
-  igwk(5)=-1 
+    igwk=0
+    igwk(1) = inkrydim*zzz    !! max krylov dim
+    igwk(2) = inkrydim*zzz    !! max orthog
+    igwk(3) = 0             !! scaling (nulldouble 2 and 3)
+    igwk(4) = preconflag  !!  preconditioning
+    igwk(5)=100  !! max restarts
+    igwk(5)=-1 
 
-  tol=intolerance
+    tol=intolerance
 
-  if (parflag.eq.0) then
-     call dgmres(jjxx, rhs, solution, nullint1, nullint2, nullint3, nulldouble1, nullint3, inmult, &
-          inprecon,itol , tol, nullint4, numiter, errest, ierr, iunit, nulldouble2, nulldouble3, rgwk, &
-          rgwkdim, igwk, ligwk, nulldouble4, nullint5)
-  else
-     call dgmrespar(jjxx, rhs, solution, nullint1, nullint2, nullint3, nulldouble1, nullint3, inmult, &
-          inprecon,itol , tol, nullint4, numiter, errest, ierr, iunit, nulldouble2, nulldouble3, rgwk, &
-          rgwkdim, igwk, ligwk, nulldouble4, nullint5)
-  endif
+    if (parflag.eq.0) then
+       call dgmres(jjxx, rhs, solution, nullint1, nullint2, nullint3, nulldouble1, nullint3, inmult, &
+            inprecon,itol , tol, nullint4, numiter, errest, ierr, iunit, nulldouble2, nulldouble3, rgwk, &
+            rgwkdim, igwk, ligwk, nulldouble4, nullint5)
+    else
+       call dgmrespar(jjxx, rhs, solution, nullint1, nullint2, nullint3, nulldouble1, nullint3, inmult, &
+            inprecon,itol , tol, nullint4, numiter, errest, ierr, iunit, nulldouble2, nulldouble3, rgwk, &
+            rgwkdim, igwk, ligwk, nulldouble4, nullint5)
+    endif
 
 !!$  if (debugflag.ne.0) then
 !!$     OFLWR "     DGSOLVE - restarts,iters,errest ",igwk(5), numiter,errest; CFL
 !!$  endif
 
-  if (jacwrite==1) then
-     OFLWR "   NEWTON: numiter ", numiter, " error ", errest;     call closefile()
-  endif
+    if (jacwrite==1) then
+       OFLWR "   NEWTON: numiter ", numiter, " error ", errest;     call closefile()
+    endif
 
 !! AUTHOR COMMENTS ARE WRONG IN DGMRES.F ierr=1 denotes max restarts (zero) reached !! 
-  if (ierr.eq.1) then 
-     OFLWR "WARNING! dgmres did not converge. increase krylov order?",inkrydim; CFL
-  else if (ierr.eq.2) then
-     OFLWR "WARNING! dgmres stalled."; CFL
-  else  if (ierr/=0) then
-     OFLWR "Error dgmres ", ierr
-     WRFL "igwk(6) = ",igwk(6)
-     WRFL "rgwkdim = ",rgwkdim
-     CFLST
-  endif
+    if (ierr.eq.1) then 
+       OFLWR "WARNING! dgmres did not converge. increase krylov order?",inkrydim; CFL
+    else if (ierr.eq.2) then
+       OFLWR "WARNING! dgmres stalled."; CFL
+    else  if (ierr/=0) then
+       OFLWR "Error dgmres ", ierr
+       WRFL "igwk(6) = ",igwk(6)
+       WRFL "rgwkdim = ",rgwkdim
+       CFLST
+    endif
 
-  deallocate(rgwk)
+    deallocate(rgwk)
 
-end subroutine dgsolve0
+  end subroutine dgsolve0
+
+end module dgsolvemod
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -111,57 +116,61 @@ subroutine quadinit(inspfs, thistime)
 end subroutine quadinit
 
 
-subroutine quadoperate(notusedint,inspfs,outspfs)
-   use parameters
-   implicit none
-   integer :: notusedint
-   DATATYPE,intent(in) ::  inspfs(totspfdim)
-   DATATYPE,intent(out) :: outspfs(totspfdim)
-   DATATYPE :: workspfs(totspfdim)              !! AUTOMATIC
+module quadopmod
+contains
 
-   if (jacprojorth.ne.0) then   
-      call jacorth(inspfs,outspfs)
-      call jacoperate0(0,0,outspfs,workspfs)
-      call jacorth(workspfs,outspfs)
-   else
-      call jacoperate0(0,0,inspfs,outspfs)
-   endif
+  subroutine quadoperate(notusedint,inspfs,outspfs)
+    use parameters
+    use jacopmod
+    implicit none
+    integer :: notusedint
+    DATATYPE,intent(in) ::  inspfs(totspfdim)
+    DATATYPE,intent(out) :: outspfs(totspfdim)
+    DATATYPE :: workspfs(totspfdim)              !! AUTOMATIC
+    if (jacprojorth.ne.0) then   
+       call jacorth(inspfs,outspfs)
+       call jacoperate0(0,0,outspfs,workspfs)
+       call jacorth(workspfs,outspfs)
+    else
+       call jacoperate0(0,0,inspfs,outspfs)
+    endif
+  end subroutine quadoperate
 
-end subroutine quadoperate
+  subroutine quadopcompact(notusedint,com_inspfs,com_outspfs)
+    use parameters
+    use jacopmod
+    implicit none
+    integer :: notusedint
+    DATATYPE,intent(in) ::  com_inspfs(spfsmallsize*nspf)
+    DATATYPE,intent(out) :: com_outspfs(spfsmallsize*nspf)
+    DATATYPE :: inspfs(spfsize*nspf),outspfs(spfsize*nspf)  !! AUTOMATIC
+    call spfs_expand(com_inspfs,inspfs)
+    if (jacprojorth.ne.0) then   
+       call jacorth(inspfs,outspfs)
+       call jacoperate0(0,0,outspfs,inspfs)
+       call jacorth(inspfs,outspfs)
+    else
+       call jacoperate0(0,0,inspfs,outspfs)
+    endif
+    call spfs_compact(outspfs,com_outspfs)
+  end subroutine quadopcompact
 
-
-subroutine quadopcompact(notusedint,com_inspfs,com_outspfs)
-   use parameters
-   implicit none
-   integer :: notusedint
-   DATATYPE,intent(in) ::  com_inspfs(spfsmallsize*nspf)
-   DATATYPE,intent(out) :: com_outspfs(spfsmallsize*nspf)
-   DATATYPE :: inspfs(spfsize*nspf),outspfs(spfsize*nspf)  !! AUTOMATIC
-
-   call spfs_expand(com_inspfs,inspfs)
-   if (jacprojorth.ne.0) then   
-      call jacorth(inspfs,outspfs)
-      call jacoperate0(0,0,outspfs,inspfs)
-      call jacorth(inspfs,outspfs)
-   else
-      call jacoperate0(0,0,inspfs,outspfs)
-   endif
-   call spfs_compact(outspfs,com_outspfs)
-
-end subroutine quadopcompact
+end module quadopmod
 
 
 subroutine quadspfs(inspfs,jjcalls)
   use parameters
   use mpimod
   use linearmod
+  use dgsolvemod
+  use quadopmod
+  use orbdermod
   implicit none
   DATATYPE,intent(inout) :: inspfs(totspfdim)  
   integer,intent(out) :: jjcalls
   integer :: icount,maxdim,ierr
   real*8 :: orthogerror,dev,mynorm
   DATATYPE, allocatable ::  vector(:), vector2(:), vector3(:), com_vector2(:), com_vector3(:)
-  EXTERNAL :: quadoperate,dummysub,quadopcompact
 
   allocate( vector(totspfdim), vector2(totspfdim), vector3(totspfdim) )
   vector=0; vector2=0; vector3=0
@@ -266,6 +275,10 @@ subroutine quadspfs(inspfs,jjcalls)
      deallocate(com_vector2,com_vector3)
   endif
 
+contains
+  subroutine dummysub()
+  end subroutine dummysub
+
 end subroutine quadspfs
 
 
@@ -287,6 +300,7 @@ subroutine aaonedinit(www,inavector)
   use r_parameters
   use walkmod
   use dotmod
+  use sparsemultmod
   implicit none
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: inavector(www%totadim)
@@ -378,9 +392,10 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
   use aaonedmod
   use xxxmod
   use walkmod
+  use dgsolvemod
+  use sparsemultmod
   implicit none
   type(walktype),intent(in) :: www
-  EXTERNAL :: paraamult, parquadpreconsub
   DATATYPE, intent(inout) ::  inavector(numr,www%firstconfig:www%lastconfig)
   integer,intent(out) :: jjcalls0
   integer :: jjcalls, ss, maxdim, mysize,flag,ierr
@@ -505,6 +520,108 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
 
   enddo  !! INFINITE LOOP
 
+contains
+
+  subroutine paraamult(notusedint,inavectorspin,outavectorspin)
+    use r_parameters
+    use aaonedmod
+    use configmod
+    use parblocklanmod
+    implicit none
+    integer,intent(in) :: notusedint
+    DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
+    DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
+    call parblockconfigmult(inavectorspin,outavectorspin)
+    if (www%topdfbasis.ge.www%botdfbasis) then
+       outavectorspin(:,:)= outavectorspin(:,:) - quadexpect*inavectorspin(:,:)
+    endif
+  end subroutine paraamult
+
+  subroutine parquadpreconsub(notusedint, inavectorspin,outavectorspin)
+    use fileptrmod
+    use r_parameters
+    use sparse_parameters
+    use aaonedmod
+    use xxxmod
+    use configmod
+    implicit none
+    integer,intent(in) :: notusedint
+    DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
+    DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
+
+    if (use_dfwalktype) then
+       call parquadpreconsub0(dwwptr,yyy%cptr(0),yyy%sdfptr(0),&
+            notusedint,inavectorspin,outavectorspin)
+    else
+       call parquadpreconsub0(dwwptr,yyy%cptr(0),yyy%sptr(0),&
+            notusedint,inavectorspin,outavectorspin)
+    endif
+
+  end subroutine parquadpreconsub
+
+  subroutine parquadpreconsub0(www,cptr,sptr,notusedint, inavectorspin,outavectorspin)
+    use fileptrmod
+    use r_parameters
+    use sparse_parameters
+    use aaonedmod
+    use walkmod
+    use configptrmod
+    use sparseptrmod
+    use sparsemultmod
+    implicit none
+    type(walktype),intent(in) :: www
+    type(CONFIGPTR),intent(in) :: cptr
+    type(SPARSEPTR),intent(in) :: sptr
+    integer,intent(in) :: notusedint
+    DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
+    DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
+    DATATYPE :: inavector(numr,www%botconfig:www%topconfig+1),&
+         outavector(numr,www%botconfig:www%topconfig+1)  !!AUTOMATIC
+    
+    if (sparseconfigflag.eq.0) then
+       OFLWR "error, no parquadpreconsub if sparseconfigflag=0"; CFLST
+    endif
+    
+    call basis_transformfrom_local(www,numr,inavectorspin,inavector)
+
+    call parsparseconfigpreconmult(www,inavector, outavector, cptr, sptr,&
+         1,1,1,1, quadexpect,0d0)
+
+    call basis_transformto_local(www,numr,outavector,outavectorspin)
+
+  end subroutine parquadpreconsub0
+
+!!$
+!!$subroutine parhrmult(lanblocknum,inavectorspin,outavectorspin)
+!!$  use parameters
+!!$  use aaonedmod
+!!$  implicit none
+!!$  integer,intent(in) :: lanblocknum
+!!$  DATATYPE,intent(in) :: inavectorspin(numr,botbasis:topbasis)
+!!$  DATATYPE,intent(out) :: outavectorspin(numr,botbasis:topbasis)
+!!$
+!!$  if (lanblocknum.ne.1) then
+!!$     OFLWR "DOOGSNATCH",lanblocknum; CFLST
+!!$  endif
+!!$  call parblockconfigmult(inavectorspin,outavectorspin)
+!!$
+!!$end subroutine parhrmult
+!!$
+!!$subroutine parhrdotsub(bra,ket,size,numbra,numket,outdots)
+!!$  implicit none
+!!$  integer,intent(in) :: size,numbra,numket
+!!$  DATATYPE,intent(in) :: bra(size,numbra),ket(size,numbra)
+!!$  DATATYPE,intent(out) :: outdots(numbra,numket)
+!!$  DATATYPE :: dot
+!!$  integer :: ii,jj
+!!$  do jj=1,numket
+!!$     do ii=1,numbra
+!!$        outdots(ii,jj)=dot(bra(:,ii),ket(:,jj),size)
+!!$     enddo
+!!$  enddo
+!!$end subroutine parhrdotsub
+!!$
+
 end subroutine sparsequadavector
 
 
@@ -514,6 +631,7 @@ subroutine nonsparsequadavector(www,avectorout)
   use parameters
   use xxxmod
   use walkmod
+  use sparsemultmod
   implicit none
   type(walktype),intent(in) :: www
   DATATYPE,intent(inout) :: avectorout(www%totadim)
@@ -619,109 +737,4 @@ end subroutine nonsparsequadavector
 
 
 
-subroutine paraamult(notusedint,inavectorspin,outavectorspin)
-  use r_parameters
-  use aaonedmod
-  use configmod
-  implicit none
-  integer,intent(in) :: notusedint
-  DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
-
-  call parblockconfigmult(inavectorspin,outavectorspin)
-
-  if (www%topdfbasis.ge.www%botdfbasis) then
-     outavectorspin(:,:)= outavectorspin(:,:) - quadexpect*inavectorspin(:,:)
-  endif
-
-end subroutine paraamult
-
-
-
-subroutine parquadpreconsub(notusedint, inavectorspin,outavectorspin)
-  use fileptrmod
-  use r_parameters
-  use sparse_parameters
-  use aaonedmod
-  use xxxmod
-  use configmod
-  implicit none
-  integer,intent(in) :: notusedint
-  DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
-
-  if (use_dfwalktype) then
-     call parquadpreconsub0(dwwptr,yyy%cptr(0),yyy%sdfptr(0),&
-          notusedint,inavectorspin,outavectorspin)
-  else
-     call parquadpreconsub0(dwwptr,yyy%cptr(0),yyy%sptr(0),&
-          notusedint,inavectorspin,outavectorspin)
-  endif
-
-end subroutine parquadpreconsub
-
-
-subroutine parquadpreconsub0(www,cptr,sptr,notusedint, inavectorspin,outavectorspin)
-  use fileptrmod
-  use r_parameters
-  use sparse_parameters
-  use aaonedmod
-  use walkmod
-  use configptrmod
-  use sparseptrmod
-  implicit none
-  type(walktype),intent(in) :: www
-  type(CONFIGPTR),intent(in) :: cptr
-  type(SPARSEPTR),intent(in) :: sptr
-  integer,intent(in) :: notusedint
-  DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
-  DATATYPE :: inavector(numr,www%botconfig:www%topconfig+1),&
-       outavector(numr,www%botconfig:www%topconfig+1)  !!AUTOMATIC
-
-  if (sparseconfigflag.eq.0) then
-     OFLWR "error, no parquadpreconsub if sparseconfigflag=0"; CFLST
-  endif
-
-  call basis_transformfrom_local(www,numr,inavectorspin,inavector)
-
-  call parsparseconfigpreconmult(www,inavector, outavector, cptr, sptr,&
-       1,1,1,1, quadexpect,0d0)
-
-  call basis_transformto_local(www,numr,outavector,outavectorspin)
-
-end subroutine parquadpreconsub0
-
-
-
-!!$
-!!$subroutine parhrmult(lanblocknum,inavectorspin,outavectorspin)
-!!$  use parameters
-!!$  use aaonedmod
-!!$  implicit none
-!!$  integer,intent(in) :: lanblocknum
-!!$  DATATYPE,intent(in) :: inavectorspin(numr,botbasis:topbasis)
-!!$  DATATYPE,intent(out) :: outavectorspin(numr,botbasis:topbasis)
-!!$
-!!$  if (lanblocknum.ne.1) then
-!!$     OFLWR "DOOGSNATCH",lanblocknum; CFLST
-!!$  endif
-!!$  call parblockconfigmult(inavectorspin,outavectorspin)
-!!$
-!!$end subroutine parhrmult
-!!$
-!!$subroutine parhrdotsub(bra,ket,size,numbra,numket,outdots)
-!!$  implicit none
-!!$  integer,intent(in) :: size,numbra,numket
-!!$  DATATYPE,intent(in) :: bra(size,numbra),ket(size,numbra)
-!!$  DATATYPE,intent(out) :: outdots(numbra,numket)
-!!$  DATATYPE :: dot
-!!$  integer :: ii,jj
-!!$  do jj=1,numket
-!!$     do ii=1,numbra
-!!$        outdots(ii,jj)=dot(bra(:,ii),ket(:,jj),size)
-!!$     enddo
-!!$  enddo
-!!$end subroutine parhrdotsub
-!!$
 

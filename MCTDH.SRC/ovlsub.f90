@@ -30,11 +30,10 @@ subroutine ovl_initial()
   use ovlmod
   use parameters
   use mpimod
+  use readavectormod
   implicit none
-
   integer :: jnumovl, ifile,acomplex,spfcomplex,nstate,i,kk,tdims(3),&
        tndof,tnumconfig,tnumr,tnspf,myiostat
-  external :: readavectorsubsimple
   DATATYPE, allocatable :: read_avectors(:,:), read_spfs(:,:)
   DATATYPE :: nullvector(numr)
 

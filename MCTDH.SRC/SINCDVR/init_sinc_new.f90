@@ -1,5 +1,4 @@
 
-
 #include "Definitions.INC"
 
 
@@ -162,6 +161,222 @@ function ddjscaled(xval)
 end function ddjscaled
 
 
+module ivopotmod
+  implicit none
+  integer :: numocc=(-1)
+  DATATYPE, allocatable :: ivopot(:),ivo_occupied(:,:)
+end module ivopotmod
+
+
+subroutine ivo_project(inbigspf,outbigspf)
+  use myparams
+  use ivopotmod
+  implicit none
+  DATATYPE,intent(in) :: inbigspf(totpoints)
+  DATATYPE, intent(out) :: outbigspf(totpoints)
+  integer :: ii
+  outbigspf(:)=0d0
+  do ii=1,numocc
+     outbigspf(:)=outbigspf(:) + ivo_occupied(:,ii) * ivodot(ivo_occupied(:,ii),inbigspf(:),totpoints)
+  enddo
+
+contains
+  function ivodot(inbra,inket,size)
+    use myparams
+    implicit none
+    integer,intent(in) :: size 
+    DATATYPE,intent(in) :: inbra(size),inket(size)
+    DATATYPE :: ivodot,csum
+    csum=DOT_PRODUCT(inbra,inket)
+    if (orbparflag) then
+       call mympireduceone(csum)
+    endif
+    ivodot=csum
+  end function ivodot
+
+end subroutine ivo_project
+
+
+subroutine init_spfs(inspfs,numloaded)
+  use myparams
+  use pmpimod
+  use pfileptrmod
+  use ivopotmod
+  use twoemod
+  implicit none
+  DATATYPE :: inspfs(totpoints,numspf)
+  DATATYPE,allocatable :: lanspfs(:,:),density(:)
+  DATAECS,allocatable :: energies(:)
+  integer, intent(in) :: numloaded
+  integer :: ibig,iorder,ispf,ppfac,ii,jj,kk,olist(numspf),flag
+  integer :: null1,null2,null3,null4,null10(10),numcompute
+
+  if (ivoflag.ne.0) then
+     if (numloaded.le.0) then
+        OFLWR "error, for ivo must load orbitals",numloaded; CFLST
+     endif
+     numcompute = numspf + max(0,num_skip_orbs) - numloaded
+  else
+     numcompute = numspf + num_skip_orbs
+  endif
+
+  if (numcompute.lt.0) then
+     OFLWR "error numcompute lt 0 ", numloaded,numspf; CFLST
+  endif
+  if (numcompute.eq.0) then
+     OFLWR "numcompute eq 0 RETURN"; CFL
+     return
+  endif
+  if (numspf-numloaded.le.0) then
+     OFLWR "numget eq 0 return", numspf-numloaded; CFL
+     return
+  endif
+
+  if (ivoflag.ne.0) then
+     kk=0
+  else
+     if (num_skip_orbs.lt.0) then
+        kk=numloaded+num_skip_orbs
+     else
+        kk=numloaded
+     endif
+  endif
+
+  ii=1
+  do while (ii.le.numspf-numloaded)
+     kk=kk+1
+     flag=0
+     do jj=1,num_skip_orbs
+        if (orb_skip(jj).eq.kk) then
+           flag=1
+           exit
+        endif
+     enddo
+     if (flag.eq.0) then
+        olist(ii)=kk
+        ii=ii+1
+     endif
+  enddo
+
+  if (kk.gt.numcompute) then
+     OFLWR "FSFFD EEEEE 555",kk,numspf,num_skip_orbs; CFLST
+  endif
+
+  if (ivoflag.ne.0) then
+     OFLWR "getting IVO pot.  occupations are "
+     WRFL loadedocc(1:numloaded); CFL
+
+     allocate(ivopot(totpoints), density(totpoints),ivo_occupied(totpoints,numloaded))
+     ivopot(:)=0d0; density(:)=0d0; ivo_occupied=0d0
+
+     numocc=numloaded
+     ivo_occupied(:,:)=inspfs(:,1:numloaded)
+     do ispf=1,numloaded
+
+        call gramschmidt(totpoints,ispf-1,totpoints,ivo_occupied(:,:),ivo_occupied(:,ispf),orbparflag)
+
+        density(:)=density(:)+ivo_occupied(:,ispf)*CONJUGATE(ivo_occupied(:,ispf))*loadedocc(ispf)
+     enddo
+     call op_tinv(density,ivopot,1,1,null1,null2,null3,null4,null10)
+     deallocate(density)
+
+     ivopot(:)=ivopot(:)+frozenreduced(:)
+
+  endif
+
+  allocate(lanspfs(totpoints,numcompute),energies(numcompute))
+  lanspfs=0; energies=0
+
+  ibig=totpoints
+  iorder=min(ibig,orblanorder)
+  ppfac=1
+  if (orbparflag) then
+     ppfac=nprocs
+  endif
+
+  OFLWR "CALL BLOCK LAN FOR ORBS, ",numcompute," VECTORS"; CFL
+
+  call blocklanczos0(min(3,numspf),numcompute,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,&
+       energies,1,0,orblancheckmod,orblanthresh,mult_bigspf,orbparflag,orbtargetflag,orbtarget)
+
+  if (ivoflag.ne.0) then
+     deallocate(ivopot,ivo_occupied)
+  endif
+  
+  OFLWR "BL CALLED. ENERGIES: ";CFL
+  do ispf=1,numcompute
+     OFLWR ispf,energies(ispf); CFL
+  enddo
+  OFLWR;  CFL
+
+  do ispf=1,numspf-numloaded
+     inspfs(:,ispf+numloaded)=lanspfs(:,olist(ispf))
+  enddo
+
+  deallocate(lanspfs,energies)
+
+contains
+
+  subroutine mult_bigspf_ivo(inbigspf,outbigspf)
+    use myparams
+    use ivopotmod
+    implicit none
+    DATATYPE,intent(in) :: inbigspf(totpoints)
+    DATATYPE, intent(out) :: outbigspf(totpoints)
+    DATATYPE :: tempspf(totpoints),inwork(totpoints),inwork2(totpoints),&
+         workspf(totpoints)   !! AUTOMATIC
+
+    tempspf=0; inwork=0; inwork2=0; workspf=0
+
+    call ivo_project(inbigspf,outbigspf)
+    call project_onfrozen(inbigspf,workspf)
+    outbigspf=outbigspf+workspf
+
+    inwork2(:)=inbigspf(:)-outbigspf(:)
+
+    outbigspf(:)=outbigspf(:) * (1d2)
+
+    call mult_ke(inwork2(:),inwork(:),1,"booga",2)
+
+    call mult_pot(1,inwork2(:),tempspf(:))
+
+    inwork(:) = inwork(:) + tempspf(:) + ivopot(:)*inwork2(:)
+
+    call ivo_project(inwork,inwork2)
+    call project_onfrozen(inwork,workspf)
+    inwork2=inwork2+workspf
+
+    outbigspf(:) = outbigspf(:) + inwork(:) - inwork2(:)
+
+  end subroutine mult_bigspf_ivo
+
+  subroutine mult_bigspf0(inbigspf,outbigspf)
+    use myparams
+    implicit none
+    DATATYPE,intent(in) :: inbigspf(totpoints)
+    DATATYPE, intent(out) :: outbigspf(totpoints)
+    DATATYPE :: tempspf(totpoints)   !! AUTOMATIC
+
+    tempspf=0
+    call mult_ke(inbigspf(:),outbigspf(:),1,"booga",2)
+    call mult_pot(1,inbigspf(:),tempspf(:))
+    outbigspf(:)=outbigspf(:)+tempspf(:)
+
+  end subroutine mult_bigspf0
+
+  subroutine mult_bigspf(inbigspf,outbigspf)
+    use myparams
+    implicit none
+    DATATYPE,intent(in) :: inbigspf(totpoints)
+    DATATYPE, intent(out) :: outbigspf(totpoints)
+    if (ivoflag.eq.0) then
+       call mult_bigspf0(inbigspf,outbigspf)
+    else
+       call mult_bigspf_ivo(inbigspf,outbigspf)
+    endif
+  end subroutine mult_bigspf
+
+end subroutine init_spfs
 
 
 subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
@@ -375,227 +590,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 end subroutine init_project
 
 
-subroutine mult_bigspf(inbigspf,outbigspf)
-  use myparams
-  implicit none
-  DATATYPE,intent(in) :: inbigspf(totpoints)
-  DATATYPE, intent(out) :: outbigspf(totpoints)
-  if (ivoflag.eq.0) then
-     call mult_bigspf0(inbigspf,outbigspf)
-  else
-     call mult_bigspf_ivo(inbigspf,outbigspf)
-  endif
-end subroutine mult_bigspf
-
-
-subroutine mult_bigspf0(inbigspf,outbigspf)
-  use myparams
-  implicit none
-  DATATYPE,intent(in) :: inbigspf(totpoints)
-  DATATYPE, intent(out) :: outbigspf(totpoints)
-  DATATYPE :: tempspf(totpoints)   !! AUTOMATIC
-
-  tempspf=0
-  call mult_ke(inbigspf(:),outbigspf(:),1,"booga",2)
-  call mult_pot(1,inbigspf(:),tempspf(:))
-  outbigspf(:)=outbigspf(:)+tempspf(:)
-
-end subroutine mult_bigspf0
-
-
-function ivodot(inbra,inket,size)
-  use myparams
-  implicit none
-  integer,intent(in) :: size 
-  DATATYPE,intent(in) :: inbra(size),inket(size)
-  DATATYPE :: ivodot,csum
-  csum=DOT_PRODUCT(inbra,inket)
-  if (orbparflag) then
-     call mympireduceone(csum)
-  endif
-  ivodot=csum
-end function ivodot
-
-
-module ivopotmod
-  implicit none
-  integer :: numocc=(-1)
-  DATATYPE, allocatable :: ivopot(:),ivo_occupied(:,:)
-end module ivopotmod
-
-
-subroutine ivo_project(inbigspf,outbigspf)
-  use myparams
-  use ivopotmod
-  implicit none
-  DATATYPE,intent(in) :: inbigspf(totpoints)
-  DATATYPE, intent(out) :: outbigspf(totpoints)
-  DATATYPE :: ivodot
-  integer :: ii
-  outbigspf(:)=0d0
-  do ii=1,numocc
-     outbigspf(:)=outbigspf(:) + ivo_occupied(:,ii) * ivodot(ivo_occupied(:,ii),inbigspf(:),totpoints)
-  enddo
-end subroutine ivo_project
-
-  
-subroutine mult_bigspf_ivo(inbigspf,outbigspf)
-  use myparams
-  use ivopotmod
-  implicit none
-  DATATYPE,intent(in) :: inbigspf(totpoints)
-  DATATYPE, intent(out) :: outbigspf(totpoints)
-  DATATYPE :: tempspf(totpoints),inwork(totpoints),inwork2(totpoints),&
-       workspf(totpoints)   !! AUTOMATIC
-
-  tempspf=0; inwork=0; inwork2=0; workspf=0
-
-  call ivo_project(inbigspf,outbigspf)
-  call project_onfrozen(inbigspf,workspf)
-  outbigspf=outbigspf+workspf
-
-  inwork2(:)=inbigspf(:)-outbigspf(:)
-
-  outbigspf(:)=outbigspf(:) * (1d2)
-
-  call mult_ke(inwork2(:),inwork(:),1,"booga",2)
-
-  call mult_pot(1,inwork2(:),tempspf(:))
-
-  inwork(:) = inwork(:) + tempspf(:) + ivopot(:)*inwork2(:)
-
-  call ivo_project(inwork,inwork2)
-  call project_onfrozen(inwork,workspf)
-  inwork2=inwork2+workspf
-
-  outbigspf(:) = outbigspf(:) + inwork(:) - inwork2(:)
-
-
-end subroutine mult_bigspf_ivo
-
-
-
-subroutine init_spfs(inspfs,numloaded)
-  use myparams
-  use pmpimod
-  use pfileptrmod
-  use ivopotmod
-  use twoemod
-  implicit none
-  DATATYPE :: inspfs(totpoints,numspf)
-  DATATYPE,allocatable :: lanspfs(:,:),density(:)
-  DATAECS,allocatable :: energies(:)
-  integer, intent(in) :: numloaded
-  integer :: ibig,iorder,ispf,ppfac,ii,jj,kk,olist(numspf),flag
-  integer :: null1,null2,null3,null4,null10(10),numcompute
-  external :: mult_bigspf
-
-  if (ivoflag.ne.0) then
-     if (numloaded.le.0) then
-        OFLWR "error, for ivo must load orbitals",numloaded; CFLST
-     endif
-     numcompute = numspf + max(0,num_skip_orbs) - numloaded
-  else
-     numcompute = numspf + num_skip_orbs
-  endif
-
-  if (numcompute.lt.0) then
-     OFLWR "error numcompute lt 0 ", numloaded,numspf; CFLST
-  endif
-  if (numcompute.eq.0) then
-     OFLWR "numcompute eq 0 RETURN"; CFL
-     return
-  endif
-  if (numspf-numloaded.le.0) then
-     OFLWR "numget eq 0 return", numspf-numloaded; CFL
-     return
-  endif
-
-  if (ivoflag.ne.0) then
-     kk=0
-  else
-     if (num_skip_orbs.lt.0) then
-        kk=numloaded+num_skip_orbs
-     else
-        kk=numloaded
-     endif
-  endif
-
-  ii=1
-  do while (ii.le.numspf-numloaded)
-     kk=kk+1
-     flag=0
-     do jj=1,num_skip_orbs
-        if (orb_skip(jj).eq.kk) then
-           flag=1
-           exit
-        endif
-     enddo
-     if (flag.eq.0) then
-        olist(ii)=kk
-        ii=ii+1
-     endif
-  enddo
-
-  if (kk.gt.numcompute) then
-     OFLWR "FSFFD EEEEE 555",kk,numspf,num_skip_orbs; CFLST
-  endif
-
-  if (ivoflag.ne.0) then
-     OFLWR "getting IVO pot.  occupations are "
-     WRFL loadedocc(1:numloaded); CFL
-
-     allocate(ivopot(totpoints), density(totpoints),ivo_occupied(totpoints,numloaded))
-     ivopot(:)=0d0; density(:)=0d0; ivo_occupied=0d0
-
-     numocc=numloaded
-     ivo_occupied(:,:)=inspfs(:,1:numloaded)
-     do ispf=1,numloaded
-
-        call gramschmidt(totpoints,ispf-1,totpoints,ivo_occupied(:,:),ivo_occupied(:,ispf),orbparflag)
-
-        density(:)=density(:)+ivo_occupied(:,ispf)*CONJUGATE(ivo_occupied(:,ispf))*loadedocc(ispf)
-     enddo
-     call op_tinv(density,ivopot,1,1,null1,null2,null3,null4,null10)
-     deallocate(density)
-
-     ivopot(:)=ivopot(:)+frozenreduced(:)
-
-  endif
-
-  allocate(lanspfs(totpoints,numcompute),energies(numcompute))
-  lanspfs=0; energies=0
-
-  ibig=totpoints
-  iorder=min(ibig,orblanorder)
-  ppfac=1
-  if (orbparflag) then
-     ppfac=nprocs
-  endif
-
-  OFLWR "CALL BLOCK LAN FOR ORBS, ",numcompute," VECTORS"; CFL
-
-  call blocklanczos0(min(3,numspf),numcompute,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,&
-       energies,1,0,orblancheckmod,orblanthresh,mult_bigspf,orbparflag,orbtargetflag,orbtarget)
-
-  if (ivoflag.ne.0) then
-     deallocate(ivopot,ivo_occupied)
-  endif
-  
-  OFLWR "BL CALLED. ENERGIES: ";CFL
-  do ispf=1,numcompute
-     OFLWR ispf,energies(ispf); CFL
-  enddo
-  OFLWR;  CFL
-
-  do ispf=1,numspf-numloaded
-     inspfs(:,ispf+numloaded)=lanspfs(:,olist(ispf))
-  enddo
-
-  deallocate(lanspfs,energies)
-
-end subroutine init_spfs
-
 !! fixed nuclei only for now
 
 subroutine nucdipvalue(notused,dipoles)
@@ -609,4 +603,3 @@ subroutine nucdipvalue(notused,dipoles)
      dipoles(:)=dipoles(:) + nuccharges(i) * centershift(:,i)/2d0 * spacing
   enddo
 end subroutine nucdipvalue
-

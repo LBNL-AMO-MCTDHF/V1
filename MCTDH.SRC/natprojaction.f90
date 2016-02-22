@@ -14,8 +14,8 @@ subroutine save_natproj( thistime )
   use natprojmod
   use xxxmod !! denproj
   use configmod
+  use sparsemultmod
   implicit none
-
   DATATYPE :: csum
   integer :: xcalledhere=0,  iflag, korder, pulseflag, isplit, i, &
        imc, getlen2, ilen, iii, nn, getlen, iorb
