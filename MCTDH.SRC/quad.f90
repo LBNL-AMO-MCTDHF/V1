@@ -517,6 +517,9 @@ subroutine sparsequadavector(inavector,jjcalls0)
         if (ss.ge.10) then
            OFLWR "10 iterations, quad aborting"; CFL
         endif
+        if (www%lastconfig.ge.www%firstconfig) then
+           inavector(:,:) = vector(:,www%firstconfig:www%lastconfig)
+        endif
         deallocate(smallvectorspin,smallvectorspin2)
         deallocate(vector, vector2, vector3)
         call mpibarrier()
