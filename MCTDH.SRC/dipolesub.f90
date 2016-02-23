@@ -133,7 +133,7 @@ module dipbiomod
 end module dipbiomod
 
 
-subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_expect,zdipole_expect)
+subroutine dipolesub_one(www,bioww,in_abra,in_aket,inspfs,xdipole_expect,ydipole_expect,zdipole_expect)
   use r_parameters
   use spfsize_parameters
   use walkmod
@@ -146,9 +146,10 @@ subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_ex
   type(walktype),intent(in) :: www,bioww
   DATATYPE, intent(in) :: inspfs(  spfsize, www%nspf ), &
        in_abra(numr,www%firstconfig:www%lastconfig),&
-       aket(numr,www%firstconfig:www%lastconfig)
+       in_aket(numr,www%firstconfig:www%lastconfig)
   DATATYPE,intent(out) ::    zdipole_expect, ydipole_expect, xdipole_expect
-  DATATYPE,allocatable :: tempvector(:,:),tempspfs(:,:),abra(:,:),workspfs(:,:)
+  DATATYPE,allocatable :: tempvector(:,:),tempspfs(:,:),abra(:,:),workspfs(:,:),&
+       aket(:,:)
   DATATYPE :: nullcomplex(1),dipoles(3), dipolemat(www%nspf,www%nspf),csum
   DATAECS :: rvector(numr)
 !!$  DATATYPE :: norm   !! datatype in case abra.ne.aket
@@ -167,12 +168,16 @@ subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_ex
   endif
   numspf=highspf-lowspf+1
  
-  allocate(tempvector(numr,www%firstconfig:www%lastconfig), tempspfs(spfsize,lowspf:highspf+1),&
-       abra(numr,www%firstconfig:www%lastconfig),workspfs(spfsize,www%nspf))
+  allocate(tempvector(numr,www%firstconfig:www%lastconfig+1), tempspfs(spfsize,lowspf:highspf+1),&
+       abra(numr,www%firstconfig:www%lastconfig+1),workspfs(spfsize,www%nspf),&
+       aket(numr,www%firstconfig:www%lastconfig+1))
 
-  tempvector=0; tempspfs=0; abra=0; workspfs=0
+  tempvector=0; tempspfs=0; workspfs=0; abra=0; aket=0
 
-  abra(:,:)=in_abra(:,:)
+  if (www%lastconfig.ge.www%firstconfig) then
+     abra(:,www%firstconfig:www%lastconfig)=in_abra(:,:)
+     aket(:,www%firstconfig:www%lastconfig)=in_aket(:,:)
+  endif
 
 #ifndef CNORMFLAG
   workspfs(:,:)=inspfs(:,:)
@@ -285,7 +290,7 @@ subroutine dipolesub_one(www,bioww,in_abra,aket,inspfs,xdipole_expect,ydipole_ex
   endif
   xdipole_expect=xdipole_expect + dipoles(1)
 
-  deallocate(tempvector,tempspfs,abra,workspfs)
+  deallocate(tempvector,tempspfs,abra,aket,workspfs)
 
 !!$#ifdef CNORMFLAG
 !!$  xdipole_expect=xdipole_expect*abs(norm)/norm
