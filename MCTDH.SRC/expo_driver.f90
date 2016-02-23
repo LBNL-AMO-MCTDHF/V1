@@ -1068,11 +1068,12 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
         call parconfigexpomult_padded(smallvector,smallvectortemp)
         
         if (www%topdfbasis.ge.www%botdfbasis) then
-           call basis_transformto_local(www,numr,workdrivingavec(:,www%botconfig),&
-                workdrivingavecdfbasis(:,:))
+           call basis_transformto_local(www,numr,&
+                workdrivingavec(:,www%botconfig:www%topconfig),&
+                workdrivingavecdfbasis(:,www%botdfbasis:www%topdfbasis))
            smallvectortemp(:,1:www%topdfbasis-www%botdfbasis+1)=  &
                 smallvectortemp(:,1:www%topdfbasis-www%botdfbasis+1) + &
-                workdrivingavecdfbasis(:,:) * timefac 
+                workdrivingavecdfbasis(:,www%botdfbasis:www%topdfbasis) * timefac 
         endif
         zerovector(:,:)=0d0
         call DGPHIVxxx2( ixx, thisexpodim, one, smallvectortemp,&
