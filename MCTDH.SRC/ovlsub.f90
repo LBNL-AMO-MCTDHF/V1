@@ -199,8 +199,8 @@ subroutine getoverlaps(forceflag)
      open(881,file=outovl, status="unknown",iostat=myiostat)
      call checkiostat(myiostat,"opening "//outovl)
      do i=0,xcalledflag-1
-        write(881,'(F12.3, 1000E20.10)',iostat=myiostat) &
-             i*autotimestep,abs(overlaps(:,i,:))**2
+        write(881,'(F12.3, 2000E20.10)',iostat=myiostat) &
+             i*autotimestep,abs(overlaps(:,i,:))**2,overlaps(:,i,:)
      enddo
      call checkiostat(myiostat,"writing "//outovl)
      close(881)

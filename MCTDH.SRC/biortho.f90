@@ -309,26 +309,31 @@ contains
        OFLWR "error, must use sparse for parbiomatvec summa"; CFLST
     endif
 
-    allocate(intemp(biopointer%bionr,biopointer%wwbio%numconfig))
-    intemp(:,:)=0d0;  outtemp=0
+    allocate(intemp(biopointer%bionr,biopointer%wwbio%numconfig));  intemp(:,:)=0d0;  outtemp=0
 
 !! transform second to reduce communication?
 !!   no, spin transformations done locally now.
 
-    if (biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
+    if (biopointer%wwbio%topbasis.ge.biopointer%wwbio%botbasis) then
        call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector,&
             intemp(:,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig))
     endif
 
-    call mpiallgather(intemp,biopointer%wwbio%numconfig*biopointer%bionr,&
-         biopointer%wwbio%configsperproc(:)*biopointer%bionr,&
-         biopointer%wwbio%maxconfigsperproc*biopointer%bionr)
+    call mpiallgather_local(intemp,biopointer%wwbio%numconfig*biopointer%bionr,&
+         biopointer%wwbio%nzconfsperproc(:)*biopointer%bionr,&
+         biopointer%wwbio%maxconfigsperproc*biopointer%bionr,&
+         biopointer%wwbio%NZ_COMM,biopointer%wwbio%nzprocs,&
+         biopointer%wwbio%nzrank)
 
-    call biomatvec_byproc(1,nprocs,intemp,outtemp)
+    if (biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
+       call biomatvec_byproc(1,nprocs,intemp,outtemp)
+    endif
 
     outavector(:,:)=0d0   !! PADDED
 
-    call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,outtemp,outavector)
+    if (biopointer%wwbio%topbasis.ge.biopointer%wwbio%botbasis) then
+       call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,outtemp,outavector)
+    endif
 
     deallocate(intemp)
 
@@ -348,7 +353,7 @@ contains
     DATATYPE :: intemp(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&   !!AUTOMATIC
          outwork(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1),&
          outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1)
-    integer :: iproc
+    integer :: iproc,iiproc
 
     if (sparseconfigflag.eq.0) then
        OFLWR "error, must use sparse for parbiomatvec summa"; CFLST
@@ -356,29 +361,39 @@ contains
 
     outwork=0d0; outtemp=0; intemp=0
 
-    do iproc=1,nprocs
+    do iiproc=1,biopointer%wwbio%nzprocs
+
+       iproc=biopointer%wwbio%nzproclist(iiproc)
 
 !! transform second to reduce communication?
 !!   no, spin transformations done locally now.
 
        if(biopointer%wwbio%alltopconfigs(iproc).ge.biopointer%wwbio%allbotconfigs(iproc)) then
           if (myrank.eq.iproc) then
-             call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,&
-                  inavector(:,:),intemp(:,:))
+             intemp=0
+             if (biopointer%wwbio%topbasis.ge.biopointer%wwbio%botbasis) then
+                call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,&
+                     inavector(:,:),intemp(:,:))
+             endif
           endif
 
-          call mympibcast(intemp,iproc,biopointer%wwbio%configsperproc(iproc)*biopointer%bionr)
+          call mympibcast_local(intemp,iiproc,&
+               biopointer%wwbio%nzconfsperproc(iiproc)*biopointer%bionr,&
+               biopointer%wwbio%NZ_COMM)
 
           call biomatvec_byproc(iproc,iproc,intemp,outtemp)
 
           outwork(:,:)=outwork(:,:)+outtemp(:,:)
+
        endif
     enddo
 
     outavector(:,:)=0d0   !! PADDED
 
-    call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,&
-         outwork(:,:),outavector(:,:))
+    if (biopointer%wwbio%topbasis.ge.biopointer%wwbio%botbasis) then
+       call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,&
+            outwork(:,:),outavector(:,:))
+    endif
 
   end subroutine parbiomatvec_summa
 
@@ -395,7 +410,7 @@ contains
          workvector2(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&    !!AUTOMATIC
          outwork(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1),&
          outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1)
-    integer :: iproc,prevproc,nextproc,deltaproc
+    integer :: iproc,prevproc,nextproc,deltaproc,iiproc
 
     if (sparseconfigflag.eq.0) then
        OFLWR "error, must use sparse for parbiomatvec summa"; CFLST
@@ -404,20 +419,24 @@ contains
 !! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 
 !!     and ftcore.f90, holding hands in a circle, prevproc and nextproc, 
 !!     each chunk gets passed around the circle
-    prevproc=mod(nprocs+myrank-2,nprocs)+1
-    nextproc=mod(myrank,nprocs)+1
+
+    prevproc=mod(biopointer%wwbio%nzprocs+biopointer%wwbio%nzrank-2,&
+         biopointer%wwbio%nzprocs)+1
+    nextproc=mod(biopointer%wwbio%nzrank,biopointer%wwbio%nzprocs)+1
 
     workvector=0; workvector2=0; outwork=0; outtemp=0
 
-    if (biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
+    if (biopointer%wwbio%topbasis.ge.biopointer%wwbio%botbasis) then
        call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,&
             inavector(:,:),workvector(:,:))
     endif
 
-    do deltaproc=0,nprocs-1
+    do deltaproc=0,biopointer%wwbio%nzprocs-1
 
 !! PASSING BACKWARD (plus deltaproc)
-       iproc=mod(myrank-1+deltaproc,nprocs)+1
+       iiproc=mod(biopointer%wwbio%nzrank-1+deltaproc,&
+            biopointer%wwbio%nzprocs)+1
+       iproc=biopointer%wwbio%nzproclist(iiproc)
 
        if (biopointer%wwbio%alltopconfigs(iproc).ge.biopointer%wwbio%allbotconfigs(iproc).and.&
             biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
@@ -428,15 +447,15 @@ contains
 !! PASSING BACKWARD
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
 
-       call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,&
-            biopointer%bionr * biopointer%wwbio%maxconfigsperproc)
+       call mympisendrecv_local(workvector,workvector2,prevproc,nextproc,deltaproc,&
+            biopointer%bionr * biopointer%wwbio%maxconfigsperproc,biopointer%wwbio%NZ_COMM)
        workvector(:,:)=workvector2(:,:)
 
     enddo
 
     outavector(:,:)=0d0   !! PADDED
 
-    if (biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
+    if (biopointer%wwbio%topbasis.ge.biopointer%wwbio%botbasis) then
        call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,&
             outwork(:,:),outavector(:,:))
     endif
@@ -473,146 +492,173 @@ contains
     end select
 #endif
 
-end subroutine parbiomatvec
+  end subroutine parbiomatvec
 
 
-subroutine abio_sparse(abio,aout,inbiovar)
-  use fileptrmod
-  use timing_parameters
-  use sparse_parameters
-  use bio_parameters
-  use mpimod
-  use matvecsetmod
-  use biorthotypemod
-  use dotmod
-  implicit none
-  type(biorthotype),target,intent(inout) :: inbiovar
-  DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
-  DATATYPE,intent(out) :: aout(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
-  integer, allocatable :: iwsp(:)
-  integer*8, save :: icalledhere=0
-  integer :: biofileptr=6719
-  real*8 :: t,anorm, tol
-  integer :: liwsp,lwsp,itrace,iflag,ixx,getlen,myiostat
-  DATATYPE, allocatable :: smallvector(:,:), smallvectorout(:,:)
-  real*8,allocatable :: wsp(:)
+  subroutine abio_sparse(abio,aout,inbiovar)
+    use fileptrmod
+    use timing_parameters
+    use sparse_parameters
+    use bio_parameters
+    use mpimod
+    use matvecsetmod
+    use biorthotypemod
+    use dotmod
+    implicit none
+    type(biorthotype),target,intent(inout) :: inbiovar
+    DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
+    DATATYPE,intent(out) :: aout(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
+    integer, allocatable :: iwsp(:)
+    integer*8, save :: icalledhere=0
+    integer :: biofileptr=6719
+    real*8 :: t,anorm, tol
+    integer :: liwsp,lwsp,itrace,iflag,ixx,getlen,myiostat,minflag
+    DATATYPE, allocatable :: smallvector(:,:), smallvectorout(:,:)
+    real*8,allocatable :: wsp(:)
 
-  if (sparseconfigflag.eq.0) then
-     OFLWR "Error, can't use abio_sparse if sparseconfigflag=0"; CFLST
-  endif
+    if (sparseconfigflag.eq.0) then
+       OFLWR "Error, can't use abio_sparse if sparseconfigflag=0"; CFLST
+    endif
 
-  t=1d0;  anorm=1d0 ;  itrace=0;   iflag=0; tol=biotol;   
-  icalledhere=icalledhere+1
-  inbiovar%icalled=inbiovar%icalled+1
+    t=1d0;  anorm=1d0 ;  itrace=0;   iflag=0; tol=biotol;   
+    icalledhere=icalledhere+1
+    inbiovar%icalled=inbiovar%icalled+1
 
-  if (inbiovar%icalled.eq.1) then
-     inbiovar%tempstepsize=1d0
-  endif
+    if (inbiovar%icalled.eq.1) then
+       inbiovar%tempstepsize=1d0
+    endif
 
-  if (inbiovar%thisbiodim.lt.inbiovar%biomaxdim) then
-     inbiovar%tempstepsize=inbiovar%tempstepsize*4
-  else
-     inbiovar%tempstepsize=inbiovar%tempstepsize*1.1
-  endif
+    if (inbiovar%thisbiodim.lt.inbiovar%biomaxdim) then
+       inbiovar%tempstepsize=inbiovar%tempstepsize*4
+    else
+       inbiovar%tempstepsize=inbiovar%tempstepsize*1.1
+    endif
 
-  if ((myrank.eq.1).and.(notiming==0)) then
-     if (icalledhere.eq.1) then
-        open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="unknown",iostat=myiostat)
-        call checkiostat(myiostat,"opening biortho timing file")
-        write(biofileptr,*,iostat=myiostat) 
-        call checkiostat(myiostat,"writing biortho timing file")
-        write(biofileptr,*);        close(biofileptr)
-     endif
+    if ((myrank.eq.1).and.(notiming==0)) then
+       if (icalledhere.eq.1) then
+          open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",&
+               status="unknown",iostat=myiostat)
+          call checkiostat(myiostat,"opening biortho timing file")
+          write(biofileptr,*,iostat=myiostat) 
+          call checkiostat(myiostat,"writing biortho timing file")
+          write(biofileptr,*);        close(biofileptr)
+       endif
 
 !     open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="old", &
 !          position="append")
 !     write(biofileptr,*) " BIORTHO. numr",inbiovar%bionr," biodim ",&
 !          inbiovar%thisbiodim, "step ",min(1d0,inbiovar%tempstepsize)
 !     close(biofileptr)
-  endif
+    endif
 
-  if (myrank.eq.1.and.notiming.eq.0) then
-     open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",&
-          status="old", position="append",iostat=myiostat)
-     call checkiostat(myiostat,"opening biortho timing file")
-  else
+    if (myrank.eq.1.and.notiming.eq.0) then
+       open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",&
+            status="old", position="append",iostat=myiostat)
+       call checkiostat(myiostat,"opening biortho timing file")
+    else
 !!$ opening /dev/null multiple times not allowed :<      
 !!$ open(biofileptr,file="/dev/null",status="unknown")
 
-     biofileptr=nullfileptr
-  endif
+       biofileptr=nullfileptr
+    endif
 
-  call biomatvecset(inbiovar)
+    call biomatvecset(inbiovar)
 
 #ifdef REALGO
-  ixx=inbiovar%wwbio%maxbasisperproc*inbiovar%bionr
+    ixx=inbiovar%wwbio%maxbasisperproc*inbiovar%bionr
 #else
-  ixx=inbiovar%wwbio%maxbasisperproc*inbiovar%bionr*2
+    ixx=inbiovar%wwbio%maxbasisperproc*inbiovar%bionr*2
 #endif
-  lwsp = ixx*(inbiovar%thisbiodim+4) + 6*(inbiovar%thisbiodim+3)**2 + 100
+    lwsp = ixx*(inbiovar%thisbiodim+4) + 6*(inbiovar%thisbiodim+3)**2 + 100
 
-  liwsp = inbiovar%thisbiodim+100
+    liwsp = inbiovar%thisbiodim+100
 
-  
-  allocate(wsp(lwsp),iwsp(liwsp));  wsp=0; iwsp=0
-  allocate(smallvector(inbiovar%bionr,inbiovar%wwbio%maxbasisperproc),&
-       smallvectorout(inbiovar%bionr,inbiovar%wwbio%maxbasisperproc))
-  smallvector(:,:)=0; smallvectorout(:,:)=0
+    allocate(wsp(lwsp),iwsp(liwsp));  wsp=0; iwsp=0
+    allocate(smallvector(inbiovar%bionr,inbiovar%wwbio%maxbasisperproc),&
+         smallvectorout(inbiovar%bionr,inbiovar%wwbio%maxbasisperproc))
+    smallvector(:,:)=0; smallvectorout(:,:)=0
 
-  if (inbiovar%wwbio%topconfig.ge.inbiovar%wwbio%botconfig) then
-     call fullbasis_transformto_local(inbiovar%wwbio,inbiovar%bionr,&
-          abio(:,inbiovar%wwbio%botconfig:inbiovar%wwbio%topconfig),smallvector(:,:))
-  endif
+    if (inbiovar%wwbio%topconfig.ge.inbiovar%wwbio%botconfig) then
+       call fullbasis_transformto_local(inbiovar%wwbio,inbiovar%bionr,&
+            abio(:,inbiovar%wwbio%botconfig:inbiovar%wwbio%topconfig),smallvector(:,:))
+    endif
 
-  call DGEXPVxxx2(ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,lwsp,iwsp,&
-       liwsp,parbiomatvec,itrace,iflag,biofileptr,inbiovar%tempstepsize,realpardotsub,ixx*nprocs)
+    call mpibarrier()
+    iflag=0
+    if (nzflag.eq.0.or.inbiovar%wwbio%nzrank.gt.0) then
+       call DGEXPVxxx2(ixx,inbiovar%thisbiodim,t,smallvector,smallvectorout,tol,anorm,wsp,&
+            lwsp,iwsp,liwsp,parbiomatvec,itrace,iflag,biofileptr,&
+            inbiovar%tempstepsize,realpardotsub,inbiovar%biomaxdim+1)
+    else
+       smallvectorout=0d0
+    endif
+    call mpibarrier()
 
-  if(iflag.eq.1) then
-     OFLWR "Solution did not converge in sparsebiortho - TEMP CONTINUE",iflag,tol,inbiovar%thisbiodim; CFL
-  elseif(iflag.ne.0) then
-     OFLWR "Stopping due to bad iflag in sparsebiortho: ",iflag,tol,inbiovar%thisbiodim; CFLST
-  endif
-  if (inbiovar%wwbio%lastconfig.ge.inbiovar%wwbio%firstconfig) then
-     aout(:,:)=0d0
-  endif
-  if (inbiovar%wwbio%topconfig.ge.inbiovar%wwbio%botconfig) then
-     call fullbasis_transformfrom_local(inbiovar%wwbio,inbiovar%bionr,&
-          smallvectorout(:,:),aout(:,inbiovar%wwbio%botconfig:inbiovar%wwbio%topconfig))
-  endif
-  if (inbiovar%wwbio%parconsplit.eq.0) then
-     call mpiallgather(aout,inbiovar%wwbio%numconfig*inbiovar%bionr,&
-          inbiovar%wwbio%configsperproc(:)*inbiovar%bionr,&
-          inbiovar%wwbio%maxconfigsperproc*inbiovar%bionr)
-  endif
-  deallocate(smallvector,smallvectorout)
+    minflag=iflag
+    call mympiimax(iflag)
+    call mympiimin(minflag)
 
-  if (myrank.eq.1.and.notiming.eq.0) then
-     open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",&
-          status="old", position="append",iostat=myiostat)
-     call checkiostat(myiostat,"opening biortho timing file")
+    if(iflag.eq.1.and.minflag.ge.0) then
+       OFLWR "Solution did not converge in sparsebiortho but continuing";
+       WRFL iflag,minflag,tol,inbiovar%thisbiodim; CFL
+    elseif(iflag.ne.0.or.minflag.ne.0) then
+       OFLWR "Stopping due to bad iflag in sparsebiortho: "
+       WRFL iflag,minflag,tol,inbiovar%thisbiodim; CFLST
+    endif
+    if (inbiovar%wwbio%lastconfig.ge.inbiovar%wwbio%firstconfig) then
+       aout(:,:)=0d0
+    endif
+    if (inbiovar%wwbio%topconfig.ge.inbiovar%wwbio%botconfig) then
+       call fullbasis_transformfrom_local(inbiovar%wwbio,inbiovar%bionr,&
+            smallvectorout(:,:),aout(:,inbiovar%wwbio%botconfig:inbiovar%wwbio%topconfig))
+    endif
+    if (inbiovar%wwbio%parconsplit.eq.0) then
+       call mpiallgather(aout,inbiovar%wwbio%numconfig*inbiovar%bionr,&
+            inbiovar%wwbio%configsperproc(:)*inbiovar%bionr,&
+            inbiovar%wwbio%maxconfigsperproc*inbiovar%bionr)
+    endif
+    deallocate(smallvector,smallvectorout)
 
-     write(biofileptr,*,iostat=myiostat) " Bio: steps, iter, stepsize", &
-          iwsp(4),iwsp(1),inbiovar%tempstepsize; 
-     call checkiostat(myiostat,"writing biortho timing file")
-     if ((iwsp(4).gt.1)) then
-        write(biofileptr,*) "Warning - biorthogonalization restarting. Ddim, tol: ", &
-             inbiovar%thisbiodim, biotol; 
-     endif
-     close(biofileptr)
-  endif
+    if (myrank.eq.1.and.notiming.eq.0) then
+       open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",&
+            status="old", position="append",iostat=myiostat)
+       call checkiostat(myiostat,"opening biortho timing file")
 
-  if (mod(inbiovar%icalled,20)==0.and.iwsp(4).eq.1) then
-     inbiovar%thisbiodim=max(min(4,inbiovar%biomaxdim),inbiovar%thisbiodim-1)
-  endif
-  if (iwsp(4).gt.1) then
-     inbiovar%thisbiodim=min(inbiovar%thisbiodim+2, inbiovar%biomaxdim)
-  endif
-  if (iwsp(4).gt.5) then
-     inbiovar%thisbiodim=min(inbiovar%thisbiodim*2,inbiovar%biomaxdim)
-  endif
-  deallocate(wsp,iwsp)
+       write(biofileptr,*,iostat=myiostat) " Bio: steps, iter, stepsize", &
+            iwsp(4),iwsp(1),inbiovar%tempstepsize; 
+       call checkiostat(myiostat,"writing biortho timing file")
+       if ((iwsp(4).gt.1)) then
+          write(biofileptr,*) "Warning - biorthogonalization restarting. Ddim, tol: ", &
+               inbiovar%thisbiodim, biotol; 
+       endif
+       close(biofileptr)
+    endif
 
-end subroutine abio_sparse
+    if (mod(inbiovar%icalled,20)==0.and.iwsp(4).eq.1) then
+       inbiovar%thisbiodim=max(min(4,inbiovar%biomaxdim),inbiovar%thisbiodim-1)
+    endif
+    if (iwsp(4).gt.1) then
+       inbiovar%thisbiodim=min(inbiovar%thisbiodim+2, inbiovar%biomaxdim)
+    endif
+    if (iwsp(4).gt.5) then
+       inbiovar%thisbiodim=min(inbiovar%thisbiodim*2,inbiovar%biomaxdim)
+    endif
+    deallocate(wsp,iwsp)
+
+  contains
+    subroutine realpardotsub(one,two,n,out)
+      implicit none
+      integer,intent(in) :: n
+      real*8,intent(in) :: one(n),two(n)
+      real*8,intent(out) :: out
+      real*8 :: sum
+      sum=DOT_PRODUCT(one,two)
+      call mympirealreduceone_local(sum,inbiovar%wwbio%NZ_COMM)
+      out=sum
+    end subroutine realpardotsub
+
+  end subroutine abio_sparse
+
 end module abiosparsemod
 
 

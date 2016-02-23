@@ -453,7 +453,11 @@ program mctdhf
 
   endif
 
-  OFLWR
+  OFLWR "     DWWPTR Slater determinants by processor"
+  do i=1,dwwptr%nzprocs
+     write (mpifileptr,'(T5,2I7,i20)') i,dwwptr%nzproclist(i),dwwptr%nzconfsperproc(i)
+  enddo
+  WRFL
   WRFL "************************************"
   WRFL "********** DONE WALKS. *************"
   WRFL "************************************"

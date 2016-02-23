@@ -550,7 +550,7 @@ subroutine expoprop(time1,time2,inspfs, numiters)
         if (parorbsplit.eq.3) then
            call dgphivxxx2(idim, thisexpodim, tdiff, aspfs, propspfs, &
                 outspfs, expotol, norm, wsp, lwsp, iwsp, liwsp, jacoperate, &
-                itrace, iflag,expofileptr,tempstepsize,realpardotsub,idim*nprocs)
+                itrace, iflag,expofileptr,tempstepsize,realpardotsub,ttott)
         else
            call dgphiv(idim, thisexpodim, tdiff, aspfs, propspfs, &
                 outspfs, expotol, norm, wsp, lwsp, iwsp, liwsp, jacoperate, &
@@ -605,6 +605,17 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   if (orbcompact.ne.0) then
      deallocate(com_aspfs, com_propspfs, com_outspfs)
   endif
+contains
+  subroutine realpardotsub(one,two,n,out)
+    implicit none
+    integer,intent(in) :: n
+    real*8,intent(in) :: one(n),two(n)
+    real*8,intent(out) :: out
+    real*8 :: sum
+    sum=DOT_PRODUCT(one,two)
+    call mympirealreduceone(sum)
+    out=sum
+  end subroutine realpardotsub
 
 end subroutine expoprop
 
@@ -708,8 +719,9 @@ contains
             intemp(:,wwin%botconfig:wwin%topconfig))
     endif
 
-    call mpiallgather(intemp,wwin%numconfig*numr,wwin%configsperproc(:)*numr,&
-         wwin%maxconfigsperproc*numr)
+    call mpiallgather_local(intemp,wwin%numconfig*numr,&
+         wwin%nzconfsperproc(:)*numr, wwin%maxconfigsperproc*numr,&
+         wwin%NZ_COMM,wwin%nzprocs,wwin%nzrank)
 
     outavector(:,:)=0d0    !!     inavector(:,:)   !! PADDED
 
@@ -752,7 +764,7 @@ contains
     DATATYPE,intent(out) :: outavector(numr,wwin%botdfbasis:wwin%botdfbasis+wwin%maxdfbasisperproc-1)
     DATATYPE :: intemp(numr,wwin%maxconfigsperproc), outwork(numr,wwin%botconfig:wwin%topconfig+1),&
          outtemp(numr,wwin%botconfig:wwin%topconfig+1)   !! AUTOMATIC
-    integer :: iproc
+    integer :: iproc,iiproc
 
     call avectortime(3)
 
@@ -762,21 +774,23 @@ contains
   
     outwork=0d0; outtemp=0; intemp=0
 
-    do iproc=1,nprocs
+    do iiproc=1,wwin%nzprocs
+
+       iproc=wwin%nzproclist(iiproc)
 
 !! transform second to reduce communication?
 !!   no, spin transformations done locally now.
 
-       if (myrank.eq.iproc) then
-          intemp=0
-          if (wwin%topdfbasis.ge.wwin%botdfbasis) then
-             call basis_transformfrom_local(wwin,numr,inavector,intemp)
-          endif
-       endif
-
        if (wwin%alltopconfigs(iproc).ge.wwin%allbotconfigs(iproc)) then
-          call mympibcast(intemp,iproc,&
-               (wwin%alltopconfigs(iproc)-wwin%allbotconfigs(iproc)+1)*numr)
+          if (myrank.eq.iproc) then
+             intemp=0
+             if (wwin%topdfbasis.ge.wwin%botdfbasis) then
+                call basis_transformfrom_local(wwin,numr,inavector,intemp)
+             endif
+          endif
+
+          call mympibcast_local(intemp,iiproc,wwin%nzconfsperproc(iiproc)*numr,&
+               wwin%NZ_COMM)
 
           call sparseconfigmult_byproc(iproc,iproc,wwin,intemp,outtemp, &
                workconfigpointer, worksparsepointer, 1,1,1,1,&
@@ -821,7 +835,7 @@ contains
     DATATYPE :: workvector(numr,wwin%maxconfigsperproc), workvector2(numr,wwin%maxconfigsperproc),&
          outwork(numr,wwin%botconfig:wwin%topconfig+1),  &
          outtemp(numr,wwin%botconfig:wwin%topconfig+1)             !! AUTOMATIC
-    integer :: iproc,prevproc,nextproc,deltaproc
+    integer :: iproc,prevproc,nextproc,deltaproc,iiproc
 
     call avectortime(3)
 
@@ -832,8 +846,9 @@ contains
 !! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 
 !!     and ftcore.f90, holding hands in a circle, prevproc and nextproc, 
 !!     each chunk gets passed around the circle
-    prevproc=mod(nprocs+myrank-2,nprocs)+1
-    nextproc=mod(myrank,nprocs)+1
+
+    prevproc=mod(wwin%nzprocs+wwin%nzrank-2,wwin%nzprocs)+1
+    nextproc=mod(wwin%nzrank,wwin%nzprocs)+1
 
     outwork=0d0; outtemp=0; workvector=0; workvector2=0
 
@@ -841,10 +856,11 @@ contains
        call basis_transformfrom_local(wwin,numr,inavector,workvector)
     endif
 
-    do deltaproc=0,nprocs-1
+    do deltaproc=0,wwin%nzprocs-1
 
 !! PASSING BACKWARD (plus deltaproc)
-       iproc=mod(myrank-1+deltaproc,nprocs)+1
+       iiproc=mod(wwin%nzrank-1+deltaproc,wwin%nzprocs)+1
+       iproc=wwin%nzproclist(iiproc)
 
        if (wwin%alltopconfigs(iproc).ge.wwin%allbotconfigs(iproc)) then
           call sparseconfigmult_byproc(iproc,iproc,wwin,workvector,outtemp, &
@@ -856,8 +872,8 @@ contains
 !! PASSING BACKWARD
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
 
-       call mympisendrecv(workvector,workvector2,prevproc,&
-            nextproc,deltaproc,numr*wwin%maxconfigsperproc)
+       call mympisendrecv_local(workvector,workvector2,prevproc,&
+            nextproc,deltaproc,numr*wwin%maxconfigsperproc,wwin%NZ_COMM)
        workvector(:,:)=workvector2(:,:)
     enddo
 
@@ -946,7 +962,8 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
        workdrivingavecdfbasis(numr,www%botdfbasis:www%topdfbasis+1)    !! AUTOMATIC
   real*8 :: one,time
   real*8, save :: tempstepsize=-1d0
-  integer :: itrace, iflag, numsteps,expofileptr=61142, liwsp=0, lwsp=0,getlen,myiostat,ixx
+  integer :: itrace, iflag, numsteps,expofileptr=61142, liwsp=0, lwsp=0,getlen,&
+       myiostat,ixx,minflag
 #ifdef REALGO
   integer, parameter :: zzz=1
 #else
@@ -1040,85 +1057,105 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
   endif
 
   call avectortime(1)
+  call mpibarrier()
 
 !! par_timestep is a-norm estimate, ok, whatever
 
-  if (drivingflag.ne.0) then
-     smallvectortemp(:,:)=0d0
-     call parconfigexpomult_padded(smallvector,smallvectortemp)
-
-     if (www%topdfbasis.ge.www%botdfbasis) then
-        call basis_transformto_local(www,numr,workdrivingavec(:,www%botconfig),&
-             workdrivingavecdfbasis(:,:))
-        smallvectortemp(:,1:www%topdfbasis-www%botdfbasis+1)=  &
-             smallvectortemp(:,1:www%topdfbasis-www%botdfbasis+1) + &
-             workdrivingavecdfbasis(:,:) * timefac 
+  iflag=0
+  if (nzflag.eq.0.or.dwwptr%nzrank.gt.0) then
+     if (drivingflag.ne.0) then
+        smallvectortemp(:,:)=0d0
+        call parconfigexpomult_padded(smallvector,smallvectortemp)
+        
+        if (www%topdfbasis.ge.www%botdfbasis) then
+           call basis_transformto_local(www,numr,workdrivingavec(:,www%botconfig),&
+                workdrivingavecdfbasis(:,:))
+           smallvectortemp(:,1:www%topdfbasis-www%botdfbasis+1)=  &
+                smallvectortemp(:,1:www%topdfbasis-www%botdfbasis+1) + &
+                workdrivingavecdfbasis(:,:) * timefac 
+        endif
+        zerovector(:,:)=0d0
+        call DGPHIVxxx2( ixx, thisexpodim, one, smallvectortemp,&
+             zerovector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
+             iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,&
+             tempstepsize,realpardotsub,my_maxaorder+1)
+        
+        smallvectorout(:,:)=smallvectorout(:,:)+smallvector(:,:)
+     else
+        call DGEXPVxxx2( ixx, thisexpodim, one, smallvector, &
+             smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
+             iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,&
+             tempstepsize,realpardotsub,my_maxaorder+1)
      endif
-     zerovector(:,:)=0d0
-     call DGPHIVxxx2( ixx, thisexpodim, one, smallvectortemp,&
-          zerovector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
-          iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,&
-          tempstepsize,realpardotsub,ixx*nprocs)
+  else
+     smallvectorout(:,:)=0d0 !! should be zero and stay zero but doing this anyway
+  endif
 
-      smallvectorout(:,:)=smallvectorout(:,:)+smallvector(:,:)
-   else
-      call DGEXPVxxx2( ixx, thisexpodim, one, smallvector, &
-           smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
-           iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,&
-           tempstepsize,realpardotsub,ixx*nprocs)
-   endif
+  minflag=iflag
+  call mympiimax(iflag)
+  call mympiimin(minflag)
+  if (iflag .ne. 0.or.minflag.ne.0) then
+     OFLWR "Error exposparseprop: ", iflag,minflag; CFLST
+  endif
 
-   call avectortime(3)
+  call avectortime(3)
 
-   lwsp=lwsp/zzz
-   
-   if (www%lastconfig.ge.www%firstconfig) then
-      outavector(:,:)=0d0;   
-      if (www%topconfig.ge.www%botconfig) then
-         call basis_transformfrom_local(www,numr,smallvectorout,outavector(:,www%botconfig))
-      endif
-   endif
+  if (www%lastconfig.ge.www%firstconfig) then
+     outavector(:,:)=0d0;   
+     if (www%topconfig.ge.www%botconfig) then
+        call basis_transformfrom_local(www,numr,smallvectorout,outavector(:,www%botconfig))
+     endif
+  endif
 
-   if (www%parconsplit.eq.0) then
-      call mpiallgather(outavector,www%numconfig*numr,&
-           www%configsperproc*numr,www%maxconfigsperproc*numr)
-   endif
+  if (www%parconsplit.eq.0) then
+     call mpiallgather(outavector,www%numconfig*numr,&
+          www%configsperproc*numr,www%maxconfigsperproc*numr)
+  endif
 
-   if (expofileptr.ne.nullfileptr) then
-      close(expofileptr)
-   endif
+  if (expofileptr.ne.nullfileptr) then
+     close(expofileptr)
+  endif
    
-   if (iflag .ne. 0) then
-      OFLWR "Error exposparseprop: ", iflag; CFLST
-   endif
-   numsteps=iwsp(4);  numiters=iwsp(1)
+  numsteps=iwsp(4);  numiters=iwsp(1)
    
-   if ((exposet==0).and.(numsteps.eq.1).and.(thisexpodim.gt.2)) then
-      thisexpodim=max(2,thisexpodim-1)
-   endif
-   
-   if (myrank.eq.1.and.notiming.eq.0) then
-      open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",&
-           status="old", position="append",iostat=myiostat)
-      call checkiostat(myiostat,"opening avecexpo timing file")
-      write(expofileptr,*,iostat=myiostat) &
-           "   End avector prop.  steps, iterations, stepsize", &
-           iwsp(4),iwsp(1),tempstepsize; 
-      call checkiostat(myiostat,"writing avecexpo timing file")
-      write(expofileptr,*);    
-      call avectortimewrite(expofileptr)
-      close(expofileptr)
-   endif
-   
-   if (numsteps.gt.1) then
-      exposet=1
-      thisexpodim=min(floor(thisexpodim*1.2)+5, my_maxaorder)
-   endif
-   
-   deallocate(wsp,iwsp)
-   
-   call avectortime(1)
-   
+  if ((exposet==0).and.(numsteps.eq.1).and.(thisexpodim.gt.2)) then
+     thisexpodim=max(2,thisexpodim-1)
+  endif
+
+  if (myrank.eq.1.and.notiming.eq.0) then
+     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",&
+          status="old", position="append",iostat=myiostat)
+     call checkiostat(myiostat,"opening avecexpo timing file")
+     write(expofileptr,*,iostat=myiostat) &
+          "   End avector prop.  steps, iterations, stepsize", &
+          iwsp(4),iwsp(1),tempstepsize; 
+     call checkiostat(myiostat,"writing avecexpo timing file")
+     write(expofileptr,*);    
+     call avectortimewrite(expofileptr)
+     close(expofileptr)
+  endif
+
+  if (numsteps.gt.1) then
+     exposet=1
+     thisexpodim=min(floor(thisexpodim*1.2)+5, my_maxaorder)
+  endif
+
+  deallocate(wsp,iwsp)
+ 
+  call avectortime(1)
+
+contains
+  subroutine realpardotsub(one,two,n,out)
+    implicit none
+    integer,intent(in) :: n
+    real*8,intent(in) :: one(n),two(n)
+    real*8,intent(out) :: out
+    real*8 :: sum
+    sum=DOT_PRODUCT(one,two)
+    call mympirealreduceone_local(sum,dwwptr%NZ_COMM)
+    out=sum
+  end subroutine realpardotsub
+ 
 end subroutine exposparseprop
 
 

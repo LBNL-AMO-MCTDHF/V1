@@ -98,13 +98,13 @@ contains
 !! transform second to reduce communication?
 !!   no, spin transformations done locally now.
 
-       if (myrank.eq.iproc) then
-          intemp=0d0
-          if (wwin%topdfbasis.ge.wwin%botdfbasis) then
-             call basis_transformfrom_local(wwin,numr,inavector,intemp)
-          endif
-       endif
        if (wwin%alltopconfigs(iproc).ge.wwin%allbotconfigs(iproc)) then
+          if (myrank.eq.iproc) then
+             intemp=0d0
+             if (wwin%topdfbasis.ge.wwin%botdfbasis) then
+                call basis_transformfrom_local(wwin,numr,inavector,intemp)
+             endif
+          endif
           call mympibcast_local(intemp,iiproc,wwin%nzconfsperproc(iiproc)*numr,wwin%NZ_COMM)
 
           call sparseconfigmult_byproc(iproc,iproc,wwin,intemp,outtemp, cptr, sptr, &

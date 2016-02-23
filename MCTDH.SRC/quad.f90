@@ -226,7 +226,7 @@ subroutine quadspfs(inspfs,jjcalls)
   implicit none
   DATATYPE,intent(inout) :: inspfs(totspfdim)  
   integer,intent(out) :: jjcalls
-  integer :: icount,maxdim,ierr
+  integer :: icount,maxdim,ierr,minerr
   real*8 :: orthogerror,dev,mynorm
   DATATYPE, allocatable ::  vector(:), vector2(:), vector3(:), com_vector2(:), com_vector3(:)
 
@@ -291,10 +291,11 @@ subroutine quadspfs(inspfs,jjcalls)
                 quadtol,totspfdim,maxdim,0,ierr)
         endif
      endif
-     ierr=abs(ierr)
+     minerr=ierr
      call mympiimax(ierr)
-     if (ierr.ne.0) then
-        OFLWR "         *** Error in dgsolve, not changing orbitals",ierr; CFL
+     call mympiimin(minerr)
+     if (ierr.ne.0.or.minerr.ne.0) then
+        OFLWR "         *** Error in dgsolve, not changing orbitals",ierr,minerr; CFL
         vector3(:)=0d0
      endif
 
@@ -458,7 +459,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
   implicit none
   DATATYPE, intent(inout) ::  inavector(numr,www%firstconfig:www%lastconfig)
   integer,intent(out) :: jjcalls0
-  integer :: jjcalls, ss, maxdim, mysize,flag,ierr
+  integer :: jjcalls, ss, maxdim, mysize,flag,ierr,minerr
   real*8 ::  dev,  thisaerror
   DATATYPE :: csum 
   DATATYPE, allocatable ::  vector(:,:), vector2(:,:), vector3(:,:), &
@@ -548,9 +549,9 @@ subroutine sparsequadavector(inavector,jjcalls0)
         endif
      endif
 
-     ierr=0
      call mpibarrier()
-     if (mysize.gt.0.or.nzflag.eq.0) then
+     ierr=0
+     if (nzflag.eq.0.or.dwwptr%nzrank.gt.0) then
         call dgsolve00( smallvectorspin, smallvectorspin2, jjcalls, paraamult,&
              quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1,ierr,dwwptr%NZ_COMM)
      else
@@ -558,10 +559,11 @@ subroutine sparsequadavector(inavector,jjcalls0)
      endif
      call mpibarrier()
 
-     ierr=abs(ierr)
+     minerr=ierr
      call mympiimax(ierr)
-     if (ierr.ne.0) then
-        OFLWR "          Error in dgsolve, not changing a-vector",ierr; CFL
+     call mympiimin(minerr)
+     if (ierr.ne.0.or.minerr.ne.0) then
+        OFLWR "          Error in dgsolve, not changing a-vector",ierr,minerr; CFL
         if (www%lastconfig.ge.www%firstconfig) then
            inavector(:,:) = vector(:,www%firstconfig:www%lastconfig)
         endif
@@ -573,7 +575,6 @@ subroutine sparsequadavector(inavector,jjcalls0)
 
 !!$  call basicblocklansolve(1,mysize,maxdim,maxdim,smallvectorspin,smallvectorspin2,1,&
 !!$     parhrmult,parhrdotsub,quadexpect)
-!!$  jjcalls=0
 
      vector3(:,:)=0d0; 
 

@@ -23,17 +23,6 @@ end module class_parameters
 
 module dotmod
 contains
-subroutine realpardotsub(one,two,n,out)
-  implicit none
-  integer,intent(in) :: n
-  real*8,intent(in) :: one(n),two(n)
-  real*8,intent(out) :: out
-  real*8 :: sum
-  sum=DOT_PRODUCT(one,two)
-  call mympirealreduceone(sum)
-  out=sum
-end subroutine realpardotsub
-
 
 !! CALLED INSIDE OMP LOOPS
 
