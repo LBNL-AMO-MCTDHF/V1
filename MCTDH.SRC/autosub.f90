@@ -32,12 +32,81 @@ subroutine autocorrelate_initial()
 end subroutine
 
 
+!! CALCULATE THE AUTOCORRELATION FUNCTION.
+
+module autocorrelate_one_mod
+contains
+
+  subroutine autocorrelate_one(www,bioww,avector,inspfs,orig_spf,orig_avector,outoverlap,innr,autobiovar)
+    use fileptrmod
+    use spfsize_parameters
+    use bio_parameters
+    use biorthomod
+    use dotmod
+    use walkmod
+    use biorthotypemod
+    implicit none
+    type(biorthotype),intent(inout) :: autobiovar
+    type(walktype),intent(in) :: www,bioww
+    DATATYPE, allocatable :: mobio(:,:),abio(:,:)
+    DATATYPE,intent(in) :: inspfs(  spfsize, www%nspf ), orig_spf(  spfsize, www%nspf ), &
+         orig_avector(innr,www%firstconfig:www%lastconfig), &
+         avector(innr,www%firstconfig:www%lastconfig)
+    DATATYPE,intent(out) :: outoverlap
+    DATATYPE,target :: smo(www%nspf,www%nspf)
+    integer :: innr
+
+    allocate(mobio(spfsize,www%nspf),abio(innr,www%firstconfig:www%lastconfig))
+
+    if(auto_biortho.eq.0) then
+
+       OFLWR "Permoverlaps disabled.  set auto_biortho=1"; CFLST
+
+!!$     call permoverlaps(innr, numelec, spfsize, inspfs, orig_spf, avector,&
+!!$          orig_avector,outoverlap, 1, &
+!!$          autopermthresh, autonormthresh, nspf, nspf, numconfig, numconfig, &
+!!$          configlist, ndof, configlist,&
+!!$          ndof, 0, parorbsplit)
+
+    else
+
+       if (www%lastconfig.ge.www%firstconfig) then
+          abio(:,:)=orig_avector(:,:)
+       endif
+
+       call bioset(autobiovar,smo,innr,bioww)
+       call biortho(orig_spf,inspfs,mobio,abio,autobiovar)
+
+       outoverlap=0d0
+       if (www%localnconfig.gt.0) then
+          outoverlap=dot(avector,abio,www%localnconfig*innr)
+       endif
+       if (www%parconsplit.ne.0) then
+          call mympireduceone(outoverlap)
+       endif
+    endif
+
+    deallocate(mobio,abio)
+
+  end subroutine autocorrelate_one
+
+end module autocorrelate_one_mod
+
+
+module autobiomod
+  use biorthotypemod
+  implicit none
+  type(biorthotype),target :: autobiovar
+end module
+
 subroutine autocorrelate()
   use automod
   use parameters
   use mpimod
   use xxxmod
   use configmod
+  use autobiomod
+  use autocorrelate_one_mod
   implicit none
   integer ::  i,imc,sflag,myiostat
   integer, save :: lastouttime=0
@@ -46,7 +115,7 @@ subroutine autocorrelate()
   if (mod(xcalledflag,autosteps).eq.0) then
      do imc=1,mcscfnum
         call autocorrelate_one(www,bwwptr,yyy%cmfavec(:,imc,0),yyy%cmfspfs(:,0),&
-             orig_spfs(:,:), orig_avectors(:,:,imc), overlaps(calledflag,imc),numr)
+             orig_spfs(:,:), orig_avectors(:,:,imc), overlaps(calledflag,imc),numr,autobiovar)
      enddo
 
      if (mod(calledflag,dipmodtime).eq.0.and.calledflag.gt.0) then
@@ -76,6 +145,13 @@ subroutine autocorrelate()
   xcalledflag=xcalledflag+1
   
 end subroutine autocorrelate
+
+
+subroutine autocorrelate_final()
+  use automod
+  implicit none
+  deallocate(orig_spfs,   orig_avectors,  overlaps)
+end subroutine autocorrelate_final
 
 
 
@@ -112,73 +188,6 @@ end subroutine autocorrelate
 !!$  getval=kkk(which)
 !!$
 !!$end function getval
-
-!! CALCULATE THE AUTOCORRELATION FUNCTION.
-
-module autobiomod
-  use biorthotypemod
-  implicit none
-  type(biorthotype),target :: autobiovar
-end module
-
-subroutine autocorrelate_one(www,bioww,avector,inspfs,orig_spf,orig_avector,outoverlap,innr)
-  use fileptrmod
-  use spfsize_parameters
-  use bio_parameters
-  use autobiomod
-  use biorthomod
-  use dotmod
-  use walkmod
-  implicit none
-  type(walktype),intent(in) :: www,bioww
-  DATATYPE, allocatable :: mobio(:,:),abio(:,:)
-  DATATYPE,intent(in) :: inspfs(  spfsize, www%nspf ), orig_spf(  spfsize, www%nspf ), &
-       orig_avector(innr,www%firstconfig:www%lastconfig), &
-       avector(innr,www%firstconfig:www%lastconfig)
-  DATATYPE,intent(out) :: outoverlap
-  DATATYPE,target :: smo(www%nspf,www%nspf)
-  integer :: innr
-
-  allocate(mobio(spfsize,www%nspf),abio(innr,www%firstconfig:www%lastconfig))
-
-  if(auto_biortho.eq.0) then
-     OFLWR "Permoverlaps disabled.  set auto_biortho=1"; CFLST
-
-!!$     call permoverlaps(innr, numelec, spfsize, inspfs, orig_spf, avector,&
-!!$          orig_avector,outoverlap, 1, &
-!!$          autopermthresh, autonormthresh, nspf, nspf, numconfig, numconfig, &
-!!$          configlist, ndof, configlist,&
-!!$          ndof, 0, parorbsplit)
-
-  else
-
-     if (www%lastconfig.ge.www%firstconfig) then
-        abio(:,:)=orig_avector(:,:)
-     endif
-
-     call bioset(autobiovar,smo,innr,bioww)
-     call biortho(orig_spf,inspfs,mobio,abio,autobiovar)
-
-     outoverlap=0d0
-     if (www%localnconfig.gt.0) then
-        outoverlap=dot(avector,abio,www%localnconfig*innr)
-     endif
-     if (www%parconsplit.ne.0) then
-        call mympireduceone(outoverlap)
-     endif
-  endif
-
-  deallocate(mobio,abio)
-
-end subroutine autocorrelate_one
-
-
-subroutine autocorrelate_final()
-  use automod
-  implicit none
-  deallocate(orig_spfs,   orig_avectors,  overlaps)
-end subroutine autocorrelate_final
-
 
 
 !!$  !! MULTI-USE OVERLAP ROUTINE, BEFORE BIORTHO.  MANUAL LOOPS

@@ -153,6 +153,12 @@ subroutine ovl_initial()
 
 end subroutine ovl_initial
 
+module ovlbiomod
+  use biorthotypemod
+  implicit none
+  integer :: ovlbioalloc=0
+  type(biorthotype),target,allocatable :: ovlbiovar(:,:)
+end module
 
 subroutine getoverlaps(forceflag)
   use ovlmod
@@ -160,23 +166,30 @@ subroutine getoverlaps(forceflag)
   use configmod
   use xxxmod
   use mpimod   !! myrank
+  use ovlbiomod
+  use autocorrelate_one_mod
   implicit none
   integer ::  i,imc,forceflag,myiostat
   DATATYPE :: nullvector1(numr),nullvector2(numr)
 
   calledflag = calledflag+1
 
+  if (ovlbioalloc.eq.0) then
+     allocate(ovlbiovar(numovl,mcscfnum))
+  endif
+  ovlbioalloc=1
+     
   if (mod(calledflag-1,autosteps).eq.0) then
      do imc=1,mcscfnum
         do i=1,numovl
            if (tot_adim.gt.0) then
               call autocorrelate_one(www,bwwptr,yyy%cmfavec(:,imc,0),&
                    yyy%cmfspfs(:,0),orig_spfs(:,:,i), &
-                   orig_avectors(:,i), overlaps(i,xcalledflag,imc),numr)
+                   orig_avectors(:,i), overlaps(i,xcalledflag,imc),numr,ovlbiovar(i,imc))
            else
               call autocorrelate_one(www,bwwptr,nullvector1(:),&
                    yyy%cmfspfs(:,0),orig_spfs(:,:,i), &
-                   nullvector2(:), overlaps(i,xcalledflag,imc),numr)
+                   nullvector2(:), overlaps(i,xcalledflag,imc),numr,ovlbiovar(i,imc))
            endif
         enddo
         xcalledflag=xcalledflag+1
@@ -202,9 +215,12 @@ subroutine mcscf_matel()
   use configmod
   use xxxmod
   use mpimod   !! myrank
+  use biorthotypemod
+  use autocorrelate_one_mod
   implicit none
   integer ::  i,j,myiostat
   DATATYPE :: myovl(numovl,numovl),nullvector1(numr),nullvector2(numr)
+  type(biorthotype),target :: mcbiovar(numovl,numovl)
 
 !! REPLACE THIS - ADAPT FINALSTATS0.
 !!   Make dual-purpose subroutine (finalstats00) contatining the guts of finalstats0 
@@ -214,10 +230,10 @@ subroutine mcscf_matel()
      do i=1,numovl
         if (tot_adim.gt.0) then
            call autocorrelate_one(www,bwwptr, orig_avectors(:,i), orig_spfs(:,:,i), &
-                orig_spfs(:,:,j), orig_avectors(:,j), myovl(i,j), numr)
+                orig_spfs(:,:,j), orig_avectors(:,j), myovl(i,j), numr, mcbiovar(i,j))
         else
            call autocorrelate_one(www,bwwptr, nullvector1(:), orig_spfs(:,:,i), &
-                orig_spfs(:,:,j), nullvector2(:), myovl(i,j), numr)
+                orig_spfs(:,:,j), nullvector2(:), myovl(i,j), numr, mcbiovar(i,j))
         endif
      enddo
   enddo
@@ -233,6 +249,7 @@ subroutine mcscf_matel()
   endif
 
   call mpibarrier()
+  OFLWR "OK done mcscf_matel, stopping"; CFLST
 
 end subroutine mcscf_matel
 
@@ -241,8 +258,10 @@ subroutine wfnovl()
   use parameters
   use configmod
   use mpimod
+  use biorthotypemod
+  use autocorrelate_one_mod
   implicit none
-  
+  type(biorthotype),target :: wfnbiovar(mcscfnum)  
   integer :: k,molength,alength,nt,ketbat,imc,ispf,myiostat
   real*8 :: piover2,dt,angle(mcscfnum)
   DATATYPE :: myovl(mcscfnum) , bradot,phase,ketdot,blah
@@ -364,7 +383,7 @@ subroutine wfnovl()
         endif
         
         call autocorrelate_one(www,bwwptr,braavec(:,imc),bramo,ketmo,&
-             ketavec(:,imc),myovl(imc),numr)
+             ketavec(:,imc),myovl(imc),numr,wfnbiovar(imc))
        
         blah=myovl(imc)/sqrt(bradot*ketdot)
         angle(imc)=acos(abs(blah))
@@ -376,6 +395,9 @@ subroutine wfnovl()
   enddo
 
   deallocate(bramo,braavec,ketmo,ketavec)
+
+  call mpibarrier()
+  OFLWR "OK done wfnovl, stopping"; CFLST
 
 end subroutine wfnovl
 

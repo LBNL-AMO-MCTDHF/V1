@@ -133,7 +133,7 @@ subroutine replace_withnat(printflag)
 
 !!$! doesn't work.  permoverlaps broken presumably.
 !!$#ifdef NOWAYDUDE
-!!$     call autocorrelate_one(yyy%cmfavec(:,imc,0), outspfs, yyy%cmfspfs(:,0), tempavector, sum,1)
+!!$     call autocorrelate_one(yyy%cmfavec(:,imc,0), outspfs, yyy%cmfspfs(:,0), tempavector, sum,1,needbiovar)
 !!$!! CHECK
 !!$     tempavector2(:)=yyy%cmfavec(:,imc,0)
 !!$     call biotransform(outspfs,yyy%cmfspfs(:,0),tempavector2(:),natrepbiovar)

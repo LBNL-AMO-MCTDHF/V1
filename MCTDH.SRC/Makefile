@@ -64,7 +64,7 @@ loadstuff.o: $(DEPEND) loadstuff.F90
 configload.o: $(DEPEND) configload.F90
 	$(F90) $(FFLAGS) $(MPIFLAG) -c configload.F90 
 
-psistats.o: $(DEPEND) psistats.F90 walkmult.o
+psistats.o: $(DEPEND) psistats.F90 walkmult.o biortho.o autosub.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c psistats.F90 
 
 dfconstrain.o: $(DEPEND) dfconstrain.F90 walkmult.o
@@ -127,7 +127,7 @@ spin.o: $(DEPEND)  spin.F90
 spfs.o: $(DEPEND) spfs.F90
 	$(F90) $(FFLAGS) $(MPIFLAG) -c spfs.F90
 
-denmat.o: $(DEPEND) denmat.F90 biortho.o
+denmat.o: $(DEPEND) denmat.F90 biortho.o autosub.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c denmat.F90
 
 driving.o: $(DEPEND) driving.F90 biortho.o walkmult.o
@@ -148,7 +148,7 @@ walkmult.o: $(DEPEND) walkmult.F90
 spinwalks.o: $(DEPEND) spinwalks.F90
 	$(F90) $(FFLAGS) $(MPIFLAG) -c spinwalks.F90
 
-ovlsub.o: $(DEPEND) ovlsub.F90 configload.o
+ovlsub.o: $(DEPEND) ovlsub.F90 configload.o biortho.o autosub.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c ovlsub.F90
 
 autosub.o: $(DEPEND) autosub.F90 biortho.o

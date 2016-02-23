@@ -199,12 +199,22 @@ subroutine psistats( thistime )
 end subroutine psistats
 
 
+module psibiomod
+  use biorthotypemod
+  implicit none
+  integer :: psibioalloc=0, psibionumvec=(-1)
+  type(biorthotype),target,allocatable :: ugbiovar(:),&
+       xrefbiovar(:),yrefbiovar(:),zrefbiovar(:)
+end module
+
 
 subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2expect,ugexpect,&
      xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
   use parameters
   use walkmod
   use arbitrarymultmod
+  use psibiomod
+  use autocorrelate_one_mod
   implicit none
   type(walktype),intent(in) :: www, bioww
   integer, intent(in) :: numvec
@@ -228,6 +238,15 @@ subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2ex
      allocate(inavectors(numr,1,numvec))
      inavectors=0
   endif
+
+  if (psibioalloc.ne.0.and.psibionumvec.ne.numvec) then
+     deallocate(ugbiovar,xrefbiovar,yrefbiovar,zrefbiovar)
+     psibioalloc=0
+  endif
+  if (psibioalloc.eq.0) then
+     allocate(ugbiovar(numvec),xrefbiovar(numvec), yrefbiovar(numvec),zrefbiovar(numvec))
+  endif
+  psibioalloc=1
 
   allocate(ugmat(www%nspf,www%nspf), xdipmat(www%nspf,www%nspf),&
        ydipmat(www%nspf,www%nspf), zdipmat(www%nspf,www%nspf), &
@@ -288,7 +307,7 @@ subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2ex
      enddo
      do imc=1,numvec
         call autocorrelate_one(www,bioww,inavectors(:,:,imc),myspfs,&
-             tempspfs,inavectors(:,:,imc),ugexpect(imc),numr)
+             tempspfs,inavectors(:,:,imc),ugexpect(imc),numr,ugbiovar(imc))
         ugexpect(imc)=ugexpect(imc)   /normsq(imc)
      enddo
 
@@ -366,7 +385,7 @@ subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2ex
   enddo
   do imc=1,numvec
      call autocorrelate_one(www,bioww,inavectors(:,:,imc),myspfs,tempspfs,&
-          inavectors(:,:,imc),zreflect(imc),numr)
+          inavectors(:,:,imc),zreflect(imc),numr,zrefbiovar(imc))
      zreflect(imc)=zreflect(imc)   /normsq(imc)
   enddo
 
@@ -375,7 +394,7 @@ subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2ex
   enddo
   do imc=1,numvec
      call autocorrelate_one(www,bioww,inavectors(:,:,imc),myspfs,tempspfs,&
-          inavectors(:,:,imc),yreflect(imc),numr)
+          inavectors(:,:,imc),yreflect(imc),numr,yrefbiovar(imc))
      yreflect(imc)=yreflect(imc)   /normsq(imc)
   enddo
 
@@ -384,7 +403,7 @@ subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2ex
   enddo
   do imc=1,numvec
      call autocorrelate_one(www,bioww,inavectors(:,:,imc),myspfs,tempspfs,&
-          inavectors(:,:,imc),xreflect(imc),numr)
+          inavectors(:,:,imc),xreflect(imc),numr,xrefbiovar(imc))
      xreflect(imc)=xreflect(imc)   /normsq(imc)
   enddo
 
@@ -410,10 +429,14 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
   use mpimod
   use walkmod
   use arbitrarymultmod
+  use biorthotypemod
+  use autocorrelate_one_mod
   implicit none
   type(walktype),intent(in) :: www,bioww
   DATATYPE,intent(in) :: myspfs(spfsize,www%nspf), &
        in_inavectors(numr,www%firstconfig:www%lastconfig,mcscfnum)       
+  type(biorthotype) :: ugbiovar(mcscfnum,mcscfnum),xrefbiovar(mcscfnum,mcscfnum),&
+       yrefbiovar(mcscfnum,mcscfnum),zrefbiovar(mcscfnum,mcscfnum)
   DATATYPE :: mmatel(mcscfnum,mcscfnum),ugmatel(mcscfnum,mcscfnum),m2matel(mcscfnum,mcscfnum),&
        xrefmatel(mcscfnum,mcscfnum),yrefmatel(mcscfnum,mcscfnum),zrefmatel(mcscfnum,mcscfnum),&
        xdipmatel(mcscfnum,mcscfnum),ydipmatel(mcscfnum,mcscfnum),zdipmatel(mcscfnum,mcscfnum),&
@@ -512,7 +535,7 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
      do imc=1,mcscfnum
         do jmc=1,mcscfnum
            call autocorrelate_one(www,bioww,inavectors(:,:,jmc),myspfs,tempspfs,&
-                inavectors(:,:,imc),ugmatel(jmc,imc),numr)
+                inavectors(:,:,imc),ugmatel(jmc,imc),numr,ugbiovar(jmc,imc))
         enddo
      enddo
   endif
@@ -598,7 +621,7 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
   do imc=1,mcscfnum
      do jmc=1,mcscfnum
         call autocorrelate_one(www,bioww,inavectors(:,:,jmc),myspfs,tempspfs,&
-             inavectors(:,:,imc),zrefmatel(jmc,imc),numr)
+             inavectors(:,:,imc),zrefmatel(jmc,imc),numr,zrefbiovar(jmc,imc))
      enddo
   enddo
 
@@ -608,7 +631,7 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
   do imc=1,mcscfnum
      do jmc=1,mcscfnum
         call autocorrelate_one(www,bioww,inavectors(:,:,jmc),myspfs,tempspfs,&
-             inavectors(:,:,imc),yrefmatel(jmc,imc),numr)
+             inavectors(:,:,imc),yrefmatel(jmc,imc),numr,yrefbiovar(jmc,imc))
      enddo
   enddo
 
@@ -618,7 +641,7 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
   do imc=1,mcscfnum
      do jmc=1,mcscfnum
         call autocorrelate_one(www,bioww,inavectors(:,:,jmc),myspfs,tempspfs,&
-             inavectors(:,:,imc),xrefmatel(jmc,imc),numr)
+             inavectors(:,:,imc),xrefmatel(jmc,imc),numr,xrefbiovar(jmc,imc))
      enddo
   enddo
 

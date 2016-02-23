@@ -486,7 +486,7 @@ subroutine abio_sparse(abio,aout,inbiovar)
   use biorthotypemod
   use dotmod
   implicit none
-  type(biorthotype),target :: inbiovar
+  type(biorthotype),target,intent(inout) :: inbiovar
   DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
   DATATYPE,intent(out) :: aout(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
   integer, allocatable :: iwsp(:)
@@ -640,8 +640,8 @@ contains
     use biorthotypemod
     use mpimod   !! nprocs
     implicit none
-    type(walktype),target :: wwbio
-    Type(biorthotype) :: biotypevar
+    type(walktype),target,intent(in) :: wwbio
+    Type(biorthotype),intent(inout) :: biotypevar
     DATATYPE,target :: insmo(wwbio%nspf,wwbio%nspf)
     integer :: innumr
 #ifdef REALGO
@@ -679,7 +679,7 @@ contains
     use fileptrmod
     use dotmod
     implicit none
-    type(biorthotype),target :: inbiovar
+    type(biorthotype),target,intent(inout) :: inbiovar
     DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)
     DATATYPE,intent(out) :: mobio(spfsize,inbiovar%wwbio%nspf)
     DATATYPE,intent(inout) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
@@ -777,7 +777,7 @@ contains
     use abiosparsemod
     use dotmod
     implicit none
-    type(biorthotype),target :: inbiovar
+    type(biorthotype),target,intent(inout) :: inbiovar
     DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)
     DATATYPE,intent(inout) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
     DATATYPE :: atmp(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig+1)    !! AUTOMATIC
@@ -849,7 +849,7 @@ subroutine abio_nonsparse(abio,aout,inbiovar)
   use biorthotypemod
   use tol_parameters
   implicit none
-    Type(biorthotype) :: inbiovar
+  Type(biorthotype),intent(inout) :: inbiovar
   integer :: i,j,iflag,clow,chigh,jproc,cnum,nnn(2),iind,mmm(2),rank,lwork
   integer :: bioconfiglist(inbiovar%wwbio%numelec,inbiovar%wwbio%numconfig)
   DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%numconfig)
