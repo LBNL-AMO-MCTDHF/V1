@@ -712,6 +712,177 @@ contains
   end subroutine bioset
 
 
+!! this is the non-sparse specific routine that does the back-transofrmation of the a-vector
+  subroutine abio_nonsparse(abio,aout,inbiovar)
+    use fileptrmod
+    use mpimod
+    use aarrmod
+    use biorthotypemod
+    use tol_parameters
+    implicit none
+    Type(biorthotype),target,intent(inout) :: inbiovar
+    integer :: i,j,iflag,clow,chigh,jproc,cnum,nnn(2),iind,mmm(2),rank,lwork
+    integer :: bioconfiglist(inbiovar%wwbio%numelec,inbiovar%wwbio%numconfig)
+    DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%numconfig)
+    DATATYPE,intent(out) :: aout(inbiovar%bionr,inbiovar%wwbio%numconfig)
+    DATATYPE :: smobig(inbiovar%wwbio%nspf*2,inbiovar%wwbio%nspf*2),&
+         Stmpbig(inbiovar%wwbio%numelec,inbiovar%wwbio%numelec), &       !! AUTOMATIC
+         Sconfig(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig), &
+         aouttr(inbiovar%wwbio%numconfig,inbiovar%bionr)
+!!  integer :: ipiv(inbiovar%wwbio%numconfig)
+    real*8 :: sing(inbiovar%wwbio%numconfig),rwork(5*inbiovar%wwbio%numconfig)
+    DATATYPE :: work(20*inbiovar%wwbio%numconfig)
+    lwork=20*inbiovar%wwbio%numconfig
+
+!! for the nonsparse routine this builds the full nonsparse configuration overlap matrix
+!! this relies on the unique properties of the Doolittle algorithm of LU factorization
+!! to take the overlap matrices of the ith and jth configs alpha and beta orbitals and 
+!! get their determinant that way this is very much so a brute force way to approach 
+!! this problem
+
+    smobig=0d0; stmpbig=0; sconfig=0; aouttr=0;  sing=0; rwork=0; work=0
+
+    do i=1,inbiovar%wwbio%nspf*2
+       mmm(:)=aarr(i)
+       do j=1,inbiovar%wwbio%nspf*2
+          nnn(:)=aarr(j)
+          if (mmm(2).eq.nnn(2)) then
+             smobig(i,j)=inbiovar%smo(mmm(1),nnn(1))
+          endif
+       enddo
+    enddo
+
+    do i=1,inbiovar%wwbio%numconfig
+       do j=1,inbiovar%wwbio%numelec
+          bioconfiglist(j,i)=iind( inbiovar%wwbio%configlist(j*2-1:j*2,i) )
+       enddo
+    enddo
+  
+    do j=inbiovar%wwbio%botconfig,inbiovar%wwbio%topconfig
+       do i=1,inbiovar%wwbio%numconfig
+          call get_petite_mat(inbiovar%wwbio%nspf*2,inbiovar%wwbio%numelec,Smobig,&
+               Stmpbig,bioconfiglist(:,i),bioconfiglist(:,j))
+          sconfig(i,j) = matdet(inbiovar%wwbio%numelec,Stmpbig)
+       enddo
+    enddo
+
+    call mpiallgather(sconfig,inbiovar%wwbio%numconfig**2,&
+         inbiovar%wwbio%configsperproc(:)*inbiovar%wwbio%numconfig,&
+         inbiovar%wwbio%maxconfigsperproc*inbiovar%wwbio%numconfig)
+
+!! this is where the linear equation solver is called to solve S*abio'=abio to get our  abio'
+!! parallelize over internuclear coordinate
+
+    aouttr(:,:)=TRANSPOSE(abio(:,:))
+
+    clow = (myrank-1)*inbiovar%bionr/nprocs+1;  chigh = myrank*inbiovar%bionr/nprocs
+
+!!  call MYGESV(inbiovar%wwbio%numconfig,chigh-clow+1,Sconfig,inbiovar%wwbio%numconfig,&
+!!       ipiv,aouttr(:,clow),inbiovar%wwbio%numconfig,iflag)
+
+#ifdef REALGO
+    call dgelss(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig,chigh-clow+1,&
+         Sconfig,inbiovar%wwbio%numconfig,aouttr(:,clow),inbiovar%wwbio%numconfig,&
+         sing,max(invtol,lntol**inbiovar%wwbio%numelec),rank,work,lwork,iflag)
+#else
+    call zgelss(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig,chigh-clow+1,&
+         Sconfig,inbiovar%wwbio%numconfig,aouttr(:,clow),inbiovar%wwbio%numconfig,&
+         sing,max(invtol,lntol**inbiovar%wwbio%numelec),rank,work,lwork,rwork,iflag)
+#endif
+
+    if(iflag.ne.0) then
+       OFLWR "Stopping due to bad iflag in nonsparsebiortho: ",iflag; CFLST
+    endif
+
+    do jproc=1,nprocs
+       clow = (jproc-1)*inbiovar%bionr/nprocs+1
+       chigh = jproc*inbiovar%bionr/nprocs
+       cnum = (chigh-clow+1)*inbiovar%wwbio%numconfig
+       call mympibcast(aouttr(:,clow:),jproc,cnum)
+    enddo
+
+    aout(:,:)=TRANSPOSE(aouttr(:,:))
+
+  contains
+
+    subroutine get_petite_mat(M,N,A,B,left,right)
+!! input :
+!! M - the dimension of A
+!! N - the dimension of B
+!! A - an M by M matrix
+!! left - an integer list containing all the LHS elements of A to keep in B (N long)
+!! right - an integer list containing all the RHS elements of A to keep in B (N long)
+!! output : 
+!! B - an N by N matrix that is a subset of A
+      implicit none
+      integer,intent(in) :: M,N,left(N),right(N)
+      DATATYPE,intent(in) :: A(M,M)
+      DATATYPE,intent(out) :: B(N,N)
+      integer :: i,j
+
+      B(:,:)=0d0
+      do i=1,N
+         do j=1,N
+            B(i,j)=A(left(i),right(j))
+         enddo
+      enddo
+    end subroutine get_petite_mat
+
+
+    function matdet(N,A)
+!subroutine getdet(N,A,matdet)
+!! this gets a determinant based off of LU decomposition of square matrix A
+!! A = PLU : det(A)=det(P)*det(L)*det(U)
+!! ?getrf uses Doolittle factorization to get L and U
+!! input :
+!! N - dimension of A
+!! A - an N by N matrix
+!! output :
+!! matdet - the determinat of A, if anything goes bad, it just returns a value of 0d0
+      implicit none
+      integer,intent(in) :: N
+      integer :: info,i,pow
+      integer :: ipiv(N)
+      DATATYPE,intent(in) :: A(N,N)
+      DATATYPE :: matdet
+
+!! rank 0 or less is not sufficient for a matrix, boo to your input!
+      if(N.le.0) then
+         matdet=0d0
+!! if A is 1x1, ?getrf will just return A, so save the effort
+      else if(N.eq.1) then
+         matdet=A(1,1)
+      else
+!! go the actual ?getrf because we need to 
+
+         call MYGETRF(N,N,A,N,ipiv,info)
+!! this is the regular case where the factorization worked
+!! in Doolittle factorization the diagonal of L=1 => det(L)=1
+!! off-diagonal of L and whole of U are stored in A => det(U)=Prod_i{A(i,i)} 
+!! det(P)=(-1)**num_row_swaps
+!! if ipiv(i).ne.i then row was swapped, last row can't be swapped
+         if(info.eq.0) then
+            pow=0
+            matdet=A(N,N)
+            do i=1,N-1
+               matdet=matdet*A(i,i)
+               if(ipiv(i).ne.i) pow=pow+1
+            enddo
+            matdet=matdet*((-1d0)**pow)
+!! this case is just the matrix is singular
+         else if(info.gt.0) then
+            matdet=0d0
+!! this case is that the ?getrf had an error, so out comes zero
+         else 
+            matdet=0d0
+         endif
+      endif
+
+    end function matdet
+
+  end subroutine abio_nonsparse
+
+
 !! on input:  origmo and abio wave function;  oppmo orbitals to biorthogonalize against
 !!   output : origmos have been transformed to mobio, and abio transformed in place
 
@@ -884,178 +1055,6 @@ contains
   end subroutine biotransform
 
 end module biorthomod
-
-
-
-!! this is the non-sparse specific routine that does the back-transofrmation of the a-vector
-subroutine abio_nonsparse(abio,aout,inbiovar)
-  use fileptrmod
-  use mpimod
-  use aarrmod
-  use biorthotypemod
-  use tol_parameters
-  implicit none
-  Type(biorthotype),target,intent(inout) :: inbiovar
-  integer :: i,j,iflag,clow,chigh,jproc,cnum,nnn(2),iind,mmm(2),rank,lwork
-  integer :: bioconfiglist(inbiovar%wwbio%numelec,inbiovar%wwbio%numconfig)
-  DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%numconfig)
-  DATATYPE,intent(out) :: aout(inbiovar%bionr,inbiovar%wwbio%numconfig)
-  DATATYPE :: smobig(inbiovar%wwbio%nspf*2,inbiovar%wwbio%nspf*2),&
-       Stmpbig(inbiovar%wwbio%numelec,inbiovar%wwbio%numelec), &       !! AUTOMATIC
-       Sconfig(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig), &
-       aouttr(inbiovar%wwbio%numconfig,inbiovar%bionr)
-!!  integer :: ipiv(inbiovar%wwbio%numconfig)
-  real*8 :: sing(inbiovar%wwbio%numconfig),rwork(5*inbiovar%wwbio%numconfig)
-  DATATYPE :: work(20*inbiovar%wwbio%numconfig)
-  lwork=20*inbiovar%wwbio%numconfig
-
-!! for the nonsparse routine this builds the full nonsparse configuration overlap matrix
-!! this relies on the unique properties of the Doolittle algorithm of LU factorization
-!! to take the overlap matrices of the ith and jth configs alpha and beta orbitals and 
-!! get their determinant that way this is very much so a brute force way to approach 
-!! this problem
-
-  smobig=0d0; stmpbig=0; sconfig=0; aouttr=0;  sing=0; rwork=0; work=0
-
-  do i=1,inbiovar%wwbio%nspf*2
-     mmm(:)=aarr(i)
-     do j=1,inbiovar%wwbio%nspf*2
-        nnn(:)=aarr(j)
-        if (mmm(2).eq.nnn(2)) then
-           smobig(i,j)=inbiovar%smo(mmm(1),nnn(1))
-        endif
-     enddo
-  enddo
-
-  do i=1,inbiovar%wwbio%numconfig
-     do j=1,inbiovar%wwbio%numelec
-        bioconfiglist(j,i)=iind( inbiovar%wwbio%configlist(j*2-1:j*2,i) )
-     enddo
-  enddo
-  
-  do j=inbiovar%wwbio%botconfig,inbiovar%wwbio%topconfig
-     do i=1,inbiovar%wwbio%numconfig
-        call get_petite_mat(inbiovar%wwbio%nspf*2,inbiovar%wwbio%numelec,Smobig,&
-             Stmpbig,bioconfiglist(:,i),bioconfiglist(:,j))
-        sconfig(i,j) = matdet(inbiovar%wwbio%numelec,Stmpbig)
-     enddo
-  enddo
-
-  call mpiallgather(sconfig,inbiovar%wwbio%numconfig**2,&
-       inbiovar%wwbio%configsperproc(:)*inbiovar%wwbio%numconfig,&
-       inbiovar%wwbio%maxconfigsperproc*inbiovar%wwbio%numconfig)
-
-!! this is where the linear equation solver is called to solve S*abio'=abio to get our  abio'
-!! parallelize over internuclear coordinate
-
-  aouttr(:,:)=TRANSPOSE(abio(:,:))
-
-  clow = (myrank-1)*inbiovar%bionr/nprocs+1;  chigh = myrank*inbiovar%bionr/nprocs
-
-!!  call MYGESV(inbiovar%wwbio%numconfig,chigh-clow+1,Sconfig,inbiovar%wwbio%numconfig,&
-!!       ipiv,aouttr(:,clow),inbiovar%wwbio%numconfig,iflag)
-
-#ifdef REALGO
-  call dgelss(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig,chigh-clow+1,&
-       Sconfig,inbiovar%wwbio%numconfig,aouttr(:,clow),inbiovar%wwbio%numconfig,&
-       sing,max(invtol,lntol**inbiovar%wwbio%numelec),rank,work,lwork,iflag)
-#else
-  call zgelss(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig,chigh-clow+1,&
-       Sconfig,inbiovar%wwbio%numconfig,aouttr(:,clow),inbiovar%wwbio%numconfig,&
-       sing,max(invtol,lntol**inbiovar%wwbio%numelec),rank,work,lwork,rwork,iflag)
-#endif
-
-  if(iflag.ne.0) then
-     OFLWR "Stopping due to bad iflag in nonsparsebiortho: ",iflag; CFLST
-  endif
-
-  do jproc=1,nprocs
-     clow = (jproc-1)*inbiovar%bionr/nprocs+1
-     chigh = jproc*inbiovar%bionr/nprocs
-     cnum = (chigh-clow+1)*inbiovar%wwbio%numconfig
-     call mympibcast(aouttr(:,clow:),jproc,cnum)
-  enddo
-
-  aout(:,:)=TRANSPOSE(aouttr(:,:))
-
-contains
-
-subroutine get_petite_mat(M,N,A,B,left,right)
-!! input :
-!! M - the dimension of A
-!! N - the dimension of B
-!! A - an M by M matrix
-!! left - an integer list containing all the LHS elements of A to keep in B (N long)
-!! right - an integer list containing all the RHS elements of A to keep in B (N long)
-!! output : 
-!! B - an N by N matrix that is a subset of A
-  implicit none
-  integer,intent(in) :: M,N,left(N),right(N)
-  DATATYPE,intent(in) :: A(M,M)
-  DATATYPE,intent(out) :: B(N,N)
-  integer :: i,j
-
-  B(:,:)=0d0
-  do i=1,N
-    do j=1,N
-      B(i,j)=A(left(i),right(j))
-    enddo
-  enddo 
-end subroutine get_petite_mat
-
-
-function matdet(N,A)
-!subroutine getdet(N,A,matdet)
-!! this gets a determinant based off of LU decomposition of square matrix A
-!! A = PLU : det(A)=det(P)*det(L)*det(U)
-!! ?getrf uses Doolittle factorization to get L and U
-!! input :
-!! N - dimension of A
-!! A - an N by N matrix
-!! output :
-!! matdet - the determinat of A, if anything goes bad, it just returns a value of 0d0
-  implicit none
-  integer,intent(in) :: N
-  integer :: info,i,pow
-  integer :: ipiv(N)
-  DATATYPE,intent(in) :: A(N,N)
-  DATATYPE :: matdet
-
-!! rank 0 or less is not sufficient for a matrix, boo to your input!
-  if(N.le.0) then
-    matdet=0d0
-!! if A is 1x1, ?getrf will just return A, so save the effort
-  else if(N.eq.1) then
-    matdet=A(1,1)
-  else
-!! go the actual ?getrf because we need to 
-
-    call MYGETRF(N,N,A,N,ipiv,info)
-!! this is the regular case where the factorization worked
-!! in Doolittle factorization the diagonal of L=1 => det(L)=1
-!! off-diagonal of L and whole of U are stored in A => det(U)=Prod_i{A(i,i)} 
-!! det(P)=(-1)**num_row_swaps
-!! if ipiv(i).ne.i then row was swapped, last row can't be swapped
-    if(info.eq.0) then
-      pow=0
-      matdet=A(N,N)
-      do i=1,N-1
-        matdet=matdet*A(i,i)
-        if(ipiv(i).ne.i) pow=pow+1
-      enddo
-      matdet=matdet*((-1d0)**pow)
-!! this case is just the matrix is singular
-    else if(info.gt.0) then
-      matdet=0d0
-!! this case is that the ?getrf had an error, so out comes zero
-    else 
-      matdet=0d0
-    endif
-  endif
-end function matdet
-
-
-end subroutine abio_nonsparse
 
 
 
