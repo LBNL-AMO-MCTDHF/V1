@@ -10,14 +10,42 @@
 
 !! ON INPUT SOLUTION IS GUESS.
 
+module dgm_comm_mod
+  implicit none
+  integer :: dgmcomm=(-798)
+end module dgm_comm_mod
+
+subroutine mympirealreduceone_local_dgmres(sum)
+  use dgm_comm_mod
+  implicit none
+  real*8,intent(inout) :: sum
+  call mympirealreduceone_local(sum,dgmcomm)
+end subroutine mympirealreduceone_local_dgmres
+
+subroutine mympiireduceone_local_dgmres(isum)
+  use dgm_comm_mod
+  implicit none
+  integer,intent(inout) :: isum
+  call mympiireduceone_local(isum,dgmcomm)
+end subroutine mympiireduceone_local_dgmres
+
+subroutine mympimax_local_dgmres(rsum)
+  use dgm_comm_mod
+  implicit none
+  real*8,intent(inout) :: rsum
+  call mympimax_local(rsum,dgmcomm)
+end subroutine mympimax_local_dgmres
+
+
 module dgsolvemod
 contains
 
   subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, &
-       intolerance, indimension, inkrydim,parflag,ierr)
+       intolerance, indimension, inkrydim,parflag,ierr,incomm)
     use fileptrmod
+    use dgm_comm_mod
     implicit none
-    integer,intent(in) :: indimension,inkrydim,parflag,preconflag
+    integer,intent(in) :: indimension,inkrydim,parflag,preconflag,incomm
     integer,intent(out) :: ierr
     real*8,intent(in) :: intolerance
     DATATYPE,intent(in) :: rhs(indimension)
@@ -42,6 +70,15 @@ contains
 !!$     OFLWR "Error, for dgsolve now must use same dimension all processors", &
 !!$         mindim,maxdim; CFLST
 !!$  endif
+
+    if (indimension.le.0) then
+       print *, "ACK, DGSOLVE CAN'T DO ZERO PER PROCESSOR, STOPPING"
+       print *, "ACK, DGSOLVE CAN'T DO ZERO PER PROCESSOR, STOPPING"
+       print *, "ACK, DGSOLVE CAN'T DO ZERO PER PROCESSOR, STOPPING"
+       stop
+    endif
+
+    dgmcomm=incomm
 
     jjxx = zzz * indimension
 
@@ -165,12 +202,16 @@ subroutine quadspfs(inspfs,jjcalls)
   use dgsolvemod
   use quadopmod
   use orbdermod
+  use mpimod      !! MPI_COMM_WORLD
   implicit none
   DATATYPE,intent(inout) :: inspfs(totspfdim)  
   integer,intent(out) :: jjcalls
   integer :: icount,maxdim,ierr
   real*8 :: orthogerror,dev,mynorm
   DATATYPE, allocatable ::  vector(:), vector2(:), vector3(:), com_vector2(:), com_vector3(:)
+#ifndef MPIFLAG
+  integer,parameter :: MPI_COMM_WORLD=(-798)
+#endif
 
   allocate( vector(totspfdim), vector2(totspfdim), vector3(totspfdim) )
   vector=0; vector2=0; vector3=0
@@ -214,22 +255,22 @@ subroutine quadspfs(inspfs,jjcalls)
         if (parorbsplit.eq.3) then
            maxdim=min(spfsmallsize*nspf*nprocs,maxexpodim)
            call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
-                quadtol,spfsmallsize*nspf,maxdim,1,ierr)
+                quadtol,spfsmallsize*nspf,maxdim,1,ierr,MPI_COMM_WORLD)
         else
            maxdim=min(spfsmallsize*nspf,maxexpodim)
            call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
-                quadtol,spfsmallsize*nspf,maxdim,0,ierr)
+                quadtol,spfsmallsize*nspf,maxdim,0,ierr,MPI_COMM_WORLD)
         endif
         call spfs_expand(com_vector3,vector3)
      else
         if (parorbsplit.eq.3) then
            maxdim=min(totspfdim*nprocs,maxexpodim)
            call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
-                quadtol,totspfdim,maxdim,1,ierr)
+                quadtol,totspfdim,maxdim,1,ierr,MPI_COMM_WORLD)
         else
            maxdim=min(totspfdim,maxexpodim)
            call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
-                quadtol,totspfdim,maxdim,0,ierr)
+                quadtol,totspfdim,maxdim,0,ierr,MPI_COMM_WORLD)
         endif
      endif
 
@@ -376,9 +417,9 @@ subroutine quadavector(inavector,jjcalls)
         jjcalls=0
      else
         if (www%totadim.gt.0) then
-           call sparsequadavector(www,inavector(:,imc),jjcalls)
+           call sparsequadavector(inavector(:,imc),jjcalls)
         else
-           call sparsequadavector(www,nullvector(:),jjcalls)
+           call sparsequadavector(nullvector(:),jjcalls)
         endif
      endif
   enddo
@@ -386,16 +427,15 @@ subroutine quadavector(inavector,jjcalls)
 end subroutine quadavector
 
 
-subroutine sparsequadavector(www,inavector,jjcalls0)
+subroutine sparsequadavector(inavector,jjcalls0)
   use parameters
   use mpimod
   use aaonedmod
   use xxxmod
-  use walkmod
+  use configmod
   use dgsolvemod
   use sparsemultmod
   implicit none
-  type(walktype),intent(in) :: www
   DATATYPE, intent(inout) ::  inavector(numr,www%firstconfig:www%lastconfig)
   integer,intent(out) :: jjcalls0
   integer :: jjcalls, ss, maxdim, mysize,flag,ierr
@@ -475,18 +515,28 @@ subroutine sparsequadavector(www,inavector,jjcalls0)
      maxdim=min(maxaorder,numr*www%numdfbasis)
      mysize=numr*(www%topdfbasis-www%botdfbasis+1)
 
-     flag=0
-     if (mysize.eq.0) then
-        print *, "ACK, CAN'T DO A-VECTOR QUAD WITH ZERO CONFIGS PER PROCESSOR RANK",myrank,mysize; 
-        flag=99
-     endif
-     call mympiireduceone(flag)
-     if (flag.ne.0) then
-        call mpistop()
-     endif
+     flag=0; jjcalls=0
 
-     call dgsolve0( smallvectorspin, smallvectorspin2, jjcalls, paraamult,&
-          quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1,ierr)
+     if (nzflag.eq.0) then
+        if (mysize.eq.0) then
+           print *, "ACK, CAN'T DO A-VECTOR QUAD WITH ZERO CONFIGS PER PROCESSOR RANK",myrank,mysize
+           flag=99
+        endif
+        call mympiireduceone(flag)
+        if (flag.ne.0) then
+           call mpistop()
+        endif
+     endif
+     call mpibarrier()
+     if (mysize.gt.0.or.nzflag.eq.0) then
+!!        OFLWR "CALLING DGSOLVE"; CFL
+        call dgsolve0( smallvectorspin, smallvectorspin2, jjcalls, paraamult,&
+             quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1,ierr,dwwptr%NZ_COMM)
+!!     else
+!!        OFLWR " waiting for dgsolve. "; CFL
+     endif
+     call mpibarrier()
+!!     OFLWR "DONE WITH DGSOLVE."; CFL
 
 !!$  call basicblocklansolve(1,mysize,maxdim,maxdim,smallvectorspin,smallvectorspin2,1,&
 !!$     parhrmult,parhrdotsub,quadexpect)

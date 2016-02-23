@@ -257,7 +257,7 @@ module walkmod
 
      integer :: numconfig=-1
      integer,allocatable :: configsperproc(:), alltopconfigs(:), allbotconfigs(:),&
-          nzconfsperproc(:)
+          nzconfsperproc(:), nzproclist(:)
      integer :: maxconfigsperproc
      integer :: botconfig=-1,topconfig=-1
      integer :: configstart=-1,configend=-1, startrank,endrank

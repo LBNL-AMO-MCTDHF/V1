@@ -59,7 +59,7 @@ subroutine basis_set(www,innzflag)
   implicit none
   type(walktype),intent(inout) :: www
   integer,intent(in) :: innzflag
-  integer :: ii,jj,nzranks(nprocs)
+  integer :: ii,jj
 
   allocate(www%basisperproc(nprocs),www%dfbasisperproc(nprocs))
   allocate(www%allbotbasis(nprocs),www%allbotdfbasis(nprocs))
@@ -98,15 +98,15 @@ subroutine basis_set(www,innzflag)
 
   www%totadim=www%localnconfig*numr
 
-  allocate(www%nzconfsperproc(nprocs))
-  www%nzconfsperproc(:)=(-99)
-  www%nzrank=(-99)
+  allocate(www%nzconfsperproc(nprocs),www%nzproclist(nprocs))
+  www%nzconfsperproc(:)=(-99); www%nzproclist(:)=(-99);  www%nzrank=(-99)
+
   jj=0
   do ii=1,nprocs
      if (www%configsperproc(ii).gt.0.or.innzflag.eq.0) then
         jj=jj+1
         www%nzconfsperproc(jj)=www%configsperproc(ii)
-        nzranks(jj)=ii
+        www%nzproclist(jj)=ii
         if (ii.eq.myrank) then
            www%nzrank=jj
         endif
@@ -114,12 +114,16 @@ subroutine basis_set(www,innzflag)
   enddo
   www%nzprocs=jj
   if (innzflag.eq.0) then
+#ifdef MPIFLAG
      www%NZ_COMM = MPI_COMM_WORLD
+#else
+     www%NZ_COMM = (-798)
+#endif
      if (www%nzprocs.ne.nprocs) then
         print*, "FAILFAIL FAIL",myrank,www%nzprocs; stop
      endif
   else
-     call make_mpi_comm(www%nzprocs,nzranks(:),www%NZ_COMM)
+     call make_mpi_comm(www%nzprocs,www%nzproclist(:),www%NZ_COMM)
   endif
 
 end subroutine basis_set

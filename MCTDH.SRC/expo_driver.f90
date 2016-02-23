@@ -703,7 +703,7 @@ contains
 !! transform second to reduce communication?
 !!   no, spin transformations done locally now.
 
-    if (www%topconfig.ge.www%botconfig) then
+    if (www%topdfbasis.ge.www%botdfbasis) then
        call basis_transformfrom_local(www,numr,inavector,&
             intemp(:,www%botconfig:www%topconfig))
     endif
@@ -717,6 +717,8 @@ contains
        call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, &
             workconfigpointer, worksparsepointer, 1,1,1,1,&
             configexpotime,0,1,numr,0,imc)
+    endif
+    if (www%topdfbasis.ge.www%botdfbasis) then
        call basis_transformto_local(www,numr,outtemp,outavector)
     endif
 
@@ -766,7 +768,10 @@ contains
 !!   no, spin transformations done locally now.
 
        if (myrank.eq.iproc) then
-          call basis_transformfrom_local(www,numr,inavector,intemp)
+          intemp=0
+          if (www%topdfbasis.ge.www%botdfbasis) then
+             call basis_transformfrom_local(www,numr,inavector,intemp)
+          endif
        endif
 
        if (www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
@@ -784,13 +789,16 @@ contains
 
     outavector(:,:)=0d0   !!     inavector(:,:)   !! PADDED
 
-    call basis_transformto_local(www,numr,outwork,outavector)
+    if (www%topdfbasis.ge.www%botdfbasis) then
+       call basis_transformto_local(www,numr,outwork,outavector)
+    endif
 
     outavector=outavector*timefac
   
     call avectortime(2)
 
   end subroutine parconfigexpomult_padded0_summa
+
 
   subroutine parconfigexpomult_padded0_circ(www,workconfigpointer,&
        worksparsepointer,inavector,outavector)
@@ -829,7 +837,9 @@ contains
 
     outwork=0d0; outtemp=0; workvector=0; workvector2=0
 
-    call basis_transformfrom_local(www,numr,inavector,workvector)
+    if (www%topdfbasis.ge.www%botdfbasis) then
+       call basis_transformfrom_local(www,numr,inavector,workvector)
+    endif
 
     do deltaproc=0,nprocs-1
 
@@ -853,7 +863,9 @@ contains
 
     outavector(:,:)=0d0    !!     inavector(:,:)   !! PADDED
 
-    call basis_transformto_local(www,numr,outwork,outavector)
+    if (www%topdfbasis.ge.www%botdfbasis) then
+       call basis_transformto_local(www,numr,outwork,outavector)
+    endif
 
     outavector=outavector*timefac
   

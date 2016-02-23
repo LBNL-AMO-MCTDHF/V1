@@ -47,139 +47,139 @@ parameters.o: Definitions.INC Definitions.ALL Makefile.header Makefile parameter
 	$(F90) $(FFLAGS) $(MPIFLAG) -c parameters.F90
 
 main_modules.o: parameters.o Definitions.INC Definitions.ALL Makefile.header Makefile main_modules.F90 
-	$(F90) $(FFLAGS) $(PGFFLAG) -c main_modules.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) $(PGFFLAG) -c main_modules.F90
 
 biortho.o: $(DEPEND) biortho.F90
-	$(F90) $(MPIFLAG) $(FFLAGS)  -c biortho.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c biortho.F90 
 
 second_derivs.o: $(DEPEND) second_derivs.F90 derivs.o proputils.o
-	$(F90) $(FFLAGS)  -c second_derivs.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c second_derivs.F90 
 
 keprojector.o: $(DEPEND) keprojector.F90 walkmult.o
-	$(F90) $(FFLAGS)  -c keprojector.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c keprojector.F90 
 
 loadstuff.o: $(DEPEND) loadstuff.F90
-	$(F90) $(FFLAGS)  -c loadstuff.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c loadstuff.F90 
 
 configload.o: $(DEPEND) configload.F90
-	$(F90) $(FFLAGS)  -c configload.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c configload.F90 
 
 psistats.o: $(DEPEND) psistats.F90 walkmult.o
-	$(F90) $(FFLAGS)  -c psistats.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c psistats.F90 
 
 dfconstrain.o: $(DEPEND) dfconstrain.F90 walkmult.o
-	$(F90) $(FFLAGS)  -c dfconstrain.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c dfconstrain.F90 
 
 expo_driver.o: $(DEPEND) expo_driver.F90 derivs.o proputils.o
-	$(F90) $(FFLAGS)  -c expo_driver.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c expo_driver.F90 
 
 quad.o: $(DEPEND) quad.F90 blocklanczos.o expo_driver.o derivs.o walkmult.o
-	$(F90) $(FFLAGS)  -c quad.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c quad.F90 
 
 BCG_driver.o: $(DEPEND) implicit.o BCG_driver.F90
-	$(F90) $(FFLAGS)  -c BCG_driver.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c BCG_driver.F90 
 
 mctdhf.o: $(DEPEND) mctdhf.F90 
-	$(F90) $(FFLAGS)  -c mctdhf.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c mctdhf.F90 
 
 actions.o: $(DEPEND) actions.F90 
-	$(F90) $(FFLAGS) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c actions.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c actions.F90 
 
 readactions.o: $(DEPEND) readactions.F90 
-	$(F90) $(FFLAGS) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c readactions.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c readactions.F90 
 
 saveactions.o: $(DEPEND) saveactions.F90 
-	$(F90) $(FFLAGS) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c saveactions.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c saveactions.F90 
 
 natprojaction.o: $(DEPEND) natprojaction.F90 walkmult.o
-	$(F90) $(FFLAGS) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c natprojaction.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c natprojaction.F90 
 
 orbvectoractions.o: $(DEPEND) orbvectoractions.F90 
-	$(F90) $(FFLAGS) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c orbvectoractions.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c orbvectoractions.F90 
 
 povactions.o: $(DEPEND) povactions.F90 
-	$(F90) $(FFLAGS) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c povactions.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c povactions.F90 
 
 prop.o: $(DEPEND) prop.F90 derivs.o proputils.o walkmult.o
-	$(F90) $(FFLAGS) -c prop.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c prop.F90 
 
 proputils.o: $(DEPEND) proputils.F90  
-	$(F90) $(FFLAGS) -c proputils.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c proputils.F90 
 
 pulse.o: $(DEPEND) pulse.F90  
-	$(F90) $(FFLAGS) -c pulse.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c pulse.F90 
 
 derivs.o: $(DEPEND) derivs.F90 proputils.o walkmult.o
-	$(F90) $(FFLAGS) -c derivs.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c derivs.F90 
 
 MPI.o:  $(DEPEND) MPI.F90
-	$(F90) $(MPIFLAG) $(FFLAGS) -c MPI.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c MPI.F90
 
 mean.o: $(DEPEND) mean.F90  
-	$(F90) $(FFLAGS)  -c mean.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c mean.F90 
 
 matel.o: $(DEPEND)  matel.F90
-	$(F90) $(FFLAGS) -c matel.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c matel.F90 
 
 spin.o: $(DEPEND)  spin.F90
-	$(F90) $(FFLAGS) -c spin.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c spin.F90 
 
 spfs.o: $(DEPEND) spfs.F90
-	$(F90) $(FFLAGS)  -c spfs.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c spfs.F90
 
 denmat.o: $(DEPEND) denmat.F90 biortho.o
-	$(F90) $(FFLAGS)  -c denmat.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c denmat.F90
 
 driving.o: $(DEPEND) driving.F90 biortho.o walkmult.o
-	$(F90) $(FFLAGS)  -c driving.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c driving.F90
 
 newconfig.o: $(DEPEND) newconfig.F90
-	$(F90) $(FFLAGS)  -c newconfig.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c newconfig.F90
 
 configstuff.o: $(DEPEND) configstuff.F90
-	$(F90) $(MPIFLAG) $(FFLAGS)  -c configstuff.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c configstuff.F90
 
 walks.o: $(DEPEND) walks.F90 
-	$(F90) $(FFLAGS)  -c walks.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c walks.F90
 
 walkmult.o: $(DEPEND) walkmult.F90 
-	$(F90) $(MPIFLAG) $(FFLAGS)  -c walkmult.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c walkmult.F90
 
 spinwalks.o: $(DEPEND) spinwalks.F90
-	$(F90) $(FFLAGS)  -c spinwalks.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c spinwalks.F90
 
 ovlsub.o: $(DEPEND) ovlsub.F90 configload.o
-	$(F90) $(FFLAGS)  -c ovlsub.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c ovlsub.F90
 
 autosub.o: $(DEPEND) autosub.F90 biortho.o
-	$(F90) $(FFLAGS)  -c autosub.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c autosub.F90
 
 autocall.o: $(DEPEND)  autocall.F90
-	$(F90) $(FFLAGS)  -c autocall.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c autocall.F90
 
 dipolesub.o: $(DEPEND) dipolesub.F90 biortho.o walkmult.o
-	$(F90) $(FFLAGS)  -c dipolesub.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c dipolesub.F90
 
 dipolecall.o: $(DEPEND)  dipolecall.F90
-	$(F90) $(FFLAGS)  -c dipolecall.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c dipolecall.F90
 
 blocklanczos.o: $(DEPEND) blocklanczos.F90 walkmult.o
-	$(F90) $(MPIFLAG) $(FFLAGS) -c blocklanczos.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c blocklanczos.F90
 
 eigen.o: eigen.F90  Definitions.ALL
-	$(F90) $(FFLAGS) -c eigen.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c eigen.F90 
 
 utils.o: $(DEPEND) utils.F90
-	$(F90) $(FFLAGS) -c utils.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c utils.F90 
 
 getparams.o: Definitions.ALL Definitions.INC parameters.o main_modules.o getparams.F90 
-	$(F90)  $(MPIFLAG) $(FFLAGS) $(SAFEFLAG) $(PGFFLAG) -c getparams.F90 
+	$(F90) $(FFLAGS) $(MPIFLAG) $(SAFEFLAG) $(PGFFLAG) -c getparams.F90 
 
 electronflux.o: $(DEPEND) electronflux.F90  biortho.o
-	$(F90) $(FFLAGS) -c electronflux.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c electronflux.F90
 
 projeflux.o: $(DEPEND) projeflux.F90 biortho.o
-	$(F90) $(FFLAGS) -c projeflux.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c projeflux.F90
 
 ####  F77 #####
 

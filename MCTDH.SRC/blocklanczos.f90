@@ -6,7 +6,7 @@
 module parblocklanmod
 contains
 
-  subroutine parblockconfigmult0_gather(www,cptr,sptr,inavector,outavector)
+  subroutine parblockconfigmult0_gather(wwin,cptr,sptr,inavector,outavector)
     use fileptrmod
     use r_parameters
     use sparse_parameters
@@ -17,43 +17,46 @@ contains
     use configptrmod
     use sparsemultmod
     implicit none
-    type(walktype),intent(in) :: www
+    type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: cptr
     type(SPARSEPTR),intent(in) :: sptr
     integer :: ii
-    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
-    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
+    DATATYPE,intent(in) :: inavector(numr,wwin%botdfbasis:wwin%topdfbasis)
+    DATATYPE,intent(out) :: outavector(numr,wwin%botdfbasis:wwin%topdfbasis)
     DATATYPE,allocatable :: intemp(:,:)
-    DATATYPE :: outtemp(numr,www%botconfig:www%topconfig)   !! AUTOMATIC
+    DATATYPE :: outtemp(numr,wwin%botconfig:wwin%topconfig+1)   !! AUTOMATIC
 
     if (sparseconfigflag.eq.0) then
        OFLWR "error, must use sparse for parblockconfigmult"; CFLST
     endif
 
-    allocate(intemp(numr,www%numconfig))
-    intemp(:,:)=0d0
+    allocate(intemp(numr,wwin%numconfig));    intemp(:,:)=0d0; outtemp=0
 
 !! transform second to reduce communication?
 !!   no, spin transformations done locally now.
 
-    if (www%topconfig-www%botconfig+1 .ne. 0) then
-       call basis_transformfrom_local(www,numr,inavector,&
-            intemp(:,www%botconfig:www%topconfig))
+    if (wwin%topdfbasis.ge.wwin%botdfbasis) then
+       call basis_transformfrom_local(wwin,numr,inavector,&
+            intemp(:,wwin%botconfig:wwin%topconfig))
     endif
 
-    call mpiallgather(intemp,www%numconfig*numr,&
-         www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+    call mpiallgather_local(intemp,wwin%numconfig*numr,&
+         wwin%nzconfsperproc(:)*numr,wwin%maxconfigsperproc*numr,&
+         wwin%NZ_COMM,wwin%nzprocs,wwin%nzrank)
 
-    call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, cptr, sptr, &
-         1,1,1,0,0d0,0,1,numr,0,-1)
-
-    if (mshift.ne.0d0) then 
-       do ii=www%botconfig,www%topconfig
-          outtemp(:,ii)=outtemp(:,ii)+ intemp(:,ii)*www%configmvals(ii)*mshift
-       enddo
+    if (wwin%topconfig.ge.wwin%botconfig) then
+       call sparseconfigmult_byproc(1,nprocs,wwin,intemp,outtemp, cptr, sptr, &
+            1,1,1,0,0d0,0,1,numr,0,-1)
+       if (mshift.ne.0d0) then 
+          do ii=wwin%botconfig,wwin%topconfig
+             outtemp(:,ii)=outtemp(:,ii)+ intemp(:,ii)*wwin%configmvals(ii)*mshift
+          enddo
+       endif
     endif
 
-    call basis_transformto_local(www,numr,outtemp,outavector)
+    if (wwin%topdfbasis.ge.wwin%botdfbasis) then
+       call basis_transformto_local(wwin,numr,outtemp,outavector)
+    endif
 
     deallocate(intemp)
 
@@ -61,7 +64,7 @@ contains
 
 #ifdef MPIFLAG
 
-  subroutine parblockconfigmult0_summa(www,cptr,sptr,inavector,outavector)
+  subroutine parblockconfigmult0_summa(wwin,cptr,sptr,inavector,outavector)
     use fileptrmod
     use r_parameters
     use sparse_parameters
@@ -72,54 +75,61 @@ contains
     use configptrmod
     use sparsemultmod
     implicit none
-    type(walktype),intent(in) :: www
+    type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: cptr
     type(SPARSEPTR),intent(in) :: sptr
-    integer :: ii,iproc
-    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
-    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
-    DATATYPE :: intemp(numr,www%maxconfigsperproc),&
-         outwork(numr,www%botconfig:www%topconfig),&
-         outtemp(numr,www%botconfig:www%topconfig)  !! AUTOMATIC
+    integer :: ii,iproc,iiproc
+    DATATYPE,intent(in) :: inavector(numr,wwin%botdfbasis:wwin%topdfbasis)
+    DATATYPE,intent(out) :: outavector(numr,wwin%botdfbasis:wwin%topdfbasis)
+    DATATYPE :: intemp(numr,wwin%maxconfigsperproc),&
+         outwork(numr,wwin%botconfig:wwin%topconfig+1),&
+         outtemp(numr,wwin%botconfig:wwin%topconfig+1)  !! AUTOMATIC
 
     if (sparseconfigflag.eq.0) then
        OFLWR "error, must use sparse for parblockconfigmult"; CFLST
     endif
 
-    outwork(:,:)=0d0
+    outwork(:,:)=0d0; outtemp=0; intemp=0
 
-    do iproc=1,nprocs
+    do iiproc=1,wwin%nzprocs
+
+       iproc=wwin%nzproclist(iiproc)
 
 !! transform second to reduce communication?
 !!   no, spin transformations done locally now.
 
        if (myrank.eq.iproc) then
-          call basis_transformfrom_local(www,numr,inavector,intemp)
-       endif
-       call mympibcast(intemp,iproc,&
-            (www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
-
-       call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, cptr, sptr, &
-            1,1,1,0,0d0,0,1,numr,0,-1)
-
-       if (myrank.eq.iproc) then
-          if (mshift.ne.0d0) then 
-             do ii=www%botconfig,www%topconfig
-                outtemp(:,ii)=outtemp(:,ii) + &
-                     intemp(:,ii-www%botconfig+1)*www%configmvals(ii)*mshift
-             enddo
+          intemp=0d0
+          if (wwin%topdfbasis.ge.wwin%botdfbasis) then
+             call basis_transformfrom_local(wwin,numr,inavector,intemp)
           endif
        endif
+       if (wwin%alltopconfigs(iproc).ge.wwin%allbotconfigs(iproc)) then
+          call mympibcast_local(intemp,iiproc,wwin%nzconfsperproc(iiproc)*numr,wwin%NZ_COMM)
 
-       outwork(:,:)=outwork(:,:) + outtemp(:,:)
+          call sparseconfigmult_byproc(iproc,iproc,wwin,intemp,outtemp, cptr, sptr, &
+               1,1,1,0,0d0,0,1,numr,0,-1)
 
+          if (myrank.eq.iproc) then
+             if (mshift.ne.0d0) then 
+                do ii=wwin%botconfig,wwin%topconfig
+                   outtemp(:,ii)=outtemp(:,ii) + &
+                        intemp(:,ii-wwin%botconfig+1)*wwin%configmvals(ii)*mshift
+                enddo
+             endif
+          endif
+          outwork(:,:)=outwork(:,:) + outtemp(:,:)
+       endif
     enddo
 
-    call basis_transformto_local(www,numr,outwork,outavector)
+    if (wwin%topdfbasis.ge.wwin%botdfbasis) then
+       call basis_transformto_local(wwin,numr,outwork,outavector)
+    endif
 
   end subroutine parblockconfigmult0_summa
 
-  subroutine parblockconfigmult0_circ(www,cptr,sptr,inavector,outavector)
+
+  subroutine parblockconfigmult0_circ(wwin,cptr,sptr,inavector,outavector)
     use fileptrmod
     use r_parameters
     use sparse_parameters
@@ -130,16 +140,16 @@ contains
     use configptrmod
     use sparsemultmod
     implicit none
-    type(walktype),intent(in) :: www
+    type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: cptr
     type(SPARSEPTR),intent(in) :: sptr
-    integer :: ii,iproc,prevproc,nextproc,deltaproc
-    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
-    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
-    DATATYPE :: workvector(numr,www%maxconfigsperproc), &
-         workvector2(numr,www%maxconfigsperproc), &
-         outwork(numr,www%botconfig:www%topconfig), &
-         outtemp(numr,www%botconfig:www%topconfig)  !! AUTOMATIC
+    integer :: ii,iproc,prevproc,nextproc,deltaproc,iiproc
+    DATATYPE,intent(in) :: inavector(numr,wwin%botdfbasis:wwin%topdfbasis)
+    DATATYPE,intent(out) :: outavector(numr,wwin%botdfbasis:wwin%topdfbasis)
+    DATATYPE :: workvector(numr,wwin%maxconfigsperproc), &
+         workvector2(numr,wwin%maxconfigsperproc), &
+         outwork(numr,wwin%botconfig:wwin%topconfig+1), &
+         outtemp(numr,wwin%botconfig:wwin%topconfig+1)  !! AUTOMATIC
 
     if (sparseconfigflag.eq.0) then
        OFLWR "error, must use sparse for parblockconfigmult"; CFLST
@@ -148,40 +158,48 @@ contains
 !! doing circ mult slightly different than e.g. SINCDVR/coreproject.f90 
 !!     and ftcore.f90, holding hands in a circle, prevproc and nextproc, 
 !!     each chunk gets passed around the circle
-    prevproc=mod(nprocs+myrank-2,nprocs)+1
-    nextproc=mod(myrank,nprocs)+1
 
-    outwork(:,:)=0d0
+    prevproc=mod(wwin%nzprocs+wwin%nzrank-2,wwin%nzprocs)+1
+    nextproc=mod(wwin%nzrank,wwin%nzprocs)+1
 
-    call basis_transformfrom_local(www,numr,inavector,workvector)
+    outwork(:,:)=0d0; outtemp=0; workvector=0; workvector2=0
 
-    if (mshift.ne.0d0) then 
-       do ii=www%botconfig,www%topconfig
-          outwork(:,ii)=outwork(:,ii) + &
-               workvector(:,ii-www%botconfig+1)*www%configmvals(ii)*mshift
-       enddo
+    if (wwin%topdfbasis.ge.wwin%botdfbasis) then
+       call basis_transformfrom_local(wwin,numr,inavector,workvector)
+       if (mshift.ne.0d0) then 
+          do ii=wwin%botconfig,wwin%topconfig
+             outwork(:,ii)=outwork(:,ii) + &
+                  workvector(:,ii-wwin%botconfig+1)*wwin%configmvals(ii)*mshift
+          enddo
+       endif
     endif
     
-    do deltaproc=0,nprocs-1
+    do deltaproc=0,wwin%nzprocs-1
 
 !! PASSING BACKWARD (plus deltaproc)
-       iproc=mod(myrank-1+deltaproc,nprocs)+1
 
-       call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp, cptr, sptr, &
-            1,1,1,0,0d0,0,1,numr,0,-1)
+       iiproc=mod(wwin%nzrank-1+deltaproc,wwin%nzprocs)+1
+       iproc=wwin%nzproclist(iiproc)
 
-       outwork(:,:)=outwork(:,:) + outtemp(:,:)
+       if (wwin%alltopconfigs(iproc).ge.wwin%allbotconfigs(iproc)) then
+          call sparseconfigmult_byproc(iproc,iproc,wwin,workvector,outtemp, cptr, sptr, &
+               1,1,1,0,0d0,0,1,numr,0,-1)
+
+          outwork(:,:)=outwork(:,:) + outtemp(:,:)
+       endif
 
 !! PASSING BACKWARD
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
 
-       call mympisendrecv(workvector,workvector2,prevproc,nextproc,deltaproc,&
-            numr * www%maxconfigsperproc)
+       call mympisendrecv_local(workvector,workvector2,prevproc,nextproc,deltaproc,&
+            numr * wwin%maxconfigsperproc,wwin%NZ_COMM)
        workvector(:,:)=workvector2(:,:)
 
     enddo
 
-    call basis_transformto_local(www,numr,outwork,outavector)
+    if (wwin%topdfbasis.ge.wwin%botdfbasis) then
+       call basis_transformto_local(wwin,numr,outwork,outavector)
+    endif
 
   end subroutine parblockconfigmult0_circ
 
@@ -242,6 +260,9 @@ subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter,
   DATAECS, intent(out) :: outvalues(numout)  
   DATATYPE, intent(inout) :: outvectors(outvectorlda,numout)
   real*8, intent(in) :: lanthresh
+#ifndef MPIFLAG
+  integer,parameter :: MPI_COMM_WORLD = (-798)
+#endif
   external :: multsub
 
   call blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,maxiter, &
@@ -627,7 +648,7 @@ contains
     DATATYPE :: nulldot
     if (logpar) then
        nulldot=0d0
-       call mympireduceone(nulldot)
+       call mympireduceone_local(nulldot,IN_COMM)
     else
        OFLWR "WHAT? nulldot called but not doing parallel calc... dimension zero???"; CFLST
     endif
@@ -641,7 +662,7 @@ contains
     DATATYPE :: hdot
     hdot=DOT_PRODUCT(bra,ket)
     if (logpar) then
-       call mympireduceone(hdot)
+       call mympireduceone_local(hdot,IN_COMM)
     endif
   end function hdot
 
@@ -665,7 +686,7 @@ contains
 !$OMP END CRITICAL
 !$OMP END PARALLEL
     if (logpar) then
-       call mympireduceone(csum2)
+       call mympireduceone_local(csum2,IN_COMM)
     endif
     thisdot=csum2
   end function thisdot
@@ -694,7 +715,7 @@ contains
 !$OMP END DO
 !$OMP END PARALLEL
     if (logpar) then
-       call mympireduce(outdots,num1*num2)
+       call mympireduce_local(outdots,num1*num2,IN_COMM)
     endif
   end subroutine allhdots
 
@@ -706,7 +727,7 @@ contains
     
     if (logpar) then
        outdots(:,:)=0d0
-       call mympireduce(outdots,num1*num2)
+       call mympireduce_local(outdots,num1*num2,IN_COMM)
     else
        OFLWR "WHAT? allnulldots called but not doing parallel calc... dimension zero???"; CFLST
     endif
@@ -733,7 +754,7 @@ contains
 !$OMP END DO
 !$OMP END PARALLEL
     if (logpar) then
-       call mympireduce(outdots,num)
+       call mympireduce_local(outdots,num,IN_COMM)
     endif
   end subroutine vechdots
 
@@ -766,7 +787,7 @@ contains
 !$OMP END CRITICAL
 !$OMP END PARALLEL
     if (logpar) then
-       call mympireduce(outdots,num)
+       call mympireduce_local(outdots,num,IN_COMM)
     endif
   end subroutine vecthisdots
 
@@ -779,7 +800,7 @@ contains
 
     if (logpar) then
        outdots(:)=0d0
-       call mympireduce(outdots,num)
+       call mympireduce_local(outdots,num,IN_COMM)
     else
        OFLWR "WHAT? vecnulldots called but not doing parallel calc... dimension zero???"; CFLST
     endif
@@ -925,9 +946,24 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
   maxdim=www%numdfbasis*numr
   vdim=(www%topdfbasis-www%botdfbasis+1)*numr
 
-  call blocklanczos0_local(order,order,vdim,vdim,lanczosorder,maxdim,workvectorsspin,vdim,&
-       outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,&
-       .true.,0,DATAZERO,www%NZ_COMM)
+  call mpibarrier()
+  if (nzflag.eq.0.or.dwwptr%nzrank.gt.0) then
+     if (printflag.ne.0) then
+        OFLWR "calling blocklanczos0_local"; CFL
+     endif
+     call blocklanczos0_local(order,order,vdim,vdim,lanczosorder,maxdim,workvectorsspin,vdim,&
+          outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,&
+          .true.,0,DATAZERO,dwwptr%NZ_COMM)
+  else
+     if (printflag.ne.0) then
+        OFLWR "waiting for blocklanczos0_local"; CFL
+     endif
+  endif
+  call mpibarrier()
+
+  if (printflag.ne.0) then
+     OFLWR "Done with blocklanczos0_local."; CFL
+  endif
 
   if (www%lastconfig.ge.www%firstconfig) then
      outvectors(:,:,:)=0d0

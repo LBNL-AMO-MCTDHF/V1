@@ -424,7 +424,7 @@ C   ------------------------------------------------------------------
 !! 121312      IF (MAXL .GT. N) MAXL = N
 
       nnn=n
-      call mympiireduce(nnn,1)
+      call mympiireduceone_local_dgmres(nnn)
 
       IF (MAXL .GT. nnn) MAXL = nnn
 
@@ -492,7 +492,7 @@ C   ------------------------------------------------------------------
             SUM = SUM + (RGWK(LR-1+I)*SB(I))**2
  10      CONTINUE
 
-         call mympirealreduceone(sum)
+         call mympirealreduceone_local_dgmres(sum)
 
          BNRM = SQRT(SUM)
       ELSE

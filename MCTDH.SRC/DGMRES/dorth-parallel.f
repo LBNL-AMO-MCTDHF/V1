@@ -98,7 +98,7 @@ C   -------------------------------------------------------------------
       DO 10 I = I0,LL
          HES(I,LL) = DDOT(N, V(1,I), 1, VNEW, 1)
 
-         call mympirealreduceone(hes(i,ll))
+         call mympirealreduceone_local_dgmres(hes(i,ll))
 
          TEM = -HES(I,LL)
          CALL DAXPY(N, TEM, V(1,I), 1, VNEW, 1)
@@ -117,7 +117,7 @@ C   -------------------------------------------------------------------
       DO 30 I = I0,LL
          TEM = -DDOT(N, V(1,I), 1, VNEW, 1)
 
-         call mympirealreduceone(tem)
+         call mympirealreduceone_local_dgmres(tem)
 
          IF (HES(I,LL) + 0.001D0*TEM .EQ. HES(I,LL)) GO TO 30
          HES(I,LL) = HES(I,LL) - TEM

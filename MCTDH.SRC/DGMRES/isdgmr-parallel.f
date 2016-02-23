@@ -347,7 +347,7 @@ C
 
  25         CONTINUE
 
-            call mympimax(ratmax)
+            call mympimax_local_dgmres(ratmax)
 
             ERR = RATMAX
             IF( RATMAX.LE.TOL ) ISDGMRPAR = 1
@@ -385,7 +385,7 @@ C         err = ||x-TrueSolution||/||TrueSolution||(2-Norms).
                   SOLNRM = SOLNRM + (SX(I)*SOLN(I))**2
  40            CONTINUE
 
-               call mympirealreduceone(solnrm)
+               call mympirealreduceone_local_dgmres(solnrm)
 
                SOLNRM = SQRT(SOLNRM)
             ENDIF
@@ -394,7 +394,7 @@ C         err = ||x-TrueSolution||/||TrueSolution||(2-Norms).
                DXNRM = DXNRM + (SX(I)*(XL(I)-SOLN(I)))**2
  50         CONTINUE
 
-            call mympirealreduceone(dxnrm)
+            call mympirealreduceone_local_dgmres(dxnrm)
 
             DXNRM = SQRT(DXNRM)
 C         err = ||SX*(x-TrueSolution)||/||SX*TrueSolution|| (2-Norms).

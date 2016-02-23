@@ -84,7 +84,7 @@ C***FIRST EXECUTABLE STATEMENT  DNRM2
 
       sum=ddot(n,dx,1,dx,1)
 
-      call mympirealreduceone(sum)
+      call mympirealreduceone_local_dgmres(sum)
 
       djhDNRM2=sqrt(sum)
       return
@@ -154,12 +154,11 @@ C
 C                   PHASE 3.  SUM IS MID-RANGE.  NO SCALING.
 C
       DO 95 J = I,NN,INCX
-      IF (ABS(DX(J)) .GE. HITEST) GO TO 100
-   95    SUM = SUM + DX(J)**2
+         IF (ABS(DX(J)) .GE. HITEST) GO TO 100
+ 95   SUM = SUM + DX(J)**2
 
-         call mympirealreduceone(sum)
-
-
+      call mympirealreduceone_local_dgmres(sum)
+         
       djhDNRM2 = SQRT(SUM)
 
       GO TO 300

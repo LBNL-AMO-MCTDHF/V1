@@ -91,7 +91,7 @@ integer :: sparsedfflag=1                        !! If zero disable separate res
 integer :: sparseconfigflag=0    !! Sparse       !! Sparse configuration routines on or off (for large # configs)
 integer :: sparseopt =1                          !! 0= direct CI  1= sparse matrix algebra (faster, more memory)
 integer :: nonsparsepropmode=1                   !! 0 = ZGCHBV expokit; 1 = mine expmat
-integer :: nzflag=0                              !! use only processors with nonzero number of Slaters for a-vec
+integer :: nzflag=1                              !! use only processors with nonzero number of Slaters for a-vec
 logical :: use_dfwalktype=.false.                !! internal, ignore me
 end module sparse_parameters
 module ham_parameters
