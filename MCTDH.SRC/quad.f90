@@ -40,7 +40,7 @@ end subroutine mympimax_local_dgmres
 module dgsolvemod
 contains
 
-  subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, &
+  subroutine dgsolve00(rhs, solution, numiter, inmult, preconflag, inprecon, &
        intolerance, indimension, inkrydim,parflag,ierr,incomm)
     use fileptrmod
     use dgm_comm_mod
@@ -51,9 +51,9 @@ contains
     DATATYPE,intent(in) :: rhs(indimension)
     integer,intent(out) :: numiter
     DATATYPE,intent(out) :: solution(indimension)
-    integer :: itol, iunit, jjxx, rgwkdim
-    external :: inmult, inprecon
-    integer :: igwk(20), ligwk=20, nullint1,nullint2,nullint3,nullint4, nullint5
+    external inmult, inprecon
+    integer :: igwk(20), ligwk=20, nullint1,nullint2,nullint3,nullint4, nullint5,&
+         itol, iunit, jjxx, rgwkdim
     real*8 :: nulldouble1, errest, nulldouble2, nulldouble3, nulldouble4, tol
     real*8, allocatable :: rgwk(:)
 #ifdef REALGO
@@ -135,8 +135,29 @@ contains
 
     deallocate(rgwk)
 
-  end subroutine dgsolve0
+  end subroutine dgsolve00
 
+  subroutine dgsolve0(rhs, solution, numiter, inmult, preconflag, inprecon, &
+       intolerance, indimension, inkrydim,parflag,ierr)
+#ifdef MPIFLAG
+    use mpimod     !! MPI_COMM_WORLD
+#endif
+    implicit none
+    integer,intent(in) :: indimension,inkrydim,parflag,preconflag
+    integer,intent(out) :: ierr
+    real*8,intent(in) :: intolerance
+    DATATYPE,intent(in) :: rhs(indimension)
+    integer,intent(out) :: numiter
+    DATATYPE,intent(out) :: solution(indimension)
+    external inmult, inprecon
+#ifndef MPIFLAG
+  integer,parameter :: MPI_COMM_WORLD=(-798)
+#endif
+
+    call dgsolve00(rhs, solution, numiter, inmult, preconflag, inprecon, &
+       intolerance, indimension, inkrydim,parflag,ierr,MPI_COMM_WORLD)
+  end subroutine dgsolve0
+    
 end module dgsolvemod
 
 
@@ -202,16 +223,12 @@ subroutine quadspfs(inspfs,jjcalls)
   use dgsolvemod
   use quadopmod
   use orbdermod
-  use mpimod      !! MPI_COMM_WORLD
   implicit none
   DATATYPE,intent(inout) :: inspfs(totspfdim)  
   integer,intent(out) :: jjcalls
   integer :: icount,maxdim,ierr
   real*8 :: orthogerror,dev,mynorm
   DATATYPE, allocatable ::  vector(:), vector2(:), vector3(:), com_vector2(:), com_vector3(:)
-#ifndef MPIFLAG
-  integer,parameter :: MPI_COMM_WORLD=(-798)
-#endif
 
   allocate( vector(totspfdim), vector2(totspfdim), vector3(totspfdim) )
   vector=0; vector2=0; vector3=0
@@ -255,22 +272,22 @@ subroutine quadspfs(inspfs,jjcalls)
         if (parorbsplit.eq.3) then
            maxdim=min(spfsmallsize*nspf*nprocs,maxexpodim)
            call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
-                quadtol,spfsmallsize*nspf,maxdim,1,ierr,MPI_COMM_WORLD)
+                quadtol,spfsmallsize*nspf,maxdim,1,ierr)
         else
            maxdim=min(spfsmallsize*nspf,maxexpodim)
            call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
-                quadtol,spfsmallsize*nspf,maxdim,0,ierr,MPI_COMM_WORLD)
+                quadtol,spfsmallsize*nspf,maxdim,0,ierr)
         endif
         call spfs_expand(com_vector3,vector3)
      else
         if (parorbsplit.eq.3) then
            maxdim=min(totspfdim*nprocs,maxexpodim)
            call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
-                quadtol,totspfdim,maxdim,1,ierr,MPI_COMM_WORLD)
+                quadtol,totspfdim,maxdim,1,ierr)
         else
            maxdim=min(totspfdim,maxexpodim)
            call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
-                quadtol,totspfdim,maxdim,0,ierr,MPI_COMM_WORLD)
+                quadtol,totspfdim,maxdim,0,ierr)
         endif
      endif
 
@@ -530,7 +547,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
      call mpibarrier()
      if (mysize.gt.0.or.nzflag.eq.0) then
 !!        OFLWR "CALLING DGSOLVE"; CFL
-        call dgsolve0( smallvectorspin, smallvectorspin2, jjcalls, paraamult,&
+        call dgsolve00( smallvectorspin, smallvectorspin2, jjcalls, paraamult,&
              quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1,ierr,dwwptr%NZ_COMM)
 !!     else
 !!        OFLWR " waiting for dgsolve. "; CFL
