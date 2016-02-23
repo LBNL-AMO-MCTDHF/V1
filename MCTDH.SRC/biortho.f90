@@ -687,7 +687,7 @@ contains
     use mpimod   !! nprocs
     implicit none
     type(walktype),target,intent(in) :: wwbio
-    Type(biorthotype),intent(inout) :: biotypevar
+    Type(biorthotype),target,intent(inout) :: biotypevar
     DATATYPE,target :: insmo(wwbio%nspf,wwbio%nspf)
     integer :: innumr
 #ifdef REALGO
@@ -895,7 +895,7 @@ subroutine abio_nonsparse(abio,aout,inbiovar)
   use biorthotypemod
   use tol_parameters
   implicit none
-  Type(biorthotype),intent(inout) :: inbiovar
+  Type(biorthotype),target,intent(inout) :: inbiovar
   integer :: i,j,iflag,clow,chigh,jproc,cnum,nnn(2),iind,mmm(2),rank,lwork
   integer :: bioconfiglist(inbiovar%wwbio%numelec,inbiovar%wwbio%numconfig)
   DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%numconfig)

@@ -435,7 +435,7 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
   type(walktype),intent(in) :: www,bioww
   DATATYPE,intent(in) :: myspfs(spfsize,www%nspf), &
        in_inavectors(numr,www%firstconfig:www%lastconfig,mcscfnum)       
-  type(biorthotype) :: ugbiovar(mcscfnum,mcscfnum),xrefbiovar(mcscfnum,mcscfnum),&
+  type(biorthotype),target :: ugbiovar(mcscfnum,mcscfnum),xrefbiovar(mcscfnum,mcscfnum),&
        yrefbiovar(mcscfnum,mcscfnum),zrefbiovar(mcscfnum,mcscfnum)
   DATATYPE :: mmatel(mcscfnum,mcscfnum),ugmatel(mcscfnum,mcscfnum),m2matel(mcscfnum,mcscfnum),&
        xrefmatel(mcscfnum,mcscfnum),yrefmatel(mcscfnum,mcscfnum),zrefmatel(mcscfnum,mcscfnum),&

@@ -46,7 +46,7 @@ contains
     use walkmod
     use biorthotypemod
     implicit none
-    type(biorthotype),intent(inout) :: autobiovar
+    type(biorthotype),target,intent(inout) :: autobiovar
     type(walktype),intent(in) :: www,bioww
     DATATYPE, allocatable :: mobio(:,:),abio(:,:)
     DATATYPE,intent(in) :: inspfs(  spfsize, www%nspf ), orig_spf(  spfsize, www%nspf ), &
