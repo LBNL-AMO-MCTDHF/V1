@@ -680,7 +680,7 @@ subroutine cmf_prop_wfn(tin, tout)
            call quadavector(yyy%cmfavec(:,:,0),qq)
            numaiters=numaiters+qq
         else
-           call myconfigeig(www,dwwptr,yyy%cptr(0),yyy%cmfavec(:,:,0),&
+           call myconfigeig(yyy%cptr(0),yyy%cmfavec(:,:,0),&
                 myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
         endif
      endif
@@ -935,9 +935,9 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
   call system_clock(jtime); times(1)=times(1)+jtime-itime; itime=jtime
 
   if (tot_adim.gt.0) then
-     call myconfigprop(www,dwwptr,avectorin(:),avectorout(:),midtime,imc,numiters)
+     call myconfigprop(avectorin(:),avectorout(:),midtime,imc,numiters)
   else
-     call myconfigprop(www,dwwptr,nullvector1(:),nullvector2(:),midtime,imc,numiters)
+     call myconfigprop(nullvector1(:),nullvector2(:),midtime,imc,numiters)
   endif
 
   call system_clock(jtime); times(2)=times(2)+jtime-itime;

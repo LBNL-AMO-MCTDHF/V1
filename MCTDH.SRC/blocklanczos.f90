@@ -955,6 +955,9 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
           outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,&
           .true.,0,DATAZERO,dwwptr%NZ_COMM)
   else
+     if (www%topdfbasis-www%botdfbasis+1.ne.0) then
+        workvectorsspin(:,:,:)=0d0
+     endif
      if (printflag.ne.0) then
         OFLWR "waiting for blocklanczos0_local"; CFL
      endif

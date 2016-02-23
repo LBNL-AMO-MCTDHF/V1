@@ -17,16 +17,15 @@ subroutine printconfig(thisconfig,www)
 end subroutine printconfig
 
 
-subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printflag, &
+subroutine myconfigeig(cptr,thisconfigvects,thisconfigvals,order,printflag, &
      guessflag,time,numshift)
   use fileptrmod
   use r_parameters
   use sparse_parameters
   use mpimod
   use configptrmod
-  use walkmod
+  use configmod
   implicit none
-  type(walktype),intent(in) :: www,dfww
   type(CONFIGPTR),intent(in) :: cptr
   integer,intent(in) :: order,printflag,guessflag,numshift
   DATATYPE,intent(out) :: thisconfigvects(www%totadim,order)
@@ -48,8 +47,8 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
      OFLWR "GG ERROR.", numshift,guessflag; CFLST
   endif
 
-  if (www%numdfbasis.ne.dfww%numdfbasis) then
-     OFLWR "ERROR DF SETS MYCONFIGEIG",www%numdfbasis,dfww%numdfbasis; CFLST
+  if (www%numdfbasis.ne.dwwptr%numdfbasis) then
+     OFLWR "ERROR DF SETS MYCONFIGEIG",www%numdfbasis,dwwptr%numdfbasis; CFLST
   endif
 
   if (sparseconfigflag/=0) then
@@ -92,7 +91,7 @@ subroutine myconfigeig(www,dfww,cptr,thisconfigvects,thisconfigvals,order,printf
           tempconfigvects(www%numdfbasis*numr,www%numdfbasis*numr))
      fullconfigvects=0d0; tempconfigvects=0d0; fullconfigmatel=0.d0; fullconfigvals=0d0
 
-     call assemble_dfbasismat(dfww,fullconfigmatel,cptr,1,1,0,0, time,-1)
+     call assemble_dfbasismat(dwwptr,fullconfigmatel,cptr,1,1,0,0, time,-1)
 
      if (printflag.ne.0) then
         OFLWR " Call eig ",www%numdfbasis*numr; CFL
@@ -191,12 +190,11 @@ end subroutine myconfigeig
 
 !! PROPAGATE A-VECTOR .  CALLED WITHIN LITTLESTEPS LOOP
 
-subroutine myconfigprop(www,dfww,avectorin,avectorout,time,imc,numiters)
+subroutine myconfigprop(avectorin,avectorout,time,imc,numiters)
   use r_parameters
   use sparse_parameters
-  use walkmod 
+  use configmod
   implicit none
-  type(walktype),intent(in) :: www,dfww
   integer,intent(in) :: imc
   integer,intent(out) :: numiters
   real*8,intent(in) :: time
@@ -206,12 +204,12 @@ subroutine myconfigprop(www,dfww,avectorin,avectorout,time,imc,numiters)
   numiters=0
   if (sparseconfigflag/=0) then
      if (www%totadim.gt.0) then
-        call exposparseprop(www,avectorin,avectorout,time,imc,numiters)
+        call exposparseprop(avectorin,avectorout,time,imc,numiters)
      else
-        call exposparseprop(www,nullvector1,nullvector2,time,imc,numiters)
+        call exposparseprop(nullvector1,nullvector2,time,imc,numiters)
      endif
   else
-     call nonsparseprop(www,dfww,avectorin,avectorout,time,imc)
+     call nonsparseprop(www,dwwptr,avectorin,avectorout,time,imc)
   endif
 
   call basis_project(www,numr,avectorout)
@@ -219,7 +217,7 @@ subroutine myconfigprop(www,dfww,avectorin,avectorout,time,imc,numiters)
 end subroutine myconfigprop
 
 
-subroutine nonsparseprop(www,dfww,avectorin,avectorout,time,imc)
+subroutine nonsparseprop(wwin,dfww,avectorin,avectorout,time,imc)
   use fileptrmod
   use sparse_parameters
   use ham_parameters
@@ -228,12 +226,12 @@ subroutine nonsparseprop(www,dfww,avectorin,avectorout,time,imc)
   use configpropmod
   use walkmod
   implicit none
-  type(walktype),intent(in) :: www,dfww
+  type(walktype),intent(in) :: wwin,dfww
   integer, intent(in) :: imc
-  DATATYPE,intent(in) :: avectorin(www%totadim)
-  DATATYPE,intent(out) :: avectorout(www%totadim)
-  DATATYPE :: avectortemp(www%numdfbasis*numr), &
-       avectortemp2(www%numdfbasis*numr) !! AUTOMATIC
+  DATATYPE,intent(in) :: avectorin(wwin%totadim)
+  DATATYPE,intent(out) :: avectorout(wwin%totadim)
+  DATATYPE :: avectortemp(wwin%numdfbasis*numr), &
+       avectortemp2(wwin%numdfbasis*numr) !! AUTOMATIC
   DATATYPE, allocatable :: bigconfigmatel(:,:), bigconfigvects(:,:)
 #ifndef REALGO
   real*8, allocatable :: realbigconfigmatel(:,:,:,:)
@@ -249,41 +247,41 @@ subroutine nonsparseprop(www,dfww,avectorin,avectorout,time,imc)
      OFLWR "Driving flag not implemented for nonsparse"; CFLST
   endif
 
-  if (www%numdfbasis.ne.dfww%numdfbasis) then
-     OFLWR "ERROR DF SETS NONSPARSEOPROP",www%numdfbasis,dfww%numdfbasis; CFLST
+  if (wwin%numdfbasis.ne.dfww%numdfbasis) then
+     OFLWR "ERROR DF SETS NONSPARSEOPROP",wwin%numdfbasis,dfww%numdfbasis; CFLST
   endif
 
-  allocate(iiwork(www%numdfbasis*numr*2));     iiwork=0
+  allocate(iiwork(wwin%numdfbasis*numr*2));     iiwork=0
 
-  allocate(bigconfigmatel(www%numdfbasis*numr,www%numdfbasis*numr), &
-       bigconfigvects(www%numdfbasis*numr,2*(www%numdfbasis*numr+2)))
+  allocate(bigconfigmatel(wwin%numdfbasis*numr,wwin%numdfbasis*numr), &
+       bigconfigvects(wwin%numdfbasis*numr,2*(wwin%numdfbasis*numr+2)))
   bigconfigmatel=0; bigconfigvects=0
 
   call assemble_dfbasismat(dfww,bigconfigmatel, workconfigpointer,1,1,1,1, time,imc)
 
   bigconfigmatel=bigconfigmatel*timefac
 
-  call basis_transformto_all(www,numr,avectorin,avectortemp)
+  call basis_transformto_all(wwin,numr,avectorin,avectortemp)
 
   if (myrank.eq.1) then
      if (nonsparsepropmode.eq.1) then
         avectortemp2(:)=avectortemp(:)
-        call expmat(bigconfigmatel,www%numdfbasis*numr) 
-        call MYGEMV('N',www%numdfbasis*numr,www%numdfbasis*numr,DATAONE,&
-             bigconfigmatel,www%numdfbasis*numr,avectortemp2,1,DATAZERO,avectortemp,1)
+        call expmat(bigconfigmatel,wwin%numdfbasis*numr) 
+        call MYGEMV('N',wwin%numdfbasis*numr,wwin%numdfbasis*numr,DATAONE,&
+             bigconfigmatel,wwin%numdfbasis*numr,avectortemp2,1,DATAZERO,avectortemp,1)
 #ifndef REALGO
      else if (nonsparsepropmode.eq.2) then
-        allocate(realbigconfigmatel(2,www%numdfbasis*numr,2,www%numdfbasis*numr))
+        allocate(realbigconfigmatel(2,wwin%numdfbasis*numr,2,wwin%numdfbasis*numr))
         realbigconfigmatel=0
         call assigncomplexmat(realbigconfigmatel,bigconfigmatel,&
-             www%numdfbasis*numr,www%numdfbasis*numr)
-        call DGCHBV(www%numdfbasis*numr*2, 1.d0, realbigconfigmatel, &
-             www%numdfbasis*numr*2, avectortemp, bigconfigvects, iiwork, iflag)           
+             wwin%numdfbasis*numr,wwin%numdfbasis*numr)
+        call DGCHBV(wwin%numdfbasis*numr*2, 1.d0, realbigconfigmatel, &
+             wwin%numdfbasis*numr*2, avectortemp, bigconfigvects, iiwork, iflag)           
         deallocate(realbigconfigmatel)
 #endif
      else
-        call EXPFULL(www%numdfbasis*numr, DATAONE, bigconfigmatel, &
-             www%numdfbasis*numr, avectortemp, bigconfigvects, iiwork, iflag)
+        call EXPFULL(wwin%numdfbasis*numr, DATAONE, bigconfigmatel, &
+             wwin%numdfbasis*numr, avectortemp, bigconfigvects, iiwork, iflag)
         
         if (iflag.ne.0) then
            OFLWR "Expo error A ", iflag; CFLST
@@ -291,9 +289,9 @@ subroutine nonsparseprop(www,dfww,avectorin,avectorout,time,imc)
      endif
   endif
 
-  call mympibcast(avectortemp,1,www%numdfbasis*numr)
+  call mympibcast(avectortemp,1,wwin%numdfbasis*numr)
 
-  call basis_transformfrom_all(www,numr,avectortemp,avectorout)
+  call basis_transformfrom_all(wwin,numr,avectortemp,avectorout)
 
   deallocate(iiwork,bigconfigmatel,bigconfigvects)
 

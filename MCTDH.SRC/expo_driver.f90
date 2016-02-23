@@ -671,7 +671,7 @@ end subroutine
 module parconfigexpomod
 contains
 
-  subroutine parconfigexpomult_padded0_gather(www,workconfigpointer,&
+  subroutine parconfigexpomult_padded0_gather(wwin,workconfigpointer,&
        worksparsepointer,inavector,outavector)
     use fileptrmod
     use r_parameters
@@ -684,13 +684,13 @@ contains
     use sparseptrmod
     use sparsemultmod
     implicit none
-    type(walktype),intent(in) :: www
+    type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: workconfigpointer
     type(SPARSEPTR),intent(in) :: worksparsepointer
-    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
-    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+    DATATYPE,intent(in) :: inavector(numr,wwin%botdfbasis:wwin%botdfbasis+wwin%maxdfbasisperproc-1)
+    DATATYPE,intent(out) :: outavector(numr,wwin%botdfbasis:wwin%botdfbasis+wwin%maxdfbasisperproc-1)
     DATATYPE,allocatable :: intemp(:,:)
-    DATATYPE :: outtemp(numr,www%botconfig:www%topconfig+1)  !! AUTOMATIC
+    DATATYPE :: outtemp(numr,wwin%botconfig:wwin%topconfig+1)  !! AUTOMATIC
 
     call avectortime(3)
 
@@ -698,28 +698,28 @@ contains
        OFLWR "error, must use sparse for parconfigexpomult"; CFLST
     endif
 
-    allocate(intemp(numr,www%numconfig));    intemp(:,:)=0d0;   outtemp=0
+    allocate(intemp(numr,wwin%numconfig));    intemp(:,:)=0d0;   outtemp=0
 
 !! transform second to reduce communication?
 !!   no, spin transformations done locally now.
 
-    if (www%topdfbasis.ge.www%botdfbasis) then
-       call basis_transformfrom_local(www,numr,inavector,&
-            intemp(:,www%botconfig:www%topconfig))
+    if (wwin%topdfbasis.ge.wwin%botdfbasis) then
+       call basis_transformfrom_local(wwin,numr,inavector,&
+            intemp(:,wwin%botconfig:wwin%topconfig))
     endif
 
-    call mpiallgather(intemp,www%numconfig*numr,www%configsperproc(:)*numr,&
-         www%maxconfigsperproc*numr)
+    call mpiallgather(intemp,wwin%numconfig*numr,wwin%configsperproc(:)*numr,&
+         wwin%maxconfigsperproc*numr)
 
     outavector(:,:)=0d0    !!     inavector(:,:)   !! PADDED
 
-    if (www%topconfig.ge.www%botconfig) then
-       call sparseconfigmult_byproc(1,nprocs,www,intemp,outtemp, &
+    if (wwin%topconfig.ge.wwin%botconfig) then
+       call sparseconfigmult_byproc(1,nprocs,wwin,intemp,outtemp, &
             workconfigpointer, worksparsepointer, 1,1,1,1,&
             configexpotime,0,1,numr,0,imc)
     endif
-    if (www%topdfbasis.ge.www%botdfbasis) then
-       call basis_transformto_local(www,numr,outtemp,outavector)
+    if (wwin%topdfbasis.ge.wwin%botdfbasis) then
+       call basis_transformto_local(wwin,numr,outtemp,outavector)
     endif
 
     outavector=outavector*timefac
@@ -732,7 +732,7 @@ contains
 
 #ifdef MPIFLAG
 
-  subroutine parconfigexpomult_padded0_summa(www,workconfigpointer,&
+  subroutine parconfigexpomult_padded0_summa(wwin,workconfigpointer,&
        worksparsepointer,inavector,outavector)
     use fileptrmod
     use r_parameters
@@ -745,13 +745,13 @@ contains
     use sparseptrmod
     use sparsemultmod
     implicit none
-    type(walktype),intent(in) :: www
+    type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: workconfigpointer
     type(SPARSEPTR),intent(in) :: worksparsepointer
-    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
-    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
-    DATATYPE :: intemp(numr,www%maxconfigsperproc), outwork(numr,www%botconfig:www%topconfig+1),&
-         outtemp(numr,www%botconfig:www%topconfig+1)   !! AUTOMATIC
+    DATATYPE,intent(in) :: inavector(numr,wwin%botdfbasis:wwin%botdfbasis+wwin%maxdfbasisperproc-1)
+    DATATYPE,intent(out) :: outavector(numr,wwin%botdfbasis:wwin%botdfbasis+wwin%maxdfbasisperproc-1)
+    DATATYPE :: intemp(numr,wwin%maxconfigsperproc), outwork(numr,wwin%botconfig:wwin%topconfig+1),&
+         outtemp(numr,wwin%botconfig:wwin%topconfig+1)   !! AUTOMATIC
     integer :: iproc
 
     call avectortime(3)
@@ -769,16 +769,16 @@ contains
 
        if (myrank.eq.iproc) then
           intemp=0
-          if (www%topdfbasis.ge.www%botdfbasis) then
-             call basis_transformfrom_local(www,numr,inavector,intemp)
+          if (wwin%topdfbasis.ge.wwin%botdfbasis) then
+             call basis_transformfrom_local(wwin,numr,inavector,intemp)
           endif
        endif
 
-       if (www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
+       if (wwin%alltopconfigs(iproc).ge.wwin%allbotconfigs(iproc)) then
           call mympibcast(intemp,iproc,&
-               (www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*numr)
+               (wwin%alltopconfigs(iproc)-wwin%allbotconfigs(iproc)+1)*numr)
 
-          call sparseconfigmult_byproc(iproc,iproc,www,intemp,outtemp, &
+          call sparseconfigmult_byproc(iproc,iproc,wwin,intemp,outtemp, &
                workconfigpointer, worksparsepointer, 1,1,1,1,&
                configexpotime,0,1,numr,0,imc)
      
@@ -789,8 +789,8 @@ contains
 
     outavector(:,:)=0d0   !!     inavector(:,:)   !! PADDED
 
-    if (www%topdfbasis.ge.www%botdfbasis) then
-       call basis_transformto_local(www,numr,outwork,outavector)
+    if (wwin%topdfbasis.ge.wwin%botdfbasis) then
+       call basis_transformto_local(wwin,numr,outwork,outavector)
     endif
 
     outavector=outavector*timefac
@@ -800,7 +800,7 @@ contains
   end subroutine parconfigexpomult_padded0_summa
 
 
-  subroutine parconfigexpomult_padded0_circ(www,workconfigpointer,&
+  subroutine parconfigexpomult_padded0_circ(wwin,workconfigpointer,&
        worksparsepointer,inavector,outavector)
     use fileptrmod
     use r_parameters
@@ -813,14 +813,14 @@ contains
     use sparseptrmod
     use sparsemultmod
     implicit none
-    type(walktype),intent(in) :: www
+    type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: workconfigpointer
     type(SPARSEPTR),intent(in) :: worksparsepointer
-    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
-    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
-    DATATYPE :: workvector(numr,www%maxconfigsperproc), workvector2(numr,www%maxconfigsperproc),&
-         outwork(numr,www%botconfig:www%topconfig+1),  &
-         outtemp(numr,www%botconfig:www%topconfig+1)             !! AUTOMATIC
+    DATATYPE,intent(in) :: inavector(numr,wwin%botdfbasis:wwin%botdfbasis+wwin%maxdfbasisperproc-1)
+    DATATYPE,intent(out) :: outavector(numr,wwin%botdfbasis:wwin%botdfbasis+wwin%maxdfbasisperproc-1)
+    DATATYPE :: workvector(numr,wwin%maxconfigsperproc), workvector2(numr,wwin%maxconfigsperproc),&
+         outwork(numr,wwin%botconfig:wwin%topconfig+1),  &
+         outtemp(numr,wwin%botconfig:wwin%topconfig+1)             !! AUTOMATIC
     integer :: iproc,prevproc,nextproc,deltaproc
 
     call avectortime(3)
@@ -837,8 +837,8 @@ contains
 
     outwork=0d0; outtemp=0; workvector=0; workvector2=0
 
-    if (www%topdfbasis.ge.www%botdfbasis) then
-       call basis_transformfrom_local(www,numr,inavector,workvector)
+    if (wwin%topdfbasis.ge.wwin%botdfbasis) then
+       call basis_transformfrom_local(wwin,numr,inavector,workvector)
     endif
 
     do deltaproc=0,nprocs-1
@@ -846,8 +846,8 @@ contains
 !! PASSING BACKWARD (plus deltaproc)
        iproc=mod(myrank-1+deltaproc,nprocs)+1
 
-       if (www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
-          call sparseconfigmult_byproc(iproc,iproc,www,workvector,outtemp, &
+       if (wwin%alltopconfigs(iproc).ge.wwin%allbotconfigs(iproc)) then
+          call sparseconfigmult_byproc(iproc,iproc,wwin,workvector,outtemp, &
                workconfigpointer, worksparsepointer, &
                1,1,1,1,configexpotime,0,1,numr,0,imc)
           outwork(:,:)=outwork(:,:)+outtemp(:,:)
@@ -857,14 +857,14 @@ contains
 !! mympisendrecv(sendbuf,recvbuf,dest,source,...)
 
        call mympisendrecv(workvector,workvector2,prevproc,&
-            nextproc,deltaproc,numr*www%maxconfigsperproc)
+            nextproc,deltaproc,numr*wwin%maxconfigsperproc)
        workvector(:,:)=workvector2(:,:)
     enddo
 
     outavector(:,:)=0d0    !!     inavector(:,:)   !! PADDED
 
-    if (www%topdfbasis.ge.www%botdfbasis) then
-       call basis_transformto_local(www,numr,outwork,outavector)
+    if (wwin%topdfbasis.ge.wwin%botdfbasis) then
+       call basis_transformto_local(wwin,numr,outwork,outavector)
     endif
 
     outavector=outavector*timefac
@@ -927,14 +927,14 @@ contains
 end module parconfigexpomod
 
 
-subroutine exposparseprop(www,inavector,outavector,time,imc,numiters)
+subroutine exposparseprop(inavector,outavector,time,imc,numiters)
   use parameters
   use configpropmod
-  use walkmod
+  use configmod
   use mpimod
   use parconfigexpomod
+  use sparse_parameters   !! nzflag
   implicit none
-  type(walktype),intent(in) :: www
   integer,intent(in) :: imc
   integer,intent(out) :: numiters
   DATATYPE,intent(in) :: inavector(numr,www%firstconfig:www%lastconfig)
@@ -943,7 +943,7 @@ subroutine exposparseprop(www,inavector,outavector,time,imc,numiters)
        smallvectorout(numr,www%maxdfbasisperproc), &
        zerovector(numr,www%maxdfbasisperproc),&
        smallvectortemp(numr,www%maxdfbasisperproc), &
-       workdrivingavecdfbasis(numr,www%botdfbasis:www%topdfbasis)    !! AUTOMATIC
+       workdrivingavecdfbasis(numr,www%botdfbasis:www%topdfbasis+1)    !! AUTOMATIC
   real*8 :: one,time
   real*8, save :: tempstepsize=-1d0
   integer :: itrace, iflag, numsteps,expofileptr=61142, liwsp=0, lwsp=0,getlen,myiostat,ixx
@@ -965,6 +965,9 @@ subroutine exposparseprop(www,inavector,outavector,time,imc,numiters)
   endif
 
   call avectortimeset()
+
+  smallvector=0;   smallvectorout=0;   zerovector=0;  smallvectortemp=0
+  workdrivingavecdfbasis=0
 
   icalled=icalled+1
 
@@ -1031,8 +1034,7 @@ subroutine exposparseprop(www,inavector,outavector,time,imc,numiters)
   allocate(wsp(lwsp),iwsp(liwsp));    
   wsp=0.d0; iwsp=0
   
-  smallvector(:,:)=0; smallvectorout(:,:)=0d0
-
+  smallvector(:,:)=0
   if (www%topconfig.ge.www%botconfig) then
      call basis_transformto_local(www,numr,inavector(:,www%botconfig),smallvector(:,:))
   endif

@@ -588,7 +588,7 @@ program mctdhf
         endif
 
         allocate(tempvals(mcscfnum)); tempvals=0
-        call myconfigeig(www,dwwptr,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
+        call myconfigeig(yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
              min(totread,1),0d0,max(0,abs(improvedrelaxflag)-1))
 
         if (improvednatflag.ne.0) then
@@ -605,7 +605,7 @@ program mctdhf
            if (tot_adim.gt.0) then
               bigavector(:,:,:)=RESHAPE(yyy%cmfavec(:,:,0),(/numr,local_nconfig,mcscfnum/))
            endif
-           call myconfigeig(www,dwwptr,yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
+           call myconfigeig(yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
                 1,0d0,max(0,abs(improvedrelaxflag)-1))
         endif
         deallocate(tempvals)

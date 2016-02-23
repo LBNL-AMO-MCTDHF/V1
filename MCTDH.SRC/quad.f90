@@ -266,6 +266,7 @@ subroutine quadspfs(inspfs,jjcalls)
 
      vector3=vector   !! guess
 
+     ierr=0
      if (orbcompact.ne.0) then
         call spfs_compact(vector2,com_vector2)
         call spfs_compact(vector3,com_vector3)
@@ -290,8 +291,10 @@ subroutine quadspfs(inspfs,jjcalls)
                 quadtol,totspfdim,maxdim,0,ierr)
         endif
      endif
-
-     if (ierr.eq.1) then
+     ierr=abs(ierr)
+     call mympiimax(ierr)
+     if (ierr.ne.0) then
+        OFLWR "         *** Error in dgsolve, not changing orbitals",ierr; CFL
         vector3(:)=0d0
      endif
 
@@ -511,16 +514,13 @@ subroutine sparsequadavector(inavector,jjcalls0)
           "   SPARSEQUAD: DEV", dev, " TOL ",aerror,thisaerror,"ENERGY",quadexpect; CFL
 
      if (abs(dev).lt.aerror.or.ss.ge.10) then
-        if (www%lastconfig.ge.www%firstconfig) then
-           inavector(:,:) = vector(:,www%firstconfig:www%lastconfig)
-        endif
         if (ss.ge.10) then
            OFLWR "10 iterations, quad aborting"; CFL
         endif
         deallocate(smallvectorspin,smallvectorspin2)
         deallocate(vector, vector2, vector3)
         call mpibarrier()
-        return  !! RETURN
+        return
      endif
 
      smallvectorspin(:,:)=0d0
@@ -544,16 +544,29 @@ subroutine sparsequadavector(inavector,jjcalls0)
            call mpistop()
         endif
      endif
+
+     ierr=0
      call mpibarrier()
      if (mysize.gt.0.or.nzflag.eq.0) then
-!!        OFLWR "CALLING DGSOLVE"; CFL
         call dgsolve00( smallvectorspin, smallvectorspin2, jjcalls, paraamult,&
              quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1,ierr,dwwptr%NZ_COMM)
-!!     else
-!!        OFLWR " waiting for dgsolve. "; CFL
+     else
+        smallvectorspin2(:,:)=0
      endif
      call mpibarrier()
-!!     OFLWR "DONE WITH DGSOLVE."; CFL
+
+     ierr=abs(ierr)
+     call mympiimax(ierr)
+     if (ierr.ne.0) then
+        OFLWR "          Error in dgsolve, not changing a-vector",ierr; CFL
+        if (www%lastconfig.ge.www%firstconfig) then
+           inavector(:,:) = vector(:,www%firstconfig:www%lastconfig)
+        endif
+        deallocate(smallvectorspin,smallvectorspin2)
+        deallocate(vector, vector2, vector3)
+        call mpibarrier()
+        return
+     endif
 
 !!$  call basicblocklansolve(1,mysize,maxdim,maxdim,smallvectorspin,smallvectorspin2,1,&
 !!$     parhrmult,parhrdotsub,quadexpect)
