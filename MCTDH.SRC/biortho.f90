@@ -299,8 +299,8 @@ contains
     use matvecsetmod
     use biomatvecmod
     implicit none
-    DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
-    DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
+    DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
+    DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
     DATATYPE,allocatable :: intemp(:,:)
 !! AUTOMATIC
     DATATYPE :: outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1)
@@ -314,8 +314,8 @@ contains
 !! transform second to reduce communication?
 !!   no, spin transformations done locally now.
 
-    if (biopointer%wwbio%topbasis.ge.biopointer%wwbio%botbasis) then
-       call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector,&
+    if (biopointer%wwbio%topdfbasis.ge.biopointer%wwbio%botdfbasis) then
+       call basis_transformfrom_local(biopointer%wwbio,biopointer%bionr,inavector,&
             intemp(:,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig))
     endif
 
@@ -331,8 +331,8 @@ contains
 
     outavector(:,:)=0d0   !! PADDED
 
-    if (biopointer%wwbio%topbasis.ge.biopointer%wwbio%botbasis) then
-       call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,outtemp,outavector)
+    if (biopointer%wwbio%topdfbasis.ge.biopointer%wwbio%botdfbasis) then
+       call basis_transformto_local(biopointer%wwbio,biopointer%bionr,outtemp,outavector)
     endif
 
     deallocate(intemp)
@@ -348,8 +348,8 @@ contains
     use matvecsetmod
     use biomatvecmod
     implicit none
-    DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
-    DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
+    DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
+    DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
     DATATYPE :: intemp(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&   !!AUTOMATIC
          outwork(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1),&
          outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1)
@@ -371,8 +371,8 @@ contains
        if(biopointer%wwbio%alltopconfigs(iproc).ge.biopointer%wwbio%allbotconfigs(iproc)) then
           if (myrank.eq.iproc) then
              intemp=0
-             if (biopointer%wwbio%topbasis.ge.biopointer%wwbio%botbasis) then
-                call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,&
+             if (biopointer%wwbio%topdfbasis.ge.biopointer%wwbio%botdfbasis) then
+                call basis_transformfrom_local(biopointer%wwbio,biopointer%bionr,&
                      inavector(:,:),intemp(:,:))
              endif
           endif
@@ -390,8 +390,8 @@ contains
 
     outavector(:,:)=0d0   !! PADDED
 
-    if (biopointer%wwbio%topbasis.ge.biopointer%wwbio%botbasis) then
-       call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,&
+    if (biopointer%wwbio%topdfbasis.ge.biopointer%wwbio%botdfbasis) then
+       call basis_transformto_local(biopointer%wwbio,biopointer%bionr,&
             outwork(:,:),outavector(:,:))
     endif
 
@@ -404,8 +404,8 @@ contains
     use matvecsetmod
     use biomatvecmod
     implicit none
-    DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
-    DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
+    DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
+    DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
     DATATYPE :: workvector(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&
          workvector2(biopointer%bionr,biopointer%wwbio%maxconfigsperproc),&    !!AUTOMATIC
          outwork(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1),&
@@ -426,8 +426,8 @@ contains
 
     workvector=0; workvector2=0; outwork=0; outtemp=0
 
-    if (biopointer%wwbio%topbasis.ge.biopointer%wwbio%botbasis) then
-       call fullbasis_transformfrom_local(biopointer%wwbio,biopointer%bionr,&
+    if (biopointer%wwbio%topdfbasis.ge.biopointer%wwbio%botdfbasis) then
+       call basis_transformfrom_local(biopointer%wwbio,biopointer%bionr,&
             inavector(:,:),workvector(:,:))
     endif
 
@@ -455,8 +455,8 @@ contains
 
     outavector(:,:)=0d0   !! PADDED
 
-    if (biopointer%wwbio%topbasis.ge.biopointer%wwbio%botbasis) then
-       call fullbasis_transformto_local(biopointer%wwbio,biopointer%bionr,&
+    if (biopointer%wwbio%topdfbasis.ge.biopointer%wwbio%botdfbasis) then
+       call basis_transformto_local(biopointer%wwbio,biopointer%bionr,&
             outwork(:,:),outavector(:,:))
     endif
 
@@ -473,8 +473,8 @@ contains
     use matvecsetmod
     use biomatvecmod
     implicit none
-    DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
-    DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxbasisperproc)
+    DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
+    DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
 
 #ifdef MPIFLAG
     select case (sparsesummaflag)
@@ -565,21 +565,21 @@ contains
     call biomatvecset(inbiovar)
 
 #ifdef REALGO
-    ixx=inbiovar%wwbio%maxbasisperproc*inbiovar%bionr
+    ixx=inbiovar%wwbio%maxdfbasisperproc*inbiovar%bionr
 #else
-    ixx=inbiovar%wwbio%maxbasisperproc*inbiovar%bionr*2
+    ixx=inbiovar%wwbio%maxdfbasisperproc*inbiovar%bionr*2
 #endif
     lwsp = ixx*(inbiovar%thisbiodim+4) + 6*(inbiovar%thisbiodim+3)**2 + 100
 
     liwsp = inbiovar%thisbiodim+100
 
     allocate(wsp(lwsp),iwsp(liwsp));  wsp=0; iwsp=0
-    allocate(smallvector(inbiovar%bionr,inbiovar%wwbio%maxbasisperproc),&
-         smallvectorout(inbiovar%bionr,inbiovar%wwbio%maxbasisperproc))
+    allocate(smallvector(inbiovar%bionr,inbiovar%wwbio%maxdfbasisperproc),&
+         smallvectorout(inbiovar%bionr,inbiovar%wwbio%maxdfbasisperproc))
     smallvector(:,:)=0; smallvectorout(:,:)=0
 
     if (inbiovar%wwbio%topconfig.ge.inbiovar%wwbio%botconfig) then
-       call fullbasis_transformto_local(inbiovar%wwbio,inbiovar%bionr,&
+       call basis_transformto_local(inbiovar%wwbio,inbiovar%bionr,&
             abio(:,inbiovar%wwbio%botconfig:inbiovar%wwbio%topconfig),smallvector(:,:))
     endif
 
@@ -609,7 +609,7 @@ contains
        aout(:,:)=0d0
     endif
     if (inbiovar%wwbio%topconfig.ge.inbiovar%wwbio%botconfig) then
-       call fullbasis_transformfrom_local(inbiovar%wwbio,inbiovar%bionr,&
+       call basis_transformfrom_local(inbiovar%wwbio,inbiovar%bionr,&
             smallvectorout(:,:),aout(:,inbiovar%wwbio%botconfig:inbiovar%wwbio%topconfig))
     endif
     if (inbiovar%wwbio%parconsplit.eq.0) then
@@ -700,7 +700,7 @@ contains
     biotypevar%smo=>insmo
     biotypevar%bionr=innumr
 
-!!$    biotypevar%biomaxdim=min(maxbiodim*zzz,biotypevar%wwbio%maxbasisperproc*biotypevar%bionr*zzz*nprocs-1)
+!!$    biotypevar%biomaxdim=min(maxbiodim*zzz,biotypevar%wwbio%maxdfbasisperproc*biotypevar%bionr*zzz*nprocs-1)
 
     biotypevar%biomaxdim=min(maxbiodim*zzz,zzz*biotypevar%wwbio%numdfbasis*biotypevar%bionr-1)
 
