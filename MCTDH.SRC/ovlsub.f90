@@ -37,6 +37,8 @@ subroutine ovl_initial()
   DATATYPE, allocatable :: read_avectors(:,:), read_spfs(:,:)
   DATATYPE :: nullvector(numr)
 
+  nullvector(:)=0
+
 !! read in the data from mcscf for our target cation state
 
   numovl=0
@@ -172,6 +174,8 @@ subroutine getoverlaps(forceflag)
   integer ::  i,imc,forceflag,myiostat
   DATATYPE :: nullvector1(numr),nullvector2(numr)
 
+  nullvector1(:)=0;   nullvector2(:)=0
+
   calledflag = calledflag+1
 
   if (ovlbioalloc.eq.0) then
@@ -222,6 +226,8 @@ subroutine mcscf_matel()
   DATATYPE :: myovl(numovl,numovl),nullvector1(numr),nullvector2(numr)
   type(biorthotype),target :: mcbiovar(numovl,numovl)
 
+  nullvector1(:)=0;nullvector2(:)=0
+
 !! REPLACE THIS - ADAPT FINALSTATS0.
 !!   Make dual-purpose subroutine (finalstats00) contatining the guts of finalstats0 
 !!   and call finalstats00 here and in finalstats0.  For now just overlaps
@@ -264,14 +270,17 @@ subroutine wfnovl()
   type(biorthotype),target :: wfnbiovar(mcscfnum)  
   integer :: k,molength,alength,nt,ketbat,imc,ispf,myiostat
   real*8 :: piover2,dt,angle(mcscfnum)
-  DATATYPE :: myovl(mcscfnum) , bradot,phase,ketdot,blah
+  DATATYPE :: myovl(mcscfnum) , bradot,phase,ketdot,blah,nullvector1(numr),&
+       nullvector2(numr)
   DATATYPE, allocatable :: read_bramo(:,:), read_braavec(:,:), &
        read_ketmo(:,:), read_ketavec(:,:),&
        bramo(:,:),braavec(:,:),ketmo(:,:),ketavec(:,:)
 
+  nullvector1(:)=0;nullvector2(:)=0
   allocate(bramo(spfsize,nspf),braavec(tot_adim,mcscfnum),&
        ketmo(spfsize,nspf),ketavec(tot_adim,mcscfnum))
   bramo=0; ketmo=0
+
   if (tot_adim.gt.0) then
      braavec=0; ketavec=0
   endif
@@ -365,10 +374,17 @@ subroutine wfnovl()
         call mympibcast(braavec(:,:),1,numr*num_config*mcscfnum)
         call mympibcast(ketavec(:,:),1,numr*num_config*mcscfnum)
      else
-        do imc=1,mcscfnum
-           call myscatterv(read_braavec(:,imc),braavec(:,imc),configs_perproc(:)*numr)
-           call myscatterv(read_ketavec(:,imc),ketavec(:,imc),configs_perproc(:)*numr)
-        enddo
+        if (tot_adim.gt.0) then
+           do imc=1,mcscfnum
+              call myscatterv(read_braavec(:,imc),braavec(:,imc),configs_perproc(:)*numr)
+              call myscatterv(read_ketavec(:,imc),ketavec(:,imc),configs_perproc(:)*numr)
+           enddo
+        else
+           do imc=1,mcscfnum
+              call myscatterv(read_braavec(:,imc),nullvector1(:),configs_perproc(:)*numr)
+              call myscatterv(read_ketavec(:,imc),nullvector2(:),configs_perproc(:)*numr)
+           enddo
+        endif
      endif
 
 
@@ -382,9 +398,14 @@ subroutine wfnovl()
            call mympireduceone(bradot); call mympireduceone(ketdot)
         endif
         
-        call autocorrelate_one(www,bwwptr,braavec(:,imc),bramo,ketmo,&
-             ketavec(:,imc),myovl(imc),numr,wfnbiovar(imc))
-       
+        if (tot_adim.gt.0) then
+           call autocorrelate_one(www,bwwptr,braavec(:,imc),bramo,ketmo,&
+                ketavec(:,imc),myovl(imc),numr,wfnbiovar(imc))
+        else
+           call autocorrelate_one(www,bwwptr,nullvector1(:),bramo,ketmo,&
+                nullvector2(:),myovl(imc),numr,wfnbiovar(imc))
+        endif
+
         blah=myovl(imc)/sqrt(bradot*ketdot)
         angle(imc)=acos(abs(blah))
         myovl(imc)=bradot+ketdot-myovl(imc)-CONJUGATE(myovl(imc))

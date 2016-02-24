@@ -849,6 +849,8 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
   real*8 :: thisstep,midtime,rsum
   integer, save :: times(2)=0, icalled=0
 
+  nullvector1(:)=0;nullvector2(:)=0
+
   call system_clock(itime)
 
   if (sparseopt.eq.0) then

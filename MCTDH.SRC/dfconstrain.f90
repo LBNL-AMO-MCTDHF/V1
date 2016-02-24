@@ -210,16 +210,6 @@ end subroutine get_rhomat
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-subroutine get_dfconstraint(time)
-  use parameters
-  use xxxmod
-  use configmod
-  implicit none
-  real*8, intent(in) :: time
-  call get_dfconstraint0(yyy%cmfavec(:,:,0),mcscfnum,yyy%cptr(0),yyy%sptr(0),www,time)
-end subroutine get_dfconstraint
-
-
 subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
   use fileptrmod
   use timing_parameters
@@ -592,6 +582,21 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 end subroutine get_dfconstraint0
 
 
+subroutine get_dfconstraint(time)
+  use parameters
+  use xxxmod
+  use configmod
+  implicit none
+  real*8, intent(in) :: time
+  DATATYPE :: nullvectors(numr,mcscfnum)
+  nullvectors=0
+  if (tot_adim.gt.0) then
+     call get_dfconstraint0(yyy%cmfavec(:,:,0),mcscfnum,yyy%cptr(0),yyy%sptr(0),www,time)
+  else
+     call get_dfconstraint0(nullvectors(:,:),mcscfnum,yyy%cptr(0),yyy%sptr(0),www,time)
+  endif
+end subroutine get_dfconstraint
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!  DENSITY MATRIX (constraintflag=1) !!!!
@@ -661,19 +666,6 @@ function llind(ispf,jspf)
 end function llind
 
 
-subroutine get_denconstraint1(iwhich,time)
-  use parameters
-  use xxxmod
-  use configmod
-  implicit none
-  integer,intent(in) :: iwhich
-  real*8,intent(in) :: time
-  call get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,&
-       yyy%cmfavec(:,:,0),yyy%drivingavectorsxx(:,:,:,0),&
-       yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
-       yyy%denmat(:,:,0),iwhich,time)
-end subroutine get_denconstraint1
-
 
 subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx, &
      drivingavectorsyy,drivingavectorszz,denmat,iwhich,time)
@@ -708,8 +700,10 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
   integer :: ipiv(liosize)
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
   DATATYPE :: liosolve(liosize),lioden(liosize, liosize),&
-       liodencopy(liosize,liosize),liosolvetemp(liosize), csum, myliosolve(liosize)
+       liodencopy(liosize,liosize),liosolvetemp(liosize), csum, myliosolve(liosize),&
+       nullvector1(numr),nullvector2(numr)
 
+  nullvector1(:)=0; nullvector2(:)=0
   cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   
   cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
 
@@ -810,29 +804,42 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
 
   do iiyy=1,maxii
      do imc=1,numvects
-        select case(iiyy)
-        case(1)
-           call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,&
-                1,1,0,0,time,imc)
-        case default
-           call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,&
-                sptr,iiyy-1,imc)
-           if (drivingflag.ne.0) then
-              if (iiyy.eq.2) then
-                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsxx(:,:,imc)
-              else if (iiyy.eq.3) then
-                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsyy(:,:,imc)
-              else if (iiyy.eq.4) then
-                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorszz(:,:,imc)
+        if (www%totadim.gt.0) then
+           select case(iiyy)
+           case(1)
+              call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,&
+                   1,1,0,0,time,imc)
+           case default
+              call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,&
+                   sptr,iiyy-1,imc)
+              if (drivingflag.ne.0) then
+                 if (iiyy.eq.2) then
+                    avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsxx(:,:,imc)
+                 else if (iiyy.eq.3) then
+                    avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsyy(:,:,imc)
+                 else if (iiyy.eq.4) then
+                    avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorszz(:,:,imc)
+                 endif
               endif
-           endif
-        end select
+           end select
+        else
+           select case(iiyy)
+           case(1)
+              call sparseconfigmult(www,nullvector1(:),nullvector2(:),cptr,sptr,&
+                   1,1,0,0,time,imc)
+           case default
+              call sparseconfigpulsemult(www,nullvector1(:),nullvector2(:),cptr,&
+                   sptr,iiyy-1,imc)
+           end select
+        endif
      enddo
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 
-     bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
-     bigavectorp(:,www%firstconfig:www%lastconfig,:)=avectorp(:,:,:)
+     if (www%lastconfig.ge.www%firstconfig) then
+        bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
+        bigavectorp(:,www%firstconfig:www%lastconfig,:)=avectorp(:,:,:)
+     endif
 
      if (www%parconsplit.ne.0) then
         do i=1,numvects
@@ -993,18 +1000,32 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
 end subroutine get_denconstraint1_0
 
 
-
-subroutine new_get_denconstraint1(time)
+subroutine get_denconstraint1(iwhich,time)
   use parameters
   use xxxmod
   use configmod
   implicit none
+  integer,intent(in) :: iwhich
   real*8,intent(in) :: time
-  call new_get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,&
-       yyy%cmfavec(:,:,0),yyy%drivingavectorsxx(:,:,:,0),&
-       yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
-       yyy%denmat(:,:,0),time)
-end subroutine new_get_denconstraint1
+  DATATYPE :: nullvectors(numr,mcscfnum)
+
+  nullvectors(:,:)=0
+
+  if (www%totadim.gt.0) then
+     call get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,&
+          yyy%cmfavec(:,:,0),yyy%drivingavectorsxx(:,:,:,0),&
+          yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
+          yyy%denmat(:,:,0),iwhich,time)
+  else
+     call get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,&
+          nullvectors(:,:),nullvectors(:,:),&
+          nullvectors(:,:),nullvectors(:,:),&
+          yyy%denmat(:,:,0),iwhich,time)
+  endif
+
+end subroutine get_denconstraint1
+
+
 
 
 subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx, &
@@ -1033,7 +1054,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
        drivingavectorszz(numr,www%firstconfig:www%lastconfig,numvects)
   integer :: ipairs(2,www%nspf*(www%nspf-1))
   DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a1p(numr,numvects), &
-       a2p(numr,numvects), csum
+       a2p(numr,numvects), csum, nullvector1(numr),nullvector2(numr)
   DATATYPE,allocatable :: bigavector(:,:,:), bigavectorp(:,:,:),avectorp(:,:,:),&
        rhomat(:,:,:,:),tempconmatels(:,:) 
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,  iwalk,  info, kspf, &
@@ -1044,6 +1065,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   DATATYPE, allocatable :: liosolve(:),lioden(:, :),liodencopy(:,:),&
        liosolvetemp(:),myliosolve(:)
 
+  nullvector1(:)=0;nullvector2(:)=0
   cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   
   cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
 
@@ -1062,6 +1084,9 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      avectorp(:,:,:)=0d0
   endif
 
+call mpibarrier()
+OFLWR "GO RHO"; CFL
+call mpibarrier()
 
   if (www%dfrestrictflag.gt.www%dflevel) then
      call get_rhomat(www,avector,rhomat,numr,numvects)
@@ -1147,37 +1172,58 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      maxii=4
   endif
 
+call mpibarrier()
+OFLWR "GO LOOPS"; CFL
+call mpibarrier()
+
   do iiyy=1,maxii
      do imc=1,numvects
-        select case(iiyy)
-        case(1)
-           call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,&
-                1,1,0,0,time,imc)
-        case default
-           call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,&
-                sptr,iiyy-1,imc)
-           if (drivingflag.ne.0) then
-              if (iiyy.eq.2) then
-                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsxx(:,:,imc)
-              else if (iiyy.eq.3) then
-                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsyy(:,:,imc)
-              else if (iiyy.eq.4) then
-                 avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorszz(:,:,imc)
+        if (www%totadim.gt.0) then
+           select case(iiyy)
+           case(1)
+              call sparseconfigmult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,sptr,&
+                   1,1,0,0,time,imc)
+           case default
+              call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,&
+                   sptr,iiyy-1,imc)
+              if (drivingflag.ne.0) then
+                 if (iiyy.eq.2) then
+                    avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsxx(:,:,imc)
+                 else if (iiyy.eq.3) then
+                    avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsyy(:,:,imc)
+                 else if (iiyy.eq.4) then
+                    avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorszz(:,:,imc)
+                 endif
               endif
-           endif
-        end select
+           end select
+        else
+           select case(iiyy)
+           case(1)
+              call sparseconfigmult(www,nullvector1(:),nullvector2(:),cptr,sptr,&
+                   1,1,0,0,time,imc)
+           case default
+              call sparseconfigpulsemult(www,nullvector1(:),nullvector2(:),cptr,&
+                   sptr,iiyy-1,imc)
+           end select
+        endif
      enddo
 
      if (www%dfrestrictflag.gt.www%dflevel) then
         do imc=1,numvects
-           call df_project(www,numr,avectorp(:,:,imc))
+           if (www%totadim.gt.0) then
+              call df_project(www,numr,avectorp(:,:,imc))
+           else
+              call df_project(www,numr,nullvector1(:))
+           endif
         enddo
      endif
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 
-     bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
-     bigavectorp(:,www%firstconfig:www%lastconfig,:)=avectorp(:,:,:)
+     if (www%lastconfig.ge.www%firstconfig) then
+        bigavector(:,www%firstconfig:www%lastconfig,:)=avector(:,:,:)
+        bigavectorp(:,www%firstconfig:www%lastconfig,:)=avectorp(:,:,:)
+     endif
 
      if (www%parconsplit.ne.0) then
         do i=1,numvects
@@ -1306,8 +1352,35 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      
   end do
 
+call mpibarrier()
+OFLWR "DONE NEW DEN 1_0"; CFL
+call mpibarrier()
+
   deallocate(bigavector,bigavectorp,avectorp,rhomat,tempconmatels)
 
 end subroutine new_get_denconstraint1_0
 
 
+subroutine new_get_denconstraint1(time)
+  use parameters
+  use xxxmod
+  use configmod
+  implicit none
+  real*8,intent(in) :: time
+  DATATYPE :: nullvectors(numr,mcscfnum)
+
+  nullvectors(:,:)=0
+
+  if (www%totadim.gt.0) then
+  call new_get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,&
+       yyy%cmfavec(:,:,0),yyy%drivingavectorsxx(:,:,:,0),&
+       yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
+       yyy%denmat(:,:,0),time)
+  else
+     call new_get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,&
+          nullvectors(:,:),nullvectors(:,:),&
+          nullvectors(:,:),nullvectors(:,:),&
+          yyy%denmat(:,:,0),time)
+  endif
+
+end subroutine new_get_denconstraint1

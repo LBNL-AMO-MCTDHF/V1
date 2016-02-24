@@ -613,8 +613,10 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
   integer :: readnumvects,readndof,readnumr,readnumconfig,readcomplex,&
        mynumvects,numskip,ii,myiostat
   DATATYPE,intent(out) :: myavectors(numr,first_config:last_config,mynumvects)
-  DATATYPE :: nullvector(numr,1)
+  DATATYPE :: nullvector(numr)
   DATATYPE, allocatable :: readavectors(:,:,:)
+
+  nullvector(:)=0
 
  if (myrank.eq.1) then
     open(999,file=filename, status="unknown", form="unformatted",iostat=myiostat)
@@ -689,7 +691,7 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
                 myavectors(:,:,ii),configs_perproc(:)*numr)
         else
            call myscatterv(readavectors(:,:,ii+numskip),&
-                nullvector(:,:),configs_perproc(:)*numr)
+                nullvector(:),configs_perproc(:)*numr)
         endif
      enddo
   endif

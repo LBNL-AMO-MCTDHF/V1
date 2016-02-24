@@ -416,6 +416,8 @@ subroutine quadavector(inavector,jjcalls)
   integer,intent(out) :: jjcalls
   integer :: imc
 
+  nullvector(:)=0
+
   if (quadorthflag.ne.0) then
      do imc=1,mcscfnum
         if (www%parconsplit.eq.0) then

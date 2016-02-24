@@ -288,7 +288,7 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
   integer :: printflag, iorder,k,flag,j,id,nn,i,thislanblocknum, thisdim,thisout
   real*8 :: error(numout), stopsum,rsum,nextran
   DATATYPE :: alpha(lanblocknum,lanblocknum),beta(lanblocknum,lanblocknum), &
-       nullvector1(100), nullvector2(100), lastvalue(numout), thisvalue(numout), &
+       nullvector1(100)=0, nullvector2(100)=0, lastvalue(numout), thisvalue(numout), &
        valdot(numout),normsq(numout),sqdot(numout)
 !! made these allocatable to fix lawrencium segfault 04-15
   DATATYPE, allocatable :: lanham(:,:,:,:), laneigvects(:,:,:), templanham(:,:),&

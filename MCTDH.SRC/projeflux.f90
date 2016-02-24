@@ -634,10 +634,11 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
        tmo(:,:),tavec(:,:,:),tmotemp(:,:),readta(:,:,:),&
        mobio(:,:,:),abio(:,:,:),mymo(:,:),myavec(:,:,:), &
        readmo(:,:),readavec(:,:,:)
-  DATATYPE :: nullvector(numr,1)
-
+  DATATYPE :: nullvector(numr)
 !! mcscf specific read variables
   DATATYPE,target :: smo(nspf,nspf)
+
+  nullvector(:)=0
 
 !! read in the data from mcscf for our target cation state
 
@@ -833,7 +834,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
            if (tot_adim.gt.0) then
               call myscatterv(readavec(:,:,i),myavec(:,:,i),configs_perproc(:)*numr)
            else
-              call myscatterv(readavec(:,:,i),nullvector(:,:),configs_perproc(:)*numr)
+              call myscatterv(readavec(:,:,i),nullvector(:),configs_perproc(:)*numr)
            endif
         enddo
      endif
@@ -868,9 +869,9 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
            abio(:,:,ir)=myavec(ir,:,:)
         enddo
      else
-        call biortho(mymo,tmo(:,:),mobio(:,:,1),nullvector(:,:),projbiovar)
+        call biortho(mymo,tmo(:,:),mobio(:,:,1),nullvector(:),projbiovar)
         do imc=2,mcscfnum
-           call biotransform(mymo,tmo(:,:),nullvector(:,:),projbiovar)
+           call biotransform(mymo,tmo(:,:),nullvector(:),projbiovar)
         enddo
      endif
 
@@ -883,7 +884,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
               if (tot_adim.gt.0) then
                  call projeflux_doproj(tavec(:,istate,ir),abio(:,imc,ir),mobio(:,:,ir),ioffset)
               else
-                 call projeflux_doproj(tavec(:,istate,ir),nullvector(:,:),mobio(:,:,ir),ioffset)
+                 call projeflux_doproj(tavec(:,istate,ir),nullvector(:),mobio(:,:,ir),ioffset)
               endif
            enddo
         enddo

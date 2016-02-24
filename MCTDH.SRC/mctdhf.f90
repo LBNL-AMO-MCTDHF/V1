@@ -526,7 +526,7 @@ program mctdhf
 
   if (skipflag.eq.0) then
 
-     allocate(bigavector(numr,first_config:last_config,mcscfnum),nullvector(1,1,mcscfnum))
+     allocate(bigavector(numr,first_config:last_config,mcscfnum),nullvector(numr,1,mcscfnum))
      nullvector=0d0
      if (tot_adim.gt.0) then
         bigavector(:,:,:)=0d0

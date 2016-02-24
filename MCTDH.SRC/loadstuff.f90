@@ -10,7 +10,8 @@ subroutine save_vector(avectors,spfs,afile,sfile)
   character,intent(in) :: afile*(*), sfile*(*)
   integer :: iprop,ispf,myiostat
   DATATYPE, allocatable :: parorbitals(:,:), parfrozen(:,:), paravec(:,:,:)
-  DATATYPE :: nullvector(1,1)
+  DATATYPE :: nullvector(numr)
+  nullvector=0
 
 !! always allocate avoid warn bounds
 
@@ -55,7 +56,7 @@ subroutine save_vector(avectors,spfs,afile,sfile)
         if (tot_adim.gt.0) then
            call mygatherv(avectors(:,:,iprop),paravec(:,:,iprop),configs_perproc(:)*numr,.false.)
         else
-           call mygatherv(nullvector(:,:),paravec(:,:,iprop),configs_perproc(:)*numr,.false.)
+           call mygatherv(nullvector(:),paravec(:,:,iprop),configs_perproc(:)*numr,.false.)
         endif
      enddo
   endif

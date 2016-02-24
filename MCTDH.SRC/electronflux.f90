@@ -18,8 +18,10 @@ subroutine fluxwrite(curtime,in_xmo,in_xa)
   integer,intent(in) :: curtime
   DATATYPE,intent(in) :: in_xmo(spfsize,nspf),in_xa(numr,first_config:last_config,mcscfnum)
   DATATYPE,allocatable :: xmo(:,:), xa(:,:,:)
-  DATATYPE :: nullvector(numr,1)
+  DATATYPE :: nullvector(numr)
   integer :: molength,alength,ispf,ii,myiostat
+
+  nullvector(:)=0
 
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
@@ -52,7 +54,7 @@ subroutine fluxwrite(curtime,in_xmo,in_xa)
         if (tot_adim.gt.0) then
            call mygatherv(in_xa(:,:,ii),xa(:,:,ii), configs_perproc(:)*numr,.false.)
         else
-           call mygatherv(nullvector(:,:),xa(:,:,ii), configs_perproc(:)*numr,.false.)
+           call mygatherv(nullvector(:),xa(:,:,ii), configs_perproc(:)*numr,.false.)
         endif
      enddo
   elseif(myrank.eq.1) then
@@ -131,10 +133,12 @@ subroutine fluxgtau0(alg,www,bioww)
   DATATYPE, allocatable :: reke(:,:),repe(:,:),reV2(:,:,:,:), reyderiv(:,:)
   DATATYPE, allocatable :: rekeop(:,:),repeop(:,:),  reyop(:,:)
   DATATYPE,target :: smo(nspf,nspf)
-  DATATYPE :: nullvector(numr,1)
+  DATATYPE :: nullvector(numr)
   if (ceground.eq.(0d0,0d0)) then
      OFLWR "Eground is ZERO.  Are you sure?  If want zero just make it small. \n     Otherwise need eground: initial state energy."; CFLST
   endif
+
+  nullvector(:)=0
 
 !! initial setup
 
@@ -285,7 +289,7 @@ subroutine fluxgtau0(alg,www,bioww)
                       ketavec(:,:,imc,i),configs_perproc(:)*numr)
               else
                  call myscatterv(read_ketavec(:,:,imc,i),&
-                      nullvector(:,:),configs_perproc(:)*numr)
+                      nullvector(:),configs_perproc(:)*numr)
               endif
            enddo
         enddo
@@ -351,7 +355,7 @@ subroutine fluxgtau0(alg,www,bioww)
                             braavec(:,:,imc,i),configs_perproc(:)*numr)
                     else
                        call myscatterv(read_braavec(:,:,imc,i),&
-                            nullvector(:,:),configs_perproc(:)*numr)
+                            nullvector(:),configs_perproc(:)*numr)
                     endif
                  enddo
               enddo
@@ -415,9 +419,9 @@ subroutine fluxgtau0(alg,www,bioww)
                  abio(:,:,:)=conjg(abio(:,:,:))
 #endif
               else
-                 call biortho(mobra,moket,mobio,nullvector(:,:),fluxgtaubiovar)
+                 call biortho(mobra,moket,mobio,nullvector(:),fluxgtaubiovar)
                  do imc=2,mcscfnum
-                    call biotransform(mobra,moket,nullvector(:,:),fluxgtaubiovar)
+                    call biotransform(mobra,moket,nullvector(:),fluxgtaubiovar)
                  enddo
               endif
               fluxgtaubiovar%hermonly=.false.   !! in case fluxgtaubiovar is reused
@@ -482,8 +486,8 @@ subroutine fluxgtau0(alg,www,bioww)
                     fluxevalval(imc) = fluxeval(abio(:,:,imc),&
                          aket(:,:,imc),ke,pe,V2,yderiv,1) * dt  !! 1 means flux
                  else
-                    fluxevalval(imc) = fluxeval(nullvector(:,:),&
-                         nullvector(:,:),ke,pe,V2,yderiv,1) * dt  !! 1 means flux
+                    fluxevalval(imc) = fluxeval(nullvector(:),&
+                         nullvector(:),ke,pe,V2,yderiv,1) * dt  !! 1 means flux
                  endif
               enddo
               if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
@@ -494,7 +498,7 @@ subroutine fluxgtau0(alg,www,bioww)
                             reke,repe,reV2,reyderiv,2) * dt  !! 2 means flux
                     else
                        fluxevalval(imc) = fluxevalval(imc) + &
-                            fluxeval(nullvector(:,:),nullvector(:,:),&
+                            fluxeval(nullvector(:),nullvector(:),&
                             reke,repe,reV2,reyderiv,2) * dt  !! 2 means flux
                     endif
                  enddo
