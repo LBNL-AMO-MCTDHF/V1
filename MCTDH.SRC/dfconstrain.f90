@@ -138,8 +138,6 @@ subroutine get_smallwalkvects(www,avector, smallwalkvects,nblock,howmany)
 
   deallocate(bigavector)
 
-  call mpibarrier()
-
 end subroutine get_smallwalkvects
 
 
@@ -1084,10 +1082,6 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      avectorp(:,:,:)=0d0
   endif
 
-call mpibarrier()
-OFLWR "GO RHO"; CFL
-call mpibarrier()
-
   if (www%dfrestrictflag.gt.www%dflevel) then
      call get_rhomat(www,avector,rhomat,numr,numvects)
   endif
@@ -1171,10 +1165,6 @@ call mpibarrier()
   if (tdflag.ne.0) then
      maxii=4
   endif
-
-call mpibarrier()
-OFLWR "GO LOOPS"; CFL
-call mpibarrier()
 
   do iiyy=1,maxii
      do imc=1,numvects
@@ -1351,10 +1341,6 @@ call mpibarrier()
      end select
      
   end do
-
-call mpibarrier()
-OFLWR "DONE NEW DEN 1_0"; CFL
-call mpibarrier()
 
   deallocate(bigavector,bigavectorp,avectorp,rhomat,tempconmatels)
 
