@@ -401,20 +401,20 @@ subroutine expoprop(time1,time2,inspfs, numiters)
   integer, save :: exposet=0   
 !! 0 = not set; reduce to minimum      !! 1 = minimum found; don't decrease
 
-  DATATYPE,allocatable :: aspfs(:,:), propspfs(:,:),   outspfs(:,:), &
-       com_aspfs(:,:), com_propspfs(:,:),   com_outspfs(:,:),  tempspfs(:,:)
+  DATATYPE,allocatable :: aspfs(:,:), proppspfs(:,:),   outspfs(:,:), &
+       com_aspfs(:,:), com_proppspfs(:,:),   com_outspfs(:,:),  tempspfs(:,:)
   integer :: idim, liwsp=0, lwsp=0,ttott,myiostat
   real*8, allocatable :: wsp(:)
   integer, allocatable :: iwsp(:)
 
-  allocate(aspfs(spfsize,nspf), propspfs(spfsize,nspf),   &
+  allocate(aspfs(spfsize,nspf), proppspfs(spfsize,nspf),   &
        outspfs(spfsize,nspf), tempspfs(spfsize,nspf))
-  aspfs=0; propspfs=0; outspfs=0; tempspfs=0
+  aspfs=0; proppspfs=0; outspfs=0; tempspfs=0
 
   if (orbcompact.ne.0) then
-     allocate(com_aspfs(spfsmallsize,nspf), com_propspfs(spfsmallsize,nspf),   &
+     allocate(com_aspfs(spfsmallsize,nspf), com_proppspfs(spfsmallsize,nspf),   &
           com_outspfs(spfsmallsize,nspf))
-     com_aspfs=0; com_propspfs=0; com_outspfs=0
+     com_aspfs=0; com_proppspfs=0; com_outspfs=0
   endif
 
   tdiff=(time2-time1)
@@ -516,7 +516,11 @@ subroutine expoprop(time1,time2,inspfs, numiters)
      if (parorbsplit.eq.3) then
         call dgexpthirdxxx2(idim, thisexpodim, tdiff, aspfs, inspfs, expotol, norm, &
              wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,&
-             tempstepsize,realpardotsub,ttott)
+             tempstepsize,realpardotsub_par3,ttott)
+     elseif (parorbsplit.eq.1) then
+        call dgexpthirdxxx2(idim, thisexpodim, tdiff, aspfs, inspfs, expotol, norm, &
+             wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,&
+             tempstepsize,realpardotsub_par1,ttott)
      else
         call dgexpthird(idim, thisexpodim, tdiff, aspfs, inspfs, expotol, norm, &
              wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,tempstepsize)
@@ -529,30 +533,39 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 
      call apply_spf_constraints(aspfs)
 
-     propspfs=0.d0
+     proppspfs=0.d0
 
      if (orbcompact.ne.0) then
         call spfs_compact(aspfs,com_aspfs); 
-        call spfs_compact(propspfs,com_propspfs);
+        call spfs_compact(proppspfs,com_proppspfs);
         if (parorbsplit.eq.3) then
            call dgphivxxx2(idim, thisexpodim, tdiff, com_aspfs, &
-                com_propspfs, com_outspfs, expotol, norm, &
+                com_proppspfs, com_outspfs, expotol, norm, &
                 wsp, lwsp, iwsp, liwsp, jacopcompact, itrace, iflag,&
-                expofileptr,tempstepsize,realpardotsub,ttott)
+                expofileptr,tempstepsize,realpardotsub_par3,ttott)
+        elseif (parorbsplit.eq.1) then
+           call dgphivxxx2(idim, thisexpodim, tdiff, com_aspfs, &
+                com_proppspfs, com_outspfs, expotol, norm, &
+                wsp, lwsp, iwsp, liwsp, jacopcompact, itrace, iflag,&
+                expofileptr,tempstepsize,realpardotsub_par1,ttott)
         else
            call dgphiv(idim, thisexpodim, tdiff, com_aspfs, &
-                com_propspfs, com_outspfs, expotol, norm, &
+                com_proppspfs, com_outspfs, expotol, norm, &
                 wsp, lwsp, iwsp, liwsp, jacopcompact, itrace, iflag,&
                 expofileptr,tempstepsize)
         endif
         call spfs_expand(com_outspfs,outspfs);
      else
         if (parorbsplit.eq.3) then
-           call dgphivxxx2(idim, thisexpodim, tdiff, aspfs, propspfs, &
+           call dgphivxxx2(idim, thisexpodim, tdiff, aspfs, proppspfs, &
                 outspfs, expotol, norm, wsp, lwsp, iwsp, liwsp, jacoperate, &
-                itrace, iflag,expofileptr,tempstepsize,realpardotsub,ttott)
+                itrace, iflag,expofileptr,tempstepsize,realpardotsub_par3,ttott)
+        elseif (parorbsplit.eq.1) then
+           call dgphivxxx2(idim, thisexpodim, tdiff, aspfs, proppspfs, &
+                outspfs, expotol, norm, wsp, lwsp, iwsp, liwsp, jacoperate, &
+                itrace, iflag,expofileptr,tempstepsize,realpardotsub_par1,ttott)
         else
-           call dgphiv(idim, thisexpodim, tdiff, aspfs, propspfs, &
+           call dgphiv(idim, thisexpodim, tdiff, aspfs, proppspfs, &
                 outspfs, expotol, norm, wsp, lwsp, iwsp, liwsp, jacoperate, &
                 itrace, iflag,expofileptr,tempstepsize)
         endif
@@ -601,12 +614,12 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 
 
   deallocate(wsp,iwsp)
-  deallocate(aspfs, propspfs, outspfs, tempspfs)
+  deallocate(aspfs, proppspfs, outspfs, tempspfs)
   if (orbcompact.ne.0) then
-     deallocate(com_aspfs, com_propspfs, com_outspfs)
+     deallocate(com_aspfs, com_proppspfs, com_outspfs)
   endif
 contains
-  subroutine realpardotsub(one,two,n,out)
+  subroutine realpardotsub_par3(one,two,n,out)
     implicit none
     integer,intent(in) :: n
     real*8,intent(in) :: one(n),two(n)
@@ -615,7 +628,18 @@ contains
     sum=DOT_PRODUCT(one,two)
     call mympirealreduceone(sum)
     out=sum
-  end subroutine realpardotsub
+  end subroutine realpardotsub_par3
+
+  subroutine realpardotsub_par1(one,two,n,out)
+    implicit none
+    integer,intent(in) :: n
+    real*8,intent(in) :: one(n),two(n)
+    real*8,intent(out) :: out
+    real*8 :: sum
+    sum=DOT_PRODUCT(one,two)
+!! TEMP    call mympirealreduceone_local(sum,MY_COMM_ORB)
+    out=sum
+  end subroutine realpardotsub_par1
 
 end subroutine expoprop
 

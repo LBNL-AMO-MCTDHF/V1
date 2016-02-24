@@ -124,6 +124,7 @@ subroutine mpiorbsets()
   if (myorbset.le.0) then
      OFLWR "SSSETERRROR"; CFLST
   endif
+  MY_COMM_ORB=MPI_COMM_ORB(myorbset)
   deallocate(process_ranks,procsperset)
 #endif
 

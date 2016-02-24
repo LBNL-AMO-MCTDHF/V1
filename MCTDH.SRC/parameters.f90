@@ -605,20 +605,17 @@ module mpimod
 #ifdef MPIFLAG
   include "mpif.h"
 #endif
-  integer ::  MPI_GROUP_WORLD
-
-integer :: nprocs=1, myrank
-character(len=200), parameter :: mpioutfilebase="MPIOUTS/MPI.Out."
-character(len=200) :: mpioutfile
-integer, parameter :: mpioutfilelen=16
-integer :: stdoutflag=0
-integer :: mpitime=0
-integer :: nonmpitime=0
-integer :: mpiatime=0
-integer :: mpibtime=0
-!real*8 :: firstmpitime
-!real*8 :: lastmpitime
-
+  integer :: MPI_GROUP_WORLD
+  integer :: MY_COMM_ORB=(-798)
+  integer :: nprocs=1, myrank
+  character(len=200), parameter :: mpioutfilebase="MPIOUTS/MPI.Out."
+  character(len=200) :: mpioutfile
+  integer, parameter :: mpioutfilelen=16
+  integer :: stdoutflag=0
+  integer :: mpitime=0
+  integer :: nonmpitime=0
+  integer :: mpiatime=0
+  integer :: mpibtime=0
 
 end module mpimod
 
