@@ -103,7 +103,7 @@ subroutine basis_set(www,innzflag)
 
   jj=0
   do ii=1,nprocs
-     if (www%configsperproc(ii).gt.0.or.innzflag.eq.0) then
+     if (www%dfbasisperproc(ii).gt.0.or.innzflag.eq.0) then
         jj=jj+1
         www%nzconfsperproc(jj)=www%configsperproc(ii)
         www%nzproclist(jj)=ii
