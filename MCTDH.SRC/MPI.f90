@@ -89,8 +89,7 @@ subroutine mpiorbsets()
      endif
   endif
 #ifndef MPIFLAG
-  myorbset=1
-  firstmpiorb=1
+  myorbset=1;    firstmpiorb=1;  maxprocsperset=1
   jproc=0  ;   ierr=0     !! avoid warn unused
 #else
   allocate(process_ranks(nspf*2,norbsets)); process_ranks(:,:)=(-1)
@@ -125,6 +124,12 @@ subroutine mpiorbsets()
      OFLWR "SSSETERRROR"; CFLST
   endif
   MY_COMM_ORB=MPI_COMM_ORB(myorbset)
+  maxprocsperset=0
+  do iset=1,norbsets
+     if (procsperset(iset).ge.maxprocsperset) then
+        maxprocsperset=procsperset(iset)
+     endif
+  enddo
   deallocate(process_ranks,procsperset)
 #endif
 

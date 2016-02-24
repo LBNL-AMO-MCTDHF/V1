@@ -52,6 +52,8 @@ contains
     DATATYPE :: bigwork(spfsize,nspf),   workspfs(spfsize,lowspf:highspf+1),& 
          tempspfs(spfsize,lowspf:highspf+1)       !! AUTOMATIC
 
+    bigwork=0; workspfs=0; tempspfs=0
+
     numcalledhere=numcalledhere+1
 
     numspf=highspf-lowspf+1
@@ -279,6 +281,7 @@ contains
   
   end subroutine jacoperate0
 
+
 !! SUBROUTINE PASSED TO EXPOKIT FOR ORBITAL PROPAGATION
 
   subroutine jacopcompact(com_inspfs,com_outspfs)
@@ -301,6 +304,78 @@ contains
     DATATYPE,intent(out) :: outspfs(spfsize,nspf)
     call jacoperate0(1,1,inspfs,outspfs)
   end subroutine jacoperate
+
+
+  subroutine parjacoperate0(dentimeflag,conflag,inspfs,outspfs)
+    use parameters
+    use jactimingmod
+    use mpi_orbsetmod
+    implicit none
+    integer,intent(in) :: dentimeflag,conflag
+    DATATYPE,intent(in) ::  inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+    DATATYPE,intent(out) :: outspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+    DATATYPE :: workspfs(spfsize,nspf)   !! AUTOMATIC
+
+    integer :: lowspf,highspf,itime,jtime,atime,btime
+
+    if (parorbsplit.ne.1) then
+       OFLWR "ERROR, parjacoperate called but parorbsplit.ne.1",parorbsplit
+       CFLST
+    endif
+
+    call system_clock(atime)
+
+    lowspf=1; highspf=nspf
+    if (parorbsplit.eq.1) then
+       call getOrbSetRange(lowspf,highspf)
+    endif
+
+    workspfs=0
+
+    if (highspf.ge.lowspf) then
+       workspfs(:,lowspf:highspf) =  inspfs(:,lowspf:highspf)
+    endif
+
+    call system_clock(itime)
+    call mpiorbgather(workspfs,spfsize)
+    call system_clock(jtime);      times(4)=times(4)+jtime-itime
+
+    outspfs=0d0    !! padded
+
+!! call always even if numspf=0
+    call jacoperate00(lowspf,highspf,dentimeflag,conflag,workspfs,outspfs)
+
+    call system_clock(btime); times(7)=times(7)+btime-atime;
+  
+  end subroutine parjacoperate0
+
+
+!! SUBROUTINE PASSED TO EXPOKIT FOR ORBITAL PROPAGATION
+
+  subroutine parjacopcompact(com_inspfs,com_outspfs)
+    use parameters
+    use mpi_orbsetmod
+    implicit none
+    DATATYPE,intent(in) :: com_inspfs(spfsmallsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+    DATATYPE,intent(out) :: com_outspfs(spfsmallsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+    DATATYPE ::  inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1),  &
+         outspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)  !! AUTOMATIC
+    inspfs=0; outspfs=0
+    call spfs_expand_local(com_inspfs,inspfs)
+    call parjacoperate0(1,1,inspfs,outspfs)
+    call spfs_compact_local(outspfs,com_outspfs)
+  end subroutine parjacopcompact
+
+!! SUBROUTINE PASSED TO EXPOKIT FOR ORBITAL PROPAGATION
+
+  subroutine parjacoperate(inspfs,outspfs)
+    use parameters
+    use mpi_orbsetmod
+    implicit none
+    DATATYPE,intent(in) :: inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+    DATATYPE,intent(out) :: outspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+    call parjacoperate0(1,1,inspfs,outspfs)
+  end subroutine parjacoperate
 
 !! attempt for quad
 
@@ -378,14 +453,15 @@ end subroutine jacinit0
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-subroutine expoprop(time1,time2,inspfs, numiters)
+subroutine expoprop(time1,time2,in_inspfs, numiters)
   use parameters
   use mpimod
   use jacopmod
   use orbdermod
+  use mpi_orbsetmod
   implicit none
   real*8,intent(in) :: time1,time2
-  DATATYPE,intent(inout) :: inspfs(spfsize,nspf)
+  DATATYPE,intent(inout) :: in_inspfs(spfsize,nspf)
   integer,intent(out) :: numiters
   real*8, save :: tempstepsize = -1d0
   real*8 :: midtime, tdiff, error, norm
@@ -402,20 +478,34 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 !! 0 = not set; reduce to minimum      !! 1 = minimum found; don't decrease
 
   DATATYPE,allocatable :: aspfs(:,:), proppspfs(:,:),   outspfs(:,:), &
-       com_aspfs(:,:), com_proppspfs(:,:),   com_outspfs(:,:),  tempspfs(:,:)
-  integer :: idim, liwsp=0, lwsp=0,ttott,myiostat
+       com_aspfs(:,:), com_proppspfs(:,:),   com_outspfs(:,:),  tempspfs(:,:),&
+       inspfs(:,:)
+  integer :: idim, liwsp=0, lwsp=0,ttott,myiostat,maxnorbs
   real*8, allocatable :: wsp(:)
   integer, allocatable :: iwsp(:)
 
-  allocate(aspfs(spfsize,nspf), proppspfs(spfsize,nspf),   &
-       outspfs(spfsize,nspf), tempspfs(spfsize,nspf))
-  aspfs=0; proppspfs=0; outspfs=0; tempspfs=0
+  if (parorbsplit.eq.1) then
+     maxnorbs=maxprocsperset*orbsperproc
+  else
+     maxnorbs=nspf
+  endif
+
+  allocate(aspfs(spfsize,maxnorbs), proppspfs(spfsize,maxnorbs),&
+       outspfs(spfsize,maxnorbs),tempspfs(spfsize,maxnorbs),&
+       inspfs(spfsize,maxnorbs))
+
+  aspfs=0; proppspfs=0; outspfs=0; tempspfs=0; inspfs=0
+
+  inspfs(:,1:nspf)=in_inspfs(:,:)
 
   if (orbcompact.ne.0) then
-     allocate(com_aspfs(spfsmallsize,nspf), com_proppspfs(spfsmallsize,nspf),   &
-          com_outspfs(spfsmallsize,nspf))
-     com_aspfs=0; com_proppspfs=0; com_outspfs=0
+     allocate(com_aspfs(spfsmallsize,maxnorbs), com_proppspfs(spfsmallsize,maxnorbs),   &
+          com_outspfs(spfsmallsize,maxnorbs))
+  else
+     allocate(com_aspfs(1,maxnorbs), com_proppspfs(1,maxnorbs), com_outspfs(1,maxnorbs))
   endif
+
+  com_aspfs=0; com_proppspfs=0; com_outspfs=0
 
   tdiff=(time2-time1)
   midtime=(time2+time1)/2d0
@@ -424,17 +514,26 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 
 !!$ PREPARE FOR CALL TO DGEXPVxxx2
 
-  if (orbcompact.ne.0) then
-     ttott=spfsmallsize*nspf
+  if (parorbsplit.eq.1) then
+     if (orbcompact.ne.0) then
+        ttott=spfsmallsize*orbsperproc
+     else
+        ttott=spfsize*orbsperproc
+     endif
   else
-     ttott=totspfdim
+     if (orbcompact.ne.0) then
+        ttott=spfsmallsize*nspf
+     else
+        ttott=totspfdim
+     endif
   endif
+
 #ifndef REALGO
   ttott=ttott*2
 #endif
 
   idim=ttott
-  if (parorbsplit.eq.3) then
+  if (parorbsplit.eq.1.or.parorbsplit.eq.3) then
      ttott=ttott*nprocs
   endif
   if (maxexpodim.gt.ttott-1) then
@@ -518,9 +617,12 @@ subroutine expoprop(time1,time2,inspfs, numiters)
              wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,&
              tempstepsize,realpardotsub_par3,ttott)
      elseif (parorbsplit.eq.1) then
-        call dgexpthirdxxx2(idim, thisexpodim, tdiff, aspfs, inspfs, expotol, norm, &
-             wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,&
+        call dgexpthirdxxx2(idim, thisexpodim, tdiff, &
+             aspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), &
+             inspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), expotol, norm, wsp, &
+             lwsp, iwsp, liwsp, parjacoperate, itrace, iflag,expofileptr,&
              tempstepsize,realpardotsub_par1,ttott)
+        call mpiorbgather(inspfs,spfsize)
      else
         call dgexpthird(idim, thisexpodim, tdiff, aspfs, inspfs, expotol, norm, &
              wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,tempstepsize)
@@ -544,10 +646,13 @@ subroutine expoprop(time1,time2,inspfs, numiters)
                 wsp, lwsp, iwsp, liwsp, jacopcompact, itrace, iflag,&
                 expofileptr,tempstepsize,realpardotsub_par3,ttott)
         elseif (parorbsplit.eq.1) then
-           call dgphivxxx2(idim, thisexpodim, tdiff, com_aspfs, &
-                com_proppspfs, com_outspfs, expotol, norm, &
-                wsp, lwsp, iwsp, liwsp, jacopcompact, itrace, iflag,&
-                expofileptr,tempstepsize,realpardotsub_par1,ttott)
+           call dgphivxxx2(idim, thisexpodim, tdiff, &
+                com_aspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), &
+                com_proppspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), &
+                com_outspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), &
+                expotol, norm, wsp, lwsp, iwsp, liwsp, parjacopcompact, itrace, &
+                iflag, expofileptr,tempstepsize,realpardotsub_par1,ttott)
+           call mpiorbgather(com_outspfs,spfsmallsize)
         else
            call dgphiv(idim, thisexpodim, tdiff, com_aspfs, &
                 com_proppspfs, com_outspfs, expotol, norm, &
@@ -561,9 +666,13 @@ subroutine expoprop(time1,time2,inspfs, numiters)
                 outspfs, expotol, norm, wsp, lwsp, iwsp, liwsp, jacoperate, &
                 itrace, iflag,expofileptr,tempstepsize,realpardotsub_par3,ttott)
         elseif (parorbsplit.eq.1) then
-           call dgphivxxx2(idim, thisexpodim, tdiff, aspfs, proppspfs, &
-                outspfs, expotol, norm, wsp, lwsp, iwsp, liwsp, jacoperate, &
+           call dgphivxxx2(idim, thisexpodim, tdiff, &
+                aspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), &
+                proppspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), &
+                outspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), &
+                expotol, norm, wsp, lwsp, iwsp, liwsp, parjacoperate, &
                 itrace, iflag,expofileptr,tempstepsize,realpardotsub_par1,ttott)
+           call mpiorbgather(outspfs,spfsize)
         else
            call dgphiv(idim, thisexpodim, tdiff, aspfs, proppspfs, &
                 outspfs, expotol, norm, wsp, lwsp, iwsp, liwsp, jacoperate, &
@@ -594,6 +703,8 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 
   call spf_orthogit(inspfs, error)
   
+  in_inspfs(:,:)=inspfs(:,1:nspf)
+
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",&
           status="old", position="append",iostat=myiostat)
@@ -614,10 +725,13 @@ subroutine expoprop(time1,time2,inspfs, numiters)
 
 
   deallocate(wsp,iwsp)
-  deallocate(aspfs, proppspfs, outspfs, tempspfs)
-  if (orbcompact.ne.0) then
-     deallocate(com_aspfs, com_proppspfs, com_outspfs)
-  endif
+  deallocate(aspfs, proppspfs, outspfs, tempspfs, inspfs)
+  deallocate(com_aspfs, com_proppspfs, com_outspfs)
+
+  return
+  return  !! END SUBROUTINE
+  return
+
 contains
   subroutine realpardotsub_par3(one,two,n,out)
     implicit none
@@ -637,7 +751,7 @@ contains
     real*8,intent(out) :: out
     real*8 :: sum
     sum=DOT_PRODUCT(one,two)
-!! TEMP    call mympirealreduceone_local(sum,MY_COMM_ORB)
+    call mympirealreduceone_local(sum,MY_COMM_ORB)
     out=sum
   end subroutine realpardotsub_par1
 

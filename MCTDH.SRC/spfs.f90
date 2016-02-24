@@ -53,6 +53,65 @@ subroutine spfs_compact(inspfs,outspfs)
 end subroutine spfs_compact
 
 
+subroutine spfs_expand_local(inspfs,outspfs)
+  use parameters
+  use mpi_orbsetmod
+  implicit none
+  DATATYPE,intent(in) :: inspfs(spfsmallsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+  DATATYPE,intent(out) :: outspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+  integer :: lowspf,highspf,numspf
+
+  outspfs=0
+
+  if (firstmpiorb.le.nspf) then
+     lowspf=firstmpiorb
+     highspf=min(nspf,firstmpiorb+orbsperproc-1)
+     numspf=highspf-lowspf+1
+     if (spfugrestrict.ne.0) then
+        call bothexpand_spfs(inspfs(:,lowspf:highspf),outspfs(:,lowspf:highspf),&
+             numspf,spfmvals(lowspf:highspf),spfugvals(lowspf:highspf))
+     else
+        if (spfrestrictflag.ne.0) then
+           call mexpand_spfs(inspfs(:,lowspf:highspf),outspfs(:,lowspf:highspf),&
+                numspf,spfmvals(lowspf:highspf))
+        else
+           outspfs(:,lowspf:highspf)=inspfs(:,lowspf:highspf)
+        endif
+     end if
+  endif
+
+end subroutine spfs_expand_local
+
+subroutine spfs_compact_local(inspfs,outspfs)
+  use parameters
+  use mpi_orbsetmod
+  implicit none
+  DATATYPE,intent(in) :: inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+  DATATYPE,intent(out) :: outspfs(spfsmallsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+  integer :: lowspf,highspf,numspf
+
+  outspfs=0
+
+  if (firstmpiorb.le.nspf) then
+     lowspf=firstmpiorb
+     highspf=min(nspf,firstmpiorb+orbsperproc-1)
+     numspf=highspf-lowspf+1
+     if (spfugrestrict.ne.0) then
+        call bothcompact_spfs(inspfs(:,lowspf:highspf),outspfs(:,lowspf:highspf),&
+             numspf,spfmvals(lowspf:highspf),spfugvals(lowspf:highspf))
+     else
+        if (spfrestrictflag.ne.0) then
+           call mcompact_spfs(inspfs(:,lowspf:highspf),outspfs(:,lowspf:highspf),&
+                numspf,spfmvals(lowspf:highspf))
+        else
+           outspfs(:,lowspf:highspf)=inspfs(:,lowspf:highspf)
+        endif
+     end if
+  endif
+
+end subroutine spfs_compact_local
+
+
 subroutine orthog_tofrozen(inspf)
   use parameters
   use opmod !! frozenspfs

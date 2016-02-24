@@ -575,7 +575,7 @@ end module parameters
 module mpi_orbsetmod
   implicit none
   integer :: mpi_orbset_init=0
-  integer :: orbsperproc=(-1),  norbsets
+  integer :: orbsperproc=(-1),  norbsets=(-1),  maxprocsperset=(-1)
   integer :: myorbset=-1, firstmpiorb=-1  !! specific to each processor
   integer, allocatable :: MPI_GROUP_ORB(:),MPI_COMM_ORB(:)
 end module
