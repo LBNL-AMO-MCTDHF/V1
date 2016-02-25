@@ -558,8 +558,8 @@ subroutine sparsequadavector(inavector,jjcalls0)
         if (dwwptr%topdfbasis.ge.dwwptr%botdfbasis) then
            shufflevector=0; shufflevector2=0
         endif
-        call basis_shuffle(numr,dfww,smallvectorspin,fdww,shufflevector)
-        call basis_shuffle(numr,dfww,smallvectorspin2,fdww,shufflevector2)
+        call basis_shuffle(numr,www,smallvectorspin,dwwptr,shufflevector)
+        call basis_shuffle(numr,www,smallvectorspin2,dwwptr,shufflevector2)
      else
         allocate(shufflevector(numr,1),shufflevector2(numr,1))
      endif
@@ -596,7 +596,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
      endif
 
      if (use_dfwalktype.and.shuffle_dfwalktype) then
-        call basis_shuffle(numr,fdww,shufflevector2,dfww,smallvectorspin2)
+        call basis_shuffle(numr,dwwptr,shufflevector2,www,smallvectorspin2)
      endif
      deallocate(shufflevector,shufflevector2)
 

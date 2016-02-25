@@ -29,8 +29,11 @@ subroutine all_matel()
   if (sparseopt.ne.0) then
      call assemble_sparsemats(www,yyy%cptr(0),yyysptr(0),1,1,1,1)
      if (use_dfwalktype) then
-        call assemble_sparsemats(dfww,yyy%cptr(0),yyysdfptr(0),1,1,1,1)
-        call assemble_sparsemats(fdww,yyy%cptr(0),yyysfdptr(0),1,1,1,1)
+        if (shuffle_dfwalktype) then
+           call assemble_sparsemats(fdww,yyy%cptr(0),yyysfdptr(0),1,1,1,1)
+        else
+           call assemble_sparsemats(dfww,yyy%cptr(0),yyysdfptr(0),1,1,1,1)
+        endif
      endif
   endif
   call system_clock(jtime); times(5)=times(5)+jtime-itime

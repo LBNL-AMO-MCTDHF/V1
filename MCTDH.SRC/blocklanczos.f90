@@ -940,7 +940,7 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
      if (dwwptr%topdfbasis.ge.dwwptr%botdfbasis) then
         shufflevectors=0
      endif
-     call basis_shuffle_several(numr,dfww,workvectorsspin,fdww,shufflevectors,order)
+     call basis_shuffle_several(numr,www,workvectorsspin,dwwptr,shufflevectors,order)
   else
      allocate(shufflevectors(numr,1,order))
   endif
@@ -970,7 +970,7 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
   call mpibarrier()
 
   if (use_dfwalktype.and.shuffle_dfwalktype) then
-     call basis_shuffle_several(numr,fdww,shufflevectors,dfww,workvectorsspin,order)
+     call basis_shuffle_several(numr,dwwptr,shufflevectors,www,workvectorsspin,order)
   endif
   deallocate(shufflevectors)
 

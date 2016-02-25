@@ -413,81 +413,87 @@ program mctdhf
      WRFL "************************************"
      WRFL; CFL
 
+     if (.not.shuffle_dfwalktype) then
+
 !! WALKTYPE VARIABLE DFWW FOR DFRESTRICT
 
-     dfww%parconsplit=par_consplit
+        dfww%parconsplit=par_consplit
 
-     dfww%numelec=numelec
-     dfww%ndof=ndof
-     dfww%nspf=nspf
+        dfww%numelec=numelec
+        dfww%ndof=ndof
+        dfww%nspf=nspf
 
-     dfww%allspinproject=all_spinproject
-     dfww%restrictms=restrict_ms
-     dfww%sss%spinrestrictval=spin_restrictval
+        dfww%allspinproject=all_spinproject
+        dfww%restrictms=restrict_ms
+        dfww%sss%spinrestrictval=spin_restrictval
 
-     dfww%dfrestrictflag=df_restrictflag
-     dfww%dflevel=df_restrictflag
-     dfww%dfwalklevel=df_restrictflag
-     dfww%singlewalkflag=1
-     dfww%doublewalkflag=1
+        dfww%dfrestrictflag=df_restrictflag
+        dfww%dflevel=df_restrictflag
+        dfww%dfwalklevel=df_restrictflag
+        dfww%singlewalkflag=1
+        dfww%doublewalkflag=1
 
-     call set_newconfiglist(www,dfww)
+        call set_newconfiglist(www,dfww)
 
-     call walkalloc(dfww);             call walks(dfww)
+        call walkalloc(dfww);             call walks(dfww)
 
-     call hops(dfww);
+        call hops(dfww);
 
-     call set_matsize(dfww);
+        call set_matsize(dfww);
 
-     call init_dfcon(dfww)
+        call init_dfcon(dfww)
 
-     call spinwalkinit(dfww); 
-     call spinwalks(dfww)
-     call spinsets_first(dfww)
-     call configspin_matel(dfww)
-     call configspinset_projector(dfww)
-     call spinwalkinternal_dealloc()
+        call spinwalkinit(dfww); 
+        call spinwalks(dfww)
+        call spinsets_first(dfww)
+        call configspin_matel(dfww)
+        call configspinset_projector(dfww)
+        call spinwalkinternal_dealloc()
 
-     call basis_set(dfww,nzflag)
+        call basis_set(dfww,nzflag)
 
 !!! END SET DFWW !!
 
+     else     !! if shuffle_dfwalktype then:
+
 !! WALKTYPE VARIABLE FDWW FOR DFRESTRICT
 
-     fdww%parconsplit=par_consplit
+        fdww%parconsplit=par_consplit
 
-     fdww%numelec=numelec
-     fdww%ndof=ndof
-     fdww%nspf=nspf
+        fdww%numelec=numelec
+        fdww%ndof=ndof
+        fdww%nspf=nspf
 
-     fdww%allspinproject=all_spinproject
-     fdww%restrictms=restrict_ms
-     fdww%sss%spinrestrictval=spin_restrictval
+        fdww%allspinproject=all_spinproject
+        fdww%restrictms=restrict_ms
+        fdww%sss%spinrestrictval=spin_restrictval
 
-     fdww%dfrestrictflag=df_restrictflag
-     fdww%dflevel=df_restrictflag
-     fdww%dfwalklevel=df_restrictflag
-     fdww%singlewalkflag=1
-     fdww%doublewalkflag=1
+        fdww%dfrestrictflag=df_restrictflag
+        fdww%dflevel=df_restrictflag
+        fdww%dfwalklevel=df_restrictflag
+        fdww%singlewalkflag=1
+        fdww%doublewalkflag=1
 
-     call fast_newconfiglist(fdww,.true.)
+        call fast_newconfiglist(fdww,.true.)
 
-     call walkalloc(fdww);             call walks(fdww)
+        call walkalloc(fdww);             call walks(fdww)
 
-     call hops(fdww);
+        call hops(fdww);
 
-     call set_matsize(fdww);
+        call set_matsize(fdww);
 
-     call init_dfcon(fdww)
+        call init_dfcon(fdww)
 
-     call spinwalkinit(fdww); 
-     call spinwalks(fdww)
-     call spinsets_first(fdww)
-     call configspin_matel(fdww)
-     call configspinset_projector(fdww)
-     call spinwalkinternal_dealloc()
+        call spinwalkinit(fdww); 
+        call spinwalks(fdww)
+        call spinsets_first(fdww)
+        call configspin_matel(fdww)
+        call configspinset_projector(fdww)
+        call spinwalkinternal_dealloc()
 
-     call basis_set(fdww,nzflag)
+        call basis_set(fdww,nzflag)
+
+     endif
 
      OFLWR "   .. DONE setting DF walk variable.";CFL
 

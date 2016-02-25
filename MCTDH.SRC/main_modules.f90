@@ -372,10 +372,13 @@ subroutine configpropalloc()
      call sparseptralloc(worksparsepointer,www)  !! nspf not used for regular walks (not walks2)
      worksparsepointer%kefac=par_timestep/littlesteps     !! constant term in poly expansion goes with ke in R; will be set
      if (use_dfwalktype) then
-        call sparseptralloc(workdfsparsepointer,dfww)
-        workdfsparsepointer%kefac=par_timestep/littlesteps
-        call sparseptralloc(workfdsparsepointer,fdww)
-        workfdsparsepointer%kefac=par_timestep/littlesteps
+        if (shuffle_dfwalktype) then
+           call sparseptralloc(workfdsparsepointer,fdww)
+           workfdsparsepointer%kefac=par_timestep/littlesteps
+        else
+           call sparseptralloc(workdfsparsepointer,dfww)
+           workdfsparsepointer%kefac=par_timestep/littlesteps
+        endif
      endif
   endif
 
@@ -395,8 +398,11 @@ subroutine configpropdealloc()
   if (sparseopt.ne.0) then
      call sparseptrdealloc(worksparsepointer)
      if (use_dfwalktype) then
-        call sparseptrdealloc(workdfsparsepointer)
-        call sparseptrdealloc(workfdsparsepointer)
+        if (shuffle_dfwalktype) then
+           call sparseptrdealloc(workfdsparsepointer)
+        else
+           call sparseptrdealloc(workdfsparsepointer)
+        endif
      endif
   endif
   deallocate(workdrivingavec)
@@ -846,12 +852,18 @@ subroutine xalloc()
      enddo
   endif
   if (use_dfwalktype) then
-     allocate(yyysdfptr(0:numreduced))
-     allocate(yyysfdptr(0:numreduced))
+     if (shuffle_dfwalktype) then
+        allocate(yyysfdptr(0:numreduced))
+     else
+        allocate(yyysdfptr(0:numreduced))
+     endif
      if (sparseopt.ne.0) then
         do ii=0,numreduced
-           call sparseptralloc(yyysdfptr(ii),dfww)
-           call sparseptralloc(yyysfdptr(ii),fdww)
+           if (shuffle_dfwalktype) then
+              call sparseptralloc(yyysfdptr(ii),fdww)
+           else
+              call sparseptralloc(yyysdfptr(ii),dfww)
+           endif
         enddo
      endif
   endif
@@ -921,8 +933,11 @@ subroutine xdealloc()
   if (use_dfwalktype) then
      if (sparseopt.ne.0) then
         do ii=0,numreduced
-           call sparseptrdealloc(yyysdfptr(ii))
-           call sparseptrdealloc(yyysfdptr(ii))
+           if (shuffle_dfwalktype) then
+              call sparseptrdealloc(yyysfdptr(ii))
+           else
+              call sparseptrdealloc(yyysdfptr(ii))
+           endif
         enddo
      endif
   endif

@@ -1190,9 +1190,9 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
 
   call mpibarrier()
   if (use_dfwalktype.and.shuffle_dfwalktype) then
-     call basis_shuffle(numr,dfww,localvector,fdww,smallvector)
+     call basis_shuffle(numr,www,localvector,dwwptr,smallvector)
      if (drivingflag.ne.0) then
-        call basis_shuffle(numr,dfww,drivingavecdf,fdww,workdrivingavecdf)
+        call basis_shuffle(numr,www,drivingavecdf,dwwptr,workdrivingavecdf)
      endif
   else
      smallvector(:,:)=localvector(:,:)
@@ -1239,7 +1239,7 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
   endif
 
   if (use_dfwalktype.and.shuffle_dfwalktype) then
-     call basis_shuffle(numr,fdww,smallvectorout,dfww,localvector)
+     call basis_shuffle(numr,dwwptr,smallvectorout,www,localvector)
   else
      localvector(:,:)=smallvectorout(:,:)
   endif

@@ -637,8 +637,11 @@ subroutine cmf_prop_wfn(tin, tout)
   endif
   if (use_dfwalktype) then
      if (sparseopt.ne.0) then
-        call assign_sptr(yyysdfptr(1),yyysdfptr(0),DATAONE,dfww)
-        call assign_sptr(yyysfdptr(1),yyysfdptr(0),DATAONE,fdww)
+        if (shuffle_dfwalktype) then
+           call assign_sptr(yyysfdptr(1),yyysfdptr(0),DATAONE,fdww)
+        else
+           call assign_sptr(yyysdfptr(1),yyysdfptr(0),DATAONE,dfww)
+        endif
      endif
   endif
   yyy%cmfspfs(:,1)= yyy%cmfspfs(:,0)
@@ -862,8 +865,11 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
   else
      call zero_sptr(worksparsepointer,www)
      if (use_dfwalktype) then
-        call zero_sptr(workdfsparsepointer,dfww)
-        call zero_sptr(workfdsparsepointer,fdww)
+        if (shuffle_dfwalktype) then
+           call zero_sptr(workfdsparsepointer,fdww)
+        else
+           call zero_sptr(workdfsparsepointer,dfww)
+        endif
      endif
   endif
 
@@ -894,8 +900,11 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
      else
         call assign_sptr(worksparsepointer,yyysptr(1),thisstep*DATAONE,www)
         if (use_dfwalktype) then
-           call assign_sptr(workdfsparsepointer,yyysdfptr(1),thisstep*DATAONE,dfww)
-           call assign_sptr(workfdsparsepointer,yyysfdptr(1),thisstep*DATAONE,fdww)
+           if (shuffle_dfwalktype) then
+              call assign_sptr(workfdsparsepointer,yyysfdptr(1),thisstep*DATAONE,fdww)
+           else
+              call assign_sptr(workdfsparsepointer,yyysdfptr(1),thisstep*DATAONE,dfww)
+           endif
         endif
      endif
 
@@ -935,10 +944,13 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
      else
         call add_sptr(yyysptr(1),yyysptr(0),worksparsepointer,sum1*thisstep,sum0*thisstep,www)
         if (use_dfwalktype) then
-           call add_sptr(yyysdfptr(1),yyysdfptr(0),workdfsparsepointer,sum1*thisstep,&
-                sum0*thisstep,dfww)
-           call add_sptr(yyysfdptr(1),yyysfdptr(0),workfdsparsepointer,sum1*thisstep,&
-                sum0*thisstep,fdww)
+           if (shuffle_dfwalktype) then
+              call add_sptr(yyysfdptr(1),yyysfdptr(0),workfdsparsepointer,sum1*thisstep,&
+                   sum0*thisstep,fdww)
+           else
+              call add_sptr(yyysdfptr(1),yyysdfptr(0),workdfsparsepointer,sum1*thisstep,&
+                   sum0*thisstep,dfww)
+           endif
         endif
      endif
   endif
