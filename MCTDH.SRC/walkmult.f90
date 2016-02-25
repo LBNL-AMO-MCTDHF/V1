@@ -513,7 +513,7 @@ contains
     DATAECS :: rvector(botr:topr)
     real*8 :: gg
 
-    if (www%topconfig-www%botconfig+1.eq.0) then
+    if (www%topconfig.lt.www%botconfig) then
        return
     endif
 
@@ -675,7 +675,7 @@ contains
        OFLWR "error no sparsesparsemult if sparseconfigflag.eq.0"; CFLST
     endif
 
-    if (www%topconfig-www%botconfig+1.eq.0) then
+    if (www%topconfig.lt.www%botconfig) then
        return
     endif
 
@@ -708,22 +708,23 @@ contains
        endif
 
        rvector(:)=1/bondpoints(botr:topr)
-       call arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,sparse_ptr%xpotsparsemattr(:,:),&
+       call arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,sparse_ptr%xpotsparsemattr,&
             rvector,invector,tempvector,mynumr,diagflag)
        outvector(:,:)=outvector(:,:)+tempvector(:,:)
 
-       call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xonepotsparsemattr(:,:),&
+       call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xonepotsparsemattr,&
             rvector,invector,tempvector,mynumr,diagflag)
        outvector(:,:)=outvector(:,:)+tempvector(:,:)
 
        rvector(:)=1/bondpoints(botr:topr)**2
-       call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xopsparsemattr(:,:),&
+       call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xopsparsemattr,&
             rvector,invector,tempvector,mynumr,diagflag)
        outvector(:,:)=outvector(:,:)+tempvector(:,:)
 
     endif
 
     if (conflag==1.and.constraintflag.ne.0) then
+
        rvector(:)=1
 
        tempsparsemattr(:,:)=sparse_ptr%xconsparsemattr(:,:)
@@ -737,6 +738,7 @@ contains
        outvector(:,:)=outvector(:,:)-tempvector(:,:)
 
     endif
+
     if (pulseflag.eq.1.and.tdflag.ne.0.or.onlytdflag.ne.0) then
        if (velflag.eq.0) then
           rvector(:)=bondpoints(botr:topr)
@@ -746,13 +748,13 @@ contains
 
        tempsparsemattr(:,:)=0d0; flag=0
        if (onlytdflag.eq.0.or.onlytdflag.eq.1) then
-          tempsparsemattr(:,:)= tempsparsemattr(:,:) + sparse_ptr%xpulsesparsemattrxx*facs(1); flag=1
+          tempsparsemattr= tempsparsemattr + sparse_ptr%xpulsesparsemattrxx*facs(1); flag=1
        endif
        if (onlytdflag.eq.0.or.onlytdflag.eq.2) then
-          tempsparsemattr(:,:)= tempsparsemattr(:,:) + sparse_ptr%xpulsesparsemattryy*facs(2); flag=1
+          tempsparsemattr= tempsparsemattr + sparse_ptr%xpulsesparsemattryy*facs(2); flag=1
        endif
        if (onlytdflag.eq.0.or.onlytdflag.eq.3) then
-          tempsparsemattr(:,:)= tempsparsemattr(:,:) + sparse_ptr%xpulsesparsemattrzz*facs(3); flag=1
+          tempsparsemattr= tempsparsemattr + sparse_ptr%xpulsesparsemattrzz*facs(3); flag=1
        endif
        if (flag.eq.1) then
           call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,tempsparsemattr,&

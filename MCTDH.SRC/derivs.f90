@@ -836,7 +836,7 @@ contains
           endif
           call basis_project(www,numr,avector)
           call sparseconfigmult(www,avector,xavecp(:,imc),&
-               yyy%cptr(0),yyy%sptr(0),1,1,1,1,thistime,imc)
+               yyy%cptr(0),yyysptr(0),1,1,1,1,thistime,imc)
           call basis_project(www,numr,xavecp(:,imc))
        enddo
     endif

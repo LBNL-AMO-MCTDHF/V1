@@ -201,6 +201,7 @@ subroutine myconfigprop(avectorin,avectorout,time,imc,numiters)
   DATATYPE,intent(in) :: avectorin(www%totadim)
   DATATYPE,intent(out) :: avectorout(www%totadim)
   DATATYPE :: nullvector1(numr),nullvector2(numr)
+
   numiters=0
   if (sparseconfigflag/=0) then
      if (www%totadim.gt.0) then
@@ -217,7 +218,7 @@ subroutine myconfigprop(avectorin,avectorout,time,imc,numiters)
 end subroutine myconfigprop
 
 
-subroutine nonsparseprop(wwin,dfww,avectorin,avectorout,time,imc)
+subroutine nonsparseprop(wwin,dwin,avectorin,avectorout,time,imc)
   use fileptrmod
   use sparse_parameters
   use ham_parameters
@@ -226,7 +227,7 @@ subroutine nonsparseprop(wwin,dfww,avectorin,avectorout,time,imc)
   use configpropmod
   use walkmod
   implicit none
-  type(walktype),intent(in) :: wwin,dfww
+  type(walktype),intent(in) :: wwin,dwin
   integer, intent(in) :: imc
   DATATYPE,intent(in) :: avectorin(wwin%totadim)
   DATATYPE,intent(out) :: avectorout(wwin%totadim)
@@ -247,8 +248,8 @@ subroutine nonsparseprop(wwin,dfww,avectorin,avectorout,time,imc)
      OFLWR "Driving flag not implemented for nonsparse"; CFLST
   endif
 
-  if (wwin%numdfbasis.ne.dfww%numdfbasis) then
-     OFLWR "ERROR DF SETS NONSPARSEOPROP",wwin%numdfbasis,dfww%numdfbasis; CFLST
+  if (wwin%numdfbasis.ne.dwin%numdfbasis) then
+     OFLWR "ERROR DF SETS NONSPARSEOPROP",wwin%numdfbasis,dwin%numdfbasis; CFLST
   endif
 
   allocate(iiwork(wwin%numdfbasis*numr*2));     iiwork=0
@@ -257,7 +258,7 @@ subroutine nonsparseprop(wwin,dfww,avectorin,avectorout,time,imc)
        bigconfigvects(wwin%numdfbasis*numr,2*(wwin%numdfbasis*numr+2)))
   bigconfigmatel=0; bigconfigvects=0
 
-  call assemble_dfbasismat(dfww,bigconfigmatel, workconfigpointer,1,1,1,1, time,imc)
+  call assemble_dfbasismat(dwin,bigconfigmatel, workconfigpointer,1,1,1,1, time,imc)
 
   bigconfigmatel=bigconfigmatel*timefac
 

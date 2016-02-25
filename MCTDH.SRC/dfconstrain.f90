@@ -74,7 +74,7 @@ subroutine dferror(www,cptr,sptr,avector,numvects,outerror,time)
         
 !! reporting norm of error appropriate to the variational principle.
 
-        outerror=   outerror +  dot(temp1,temp1,www%totadim)
+        outerror = outerror + dot(temp1,temp1,www%totadim) !! ok conversion
      else if (www%numdfconfigs.lt.0) then
         OFLWR "error, dfconstrain not allocated"; CFLST
      endif
@@ -589,9 +589,9 @@ subroutine get_dfconstraint(time)
   DATATYPE :: nullvectors(numr,mcscfnum)
   nullvectors=0
   if (tot_adim.gt.0) then
-     call get_dfconstraint0(yyy%cmfavec(:,:,0),mcscfnum,yyy%cptr(0),yyy%sptr(0),www,time)
+     call get_dfconstraint0(yyy%cmfavec(:,:,0),mcscfnum,yyy%cptr(0),yyysptr(0),www,time)
   else
-     call get_dfconstraint0(nullvectors(:,:),mcscfnum,yyy%cptr(0),yyy%sptr(0),www,time)
+     call get_dfconstraint0(nullvectors(:,:),mcscfnum,yyy%cptr(0),yyysptr(0),www,time)
   endif
 end subroutine get_dfconstraint
 
@@ -1010,12 +1010,12 @@ subroutine get_denconstraint1(iwhich,time)
   nullvectors(:,:)=0
 
   if (www%totadim.gt.0) then
-     call get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,&
+     call get_denconstraint1_0(www,yyy%cptr(0),yyysptr(0),mcscfnum,&
           yyy%cmfavec(:,:,0),yyy%drivingavectorsxx(:,:,:,0),&
           yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
           yyy%denmat(:,:,0),iwhich,time)
   else
-     call get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,&
+     call get_denconstraint1_0(www,yyy%cptr(0),yyysptr(0),mcscfnum,&
           nullvectors(:,:),nullvectors(:,:),&
           nullvectors(:,:),nullvectors(:,:),&
           yyy%denmat(:,:,0),iwhich,time)
@@ -1358,12 +1358,12 @@ subroutine new_get_denconstraint1(time)
   nullvectors(:,:)=0
 
   if (www%totadim.gt.0) then
-  call new_get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,&
+  call new_get_denconstraint1_0(www,yyy%cptr(0),yyysptr(0),mcscfnum,&
        yyy%cmfavec(:,:,0),yyy%drivingavectorsxx(:,:,:,0),&
        yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
        yyy%denmat(:,:,0),time)
   else
-     call new_get_denconstraint1_0(www,yyy%cptr(0),yyy%sptr(0),mcscfnum,&
+     call new_get_denconstraint1_0(www,yyy%cptr(0),yyysptr(0),mcscfnum,&
           nullvectors(:,:),nullvectors(:,:),&
           nullvectors(:,:),nullvectors(:,:),&
           yyy%denmat(:,:,0),time)

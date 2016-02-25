@@ -139,20 +139,28 @@ subroutine zfftb_wrap(size,inout)
   deallocate(wsave)
 end subroutine zfftb_wrap
 
+subroutine waitawhile()
+  implicit none
+  integer :: i,j
+  character (len=10) :: mytext
+  j=1
+  do i=1,10000000
+     j=mod(j*i,1777)
+  enddo
+  write(mytext,'(I10)') j
+  call system("echo "//mytext//" >> /dev/null")
+end subroutine waitawhile
+
 
 subroutine checkiostat(iniostat,intext)
   use fileptrmod
   implicit none
   integer,intent(in) :: iniostat
   character*(*),intent(in) :: intext
-  integer :: i,j
   if (iniostat /=0 ) then
      print *, "MCTDHF ABORT: I/O error ", iniostat,intext
      OFLWR "MCTDHF ABORT: I/O error ", iniostat,intext; CFL
-     j=1
-     do i=1,1000
-        j=j*i
-     enddo
+     call waitawhile()
      stop
      stop   !!   STOP.   !!
      stop
@@ -215,7 +223,7 @@ subroutine gramschmidt(n, m, lda, previous, vector,parflag)
      do i=1,m
         vector=vector-previous(1:n,i)* heredot(previous(1:n,i),vector,n) 
      enddo
-     norm=sqrt(heredot(vector,vector,n))  !! ok for impconv (chmctdh,pmctdh)
+     norm=sqrt(heredot(vector,vector,n))  !! ok conversion
      vector=vector/norm
   enddo
 
@@ -253,7 +261,7 @@ subroutine nullgramschmidt(m,parflag)
   ! n is the length of the vectors; m is how many to orthogonalize to
   integer,intent(in) :: m
   logical,intent(in) :: parflag
-  CNORMTYPE :: norm
+  DATATYPE :: norm
   integer ::  i,j
 
   if (.not.parflag) then

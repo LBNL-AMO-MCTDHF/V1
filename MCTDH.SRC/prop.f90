@@ -47,7 +47,7 @@ subroutine prop_loop( starttime)
   do imc=1,mcscfnum
 
      call sparseconfigmult(www,yyy%cmfavec(:,imc,0),avectorp,&
-          yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0,imc)
+          yyy%cptr(0),yyysptr(0),1,1,1,0,0d0,imc)
 
      sum=0;     sum2=0
      if (tot_adim.gt.0) then
@@ -165,7 +165,7 @@ subroutine prop_loop( starttime)
      do imc=1,mcscfnum
 
         call sparseconfigmult(www,yyy%cmfavec(:,imc,0),avectorp,&
-             yyy%cptr(0),yyy%sptr(0),1,1,timedepexpect,0,thattime,imc)
+             yyy%cptr(0),yyysptr(0),1,1,timedepexpect,0,thattime,imc)
 
 
         call basis_project(www,numr,avectorp)
@@ -179,8 +179,8 @@ subroutine prop_loop( starttime)
            call mympireduceone(sum); call mympireduceone(sum2)
         endif
 
-        thisenergy(imc) = sum/sum2   !! ok implicit pmctdh
-        norms(imc)=sqrt(sum2)   !! ok implicit p/chmctdh
+        thisenergy(imc) = sum/sum2   !! ok conversion
+        norms(imc)=sqrt(sum2)   !! ok conversion
         
         OFL
 #ifdef ECSFLAG     
@@ -309,7 +309,8 @@ subroutine prop_loop( starttime)
   norms=0
   if (tot_adim.gt.0) then
      do imc=1,mcscfnum
-        norms(imc)=dot(yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),tot_adim)   !! ok implicit
+        norms(imc)=dot(yyy%cmfavec(:,imc,0),& !! ok conversion
+             yyy%cmfavec(:,imc,0),tot_adim)   !! ok conversion
      enddo
   endif
   if (par_consplit.ne.0) then
@@ -632,11 +633,12 @@ subroutine cmf_prop_wfn(tin, tout)
   call assign_cptr(yyy%cptr(1),yyy%cptr(0),DATAONE)
 
   if (sparseopt.ne.0) then
-     call assign_sptr(yyy%sptr(1),yyy%sptr(0),DATAONE,www)
+     call assign_sptr(yyysptr(1),yyysptr(0),DATAONE,www)
   endif
   if (use_dfwalktype) then
      if (sparseopt.ne.0) then
-        call assign_sptr(yyy%sdfptr(1),yyy%sdfptr(0),DATAONE,www)
+        call assign_sptr(yyysdfptr(1),yyysdfptr(0),DATAONE,dfww)
+        call assign_sptr(yyysfdptr(1),yyysfdptr(0),DATAONE,fdww)
      endif
   endif
   yyy%cmfspfs(:,1)= yyy%cmfspfs(:,0)
@@ -654,6 +656,7 @@ subroutine cmf_prop_wfn(tin, tout)
   endif
 
   if (improvedrelaxflag.gt.0) then
+
      call system_clock(itime)
      if (spf_flag.ne.0) then
         if (improvedquadflag.gt.1.and.tin.ge.quadstarttime) then
@@ -706,8 +709,8 @@ subroutine cmf_prop_wfn(tin, tout)
 !!            and              !!
 !! ******* LMF CORRECTOR ***** !!
 
-
      do linearflag=0,1
+
         call system_clock(itime)
         if (spf_flag.ne.0) then
            time1=tin;        time2=tout
@@ -805,6 +808,7 @@ subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc,numi
   do k=1,littlesteps
      timea=time1+(time2-time1)*(k-1)/littlesteps
      timeb=time1+(time2-time1)*k/littlesteps
+
      call cmf_prop_avector0(tempvector,avectorout,linearflag,timea,timeb,imc,qq)
      if (tot_adim.gt.0) then
         tempvector(:)=avectorout(:)
@@ -858,7 +862,8 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
   else
      call zero_sptr(worksparsepointer,www)
      if (use_dfwalktype) then
-        call zero_sptr(workdfsparsepointer,www)
+        call zero_sptr(workdfsparsepointer,dfww)
+        call zero_sptr(workfdsparsepointer,fdww)
      endif
   endif
 
@@ -887,9 +892,10 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
      if (sparseopt.eq.0) then
         call assign_cptr(workconfigpointer,yyy%cptr(1),thisstep*DATAONE)
      else
-        call assign_sptr(worksparsepointer,yyy%sptr(1),thisstep*DATAONE,www)
+        call assign_sptr(worksparsepointer,yyysptr(1),thisstep*DATAONE,www)
         if (use_dfwalktype) then
-           call assign_sptr(workdfsparsepointer,yyy%sdfptr(1),thisstep*DATAONE,www)
+           call assign_sptr(workdfsparsepointer,yyysdfptr(1),thisstep*DATAONE,dfww)
+           call assign_sptr(workfdsparsepointer,yyysfdptr(1),thisstep*DATAONE,fdww)
         endif
      endif
 
@@ -921,19 +927,21 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
    (sum1*yyy%drivingavectorszz(:,:,imc,1)+ sum0*yyy%drivingavectorszz(:,:,imc,0))*pots(3) )
 
         endif
+
      endif
 
      if (sparseopt.eq.0) then
         call add_cptr(yyy%cptr(1),yyy%cptr(0),workconfigpointer,sum1*thisstep,sum0*thisstep)
      else
-        call add_sptr(yyy%sptr(1),yyy%sptr(0),worksparsepointer,sum1*thisstep,sum0*thisstep,www)
+        call add_sptr(yyysptr(1),yyysptr(0),worksparsepointer,sum1*thisstep,sum0*thisstep,www)
         if (use_dfwalktype) then
-           call add_sptr(yyy%sdfptr(1),yyy%sdfptr(0),workdfsparsepointer,sum1*thisstep,&
-                sum0*thisstep,www)
+           call add_sptr(yyysdfptr(1),yyysdfptr(0),workdfsparsepointer,sum1*thisstep,&
+                sum0*thisstep,dfww)
+           call add_sptr(yyysfdptr(1),yyysfdptr(0),workfdsparsepointer,sum1*thisstep,&
+                sum0*thisstep,fdww)
         endif
      endif
   endif
-
   call system_clock(jtime); times(1)=times(1)+jtime-itime; itime=jtime
 
   if (tot_adim.gt.0) then
@@ -941,7 +949,6 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
   else
      call myconfigprop(nullvector1(:),nullvector2(:),midtime,imc,numiters)
   endif
-
   call system_clock(jtime); times(2)=times(2)+jtime-itime;
 
   if (notiming.eq.0.and.myrank.eq.1) then

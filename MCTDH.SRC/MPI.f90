@@ -312,12 +312,14 @@ subroutine mpistop()
   use fileptrmod
   implicit none
   integer :: ierr
+  call waitawhile()
   call mpi_finalize(ierr)
+  call waitawhile()
   if (ierr/=0) then
      OFLWR "MPI ERR 3"; CFL
   endif
   OFLWR "MCTDHF STOP!";CFL
-  stop
+  stop  !! STOP
 end subroutine mpistop
 
 
@@ -341,6 +343,9 @@ subroutine mympireduce_local(input, isize, IN_COMM)
   DATATYPE,allocatable :: output(:)
   integer :: ierr
 
+  if (nprocs.eq.1) then
+     return
+  endif
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   allocate(output(isize))
   output=0; ierr=0
@@ -372,7 +377,9 @@ subroutine mympirealreduce(input, isize)
   real*8,intent(inout) :: input(isize)
   real*8,allocatable :: output(:)
   integer :: ierr
-
+  if (nprocs.eq.1) then
+     return
+  endif
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   allocate(output(isize))
   ierr=0; output=0
@@ -422,7 +429,9 @@ subroutine mympirealreduceone_local(input,IN_COMM)
   real*8,intent(inout) :: input
   real*8 :: output
   integer :: ierr
-
+  if (nprocs.eq.1) then
+     return
+  endif
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   ierr=0
   call MPI_allreduce(input,output,1,MPI_DOUBLE_PRECISION,MPI_SUM,IN_COMM,ierr)
@@ -441,6 +450,9 @@ subroutine mympiireduceone_local(input,IN_COMM)
   integer,intent(in) :: IN_COMM
   integer,intent(inout) :: input
   integer :: output,ierr
+  if (nprocs.eq.1) then
+     return
+  endif
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   ierr=0
   call MPI_allreduce(input,output,1,MPI_INTEGER,MPI_SUM,IN_COMM,ierr)
@@ -475,6 +487,9 @@ subroutine mympiireduce(input, isize)
   integer,intent(in) :: isize
   integer,intent(inout) :: input(isize)
   integer :: output(isize) , ierr
+  if (nprocs.eq.1) then
+     return
+  endif
   output=0
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   ierr=0
@@ -496,6 +511,9 @@ subroutine mympireduceone_local(input,IN_COMM)
   DATATYPE, intent(inout) :: input
   DATATYPE :: output
   integer :: ierr 
+  if (nprocs.eq.1) then
+     return
+  endif
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   ierr=0
   call MPI_allreduce( input, output, 1, MPIDATATYPE, MPI_SUM,IN_COMM, ierr)
@@ -1397,6 +1415,7 @@ end subroutine mpibarrier
 subroutine mpistop()
   use fileptrmod
   implicit none
+  call waitawhile()
   OFLWR "MCTDHF STOP!";CFL
   stop
 end subroutine mpistop

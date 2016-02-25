@@ -72,8 +72,7 @@ module xmod
           drivingorbszz(:,:,:)
 
      Type(CONFIGPTR), allocatable :: cptr(:)
-     Type(SPARSEPTR), allocatable :: sptr(:)
-     Type(SPARSEPTR), allocatable :: sdfptr(:)
+     Type(SPARSEPTR), pointer :: sptrptr(:)
 
      CNORMTYPE, allocatable :: &
           denvals(:)
@@ -83,12 +82,14 @@ module xmod
           denvects(:,:) 
      DATATYPE, allocatable :: frozenexchinvr(:,:,:)
   end type xarr
+
 end module xmod
 
 module xxxmod
   use xmod
   implicit none
   Type(xarr) :: yyy
+  Type(SPARSEPTR), target, allocatable :: yyysptr(:), yyysdfptr(:), yyysfdptr(:)
 end module xxxmod
 
 
@@ -343,6 +344,7 @@ module configmod
   type(walktype),target :: bioww
   type(walktype),pointer:: dwwptr
   type(walktype),target :: dfww
+  type(walktype),target :: fdww
 end module configmod
 
 
@@ -350,9 +352,9 @@ module configpropmod
   use configptrmod
   use sparseptrmod
   implicit none
-  Type(CONFIGPTR) ::                   &     !! Pointers for pass to sparseconfigmult
-       workconfigpointer
-  Type(SPARSEPTR) ::        worksparsepointer, workdfsparsepointer
+  Type(CONFIGPTR) :: workconfigpointer
+  Type(SPARSEPTR),target :: worksparsepointer, workdfsparsepointer, workfdsparsepointer
+  Type(SPARSEPTR),pointer :: worksparsepointerptr
   DATATYPE, allocatable :: workdrivingavec(:,:)
 
 end module configpropmod
@@ -372,6 +374,8 @@ subroutine configpropalloc()
      if (use_dfwalktype) then
         call sparseptralloc(workdfsparsepointer,dfww)
         workdfsparsepointer%kefac=par_timestep/littlesteps
+        call sparseptralloc(workfdsparsepointer,fdww)
+        workfdsparsepointer%kefac=par_timestep/littlesteps
      endif
   endif
 
@@ -390,10 +394,9 @@ subroutine configpropdealloc()
   call configptrdealloc(workconfigpointer)
   if (sparseopt.ne.0) then
      call sparseptrdealloc(worksparsepointer)
-  endif
-  if (use_dfwalktype) then
-     if (sparseopt.ne.0) then
+     if (use_dfwalktype) then
         call sparseptrdealloc(workdfsparsepointer)
+        call sparseptrdealloc(workfdsparsepointer)
      endif
   endif
   deallocate(workdrivingavec)
@@ -836,17 +839,19 @@ subroutine xalloc()
   do ii=0,numreduced
      call configptralloc(yyy%cptr(ii),www)
   enddo
-  allocate(yyy%sptr(0:numreduced))
+  allocate(yyysptr(0:numreduced))
   if (sparseopt.ne.0) then
      do ii=0,numreduced
-        call sparseptralloc(yyy%sptr(ii),www)
+        call sparseptralloc(yyysptr(ii),www)
      enddo
   endif
   if (use_dfwalktype) then
-     allocate(yyy%sdfptr(0:numreduced))
+     allocate(yyysdfptr(0:numreduced))
+     allocate(yyysfdptr(0:numreduced))
      if (sparseopt.ne.0) then
         do ii=0,numreduced
-           call sparseptralloc(yyy%sdfptr(ii),dfww)
+           call sparseptralloc(yyysdfptr(ii),dfww)
+           call sparseptralloc(yyysfdptr(ii),fdww)
         enddo
      endif
   endif
@@ -910,13 +915,14 @@ subroutine xdealloc()
   enddo
   if (sparseopt.ne.0) then
      do ii=0,numreduced
-        call sparseptrdealloc(yyy%sptr(ii))
+        call sparseptrdealloc(yyysptr(ii))
      enddo
   endif
   if (use_dfwalktype) then
      if (sparseopt.ne.0) then
         do ii=0,numreduced
-           call sparseptrdealloc(yyy%sdfptr(ii))
+           call sparseptrdealloc(yyysdfptr(ii))
+           call sparseptrdealloc(yyysfdptr(ii))
         enddo
      endif
   endif

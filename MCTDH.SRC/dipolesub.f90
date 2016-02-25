@@ -133,7 +133,8 @@ module dipbiomod
 end module dipbiomod
 
 
-subroutine dipolesub_one(www,bioww,in_abra,in_aket,inspfs,xdipole_expect,ydipole_expect,zdipole_expect)
+subroutine dipolesub_one(www,bioww,in_abra,&    !! ok unused bioww
+     in_aket,inspfs,xdipole_expect,ydipole_expect,zdipole_expect)
   use r_parameters
   use spfsize_parameters
   use walkmod

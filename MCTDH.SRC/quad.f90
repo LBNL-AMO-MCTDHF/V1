@@ -389,7 +389,7 @@ subroutine aaonedinit(www,inavector)
 
 !! 01-2016 setting conflag to zero here too.  Tau not used in avector quad equations.
 !!   here (defining quadexpect) perhaps it could be set to 1
-  call sparseconfigmult(www,jacaa, jacaamult, yyy%cptr(0), yyy%sptr(0),1,1,1,0,0d0,-1)
+  call sparseconfigmult(www,jacaa, jacaamult, yyy%cptr(0), yyysptr(0),1,1,1,0,0d0,-1)
 
   call basis_project(www,numr,jacaamult)
 
@@ -465,7 +465,8 @@ subroutine sparsequadavector(inavector,jjcalls0)
   real*8 ::  dev,  thisaerror
   DATATYPE :: csum 
   DATATYPE, allocatable ::  vector(:,:), vector2(:,:), vector3(:,:), &
-       smallvectorspin(:,:),smallvectorspin2(:,:)
+       smallvectorspin(:,:),smallvectorspin2(:,:),shufflevector(:,:),&
+       shufflevector2(:,:)
 
   if (sparseconfigflag.eq.0) then
      OFLWR "Error, must use sparseconfigflag.ne.0 for sparsequadavector"; CFLST
@@ -494,7 +495,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
      call aaonedinit(www,vector)
 
 !! CONSISTENT WITH PARAAMULT/PARBLOCKCONFIGMULT yes pulse no tau
-     call sparseconfigmult(www,vector, vector2, yyy%cptr(0), yyy%sptr(0), &
+     call sparseconfigmult(www,vector, vector2, yyy%cptr(0), yyysptr(0), &
           1,1,1,0,0d0,-1)
 
      call basis_project(www,numr,vector2)
@@ -525,7 +526,6 @@ subroutine sparsequadavector(inavector,jjcalls0)
         endif
         deallocate(smallvectorspin,smallvectorspin2)
         deallocate(vector, vector2, vector3)
-        call mpibarrier()
         return
      endif
 
@@ -536,7 +536,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
      smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
 
      maxdim=min(maxaorder,numr*www%numdfbasis)
-     mysize=numr*(www%topdfbasis-www%botdfbasis+1)
+     mysize=numr*(dwwptr%topdfbasis-dwwptr%botdfbasis+1)
 
      flag=0; jjcalls=0
 
@@ -552,12 +552,32 @@ subroutine sparsequadavector(inavector,jjcalls0)
      endif
 
      call mpibarrier()
+     if (use_dfwalktype.and.shuffle_dfwalktype) then
+        allocate(shufflevector(numr,dwwptr%botdfbasis:dwwptr%topdfbasis),&
+             shufflevector2(numr,dwwptr%botdfbasis:dwwptr%topdfbasis))
+        if (dwwptr%topdfbasis.ge.dwwptr%botdfbasis) then
+           shufflevector=0; shufflevector2=0
+        endif
+        call basis_shuffle(numr,dfww,smallvectorspin,fdww,shufflevector)
+        call basis_shuffle(numr,dfww,smallvectorspin2,fdww,shufflevector2)
+     else
+        allocate(shufflevector(numr,1),shufflevector2(numr,1))
+     endif
+
      ierr=0
      if (nzflag.eq.0.or.dwwptr%nzrank.gt.0) then
-        call dgsolve00( smallvectorspin, smallvectorspin2, jjcalls, paraamult,&
+        if (use_dfwalktype.and.shuffle_dfwalktype) then
+           call dgsolve00( shufflevector, shufflevector2, jjcalls, paraamult,&
              quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1,ierr,dwwptr%NZ_COMM)
+        else
+           call dgsolve00( smallvectorspin, smallvectorspin2, jjcalls, paraamult,&
+             quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1,ierr,dwwptr%NZ_COMM)
+        endif
      else
-        smallvectorspin2(:,:)=0
+        smallvectorspin2=0
+        if (use_dfwalktype.and.shuffle_dfwalktype) then
+           shufflevector2=0
+        endif
      endif
      call mpibarrier()
 
@@ -571,9 +591,14 @@ subroutine sparsequadavector(inavector,jjcalls0)
         endif
         deallocate(smallvectorspin,smallvectorspin2)
         deallocate(vector, vector2, vector3)
-        call mpibarrier()
+        deallocate(shufflevector,shufflevector2)
         return
      endif
+
+     if (use_dfwalktype.and.shuffle_dfwalktype) then
+        call basis_shuffle(numr,fdww,shufflevector2,dfww,smallvectorspin2)
+     endif
+     deallocate(shufflevector,shufflevector2)
 
 !!$  call basicblocklansolve(1,mysize,maxdim,maxdim,smallvectorspin,smallvectorspin2,1,&
 !!$     parhrmult,parhrdotsub,quadexpect)
@@ -615,10 +640,10 @@ contains
     use parblocklanmod
     implicit none
     integer,intent(in) :: notusedint
-    DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
-    DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
+    DATATYPE,intent(in) :: inavectorspin(numr,dwwptr%botdfbasis:dwwptr%topdfbasis)
+    DATATYPE,intent(out) :: outavectorspin(numr,dwwptr%botdfbasis:dwwptr%topdfbasis)
     call parblockconfigmult(inavectorspin,outavectorspin)
-    if (www%topdfbasis.ge.www%botdfbasis) then
+    if (dwwptr%topdfbasis.ge.dwwptr%botdfbasis) then
        outavectorspin(:,:)= outavectorspin(:,:) - quadexpect*inavectorspin(:,:)
     endif
   end subroutine paraamult
@@ -632,20 +657,15 @@ contains
     use configmod
     implicit none
     integer,intent(in) :: notusedint
-    DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
-    DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
+    DATATYPE,intent(in) :: inavectorspin(numr,dwwptr%botdfbasis:dwwptr%topdfbasis)
+    DATATYPE,intent(out) :: outavectorspin(numr,dwwptr%botdfbasis:dwwptr%topdfbasis)
 
-    if (use_dfwalktype) then
-       call parquadpreconsub0(dwwptr,yyy%cptr(0),yyy%sdfptr(0),&
-            notusedint,inavectorspin,outavectorspin)
-    else
-       call parquadpreconsub0(dwwptr,yyy%cptr(0),yyy%sptr(0),&
-            notusedint,inavectorspin,outavectorspin)
-    endif
+    call parquadpreconsub0(dwwptr,yyy%cptr(0),yyy%sptrptr(0),&
+         notusedint,inavectorspin,outavectorspin)
 
   end subroutine parquadpreconsub
 
-  subroutine parquadpreconsub0(www,cptr,sptr,notusedint, inavectorspin,outavectorspin)
+  subroutine parquadpreconsub0(wwin,cptr,sptr,notusedint, inavectorspin,outavectorspin)
     use fileptrmod
     use r_parameters
     use sparse_parameters
@@ -655,25 +675,25 @@ contains
     use sparseptrmod
     use sparsemultmod
     implicit none
-    type(walktype),intent(in) :: www
+    type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: cptr
     type(SPARSEPTR),intent(in) :: sptr
     integer,intent(in) :: notusedint
-    DATATYPE,intent(in) :: inavectorspin(numr,www%botdfbasis:www%topdfbasis)
-    DATATYPE,intent(out) :: outavectorspin(numr,www%botdfbasis:www%topdfbasis)
-    DATATYPE :: inavector(numr,www%botconfig:www%topconfig+1),&
-         outavector(numr,www%botconfig:www%topconfig+1)  !!AUTOMATIC
+    DATATYPE,intent(in) :: inavectorspin(numr,wwin%botdfbasis:wwin%topdfbasis)
+    DATATYPE,intent(out) :: outavectorspin(numr,wwin%botdfbasis:wwin%topdfbasis)
+    DATATYPE :: inavector(numr,wwin%botconfig:wwin%topconfig+1),&
+         outavector(numr,wwin%botconfig:wwin%topconfig+1)  !!AUTOMATIC
     
     if (sparseconfigflag.eq.0) then
        OFLWR "error, no parquadpreconsub if sparseconfigflag=0"; CFLST
     endif
     
-    call basis_transformfrom_local(www,numr,inavectorspin,inavector)
+    call basis_transformfrom_local(wwin,numr,inavectorspin,inavector)
 
-    call parsparseconfigpreconmult(www,inavector, outavector, cptr, sptr,&
+    call parsparseconfigpreconmult(wwin,inavector, outavector, cptr, sptr,&
          1,1,1,1, quadexpect,0d0)
 
-    call basis_transformto_local(www,numr,outavector,outavectorspin)
+    call basis_transformto_local(wwin,numr,outavector,outavectorspin)
 
   end subroutine parquadpreconsub0
 
@@ -745,7 +765,7 @@ subroutine nonsparsequadavector(www,avectorout)
      call aaonedinit(www,avectorout)
 
 !! CONSISTENT WITH PARAAMULT/PARBLOCKCONFIGMULT yes pulse no tau
-     call sparseconfigmult(www,avectorout(:),err(:),yyy%cptr(0),yyy%sptr(0),1,1,1,0,0d0,-1)
+     call sparseconfigmult(www,avectorout(:),err(:),yyy%cptr(0),yyysptr(0),1,1,1,0,0d0,-1)
 
      call basis_project(www,numr,err(:))
 
@@ -768,7 +788,6 @@ subroutine nonsparsequadavector(www,avectorout)
 !      "      Converged nonsparse quad: dev ", dev, "  E= ", quadexpect, " tol ", aerror; CFL
 !#endif
 
-        call mpibarrier()
         return   !! RETURN
      endif
 

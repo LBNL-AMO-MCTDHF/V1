@@ -199,13 +199,14 @@ program mctdhf
   use xxxmod
   use opmod !! frozenspfs
   use configmod
+  use configpropmod
   use parameters
   implicit none
 
   integer :: i,spfsloaded,totread,ifile,readnum
   DATAECS, allocatable ::  tempvals(:)
   DATATYPE, allocatable :: bigavector(:,:,:), bigspfs(:,:),hugeavector(:,:),nullvector(:,:,:)
-  logical :: logcheckpar
+  logical :: logcheckpar,use_biowalktype
 
   spfsloaded=0
   pi=4.d0*atan(1.d0)
@@ -264,6 +265,8 @@ program mctdhf
   call getparams()
   call system("mkdir -p "//timingdir)  
 
+  totspfdim=nspf*spfsize
+
   call transferparams(nspf,spfrestrictflag,spfmvals,spfugrestrict,&
        spfugvals,spfsmallsize,logcheckpar)
   if (logcheckpar) then
@@ -288,6 +291,10 @@ program mctdhf
   call mpiorbsets()
 !!$  endif
 
+  if ((sparseconfigflag.eq.0).and.(num_config.gt.1000).and.(nosparseforce.eq.0)) then
+     OFLWR "You should really turn sparseconfigflag on, with ", &
+          num_config*numr, "configurations.";     CFLST
+  endif
 
   OFLWR
   WRFL "************************************"
@@ -295,6 +302,17 @@ program mctdhf
   WRFL "************************************"
   WRFL; CFL
 
+  if (df_restrictflag.ne.0.or.(spfrestrictflag.eq.1.and.mrestrictflag.eq.0)) then
+     use_biowalktype=.true.
+  else
+     use_biowalktype=.false.
+  endif
+  if (df_restrictflag.eq.0.or.sparsedfflag.eq.0) then
+     use_dfwalktype=.false.
+  else
+     use_dfwalktype=.true.
+  endif
+  
   www%parconsplit=par_consplit
 
   www%numelec=numelec
@@ -319,6 +337,7 @@ program mctdhf
   first_config=www%firstconfig
   last_config=www%lastconfig
   local_nconfig=www%localnconfig
+  tot_adim=local_nconfig*numr;  
 
   call walkalloc(www);             call walks(www)
 
@@ -337,18 +356,9 @@ program mctdhf
 
   call basis_set(www,nzflag)
 
-  totspfdim=nspf*spfsize
-  tot_adim=local_nconfig*numr;  
-
-  if ((sparseconfigflag.eq.0).and.(num_config.gt.1000).and.(nosparseforce.eq.0)) then
-     OFLWR "You should really turn sparseconfigflag on, with ", &
-          num_config*numr, "configurations.";     CFLST
-  endif
-
-
 !! WALKTYPE VARIABLE BIOWW FOR BIORTHO
-  if (df_restrictflag.ne.0.or.(spfrestrictflag.eq.1.and.mrestrictflag.eq.0)) then
-     bwwptr => bioww
+
+  if (use_biowalktype) then
 
      OFLWR
      WRFL "************************************"
@@ -393,16 +403,9 @@ program mctdhf
 
 !!! END SET BIOWW !!
 
-  else
-     bwwptr => www
   endif
 
-  if (df_restrictflag.eq.0.or.sparsedfflag.eq.0) then
-     use_dfwalktype=.false.
-     dwwptr => www
-  else
-     use_dfwalktype=.true.
-     dwwptr => dfww
+  if (use_dfwalktype) then
 
      OFLWR
      WRFL "************************************"
@@ -447,17 +450,52 @@ program mctdhf
 
      call basis_set(dfww,nzflag)
 
+!!! END SET DFWW !!
+
+!! WALKTYPE VARIABLE FDWW FOR DFRESTRICT
+
+     fdww%parconsplit=par_consplit
+
+     fdww%numelec=numelec
+     fdww%ndof=ndof
+     fdww%nspf=nspf
+
+     fdww%allspinproject=all_spinproject
+     fdww%restrictms=restrict_ms
+     fdww%sss%spinrestrictval=spin_restrictval
+
+     fdww%dfrestrictflag=df_restrictflag
+     fdww%dflevel=df_restrictflag
+     fdww%dfwalklevel=df_restrictflag
+     fdww%singlewalkflag=1
+     fdww%doublewalkflag=1
+
+     call fast_newconfiglist(fdww,.true.)
+
+     call walkalloc(fdww);             call walks(fdww)
+
+     call hops(fdww);
+
+     call set_matsize(fdww);
+
+     call init_dfcon(fdww)
+
+     call spinwalkinit(fdww); 
+     call spinwalks(fdww)
+     call spinsets_first(fdww)
+     call configspin_matel(fdww)
+     call configspinset_projector(fdww)
+     call spinwalkinternal_dealloc()
+
+     call basis_set(fdww,nzflag)
+
      OFLWR "   .. DONE setting DF walk variable.";CFL
 
-!!! END SET DFWW !!
+!!! END SET FDWW !!
 
   endif
 
-  OFLWR "     DWWPTR Slater determinants by processor"
-  do i=1,dwwptr%nzprocs
-     write (mpifileptr,'(T5,2I7,i20)') i,dwwptr%nzproclist(i),dwwptr%nzconfsperproc(i)
-  enddo
-  WRFL
+  OFLWR
   WRFL "************************************"
   WRFL "********** DONE WALKS. *************"
   WRFL "************************************"
@@ -465,17 +503,41 @@ program mctdhf
 
 !!!!!! REINSTATE WALKS READ/WRITE (walkwriteflag) !!!!!!
 
-  call opalloc()
-
-!!$  if (writeconfiglist.ne.0) then
-!!$     call configlistwrite(www,configlistfile)
-!!$  endif
-
   call configpropalloc()
 
-  call myprojectalloc()      !! Initialize coordinate-dependent arrays.
-
   call xalloc() !!   INITIALIZE XXX/YYY VECTORS!  
+
+  if (use_biowalktype) then
+     bwwptr => bioww
+  else
+     bwwptr => www
+  endif
+
+  if (.not.use_dfwalktype) then
+     dwwptr => www
+     yyy%sptrptr => yyysptr
+     worksparsepointerptr => worksparsepointer
+  else
+     if (shuffle_dfwalktype) then
+        dwwptr => fdww
+        yyy%sptrptr => yyysfdptr
+        worksparsepointerptr => workfdsparsepointer
+     else
+        dwwptr => dfww
+        yyy%sptrptr => yyysdfptr
+        worksparsepointerptr => workdfsparsepointer
+     endif
+  endif
+
+  OFLWR "     DWWPTR Slater determinants by processor"
+  do i=1,dwwptr%nzprocs
+     write (mpifileptr,'(T5,2I7,i20)') i,dwwptr%nzproclist(i),dwwptr%nzconfsperproc(i)
+  enddo
+  CFL
+
+  call opalloc()
+
+  call myprojectalloc()      !! Initialize coordinate-dependent arrays.
 
   allocate(bigspfs(spfsize,nspf+numfrozen));    bigspfs=0
 

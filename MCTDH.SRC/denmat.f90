@@ -350,7 +350,7 @@ subroutine getoccupations(www,in_avector, numpoints, occupations)
         ispf=www%singlewalkopspf(1,iwalk,config1)  !! goes with config1
         jspf=www%singlewalkopspf(2,iwalk,config1)  !! goes with config2
 
-        occupations(ispf)=occupations(ispf) + &
+        occupations(ispf)=occupations(ispf) + &  !! ok conversion
              dot(avector(:,config1),avector(:,config1),numpoints)
 
      enddo

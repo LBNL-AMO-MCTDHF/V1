@@ -212,32 +212,19 @@ contains
     use xxxmod
     use fileptrmod
     implicit none
-    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%topdfbasis)
-    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%topdfbasis)
+    DATATYPE,intent(in) :: inavector(numr,dwwptr%botdfbasis:dwwptr%topdfbasis)
+    DATATYPE,intent(out) :: outavector(numr,dwwptr%botdfbasis:dwwptr%topdfbasis)
 
 #ifdef MPIFLAG
     select case (sparsesummaflag)
     case(0)
 #endif
-       if (use_dfwalktype) then
-          call parblockconfigmult0_gather(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
-       else
-          call parblockconfigmult0_gather(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
-       endif
-
+       call parblockconfigmult0_gather(dwwptr,yyy%cptr(0),yyy%sptrptr(0),inavector,outavector)
 #ifdef MPIFLAG
     case(1)
-       if (use_dfwalktype) then
-          call parblockconfigmult0_summa(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
-       else
-          call parblockconfigmult0_summa(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
-       endif
+       call parblockconfigmult0_summa(dwwptr,yyy%cptr(0),yyy%sptrptr(0),inavector,outavector)
     case(2)
-       if (use_dfwalktype) then
-          call parblockconfigmult0_circ(dwwptr,yyy%cptr(0),yyy%sdfptr(0),inavector,outavector)
-       else
-          call parblockconfigmult0_circ(dwwptr,yyy%cptr(0),yyy%sptr(0),inavector,outavector)
-       endif
+       call parblockconfigmult0_circ(dwwptr,yyy%cptr(0),yyy%sptrptr(0),inavector,outavector)
     case default
        OFLWR "Error sparsesummaflag ", sparsesummaflag; CFLST
     end select
@@ -923,9 +910,10 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
   integer :: printflag,maxdim,vdim,ii
   DATAECS, intent(out) :: outvalues(order)
   DATATYPE, intent(inout) :: outvectors(numr,www%firstconfig:www%lastconfig,order)
-  DATATYPE,allocatable :: workvectorsspin(:,:,:)
+  DATATYPE,allocatable :: workvectorsspin(:,:,:), shufflevectors(:,:,:)
+  DATATYPE :: nullvectors(numr,order)
 
-  printflag=max(lanprintflag,inprintflag)
+  printflag=max(lanprintflag,inprintflag);    nullvectors=0
 
   if (sparseconfigflag.eq.0) then
      OFLWR "error, can't use blocklanczos for a-vector with sparseconfigflag=0"; CFLST
@@ -943,30 +931,52 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
      endif
   endif
 
-  maxdim=www%numdfbasis*numr
-  vdim=(www%topdfbasis-www%botdfbasis+1)*numr
+  maxdim=dwwptr%numdfbasis*numr
+  vdim=(dwwptr%topdfbasis-dwwptr%botdfbasis+1)*numr
 
   call mpibarrier()
-  if (nzflag.eq.0.or.dwwptr%nzrank.gt.0) then
-     if (printflag.ne.0) then
-        OFLWR "calling blocklanczos0_local"; CFL
+  if (use_dfwalktype.and.shuffle_dfwalktype) then
+     allocate(shufflevectors(numr,dwwptr%botdfbasis:dwwptr%topdfbasis,order))
+     if (dwwptr%topdfbasis.ge.dwwptr%botdfbasis) then
+        shufflevectors=0
      endif
-     call blocklanczos0_local(order,order,vdim,vdim,lanczosorder,maxdim,workvectorsspin,vdim,&
-          outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,&
-          .true.,0,DATAZERO,dwwptr%NZ_COMM)
+     call basis_shuffle_several(numr,dfww,workvectorsspin,fdww,shufflevectors,order)
   else
-     if (www%topdfbasis-www%botdfbasis+1.ne.0) then
-        workvectorsspin(:,:,:)=0d0
+     allocate(shufflevectors(numr,1,order))
+  endif
+
+  if (use_dfwalktype.and.shuffle_dfwalktype) then
+     if (nzflag.eq.0.or.dwwptr%nzrank.gt.0) then
+        call blocklanczos0_local(order,order,vdim,vdim,lanczosorder,maxdim,shufflevectors,vdim,&
+             outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,&
+             .true.,0,DATAZERO,dwwptr%NZ_COMM)
+     else
+        if (dwwptr%topdfbasis.ge.dwwptr%botdfbasis) then
+           shufflevectors=0
+        endif
      endif
-     if (printflag.ne.0) then
-        OFLWR "waiting for blocklanczos0_local"; CFL
+  else
+     if (nzflag.eq.0.or.dwwptr%nzrank.gt.0) then
+        call blocklanczos0_local(order,order,vdim,vdim,lanczosorder,maxdim,workvectorsspin,vdim,&
+             outvalues,printflag,guessflag,lancheckstep,lanthresh,parblockconfigmult,&
+             .true.,0,DATAZERO,dwwptr%NZ_COMM)
+     else
+        if (dwwptr%topdfbasis.ge.dwwptr%botdfbasis) then
+           workvectorsspin=0d0
+        endif
      endif
   endif
+
   call mpibarrier()
 
-  if (printflag.ne.0) then
-     OFLWR "Done with blocklanczos0_local."; CFL
+  if (use_dfwalktype.and.shuffle_dfwalktype) then
+     call basis_shuffle_several(numr,fdww,shufflevectors,dfww,workvectorsspin,order)
   endif
+  deallocate(shufflevectors)
+
+!  if (printflag.ne.0) then
+!     OFLWR "Done with blocklanczos0_local."; CFL
+!  endif
 
   if (www%lastconfig.ge.www%firstconfig) then
      outvectors(:,:,:)=0d0

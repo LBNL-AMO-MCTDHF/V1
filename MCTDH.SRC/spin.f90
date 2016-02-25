@@ -637,6 +637,8 @@ subroutine basis_transformto_all(www,howmany,avectorin,avectorout)
   DATATYPE,intent(in) :: avectorin(howmany,www%numconfig)
   DATATYPE,intent(out) :: avectorout(howmany,www%numdfbasis)
 
+  avectorout(:,:)=0d0
+
   if (www%sparseconfigflag.ne.0) then
      if (www%topdfbasis.ge.www%botdfbasis) then
         call basis_transformto_local(www,howmany,avectorin(:,www%botconfig:www%topconfig),&
@@ -674,6 +676,7 @@ subroutine basis_transformto_general(www,howmany,avectorin,avectorout,iproc,jpro
   DATATYPE :: workvec(howmany,www%allbotdfconfigs(iproc):www%alltopdfconfigs(jproc))   !! AUTOMATIC
 
   if (www%alltopdfbasis(jproc)-www%allbotdfbasis(iproc)+1.ne.0) then
+     avectorout(:,:)=0d0
      if (www%dfrestrictflag.ne.www%dflevel) then
         if (www%allspinproject.ne.0) then
            call df_transformto_general(www,howmany,avectorin,workvec,iproc,jproc)
@@ -704,6 +707,8 @@ subroutine basis_transformfrom_all(www,howmany,avectorin,avectorout)
   integer,intent(in) :: howmany
   DATATYPE,intent(in) :: avectorin(howmany,www%numdfbasis)
   DATATYPE,intent(out) :: avectorout(howmany,www%numconfig)
+
+  avectorout=0d0
 
   if (www%sparseconfigflag.ne.0) then
      if (www%topconfig.ge.www%botconfig) then
@@ -767,5 +772,179 @@ subroutine basis_transformfrom_general(www,howmany,avectorin,avectorout,iproc,jp
   endif
 
 end subroutine basis_transformfrom_general
+
+
+subroutine basis_shuffle(howmany,wwin,avectorin,wwout,avectorout)
+  use timing_parameters
+  use fileptrmod
+  use walkmod
+  use mpimod     !! nprocs
+  implicit none
+  type(walktype),intent(in) :: wwin,wwout
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: avectorin(howmany,wwin%botdfbasis:wwin%topdfbasis)
+  DATATYPE,intent(out) :: avectorout(howmany,wwout%botdfbasis:wwout%topdfbasis)
+#ifndef MPIFLAG
+  avectorout(:,:)=avectorin(:,:)
+#else
+  integer,allocatable :: pairs(:,:),pairlow(:),pairhigh(:),pairsize(:),&
+       pairtag(:)
+  integer :: iin, iout, numpairs, ipair, getlen, myiostat
+  integer,save :: times(20)=0, atime = -99, btime = -99, icalled=0, &
+       numcalled=0
+
+  if (wwin%numdfbasis.ne.wwout%numdfbasis) then
+     OFLWR "error, on shuffle basis sizes do not agree ",&
+          wwin%numdfbasis,wwout%numdfbasis; CFLST
+  endif
+
+  if (nprocs.eq.1) then
+     avectorout(:,:)=avectorin(:,:)
+     return    !! RETURN
+  endif
+
+  if (icalled.eq.0) then
+     call system_clock(btime); atime=btime
+     if (myrank.eq.1.and.notiming.le.1) then
+        open(1777, file=timingdir(1:getlen(timingdir)-1)//"/shuffletime.dat", &
+             status="unknown",iostat=myiostat)
+        call checkiostat(myiostat," opening shuffletime.dat")
+        write(1777,'(T16,100A15)')  &
+             "Init ", &     !! (1)
+             "Alloc ", &    !! (2)
+             "Pairs ", &    !! (3)
+             "Sendrecv", &  !! (4)
+             "Final", &     !! (5)
+             "Away"         !! (6)
+        close(1777)
+     endif
+  else
+     call system_clock(btime); times(6)=times(6)+btime-atime; atime=btime
+  endif
+  icalled=1; numcalled=numcalled+1
+
+  if (wwout%topdfbasis.ge.wwout%botdfbasis) then
+     avectorout(:,:)=0d0
+  endif
+
+  numpairs=0
+  do iin=1,nprocs
+     do iout=1,nprocs
+        if (wwout%allbotdfbasis(iout).le.wwin%alltopdfbasis(iin).and.&
+             wwout%alltopdfbasis(iout).ge.wwin%allbotdfbasis(iin).and.&
+             wwin%alltopdfbasis(iin).ge.wwin%allbotdfbasis(iin).and.&
+             wwout%alltopdfbasis(iout).ge.wwout%allbotdfbasis(iout)) then
+           numpairs=numpairs+1
+        endif
+     enddo
+  enddo
+
+  call system_clock(btime); times(1)=times(1)+ btime-atime; atime=btime
+
+  allocate(pairs(2,numpairs),pairlow(numpairs),pairhigh(numpairs),&
+       pairsize(numpairs),pairtag(numpairs))
+  pairs=(-1); pairlow=(-1); pairhigh=(-1); pairsize=(-1); pairtag=(-1)
+
+  call system_clock(btime); times(2)=times(2)+ btime-atime; atime=btime
+
+  numpairs=0
+  do iin=1,nprocs
+     do iout=1,nprocs
+        if (wwout%allbotdfbasis(iout).le.wwin%alltopdfbasis(iin).and.&
+             wwout%alltopdfbasis(iout).ge.wwin%allbotdfbasis(iin).and.&
+             wwin%alltopdfbasis(iin).ge.wwin%allbotdfbasis(iin).and.&
+             wwout%alltopdfbasis(iout).ge.wwout%allbotdfbasis(iout)) then
+           numpairs=numpairs+1
+           pairs(1,numpairs)=iin;     pairs(2,numpairs)=iout
+           pairlow(numpairs)=max(wwout%allbotdfbasis(iout),wwin%allbotdfbasis(iin))
+           pairhigh(numpairs)=min(wwout%alltopdfbasis(iout),wwin%alltopdfbasis(iin))
+           pairsize(numpairs)=pairhigh(numpairs)-pairlow(numpairs)+1
+           pairtag(numpairs)=iin+(iout-1)*nprocs
+           if (pairsize(numpairs).lt.1) then
+              print *, "progcheckkkk pairsize",pairsize(numpairs),&
+                   wwin%allbotdfbasis(iin),wwin%alltopdfbasis(iin),&
+                   wwout%allbotdfbasis(iout),wwout%alltopdfbasis(iout)
+              stop
+           endif
+        endif
+     enddo
+  enddo
+
+  if (numpairs.eq.nprocs) then
+     OFLWR "What? it doesn't look like you need to shuffle."
+     write(mpifileptr,'(2I10)') pairs(:,:);     CFLST
+  elseif (numpairs.lt.nprocs) then
+     OFLWR "What? too few pairs",numpairs; CFLST
+  endif
+
+  call system_clock(btime); times(3)=times(3)+ btime-atime; atime=btime
+
+  do ipair=1,numpairs
+     if (pairs(1,ipair).eq.myrank.and.pairs(2,ipair).eq.myrank) then
+        avectorout(:,pairlow(ipair):pairhigh(ipair)) = &
+             avectorin(:,pairlow(ipair):pairhigh(ipair))
+     elseif (pairs(1,ipair).eq.myrank.and.pairs(2,ipair).ne.myrank) then
+        call mympisend(avectorin(:,pairlow(ipair):pairhigh(ipair)),pairs(2,ipair),&
+             pairtag(ipair), pairsize(ipair)*howmany)
+     elseif (pairs(2,ipair).eq.myrank.and.pairs(1,ipair).ne.myrank) then
+        call mympirecv(avectorout(:,pairlow(ipair):pairhigh(ipair)),pairs(1,ipair),&
+             pairtag(ipair), pairsize(ipair)*howmany)
+     endif
+  enddo
+
+  call system_clock(btime); times(4)=times(4)+ btime-atime; atime=btime
+
+  deallocate(pairs,pairlow,pairhigh,pairsize,pairtag)
+
+  if (myrank.eq.1.and.notiming.le.1.and.mod(numcalled,timingout).eq.0) then
+     open(1777, file=timingdir(1:getlen(timingdir)-1)//"/shuffletime.dat", &
+          status="old", position="append",iostat=myiostat)
+     call checkiostat(myiostat," opening shuffletime.dat")
+     write(1777,'(100I15)',iostat=myiostat) times(1:6)/1000
+     call checkiostat(myiostat," writing shuffletime.dat")
+     close(1777)
+  endif
+
+  call system_clock(btime); times(5)=times(5)+ btime-atime; atime=btime
+
+#endif
+
+end subroutine basis_shuffle
+
+
+subroutine basis_shuffle_several(howmany,wwin,avectorin,wwout,avectorout,numvec)
+  use timing_parameters
+  use fileptrmod
+  use walkmod
+  use mpimod     !! nprocs
+  implicit none
+  type(walktype),intent(in) :: wwin,wwout
+  integer,intent(in) :: howmany,numvec
+  DATATYPE,intent(in) :: avectorin(howmany,wwin%botdfbasis:wwin%topdfbasis,numvec)
+  DATATYPE,intent(out) :: avectorout(howmany,wwout%botdfbasis:wwout%topdfbasis,numvec)
+#ifndef MPIFLAG
+  avectorout(:,:,:)=avectorin(:,:,:)
+#else
+  DATATYPE :: nullvector1(howmany),nullvector2(howmany)
+  integer :: ii
+
+  nullvector1=0; nullvector2=0
+  do ii=1,numvec
+     if (wwin%topdfbasis.ge.wwin%botdfbasis.and.wwout%topdfbasis.ge.wwout%botdfbasis) then
+        call basis_shuffle(howmany,wwin,avectorin(:,:,ii),wwout,avectorout(:,:,ii))
+     elseif (wwin%topdfbasis.ge.wwin%botdfbasis) then
+        call basis_shuffle(howmany,wwin,avectorin(:,:,ii),wwout,nullvector2)
+     elseif (wwout%topdfbasis.ge.wwout%botdfbasis) then
+        call basis_shuffle(howmany,wwin,nullvector1,wwout,avectorout(:,:,ii))
+     else
+        call basis_shuffle(howmany,wwin,nullvector1,wwout,nullvector2)
+     endif
+  enddo
+
+#endif
+
+end subroutine basis_shuffle_several
+
+
 
 

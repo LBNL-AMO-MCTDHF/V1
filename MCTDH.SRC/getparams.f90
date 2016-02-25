@@ -105,7 +105,8 @@ subroutine getparams()
        turnbatchsize,energyshift, pulseft_estep, finalstatsfile, projgtaufile,gtaufile,&
        sparsedfflag,sparseprime,sparsesummaflag, par_consplit, ftwindowlength, fttriwindow,&
        pulsewindowtoo,conjgpropflag,dipolesumstart,dipolesumend,outmatel,numcatfiles,&
-       catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag
+       catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
+       shuffle_dfwalktype
 
 
   OFL

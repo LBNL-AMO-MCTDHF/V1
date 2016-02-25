@@ -727,7 +727,6 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
   deallocate(wsp,iwsp)
   deallocate(aspfs, proppspfs, outspfs, tempspfs, inspfs)
   deallocate(com_aspfs, com_proppspfs, com_outspfs)
-
   return
   return  !! END SUBROUTINE
   return
@@ -820,8 +819,8 @@ end subroutine
 module parconfigexpomod
 contains
 
-  subroutine parconfigexpomult_padded0_gather(wwin,workconfigpointer,&
-       worksparsepointer,inavector,outavector)
+  subroutine parconfigexpomult_padded0_gather(wwin,inconfigpointer,&
+       insparsepointer,inavector,outavector)
     use fileptrmod
     use r_parameters
     use sparse_parameters
@@ -834,8 +833,8 @@ contains
     use sparsemultmod
     implicit none
     type(walktype),intent(in) :: wwin
-    type(CONFIGPTR),intent(in) :: workconfigpointer
-    type(SPARSEPTR),intent(in) :: worksparsepointer
+    type(CONFIGPTR),intent(in) :: inconfigpointer
+    type(SPARSEPTR),intent(in) :: insparsepointer
     DATATYPE,intent(in) :: inavector(numr,wwin%botdfbasis:wwin%botdfbasis+wwin%maxdfbasisperproc-1)
     DATATYPE,intent(out) :: outavector(numr,wwin%botdfbasis:wwin%botdfbasis+wwin%maxdfbasisperproc-1)
     DATATYPE,allocatable :: intemp(:,:)
@@ -865,9 +864,10 @@ contains
 
     if (wwin%topconfig.ge.wwin%botconfig) then
        call sparseconfigmult_byproc(1,nprocs,wwin,intemp,outtemp, &
-            workconfigpointer, worksparsepointer, 1,1,1,1,&
+            inconfigpointer, insparsepointer, 1,1,1,1,&
             configexpotime,0,1,numr,0,imc)
     endif
+
     if (wwin%topdfbasis.ge.wwin%botdfbasis) then
        call basis_transformto_local(wwin,numr,outtemp,outavector)
     endif
@@ -882,8 +882,8 @@ contains
 
 #ifdef MPIFLAG
 
-  subroutine parconfigexpomult_padded0_summa(wwin,workconfigpointer,&
-       worksparsepointer,inavector,outavector)
+  subroutine parconfigexpomult_padded0_summa(wwin,inconfigpointer,&
+       insparsepointer,inavector,outavector)
     use fileptrmod
     use r_parameters
     use sparse_parameters
@@ -896,8 +896,8 @@ contains
     use sparsemultmod
     implicit none
     type(walktype),intent(in) :: wwin
-    type(CONFIGPTR),intent(in) :: workconfigpointer
-    type(SPARSEPTR),intent(in) :: worksparsepointer
+    type(CONFIGPTR),intent(in) :: inconfigpointer
+    type(SPARSEPTR),intent(in) :: insparsepointer
     DATATYPE,intent(in) :: inavector(numr,wwin%botdfbasis:wwin%botdfbasis+wwin%maxdfbasisperproc-1)
     DATATYPE,intent(out) :: outavector(numr,wwin%botdfbasis:wwin%botdfbasis+wwin%maxdfbasisperproc-1)
     DATATYPE :: intemp(numr,wwin%maxconfigsperproc), outwork(numr,wwin%botconfig:wwin%topconfig+1),&
@@ -931,7 +931,7 @@ contains
                wwin%NZ_COMM)
 
           call sparseconfigmult_byproc(iproc,iproc,wwin,intemp,outtemp, &
-               workconfigpointer, worksparsepointer, 1,1,1,1,&
+               inconfigpointer, insparsepointer, 1,1,1,1,&
                configexpotime,0,1,numr,0,imc)
      
           outwork(:,:)=outwork(:,:)+outtemp(:,:)
@@ -952,8 +952,8 @@ contains
   end subroutine parconfigexpomult_padded0_summa
 
 
-  subroutine parconfigexpomult_padded0_circ(wwin,workconfigpointer,&
-       worksparsepointer,inavector,outavector)
+  subroutine parconfigexpomult_padded0_circ(wwin,inconfigpointer,&
+       insparsepointer,inavector,outavector)
     use fileptrmod
     use r_parameters
     use sparse_parameters
@@ -966,8 +966,8 @@ contains
     use sparsemultmod
     implicit none
     type(walktype),intent(in) :: wwin
-    type(CONFIGPTR),intent(in) :: workconfigpointer
-    type(SPARSEPTR),intent(in) :: worksparsepointer
+    type(CONFIGPTR),intent(in) :: inconfigpointer
+    type(SPARSEPTR),intent(in) :: insparsepointer
     DATATYPE,intent(in) :: inavector(numr,wwin%botdfbasis:wwin%botdfbasis+wwin%maxdfbasisperproc-1)
     DATATYPE,intent(out) :: outavector(numr,wwin%botdfbasis:wwin%botdfbasis+wwin%maxdfbasisperproc-1)
     DATATYPE :: workvector(numr,wwin%maxconfigsperproc), workvector2(numr,wwin%maxconfigsperproc),&
@@ -1002,7 +1002,7 @@ contains
 
        if (wwin%alltopconfigs(iproc).ge.wwin%allbotconfigs(iproc)) then
           call sparseconfigmult_byproc(iproc,iproc,wwin,workvector,outtemp, &
-               workconfigpointer, worksparsepointer, &
+               inconfigpointer, insparsepointer, &
                1,1,1,1,configexpotime,0,1,numr,0,imc)
           outwork(:,:)=outwork(:,:)+outtemp(:,:)
        endif
@@ -1039,38 +1039,22 @@ contains
     use configpropmod
     use configmod
     implicit none
-    DATATYPE,intent(in) :: inavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
-    DATATYPE,intent(out) :: outavector(numr,www%botdfbasis:www%botdfbasis+www%maxdfbasisperproc-1)
+    DATATYPE,intent(in) :: inavector(numr,dwwptr%maxdfbasisperproc)
+    DATATYPE,intent(out) :: outavector(numr,dwwptr%maxdfbasisperproc)
 
 #ifdef MPIFLAG
     select case (sparsesummaflag)
     case(0)
 #endif
-       if (use_dfwalktype) then
-          call parconfigexpomult_padded0_gather(dwwptr,workconfigpointer,&
-               workdfsparsepointer,inavector,outavector)
-       else
-          call parconfigexpomult_padded0_gather(dwwptr,workconfigpointer,&
-               worksparsepointer,inavector,outavector)
-       endif
-
+       call parconfigexpomult_padded0_gather(dwwptr,workconfigpointer,&
+            worksparsepointerptr,inavector,outavector)
 #ifdef MPIFLAG
     case(1)
-       if (use_dfwalktype) then
-          call parconfigexpomult_padded0_summa(dwwptr,workconfigpointer,&
-               workdfsparsepointer,inavector,outavector)
-       else
-          call parconfigexpomult_padded0_summa(dwwptr,workconfigpointer,&
-               worksparsepointer,inavector,outavector)
-       endif
+       call parconfigexpomult_padded0_summa(dwwptr,workconfigpointer,&
+            worksparsepointerptr,inavector,outavector)
     case(2)
-       if (use_dfwalktype) then
-          call parconfigexpomult_padded0_circ(dwwptr,workconfigpointer,&
-               workdfsparsepointer,inavector,outavector)
-       else
-          call parconfigexpomult_padded0_circ(dwwptr,workconfigpointer,&
-               worksparsepointer,inavector,outavector)
-       endif
+       call parconfigexpomult_padded0_circ(dwwptr,workconfigpointer,&
+            worksparsepointerptr,inavector,outavector)
     case default
        OFLWR "Error sparsesummaflag ",sparsesummaflag; CFLST
     end select
@@ -1093,11 +1077,15 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
   integer,intent(out) :: numiters
   DATATYPE,intent(in) :: inavector(numr,www%firstconfig:www%lastconfig)
   DATATYPE,intent(out) :: outavector(numr,www%firstconfig:www%lastconfig)
-  DATATYPE :: smallvector(numr,www%maxdfbasisperproc),&
-       smallvectorout(numr,www%maxdfbasisperproc), &
-       zerovector(numr,www%maxdfbasisperproc),&
-       smallvectortemp(numr,www%maxdfbasisperproc), &
-       workdrivingavecdfbasis(numr,www%botdfbasis:www%topdfbasis+1)    !! AUTOMATIC
+                                                                !!  AUTOMATIC
+  DATATYPE :: localvector(numr,www%maxdfbasisperproc),&         !!       DFWW
+       drivingavecdf(numr,www%botdfbasis:www%topdfbasis+1),&    !!       DFWW
+       smallvector(numr,dwwptr%maxdfbasisperproc),&             !!       FDWW
+       smallvectorout(numr,dwwptr%maxdfbasisperproc), &         !!       FDWW
+       zerovector(numr,dwwptr%maxdfbasisperproc),&              !!       FDWW
+       smallvectortemp(numr,dwwptr%maxdfbasisperproc), &        !!       FDWW
+       workdrivingavecdf(numr,dwwptr%botdfbasis:dwwptr%topdfbasis+1) !!  FDWW
+
   real*8 :: one,time
   real*8, save :: tempstepsize=-1d0
   integer :: itrace, iflag, numsteps,expofileptr=61142, liwsp=0, lwsp=0,getlen,&
@@ -1122,16 +1110,14 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
   call avectortimeset()
 
   smallvector=0;   smallvectorout=0;   zerovector=0;  smallvectortemp=0
-  workdrivingavecdfbasis=0
+  workdrivingavecdf=0; localvector=0; drivingavecdf=0;
 
   icalled=icalled+1
 
-  ixx = zzz * www%maxdfbasisperproc * numr
+  ixx = zzz * dwwptr%maxdfbasisperproc * numr
 
   if (icalled.eq.1) then
      tempstepsize=par_timestep/littlesteps
-
-!!$     my_maxaorder=min(ixx*nprocs-1,maxaorder)
 
      my_maxaorder=min(zzz*www%numdfbasis*numr-1,maxaorder)
 
@@ -1188,14 +1174,32 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
   liwsp=thisexpodim+100
   allocate(wsp(lwsp),iwsp(liwsp));    
   wsp=0.d0; iwsp=0
-  
-  smallvector(:,:)=0
+
+  localvector(:,:)=0
   if (www%topconfig.ge.www%botconfig) then
-     call basis_transformto_local(www,numr,inavector(:,www%botconfig),smallvector(:,:))
+     call basis_transformto_local(www,numr,inavector(:,www%botconfig),localvector(:,:))
   endif
 
   call avectortime(1)
+
+  if (drivingflag.ne.0.and.www%topdfbasis.ge.www%botdfbasis) then
+     call basis_transformto_local(www,numr,&
+          workdrivingavec(:,www%botconfig:www%topconfig),&
+          drivingavecdf(:,www%botdfbasis:www%topdfbasis))
+  endif
+
   call mpibarrier()
+  if (use_dfwalktype.and.shuffle_dfwalktype) then
+     call basis_shuffle(numr,dfww,localvector,fdww,smallvector)
+     if (drivingflag.ne.0) then
+        call basis_shuffle(numr,dfww,drivingavecdf,fdww,workdrivingavecdf)
+     endif
+  else
+     smallvector(:,:)=localvector(:,:)
+     if (drivingflag.ne.0) then
+        workdrivingavecdf(:,:)=drivingavecdf(:,:)
+     endif
+  endif
 
 !! par_timestep is a-norm estimate, ok, whatever
 
@@ -1204,14 +1208,10 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
      if (drivingflag.ne.0) then
         smallvectortemp(:,:)=0d0
         call parconfigexpomult_padded(smallvector,smallvectortemp)
-        
-        if (www%topdfbasis.ge.www%botdfbasis) then
-           call basis_transformto_local(www,numr,&
-                workdrivingavec(:,www%botconfig:www%topconfig),&
-                workdrivingavecdfbasis(:,www%botdfbasis:www%topdfbasis))
-           smallvectortemp(:,1:www%topdfbasis-www%botdfbasis+1)=  &
-                smallvectortemp(:,1:www%topdfbasis-www%botdfbasis+1) + &
-                workdrivingavecdfbasis(:,www%botdfbasis:www%topdfbasis) * timefac 
+        if (dwwptr%topdfbasis.ge.dwwptr%botdfbasis) then
+           smallvectortemp(:,1:dwwptr%topdfbasis-dwwptr%botdfbasis+1)=  &
+                smallvectortemp(:,1:dwwptr%topdfbasis-dwwptr%botdfbasis+1) + &
+                workdrivingavecdf(:,dwwptr%botdfbasis:dwwptr%topdfbasis) * timefac 
         endif
         zerovector(:,:)=0d0
         call DGPHIVxxx2( ixx, thisexpodim, one, smallvectortemp,&
@@ -1229,6 +1229,7 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
   else
      smallvectorout(:,:)=0d0 !! should be zero and stay zero but doing this anyway
   endif
+  call mpibarrier()
 
   minflag=iflag
   call mympiimax(iflag)
@@ -1237,12 +1238,18 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
      OFLWR "Error exposparseprop: ", iflag,minflag; CFLST
   endif
 
+  if (use_dfwalktype.and.shuffle_dfwalktype) then
+     call basis_shuffle(numr,fdww,smallvectorout,dfww,localvector)
+  else
+     localvector(:,:)=smallvectorout(:,:)
+  endif
+
   call avectortime(3)
 
   if (www%lastconfig.ge.www%firstconfig) then
      outavector(:,:)=0d0;   
      if (www%topconfig.ge.www%botconfig) then
-        call basis_transformfrom_local(www,numr,smallvectorout,outavector(:,www%botconfig))
+        call basis_transformfrom_local(www,numr,localvector,outavector(:,www%botconfig))
      endif
   endif
 

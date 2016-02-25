@@ -127,7 +127,7 @@ subroutine actionsub(thistime)
         call system_clock(btime);        times(21)=times(21)+btime-atime
      case (22)    
         call system_clock(atime)
-        call dferror(www,yyy%cptr(0),yyy%sptr(0),yyy%cmfavec(:,:,0),&
+        call dferror(www,yyy%cptr(0),yyysptr(0),yyy%cmfavec(:,:,0),&
              mcscfnum,error,thistime)  !! does all mcscfnum
         OFL; write(mpifileptr,'(A15,2F25.10)') " DF error is ", error; CFL
         call system_clock(btime);        times(22)=times(22)+btime-atime
