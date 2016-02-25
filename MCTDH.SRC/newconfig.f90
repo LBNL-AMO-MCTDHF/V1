@@ -5,6 +5,8 @@
 #include "Definitions.INC"
 
 
+module configsubmod
+contains
 
 !! ORBITAL ORDERING:  RETURNS SPINORBITAL INDEX GIVEN ORBITAL INDEX AND SPIN
 !! (SPIN IS 1 (ALPHA) OR 2 (BETA))
@@ -25,8 +27,6 @@ end function
 
 
 !! RETURN CONFIGURATION INDEX GIVEN ORBITAL OCCUPANCIES
-
-
 
 function getconfiguration(thisconfig,www)
   use fileptrmod
@@ -118,7 +118,7 @@ function reorder(thisconfig,numelec)
   implicit none
   integer, intent(in) :: numelec
   integer, intent(inout) :: thisconfig(1:2*numelec)
-  integer :: reorder, phase, flag, jdof, temporb(2), iind
+  integer :: reorder, phase, flag, jdof, temporb(2)
 
   phase=1;  flag=0
   do while (flag==0)
@@ -147,7 +147,7 @@ function allowedconfig0(www,thisconfig,in_df)
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: thisconfig(www%ndof), in_df
-  integer :: i, isum, j, tempcount, tempcount2, ishell, ii, k, iind, getugval,getmval
+  integer :: i, isum, j, tempcount, tempcount2, ishell, ii, k
   logical :: allowedconfig0, tempflag
 
   do j=1,www%numelec
@@ -367,9 +367,8 @@ subroutine fast_newconfiglist(www,domflags)
 
   integer,allocatable :: bigspinblockstart(:),bigspinblockend(:)
   integer :: i, idof, ii , lowerarr(max_numelec),upperarr(max_numelec),  thisconfig(www%ndof),&
-       reorder,nullint,kk,iconfig,mm, single(max_numelec),ishell,jj,maxssize=0,sss,nss,ssflag,numdoubly,&
-       mynumexcite(numshells),isum,jshell,jsum,ppp,numspinblocks,getmval,getugval
-  logical :: allowedconfig0
+       nullint,kk,iconfig,mm, single(max_numelec),ishell,jj,maxssize=0,sss,nss,ssflag,numdoubly,&
+       mynumexcite(numshells),isum,jshell,jsum,ppp,numspinblocks
 
   if (www%numelec.gt.max_numelec) then
      OFLWR "Resize get_newconfiglist"; CFLST
@@ -1083,3 +1082,5 @@ subroutine set_newconfiglist(wwin,wwout)
   wwout%localnconfig=(wwout%lastconfig-wwout%firstconfig+1)
 
 end subroutine set_newconfiglist
+
+end module

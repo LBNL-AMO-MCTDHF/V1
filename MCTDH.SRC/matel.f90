@@ -435,6 +435,7 @@ subroutine assemble_dfbasismat(www,outmatrix, matrix_ptr, boflag, nucflag, pulse
   use fileptrmod
   use configptrmod
   use walkmod
+  use basissubmod
   implicit none
   type(walktype),intent(in) :: www
   Type(configptr),intent(in) :: matrix_ptr

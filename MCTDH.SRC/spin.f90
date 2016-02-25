@@ -4,54 +4,6 @@
 #include "Definitions.INC"
 
 
-!! Returns df configuration index (dfrestricted) up to numdfconfigs
-!! given configuration index config1 (full list, numconfig)
-!! if config1 is included in the dfrestricted list
-!! or -1 if config1 is not in the dfrestricted config list
-
-function getdfindex(www,config1)
-  use walkmod
-  implicit none
-  type(walktype),intent(in) :: www
-  integer,intent(in) :: config1
-  integer :: getdfindex, j,flag, dir,newdir, step
-
-  getdfindex=-1
-
-  if (www%ddd%dfincludedmask(config1).eq.0) then
-     return
-  endif
-  
-  dir=1;  j=1;  step=max(1,www%numdfconfigs/4);  flag=0
-
-  do while (flag.eq.0)
-     flag=1
-
-     if (www%ddd%dfincludedconfigs(j) .ne. config1) then
-        flag=0
-        if (www%ddd%dfincludedconfigs(j).lt.config1) then
-           newdir=1
-        else
-           newdir=-1
-        endif
-        if (newdir.ne.dir) then
-           step=max(1,step/2)
-        endif
-        dir=newdir;           j=j+dir*step
-        if (j.le.1) then
-           j=1;              dir=1
-        endif
-        if (j.ge.www%numdfconfigs) then
-           j=www%numdfconfigs;              dir=-1
-        endif
-     endif
-  enddo
-
-  getdfindex=j
-  
-end function getdfindex
-
-
 subroutine basis_set(www,innzflag)
   use r_parameters
   use walkmod
@@ -136,10 +88,10 @@ subroutine init_dfcon(www)
   use fileptrmod
   use walkmod
   use mpimod
+  use configsubmod
   implicit none
   type(walktype),intent(inout) :: www
   integer :: i,j,iconfig,nondfconfigs,dfrank,ii
-  logical :: allowedconfig0
   integer,allocatable :: dfnotconfigs(:)
 
   allocate(www%ddd%dfincludedmask(www%numconfig), www%ddd%dfincludedconfigs(www%numconfig), &
@@ -285,6 +237,56 @@ subroutine dfcondealloc(www)
   www%ddd%numdfwalks=-1;  www%numdfconfigs=-1
 end subroutine dfcondealloc
 
+
+module basissubmod
+contains
+
+!! Returns df configuration index (dfrestricted) up to numdfconfigs
+!! given configuration index config1 (full list, numconfig)
+!! if config1 is included in the dfrestricted list
+!! or -1 if config1 is not in the dfrestricted config list
+
+function getdfindex(www,config1)
+  use walkmod
+  implicit none
+  type(walktype),intent(in) :: www
+  integer,intent(in) :: config1
+  integer :: getdfindex, j,flag, dir,newdir, step
+
+  getdfindex=-1
+
+  if (www%ddd%dfincludedmask(config1).eq.0) then
+     return
+  endif
+  
+  dir=1;  j=1;  step=max(1,www%numdfconfigs/4);  flag=0
+
+  do while (flag.eq.0)
+     flag=1
+
+     if (www%ddd%dfincludedconfigs(j) .ne. config1) then
+        flag=0
+        if (www%ddd%dfincludedconfigs(j).lt.config1) then
+           newdir=1
+        else
+           newdir=-1
+        endif
+        if (newdir.ne.dir) then
+           step=max(1,step/2)
+        endif
+        dir=newdir;           j=j+dir*step
+        if (j.le.1) then
+           j=1;              dir=1
+        endif
+        if (j.ge.www%numdfconfigs) then
+           j=www%numdfconfigs;              dir=-1
+        endif
+     endif
+  enddo
+
+  getdfindex=j
+  
+end function getdfindex
 
 
 subroutine configspin_project(www,nr, vector)
@@ -945,6 +947,4 @@ subroutine basis_shuffle_several(howmany,wwin,avectorin,wwout,avectorout,numvec)
 
 end subroutine basis_shuffle_several
 
-
-
-
+end module basissubmod

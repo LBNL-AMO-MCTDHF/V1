@@ -20,10 +20,10 @@ subroutine projeflux_singlewalks()
   use projefluxmod
   use configmod
   use mpimod
+  use configsubmod
   implicit none
-  integer :: iconfig,jconfig,idof,iindex,iind,iwalk,flag,getconfiguration,reorder,dirphase
+  integer :: iconfig,jconfig,idof,iindex,iwalk,flag,dirphase
   integer :: tempconfig(ndof),temporb(2)
-  logical :: allowedconfig0
 
 !! get the number of single walks from the target N-1 e- state to our regular N e- state
   OFLWR "Getting cation single walks"; CFL

@@ -298,6 +298,7 @@ contains
     use mpimod
     use matvecsetmod
     use biomatvecmod
+    use basissubmod
     implicit none
     DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
     DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
@@ -347,6 +348,7 @@ contains
     use mpimod
     use matvecsetmod
     use biomatvecmod
+    use basissubmod
     implicit none
     DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
     DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
@@ -403,6 +405,7 @@ contains
     use mpimod
     use matvecsetmod
     use biomatvecmod
+    use basissubmod
     implicit none
     DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
     DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
@@ -504,6 +507,7 @@ contains
     use matvecsetmod
     use biorthotypemod
     use dotmod
+    use basissubmod
     implicit none
     type(biorthotype),target,intent(inout) :: inbiovar
     DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
@@ -719,9 +723,10 @@ contains
     use aarrmod
     use biorthotypemod
     use tol_parameters
+    use configsubmod
     implicit none
     Type(biorthotype),target,intent(inout) :: inbiovar
-    integer :: i,j,iflag,clow,chigh,jproc,cnum,nnn(2),iind,mmm(2),rank,lwork
+    integer :: i,j,iflag,clow,chigh,jproc,cnum,nnn(2),mmm(2),rank,lwork
     integer :: bioconfiglist(inbiovar%wwbio%numelec,inbiovar%wwbio%numconfig)
     DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%numconfig)
     DATATYPE,intent(out) :: aout(inbiovar%bionr,inbiovar%wwbio%numconfig)
@@ -895,6 +900,8 @@ contains
     use abiosparsemod
     use fileptrmod
     use dotmod
+    use invsubmod
+    use lnsubmod
     implicit none
     type(biorthotype),target,intent(inout) :: inbiovar
     DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)
@@ -993,6 +1000,8 @@ contains
     use biorthotypemod
     use abiosparsemod
     use dotmod
+    use invsubmod
+    use lnsubmod
     implicit none
     type(biorthotype),target,intent(inout) :: inbiovar
     DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)

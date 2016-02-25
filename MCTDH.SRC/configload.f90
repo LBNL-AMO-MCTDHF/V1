@@ -135,6 +135,7 @@ subroutine load_avector_productsub(myavector)
   use parameters
   use configmod
   use mpimod
+  use configsubmod
   implicit none
   DATATYPE,intent(out) :: myavector(numr,first_config:last_config,mcscfnum)
   integer :: readnumvects(numavectorfiles),readndof(numavectorfiles),readnumr(numavectorfiles),&
@@ -151,9 +152,8 @@ subroutine load_avector_productsub(myavector)
   DATATYPE, allocatable :: productvector(:,:,:,:,:,:,:),productreshape(:,:)
   integer,allocatable :: newconfiglist(:,:)
   integer :: ifile,tot_ndof,tot_numconfig,iconfig,jj,kk,&
-       dirphase,reorder,num_allowed,jconfig,iitop(6),&
-       dofsum,thisconfig(ndof),ir,getconfiguration,tot_wfns,iwfn,myiostat
-  logical :: allowedconfig0
+       dirphase,num_allowed,jconfig,iitop(6),&
+       dofsum,thisconfig(ndof),ir,tot_wfns,iwfn,myiostat
   integer, target :: ii(6)
   integer, pointer :: ii1,ii2,ii3,ii4,ii5,ii6
 !  DATATYPE :: dot
@@ -493,14 +493,13 @@ contains
     use parameters
     use configmod
     use aarrmod
+    use configsubmod
     implicit none
     integer :: i,iihole,iloop,jloop,ivect
     DATATYPE,intent(out) :: outavector(num_config)
     integer ::  readconfig(ndof+2*numholes),xflag,iexcite,config2
     integer :: thisconfig(ndof+400)
-    integer :: jj,iind,phase,reorder
-    integer :: getconfiguration
-    logical :: allowedconfig0
+    integer :: jj,phase
     real*8 :: qfac,xphase
 
 !!!!!!!!!!!!!!   HOLES   !!!!!!!!!!!!!!
@@ -578,10 +577,10 @@ contains
     use parameters
     use configmod
     use aarrmod
+    use configsubmod
     implicit none
-    integer :: i,notusedint,phase,reorder,readconfig(ndof),config2,&
-         thisconfig(ndof),getconfiguration
-    logical :: allowedconfig0
+    integer :: i,notusedint,phase,readconfig(ndof),config2,&
+         thisconfig(ndof)
     DATATYPE,intent(out) :: outavector(num_config)
 
     outavector(:)=0d0;  thisconfig(:)=readconfig(:)
@@ -798,13 +797,12 @@ subroutine easy_load_avectors(iunit, qq, outavectors, mynumr, mynumconfig, mynum
   use parameters
   use configmod
   use mpimod   !! myrank
+  use configsubmod
   implicit none
-
   integer ::  mynumconfig, mynumr,mynumvects,iunit,ivect,qq, config1,&
-        thatconfig(ndof), myiostat, phase,reorder,myconfig,getconfiguration
+        thatconfig(ndof), myiostat, phase, myconfig
   DATATYPE,intent(out) :: outavectors(mynumr,num_config,mynumvects)
   real*8 :: rtempreadvect(mynumr)
-  logical :: allowedconfig0
   complex*16 :: ctempreadvect(mynumr)
 
   if (mynumr.gt.numr) then

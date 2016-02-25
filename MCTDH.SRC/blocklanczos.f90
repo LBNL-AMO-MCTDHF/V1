@@ -16,6 +16,7 @@ contains
     use sparseptrmod
     use configptrmod
     use sparsemultmod
+    use basissubmod
     implicit none
     type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: cptr
@@ -74,6 +75,7 @@ contains
     use sparseptrmod
     use configptrmod
     use sparsemultmod
+    use basissubmod
     implicit none
     type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: cptr
@@ -139,6 +141,7 @@ contains
     use sparseptrmod
     use configptrmod
     use sparsemultmod
+    use basissubmod
     implicit none
     type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: cptr
@@ -905,6 +908,7 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
   use fileptrmod
   use configmod
   use parblocklanmod
+  use basissubmod
   implicit none 
   integer, intent(in) :: order,inprintflag,guessflag
   integer :: printflag,maxdim,vdim,ii

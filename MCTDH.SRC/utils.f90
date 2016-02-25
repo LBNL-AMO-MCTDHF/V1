@@ -290,227 +290,12 @@ contains
 
 end subroutine nullgramschmidt
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!      MODULE INVSUBMOD    !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
-subroutine neglnmat(A,N)
-  implicit none
-  integer,intent(in) :: N
-  DATATYPE,intent(inout) :: A(N,N)
-  call bothlnmat(A,N,-1)
-end subroutine neglnmat
-
-
-subroutine lnmat(A,N)
-  implicit none
-  integer,intent(in) :: N
-  DATATYPE,intent(inout) :: A(N,N)
-  call bothlnmat(A,N,+1)
-end subroutine lnmat
-
-
-function djhlog(incomplex)
-  use bio_parameters
-  implicit none
-  complex*16 :: djhlog,incomplex
-  select case(logbranch)
-  case(0)
-     djhlog = log(incomplex)
-  case(1)
-     djhlog = log((0d0,1d0)*incomplex)-log((0d0,1d0))
-  case (2)
-     djhlog = log((-0.8d0,-0.6d0)*incomplex)-log((-0.8d0,-0.6d0))
-  case default
-     djhlog = log((-0.8d0,0.6d0)*incomplex)-log((-0.8d0,0.6d0))
-  end select
-end function djhlog
-
-
-subroutine bothlnmat(A,N, which) 
-!! input :
-!! A - an N by N matrix
-!! N - the dimension of A
-!! output:
-!! A - an N by N matrix that is A=-ln(A_in)
-  use tol_parameters
-  implicit none
-  integer,intent(in) :: N,which
-  DATATYPE,intent(inout) :: A(N,N)
-  integer, save :: ierr=0
-  real*8 :: time
-  integer :: lwork,i,j,k,nscale,iflag
-  complex*16 :: eig(N),djhlog 
-  DATATYPE :: sum,sum2,sum3
-  integer :: lwsp,ideg,iexph
-  DATATYPE,allocatable :: VL(:,:),VR(:,:),work(:),rwork(:), tempmat(:,:),wsp(:),saveA(:,:)
-  integer,allocatable :: ipiv(:)
-
-  allocate(VL(N,N),VR(N,N),work(8*N),rwork(8*N), tempmat(N,N),wsp(6*N*N),saveA(N,N),ipiv(2*N*N))
-
-  lwork=8*N
-
-  saveA(:,:)=A(:,:)
-
-!! identity check  (Why?  forget if ever was needed for any reason...
-!  rsum=0d0
-!  do i=1,N
-!    do j=1,N
-!      if (i==j) then
-!        rsum=rsum+abs(A(i,i)-1d0)
-!      else
-!        rsum=rsum+abs(A(i,j))
-!      endif
-!    enddo
-!  enddo
-!  if(rsum.lt.1d-8) then
-!    A=0d0
-!!!PREV 043012    A=0d0
-!!    A=0d0
-!!    do i=1,N
-!!       A(i,i)=-log(1d-8)
-!!    enddo
-!    return
-!  endif
-
-
-#ifdef REALGO 
-  call dgeev('V','V',N,A,N,rwork(1),rwork(1+N),VL,N,VR,N,work,lwork,i)
-  do j=1,N
-    eig(j)= (1d0,0d0)*rwork(j) + (0d0,1d0)*rwork(j+N)
-  enddo
-#else
-  call zgeev('V','V',N,A,N,eig,VL,N,VR,N,work,lwork,rwork,i)
-  VL(1:N,1:N)=ALLCON(VL(1:N,1:N))
-#endif
-
-
-!! MAY 2014
-  VL(:,:)=TRANSPOSE(VR(:,:))
-  call invmatsmooth(VL,N,N,invtol)
-
-!! apply the function
-  do k=1,N
-     if (eig(k).ne.0d0) then
-        if (real(djhlog(eig(k)**which),8).gt.log(1d0/lntol)) then
-           eig(k)= djhlog((eig(k)/abs(eig(k)))**which/lntol)
-        elseif (real(djhlog(eig(k)**which),8).lt.log(invtol)) then
-           eig(k)= djhlog(invtol*(eig(k)/abs(eig(k)))**which)
-        else
-           eig(k) = djhlog( eig(k)**which )
-        endif
-     else
-        if (which.eq.1) then
-           eig(k) = log(invtol)
-        elseif (which.eq.-1) then
-           eig(k) = log(1d0/lntol)
-        else
-           print *, "oogablah"; stop
-        endif
-     endif
-  enddo
-
-!! rebuild the matrix
-  do j=1,N
-    do i=1,N
-      A(i,j) = 0d0
-      do k=1,N
-!!FOR real valued (mctdh) this is still ok.  imaginary cancels.
-!!
-        A(i,j) = A(i,j) + VR(i,k) * &   !! ok imp conv mctdh
-             eig(k) * VL(j,k)           !! ok imp conv mctdh
-      enddo
-    enddo
-  enddo
-
-!! djh: check to make sure (degenerate case).  training wheels?
-!!  now doing proper spectral expansion so can probably remove but... leave for now
-
-  VL=(A)*which; time=1.d0;lwsp=6*N*N; ideg=6
-  wsp=0.d0
-  iexph=1
-  call MYGPADM( ideg, N, time, VL, N,wsp,lwsp,ipiv,iexph,nscale,iflag)
-  
-  tempmat=RESHAPE(wsp(iexph:iexph+N*N-1),(/N,N/))-saveA(:,:)
-
-  sum=0;sum2=0;sum3=0
-  do i=1,N
-     do j=1,N
-        sum=sum+abs(tempmat(i,j)**2)
-        sum2=sum2+abs(A(i,j)**2)
-        sum3=sum3+abs(tempmat(i,j)**2)
-     enddo
-  enddo
-  if (ierr.lt.10.and.((abs(sum/sum2).gt.1.d-7.and.abs(sum2).gt.1d-22).or.(iflag.ne.0))) then
-     print *, "NEGLN ERR", iflag,abs(sum/sum2),iexph,lwsp,sum,sum2,sum3
-     if (ierr.le.1) then
-        do i=1,min(10,N)
-           write(*,'(100F12.6)') abs(saveA(1:min(10,N),i))
-        enddo
-        print *, "XX"
-        tempmat=RESHAPE(wsp(iexph:iexph+N*N-1),(/N,N/))
-        do i=1,min(10,N)
-           write(*,'(100F12.6)') abs(tempmat(1:min(10,N),i))
-        enddo
-        print *
-     endif
-           
-     ierr=ierr+1
-     if (ierr.eq.10) then
-        print *, "FURTHER NEGLN ERRS SUPPRESSED"
-     endif
-  endif
-
-  deallocate(VL,VR,work,rwork,tempmat,wsp,saveA,ipiv)
-
-end subroutine bothlnmat
-
-
-
-subroutine expmat(A,N)
-!! input :
-!! A - an N by N matrix
-!! N - the dimension of A
-!! output:
-!! A - an N by N matrix that is A=exp(A_in)
-  use tol_parameters
-  implicit none
-  integer,intent(in) :: N
-  DATATYPE,intent(inout) :: A(N,N)
-  integer :: lwork,i,k,j
-  complex*16,allocatable :: eig(:), CVL(:,:),CVR(:,:),CA(:,:)
-  DATATYPE,allocatable :: VL(:,:),VR(:,:),work(:),rwork(:)
-
-  allocate( eig(N), CVL(N,N),CVR(N,N),CA(N,N), VL(N,N),VR(N,N),work(8*N),rwork(4*N) )
-  lwork=8*N
-
-#ifdef REALGO 
-  call dgeev('V','V',N,A,N,rwork(1),rwork(1+N),VL,N,VR,N,work,lwork,i)
-  do j=1,N
-    eig(j)= (1d0,0d0)*rwork(j) + (0d0,1d0)*rwork(j+N)
-  enddo
-#else
-  j=0
-  call zgeev('V','V',N,A,N,eig,VL,N,VR,N,work,lwork,rwork,i)
-#endif
-
-  VL(:,:)=TRANSPOSE(VR(:,:))
-  call invmatsmooth(VL,N,N,invtol)
-
-!! apply the function
-  do k=1,N
-     eig(k) = exp( eig(k) )
-     CVR(:,k)=VR(:,k)*eig(k)
-  enddo
-  CVL(:,:)=VL(:,:)
-
-!! rebuild the matrix
-
-  call ZGEMM('N','T',N,N,N,(1d0,0d0),CVR,N,CVL,N,(0d0,0d0),CA,N)
-  A(:,:)=CA(:,:)  !! OK IMP CONV
-
-  deallocate( eig,cvl,cvr,ca,vl,vr,work,rwork )
-
-end subroutine expmat
-
+module invsubmod
+contains
 
 !!$  For invmatsmooth, tol is the maximum ratio of smallest to biggest eigenvalue
 !!$   i.e. tol is relative not absolute
@@ -646,6 +431,254 @@ subroutine realinvmatsmooth(A,N,tol)  !! inverse of ANY matrix.
 
 end subroutine realinvmatsmooth
 
+end module invsubmod
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!      MODULE LNSUBMOD     !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+module lnsubmod
+contains
+
+subroutine neglnmat(A,N)
+  implicit none
+  integer,intent(in) :: N
+  DATATYPE,intent(inout) :: A(N,N)
+  call bothlnmat(A,N,-1)
+end subroutine neglnmat
+
+
+subroutine lnmat(A,N)
+  implicit none
+  integer,intent(in) :: N
+  DATATYPE,intent(inout) :: A(N,N)
+  call bothlnmat(A,N,+1)
+end subroutine lnmat
+
+
+function djhlog(incomplex)
+  use bio_parameters
+  implicit none
+  complex*16 :: djhlog,incomplex
+  select case(logbranch)
+  case(0)
+     djhlog = log(incomplex)
+  case(1)
+     djhlog = log((0d0,1d0)*incomplex)-log((0d0,1d0))
+  case (2)
+     djhlog = log((-0.8d0,-0.6d0)*incomplex)-log((-0.8d0,-0.6d0))
+  case default
+     djhlog = log((-0.8d0,0.6d0)*incomplex)-log((-0.8d0,0.6d0))
+  end select
+end function djhlog
+
+
+subroutine bothlnmat(A,N, which) 
+!! input :
+!! A - an N by N matrix
+!! N - the dimension of A
+!! output:
+!! A - an N by N matrix that is A=-ln(A_in)
+  use tol_parameters
+  use invsubmod
+  implicit none
+  integer,intent(in) :: N,which
+  DATATYPE,intent(inout) :: A(N,N)
+  integer, save :: ierr=0
+  real*8 :: time
+  integer :: lwork,i,j,k,nscale,iflag
+  complex*16 :: eig(N)
+  DATATYPE :: sum,sum2,sum3
+  integer :: lwsp,ideg,iexph
+  DATATYPE,allocatable :: VL(:,:),VR(:,:),work(:),rwork(:), tempmat(:,:),wsp(:),saveA(:,:)
+  integer,allocatable :: ipiv(:)
+
+  allocate(VL(N,N),VR(N,N),work(8*N),rwork(8*N), tempmat(N,N),wsp(6*N*N),saveA(N,N),ipiv(2*N*N))
+
+  lwork=8*N
+
+  saveA(:,:)=A(:,:)
+
+!! identity check  (Why?  forget if ever was needed for any reason...
+!  rsum=0d0
+!  do i=1,N
+!    do j=1,N
+!      if (i==j) then
+!        rsum=rsum+abs(A(i,i)-1d0)
+!      else
+!        rsum=rsum+abs(A(i,j))
+!      endif
+!    enddo
+!  enddo
+!  if(rsum.lt.1d-8) then
+!    A=0d0
+!!!PREV 043012    A=0d0
+!!    A=0d0
+!!    do i=1,N
+!!       A(i,i)=-log(1d-8)
+!!    enddo
+!    return
+!  endif
+
+
+#ifdef REALGO 
+  call dgeev('V','V',N,A,N,rwork(1),rwork(1+N),VL,N,VR,N,work,lwork,i)
+  do j=1,N
+    eig(j)= (1d0,0d0)*rwork(j) + (0d0,1d0)*rwork(j+N)
+  enddo
+#else
+  call zgeev('V','V',N,A,N,eig,VL,N,VR,N,work,lwork,rwork,i)
+  VL(1:N,1:N)=ALLCON(VL(1:N,1:N))
+#endif
+
+
+!! MAY 2014
+  VL(:,:)=TRANSPOSE(VR(:,:))
+  call invmatsmooth(VL,N,N,invtol)
+
+!! apply the function
+  do k=1,N
+     if (eig(k).ne.0d0) then
+        if (real(djhlog(eig(k)**which),8).gt.log(1d0/lntol)) then
+           eig(k)= djhlog((eig(k)/abs(eig(k)))**which/lntol)
+        elseif (real(djhlog(eig(k)**which),8).lt.log(invtol)) then
+           eig(k)= djhlog(invtol*(eig(k)/abs(eig(k)))**which)
+        else
+           eig(k) = djhlog( eig(k)**which )
+        endif
+     else
+        if (which.eq.1) then
+           eig(k) = log(invtol)
+        elseif (which.eq.-1) then
+           eig(k) = log(1d0/lntol)
+        else
+           print *, "oogablah"; stop
+        endif
+     endif
+  enddo
+
+!! rebuild the matrix
+  do j=1,N
+    do i=1,N
+      A(i,j) = 0d0
+      do k=1,N
+!!FOR real valued (mctdh) this is still ok.  imaginary cancels.
+!!
+        A(i,j) = A(i,j) + VR(i,k) * &   !! ok imp conv mctdh
+             eig(k) * VL(j,k)           !! ok imp conv mctdh
+      enddo
+    enddo
+  enddo
+
+!! djh: check to make sure (degenerate case).  training wheels?
+!!  now doing proper spectral expansion so can probably remove but... leave for now
+
+  VL=(A)*which; time=1.d0;lwsp=6*N*N; ideg=6
+  wsp=0.d0
+  iexph=1
+  call MYGPADM( ideg, N, time, VL, N,wsp,lwsp,ipiv,iexph,nscale,iflag)
+  
+  tempmat=RESHAPE(wsp(iexph:iexph+N*N-1),(/N,N/))-saveA(:,:)
+
+  sum=0;sum2=0;sum3=0
+  do i=1,N
+     do j=1,N
+        sum=sum+abs(tempmat(i,j)**2)
+        sum2=sum2+abs(A(i,j)**2)
+        sum3=sum3+abs(tempmat(i,j)**2)
+     enddo
+  enddo
+  if (ierr.lt.10.and.((abs(sum/sum2).gt.1.d-7.and.abs(sum2).gt.1d-22).or.(iflag.ne.0))) then
+     print *, "NEGLN ERR", iflag,abs(sum/sum2),iexph,lwsp,sum,sum2,sum3
+     if (ierr.le.1) then
+        do i=1,min(10,N)
+           write(*,'(100F12.6)') abs(saveA(1:min(10,N),i))
+        enddo
+        print *, "XX"
+        tempmat=RESHAPE(wsp(iexph:iexph+N*N-1),(/N,N/))
+        do i=1,min(10,N)
+           write(*,'(100F12.6)') abs(tempmat(1:min(10,N),i))
+        enddo
+        print *
+     endif
+           
+     ierr=ierr+1
+     if (ierr.eq.10) then
+        print *, "FURTHER NEGLN ERRS SUPPRESSED"
+     endif
+  endif
+
+  deallocate(VL,VR,work,rwork,tempmat,wsp,saveA,ipiv)
+
+end subroutine bothlnmat
+
+end module lnsubmod
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!      MODULE EXPSUBMOD    !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+module expsubmod
+contains
+
+subroutine expmat(A,N)
+!! input :
+!! A - an N by N matrix
+!! N - the dimension of A
+!! output:
+!! A - an N by N matrix that is A=exp(A_in)
+  use tol_parameters
+  use invsubmod
+  implicit none
+  integer,intent(in) :: N
+  DATATYPE,intent(inout) :: A(N,N)
+  integer :: lwork,i,k,j
+  complex*16,allocatable :: eig(:), CVL(:,:),CVR(:,:),CA(:,:)
+  DATATYPE,allocatable :: VL(:,:),VR(:,:),work(:),rwork(:)
+
+  allocate( eig(N), CVL(N,N),CVR(N,N),CA(N,N), VL(N,N),VR(N,N),work(8*N),rwork(4*N) )
+  lwork=8*N
+
+#ifdef REALGO 
+  call dgeev('V','V',N,A,N,rwork(1),rwork(1+N),VL,N,VR,N,work,lwork,i)
+  do j=1,N
+    eig(j)= (1d0,0d0)*rwork(j) + (0d0,1d0)*rwork(j+N)
+  enddo
+#else
+  j=0
+  call zgeev('V','V',N,A,N,eig,VL,N,VR,N,work,lwork,rwork,i)
+#endif
+
+  VL(:,:)=TRANSPOSE(VR(:,:))
+  call invmatsmooth(VL,N,N,invtol)
+
+!! apply the function
+  do k=1,N
+     eig(k) = exp( eig(k) )
+     CVR(:,k)=VR(:,k)*eig(k)
+  enddo
+  CVL(:,:)=VL(:,:)
+
+!! rebuild the matrix
+
+  call ZGEMM('N','T',N,N,N,(1d0,0d0),CVR,N,CVL,N,(0d0,0d0),CA,N)
+  A(:,:)=CA(:,:)  !! OK IMP CONV
+
+  deallocate( eig,cvl,cvr,ca,vl,vr,work,rwork )
+
+end subroutine expmat
+
+end module expsubmod
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!      MODULE MATSUBMOD    !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
 !! orthog routines:
 !!  FLAG 1:  if on input A(i,j) = <phi_i|phi_j>
@@ -653,6 +686,10 @@ end subroutine realinvmatsmooth
 !!  FLAG 2:  if on input A(i,j) = <phi_i|phi_j>
 !!              on output varphi_j = sum_i A(i,j) |phi_i> are biorthonormal to phi:
 !!            : <varphi_i|phi_j>=delta_ij
+
+
+module matsubmod
+contains
 
 subroutine biorthogmat(A,N)
   implicit none
@@ -768,6 +805,7 @@ end subroutine cnormorthogmat
 subroutine allpurposemat(A,N,flag)
   use tol_parameters
   use fileptrmod
+  use invsubmod
 !! input :
 !! A - an N by N matrix
 !! N - the dimension of A
@@ -819,6 +857,7 @@ subroutine allpurposemat(A,N,flag)
 
 end subroutine allpurposemat
 
+end module
 
 
 ! enter as l1 l2 m1 m2 l3    TIMES TWO!!   INTEGER ARGUMENTS FOR HALF SPIN

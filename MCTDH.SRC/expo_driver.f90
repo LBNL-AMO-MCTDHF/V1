@@ -831,6 +831,7 @@ contains
     use configptrmod
     use sparseptrmod
     use sparsemultmod
+    use basissubmod
     implicit none
     type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: inconfigpointer
@@ -894,6 +895,7 @@ contains
     use configptrmod
     use sparseptrmod
     use sparsemultmod
+    use basissubmod
     implicit none
     type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: inconfigpointer
@@ -964,6 +966,7 @@ contains
     use configptrmod
     use sparseptrmod
     use sparsemultmod
+    use basissubmod
     implicit none
     type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: inconfigpointer
@@ -1072,6 +1075,7 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
   use mpimod
   use parconfigexpomod
   use sparse_parameters   !! nzflag
+  use basissubmod
   implicit none
   integer,intent(in) :: imc
   integer,intent(out) :: numiters

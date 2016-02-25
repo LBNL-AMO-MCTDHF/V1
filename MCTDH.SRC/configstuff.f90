@@ -25,6 +25,7 @@ subroutine myconfigeig(cptr,thisconfigvects,thisconfigvals,order,printflag, &
   use mpimod
   use configptrmod
   use configmod
+  use basissubmod
   implicit none
   type(CONFIGPTR),intent(in) :: cptr
   integer,intent(in) :: order,printflag,guessflag,numshift
@@ -194,6 +195,7 @@ subroutine myconfigprop(avectorin,avectorout,time,imc,numiters)
   use r_parameters
   use sparse_parameters
   use configmod
+  use basissubmod
   implicit none
   integer,intent(in) :: imc
   integer,intent(out) :: numiters
@@ -226,6 +228,8 @@ subroutine nonsparseprop(wwin,dwin,avectorin,avectorout,time,imc)
   use mpimod
   use configpropmod
   use walkmod
+  use basissubmod
+  use expsubmod
   implicit none
   type(walktype),intent(in) :: wwin,dwin
   integer, intent(in) :: imc

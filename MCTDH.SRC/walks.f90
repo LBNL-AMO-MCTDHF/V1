@@ -164,12 +164,11 @@ subroutine walks(www)
   use walkmod
   use mpimod !! nprocs
   use aarrmod
+  use configsubmod
   implicit none
   type(walktype) :: www
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, jspf, &
-       iispf, jjspf, config2, config1, dirphase, &
-       iind, flag, idof, iidof, jdof, iwalk, reorder, getconfiguration,idiag
-  logical :: allowedconfig0
+       iispf, jjspf, config2, config1, dirphase, flag, idof, iidof, jdof, iwalk, idiag
   integer :: thisconfig(www%ndof), thatconfig(www%ndof), temporb(2), temporb2(2), isize, &
        listorder(www%maxdoublewalks+www%maxsinglewalks)
 
@@ -437,11 +436,11 @@ subroutine getnumwalks(www)
   use walkmod
   use mpimod
   use aarrmod
+  use configsubmod
   implicit none
   type(walktype) :: www
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, iispf,  config1,  &
-       dirphase, iind, flag, idof, iidof, jdof,iwalk , reorder, config2, getconfiguration
-  logical :: allowedconfig0
+       dirphase, flag, idof, iidof, jdof,iwalk ,config2
   integer :: thisconfig(www%ndof), thatconfig(www%ndof), temporb(2), temporb2(2),totwalks
   character(len=3) :: iilab
   character(len=4) :: iilab0

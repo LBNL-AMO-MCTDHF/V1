@@ -789,6 +789,7 @@ contains
     use configmod
     use xxxmod
     use sparsemultmod
+    use basissubmod
     implicit none
     DATATYPE,intent(in) :: in_xpsi(tot_adim*mcscfnum+totspfdim)
     DATATYPE,intent(out) :: out_xpsip(tot_adim*mcscfnum+totspfdim)

@@ -92,11 +92,11 @@ subroutine spinwalks(www)
   use walkmod
   use mpimod !! nprocs
   use aarrmod
+  use configsubmod
   implicit none
   type(walktype) :: www
   integer ::     config1, config2, dirphase,  idof, jdof,iwalk , thisconfig(www%ndof),  &
-       thatconfig(www%ndof), reorder,  getconfiguration, ii, jj, firstspin, secondspin, iproc
-  logical :: allowedconfig0
+       thatconfig(www%ndof), ii, jj, firstspin, secondspin, iproc
 
   spinwalk=0;     spinwalkdirphase=0
 
@@ -164,10 +164,11 @@ subroutine spinsets_first(www)
   use walkmod
   use aarrmod
   use mpimod
+  use basissubmod
   implicit none
   type(walktype) :: www
   integer ::  iwalk, jj,  iset, ilevel, currentnumwalks, prevnumwalks, flag, iflag, &
-       addwalks, i, j, jwalk, jset, getdfindex, iproc
+       addwalks, i, j, jwalk, jset, iproc
   integer, allocatable :: taken(:), tempwalks(:)
 
   OFLWR "   ... go spinsets ..."; CFL
@@ -307,13 +308,12 @@ subroutine getnumspinwalks(www)
   use fileptrmod
   use walkmod
   use spinwalkinternal
+  use configsubmod
   implicit none
   type(walktype) :: www
   integer ::   ispf,  config1, flag, idof, jdof,iwalk , thisconfig(www%ndof), &
-       thatconfig(www%ndof), ii, jj, dirphase, reorder, firstspin, secondspin
+       thatconfig(www%ndof), ii, jj, dirphase, firstspin, secondspin
   real*8 :: avgspinwalks
-  logical :: allowedconfig0
-
 
   OFLWR "Doing spin projector.";  CFL
 
@@ -440,12 +440,13 @@ subroutine configspinset_projector(www)
   use walkmod
   use spinwalkinternal
   use mpimod
+  use configsubmod
   implicit none
   type(walktype) :: www
   integer :: info, lwork,j,i,ii,iset,jj, elim, elimsets, flag, iwalk,&
        iproc
   real*8, allocatable :: spinvects(:,:), spinvals(:), work(:), realprojector(:,:)
-  logical :: spinallowed,allowedconfig0
+  logical :: spinallowed
 !  DATATYPE :: doublevects(maxspinsetsize**2)
 !  real*8 :: doublevals(maxspinsetsize)
 

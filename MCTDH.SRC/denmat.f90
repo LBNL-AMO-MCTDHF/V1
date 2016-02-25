@@ -269,6 +269,7 @@ subroutine getdenmatstuff(www,avector, denmat, invdenmat, denvals, &
   use class_parameters
   use denreg_parameters
   use walkmod
+  use invsubmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) ::  numpoints,howmany

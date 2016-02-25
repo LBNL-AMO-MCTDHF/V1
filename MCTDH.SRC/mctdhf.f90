@@ -195,12 +195,13 @@
 
   
 program mctdhf
+  use parameters
   use mpimod
   use xxxmod
   use opmod !! frozenspfs
   use configmod
   use configpropmod
-  use parameters
+  use configsubmod
   implicit none
 
   integer :: i,spfsloaded,totread,ifile,readnum

@@ -14,6 +14,7 @@ subroutine prop_loop( starttime)
   use configmod
   use derivativemod
   use sparsemultmod
+  use basissubmod
   implicit none
   integer ::  jj,flag,  iii, itime, jtime, times(20)=0, qq,imc,getlen,myiostat
   DATAECS :: thisenergy(mcscfnum), lastenergy(mcscfnum) ,thisenergyavg,&

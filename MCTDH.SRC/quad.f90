@@ -363,6 +363,7 @@ subroutine aaonedinit(www,inavector)
   use walkmod
   use dotmod
   use sparsemultmod
+  use basissubmod
   implicit none
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: inavector(www%totadim)
@@ -458,6 +459,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
   use configmod
   use dgsolvemod
   use sparsemultmod
+  use basissubmod
   implicit none
   DATATYPE, intent(inout) ::  inavector(numr,www%firstconfig:www%lastconfig)
   integer,intent(out) :: jjcalls0
@@ -674,6 +676,7 @@ contains
     use configptrmod
     use sparseptrmod
     use sparsemultmod
+    use basissubmod
     implicit none
     type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: cptr
@@ -738,6 +741,7 @@ subroutine nonsparsequadavector(www,avectorout)
   use xxxmod
   use walkmod
   use sparsemultmod
+  use basissubmod
   implicit none
   type(walktype),intent(in) :: www
   DATATYPE,intent(inout) :: avectorout(www%totadim)
