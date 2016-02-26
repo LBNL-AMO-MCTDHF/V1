@@ -691,22 +691,23 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
        drivingavectorsxx(numr,www%firstconfig:www%lastconfig,numvects),&
        drivingavectorsyy(numr,www%firstconfig:www%lastconfig,numvects),&
        drivingavectorszz(numr,www%firstconfig:www%lastconfig,numvects)
-  DATATYPE ::  a1(numr,numvects), a2(numr,numvects), &
-       a1p(numr,numvects), a2p(numr,numvects),&
-       tempconmatels(www%nspf,www%nspf)
+  DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a1p(numr,numvects), &
+       a2p(numr,numvects), tempconmatels(www%nspf,www%nspf), csum
   DATATYPE,allocatable :: bigavector(:,:,:),bigavectorp(:,:,:), avectorp(:,:,:)
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,   &
        iwalk, info, kspf, lspf, ind, jind,  lowspf,highspf, &
-       lind, llind, flag, isize, iwhich,  iiyy,maxii,imc,ihop
-  integer :: ipiv(liosize)
+       lind, llind, flag, isize, iwhich,  iiyy,maxii,imc,ihop, liosize
+  integer :: ipiv(www%nspf*(www%nspf-1))
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
-  DATATYPE :: liosolve(liosize),lioden(liosize, liosize),&
-       liodencopy(liosize,liosize),liosolvetemp(liosize), csum, myliosolve(liosize),&
-       nullvector1(numr),nullvector2(numr)
+  DATATYPE :: liosolve(www%nspf*(www%nspf-1)),lioden(www%nspf*(www%nspf-1), www%nspf*(www%nspf-1)),&
+       liodencopy(www%nspf*(www%nspf-1),www%nspf*(www%nspf-1)),liosolvetemp(www%nspf*(www%nspf-1)),&
+       myliosolve(www%nspf*(www%nspf-1)),nullvector1(numr),nullvector2(numr)
 
   nullvector1(:)=0; nullvector2(:)=0
   cptr%xconmatel(:,:)=0.d0;   cptr%xconmatelxx(:,:)=0.d0;   
   cptr%xconmatelyy(:,:)=0.d0;   cptr%xconmatelzz(:,:)=0.d0
+
+  liosize=www%nspf*(www%nspf-1)
 
   if ((iwhich.eq.2).and.(numshells.eq.1)) then
      return

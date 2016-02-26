@@ -454,7 +454,6 @@ subroutine getparams()
         numexcite(ishell:numshells)=numexcite(ishell+1:numshells+1)
      endif
   enddo
-  liosize=nspf*(nspf-1)
 
   do i=1,numshells
      if (allshelltop(i).le.allshelltop(i-1)) then

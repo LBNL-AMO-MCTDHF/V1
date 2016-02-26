@@ -183,7 +183,6 @@ integer :: conway=0                              !! for constraintflag=2, dirac 
                                                  !!   3=Lagrangian with epsilon times McLachlan
 real*8 :: conprop=1d-1                           !! epsilon for conway=3
 real*8 :: condamp=1
-integer :: liosize
 end module constraint_parameters
 module denreg_parameters
 real*8 :: denreg=1d-10           !! Denreg=      !! density matrix regularization parameter.

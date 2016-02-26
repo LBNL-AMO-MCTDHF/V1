@@ -340,22 +340,7 @@ program mctdhf
   local_nconfig=www%localnconfig
   tot_adim=local_nconfig*numr;  
 
-  call walkalloc(www);             call walks(www)
-
-  call hops(www);
-
-  call set_matsize(www);
-
-  call init_dfcon(www)
-
-  call spinwalkinit(www); 
-  call spinwalks(www)
-  call spinsets_first(www)
-  call configspin_matel(www)
-  call configspinset_projector(www)
-  call spinwalkinternal_dealloc()
-
-  call basis_set(www,nzflag)
+  call walks_and_basis(www)
 
 !! WALKTYPE VARIABLE BIOWW FOR BIORTHO
 
@@ -385,22 +370,7 @@ program mctdhf
 
      call fast_newconfiglist(bioww,.false.)
 
-     call walkalloc(bioww);             call walks(bioww)
-
-     call hops(bioww);
-
-     call set_matsize(bioww);
-
-     call init_dfcon(bioww)
-
-     call spinwalkinit(bioww); 
-     call spinwalks(bioww)
-     call spinsets_first(bioww)
-     call configspin_matel(bioww)
-     call configspinset_projector(bioww)
-     call spinwalkinternal_dealloc()
-
-     call basis_set(bioww,nzflag)
+     call walks_and_basis(bioww)
 
 !!! END SET BIOWW !!
 
@@ -436,22 +406,7 @@ program mctdhf
 
         call set_newconfiglist(www,dfww)
 
-        call walkalloc(dfww);             call walks(dfww)
-
-        call hops(dfww);
-
-        call set_matsize(dfww);
-
-        call init_dfcon(dfww)
-
-        call spinwalkinit(dfww); 
-        call spinwalks(dfww)
-        call spinsets_first(dfww)
-        call configspin_matel(dfww)
-        call configspinset_projector(dfww)
-        call spinwalkinternal_dealloc()
-
-        call basis_set(dfww,nzflag)
+        call walks_and_basis(dfww)
 
 !!! END SET DFWW !!
 
@@ -477,22 +432,7 @@ program mctdhf
 
         call fast_newconfiglist(fdww,.true.)
 
-        call walkalloc(fdww);             call walks(fdww)
-
-        call hops(fdww);
-
-        call set_matsize(fdww);
-
-        call init_dfcon(fdww)
-
-        call spinwalkinit(fdww); 
-        call spinwalks(fdww)
-        call spinsets_first(fdww)
-        call configspin_matel(fdww)
-        call configspinset_projector(fdww)
-        call spinwalkinternal_dealloc()
-
-        call basis_set(fdww,nzflag)
+        call walks_and_basis(fdww)
 
      endif
 
@@ -540,7 +480,7 @@ program mctdhf
   do i=1,dwwptr%nzprocs
      write (mpifileptr,'(T5,2I7,i20)') i,dwwptr%nzproclist(i),dwwptr%nzconfsperproc(i)
   enddo
-  CFL
+  WRFL; CFL
 
   call opalloc()
 
@@ -740,6 +680,24 @@ program mctdhf
   call system("date")
   call mpibarrier()
   OFLWR "   ...END MCTDHF"; CFLST
+
+contains
+  subroutine walks_and_basis(wwin)
+    implicit none
+    type(walktype),intent(inout) :: wwin
+     call walkalloc(wwin)
+     call walks(wwin)
+     call hops(wwin)
+     call set_matsize(wwin)
+     call init_dfcon(wwin)
+     call spinwalkinit(wwin)
+     call spinwalks(wwin)
+     call spinsets_first(wwin)
+     call configspin_matel(wwin)
+     call configspinset_projector(wwin)
+     call spinwalkinternal_dealloc()
+     call basis_set(wwin,nzflag)
+   end subroutine walks_and_basis
 
 end program mctdhf
 
