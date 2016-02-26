@@ -810,7 +810,18 @@ subroutine getdensity(density, indenmat, inspfs,howmany)
 
 end subroutine getdensity
 
-!! redundancy here with getsmallugvalue
+
+subroutine op_conjg(in, out)
+  use myparams
+  implicit none
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig)
+  integer :: i
+  do i=-mbig,mbig
+     out(:,:,i)=ALLCON(in(:,:,-i))
+  enddo
+end subroutine op_conjg
+
 
 subroutine op_reflectz(in, out)
   use myparams

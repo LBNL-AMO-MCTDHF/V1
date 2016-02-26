@@ -7,7 +7,7 @@
 
 
 subroutine get_orbmats( myspfs,  howmany,  ugmat,   &
-     xdipmat,ydipmat,zdipmat,   xrefmat,yrefmat,zrefmat)
+     xdipmat,ydipmat,zdipmat,   xrefmat,yrefmat,zrefmat,conjgmat)
   use parameters
   implicit none
 
@@ -15,7 +15,8 @@ subroutine get_orbmats( myspfs,  howmany,  ugmat,   &
   DATATYPE,intent(in) :: myspfs(spfsize,howmany)
   DATATYPE, intent(out) :: ugmat(howmany,howmany), xdipmat(howmany,howmany), &
        ydipmat(howmany,howmany), zdipmat(howmany,howmany), &
-       xrefmat(howmany,howmany), yrefmat(howmany,howmany), zrefmat(howmany,howmany)
+       xrefmat(howmany,howmany), yrefmat(howmany,howmany), zrefmat(howmany,howmany),&
+       conjgmat(howmany,howmany)
   DATATYPE,allocatable ::  tempspfs(:,:),tempspfs2(:,:)
   integer :: i,lowspf,highspf,numspf
 
@@ -31,6 +32,22 @@ subroutine get_orbmats( myspfs,  howmany,  ugmat,   &
      call getOrbSetRange(lowspf,highspf)
   endif
   numspf=highspf-lowspf+1
+
+!! CONJUGATION
+  do i=lowspf,highspf
+     call op_conjg(myspfs(:,i),tempspfs(:,i))
+  enddo
+
+  if (numspf.gt.0) then
+     call MYGEMM(CNORMCHAR,'N',howmany,numspf,spfsize,DATAONE, myspfs, spfsize, &
+          tempspfs(:,lowspf:highspf), spfsize, DATAZERO, conjgmat(:,lowspf:highspf), howmany)
+  endif
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(conjgmat,nspf)
+  endif
+  if (parorbsplit.eq.3) then
+     call mympireduce(conjgmat(:,:),howmany**2)
+  endif
 
 !! M & U/G
 
@@ -144,72 +161,17 @@ subroutine get_orbmats( myspfs,  howmany,  ugmat,   &
 end subroutine get_orbmats
 
 
-
-
-subroutine psistats( thistime )
-  use parameters
-  use mpimod
-  use configmod
-  use xxxmod
-  implicit none
-
-  real*8,intent(in) :: thistime
-  integer, save :: calledflag=0
-  integer :: i,myiostat
-  DATATYPE :: mexpect(mcscfnum),ugexpect(mcscfnum),m2expect(mcscfnum),&
-       xreflect(mcscfnum),yreflect(mcscfnum),zreflect(mcscfnum),xdipole(mcscfnum),&
-       ydipole(mcscfnum),zdipole(mcscfnum)
-
-  if (calledflag==0) then
-     if (myrank.eq.1) then
-        open(662, file=psistatsfile, status="unknown",iostat=myiostat)
-        call checkiostat(myiostat,"opening "//psistatsfile)
-#ifdef REALGO        
-        write(662,'(A16,200A14)',iostat=myiostat) &
-             " Time     ", " M        ", " M2       ", " UG       ", " XDipole  ", &
-             " YDipole  ", " ZDipole  ", " XReflect ", " YReflect ", " ZReflect "
-#else
-        write(662,'(A16,A14,200A28)',iostat=myiostat) &
-             " Time     ", " M        ", " M2       ", " UG       ", " XDipole  ", &
-             " YDipole  ", " ZDipole  ", " XReflect ", " YReflect ", " ZReflect "
-#endif
-        call checkiostat(myiostat,"writing "//psistatsfile)
-        close(662)
-     endif
-  endif
-
-  calledflag=1
-
-
-  call get_psistats(www,bwwptr,yyy%cmfspfs(:,0),mcscfnum,yyy%cmfavec(:,:,0),&
-       mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
-
-  if (myrank.eq.1) then
-     open(662, file=psistatsfile, status="old", position="append",iostat=myiostat)
-     call checkiostat(myiostat,"opening "//psistatsfile)
-     do i=1,mcscfnum
-        write(662,'(F13.5,I3,2000F14.8)',iostat=myiostat) thistime, i, &
-             mexpect(i),m2expect(i),ugexpect(i),  xdipole(i),ydipole(i),zdipole(i),  &
-             xreflect(i),yreflect(i),zreflect(i)
-     enddo
-     call checkiostat(myiostat,"writing "//psistatsfile)
-     close(662)
-  endif
-
-end subroutine psistats
-
-
 module psibiomod
   use biorthotypemod
   implicit none
   integer :: psibioalloc=0, psibionumvec=(-1)
   type(biorthotype),target,allocatable :: ugbiovar(:),&
-       xrefbiovar(:),yrefbiovar(:),zrefbiovar(:)
+       xrefbiovar(:),yrefbiovar(:),zrefbiovar(:),conjgbiovar(:)
 end module
 
 
 subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2expect,ugexpect,&
-     xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect)
+     xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect,conjgexpect)
   use parameters
   use walkmod
   use arbitrarymultmod
@@ -222,11 +184,11 @@ subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2ex
        in_inavectors(numr,www%firstconfig:www%lastconfig,numvec)       
   DATATYPE, intent(out) :: mexpect(numvec),ugexpect(numvec),m2expect(numvec),&
        xreflect(numvec),yreflect(numvec),zreflect(numvec),&
-       xdipole(numvec),ydipole(numvec),zdipole(numvec)
+       xdipole(numvec),ydipole(numvec),zdipole(numvec),conjgexpect(numvec)
   DATATYPE,allocatable :: ugmat(:,:), xdipmat(:,:), &
        ydipmat(:,:), zdipmat(:,:), inavectors(:,:,:), &
        xrefmat(:,:), yrefmat(:,:), zrefmat(:,:),     &
-       tempvector(:,:), tempspfs(:,:),tempspfs2(:,:)
+       tempvector(:,:), tempspfs(:,:),tempspfs2(:,:),conjgmat(:,:)
   DATATYPE :: normsq(numvec),nullcomplex,dipoles(3),nucdipexpect(numvec,3),csum
   DATAECS :: rvector(numr)
   integer :: i,imc
@@ -240,11 +202,12 @@ subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2ex
   endif
 
   if (psibioalloc.ne.0.and.psibionumvec.ne.numvec) then
-     deallocate(ugbiovar,xrefbiovar,yrefbiovar,zrefbiovar)
+     deallocate(ugbiovar,xrefbiovar,yrefbiovar,zrefbiovar,conjgbiovar)
      psibioalloc=0
   endif
   if (psibioalloc.eq.0) then
-     allocate(ugbiovar(numvec),xrefbiovar(numvec), yrefbiovar(numvec),zrefbiovar(numvec))
+     allocate(ugbiovar(numvec),xrefbiovar(numvec), yrefbiovar(numvec),zrefbiovar(numvec),&
+          conjgbiovar(numvec))
   endif
   psibioalloc=1
 
@@ -252,12 +215,12 @@ subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2ex
        ydipmat(www%nspf,www%nspf), zdipmat(www%nspf,www%nspf), &
        xrefmat(www%nspf,www%nspf), yrefmat(www%nspf,www%nspf), &
        zrefmat(www%nspf,www%nspf),tempvector(numr,www%firstconfig:www%lastconfig), &
-       tempspfs(spfsize,www%nspf),tempspfs2(spfsize,www%nspf))
+       tempspfs(spfsize,www%nspf),tempspfs2(spfsize,www%nspf),&
+       conjgmat(www%nspf,www%nspf))
   
   ugmat=0; xdipmat=0; ydipmat=0; zdipmat=0; xrefmat=0; yrefmat=0; zrefmat=0
-  call get_orbmats( myspfs,  www%nspf,  ugmat,   xdipmat,ydipmat,zdipmat,   xrefmat,yrefmat,zrefmat)
-
-!! M & U/G
+  call get_orbmats( myspfs,  www%nspf,  ugmat,   xdipmat,ydipmat,zdipmat,  &
+       xrefmat,yrefmat,zrefmat, conjgmat)
 
   normsq(:)=0
   if (www%totadim.gt.0) then
@@ -268,6 +231,19 @@ subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2ex
   if (www%parconsplit.ne.0) then
      call mympireduce(normsq,numvec)
   endif
+
+!! CONJUGATION
+
+  do i=1,nspf
+     call op_conjg(myspfs(:,i),tempspfs(:,i))
+  enddo
+  do imc=1,numvec
+     call autocorrelate_one(www,bioww,inavectors(:,:,imc),myspfs,&
+          tempspfs,inavectors(:,:,imc),conjgexpect(imc),numr,conjgbiovar(imc))
+     conjgexpect(imc)=conjgexpect(imc)   /normsq(imc)
+  enddo
+  
+!! M & U/G
 
   if (spfrestrictflag.eq.1) then
      mexpect(:)=0; ugexpect(:)=0; m2expect(:)=0
@@ -408,20 +384,65 @@ subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2ex
   enddo
 
   deallocate(ugmat, xdipmat, ydipmat, zdipmat,     xrefmat, yrefmat, zrefmat, &
-       tempvector,tempspfs,tempspfs2,inavectors)
+       tempvector,tempspfs,tempspfs2,inavectors, conjgmat)
   
 end subroutine get_psistats
 
 
-subroutine finalstats( )
+subroutine psistats( thistime )
   use parameters
+  use mpimod
   use configmod
   use xxxmod
   implicit none
 
-  call finalstats0(yyy%cmfspfs(:,0),  yyy%cmfavec(:,:,0),www,bwwptr)
+  real*8,intent(in) :: thistime
+  integer, save :: calledflag=0
+  integer :: i,myiostat
+  DATATYPE :: mexpect(mcscfnum),ugexpect(mcscfnum),m2expect(mcscfnum),&
+       xreflect(mcscfnum),yreflect(mcscfnum),zreflect(mcscfnum),xdipole(mcscfnum),&
+       ydipole(mcscfnum),zdipole(mcscfnum),conjugation(mcscfnum)
 
-end subroutine finalstats
+  if (calledflag==0) then
+     if (myrank.eq.1) then
+        open(662, file=psistatsfile, status="unknown",iostat=myiostat)
+        call checkiostat(myiostat,"opening "//psistatsfile)
+#ifdef REALGO        
+        write(662,'(A16,200A14)',iostat=myiostat) &
+             " Time        ", " M           ", " M2          ", " UG          ", &
+             " XDipole     ", " YDipole     ", " ZDipole     ", " XReflect    ", &
+             " YReflect    ", " ZReflect    ", " Conjugation ", " Abs(conjg)  "
+#else
+        write(662,'(A16,A14,200A28)',iostat=myiostat) &
+             " Time        ", " M           ", " M2          ", " UG          ", &
+             " XDipole     ", " YDipole     ", " ZDipole     ", " XReflect    ", &
+             " YReflect    ", " ZReflect    ", " Conjugation ", " Abs(conjg)  "
+#endif
+        call checkiostat(myiostat,"writing "//psistatsfile)
+        close(662)
+     endif
+  endif
+
+  calledflag=1
+
+
+  call get_psistats(www,bwwptr,yyy%cmfspfs(:,0),mcscfnum,yyy%cmfavec(:,:,0),&
+       mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   &
+       xreflect,yreflect,zreflect,conjugation)
+
+  if (myrank.eq.1) then
+     open(662, file=psistatsfile, status="old", position="append",iostat=myiostat)
+     call checkiostat(myiostat,"opening "//psistatsfile)
+     do i=1,mcscfnum
+        write(662,'(F13.5,I3,2000F14.8)',iostat=myiostat) thistime, i, &
+             mexpect(i),m2expect(i),ugexpect(i),  xdipole(i),ydipole(i),zdipole(i),  &
+             xreflect(i),yreflect(i),zreflect(i), conjugation(i), abs(conjugation(i))+DATAZERO
+     enddo
+     call checkiostat(myiostat,"writing "//psistatsfile)
+     close(662)
+  endif
+
+end subroutine psistats
 
 
 subroutine finalstats0(myspfs,in_inavectors,www,bioww )
@@ -436,14 +457,16 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
   DATATYPE,intent(in) :: myspfs(spfsize,www%nspf), &
        in_inavectors(numr,www%firstconfig:www%lastconfig,mcscfnum)       
   type(biorthotype),target :: ugbiovar(mcscfnum,mcscfnum),xrefbiovar(mcscfnum,mcscfnum),&
-       yrefbiovar(mcscfnum,mcscfnum),zrefbiovar(mcscfnum,mcscfnum)
+       yrefbiovar(mcscfnum,mcscfnum),zrefbiovar(mcscfnum,mcscfnum),&
+       conjgbiovar(mcscfnum,mcscfnum)
   DATATYPE :: mmatel(mcscfnum,mcscfnum),ugmatel(mcscfnum,mcscfnum),m2matel(mcscfnum,mcscfnum),&
        xrefmatel(mcscfnum,mcscfnum),yrefmatel(mcscfnum,mcscfnum),zrefmatel(mcscfnum,mcscfnum),&
        xdipmatel(mcscfnum,mcscfnum),ydipmatel(mcscfnum,mcscfnum),zdipmatel(mcscfnum,mcscfnum),&
        ovlmatel(mcscfnum,mcscfnum), nucdipmatel(mcscfnum,mcscfnum,3),&
-       nullcomplex,dipoles(3)
+       nullcomplex,dipoles(3), conjgmatel(mcscfnum,mcscfnum)
   DATATYPE,allocatable :: ugmat(:,:), xdipmat(:,:), ydipmat(:,:), zdipmat(:,:), inavectors(:,:,:), &
-       xrefmat(:,:), yrefmat(:,:), zrefmat(:,:), tempvector(:,:), tempspfs(:,:),tempspfs2(:,:)
+       xrefmat(:,:), yrefmat(:,:), zrefmat(:,:), tempvector(:,:), tempspfs(:,:),tempspfs2(:,:),&
+       conjgmat(:,:)
   CNORMTYPE :: occupations(www%nspf,mcscfnum)
   DATAECS :: rvector(numr)
   integer :: i,j,imc,jmc,myiostat
@@ -464,17 +487,31 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
        ydipmat(www%nspf,www%nspf), zdipmat(www%nspf,www%nspf), &
        xrefmat(www%nspf,www%nspf), yrefmat(www%nspf,www%nspf), &
        zrefmat(www%nspf,www%nspf),tempvector(numr,www%firstconfig:www%lastconfig), &
-       tempspfs(spfsize,www%nspf),tempspfs2(spfsize,www%nspf))
+       tempspfs(spfsize,www%nspf),tempspfs2(spfsize,www%nspf),&
+       conjgmat(www%nspf,www%nspf))
 
   tempvector(:,:)=0d0; tempspfs(:,:)=0d0; tempspfs2(:,:)=0d0
 
   ugmat=0; xdipmat=0; ydipmat=0; zdipmat=0; xrefmat=0; yrefmat=0; zrefmat=0
 
   call get_orbmats( myspfs,  www%nspf,  ugmat,   xdipmat,ydipmat,zdipmat,   &
-       xrefmat,yrefmat,zrefmat)
+       xrefmat,yrefmat,zrefmat,conjgmat)
 
   do imc=1,mcscfnum
      call getoccupations(www,inavectors(:,:,imc),numr,occupations(:,imc))
+  enddo
+
+!! CONJUGATION
+  call mpibarrier()
+
+  do i=1,nspf
+     call op_conjg(myspfs(:,i),tempspfs(:,i))
+  enddo
+  do imc=1,mcscfnum
+     do jmc=1,mcscfnum
+        call autocorrelate_one(www,bioww,inavectors(:,:,jmc),myspfs,tempspfs,&
+             inavectors(:,:,imc),conjgmatel(jmc,imc),numr,conjgbiovar(jmc,imc))
+     enddo
   enddo
 
 !! M & U/G
@@ -655,24 +692,27 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
      write(662,*) "--- EXPECTATION VALUES PSI VECTORS ---"
 
      write(662,*);     write(662,*)
-     write(662,*) "  M expectation values psi vectors "
+     write(662,*) "  conjugation expectation values psi vectors, value and absolute value "
+     do i=1,mcscfnum
+        write(662,'(I10,2000F14.8)') i, conjgmatel(i,i),abs(conjgmatel(i,i))
+     enddo
 
+     write(662,*);     write(662,*)
+     write(662,*) "  inversion expectation values psi vectors "
+     do i=1,mcscfnum
+        write(662,'(I10,2000F14.8)') i, ugmatel(i,i)
+     enddo
+
+     write(662,*);     write(662,*)
+     write(662,*) "  M expectation values psi vectors "
      do i=1,mcscfnum
         write(662,'(I10,2000F14.8)') i, mmatel(i,i)
      enddo
 
      write(662,*);     write(662,*)
      write(662,*) "  M^2 expectation values psi vectors "
-
      do i=1,mcscfnum
         write(662,'(I10,2000F14.8)') i, m2matel(i,i)
-     enddo
-
-     write(662,*);     write(662,*)
-     write(662,*) "  inversion expectation values psi vectors "
-
-     do i=1,mcscfnum
-        write(662,'(I10,2000F14.8)') i, ugmatel(i,i)
      enddo
 
      write(662,*);     write(662,*)
@@ -681,18 +721,20 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
         write(662,'(I10,2000F14.8)') i, xdipmatel(i,i), ydipmatel(i,i), zdipmatel(i,i)
      enddo
 
-
      write(662,*);     write(662,*)
      write(662,*) "  X, Y, Z reflection expectation values psi vectors"
-
      do i=1,mcscfnum
         write(662,'(I10,2000F14.8)') i, xrefmatel(i,i), yrefmatel(i,i), zrefmatel(i,i)
      enddo
 
-
      write(662,*);     write(662,*)
      write(662,*) "--- EXPECTATION VALUES ORBITALS ---"
 
+     write(662,*);     write(662,*)
+     write(662,*) "  conjugation expectation values orbitals, value and absolute value"
+     do i=1,nspf
+        write(662,'(I10,2000F14.8)') i, conjgmat(i,i), abs(conjgmat(i,i))
+     enddo
 
      write(662,*);     write(662,*)
      write(662,*) "  inversion expectation values orbitals"
@@ -720,49 +762,57 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
         write(662,'(I15,1000F15.10)') i, (occupations(i,j),j=1,mcscfnum)
      enddo
 
+
      write(662,*);     write(662,*)
      write(662,*) "---------------- MATRIX ELEMENTS ------------------"
 
 
      write(662,*);     write(662,*)
-     write(662,*) "  M matrix elements "
-
+     write(662,*) "  conjugation matrix elements, absolute value "
+     write(662,*) "--------------------------------"
+     write(662,*) "     ORBITALS    "
+     write(662,*) "--------------------------------"
+     do i=1,nspf
+        write(662,'(2000F14.8)') (abs(conjgmat(i,j)),j=1,nspf)
+     enddo
      write(662,*) "--------------------------------"
      write(662,*) "     PSI VECTORS    "
      write(662,*) "--------------------------------"
-
      do i=1,mcscfnum
-        write(662,'(2000F14.8)') (mmatel(i,j),j=1,mcscfnum)
+        write(662,'(2000F14.8)') (abs(conjgmatel(i,j)),j=1,mcscfnum)
      enddo
-
-
-     write(662,*)
-     write(662,*)
-     write(662,*) "  M^2 matrix elements "
-     write(662,*) "--------------------------------"
-     write(662,*) "     PSI VECTORS    "
-     write(662,*) "--------------------------------"
-
-     do i=1,mcscfnum
-        write(662,'(2000F14.8)') (m2matel(i,j),j=1,mcscfnum)
-     enddo
-
 
      write(662,*);     write(662,*)
      write(662,*) "  inversion matrix elements "
      write(662,*) "--------------------------------"
      write(662,*) "     ORBITALS    "
      write(662,*) "--------------------------------"
-
      do i=1,nspf
         write(662,'(2000F14.8)') (ugmat(i,j),j=1,nspf)
      enddo
      write(662,*) "--------------------------------"
      write(662,*) "     PSI VECTORS    "
      write(662,*) "--------------------------------"
-
      do i=1,mcscfnum
         write(662,'(2000F14.8)') (ugmatel(i,j),j=1,mcscfnum)
+     enddo
+
+     write(662,*);     write(662,*)
+     write(662,*) "  M matrix elements "
+     write(662,*) "--------------------------------"
+     write(662,*) "     PSI VECTORS    "
+     write(662,*) "--------------------------------"
+     do i=1,mcscfnum
+        write(662,'(2000F14.8)') (mmatel(i,j),j=1,mcscfnum)
+     enddo
+
+     write(662,*);     write(662,*)
+     write(662,*) "  M^2 matrix elements "
+     write(662,*) "--------------------------------"
+     write(662,*) "     PSI VECTORS    "
+     write(662,*) "--------------------------------"
+     do i=1,mcscfnum
+        write(662,'(2000F14.8)') (m2matel(i,j),j=1,mcscfnum)
      enddo
 
      write(662,*);     write(662,*)
@@ -770,14 +820,12 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
      write(662,*) "--------------------------------"
      write(662,*) "     ORBITALS    "
      write(662,*) "--------------------------------"
-
      do i=1,nspf
         write(662,'(2000F14.8)') (zdipmat(i,j),j=1,nspf)
      enddo
      write(662,*) "--------------------------------"
      write(662,*) "     PSI VECTORS    "
      write(662,*) "--------------------------------"
-
      do i=1,mcscfnum
         write(662,'(2000F14.8)') (zdipmatel(i,j),j=1,mcscfnum)
      enddo
@@ -787,14 +835,12 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
      write(662,*) "--------------------------------"
      write(662,*) "     ORBITALS    "
      write(662,*) "--------------------------------"
-
      do i=1,nspf
         write(662,'(2000F14.8)') (ydipmat(i,j),j=1,nspf)
      enddo
      write(662,*) "--------------------------------"
      write(662,*) "     PSI VECTORS    "
      write(662,*) "--------------------------------"
-
      do i=1,mcscfnum
         write(662,'(2000F14.8)') (ydipmatel(i,j),j=1,mcscfnum)
      enddo
@@ -804,14 +850,12 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
      write(662,*) "--------------------------------"
      write(662,*) "     ORBITALS    "
      write(662,*) "--------------------------------"
-
      do i=1,nspf
         write(662,'(2000F14.8)') (xdipmat(i,j),j=1,nspf)
      enddo
      write(662,*) "--------------------------------"
      write(662,*) "     PSI VECTORS    "
      write(662,*) "--------------------------------"
-
      do i=1,mcscfnum
         write(662,'(2000F14.8)') (xdipmatel(i,j),j=1,mcscfnum)
      enddo
@@ -821,58 +865,67 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
      write(662,*) "--------------------------------"
      write(662,*) "     ORBITALS    "
      write(662,*) "--------------------------------"
-
      do i=1,nspf
         write(662,'(2000F14.8)') (zrefmat(i,j),j=1,nspf)
      enddo
      write(662,*) "--------------------------------"
      write(662,*) "     PSI VECTORS    "
      write(662,*) "--------------------------------"
-
      do i=1,mcscfnum
         write(662,'(2000F14.8)') (zrefmatel(i,j),j=1,mcscfnum)
      enddo
+
      write(662,*);     write(662,*)
      write(662,*) "  Y reflection matrix elements "
      write(662,*) "--------------------------------"
      write(662,*) "     ORBITALS    "
      write(662,*) "--------------------------------"
-
      do i=1,nspf
         write(662,'(2000F14.8)') (yrefmat(i,j),j=1,nspf)
      enddo
      write(662,*) "--------------------------------"
      write(662,*) "     PSI VECTORS    "
      write(662,*) "--------------------------------"
-
      do i=1,mcscfnum
         write(662,'(2000F14.8)') (yrefmatel(i,j),j=1,mcscfnum)
      enddo
+
      write(662,*);     write(662,*)
      write(662,*) "  X reflection matrix elements "
      write(662,*) "--------------------------------"
      write(662,*) "     ORBITALS    "
      write(662,*) "--------------------------------"
-
      do i=1,nspf
         write(662,'(2000F14.8)') (xrefmat(i,j),j=1,nspf)
      enddo
      write(662,*) "--------------------------------"
      write(662,*) "     PSI VECTORS    "
      write(662,*) "--------------------------------"
-
      do i=1,mcscfnum
         write(662,'(2000F14.8)') (xrefmatel(i,j),j=1,mcscfnum)
      enddo
 
      close(662)
+
   endif
 
   deallocate(ugmat, xdipmat, ydipmat, zdipmat,     xrefmat, yrefmat, zrefmat, &
-       tempvector,tempspfs,tempspfs2,inavectors)
+       tempvector,tempspfs,tempspfs2,inavectors, conjgmat)
+
   call mpibarrier()
 
 end subroutine finalstats0
+
+
+subroutine finalstats( )
+  use parameters
+  use configmod
+  use xxxmod
+  implicit none
+
+  call finalstats0(yyy%cmfspfs(:,0),  yyy%cmfavec(:,:,0),www,bwwptr)
+
+end subroutine finalstats
 
 
 

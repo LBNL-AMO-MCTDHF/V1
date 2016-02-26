@@ -411,6 +411,16 @@ print *, "DOME GETDENSITY"; stop
 end subroutine getdensity
 
 
+subroutine op_conjg(in,out)
+  use myparams
+  use pmpimod
+  implicit none
+  DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3))
+  DATATYPE,intent(out) :: out(numpoints(1),numpoints(2),numpoints(3))
+  out(:,:,:)=ALLCON(in(:,:,:))
+end subroutine op_conjg
+
+
 subroutine op_reflectz(in,out)
   use myparams
   use pmpimod
