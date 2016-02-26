@@ -264,12 +264,13 @@ subroutine quadspfs(inspfs,jjcalls)
   implicit none
   DATATYPE,intent(inout) :: inspfs(spfsize,nspf)
   integer,intent(out) :: jjcalls
-  integer :: ierr,minerr,maxnorbs,lastmpiorb
+  integer :: ierr,minerr,maxnorbs,lastmpiorb,flag,ii
   real*8 :: orthogerror,indev,dev,mynorm
   DATATYPE, allocatable ::  vector(:,:), vector2(:,:), vector3(:,:), &
-       com_vector2(:,:), com_vector3(:,:)
+       com_vector2(:,:), com_vector3(:,:), vector4(:,:)
 
   lastmpiorb=firstmpiorb+orbsperproc-1
+  flag=1
 
   if (parorbsplit.eq.1) then
      maxnorbs=maxprocsperset*orbsperproc
@@ -282,8 +283,9 @@ subroutine quadspfs(inspfs,jjcalls)
 !!$ maximum dimensions now in arguments to dgsolve below
 
 
-  allocate( vector(spfsize,maxnorbs), vector2(spfsize,maxnorbs), vector3(spfsize,maxnorbs) )
-  vector=0; vector2=0; vector3=0
+  allocate( vector(spfsize,maxnorbs), vector2(spfsize,maxnorbs), &
+       vector3(spfsize,maxnorbs), vector4(spfsize,maxnorbs) )
+  vector=0; vector2=0; vector3=0; vector4=0
 
   if (jacsymflag.ne.1.and.jacprojorth.eq.0) then
      OFLWR "setting jacsymflag=1 for orbital quad"; CFL
@@ -363,30 +365,35 @@ subroutine quadspfs(inspfs,jjcalls)
         vector3=vector3*maxquadnorm*nspf/mynorm
      endif
 
-     vector=vector+vector3
+     do ii=0,4
 
-     call spf_orthogit(vector,orthogerror)
+        vector4=vector+(0.5)**ii*vector3
 
-     call spf_linear_derivs0(0,0,0d0,vector,vector2,1,1)
+        call spf_orthogit(vector4,orthogerror)
 
-     call apply_spf_constraints(vector2)
+        call spf_linear_derivs0(0,0,0d0,vector4,vector2,1,1)
 
-     dev=abs(hermdot(vector2,vector2,totspfdim))
-     if (parorbsplit.eq.3) then
-        call mympirealreduceone(dev)
-     endif
-     dev=sqrt(dev)
+        call apply_spf_constraints(vector2)
+
+        dev=abs(hermdot(vector2,vector2,totspfdim))
+        if (parorbsplit.eq.3) then
+           call mympirealreduceone(dev)
+        endif
+        dev=sqrt(dev)
   
-     OFLWR "   Quad orbitals: Deviation is now ", dev;
-     WRFL  "                  Orthog error is  ", orthogerror; CFL
-     if (dev.gt.indev) then
+        OFLWR "   Quad orbitals: Deviation is now ", dev,orthogerror; CFL
+        if (dev.le.indev) then
+           inspfs(:,:) = vector4(:,1:nspf)
+           flag=0
+           exit
+        endif
+     enddo
+     if (flag.eq.1) then
         OFLWR "        ... rejecting step."; CFL
-     else
-        inspfs(:,:) = vector(:,1:nspf)
      endif
   endif
 
-  deallocate( vector,vector2,vector3)
+  deallocate( vector,vector2,vector3,vector4)
 
 contains
   subroutine dummysub()

@@ -872,13 +872,17 @@ subroutine basis_shuffle(howmany,wwin,avectorin,wwout,avectorout)
      enddo
   enddo
 
-  if (numpairs.eq.nprocs) then
-     OFLWR "What? it doesn't look like you need to shuffle."
-     write(mpifileptr,'(2I10)') pairs(:,:);     CFLST
-  elseif (numpairs.lt.nprocs) then
-     OFLWR "What? too few pairs",numpairs; CFLST
-  endif
+!!$  these things will happen and they are ok.
+!!$  if (numpairs.eq.nprocs) then
+!!$     OFLWR "What? it doesn't look like you need to shuffle."
+!!$     write(mpifileptr,'(2I10)') pairs(:,:);     CFLST
+!!$  elseif (numpairs.lt.nprocs) then
+!!$     OFLWR "What? too few pairs",numpairs; CFLST
+!!$  endif
 
+  if (numpairs.lt.min(wwin%nzprocs,wwout%nzprocs)) then
+     OFLWR "What? too few pairs",numpairs,wwin%nzprocs,wwout%nzprocs; CFLST
+  endif
   call system_clock(btime); times(3)=times(3)+ btime-atime; atime=btime
 
   do ipair=1,numpairs
