@@ -486,42 +486,13 @@ subroutine bothlnmat(A,N, which)
   implicit none
   integer,intent(in) :: N,which
   DATATYPE,intent(inout) :: A(N,N)
-  integer, save :: ierr=0
-  real*8 :: time
-  integer :: lwork,i,j,k,nscale,iflag
+  integer :: lwork,i,j,k
   complex*16 :: eig(N)
-  DATATYPE :: sum,sum2,sum3
-  integer :: lwsp,ideg,iexph
-  DATATYPE,allocatable :: VL(:,:),VR(:,:),work(:),rwork(:), tempmat(:,:),wsp(:),saveA(:,:)
-  integer,allocatable :: ipiv(:)
+  DATATYPE,allocatable :: VL(:,:),VR(:,:),work(:),rwork(:)
 
-  allocate(VL(N,N),VR(N,N),work(8*N),rwork(8*N), tempmat(N,N),wsp(6*N*N),saveA(N,N),ipiv(2*N*N))
+  allocate(VL(N,N),VR(N,N),work(8*N),rwork(8*N))
 
   lwork=8*N
-
-  saveA(:,:)=A(:,:)
-
-!! identity check  (Why?  forget if ever was needed for any reason...
-!  rsum=0d0
-!  do i=1,N
-!    do j=1,N
-!      if (i==j) then
-!        rsum=rsum+abs(A(i,i)-1d0)
-!      else
-!        rsum=rsum+abs(A(i,j))
-!      endif
-!    enddo
-!  enddo
-!  if(rsum.lt.1d-8) then
-!    A=0d0
-!!!PREV 043012    A=0d0
-!!    A=0d0
-!!    do i=1,N
-!!       A(i,i)=-log(1d-8)
-!!    enddo
-!    return
-!  endif
-
 
 #ifdef REALGO 
   call dgeev('V','V',N,A,N,rwork(1),rwork(1+N),VL,N,VR,N,work,lwork,i)
@@ -572,49 +543,59 @@ subroutine bothlnmat(A,N, which)
     enddo
   enddo
 
-!! djh: check to make sure (degenerate case).  training wheels?
-!!  now doing proper spectral expansion so can probably remove but... leave for now
-
-  VL=(A)*which; time=1.d0;lwsp=6*N*N; ideg=6
-  wsp=0.d0
-  iexph=1
-  call MYGPADM( ideg, N, time, VL, N,wsp,lwsp,ipiv,iexph,nscale,iflag)
-  
-  tempmat=RESHAPE(wsp(iexph:iexph+N*N-1),(/N,N/))-saveA(:,:)
-
-  sum=0;sum2=0;sum3=0
-  do i=1,N
-     do j=1,N
-        sum=sum+abs(tempmat(i,j)**2)
-        sum2=sum2+abs(A(i,j)**2)
-        sum3=sum3+abs(tempmat(i,j)**2)
-     enddo
-  enddo
-  if (ierr.lt.10.and.((abs(sum/sum2).gt.1.d-7.and.abs(sum2).gt.1d-22).or.(iflag.ne.0))) then
-     print *, "NEGLN ERR", iflag,abs(sum/sum2),iexph,lwsp,sum,sum2,sum3
-     if (ierr.le.1) then
-        do i=1,min(10,N)
-           write(*,'(100F12.6)') abs(saveA(1:min(10,N),i))
-        enddo
-        print *, "XX"
-        tempmat=RESHAPE(wsp(iexph:iexph+N*N-1),(/N,N/))
-        do i=1,min(10,N)
-           write(*,'(100F12.6)') abs(tempmat(1:min(10,N),i))
-        enddo
-        print *
-     endif
-           
-     ierr=ierr+1
-     if (ierr.eq.10) then
-        print *, "FURTHER NEGLN ERRS SUPPRESSED"
-     endif
-  endif
-
-  deallocate(VL,VR,work,rwork,tempmat,wsp,saveA,ipiv)
+  deallocate(VL,VR,work,rwork)
 
 end subroutine bothlnmat
 
 end module lnsubmod
+
+!!$ removing check because we are regularizing and the error message is confusing
+!!$  
+!!$  !! djh: check to make sure (degenerate case).  training wheels?
+!!$  !!  now doing proper spectral expansion so can probably remove but... leave for now
+!!$  
+!!$    VL=(A)*which; time=1.d0;lwsp=6*N*N; ideg=6
+!!$    wsp=0.d0
+!!$    iexph=1
+!!$    call MYGPADM( ideg, N, time, VL, N,wsp,lwsp,ipiv,iexph,nscale,iflag)
+!!$    
+!!$    tempmat=RESHAPE(wsp(iexph:iexph+N*N-1),(/N,N/))-saveA(:,:)
+!!$  
+!!$    sum=0;sum2=0;sum3=0
+!!$    do i=1,N
+!!$       do j=1,N
+!!$          sum=sum+abs(tempmat(i,j)**2)
+!!$          sum2=sum2+abs(A(i,j)**2)
+!!$          sum3=sum3+abs(tempmat(i,j)**2)
+!!$       enddo
+!!$    enddo
+!!$  
+!!$  !!$ it is being regularized, this is to be expected
+!!$    if (ierr.lt.10.and.((abs(sum/sum2).gt.1.d-7.and.abs(sum2).gt.1d-22).or.(iflag.ne.0))) then
+!!$       print *, "NEGLN ERR", iflag,abs(sum/sum2),iexph,lwsp,sum,sum2,sum3
+!!$       if (ierr.le.1) then
+!!$          do i=1,min(10,N)
+!!$             write(*,'(100F12.6)') abs(saveA(1:min(10,N),i))
+!!$          enddo
+!!$          print *, "XX"
+!!$          tempmat=RESHAPE(wsp(iexph:iexph+N*N-1),(/N,N/))
+!!$          do i=1,min(10,N)
+!!$             write(*,'(100F12.6)') abs(tempmat(1:min(10,N),i))
+!!$          enddo
+!!$          print *
+!!$       endif
+!!$             
+!!$       ierr=ierr+1
+!!$       if (ierr.eq.10) then
+!!$          print *, "FURTHER NEGLN ERRS SUPPRESSED"
+!!$       endif
+!!$    endif
+!!$  
+!!$    deallocate(VL,VR,work,rwork,tempmat,wsp,saveA,ipiv)
+!!$
+!!$  end subroutine bothlnmat
+!!$
+!!$  end module lnsubmod
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
