@@ -1,1 +1,0 @@
-../../MCTDH.SRC/SINCDVR/ftcore.f90

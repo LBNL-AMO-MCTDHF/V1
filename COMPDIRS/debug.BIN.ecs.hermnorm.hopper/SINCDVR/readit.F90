@@ -1,1 +1,0 @@
-../../MCTDH.SRC/SINCDVR/readit.f90
