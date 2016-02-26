@@ -284,10 +284,6 @@ subroutine quadspfs(inspfs,jjcalls)
 
   allocate( vector(spfsize,maxnorbs), vector2(spfsize,maxnorbs), vector3(spfsize,maxnorbs) )
   vector=0; vector2=0; vector3=0
-  if (orbcompact.ne.0) then
-     allocate( com_vector2(spfsmallsize,maxnorbs), com_vector3(spfsmallsize,maxnorbs) )
-     com_vector2=0; com_vector3=0
-  endif
 
   if (jacsymflag.ne.1.and.jacprojorth.eq.0) then
      OFLWR "setting jacsymflag=1 for orbital quad"; CFL
@@ -318,6 +314,8 @@ subroutine quadspfs(inspfs,jjcalls)
 
   ierr=0
   if (orbcompact.ne.0) then
+     allocate( com_vector2(spfsmallsize,maxnorbs), com_vector3(spfsmallsize,maxnorbs) )
+     com_vector2=0; com_vector3=0
      call spfs_compact(vector2,com_vector2)
      call spfs_compact(vector3,com_vector3)
      if (parorbsplit.eq.3) then
@@ -333,6 +331,7 @@ subroutine quadspfs(inspfs,jjcalls)
              quadtol,spfsmallsize*nspf,spfsmallsize*nspf,0,ierr)
      endif
      call spfs_expand(com_vector3,vector3)
+     deallocate(com_vector2,com_vector3)
   else
      if (parorbsplit.eq.3) then
         call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
@@ -388,10 +387,6 @@ subroutine quadspfs(inspfs,jjcalls)
   endif
 
   deallocate( vector,vector2,vector3)
-  
-  if (orbcompact.ne.0) then
-     deallocate(com_vector2,com_vector3)
-  endif
 
 contains
   subroutine dummysub()

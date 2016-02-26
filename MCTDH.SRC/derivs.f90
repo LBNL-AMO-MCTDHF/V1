@@ -915,16 +915,14 @@ contains
     DATATYPE :: facs(0:1),csum,pots(3)
     DATATYPE,allocatable :: tempspfs(:,:),workspfs(:,:)
     real*8 :: rsum
-    integer ::  jjj, ibot,lowspf,highspf,numspf,itime,jtime
-
-!!  times(:)=0       !! zeroing this now here in spf_linear_derivs0.
+    integer ::  jjj, itop,lowspf,highspf,numspf,itime,jtime
 
     if (inlinearflag.eq.1) then
-       ibot=0;     
+       itop=1;     
        facs(0)=(thistime-firsttime)/(lasttime-firsttime); 
        facs(1)=1d0-facs(0)
     else
-       ibot=1;     facs(0)=0d0;     facs(1)=1d0
+       itop=0;     facs(0)=1d0;     facs(1)=0d0
     endif
 
     lowspf=1; highspf=nspf
@@ -937,7 +935,7 @@ contains
 
     spfsout(:,:)=0d0; tempspfs(:,:)=0d0; workspfs(:,:)=0d0
 
-    do jjj=ibot,1
+    do jjj=0,itop
        call actreduced00(lowspf,highspf,dentimeflag,thistime,spfsin,spfsin,&
             workspfs,jjj, projflag,conflag)
        if (numspf.gt.0) then
@@ -952,7 +950,7 @@ contains
 
     if (numfrozen.gt.0.and.numspf.gt.0) then
        call system_clock(itime)
-       do jjj=ibot,1
+       do jjj=0,itop
           if (dentimeflag.ne.0) then
 !! TIMEFAC and facs HERE
              csum=timefac*facs(jjj)
@@ -991,7 +989,7 @@ contains
        enddo
        if (rsum.ne.0d0) then
           tempspfs(:,:)=0d0
-          do jjj=ibot,1
+          do jjj=0,itop
              tempspfs(:,lowspf:highspf)=tempspfs(:,lowspf:highspf)+ ( &
                   yyy%drivingorbsxx(:,lowspf:highspf,jjj) * pots(1) + &
                   yyy%drivingorbsyy(:,lowspf:highspf,jjj) * pots(2) + &

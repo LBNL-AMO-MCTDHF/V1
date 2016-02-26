@@ -46,7 +46,7 @@ contains
     integer,intent(in) :: lowspf,highspf,dentimeflag,conflag
     DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
     DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
-    integer :: ii,ibot,getlen,numspf,myiostat,itime,jtime,jjj
+    integer :: ii,itop,getlen,numspf,myiostat,itime,jtime,jjj
     DATATYPE :: csum, nulldouble(2),pots(3)
     real*8 :: facs(0:1),rsum
     DATATYPE :: bigwork(spfsize,nspf),   workspfs(spfsize,lowspf:highspf+1),& 
@@ -59,10 +59,10 @@ contains
     numspf=highspf-lowspf+1
 
     if (effective_cmf_linearflag.eq.1) then
-       ibot=0
+       itop=1;
        facs(0)=(jactime-firsttime)/(lasttime-firsttime);     facs(1)=1d0-facs(0)
     else
-       ibot=1;     facs(0)=0d0;     facs(1)=1d0
+       itop=0;     facs(0)=1d0;     facs(1)=0d0
     endif
 
     if (numspf.gt.0) then
@@ -73,7 +73,7 @@ contains
 
 !! call actreduced00 even if numspf=0
 
-    do ii=1,ibot,-1
+    do ii=0,itop
      
        if (jacsymflag.ne.0) then
 
@@ -427,7 +427,7 @@ subroutine jacinit0(dentimeflag,inspfs, thistime)
 
 !! ONLY GOOD FOR CMF, LMF !!
 
-  call actreduced0(dentimeflag,jactime,jacvect,nulldouble,jacvectout,1,0,0)
+  call actreduced0(dentimeflag,jactime,jacvect,nulldouble,jacvectout,0,0,0)
 
   if (effective_cmf_linearflag.eq.1) then
      allocate( jactemp(spfsize,nspf) );   jactemp=0
@@ -436,9 +436,9 @@ subroutine jacinit0(dentimeflag,inspfs, thistime)
         print *, "GGGRIDTIME ERR ", gridtime, jactime, firsttime, lasttime
         stop
      endif
-     jacvectout=jacvectout*(1.d0-gridtime)
-     call actreduced0(dentimeflag,jactime,jacvect,jacvect,jactemp,0,0,0)
-     jacvectout=jacvectout+gridtime*jactemp
+     jacvectout=jacvectout*gridtime
+     call actreduced0(dentimeflag,jactime,jacvect,jacvect,jactemp,1,0,0)
+     jacvectout=jacvectout+(1.d0-gridtime)*jactemp
      deallocate(jactemp)
   endif
 

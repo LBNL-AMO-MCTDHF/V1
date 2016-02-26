@@ -897,14 +897,14 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
   if (linearflag.eq.0) then
 
      if (sparseopt.eq.0) then
-        call assign_cptr(workconfigpointer,yyy%cptr(1),thisstep*DATAONE)
+        call assign_cptr(workconfigpointer,yyy%cptr(0),thisstep*DATAONE)
      else
-        call assign_sptr(worksparsepointer,yyysptr(1),thisstep*DATAONE,www)
+        call assign_sptr(worksparsepointer,yyysptr(0),thisstep*DATAONE,www)
         if (use_dfwalktype) then
            if (shuffle_dfwalktype) then
-              call assign_sptr(workfdsparsepointer,yyysfdptr(1),thisstep*DATAONE,fdww)
+              call assign_sptr(workfdsparsepointer,yyysfdptr(0),thisstep*DATAONE,fdww)
            else
-              call assign_sptr(workdfsparsepointer,yyysdfptr(1),thisstep*DATAONE,dfww)
+              call assign_sptr(workdfsparsepointer,yyysdfptr(0),thisstep*DATAONE,dfww)
            endif
         endif
      endif
@@ -913,9 +913,9 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
         workdrivingavec(:,:)=0d0
 
         if (iflag.eq.1) then
-           workdrivingavec(:,:)=( yyy%drivingavectorsxx(:,:,imc,1)*pots(1) + &
-                yyy%drivingavectorsyy(:,:,imc,1)*pots(2) + &
-                yyy%drivingavectorszz(:,:,imc,1)*pots(3) )*thisstep
+           workdrivingavec(:,:)=( yyy%drivingavectorsxx(:,:,imc,0)*pots(1) + &
+                yyy%drivingavectorsyy(:,:,imc,0)*pots(2) + &
+                yyy%drivingavectorszz(:,:,imc,0)*pots(3) )*thisstep
 
         endif
      endif

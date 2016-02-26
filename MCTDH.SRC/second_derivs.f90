@@ -49,7 +49,7 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
 
 !! First derivative.
 
-  call actreduced00(lowspf,highspf,1,thistime, inspfs, nullspfs, workspfs0, 1, 0,1)
+  call actreduced00(lowspf,highspf,1,thistime, inspfs, nullspfs, workspfs0, 0, 0,1)
 
   if (effective_cmf_linearflag.eq.0) then
      if (numspf.gt.0) then
@@ -58,9 +58,9 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
         derspfs0(:,lowspf:highspf)=workspfs0(:,lowspf:highspf)-derspfs0(:,lowspf:highspf)
     endif
   else
-     call actreduced00(lowspf,highspf,1,thistime, inspfs, nullspfs, workspfs2, 0, 0,1)
+     call actreduced00(lowspf,highspf,1,thistime, inspfs, nullspfs, workspfs2, 1, 0,1)
      if (numspf.gt.0) then
-        workoutspfs0=(1.d0-gridtime)*workspfs0 + gridtime*workspfs2
+        workoutspfs0=(1.d0-gridtime)*workspfs2 + gridtime*workspfs0
         call project00(lowspf,highspf,workoutspfs0(:,lowspf:highspf), &
              derspfs0(:,lowspf:highspf), inspfs)
         derspfs0(:,lowspf:highspf)=workoutspfs0(:,lowspf:highspf)-derspfs0(:,lowspf:highspf)
@@ -77,16 +77,16 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
 
  !! second term    
 
-  call actreduced00(lowspf,highspf,1,thistime, derspfs0, nullspfs, workoutspfs0, 1, 0,1) 
+  call actreduced00(lowspf,highspf,1,thistime, derspfs0, nullspfs, workoutspfs0, 0, 0,1) 
 
   if (effective_cmf_linearflag.eq.0) then
 
-     call actreduced00(lowspf,highspf,1,thistime, derspfs0, nullspfs, workoutspfs2, 0, 0,1)
+     call actreduced00(lowspf,highspf,1,thistime, derspfs0, nullspfs, workoutspfs2, 1, 0,1)
      if (numspf.gt.0) then
-        workoutspfs0 = (1-gridtime)*workoutspfs0 + gridtime*workoutspfs2
+        workoutspfs0 = (1-gridtime)*workoutspfs2 + gridtime*workoutspfs0
 
 !! d/dt Q term
-        workoutspfs0 = workoutspfs0 + 1.d0/(lasttime-firsttime) * (workspfs2-workspfs0)
+        workoutspfs0 = workoutspfs0 + 1.d0/(lasttime-firsttime) * (workspfs0-workspfs2)
      endif
 
   endif
@@ -100,7 +100,7 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
 !! first term.
 
   if (effective_cmf_linearflag.eq.0.and.numspf.gt.0) then
-     workspfs0 = (1-gridtime)*workspfs0 + gridtime*workspfs2
+     workspfs0 = (1-gridtime)*workspfs2 + gridtime*workspfs0
   endif
 
 !!   Projector is just sum_i |phi_i><phi_i| without regard to orthonorm 
