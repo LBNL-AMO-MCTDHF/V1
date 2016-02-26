@@ -260,8 +260,9 @@ integer :: quadprecon=1          !!              !! Precondition newton iteratio
 integer :: quadorthflag=0        !!              !! If eigenfunctions are becoming linearly dependent try this
 integer :: normboflag=0          !!              !! Enforce norm at each r value
 !!EE
-!!\textbf{\qquad SPARSE - for relaxation if sparseconfigflag .ne. 0 see module lanparameters above}
+!!\textbf{\qquad SPARSE - for relaxation if sparseconfigflag .ne. 0 see module lanparameters above, and}
 !!BB
+integer :: maxdgdim = 1200                       !! Max dimension for improvedquadflag options
 !!EE
 !!{\large \quad ORBITALS (SINGLE PARTICLE FUNCTIONS, SPFS)}
 !!BB

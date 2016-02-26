@@ -278,11 +278,6 @@ subroutine quadspfs(inspfs,jjcalls)
      maxnorbs=nspf
   endif
 
-!!$ NO not using maxexpodim for dgsolve!  Give it proper maximum order
-!!$        maxdim=min(spfsmallsize*nspf*nprocs,maxexpodim)
-!!$ maximum dimensions now in arguments to dgsolve below
-
-
   allocate( vector(spfsize,maxnorbs), vector2(spfsize,maxnorbs), &
        vector3(spfsize,maxnorbs), vector4(spfsize,maxnorbs) )
   vector=0; vector2=0; vector3=0; vector4=0
@@ -322,30 +317,31 @@ subroutine quadspfs(inspfs,jjcalls)
      call spfs_compact(vector3,com_vector3)
      if (parorbsplit.eq.3) then
         call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
-             quadtol,spfsmallsize*nspf,spfsmallsize*nspf*nprocs,1,ierr)
+             quadtol,spfsmallsize*nspf,min(maxdgdim,spfsmallsize*nspf*nprocs),1,ierr)
      elseif (parorbsplit.eq.1) then
         call dgsolve0( com_vector2(:,firstmpiorb:lastmpiorb), &
              com_vector3(:,firstmpiorb:lastmpiorb), jjcalls, parquadopcompact,&
-             0,dummysub,quadtol,spfsmallsize*orbsperproc,spfsmallsize*nspf,1,ierr)
+             0,dummysub,quadtol,spfsmallsize*orbsperproc,&
+             min(maxdgdim,spfsmallsize*nspf),1,ierr)
         call mpiorbgather(com_vector3,spfsmallsize)
      else
         call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
-             quadtol,spfsmallsize*nspf,spfsmallsize*nspf,0,ierr)
+             quadtol,spfsmallsize*nspf,min(maxdgdim,spfsmallsize*nspf),0,ierr)
      endif
      call spfs_expand(com_vector3,vector3)
      deallocate(com_vector2,com_vector3)
   else
      if (parorbsplit.eq.3) then
         call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
-             quadtol,spfsize*nspf,spfsize*nspf*nprocs,1,ierr)
+             quadtol,spfsize*nspf,min(maxdgdim,spfsize*nspf*nprocs),1,ierr)
      elseif (parorbsplit.eq.1) then
         call dgsolve0( vector2(:,firstmpiorb:lastmpiorb), &
              vector3(:,firstmpiorb:lastmpiorb), jjcalls, parquadoperate,0,dummysub, &
-             quadtol,spfsize*orbsperproc,spfsize*nspf,1,ierr)
+             quadtol,spfsize*orbsperproc,min(maxdgdim,spfsize*nspf),1,ierr)
         call mpiorbgather(vector3,spfsize)
      else
         call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
-             quadtol,spfsize*nspf,spfsize*nspf,0,ierr)
+             quadtol,spfsize*nspf,min(maxdgdim,spfsize*nspf),0,ierr)
      endif
   endif
   minerr=ierr
@@ -595,10 +591,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
      endif
      smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
 
-!!$  NO not using maxaorder for dgsolve!  Give it proper maximum order
-!!$       maxdim=min(maxaorder,numr*www%numdfbasis)
-
-     maxdim=numr*www%numdfbasis
+     maxdim=min(maxdgdim,numr*www%numdfbasis)
 
      mysize=numr*(dwwptr%topdfbasis-dwwptr%botdfbasis+1)
 

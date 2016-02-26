@@ -106,7 +106,7 @@ subroutine getparams()
        sparsedfflag,sparseprime,sparsesummaflag, par_consplit, ftwindowlength, fttriwindow,&
        pulsewindowtoo,conjgpropflag,dipolesumstart,dipolesumend,outmatel,numcatfiles,&
        catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
-       shuffle_dfwalktype
+       shuffle_dfwalktype,maxdgdim
 
 
   OFL
