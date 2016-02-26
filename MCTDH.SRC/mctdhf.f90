@@ -176,7 +176,7 @@
 !!$
 !!$   END OF TERMS AND CONDITIONS
 !!$
-!!$   Copyright 2015 the regents of the University of California
+!!$   Copyright 2016 the regents of the University of California
 !!$
 !!$   Licensed under the Apache License, Version 2.0 (the "License");
 !!$   you may not use this file except in compliance with the License.
@@ -231,7 +231,7 @@ program mctdhf
   write(mpifileptr, *) "     D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, "
   write(mpifileptr, *) "     B Abeln, X Li . . ."
   write(mpifileptr, *) "                             VERSION 1.23 "
-  write(mpifileptr, *) "       Copyright 2015 the regents of the University of California"
+  write(mpifileptr, *) "       Copyright 2016 the regents of the University of California"
   write(mpifileptr, *)
 #ifdef REALGO
   write(mpifileptr, *) "               This is MCTDH: Real-valued version."
