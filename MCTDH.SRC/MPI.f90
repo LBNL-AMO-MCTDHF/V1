@@ -3,6 +3,13 @@
 
 #include "Definitions.INC"
 
+subroutine zero_mpi_times()
+  use mpimod
+  implicit none
+  mpitime=0; nonmpitime=0
+end subroutine zero_mpi_times
+
+
 subroutine getmyranknprocs(outrank,outnprocs)
   use mpimod
   implicit none

@@ -25,7 +25,7 @@ subroutine prop_loop( starttime)
   DATATYPE, allocatable :: avectorp(:),outspfs(:)
   DATATYPE :: savenorms(numr,mcscfnum)
 
-  thistime=starttime;  flag=0
+  thistime=starttime;  flag=0;    call zero_mpi_times()
 
   allocate(avectorp(tot_adim),outspfs(totspfdim))
   outspfs=0
