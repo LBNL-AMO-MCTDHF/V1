@@ -85,7 +85,7 @@ contains
     rgwkdim= (42 + jjxx*(inkrydim*zzz + 6) + inkrydim*zzz*(inkrydim*zzz + 3)) / 5 * 6
 
     if (rgwkdim.lt.0) then
-       OFLWR "OOPS, integer overflow, decrease maxexpodim or reduce size of orbitals (per processor)",&
+       OFLWR "OOPS, integer overflow, decrease maxdgdim or reduce size of orbitals (per processor)",&
             rgwkdim; CFLST
     endif
 
