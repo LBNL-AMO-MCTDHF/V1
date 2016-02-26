@@ -904,7 +904,7 @@ end subroutine blocklanczos0_local
 subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
   use r_parameters
   use sparse_parameters
-  use lan_parameters
+  use lanparameters
   use fileptrmod
   use configmod
   use parblocklanmod

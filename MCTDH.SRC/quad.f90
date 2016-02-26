@@ -177,6 +177,8 @@ end subroutine quadinit
 module quadopmod
 contains
 
+!! SUBROUTINES PASSED TO DGSOLVE FOR ORBITAL NEWTON SOLVE IMPROVEDQUADFLAG 2 and 3
+
   subroutine quadoperate(notusedint,inspfs,outspfs)
     use parameters
     use jacopmod
@@ -185,6 +187,7 @@ contains
     DATATYPE,intent(in) ::  inspfs(totspfdim)
     DATATYPE,intent(out) :: outspfs(totspfdim)
     DATATYPE :: workspfs(totspfdim)              !! AUTOMATIC
+    workspfs=0
     if (jacprojorth.ne.0) then   
        call jacorth(inspfs,outspfs)
        call jacoperate0(0,0,outspfs,workspfs)
@@ -202,6 +205,7 @@ contains
     DATATYPE,intent(in) ::  com_inspfs(spfsmallsize*nspf)
     DATATYPE,intent(out) :: com_outspfs(spfsmallsize*nspf)
     DATATYPE :: inspfs(spfsize*nspf),outspfs(spfsize*nspf)  !! AUTOMATIC
+    inspfs=0; outspfs=0
     call spfs_expand(com_inspfs,inspfs)
     if (jacprojorth.ne.0) then   
        call jacorth(inspfs,outspfs)
@@ -213,6 +217,39 @@ contains
     call spfs_compact(outspfs,com_outspfs)
   end subroutine quadopcompact
 
+  subroutine parquadopcompact(notusedint,com_inspfs,com_outspfs)
+    use parameters
+    use jacopmod
+    use mpi_orbsetmod
+    implicit none
+    integer :: notusedint
+    DATATYPE,intent(in) :: com_inspfs(spfsmallsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+    DATATYPE,intent(out) :: com_outspfs(spfsmallsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+    DATATYPE ::  inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1),  &
+         outspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)  !! AUTOMATIC
+    inspfs=0; outspfs=0
+    if (jacprojorth.ne.0) then   
+       OFLWR "not supported parallel mode quadoperate jacprojorth"; CFLST
+    endif
+    call spfs_expand_local(com_inspfs,inspfs)
+    call parjacoperate0(0,0,inspfs,outspfs)
+    call spfs_compact_local(outspfs,com_outspfs)
+  end subroutine parquadopcompact
+
+  subroutine parquadoperate(notusedint,inspfs,outspfs)
+    use parameters
+    use jacopmod
+    use mpi_orbsetmod
+    implicit none
+    integer :: notusedint
+    DATATYPE,intent(in) :: inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+    DATATYPE,intent(out) :: outspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+    if (jacprojorth.ne.0) then   
+       OFLWR "not supported parallel mode quadoperate jacprojorth"; CFLST
+    endif
+    call parjacoperate0(0,0,inspfs,outspfs)
+  end subroutine parquadoperate
+
 end module quadopmod
 
 
@@ -223,17 +260,32 @@ subroutine quadspfs(inspfs,jjcalls)
   use dgsolvemod
   use quadopmod
   use orbdermod
+  use mpi_orbsetmod
   implicit none
-  DATATYPE,intent(inout) :: inspfs(totspfdim)  
+  DATATYPE,intent(inout) :: inspfs(spfsize,nspf)
   integer,intent(out) :: jjcalls
-  integer :: icount,maxdim,ierr,minerr
-  real*8 :: orthogerror,dev,mynorm
-  DATATYPE, allocatable ::  vector(:), vector2(:), vector3(:), com_vector2(:), com_vector3(:)
+  integer :: ierr,minerr,maxnorbs,lastmpiorb
+  real*8 :: orthogerror,indev,dev,mynorm
+  DATATYPE, allocatable ::  vector(:,:), vector2(:,:), vector3(:,:), &
+       com_vector2(:,:), com_vector3(:,:)
 
-  allocate( vector(totspfdim), vector2(totspfdim), vector3(totspfdim) )
+  lastmpiorb=firstmpiorb+orbsperproc-1
+
+  if (parorbsplit.eq.1) then
+     maxnorbs=maxprocsperset*orbsperproc
+  else
+     maxnorbs=nspf
+  endif
+
+!!$ NO not using maxexpodim for dgsolve!  Give it proper maximum order
+!!$        maxdim=min(spfsmallsize*nspf*nprocs,maxexpodim)
+!!$ maximum dimensions now in arguments to dgsolve below
+
+
+  allocate( vector(spfsize,maxnorbs), vector2(spfsize,maxnorbs), vector3(spfsize,maxnorbs) )
   vector=0; vector2=0; vector3=0
   if (orbcompact.ne.0) then
-     allocate( com_vector2(spfsmallsize*nspf), com_vector3(spfsmallsize*nspf) )
+     allocate( com_vector2(spfsmallsize,maxnorbs), com_vector3(spfsmallsize,maxnorbs) )
      com_vector2=0; com_vector3=0
   endif
 
@@ -244,13 +296,77 @@ subroutine quadspfs(inspfs,jjcalls)
 
   effective_cmf_linearflag=0
 
-  vector=inspfs
+  vector(:,1:nspf)=inspfs(:,:)
 
-  do icount=0,0
+  call spf_orthogit(vector,orthogerror)
+
+  call quadinit(vector,0d0)
+
+  call spf_linear_derivs0(0,0,0d0,vector,vector2,1,1)
+
+  call apply_spf_constraints(vector2)
+
+  indev=abs(hermdot(vector2,vector2,totspfdim))
+  if (parorbsplit.eq.3) then
+     call mympirealreduceone(indev)
+  endif
+  indev=sqrt(indev)
+  
+  OFLWR "   Quad orbitals: Deviation is     ", indev; CFL
+
+  vector3=vector   !! guess
+
+  ierr=0
+  if (orbcompact.ne.0) then
+     call spfs_compact(vector2,com_vector2)
+     call spfs_compact(vector3,com_vector3)
+     if (parorbsplit.eq.3) then
+        call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
+             quadtol,spfsmallsize*nspf,spfsmallsize*nspf*nprocs,1,ierr)
+     elseif (parorbsplit.eq.1) then
+        call dgsolve0( com_vector2(:,firstmpiorb:lastmpiorb), &
+             com_vector3(:,firstmpiorb:lastmpiorb), jjcalls, parquadopcompact,&
+             0,dummysub,quadtol,spfsmallsize*orbsperproc,spfsmallsize*nspf,1,ierr)
+        call mpiorbgather(com_vector3,spfsmallsize)
+     else
+        call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
+             quadtol,spfsmallsize*nspf,spfsmallsize*nspf,0,ierr)
+     endif
+     call spfs_expand(com_vector3,vector3)
+  else
+     if (parorbsplit.eq.3) then
+        call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
+             quadtol,spfsize*nspf,spfsize*nspf*nprocs,1,ierr)
+     elseif (parorbsplit.eq.1) then
+        call dgsolve0( vector2(:,firstmpiorb:lastmpiorb), &
+             vector3(:,firstmpiorb:lastmpiorb), jjcalls, parquadoperate,0,dummysub, &
+             quadtol,spfsize*orbsperproc,spfsize*nspf,1,ierr)
+        call mpiorbgather(vector3,spfsize)
+     else
+        call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
+             quadtol,spfsize*nspf,spfsize*nspf,0,ierr)
+     endif
+  endif
+  minerr=ierr
+  call mympiimax(ierr)
+  call mympiimin(minerr)
+  if (ierr.ne.0.or.minerr.ne.0) then
+     OFLWR "         *** Error in dgsolve, not changing orbitals",ierr,minerr; CFL
+  else
+
+     mynorm=abs(hermdot(vector3,vector3,totspfdim))
+     if (parorbsplit.eq.3) then
+        call mympirealreduceone(mynorm)
+     endif
+     mynorm=sqrt(mynorm)
+  
+     if (mynorm.gt.maxquadnorm*nspf) then
+        vector3=vector3*maxquadnorm*nspf/mynorm
+     endif
+
+     vector=vector+vector3
 
      call spf_orthogit(vector,orthogerror)
-
-     call quadinit(vector,0d0)
 
      call spf_linear_derivs0(0,0,0d0,vector,vector2,1,1)
 
@@ -262,74 +378,14 @@ subroutine quadspfs(inspfs,jjcalls)
      endif
      dev=sqrt(dev)
   
-     OFLWR "   Quad orbitals: Deviation is     ", dev; CFL
-
-     vector3=vector   !! guess
-
-     ierr=0
-     if (orbcompact.ne.0) then
-        call spfs_compact(vector2,com_vector2)
-        call spfs_compact(vector3,com_vector3)
-        if (parorbsplit.eq.3) then
-           maxdim=min(spfsmallsize*nspf*nprocs,maxexpodim)
-           call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
-                quadtol,spfsmallsize*nspf,maxdim,1,ierr)
-        else
-           maxdim=min(spfsmallsize*nspf,maxexpodim)
-           call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
-                quadtol,spfsmallsize*nspf,maxdim,0,ierr)
-        endif
-        call spfs_expand(com_vector3,vector3)
+     OFLWR "   Quad orbitals: Deviation is now ", dev;
+     WRFL  "                  Orthog error is  ", orthogerror; CFL
+     if (dev.gt.indev) then
+        OFLWR "        ... rejecting step."; CFL
      else
-        if (parorbsplit.eq.3) then
-           maxdim=min(totspfdim*nprocs,maxexpodim)
-           call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
-                quadtol,totspfdim,maxdim,1,ierr)
-        else
-           maxdim=min(totspfdim,maxexpodim)
-           call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
-                quadtol,totspfdim,maxdim,0,ierr)
-        endif
+        inspfs(:,:) = vector(:,1:nspf)
      endif
-     minerr=ierr
-     call mympiimax(ierr)
-     call mympiimin(minerr)
-     if (ierr.ne.0.or.minerr.ne.0) then
-        OFLWR "         *** Error in dgsolve, not changing orbitals",ierr,minerr; CFL
-        vector3(:)=0d0
-     endif
-
-     mynorm=abs(hermdot(vector3,vector3,totspfdim))
-     
-     if (parorbsplit.eq.3) then
-        call mympirealreduceone(mynorm)
-     endif
-     mynorm=sqrt(mynorm)
-
-     if (mynorm.gt.maxquadnorm*nspf) then
-        vector3=vector3*maxquadnorm*nspf/mynorm
-     endif
-
-     vector=vector+vector3
-
-  enddo
-
-  call spf_orthogit(vector,orthogerror)
-
-  inspfs = vector
-
-  call spf_linear_derivs0(0,0,0d0,vector,vector2,1,1)
-
-  call apply_spf_constraints(vector2)
-
-  dev=abs(hermdot(vector2,vector2,totspfdim))
-  if (parorbsplit.eq.3) then
-     call mympirealreduceone(dev)
   endif
-  dev=sqrt(dev)
-  
-  OFLWR "   Quad orbitals: Deviation is now ", dev;
-  WRFL  "                  Orthog error is  ", orthogerror; CFL
 
   deallocate( vector,vector2,vector3)
   
@@ -537,7 +593,11 @@ subroutine sparsequadavector(inavector,jjcalls0)
      endif
      smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
 
-     maxdim=min(maxaorder,numr*www%numdfbasis)
+!!$  NO not using maxaorder for dgsolve!  Give it proper maximum order
+!!$       maxdim=min(maxaorder,numr*www%numdfbasis)
+
+     maxdim=numr*www%numdfbasis
+
      mysize=numr*(dwwptr%topdfbasis-dwwptr%botdfbasis+1)
 
      flag=0; jjcalls=0

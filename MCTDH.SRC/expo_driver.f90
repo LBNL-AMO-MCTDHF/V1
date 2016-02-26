@@ -480,10 +480,11 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
   DATATYPE,allocatable :: aspfs(:,:), proppspfs(:,:),   outspfs(:,:), &
        com_aspfs(:,:), com_proppspfs(:,:),   com_outspfs(:,:),  tempspfs(:,:),&
        inspfs(:,:)
-  integer :: idim, liwsp=0, lwsp=0,ttott,myiostat,maxnorbs
+  integer :: idim, liwsp=0, lwsp=0,ttott,myiostat,maxnorbs,lastmpiorb
   real*8, allocatable :: wsp(:)
   integer, allocatable :: iwsp(:)
 
+  lastmpiorb=firstmpiorb+orbsperproc-1
   if (parorbsplit.eq.1) then
      maxnorbs=maxprocsperset*orbsperproc
   else
@@ -618,10 +619,9 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
              tempstepsize,realpardotsub_par3,ttott)
      elseif (parorbsplit.eq.1) then
         call dgexpthirdxxx2(idim, thisexpodim, tdiff, &
-             aspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), &
-             inspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), expotol, norm, wsp, &
-             lwsp, iwsp, liwsp, parjacoperate, itrace, iflag,expofileptr,&
-             tempstepsize,realpardotsub_par1,ttott)
+             aspfs(:,firstmpiorb:lastmpiorb), inspfs(:,firstmpiorb:lastmpiorb),&
+             expotol, norm, wsp,lwsp, iwsp, liwsp, parjacoperate, itrace, iflag, &
+             expofileptr,tempstepsize,realpardotsub_par1,ttott)
         call mpiorbgather(inspfs,spfsize)
      else
         call dgexpthird(idim, thisexpodim, tdiff, aspfs, inspfs, expotol, norm, &
@@ -647,11 +647,11 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
                 expofileptr,tempstepsize,realpardotsub_par3,ttott)
         elseif (parorbsplit.eq.1) then
            call dgphivxxx2(idim, thisexpodim, tdiff, &
-                com_aspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), &
-                com_proppspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), &
-                com_outspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), &
-                expotol, norm, wsp, lwsp, iwsp, liwsp, parjacopcompact, itrace, &
-                iflag, expofileptr,tempstepsize,realpardotsub_par1,ttott)
+                com_aspfs(:,firstmpiorb:lastmpiorb), &
+                com_proppspfs(:,firstmpiorb:lastmpiorb),&
+                com_outspfs(:,firstmpiorb:lastmpiorb), expotol, norm, wsp, &
+                lwsp, iwsp, liwsp, parjacopcompact, itrace, iflag, expofileptr,&
+                tempstepsize,realpardotsub_par1,ttott)
            call mpiorbgather(com_outspfs,spfsmallsize)
         else
            call dgphiv(idim, thisexpodim, tdiff, com_aspfs, &
@@ -667,11 +667,10 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
                 itrace, iflag,expofileptr,tempstepsize,realpardotsub_par3,ttott)
         elseif (parorbsplit.eq.1) then
            call dgphivxxx2(idim, thisexpodim, tdiff, &
-                aspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), &
-                proppspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), &
-                outspfs(:,firstmpiorb:firstmpiorb+orbsperproc-1), &
-                expotol, norm, wsp, lwsp, iwsp, liwsp, parjacoperate, &
-                itrace, iflag,expofileptr,tempstepsize,realpardotsub_par1,ttott)
+                aspfs(:,firstmpiorb:lastmpiorb),proppspfs(:,firstmpiorb:lastmpiorb), &
+                outspfs(:,firstmpiorb:lastmpiorb), expotol, norm, wsp, lwsp, iwsp, &
+                liwsp, parjacoperate,itrace, iflag,expofileptr,&
+                tempstepsize,realpardotsub_par1,ttott)
            call mpiorbgather(outspfs,spfsize)
         else
            call dgphiv(idim, thisexpodim, tdiff, aspfs, proppspfs, &

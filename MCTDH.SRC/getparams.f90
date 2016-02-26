@@ -46,7 +46,7 @@ subroutine getparams()
   use denreg_parameters
   use bio_parameters
   use constraint_parameters
-  use lan_parameters
+  use lanparameters
   use output_parameters
   use mpimod
   use orblabelmod

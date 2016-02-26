@@ -67,12 +67,12 @@ end module dotmod
 !!EE
 !!\textbf{\qquad SPARSE - if sparseconfigflag .ne. 0}
 !!BB
-module lan_parameters
+module lanparameters
 integer :: lanprintflag=0
 integer :: lanczosorder=200      !!              !!   lanczos order used in A-vector eigen.
 integer :: lancheckstep=20       !!              !! lanczos eigen routine checks for convergence every this # steps
 real*8 :: lanthresh=1.d-9        !!              !! convergence criterion.
-end module lan_parameters
+end module lanparameters
 module sparse_parameters
 integer :: sparseprime=1                         !! For reordering config list (experimental)
 integer :: sparsesummaflag=0                     !! 0=gather 1=summa(bad) 2=sendrecv(ok)
@@ -224,24 +224,24 @@ real*8 :: par_timestep=0.1d0     !! Step=        !! MEAN FIELD TIMESTEP
 integer :: improvedrelaxflag=0   !! Relax        !! For improved versus regular relaxtion.   
 integer :: threshflag=0          !!              !! Set to 1 for regular relaxation
 real*8 :: expotol=1d-8           !!              !! Orbital krylov convergence parameter
-integer :: maxexpodim=100        !!              !! Orbital maximum kry dimension OR DGMRES DIM improvedquad=2,3
+integer :: expodim=10            !!              !! Starting krylov dimension for expokit orbital propagation
+integer :: maxexpodim=100        !!              !! Maximum krylov dimension for expokit orbital propagation
 real*8  :: expostepfac=1.2d0     !!              !! Miscellaneous algorithm parameter
 !!EE
 !!\textbf{\qquad SPARSE - if sparseconfigflag .ne. 0}
 !!BB
-integer :: maxaorder=100         !!              !!   lanczos order for sparse a-vector prop and improvedquad=1,3
+real*8 :: aerror=1d-9            !!              !! error criterion for sparse a-vector prop
+                                                 !! and eigenfunctions with improvedquad=1,3
 !!EE
 !!{\large \quad PROPAGATION}
 !!BB
 integer :: littlesteps=1         !!              !! Sub intervals of mean field time step for avector prop
 real*8 :: finaltime=4d4          !! T=           !! length of prop.  Overridden for pulse and relax.  
-integer :: expodim=10            !!              !! Starting krylov size for orbital propagation (expokit)
 !!EE
 !!\textbf{\qquad SPARSE - if sparseconfigflag .ne. 0}
 !!BB
-integer :: aorder=30             !!              !!   
-real*8 :: aerror=1d-9            !!              !! lanczos error criterion for sparse a-vector CMF propagation
-                                                 !!  within aerror to stop.
+integer :: aorder=30             !!              !! Starting lanczos order for sparse a-vector expokit prop
+integer :: maxaorder=100         !!              !! max lanczos order for sparse a-vector expokit prop
 !!EE
 !!{\large \quad RELAXATION}
 !!BB
@@ -259,6 +259,9 @@ real*8 :: quadtol=1d-1           !!              !! Threshold for solution of Ne
 integer :: quadprecon=1          !!              !! Precondition newton iterations for A-vector?
 integer :: quadorthflag=0        !!              !! If eigenfunctions are becoming linearly dependent try this
 integer :: normboflag=0          !!              !! Enforce norm at each r value
+!!EE
+!!\textbf{\qquad SPARSE - for relaxation if sparseconfigflag .ne. 0 see module lanparameters above}
+!!BB
 !!EE
 !!{\large \quad ORBITALS (SINGLE PARTICLE FUNCTIONS, SPFS)}
 !!BB
