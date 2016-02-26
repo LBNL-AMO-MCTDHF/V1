@@ -880,7 +880,7 @@ subroutine basis_shuffle(howmany,wwin,avectorin,wwout,avectorout)
 !!$     OFLWR "What? too few pairs",numpairs; CFLST
 !!$  endif
 
-  if (numpairs.lt.min(wwin%nzprocs,wwout%nzprocs)) then
+  if (numpairs.lt.max(wwin%nzprocs,wwout%nzprocs)) then
      OFLWR "What? too few pairs",numpairs,wwin%nzprocs,wwout%nzprocs; CFLST
   endif
   call system_clock(btime); times(3)=times(3)+ btime-atime; atime=btime
