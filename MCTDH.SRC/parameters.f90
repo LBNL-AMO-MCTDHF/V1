@@ -214,7 +214,7 @@ integer :: spf_flag=1            !!              !! IF ZERO, FREEZE SPFS. (for d
 integer :: avector_flag=1        !!              !! IF ZERO, FREEZE AVECTOR. (for debugging)
 !! FOR TOTAL ORBITAL PARALLELIZATION with SINC DVR, SET PARORBSPLIT=3
 !!   and orbparflag=.true. in &sinc_params.  parorbsplit=3 not supported for atom or diatom.
-integer :: par_consplit=0
+integer :: par_consplit=1
 character (len=200) :: &         !!              !! MAY BE SET BY COMMAND LINE OPTION ONLY: not namelist
   inpfile="Input.Inp        "    !! Inp=filename !!  input.  (=name of input file where namelist input is)
 !!EE
@@ -262,7 +262,7 @@ integer :: normboflag=0          !!              !! Enforce norm at each r value
 !!EE
 !!\textbf{\qquad SPARSE - for relaxation if sparseconfigflag .ne. 0 see module lanparameters above, and}
 !!BB
-integer :: maxdgdim = 1200                       !! Max dimension for improvedquadflag options
+integer :: maxdgdim = 800                        !! Max dimension for improvedquadflag options
 !!EE
 !!{\large \quad ORBITALS (SINGLE PARTICLE FUNCTIONS, SPFS)}
 !!BB
