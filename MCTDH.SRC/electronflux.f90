@@ -255,12 +255,12 @@ subroutine fluxgtau0(alg,www,bioww)
            k=FluxSkipMult*((ketbat-1)*BatchSize+i-1)+1
            read(1001,rec=k,iostat=myiostat) read_ketmo(:,:,i) 
         enddo
-        call checkiostat(myiostat,"writing "//fluxmofile)
+        call checkiostat(myiostat,"reading "//fluxmofile)
         do i=1,ketreadsize
            k=FluxSkipMult*((ketbat-1)*BatchSize+i-1)+1
            read(1002,rec=k,iostat=myiostat) read_ketavec(:,:,:,i) 
         enddo
-        call checkiostat(myiostat,"writing "//fluxafile)
+        call checkiostat(myiostat,"reading "//fluxafile)
         close(1001);      close(1002)
      endif
 
@@ -325,7 +325,7 @@ subroutine fluxgtau0(alg,www,bioww)
                  k=FluxSkipMult*((brabat-1)*BatchSize+i-1)+1
                  read(1002,rec=k,iostat=myiostat) read_braavec(:,:,:,i) 
               enddo
-              call checkiostat(myiostat,"reading"//fluxafile)
+              call checkiostat(myiostat,"reading "//fluxafile)
               close(1001);          close(1002)
            endif
 
