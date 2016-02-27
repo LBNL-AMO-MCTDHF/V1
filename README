@@ -165,6 +165,19 @@ in the V1 working directory,
 6)   cd EXAMPLES-DEPOT
      git pull https://github.com/LBNL-AMO-MCTDHF/examples-depot
 
+If you want to switch versions of the code then do e.g.
+
+     git checkout tags/v1.21
+     cd COMPDIRS
+     for dir in *BIN*; do cd $dir; ./Makeme & cd ..; done
+
+This should work for tags v1.16 and later.  Return to the most up-to-date 
+version of the code by executing
+
+     git checkout master
+
+and again recompiling.
+
 ----------------------------    MODULES TO LOAD    -----------------------------
 ---------------------------- ON NERSC & LAWRENCIUM -----------------------------
 
