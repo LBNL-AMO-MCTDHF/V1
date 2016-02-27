@@ -212,7 +212,9 @@ program mctdhf
   spfsloaded=0
   pi=4.d0*atan(1.d0)
 
-  call system("date")
+  if (myrank.eq.1) then
+     call system("date")
+  endif
   call system("mkdir -p Dat"); call system("mkdir -p Bin"); call system("mkdir -p Flux")
   call system("mkdir -p WALKS");  
 
@@ -662,8 +664,6 @@ program mctdhf
 
 !  OFLWR "   ...cleanup..."; CFL
 
-  call mpibarrier()
-
 !! 10-2015 something is buggy... no need to explicitly deallocate so commenting out - djh
 !  call opdealloc()
 !
@@ -677,8 +677,13 @@ program mctdhf
 !  call dfcondealloc()
 !  call natprojdealloc(); 
 
-  call system("date")
   call mpibarrier()
+  call waitawhile()
+  if (myrank.eq.1) then
+     call system("date")
+  endif
+  call mpibarrier()
+  call waitawhile()
   OFLWR "   ...END MCTDHF"; CFLST
 
 contains
