@@ -29,7 +29,7 @@ ALSO v1.16 linear damping (fttriwindow=1) NEW DEFAULT actions 1,16,17,21
    RESULTS WILL BE DIFFERENT (hopefully better)
    Probably better results for absorption/emission, action 21.
    CONSIDER fttriwindow=0, ftwindowpower=2 in namelist &parinp
-     to invoke old windowing function for actions 1,16,17.
+   to invoke old windowing function for actions 1,16,17.
 
 ALSO v1.16 ABSOLUTE UNITS (megabarns) IMPLEMENTED FOR ACTION 21
    emission/absorption.  Column 9 in ZDipoleft.Dat etc is cross 
@@ -73,14 +73,14 @@ Possible workflow described below for mac.  The general idea is that you can
 
 ----------------------------------------------------------------------------
 
-On Mac: minimal demonstration.  BIN*mac* directories use GFORTRAN.  You must have
-gfortran installed to use the BIN*mac* directories.  To install gfortran -- which
+On Mac: minimal demonstration.  *BIN*mac* directories use GFORTRAN.  You must have
+gfortran installed to use the *BIN*mac* directories.  To install gfortran -- which
 you will need to do if the Makeme step fails -- visit 
 
      https://gcc.gnu.org/wiki/GFortranBinariesMacOS
 
-00)  mkdir V1/
-     cd V1/
+00)  mkdir V1
+     cd V1
      git clone https://github.com/LBNL-AMO-MCTDHF/V1 master .
 
           or download using a web browser
@@ -88,17 +88,16 @@ you will need to do if the Makeme step fails -- visit
      https://github.com/LBNL-AMO-MCTDHF/V1/archive/master.zip
           and unzip this file
      unzip master.zip
-     mv master/ V1/
-     cd V1/
+     mv master V1
+     cd V1
 
      PERFORM ALL OTHER STEPS IN THIS V1 DIRECTORY.
 
 0)   You must get the examples now separately.
 
-     cd EXAMPLES-DEPOT 
+     cd EXAMPLES-DEPOT
      rm README
-
-     git clone https://github.com/LBNL-AMO-MCTDHF/EXAMPLES-DEPOT master .
+     git clone https://github.com/LBNL-AMO-MCTDHF/examples-depot master .
 
           or download using a web browser
 
@@ -117,7 +116,9 @@ you will need to do if the Makeme step fails -- visit
      cd ../debug.BIN.ecs.hermnorm.mac.mpi
      ./Makeme
 
-     You can delete the directories in COMPDIRS that you don't want.
+     [ You can delete the directories in COMPDIRS that you don't want, e.g.
+     cd COMPDIRS
+     rm -r *BIN*law* *BIN*ediso* *BIN*cori* ]
 
 2)   You need to have the code in your path.  Safe, temporary way:
 
@@ -156,10 +157,11 @@ you will need to do if the Makeme step fails -- visit
 If you want to update the code then perform steps 5 and 6, like steps 1-4, 
 in the V1 working directory,
 
-5)   git pull https://github.com/LBNL-AMO-MCTDHF/V1 master
+5)   git pull https://github.com/LBNL-AMO-MCTDHF/V1
      ... then ./Makeme should be sufficient, in the BIN directories,
          but ./Makeme clean; ./Makeme would certainly be fail safe
          after updating the code with git pull.
+
 6)   cd EXAMPLES-DEPOT
      git pull https://github.com/LBNL-AMO-MCTDHF/examples-depot
 
