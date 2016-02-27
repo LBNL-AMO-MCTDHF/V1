@@ -33,7 +33,7 @@ ALSO v1.16 linear damping (fttriwindow=1) NEW DEFAULT actions 1,16,17,21
 
 ALSO v1.16 ABSOLUTE UNITS (megabarns) IMPLEMENTED FOR ACTION 21
    emission/absorption.  Column 9 in ZDipoleft.Dat etc is cross 
-   section in Mb. See H2ABSORPTION and HEABSORPTION examples.
+   section in Mb. See H2 and Helium examples.
 
 ALSO v1.16 par_consplit.ne.0 attempted first time.  Total MPI 
    parallelization of LBNL-AMO-MCTDHF calculation with
@@ -79,27 +79,26 @@ you will need to do if the Makeme step fails -- visit
 
      https://gcc.gnu.org/wiki/GFortranBinariesMacOS
 
-00)   git clone https://github.com/LBNL-AMO-MCTDHF/V1 master
+00)  mkdir V1/
+     cd V1/
+     git clone https://github.com/LBNL-AMO-MCTDHF/V1 master .
 
           or download using a web browser
 
      https://github.com/LBNL-AMO-MCTDHF/V1/archive/master.zip
-          and unzip this file.
-
-     You then have a V1 or V1-master directory with the code in it.  change
-     to that directory:
-
-     cd ./V1
-         or
-     cd ./V1-master
+          and unzip this file
+     unzip master.zip
+     mv master/ V1/
+     cd V1/
 
      PERFORM ALL OTHER STEPS IN THIS V1 DIRECTORY.
 
 0)   You must get the examples now separately.
 
      cd EXAMPLES-DEPOT 
+     rm README
 
-     git clone https://github.com/LBNL-AMO-MCTDHF/EXAMPLES-DEPOT master
+     git clone https://github.com/LBNL-AMO-MCTDHF/EXAMPLES-DEPOT master .
 
           or download using a web browser
 
@@ -141,9 +140,8 @@ you will need to do if the Makeme step fails -- visit
 
      You must restart the terminal after step 2C.
 
-3)   mkdir EXAMPLES          (you can also make other directories e.g. 
-     mkdir MYRUNS            )
-     cp -R -p EXAMPLES-depot/H2-EXAMPLE-PLAIN-SCRIPTS EXAMPLES
+3)   mkdir EXAMPLES
+     cp -R -p EXAMPLES-DEPOT/H2-EXAMPLE-PLAIN-SCRIPTS EXAMPLES
 
 4)   cd EXAMPLES/H2-EXAMPLE-PLAIN-SCRIPTS
      follow the README; 
@@ -155,13 +153,15 @@ you will need to do if the Makeme step fails -- visit
 
      for total photoionization; see the README for more.
  
-If you want to update the code then perform step 5, like steps 1-4, in the 
-V1 working directory,
+If you want to update the code then perform steps 5 and 6, like steps 1-4, 
+in the V1 working directory,
 
 5)   git pull https://github.com/LBNL-AMO-MCTDHF/V1 master
      ... then ./Makeme should be sufficient, in the BIN directories,
          but ./Makeme clean; ./Makeme would certainly be fail safe
          after updating the code with git pull.
+6)   cd EXAMPLES-DEPOT
+     git pull https://github.com/LBNL-AMO-MCTDHF/examples-depot
 
 ----------------------------    MODULES TO LOAD    -----------------------------
 ---------------------------- ON NERSC & LAWRENCIUM -----------------------------
@@ -172,19 +172,6 @@ V1 working directory,
 LAWRENCIUM:
 
 module load mkl
-
-CARVER:
-
-module unload pgi openmpi
-module load intel openmpi-intel mkl
-module unload torque
-module load torque
-
-HOPPER:
-
-module swap PrgEnv-pgi PrgEnv-intel
-#yes last
-module unload cray-libsci
 
 EDISON:
 
