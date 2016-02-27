@@ -21,6 +21,10 @@ integer :: numclasses=1
 integer, allocatable :: classorb(:,:),nperclass(:), orbclass(:)
 end module class_parameters
 
+module output_parameters
+integer :: iprintconfiglist=0
+end module output_parameters
+
 module dotmod
 contains
 
@@ -65,7 +69,7 @@ end module dotmod
 !! Type, variable, default value !! Command-line !! Description 
 !!                               !!  option      !! 
 !!EE
-!!\textbf{\qquad SPARSE - if sparseconfigflag .ne. 0}
+!!{\large \quad SPARSE - if sparseconfigflag .ne. 0}
 !!BB
 module lanparameters
 integer :: lanprintflag=0
@@ -74,19 +78,20 @@ integer :: lancheckstep=20       !!              !! lanczos eigen routine checks
 real*8 :: lanthresh=1.d-9        !!              !! convergence criterion.
 end module lanparameters
 module sparse_parameters
-integer :: sparseprime=1                         !! For reordering config list (experimental)
-integer :: sparsesummaflag=0                     !! 0=gather 1=summa(bad) 2=sendrecv(ok)
-integer :: sparsedfflag=1                        !! If zero disable separate restricted config walk list
 integer :: sparseconfigflag=0    !! Sparse       !! Sparse configuration routines on or off (for large # configs)
 integer :: sparseopt =1                          !! 0= direct CI  1= sparse matrix algebra (faster, more memory)
+integer :: par_consplit=1                        !! Fully distribute a-vector
+integer :: sparsesummaflag=0                     !! a-vector matvec mode 0=gather 1=summa(bad) 2=sendrecv(ok)
+integer :: sparsedfflag=1                        !! If zero disable separate restricted config walk list
 integer :: nonsparsepropmode=1                   !! 0 = ZGCHBV expokit; 1 = mine expmat
 integer :: nzflag=1                              !! use only processors with nonzero number of Slaters for a-vec
 logical :: shuffle_dfwalktype=.true.             !! redistribute restricted configs evenly over processors
+integer :: sparseprime=1                         !! For reordering config list (experimental)
 logical :: use_dfwalktype=.false.                !! internal, IGNORE me
 end module sparse_parameters
 module ham_parameters
 !!EE
-!!\textbf{\qquad HAMILTONIAN PARAMETERS}
+!!{\large \quad HAMILTONIAN PARAMETERS}
 !!BB
 integer :: nonuc_checkflag=1     !!              !! Turn off deriv operators in nuclear dofs.
 integer :: tdflag=0              !! Pulse        !! Use pulse?
@@ -108,7 +113,17 @@ integer :: offaxispulseflag=0                    !! internal (not namelist), IGN
 end module ham_parameters
 module basis_parameters
 !!EE
-!! {\large \quad For restricted configuration lists (not full CI): SEE MANUAL about dfrestrictflag}
+!!{\large \quad CONFIGURATIONS / SLATER DETERMINANTS}
+!!BB
+integer :: mrestrictflag=0       !!              !! If spfrestrictflag=1, restrict wfn to given total M.
+integer :: mrestrictval=0        !!              !!    This is the value.
+integer :: mrestrictmax= 99999   !!              !! If doing state averaged MCSCF, can include a range of m vals;
+integer :: mrestrictmin=-99999   !!              !!    set these variables, with mrestrictflag=0, spfrestrictflag=1
+integer :: ugrestrictflag=0      !!              !! like mrestrictflag but for parity
+integer :: ugrestrictval=1       !!              !!    like mrestrictval but for parity (1=even,-1=odd)
+integer :: restrictflag=1        !!              !! Restrict spin projection of determinants?
+!!EE
+!! \textbf{\qquad For restricted configuration lists (not full CI) (see manual)}
 !!BB
 integer :: numshells=1           !!              !! number of shells.  greater than one: possibly not full CI. 
 !!$ integer :: shelltop(100)=-1  !! Numfrozen=   !! shelltop is namelist input in parinp; the internal variable 
@@ -123,16 +138,6 @@ integer :: vexcite=999           !!              !! excitations INTO last shell.
 integer :: shells(100)=1
 integer :: allshelltop(0:100)=0           
 !!EE
-!!{\large \quad CONFIGURATIONS}
-!!BB
-integer :: mrestrictflag=0       !!              !! If spfrestrictflag=1, restrict wfn to given total M.
-integer :: mrestrictval=0        !!              !!    This is the value.
-integer :: mrestrictmax= 99999   !!              !! If doing state averaged MCSCF, can include a range of m vals;
-integer :: mrestrictmin=-99999   !!              !!    set these variables, with mrestrictflag=0, spfrestrictflag=1
-integer :: ugrestrictflag=0      !!              !! like mrestrictflag but for parity
-integer :: ugrestrictval=1       !!              !!    like mrestrictval but for parity (1=even,-1=odd)
-integer :: restrictflag=1        !!              !! Restrict spin projection of determinants?
-!!EE
 !!{\large \quad ORBITALS (SINGLE PARTICLE FUNCTIONS, SPFS)}
 !!BB
 integer :: spfrestrictflag=0     !!              !! Restrict m values of orbitals?  
@@ -140,9 +145,6 @@ integer :: spfmvals(1000)=0      !!              !!   M-values of orbitals
 integer :: spfugrestrict=0       !!              !! Restrict parity of orbitals? 
 integer :: spfugvals(1000)=0     !!              !!   Parity (+/-1; 0=either) of orbitals (ungerade/gerade)
 end module basis_parameters
-module output_parameters
-integer :: iprintconfiglist=0
-end module output_parameters
 module timing_parameters
 !!EE
 !!{\large \quad Timing}
@@ -154,24 +156,23 @@ integer :: timingout=499         !!              !! various routines output to f
 character(len=200):: timingdir="timing"                       !!
 end module timing_parameters
 module tol_parameters
-real*8 :: lntol=1d-4
-real*8 :: invtol=1d-8
+real*8 :: lntol=1d-4             !! Regularization of natural logarithm
+real*8 :: invtol=1d-8            !! Regularization of inverses especially for spectral expansions
 end module tol_parameters
 module bio_parameters
 !!EE
 !!{\large \quad Biorthogonalization }
 !!BB
-integer ::      maxbiodim=100, &
-     biodim=10                   !! Krylov dim for biorthogonalization
-real*8 ::     biotol=1.d-6
-integer :: auto_biortho=1        !! do we want to use biorthonormalization or permutation overlaps? 0 perm overlaps, 1 biortho
+integer ::      maxbiodim=100, & !! Max krylov dim for biorthogonalization
+     biodim=10                   !! Starting krylov dim for biorthogonalization
+real*8 ::     biotol=1.d-6       !! Expokit tolerance parameter for biorthogonalization
 integer :: logbranch=1           !! branch of logarithm 3 options 0,1,2
+integer :: auto_biortho=1        !! internal, IGNORE me
 end module bio_parameters
 module spfsize_parameters
-integer :: parorbsplit=1                         !!  Parallelize orbital calculation.  Might speed up, might
-                                                 !!   slow down; check timing.
-integer :: spfsize,spfsmallsize                  !! internal, IGNORE
-integer :: reducedpotsize = -1                   !! internal, iGNORE
+integer :: parorbsplit=1                !! 1=keep all orbs, prop in parallel   3=polyatomic, full MPI
+integer :: spfsize,spfsmallsize         !! internal, IGNORE
+integer :: reducedpotsize = -1          !! internal, iGNORE
 end module spfsize_parameters
 module constraint_parameters
 !!EE
@@ -212,9 +213,6 @@ integer :: save_every=0                          !! if nonzero saves wave functi
 integer :: walkwriteflag=0                       !! Turning OFF writing of walks by default
 integer :: spf_flag=1            !!              !! IF ZERO, FREEZE SPFS. (for debugging, or TDCI)
 integer :: avector_flag=1        !!              !! IF ZERO, FREEZE AVECTOR. (for debugging)
-!! FOR TOTAL ORBITAL PARALLELIZATION with SINC DVR, SET PARORBSPLIT=3
-!!   and orbparflag=.true. in &sinc_params.  parorbsplit=3 not supported for atom or diatom.
-integer :: par_consplit=1
 character (len=200) :: &         !!              !! MAY BE SET BY COMMAND LINE OPTION ONLY: not namelist
   inpfile="Input.Inp        "    !! Inp=filename !!  input.  (=name of input file where namelist input is)
 !!EE
