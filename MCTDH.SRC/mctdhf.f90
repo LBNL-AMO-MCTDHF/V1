@@ -640,14 +640,6 @@ program mctdhf
                 hugeavector((first_config-1)*numr+1:last_config*numr,1) / &
                 sqrt(real(num_config*numr))
         endif
-#ifndef REALGO
-        call staticvector(hugeavector(:,:),num_config*numr)
-        if (tot_adim.gt.0) then
-           yyy%cmfavec(:,i,0) = yyy%cmfavec(:,i,0) + messaamount * (0d0,1d0) * &
-                hugeavector((first_config-1)*numr+1:last_config*numr,1) / &
-                sqrt(real(num_config*numr))
-        endif
-#endif
      enddo
      deallocate(hugeavector)
   endif
