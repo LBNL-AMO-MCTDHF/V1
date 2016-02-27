@@ -377,7 +377,7 @@ subroutine quadspfs(inspfs,jjcalls)
         endif
         dev=sqrt(dev)
   
-        OFLWR "   Quad orbitals: Deviation is now ", dev,orthogerror; CFL
+        OFLWR "   Quad orbitals: Deviation is now ", dev; CFL
         if (dev.le.indev) then
            inspfs(:,:) = vector4(:,1:nspf)
            flag=0

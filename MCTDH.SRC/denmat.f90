@@ -303,7 +303,7 @@ subroutine getdenmatstuff(www,avector, denmat, invdenmat, denvals, &
      tempinvden(:,:,iclass)= (-1) * tempinvden(:,:,iclass)
      tempdenvals(:,iclass)= (-1) * tempdenvals(:,iclass)
 
-     call invmatsmooth(tempinvden(:,:,iclass),nperclass(iclass),www%nspf,denreg)
+     call invmatsmooth(tempinvden(:,:,iclass),nperclass(iclass),www%nspf,denreg,.false.)
      do ispf=1,nperclass(iclass)
         denvals(classorb(ispf,iclass))=tempdenvals(ispf,iclass)
         do jspf=1,nperclass(iclass)

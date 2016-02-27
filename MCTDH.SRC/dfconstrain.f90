@@ -520,7 +520,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
         call checksym(rhomatpairscopy,isize*zzz)
 
-        call realinvmatsmooth(rhomatpairscopy,isize*zzz,lioreg)
+        call realinvmatsmooth(rhomatpairscopy,isize*zzz,lioreg,.false.)
         call dgemv('N',isize*zzz,isize*zzz,1d0,rhomatpairscopy,&
              isize*zzz,rhspairstemp,1,0d0,rhspairs,1)
 
@@ -530,7 +530,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
              MATMUL(TRANSPOSE(RESHAPE(rhomatpairsbigcopy(:,:,:,:),&
              (/2*isize*zzz,isize*zzz/))),&
              RESHAPE(rhomatpairsbigcopy(:,:,:,:),(/2*isize*zzz,isize*zzz/)))
-        call realinvmatsmooth(mattemp,isize*zzz,lioreg)
+        call realinvmatsmooth(mattemp,isize*zzz,lioreg,.false.)
         pseudoinv(:,:)=MATMUL(mattemp,TRANSPOSE(RESHAPE(rhomatpairsbigcopy(:,:,:,:),&
              (/2*isize*zzz,isize*zzz/))))
         call DGEMV('N',zzz*isize,2*zzz*isize,1d0,pseudoinv(:,:),isize*zzz,&
@@ -926,7 +926,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
            OFLWR "Errx  mygesv lioden", info, " size ", liosize, isize ; CFLST
         endif
      else
-        call invmatsmooth(liodencopy,liosize,liosize,lioreg)
+        call invmatsmooth(liodencopy,liosize,liosize,lioreg,.false.)
         call MYGEMV('N',liosize,liosize,DATAONE,liodencopy,liosize,liosolve,1,&
              DATAZERO,liosolvetemp,1)
         liosolve(:)=liosolvetemp(:)
@@ -1286,7 +1286,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
            OFLWR "Errx  mygesv lioden", info, " size ", isize ; CFLST
         endif
      else
-        call invmatsmooth(liodencopy,isize,isize,lioreg)
+        call invmatsmooth(liodencopy,isize,isize,lioreg,.false.)
         call MYGEMV('N',isize,isize,DATAONE,liodencopy,isize,&
              liosolve,1,DATAZERO,liosolvetemp,1)
         liosolve(:)=liosolvetemp(:)

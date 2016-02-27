@@ -297,18 +297,22 @@ end subroutine nullgramschmidt
 module invsubmod
 contains
 
-!!$  For invmatsmooth, tol is the maximum ratio of smallest to biggest eigenvalue
-!!$   i.e. tol is relative not absolute
+!!$  if relflag then
+!!$  tol is the maximum ratio of smallest to biggest eigenvalue
+!!$    i.e. tol is relative not absolute
+!!$  it .not.relflag then tol is absolute
 
-subroutine invmatsmooth(A,N,LDA,tol)  !! inverse of ANY matrix.
+subroutine invmatsmooth(A,N,LDA,tol,relflag)  !! inverse of ANY matrix.
 !! input :
 !! A - an N by N matrix
 !! N - the dimension of A
 !! output:
 !! A - an N by N matrix that is A=(A_in)**-1
   implicit none
+  logical,intent(in) :: relflag
   integer,intent(in) :: N,LDA
   real*8,intent(in) :: tol
+  real*8 :: mytol
   DATATYPE,intent(inout) :: A(LDA,N)
   integer :: lwork,i,j,k
   real*8,allocatable :: SV(:)
@@ -338,22 +342,27 @@ subroutine invmatsmooth(A,N,LDA,tol)  !! inverse of ANY matrix.
      stop
   endif
 
+  if (relflag) then 
+     mytol=tol*SV(1)
+  else
+     mytol=tol
+  endif
+
 !! apply the function
   do k=1,N
      if (SV(k).ne.0d0) then
-        if(SV(k).lt.tol*SV(1)) then    !! it is positive ,whatever
+        if(SV(k).lt.mytol) then    !! it is positive ,whatever
 
-!!$ NAAAH    SV(k)= 1d0 / tol / SV(1) * (3 * (SV(k) / tol / SV(1)) - 2 *( SV(k) / tol / SV(1))**2)
+!!$ NAAAH    SV(k)= 1d0 / mytol * (3 * (SV(k) / mytol / ) - 2 *( SV(k) / mytol )**2)
 
 !!$    SVD so SV is real, keeping old regularization for now v1.19
 
-           SV(k)= 1d0 / tol / SV(1)
+           SV(k)= 1d0 / mytol
 
         else
            SV(k) = 1d0 / SV(k)
         endif
      endif
-
   enddo
 
 !! rebuild the matrix
@@ -374,19 +383,24 @@ subroutine invmatsmooth(A,N,LDA,tol)  !! inverse of ANY matrix.
 end subroutine invmatsmooth
 
 
-!!$  realinvmatsmooth used for constraintflag.ne.0
-!!$  For realinvmatsmooth, tol is absolute not relative 
-!!$  (refers to absolute mag of eigenvalue)
 
-subroutine realinvmatsmooth(A,N,tol)  !! inverse of ANY matrix.
+!!$  if relflag then
+!!$  tol is the maximum ratio of smallest to biggest eigenvalue
+!!$    i.e. tol is relative not absolute
+!!$  it .not.relflag then tol is absolute
+
+
+subroutine realinvmatsmooth(A,N,tol,relflag)  !! inverse of ANY matrix.
 !! input :
 !! A - an N by N matrix
 !! N - the dimension of A
 !! output:
 !! A - an N by N matrix that is A=(A_in)**-1
   implicit none
+  logical,intent(in) :: relflag
   integer,intent(in) :: N
   real*8,intent(in) :: tol 
+  real*8 :: mytol
   real*8,intent(inout) :: A(N,N)
   real*8,allocatable :: U(:,:),VT(:,:),work(:),SV(:)
   integer :: lwork,i,j,k
@@ -398,20 +412,26 @@ subroutine realinvmatsmooth(A,N,tol)  !! inverse of ANY matrix.
 !! do the svd
 
   call dgesvd('A','A',N,N,A,N,SV,U,N,VT,N,work,lwork,i)
-
   if (i.ne.0) then
      print *, "ERR SVD";     stop
   endif
+
+  if (relflag) then 
+     mytol=tol*SV(1)
+  else
+     mytol=tol
+  endif
+
 !! apply the function
   do k=1,N
      if (SV(k).ne.0d0) then
-        if(abs(SV(k)).lt.tol) then
+        if(abs(SV(k)).lt.mytol) then
 
-!!$ NAAAH         SV(k)= 1d0 / tol * (3 * (SV(k) / tol) - 2 *( SV(k) / tol )**2)
+!!$ NAAAH         SV(k)= 1d0 / mytol * (3 * (SV(k) / mytol) - 2 *( SV(k) / mytol )**2)
 
 !!$    SVD so SV is real, keeping old regularization for now v1.19
 
-           SV(k) = 1d0 / tol 
+           SV(k) = 1d0 / mytol 
         else
            SV(k) = 1d0 / SV(k)
         endif
@@ -507,7 +527,7 @@ subroutine bothlnmat(A,N, which)
 
 !! MAY 2014
   VL(:,:)=TRANSPOSE(VR(:,:))
-  call invmatsmooth(VL,N,N,invtol)
+  call invmatsmooth(VL,N,N,invtol,.true.)
 
 !! apply the function
   do k=1,N
@@ -635,7 +655,7 @@ subroutine expmat(A,N)
 #endif
 
   VL(:,:)=TRANSPOSE(VR(:,:))
-  call invmatsmooth(VL,N,N,invtol)
+  call invmatsmooth(VL,N,N,invtol,.true.)
 
 !! apply the function
   do k=1,N
@@ -813,7 +833,7 @@ subroutine allpurposemat(A,N,flag)
 #endif
 
   VL(:,:)=TRANSPOSE(VR(:,:))
-  call invmatsmooth(VL,N,N,invtol)
+  call invmatsmooth(VL,N,N,invtol,.true.)
 
 !! apply the function
   do k=1,N

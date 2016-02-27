@@ -954,7 +954,7 @@ contains
     
 !! make the  bi-orthonormal orbitals 
     smosave(:,:)=inbiovar%smo(:,:)
-    call invmatsmooth(inbiovar%smo,inbiovar%wwbio%nspf,inbiovar%wwbio%nspf,lntol);   
+    call invmatsmooth(inbiovar%smo,inbiovar%wwbio%nspf,inbiovar%wwbio%nspf,lntol,.false.);   
     call MYGEMM('N','N',spfsize,inbiovar%wwbio%nspf,inbiovar%wwbio%nspf,DATAONE,origmo,spfsize,&
          inbiovar%smo,inbiovar%wwbio%nspf,DATAZERO,mobio,spfsize)
     
@@ -1052,7 +1052,7 @@ contains
     endif
 
     if(sparseconfigflag.eq.0) then
-       call invmatsmooth(inbiovar%smo,inbiovar%wwbio%nspf,inbiovar%wwbio%nspf,lntol);   
+       call invmatsmooth(inbiovar%smo,inbiovar%wwbio%nspf,inbiovar%wwbio%nspf,lntol,.false.);   
        call abio_nonsparse(abio,atmp,inbiovar)
     else
        call lnmat(inbiovar%smo,inbiovar%wwbio%nspf)    !! transform s to -ln(s)
