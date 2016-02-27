@@ -309,6 +309,10 @@ integer,allocatable:: myavectorexciteto(:,:,:)   !!
                                                  !! For both excite and hole: value is spin orbital index
                                                  !! 1=1alpha, 2=1beta, 3=1alpha, etc.
                                                  !! negative input -> negative coefficent
+integer :: messflag=0                            !! add static to initial orbitals
+real*8 :: messamount=1.d-4                       !!    how much
+integer :: messavec=0                            !! add static to initial a-vector
+real*8 :: messaamount=1.d-4                      !!    how much
 !!EE
 !!{\large \quad INPUT / OUTPUT }
 !!BB
@@ -505,6 +509,7 @@ integer, parameter :: nodgexpthirdflag=1  !! =1 HARDWIRE 10-2015 not sure about 
 integer :: eigprintflag=0
 !integer :: intopt=3              !! RK, GBS      !! SPF/VMF Integrator: 0, RK; 1, GBS, 2, DLSODPK  
 !                                                 !!  for CMF: 3=expo 4=verlet
+real*8 :: abserr
 real*8 :: relerr=1.d-10          !!              !! relative error for integrator (RK/GBS/DLSODPK)
                                                  !!   norm error for expo (controls exposteps)
 real*8 :: myrelerr=1.d-10        !!              !! absolute error set to norm*myrelerr
@@ -565,9 +570,6 @@ integer, parameter :: denfile=904
 integer, parameter :: denprojfile=597
 integer, parameter :: natprojfile=488
 
-real*8 :: abserr
-integer :: messflag=0
-real*8 :: messamount=1.d-2
 integer :: skipflag=0
 
 character (len=200) :: nullbuff="                                                                                                                                                                                                        ";;;;;;

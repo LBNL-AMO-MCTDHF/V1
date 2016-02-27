@@ -631,6 +631,27 @@ program mctdhf
      deallocate(bigavector)
   endif
 
+  if (messavec.ne.0) then
+     allocate(hugeavector(numr*num_config,1));  hugeavector=0
+     do i=1,mcscfnum
+        call staticvector(hugeavector(:,:),num_config*numr)
+        if (tot_adim.gt.0) then
+           yyy%cmfavec(:,i,0) = yyy%cmfavec(:,i,0) + messaamount * &
+                hugeavector((first_config-1)*numr+1:last_config*numr,1) / &
+                sqrt(real(num_config*numr))
+        endif
+#ifndef REALGO
+        call staticvector(hugeavector(:,:),num_config*numr)
+        if (tot_adim.gt.0) then
+           yyy%cmfavec(:,i,0) = yyy%cmfavec(:,i,0) + messaamount * (0d0,1d0) * &
+                hugeavector((first_config-1)*numr+1:last_config*numr,1) / &
+                sqrt(real(num_config*numr))
+        endif
+#endif
+     enddo
+     deallocate(hugeavector)
+  endif
+
   if (cdenflag.ne.0) then
      call natprojalloc()
   endif
