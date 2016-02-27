@@ -169,7 +169,7 @@ If you want to switch versions of the code then do e.g.
 
      git checkout tags/v1.21
      cd COMPDIRS
-     for dir in *BIN*; do cd $dir; ./Makeme & cd ..; done
+     for dir in *BIN*; do cd $dir; ./Makeme clean; ./Makeme & cd ..; done
 
 This should work for tags v1.16 and later.  Return to the most up-to-date 
 version of the code by executing
