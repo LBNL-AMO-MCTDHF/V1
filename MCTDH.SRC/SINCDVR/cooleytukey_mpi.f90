@@ -191,6 +191,7 @@
 !!$   limitations under the License.
 
 
+#ifdef MPIFLAG
 
 !! INVERSE OF cooleytukey_outofplace_mpi except for division
 
@@ -241,6 +242,8 @@ recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim1,dim2,dim3,howm
   use pmpimod
   use ct_options
   use ct_primesetmod !! ct_numprimes
+  use ctsubmod
+  use fft3dsubmod
   implicit none
   integer, intent(in) :: dim1,dim2,dim3,howmany,recursiondepth
   complex*16, intent(in) :: in(dim1,dim2,dim3,howmany)
@@ -291,6 +294,8 @@ recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim1,dim2,
   use pmpimod
   use ct_options
   use ct_primesetmod !! ct_numprimes
+  use ctsubmod
+  use fft3dsubmod
   implicit none
   integer, intent(in) :: dim1,dim2,dim3,howmany,recursiondepth
   complex*16, intent(in) :: intranspose(dim1,dim2,dim3,howmany)
@@ -346,4 +351,5 @@ recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim1,dim2,
 
 end subroutine cooleytukey_outofplaceinput_mpi0
 
+#endif
 

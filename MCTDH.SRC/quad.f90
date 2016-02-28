@@ -274,7 +274,8 @@ subroutine quadspfs(inspfs,jjcalls)
   flag=1
 
   if (parorbsplit.eq.1) then
-     maxnorbs=nzprocsperset*orbsperproc
+!! TEMP? was     maxnorbs=nzprocsperset*orbsperproc
+     maxnorbs=maxprocsperset*orbsperproc
   else
      maxnorbs=nspf
   endif

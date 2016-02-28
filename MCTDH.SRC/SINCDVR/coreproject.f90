@@ -1050,6 +1050,7 @@ subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
   use pmpimod
   use pfileptrmod
   use myprojectmod
+  use circ3dsubmod
   implicit none
   integer, intent(in) :: allsize,circsize
   integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)

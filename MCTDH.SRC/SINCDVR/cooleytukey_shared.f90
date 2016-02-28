@@ -205,7 +205,7 @@ end module ct_options
 module ct_primesetmod
   implicit none
 
-  integer, allocatable :: CT_COMM_EACH(:,:,:),CT_GROUP_EACH(:,:,:)
+  integer, allocatable :: CT_COMM_EACH(:,:,:)
   integer :: CT_MYLOC(MAXPRIMES,3),CT_MYRANK(MAXPRIMES,3),CT_MYPOSITION(MAXPRIMES,3)
 
   integer :: ct_called=0
@@ -217,221 +217,165 @@ module ct_primesetmod
 end module ct_primesetmod
 
 
-
-subroutine ct_init(in_ctparopt)
-  use pmpimod
-  use ct_options
-  implicit none
-  integer, intent(in) :: in_ctparopt
-
-  ct_paropt=in_ctparopt
-
-  call ct_getprimeset()
-  
-end subroutine ct_init
-
-
-subroutine twiddlemult_mpi(blocksize,in,out,dim1,howmany,rdd,oplevel)
-  use ct_primesetmod
-  implicit none
-  integer, intent(in) :: blocksize,dim1,howmany,rdd,oplevel
-  complex*16, intent(in) :: in(blocksize,dim1,howmany)
-  complex*16, intent(out) :: out(blocksize,dim1,howmany)
-  complex*16 :: twiddle1(dim1,ct_maxposition(rdd)),tt1(dim1)
-  integer :: ii,n1
-
-  twiddle1=0; tt1=0
-  call gettwiddlesmall(twiddle1(:,:),dim1*ct_maxposition(rdd),ct_pf(rdd))
-
-  tt1(:)=twiddle1(:,ct_myposition(rdd,oplevel))**(ct_myrank(rdd,oplevel)-1)
-  do ii=1,howmany
-     do n1=1,dim1
-        out(:,n1,ii) = in(:,n1,ii) * tt1(n1)
-     enddo
-  enddo
-
-end subroutine twiddlemult_mpi
-
-
-subroutine myzfft1d_slowindex_mpi(in,out,totsize,rdd,oplevel)
-  use pfileptrmod
-  use ct_options
-  use ct_primesetmod
-  implicit none
-  integer, intent(in) :: totsize,rdd,oplevel
-  complex*16, intent(in) :: in(totsize)
-  complex*16, intent(out) :: out(totsize)
-  complex*16 :: fouriermatrix(ct_pf(rdd),ct_pf(rdd)),twiddle(ct_pf(rdd))
-  integer :: ii
-
-  fouriermatrix=0; ct_pf=0; twiddle=0
-
-  call gettwiddlesmall(twiddle,ct_pf(rdd),1)
-  do ii=1,ct_pf(rdd)
-     fouriermatrix(:,ii)=twiddle(:)**(ii-1)
-  enddo
-  select case (ct_paropt)
-  case(0)
-  call simple_circ(in,out,fouriermatrix,totsize,rdd,oplevel)
-  case(1)
-  call simple_summa(in,out,fouriermatrix,totsize,rdd,oplevel)
-  case default
-     OFLWR "ct_paropt not recognized",ct_paropt; CFLST
-  end select
-
-end subroutine myzfft1d_slowindex_mpi
-
-
-subroutine simple_circ(in, out,mat,howmany,rdd,oplevel)
-  use pmpimod
-  use ct_primesetmod
-  implicit none
-  integer, intent(in) :: howmany,rdd,oplevel
-  complex*16, intent(in) :: in(howmany), mat(ct_pf(rdd),ct_pf(rdd))
-  complex*16, intent(out) :: out(howmany)
-  integer :: thisfileptr
 #ifdef MPIFLAG
-  complex*16 :: work2(howmany),work(howmany)
-  integer :: ibox,jbox,deltabox,nnn
-  work2=0;work=0
+
+module ctsubmod
+contains
+
+!! called by recursive subroutines so making recursive
+  recursive subroutine twiddlemult_mpi(blocksize,in,out,dim1,howmany,rdd,oplevel)
+    use ct_primesetmod
+    implicit none
+    integer, intent(in) :: blocksize,dim1,howmany,rdd,oplevel
+    complex*16, intent(in) :: in(blocksize,dim1,howmany)
+    complex*16, intent(out) :: out(blocksize,dim1,howmany)
+!!   complex*16 :: twiddle1(dim1,ct_maxposition(rdd)),tt1(dim1)
+    complex*16,allocatable :: twiddle1(:,:),tt1(:)
+    integer :: ii,n1
+
+    allocate(twiddle1(dim1,ct_maxposition(rdd)),tt1(dim1))
+    twiddle1=0; tt1=0
+
+    call gettwiddlesmall(twiddle1(:,:),dim1*ct_maxposition(rdd),ct_pf(rdd))
+
+    tt1(:)=twiddle1(:,ct_myposition(rdd,oplevel))**(ct_myrank(rdd,oplevel)-1)
+    do ii=1,howmany
+       do n1=1,dim1
+          out(:,n1,ii) = in(:,n1,ii) * tt1(n1)
+       enddo
+    enddo
+
+    deallocate(twiddle1,tt1)
+
+  end subroutine twiddlemult_mpi
+
+  recursive subroutine myzfft1d_slowindex_mpi(in,out,totsize,rdd,oplevel)
+    use pfileptrmod
+    use ct_options
+    use ct_primesetmod
+    implicit none
+    integer, intent(in) :: totsize,rdd,oplevel
+    complex*16, intent(in) :: in(totsize)
+    complex*16, intent(out) :: out(totsize)
+!!  complex*16 :: fouriermatrix(ct_pf(rdd),ct_pf(rdd)),twiddle(ct_pf(rdd))
+    complex*16,allocatable :: fouriermatrix(:,:),twiddle(:)
+    integer :: ii
+
+    allocate(fouriermatrix(ct_pf(rdd),ct_pf(rdd)),twiddle(ct_pf(rdd)))
+    fouriermatrix=0; twiddle=0
+
+    call gettwiddlesmall(twiddle,ct_pf(rdd),1)
+    do ii=1,ct_pf(rdd)
+       fouriermatrix(:,ii)=twiddle(:)**(ii-1)
+    enddo
+    select case (ct_paropt)
+    case(0)
+       call simple_circ(in,out,fouriermatrix,totsize,rdd,oplevel)
+    case(1)
+       call simple_summa(in,out,fouriermatrix,totsize,rdd,oplevel)
+    case default
+       OFLWR "ct_paropt not recognized",ct_paropt; CFLST
+    end select
+
+    deallocate(fouriermatrix,twiddle)
+
+  contains
+
+    recursive subroutine simple_circ(in, out,mat,howmany,rdd,oplevel)
+      use pmpimod
+      use ct_primesetmod
+      implicit none
+      integer, intent(in) :: howmany,rdd,oplevel
+      complex*16, intent(in) :: in(howmany), mat(ct_pf(rdd),ct_pf(rdd))
+      complex*16, intent(out) :: out(howmany)
+      integer :: thisfileptr
+      complex*16 :: work2(howmany),work(howmany)   !! AUTOMATIC
+      integer :: ibox,jbox,deltabox,nnn
+      work2=0;work=0
+
+      thisfileptr=6
+
+      if (rdd.lt.1.or.rdd.gt.ct_numprimes) then
+         call waitawhile()
+         write(*,*) "recursion depth error circ",rdd,ct_numprimes; 
+         call waitawhile()
+         stop
+      endif
+
+      nnn=1
+      out(:)=0
+
+      do deltabox=0,ct_pf(rdd)-1
+         ibox=mod(ct_pf(rdd)+CT_MYRANK(rdd,oplevel)-1+deltabox,ct_pf(rdd))+1
+         jbox=mod(ct_pf(rdd)+CT_MYRANK(rdd,oplevel)-1-deltabox,ct_pf(rdd))+1
+
+         work(:)=in(:)*mat(ibox,CT_MYRANK(rdd,oplevel))
+
+         if (deltabox.ne.0) then
+            call mympisendrecv_complex_local(work(:),work2(:),ibox,jbox,deltabox,howmany,CT_COMM_EACH(CT_MYLOC(rdd,oplevel),rdd,oplevel))
+            out(:)=out(:)+work2(:)
+         else
+            out(:)=out(:)+work(:)
+         endif
+      enddo
+
+    end subroutine simple_circ
+
+    recursive subroutine simple_summa(in, out,mat,howmany,rdd,oplevel)
+      use pmpimod
+      use ct_primesetmod
+      implicit none
+      integer, intent(in) :: howmany,rdd,oplevel
+      complex*16, intent(in) :: in(howmany), mat(ct_pf(rdd),ct_pf(rdd))
+      complex*16, intent(out) :: out(howmany)
+      integer :: thisfileptr
+      complex*16 :: work(howmany)   !! AUTOMATIC
+      integer :: ibox,nnn
+      work=0
+
+      thisfileptr=6
+
+      if (rdd.lt.1.or.rdd.gt.ct_numprimes) then
+         call waitawhile()
+         write(*,*) "recursion depth error circ",rdd,ct_numprimes
+         call waitawhile()
+         stop
+      endif
+
+      nnn=1
+      out(:)=0d0
+
+      do ibox=1,ct_pf(rdd)
+         if (CT_MYRANK(rdd,oplevel).eq.ibox) then
+            work(:)=in(:)
+         endif
+         call mympicomplexbcast_local(work(:),ibox,howmany,CT_COMM_EACH(CT_MYLOC(rdd,oplevel),rdd,oplevel))
+         out(:)=out(:)+work(:)*mat(CT_MYRANK(rdd,oplevel),ibox)
+      enddo
+
+    end subroutine simple_summa
+
+  end subroutine myzfft1d_slowindex_mpi
+
+  recursive subroutine gettwiddlesmall(twiddlefacs,dim1,dim2)
+    implicit none
+    integer, intent(in) :: dim1,dim2
+    complex*16, intent(out) :: twiddlefacs(dim1)
+    complex*16 :: phi
+    integer :: k1, itwiddle(dim1)
+    real*8, parameter :: pi=3.14159265358979323846264338327950d0
+    phi=exp((0d0,-2d0) * pi / (dim1*dim2))
+    do k1=1,dim1
+       itwiddle(k1)=(k1-1)
+    enddo
+    twiddlefacs(:)=phi**itwiddle(:)
+  end subroutine gettwiddlesmall
+
+end module ctsubmod
+
 #endif
 
-  thisfileptr=6
 
-  if (rdd.lt.1.or.rdd.gt.ct_numprimes) then
-     write(*,*) "recursion depth error circ",rdd,ct_numprimes; call mpistop()
-  endif
-
-#ifndef MPIFLAG
-  out(:)=in(:)
-  return
-  out(1)=mat(1,1) !! avoid warn unused
-#else
-
-  nnn=1
-  out(:)=0
-
-  do deltabox=0,ct_pf(rdd)-1
-     ibox=mod(ct_pf(rdd)+CT_MYRANK(rdd,oplevel)-1+deltabox,ct_pf(rdd))+1
-     jbox=mod(ct_pf(rdd)+CT_MYRANK(rdd,oplevel)-1-deltabox,ct_pf(rdd))+1
-
-     work(:)=in(:)*mat(ibox,CT_MYRANK(rdd,oplevel))
-
-     if (deltabox.ne.0) then
-        call mympisendrecv_complex_local(work(:),work2(:),ibox,jbox,deltabox,howmany,CT_COMM_EACH(CT_MYLOC(rdd,oplevel),rdd,oplevel))
-        out(:)=out(:)+work2(:)
-     else
-        out(:)=out(:)+work(:)
-     endif
-  enddo
-#endif
-
-end subroutine simple_circ
-
-
-subroutine simple_summa(in, out,mat,howmany,rdd,oplevel)
-  use pmpimod
-  use ct_primesetmod
-  implicit none
-  integer, intent(in) :: howmany,rdd,oplevel
-  complex*16, intent(in) :: in(howmany), mat(ct_pf(rdd),ct_pf(rdd))
-  complex*16, intent(out) :: out(howmany)
-  integer :: thisfileptr
-#ifdef MPIFLAG
-  complex*16 :: work(howmany)
-  integer :: ibox,nnn
-  work=0
-#endif
-
-  thisfileptr=6
-
-  if (rdd.lt.1.or.rdd.gt.ct_numprimes) then
-     write(*,*) "recursion depth error circ",rdd,ct_numprimes; call mpistop()
-  endif
-
-#ifndef MPIFLAG
-  out(:)=in(:)
-  return
-  out(1)=mat(1,1) !! avoid warn unused
-#else
-
-  nnn=1
-  out(:)=0d0
-
-  do ibox=1,ct_pf(rdd)
-     if (CT_MYRANK(rdd,oplevel).eq.ibox) then
-        work(:)=in(:)
-     endif
-     call mympicomplexbcast_local(work(:),ibox,howmany,CT_COMM_EACH(CT_MYLOC(rdd,oplevel),rdd,oplevel))
-     out(:)=out(:)+work(:)*mat(CT_MYRANK(rdd,oplevel),ibox)
-  enddo
-#endif
-
-end subroutine simple_summa
-
-
-  
-
-subroutine getprimefactor(dim,myfactor)
-  implicit none
-  integer, intent(in) :: dim
-  integer, intent(out) :: myfactor
-  integer :: iprime
-  integer, parameter :: numprimes=31
-  integer, parameter :: primelist(numprimes)=&
-       (/  2,  3,  5,  7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71,&
-          73, 79, 83, 89, 97,101,103,107,109,113,127 /)  ! no need to go remotely this high
-
-  myfactor=dim
-  do iprime=1,numprimes
-     if (mod(dim,primelist(iprime)).eq.0) then
-        myfactor=primelist(iprime)
-        return
-     endif
-  enddo
-end subroutine getprimefactor
-
-
-subroutine getallprimefactors(dim,factormax,numfactors,allfactors)
-  implicit none
-  integer, intent(in) :: dim,factormax
-  integer, intent(out) :: allfactors(factormax),numfactors
-  integer :: thisdim,flag
-
-  allfactors(:)=1
-  numfactors=1
-  thisdim=dim
-  flag=0
-
-  do while (42.eq.42)
-     if (numfactors.eq.factormax) then
-        allfactors(factormax)=thisdim
-        return  !! RETURN
-     else
-        call getprimefactor(thisdim,allfactors(numfactors))
-        if (allfactors(numfactors).eq.thisdim) then
-           return  !! RETURN
-        endif
-        thisdim=thisdim/allfactors(numfactors)
-        numfactors=numfactors+1
-     endif
-  enddo
-end subroutine getallprimefactors
-
-
-subroutine gettwiddlesmall(twiddlefacs,dim1,dim2)
-  implicit none
-  integer, intent(in) :: dim1,dim2
-  complex*16, intent(out) :: twiddlefacs(dim1)
-  complex*16 :: phi
-  integer :: k1, itwiddle(dim1)
-  real*8, parameter :: pi=3.14159265358979323846264338327950d0
-  phi=exp((0d0,-2d0) * pi / (dim1*dim2))
-  do k1=1,dim1
-     itwiddle(k1)=(k1-1)
-  enddo
-  twiddlefacs(:)=phi**itwiddle(:)
-end subroutine gettwiddlesmall
 
 
 !! PRIMESET SUBROUTINES
@@ -490,10 +434,8 @@ subroutine ct_getprimeset()
   WRFL "  ",ct_pf(1:ct_numprimes)
   CFL
 
-  allocate(CT_COMM_EACH(procsplit(3)/ct_minprime,ct_numprimes,orbparlevel:3),&
-       CT_GROUP_EACH(procsplit(3)/ct_minprime,ct_numprimes,orbparlevel:3))
-  CT_COMM_EACH(:,:,:)=(-42); 
-  CT_GROUP_EACH(:,:,:)=(-42)
+  allocate(CT_COMM_EACH(procsplit(3)/ct_minprime,ct_numprimes,orbparlevel:3))
+  CT_COMM_EACH(:,:,:)=(-42)
  
   OFLWR "Calling ct_construct..."; CFL
 
@@ -507,7 +449,7 @@ subroutine ct_getprimeset()
      enddo
   enddo
 
-  call ct_construct(allprocs0)
+  call ct_construct()
 
 !  do ii=orbparlevel,3
 !     do jj=1,nbox(2)
@@ -519,110 +461,201 @@ subroutine ct_getprimeset()
 
   OFLWR "   ....Called ct_construct."; CFL
 
-
-end subroutine ct_getprimeset
-
-
-subroutine ct_construct(allprocs0)
-  use pmpimod
-  use pfileptrmod
-  use ct_primesetmod
-  implicit none
-  integer,intent(in) :: allprocs0(procsplit(1),procsplit(2),procsplit(3))
-#ifdef MPIFLAG
-  integer :: thisfileptr,procshift(ct_maxprime),ierr,iprime,&
-       proc_check, ii, icomm, ilevel, &
-       xxtop(1:ct_numprimes),yytop(1:ct_numprimes),xx,yy
-  integer :: procset(ct_maxprime)
-
-  proc_check=1; xxtop(:)=1; yytop(:)=1
-  do ii=1,ct_numprimes
-     proc_check=proc_check*ct_pf(ii)
-     yytop(1:ii-1)=yytop(1:ii-1)*ct_pf(ii)
-     xxtop(ii+1: )=xxtop(ii+1:)*ct_pf(ii)
-  enddo
-  if (proc_check.ne.procsplit(3)) then
-     OFLWR "Proc check programmer error ", proc_check,procsplit(3),&
-          ct_pf(1:ct_numprimes); CFLST
-  endif
-
-  thisfileptr=6
-
-  CT_MYLOC = (-99)
-  CT_MYRANK = (-99)
-  CT_MYPOSITION = 1
-
-  do ilevel=orbparlevel,3
-
-     do iprime=1,ct_numprimes
-        CT_MYPOSITION(iprime,ilevel)=mod(boxrank(ilevel)-1,ct_maxposition(iprime))+1
-     enddo
-
-     do iprime=1,ct_numprimes
-
-        icomm=0
-
-        do xx=1, xxtop(iprime)    !!  EITHER LOOP ORDER APPEARS OK
-        do yy=1, yytop(iprime)    !!  CHECKME (with qqtop etc was fast index outer, slow inner)
-
-           icomm=icomm+1
-           if (icomm.gt.procsplit(ilevel)/ct_minprime) then
-              OFLWR  "Error construct",icomm,procsplit(ilevel),ct_minprime; CFLST
-           endif
-           
-           select case(ilevel)
-           case(3)
-              call ct_cast_assign(allprocs0(boxrank(1),boxrank(2),:),yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
-                   procset(1:ct_pf(iprime)))
-           case(2)
-              call ct_cast_assign(allprocs0(boxrank(1),:,boxrank(3)),yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
-                   procset(1:ct_pf(iprime)))
-           case(1)
-              call ct_cast_assign(allprocs0(:,boxrank(2),boxrank(3)),yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
-                   procset(1:ct_pf(iprime)))
-           end select
-
-           do ii=1,ct_pf(iprime)
-              if (procset(ii).eq.myrank) then
-                 if (CT_MYLOC(iprime,ilevel).gt.0) then
-                    print *, "ERROR MYLOC"; call mpistop()
-                 endif
-                 CT_MYLOC(iprime,ilevel)=icomm
-                 CT_MYRANK(iprime,ilevel)=ii
-              endif
-           enddo
-           
-           procshift(1:ct_pf(iprime))=procset(1:ct_pf(iprime)) - 1
-
-           call mpi_group_incl(PROJ_GROUP_WORLD,ct_pf(iprime),procshift,CT_GROUP_EACH(icomm,iprime,ilevel),ierr)
-
-           if (ierr.ne.0) then
-              write(thisfileptr,*) "Error group incl CT",icomm,iprime,ierr; call mpistop()
-           endif
-
-           call mpi_comm_create(PROJ_COMM_WORLD, CT_GROUP_EACH(icomm,iprime,ilevel), CT_COMM_EACH(icomm,iprime,ilevel),ierr)
-
-           if (ierr.ne.0) then
-              write(thisfileptr,*) "Error comm create CT",icomm,iprime,ierr; call mpistop()
-           endif
-        enddo
-        enddo
-        if (CT_MYLOC(iprime,ilevel).le.0) then
-           print *, "MYLOC ERROR",myrank,boxrank(ilevel),CT_MYLOC(iprime,ilevel),iprime; call mpistop()
-        endif
-     enddo
-  enddo
-#endif
-
 contains
+
   subroutine ct_cast_assign(threemat,first,middle,last,x1,x3,middle_out)
     implicit none
     integer, intent(in) :: first,middle,last,x1,x3, threemat(first,middle,last)
     integer, intent(out) :: middle_out(middle)
     middle_out(:)=threemat(x1,:,x3)
   end subroutine ct_cast_assign
+
+  subroutine ct_construct()
+    use pmpimod
+    use pfileptrmod
+    use ct_primesetmod
+    implicit none
+    integer :: thisfileptr,procshift(ct_maxprime),ierr,iprime,&
+         proc_check, ii, icomm, ilevel, CT_GROUP, &
+         xxtop(1:ct_numprimes),yytop(1:ct_numprimes),xx,yy,&
+         rank1,rank2,rank3,ALL_CT_COMM(procsplit(1),procsplit(2),procsplit(3))
+    integer :: procset(ct_maxprime)
+
+    proc_check=1; xxtop(:)=1; yytop(:)=1
+    do ii=1,ct_numprimes
+       proc_check=proc_check*ct_pf(ii)
+       yytop(1:ii-1)=yytop(1:ii-1)*ct_pf(ii)
+       xxtop(ii+1: )=xxtop(ii+1:)*ct_pf(ii)
+    enddo
+    if (proc_check.ne.procsplit(3)) then
+       OFLWR "Proc check programmer error ", proc_check,procsplit(3),&
+            ct_pf(1:ct_numprimes); CFLST
+    endif
+
+    thisfileptr=6
+
+    CT_MYLOC = (-99)
+    CT_MYRANK = (-99)
+    CT_MYPOSITION = 1
+
+!!             OFLWR "Create communicators for MPIcooley-tukey..."; CFL
+
+    ALL_CT_COMM(:,:,:)=(-798)
+
+    do ilevel=orbparlevel,3
+
+       do iprime=1,ct_numprimes
+          CT_MYPOSITION(iprime,ilevel)=mod(boxrank(ilevel)-1,ct_maxposition(iprime))+1
+       enddo
+
+       do iprime=1,ct_numprimes
+
+          icomm=0
+
+          do xx=1, xxtop(iprime)    !!  EITHER LOOP ORDER APPEARS OK
+          do yy=1, yytop(iprime)    !!  CHECKME (with qqtop etc was fast index outer, slow inner)
+
+             icomm=icomm+1
+             if (icomm.gt.procsplit(ilevel)/ct_minprime) then
+                OFLWR  "Error construct",icomm,procsplit(ilevel),ct_minprime; CFLST
+             endif
+
+! nonstandard MPI, make all communicators.
+!             do rank3=boxrank(3),boxrank(3)
+!                do rank2=boxrank(2),boxrank(2)
+!                   do rank1=boxrank(1),boxrank(1)
+
+             do rank3=1,procsplit(3)
+                do rank2=1,procsplit(2)
+                   do rank1=1,procsplit(1)
+           
+      select case(ilevel)
+      case(3)
+         call ct_cast_assign(allprocs0(rank1,rank2,:),yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
+              procset(1:ct_pf(iprime)))
+      case(2)
+         call ct_cast_assign(allprocs0(rank1,:,rank3),yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
+              procset(1:ct_pf(iprime)))
+      case(1)
+         call ct_cast_assign(allprocs0(:,rank2,rank3),yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
+              procset(1:ct_pf(iprime)))
+      end select
+           
+      procshift(1:ct_pf(iprime))=procset(1:ct_pf(iprime)) - 1
+
+      call mpi_group_incl(PROJ_GROUP_WORLD,ct_pf(iprime),procshift,CT_GROUP,ierr)
+      if (ierr.ne.0) then
+         call waitawhile()
+         print *, "Error group incl CT",icomm,iprime,ierr
+         call waitawhile()
+         stop
+      endif
+      call mpi_comm_create(PROJ_COMM_WORLD, CT_GROUP,ALL_CT_COMM(rank1,rank2,rank3),ierr)
+      if (ierr.ne.0) then
+         call waitawhile()
+         print *, "Error comm create CT",icomm,iprime,ierr
+         call waitawhile()
+         stop
+      endif
+
+      if (rank1.eq.boxrank(1).and.rank2.eq.boxrank(2).and.rank3.eq.boxrank(3)) then
+
+         do ii=1,ct_pf(iprime)
+            if (procset(ii).eq.myrank) then
+               if (CT_MYLOC(iprime,ilevel).gt.0) then
+                  call waitawhile()
+                  print *, "ERROR MYLOC"
+                  call waitawhile()
+                  call mpistop()
+               endif
+               CT_MYLOC(iprime,ilevel)=icomm
+               CT_MYRANK(iprime,ilevel)=ii
+            endif
+         enddo
+
+         CT_COMM_EACH(icomm,iprime,ilevel)=ALL_CT_COMM(rank1,rank2,rank3)
+
+      endif
+                   enddo
+                enddo
+             enddo
+          enddo
+          enddo
+          if (CT_MYLOC(iprime,ilevel).le.0) then
+             call waitawhile()
+             print *, "MYLOC ERROR",myrank,boxrank(ilevel),CT_MYLOC(iprime,ilevel),iprime
+             call waitawhile()
+             stop
+          endif
+       enddo
+    enddo
+
+!!             OFLWR "   OK, done constructing CT communicators."; CFL
+
+  end subroutine ct_construct
+
+  subroutine getprimefactor(dim,myfactor)
+    implicit none
+    integer, intent(in) :: dim
+    integer, intent(out) :: myfactor
+    integer :: iprime
+    integer, parameter :: numprimes=31
+    integer, parameter :: primelist(numprimes)=&
+         (/  2,  3,  5,  7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71,&
+         73, 79, 83, 89, 97,101,103,107,109,113,127 /)  ! no need to go remotely this high
+
+    myfactor=dim
+    do iprime=1,numprimes
+       if (mod(dim,primelist(iprime)).eq.0) then
+          myfactor=primelist(iprime)
+          return
+       endif
+    enddo
+  end subroutine getprimefactor
+
+  subroutine getallprimefactors(dim,factormax,numfactors,allfactors)
+    implicit none
+    integer, intent(in) :: dim,factormax
+    integer, intent(out) :: allfactors(factormax),numfactors
+    integer :: thisdim,flag
+
+    allfactors(:)=1
+    numfactors=1
+    thisdim=dim
+    flag=0
+
+    do while (42.eq.42)
+       if (numfactors.eq.factormax) then
+          allfactors(factormax)=thisdim
+          return  !! RETURN
+       else
+          call getprimefactor(thisdim,allfactors(numfactors))
+          if (allfactors(numfactors).eq.thisdim) then
+             return  !! RETURN
+          endif
+          thisdim=thisdim/allfactors(numfactors)
+          numfactors=numfactors+1
+       endif
+    enddo
+
+  end subroutine getallprimefactors
+
+end subroutine ct_getprimeset
+
+
+subroutine ct_init(in_ctparopt)
+  use pmpimod
+  use ct_options
+  implicit none
+  integer, intent(in) :: in_ctparopt
+
+  ct_paropt=in_ctparopt
+
+  call ct_getprimeset()
   
-end subroutine ct_construct
+end subroutine ct_init
+
+
 
 
 
