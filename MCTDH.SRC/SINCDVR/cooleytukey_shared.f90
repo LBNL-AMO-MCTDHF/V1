@@ -521,13 +521,15 @@ contains
              endif
 
 ! nonstandard MPI, make all communicators.
-!             do rank3=boxrank(3),boxrank(3)
-!                do rank2=boxrank(2),boxrank(2)
-!                   do rank1=boxrank(1),boxrank(1)
+             do rank3=boxrank(3),boxrank(3)
+                do rank2=boxrank(2),boxrank(2)
+                   do rank1=boxrank(1),boxrank(1)
 
-             do rank3=1,procsplit(3)
-                do rank2=1,procsplit(2)
-                   do rank1=1,procsplit(1)
+! what is going on?  This the correct way works for init_project but
+! causes the program to hang on entry to blocklanczos for a-vectors. 2-2016 v1.23
+!             do rank3=1,procsplit(3)
+!                do rank2=1,procsplit(2)
+!                   do rank1=1,procsplit(1)
            
       select case(ilevel)
       case(3)
