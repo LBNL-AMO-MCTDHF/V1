@@ -245,10 +245,10 @@ module walkmod
      integer, allocatable ::   &
        configlist(  :  ,   : )               !! LIST OF CONFIGURATIONS ndof, numconfig
      integer, allocatable :: &
-       configmvals(  : ), &     !! if spfrestrict, their mvalues : numconfig
-       configugvals(  : ), &       !! ugvalues based on info in spfugvals
-       configtypes( : ),&          !! Hamiltonian matrix elements only among same type
-       configorder(:)
+       configmvals(  : ), &      !! if spfrestrict, their mvalues : numconfig
+       configugvals(  : ), &     !! ugvalues based on info in spfugvals
+       configtypes( : )          !! Hamiltonian matrix elements only among same type
+!!$SP       configorder(:)
 
      integer :: nspf=0, numelec=0, ndof=0
      integer :: allspinproject=0

@@ -44,7 +44,10 @@ function getconfiguration(thisconfig,www)
      flag=1
      do k=1,www%numelec
 
-        aa=www%configlist(2*k-1,www%configorder(j));        bb=thisconfig(2*k-1)
+!!$SP        aa=www%configlist(2*k-1,www%configorder(j));
+        aa=www%configlist(2*k-1,j);
+
+        bb=thisconfig(2*k-1)
 
         if (aa .ne. bb) then
            flag=0
@@ -90,13 +93,15 @@ function getconfiguration(thisconfig,www)
 
            flag=1
            do k=1,www%ndof
-              if (thisconfig(k).ne.www%configlist(k,www%configorder(j))) then
+!!$SP          if (thisconfig(k).ne.www%configlist(k,www%configorder(j))) then
+              if (thisconfig(k).ne.www%configlist(k,j)) then
                  flag=0
                  exit
               endif
            enddo
            if (flag.eq.1) then
-              getconfiguration=www%configorder(j)
+!!$SP              getconfiguration=www%configorder(j)
+              getconfiguration=j
               return
            endif
         enddo
@@ -284,47 +289,47 @@ function getugval(www,thisconfig)
 end function getugval
 
 
-subroutine re_order_configlist(configlist,configorder,ndof,numconfig,numspinblocks,spinblockstart,spinblockend)
-  use fileptrmod
-  use sparse_parameters
-  implicit none
-  integer,intent(in) :: numconfig, ndof, numspinblocks
-  integer,intent(inout) :: spinblockstart(numspinblocks),spinblockend(numspinblocks),&
-       configlist(ndof,numconfig),configorder(numconfig)
-  integer :: ii,jj,kk,iconfig
-  integer,allocatable :: newstart(:),newend(:),newlist(:,:),neworder(:)
-
-  allocate(newstart(numspinblocks),newend(numspinblocks),newlist(ndof,numconfig), neworder(numconfig))
-  newstart=0; newend=0; newlist=0; neworder=0
-
-  iconfig=0
-  do ii=1,numspinblocks
-     jj=mod((ii-1)*sparseprime,numspinblocks)+1
-     newstart(ii)=iconfig+1
-     newend(ii)=newstart(ii) + (spinblockend(jj)-spinblockstart(jj))
-
-
-     newlist(:,newstart(ii):newend(ii)) = configlist(:,spinblockstart(jj):spinblockend(jj))
-
-!!     iconfig=iconfig+(spinblockend(jj)-spinblockstart(jj))+1
-
-     do kk=spinblockstart(jj),spinblockend(jj)
-        iconfig=iconfig+1
-        neworder(kk)=configorder(iconfig)
-     enddo
-  enddo
-  if (iconfig.ne.numconfig) then
-     OFLWR "CONFIGCHEK ERROR ",iconfig,numconfig; CFLST
-  endif
-
-  configlist(:,:)=newlist(:,:)
-  spinblockstart(:)=newstart(:)
-  spinblockend(:)=newend(:)
-  configorder(:)=neworder(:)
-
-  deallocate(newstart,newend,newlist,neworder)
-
-end subroutine re_order_configlist
+!!$  subroutine re_order_configlist(configlist,configorder,ndof,numconfig,numspinblocks,spinblockstart,spinblockend)
+!!$    use fileptrmod
+!!$    use sparse_parameters
+!!$    implicit none
+!!$    integer,intent(in) :: numconfig, ndof, numspinblocks
+!!$    integer,intent(inout) :: spinblockstart(numspinblocks),spinblockend(numspinblocks),&
+!!$         configlist(ndof,numconfig),configorder(numconfig)
+!!$    integer :: ii,jj,kk,iconfig
+!!$    integer,allocatable :: newstart(:),newend(:),newlist(:,:),neworder(:)
+!!$  
+!!$    allocate(newstart(numspinblocks),newend(numspinblocks),newlist(ndof,numconfig), neworder(numconfig))
+!!$    newstart=0; newend=0; newlist=0; neworder=0
+!!$  
+!!$    iconfig=0
+!!$    do ii=1,numspinblocks
+!!$       jj=mod((ii-1)*sparseprime,numspinblocks)+1
+!!$       newstart(ii)=iconfig+1
+!!$       newend(ii)=newstart(ii) + (spinblockend(jj)-spinblockstart(jj))
+!!$  
+!!$  
+!!$       newlist(:,newstart(ii):newend(ii)) = configlist(:,spinblockstart(jj):spinblockend(jj))
+!!$  
+!!$  !!     iconfig=iconfig+(spinblockend(jj)-spinblockstart(jj))+1
+!!$  
+!!$       do kk=spinblockstart(jj),spinblockend(jj)
+!!$          iconfig=iconfig+1
+!!$          neworder(kk)=configorder(iconfig)
+!!$       enddo
+!!$    enddo
+!!$    if (iconfig.ne.numconfig) then
+!!$       OFLWR "CONFIGCHEK ERROR ",iconfig,numconfig; CFLST
+!!$    endif
+!!$  
+!!$    configlist(:,:)=newlist(:,:)
+!!$    spinblockstart(:)=newstart(:)
+!!$    spinblockend(:)=newend(:)
+!!$    configorder(:)=neworder(:)
+!!$  
+!!$    deallocate(newstart,newend,newlist,neworder)
+!!$  
+!!$  end subroutine re_order_configlist
 
 
 
@@ -396,10 +401,13 @@ subroutine fast_newconfiglist(www,domflags)
      call mpibarrier()
      deallocate(bigspinblockstart,bigspinblockend)
      allocate(www%configlist(www%ndof,www%numconfig), www%configmvals(www%numconfig), &
-          www%configugvals(www%numconfig), www%configtypes(www%numconfig),www%configorder(www%numconfig), &
+          www%configugvals(www%numconfig), www%configtypes(www%numconfig),&
           bigspinblockstart(numspinblocks+2*nprocs),bigspinblockend(numspinblocks+2*nprocs))
-     bigspinblockstart=0; bigspinblockend=0; www%configorder=0;
+     bigspinblockstart=0; bigspinblockend=0; 
      www%configlist(:,:)=0; www%configmvals(:)=0; www%configugvals(:)=0; www%configtypes(:)=0
+
+!!$SP  allocate(www%configorder(www%numconfig)); www%configorder=0
+
      call mpibarrier()
      OFLWR "   Allocated.  getting configurations."; CFL
   else
@@ -828,14 +836,21 @@ endif
      OFLWR "Configlist err",iconfig,www%numconfig; CFLST
   endif
 
-  do iconfig=1,www%numconfig
-     www%configorder(iconfig)=iconfig
-  enddo
-  if (sparseprime.ne.1) then
-     OFLWR "Reordering configlist with sparseprime=",sparseprime; CFL
+!!$SP  do iconfig=1,www%numconfig
+!!$SP     www%configorder(iconfig)=iconfig
+!!$SP  enddo
 
-     call re_order_configlist(www%configlist(:,:),www%configorder(:),www%ndof,www%numconfig,numspinblocks,bigspinblockstart(:),bigspinblockend(:))
+  if (sparseprime.ne.1) then
+     OFLWR "Reordering configlist with sparseprime is NO LONGER SUPPORTED"
+     CFLST
   endif
+
+!!$SP       OFLWR "Reordering configlist with sparseprime=",sparseprime; CFL
+!!$SP  
+!!$SP       call re_order_configlist(www%configlist(:,:),www%configorder(:),&
+!!$SP             www%ndof,www%numconfig,numspinblocks,bigspinblockstart(:),&
+!!$SP             bigspinblockend(:))
+!!$SP    endif
 
   if (nss.ne.numspinblocks) then
      OFLWR "NUMSPINBLOCKS ERR",nss,numspinblocks; CFLST
@@ -1030,10 +1045,10 @@ subroutine set_newconfiglist(wwin,wwout)
   wwout%maxconfigsperproc=wwin%maxdfconfsperproc
 
   allocate(wwout%configlist(wwout%ndof,wwout%numconfig),wwout%configmvals(wwout%numconfig),&
-       wwout%configugvals(wwout%numconfig), wwout%configtypes(wwout%numconfig), &
-       wwout%configorder(wwout%numconfig))
+       wwout%configugvals(wwout%numconfig), wwout%configtypes(wwout%numconfig))
   wwout%configlist=0; wwout%configmvals=0; wwout%configugvals=0; wwout%configtypes=0;
-  wwout%configorder=0
+
+!!$SP  allocate(      wwout%configorder(wwout%numconfig));   wwout%configorder=0
 
   do iconfig=1,wwout%numconfig
      wwout%configlist(:,iconfig)=wwin%configlist(:,wwin%ddd%dfincludedconfigs(iconfig))
@@ -1044,9 +1059,12 @@ subroutine set_newconfiglist(wwin,wwout)
 
   jconfig=0
   do iconfig=1,wwin%numconfig
-     if (wwin%ddd%dfincludedmask(wwin%configorder(iconfig)).ne.0) then
+!!$SP     if (wwin%ddd%dfincludedmask(wwin%configorder(iconfig)).ne.0) then
+!!$SP        jconfig=jconfig+1
+!!$SP        wwout%configorder(jconfig)=wwin%ddd%dfincludedindex(wwin%configorder(iconfig))
+!!$SP     endif
+     if (wwin%ddd%dfincludedmask(iconfig).ne.0) then
         jconfig=jconfig+1
-        wwout%configorder(jconfig)=wwin%ddd%dfincludedindex(wwin%configorder(iconfig))
      endif
   enddo
   if (jconfig.ne.wwout%numconfig) then
