@@ -155,14 +155,6 @@ subroutine prop_loop( starttime)
 
      call system_clock(jtime)  ;  times(1)=times(1)+jtime-itime;    itime=jtime
 
-!! prevent drift
-     if (parorbsplit.ne.3) then
-        call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
-     endif
-     if (par_consplit.eq.0) then
-        call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
-     endif
-
      do imc=1,mcscfnum
 
         call sparseconfigmult(www,yyy%cmfavec(:,imc,0),avectorp,&
@@ -397,6 +389,8 @@ subroutine prop_wfn(tin, tout)
   use xxxmod
   use mpimod
   use orbdermod
+  use configmod
+  use basissubmod
   implicit none
   real*8,intent(in) :: tout, tin
   real*8 :: mytime,nullreal, nulldouble,gbsstepsize
@@ -423,6 +417,11 @@ subroutine prop_wfn(tin, tout)
   psivec(tot_adim*mcscfnum+1:tot_adim*mcscfnum+totspfdim)=yyy%cmfspfs(:,0)
   if (tot_adim.gt.0) then
      psivec(1:tot_adim*mcscfnum)=RESHAPE(yyy%cmfavec(:,:,0),(/tot_adim*mcscfnum/))
+  endif
+
+  if (nprocs.gt.1.and.(parorbsplit.ne.0.or.par_consplit.ne.0)) then
+     OFLWR "error, for parallel options can't do VMF."
+     WRFL  "set parorbsplit=0 and par_consplit=0 in namelist &parinp"; CFLST
   endif
 
   if (intopt==0) then
@@ -462,9 +461,20 @@ subroutine prop_wfn(tin, tout)
 
   call system_clock(jtime);  time=time+jtime-itime;  call system_clock(itime)
 
+  call basis_project(www,numr,yyy%cmfavec(:,:,0))
+
   call apply_spf_constraints(yyy%cmfspfs(:,0))
 
   call spf_orthogit(yyy%cmfspfs(:,0), nulldouble)
+
+!! prevent drift.. need timings
+  if (parorbsplit.ne.3) then
+     call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
+  endif
+  if (par_consplit.eq.0) then
+     call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
+  endif
+
   call get_stuff(tout) 
 
   call system_clock(jtime);  time2=time2+jtime-itime
@@ -674,6 +684,12 @@ subroutine cmf_prop_wfn(tin, tout)
      endif
      call system_clock(jtime);     times(4)=times(4)+jtime-itime;     itime=jtime
 
+!! prevent drift
+     if (parorbsplit.ne.3) then
+        call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
+     endif
+     call system_clock(jtime);     times(9)=times(9)+jtime-itime;     itime=jtime
+
      if (improvednatflag.ne.0) then
         call replace_withnat(printflag)
      endif
@@ -692,6 +708,12 @@ subroutine cmf_prop_wfn(tin, tout)
         endif
      endif
      call system_clock(jtime);     times(5)=times(5)+jtime-itime;    itime=jtime
+
+!! prevent drift
+     if (par_consplit.eq.0) then
+        call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
+     endif
+     call system_clock(jtime);     times(9)=times(9)+jtime-itime;     itime=jtime
 
      call get_allden()
      call system_clock(jtime);        times(2)=times(2)+jtime-itime;     itime=jtime
@@ -730,8 +752,14 @@ subroutine cmf_prop_wfn(tin, tout)
               numaiters=numaiters+qq
            enddo
         endif
-        call system_clock(jtime);     times(5)=times(5)+jtime-itime
+        call system_clock(jtime);     times(5)=times(5)+jtime-itime;  itime=jtime
 
+!! prevent drift
+        if (par_consplit.eq.0) then
+           call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
+        endif
+        call system_clock(jtime);     times(9)=times(9)+jtime-itime;     itime=jtime
+     
         call get_stuff0(tout,times)
 
      enddo
@@ -763,6 +791,7 @@ subroutine cmf_prop_wfn(tin, tout)
              "advance", &   !! (6)
              "constrain", & !! (7)
              "driving",&    !! (8)
+             "MPI",&        !! (9)
              "#SDERIVS",&   !!
              "#ADERIVS"     !!
         call checkiostat(myiostat," writing cmf_prop_time.dat")
