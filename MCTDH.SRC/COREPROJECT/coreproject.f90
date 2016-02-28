@@ -1002,7 +1002,7 @@ subroutine mult_reducedpot(firstspf,lastspf,inspfs,outspfs,reducedpot)
                     
                  mine(:,:) = mine(:,:) + & 
 !! switching 2-2016         reducedpot(:,:,imval-kmval,ispf,kspf) * inspfs(:,:,kmval,kspf)
-                      reducedpot(:,:,imval-kmval,kspf,ispf) * inspfs(:,:,kmval,kspf)
+                      reducedpot(:,:,kmval-imval,kspf,ispf) * inspfs(:,:,kmval,kspf)
               enddo
            enddo
            outspfs(:,:,imval,ispf) = mine(:,:)
