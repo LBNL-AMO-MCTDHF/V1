@@ -387,9 +387,11 @@ subroutine ct_getprimeset()
   use ct_primesetmod
   use ct_options
   implicit none
-  integer :: ii, allprocs0(procsplit(1),procsplit(2),procsplit(3)),jj,kk,iproc
-
+  integer :: ii
+#ifdef MPIFLAG
+  integer :: allprocs0(procsplit(1),procsplit(2),procsplit(3)),iproc, jj,kk
   allprocs0=0
+#endif
 
   if (ct_called.ne.0) then
      OFLWR "ONLY CALL CT_GETPRIMESET ONCE (programmer fail)"; CFLST
@@ -436,7 +438,9 @@ subroutine ct_getprimeset()
 
   allocate(CT_COMM_EACH(procsplit(3)/ct_minprime,ct_numprimes,orbparlevel:3))
   CT_COMM_EACH(:,:,:)=(-42)
- 
+
+#ifdef MPIFLAG
+
   OFLWR "Calling ct_construct..."; CFL
 
   iproc=0
@@ -461,7 +465,59 @@ subroutine ct_getprimeset()
 
   OFLWR "   ....Called ct_construct."; CFL
 
+#endif
+
 contains
+
+  subroutine getprimefactor(dim,myfactor)
+    implicit none
+    integer, intent(in) :: dim
+    integer, intent(out) :: myfactor
+    integer :: iprime
+    integer, parameter :: numprimes=31
+    integer, parameter :: primelist(numprimes)=&
+         (/  2,  3,  5,  7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71,&
+         73, 79, 83, 89, 97,101,103,107,109,113,127 /)  ! no need to go remotely this high
+
+    myfactor=dim
+    do iprime=1,numprimes
+       if (mod(dim,primelist(iprime)).eq.0) then
+          myfactor=primelist(iprime)
+          return
+       endif
+    enddo
+  end subroutine getprimefactor
+
+  subroutine getallprimefactors(dim,factormax,numfactors,allfactors)
+    implicit none
+    integer, intent(in) :: dim,factormax
+    integer, intent(out) :: allfactors(factormax),numfactors
+    integer :: thisdim,flag
+
+    allfactors(:)=1
+    numfactors=1
+    thisdim=dim
+    flag=0
+
+    do while (42.eq.42)
+       if (numfactors.eq.factormax) then
+          allfactors(factormax)=thisdim
+          return  !! RETURN
+       else
+          call getprimefactor(thisdim,allfactors(numfactors))
+          if (allfactors(numfactors).eq.thisdim) then
+             return  !! RETURN
+          endif
+          thisdim=thisdim/allfactors(numfactors)
+          numfactors=numfactors+1
+       endif
+    enddo
+
+  end subroutine getallprimefactors
+
+#ifndef MPIFLAG
+end subroutine ct_getprimeset
+#else
 
   subroutine ct_cast_assign(threemat,first,middle,last,x1,x3,middle_out)
     implicit none
@@ -593,56 +649,11 @@ contains
     enddo
 
 !!             OFLWR "   OK, done constructing CT communicators."; CFL
-
   end subroutine ct_construct
 
-  subroutine getprimefactor(dim,myfactor)
-    implicit none
-    integer, intent(in) :: dim
-    integer, intent(out) :: myfactor
-    integer :: iprime
-    integer, parameter :: numprimes=31
-    integer, parameter :: primelist(numprimes)=&
-         (/  2,  3,  5,  7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71,&
-         73, 79, 83, 89, 97,101,103,107,109,113,127 /)  ! no need to go remotely this high
-
-    myfactor=dim
-    do iprime=1,numprimes
-       if (mod(dim,primelist(iprime)).eq.0) then
-          myfactor=primelist(iprime)
-          return
-       endif
-    enddo
-  end subroutine getprimefactor
-
-  subroutine getallprimefactors(dim,factormax,numfactors,allfactors)
-    implicit none
-    integer, intent(in) :: dim,factormax
-    integer, intent(out) :: allfactors(factormax),numfactors
-    integer :: thisdim,flag
-
-    allfactors(:)=1
-    numfactors=1
-    thisdim=dim
-    flag=0
-
-    do while (42.eq.42)
-       if (numfactors.eq.factormax) then
-          allfactors(factormax)=thisdim
-          return  !! RETURN
-       else
-          call getprimefactor(thisdim,allfactors(numfactors))
-          if (allfactors(numfactors).eq.thisdim) then
-             return  !! RETURN
-          endif
-          thisdim=thisdim/allfactors(numfactors)
-          numfactors=numfactors+1
-       endif
-    enddo
-
-  end subroutine getallprimefactors
-
 end subroutine ct_getprimeset
+
+#endif
 
 
 subroutine ct_init(in_ctparopt)
