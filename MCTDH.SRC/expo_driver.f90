@@ -42,6 +42,7 @@ contains
     use jactimingmod
     use orbprojectmod
     use derivativemod
+    use orbgathersubmod
     implicit none
     integer,intent(in) :: lowspf,highspf,dentimeflag,conflag
     DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
@@ -49,12 +50,19 @@ contains
     integer :: ii,itop,getlen,numspf,myiostat,itime,jtime,jjj
     DATATYPE :: csum, nulldouble(2),pots(3)
     real*8 :: facs(0:1),rsum
-    DATATYPE :: bigwork(spfsize,nspf),   workspfs(spfsize,lowspf:highspf+1),& 
-         tempspfs(spfsize,lowspf:highspf+1)       !! AUTOMATIC
+    DATATYPE :: bigwork(spfsize,nspf),   workspfs(spfsize,lowspf:highspf),& 
+         tempspfs(spfsize,lowspf:highspf)       !! AUTOMATIC
 
     bigwork=0; workspfs=0; tempspfs=0
 
     numcalledhere=numcalledhere+1
+
+    if (highspf.lt.lowspf) then
+       call waitawhile()
+       print *, "ERRROROR JACOP00",highspf,lowspf;
+       call waitawhile()
+       stop
+    endif
 
     numspf=highspf-lowspf+1
 
@@ -65,36 +73,28 @@ contains
        itop=0;     facs(0)=1d0;     facs(1)=0d0
     endif
 
-    if (numspf.gt.0) then
-       outspfs(:,lowspf:highspf)=0.d0
-    endif
+    outspfs(:,lowspf:highspf)=0.d0
 
 !! ** term with inspfs on far right ** !!
-
-!! call actreduced00 even if numspf=0
 
     do ii=0,itop
      
        if (jacsymflag.ne.0) then
 
           call system_clock(itime)
-          if (numspf.gt.0) then
-             call project00(lowspf,highspf,inspfs(:,lowspf:highspf),&
-                  bigwork(:,lowspf:highspf),jacvect) 
-          endif
+          call project00(lowspf,highspf,inspfs(:,lowspf:highspf),&
+               bigwork(:,lowspf:highspf),jacvect) 
           call system_clock(jtime); times(2)=times(2)+jtime-itime;   itime=jtime
           if (parorbsplit.eq.1) then
-             call mpiorbgather(bigwork,spfsize)
+             call mpiorbgather_nz(bigwork,spfsize)
           endif
           call system_clock(jtime); times(4)=times(4)+jtime-itime;   itime=jtime
 
-!! call always even if numspf=0
           call actreduced00(lowspf,highspf,dentimeflag,jactime,bigwork,nulldouble,&
                workspfs,ii,0,0)
 
-          if (numspf.gt.0) then
-             outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
-          endif
+          outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
+
           call actreduced00(lowspf,highspf,dentimeflag,jactime,inspfs,&
                nulldouble,tempspfs,ii,0,0)
           call system_clock(jtime); times(1)=times(1)+jtime-itime; 
@@ -104,54 +104,46 @@ contains
           call system_clock(itime)
           call actreduced00(lowspf,highspf,dentimeflag,jactime, inspfs,&
                nulldouble, workspfs,ii,0,0)
-          if (numspf.gt.0) then
-             tempspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)
-          endif
-          if (numspf.gt.0) then
-             outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
-          endif
+!!tempspfs used later
+          tempspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)
+          outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
+
           call system_clock(jtime); times(1)=times(1)+jtime-itime;      
        endif
 
        call system_clock(itime)
-       if (numspf.gt.0) then
-          call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),&
-               workspfs(:,lowspf:highspf),jacvect)
-          outspfs(:,:)=outspfs(:,:)-workspfs(:,lowspf:highspf)*facs(ii)
-       endif
+       call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),&
+            workspfs(:,lowspf:highspf),jacvect)
+       outspfs(:,:)=outspfs(:,:)-workspfs(:,lowspf:highspf)*facs(ii)
+
        call system_clock(jtime); times(2)=times(2)+jtime-itime;
 
 !! terms from projector
-
-!! always call derproject00   timing in derproject00
-       call derproject00(lowspf,highspf,jacvectout(:,min(lowspf,nspf):highspf),&
+!! timing in derproject
+       call derproject00(lowspf,highspf,jacvectout(:,lowspf:highspf),&
             workspfs,jacvect,inspfs)
-       if (numspf.gt.0) then
-          outspfs(:,:)=outspfs(:,:)-workspfs(:,lowspf:highspf)*facs(ii)
-       endif
-        
+       outspfs(:,:)=outspfs(:,:)-workspfs(:,lowspf:highspf)*facs(ii)
+
        if (jacsymflag.ne.0) then
-!! always call derproject00
-          call derproject00(lowspf,highspf,jacvect(:,min(lowspf,nspf):highspf),&
+          call derproject00(lowspf,highspf,jacvect(:,lowspf:highspf),&
                bigwork(:,min(lowspf,nspf):highspf),jacvect,inspfs)
 
           call system_clock(itime)
           if (parorbsplit.eq.1) then
-             call mpiorbgather(bigwork,spfsize)
+             call mpiorbgather_nz(bigwork,spfsize)
           endif
           call system_clock(jtime); times(4)=times(4)+jtime-itime;   itime=jtime
 
           call actreduced00(lowspf,highspf,dentimeflag,jactime,bigwork,nulldouble,&
                workspfs,ii,0,0)
-          if (numspf.gt.0) then
-             outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
-          endif
+          outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
+
           call system_clock(jtime); times(1)=times(1)+jtime-itime;  
        endif
         
 !!  CONSTRAINT!!  FORGOTTEN I GUESS !! APR 2014
 
-       if (constraintflag.ne.0.and.numspf.gt.0.and.conflag.ne.0) then
+       if (constraintflag.ne.0.and.conflag.ne.0) then
           call system_clock(itime)
           call op_gmat00(lowspf,highspf,inspfs,&
                workspfs(:,lowspf:highspf),ii,jactime,jacvect)
@@ -166,30 +158,25 @@ contains
 
 
        if (numfrozen.gt.0) then
-          if (numspf.gt.0) then
-             call system_clock(itime)
+          call system_clock(itime)
 !! EXCHANGE
-             if (dentimeflag.ne.0) then
+          if (dentimeflag.ne.0) then
 !! TIMEFAC and facs HERE
-                csum=timefac*facs(ii)
-                call MYGEMM('N','N', spfsize,numspf,nspf,csum, &
-                     yyy%frozenexchinvr(:,:,ii),spfsize, &
-                     yyy%invdenmat(:,lowspf:highspf,ii), nspf, DATAZERO, &
-                     tempspfs(:,lowspf:highspf), spfsize)
-             else
-                tempspfs(:,lowspf:highspf)=(-1) * &
-                     yyy%frozenexchinvr(:,lowspf:highspf,ii)*facs(ii) !! factor (-1)
-             endif
-             call system_clock(jtime); times(6)=times(6)+jtime-itime;
+             csum=timefac*facs(ii)
+             call MYGEMM('N','N', spfsize,numspf,nspf,csum, &
+                  yyy%frozenexchinvr(:,:,ii),spfsize, &
+                  yyy%invdenmat(:,lowspf:highspf,ii), nspf, DATAZERO, &
+                  tempspfs(:,lowspf:highspf), spfsize)
+          else
+             tempspfs(:,lowspf:highspf)=(-1) * &
+                  yyy%frozenexchinvr(:,lowspf:highspf,ii)*facs(ii) !! factor (-1)
           endif
+          call system_clock(jtime); times(6)=times(6)+jtime-itime;
 
-!! always call derproject00 timing in derproject00
           call derproject00(lowspf,highspf,tempspfs,workspfs,jacvect,inspfs)
 
-          if (numspf.gt.0) then
-             outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) + &
-                  tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
-          endif
+          outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) + &
+               tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
        endif
 
 !! DRIVING (PSI-PRIME)
@@ -199,28 +186,21 @@ contains
              OFLWR "error, no driving for quad!!"; CFLST !! invdenmat already in drivingorbs
           endif
           rsum=0
-          if (numspf.gt.0) then
-             call vectdpot(jactime,velflag,pots,-1)
-             do jjj=1,3
-                rsum=rsum+abs(pots(jjj))**2
-             enddo
-          endif
+          call vectdpot(jactime,velflag,pots,-1)
+          do jjj=1,3
+             rsum=rsum+abs(pots(jjj))**2
+          enddo
           if (rsum.ne.0d0) then
-             if (numspf.gt.0) then
-                workspfs(:,lowspf:highspf)=&
-                     pots(1)*yyy%drivingorbsxx(:,lowspf:highspf,ii)+&
-                     pots(2)*yyy%drivingorbsyy(:,lowspf:highspf,ii)+&
-                     pots(3)*yyy%drivingorbszz(:,lowspf:highspf,ii)
-             endif
-!! always call derproject00
+             workspfs(:,lowspf:highspf)=&
+                  pots(1)*yyy%drivingorbsxx(:,lowspf:highspf,ii)+&
+                  pots(2)*yyy%drivingorbsyy(:,lowspf:highspf,ii)+&
+                  pots(3)*yyy%drivingorbszz(:,lowspf:highspf,ii)
              call derproject00(lowspf,highspf,workspfs,tempspfs,jacvect,inspfs)
-             if (numspf.gt.0) then           
-                outspfs(:,:)=outspfs(:,:)-tempspfs(:,lowspf:highspf)*facs(ii)*timefac
-             endif
+             outspfs(:,:)=outspfs(:,:)-tempspfs(:,lowspf:highspf)*facs(ii)*timefac
           endif
        endif
 
-    enddo
+    enddo  !! do ii=0,itop
 
     if ((myrank.eq.1).and.(notiming.eq.0)) then
        if (numcalledhere==1) then
@@ -254,6 +234,7 @@ contains
   subroutine jacoperate0(dentimeflag,conflag,inspfs,outspfs)
     use parameters
     use jactimingmod
+    use orbgathersubmod
     implicit none
     integer,intent(in) :: dentimeflag,conflag
     DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
@@ -267,10 +248,10 @@ contains
        call getOrbSetRange(lowspf,highspf)
     endif
 
-!! call always even if numspf=0
-    call jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,&
-         outspfs(:,min(nspf,lowspf):highspf))
-
+    if (highspf.ge.lowspf) then
+       call jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,&
+            outspfs(:,lowspf:highspf))
+    endif
     if (parorbsplit.eq.1) then
        call system_clock(itime)
        call mpiorbgather(outspfs,spfsize)
@@ -310,6 +291,7 @@ contains
     use parameters
     use jactimingmod
     use mpi_orbsetmod
+    use orbgathersubmod
     implicit none
     integer,intent(in) :: dentimeflag,conflag
     DATATYPE,intent(in) ::  inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
@@ -330,20 +312,24 @@ contains
        call getOrbSetRange(lowspf,highspf)
     endif
 
-    workspfs=0
-
-    if (highspf.ge.lowspf) then
-       workspfs(:,lowspf:highspf) =  inspfs(:,lowspf:highspf)
+    if (highspf.lt.lowspf) then
+       call waitawhile()
+       print *, "ERRROROR parjacop",highspf,lowspf;
+       call waitawhile()
+       stop
     endif
 
+    workspfs=0
+    workspfs(:,lowspf:highspf)=inspfs(:,lowspf:highspf)
+
     call system_clock(itime)
-    call mpiorbgather(workspfs,spfsize)
+    call mpiorbgather_nz(workspfs,spfsize)
     call system_clock(jtime);      times(4)=times(4)+jtime-itime
 
     outspfs=0d0    !! padded
 
-!! call always even if numspf=0
-    call jacoperate00(lowspf,highspf,dentimeflag,conflag,workspfs,outspfs)
+    call jacoperate00(lowspf,highspf,dentimeflag,conflag,&
+         workspfs(:,:),outspfs(:,lowspf:highspf))
 
     call system_clock(btime); times(7)=times(7)+btime-atime;
   
@@ -459,13 +445,14 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
   use jacopmod
   use orbdermod
   use mpi_orbsetmod
+  use orbgathersubmod
   implicit none
   real*8,intent(in) :: time1,time2
   DATATYPE,intent(inout) :: in_inspfs(spfsize,nspf)
   integer,intent(out) :: numiters
   real*8, save :: tempstepsize = -1d0
   real*8 :: midtime, tdiff, error, norm
-  integer :: itrace, iflag,getlen
+  integer :: itrace, iflag,getlen,minflag
   integer :: expofileptr=805
 
 !! lowers thisexpodim until number of internal expokit steps is 2 or less, 
@@ -486,7 +473,7 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
 
   lastmpiorb=firstmpiorb+orbsperproc-1
   if (parorbsplit.eq.1) then
-     maxnorbs=maxprocsperset*orbsperproc
+     maxnorbs=nzprocsperset*orbsperproc
   else
      maxnorbs=nspf
   endif
@@ -606,6 +593,7 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
   
 !! nodgexpthirdflag=1 HARDWIRE 10-2015  NOT SURE ABOUT DGEXPTHIRD SUBROUTINES
 
+  iflag=0
   if  ((jacsymflag.ne.0).and.(jacprojorth.eq.0).and.&
        (constraintflag.eq.0.or.jacgmatthird.ne.0).and.(nodgexpthirdflag.eq.0)) then
 
@@ -618,10 +606,12 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
              wsp, lwsp, iwsp, liwsp, jacoperate, itrace, iflag,expofileptr,&
              tempstepsize,realpardotsub_par3,ttott)
      elseif (parorbsplit.eq.1) then
-        call dgexpthirdxxx2(idim, thisexpodim, tdiff, &
-             aspfs(:,firstmpiorb:lastmpiorb), inspfs(:,firstmpiorb:lastmpiorb),&
-             expotol, norm, wsp,lwsp, iwsp, liwsp, parjacoperate, itrace, iflag, &
-             expofileptr,tempstepsize,realpardotsub_par1,ttott)
+        if (firstmpiorb.le.nspf) then
+           call dgexpthirdxxx2(idim, thisexpodim, tdiff, &
+                aspfs(:,firstmpiorb:lastmpiorb), inspfs(:,firstmpiorb:lastmpiorb),&
+                expotol, norm, wsp,lwsp, iwsp, liwsp, parjacoperate, itrace, iflag, &
+                expofileptr,tempstepsize,realpardotsub_par1,ttott)
+        endif
         call mpiorbgather(inspfs,spfsize)
      else
         call dgexpthird(idim, thisexpodim, tdiff, aspfs, inspfs, expotol, norm, &
@@ -646,12 +636,14 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
                 wsp, lwsp, iwsp, liwsp, jacopcompact, itrace, iflag,&
                 expofileptr,tempstepsize,realpardotsub_par3,ttott)
         elseif (parorbsplit.eq.1) then
-           call dgphivxxx2(idim, thisexpodim, tdiff, &
-                com_aspfs(:,firstmpiorb:lastmpiorb), &
-                com_proppspfs(:,firstmpiorb:lastmpiorb),&
-                com_outspfs(:,firstmpiorb:lastmpiorb), expotol, norm, wsp, &
-                lwsp, iwsp, liwsp, parjacopcompact, itrace, iflag, expofileptr,&
-                tempstepsize,realpardotsub_par1,ttott)
+           if (firstmpiorb.le.nspf) then
+              call dgphivxxx2(idim, thisexpodim, tdiff, &
+                   com_aspfs(:,firstmpiorb:lastmpiorb), &
+                   com_proppspfs(:,firstmpiorb:lastmpiorb),&
+                   com_outspfs(:,firstmpiorb:lastmpiorb), expotol, norm, wsp, &
+                   lwsp, iwsp, liwsp, parjacopcompact, itrace, iflag, expofileptr,&
+                   tempstepsize,realpardotsub_par1,ttott)
+           endif
            call mpiorbgather(com_outspfs,spfsmallsize)
         else
            call dgphiv(idim, thisexpodim, tdiff, com_aspfs, &
@@ -666,11 +658,13 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
                 outspfs, expotol, norm, wsp, lwsp, iwsp, liwsp, jacoperate, &
                 itrace, iflag,expofileptr,tempstepsize,realpardotsub_par3,ttott)
         elseif (parorbsplit.eq.1) then
-           call dgphivxxx2(idim, thisexpodim, tdiff, &
-                aspfs(:,firstmpiorb:lastmpiorb),proppspfs(:,firstmpiorb:lastmpiorb), &
-                outspfs(:,firstmpiorb:lastmpiorb), expotol, norm, wsp, lwsp, iwsp, &
-                liwsp, parjacoperate,itrace, iflag,expofileptr,&
-                tempstepsize,realpardotsub_par1,ttott)
+           if (firstmpiorb.le.nspf) then
+              call dgphivxxx2(idim, thisexpodim, tdiff, &
+                   aspfs(:,firstmpiorb:lastmpiorb),proppspfs(:,firstmpiorb:lastmpiorb), &
+                   outspfs(:,firstmpiorb:lastmpiorb), expotol, norm, wsp, lwsp, iwsp, &
+                   liwsp, parjacoperate,itrace, iflag,expofileptr,&
+                   tempstepsize,realpardotsub_par1,ttott)
+           endif
            call mpiorbgather(outspfs,spfsize)
         else
            call dgphiv(idim, thisexpodim, tdiff, aspfs, proppspfs, &
@@ -687,9 +681,16 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
      close(expofileptr)
   endif
 
-  if (iflag/=0) then
-     OFLWR "Expo error spf ", iflag; CFLST
+  minflag=iflag
+  call mympiimax(iflag)
+  call mympiimin(minflag)
+  if (iflag/=0.or.minflag/=0) then
+     OFLWR "Expo error spf ", iflag,minflag; CFLST
   endif
+
+!! should check to see if any numbers are unequal among processors.
+
+  call mympiimax(iwsp(4))
 
   if (iwsp(4).gt.1) then
      thisexpodim=min(maxexpodim,max(thisexpodim+5,ceiling(thisexpodim*1.2)))
@@ -749,7 +750,7 @@ contains
     real*8,intent(out) :: out
     real*8 :: sum
     sum=DOT_PRODUCT(one,two)
-    call mympirealreduceone_local(sum,MY_COMM_ORB)
+    call mympirealreduceone_local(sum,NZ_COMM_ORB(myorbset))
     out=sum
   end subroutine realpardotsub_par1
 

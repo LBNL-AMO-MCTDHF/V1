@@ -9,8 +9,8 @@
 subroutine get_orbmats( myspfs,  howmany,  ugmat,   &
      xdipmat,ydipmat,zdipmat,   xrefmat,yrefmat,zrefmat,conjgmat)
   use parameters
+  use orbgathersubmod
   implicit none
-
   integer, intent(in) :: howmany
   DATATYPE,intent(in) :: myspfs(spfsize,howmany)
   DATATYPE, intent(out) :: ugmat(howmany,howmany), xdipmat(howmany,howmany), &

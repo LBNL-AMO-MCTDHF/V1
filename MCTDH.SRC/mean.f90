@@ -43,27 +43,55 @@ subroutine get_reducedpot()
   use xxxmod
   use configmod
   use opmod
+  use parameters
+  use mpi_orbsetmod
   implicit none
-  call get_reducedpot0(www,yyy%reducedpottally(:,:,:,:,0), yyy%reducedpot(:,:,:,0),twoereduced(:,:,:))
+
+  if (parorbsplit.eq.1) then
+     call get_reducedpot0(www,yyy%reducedpottally(:,:,:,:,0), yyy%reducedpot(:,:,:,0),&
+          twoereduced(:,:,:),firstmpiorb,firstmpiorb+orbsperproc-1)
+  else
+     call get_reducedpot0(www,yyy%reducedpottally(:,:,:,:,0), yyy%reducedpot(:,:,:,0),&
+          twoereduced(:,:,:),1,nspf)
+  endif
+  call mpibarrier()
+
 end subroutine get_reducedpot
 
 
-subroutine get_reducedpot0(www,intwoden,outpot,twoereduced)
+subroutine get_reducedpot0(www,intwoden,outpot,twoereduced,firstorb,lastorb)
   use walkmod
   use spfsize_parameters
+  use mpi_orbsetmod
   implicit none
+  integer,intent(in) :: firstorb,lastorb
   type(walktype),intent(in) :: www
-  DATATYPE,intent(in) :: twoereduced(reducedpotsize, www%nspf,www%nspf),&
+  DATATYPE,intent(in) :: twoereduced(reducedpotsize, www%nspf,firstorb:lastorb),&
        intwoden(www%nspf,www%nspf,www%nspf,www%nspf)
-  DATATYPE,intent(out) :: outpot(reducedpotsize,www%nspf,www%nspf)
-  integer :: ii
+  DATATYPE,intent(out) :: outpot(reducedpotsize,www%nspf,firstorb:lastorb)
+  integer :: lowspf,highspf
+#ifdef MPIFLAG
+  DATATYPE,allocatable :: workpot(:,:,:),workpot2(:,:,:),temptwoden(:,:,:,:)
+  integer :: numspf,norbs,iproc,ispf,jspf
+#endif
+
+  lowspf=1; highspf=www%nspf
+
+#ifdef MPIFLAG
+  if (parorbsplit.eq.1) then
+     call getorbsetrange(lowspf,highspf)
+  endif
+  numspf=highspf-lowspf+1
+  norbs=lastorb-firstorb+1
+  if (numspf.le.0) then
+     return
+  endif
+#endif
 
 ! I have bra2,ket2,bra1,ket1. (chemists' notation for contraction)
 
 ! e.g. M= -2, -1, 2, 1 all different classes. 
 !   no zeroed entries even if constraining, in general, I believe.
-
-  ii=reducedpotsize
 
 !  if(deb ugflag.ne.0) then
 !     temptwoden(:,:,:,:)=intwoden(:,:,:,:)
@@ -75,13 +103,45 @@ subroutine get_reducedpot0(www,intwoden,outpot,twoereduced)
 !           endif
 !        enddo
 !     enddo
-!     call MYGEMM('N','N', ii,www%nspf**2,www%nspf**2,(1.0d0,0.d0), &
-!         twoereduced,ii,temptwoden,www%nspf**2, (0.d0,0.d0),outpot,ii)
+!     call MYGEMM('N','N', reducedpotsize,www%nspf**2,www%nspf**2,(1.0d0,0.d0), &
+!         twoereduced,reducedpotsize,temptwoden,www%nspf**2, (0.d0,0.d0),outpot,&
+!         reducedpotsize)
 !  else
 
-     call MYGEMM('N','N', ii,www%nspf**2,www%nspf**2,(1.0d0,0.d0), &
-          twoereduced,ii,intwoden,www%nspf**2, (0.d0,0.d0),outpot,ii)
+#ifdef MPIFLAG
+  if (parorbsplit.ne.1) then
+#endif
+     call MYGEMM('N','N', reducedpotsize,www%nspf**2,www%nspf**2,DATAONE, &
+          twoereduced,reducedpotsize,intwoden,www%nspf**2, DATAZERO,&
+          outpot,reducedpotsize)
+#ifdef MPIFLAG
+  else
+     allocate(temptwoden(www%nspf,firstorb:lastorb,www%nspf,norbs),&
+          workpot(reducedpotsize,www%nspf,norbs),workpot2(reducedpotsize,www%nspf,norbs))
+     outpot=0
+     ispf=0
+     do iproc=1,nzprocsperset
+        jspf=min(ispf+orbsperproc,www%nspf)
+        if (jspf.ge.ispf+1) then
 
+           temptwoden=0d0;  workpot=0
+           temptwoden(:,lowspf:highspf,:,1:jspf-ispf)=intwoden(:,lowspf:highspf,:,ispf+1:jspf)
+
+           call MYGEMM('N','N', reducedpotsize,www%nspf*(jspf-ispf),www%nspf*numspf,DATAONE,&
+                twoereduced,reducedpotsize,temptwoden,&
+                www%nspf*norbs, DATAZERO,workpot,reducedpotsize)
+           call mympireduceto_local(workpot,workpot2,reducedpotsize*www%nspf*(jspf-ispf),iproc,&
+                NZ_COMM_ORB(myorbset))
+
+           if (orbrank.eq.iproc) then
+              outpot(:,:,:)=outpot(:,:,:)+workpot2(:,:,1:numspf)
+           endif
+        endif
+        ispf=ispf+orbsperproc
+     enddo
+     deallocate(workpot,temptwoden,workpot2)
+  endif
+#endif
 
 end subroutine get_reducedpot0
 
@@ -148,11 +208,12 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
            
            dirphase=www%doublewalkdirphase(iwalk,config1)
 
-           ispf=www%doublewalkdirspf(1,iwalk,config1)   !BRA2 
-           jspf=www%doublewalkdirspf(2,iwalk,config1)   !KET2 (walk)
-           iispf=www%doublewalkdirspf(3,iwalk,config1)  !BRA1
-           jjspf=www%doublewalkdirspf(4,iwalk,config1)  !KET1 (walk)
-           
+!! switched 2-2016, keep this logic the same
+           ispf=www%doublewalkdirspf(1,iwalk,config1)   !KET2 
+           jspf=www%doublewalkdirspf(2,iwalk,config1)   !BRA2 (walk)
+           iispf=www%doublewalkdirspf(3,iwalk,config1)  !KET1
+           jjspf=www%doublewalkdirspf(4,iwalk,config1)  !BRA1 (walk)
+
            mytally(ispf,jspf,iispf,jjspf) =  &    
                 mytally(ispf,jspf,iispf,jjspf) +  &
                 dirphase*csum           !! 1/R factor above

@@ -12,6 +12,7 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
   use linearmod
   use derivativemod
   use orbprojectmod
+  use orbgathersubmod
   implicit none
   integer,intent(in) :: lowspf,highspf
   real*8,intent(in) :: thistime
@@ -32,6 +33,12 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
   endif
 
   numspf=highspf-lowspf+1
+  if (numspf.le.0) then
+     call waitawhile()
+     print *, "ACKDOOG 5689"
+     call waitawhile()
+     stop
+  endif
 
   gridtime=(thistime-firsttime)/(lasttime-firsttime) 
   if (jacprojorth.ne.0) then
@@ -52,23 +59,19 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
   call actreduced00(lowspf,highspf,1,thistime, inspfs, nullspfs, workspfs0, 0, 0,1)
 
   if (effective_cmf_linearflag.eq.0) then
-     if (numspf.gt.0) then
-        call project00(lowspf,highspf,workspfs0(:,lowspf:highspf), &
-             derspfs0(:,lowspf:highspf), inspfs)
-        derspfs0(:,lowspf:highspf)=workspfs0(:,lowspf:highspf)-derspfs0(:,lowspf:highspf)
-    endif
+     call project00(lowspf,highspf,workspfs0(:,lowspf:highspf), &
+          derspfs0(:,lowspf:highspf), inspfs)
+     derspfs0(:,lowspf:highspf)=workspfs0(:,lowspf:highspf)-derspfs0(:,lowspf:highspf)
   else
      call actreduced00(lowspf,highspf,1,thistime, inspfs, nullspfs, workspfs2, 1, 0,1)
-     if (numspf.gt.0) then
-        workoutspfs0=(1.d0-gridtime)*workspfs2 + gridtime*workspfs0
-        call project00(lowspf,highspf,workoutspfs0(:,lowspf:highspf), &
-             derspfs0(:,lowspf:highspf), inspfs)
-        derspfs0(:,lowspf:highspf)=workoutspfs0(:,lowspf:highspf)-derspfs0(:,lowspf:highspf)
-     endif
+     workoutspfs0=(1.d0-gridtime)*workspfs2 + gridtime*workspfs0
+     call project00(lowspf,highspf,workoutspfs0(:,lowspf:highspf), &
+          derspfs0(:,lowspf:highspf), inspfs)
+     derspfs0(:,lowspf:highspf)=workoutspfs0(:,lowspf:highspf)-derspfs0(:,lowspf:highspf)
   endif
 
   if (parorbsplit.eq.1) then
-     call mpiorbgather(derspfs0,spfsize)
+     call mpiorbgather_nz(derspfs0,spfsize)
   endif
 
 !! d/dt phi = (1-P) Q phi
@@ -82,20 +85,16 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
   if (effective_cmf_linearflag.eq.0) then
 
      call actreduced00(lowspf,highspf,1,thistime, derspfs0, nullspfs, workoutspfs2, 1, 0,1)
-     if (numspf.gt.0) then
-        workoutspfs0 = (1-gridtime)*workoutspfs2 + gridtime*workoutspfs0
+     workoutspfs0 = (1-gridtime)*workoutspfs2 + gridtime*workoutspfs0
 
 !! d/dt Q term
-        workoutspfs0 = workoutspfs0 + 1.d0/(lasttime-firsttime) * (workspfs0-workspfs2)
-     endif
+     workoutspfs0 = workoutspfs0 + 1.d0/(lasttime-firsttime) * (workspfs0-workspfs2)
 
   endif
 
-  if (numspf.gt.0) then
-     call project00(lowspf,highspf,workoutspfs0(:,lowspf:highspf), &
-          sdspfs(:,lowspf:highspf), inspfs)
-     sdspfs(:,lowspf:highspf)=workoutspfs0(:,lowspf:highspf)-sdspfs(:,lowspf:highspf)
-  endif
+  call project00(lowspf,highspf,workoutspfs0(:,lowspf:highspf), &
+       sdspfs(:,lowspf:highspf), inspfs)
+  sdspfs(:,lowspf:highspf)=workoutspfs0(:,lowspf:highspf)-sdspfs(:,lowspf:highspf)
 
 !! first term.
 
@@ -106,17 +105,15 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
 !!   Projector is just sum_i |phi_i><phi_i| without regard to orthonorm 
 !!      (consistent with noorthogflag=1)
 
-!! always call derproject00
   call derproject00(lowspf,highspf,workspfs0, workoutspfs0, derspfs0, inspfs)
-  if (numspf.gt.0) then
-     sdspfs(:,lowspf:highspf)=sdspfs(:,lowspf:highspf)-workoutspfs0(:,lowspf:highspf)
-  endif
+  sdspfs(:,lowspf:highspf)=sdspfs(:,lowspf:highspf)-workoutspfs0(:,lowspf:highspf)
 
 end subroutine second_derivs00
 
 
 subroutine second_derivs(thistime,inspfs,sdspfs)
   use parameters
+  use orbgathersubmod
   implicit none
   real*8,intent(in) :: thistime
   DATATYPE,intent(in) :: inspfs(spfsize,nspf)
@@ -128,9 +125,9 @@ subroutine second_derivs(thistime,inspfs,sdspfs)
      call getOrbSetRange(lowspf,highspf)
   endif
 
-!! call always even if numspf=0
-  call second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs(:,min(lowspf,nspf):highspf))
-
+  if (highspf.ge.lowspf) then
+     call second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs(:,lowspf:highspf))
+  endif
   if (parorbsplit.eq.1) then
      call mpiorbgather(sdspfs,spfsize)
   endif
@@ -148,6 +145,8 @@ end module verletmod
 subroutine verlet(inspfs0, time1,time2,outiter)
   use parameters
   use verletmod
+  use orbgathersubmod
+  use mpi_orbsetmod
   implicit none
   real*8,intent(in) :: time1,time2
   integer,intent(out) :: outiter
@@ -162,7 +161,8 @@ subroutine verlet(inspfs0, time1,time2,outiter)
   endif
   numspf=highspf-lowspf+1
 
-  allocate(inspfs(spfsize,nspf), tempspfs(spfsize,nspf), sdspfs(spfsize,lowspf:highspf+1))
+  allocate(inspfs(spfsize,nspf), tempspfs(spfsize,nspf), &
+       sdspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1))
   tempspfs=0; sdspfs=0
   inspfs(:,:)=inspfs0(:,:)
 
@@ -175,8 +175,9 @@ subroutine verlet(inspfs0, time1,time2,outiter)
      jstep=jstep+1
      
      thistime=(istep-1)*cstep + time1
-     call second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
-
+     if (numspf.gt.0) then
+        call second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
+     endif
      if (jstep.eq.1) then
         allocate(prevspfs(spfsize,nspf))
      endif

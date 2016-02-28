@@ -261,6 +261,7 @@ subroutine quadspfs(inspfs,jjcalls)
   use quadopmod
   use orbdermod
   use mpi_orbsetmod
+  use orbgathersubmod
   implicit none
   DATATYPE,intent(inout) :: inspfs(spfsize,nspf)
   integer,intent(out) :: jjcalls
@@ -273,7 +274,7 @@ subroutine quadspfs(inspfs,jjcalls)
   flag=1
 
   if (parorbsplit.eq.1) then
-     maxnorbs=maxprocsperset*orbsperproc
+     maxnorbs=nzprocsperset*orbsperproc
   else
      maxnorbs=nspf
   endif
@@ -319,10 +320,12 @@ subroutine quadspfs(inspfs,jjcalls)
         call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
              quadtol,spfsmallsize*nspf,min(maxdgdim,spfsmallsize*nspf*nprocs),1,ierr)
      elseif (parorbsplit.eq.1) then
-        call dgsolve0( com_vector2(:,firstmpiorb:lastmpiorb), &
-             com_vector3(:,firstmpiorb:lastmpiorb), jjcalls, parquadopcompact,&
-             0,dummysub,quadtol,spfsmallsize*orbsperproc,&
-             min(maxdgdim,spfsmallsize*nspf),1,ierr)
+        if (firstmpiorb.le.nspf) then
+           call dgsolve00( com_vector2(:,firstmpiorb:lastmpiorb), &
+                com_vector3(:,firstmpiorb:lastmpiorb), jjcalls, parquadopcompact,&
+                0,dummysub,quadtol,spfsmallsize*orbsperproc,&
+                min(maxdgdim,spfsmallsize*nspf),1,ierr,NZ_COMM_ORB(myorbset))
+        endif
         call mpiorbgather(com_vector3,spfsmallsize)
      else
         call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
@@ -335,9 +338,12 @@ subroutine quadspfs(inspfs,jjcalls)
         call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
              quadtol,spfsize*nspf,min(maxdgdim,spfsize*nspf*nprocs),1,ierr)
      elseif (parorbsplit.eq.1) then
-        call dgsolve0( vector2(:,firstmpiorb:lastmpiorb), &
-             vector3(:,firstmpiorb:lastmpiorb), jjcalls, parquadoperate,0,dummysub, &
-             quadtol,spfsize*orbsperproc,min(maxdgdim,spfsize*nspf),1,ierr)
+        if (firstmpiorb.le.nspf) then
+           call dgsolve00( vector2(:,firstmpiorb:lastmpiorb), &
+                vector3(:,firstmpiorb:lastmpiorb), jjcalls, parquadoperate,0,dummysub, &
+                quadtol,spfsize*orbsperproc,min(maxdgdim,spfsize*nspf),1,ierr,&
+                NZ_COMM_ORB(myorbset))
+        endif
         call mpiorbgather(vector3,spfsize)
      else
         call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &

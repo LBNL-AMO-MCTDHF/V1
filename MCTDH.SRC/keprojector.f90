@@ -9,6 +9,7 @@ subroutine keprojector(inavector,inspfs,infac,www)
   use parameters
   use walkmod
   use arbitrarymultmod
+  use orbgathersubmod
   implicit none
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: inavector(www%totadim,mcscfnum), inspfs(spfsize,nspf)

@@ -783,7 +783,10 @@ subroutine call_twoe_matelxxx00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoer
      do spf2b=spf2low,spf2high
         do spf2a=1,numspf
            
-           twoeden03(:,:,:,batchindex(spf2a,spf2b))=RESHAPE(CONJUGATE(inspfs10(:,spf2a)) * inspfs20(:,spf2b),&
+           twoeden03(:,:,:,batchindex(spf2a,spf2b))=&
+
+!! switching 2-2016     RESHAPE(CONJUGATE(inspfs10(:,spf2a)) * inspfs20(:,spf2b),&
+                RESHAPE(inspfs10(:,spf2a) * CONJUGATE(inspfs20(:,spf2b)),&
                 (/numpoints(1),numpoints(2),numpoints(3)/))
         enddo
      enddo
@@ -813,8 +816,9 @@ subroutine call_twoe_matelxxx00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoer
   if (nnnspf.gt.0) then
      do spf1b=1,numspf
         do spf1a=1,numspf
-           myden(:)=CONJUGATE(inspfs10(:,spf1a)) * inspfs20(:,spf1b)
 
+!! switching 2-2016       myden(:)=CONJUGATE(inspfs10(:,spf1a)) * inspfs20(:,spf1b)
+           myden(:)=inspfs10(:,spf1a) * CONJUGATE(inspfs20(:,spf1b))
            call MYGEMV('T',totpoints,numspf*nnnspf,DATAONE,twoereduced(:,:,lowspf:highspf),totpoints,myden,1,&
                 DATAZERO,twoemattemp(:,lowspf:highspf),1)
            twoematel(spf1a,spf1b,:,lowspf:highspf)=twoemattemp(:,lowspf:highspf)
@@ -1215,7 +1219,7 @@ subroutine mult_reducedpot(firstspf,lastspf,inspfs,outspfs,reducedpot)
   implicit none
   integer,intent(in) :: firstspf,lastspf
   DATATYPE,intent(out) :: outspfs(totpoints,firstspf:lastspf)
-  DATATYPE,intent(in) :: inspfs(totpoints, numspf),reducedpot(totpoints, numspf,numspf)
+  DATATYPE,intent(in) :: inspfs(totpoints, numspf),reducedpot(totpoints, numspf,firstspf:lastspf)
   DATATYPE :: myspf(totpoints)         !! AUTOMATIC
   integer :: ispf,kspf
 
@@ -1232,7 +1236,10 @@ subroutine mult_reducedpot(firstspf,lastspf,inspfs,outspfs,reducedpot)
 !!$ reducedpot is usual notation: <ispf | kspf> so so sum over slow index kspf
                     
         myspf(:) = myspf(:) + &
-             reducedpot(:,ispf,kspf) * inspfs(:,kspf)
+
+!!$ switching 2-2016             reducedpot(:,ispf,kspf) * inspfs(:,kspf)
+
+             reducedpot(:,kspf,ispf) * inspfs(:,kspf)
 
 !!$        endif
 

@@ -670,6 +670,7 @@ end subroutine fluxgtau
 
 subroutine flux_op_onee(inspfs,keop,peop,flag)
   use parameters
+  use orbgathersubmod
   implicit none
   integer,intent(in) :: flag
   DATATYPE, intent(in) :: inspfs(spfsize,nspf)
@@ -744,6 +745,7 @@ end subroutine flux_op_onee
 
 subroutine flux_op_nuc(inspfs,yop,flag)
   use parameters
+  use orbgathersubmod
   implicit none
   DATATYPE, intent(in) :: inspfs(spfsize,nspf)
   DATATYPE,intent(out) ::  yop(spfsize,nspf)
@@ -786,6 +788,7 @@ end subroutine flux_op_nuc
 
 subroutine flux_op_twoe(mobra,moket,V2,flag)
   use parameters
+  use orbgathersubmod
   implicit none
   DATATYPE,intent(in) :: mobra(spfsize,nspf),moket(spfsize,nspf)
   DATATYPE,intent(out) :: V2(nspf,nspf,nspf,nspf)

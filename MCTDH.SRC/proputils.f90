@@ -18,6 +18,12 @@ contains
          tempprospfs(spfsize,nspf+numfrozen)            !! AUTOMATIC
 
     numspf=highspf-lowspf+1
+    if (numspf.le.0) then
+       call waitawhile()
+       print *, "ACK ERRR PROJ00"
+       call waitawhile()
+       stop
+    endif
 
     tempprospfs(:,1:nspf)=prospfs(:,:)
 
@@ -45,11 +51,9 @@ contains
        call mympireduce(mydot,nspf*(nspf+numfrozen))
     endif
 
-    if (numspf.gt.0) then
-       call MYGEMM('N','N',spfsize,numspf,nspf+numfrozen,DATAONE,&
-            tempprospfs(:,:),spfsize,mydot(:,lowspf:highspf),&
-            nspf+numfrozen,DATAZERO,outspfs(:,lowspf:highspf),spfsize)
-    endif
+    call MYGEMM('N','N',spfsize,numspf,nspf+numfrozen,DATAONE,&
+         tempprospfs(:,:),spfsize,mydot(:,lowspf:highspf),&
+         nspf+numfrozen,DATAZERO,outspfs(:,lowspf:highspf),spfsize)
      
   end subroutine project00
 
@@ -57,6 +61,7 @@ contains
   subroutine project(inspfs, outspfs, prospfs)
     use parameters
     use opmod !! frozenspfs
+    use orbgathersubmod
     implicit none
     DATATYPE,intent(in) :: inspfs(spfsize,nspf),  prospfs(spfsize,nspf)
     DATATYPE,intent(out) :: outspfs(spfsize,nspf)
@@ -114,6 +119,7 @@ end subroutine project_onfrozen
 subroutine get_frexchange()
   use parameters
   use xxxmod !! frozenexchinvr
+  use orbgathersubmod
   implicit none
   integer :: lowspf,highspf,numspf
   DATATYPE,allocatable :: frozenexchange(:,:)

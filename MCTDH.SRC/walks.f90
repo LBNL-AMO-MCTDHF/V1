@@ -341,8 +341,11 @@ subroutine walks(www)
 
                     iwalk = iwalk+1
             
-!!                                                      ket2   bra2   ket1   bra1
-                    www%doublewalkdirspf(1:4,iwalk,config1)=[ iispf, jjspf, ispf, jspf ]
+!! switched 2-2016 was                                          ket2   bra2   ket1   bra1
+!!                    www%doublewalkdirspf(1:4,iwalk,config1)=[ iispf, jjspf, ispf, jspf ]
+
+!! now                                                         bra2   ket2   bra1   ket1
+                    www%doublewalkdirspf(1:4,iwalk,config1)=[ jjspf, iispf, jspf, ispf ]
                     www%doublewalkdirphase(iwalk,config1)=dirphase
                  
                     www%doublewalk(iwalk,config1)=config2

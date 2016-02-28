@@ -143,6 +143,7 @@ subroutine dipolesub_one(www,bioww,in_abra,&    !! ok unused bioww
   use dipbiomod
   use biorthomod
   use arbitrarymultmod
+  use orbgathersubmod
   implicit none
   type(walktype),intent(in) :: www,bioww
   DATATYPE, intent(in) :: inspfs(  spfsize, www%nspf ), &

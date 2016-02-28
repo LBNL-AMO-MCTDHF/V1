@@ -70,9 +70,10 @@ subroutine mpiorbsets()
   use mpi_orbsetmod
   use parameters
   implicit none
-  integer :: iproc,iset,jproc,ierr
+  integer :: iproc,iset
   integer, allocatable :: procsperset(:)
 #ifdef MPIFLAG
+  integer :: jproc,ierr,MPI_GROUP_ORB
   integer, allocatable :: process_ranks(:,:)
 #endif
   if (nprocs.lt.nspf) then
@@ -96,12 +97,14 @@ subroutine mpiorbsets()
      endif
   endif
 #ifndef MPIFLAG
-  myorbset=1;    firstmpiorb=1;  maxprocsperset=1
-  jproc=0  ;   ierr=0     !! avoid warn unused
+  myorbset=1;    firstmpiorb=1;  maxprocsperset=1; orbrank=1;
+  nzprocsperset=1
 #else
   allocate(process_ranks(nspf*2,norbsets)); process_ranks(:,:)=(-1)
-  allocate(MPI_GROUP_ORB(norbsets), MPI_COMM_ORB(norbsets))
-  MPI_GROUP_ORB(:)=0; MPI_COMM_ORB(:)=0
+  allocate(MPI_COMM_ORB(norbsets),NZ_COMM_ORB(norbsets))
+  MPI_COMM_ORB(:)=0; NZ_COMM_ORB(:)=0
+
+  nzprocsperset=(nspf+orbsperproc-1)/orbsperproc
 
   firstmpiorb=nspf+1
   iproc=0
@@ -112,25 +115,35 @@ subroutine mpiorbsets()
         iproc=iproc+1
         process_ranks(jproc,iset)=iproc
         if (iproc.eq.myrank) then
+           orbrank=jproc
            myorbset=iset
            firstmpiorb=(jproc-1)*orbsperproc+1
         endif
      enddo
      process_ranks(:,iset)=process_ranks(:,iset)-1
      call MPI_group_incl(MPI_GROUP_WORLD,procsperset(iset),process_ranks(:,iset),&
-          MPI_GROUP_ORB(iset),ierr)
+          MPI_GROUP_ORB,ierr)
      if (ierr.ne.0) then
         OFLWR "group_incl ERR ", ierr; CFLST
      endif
-     call MPI_comm_create(MPI_COMM_WORLD, MPI_GROUP_ORB(iset),MPI_COMM_ORB(iset),ierr)
+     call MPI_comm_create(MPI_COMM_WORLD, MPI_GROUP_ORB,MPI_COMM_ORB(iset),ierr)
      if (ierr.ne.0) then
         OFLWR "group_create err ", ierr; CFLST
+     endif
+     call MPI_group_incl(MPI_GROUP_WORLD,nzprocsperset,process_ranks(:,iset),&
+          MPI_GROUP_ORB,ierr)
+     if (ierr.ne.0) then
+        OFLWR "group_incl ERR xx", ierr; CFLST
+     endif
+     call MPI_comm_create(MPI_COMM_WORLD, MPI_GROUP_ORB,NZ_COMM_ORB(iset),ierr)
+     if (ierr.ne.0) then
+        OFLWR "group_create err xx", ierr; CFLST
      endif
   enddo
   if (myorbset.le.0) then
      OFLWR "SSSETERRROR"; CFLST
   endif
-  MY_COMM_ORB=MPI_COMM_ORB(myorbset)
+
   maxprocsperset=0
   do iset=1,norbsets
      if (procsperset(iset).ge.maxprocsperset) then
@@ -149,15 +162,17 @@ end subroutine mpiorbsets
 
 #ifdef MPIFLAG
 
-!! NOTE DOUBLE DIMENSION orbvector !!
 
-subroutine mpiorbgather(inoutvector,insize)    !! insize=spfsize except debug
+module orbgathersubmod
+contains
+
+subroutine mpiorbgather0(inoutvector,insize,onlynz)
   use mpimod
   use mpi_orbsetmod
   use fileptrmod
   use parameters
   implicit none
-  integer,intent(in) :: insize
+  integer,intent(in) :: insize,onlynz
   DATATYPE,intent(inout) :: inoutvector(insize,nspf)
   DATATYPE :: orbvector(insize,nspf*2),workvector(insize,orbsperproc)   !! AUTOMATIC
   integer :: ierr,lastmpiorb
@@ -184,15 +199,15 @@ subroutine mpiorbgather(inoutvector,insize)    !! insize=spfsize except debug
      workvector(:,1:lastmpiorb-firstmpiorb+1)=inoutvector(:,firstmpiorb:lastmpiorb)
   endif
 
-#ifdef REALGO
-  call mpi_allgather(workvector(:,:),insize*orbsperproc,&
-       MPI_DOUBLE_PRECISION,orbvector(:,:),insize*orbsperproc,&
-       MPI_DOUBLE_PRECISION,MPI_COMM_ORB(myorbset),ierr)
-#else
-  call mpi_allgather(workvector(:,:),insize*orbsperproc,&
-       MPI_DOUBLE_COMPLEX,orbvector(:,:),insize*orbsperproc,&
-       MPI_DOUBLE_COMPLEX,MPI_COMM_ORB(myorbset),ierr)
-#endif
+  if (onlynz.eq.0) then
+     call mpi_allgather(workvector(:,:),insize*orbsperproc,&
+          MPIDATATYPE,orbvector(:,:),insize*orbsperproc,&
+          MPIDATATYPE,MPI_COMM_ORB(myorbset),ierr)
+  else
+     call mpi_allgather(workvector(:,:),insize*orbsperproc,&
+          MPIDATATYPE,orbvector(:,:),insize*orbsperproc,&
+          MPIDATATYPE,NZ_COMM_ORB(myorbset),ierr)
+  endif
   if (ierr.ne.0) then
      OFLWR "ORBGATHER ERR ", ierr; CFLST
   endif
@@ -200,7 +215,31 @@ subroutine mpiorbgather(inoutvector,insize)    !! insize=spfsize except debug
   inoutvector(:,:)=orbvector(:,1:nspf)
 
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+end subroutine mpiorbgather0
+
+
+subroutine mpiorbgather(inoutvector,insize)
+  use mpimod
+  use mpi_orbsetmod
+  use fileptrmod
+  use parameters
+  implicit none
+  integer,intent(in) :: insize
+  DATATYPE,intent(inout) :: inoutvector(insize,nspf)
+  call mpiorbgather0(inoutvector,insize,0)
 end subroutine mpiorbgather
+
+
+subroutine mpiorbgather_nz(inoutvector,insize)
+  use mpimod
+  use mpi_orbsetmod
+  use fileptrmod
+  use parameters
+  implicit none
+  integer,intent(in) :: insize
+  DATATYPE,intent(inout) :: inoutvector(insize,nspf)
+  call mpiorbgather0(inoutvector,insize,1)
+end subroutine mpiorbgather_nz
 
 
 subroutine mpiorbreduce(input, isize)
@@ -226,6 +265,8 @@ subroutine mpiorbreduce(input, isize)
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 
 end subroutine mpiorbreduce
+
+end module orbgathersubmod
 
 
 subroutine mpistart()
@@ -401,11 +442,11 @@ subroutine mympirealreduce(input, isize)
 end subroutine mympirealreduce
 
 
-subroutine mympireduceto(input, output, isize, dest)
+subroutine mympireduceto_local(input, output, isize, dest, IN_COMM)
   use mpimod
   use fileptrmod
   implicit none
-  integer,intent(in) :: isize,dest
+  integer,intent(in) :: isize,dest,IN_COMM
   DATATYPE,intent(in) :: input(isize)
   DATATYPE,intent(out) :: output(isize) 
   integer :: ierr, idest
@@ -417,13 +458,22 @@ subroutine mympireduceto(input, output, isize, dest)
   ierr=0
   idest=dest-1
   call MPI_reduce( input, output, isize, MPIDATATYPE, MPI_SUM, idest, &
-       MPI_COMM_WORLD , ierr)
+       IN_COMM, ierr)
   if (ierr/=0) then
      OFLWR "ERR mpi_reduce!";   CFLST
   endif
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
-end subroutine mympireduceto
+end subroutine mympireduceto_local
 
+
+subroutine mympireduceto(input, output, isize, dest)
+  use mpimod
+  implicit none
+  integer,intent(in) :: isize,dest
+  DATATYPE,intent(in) :: input(isize)
+  DATATYPE,intent(out) :: output(isize) 
+  call mympireduceto_local(input,output,isize,dest,MPI_COMM_WORLD)
+end subroutine mympireduceto
 
 
 !! used in dGMRES parallel routines
@@ -1350,6 +1400,9 @@ subroutine mympiireduceone_local(input,incomm)
 end subroutine mympiireduceone_local
 
 
+module orbgathersubmod
+contains
+
 subroutine mpiorbgather(orbvector,insize)
   implicit none
   integer :: insize
@@ -1357,6 +1410,15 @@ subroutine mpiorbgather(orbvector,insize)
   return
   orbvector(1)=orbvector(1)
 end subroutine mpiorbgather
+
+
+subroutine mpiorbgather_nz(orbvector,insize)
+  implicit none
+  integer :: insize
+  DATATYPE :: orbvector(insize)
+  return
+  orbvector(1)=orbvector(1)
+end subroutine mpiorbgather_nz
 
 
 subroutine mpiorbreduce(orbvector,insize)
@@ -1367,6 +1429,7 @@ subroutine mpiorbreduce(orbvector,insize)
   orbvector(1)=orbvector(1)
 end subroutine mpiorbreduce
 
+end module orbgathersubmod
 
 subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
   use mpimod

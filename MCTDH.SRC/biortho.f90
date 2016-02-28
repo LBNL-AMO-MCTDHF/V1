@@ -902,6 +902,7 @@ contains
     use dotmod
     use invsubmod
     use lnsubmod
+    use orbgathersubmod
     implicit none
     type(biorthotype),target,intent(inout) :: inbiovar
     DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)
@@ -1002,6 +1003,7 @@ contains
     use dotmod
     use invsubmod
     use lnsubmod
+    use orbgathersubmod
     implicit none
     type(biorthotype),target,intent(inout) :: inbiovar
     DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)

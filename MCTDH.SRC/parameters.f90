@@ -579,9 +579,11 @@ end module parameters
 module mpi_orbsetmod
   implicit none
   integer :: mpi_orbset_init=0
-  integer :: orbsperproc=(-1),  norbsets=(-1),  maxprocsperset=(-1)
-  integer :: myorbset=-1, firstmpiorb=-1  !! specific to each processor
-  integer, allocatable :: MPI_GROUP_ORB(:),MPI_COMM_ORB(:)
+  integer :: orbsperproc=(-1),  norbsets=(-1),  maxprocsperset=(-1),&
+       nzprocsperset=(-1)
+!! specific to each processor: 
+  integer :: myorbset=-1, firstmpiorb=-1, orbrank=(-1)
+  integer, allocatable :: MPI_COMM_ORB(:), NZ_COMM_ORB(:)
 end module
 
 subroutine getOrbSetRange(out_lowspf,out_highspf)
@@ -610,7 +612,6 @@ module mpimod
   include "mpif.h"
 #endif
   integer :: MPI_GROUP_WORLD
-  integer :: MY_COMM_ORB=(-798)
   integer :: nprocs=1, myrank
   character(len=200), parameter :: mpioutfilebase="MPIOUTS/MPI.Out."
   character(len=200) :: mpioutfile

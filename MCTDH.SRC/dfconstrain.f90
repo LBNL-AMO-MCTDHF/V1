@@ -146,6 +146,7 @@ subroutine get_rhomat(www,avector, rhomat,nblock,howmany)
   use fileptrmod
   use sparse_parameters
   use spfsize_parameters !! parorbsplit
+  use orbgathersubmod
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
@@ -225,6 +226,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
   use sparsemultmod
   use basissubmod
   use invsubmod
+  use orbgathersubmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -681,6 +683,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
   use dotmod
   use sparsemultmod
   use invsubmod
+  use orbgathersubmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -1046,6 +1049,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   use sparsemultmod
   use basissubmod
   use invsubmod
+  use orbgathersubmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www

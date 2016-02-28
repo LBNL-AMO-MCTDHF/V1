@@ -750,6 +750,7 @@ subroutine opalloc()
   use parameters
   use opmod
   use configmod
+  use mpi_orbsetmod
   implicit none
 
   allocate(rkemod(numr,numr), proderivmod(numr,numr))   
@@ -764,7 +765,11 @@ subroutine opalloc()
      endif
   endif
 
-  allocate(twoereduced(reducedpotsize,nspf,nspf))
+  if (parorbsplit.eq.1) then
+     allocate(twoereduced(reducedpotsize,nspf,firstmpiorb:firstmpiorb+orbsperproc-1))
+  else
+     allocate(twoereduced(reducedpotsize,nspf,nspf))
+  endif
   twoereduced(:,:,:)=0d0
 
   allocate(   pot(spfsize),  halfniumpot(spfsize) )
@@ -836,6 +841,7 @@ subroutine xalloc()
   use parameters
   use configmod
   use xxxmod
+  use mpi_orbsetmod
   implicit none
   integer :: ii
 
@@ -873,11 +879,18 @@ subroutine xalloc()
        yyy%reducedinvr( nspf, nspf, 0:numreduced), &
        yyy%reducedr( nspf, nspf, 0:numreduced),&
        yyy%reducedinvrsq( nspf, nspf, 0:numreduced),&
-       yyy%reducedpot(reducedpotsize,  nspf,nspf, 0:numreduced), &
-       yyy%reducedpottally(nspf,nspf, nspf,nspf, 0:numreduced), &
        yyy%reducedproderiv(nspf,nspf, 0:numreduced),  &
        yyy%cmfspfs(totspfdim,0:numreduced),&
-       yyy%cmfavec(tot_adim,mcscfnum,0:numreduced))
+       yyy%cmfavec(tot_adim,mcscfnum,0:numreduced),&
+       yyy%reducedpottally(nspf,nspf, nspf, nspf, 0:numreduced))
+
+  if (parorbsplit.eq.1) then
+     allocate(yyy%reducedpot(reducedpotsize,  nspf, &
+          firstmpiorb:firstmpiorb+orbsperproc-1, 0:numreduced))
+  else
+     allocate(yyy%reducedpot(reducedpotsize,  nspf, nspf, 0:numreduced))
+  endif
+
   yyy%denmat=0; yyy%invdenmat=0; yyy%reducedr=0; yyy%reducedinvrsq=0; yyy%reducedpot=0;
   yyy%reducedpottally=0; yyy%reducedproderiv=0; yyy%cmfspfs=0; 
   if (tot_adim.gt.0) then

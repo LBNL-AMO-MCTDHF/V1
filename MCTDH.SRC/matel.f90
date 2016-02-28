@@ -12,15 +12,22 @@ subroutine all_matel()
   use mpimod
   use configmod
   use opmod
+  use mpi_orbsetmod
   implicit none
   integer,save :: times(10)=0,xcalled=0
-  integer :: itime,jtime,getlen
+  integer :: itime,jtime,getlen,firstspf,lastspf
   xcalled=xcalled+1
+
+  firstspf=1;lastspf=nspf
+  if (parorbsplit.eq.1) then
+     firstspf=firstmpiorb
+     lastspf=firstmpiorb+orbsperproc-1
+  endif
 
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     Call all_matel0 in all_matel"; CFL; call mpibarrier()
   endif
-  call all_matel0(yyy%cptr(0), yyy%cmfspfs(:,0), yyy%cmfspfs(:,0), twoereduced,times)
+  call all_matel0(yyy%cptr(0), yyy%cmfspfs(:,0), yyy%cmfspfs(:,0), twoereduced,times,firstspf,lastspf)
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     ...called all_matel0 in all_matel"; CFL; call mpibarrier()
   endif
@@ -60,13 +67,14 @@ subroutine all_matel()
 
 end subroutine all_matel
 
-subroutine all_matel0(matrix_ptr,inspfs1,inspfs2,twoereduced,times)
+subroutine all_matel0(matrix_ptr,inspfs1,inspfs2,twoereduced,times,firstspf,lastspf)
   use parameters
   use configptrmod
   implicit none
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
+  integer,intent(in) :: firstspf,lastspf
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
-  DATATYPE,intent(out) :: twoereduced(reducedpotsize,nspf,nspf)
+  DATATYPE,intent(out) :: twoereduced(reducedpotsize,nspf,firstspf:lastspf)
   integer :: times(*), i,j
 
   if (debugflag.eq.42) then
@@ -88,7 +96,7 @@ subroutine all_matel0(matrix_ptr,inspfs1,inspfs2,twoereduced,times)
      call mpibarrier();     OFLWR "     ...twoe_matel"; CFL; call mpibarrier()
   endif
   call system_clock(j);  times(3)=times(3)+j-i; i=j
-  call twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced)
+  call twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced,firstspf,lastspf)
   call system_clock(j);  times(4)=times(4)+j-i
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     ...done all_matel0"; CFL; call mpibarrier()
@@ -96,14 +104,16 @@ subroutine all_matel0(matrix_ptr,inspfs1,inspfs2,twoereduced,times)
 
 end subroutine all_matel0
 
-subroutine twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced)
+subroutine twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced,firstspf,lastspf)
   use parameters
   use mpimod
   use configptrmod
+  use orbgathersubmod
   implicit none
+  integer,intent(in) :: firstspf,lastspf
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf),inspfs2(spfsize,nspf)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
-  DATATYPE,intent(out) :: twoereduced(reducedpotsize,nspf,nspf)
+  DATATYPE,intent(out) :: twoereduced(reducedpotsize,nspf,firstspf:lastspf)
   integer :: lowspf,highspf,numspf
 
   lowspf=1; highspf=nspf
@@ -111,9 +121,6 @@ subroutine twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced)
      call getorbsetrange(lowspf,highspf)
   endif
   numspf=highspf-lowspf+1
-  if (numspf.lt.0) then
-     print *, "DOOGGDSeeeF555"; stop
-  endif
 
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "         In twoe_matel.  Calling call_twoe_matel"; CFL; call mpibarrier()
@@ -127,7 +134,6 @@ subroutine twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced)
   endif
   if (parorbsplit.eq.1) then
      call mpiorbgather(matrix_ptr%xtwoematel(:,:,:,:),nspf**3)
-     call mpiorbgather(twoereduced(:,:,:),nspf*reducedpotsize)
   endif
   if (parorbsplit.eq.3) then
      call mympireduce(matrix_ptr%xtwoematel(:,:,:,:),nspf**4)
@@ -141,6 +147,7 @@ end subroutine twoe_matel
 subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
   use parameters
   use configptrmod
+  use orbgathersubmod
   implicit none
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
@@ -154,11 +161,8 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
      call getorbsetrange(lowspf,highspf)
   endif
   numspf=highspf-lowspf+1
-  if (numspf.lt.0) then
-     print *, "DOOGGDSeeeF"; stop
-  endif
 
-  if (numspf.ne.0) then
+  if (numspf.gt.0) then
 
      allocate(ttempspfs(spfsize,lowspf:highspf),workspfs(spfsize,lowspf:highspf))
      ttempspfs=0; workspfs=0
@@ -200,6 +204,7 @@ end subroutine pot_matel
 subroutine pulse_matel(matrix_ptr,inspfs1,inspfs2)
   use parameters
   use configptrmod
+  use orbgathersubmod
   implicit none
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
@@ -214,9 +219,6 @@ subroutine pulse_matel(matrix_ptr,inspfs1,inspfs2)
      call getorbsetrange(lowspf,highspf)
   endif
   numspf=highspf-lowspf+1
-  if (numspf.lt.0) then
-     print *, "DOOGeeeGDSF"; stop
-  endif
 
   dipoles(:)=0d0
   if (velflag.eq.0) then
@@ -224,7 +226,7 @@ subroutine pulse_matel(matrix_ptr,inspfs1,inspfs2)
   endif
   matrix_ptr%xpulsenuc(:)=dipoles(:)
 
-  if (numspf.ne.0) then
+  if (numspf.gt.0) then
 
      allocate(ttempspfsxx(spfsize,lowspf:highspf), ttempspfsyy(spfsize,lowspf:highspf), ttempspfszz(spfsize,lowspf:highspf))
      ttempspfsxx=0; ttempspfsyy=0; ttempspfszz=0
@@ -268,6 +270,7 @@ end subroutine pulse_matel
 subroutine sparseops_matel(matrix_ptr,inspfs1,inspfs2)
   use parameters
   use configptrmod
+  use orbgathersubmod
   implicit none
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
@@ -281,11 +284,8 @@ subroutine sparseops_matel(matrix_ptr,inspfs1,inspfs2)
      call getorbsetrange(lowspf,highspf)
   endif
   numspf=highspf-lowspf+1
-  if (numspf.lt.0) then
-     print *, "DOOeeeGGDSF",lowspf,highspf,nspf; stop
-  endif
 
-  if (numspf.ne.0) then
+  if (numspf.gt.0) then
 
      allocate(ttempspfs(spfsize,lowspf:highspf)); ttempspfs=0
 

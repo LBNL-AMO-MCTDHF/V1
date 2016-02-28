@@ -152,7 +152,6 @@ end subroutine op_tinv
         
 
 
-
 !! flag=1 means flux, otherwise whole op
 subroutine call_flux_op_twoe00(lowspf,highspf,mobra,moket,V2,flag) 
 !! determine the 2-electron matrix elements in the orbital basis for the flux operator i(H-H^{\dag}) 
@@ -195,7 +194,11 @@ subroutine call_flux_op_twoe00(lowspf,highspf,mobra,moket,V2,flag)
       do mvalj=qq,rr
         do mvalb=qq2,rr2
           deltam=mvalb-mvalj
-          twoeden(:,:) = CONJUGATE(mobra(:,:,mvalj,j)) * moket(:,:,mvalb,b)
+
+!! switching 2-2016     twoeden(:,:) = CONJUGATE(mobra(:,:,mvalj,j)) * moket(:,:,mvalb,b)
+
+          twoeden(:,:) = mobra(:,:,mvalj,j) * CONJUGATE(moket(:,:,mvalb,b))
+
           do lsum=1+abs(deltam),jacobisummax+1
 !! this is always real and serves as a delta function, can use for both V and V^\dagger
 !! We do not need conjugation and separate V and V^\dagger densities as Ylm is real
@@ -268,7 +271,8 @@ subroutine call_flux_op_twoe00(lowspf,highspf,mobra,moket,V2,flag)
                   !      CONJUGATE(mobra(ixi,ieta,mvali,i)) * moket(ixi,ieta,mvala,a) * twoemat2(ixi,ieta,deltam)
 
                   V2(i,a,j,b) = V2(i,a,j,b) +  &
-                    CONJUGATE(mobra(ixi,ieta,mvali,i)) * moket(ixi,ieta,mvala,a) * twoemat2(ixi,ieta,deltam)
+!! switching 2-2016        CONJUGATE(mobra(ixi,ieta,mvali,i)) * moket(ixi,ieta,mvala,a) * twoemat2(ixi,ieta,deltam)
+                    mobra(ixi,ieta,mvali,i) * CONJUGATE(moket(ixi,ieta,mvala,a)) * twoemat2(ixi,ieta,deltam)
 
                 enddo
               enddo
@@ -344,7 +348,8 @@ subroutine call_twoe_matel00(lowspf,highspf,inspfs1,inspfs2,twoematel,twoereduce
            do mvalue2b=qq2,rr2
               deltam=mvalue2b-mvalue2a
               myden(:,:,deltam) = myden(:,:,deltam) + &
-                   CONJUGATE(inspfs1(:,:,mvalue2a,spf2a)) * inspfs2(:,:,mvalue2b,spf2b)
+!! switching 2-2016       CONJUGATE(inspfs1(:,:,mvalue2a,spf2a)) * inspfs2(:,:,mvalue2b,spf2b)
+                   inspfs1(:,:,mvalue2a,spf2a) * CONJUGATE(inspfs2(:,:,mvalue2b,spf2b))
            enddo
         enddo
         twoeden(:,:,:,spf2a)=myden(:,:,:)
@@ -377,7 +382,8 @@ subroutine call_twoe_matel00(lowspf,highspf,inspfs1,inspfs2,twoematel,twoereduce
 
               deltam=mvalue1a-mvalue1b
               myden(:,:,deltam) = myden(:,:,deltam) + &
-                   CONJUGATE(inspfs1(:,:,mvalue1a,spf1a)) * inspfs2(:,:,mvalue1b,spf1b)
+!! switching 2-2016        CONJUGATE(inspfs1(:,:,mvalue1a,spf1a)) * inspfs2(:,:,mvalue1b,spf1b)
+                   inspfs1(:,:,mvalue1a,spf1a) * CONJUGATE(inspfs2(:,:,mvalue1b,spf1b))
            enddo
         enddo
 
@@ -974,7 +980,7 @@ subroutine mult_reducedpot(firstspf,lastspf,inspfs,outspfs,reducedpot)
   integer,intent(in) :: firstspf,lastspf
   DATATYPE,intent(out) :: outspfs(numerad,lbig+1, -mbig:mbig,firstspf:lastspf)
   DATATYPE, intent(in) :: inspfs(numerad,lbig+1, -mbig:mbig, numspf),&
-       reducedpot(numerad,lbig+1,-2*mbig:2*mbig,  numspf,numspf)
+       reducedpot(numerad,lbig+1,-2*mbig:2*mbig,  numspf,firstspf:lastspf)
   DATATYPE :: mine(numerad,lbig+1)      !! AUTOMATIC
   integer :: ispf,imval,flag,kspf,kmval
 
@@ -995,7 +1001,8 @@ subroutine mult_reducedpot(firstspf,lastspf,inspfs,outspfs,reducedpot)
 !! reducedpot is usual notation: <ispf | kspf> so so sum over slow index kspf
                     
                  mine(:,:) = mine(:,:) + & 
-                      reducedpot(:,:,imval-kmval,ispf,kspf) * inspfs(:,:,kmval,kspf)
+!! switching 2-2016         reducedpot(:,:,imval-kmval,ispf,kspf) * inspfs(:,:,kmval,kspf)
+                      reducedpot(:,:,imval-kmval,kspf,ispf) * inspfs(:,:,kmval,kspf)
               enddo
            enddo
            outspfs(:,:,imval,ispf) = mine(:,:)

@@ -28,6 +28,7 @@ subroutine drivingtrans(thistime)
   use biorthomod
   use opmod
   use arbitrarymultmod
+  use mpi_orbsetmod
   implicit none
   DATATYPE :: dipmatxx(nspf,nspf),dipmatyy(nspf,nspf),dipmatzz(nspf,nspf),&
        scalarpotyy(nspf,nspf),scalarpotzz(nspf,nspf),tempinvden(nspf,nspf),&
@@ -36,8 +37,8 @@ subroutine drivingtrans(thistime)
        tempdrivingavector(:,:,:),dtwoereduced(:,:,:),&
        dreducedpottally(:,:,:,:),multorbsxx(:,:),multorbsyy(:,:),multorbszz(:,:)
   DATATYPE :: pots(3)=0d0
-   Type(CONFIGPTR) :: drivingptr
-  integer ::  i, imc,j, nulltimes(10)
+  Type(CONFIGPTR) :: drivingptr
+  integer ::  i, imc,j, nulltimes(10),firstorb,lastorb
   real*8 :: thistime,rsum
   DATATYPE, target :: smo(nspf,nspf)
   DATAECS :: rvector(numr)
@@ -98,12 +99,22 @@ subroutine drivingtrans(thistime)
      return
   endif
 
-  allocate(dtwoereduced(reducedpotsize,nspf,nspf), dreducedpottally(nspf,nspf,nspf,nspf),&
+  if (parorbsplit.eq.1) then
+     firstorb=firstmpiorb
+     lastorb=firstmpiorb+orbsperproc-1
+  else
+     firstorb=1
+     lastorb=nspf
+  endif
+
+  allocate(dtwoereduced(reducedpotsize,nspf,firstorb:lastorb),&
+       dreducedpottally(nspf,nspf,nspf,nspf),&
        multorbsxx(spfsize,nspf), multorbsyy(spfsize,nspf), multorbszz(spfsize,nspf))
+  dtwoereduced=0; dreducedpottally=0; multorbsxx=0; multorbsyy=0; multorbszz=0
 
   call configptralloc(drivingptr,www)
   call zero_cptr(drivingptr)
-  call all_matel0(drivingptr,currentorbs,tempdrivingorbs,dtwoereduced,nulltimes)
+  call all_matel0(drivingptr,currentorbs,tempdrivingorbs,dtwoereduced,nulltimes,firstorb,lastorb)
 
   if (velflag.eq.0) then
      rvector(:)=bondpoints(:)

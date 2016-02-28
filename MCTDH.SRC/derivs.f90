@@ -51,21 +51,27 @@ contains
   subroutine derproject00(lowspf,highspf,inspfs, outspfs, prospfs, prospfderivs)
     use parameters
     use jactimingmod
+    use orbgathersubmod
     implicit none
     integer,intent(in) :: lowspf,highspf
     DATATYPE, intent(in) :: inspfs(spfsize, lowspf:highspf), &
          prospfs(spfsize, nspf),  prospfderivs(spfsize, nspf)
     DATATYPE, intent(out) :: outspfs(spfsize, lowspf:highspf)
     DATATYPE :: csum
-    DATATYPE :: mydot(nspf,lowspf:highspf+1), prodot(nspf,nspf), &
-         derdot(nspf,lowspf:highspf+1) !! AUTOMATIC
+    DATATYPE :: mydot(nspf,lowspf:highspf), prodot(nspf,nspf), &
+         derdot(nspf,lowspf:highspf) !! AUTOMATIC
     integer :: i,j,numspf,itime,jtime
 
     numspf=highspf-lowspf+1
 
-    if (numspf.gt.0) then
-       outspfs(:,:)=0.d0
+    if (numspf.le.0) then
+       call waitawhile()
+       print *, "OOOGA EdddERRRRR"
+       call waitawhile()
+       stop
     endif
+
+    outspfs(:,:)=0.d0
 
     call system_clock(itime)
 
@@ -91,12 +97,10 @@ contains
 
     call system_clock(jtime); times(4)=times(4)+jtime-itime;     itime=jtime
 
-    if (numspf.gt.0) then
-       call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfs,spfsize,&
-            derdot(:,lowspf:highspf),nspf,DATAONE,outspfs,spfsize)
-       call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfderivs,spfsize,&
-            mydot(:,lowspf:highspf), nspf,DATAONE,outspfs,spfsize)
-    endif
+    call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfs,spfsize,&
+         derdot(:,lowspf:highspf),nspf,DATAONE,outspfs,spfsize)
+    call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfderivs,spfsize,&
+         mydot(:,lowspf:highspf), nspf,DATAONE,outspfs,spfsize)
 
     call system_clock(jtime); times(3)=times(3)+jtime-itime;
 
@@ -136,7 +140,7 @@ contains
        call system_clock(jtime); times(3)=times(3)+jtime-itime;     itime=jtime
 
        if (parorbsplit.eq.1) then
-          call mpiorbgather(prodot,nspf)
+          call mpiorbgather_nz(prodot,nspf)
        endif
        if (parorbsplit.eq.3) then
           call mympireduce(prodot,nspf**2)
@@ -144,13 +148,11 @@ contains
 
        call system_clock(jtime); times(4)=times(4)+jtime-itime;     itime=jtime
 
-       if (numspf.gt.0) then
-          call MYGEMM('N', 'N', nspf, numspf, nspf, DATAONE, prodot, nspf, &
-               mydot(:,lowspf:highspf), nspf, DATAZERO, derdot(:,lowspf:highspf), nspf)
+       call MYGEMM('N', 'N', nspf, numspf, nspf, DATAONE, prodot, nspf, &
+            mydot(:,lowspf:highspf), nspf, DATAZERO, derdot(:,lowspf:highspf), nspf)
           
-          call MYGEMM('N', 'N', spfsize, numspf, nspf, DATANEGONE, prospfs, spfsize, &
-               derdot(:,lowspf:highspf), nspf, DATAONE, outspfs, spfsize)
-       endif
+       call MYGEMM('N', 'N', spfsize, numspf, nspf, DATANEGONE, prospfs, spfsize, &
+            derdot(:,lowspf:highspf), nspf, DATAONE, outspfs, spfsize)
 
        call system_clock(jtime); times(3)=times(3)+jtime-itime
 
@@ -162,6 +164,7 @@ contains
 
   subroutine derproject(inspfs, outspfs, prospfs, prospfderivs)
     use parameters
+    use orbgathersubmod
     implicit none
     DATATYPE, intent(in) :: inspfs(spfsize, nspf), prospfs(spfsize, nspf),&
          prospfderivs(spfsize, nspf)
@@ -172,11 +175,10 @@ contains
     if (parorbsplit.eq.1) then
        call getOrbSetRange(lowspf,highspf)
     endif
-
-!! always call derproject00
-    call derproject00(lowspf,highspf,inspfs(:,min(lowspf,nspf):highspf),&
-         outspfs(:,min(lowspf,nspf):highspf),prospfs,prospfderivs)
-
+    if (highspf.ge.lowspf) then
+       call derproject00(lowspf,highspf,inspfs(:,lowspf:highspf),&
+            outspfs(:,lowspf:highspf),prospfs,prospfderivs)
+    endif
     if (parorbsplit.eq.1) then
        call mpiorbgather(outspfs,spfsize)
     endif
@@ -193,16 +195,21 @@ contains
          prospfderivs(spfsize, nspf)
     DATATYPE, intent(out) :: outspfs(spfsize, lowspf:highspf)
     integer :: i,j,numspf
-    DATATYPE :: mydot(nspf,lowspf:highspf+1), &
-         derdot(nspf,lowspf:highspf+1), &            !!  AUTOMATIC
-         mydot0(nspf,lowspf:highspf+1), &
-         derdot0(nspf,lowspf:highspf+1), conmat(nspf,nspf)
+    DATATYPE :: mydot(nspf,lowspf:highspf), &
+         derdot(nspf,lowspf:highspf), &            !!  AUTOMATIC
+         mydot0(nspf,lowspf:highspf), &
+         derdot0(nspf,lowspf:highspf), conmat(nspf,nspf)
 
     numspf=highspf-lowspf+1
 
-    if (numspf.gt.0) then
-       outspfs(:,:)=0.d0
+    if (numspf.le.0) then
+       call waitawhile()
+       print *, "OOOGA EERRRRR"
+       call waitawhile()
+       stop
     endif
+
+    outspfs(:,:)=0.d0
 
     if (constraintflag.eq.0) then
        return
@@ -228,22 +235,21 @@ contains
 
     call getconmat(thistime,ireduced,conmat)
     
-    if (numspf.gt.0) then
-       call MYGEMM('N','N',nspf,numspf,nspf,DATAONE,conmat,nspf,&
-            mydot0(:,lowspf:highspf),nspf,DATAZERO,mydot(:,lowspf:highspf),nspf)
-       call MYGEMM('N','N',nspf,numspf,nspf,DATAONE,conmat,nspf,&
-            derdot0(:,lowspf:highspf),nspf,DATAZERO,derdot(:,lowspf:highspf),nspf)
+    call MYGEMM('N','N',nspf,numspf,nspf,DATAONE,conmat,nspf,&
+         mydot0(:,lowspf:highspf),nspf,DATAZERO,mydot(:,lowspf:highspf),nspf)
+    call MYGEMM('N','N',nspf,numspf,nspf,DATAONE,conmat,nspf,&
+         derdot0(:,lowspf:highspf),nspf,DATAZERO,derdot(:,lowspf:highspf),nspf)
 
-       call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfs,     spfsize,&
-            derdot(:,lowspf:highspf),nspf,DATAZERO,outspfs,spfsize)
-       call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfderivs,spfsize,&
-            mydot(:,lowspf:highspf), nspf,DATAONE,outspfs,spfsize)
-    endif
+    call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfs,     spfsize,&
+         derdot(:,lowspf:highspf),nspf,DATAZERO,outspfs,spfsize)
+    call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfderivs,spfsize,&
+         mydot(:,lowspf:highspf), nspf,DATAONE,outspfs,spfsize)
 
   end subroutine der_gmat00
 
   subroutine der_gmat(inspfs, outspfs, ireduced,thistime,prospfs, prospfderivs)
     use parameters
+    use orbgathersubmod
     implicit none
     integer, intent(in) :: ireduced
     real*8, intent(in) :: thistime
@@ -284,21 +290,24 @@ contains
 
     numspf=highspf-lowspf+1
 
+    if (numspf.le.0) then
+       call waitawhile()
+       print *, "OOOGA EERRRRR"
+       call waitawhile()
+       stop
+    endif
+
     if (constraintflag.eq.0) then
-       if (numspf.gt.0) then
-          outspfs(:,:)=0d0
-       endif
+       outspfs(:,:)=0d0
        return
     endif
 
 !! with timefac
     call getconmat(thistime,ireduced,conmat)
 
-    if (numspf.gt.0) then
-       call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,inspfs,&
-            spfsize,conmat(:,lowspf:highspf),&
-            nspf,DATAZERO,outspfs(:,lowspf:highspf),spfsize)
-    endif
+    call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,inspfs,&
+         spfsize,conmat(:,lowspf:highspf),&
+         nspf,DATAZERO,outspfs(:,lowspf:highspf),spfsize)
 
   end subroutine op_gmat_firstorder00
 
@@ -315,10 +324,15 @@ contains
 
     numspf=highspf-lowspf+1
 
+    if (numspf.le.0) then
+       call waitawhile()
+       print *, "OOOGA EERRRRR"
+       call waitawhile()
+       stop
+    endif
+
     if (constraintflag.eq.0) then
-       if (numspf.gt.0) then
-          outspfs(:,:)=0d0
-       endif
+       outspfs(:,:)=0d0
        return
     endif
 
@@ -341,14 +355,12 @@ contains
 !! with timefac
     call getconmat(thistime,ireduced,conmat)
 
-    if (numspf.gt.0) then
-       call MYGEMM('N','N',nspf,numspf,nspf,DATAONE,conmat,nspf,&
-            mydot(:,lowspf:highspf),nspf,DATAZERO,mymat(:,lowspf:highspf),nspf)
+    call MYGEMM('N','N',nspf,numspf,nspf,DATAONE,conmat,nspf,&
+         mydot(:,lowspf:highspf),nspf,DATAZERO,mymat(:,lowspf:highspf),nspf)
 
-       call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,projspfs,spfsize,&
-            mymat(:,lowspf:highspf),nspf,DATAZERO,outspfs(:,lowspf:highspf),&
-            spfsize)
-    endif
+    call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,projspfs,spfsize,&
+         mymat(:,lowspf:highspf),nspf,DATAZERO,outspfs(:,lowspf:highspf),&
+         spfsize)
 
   end subroutine op_gmat_thirdorder00
 
@@ -373,6 +385,7 @@ contains
 
   subroutine op_gmat(inspfs, outspfs, ireduced,thistime,projspfs)
     use parameters
+    use orbgathersubmod
     implicit none
     integer, intent(in) :: ireduced
     real*8, intent(in) ::  thistime 
@@ -404,54 +417,58 @@ contains
     integer,intent(in) :: lowspf,highspf,ireduced
     DATATYPE, intent(in) :: inspfs(spfsize,nspf)
     DATATYPE, intent(out) :: outspfs(spfsize,lowspf:highspf)
-    DATATYPE :: workmult(spfsize,lowspf:highspf+1), &
-         spfinvr( spfsize,lowspf:highspf+1 ),&  !! AUTOMATIC
-         spfinvrsq(  spfsize,lowspf:highspf+1), &
-         spfproderiv(  spfsize,lowspf:highspf+1 )
+    DATATYPE :: workmult(spfsize,lowspf:highspf), &
+         spfinvr( spfsize,lowspf:highspf ),&  !! AUTOMATIC
+         spfinvrsq(  spfsize,lowspf:highspf), &
+         spfproderiv(  spfsize,lowspf:highspf )
     integer :: numspf
 
     numspf=highspf-lowspf+1
 
+    if (numspf.le.0) then
+       call waitawhile()
+       print *, "OOOGA EERReeeeRRR"
+       call waitawhile()
+       stop
+    endif
+
 !! sum over fast index reduced matrices, because doing spfinvrsq= reducedinvrsq * inspfs 
 !! BUT 1) store in transposed order and 2) have to reverse the call in BLAS
 
-    if (numspf.gt.0) then
-
+    call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
+         yyy%reducedinvrsq(:,lowspf:highspf,ireduced),&
+         nspf,DATAZERO, spfinvrsq(:,lowspf:highspf), spfsize)
+    call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
+         yyy%reducedinvr(:,lowspf:highspf,ireduced),&
+         nspf, DATAZERO, spfinvr(:,lowspf:highspf), spfsize)
+    if ((nonuc_checkflag.eq.0)) then
        call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
-            yyy%reducedinvrsq(:,lowspf:highspf,ireduced),&
-            nspf,DATAZERO, spfinvrsq(:,lowspf:highspf), spfsize)
-       call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
-            yyy%reducedinvr(:,lowspf:highspf,ireduced),&
-            nspf, DATAZERO, spfinvr(:,lowspf:highspf), spfsize)
-       if ((nonuc_checkflag.eq.0)) then
-          call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
-               yyy%reducedproderiv(:,lowspf:highspf,ireduced),&
-               nspf, DATAZERO, spfproderiv(:,lowspf:highspf), spfsize)
-       endif
+            yyy%reducedproderiv(:,lowspf:highspf,ireduced),&
+            nspf, DATAZERO, spfproderiv(:,lowspf:highspf), spfsize)
+    endif
   
-       outspfs(:,:)=0.d0
+    outspfs(:,:)=0.d0
 
-       call mult_ke(spfinvrsq(:,lowspf:highspf),outspfs(:,lowspf:highspf),&
-            numspf,timingdir,notiming)
+    call mult_ke(spfinvrsq(:,lowspf:highspf),outspfs(:,lowspf:highspf),&
+         numspf,timingdir,notiming)
 
-       call mult_pot(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
-       outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf)+workmult(:,lowspf:highspf)
+    call mult_pot(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
+    outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf)+workmult(:,lowspf:highspf)
 
-       if ((nonuc_checkflag.eq.0)) then
-          call op_yderiv(numspf,spfproderiv(:,lowspf:highspf),workmult(:,lowspf:highspf))
-          outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) + workmult(:,lowspf:highspf)
-       endif
-
-       call mult_reducedpot(lowspf,highspf,inspfs(:,lowspf:highspf),&
-            workmult(:,lowspf:highspf),yyy%reducedpot(:,:,:,ireduced))
-       outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf)+workmult(:,lowspf:highspf)
-
+    if ((nonuc_checkflag.eq.0)) then
+       call op_yderiv(numspf,spfproderiv(:,lowspf:highspf),workmult(:,lowspf:highspf))
+       outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) + workmult(:,lowspf:highspf)
     endif
 
+    call mult_reducedpot(lowspf,highspf,inspfs(:,lowspf:highspf),&
+         workmult(:,lowspf:highspf),yyy%reducedpot(:,:,lowspf:highspf,ireduced))
+    outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf)+workmult(:,lowspf:highspf)
+    
   end subroutine wmult00
 
   subroutine wmult(inspfs, outspfs, ireduced)
     use parameters
+    use orbgathersubmod
     implicit none
     DATATYPE, intent(in) :: inspfs(spfsize,nspf)
     DATATYPE, intent(out) :: outspfs(spfsize,nspf)
@@ -467,7 +484,6 @@ contains
     if (numspf.gt.0) then
        call wmult00(lowspf,highspf,inspfs, outspfs(:,lowspf:highspf), ireduced)
     endif
-
     if (parorbsplit.eq.1) then
        call mpiorbgather(outspfs,spfsize)
     endif
@@ -485,17 +501,23 @@ contains
 
     numspf=highspf-lowspf+1
 
-    if (numspf.gt.0) then
-       call MYGEMM('N','N', spfsize,numspf,nspf,DATAONE, inspfs,spfsize, &
-            yyy%denmat(:,lowspf:highspf,ireduced), nspf, DATAZERO, outspfs, &
-            spfsize) 
-       outspfs=outspfs/numelec
+    if (numspf.le.0) then
+       call waitawhile()
+       print *, "DENDEN EERReeeeRRR",lowspf,highspf
+       call waitawhile()
+       stop
     endif
+
+    call MYGEMM('N','N', spfsize,numspf,nspf,DATAONE, inspfs,spfsize, &
+         yyy%denmat(:,lowspf:highspf,ireduced), nspf, DATAZERO, outspfs, &
+         spfsize) 
+    outspfs=outspfs/numelec
 
   end subroutine denmult00
 
   subroutine denmult(inspfs, outspfs, ireduced)
     use parameters
+    use orbgathersubmod
     implicit none
     DATATYPE, intent(in) :: inspfs(spfsize,nspf)
     DATATYPE, intent(out) :: outspfs(spfsize,nspf)
@@ -525,6 +547,7 @@ contains
     use xxxmod
     use derivtimingmod
     use orbprojectmod
+    use orbgathersubmod
     implicit none
     integer, intent(in) :: lowspf,highspf,dentimeflag,ireduced,projflag,conflag
     real*8, intent(in) :: thistime
@@ -532,11 +555,18 @@ contains
     DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
     integer :: itime, jtime, getlen,numspf,myiostat
     DATATYPE :: myxtdpot=0,  myytdpot=0, myztdpot=0, pots(3)=0d0
-    DATATYPE :: spfmult(spfsize,nspf),workmult(spfsize,lowspf:highspf+1), &  !! AUTOMATIC
-         spfinvr( spfsize,lowspf:highspf+1), spfr( spfsize,lowspf:highspf+1 ),  &
-         spfinvrsq(  spfsize,lowspf:highspf+1),spfproderiv(  spfsize,lowspf:highspf+1 )
+    DATATYPE :: spfmult(spfsize,nspf),workmult(spfsize,lowspf:highspf), &  !! AUTOMATIC
+         spfinvr( spfsize,lowspf:highspf), spfr( spfsize,lowspf:highspf ),  &
+         spfinvrsq(  spfsize,lowspf:highspf),spfproderiv(  spfsize,lowspf:highspf )
   
     numspf=highspf-lowspf+1
+
+    if (numspf.le.0) then
+       call waitawhile()
+       print *, "ACT00 EERReeeeRRR",lowspf,highspf
+       call waitawhile()
+       stop
+    endif
 
     if (tdflag.ne.0) then
        call vectdpot(thistime,velflag,pots,-1)
@@ -547,127 +577,121 @@ contains
 
     spfmult(:,:)=0.d0
 
-    if (numspf.ne.0) then
-
 !! sum over fast index reduced matrices, because doing spfinvrsq= reducedinvrsq * inspfs 
 !!   BUT 1) store in transposed order and 2) have to reverse the call in BLAS
-       call system_clock(itime)
-       if (numr.eq.1) then
-          call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
-               yyy%denmat(:,lowspf:highspf,ireduced),nspf, DATAZERO, &
-               spfinvrsq(:,lowspf:highspf), spfsize)
+    call system_clock(itime)
+    if (numr.eq.1) then
+       call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
+            yyy%denmat(:,lowspf:highspf,ireduced),nspf, DATAZERO, &
+            spfinvrsq(:,lowspf:highspf), spfsize)
 
-          spfinvr(:,lowspf:highspf)=spfinvrsq(:,lowspf:highspf)/bondpoints(1)
-
-          if (tdflag.ne.0) then
-             spfr(:,lowspf:highspf)=spfinvrsq(:,lowspf:highspf)*bondpoints(1)
-          endif
-
-          if (nonuc_checkflag.eq.0) then
-             spfproderiv(:,lowspf:highspf)=spfinvrsq(:,lowspf:highspf)*bondpoints(1)
-          endif
-
-          spfinvrsq(:,lowspf:highspf)=spfinvrsq(:,lowspf:highspf)/bondpoints(1)**2
-
-       else
-          call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
-               yyy%reducedinvrsq(:,lowspf:highspf,ireduced),&
-               nspf, DATAZERO, spfinvrsq(:,lowspf:highspf), spfsize)
-          call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
-               yyy%reducedinvr(:,lowspf:highspf,ireduced),&
-               nspf, DATAZERO, spfinvr(:,lowspf:highspf), spfsize)
-        
-          if (tdflag.ne.0) then
-             call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
-                  yyy%reducedr(:,lowspf:highspf,ireduced),&
-                  nspf, DATAZERO, spfr(:,lowspf:highspf), spfsize)
-          endif
-     
-          if (nonuc_checkflag.eq.0) then
-             call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
-                  yyy%reducedproderiv(:,lowspf:highspf,ireduced),nspf, DATAZERO, &
-                  spfproderiv(:,lowspf:highspf), spfsize)
-          endif
-       endif
-       call system_clock(jtime);  times(1)=times(1)+jtime-itime; itime=jtime
-
-       call mult_ke(spfinvrsq(:,lowspf:highspf),workmult(:,lowspf:highspf),&
-            numspf,timingdir,notiming)
-       spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
-       call system_clock(jtime);  times(2)=times(2)+jtime-itime;      itime=jtime
-
-       call mult_pot(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
-       spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
-       call hatom_op(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
-       spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
-
-       if (numfrozen.gt.0) then
-!! DIRECT ONLY in linear operator actreduced.  Exchange treated like driving term.
-          call op_frozenreduced(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
-          spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
-       endif
-       call system_clock(jtime);     times(3)=times(3)+jtime-itime;      itime=jtime
+       spfinvr(:,lowspf:highspf)=spfinvrsq(:,lowspf:highspf)/bondpoints(1)
 
        if (tdflag.ne.0) then
-          select case (velflag)
-          case (0)
-             call lenmultiply(numspf,spfr(:,lowspf:highspf),workmult(:,lowspf:highspf), &
-                  myxtdpot,myytdpot,myztdpot)
-             spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
-          case default
-             call velmultiply(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf), &
-                  myxtdpot,myytdpot,myztdpot)
-             spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
-          end select
-       endif  !! tdpot
-       call system_clock(jtime);        times(4)=times(4)+jtime-itime;        itime=jtime
-  
-       if (nonuc_checkflag.eq.0) then
-          call op_yderiv(numspf,spfproderiv(:,lowspf:highspf),workmult(:,lowspf:highspf))
-          spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
+          spfr(:,lowspf:highspf)=spfinvrsq(:,lowspf:highspf)*bondpoints(1)
        endif
-       call system_clock(jtime);     times(5)=times(5)+jtime-itime;         itime=jtime
 
-       call mult_reducedpot(lowspf,highspf,inspfs,workmult(:,lowspf:highspf),&
-            yyy%reducedpot(:,:,:,ireduced))
-       spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
-       call system_clock(jtime);  times(6)=times(6)+jtime-itime;  
+       if (nonuc_checkflag.eq.0) then
+          spfproderiv(:,lowspf:highspf)=spfinvrsq(:,lowspf:highspf)*bondpoints(1)
+       endif
 
+       spfinvrsq(:,lowspf:highspf)=spfinvrsq(:,lowspf:highspf)/bondpoints(1)**2
+
+    else
+       call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
+            yyy%reducedinvrsq(:,lowspf:highspf,ireduced),&
+            nspf, DATAZERO, spfinvrsq(:,lowspf:highspf), spfsize)
+       call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
+            yyy%reducedinvr(:,lowspf:highspf,ireduced),&
+            nspf, DATAZERO, spfinvr(:,lowspf:highspf), spfsize)
+        
+       if (tdflag.ne.0) then
+          call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
+               yyy%reducedr(:,lowspf:highspf,ireduced),&
+               nspf, DATAZERO, spfr(:,lowspf:highspf), spfsize)
+       endif
+     
+       if (nonuc_checkflag.eq.0) then
+          call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
+               yyy%reducedproderiv(:,lowspf:highspf,ireduced),nspf, DATAZERO, &
+               spfproderiv(:,lowspf:highspf), spfsize)
+       endif
     endif
+    call system_clock(jtime);  times(1)=times(1)+jtime-itime; itime=jtime
+
+    call mult_ke(spfinvrsq(:,lowspf:highspf),workmult(:,lowspf:highspf),&
+         numspf,timingdir,notiming)
+    spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
+    call system_clock(jtime);  times(2)=times(2)+jtime-itime;      itime=jtime
+
+    call mult_pot(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
+    spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
+    call hatom_op(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
+    spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
+
+    if (numfrozen.gt.0) then
+!! DIRECT ONLY in linear operator actreduced.  Exchange treated like driving term.
+       call op_frozenreduced(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
+       spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
+    endif
+    call system_clock(jtime);     times(3)=times(3)+jtime-itime;      itime=jtime
+
+    if (tdflag.ne.0) then
+       select case (velflag)
+       case (0)
+          call lenmultiply(numspf,spfr(:,lowspf:highspf),workmult(:,lowspf:highspf), &
+               myxtdpot,myytdpot,myztdpot)
+          spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
+       case default
+          call velmultiply(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf), &
+               myxtdpot,myytdpot,myztdpot)
+          spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
+       end select
+    endif  !! tdpot
+    call system_clock(jtime);        times(4)=times(4)+jtime-itime;        itime=jtime
+  
+    if (nonuc_checkflag.eq.0) then
+       call op_yderiv(numspf,spfproderiv(:,lowspf:highspf),workmult(:,lowspf:highspf))
+       spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
+    endif
+    call system_clock(jtime);     times(5)=times(5)+jtime-itime;         itime=jtime
+
+    call mult_reducedpot(lowspf,highspf,inspfs,workmult(:,lowspf:highspf),&
+         yyy%reducedpot(:,:,lowspf:highspf,ireduced))
+    spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
+    call system_clock(jtime);  times(6)=times(6)+jtime-itime;  
+
 
 !! WITH TIMEFAC
     if (dentimeflag.ne.0) then
        call system_clock(itime)
        if (parorbsplit.eq.1) then
-          call mpiorbgather(spfmult,spfsize)
+          call mpiorbgather_nz(spfmult,spfsize)
        endif
        call system_clock(jtime);        times(10)=times(10)+jtime-itime;      itime=jtime
-       if (numspf.gt.0) then
-          call MYGEMM('N','N', spfsize,numspf,nspf,timefac, spfmult,spfsize, &
-               yyy%invdenmat(:,lowspf:highspf,ireduced), nspf, DATAZERO, workmult, spfsize)
-          spfmult(:,lowspf:highspf)=workmult(:,lowspf:highspf)
-       endif
+       call MYGEMM('N','N', spfsize,numspf,nspf,timefac, spfmult,spfsize, &
+            yyy%invdenmat(:,lowspf:highspf,ireduced), nspf, DATAZERO, workmult, spfsize)
+       spfmult(:,lowspf:highspf)=workmult(:,lowspf:highspf)
+
        call system_clock(jtime);  times(7)=times(7)+jtime-itime
-    elseif (numspf.gt.0) then
+    else
        spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) * (-1)
     endif
 
     if (projflag==1) then
        call system_clock(itime)
        if (parorbsplit.eq.1) then
-          call mpiorbgather(spfmult,spfsize)
+          call mpiorbgather_nz(spfmult,spfsize)
        endif
        call system_clock(jtime);  times(10)=times(10)+jtime-itime;    itime=jtime
-       if (numspf.gt.0) then
-          call project00(lowspf,highspf,spfmult(:,lowspf:highspf), workmult, projspfs)
-          outspfs(:,:) = spfmult(:,lowspf:highspf) - workmult(:,lowspf:highspf)
-       endif
+       call project00(lowspf,highspf,spfmult(:,lowspf:highspf), workmult, projspfs)
+       outspfs(:,:) = spfmult(:,lowspf:highspf) - workmult(:,lowspf:highspf)
        call system_clock(jtime);     times(8)=times(8)+jtime-itime;      
-    elseif (numspf.gt.0) then
+    else
        outspfs(:,:)=spfmult(:,lowspf:highspf)
     endif
      
-    if (constraintflag/=0.and.conflag.ne.0.and.numspf.gt.0) then
+    if (constraintflag/=0.and.conflag.ne.0) then
        call system_clock(itime)
        call op_gmat00(lowspf,highspf,inspfs,workmult,ireduced,thistime,projspfs)
        outspfs(:,:)=outspfs(:,:)+workmult(:,lowspf:highspf)
@@ -716,6 +740,7 @@ contains
        outspfs, ireduced, projflag,conflag)
     use parameters
     use derivtimingmod
+    use orbgathersubmod
     implicit none
     integer, intent(in) :: dentimeflag,ireduced,projflag,conflag
     real*8, intent(in) :: thistime
@@ -727,11 +752,10 @@ contains
     if (parorbsplit.eq.1) then
        call getOrbSetRange(lowspf,highspf)
     endif
-
-!! call always even if numspf=0
-    call actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, &
-         outspfs(:,min(nspf,lowspf):highspf), ireduced, projflag,conflag)
-
+    if (highspf.ge.lowspf) then
+       call actreduced00(lowspf,highspf,dentimeflag,thistime,inspfs, projspfs, &
+            outspfs(:,lowspf:highspf), ireduced, projflag,conflag)
+    endif
     if (parorbsplit.eq.1) then
        call system_clock(itime)
        call mpiorbgather(outspfs,spfsize)
@@ -907,6 +931,7 @@ contains
     use linearmod    !! firsttime,lasttime
     use xxxmod  !! frozenexchange and driving orbs
     use orbprojectmod
+    use orbgathersubmod
     implicit none
     integer,intent(in) :: inlinearflag,dentimeflag,projflag,conflag
     real*8,intent(in) :: thistime
@@ -931,76 +956,43 @@ contains
     endif
     numspf=highspf-lowspf+1
 
-    allocate(tempspfs(spfsize,lowspf:highspf+1), workspfs(spfsize,lowspf:highspf+1))
+    if (numspf.gt.0) then
 
-    spfsout(:,:)=0d0; tempspfs(:,:)=0d0; workspfs(:,:)=0d0
+       allocate(tempspfs(spfsize,lowspf:highspf+1), workspfs(spfsize,lowspf:highspf+1))
 
-    do jjj=0,itop
-       call actreduced00(lowspf,highspf,dentimeflag,thistime,spfsin,spfsin,&
-            workspfs,jjj, projflag,conflag)
-       if (numspf.gt.0) then
+       spfsout(:,:)=0d0; tempspfs(:,:)=0d0; workspfs(:,:)=0d0
+
+       do jjj=0,itop
+          call actreduced00(lowspf,highspf,dentimeflag,thistime,spfsin,spfsin,&
+               workspfs,jjj, projflag,conflag)
           spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf) + &
                workspfs(:,lowspf:highspf)*facs(jjj)
-       endif
-    enddo
+       enddo
 
 !! EXCHANGE IS TREATED AS A DRIVING TERM.  DOES NOT GO IN LINEAR OPERATOR ACTREDUCED.
 !!  (it is prohibitive to call op_frozen_exchange repeatedly)
 !! EXCHANGE AND DRIVING CONTRIBUTE TO JACOBIAN (jacoperate) via projector.
 
-    if (numfrozen.gt.0.and.numspf.gt.0) then
-       call system_clock(itime)
-       do jjj=0,itop
-          if (dentimeflag.ne.0) then
-!! TIMEFAC and facs HERE
-             csum=timefac*facs(jjj)
-             call MYGEMM('N','N', spfsize,numspf,nspf,csum, &
-                  yyy%frozenexchinvr(:,:,jjj),spfsize, &
-                  yyy%invdenmat(:,lowspf:highspf,jjj), nspf, DATAZERO, &
-                  tempspfs(:,lowspf:highspf), spfsize)
-          else
-             tempspfs(:,lowspf:highspf)=(-1)* &
-                  yyy%frozenexchinvr(:,lowspf:highspf,jjj)*facs(jjj) !! factor (-1)
-          endif
-       enddo
-       call system_clock(jtime);    times(7)=times(7)+jtime-itime;     itime=jtime
-       if (projflag.ne.0) then
-          call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),&
-               workspfs(:,lowspf:highspf),spfsin)
-          spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf) + &
-               tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
-       else
-          spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf) + &
-               tempspfs(:,lowspf:highspf)
-       endif
-       call system_clock(jtime);        times(8)=times(8)+jtime-itime
-    endif
-
-!! DRIVING (PSI-PRIME)
-
-    if (drivingflag.ne.0.and.numspf.gt.0) then
-       if (dentimeflag.eq.0) then
-          OFLWR "Error, no drivingflag for quad"; CFLST !! invdenmat already in drivingorbs
-       endif
-       call vectdpot(thistime,velflag,pots,-1)
-       rsum=0
-       do jjj=1,3
-          rsum=rsum+abs(pots(jjj))**2
-       enddo
-       if (rsum.ne.0d0) then
-          tempspfs(:,:)=0d0
-          do jjj=0,itop
-             tempspfs(:,lowspf:highspf)=tempspfs(:,lowspf:highspf)+ ( &
-                  yyy%drivingorbsxx(:,lowspf:highspf,jjj) * pots(1) + &
-                  yyy%drivingorbsyy(:,lowspf:highspf,jjj) * pots(2) + &
-                  yyy%drivingorbszz(:,lowspf:highspf,jjj) * pots(3) ) &
-                  *facs(jjj) * timefac                             !! WITH TIMEFAC
-          enddo
+       if (numfrozen.gt.0) then
           call system_clock(itime)
+          do jjj=0,itop
+             if (dentimeflag.ne.0) then
+!! TIMEFAC and facs HERE
+                csum=timefac*facs(jjj)
+                call MYGEMM('N','N', spfsize,numspf,nspf,csum, &
+                     yyy%frozenexchinvr(:,:,jjj),spfsize, &
+                     yyy%invdenmat(:,lowspf:highspf,jjj), nspf, DATAZERO, &
+                     tempspfs(:,lowspf:highspf), spfsize)
+             else
+                tempspfs(:,lowspf:highspf)=(-1)* &
+                     yyy%frozenexchinvr(:,lowspf:highspf,jjj)*facs(jjj) !! factor (-1)
+             endif
+          enddo
+          call system_clock(jtime);    times(7)=times(7)+jtime-itime;     itime=jtime
           if (projflag.ne.0) then
              call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),&
                   workspfs(:,lowspf:highspf),spfsin)
-             spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf)+&
+             spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf) + &
                   tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
           else
              spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf) + &
@@ -1008,9 +1000,44 @@ contains
           endif
           call system_clock(jtime);        times(8)=times(8)+jtime-itime
        endif
-    endif
 
-    deallocate(tempspfs,workspfs)
+!! DRIVING (PSI-PRIME)
+
+       if (drivingflag.ne.0) then
+          if (dentimeflag.eq.0) then
+             OFLWR "Error, no drivingflag for quad"; CFLST !! invdenmat already in drivingorbs
+          endif
+          call vectdpot(thistime,velflag,pots,-1)
+          rsum=0
+          do jjj=1,3
+             rsum=rsum+abs(pots(jjj))**2
+          enddo
+          if (rsum.ne.0d0) then
+             tempspfs(:,:)=0d0
+             do jjj=0,itop
+                tempspfs(:,lowspf:highspf)=tempspfs(:,lowspf:highspf)+ ( &
+                     yyy%drivingorbsxx(:,lowspf:highspf,jjj) * pots(1) + &
+                     yyy%drivingorbsyy(:,lowspf:highspf,jjj) * pots(2) + &
+                     yyy%drivingorbszz(:,lowspf:highspf,jjj) * pots(3) ) &
+                     *facs(jjj) * timefac                             !! WITH TIMEFAC
+             enddo
+             call system_clock(itime)
+             if (projflag.ne.0) then
+                call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),&
+                     workspfs(:,lowspf:highspf),spfsin)
+                spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf)+&
+                     tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
+             else
+                spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf) + &
+                     tempspfs(:,lowspf:highspf)
+             endif
+             call system_clock(jtime);        times(8)=times(8)+jtime-itime
+          endif
+       endif
+
+       deallocate(tempspfs,workspfs)
+
+    endif
 
     if (parorbsplit.eq.1) then
        call system_clock(itime)
