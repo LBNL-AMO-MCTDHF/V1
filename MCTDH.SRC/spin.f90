@@ -94,12 +94,19 @@ subroutine init_dfcon(www)
   integer :: i,j,iconfig,nondfconfigs,dfrank,ii
   integer,allocatable :: dfnotconfigs(:)
 
-  allocate(www%ddd%dfincludedmask(www%numconfig), www%ddd%dfincludedconfigs(www%numconfig), &
-       www%ddd%dfincludedindex(www%numconfig),&
+  OFLWR "Allocating more arrays for Slater determinants..."; CFL
+  call mpibarrier()
+
+  allocate(www%ddd%dfincludedmask(www%numconfig), www%ddd%dfincludedconfigs(www%numconfig),&
+!!$SP       www%ddd%dfincludedindex(www%numconfig),&
        dfnotconfigs(www%numconfig),  www%dfconfsperproc(nprocs), &
        www%allbotdfconfigs(nprocs),www%alltopdfconfigs(nprocs))
-  www%ddd%dfincludedmask=0; www%ddd%dfincludedconfigs=0; www%ddd%dfincludedindex=0;
+  www%ddd%dfincludedmask=0; www%ddd%dfincludedconfigs=0; 
   dfnotconfigs=0; www%dfconfsperproc=0; www%allbotdfconfigs=0; www%alltopdfconfigs=0
+!!$SP www%ddd%dfincludedindex=0;
+
+  call mpibarrier()
+  OFLWR "     .. OK allocating."; CFL
 
   if (www%dfrestrictflag.lt.www%dflevel) then
      OFLWR "error, set dfrestrictflag .ge. dflevel",www%dfrestrictflag,www%dflevel; CFLST
@@ -109,7 +116,7 @@ subroutine init_dfcon(www)
      www%ddd%dfincludedmask(:)=1; dfnotconfigs(:)=(-1)
      do i=1,www%numconfig
         www%ddd%dfincludedconfigs(i)=i
-        www%ddd%dfincludedindex(i)=i
+!!$SP        www%ddd%dfincludedindex(i)=i
      enddo
      www%numdfconfigs=www%numconfig; nondfconfigs=0
      www%dfconfsperproc(:)=www%configsperproc(:)
@@ -121,7 +128,7 @@ subroutine init_dfcon(www)
   else
 
      www%ddd%dfincludedmask(:)=0;  www%ddd%dfincludedconfigs(:)=(-1);  dfnotconfigs(:)=(-1)
-     www%ddd%dfincludedindex(:)=(-999)
+!!$SP     www%ddd%dfincludedindex(:)=(-999)
 
      www%numdfconfigs=0;  nondfconfigs=0
 
@@ -129,7 +136,7 @@ subroutine init_dfcon(www)
         if (allowedconfig0(www,www%configlist(:,i),www%dfrestrictflag)) then 
            www%numdfconfigs=www%numdfconfigs+1
            www%ddd%dfincludedmask(i)=1;        www%ddd%dfincludedconfigs(www%numdfconfigs)=i
-           www%ddd%dfincludedindex(i)=www%numdfconfigs
+!!$SP           www%ddd%dfincludedindex(i)=www%numdfconfigs
         else
            nondfconfigs=nondfconfigs+1;        dfnotconfigs(nondfconfigs)=i
         endif

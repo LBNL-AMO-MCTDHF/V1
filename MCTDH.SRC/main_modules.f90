@@ -215,7 +215,8 @@ module dfconmod
   implicit none
 
 type dfcontype
-  integer, allocatable :: dfincludedmask(:), dfincludedconfigs(:), dfincludedindex(:)
+  integer, allocatable :: dfincludedmask(:), dfincludedconfigs(:)
+!!$SP, dfincludedindex(:)
 
 !! careful!  parconfigsplit, configstart, configend, etc.
 
