@@ -762,8 +762,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
 
            if (flag==1) then
               lioden(ind, jind) = lioden(ind, jind) + &
-!!PREV             denmat(kspf,ispf) * (0d0,1d0) !!!! NO, timefac goes in RHS   * CONJUGATE(timefac)
-                   denmat(ispf,kspf) * (0d0,1d0) !!!! NO, timefac goes in RHS   * CONJUGATE(timefac)
+                   denmat(ispf,kspf) * CONJUGATE(timefac)
            endif
         enddo
      enddo
@@ -791,8 +790,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
 
            if (flag==1) then
               lioden(ind,jind) = lioden(ind,jind) + &
-!!PREV             denmat(jspf,lspf) * (0d0, -1d0) !!!! NO, timefac goes in RHS  * timefac
-                   denmat(lspf,jspf) * (0d0, -1d0) !!!! NO, timefac goes in RHS  * timefac
+                   denmat(lspf,jspf) * timefac
            endif
         enddo
      enddo
