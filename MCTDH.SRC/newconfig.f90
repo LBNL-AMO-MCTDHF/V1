@@ -398,16 +398,14 @@ subroutine fast_newconfiglist(www,domflags)
 
   if (alreadycounted) then
      OFLWR "Go fast_newconfiglist.  Allocating...";CFL
+     call waitawhile()
      call mpibarrier()
      deallocate(bigspinblockstart,bigspinblockend)
-     allocate(www%configlist(www%ndof,www%numconfig), www%configmvals(www%numconfig), &
-          www%configugvals(www%numconfig), www%configtypes(www%numconfig),&
+     allocate(www%configlist(www%ndof,www%numconfig),  www%configtypes(www%numconfig), &
           bigspinblockstart(numspinblocks+2*nprocs),bigspinblockend(numspinblocks+2*nprocs))
      bigspinblockstart=0; bigspinblockend=0; 
-     www%configlist(:,:)=0; www%configmvals(:)=0; www%configugvals(:)=0; www%configtypes(:)=0
-
-!!$SP  allocate(www%configorder(www%numconfig)); www%configorder=0
-
+     www%configlist(:,:)=0;  www%configtypes(:)=0
+     call waitawhile()
      call mpibarrier()
      OFLWR "   Allocated.  getting configurations."; CFL
   else
@@ -912,6 +910,12 @@ endif
      www%lastconfig=www%topconfig
   endif
 
+  allocate(          www%configmvals(www%firstconfig:www%lastconfig), &
+       www%configugvals(www%firstconfig:www%lastconfig))
+  www%configmvals(:)=0; www%configugvals(:)=0; 
+
+!!$SP  allocate(www%configorder(www%firstconfig:www%lastconfig)); www%configorder=0
+
   www%localnconfig=www%lastconfig-www%firstconfig+1
 
   ii=0
@@ -944,11 +948,11 @@ endif
   deallocate(bigspinblockstart,bigspinblockend)
 
   if (spfrestrictflag.ne.0) then
-     do ii=1,www%numconfig
+     do ii=www%firstconfig,www%lastconfig
         www%configmvals(ii)=getmval(www,www%configlist(:,ii))
      enddo
      if (spfugrestrict.ne.0) then
-        do ii=1,www%numconfig
+        do ii=www%firstconfig,www%lastconfig
            www%configugvals(ii)=getugval(www,www%configlist(:,ii))
         enddo
      endif
@@ -957,11 +961,18 @@ endif
   if (domflags.and.(tdflag.eq.0.or.offaxispulseflag.eq.0)) then
      if (spfrestrictflag.ne.0) then
         if (spfugrestrict.ne.0.and.tdflag.eq.0) then
-           www%configtypes(:)=www%configmvals(:)*www%configugvals(:)
+           www%configtypes(www%firstconfig:www%lastconfig) = &
+                www%configmvals(:)*www%configugvals(:)
         else
-           www%configtypes(:)=www%configmvals(:)
+           www%configtypes(www%firstconfig:www%lastconfig)=www%configmvals(:)
         endif
      endif
+#ifdef MPIFLAG
+     if (www%parconsplit.ne.0) then
+        call mpiallgather_i(www%configtypes,www%numconfig,www%configsperproc(:),&
+             www%maxconfigsperproc)
+     endif
+#endif
   endif
 
   OFLWR "     ...Done fast_newconfiglist"; CFL
@@ -1024,12 +1035,15 @@ end subroutine fast_newconfiglist
 
 
 
-subroutine set_newconfiglist(wwin,wwout)
+subroutine set_newconfiglist(wwin,wwout,domflags)
   use fileptrmod
   use walkmod
   use mpimod
+  use basis_parameters
+  use ham_parameters  !! tdflag and offaxispulseflag for configtypes
   implicit none
   type(walktype),intent(in) :: wwin
+  logical,intent(in) :: domflags
   type(walktype),intent(inout) :: wwout
   integer :: iconfig,jconfig
 
@@ -1044,17 +1058,12 @@ subroutine set_newconfiglist(wwin,wwout)
 
   wwout%maxconfigsperproc=wwin%maxdfconfsperproc
 
-  allocate(wwout%configlist(wwout%ndof,wwout%numconfig),wwout%configmvals(wwout%numconfig),&
-       wwout%configugvals(wwout%numconfig), wwout%configtypes(wwout%numconfig))
-  wwout%configlist=0; wwout%configmvals=0; wwout%configugvals=0; wwout%configtypes=0;
-
-!!$SP  allocate(      wwout%configorder(wwout%numconfig));   wwout%configorder=0
+  allocate(wwout%configlist(wwout%ndof,wwout%numconfig),&
+       wwout%configtypes(wwout%numconfig))
+  wwout%configlist=0; wwout%configtypes=0;
 
   do iconfig=1,wwout%numconfig
      wwout%configlist(:,iconfig)=wwin%configlist(:,wwin%ddd%dfincludedconfigs(iconfig))
-     wwout%configmvals(iconfig)=wwin%configmvals(wwin%ddd%dfincludedconfigs(iconfig))
-     wwout%configugvals(iconfig)=wwin%configugvals(wwin%ddd%dfincludedconfigs(iconfig))
-     wwout%configtypes(iconfig)=wwin%configtypes(wwin%ddd%dfincludedconfigs(iconfig))
   enddo
 
   jconfig=0
@@ -1098,6 +1107,34 @@ subroutine set_newconfiglist(wwin,wwout)
   endif
 
   wwout%localnconfig=(wwout%lastconfig-wwout%firstconfig+1)
+
+  allocate(  wwout%configmvals(wwout%firstconfig:wwout%lastconfig),&
+       wwout%configugvals(wwout%firstconfig:wwout%lastconfig))
+  wwout%configmvals=0; wwout%configugvals=0; 
+  
+!!$SP  allocate(      wwout%configorder(wwout%firstconfig:wwout%lastconfig));   
+!!$SP  wwout%configorder=0
+
+  do iconfig=wwout%firstconfig,wwout%lastconfig
+     wwout%configmvals(iconfig)=getmval(wwout,wwout%configlist(:,iconfig))
+     wwout%configugvals(iconfig)=getugval(wwout,wwout%configlist(:,iconfig))
+  enddo
+  if (domflags.and.(tdflag.eq.0.or.offaxispulseflag.eq.0)) then
+     if (spfrestrictflag.ne.0) then
+        if (spfugrestrict.ne.0.and.tdflag.eq.0) then
+           wwout%configtypes(wwout%firstconfig:wwout%lastconfig) = &
+                wwout%configmvals(:)*wwout%configugvals(:)
+        else
+           wwout%configtypes(wwout%firstconfig:wwout%lastconfig)=wwout%configmvals(:)
+        endif
+     endif
+#ifdef MPIFLAG
+     if (wwout%parconsplit.ne.0) then
+        call mpiallgather_i(wwout%configtypes,wwout%numconfig,wwout%configsperproc(:),&
+             wwout%maxconfigsperproc)
+     endif
+#endif
+  endif
 
 end subroutine set_newconfiglist
 

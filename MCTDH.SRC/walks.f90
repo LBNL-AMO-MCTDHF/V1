@@ -383,6 +383,8 @@ subroutine walks(www)
   OFLWR "    .... done sorting walks."; CFL
 
 
+#ifdef MPIFLAG
+
   call mpibarrier()
   
   if (www%sparseconfigflag.eq.0.and.www%maxsinglewalks.ne.0) then
@@ -396,7 +398,6 @@ subroutine walks(www)
           www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
   endif
 
-
   if (www%sparseconfigflag.eq.0.and.www%maxdoublewalks.ne.0) then
      isize=4*www%maxdoublewalks
      call mpiallgather_i(www%doublewalkdirspf,  www%numconfig*isize,&
@@ -409,6 +410,8 @@ subroutine walks(www)
   endif
 
   call mpibarrier()
+
+#endif
 
   do config1=www%configstart,www%configend
      idiag=0
@@ -523,11 +526,12 @@ subroutine getnumwalks(www)
 
      enddo   ! config1
 
+#ifdef MPIFLAG
      if (www%sparseconfigflag.eq.0) then
         call mpiallgather_i(www%numsinglewalks(:),www%numconfig,&
              www%configsperproc(:),www%maxconfigsperproc)
      endif
-
+#endif
 
      OFLWR "Counting walks. Doubles"; CFL
      
@@ -623,11 +627,12 @@ subroutine getnumwalks(www)
 
      enddo   ! config1
 
+#ifdef MPIFLAG
      if (www%sparseconfigflag.eq.0) then
         call mpiallgather_i(www%numdoublewalks(:),www%numconfig,www%configsperproc(:),&
              www%maxconfigsperproc)
      endif
-
+#endif
 
 !!$  www%maxsinglewalks=0;  www%maxdoublewalks=0
   www%maxsinglewalks=1;  www%maxdoublewalks=1      !! ensure always allocate
@@ -879,6 +884,7 @@ subroutine hops(www)
 
   end do
 
+#ifdef MPIFLAG
   call mpibarrier()
 
   if (www%sparseconfigflag.eq.0) then
@@ -892,7 +898,6 @@ subroutine hops(www)
      call mpiallgather_i(www%lastdoublehopbyproc(:,:),   www%numconfig*isize,&
           www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
   endif
-
 
   if (www%sparseconfigflag.eq.0) then
      ii=1
@@ -946,15 +951,20 @@ subroutine hops(www)
 
   call mpibarrier()
 
+#endif
 
   OFLWR "GOT HOPS:  "
   WRFL " Single hops this processor ",totsinglehops, " of ", totsinglewalks
   WRFL " Double hops this processor ",totdoublehops, " of ", totdoublewalks; CFL
+
+#ifdef MPIFLAG
   if (www%sparseconfigflag.ne.0) then
      call mympiireduceone(totsinglehops);  call mympiireduceone(totdoublehops)
      call mympiireduceone(totsinglewalks);  call mympiireduceone(totdoublewalks)
      call mympiimax(www%maxnumsinglehops);  call mympiimax(www%maxnumdoublehops)
   endif
+#endif
+
   OFLWR " Single hops total ",totsinglehops, " of ", totsinglewalks
   WRFL " Double hops total ",totdoublehops, " of ", totdoublewalks
   WRFL "    Max single hops ", www%maxnumsinglehops

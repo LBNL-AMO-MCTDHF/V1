@@ -95,6 +95,7 @@ subroutine init_dfcon(www)
   integer,allocatable :: dfnotconfigs(:)
 
   OFLWR "Allocating more arrays for Slater determinants..."; CFL
+  call waitawhile()
   call mpibarrier()
 
   allocate(www%ddd%dfincludedmask(www%numconfig), www%ddd%dfincludedconfigs(www%numconfig),&
@@ -105,6 +106,7 @@ subroutine init_dfcon(www)
   dfnotconfigs=0; www%dfconfsperproc=0; www%allbotdfconfigs=0; www%alltopdfconfigs=0
 !!$SP www%ddd%dfincludedindex=0;
 
+  call waitawhile()
   call mpibarrier()
   OFLWR "     .. OK allocating."; CFL
 
@@ -195,6 +197,8 @@ subroutine init_dfcon(www)
         endif
      enddo
 
+     call waitawhile()
+     call mpibarrier()
      OFLWR "numdfwalks:  ", www%ddd%numdfwalks," is total number DF single excitations on this processor"
      WRFL; CFL
 
@@ -205,6 +209,10 @@ subroutine init_dfcon(www)
         www%ddd%dfwalkfrom=0; www%ddd%dfwalkto=0; www%ddd%includedorb=0; 
         www%ddd%excludedorb=0; www%ddd%dfwalkphase=0
      endif
+
+     call waitawhile()
+     call mpibarrier()
+     OFLWR "       ...allocated more..."; CFL
 
      www%ddd%numdfwalks=0
      do i=1,NONdfconfigs

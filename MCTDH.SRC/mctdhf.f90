@@ -406,7 +406,7 @@ program mctdhf
         dfww%singlewalkflag=1
         dfww%doublewalkflag=1
 
-        call set_newconfiglist(www,dfww)
+        call set_newconfiglist(www,dfww,.true.)
 
         call walks_and_basis(dfww)
 

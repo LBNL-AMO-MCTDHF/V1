@@ -535,19 +535,19 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
      if (www%totadim.gt.0) then
         do imc=1,mcscfnum
            do i=1,numr
-              tempvector(i,:)=inavectors(i,:,imc) * www%configmvals(:)
+              tempvector(i,:)=inavectors(i,:,imc) * www%configmvals(www%firstconfig:www%lastconfig)
            enddo
            do jmc=1,mcscfnum
               mmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector(:,:),www%totadim)
            enddo
            do i=1,numr
-              tempvector(i,:)=inavectors(i,:,imc) * www%configugvals(:)
+              tempvector(i,:)=inavectors(i,:,imc) * www%configugvals(www%firstconfig:www%lastconfig)
            enddo
            do jmc=1,mcscfnum
               ugmatel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector(:,:),www%totadim)
            enddo
            do i=1,numr
-              tempvector(i,:)=inavectors(i,:,imc) * www%configmvals(:)**2
+              tempvector(i,:)=inavectors(i,:,imc) * www%configmvals(www%firstconfig:www%lastconfig)**2
            enddo
            do jmc=1,mcscfnum
               m2matel(jmc,imc)=dot(inavectors(:,:,jmc),tempvector(:,:),www%totadim)
