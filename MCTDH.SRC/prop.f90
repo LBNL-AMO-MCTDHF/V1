@@ -801,7 +801,7 @@ subroutine cmf_prop_wfn(tin, tout)
              status="unknown", position="append",iostat=myiostat)
         call checkiostat(myiostat," opening cmf_prop_time.dat")
         write(853,'(A3,F12.3,T16, 100I11)',iostat=myiostat)  "T=", tout, &
-             times(1:8)/1000, numiters,numaiters
+             times(1:9)/1000, numiters,numaiters
         call checkiostat(myiostat," writing cmf_prop_time.dat")
         close(853)
   endif
