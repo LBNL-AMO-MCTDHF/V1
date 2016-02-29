@@ -655,16 +655,21 @@ subroutine getparams()
      allocate(myavectorexcitefrom(1,1,1), myavectorexciteto(1,1,1))
   endif
 
-#ifndef MPIFLAG
-  if (par_consplit.ne.0.or.parorbsplit.eq.3) then
-     OFLWR "Error, this is not MPI chmctdhf; cannot use par_consplit.ne.0 or parorbsplit.eq.3"; CFLST
+  if (nprocs.eq.1) then
+     par_consplit=0
+     parorbsplit=0
   endif
-#endif
 
   if (sparseconfigflag.eq.0) then
      sparseopt=0
      par_consplit=0
   endif
+
+#ifndef MPIFLAG
+  if (par_consplit.ne.0.or.parorbsplit.eq.3) then
+     OFLWR "Error, this is not MPI chmctdhf; cannot use par_consplit.ne.0 or parorbsplit.eq.3"; CFLST
+  endif
+#endif
 
   if (numavectorfiles.gt.MXF.or.numspffiles.gt.MXF) then
      OFLWR "PROGRAMMER REDIM littleparmod",numavectorfiles,numspffiles,MXF; CFLST
