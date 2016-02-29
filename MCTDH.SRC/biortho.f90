@@ -706,7 +706,7 @@ contains
 
 !!$    biotypevar%biomaxdim=min(maxbiodim*zzz,biotypevar%wwbio%maxdfbasisperproc*biotypevar%bionr*zzz*nprocs-1)
 
-    biotypevar%biomaxdim=min(maxbiodim*zzz,zzz*biotypevar%wwbio%numdfbasis*biotypevar%bionr-1)
+    biotypevar%biomaxdim=max(1,min(maxbiodim*zzz,zzz*biotypevar%wwbio%numdfbasis*biotypevar%bionr-1))
 
     if (.not.biotypevar%started) then
        biotypevar%thisbiodim=min(biodim,biotypevar%biomaxdim)

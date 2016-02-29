@@ -1124,7 +1124,7 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
   if (icalled.eq.1) then
      tempstepsize=par_timestep/littlesteps
 
-     my_maxaorder=min(zzz*www%numdfbasis*numr-1,maxaorder)
+     my_maxaorder=max(1,min(zzz*www%numdfbasis*numr-1,maxaorder))
 
      thisexpodim=min(my_maxaorder,aorder)
   endif
