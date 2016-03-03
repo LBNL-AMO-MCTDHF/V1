@@ -8,8 +8,8 @@ module drivingbiomod
   use biorthotypemod
   implicit none
   type(biorthotype),target :: drivingbiovar
-  DATATYPE :: drivingoverlap(200)
-
+  DATATYPE :: drivingoverlap(200)=0,sxx(200)=0,syy(200)=0,szz(200)=0,&
+       axx(200)=0,ayy(200)=0,azz(200)=0
 end module
 
 subroutine getdrivingoverlap(outdrivingoverlap,numvects)
@@ -19,6 +19,22 @@ subroutine getdrivingoverlap(outdrivingoverlap,numvects)
   DATATYPE,intent(out) :: outdrivingoverlap(numvects)
   outdrivingoverlap(:)= drivingoverlap(1:numvects)
 end subroutine getdrivingoverlap
+
+
+subroutine dipolesub_driving(oaxx,oayy,oazz,osxx,osyy,oszz,numvects)
+  use drivingbiomod
+  implicit none
+  integer,intent(in) :: numvects
+  DATATYPE,intent(out) :: oaxx(numvects),oayy(numvects),oazz(numvects),&
+       osxx(numvects),osyy(numvects),oszz(numvects)
+  oaxx(:)=axx(1:numvects)
+  oayy(:)=ayy(1:numvects)
+  oazz(:)=azz(1:numvects)
+  osxx(:)=sxx(1:numvects)
+  osyy(:)=syy(1:numvects)
+  oszz(:)=szz(1:numvects)
+end subroutine dipolesub_driving
+
 
 subroutine drivingtrans(thistime)
   use parameters
@@ -154,7 +170,20 @@ subroutine drivingtrans(thistime)
           tempdrivingavector(:,:,imc),     yyy%drivingavectorsyy(:,:,imc,0),numr)
      call arbitraryconfig_mult_singles(www,dipmatzz,rvector,&
           tempdrivingavector(:,:,imc),     yyy%drivingavectorszz(:,:,imc,0),numr)
+
+     axx(imc)=0; ayy(imc)=0; azz(imc)=0
+     if (tot_adim.gt.0) then
+        axx(imc)=dot(yyy%cmfavec(:,imc,0),yyy%drivingavectorsxx(:,:,imc,0),tot_adim)
+        ayy(imc)=dot(yyy%cmfavec(:,imc,0),yyy%drivingavectorsyy(:,:,imc,0),tot_adim)
+        azz(imc)=dot(yyy%cmfavec(:,imc,0),yyy%drivingavectorszz(:,:,imc,0),tot_adim)
+     endif
   enddo
+
+  if (par_consplit.ne.0) then
+     call mympireduce(axx,mcscfnum)
+     call mympireduce(ayy,mcscfnum)
+     call mympireduce(azz,mcscfnum)
+  endif
 
   call get_tworeducedx(www, dreducedpottally, yyy%cmfavec(:,:,0),  tempdrivingavector, mcscfnum)
 
@@ -242,12 +271,20 @@ end subroutine drivingtrans
 
 subroutine drivinginit(inenergies)
   use parameters
+  use drivingbiomod
   use xxxmod
   use opmod
+  use configmod
   implicit none
   DATAECS,intent(in) :: inenergies(mcscfnum)
+  integer :: imc
 
   orbs_driving(:,:)=RESHAPE(yyy%cmfspfs(:,0),(/spfsize,nspf/))
+
+  do imc=1,mcscfnum
+     call dipolesub_one(www,bwwptr,yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),&
+          yyy%cmfspfs(:,0),sxx(imc),syy(imc),szz(imc))
+  enddo
 
   if (tot_adim.gt.0) then
      avector_driving(:,:,:)=&
@@ -256,6 +293,7 @@ subroutine drivinginit(inenergies)
   endif
 
   drivingenergies(1:mcscfnum)=inenergies(:)
+
 
 end subroutine drivinginit
 

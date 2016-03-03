@@ -18,22 +18,29 @@ subroutine dipolesub_initial()
        dipolenormsq(0:autosize))
 end subroutine
 
+
 subroutine dipolesub()
   use dipolemod
   use parameters
   use configmod
   use xxxmod
   implicit none
-  DATATYPE :: xx(mcscfnum),yy(mcscfnum),zz(mcscfnum),dd(mcscfnum)
+  DATATYPE :: xx(mcscfnum),yy(mcscfnum),zz(mcscfnum),dd(mcscfnum),&
+       axx(mcscfnum),ayy(mcscfnum),azz(mcscfnum),sxx(mcscfnum),syy(mcscfnum),&
+       szz(mcscfnum),drivingoverlap(mcscfnum)
   integer :: imc,sflag
   integer, save :: lastouttime=0
   real*8 :: thistime
+  xx=0;yy=0;zz=0;axx=0;ayy=0;azz=0;sxx=0;syy=0;szz=0;dd=0;drivingoverlap=0
 
   if (mod(xcalledflag,autosteps).eq.0) then
 
      if (conjgpropflag.ne.0) then
         if (mcscfnum.ne.2) then
            OFLWR "Whoot? conjgpropflag mcscfnum",mcscfnum; CFLST
+        endif
+        if (drivingflag.ne.0) then
+           OFLWR "Driving not supported for conjprop yet"; CFLST
         endif
         dipolenormsq(calledflag)=0
         if (tot_adim.gt.0) then
@@ -42,7 +49,6 @@ subroutine dipolesub()
         if (par_consplit.ne.0) then
            call mympireduceone(dipolenormsq(calledflag))
         endif
-
         call dipolesub_one(www,bwwptr,yyy%cmfavec(:,2,0),yyy%cmfavec(:,1,0), yyy%cmfspfs(:,0),&
              xdipoleexpect(calledflag),ydipoleexpect(calledflag),zdipoleexpect(calledflag))
 
@@ -56,10 +62,24 @@ subroutine dipolesub()
            if (par_consplit.ne.0) then
               call mympireduceone(dd(imc))
            endif
-
            call dipolesub_one(www,bwwptr,yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),&
                 yyy%cmfspfs(:,0), xx(imc),yy(imc),zz(imc))
+
         enddo
+
+        if (drivingflag.ne.0) then
+#ifdef CNORMFLAG
+           OFLWR "Error, driving with dipole not supported c-norm"; CFLST
+#endif
+           call dipolesub_driving(axx,ayy,azz,sxx,syy,szz,mcscfnum)
+           xx(:)=xx(:)+axx(:)+CONJUGATE(axx(:))+sxx*drivingproportion**2
+           yy(:)=yy(:)+ayy(:)+CONJUGATE(ayy(:))+syy*drivingproportion**2
+           zz(:)=zz(:)+azz(:)+CONJUGATE(azz(:))+szz*drivingproportion**2
+
+           call getdrivingoverlap(drivingoverlap,mcscfnum)   !! for time slot zero
+           dd(:)=dd(:)+drivingproportion**2 + drivingoverlap(:) + &
+                CONJUGATE(drivingoverlap(:))
+        endif
 
         xdipoleexpect(calledflag)=0d0
         ydipoleexpect(calledflag)=0d0
