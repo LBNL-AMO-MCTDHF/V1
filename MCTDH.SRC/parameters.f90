@@ -362,8 +362,8 @@ integer :: numpulses=1
 integer ::  pulsetype(100)=1      !!              !!  Pulsetype=1:  A(t) = pulsestrength * sin(w t)^2,
 real*8  :: omega(100)=1.d0        !!              !!  2:  A(t) = strength * sin(w t)^2 
 real*8 :: omega2(100)=1.d0        !!              !!             * sin(w2 t + phaseshift),
-real*8 :: pulsestart(100)=0.1d0   !!              !!   
-real*8 :: phaseshift(100)=0.d0    !!              !!    pulsestart < t < pulsestart + pi/w; 0 otherwise
+real*8 :: pulsestart(100)=0d0     !!              !!   
+real*8 :: phaseshift(100)=0d0     !!              !!    pulsestart < t < pulsestart + pi/w; 0 otherwise
 real*8 :: chirp(100)=0d0          !!              !!
 real*8 :: ramp(100)=0d0
 real*8 :: longstep(100)=1d0       !!              !!  Pulsetype 3 available: monochromatic, sinesq start+end
