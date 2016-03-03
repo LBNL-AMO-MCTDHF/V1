@@ -230,6 +230,8 @@ real*8  :: expostepfac=1.2d0     !!              !! Miscellaneous algorithm para
 !!BB
 real*8 :: aerror=1d-9            !!              !! error criterion for sparse a-vector prop
                                                  !! and eigenfunctions with improvedquad=1,3
+integer :: maxaorder=100         !!              !! max lanczos order for sparse a-vector expokit prop or
+                                                 !!    dgmres solve for avector improvedquadflag=1,3
 !!EE
 !!{\large \quad PROPAGATION}
 !!BB
@@ -239,7 +241,6 @@ real*8 :: finaltime=4d4          !! T=           !! length of prop.  Overridden 
 !!\textbf{\qquad SPARSE - if sparseconfigflag .ne. 0}
 !!BB
 integer :: aorder=30             !!              !! Starting lanczos order for sparse a-vector expokit prop
-integer :: maxaorder=100         !!              !! max lanczos order for sparse a-vector expokit prop
 !!EE
 !!{\large \quad RELAXATION}
 !!BB

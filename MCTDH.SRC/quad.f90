@@ -85,8 +85,8 @@ contains
     rgwkdim= (42 + jjxx*(inkrydim*zzz + 6) + inkrydim*zzz*(inkrydim*zzz + 3)) / 5 * 6
 
     if (rgwkdim.lt.0) then
-       OFLWR "OOPS, integer overflow, decrease maxdgdim or reduce size of orbitals (per processor)",&
-            rgwkdim; CFLST
+       OFLWR "OOPS, integer overflow, decrease kyrlov dimension in dgsolve";
+       WRFL rgwkdim; CFLST
     endif
 
     allocate(rgwk(rgwkdim)); rgwk(:)=0d0
@@ -598,7 +598,10 @@ subroutine sparsequadavector(inavector,jjcalls0)
      endif
      smallvectorspin2(:,:)=smallvectorspin(:,:)    !! guess
 
-     maxdim=min(maxdgdim,numr*www%numdfbasis)
+!!$ v1.23     maxdim=min(maxdgdim,numr*www%numdfbasis)
+
+!! back to maxaorder here so that can do different orbitals and avec improvedquadflag.eq.3
+     maxdim=min(maxaorder,numr*www%numdfbasis)
 
      mysize=numr*(dwwptr%topdfbasis-dwwptr%botdfbasis+1)
 
