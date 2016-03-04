@@ -397,49 +397,46 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 #endif
   real*8 :: rsum,pi
   character (len=2) :: th(4)
-  integer ::  i,   j,ii,jj,k,l,idim,ilow(3),ihigh(3)
+  integer ::  i,   j,ii,jj,k,l
 
 !! smooth exterior scaling
-  DATATYPE,allocatable :: scalefunction(:,:), djacobian(:,:), ddjacobian(:,:)
+  DATATYPE,allocatable :: scalefunction(:), djacobian(:), ddjacobian(:)
   DATATYPE :: ffunct, djfunct, ddjfunct, jfunct
 
 #ifndef REALGO
   allocate(temppot(totpoints))
   temppot=0
 #endif
-  allocate(scalefunction(totpoints,3), djacobian(totpoints,3), ddjacobian(totpoints,3))
+  allocate(scalefunction(totpoints), djacobian(totpoints), ddjacobian(totpoints))
   scalefunction=0; djacobian=0; ddjacobian=0
 
-  if (fft_mpi_inplaceflag.eq.0) then
-     call ct_init(fft_ct_paropt)
-  endif
+  call ct_init(fft_ct_paropt)
 
   rkemod(:,:)=0d0; proderivmod(:,:)=0d0; bondpoints(:)=1d0; bondweights(:)=1d0
 
-  elecweights(:)=(1d0/spacing)**griddim
+  elecweights(:)=(1d0/spacing)
 
-  do idim=1,griddim
 
-     call sineDVR(kevect(idim)%rmat(:),fdvect(idim)%rmat(:), sinepoints(idim)%mat(:,:),gridpoints(idim),spacing)
+  call sineDVR(kevect%rmat(:),fdvect%rmat(:), sinepoints%mat(:,:),gridpoints,spacing)
 
-     kevect(idim)%cmat(:)=kevect(idim)%rmat(:)
-     fdvect(idim)%cmat(:)=fdvect(idim)%rmat(:)
+  kevect%cmat(:)=kevect%rmat(:)
+  fdvect%cmat(:)=fdvect%rmat(:)
 
-     ii=0
-     do i=1,nbox(idim)
-        do j=1,numpoints(idim)
-           ii=ii+1
-           jj=0
-           do k=1,nbox(idim)
-              do l=1,numpoints(idim)
-                 jj=jj+1
-                 ketot(idim)%mat(l,k,j,i)=kevect(idim)%rmat(ii-jj)
-                 fdtot(idim)%mat(l,k,j,i)=fdvect(idim)%rmat(ii-jj)
-              enddo
+  ii=0
+  do i=1,nbox
+     do j=1,numpoints
+        ii=ii+1
+        jj=0
+        do k=1,nbox
+           do l=1,numpoints
+              jj=jj+1
+              ketot%mat(l,k,j,i)=kevect%rmat(ii-jj)
+              fdtot%mat(l,k,j,i)=fdvect%rmat(ii-jj)
            enddo
         enddo
      enddo
   enddo
+
 
   th=(/ "st", "nd", "rd", "th" /)
 
@@ -457,7 +454,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         if (myrank.eq.1) then
            open(76333,file="Contour.Dat",status="unknown")
            do i=-100,100
-              rsum=i/100d0*spacing*gridpoints(1)/2d0
+              rsum=i/100d0*spacing*gridpoints/2d0
               write(76333,'(100F12.5)') rsum, ffunct(rsum), jfunct(rsum), djfunct(rsum), ddjfunct(rsum)
            enddo
            close(76333)
@@ -468,22 +465,20 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
      OFLWR "Getting scaling..."; CFL
 
-     do idim=1,3
-        do i=1,totpoints
-           scalefunction(i,idim)=ffunct(real(dipoles(i,idim),8))
-           jacobian(i,idim)=jfunct(real(dipoles(i,idim),8))
-           djacobian(i,idim)=djfunct(real(dipoles(i,idim),8))
-           ddjacobian(i,idim)=ddjfunct(real(dipoles(i,idim),8))
-        enddo
+     do i=1,totpoints
+        scalefunction(i)=ffunct(real(dipoles(i),8))
+        jacobian(i)=jfunct(real(dipoles(i),8))
+        djacobian(i)=djfunct(real(dipoles(i),8))
+        ddjacobian(i)=ddjfunct(real(dipoles(i),8))
      enddo
 
-     invjacobian(:,:)=1d0/jacobian(:,:)
+     invjacobian(:)=1d0/jacobian(:)
 
-     invsqrtjacobian(:,:)=sqrt(invjacobian(:,:))
+     invsqrtjacobian(:)=sqrt(invjacobian(:))
 
-     invsqrtscaleweights(:) = sqrt(invjacobian(:,1)) * sqrt(invjacobian(:,2)) *  sqrt(invjacobian(:,3))
+     invsqrtscaleweights(:) = sqrt(invjacobian(:)) 
 
-     scaleweights13(:) = (jacobian(:,1))**(1d0/3d0) * (jacobian(:,2))**(1d0/3d0) * (jacobian(:,3))**(1d0/3d0)
+     scaleweights13(:) = (jacobian(:))**(1d0/3d0) 
      invscaleweights13(:) = 1d0/scaleweights13(:)
 
      scaleweights16(:)=sqrt(scaleweights13(:))
@@ -492,34 +487,19 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 !!     scaleweights13(:) = 1d0
 !!     invscaleweights13(:) = 1d0
 
-     scalediag(:)=0d0
-     do jj=1,3
-        scalediag(:)=scalediag(:) + 3d0/8d0 * invjacobian(:,jj)**4 * djacobian(:,jj)**2 &
-             - 1d0/4d0 * invjacobian(:,jj)**3 * ddjacobian(:,jj)
-     enddo
 
-     elecweights(:)=elecweights(:)*jacobian(:,1)*jacobian(:,2)*jacobian(:,3)
+     scalediag(:) = 3d0/8d0 * invjacobian(:)**4 * djacobian(:)**2 &
+          - 1d0/4d0 * invjacobian(:)**3 * ddjacobian(:)
 
-     dipoles(:,:)=scalefunction(:,:)
+     elecweights(:)=elecweights(:)*jacobian(:)
+
+     dipoles(:)=scalefunction(:)
      OFLWR "    ....Ok got scaling."; CFL
   endif
 
-  elecradii(:)=sqrt( dipoles(:,1)**2 + dipoles(:,2)**2 + dipoles(:,3)**2)
+  elecradii(:)=sqrt( dipoles(:)**2 )
    
   call get_twoe_new(pot)
-
-  if (debugflag .eq. 4040) then
-     pot(:) = 0.35d0 * elecradii(:)**2 * ( &
-          exp((-0.13d0)*(dipoles(:,1)**2+dipoles(:,2)**2+(dipoles(:,3)-2d0)**2)) + &
-          exp((-0.13d0)*(dipoles(:,1)**2+dipoles(:,2)**2+(dipoles(:,3)+2d0)**2)) )
-     threed_two(:,:,:)=0d0
-  else if (debugflag .eq. 4242) then
-     pot(:) = 7.5d0 * elecradii(:)**2 * exp((-1)*elecradii(:))
-     threed_two(:,:,:)=0d0
-  else if (debugflag.eq.4343) then
-     pot(:) = 4.5d0 * elecradii(:)**2 
-     threed_two(:,:,:)=0d0
-  endif
 
 #ifndef REALGO
 
@@ -537,37 +517,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   endif
 #endif
 
-  ilow(1:3)=1
-  ihigh(1:3)=gridpoints(1:3)
-
-  if (orbparflag) then
-     ilow(orbparlevel:3)=(boxrank(orbparlevel:3)-1)*numpoints(orbparlevel:3)+1
-     ihigh(orbparlevel:3)=boxrank(orbparlevel:3)*numpoints(orbparlevel:3)
-  endif
-
   pi=4d0*atan(1d0)
-
-  if (maskflag.ne.0) then
-     do jj=1,3
-        maskfunction(jj)%rmat(:)=1d0
-        do ii=1,masknumpoints
-
-           rsum=( 1d0 + cos(pi*ii/(masknumpoints+1)) ) / 2d0
-
-           i=masknumpoints+1-ii
-
-           if (i.ge.ilow(jj).and.i.le.ihigh(jj)) then
-              maskfunction(jj)%rmat(i+1-ilow(jj)) = maskfunction(jj)%rmat(i+1-ilow(jj)) * rsum
-           endif
-
-           i=gridpoints(jj)-masknumpoints+ii
-
-           if (i.ge.ilow(jj).and.i.le.ihigh(jj)) then
-              maskfunction(jj)%rmat(i+1-ilow(jj)) = maskfunction(jj)%rmat(i+1-ilow(jj)) * rsum
-           endif
-        enddo
-     enddo
-  endif
 
   halfniumpot(:)=pot(:)/sumcharge
 
@@ -598,8 +548,8 @@ subroutine nucdipvalue(notused,dipoles)
   DATATYPE,intent(in) :: notused(1)
   DATATYPE,intent(out) :: dipoles(3)
   integer :: i
-  dipoles(:)=0d0 * notused(1)   !! avoid warn unused
+  dipoles(:)=0d0 
   do i=1,numcenters
-     dipoles(:)=dipoles(:) + nuccharges(i) * centershift(:,i)/2d0 * spacing
+     dipoles(3)=dipoles(3) + nuccharges(i) * centershift(i)/2d0 * spacing
   enddo
 end subroutine nucdipvalue

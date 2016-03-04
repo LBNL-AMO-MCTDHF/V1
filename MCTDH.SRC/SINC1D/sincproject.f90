@@ -4,7 +4,7 @@
 module myprojectmod
   implicit none
 
-  DATATYPE, allocatable ::  threed_two(:,:,:)
+  DATATYPE, allocatable ::  threed_two(:)
 
   type fourmat
      DATATYPE, allocatable :: mat(:,:,:,:)
@@ -19,20 +19,18 @@ module myprojectmod
      DATATYPE, allocatable :: cmat(:)
   end type onemat
 
-  type(fourmat), allocatable :: ketot(:),fdtot(:)
-  type(twomat), allocatable ::  sinepoints(:)
-  type(onemat),allocatable :: kevect(:),fdvect(:)
+  type(fourmat) :: ketot,fdtot
+  type(twomat) ::  sinepoints
+  type(onemat) :: kevect,fdvect
 
-  type(onemat), allocatable :: maskfunction(:)
-
-  DATATYPE, allocatable :: dipoles(:,:),&
+  DATATYPE, allocatable :: dipoles(:),&
 
 !! WAS:  e.g. X(x) = x + i scalefunction(x,1)
 
 
-       jacobian(:,:),&         !! jacobian(:,1) should only be a function of x, etc.
-       invjacobian(:,:),&
-       invsqrtjacobian(:,:),&
+       jacobian(:),&         !! jacobian(:,1) should only be a function of x, etc.
+       invjacobian(:),&
+       invsqrtjacobian(:),&
        scalediag(:),&
        invsqrtscaleweights(:),&
        scaleweights13(:), &
@@ -48,27 +46,13 @@ subroutine myprojectalloc()
   use pfileptrmod
   use myprojectmod
   implicit none
-  integer :: idim
 
-  allocate(dipoles(totpoints,griddim))
+  allocate(dipoles(totpoints))
   dipoles=0
-  if (maskflag.ne.0) then
-     if (masknumpoints.lt.0.or.&
-          masknumpoints.gt.gridpoints(1).or.&
-          masknumpoints.gt.gridpoints(2).or.&
-          masknumpoints.gt.gridpoints(3)) then
-        OFLWR "masknumpoints not allowed",masknumpoints; CFLST
-     endif
-     allocate(maskfunction(3))
-     do idim=1,griddim
-        allocate(maskfunction(idim)%rmat(numpoints(idim)))
-        maskfunction(idim)%rmat=0
-     enddo
-  endif
   
   if (scalingflag.ne.0) then
-     allocate(          jacobian(totpoints,3),invjacobian(totpoints,3), &
-          invsqrtjacobian(totpoints,3), &
+     allocate(          jacobian(totpoints),invjacobian(totpoints), &
+          invsqrtjacobian(totpoints), &
           scalediag(totpoints),&
           invsqrtscaleweights(totpoints),scaleweights13(totpoints),&
           invscaleweights13(totpoints),scaleweights16(totpoints),&
@@ -78,31 +62,24 @@ subroutine myprojectalloc()
      scaleweights16=0;invscaleweights16=0;
   endif
   
-  allocate(ketot(griddim),sinepoints(griddim),kevect(griddim),fdtot(griddim),fdvect(griddim))
 
-  do idim=1,griddim
-     allocate( &
+  allocate( &
 
 !! Allocating extra here for fdtot%mat and ketot%mat (+1's) --
 !!   see Z/GEMM calls in coreproject.f90... leading dimension not
 !!   allocated as passed to Z/GEMM without extra
 
-          fdtot(idim)%mat(numpoints(idim),nbox(idim),numpoints(idim),nbox(idim)   +1), &
-          ketot(idim)%mat(numpoints(idim),nbox(idim),numpoints(idim),nbox(idim)   +1), &
-          kevect(idim)%rmat(1-gridpoints(idim):gridpoints(idim)-1),&
-          kevect(idim)%cmat(1-gridpoints(idim):gridpoints(idim)-1),&
-          fdvect(idim)%rmat(1-gridpoints(idim):gridpoints(idim)-1),&
-          fdvect(idim)%cmat(1-gridpoints(idim):gridpoints(idim)-1),&
-          sinepoints(idim)%mat(numpoints(idim),nbox(idim)))
-     fdtot(idim)%mat=0; ketot(idim)%mat=0; kevect(idim)%rmat=0; kevect(idim)%cmat=0;
-     fdvect(idim)%rmat=0; kevect(idim)%cmat=0
-  enddo
+       fdtot%mat(numpoints,nbox,numpoints,nbox   +1), &
+       ketot%mat(numpoints,nbox,numpoints,nbox   +1), &
+       kevect%rmat(1-gridpoints:gridpoints-1),&
+       kevect%cmat(1-gridpoints:gridpoints-1),&
+       fdvect%rmat(1-gridpoints:gridpoints-1),&
+       fdvect%cmat(1-gridpoints:gridpoints-1),&
+       sinepoints%mat(numpoints,nbox))
+  fdtot%mat=0; ketot%mat=0; kevect%rmat=0; kevect%cmat=0;
+  fdvect%rmat=0; kevect%cmat=0
 
-  if (griddim.ne.3) then
-     OFLWR "griddim.ne.3 not supported no mo"; CFLST
-  endif
-
-  allocate(threed_two(0-numpoints(1):numpoints(1)-1,0-numpoints(2):numpoints(2)-1,0-numpoints(3):numpoints(3)-1))
+  allocate(threed_two(0-numpoints:numpoints-1))
   threed_two=0
 
 end subroutine myprojectalloc
@@ -120,25 +97,12 @@ subroutine get_twoe_new(pot)
   use myprojectmod  
   implicit none
   DATATYPE,intent(out) :: pot(totpoints)
-  real*8,allocatable :: realpot(:)
 
-  if (griddim.ne.3) then
-     OFLWR "griddim.ne.3 not supported get_twoe_new"; CFLST
-  endif
-
-  allocate(realpot(totpoints))
-  realpot=0
-  call get_3dpoisson(realpot)        
-  pot(:)=realpot(:)
-  deallocate(realpot)
+  pot(:)=dipoles(:)**2 * 0.5d0
 
   if (notwoflag.eq.1) then
-     threed_two(:,:,:)=0d0
+     threed_two(:)=0d0
   endif
-
-!!$TINV  if (debugflag.eq.33.or.scalingflag.ne.0) then
-!!$TINV     call get_3dpoisson_scaledoption(pot)
-!!$TINV   endif
 
 end subroutine get_twoe_new
 

@@ -199,280 +199,133 @@ subroutine myclock(mytime)
 end subroutine myclock
 
 
-module circ3dsubmod
+module circ1dsubmod
 contains
 
-subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany)
+subroutine circ1d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany)
   implicit none
   integer,intent(in) :: totdim,howmany
-  real*8,intent(in) :: rmultvector(2*totdim,2*totdim,2*totdim,howmany), &
-       rbigcirc(2*totdim,2*totdim,2*totdim)
-  real*8,intent(out) :: rffback(2*totdim,2*totdim,2*totdim,howmany)
-  complex*16 :: multvector(2*totdim,2*totdim,2*totdim,howmany), &              !! AUTOMATIC
-       ffback(2*totdim,2*totdim,2*totdim,howmany),   bigcirc(2*totdim,2*totdim,2*totdim)
+  real*8,intent(in) :: rmultvector(2*totdim,howmany), &
+       rbigcirc(2*totdim)
+  real*8,intent(out) :: rffback(2*totdim,howmany)
+  complex*16 :: multvector(2*totdim,howmany), &              !! AUTOMATIC
+       ffback(2*totdim,howmany),   bigcirc(2*totdim)
 
   ffback=0
-  bigcirc(:,:,:)=rbigcirc(:,:,:)
-  multvector(:,:,:,:)=rmultvector(:,:,:,:)
-  call circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
-  rffback(:,:,:,:)=real(ffback(:,:,:,:),8)
+  bigcirc(:)=rbigcirc(:)
+  multvector(:,:)=rmultvector(:,:)
+  call circ1d_sub(bigcirc,multvector,ffback,totdim,howmany)
+  rffback(:,:)=real(ffback(:,:),8)
 
-end subroutine circ3d_sub_real
+end subroutine circ1d_sub_real
 
 
-subroutine circ3d_sub(bigcirc,multvector,ffback,totdim,howmany)
-  use fft3dsubmod
+subroutine circ1d_sub(bigcirc,multvector,ffback,totdim,howmany)
+  use fft1dsubmod
   implicit none
   integer,intent(in) :: totdim,howmany
-  complex*16,intent(in) ::  bigcirc(2*totdim,2*totdim,2*totdim,1,1,1), &
-       multvector(2*totdim,2*totdim,2*totdim,howmany)
-  complex*16,intent(out) :: ffback(2*totdim,2*totdim,2*totdim,howmany)
-  complex*16 :: ffmat(2*totdim,2*totdim,2*totdim),ffvec(2*totdim,2*totdim,2*totdim,howmany),& 
-       ffprod(2*totdim,2*totdim,2*totdim,howmany)                            !! AUTOMATIC
+  complex*16,intent(in) ::  bigcirc(2*totdim,1), &
+       multvector(2*totdim,howmany)
+  complex*16,intent(out) :: ffback(2*totdim,howmany)
+  complex*16 :: ffmat(2*totdim),ffvec(2*totdim,howmany),& 
+       ffprod(2*totdim,howmany)                            !! AUTOMATIC
   integer :: ii
 
   ffvec=0; ffmat=0
-  call myzfft3d(multvector(:,:,:,:),ffvec(:,:,:,:),2*totdim,2*totdim,2*totdim,howmany)
-  call myzfft3d(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*totdim,2*totdim,2*totdim,1)
+  call myzfft1d(multvector(:,:),ffvec(:,:),2*totdim,howmany)
+  call myzfft1d(bigcirc(:,1),ffmat(:),2*totdim,1)
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)  
 !$OMP DO SCHEDULE(STATIC)
   do ii=1,howmany
-     ffprod(:,:,:,ii)=ffvec(:,:,:,ii)*ffmat(:,:,:)/(2*totdim)**3
+     ffprod(:,ii)=ffvec(:,ii)*ffmat(:)/(2*totdim)**3
   enddo
 !$OMP END DO
 !$OMP END PARALLEL
 
-  ffprod(:,:,:,:)=CONJG(ffprod(:,:,:,:))
-  call myzfft3d(ffprod(:,:,:,:),ffback(:,:,:,:),2*totdim,2*totdim,2*totdim,howmany)
-  ffback(:,:,:,:)=CONJG(ffback(:,:,:,:))
+  ffprod(:,:)=CONJG(ffprod(:,:))
+  call myzfft1d(ffprod(:,:),ffback(:,:),2*totdim,howmany)
+  ffback(:,:)=CONJG(ffback(:,:))
   return
 
-end subroutine circ3d_sub
+end subroutine circ1d_sub
 
 
 #ifdef MPIFLAG
 
-subroutine circ3d_sub_real_mpi(rbigcirc,rmultvector,rffback,dim1,dim2,dim3,times,howmany,placeopt)
+subroutine circ1d_sub_real_mpi(rbigcirc,rmultvector,rffback,dim1,times,howmany)
   implicit none
-  integer,intent(in) :: dim1,dim2,dim3,howmany,placeopt
+  integer,intent(in) :: dim1,howmany
   integer,intent(inout) :: times(*)
   integer :: atime,btime
-  real*8,intent(in) :: rmultvector(2*dim1,2*dim2,2*dim3,howmany),   rbigcirc(2*dim1,2*dim2,2*dim3)
-  real*8,intent(out) :: rffback(2*dim1,2*dim2,2*dim3,howmany)
-  complex*16 :: multvector(2*dim1,2*dim2,2*dim3,howmany), &                    !! AUTOMATIC
-        ffback(2*dim1,2*dim2,2*dim3,howmany),  bigcirc(2*dim1,2*dim2,2*dim3)
+  real*8,intent(in) :: rmultvector(2*dim1,howmany),   rbigcirc(2*dim1)
+  real*8,intent(out) :: rffback(2*dim1,howmany)
+  complex*16 :: multvector(2*dim1,howmany), &                    !! AUTOMATIC
+        ffback(2*dim1,howmany),  bigcirc(2*dim1)
 
   call myclock(atime)
   ffback=0
-  bigcirc(:,:,:)=rbigcirc(:,:,:)
-  multvector(:,:,:,:)=rmultvector(:,:,:,:)
+  bigcirc(:)=rbigcirc(:)
+  multvector(:,:)=rmultvector(:,:)
   call myclock(btime); times(7)=times(7)+btime-atime
 
-  call circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany,placeopt)
+  call circ1d_sub_mpi(bigcirc,multvector,ffback,dim1,times,howmany)
 
   call myclock(atime)
-  rffback(:,:,:,:)=real(ffback(:,:,:,:),8)
+  rffback(:,:)=real(ffback(:,:),8)
   call myclock(btime); times(7)=times(7)+btime-atime
 
-end subroutine circ3d_sub_real_mpi
+end subroutine circ1d_sub_real_mpi
 
 
 !!! times(7) = circ math
 
-!!! from myzfft3d_par (if fft_mpi_inplaceopt == 1):
-
-!!! times(1) = copy  times(2) = conjg  times(3) = ft
-!!! from mytranspose times(4) = transpose   times(5) = mpi  times(6) = copy
-
-!!! from cooleytukey (if fft_mpi_inplaceopt == 0):
+!!! from cooleytukey :
 
 !!! times(1) conjugate
 !!! times(2) gettwiddle
 !!! times(3) 1d ft-slowindex
 !!! times(4) raise twiddle factor to power
 !!! times(5) multiply
-!!! times(6) 3d f.t.
+!!! times(6) 1d f.t.
 
-subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany,placeopt)
-  use fftparsubmod
+subroutine circ1d_sub_mpi(bigcirc,multvector,ffback,dim1,times,howmany)
   use cooleytukeymod
   implicit none
-  integer,intent(in) :: dim1,dim2,dim3,howmany,placeopt
+  integer,intent(in) :: dim1,howmany
   integer,intent(inout) :: times(*)
-  complex*16,intent(in) ::  multvector(2*dim1,2*dim2,2*dim3,howmany), bigcirc(2*dim1,2*dim2,2*dim3,1,1,1)
-  complex*16,intent(out) :: ffback(2*dim1,2*dim2,2*dim3,howmany)
+  complex*16,intent(in) ::  multvector(2*dim1,howmany), bigcirc(2*dim1,1)
+  complex*16,intent(out) :: ffback(2*dim1,howmany)
   integer :: ii
   integer :: atime,btime,myrank,nprocs
-  complex*16 :: ffmat(2*dim1,2*dim2,2*dim3), &                                     !! AUTOMATIC
-       ffvec(2*dim1,2*dim2,2*dim3,howmany),  ffprod(2*dim1,2*dim2,2*dim3,howmany)
+  complex*16 :: ffmat(2*dim1), &                                     !! AUTOMATIC
+       ffvec(2*dim1,howmany),  ffprod(2*dim1,howmany)
 
   ffvec=0; ffmat=0
 
   call getmyranknprocs(myrank,nprocs)  
 
-  if (placeopt.ne.1) then
-!!$     call ctdim(3)
-     call cooleytukey_outofplace_forward_mpi(multvector(:,:,:,:),ffvec(:,:,:,:),2*dim1,2*dim2,2*dim3,howmany)
-     call cooleytukey_outofplace_forward_mpi(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*dim1,2*dim2,2*dim3,1)
-  else
-
-     call myzfft3d_par_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*dim1,times,howmany)
-     call myzfft3d_par_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*dim1,times,1)
-  endif
+  call cooleytukey_outofplace_forward_mpi(multvector(:,:),ffvec(:,:),2*dim1,howmany)
+  call cooleytukey_outofplace_forward_mpi(bigcirc(:,1),ffmat(:),2*dim1,1)
 
   call myclock(atime)
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
 !$OMP DO SCHEDULE(STATIC)
   do ii=1,howmany
-     ffprod(:,:,:,ii)=ffvec(:,:,:,ii)*ffmat(:,:,:)/(8*dim1*dim2*dim3*nprocs)
+     ffprod(:,ii)=ffvec(:,ii)*ffmat(:)/(2*dim1*nprocs)
   enddo
 !$OMP END DO
 !$OMP END PARALLEL
 
   call myclock(btime); times(7)=times(7)+btime-atime
 
-  if (placeopt.ne.1) then
-!!$     call ctdim(3)
-     call cooleytukey_outofplace_backward_mpi(ffprod(:,:,:,:),ffback(:,:,:,:),2*dim1,2*dim2,2*dim3,howmany)
-  else
-     call myzfft3d_par_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*dim1,times,howmany)
-  endif
+  call cooleytukey_outofplace_backward_mpi(ffprod(:,:),ffback(:,:),2*dim1,howmany)
 
-end subroutine circ3d_sub_mpi
+end subroutine circ1d_sub_mpi
 
 #endif
 
-end module circ3dsubmod
+end module circ1dsubmod
 
-
-!!$subroutine convolve_3d(vec1,vec2,outvec,nbig,nsmall,howmany)
-!!$  implicit none
-!!$  integer,intent(in) :: nbig,nsmall,howmany
-!!$  real*8,intent(in) :: vec1(-nbig:nbig,-nbig:nbig,-nbig:nbig,howmany),&
-!!$       vec2(-nbig:nbig,-nbig:nbig,-nbig:nbig,howmany)
-!!$  real*8, intent(out) :: outvec(-nsmall:nsmall,-nsmall:nsmall,-nsmall:nsmall,howmany)
-!!$  complex*16,allocatable :: workvec1(:,:,:),workvec2(:,:,:),workvec3(:,:,:)
-!!$  integer :: ii,mydim,myrank,nprocs
-!!$  integer, parameter :: QQ=1
-!!$
-!!$  mydim=4*nbig+2*QQ + 1
-!!$
-!!$  call getmyranknprocs(myrank,nprocs)
-!!$
-!!$  if (myrank.eq.1) then
-!!$
-!!$  print *, "Go convolve."
-!!$
-!!$  allocate(workvec1(mydim,mydim,mydim),workvec2(mydim,mydim,mydim),workvec3(mydim,mydim,mydim))
-!!$  workvec1(:,:,:)=0d0; workvec2(:,:,:)=0d0; workvec3(:,:,:)=0d0
-!!$
-!!$  do ii=1,howmany
-!!$
-!!$     workvec1(:,:,:)=0d0
-!!$     workvec1(          1:nbig+1,            1:nbig+1,            1:nbig+1) = vec1(  0:nbig,   0:nbig,   0:nbig, ii)
-!!$
-!!$     workvec1(          1:nbig+1,            1:nbig+1,  mydim-nbig+1:mydim) = vec1(  0:nbig,   0:nbig, -nbig:-1, ii)
-!!$     workvec1(          1:nbig+1,  mydim-nbig+1:mydim,            1:nbig+1) = vec1(  0:nbig, -nbig:-1,   0:nbig, ii)
-!!$     workvec1(mydim-nbig+1:mydim,            1:nbig+1,            1:nbig+1) = vec1(-nbig:-1,   0:nbig,   0:nbig, ii)
-!!$
-!!$     workvec1(mydim-nbig+1:mydim,  mydim-nbig+1:mydim,            1:nbig+1) = vec1(-nbig:-1, -nbig:-1,   0:nbig, ii)
-!!$     workvec1(mydim-nbig+1:mydim,            1:nbig+1,  mydim-nbig+1:mydim) = vec1(-nbig:-1,   0:nbig, -nbig:-1, ii)
-!!$     workvec1(          1:nbig+1,  mydim-nbig+1:mydim,  mydim-nbig+1:mydim) = vec1(  0:nbig, -nbig:-1, -nbig:-1, ii)
-!!$
-!!$     workvec1(mydim-nbig+1:mydim,  mydim-nbig+1:mydim,  mydim-nbig+1:mydim) = vec1(-nbig:-1, -nbig:-1, -nbig:-1, ii)
-!!$
-!!$     call myzfft3d(workvec1,workvec2,mydim,mydim,mydim,1)
-!!$
-!!$     workvec1(:,:,:)=0d0
-!!$     workvec1(          1:nbig+1,            1:nbig+1,            1:nbig+1) = vec2(  0:nbig,   0:nbig,   0:nbig, ii)
-!!$
-!!$     workvec1(          1:nbig+1,            1:nbig+1,  mydim-nbig+1:mydim) = vec2(  0:nbig,   0:nbig, -nbig:-1, ii)
-!!$     workvec1(          1:nbig+1,  mydim-nbig+1:mydim,            1:nbig+1) = vec2(  0:nbig, -nbig:-1,   0:nbig, ii)
-!!$     workvec1(mydim-nbig+1:mydim,            1:nbig+1,            1:nbig+1) = vec2(-nbig:-1,   0:nbig,   0:nbig, ii)
-!!$
-!!$     workvec1(mydim-nbig+1:mydim,  mydim-nbig+1:mydim,            1:nbig+1) = vec2(-nbig:-1, -nbig:-1,   0:nbig, ii)
-!!$     workvec1(mydim-nbig+1:mydim,            1:nbig+1,  mydim-nbig+1:mydim) = vec2(-nbig:-1,   0:nbig, -nbig:-1, ii)
-!!$     workvec1(          1:nbig+1,  mydim-nbig+1:mydim,  mydim-nbig+1:mydim) = vec2(  0:nbig, -nbig:-1, -nbig:-1, ii)
-!!$
-!!$     workvec1(mydim-nbig+1:mydim,  mydim-nbig+1:mydim,  mydim-nbig+1:mydim) = vec2(-nbig:-1, -nbig:-1, -nbig:-1, ii)
-!!$
-!!$     call myzfft3d(workvec1,workvec3,mydim,mydim,mydim,1)
-!!$
-!!$     workvec1(:,:,:)=workvec2(:,:,:)*workvec3(:,:,:)
-!!$     workvec2(:,:,:)=CONJG(workvec1(:,:,:))
-!!$     workvec1(:,:,:)=workvec2(:,:,:)/mydim**3
-!!$
-!!$     call myzfft3d(workvec1(:,:,:),workvec2(:,:,:),mydim,mydim,mydim,1)
-!!$
-!!$     outvec(  0:nsmall,   0:nsmall,   0:nsmall, ii) = real(workvec2(          1:nsmall+1,            1:nsmall+1,            1:nsmall+1),8)
-!!$
-!!$     outvec(  0:nsmall,   0:nsmall, -nsmall:-1, ii) = real(workvec2(          1:nsmall+1,            1:nsmall+1,  mydim-nsmall+1:mydim),8)
-!!$     outvec(  0:nsmall, -nsmall:-1,   0:nsmall, ii) = real(workvec2(          1:nsmall+1,  mydim-nsmall+1:mydim,            1:nsmall+1),8)
-!!$     outvec(-nsmall:-1,   0:nsmall,   0:nsmall, ii) = real(workvec2(mydim-nsmall+1:mydim,            1:nsmall+1,            1:nsmall+1),8)
-!!$
-!!$     outvec(-nsmall:-1, -nsmall:-1,   0:nsmall, ii) = real(workvec2(mydim-nsmall+1:mydim,  mydim-nsmall+1:mydim,            1:nsmall+1),8)
-!!$     outvec(-nsmall:-1,   0:nsmall, -nsmall:-1, ii) = real(workvec2(mydim-nsmall+1:mydim,            1:nsmall+1,  mydim-nsmall+1:mydim),8)
-!!$     outvec(  0:nsmall, -nsmall:-1, -nsmall:-1, ii) = real(workvec2(          1:nsmall+1,  mydim-nsmall+1:mydim,  mydim-nsmall+1:mydim),8)
-!!$
-!!$     outvec(-nsmall:-1, -nsmall:-1, -nsmall:-1, ii) = real(workvec2(mydim-nsmall+1:mydim,  mydim-nsmall+1:mydim,  mydim-nsmall+1:mydim),8)
-!!$
-!!$  enddo
-!!$
-!!$  deallocate(workvec1,workvec2,workvec3)
-!!$
-!!$  endif
-!!$
-!!$  call mpibarrier()
-!!$
-!!$  call mympirealbcast(outvec,1,(2*nsmall+1)**3)
-!!$
-!!$  call mpibarrier()
-!!$  if (myrank.eq.1) then
-!!$     print *, "Done convolve."
-!!$  endif
-!!$
-!!$end subroutine convolve_3d
-
-
-
-
-!!$  subroutine little_circ1d_sub(bigcirc,multvector,ffback,totdim,howmany)
-!!$    implicit none
-!!$    integer :: totdim,howmany,ii
-!!$    complex*16 :: multvector(2*totdim,howmany),  bigcirc(2*totdim,1), &
-!!$         ffback(2*totdim,howmany)
-!!$    complex*16 ::   ffmat(2*totdim),ffvec(2*totdim,howmany),& !! AUTOMATIC
-!!$         ffprod(2*totdim,howmany)
-!!$  
-!!$    call myzfft1d(bigcirc(:,:),ffmat(:),2*totdim,1)
-!!$    call myzfft1d(multvector(:,:),ffvec(:,:),2*totdim,howmany)
-!!$    do ii=1,howmany
-!!$       ffprod(:,ii)=ffvec(:,ii)*ffmat(:)/(2*totdim)
-!!$    enddo
-!!$    ffprod(:,:)=CONJG(ffprod(:,:))
-!!$    call myzfft1d(ffprod(:,:),ffback(:,:),2*totdim,howmany)
-!!$    ffback(:,:)=CONJG(ffback(:,:))
-!!$  
-!!$  end subroutine little_circ1d_sub
-
-
-
-!!$ PREVIOUS SUBROUTINE
-!!$  
-!!$  subroutine toeplitz1d_sub(bigvector,smallmultvector,outvector,totdim,howmany)
-!!$    implicit none
-!!$    integer :: totdim,howmany
-!!$    complex*16 :: multvector(2*totdim,howmany),&
-!!$         outvector(totdim,howmany),smallmultvector(totdim,howmany),&
-!!$         bigcirc(2*totdim,1), ffback(2*totdim,howmany),     bigvector(1-totdim:totdim-1)
-!!$    bigcirc(:,:)=0d0
-!!$    bigcirc(2:totdim*2,1)=bigvector(:)
-!!$    multvector(:,:)=0d0
-!!$    multvector(1:totdim,:)=smallmultvector(:,:)
-!!$    call circ1d_sub(bigcirc,multvector,ffback,totdim,howmany)
-!!$    outvector(:,:)=ffback(totdim+1:2*totdim,:)
-!!$  end subroutine toeplitz1d_sub
-!!$  
 

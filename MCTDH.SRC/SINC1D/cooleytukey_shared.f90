@@ -205,8 +205,8 @@ end module ct_options
 module ct_primesetmod
   implicit none
 
-  integer, allocatable :: CT_COMM_EACH(:,:,:)
-  integer :: CT_MYLOC(MAXPRIMES,3),CT_MYRANK(MAXPRIMES,3),CT_MYPOSITION(MAXPRIMES,3)
+  integer, allocatable :: CT_COMM_EACH(:,:)
+  integer :: CT_MYLOC(MAXPRIMES),CT_MYRANK(MAXPRIMES),CT_MYPOSITION(MAXPRIMES)
 
   integer :: ct_called=0
   integer :: ct_numprimes = (-1)
@@ -223,10 +223,10 @@ module ctsubmod
 contains
 
 !! called by recursive subroutines so making recursive
-  recursive subroutine twiddlemult_mpi(blocksize,in,out,dim1,howmany,rdd,oplevel)
+  recursive subroutine twiddlemult_mpi(blocksize,in,out,dim1,howmany,rdd)
     use ct_primesetmod
     implicit none
-    integer, intent(in) :: blocksize,dim1,howmany,rdd,oplevel
+    integer, intent(in) :: blocksize,dim1,howmany,rdd
     complex*16, intent(in) :: in(blocksize,dim1,howmany)
     complex*16, intent(out) :: out(blocksize,dim1,howmany)
 !!   complex*16 :: twiddle1(dim1,ct_maxposition(rdd)),tt1(dim1)
@@ -238,7 +238,7 @@ contains
 
     call gettwiddlesmall(twiddle1(:,:),dim1*ct_maxposition(rdd),ct_pf(rdd))
 
-    tt1(:)=twiddle1(:,ct_myposition(rdd,oplevel))**(ct_myrank(rdd,oplevel)-1)
+    tt1(:)=twiddle1(:,ct_myposition(rdd))**(ct_myrank(rdd)-1)
     do ii=1,howmany
        do n1=1,dim1
           out(:,n1,ii) = in(:,n1,ii) * tt1(n1)
@@ -249,12 +249,12 @@ contains
 
   end subroutine twiddlemult_mpi
 
-  recursive subroutine myzfft1d_slowindex_mpi(in,out,totsize,rdd,oplevel)
+  recursive subroutine myzfft1d_slowindex_mpi(in,out,totsize,rdd)
     use pfileptrmod
     use ct_options
     use ct_primesetmod
     implicit none
-    integer, intent(in) :: totsize,rdd,oplevel
+    integer, intent(in) :: totsize,rdd
     complex*16, intent(in) :: in(totsize)
     complex*16, intent(out) :: out(totsize)
 !!  complex*16 :: fouriermatrix(ct_pf(rdd),ct_pf(rdd)),twiddle(ct_pf(rdd))
@@ -270,9 +270,9 @@ contains
     enddo
     select case (ct_paropt)
     case(0)
-       call simple_circ(in,out,fouriermatrix,totsize,rdd,oplevel)
+       call simple_circ(in,out,fouriermatrix,totsize,rdd)
     case(1)
-       call simple_summa(in,out,fouriermatrix,totsize,rdd,oplevel)
+       call simple_summa(in,out,fouriermatrix,totsize,rdd)
     case default
        OFLWR "ct_paropt not recognized",ct_paropt; CFLST
     end select
@@ -281,11 +281,11 @@ contains
 
   contains
 
-    recursive subroutine simple_circ(in, out,mat,howmany,rdd,oplevel)
+    recursive subroutine simple_circ(in, out,mat,howmany,rdd)
       use pmpimod
       use ct_primesetmod
       implicit none
-      integer, intent(in) :: howmany,rdd,oplevel
+      integer, intent(in) :: howmany,rdd
       complex*16, intent(in) :: in(howmany), mat(ct_pf(rdd),ct_pf(rdd))
       complex*16, intent(out) :: out(howmany)
       integer :: thisfileptr
@@ -306,13 +306,13 @@ contains
       out(:)=0
 
       do deltabox=0,ct_pf(rdd)-1
-         ibox=mod(ct_pf(rdd)+CT_MYRANK(rdd,oplevel)-1+deltabox,ct_pf(rdd))+1
-         jbox=mod(ct_pf(rdd)+CT_MYRANK(rdd,oplevel)-1-deltabox,ct_pf(rdd))+1
+         ibox=mod(ct_pf(rdd)+CT_MYRANK(rdd)-1+deltabox,ct_pf(rdd))+1
+         jbox=mod(ct_pf(rdd)+CT_MYRANK(rdd)-1-deltabox,ct_pf(rdd))+1
 
-         work(:)=in(:)*mat(ibox,CT_MYRANK(rdd,oplevel))
+         work(:)=in(:)*mat(ibox,CT_MYRANK(rdd))
 
          if (deltabox.ne.0) then
-            call mympisendrecv_complex_local(work(:),work2(:),ibox,jbox,deltabox,howmany,CT_COMM_EACH(CT_MYLOC(rdd,oplevel),rdd,oplevel))
+            call mympisendrecv_complex_local(work(:),work2(:),ibox,jbox,deltabox,howmany,CT_COMM_EACH(CT_MYLOC(rdd),rdd))
             out(:)=out(:)+work2(:)
          else
             out(:)=out(:)+work(:)
@@ -321,11 +321,11 @@ contains
 
     end subroutine simple_circ
 
-    recursive subroutine simple_summa(in, out,mat,howmany,rdd,oplevel)
+    recursive subroutine simple_summa(in, out,mat,howmany,rdd)
       use pmpimod
       use ct_primesetmod
       implicit none
-      integer, intent(in) :: howmany,rdd,oplevel
+      integer, intent(in) :: howmany,rdd
       complex*16, intent(in) :: in(howmany), mat(ct_pf(rdd),ct_pf(rdd))
       complex*16, intent(out) :: out(howmany)
       integer :: thisfileptr
@@ -346,11 +346,11 @@ contains
       out(:)=0d0
 
       do ibox=1,ct_pf(rdd)
-         if (CT_MYRANK(rdd,oplevel).eq.ibox) then
+         if (CT_MYRANK(rdd).eq.ibox) then
             work(:)=in(:)
          endif
-         call mympicomplexbcast_local(work(:),ibox,howmany,CT_COMM_EACH(CT_MYLOC(rdd,oplevel),rdd,oplevel))
-         out(:)=out(:)+work(:)*mat(CT_MYRANK(rdd,oplevel),ibox)
+         call mympicomplexbcast_local(work(:),ibox,howmany,CT_COMM_EACH(CT_MYLOC(rdd),rdd))
+         out(:)=out(:)+work(:)*mat(CT_MYRANK(rdd),ibox)
       enddo
 
     end subroutine simple_summa
@@ -389,7 +389,7 @@ subroutine ct_getprimeset()
   implicit none
   integer :: ii
 #ifdef MPIFLAG
-  integer :: allprocs0(procsplit(1),procsplit(2),procsplit(3)),iproc, jj,kk
+  integer :: allprocs0(nprocs),iproc, jj,kk
   allprocs0=0
 #endif
 
@@ -400,24 +400,13 @@ subroutine ct_getprimeset()
 
   ct_maxposition(:)=1
 
-  select case(orbparlevel)
-  case(3)
-     call getallprimefactors(nprocs,MAXPRIMES,ct_numprimes,ct_pf)
-     ct_maxposition(1:ct_numprimes)=nprocs
-  case(2)
-     call getallprimefactors(sqnprocs,MAXPRIMES,ct_numprimes,ct_pf)
-     ct_maxposition(1:ct_numprimes)=sqnprocs
-  case(1)
-     call getallprimefactors(cbnprocs,MAXPRIMES,ct_numprimes,ct_pf)
-     ct_maxposition(1:ct_numprimes)=cbnprocs
-  end select
+  call getallprimefactors(nprocs,MAXPRIMES,ct_numprimes,ct_pf)
+  ct_maxposition(1:ct_numprimes)=nprocs
 
 
   do ii=1,ct_numprimes
      ct_maxposition(ii:ct_numprimes)=ct_maxposition(ii:ct_numprimes)/ct_pf(ii)
   enddo
-
-
 
   ct_maxprime=1; ct_minprime=32767
   do ii=1,ct_numprimes
@@ -436,32 +425,18 @@ subroutine ct_getprimeset()
   WRFL "  ",ct_pf(1:ct_numprimes)
   CFL
 
-  allocate(CT_COMM_EACH(procsplit(3)/ct_minprime,ct_numprimes,orbparlevel:3))
-  CT_COMM_EACH(:,:,:)=(-42)
+  allocate(CT_COMM_EACH(nprocs/ct_minprime,ct_numprimes))
+  CT_COMM_EACH(:,:)=(-42)
 
 #ifdef MPIFLAG
 
   OFLWR "Calling ct_construct..."; CFL
 
-  iproc=0
-  do ii=1,procsplit(3)
-     do jj=1,procsplit(2)
-        do kk=1,procsplit(1)
-           iproc=iproc+1
-           allprocs0(kk,jj,ii)=iproc
-        enddo
-     enddo
+  do iproc=1,nprocs
+     allprocs0(iproc)=iproc
   enddo
 
   call ct_construct()
-
-!  do ii=orbparlevel,3
-!     do jj=1,nbox(2)
-!        do kk=1,nbox(1)
-!           call ct_construct(allprocs0(:,jj,kk)) !!,CTBOX(kk,jj,ii))
-!        enddo
-!     enddo
-!  enddo
 
   OFLWR "   ....Called ct_construct."; CFL
 
@@ -532,9 +507,9 @@ end subroutine ct_getprimeset
     use ct_primesetmod
     implicit none
     integer :: thisfileptr,procshift(ct_maxprime),ierr,iprime,&
-         proc_check, ii, icomm, ilevel, CT_GROUP, &
+         proc_check, ii, icomm, CT_GROUP, &
          xxtop(1:ct_numprimes),yytop(1:ct_numprimes),xx,yy,&
-         rank1,rank2,rank3,ALL_CT_COMM(procsplit(1),procsplit(2),procsplit(3))
+         rank1,ALL_CT_COMM(nprocs)
     integer :: procset(ct_maxprime)
 
     proc_check=1; xxtop(:)=1; yytop(:)=1
@@ -543,8 +518,8 @@ end subroutine ct_getprimeset
        yytop(1:ii-1)=yytop(1:ii-1)*ct_pf(ii)
        xxtop(ii+1: )=xxtop(ii+1:)*ct_pf(ii)
     enddo
-    if (proc_check.ne.procsplit(3)) then
-       OFLWR "Proc check programmer error ", proc_check,procsplit(3),&
+    if (proc_check.ne.nprocs) then
+       OFLWR "Proc check programmer error ", proc_check,nprocs,&
             ct_pf(1:ct_numprimes); CFLST
     endif
 
@@ -556,96 +531,77 @@ end subroutine ct_getprimeset
 
 !!             OFLWR "Create communicators for MPIcooley-tukey..."; CFL
 
-    ALL_CT_COMM(:,:,:)=(-798)
+    ALL_CT_COMM(:)=(-798)
 
-    do ilevel=orbparlevel,3
+    do iprime=1,ct_numprimes
+       CT_MYPOSITION(iprime)=mod(myrank-1,ct_maxposition(iprime))+1
+    enddo
 
-       do iprime=1,ct_numprimes
-          CT_MYPOSITION(iprime,ilevel)=mod(boxrank(ilevel)-1,ct_maxposition(iprime))+1
-       enddo
+    do iprime=1,ct_numprimes
 
-       do iprime=1,ct_numprimes
+       icomm=0
 
-          icomm=0
-
-          do xx=1, xxtop(iprime)    !!  EITHER LOOP ORDER APPEARS OK
+       do xx=1, xxtop(iprime)    !!  EITHER LOOP ORDER APPEARS OK
           do yy=1, yytop(iprime)    !!  CHECKME (with qqtop etc was fast index outer, slow inner)
 
              icomm=icomm+1
-             if (icomm.gt.procsplit(ilevel)/ct_minprime) then
-                OFLWR  "Error construct",icomm,procsplit(ilevel),ct_minprime; CFLST
+             if (icomm.gt.nprocs/ct_minprime) then
+                OFLWR  "Error construct",icomm,nprocs,ct_minprime; CFLST
              endif
 
 ! nonstandard MPI, make all communicators.
-             do rank3=boxrank(3),boxrank(3)
-                do rank2=boxrank(2),boxrank(2)
-                   do rank1=boxrank(1),boxrank(1)
+             do rank1=myrank,myrank
 
 ! what is going on?  This the correct way works for init_project but
 ! causes the program to hang on entry to blocklanczos for a-vectors. 2-2016 v1.23
-!             do rank3=1,procsplit(3)
-!                do rank2=1,procsplit(2)
-!                   do rank1=1,procsplit(1)
+!               do rank1=1,nprocs
            
-      select case(ilevel)
-      case(3)
-         call ct_cast_assign(allprocs0(rank1,rank2,:),yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
-              procset(1:ct_pf(iprime)))
-      case(2)
-         call ct_cast_assign(allprocs0(rank1,:,rank3),yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
-              procset(1:ct_pf(iprime)))
-      case(1)
-         call ct_cast_assign(allprocs0(:,rank2,rank3),yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
-              procset(1:ct_pf(iprime)))
-      end select
+                call ct_cast_assign(allprocs0(:),yytop(iprime),ct_pf(iprime),xxtop(iprime),yy,xx,&
+                     procset(1:ct_pf(iprime)))
            
-      procshift(1:ct_pf(iprime))=procset(1:ct_pf(iprime)) - 1
+                procshift(1:ct_pf(iprime))=procset(1:ct_pf(iprime)) - 1
 
-      call mpi_group_incl(PROJ_GROUP_WORLD,ct_pf(iprime),procshift,CT_GROUP,ierr)
-      if (ierr.ne.0) then
-         call waitawhile()
-         print *, "Error group incl CT",icomm,iprime,ierr
-         call waitawhile()
-         stop
-      endif
-      call mpi_comm_create(PROJ_COMM_WORLD, CT_GROUP,ALL_CT_COMM(rank1,rank2,rank3),ierr)
-      if (ierr.ne.0) then
-         call waitawhile()
-         print *, "Error comm create CT",icomm,iprime,ierr
-         call waitawhile()
-         stop
-      endif
+                call mpi_group_incl(PROJ_GROUP_WORLD,ct_pf(iprime),procshift,CT_GROUP,ierr)
+                if (ierr.ne.0) then
+                   call waitawhile()
+                   print *, "Error group incl CT",icomm,iprime,ierr
+                   call waitawhile()
+                   stop
+                endif
+                call mpi_comm_create(PROJ_COMM_WORLD, CT_GROUP,ALL_CT_COMM(rank1),ierr)
+                if (ierr.ne.0) then
+                   call waitawhile()
+                   print *, "Error comm create CT",icomm,iprime,ierr
+                   call waitawhile()
+                   stop
+                endif
 
-      if (rank1.eq.boxrank(1).and.rank2.eq.boxrank(2).and.rank3.eq.boxrank(3)) then
-
-         do ii=1,ct_pf(iprime)
-            if (procset(ii).eq.myrank) then
-               if (CT_MYLOC(iprime,ilevel).gt.0) then
-                  call waitawhile()
-                  print *, "ERROR MYLOC"
-                  call waitawhile()
-                  call mpistop()
-               endif
-               CT_MYLOC(iprime,ilevel)=icomm
-               CT_MYRANK(iprime,ilevel)=ii
-            endif
-         enddo
-
-         CT_COMM_EACH(icomm,iprime,ilevel)=ALL_CT_COMM(rank1,rank2,rank3)
-
-      endif
+                if (rank1.eq.myrank) then
+                   do ii=1,ct_pf(iprime)
+                      if (procset(ii).eq.myrank) then
+                         if (CT_MYLOC(iprime).gt.0) then
+                            call waitawhile()
+                            print *, "ERROR MYLOC"
+                            call waitawhile()
+                            call mpistop()
+                         endif
+                         CT_MYLOC(iprime)=icomm
+                         CT_MYRANK(iprime)=ii
+                      endif
                    enddo
-                enddo
+
+                   CT_COMM_EACH(icomm,iprime)=ALL_CT_COMM(rank1)
+
+                endif
              enddo
-          enddo
-          enddo
-          if (CT_MYLOC(iprime,ilevel).le.0) then
-             call waitawhile()
-             print *, "MYLOC ERROR",myrank,boxrank(ilevel),CT_MYLOC(iprime,ilevel),iprime
-             call waitawhile()
-             stop
-          endif
-       enddo
+          enddo  !! do xx
+       enddo  !! do yy
+       if (CT_MYLOC(iprime).le.0) then
+          call waitawhile()
+          print *, "MYLOC ERROR",myrank,CT_MYLOC(iprime),iprime
+          call waitawhile()
+          stop
+       endif
     enddo
 
 !!             OFLWR "   OK, done constructing CT communicators."; CFL
