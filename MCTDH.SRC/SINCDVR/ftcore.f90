@@ -13,8 +13,10 @@ subroutine ftset(inoutflag,infileptr)
   ftoutflag=inoutflag; ftfileptr=infileptr
 end subroutine ftset
 
-
 #ifdef FFTWFLAG
+
+module fft1dsubmod
+contains
 
 !! Old version myzfft1d() for intel, should not be needed; see myzfft1d_not() below
 
@@ -81,6 +83,7 @@ subroutine myzfft1d(in,out,dim,howmany)
 
 end subroutine myzfft1d
 
+end module fft1dsubmod
 
 !! Not sure why this didn't work.  Old version myzfft1d() for intel, above, should not be needed
 
@@ -254,6 +257,9 @@ end module fft3dsubmod
 #else
 
 
+module fft1dsubmod
+contains
+
 subroutine myzfft1d(in,out,dim,howmany)
   implicit none
   integer, intent(in) :: dim,howmany
@@ -273,6 +279,7 @@ subroutine myzfft1d(in,out,dim,howmany)
 !$OMP END PARALLEL
 end subroutine myzfft1d
 
+end module fft1dsubmod
 
 
 !!$  !! OBVIOUSLY UNSATISFACTORY WITH DFFTPACK ROUTINES
@@ -320,6 +327,7 @@ contains
 
 !! called by recursive so making recursive
   recursive subroutine fftblock_withtranspose(inout,dim1,dim2,dim3,howmany)
+    use fft1dsubmod
     implicit none
     integer :: dim1,dim2,dim3,howmany
 !!!!  is dimensioned (dim1,dim2,dim3) on input. !!!!
@@ -519,6 +527,7 @@ end subroutine myzfft3d_par_backward
 !!! from mytranspose times(4) = transpose   times(5) = mpi  times(6) = copy
 
 recursive subroutine myzfft3d_par0(in,out,dim,times,howmany,nprocs1,nprocs2,direction,oplevel)
+  use fft1dsubmod
   implicit none
   integer, intent(in) :: dim,howmany,nprocs1,nprocs2,direction,oplevel
   complex*16, intent(in) :: in(dim**3/nprocs1/nprocs2,howmany)

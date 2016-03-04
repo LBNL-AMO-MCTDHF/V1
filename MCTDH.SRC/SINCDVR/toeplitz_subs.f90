@@ -296,6 +296,7 @@ end subroutine circ3d_sub_real_mpi
 
 subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany,placeopt)
   use fftparsubmod
+  use cooleytukeymod
   implicit none
   integer,intent(in) :: dim1,dim2,dim3,howmany,placeopt
   integer,intent(inout) :: times(*)

@@ -191,6 +191,9 @@
 !!$   limitations under the License.
 
 
+module cooleytukeymod
+contains
+
 #ifdef MPIFLAG
 
 !! INVERSE OF cooleytukey_outofplace_mpi except for division
@@ -353,3 +356,4 @@ end subroutine cooleytukey_outofplaceinput_mpi0
 
 #endif
 
+end module cooleytukeymod
