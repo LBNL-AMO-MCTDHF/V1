@@ -1,0 +1,39 @@
+#!/bin/bash
+
+if [[ "$1 " == "clean " ]]
+then
+
+for dir in DFFTPACK DGMRES bessel SINC1D
+do
+	if [[ -e $dir ]]
+	then
+
+	cd $dir
+	make clean
+	cd ..
+
+	fi
+
+done
+
+make clean
+
+else
+
+
+for dir in DFFTPACK DGMRES bessel SINC1D
+do
+	if [[ -e $dir ]]
+	then
+
+	cd $dir
+	make
+	cd ..
+
+	fi
+
+done
+
+make
+
+fi
