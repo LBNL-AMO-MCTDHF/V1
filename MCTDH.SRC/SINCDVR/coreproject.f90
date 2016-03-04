@@ -194,11 +194,13 @@
 #include "Definitions.INC"
 
 
-subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,outorbparflag)
+subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,&
+     inspfugvals,outspfsmallsize,outorbparflag)
   use myparams
   use twoemod
   implicit none
-  integer :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,inspfugvals(innumspf), outspfsmallsize,ii
+  integer :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,&
+       inspfugvals(innumspf), outspfsmallsize,ii
   logical, intent(out) :: outorbparflag
 
   numspf=innumspf;  
@@ -250,7 +252,8 @@ end function mydot
 end module
 
 
-subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  !! returns last two.  a little cloogey
+!! returns last two.  a little cloogey
+subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)
   use twoemod
   use myparams
   use pmpimod
@@ -728,7 +731,8 @@ subroutine call_twoe_matelxxx00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoer
 
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (debugflag.eq.10) then
-        open(8853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat", status="unknown", position="append",iostat=myiostat)
+        open(8853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat", &
+             status="unknown", position="append",iostat=myiostat)
         call checkiostat(myiostat,"opening twoematel timing sincdvr")
         write(8853,*,iostat=myiostat) "****"
         call checkiostat(myiostat,"writing twoematel timing sincdvr")
@@ -840,7 +844,8 @@ subroutine call_twoe_matelxxx00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoer
 
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (xcount==1) then
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.time.dat", status="unknown",iostat=myiostat)
+        open(853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.time.dat", &
+             status="unknown",iostat=myiostat)
         call checkiostat(myiostat,"opening twoematel timing sincdvr")
 #ifdef MPIFLAG
         if (orbparflag) then
@@ -859,10 +864,12 @@ subroutine call_twoe_matelxxx00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoer
 #endif
         close(853)
      endif
-     open(853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.time.dat", status="unknown", position="append",iostat=myiostat)
+     open(853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.time.dat", &
+          status="unknown", position="append",iostat=myiostat)
      call checkiostat(myiostat,"opening twoematel timing sincdvr")
-     write(853,'(100I11)',iostat=myiostat)  times(1:7),fttimes(1:7);        close(853)
+     write(853,'(100I11)',iostat=myiostat)  times(1:7),fttimes(1:7);
      call checkiostat(myiostat,"writing twoematel timing sincdvr")
+     close(853)
   endif
 
 !!! from circ subs, fttimes
@@ -886,7 +893,8 @@ subroutine call_twoe_matelxxx00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoer
 
   if (myrank.eq.1.and.(notiming.eq.0).and.debugflag.eq.10) then
         call system("date --rfc-3339=ns >>"//timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat")
-        open(8853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat", status="unknown", position="append",iostat=myiostat)
+        open(8853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat", &
+             status="unknown", position="append",iostat=myiostat)
         call checkiostat(myiostat,"opening twoematel timing sincdvr")
         write(8853,*,iostat=myiostat) "****"
         call checkiostat(myiostat,"writing twoematel timing sincdvr")
@@ -1061,7 +1069,7 @@ subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
   integer ::  ibox1,ibox2,ibox3,jbox1,jbox2,jbox3,jproc,iproc
   DATATYPE,allocatable :: tempden03(:,:,:,:)
 #endif
-  integer :: circhigh,circindex,icirc
+  integer :: circhigh,circbot,circtop,icirc
   DATATYPE,allocatable :: twoeden03huge(:,:,:,:,:,:,:), reducedhuge(:,:,:,:,:,:,:),&
        reducedwork3d(:,:,:,:)
 
@@ -1139,11 +1147,16 @@ subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
      call myclock(itime); 
      
      do icirc=1,circhigh
-        circindex=(icirc-1)*circsize+1
+        circbot=(icirc-1)*circsize+1
+        circtop=icirc*circsize
 #ifdef REALGO
-        call circ3d_sub_real_mpi(threed_two(:,:,:),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),numpoints(1),numpoints(2),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag)
+        call circ3d_sub_real_mpi(threed_two(:,:,:),twoeden03huge(:,:,:,:,:,:,circbot:circtop),&
+             reducedhuge(:,:,:,:,:,:,circbot:circtop),numpoints(1),numpoints(2),numpoints(3),&
+             fttimes,circsize,fft_mpi_inplaceflag)
 #else
-        call circ3d_sub_mpi(threed_two(:,:,:),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),numpoints(1),numpoints(2),numpoints(3),fttimes,circsize,fft_mpi_inplaceflag)
+        call circ3d_sub_mpi(threed_two(:,:,:),twoeden03huge(:,:,:,:,:,:,circbot:circtop),&
+             reducedhuge(:,:,:,:,:,:,circbot:circtop),numpoints(1),numpoints(2),numpoints(3),&
+             fttimes,circsize,fft_mpi_inplaceflag)
 #endif
      enddo
      
@@ -1182,11 +1195,14 @@ subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
      call myclock(itime)
      
      do icirc=1,circhigh
-        circindex=(icirc-1)*circsize+1
+        circbot=(icirc-1)*circsize+1
+        circtop=icirc*circsize
 #ifdef REALGO
-        call circ3d_sub_real(threed_two(:,:,:),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize)
+        call circ3d_sub_real(threed_two(:,:,:),twoeden03huge(:,:,:,:,:,:,circbot:circtop),&
+             reducedhuge(:,:,:,:,:,:,circbot:circtop),gridpoints(3),circsize)
 #else
-        call circ3d_sub(threed_two(:,:,:),twoeden03huge(1,1,1,1,1,1,circindex),reducedhuge(1,1,1,1,1,1,circindex),gridpoints(3),circsize)
+        call circ3d_sub(threed_two(:,:,:),twoeden03huge(:,:,:,:,:,:,circbot:circtop),&
+             reducedhuge(:,:,:,:,:,:,circbot:circtop),gridpoints(3),circsize)
 #endif
      enddo
      
@@ -1773,11 +1789,13 @@ subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
      select case(option)
      case(1)  !! KE
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,ketot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,&
+                ketot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
         enddo
      case(2) 
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,fdtot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,&
+                fdtot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
         enddo
      case default 
         OFLWR "WHAAAAT"; CFLST
@@ -1918,11 +1936,13 @@ subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
      select case(option)
      case(1)  !! KE
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,work(:,ii),nnn,ketot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,work(:,ii),nnn,&
+                ketot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
         enddo
      case(2) 
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,work(:,ii),nnn,fdtot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,work(:,ii),nnn,&
+                fdtot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
         enddo
      case default 
         OFLWR "WHAAAAT"; CFLST
@@ -1935,14 +1955,16 @@ subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
   if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
      xcount=xcount+1
      if (xcount==1) then
-        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown",iostat=myiostat)
+        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
+             status="unknown",iostat=myiostat)
         call checkiostat(myiostat,"opening kemult timing sincdvr")
         write(2853,'(100A11)',iostat=myiostat)   "copy", "bcast","mult"
         call checkiostat(myiostat,"writing kemult timing sincdvr")
         close(2853) 
      endif
      if (mod(xcount,20).eq.0) then
-        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", status="unknown", position="append",iostat=myiostat)
+        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
+             status="unknown", position="append",iostat=myiostat)
         call checkiostat(myiostat,"opening kemult timing sincdvr")
         write(2853,'(100I11)',iostat=myiostat)  times(1:3)
         call checkiostat(myiostat,"writing kemult timing sincdvr")
@@ -1993,11 +2015,13 @@ subroutine mult_all0(in, out,idim,nnn,mmm,option)
   select case(option)
   case(1)  !! KE
      do jj=1,mmm
-        call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,ketot(idim)%mat,gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
+        call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,&
+             ketot(idim)%mat,gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
      enddo
   case(2)  !! X Y or Z derivative (real valued antisymmetric)
      do jj=1,mmm
-        call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,fdtot(idim)%mat,gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
+        call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,&
+             fdtot(idim)%mat,gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
      enddo
   case default 
      OFLWR "WHAAAAT",option; CFLST
