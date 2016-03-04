@@ -19,7 +19,6 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   integer,intent(out) :: spfdims(3),spfdimtype(3),nonuc_checkflag,reducedpotsize, outnumr
   real*8,intent(out) :: outnucrepulsion
   integer :: nargs, i,j,len,getlen,iproc,k,ierr,ii,myiostat
-  integer :: toepflag  !! toepflag deprecated; dummy
   real*8 :: rsq
   character (len=200) :: buffer
   character (len=200) :: nullbuff="                                                                                "

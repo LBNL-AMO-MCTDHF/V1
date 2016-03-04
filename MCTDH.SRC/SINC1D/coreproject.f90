@@ -1006,7 +1006,6 @@ end subroutine op_tinv_notscaled
 
 
 
-
 !! OUTPUTS orbitals from firstspf to lastspf (out of numspf)
 
 subroutine mult_reducedpot(firstspf,lastspf,inspfs,outspfs,reducedpot)
@@ -1102,6 +1101,7 @@ subroutine mult_general(option,zcoef,in,out,howmany,timingdir,notiming)
 end subroutine mult_general
 
 
+
 subroutine mult_general_withbcast(option,zcoef,in,out,howmany,timingdir,notiming)
   use myparams
   use myprojectmod
@@ -1183,7 +1183,13 @@ subroutine mult_allpar(option, in, out,howmany,timingdir,notiming)
      OFLWR "OWWOWORE WHAT?", option; CFLST
   endif
 
-  if (.not.orbparflag) then
+  if (toepflag.ne.0) then
+     if (fft_circbatchdim.eq.0) then
+        call mult_allone_toep(in,out,option,howmany,1)
+     else
+        call mult_allone_toep(in,out,option,howmany,howmany)
+     endif
+  elseif (.not.orbparflag) then
      call mult_allone(in,out,option,howmany)
   else
      select case(zke_paropt)
@@ -1197,6 +1203,176 @@ subroutine mult_allpar(option, in, out,howmany,timingdir,notiming)
   endif
 
 end subroutine mult_allpar
+
+
+
+!! option=1 ke   option=2 first deriv
+
+module toeptimes
+  implicit none
+  integer :: times1=0,times3=0,times4=0,times5=0,fttimes(10)=0
+end module toeptimes
+
+subroutine  mult_allone_toep(invector,outvector,option,allsize,circsize)
+  use myparams
+  use pmpimod
+  use pfileptrmod
+  use myprojectmod
+  use circ1dsubmod
+  use toeptimes
+  implicit none
+  integer, intent(in) :: allsize,circsize,option
+  DATATYPE,intent(in) :: invector(numpoints,allsize)
+  DATATYPE,intent(out) :: outvector(totpoints,allsize)
+  integer ::   ii, itime,jtime
+#ifdef MPIFLAG
+  integer ::  ibox1,jbox1,jproc,iproc
+  DATATYPE,allocatable :: workvec(:,:)
+#endif
+  integer :: circhigh,circbot,circtop,icirc
+  DATATYPE,allocatable :: invectorhuge(:,:,:), outvechuge(:,:,:),&
+       outvecwork1d(:,:)
+
+  if (mod(allsize,circsize).ne.0) then
+     OFLWR "SIZE ERROR OP_TINV",allsize,circsize; CFLST
+  endif
+
+  circhigh=allsize/circsize
+
+#ifdef MPIFLAG
+  allocate(workvec(numpoints,allsize))
+  workvec(:,:)=0d0
+#endif
+  allocate(invectorhuge(numpoints,2,allsize),&
+       outvechuge(numpoints,2,allsize),&
+       outvecwork1d(numpoints,allsize))
+
+  invectorhuge(:,:,:)=0d0;  outvechuge(:,:,:)=0; outvecwork1d(:,:)=0d0;
+
+  outvector(:,:)=0d0;  
+
+#ifdef MPIFLAG
+  
+  if (orbparflag) then
+
+     call myclock(itime)
+     invectorhuge(:,:,:)=0d0; 
+
+     do ibox1=1,nbox  !! processor sending
+
+        iproc=ibox1
+
+        jbox1=(ibox1+1)/2
+
+        jproc=jbox1
+
+        if (iproc.eq.myrank.and.jproc.eq.myrank) then
+           invectorhuge(:,mod(ibox1-1,2)+1,:)=invector(:,:)
+        else if (iproc.eq.myrank) then
+           call mympisend(invector,jproc,999,totpoints*allsize)
+        else if (jproc.eq.myrank) then
+           call mympirecv(workvec,iproc,999,totpoints*allsize)
+           invectorhuge(:,mod(ibox1-1,2)+1,:)=workvec(:,:)
+        endif
+
+     enddo
+     call myclock(jtime); times3=times3+jtime-itime;
+  else
+#endif
+     call myclock(itime)
+     invectorhuge(:,:,:)=0d0; 
+     invectorhuge(:,1,:)=invector(:,:)
+     call myclock(jtime); times1=times1+jtime-itime;
+     
+#ifdef MPIFLAG
+  endif  !! orbparflag
+#endif
+  
+#ifdef MPIFLAG
+  if (orbparflag) then
+     call myclock(itime); 
+     
+     do icirc=1,circhigh
+        circbot=(icirc-1)*circsize+1
+        circtop=icirc*circsize
+        if (option.eq.1) then
+#ifdef REALGO
+           call circ1d_sub_real_mpi(kevect%rmat(:),invectorhuge(:,:,circbot:circtop),&
+                outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
+#else
+           call circ1d_sub_mpi(kevect%cmat(:),invectorhuge(:,:,circbot:circtop),&
+                outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
+#endif
+        elseif (option.eq.2) then
+#ifdef REALGO
+           call circ1d_sub_real_mpi(fdvect%rmat(:),invectorhuge(:,:,circbot:circtop),&
+                outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
+#else
+           call circ1d_sub_mpi(fdvect%cmat(:),invectorhuge(:,:,circbot:circtop),&
+                outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
+#endif
+        else
+           OFLWR "option not recognized circ ",option;CFLST
+        endif
+     enddo
+     
+     call myclock(jtime); times4=times4+jtime-itime; itime=jtime
+
+     do ibox1=1,nbox  !! processor receiving
+
+        iproc=ibox1
+
+        jbox1=(ibox1+nbox+1)/2   !! processor sending
+
+        jproc=jbox1
+
+        if (iproc.eq.myrank.and.jproc.eq.myrank) then
+           outvecwork1d(:,:)=outvechuge(:,mod(ibox1+nbox-1,2)+1,:)
+        else if (iproc.eq.myrank) then
+           call mympirecv(outvecwork1d(:,:),jproc,999,totpoints*allsize)
+        else if (jproc.eq.myrank) then
+           workvec(:,:)=outvechuge(:,mod(ibox1+nbox-1,2)+1,:)
+           call mympisend(workvec(:,:),iproc,999,totpoints*allsize)
+        endif
+
+     enddo
+     
+     call myclock(jtime); times5=times5+jtime-itime
+  else
+#endif
+     call myclock(itime)
+     
+     do icirc=1,circhigh
+        circbot=(icirc-1)*circsize+1
+        circtop=icirc*circsize
+#ifdef REALGO
+        call circ1d_sub_real(threed_two(:),invectorhuge(:,:,circbot:circtop),&
+             outvechuge(:,:,circbot:circtop),gridpoints,circsize)
+#else
+        call circ1d_sub(threed_two(:),invectorhuge(:,:,circbot:circtop),&
+             outvechuge(:,:,circbot:circtop),gridpoints,circsize)
+#endif
+     enddo
+     
+     outvecwork1d(:,:)=outvechuge(:,2,:)
+     
+     call myclock(jtime); times4=times4+jtime-itime
+#ifdef MPIFLAG
+  endif
+#endif
+
+     
+  outvector(:,:) =RESHAPE(outvecwork1d(:,:),(/totpoints,allsize/))
+
+#ifdef MPIFLAG
+  deallocate(workvec)
+#endif
+  deallocate(invectorhuge,       outvechuge,       outvecwork1d)
+
+  call myclock(jtime); times1=times1+jtime-itime; itime=jtime
+  
+end subroutine mult_allone_toep
+
 
 
 !!  RATE LIMITING STEP IN CODE: MPI PARALLEL KINETIC ENERGY MULTPILICATION IN Z DIRECTION !!
@@ -1251,11 +1427,13 @@ subroutine mult_circ_gen0(nnn,in, out,option,howmany,timingdir,notiming)
      select case(option)
      case(1)  !! KE
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,in(:,ii),nnn,ketot%mat(1,ibox,1,myrank),gridpoints,DATAZERO, work(:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,in(:,ii),nnn,&
+                ketot%mat(1,ibox,1,myrank),gridpoints,DATAZERO, work(:,ii), nnn)
         enddo
      case(2) 
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,in(:,ii),nnn,fdtot%mat(1,ibox,1,myrank),gridpoints,DATAZERO, work(:,ii), nnn)
+           call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,in(:,ii),nnn,&
+                fdtot%mat(1,ibox,1,myrank),gridpoints,DATAZERO, work(:,ii), nnn)
         enddo
      case default 
         OFLWR "WHAAAAT"; CFLST

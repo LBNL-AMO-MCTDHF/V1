@@ -6,6 +6,9 @@
 module myparams
 implicit none
 
+!! FOR KE MULT IN 1D, toepflag.ne.0 does single toeplitz matvec
+integer :: toepflag=0
+
 !! FOR TOTAL ORBITAL PARALLELIZATION, SET orbparflag=.true., AND parorbsplit=3 in &parinp
 logical :: orbparflag=.false.
 

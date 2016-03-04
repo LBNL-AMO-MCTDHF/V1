@@ -61,22 +61,34 @@ subroutine myprojectalloc()
      invsqrtscaleweights=0;scaleweights13=0;invscaleweights13=0;
      scaleweights16=0;invscaleweights16=0;
   endif
-  
 
-  allocate( &
+  if (toepflag.eq.0) then
+  
+     if (numpoints*nbox.gt.10000) then
+        OFLWR "WOW THAT'S BIG!  Are you sure you don't want to try toepflag?", numpoints*nbox; CFL
+        OFLWR "WOW THAT'S BIG!  Are you sure you don't want to try toepflag?", numpoints*nbox; CFL
+        OFLWR "WOW THAT'S BIG!  Are you sure you don't want to try toepflag?", numpoints*nbox; CFL
+     endif
+
+     allocate( &
 
 !! Allocating extra here for fdtot%mat and ketot%mat (+1's) --
 !!   see Z/GEMM calls in coreproject.f90... leading dimension not
 !!   allocated as passed to Z/GEMM without extra
 
-       fdtot%mat(numpoints,nbox,numpoints,nbox   +1), &
-       ketot%mat(numpoints,nbox,numpoints,nbox   +1), &
-       kevect%rmat(1-gridpoints:gridpoints-1),&
-       kevect%cmat(1-gridpoints:gridpoints-1),&
-       fdvect%rmat(1-gridpoints:gridpoints-1),&
-       fdvect%cmat(1-gridpoints:gridpoints-1),&
+          fdtot%mat(numpoints,nbox,numpoints,nbox   +1), &
+          ketot%mat(numpoints,nbox,numpoints,nbox   +1))
+     fdtot%mat=0; ketot%mat=0; 
+  endif
+
+  allocate( &
+       kevect%rmat(0-gridpoints:gridpoints-1),&
+       kevect%cmat(0-gridpoints:gridpoints-1),&
+       fdvect%rmat(0-gridpoints:gridpoints-1),&
+       fdvect%cmat(0-gridpoints:gridpoints-1),&
        sinepoints%mat(numpoints,nbox))
-  fdtot%mat=0; ketot%mat=0; kevect%rmat=0; kevect%cmat=0;
+
+  kevect%rmat=0; kevect%cmat=0;
   fdvect%rmat=0; kevect%cmat=0
 
   allocate(threed_two(0-numpoints:numpoints-1))
