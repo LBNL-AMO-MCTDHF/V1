@@ -21,7 +21,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   integer :: nargs, i,len,getlen,myiostat
   character (len=200) :: buffer
   character (len=200) :: nullbuff="                                                                                "
-  NAMELIST /sincparinp/        numpoints,spacing,notwoflag,nuccharges,orblanthresh, &
+  NAMELIST /sinc1dparinp/        numpoints,spacing,notwoflag,nuccharges,orblanthresh, &
        numcenters,centershift,orblanorder,nonucrepflag,debugflag, &
        orbparflag,num_skip_orbs,orb_skip,orblancheckmod,zke_paropt,&
        capflag,capstrength,capstart,cappower,fft_ct_paropt,fft_batchdim,&
@@ -51,13 +51,13 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   if (myiostat/=0) then
      OFLWR "No Input.Inp found, not reading sincparams. iostat=",myiostat;CFL
   else
-     read(971,nml=sincparinp)
+     read(971,nml=sinc1dparinp)
      close(971)
 
 !! enforce defaults that depend on other variables
 
      open(971,file=inpfile, status="old", iostat=myiostat)
-     read(971,nml=sincparinp)
+     read(971,nml=sinc1dparinp)
      close(971)
 
   endif
