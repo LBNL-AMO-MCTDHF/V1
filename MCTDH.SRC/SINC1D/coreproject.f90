@@ -582,7 +582,7 @@ subroutine velmultiply(howmany,spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   DATATYPE,intent(out) :: spfout(totpoints,howmany)
   DATATYPE :: cz
 
-  cz=(0d0,-1d0) * myztdpot
+  cz=(0d0,-1d0) * myztdpot + 0d0 * myxtdpot0 + 0d0 * myytdpot0
 
   call mult_general(2,cz,spfin,spfout,howmany,"booga",2)
 
@@ -866,7 +866,7 @@ subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
   integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
   DATATYPE,intent(in) :: twoeden03(numpoints,allsize)
   DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
-  integer ::   ii, itime,jtime
+  integer ::  itime,jtime
 #ifdef MPIFLAG
   integer ::  ibox1,jbox1,jproc,iproc
   DATATYPE,allocatable :: tempden03(:,:)
@@ -1224,7 +1224,7 @@ subroutine  mult_allone_toep(invector,outvector,option,allsize,circsize)
   integer, intent(in) :: allsize,circsize,option
   DATATYPE,intent(in) :: invector(numpoints,allsize)
   DATATYPE,intent(out) :: outvector(totpoints,allsize)
-  integer ::   ii, itime,jtime
+  integer :: itime,jtime
 #ifdef MPIFLAG
   integer ::  ibox1,jbox1,jproc,iproc
   DATATYPE,allocatable :: workvec(:,:)
@@ -1490,7 +1490,7 @@ subroutine mult_summa_gen(in, out,option,howmany,timingdir,notiming)
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE,intent(out) :: out(totpoints,howmany)
   character,intent(in) :: timingdir*(*)
-  integer :: nnn,mmm,ii
+  integer :: nnn,mmm
   nnn=1
   mmm=howmany
   call mult_summa_gen0(nnn,in,out,option,mmm,timingdir,notiming)

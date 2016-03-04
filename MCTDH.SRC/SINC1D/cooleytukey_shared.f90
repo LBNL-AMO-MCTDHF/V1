@@ -389,7 +389,7 @@ subroutine ct_getprimeset()
   implicit none
   integer :: ii
 #ifdef MPIFLAG
-  integer :: allprocs0(nprocs),iproc, jj,kk
+  integer :: allprocs0(nprocs),iproc
   allprocs0=0
 #endif
 

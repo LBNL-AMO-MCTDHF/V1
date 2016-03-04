@@ -30,7 +30,8 @@ integer :: orb_skip(200)=-1
 
 integer :: numcenters=1
 integer :: centershift(100)=0       !! grid point index for each center
-real*8 :: nuccharges(100)=2d0
+real*8 :: nuccharges(100)=2d0       !! sech potential
+real*8 :: softness(100)=1d0         !! sech potential
 
 integer :: numpoints=15
 real*8 :: spacing=0.25d0

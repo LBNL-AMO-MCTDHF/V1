@@ -116,13 +116,24 @@ subroutine get_twoe_new(pot)
   use myprojectmod  
   implicit none
   DATATYPE,intent(out) :: pot(totpoints)
+  integer :: ii
 
-  pot(:)=dipoles(:)**2 * 0.5d0
+  pot(:)=0d0
+  do ii=1,numcenters
+     pot(:)=pot(:) - 0.5d0 * nuccharges(ii)*(nuccharges(ii)+1) / softness(ii)**2 * &
+          sech((dipoles(:)-centershift(ii)/2d0)/softness(ii))
+  enddo
 
-  if (notwoflag.eq.1) then
-     threed_two(:)=0d0
-  endif
+  threed_two(:) = 0.5d0 * sech(dipoles(:))
 
+contains
+  function sech(inarray)
+    implicit none
+    DATATYPE,intent(in) :: inarray(totpoints)
+    DATATYPE :: sech(totpoints)
+    sech=2d0/(exp(inarray)+exp((-1)*inarray))
+  end function sech
+    
 end subroutine get_twoe_new
 
 

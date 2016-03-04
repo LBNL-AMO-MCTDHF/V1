@@ -18,8 +18,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   character,intent(in) :: inpfile*(*)
   integer,intent(out) :: spfdims(3),spfdimtype(3),nonuc_checkflag,reducedpotsize, outnumr
   real*8,intent(out) :: outnucrepulsion
-  integer :: nargs, i,j,len,getlen,iproc,k,ierr,ii,myiostat
-  real*8 :: rsq
+  integer :: nargs, i,len,getlen,myiostat
   character (len=200) :: buffer
   character (len=200) :: nullbuff="                                                                                "
   NAMELIST /sincparinp/        numpoints,spacing,notwoflag,nuccharges,orblanthresh, &
@@ -29,7 +28,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        fft_circbatchdim,maxcap,mincap,capmode, &
        scalingflag,scalingdistance,smoothness,scalingtheta,scalingstretch,&
        ivoflag, loadedocc, orbtargetflag,orbtarget,&
-       toepflag
+       toepflag,softness
 
 #ifdef PGFFLAG
   integer :: myiargc
