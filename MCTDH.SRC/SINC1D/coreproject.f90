@@ -1535,13 +1535,13 @@ subroutine mult_summa_gen0(nnn,in, out,option,howmany,timingdir,notiming)
      select case(option)
      case(1)  !! KE
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,work(:,ii),nnn,&
-                ketot%mat(1,myrank,1,ibox),gridpoints,DATAONE, out(:,ii), nnn)
+           call MYGEMM('N','N',nnn,numpoints,numpoints,DATAONE,work(:,ii),nnn,&
+                ketot%mat(1,ibox,1,myrank),gridpoints,DATAONE, out(:,ii), nnn)
         enddo
      case(2) 
         do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,work(:,ii),nnn,&
-                fdtot%mat(1,myrank,1,ibox),gridpoints,DATAONE, out(:,ii), nnn)
+           call MYGEMM('N','N',nnn,numpoints,numpoints,DATAONE,work(:,ii),nnn,&
+                fdtot%mat(1,ibox,1,myrank),gridpoints,DATAONE, out(:,ii), nnn)
         enddo
      case default 
         OFLWR "WHAAAAT"; CFLST

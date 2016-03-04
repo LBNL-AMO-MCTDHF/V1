@@ -43,6 +43,7 @@ end module myprojectmod
 
 subroutine myprojectalloc()
   use myparams
+  use pmpimod
   use pfileptrmod
   use myprojectmod
   implicit none
@@ -70,14 +71,20 @@ subroutine myprojectalloc()
         OFLWR "WOW THAT'S BIG!  Are you sure you don't want to try toepflag?", numpoints*nbox; CFL
      endif
 
-     allocate( &
-
 !! Allocating extra here for fdtot%mat and ketot%mat (+1's) --
 !!   see Z/GEMM calls in coreproject.f90... leading dimension not
 !!   allocated as passed to Z/GEMM without extra
 
-          fdtot%mat(numpoints,nbox,numpoints,nbox   +1), &
-          ketot%mat(numpoints,nbox,numpoints,nbox   +1))
+     if (orbparflag) then
+        allocate( &
+             fdtot%mat(numpoints,nbox,numpoints,myrank:myrank +1), &
+             ketot%mat(numpoints,nbox,numpoints,myrank:myrank +1))
+     else
+        allocate( &
+             fdtot%mat(numpoints,nbox,numpoints,nbox), &
+             ketot%mat(numpoints,nbox,numpoints,nbox))
+     endif
+
      fdtot%mat=0; ketot%mat=0; 
   endif
 
