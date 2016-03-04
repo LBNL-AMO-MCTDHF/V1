@@ -206,8 +206,6 @@ function myisnan(input)
 end function myisnan
 
 
-!! real-valued dot product for expokit
-
 
 subroutine gramschmidt(n, m, lda, previous, vector,parflag)
   implicit none
