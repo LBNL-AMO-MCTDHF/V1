@@ -406,6 +406,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   DATATYPE,allocatable :: scalefunction(:), djacobian(:), ddjacobian(:)
   DATATYPE :: ffunct, djfunct, ddjfunct, jfunct
 
+  pi=4d0*atan(1d0)
+
 #ifndef REALGO
   allocate(temppot(totpoints))
   temppot=0
@@ -513,13 +515,14 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         endif
      enddo
      temppot(:)= min(maxcap,max(mincap,temppot(:)))
+     halfniumpot(:) = (0d0,-1d0) * temppot(:)
      pot(:)=pot(:) + (0d0,-1d0) * temppot(:)
+  else
+#endif
+     halfniumpot(:)=0d0
+#ifndef REALGO
   endif
 #endif
-
-  pi=4d0*atan(1d0)
-
-  halfniumpot(:)=0d0
 
   if (spfsloaded.lt.numspf) then
      call frozen_matels()

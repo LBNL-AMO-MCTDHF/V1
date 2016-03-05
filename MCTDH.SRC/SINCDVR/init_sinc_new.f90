@@ -403,6 +403,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   DATATYPE,allocatable :: scalefunction(:,:), djacobian(:,:), ddjacobian(:,:)
   DATATYPE :: ffunct, djfunct, ddjfunct, jfunct
 
+  pi=4d0*atan(1d0)
+
 #ifndef REALGO
   allocate(temppot(totpoints))
   temppot=0
@@ -522,7 +524,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   endif
 
 #ifndef REALGO
-
   if (capflag.gt.0) then
      temppot(:)=0d0
      do i=1,capflag
@@ -533,7 +534,12 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         endif
      enddo
      temppot(:)= min(maxcap,max(mincap,temppot(:)))
+     halfniumpot(:)=pot(:)/sumcharge + (0d0,-1d0) * temppot(:)
      pot(:)=pot(:) + (0d0,-1d0) * temppot(:)
+  else
+#endif
+     halfniumpot(:)=pot(:)/sumcharge
+#ifndef REALGO
   endif
 #endif
 
@@ -544,8 +550,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      ilow(orbparlevel:3)=(boxrank(orbparlevel:3)-1)*numpoints(orbparlevel:3)+1
      ihigh(orbparlevel:3)=boxrank(orbparlevel:3)*numpoints(orbparlevel:3)
   endif
-
-  pi=4d0*atan(1d0)
 
   if (maskflag.ne.0) then
      do jj=1,3
@@ -568,8 +572,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         enddo
      enddo
   endif
-
-  halfniumpot(:)=pot(:)/sumcharge
 
   if (spfsloaded.lt.numspf) then
      call frozen_matels()
