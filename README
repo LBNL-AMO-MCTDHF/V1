@@ -158,12 +158,14 @@ If you want to update the code then perform steps 5 and 6, like steps 1-4,
 in the V1 working directory,
 
 5)   git pull https://github.com/LBNL-AMO-MCTDHF/V1
-     ... then ./Makeme should be sufficient, in the BIN directories,
-         but ./Makeme clean; ./Makeme would certainly be fail safe
-         after updating the code with git pull.
+     git pull --tags https://github.com/LBNL-AMO-MCTDHF/V1
+
+     then ./Makeme should be sufficient, in the BIN directories,
+     but ./Makeme clean; ./Makeme would certainly be fail safe
 
 6)   cd EXAMPLES-DEPOT
      git pull https://github.com/LBNL-AMO-MCTDHF/examples-depot
+     git pull --tags https://github.com/LBNL-AMO-MCTDHF/examples-depot
 
 If you want to switch versions of the code then do e.g.
 
