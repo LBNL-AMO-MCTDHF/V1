@@ -1745,7 +1745,7 @@ subroutine splitgatherv_complex(inlocal,outbig,ilog)
   complex*16,intent(in) :: inlocal(totpoints*nprocs)
   integer :: blocks(nprocs)
   blocks(:)=totpoints
-  call mygatherv(inlocal,outbig,blocks,ilog)
+  call mygatherv_complex(inlocal,outbig,blocks,ilog)
 end subroutine splitgatherv_complex
 
 
