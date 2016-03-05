@@ -32,11 +32,7 @@ module myprojectmod
        invjacobian(:),&
        invsqrtjacobian(:),&
        scalediag(:),&
-       invsqrtscaleweights(:),&
-       scaleweights13(:), &
-       invscaleweights13(:),&
-       scaleweights16(:), &
-       invscaleweights16(:)
+       invsqrtscaleweights(:)
 
 end module myprojectmod
 
@@ -55,12 +51,9 @@ subroutine myprojectalloc()
      allocate(          jacobian(totpoints),invjacobian(totpoints), &
           invsqrtjacobian(totpoints), &
           scalediag(totpoints),&
-          invsqrtscaleweights(totpoints),scaleweights13(totpoints),&
-          invscaleweights13(totpoints),scaleweights16(totpoints),&
-          invscaleweights16(totpoints))
+          invsqrtscaleweights(totpoints))
      jacobian=0; invjacobian=0; invsqrtjacobian=0; scalediag=0;
-     invsqrtscaleweights=0;scaleweights13=0;invscaleweights13=0;
-     scaleweights16=0;invscaleweights16=0;
+     invsqrtscaleweights=0;
   endif
 
   if (toepflag.eq.0) then
@@ -167,14 +160,20 @@ subroutine get_twoe_new(pot)
 
   do icenter=1,numcenters
 
-     sum2=sum
-     do ii=1,numpoints
-        myarray(ii)=ffunct((sum2 - centershift(icenter)*spacing/2d0)/softness(icenter))
-        sum2=sum2+spacing
-     enddo
+!     sum2=sum
+!     do ii=1,numpoints
+!!! no, below
+!!!         myarray(ii)=ffunct((sum2 - centershift(icenter)*spacing/2d0)/softness(icenter))
+!
+!        myarray(ii)=ffunct(sum2)
+!
+!        sum2=sum2+spacing
+!     enddo
+
+     myarray(:)=dipoles(:)
 
      pot(:)=pot(:) - 0.5d0 * nuccharges(icenter)*(nuccharges(icenter)+1) / softness(icenter)**2 * &
-          sech(myarray(:),numpoints)**2
+          sech(( myarray(:) - centershift(icenter)*spacing/2d0 )/softness(icenter),numpoints)**2
   enddo
 
   deallocate(myarray)

@@ -488,16 +488,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
      invsqrtscaleweights(:) = sqrt(invjacobian(:)) 
 
-     scaleweights13(:) = (jacobian(:))**(1d0/3d0) 
-     invscaleweights13(:) = 1d0/scaleweights13(:)
-
-     scaleweights16(:)=sqrt(scaleweights13(:))
-     invscaleweights16(:)=sqrt(invscaleweights13(:))
-
-!!     scaleweights13(:) = 1d0
-!!     invscaleweights13(:) = 1d0
-
-
      scalediag(:) = 3d0/8d0 * invjacobian(:)**4 * djacobian(:)**2 &
           - 1d0/4d0 * invjacobian(:)**3 * ddjacobian(:)
 
