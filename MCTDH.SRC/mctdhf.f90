@@ -274,8 +274,7 @@ program mctdhf
        spfugvals,spfsmallsize,logcheckpar)
   if (logcheckpar) then
      if (parorbsplit.ne.3) then
-        OFLWR "Setting parorbsplit=3 - you have orbital parallelization in your project";CFL
-        parorbsplit=3
+        OFLWR "Please set parorbsplit=3 - you have orbital parallelization in your project";CFLST
      endif
   else
      if (parorbsplit.eq.3) then

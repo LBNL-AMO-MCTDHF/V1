@@ -6,6 +6,11 @@
 module myparams
 implicit none
 
+DATATYPE :: twostrength=1d0  !! 1d0 = repulsive 0d0 = no interaction etc.
+integer :: twotype = 1       !!  1 = short range sech^2 interaction  0 = constant interaction
+
+DATATYPE :: harmstrength=1d0   !! harmonic potential
+
 !! FOR KE MULT IN 1D, toepflag.ne.0 does single toeplitz matvec
 integer :: toepflag=0
 
@@ -69,9 +74,6 @@ integer :: qbox=1
 integer :: gridpoints=10
 
 integer, parameter :: numr=1,bornopflag=1
-
-integer :: notwoflag=0
-
 
 !! internal
 

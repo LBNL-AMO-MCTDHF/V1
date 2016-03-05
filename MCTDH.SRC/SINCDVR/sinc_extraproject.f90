@@ -114,6 +114,11 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
 
   procsplit(:)=1
 
+!! matches main
+  if (nprocs.eq.1) then
+     orbparflag=.false.
+  endif
+
   if (orbparflag) then
 
      select case (orbparlevel)

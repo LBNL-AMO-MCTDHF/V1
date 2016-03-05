@@ -288,11 +288,11 @@ subroutine init_spfs(inspfs,numloaded)
   lanspfs=0; energies=0
 
   ibig=totpoints
-  iorder=min(ibig,orblanorder)
   ppfac=1
   if (orbparflag) then
      ppfac=nprocs
   endif
+  iorder=min(ibig*ppfac,orblanorder)
 
   OFLWR "CALL BLOCK LAN FOR ORBS, ",numcompute," VECTORS"; CFL
 

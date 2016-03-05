@@ -238,7 +238,7 @@ subroutine circ1d_sub(bigcirc,multvector,ffback,totdim,howmany)
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)  
 !$OMP DO SCHEDULE(STATIC)
   do ii=1,howmany
-     ffprod(:,ii)=ffvec(:,ii)*ffmat(:)/(2*totdim)**3
+     ffprod(:,ii)=ffvec(:,ii)*ffmat(:)/(2*totdim)
   enddo
 !$OMP END DO
 !$OMP END PARALLEL

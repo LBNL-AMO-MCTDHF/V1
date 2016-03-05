@@ -21,14 +21,14 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   integer :: nargs, i,len,getlen,myiostat
   character (len=200) :: buffer
   character (len=200) :: nullbuff="                                                                                "
-  NAMELIST /sinc1dparinp/        numpoints,spacing,notwoflag,nuccharges,orblanthresh, &
+  NAMELIST /sinc1dparinp/        numpoints,spacing,twostrength,nuccharges,orblanthresh, &
        numcenters,centershift,orblanorder,nonucrepflag,debugflag, &
        orbparflag,num_skip_orbs,orb_skip,orblancheckmod,zke_paropt,&
        capflag,capstrength,capstart,cappower,fft_ct_paropt,fft_batchdim,&
        fft_circbatchdim,maxcap,mincap,capmode, &
        scalingflag,scalingdistance,smoothness,scalingtheta,scalingstretch,&
        ivoflag, loadedocc, orbtargetflag,orbtarget,&
-       toepflag,softness
+       toepflag,softness,twotype,harmstrength
 
 #ifdef PGFFLAG
   integer :: myiargc
@@ -96,6 +96,10 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
      call ftset(0,-99)
   endif
 
+!! matches main
+  if (nprocs.eq.1) then
+     orbparflag=.false.
+  endif
 
   if (orbparflag) then
      if (mod(numpoints,nprocs).ne.0) then

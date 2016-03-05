@@ -196,6 +196,7 @@
 
 subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,outorbparflag)
   use myparams
+  use pmpimod
   use twoemod
   implicit none
   integer :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,inspfugvals(innumspf), outspfsmallsize,ii
@@ -203,7 +204,11 @@ subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,
 
   numspf=innumspf;  
   outspfsmallsize=totpoints
-  outorbparflag=orbparflag
+!!$  if (nprocs.eq.1) then
+!!$     outorbparflag=.false.
+!!$  else
+     outorbparflag=orbparflag
+!!$  endif
 
   ii=inspfrestrictflag; ii=inspfmvals(1); ii=inspfugvals(1); ii=inspfugrestrict;
 
@@ -660,7 +665,7 @@ subroutine call_twoe_matelxxx00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoer
 
   twoereduced(:,:,:)=0d0;   twoematel(:,:,:,:)=0
 
-  if (notwoflag.ne.0) then
+  if (abs(twostrength).eq.0d0) then
      return
   endif
 
@@ -842,9 +847,9 @@ subroutine  op_tinv(twoeden03,twoereduced,allsize,circsize,&
      return
   endif
 
-  if (scalingflag.ne.0) then
-     OFLWR "DO ME SCALED TINV!"; CFLST
-  endif
+!!$  if (scalingflag.ne.0) then
+!!$     OFLWR "DO ME SCALED TINV!"; CFLST
+!!$  endif
 
   call op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
        times1,times3,times4,times5,fttimes)
@@ -1226,7 +1231,7 @@ subroutine  mult_allone_toep(invector,outvector,option,allsize,circsize)
   DATATYPE,intent(out) :: outvector(totpoints,allsize)
   integer :: itime,jtime
 #ifdef MPIFLAG
-  integer ::  ibox1,jbox1,jproc,iproc
+  integer ::  ibox1,jbox1,jproc,iproc,mstart,mend
   DATATYPE,allocatable :: workvec(:,:)
 #endif
   integer :: circhigh,circbot,circtop,icirc
@@ -1290,6 +1295,8 @@ subroutine  mult_allone_toep(invector,outvector,option,allsize,circsize)
   
 #ifdef MPIFLAG
   if (orbparflag) then
+     mstart=(myrank-1)*2*numpoints - gridpoints
+     mend =myrank*2*numpoints - gridpoints - 1
      call myclock(itime); 
      
      do icirc=1,circhigh
@@ -1297,18 +1304,18 @@ subroutine  mult_allone_toep(invector,outvector,option,allsize,circsize)
         circtop=icirc*circsize
         if (option.eq.1) then
 #ifdef REALGO
-           call circ1d_sub_real_mpi(kevect%rmat(:),invectorhuge(:,:,circbot:circtop),&
+           call circ1d_sub_real_mpi(kevect%rmat(mstart:mend),invectorhuge(:,:,circbot:circtop),&
                 outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
 #else
-           call circ1d_sub_mpi(kevect%cmat(:),invectorhuge(:,:,circbot:circtop),&
+           call circ1d_sub_mpi(kevect%cmat(mstart:mend),invectorhuge(:,:,circbot:circtop),&
                 outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
 #endif
         elseif (option.eq.2) then
 #ifdef REALGO
-           call circ1d_sub_real_mpi(fdvect%rmat(:),invectorhuge(:,:,circbot:circtop),&
+           call circ1d_sub_real_mpi(fdvect%rmat(mstart:mend),invectorhuge(:,:,circbot:circtop),&
                 outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
 #else
-           call circ1d_sub_mpi(fdvect%cmat(:),invectorhuge(:,:,circbot:circtop),&
+           call circ1d_sub_mpi(fdvect%cmat(mstart:mend),invectorhuge(:,:,circbot:circtop),&
                 outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
 #endif
         else
@@ -1345,13 +1352,25 @@ subroutine  mult_allone_toep(invector,outvector,option,allsize,circsize)
      do icirc=1,circhigh
         circbot=(icirc-1)*circsize+1
         circtop=icirc*circsize
+        if (option.eq.1) then
 #ifdef REALGO
-        call circ1d_sub_real(threed_two(:),invectorhuge(:,:,circbot:circtop),&
-             outvechuge(:,:,circbot:circtop),gridpoints,circsize)
+           call circ1d_sub_real(kevect%rmat(:),invectorhuge(:,:,circbot:circtop),&
+                outvechuge(:,:,circbot:circtop),gridpoints,circsize)
 #else
-        call circ1d_sub(threed_two(:),invectorhuge(:,:,circbot:circtop),&
-             outvechuge(:,:,circbot:circtop),gridpoints,circsize)
+           call circ1d_sub(kevect%cmat(:),invectorhuge(:,:,circbot:circtop),&
+                outvechuge(:,:,circbot:circtop),gridpoints,circsize)
 #endif
+        elseif (option.eq.2) then
+#ifdef REALGO
+           call circ1d_sub_real(fdvect%rmat(:),invectorhuge(:,:,circbot:circtop),&
+                outvechuge(:,:,circbot:circtop),gridpoints,circsize)
+#else
+           call circ1d_sub(fdvect%cmat(:),invectorhuge(:,:,circbot:circtop),&
+                outvechuge(:,:,circbot:circtop),gridpoints,circsize)
+#endif
+        else
+           OFLWR "option not recognized circ ",option;CFLST
+        endif
      enddo
      
      outvecwork1d(:,:)=outvechuge(:,2,:)
@@ -1668,56 +1687,79 @@ end subroutine reinterpolate_orbs_complex
 
 
 subroutine splitscatterv(inbig,outlocal)
-  use pfileptrmod
+  use myparams
+  use pmpimod
   implicit none
-  integer :: inbig,outlocal
-  OFLWR "What? don't call split gather/scatter routines for one dimension.  Programmer fail"; CFLST
-  inbig=outlocal
+  DATATYPE,intent(in) :: inbig(totpoints*nprocs)
+  DATATYPE,intent(out) :: outlocal(totpoints)
+  integer :: blocks(nprocs)
+  blocks(:)=totpoints
+  call myscatterv(inbig,outlocal,blocks)
 end subroutine splitscatterv
 
+
 subroutine splitscatterv_complex(inbig,outlocal)
-  use pfileptrmod
+  use myparams
+  use pmpimod
   implicit none
-  integer :: inbig,outlocal
-  OFLWR "What? don't call split gather/scatter routines for one dimension.  Programmer fail"; CFLST
-  inbig=outlocal
+  complex*16,intent(in) :: inbig(totpoints*nprocs)
+  complex*16,intent(out) :: outlocal(totpoints)
+  integer :: blocks(nprocs)
+  blocks(:)=totpoints
+  call myscatterv_complex(inbig,outlocal,blocks)
 end subroutine splitscatterv_complex
 
+
 subroutine splitscatterv_real(inbig,outlocal)
-  use pfileptrmod
+  use myparams
+  use pmpimod
   implicit none
-  integer :: inbig,outlocal
-  OFLWR "What? don't call split gather/scatter routines for one dimension.  Programmer fail"; CFLST
-  inbig=outlocal
+  real*8,intent(in) :: inbig(totpoints*nprocs)
+  real*8,intent(out) :: outlocal(totpoints)
+  integer :: blocks(nprocs)
+  blocks(:)=totpoints
+  call myscatterv_real(inbig,outlocal,blocks)
 end subroutine splitscatterv_real
 
-subroutine splitgatherv(inbig,outlocal,ilog)
-  use pfileptrmod
+
+subroutine splitgatherv(inlocal,outbig,ilog)
+  use myparams
+  use pmpimod
   implicit none
-  logical :: ilog
-  integer :: inbig,outlocal
-  OFLWR "What? don't call split gather/scatter routines for one dimension.  Programmer fail"; CFLST
-  inbig=outlocal
-  ilog=.true.
+  logical,intent(in) :: ilog
+  DATATYPE,intent(out) :: outbig(totpoints)
+  DATATYPE,intent(in) :: inlocal(totpoints*nprocs)
+  integer :: blocks(nprocs)
+  blocks(:)=totpoints
+  call mygatherv(inlocal,outbig,blocks,ilog)
 end subroutine splitgatherv
 
-subroutine splitgatherv_complex(inbig,outlocal,ilog)
-  use pfileptrmod
+
+
+subroutine splitgatherv_complex(inlocal,outbig,ilog)
+  use myparams
+  use pmpimod
   implicit none
-  logical :: ilog
-  integer :: inbig,outlocal
-  OFLWR "What? don't call split gather/scatter routines for one dimension.  Programmer fail"; CFLST
-  inbig=outlocal
-  ilog=.true.
+  logical,intent(in) :: ilog
+  complex*16,intent(out) :: outbig(totpoints)
+  complex*16,intent(in) :: inlocal(totpoints*nprocs)
+  integer :: blocks(nprocs)
+  blocks(:)=totpoints
+  call mygatherv(inlocal,outbig,blocks,ilog)
 end subroutine splitgatherv_complex
 
-subroutine splitgatherv_real(inbig,outlocal,ilog)
-  use pfileptrmod
+
+
+subroutine splitgatherv_real(inlocal,outbig,ilog)
+  use myparams
+  use pmpimod
   implicit none
-  logical :: ilog
-  integer :: inbig,outlocal
-  OFLWR "What? don't call split gather/scatter routines for one dimension.  Programmer fail"; CFLST
-  inbig=outlocal
-  ilog=.true.
+  logical,intent(in) :: ilog
+  real*8,intent(out) :: outbig(totpoints)
+  real*8,intent(in) :: inlocal(totpoints*nprocs)
+  integer :: blocks(nprocs)
+  blocks(:)=totpoints
+  call mygatherv_real(inlocal,outbig,blocks,ilog)
 end subroutine splitgatherv_real
+
 

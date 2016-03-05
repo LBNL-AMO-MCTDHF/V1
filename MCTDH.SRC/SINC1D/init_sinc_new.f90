@@ -288,15 +288,15 @@ subroutine init_spfs(inspfs,numloaded)
   lanspfs=0; energies=0
 
   ibig=totpoints
-  iorder=min(ibig,orblanorder)
   ppfac=1
   if (orbparflag) then
      ppfac=nprocs
   endif
+  iorder=min(ibig*ppfac,orblanorder)
 
-  OFLWR "CALL BLOCK LAN FOR ORBS, ",numcompute," VECTORS"; CFL
+  OFLWR "CALL BLOCK LAN FOR ORBS, ",numcompute," VECTORS",orbparflag; CFL
 
-  call blocklanczos0(min(3,numspf),numcompute,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,&
+  call blocklanczos0(1,numcompute,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,&
        energies,1,0,orblancheckmod,orblanthresh,mult_bigspf,orbparflag,orbtargetflag,orbtarget)
 
   if (ivoflag.ne.0) then
@@ -357,8 +357,11 @@ contains
     DATATYPE, intent(out) :: outbigspf(totpoints)
     DATATYPE :: tempspf(totpoints)   !! AUTOMATIC
 
+
     tempspf=0
+
     call mult_ke(inbigspf(:),outbigspf(:),1,"booga",2)
+
     call mult_pot(1,inbigspf(:),tempspf(:))
     outbigspf(:)=outbigspf(:)+tempspf(:)
 
@@ -397,7 +400,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 #endif
   real*8 :: rsum,pi
   character (len=2) :: th(4)
-  integer ::  i,   j,ii,jj,k,l
+  integer ::  i,   j,ii,jj,k,l,ilow,ihigh
 
 !! smooth exterior scaling
   DATATYPE,allocatable :: scalefunction(:), djacobian(:), ddjacobian(:)
@@ -417,26 +420,33 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   elecweights(:)=(1d0/spacing)
 
 
-  call sineDVR(kevect%rmat(:),fdvect%rmat(:), sinepoints%mat(:,:),gridpoints,spacing)
+  call sineDVR(kevect%rmat(1-gridpoints:gridpoints-1),&
+       fdvect%rmat(1-gridpoints:gridpoints-1), sinepoints%mat(:,:),gridpoints,spacing)
 
   kevect%cmat(:)=kevect%rmat(:)
   fdvect%cmat(:)=fdvect%rmat(:)
 
-  ii=0
-  do i=1,nbox
-     do j=1,numpoints
-        ii=ii+1
-        jj=0
-        do k=1,nbox
-           do l=1,numpoints
-              jj=jj+1
-              ketot%mat(l,k,j,i)=kevect%rmat(ii-jj)
-              fdtot%mat(l,k,j,i)=fdvect%rmat(ii-jj)
+  ilow=1; ihigh=nbox
+  if (orbparflag) then
+     ilow=myrank; ihigh=myrank
+  endif
+  ii=(ilow-1)*numpoints
+
+  if (toepflag.eq.0) then
+     do i=ilow,ihigh
+        do j=1,numpoints
+           ii=ii+1
+           jj=0
+           do k=1,nbox
+              do l=1,numpoints
+                 jj=jj+1
+                 ketot%mat(l,k,j,i)=kevect%rmat(ii-jj)
+                 fdtot%mat(l,k,j,i)=fdvect%rmat(ii-jj)
+              enddo
            enddo
         enddo
      enddo
-  enddo
-
+  endif
 
   th=(/ "st", "nd", "rd", "th" /)
 
@@ -519,12 +529,20 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   pi=4d0*atan(1d0)
 
-  halfniumpot(:)=pot(:)/sumcharge
+  halfniumpot(:)=0d0
 
   if (spfsloaded.lt.numspf) then
      call frozen_matels()
      call init_spfs(inspfs(:,:),spfsloaded)
   endif
+
+!! now add in harmonic
+
+  if (numcenters.gt.0) then
+     pot(:) = pot(:) + 0.5d0 * harmstrength * dipoles(:)**2
+  endif
+
+
 
   spfsloaded=numspf   !! for mcscf... really just for BO curve to skip eigen
 

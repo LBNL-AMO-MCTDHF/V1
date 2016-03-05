@@ -114,24 +114,78 @@ subroutine get_twoe_new(pot)
   use myparams
   use pfileptrmod
   use myprojectmod  
+  use pmpimod
   implicit none
   DATATYPE,intent(out) :: pot(totpoints)
-  integer :: ii
+  DATATYPE,allocatable :: myarray(:)
+  DATATYPE :: ffunct
+  real*8 :: sum,sum2
+  integer :: ii,jj,pp,gridoffset,istart,icenter
 
-  pot(:)=0d0
-  do ii=1,numcenters
-     pot(:)=pot(:) - 0.5d0 * nuccharges(ii)*(nuccharges(ii)+1) / softness(ii)**2 * &
-          sech((dipoles(:)-centershift(ii)/2d0)/softness(ii))
+  istart=1
+  if (orbparflag.and.myrank.ne.1) then
+     istart=0
+  endif
+  gridoffset=0; pp=1-gridpoints
+  if (orbparflag) then
+     gridoffset=(myrank-1)*numpoints
+     pp=istart+2*gridoffset-gridpoints
+  endif
+
+  allocate(myarray(istart-numpoints:numpoints-1)); myarray=0
+
+  jj=pp
+  do ii=istart-numpoints,numpoints-1
+     myarray(ii)=jj*spacing
+     jj=jj+1
   enddo
 
-  threed_two(:) = 0.5d0 * sech(dipoles(:))
+  threed_two(:)=0d0
+
+  if (twotype.eq.0) then
+     threed_two(istart-numpoints:numpoints-1) = twostrength
+  else
+     threed_two(istart-numpoints:numpoints-1) = 0.5d0 * sech(myarray(:),2*numpoints-istart)**2 * twostrength
+  endif
+
+  deallocate(myarray)
+
+  gridoffset=0
+  if (orbparflag) then
+     gridoffset=(myrank-1)*numpoints
+  endif
+  sum=(gridoffset - gridpoints/2d0) * spacing
+
+  allocate(myarray(numpoints)); myarray=0
+
+  if (numcenters.eq.0) then
+     pot(:) = 0.5d0 * harmstrength * dipoles(:)**2
+  else
+!! Add in after get orbs  
+     pot(:)=0d0
+  endif
+
+  do icenter=1,numcenters
+
+     sum2=sum
+     do ii=1,numpoints
+        myarray(ii)=ffunct((sum2 - centershift(icenter)*spacing/2d0)/softness(icenter))
+        sum2=sum2+spacing
+     enddo
+
+     pot(:)=pot(:) - 0.5d0 * nuccharges(icenter)*(nuccharges(icenter)+1) / softness(icenter)**2 * &
+          sech(myarray(:),numpoints)**2
+  enddo
+
+  deallocate(myarray)
 
 contains
-  function sech(inarray)
+  function sech(inarray,num)
     implicit none
-    DATATYPE,intent(in) :: inarray(totpoints)
-    DATATYPE :: sech(totpoints)
-    sech=2d0/(exp(inarray)+exp((-1)*inarray))
+    integer,intent(in) :: num
+    DATATYPE,intent(in) :: inarray(num)
+    DATATYPE :: sech(num)
+    sech(:) = 2d0/(exp(inarray(:)) + exp((-1)*inarray(:)))
   end function sech
     
 end subroutine get_twoe_new
