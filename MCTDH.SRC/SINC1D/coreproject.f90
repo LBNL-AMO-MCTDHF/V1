@@ -1374,14 +1374,17 @@ subroutine  mult_allone_toep(invector,outvector,option,allsize,circsize)
      enddo
      
      outvecwork1d(:,:)=outvechuge(:,2,:)
-     
+
      call myclock(jtime); times4=times4+jtime-itime
 #ifdef MPIFLAG
   endif
 #endif
 
-     
-  outvector(:,:) =RESHAPE(outvecwork1d(:,:),(/totpoints,allsize/))
+  if (option.eq.2) then !! correct phase first derivative
+     outvector(:,:) =RESHAPE(outvecwork1d(:,:),(/totpoints,allsize/)) * (-1)
+  else
+     outvector(:,:) =RESHAPE(outvecwork1d(:,:),(/totpoints,allsize/))
+  endif
 
 #ifdef MPIFLAG
   deallocate(workvec)
