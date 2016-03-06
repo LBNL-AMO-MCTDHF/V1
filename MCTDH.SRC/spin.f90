@@ -148,6 +148,8 @@ subroutine init_dfcon(www)
         OFLWR "Error, no included DF configs!"; CFLST
      endif
 
+     call waitawhile()
+     call mpibarrier()
      OFLWR "Number of included configurations ", www%numdfconfigs
      WRFL  "Number of not included ", nondfconfigs;  WRFL; CFL
 
@@ -174,6 +176,8 @@ subroutine init_dfcon(www)
      www%topdfconfig=www%alltopdfconfigs(myrank)
 
   endif
+
+  call mpibarrier()
 
   www%ddd%numdfwalks=0
 
