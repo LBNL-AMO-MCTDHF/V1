@@ -7,21 +7,21 @@
 
 #include "Definitions.INC"
 
-function highspinorder(thisconfig,ndof,numelec)
+function highspinorder(thisconfig,numpart)
   implicit none
-  integer,intent(in) :: ndof,numelec,thisconfig(ndof)
+  integer,intent(in) :: numpart,thisconfig(2*numpart)
   logical :: highspinorder
-  integer :: ii,unpaired(numelec),flag,jj
+  integer :: ii,unpaired(numpart),flag,jj
 
   highspinorder=.true.
 
-  unpaired(1:numelec)=1
+  unpaired(1:numpart)=1
 
-  do ii=1,numelec
-     do jj=1,numelec   !! WORKS
+  do ii=1,numpart
+     do jj=1,numpart   !! WORKS
         if (jj.ne.ii) then   !!WORKS
 ! -xAVX error on lawrencium!  doesnt work this way.  compiler/instruction set bug.
-!     do jj=ii+1,numelec   !!FAILS
+!     do jj=ii+1,numpart   !!FAILS
            if (thisconfig(jj*2-1).eq.thisconfig(ii*2-1)) then
               unpaired(ii)=0
               unpaired(jj)=0
@@ -31,7 +31,7 @@ function highspinorder(thisconfig,ndof,numelec)
   enddo
   
   flag=0
-  do ii=1,numelec
+  do ii=1,numpart
      if (unpaired(ii).eq.1) then
         if (thisconfig(ii*2).eq.1) then
            flag=1
@@ -49,19 +49,19 @@ end function highspinorder
    
 
 
-function lowspinorder(thisconfig,ndof,numelec)
+function lowspinorder(thisconfig,numpart)
   implicit none
-  integer,intent(in) :: ndof,numelec,thisconfig(ndof)
+  integer,intent(in) :: numpart,thisconfig(2*numpart)
   logical :: lowspinorder
-  integer :: ii,unpaired(numelec),flag,jj
+  integer :: ii,unpaired(numpart),flag,jj
 
   lowspinorder=.true.
 
   unpaired(:)=1
 
-  do ii=1,numelec
-!     do jj=ii+1,numelec    !!FAILS
-     do jj=1,numelec        !!WORKS
+  do ii=1,numpart
+!     do jj=ii+1,numpart    !!FAILS
+     do jj=1,numpart        !!WORKS
         if (jj.ne.ii) then  !!WORKS
         if (thisconfig(jj*2-1).eq.thisconfig(ii*2-1)) then
            unpaired(ii)=0
@@ -72,7 +72,7 @@ function lowspinorder(thisconfig,ndof,numelec)
   enddo
 
   flag=0
-  do ii=1,numelec
+  do ii=1,numpart
      if (unpaired(ii).eq.1) then
         if (thisconfig(ii*2).eq.2) then
            flag=1
@@ -99,12 +99,12 @@ subroutine walkalloc(www)
 !! training wheels
 
   if (www%topconfig-www%botconfig.gt.0) then
-     if (.not.highspinorder(www%configlist(:,www%topconfig),www%ndof,www%numelec)) then
+     if (.not.highspinorder(www%configlist(:,www%topconfig),www%numpart)) then
         OFLWR "NOT HIGHSPIN",www%topconfig
         call printconfig(www%configlist(:,www%topconfig),www)
         CFLST
      endif
-     if (.not.lowspinorder(www%configlist(:,www%botconfig),www%ndof,www%numelec)) then
+     if (.not.lowspinorder(www%configlist(:,www%botconfig),www%numpart)) then
         OFLWR "NOT LOWSPIN",www%botconfig
         call printconfig(www%configlist(:,www%topconfig),www)
         CFLST
@@ -124,7 +124,7 @@ subroutine walkalloc(www)
   OFLWR "Allocating singlewalks"; CFL
   allocate( www%singlewalk(www%maxsinglewalks,www%configstart:www%configend+1))
   www%singlewalk=-1
-  allocate(www%singlediag(www%numelec,www%configstart:www%configend+1) )
+  allocate(www%singlediag(www%numpart,www%configstart:www%configend+1) )
   www%singlediag=-1
   allocate( www%singlewalkdirphase(www%maxsinglewalks,www%configstart:www%configend+1) )
   www%singlewalkdirphase=0
@@ -137,7 +137,7 @@ subroutine walkalloc(www)
   www%doublewalkdirphase=0
   allocate( www%doublewalk(www%maxdoublewalks,www%configstart:www%configend+1))
   www%doublewalk=-1
-  allocate(www%doublediag(www%numelec*(www%numelec-1),www%configstart:www%configend+1))
+  allocate(www%doublediag(www%numpart*(www%numpart-1),www%configstart:www%configend+1))
   www%doublediag=-1
   OFLWR "     ..done walkalloc."; CFL
 end subroutine walkalloc
@@ -169,7 +169,7 @@ subroutine walks(www)
   type(walktype) :: www
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, jspf, &
        iispf, jjspf, config2, config1, dirphase, flag, idof, iidof, jdof, iwalk, idiag
-  integer :: thisconfig(www%ndof), thatconfig(www%ndof), temporb(2), temporb2(2), isize, &
+  integer :: thisconfig(www%num2part), thatconfig(www%num2part), temporb(2), temporb2(2), isize, &
        listorder(www%maxdoublewalks+www%maxsinglewalks)
 
   !!  ***********   SINGLES  **********
@@ -188,7 +188,7 @@ subroutine walks(www)
 
         thisconfig=www%configlist(:,config1)
 
-        do idof=1,www%numelec   !! position in thisconfig that we're walking 
+        do idof=1,www%numpart   !! position in thisconfig that we're walking 
 
            temporb=thisconfig((idof-1)*2+1 : idof*2)
            ispf=temporb(1)
@@ -206,7 +206,7 @@ subroutine walks(www)
               endif
            
               flag=0
-              do jdof=1,www%numelec
+              do jdof=1,www%numpart
                  if (jdof.ne.idof) then !! INCLUDING DIAGONAL WALKS
                     if (iind(thisconfig((jdof-1)*2+1:jdof*2)) == jindex) then 
                        flag=1
@@ -221,7 +221,7 @@ subroutine walks(www)
               thatconfig=thisconfig
               thatconfig((idof-1)*2+1  : idof*2)=temporb
 
-              dirphase=reorder(thatconfig,www%numelec)
+              dirphase=reorder(thatconfig,www%numpart)
 
               if (.not.allowedconfig0(www,thatconfig,www%dfwalklevel)) then
                  cycle
@@ -268,8 +268,8 @@ subroutine walks(www)
 
         thisconfig=www%configlist(:,config1)
 
-        do idof=1,www%numelec         !! positions in thisconfig that we're walking 
-           do iidof=idof+1,www%numelec   !! 
+        do idof=1,www%numpart         !! positions in thisconfig that we're walking 
+           do iidof=idof+1,www%numpart   !! 
 
               temporb=thisconfig((idof-1)*2+1 : idof*2)
               ispf=temporb(1)
@@ -308,7 +308,7 @@ subroutine walks(www)
 
 !! INCLUDING DIAGONAL AND SINGLE WALKS
                     flag=0
-                    do jdof=1,www%numelec
+                    do jdof=1,www%numpart
                        if (jdof.ne.idof.and.jdof.ne.iidof) then 
                           if ((iind(thisconfig((jdof-1)*2+1:jdof*2)) == jindex).or. &
                                (iind(thisconfig((jdof-1)*2+1:jdof*2)) == jjindex)) then
@@ -327,7 +327,7 @@ subroutine walks(www)
                     thatconfig((idof-1)*2+1  : idof*2)=temporb
                     thatconfig((iidof-1)*2+1  : iidof*2)=temporb2
 
-                    dirphase=reorder(thatconfig,www%numelec)
+                    dirphase=reorder(thatconfig,www%numpart)
 
                     if (.not.allowedconfig0(www,thatconfig,www%dfwalklevel)) then
                        cycle
@@ -447,7 +447,7 @@ subroutine getnumwalks(www)
   type(walktype) :: www
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, iispf,  config1,  &
        dirphase, flag, idof, iidof, jdof,iwalk ,config2
-  integer :: thisconfig(www%ndof), thatconfig(www%ndof), temporb(2), temporb2(2),totwalks
+  integer :: thisconfig(www%num2part), thatconfig(www%num2part), temporb(2), temporb2(2),totwalks
   character(len=3) :: iilab
   character(len=4) :: iilab0
 
@@ -473,7 +473,7 @@ subroutine getnumwalks(www)
 
            thisconfig=www%configlist(:,config1)
 
-           do idof=1,www%numelec   !! position in thisconfig that we're walking 
+           do idof=1,www%numpart   !! position in thisconfig that we're walking 
            
               temporb=thisconfig((idof-1)*2+1 : idof*2)
               ispf=temporb(1)
@@ -489,7 +489,7 @@ subroutine getnumwalks(www)
                  endif
 
                  flag=0
-                 do jdof=1,www%numelec
+                 do jdof=1,www%numpart
                     if (jdof.ne.idof) then !! INCLUDING DIAGONAL WALKS
                        if (iind(thisconfig((jdof-1)*2+1:jdof*2)) == jindex) then 
                           flag=1
@@ -504,7 +504,7 @@ subroutine getnumwalks(www)
                  thatconfig=thisconfig
                  thatconfig((idof-1)*2+1  : idof*2)=temporb
 
-                 dirphase=reorder(thatconfig,www%numelec)
+                 dirphase=reorder(thatconfig,www%numpart)
 
                  if (.not.allowedconfig0(www,thatconfig,www%dfwalklevel)) then
                     cycle
@@ -549,8 +549,8 @@ subroutine getnumwalks(www)
 
            thisconfig=www%configlist(:,config1)
         
-           do idof=1,www%numelec            !! positions in thisconfig that we're walking 
-              do iidof=idof+1,www%numelec   !! 
+           do idof=1,www%numpart            !! positions in thisconfig that we're walking 
+              do iidof=idof+1,www%numpart   !! 
               
                  temporb=thisconfig((idof-1)*2+1 : idof*2)
                  ispf=temporb(1)
@@ -587,7 +587,7 @@ subroutine getnumwalks(www)
 !! INCLUDING DIAGONAL AND SINGLE WALKS
 
                        flag=0
-                       do jdof=1,www%numelec
+                       do jdof=1,www%numpart
                           if (jdof.ne.idof.and.jdof.ne.iidof) then  
                              if ((iind(thisconfig((jdof-1)*2+1:jdof*2)) == jindex).or. &
                                   (iind(thisconfig((jdof-1)*2+1:jdof*2)) == jjindex)) then
@@ -603,7 +603,7 @@ subroutine getnumwalks(www)
                        thatconfig=thisconfig
                        thatconfig((idof-1)*2+1  : idof*2)=temporb
                        thatconfig((iidof-1)*2+1  : iidof*2)=temporb2
-                       dirphase=reorder(thatconfig,www%numelec)
+                       dirphase=reorder(thatconfig,www%numpart)
 
                        if (.not.allowedconfig0(www,thatconfig,www%dfwalklevel)) then
                           cycle

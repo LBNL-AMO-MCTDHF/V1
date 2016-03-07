@@ -238,20 +238,22 @@ module walkmod
 
   type walktype
 
+     integer :: holeflag=0   !! index holes not electrons
+
      integer :: dflevel=0, dfwalklevel=0, dfrestrictflag=0
      integer :: singlewalkflag=0, doublewalkflag=0
 
      integer :: parconsplit=0
 
-     integer, allocatable ::   &
-       configlist(  :  ,   : )               !! LIST OF CONFIGURATIONS ndof, numconfig
+     integer, allocatable :: &   !! LIST OF CONFIGURATIONS num2part, numconfig
+       configlist(  :  ,   : )   !!  num2part = 2x numpart = 2x number of elec or holes
      integer, allocatable :: &
        configmvals(  : ), &      !! if spfrestrict, their mvalues : numconfig
        configugvals(  : ), &     !! ugvalues based on info in spfugvals
        configtypes( : )          !! Hamiltonian matrix elements only among same type
 !!$SP       configorder(:)
 
-     integer :: nspf=0, numelec=0, ndof=0
+     integer :: nspf=0, numelec=0, numpart=0, num2part=0
      integer :: allspinproject=0
      integer :: restrictms=0
 

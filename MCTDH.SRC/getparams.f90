@@ -87,7 +87,7 @@ subroutine getparams()
        par_timestep,  stopthresh ,  cmf_flag,  intopt, timedepexpect,  avector_flag, &
        numelec,  relerr,  myrelerr,  spf_flag,  denreg,  timingout, tdflag, finaltime, actions, numactions, &
        messflag,  sparseconfigflag,  aorder, maxaorder, aerror, shelltop, numexcite, povres, povrange,&
-       numpovranges, povsparse,  povmult, vexcite, plotnum,lancheckstep,  plotview1, plotview2, &
+       numpovranges, povsparse,  povmult, plotnum,lancheckstep,  plotview1, plotview2, &
        computeFlux, FluxInterval, FluxSkipMult, &
        numfrozen, nucfluxopt, natplotbin, spfplotbin, denplotbin, denprojplotbin, &
        natprojplotbin, rnatplotbin, dendatfile, denrotfile, rdendatfile,   avectorexcitefrom, avectorexciteto,&
@@ -106,7 +106,7 @@ subroutine getparams()
        sparsedfflag,sparseprime,sparsesummaflag, par_consplit, ftwindowlength, fttriwindow,&
        pulsewindowtoo,conjgpropflag,dipolesumstart,dipolesumend,outmatel,numcatfiles,&
        catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
-       shuffle_dfwalktype,maxdgdim, messavec, messaamount
+       shuffle_dfwalktype,maxdgdim, messavec, messaamount,holeflag
 
 
   OFL
@@ -198,6 +198,11 @@ subroutine getparams()
      if (buffer(1:5) .eq. 'Nspf=') then
         read(buffer(6:len),*,iostat=myiostat) nspf;   
         write(mpifileptr,*) "Nspf set to  ", nspf, " by command line option."
+     endif
+
+     if (buffer(1:5) .eq. 'Holes') then
+        holeflag=1
+        write(mpifileptr, *) "indexing holes not electrons by command line option"
      endif
 
      if (buffer(1:9) .eq. 'NoTiming=') then
@@ -587,7 +592,12 @@ subroutine getparams()
      call checkiostat(myiostat," command line argument plotmodulus "//buffer)
   enddo
 
-  ndof=2*numelec
+  if (holeflag.eq.0) then
+     numpart=numelec
+  else
+     numpart=2*nspf-numelec
+  endif
+  num2part=2*numpart
 
   if (stopthresh.lt.1.d-12) then
      OFLWR "Error, stopthresh cannot be less than 1d-12"; CFLST  !! then would send hgram 1d-14
@@ -711,11 +721,6 @@ subroutine getparams()
      endif
      write(mpifileptr,'(12A6)')  (orblabel(i),i=allshelltop(ishell-1)*2+1,allshelltop(ishell)*2)
   enddo
-  if (vexcite.ge.numelec.and.numshells.gt.1) then
-     write(mpifileptr,*) "No restriction on occupancy of final shell (CISDQT+++)"
-  else
-     write(mpifileptr,*)  " Final shell occupancy level vexcite=",vexcite
-  endif
   if (df_restrictflag.gt.0) then
      write(mpifileptr,*) " DF restrictflag is on for constraintflag=2 or other purposes = ",df_restrictflag
   endif

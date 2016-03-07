@@ -36,7 +36,7 @@ subroutine spinwalkinit(www)
        www%sss%numspindfsets(www%startrank:www%endrank+1))
   www%sss%numspinsets(:)=(-99);   www%sss%numspindfsets(:)=(-99)
 
-  allocate(unpaired(www%numelec,www%configstart:www%configend+1), &
+  allocate(unpaired(www%numpart,www%configstart:www%configend+1), &
        numunpaired(www%configstart:www%configend+1), &
        msvalue(www%configstart:www%configend+1), &
        numspinwalks(www%configstart:www%configend+1))
@@ -92,8 +92,8 @@ subroutine spinwalks(www)
   use configsubmod
   implicit none
   type(walktype),intent(in) :: www
-  integer ::     config1, config2, dirphase,  idof, jdof,iwalk , thisconfig(www%ndof),  &
-       thatconfig(www%ndof), ii, jj, firstspin, secondspin, iproc
+  integer ::     config1, config2, dirphase,  idof, jdof,iwalk , thisconfig(www%num2part),  &
+       thatconfig(www%num2part), ii, jj, firstspin, secondspin, iproc
 
   spinwalk=0;     spinwalkdirphase=0
 
@@ -122,7 +122,7 @@ subroutine spinwalks(www)
 
               if (secondspin.ne.firstspin) then
                  thatconfig(jdof*2)=mod(thatconfig(jdof*2),2) + 1
-                 dirphase=reorder(thatconfig,www%numelec)
+                 dirphase=reorder(thatconfig,www%numpart)
                  if (allowedconfig0(www,thatconfig,www%dflevel)) then
                     iwalk=iwalk+1
                     spinwalkdirphase(iwalk,config1)=dirphase
@@ -308,8 +308,8 @@ subroutine getnumspinwalks(www)
   use configsubmod
   implicit none
   type(walktype),intent(in) :: www
-  integer ::   ispf,  config1, flag, idof, jdof,iwalk , thisconfig(www%ndof), &
-       thatconfig(www%ndof), ii, jj, dirphase, firstspin, secondspin
+  integer ::   ispf,  config1, flag, idof, jdof,iwalk , thisconfig(www%num2part), &
+       thatconfig(www%num2part), ii, jj, dirphase, firstspin, secondspin
   real*8 :: avgspinwalks
 
   OFLWR "Doing spin projector.";  CFL
@@ -317,11 +317,11 @@ subroutine getnumspinwalks(www)
   do config1=www%configstart,www%configend
      unpaired(:,config1)=0;    numunpaired(config1)=0;   msvalue(config1)=0
      thisconfig=www%configlist(:,config1)
-     do idof=1,www%numelec
+     do idof=1,www%numpart
         msvalue(config1)=msvalue(config1) + thisconfig(idof*2)*2-3
         ispf=thisconfig(idof*2-1)
         flag=0
-        do jdof=1,www%numelec
+        do jdof=1,www%numpart
            if ((jdof.ne.idof).and.(thisconfig(jdof*2-1).eq.ispf)) then
               flag=1
               exit
@@ -353,7 +353,7 @@ subroutine getnumspinwalks(www)
            secondspin=thatconfig(jdof*2)
            if (secondspin.ne.firstspin) then
               thatconfig(jdof*2)=mod(thatconfig(jdof*2),2) + 1
-              dirphase=reorder(thatconfig,www%numelec)
+              dirphase=reorder(thatconfig,www%numpart)
               if (allowedconfig0(www,thatconfig,www%dflevel)) then
                  iwalk=iwalk+1
               endif   ! allowedconfig

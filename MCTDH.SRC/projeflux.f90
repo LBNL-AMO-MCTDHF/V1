@@ -23,7 +23,7 @@ subroutine projeflux_singlewalks()
   use configsubmod
   implicit none
   integer :: iconfig,jconfig,idof,iindex,iwalk,flag,dirphase
-  integer :: tempconfig(ndof),temporb(2)
+  integer :: tempconfig(num2part),temporb(2)
 
 !! get the number of single walks from the target N-1 e- state to our regular N e- state
   OFLWR "Getting cation single walks"; CFL
@@ -33,13 +33,13 @@ subroutine projeflux_singlewalks()
   do iconfig=1,tnumconfig
     iwalk=0
     do iindex=1,2*www%nspf
-      tempconfig(3:ndof)=tconfiglist(:,iconfig);      temporb=aarr(iindex)
+      tempconfig(3:num2part)=tconfiglist(:,iconfig);      temporb=aarr(iindex)
       flag=0
-      do idof=2,numelec 
+      do idof=2,numpart 
         if(iind(tempconfig(idof*2-1:idof*2)).eq.iindex) flag=1
       enddo
       if(flag.eq.0) then
-        tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig,www%numelec)
+        tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig,www%numpart)
         if(allowedconfig0(www,tempconfig,www%dflevel)) then
            jconfig=getconfiguration(tempconfig,www)
            if (jconfig.ge.www%botconfig.and.jconfig.le.www%topconfig) then
@@ -65,12 +65,12 @@ subroutine projeflux_singlewalks()
   do iconfig=1,tnumconfig
     iwalk=0
     do iindex=1,2*www%nspf
-      tempconfig(3:ndof)=tconfiglist(:,iconfig);      temporb=aarr(iindex);      flag=0
-      do idof=2,numelec
+      tempconfig(3:num2part)=tconfiglist(:,iconfig);      temporb=aarr(iindex);      flag=0
+      do idof=2,numpart
         if(iind(tempconfig(idof*2-1:idof*2)).eq.iindex) flag=1
       enddo
       if(flag.eq.0) then
-        tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig,www%numelec)
+        tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig,www%numpart)
         if(allowedconfig0(www,tempconfig,www%dflevel)) then
            jconfig=getconfiguration(tempconfig,www)
            if (jconfig.ge.www%botconfig.and.jconfig.le.www%topconfig) then
@@ -628,7 +628,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 !! necessary working variables
   integer,intent(in) :: nt,alreadystate,ifile
   integer,intent(out) :: nstate
-  integer :: tau, i,ir,tndof,tnspf,tnumr,istate,ierr
+  integer :: tau, i,ir,tnum2part,tnspf,tnumr,istate,ierr
   integer :: spfcomplex, acomplex, tdims(3),imc,ioffset,myiostat
   DATATYPE, allocatable :: &
        tmo(:,:),tavec(:,:,:),tmotemp(:,:),readta(:,:,:),&
@@ -647,10 +647,10 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
      call checkiostat(myiostat,"opening "//catspffiles(ifile))
      open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
      call checkiostat(myiostat,"opening "//catavectorfiles(ifile))
-     call avector_header_read(910,nstate,tndof,tnumr,tnumconfig,targetrestrictflag,targetms,&
+     call avector_header_read(910,nstate,tnum2part,tnumr,tnumconfig,targetrestrictflag,targetms,&
           targetspinproject,targetspinval,acomplex,ierr)
   endif
-  call mympiibcastone(nstate,1); call mympiibcastone(tndof,1); 
+  call mympiibcastone(nstate,1); call mympiibcastone(tnum2part,1); 
   call mympiibcastone(tnumr,1); call mympiibcastone(tnumconfig,1); 
   call mympiibcastone(targetrestrictflag,1);  call mympiibcastone(targetms,1);  
   call mympiibcastone(targetspinproject,1);  call mympiibcastone(targetspinval,1); 
@@ -674,7 +674,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   if (tnspf.gt.nspf+numfrozen) then
      OFLWR "ERROR, for now can't do more orbs in projection than in calculation",tnspf,nspf+numfrozen; CFLST
   endif
-  if (tndof.ne.ndof-2 ) then
+  if (tnum2part.ne.num2part-2 ) then
      OFLWR "Vectors read are not n-1 electron functions"; CFLST
   endif
 
@@ -717,7 +717,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   OFLWR "Reading", nstate," Born-Oppenheimer states."; CFL
 
   if (myrank.eq.1) then
-     call simple_load_avectors(910,acomplex,readta(:,:,:),ndof-2,tnumr,tnumconfig,nstate)
+     call simple_load_avectors(910,acomplex,readta(:,:,:),num2part-2,tnumr,tnumconfig,nstate)
      do ir=1,min(tnumr,numr)
         tavec(:,:,ir)=readta(ir,:,:)
      enddo
@@ -756,17 +756,17 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
      endif
   enddo
 
-  allocate(tconfiglist(tndof,tnumconfig));    tconfiglist=0
+  allocate(tconfiglist(tnum2part,tnumconfig));    tconfiglist=0
 
   if (myrank.eq.1) then
      open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
      call checkiostat(myiostat,"opening "//catavectorfiles(ifile))
-     call avector_header_read_simple(910,nstate,tndof,tnumr,tnumconfig,acomplex)
-     call get_avectorfile_configlist(910,acomplex,tconfiglist,tndof,tnumr,tnumconfig)
+     call avector_header_read_simple(910,nstate,tnum2part,tnumr,tnumconfig,acomplex)
+     call get_avectorfile_configlist(910,acomplex,tconfiglist,tnum2part,tnumr,tnumconfig)
      close(910)
   endif
 
-  call mympiibcast(tconfiglist,1,tndof*tnumconfig)
+  call mympiibcast(tconfiglist,1,tnum2part*tnumconfig)
 
 !! do the walks from the target state into our final state
 

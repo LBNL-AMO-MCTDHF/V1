@@ -7,12 +7,12 @@ subroutine printconfig(thisconfig,www)
   implicit none
 
   type(walktype),intent(in) :: www
-  integer,intent(in) :: thisconfig(www%ndof)
+  integer,intent(in) :: thisconfig(www%num2part)
   character (len=4) :: mslabels(2) =["a ","b "]
   integer :: i
 
   write(mpifileptr,'(100(I3,A2))') (thisconfig((i-1)*2+1), &
-       mslabels(thisconfig(i*2)), i=1,www%numelec)
+       mslabels(thisconfig(i*2)), i=1,www%numpart)
 
 end subroutine printconfig
 

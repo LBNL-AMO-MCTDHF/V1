@@ -26,47 +26,47 @@ subroutine print_excitations()
 end subroutine print_excitations
 
 
-subroutine avector_header_read_simple(iunit,numvects,outndof,outnumr,outnumconfig,icomplex)
+subroutine avector_header_read_simple(iunit,numvects,outnum2part,outnumr,outnumconfig,icomplex)
   use mpimod   !! myrank
   implicit none
   integer,intent(in) :: iunit
-  integer,intent(out) :: outnumr,outnumconfig,icomplex,numvects,outndof
+  integer,intent(out) :: outnumr,outnumconfig,icomplex,numvects,outnum2part
   integer :: ierr,nullint
   if (myrank.ne.1) then
      print *, "programmer error, only call avector header read simple on root process"; stop
   endif
-  call avector_header_read(iunit,numvects,outndof,outnumr,outnumconfig,&
+  call avector_header_read(iunit,numvects,outnum2part,outnumr,outnumconfig,&
        nullint,nullint,nullint,nullint,icomplex,ierr)  
   if (ierr.ne.0) then
-     call avector_header_read_old(iunit,numvects,outndof,outnumr,outnumconfig,nullint,icomplex)
+     call avector_header_read_old(iunit,numvects,outnum2part,outnumr,outnumconfig,nullint,icomplex)
   endif
 end subroutine avector_header_read_simple
 
 
-subroutine avector_header_read_old(iunit,numvects,outndof,outnumr,outnumconfig,&
+subroutine avector_header_read_old(iunit,numvects,outnum2part,outnumr,outnumconfig,&
      outspinrestrictval,icomplex)
   use mpimod   !! myrank
   implicit none
   integer,intent(in) :: iunit
-  integer,intent(out) :: outnumr,outnumconfig,icomplex,numvects,outndof,outspinrestrictval
+  integer,intent(out) :: outnumr,outnumconfig,icomplex,numvects,outnum2part,outspinrestrictval
   integer :: myiostat
   if (myrank.ne.1) then
      print *, "programmer error, only call avector header read old on root process"; stop
   endif
   read(iunit,iostat=myiostat) numvects;  
   call checkiostat(myiostat," reading avector")
-  read(iunit,iostat=myiostat) outndof,outnumr,outnumconfig,outspinrestrictval
+  read(iunit,iostat=myiostat) outnum2part,outnumr,outnumconfig,outspinrestrictval
   call checkiostat(myiostat," reading avector")
   read(iunit,iostat=myiostat) icomplex
   call checkiostat(myiostat," reading avector")
 end subroutine
 
 
-subroutine avector_header_read(iunit,numvects,outndof,outnumr,outnumconfig, &
+subroutine avector_header_read(iunit,numvects,outnum2part,outnumr,outnumconfig, &
      outrestrictflag, outrestrictms, outallspinproject, outspinrestrictval, icomplex,ierr)
   use mpimod   !! myrank
   implicit none
-  integer :: outnumr,outnumconfig,icomplex,iunit,numvects,outndof,outspinrestrictval,ierr, &
+  integer :: outnumr,outnumconfig,icomplex,iunit,numvects,outnum2part,outspinrestrictval,ierr, &
        array(100),myiostat, outrestrictflag, outrestrictms,outallspinproject
 
   if (myrank.ne.1) then
@@ -81,7 +81,7 @@ subroutine avector_header_read(iunit,numvects,outndof,outnumr,outnumconfig, &
   if (myiostat.ne.0) then
      ierr=1; rewind(iunit); return
   endif
-  outndof=array(1)
+  outnum2part=array(1)
   outnumr=array(2)
   outnumconfig=array(3)
   outrestrictflag=array(4)
@@ -108,7 +108,7 @@ subroutine avector_header_write(iunit,numvects)
   write(iunit,iostat=myiostat) numvects
   call checkiostat(myiostat,"writing avector")
 
-  array(1)=ndof
+  array(1)=num2part
   array(2)=numr
   array(3)=num_config
   array(4)=restrictflag
@@ -138,7 +138,7 @@ subroutine load_avector_productsub(myavector)
   use configsubmod
   implicit none
   DATATYPE,intent(out) :: myavector(numr,first_config:last_config,mcscfnum)
-  integer :: readnumvects(numavectorfiles),readndof(numavectorfiles),readnumr(numavectorfiles),&
+  integer :: readnumvects(numavectorfiles),readnum2part(numavectorfiles),readnumr(numavectorfiles),&
        readnumconfig(numavectorfiles),readcomplex(numavectorfiles),readunit(numavectorfiles)
   integer,allocatable :: configtable(:),configphase(:)
   type threemat
@@ -151,9 +151,9 @@ subroutine load_avector_productsub(myavector)
   type(inttwomat) :: readconfiglist(numavectorfiles)
   DATATYPE, allocatable :: productvector(:,:,:,:,:,:,:),productreshape(:,:)
   integer,allocatable :: newconfiglist(:,:)
-  integer :: ifile,tot_ndof,tot_numconfig,iconfig,jj,kk,&
+  integer :: ifile,tot_num2part,tot_numconfig,iconfig,jj,kk,&
        dirphase,num_allowed,jconfig,iitop(6),&
-       dofsum,thisconfig(ndof),ir,tot_wfns,iwfn,myiostat
+       dofsum,thisconfig(num2part),ir,tot_wfns,iwfn,myiostat
   integer, target :: ii(6)
   integer, pointer :: ii1,ii2,ii3,ii4,ii5,ii6
 !  DATATYPE :: dot
@@ -177,14 +177,14 @@ subroutine load_avector_productsub(myavector)
              form="unformatted",iostat=myiostat)
         call checkiostat(myiostat,"opening "//avectorfile(ifile))
         call avector_header_read_simple(readunit(ifile),readnumvects(ifile),&
-             readndof(ifile),readnumr(ifile),readnumconfig(ifile),readcomplex(ifile))  
+             readnum2part(ifile),readnumr(ifile),readnumconfig(ifile),readcomplex(ifile))  
         close(readunit(ifile))
      enddo
   endif
      
   call mympiibcast(readunit,1,numavectorfiles)
   call mympiibcast(readnumvects,1,numavectorfiles)
-  call mympiibcast(readndof,1,numavectorfiles)
+  call mympiibcast(readnum2part,1,numavectorfiles)
   call mympiibcast(readnumr,1,numavectorfiles)
   call mympiibcast(readnumconfig,1,numavectorfiles)
   call mympiibcast(readcomplex,1,numavectorfiles)
@@ -196,18 +196,18 @@ subroutine load_avector_productsub(myavector)
      endif
   enddo
 
-  tot_ndof=0
+  tot_num2part=0
   tot_numconfig=1
   tot_wfns=1
   do ifile=1,numavectorfiles
-     tot_ndof=tot_ndof+readndof(ifile)
+     tot_num2part=tot_num2part+readnum2part(ifile)
      tot_numconfig=tot_numconfig*readnumconfig(ifile)
      tot_wfns=tot_wfns*readnumvects(ifile)
   enddo
 
-  if (tot_ndof.ne.ndof) then
+  if (tot_num2part.ne.num2part) then
      OFLWR "error, total number of electrons doesn't agree load_avector_product"
-     WRFL tot_ndof,ndof,readndof(1:numavectorfiles); CFLST
+     WRFL tot_num2part,num2part,readnum2part(1:numavectorfiles); CFLST
   endif
 
   if (tot_wfns.ne.mcscfnum) then
@@ -221,7 +221,7 @@ subroutine load_avector_productsub(myavector)
 
   do ifile=1,numavectorfiles
      allocate(readavectors(ifile)%mat(numr,readnumconfig(ifile),readnumvects(ifile)))
-     allocate(readconfiglist(ifile)%mat(readndof(ifile),readnumconfig(ifile)))
+     allocate(readconfiglist(ifile)%mat(readnum2part(ifile),readnumconfig(ifile)))
   enddo
 
   if (myrank.eq.1) then
@@ -232,18 +232,18 @@ subroutine load_avector_productsub(myavector)
              form="unformatted",iostat=myiostat)
         call checkiostat(myiostat,"opening "//avectorfile(ifile))
         call avector_header_read_simple(readunit(ifile),readnumvects(ifile),&
-             readndof(ifile),numr,readnumconfig(ifile),readcomplex(ifile))  
+             readnum2part(ifile),numr,readnumconfig(ifile),readcomplex(ifile))  
         call simple_load_avectors(readunit(ifile),readcomplex(ifile), &
              readavectors(ifile)%mat(:,:,:), &
-             readndof(ifile), numr, readnumconfig(ifile), readnumvects(ifile))
+             readnum2part(ifile), numr, readnumconfig(ifile), readnumvects(ifile))
         close(readunit(ifile))
         open(readunit(ifile),file=avectorfile(ifile), status="unknown", &
              form="unformatted",iostat=myiostat)
         call checkiostat(myiostat,"opening "//avectorfile(ifile))
         call avector_header_read_simple(readunit(ifile),readnumvects(ifile),&
-             readndof(ifile),numr,readnumconfig(ifile),readcomplex(ifile))  
+             readnum2part(ifile),numr,readnumconfig(ifile),readcomplex(ifile))  
         call get_avectorfile_configlist(readunit(ifile),readcomplex(ifile), &
-             readconfiglist(ifile)%mat(:,:),readndof(ifile), numr, readnumconfig(ifile))
+             readconfiglist(ifile)%mat(:,:),readnum2part(ifile), numr, readnumconfig(ifile))
         close(readunit(ifile))
      enddo
   endif
@@ -256,7 +256,7 @@ subroutine load_avector_productsub(myavector)
      call mympibcast(readavectors(ifile)%mat(:,:,:),1,&
           readnumconfig(ifile)*numr*readnumvects(ifile))
      call mympiibcast(readconfiglist(ifile)%mat(:,:),1,&
-          readndof(ifile)*readnumconfig(ifile))
+          readnum2part(ifile)*readnumconfig(ifile))
 
 !     do iwfn=1,readnumvects(ifile)
 !        OFLWR "    Vector norm on read",ifile,iwfn,dot(readavectors(ifile)%mat(:,:,iwfn), &
@@ -270,7 +270,7 @@ subroutine load_avector_productsub(myavector)
 
   OFLWR "    ..go get newconfiglist load_avector_product"; CFL
 
-  allocate(newconfiglist(ndof,tot_numconfig))
+  allocate(newconfiglist(num2part,tot_numconfig))
 
   iitop(:)=1
   iitop(1:numavectorfiles)=readnumconfig(1:numavectorfiles)
@@ -290,12 +290,12 @@ subroutine load_avector_productsub(myavector)
      jj=0
      dofsum=0
      do ifile=1,numavectorfiles
-        thisconfig(jj+1:jj+readndof(ifile))=readconfiglist(ifile)%mat(:,ii(ifile))
-        do kk=1,readndof(ifile)-1,2
+        thisconfig(jj+1:jj+readnum2part(ifile))=readconfiglist(ifile)%mat(:,ii(ifile))
+        do kk=1,readnum2part(ifile)-1,2
            thisconfig(jj+kk)=thisconfig(jj+kk)+    dofsum
         enddo
         dofsum=dofsum+eachloaded(ifile)
-        jj=jj+readndof(ifile)
+        jj=jj+readnum2part(ifile)
      enddo
 
      iconfig=iconfig+1
@@ -322,7 +322,7 @@ subroutine load_avector_productsub(myavector)
 
   num_allowed=0
   do iconfig=1,tot_numconfig
-     dirphase=reorder(newconfiglist(:,iconfig),numelec)
+     dirphase=reorder(newconfiglist(:,iconfig),numpart)
      if (allowedconfig0(www,newconfiglist(:,iconfig),www%dflevel)) then
         num_allowed=num_allowed+1
         jconfig=getconfiguration(newconfiglist(:,iconfig),www)
@@ -452,12 +452,12 @@ end subroutine load_avector_productsub
 
 
 
-subroutine get_avectorfile_configlist(iunit, qq, myconfiglist, myndof, mynumr, mynumconfig)
+subroutine get_avectorfile_configlist(iunit, qq, myconfiglist, mynum2part, mynumr, mynumconfig)
   use fileptrmod
   use mpimod    !! myrank
   implicit none
-  integer :: myndof, mynumconfig, mynumr,iunit,qq, config1, myiostat
-  integer, intent(out) :: myconfiglist(myndof,mynumconfig)
+  integer :: mynum2part, mynumconfig, mynumr,iunit,qq, config1, myiostat
+  integer, intent(out) :: myconfiglist(mynum2part,mynumconfig)
   real*8 :: rtempreadvect(mynumr)
   complex*16 :: ctempreadvect(mynumr)
 
@@ -497,8 +497,8 @@ contains
     implicit none
     integer :: i,iihole,iloop,jloop,ivect
     DATATYPE,intent(out) :: outavector(num_config)
-    integer ::  readconfig(ndof+2*numholes),xflag,iexcite,config2
-    integer :: thisconfig(ndof+400)
+    integer ::  readconfig(num2part+2*numholes),xflag,iexcite,config2
+    integer :: thisconfig(num2part+400)
     integer :: jj,phase
     real*8 :: qfac,xphase
 
@@ -507,17 +507,17 @@ contains
     outavector(:)=0d0;  qfac=sqrt(1d0/numholecombo/excitecombos)
 
     do iloop=1,numholecombo   !! default numholecombo=1  with -1 entry for no avectorhole.
-       thisconfig(1:ndof+2*numholes)=readconfig(1:ndof+2*numholes)
+       thisconfig(1:num2part+2*numholes)=readconfig(1:num2part+2*numholes)
        xphase=1;     xflag=0
 
        do iihole=1,numholes
           xflag=1
-          do jj=1,numelec+numholes-iihole+1
+          do jj=1,numpart+numholes-iihole+1
              if (iind(thisconfig(2*jj-1:2*jj)).eq.abs(myavectorhole(iihole,iloop,ivect))) then
                 xflag=0
                 xphase=xphase*myavectorhole(iihole,iloop,ivect) / &
                      abs(myavectorhole(iihole,iloop,ivect))
-                thisconfig(2*jj-1:ndof+298)=thisconfig(2*jj+1:ndof+300)
+                thisconfig(2*jj-1:num2part+298)=thisconfig(2*jj+1:num2part+300)
                 exit
              endif
           enddo
@@ -528,7 +528,7 @@ contains
        if (xflag==1) then
           cycle                   !! cycle iloop
        endif
-       do i=1,numelec+numholes
+       do i=1,numpart+numholes
           thisconfig(i*2-1)   = thisconfig(i*2-1)-numloadfrozen   
        enddo
 
@@ -538,7 +538,7 @@ contains
           xflag=0
           do iexcite=1,excitations  
              xflag=1
-             do jj=1,numelec
+             do jj=1,numpart
                 if (iind(thisconfig(2*jj-1:2*jj)).eq.&
                      abs(myavectorexcitefrom(iexcite,jloop,ivect))) then
                    xflag=0  
@@ -557,7 +557,7 @@ contains
           if (xflag.eq.1) then
              cycle                     !! cycle jloop
           endif
-          phase=reorder(thisconfig,numelec)
+          phase=reorder(thisconfig,numpart)
           if (allowedconfig0(www,thisconfig,www%dflevel)) then
              config2=getconfiguration(thisconfig,www)
              if (config2.eq.-1) then
@@ -579,15 +579,15 @@ contains
     use aarrmod
     use configsubmod
     implicit none
-    integer :: i,notusedint,phase,readconfig(ndof),config2,&
-         thisconfig(ndof)
+    integer :: i,notusedint,phase,readconfig(num2part),config2,&
+         thisconfig(num2part)
     DATATYPE,intent(out) :: outavector(num_config)
 
     outavector(:)=0d0;  thisconfig(:)=readconfig(:)
-    do i=1,numelec
+    do i=1,numpart
        thisconfig(i*2-1)   = thisconfig(i*2-1)-numloadfrozen   
     enddo
-    phase=reorder(thisconfig,numelec)
+    phase=reorder(thisconfig,numpart)
   
     if (allowedconfig0(www,thisconfig,www%dflevel)) then
        config2=getconfiguration(thisconfig,www)
@@ -609,7 +609,7 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
   use readavectormod
   implicit none
   character :: filename*(*)
-  integer :: readnumvects,readndof,readnumr,readnumconfig,readcomplex,&
+  integer :: readnumvects,readnum2part,readnumr,readnumconfig,readcomplex,&
        mynumvects,numskip,ii,myiostat
   DATATYPE,intent(out) :: myavectors(numr,first_config:last_config,mynumvects)
   DATATYPE :: nullvector(numr)
@@ -620,13 +620,13 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
  if (myrank.eq.1) then
     open(999,file=filename, status="unknown", form="unformatted",iostat=myiostat)
     call checkiostat(myiostat,"opening avector file "//filename)
-    call avector_header_read_simple(999,readnumvects,readndof,&
+    call avector_header_read_simple(999,readnumvects,readnum2part,&
          readnumr,readnumconfig,readcomplex)  
     close(999)
  endif
 
  call mympiibcastone(readnumvects,1)
- call mympiibcastone(readndof,1)
+ call mympiibcastone(readnum2part,1)
  call mympiibcastone(readnumr,1)
  call mympiibcastone(readnumconfig,1)
  call mympiibcastone(readcomplex,1)
@@ -659,7 +659,7 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
   if (myrank.eq.1) then
      open(999,file=filename, status="unknown", form="unformatted",iostat=myiostat)
     call checkiostat(myiostat,"opening avector file "//filename)
-     call avector_header_read_simple(999,readnumvects,readndof,readnumr,&
+     call avector_header_read_simple(999,readnumvects,readnum2part,readnumr,&
           readnumconfig,readcomplex)
 
      if (numholes.eq.0.and.excitations.eq.0) then
@@ -669,7 +669,7 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
 
      else
         call load_avectors0(999,readcomplex,readavectors(:,:,:),numr,num_config,&
-             ndof+2*numholes,readnumr,readnumconfig, readavectorsubroutine,readnumvects)
+             num2part+2*numholes,readnumr,readnumconfig, readavectorsubroutine,readnumvects)
      endif
 
      close(999)
@@ -702,14 +702,14 @@ contains
 !! general subroutine, for loading vectors with some manipulating on read
 !!     used in load_avectors (main load routine) and ovlsub.
 
-  subroutine load_avectors0(iunit, qq, myavectors, mynumr, mynumconfig, readndof, &
+  subroutine load_avectors0(iunit, qq, myavectors, mynumr, mynumconfig, readnum2part, &
        readnumr, readnumconfig, mysubroutine, mynumvects )
     use fileptrmod
     use mpimod   !! myrank
     implicit none
     external :: mysubroutine
-    integer :: mynumconfig, mynumr, mynumvects,iunit,i,  readndof, readnumr, readnumconfig
-    integer :: qq, config1,  thatconfig(readndof),  myiostat, ivect
+    integer :: mynumconfig, mynumr, mynumvects,iunit,i,  readnum2part, readnumr, readnumconfig
+    integer :: qq, config1,  thatconfig(readnum2part),  myiostat, ivect
     DATATYPE,intent(out) :: myavectors(mynumr,mynumconfig,mynumvects)
     DATATYPE,allocatable :: mytempavector(:)
     DATATYPE :: readvect(readnumr)
@@ -728,16 +728,16 @@ contains
        myavectors(:,:,ivect)=0d0
        do config1=1,readnumconfig
           if (qq==0) then
-             read (iunit,iostat=myiostat) thatconfig(1:readndof), rtempreadvect(1:readnumr)
+             read (iunit,iostat=myiostat) thatconfig(1:readnum2part), rtempreadvect(1:readnumr)
              readvect(:)=rtempreadvect(:)
           else
-             read (iunit,iostat=myiostat) thatconfig(1:readndof), ctempreadvect(1:readnumr)
+             read (iunit,iostat=myiostat) thatconfig(1:readnum2part), ctempreadvect(1:readnumr)
              readvect(:)=ctempreadvect(:)
           endif
           if (myiostat.ne.0) then
              OFLWR "err read config "; CFLST
           endif
-!! mysubroutine takes input slater determinant with readndof electrons 
+!! mysubroutine takes input slater determinant with readnum2part electrons 
 !!    mysubroutine may give a linear combo of slaters
 !!       so is programmed to return entire A-vector
 !!  and checks validity and does its action and returns configuration index 
@@ -757,13 +757,13 @@ contains
 end subroutine load_avectors
   
 
-subroutine simple_load_avectors(iunit, qq, myavectors, myndof, mynumr, &
+subroutine simple_load_avectors(iunit, qq, myavectors, mynum2part, mynumr, &
      mynumconfig, mynumvects)
   use fileptrmod
   use mpimod   !! myrank
   implicit none
-  integer :: myndof, mynumconfig, mynumr,mynumvects,iunit,ivect,qq, &
-       config1, thatconfig(myndof), myiostat
+  integer :: mynum2part, mynumconfig, mynumr,mynumvects,iunit,ivect,qq, &
+       config1, thatconfig(mynum2part), myiostat
   DATATYPE,intent(out) :: myavectors(mynumr,mynumconfig,mynumvects)
   real*8 :: rtempreadvect(mynumr)
   complex*16 :: ctempreadvect(mynumr)
@@ -777,10 +777,10 @@ subroutine simple_load_avectors(iunit, qq, myavectors, myndof, mynumr, &
   do ivect=1,mynumvects
      do config1=1,mynumconfig
         if (qq==0) then
-           read (iunit,iostat=myiostat) thatconfig(1:myndof), rtempreadvect(1:mynumr)
+           read (iunit,iostat=myiostat) thatconfig(1:mynum2part), rtempreadvect(1:mynumr)
            myavectors(:,config1,ivect)=rtempreadvect(:)
         else
-           read (iunit,iostat=myiostat) thatconfig(1:myndof), ctempreadvect(1:mynumr)
+           read (iunit,iostat=myiostat) thatconfig(1:mynum2part), ctempreadvect(1:mynumr)
            myavectors(:,config1,ivect)=ctempreadvect(:)
         endif
         if (myiostat.ne.0) then
@@ -800,7 +800,7 @@ subroutine easy_load_avectors(iunit, qq, outavectors, mynumr, mynumconfig, mynum
   use configsubmod
   implicit none
   integer ::  mynumconfig, mynumr,mynumvects,iunit,ivect,qq, config1,&
-        thatconfig(ndof), myiostat, phase, myconfig
+        thatconfig(num2part), myiostat, phase, myconfig
   DATATYPE,intent(out) :: outavectors(mynumr,num_config,mynumvects)
   real*8 :: rtempreadvect(mynumr)
   complex*16 :: ctempreadvect(mynumr)
@@ -817,11 +817,11 @@ subroutine easy_load_avectors(iunit, qq, outavectors, mynumr, mynumconfig, mynum
   do ivect=1,mynumvects
      do myconfig=1,mynumconfig
         if (qq==0) then
-           read (iunit,iostat=myiostat) thatconfig(1:ndof), rtempreadvect(1:mynumr)
+           read (iunit,iostat=myiostat) thatconfig(1:num2part), rtempreadvect(1:mynumr)
         else
-           read (iunit,iostat=myiostat) thatconfig(1:ndof), ctempreadvect(1:mynumr)
+           read (iunit,iostat=myiostat) thatconfig(1:num2part), ctempreadvect(1:mynumr)
         endif
-        phase=reorder(thatconfig,numelec)
+        phase=reorder(thatconfig,numpart)
         if (allowedconfig0(www,thatconfig,www%dflevel)) then
            config1=getconfiguration(thatconfig,www)
            if (qq==0) then

@@ -727,11 +727,11 @@ contains
     implicit none
     Type(biorthotype),target,intent(inout) :: inbiovar
     integer :: i,j,iflag,clow,chigh,jproc,cnum,nnn(2),mmm(2),rank,lwork
-    integer :: bioconfiglist(inbiovar%wwbio%numelec,inbiovar%wwbio%numconfig)
+    integer :: bioconfiglist(inbiovar%wwbio%numpart,inbiovar%wwbio%numconfig)
     DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%numconfig)
     DATATYPE,intent(out) :: aout(inbiovar%bionr,inbiovar%wwbio%numconfig)
     DATATYPE :: smobig(inbiovar%wwbio%nspf*2,inbiovar%wwbio%nspf*2),&
-         Stmpbig(inbiovar%wwbio%numelec,inbiovar%wwbio%numelec), &       !! AUTOMATIC
+         Stmpbig(inbiovar%wwbio%numpart,inbiovar%wwbio%numpart), &       !! AUTOMATIC
          Sconfig(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig), &
          aouttr(inbiovar%wwbio%numconfig,inbiovar%bionr)
 !!  integer :: ipiv(inbiovar%wwbio%numconfig)
@@ -758,16 +758,16 @@ contains
     enddo
 
     do i=1,inbiovar%wwbio%numconfig
-       do j=1,inbiovar%wwbio%numelec
+       do j=1,inbiovar%wwbio%numpart
           bioconfiglist(j,i)=iind( inbiovar%wwbio%configlist(j*2-1:j*2,i) )
        enddo
     enddo
   
     do j=inbiovar%wwbio%botconfig,inbiovar%wwbio%topconfig
        do i=1,inbiovar%wwbio%numconfig
-          call get_petite_mat(inbiovar%wwbio%nspf*2,inbiovar%wwbio%numelec,Smobig,&
+          call get_petite_mat(inbiovar%wwbio%nspf*2,inbiovar%wwbio%numpart,Smobig,&
                Stmpbig,bioconfiglist(:,i),bioconfiglist(:,j))
-          sconfig(i,j) = matdet(inbiovar%wwbio%numelec,Stmpbig)
+          sconfig(i,j) = matdet(inbiovar%wwbio%numpart,Stmpbig)
        enddo
     enddo
 
@@ -788,11 +788,11 @@ contains
 #ifdef REALGO
     call dgelss(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig,chigh-clow+1,&
          Sconfig,inbiovar%wwbio%numconfig,aouttr(:,clow),inbiovar%wwbio%numconfig,&
-         sing,max(invtol,lntol**inbiovar%wwbio%numelec),rank,work,lwork,iflag)
+         sing,max(invtol,lntol**inbiovar%wwbio%numpart),rank,work,lwork,iflag)
 #else
     call zgelss(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig,chigh-clow+1,&
          Sconfig,inbiovar%wwbio%numconfig,aouttr(:,clow),inbiovar%wwbio%numconfig,&
-         sing,max(invtol,lntol**inbiovar%wwbio%numelec),rank,work,lwork,rwork,iflag)
+         sing,max(invtol,lntol**inbiovar%wwbio%numpart),rank,work,lwork,rwork,iflag)
 #endif
 
     if(iflag.ne.0) then
@@ -1085,13 +1085,13 @@ end module biorthomod
 !!$  
 !!$    call openfile(); write(mpifileptr,*) "   .... check biortho perm " ; call closefile()
 !!$  
-!!$    call permoverlaps(numr,numelec,spfsize,origmo,mobio,abio,atmp,checkoverlap,&
-!!$          0,0.d-8,0.d-8,nspf,nspf,num_config,num_config,configlist,numelec*2,&
-!!$          configlist,numelec*2,0,parorbsplit)
-!!$    call permoverlaps(numr,numelec,spfsize,origmo,origmo,abio,abio,check1,0,0.d-8,0.d-8,&
-!!$          nspf,nspf,num_config,num_config,configlist,numelec*2,configlist,numelec*2,0,parorbsplit)
-!!$    call permoverlaps(numr,numelec,spfsize,mobio,mobio,atmp,atmp,check2,0,0.d-8,0.d-8,&
-!!$          nspf,nspf,num_config,num_config,configlist,numelec*2,configlist,numelec*2,0,parorbsplit)
+!!$    call permoverlaps(numr,num2part,spfsize,origmo,mobio,abio,atmp,checkoverlap,&
+!!$          0,0.d-8,0.d-8,nspf,nspf,num_config,num_config,configlist,num2part,&
+!!$          configlist,num2part,0,parorbsplit)
+!!$    call permoverlaps(numr,num2part,spfsize,origmo,origmo,abio,abio,check1,0,0.d-8,0.d-8,&
+!!$          nspf,nspf,num_config,num_config,configlist,num2part,configlist,num2part,0,parorbsplit)
+!!$    call permoverlaps(numr,num2part,spfsize,mobio,mobio,atmp,atmp,check2,0,0.d-8,0.d-8,&
+!!$          nspf,nspf,num_config,num_config,configlist,num2part,configlist,num2part,0,parorbsplit)
 !!$  
 !!$    err=abs((checkoverlap-sqrt(check1*check2))/checkoverlap)
 !!$    if (err.gt.1.d-7) then
@@ -1119,12 +1119,12 @@ end module biorthomod
 !!$ 
 !!$ !!  call openfile(); write(mpifileptr,*) "   .... check biortho perm " ; call closefile()
 !!$ 
-!!$   call permoverlaps(nr,numelec,insize,origmo,mobio,abio,atmp,checkoverlap,0,0.d-8,0.d-8,&
-!!$         norb,norb,num_config,num_config,configlist,numelec*2,configlist,numelec*2,0)
-!!$   call permoverlaps(nr,numelec,insize,origmo,origmo,abio,abio,check1,0,0.d-8,0.d-8,&
-!!$         norb,norb,num_config,num_config,configlist,numelec*2,configlist,numelec*2,0)
-!!$   call permoverlaps(nr,numelec,insize,mobio,mobio,atmp,atmp,check2,0,0.d-8,0.d-8,norb,norb,&
-!!$         num_config,num_config,configlist,numelec*2,configlist,numelec*2,0)
+!!$   call permoverlaps(nr,num2part,insize,origmo,mobio,abio,atmp,checkoverlap,0,0.d-8,0.d-8,&
+!!$         norb,norb,num_config,num_config,configlist,num2part,configlist,num2part,0)
+!!$   call permoverlaps(nr,num2part,insize,origmo,origmo,abio,abio,check1,0,0.d-8,0.d-8,&
+!!$         norb,norb,num_config,num_config,configlist,num2part,configlist,num2part,0)
+!!$   call permoverlaps(nr,num2part,insize,mobio,mobio,atmp,atmp,check2,0,0.d-8,0.d-8,norb,norb,&
+!!$         num_config,num_config,configlist,num2part,configlist,num2part,0)
 !!$ 
 !!$   err=abs((checkoverlap-sqrt(check1*check2))/checkoverlap)
 !!$   if (err.gt.1.d-6) then

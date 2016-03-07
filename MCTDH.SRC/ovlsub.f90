@@ -33,7 +33,7 @@ subroutine ovl_initial()
   use readavectormod
   implicit none
   integer :: jnumovl, ifile,acomplex,spfcomplex,nstate,i,kk,tdims(3),&
-       tndof,tnumconfig,tnumr,tnspf,myiostat
+       tnum2part,tnumconfig,tnumr,tnspf,myiostat
   DATATYPE, allocatable :: read_avectors(:,:), read_spfs(:,:)
   DATATYPE :: nullvector(numr)
 
@@ -50,7 +50,7 @@ subroutine ovl_initial()
         open(910,file=ovlavectorfiles(ifile),status="unknown",&
              form="unformatted",iostat=myiostat)
         call checkiostat(myiostat,"opening "//ovlavectorfiles(ifile))
-        call avector_header_read_simple(910,nstate,tndof,tnumr,tnumconfig,acomplex)
+        call avector_header_read_simple(910,nstate,tnum2part,tnumr,tnumconfig,acomplex)
         call spf_header_read(909,tdims,tnspf,spfcomplex)
         close(909);     close(910)
      endif
@@ -114,9 +114,9 @@ subroutine ovl_initial()
         open(910,file=ovlavectorfiles(ifile),status="unknown",&
              form="unformatted",iostat=myiostat)
         call checkiostat(myiostat,"opening "//ovlavectorfiles(ifile))
-        call avector_header_read_simple(910,nstate,tndof,tnumr,tnumconfig,acomplex)
+        call avector_header_read_simple(910,nstate,tnum2part,tnumr,tnumconfig,acomplex)
      endif
-     call mympiibcastone(nstate,1); call mympiibcastone(tndof,1); 
+     call mympiibcastone(nstate,1); call mympiibcastone(tnum2part,1); 
      call mympiibcastone(tnumr,1);
      call mympiibcastone(tnumconfig,1); call mympiibcastone(acomplex,1)
      if (myrank.eq.1) then

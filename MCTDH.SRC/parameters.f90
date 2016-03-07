@@ -115,6 +115,7 @@ module basis_parameters
 !!EE
 !!{\large \quad CONFIGURATIONS / SLATER DETERMINANTS}
 !!BB
+integer :: holeflag=0            !! Holes        !! index holes not electrons
 integer :: mrestrictflag=0       !!              !! If spfrestrictflag=1, restrict wfn to given total M.
 integer :: mrestrictval=0        !!              !!    This is the value.
 integer :: mrestrictmax= 99999   !!              !! If doing state averaged MCSCF, can include a range of m vals;
@@ -134,7 +135,6 @@ integer :: numexcite(100)=999    !! Numexcite=   !! excitations from core shells
                                                  !!    assigned via command line input.
 integer :: minocc(100)=-999      !!              !! minimum occupation, each shell
 integer :: maxocc(100)=999       !!              !!    maximum
-integer :: vexcite=999           !!              !! excitations INTO last shell. Use to restrict to doubles, etc.
 integer :: shells(100)=1
 integer :: allshelltop(0:100)=0           
 !!EE
@@ -548,14 +548,14 @@ real*8 :: langramthresh=1d-9
 integer :: numreduced=1
 integer :: headersize=200
 
-integer :: tot_adim
+integer :: tot_adim   !! numr*localnconfig
 
 integer :: num_config=-1
 integer, allocatable :: configs_perproc(:)
 integer :: first_config,last_config,local_nconfig
 
-integer ::  ndof
-integer :: totspfdim
+integer :: numpart,num2part    !! particles or holes
+integer :: totspfdim           !! nspf * spfsize (local size only)
 
 integer :: autosize, autosteps
 integer :: cdenflag=0            !!              !! Calulate natconfig?  Not necessary if Act=6.

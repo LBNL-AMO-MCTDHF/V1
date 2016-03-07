@@ -118,7 +118,7 @@ subroutine replace_withnat(printflag)
   if (printflag==1) then
      OFLWR "REPLACING SPFS - DENMAT EIGS"
      do i=1,nspf
-        write(mpifileptr,'(2E25.10)') yyy%denvals(i)/mcscfnum  !!!*numelec
+        write(mpifileptr,'(2E25.10)') yyy%denvals(i)/mcscfnum
      enddo
      WRFL; CFL
   endif

@@ -33,7 +33,7 @@ function getconfiguration(thisconfig,www)
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
-  integer,intent(in) :: thisconfig(www%ndof)
+  integer,intent(in) :: thisconfig(www%num2part)
   integer :: getconfiguration,  j,flag,k, dir,newdir, step,aa,bb, ii,kk,jj,flag1,flag2
 
   getconfiguration=-1
@@ -42,7 +42,7 @@ function getconfiguration(thisconfig,www)
 
   do while (flag.eq.0)
      flag=1
-     do k=1,www%numelec
+     do k=1,www%numpart
 
 !!$SP        aa=www%configlist(2*k-1,www%configorder(j));
         aa=www%configlist(2*k-1,j);
@@ -92,7 +92,7 @@ function getconfiguration(thisconfig,www)
            endif
 
            flag=1
-           do k=1,www%ndof
+           do k=1,www%num2part
 !!$SP          if (thisconfig(k).ne.www%configlist(k,www%configorder(j))) then
               if (thisconfig(k).ne.www%configlist(k,j)) then
                  flag=0
@@ -119,16 +119,16 @@ end function getconfiguration
 !! PUTS AN UN ORDERED CONFIGURATION INTO PROPER (INDEX INCREASING) ORDER
 !! AND RETURNS SIGN OF PERMUTATION
 
-function reorder(thisconfig,numelec)
+function reorder(thisconfig,numpart)
   implicit none
-  integer, intent(in) :: numelec
-  integer, intent(inout) :: thisconfig(1:2*numelec)
+  integer, intent(in) :: numpart
+  integer, intent(inout) :: thisconfig(1:2*numpart)
   integer :: reorder, phase, flag, jdof, temporb(2)
 
   phase=1;  flag=0
   do while (flag==0)
      flag=1
-     do jdof=1,numelec-1
+     do jdof=1,numpart-1
         if (iind(thisconfig((jdof-1)*2+1:jdof*2)) .gt. &
              iind(thisconfig(jdof*2+1:(jdof+1)*2))) then
            phase=phase*(-1)
@@ -151,18 +151,18 @@ function allowedconfig0(www,thisconfig,in_df)
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
-  integer,intent(in) :: thisconfig(www%ndof), in_df
+  integer,intent(in) :: thisconfig(www%num2part), in_df
   integer :: i, isum, j, tempcount, tempcount2, ishell, ii, k
   logical :: allowedconfig0, tempflag
 
-  do j=1,www%numelec
-     do i=j+1,www%numelec
+  do j=1,www%numpart
+     do i=j+1,www%numpart
         if ( (thisconfig(2*i-1)==thisconfig(2*j-1)).and.(thisconfig(2*i)==thisconfig(2*j)) ) then
            allowedconfig0=.false.;           return
         endif
      enddo
   enddo
-  do j=1,www%numelec
+  do j=1,www%numpart
      i=thisconfig(j*2-1)
      if ((i.lt.1).or.(i.gt.www%nspf)) then
         allowedconfig0=.false.;        return
@@ -170,11 +170,12 @@ function allowedconfig0(www,thisconfig,in_df)
   enddo
   if (restrictflag==1) then    ! by m_s
      isum=0
-     do i=2,www%numelec*2,2
+     do i=2,www%num2part,2
         isum=isum+(thisconfig(i)*2-3)
      enddo
      if (isum /= www%restrictms) then
-        allowedconfig0=.false.;        return
+        allowedconfig0=.false.
+        return
      endif
   end if
   if (spfrestrictflag==1) then
@@ -193,24 +194,7 @@ function allowedconfig0(www,thisconfig,in_df)
         return
      endif
   end if
-  
-  tempcount=0
-  do i=allshelltop(numshells-1)+1,allshelltop(numshells)
-     do ii=1,2
-        k=iind((/ i,ii /));        tempflag=.false.
-        do j=1,www%numelec
-           if (iind(thisconfig((j*2)-1:j*2)) == k) then
-              tempflag=.true.;              exit
-           endif
-        enddo
-        if (tempflag) then
-           tempcount=tempcount+1
-        endif
-     enddo
-  enddo
-  if (tempcount.gt.vexcite-in_df) then
-     allowedconfig0=.false.;     return
-  endif
+
   
   tempcount=0
   do ishell=1,numshells
@@ -221,7 +205,7 @@ function allowedconfig0(www,thisconfig,in_df)
 
            k=iind((/ i,ii /))  ! spin orbital
            tempflag=.false.
-           do j=1,www%numelec
+           do j=1,www%numpart
               if (iind(thisconfig((j*2)-1:j*2)) == k) then  ! got this spin orbital in the configuration
                  tempflag=.true.
                  exit
@@ -258,13 +242,13 @@ function getmval(www,thisconfig)
   use basis_parameters
   implicit none
   type(walktype),intent(in) :: www
-  integer,intent(in) :: thisconfig(www%ndof)
+  integer,intent(in) :: thisconfig(www%num2part)
   integer :: i, isum, getmval
   if ((spfrestrictflag==0)) then
      getmval=0;     return
   endif
   isum=0
-  do i=1,www%numelec*2-1,2
+  do i=1,www%num2part-1,2
      isum=isum+(spfmvals(thisconfig(i)))
   enddo
   getmval=isum
@@ -278,10 +262,10 @@ function getugval(www,thisconfig)
   use basis_parameters
   implicit none
   type(walktype),intent(in) :: www
-  integer,intent(in) :: thisconfig(www%ndof)
+  integer,intent(in) :: thisconfig(www%num2part)
   integer :: i, isum, getugval
   isum=1
-  do i=1,www%numelec*2-1,2
+  do i=1,www%num2part-1,2
      isum=isum*(spfugvals(thisconfig(i)))
   enddo
   getugval=isum
@@ -289,17 +273,17 @@ function getugval(www,thisconfig)
 end function getugval
 
 
-!!$  subroutine re_order_configlist(configlist,configorder,ndof,numconfig,numspinblocks,spinblockstart,spinblockend)
+!!$  subroutine re_order_configlist(configlist,configorder,num2part,numconfig,numspinblocks,spinblockstart,spinblockend)
 !!$    use fileptrmod
 !!$    use sparse_parameters
 !!$    implicit none
-!!$    integer,intent(in) :: numconfig, ndof, numspinblocks
+!!$    integer,intent(in) :: numconfig, num2part, numspinblocks
 !!$    integer,intent(inout) :: spinblockstart(numspinblocks),spinblockend(numspinblocks),&
-!!$         configlist(ndof,numconfig),configorder(numconfig)
+!!$         configlist(num2part,numconfig),configorder(numconfig)
 !!$    integer :: ii,jj,kk,iconfig
 !!$    integer,allocatable :: newstart(:),newend(:),newlist(:,:),neworder(:)
 !!$  
-!!$    allocate(newstart(numspinblocks),newend(numspinblocks),newlist(ndof,numconfig), neworder(numconfig))
+!!$    allocate(newstart(numspinblocks),newend(numspinblocks),newlist(num2part,numconfig), neworder(numconfig))
 !!$    newstart=0; newend=0; newlist=0; neworder=0
 !!$  
 !!$    iconfig=0
@@ -348,7 +332,7 @@ subroutine fast_newconfiglist(www,domflags)
   type(walktype) :: www
   logical,intent(in) :: domflags
   logical :: alreadycounted
-  integer, parameter :: max_numelec=80
+  integer, parameter :: max_numpart=80
   integer, pointer :: &
        ii1,ii2,ii3,ii4,ii5,ii6,ii7,ii8,ii9,ii10, &
        ii11,ii12, ii13, ii14, ii15, ii16, ii17, ii18, ii19, ii20, &
@@ -367,15 +351,16 @@ subroutine fast_newconfiglist(www,domflags)
        jj51,jj52, jj53, jj54, jj55, jj56, jj57, jj58, jj59, jj60, &
        jj61,jj62, jj63, jj64, jj65, jj66, jj67, jj68, jj69, jj70, &
        jj71,jj72, jj73, jj74, jj75, jj76, jj77, jj78, jj79, jj80
-  integer, target :: iii(max_numelec)  !! no, it is set.
-  integer, target :: jjj(max_numelec)  !! no, it is set.
+  integer, target :: iii(max_numpart)  !! no, it is set.
+  integer, target :: jjj(max_numpart)  !! no, it is set.
 
   integer,allocatable :: bigspinblockstart(:),bigspinblockend(:)
-  integer :: i, idof, ii , lowerarr(max_numelec),upperarr(max_numelec),  thisconfig(www%ndof),&
-       nullint,kk,iconfig,mm, single(max_numelec),ishell,jj,maxssize=0,sss,nss,ssflag,numdoubly,&
-       mynumexcite(numshells),isum,jshell,jsum,ppp,numspinblocks
+  integer :: i, idof, ii , lowerarr(max_numpart),upperarr(max_numpart),  thisconfig(www%num2part),&
+       nullint,kk,iconfig,mm, single(max_numpart),ishell,jj,maxssize=0,sss,nss,ssflag,numdoubly,&
+       mynumexcite(numshells),isums(numshells),jshell,jsums(numshells),&
+       ppp,numspinblocks,mytot(numshells)
 
-  if (www%numelec.gt.max_numelec) then
+  if (www%numpart.gt.max_numpart) then
      OFLWR "Resize get_newconfiglist"; CFLST
   endif
 
@@ -401,7 +386,7 @@ subroutine fast_newconfiglist(www,domflags)
      call waitawhile()
      call mpibarrier()
      deallocate(bigspinblockstart,bigspinblockend)
-     allocate(www%configlist(www%ndof,www%numconfig),  www%configtypes(www%numconfig), &
+     allocate(www%configlist(www%num2part,www%numconfig),  www%configtypes(www%numconfig), &
           bigspinblockstart(numspinblocks+2*nprocs),bigspinblockend(numspinblocks+2*nprocs))
      bigspinblockstart=0; bigspinblockend=0; 
      www%configlist(:,:)=0;  www%configtypes(:)=0
@@ -458,11 +443,11 @@ subroutine fast_newconfiglist(www,domflags)
   lowerarr(:)=1000000
   upperarr(:)=1000000
 
-  numdoubly=www%numelec-abs(www%restrictms)
+  numdoubly=www%numpart-abs(www%restrictms)
 
   if (mod(numdoubly,2).ne.0) then
      OFLWR "Looks like restrictms not compatible with numelec - need both even or both odd ",&
-          www%restrictms,www%numelec; CFLST
+          www%restrictms,www%numelec,www%numpart; CFLST
   endif
 
   do ii=1,numdoubly
@@ -472,82 +457,99 @@ subroutine fast_newconfiglist(www,domflags)
      lowerarr(ii+numdoubly)=numdoubly/2+ii
   enddo
 
-  do ii=1,www%numelec
-     upperarr(ii)=www%nspf+1-lowerarr(www%numelec+1-ii)
+  do ii=1,www%numpart
+     upperarr(ii)=www%nspf+1-lowerarr(www%numpart+1-ii)
   enddo
 
-  do ii=www%numelec+3,max_numelec
-     upperarr(ii)=1000000+ii-www%numelec+2
-     lowerarr(ii)=1000000+ii-www%numelec+2
+  do ii=www%numpart+3,max_numpart
+     upperarr(ii)=1000000+ii-www%numpart+2
+     lowerarr(ii)=1000000+ii-www%numpart+2
   enddo
 
 !!#          min        max
-!!numelec     ..        nspf
-!!numelec+1  1000000    1000000
-!!numelec+2  1000000    1000000
-!!numelec+3  1000001    1000001  etc.
-!!numelec+4  1000002    1000002
-!!numelec+4  1000003    1000003
+!!numpart     ..        nspf
+!!numpart+1  1000000    1000000
+!!numpart+2  1000000    1000000
+!!numpart+3  1000001    1000001  etc.
+!!numpart+4  1000002    1000002
+!!numpart+4  1000003    1000003
 
-!!account for numexcite and vexcite only; not minocc, nor maxocc
 !! numexcite(:) is CUMULATIVE
-!! vexcite only for last shell   not debugged
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!! Now account for maxocc 05-05-2015
-!
-! (ZERO DIMENSION STATEMENT ABOVE)
-!  mynumexcite(0)=0
-!
-!  do ishell=1,numshells
-!     isum=0
-!     do jshell=1,numshells
-!        if (jshell.ne.ishell) then
-!           isum=isum+min(maxocc(jshell),2*(allshelltop(jshell)-allshelltop(jshell-1)))
-!        endif
-!     enddo
-!!! minimum number of electrons in shell ishell is now numelec-isum.... actually max(minocc(ishell),numelec-isum)
-!!!   maximum number of holes is 2*(shelltop(ishell)-shelltop(ishell-1))-max(minocc(ishell),(numelec-isum))
-!
-!     mynumexcite(ishell)=min(numexcite(ishell),mynumexcite(ishell-1)+ &
-!          max(0,2*(allshelltop(ishell)-allshelltop(ishell-1))-max(minocc(ishell),(numelec-isum))))
-!  enddo
+  mytot(1:numshells)=2*(allshelltop(1:numshells)-allshelltop(0:numshells-1))
 
-!! better: minocc and maxocc
+!! isums: cumulative maximum excitations given maxocc for higher shells
 
+  isums(:)=0
   do ishell=1,numshells
 
-!! count maximum number of electrons in shells greater than ishell, given maxocc
-     isum=0
+!! count maximum number of excitations in shells greater than ishell, given maxocc
+
      do jshell=ishell+1,numshells
-        isum=isum+min(maxocc(jshell),2*(allshelltop(jshell)-allshelltop(jshell-1)))
+
+!!$        isum=isum+min(maxocc(jshell),2*(allshelltop(jshell)-allshelltop(jshell-1)))
+
+        isums(ishell) = isums(ishell) + max(0,min(maxocc(jshell),mytot(jshell)))
+
      enddo
-!! minimum number of electrons in shells 1 through ishell given maxocc is then max(0,numelec-isum)
-!! maximum number of holes in shells 1 through ishell given maxocc is then 
-!!     2*allshelltop(ishell)-max(0,numelec-isum) :
-
-     isum=max(0,2*allshelltop(ishell)-max(0,www%numelec-isum))
-
-!! count maximum number of holes in shells 1 through ishell, given minocc
-     jsum=0
-     do jshell=1,ishell
-        jsum=jsum+minocc(jshell)
-     enddo
-!! maximum number of holes in shells 1 through ishell, given minocc, is 2*allshelltop(ishell)-jsum
-!! could do this to numexcite(:) variable in getparams really... maybe no need
-
-     jsum=max(0,2*allshelltop(ishell)-jsum)
-
-     mynumexcite(ishell)=min(min(numexcite(ishell),isum), jsum)
-
   enddo
 
+!!$ prev      isums(1:numshells)=max(0,2*allshelltop(1:numshells)-max(0,www%numelec-isums(1:numshells)))
+
+!! minimum number of electrons in shells 1 through ishell given maxocc for higher shells
+!!    is then max(0,numelec-isum)
+!! maximum number of holes in shells 1 through ishell given maxocc for higher shells is then 
+!!     2*allshelltop(ishell)-max(0,numelec-isum) 
+
+!! --> isum is maximum cumulative number of excitations (of electrons or holes for holeflag.eq.0 or .ne.0) <--
+!! --> given maximum electron occupancy restriction on other shells <--
+
+!! if holeflag.ne.0, then set isum to the former
+!! if not, to the latter
+
+  isums(1:numshells)=max(0,www%numelec-isums(1:numshells))
+  if (www%holeflag.eq.0) then
+     isums(1:numshells)=max(0,2*allshelltop(1:numshells)-isums(1:numshells))
+  endif
+
+!! count maximum number of excitations in shells 1 through ishell, given minocc for those shells
+
+!! max number of electrons
+  jsums=0
+  do ishell=1,numshells
+     do jshell=1,ishell
+        jsums(ishell)=jsums(ishell)+max(0,min(minocc(jshell),mytot(jshell)))
+     enddo
+  enddo
+  jsums(:)=min(jsums(:),www%numelec)
+
+!! maximum number of holes in shells 1 through ishell, given minocc for those shells, is 
+!!    2*allshelltop(ishell)-jsums(ishell)
+!! if holeflag.eq.0, set jsums to this, otherwise let it be; those electrons already counted
+!!    are excitations of holes
+
+  if (holeflag.eq.0) then
+     jsums(:)=max(0,2*allshelltop(1:numshells)-jsums(:))
+  endif
+
+!! now the final maximum number of cumulative excitations of particles (electrons or holes)
+!!   for shells 1 through ishell is mynumexcite(ishell) accounting both for
+!!   minocc restriction on shells 1 through ishell and for maxocc for higher shells is mynumexcite
+
+  mynumexcite(1:numshells)=min(min(numexcite(1:numshells),isums(:)), jsums(:))
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  kk=0
+  kk=0  !! electron
+
   do ishell=1,numshells
-     mm=2*allshelltop(ishell)-min(mynumexcite(ishell),2*www%nspf-www%numelec)
-     do jj=kk+1,mm
+
+!! maximum number of cumulative excitations mm
+
+     mm=2*allshelltop(ishell)-min(mynumexcite(ishell),2*www%nspf-www%numpart)
+
+     do jj=kk+1,mm   !! which electron. the jjth electron can start in the qth orbital,
+                     !! which is in ishell, where q = allshelltop(ishell)-(mm-jj)/2.  Right?
 
         upperarr(jj)=min(upperarr(jj),allshelltop(ishell)-(mm-jj)/2)
 
@@ -557,7 +559,7 @@ subroutine fast_newconfiglist(www,domflags)
 
   if (.not.alreadycounted) then
      OFLWR "UPPER/LOWER"
-     do ii=1,www%numelec
+     do ii=1,www%numpart
         WRFL lowerarr(ii),upperarr(ii)
      enddo
      WRFL; CFL
@@ -661,14 +663,14 @@ subroutine fast_newconfiglist(www,domflags)
      sss=0
      ssflag=0
 
-     do idof=1,www%numelec
+     do idof=1,www%numpart
         thisconfig(idof*2-1) = iii(idof)
      enddo
 
      single(:)=1
-     single(www%numelec+1:)=0
+     single(www%numpart+1:)=0
 
-     do idof=2,www%numelec
+     do idof=2,www%numpart
         if (iii(idof).eq.iii(idof-1)) then
            thisconfig((idof-1)*2)=1
            thisconfig(idof*2)=2
@@ -765,7 +767,7 @@ subroutine fast_newconfiglist(www,domflags)
      do jj79=0,single(79)
      do jj80=0,single(80)
 
-        do idof=1,www%numelec
+        do idof=1,www%numpart
            if (single(idof).eq.1) then
               thisconfig(idof*2)=jjj(idof)+1
            endif
@@ -784,7 +786,7 @@ subroutine fast_newconfiglist(www,domflags)
            if (alreadycounted) then
               bigspinblockend(nss)=iconfig
               www%configlist(:,iconfig)=thisconfig; 
-              nullint=reorder(www%configlist(:,iconfig),www%numelec)
+              nullint=reorder(www%configlist(:,iconfig),www%numpart)
            endif
         endif
 
@@ -846,7 +848,7 @@ endif
 !!$SP       OFLWR "Reordering configlist with sparseprime=",sparseprime; CFL
 !!$SP  
 !!$SP       call re_order_configlist(www%configlist(:,:),www%configorder(:),&
-!!$SP             www%ndof,www%numconfig,numspinblocks,bigspinblockstart(:),&
+!!$SP             www%num2part,www%numconfig,numspinblocks,bigspinblockstart(:),&
 !!$SP             bigspinblockend(:))
 !!$SP    endif
 
@@ -984,11 +986,11 @@ contains
   function okexcite(kkk)
     implicit none
     logical :: okexcite
-    integer,intent(in) :: kkk(www%numelec)
+    integer,intent(in) :: kkk(www%numpart)
     integer :: numwithinshell(numshells),ii,ishell,numinshell(numshells)
 
     numwithinshell(:)=0; numinshell(:)=0
-    do ii=1,www%numelec
+    do ii=1,www%numpart
        do ishell=1,numshells
           if (kkk(ii).gt.allshelltop(ishell-1).and.kkk(ii).le.allshelltop(ishell)) then
              numinshell(ishell)=numinshell(ishell)+1
@@ -997,6 +999,12 @@ contains
           endif
        enddo
     enddo
+
+    if (www%holeflag.ne.0) then
+       numwithinshell(:)=2*allshelltop(1:numshells)-numwithinshell(:)
+       numinshell(:)=2*(allshelltop(1:numshells)-allshelltop(0:numshells-1))-numinshell(:)
+    endif
+
     do ishell=1,numshells
        if (numwithinshell(ishell).lt.2*allshelltop(ishell)-numexcite(ishell)) then
           okexcite=.false.
@@ -1007,10 +1015,7 @@ contains
           return
        endif
     enddo
-    if (numinshell(numshells).gt.vexcite) then
-       okexcite=.false.
-       return
-    endif
+
     okexcite=.true.
   end function okexcite
 
@@ -1058,8 +1063,7 @@ subroutine set_newconfiglist(wwin,wwout,domflags)
 
   wwout%maxconfigsperproc=wwin%maxdfconfsperproc
 
-  allocate(wwout%configlist(wwout%ndof,wwout%numconfig),&
-       wwout%configtypes(wwout%numconfig))
+  allocate(wwout%configlist(wwout%num2part,wwout%numconfig),wwout%configtypes(wwout%numconfig))
   wwout%configlist=0; wwout%configtypes=0;
 
   do iconfig=1,wwout%numconfig

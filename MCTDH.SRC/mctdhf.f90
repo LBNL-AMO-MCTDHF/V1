@@ -318,7 +318,10 @@ program mctdhf
   www%parconsplit=par_consplit
 
   www%numelec=numelec
-  www%ndof=ndof
+  www%holeflag=holeflag
+  www%numpart=numpart
+  www%num2part=num2part
+
   www%nspf=nspf
 
   www%allspinproject=all_spinproject
@@ -356,7 +359,10 @@ program mctdhf
      bioww%parconsplit=par_consplit
 
      bioww%numelec=numelec
-     bioww%ndof=ndof
+     bioww%holeflag=holeflag
+     bioww%numpart=numpart
+     bioww%num2part=num2part
+
      bioww%nspf=nspf
 
      bioww%allspinproject=all_spinproject
@@ -392,7 +398,10 @@ program mctdhf
         dfww%parconsplit=par_consplit
 
         dfww%numelec=numelec
-        dfww%ndof=ndof
+        dfww%holeflag=holeflag
+        dfww%numpart=numpart
+        dfww%num2part=num2part
+
         dfww%nspf=nspf
 
         dfww%allspinproject=all_spinproject
@@ -418,7 +427,10 @@ program mctdhf
         fdww%parconsplit=par_consplit
 
         fdww%numelec=numelec
-        fdww%ndof=ndof
+        fdww%holeflag=holeflag
+        fdww%numpart=numpart
+        fdww%num2part=num2part
+
         fdww%nspf=nspf
 
         fdww%allspinproject=all_spinproject
@@ -477,7 +489,11 @@ program mctdhf
      endif
   endif
 
-  OFLWR "     DWWPTR Slater determinants by processor"
+  if (all_spinproject.eq.0) then
+     OFLWR "     DWWPTR Slater determinants by processor"
+  else
+     OFLWR "     DWWPTR Spin-adapted configurations by processor"
+  endif
   do i=1,dwwptr%nzprocs
      write (mpifileptr,'(T5,2I7,i20)') i,dwwptr%nzproclist(i),dwwptr%nzconfsperproc(i)
   enddo
@@ -702,6 +718,7 @@ contains
   subroutine walks_and_basis(wwin)
     implicit none
     type(walktype),intent(inout) :: wwin
+
      call walkalloc(wwin)
      call walks(wwin)
      call hops(wwin)
