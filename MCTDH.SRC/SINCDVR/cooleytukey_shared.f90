@@ -289,8 +289,11 @@ contains
       complex*16, intent(in) :: in(howmany), mat(ct_pf(rdd),ct_pf(rdd))
       complex*16, intent(out) :: out(howmany)
       integer :: thisfileptr
-      complex*16 :: work2(howmany),work(howmany)   !! AUTOMATIC
+!!$      complex*16 :: work2(howmany),work(howmany)
+      complex*16,allocatable :: work2(:),work(:)
       integer :: ibox,jbox,deltabox,nnn
+
+      allocate(work2(howmany),work(howmany))
       work2=0;work=0
 
       thisfileptr=6
@@ -319,6 +322,8 @@ contains
          endif
       enddo
 
+      deallocate(work,work2)
+
     end subroutine simple_circ
 
     recursive subroutine simple_summa(in, out,mat,howmany,rdd,oplevel)
@@ -329,8 +334,11 @@ contains
       complex*16, intent(in) :: in(howmany), mat(ct_pf(rdd),ct_pf(rdd))
       complex*16, intent(out) :: out(howmany)
       integer :: thisfileptr
-      complex*16 :: work(howmany)   !! AUTOMATIC
+!!$      complex*16 :: work(howmany)
+      complex*16,allocatable :: work(:)
       integer :: ibox,nnn
+
+      allocate(work(howmany))
       work=0
 
       thisfileptr=6
@@ -352,6 +360,8 @@ contains
          call mympicomplexbcast_local(work(:),ibox,howmany,CT_COMM_EACH(CT_MYLOC(rdd,oplevel),rdd,oplevel))
          out(:)=out(:)+work(:)*mat(CT_MYRANK(rdd,oplevel),ibox)
       enddo
+
+      deallocate(work)
 
     end subroutine simple_summa
 

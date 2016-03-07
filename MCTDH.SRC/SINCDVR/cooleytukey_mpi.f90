@@ -203,7 +203,10 @@ subroutine cooleytukey_outofplace_backward_mpi(intranspose,out,dim1,dim2,dim3,ho
   integer, intent(in) :: dim1,dim2,dim3,howmany
   complex*16, intent(in) :: intranspose(dim1,dim2,dim3,howmany)
   complex*16, intent(out) :: out(dim1,dim2,dim3,howmany)
-  complex*16 ::  work(dim1,dim2,dim3,howmany), work2(dim1,dim2,dim3,howmany)  !!AUTOMATIC
+!!$  complex*16 ::  work(dim1,dim2,dim3,howmany), work2(dim1,dim2,dim3,howmany)
+  complex*16,allocatable ::  work(:,:,:,:),work2(:,:,:,:)
+
+  allocate(work(dim1,dim2,dim3,howmany), work2(dim1,dim2,dim3,howmany))
 
 !! USING WORK2 FIRST... PASS WORK NOT WORK2 AS INPUT
 
@@ -212,9 +215,7 @@ subroutine cooleytukey_outofplace_backward_mpi(intranspose,out,dim1,dim2,dim3,ho
   call cooleytukey_outofplaceinput_mpi0(work,out,dim1,dim2,dim3,howmany,1,work,work2)
   out(:,:,:,:)=CONJG(out(:,:,:,:))
 
-!! regrettably appears necessary to stop bad mpi behavior in some cases
-!! actuall not here; below
-!!  call mpibarrier()
+  deallocate(work,work2)
 
 end subroutine cooleytukey_outofplace_backward_mpi
 
@@ -229,14 +230,15 @@ subroutine cooleytukey_outofplace_forward_mpi(in,outtrans,dim1,dim2,dim3,howmany
   integer, intent(in) :: dim1,dim2,dim3,howmany
   complex*16, intent(in) :: in(dim1,dim2,dim3,howmany)
   complex*16, intent(out) :: outtrans(dim1,dim2,dim3,howmany)
-  complex*16 ::  work(dim1,dim2,dim3,howmany) , work2(dim1,dim2,dim3,howmany)  !!AUTOMATIC
+!!$  complex*16 ::  work(dim1,dim2,dim3,howmany) , work2(dim1,dim2,dim3,howmany)
+  complex*16,allocatable ::  work(:,:,:,:),work2(:,:,:,:)
+
+  allocate(work(dim1,dim2,dim3,howmany), work2(dim1,dim2,dim3,howmany))
 
   work(:,:,:,:)=0d0; work2(:,:,:,:)=0d0
   call cooleytukey_outofplace_mpi0(in,outtrans,dim1,dim2,dim3,howmany,1,work,work2)
 
-!! regrettably appears necessary to stop bad mpi behavior in some cases
-!! actuall not here; below
-!!  call mpibarrier()
+  deallocate(work,work2)
 
 end subroutine cooleytukey_outofplace_forward_mpi
 
