@@ -29,7 +29,7 @@ subroutine myzfft1d(in,out,dim,howmany)
   integer, intent(in) :: dim,howmany
   complex*16 :: in(dim,howmany)    !! cannot be declared intent(in)...hmmm...
   complex*16, intent(out) :: out(dim,howmany)
-  integer, parameter :: maxplans=3
+  integer, parameter :: maxplans=10
   type(C_PTR),save :: plans(maxplans)
   integer, save :: plandims(maxplans)=-999, planhowmany(maxplans)=-999
   integer,save :: icalleds(maxplans)=0, numplans=0

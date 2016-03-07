@@ -190,121 +190,226 @@
 !!$   See the License for the specific language governing permissions and
 !!$   limitations under the License.
 
-module cooleytukeymod
+
+#include "Definitions.INC"
+
+module ct2commod
+  implicit none
+  integer :: CT_COMM = (-798), ctprocs=(-1), ctrank=(-1)
+end module ct2commod
+
+
+
+
+module cooleytukey2mod
+  implicit none
+  integer,parameter :: ctopt=1
+
 contains
 
 #ifdef MPIFLAG
 
-!! INVERSE OF cooleytukey_outofplace_mpi except for division
 
-subroutine cooleytukey_outofplace_backward_mpi(intranspose,out,dim1,howmany)
-  implicit none
-  integer, intent(in) :: dim1,howmany
-  complex*16, intent(in) :: intranspose(dim1,howmany)
-  complex*16, intent(out) :: out(dim1,howmany)
-  complex*16 ::  work(dim1,howmany), work2(dim1,howmany)  !!AUTOMATIC
+  subroutine twiddlemult_mpi(blocksize,in,out,dim1,inprocs,inrank,howmany)
+    implicit none
+    integer, intent(in) :: blocksize,dim1,inprocs,inrank,howmany
+    complex*16, intent(in) :: in(blocksize,dim1,howmany)
+    complex*16, intent(out) :: out(blocksize,dim1,howmany)
+    complex*16,allocatable :: twiddle1(:),tt1(:)
+    integer :: ii,n2,n1
 
-!! USING WORK2 FIRST... PASS WORK NOT WORK2 AS INPUT
+    allocate(twiddle1(dim1),tt1(dim1))
+    twiddle1=0; tt1=0
 
-  work2(:,:)=0d0
-  work(:,:)=CONJG(intranspose(:,:))
-  call cooleytukey_outofplaceinput_mpi0(work,out,dim1,howmany,1,work,work2)
-  out(:,:)=CONJG(out(:,:))
+    call gettwiddlesmall(twiddle1(:),dim1,inprocs)
 
-!! regrettably appears necessary to stop bad mpi behavior in some cases
-!! actuall not here; below
-!!  call mpibarrier()
+    do n2=inrank,inrank
+       tt1(:)=twiddle1(:)**(n2-1)
+       do ii=1,howmany
+          do n1=1,dim1
+             out(:,n1,ii) = in(:,n1,ii) * tt1(n1)
+          enddo
+       enddo
+    enddo
 
-end subroutine cooleytukey_outofplace_backward_mpi
+    deallocate(twiddle1,tt1)
 
+  contains
+    recursive subroutine gettwiddlesmall(twiddlefacs,dim1,dim2)
+      implicit none
+      integer, intent(in) :: dim1,dim2
+      complex*16, intent(out) :: twiddlefacs(dim1)
+      complex*16 :: phi
+      integer :: k1, itwiddle(dim1)
+      real*8, parameter :: pi=3.14159265358979323846264338327950d0
+      phi=exp((0d0,-2d0) * pi / (dim1*dim2))
+      do k1=1,dim1
+         itwiddle(k1)=(k1-1)
+      enddo
+      twiddlefacs(:)=phi**itwiddle(:)
+    end subroutine gettwiddlesmall
+
+  end subroutine twiddlemult_mpi
+
+
+  subroutine myzfft1d_slowindex(in,out,blocksize,size,howmany)
+    use fft1dsubmod
+    implicit none
+    integer,intent(in) :: blocksize,size,howmany
+    complex*16,intent(in) :: in(blocksize,size,howmany)
+    complex*16,intent(out) :: out(blocksize,size,howmany)
+    complex*16,allocatable :: intrans(:,:,:), outtrans(:,:,:)
+    integer :: ii
+
+    if (blocksize.eq.1) then
+       call myzfft1d(in,out,size,howmany)
+    else
+       allocate( intrans(size,blocksize,howmany), outtrans(size,blocksize,howmany) )
+       intrans(:,:,:)=0; outtrans(:,:,:)=0
+
+       do ii=1,howmany
+          intrans(:,:,ii)=TRANSPOSE(in(:,:,ii))
+       enddo
+       call myzfft1d(intrans,outtrans,size,blocksize*howmany)
+       do ii=1,howmany
+          out(:,:,ii)=TRANSPOSE(outtrans(:,:,ii))
+       enddo
+       deallocate(intrans,outtrans)
+    endif
+
+  end subroutine myzfft1d_slowindex
+
+
+  subroutine myzfft1d_slowindex_mpi(in,out,size,howmany,INCOMM,inprocs)
+    implicit none
+    integer,intent(in) :: size,howmany,INCOMM,inprocs
+    complex*16,intent(in) :: in(size,howmany)
+    complex*16,intent(out) :: out(size,howmany)
+    complex*16,allocatable :: work(:,:),work2(:,:)
+    integer :: ii,workdim,little
+
+    little = ceiling(real(size)/inprocs)
+    workdim = little*inprocs
+
+    allocate(work(workdim,howmany),work2(workdim,howmany))
+    work2=0; work=0
+    work(1:size,:)=in(:,:)
+
+    do ii=1,howmany
+       call mympialltoall_local(work(:,ii),work2(:,ii),little,INCOMM)
+    enddo
+
+    call myzfft1d_slowindex(work2,work,little,inprocs,howmany)
+
+    do ii=1,howmany
+       call mympialltoall_local(work(:,ii),work2(:,ii),little,INCOMM)
+    enddo
+
+    out(:,:)=work2(1:size,:)
+
+    deallocate(work,work2)
+
+  end subroutine myzfft1d_slowindex_mpi
+
+
+  subroutine ct2_outofplace_mpi0(blocksize,in,outtrans,dim1,howmany)
+    use ct2commod
+    implicit none
+    integer, intent(in) :: blocksize,dim1,howmany
+    complex*16, intent(in) :: in(blocksize,dim1,howmany)
+    complex*16, intent(out) :: outtrans(blocksize,dim1,howmany)
+    complex*16,allocatable ::  work(:,:,:),work2(:,:,:)
+
+    allocate(work(blocksize,dim1,howmany), work2(blocksize,dim1,howmany))
+    work=0; work2=0
+
+    call myzfft1d_slowindex_mpi(in,work,blocksize*dim1,howmany,CT_COMM,ctprocs)
+
+    call twiddlemult_mpi(blocksize,work2,work,dim1,ctprocs,ctrank,howmany)
+
+    call myzfft1d_slowindex(work,outtrans,blocksize,dim1,howmany)
+
+    deallocate(work,work2)
+
+  end subroutine ct2_outofplace_mpi0
+
+
+  subroutine ct2_outofplaceinput_mpi0(blocksize,intranspose,out,dim1,howmany)
+    use ct2commod
+    implicit none
+    integer, intent(in) :: blocksize,dim1,howmany
+    complex*16, intent(in) :: intranspose(blocksize,dim1,howmany)
+    complex*16, intent(out) :: out(blocksize,dim1,howmany)
+    complex*16,allocatable ::  work(:,:,:),work2(:,:,:)
+
+    allocate(work(blocksize,dim1,howmany), work2(blocksize,dim1,howmany))
+    work=0; work2=0
+
+    call myzfft1d_slowindex(intranspose,work2,blocksize,dim1,howmany)
+
+    call twiddlemult_mpi(blocksize,work2,work,dim1,ctprocs,ctrank,howmany)
+
+    call myzfft1d_slowindex_mpi(work,out,blocksize*dim1,howmany,CT_COMM,ctprocs)
+
+    deallocate(work,work2)
+
+  end subroutine ct2_outofplaceinput_mpi0
+
+
+  subroutine ct2_init(dimflag)
+    use pmpimod
+    use ct2commod
+    use pfileptrmod
+    implicit none
+    integer,intent(in) :: dimflag
+
+    if (dimflag.ne.0) then
+       OFLWR "dimflag error ct2_init ",dimflag; CFLST
+    endif
+
+    CT_COMM = PROJ_COMM_WORLD
+    ctprocs = nprocs
+    ctrank = myrank
+
+  end subroutine ct2_init
+
+!! INVERSE OF ct2_outofplace_mpi except for division
+
+  subroutine ct2_outofplace_backward_mpi_1d(intranspose,out,dim1,howmany)
+    implicit none
+    integer, intent(in) :: dim1,howmany
+    complex*16, intent(in) :: intranspose(dim1,howmany)
+    complex*16, intent(out) :: out(dim1,howmany)
+    complex*16,allocatable ::  work(:,:)
+
+    call ct2_init(0)
+
+    allocate(work(dim1,howmany))
+    work(:,:)=CONJG(intranspose(:,:))
+    call ct2_outofplaceinput_mpi0(1,work,out,dim1,howmany)
+    out(:,:)=CONJG(out(:,:))
+    deallocate(work)
+
+  end subroutine ct2_outofplace_backward_mpi_1d
 
 
 !! fourier transform with OUT-OF-PLACE OUTPUT. 
 
-subroutine cooleytukey_outofplace_forward_mpi(in,outtrans,dim1,howmany)
-  use pmpimod
-  use ct_options
-  implicit none
-  integer, intent(in) :: dim1,howmany
-  complex*16, intent(in) :: in(dim1,howmany)
-  complex*16, intent(out) :: outtrans(dim1,howmany)
-  complex*16 ::  work(dim1,howmany) , work2(dim1,howmany)  !!AUTOMATIC
+  subroutine ct2_outofplace_forward_mpi_1d(in,outtrans,dim1,howmany)
+    implicit none
+    integer, intent(in) :: dim1,howmany
+    complex*16, intent(in) :: in(dim1,howmany)
+    complex*16, intent(out) :: outtrans(dim1,howmany)
 
-  work(:,:)=0d0; work2(:,:)=0d0
-  call cooleytukey_outofplace_mpi0(in,outtrans,dim1,howmany,1,work,work2)
+    call ct2_init(0)
 
-!! regrettably appears necessary to stop bad mpi behavior in some cases
-!! actuall not here; below
-!!  call mpibarrier()
+    call ct2_outofplace_mpi0(1,in,outtrans,dim1,howmany)
 
-end subroutine cooleytukey_outofplace_forward_mpi
-
-
-recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim1,howmany,recursiondepth,work,work2)
-  use pmpimod
-  use ct_options
-  use ct_primesetmod !! ct_numprimes
-  use ctsubmod
-  use fft1dsubmod
-  implicit none
-  integer, intent(in) :: dim1,howmany,recursiondepth
-  complex*16, intent(in) :: in(dim1,howmany)
-  complex*16, intent(out) :: outtrans(dim1,howmany)
-  complex*16,intent(inout) ::  work(dim1,howmany), work2(dim1,howmany)
-  integer ::  newdepth
-
-!! PASSING WORK(:) AS IN(:)... USE WORK2 FIRST
-
-  call myzfft1d_slowindex_mpi(in,work2,dim1*howmany,recursiondepth)
-  call twiddlemult_mpi(1,work2,work,dim1,howmany,recursiondepth)
-
-  if (recursiondepth.eq.ct_numprimes) then
-     call myzfft1d(work,outtrans,dim1,howmany)
-  else
-     newdepth=recursiondepth+1
-     call cooleytukey_outofplace_mpi0(work,outtrans,dim1,howmany,newdepth,work,work2)
-  endif
-
-end subroutine cooleytukey_outofplace_mpi0
-
-
-recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim1,howmany,recursiondepth,work,work2)
-  use pmpimod
-  use ct_options
-  use ct_primesetmod !! ct_numprimes
-  use ctsubmod
-  use fft1dsubmod
-  implicit none
-  integer, intent(in) :: dim1,howmany,recursiondepth
-  complex*16, intent(in) :: intranspose(dim1,howmany)
-  complex*16, intent(out) :: out(dim1,howmany)
-  complex*16,intent(inout) ::  work(dim1,howmany), work2(dim1,howmany)
-  integer ::  newdepth
-
-!! PASSING WORK(:) AS INTRANSPOSE(:)... USE WORK2 FIRST
-
-  if (recursiondepth.eq.ct_numprimes) then
-
-     call myzfft1d(intranspose,work2,dim1,howmany)
-
-  else
-     newdepth=recursiondepth+1
-
-!! USING WORK2 AS OUTPUT
-
-     call cooleytukey_outofplaceinput_mpi0(intranspose,work2,dim1,howmany,newdepth,work,work2)
-  endif
-
-
-!! WORK HERE... WORK2 IS OUTPUT
-!!$  call myzfft1d_slowindex_mpi(work,out,dim1*howmany,recursiondepth)
-
-     call twiddlemult_mpi(1,work2,work,dim1,howmany,recursiondepth)
-     call myzfft1d_slowindex_mpi(work,out,dim1*howmany,recursiondepth)
-
-
-end subroutine cooleytukey_outofplaceinput_mpi0
+  end subroutine ct2_outofplace_forward_mpi_1d
 
 #endif
 
-end module cooleytukeymod
+end module cooleytukey2mod
+
+
+

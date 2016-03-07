@@ -289,8 +289,11 @@ contains
       complex*16, intent(in) :: in(howmany), mat(ct_pf(rdd),ct_pf(rdd))
       complex*16, intent(out) :: out(howmany)
       integer :: thisfileptr
-      complex*16 :: work2(howmany),work(howmany)   !! AUTOMATIC
+!!$      complex*16 :: work2(howmany),work(howmany)
+      complex*16,allocatable :: work2(:),work(:)
       integer :: ibox,jbox,deltabox,nnn
+
+      allocate(work2(howmany),work(howmany))
       work2=0;work=0
 
       thisfileptr=6
@@ -319,6 +322,8 @@ contains
          endif
       enddo
 
+      deallocate(work,work2)
+
     end subroutine simple_circ
 
     recursive subroutine simple_summa(in, out,mat,howmany,rdd)
@@ -329,8 +334,11 @@ contains
       complex*16, intent(in) :: in(howmany), mat(ct_pf(rdd),ct_pf(rdd))
       complex*16, intent(out) :: out(howmany)
       integer :: thisfileptr
-      complex*16 :: work(howmany)   !! AUTOMATIC
+!!$      complex*16 :: work(howmany)
+      complex*16,allocatable :: work(:) 
       integer :: ibox,nnn
+
+      allocate(work(howmany))
       work=0
 
       thisfileptr=6
@@ -352,6 +360,8 @@ contains
          call mympicomplexbcast_local(work(:),ibox,howmany,CT_COMM_EACH(CT_MYLOC(rdd),rdd))
          out(:)=out(:)+work(:)*mat(CT_MYRANK(rdd),ibox)
       enddo
+
+      deallocate(work)
 
     end subroutine simple_summa
 
@@ -626,5 +636,123 @@ end subroutine ct_init
 
 
 
+module cooleytukeymod
+contains
+
+#ifdef MPIFLAG
+
+!! INVERSE OF cooleytukey_outofplace_mpi except for division
+
+subroutine cooleytukey_outofplace_backward_mpi(intranspose,out,dim1,howmany)
+  implicit none
+  integer, intent(in) :: dim1,howmany
+  complex*16, intent(in) :: intranspose(dim1,howmany)
+  complex*16, intent(out) :: out(dim1,howmany)
+  complex*16 ::  work(dim1,howmany), work2(dim1,howmany)  !!AUTOMATIC
+
+!! USING WORK2 FIRST... PASS WORK NOT WORK2 AS INPUT
+
+  work2(:,:)=0d0
+  work(:,:)=CONJG(intranspose(:,:))
+  call cooleytukey_outofplaceinput_mpi0(work,out,dim1,howmany,1,work,work2)
+  out(:,:)=CONJG(out(:,:))
+
+!! regrettably appears necessary to stop bad mpi behavior in some cases
+!! actuall not here; below
+!!  call mpibarrier()
+
+end subroutine cooleytukey_outofplace_backward_mpi
+
+
+
+!! fourier transform with OUT-OF-PLACE OUTPUT. 
+
+subroutine cooleytukey_outofplace_forward_mpi(in,outtrans,dim1,howmany)
+  use pmpimod
+  use ct_options
+  implicit none
+  integer, intent(in) :: dim1,howmany
+  complex*16, intent(in) :: in(dim1,howmany)
+  complex*16, intent(out) :: outtrans(dim1,howmany)
+  complex*16 ::  work(dim1,howmany) , work2(dim1,howmany)  !!AUTOMATIC
+
+  work(:,:)=0d0; work2(:,:)=0d0
+  call cooleytukey_outofplace_mpi0(in,outtrans,dim1,howmany,1,work,work2)
+
+!! regrettably appears necessary to stop bad mpi behavior in some cases
+!! actuall not here; below
+!!  call mpibarrier()
+
+end subroutine cooleytukey_outofplace_forward_mpi
+
+
+recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim1,howmany,recursiondepth,work,work2)
+  use pmpimod
+  use ct_options
+  use ct_primesetmod !! ct_numprimes
+  use ctsubmod
+  use fft1dsubmod
+  implicit none
+  integer, intent(in) :: dim1,howmany,recursiondepth
+  complex*16, intent(in) :: in(dim1,howmany)
+  complex*16, intent(out) :: outtrans(dim1,howmany)
+  complex*16,intent(inout) ::  work(dim1,howmany), work2(dim1,howmany)
+  integer ::  newdepth
+
+!! PASSING WORK(:) AS IN(:)... USE WORK2 FIRST
+
+  call myzfft1d_slowindex_mpi(in,work2,dim1*howmany,recursiondepth)
+  call twiddlemult_mpi(1,work2,work,dim1,howmany,recursiondepth)
+
+  if (recursiondepth.eq.ct_numprimes) then
+     call myzfft1d(work,outtrans,dim1,howmany)
+  else
+     newdepth=recursiondepth+1
+     call cooleytukey_outofplace_mpi0(work,outtrans,dim1,howmany,newdepth,work,work2)
+  endif
+
+end subroutine cooleytukey_outofplace_mpi0
+
+
+recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim1,howmany,recursiondepth,work,work2)
+  use pmpimod
+  use ct_options
+  use ct_primesetmod !! ct_numprimes
+  use ctsubmod
+  use fft1dsubmod
+  implicit none
+  integer, intent(in) :: dim1,howmany,recursiondepth
+  complex*16, intent(in) :: intranspose(dim1,howmany)
+  complex*16, intent(out) :: out(dim1,howmany)
+  complex*16,intent(inout) ::  work(dim1,howmany), work2(dim1,howmany)
+  integer ::  newdepth
+
+!! PASSING WORK(:) AS INTRANSPOSE(:)... USE WORK2 FIRST
+
+  if (recursiondepth.eq.ct_numprimes) then
+
+     call myzfft1d(intranspose,work2,dim1,howmany)
+
+  else
+     newdepth=recursiondepth+1
+
+!! USING WORK2 AS OUTPUT
+
+     call cooleytukey_outofplaceinput_mpi0(intranspose,work2,dim1,howmany,newdepth,work,work2)
+  endif
+
+
+!! WORK HERE... WORK2 IS OUTPUT
+!!$  call myzfft1d_slowindex_mpi(work,out,dim1*howmany,recursiondepth)
+
+     call twiddlemult_mpi(1,work2,work,dim1,howmany,recursiondepth)
+     call myzfft1d_slowindex_mpi(work,out,dim1*howmany,recursiondepth)
+
+
+end subroutine cooleytukey_outofplaceinput_mpi0
+
+#endif
+
+end module cooleytukeymod
 
 
