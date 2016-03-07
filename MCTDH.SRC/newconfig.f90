@@ -528,7 +528,7 @@ subroutine fast_newconfiglist(www,domflags)
 !! if holeflag.eq.0, set jsums to this, otherwise let it be; those electrons already counted
 !!    are excitations of holes
 
-  if (holeflag.eq.0) then
+  if (www%holeflag.eq.0) then
      jsums(:)=max(0,2*allshelltop(1:numshells)-jsums(:))
   endif
 

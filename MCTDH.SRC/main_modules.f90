@@ -25,8 +25,11 @@ module configptrmod
           xpulsematelyy(:,:), xpulsematelzz(:,:), xtwoematel(:,:,:,:), &
           xconmatelxx(:,:),xconmatelyy(:,:),xconmatelzz(:,:)
 
-     DATATYPE :: xpulsenuc(3)
+     DATATYPE :: xpulsenuc(3)=0
      DATATYPE :: kefac=1          !! scalar by which R ke is mutiplied
+
+!! for holes
+     DATATYPE,allocatable :: xtwoe_htrace(:,:)
 
   end type CONFIGPTR
 end module configptrmod
@@ -37,12 +40,13 @@ module sparseptrmod
   type SPARSEPTR
 
      DATATYPE, allocatable :: &
-          xpotsparsemattr(:,:),xopsparsemattr(:,:),xonepotsparsemattr(:,:), &
+          xpotsparsemattr(:,:),          xpottracemattr(:,:),&
+          xopsparsemattr(:,:),xonepotsparsemattr(:,:), &
           xconsparsemattr(:,:),xysparsemattr(:,:), xpulsesparsemattrxx(:,:), &
           xpulsesparsemattryy(:,:), xpulsesparsemattrzz(:,:), &
           xconsparsemattrxx(:,:),xconsparsemattryy(:,:),xconsparsemattrzz(:,:)
 
-     DATATYPE :: xpulsenuc(3)
+     DATATYPE :: xpulsenuc(3)=0
      DATATYPE :: kefac=1          !! scalar by which R ke is mutiplied
 
   end type SPARSEPTR
@@ -466,6 +470,9 @@ subroutine assign_cptr(outptr,inptr,fac)
   Type(CONFIGPTR),intent(inout) :: outptr
 
   outptr%kefac = inptr%kefac   * fac
+  outptr%xpulsenuc(:) = inptr%xpulsenuc(:) * fac
+
+  outptr%xtwoe_htrace(:,:) = inptr%xtwoe_htrace(:,:) * fac
 
   outptr%xpotmatel(:,:)=inptr%xpotmatel(:,:)   * fac
   outptr%xopmatel(:,:)=inptr%xopmatel(:,:)   * fac
@@ -492,6 +499,9 @@ subroutine add_cptr0(aptr,bptr,sumptr,afacbo,bfacbo,  afacnuc,bfacnuc,   afacpul
   DATATYPE,intent(in) :: afacbo,bfacbo,  afacnuc,bfacnuc,   afacpulse,bfacpulse, afaccon,bfaccon
 
   sumptr%kefac = afacnuc*aptr%kefac + bfacnuc*bptr%kefac
+  sumptr%xpulsenuc(:) = afacnuc*aptr%xpulsenuc(:) + bfacnuc*bptr%xpulsenuc(:)
+
+  sumptr%xtwoe_htrace(:,:) = afacbo*aptr%xtwoe_htrace(:,:) + bfacbo*bptr%xtwoe_htrace(:,:)
 
   sumptr%xpotmatel(:,:)=aptr%xpotmatel(:,:)*afacbo                +bptr%xpotmatel(:,:)*bfacbo
   sumptr%xopmatel(:,:)=aptr%xopmatel(:,:)*afacbo                  +bptr%xopmatel(:,:)*bfacbo
@@ -517,6 +527,9 @@ subroutine zero_cptr(outptr)
   Type(CONFIGPTR),intent(inout) :: outptr
 
   outptr%kefac=0d0
+  outptr%xpulsenuc(:)=0
+
+  outptr%xtwoe_htrace(:,:) = 0
 
   outptr%xpotmatel(:,:)=0d0
   outptr%xopmatel(:,:)=0d0
@@ -556,7 +569,11 @@ subroutine configptralloc(inptr,www)
   inptr%xpulsematelzz=0;   inptr%xconmatel=0;  inptr%xconmatelxx=0;  inptr%xconmatelyy=0;
   inptr%xconmatelzz=0;   inptr%xymatel=0;  inptr%xtwoematel=0; 
 
+  allocate(inptr%xtwoe_htrace(www%nspf,www%nspf))
+  inptr%xtwoe_htrace=0
+
   inptr%kefac=1
+  inptr%xpulsenuc(:)=0
 
 end subroutine configptralloc
 
@@ -575,8 +592,10 @@ subroutine configptrdealloc(inptr)
   deallocate(inptr%xconmatelzz)
   deallocate(inptr%xymatel)
   deallocate(inptr%xtwoematel)
+  deallocate(inptr%xtwoe_htrace)
 
   inptr%kefac=0
+  inptr%xpulsenuc(:)=0
 
 end subroutine
 
@@ -609,9 +628,12 @@ subroutine assign_sptr(outptr,inptr,fac,www)
   Type(SPARSEPTR),intent(inout) :: outptr
 
   outptr%kefac = inptr%kefac   * fac
+  outptr%xpulsenuc=inptr%xpulsenuc   * fac
 
   if (www%configend.ge.www%configstart) then
      outptr%xpotsparsemattr(:,:)=inptr%xpotsparsemattr(:,:)   * fac
+     outptr%xpottracemattr(:,:)=inptr%xpottracemattr(:,:)   * fac
+
      outptr%xopsparsemattr(:,:)=inptr%xopsparsemattr(:,:)   * fac
      outptr%xonepotsparsemattr(:,:)=inptr%xonepotsparsemattr(:,:)   * fac
      outptr%xconsparsemattr(:,:)=inptr%xconsparsemattr(:,:)   * fac
@@ -622,7 +644,6 @@ subroutine assign_sptr(outptr,inptr,fac,www)
      outptr%xpulsesparsemattrxx(:,:)=inptr%xpulsesparsemattrxx(:,:)   * fac
      outptr%xpulsesparsemattryy(:,:)=inptr%xpulsesparsemattryy(:,:)   * fac
      outptr%xpulsesparsemattrzz(:,:)=inptr%xpulsesparsemattrzz(:,:)   * fac
-     outptr%xpulsenuc=inptr%xpulsenuc   * fac
   endif
 
 end subroutine assign_sptr
@@ -639,9 +660,12 @@ subroutine add_sptr0(aptr,bptr,sumptr,afacbo,bfacbo,  afacnuc,bfacnuc,   afacpul
   DATATYPE,intent(in) :: afacbo,bfacbo,  afacnuc,bfacnuc,   afacpulse,bfacpulse, afaccon,bfaccon
 
   sumptr%kefac = afacnuc*aptr%kefac + bfacnuc*bptr%kefac
+  sumptr%xpulsenuc=aptr%xpulsenuc*afacpulse         +bptr%xpulsenuc*bfacpulse
 
   if (www%configend.ge.www%configstart) then
      sumptr%xpotsparsemattr(:,:)=aptr%xpotsparsemattr(:,:)*afacbo    +bptr%xpotsparsemattr(:,:)*bfacbo
+     sumptr%xpottracemattr(:,:)=aptr%xpottracemattr(:,:)*afacbo    +bptr%xpottracemattr(:,:)*bfacbo
+
      sumptr%xopsparsemattr(:,:)=aptr%xopsparsemattr(:,:)*afacbo      +bptr%xopsparsemattr(:,:)*bfacbo
      sumptr%xonepotsparsemattr(:,:)=aptr%xonepotsparsemattr(:,:)*afacbo      +bptr%xonepotsparsemattr(:,:)*bfacbo
      sumptr%xconsparsemattr(:,:)=aptr%xconsparsemattr(:,:)*afaccon   +bptr%xconsparsemattr(:,:)*bfaccon
@@ -652,7 +676,6 @@ subroutine add_sptr0(aptr,bptr,sumptr,afacbo,bfacbo,  afacnuc,bfacnuc,   afacpul
      sumptr%xpulsesparsemattrxx(:,:)=aptr%xpulsesparsemattrxx(:,:)*afacpulse  +bptr%xpulsesparsemattrxx(:,:)*bfacpulse
      sumptr%xpulsesparsemattryy(:,:)=aptr%xpulsesparsemattryy(:,:)*afacpulse  +bptr%xpulsesparsemattryy(:,:)*bfacpulse
      sumptr%xpulsesparsemattrzz(:,:)=aptr%xpulsesparsemattrzz(:,:)*afacpulse  +bptr%xpulsesparsemattrzz(:,:)*bfacpulse
-     sumptr%xpulsenuc=aptr%xpulsenuc*afacpulse         +bptr%xpulsenuc*bfacpulse
   endif
 
 end subroutine add_sptr0
@@ -671,6 +694,8 @@ subroutine zero_sptr(outptr,www)
 
   if (www%configend.ge.www%configstart) then
      outptr%xpotsparsemattr(:,:)=0d0
+     outptr%xpottracemattr(:,:)=0d0
+
      outptr%xopsparsemattr(:,:)=0d0
      outptr%xonepotsparsemattr(:,:)=0d0
      outptr%xconsparsemattr(:,:)=0d0
@@ -704,6 +729,8 @@ subroutine sparseptralloc(inptr,www)
 !!  call mpibarrier()
 
   allocate(inptr%xpotsparsemattr    (www%doublematsize,www%configstart:www%configend))
+  allocate(inptr%xpottracemattr     (www%singlematsize,www%configstart:www%configend))
+
   allocate(inptr%xopsparsemattr     (www%singlematsize,www%configstart:www%configend))
   allocate(inptr%xonepotsparsemattr (www%singlematsize,www%configstart:www%configend))
   allocate(inptr%xpulsesparsemattrxx(www%singlematsize,www%configstart:www%configend))
@@ -716,7 +743,8 @@ subroutine sparseptralloc(inptr,www)
   allocate(inptr%xysparsemattr      (www%singlematsize,www%configstart:www%configend))
 
   if (www%configend.ge.www%configstart) then
-     inptr%xpotsparsemattr=0; inptr%xopsparsemattr=0; inptr%xonepotsparsemattr=0; 
+     inptr%xpotsparsemattr=0; inptr%xpottracemattr=0;
+     inptr%xopsparsemattr=0; inptr%xonepotsparsemattr=0; 
      inptr%xpulsesparsemattrxx=0; inptr%xpulsesparsemattryy=0; inptr%xpulsesparsemattrzz=0; 
      inptr%xconsparsemattr=0; inptr%xconsparsemattrxx=0; inptr%xconsparsemattryy=0; 
      inptr%xconsparsemattrzz=0; inptr%xysparsemattr=0
@@ -732,6 +760,7 @@ subroutine sparseptrdealloc(inptr)
   Type(SPARSEPTR) :: inptr
 
   deallocate(inptr%xpotsparsemattr)
+  deallocate(inptr%xpottracemattr)
   deallocate(inptr%xopsparsemattr)
   deallocate(inptr%xonepotsparsemattr)
   deallocate(inptr%xpulsesparsemattrxx)

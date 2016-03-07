@@ -148,6 +148,7 @@ contains
   subroutine arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,onebodymat, &
        rvector, avectorin, avectorout,inrnum,diagflag)
     use walkmod
+    use fileptrmod   !! TEMP
     implicit none
     type(walktype),intent(in) :: www
     integer,intent(in) :: firstproc,lastproc
@@ -162,6 +163,10 @@ contains
 
     if (www%topconfig-www%botconfig+1.eq.0) then
        return
+    endif
+
+    if (www%holeflag.ne.0) then
+       OFLWR "dooome holetrace"; CFLST
     endif
 
     avectorout(:,:)=0.d0
@@ -308,8 +313,8 @@ contains
        OFLWR "ERROR NOPARCON ARB"; CFLST
     endif   !! now botconfig:topconfig = firstconfig:lastconfig
     
-    call arbitraryconfig_mult_singles_byproc(1,nprocs,www,onebodymat, rvector, avectorin,&
-         avectorout(:,www%botconfig:www%topconfig),inrnum,0)
+    call arbitraryconfig_mult_singles_byproc(1,nprocs,www,onebodymat, &
+         rvector, avectorin,avectorout(:,www%botconfig:www%topconfig),inrnum,0)
   
     call mpiallgather(avectorout,www%numconfig*inrnum,www%configsperproc(:)*inrnum,&
          www%maxconfigsperproc*inrnum)
@@ -344,7 +349,8 @@ contains
          www%maxconfigsperproc*inrnum)
 
     if (www%lastconfig.ge.www%firstconfig) then
-       call arbitraryconfig_mult_singles_byproc(1,nprocs,www,onebodymat, rvector, workvector, avectorout,inrnum,0)
+       call arbitraryconfig_mult_singles_byproc(1,nprocs,www,onebodymat,&
+            rvector, workvector, avectorout,inrnum,0)
     endif
     deallocate(workvector)
 
@@ -384,8 +390,8 @@ contains
           call mympibcast(workvector,iproc,&
                (www%alltopconfigs(iproc)-www%allbotconfigs(iproc)+1)*inrnum)
           if (www%lastconfig.ge.www%firstconfig) then
-             call arbitraryconfig_mult_singles_byproc(iproc,iproc,www,onebodymat, rvector, &
-                  workvector, outtemp,inrnum,0)           
+             call arbitraryconfig_mult_singles_byproc(iproc,iproc,www,onebodymat, &
+                  rvector, workvector, outtemp,inrnum,0)           
              avectorout(:,:) = avectorout(:,:) + outtemp(:,www%botconfig:www%topconfig)
           endif
        endif
@@ -431,8 +437,8 @@ contains
        iproc=mod(myrank-1+deltaproc,nprocs)+1
 
        if (www%topconfig.ge.www%botconfig.and.www%alltopconfigs(iproc).ge.www%allbotconfigs(iproc)) then
-          call arbitraryconfig_mult_singles_byproc(iproc,iproc,www,onebodymat, rvector, &
-               workvector, outtemp,inrnum,0)
+          call arbitraryconfig_mult_singles_byproc(iproc,iproc,www,onebodymat, &
+               rvector, workvector, outtemp,inrnum,0)
           avectorout(:,:) = avectorout(:,:) + outtemp(:,www%botconfig:www%topconfig)
        endif
 
@@ -547,7 +553,13 @@ contains
        call arbitraryconfig_mult_doubles_byproc(firstproc,lastproc,www,matrix_ptr%xtwoematel(:,:,:,:),&
             rvector,invector,tempvector,mynumr,diagflag)
        outvector(:,:)=outvector(:,:)+tempvector(:,:)
-     
+
+       if (www%holeflag.ne.0) then
+          call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,matrix_ptr%xtwoe_htrace(:,:),&
+               rvector,invector,tempvector,mynumr,diagflag)
+          outvector(:,:)=outvector(:,:)+tempvector(:,:)
+       endif
+
        call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,matrix_ptr%xpotmatel(:,:),&
             rvector,invector,tempvector,mynumr,diagflag)
        outvector(:,:)=outvector(:,:)+tempvector(:,:)
@@ -563,7 +575,7 @@ contains
        rvector(:)=1
      
        tempmatel(:,:)=matrix_ptr%xconmatel(:,:)
-       if (tdflag.ne.0) then
+      if (tdflag.ne.0) then
           tempmatel(:,:)=tempmatel(:,:)+matrix_ptr%xconmatelxx(:,:)*facs(1)
           tempmatel(:,:)=tempmatel(:,:)+matrix_ptr%xconmatelyy(:,:)*facs(2)
           tempmatel(:,:)=tempmatel(:,:)+matrix_ptr%xconmatelzz(:,:)*facs(3)
@@ -611,13 +623,15 @@ contains
                 endif
              enddo
              do ir=botr,topr
-                outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*csum*bondpoints(ir)
+                outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig) * &
+                     csum*bondpoints(ir)
              enddo
           else if (onlytdflag.eq.0) then
 !! a-squared
              csum=matrix_ptr%kefac * www%numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2 ) * 2  * gg
              do ir=botr,topr
-                outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*csum   !! NO R FACTOR !!
+!! NO R FACTOR !!
+                outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*csum
              enddo
           endif
        endif
@@ -711,6 +725,11 @@ contains
        call arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,sparse_ptr%xpotsparsemattr,&
             rvector,invector,tempvector,mynumr,diagflag)
        outvector(:,:)=outvector(:,:)+tempvector(:,:)
+       if (www%holeflag.ne.0) then
+          call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xpottracemattr,&
+               rvector,invector,tempvector,mynumr,diagflag)
+          outvector(:,:)=outvector(:,:)+tempvector(:,:)
+       endif
 
        call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xonepotsparsemattr,&
             rvector,invector,tempvector,mynumr,diagflag)
@@ -778,13 +797,15 @@ contains
                 endif
              enddo
              do ir=botr,topr
-                outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*csum*bondpoints(ir)
+                outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig) * &
+                     csum*bondpoints(ir)
              enddo
           else if (onlytdflag.eq.0) then
 !! a-squared
              csum= sparse_ptr%kefac * www%numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2 ) * 2 * gg
              do ir=botr,topr
-                outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*csum  !! NO R FACTOR !!
+!! NO R FACTOR !!
+                outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*csum
              enddo
           endif
        endif
