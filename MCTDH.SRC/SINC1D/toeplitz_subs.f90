@@ -290,7 +290,6 @@ end subroutine circ1d_sub_real_mpi
 !!! times(6) 1d f.t.
 
 subroutine circ1d_sub_mpi(bigcirc,multvector,ffback,dim1,times,howmany)
-  use cooleytukeymod
   use cooleytukey2mod
   implicit none
   integer,intent(in) :: dim1,howmany
@@ -306,13 +305,9 @@ subroutine circ1d_sub_mpi(bigcirc,multvector,ffback,dim1,times,howmany)
 
   call getmyranknprocs(myrank,nprocs)  
 
-  if (ctopt.eq.0) then
-     call cooleytukey_outofplace_forward_mpi(multvector(:,:),ffvec(:,:),2*dim1,howmany)
-     call cooleytukey_outofplace_forward_mpi(bigcirc(:,1),ffmat(:),2*dim1,1)
-  else
-     call ct2_outofplace_forward_mpi_1d(multvector(:,:),ffvec(:,:),2*dim1,howmany)
-     call ct2_outofplace_forward_mpi_1d(bigcirc(:,1),ffmat(:),2*dim1,1)
-  endif
+  call ct2_outofplace_forward_mpi_1d(multvector(:,:),ffvec(:,:),2*dim1,howmany)
+  call ct2_outofplace_forward_mpi_1d(bigcirc(:,1),ffmat(:),2*dim1,1)
+
   call myclock(atime)
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ii)
@@ -325,11 +320,7 @@ subroutine circ1d_sub_mpi(bigcirc,multvector,ffback,dim1,times,howmany)
 
   call myclock(btime); times(7)=times(7)+btime-atime
 
-  if (ctopt.eq.0) then
-     call cooleytukey_outofplace_backward_mpi(ffprod(:,:),ffback(:,:),2*dim1,howmany)
-  else
-     call ct2_outofplace_backward_mpi_1d(ffprod(:,:),ffback(:,:),2*dim1,howmany)
-  endif
+  call ct2_outofplace_backward_mpi_1d(ffprod(:,:),ffback(:,:),2*dim1,howmany)
 
 end subroutine circ1d_sub_mpi
 

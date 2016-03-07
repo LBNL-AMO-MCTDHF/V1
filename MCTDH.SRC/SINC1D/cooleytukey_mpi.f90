@@ -203,7 +203,6 @@ end module ct2commod
 
 module cooleytukey2mod
   implicit none
-  integer,parameter :: ctopt=1
 
 contains
 
