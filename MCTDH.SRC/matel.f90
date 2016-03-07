@@ -403,9 +403,9 @@ subroutine arbitraryconfig_matel_singles00transpose_hhh(www,onebodymat, smallmat
      do config1=www%botconfig,www%topconfig
         if (www%singlehopdiagflag(config1).ne.0) then
            if (sparseconfigflag.eq.0) then
-              myind=www%singlediaghop(config1)
-           else
               myind=config1
+           else
+              myind=www%singlediaghop(config1)
            endif
 !! matrix will already have been multiplied by minus one.  multiply again by minus 1
 !!   to get the positive contribution of the background density
