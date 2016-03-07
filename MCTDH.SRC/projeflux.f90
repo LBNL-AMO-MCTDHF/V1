@@ -31,25 +31,40 @@ subroutine projeflux_singlewalks()
   allocate(numpwalk1(tnumconfig));    numpwalk1(:)=0
 
   do iconfig=1,tnumconfig
-    iwalk=0
-    do iindex=1,2*www%nspf
-      tempconfig(3:num2part)=tconfiglist(:,iconfig);      temporb=aarr(iindex)
-      flag=0
-      do idof=2,numpart 
-        if(iind(tempconfig(idof*2-1:idof*2)).eq.iindex) flag=1
-      enddo
-      if(flag.eq.0) then
-        tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig,www%numpart)
-        if(allowedconfig0(www,tempconfig,www%dflevel)) then
-           jconfig=getconfiguration(tempconfig,www)
-           if (jconfig.ge.www%botconfig.and.jconfig.le.www%topconfig) then
-              iwalk=iwalk+1
-           endif
-        endif
-      endif
+     iwalk=0
+     do iindex=1,2*www%nspf
+
+       if (www%holeflag.eq.0) then
+          tempconfig(3:num2part)=tconfiglist(:,iconfig)
+          temporb=aarr(iindex)
+          flag=0
+          do idof=2,numpart 
+             if(iind(tempconfig(idof*2-1:idof*2)).eq.iindex) flag=1
+          enddo
+       else   !! holeflag
+          flag=0
+          do idof=1,numpart+1
+             if(iind(tconfiglist(idof*2-1:idof*2,iconfig)).eq.iindex) then
+                flag=1
+                tempconfig(1:(idof-1)*2) = tconfiglist(1:(idof-1)*2,iconfig)
+                tempconfig(idof*2-1:num2part) = tconfiglist(idof*2+1:num2part+2,iconfig)
+                temporb=aarr(iindex)
+                exit
+             endif
+          enddo
+       endif   !! holeflag
+       if(flag.eq.0) then
+          tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig,www%numpart)
+          if(allowedconfig0(www,tempconfig,www%dflevel)) then
+             jconfig=getconfiguration(tempconfig,www)
+             if (jconfig.ge.www%botconfig.and.jconfig.le.www%topconfig) then
+                iwalk=iwalk+1
+             endif
+          endif
+       endif
     enddo
     numpwalk1(iconfig)=iwalk
-  enddo
+ enddo
 
 !! figure out the maximum number of single target walks
   maxpwalk1=0
@@ -63,29 +78,44 @@ subroutine projeflux_singlewalks()
   pwalk1=0;  pspf1=0;  pphase1=0
 
   do iconfig=1,tnumconfig
-    iwalk=0
-    do iindex=1,2*www%nspf
-      tempconfig(3:num2part)=tconfiglist(:,iconfig);      temporb=aarr(iindex);      flag=0
-      do idof=2,numpart
-        if(iind(tempconfig(idof*2-1:idof*2)).eq.iindex) flag=1
-      enddo
-      if(flag.eq.0) then
-        tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig,www%numpart)
-        if(allowedconfig0(www,tempconfig,www%dflevel)) then
-           jconfig=getconfiguration(tempconfig,www)
-           if (jconfig.ge.www%botconfig.and.jconfig.le.www%topconfig) then
-              iwalk=iwalk+1;          pwalk1(iwalk,iconfig)=jconfig
-              pspf1(:,iwalk,iconfig)=temporb;          pphase1(iwalk,iconfig)=dirphase
+     iwalk=0
+     do iindex=1,2*www%nspf
+        if (www%holeflag.eq.0) then
+           tempconfig(3:num2part)=tconfiglist(:,iconfig)
+           temporb=aarr(iindex)
+           flag=0
+           do idof=2,numpart
+              if(iind(tempconfig(idof*2-1:idof*2)).eq.iindex) flag=1
+           enddo
+        else    !! holeflag
+           flag=0
+           do idof=1,numpart+1
+              if(iind(tconfiglist(idof*2-1:idof*2,iconfig)).eq.iindex) then
+                 flag=1
+                 tempconfig(1:(idof-1)*2) = tconfiglist(1:(idof-1)*2,iconfig)
+                 tempconfig(idof*2-1:num2part) = tconfiglist(idof*2+1:num2part+2,iconfig)
+                 temporb=aarr(iindex)
+                 exit
+              endif
+           enddo
+        endif  !! holeflag
+        if(flag.eq.0) then
+           tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig,www%numpart)
+           if(allowedconfig0(www,tempconfig,www%dflevel)) then
+              jconfig=getconfiguration(tempconfig,www)
+              if (jconfig.ge.www%botconfig.and.jconfig.le.www%topconfig) then
+                 iwalk=iwalk+1;          pwalk1(iwalk,iconfig)=jconfig
+                 pspf1(:,iwalk,iconfig)=temporb;          pphase1(iwalk,iconfig)=dirphase
+              endif
            endif
         endif
-      endif
-    enddo
+     enddo
 !! check and make sure no bad walk error
-    if(numpwalk1(iconfig).ne.iwalk) then
-      OFLWR "TARGET SINGLE WALK ERROR";CFLST
-    endif
+     if(numpwalk1(iconfig).ne.iwalk) then
+        OFLWR "TARGET SINGLE WALK ERROR";CFLST
+     endif
   enddo
-
+  
   OFLWR "DONE getting proj single walks"; CFL
 
 end subroutine projeflux_singlewalks
@@ -674,8 +704,8 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   if (tnspf.gt.nspf+numfrozen) then
      OFLWR "ERROR, for now can't do more orbs in projection than in calculation",tnspf,nspf+numfrozen; CFLST
   endif
-  if (tnum2part.ne.num2part-2 ) then
-     OFLWR "Vectors read are not n-1 electron functions"; CFLST
+  if ( (holeflag.eq.0.and.tnum2part.ne.num2part-2) .or. (holeflag.ne.0.and.tnum2part.ne.num2part+2) ) then
+        OFLWR "Vectors read are not n-1 electron functions"; CFLST
   endif
 
   cgflag=0
@@ -717,7 +747,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   OFLWR "Reading", nstate," Born-Oppenheimer states."; CFL
 
   if (myrank.eq.1) then
-     call simple_load_avectors(910,acomplex,readta(:,:,:),num2part-2,tnumr,tnumconfig,nstate)
+     call simple_load_avectors(910,acomplex,readta(:,:,:),tnum2part,tnumr,tnumconfig,nstate)
      do ir=1,min(tnumr,numr)
         tavec(:,:,ir)=readta(ir,:,:)
      enddo
