@@ -296,7 +296,6 @@ end subroutine circ3d_sub_real_mpi
 
 subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany,placeopt)
   use fftparsubmod
-  use cooleytukeymod
   use cooleytukey2mod
   implicit none
   integer,intent(in) :: dim1,dim2,dim3,howmany,placeopt
@@ -313,14 +312,8 @@ subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany
   call getmyranknprocs(myrank,nprocs)  
 
   if (placeopt.ne.1) then
-
-     if (ctopt.eq.0) then
-        call cooleytukey_outofplace_forward_mpi(multvector(:,:,:,:),ffvec(:,:,:,:),2*dim1,2*dim2,2*dim3,howmany)
-        call cooleytukey_outofplace_forward_mpi(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*dim1,2*dim2,2*dim3,1)
-     else
-        call ct2_outofplace_forward_mpi_3d(multvector(:,:,:,:),ffvec(:,:,:,:),2*dim1,2*dim2,2*dim3,howmany)
-        call ct2_outofplace_forward_mpi_3d(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*dim1,2*dim2,2*dim3,1)
-     endif
+     call ct2_outofplace_forward_mpi_3d(multvector(:,:,:,:),ffvec(:,:,:,:),2*dim1,2*dim2,2*dim3,howmany)
+     call ct2_outofplace_forward_mpi_3d(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*dim1,2*dim2,2*dim3,1)
   else
      call myzfft3d_par_forward(multvector(:,:,:,:),ffvec(:,:,:,:),2*dim1,times,howmany)
      call myzfft3d_par_forward(bigcirc(:,:,:,1,1,1),ffmat(:,:,:),2*dim1,times,1)
@@ -339,11 +332,7 @@ subroutine circ3d_sub_mpi(bigcirc,multvector,ffback,dim1,dim2,dim3,times,howmany
   call myclock(btime); times(7)=times(7)+btime-atime
 
   if (placeopt.ne.1) then
-     if (ctopt.eq.0) then
-        call cooleytukey_outofplace_backward_mpi(ffprod(:,:,:,:),ffback(:,:,:,:),2*dim1,2*dim2,2*dim3,howmany)
-     else
-        call ct2_outofplace_backward_mpi_3d(ffprod(:,:,:,:),ffback(:,:,:,:),2*dim1,2*dim2,2*dim3,howmany)
-     endif
+     call ct2_outofplace_backward_mpi_3d(ffprod(:,:,:,:),ffback(:,:,:,:),2*dim1,2*dim2,2*dim3,howmany)
   else
      call myzfft3d_par_backward(ffprod(:,:,:,:),ffback(:,:,:,:),2*dim1,times,howmany)
   endif

@@ -385,7 +385,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   use pmpimod
   use pfileptrmod
   use myprojectmod
-  use cooleytukey2mod    !!TEMP
   implicit none
   integer, intent(in) :: skipflag,notused
   integer,intent(inout) :: spfsloaded
@@ -412,11 +411,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 #endif
   allocate(scalefunction(totpoints,3), djacobian(totpoints,3), ddjacobian(totpoints,3))
   scalefunction=0; djacobian=0; ddjacobian=0
-
-!!TEMP
-  if (fft_mpi_inplaceflag.eq.0.and.ctopt.eq.0) then
-     call ct_init(fft_ct_paropt)
-  endif
 
   rkemod(:,:)=0d0; proderivmod(:,:)=0d0; bondpoints(:)=1d0; bondweights(:)=1d0
 
