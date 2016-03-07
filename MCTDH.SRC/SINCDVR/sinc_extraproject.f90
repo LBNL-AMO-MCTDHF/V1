@@ -26,7 +26,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   NAMELIST /sincparinp/        numpoints,spacing,griddim,notwoflag,nuccharges,orblanthresh, &
        numcenters,centershift,orblanorder,nonucrepflag,debugflag, &
        toothnbig, toothnsmall, orbparflag,num_skip_orbs,orb_skip,orblancheckmod,zke_paropt,&
-       capflag,capstrength,capstart,cappower,fft_mpi_inplaceflag, fft_ct_paropt,fft_batchdim,&
+       capflag,capstrength,capstart,cappower,fft_mpi_inplaceflag, fft_batchdim,&
        fft_circbatchdim,maxcap,mincap,capmode, maskflag, masknumpoints,&
        scalingflag,scalingdistance,smoothness,scalingtheta,scalingstretch,tinv_tol,&
        orbparlevel, ivoflag, loadedocc, orbtargetflag,orbtarget,&
@@ -326,9 +326,6 @@ subroutine printmyopts()
   WRFL "orbparflag, orbparlevel",orbparflag, orbparlevel
   WRFL "zke_paropt",zke_paropt
   WRFL "fft_mpi_inplaceflag",fft_mpi_inplaceflag
-  if (fft_mpi_inplaceflag==0) then
-     WRFL "   --> fft_ct_paropt",fft_ct_paropt
-  endif
   WRFL "fft_batchdim",fft_batchdim
   WRFL "fft_circbatchdim",fft_circbatchdim
   WRFL "  -----  "
