@@ -25,9 +25,8 @@ subroutine spinwalkinit(www)
   use fileptrmod
   use spinwalkinternal
   use walkmod
-  use mpimod   !! nprocs,myrank
   implicit none
-  type(walktype) :: www
+  type(walktype),intent(inout) :: www
 
   call mpibarrier()
   OFLWR "Go spinwalk init. "; CFL
@@ -67,7 +66,6 @@ end subroutine spinwalkinit
 
 
 !subroutine spinwalkdealloc(sss)
-!  use mpimod  !! nprocs
 !  use spinwalkmod
 !  implicit none
 !  type(spintype) :: sss
@@ -90,11 +88,10 @@ subroutine spinwalks(www)
   use fileptrmod
   use spinwalkinternal
   use walkmod
-  use mpimod !! nprocs
   use aarrmod
   use configsubmod
   implicit none
-  type(walktype) :: www
+  type(walktype),intent(in) :: www
   integer ::     config1, config2, dirphase,  idof, jdof,iwalk , thisconfig(www%ndof),  &
        thatconfig(www%ndof), ii, jj, firstspin, secondspin, iproc
 
@@ -166,7 +163,7 @@ subroutine spinsets_first(www)
   use mpimod
   use basissubmod
   implicit none
-  type(walktype) :: www
+  type(walktype),intent(inout) :: www
   integer ::  iwalk, jj,  iset, ilevel, currentnumwalks, prevnumwalks, flag, iflag, &
        addwalks, i, j, jwalk, jset, iproc
   integer, allocatable :: taken(:), tempwalks(:)
@@ -310,7 +307,7 @@ subroutine getnumspinwalks(www)
   use spinwalkinternal
   use configsubmod
   implicit none
-  type(walktype) :: www
+  type(walktype),intent(in) :: www
   integer ::   ispf,  config1, flag, idof, jdof,iwalk , thisconfig(www%ndof), &
        thatconfig(www%ndof), ii, jj, dirphase, firstspin, secondspin
   real*8 :: avgspinwalks
@@ -396,7 +393,7 @@ subroutine configspin_matel(www)
   use walkmod
   use spinwalkinternal
   implicit none
-  type(walktype) :: www
+  type(walktype),intent(in) :: www
   integer ::     config2, config1,   iwalk, myind
 
   configspinmatel(:,:)=0.d0
@@ -442,7 +439,7 @@ subroutine configspinset_projector(www)
   use mpimod
   use configsubmod
   implicit none
-  type(walktype) :: www
+  type(walktype),intent(inout) :: www
   integer :: info, lwork,j,i,ii,iset,jj, elim, elimsets, flag, iwalk,&
        iproc
   real*8, allocatable :: spinvects(:,:), spinvals(:), work(:), realprojector(:,:)
