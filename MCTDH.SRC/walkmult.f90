@@ -145,31 +145,28 @@ contains
 
   end subroutine arbitrary_sparsemult_doubles_byproc
 
-  subroutine arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,onebodymat, &
-       rvector, avectorin, avectorout,inrnum,diagflag)
+
+
+  subroutine arbitraryconfig_mult_singles_byproc_hhh(firstproc,lastproc,www,onebodymat, &
+       rvector, avectorin, avectorout,inrnum,diagflag,inholeflag)
     use walkmod
-    use fileptrmod   !! TEMP
+    use mpimod   !! myrank
     implicit none
     type(walktype),intent(in) :: www
-    integer,intent(in) :: firstproc,lastproc
-    integer,intent(in) :: inrnum,diagflag
+    integer,intent(in) :: firstproc,lastproc,inholeflag,inrnum,diagflag
     DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf), &
          avectorin(inrnum,www%allbotconfigs(firstproc):www%alltopconfigs(lastproc))
     DATATYPE,intent(out) :: avectorout(inrnum,www%botconfig:www%topconfig)
     DATAECS,intent(in) :: rvector(inrnum)
-    DATATYPE :: csum, outsum(inrnum)
+    DATATYPE :: csum, outsum(inrnum), holetrace
     DATAECS :: myrvector(inrnum)
-    integer ::    config2, config1, iwalk, idiag,ihop
+    integer ::    config2, config1, iwalk, idiag,ihop,ispf
 
     if (www%topconfig-www%botconfig+1.eq.0) then
        return
     endif
 
-    if (www%holeflag.ne.0) then
-       OFLWR "dooome holetrace"; CFLST
-    endif
-
-    avectorout(:,:)=0.d0
+    avectorout(:,:)=0d0
 
     if (www%alltopconfigs(lastproc).lt.www%allbotconfigs(firstproc)) then
        return
@@ -221,7 +218,40 @@ contains
 
     endif
 
+    if (www%holeflag.ne.0.and.inholeflag.ne.0) then
+       holetrace=0
+       do ispf=1,www%nspf
+          holetrace=holetrace + onebodymat(ispf,ispf)
+       enddo
+
+!! matrix will already have been multiplied by minus one.  multiply again by minus 1
+!!   to get the positive contribution of the background density
+
+       if (myrank.ge.firstproc.and.myrank.le.lastproc) then
+          avectorout(:,:)=avectorout(:,:)-holetrace*avectorin(:,www%botconfig:www%topconfig)
+       endif
+    endif
+
+  end subroutine arbitraryconfig_mult_singles_byproc_hhh
+
+
+  subroutine arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,onebodymat, &
+       rvector, avectorin, avectorout,inrnum,diagflag)
+    use walkmod
+    use mpimod   !! myrank
+    implicit none
+    type(walktype),intent(in) :: www
+    integer,intent(in) :: firstproc,lastproc,inrnum,diagflag
+    DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf), &
+         avectorin(inrnum,www%allbotconfigs(firstproc):www%alltopconfigs(lastproc))
+    DATATYPE,intent(out) :: avectorout(inrnum,www%botconfig:www%topconfig)
+    DATAECS,intent(in) :: rvector(inrnum)
+
+    call arbitraryconfig_mult_singles_byproc_hhh(firstproc,lastproc,www,onebodymat, &
+         rvector, avectorin, avectorout,inrnum,diagflag,1)
+
   end subroutine arbitraryconfig_mult_singles_byproc
+
 
   subroutine arbitraryconfig_mult_doubles_byproc(firstproc,lastproc,www,twobodymat, &
        rvector, avectorin, avectorout,inrnum,diagflag)   
@@ -555,9 +585,11 @@ contains
        outvector(:,:)=outvector(:,:)+tempvector(:,:)
 
        if (www%holeflag.ne.0) then
-          call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,matrix_ptr%xtwoe_htrace(:,:),&
-               rvector,invector,tempvector,mynumr,diagflag)
-          outvector(:,:)=outvector(:,:)+tempvector(:,:)
+          call arbitraryconfig_mult_singles_byproc_hhh(firstproc,lastproc,www,matrix_ptr%xtwoe_htrace(:,:),&
+               rvector,invector,tempvector,mynumr,diagflag,0)
+!! matrix elements are already multiplied by minus 1; multiply by (-1) again to get positive contribution
+!! of the background density
+          outvector(:,:)=outvector(:,:)-tempvector(:,:)
        endif
 
        call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,matrix_ptr%xpotmatel(:,:),&
@@ -728,7 +760,9 @@ contains
        if (www%holeflag.ne.0) then
           call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xpottracemattr,&
                rvector,invector,tempvector,mynumr,diagflag)
-          outvector(:,:)=outvector(:,:)+tempvector(:,:)
+!! matrix elements are already multiplied by minus 1; multiply by (-1) again to get positive contribution
+!! of the background density
+          outvector(:,:)=outvector(:,:)-tempvector(:,:)
        endif
 
        call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xonepotsparsemattr,&

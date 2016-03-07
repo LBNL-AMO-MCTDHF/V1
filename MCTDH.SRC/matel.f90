@@ -27,7 +27,7 @@ subroutine all_matel()
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     Call all_matel0 in all_matel"; CFL; call mpibarrier()
   endif
-  call all_matel0(yyy%cptr(0), yyy%cmfspfs(:,0), yyy%cmfspfs(:,0), twoereduced,times,firstspf,lastspf)
+  call all_matel0(www%holeflag,yyy%cptr(0), yyy%cmfspfs(:,0), yyy%cmfspfs(:,0), twoereduced,times,firstspf,lastspf)
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     ...called all_matel0 in all_matel"; CFL; call mpibarrier()
   endif
@@ -67,15 +67,15 @@ subroutine all_matel()
 
 end subroutine all_matel
 
-subroutine all_matel0(matrix_ptr,inspfs1,inspfs2,twoereduced,times,firstspf,lastspf)
+subroutine all_matel0(inholeflag,matrix_ptr,inspfs1,inspfs2,twoereduced,times,firstspf,lastspf)
   use parameters
   use configptrmod
   implicit none
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
-  integer,intent(in) :: firstspf,lastspf
+  integer,intent(in) :: firstspf,lastspf,inholeflag
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   DATATYPE,intent(out) :: twoereduced(reducedpotsize,nspf,firstspf:lastspf)
-  integer :: times(*), i,j
+  integer :: times(*), i,j,ispf
 
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     ...sparseops_matel"; CFL; call mpibarrier()
@@ -100,6 +100,30 @@ subroutine all_matel0(matrix_ptr,inspfs1,inspfs2,twoereduced,times,firstspf,last
   call system_clock(j);  times(4)=times(4)+j-i
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     ...done all_matel0"; CFL; call mpibarrier()
+  endif
+
+  if (inholeflag.ne.0) then
+     matrix_ptr%xopmatel(:,:) = matrix_ptr%xopmatel(:,:) * (-1)
+     matrix_ptr%xymatel(:,:) = matrix_ptr%xymatel(:,:) * (-1)
+     matrix_ptr%xpotmatel(:,:) = matrix_ptr%xpotmatel(:,:) * (-1)
+     matrix_ptr%xpulsematelxx(:,:) = matrix_ptr%xpulsematelxx(:,:) * (-1)
+     matrix_ptr%xpulsematelyy(:,:) = matrix_ptr%xpulsematelyy(:,:) * (-1)
+     matrix_ptr%xpulsematelzz(:,:) = matrix_ptr%xpulsematelzz(:,:) * (-1)
+     matrix_ptr%xconmatel(:,:) = matrix_ptr%xconmatel(:,:) * (-1)
+     matrix_ptr%xconmatelxx(:,:) = matrix_ptr%xconmatelxx(:,:) * (-1)
+     matrix_ptr%xconmatelyy(:,:) = matrix_ptr%xconmatelyy(:,:) * (-1)
+     matrix_ptr%xconmatelzz(:,:) = matrix_ptr%xconmatelzz(:,:) * (-1)
+     matrix_ptr%xtwoematel(:,:,:,:) = matrix_ptr%xtwoematel(:,:,:,:) * (-1)
+     
+!! NO not these right?
+!     matrix_ptr%xpulsenuc = matrix_ptr%xpulsenuc * (-1)
+!     matrix_ptr%kefac = matrix_ptr%kefac * (-1)
+
+     matrix_ptr%xtwoe_htrace(:,:) = 0d0     
+     do ispf=1,nspf
+        matrix_ptr%xtwoe_htrace(:,:) =  matrix_ptr%xtwoe_htrace(:,:) + &
+             matrix_ptr%xtwoematel(:,:,ispf,ispf)
+     enddo
   endif
 
 end subroutine all_matel0
@@ -329,25 +353,22 @@ subroutine frozen_matels()
 end subroutine frozen_matels
 
 
-subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixtr)
+subroutine arbitraryconfig_matel_singles00transpose_hhh(www,onebodymat, smallmatrixtr,inholeflag)
   use fileptrmod
   use sparse_parameters
   use walkmod
   implicit none
   type(walktype),intent(in) :: www
+  integer,intent(in) :: inholeflag
   DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf)
   DATATYPE,intent(out) :: smallmatrixtr(www%singlematsize,www%configstart:www%configend)
-  DATATYPE :: csum, myvec(www%singlematsize)
-  integer ::    config1,  iwalk,myind,ihop
-
-  if (www%holeflag.ne.0) then
-     OFLWR "dome holetrace"; CFLST
-  endif
+  DATATYPE :: csum, myvec(www%singlematsize), holetrace
+  integer ::    config1,  iwalk,myind,ihop,ispf
 
   smallmatrixtr=0d0; 
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(config1,ihop,iwalk,myind,csum,myvec)
-
+  
 !$OMP DO SCHEDULE(DYNAMIC)
   do config1=www%botconfig,www%topconfig
 
@@ -374,12 +395,45 @@ subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixt
 !$OMP END DO
 !$OMP END PARALLEL
 
-  if (sparseconfigflag.eq.0) then
-     call mpiallgather(smallmatrixtr(:,:),www%numconfig**2,www%configsperproc(:)*www%numconfig,www%maxconfigsperproc*www%numconfig)
+  if (www%holeflag.ne.0.and.inholeflag.ne.0) then
+     holetrace=0
+     do ispf=1,www%nspf
+        holetrace=holetrace + onebodymat(ispf,ispf)
+     enddo
+     do config1=www%botconfig,www%topconfig
+        if (www%singlehopdiagflag(config1).ne.0) then
+           if (sparseconfigflag.eq.0) then
+              myind=www%singlediaghop(config1)
+           else
+              myind=config1
+           endif
+!! matrix will already have been multiplied by minus one.  multiply again by minus 1
+!!   to get the positive contribution of the background density
+           smallmatrixtr(myind,config1)=smallmatrixtr(myind,config1) - holetrace
+        endif
+     enddo
   endif
+  
+  if (sparseconfigflag.eq.0) then
+     call mpiallgather(smallmatrixtr(:,:),www%numconfig**2,www%configsperproc(:)*www%numconfig,&
+          www%maxconfigsperproc*www%numconfig)
+  endif
+    
+end subroutine arbitraryconfig_matel_singles00transpose_hhh
+  
+
+subroutine arbitraryconfig_matel_singles00transpose(www,onebodymat, smallmatrixtr)
+  use fileptrmod
+  use sparse_parameters
+  use walkmod
+  implicit none
+  type(walktype),intent(in) :: www
+  DATATYPE,intent(in) :: onebodymat(www%nspf,www%nspf)
+  DATATYPE,intent(out) :: smallmatrixtr(www%singlematsize,www%configstart:www%configend)
+
+  call arbitraryconfig_matel_singles00transpose_hhh(www,onebodymat, smallmatrixtr,1)
 
 end subroutine arbitraryconfig_matel_singles00transpose
-
 
 
 subroutine arbitraryconfig_matel_doubles00transpose(www,twobodymat, smallmatrixtr)
@@ -426,7 +480,8 @@ subroutine arbitraryconfig_matel_doubles00transpose(www,twobodymat, smallmatrixt
 !$OMP END PARALLEL
 
   if (sparseconfigflag.eq.0) then
-     call mpiallgather(smallmatrixtr(:,:),www%numconfig**2,www%configsperproc(:)*www%numconfig,www%maxconfigsperproc*www%numconfig)
+     call mpiallgather(smallmatrixtr(:,:),www%numconfig**2,www%configsperproc(:)*www%numconfig,&
+          www%maxconfigsperproc*www%numconfig)
   endif
 
 end subroutine arbitraryconfig_matel_doubles00transpose
@@ -514,8 +569,10 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
 
      call arbitraryconfig_matel_doubles00transpose(www,matrix_ptr%xtwoematel(:,:,:,:),tempconfigmat)
      if (www%holeflag.ne.0) then
-        call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xtwoe_htrace(:,:), tempconfigmat2)
-        tempconfigmat(:,:)=tempconfigmat(:,:)+tempconfigmat2(:,:)
+        call arbitraryconfig_matel_singles00transpose_hhh(www,matrix_ptr%xtwoe_htrace(:,:), tempconfigmat2, 0)
+!! matrix elements are already multiplied by minus 1; multiply by (-1) again to get positive contribution
+!! of the background density
+        tempconfigmat(:,:)=tempconfigmat(:,:)-tempconfigmat2(:,:)
      endif
      call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xpotmatel(:,:), tempconfigmat2)
 
@@ -639,7 +696,7 @@ subroutine assemble_sparsemats(www,matrix_ptr, sparse_ptr,boflag, nucflag, pulse
 
      sparse_ptr%xpottracemattr(:,:)=0d0
      if (www%holeflag.ne.0) then
-        call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xtwoe_htrace(:,:), sparse_ptr%xpottracemattr(:,:))
+        call arbitraryconfig_matel_singles00transpose_hhh(www,matrix_ptr%xtwoe_htrace(:,:), sparse_ptr%xpottracemattr(:,:), 0)
      endif
 
      call arbitraryconfig_matel_singles00transpose(www,matrix_ptr%xpotmatel(:,:),sparse_ptr%xonepotsparsemattr(:,:))

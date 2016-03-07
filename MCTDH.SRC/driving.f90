@@ -130,7 +130,10 @@ subroutine drivingtrans(thistime)
 
   call configptralloc(drivingptr,www)
   call zero_cptr(drivingptr)
-  call all_matel0(drivingptr,currentorbs,tempdrivingorbs,dtwoereduced,nulltimes,firstorb,lastorb)
+  if (holeflag.ne.0) then
+     OFLWR "Not done holeflag driving"; CFLST
+  endif
+  call all_matel0(0,drivingptr,currentorbs,tempdrivingorbs,dtwoereduced,nulltimes,firstorb,lastorb)
 
   if (velflag.eq.0) then
      rvector(:)=bondpoints(:)
