@@ -21,16 +21,16 @@ sinc_params.o: sinc_params.F90
 mpimod.o: mpimod.f90 ../Definitions.INC  ../Definitions.ALL ../Makefile.header sinc_params.o Makefile
 	$(F90) $(FFLAGS) $(MPIFLAG) -c mpimod.f90
 
-toeplitz_subs.o: $(DEPEND) toeplitz_subs.F90 ftcore.o cooleytukey_mpi.o
+toeplitz_subs.o: $(DEPEND) toeplitz_subs.F90 ftcore.o cooleytukey_mpi.o cooleytukey_shared.o
 	$(F90) $(FFLAGS) $(MPIFLAG)  -c toeplitz_subs.F90
 
 ftcore.o: $(DEPEND) ftcore.F90
 	$(F90) $(FFLAGS) $(MPIFLAG) $(FFTFLAG) -c ftcore.F90 -I$(MYINCLUDE)
 
-cooleytukey_shared.o: $(DEPEND) cooleytukey_shared.F90
+cooleytukey_shared.o: $(DEPEND) cooleytukey_shared.F90 ftcore.o
 	$(F90) $(FFLAGS) $(MPIFLAG)  -c cooleytukey_shared.F90
 
-cooleytukey_mpi.o: $(DEPEND) cooleytukey_mpi.F90 cooleytukey_shared.o ftcore.o
+cooleytukey_mpi.o: $(DEPEND) cooleytukey_mpi.F90 ftcore.o
 	$(F90) $(FFLAGS) $(MPIFLAG)  -c cooleytukey_mpi.F90
 
 readit.o: $(DEPEND) sinc_params.o sincproject.o tooth.o readit.F90

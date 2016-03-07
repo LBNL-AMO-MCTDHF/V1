@@ -682,3 +682,173 @@ end subroutine ct_init
 
 
 
+
+
+module cooleytukeymod
+contains
+
+#ifdef MPIFLAG
+
+!! INVERSE OF cooleytukey_outofplace_mpi except for division
+
+subroutine cooleytukey_outofplace_backward_mpi(intranspose,out,dim1,dim2,dim3,howmany)
+  implicit none
+  integer, intent(in) :: dim1,dim2,dim3,howmany
+  complex*16, intent(in) :: intranspose(dim1,dim2,dim3,howmany)
+  complex*16, intent(out) :: out(dim1,dim2,dim3,howmany)
+!!$  complex*16 ::  work(dim1,dim2,dim3,howmany), work2(dim1,dim2,dim3,howmany)
+  complex*16,allocatable ::  work(:,:,:,:),work2(:,:,:,:)
+
+  allocate(work(dim1,dim2,dim3,howmany), work2(dim1,dim2,dim3,howmany))
+
+!! USING WORK2 FIRST... PASS WORK NOT WORK2 AS INPUT
+
+  work2(:,:,:,:)=0d0
+  work(:,:,:,:)=CONJG(intranspose(:,:,:,:))
+  call cooleytukey_outofplaceinput_mpi0(work,out,dim1,dim2,dim3,howmany,1,work,work2)
+  out(:,:,:,:)=CONJG(out(:,:,:,:))
+
+  deallocate(work,work2)
+
+end subroutine cooleytukey_outofplace_backward_mpi
+
+
+
+!! fourier transform with OUT-OF-PLACE OUTPUT. 
+
+subroutine cooleytukey_outofplace_forward_mpi(in,outtrans,dim1,dim2,dim3,howmany)
+  use pmpimod
+  use ct_options
+  implicit none
+  integer, intent(in) :: dim1,dim2,dim3,howmany
+  complex*16, intent(in) :: in(dim1,dim2,dim3,howmany)
+  complex*16, intent(out) :: outtrans(dim1,dim2,dim3,howmany)
+!!$  complex*16 ::  work(dim1,dim2,dim3,howmany) , work2(dim1,dim2,dim3,howmany)
+  complex*16,allocatable ::  work(:,:,:,:),work2(:,:,:,:)
+
+  allocate(work(dim1,dim2,dim3,howmany), work2(dim1,dim2,dim3,howmany))
+
+  work(:,:,:,:)=0d0; work2(:,:,:,:)=0d0
+  call cooleytukey_outofplace_mpi0(in,outtrans,dim1,dim2,dim3,howmany,1,work,work2)
+
+  deallocate(work,work2)
+
+end subroutine cooleytukey_outofplace_forward_mpi
+
+
+recursive subroutine cooleytukey_outofplace_mpi0(in,outtrans,dim1,dim2,dim3,howmany,recursiondepth,work,work2)
+  use pmpimod
+  use ct_options
+  use ct_primesetmod !! ct_numprimes
+  use ctsubmod
+  use fft3dsubmod
+  implicit none
+  integer, intent(in) :: dim1,dim2,dim3,howmany,recursiondepth
+  complex*16, intent(in) :: in(dim1,dim2,dim3,howmany)
+  complex*16, intent(out) :: outtrans(dim1,dim2,dim3,howmany)
+  complex*16,intent(inout) ::  work(dim1,dim2,dim3,howmany), work2(dim1,dim2,dim3,howmany)
+  integer ::  newdepth
+
+!! PASSING WORK(:,:,:) AS IN(:,:,:)... USE WORK2 FIRST
+
+  select case(orbparlevel)
+  case(3)
+     call myzfft1d_slowindex_mpi(in,work2,dim1*dim2*dim3*howmany,recursiondepth,3)
+     call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth,3)
+  case(2)
+!!     call mpibarrier()
+     call myzfft1d_slowindex_mpi(in,work2,dim1*dim2*dim3*howmany,recursiondepth,3)
+     call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth,3)
+!!     call mpibarrier()
+     call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,2)
+     call twiddlemult_mpi(dim1,work2,work,dim2,dim3*howmany,recursiondepth,2)
+!!     call mpibarrier()
+  case(1)
+!!     call mpibarrier()
+     call myzfft1d_slowindex_mpi(in,work2,dim1*dim2*dim3*howmany,recursiondepth,3)
+     call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth,3)
+!!     call mpibarrier()
+     call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,2)
+     call twiddlemult_mpi(dim1,work2,work,dim2,dim3*howmany,recursiondepth,2)
+!!     call mpibarrier()
+     call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,1)
+     call twiddlemult_mpi(1,work2,work,dim1,dim3*dim2*howmany,recursiondepth,1)
+!!     call mpibarrier()
+  case default
+     print *, "fdsdfsf6666888"; stop
+  end select
+
+  if (recursiondepth.eq.ct_numprimes) then
+     call myzfft3d(work,outtrans,dim1,dim2,dim3,howmany)
+  else
+     newdepth=recursiondepth+1
+     call cooleytukey_outofplace_mpi0(work,outtrans,dim1,dim2,dim3,howmany,newdepth,work,work2)
+  endif
+
+end subroutine cooleytukey_outofplace_mpi0
+
+
+recursive subroutine cooleytukey_outofplaceinput_mpi0(intranspose,out,dim1,dim2,dim3,howmany,recursiondepth,work,work2)
+  use pmpimod
+  use ct_options
+  use ct_primesetmod !! ct_numprimes
+  use ctsubmod
+  use fft3dsubmod
+  implicit none
+  integer, intent(in) :: dim1,dim2,dim3,howmany,recursiondepth
+  complex*16, intent(in) :: intranspose(dim1,dim2,dim3,howmany)
+  complex*16, intent(out) :: out(dim1,dim2,dim3,howmany)
+  complex*16,intent(inout) ::  work(dim1,dim2,dim3,howmany), work2(dim1,dim2,dim3,howmany)
+  integer ::  newdepth
+
+!! PASSING WORK(:,:,:) AS INTRANSPOSE(:,:,:)... USE WORK2 FIRST
+
+  if (recursiondepth.eq.ct_numprimes) then
+
+     call myzfft3d(intranspose,work2,dim1,dim2,dim3,howmany)
+
+  else
+     newdepth=recursiondepth+1
+
+!! USING WORK2 AS OUTPUT
+
+     call cooleytukey_outofplaceinput_mpi0(intranspose,work2,dim1,dim2,dim3,howmany,newdepth,work,work2)
+  endif
+
+
+!! WORK HERE... WORK2 IS OUTPUT
+!!$  call myzfft1d_slowindex_mpi(work,out,dim1*dim2*dim3*howmany,recursiondepth)
+
+  select case(orbparlevel)
+  case(3)
+     call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth,3)
+     call myzfft1d_slowindex_mpi(work,out,dim1*dim2*dim3*howmany,recursiondepth,3)
+  case(2)
+!!     call mpibarrier()
+     call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth,3)
+     call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,3)
+!!     call mpibarrier()
+     call twiddlemult_mpi(dim1,work2,work,dim2,dim3*howmany,recursiondepth,2)
+     call myzfft1d_slowindex_mpi(work,out,dim1*dim2*dim3*howmany,recursiondepth,2)
+!!     call mpibarrier()
+  case(1)
+!!     call mpibarrier()
+     call twiddlemult_mpi(dim1*dim2,work2,work,dim3,howmany,recursiondepth,3)
+     call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,3)
+!!     call mpibarrier()
+     call twiddlemult_mpi(dim1,work2,work,dim2,dim3*howmany,recursiondepth,2)
+     call myzfft1d_slowindex_mpi(work,work2,dim1*dim2*dim3*howmany,recursiondepth,2)
+!!     call mpibarrier()
+     call twiddlemult_mpi(1,work2,work,dim1,dim2*dim3*howmany,recursiondepth,1)
+     call myzfft1d_slowindex_mpi(work,out,dim1*dim2*dim3*howmany,recursiondepth,1)
+!!     call mpibarrier()
+  case default
+     print *, "fdsdfsf6666888"; stop
+  end select
+
+
+end subroutine cooleytukey_outofplaceinput_mpi0
+
+#endif
+
+end module cooleytukeymod
