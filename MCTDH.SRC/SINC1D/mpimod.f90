@@ -9,6 +9,9 @@ module pmpimod
   implicit none
   integer :: myrank=(-1),nprocs=(-1),&
        PROJ_COMM_WORLD=(-1), PROJ_GROUP_WORLD=(-1)
+  integer,parameter :: boxrank(3) = (/ 1,1,1 /), &  !! not used 1d (dummies)
+       procsplit(3) = (/ -888,-888,-888 /), &       !! not used 1d (dummies)
+       box_comm(1,1,3) = -798,   orbparlevel=1      !! not used 1d (dummies)
 
 end module pmpimod
 

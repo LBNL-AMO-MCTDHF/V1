@@ -147,12 +147,7 @@ subroutine get_twoe_new(pot)
      threed_two(istart-numpoints:numpoints-1) = 0.5d0 * sech(myarray(:),2*numpoints-istart)**2 * twostrength
   endif
 
-  deallocate(myarray)
-
-  gridoffset=0
-  if (orbparflag) then
-     gridoffset=(myrank-1)*numpoints
-  endif
+  deallocate(myarray); allocate(myarray(numpoints))
 
   if (numcenters.eq.0) then
      pot(:) = 0.5d0 * harmstrength * dipoles(:)**2
@@ -162,9 +157,14 @@ subroutine get_twoe_new(pot)
   endif
 
   do icenter=1,numcenters
+     myarray(:)=( dipoles(:) - centershift(icenter)*spacing/2d0 )/softness(icenter)
+
+
      pot(:)=pot(:) - 0.5d0 * nuccharges(icenter)*(nuccharges(icenter)+1) / softness(icenter)**2 * &
-          sech(( dipoles(:) - centershift(icenter)*spacing/2d0 )/softness(icenter),numpoints)**2
+          sech(myarray(:), numpoints)**2
   enddo
+
+  deallocate(myarray)
 
 contains
   function sech(inarray,num)

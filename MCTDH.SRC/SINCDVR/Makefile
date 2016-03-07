@@ -12,7 +12,7 @@ default: sincprojectar.a
 clean:
 	rm *.o *.a *genmod* *.mod
 
-sincprojectar.a:  $(HTWO) 
+sincprojectar.a: $(HTWO) 
 	$(AR) -r sincprojectar.a    $(HTWO) 
 
 sinc_params.o: sinc_params.F90
@@ -45,7 +45,8 @@ tooth.o: $(DEPEND) tooth.f90
 sincproject.o: $(DEPEND) sincproject.F90 sinc_params.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c sincproject.F90
 
-init_sinc_new.o: $(DEPEND) sinc_params.o sincproject.o init_sinc_new.F90
+# TEMP cooleytukey_mpi.o
+init_sinc_new.o: $(DEPEND) sinc_params.o sincproject.o init_sinc_new.F90 cooleytukey_mpi.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c init_sinc_new.F90
 
 coreproject.o: $(DEPEND)  sinc_params.o sincproject.o coreproject.F90 toeplitz_subs.o
