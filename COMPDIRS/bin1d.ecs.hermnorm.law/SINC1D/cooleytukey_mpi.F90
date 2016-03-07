@@ -1,1 +1,1 @@
-../../MCTDH.SRC/SINC1D/cooleytukey_mpi.f90
+../../MCTDH.SRC/COREPROJECT/cooleytukey_mpi.f90
