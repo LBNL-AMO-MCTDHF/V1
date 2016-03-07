@@ -1790,12 +1790,14 @@ subroutine mult_circ_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
      case(1)  !! KE
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,&
-                ketot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
+                ketot(indim)%tam(:,:,ibox,boxrank(indim)),numpoints(indim),DATAZERO, work(:,ii), nnn)
+!!                ketot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
         enddo
      case(2) 
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,in(:,ii),nnn,&
-                fdtot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
+                fdtot(indim)%tam(:,:,ibox,boxrank(indim)),numpoints(indim),DATAZERO, work(:,ii), nnn)
+!!                fdtot(indim)%mat(1,ibox,1,boxrank(indim)),gridpoints(indim),DATAZERO, work(:,ii), nnn)
         enddo
      case default 
         OFLWR "WHAAAAT"; CFLST
@@ -1939,12 +1941,14 @@ subroutine mult_summa_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
      case(1)  !! KE
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,work(:,ii),nnn,&
-                ketot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
+                ketot(indim)%tam(:,:,boxrank(indim),ibox),numpoints(indim),DATAONE, out(:,ii), nnn)
+!!                ketot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
         enddo
      case(2) 
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints(indim),numpoints(indim),DATAONE,work(:,ii),nnn,&
-                fdtot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
+                fdtot(indim)%tam(:,:,boxrank(indim),ibox),numpoints(indim),DATAONE, out(:,ii), nnn)
+!!                fdtot(indim)%mat(1,boxrank(indim),1,ibox),gridpoints(indim),DATAONE, out(:,ii), nnn)
         enddo
      case default 
         OFLWR "WHAAAAT"; CFLST

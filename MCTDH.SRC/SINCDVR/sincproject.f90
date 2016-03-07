@@ -7,7 +7,7 @@ module myprojectmod
   DATATYPE, allocatable ::  threed_two(:,:,:)
 
   type fourmat
-     DATATYPE, allocatable :: mat(:,:,:,:)
+     DATATYPE, allocatable :: mat(:,:,:,:), tam(:,:,:,:)
   end type fourmat
 
   type twomat
@@ -83,19 +83,24 @@ subroutine myprojectalloc()
   do idim=1,griddim
      allocate( &
 
-!! Allocating extra here for fdtot%mat and ketot%mat (+1's) --
-!!   see Z/GEMM calls in coreproject.f90... leading dimension not
-!!   allocated as passed to Z/GEMM without extra
+!! not needed with tam.  old comment:
+!! !! Allocating extra here for fdtot%mat and ketot%mat (+1's) --
+!! !!   see Z/GEMM calls in coreproject.f90... leading dimension not
+!! !!   allocated as passed to Z/GEMM without extra
 
-          fdtot(idim)%mat(numpoints(idim),nbox(idim),numpoints(idim),nbox(idim)   +1), &
-          ketot(idim)%mat(numpoints(idim),nbox(idim),numpoints(idim),nbox(idim)   +1), &
+!!          fdtot(idim)%mat(numpoints(idim),nbox(idim),numpoints(idim),nbox(idim)   +1), &
+!!          ketot(idim)%mat(numpoints(idim),nbox(idim),numpoints(idim),nbox(idim)   +1), &
+          fdtot(idim)%mat(numpoints(idim),nbox(idim),numpoints(idim),nbox(idim)), &
+          ketot(idim)%mat(numpoints(idim),nbox(idim),numpoints(idim),nbox(idim)), &
+          fdtot(idim)%tam(numpoints(idim),numpoints(idim),nbox(idim),nbox(idim)), &
+          ketot(idim)%tam(numpoints(idim),numpoints(idim),nbox(idim),nbox(idim)), &
           kevect(idim)%rmat(1-gridpoints(idim):gridpoints(idim)-1),&
           kevect(idim)%cmat(1-gridpoints(idim):gridpoints(idim)-1),&
           fdvect(idim)%rmat(1-gridpoints(idim):gridpoints(idim)-1),&
           fdvect(idim)%cmat(1-gridpoints(idim):gridpoints(idim)-1),&
           sinepoints(idim)%mat(numpoints(idim),nbox(idim)))
      fdtot(idim)%mat=0; ketot(idim)%mat=0; kevect(idim)%rmat=0; kevect(idim)%cmat=0;
-     fdvect(idim)%rmat=0; kevect(idim)%cmat=0
+     fdvect(idim)%rmat=0; kevect(idim)%cmat=0; fdtot(idim)%tam=0; ketot(idim)%tam=0
   enddo
 
   if (griddim.ne.3) then
