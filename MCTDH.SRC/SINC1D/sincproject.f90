@@ -7,7 +7,7 @@ module myprojectmod
   DATATYPE, allocatable ::  threed_two(:)
 
   type fourmat
-     DATATYPE, allocatable :: mat(:,:,:,:)
+     DATATYPE, allocatable :: mat(:,:,:,:), tam(:,:,:,:)
   end type fourmat
 
   type twomat
@@ -64,21 +64,29 @@ subroutine myprojectalloc()
         OFLWR "WOW THAT'S BIG!  Are you sure you don't want to try toepflag?", numpoints*nbox; CFL
      endif
 
-!! Allocating extra here for fdtot%mat and ketot%mat (+1's) --
-!!   see Z/GEMM calls in coreproject.f90... leading dimension not
-!!   allocated as passed to Z/GEMM without extra
+!! not needed now with tam.  old comment:
+!! !! Allocating extra here for fdtot%mat and ketot%mat (+1's) --
+!! !!   see Z/GEMM calls in coreproject.f90... leading dimension not
+!! !!   allocated as passed to Z/GEMM without extra
 
      if (orbparflag) then
         allocate( &
-             fdtot%mat(numpoints,nbox,numpoints,myrank:myrank +1), &
-             ketot%mat(numpoints,nbox,numpoints,myrank:myrank +1))
+!!             fdtot%mat(numpoints,nbox,numpoints,myrank:myrank +1), &
+!!             ketot%mat(numpoints,nbox,numpoints,myrank:myrank +1))
+             fdtot%mat(numpoints,nbox,numpoints,myrank:myrank), &
+             ketot%mat(numpoints,nbox,numpoints,myrank:myrank),&
+             fdtot%tam(numpoints,numpoints,nbox,myrank:myrank), &
+             ketot%tam(numpoints,numpoints,nbox,myrank:myrank))
      else
         allocate( &
              fdtot%mat(numpoints,nbox,numpoints,nbox), &
-             ketot%mat(numpoints,nbox,numpoints,nbox))
+             ketot%mat(numpoints,nbox,numpoints,nbox), &
+             fdtot%tam(numpoints,numpoints,nbox,nbox), &
+             ketot%tam(numpoints,numpoints,nbox,nbox))
+
      endif
 
-     fdtot%mat=0; ketot%mat=0; 
+     fdtot%mat=0; ketot%mat=0; fdtot%tam=0; ketot%tam=0
   endif
 
   allocate( &
@@ -111,8 +119,6 @@ subroutine get_twoe_new(pot)
   implicit none
   DATATYPE,intent(out) :: pot(totpoints)
   DATATYPE,allocatable :: myarray(:)
-  DATATYPE :: ffunct
-  real*8 :: sum,sum2
   integer :: ii,jj,pp,gridoffset,istart,icenter
 
   istart=1
@@ -147,9 +153,6 @@ subroutine get_twoe_new(pot)
   if (orbparflag) then
      gridoffset=(myrank-1)*numpoints
   endif
-  sum=(gridoffset - gridpoints/2d0) * spacing
-
-  allocate(myarray(numpoints)); myarray=0
 
   if (numcenters.eq.0) then
      pot(:) = 0.5d0 * harmstrength * dipoles(:)**2
@@ -159,24 +162,9 @@ subroutine get_twoe_new(pot)
   endif
 
   do icenter=1,numcenters
-
-!     sum2=sum
-!     do ii=1,numpoints
-!!! no, below
-!!!         myarray(ii)=ffunct((sum2 - centershift(icenter)*spacing/2d0)/softness(icenter))
-!
-!        myarray(ii)=ffunct(sum2)
-!
-!        sum2=sum2+spacing
-!     enddo
-
-     myarray(:)=dipoles(:)
-
      pot(:)=pot(:) - 0.5d0 * nuccharges(icenter)*(nuccharges(icenter)+1) / softness(icenter)**2 * &
-          sech(( myarray(:) - centershift(icenter)*spacing/2d0 )/softness(icenter),numpoints)**2
+          sech(( dipoles(:) - centershift(icenter)*spacing/2d0 )/softness(icenter),numpoints)**2
   enddo
-
-  deallocate(myarray)
 
 contains
   function sech(inarray,num)

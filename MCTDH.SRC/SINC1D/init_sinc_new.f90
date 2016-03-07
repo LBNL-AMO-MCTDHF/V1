@@ -444,6 +444,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
                  jj=jj+1
                  ketot%mat(l,k,j,i)=kevect%rmat(ii-jj)
                  fdtot%mat(l,k,j,i)=fdvect%rmat(ii-jj)
+                 ketot%tam(l,j,k,i)=kevect%rmat(ii-jj)
+                 fdtot%tam(l,j,k,i)=fdvect%rmat(ii-jj)
               enddo
            enddo
         enddo

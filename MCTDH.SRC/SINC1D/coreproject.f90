@@ -1450,12 +1450,14 @@ subroutine mult_circ_gen0(nnn,in, out,option,howmany,timingdir,notiming)
      case(1)  !! KE
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,in(:,ii),nnn,&
-                ketot%mat(1,ibox,1,myrank),gridpoints,DATAZERO, work(:,ii), nnn)
+                ketot%tam(:,:,ibox,myrank),numpoints,DATAZERO, work(:,ii), nnn)
+!!                ketot%mat(1,ibox,1,myrank),gridpoints,DATAZERO, work(:,ii), nnn)
         enddo
      case(2) 
         do ii=1,howmany
            call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,in(:,ii),nnn,&
-                fdtot%mat(1,ibox,1,myrank),gridpoints,DATAZERO, work(:,ii), nnn)
+                fdtot%tam(:,:,ibox,myrank),numpoints,DATAZERO, work(:,ii), nnn)
+!!                fdtot%mat(1,ibox,1,myrank),gridpoints,DATAZERO, work(:,ii), nnn)
         enddo
      case default 
         OFLWR "WHAAAAT"; CFLST
@@ -1558,12 +1560,14 @@ subroutine mult_summa_gen0(nnn,in, out,option,howmany,timingdir,notiming)
      case(1)  !! KE
         do ii=1,howmany
            call MYGEMM('N','N',nnn,numpoints,numpoints,DATAONE,work(:,ii),nnn,&
-                ketot%mat(1,ibox,1,myrank),gridpoints,DATAONE, out(:,ii), nnn)
+                ketot%tam(:,:,ibox,myrank),numpoints,DATAONE, out(:,ii), nnn)
+!!                ketot%mat(1,ibox,1,myrank),gridpoints,DATAONE, out(:,ii), nnn)
         enddo
      case(2) 
         do ii=1,howmany
            call MYGEMM('N','N',nnn,numpoints,numpoints,DATAONE,work(:,ii),nnn,&
-                fdtot%mat(1,ibox,1,myrank),gridpoints,DATAONE, out(:,ii), nnn)
+                fdtot%tam(:,:,ibox,myrank),numpoints,DATAONE, out(:,ii), nnn)
+!!                fdtot%mat(1,ibox,1,myrank),gridpoints,DATAONE, out(:,ii), nnn)
         enddo
      case default 
         OFLWR "WHAAAAT"; CFLST
