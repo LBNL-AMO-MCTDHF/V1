@@ -37,15 +37,16 @@ subroutine projeflux_singlewalks()
        if (www%holeflag.eq.0) then
           tempconfig(3:num2part)=tconfiglist(:,iconfig)
           temporb=aarr(iindex)
+          tempconfig(1:2)=temporb(:);        
           flag=0
           do idof=2,numpart 
              if(iind(tempconfig(idof*2-1:idof*2)).eq.iindex) flag=1
           enddo
        else   !! holeflag
-          flag=0
+          flag=1
           do idof=1,numpart+1
              if(iind(tconfiglist(idof*2-1:idof*2,iconfig)).eq.iindex) then
-                flag=1
+                flag=0
                 tempconfig(1:(idof-1)*2) = tconfiglist(1:(idof-1)*2,iconfig)
                 tempconfig(idof*2-1:num2part) = tconfiglist(idof*2+1:num2part+2,iconfig)
                 temporb=aarr(iindex)
@@ -54,7 +55,7 @@ subroutine projeflux_singlewalks()
           enddo
        endif   !! holeflag
        if(flag.eq.0) then
-          tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig,www%numpart)
+          dirphase=reorder(tempconfig,www%numpart)
           if(allowedconfig0(www,tempconfig,www%dflevel)) then
              jconfig=getconfiguration(tempconfig,www)
              if (jconfig.ge.www%botconfig.and.jconfig.le.www%topconfig) then
@@ -83,15 +84,16 @@ subroutine projeflux_singlewalks()
         if (www%holeflag.eq.0) then
            tempconfig(3:num2part)=tconfiglist(:,iconfig)
            temporb=aarr(iindex)
+           tempconfig(1:2)=temporb(:)
            flag=0
            do idof=2,numpart
               if(iind(tempconfig(idof*2-1:idof*2)).eq.iindex) flag=1
            enddo
         else    !! holeflag
-           flag=0
+           flag=1
            do idof=1,numpart+1
               if(iind(tconfiglist(idof*2-1:idof*2,iconfig)).eq.iindex) then
-                 flag=1
+                 flag=0
                  tempconfig(1:(idof-1)*2) = tconfiglist(1:(idof-1)*2,iconfig)
                  tempconfig(idof*2-1:num2part) = tconfiglist(idof*2+1:num2part+2,iconfig)
                  temporb=aarr(iindex)
@@ -100,7 +102,7 @@ subroutine projeflux_singlewalks()
            enddo
         endif  !! holeflag
         if(flag.eq.0) then
-           tempconfig(1:2)=temporb(:);        dirphase=reorder(tempconfig,www%numpart)
+           dirphase=reorder(tempconfig,www%numpart)
            if(allowedconfig0(www,tempconfig,www%dflevel)) then
               jconfig=getconfiguration(tempconfig,www)
               if (jconfig.ge.www%botconfig.and.jconfig.le.www%topconfig) then
