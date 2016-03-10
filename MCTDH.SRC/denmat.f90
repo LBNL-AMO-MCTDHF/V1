@@ -260,6 +260,20 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
 
   call mympireduce(denmat,www%nspf**2)
 
+  if (www%holeflag.ne.0) then
+     csum=0d0
+     if (www%lastconfig.ge.www%firstconfig) then
+        csum=dot(in_avector2,avector1,numpoints*www%localnconfig*howmany)
+     endif
+     if (www%parconsplit.ne.0) then
+        call mympireduceone(csum)
+     endif
+     denmat(:,:) = (-1) * denmat(:,:)
+     do ispf=1,www%nspf
+        denmat(ispf,ispf)=denmat(ispf,ispf) + csum * 2d0
+     enddo
+  endif
+
 end subroutine getdenmat00
 
 

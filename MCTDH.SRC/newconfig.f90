@@ -483,14 +483,9 @@ subroutine fast_newconfiglist(www,domflags)
   isums(:)=0
   do ishell=1,numshells
 
-!! count maximum number of excitations in shells greater than ishell, given maxocc
-
+!! count maximum number of excitations in ishell given maxocc for shells greater than ishell
      do jshell=ishell+1,numshells
-
-!!$        isum=isum+min(maxocc(jshell),2*(allshelltop(jshell)-allshelltop(jshell-1)))
-
         isums(ishell) = isums(ishell) + max(0,min(maxocc(jshell),mytot(jshell)))
-
      enddo
   enddo
 
@@ -501,44 +496,43 @@ subroutine fast_newconfiglist(www,domflags)
 !! maximum number of holes in shells 1 through ishell given maxocc for higher shells is then 
 !!     2*allshelltop(ishell)-max(0,numelec-isum) 
 
-!! --> isum is maximum cumulative number of excitations (of electrons or holes for holeflag.eq.0 or .ne.0) <--
+  isums(1:numshells)=max(0,2*allshelltop(1:numshells)-max(0,www%numelec-isums(1:numshells)))
+
+!! --> isums(ishell) is now the maximum number of holes in shell 1 through ishell <--
 !! --> given maximum electron occupancy restriction on other shells <--
-
-!! if holeflag.ne.0, then set isum to the former
-!! if not, to the latter
-
-  isums(1:numshells)=max(0,www%numelec-isums(1:numshells))
-  if (www%holeflag.eq.0) then
-     isums(1:numshells)=max(0,2*allshelltop(1:numshells)-isums(1:numshells))
-  endif
 
 !! count maximum number of excitations in shells 1 through ishell, given minocc for those shells
 
-!! max number of electrons
+!! min number of electrons
   jsums=0
   do ishell=1,numshells
      do jshell=1,ishell
         jsums(ishell)=jsums(ishell)+max(0,min(minocc(jshell),mytot(jshell)))
      enddo
   enddo
-  jsums(:)=min(jsums(:),www%numelec)
+
+!! jsums is now minimum number of electrons
 
 !! maximum number of holes in shells 1 through ishell, given minocc for those shells, is 
 !!    2*allshelltop(ishell)-jsums(ishell)
-!! if holeflag.eq.0, set jsums to this, otherwise let it be; those electrons already counted
-!!    are excitations of holes
+!! set jsums to this:
 
-  if (www%holeflag.eq.0) then
-     jsums(:)=max(0,2*allshelltop(1:numshells)-jsums(:))
-  endif
+  jsums(:)=max(0,2*allshelltop(1:numshells)-jsums(:))
 
-!! now the final maximum number of cumulative excitations of particles (electrons or holes)
+!! --> jsums(ishell) is now the maximum number of holes in shell 1 through ishell <--
+!! --> given minimum occupancy restriction on shells 1 through ishell <--
+
+!! now the final maximum number of holes
 !!   for shells 1 through ishell is mynumexcite(ishell) accounting both for
 !!   minocc restriction on shells 1 through ishell and for maxocc for higher shells is mynumexcite
 
   mynumexcite(1:numshells)=min(min(numexcite(1:numshells),isums(:)), jsums(:))
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  
+  OFLWR "Excitations per shell"
+  write(mpifileptr,'(3I10)') (mynumexcite(ishell),isums(ishell),jsums(ishell),ishell=1,numshells)
+  CFL
 
   kk=0  !! electron
 
@@ -546,19 +540,45 @@ subroutine fast_newconfiglist(www,domflags)
 
 !! maximum number of cumulative excitations mm
 
-     mm=2*allshelltop(ishell)-min(mynumexcite(ishell),2*www%nspf-www%numpart)
+     if (www%holeflag.eq.0) then
 
-     do jj=kk+1,mm   !! which electron. the jjth electron can start in the qth orbital,
-                     !! which is in ishell, where q = allshelltop(ishell)-(mm-jj)/2.  Right?
+!! mm is minimum number of electrons in shells 1 through ishell
+!! kk is the old minimum
 
-        upperarr(jj)=min(upperarr(jj),allshelltop(ishell)-(mm-jj)/2)
+        mm=2*allshelltop(ishell)-min(mynumexcite(ishell),2*www%nspf-www%numpart)
 
-     enddo
+        do jj=kk+1,mm   !! which electron. the jjth electron can start in the qth orbital,
+                           !! which is in ishell, where q = allshelltop(ishell)-(mm-jj)/2.  Right?
+
+           upperarr(jj)=min(upperarr(jj),allshelltop(ishell)-(mm-jj)/2)
+        enddo
+
+     else
+        
+!! mm is minimum number of holes in shells 1 through ishell
+!! kk is the old minimum
+
+        mm=mynumexcite(ishell)
+
+        do jj=kk+1,mm   !! which electron. the jjth electron can start in the qth orbital,
+                           !! which is in ishell, where q = allshelltop(ishell)-(mm-jj)/2.  Right?
+
+           lowerarr(jj)=max(lowerarr(jj),allshelltop(ishell-1)-(mm-jj)/2)
+        enddo
+
+     endif
+
      kk=max(0,mm)
-  enddo
+
+  enddo  ! ishell
+
 
   if (.not.alreadycounted) then
-     OFLWR "UPPER/LOWER"
+     if (www%holeflag.eq.0) then
+        OFLWR "Orbital ranges for each electron ::"
+     else
+        OFLWR "Orbital ranges for each hole ::"
+     endif
      do ii=1,www%numpart
         WRFL lowerarr(ii),upperarr(ii)
      enddo

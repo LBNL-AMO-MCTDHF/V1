@@ -727,7 +727,7 @@ contains
     implicit none
     Type(biorthotype),target,intent(inout) :: inbiovar
     integer :: i,j,iflag,clow,chigh,jproc,cnum,nnn(2),mmm(2),rank,lwork
-    integer :: bioconfiglist(inbiovar%wwbio%numpart,inbiovar%wwbio%numconfig)
+    integer :: bioconfiglist(inbiovar%wwbio%numpart+1,inbiovar%wwbio%numconfig)  !! PADDED
     DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%numconfig)
     DATATYPE,intent(out) :: aout(inbiovar%bionr,inbiovar%wwbio%numconfig)
     DATATYPE :: smobig(inbiovar%wwbio%nspf*2,inbiovar%wwbio%nspf*2),&

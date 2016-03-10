@@ -670,6 +670,7 @@ subroutine hops(www)
   use walkmod
   use mpimod
   use aarrmod
+  use configsubmod   !! allowedconfig0
   implicit none
   type(walktype) :: www
   integer :: ii,iwalk,iconfig,totsinglehops,totdoublehops,&
@@ -711,10 +712,11 @@ subroutine hops(www)
              www%doublehopwalkstart(www%maxnumdoublehops,www%configstart:www%configend+1),&
              www%doublehopwalkend(www%maxnumdoublehops,www%configstart:www%configend+1))
         www%singlehop(:,:)=(-99)
-        www%singlehopwalkstart(:,:)=(-99) 
+        www%singlehopwalkstart(:,:)=1
+        www%singlehopwalkend(:,:)=0
         www%doublehop(:,:)=(-99)
-        www%doublehopwalkstart(:,:)=(-99)
-        www%doublehopwalkend(:,:)=(-99)
+        www%doublehopwalkstart(:,:)=1
+        www%doublehopwalkend(:,:)=0
      endif
 
      if (ii.eq.0) then
@@ -755,7 +757,6 @@ subroutine hops(www)
            endif
         endif
      enddo
-
 
      if (ii.eq.0) then
         OFLWR "Counting double hops..."; CFL
@@ -817,6 +818,22 @@ subroutine hops(www)
         enddo
      endif
 
+  enddo   !! do ii=0,1
+
+
+  do iconfig=www%configstart,www%configend
+
+     if (allowedconfig0(www,www%configlist(:,iconfig),www%dfwalklevel) .and. www%holeflag.ne.0) then
+        if (www%numsinglehops(iconfig).eq.0.and.www%singlewalkflag.ne.0) then
+           www%numsinglehops(iconfig) = 1
+           www%singlehop(1,iconfig)=iconfig
+        endif
+        if (www%numdoublehops(iconfig).eq.0.and.www%doublewalkflag.ne.0) then
+           www%numdoublehops(iconfig)=1
+           www%doublehop(1,iconfig)=iconfig
+        endif
+     endif
+
   enddo
 
   do iconfig=www%configstart,www%configend
@@ -850,6 +867,7 @@ subroutine hops(www)
         enddo
      endif
      www%doublehopdiagflag(iconfig)=flag
+
   enddo
 
   call mpibarrier()
