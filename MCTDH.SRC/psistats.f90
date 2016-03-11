@@ -238,9 +238,11 @@ subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2ex
      call op_conjg(myspfs(:,i),tempspfs(:,i))
   enddo
   do imc=1,numvec
-     tempvector(:,:)=ALLCON(inavectors(:,:,imc))
+     if (www%totadim.gt.0) then
+        tempvector(:,:)=ALLCON(inavectors(:,:,imc))
+     endif
      call autocorrelate_one(www,bioww,inavectors(:,:,imc),myspfs,&
-          tempspfs,tempvector(:,:),conjgexpect(imc),numr,conjgbiovar(imc))
+          tempspfs,tempvector,conjgexpect(imc),numr,conjgbiovar(imc))
      conjgexpect(imc)=conjgexpect(imc)   /normsq(imc)
   enddo
   
@@ -491,7 +493,10 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
        tempspfs(spfsize,www%nspf),tempspfs2(spfsize,www%nspf),&
        conjgmat(www%nspf,www%nspf))
 
-  tempvector(:,:)=0d0; tempspfs(:,:)=0d0; tempspfs2(:,:)=0d0
+  if (www%totadim.gt.0) then
+     tempvector(:,:)=0d0;
+  endif
+  tempspfs(:,:)=0d0; tempspfs2(:,:)=0d0
 
   ugmat=0; xdipmat=0; ydipmat=0; zdipmat=0; xrefmat=0; yrefmat=0; zrefmat=0
 
@@ -509,10 +514,12 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
      call op_conjg(myspfs(:,i),tempspfs(:,i))
   enddo
   do imc=1,mcscfnum
-     tempvector(:,:)=ALLCON(inavectors(:,:,imc))
+     if (www%totadim.gt.0) then
+        tempvector(:,:)=ALLCON(inavectors(:,:,imc))
+     endif
      do jmc=1,mcscfnum
         call autocorrelate_one(www,bioww,inavectors(:,:,jmc),myspfs,tempspfs,&
-             tempvector(:,:),conjgmatel(jmc,imc),numr,conjgbiovar(jmc,imc))
+             tempvector,conjgmatel(jmc,imc),numr,conjgbiovar(jmc,imc))
      enddo
   enddo
 
