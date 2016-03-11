@@ -301,16 +301,14 @@ contains
 
 !!       OFLWR "HTRACE002",holetrace,www%nspf; CFL
 
-!!! NO! Two-electron operator       twobodymat(:,:,:,:) = (-1) * in_twobodymat(:,:,:,:)
+!! NO!  Two-electron operator       twobodymat(:,:,:,:) = (-1) * in_twobodymat(:,:,:,:)
 
        if (myrank.ge.firstproc.and.myrank.le.lastproc) then
           do config1=www%botconfig,www%topconfig
              avectorout(:,config1) = holetrace*avectorin(:,config1) * rvector(:)
           enddo
        endif
-
     endif    !! holeflag
-
 
     if (diagflag.eq.0) then
 
@@ -623,7 +621,6 @@ contains
             rvector,invector,tempvector,mynumr,diagflag)
        outvector(:,:)=outvector(:,:)+tempvector(:,:)
 
-!! HOLEDOUB
        if (www%holeflag.ne.0) then
           call arbitraryconfig_mult_singles_byproc_hhh(firstproc,lastproc,www,matrix_ptr%xtwoe_htrace(:,:),&
                rvector,invector,tempvector,mynumr,diagflag,0)
@@ -796,7 +793,6 @@ contains
             rvector,invector,tempvector,mynumr,diagflag)
        outvector(:,:)=outvector(:,:)+tempvector(:,:)
 
-!! HOLEDOUB
        if (www%holeflag.ne.0) then
           call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xpottracemattr,&
                rvector,invector,tempvector,mynumr,diagflag)

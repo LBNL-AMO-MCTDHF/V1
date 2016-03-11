@@ -49,18 +49,14 @@ subroutine all_matel()
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (xcalled==1) then
         open(853, file=timingdir(1:getlen(timingdir)-1)//"/matel.time.dat", status="unknown")
-!!$        open(8853, file=timingdir(1:getlen(timingdir)-1)//"/matel.abs.time.dat", status="unknown")
         write(853,'(100A11)')   "op", "pot", "pulse", "two", "assemble"
-!!$        write(8853,'(100A11)')   "matel absolute timing"
         close(853)
-!!$        close(8853)
      endif
 
      open(853, file=timingdir(1:getlen(timingdir)-1)//"/matel.time.dat", &
           status="unknown", position="append")
      write(853,'(100I11)')  times(1:5)/1000;        close(853)
      close(853)
-!!$     call system("date >> "//timingdir(1:getlen(timingdir)-1)//"/matel.abs.time.dat")
   endif
 
   if (debugflag.eq.42) then
@@ -69,25 +65,28 @@ subroutine all_matel()
 
 end subroutine all_matel
 
-subroutine all_matel0(inholeflag,matrix_ptr,in_inspfs1,in_inspfs2,twoereduced,times,firstspf,lastspf)
+
+subroutine all_matel0(inholeflag,matrix_ptr,inspfs1,inspfs2,twoereduced,times,firstspf,lastspf)
   use parameters
   use configptrmod
+  use fileptrmod      !! TEMP
   implicit none
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
   integer,intent(in) :: firstspf,lastspf,inholeflag
-  DATATYPE,intent(in) :: in_inspfs1(spfsize,nspf), in_inspfs2(spfsize,nspf)
+  DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   DATATYPE,intent(out) :: twoereduced(reducedpotsize,nspf,firstspf:lastspf)
-  DATATYPE,allocatable :: inspfs1(:,:),inspfs2(:,:)
   integer :: times(*), i,j,ispf
 
-  allocate(inspfs1(spfsize,nspf),inspfs2(spfsize,nspf))
-  if (inholeflag.eq.0) then
-     inspfs1(:,:)=in_inspfs1(:,:)
-     inspfs2(:,:)=in_inspfs2(:,:)
-  else
-     inspfs1(:,:)=CONJUGATE(in_inspfs1(:,:))
-     inspfs2(:,:)=CONJUGATE(in_inspfs2(:,:))
-  endif
+!!$  instead using please_transpose so that twoereduced is right
+!!$  allocate(inspfs1(spfsize,nspf),inspfs2(spfsize,nspf))
+!!$  if (inholeflag.eq.0) then
+!!$     inspfs1(:,:)=in_inspfs1(:,:)
+!!$     inspfs2(:,:)=in_inspfs2(:,:)
+!!$  else
+!!$!! LIKE GETDENMAT00 AND GET_TWOREDUCEDX
+!!$     inspfs1(:,:)=CONJUGATE(in_inspfs1(:,:))  !! THIS LOOKS RIGHT (correct if inspfs1=inspfs2)
+!!$     inspfs2(:,:)=CONJUGATE(in_inspfs2(:,:))  !! This is what you do if you switch order bra ket
+!!$  endif                                       !!   in singlewalkopspf and doublewalkdirspf
 
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     ...sparseops_matel"; CFL; call mpibarrier()
@@ -114,10 +113,9 @@ subroutine all_matel0(inholeflag,matrix_ptr,in_inspfs1,in_inspfs2,twoereduced,ti
      call mpibarrier();     OFLWR "     ...done all_matel0"; CFL; call mpibarrier()
   endif
 
-  if (debugflag.eq.4242) then
-     OFLWR "zeroing two-electron"; CFL
-     twoereduced(:,:,:)=0d0; matrix_ptr%xtwoematel(:,:,:,:)=0d0
-  endif
+!!  OFLWR "CHECKREDUCEDxxx"
+!!  write(mpifileptr,'(2F10.5)') twoereduced(1,:,1)
+!!  OFLWR "REDSTOPxxx"; CFLST
 
   matrix_ptr%xtwoe_htrace(:,:) = 0d0     
 
@@ -129,9 +127,44 @@ subroutine all_matel0(inholeflag,matrix_ptr,in_inspfs1,in_inspfs2,twoereduced,ti
      enddo
   endif
 
+  if (inholeflag.ne.0) then
+     call please_transpose(matrix_ptr%xopmatel(:,:),nspf,1)
+     call please_transpose(matrix_ptr%xymatel(:,:),nspf,1)
+     call please_transpose(matrix_ptr%xpotmatel(:,:),nspf,1)
+     call please_transpose(matrix_ptr%xconmatel(:,:),nspf,1)
+     call please_transpose(matrix_ptr%xconmatelxx(:,:),nspf,1)
+     call please_transpose(matrix_ptr%xconmatelyy(:,:),nspf,1)
+     call please_transpose(matrix_ptr%xconmatelzz(:,:),nspf,1)
+     call please_transpose(matrix_ptr%xpulsematelxx(:,:),nspf,1)
+     call please_transpose(matrix_ptr%xpulsematelyy(:,:),nspf,1)
+     call please_transpose(matrix_ptr%xpulsematelzz(:,:),nspf,1)
+     call please_transpose(matrix_ptr%xtwoematel(:,:,:,:),nspf,nspf)
+  endif
+
+  if (debugflag.eq.4242) then
+     OFLWR "zeroing two-electron"; CFL
+     twoereduced(:,:,:)=0d0; matrix_ptr%xtwoematel(:,:,:,:)=0d0
+  endif
+
 !!  OFLWR "HTRACEMAT", matrix_ptr%xtwoe_htrace(1,1); CFL
 
-  deallocate(inspfs1,inspfs2)
+!!$  deallocate(inspfs1,inspfs2)
+
+contains
+  subroutine please_transpose(twomatrix,dim1,dim2)
+    implicit none
+    integer,intent(in) :: dim1,dim2
+    DATATYPE,intent(inout) :: twomatrix(dim1,dim1,dim2,dim2)
+    integer :: ii,jj
+    DATATYPE :: tempmatrix(dim1,dim1,dim2,dim2)    !! AUTOMATIC
+    tempmatrix=0d0
+    do ii=1,dim2
+       do jj=1,dim2
+          tempmatrix(:,:,jj,ii) = TRANSPOSE(twomatrix(:,:,ii,jj))
+       enddo
+    enddo
+    twomatrix(:,:,:,:)=tempmatrix(:,:,:,:)
+  end subroutine please_transpose
 
 end subroutine all_matel0
 
@@ -481,7 +514,7 @@ subroutine arbitraryconfig_matel_doubles00transpose(www,in_twobodymat, smallmatr
 
 !!     OFLWR "HTRACE001", holetrace,www%nspf; CFL
 
-!!! NO! Two-electron operator    twobodymat(:,:,:,:) = (-1) * in_twobodymat(:,:,:,:)
+!! No!  Two-electron operator      twobodymat(:,:,:,:) = (-1) * in_twobodymat(:,:,:,:)
 
      do config1=www%botconfig,www%topconfig
         if (www%doublehopdiagflag(config1).ne.0) then
@@ -542,6 +575,7 @@ subroutine assemble_dfbasismat(www,outmatrix, matrix_ptr, boflag, nucflag, pulse
   use configptrmod
   use walkmod
   use basissubmod
+!  use fileptrmod   
   implicit none
   type(walktype),intent(in) :: www
   Type(configptr),intent(in) :: matrix_ptr
@@ -549,6 +583,7 @@ subroutine assemble_dfbasismat(www,outmatrix, matrix_ptr, boflag, nucflag, pulse
   DATATYPE,intent(out) ::        outmatrix(www%numdfbasis*numr,www%numdfbasis*numr)
   real*8,intent(in) :: time
   DATATYPE, allocatable ::        bigmatrix(:,:),halfmatrix(:,:),halfmatrix2(:,:),donematrix(:,:)
+!  integer :: iconfig
 
   if (sparseconfigflag/=0) then
      OFLWR "Error, assemble_full_config_matel called when sparseconfigflag/=0";CFLST
@@ -568,6 +603,11 @@ subroutine assemble_dfbasismat(www,outmatrix, matrix_ptr, boflag, nucflag, pulse
   outmatrix=transpose(donematrix)
 
   deallocate(bigmatrix,halfmatrix,halfmatrix2,donematrix)
+
+!!  OFLWR "OUTMATRIX"
+!!  write(mpifileptr,'(4F20.10)')  (outmatrix(iconfig,1),outmatrix(iconfig,www%numdfbasis*numr),&
+!!       iconfig=1,www%numdfbasis*numr)
+!!  CFLST
 
 end subroutine assemble_dfbasismat
 
@@ -616,7 +656,6 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
 
      call arbitraryconfig_matel_doubles00transpose(www,matrix_ptr%xtwoematel(:,:,:,:),tempconfigmat)
 
-!!HOLEDOUB
      if (www%holeflag.ne.0) then
         call arbitraryconfig_matel_singles00transpose_hhh(www,matrix_ptr%xtwoe_htrace(:,:), tempconfigmat2, 0)
         tempconfigmat(:,:)=tempconfigmat(:,:) + tempconfigmat2(:,:)
@@ -744,7 +783,6 @@ subroutine assemble_sparsemats(www,matrix_ptr, sparse_ptr,boflag, nucflag, pulse
      call arbitraryconfig_matel_doubles00transpose(www,matrix_ptr%xtwoematel(:,:,:,:),sparse_ptr%xpotsparsemattr(:,:))
 
      sparse_ptr%xpottracemattr(:,:)=0d0
-!! HOLEDOUB
      if (www%holeflag.ne.0) then
         call arbitraryconfig_matel_singles00transpose_hhh(www,matrix_ptr%xtwoe_htrace(:,:), sparse_ptr%xpottracemattr(:,:), 0)
      endif

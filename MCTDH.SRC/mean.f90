@@ -147,29 +147,43 @@ end subroutine get_reducedpot0
 
 
 
-subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
-  use fileptrmod
+subroutine get_tworeducedx(www,reducedpottally,in_avector1,in_avector2,numvects)
+!!  use fileptrmod 
   use r_parameters
   use walkmod
   use dotmod
+  use densubmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
-  DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects),  &
+  DATATYPE,intent(in) :: in_avector1(numr,www%firstconfig:www%lastconfig,numvects),  &
        in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE,intent(out) :: reducedpottally(www%nspf,www%nspf,www%nspf,www%nspf)
-  DATATYPE,allocatable :: avector2(:,:,:)
-  DATATYPE,allocatable :: mytally(:,:,:,:)
+  DATATYPE,allocatable :: avector1(:,:,:), avector2(:,:,:), mytally(:,:,:,:), &
+       holeden(:,:), tempvec(:,:,:),small_avector2(:,:,:)
   DATATYPE ::  a1(numr,numvects), a2(numr,numvects), csum
   DATAECS :: rvalues(numr)
   integer ::   ispf, jspf, iispf, jjspf ,  config2, config1,dirphase, iwalk,ii,ihop
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 
-  allocate(avector2(numr,www%numconfig,numvects));    avector2(:,:,:)=0d0
+  allocate(avector2(numr,www%numconfig,numvects),&
+       avector1(numr,www%firstconfig:www%lastconfig,numvects),&
+       small_avector2(numr,www%firstconfig:www%lastconfig,numvects))
+
   if (www%lastconfig.ge.www%firstconfig) then
-     avector2(:,www%firstconfig:www%lastconfig,:)=in_avector2(:,:,:)
+     if (www%holeflag.eq.0) then
+        avector1(:,www%firstconfig:www%lastconfig,:)=in_avector1(:,:,:)
+        avector2(:,www%firstconfig:www%lastconfig,:)=in_avector2(:,:,:)
+        small_avector2(:,www%firstconfig:www%lastconfig,:)=in_avector2(:,:,:)
+     else
+!! LIKE ALL_MATEL0 AND GETDENMAT00
+        avector1(:,www%firstconfig:www%lastconfig,:)=CONJUGATE(in_avector1(:,:,:))
+        avector2(:,www%firstconfig:www%lastconfig,:)=CONJUGATE(in_avector2(:,:,:))
+        small_avector2(:,www%firstconfig:www%lastconfig,:)=CONJUGATE(in_avector2(:,:,:))
+     endif
   endif
+
   if (www%parconsplit.ne.0) then
      do ii=1,numvects
         call mpiallgather(avector2(:,:,ii),www%numconfig*numr,&
@@ -186,7 +200,7 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
   allocate(mytally(www%nspf,www%nspf,www%nspf,www%nspf))
   mytally(:,:,:,:)=0d0
 
-  rvalues(:)=bondpoints(:)
+  rvalues(:)=1d0/bondpoints(:)
 
         !! doubly off diagonal walks
 
@@ -199,7 +213,7 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
         config2=www%doublehop(ihop,config1)
 
         do ii=1,numvects
-           a2(:,ii)=avector2(:,config2,ii)/rvalues(:)
+           a2(:,ii)=avector2(:,config2,ii) * rvalues(:)
         enddo
 
         csum=dot(a1,a2,numvects*numr)           !! 1/R factor above
@@ -233,9 +247,62 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
   deallocate(mytally)
 !$OMP END PARALLEL
 
-  deallocate(avector2)
-
   call mympireduce(reducedpottally(:,:,:,:), www%nspf**4)
+
+!!  OFLWR "TALLY ", reducedpottally(1,1,1,1); CFL
+
+  if (www%holeflag.ne.0) then
+     allocate(tempvec(numr,www%firstconfig:www%lastconfig,numvects),&
+          holeden(www%nspf,www%nspf))
+     csum=0
+     rvalues(:)=1d0/bondpoints(:)
+
+     if (www%lastconfig.ge.www%firstconfig) then
+        do ii=1,numvects
+           do config1=www%firstconfig,www%lastconfig
+              tempvec(:,config1,ii) = avector2(:,config1,ii) * rvalues
+           enddo
+        enddo
+        csum=dot(avector1,tempvec,numr*www%localnconfig*numvects)
+     endif
+     if (www%parconsplit.ne.0) then
+        call mympireduceone(csum)
+     endif
+
+!! second avector(avector1 here) is conjugated in getdenmat00
+     call getdenmat00(0,www,small_avector2,avector1,rvalues,holeden,numr,numvects)
+
+     do ispf=1,www%nspf
+        do jspf=1,www%nspf
+           reducedpottally(ispf,ispf,jspf,jspf) = reducedpottally(ispf,ispf,jspf,jspf) + 4d0*csum
+           reducedpottally(ispf,jspf,jspf,ispf) = reducedpottally(ispf,jspf,jspf,ispf) - 2d0*csum
+        enddo
+        reducedpottally(:,:,ispf,ispf) = reducedpottally(:,:,ispf,ispf) - holeden(:,:) * 2 
+        reducedpottally(ispf,ispf,:,:) = reducedpottally(ispf,ispf,:,:) - holeden(:,:) * 2 
+        reducedpottally(:,ispf,ispf,:) = reducedpottally(:,ispf,ispf,:) + holeden(:,:) 
+        reducedpottally(ispf,:,:,ispf) = reducedpottally(ispf,:,:,ispf) + TRANSPOSE(holeden(:,:)) 
+     enddo
+     deallocate(holeden,tempvec)
+  endif
+
+  deallocate(avector1,avector2,small_avector2)
+
+!!  csum=0
+!!  do ispf=1,www%nspf
+!!     do jspf=1,www%nspf
+!!        csum=csum+reducedpottally(ispf,ispf,jspf,jspf)
+!!     enddo
+!!  enddo
+!!
+!!  WRFL "SUMCHECK", csum
+
+!!  WRFL "FIRST"
+!!#ifdef REALGO
+!!  write(mpifileptr,'(F20.10)') reducedpottally(:,1,2,3)
+!!#else
+!!  write(mpifileptr,'(2F20.10)') reducedpottally(:,1,2,3)
+!!#endif
+!!  CFLST
 
 end subroutine get_tworeducedx
 

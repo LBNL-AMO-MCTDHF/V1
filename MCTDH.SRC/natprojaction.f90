@@ -15,6 +15,7 @@ subroutine save_natproj( thistime )
   use xxxmod !! denproj
   use configmod
   use sparsemultmod
+  use densubmod
   implicit none
   DATATYPE :: csum
   integer :: xcalledhere=0,  iflag, korder, pulseflag, isplit, i, &
@@ -328,7 +329,7 @@ subroutine save_natproj( thistime )
 
   tempdenmat(:,:,:)=0d0
   do i=1,min(numr,min(num_config,4))
-     call getdenmat00(www,natconfigs(:,i),natconfigs(:,i),&
+     call getdenmat00(1,www,natconfigs(:,i),natconfigs(:,i),&
           (/ECSONE/),tempdenmat(:,:,i),1,1)
   enddo
   call save_denproj( 4, thistime, yyy%cmfspfs(:,0),  tempdenmat, denprojplotbin)

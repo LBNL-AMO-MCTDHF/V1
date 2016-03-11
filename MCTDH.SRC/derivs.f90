@@ -624,10 +624,14 @@ contains
     spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
     call system_clock(jtime);  times(2)=times(2)+jtime-itime;      itime=jtime
 
+!!    OFLWR "CHECKMULT1  ",spfmult(1,1); CFL
+
     call mult_pot(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
     spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
     call hatom_op(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
     spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
+
+!!    OFLWR "CHECKMULT2  ",spfmult(1,1); CFL
 
     if (numfrozen.gt.0) then
 !! DIRECT ONLY in linear operator actreduced.  Exchange treated like driving term.
@@ -661,6 +665,7 @@ contains
     spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
     call system_clock(jtime);  times(6)=times(6)+jtime-itime;  
 
+!!    OFLWR "CHECKMULT3  ",spfmult(1,1); CFL
 
 !! WITH TIMEFAC
     if (dentimeflag.ne.0) then
@@ -678,6 +683,8 @@ contains
        spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) * (-1)
     endif
 
+!!    OFLWR "CHECKMULT4  ",spfmult(1,1); CFL
+
     if (projflag==1) then
        call system_clock(itime)
        if (parorbsplit.eq.1) then
@@ -690,6 +697,8 @@ contains
     else
        outspfs(:,:)=spfmult(:,lowspf:highspf)
     endif
+
+!!    OFLWR "CHECKMULT5  ",spfmult(1,1); CFLST
      
     if (constraintflag/=0.and.conflag.ne.0) then
        call system_clock(itime)

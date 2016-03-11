@@ -45,6 +45,7 @@ subroutine drivingtrans(thistime)
   use opmod
   use arbitrarymultmod
   use mpi_orbsetmod
+  use densubmod
   implicit none
   DATATYPE :: dipmatxx(nspf,nspf),dipmatyy(nspf,nspf),dipmatzz(nspf,nspf),&
        scalarpotyy(nspf,nspf),scalarpotzz(nspf,nspf),tempinvden(nspf,nspf),&
@@ -200,7 +201,7 @@ subroutine drivingtrans(thistime)
 
 !! NOT DENMAT, REDUCED OPERATOR FOR PULSE (rvector)
 
-  call getdenmat00(www,tempdrivingavector(:,:,:),yyy%cmfavec(:,:,0),&
+  call getdenmat00(1,www,tempdrivingavector(:,:,:),yyy%cmfavec(:,:,0),&
        rvector(:),tempdenmat(:,:),numr,mcscfnum)
 
 !!$  tempdenmat(:,:)=0.d0

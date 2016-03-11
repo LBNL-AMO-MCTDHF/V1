@@ -161,10 +161,21 @@ subroutine getdenmatx()
   use parameters
   use configmod
   use xxxmod
+  use fileptrmod !! TEMP
   implicit none
 
   call getdenmatstuff(www,yyy%cmfavec(:,:,0), yyy%denmat(:,:,0) , &
        yyy%invdenmat(:,:,0) , yyy%denvals(:) , yyy%denvects(:,:), numr, mcscfnum)
+
+!!  OFLWR "DENCHECK"
+!!#ifdef REALGO
+!!  write(mpifileptr,'(F20.10)') yyy%denmat(:,1,0)
+!!#else
+!!  write(mpifileptr,'(2F20.10)') yyy%denmat(:,1,0)
+!!#endif
+!!  WRFL "DENSTOP!"; CFLST
+
+
 
 !!$  if (rdenflag==1) then
 !!$     call getrdenmat()
@@ -180,25 +191,40 @@ end subroutine getdenmatx
 
 !! denmat is the true denmat, not transposed.
 
-subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howmany)
+module densubmod
+contains
+
+subroutine getdenmat00(inholeflag,www,in_avector1,in_avector2,rvector, denmat, numpoints,howmany)
   use walkmod
   use dotmod
   implicit none
   type(walktype),intent(in) :: www
-  integer,intent(in) ::  numpoints,howmany
+  integer,intent(in) ::  numpoints,howmany,inholeflag
   DATATYPE, intent(in) :: in_avector2(numpoints,www%firstconfig:www%lastconfig,howmany),&
-       avector1(numpoints,www%firstconfig:www%lastconfig,howmany)
+       in_avector1(numpoints,www%firstconfig:www%lastconfig,howmany)
   DATAECS,intent(in) :: rvector(numpoints)
   DATATYPE,intent(out) :: denmat(www%nspf,www%nspf)
   DATATYPE :: a1(numpoints,howmany), a2(numpoints,howmany), &
        mydenmat(www%nspf,www%nspf), csum
-  DATATYPE, allocatable :: avector2(:,:,:)
+  DATATYPE, allocatable :: avector2(:,:,:),avector1(:,:,:),small_avector2(:,:,:)
   integer :: config1,config2,  ispf,jspf,  dirphase, iwalk, ii, ihop
 
-  allocate(avector2(numpoints,www%numconfig,howmany))
+  allocate(avector1(numpoints,www%firstconfig:www%lastconfig,howmany),&
+       small_avector2(numpoints,www%firstconfig:www%lastconfig,howmany),&
+       avector2(numpoints,www%numconfig,howmany))
   avector2(:,:,:)=0d0
-
-  avector2(:,www%firstconfig:www%lastconfig,:) = in_avector2(:,:,:)
+  if (www%lastconfig.ge.www%firstconfig) then
+     if (www%holeflag.eq.0.or.inholeflag.eq.0) then
+        avector2(:,www%firstconfig:www%lastconfig,:) = in_avector2(:,:,:)
+        avector1(:,:,:)                              = in_avector1(:,:,:)
+        small_avector2(:,:,:)                        = in_avector2(:,:,:)
+     else
+!! LIKE ALL_MATEL0 and GET_TWOREDUCEDX
+        avector2(:,www%firstconfig:www%lastconfig,:) = CONJUGATE(in_avector2(:,:,:))
+        avector1(:,:,:)                              = CONJUGATE(in_avector1(:,:,:))
+        small_avector2(:,:,:)                        = CONJUGATE(in_avector2(:,:,:))
+     endif
+  endif
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 
@@ -256,14 +282,12 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
 !$OMP END CRITICAL
 !$OMP END PARALLEL
 
-  deallocate(avector2)
-
   call mympireduce(denmat,www%nspf**2)
 
-  if (www%holeflag.ne.0) then
+  if (www%holeflag.ne.0.and.inholeflag.ne.0) then
      csum=0d0
      if (www%lastconfig.ge.www%firstconfig) then
-        csum=dot(in_avector2,avector1,numpoints*www%localnconfig*howmany)
+        csum=dot(small_avector2,avector1,numpoints*www%localnconfig*howmany)
      endif
      if (www%parconsplit.ne.0) then
         call mympireduceone(csum)
@@ -274,8 +298,12 @@ subroutine getdenmat00(www,avector1,in_avector2,rvector, denmat, numpoints,howma
      enddo
   endif
 
+  deallocate(avector1,avector2,small_avector2)
+
+
 end subroutine getdenmat00
 
+end module densubmod
 
 
 subroutine getdenmatstuff(www,avector, denmat, invdenmat, denvals, &
@@ -284,6 +312,7 @@ subroutine getdenmatstuff(www,avector, denmat, invdenmat, denvals, &
   use denreg_parameters
   use walkmod
   use invsubmod
+  use densubmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) ::  numpoints,howmany
@@ -298,7 +327,7 @@ subroutine getdenmatstuff(www,avector, denmat, invdenmat, denvals, &
   DATAECS :: rvector(numpoints)
 
   rvector(:)=1d0
-  call getdenmat00(www,avector,avector,rvector,denmat,numpoints,howmany)
+  call getdenmat00(1,www,avector,avector,rvector,denmat,numpoints,howmany)
 
   denvects(:,:)=0d0; invdenmat(:,:)=0d0
 

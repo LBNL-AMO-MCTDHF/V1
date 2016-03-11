@@ -83,7 +83,7 @@ readactions.o: $(DEPEND) readactions.F90
 saveactions.o: $(DEPEND) saveactions.F90 
 	$(F90) $(FFLAGS) $(MPIFLAG) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c saveactions.F90 
 
-natprojaction.o: $(DEPEND) natprojaction.F90 walkmult.o
+natprojaction.o: $(DEPEND) natprojaction.F90 walkmult.o denmat.o
 	$(F90) $(FFLAGS) $(MPIFLAG) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c natprojaction.F90 
 
 orbvectoractions.o: $(DEPEND) orbvectoractions.F90 
@@ -107,7 +107,7 @@ derivs.o: $(DEPEND) derivs.F90 proputils.o walkmult.o MPI.o
 MPI.o:  $(DEPEND) MPI.F90
 	$(F90) $(FFLAGS) $(MPIFLAG) -c MPI.F90
 
-mean.o: $(DEPEND) mean.F90 MPI.o
+mean.o: $(DEPEND) mean.F90 MPI.o denmat.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c mean.F90 
 
 matel.o: $(DEPEND)  matel.F90 spin.o MPI.o
@@ -122,7 +122,7 @@ spfs.o: $(DEPEND) spfs.F90 utils.o MPI.o
 denmat.o: $(DEPEND) denmat.F90 biortho.o autosub.o utils.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c denmat.F90
 
-driving.o: $(DEPEND) driving.F90 biortho.o walkmult.o
+driving.o: $(DEPEND) driving.F90 biortho.o walkmult.o denmat.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c driving.F90
 
 newconfig.o: $(DEPEND) newconfig.F90
