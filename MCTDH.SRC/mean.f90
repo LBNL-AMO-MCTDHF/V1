@@ -147,8 +147,7 @@ end subroutine get_reducedpot0
 
 
 
-subroutine get_tworeducedx(www,reducedpottally,in_avector1,in_avector2,numvects)
-!!  use fileptrmod 
+subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
   use r_parameters
   use walkmod
   use dotmod
@@ -156,32 +155,21 @@ subroutine get_tworeducedx(www,reducedpottally,in_avector1,in_avector2,numvects)
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
-  DATATYPE,intent(in) :: in_avector1(numr,www%firstconfig:www%lastconfig,numvects),  &
+  DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects),  &
        in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE,intent(out) :: reducedpottally(www%nspf,www%nspf,www%nspf,www%nspf)
-  DATATYPE,allocatable :: avector1(:,:,:), avector2(:,:,:), mytally(:,:,:,:), &
-       holeden(:,:), tempvec(:,:,:),small_avector2(:,:,:)
+  DATATYPE,allocatable :: avector2(:,:,:), mytally(:,:,:,:), &
+       holeden(:,:), tempvec(:,:,:)
   DATATYPE ::  a1(numr,numvects), a2(numr,numvects), csum
   DATAECS :: rvalues(numr)
   integer ::   ispf, jspf, iispf, jjspf ,  config2, config1,dirphase, iwalk,ii,ihop
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 
-  allocate(avector2(numr,www%numconfig,numvects),&
-       avector1(numr,www%firstconfig:www%lastconfig,numvects),&
-       small_avector2(numr,www%firstconfig:www%lastconfig,numvects))
+  allocate(avector2(numr,www%numconfig,numvects))
 
   if (www%lastconfig.ge.www%firstconfig) then
-     if (www%holeflag.eq.0) then
-        avector1(:,www%firstconfig:www%lastconfig,:)=in_avector1(:,:,:)
-        avector2(:,www%firstconfig:www%lastconfig,:)=in_avector2(:,:,:)
-        small_avector2(:,www%firstconfig:www%lastconfig,:)=in_avector2(:,:,:)
-     else
-!! LIKE ALL_MATEL0 AND GETDENMAT00
-        avector1(:,www%firstconfig:www%lastconfig,:)=CONJUGATE(in_avector1(:,:,:))
-        avector2(:,www%firstconfig:www%lastconfig,:)=CONJUGATE(in_avector2(:,:,:))
-        small_avector2(:,www%firstconfig:www%lastconfig,:)=CONJUGATE(in_avector2(:,:,:))
-     endif
+     avector2(:,www%firstconfig:www%lastconfig,:)=in_avector2(:,:,:)
   endif
 
   if (www%parconsplit.ne.0) then
@@ -270,7 +258,7 @@ subroutine get_tworeducedx(www,reducedpottally,in_avector1,in_avector2,numvects)
      endif
 
 !! second avector(avector1 here) is conjugated in getdenmat00
-     call getdenmat00(0,www,small_avector2,avector1,rvalues,holeden,numr,numvects)
+     call getdenmat00(0,www,in_avector2,avector1,rvalues,holeden,numr,numvects)
 
      do ispf=1,www%nspf
         do jspf=1,www%nspf
@@ -285,18 +273,9 @@ subroutine get_tworeducedx(www,reducedpottally,in_avector1,in_avector2,numvects)
      deallocate(holeden,tempvec)
   endif
 
-  deallocate(avector1,avector2,small_avector2)
+  deallocate(avector2)
 
-!!  csum=0
-!!  do ispf=1,www%nspf
-!!     do jspf=1,www%nspf
-!!        csum=csum+reducedpottally(ispf,ispf,jspf,jspf)
-!!     enddo
-!!  enddo
-!!
-!!  WRFL "SUMCHECK", csum
-
-!!  WRFL "FIRST"
+!!  OFLWR "FIRST"
 !!#ifdef REALGO
 !!  write(mpifileptr,'(F20.10)') reducedpottally(:,1,2,3)
 !!#else

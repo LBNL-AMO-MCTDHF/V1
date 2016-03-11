@@ -236,7 +236,12 @@ subroutine walks(www)
               iwalk=iwalk+1
 
 !! ket, bra   bra is walk
+if (www%holeflag.eq.0) then
               www%singlewalkopspf(1:2,iwalk,config1)=[ ispf,jspf ] 
+else
+              www%singlewalkopspf(1:2,iwalk,config1)=[ jspf,ispf ] 
+endif
+
               www%singlewalkdirphase(iwalk,config1)=dirphase
            
               www%singlewalk(iwalk,config1)=config2
@@ -344,8 +349,13 @@ subroutine walks(www)
 !! switched 2-2016 was                                          ket2   bra2   ket1   bra1
 !!                    www%doublewalkdirspf(1:4,iwalk,config1)=[ iispf, jjspf, ispf, jspf ]
 
+if (www%holeflag.eq.0) then
 !! now                                                         bra2   ket2   bra1   ket1
                     www%doublewalkdirspf(1:4,iwalk,config1)=[ jjspf, iispf, jspf, ispf ]
+else
+                    www%doublewalkdirspf(1:4,iwalk,config1)=[ iispf, jjspf, ispf, jspf ]
+endif
+
                     www%doublewalkdirphase(iwalk,config1)=dirphase
                  
                     www%doublewalk(iwalk,config1)=config2

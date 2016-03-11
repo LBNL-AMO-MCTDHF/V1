@@ -238,8 +238,9 @@ subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2ex
      call op_conjg(myspfs(:,i),tempspfs(:,i))
   enddo
   do imc=1,numvec
+     tempvector(:,:)=ALLCON(inavectors(:,:,imc))
      call autocorrelate_one(www,bioww,inavectors(:,:,imc),myspfs,&
-          tempspfs,inavectors(:,:,imc),conjgexpect(imc),numr,conjgbiovar(imc))
+          tempspfs,tempvector(:,:),conjgexpect(imc),numr,conjgbiovar(imc))
      conjgexpect(imc)=conjgexpect(imc)   /normsq(imc)
   enddo
   
@@ -508,9 +509,10 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
      call op_conjg(myspfs(:,i),tempspfs(:,i))
   enddo
   do imc=1,mcscfnum
+     tempvector(:,:)=ALLCON(inavectors(:,:,imc))
      do jmc=1,mcscfnum
         call autocorrelate_one(www,bioww,inavectors(:,:,jmc),myspfs,tempspfs,&
-             inavectors(:,:,imc),conjgmatel(jmc,imc),numr,conjgbiovar(jmc,imc))
+             tempvector(:,:),conjgmatel(jmc,imc),numr,conjgbiovar(jmc,imc))
      enddo
   enddo
 

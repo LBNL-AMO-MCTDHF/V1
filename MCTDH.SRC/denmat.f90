@@ -161,7 +161,6 @@ subroutine getdenmatx()
   use parameters
   use configmod
   use xxxmod
-  use fileptrmod !! TEMP
   implicit none
 
   call getdenmatstuff(www,yyy%cmfavec(:,:,0), yyy%denmat(:,:,0) , &
@@ -194,36 +193,25 @@ end subroutine getdenmatx
 module densubmod
 contains
 
-subroutine getdenmat00(inholeflag,www,in_avector1,in_avector2,rvector, denmat, numpoints,howmany)
+subroutine getdenmat00(inholeflag,www,avector1,in_avector2,rvector, denmat, numpoints,howmany)
   use walkmod
   use dotmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) ::  numpoints,howmany,inholeflag
   DATATYPE, intent(in) :: in_avector2(numpoints,www%firstconfig:www%lastconfig,howmany),&
-       in_avector1(numpoints,www%firstconfig:www%lastconfig,howmany)
+       avector1(numpoints,www%firstconfig:www%lastconfig,howmany)
   DATAECS,intent(in) :: rvector(numpoints)
   DATATYPE,intent(out) :: denmat(www%nspf,www%nspf)
   DATATYPE :: a1(numpoints,howmany), a2(numpoints,howmany), &
        mydenmat(www%nspf,www%nspf), csum
-  DATATYPE, allocatable :: avector2(:,:,:),avector1(:,:,:),small_avector2(:,:,:)
+  DATATYPE, allocatable :: avector2(:,:,:)
   integer :: config1,config2,  ispf,jspf,  dirphase, iwalk, ii, ihop
 
-  allocate(avector1(numpoints,www%firstconfig:www%lastconfig,howmany),&
-       small_avector2(numpoints,www%firstconfig:www%lastconfig,howmany),&
-       avector2(numpoints,www%numconfig,howmany))
+  allocate(avector2(numpoints,www%numconfig,howmany))
   avector2(:,:,:)=0d0
   if (www%lastconfig.ge.www%firstconfig) then
-     if (www%holeflag.eq.0.or.inholeflag.eq.0) then
-        avector2(:,www%firstconfig:www%lastconfig,:) = in_avector2(:,:,:)
-        avector1(:,:,:)                              = in_avector1(:,:,:)
-        small_avector2(:,:,:)                        = in_avector2(:,:,:)
-     else
-!! LIKE ALL_MATEL0 and GET_TWOREDUCEDX
-        avector2(:,www%firstconfig:www%lastconfig,:) = CONJUGATE(in_avector2(:,:,:))
-        avector1(:,:,:)                              = CONJUGATE(in_avector1(:,:,:))
-        small_avector2(:,:,:)                        = CONJUGATE(in_avector2(:,:,:))
-     endif
+     avector2(:,www%firstconfig:www%lastconfig,:) = in_avector2(:,:,:)
   endif
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
@@ -287,7 +275,7 @@ subroutine getdenmat00(inholeflag,www,in_avector1,in_avector2,rvector, denmat, n
   if (www%holeflag.ne.0.and.inholeflag.ne.0) then
      csum=0d0
      if (www%lastconfig.ge.www%firstconfig) then
-        csum=dot(small_avector2,avector1,numpoints*www%localnconfig*howmany)
+        csum=dot(in_avector2,avector1,numpoints*www%localnconfig*howmany)
      endif
      if (www%parconsplit.ne.0) then
         call mympireduceone(csum)
@@ -298,7 +286,7 @@ subroutine getdenmat00(inholeflag,www,in_avector1,in_avector2,rvector, denmat, n
      enddo
   endif
 
-  deallocate(avector1,avector2,small_avector2)
+  deallocate(avector2)
 
 
 end subroutine getdenmat00
@@ -399,6 +387,10 @@ subroutine getoccupations(www,in_avector, numpoints, occupations)
 
      enddo
   enddo
+
+  if (www%holeflag.ne.0) then
+     occupations(:)=2d0-occupations(:)
+  endif
 
   deallocate(avector)
 

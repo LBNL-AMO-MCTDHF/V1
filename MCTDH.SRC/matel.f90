@@ -69,24 +69,12 @@ end subroutine all_matel
 subroutine all_matel0(inholeflag,matrix_ptr,inspfs1,inspfs2,twoereduced,times,firstspf,lastspf)
   use parameters
   use configptrmod
-  use fileptrmod      !! TEMP
   implicit none
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
   integer,intent(in) :: firstspf,lastspf,inholeflag
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   DATATYPE,intent(out) :: twoereduced(reducedpotsize,nspf,firstspf:lastspf)
   integer :: times(*), i,j,ispf
-
-!!$  instead using please_transpose so that twoereduced is right
-!!$  allocate(inspfs1(spfsize,nspf),inspfs2(spfsize,nspf))
-!!$  if (inholeflag.eq.0) then
-!!$     inspfs1(:,:)=in_inspfs1(:,:)
-!!$     inspfs2(:,:)=in_inspfs2(:,:)
-!!$  else
-!!$!! LIKE GETDENMAT00 AND GET_TWOREDUCEDX
-!!$     inspfs1(:,:)=CONJUGATE(in_inspfs1(:,:))  !! THIS LOOKS RIGHT (correct if inspfs1=inspfs2)
-!!$     inspfs2(:,:)=CONJUGATE(in_inspfs2(:,:))  !! This is what you do if you switch order bra ket
-!!$  endif                                       !!   in singlewalkopspf and doublewalkdirspf
 
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     ...sparseops_matel"; CFL; call mpibarrier()
@@ -125,20 +113,7 @@ subroutine all_matel0(inholeflag,matrix_ptr,inspfs1,inspfs2,twoereduced,times,fi
              ( -2*matrix_ptr%xtwoematel(:,:,ispf,ispf) &
              + matrix_ptr%xtwoematel(:,ispf,ispf,:) )
      enddo
-  endif
-
-  if (inholeflag.ne.0) then
-     call please_transpose(matrix_ptr%xopmatel(:,:),nspf,1)
-     call please_transpose(matrix_ptr%xymatel(:,:),nspf,1)
-     call please_transpose(matrix_ptr%xpotmatel(:,:),nspf,1)
-     call please_transpose(matrix_ptr%xconmatel(:,:),nspf,1)
-     call please_transpose(matrix_ptr%xconmatelxx(:,:),nspf,1)
-     call please_transpose(matrix_ptr%xconmatelyy(:,:),nspf,1)
-     call please_transpose(matrix_ptr%xconmatelzz(:,:),nspf,1)
-     call please_transpose(matrix_ptr%xpulsematelxx(:,:),nspf,1)
-     call please_transpose(matrix_ptr%xpulsematelyy(:,:),nspf,1)
-     call please_transpose(matrix_ptr%xpulsematelzz(:,:),nspf,1)
-     call please_transpose(matrix_ptr%xtwoematel(:,:,:,:),nspf,nspf)
+     matrix_ptr%xtwoe_htrace(:,:) =  TRANSPOSE(matrix_ptr%xtwoe_htrace(:,:))
   endif
 
   if (debugflag.eq.4242) then
@@ -147,24 +122,6 @@ subroutine all_matel0(inholeflag,matrix_ptr,inspfs1,inspfs2,twoereduced,times,fi
   endif
 
 !!  OFLWR "HTRACEMAT", matrix_ptr%xtwoe_htrace(1,1); CFL
-
-!!$  deallocate(inspfs1,inspfs2)
-
-contains
-  subroutine please_transpose(twomatrix,dim1,dim2)
-    implicit none
-    integer,intent(in) :: dim1,dim2
-    DATATYPE,intent(inout) :: twomatrix(dim1,dim1,dim2,dim2)
-    integer :: ii,jj
-    DATATYPE :: tempmatrix(dim1,dim1,dim2,dim2)    !! AUTOMATIC
-    tempmatrix=0d0
-    do ii=1,dim2
-       do jj=1,dim2
-          tempmatrix(:,:,jj,ii) = TRANSPOSE(twomatrix(:,:,ii,jj))
-       enddo
-    enddo
-    twomatrix(:,:,:,:)=tempmatrix(:,:,:,:)
-  end subroutine please_transpose
 
 end subroutine all_matel0
 
