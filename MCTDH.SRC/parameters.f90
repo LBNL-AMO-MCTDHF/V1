@@ -453,7 +453,7 @@ real*8 :: dipolesumstart=1d10,&  !! range for integration of oscillator strength
 integer :: computeFlux=500, &    ! 0=All in memory other: MBs to allocate
      FluxInterval=50,&           !! Multiple of par_timestep at which to save flux
      FluxSkipMult=1              !! Read every this number of time points.  Step=FluxInterval*FluxSkipMult
-integer :: nucfluxopt=1          !! Include imaginary part of hamiltonian from nuc ke 
+integer :: nucfluxopt=1          !! Include imaginary part of hamiltonian from nuc ke 2=only that part
 integer :: FluxOpType=1          !! 0=Full ham 1=halfnium 
 integer :: numcatfiles=1         !! see catspffiles and catavectorfiles in INPUT/OUTPUT for action 17
 !!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input) 

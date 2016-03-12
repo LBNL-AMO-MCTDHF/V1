@@ -632,20 +632,24 @@ contains
     integer :: r
 
     workspfs=0; outspfs=0
-    call mult_imke(numr,inspfs(:,:),workspfs(:,:))
-    do r=1,numr
+
+    if (nucfluxopt.ne.2) then
+
+       call mult_imke(numr,inspfs(:,:),workspfs(:,:))
+       do r=1,numr
 !! bugfix 01-2016 wasn't squared
-       outspfs(:,r) = outspfs(:,r) + workspfs(:,r) / bondpoints(r)**2
-    enddo
+          outspfs(:,r) = outspfs(:,r) + workspfs(:,r) / bondpoints(r)**2
+       enddo
     
-    if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
-       call mult_impot(numr,inspfs(:,:),workspfs(:,:))
-    else if(FluxOpType.eq.1) then
-       call mult_imhalfniumpot(numr,inspfs(:,:),workspfs(:,:))
+       if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
+          call mult_impot(numr,inspfs(:,:),workspfs(:,:))
+       else if(FluxOpType.eq.1) then
+          call mult_imhalfniumpot(numr,inspfs(:,:),workspfs(:,:))
+       endif
+       do r=1,numr
+          outspfs(:,r) = outspfs(:,r) + workspfs(:,r) / bondpoints(r)
+       enddo
     endif
-    do r=1,numr
-       outspfs(:,r) = outspfs(:,r) + workspfs(:,r) / bondpoints(r)
-    enddo
 
     if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
        call op_imyderiv(numr,inspfs,workspfs)

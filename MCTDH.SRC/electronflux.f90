@@ -939,10 +939,10 @@ contains
 
       if (sparseopt.ne.0) then
          call sparseptralloc(sparse_ptr,www)
-         call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0)
+         call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0)
       endif
 
-      call sparseconfigmult(www,aket,ketwork,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0,0d0,-1)
+      call sparseconfigmult(www,aket,ketwork,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0,0d0,-1)
 
       matrix_ptr%xpotmatel(:,:)      = ALLCON(matrix_ptr%xpotmatel(:,:))
       matrix_ptr%xopmatel(:,:)       = ALLCON(matrix_ptr%xopmatel(:,:))
@@ -950,20 +950,20 @@ contains
       matrix_ptr%xtwoematel(:,:,:,:) = ALLCON(matrix_ptr%xtwoematel(:,:,:,:))
 
       if (sparseopt.ne.0) then
-         call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0)
+         call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0)
       endif
 
       if (tot_adim.gt.0) then
          conjgket(:,:) = ALLCON(aket(:,:))
       endif
-      call sparseconfigmult(www,conjgket,multket,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0,0d0,-1)
+      call sparseconfigmult(www,conjgket,multket,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0,0d0,-1)
       if (tot_adim.gt.0) then
          multket(:,:)=ALLCON(multket(:,:))
       endif
    
       outsum=0d0
 
-      if (tot_adim.gt.0) then
+      if (tot_adim.gt.0.and.nucfluxopt.ne.2) then
          ketwork(:,:)=(ketwork(:,:)+multket(:,:)) / 2d0    !! REAL PART OF SPARSECONFIGMULT
          outsum = hermdot(abra,ketwork,tot_adim)
       endif
@@ -980,9 +980,9 @@ contains
          matrix_ptr%xtwoematel(:,:,:,:) = reV2(:,:,:,:)
 
          if (sparseopt.ne.0) then
-            call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0)
+            call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0)
          endif
-         call sparseconfigmult(www,aket,ketwork,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0,0d0,-1)
+         call sparseconfigmult(www,aket,ketwork,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0,0d0,-1)
 
          matrix_ptr%xpotmatel(:,:)      = ALLCON(matrix_ptr%xpotmatel(:,:))
          matrix_ptr%xopmatel(:,:)       = ALLCON(matrix_ptr%xopmatel(:,:))
@@ -990,13 +990,13 @@ contains
          matrix_ptr%xtwoematel(:,:,:,:) = ALLCON(matrix_ptr%xtwoematel(:,:,:,:))
 
          if (sparseopt.ne.0) then
-            call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0)
+            call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0)
          endif
 
          if (tot_adim.gt.0) then
             conjgket(:,:) = ALLCON(aket(:,:))
          endif
-         call sparseconfigmult(www,conjgket,multket,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0,0d0,-1)
+         call sparseconfigmult(www,conjgket,multket,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0,0d0,-1)
          if (tot_adim.gt.0) then
             multket(:,:)=ALLCON(multket(:,:))
          endif
