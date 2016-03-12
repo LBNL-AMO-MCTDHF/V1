@@ -516,7 +516,6 @@ contains
              else
                 bratop=kettime
              endif
-
              call system_clock(btime);        times(4)=times(4)+btime-atime
            
 !! loop over all previous time for the bra of the flux integral
@@ -854,12 +853,12 @@ contains
       if (numspf.gt.0) then
          select case(flag)
          case(1)
-            call op_imyderiv(nspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
+            call op_imyderiv(numspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
          case(2)
-            call op_reyderiv(nspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
+            call op_reyderiv(numspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
          case default
             OFLWR "NNOT supported!"; CFLST
-            call op_yderiv(nspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
+            call op_yderiv(numspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
          end select
 !! scale correctly and clear memory
          if(flag.ne.0) then
