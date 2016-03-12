@@ -81,28 +81,35 @@ subroutine projeflux_singlewalks()
   do iconfig=1,tnumconfig
      iwalk=0
      do iindex=1,2*www%nspf
+        dirphase=(-9999);        tempconfig(:)=(-9999);        temporb(:)=(-9999)
         if (www%holeflag.eq.0) then
-           tempconfig(3:num2part)=tconfiglist(:,iconfig)
-           temporb=aarr(iindex)
-           tempconfig(1:2)=temporb(:)
            flag=0
-           do idof=2,numpart
-              if(iind(tempconfig(idof*2-1:idof*2)).eq.iindex) flag=1
+           do idof=1,numpart-1
+              if(iind(tconfiglist(idof*2-1:idof*2,iconfig)).eq.iindex) then
+                 flag=1
+                 exit
+              endif
            enddo
+           if (flag.eq.0) then
+              temporb=aarr(iindex)
+              tempconfig(1:2)=temporb(:)
+              tempconfig(3:num2part)=tconfiglist(:,iconfig)
+              dirphase=reorder(tempconfig,www%numpart)
+           endif
         else    !! holeflag
            flag=1
            do idof=1,numpart+1
               if(iind(tconfiglist(idof*2-1:idof*2,iconfig)).eq.iindex) then
                  flag=0
+                 temporb=aarr(iindex)
                  tempconfig(1:(idof-1)*2) = tconfiglist(1:(idof-1)*2,iconfig)
                  tempconfig(idof*2-1:num2part) = tconfiglist(idof*2+1:num2part+2,iconfig)
-                 temporb=aarr(iindex)
+                 dirphase=(-1)**idof
                  exit
               endif
            enddo
         endif  !! holeflag
         if(flag.eq.0) then
-           dirphase=reorder(tempconfig,www%numpart)
            if(allowedconfig0(www,tempconfig,www%dflevel)) then
               jconfig=getconfiguration(tempconfig,www)
               if (jconfig.ge.www%botconfig.and.jconfig.le.www%topconfig) then
@@ -618,44 +625,30 @@ contains
 
   subroutine projeflux_op_onee(inspfs)
     use parameters
+    use opmod
     implicit none
     DATATYPE,intent(inout) :: inspfs(spfsize,numr)
-    DATATYPE :: workspfs(spfsize,numr), workspfs2(spfsize,numr)
-    
-    workspfs2(:,:) = ALLCON(inspfs(:,:))
-    workspfs=0
-    call multone(workspfs2,workspfs)
-    call multone(inspfs,workspfs2)
-    inspfs=(workspfs2-ALLCON(workspfs)) / (0d0,1d0)   !! properly scaled (-2 im)
-  end subroutine projeflux_op_onee
-
-
-  subroutine multone(inspfs,outspfs)
-    use opmod      !! proderivmod, rkemod
-    implicit none
-    DATATYPE,intent(in) :: inspfs(spfsize,numr)
-    DATATYPE,intent(out) :: outspfs(spfsize,numr)
-    DATATYPE :: workspfs(spfsize,numr)              !! AUTOMATIC
+    DATATYPE :: workspfs(spfsize,numr), outspfs(spfsize,numr)  !! AUTOMATIC
     integer :: r
 
     workspfs=0; outspfs=0
-    call mult_ke(numr,inspfs(:,:),workspfs(:,:))
+    call mult_imke(numr,inspfs(:,:),workspfs(:,:))
     do r=1,numr
 !! bugfix 01-2016 wasn't squared
        outspfs(:,r) = outspfs(:,r) + workspfs(:,r) / bondpoints(r)**2
     enddo
     
     if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
-       call mult_pot(numr,inspfs(:,:),workspfs(:,:))
+       call mult_impot(numr,inspfs(:,:),workspfs(:,:))
     else if(FluxOpType.eq.1) then
-       call mult_halfniumpot(numr,inspfs(:,:),workspfs(:,:))
+       call mult_imhalfniumpot(numr,inspfs(:,:),workspfs(:,:))
     endif
     do r=1,numr
        outspfs(:,r) = outspfs(:,r) + workspfs(:,r) / bondpoints(r)
     enddo
 
     if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
-       call op_yderiv(numr,inspfs,workspfs)
+       call op_imyderiv(numr,inspfs,workspfs)
        call MYGEMM('N','T',numr,spfsize,numr,DATAONE,proderivmod,numr,workspfs,spfsize,&
             DATAONE,outspfs,numr)
 
@@ -663,8 +656,12 @@ contains
             DATAONE,outspfs,numr)
     endif
 
-  end subroutine multone
-  
+!! scale correctly
+    inspfs(:,:)=outspfs(:,:)*(-2d0)
+
+  end subroutine projeflux_op_onee
+
+    
 end subroutine projeflux_double_time_int
 
 
@@ -916,7 +913,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
 !! this should do the same and it looks like it does
      
-     call bioset(projbiovar,smo,numr,bwwptr); 
+     call bioset(projbiovar,smo,numr,bwwptr)
 
      if (tot_adim.gt.0) then
         call biortho(mymo,tmo(:,:),mobio(:,:,1),myavec(:,:,1),projbiovar)
