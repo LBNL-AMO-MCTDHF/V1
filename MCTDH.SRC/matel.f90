@@ -701,8 +701,7 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
 
      do ir=1,numr
         do jr=1,numr
-           bigconfigmat(ir,:,jr,:)=bigconfigmat(ir,:,jr,:)+tempconfigmat(:,:)*proderivmod(ir,jr)&
-                *matrix_ptr%kefac    !! KEFAC FORGOTTEN 3-2016
+           bigconfigmat(ir,:,jr,:)=bigconfigmat(ir,:,jr,:)+tempconfigmat(:,:)*proderivmod(ir,jr)
         enddo
      enddo
      do i=1,www%numconfig

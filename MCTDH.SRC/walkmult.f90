@@ -709,8 +709,7 @@ contains
           rvector(:)=1d0
           call arbitraryconfig_mult_singles_byproc(firstproc,lastproc,www,matrix_ptr%xymatel,&
                rvector,invector,tempvector,numr,0)
-!! KEFAC FORGOTTEN 3-2016
-          call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE*matrix_ptr%kefac, &
+          call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE, &
                proderivmod,numr,     tempvector,           numr,DATAONE,outvector,numr)
           if (myrank.ge.firstproc.and.myrank.le.lastproc) then
              call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE*matrix_ptr%kefac,&
@@ -885,8 +884,7 @@ contains
           rvector(:)=1d0
           call arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,sparse_ptr%xysparsemattr,&
                rvector,invector,tempvector,numr,0)
-!! KEFAC FORGOTTEN 3-2016
-          call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE*sparse_ptr%kefac, &
+          call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE, &
                proderivmod,numr,     tempvector,           numr,DATAONE,outvector,numr)
           if (myrank.ge.firstproc.and.myrank.le.lastproc) then
              call MYGEMM('N','N',numr,www%topconfig-www%botconfig+1,numr,DATAONE*sparse_ptr%kefac,&
