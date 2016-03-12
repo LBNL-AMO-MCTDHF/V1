@@ -998,3 +998,54 @@ subroutine xdealloc()
 end subroutine xdealloc
 
 
+module savenormmod
+  implicit none
+  DATATYPE,allocatable :: savenorms(:,:)
+
+contains
+
+  subroutine get_bonorms(howmany,vectors,outnorms)
+    use sparse_parameters
+    use basis_parameters
+    use r_parameters
+    use dotmod
+    implicit none
+    integer,intent(in) :: howmany
+    DATATYPE,intent(in) :: vectors(numr,first_config:last_config,howmany)
+    DATATYPE,intent(out) :: outnorms(numr,howmany)
+    DATATYPE :: tempnorms(numr,howmany),tempvec(first_config:last_config)   !! AUTOMATIC
+    integer :: kk,mm
+    do mm=1,howmany
+       do kk=1,numr
+          tempvec(:)=vectors(kk,:,mm)
+          tempnorms(kk,mm)=dot(tempvec,tempvec,local_nconfig)
+       enddo
+    enddo
+    if (par_consplit.ne.0) then
+       call mympireduce(tempnorms,howmany*numr)
+    endif
+    outnorms(:,:)=sqrt(tempnorms)
+  end subroutine get_bonorms
+
+  subroutine enforce_bonorms(howmany,vectors,innorms)
+    use sparse_parameters
+    use basis_parameters
+    use r_parameters
+    use dotmod
+    implicit none
+    integer,intent(in) :: howmany
+    DATATYPE,intent(inout) :: vectors(numr,first_config:last_config,howmany)
+    DATATYPE,intent(in) :: innorms(numr,howmany)
+    DATATYPE :: tempnorms(numr,howmany),tempvec(first_config:last_config)   !! AUTOMATIC
+    integer :: kk,mm
+    call get_bonorms(howmany,vectors,tempnorms)
+    do mm=1,howmany
+       do kk=1,numr
+          tempvec(:)=vectors(kk,:,mm)
+          vectors(kk,:,mm)=tempvec(:)/tempnorms(kk,mm)*innorms(kk,mm)
+       enddo
+    enddo
+  end subroutine enforce_bonorms
+
+end module savenormmod
+

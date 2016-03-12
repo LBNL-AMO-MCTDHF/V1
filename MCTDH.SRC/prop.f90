@@ -15,6 +15,7 @@ subroutine prop_loop( starttime)
   use derivativemod
   use sparsemultmod
   use basissubmod
+  use savenormmod
   implicit none
   integer ::  jj,flag,  iii, itime, jtime, times(20)=0, qq,imc,getlen,myiostat
   DATAECS :: thisenergy(mcscfnum), lastenergy(mcscfnum) ,thisenergyavg,&
@@ -23,7 +24,6 @@ subroutine prop_loop( starttime)
   real*8 :: thistime, starttime, thattime,error=1d10,rsum,avecerror=1d10
   DATATYPE :: sum2,sum,drivingoverlap(mcscfnum)
   DATATYPE, allocatable :: avectorp(:),outspfs(:)
-  DATATYPE :: savenorms(numr,mcscfnum)
 
   thistime=starttime;  flag=0;    call zero_mpi_times()
 
@@ -41,9 +41,12 @@ subroutine prop_loop( starttime)
      call basis_project(www,numr,yyy%cmfavec(:,imc,0))
   enddo
 
-  call get_stuff(0.0d0)
+  if (normboflag.ne.0) then
+     OFLWR "    Enforcing BO norms due to normboflag"; CFL
+     call enforce_bonorms(mcscfnum,  yyy%cmfavec(:,:,0),savenorms(:,:))
+  endif
 
-  savenorms(:,:)=1d0
+  call get_stuff(0.0d0)
 
   do imc=1,mcscfnum
 
@@ -62,10 +65,11 @@ subroutine prop_loop( starttime)
      startenergy(imc)=sum2/sum
      OFLWR "         ENERGY ", startenergy(imc); CFL
 
-     if (normboflag.ne.0) then
-        OFLWR "    ... will enforce BO norms due to normboflag"; CFL
-        call get_bonorms(1,yyy%cmfavec(:,imc,0),savenorms(:,imc))
-     endif
+!!$  moving to main
+!!$     if (normboflag.ne.0) then
+!!$        OFLWR "    ... will enforce BO norms due to normboflag"; CFL
+!!$        call get_bonorms(1,yyy%cmfavec(:,imc,0),savenorms(:,imc))
+!!$     endif
 
   enddo
 
@@ -343,40 +347,6 @@ subroutine prop_loop( starttime)
 
   deallocate(avectorp,outspfs)
 
-contains
-  subroutine get_bonorms(howmany,vectors,outnorms)
-    implicit none
-    integer,intent(in) :: howmany
-    DATATYPE,intent(in) :: vectors(numr,first_config:last_config,howmany)
-    DATATYPE,intent(out) :: outnorms(numr,howmany)
-    DATATYPE :: tempnorms(numr,howmany),tempvec(first_config:last_config)   !! AUTOMATIC
-    integer :: kk,mm
-    do mm=1,howmany
-       do kk=1,numr
-          tempvec(:)=vectors(kk,:,mm)
-          tempnorms(kk,mm)=dot(tempvec,tempvec,local_nconfig)
-       enddo
-    enddo
-    if (par_consplit.ne.0) then
-       call mympireduce(tempnorms,howmany*numr)
-    endif
-    outnorms(:,:)=sqrt(tempnorms)
-  end subroutine get_bonorms
-  subroutine enforce_bonorms(howmany,vectors,innorms)
-    implicit none
-    integer,intent(in) :: howmany
-    DATATYPE,intent(inout) :: vectors(numr,first_config:last_config,howmany)
-    DATATYPE,intent(in) :: innorms(numr,howmany)
-    DATATYPE :: tempnorms(numr,howmany),tempvec(first_config:last_config)   !! AUTOMATIC
-    integer :: kk,mm
-    call get_bonorms(howmany,vectors,tempnorms)
-    do mm=1,howmany
-       do kk=1,numr
-          tempvec(:)=vectors(kk,:,mm)
-          vectors(kk,:,mm)=tempvec(:)/tempnorms(kk,mm)*innorms(kk,mm)
-       enddo
-    enddo
-  end subroutine enforce_bonorms
 end subroutine prop_loop
 
 

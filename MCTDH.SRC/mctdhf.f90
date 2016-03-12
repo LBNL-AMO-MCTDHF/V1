@@ -202,6 +202,7 @@ program mctdhf
   use configmod
   use configpropmod
   use configsubmod
+  use savenormmod
   implicit none
 
   integer :: i,spfsloaded,totread,ifile,readnum
@@ -548,6 +549,9 @@ program mctdhf
      yyy%cmfavec(:,:,0)=0d0
   endif
 
+  allocate(savenorms(numr,mcscfnum))
+  savenorms(:,:)=1d0
+
 !! MAY 2014 now not doing load avector if skipflag=1 (flux)
 
   if (skipflag.eq.0) then
@@ -581,6 +585,18 @@ program mctdhf
         endif
         OFLWR "Read ",totread," A-vectors"; CFL
      endif
+
+     if (normboflag.ne.0) then
+        if (totread.lt.mcscfnum) then
+           OFLWR "enforcing BO norms with normboflag, but not enough vectors loaded", mcscfnum
+           CFLST
+        endif
+        OFLWR "    ... will enforce BO norms due to normboflag"
+        WRFL "         vectors loaded are then discarded."; CFL
+        call get_bonorms(mcscfnum,bigavector,savenorms)
+        totread=0
+     endif
+
 
      if (totread.lt.mcscfnum) then
         if (improvedrelaxflag.eq.0.and.loadavectorflag.ne.0) then
