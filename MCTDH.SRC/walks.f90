@@ -362,7 +362,7 @@ endif
   OFLWR "Sorting walks..."; CFL
 
   allocate(listorder(www%maxdoublewalks+www%maxsinglewalks))
-  listorder=0d0
+  listorder=0
   do config1=www%botconfig,www%topconfig
 
      if (www%numsinglewalks(config1).gt.1) then
