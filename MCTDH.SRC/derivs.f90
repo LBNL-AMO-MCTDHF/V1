@@ -660,6 +660,8 @@ contains
     endif
     call system_clock(jtime);     times(5)=times(5)+jtime-itime;         itime=jtime
 
+!!    OFLWR "CHECKMULT2BBB  ",spfmult(1,1); CFL
+
     call mult_reducedpot(lowspf,highspf,inspfs,workmult(:,lowspf:highspf),&
          yyy%reducedpot(:,:,lowspf:highspf,ireduced))
     spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)

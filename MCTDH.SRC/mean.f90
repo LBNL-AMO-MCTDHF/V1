@@ -235,6 +235,8 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
   deallocate(mytally)
 !$OMP END PARALLEL
 
+  deallocate(avector2)
+
   call mympireduce(reducedpottally(:,:,:,:), www%nspf**4)
 
 !!  OFLWR "TALLY ", reducedpottally(1,1,1,1); CFL
@@ -248,7 +250,7 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
      if (www%lastconfig.ge.www%firstconfig) then
         do ii=1,numvects
            do config1=www%firstconfig,www%lastconfig
-              tempvec(:,config1,ii) = avector2(:,config1,ii) * rvalues
+              tempvec(:,config1,ii) = in_avector2(:,config1,ii) * rvalues
            enddo
         enddo
         csum=dot(avector1,tempvec,numr*www%localnconfig*numvects)
@@ -273,7 +275,6 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
      deallocate(holeden,tempvec)
   endif
 
-  deallocate(avector2)
 
 !!  OFLWR "FIRST"
 !!#ifdef REALGO
@@ -300,7 +301,7 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
   DATATYPE,intent(in) :: avector1(numr,www%firstconfig:www%lastconfig,numvects), &
        in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE,intent(out) :: reducedproderiv(www%nspf,www%nspf)
-  DATATYPE,allocatable :: avector2(:,:,:)
+  DATATYPE,allocatable :: avector2(:,:,:), tempvec(:,:,:)
   DATATYPE :: a1(numr,numvects), a2(numr,numvects), a2mult(numr,numvects), mypro(numr,numr), &
        myredpro(www%nspf,www%nspf),csum
   integer ::  config1,config2,  ispf,jspf,  dirphase,     iwalk,ii,ihop
@@ -377,6 +378,40 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
 
   call mympireduce(reducedproderiv(:,:), www%nspf**2)
 
+  if (www%holeflag.ne.0) then
+
+     allocate(tempvec(numr,www%firstconfig:www%lastconfig,numvects))
+
+     do config1=www%botconfig,www%topconfig
+
+        a2(:,:)=in_avector2(:,config1,:)
+
+        call MYGEMM('N','N',numr,numvects,numr,DATAONE,&
+             proderivmod(:,:),numr,a2(:,:),numr,DATAZERO,a2mult(:,:),numr)
+        tempvec(:,config1,:)=a2mult(:,:)
+     enddo
+
+     if (www%parconsplit.eq.0) then
+        do ii=1,numvects
+           call mpiallgather(tempvec(:,:,ii),www%numconfig*numr,&
+                www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+        enddo
+     endif
+
+     csum=0
+     if (www%lastconfig.ge.www%firstconfig) then
+        csum=dot(avector1,tempvec,numr*www%localnconfig*numvects)
+     endif
+     if (www%parconsplit.ne.0) then
+        call mympireduceone(csum)
+     endif
+     reducedproderiv(:,:) = reducedproderiv(:,:) * (-1)
+     do ispf=1,www%nspf
+        reducedproderiv(ispf,ispf) = reducedproderiv(ispf,ispf) + csum * 2d0
+     enddo
+     deallocate(tempvec)
+  endif
+
 end subroutine get_reducedproderiv
 
 
@@ -392,12 +427,13 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
        in_avector2(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE,intent(out) :: reducedinvr(www%nspf,www%nspf),reducedr(www%nspf,www%nspf), &
        reducedinvrsq(www%nspf,www%nspf)
-  DATATYPE,allocatable :: avector2(:,:,:)
+  DATATYPE,allocatable :: avector2(:,:,:),tempr(:,:,:),tempinvr(:,:,:),tempinvrsq(:,:,:)
   DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a2r(numr,numvects), &
        a2inv(numr,numvects), a2invsq(numr,numvects), rdot,invdot,invsqdot
   integer ::  config1,config2,   ispf,jspf,  dirphase,    iwalk,ii, ihop
   DATAECS ::  invrvalues(numr),invrsqvalues(numr),rvalues(numr)
-  DATATYPE :: myinvr(www%nspf,www%nspf),myr(www%nspf,www%nspf),  myinvrsq(www%nspf,www%nspf)
+  DATATYPE :: myinvr(www%nspf,www%nspf),myr(www%nspf,www%nspf),  myinvrsq(www%nspf,www%nspf),&
+       csumr,csuminvr,csuminvrsq
 
   reducedinvr(:,:)=0.d0;  reducedr(:,:)=0.d0;  reducedinvrsq(:,:)=0.d0
 
@@ -475,6 +511,45 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
   call mympireduce(reducedr(:,:), www%nspf**2)
   call mympireduce(reducedinvr(:,:), www%nspf**2)
   call mympireduce(reducedinvrsq(:,:), www%nspf**2)
+
+  if (www%holeflag.ne.0) then
+     csumr=0; csuminvr=0; csuminvrsq=0
+
+     allocate(tempr(numr,www%firstconfig:www%lastconfig,numvects),&
+          tempinvr(numr,www%firstconfig:www%lastconfig,numvects),&
+          tempinvrsq(numr,www%firstconfig:www%lastconfig,numvects))
+
+     if (www%lastconfig.ge.www%firstconfig) then
+
+        tempr=0; tempinvr=0; tempinvrsq=0
+        do ii=1,numvects
+           do config1=www%firstconfig,www%lastconfig
+              tempr(:,config1,ii) = in_avector2(:,config1,ii) * bondpoints(:)
+              tempinvr(:,config1,ii) = in_avector2(:,config1,ii) / bondpoints(:)
+              tempinvrsq(:,config1,ii) = in_avector2(:,config1,ii) / bondpoints(:)**2
+           enddo
+        enddo
+        csumr     =dot(avector1,tempr,numr*www%localnconfig*numvects)
+        csuminvr  =dot(avector1,tempinvr,numr*www%localnconfig*numvects)
+        csuminvrsq=dot(avector1,tempinvrsq,numr*www%localnconfig*numvects)
+     endif
+     if (www%parconsplit.ne.0) then
+        call mympireduceone(csumr)
+        call mympireduceone(csuminvr)
+        call mympireduceone(csuminvrsq)
+     endif
+     reducedr(:,:) = reducedr(:,:) * (-1)
+     reducedinvr(:,:) = reducedinvr(:,:) * (-1)
+     reducedinvrsq(:,:) = reducedinvrsq(:,:) * (-1)
+     do ispf=1,www%nspf
+        reducedr(ispf,ispf) = reducedr(ispf,ispf) + csumr * 2d0
+        reducedinvr(ispf,ispf) = reducedinvr(ispf,ispf) + csuminvr * 2d0
+        reducedinvrsq(ispf,ispf) = reducedinvrsq(ispf,ispf) + csuminvrsq * 2d0
+     enddo
+
+     deallocate(tempr,tempinvr,tempinvrsq)
+
+  endif
 
 end subroutine get_reducedr
 
