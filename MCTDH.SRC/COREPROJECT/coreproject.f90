@@ -149,150 +149,6 @@ subroutine op_tinv(mlow,mhigh,howmany,indensity,outpotential)
 !$OMP END PARALLEL
 
 end subroutine op_tinv
-        
-
-
-!! flag=1 means flux, otherwise whole op
-subroutine call_flux_op_twoe00(lowspf,highspf,mobra,moket,V2,flag) 
-!! determine the 2-electron matrix elements in the orbital basis for the flux operator i(H-H^{\dag}) 
-!! input :
-!! mobra - the orbitals that contained in the bra 
-!! moket - the orbitals that contained in the ket 
-!! output : 
-!! V2 - the 2-electron matrix elements corresponding with potential energy (contract with 1/R) 
-  use myparams
-  use twoemod
-  use myprojectmod   !! rmatrix,ylmvals
-  implicit none
-  integer,intent(in) :: flag,lowspf,highspf
-  DATATYPE,intent(in) :: mobra(numerad,lbig+1,-mbig:mbig,numspf),moket(numerad,lbig+1,-mbig:mbig,numspf)
-  DATATYPE,intent(out) :: V2(numspf,numspf,numspf,lowspf:highspf)
-  DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),&   !! AUTOMATIC
-       twoeden2(numerad),twoeden3(numerad)
-  integer :: i,a,j,b,mvali,mvala,mvalj,mvalb,ixi,ieta,deltam,lsum,qq,rr,qq2,rr2 
-
-  if (highspf-lowspf+1.gt.0) then
-     V2=0d0
-  endif
-
-!! The bra determinant is <ij|
-!! The ket determinant is |ab>
-!! without the ecs rmatrix and ylm are real, sooooooo V-V^dagger is zero by def...
-!! ALWAYS USING ALLLCON TO MAKE SURE ITS ALWAYS hermitian elements of V-V^\dagger and V\dagger must have transpose 
-
-  do b=lowspf,highspf
-    do j=1,numspf !! bra vector
-!! integrating over electron 2
-      twoemat2=0d0
-      if(spfrestrictflag==1) then
-        qq=spfmvals(j);        rr=spfmvals(j)
-        qq2=spfmvals(b);        rr2=spfmvals(b)
-      else
-        qq=-mbig;        rr=mbig
-        qq2=-mbig;        rr2=mbig
-      endif
-      do mvalj=qq,rr
-        do mvalb=qq2,rr2
-          deltam=mvalb-mvalj
-
-!! switching 2-2016     twoeden(:,:) = CONJUGATE(mobra(:,:,mvalj,j)) * moket(:,:,mvalb,b)
-
-          twoeden(:,:) = mobra(:,:,mvalj,j) * CONJUGATE(moket(:,:,mvalb,b))
-
-          do lsum=1+abs(deltam),jacobisummax+1
-!! this is always real and serves as a delta function, can use for both V and V^\dagger
-!! We do not need conjugation and separate V and V^\dagger densities as Ylm is real
-!! Ylm's here mean it is a delta function for e-2 in eta 
-            twoeden2=0d0
-            do ieta=1,lbig+1
-              twoeden2(:)=twoeden2(:) + twoeden(:,ieta) * ylmvals(abs(deltam),ieta,lsum-abs(deltam)) 
-            enddo
-!! we need to be able to do the conjugate here
-!! thankfully the rmatrix is diagonal in xi, so transposing rmatrix only switches e-s which doesn't make any sense
-            twoeden3=0d0
-            select case(flag)
-            case(1)  ! flux imag
-#ifdef ECSFLAG
-               do ixi=1,numerad
-                  if(atomflag==0) then
-                     twoeden3(:)=twoeden3(:) + twoeden2(ixi) * 4d0 * (rmatrix(:,ixi,abs(deltam)+1,lsum-abs(deltam)) - ALLCON(rmatrix(:,ixi,abs(deltam)+1,lsum-abs(deltam))))
-                  else
-                     twoeden3(:)=twoeden3(:) + twoeden2(ixi) * (rmatrix(:,ixi,1,lsum) - ALLCON(rmatrix(:,ixi,1,lsum)))
-                  endif
-               enddo
-#endif
-            case(2)  ! flux real
-#ifdef ECSFLAG
-               do ixi=1,numerad
-                  if(atomflag==0) then
-                     twoeden3(:)=twoeden3(:) + twoeden2(ixi) * 4d0 * (rmatrix(:,ixi,abs(deltam)+1,lsum-abs(deltam)) + ALLCON(rmatrix(:,ixi,abs(deltam)+1,lsum-abs(deltam))))
-                  else
-                     twoeden3(:)=twoeden3(:) + twoeden2(ixi) * (rmatrix(:,ixi,1,lsum) + ALLCON(rmatrix(:,ixi,1,lsum)))
-                  endif
-              enddo
-#endif
-               case default
-               do ixi=1,numerad
-                  if(atomflag==0) then
-                     twoeden3(:)=twoeden3(:) + twoeden2(ixi) * 4d0 * (rmatrix(:,ixi,abs(deltam)+1,lsum-abs(deltam)))
-                  else
-                     twoeden3(:)=twoeden3(:) + twoeden2(ixi) * (rmatrix(:,ixi,1,lsum))
-                  endif
-               enddo
-            end select
-
-!! this is always real and serves as a delta function, can use for both V and V^\dagger
-!! this uses the same Ylm realness as above to cleanly finish the matrix element
-            do ieta=1,lbig+1
-              twoemat2(:,ieta,deltam)=twoemat2(:,ieta,deltam) - twoeden3(:) * ylmvals(abs(deltam),ieta,lsum-abs(deltam))
-            enddo
-          enddo
-        enddo
-      enddo
-!! slap on the other two orbitals, twoemat2 already holds a half transformed (for only e-2) V-V\dagger
-      do a=1,numspf !! ket vector
-        do i=1,numspf !!  bra vector
-          if(spfrestrictflag==1) then
-            qq=spfmvals(i);            rr=spfmvals(i)
-            qq2=spfmvals(a);            rr2=spfmvals(a)
-          else
-            qq=-mbig;            rr=mbig
-            qq2=-mbig;            rr2=mbig
-          endif
-          do mvali=qq,rr
-            do mvala=qq2,rr2
-              deltam=mvali-mvala
-              do ieta=1,lbig+1
-                do ixi=1,numerad
-!! saving the integral in Chemist's form
-!! V(i,a,j,b) = (ia|jb)
-!! i and j are in the bra, a and b are in the ket ie <ij|V-V\dagger|ab>
-                  !V2(i,a,j,b) = V2(i,a,j,b) + (0d0,1d0) * &
-                  !      CONJUGATE(mobra(ixi,ieta,mvali,i)) * moket(ixi,ieta,mvala,a) * twoemat2(ixi,ieta,deltam)
-
-                  V2(i,a,j,b) = V2(i,a,j,b) +  &
-!! switching 2-2016        CONJUGATE(mobra(ixi,ieta,mvali,i)) * moket(ixi,ieta,mvala,a) * twoemat2(ixi,ieta,deltam)
-                    mobra(ixi,ieta,mvali,i) * CONJUGATE(moket(ixi,ieta,mvala,a)) * twoemat2(ixi,ieta,deltam)
-
-                enddo
-              enddo
-            enddo
-          enddo
-        enddo
-      enddo
-    enddo
-  enddo
-
-  if (highspf-lowspf+1.gt.0) then
-     if(flag.eq.1) then
-        V2=(0d0,1d0)*V2       !!! yes because I got the imaginary part above with conjugates...  returns imaginary... mult by i to get -2 x imag part (real valued number) like others
-     else if (flag.eq.2) then
-        V2=(-1)*V2
-     endif
-  endif
-
-
-end subroutine call_flux_op_twoe00
 
 
 
@@ -312,7 +168,7 @@ subroutine call_twoe_matel00(lowspf,highspf,inspfs1,inspfs2,twoematel,twoereduce
   character,intent(in) :: xtimingdir*(*)
   integer :: mvalue2a, mvalue1b, mvalue2b, mvalue1a, itime, jtime, &
        spf1a,spf1b,spf2a,spf2b, deltam,qq,rr,qq2,rr2,times(100),nnnspf
-  DATATYPE :: myden(numerad,lbig+1,-2*mbig:2*mbig),myred(numerad,lbig+1,-2*mbig:2*mbig)        !! AUTOMATIC
+  DATATYPE :: myden(numerad,lbig+1,-2*mbig:2*mbig),myred(numerad,lbig+1,-2*mbig:2*mbig)   !! AUTOMATIC
   DATATYPE,allocatable :: twoeden(:,:,:,:)
 
   nnnspf=highspf-lowspf+1
@@ -429,63 +285,6 @@ subroutine call_twoe_matel00(lowspf,highspf,inspfs1,inspfs2,twoematel,twoereduce
 
 end subroutine call_twoe_matel00
 
-
-
-!!$!! ADDS TO matrix hatommatel  NO NEVERMIND
-!!$
-!!$subroutine hatom_matel(inspfs1, inspfs2, hatommatel,numberspf)
-!!$  use myparams
-!!$  use twoemod
-!!$  use myprojectmod
-!!$  implicit none
-!!$
-!!$  integer,intent(in) :: numberspf
-!!$  DATATYPE,intent(in) :: inspfs1(numerad,lbig+1,-mbig:mbig,numberspf),inspfs2(numerad,lbig+1,-mbig:mbig,numberspf)
-!!$  DATATYPE,intent(out) :: hatommatel(numberspf,numberspf)
-!!$  DATATYPE :: opspfs(numerad,lbig+1,-mbig:mbig,numberspf)   !! AUTOMATIC
-!!$  DATATYPE :: sum
-!!$  integer :: mvalue1b, mvalue1a,    i1,i2,spf1a,spf1b,deltam
-!!$
-!!$  hatommatel(:,:)=0d0
-!!$
-!!$  if (numhatoms.eq.0) then
-!!$     return
-!!$  endif
-!!$  if (spfrestrictflag==1) then
-!!$     OFLWR "Hey, don't use spfrestrictflag if you have hatoms!";CFLST
-!!$  endif
-!!$  if (numr.gt.1) then
-!!$     print *, "Hatom not for calc with multiple r gridpoints.sorry.";     stop
-!!$  endif
-!!$  if (numhatoms.eq.0) then
-!!$     return
-!!$  endif
-!!$
-!!$  call hatom_op(numberspf,inspfs2,opspfs)
-!!$
-!!$  call MYGEMM(CNORMCHAR, 'N',numberspf,numberspf,sizespf,DATAONE, inspfs1, sizespf, opspfs, sizespf, DATAZERO, hatommatel(:,:), numberspf)
-!!$
-!!$!  do spf1b=1,numberspf
-!!$!     do spf1a=1,numberspf
-!!$!        sum=0.d0
-!!$!        do mvalue1a=-mbig,mbig
-!!$!           do mvalue1b=-mbig,mbig
-!!$!              deltam=mvalue1a-mvalue1b
-!!$!
-!!$!!!$ if (1==1) then  ! is faster when optimized, much slower when not.
-!!$!                       
-!!$!              do i1=1,lbig+1
-!!$!                 do i2=1,numerad
-!!$!                    sum = sum + CONJUGATE(inspfs1(i2,i1,mvalue1a,spf1a)) * inspfs2(i2,i1,mvalue1b,spf1b) * hatomreduced(i2,i1,deltam)
-!!$!                 enddo
-!!$!              enddo
-!!$!           enddo
-!!$!        enddo
-!!$!        hatommatel(spf1a,spf1b) = hatommatel(spf1a,spf1b) -  sum
-!!$!     enddo
-!!$!  enddo
-!!$  
-!!$end subroutine hatom_matel
 
 
 subroutine hatom_op(howmany,inspfs, outspfs)
@@ -1796,3 +1595,149 @@ subroutine splitgatherv_real(inbig,outlocal,ilog)
   ilog=.true.
 end subroutine splitgatherv_real
 
+
+
+
+!!$  
+!!$  !! flag=1 means flux, otherwise whole op
+!!$  subroutine call_flux_op_twoe00(lowspf,highspf,mobra,moket,V2,flag) 
+!!$  !! determine the 2-electron matrix elements in the orbital basis for the flux operator i(H-H^{\dag}) 
+!!$  !! input :
+!!$  !! mobra - the orbitals that contained in the bra 
+!!$  !! moket - the orbitals that contained in the ket 
+!!$  !! output : 
+!!$  !! V2 - the 2-electron matrix elements corresponding with potential energy (contract with 1/R) 
+!!$    use myparams
+!!$    use twoemod
+!!$    use myprojectmod   !! rmatrix,ylmvals
+!!$    implicit none
+!!$    integer,intent(in) :: flag,lowspf,highspf
+!!$    DATATYPE,intent(in) :: mobra(numerad,lbig+1,-mbig:mbig,numspf),moket(numerad,lbig+1,-mbig:mbig,numspf)
+!!$    DATATYPE,intent(out) :: V2(numspf,numspf,numspf,lowspf:highspf)
+!!$    DATATYPE :: twoemat2(numerad,lbig+1,-2*mbig:2*mbig),twoeden(numerad,lbig+1),&   !! AUTOMATIC
+!!$         twoeden2(numerad),twoeden3(numerad)
+!!$    integer :: i,a,j,b,mvali,mvala,mvalj,mvalb,ixi,ieta,deltam,lsum,qq,rr,qq2,rr2 
+!!$  
+!!$    if (highspf-lowspf+1.gt.0) then
+!!$       V2=0d0
+!!$    endif
+!!$  
+!!$  !! The bra determinant is <ij|
+!!$  !! The ket determinant is |ab>
+!!$  !! without the ecs rmatrix and ylm are real, sooooooo V-V^dagger is zero by def...
+!!$  !! ALWAYS USING ALLLCON TO MAKE SURE ITS ALWAYS hermitian elements of V-V^\dagger and V\dagger must have transpose 
+!!$  
+!!$    do b=lowspf,highspf
+!!$      do j=1,numspf !! bra vector
+!!$  !! integrating over electron 2
+!!$        twoemat2=0d0
+!!$        if(spfrestrictflag==1) then
+!!$          qq=spfmvals(j);        rr=spfmvals(j)
+!!$          qq2=spfmvals(b);        rr2=spfmvals(b)
+!!$        else
+!!$          qq=-mbig;        rr=mbig
+!!$          qq2=-mbig;        rr2=mbig
+!!$        endif
+!!$        do mvalj=qq,rr
+!!$          do mvalb=qq2,rr2
+!!$            deltam=mvalb-mvalj
+!!$  
+!!$  !! switching 2-2016     twoeden(:,:) = CONJUGATE(mobra(:,:,mvalj,j)) * moket(:,:,mvalb,b)
+!!$  
+!!$            twoeden(:,:) = mobra(:,:,mvalj,j) * CONJUGATE(moket(:,:,mvalb,b))
+!!$  
+!!$            do lsum=1+abs(deltam),jacobisummax+1
+!!$  !! this is always real and serves as a delta function, can use for both V and V^\dagger
+!!$  !! We do not need conjugation and separate V and V^\dagger densities as Ylm is real
+!!$  !! Ylm's here mean it is a delta function for e-2 in eta 
+!!$              twoeden2=0d0
+!!$              do ieta=1,lbig+1
+!!$                twoeden2(:)=twoeden2(:) + twoeden(:,ieta) * ylmvals(abs(deltam),ieta,lsum-abs(deltam)) 
+!!$              enddo
+!!$  !! we need to be able to do the conjugate here
+!!$  !! thankfully the rmatrix is diagonal in xi, so transposing rmatrix only switches e-s which doesn't make any sense
+!!$              twoeden3=0d0
+!!$              select case(flag)
+!!$              case(1)  ! flux imag
+!!$  #ifdef ECSFLAG
+!!$                 do ixi=1,numerad
+!!$                    if(atomflag==0) then
+!!$                       twoeden3(:)=twoeden3(:) + twoeden2(ixi) * 4d0 * (rmatrix(:,ixi,abs(deltam)+1,lsum-abs(deltam)) - ALLCON(rmatrix(:,ixi,abs(deltam)+1,lsum-abs(deltam))))
+!!$                    else
+!!$                       twoeden3(:)=twoeden3(:) + twoeden2(ixi) * (rmatrix(:,ixi,1,lsum) - ALLCON(rmatrix(:,ixi,1,lsum)))
+!!$                    endif
+!!$                 enddo
+!!$  #endif
+!!$              case(2)  ! flux real
+!!$  #ifdef ECSFLAG
+!!$                 do ixi=1,numerad
+!!$                    if(atomflag==0) then
+!!$                       twoeden3(:)=twoeden3(:) + twoeden2(ixi) * 4d0 * (rmatrix(:,ixi,abs(deltam)+1,lsum-abs(deltam)) + ALLCON(rmatrix(:,ixi,abs(deltam)+1,lsum-abs(deltam))))
+!!$                    else
+!!$                       twoeden3(:)=twoeden3(:) + twoeden2(ixi) * (rmatrix(:,ixi,1,lsum) + ALLCON(rmatrix(:,ixi,1,lsum)))
+!!$                    endif
+!!$                enddo
+!!$  #endif
+!!$                 case default
+!!$                 do ixi=1,numerad
+!!$                    if(atomflag==0) then
+!!$                       twoeden3(:)=twoeden3(:) + twoeden2(ixi) * 4d0 * (rmatrix(:,ixi,abs(deltam)+1,lsum-abs(deltam)))
+!!$                    else
+!!$                       twoeden3(:)=twoeden3(:) + twoeden2(ixi) * (rmatrix(:,ixi,1,lsum))
+!!$                    endif
+!!$                 enddo
+!!$              end select
+!!$  
+!!$  !! this is always real and serves as a delta function, can use for both V and V^\dagger
+!!$  !! this uses the same Ylm realness as above to cleanly finish the matrix element
+!!$              do ieta=1,lbig+1
+!!$                twoemat2(:,ieta,deltam)=twoemat2(:,ieta,deltam) - twoeden3(:) * ylmvals(abs(deltam),ieta,lsum-abs(deltam))
+!!$              enddo
+!!$            enddo
+!!$          enddo
+!!$        enddo
+!!$  !! slap on the other two orbitals, twoemat2 already holds a half transformed (for only e-2) V-V\dagger
+!!$        do a=1,numspf !! ket vector
+!!$          do i=1,numspf !!  bra vector
+!!$            if(spfrestrictflag==1) then
+!!$              qq=spfmvals(i);            rr=spfmvals(i)
+!!$              qq2=spfmvals(a);            rr2=spfmvals(a)
+!!$            else
+!!$              qq=-mbig;            rr=mbig
+!!$              qq2=-mbig;            rr2=mbig
+!!$            endif
+!!$            do mvali=qq,rr
+!!$              do mvala=qq2,rr2
+!!$                deltam=mvali-mvala
+!!$                do ieta=1,lbig+1
+!!$                  do ixi=1,numerad
+!!$  !! saving the integral in Chemist's form
+!!$  !! V(i,a,j,b) = (ia|jb)
+!!$  !! i and j are in the bra, a and b are in the ket ie <ij|V-V\dagger|ab>
+!!$                    !V2(i,a,j,b) = V2(i,a,j,b) + (0d0,1d0) * &
+!!$                    !      CONJUGATE(mobra(ixi,ieta,mvali,i)) * moket(ixi,ieta,mvala,a) * twoemat2(ixi,ieta,deltam)
+!!$  
+!!$                    V2(i,a,j,b) = V2(i,a,j,b) +  &
+!!$  !! switching 2-2016        CONJUGATE(mobra(ixi,ieta,mvali,i)) * moket(ixi,ieta,mvala,a) * twoemat2(ixi,ieta,deltam)
+!!$                      mobra(ixi,ieta,mvali,i) * CONJUGATE(moket(ixi,ieta,mvala,a)) * twoemat2(ixi,ieta,deltam)
+!!$  
+!!$                  enddo
+!!$                enddo
+!!$              enddo
+!!$            enddo
+!!$          enddo
+!!$        enddo
+!!$      enddo
+!!$    enddo
+!!$  
+!!$    if (highspf-lowspf+1.gt.0) then
+!!$       if(flag.eq.1) then
+!!$          V2=(0d0,1d0)*V2       !!! yes because I got the imaginary part above with conjugates...  returns imaginary... mult by i to get -2 x imag part (real valued number) like others
+!!$       else if (flag.eq.2) then
+!!$          V2=(-1)*V2
+!!$       endif
+!!$    endif
+!!$  
+!!$  
+!!$  end subroutine call_flux_op_twoe00
+!!$  

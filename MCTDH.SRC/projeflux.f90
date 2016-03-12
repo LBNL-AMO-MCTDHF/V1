@@ -388,6 +388,10 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
               enddo
            endif
 
+           if (fluxoptype.eq.0) then
+              OFLWR "PROGRAM ME FLUXOPTYPE 0 PROJEFLUX"; CFLST
+           endif
+
 !! change it to \hat{F}|\psi(t)>, the onee part
            do i=1,ketreadsize
               do k=1,2 !! loop over the spins...
@@ -606,41 +610,64 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   deallocate(read_bramo,read_ketmo)
   deallocate(gtau,ketmo,bramo)
 
-end subroutine projeflux_double_time_int
-
+contains
 
 
 !! get the contraction of the flux operator (iH-H^\dag) with our current set of orbitals 
 !! F*inspfs=outspfs
 
-subroutine projeflux_op_onee(inspfs)
-  use parameters
-  implicit none
-  DATATYPE,intent(inout) :: inspfs(spfsize,numr)
-  DATATYPE :: workspfs(spfsize,numr), workspfs2(spfsize,numr)
-  integer :: r
+  subroutine projeflux_op_onee(inspfs)
+    use parameters
+    implicit none
+    DATATYPE,intent(inout) :: inspfs(spfsize,numr)
+    DATATYPE :: workspfs(spfsize,numr), workspfs2(spfsize,numr)
+    
+    workspfs2(:,:) = ALLCON(inspfs(:,:))
+    workspfs=0
+    call multone(workspfs2,workspfs)
+    call multone(inspfs,workspfs2)
+    inspfs=(workspfs2-ALLCON(workspfs)) / (0d0,1d0)   !! properly scaled (-2 im)
+  end subroutine projeflux_op_onee
 
-!! NOT ACCOUNTING FOR SCALING IN BOND LENGTH (assuming bondpoints is real)
 
-  call mult_imke(numr,inspfs(:,:),workspfs(:,:))
-  do r=1,numr
-     workspfs(:,r) = workspfs(:,r) / bondpoints(r)**2   !! bugfix 01-2016 wasn't squared
-  enddo
+  subroutine multone(inspfs,outspfs)
+    use opmod      !! proderivmod, rkemod
+    implicit none
+    DATATYPE,intent(in) :: inspfs(spfsize,numr)
+    DATATYPE,intent(out) :: outspfs(spfsize,numr)
+    DATATYPE :: workspfs(spfsize,numr)              !! AUTOMATIC
+    integer :: r
 
-  workspfs2(:,:)=0d0
-  if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
-     call mult_impot(numr,inspfs(:,:),workspfs2(:,:))
-  else if(FluxOpType.eq.1) then
-     call mult_imhalfniumpot(numr,inspfs(:,:),workspfs2(:,:))
-  endif
-  do r=1,numr
-     workspfs2(:,r) = workspfs2(:,r) / bondpoints(r)
-  enddo
+    workspfs=0; outspfs=0
+    call mult_ke(numr,inspfs(:,:),workspfs(:,:))
+    do r=1,numr
+!! bugfix 01-2016 wasn't squared
+       outspfs(:,r) = outspfs(:,r) + workspfs(:,r) / bondpoints(r)**2
+    enddo
+    
+    if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
+       call mult_pot(numr,inspfs(:,:),workspfs(:,:))
+    else if(FluxOpType.eq.1) then
+       call mult_halfniumpot(numr,inspfs(:,:),workspfs(:,:))
+    endif
+    do r=1,numr
+       outspfs(:,r) = outspfs(:,r) + workspfs(:,r) / bondpoints(r)
+    enddo
 
-!! scale correctly and clear memory
-  inspfs=(workspfs+workspfs2)*(-2d0)
+    if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
+       call op_yderiv(numr,inspfs,workspfs)
+       call MYGEMM('N','T',numr,spfsize,numr,DATAONE,proderivmod,numr,workspfs,spfsize,&
+            DATAONE,outspfs,numr)
 
-end subroutine projeflux_op_onee
+       call MYGEMM('N','T',numr,spfsize,numr,DATAONE,rkemod,numr,inspfs,spfsize,&
+            DATAONE,outspfs,numr)
+    endif
+
+  end subroutine multone
+  
+end subroutine projeflux_double_time_int
+
+
 
 
 module projbiomod

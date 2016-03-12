@@ -724,6 +724,11 @@ contains
      call hops(wwin)
      call set_matsize(wwin)
      call init_dfcon(wwin)
+
+!!!! NO LONGER NEED THESE
+     OFLWR "Deallocating walks arrays."; CFL
+     deallocate(wwin%singlewalk, wwin%doublewalk)
+
      call spinwalkinit(wwin)
      call spinwalks(wwin)
      call spinsets_first(wwin)

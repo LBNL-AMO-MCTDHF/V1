@@ -201,101 +201,7 @@ subroutine get_stuff0(thistime,times)
 end subroutine get_stuff0
 
 
-subroutine mult_reke(howmany,in,out)
-  use parameters
-  implicit none
-  integer,intent(in) :: howmany
-  DATATYPE,intent(in) :: in(spfsize,howmany)
-  DATATYPE,intent(out) :: out(spfsize,howmany)
-  DATATYPE :: work(spfsize,howmany)
-  work(:,:)=ALLCON(in(:,:))
-  call mult_ke(work,out,howmany,"booga",2)
-  work=ALLCON(out)
-  call mult_ke(in,out,howmany,"booga",2)  
-  work=work+out
-  out=work/2d0
-end subroutine mult_reke
-
-
-subroutine mult_imke(howmany,in,out)
-  use parameters
-  implicit none
-  integer,intent(in) :: howmany
-  DATATYPE,intent(in) :: in(spfsize,howmany)
-  DATATYPE,intent(out) :: out(spfsize,howmany)
-  DATATYPE :: work(spfsize,howmany)
-  work(:,:)=ALLCON(in(:,:))
-  call mult_ke(work,out,howmany,"booga",2)
-  work=ALLCON(out)
-  call mult_ke(in,out,howmany,"booga",2)  
-  work=out-work
-  out=work/(0d0,2d0)
-end subroutine mult_imke
-
-subroutine op_reyderiv(howmany,in,out)
-  use parameters
-  implicit none
-  integer,intent(in) :: howmany
-  DATATYPE,intent(in) :: in(spfsize,howmany)
-  DATATYPE,intent(out) :: out(spfsize,howmany)
-  DATATYPE :: work(spfsize,howmany)
-  work(:,:)=ALLCON(in(:,:))
-  call op_yderiv(howmany,work,out)
-  work=ALLCON(out)
-  call op_yderiv(howmany,in,out)
-  work=work+out
-  out=work/2d0
-end subroutine op_reyderiv
-
-
-subroutine op_imyderiv(howmany,in,out)
-  use parameters
-  implicit none
-  integer,intent(in) :: howmany
-  DATATYPE,intent(in) :: in(spfsize,howmany)
-  DATATYPE,intent(out) :: out(spfsize,howmany)
-  DATATYPE :: work(spfsize,howmany)
-  work(:,:)=ALLCON(in(:,:))
-  call op_yderiv(howmany,work,out)
-  work=ALLCON(out)
-  call op_yderiv(howmany,in,out)
-  work=out-work
-  out=work/(0d0,2d0)
-end subroutine op_imyderiv
-
-
 !! needs factor of 1/r  for hamiltonian
-
-subroutine mult_impot(howmany,in, out)
-  use parameters
-  use opmod 
-  implicit none
-  integer,intent(in) :: howmany
-  DATATYPE,intent(in) :: in(spfsize,howmany)
-  DATATYPE,intent(out) :: out(spfsize,howmany)
-  integer :: ii
-  do ii=1,howmany
-     out(:,ii)=in(:,ii)*imag((0d0,0d0)+pot(:))   !! NO INTERNUCLEAR REPULSION !!
-  enddo
-end subroutine mult_impot
-
-
-
-!! needs factor of 1/r  for hamiltonian
-
-subroutine mult_repot(howmany,in, out)
-  use parameters
-  use opmod 
-  implicit none
-  integer,intent(in) :: howmany
-  DATATYPE,intent(in) :: in(spfsize,howmany)
-  DATATYPE,intent(out) :: out(spfsize,howmany)
-  integer :: ii
-  do ii=1,howmany
-     out(:,ii)=in(:,ii)*real(pot(:),8)   !! NO INTERNUCLEAR REPULSION !!
-  enddo
-end subroutine mult_repot
-
 
 subroutine mult_pot(howmany,in, out)
   use parameters
@@ -313,7 +219,7 @@ end subroutine mult_pot
 
 !! needs factor of 1/r  for hamiltonian
 
-subroutine mult_imhalfniumpot(howmany,in, out)
+subroutine mult_halfniumpot(howmany,in, out)
   use parameters
   use opmod  
   implicit none
@@ -322,23 +228,10 @@ subroutine mult_imhalfniumpot(howmany,in, out)
   DATATYPE,intent(out) :: out(spfsize,howmany)
   integer :: ii
   do ii=1,howmany
-     out(:,ii)=in(:,ii)*imag((0d0,0d0)+halfniumpot(:))
+     out(:,ii)=in(:,ii)*halfniumpot(:)
   enddo
-end subroutine mult_imhalfniumpot
+end subroutine mult_halfniumpot
 
-
-subroutine mult_rehalfniumpot(howmany,in, out)
-  use parameters
-  use opmod  
-  implicit none
-  integer,intent(in) :: howmany
-  DATATYPE,intent(in) :: in(spfsize,howmany)
-  DATATYPE,intent(out) :: out(spfsize,howmany)
-  integer :: ii
-  do ii=1,howmany
-     out(:,ii)=in(:,ii)*real(halfniumpot(:),8)
-  enddo
-end subroutine mult_rehalfniumpot
 
 
 subroutine lenmultiply(howmany,spfin,spfout, myxtdpot,myytdpot,myztdpot)
@@ -384,8 +277,6 @@ subroutine op_frozen_exchange(lowspf,highspf,inspfs,outspfs)
           numfrozen,spfmvals(lowspf:highspf))
   endif
 end subroutine op_frozen_exchange
-
-
 
 
 

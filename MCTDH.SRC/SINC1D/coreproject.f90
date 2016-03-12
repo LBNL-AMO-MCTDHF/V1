@@ -221,9 +221,6 @@ end subroutine transferparams
 subroutine twoedealloc()
 end subroutine twoedealloc
 
-subroutine call_flux_op_twoe00() !mobra,moket,V2,flag) 
-print *, "DOME flux_op_twoe"; stop
-end subroutine call_flux_op_twoe00
 
 
 module mycdotmod

@@ -4,6 +4,8 @@
 !! ACTION 15 save file, saved file may be used for actions 16 17 23)
 
 
+#define NEWWAY
+
 #include "Definitions.INC"
 
 subroutine fluxwrite(curtime,in_xmo,in_xa)
@@ -97,8 +99,10 @@ module fluxgtaubiomod
   type(biorthotype),target :: fluxgtaubiovar
 end module fluxgtaubiomod
 
+
 module fluxgtau0mod
 contains
+
 subroutine fluxgtau0(alg,www,bioww)
 !! actually compute the flux in a post processing kind of manner
 !! input :
@@ -123,17 +127,18 @@ subroutine fluxgtau0(alg,www,bioww)
   real*8 :: MemTot,MemVal,dt, myfac,wfi,estep,windowfunct
   complex*16, allocatable :: FTgtau(:,:), pulseft(:,:)
   real*8, allocatable :: pulseftsq(:)
-  DATATYPE :: fluxeval,fluxevalval(mcscfnum), pots1(3)=0d0  !!$, pots2(3)=0d0
+  DATATYPE :: fluxevalval(mcscfnum), pots1(3)=0d0  !!$, pots2(3)=0d0
   DATATYPE, allocatable :: gtau(:,:), mobio(:,:),abio(:,:,:)
   DATATYPE, allocatable, target :: bramo(:,:,:),braavec(:,:,:,:), ketmo(:,:,:),ketavec(:,:,:,:)
   DATATYPE,allocatable :: read_bramo(:,:,:),read_braavec(:,:,:,:),read_ketmo(:,:,:),read_ketavec(:,:,:,:)
   DATATYPE, pointer :: moket(:,:),mobra(:,:),aket(:,:,:)
-  DATATYPE, allocatable :: ke(:,:),pe(:,:),V2(:,:,:,:), yderiv(:,:)
-  DATATYPE, allocatable :: keop(:,:),peop(:,:),  yop(:,:)
+  DATATYPE, allocatable :: imke(:,:),impe(:,:),imV2(:,:,:,:), imyderiv(:,:)
+  DATATYPE, allocatable :: imkeop(:,:),impeop(:,:),  imyop(:,:)
   DATATYPE, allocatable :: reke(:,:),repe(:,:),reV2(:,:,:,:), reyderiv(:,:)
   DATATYPE, allocatable :: rekeop(:,:),repeop(:,:),  reyop(:,:)
   DATATYPE,target :: smo(nspf,nspf)
   DATATYPE :: nullvector(numr)
+
   if (ceground.eq.(0d0,0d0)) then
      OFLWR "Eground is ZERO.  Are you sure?  If want zero just make it small. \n     Otherwise need eground: initial state energy."; CFLST
   endif
@@ -149,14 +154,15 @@ subroutine fluxgtau0(alg,www,bioww)
   allocate(gtau(0:nt,mcscfnum))
   gtau(:,:)=0d0
 
-  allocate(ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf),&
+  allocate(imke(nspf,nspf),impe(nspf,nspf),imV2(nspf,nspf,nspf,nspf),imyderiv(nspf,nspf),&
        reke(nspf,nspf),repe(nspf,nspf),reV2(nspf,nspf,nspf,nspf),reyderiv(nspf,nspf),&
+       rekeop(spfsize,nspf),repeop(spfsize,nspf),reyop(spfsize,nspf),&
        mobio(spfsize,nspf),abio(numr,www%firstconfig:www%lastconfig,mcscfnum), &
-       keop(spfsize,nspf),peop(spfsize,nspf),   rekeop(spfsize,nspf),repeop(spfsize,nspf),&
-       yop(spfsize,nspf), reyop(spfsize,nspf))
+       imkeop(spfsize,nspf),impeop(spfsize,nspf),imyop(spfsize,nspf))
 
-  ke=0; pe=0; V2=0; yderiv=0;   reke=0; repe=0; reV2=0; reyderiv=0
-  mobio=0; keop=0; peop=0; rekeop=0; repeop=0; yop=0; reyop=0
+  imke=0; impe=0; imV2=0; imyderiv=0; imkeop=0; impeop=0; imyop=0;
+  reke=0; repe=0; reV2=0; reyderiv=0; rekeop=0; repeop=0; reyop=0
+  mobio=0;
   if (www%lastconfig.ge.www%firstconfig) then
      abio=0
   endif
@@ -373,17 +379,13 @@ subroutine fluxgtau0(alg,www,bioww)
            curtime=(ketbat-1)*BatchSize+kettime-1 
            moket=>ketmo(:,:,kettime);        aket=>ketavec(:,:,:,kettime)
            
-           call flux_op_onee(moket,keop,peop,1)  !! 1 means flux
+           call flux_op_onee(moket,imkeop,impeop,1)
            if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
-              call flux_op_onee(moket,rekeop,repeop,2)  !! 1 means flux
+              call flux_op_onee(moket,rekeop,repeop,2)
            endif
-           
-           if (nonuc_checkflag.eq.0) then
-              call flux_op_nuc(moket,yop,1)  !! 1 means flux
-              if (nucfluxopt.ne.0) then
-                 
-                 call flux_op_nuc(moket,reyop,2)  !! 1 means flux
-              endif
+           if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
+              call flux_op_nuc(moket,imyop,1)
+              call flux_op_nuc(moket,reyop,2)
            endif
 
 !! determine bounds of loop over bras and setup doing in parallel with mpi!
@@ -429,51 +431,41 @@ subroutine fluxgtau0(alg,www,bioww)
               call system_clock(jtime);          times(3)=times(3)+jtime-itime
 
 !! complete the one-e potential and kinetic energy matrix elements           
+!! DO BLAS !!
+
               do i=1,nspf
                  do k=1,nspf
-                    ke(k,i) = hermdot(mobio(:,k),keop(:,i),spfsize)
-                    pe(k,i) = hermdot(mobio(:,k),peop(:,i),spfsize)
+                    imke(k,i) = hermdot(mobio(:,k),imkeop(:,i),spfsize)
+                    impe(k,i) = hermdot(mobio(:,k),impeop(:,i),spfsize)
                     if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
                        reke(k,i) = hermdot(mobio(:,k),rekeop(:,i),spfsize)
                        repe(k,i) = hermdot(mobio(:,k),repeop(:,i),spfsize)
+                       imyderiv(k,i) = hermdot(mobio(:,k),imyop(:,i),spfsize)
+                       reyderiv(k,i) = hermdot(mobio(:,k),reyop(:,i),spfsize)
                     endif
                  enddo
               enddo
-              if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
-                 do i=1,nspf
-                    do k=1,nspf
-                       yderiv(k,i) = hermdot(mobio(:,k),yop(:,i),spfsize)
-                    enddo
-                 enddo
-                 do i=1,nspf
-                    do k=1,nspf
-                       reyderiv(k,i) = hermdot(mobio(:,k),reyop(:,i),spfsize)
-                    enddo
-                 enddo
-              endif
 
               if (parorbsplit.eq.3) then
-                 call mympireduce(ke,nspf**2)
-                 call mympireduce(pe,nspf**2)
+                 call mympireduce(imke,nspf**2)
+                 call mympireduce(impe,nspf**2)
                  if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
                     call mympireduce(reke,nspf**2)
                     call mympireduce(repe,nspf**2)
-                 endif
-                 if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
-                    call mympireduce(yderiv,nspf**2)
+                    call mympireduce(imyderiv,nspf**2)
                     call mympireduce(reyderiv,nspf**2)
                  endif
               endif
 
               call system_clock(itime);          times(4)=times(4)+itime-jtime
 
-!! get the two-e contribution, boo this is slow and we don't like it!           
+!! get the two-e contribution for exact formula (fluxoptype=0)
               
-              V2=0d0
-              if(FluxOpType.eq.0) then  !!.and.onee_checkflag/=1) then
-                 call flux_op_twoe(mobio,moket,V2,1) !! one means flux
+              imV2=0d0; reV2=0
+              if(FluxOpType.eq.0) then
+                 call flux_op_twoe(mobio,moket,imV2,1)
                  if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
-                    call flux_op_twoe(mobio,moket,reV2,2)  !! one means flux
+                    call flux_op_twoe(mobio,moket,reV2,2)
                  endif
               endif
               call system_clock(jtime)
@@ -481,13 +473,24 @@ subroutine fluxgtau0(alg,www,bioww)
 
 !! evaluate the actual g(tau) expression
 
+#ifdef NEWWAY
+              do imc=1,mcscfnum
+                 if (tot_adim.gt.0) then
+                    fluxevalval(imc) = fluxeval(abio(:,:,imc),aket(:,:,imc),&
+                         imke,impe,imV2,imyderiv,reke,repe,reV2,reyderiv)
+                 else
+                    fluxevalval(imc) = fluxeval(nullvector(:),nullvector(:),&
+                         imke,impe,imV2,imyderiv,reke,repe,reV2,reyderiv)
+                 endif
+              enddo
+#else
               do imc=1,mcscfnum
                  if (tot_adim.gt.0) then
                     fluxevalval(imc) = fluxeval(abio(:,:,imc),&
-                         aket(:,:,imc),ke,pe,V2,yderiv,1) * dt  !! 1 means flux
+                         aket(:,:,imc),imke,impe,imV2,imyderiv,1) * dt  !! 1 means flux
                  else
                     fluxevalval(imc) = fluxeval(nullvector(:),&
-                         nullvector(:),ke,pe,V2,yderiv,1) * dt  !! 1 means flux
+                         nullvector(:),imke,impe,imV2,imyderiv,1) * dt  !! 1 means flux
                  endif
               enddo
               if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
@@ -503,6 +506,7 @@ subroutine fluxgtau0(alg,www,bioww)
                     endif
                  enddo
               endif
+#endif
 
               oldtime=(brabat-1)*BatchSize+bratime-1
               tau=curtime-oldtime; 
@@ -643,93 +647,83 @@ subroutine fluxgtau0(alg,www,bioww)
   deallocate(bramo,ketmo,braavec,ketavec)
   deallocate(read_bramo,read_ketmo,read_braavec,read_ketavec)
   deallocate(gtau)
-  deallocate(ke,pe,V2,yderiv)
-  deallocate(reke,repe,reV2,reyderiv)
-  deallocate(mobio,abio,keop,peop,rekeop,repeop)
-  deallocate(yop,reyop)
+  deallocate(imke,impe,imV2,imyderiv,imkeop,impeop,imyop)
+  deallocate(reke,repe,reV2,reyderiv,rekeop,repeop,reyop)
+  deallocate(mobio,abio)
 
-
-end subroutine fluxgtau0
-end module fluxgtau0mod
-
-subroutine fluxgtau(alg)
-  use fluxgtau0mod
-  use configmod
-  use df_parameters
-  implicit none
-  integer,intent(in) :: alg
-
-  call fluxgtau0(alg,www,bwwptr)
-
-end subroutine fluxgtau
-
-
+contains
 
 !! begin the flux matrix element and contraction routine section
-!! flag=1, flux (imag); flag=2, flux (real); flag=0, all  0 not used
+!! flag=1, imag part; flag=2, real part; flag=0, all
 
-subroutine flux_op_onee(inspfs,keop,peop,flag)
-  use parameters
-  use orbgathersubmod
-  implicit none
-  integer,intent(in) :: flag
-  DATATYPE, intent(in) :: inspfs(spfsize,nspf)
-  DATATYPE,intent(out) ::  keop(spfsize,nspf),peop(spfsize,nspf)
-  integer :: lowspf,highspf,numspf
+  subroutine flux_op_onee(inspfs,keop,peop,flag)
+    use parameters
+    use orbgathersubmod
+    implicit none
+    integer,intent(in) :: flag
+    DATATYPE, intent(in) :: inspfs(spfsize,nspf)
+    DATATYPE,intent(out) ::  keop(spfsize,nspf),peop(spfsize,nspf)
+    integer :: lowspf,highspf,numspf
 
-  lowspf=1; highspf=nspf
-  if (parorbsplit.eq.1) then
-     call getOrbSetRange(lowspf,highspf)
-  endif
-  numspf=highspf-lowspf+1
+    lowspf=1; highspf=nspf
+    if (parorbsplit.eq.1) then
+       call getOrbSetRange(lowspf,highspf)
+    endif
+    numspf=highspf-lowspf+1
 
 !! initialize
-  keop=0d0; peop=0d0
+    keop=0d0; peop=0d0
 
 !! the kinetic energy
 
-  if (numspf.gt.0) then
-     select case(flag)
-     case(1)
-        call mult_imke(numspf,inspfs(:,lowspf:highspf),keop(:,lowspf:highspf))
-     case(2)
-        call mult_reke(numspf,inspfs(:,lowspf:highspf),keop(:,lowspf:highspf))
-     case default
-        call mult_ke(inspfs(:,lowspf:highspf),keop(:,lowspf:highspf),numspf,"booga",2)
-     end select
+    if (numspf.gt.0) then
+       select case(flag)
+       case(1)
+          call mult_imke(numspf,inspfs(:,lowspf:highspf),keop(:,lowspf:highspf))
+       case(2)
+          call mult_reke(numspf,inspfs(:,lowspf:highspf),keop(:,lowspf:highspf))
+       case default
+          OFLWR "not supppported"; CFLST
+          call mult_ke(inspfs(:,lowspf:highspf),keop(:,lowspf:highspf),numspf,"booga",2)
+       end select
 
 !! the one-e potential energy 
 
-     select case(flag)
-     case(1)
-        if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
-           call mult_impot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
-        else if(FluxOpType.eq.1) then
-           call mult_imhalfniumpot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
-        endif 
-     case(2)
-        if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
-           call mult_repot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
-        else if(FluxOpType.eq.1) then
-           call mult_rehalfniumpot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
-        endif 
-     case default
-        call mult_pot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
-     end select
+       select case(flag)
+       case(1)
+          if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
+             call mult_impot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
+          else if(FluxOpType.eq.1) then
+             call mult_imhalfniumpot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
+          endif
+       case(2)
+          if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
+             call mult_repot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
+          else if(FluxOpType.eq.1) then
+             call mult_rehalfniumpot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
+          endif
+       case default
+          OFLWR "Nottt supporteddd"; CFLST
+          if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
+             call mult_pot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
+          else if(FluxOpType.eq.1) then
+             call mult_halfniumpot(numspf,inspfs(:,lowspf:highspf),peop(:,lowspf:highspf))
+          endif
+       end select
 
 !! scale correctly and clear memory
-     if(flag.ne.0) then
-        peop(:,lowspf:highspf)=peop(:,lowspf:highspf)*(-2d0)
-        keop(:,lowspf:highspf)=keop(:,lowspf:highspf)*(-2d0)
-     endif
-  endif
+       if(flag.ne.0) then
+          peop(:,lowspf:highspf)=peop(:,lowspf:highspf)*(-2d0)
+          keop(:,lowspf:highspf)=keop(:,lowspf:highspf)*(-2d0)
+       endif
+    endif
 
-  if (parorbsplit.eq.1) then
-     call mpiorbgather(peop,spfsize)
-     call mpiorbgather(keop,spfsize)
-  endif
+    if (parorbsplit.eq.1) then
+       call mpiorbgather(peop,spfsize)
+       call mpiorbgather(keop,spfsize)
+    endif
 
-end subroutine flux_op_onee
+  end subroutine flux_op_onee
 
 
 !! operates with y derivative cross term.  
@@ -743,79 +737,198 @@ end subroutine flux_op_onee
 
 !! flag=1, flux (imag); flag=0, all    2 flux (imag)
 
-subroutine flux_op_nuc(inspfs,yop,flag)
-  use parameters
-  use orbgathersubmod
-  implicit none
-  DATATYPE, intent(in) :: inspfs(spfsize,nspf)
-  DATATYPE,intent(out) ::  yop(spfsize,nspf)
-  integer,intent(in) :: flag
-  integer :: lowspf,highspf,numspf
+  subroutine flux_op_nuc(inspfs,yop,flag)
+    use parameters
+    use orbgathersubmod
+    implicit none
+    DATATYPE, intent(in) :: inspfs(spfsize,nspf)
+    DATATYPE,intent(out) ::  yop(spfsize,nspf)
+    integer,intent(in) :: flag
+    integer :: lowspf,highspf,numspf
 
-  lowspf=1; highspf=nspf
-  if (parorbsplit.eq.1) then
-     call getOrbSetRange(lowspf,highspf)
-  endif
-  numspf=highspf-lowspf+1
+    lowspf=1; highspf=nspf
+    if (parorbsplit.eq.1) then
+       call getOrbSetRange(lowspf,highspf)
+    endif
+    numspf=highspf-lowspf+1
 
 !! the kinetic energy
 
-  if (numspf.gt.0) then
-     select case(flag)
-     case(1)
-        call op_imyderiv(nspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
-     case(2)
-        call op_reyderiv(nspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
-     case default
-        call op_yderiv(nspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
-     end select
+    if (numspf.gt.0) then
+       select case(flag)
+       case(1)
+          call op_imyderiv(nspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
+       case(2)
+          call op_reyderiv(nspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
+       case default
+          OFLWR "NNOT supported!"; CFLST
+          call op_yderiv(nspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
+       end select
 !! scale correctly and clear memory
-     if(flag.ne.0) then
-        yop(:,lowspf:highspf)=yop(:,lowspf:highspf)*(-2d0)
-     endif
-  endif
+       if(flag.ne.0) then
+          yop(:,lowspf:highspf)=yop(:,lowspf:highspf)*(-2d0)
+       endif
+    endif
 
-  if (parorbsplit.eq.1) then
-     call mpiorbgather(yop,spfsize)
-  endif
+    if (parorbsplit.eq.1) then
+       call mpiorbgather(yop,spfsize)
+    endif
 
-end subroutine flux_op_nuc
+  end subroutine flux_op_nuc
 
 
-!! maybe double check if flag.ne.1.
+  subroutine flux_op_twoe(mobra,moket,V2,flag)
+    use parameters
+    use orbgathersubmod
+    implicit none
+    DATATYPE,intent(in) :: mobra(spfsize,nspf),moket(spfsize,nspf)
+    DATATYPE,intent(out) :: V2(nspf,nspf,nspf,nspf)
+    integer,intent(in) :: flag
+#ifdef NEWWAY
+    DATATYPE, allocatable :: tempreduced(:,:,:)
+#endif
+    integer :: lowspf,highspf,numspf
 
-!! flag=1 means flux, otherwise whole op
+    lowspf=1; highspf=nspf
+    if (parorbsplit.eq.1) then
+       call getOrbSetRange(lowspf,highspf)
+    endif
+    numspf=highspf-lowspf+1
 
-subroutine flux_op_twoe(mobra,moket,V2,flag)
-  use parameters
-  use orbgathersubmod
-  implicit none
-  DATATYPE,intent(in) :: mobra(spfsize,nspf),moket(spfsize,nspf)
-  DATATYPE,intent(out) :: V2(nspf,nspf,nspf,nspf)
-  integer,intent(in) :: flag
-  integer :: lowspf,highspf,numspf
+    if (numspf.gt.0) then
+#ifdef NEWWAY
+       allocate(tempreduced(reducedpotsize,nspf,lowspf:highspf))
+       tempreduced=0
+       OFLWR "DOME TWOE_MATEL0000"; CFLST
+!!$       call call_twoe_matel0000(lowspf,highspf,mobra,moket,V2(:,:,:,lowspf:highspf),tempreduced,"boogie",2,flag)
+       deallocate(tempreduced)
+#else
+       call call_flux_op_twoe00(lowspf,highspf,mobra,moket,V2(:,:,:,lowspf:highspf),flag)
+#endif
+    endif
 
-  lowspf=1; highspf=nspf
-  if (parorbsplit.eq.1) then
-     call getOrbSetRange(lowspf,highspf)
-  endif
-  numspf=highspf-lowspf+1
+    if (parorbsplit.eq.1) then
+       call mpiorbgather(V2,nspf**3)
+    endif
+    if (parorbsplit.eq.3) then
+       call mympireduce(V2,nspf**4)
+    endif
 
-  if (flag.ne.1) then
-     OFLWR "Doublecheck flag.ne.1 ok in flux_op_twoe"; CFLST
-  endif
-  if (numspf.gt.0) then
-     call call_flux_op_twoe00(lowspf,highspf,mobra,moket,V2(:,:,:,lowspf:highspf),flag)
-  endif
+  end subroutine flux_op_twoe
 
-  if (parorbsplit.eq.1) then
-     call mpiorbgather(V2,nspf**3)
-  endif
-  if (parorbsplit.eq.3) then
-     call mympireduce(V2,nspf**4)
-  endif
 
-end subroutine flux_op_twoe
+#ifdef  NEWWAY
+
+  function fluxeval(abra,aket,imke,impe,imV2,imyderiv,reke,repe,reV2,reyderiv)
+    use parameters 
+    use walkmod
+    use configptrmod
+    use sparseptrmod
+    use sparsemultmod
+    implicit none
+    DATATYPE,intent(in) :: abra(numr,first_config:last_config),aket(numr,first_config:last_config),&
+         imke(nspf,nspf),impe(nspf,nspf),imV2(nspf,nspf,nspf,nspf),imyderiv(nspf,nspf),&
+         reke(nspf,nspf),repe(nspf,nspf),reV2(nspf,nspf,nspf,nspf),reyderiv(nspf,nspf)
+    DATATYPE, allocatable :: multket(:,:), ketwork(:,:), conjgket(:,:)
+    DATATYPE :: fluxeval, outsum
+    type(CONFIGPTR) :: matrix_ptr
+    type(SPARSEPTR) :: sparse_ptr
+    integer :: ispf,jspf
+
+!! imaginary part of electronic operators, real part of nuclear operators
+
+    call configptralloc(matrix_ptr,www)
+    allocate(multket(numr,first_config:last_config), ketwork(numr,first_config:last_config),&
+         conjgket(numr,first_config:last_config))
+
+    matrix_ptr%xpotmatel(:,:) = impe(:,:)
+    matrix_ptr%xopmatel(:,:)  = imke(:,:)
+    matrix_ptr%xymatel(:,:)   = imyderiv(:,:)
+    matrix_ptr%xtwoematel(:,:,:,:) = imV2(:,:,:,:)
+
+    if (sparseopt.ne.0) then
+       call sparseptralloc(sparse_ptr,www)
+       call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0)
+    endif
+
+    call sparseconfigmult(www,aket,ketwork,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0,0d0,-1)
+
+    matrix_ptr%xpotmatel(:,:)      = ALLCON(matrix_ptr%xpotmatel(:,:))
+    matrix_ptr%xopmatel(:,:)       = ALLCON(matrix_ptr%xopmatel(:,:))
+    matrix_ptr%xymatel(:,:)        = ALLCON(matrix_ptr%xymatel(:,:))
+    matrix_ptr%xtwoematel(:,:,:,:) = ALLCON(matrix_ptr%xtwoematel(:,:,:,:))
+
+    if (sparseopt.ne.0) then
+       call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0)
+    endif
+
+    if (tot_adim.gt.0) then
+       conjgket(:,:) = ALLCON(aket(:,:))
+    endif
+    call sparseconfigmult(www,conjgket,multket,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0,0d0,-1)
+    if (tot_adim.gt.0) then
+       multket(:,:)=ALLCON(multket(:,:))
+    endif
+   
+    outsum=0d0
+
+    if (tot_adim.gt.0) then
+       ketwork(:,:)=(ketwork(:,:)+multket(:,:)) / 2d0    !! REAL PART OF SPARSECONFIGMULT
+       outsum = hermdot(abra,ketwork,tot_adim)
+    endif
+
+    if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
+
+!! real part of electronic operators, imaginary part of nuclear operators
+
+       matrix_ptr%xpotmatel(:,:) = repe(:,:)
+       matrix_ptr%xopmatel(:,:)  = reke(:,:)
+       matrix_ptr%xymatel(:,:)   = reyderiv(:,:)
+       matrix_ptr%xtwoematel(:,:,:,:) = reV2(:,:,:,:)
+
+       if (sparseopt.ne.0) then
+          call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0)
+       endif
+       call sparseconfigmult(www,aket,ketwork,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0,0d0,-1)
+
+       matrix_ptr%xpotmatel(:,:)      = ALLCON(matrix_ptr%xpotmatel(:,:))
+       matrix_ptr%xopmatel(:,:)       = ALLCON(matrix_ptr%xopmatel(:,:))
+       matrix_ptr%xymatel(:,:)        = ALLCON(matrix_ptr%xymatel(:,:))
+       matrix_ptr%xtwoematel(:,:,:,:) = ALLCON(matrix_ptr%xtwoematel(:,:,:,:))
+
+       if (sparseopt.ne.0) then
+          call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0)
+       endif
+
+       if (tot_adim.gt.0) then
+          conjgket(:,:) = ALLCON(aket(:,:))
+       endif
+       call sparseconfigmult(www,conjgket,multket,matrix_ptr,sparse_ptr,1,nucfluxopt,0,0,0d0,-1)
+       if (tot_adim.gt.0) then
+          multket(:,:)=ALLCON(multket(:,:))
+       endif
+
+       if (tot_adim.gt.0) then
+          ketwork(:,:)=(ketwork(:,:)-multket(:,:)) / (0d0,2d0)   !! IMAG PART OF SPARSECONFIGMULT
+          outsum = outsum + hermdot(abra,ketwork,tot_adim)
+       endif
+
+    endif
+
+    if (par_consplit.ne.0) then
+       call mympireduceone(outsum)
+    endif
+    fluxeval=outsum
+
+    if (sparseopt.ne.0) then
+       call sparseptrdealloc(sparse_ptr)
+    endif
+    call configptrdealloc(matrix_ptr)
+    deallocate(multket,ketwork,conjgket)
+
+  end function fluxeval
+
+#else
 
 
 !! with flag=1 is sent matrix elements of imaginary part of electronic operators 
@@ -825,25 +938,23 @@ end subroutine flux_op_twoe
 !! with flag=0 does full hamiltonian no real or imag part
 
 
-function fluxeval(abra,aket,ke,pe,V2,yderiv,flag)   
-  use parameters 
-  use configmod
-  implicit none
-  integer,intent(in) :: flag
-  DATATYPE,intent(in) :: abra(numr,first_config:last_config),aket(numr,first_config:last_config)
-  DATATYPE :: fluxeval,fluxeval00
-  DATATYPE :: ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf)  !! AUTOMATIC
-
-  fluxeval=fluxeval00(abra,aket,ke,pe,V2,yderiv,flag,nucfluxflag,www)
-
-end function fluxeval
+  function fluxeval(abra,aket,ke,pe,V2,yderiv,flag)   
+    use parameters 
+    use configmod
+    implicit none
+    integer,intent(in) :: flag
+    DATATYPE,intent(in) :: abra(numr,first_config:last_config),aket(numr,first_config:last_config),&
+         ke(nspf,nspf),pe(nspf,nspf),V2(nspf,nspf,nspf,nspf),yderiv(nspf,nspf)
+    DATATYPE :: fluxeval
+    fluxeval=fluxeval00(abra,aket,ke,pe,V2,yderiv,flag,www)
+  end function fluxeval
 
 
-function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart,www)   
+  function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,www)   
 
 !! flag=1 means flux (take into account fluxoptype) otherwise whole thing
 
-!! ipart=0 do all   1 elec only   (diagonal nuclear ke ; cap; herm(Y+3/2)*anti(d/dR term) 
+!! (diagonal nuclear ke ; cap; herm(Y+3/2)*anti(d/dR term) 
 !!   (herm=hermitian part (H + H^dag /2))  that's imag(Y+3/2)...   yes this is correct
 
 !! determine the 2-electron matrix elements in the orbital basis for the flux operator i(H-H^{\dag}) 
@@ -857,140 +968,275 @@ function fluxeval00(abra,in_aket,ke,pe,V2,yderiv,flag,ipart,www)
 !! output : 
 !! fluxeval - this is the actual value for <\Psi_{bra space}| i(H-H^{\dag}) |\Psi_{ket space}>
 
-  use parameters 
-  use opmod  !! rkemod & proderivmod
-  use walkmod
-  implicit none
-  integer,intent(in) :: flag,ipart
-  type(walktype),intent(in) :: www
-  DATATYPE,intent(in) :: abra(numr,www%firstconfig:www%lastconfig),&
-       in_aket(numr,www%firstconfig:www%lastconfig),&
-       ke(www%nspf,www%nspf),pe(www%nspf,www%nspf),&
-       V2(www%nspf,www%nspf,www%nspf,www%nspf),yderiv(www%nspf,www%nspf)
-  DATATYPE :: INVR,INVRSQ,fluxeval00,PRODERIV,BONDKE
-  DATATYPE,allocatable :: aket(:,:)
-  integer :: bra,ket,r,rr
+    use parameters 
+    use opmod  !! rkemod & proderivmod
+    use walkmod
+    implicit none
+    integer,intent(in) :: flag
+    type(walktype),intent(in) :: www
+    DATATYPE,intent(in) :: abra(numr,www%firstconfig:www%lastconfig),&
+         in_aket(numr,www%firstconfig:www%lastconfig),&
+         ke(www%nspf,www%nspf),pe(www%nspf,www%nspf),&
+         V2(www%nspf,www%nspf,www%nspf,www%nspf),yderiv(www%nspf,www%nspf)
+    DATATYPE :: INVR,INVRSQ,fluxeval00,PRODERIV,BONDKE
+    DATATYPE,allocatable :: aket(:,:)
+    integer :: bra,ket,r,rr
 
-  if (flag.ne.1.or.fluxoptype.ne.1.or.ipart.ne.0) then
-     OFLWR "maybe checkme debug"; CFLST
-  endif
+    if (flag.ne.1.or.fluxoptype.ne.1) then
+       OFLWR "maybe checkme debug"; CFLST
+    endif
 
-  allocate(aket(numr,www%numconfig))
-  aket(:,:)=0d0
-  aket(:,www%firstconfig:www%lastconfig)=in_aket(:,:)
+    allocate(aket(numr,www%numconfig))
+    aket(:,:)=0d0
+    aket(:,www%firstconfig:www%lastconfig)=in_aket(:,:)
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 !! AND DO HOPS
 !! AND DO OPENMP
 
-  if (www%parconsplit.ne.0) then
-     call mpiallgather(aket,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
-  endif
+    if (www%parconsplit.ne.0) then
+       call mpiallgather(aket,www%numconfig*numr,www%configsperproc(:)*numr,www%maxconfigsperproc*numr)
+    endif
 
-  fluxeval00 = 0d0
+    fluxeval00 = 0d0
 
-  do bra=www%botconfig,www%topconfig
+    do bra=www%botconfig,www%topconfig
+       do ket=1,www%numsinglewalks(bra)
 
-    do ket=1,www%numsinglewalks(bra)
+          INVR=0d0;      INVRSQ=0d0
+          do r=1,numr
+             select case(flag)
+             case(1)
+                INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) * real(1d0/ (bondpoints(r)),8)
+                INVRSQ = INVRSQ + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) * real(1d0 / (bondpoints(r)**2),8)
+             case(2)
+                INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) *imag((0d0,0d0)+1d0/bondpoints(r))
+                INVRSQ = INVRSQ + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) * imag((0d0,0d0)+1d0/ (bondpoints(r)**2))
+             case default
+                INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) / (bondpoints(r))
+                INVRSQ = INVRSQ + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) / (bondpoints(r)**2)
+             end select
+          enddo
 
-      INVR=0d0;      INVRSQ=0d0
-      do r=1,numr
-         select case(flag)
-         case(1)
-            INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) * real(1d0/ (bondpoints(r)),8)
-            INVRSQ = INVRSQ + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) * real(1d0 / (bondpoints(r)**2),8)
-         case(2)
-            INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) *imag((0d0,0d0)+1d0/bondpoints(r))
-            INVRSQ = INVRSQ + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) * imag((0d0,0d0)+1d0/ (bondpoints(r)**2))
-         case default
-            INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) / (bondpoints(r))
-            INVRSQ = INVRSQ + CONJUGATE(abra(r,bra)) * aket(r,www%singlewalk(ket,bra)) / (bondpoints(r)**2)
-         end select
+          INVR = INVR * www%singlewalkdirphase(ket,bra)
+          INVRSQ = INVRSQ * www%singlewalkdirphase(ket,bra)
+          BONDKE=0d0;      PRODERIV=0d0
 
-      enddo
+          if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
+             select case(flag)
+             case(1)
+                do rr=1,numr
+                   do r=1,numr
+                      BONDKE = BONDKE + CONJUGATE(abra(r,bra)) * aket(rr,www%singlewalk(ket,bra)) * imag((0d0,0d0)+rkemod(r,rr))
+                      PRODERIV = PRODERIV + CONJUGATE(abra(r,bra)) * aket(rr,www%singlewalk(ket,bra)) * real(proderivmod(r,rr),8)
+                   enddo
+                enddo
+             case(2)
+                do rr=1,numr
+                   do r=1,numr
+                      PRODERIV = PRODERIV + CONJUGATE(abra(r,bra)) * aket(rr,www%singlewalk(ket,bra)) * imag((0d0,0d0)+proderivmod(r,rr))
+                   enddo
+                enddo
+             case default
+                do rr=1,numr
+                   do r=1,numr
+                      BONDKE = BONDKE + CONJUGATE(abra(r,bra)) * aket(rr,www%singlewalk(ket,bra)) * rkemod(r,rr)
+                      PRODERIV = PRODERIV + CONJUGATE(abra(r,bra)) * aket(rr,www%singlewalk(ket,bra)) * proderivmod(r,rr)
+                   enddo
+                enddo
+             end select
 
-      INVR = INVR * www%singlewalkdirphase(ket,bra)
-      INVRSQ = INVRSQ * www%singlewalkdirphase(ket,bra)
-      BONDKE=0d0;      PRODERIV=0d0
+             BONDKE = BONDKE * www%singlewalkdirphase(ket,bra)
+             PRODERIV = PRODERIV * www%singlewalkdirphase(ket,bra)
 
-      if (ipart.eq.0.or.ipart.eq.2) then
-      if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
-         select case(flag)
-         case(1)
-            do rr=1,numr
-               do r=1,numr
-                  BONDKE = BONDKE + CONJUGATE(abra(r,bra)) * aket(rr,www%singlewalk(ket,bra)) * imag((0d0,0d0)+rkemod(r,rr))
-                  PRODERIV = PRODERIV + CONJUGATE(abra(r,bra)) * aket(rr,www%singlewalk(ket,bra)) * real(proderivmod(r,rr),8)
-               enddo
-            enddo
-         case(2)
-            do rr=1,numr
-               do r=1,numr
-                  PRODERIV = PRODERIV + CONJUGATE(abra(r,bra)) * aket(rr,www%singlewalk(ket,bra)) * imag((0d0,0d0)+proderivmod(r,rr))
-               enddo
-            enddo
-         case default
-            do rr=1,numr
-               do r=1,numr
-                  BONDKE = BONDKE + CONJUGATE(abra(r,bra)) * aket(rr,www%singlewalk(ket,bra)) * rkemod(r,rr)
-                  PRODERIV = PRODERIV + CONJUGATE(abra(r,bra)) * aket(rr,www%singlewalk(ket,bra)) * proderivmod(r,rr)
-               enddo
-            enddo
-         end select
+             if (flag.eq.1.or.flag.eq.2) then
+                fluxeval00 = fluxeval00 + BONDKE   * (-2d0)
+             else
+                fluxeval00 = fluxeval00 + BONDKE  
+             endif
+             fluxeval00 = fluxeval00 + PRODERIV * yderiv(www%singlewalkopspf(1,ket,bra),www%singlewalkopspf(2,ket,bra))
+          endif
+          fluxeval00 = fluxeval00 + INVRSQ * ke(www%singlewalkopspf(1,ket,bra),www%singlewalkopspf(2,ket,bra)) & !! conjugates OK
+               + INVR * pe(www%singlewalkopspf(1,ket,bra),www%singlewalkopspf(2,ket,bra))
+       enddo
 
-         BONDKE = BONDKE * www%singlewalkdirphase(ket,bra)
-         PRODERIV = PRODERIV * www%singlewalkdirphase(ket,bra)
-
-         if (flag.eq.1.or.flag.eq.2) then
-            fluxeval00 = fluxeval00 + BONDKE   * (-2d0)
-         else
-            fluxeval00 = fluxeval00 + BONDKE  
-         endif
-         fluxeval00 = fluxeval00 + PRODERIV * yderiv(www%singlewalkopspf(1,ket,bra),www%singlewalkopspf(2,ket,bra))
-      endif
-      endif
-      if (ipart.eq.1.or.ipart.eq.0) then
-
-         fluxeval00 = fluxeval00 + INVRSQ * ke(www%singlewalkopspf(1,ket,bra),www%singlewalkopspf(2,ket,bra)) & !! conjugates OK
-              + INVR * pe(www%singlewalkopspf(1,ket,bra),www%singlewalkopspf(2,ket,bra))
-
-      endif  !! ipart
-    enddo
-
-    if(ipart.eq.0.or.ipart.eq.1) then
 
 !! C) do all the double walks (only 2 electron)
-    if(((FluxOpType.eq.0).or.(flag.ne.1))) then
+       if(((FluxOpType.eq.0).or.(flag.ne.1))) then
 
-       OFLWR "MAYBE DOUBLE CHECKME"; CFLST
+          OFLWR "MAYBE DOUBLE CHECKME"; CFLST
 
-      do ket=1,www%numdoublewalks(bra)
-        INVR=0d0
-        select case(flag)
-        case(1)
-           do r=1,numr
-              INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%doublewalk(ket,bra)) *real(1d0/ (bondpoints(r)),8)
-           enddo
-        case(2)
-           do r=1,numr
-              INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%doublewalk(ket,bra)) *imag((0d0,0d0)+1d0/bondpoints(r))
-           enddo
-        case default
-           do r=1,numr
-              INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%doublewalk(ket,bra)) / (bondpoints(r))
-           enddo
-        end select
-          fluxeval00 = fluxeval00 + INVR * V2(www%doublewalkdirspf(1,ket,bra), &
-            www%doublewalkdirspf(2,ket,bra), &
-            www%doublewalkdirspf(3,ket,bra), &
-            www%doublewalkdirspf(4,ket,bra)) * &
-            www%doublewalkdirphase(ket,bra)
-       enddo
-    endif
-    endif  !! ipart
+          do ket=1,www%numdoublewalks(bra)
+             INVR=0d0
+             select case(flag)
+             case(1)
+                do r=1,numr
+                   INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%doublewalk(ket,bra)) *real(1d0/ (bondpoints(r)),8)
+                enddo
+             case(2)
+                do r=1,numr
+                   INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%doublewalk(ket,bra)) *imag((0d0,0d0)+1d0/bondpoints(r))
+                enddo
+             case default
+                do r=1,numr
+                   INVR = INVR + CONJUGATE(abra(r,bra)) * aket(r,www%doublewalk(ket,bra)) / (bondpoints(r))
+                enddo
+             end select
+             fluxeval00 = fluxeval00 + INVR * V2(www%doublewalkdirspf(1,ket,bra), &
+                  www%doublewalkdirspf(2,ket,bra), &
+                  www%doublewalkdirspf(3,ket,bra), &
+                  www%doublewalkdirspf(4,ket,bra)) * &
+                  www%doublewalkdirphase(ket,bra)
+          enddo
+       endif
+    enddo
+    
+    deallocate(aket)
+    call mympireduceone(fluxeval00)
+
+  end function fluxeval00
+
+#endif
+
+end subroutine fluxgtau0
+
+end module fluxgtau0mod
+
+
+
+subroutine fluxgtau(alg)
+  use fluxgtau0mod
+  use configmod
+  implicit none
+  integer,intent(in) :: alg
+
+  call fluxgtau0(alg,www,bwwptr)
+
+end subroutine fluxgtau
+
+
+
+subroutine mult_reke(howmany,in,out)
+  use parameters
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  DATATYPE :: work(spfsize,howmany)
+  work(:,:)=ALLCON(in(:,:))
+  call mult_ke(work,out,howmany,"booga",2)
+  work=ALLCON(out)
+  call mult_ke(in,out,howmany,"booga",2)  
+  work=work+out
+  out=work/2d0
+end subroutine mult_reke
+
+
+subroutine mult_imke(howmany,in,out)
+  use parameters
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  DATATYPE :: work(spfsize,howmany)
+  work(:,:)=ALLCON(in(:,:))
+  call mult_ke(work,out,howmany,"booga",2)
+  work=ALLCON(out)
+  call mult_ke(in,out,howmany,"booga",2)  
+  work=out-work
+  out=work/(0d0,2d0)
+end subroutine mult_imke
+
+
+subroutine op_reyderiv(howmany,in,out)
+  use parameters
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  DATATYPE :: work(spfsize,howmany)
+  work(:,:)=ALLCON(in(:,:))
+  call op_yderiv(howmany,work,out)
+  work=ALLCON(out)
+  call op_yderiv(howmany,in,out)
+  work=work+out
+  out=work/2d0
+end subroutine op_reyderiv
+
+
+subroutine op_imyderiv(howmany,in,out)
+  use parameters
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  DATATYPE :: work(spfsize,howmany)
+  work(:,:)=ALLCON(in(:,:))
+  call op_yderiv(howmany,work,out)
+  work=ALLCON(out)
+  call op_yderiv(howmany,in,out)
+  work=out-work
+  out=work/(0d0,2d0)
+end subroutine op_imyderiv
+
+
+!! needs factor of 1/r  for hamiltonian
+
+subroutine mult_impot(howmany,in, out)
+  use parameters
+  use opmod 
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  integer :: ii
+  do ii=1,howmany
+     out(:,ii)=in(:,ii)*imag((0d0,0d0)+pot(:))   !! NO INTERNUCLEAR REPULSION !!
   enddo
+end subroutine mult_impot
 
-  deallocate(aket)
-  call mympireduceone(fluxeval00)
 
-end function fluxeval00
+
+!! needs factor of 1/r  for hamiltonian
+
+subroutine mult_repot(howmany,in, out)
+  use parameters
+  use opmod 
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  integer :: ii
+  do ii=1,howmany
+     out(:,ii)=in(:,ii)*real(pot(:),8)   !! NO INTERNUCLEAR REPULSION !!
+  enddo
+end subroutine mult_repot
+
+
+subroutine mult_imhalfniumpot(howmany,in, out)
+  use parameters
+  use opmod  
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  integer :: ii
+  do ii=1,howmany
+     out(:,ii)=in(:,ii)*imag((0d0,0d0)+halfniumpot(:))
+  enddo
+end subroutine mult_imhalfniumpot
+
+
+subroutine mult_rehalfniumpot(howmany,in, out)
+  use parameters
+  use opmod  
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(spfsize,howmany)
+  DATATYPE,intent(out) :: out(spfsize,howmany)
+  integer :: ii
+  do ii=1,howmany
+     out(:,ii)=in(:,ii)*real(halfniumpot(:),8)
+  enddo
+end subroutine mult_rehalfniumpot
+

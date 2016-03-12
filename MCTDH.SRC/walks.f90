@@ -143,21 +143,6 @@ subroutine walkalloc(www)
 end subroutine walkalloc
 
 
-subroutine walkdealloc(www)
-  use walkmod
-  implicit none
-  type(walktype) :: www
-  deallocate( www%numsinglewalks,www%numsinglediagwalks )
-  deallocate( www%numdoublewalks,www%numdoublediagwalks )
-  deallocate( www%singlewalk )
-  deallocate( www%singlewalkdirphase )
-  deallocate( www%singlewalkopspf )
-  deallocate( www%doublewalkdirspf )
-  deallocate( www%doublewalkdirphase )
-  deallocate( www%doublewalk)
-end subroutine walkdealloc
-
-
 
 subroutine walks(www)
   use fileptrmod
@@ -169,8 +154,8 @@ subroutine walks(www)
   type(walktype) :: www
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, jspf, &
        iispf, jjspf, config2, config1, dirphase, flag, idof, iidof, jdof, iwalk, idiag
-  integer :: thisconfig(www%num2part), thatconfig(www%num2part), temporb(2), temporb2(2), isize, &
-       listorder(www%maxdoublewalks+www%maxsinglewalks)
+  integer :: thisconfig(www%num2part), thatconfig(www%num2part), temporb(2), temporb2(2), isize
+  integer, allocatable :: listorder(:)
 
   !!  ***********   SINGLES  **********
 
@@ -375,6 +360,9 @@ endif
   call mpibarrier()
 
   OFLWR "Sorting walks..."; CFL
+
+  allocate(listorder(www%maxdoublewalks+www%maxsinglewalks))
+  listorder=0d0
   do config1=www%botconfig,www%topconfig
 
      if (www%numsinglewalks(config1).gt.1) then
@@ -390,6 +378,7 @@ endif
         call listreorder(www%doublewalk(:,config1),listorder(:),www%numdoublewalks(config1),1)
      endif
   enddo
+  deallocate(listorder)
   OFLWR "    .... done sorting walks."; CFL
 
 
@@ -441,6 +430,60 @@ endif
      enddo
      www%numdoublediagwalks(config1)=idiag
   enddo
+
+contains
+
+  subroutine getlistorder(values, order,num)
+    implicit none
+    integer,intent(in) :: num,values(num)
+    integer,intent(out) :: order(num)
+    integer :: i,j,whichlowest, flag, lowval
+    integer, allocatable :: taken(:)
+
+    allocate(taken(num))
+    taken=0;  order=-1
+
+    do j=1,num
+       whichlowest=-1; flag=0;     lowval=10000000  !! is not used (see flag)
+       do i=1,num
+          if ( taken(i) .eq. 0 ) then
+             if ((flag.eq.0) .or.(values(i) .le. lowval)) then
+                flag=1;              lowval=values(i); whichlowest=i
+             endif
+          endif
+       enddo
+       if ((whichlowest.gt.num).or.(whichlowest.lt.1)) then
+          OFLWR taken,"lowest ERROR, J=",j," WHICHLOWEST=", whichlowest;   CFLST
+       endif
+       if (taken(whichlowest).ne.0) then
+          OFLWR "TAKENmm ERROR.";        CFLST
+       endif
+       taken(whichlowest)=1;     order(j)=whichlowest
+    enddo
+
+    deallocate(taken)
+
+  end subroutine getlistorder
+
+  subroutine listreorder(list, order,num,numper)
+    implicit none
+    integer,intent(in) :: num, numper, order(num)
+    integer,intent(inout) :: list(numper,num)
+    integer,allocatable :: newvals(:,:)
+    integer :: j
+
+    allocate(newvals(numper,num))
+    newvals=0
+
+    do j=1,num
+       newvals(:,j)=list(:,order(j))
+    enddo
+
+    list(:,:)=newvals(:,:)
+
+    deallocate(newvals)
+
+  end subroutine listreorder
      
   
 end subroutine walks
@@ -1016,54 +1059,17 @@ subroutine set_matsize(www)
 end subroutine set_matsize
 
 
-subroutine getlistorder(values, order,num)
-  use fileptrmod
-  implicit none
-  integer,intent(in) :: num,values(num)
-  integer,intent(out) :: order(num)
-  integer :: taken(num),i,j,whichlowest, flag, lowval
-
-  taken=0;  order=-1
-  do j=1,num
-     whichlowest=-1; flag=0;     lowval=10000000  !! is not used (see flag)
-     do i=1,num
-        if ( taken(i) .eq. 0 ) then
-           if ((flag.eq.0) .or.(values(i) .le. lowval)) then
-              flag=1;              lowval=values(i); whichlowest=i
-           endif
-        endif
-     enddo
-     if ((whichlowest.gt.num).or.(whichlowest.lt.1)) then
-         OFLWR taken,"lowest ERROR, J=",j," WHICHLOWEST=", whichlowest;   CFLST
-     endif
-     if (taken(whichlowest).ne.0) then
-        OFLWR "TAKENmm ERROR.";        CFLST
-     endif
-     taken(whichlowest)=1;     order(j)=whichlowest
-  enddo
-
-end subroutine getlistorder
-
-
-subroutine listreorder(list, order,num,numper)
-  implicit none
-  integer,intent(in) :: num, numper, order(num)
-  integer,intent(inout) :: list(numper,num)
-  integer,allocatable :: newvals(:,:)
-  integer :: j
-
-  allocate(newvals(numper,num))
-
-  do j=1,num
-     newvals(:,j)=list(:,order(j))
-  enddo
-
-  list(:,:)=newvals(:,:)
-
-  deallocate(newvals)
-
-end subroutine listreorder
-
-
-
-
+! deallocating doublewalks and singlewalks ahead of time
+!subroutine walkdealloc(www)
+!  use walkmod
+!  implicit none
+!  type(walktype) :: www
+!  deallocate( www%numsinglewalks,www%numsinglediagwalks )
+!  deallocate( www%numdoublewalks,www%numdoublediagwalks )
+!  deallocate( www%singlewalk )
+!  deallocate( www%singlewalkdirphase )
+!  deallocate( www%singlewalkopspf )
+!  deallocate( www%doublewalkdirspf )
+!  deallocate( www%doublewalkdirphase )
+!  deallocate( www%doublewalk)
+!end subroutine walkdealloc

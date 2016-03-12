@@ -255,15 +255,29 @@ contains
     use biomatvecmod
     implicit none
     integer,intent(in) :: firstproc,lastproc
-    integer :: i,j,ihop
+    integer :: i,j,ihop,phase
     DATATYPE,intent(in) :: x(biopointer%bionr,biopointer%wwbio%allbotconfigs(firstproc):&
          biopointer%wwbio%alltopconfigs(lastproc))
     DATATYPE,intent(out) :: y(biopointer%bionr,biopointer%wwbio%botconfig:&
          biopointer%wwbio%topconfig)
-    DATATYPE :: csum,myout(biopointer%bionr)
+    DATATYPE :: csum,myout(biopointer%bionr), holetrace
 
+    phase=1
     if (biopointer%wwbio%topconfig.ge.biopointer%wwbio%botconfig) then
-       y(:,:)=0d0
+       if (biopointer%wwbio%holeflag.eq.0) then
+          y(:,:)=0d0
+       else
+          phase=(-1)
+          holetrace=0d0
+          do i=1,biopointer%wwbio%nspf
+             holetrace=holetrace + biopointer%smo(i,i) * 2
+          enddo
+          do i=biopointer%wwbio%botconfig,biopointer%wwbio%topconfig
+             if (biopointer%wwbio%singlehopdiagflag(i).ne.0) then
+                y(:,i) = holetrace * x(:,i)
+             endif
+          enddo
+       endif
     endif
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,ihop,csum,j,myout) 
@@ -272,7 +286,7 @@ contains
     do i=biopointer%wwbio%botconfig,biopointer%wwbio%topconfig
 !! summing over nonconjugated second index in s(:), good
 
-       myout(:)=0d0
+       myout(:)=y(:,i)
        do ihop=biopointer%wwbio%firstsinglehopbyproc(firstproc,i), &
             biopointer%wwbio%lastsinglehopbyproc(lastproc,i) 
           csum=0d0
@@ -283,7 +297,7 @@ contains
                   biopointer%wwbio%singlewalkopspf(2,j,i)) &
                   * biopointer%wwbio%singlewalkdirphase(j,i)
           enddo
-          myout(:) = myout(:) + csum * x(:,biopointer%wwbio%singlehop(ihop,i)) 
+          myout(:) = myout(:) + csum * x(:,biopointer%wwbio%singlehop(ihop,i)) * phase
        enddo
        y(:,i)=myout(:)
     enddo
@@ -726,26 +740,34 @@ contains
     use configsubmod
     implicit none
     Type(biorthotype),target,intent(inout) :: inbiovar
-    integer :: i,j,iflag,clow,chigh,jproc,cnum,nnn(2),mmm(2),rank,lwork
-    integer :: bioconfiglist(inbiovar%wwbio%numpart+1,inbiovar%wwbio%numconfig)  !! PADDED
     DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%numconfig)
     DATATYPE,intent(out) :: aout(inbiovar%bionr,inbiovar%wwbio%numconfig)
-    DATATYPE :: smobig(inbiovar%wwbio%nspf*2,inbiovar%wwbio%nspf*2),&
-         Stmpbig(inbiovar%wwbio%numpart,inbiovar%wwbio%numpart), &       !! AUTOMATIC
-         Sconfig(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig), &
-         aouttr(inbiovar%wwbio%numconfig,inbiovar%bionr)
-!!  integer :: ipiv(inbiovar%wwbio%numconfig)
-    real*8 :: sing(inbiovar%wwbio%numconfig),rwork(5*inbiovar%wwbio%numconfig)
-    DATATYPE :: work(20*inbiovar%wwbio%numconfig)
+    integer :: i,j,iflag,clow,chigh,jproc,cnum,nnn(2),mmm(2),rank,lwork,&
+         flag,k,l
+    integer,allocatable :: bioconfiglist(:,:), bioeleclist(:,:)
+    DATATYPE,allocatable :: smobig(:,:), Stmpbig(:,:), Sconfig(:,:),&
+         aouttr(:,:), work(:)
+    real*8,allocatable :: sing(:),rwork(:)
+
     lwork=20*inbiovar%wwbio%numconfig
+
+    allocate( bioconfiglist(inbiovar%wwbio%numpart+1,inbiovar%wwbio%numconfig), &  !! PADDED
+         bioeleclist(inbiovar%wwbio%numelec+1,inbiovar%wwbio%numconfig), &          !! PADDED
+         smobig(inbiovar%wwbio%nspf*2,inbiovar%wwbio%nspf*2),&
+         Stmpbig(inbiovar%wwbio%numelec,inbiovar%wwbio%numelec), &     
+         Sconfig(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig), &
+         aouttr(inbiovar%wwbio%numconfig,inbiovar%bionr),&
+         work(20*inbiovar%wwbio%numconfig),&
+         sing(inbiovar%wwbio%numconfig),rwork(5*inbiovar%wwbio%numconfig) )
+    bioconfiglist=0; bioeleclist=0; smobig=0d0; stmpbig=0; sconfig=0; aouttr=0;  
+    sing=0; rwork=0; work=0
+
 
 !! for the nonsparse routine this builds the full nonsparse configuration overlap matrix
 !! this relies on the unique properties of the Doolittle algorithm of LU factorization
 !! to take the overlap matrices of the ith and jth configs alpha and beta orbitals and 
 !! get their determinant that way this is very much so a brute force way to approach 
 !! this problem
-
-    smobig=0d0; stmpbig=0; sconfig=0; aouttr=0;  sing=0; rwork=0; work=0
 
     do i=1,inbiovar%wwbio%nspf*2
        mmm(:)=aarr(i)
@@ -762,12 +784,35 @@ contains
           bioconfiglist(j,i)=iind( inbiovar%wwbio%configlist(j*2-1:j*2,i) )
        enddo
     enddo
-  
+    if (inbiovar%wwbio%holeflag.eq.0) then
+       bioeleclist(:,:)=bioconfiglist(:,:)
+    else
+       do i=1,inbiovar%wwbio%numconfig
+          k=0
+          do j=1,2*inbiovar%wwbio%nspf
+             flag=0
+             do l=1,inbiovar%wwbio%numpart
+                if (bioconfiglist(l,i).eq.j) then
+                   flag=1
+                   exit
+                endif
+             enddo
+             if (flag.eq.0) then
+                k=k+1
+                bioeleclist(k,i)=j
+             endif
+          enddo
+          if (k.ne.inbiovar%wwbio%numelec) then
+             print *, "EEEEEROR12345 ",k,inbiovar%wwbio%numelec; stop
+          endif
+       enddo
+    endif
+
     do j=inbiovar%wwbio%botconfig,inbiovar%wwbio%topconfig
        do i=1,inbiovar%wwbio%numconfig
-          call get_petite_mat(inbiovar%wwbio%nspf*2,inbiovar%wwbio%numpart,Smobig,&
-               Stmpbig,bioconfiglist(:,i),bioconfiglist(:,j))
-          sconfig(i,j) = matdet(inbiovar%wwbio%numpart,Stmpbig)
+          call get_petite_mat(inbiovar%wwbio%nspf*2,inbiovar%wwbio%numelec,Smobig,&
+               Stmpbig,bioeleclist(:,i),bioeleclist(:,j))
+          sconfig(i,j) = matdet(inbiovar%wwbio%numelec,Stmpbig)
        enddo
     enddo
 
@@ -781,9 +826,6 @@ contains
     aouttr(:,:)=TRANSPOSE(abio(:,:))
 
     clow = (myrank-1)*inbiovar%bionr/nprocs+1;  chigh = myrank*inbiovar%bionr/nprocs
-
-!!  call MYGESV(inbiovar%wwbio%numconfig,chigh-clow+1,Sconfig,inbiovar%wwbio%numconfig,&
-!!       ipiv,aouttr(:,clow),inbiovar%wwbio%numconfig,iflag)
 
 #ifdef REALGO
     call dgelss(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig,chigh-clow+1,&
@@ -807,6 +849,9 @@ contains
     enddo
 
     aout(:,:)=TRANSPOSE(aouttr(:,:))
+
+    deallocate( bioconfiglist, bioeleclist, smobig, &
+         Stmpbig, Sconfig, aouttr, work, sing, rwork )
 
   contains
 
@@ -1057,7 +1102,7 @@ contains
        call invmatsmooth(inbiovar%smo,inbiovar%wwbio%nspf,inbiovar%wwbio%nspf,lntol,.false.);   
        call abio_nonsparse(abio,atmp,inbiovar)
     else
-       call lnmat(inbiovar%smo,inbiovar%wwbio%nspf)    !! transform s to -ln(s)
+       call lnmat(inbiovar%smo,inbiovar%wwbio%nspf)
        call abio_sparse(abio,atmp,inbiovar)
     endif
     if (inbiovar%wwbio%lastconfig.ge.inbiovar%wwbio%firstconfig) then

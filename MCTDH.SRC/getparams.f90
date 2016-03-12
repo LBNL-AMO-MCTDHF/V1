@@ -77,7 +77,7 @@ subroutine getparams()
 
 !!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input)      fluxtimestep,   
 
-       mrestrictflag, mrestrictval, autotimestep,  nucfluxflag, &
+       mrestrictflag, mrestrictval, autotimestep, &
        nosparseforce,  allspinproject,  numfluxfiles,  verletnum, &
        constraintflag, dfrestrictflag, improvedrelaxflag, mcscfnum,  improvednatflag, avectorfile, spffile, &
        quadprecon,  improvedquadflag, quadtol,  &
