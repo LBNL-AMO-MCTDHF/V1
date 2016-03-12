@@ -927,6 +927,8 @@ contains
 !! imaginary part of electronic operators, real part of nuclear operators
 
       call configptralloc(matrix_ptr,www)
+      matrix_ptr%kefac = 0d0
+
       allocate(multket(numr,first_config:last_config), ketwork(numr,first_config:last_config),&
            conjgket(numr,first_config:last_config))
 

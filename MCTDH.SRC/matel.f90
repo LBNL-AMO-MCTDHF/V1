@@ -701,7 +701,8 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
 
      do ir=1,numr
         do jr=1,numr
-           bigconfigmat(ir,:,jr,:)=bigconfigmat(ir,:,jr,:)+tempconfigmat(:,:)*proderivmod(ir,jr)
+           bigconfigmat(ir,:,jr,:)=bigconfigmat(ir,:,jr,:)+tempconfigmat(:,:)*proderivmod(ir,jr)&
+                *matrix_ptr%kefac    !! KEFAC FORGOTTEN 3-2016
         enddo
      enddo
      do i=1,www%numconfig
@@ -734,6 +735,9 @@ subroutine assemble_sparsemats(www,matrix_ptr, sparse_ptr,boflag, nucflag, pulse
   if (sparseconfigflag.eq.0) then
      OFLWR "BADDDCAL555LL"; CFLST
   endif
+
+  sparse_ptr%kefac = matrix_ptr%kefac
+  sparse_ptr%xpulsenuc(:) = matrix_ptr%xpulsenuc(:)
 
   if (boflag==1) then
 
