@@ -373,18 +373,15 @@ subroutine configpropalloc()
   implicit none
 
   call configptralloc(workconfigpointer,www)  !! nspf not used for regular walks (not walks2)
-  workconfigpointer%kefac=par_timestep/littlesteps     !! constant term in poly expansion goes with ke in R; will be set
 
   if (sparseopt.ne.0) then  !! (sparseconfigflag is also 0, see getparams)
      call sparseptralloc(worksparsepointer,www)  !! nspf not used for regular walks (not walks2)
-     worksparsepointer%kefac=par_timestep/littlesteps     !! constant term in poly expansion goes with ke in R; will be set
+
      if (use_dfwalktype) then
         if (shuffle_dfwalktype) then
            call sparseptralloc(workfdsparsepointer,fdww)
-           workfdsparsepointer%kefac=par_timestep/littlesteps
         else
            call sparseptralloc(workdfsparsepointer,dfww)
-           workdfsparsepointer%kefac=par_timestep/littlesteps
         endif
      endif
   endif
@@ -597,7 +594,7 @@ subroutine configptrdealloc(inptr)
   inptr%kefac=0
   inptr%xpulsenuc(:)=0
 
-end subroutine
+end subroutine configptrdealloc
 
 
 

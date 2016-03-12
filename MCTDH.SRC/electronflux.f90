@@ -971,6 +971,8 @@ contains
 
 !! real part of electronic operators, imaginary part of nuclear operators
 
+         matrix_ptr%kefac = 1d0
+
          matrix_ptr%xpotmatel(:,:) = repe(:,:)
          matrix_ptr%xopmatel(:,:)  = reke(:,:)
          matrix_ptr%xymatel(:,:)   = reyderiv(:,:)
