@@ -612,7 +612,7 @@ contains
           do ir=botr,topr
              outvector(ir,:)=outvector(ir,:) + invector(ir,www%botconfig:www%topconfig) * ( &
                   energyshift + (nucrepulsion+frozenpotdiag)/bondpoints(ir) + &
-                  frozenkediag/bondpoints(ir)**2 ) * matrix_ptr%kefac
+                  frozenkediag/bondpoints(ir)**2 ) * matrix_ptr%constfac
           enddo
        endif
 
@@ -695,7 +695,7 @@ contains
              enddo
           else if (onlytdflag.eq.0) then
 !! a-squared
-             csum=matrix_ptr%kefac * www%numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2 ) * 2  * gg
+             csum=matrix_ptr%constfac * www%numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2 ) * 2  * gg
              do ir=botr,topr
 !! NO R FACTOR !!
                 outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*csum
@@ -784,7 +784,7 @@ contains
           do ir=botr,topr
              outvector(ir,:)=outvector(ir,:) + invector(ir,www%botconfig:www%topconfig) * ( &
                   energyshift + (nucrepulsion+frozenpotdiag)/bondpoints(ir) + &
-                  frozenkediag/bondpoints(ir)**2 ) * sparse_ptr%kefac
+                  frozenkediag/bondpoints(ir)**2 ) * sparse_ptr%constfac
           enddo
        endif
 
@@ -870,7 +870,7 @@ contains
              enddo
           else if (onlytdflag.eq.0) then
 !! a-squared
-             csum= sparse_ptr%kefac * www%numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2 ) * 2 * gg
+             csum= sparse_ptr%constfac * www%numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2 ) * 2 * gg
              do ir=botr,topr
 !! NO R FACTOR !!
                 outvector(ir,:)=outvector(ir,:)+invector(ir,www%botconfig:www%topconfig)*csum

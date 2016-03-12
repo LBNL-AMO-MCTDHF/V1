@@ -27,6 +27,7 @@ module configptrmod
 
      DATATYPE :: xpulsenuc(3)=0
      DATATYPE :: kefac=1          !! scalar by which R ke is mutiplied
+     DATATYPE :: constfac=1       !! scalar by constant terms are multiplied
 
 !! for holes
      DATATYPE,allocatable :: xtwoe_htrace(:,:)
@@ -48,6 +49,7 @@ module sparseptrmod
 
      DATATYPE :: xpulsenuc(3)=0
      DATATYPE :: kefac=1          !! scalar by which R ke is mutiplied
+     DATATYPE :: constfac=1       !!                 constant terms are multiplied
 
   end type SPARSEPTR
 end module sparseptrmod
@@ -467,6 +469,7 @@ subroutine assign_cptr(outptr,inptr,fac)
   Type(CONFIGPTR),intent(inout) :: outptr
 
   outptr%kefac = inptr%kefac   * fac
+  outptr%constfac = inptr%constfac   * fac
   outptr%xpulsenuc(:) = inptr%xpulsenuc(:) * fac
 
   outptr%xtwoe_htrace(:,:) = inptr%xtwoe_htrace(:,:) * fac
@@ -496,6 +499,7 @@ subroutine add_cptr0(aptr,bptr,sumptr,afacbo,bfacbo,  afacnuc,bfacnuc,   afacpul
   DATATYPE,intent(in) :: afacbo,bfacbo,  afacnuc,bfacnuc,   afacpulse,bfacpulse, afaccon,bfaccon
 
   sumptr%kefac = afacnuc*aptr%kefac + bfacnuc*bptr%kefac
+  sumptr%constfac = afacnuc*aptr%constfac + bfacnuc*bptr%constfac
   sumptr%xpulsenuc(:) = afacnuc*aptr%xpulsenuc(:) + bfacnuc*bptr%xpulsenuc(:)
 
   sumptr%xtwoe_htrace(:,:) = afacbo*aptr%xtwoe_htrace(:,:) + bfacbo*bptr%xtwoe_htrace(:,:)
@@ -524,6 +528,7 @@ subroutine zero_cptr(outptr)
   Type(CONFIGPTR),intent(inout) :: outptr
 
   outptr%kefac=0d0
+  outptr%constfac=0d0
   outptr%xpulsenuc(:)=0
 
   outptr%xtwoe_htrace(:,:) = 0
@@ -570,6 +575,7 @@ subroutine configptralloc(inptr,www)
   inptr%xtwoe_htrace=0
 
   inptr%kefac=1
+  inptr%constfac=1
   inptr%xpulsenuc(:)=0
 
 end subroutine configptralloc
@@ -592,6 +598,7 @@ subroutine configptrdealloc(inptr)
   deallocate(inptr%xtwoe_htrace)
 
   inptr%kefac=0
+  inptr%constfac=0
   inptr%xpulsenuc(:)=0
 
 end subroutine configptrdealloc
@@ -625,6 +632,7 @@ subroutine assign_sptr(outptr,inptr,fac,www)
   Type(SPARSEPTR),intent(inout) :: outptr
 
   outptr%kefac = inptr%kefac   * fac
+  outptr%constfac = inptr%constfac   * fac
   outptr%xpulsenuc=inptr%xpulsenuc   * fac
 
   if (www%configend.ge.www%configstart) then
@@ -657,6 +665,7 @@ subroutine add_sptr0(aptr,bptr,sumptr,afacbo,bfacbo,  afacnuc,bfacnuc,   afacpul
   DATATYPE,intent(in) :: afacbo,bfacbo,  afacnuc,bfacnuc,   afacpulse,bfacpulse, afaccon,bfaccon
 
   sumptr%kefac = afacnuc*aptr%kefac + bfacnuc*bptr%kefac
+  sumptr%constfac = afacnuc*aptr%constfac + bfacnuc*bptr%constfac
   sumptr%xpulsenuc=aptr%xpulsenuc*afacpulse         +bptr%xpulsenuc*bfacpulse
 
   if (www%configend.ge.www%configstart) then
@@ -687,6 +696,7 @@ subroutine zero_sptr(outptr,www)
   Type(SPARSEPTR) :: outptr
 
   outptr%kefac=0d0
+  outptr%constfac=0d0
   outptr%xpulsenuc=0d0
 
   if (www%configend.ge.www%configstart) then

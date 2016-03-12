@@ -607,7 +607,7 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
      do ir=1,numr
         do i=1,www%numconfig
          diagmat(i,i,ir)=( frozenkediag/bondpoints(ir)**2 + &
-              (nucrepulsion+frozenpotdiag)/bondpoints(ir) + energyshift ) * matrix_ptr%kefac 
+              (nucrepulsion+frozenpotdiag)/bondpoints(ir) + energyshift ) * matrix_ptr%constfac 
         enddo
      enddo
 
@@ -670,7 +670,7 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
 
 
      if (velflag.ne.0) then 
-        csum0 = matrix_ptr%kefac * www%numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2) * 2  * gg   !! a-squared term.
+        csum0 = matrix_ptr%constfac * www%numelec * (facs(1)**2 + facs(2)**2 + facs(3)**2) * 2  * gg   !! a-squared term.
      else
 !! xpulsenuc is nuclear dipole, divided by R.    from nucdipvalue.
 
@@ -736,6 +736,7 @@ subroutine assemble_sparsemats(www,matrix_ptr, sparse_ptr,boflag, nucflag, pulse
   endif
 
   sparse_ptr%kefac = matrix_ptr%kefac
+  sparse_ptr%constfac = matrix_ptr%constfac
   sparse_ptr%xpulsenuc(:) = matrix_ptr%xpulsenuc(:)
 
   if (boflag==1) then
