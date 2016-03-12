@@ -743,7 +743,7 @@ contains
     DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%numconfig)
     DATATYPE,intent(out) :: aout(inbiovar%bionr,inbiovar%wwbio%numconfig)
     integer :: i,j,iflag,clow,chigh,jproc,cnum,nnn(2),mmm(2),rank,lwork,&
-         flag,k,l,numbio
+         flag,k,l
     integer,allocatable :: bioconfiglist(:,:), bioeleclist(:,:)
     DATATYPE,allocatable :: smobig(:,:), Stmpbig(:,:), Sconfig(:,:),&
          aouttr(:,:), work(:)
@@ -754,11 +754,12 @@ contains
     allocate( bioconfiglist(inbiovar%wwbio%numpart+1,inbiovar%wwbio%numconfig), &  !! PADDED
          bioeleclist(inbiovar%wwbio%numelec+1,inbiovar%wwbio%numconfig), &          !! PADDED
          smobig(inbiovar%wwbio%nspf*2,inbiovar%wwbio%nspf*2),&
+         Stmpbig(inbiovar%wwbio%numelec,inbiovar%wwbio%numelec), &
          Sconfig(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig), &
          aouttr(inbiovar%wwbio%numconfig,inbiovar%bionr),&
          work(20*inbiovar%wwbio%numconfig),&
          sing(inbiovar%wwbio%numconfig),rwork(5*inbiovar%wwbio%numconfig) )
-    bioconfiglist=0; bioeleclist=0; smobig=0d0; sconfig=0; aouttr=0;  
+    bioconfiglist=0; bioeleclist=0; smobig=0d0; stmpbig=0; sconfig=0; aouttr=0;  
     sing=0; rwork=0; work=0
 
 !! for the nonsparse routine this builds the full nonsparse configuration overlap matrix
@@ -806,27 +807,13 @@ contains
        enddo
     endif
 
-    if (inbiovar%wwbio%holeflag.eq.0) then
-       numbio=inbiovar%wwbio%numpart
-    else
-       numbio=inbiovar%wwbio%numelec
-    endif
-     
-    allocate(Stmpbig(numbio,numbio))
-    stmpbig=0;
-
     do j=inbiovar%wwbio%botconfig,inbiovar%wwbio%topconfig
        do i=1,inbiovar%wwbio%numconfig
 
-          if (inbiovar%wwbio%holeflag.eq.0) then
-             call get_petite_mat(inbiovar%wwbio%nspf*2,numbio,Smobig,&
-                  Stmpbig,bioconfiglist(:,i),bioconfiglist(:,j))
-          else
-             call get_petite_mat(inbiovar%wwbio%nspf*2,numbio,Smobig,&
-                  Stmpbig,bioeleclist(:,i),bioeleclist(:,j))
-          endif
+          call get_petite_mat(inbiovar%wwbio%nspf*2,inbiovar%wwbio%numelec,Smobig,&
+               Stmpbig,bioeleclist(:,i),bioeleclist(:,j))
 
-          sconfig(i,j) = matdet(numbio,Stmpbig)
+          sconfig(i,j) = matdet(inbiovar%wwbio%numelec,Stmpbig)
 
        enddo
     enddo
