@@ -807,11 +807,13 @@ contains
             endif
          end select
 
-!! scale correctly and clear memory
-         if(flag.ne.0) then
-            peop(:,lowspf:highspf)=peop(:,lowspf:highspf)*(-2d0)
-            keop(:,lowspf:highspf)=keop(:,lowspf:highspf)*(-2d0)
-         endif
+! no, later
+! scale correctly and clear memory
+!         if(flag.ne.0) then
+!            peop(:,lowspf:highspf)=peop(:,lowspf:highspf)*(-2d0)
+!            keop(:,lowspf:highspf)=keop(:,lowspf:highspf)*(-2d0)
+!         endif
+
       endif
 
       if (parorbsplit.eq.1) then
@@ -860,10 +862,13 @@ contains
             OFLWR "NNOT supported!"; CFLST
             call op_yderiv(numspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
          end select
-!! scale correctly and clear memory
-         if(flag.ne.0) then
-            yop(:,lowspf:highspf)=yop(:,lowspf:highspf)*(-2d0)
-         endif
+
+! no, later
+! scale correctly and clear memory
+!         if(flag.ne.0) then
+!            yop(:,lowspf:highspf)=yop(:,lowspf:highspf)*(-2d0)
+!         endif
+
       endif
 
       if (parorbsplit.eq.1) then
@@ -964,7 +969,7 @@ contains
       outsum=0d0
 
       if (tot_adim.gt.0.and.nucfluxopt.ne.2) then
-         ketwork(:,:)=(ketwork(:,:)+multket(:,:)) / 2d0    !! REAL PART OF SPARSECONFIGMULT
+         ketwork(:,:)=(ketwork(:,:)+multket(:,:)) / (-1d0)    !! (-2)xREAL PART OF SPARSECONFIGMULT
          outsum = hermdot(abra,ketwork,tot_adim)
       endif
 
@@ -1002,7 +1007,7 @@ contains
          endif
 
          if (tot_adim.gt.0) then
-            ketwork(:,:)=(ketwork(:,:)-multket(:,:)) / (0d0,2d0)   !! IMAG PART OF SPARSECONFIGMULT
+            ketwork(:,:)=(ketwork(:,:)-multket(:,:)) / (0d0,-1d0)   !! (-2)xIMAG PART OF SPARSECONFIGMULT
             outsum = outsum + hermdot(abra,ketwork,tot_adim)
          endif
 
