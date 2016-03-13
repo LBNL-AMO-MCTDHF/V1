@@ -215,21 +215,26 @@ contains
     complex*16,allocatable :: twiddle1(:),tt1(:)
     integer :: ii,n2,n1
 
-    allocate(twiddle1(dim1),tt1(dim1))
-    twiddle1=0; tt1=0
+    allocate(twiddle1(dim1))
+    twiddle1=0
 
     call gettwiddlesmall_ct2(twiddle1(:),dim1,inprocs)
+    n2=inrank
 
-    do n2=inrank,inrank
-       tt1(:)=twiddle1(:)**(n2-1)
-       do ii=1,howmany
-          do n1=1,dim1
-             out(:,n1,ii) = in(:,n1,ii) * tt1(n1)
-          enddo
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(tt1,ii,n1)
+    allocate(tt1(dim1))
+    tt1(:)=twiddle1(:)**(n2-1)
+
+!$OMP DO SCHEDULE(DYNAMIC) COLLAPSE(2)
+    do ii=1,howmany
+       do n1=1,dim1
+          out(:,n1,ii) = in(:,n1,ii) * tt1(n1)
        enddo
     enddo
-
-    deallocate(twiddle1,tt1)
+!$OMP END DO
+    deallocate(tt1)
+!$OMP END PARALLEL
+    deallocate(twiddle1)
 
   contains
     recursive subroutine gettwiddlesmall_ct2(twiddlefacs,dim1,dim2)
@@ -249,35 +254,9 @@ contains
   end subroutine twiddlemult_mpi_ct2
 
 
-  subroutine myzfft1d_slowindex_ct2(in,out,blocksize,size,howmany)
-    use fft1dsubmod
-    implicit none
-    integer,intent(in) :: blocksize,size,howmany
-    complex*16,intent(in) :: in(blocksize,size,howmany)
-    complex*16,intent(out) :: out(blocksize,size,howmany)
-    complex*16,allocatable :: intrans(:,:,:), outtrans(:,:,:)
-    integer :: ii
-
-    if (blocksize.eq.1) then
-       call myzfft1d(in,out,size,howmany)
-    else
-       allocate( intrans(size,blocksize,howmany), outtrans(size,blocksize,howmany) )
-       intrans(:,:,:)=0; outtrans(:,:,:)=0
-
-       do ii=1,howmany
-          intrans(:,:,ii)=TRANSPOSE(in(:,:,ii))
-       enddo
-       call myzfft1d(intrans,outtrans,size,blocksize*howmany)
-       do ii=1,howmany
-          out(:,:,ii)=TRANSPOSE(outtrans(:,:,ii))
-       enddo
-       deallocate(intrans,outtrans)
-    endif
-
-  end subroutine myzfft1d_slowindex_ct2
-
 
   subroutine myzfft1d_slowindex_ct2_mpi(in,out,size,howmany,INCOMM,inprocs)
+    use fft1dsubmod
     implicit none
     integer,intent(in) :: size,howmany,INCOMM,inprocs
     complex*16,intent(in) :: in(size,howmany)
@@ -296,7 +275,7 @@ contains
        call mympialltoall_local(work(:,ii),work2(:,ii),little,INCOMM)
     enddo
 
-    call myzfft1d_slowindex_ct2(work2,work,little,inprocs,howmany)
+    call myzfft1d_slowindex(work2,work,little,inprocs,howmany)
 
     do ii=1,howmany
        call mympialltoall_local(work(:,ii),work2(:,ii),little,INCOMM)
@@ -311,6 +290,7 @@ contains
 
   subroutine ct2_outofplace_mpi0(blocksize,in,outtrans,dim1,howmany)
     use ct2commod
+    use fft1dsubmod
     implicit none
     integer, intent(in) :: blocksize,dim1,howmany
     complex*16, intent(in) :: in(blocksize,dim1,howmany)
@@ -318,7 +298,7 @@ contains
     complex*16,allocatable ::  work(:,:,:)
 
     if (ctparflag.eq.0) then
-       call myzfft1d_slowindex_ct2(in,outtrans,blocksize,dim1,howmany)
+       call myzfft1d_slowindex(in,outtrans,blocksize,dim1,howmany)
 
     else
        allocate(work(blocksize,dim1,howmany))
@@ -328,7 +308,7 @@ contains
 
        call twiddlemult_mpi_ct2(blocksize,outtrans,work,dim1,ctprocs,ctrank,howmany)
 
-       call myzfft1d_slowindex_ct2(work,outtrans,blocksize,dim1,howmany)
+       call myzfft1d_slowindex(work,outtrans,blocksize,dim1,howmany)
 
        deallocate(work)
     endif
@@ -338,13 +318,14 @@ contains
 
   subroutine ct2_outofplaceinput_mpi0(blocksize,intranspose,out,dim1,howmany)
     use ct2commod
+    use fft1dsubmod
     implicit none
     integer, intent(in) :: blocksize,dim1,howmany
     complex*16, intent(in) :: intranspose(blocksize,dim1,howmany)
     complex*16, intent(out) :: out(blocksize,dim1,howmany)
     complex*16,allocatable ::  work(:,:,:)
 
-    call myzfft1d_slowindex_ct2(intranspose,out,blocksize,dim1,howmany)
+    call myzfft1d_slowindex(intranspose,out,blocksize,dim1,howmany)
 
     if (ctparflag.ne.0) then
        allocate(work(blocksize,dim1,howmany))

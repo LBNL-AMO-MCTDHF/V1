@@ -1,1 +1,1 @@
-../../MCTDH.SRC/SINCDVR/ftcore.f90
+../../MCTDH.SRC/COREPROJECT/ftcore.f90

@@ -964,7 +964,7 @@ endif
         write(mpifileptr,'(A12,I12,A4)',advance='no') "  Config ", 0," is "
         call printconfig(www%configlist(:,ii),www)
      enddo
-     WRFL; CFLST
+     WRFL; CFL
   endif
 
   deallocate(bigspinblockstart,bigspinblockend)
