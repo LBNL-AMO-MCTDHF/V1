@@ -194,6 +194,12 @@
 #include "Definitions.INC"
 
 
+module toeptimes
+  implicit none
+  integer :: times1=0,times3=0,times4=0,times5=0,fttimes(10)=0
+end module toeptimes
+
+
 subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,outorbparflag)
   use myparams
   use pmpimod
@@ -222,34 +228,33 @@ subroutine twoedealloc()
 end subroutine twoedealloc
 
 
-
 module mycdotmod
 contains
-recursive function mycdot(one,two,n)
-  implicit none
-  integer,intent(in) :: n
-  DATATYPE,intent(in) :: one(n), two(n)
-  DATATYPE :: mycdot, sum
-  integer :: i
-  sum=0.d0
-  do i=1,n
-     sum = sum + one(i) * two(i) 
-  enddo
-  mycdot=sum
-end function mycdot
-recursive function mydot(one,two,n)
-  implicit none
-  integer,intent(in) :: n
-  DATATYPE,intent(in) :: one(n), two(n)
-  DATATYPE :: mydot, sum
-  integer :: i
-  sum=0.d0
-  do i=1,n
-     sum = sum + CONJUGATE(one(i)) * two(i) 
-  enddo
-  mydot=sum
-end function mydot
-end module
+  recursive function mycdot(one,two,n)
+    implicit none
+    integer,intent(in) :: n
+    DATATYPE,intent(in) :: one(n), two(n)
+    DATATYPE :: mycdot, sum
+    integer :: i
+    sum=0.d0
+    do i=1,n
+       sum = sum + one(i) * two(i) 
+    enddo
+    mycdot=sum
+  end function mycdot
+  recursive function mydot(one,two,n)
+    implicit none
+    integer,intent(in) :: n
+    DATATYPE,intent(in) :: one(n), two(n)
+    DATATYPE :: mydot, sum
+    integer :: i
+    sum=0.d0
+    do i=1,n
+       sum = sum + CONJUGATE(one(i)) * two(i) 
+    enddo
+    mydot=sum
+  end function mydot
+end module mycdotmod
 
 
 subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  !! returns last two.  a little cloogey
@@ -274,10 +279,8 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
 
   allocate(frodensity(totpoints,numfrozen), tempreduced(totpoints,numfrozen), &
        cfrodensity(totpoints,numfrozen),   tempmult(totpoints,numfrozen))
-
   frodensity=0; tempreduced=0; cfrodensity=0; temppotmatel=0; tempmult=0
 
-  frodensity(:,1)=0d0
   do ii=1,numfrozen
      frodensity(:,1)=frodensity(:,1) + infrozens(:,ii)*CONJUGATE(infrozens(:,ii)) * 2
   enddo
@@ -397,7 +400,6 @@ subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen,notuse
      enddo
      call op_tinv(frodensity(:,:),tempreduced(:,:),howmany,howmany,&
           times1,times3,times4,times5,fttimes)
-!! ADDS TO OUTSPFS
      do spf2a=1,howmany
         outspfs(:,spf2a) = outspfs(:,spf2a) - tempreduced(:,spf2a)*infrozens(:,spf2b)
      enddo
@@ -576,20 +578,6 @@ OFLWR "NOT APPLICABLE MEXPAND SINCDVR"; CFLST
 end subroutine mexpand_spfs
 
 
-subroutine velmultiply(howmany,spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
-  use myparams
-  implicit none
-  integer,intent(in) :: howmany
-  DATATYPE,intent(in) :: spfin(totpoints,howmany),myxtdpot0,myytdpot0,myztdpot
-  DATATYPE,intent(out) :: spfout(totpoints,howmany)
-  DATATYPE :: cz
-
-  cz=(0d0,-1d0) * myztdpot + 0d0 * myxtdpot0 + 0d0 * myytdpot0
-
-  call mult_general(2,cz,spfin,spfout,howmany,"booga",2)
-
-end subroutine velmultiply
-
 
 subroutine call_twoe_matel00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
   use myparams
@@ -618,159 +606,158 @@ subroutine call_twoe_matel00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoeredu
      call call_twoe_matelxxx00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
   endif
 
-end subroutine call_twoe_matel00
+contains
 
+  subroutine call_twoe_matelxxx00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
+    use myparams
+    use pmpimod
+    use pfileptrmod
+    use myprojectmod
+    implicit none
+    integer, intent(in) :: lowspf,highspf,notiming
+    DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
+    DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,lowspf:highspf),&
+         twoereduced(totpoints,numspf,lowspf:highspf)
+    character,intent(in) :: timingdir*(*)
+    integer ::  spf1a, spf1b, spf2a, spf2b, itime,jtime,getlen,&
+         spf2low,spf2high,index2b,index2low,index2high, firsttime,lasttime,nnnspf,qq,myiostat
+    integer, save :: xcount=0, times(10)=0,fttimes(10)=0,qqcount=0
+    DATATYPE, allocatable :: twoeden03(:,:) 
+    DATATYPE :: twoemattemp(numspf,numspf),  myden(totpoints)
 
-subroutine call_twoe_matelxxx00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoereduced,timingdir,notiming) 
-  use myparams
-  use pmpimod
-  use pfileptrmod
-  use myprojectmod
-  implicit none
-  integer, intent(in) :: lowspf,highspf,notiming
-  DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
-  DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,lowspf:highspf),&
-       twoereduced(totpoints,numspf,lowspf:highspf)
-  character,intent(in) :: timingdir*(*)
-  integer ::  spf1a, spf1b, spf2a, spf2b, itime,jtime,getlen,&
-       spf2low,spf2high,index2b,index2low,index2high, firsttime,lasttime,nnnspf,qq,myiostat
-  integer, save :: xcount=0, times(10)=0,fttimes(10)=0,qqcount=0
-  DATATYPE, allocatable :: twoeden03(:,:) 
-  DATATYPE :: twoemattemp(numspf,numspf),  myden(totpoints)
+    nnnspf=highspf-lowspf+1
 
-  nnnspf=highspf-lowspf+1
+    if (highspf.gt.numspf.or.lowspf.lt.1) then
+       OFLWR "programmer fail!!! YYY",lowspf,highspf,numspf; CFLST
+    endif
 
-  if (highspf.gt.numspf.or.lowspf.lt.1) then
-     OFLWR "programmer fail!!! YYY",lowspf,highspf,numspf; CFLST
-  endif
+    times(:)=0; fttimes(:)=0;   !! ZEROING TIMES... not cumulative
 
-  times(:)=0; fttimes(:)=0;   !! ZEROING TIMES... not cumulative
+    call myclock(firsttime); itime=firsttime
 
-  call myclock(firsttime); itime=firsttime
+    if ((myrank.eq.1).and.(notiming.eq.0)) then
+       if (debugflag.eq.10) then
+          open(8853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat", &
+               status="unknown", position="append",iostat=myiostat)
+          call checkiostat(myiostat,"opening twoematel timing sincdvr")
+          write(8853,*,iostat=myiostat) "****"
+          call checkiostat(myiostat,"writing twoematel timing sincdvr")
+          close(8853)
+          call system("date --rfc-3339=ns >>"//timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat")
+       endif
+    endif
 
-  if ((myrank.eq.1).and.(notiming.eq.0)) then
-     if (debugflag.eq.10) then
-        open(8853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat", &
-             status="unknown", position="append",iostat=myiostat)
-        call checkiostat(myiostat,"opening twoematel timing sincdvr")
-        write(8853,*,iostat=myiostat) "****"
-        call checkiostat(myiostat,"writing twoematel timing sincdvr")
-        close(8853)
-        call system("date --rfc-3339=ns >>"//timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat")
-     endif
-  endif
+    twoereduced(:,:,:)=0d0;   twoematel(:,:,:,:)=0
 
-  twoereduced(:,:,:)=0d0;   twoematel(:,:,:,:)=0
+    if (abs(twostrength).eq.0d0) then
+       return
+    endif
 
-  if (abs(twostrength).eq.0d0) then
-     return
-  endif
+    allocate(twoeden03(numpoints,batchindex(1,lowspf):batchindex(numspf,highspf)))
 
-  allocate(twoeden03(numpoints,batchindex(1,lowspf):batchindex(numspf,highspf)))
+    twoeden03(:,:)=0
 
-  twoeden03(:,:)=0
-
-  call myclock(jtime); times(1)=times(1)+jtime-itime;  
+    call myclock(jtime); times(1)=times(1)+jtime-itime;  
   
-  select case(fft_batchdim)
-  case(1)
-     index2low=lowspf; index2high=highspf
-  case(2)
-     index2low=1; index2high=1
-  case default
-     OFLWR "ACK BACTCHDIM", fft_batchdim; CFLST
-     index2low=999; index2high=(-42)    !! avoid warn unused
-  end select
+    select case(fft_batchdim)
+    case(1)
+       index2low=lowspf; index2high=highspf
+    case(2)
+       index2low=1; index2high=1
+    case default
+       OFLWR "ACK BACTCHDIM", fft_batchdim; CFLST
+       index2low=999; index2high=(-42)    !! avoid warn unused
+    end select
   
-  do index2b=index2low,index2high
+    do index2b=index2low,index2high
         
-     select case(fft_batchdim)
-     case(1)
-        spf2low=index2b;        spf2high=index2b
-     case(2)
-        spf2low=lowspf; spf2high=highspf
-     case default
-        OFLWR "ACK BACTCHDIM", fft_batchdim; CFLST
-        spf2low=42; spf2high=(-999)   !! avoid warn unused
-     end select
+       select case(fft_batchdim)
+       case(1)
+          spf2low=index2b;        spf2high=index2b
+       case(2)
+          spf2low=lowspf; spf2high=highspf
+       case default
+          OFLWR "ACK BACTCHDIM", fft_batchdim; CFLST
+          spf2low=42; spf2high=(-999)   !! avoid warn unused
+       end select
      
  ! integrating over electron 2
 
-     call myclock(itime)
-     do spf2b=spf2low,spf2high
-        do spf2a=1,numspf
+       call myclock(itime)
+       do spf2b=spf2low,spf2high
+          do spf2a=1,numspf
            
-           twoeden03(:,batchindex(spf2a,spf2b))=&
+             twoeden03(:,batchindex(spf2a,spf2b))=&
 !! switching 2-2016     CONJUGATE(inspfs10(:,spf2a)) * inspfs20(:,spf2b)
-                inspfs10(:,spf2a) * CONJUGATE(inspfs20(:,spf2b))
-        enddo
-     enddo
-     call myclock(jtime); times(2)=times(2)+jtime-itime;
+                  inspfs10(:,spf2a) * CONJUGATE(inspfs20(:,spf2b))
+          enddo
+       enddo
+       call myclock(jtime); times(2)=times(2)+jtime-itime;
 
-     select case(fft_circbatchdim)
-     case(0)
-        qq=1
-     case(1)
-        qq=numspf
-     case(2)
-        qq=nnnspf*numspf
-     case default
-        OFLWR "AUUGUGUGH circbatchdim not allowed",fft_circbatchdim; CFLST
-     end select
-     call op_tinv(twoeden03(:,batchindex(1,spf2low)), twoereduced(:,1,spf2low),&
-          nnnspf**(fft_batchdim-1)*numspf, qq, times(1),times(3),times(4),times(5),fttimes)
+       select case(fft_circbatchdim)
+       case(0)
+          qq=1
+       case(1)
+          qq=numspf
+       case(2)
+          qq=nnnspf*numspf
+       case default
+          OFLWR "AUUGUGUGH circbatchdim not allowed",fft_circbatchdim; CFLST
+       end select
+       call op_tinv(twoeden03(:,batchindex(1,spf2low)), twoereduced(:,1,spf2low),&
+            nnnspf**(fft_batchdim-1)*numspf, qq, times(1),times(3),times(4),times(5),fttimes)
 
-  enddo  !! DO INDEX2B
+    enddo  !! DO INDEX2B
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!! MPI reduction is performed in main MCTDHF routines NOT HERE !!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  twoemattemp(:,:)=0
+    twoemattemp(:,:)=0
 
-  if (nnnspf.gt.0) then
-     do spf1b=1,numspf
-        do spf1a=1,numspf
+    if (nnnspf.gt.0) then
+       do spf1b=1,numspf
+          do spf1a=1,numspf
 
 !! switching 2-2016       myden(:)=CONJUGATE(inspfs10(:,spf1a)) * inspfs20(:,spf1b)
-           myden(:)=inspfs10(:,spf1a) * CONJUGATE(inspfs20(:,spf1b))
-           call MYGEMV('T',totpoints,numspf*nnnspf,DATAONE,twoereduced(:,:,lowspf:highspf),totpoints,myden,1,&
-                DATAZERO,twoemattemp(:,lowspf:highspf),1)
-           twoematel(spf1a,spf1b,:,lowspf:highspf)=twoemattemp(:,lowspf:highspf)
-        enddo
-     enddo
-  endif
-  deallocate(twoeden03)
+             myden(:)=inspfs10(:,spf1a) * CONJUGATE(inspfs20(:,spf1b))
+             call MYGEMV('T',totpoints,numspf*nnnspf,DATAONE,twoereduced(:,:,lowspf:highspf),totpoints,myden,1,&
+                  DATAZERO,twoemattemp(:,lowspf:highspf),1)
+             twoematel(spf1a,spf1b,:,lowspf:highspf)=twoemattemp(:,lowspf:highspf)
+          enddo
+       enddo
+    endif
+    deallocate(twoeden03)
 
-  call myclock(jtime); times(6)=times(6)+jtime-itime;  
-  lasttime=jtime
-  times(7)=times(7)+lasttime-firsttime
+    call myclock(jtime); times(6)=times(6)+jtime-itime;  
+    lasttime=jtime
+    times(7)=times(7)+lasttime-firsttime
 
-  xcount=xcount+1
+    xcount=xcount+1
 
-  if ((myrank.eq.1).and.(notiming.eq.0)) then
-     if (xcount==1) then
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.time.dat", &
-             status="unknown",iostat=myiostat)
-        call checkiostat(myiostat,"opening twoematel timing sincdvr")
+    if ((myrank.eq.1).and.(notiming.eq.0)) then
+       if (xcount==1) then
+          open(853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.time.dat", &
+               status="unknown",iostat=myiostat)
+          call checkiostat(myiostat,"opening twoematel timing sincdvr")
 #ifdef MPIFLAG
-        if (orbparflag) then
-           write(853,'(100A11)')   "etc", "1den", "1mpi", "F.T.", "2mpi", "dot","ALL",   &
-                "ft_conjg","ft_twid","ft_mpict","ft_raise","ft_tmult","ft_ft1d", "ft_circ"
-        else
+          if (orbparflag) then
+             write(853,'(100A11)')   "etc", "1den", "1mpi", "F.T.", "2mpi", "dot","ALL",   &
+                  "ft_conjg","ft_twid","ft_mpict","ft_raise","ft_tmult","ft_ft1d", "ft_circ"
+          else
 #endif
-           write(853,'(100A11)')   "etc", "1den", "1mpi", "F.T.", "2mpi", "dot","ALL"
+             write(853,'(100A11)')   "etc", "1den", "1mpi", "F.T.", "2mpi", "dot","ALL"
 #ifdef MPIFLAG
-        endif
+          endif
 #endif
-        close(853)
-     endif
-     open(853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.time.dat", &
-          status="unknown", position="append",iostat=myiostat)
-     call checkiostat(myiostat,"opening twoematel timing sincdvr")
-     write(853,'(100I11)',iostat=myiostat)  times(1:7),fttimes(1:7);        close(853)
-     call checkiostat(myiostat,"writing twoematel timing sincdvr")
-  endif
+          close(853)
+       endif
+       open(853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.time.dat", &
+            status="unknown", position="append",iostat=myiostat)
+       call checkiostat(myiostat,"opening twoematel timing sincdvr")
+       write(853,'(100I11)',iostat=myiostat)  times(1:7),fttimes(1:7);        close(853)
+       call checkiostat(myiostat,"writing twoematel timing sincdvr")
+    endif
 
 !!! from circ subs, fttimes
 !!!
@@ -786,22 +773,23 @@ subroutine call_twoe_matelxxx00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoer
 !!! fttimes(6) 1d f.t.
 
 
-  if (myrank.eq.1.and.(notiming.eq.0).and.debugflag.eq.10) then
-        call system("date --rfc-3339=ns >>"//timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat")
-        open(8853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat", &
-             status="unknown", position="append",iostat=myiostat)
-        call checkiostat(myiostat,"opening twoematel timing sincdvr")
-        write(8853,*,iostat=myiostat) "****"
-        call checkiostat(myiostat,"writing twoematel timing sincdvr")
-        close(8853)
-  endif
+    if (myrank.eq.1.and.(notiming.eq.0).and.debugflag.eq.10) then
+       call system("date --rfc-3339=ns >>"//timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat")
+       open(8853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat", &
+            status="unknown", position="append",iostat=myiostat)
+       call checkiostat(myiostat,"opening twoematel timing sincdvr")
+       write(8853,*,iostat=myiostat) "****"
+       call checkiostat(myiostat,"writing twoematel timing sincdvr")
+       close(8853)
+    endif
 
-  qqcount=qqcount+1
-  if ((notiming.eq.0).and.debugflag.eq.10.and.qqcount.gt.1) then
-     OFLWR "DEBUG10STOP"; CFLST
-  endif
+    qqcount=qqcount+1
+    if ((notiming.eq.0).and.debugflag.eq.10.and.qqcount.gt.1) then
+       OFLWR "DEBUG10STOP"; CFLST
+    endif
 
-contains
+  end subroutine call_twoe_matelxxx00
+
   function batchindex(spf2a,spf2b)
     implicit none
     integer :: spf2a,spf2b,batchindex
@@ -816,16 +804,7 @@ contains
     end select
   end function batchindex
 
-!contains
-!  subroutine myclock(mytime)
-!    integer :: values(10),mytime
-!    integer, parameter :: fac(5:8)=(/60*60*1000,60*1000,1000,1/)  !! hour,minute,second,millisecond
-!    call date_and_time(values=values)
-!    mytime=values(8)+values(7)*fac(7)+values(6)*fac(6)+values(5)*fac(5)
-!  end subroutine myclock
-end subroutine call_twoe_matelxxx00
-
-
+end subroutine call_twoe_matel00
 
 
 subroutine  op_tinv(twoeden03,twoereduced,allsize,circsize,&
@@ -851,160 +830,156 @@ subroutine  op_tinv(twoeden03,twoereduced,allsize,circsize,&
   call op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
        times1,times3,times4,times5,fttimes)
 
+contains
+
+  subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
+       times1,times3,times4,times5,fttimes)
+    use myparams
+    use pmpimod
+    use pfileptrmod
+    use myprojectmod
+    use circ1dsubmod
+    implicit none
+    integer, intent(in) :: allsize,circsize
+    integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
+    DATATYPE,intent(in) :: twoeden03(numpoints,allsize)
+    DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
+    integer ::  itime,jtime
+#ifdef MPIFLAG
+    integer ::  ibox1,jbox1,jproc,iproc
+    DATATYPE,allocatable :: tempden03(:,:)
+#endif
+    integer :: circhigh,circbot,circtop,icirc
+    DATATYPE,allocatable :: twoeden03huge(:,:,:), reducedhuge(:,:,:),&
+         reducedwork1d(:,:)
+
+    if (mod(allsize,circsize).ne.0) then
+       OFLWR "SIZE ERROR OP_TINV",allsize,circsize; CFLST
+    endif
+
+    circhigh=allsize/circsize
+
+#ifdef MPIFLAG
+    allocate(tempden03(numpoints,allsize))
+    tempden03(:,:)=0d0
+#endif
+    allocate(twoeden03huge(numpoints,2,allsize),&
+         reducedhuge(numpoints,2,allsize),&
+         reducedwork1d(numpoints,allsize))
+
+    twoeden03huge(:,:,:)=0d0;  reducedhuge(:,:,:)=0; reducedwork1d(:,:)=0d0;
+    twoereduced(:,:)=0d0;  
+
+#ifdef MPIFLAG
+  
+    if (orbparflag) then
+
+       call myclock(itime)
+       twoeden03huge(:,:,:)=0d0; 
+
+       do ibox1=1,nbox  !! processor sending
+
+          iproc=ibox1
+
+          jbox1=(ibox1+1)/2
+
+          jproc=jbox1
+
+          if (iproc.eq.myrank.and.jproc.eq.myrank) then
+             twoeden03huge(:,mod(ibox1-1,2)+1,:)=twoeden03(:,:)
+          else if (iproc.eq.myrank) then
+             call mympisend(twoeden03,jproc,999,totpoints*allsize)
+          else if (jproc.eq.myrank) then
+             call mympirecv(tempden03,iproc,999,totpoints*allsize)
+             twoeden03huge(:,mod(ibox1-1,2)+1,:)=tempden03(:,:)
+          endif
+
+       enddo
+       call myclock(jtime); times3=times3+jtime-itime;
+    else
+#endif
+       call myclock(itime)
+       twoeden03huge(:,:,:)=0d0; 
+       twoeden03huge(:,1,:)=twoeden03(:,:)
+       call myclock(jtime); times1=times1+jtime-itime;
+     
+#ifdef MPIFLAG
+    endif  !! orbparflag
+#endif
+  
+#ifdef MPIFLAG
+    if (orbparflag) then
+       call myclock(itime); 
+
+       do icirc=1,circhigh
+          circbot=(icirc-1)*circsize+1
+          circtop=icirc*circsize
+#ifdef REALGO
+          call circ1d_sub_real_mpi(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
+               reducedhuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
+#else
+          call circ1d_sub_mpi(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
+               reducedhuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
+#endif
+       enddo
+
+       call myclock(jtime); times4=times4+jtime-itime; itime=jtime
+
+       do ibox1=1,nbox  !! processor receiving
+
+          iproc=ibox1
+
+          jbox1=(ibox1+nbox+1)/2   !! processor sending
+
+          jproc=jbox1
+
+          if (iproc.eq.myrank.and.jproc.eq.myrank) then
+             reducedwork1d(:,:)=reducedhuge(:,mod(ibox1+nbox-1,2)+1,:)
+          else if (iproc.eq.myrank) then
+             call mympirecv(reducedwork1d(:,:),jproc,999,totpoints*allsize)
+          else if (jproc.eq.myrank) then
+             tempden03(:,:)=reducedhuge(:,mod(ibox1+nbox-1,2)+1,:)
+             call mympisend(tempden03(:,:),iproc,999,totpoints*allsize)
+          endif
+
+       enddo
+     
+       call myclock(jtime); times5=times5+jtime-itime
+    else
+#endif
+       call myclock(itime)
+     
+       do icirc=1,circhigh
+          circbot=(icirc-1)*circsize+1
+          circtop=icirc*circsize
+#ifdef REALGO
+          call circ1d_sub_real(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
+               reducedhuge(:,:,circbot:circtop),gridpoints,circsize)
+#else
+          call circ1d_sub(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
+               reducedhuge(:,:,circbot:circtop),gridpoints,circsize)
+#endif
+       enddo
+     
+       reducedwork1d(:,:)=reducedhuge(:,2,:)
+     
+       call myclock(jtime); times4=times4+jtime-itime
+#ifdef MPIFLAG
+    endif
+#endif
+
+    twoereduced(:,:) =RESHAPE(reducedwork1d(:,:),(/totpoints,allsize/))
+
+#ifdef MPIFLAG
+    deallocate(tempden03)
+#endif
+    deallocate(twoeden03huge,       reducedhuge,       reducedwork1d)
+
+    call myclock(jtime); times1=times1+jtime-itime; itime=jtime
+  
+  end subroutine op_tinv_notscaled
 
 end subroutine op_tinv
-
-
-
-subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
-          times1,times3,times4,times5,fttimes)
-  use myparams
-  use pmpimod
-  use pfileptrmod
-  use myprojectmod
-  use circ1dsubmod
-  implicit none
-  integer, intent(in) :: allsize,circsize
-  integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
-  DATATYPE,intent(in) :: twoeden03(numpoints,allsize)
-  DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
-  integer ::  itime,jtime
-#ifdef MPIFLAG
-  integer ::  ibox1,jbox1,jproc,iproc
-  DATATYPE,allocatable :: tempden03(:,:)
-#endif
-  integer :: circhigh,circbot,circtop,icirc
-  DATATYPE,allocatable :: twoeden03huge(:,:,:), reducedhuge(:,:,:),&
-       reducedwork1d(:,:)
-
-  if (mod(allsize,circsize).ne.0) then
-     OFLWR "SIZE ERROR OP_TINV",allsize,circsize; CFLST
-  endif
-
-  circhigh=allsize/circsize
-
-#ifdef MPIFLAG
-  allocate(tempden03(numpoints,allsize))
-  tempden03(:,:)=0d0
-#endif
-  allocate(twoeden03huge(numpoints,2,allsize),&
-       reducedhuge(numpoints,2,allsize),&
-       reducedwork1d(numpoints,allsize))
-
-  twoeden03huge(:,:,:)=0d0;  reducedhuge(:,:,:)=0; reducedwork1d(:,:)=0d0;
-
-  twoereduced(:,:)=0d0;  
-
-#ifdef MPIFLAG
-  
-  if (orbparflag) then
-
-     call myclock(itime)
-     twoeden03huge(:,:,:)=0d0; 
-
-     do ibox1=1,nbox  !! processor sending
-
-        iproc=ibox1
-
-        jbox1=(ibox1+1)/2
-
-        jproc=jbox1
-
-        if (iproc.eq.myrank.and.jproc.eq.myrank) then
-           twoeden03huge(:,mod(ibox1-1,2)+1,:)=twoeden03(:,:)
-        else if (iproc.eq.myrank) then
-           call mympisend(twoeden03,jproc,999,totpoints*allsize)
-        else if (jproc.eq.myrank) then
-           call mympirecv(tempden03,iproc,999,totpoints*allsize)
-           twoeden03huge(:,mod(ibox1-1,2)+1,:)=tempden03(:,:)
-        endif
-
-     enddo
-     call myclock(jtime); times3=times3+jtime-itime;
-  else
-#endif
-     call myclock(itime)
-     twoeden03huge(:,:,:)=0d0; 
-     twoeden03huge(:,1,:)=twoeden03(:,:)
-     call myclock(jtime); times1=times1+jtime-itime;
-     
-#ifdef MPIFLAG
-  endif  !! orbparflag
-#endif
-  
-#ifdef MPIFLAG
-  if (orbparflag) then
-     call myclock(itime); 
-     
-     do icirc=1,circhigh
-        circbot=(icirc-1)*circsize+1
-        circtop=icirc*circsize
-#ifdef REALGO
-        call circ1d_sub_real_mpi(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
-             reducedhuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
-#else
-        call circ1d_sub_mpi(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
-             reducedhuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
-#endif
-     enddo
-     
-     call myclock(jtime); times4=times4+jtime-itime; itime=jtime
-
-     do ibox1=1,nbox  !! processor receiving
-
-        iproc=ibox1
-
-        jbox1=(ibox1+nbox+1)/2   !! processor sending
-
-        jproc=jbox1
-
-        if (iproc.eq.myrank.and.jproc.eq.myrank) then
-           reducedwork1d(:,:)=reducedhuge(:,mod(ibox1+nbox-1,2)+1,:)
-        else if (iproc.eq.myrank) then
-           call mympirecv(reducedwork1d(:,:),jproc,999,totpoints*allsize)
-        else if (jproc.eq.myrank) then
-           tempden03(:,:)=reducedhuge(:,mod(ibox1+nbox-1,2)+1,:)
-           call mympisend(tempden03(:,:),iproc,999,totpoints*allsize)
-        endif
-
-     enddo
-     
-     call myclock(jtime); times5=times5+jtime-itime
-  else
-#endif
-     call myclock(itime)
-     
-     do icirc=1,circhigh
-        circbot=(icirc-1)*circsize+1
-        circtop=icirc*circsize
-#ifdef REALGO
-        call circ1d_sub_real(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
-             reducedhuge(:,:,circbot:circtop),gridpoints,circsize)
-#else
-        call circ1d_sub(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
-             reducedhuge(:,:,circbot:circtop),gridpoints,circsize)
-#endif
-     enddo
-     
-     reducedwork1d(:,:)=reducedhuge(:,2,:)
-     
-     call myclock(jtime); times4=times4+jtime-itime
-#ifdef MPIFLAG
-  endif
-#endif
-
-     
-  twoereduced(:,:) =RESHAPE(reducedwork1d(:,:),(/totpoints,allsize/))
-
-#ifdef MPIFLAG
-  deallocate(tempden03)
-#endif
-  deallocate(twoeden03huge,       reducedhuge,       reducedwork1d)
-
-  call myclock(jtime); times1=times1+jtime-itime; itime=jtime
-  
-end subroutine op_tinv_notscaled
-
 
 
 
@@ -1053,37 +1028,24 @@ subroutine get_dipoles()
   use myprojectmod  
   implicit none
   call get_one_dipole(dipoles(:),qbox,1,1)
+
+contains
+
+  subroutine get_one_dipole(out,whichbox,nnn,mmm)
+    use myparams
+    use myprojectmod
+    implicit none
+    integer,intent(in) :: mmm,nnn,whichbox
+    DATATYPE,intent(out) :: out(nnn,numpoints,mmm)
+    integer :: jj,ii
+    do jj=1,mmm
+       do ii=1,numpoints
+          out(:,ii,jj)=sinepoints%mat(ii,whichbox)
+       enddo
+    enddo
+  end subroutine get_one_dipole
+
 end subroutine get_dipoles
-
-
-subroutine get_one_dipole(out,whichbox,nnn,mmm)
-  use myparams
-  use myprojectmod
-  implicit none
-  integer,intent(in) :: mmm,nnn,whichbox
-  DATATYPE,intent(out) :: out(nnn,numpoints,mmm)
-  integer :: jj,ii
-  do jj=1,mmm
-     do ii=1,numpoints
-        out(:,ii,jj)=sinepoints%mat(ii,whichbox)
-     enddo
-  enddo
-end subroutine get_one_dipole
-
-
-subroutine mult_ke(in,out,howmany,timingdir,notiming)
-  use myparams
-  use myprojectmod
-  implicit none
-  integer,intent(in) :: howmany,notiming
-  character,intent(in) :: timingdir*(*)
-  DATATYPE,intent(in) :: in(totpoints,howmany)
-  DATATYPE, intent(out) :: out(totpoints,howmany)
-
-  call mult_general(1,DATAONE,in,out,howmany,timingdir,notiming)
-
-end subroutine mult_ke
-
 
 !! option=1 ke   option=2 first deriv
 
@@ -1100,298 +1062,247 @@ subroutine mult_general(option,zcoef,in,out,howmany,timingdir,notiming)
 
   call mult_general_withbcast(option,zcoef,in,out,howmany,timingdir,notiming)
 
-end subroutine mult_general
+contains
 
+  subroutine mult_general_withbcast(option,zcoef,in,out,howmany,timingdir,notiming)
+    use myparams
+    use myprojectmod
+    implicit none
+    integer, intent(in) :: option,howmany,notiming
+    integer :: ii
+    character,intent(in) :: timingdir*(*)
+    DATATYPE, intent(in) :: in(totpoints,howmany), zcoef
+    DATATYPE, intent(out) :: out(totpoints,howmany)
+    DATATYPE :: temp(totpoints,howmany),temp2(totpoints,howmany)   !!AUTOMATIC
+    DATATYPE :: mycoef
 
+    temp(:,:)=0;  temp2(:,:)=0;  out(:,:)=0d0
 
-subroutine mult_general_withbcast(option,zcoef,in,out,howmany,timingdir,notiming)
-  use myparams
-  use myprojectmod
-  implicit none
-  integer, intent(in) :: option,howmany,notiming
-  integer :: ii
-  character,intent(in) :: timingdir*(*)
-  DATATYPE, intent(in) :: in(totpoints,howmany), zcoef
-  DATATYPE, intent(out) :: out(totpoints,howmany)
-  DATATYPE :: temp(totpoints,howmany),temp2(totpoints,howmany)   !!AUTOMATIC
-  DATATYPE :: mycoef
+    if (option.eq.2) then 
+       mycoef = zcoef
+    else
+       mycoef = 1d0
+    endif
 
-  temp(:,:)=0;  temp2(:,:)=0;  out(:,:)=0d0
+    if (abs(mycoef).gt.0d0) then
 
-  if (option.eq.2) then 
-     mycoef = zcoef
-  else
-     mycoef = 1d0
-  endif
+       if (scalingflag.ne.0) then
+          if (option.eq.1) then        !! KE
+             do ii=1,howmany
+                temp(:,ii)=in(:,ii)*invjacobian(:)
+             enddo
+          else                         !! FIRST DER
+             do ii=1,howmany
+                temp(:,ii)=in(:,ii)*invsqrtjacobian(:)
+             enddo
+          endif
+       else
+          temp(:,:)=in(:,:)
+       endif
 
-  if (abs(mycoef).gt.0d0) then
+       call mult_allpar(option,temp(:,:), temp2(:,:),howmany,timingdir,notiming)
 
-     if (scalingflag.ne.0) then
-        if (option.eq.1) then        !! KE
-           do ii=1,howmany
-              temp(:,ii)=in(:,ii)*invjacobian(:)
-           enddo
-        else                         !! FIRST DER
-           do ii=1,howmany
-              temp(:,ii)=in(:,ii)*invsqrtjacobian(:)
-           enddo
-        endif
-     else
-        temp(:,:)=in(:,:)
-     endif
+       if (scalingflag.ne.0) then
+          if (option.eq.1) then        !! KE
+             do ii=1,howmany
+                out(:,ii)=out(:,ii)+temp2(:,ii)*invjacobian(:)   * mycoef
+             enddo
+          else                         !! FIRST DER
+             do ii=1,howmany
+                out(:,ii)=out(:,ii)+temp2(:,ii)*invsqrtjacobian(:)   * mycoef
+             enddo
+          endif
+       else
+          out(:,:)=out(:,:)+temp2(:,:)   * mycoef
+       endif
 
-     call mult_allpar(option,temp(:,:), temp2(:,:),howmany,timingdir,notiming)
+    endif
 
-     if (scalingflag.ne.0) then
-        if (option.eq.1) then        !! KE
-           do ii=1,howmany
-              out(:,ii)=out(:,ii)+temp2(:,ii)*invjacobian(:)   * mycoef
-           enddo
-        else                         !! FIRST DER
-           do ii=1,howmany
-              out(:,ii)=out(:,ii)+temp2(:,ii)*invsqrtjacobian(:)   * mycoef
-           enddo
-        endif
-     else
-        out(:,:)=out(:,:)+temp2(:,:)   * mycoef
-     endif
+    if (option.eq.1) then
+       if (scalingflag.ne.0) then
+          do ii=1,howmany
+             out(:,ii)=out(:,ii) + in(:,ii) * scalediag(:) 
+          enddo
+       endif
+    endif
 
-  endif
+  end subroutine mult_general_withbcast
 
-  if (option.eq.1) then
-     if (scalingflag.ne.0) then
-        do ii=1,howmany
-           out(:,ii)=out(:,ii) + in(:,ii) * scalediag(:) 
-        enddo
-     endif
-  endif
-
-end subroutine mult_general_withbcast
-
-
-!! option=1 ke    option=2 first derivative
-
-subroutine mult_allpar(option, in, out,howmany,timingdir,notiming)
-  use myparams
-  use pmpimod
-  use pfileptrmod
-  implicit none
-  integer,intent(in) :: option,howmany,notiming
-  DATATYPE,intent(in) :: in(totpoints,howmany)
-  DATATYPE, intent(out) :: out(totpoints,howmany)
-  character,intent(in) :: timingdir*(*)
-
-  if (option.ne.1.and.option.ne.2) then
-     OFLWR "OWWOWORE WHAT?", option; CFLST
-  endif
-
-  if (toepflag.ne.0) then
-     if (fft_circbatchdim.eq.0) then
-        call mult_allone_toep(in,out,option,howmany,1)
-     else
-        call mult_allone_toep(in,out,option,howmany,howmany)
-     endif
-  elseif (.not.orbparflag) then
-     call mult_allone(in,out,option,howmany)
-  else
-     select case(zke_paropt)
-     case(0)
-        call mult_circ_gen(in,out,option,howmany,timingdir,notiming)
-     case(1)
-        call mult_summa_gen(in,out,option,howmany,timingdir,notiming)
-     case default
-        OFLWR "Error, zke_paropt not recognized",zke_paropt; CFLST
-     end select
-  endif
-
-end subroutine mult_allpar
-
-
-
-!! option=1 ke   option=2 first deriv
-
-module toeptimes
-  implicit none
-  integer :: times1=0,times3=0,times4=0,times5=0,fttimes(10)=0
-end module toeptimes
-
-subroutine  mult_allone_toep(invector,outvector,option,allsize,circsize)
-  use myparams
-  use pmpimod
-  use pfileptrmod
-  use myprojectmod
-  use circ1dsubmod
-  use toeptimes
-  implicit none
-  integer, intent(in) :: allsize,circsize,option
-  DATATYPE,intent(in) :: invector(numpoints,allsize)
-  DATATYPE,intent(out) :: outvector(totpoints,allsize)
-  integer :: itime,jtime
+  subroutine  mult_allone_toep(invector,outvector,option,allsize,circsize)
+    use myparams
+    use pmpimod
+    use pfileptrmod
+    use myprojectmod
+    use circ1dsubmod
+    use toeptimes
+    implicit none
+    integer, intent(in) :: allsize,circsize,option
+    DATATYPE,intent(in) :: invector(numpoints,allsize)
+    DATATYPE,intent(out) :: outvector(totpoints,allsize)
+    integer :: itime,jtime
 #ifdef MPIFLAG
-  integer ::  ibox1,jbox1,jproc,iproc,mstart,mend
-  DATATYPE,allocatable :: workvec(:,:)
+    integer ::  ibox1,jbox1,jproc,iproc,mstart,mend
+    DATATYPE,allocatable :: workvec(:,:)
 #endif
-  integer :: circhigh,circbot,circtop,icirc
-  DATATYPE,allocatable :: invectorhuge(:,:,:), outvechuge(:,:,:),&
-       outvecwork1d(:,:)
+    integer :: circhigh,circbot,circtop,icirc
+    DATATYPE,allocatable :: invectorhuge(:,:,:), outvechuge(:,:,:),&
+         outvecwork1d(:,:)
 
-  if (mod(allsize,circsize).ne.0) then
-     OFLWR "SIZE ERROR OP_TINV",allsize,circsize; CFLST
-  endif
+    if (mod(allsize,circsize).ne.0) then
+       OFLWR "SIZE ERROR OP_TINV",allsize,circsize; CFLST
+    endif
 
-  circhigh=allsize/circsize
+    circhigh=allsize/circsize
 
 #ifdef MPIFLAG
-  allocate(workvec(numpoints,allsize))
-  workvec(:,:)=0d0
+    allocate(workvec(numpoints,allsize))
+    workvec(:,:)=0d0
 #endif
-  allocate(invectorhuge(numpoints,2,allsize),&
-       outvechuge(numpoints,2,allsize),&
-       outvecwork1d(numpoints,allsize))
+    allocate(invectorhuge(numpoints,2,allsize),&
+         outvechuge(numpoints,2,allsize),&
+         outvecwork1d(numpoints,allsize))
 
-  invectorhuge(:,:,:)=0d0;  outvechuge(:,:,:)=0; outvecwork1d(:,:)=0d0;
-
-  outvector(:,:)=0d0;  
+    invectorhuge(:,:,:)=0d0;  outvechuge(:,:,:)=0; outvecwork1d(:,:)=0d0;
+    outvector(:,:)=0d0;  
 
 #ifdef MPIFLAG
   
-  if (orbparflag) then
+    if (orbparflag) then
 
-     call myclock(itime)
-     invectorhuge(:,:,:)=0d0; 
+       call myclock(itime)
+       invectorhuge(:,:,:)=0d0; 
 
-     do ibox1=1,nbox  !! processor sending
+       do ibox1=1,nbox  !! processor sending
 
-        iproc=ibox1
+          iproc=ibox1
 
-        jbox1=(ibox1+1)/2
+          jbox1=(ibox1+1)/2
 
-        jproc=jbox1
+          jproc=jbox1
 
-        if (iproc.eq.myrank.and.jproc.eq.myrank) then
-           invectorhuge(:,mod(ibox1-1,2)+1,:)=invector(:,:)
-        else if (iproc.eq.myrank) then
-           call mympisend(invector,jproc,999,totpoints*allsize)
-        else if (jproc.eq.myrank) then
-           call mympirecv(workvec,iproc,999,totpoints*allsize)
-           invectorhuge(:,mod(ibox1-1,2)+1,:)=workvec(:,:)
-        endif
+          if (iproc.eq.myrank.and.jproc.eq.myrank) then
+             invectorhuge(:,mod(ibox1-1,2)+1,:)=invector(:,:)
+          else if (iproc.eq.myrank) then
+             call mympisend(invector,jproc,999,totpoints*allsize)
+          else if (jproc.eq.myrank) then
+             call mympirecv(workvec,iproc,999,totpoints*allsize)
+             invectorhuge(:,mod(ibox1-1,2)+1,:)=workvec(:,:)
+          endif
 
-     enddo
-     call myclock(jtime); times3=times3+jtime-itime;
-  else
+       enddo
+       call myclock(jtime); times3=times3+jtime-itime;
+    else
 #endif
-     call myclock(itime)
-     invectorhuge(:,:,:)=0d0; 
-     invectorhuge(:,1,:)=invector(:,:)
-     call myclock(jtime); times1=times1+jtime-itime;
+       call myclock(itime)
+       invectorhuge(:,:,:)=0d0; 
+       invectorhuge(:,1,:)=invector(:,:)
+       call myclock(jtime); times1=times1+jtime-itime;
      
 #ifdef MPIFLAG
-  endif  !! orbparflag
+    endif  !! orbparflag
 #endif
   
 #ifdef MPIFLAG
-  if (orbparflag) then
-     mstart=(myrank-1)*2*numpoints - gridpoints
-     mend =myrank*2*numpoints - gridpoints - 1
-     call myclock(itime); 
+    if (orbparflag) then
+       mstart=(myrank-1)*2*numpoints - gridpoints
+       mend =myrank*2*numpoints - gridpoints - 1
+       call myclock(itime); 
      
-     do icirc=1,circhigh
-        circbot=(icirc-1)*circsize+1
-        circtop=icirc*circsize
-        if (option.eq.1) then
+       do icirc=1,circhigh
+          circbot=(icirc-1)*circsize+1
+          circtop=icirc*circsize
+          if (option.eq.1) then
 #ifdef REALGO
-           call circ1d_sub_real_mpi(kevect%rmat(mstart:mend),invectorhuge(:,:,circbot:circtop),&
-                outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
+             call circ1d_sub_real_mpi(kevect%rmat(mstart:mend),invectorhuge(:,:,circbot:circtop),&
+                  outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
 #else
-           call circ1d_sub_mpi(kevect%cmat(mstart:mend),invectorhuge(:,:,circbot:circtop),&
-                outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
+             call circ1d_sub_mpi(kevect%cmat(mstart:mend),invectorhuge(:,:,circbot:circtop),&
+                  outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
 #endif
-        elseif (option.eq.2) then
+          elseif (option.eq.2) then
 #ifdef REALGO
-           call circ1d_sub_real_mpi(fdvect%rmat(mstart:mend),invectorhuge(:,:,circbot:circtop),&
-                outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
+             call circ1d_sub_real_mpi(fdvect%rmat(mstart:mend),invectorhuge(:,:,circbot:circtop),&
+                  outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
 #else
-           call circ1d_sub_mpi(fdvect%cmat(mstart:mend),invectorhuge(:,:,circbot:circtop),&
-                outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
+             call circ1d_sub_mpi(fdvect%cmat(mstart:mend),invectorhuge(:,:,circbot:circtop),&
+                  outvechuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
 #endif
-        else
-           OFLWR "option not recognized circ ",option;CFLST
-        endif
-     enddo
+          else
+             OFLWR "option not recognized circ ",option;CFLST
+          endif
+       enddo
      
-     call myclock(jtime); times4=times4+jtime-itime; itime=jtime
+       call myclock(jtime); times4=times4+jtime-itime; itime=jtime
 
-     do ibox1=1,nbox  !! processor receiving
+       do ibox1=1,nbox  !! processor receiving
 
-        iproc=ibox1
+          iproc=ibox1
 
-        jbox1=(ibox1+nbox+1)/2   !! processor sending
+          jbox1=(ibox1+nbox+1)/2   !! processor sending
 
-        jproc=jbox1
+          jproc=jbox1
 
-        if (iproc.eq.myrank.and.jproc.eq.myrank) then
-           outvecwork1d(:,:)=outvechuge(:,mod(ibox1+nbox-1,2)+1,:)
-        else if (iproc.eq.myrank) then
-           call mympirecv(outvecwork1d(:,:),jproc,999,totpoints*allsize)
-        else if (jproc.eq.myrank) then
-           workvec(:,:)=outvechuge(:,mod(ibox1+nbox-1,2)+1,:)
-           call mympisend(workvec(:,:),iproc,999,totpoints*allsize)
-        endif
+          if (iproc.eq.myrank.and.jproc.eq.myrank) then
+             outvecwork1d(:,:)=outvechuge(:,mod(ibox1+nbox-1,2)+1,:)
+          else if (iproc.eq.myrank) then
+             call mympirecv(outvecwork1d(:,:),jproc,999,totpoints*allsize)
+          else if (jproc.eq.myrank) then
+             workvec(:,:)=outvechuge(:,mod(ibox1+nbox-1,2)+1,:)
+             call mympisend(workvec(:,:),iproc,999,totpoints*allsize)
+          endif
 
-     enddo
+       enddo
      
-     call myclock(jtime); times5=times5+jtime-itime
-  else
+       call myclock(jtime); times5=times5+jtime-itime
+    else
 #endif
-     call myclock(itime)
+       call myclock(itime)
      
-     do icirc=1,circhigh
-        circbot=(icirc-1)*circsize+1
-        circtop=icirc*circsize
-        if (option.eq.1) then
+       do icirc=1,circhigh
+          circbot=(icirc-1)*circsize+1
+          circtop=icirc*circsize
+          if (option.eq.1) then
 #ifdef REALGO
-           call circ1d_sub_real(kevect%rmat(:),invectorhuge(:,:,circbot:circtop),&
-                outvechuge(:,:,circbot:circtop),gridpoints,circsize)
+             call circ1d_sub_real(kevect%rmat(:),invectorhuge(:,:,circbot:circtop),&
+                  outvechuge(:,:,circbot:circtop),gridpoints,circsize)
 #else
-           call circ1d_sub(kevect%cmat(:),invectorhuge(:,:,circbot:circtop),&
-                outvechuge(:,:,circbot:circtop),gridpoints,circsize)
+             call circ1d_sub(kevect%cmat(:),invectorhuge(:,:,circbot:circtop),&
+                  outvechuge(:,:,circbot:circtop),gridpoints,circsize)
 #endif
-        elseif (option.eq.2) then
+          elseif (option.eq.2) then
 #ifdef REALGO
-           call circ1d_sub_real(fdvect%rmat(:),invectorhuge(:,:,circbot:circtop),&
-                outvechuge(:,:,circbot:circtop),gridpoints,circsize)
+             call circ1d_sub_real(fdvect%rmat(:),invectorhuge(:,:,circbot:circtop),&
+                  outvechuge(:,:,circbot:circtop),gridpoints,circsize)
 #else
-           call circ1d_sub(fdvect%cmat(:),invectorhuge(:,:,circbot:circtop),&
-                outvechuge(:,:,circbot:circtop),gridpoints,circsize)
+             call circ1d_sub(fdvect%cmat(:),invectorhuge(:,:,circbot:circtop),&
+                  outvechuge(:,:,circbot:circtop),gridpoints,circsize)
 #endif
-        else
-           OFLWR "option not recognized circ ",option;CFLST
-        endif
-     enddo
+          else
+             OFLWR "option not recognized circ ",option;CFLST
+          endif
+       enddo
      
-     outvecwork1d(:,:)=outvechuge(:,2,:)
+       outvecwork1d(:,:)=outvechuge(:,2,:)
 
-     call myclock(jtime); times4=times4+jtime-itime
+       call myclock(jtime); times4=times4+jtime-itime
 #ifdef MPIFLAG
-  endif
+    endif
 #endif
 
-  if (option.eq.2) then !! correct phase first derivative
-     outvector(:,:) =RESHAPE(outvecwork1d(:,:),(/totpoints,allsize/)) * (-1)
-  else
-     outvector(:,:) =RESHAPE(outvecwork1d(:,:),(/totpoints,allsize/))
-  endif
-
-#ifdef MPIFLAG
-  deallocate(workvec)
-#endif
-  deallocate(invectorhuge,       outvechuge,       outvecwork1d)
-
-  call myclock(jtime); times1=times1+jtime-itime; itime=jtime
+    if (option.eq.2) then !! correct phase first derivative
+       outvector(:,:) =RESHAPE(outvecwork1d(:,:),(/totpoints,allsize/)) * (-1)
+    else
+       outvector(:,:) =RESHAPE(outvecwork1d(:,:),(/totpoints,allsize/))
+    endif
   
-end subroutine mult_allone_toep
+#ifdef MPIFLAG
+    deallocate(workvec)
+#endif
+    deallocate(invectorhuge,       outvechuge,       outvecwork1d)
 
+    call myclock(jtime); times1=times1+jtime-itime; itime=jtime
+  
+  end subroutine mult_allone_toep
 
 
 !!  RATE LIMITING STEP IN CODE: MPI PARALLEL KINETIC ENERGY MULTPILICATION IN Z DIRECTION !!
@@ -1400,248 +1311,305 @@ end subroutine mult_allone_toep
 !!  zke_paropt=0   mult_circ_z   sendrecv
 !!  zke_paropt=1   mult_summa_z  SUMMA  scalable universal matrix multiplication algorithm (broadcast before)
 
-subroutine mult_circ_gen(in, out,option,howmany,timingdir,notiming)
-  use myparams
-  use pmpimod
-  use pfileptrmod
-  use myprojectmod  
-  implicit none
-  integer,intent(in) :: option,howmany,notiming
-  DATATYPE,intent(in) :: in(totpoints,howmany)
-  DATATYPE,intent(out) :: out(totpoints,howmany)
-  character,intent(in) :: timingdir*(*)
-  integer :: nnn,mmm
-  nnn=1
-  mmm=howmany
-  call mult_circ_gen0(nnn,in,out,option,mmm,timingdir,notiming)
-end subroutine mult_circ_gen
+!! option=1 ke    option=2 first derivative
 
-
-subroutine mult_circ_gen0(nnn,in, out,option,howmany,timingdir,notiming)
-  use myparams
-  use pmpimod
-  use pfileptrmod
-  use myprojectmod  
-  implicit none
-  integer,intent(in) :: nnn,option,howmany,notiming
-  DATATYPE,intent(in) :: in(nnn*numpoints,howmany)
-  DATATYPE,intent(out) :: out(nnn*numpoints,howmany)
-  character,intent(in) :: timingdir*(*)
-  DATATYPE ::     work(nnn*numpoints,howmany),       work2(nnn*numpoints,howmany) !! AUTOMATIC
-  integer :: atime,btime,getlen,ibox,jbox,deltabox,ii,totsize,myiostat
-  integer, save :: xcount=0, times(10)=0
-  
-  totsize=nnn*numpoints*howmany
-
-  out(:,:)=0; work=0; work2=0
-
-  do deltabox=0,nbox-1
-     call myclock(atime)
-     
-     ibox=mod(nbox+myrank-1+deltabox,nbox)+1
-     jbox=mod(nbox+myrank-1-deltabox,nbox)+1
+  subroutine mult_allpar(option, in, out,howmany,timingdir,notiming)
+    use myparams
+    use pmpimod
+    use pfileptrmod
+    implicit none
+    integer,intent(in) :: option,howmany,notiming
+    DATATYPE,intent(in) :: in(totpoints,howmany)
+    DATATYPE, intent(out) :: out(totpoints,howmany)
+    character,intent(in) :: timingdir*(*)
     
-     work(:,:)=0d0
+    if (option.ne.1.and.option.ne.2) then
+       OFLWR "OWWOWORE WHAT?", option; CFLST
+    endif
 
-     select case(option)
-     case(1)  !! KE
-        do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,in(:,ii),nnn,&
-                ketot%tam(:,:,ibox,myrank),numpoints,DATAZERO, work(:,ii), nnn)
-!!                ketot%mat(1,ibox,1,myrank),gridpoints,DATAZERO, work(:,ii), nnn)
-        enddo
-     case(2) 
-        do ii=1,howmany
-           call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,in(:,ii),nnn,&
-                fdtot%tam(:,:,ibox,myrank),numpoints,DATAZERO, work(:,ii), nnn)
-!!                fdtot%mat(1,ibox,1,myrank),gridpoints,DATAZERO, work(:,ii), nnn)
-        enddo
-     case default 
-        OFLWR "WHAAAAT"; CFLST
-     end select
+    if (toepflag.ne.0) then
+       if (fft_circbatchdim.eq.0) then
+          call mult_allone_toep(in,out,option,howmany,1)
+       else
+          call mult_allone_toep(in,out,option,howmany,howmany)
+       endif
+    elseif (.not.orbparflag) then
+       call mult_allone(in,out,option,howmany)
+    else
+       select case(zke_paropt)
+       case(0)
+          call mult_circ_gen(in,out,option,howmany,timingdir,notiming)
+       case(1)
+          call mult_summa_gen(in,out,option,howmany,timingdir,notiming)
+       case default
+          OFLWR "Error, zke_paropt not recognized",zke_paropt; CFLST
+       end select
+    endif
 
-! (Implied barrier at end parallel)
-     call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
-     
-     if (deltabox.ne.0) then
+  end subroutine mult_allpar
 
-        work2(:,:)=0d0
+  subroutine mult_circ_gen(in, out,option,howmany,timingdir,notiming)
+    use myparams
+    use pmpimod
+    use pfileptrmod
+    use myprojectmod  
+    implicit none
+    integer,intent(in) :: option,howmany,notiming
+    DATATYPE,intent(in) :: in(totpoints,howmany)
+    DATATYPE,intent(out) :: out(totpoints,howmany)
+    character,intent(in) :: timingdir*(*)
+    integer :: nnn,mmm
+    nnn=1
+    mmm=howmany
+    call mult_circ_gen0(nnn,in,out,option,mmm,timingdir,notiming)
+  end subroutine mult_circ_gen
 
-        call mympisendrecv(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize)
-
-        call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
-        out(:,:)=out(:,:)+work2(:,:)
-     else
-        out(:,:)=out(:,:)+work(:,:)
-     endif
-     call myclock(btime); times(3)=times(3)+btime-atime
-  enddo
+  subroutine mult_circ_gen0(nnn,in, out,option,howmany,timingdir,notiming)
+    use myparams
+    use pmpimod
+    use pfileptrmod
+    use myprojectmod  
+    implicit none
+    integer,intent(in) :: nnn,option,howmany,notiming
+    DATATYPE,intent(in) :: in(nnn*numpoints,howmany)
+    DATATYPE,intent(out) :: out(nnn*numpoints,howmany)
+    character,intent(in) :: timingdir*(*)
+    DATATYPE ::     work(nnn*numpoints,howmany),       work2(nnn*numpoints,howmany) !! AUTOMATIC
+    integer :: atime,btime,getlen,ibox,jbox,deltabox,ii,totsize,myiostat
+    integer, save :: xcount=0, times(10)=0
   
-  if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
-     xcount=xcount+1
-     if (xcount==1) then
-        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
-             status="unknown",iostat=myiostat)
-        call checkiostat(myiostat,"opening kemult timing sincdvr")
-        write(2853,'(100A11)',iostat=myiostat)   "mult", "sendrecv","add"
-        call checkiostat(myiostat,"writing kemult timing sincdvr")
-        close(2853) 
-     endif
-     if (mod(xcount,20).eq.0) then
-        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
-             status="unknown", position="append",iostat=myiostat)
-        call checkiostat(myiostat,"opening kemult timing sincdvr")
-        write(2853,'(100I11)',iostat=myiostat)  times(1:3)
-        call checkiostat(myiostat,"writing kemult timing sincdvr")
-        close(2853)
-     endif
-  endif
+    totsize=nnn*numpoints*howmany
 
-end subroutine mult_circ_gen0
+    out(:,:)=0; work=0; work2=0
 
+    do deltabox=0,nbox-1
+       call myclock(atime)
+     
+       ibox=mod(nbox+myrank-1+deltabox,nbox)+1
+       jbox=mod(nbox+myrank-1-deltabox,nbox)+1
+    
+       work(:,:)=0d0
 
+       select case(option)
+       case(1)  !! KE
+          do ii=1,howmany
+             call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,in(:,ii),nnn,&
+                  ketot%tam(:,:,ibox,myrank),numpoints,DATAZERO, work(:,ii), nnn)
+!!                ketot%mat(1,ibox,1,myrank),gridpoints,DATAZERO, work(:,ii), nnn)
+          enddo
+       case(2) 
+          do ii=1,howmany
+             call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,in(:,ii),nnn,&
+                  fdtot%tam(:,:,ibox,myrank),numpoints,DATAZERO, work(:,ii), nnn)
+!!                fdtot%mat(1,ibox,1,myrank),gridpoints,DATAZERO, work(:,ii), nnn)
+          enddo
+       case default 
+          OFLWR "WHAAAAT"; CFLST
+       end select
 
-subroutine mult_summa_gen(in, out,option,howmany,timingdir,notiming)
-  use myparams
-  use pmpimod
-  use pfileptrmod
-  use myprojectmod  
-  implicit none
-  integer,intent(in) :: option,howmany,notiming
-  DATATYPE,intent(in) :: in(totpoints,howmany)
-  DATATYPE,intent(out) :: out(totpoints,howmany)
-  character,intent(in) :: timingdir*(*)
-  integer :: nnn,mmm
-  nnn=1
-  mmm=howmany
-  call mult_summa_gen0(nnn,in,out,option,mmm,timingdir,notiming)
-end subroutine mult_summa_gen
+       call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+     
+       if (deltabox.ne.0) then
 
+          work2(:,:)=0d0
+          call mympisendrecv(work(:,:),work2(:,:),ibox,jbox,deltabox,totsize)
 
-subroutine mult_summa_gen0(nnn,in, out,option,howmany,timingdir,notiming)
-  use myparams
-  use pmpimod
-  use pfileptrmod
-  use myprojectmod  
-  implicit none
-  integer,intent(in) :: nnn,option,howmany
-  DATATYPE,intent(in) :: in(nnn*numpoints,howmany)
-  DATATYPE,intent(out) :: out(nnn*numpoints,howmany)
-  DATATYPE ::     work(nnn*numpoints,howmany) !! AUTOMATIC
-  character,intent(in) :: timingdir*(*)
-  integer :: atime,btime,notiming,getlen,ibox,ii,totsize,myiostat
-  integer, save :: xcount=0, times(10)=0
+          call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
+          out(:,:)=out(:,:)+work2(:,:)
+       else
+          out(:,:)=out(:,:)+work(:,:)
+       endif
+       call myclock(btime); times(3)=times(3)+btime-atime
+    enddo
+  
+    if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
+       xcount=xcount+1
+       if (xcount==1) then
+          open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
+               status="unknown",iostat=myiostat)
+          call checkiostat(myiostat,"opening kemult timing sincdvr")
+          write(2853,'(100A11)',iostat=myiostat)   "mult", "sendrecv","add"
+          call checkiostat(myiostat,"writing kemult timing sincdvr")
+          close(2853) 
+       endif
+       if (mod(xcount,20).eq.0) then
+          open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
+               status="unknown", position="append",iostat=myiostat)
+          call checkiostat(myiostat,"opening kemult timing sincdvr")
+          write(2853,'(100I11)',iostat=myiostat)  times(1:3)
+          call checkiostat(myiostat,"writing kemult timing sincdvr")
+          close(2853)
+       endif
+    endif
 
-  totsize=numpoints*nnn*howmany
+  end subroutine mult_circ_gen0
 
-  call myclock(atime)
+  subroutine mult_summa_gen(in, out,option,howmany,timingdir,notiming)
+    use myparams
+    use pmpimod
+    use pfileptrmod
+    use myprojectmod  
+    implicit none
+    integer,intent(in) :: option,howmany,notiming
+    DATATYPE,intent(in) :: in(totpoints,howmany)
+    DATATYPE,intent(out) :: out(totpoints,howmany)
+    character,intent(in) :: timingdir*(*)
+    integer :: nnn,mmm
+    nnn=1
+    mmm=howmany
+    call mult_summa_gen0(nnn,in,out,option,mmm,timingdir,notiming)
+  end subroutine mult_summa_gen
 
-  out(:,:)=0d0;   work=0
+  subroutine mult_summa_gen0(nnn,in, out,option,howmany,timingdir,notiming)
+    use myparams
+    use pmpimod
+    use pfileptrmod
+    use myprojectmod  
+    implicit none
+    integer,intent(in) :: nnn,option,howmany
+    DATATYPE,intent(in) :: in(nnn*numpoints,howmany)
+    DATATYPE,intent(out) :: out(nnn*numpoints,howmany)
+    DATATYPE ::     work(nnn*numpoints,howmany) !! AUTOMATIC
+    character,intent(in) :: timingdir*(*)
+    integer :: atime,btime,notiming,getlen,ibox,ii,totsize,myiostat
+    integer, save :: xcount=0, times(10)=0
 
-  call myclock(btime); times(1)=times(1)+btime-atime
+    totsize=numpoints*nnn*howmany
 
-  do ibox=1,nbox
-     call myclock(atime)
+    call myclock(atime)
 
-     work(:,:)=0d0
-     if (myrank.eq.ibox) then
-        work(:,:)=in(:,:)
-     endif
-     call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+    out(:,:)=0d0;   work=0
 
-     call mympibcast(work(:,:),ibox,totsize)
+    call myclock(btime); times(1)=times(1)+btime-atime
 
-     call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
+    do ibox=1,nbox
+       call myclock(atime)
 
-     select case(option)
-     case(1)  !! KE
-        do ii=1,howmany
-           call MYGEMM('N','N',nnn,numpoints,numpoints,DATAONE,work(:,ii),nnn,&
-                ketot%tam(:,:,ibox,myrank),numpoints,DATAONE, out(:,ii), nnn)
+       work(:,:)=0d0
+       if (myrank.eq.ibox) then
+          work(:,:)=in(:,:)
+       endif
+       call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+
+       call mympibcast(work(:,:),ibox,totsize)
+
+       call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
+
+       select case(option)
+       case(1)  !! KE
+          do ii=1,howmany
+             call MYGEMM('N','N',nnn,numpoints,numpoints,DATAONE,work(:,ii),nnn,&
+                  ketot%tam(:,:,ibox,myrank),numpoints,DATAONE, out(:,ii), nnn)
 !!                ketot%mat(1,ibox,1,myrank),gridpoints,DATAONE, out(:,ii), nnn)
-        enddo
-     case(2) 
-        do ii=1,howmany
-           call MYGEMM('N','N',nnn,numpoints,numpoints,DATAONE,work(:,ii),nnn,&
-                fdtot%tam(:,:,ibox,myrank),numpoints,DATAONE, out(:,ii), nnn)
+          enddo
+       case(2) 
+          do ii=1,howmany
+             call MYGEMM('N','N',nnn,numpoints,numpoints,DATAONE,work(:,ii),nnn,&
+                  fdtot%tam(:,:,ibox,myrank),numpoints,DATAONE, out(:,ii), nnn)
 !!                fdtot%mat(1,ibox,1,myrank),gridpoints,DATAONE, out(:,ii), nnn)
-        enddo
-     case default 
-        OFLWR "WHAAAAT"; CFLST
-     end select
+          enddo
+       case default 
+          OFLWR "WHAAAAT"; CFLST
+       end select
 
-! (Implied barrier at end parallel)
-     call myclock(btime); times(3)=times(3)+btime-atime
-  enddo
+       call myclock(btime); times(3)=times(3)+btime-atime
+    enddo
 
-  if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
-     xcount=xcount+1
-     if (xcount==1) then
-        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
-             status="unknown",iostat=myiostat)
-        call checkiostat(myiostat,"opening kemult timing sincdvr")
-        write(2853,'(100A11)',iostat=myiostat)   "copy", "bcast","mult"
-        call checkiostat(myiostat,"writing kemult timing sincdvr")
-        close(2853) 
-     endif
-     if (mod(xcount,20).eq.0) then
-        open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
-             status="unknown", position="append",iostat=myiostat)
-        call checkiostat(myiostat,"opening kemult timing sincdvr")
-        write(2853,'(100I11)',iostat=myiostat)  times(1:3)
-        call checkiostat(myiostat,"writing kemult timing sincdvr")
-        close(2853)
-     endif
-  endif
+    if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
+       xcount=xcount+1
+       if (xcount==1) then
+          open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
+               status="unknown",iostat=myiostat)
+          call checkiostat(myiostat,"opening kemult timing sincdvr")
+          write(2853,'(100A11)',iostat=myiostat)   "copy", "bcast","mult"
+          call checkiostat(myiostat,"writing kemult timing sincdvr")
+          close(2853) 
+       endif
+       if (mod(xcount,20).eq.0) then
+          open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
+               status="unknown", position="append",iostat=myiostat)
+          call checkiostat(myiostat,"opening kemult timing sincdvr")
+          write(2853,'(100I11)',iostat=myiostat)  times(1:3)
+          call checkiostat(myiostat,"writing kemult timing sincdvr")
+          close(2853)
+       endif
+    endif
 
-end subroutine mult_summa_gen0
+  end subroutine mult_summa_gen0
+
+  subroutine mult_allone(in, out,option,howmany)
+    use myparams
+    use pfileptrmod
+    implicit none
+    integer,intent(in) :: option,howmany
+    DATATYPE,intent(in) :: in(totpoints,howmany)
+    DATATYPE, intent(out) :: out(totpoints,howmany)
+    integer :: mmm,nnn
+
+    nnn=1; mmm=1
+    call mult_all0(in,out,nnn,mmm*howmany,option)
+
+  end subroutine mult_allone
+
+  subroutine mult_all0(in, out,nnn,mmm,option)
+    use myparams
+    use pfileptrmod
+    use myprojectmod  
+    implicit none
+    integer,intent(in) :: nnn,mmm,option
+    DATATYPE,intent(in) :: in(nnn,numpoints,mmm)
+    DATATYPE,intent(out) :: out(nnn,numpoints,mmm)
+    integer :: jj
+
+    out(:,:,:)=0d0
+
+    select case(option)
+    case(1)  !! KE
+       do jj=1,mmm
+          call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,in(:,:,jj),nnn,&
+               ketot%mat,gridpoints,DATAZERO, out(:,:,jj), nnn)
+       enddo
+    case(2)  !! X Y or Z derivative (real valued antisymmetric)
+       do jj=1,mmm
+          call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,in(:,:,jj),nnn,&
+               fdtot%mat,gridpoints,DATAZERO, out(:,:,jj), nnn)
+       enddo
+    case default 
+       OFLWR "WHAAAAT",option; CFLST
+    end select
+
+  end subroutine mult_all0
+
+end subroutine mult_general
 
 
-
-subroutine mult_allone(in, out,option,howmany)
+subroutine mult_ke(in,out,howmany,timingdir,notiming)
   use myparams
-  use pfileptrmod
+  use myprojectmod
   implicit none
-  integer,intent(in) :: option,howmany
+  integer,intent(in) :: howmany,notiming
+  character,intent(in) :: timingdir*(*)
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE, intent(out) :: out(totpoints,howmany)
-  integer :: mmm,nnn
 
-  nnn=1; mmm=1
-  call mult_all0(in,out,nnn,mmm*howmany,option)
+  call mult_general(1,DATAONE,in,out,howmany,timingdir,notiming)
 
-end subroutine mult_allone
+end subroutine mult_ke
 
 
-subroutine mult_all0(in, out,nnn,mmm,option)
+subroutine velmultiply(howmany,spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   use myparams
-  use pfileptrmod
-  use myprojectmod  
   implicit none
-  integer,intent(in) :: nnn,mmm,option
-  DATATYPE,intent(in) :: in(nnn,numpoints,mmm)
-  DATATYPE,intent(out) :: out(nnn,numpoints,mmm)
-  integer :: jj
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: spfin(totpoints,howmany),myxtdpot0,myytdpot0,myztdpot
+  DATATYPE,intent(out) :: spfout(totpoints,howmany)
+  DATATYPE :: cz
 
-  out(:,:,:)=0d0
+  cz=(0d0,-1d0) * myztdpot + 0d0 * myxtdpot0 + 0d0 * myytdpot0
 
-  select case(option)
-  case(1)  !! KE
-     do jj=1,mmm
-        call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,in(:,:,jj),nnn,&
-             ketot%mat,gridpoints,DATAZERO, out(:,:,jj), nnn)
-     enddo
-  case(2)  !! X Y or Z derivative (real valued antisymmetric)
-     do jj=1,mmm
-        call MYGEMM('N','T',nnn,numpoints,numpoints,DATAONE,in(:,:,jj),nnn,&
-             fdtot%mat,gridpoints,DATAZERO, out(:,:,jj), nnn)
-     enddo
-  case default 
-     OFLWR "WHAAAAT",option; CFLST
-  end select
+  call mult_general(2,cz,spfin,spfout,howmany,"booga",2)
 
-end subroutine mult_all0
-
+end subroutine velmultiply
 
 
 subroutine hatom_op(howmany,inspfs, outspfs)
