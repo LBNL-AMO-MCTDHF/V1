@@ -130,7 +130,9 @@ subroutine get_smallwalkvects(www,avector, smallwalkvects,nblock,howmany)
      smallwalkvects(:,:,:,:,:)=0d0
   endif
   do i=1,www%ddd%numdfwalks
+
      ii=www%ddd%includedorb(i);     ix=www%ddd%excludedorb(i)
+
      smallwalkvects(:,www%ddd%dfwalkto(i),:,ii,ix) = &
           smallwalkvects(:,www%ddd%dfwalkto(i),:,ii,ix) + &
           bigavector(:,www%ddd%dfwalkfrom(i),:) * www%ddd%dfwalkphase(i)
@@ -468,7 +470,6 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
               enddo
            enddo
         endif
-
         call system_clock(jtime);    times(10)=times(10)+jtime-itime;   itime=jtime
         if (parorbsplit.eq.1.and.sparseconfigflag.eq.0) then
            call mpiorbgather(rhs,www%nspf)
@@ -476,6 +477,11 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
         if (sparseconfigflag.ne.0) then
            call mympireduce(rhs,www%nspf**2)
         endif
+
+        if (www%holeflag.ne.0) then
+           rhs(:,:) = (-1) * rhs(:,:)
+        endif
+
         call system_clock(jtime);    times(11)=times(11)+jtime-itime;   itime=jtime
 
         call assigncomplexvec(realrhs(:,:,:),rhs(:,:), www%nspf**2)
@@ -800,6 +806,10 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
      call mpiorbreduce(lioden,liosize**2)
   endif
 
+  if (www%holeflag.ne.0) then
+     lioden(:,:)=(-1)*lioden(:,:)
+  endif
+
   maxii=1
   if (tdflag.ne.0) then
      maxii=4
@@ -877,6 +887,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
            do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
 
               dirphase=www%singlewalkdirphase(iwalk,config1)
+
               ispf=www%singlewalkopspf(1,iwalk,config1)
               jspf=www%singlewalkopspf(2,iwalk,config1)
               
@@ -1169,6 +1180,10 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
      call mpiorbreduce(lioden,isize**2)
   endif
 
+  if (www%holeflag.ne.0) then
+     lioden(:,:)=(-1)*lioden(:,:)
+  endif
+
   maxii=1
   if (tdflag.ne.0) then
      maxii=4
@@ -1258,7 +1273,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
               dirphase=www%singlewalkdirphase(iwalk,config1)
               ispf=www%singlewalkopspf(1,iwalk,config1)
               jspf=www%singlewalkopspf(2,iwalk,config1)
-              
+
               flag=0
               if (shells(ispf).ne.shells(jspf)) then
 !! FIRSTWAY
