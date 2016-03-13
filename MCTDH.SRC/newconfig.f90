@@ -152,7 +152,7 @@ function allowedconfig0(www,thisconfig,in_df)
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: thisconfig(www%num2part), in_df
-  integer :: i, isum, j, tempcount, tempcount2, ishell, ii, k
+  integer :: i, isum, j, numwithinshell(numshells), numinshell(numshells), ishell, ii, k
   logical :: allowedconfig0, tempflag
 
   do j=1,www%numpart
@@ -196,10 +196,8 @@ function allowedconfig0(www,thisconfig,in_df)
   end if
 
   
-  tempcount=0
+  numwithinshell(:)=0;      numinshell(:)=0
   do ishell=1,numshells
-
-     tempcount2=0
      do i=allshelltop(ishell-1)+1,allshelltop(ishell)  !! spatial orbital
         do ii=1,2 ! spin 
 
@@ -211,23 +209,33 @@ function allowedconfig0(www,thisconfig,in_df)
                  exit
               endif
            enddo
-           if (.not.tempflag) then
-!counts how many spin orbitals as of shell ishell are not included in the configuration
-              tempcount=tempcount+1   
-           else
+           if (tempflag) then
 !counts how many spin orbitals of shell ishell are included in the configuration
-              tempcount2=tempcount2+1   
+              numinshell(ishell)=numinshell(ishell)+1   
+!cumulative
+              numwithinshell(ishell:numshells)=numwithinshell(ishell:numshells)+1
            endif
         enddo
      enddo
-     if (tempcount2.gt.maxocc(ishell)-in_df) then
-        allowedconfig0=.false.;        return
+  enddo
+
+  if (www%holeflag.ne.0) then
+     numwithinshell(:)=2*allshelltop(1:numshells)-numwithinshell(:)
+     numinshell(:)=2*(allshelltop(1:numshells)-allshelltop(0:numshells-1))-numinshell(:)
+  endif
+  
+do ishell=1,numshells
+     if (numwithinshell(ishell).lt.2*allshelltop(ishell)-numexcite(ishell)+in_df) then
+        allowedconfig0=.false.
+        return
      endif
-     if (tempcount2.lt.minocc(ishell)+in_df) then
-        allowedconfig0=.false.;        return
+     if (numinshell(ishell).gt.maxocc(ishell)-in_df) then
+        allowedconfig0=.false.
+        return
      endif
-     if (ishell.lt.numshells.and.tempcount.gt.numexcite(ishell)-in_df) then
-        allowedconfig0=.false.;        return
+     if (numinshell(ishell).lt.minocc(ishell)+in_df) then
+        allowedconfig0=.false.
+        return
      endif
   enddo
   allowedconfig0=.true.
