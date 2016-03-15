@@ -308,6 +308,8 @@ end module fft3dsubmod
 #ifdef MPIFLAG
 
 module fftparsubmod
+  use mpisubmod   !! IN PARENT DIRECTORY
+
 contains
 
 !! times(1) = transpose   times(2) = mpi  times(3) = copy

@@ -257,6 +257,7 @@ contains
 
   subroutine myzfft1d_slowindex_ct2_mpi(in,out,size,howmany,INCOMM,inprocs)
     use fft1dsubmod
+    use mpisubmod
     implicit none
     integer,intent(in) :: size,howmany,INCOMM,inprocs
     complex*16,intent(in) :: in(size,howmany)
@@ -272,13 +273,13 @@ contains
     work(1:size,:)=in(:,:)
 
     do ii=1,howmany
-       call mympialltoall_local(work(:,ii),work2(:,ii),little,INCOMM)
+       call mympialltoall_complex_local(work(:,ii),work2(:,ii),little,INCOMM)
     enddo
 
     call myzfft1d_slowindex(work2,work,little,inprocs,howmany)
 
     do ii=1,howmany
-       call mympialltoall_local(work(:,ii),work2(:,ii),little,INCOMM)
+       call mympialltoall_complex_local(work(:,ii),work2(:,ii),little,INCOMM)
     enddo
 
     out(:,:)=work2(1:size,:)

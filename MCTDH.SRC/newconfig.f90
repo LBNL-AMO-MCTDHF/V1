@@ -336,6 +336,7 @@ subroutine fast_newconfiglist(www,domflags)
   use walkmod
   use mpimod
   use ham_parameters  !! tdflag and offaxispulseflag for configtypes
+  use mpisubmod
   implicit none
   type(walktype) :: www
   logical,intent(in) :: domflags
@@ -1074,6 +1075,7 @@ subroutine set_newconfiglist(wwin,wwout,domflags)
   use mpimod
   use basis_parameters
   use ham_parameters  !! tdflag and offaxispulseflag for configtypes
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: wwin
   logical,intent(in) :: domflags

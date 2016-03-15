@@ -162,6 +162,7 @@ subroutine spinsets_first(www)
   use aarrmod
   use mpimod
   use basissubmod
+  use mpisubmod
   implicit none
   type(walktype),intent(inout) :: www
   integer ::  iwalk, jj,  iset, ilevel, currentnumwalks, prevnumwalks, flag, iflag, &
@@ -306,6 +307,7 @@ subroutine getnumspinwalks(www)
   use walkmod
   use spinwalkinternal
   use configsubmod
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: www
   integer ::   ispf,  config1, flag, idof, jdof,iwalk , thisconfig(www%num2part), &
@@ -438,6 +440,7 @@ subroutine configspinset_projector(www)
   use spinwalkinternal
   use mpimod
   use configsubmod
+  use mpisubmod
   implicit none
   type(walktype),intent(inout) :: www
   integer :: info, lwork,j,i,ii,iset,jj, elim, elimsets, flag, iwalk,&

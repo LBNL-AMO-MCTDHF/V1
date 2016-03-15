@@ -9,6 +9,8 @@
 !!!!!!      BYPROC SUBROUTINES   !!!!!!!
 
 module arbitrarymultmod
+  use mpisubmod
+
 contains
 
   subroutine arbitrary_sparsemult_singles_byproc(firstproc,lastproc,www,mattrans, &

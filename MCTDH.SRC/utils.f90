@@ -228,6 +228,7 @@ subroutine gramschmidt(n, m, lda, previous, vector,parflag)
 contains
 
   function heredot(bra,ket,size)
+    use mpisubmod
     implicit none
     integer,intent(in) :: size
     DATATYPE,intent(in) :: ket(size),bra(size)
@@ -275,6 +276,7 @@ subroutine nullgramschmidt(m,parflag)
 contains
 
   function mynulldot()
+    use mpisubmod
     implicit none
     DATATYPE :: mynulldot,csum
     if (parflag) then

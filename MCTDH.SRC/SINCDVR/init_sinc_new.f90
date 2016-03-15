@@ -171,6 +171,7 @@ end module ivopotmod
 subroutine ivo_project(inbigspf,outbigspf)
   use myparams
   use ivopotmod
+  use mpisubmod   !! IN PARENT DIRECTORY
   implicit none
   DATATYPE,intent(in) :: inbigspf(totpoints)
   DATATYPE, intent(out) :: outbigspf(totpoints)

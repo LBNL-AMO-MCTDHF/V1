@@ -31,6 +31,8 @@ end module
 
 
 module jacopmod
+  use mpisubmod
+
 contains
 
   subroutine jacoperate00(lowspf,highspf,dentimeflag,conflag,inspfs,outspfs)
@@ -446,6 +448,7 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
   use orbdermod
   use mpi_orbsetmod
   use orbgathersubmod
+  use mpisubmod
   implicit none
   real*8,intent(in) :: time1,time2
   DATATYPE,intent(inout) :: in_inspfs(spfsize,nspf)
@@ -818,6 +821,8 @@ end subroutine
 !! NOTE BOUNDS !!  PADDED
 
 module parconfigexpomod
+  use mpisubmod
+
 contains
 
   subroutine parconfigexpomult_padded0_gather(wwin,inconfigpointer,&
@@ -1077,6 +1082,7 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
   use parconfigexpomod
   use sparse_parameters   !! nzflag
   use basissubmod
+  use mpisubmod
   implicit none
   integer,intent(in) :: imc
   integer,intent(out) :: numiters

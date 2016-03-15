@@ -45,6 +45,7 @@ subroutine dferror(www,cptr,sptr,avector,numvects,outerror,time)
   use fileptrmod
   use dotmod
   use sparsemultmod
+  use mpisubmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -100,6 +101,7 @@ end subroutine dferror
 subroutine get_smallwalkvects(www,avector, smallwalkvects,nblock,howmany)
   use fileptrmod
   use walkmod
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: nblock,howmany
@@ -150,6 +152,7 @@ subroutine get_rhomat(www,avector, rhomat,nblock,howmany)
   use spfsize_parameters !! parorbsplit
   use orbgathersubmod
   use walkmod
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: nblock,howmany
@@ -229,6 +232,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
   use basissubmod
   use invsubmod
   use orbgathersubmod
+  use mpisubmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -690,6 +694,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
   use sparsemultmod
   use invsubmod
   use orbgathersubmod
+  use mpisubmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -1059,6 +1064,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   use basissubmod
   use invsubmod
   use orbgathersubmod
+  use mpisubmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www

@@ -31,6 +31,7 @@ subroutine ovl_initial()
   use parameters
   use mpimod
   use readavectormod
+  use mpisubmod
   implicit none
   integer :: jnumovl, ifile,acomplex,spfcomplex,nstate,i,kk,tdims(3),&
        tnum2part,tnumconfig,tnumr,tnspf,myiostat
@@ -266,6 +267,7 @@ subroutine wfnovl()
   use mpimod
   use biorthotypemod
   use autocorrelate_one_mod
+  use mpisubmod
   implicit none
   type(biorthotype),target :: wfnbiovar(mcscfnum)  
   integer :: k,molength,alength,nt,ketbat,imc,ispf,myiostat

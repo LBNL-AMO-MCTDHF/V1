@@ -4,6 +4,8 @@
 
 
 module orbprojectmod
+  use mpisubmod
+
 contains
 
   subroutine project00(lowspf,highspf,inspfs, outspfs, prospfs)
@@ -87,6 +89,7 @@ end module orbprojectmod
 subroutine project_onfrozen(inspf, outspf)
   use parameters
   use opmod !! frozenspfs
+  use mpisubmod
   implicit none
   DATATYPE,intent(in) :: inspf(spfsize)
   DATATYPE,intent(out) :: outspf(spfsize)

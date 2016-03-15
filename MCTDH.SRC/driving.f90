@@ -46,6 +46,7 @@ subroutine drivingtrans(thistime)
   use arbitrarymultmod
   use mpi_orbsetmod
   use densubmod
+  use mpisubmod
   implicit none
   DATATYPE :: dipmatxx(nspf,nspf),dipmatyy(nspf,nspf),dipmatzz(nspf,nspf),&
        scalarpotyy(nspf,nspf),scalarpotzz(nspf,nspf),tempinvden(nspf,nspf),&

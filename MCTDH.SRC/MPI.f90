@@ -1,5 +1,5 @@
 
-!! PARALLEL SUBROUTINES.
+!! PARALLEL SUBROUTINES.  NO DEPENDENCIES ON MAIN_MODULES !!  ONLY PARAMETERS.F90
 
 #include "Definitions.INC"
 
@@ -158,6 +158,77 @@ subroutine mpiorbsets()
   mpi_orbset_init=1
 
 end subroutine mpiorbsets
+
+
+
+function iilen(which)
+  use mpimod
+  implicit none
+  integer :: iilen, which
+  iilen=0
+  if (which < 10) then
+     iilen=1
+  else if (which < 100) then
+     iilen=2
+  else if (which < 1000) then
+     iilen=3
+  else if (which < 10000) then
+     iilen=4
+  else 
+     write(*,*) "Whoa! reformat"
+     call mpistop()
+  endif
+end function iilen
+
+
+subroutine openfile()
+  use mpimod
+  use fileptrmod  
+  implicit none
+  integer :: myiostat
+  if (stdoutflag==0.and.mpifileptr.ne.nullfileptr) then
+     open(mpifileptr,file=mpioutfile,status="old", position="append",iostat=myiostat)
+     if (myiostat.ne.0) then
+        print *, "IOSTAT OPENFILE",myiostat,myrank,mpifileptr,nullfileptr; stop
+     endif
+  endif
+end subroutine openfile
+
+
+subroutine closefile()
+  use mpimod
+  use fileptrmod
+  implicit none
+  if (stdoutflag==0.and.mpifileptr.ne.nullfileptr)  then
+     close(mpifileptr)
+  endif
+end subroutine closefile
+
+
+subroutine beforebarrier()
+  use mpimod
+  use parameters
+  implicit none
+  integer :: ii,qrank,qprocs
+  qprocs=(nprocs-1)/turnbatchsize+1
+  qrank=(myrank-1)/turnbatchsize+1
+  do ii=1,qrank
+     call mpibarrier()
+  enddo
+end subroutine beforebarrier
+
+
+subroutine afterbarrier()
+  use mpimod
+  use parameters
+  implicit none
+  integer :: ii,qrank,qprocs
+  qprocs=(nprocs-1)/turnbatchsize+1
+  qrank=(myrank-1)/turnbatchsize+1
+  do ii=qrank,qprocs
+     call mpibarrier()
+  enddo
+end subroutine afterbarrier
 
 
 #ifdef MPIFLAG
@@ -338,7 +409,6 @@ subroutine mpistart()
 end subroutine mpistart
 
 
-
 subroutine mpibarrier()
   use mpimod
   use fileptrmod
@@ -381,6 +451,9 @@ subroutine mpiabort()
   stop
 end subroutine mpiabort
 
+
+module mpisubmod
+contains
 
 subroutine mympireduce_local(input, isize, IN_COMM)
   use mpimod
@@ -903,7 +976,7 @@ subroutine mympimax_local(input,IN_COMM)
   call mpi_bcast(output,1,MPI_DOUBLE_PRECISION,0,IN_COMM,ierr)
   input=output
   if (ierr/=0) then
-     OFLWR "ERR MPIIMAX!"; CFLST
+     OFLWR "ERR MPIMAX!"; CFLST
   endif
   call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympimax_local
@@ -1140,8 +1213,77 @@ SUBROUTINE MYSCATTERV_real(X1,V1,BLOCKS)
 
 END SUBROUTINE MYSCATTERV_real
 
+!! MODULE mpisubmod continues
 
 #else
+
+module orbgathersubmod
+contains
+
+subroutine mpiorbgather(orbvector,insize)
+  implicit none
+  integer :: insize
+  DATATYPE :: orbvector(insize)
+  return
+  orbvector(1)=orbvector(1)
+end subroutine mpiorbgather
+
+
+subroutine mpiorbgather_nz(orbvector,insize)
+  implicit none
+  integer :: insize
+  DATATYPE :: orbvector(insize)
+  return
+  orbvector(1)=orbvector(1)
+end subroutine mpiorbgather_nz
+
+
+subroutine mpiorbreduce(orbvector,insize)
+  implicit none
+  integer :: insize
+  DATATYPE :: orbvector(insize)
+  return
+  orbvector(1)=orbvector(1)
+end subroutine mpiorbreduce
+
+end module orbgathersubmod
+
+
+
+subroutine mpistart
+  use mpimod
+  use fileptrmod
+  implicit none
+  myrank=1
+  nprocs=1
+  stdoutflag=1
+  mpifileptr=6
+
+end subroutine mpistart
+
+
+subroutine mpibarrier()
+end subroutine mpibarrier
+
+
+subroutine mpistop()
+  use fileptrmod
+  implicit none
+  call waitawhile()
+  OFLWR "MCTDHF STOP!";CFL
+  stop
+end subroutine mpistop
+
+subroutine mpiabort()
+  use fileptrmod
+  implicit none
+  OFLWR "MCTDHF ABORT!";CFL
+  stop
+end subroutine mpiabort
+
+
+module mpisubmod
+contains
 
 subroutine mympiimax(input)
   implicit none
@@ -1399,38 +1541,6 @@ subroutine mympiireduceone_local(input,incomm)
   input=input; incomm=incomm
 end subroutine mympiireduceone_local
 
-
-module orbgathersubmod
-contains
-
-subroutine mpiorbgather(orbvector,insize)
-  implicit none
-  integer :: insize
-  DATATYPE :: orbvector(insize)
-  return
-  orbvector(1)=orbvector(1)
-end subroutine mpiorbgather
-
-
-subroutine mpiorbgather_nz(orbvector,insize)
-  implicit none
-  integer :: insize
-  DATATYPE :: orbvector(insize)
-  return
-  orbvector(1)=orbvector(1)
-end subroutine mpiorbgather_nz
-
-
-subroutine mpiorbreduce(orbvector,insize)
-  implicit none
-  integer :: insize
-  DATATYPE :: orbvector(insize)
-  return
-  orbvector(1)=orbvector(1)
-end subroutine mpiorbreduce
-
-end module orbgathersubmod
-
 subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
   use mpimod
   use fileptrmod
@@ -1460,90 +1570,9 @@ subroutine mympisendrecv_local(sendbuf, recvbuf, dest, source, tag, isize,INCOMM
   tag=tag ; tag=incomm
 end subroutine mympisendrecv_local
 
-
-
-subroutine mpistart
-  use mpimod
-  use fileptrmod
-  implicit none
-  myrank=1
-  nprocs=1
-  stdoutflag=1
-  mpifileptr=6
-
-end subroutine mpistart
-
-
-subroutine mpiinit
-end subroutine mpiinit
-
-
-subroutine mpibarrier()
-end subroutine mpibarrier
-
-
-subroutine mpistop()
-  use fileptrmod
-  implicit none
-  call waitawhile()
-  OFLWR "MCTDHF STOP!";CFL
-  stop
-end subroutine mpistop
-
-subroutine mpiabort()
-  use fileptrmod
-  implicit none
-  OFLWR "MCTDHF ABORT!";CFL
-  stop
-end subroutine mpiabort
-
-
 #endif
 
-
-function iilen(which)
-  use mpimod
-  implicit none
-  integer :: iilen, which
-  iilen=0
-  if (which < 10) then
-     iilen=1
-  else if (which < 100) then
-     iilen=2
-  else if (which < 1000) then
-     iilen=3
-  else if (which < 10000) then
-     iilen=4
-  else 
-     write(*,*) "Whoa! reformat"
-     call mpistop()
-  endif
-end function iilen
-
-
-subroutine openfile()
-  use mpimod
-  use fileptrmod  
-  implicit none
-  integer :: myiostat
-  if (stdoutflag==0.and.mpifileptr.ne.nullfileptr) then
-     open(mpifileptr,file=mpioutfile,status="old", position="append",iostat=myiostat)
-     if (myiostat.ne.0) then
-        print *, "IOSTAT OPENFILE",myiostat,myrank,mpifileptr,nullfileptr; stop
-     endif
-  endif
-end subroutine openfile
-
-
-subroutine closefile()
-  use mpimod
-  use fileptrmod
-  implicit none
-  if (stdoutflag==0.and.mpifileptr.ne.nullfileptr)  then
-     close(mpifileptr)
-  endif
-end subroutine closefile
-
+!! MODULE MPISUBMOD CONTINUES
 
 subroutine mpiallgather_local(inout,totsize,blocksizes,notusedint,&
      IN_COMM,numprocs,locrank)
@@ -1715,32 +1744,8 @@ subroutine mympialltoall_local(input, output, count,INCOMM)
 #endif
 end subroutine mympialltoall_local
 
+end module mpisubmod
 
 
-subroutine beforebarrier()
-  use mpimod
-  use parameters
-  implicit none
-  integer :: ii,qrank,qprocs
-  qprocs=(nprocs-1)/turnbatchsize+1
-  qrank=(myrank-1)/turnbatchsize+1
-  do ii=1,qrank
-     call mpibarrier()
-  enddo
-end subroutine beforebarrier
-
-
-
-subroutine afterbarrier()
-  use mpimod
-  use parameters
-  implicit none
-  integer :: ii,qrank,qprocs
-  qprocs=(nprocs-1)/turnbatchsize+1
-  qrank=(myrank-1)/turnbatchsize+1
-  do ii=qrank,qprocs
-     call mpibarrier()
-  enddo
-end subroutine afterbarrier
 
 

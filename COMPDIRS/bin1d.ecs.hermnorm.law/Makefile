@@ -1,1 +1,1 @@
-../MCTDH.SRC/Makefile.1d
+../MCTDH.SRC/Makefile

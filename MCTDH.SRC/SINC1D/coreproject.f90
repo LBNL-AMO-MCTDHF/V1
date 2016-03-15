@@ -263,6 +263,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   use pmpimod
   use pfileptrmod
   use mycdotmod
+  use mpisubmod    !! IN PARENT DIRECTORY
   implicit none
   integer, intent(in) :: numfrozen
   DATATYPE, intent(in) :: infrozens(totpoints,numfrozen)
@@ -427,6 +428,7 @@ end subroutine op_conjg
 subroutine op_reflectz(in,out)
   use myparams
   use pmpimod
+  use mpisubmod    !! IN PARENT DIRECTORY
   implicit none
   DATATYPE,intent(in) :: in(numpoints)
   DATATYPE,intent(out) :: out(numpoints)
@@ -812,6 +814,7 @@ subroutine  op_tinv(twoeden03,twoereduced,allsize,circsize,&
   use myparams
   use myprojectmod
   use pfileptrmod
+  use mpisubmod    !! IN PARENT DIRECTORY
   implicit none
   integer, intent(in) :: allsize,circsize
   integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
@@ -1054,6 +1057,7 @@ subroutine mult_general(option,zcoef,in,out,howmany,timingdir,notiming)
   use myprojectmod
   use pmpimod
   use pfileptrmod
+  use mpisubmod    !! IN PARENT DIRECTORY
   implicit none
   integer, intent(in) :: option,howmany,notiming
   character,intent(in) :: timingdir*(*)
@@ -1661,6 +1665,7 @@ end subroutine reinterpolate_orbs_complex
 subroutine splitscatterv(inbig,outlocal)
   use myparams
   use pmpimod
+  use mpisubmod    !! IN PARENT DIRECTORY
   implicit none
   DATATYPE,intent(in) :: inbig(totpoints*nprocs)
   DATATYPE,intent(out) :: outlocal(totpoints)
@@ -1673,6 +1678,7 @@ end subroutine splitscatterv
 subroutine splitscatterv_complex(inbig,outlocal)
   use myparams
   use pmpimod
+  use mpisubmod    !! IN PARENT DIRECTORY
   implicit none
   complex*16,intent(in) :: inbig(totpoints*nprocs)
   complex*16,intent(out) :: outlocal(totpoints)
@@ -1685,6 +1691,7 @@ end subroutine splitscatterv_complex
 subroutine splitscatterv_real(inbig,outlocal)
   use myparams
   use pmpimod
+  use mpisubmod    !! IN PARENT DIRECTORY
   implicit none
   real*8,intent(in) :: inbig(totpoints*nprocs)
   real*8,intent(out) :: outlocal(totpoints)
@@ -1697,6 +1704,7 @@ end subroutine splitscatterv_real
 subroutine splitgatherv(inlocal,outbig,ilog)
   use myparams
   use pmpimod
+  use mpisubmod    !! IN PARENT DIRECTORY
   implicit none
   logical,intent(in) :: ilog
   DATATYPE,intent(out) :: outbig(totpoints)
@@ -1711,6 +1719,7 @@ end subroutine splitgatherv
 subroutine splitgatherv_complex(inlocal,outbig,ilog)
   use myparams
   use pmpimod
+  use mpisubmod    !! IN PARENT DIRECTORY
   implicit none
   logical,intent(in) :: ilog
   complex*16,intent(out) :: outbig(totpoints)
@@ -1725,6 +1734,7 @@ end subroutine splitgatherv_complex
 subroutine splitgatherv_real(inlocal,outbig,ilog)
   use myparams
   use pmpimod
+  use mpisubmod    !! IN PARENT DIRECTORY
   implicit none
   logical,intent(in) :: ilog
   real*8,intent(out) :: outbig(totpoints)

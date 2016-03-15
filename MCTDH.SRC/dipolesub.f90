@@ -24,6 +24,7 @@ subroutine dipolesub()
   use parameters
   use configmod
   use xxxmod
+  use mpisubmod
   implicit none
   DATATYPE :: xx(mcscfnum),yy(mcscfnum),zz(mcscfnum),dd(mcscfnum),&
        axx(mcscfnum),ayy(mcscfnum),azz(mcscfnum),sxx(mcscfnum),syy(mcscfnum),&
@@ -164,6 +165,7 @@ subroutine dipolesub_one(www,bioww,in_abra,&    !! ok unused bioww
   use biorthomod
   use arbitrarymultmod
   use orbgathersubmod
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: www,bioww
   DATATYPE, intent(in) :: inspfs(  spfsize, www%nspf ), &

@@ -1016,6 +1016,7 @@ contains
     use basis_parameters
     use r_parameters
     use dotmod
+    use mpisubmod
     implicit none
     integer,intent(in) :: howmany
     DATATYPE,intent(in) :: vectors(numr,first_config:last_config,howmany)

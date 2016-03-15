@@ -27,6 +27,7 @@ subroutine read_orbvector(returnval,outvec, isize, ifile, filename, header)
   use orbvecmod
   use parameters
   use mpimod
+  use mpisubmod
   implicit none
   integer :: returnval, isize, ifile
   character :: filename*(*)

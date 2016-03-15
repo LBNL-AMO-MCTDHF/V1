@@ -17,6 +17,7 @@ contains
     use configptrmod
     use sparsemultmod
     use basissubmod
+    use mpisubmod
     implicit none
     type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: cptr
@@ -76,6 +77,7 @@ contains
     use configptrmod
     use sparsemultmod
     use basissubmod
+    use mpisubmod
     implicit none
     type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: cptr
@@ -142,6 +144,7 @@ contains
     use configptrmod
     use sparsemultmod
     use basissubmod
+    use mpisubmod
     implicit none
     type(walktype),intent(in) :: wwin
     type(CONFIGPTR),intent(in) :: cptr
@@ -266,6 +269,7 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
      outvectors,outvectorlda, outvalues,inprintflag,guessflag,lancheckmod,lanthresh,&
      multsub,logpar,targetflag,etarget,IN_COMM)
   use fileptrmod
+  use mpisubmod
   implicit none 
   logical,intent(in) :: logpar
   integer,intent(in) :: lansize,maxlansize,maxiter,lanblocknum,inprintflag,order,&
@@ -909,6 +913,7 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
   use configmod
   use parblocklanmod
   use basissubmod
+  use mpisubmod
   implicit none 
   integer, intent(in) :: order,inprintflag,guessflag
   integer :: printflag,maxdim,vdim,ii

@@ -14,6 +14,7 @@ subroutine fluxwrite(curtime,in_xmo,in_xa)
 !! xa - this time's current A vector
   use parameters
   use mpimod
+  use mpisubmod
   implicit none
   integer,intent(in) :: curtime
   DATATYPE,intent(in) :: in_xmo(spfsize,nspf),in_xa(numr,first_config:last_config,mcscfnum)
@@ -235,6 +236,7 @@ contains
     use parameters
     use walkmod
     use mpimod
+    use mpisubmod
     implicit none
 !! FluxOpType:
 !! 0       = use one-e potential and two-e contribution routines  (exact treatment)

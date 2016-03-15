@@ -135,6 +135,7 @@ subroutine projeflux_doproj(cata,neuta,mo,offset)
   use parameters
   use projefluxmod
   use mpimod
+  use mpisubmod
   implicit none
   integer,intent(in) :: offset 
   DATATYPE,intent(in) :: cata(tnumconfig),&
@@ -202,6 +203,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   use parameters
   use projefluxmod  !! targetms, ..
   use mpimod
+  use mpisubmod
   implicit none
   integer,intent(in) :: mem,nstate,nt
   real*8,intent(in) :: dt
@@ -684,6 +686,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   use configmod
   use projefluxmod
   use mpimod
+  use mpisubmod
   implicit none
 !! necessary working variables
   integer,intent(in) :: nt,alreadystate,ifile

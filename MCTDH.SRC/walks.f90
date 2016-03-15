@@ -150,6 +150,7 @@ subroutine walks(www)
   use mpimod !! nprocs
   use aarrmod
   use configsubmod
+  use mpisubmod
   implicit none
   type(walktype) :: www
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, jspf, &
@@ -496,6 +497,7 @@ subroutine getnumwalks(www)
   use mpimod
   use aarrmod
   use configsubmod
+  use mpisubmod
   implicit none
   type(walktype) :: www
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, iispf,  config1,  &
@@ -724,6 +726,7 @@ subroutine hops(www)
   use mpimod
   use aarrmod
   use configsubmod   !! allowedconfig0
+  use mpisubmod
   implicit none
   type(walktype) :: www
   integer :: ii,iwalk,iconfig,totsinglehops,totdoublehops,&

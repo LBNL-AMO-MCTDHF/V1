@@ -43,6 +43,8 @@ end subroutine getconmat
 
 
 module derivativemod
+    use mpisubmod
+
 contains
 
 !! for derivative of PROJECTOR using derivative of spfs.     
@@ -802,6 +804,7 @@ end module derivativemod
 
 module orbdermod
   use derivativemod
+
 contains
 
 !! FOR ODEX PROPAGATION (NOT DEFAULT)

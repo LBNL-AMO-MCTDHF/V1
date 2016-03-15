@@ -16,6 +16,7 @@ subroutine prop_loop( starttime)
   use sparsemultmod
   use basissubmod
   use savenormmod
+  use mpisubmod
   implicit none
   integer ::  jj,flag,  iii, itime, jtime, times(20)=0, qq,imc,getlen,myiostat
   DATAECS :: thisenergy(mcscfnum), lastenergy(mcscfnum) ,thisenergyavg,&
@@ -361,6 +362,7 @@ subroutine prop_wfn(tin, tout)
   use orbdermod
   use configmod
   use basissubmod
+  use mpisubmod
   implicit none
   real*8,intent(in) :: tout, tin
   real*8 :: mytime,nullreal, nulldouble,gbsstepsize
@@ -567,6 +569,7 @@ subroutine cmf_prop_wfn(tin, tout)
   use xxxmod
   use configmod
   use mpimod
+  use mpisubmod
   implicit none
   real*8,intent(in) :: tout, tin
   integer ::  itime,jtime
@@ -785,6 +788,7 @@ end subroutine cmf_prop_wfn
 
 subroutine cmf_prop_avector(avectorin,avectorout,linearflag,time1,time2,imc,numiters)
   use parameters
+  use mpisubmod
   implicit none
   DATATYPE,intent(in) :: avectorin(tot_adim)
   DATATYPE,intent(out) :: avectorout(tot_adim)

@@ -3,6 +3,8 @@
 if [[ "$1 " == "clean " ]]
 then
 
+make clean
+
 for dir in DFFTPACK DGMRES bessel H2PROJECT HEPROJECT SINCDVR
 do
 	if [[ -e $dir ]]
@@ -16,10 +18,15 @@ do
 
 done
 
-make clean
-
 else
 
+## PROJECT DIRECTORIES INTERFACE EXPLICITLY WITH MAIN ROUTINES
+##                   NOT VICE VERSA.
+## MAKE MAIN ROUTINES FIRST, the ones upon which the project dirs
+## depend explicitly.  These dependencies are also in the project
+## makefiles.
+
+make MPI.o
 
 for dir in DFFTPACK DGMRES bessel H2PROJECT HEPROJECT SINCDVR
 do
@@ -33,6 +40,8 @@ do
 	fi
 
 done
+
+## NOW MAKE WHOLE PROGRAM
 
 make
 

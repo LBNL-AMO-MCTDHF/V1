@@ -10,6 +10,7 @@ include Name.Txt
 HEPROJECT=HEPROJECT/heprojectar.a
 H2PROJECT=H2PROJECT/h2projectar.a
 SINCPROJECT=SINCDVR/sincprojectar.a
+SINC1DPROJECT=SINC1D/sincprojectar.a
 
 include Name.Txt
 
@@ -21,12 +22,12 @@ bessrcso = bessel/d1mach.o bessel/d9lgmc.o bessel/dasyjy.o bessel/dbesj.o bessel
 
 SRCS= parameters.o  gaussq.o  eigen.o jacobi.o  spin.o rkf45.o   spfs.o  main_modules.o spinwalks.o ovlsub.o autocall.o utils.o odex.o   getparams.o MPI.o   actions.o   readactions.o povactions.o saveactions.o natprojaction.o orbvectoractions.o   expokit.o  expo_driver.o quad.o   dipolecall.o    dipolesub.o  proputils.o pulse.o autosub.o  derivs.o prop.o matel.o  projeflux.o loadstuff.o configload.o blocklanczos.o psistats.o second_derivs.o keprojector.o opfunctions.o electronflux.o walks.o walkmult.o  newconfig.o configstuff.o biortho.o    dfconstrain.o denmat.o mean.o driving.o $(ARGO) 
 
-DEPEND= Definitions.INC main_modules.o parameters.o Definitions.ALL Makefile.header Makefile
+DEPEND= Definitions.INC Definitions.ALL Makefile.header Makefile MPI.o main_modules.o parameters.o
 
 default: $(MYDEFAULT)
 
 clean:
-	rm *.o *.mod *~  $(NAME)_atom $(NAME)_diatom $(NAME)_sinc *genmod*
+	rm *.o *.mod *~  $(NAME)_atom $(NAME)_diatom $(NAME)_sinc $(NAME)_sinc1d *genmod*
 
 ##double colon
 #linkme::
@@ -43,19 +44,25 @@ $(NAME)_atom:   $(STUFFS)  $(HEPROJECT)
 $(NAME)_sinc:   $(STUFFS)  $(SINCPROJECT)
 	$(F90) $(LOADFLAGS) -o $(NAME)_sinc  $(STUFFS) $(SINCPROJECT)  $(LAPACK)
 
+$(NAME)_sinc1d:   $(STUFFS)  $(SINC1DPROJECT)
+	$(F90) $(LOADFLAGS) -o $(NAME)_sinc1d  $(STUFFS) $(SINC1DPROJECT)  $(LAPACK)
+
 parameters.o: Definitions.INC Definitions.ALL Makefile.header Makefile parameters.F90 
 	$(F90) $(FFLAGS) $(MPIFLAG) -c parameters.F90
 
-main_modules.o: parameters.o Definitions.INC Definitions.ALL Makefile.header Makefile main_modules.F90 
+MPI.o:  Definitions.INC Definitions.ALL Makefile.header Makefile MPI.F90 parameters.o 
+	$(F90) $(FFLAGS) $(MPIFLAG) -c MPI.F90
+
+main_modules.o: Definitions.INC Definitions.ALL Makefile.header Makefile MPI.o parameters.o main_modules.F90
 	$(F90) $(FFLAGS) $(MPIFLAG) $(PGFFLAG) -c main_modules.F90
 
-biortho.o: $(DEPEND) biortho.F90 newconfig.o spin.o utils.o MPI.o
+biortho.o: $(DEPEND) biortho.F90 newconfig.o spin.o utils.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c biortho.F90 
 
-second_derivs.o: $(DEPEND) second_derivs.F90 derivs.o proputils.o spin.o MPI.o
+second_derivs.o: $(DEPEND) second_derivs.F90 derivs.o proputils.o spin.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c second_derivs.F90 
 
-keprojector.o: $(DEPEND) keprojector.F90 walkmult.o MPI.o
+keprojector.o: $(DEPEND) keprojector.F90 walkmult.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c keprojector.F90 
 
 loadstuff.o: $(DEPEND) loadstuff.F90
@@ -64,16 +71,16 @@ loadstuff.o: $(DEPEND) loadstuff.F90
 configload.o: $(DEPEND) configload.F90 newconfig.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c configload.F90 
 
-psistats.o: $(DEPEND) psistats.F90 walkmult.o biortho.o autosub.o MPI.o
+psistats.o: $(DEPEND) psistats.F90 walkmult.o biortho.o autosub.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c psistats.F90 
 
-dfconstrain.o: $(DEPEND) dfconstrain.F90 walkmult.o spin.o utils.o MPI.o
+dfconstrain.o: $(DEPEND) dfconstrain.F90 walkmult.o spin.o utils.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c dfconstrain.F90 
 
-expo_driver.o: $(DEPEND) expo_driver.F90 derivs.o proputils.o spin.o MPI.o
+expo_driver.o: $(DEPEND) expo_driver.F90 derivs.o proputils.o spin.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c expo_driver.F90 
 
-quad.o: $(DEPEND) quad.F90 blocklanczos.o expo_driver.o derivs.o walkmult.o spin.o MPI.o
+quad.o: $(DEPEND) quad.F90 blocklanczos.o expo_driver.o derivs.o walkmult.o spin.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c quad.F90 
 
 BCG_driver.o: $(DEPEND) implicit.o BCG_driver.F90
@@ -94,7 +101,7 @@ saveactions.o: $(DEPEND) saveactions.F90
 natprojaction.o: $(DEPEND) natprojaction.F90 walkmult.o denmat.o
 	$(F90) $(FFLAGS) $(MPIFLAG) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c natprojaction.F90 
 
-orbvectoractions.o: $(DEPEND) orbvectoractions.F90 
+orbvectoractions.o: $(DEPEND) orbvectoractions.F90
 	$(F90) $(FFLAGS) $(MPIFLAG) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c orbvectoractions.F90 
 
 povactions.o: $(DEPEND) povactions.F90 
@@ -103,28 +110,25 @@ povactions.o: $(DEPEND) povactions.F90
 prop.o: $(DEPEND) prop.F90 derivs.o proputils.o walkmult.o spin.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c prop.F90 
 
-proputils.o: $(DEPEND) proputils.F90 MPI.o
+proputils.o: $(DEPEND) proputils.F90
 	$(F90) $(FFLAGS) $(MPIFLAG) -c proputils.F90 
 
 pulse.o: $(DEPEND) pulse.F90  
 	$(F90) $(FFLAGS) $(MPIFLAG) -c pulse.F90 
 
-derivs.o: $(DEPEND) derivs.F90 proputils.o walkmult.o MPI.o
+derivs.o: $(DEPEND) derivs.F90 proputils.o walkmult.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c derivs.F90 
-
-MPI.o:  $(DEPEND) MPI.F90
-	$(F90) $(FFLAGS) $(MPIFLAG) -c MPI.F90
 
 mean.o: $(DEPEND) mean.F90 MPI.o denmat.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c mean.F90 
 
-matel.o: $(DEPEND)  matel.F90 spin.o MPI.o
+matel.o: $(DEPEND)  matel.F90 spin.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c matel.F90 
 
 spin.o: $(DEPEND)  spin.F90 newconfig.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c spin.F90 
 
-spfs.o: $(DEPEND) spfs.F90 utils.o MPI.o
+spfs.o: $(DEPEND) spfs.F90 utils.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c spfs.F90
 
 denmat.o: $(DEPEND) denmat.F90 biortho.o autosub.o utils.o
@@ -142,7 +146,7 @@ configstuff.o: $(DEPEND) configstuff.F90 spin.o utils.o
 walks.o: $(DEPEND) walks.F90 newconfig.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c walks.F90
 
-walkmult.o: $(DEPEND) walkmult.F90 
+walkmult.o: $(DEPEND) walkmult.F90
 	$(F90) $(FFLAGS) $(MPIFLAG) -c walkmult.F90
 
 spinwalks.o: $(DEPEND) spinwalks.F90 newconfig.o spin.o
@@ -157,7 +161,7 @@ autosub.o: $(DEPEND) autosub.F90 biortho.o
 autocall.o: $(DEPEND)  autocall.F90
 	$(F90) $(FFLAGS) $(MPIFLAG) -c autocall.F90
 
-dipolesub.o: $(DEPEND) dipolesub.F90 biortho.o walkmult.o MPI.o
+dipolesub.o: $(DEPEND) dipolesub.F90 biortho.o walkmult.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c dipolesub.F90
 
 dipolecall.o: $(DEPEND)  dipolecall.F90
@@ -175,7 +179,7 @@ utils.o: $(DEPEND) utils.F90
 getparams.o: Definitions.ALL Definitions.INC parameters.o main_modules.o getparams.F90 
 	$(F90) $(FFLAGS) $(MPIFLAG) $(SAFEFLAG) $(PGFFLAG) -c getparams.F90 
 
-electronflux.o: $(DEPEND) electronflux.F90 biortho.o MPI.o walkmult.o
+electronflux.o: $(DEPEND) electronflux.F90 biortho.o walkmult.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c electronflux.F90
 
 projeflux.o: $(DEPEND) projeflux.F90 biortho.o newconfig.o

@@ -183,6 +183,7 @@ subroutine ivo_project(inbigspf,outbigspf)
 contains
   function ivodot(inbra,inket,size)
     use myparams
+    use mpisubmod    !! IN PARENT DIRECTORY
     implicit none
     integer,intent(in) :: size 
     DATATYPE,intent(in) :: inbra(size),inket(size)

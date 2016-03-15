@@ -255,6 +255,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)
   use pmpimod
   use pfileptrmod
   use mycdotmod
+  use mpisubmod   !! IN PARENT DIRECTORY
   implicit none
   integer, intent(in) :: numfrozen
   DATATYPE, intent(in) :: infrozens(totpoints,numfrozen)
@@ -420,6 +421,7 @@ end subroutine op_conjg
 subroutine op_reflectz(in,out)
   use myparams
   use pmpimod
+  use mpisubmod   !! IN PARENT DIRECTORY
   implicit none
   DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3))
   DATATYPE,intent(out) :: out(numpoints(1),numpoints(2),numpoints(3))
@@ -454,6 +456,7 @@ end subroutine op_reflectz
 subroutine op_reflecty(in,out)
   use myparams
   use pmpimod
+  use mpisubmod   !! IN PARENT DIRECTORY
   implicit none
   DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3))
   DATATYPE,intent(out) :: out(numpoints(1),numpoints(2),numpoints(3))
@@ -488,6 +491,7 @@ end subroutine op_reflecty
 subroutine op_reflectx(in,out)
   use myparams
   use pmpimod
+  use mpisubmod   !! IN PARENT DIRECTORY
   implicit none
   DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3))
   DATATYPE,intent(out) :: out(numpoints(1),numpoints(2),numpoints(3))
@@ -1023,6 +1027,7 @@ contains
     use pfileptrmod
     use myprojectmod
     use circ3dsubmod
+    use mpisubmod   !! IN PARENT DIRECTORY
     implicit none
     integer, intent(in) :: allsize,circsize
     integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
@@ -1270,6 +1275,7 @@ subroutine mult_general(option,xcoef,ycoef,zcoef,in,out,howmany,timingdir,notimi
   use myprojectmod
   use pmpimod
   use pfileptrmod
+  use mpisubmod    !! IN PARENT DIRECTORY
   implicit none
   integer, intent(in) :: option,howmany,notiming
   character,intent(in) :: timingdir*(*)
@@ -1707,11 +1713,6 @@ contains
 
     procs=procsplit(indim)
 
-!!TEMP
-!!    call mpibarrier()
-!!    OFLWR "BEGIN GEN0",procs,howmany; CFL
-!!    call waitawhile()
-
 !!    batchsize=(howmany-1)/procs+1
 !!    numbatch=(howmany-1)/batchsize+1
 
@@ -1809,11 +1810,6 @@ contains
           close(2853)
        endif
     endif
-
-!!TEMP
-!!    call mpibarrier()
-!!    OFLWR "END GEN0",procs,howmany; CFL
-!!    call waitawhile()
 
   end subroutine mult_gather_gen0
 
@@ -2262,6 +2258,7 @@ end subroutine splitgatherv
 subroutine splitgatherv_real(inlocal,outbig,bcastflag)
   use pmpimod
   use myparams
+  use mpisubmod   !! IN PARENT DIRECTORY
   implicit none
   logical,intent(in) :: bcastflag
   real*8, intent(in) :: inlocal(numpoints(1),numpoints(2),numpoints(3))
@@ -2303,6 +2300,7 @@ end subroutine splitgatherv_real
 subroutine splitgatherv_complex(inlocal,outbig,bcastflag)
   use pmpimod
   use myparams
+  use mpisubmod   !! IN PARENT DIRECTORY
   implicit none
   logical,intent(in) :: bcastflag
   complex*16, intent(in) :: inlocal(numpoints(1),numpoints(2),numpoints(3))
@@ -2358,6 +2356,7 @@ end subroutine splitscatterv
 subroutine splitscatterv_real(inbig,outlocal)
   use pmpimod
   use myparams
+  use mpisubmod   !! IN PARENT DIRECTORY
   implicit none
   real*8, intent(out) :: outlocal(numpoints(1),numpoints(2),numpoints(3))
   real*8, allocatable :: inscatter(:,:,:,:,:,:)
@@ -2393,6 +2392,7 @@ end subroutine splitscatterv_real
 subroutine splitscatterv_complex(inbig,outlocal)
   use pmpimod
   use myparams
+  use mpisubmod   !! IN PARENT DIRECTORY
   implicit none
   complex*16, intent(out) :: outlocal(numpoints(1),numpoints(2),numpoints(3))
   complex*16, allocatable :: inscatter(:,:,:,:,:,:)

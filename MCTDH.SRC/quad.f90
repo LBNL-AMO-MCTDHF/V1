@@ -17,6 +17,7 @@ end module dgm_comm_mod
 
 subroutine mympirealreduceone_local_dgmres(sum)
   use dgm_comm_mod
+  use mpisubmod
   implicit none
   real*8,intent(inout) :: sum
   call mympirealreduceone_local(sum,dgmcomm)
@@ -24,6 +25,7 @@ end subroutine mympirealreduceone_local_dgmres
 
 subroutine mympiireduceone_local_dgmres(isum)
   use dgm_comm_mod
+  use mpisubmod
   implicit none
   integer,intent(inout) :: isum
   call mympiireduceone_local(isum,dgmcomm)
@@ -31,6 +33,7 @@ end subroutine mympiireduceone_local_dgmres
 
 subroutine mympimax_local_dgmres(rsum)
   use dgm_comm_mod
+  use mpisubmod
   implicit none
   real*8,intent(inout) :: rsum
   call mympimax_local(rsum,dgmcomm)
@@ -262,6 +265,7 @@ subroutine quadspfs(inspfs,jjcalls)
   use orbdermod
   use mpi_orbsetmod
   use orbgathersubmod
+  use mpisubmod
   implicit none
   DATATYPE,intent(inout) :: inspfs(spfsize,nspf)
   integer,intent(out) :: jjcalls
@@ -425,6 +429,7 @@ subroutine aaonedinit(www,inavector)
   use dotmod
   use sparsemultmod
   use basissubmod
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: inavector(www%totadim)
@@ -521,6 +526,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
   use dgsolvemod
   use sparsemultmod
   use basissubmod
+  use mpisubmod
   implicit none
   DATATYPE, intent(inout) ::  inavector(numr,www%firstconfig:www%lastconfig)
   integer,intent(out) :: jjcalls0
@@ -807,6 +813,7 @@ subroutine nonsparsequadavector(www,avectorout)
   use walkmod
   use sparsemultmod
   use basissubmod
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: www
   DATATYPE,intent(inout) :: avectorout(www%totadim)

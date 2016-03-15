@@ -130,6 +130,7 @@ subroutine twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced,firstspf,lastspf)
   use mpimod
   use configptrmod
   use orbgathersubmod
+  use mpisubmod
   implicit none
   integer,intent(in) :: firstspf,lastspf
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf),inspfs2(spfsize,nspf)
@@ -169,6 +170,7 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
   use parameters
   use configptrmod
   use orbgathersubmod
+  use mpisubmod
   implicit none
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
@@ -226,6 +228,7 @@ subroutine pulse_matel(matrix_ptr,inspfs1,inspfs2)
   use parameters
   use configptrmod
   use orbgathersubmod
+  use mpisubmod
   implicit none
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
@@ -292,6 +295,7 @@ subroutine sparseops_matel(matrix_ptr,inspfs1,inspfs2)
   use parameters
   use configptrmod
   use orbgathersubmod
+  use mpisubmod
   implicit none
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
@@ -354,6 +358,7 @@ subroutine arbitraryconfig_matel_singles00transpose_hhh(www,in_onebodymat, small
   use fileptrmod
   use sparse_parameters
   use walkmod
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: inholeflag
@@ -443,6 +448,7 @@ end subroutine arbitraryconfig_matel_singles00transpose
 subroutine arbitraryconfig_matel_doubles00transpose(www,in_twobodymat, smallmatrixtr)
   use sparse_parameters
   use walkmod
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: www
   DATATYPE,intent(in) :: in_twobodymat(www%nspf,www%nspf,www%nspf,www%nspf)

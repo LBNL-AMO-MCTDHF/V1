@@ -133,6 +133,7 @@ subroutine spf_orthogit(inspfs,error)
   use opmod !! frozenspfs
   use matsubmod
   use orbgathersubmod
+  use mpisubmod
   implicit none
   real*8,intent(out) :: error
   DATATYPE,intent(inout) :: inspfs(spfsize,nspf)

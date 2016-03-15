@@ -89,6 +89,7 @@ subroutine init_dfcon(www)
   use walkmod
   use mpimod
   use configsubmod
+  use mpisubmod
   implicit none
   type(walktype),intent(inout) :: www
   integer :: i,j,iconfig,nondfconfigs,dfrank,ii
@@ -310,6 +311,7 @@ end function getdfindex
 
 subroutine configspin_project(www,nr, vector)
   use walkmod
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: nr
@@ -652,6 +654,7 @@ end subroutine basis_project
 subroutine basis_transformto_all(www,howmany,avectorin,avectorout)
   use walkmod
   use mpimod   !! myrank,nprocs ( not perfect )
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: howmany
@@ -723,6 +726,7 @@ end subroutine basis_transformto_general
 subroutine basis_transformfrom_all(www,howmany,avectorin,avectorout)
   use walkmod
   use mpimod    !! myrank,nprocs ( not perfect )
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: howmany
@@ -800,6 +804,7 @@ subroutine basis_shuffle(howmany,wwin,avectorin,wwout,avectorout)
   use fileptrmod
   use walkmod
   use mpimod     !! nprocs
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: wwin,wwout
   integer,intent(in) :: howmany

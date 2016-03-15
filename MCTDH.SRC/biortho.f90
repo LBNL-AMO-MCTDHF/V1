@@ -315,6 +315,7 @@ contains
     use matvecsetmod
     use biomatvecmod
     use basissubmod
+    use mpisubmod
     implicit none
     DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
     DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
@@ -364,6 +365,7 @@ contains
     use matvecsetmod
     use biomatvecmod
     use basissubmod
+    use mpisubmod
     implicit none
     DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
     DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
@@ -419,6 +421,7 @@ contains
     use matvecsetmod
     use biomatvecmod
     use basissubmod
+    use mpisubmod
     implicit none
     DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
     DATATYPE,intent(out) :: outavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
@@ -518,6 +521,7 @@ contains
     use matvecsetmod
     use biorthotypemod
     use basissubmod
+    use mpisubmod
     implicit none
     type(biorthotype),target,intent(inout) :: inbiovar
     DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
@@ -693,6 +697,8 @@ end module abiosparsemod
 !! by any other routines than the ones in this file if we can avoid it
 
 module biorthomod
+  use mpisubmod
+
 contains
   subroutine bioset(biotypevar,insmo,innumr,wwbio)
     use bio_parameters

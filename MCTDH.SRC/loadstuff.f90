@@ -5,6 +5,7 @@ subroutine save_vector(avectors,spfs,afile,sfile)
   use parameters
   use opmod !! frozenspfs
   use mpimod
+  use mpisubmod
   implicit none
   DATATYPE,intent(in) :: spfs(spfsize,nspf),avectors(numr,first_config:last_config,mcscfnum)
   character,intent(in) :: afile*(*), sfile*(*)
@@ -227,6 +228,7 @@ end subroutine load_spfs
 subroutine load_spfs0(inspfs, inspfdims, innspf, dimtypes, infile, numloaded,in_gridshift)
   use fileptrmod
   use mpimod
+  use mpisubmod
   implicit none
   character,intent(in) :: infile*(*)
   integer, intent(in) :: inspfdims(3), innspf, dimtypes(3),in_gridshift(3)
@@ -264,6 +266,7 @@ end subroutine load_spfs0
 subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtypes,outspfs,in_gridshift)
   use mpimod
   use parameters
+  use mpisubmod
   implicit none
   integer, intent(in) :: iunit, dimtypes(3),outdims(3),readnspf,outnspf,readcflag,&
        bigreaddims(3),in_gridshift(3)

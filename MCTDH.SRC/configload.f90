@@ -136,6 +136,7 @@ subroutine load_avector_productsub(myavector)
   use configmod
   use mpimod
   use configsubmod
+  use mpisubmod
   implicit none
   DATATYPE,intent(out) :: myavector(numr,first_config:last_config,mcscfnum)
   integer :: readnumvects(numavectorfiles),readnum2part(numavectorfiles),readnumr(numavectorfiles),&
@@ -484,6 +485,7 @@ end subroutine get_avectorfile_configlist
 
 
 module readavectormod
+  use mpisubmod
 contains
 
 !! does conversion for initial a-vector read (excitations and holes).  
@@ -607,6 +609,7 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
   use parameters
   use mpimod    !! myrank
   use readavectormod
+  use mpisubmod
   implicit none
   character :: filename*(*)
   integer :: readnumvects,readnum2part,readnumr,readnumconfig,readcomplex,&

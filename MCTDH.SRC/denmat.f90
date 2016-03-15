@@ -196,6 +196,7 @@ contains
 subroutine getdenmat00(inholeflag,www,avector1,in_avector2,rvector, denmat, numpoints,howmany)
   use walkmod
   use dotmod
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) ::  numpoints,howmany,inholeflag
@@ -353,6 +354,7 @@ end subroutine getdenmatstuff
 subroutine getoccupations(www,in_avector, numpoints, occupations)
   use walkmod
   use dotmod
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) ::  numpoints

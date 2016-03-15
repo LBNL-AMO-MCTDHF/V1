@@ -63,6 +63,7 @@ subroutine get_reducedpot0(www,intwoden,outpot,twoereduced,firstorb,lastorb)
   use walkmod
   use spfsize_parameters
   use mpi_orbsetmod
+  use mpisubmod
   implicit none
   integer,intent(in) :: firstorb,lastorb
   type(walktype),intent(in) :: www
@@ -152,6 +153,7 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
   use walkmod
   use dotmod
   use densubmod
+  use mpisubmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -295,6 +297,7 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
   use opmod   !! rkemod, proderivmod
   use walkmod
   use dotmod
+  use mpisubmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -420,6 +423,7 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
   use r_parameters
   use walkmod
   use dotmod
+  use mpisubmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www

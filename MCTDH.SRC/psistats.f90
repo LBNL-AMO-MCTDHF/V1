@@ -10,6 +10,7 @@ subroutine get_orbmats( myspfs,  howmany,  ugmat,   &
      xdipmat,ydipmat,zdipmat,   xrefmat,yrefmat,zrefmat,conjgmat)
   use parameters
   use orbgathersubmod
+  use mpisubmod
   implicit none
   integer, intent(in) :: howmany
   DATATYPE,intent(in) :: myspfs(spfsize,howmany)
@@ -177,6 +178,7 @@ subroutine get_psistats( www, bioww, myspfs, numvec, in_inavectors, mexpect,m2ex
   use arbitrarymultmod
   use psibiomod
   use autocorrelate_one_mod
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: www, bioww
   integer, intent(in) :: numvec
@@ -455,6 +457,7 @@ subroutine finalstats0(myspfs,in_inavectors,www,bioww )
   use arbitrarymultmod
   use biorthotypemod
   use autocorrelate_one_mod
+  use mpisubmod
   implicit none
   type(walktype),intent(in) :: www,bioww
   DATATYPE,intent(in) :: myspfs(spfsize,www%nspf), &

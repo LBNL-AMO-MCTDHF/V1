@@ -8,6 +8,7 @@ subroutine get_3dpoisson(pot)
   use pmpimod
   use pfileptrmod
   use myprojectmod
+  use mpisubmod   !! IN PARENT DIRECTORY
   implicit none
   real*8,intent(out) :: pot(totpoints)
   real*8 :: rval
