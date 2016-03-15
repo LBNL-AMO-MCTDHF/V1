@@ -79,13 +79,13 @@ contains
     endif
     if (icalleds(thisplan).eq.0) then
        if (ftoutflag.ne.0) then
-          print *, "       Making a 1D FFT plan ", thisplan, blockdim, dims, howmany
+          print *, "   Making 1D FFT plan ", thisplan, blockdim, dims, howmany
        endif
        plans(thisplan) = fftw_plan_many_dft(1,dims,howmany*blockdim,in,inembed,istride,idist,out,&
             onembed,ostride,odist,FFTW_FORWARD,FFTW_EXHAUSTIVE) 
-       if (ftoutflag.ne.0) then
-          print *, "       Done making a 1D FFT plan ", thisplan, blockdim, dims, howmany
-       endif
+!       if (ftoutflag.ne.0) then
+!          print *, "       Done with 1D plan ", thisplan, blockdim, dims, howmany
+!       endif
     endif
     icalleds(thisplan)=1    
     

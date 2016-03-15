@@ -1650,6 +1650,8 @@ contains
           call mult_circ_gen(idim,in,out,option,howmany,timingdir,notiming)
        case(1)
           call mult_summa_gen(idim,in,out,option,howmany,timingdir,notiming)
+       case(2)
+          call mult_gather_gen(idim,in,out,option,howmany,timingdir,notiming)
        case default
           OFLWR "Error, zke_paropt not recognized",zke_paropt; CFLST
        end select
@@ -1657,11 +1659,163 @@ contains
 
   end subroutine mult_allpar
 
-!!  RATE LIMITING STEP IN CODE: MPI PARALLEL KINETIC ENERGY MULTPILICATION IN Z DIRECTION !!
-!!  FOUR OPTIONS
+!!  RATE LIMITING STEP IN CODE: MPI PARALLEL KINETIC ENERGY MULTIPLICATION!!
+!!  THREE OPTIONS
 !!
-!!  zke_paropt=0   mult_circ_z   sendrecv
-!!  zke_paropt=1   mult_summa_z  SUMMA  scalable universal matrix multiplication algorithm (broadcast before)
+!!  zke_paropt=0   mult_circ   sendrecv
+!!  zke_paropt=1   mult_summa  SUMMA  scalable universal matrix multiplication algorithm (broadcast before)
+!!  zke_paropt=2   mult_gather gather and multiply locally in blocks
+
+
+  subroutine mult_gather_gen(indim,in, out,option,howmany,timingdir,notiming)
+    use myparams
+    use pmpimod
+    use pfileptrmod
+    use myprojectmod  
+    implicit none
+    integer,intent(in) :: option,howmany,indim,notiming
+    DATATYPE,intent(in) :: in(totpoints,howmany)
+    DATATYPE,intent(out) :: out(totpoints,howmany)
+    character,intent(in) :: timingdir*(*)
+    integer :: nnn,mmm,ii
+    nnn=1
+    do ii=1,indim-1
+       nnn=nnn*numpoints(ii)
+    enddo
+    mmm=howmany
+    do ii=indim+1,3
+       mmm=mmm*numpoints(ii)
+    enddo
+    call mult_gather_gen0(nnn,indim,in,out,option,mmm,timingdir,notiming)
+  end subroutine mult_gather_gen
+
+  subroutine mult_gather_gen0(nnn,indim,in, out,option,howmany,timingdir,notiming)
+    use myparams
+    use pmpimod
+    use pfileptrmod
+    use myprojectmod  
+    implicit none
+    integer,intent(in) :: nnn,option,howmany,indim,notiming
+    DATATYPE,intent(in) :: in(nnn*numpoints(indim),howmany)
+    DATATYPE,intent(out) :: out(nnn*numpoints(indim),howmany)
+    character,intent(in) :: timingdir*(*)
+    DATATYPE,allocatable ::  work(:,:,:),work2(:,:,:)
+    integer :: atime,btime,getlen,myiostat,batchsize,iproc,&
+         ibatch,procs,numbatch,batchlow,batchhigh,rank,comm,totsize,&
+         blocksizes(procsplit(indim)),thisbatchsize
+    integer, save :: xcount=0, times(10)=0
+
+    procs=procsplit(indim)
+
+!!TEMP
+!!    call mpibarrier()
+!!    OFLWR "BEGIN GEN0",procs,howmany; CFL
+!!    call waitawhile()
+
+!!    batchsize=(howmany-1)/procs+1
+!!    numbatch=(howmany-1)/batchsize+1
+
+!!    batchsize=howmany
+!!    numbatch=1
+
+    batchsize=1
+    numbatch=howmany
+
+    if (procs.le.1) then
+       OFLWR "procsplit error gather", procsplit(indim),indim; CFLST
+    endif
+    if (procs*numpoints(indim).ne.gridpoints(indim)) then
+       print *, "KE GATHER ERROR", procs,numpoints(indim),gridpoints(indim),indim; stop
+    endif
+
+    call myclock(atime)
+
+    allocate(work(nnn*numpoints(indim),batchsize,nprocs), &
+         work2(nnn*numpoints(indim),procs,batchsize))
+
+    out(:,:)=0; work=0; work2=0
+
+    select case (indim)
+    case(3)
+       rank=boxrank(3)
+       comm=BOX_COMM(boxrank(1),boxrank(2),3)
+    case(2)
+       rank=boxrank(2)
+       select case(orbparlevel)
+       case(2)
+          comm=BOX_COMM(boxrank(1),boxrank(3),2)
+       case(1)
+          comm=BOX_COMM(boxrank(3),boxrank(1),2)
+       case default
+          print *, "ACK LEVEL"; stop
+       end select
+    case(1)
+       rank=boxrank(1)
+       comm=BOX_COMM(boxrank(2),boxrank(3),1)
+    case default 
+       print *, "ACK dim"; stop
+    end select
+
+    call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+
+    do ibatch=1,numbatch
+       batchlow=(ibatch-1)*batchsize+1
+       batchhigh=min(howmany,ibatch*batchsize)
+       thisbatchsize=batchhigh-batchlow+1
+
+       call myclock(atime)
+
+       work(:,1:thisbatchsize,rank)=in(:,batchlow:batchhigh)
+
+       totsize=procs*thisbatchsize*nnn*numpoints(indim)
+       blocksizes(:)=thisbatchsize*nnn*numpoints(indim)
+
+       call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+
+       call mpiallgather_local(work(:,:,:),totsize,blocksizes,798,comm,procs,rank)
+
+       call myclock(btime); times(2)=times(2)+btime-atime; atime=btime
+
+       do iproc=1,procs
+          work2(:,iproc,:)=work(:,:,iproc)
+       enddo
+
+       call myclock(btime); times(1)=times(1)+btime-atime; atime=btime
+
+       call mult_all0(work2,out(:,batchlow:batchhigh),indim,nnn,thisbatchsize,option)
+
+       call myclock(btime); times(3)=times(3)+btime-atime
+
+    enddo
+
+    deallocate(work,work2)
+  
+    if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
+       xcount=xcount+1
+       if (xcount==1) then
+          open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
+               status="unknown",iostat=myiostat)
+          call checkiostat(myiostat,"opening kemult timing sincdvr")
+          write(2853,'(100A11)',iostat=myiostat)   "copy", "allgather","mult"
+          call checkiostat(myiostat,"writing kemult timing sincdvr")
+          close(2853) 
+       endif
+       if (mod(xcount,100).eq.0) then
+          open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
+               status="unknown", position="append",iostat=myiostat)
+          call checkiostat(myiostat,"opening kemult timing sincdvr")
+          write(2853,'(100I11)',iostat=myiostat)  times(1:3)
+          call checkiostat(myiostat,"writing kemult timing sincdvr")
+          close(2853)
+       endif
+    endif
+
+!!TEMP
+!!    call mpibarrier()
+!!    OFLWR "END GEN0",procs,howmany; CFL
+!!    call waitawhile()
+
+  end subroutine mult_gather_gen0
 
   subroutine mult_circ_gen(indim,in, out,option,howmany,timingdir,notiming)
     use myparams
@@ -1770,7 +1924,7 @@ contains
           call checkiostat(myiostat,"writing kemult timing sincdvr")
           close(2853) 
        endif
-       if (mod(xcount,20).eq.0) then
+       if (mod(xcount,100).eq.0) then
           open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
                status="unknown", position="append",iostat=myiostat)
           call checkiostat(myiostat,"opening kemult timing sincdvr")
@@ -1885,7 +2039,7 @@ contains
           call checkiostat(myiostat,"writing kemult timing sincdvr")
           close(2853) 
        endif
-       if (mod(xcount,20).eq.0) then
+       if (mod(xcount,100).eq.0) then
           open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
                status="unknown", position="append",iostat=myiostat)
           call checkiostat(myiostat,"opening kemult timing sincdvr")
@@ -1923,7 +2077,7 @@ contains
     use myprojectmod  
     implicit none
     integer,intent(in) :: idim,nnn,mmm,option
-    DATATYPE,intent(in) :: in(nnn,numpoints(idim),mmm)
+    DATATYPE,intent(in) :: in(nnn,gridpoints(idim),mmm)
     DATATYPE,intent(out) :: out(nnn,numpoints(idim),mmm)
     integer :: jj
 
@@ -1932,13 +2086,13 @@ contains
     select case(option)
     case(1)  !! KE
        do jj=1,mmm
-          call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,&
-               ketot(idim)%mat,gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
+          call MYGEMM('N','N',nnn,numpoints(idim),gridpoints(idim),DATAONE,in(:,:,jj),nnn,&
+               ketot(idim)%mat(:,:,:,boxrank(idim)),gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
        enddo
     case(2)  !! X Y or Z derivative (real valued antisymmetric)
        do jj=1,mmm
-          call MYGEMM('N','T',nnn,numpoints(idim),numpoints(idim),DATAONE,in(:,:,jj),nnn,&
-               fdtot(idim)%mat,gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
+          call MYGEMM('N','N',nnn,numpoints(idim),gridpoints(idim),DATANEGONE,in(:,:,jj),nnn,&
+               fdtot(idim)%mat(:,:,:,boxrank(idim)),gridpoints(idim),DATAZERO, out(:,:,jj), nnn)
        enddo
     case default 
        OFLWR "WHAAAAT",option; CFLST

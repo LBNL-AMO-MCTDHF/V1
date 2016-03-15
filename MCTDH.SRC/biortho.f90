@@ -252,6 +252,7 @@ contains
 !! that were passed to biortho when it was called this time
 
   subroutine biomatvec_byproc(firstproc,lastproc,x,y)
+    use mpimod !! myrank
     use biomatvecmod
     implicit none
     integer,intent(in) :: firstproc,lastproc
@@ -272,11 +273,13 @@ contains
           do i=1,biopointer%wwbio%nspf
              holetrace=holetrace + biopointer%smo(i,i) * 2
           enddo
-          do i=biopointer%wwbio%botconfig,biopointer%wwbio%topconfig
-             if (biopointer%wwbio%singlehopdiagflag(i).ne.0) then
-                y(:,i) = holetrace * x(:,i)
-             endif
-          enddo
+          if (firstproc.le.myrank.and.lastproc.ge.myrank) then
+             do i=biopointer%wwbio%botconfig,biopointer%wwbio%topconfig
+                if (biopointer%wwbio%singlehopdiagflag(i).ne.0) then
+                   y(:,i) = holetrace * x(:,i)
+                endif
+             enddo
+          endif
        endif
     endif
 
@@ -308,7 +311,6 @@ contains
 
   subroutine parbiomatvec_gather(inavector,outavector)
     use fileptrmod
-    use sparse_parameters
     use mpimod
     use matvecsetmod
     use biomatvecmod
@@ -320,7 +322,7 @@ contains
 !! AUTOMATIC
     DATATYPE :: outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1)
 
-    if (sparseconfigflag.eq.0) then
+    if (biopointer%wwbio%sparseconfigflag.eq.0) then
        OFLWR "error, must use sparse for parbiomatvec summa"; CFLST
     endif
 
@@ -358,8 +360,7 @@ contains
 
   subroutine parbiomatvec_summa(inavector,outavector)
     use fileptrmod
-    use sparse_parameters
-    use mpimod
+    use mpimod   !! myrank
     use matvecsetmod
     use biomatvecmod
     use basissubmod
@@ -371,7 +372,7 @@ contains
          outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1)
     integer :: iproc,iiproc
 
-    if (sparseconfigflag.eq.0) then
+    if (biopointer%wwbio%sparseconfigflag.eq.0) then
        OFLWR "error, must use sparse for parbiomatvec summa"; CFLST
     endif
 
@@ -415,8 +416,6 @@ contains
 
   subroutine parbiomatvec_circ(inavector,outavector)
     use fileptrmod
-    use sparse_parameters
-    use mpimod
     use matvecsetmod
     use biomatvecmod
     use basissubmod
@@ -429,7 +428,7 @@ contains
          outtemp(biopointer%bionr,biopointer%wwbio%botconfig:biopointer%wwbio%topconfig+1)
     integer :: iproc,prevproc,nextproc,deltaproc,iiproc
 
-    if (sparseconfigflag.eq.0) then
+    if (biopointer%wwbio%sparseconfigflag.eq.0) then
        OFLWR "error, must use sparse for parbiomatvec summa"; CFLST
     endif
 
@@ -485,9 +484,7 @@ contains
 
   subroutine parbiomatvec(inavector,outavector)
     use fileptrmod
-    use sparse_parameters
-    use mpimod
-    use matvecsetmod
+    use sparse_parameters   !! sparsesummaflag
     use biomatvecmod
     implicit none
     DATATYPE,intent(in) :: inavector(biopointer%bionr,biopointer%wwbio%maxdfbasisperproc)
@@ -515,12 +512,11 @@ contains
   subroutine abio_sparse(abio,aout,inbiovar)
     use fileptrmod
     use timing_parameters
-    use sparse_parameters
+    use sparse_parameters   !! nzflag
     use bio_parameters
-    use mpimod
+    use mpimod        !! myrank
     use matvecsetmod
     use biorthotypemod
-    use dotmod
     use basissubmod
     implicit none
     type(biorthotype),target,intent(inout) :: inbiovar
@@ -534,7 +530,7 @@ contains
     DATATYPE, allocatable :: smallvector(:,:), smallvectorout(:,:)
     real*8,allocatable :: wsp(:)
 
-    if (sparseconfigflag.eq.0) then
+    if (inbiovar%wwbio%sparseconfigflag.eq.0) then
        OFLWR "Error, can't use abio_sparse if sparseconfigflag=0"; CFLST
     endif
 
@@ -733,7 +729,7 @@ contains
 !! this is the non-sparse specific routine that does the back-transofrmation of the a-vector
   subroutine abio_nonsparse(abio,aout,inbiovar)
     use fileptrmod
-    use mpimod
+    use mpimod     !! myrank,nprocs
     use aarrmod
     use biorthotypemod
     use tol_parameters
@@ -1017,7 +1013,7 @@ contains
 !enddo
 !! do the a-vector backtransform, sparse or nonsparse
     
-    if(sparseconfigflag.eq.0) then
+    if(inbiovar%wwbio%sparseconfigflag.eq.0) then
        call abio_nonsparse(abio,atmp,inbiovar)
     else
        inbiovar%smo(:,:)=smosave(:,:)
@@ -1100,7 +1096,7 @@ contains
        call mympireduce(inbiovar%smo,inbiovar%wwbio%nspf**2)
     endif
 
-    if(sparseconfigflag.eq.0) then
+    if(inbiovar%wwbio%sparseconfigflag.eq.0) then
        call invmatsmooth(inbiovar%smo,inbiovar%wwbio%nspf,inbiovar%wwbio%nspf,lntol,.false.);   
        call abio_nonsparse(abio,atmp,inbiovar)
     else
