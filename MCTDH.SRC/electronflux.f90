@@ -757,6 +757,7 @@ contains
     subroutine flux_op_onee(inspfs,keop,peop,flag)
       use parameters
       use orbgathersubmod
+      use orbmultsubmod
       implicit none
       integer,intent(in) :: flag
       DATATYPE, intent(in) :: inspfs(spfsize,nspf)

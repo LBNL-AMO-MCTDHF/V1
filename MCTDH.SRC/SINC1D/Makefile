@@ -15,6 +15,9 @@ clean:
 ../MPI.o: ../MPI.F90
 	cd ..; make MPI.o
 
+../proputils.o: ../proputils.F90
+	cd ..; make proputils.o
+
 sincprojectar.a:  $(HTWO) 
 	$(AR) -r sincprojectar.a    $(HTWO) 
 
@@ -36,10 +39,10 @@ ftcore.o: $(DEPEND) ftcore.F90
 sincproject.o: $(DEPEND) sincproject.F90 sinc_params.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c sincproject.F90
 
-init_sinc_new.o: $(DEPEND) sinc_params.o sincproject.o init_sinc_new.F90 ../MPI.o
+init_sinc_new.o: $(DEPEND) sinc_params.o sincproject.o init_sinc_new.F90 ../MPI.o ../proputils.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -I.. -c init_sinc_new.F90
 
-coreproject.o: $(DEPEND)  sinc_params.o sincproject.o coreproject.F90 toeplitz_subs.o ../MPI.o
+coreproject.o: $(DEPEND)  sinc_params.o sincproject.o coreproject.F90 toeplitz_subs.o ../MPI.o ../proputils.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -I.. -c coreproject.F90
 
 sinc_extraproject.o: $(DEPEND) sinc_params.o sincproject.o sinc_extraproject.F90

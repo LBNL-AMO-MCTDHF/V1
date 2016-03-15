@@ -122,7 +122,7 @@ derivs.o: $(DEPEND) derivs.F90 proputils.o walkmult.o
 mean.o: $(DEPEND) mean.F90 MPI.o denmat.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c mean.F90 
 
-matel.o: $(DEPEND)  matel.F90 spin.o
+matel.o: $(DEPEND)  matel.F90 spin.o proputils.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c matel.F90 
 
 spin.o: $(DEPEND)  spin.F90 newconfig.o
@@ -134,7 +134,7 @@ spfs.o: $(DEPEND) spfs.F90 utils.o
 denmat.o: $(DEPEND) denmat.F90 biortho.o autosub.o utils.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c denmat.F90
 
-driving.o: $(DEPEND) driving.F90 biortho.o walkmult.o denmat.o
+driving.o: $(DEPEND) driving.F90 biortho.o walkmult.o denmat.o proputils.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c driving.F90
 
 newconfig.o: $(DEPEND) newconfig.F90
@@ -179,7 +179,7 @@ utils.o: $(DEPEND) utils.F90
 getparams.o: Definitions.ALL Definitions.INC parameters.o main_modules.o getparams.F90 
 	$(F90) $(FFLAGS) $(MPIFLAG) $(SAFEFLAG) $(PGFFLAG) -c getparams.F90 
 
-electronflux.o: $(DEPEND) electronflux.F90 biortho.o walkmult.o
+electronflux.o: $(DEPEND) electronflux.F90 biortho.o walkmult.o proputils.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c electronflux.F90
 
 projeflux.o: $(DEPEND) projeflux.F90 biortho.o newconfig.o

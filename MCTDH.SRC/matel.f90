@@ -171,6 +171,7 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
   use configptrmod
   use orbgathersubmod
   use mpisubmod
+  use orbmultsubmod
   implicit none
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
@@ -229,6 +230,7 @@ subroutine pulse_matel(matrix_ptr,inspfs1,inspfs2)
   use configptrmod
   use orbgathersubmod
   use mpisubmod
+  use orbmultsubmod
   implicit none
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr

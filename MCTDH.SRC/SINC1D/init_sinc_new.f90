@@ -321,6 +321,8 @@ contains
   subroutine mult_bigspf_ivo(inbigspf,outbigspf)
     use myparams
     use ivopotmod
+    use orbmultsubmod   !! IN PARENT DIRECTORY
+    use orbprojectmod
     implicit none
     DATATYPE,intent(in) :: inbigspf(totpoints)
     DATATYPE, intent(out) :: outbigspf(totpoints)
@@ -353,11 +355,11 @@ contains
 
   subroutine mult_bigspf0(inbigspf,outbigspf)
     use myparams
+    use orbmultsubmod   !! IN PARENT DIRECTORY
     implicit none
     DATATYPE,intent(in) :: inbigspf(totpoints)
     DATATYPE, intent(out) :: outbigspf(totpoints)
     DATATYPE :: tempspf(totpoints)   !! AUTOMATIC
-
 
     tempspf=0
 

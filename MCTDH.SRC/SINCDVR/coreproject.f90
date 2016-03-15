@@ -255,7 +255,8 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)
   use pmpimod
   use pfileptrmod
   use mycdotmod
-  use mpisubmod   !! IN PARENT DIRECTORY
+  use mpisubmod     !! IN PARENT DIRECTORY
+  use orbmultsubmod !! IN PARENT DIRECTORY
   implicit none
   integer, intent(in) :: numfrozen
   DATATYPE, intent(in) :: infrozens(totpoints,numfrozen)

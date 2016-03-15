@@ -415,6 +415,7 @@ contains
   subroutine wmult00(lowspf,highspf,inspfs, outspfs, ireduced)
     use parameters
     use xxxmod
+    use orbmultsubmod
     implicit none
     integer,intent(in) :: lowspf,highspf,ireduced
     DATATYPE, intent(in) :: inspfs(spfsize,nspf)
@@ -550,6 +551,7 @@ contains
     use derivtimingmod
     use orbprojectmod
     use orbgathersubmod
+    use orbmultsubmod
     implicit none
     integer, intent(in) :: lowspf,highspf,dentimeflag,ireduced,projflag,conflag
     real*8, intent(in) :: thistime

@@ -26,7 +26,7 @@ else
 ## depend explicitly.  These dependencies are also in the project
 ## makefiles.
 
-make MPI.o
+make MPI.o proputils.o
 
 for dir in DFFTPACK DGMRES bessel H2PROJECT HEPROJECT SINCDVR
 do

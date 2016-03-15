@@ -11,10 +11,11 @@ default: h2projectar.a
 clean:
 	rm *.o *.a *.mod *genmod*
 
+../proputils.o: ../proputils.F90
+	cd ..; make proputils.o
+
 h2projectar.a:  $(HTWO) 
 	$(AR) -r h2projectar.a    $(HTWO) 
-
-
 
 H2_params.o: $(DEPEND) H2_params.F90
 	$(F90) $(FFLAGS)  -c H2_params.F90
@@ -25,8 +26,8 @@ h2project.o: $(DEPEND) h2project.F90 H2_params.o
 init_H2_new.o: $(DEPEND)  H2_params.o h2project.o coreproject.o init_H2_new.F90
 	$(F90) $(FFLAGS)  -c init_H2_new.F90
 
-coreproject.o: $(DEPEND)  H2_params.o h2project.o coreproject.F90
-	$(F90) $(FFLAGS)  -c coreproject.F90
+coreproject.o: $(DEPEND)  H2_params.o h2project.o coreproject.F90 ../proputils.o
+	$(F90) $(FFLAGS) -I.. -c coreproject.F90
 
 coretwoe.o: $(DEPEND)  HE_params.o heproject.o coretwoe.F90
 	$(F90) $(FFLAGS)  -c coretwoe.F90

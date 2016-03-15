@@ -328,6 +328,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
   use twoemod
   use myprojectmod
   use mycdotmod
+  use orbmultsubmod   !! IN PARENT DIRECTORY
   implicit none
   integer,intent(in) :: numfrozen
   DATATYPE,intent(out) :: frozenkediag,frozenpotdiag
