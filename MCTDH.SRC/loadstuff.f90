@@ -25,8 +25,11 @@ subroutine save_vector(avectors,spfs,afile,sfile)
   parorbitals(:,:)=0d0; parfrozen(:,:)=0d0
 
   call mpibarrier()
-  OFLWR "  ... go save vectors..."; CFL
+  OFLWR "  ... go save vectors...gather orbitals..."; CFL
   call mpibarrier()
+
+!! ARGH should be gathering only one at a time... running out of memory.
+!! perhaps we should be using MPI I/O
 
   if (parorbsplit.eq.3) then     
      do ispf=1,nspf
@@ -40,30 +43,8 @@ subroutine save_vector(avectors,spfs,afile,sfile)
      endif
   endif
 
-
-  if (par_consplit.ne.0.and.myrank.eq.1) then
-     allocate(paravec(numr,num_config,mcscfnum))
-  else
-     allocate(paravec(1,1,mcscfnum))
-  endif
-  paravec(:,:,:)=0d0
-
   call mpibarrier()
-  OFLWR "  ... gathered orbs, now gather avector..."; CFL
-  call mpibarrier()
-
-  if (par_consplit.ne.0) then
-     do iprop=1,mcscfnum
-        if (tot_adim.gt.0) then
-           call mygatherv(avectors(:,:,iprop),paravec(:,:,iprop),configs_perproc(:)*numr,.false.)
-        else
-           call mygatherv(nullvector(:),paravec(:,:,iprop),configs_perproc(:)*numr,.false.)
-        endif
-     enddo
-  endif
-
-  call mpibarrier()
-  OFLWR "  ... ok, now write!"; CFL
+  OFLWR "  ... gathered orbs, now write"; CFL
   call mpibarrier()
 
   if (myrank.eq.1) then
@@ -79,10 +60,43 @@ subroutine save_vector(avectors,spfs,afile,sfile)
      endif
      close(998)
 
+  endif
+
+  deallocate(parorbitals,parfrozen)
+
+  call mpibarrier()
+  OFLWR "  ... gathered orbs, alloc avector..."; CFL
+  call mpibarrier()
+
+  if (par_consplit.ne.0.and.myrank.eq.1) then
+     allocate(paravec(numr,num_config,mcscfnum))
+  else
+     allocate(paravec(1,1,mcscfnum))
+  endif
+  paravec(:,:,:)=0d0
+
+  call mpibarrier()
+  OFLWR "  ... now gather avector..."; CFL
+  call mpibarrier()
+
+  if (par_consplit.ne.0) then
+     do iprop=1,mcscfnum
+        if (tot_adim.gt.0) then
+           call mygatherv(avectors(:,:,iprop),paravec(:,:,iprop),configs_perproc(:)*numr,.false.)
+        else
+           call mygatherv(nullvector(:),paravec(:,:,iprop),configs_perproc(:)*numr,.false.)
+        endif
+     enddo
+  endif
+
+  call mpibarrier()
+  OFLWR "  ... ok, now write avector"; CFL
+  call mpibarrier()
+
+  if (myrank.eq.1) then
      open(999,file=afile, status="unknown", form="unformatted",iostat=myiostat)
      call checkiostat(myiostat,"opening "//afile)
      call avector_header_write(999,mcscfnum)
-
      if (par_consplit.ne.0) then
         do iprop=1,mcscfnum
            call write_avector(999,paravec(:,:,iprop))
@@ -93,12 +107,10 @@ subroutine save_vector(avectors,spfs,afile,sfile)
         enddo
      endif
      close(999)
-
   endif
   
   call mpibarrier()
 
-  deallocate(parorbitals,parfrozen)
   deallocate(paravec)
 
   if (myrank.eq.1) then
