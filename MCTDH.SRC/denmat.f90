@@ -91,7 +91,7 @@ subroutine replace_withnat(printflag)
   use natrepbiomod
   use biorthomod
   use parameters
-  use configmod
+  use configmod    !! bwwptr
   use xxxmod
   implicit none
 
@@ -193,34 +193,34 @@ end subroutine getdenmatx
 module densubmod
 contains
 
-subroutine getdenmat00(inholeflag,www,avector1,in_avector2,rvector, denmat, numpoints,howmany)
+subroutine getdenmat00(inholeflag,wwin,avector1,in_avector2,rvector, denmat, numpoints,howmany)
   use walkmod
   use dotmod
   use mpisubmod
   implicit none
-  type(walktype),intent(in) :: www
+  type(walktype),intent(in) :: wwin
   integer,intent(in) ::  numpoints,howmany,inholeflag
-  DATATYPE, intent(in) :: in_avector2(numpoints,www%firstconfig:www%lastconfig,howmany),&
-       avector1(numpoints,www%firstconfig:www%lastconfig,howmany)
+  DATATYPE, intent(in) :: in_avector2(numpoints,wwin%firstconfig:wwin%lastconfig,howmany),&
+       avector1(numpoints,wwin%firstconfig:wwin%lastconfig,howmany)
   DATAECS,intent(in) :: rvector(numpoints)
-  DATATYPE,intent(out) :: denmat(www%nspf,www%nspf)
+  DATATYPE,intent(out) :: denmat(wwin%nspf,wwin%nspf)
   DATATYPE :: a1(numpoints,howmany), a2(numpoints,howmany), &
-       mydenmat(www%nspf,www%nspf), csum
+       mydenmat(wwin%nspf,wwin%nspf), csum
   DATATYPE, allocatable :: avector2(:,:,:)
   integer :: config1,config2,  ispf,jspf,  dirphase, iwalk, ii, ihop
 
-  allocate(avector2(numpoints,www%numconfig,howmany))
+  allocate(avector2(numpoints,wwin%numconfig,howmany))
   avector2(:,:,:)=0d0
-  if (www%lastconfig.ge.www%firstconfig) then
-     avector2(:,www%firstconfig:www%lastconfig,:) = in_avector2(:,:,:)
+  if (wwin%lastconfig.ge.wwin%firstconfig) then
+     avector2(:,wwin%firstconfig:wwin%lastconfig,:) = in_avector2(:,:,:)
   endif
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 
-  if (www%parconsplit.ne.0) then
+  if (wwin%parconsplit.ne.0) then
      do ii=1,howmany
-        call mpiallgather(avector2(:,:,ii),www%numconfig*numpoints,&
-             www%configsperproc(:)*numpoints,www%maxconfigsperproc*numpoints)
+        call mpiallgather(avector2(:,:,ii),wwin%numconfig*numpoints,&
+             wwin%configsperproc(:)*numpoints,wwin%maxconfigsperproc*numpoints)
      enddo
   endif
 
@@ -233,23 +233,23 @@ subroutine getdenmat00(inholeflag,www,avector1,in_avector2,rvector, denmat, nump
   mydenmat(:,:)=0.d0
 
 !$OMP DO SCHEDULE(DYNAMIC)
-  do config1=www%botconfig,www%topconfig
+  do config1=wwin%botconfig,wwin%topconfig
 
      do ii=1,howmany
         a1(:,ii)=avector1(:,config1,ii) * rvector(:)
      enddo
 
-     do ihop=1,www%numsinglehops(config1)
-        config2=www%singlehop(ihop,config1)
+     do ihop=1,wwin%numsinglehops(config1)
+        config2=wwin%singlehop(ihop,config1)
 
         a2(:,:)=avector2(:,config2,:)
         csum=dot(a2(:,:),a1(:,:),numpoints*howmany)
 
-        do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
+        do iwalk=wwin%singlehopwalkstart(ihop,config1),wwin%singlehopwalkend(ihop,config1)
 
-           dirphase=www%singlewalkdirphase(iwalk,config1)
-           ispf=www%singlewalkopspf(1,iwalk,config1)  !! goes with config1
-           jspf=www%singlewalkopspf(2,iwalk,config1)  !! goes with config2
+           dirphase=wwin%singlewalkdirphase(iwalk,config1)
+           ispf=wwin%singlewalkopspf(1,iwalk,config1)  !! goes with config1
+           jspf=wwin%singlewalkopspf(2,iwalk,config1)  !! goes with config2
 
            mydenmat(ispf,jspf)=mydenmat(ispf,jspf)+ &
                 csum*dirphase
@@ -271,18 +271,18 @@ subroutine getdenmat00(inholeflag,www,avector1,in_avector2,rvector, denmat, nump
 !$OMP END CRITICAL
 !$OMP END PARALLEL
 
-  call mympireduce(denmat,www%nspf**2)
+  call mympireduce(denmat,wwin%nspf**2)
 
-  if (www%holeflag.ne.0.and.inholeflag.ne.0) then
+  if (wwin%holeflag.ne.0.and.inholeflag.ne.0) then
      csum=0d0
-     if (www%lastconfig.ge.www%firstconfig) then
-        csum=dot(in_avector2,avector1,numpoints*www%localnconfig*howmany)
+     if (wwin%lastconfig.ge.wwin%firstconfig) then
+        csum=dot(in_avector2,avector1,numpoints*wwin%localnconfig*howmany)
      endif
-     if (www%parconsplit.ne.0) then
+     if (wwin%parconsplit.ne.0) then
         call mympireduceone(csum)
      endif
      denmat(:,:) = (-1) * denmat(:,:)
-     do ispf=1,www%nspf
+     do ispf=1,wwin%nspf
         denmat(ispf,ispf)=denmat(ispf,ispf) + csum * 2d0
      enddo
   endif
@@ -295,7 +295,7 @@ end subroutine getdenmat00
 end module densubmod
 
 
-subroutine getdenmatstuff(www,avector, denmat, invdenmat, denvals, &
+subroutine getdenmatstuff(wwin,avector, denmat, invdenmat, denvals, &
      denvects, numpoints,howmany)
   use class_parameters
   use denreg_parameters
@@ -303,20 +303,20 @@ subroutine getdenmatstuff(www,avector, denmat, invdenmat, denvals, &
   use invsubmod
   use densubmod
   implicit none
-  type(walktype),intent(in) :: www
+  type(walktype),intent(in) :: wwin
   integer,intent(in) ::  numpoints,howmany
-  CNORMTYPE,intent(out) :: denvals(www%nspf)
-  DATATYPE, intent(in) :: avector(numpoints,www%firstconfig:www%lastconfig,howmany)
-  DATATYPE,intent(out) :: denmat(www%nspf,www%nspf),&
-       invdenmat(www%nspf,www%nspf),denvects(www%nspf,www%nspf)
-  CNORMTYPE :: tempdenvals(www%nspf,numclasses)
-  DATATYPE :: tempinvden(www%nspf,www%nspf,numclasses),&
-       tempdenvects(www%nspf,www%nspf,numclasses)
+  CNORMTYPE,intent(out) :: denvals(wwin%nspf)
+  DATATYPE, intent(in) :: avector(numpoints,wwin%firstconfig:wwin%lastconfig,howmany)
+  DATATYPE,intent(out) :: denmat(wwin%nspf,wwin%nspf),&
+       invdenmat(wwin%nspf,wwin%nspf),denvects(wwin%nspf,wwin%nspf)
+  CNORMTYPE :: tempdenvals(wwin%nspf,numclasses)
+  DATATYPE :: tempinvden(wwin%nspf,wwin%nspf,numclasses),&
+       tempdenvects(wwin%nspf,wwin%nspf,numclasses)
   integer :: ispf,jspf,iclass
   DATAECS :: rvector(numpoints)
 
   rvector(:)=1d0
-  call getdenmat00(1,www,avector,avector,rvector,denmat,numpoints,howmany)
+  call getdenmat00(1,wwin,avector,avector,rvector,denmat,numpoints,howmany)
 
   denvects(:,:)=0d0; invdenmat(:,:)=0d0
 
@@ -330,12 +330,12 @@ subroutine getdenmatstuff(www,avector, denmat, invdenmat, denvals, &
         enddo
      enddo
      tempinvden(:,:,iclass)= (-1) * tempinvden(:,:,iclass)
-     call EIGEN(tempinvden(:,:,iclass),nperclass(iclass), www%nspf, &
+     call EIGEN(tempinvden(:,:,iclass),nperclass(iclass), wwin%nspf, &
           tempdenvects(:,:,iclass),tempdenvals(:,iclass))
      tempinvden(:,:,iclass)= (-1) * tempinvden(:,:,iclass)
      tempdenvals(:,iclass)= (-1) * tempdenvals(:,iclass)
 
-     call invmatsmooth(tempinvden(:,:,iclass),nperclass(iclass),www%nspf,denreg,.false.)
+     call invmatsmooth(tempinvden(:,:,iclass),nperclass(iclass),wwin%nspf,denreg,.false.)
      do ispf=1,nperclass(iclass)
         denvals(classorb(ispf,iclass))=tempdenvals(ispf,iclass)
         do jspf=1,nperclass(iclass)
@@ -351,38 +351,38 @@ subroutine getdenmatstuff(www,avector, denmat, invdenmat, denvals, &
 end subroutine getdenmatstuff
 
 
-subroutine getoccupations(www,in_avector, numpoints, occupations)
+subroutine getoccupations(wwin,in_avector, numpoints, occupations)
   use walkmod
   use dotmod
   use mpisubmod
   implicit none
-  type(walktype),intent(in) :: www
+  type(walktype),intent(in) :: wwin
   integer,intent(in) ::  numpoints
-  CNORMTYPE, intent(out) :: occupations(www%nspf)
+  CNORMTYPE, intent(out) :: occupations(wwin%nspf)
   integer :: config1,  ispf,jspf,  iwalk,idiag
-  DATATYPE, intent(in) :: in_avector(numpoints,www%firstconfig:www%lastconfig)
+  DATATYPE, intent(in) :: in_avector(numpoints,wwin%firstconfig:wwin%lastconfig)
   DATATYPE, allocatable :: avector(:,:)
 
-  allocate(avector(numpoints,www%numconfig))
+  allocate(avector(numpoints,wwin%numconfig))
   avector(:,:)=0d0
 
-  avector(:,www%firstconfig:www%lastconfig) = in_avector(:,:)
+  avector(:,wwin%firstconfig:wwin%lastconfig) = in_avector(:,:)
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 
-  if (www%parconsplit.ne.0) then
-     call mpiallgather(avector,www%numconfig*numpoints,&
-          www%configsperproc(:)*numpoints,www%maxconfigsperproc*numpoints)
+  if (wwin%parconsplit.ne.0) then
+     call mpiallgather(avector,wwin%numconfig*numpoints,&
+          wwin%configsperproc(:)*numpoints,wwin%maxconfigsperproc*numpoints)
   endif
 
   occupations(:)=0d0
 
-  do config1=www%botconfig,www%topconfig
-     do idiag=1,www%numsinglediagwalks(config1)
-        iwalk=www%singlediag(idiag,config1)
+  do config1=wwin%botconfig,wwin%topconfig
+     do idiag=1,wwin%numsinglediagwalks(config1)
+        iwalk=wwin%singlediag(idiag,config1)
 
-        ispf=www%singlewalkopspf(1,iwalk,config1)  !! goes with config1
-        jspf=www%singlewalkopspf(2,iwalk,config1)  !! goes with config2
+        ispf=wwin%singlewalkopspf(1,iwalk,config1)  !! goes with config1
+        jspf=wwin%singlewalkopspf(2,iwalk,config1)  !! goes with config2
 
         occupations(ispf)=occupations(ispf) + &  !! ok conversion
              dot(avector(:,config1),avector(:,config1),numpoints)
@@ -390,22 +390,21 @@ subroutine getoccupations(www,in_avector, numpoints, occupations)
      enddo
   enddo
 
-  if (www%holeflag.ne.0) then
-     occupations(:)=2d0-occupations(:)
-  endif
-
   deallocate(avector)
 
 #ifndef REALGO
 #ifndef CNORMFLAG
-  call mympirealreduce(occupations,www%nspf)
+  call mympirealreduce(occupations,wwin%nspf)
 #else
-  call mympireduce(occupations,www%nspf)
+  call mympireduce(occupations,wwin%nspf)
 #endif
 #else
-  call mympireduce(occupations,www%nspf)
+  call mympireduce(occupations,wwin%nspf)
 #endif
 
+  if (wwin%holeflag.ne.0) then
+     occupations(:)=2d0-occupations(:)
+  endif
 
 end subroutine getoccupations
 
