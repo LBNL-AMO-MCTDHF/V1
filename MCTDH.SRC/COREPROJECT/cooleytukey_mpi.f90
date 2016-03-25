@@ -237,7 +237,7 @@ contains
     deallocate(twiddle1)
 
   contains
-    recursive subroutine gettwiddlesmall_ct2(twiddlefacs,dim1,dim2)
+    subroutine gettwiddlesmall_ct2(twiddlefacs,dim1,dim2)
       implicit none
       integer, intent(in) :: dim1,dim2
       complex*16, intent(out) :: twiddlefacs(dim1)
