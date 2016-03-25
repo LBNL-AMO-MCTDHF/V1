@@ -362,8 +362,10 @@ endif
 
   OFLWR "Sorting walks..."; CFL
 
+!$OMP PARALLEL DEFAULT(PRIVATE) SHARED(www)
   allocate(listorder(www%maxdoublewalks+www%maxsinglewalks))
   listorder=0
+!$OMP DO SCHEDULE(DYNAMIC)
   do config1=www%botconfig,www%topconfig
 
      if (www%numsinglewalks(config1).gt.1) then
@@ -379,7 +381,10 @@ endif
         call listreorder(www%doublewalk(:,config1),listorder(:),www%numdoublewalks(config1),1)
      endif
   enddo
+!$OMP END DO
   deallocate(listorder)
+!$OMP END PARALLEL
+
   OFLWR "    .... done sorting walks."; CFL
 
 
@@ -434,7 +439,7 @@ endif
 
 contains
 
-  subroutine getlistorder(values, order,num)
+  recursive subroutine getlistorder(values, order,num)
     implicit none
     integer,intent(in) :: num,values(num)
     integer,intent(out) :: order(num)
@@ -466,7 +471,7 @@ contains
 
   end subroutine getlistorder
 
-  subroutine listreorder(list, order,num,numper)
+  recursive subroutine listreorder(list, order,num,numper)
     implicit none
     integer,intent(in) :: num, numper, order(num)
     integer,intent(inout) :: list(numper,num)
