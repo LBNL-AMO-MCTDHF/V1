@@ -17,7 +17,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   DATATYPE,intent(inout) ::       inspfs(numerad,lbig+1, -mbig:mbig, numspf)
   DATATYPE,intent(out) :: proderivmod(numr,numr),rkemod(numr,numr),bondpoints(numr),&
        bondweights(numr),  halfniumpot(numerad,lbig+1, -mbig:mbig),pot(numerad,lbig+1, -mbig:mbig), &
-       elecweights(numerad,lbig+1, -mbig:mbig),elecradii(numerad,lbig+1, -mbig:mbig)
+       elecweights(numerad,lbig+1, -mbig:mbig,3),elecradii(numerad,lbig+1, -mbig:mbig)
   character (len=2) :: th(4)
   DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:)
   DATATYPE,allocatable :: mydensity(:,:), ivopot(:,:)
@@ -79,12 +79,17 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   bondpoints(:)=1d0
   bondweights(:)=1d0
+
+  elecweights(:,:,:,3)=1d0
   do i=1,lbig+1
-     elecweights(:,i,:)=jacobiweights(i)
+     elecweights(:,i,:,2)=jacobiweights(i)
   enddo
   do i=2,hegridpoints-1
-     elecweights(i-1,:,:)=elecweights(i-1,:,:)*glweights(i)
+     elecweights(i-1,:,:,1)=glweights(i)
   enddo
+
+!!$     elecweights(i-1,:,:)=elecweights(i-1,:,:)*glweights(i)
+
   rkemod(:,:)=0d0
   proderivmod(:,:)=0d0
 

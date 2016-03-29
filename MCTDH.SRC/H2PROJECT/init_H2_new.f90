@@ -18,7 +18,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   DATATYPE,intent(out) :: proderivmod(numr,numr),rkemod(numr,numr), &
        bondpoints(numr),bondweights(numr), halfniumpot(numerad,lbig+1, -mbig:mbig),&
        pot(numerad,lbig+1, -mbig:mbig), &
-       elecweights(numerad,lbig+1, -mbig:mbig), elecradii(numerad,lbig+1, -mbig:mbig)
+       elecweights(numerad,lbig+1, -mbig:mbig,3), elecradii(numerad,lbig+1, -mbig:mbig)
   integer :: i,ii,j,    taken(200)=0, flag, jj, jflag, xiug, iug, ugvalue(200,0:30), &
        getsmallugvalue
   DATAECS :: thisrvalue  
@@ -56,12 +56,15 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   enddo
 
 
+  elecweights(:,:,:,3)=1d0
   do i=1,lbig+1
-     elecweights(:,i,:)=etaweights(i)
+     elecweights(:,i,:,2)=etaweights(i)
   enddo
   do i=2,xigridpoints-1
-     elecweights(i-1,:,:)=elecweights(i-1,:,:)*xiweights(i)
+     elecweights(i-1,:,:,1)=xiweights(i)
   enddo
+
+!!$      elecweights(i-1,:,:)=elecweights(i-1,:,:)*xiweights(i)
 
   rkemod=rketot(2:numr+1,2:numr+1)
   proderivmod(:,:) = prolate_derivs(2:numr+1,2:numr+1)

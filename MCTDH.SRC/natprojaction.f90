@@ -397,9 +397,11 @@ subroutine save_denproj( nproj, thistime, inspfs, indenmats, denfilename)
           (1.d0,0.d0), density, spfdims(1)*spfdims(2), mtrans,spfdims(3), &
           (0.d0,0.d0), cmdensity, spfdims(1)*spfdims(2))
 
+!! why square root?  is this a mistake?
      do imval=1,spfdims(3)
-        mdensity(:,:,imval)=  cmdensity(:,:,imval) / &
-             sqrt(elecweights(:,:,imval))   !! ok imp conv mctdh
+        mdensity(:,:,imval)=  cmdensity(:,:,imval) / &          !! ok conversion
+             sqrt(elecweights(:,:,imval,1)* &                   !! ok conversion
+             elecweights(:,:,imval,2)*elecweights(:,:,imval,3)) !! ok conversion
      enddo
      csum=natvals(iproj)
      call write_nat_header(header,thistime,0,iproj,csum)

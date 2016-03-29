@@ -35,7 +35,8 @@ subroutine keprojector(inavector,inspfs,infac,www)
      kevects(:,:)=0d0; keproj(:,:,:)=0d0; kesum=0d0; kesum2=0d0; keproj2(:,:,:)=0d0
 
 !! elec weights has spfdims for m value support
-     tempelecweights=RESHAPE(elecweights(:,:,:),(/spfsize/))
+     tempelecweights=RESHAPE(elecweights(:,:,:,1)*elecweights(:,:,:,2)*elecweights(:,:,:,3),&
+          (/spfsize/))
      
      do ii=1,nkeproj
         energy(ii)=keprojminenergy+ ii*keprojenergystep

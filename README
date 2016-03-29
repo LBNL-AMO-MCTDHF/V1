@@ -1,5 +1,8 @@
 
-  ** LBNL-AMO-MCTDHF VERSION 1.25 **
+  ** LBNL-AMO-MCTDHF VERSION 1.26 **
+
+v1.26 angular differential partial photoionization, action 17, with
+   angularflag.ne.0
 
 v1.20 multiple cation files for partial photoionization action 17
    using numcatfiles, catspffiles, catavectorfiles in namelist &parinp
@@ -183,14 +186,11 @@ and again recompiling.
 ----------------------------    MODULES TO LOAD    -----------------------------
 ---------------------------- ON NERSC & LAWRENCIUM -----------------------------
 
-  COMPDIRS/BIN.ecs.hermnorm.law, 
-  COMPDIRS/BIN.ecs.hermnorm.edison, etc.
+  COMPDIRS/BIN.ecs.hermnorm.law,  COMPDIRS/BIN.ecs.hermnorm.edison, etc.
 
 LAWRENCIUM:
-
-module load mkl
+  module load mkl
 
 EDISON:
-
-module unload cray-libsci
-module load mkl
+  module unload cray-libsci
+  module load mkl

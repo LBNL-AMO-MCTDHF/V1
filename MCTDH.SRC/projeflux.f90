@@ -15,7 +15,8 @@ end module projefluxmod
 
 !! here we are doing walks from our BO target state to our wavefunction \Psi(t)
 subroutine projeflux_singlewalks()
-  use parameters
+  use fileptrmod
+  use basis_parameters !! numpart, num2part
   use aarrmod
   use projefluxmod
   use configmod
@@ -132,7 +133,7 @@ end subroutine projeflux_singlewalks
 
 !! construct the one electron functions
 subroutine projeflux_doproj(cata,neuta,mo,offset)
-  use parameters
+  use parameters     !! nspf, projfluxfile etc.
   use projefluxmod
   use mpimod
   use mpisubmod
@@ -200,20 +201,20 @@ end subroutine projeflux_doproj
 !! do the double time integral piece    08-2015 now looping over istate and imc here
 
 subroutine projeflux_double_time_int(mem,nstate,nt,dt)
-  use parameters
+  use parameters    !! par_timestep and others
   use projefluxmod  !! targetms, ..
   use mpimod
   use mpisubmod
   implicit none
   integer,intent(in) :: mem,nstate,nt
   real*8,intent(in) :: dt
-  integer :: i,k,tlen,istate,curtime,tau,ir ,imc,ioffset
+  integer :: i,k,tlen,istate,curtime,tau,ir ,imc,ioffset, NUMANGLES, NUMERAD, il
   integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,&
        bratop,getlen,myiostat
   real*8 :: doubleclebschsq,aa,bb,cc,MemTot,MemVal,wfi,cgfac,estep,myfac,windowfunct
-  DATATYPE, allocatable,target :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:)
-  DATATYPE, allocatable :: read_bramo(:,:,:,:), read_ketmo(:,:,:,:)
-  complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:)
+  DATATYPE, allocatable :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:),gtau_ad(:,:,:,:),&
+       read_bramo(:,:,:,:), read_ketmo(:,:,:,:), deweighted_bramo(:,:,:)
+  complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:),ftgtau_ad(:,:),total_ad(:,:)
   real*8, allocatable :: pulseftsq(:)
   DATATYPE :: pots1(3), csum
   character (len=4) :: xstate0,xmc0
@@ -313,6 +314,25 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
        bramo(spfsize,numr,2,BatchSize))
   gtau=0; ketmo=0; bramo=0
 
+  NUMANGLES=0; NUMERAD=0
+
+  if (angularflag.ne.0) then    !! FULLY DIFFERENTIAL PHOTOIONIZATION (function of angle and energy)
+     if (spfdimtype(2).ne.2) then
+        OFLWR "For angularflag, fully differential photoionizatoin, must have spfdimtype(2).eq.2"
+        WRFL "     (atom/diatom only)"; CFLST
+     endif
+
+     NUMANGLES=spfdims(2)
+     NUMERAD=spfdims(1)
+
+     allocate(gtau_ad(0:nt,nstate,mcscfnum,NUMANGLES),deweighted_bramo(spfsize,numr,2))
+  else
+     allocate(gtau_ad(0:1,nstate,mcscfnum,NUMANGLES),deweighted_bramo(1,1,2))
+  endif
+
+  gtau_ad=0
+  deweighted_bramo=0
+
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
         allocate(read_ketmo(spfsize*nprocs,numr,2,BatchSize),&
@@ -337,6 +357,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   OFLWR "Projected 1e- function record length is ",tlen;  CFL
 
   gtau(:,:,:)=0d0
+  gtau_ad(:,:,:,:)=0d0
 
 !! looping here now 08-2015
 
@@ -454,6 +475,28 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
                     tau=curtime-((brabat-1)*BatchSize+bratime-1)
                     gtau(tau,istate,imc) = gtau(tau,istate,imc) + &
                          hermdot(bramo(:,:,:,bratime),ketmo(:,:,:,kettime),2*spfsize*numr) * dt
+
+!!      allocated   bramo(spfsize,numr,2,BatchSize)
+
+                    if (angularflag.ne.0) then
+
+!!$                       gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + &
+!!$                            myhermdots(bramo(:,:,:,bratime),ketmo(:,:,:,kettime),2*spfsize*numr) * dt
+
+                       do k=1,2
+                          do ir=1,numr
+
+!! with /2/pi, we have Mb per steradian column 4 angprojspifile... right?  column 5 is nonsense pmctdhf/chmctdhf
+!! weights elecweights(:,:,:,3)=1d0.
+
+                             deweighted_bramo(:,ir,k) = bramo(:,ir,k,bratime) / &
+                                  RESHAPE(elecweights(:,:,:,2),(/spfsize/)) / 2 / pi
+                          enddo
+                       enddo
+                       gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + &
+                            myhermdots(deweighted_bramo(:,:,:),ketmo(:,:,:,kettime),2*spfsize*numr) * dt
+
+                    endif
                  enddo
 
 !! only do this after we are sure we've gone through every bra
@@ -487,6 +530,9 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
   if (parorbsplit.eq.3) then
      call mympireduce(gtau(:,:,:), (nt+1)*nstate*mcscfnum)
+     if (angularflag.ne.0) then
+        call mympireduce(gtau_ad(:,:,:,:), (NUMANGLES)*(nt+1)*nstate*mcscfnum)
+     endif
   endif
 
 
@@ -494,8 +540,14 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
   allocate(ftgtau(-curtime:curtime), pulseft(-curtime:curtime,3),&
        pulseftsq(-curtime:curtime),total(-curtime:curtime))
-
   ftgtau(:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0; total(:)=0
+
+  if (angularflag.ne.0) then
+     allocate(ftgtau_ad(-curtime:curtime,NUMANGLES), total_ad(-curtime:curtime,NUMANGLES))
+  else
+     allocate(ftgtau_ad(0:0,NUMANGLES), total_ad(0:0,NUMANGLES))
+  endif
+  ftgtau_ad=0; total_ad=0
 
   do i=0,curtime
      call vectdpot(i*par_timestep*fluxinterval*fluxskipmult,0,pots1,-1)  !! LENGTH GAUGE
@@ -524,21 +576,29 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   do imc=1,mcscfnum
 
      total(:)=0d0
+     total_ad(:,:)=0d0
 
      do istate=1,nstate
 
         ftgtau(:)=0d0;
 
         do i=0,curtime
-
            ftgtau(i) = ALLCON(gtau(i,istate,imc))   * windowfunct(i,curtime) * &
                 exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
-
         enddo
-
         do i=1,curtime
            ftgtau(-i) = ALLCON(ftgtau(i))
         enddo
+
+        if (angularflag.ne.0) then
+           do i=0,curtime
+              ftgtau_ad(i,:) = ALLCON(gtau_ad(i,istate,imc,:))   * windowfunct(i,curtime) * &
+                   exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
+           enddo
+           do i=1,curtime
+              ftgtau_ad(-i,:) = ALLCON(ftgtau_ad(i,:))
+           enddo
+        endif
 
         write(xstate0,'(I4)') istate+1000;  write(xmc0,'(I4)') imc+1000
         xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
@@ -568,6 +628,20 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
         total(:)=total(:)+ftgtau(:)
 
+        if (angularflag.ne.0) then
+           do il=1,NUMANGLES
+              call zfftf_wrap_diff(2*curtime+1,ftgtau_ad(-curtime:curtime,il),ftdiff)
+           enddo
+
+           ftgtau_ad(:,:)=ftgtau_ad(:,:)*par_timestep*FluxInterval*FluxSkipMult
+
+           do i=-curtime,curtime
+              ftgtau_ad(i,:)=ftgtau_ad(i,:)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))
+           enddo
+
+           total_ad(:,:)=total_ad(:,:)+ftgtau_ad(:,:)
+        endif
+
         if(myrank.eq.1) then
 
            open(1004,file=projspifile(1:getlen(projspifile)-1)//"_"//xstate1//"_"//xmc1//".dat",&
@@ -575,7 +649,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            call checkiostat(myiostat,"opening proj spi file")
            write(1004,*,iostat=myiostat)
            call checkiostat(myiostat,"writing proj spi file")
-           write(1004,*) "# Omega; pulse ft; projected flux at t= ",finaltime
+           write(1004,*) "# Omega; pulse ft; proj flux t= ",finaltime
 
            do i=-curtime,curtime
               wfi=(i+curtime)*estep
@@ -590,27 +664,71 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
               write(1004,'(F18.12, T22, 400E20.8)',iostat=myiostat)  wfi,  &
                    pulseftsq(i), ftgtau(i)/pulseftsq(i) * cgfac * myfac, ftgtau(i)
+
            enddo
            call checkiostat(myiostat,"writing proj spi file")
            close(1004)
-        endif
+
+           if (angularflag.ne.0) then
+              open(1004,file=angprojspifile(1:getlen(angprojspifile)-1)//"_"//xstate1//"_"//xmc1//".dat",&
+                   status="replace",action="readwrite",position="rewind",iostat=myiostat)
+              call checkiostat(myiostat,"opening angproj spi file")
+              write(1004,*,iostat=myiostat)
+              call checkiostat(myiostat,"writing angproj spi file")
+              write(1004,*) "# Omega; pulse ft; differential proj flux t= ",finaltime
+              do i=-curtime,curtime
+                 wfi=(i+curtime)*estep
+                 myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi 
+
+                 do il=1,NUMANGLES
+                    write(1004,'(F18.12, I5, 1400E20.8)',iostat=myiostat)  wfi, il, &
+                         pulseftsq(i), ftgtau_ad(i,il)/pulseftsq(i) * cgfac * myfac, ftgtau_ad(i,il)
+                 enddo
+                 write(1004,*)
+              enddo
+              call checkiostat(myiostat,"writing angproj spi file")
+              close(1004)
+           endif
+        endif  !! if myrank.eq.1
      enddo  !! do istate
 
      if(myrank.eq.1) then
         open(1004,file=projspifile(1:getlen(projspifile)-1)//"_all_"//xmc1//".dat",&
              status="replace",action="readwrite",position="rewind",iostat=myiostat)
-        call checkiostat(myiostat,"opening proj spi file")
+        call checkiostat(myiostat,"opening total proj spi file")
         write(1004,*,iostat=myiostat)
-        call checkiostat(myiostat,"writing proj spi file")
-        write(1004,*) "# Omega; pulse ft; projected flux at t= ",finaltime
+        call checkiostat(myiostat,"writing total proj spi file")
+        write(1004,*) "# Omega; pulse ft; proj flux t= ",finaltime
         do i=-curtime,curtime
            wfi=(i+curtime)*estep
            myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
            write(1004,'(F18.12, T22, 400E20.8)',iostat=myiostat)  wfi,  pulseftsq(i), &
                 total(i)/pulseftsq(i) * cgfac * myfac, total(i)
         enddo
-        call checkiostat(myiostat,"writing proj spi file")
+        call checkiostat(myiostat,"writing total proj spi file")
         close(1004)
+
+        if (angularflag.ne.0) then
+           open(1004,file=angprojspifile(1:getlen(angprojspifile)-1)//"_all_"//xmc1//".dat",&
+                status="replace",action="readwrite",position="rewind",iostat=myiostat)
+           call checkiostat(myiostat,"opening total ang proj spi file")
+           write(1004,*,iostat=myiostat)
+           call checkiostat(myiostat,"writing total ang proj spi file")
+           write(1004,*) "# Omega; pulse ft; differential proj flux t= ",finaltime
+           do i=-curtime,curtime
+              wfi=(i+curtime)*estep
+              myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
+
+              do il=1,NUMANGLES
+                 write(1004,'(F18.12, I5, 400E20.8)',iostat=myiostat)  wfi, il, pulseftsq(i), &
+                      total_ad(i,il)/pulseftsq(i) * cgfac * myfac, total_ad(i,il)
+              enddo
+              write(1004,*)
+           enddo
+           call checkiostat(myiostat,"writing total ang proj spi file")
+           close(1004)
+        endif
+
      endif
 
   enddo  !! do imc
@@ -618,15 +736,45 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   deallocate(ftgtau,pulseft,pulseftsq,total)
   deallocate(read_bramo,read_ketmo)
   deallocate(gtau,ketmo,bramo)
+  deallocate(gtau_ad,ftgtau_ad,total_ad,deweighted_bramo)
 
 contains
+
+  function myhermdots(bra,ket,totsize)
+    integer,intent(in) :: totsize
+    DATATYPE,intent(in) :: bra(NUMERAD,NUMANGLES,totsize/NUMERAD/(NUMANGLES)),&
+         ket(NUMERAD,NUMANGLES,totsize/NUMERAD/(NUMANGLES))
+    DATATYPE :: myhermdots(NUMANGLES)
+    DATATYPE :: tempbra(NUMERAD,totsize/NUMERAD/(NUMANGLES)), &
+         tempket(NUMERAD,totsize/NUMERAD/(NUMANGLES)),&            !! AUTOMATIC
+         temparray(NUMANGLES)
+    integer :: ibb,il
+
+    ibb=(totsize/NUMERAD/(NUMANGLES)) * NUMERAD * (NUMANGLES)
+    if (ibb.ne.totsize) then
+       OFLWR "MYHERMDOTS ERROR ",ibb,totsize,NUMERAD,NUMANGLES; CFLST
+    endif
+
+    temparray=0
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(il,tempbra,tempket)
+!$OMP DO SCHEDULE(DYNAMIC)
+    do il=1,NUMANGLES
+       tempbra(:,:)=bra(:,il,:);    tempket(:,:)=ket(:,il,:)
+       temparray(il)=hermdot(tempbra,tempket,totsize/(NUMANGLES))
+    enddo
+!$OMP END DO
+!$OMP END PARALLEL
+    myhermdots(:) = temparray(:)
+
+  end function myhermdots
 
 
 !! get the contraction of the flux operator (iH-H^\dag) with our current set of orbitals 
 !! F*inspfs=outspfs
 
   subroutine projeflux_op_onee(inspfs)
-    use parameters
+    use r_parameters
+    use spfsize_parameters
     use opmod
     implicit none
     DATATYPE,intent(inout) :: inspfs(spfsize,numr)
@@ -680,9 +828,9 @@ module projbiomod
 end module projbiomod
 
 subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
+  use parameters    !! catavectorfiles and others
   use projbiomod
   use biorthomod
-  use parameters
   use configmod
   use projefluxmod
   use mpimod
@@ -976,7 +1124,7 @@ end subroutine projeflux_single0
 
 
 subroutine projeflux_single(mem)
-  use parameters
+  use parameters    !! fluxinterval, par_timestep, etc.
   use projefluxmod
   implicit none
   integer,intent(in) :: mem

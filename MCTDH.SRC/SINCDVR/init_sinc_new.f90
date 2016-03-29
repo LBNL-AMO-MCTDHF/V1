@@ -394,7 +394,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   integer,intent(inout) :: spfsloaded
   DATATYPE,intent(inout) :: inspfs(totpoints, numspf)
   DATATYPE,intent(out) :: pot(totpoints),proderivmod(numr,numr),rkemod(numr,numr),&
-       bondpoints(numr),bondweights(numr), elecweights(totpoints),elecradii(totpoints),&
+       bondpoints(numr),bondweights(numr), elecweights(totpoints,3),elecradii(totpoints),&
        halfniumpot(totpoints)
 #ifndef REALGO
   real*8,allocatable :: temppot(:)
@@ -418,7 +418,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   rkemod(:,:)=0d0; proderivmod(:,:)=0d0; bondpoints(:)=1d0; bondweights(:)=1d0
 
-  elecweights(:)=(1d0/spacing)**griddim
+  elecweights(:,:)=1d0
+  elecweights(:,1:griddim)=(1d0/spacing)    !! griddim=3
 
   do idim=1,griddim
 
@@ -502,7 +503,9 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
              - 1d0/4d0 * invjacobian(:,jj)**3 * ddjacobian(:,jj)
      enddo
 
-     elecweights(:)=elecweights(:)*jacobian(:,1)*jacobian(:,2)*jacobian(:,3)
+     elecweights(:,:)=elecweights(:,:)*jacobian(:,:)
+
+!!$     elecweights(:)=elecweights(:)*jacobian(:,1)*jacobian(:,2)*jacobian(:,3)
 
      dipoles(:,:)=scalefunction(:,:)
      OFLWR "    ....Ok got scaling."; CFL

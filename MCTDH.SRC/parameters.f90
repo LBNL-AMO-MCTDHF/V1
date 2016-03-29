@@ -89,10 +89,10 @@ logical :: shuffle_dfwalktype=.true.             !! redistribute restricted conf
 integer :: sparseprime=1                         !! For reordering config list (experimental)
 logical :: use_dfwalktype=.false.                !! internal, IGNORE me
 end module sparse_parameters
-module ham_parameters
 !!EE
 !!{\large \quad HAMILTONIAN PARAMETERS}
 !!BB
+module ham_parameters
 integer :: nonuc_checkflag=1     !!              !! Turn off deriv operators in nuclear dofs.
 integer :: tdflag=0              !! Pulse        !! Use pulse?
 integer :: velflag=0             !!              !!  Length (V(t)) or velocity (A(t))      
@@ -111,10 +111,16 @@ real*8 :: mshift=0d0                             !! shift configurations based o
                                                  !!  (mrestrictmin, mrestrictmax) mcscf; good idea.
 integer :: offaxispulseflag=0                    !! internal (not namelist), IGNORE me
 end module ham_parameters
-module basis_parameters
 !!EE
 !!{\large \quad CONFIGURATIONS / SLATER DETERMINANTS}
 !!BB
+module df_parameters
+integer :: df_restrictflag=0      !!              !! apply constraint to configuration list?  Must use this
+                                                 !!  option if constraintflag /= 0.  1 is sufficient;
+                                                 !!  dfrestrictflag=2 necessary for action 22. 
+                                                 !!  SEE MANUAL FOR PROPER USE OF dfrestrictflag/shell options.
+end module df_parameters
+module basis_parameters
 integer :: holeflag=0            !! Holes        !! index holes not electrons
 integer :: mrestrictflag=0       !!              !! If spfrestrictflag=1, restrict wfn to given total M.
 integer :: mrestrictval=0        !!              !!    This is the value.
@@ -150,40 +156,51 @@ integer, allocatable :: configs_perproc(:)       !!         INTERNAL, IGNORE ME
 integer :: first_config,last_config,local_nconfig!!         INTERNAL, IGNORE ME
 integer :: numpart,num2part    !! particles or holes        INTERNAL, IGNORE ME
 end module basis_parameters
-module timing_parameters
 !!EE
 !!{\large \quad Timing}
 !!BB
+module timing_parameters
 integer :: notiming=2            !!NoTiming=0,1,2!! 0=write all 1=write some 2= write none
                                  !!  Timing=2,1,0!!     controls writing of all timing and some info files
 integer :: timingout=499         !!              !! various routines output to file (timing info) every this 
                                  !!              !!   # of calls
 character(len=200):: timingdir="timing"                       !!
 end module timing_parameters
-module tol_parameters
-real*8 :: lntol=1d-4             !! Regularization of natural logarithm
-real*8 :: invtol=1d-8            !! Regularization of inverses especially for spectral expansions
-end module tol_parameters
-module bio_parameters
 !!EE
 !!{\large \quad Biorthogonalization }
 !!BB
+module bio_parameters
 integer ::      maxbiodim=100, & !! Max krylov dim for biorthogonalization
      biodim=10                   !! Starting krylov dim for biorthogonalization
 real*8 ::     biotol=1.d-6       !! Expokit tolerance parameter for biorthogonalization
 integer :: logbranch=1           !! branch of logarithm 3 options 0,1,2
 integer :: auto_biortho=1        !! internal, IGNORE me
 end module bio_parameters
+!!EE
+!!{\large \quad Regularization}
+!!BB
+module tol_parameters
+real*8 :: lntol=1d-4             !! Regularization of natural logarithm
+real*8 :: invtol=1d-8            !! Regularization of inverses especially for spectral expansions
+end module tol_parameters
+module denreg_parameters
+real*8 :: denreg=1d-10           !! Denreg=      !! density matrix regularization parameter.
+end module denreg_parameters
+!!EE
+!!{\large \quad Orbital parallelization}
+!!BB
 module spfsize_parameters
 integer :: parorbsplit=1                !! 1=keep all orbs, prop in parallel   3=polyatomic, full MPI
-integer :: spfsize,spfsmallsize         !! internal, IGNORE
-integer :: reducedpotsize = -1          !! internal, IGNORE
-integer :: totspfdim                    !! nspf * spfsize (local size only)  internal, IGNORE
+integer :: spfsize,spfsmallsize         !! size of orbitals each processor                internal, IGNORE
+integer :: reducedpotsize = -1          !! size of array used to store reduced potential  internal, IGNORE
+integer :: totspfdim                    !! nspf * spfsize (local size only)               internal, IGNORE
+integer :: spfdims(3)=0                 !! general - not numerad,lbig+1,2*mbig+1          internal, IGNORE
+integer :: spfdimtype(3)=(/0,2,1/)      !! 0 = [0,infty];  1=[-infty,infty]; 2=[-A,A]     internal, IGNORE
 end module spfsize_parameters
-module constraint_parameters
 !!EE
 !!{\large \quad CONSTRAINT: With constraintflag. NEED FOR RESTRICTED CONFIG LIST.}
 !!BB
+module constraint_parameters
 real*8 :: lioreg= 1d-9           !!              !! Regularization for linear solve constraint
 integer :: conway=0                              !! for constraintflag=2, dirac frenkel constraint
                                                  !!   0=McLachlan 1=50/50 mix 2=Lagrangian
@@ -191,18 +208,6 @@ integer :: conway=0                              !! for constraintflag=2, dirac 
 real*8 :: conprop=1d-1                           !! epsilon for conway=3
 real*8 :: condamp=1
 end module constraint_parameters
-module denreg_parameters
-real*8 :: denreg=1d-10           !! Denreg=      !! density matrix regularization parameter.
-end module denreg_parameters
-module df_parameters
-!!EE
-!!{\large \quad CONFIGURATIONS}
-!!BB
-integer :: df_restrictflag=0      !!              !! apply constraint to configuration list?  Must use this
-                                                 !!  option if constraintflag /= 0.  1 is sufficient;
-                                                 !!  dfrestrictflag=2 necessary for action 22. 
-                                                 !!  SEE MANUAL FOR PROPER USE OF dfrestrictflag/shell options.
-end module df_parameters
 module parameters
   use littleparmod;  use fileptrmod;  use r_parameters; use sparse_parameters; use tol_parameters
   use ham_parameters;  use basis_parameters;  use timing_parameters; use spfsize_parameters;
@@ -353,6 +358,7 @@ character(len=200):: projgtaufile="Dat/gtau.dat"              !!  " (projected f
 character(len=200):: projfluxfile="Flux/proj.flux.wfn.bin"    !!  "
 character (len=200):: catspffiles(50)="Bin/cation.spfs.bin"       !!  " (see numcatfiles in ACTIONS)
 character (len=200):: catavectorfiles(50)="Bin/cation.avector.bin"!!  "
+character(len=200):: angprojspifile="Dat/xsec.angproj.spi"    !!  " if angularflag.ne.0 calculate partial ionization, wrt angle
 character(len=200):: fluxafile2="Flux/flux.avec.bin"          !! for action 23
 character(len=200):: fluxmofile2="Flux/flux.mo.bin"           !!  "
 character(len=200):: natplotbin="Bin/Natlorb.bin"             !! for actions 2,8
@@ -456,6 +462,8 @@ integer :: computeFlux=500, &    ! 0=All in memory other: MBs to allocate
 integer :: nucfluxopt=1          !! Include imaginary part of hamiltonian from nuc ke 2=only that part
 integer :: FluxOpType=1          !! 0=Full ham 1=halfnium 
 integer :: numcatfiles=1         !! see catspffiles and catavectorfiles in INPUT/OUTPUT for action 17
+integer :: angularflag=0         !! for action 17 calculate fully differential partial ionization, angular
+                                 !!   output in angprojspifile (atom/diatom only)
 !!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input) 
 !!$ real*8 :: fluxtimestep=0.1d0
 !!EE
@@ -545,10 +553,8 @@ integer :: eachloaded(MXF)=(-99)
 integer :: numpropsteps=1000000  !!              !! length of prop.  Overridden for pulse and relax.
 integer, parameter :: maxmc=100
 DATATYPE :: drivingenergies(maxmc)=0d0
-integer :: spfdims(3)=0   !! general - not numerad,lbig+1,2*mbig+1
-integer :: spfdimtype(3)=(/0,2,1/)    !! 0 = [0,infty];  1=[-infty,infty];     2=[-A,A] must match on read
 integer :: numcurves=1
-DATATYPE, allocatable :: elecweights(:,:,:), elecradii(:)
+DATATYPE, allocatable :: elecweights(:,:,:,:), elecradii(:)
 real*8 :: langramthresh=1d-9
 integer :: numreduced=1
 integer :: headersize=200

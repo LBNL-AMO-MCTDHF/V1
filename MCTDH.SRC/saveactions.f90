@@ -39,9 +39,11 @@ subroutine save_density( thistime, inspfs, indenmat, iprop, denfilename)
        density, spfdims(1)*spfdims(2), mtrans,spfdims(3), (0.d0,0.d0),&
        cmdensity, spfdims(1)*spfdims(2))
 
+!! why square root?  is this a mistake?
   do imval=1,spfdims(3)
-     mdensity(:,:,imval)=  cmdensity(:,:,imval) / &
-          sqrt(elecweights(:,:,imval))   !! ok imp conv mctdh
+     mdensity(:,:,imval)=  cmdensity(:,:,imval) / &          !! ok conversion
+          sqrt(elecweights(:,:,imval,1)* &                   !! ok conversion
+          elecweights(:,:,imval,2)*elecweights(:,:,imval,3)) !! ok conversion
   enddo
   call write_den_header(header,thistime,iprop)
   call save_orbvector(mdensity, spfsize, denfile, denfilename, header)

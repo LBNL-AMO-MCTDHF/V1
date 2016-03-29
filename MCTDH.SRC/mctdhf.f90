@@ -233,7 +233,7 @@ program mctdhf
   write(mpifileptr, *) "   AMO Theory Group, Lawrence Berkeley Laboratory"
   write(mpifileptr, *) "     D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, "
   write(mpifileptr, *) "     B Abeln, X Li . . ."
-  write(mpifileptr, *) "                             VERSION 1.25 "
+  write(mpifileptr, *) "                             VERSION 1.26 "
   write(mpifileptr, *) "       Copyright 2016 the regents of the University of California"
   write(mpifileptr, *)
 #ifdef REALGO
@@ -263,7 +263,7 @@ program mctdhf
 
   
   allocate(bondpoints(numr),bondweights(numr),elecweights(spfdims(1),&
-       spfdims(2),spfdims(3)),elecradii(spfsize))
+       spfdims(2),spfdims(3),3),elecradii(spfsize))
   bondpoints=0; bondweights=0; elecweights=0; elecradii=0
 
   call getparams()
