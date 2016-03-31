@@ -213,7 +213,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
        bratop,getlen,myiostat
   real*8 :: doubleclebschsq,aa,bb,cc,MemTot,MemVal,wfi,cgfac,estep,myfac,windowfunct
   DATATYPE, allocatable :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:),gtau_ad(:,:,:,:),&
-       read_bramo(:,:,:,:), read_ketmo(:,:,:,:), deweighted_bramo(:,:,:)
+       read_bramo(:,:,:,:), read_ketmo(:,:,:,:), deweighted_bramo(:,:,:), ketmo_ad(:,:,:,:,:)
   complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:),ftgtau_ad(:,:),total_ad(:,:)
   real*8, allocatable :: pulseftsq(:)
   DATATYPE :: pots1(3), csum
@@ -325,13 +325,14 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
      NUMANGLES=spfdims(2)
      NUMERAD=spfdims(1)
 
-     allocate(gtau_ad(0:nt,nstate,mcscfnum,NUMANGLES),deweighted_bramo(spfsize,numr,2))
+     allocate(gtau_ad(0:nt,nstate,mcscfnum,NUMANGLES),deweighted_bramo(spfsize,numr,2),&
+          ketmo_ad(spfsize,numr,2,batchsize,NUMANGLES))
   else
-     allocate(gtau_ad(0:1,nstate,mcscfnum,NUMANGLES),deweighted_bramo(1,1,2))
+     allocate(gtau_ad(0:0,1,1,NUMANGLES),deweighted_bramo(1,1,2),&
+          ketmo_ad(1,1,2,1,NUMANGLES))
   endif
 
-  gtau_ad=0
-  deweighted_bramo=0
+  gtau_ad=0;   deweighted_bramo=0;  ketmo_ad=0
 
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
@@ -422,6 +423,18 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
               OFLWR "PROGRAM ME FLUXOPTYPE 0 PROJEFLUX"; CFLST
            endif
 
+           if (angularflag.ne.0) then
+              do il=1,NUMANGLES
+                 ketmo_ad(:,:,:,1:ketreadsize,il) = ketmo(:,:,:,1:ketreadsize)
+                 call only_one_angle(2*numr*ketreadsize,il,ketmo_ad(:,:,:,:,il))
+                 do i=1,ketreadsize
+                    do k=1,2 !! loop over the spins...
+                       call projeflux_op_onee(ketmo_ad(:,:,k,i,il))
+                    enddo
+                 enddo
+              enddo
+           endif
+
 !! change it to \hat{F}|\psi(t)>, the onee part
            do i=1,ketreadsize
               do k=1,2 !! loop over the spins...
@@ -493,8 +506,20 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
                                   RESHAPE(elecweights(:,:,:,2),(/spfsize/)) / 2 / pi
                           enddo
                        enddo
-                       gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + &
+!!$                       gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + &
+!!$                            myhermdots(deweighted_bramo(:,:,:),ketmo(:,:,:,kettime),2*spfsize*numr) * dt
+
+!! better way, with symmetric flux operator.  total still equals integrated differential.
+!! results (at threshold where there is oscillation and usually some negative values) actually 
+!! look worse for H2 with this symmetrized operator, below, instead of what's above
+
+                       gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + 0.5d0 * &
                             myhermdots(deweighted_bramo(:,:,:),ketmo(:,:,:,kettime),2*spfsize*numr) * dt
+
+                       do il=1,NUMANGLES
+                          gtau_ad(tau,istate,imc,il) = gtau_ad(tau,istate,imc,il) + 0.5d0 * &
+                               hermdot(deweighted_bramo(:,:,:),ketmo_ad(:,:,:,kettime,il),2*spfsize*numr) * dt
+                       enddo
 
                     endif
                  enddo
@@ -736,9 +761,19 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   deallocate(ftgtau,pulseft,pulseftsq,total)
   deallocate(read_bramo,read_ketmo)
   deallocate(gtau,ketmo,bramo)
-  deallocate(gtau_ad,ftgtau_ad,total_ad,deweighted_bramo)
+  deallocate(gtau_ad,ftgtau_ad,total_ad,deweighted_bramo,ketmo_ad)
 
 contains
+
+  subroutine only_one_angle(howmany,iangle,inout)
+    integer,intent(in) :: howmany,iangle
+    DATATYPE,intent(inout) :: inout(spfdims(1),spfdims(2),spfdims(3),howmany)
+    if (NUMANGLES.ne.spfdims(2)) then
+       OFLWR "WHAAAAAAATTTT?? onlyoneangle",spfdims(2),NUMANGLES; CFLST
+    endif
+    inout(:,1:iangle-1,:,:)=0
+    inout(:,iangle+1:NUMANGLES,:,:)=0
+  end subroutine only_one_angle
 
   function myhermdots(bra,ket,totsize)
     integer,intent(in) :: totsize

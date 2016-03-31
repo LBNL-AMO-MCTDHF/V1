@@ -108,8 +108,9 @@ subroutine save_natproj( thistime )
                  call sparseconfigmultone(www,natconfigs(:,i),natderiv,&
                       yyy%cptr(0), yyysptr(0), 1,pulseflag,0, isplit ,thistime,-1)
 
-              curves(isplit,i)=dot(natconfigs(:,i),natderiv,num_config)/&
-                   dot(natconfigs(:,i),natconfigs(:,i), num_config) !! ok conversion.
+              curves(isplit,i)=&                                    !! ok conversion
+                   dot(natconfigs(:,i),natderiv,num_config)/&       !! ok conversion
+                   dot(natconfigs(:,i),natconfigs(:,i), num_config) !! ok conversion
 
            enddo
         enddo
