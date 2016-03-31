@@ -366,7 +366,9 @@ subroutine getoccupations(wwin,in_avector, numpoints, occupations)
   allocate(avector(numpoints,wwin%numconfig))
   avector(:,:)=0d0
 
-  avector(:,wwin%firstconfig:wwin%lastconfig) = in_avector(:,:)
+  if (wwin%lastconfig.ge.wwin%firstconfig) then
+     avector(:,wwin%firstconfig:wwin%lastconfig) = in_avector(:,:)
+  endif
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 
