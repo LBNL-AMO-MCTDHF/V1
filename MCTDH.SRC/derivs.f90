@@ -461,6 +461,7 @@ contains
     DATATYPE, intent(in) :: inspfs(spfsize,nspf)
     DATATYPE, intent(out) :: outspfs(spfsize,nspf)
     integer :: lowspf,highspf,numspf
+    real*8 :: orthogerror
 
     lowspf=1; highspf=nspf
     if (parorbsplit.eq.1) then
@@ -474,6 +475,11 @@ contains
 
     if (parorbsplit.eq.1) then
        call mpiorbgather(outspfs,spfsize)
+    endif
+
+    call spf_orthogit(outspfs,orthogerror)
+    if (orthogerror.gt.1d-10) then
+       OFLWR "WARNING - orthog error in conpropspfs",orthogerror; CFL
     endif
 
   end subroutine conpropspfs

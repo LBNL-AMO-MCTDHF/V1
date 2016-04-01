@@ -199,10 +199,9 @@ subroutine spf_orthogit(inspfs,error)
      endif
   enddo
   
-
-  if (abs(error) .gt. 0.000001d0) then
-     OFLWR "Err spf ovl!! ", error;  CFLST
-  endif
+!!$  if (abs(error) .gt. 0.000001d0) then
+!!$     OFLWR "Err spf ovl!! ", error;  CFLST
+!!$  endif
   
 end subroutine spf_orthogit
 
