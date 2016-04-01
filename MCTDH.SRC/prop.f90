@@ -361,28 +361,33 @@ subroutine cmf_prop_wfn(tin, tout)
 
      do linearflag=0,1
 
-        call system_clock(itime)
         if (spf_flag.ne.0) then
+           call system_clock(itime)
            time1=tin;        time2=tout
            call propspfs(yyy%cmfspfs(:,1),yyy%cmfspfs(:,0), time1,time2,linearflag,qq)
            numiters=numiters+qq
+           call system_clock(jtime);     times(4)=times(4)+jtime-itime;   itime=jtime
+!! prevent drift
+           if (parorbsplit.ne.3) then
+              call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
+              call system_clock(jtime);     times(9)=times(9)+jtime-itime
+           endif
         endif
-        call system_clock(jtime);     times(4)=times(4)+jtime-itime;   itime=jtime
 
         if(avector_flag.ne.0) then
+           call system_clock(itime)
            do imc=1,mcscfnum
               call cmf_prop_avector(yyy%cmfavec(:,imc,1),  &
                    yyy%cmfavec(:,imc,0), linearflag,tin,tout,imc,qq)
               numaiters=numaiters+qq
            enddo
-        endif
-        call system_clock(jtime);     times(5)=times(5)+jtime-itime;  itime=jtime
-
+           call system_clock(jtime);     times(5)=times(5)+jtime-itime;  itime=jtime
 !! prevent drift
-        if (par_consplit.eq.0) then
-           call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
+           if (par_consplit.eq.0) then
+              call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
+              call system_clock(jtime);     times(9)=times(9)+jtime-itime
+           endif
         endif
-        call system_clock(jtime);     times(9)=times(9)+jtime-itime;     itime=jtime
      
         call get_stuff0(tout,times)
 
