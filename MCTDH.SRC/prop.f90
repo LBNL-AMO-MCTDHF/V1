@@ -7,349 +7,9 @@
 
 #include "Definitions.INC"
 
-subroutine prop_loop( starttime)
-  use parameters
-  use mpimod
-  use xxxmod
-  use configmod
-  use derivativemod
-  use sparsemultmod
-  use basissubmod
-  use savenormmod
-  use mpisubmod
-  implicit none
-  integer ::  jj,flag,  iii, itime, jtime, times(20)=0, qq,imc,getlen,myiostat
-  DATAECS :: thisenergy(mcscfnum), lastenergy(mcscfnum) ,thisenergyavg,&
-       lastenergyavg,startenergy(mcscfnum)
-  CNORMTYPE :: norms(mcscfnum)
-  real*8 :: thistime, starttime, thattime,error=1d10,rsum,avecerror=1d10
-  DATATYPE :: sum2,sum,drivingoverlap(mcscfnum)
-  DATATYPE, allocatable :: avectorp(:),outspfs(:)
 
-  thistime=starttime;  flag=0;    call zero_mpi_times()
-
-  allocate(avectorp(tot_adim),outspfs(totspfdim))
-  outspfs=0
-  if (tot_adim.gt.0) then
-     avectorp=0; 
-  endif
-
-  lastenergy(:)=1.d+3;  lastenergyavg=1.d+3
-
-  call system_clock(itime)
-
-  do imc=1,mcscfnum
-     call basis_project(www,numr,yyy%cmfavec(:,imc,0))
-  enddo
-
-  if (normboflag.ne.0) then
-     OFLWR "    Enforcing BO norms due to normboflag"; CFL
-     call enforce_bonorms(mcscfnum,  yyy%cmfavec(:,:,0),savenorms(:,:))
-  endif
-
-  call get_stuff(0.0d0)
-
-  do imc=1,mcscfnum
-
-     call sparseconfigmult(www,yyy%cmfavec(:,imc,0),avectorp,&
-          yyy%cptr(0),yyysptr(0),1,1,1,0,0d0,imc)
-
-     sum=0;     sum2=0
-     if (tot_adim.gt.0) then
-        sum = dot(yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),tot_adim)
-        sum2=dot(yyy%cmfavec(:,imc,0),avectorp,tot_adim)
-     endif
-     if (par_consplit.ne.0) then
-        call mympireduceone(sum);        call mympireduceone(sum2)
-     endif
-     OFLWR "IN PROP: VECTOR NORM ",sqrt(sum);CFL
-     startenergy(imc)=sum2/sum
-     OFLWR "         ENERGY ", startenergy(imc); CFL
-
-!!$  moving to main
-!!$     if (normboflag.ne.0) then
-!!$        OFLWR "    ... will enforce BO norms due to normboflag"; CFL
-!!$        call get_bonorms(1,yyy%cmfavec(:,imc,0),savenorms(:,imc))
-!!$     endif
-
-  enddo
-
-  if (drivingflag.ne.0) then
-     OFLWR "call drivinginit"; CFL
-     call drivinginit(startenergy)
-     call get_stuff(0.0d0)
-     OFLWR "called drivinginit"; CFL
-  endif
-
-  if (debugflag.eq.956) then
-     OFLWR "Stopping due to debugflag=956"; CFLST
-  endif
-
-  if ((myrank.eq.1).and.(notiming.le.1)) then
-     call system("echo -n > "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
-     open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", &
-          status="unknown",iostat=myiostat)
-     call checkiostat(myiostat," opening Main.time.dat")
-     write(853,'(T16,100A15)')  &
-          "Prop ", &     !! (1)
-          "Act ", &      !! (2)
-          "After ", &    !! (3)
-          "Init", &      !! (4)
-          "Save",&       !! (5)
-          "MPI",&        !! (6)
-          "Non MPI"      !! (7)
-     close(853)
-  endif
-
-  call system_clock(jtime)  ;  times(4)=times(4)+jtime-itime
-
-  jj=0
-  do while (flag==0)      !! BEGIN MAIN LOOP
-     jj=jj+1
-
-     call system_clock(itime)
-
-     if (save_every.ne.0.and.mod(jj,save_every).eq.0) then
-        call save_vector(yyy%cmfavec(:,:,0),yyy%cmfspfs(:,0),avectoroutfile,spfoutfile)  
-     endif
-
-     if ((jj==numpropsteps) .and. (threshflag/=1)) then
-        flag=1
-     endif
-     open(222,file="stop",status="old", iostat=iii)
-     if (iii==0) then
-        close(222)
-     endif
-     if (iii==0) then
-        flag=1
-        OFLWR "Stopping due to stopfile!"; CFLST
-     endif
-
-     thattime=thistime+par_timestep
-
-     call system_clock(jtime)  ;  times(5)=times(5)+jtime-itime;    itime=jtime
-
-                                 !! ************************************************************* !!
-     call actionsub( thistime)   !! ACTIONS.  IF ACTION CHANGES PSI THEN CALL GET_STUFF AFTER ACTION.
-                                 !! ************************************************************* !!
-
-     call system_clock(jtime)  ;     times(2)=times(2)+jtime-itime;     itime=jtime
-
-!!! (Not used for exponential propagation default - abserr thus myrelerr not used then)
-
-     rsum=0d0
-     do imc=1,mcscfnum
-        rsum=rsum+norms(imc)**2
-     enddo
-     rsum=sqrt(rsum);     abserr=sqrt(rsum)*myrelerr
-
-     if ((cmf_flag==1)) then
-        call cmf_prop_wfn(thistime, thattime)
-     else
-        call prop_wfn(thistime, thattime)
-     endif
-
-     do imc=1,mcscfnum
-        call basis_project(www,numr,yyy%cmfavec(:,imc,0))
-     enddo
-
-     if (normboflag.ne.0) then
-!!        OFLWR "    ... enforcing BO norms due to normboflag"; CFL
-        call enforce_bonorms(mcscfnum,  yyy%cmfavec(:,:,0),savenorms(:,:))
-     endif
-
-     call system_clock(jtime)  ;  times(1)=times(1)+jtime-itime;    itime=jtime
-
-     do imc=1,mcscfnum
-
-        call sparseconfigmult(www,yyy%cmfavec(:,imc,0),avectorp,&
-             yyy%cptr(0),yyysptr(0),1,1,timedepexpect,0,thattime,imc)
-
-
-        call basis_project(www,numr,avectorp)
-
-        sum=0; sum2=0
-        if (tot_adim.gt.0) then
-           sum=dot(yyy%cmfavec(:,imc,0),avectorp(:),tot_adim)
-           sum2=dot(yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),tot_adim)
-        endif
-        if (par_consplit.ne.0) then
-           call mympireduceone(sum); call mympireduceone(sum2)
-        endif
-
-        thisenergy(imc) = sum/sum2   !! ok conversion
-        norms(imc)=sqrt(sum2)   !! ok conversion
-        
-        OFL
-#ifdef ECSFLAG     
-#ifdef CNORMFLAG
-        write(mpifileptr,'(A3,F16.5, 2(A10, 2E18.10),E18.10)') "T= ",thattime,&
-             "Energy: ", thisenergy(imc), "Norm: ", abs(norms(imc)),norms(imc)
-#else
-        write(mpifileptr,'(A3,F16.5, 2(A10, 2E18.10))') "T= ",thattime, &
-             "Energy: ", thisenergy(imc), "Norm: ", norms(imc)
-#endif
-#else 
-        write(mpifileptr,'(A3,F16.5, 2(A10, E18.10))') "T= ", thattime, &
-             "Energy: ", thisenergy(imc), "Norm: ", norms(imc)
-#endif     
-        CFL
-
-        if (drivingflag.ne.0) then
-          call getdrivingoverlap(drivingoverlap,mcscfnum)
-
-          OFL
-#ifdef ECSFLAG     
-           write(mpifileptr,'(A3,F16.5, 2(A10, 2E18.10))') "t= ",thattime, "DEnergy ", &
-#else 
-           write(mpifileptr,'(A3,F16.5, 2(A10, E18.10))') "t= ", thattime, "DEnergy ", &
-#endif
-
-    (    (drivingenergies(imc)*drivingproportion**2 + CONJUGATE(drivingenergies(imc) * drivingoverlap(imc)) + &
-    drivingenergies(imc)*drivingoverlap(imc) + thisenergy(imc)*norms(imc)**2)     )/  &
-    (drivingproportion**2 + drivingoverlap(imc) + CONJUGATE(drivingoverlap(imc)) + norms(imc)**2), &
-    "DNorm ", (sqrt &
-    (drivingproportion**2 + drivingoverlap(imc) + CONJUGATE(drivingoverlap(imc)) + norms(imc)**2))
-
-           CFL
-
-!! ok so < Psi(t) | H | Psi(t) > =
-
-!!   < Psi_0 | H | Psi_0 > +          drivingenergy * drivingproportion**2
-!!   < Psi_0 | H | Psi' > +          = CONJUGATE(drivingenergy) * < Psi_0 | Psi' >  !! factor in psi0 in code * drivingproportion
-!!   < Psi' | H | Psi_0 > +          = drivingenergy * < Psi_0 | Psi' >  !! factor in psi0 in code * drivingproportion
-!!   < Psi' | H | Psi' >               in code
-
-!! ok so < Psi(t) | Psi(t) > =
-
-!!   < Psi_0 | Psi_0 > +          drivingproportion**2
-!!   < Psi_0 |  Psi' > +          = < Psi_0 | Psi' >    !! factor in psi_0 in code * drivingproportion
-!!   < Psi' | Psi_0 > +          = < Psi' | Psi_0 >     !!  ditto   * drivingproportion
-!!   < Psi' | Psi' >               in code
-
-        endif
-
-     enddo  !! imc
-
-     thisenergyavg=0
-     do imc=1,mcscfnum
-        thisenergyavg=thisenergyavg+thisenergy(imc)/mcscfnum
-     enddo
-     
-     if ((myrank.eq.1).and.(notiming.le.1)) then
-        call system("date >> "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", &
-             status="old", position="append",iostat=myiostat)
-        call checkiostat(myiostat," opening Main.time.dat")
-        write(853,'(F13.3,T16,100I15)',iostat=myiostat)  thistime, &
-             times(1:5)/1000, mpitime/1000, nonmpitime/1000
-        call checkiostat(myiostat," writing Main.time.dat")
-        close(853)
-     endif
-
-     if (debugflag.eq.42) then
-        OFLWR "Stopping due to debugflag=42"; CFLST
-     endif
-
-     thistime=thattime
-
-     if (threshflag.eq.1) then
-
-        call actreduced0(1,0d0,yyy%cmfspfs(:,0),yyy%cmfspfs(:,0),outspfs,0,1,1)
-
-        call apply_spf_constraints(outspfs)
-
-        avecerror=abs(thisenergyavg-lastenergyavg)/par_timestep
-
-!!$ OOPS 04-24-15        error=sqrt(abs(hermdot(outspfs,outspfs,totspfdim)))
-!                        if (parorbsplit.eq.3) then
-!                           call mympirealreduceone(error)
-!                        endif
-
-        error=abs(hermdot(outspfs,outspfs,totspfdim))
-        if (parorbsplit.eq.3) then
-           call mympirealreduceone(error)
-        endif
-        error=sqrt(error)
-
-        OFL; write(mpifileptr,'(A24,2E10.2,A10,2E10.2)') &
-             " STOPTEST : ORBITALS ", error,stopthresh, " AVECTOR ",avecerror,astoptol;CFL
-        
-        if ( error.lt.stopthresh .or.spf_flag.eq.0) then
-           if (avecerror.gt.astoptol) then
-              OFL; write(mpifileptr,'(A67,2E12.5)') &
-                   "   Orbitals Converged, Avector not necessarily converged "; CFL
-           else
-              flag=1
-              OFLWR; WRFL "   ***  CONVERGED *** "; WRFL
-              do qq=1,mcscfnum
-                 write(mpifileptr,'(T5,10F20.12)') thisenergy(qq), thisenergy(qq)-lastenergy(qq)
-              enddo
-              write(mpifileptr, *) "   ***   ";              write(mpifileptr, *);CFL
-           endif
-        endif
-        do qq=1,mcscfnum
-           lastenergy(qq)=thisenergy(qq)
-        enddo
-        lastenergyavg=thisenergyavg
-        
-        par_timestep=par_timestep*timestepfac
-        if (par_timestep.gt.max_timestep) then
-           par_timestep=max_timestep
-        endif
-
-     endif
-
-     call system_clock(jtime)  ;        times(3)=times(3)+jtime-itime
-
-  enddo    !! END MAIN LOOP
-
-  norms=0
-  if (tot_adim.gt.0) then
-     do imc=1,mcscfnum
-        norms(imc)=dot(yyy%cmfavec(:,imc,0),& !! ok conversion
-             yyy%cmfavec(:,imc,0),tot_adim)   !! ok conversion
-     enddo
-  endif
-  if (par_consplit.ne.0) then
-#ifndef REALGO
-#ifndef CNORMFLAG     
-     call mympirealreduce(norms,mcscfnum)
-#else
-     call mympireduce(norms,mcscfnum)
-#endif
-#else
-     call mympireduce(norms,mcscfnum)
-#endif
-  endif
-  norms(:)=sqrt(norms(:))
-
-  if (threshflag.eq.1) then
-     if (tot_adim.gt.0) then
-        do imc=1,mcscfnum
-           yyy%cmfavec(:,imc,0)=yyy%cmfavec(:,imc,0)/norms(imc)
-        enddo
-     endif
-     norms(:)=1d0 
-  endif
-  
-  call actions_final()
-
-  OFLWR "   ...done prop..."; CFL
-  call mpibarrier()
-
-  if (saveflag.ne.0) then
-     OFLWR "  ...saving vector..."; CFL
-     call mpibarrier()
-     call save_vector(yyy%cmfavec(:,:,0),yyy%cmfspfs(:,0),avectoroutfile,spfoutfile)  
-  endif
-  OFLWR "   ...end prop..."; CFL
-  call mpibarrier()
-
-  deallocate(avectorp,outspfs)
-
-end subroutine prop_loop
-
+module prop_loop_sub_mod
+contains
 
 !! ***************************************************************************************** !!
 !!                        EXACT (VMF) PROPAGATION ROUTINE 
@@ -459,11 +119,10 @@ subroutine prop_wfn(tin, tout)
 !     close(853)
 !  endif
 
-contains
-  subroutine dummysub()
-  end subroutine dummysub
 end subroutine prop_wfn
 
+subroutine dummysub()
+end subroutine dummysub
 
 subroutine propspfs(inspfs,outspfs,tin, tout,inlinearflag,numiters)
   use parameters
@@ -490,8 +149,6 @@ subroutine propspfs(inspfs,outspfs,tin, tout,inlinearflag,numiters)
   deallocate(tempspfs2)
 
 end subroutine propspfs
-
-
 
 subroutine propspfs0(inspfs,outspfs,tin, tout,inlinearflag,numiters)
   use parameters
@@ -551,13 +208,7 @@ subroutine propspfs0(inspfs,outspfs,tin, tout,inlinearflag,numiters)
 
   call spf_orthogit(outspfs, nulldouble)
 
-contains
-  subroutine dummysub()
-  end subroutine dummysub
-
 end subroutine propspfs0
-
-
 
 !! ***************************************************************************************** !!
 !!                        MEAN FIELD (CMF) PROPAGATION ROUTINE 
@@ -988,5 +639,351 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
   icalled=1
 
 end subroutine cmf_prop_avector0
+
+end module prop_loop_sub_mod
+
+subroutine prop_loop( starttime)
+  use parameters
+  use mpimod
+  use xxxmod
+  use configmod
+  use derivativemod
+  use sparsemultmod
+  use basissubmod
+  use savenormmod
+  use mpisubmod
+  use prop_loop_sub_mod
+  implicit none
+  integer ::  jj,flag,  iii, itime, jtime, times(20)=0, qq,imc,getlen,myiostat
+  DATAECS :: thisenergy(mcscfnum), lastenergy(mcscfnum) ,thisenergyavg,&
+       lastenergyavg,startenergy(mcscfnum)
+  CNORMTYPE :: norms(mcscfnum)
+  real*8 :: thistime, starttime, thattime,error=1d10,rsum,avecerror=1d10
+  DATATYPE :: sum2,sum,drivingoverlap(mcscfnum)
+  DATATYPE, allocatable :: avectorp(:),outspfs(:)
+
+  thistime=starttime;  flag=0;    call zero_mpi_times()
+
+  allocate(avectorp(tot_adim),outspfs(totspfdim))
+  outspfs=0
+  if (tot_adim.gt.0) then
+     avectorp=0; 
+  endif
+
+  lastenergy(:)=1.d+3;  lastenergyavg=1.d+3
+
+  call system_clock(itime)
+
+  do imc=1,mcscfnum
+     call basis_project(www,numr,yyy%cmfavec(:,imc,0))
+  enddo
+
+  if (normboflag.ne.0) then
+     OFLWR "    Enforcing BO norms due to normboflag"; CFL
+     call enforce_bonorms(mcscfnum,  yyy%cmfavec(:,:,0),savenorms(:,:))
+  endif
+
+  call get_stuff(0.0d0)
+
+  do imc=1,mcscfnum
+
+     call sparseconfigmult(www,yyy%cmfavec(:,imc,0),avectorp,&
+          yyy%cptr(0),yyysptr(0),1,1,1,0,0d0,imc)
+
+     sum=0;     sum2=0
+     if (tot_adim.gt.0) then
+        sum = dot(yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),tot_adim)
+        sum2=dot(yyy%cmfavec(:,imc,0),avectorp,tot_adim)
+     endif
+     if (par_consplit.ne.0) then
+        call mympireduceone(sum);        call mympireduceone(sum2)
+     endif
+     OFLWR "IN PROP: VECTOR NORM ",sqrt(sum);CFL
+     startenergy(imc)=sum2/sum
+     OFLWR "         ENERGY ", startenergy(imc); CFL
+
+!!$  moving to main
+!!$     if (normboflag.ne.0) then
+!!$        OFLWR "    ... will enforce BO norms due to normboflag"; CFL
+!!$        call get_bonorms(1,yyy%cmfavec(:,imc,0),savenorms(:,imc))
+!!$     endif
+
+  enddo
+
+  if (drivingflag.ne.0) then
+     OFLWR "call drivinginit"; CFL
+     call drivinginit(startenergy)
+     call get_stuff(0.0d0)
+     OFLWR "called drivinginit"; CFL
+  endif
+
+  if (debugflag.eq.956) then
+     OFLWR "Stopping due to debugflag=956"; CFLST
+  endif
+
+  if ((myrank.eq.1).and.(notiming.le.1)) then
+     call system("echo -n > "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
+     open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", &
+          status="unknown",iostat=myiostat)
+     call checkiostat(myiostat," opening Main.time.dat")
+     write(853,'(T16,100A15)')  &
+          "Prop ", &     !! (1)
+          "Act ", &      !! (2)
+          "After ", &    !! (3)
+          "Init", &      !! (4)
+          "Save",&       !! (5)
+          "MPI",&        !! (6)
+          "Non MPI"      !! (7)
+     close(853)
+  endif
+
+  call system_clock(jtime)  ;  times(4)=times(4)+jtime-itime
+
+  jj=0
+  do while (flag==0)      !! BEGIN MAIN LOOP
+     jj=jj+1
+
+     call system_clock(itime)
+
+     if (save_every.ne.0.and.mod(jj,save_every).eq.0) then
+        call save_vector(yyy%cmfavec(:,:,0),yyy%cmfspfs(:,0),avectoroutfile,spfoutfile)  
+     endif
+
+     if ((jj==numpropsteps) .and. (threshflag/=1)) then
+        flag=1
+     endif
+     open(222,file="stop",status="old", iostat=iii)
+     if (iii==0) then
+        close(222)
+     endif
+     if (iii==0) then
+        flag=1
+        OFLWR "Stopping due to stopfile!"; CFLST
+     endif
+
+     thattime=thistime+par_timestep
+
+     call system_clock(jtime)  ;  times(5)=times(5)+jtime-itime;    itime=jtime
+
+                                 !! ************************************************************* !!
+     call actionsub( thistime)   !! ACTIONS.  IF ACTION CHANGES PSI THEN CALL GET_STUFF AFTER ACTION.
+                                 !! ************************************************************* !!
+
+     call system_clock(jtime)  ;     times(2)=times(2)+jtime-itime;     itime=jtime
+
+!!! (Not used for exponential propagation default - abserr thus myrelerr not used then)
+
+     rsum=0d0
+     do imc=1,mcscfnum
+        rsum=rsum+norms(imc)**2
+     enddo
+     rsum=sqrt(rsum);     abserr=sqrt(rsum)*myrelerr
+
+     if ((cmf_flag==1)) then
+        call cmf_prop_wfn(thistime, thattime)
+     else
+        call prop_wfn(thistime, thattime)
+     endif
+
+     do imc=1,mcscfnum
+        call basis_project(www,numr,yyy%cmfavec(:,imc,0))
+     enddo
+
+     if (normboflag.ne.0) then
+!!        OFLWR "    ... enforcing BO norms due to normboflag"; CFL
+        call enforce_bonorms(mcscfnum,  yyy%cmfavec(:,:,0),savenorms(:,:))
+     endif
+
+     call system_clock(jtime)  ;  times(1)=times(1)+jtime-itime;    itime=jtime
+
+     do imc=1,mcscfnum
+
+        call sparseconfigmult(www,yyy%cmfavec(:,imc,0),avectorp,&
+             yyy%cptr(0),yyysptr(0),1,1,timedepexpect,0,thattime,imc)
+
+
+        call basis_project(www,numr,avectorp)
+
+        sum=0; sum2=0
+        if (tot_adim.gt.0) then
+           sum=dot(yyy%cmfavec(:,imc,0),avectorp(:),tot_adim)
+           sum2=dot(yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),tot_adim)
+        endif
+        if (par_consplit.ne.0) then
+           call mympireduceone(sum); call mympireduceone(sum2)
+        endif
+
+        thisenergy(imc) = sum/sum2   !! ok conversion
+        norms(imc)=sqrt(sum2)   !! ok conversion
+        
+        OFL
+#ifdef ECSFLAG     
+#ifdef CNORMFLAG
+        write(mpifileptr,'(A3,F16.5, 2(A10, 2E18.10),E18.10)') "T= ",thattime,&
+             "Energy: ", thisenergy(imc), "Norm: ", abs(norms(imc)),norms(imc)
+#else
+        write(mpifileptr,'(A3,F16.5, 2(A10, 2E18.10))') "T= ",thattime, &
+             "Energy: ", thisenergy(imc), "Norm: ", norms(imc)
+#endif
+#else 
+        write(mpifileptr,'(A3,F16.5, 2(A10, E18.10))') "T= ", thattime, &
+             "Energy: ", thisenergy(imc), "Norm: ", norms(imc)
+#endif     
+        CFL
+
+        if (drivingflag.ne.0) then
+          call getdrivingoverlap(drivingoverlap,mcscfnum)
+
+          OFL
+#ifdef ECSFLAG     
+           write(mpifileptr,'(A3,F16.5, 2(A10, 2E18.10))') "t= ",thattime, "DEnergy ", &
+#else 
+           write(mpifileptr,'(A3,F16.5, 2(A10, E18.10))') "t= ", thattime, "DEnergy ", &
+#endif
+
+    (    (drivingenergies(imc)*drivingproportion**2 + CONJUGATE(drivingenergies(imc) * drivingoverlap(imc)) + &
+    drivingenergies(imc)*drivingoverlap(imc) + thisenergy(imc)*norms(imc)**2)     )/  &
+    (drivingproportion**2 + drivingoverlap(imc) + CONJUGATE(drivingoverlap(imc)) + norms(imc)**2), &
+    "DNorm ", (sqrt &
+    (drivingproportion**2 + drivingoverlap(imc) + CONJUGATE(drivingoverlap(imc)) + norms(imc)**2))
+
+           CFL
+
+!! ok so < Psi(t) | H | Psi(t) > =
+
+!!   < Psi_0 | H | Psi_0 > +          drivingenergy * drivingproportion**2
+!!   < Psi_0 | H | Psi' > +          = CONJUGATE(drivingenergy) * < Psi_0 | Psi' >  !! factor in psi0 in code * drivingproportion
+!!   < Psi' | H | Psi_0 > +          = drivingenergy * < Psi_0 | Psi' >  !! factor in psi0 in code * drivingproportion
+!!   < Psi' | H | Psi' >               in code
+
+!! ok so < Psi(t) | Psi(t) > =
+
+!!   < Psi_0 | Psi_0 > +          drivingproportion**2
+!!   < Psi_0 |  Psi' > +          = < Psi_0 | Psi' >    !! factor in psi_0 in code * drivingproportion
+!!   < Psi' | Psi_0 > +          = < Psi' | Psi_0 >     !!  ditto   * drivingproportion
+!!   < Psi' | Psi' >               in code
+
+        endif
+
+     enddo  !! imc
+
+     thisenergyavg=0
+     do imc=1,mcscfnum
+        thisenergyavg=thisenergyavg+thisenergy(imc)/mcscfnum
+     enddo
+     
+     if ((myrank.eq.1).and.(notiming.le.1)) then
+        call system("date >> "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
+        open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", &
+             status="old", position="append",iostat=myiostat)
+        call checkiostat(myiostat," opening Main.time.dat")
+        write(853,'(F13.3,T16,100I15)',iostat=myiostat)  thistime, &
+             times(1:5)/1000, mpitime/1000, nonmpitime/1000
+        call checkiostat(myiostat," writing Main.time.dat")
+        close(853)
+     endif
+
+     if (debugflag.eq.42) then
+        OFLWR "Stopping due to debugflag=42"; CFLST
+     endif
+
+     thistime=thattime
+
+     if (threshflag.eq.1) then
+
+        call actreduced0(1,0d0,yyy%cmfspfs(:,0),yyy%cmfspfs(:,0),outspfs,0,1,1)
+
+        call apply_spf_constraints(outspfs)
+
+        avecerror=abs(thisenergyavg-lastenergyavg)/par_timestep
+
+!!$ OOPS 04-24-15        error=sqrt(abs(hermdot(outspfs,outspfs,totspfdim)))
+!                        if (parorbsplit.eq.3) then
+!                           call mympirealreduceone(error)
+!                        endif
+
+        error=abs(hermdot(outspfs,outspfs,totspfdim))
+        if (parorbsplit.eq.3) then
+           call mympirealreduceone(error)
+        endif
+        error=sqrt(error)
+
+        OFL; write(mpifileptr,'(A24,2E10.2,A10,2E10.2)') &
+             " STOPTEST : ORBITALS ", error,stopthresh, " AVECTOR ",avecerror,astoptol;CFL
+        
+        if ( error.lt.stopthresh .or.spf_flag.eq.0) then
+           if (avecerror.gt.astoptol) then
+              OFL; write(mpifileptr,'(A67,2E12.5)') &
+                   "   Orbitals Converged, Avector not necessarily converged "; CFL
+           else
+              flag=1
+              OFLWR; WRFL "   ***  CONVERGED *** "; WRFL
+              do qq=1,mcscfnum
+                 write(mpifileptr,'(T5,10F20.12)') thisenergy(qq), thisenergy(qq)-lastenergy(qq)
+              enddo
+              write(mpifileptr, *) "   ***   ";              write(mpifileptr, *);CFL
+           endif
+        endif
+        do qq=1,mcscfnum
+           lastenergy(qq)=thisenergy(qq)
+        enddo
+        lastenergyavg=thisenergyavg
+        
+        par_timestep=par_timestep*timestepfac
+        if (par_timestep.gt.max_timestep) then
+           par_timestep=max_timestep
+        endif
+
+     endif
+
+     call system_clock(jtime)  ;        times(3)=times(3)+jtime-itime
+
+  enddo    !! END MAIN LOOP
+
+  norms=0
+  if (tot_adim.gt.0) then
+     do imc=1,mcscfnum
+        norms(imc)=dot(yyy%cmfavec(:,imc,0),& !! ok conversion
+             yyy%cmfavec(:,imc,0),tot_adim)   !! ok conversion
+     enddo
+  endif
+  if (par_consplit.ne.0) then
+#ifndef REALGO
+#ifndef CNORMFLAG     
+     call mympirealreduce(norms,mcscfnum)
+#else
+     call mympireduce(norms,mcscfnum)
+#endif
+#else
+     call mympireduce(norms,mcscfnum)
+#endif
+  endif
+  norms(:)=sqrt(norms(:))
+
+  if (threshflag.eq.1) then
+     if (tot_adim.gt.0) then
+        do imc=1,mcscfnum
+           yyy%cmfavec(:,imc,0)=yyy%cmfavec(:,imc,0)/norms(imc)
+        enddo
+     endif
+     norms(:)=1d0 
+  endif
+  
+  call actions_final()
+
+  OFLWR "   ...done prop..."; CFL
+  call mpibarrier()
+
+  if (saveflag.ne.0) then
+     OFLWR "  ...saving vector..."; CFL
+     call mpibarrier()
+     call save_vector(yyy%cmfavec(:,:,0),yyy%cmfspfs(:,0),avectoroutfile,spfoutfile)  
+  endif
+  OFLWR "   ...end prop..."; CFL
+  call mpibarrier()
+
+  deallocate(avectorp,outspfs)
+
+end subroutine prop_loop
 
 
