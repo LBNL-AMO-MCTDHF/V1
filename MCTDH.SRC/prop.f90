@@ -221,12 +221,13 @@ subroutine cmf_prop_wfn(tin, tout)
   use configmod
   use mpimod
   use mpisubmod
+  use derivativemod !! conpropspfs
   implicit none
   real*8,intent(in) :: tout, tin
-  integer ::  itime,jtime
   integer,save :: times(0:20)=0
   integer, save :: xxcount=0 
-  integer :: numaiters,numiters,linearflag,imc,printflag=1,getlen,qq,myiostat
+  integer :: numaiters,numiters,linearflag,imc,printflag=1,getlen,qq,&
+       myiostat,ii,itime,jtime
   real*8 :: time1, time2
   DATAECS :: myvalues(mcscfnum)
 
@@ -359,8 +360,63 @@ subroutine cmf_prop_wfn(tin, tout)
 !!            and              !!
 !! ******* LMF CORRECTOR ***** !!
 
-     do linearflag=0,1
+     linearflag=0
 
+     if (prepropflag.ne.0) then
+        if (constraintflag.ne.0) then
+           call system_clock(itime)
+           time1=tin;        time2=tout
+           call conpropspfs(yyy%cmfspfs(:,1),yyy%cmfspfs(:,0), time1,time2)
+           numiters=numiters+qq
+           call system_clock(jtime);     times(4)=times(4)+jtime-itime;   itime=jtime
+!! prevent drift
+           if (parorbsplit.ne.3) then
+              call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
+              call system_clock(jtime);     times(9)=times(9)+jtime-itime;   itime=jtime
+           endif
+           call all_matel()
+           call system_clock(jtime);  times(1)=times(1)+jtime-itime
+        endif
+
+        if(avector_flag.ne.0) then
+           call system_clock(itime)
+           do imc=1,mcscfnum
+              call cmf_prop_avector(yyy%cmfavec(:,imc,1),  &
+                   yyy%cmfavec(:,imc,0), linearflag,tin,tout,imc,qq)
+              numaiters=numaiters+qq
+           enddo
+           call system_clock(jtime);     times(5)=times(5)+jtime-itime;  itime=jtime
+!! prevent drift
+           if (par_consplit.eq.0) then
+              call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
+              call system_clock(jtime);     times(9)=times(9)+jtime-itime;   itime=jtime
+           endif
+           call get_allden()
+           call system_clock(jtime);  times(2)=times(2)+jtime-itime
+        endif
+
+
+        if (constraintflag.ne.0) then
+           call get_constraint(tout)
+        endif
+        call system_clock(jtime); times(7)=times(7)+jtime-itime;     itime=jtime
+
+        if (drivingflag.ne.0) then
+           call drivingtrans(tout)
+        endif
+        call system_clock(jtime); times(8)=times(8)+jtime-itime;     itime=jtime
+
+        call get_reducedpot()
+        if (numfrozen.gt.0) then
+           call get_frexchange()
+        endif
+        call system_clock(jtime);     times(3)=times(3)+jtime-itime
+
+        linearflag=1
+
+     endif  !! prepropflag
+
+     do ii=0,1
         if (spf_flag.ne.0) then
            call system_clock(itime)
            time1=tin;        time2=tout
@@ -391,6 +447,7 @@ subroutine cmf_prop_wfn(tin, tout)
      
         call get_stuff0(tout,times)
 
+        linearflag=1
      enddo
 
   endif  !!improvedrelax

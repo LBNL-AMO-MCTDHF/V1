@@ -43,8 +43,6 @@ end subroutine getconmat
 
 
 module derivativemod
-    use mpisubmod
-
 contains
 
 !! for derivative of PROJECTOR using derivative of spfs.     
@@ -54,6 +52,7 @@ contains
     use parameters
     use jactimingmod
     use orbgathersubmod
+    use mpisubmod
     implicit none
     integer,intent(in) :: lowspf,highspf
     DATATYPE, intent(in) :: inspfs(spfsize, lowspf:highspf), &
@@ -190,6 +189,7 @@ contains
   subroutine der_gmat00(lowspf,highspf,inspfs, outspfs, &
        ireduced,thistime,prospfs, prospfderivs)
     use parameters
+    use mpisubmod
     implicit none
     integer, intent(in) :: ireduced,lowspf,highspf
     real*8, intent(in) :: thistime
@@ -298,7 +298,6 @@ contains
        call waitawhile()
        stop
     endif
-
     if (constraintflag.eq.0) then
        outspfs(:,:)=0d0
        return
@@ -316,6 +315,7 @@ contains
   subroutine op_gmat_thirdorder00(lowspf,highspf,inspfs, outspfs, &
        ireduced,thistime,projspfs)
     use parameters
+    use mpisubmod
     implicit none
     integer,intent(in) :: lowspf,highspf,ireduced
     real*8, intent(in) ::  thistime 
@@ -332,7 +332,6 @@ contains
        call waitawhile()
        stop
     endif
-
     if (constraintflag.eq.0) then
        outspfs(:,:)=0d0
        return
@@ -411,6 +410,79 @@ contains
     endif
 
   end subroutine op_gmat
+
+!! conpropspfs FOR prepropflag.ne.0 !!
+
+  subroutine conpropspfs00(lowspf,highspf,inspfs, outspfs, time1,time2)
+    use parameters
+    use expsubmod
+    implicit none
+    integer,intent(in) :: lowspf,highspf
+    real*8, intent(in) ::  time1,time2
+    DATATYPE, intent(in) :: inspfs(spfsize,nspf)
+    DATATYPE, intent(out) :: outspfs(spfsize,lowspf:highspf)
+    DATATYPE :: conmat(nspf,nspf)        !! AUTOMATIC
+    real*8 :: midtime
+    integer :: numspf
+
+    numspf=highspf-lowspf+1
+
+    if (numspf.le.0) then
+       call waitawhile()
+       print *, "OOOGA EErrrrr 77 42 42"
+       call waitawhile()
+       stop
+    endif
+    if (constraintflag.eq.0) then
+       OFLWR "what? why call conpropspfs?"; CFLST
+       outspfs(:,:)=inspfs(:,:)
+       return
+    endif
+
+!! with timefac
+    midtime=(time1+time2)/2d0
+    call getconmat(midtime,0,conmat)
+
+    conmat(:,:)=conmat(:,:) * (time2-time1)
+
+    call expmat(conmat,nspf)
+
+    call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,inspfs,&
+         spfsize,conmat(:,lowspf:highspf),&
+         nspf,DATAZERO,outspfs(:,lowspf:highspf),spfsize)
+
+  end subroutine conpropspfs00
+
+  subroutine conpropspfs(inspfs, outspfs, time1,time2)
+    use parameters
+    use orbgathersubmod
+    implicit none
+    real*8, intent(in) ::  time1,time2
+    DATATYPE, intent(in) :: inspfs(spfsize,nspf)
+    DATATYPE, intent(out) :: outspfs(spfsize,nspf)
+    integer :: lowspf,highspf,numspf
+
+    lowspf=1; highspf=nspf
+    if (parorbsplit.eq.1) then
+       call getOrbSetRange(lowspf,highspf)
+    endif
+    
+    numspf=highspf-lowspf+1
+    if (numspf.gt.0) then
+       call conpropspfs00(lowspf,highspf,inspfs, outspfs(:,lowspf:highspf),time1,time2)
+    endif
+
+    if (parorbsplit.eq.1) then
+       call mpiorbgather(outspfs,spfsize)
+    endif
+
+  end subroutine conpropspfs
+
+!! Wmult subroutines for multiplication by reduced operator W, not used at the moment.
+!! When scalar terms in W are implemented (see LBNL-AMO-MCTDHF version 1 to do list
+!! on the github wiki) then this can be used for various purposes like enforcing
+!! Fock eigenfunctions e.g. Hartree-Fock orbitals, like we currently do with
+!! enforcing natural orbitals with improvenatflag=1.
 
   subroutine wmult00(lowspf,highspf,inspfs, outspfs, ireduced)
     use parameters

@@ -106,7 +106,8 @@ subroutine getparams()
        sparsedfflag,sparseprime,sparsesummaflag, par_consplit, ftwindowlength, fttriwindow,&
        pulsewindowtoo,conjgpropflag,dipolesumstart,dipolesumend,outmatel,numcatfiles,&
        catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
-       shuffle_dfwalktype,maxdgdim, messavec, messaamount,holeflag, angularflag, angprojspifile
+       shuffle_dfwalktype,maxdgdim, messavec, messaamount,holeflag, angularflag, angprojspifile,&
+       prepropflag
 
 
   OFL
@@ -140,7 +141,11 @@ subroutine getparams()
      all_spinproject=allspinproject
      df_restrictflag=dfrestrictflag
 
-!! input dependent defaults
+!! input-dependent defaults
+
+     if (constraintflag.ne.0) then
+        prepropflag=1
+     endif
 
      if (improvedrelaxflag.ne.0) then
         maxexpodim=max(300,maxexpodim)

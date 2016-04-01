@@ -230,6 +230,7 @@ character (len=200) :: &         !!              !! MAY BE SET BY COMMAND LINE O
 !!{\large \quad PROPAGATION/RELAXATION}
 !!BB
 real*8 :: par_timestep=0.1d0     !! Step=        !! MEAN FIELD TIMESTEP
+integer :: prepropflag=0         !!              !! Option for three-step propagation for strong fields or constraint
 integer :: improvedrelaxflag=0   !! Relax        !! For improved versus regular relaxtion.   
 integer :: threshflag=0          !!              !! Set to 1 for regular relaxation
 real*8 :: expotol=1d-8           !!              !! Orbital krylov convergence parameter
