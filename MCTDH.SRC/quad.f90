@@ -814,6 +814,7 @@ subroutine nonsparsequadavector(www,avectorout)
   use sparsemultmod
   use basissubmod
   use mpisubmod
+  use asssubmod
   implicit none
   type(walktype),intent(in) :: www
   DATATYPE,intent(inout) :: avectorout(www%totadim)

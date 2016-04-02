@@ -80,7 +80,7 @@ dfconstrain.o: $(DEPEND) dfconstrain.F90 walkmult.o spin.o utils.o
 expo_driver.o: $(DEPEND) expo_driver.F90 derivs.o proputils.o spin.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c expo_driver.F90 
 
-quad.o: $(DEPEND) quad.F90 blocklanczos.o expo_driver.o derivs.o walkmult.o spin.o
+quad.o: $(DEPEND) quad.F90 blocklanczos.o expo_driver.o derivs.o walkmult.o spin.o matel.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c quad.F90 
 
 BCG_driver.o: $(DEPEND) implicit.o BCG_driver.F90
@@ -134,13 +134,13 @@ spfs.o: $(DEPEND) spfs.F90 utils.o
 denmat.o: $(DEPEND) denmat.F90 biortho.o autosub.o utils.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c denmat.F90
 
-driving.o: $(DEPEND) driving.F90 biortho.o walkmult.o denmat.o proputils.o
+driving.o: $(DEPEND) driving.F90 biortho.o walkmult.o denmat.o proputils.o matel.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c driving.F90
 
 newconfig.o: $(DEPEND) newconfig.F90
 	$(F90) $(FFLAGS) $(MPIFLAG) -c newconfig.F90
 
-configstuff.o: $(DEPEND) configstuff.F90 spin.o utils.o
+configstuff.o: $(DEPEND) configstuff.F90 spin.o utils.o matel.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c configstuff.F90
 
 walks.o: $(DEPEND) walks.F90 newconfig.o
@@ -179,7 +179,7 @@ utils.o: $(DEPEND) utils.F90
 getparams.o: Definitions.ALL Definitions.INC parameters.o main_modules.o getparams.F90 
 	$(F90) $(FFLAGS) $(MPIFLAG) $(SAFEFLAG) $(PGFFLAG) -c getparams.F90 
 
-electronflux.o: $(DEPEND) electronflux.F90 biortho.o walkmult.o proputils.o
+electronflux.o: $(DEPEND) electronflux.F90 biortho.o walkmult.o proputils.o matel.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c electronflux.F90
 
 projeflux.o: $(DEPEND) projeflux.F90 biortho.o newconfig.o

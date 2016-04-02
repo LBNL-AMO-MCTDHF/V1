@@ -921,6 +921,7 @@ contains
       use configptrmod
       use sparseptrmod
       use sparsemultmod
+      use asssubmod
       implicit none
       DATATYPE,intent(in) :: abra(numr,first_config:last_config),aket(numr,first_config:last_config),&
            imke(nspf,nspf),impe(nspf,nspf),imV2(nspf,nspf,nspf,nspf),imyderiv(nspf,nspf),&

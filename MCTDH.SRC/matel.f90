@@ -5,66 +5,8 @@
 
 #include "Definitions.INC"
 
-
-subroutine all_matel()
-  use parameters
-  use xxxmod
-  use mpimod
-  use configmod
-  use opmod
-  use mpi_orbsetmod
-  implicit none
-  integer,save :: times(10)=0,xcalled=0
-  integer :: itime,jtime,getlen,firstspf,lastspf
-  xcalled=xcalled+1
-
-  firstspf=1;lastspf=nspf
-  if (parorbsplit.eq.1) then
-     firstspf=firstmpiorb
-     lastspf=firstmpiorb+orbsperproc-1
-  endif
-
-  if (debugflag.eq.42) then
-     call mpibarrier();     OFLWR "     Call all_matel0 in all_matel"; CFL; call mpibarrier()
-  endif
-  call all_matel0(www%holeflag,yyy%cptr(0), yyy%cmfspfs(:,0), yyy%cmfspfs(:,0), &
-       twoereduced,times,firstspf,lastspf)
-  if (debugflag.eq.42) then
-     call mpibarrier();     OFLWR "     ...called all_matel0 in all_matel"; CFL; call mpibarrier()
-  endif
-
-  call system_clock(itime)
-  if (sparseopt.ne.0) then
-     call assemble_sparsemats(www,yyy%cptr(0),yyysptr(0),1,1,1,1)
-     if (use_dfwalktype) then
-        if (shuffle_dfwalktype) then
-           call assemble_sparsemats(fdww,yyy%cptr(0),yyysfdptr(0),1,1,1,1)
-        else
-           call assemble_sparsemats(dfww,yyy%cptr(0),yyysdfptr(0),1,1,1,1)
-        endif
-     endif
-  endif
-  call system_clock(jtime); times(5)=times(5)+jtime-itime
-
-  if ((myrank.eq.1).and.(notiming.eq.0)) then
-     if (xcalled==1) then
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/matel.time.dat", status="unknown")
-        write(853,'(100A11)')   "op", "pot", "pulse", "two", "assemble"
-        close(853)
-     endif
-
-     open(853, file=timingdir(1:getlen(timingdir)-1)//"/matel.time.dat", &
-          status="unknown", position="append")
-     write(853,'(100I11)')  times(1:5)/1000;        close(853)
-     close(853)
-  endif
-
-  if (debugflag.eq.42) then
-     call mpibarrier();     OFLWR "     ...finished all_matel"; CFL; call mpibarrier()
-  endif
-
-end subroutine all_matel
-
+module allmat0mod
+contains
 
 subroutine all_matel0(inholeflag,matrix_ptr,inspfs1,inspfs2,twoereduced,times,firstspf,lastspf)
   use parameters
@@ -347,6 +289,8 @@ subroutine sparseops_matel(matrix_ptr,inspfs1,inspfs2)
 
 end subroutine sparseops_matel
 
+end module allmat0mod
+
 
 subroutine frozen_matels()
   use opmod
@@ -355,6 +299,9 @@ subroutine frozen_matels()
   call call_frozen_matels0(frozenspfs(:,:),numfrozen,frozenkediag,frozenpotdiag)  !! returns diags; has matels in twoemod
 end subroutine frozen_matels
 
+
+module cfgsubmod
+contains
 
 subroutine arbitraryconfig_matel_singles00transpose_hhh(www,in_onebodymat, smallmatrixtr,inholeflag)
   use fileptrmod
@@ -531,7 +478,11 @@ subroutine arbitraryconfig_matel_doubles00transpose(www,in_twobodymat, smallmatr
 
 end subroutine arbitraryconfig_matel_doubles00transpose
 
+end module cfgsubmod
 
+
+module asssubmod
+contains
 
 subroutine assemble_dfbasismat(www,outmatrix, matrix_ptr, boflag, nucflag, pulseflag, conflag, time,imc)
   use sparse_parameters
@@ -540,7 +491,6 @@ subroutine assemble_dfbasismat(www,outmatrix, matrix_ptr, boflag, nucflag, pulse
   use configptrmod
   use walkmod
   use basissubmod
-!  use fileptrmod   
   implicit none
   type(walktype),intent(in) :: www
   Type(configptr),intent(in) :: matrix_ptr
@@ -588,6 +538,7 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
   use configptrmod
   use walkmod
   use opmod   !! rkemod, proderivmod, frozenkediag, frozenpotdiag, bondpoints, bondweights
+  use cfgsubmod
   implicit none
   type(walktype),intent(in) :: www
   Type(CONFIGPTR),intent(in) :: matrix_ptr
@@ -721,7 +672,6 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
 
 end subroutine assemble_configmat
 
-
 !! NO A-SQUARED TERM HERE; TIME IS NOT AN ARGUMENT.  A-squared in sparsesparsemult_byproc.
 
 subroutine assemble_sparsemats(www,matrix_ptr, sparse_ptr,boflag, nucflag, pulseflag, conflag)
@@ -733,6 +683,7 @@ subroutine assemble_sparsemats(www,matrix_ptr, sparse_ptr,boflag, nucflag, pulse
   use walkmod
   use sparseptrmod
   use opmod   !! rkemod, proderivmod
+  use cfgsubmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: conflag,boflag,nucflag,pulseflag
@@ -779,4 +730,70 @@ subroutine assemble_sparsemats(www,matrix_ptr, sparse_ptr,boflag, nucflag, pulse
   endif
 
 end subroutine assemble_sparsemats
+
+end module asssubmod
+
+
+subroutine all_matel()
+  use parameters
+  use xxxmod
+  use mpimod
+  use configmod
+  use opmod
+  use mpi_orbsetmod
+  use asssubmod
+  use cfgsubmod
+  use allmat0mod
+  implicit none
+  integer,save :: times(10)=0,xcalled=0
+  integer :: itime,jtime,getlen,firstspf,lastspf
+  xcalled=xcalled+1
+
+  firstspf=1;lastspf=nspf
+  if (parorbsplit.eq.1) then
+     firstspf=firstmpiorb
+     lastspf=firstmpiorb+orbsperproc-1
+  endif
+
+  if (debugflag.eq.42) then
+     call mpibarrier();     OFLWR "     Call all_matel0 in all_matel"; CFL; call mpibarrier()
+  endif
+  call all_matel0(www%holeflag,yyy%cptr(0), yyy%cmfspfs(:,0), yyy%cmfspfs(:,0), &
+       twoereduced,times,firstspf,lastspf)
+  if (debugflag.eq.42) then
+     call mpibarrier();     OFLWR "     ...called all_matel0 in all_matel"; CFL; call mpibarrier()
+  endif
+
+  call system_clock(itime)
+  if (sparseopt.ne.0) then
+     call assemble_sparsemats(www,yyy%cptr(0),yyysptr(0),1,1,1,1)
+     if (use_dfwalktype) then
+        if (shuffle_dfwalktype) then
+           call assemble_sparsemats(fdww,yyy%cptr(0),yyysfdptr(0),1,1,1,1)
+        else
+           call assemble_sparsemats(dfww,yyy%cptr(0),yyysdfptr(0),1,1,1,1)
+        endif
+     endif
+  endif
+  call system_clock(jtime); times(5)=times(5)+jtime-itime
+
+  if ((myrank.eq.1).and.(notiming.eq.0)) then
+     if (xcalled==1) then
+        open(853, file=timingdir(1:getlen(timingdir)-1)//"/matel.time.dat", status="unknown")
+        write(853,'(100A11)')   "op", "pot", "pulse", "two", "assemble"
+        close(853)
+     endif
+
+     open(853, file=timingdir(1:getlen(timingdir)-1)//"/matel.time.dat", &
+          status="unknown", position="append")
+     write(853,'(100I11)')  times(1:5)/1000;        close(853)
+     close(853)
+  endif
+
+  if (debugflag.eq.42) then
+     call mpibarrier();     OFLWR "     ...finished all_matel"; CFL; call mpibarrier()
+  endif
+
+end subroutine all_matel
+
 
