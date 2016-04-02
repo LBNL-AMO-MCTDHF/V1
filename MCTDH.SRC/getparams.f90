@@ -440,12 +440,6 @@ subroutine getparams()
      endif
   endif
 
-  if (constraintflag==1) then
-     if (real(timefac,8).ne.0.d0) then
-        OFLWR "denmat Constraint flag only available for real time propagation. use improvednatflag."; CFLST
-     endif
-  endif
-
   if (numshells.lt.1) then
      OFLWR "Shell error ", numshells; CFLST
   endif
@@ -799,6 +793,8 @@ subroutine getparams()
   write(mpifileptr, *) "***********************    Parameters: propagation    ***********************   "
   write(mpifileptr, *)
   write(mpifileptr,*)  " PAR_TIMESTEP IS ", par_timestep, " LITTLESTEPS IS ", littlesteps
+  write(mpifileptr,*)   "  prepropflag is ", prepropflag
+
   write(mpifileptr,*)
   if (messflag.ne.0) then
      write(mpifileptr,*) "MESSFLAG is on -- messing with spfs.  Messamount=", messamount; write(mpifileptr,*)
