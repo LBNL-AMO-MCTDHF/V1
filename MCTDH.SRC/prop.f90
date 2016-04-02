@@ -367,7 +367,6 @@ subroutine cmf_prop_wfn(tin, tout)
            call system_clock(itime)
            time1=tin;        time2=tout
            call conpropspfs(yyy%cmfspfs(:,1),yyy%cmfspfs(:,0), time1,time2)
-           numiters=numiters+qq
            call system_clock(jtime);     times(4)=times(4)+jtime-itime;   itime=jtime
 !! prevent drift
            if (parorbsplit.ne.3) then
