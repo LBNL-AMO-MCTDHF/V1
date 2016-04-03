@@ -25,6 +25,7 @@ subroutine dipolesub()
   use configmod
   use xxxmod
   use mpisubmod
+  use pulse_parameters !! conjgpropflag
   implicit none
   DATATYPE :: xx(mcscfnum),yy(mcscfnum),zz(mcscfnum),dd(mcscfnum),&
        axx(mcscfnum),ayy(mcscfnum),azz(mcscfnum),sxx(mcscfnum),syy(mcscfnum),&

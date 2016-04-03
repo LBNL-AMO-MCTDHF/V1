@@ -1,6 +1,10 @@
 
 #include "Definitions.INC"
 
+module constant_parameters
+real*8 :: pi
+end module constant_parameters
+
 module fileptrmod
 integer :: mpifileptr
 integer,parameter :: nullfileptr=798  !! MUST MATCH COOLEYTUKEY_SHARED.F90
@@ -69,27 +73,6 @@ end module dotmod
 !! Type, variable, default value !! Command-line !! Description 
 !!                               !!  option      !! 
 !!EE
-!!{\large \quad SPARSE - if sparseconfigflag .ne. 0}
-!!BB
-module lanparameters
-integer :: lanprintflag=0
-integer :: lanczosorder=200      !!              !!   lanczos order used in A-vector eigen.
-integer :: lancheckstep=20       !!              !! lanczos eigen routine checks for convergence every this # steps
-real*8 :: lanthresh=1.d-9        !!              !! convergence criterion.
-end module lanparameters
-module sparse_parameters
-integer :: sparseconfigflag=0    !! Sparse       !! Sparse configuration routines on or off (for large # configs)
-integer :: sparseopt =1                          !! 0= direct CI  1= sparse matrix algebra (faster, more memory)
-integer :: par_consplit=1                        !! Fully distribute a-vector
-integer :: sparsesummaflag=0                     !! a-vector matvec mode 0=gather 1=summa(bad) 2=sendrecv(ok)
-integer :: sparsedfflag=1                        !! If zero disable separate restricted config walk list
-integer :: nonsparsepropmode=1                   !! 0 = ZGCHBV expokit; 1 = mine expmat
-integer :: nzflag=1                              !! use only processors with nonzero number of Slaters for a-vec
-logical :: shuffle_dfwalktype=.true.             !! redistribute restricted configs evenly over processors
-integer :: sparseprime=1                         !! For reordering config list (experimental)
-logical :: use_dfwalktype=.false.                !! internal, IGNORE me
-end module sparse_parameters
-!!EE
 !!{\large \quad HAMILTONIAN PARAMETERS}
 !!BB
 module ham_parameters
@@ -111,6 +94,29 @@ real*8 :: mshift=0d0                             !! shift configurations based o
                                                  !!  (mrestrictmin, mrestrictmax) mcscf; good idea.
 integer :: offaxispulseflag=0                    !! internal (not namelist), IGNORE me
 end module ham_parameters
+!!EE
+!!{\large \quad PULSE.  (If tdflag=1) }
+!!BB
+module pulse_parameters
+integer :: numpulses=1
+integer ::  pulsetype(100)=1      !!              !!  Pulsetype=1:  A(t) = pulsestrength * sin(w t)^2,
+real*8  :: omega(100)=1.d0        !!              !!  2:  A(t) = strength * sin(w t)^2 
+real*8 :: omega2(100)=1.d0        !!              !!             * sin(w2 t + phaseshift),
+real*8 :: pulsestart(100)=0d0     !!              !!   
+real*8 :: phaseshift(100)=0d0     !!              !!    pulsestart < t < pulsestart + pi/w; 0 otherwise
+real*8 :: chirp(100)=0d0          !!              !!
+real*8 :: ramp(100)=0d0
+real*8 :: longstep(100)=1d0       !!              !!  Pulsetype 3 available: monochromatic, sinesq start+end
+!! NOW COMPLEX
+DATATYPE :: pulsestrength(100)=.5d0 !!            !!  A_0 = E_0/omega (strength of field)  
+real*8 :: intensity(100)= -1.d0   !!              !! overrides pulse strength.  Intensity, 10^16 W cm^-2 
+real*8 :: pulsetheta(100)=0.d0    !!              !!  angle between polarization and bond axis (radians)
+real*8 :: pulsephi(100)=0.d0      !!              !!  polarization in xy plane
+real*8 :: maxpulsetime=1.d20     !!              !!  
+real*8 :: minpulsetime=0.d0      !!              !!  By default calc stops after pulse (overrides finaltime,
+                                                 !!   numpropsteps); this will enforce minimum duration
+integer :: conjgpropflag=0       !! for complex Domcke
+end module pulse_parameters
 !!EE
 !!{\large \quad CONFIGURATIONS / SLATER DETERMINANTS}
 !!BB
@@ -157,6 +163,49 @@ integer :: first_config,last_config,local_nconfig!!         INTERNAL, IGNORE ME
 integer :: numpart,num2part    !! particles or holes        INTERNAL, IGNORE ME
 end module basis_parameters
 !!EE
+!!{\large \quad for SPARSE CONFIGURATION ROUTINES - if sparseconfigflag .ne. 0}
+!!BB
+module lanparameters
+integer :: lanprintflag=0
+integer :: lanczosorder=200      !!              !!   lanczos order used in A-vector eigen.
+integer :: lancheckstep=20       !!              !! lanczos eigen routine checks for convergence every this # steps
+real*8 :: lanthresh=1.d-9        !!              !! convergence criterion.
+end module lanparameters
+module sparse_parameters
+integer :: sparseconfigflag=0    !! Sparse       !! Sparse configuration routines on or off (for large # configs)
+integer :: sparseopt =1                          !! 0= direct CI  1= sparse matrix algebra (faster, more memory)
+integer :: par_consplit=1                        !! Fully distribute a-vector
+integer :: sparsesummaflag=0                     !! a-vector matvec mode 0=gather 1=summa(bad) 2=sendrecv(ok)
+integer :: sparsedfflag=1                        !! If zero disable separate restricted config walk list
+integer :: nonsparsepropmode=1                   !! 0 = ZGCHBV expokit; 1 = mine expmat
+integer :: nzflag=1                              !! use only processors with nonzero number of Slaters for a-vec
+logical :: shuffle_dfwalktype=.true.             !! redistribute restricted configs evenly over processors
+integer :: sparseprime=1                         !! For reordering config list (experimental)
+logical :: use_dfwalktype=.false.                !! internal, IGNORE me
+end module sparse_parameters
+!!EE
+!!{\large \quad Orbital parallelization}
+!!BB
+module spfsize_parameters
+integer :: parorbsplit=1                !! 1=keep all orbs, prop in parallel   3=polyatomic, full MPI
+integer :: spfsize,spfsmallsize         !! size of orbitals each processor                internal, IGNORE
+integer :: reducedpotsize = -1          !! size of array used to store reduced potential  internal, IGNORE
+integer :: totspfdim                    !! nspf * spfsize (local size only)               internal, IGNORE
+integer :: spfdims(3)=0                 !! general - not numerad,lbig+1,2*mbig+1          internal, IGNORE
+integer :: spfdimtype(3)=(/0,2,1/)      !! 0 = [0,infty];  1=[-infty,infty]; 2=[-A,A]     internal, IGNORE
+end module spfsize_parameters
+!!EE
+!!{\large \quad CONSTRAINT: With constraintflag. NEED FOR RESTRICTED CONFIG LIST.}
+!!BB
+module constraint_parameters
+real*8 :: lioreg= 1d-9           !!              !! Regularization for linear solve constraint
+integer :: conway=0                              !! for constraintflag=2, dirac frenkel constraint
+                                                 !!   0=McLachlan 1=50/50 mix 2=Lagrangian
+                                                 !!   3=Lagrangian with epsilon times McLachlan
+real*8 :: conprop=1d-1                           !! epsilon for conway=3
+real*8 :: condamp=1
+end module constraint_parameters
+!!EE
 !!{\large \quad Timing}
 !!BB
 module timing_parameters
@@ -186,32 +235,10 @@ end module tol_parameters
 module denreg_parameters
 real*8 :: denreg=1d-10           !! Denreg=      !! density matrix regularization parameter.
 end module denreg_parameters
-!!EE
-!!{\large \quad Orbital parallelization}
-!!BB
-module spfsize_parameters
-integer :: parorbsplit=1                !! 1=keep all orbs, prop in parallel   3=polyatomic, full MPI
-integer :: spfsize,spfsmallsize         !! size of orbitals each processor                internal, IGNORE
-integer :: reducedpotsize = -1          !! size of array used to store reduced potential  internal, IGNORE
-integer :: totspfdim                    !! nspf * spfsize (local size only)               internal, IGNORE
-integer :: spfdims(3)=0                 !! general - not numerad,lbig+1,2*mbig+1          internal, IGNORE
-integer :: spfdimtype(3)=(/0,2,1/)      !! 0 = [0,infty];  1=[-infty,infty]; 2=[-A,A]     internal, IGNORE
-end module spfsize_parameters
-!!EE
-!!{\large \quad CONSTRAINT: With constraintflag. NEED FOR RESTRICTED CONFIG LIST.}
-!!BB
-module constraint_parameters
-real*8 :: lioreg= 1d-9           !!              !! Regularization for linear solve constraint
-integer :: conway=0                              !! for constraintflag=2, dirac frenkel constraint
-                                                 !!   0=McLachlan 1=50/50 mix 2=Lagrangian
-                                                 !!   3=Lagrangian with epsilon times McLachlan
-real*8 :: conprop=1d-1                           !! epsilon for conway=3
-real*8 :: condamp=1
-end module constraint_parameters
 module parameters
   use littleparmod;  use fileptrmod;  use r_parameters; use sparse_parameters; use tol_parameters
   use ham_parameters;  use basis_parameters;  use timing_parameters; use spfsize_parameters;
-  use df_parameters; use dotmod
+  use df_parameters; use dotmod;    use constant_parameters
   implicit none
 !!EE
 !!{\large \quad MAIN PARAMETERS }
@@ -368,26 +395,6 @@ character(len=200):: denplotbin="Bin/Density.bin"             !! for actions 4,1
 character(len=200):: rnatplotbin="Bin/RNatorb.bin"            !! for actions 5,11
 character(len=200):: denprojplotbin="Bin/Denproj.bin"         !! for actions 6,12
 character(len=200):: natprojplotbin="Bin/Natproj.bin"         !!  "
-!!EE
-!!{\large \quad PULSE.  (If tdflag=1) }
-!!BB
-integer :: numpulses=1
-integer ::  pulsetype(100)=1      !!              !!  Pulsetype=1:  A(t) = pulsestrength * sin(w t)^2,
-real*8  :: omega(100)=1.d0        !!              !!  2:  A(t) = strength * sin(w t)^2 
-real*8 :: omega2(100)=1.d0        !!              !!             * sin(w2 t + phaseshift),
-real*8 :: pulsestart(100)=0d0     !!              !!   
-real*8 :: phaseshift(100)=0d0     !!              !!    pulsestart < t < pulsestart + pi/w; 0 otherwise
-real*8 :: chirp(100)=0d0          !!              !!
-real*8 :: ramp(100)=0d0
-real*8 :: longstep(100)=1d0       !!              !!  Pulsetype 3 available: monochromatic, sinesq start+end
-!! NOW COMPLEX
-DATATYPE :: pulsestrength(100)=.5d0 !!            !!  A_0 = E_0/omega (strength of field)  
-real*8 :: intensity(100)= -1.d0   !!              !! overrides pulse strength.  Intensity, 10^16 W cm^-2 
-real*8 :: pulsetheta(100)=0.d0    !!              !!  angle between polarization and bond axis (radians)
-real*8 :: pulsephi(100)=0.d0      !!              !!  polarization in xy plane
-real*8 :: maxpulsetime=1.d20     !!              !!  
-real*8 :: minpulsetime=0.d0      !!              !!  By default calc stops after pulse (overrides finaltime,
-                                                 !!   numpropsteps); this will enforce minimum duration
 !!EE 
 !!{\large \quad ACTIONS} \verb# may also be specified by Act=X where X is an integer on the command line #
 !!BB
@@ -452,7 +459,7 @@ integer :: ftdiff=0           !! fourier transform derivative of dipole moment n
 integer :: hanningflag=0         !! for hanning window set nonzero action 1 autocorr
 integer :: diptime=100           !! For act=20, outputs copies every diptime atomic units
 integer :: dipmodtime=100        !! do ft every autotimestep*dipmodtime
-real*8 :: dipolesumstart=1d10,&  !! range for integration of oscillator strength (e.g. for sum rule)
+real*8 :: dipolesumstart=0d0,&   !! range for integration of oscillator strength (e.g. for sum rule)
      dipolesumend=1d9            !!    photon energy, atomic units (Hartree), start and end
 !!EE
 !!{\large \quad PHOTOIONIZATION (actions 15,16,17)}
@@ -491,7 +498,6 @@ real*8  :: povsparse=1.d-3       !!              !! Sparsity threshold for trans
 !!EE
 !!{\large \quad MISC AND EXPERIMENTAL}
 !!BB
-integer :: conjgpropflag=0       !! for complex Domcke
 integer :: pulsewindowtoo=1      !! use window function for E(omega) as well
 logical :: readfullvector=.true.
 logical :: walksinturn=.false.   !!              !! if you have problems with MPI i/o, maybe try this
@@ -565,7 +571,6 @@ integer :: cdenflag=0            !!              !! Calulate natconfig?  Not nec
 integer :: rdenflag=0            !!              !! Calulate denmat in R? 
 real*8 :: globaltime=0.d0   !! for ease of output
 !!! real*8 :: rcond=1.d-4      !! singular value for split operator cranck-nicholson
-real*8 :: pi
 integer :: povplotflag=0
 integer, parameter :: natorbfile=765
 integer, parameter :: rnatorbfile=769

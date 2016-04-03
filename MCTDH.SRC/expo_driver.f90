@@ -45,6 +45,7 @@ contains
     use orbprojectmod
     use derivativemod
     use orbgathersubmod
+    use pulsesubmod
     implicit none
     integer,intent(in) :: lowspf,highspf,dentimeflag,conflag
     DATATYPE,intent(in) ::  inspfs(spfsize,nspf)

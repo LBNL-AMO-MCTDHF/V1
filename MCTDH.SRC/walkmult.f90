@@ -574,6 +574,7 @@ contains
     use opmod   !! rkemod, proderivmod  
     use mpimod  !! myrank
     use walkmod
+    use pulsesubmod
     implicit none
     type(walktype),intent(in) :: www
     integer,intent(in) :: firstproc,lastproc,imc
@@ -739,6 +740,7 @@ contains
     use opmod   !! rkemod, proderivmod
     use mpimod  !! myrank 
     use fileptrmod
+    use pulsesubmod
     implicit none
     type(walktype),intent(in) :: www
     integer,intent(in) :: firstproc,lastproc,imc

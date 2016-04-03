@@ -19,6 +19,7 @@ end module derivtimingmod
 subroutine getconmat(thistime,ireduced,conmat)
   use parameters
   use xxxmod
+  use pulsesubmod
   implicit none
   integer, intent(in) :: ireduced
   real*8, intent(in) ::  thistime 
@@ -630,6 +631,7 @@ contains
     use orbprojectmod
     use orbgathersubmod
     use orbmultsubmod
+    use pulsesubmod
     implicit none
     integer, intent(in) :: lowspf,highspf,dentimeflag,ireduced,projflag,conflag
     real*8, intent(in) :: thistime
@@ -1026,6 +1028,7 @@ contains
     use xxxmod  !! frozenexchange and driving orbs
     use orbprojectmod
     use orbgathersubmod
+    use pulsesubmod
     implicit none
     integer,intent(in) :: inlinearflag,dentimeflag,projflag,conflag
     real*8,intent(in) :: thistime

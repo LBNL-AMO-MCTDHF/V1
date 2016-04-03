@@ -50,8 +50,8 @@ subroutine getparams()
   use output_parameters
   use mpimod
   use orblabelmod
+  use pulse_parameters   !! conjgpropflag
   implicit none
-
   integer :: nargs, getlen, i, len,  ishell, ispf,j, myiostat, iiflag,needpulse
 #ifdef PGFFLAG
   integer :: myiargc
@@ -916,9 +916,10 @@ end subroutine getparams
 
 subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse is not read
   use parameters
+  use pulse_parameters
   use mpimod
+  use pulsesubmod
   implicit none
-
   NAMELIST /pulse/ omega,pulsestart,pulsestrength, velflag, omega2,phaseshift,intensity,pulsetype, &
        pulsetheta,pulsephi, longstep, numpulses, minpulsetime, maxpulsetime, chirp, ramp
   real*8 ::  time,   lastfinish, fac, pulse_end, estep

@@ -46,6 +46,7 @@ end function windowfunct
 subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)
   use parameters
   use mpimod
+  use pulsesubmod
   implicit none
 
   DATATYPE :: indipolearray(0:numdata),pots(3)

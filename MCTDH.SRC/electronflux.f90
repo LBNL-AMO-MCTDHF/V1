@@ -237,6 +237,7 @@ contains
     use walkmod
     use mpimod
     use mpisubmod
+    use pulsesubmod
     implicit none
 !! FluxOpType:
 !! 0       = use one-e potential and two-e contribution routines  (exact treatment)

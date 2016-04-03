@@ -539,6 +539,7 @@ subroutine assemble_configmat(www,bigconfigmat,matrix_ptr, boflag, nucflag, puls
   use walkmod
   use opmod   !! rkemod, proderivmod, frozenkediag, frozenpotdiag, bondpoints, bondweights
   use cfgsubmod
+  use pulsesubmod
   implicit none
   type(walktype),intent(in) :: www
   Type(CONFIGPTR),intent(in) :: matrix_ptr

@@ -2,14 +2,38 @@
 #include "Definitions.INC"
 
 
+module pulsesubmod
+contains
+
 subroutine vectdpot(myintime,invelflag,tdpotsout,imc)
-  use parameters
+  use pulse_parameters
   implicit none
   real*8,intent(in) :: myintime
   integer, intent(in) :: invelflag,imc
   DATATYPE,intent(out) :: tdpotsout(3)
 
-  call vectdpot0(myintime,invelflag,tdpotsout)
+  call vectdpot0(myintime,invelflag,tdpotsout,imc,1,numpulses)
+
+end subroutine vectdpot
+
+
+subroutine vectdpot0(myintime,invelflag,tdpotsout,imc,ilow,ihigh)
+  use pulse_parameters
+  use fileptrmod
+  implicit none
+  integer, intent(in) :: invelflag,imc,ilow,ihigh
+  real*8,intent(in) :: myintime
+  DATATYPE,intent(out) :: tdpotsout(3)
+
+  if (invelflag.eq.0) then
+     tdpotsout(1)=tdpotlen0(myintime,1,ilow,ihigh)
+     tdpotsout(2)=tdpotlen0(myintime,2,ilow,ihigh)
+     tdpotsout(3)=tdpotlen0(myintime,3,ilow,ihigh)
+  else
+     tdpotsout(1)=tdpotvel0(myintime,1,ilow,ihigh)
+     tdpotsout(2)=tdpotvel0(myintime,2,ilow,ihigh)
+     tdpotsout(3)=tdpotvel0(myintime,3,ilow,ihigh)
+  endif
 
   if (conjgpropflag.ne.0) then
      select case (imc)
@@ -23,44 +47,24 @@ subroutine vectdpot(myintime,invelflag,tdpotsout,imc)
      end select
   endif
 
-end subroutine vectdpot
-
-
-
-subroutine vectdpot0(myintime,invelflag,tdpotsout)
-  implicit none
-  real*8,intent(in) :: myintime
-  integer, intent(in) :: invelflag
-  DATATYPE,intent(out) :: tdpotsout(3)
-  DATATYPE :: tdpotlen,tdpotvel
-
-  if (invelflag.eq.0) then
-     tdpotsout(1)=tdpotlen(myintime,1)  ;
-     tdpotsout(2)=tdpotlen(myintime,2)
-     tdpotsout(3)=tdpotlen(myintime,3)
-  else
-     tdpotsout(1)=tdpotvel(myintime,1)  
-     tdpotsout(2)=tdpotvel(myintime,2)
-     tdpotsout(3)=tdpotvel(myintime,3)
-  endif
-
 end subroutine vectdpot0
 
 
-
-
-function tdpotlen(myintime, which)
-  use parameters
+function tdpotlen0(myintime, which,ilow,ihigh)
+  use pulse_parameters
+  use fileptrmod
   implicit none
-  integer,intent(in) :: which
+  integer,intent(in) :: which,ilow,ihigh
   real*8,intent(in) :: myintime
   integer :: ipulse
   real*8 :: fac
-  DATATYPE :: tdpotlen, simplepulselen,pulselen, longpulselen,cwpulselen
+  DATATYPE :: tdpotlen0
 
-  tdpotlen=0.d0
+  tdpotlen0=0.d0
 
-  do ipulse=1,numpulses
+!!  do ipulse=1,numpulses
+
+  do ipulse=ilow,ihigh
 
      if (which==3) then !! z component
         fac=cos(pulsetheta(ipulse))
@@ -69,42 +73,44 @@ function tdpotlen(myintime, which)
      else if (which==2) then
         fac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
      else 
-        OFLWR "ACK which = ",which," not allowed tdpotlen"; CFLST
+        OFLWR "ACK which = ",which," not allowed tdpotlen0"; CFLST
         fac=798d0   !! avoid warn unused
      endif
 
      if (fac.ne.0d0) then
         select case (pulsetype(ipulse))
         case (1)
-           tdpotlen=tdpotlen+simplepulselen(myintime,ipulse) * fac
+           tdpotlen0=tdpotlen0+simplepulselen(myintime,ipulse) * fac
         case (2)
-           tdpotlen=tdpotlen+pulselen(myintime,ipulse) * fac
+           tdpotlen0=tdpotlen0+pulselen(myintime,ipulse) * fac
         case (3)
-           tdpotlen=tdpotlen+longpulselen(myintime,ipulse) * fac
+           tdpotlen0=tdpotlen0+longpulselen(myintime,ipulse) * fac
         case (4)
-           tdpotlen=tdpotlen+cwpulselen(myintime,ipulse) * fac
+           tdpotlen0=tdpotlen0+cwpulselen(myintime,ipulse) * fac
         case default
            OFLWR "Pulse type not supported: ", pulsetype(ipulse); CFLST
         end select
      endif
   enddo
   
-end function tdpotlen
+end function tdpotlen0
 
 
-function tdpotvel(myintime,which)
-  use parameters
-
+function tdpotvel0(myintime,which,ilow,ihigh)
+  use pulse_parameters
+  use fileptrmod
   implicit none
-  integer,intent(in) :: which
+  integer,intent(in) :: which,ilow,ihigh
   real*8,intent(in) :: myintime
   integer :: ipulse
   real*8 :: fac
-  DATATYPE :: tdpotvel, simplepulsevel, pulsevel, longpulsevel,cwpulsevel
+  DATATYPE :: tdpotvel0
 
-  tdpotvel=0.d0
+  tdpotvel0=0.d0
 
-  do ipulse=1,numpulses
+!!  do ipulse=1,numpulses
+
+  do ipulse=ilow,ihigh
 
      if (which==3) then !! z component
         fac=cos(pulsetheta(ipulse))
@@ -113,32 +119,32 @@ function tdpotvel(myintime,which)
      else if (which==2) then
         fac=sin(pulsetheta(ipulse))*sin(pulsephi(ipulse))
      else 
-        OFLWR "ACK which = ",which," not allowed tdpotvel"; CFLST
+        OFLWR "ACK which = ",which," not allowed tdpotvel0"; CFLST
         fac=798d0   !! avoid warn unused
      endif
 
      if (fac.ne.0d0) then
         select case (pulsetype(ipulse))
         case (1)
-           tdpotvel=tdpotvel+simplepulsevel(myintime, ipulse) * fac
+           tdpotvel0=tdpotvel0+simplepulsevel(myintime, ipulse) * fac
         case (2)
-           tdpotvel=tdpotvel+pulsevel(myintime, ipulse) * fac
+           tdpotvel0=tdpotvel0+pulsevel(myintime, ipulse) * fac
         case (3)
-           tdpotvel=tdpotvel+longpulsevel(myintime, ipulse) * fac
+           tdpotvel0=tdpotvel0+longpulsevel(myintime, ipulse) * fac
         case (4)
-           tdpotvel=tdpotvel+cwpulsevel(myintime, ipulse) * fac
+           tdpotvel0=tdpotvel0+cwpulsevel(myintime, ipulse) * fac
         case default
            OFLWR "Pulse type not supported: ", pulsetype(ipulse); CFLST
         end select
      endif
   enddo
 
-end function tdpotvel
-
+end function tdpotvel0
 
 
 function simplepulselen(myintime, ipulse)
-  use parameters
+  use pulse_parameters
+  use constant_parameters
   implicit none
   integer,intent(in) :: ipulse
   real*8,intent(in) :: myintime
@@ -161,7 +167,8 @@ end function simplepulselen
 
 
 function simplepulsevel(myintime, ipulse)
-  use parameters
+  use pulse_parameters
+  use constant_parameters
   implicit none
   integer,intent(in) :: ipulse
   real*8,intent(in) :: myintime
@@ -183,9 +190,9 @@ function simplepulsevel(myintime, ipulse)
 end function simplepulsevel
 
 
-
 function cwpulselen(myintime, ipulse)
-  use parameters
+  use pulse_parameters
+  use constant_parameters
   implicit none
   integer,intent(in) :: ipulse
   real*8,intent(in) :: myintime
@@ -201,7 +208,8 @@ end function cwpulselen
 
 
 function cwpulsevel(myintime, ipulse)
-  use parameters
+  use pulse_parameters
+  use constant_parameters
   implicit none
   integer,intent(in) :: ipulse
   real*8,intent(in) :: myintime
@@ -216,7 +224,9 @@ end function cwpulsevel
 
 
 function pulselen(myintime, ipulse)
-  use parameters
+  use pulse_parameters
+  use constant_parameters
+  use fileptrmod
   implicit none
   integer,intent(in) :: ipulse
   real*8,intent(in) :: myintime
@@ -243,7 +253,8 @@ end function pulselen
 
 
 function pulsevel(myintime, ipulse)
-  use parameters
+  use pulse_parameters
+  use constant_parameters
   implicit none
   integer,intent(in) :: ipulse
   real*8,intent(in) :: myintime
@@ -273,11 +284,14 @@ function pulsevel(myintime, ipulse)
 
 end function pulsevel
 
+
 !! wtf with longstep...  why did I do it 2* longstep+1?  So for longstep 0, no constant part of
 !!  envelope; for longstep 1, constant part is middle 2/3 of pulse.
 
 function longpulselen(myintime, ipulse)
-  use parameters
+  use pulse_parameters
+  use constant_parameters
+  use fileptrmod
   implicit none
   integer,intent(in) :: ipulse
   real*8,intent(in) :: myintime
@@ -314,7 +328,8 @@ end function longpulselen
 
 
 function longpulsevel(myintime, ipulse)
-  use parameters
+  use pulse_parameters
+  use constant_parameters
   implicit none
   integer,intent(in) :: ipulse
   real*8,intent(in) :: myintime
@@ -351,3 +366,4 @@ function longpulsevel(myintime, ipulse)
   
 end function longpulsevel
 
+end module pulsesubmod

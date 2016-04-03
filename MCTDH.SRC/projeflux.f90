@@ -205,6 +205,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   use projefluxmod  !! targetms, ..
   use mpimod
   use mpisubmod
+  use pulsesubmod
   implicit none
   integer,intent(in) :: mem,nstate,nt
   real*8,intent(in) :: dt

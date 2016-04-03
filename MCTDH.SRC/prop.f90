@@ -559,8 +559,8 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
   use xxxmod
   use configmod
   use configpropmod
+  use pulsesubmod
   implicit none
-
   DATATYPE,intent(in) :: avectorin(tot_adim)
   DATATYPE,intent(out) :: avectorout(tot_adim)
   integer,intent(in) :: imc,linearflag
