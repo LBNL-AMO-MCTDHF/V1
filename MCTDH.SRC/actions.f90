@@ -149,7 +149,7 @@ subroutine actionsub(thistime)
 
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (calledhere.eq.1) then
-        open(4132,file=timingdir(1:getlen(timingdir)-1)//"/Actions.time.dat",&
+        open(4132,file=timingdir(1:getlen(timingdir))//"/Actions.time.dat",&
              status="unknown",iostat=myiostat)
         call checkiostat(myiostat,"opening actions timing file")
         write(4132,'(500A15)',iostat=myiostat) (action_list(actions(i)),i=1,numactions)
@@ -157,7 +157,7 @@ subroutine actionsub(thistime)
         close(4132)
      endif
      if (mod(calledhere,10).eq.1) then
-        open(4132,file=timingdir(1:getlen(timingdir)-1)//"/Actions.time.dat",&
+        open(4132,file=timingdir(1:getlen(timingdir))//"/Actions.time.dat",&
              status="old",position="append",iostat=myiostat)
         call checkiostat(myiostat,"opening actions timing file")
         write(4132,'(500I15)',iostat=myiostat) (times(actions(i))/1000,i=1,numactions)

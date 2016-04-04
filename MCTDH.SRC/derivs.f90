@@ -795,7 +795,7 @@ contains
 
     if ((myrank.eq.1).and.(notiming.eq.0)) then
        if (numcalledhere==1) then
-          open(853, file=timingdir(1:getlen(timingdir)-1)//"/actreduced.time.dat", &
+          open(853, file=timingdir(1:getlen(timingdir))//"/actreduced.time.dat", &
                status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening actreduced timing file")
           write(853,'(T16,100A9)',iostat=myiostat) &
@@ -814,7 +814,7 @@ contains
        endif
 
        if (mod(numcalledhere,timingout).eq.0) then
-          open(853, file=timingdir(1:getlen(timingdir)-1)//"/actreduced.time.dat", &
+          open(853, file=timingdir(1:getlen(timingdir))//"/actreduced.time.dat", &
                status="unknown", position="append",iostat=myiostat)
           call checkiostat(myiostat,"opening actreduced timing file")
           write(853,'(A3,F12.4,15I9)',iostat=myiostat) "T= ", thistime,  times(1:10)/1000
@@ -970,7 +970,7 @@ contains
   
     if ((myrank.eq.1).and.(notiming.eq.0)) then
        if (numcalledhere==1) then
-          open(853, file=timingdir(1:getlen(timingdir)-1)//"/all_deriv.time.dat", &
+          open(853, file=timingdir(1:getlen(timingdir))//"/all_deriv.time.dat", &
                status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening all_deriv timing file")
           write(853,'( T16, 100A15)') " init ", " matel ", " denmat ", " getredham ", &
@@ -978,7 +978,7 @@ contains
           close(853)
        endif
        if (mod(numcalledhere,timingout).eq.0) then
-          open(853, file=timingdir(1:getlen(timingdir)-1)//"/all_deriv.time.dat", &
+          open(853, file=timingdir(1:getlen(timingdir))//"/all_deriv.time.dat", &
                status="unknown", position="append",iostat=myiostat)
           call checkiostat(myiostat,"writing all_deriv timing file")
           write(853,'(A3,F12.3,100I15)') "T= ", thistime,  times(1:6)/1000

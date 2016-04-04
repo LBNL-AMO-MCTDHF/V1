@@ -832,7 +832,7 @@ subroutine basis_shuffle(howmany,wwin,avectorin,wwout,avectorout)
   if (icalled.eq.0) then
      call system_clock(btime); atime=btime
      if (myrank.eq.1.and.notiming.le.1) then
-        open(1777, file=timingdir(1:getlen(timingdir)-1)//"/shuffletime.dat", &
+        open(1777, file=timingdir(1:getlen(timingdir))//"/shuffletime.dat", &
              status="unknown",iostat=myiostat)
         call checkiostat(myiostat," opening shuffletime.dat")
         write(1777,'(T16,100A15)')  &
@@ -927,7 +927,7 @@ subroutine basis_shuffle(howmany,wwin,avectorin,wwout,avectorout)
   deallocate(pairs,pairlow,pairhigh,pairsize,pairtag)
 
   if (myrank.eq.1.and.notiming.le.1.and.mod(numcalled,timingout).eq.0) then
-     open(1777, file=timingdir(1:getlen(timingdir)-1)//"/shuffletime.dat", &
+     open(1777, file=timingdir(1:getlen(timingdir))//"/shuffletime.dat", &
           status="old", position="append",iostat=myiostat)
      call checkiostat(myiostat," opening shuffletime.dat")
      write(1777,'(100I15)',iostat=myiostat) times(1:6)/1000

@@ -179,8 +179,7 @@ subroutine checkiostat(iniostat,intext)
   endif
 end subroutine checkiostat
 
-
-!! getlen is kloodgey, reports length+1 of string, could fix this throughout code
+!! v1.27 getlen now reports length of string not length of string plus one
 
 function getlen(buffer)
   implicit none
@@ -188,10 +187,15 @@ function getlen(buffer)
   integer :: j, getlen, mylen
   mylen=LEN(buffer)
   j=1
-  do while ((j.le.mylen).and..not.(buffer(j:j) .eq. " "))
-     j=j+1
+  do while (j.le.mylen)
+     if (buffer(j:j) .eq. " ") then
+        getlen=j-1
+        return
+     else
+        j=j+1
+     endif
   enddo
-  getlen=j
+  getlen=mylen
 end function getlen
 
 

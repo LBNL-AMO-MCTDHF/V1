@@ -286,14 +286,14 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
   if (notiming.eq.0.and.myrank.eq.1) then
      if (icalled.eq.1) then
-        open(8712,file=timingdir(1:getlen(timingdir)-1)//"/dfconstrain.dat",&
+        open(8712,file=timingdir(1:getlen(timingdir))//"/dfconstrain.dat",&
              status="unknown",iostat=myiostat)
         call checkiostat(myiostat,"opening dfconstrain timing file")
         write(8712,*,iostat=myiostat) "DF timings."
         call checkiostat(myiostat,"writing dfconstrain timing file")
         close(8712)
      else if (mod(icalled,30).eq.0) then
-        open(8712,file=timingdir(1:getlen(timingdir)-1)//"/dfconstrain.dat",&
+        open(8712,file=timingdir(1:getlen(timingdir))//"/dfconstrain.dat",&
              status="old", position="append",iostat=myiostat)
         call checkiostat(myiostat,"opening dfconstrain timing file")
         write(8712,'(100I12)',iostat=myiostat) times(1:14)/1000

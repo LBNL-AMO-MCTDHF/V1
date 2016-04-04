@@ -276,7 +276,7 @@ subroutine read_orb(inspf,imvalue, iprop, iwhich)
      if ((flag==1).or.(flag==2)) then
         if (povplotflag==1) then
            mypovdir=povdirs(iwhich)
-           call read_povother( thistime, ttempspf(:,:,:), iprop, mypovdir(1:getlen(mypovdir)-1), iwhich, ispf, irecord-1)
+           call read_povother( thistime, ttempspf(:,:,:), iprop, mypovdir(1:getlen(mypovdir)), iwhich, ispf, irecord-1)
         else
            if (first==1) then
               first=0;              filename=filex

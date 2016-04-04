@@ -131,82 +131,82 @@ subroutine dipolesub()
         endif
 
         if (conjgpropflag.eq.0) then
-           call dipolecall(calledflag, dipoleexpects(:,:,1),   xdipfile(1:getlen(xdipfile)-1),&
-                xdftfile(1:getlen(xdftfile)-1),            xoworkfile(1:getlen(xoworkfile)-1),&
-                xtworkfile(1:getlen(xtworkfile)-1),    xophotonfile(1:getlen(xophotonfile)-1),&
+           call dipolecall(calledflag, dipoleexpects(:,:,1),   xdipfile(1:getlen(xdipfile)),&
+                xdftfile(1:getlen(xdftfile)),            xoworkfile(1:getlen(xoworkfile)),&
+                xtworkfile(1:getlen(xtworkfile)),    xophotonfile(1:getlen(xophotonfile)),&
                 1,sflag)
-           call dipolecall(calledflag, dipoleexpects(:,:,1),   ydipfile(1:getlen(ydipfile)-1),&
-                ydftfile(1:getlen(ydftfile)-1),            yoworkfile(1:getlen(xoworkfile)-1),&
-                ytworkfile(1:getlen(xtworkfile)-1),    yophotonfile(1:getlen(xophotonfile)-1),&
+           call dipolecall(calledflag, dipoleexpects(:,:,1),   ydipfile(1:getlen(ydipfile)),&
+                ydftfile(1:getlen(ydftfile)),            yoworkfile(1:getlen(xoworkfile)),&
+                ytworkfile(1:getlen(xtworkfile)),    yophotonfile(1:getlen(xophotonfile)),&
                 2,sflag)
-           call dipolecall(calledflag, dipoleexpects(:,:,1),   zdipfile(1:getlen(zdipfile)-1),&
-                zdftfile(1:getlen(zdftfile)-1),            zoworkfile(1:getlen(xoworkfile)-1),&
-                ztworkfile(1:getlen(xtworkfile)-1),    zophotonfile(1:getlen(xophotonfile)-1),&
+           call dipolecall(calledflag, dipoleexpects(:,:,1),   zdipfile(1:getlen(zdipfile)),&
+                zdftfile(1:getlen(zdftfile)),            zoworkfile(1:getlen(xoworkfile)),&
+                ztworkfile(1:getlen(xtworkfile)),    zophotonfile(1:getlen(xophotonfile)),&
                 3,sflag)
            if (act21circ.ne.0) then
-              call dipolecall(calledflag, dipoleexpects(:,:,1),  xydipfile(1:getlen(xydipfile)-1),&
-                   xydftfile(1:getlen(xydftfile)-1),          xyoworkfile(1:getlen(xoworkfile)-1),&
-                   xytworkfile(1:getlen(xtworkfile)-1),   xyophotonfile(1:getlen(xophotonfile)-1),&
+              call dipolecall(calledflag, dipoleexpects(:,:,1),  xydipfile(1:getlen(xydipfile)),&
+                   xydftfile(1:getlen(xydftfile)),          xyoworkfile(1:getlen(xoworkfile)),&
+                   xytworkfile(1:getlen(xtworkfile)),   xyophotonfile(1:getlen(xophotonfile)),&
                    4,sflag)
-              call dipolecall(calledflag, dipoleexpects(:,:,1),  xzdipfile(1:getlen(xzdipfile)-1),&
-                   xzdftfile(1:getlen(xzdftfile)-1),          xzoworkfile(1:getlen(xoworkfile)-1),&
-                   xztworkfile(1:getlen(xtworkfile)-1),   xzophotonfile(1:getlen(xophotonfile)-1),&
+              call dipolecall(calledflag, dipoleexpects(:,:,1),  xzdipfile(1:getlen(xzdipfile)),&
+                   xzdftfile(1:getlen(xzdftfile)),          xzoworkfile(1:getlen(xoworkfile)),&
+                   xztworkfile(1:getlen(xtworkfile)),   xzophotonfile(1:getlen(xophotonfile)),&
                    5,sflag)
-              call dipolecall(calledflag, dipoleexpects(:,:,1),  yxdipfile(1:getlen(yxdipfile)-1),&
-                   yxdftfile(1:getlen(yxdftfile)-1),          yxoworkfile(1:getlen(xoworkfile)-1),&
-                   yxtworkfile(1:getlen(xtworkfile)-1),   yxophotonfile(1:getlen(xophotonfile)-1),&
+              call dipolecall(calledflag, dipoleexpects(:,:,1),  yxdipfile(1:getlen(yxdipfile)),&
+                   yxdftfile(1:getlen(yxdftfile)),          yxoworkfile(1:getlen(xoworkfile)),&
+                   yxtworkfile(1:getlen(xtworkfile)),   yxophotonfile(1:getlen(xophotonfile)),&
                    6,sflag)
-              call dipolecall(calledflag, dipoleexpects(:,:,1),  yzdipfile(1:getlen(yzdipfile)-1),&
-                   yzdftfile(1:getlen(yzdftfile)-1),          yzoworkfile(1:getlen(xoworkfile)-1),&
-                   yztworkfile(1:getlen(xtworkfile)-1),   yzophotonfile(1:getlen(xophotonfile)-1),&
+              call dipolecall(calledflag, dipoleexpects(:,:,1),  yzdipfile(1:getlen(yzdipfile)),&
+                   yzdftfile(1:getlen(yzdftfile)),          yzoworkfile(1:getlen(xoworkfile)),&
+                   yztworkfile(1:getlen(xtworkfile)),   yzophotonfile(1:getlen(xophotonfile)),&
                    7,sflag)
-              call dipolecall(calledflag, dipoleexpects(:,:,1),  zxdipfile(1:getlen(zxdipfile)-1),&
-                   zxdftfile(1:getlen(zxdftfile)-1),          zxoworkfile(1:getlen(xoworkfile)-1),&
-                   zxtworkfile(1:getlen(xtworkfile)-1),   zxophotonfile(1:getlen(xophotonfile)-1),&
+              call dipolecall(calledflag, dipoleexpects(:,:,1),  zxdipfile(1:getlen(zxdipfile)),&
+                   zxdftfile(1:getlen(zxdftfile)),          zxoworkfile(1:getlen(xoworkfile)),&
+                   zxtworkfile(1:getlen(xtworkfile)),   zxophotonfile(1:getlen(xophotonfile)),&
                    8,sflag)
-              call dipolecall(calledflag, dipoleexpects(:,:,1),  zydipfile(1:getlen(zydipfile)-1),&
-                   zydftfile(1:getlen(zydftfile)-1),          zyoworkfile(1:getlen(xoworkfile)-1),&
-                   zytworkfile(1:getlen(xtworkfile)-1),   zyophotonfile(1:getlen(xophotonfile)-1),&
+              call dipolecall(calledflag, dipoleexpects(:,:,1),  zydipfile(1:getlen(zydipfile)),&
+                   zydftfile(1:getlen(zydftfile)),          zyoworkfile(1:getlen(xoworkfile)),&
+                   zytworkfile(1:getlen(xtworkfile)),   zyophotonfile(1:getlen(xophotonfile)),&
                    9,sflag)
            endif
         else
            do ii=1,4
-              call dipolecall(calledflag, dipoleexpects(:,:,1),      xdipfile(1:getlen(xdipfile)-1)//tl(ii),&
-                   xdftfile(1:getlen(xdftfile)-1)//tl(ii),         xoworkfile(1:getlen(xoworkfile)-1)//tl(ii),&
-                   xtworkfile(1:getlen(xtworkfile)-1)//tl(ii),   xophotonfile(1:getlen(xophotonfile)-1)//tl(ii),&
+              call dipolecall(calledflag, dipoleexpects(:,:,1),      xdipfile(1:getlen(xdipfile))//tl(ii),&
+                   xdftfile(1:getlen(xdftfile))//tl(ii),         xoworkfile(1:getlen(xoworkfile))//tl(ii),&
+                   xtworkfile(1:getlen(xtworkfile))//tl(ii),   xophotonfile(1:getlen(xophotonfile))//tl(ii),&
                    1,sflag)
-              call dipolecall(calledflag, dipoleexpects(:,:,1),      ydipfile(1:getlen(ydipfile)-1)//tl(ii),&
-                   ydftfile(1:getlen(ydftfile)-1)//tl(ii),         yoworkfile(1:getlen(xoworkfile)-1)//tl(ii),&
-                   ytworkfile(1:getlen(xtworkfile)-1)//tl(ii),   yophotonfile(1:getlen(xophotonfile)-1)//tl(ii),&
+              call dipolecall(calledflag, dipoleexpects(:,:,1),      ydipfile(1:getlen(ydipfile))//tl(ii),&
+                   ydftfile(1:getlen(ydftfile))//tl(ii),         yoworkfile(1:getlen(xoworkfile))//tl(ii),&
+                   ytworkfile(1:getlen(xtworkfile))//tl(ii),   yophotonfile(1:getlen(xophotonfile))//tl(ii),&
                    2,sflag)
-              call dipolecall(calledflag, dipoleexpects(:,:,1),     zdipfile(1:getlen(zdipfile)-1)//tl(ii),&
-                   zdftfile(1:getlen(zdftfile)-1)//tl(ii),        zoworkfile(1:getlen(xoworkfile)-1)//tl(ii),&
-                   ztworkfile(1:getlen(xtworkfile)-1)//tl(ii),  zophotonfile(1:getlen(xophotonfile)-1)//tl(ii),&
+              call dipolecall(calledflag, dipoleexpects(:,:,1),     zdipfile(1:getlen(zdipfile))//tl(ii),&
+                   zdftfile(1:getlen(zdftfile))//tl(ii),        zoworkfile(1:getlen(xoworkfile))//tl(ii),&
+                   ztworkfile(1:getlen(xtworkfile))//tl(ii),  zophotonfile(1:getlen(xophotonfile))//tl(ii),&
                    3,sflag)
               if (act21circ.ne.0) then
-                 call dipolecall(calledflag, dipoleexpects(:,:,1),      xydipfile(1:getlen(xydipfile)-1)//tl(ii),&
-                      xydftfile(1:getlen(xydftfile)-1)//tl(ii),       xyoworkfile(1:getlen(xoworkfile)-1)//tl(ii),&
-                      xytworkfile(1:getlen(xtworkfile)-1)//tl(ii),  xyophotonfile(1:getlen(xophotonfile)-1)//tl(ii),&
+                 call dipolecall(calledflag, dipoleexpects(:,:,1),      xydipfile(1:getlen(xydipfile))//tl(ii),&
+                      xydftfile(1:getlen(xydftfile))//tl(ii),       xyoworkfile(1:getlen(xoworkfile))//tl(ii),&
+                      xytworkfile(1:getlen(xtworkfile))//tl(ii),  xyophotonfile(1:getlen(xophotonfile))//tl(ii),&
                       4,sflag)
-                 call dipolecall(calledflag, dipoleexpects(:,:,1),      xzdipfile(1:getlen(xzdipfile)-1)//tl(ii),&
-                      xzdftfile(1:getlen(xzdftfile)-1)//tl(ii),       xzoworkfile(1:getlen(xoworkfile)-1)//tl(ii),&
-                      xztworkfile(1:getlen(xtworkfile)-1)//tl(ii),  xzophotonfile(1:getlen(xophotonfile)-1)//tl(ii),&
+                 call dipolecall(calledflag, dipoleexpects(:,:,1),      xzdipfile(1:getlen(xzdipfile))//tl(ii),&
+                      xzdftfile(1:getlen(xzdftfile))//tl(ii),       xzoworkfile(1:getlen(xoworkfile))//tl(ii),&
+                      xztworkfile(1:getlen(xtworkfile))//tl(ii),  xzophotonfile(1:getlen(xophotonfile))//tl(ii),&
                       5,sflag)
-                 call dipolecall(calledflag, dipoleexpects(:,:,1),      yxdipfile(1:getlen(yxdipfile)-1)//tl(ii),&
-                      yxdftfile(1:getlen(yxdftfile)-1)//tl(ii),       yxoworkfile(1:getlen(xoworkfile)-1)//tl(ii),&
-                      yxtworkfile(1:getlen(xtworkfile)-1)//tl(ii),  yxophotonfile(1:getlen(xophotonfile)-1)//tl(ii),&
+                 call dipolecall(calledflag, dipoleexpects(:,:,1),      yxdipfile(1:getlen(yxdipfile))//tl(ii),&
+                      yxdftfile(1:getlen(yxdftfile))//tl(ii),       yxoworkfile(1:getlen(xoworkfile))//tl(ii),&
+                      yxtworkfile(1:getlen(xtworkfile))//tl(ii),  yxophotonfile(1:getlen(xophotonfile))//tl(ii),&
                       6,sflag)
-                 call dipolecall(calledflag, dipoleexpects(:,:,1),      yzdipfile(1:getlen(yzdipfile)-1)//tl(ii),&
-                      yzdftfile(1:getlen(yzdftfile)-1)//tl(ii),       yzoworkfile(1:getlen(xoworkfile)-1)//tl(ii),&
-                      yztworkfile(1:getlen(xtworkfile)-1)//tl(ii),  yzophotonfile(1:getlen(xophotonfile)-1)//tl(ii),&
+                 call dipolecall(calledflag, dipoleexpects(:,:,1),      yzdipfile(1:getlen(yzdipfile))//tl(ii),&
+                      yzdftfile(1:getlen(yzdftfile))//tl(ii),       yzoworkfile(1:getlen(xoworkfile))//tl(ii),&
+                      yztworkfile(1:getlen(xtworkfile))//tl(ii),  yzophotonfile(1:getlen(xophotonfile))//tl(ii),&
                       7,sflag)
-                 call dipolecall(calledflag, dipoleexpects(:,:,1),      zxdipfile(1:getlen(zxdipfile)-1)//tl(ii),&
-                      zxdftfile(1:getlen(zxdftfile)-1)//tl(ii),       zxoworkfile(1:getlen(xoworkfile)-1)//tl(ii),&
-                      zxtworkfile(1:getlen(xtworkfile)-1)//tl(ii),  zxophotonfile(1:getlen(xophotonfile)-1)//tl(ii),&
+                 call dipolecall(calledflag, dipoleexpects(:,:,1),      zxdipfile(1:getlen(zxdipfile))//tl(ii),&
+                      zxdftfile(1:getlen(zxdftfile))//tl(ii),       zxoworkfile(1:getlen(xoworkfile))//tl(ii),&
+                      zxtworkfile(1:getlen(xtworkfile))//tl(ii),  zxophotonfile(1:getlen(xophotonfile))//tl(ii),&
                       8,sflag)
-                 call dipolecall(calledflag, dipoleexpects(:,:,1),      zydipfile(1:getlen(zydipfile)-1)//tl(ii),&
-                      zydftfile(1:getlen(zydftfile)-1)//tl(ii),       zyoworkfile(1:getlen(xoworkfile)-1)//tl(ii),&
-                      zytworkfile(1:getlen(xtworkfile)-1)//tl(ii),  zyophotonfile(1:getlen(xophotonfile)-1)//tl(ii),&
+                 call dipolecall(calledflag, dipoleexpects(:,:,1),      zydipfile(1:getlen(zydipfile))//tl(ii),&
+                      zydftfile(1:getlen(zydftfile))//tl(ii),       zyoworkfile(1:getlen(xoworkfile))//tl(ii),&
+                      zytworkfile(1:getlen(xtworkfile))//tl(ii),  zyophotonfile(1:getlen(xophotonfile))//tl(ii),&
                       9,sflag)
               endif
            enddo

@@ -100,7 +100,7 @@ subroutine autocall(numdata, forwardovl, sflag)
      if (sflag.ne.0) then
         thistime=numdata*par_timestep*autosteps
         write(number,'(I7)') 1000000+floor(thistime)
-        open(1711,file=corrftfile(1:getlen(corrftfile)-1)//number(2:7),&
+        open(1711,file=corrftfile(1:getlen(corrftfile))//number(2:7),&
              status="unknown",iostat=myiostat)
      call checkiostat(myiostat,"opening corrftfile")
         write(1711,*,iostat=myiostat) "#   ", totdim

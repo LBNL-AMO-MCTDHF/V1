@@ -712,13 +712,13 @@ contains
 
     if ((myrank.eq.1).and.(notiming.eq.0)) then
        if (debugflag.eq.10) then
-          open(8853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat", &
+          open(8853, file=timingdir(1:getlen(timingdir))//"/twoematel.abs.time.dat", &
                status="unknown", position="append",iostat=myiostat)
           call checkiostat(myiostat,"opening twoematel timing sincdvr")
           write(8853,*,iostat=myiostat) "****"
           call checkiostat(myiostat,"writing twoematel timing sincdvr")
           close(8853)
-          call system("date --rfc-3339=ns >>"//timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat")
+          call system("date --rfc-3339=ns >>"//timingdir(1:getlen(timingdir))//"/twoematel.abs.time.dat")
        endif
     endif
 
@@ -824,7 +824,7 @@ contains
 
     if ((myrank.eq.1).and.(notiming.eq.0)) then
        if (xcount==1) then
-          open(853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.time.dat", &
+          open(853, file=timingdir(1:getlen(timingdir))//"/twoematel.time.dat", &
                status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening twoematel timing sincdvr")
 #ifdef MPIFLAG
@@ -844,7 +844,7 @@ contains
 #endif
           close(853)
        endif
-       open(853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.time.dat", &
+       open(853, file=timingdir(1:getlen(timingdir))//"/twoematel.time.dat", &
             status="unknown", position="append",iostat=myiostat)
        call checkiostat(myiostat,"opening twoematel timing sincdvr")
        write(853,'(100I11)',iostat=myiostat)  times(1:7),fttimes(1:7);
@@ -872,8 +872,8 @@ contains
 
 
     if (myrank.eq.1.and.(notiming.eq.0).and.debugflag.eq.10) then
-       call system("date --rfc-3339=ns >>"//timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat")
-       open(8853, file=timingdir(1:getlen(timingdir)-1)//"/twoematel.abs.time.dat", &
+       call system("date --rfc-3339=ns >>"//timingdir(1:getlen(timingdir))//"/twoematel.abs.time.dat")
+       open(8853, file=timingdir(1:getlen(timingdir))//"/twoematel.abs.time.dat", &
             status="unknown", position="append",iostat=myiostat)
        call checkiostat(myiostat,"opening twoematel timing sincdvr")
        write(8853,*,iostat=myiostat) "****"
@@ -1795,7 +1795,7 @@ contains
     if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
        xcount=xcount+1
        if (xcount==1) then
-          open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
+          open(2853, file=timingdir(1:getlen(timingdir))//"/zke2.time.dat", &
                status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening kemult timing sincdvr")
           write(2853,'(100A11)',iostat=myiostat)   "copy", "allgather","mult"
@@ -1803,7 +1803,7 @@ contains
           close(2853) 
        endif
        if (mod(xcount,100).eq.0) then
-          open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
+          open(2853, file=timingdir(1:getlen(timingdir))//"/zke2.time.dat", &
                status="unknown", position="append",iostat=myiostat)
           call checkiostat(myiostat,"opening kemult timing sincdvr")
           write(2853,'(100I11)',iostat=myiostat)  times(1:3)
@@ -1914,7 +1914,7 @@ contains
     if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
        xcount=xcount+1
        if (xcount==1) then
-          open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
+          open(2853, file=timingdir(1:getlen(timingdir))//"/zke2.time.dat", &
                status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening kemult timing sincdvr")
           write(2853,'(100A11)',iostat=myiostat)   "mult", "sendrecv","add"
@@ -1922,7 +1922,7 @@ contains
           close(2853) 
        endif
        if (mod(xcount,100).eq.0) then
-          open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
+          open(2853, file=timingdir(1:getlen(timingdir))//"/zke2.time.dat", &
                status="unknown", position="append",iostat=myiostat)
           call checkiostat(myiostat,"opening kemult timing sincdvr")
           write(2853,'(100I11)',iostat=myiostat)  times(1:3)
@@ -2029,7 +2029,7 @@ contains
     if (debugflag.eq.42.and.myrank.eq.1.and.notiming.lt.2) then
        xcount=xcount+1
        if (xcount==1) then
-          open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
+          open(2853, file=timingdir(1:getlen(timingdir))//"/zke2.time.dat", &
                status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening kemult timing sincdvr")
           write(2853,'(100A11)',iostat=myiostat)   "copy", "bcast","mult"
@@ -2037,7 +2037,7 @@ contains
           close(2853) 
        endif
        if (mod(xcount,100).eq.0) then
-          open(2853, file=timingdir(1:getlen(timingdir)-1)//"/zke2.time.dat", &
+          open(2853, file=timingdir(1:getlen(timingdir))//"/zke2.time.dat", &
                status="unknown", position="append",iostat=myiostat)
           call checkiostat(myiostat,"opening kemult timing sincdvr")
           write(2853,'(100I11)',iostat=myiostat)  times(1:3)

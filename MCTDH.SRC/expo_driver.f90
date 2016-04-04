@@ -207,7 +207,7 @@ contains
 
     if ((myrank.eq.1).and.(notiming.eq.0)) then
        if (numcalledhere==1) then
-          open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", &
+          open(8577, file=timingdir(1:getlen(timingdir))//"/jacoperate.time.dat", &
                status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening jacoperate timing file")
           write(8577,'(T16,100A9)',iostat=myiostat) &
@@ -223,7 +223,7 @@ contains
           call checkiostat(myiostat,"writing jacoperate timing file")
        endif
        if (mod(numcalledhere,timingout).eq.0) then
-          open(8577, file=timingdir(1:getlen(timingdir)-1)//"/jacoperate.time.dat", &
+          open(8577, file=timingdir(1:getlen(timingdir))//"/jacoperate.time.dat", &
                status="unknown", position="append",iostat=myiostat)
           call checkiostat(myiostat,"opening jacoperate timing file")
           write(8577,'(A3,F12.4,15I9)',iostat=myiostat) "T= ", jactime,  times(1:7)/1000
@@ -542,7 +542,7 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
      endif
      thisexpodim=expodim
      if ((myrank.eq.1).and.(notiming==0)) then
-        open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",&
+        open(expofileptr,file=timingdir(1:getlen(timingdir))//"/expo.dat",&
              status="unknown",iostat=myiostat)
         call checkiostat(myiostat,"opening expo.dat timing file")
         write(expofileptr,*,iostat=myiostat) " Exponential propagator output.  expotol=",expotol
@@ -564,7 +564,7 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
   endif
 
   if ((myrank.eq.1).and.(notiming.eq.0)) then
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",&
+     open(expofileptr,file=timingdir(1:getlen(timingdir))//"/expo.dat",&
           status="old", position="append",iostat=myiostat)
      call checkiostat(myiostat,"opening expo.dat timing file")
      write(expofileptr,*,iostat=myiostat) "Go Orbital Expoprop.  Tinit=", time1, &
@@ -574,7 +574,7 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
   endif
 
   if (myrank.eq.1.and.notiming.eq.0) then
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",&
+     open(expofileptr,file=timingdir(1:getlen(timingdir))//"/expo.dat",&
           status="old", position="append",iostat=myiostat)
      call checkiostat(myiostat,"opening expo.dat timing file")
   else
@@ -711,7 +711,7 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
   in_inspfs(:,:)=inspfs(:,1:nspf)
 
   if ((myrank.eq.1).and.(notiming.eq.0)) then
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/expo.dat",&
+     open(expofileptr,file=timingdir(1:getlen(timingdir))//"/expo.dat",&
           status="old", position="append",iostat=myiostat)
      call checkiostat(myiostat,"opening expo.dat timing file")
      write(expofileptr,*,iostat=myiostat) &
@@ -1150,7 +1150,7 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
 
   if ((myrank.eq.1).and.(notiming==0)) then
      if (icalled.eq.1) then
-        open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",&
+        open(expofileptr,file=timingdir(1:getlen(timingdir))//"/avecexpo.dat",&
              status="unknown",iostat=myiostat)
         call checkiostat(myiostat,"opening avecexpo timing file")
         write(expofileptr,*,iostat=myiostat) " Avector lanczos propagator.  Order =",&
@@ -1159,7 +1159,7 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
         write(expofileptr,*);        close(expofileptr)
      endif
 
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",&
+     open(expofileptr,file=timingdir(1:getlen(timingdir))//"/avecexpo.dat",&
           status="old", position="append",iostat=myiostat)
      call checkiostat(myiostat,"opening avecexpo timing file")
      write(expofileptr,*,iostat=myiostat) "Go Avector Lanczos.  time=", time, &
@@ -1169,7 +1169,7 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
   endif
 
   if (myrank.eq.1.and.notiming.eq.0) then
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",&
+     open(expofileptr,file=timingdir(1:getlen(timingdir))//"/avecexpo.dat",&
           status="old", position="append",iostat=myiostat)
      call checkiostat(myiostat,"opening avecexpo timing file")
   else
@@ -1281,7 +1281,7 @@ subroutine exposparseprop(inavector,outavector,time,imc,numiters)
   endif
 
   if (myrank.eq.1.and.notiming.eq.0) then
-     open(expofileptr,file=timingdir(1:getlen(timingdir)-1)//"/avecexpo.dat",&
+     open(expofileptr,file=timingdir(1:getlen(timingdir))//"/avecexpo.dat",&
           status="old", position="append",iostat=myiostat)
      call checkiostat(myiostat,"opening avecexpo timing file")
      write(expofileptr,*,iostat=myiostat) &

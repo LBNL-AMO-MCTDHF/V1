@@ -780,12 +780,12 @@ subroutine all_matel()
 
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (xcalled==1) then
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/matel.time.dat", status="unknown")
+        open(853, file=timingdir(1:getlen(timingdir))//"/matel.time.dat", status="unknown")
         write(853,'(100A11)')   "op", "pot", "pulse", "two", "assemble"
         close(853)
      endif
 
-     open(853, file=timingdir(1:getlen(timingdir)-1)//"/matel.time.dat", &
+     open(853, file=timingdir(1:getlen(timingdir))//"/matel.time.dat", &
           status="unknown", position="append")
      write(853,'(100I11)')  times(1:5)/1000;        close(853)
      close(853)

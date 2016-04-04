@@ -113,7 +113,7 @@ subroutine prop_wfn(tin, tout)
 
 ! rkiwork!
 !  if ((myrank.eq.1).and.(notiming.eq.0)) then
-!     open(853, file=timingdir(1:getlen(timingdir)-1)//"/vmf_prop.time.dat", &
+!     open(853, file=timingdir(1:getlen(timingdir))//"/vmf_prop.time.dat", &
 !             status="unknown", position="append")
 !     write(853,'(A3,F12.3,100I15)') "T=",  tout, time/1000, time2/1000,rkiwork(1);     
 !     close(853)
@@ -463,7 +463,7 @@ subroutine cmf_prop_wfn(tin, tout)
 
   if ((myrank.eq.1).and.(notiming.le.1)) then
      if (xxcount==1) then
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/cmf_prop.time.dat", &
+        open(853, file=timingdir(1:getlen(timingdir))//"/cmf_prop.time.dat", &
              status="unknown",iostat=myiostat)
         call checkiostat(myiostat," opening cmf_prop_time.dat")
         write(853,'(A15,100A11)',iostat=myiostat) &
@@ -482,7 +482,7 @@ subroutine cmf_prop_wfn(tin, tout)
         call checkiostat(myiostat," writing cmf_prop_time.dat")
         close(853)
      endif
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/cmf_prop.time.dat", &
+        open(853, file=timingdir(1:getlen(timingdir))//"/cmf_prop.time.dat", &
              status="unknown", position="append",iostat=myiostat)
         call checkiostat(myiostat," opening cmf_prop_time.dat")
         write(853,'(A3,F12.3,T16, 100I11)',iostat=myiostat)  "T=", tout, &
@@ -682,14 +682,14 @@ subroutine cmf_prop_avector0(avectorin,avectorout,linearflag,time1,time2,imc,num
   if (notiming.eq.0.and.myrank.eq.1) then
 
      if (icalled.eq.0) then
-        open(11766, file=timingdir(1:getlen(timingdir)-1)//"/aprop.time.dat", &
+        open(11766, file=timingdir(1:getlen(timingdir))//"/aprop.time.dat", &
              status="unknown",iostat=myiostat)
         call checkiostat(myiostat," writing aprop.time.dat")
         write(11766,'(100A11)',iostat=myiostat)  "init", "prop"
         call checkiostat(myiostat," writing aprop.time.dat")
         close(11766)
      endif
-     open(11766, file=timingdir(1:getlen(timingdir)-1)//"/aprop.time.dat", &
+     open(11766, file=timingdir(1:getlen(timingdir))//"/aprop.time.dat", &
           status="unknown", position="append",iostat=myiostat)
         call checkiostat(myiostat," writing aprop.time.dat")
      write(11766,'(100I11)',iostat=myiostat)  times(1:2)
@@ -783,8 +783,8 @@ subroutine prop_loop( starttime)
   endif
 
   if ((myrank.eq.1).and.(notiming.le.1)) then
-     call system("echo -n > "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
-     open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", &
+     call system("echo -n > "//timingdir(1:getlen(timingdir))//"/abstiming.dat")
+     open(853, file=timingdir(1:getlen(timingdir))//"/Main.time.dat", &
           status="unknown",iostat=myiostat)
      call checkiostat(myiostat," opening Main.time.dat")
      write(853,'(T16,100A15)')  &
@@ -934,8 +934,8 @@ subroutine prop_loop( starttime)
      enddo
      
      if ((myrank.eq.1).and.(notiming.le.1)) then
-        call system("date >> "//timingdir(1:getlen(timingdir)-1)//"/abstiming.dat")
-        open(853, file=timingdir(1:getlen(timingdir)-1)//"/Main.time.dat", &
+        call system("date >> "//timingdir(1:getlen(timingdir))//"/abstiming.dat")
+        open(853, file=timingdir(1:getlen(timingdir))//"/Main.time.dat", &
              status="old", position="append",iostat=myiostat)
         call checkiostat(myiostat," opening Main.time.dat")
         write(853,'(F13.3,T16,100I15)',iostat=myiostat)  thistime, &

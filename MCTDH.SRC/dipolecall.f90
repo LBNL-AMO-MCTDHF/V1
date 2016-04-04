@@ -173,9 +173,9 @@ subroutine dipolecall(numdata, indipolearrays, outename, outftname, outoworkname
 
   thistime=numdata*par_timestep*autosteps
 
-  xsums(0)= Estep * imag(fftrans(0)*conjg(eft(0))) / abs(eft(0)**2) * myenergy * 2 / PI
+  xsums(0)= 0d0
   exsums(0,:) = Estep * imag(fftrans(0)*conjg(all_eft(0,:))) / PI
-  worksums(0,:) = Estep * imag(fftrans(0)*conjg(all_eft(0,:))) / PI * myenergy
+  worksums(0,:) = 0d0
 
   do i=1,numdata
      myenergy=i*Estep
@@ -243,7 +243,7 @@ subroutine dipolecall(numdata, indipolearrays, outename, outftname, outoworkname
 
      if (sflag.ne.0) then
         write(number,'(I7)') 1000000+floor(thistime)
-        open(171,file=outftname(1:getlen(outftname)-1)//number(2:7),status="unknown",iostat=myiostat)
+        open(171,file=outftname(1:getlen(outftname))//number(2:7),status="unknown",iostat=myiostat)
         call checkiostat(myiostat,"opening "//outftname)
         write(171,'(A120)',iostat=myiostat) &
              "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 

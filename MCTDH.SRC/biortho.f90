@@ -554,7 +554,7 @@ contains
 
     if ((myrank.eq.1).and.(notiming==0)) then
        if (icalledhere.eq.1) then
-          open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",&
+          open(biofileptr,file=timingdir(1:getlen(timingdir))//"/biortho.dat",&
                status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening biortho timing file")
           write(biofileptr,*,iostat=myiostat) 
@@ -562,7 +562,7 @@ contains
           write(biofileptr,*);        close(biofileptr)
        endif
 
-!     open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",status="old", &
+!     open(biofileptr,file=timingdir(1:getlen(timingdir))//"/biortho.dat",status="old", &
 !          position="append")
 !     write(biofileptr,*) " BIORTHO. numr",inbiovar%bionr," biodim ",&
 !          inbiovar%thisbiodim, "step ",min(1d0,inbiovar%tempstepsize)
@@ -570,7 +570,7 @@ contains
     endif
 
     if (myrank.eq.1.and.notiming.eq.0) then
-       open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",&
+       open(biofileptr,file=timingdir(1:getlen(timingdir))//"/biortho.dat",&
             status="old", position="append",iostat=myiostat)
        call checkiostat(myiostat,"opening biortho timing file")
     else
@@ -638,7 +638,7 @@ contains
     deallocate(smallvector,smallvectorout)
 
     if (myrank.eq.1.and.notiming.eq.0) then
-       open(biofileptr,file=timingdir(1:getlen(timingdir)-1)//"/biortho.dat",&
+       open(biofileptr,file=timingdir(1:getlen(timingdir))//"/biortho.dat",&
             status="old", position="append",iostat=myiostat)
        call checkiostat(myiostat,"opening biortho timing file")
 

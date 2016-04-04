@@ -630,7 +630,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
         xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
         
         if (myrank.eq.1) then
-           open(171,file=projgtaufile(1:getlen(projgtaufile)-1)//xstate1//"_"//xmc1//".dat", &
+           open(171,file=projgtaufile(1:getlen(projgtaufile))//xstate1//"_"//xmc1//".dat", &
                 status="unknown",iostat=myiostat)
            call checkiostat(myiostat,"opening proj gtau file")
            write(171,*,iostat=myiostat) "#   ", curtime
@@ -670,7 +670,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
         if(myrank.eq.1) then
 
-           open(1004,file=projspifile(1:getlen(projspifile)-1)//"_"//xstate1//"_"//xmc1//".dat",&
+           open(1004,file=projspifile(1:getlen(projspifile))//"_"//xstate1//"_"//xmc1//".dat",&
                 status="replace",action="readwrite",position="rewind",iostat=myiostat)
            call checkiostat(myiostat,"opening proj spi file")
            write(1004,*,iostat=myiostat)
@@ -696,7 +696,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            close(1004)
 
            if (angularflag.ne.0) then
-              open(1004,file=angprojspifile(1:getlen(angprojspifile)-1)//"_"//xstate1//"_"//xmc1//".dat",&
+              open(1004,file=angprojspifile(1:getlen(angprojspifile))//"_"//xstate1//"_"//xmc1//".dat",&
                    status="replace",action="readwrite",position="rewind",iostat=myiostat)
               call checkiostat(myiostat,"opening angproj spi file")
               write(1004,*,iostat=myiostat)
@@ -719,7 +719,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
      enddo  !! do istate
 
      if(myrank.eq.1) then
-        open(1004,file=projspifile(1:getlen(projspifile)-1)//"_all_"//xmc1//".dat",&
+        open(1004,file=projspifile(1:getlen(projspifile))//"_all_"//xmc1//".dat",&
              status="replace",action="readwrite",position="rewind",iostat=myiostat)
         call checkiostat(myiostat,"opening total proj spi file")
         write(1004,*,iostat=myiostat)
@@ -735,7 +735,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
         close(1004)
 
         if (angularflag.ne.0) then
-           open(1004,file=angprojspifile(1:getlen(angprojspifile)-1)//"_all_"//xmc1//".dat",&
+           open(1004,file=angprojspifile(1:getlen(angprojspifile))//"_all_"//xmc1//".dat",&
                 status="replace",action="readwrite",position="rewind",iostat=myiostat)
            call checkiostat(myiostat,"opening total ang proj spi file")
            write(1004,*,iostat=myiostat)
