@@ -52,7 +52,7 @@ subroutine getparams()
   use orblabelmod
   use pulse_parameters   !! conjgpropflag
   implicit none
-  integer :: nargs, getlen, i, len,  ishell, ispf,j, myiostat, iiflag,needpulse
+  integer :: nargs, getlen, i, len,  ishell, ispf,j, myiostat, iiflag,needpulse,ipulse
 #ifdef PGFFLAG
   integer :: myiargc
 #endif
@@ -61,12 +61,10 @@ subroutine getparams()
   integer :: avectorhole(1000)=-1001
   integer :: avectorexcitefrom(1000)=-1001
   integer :: avectorexciteto(1000)=-1001
-  real*8 :: tempreal
+  real*8 :: tempreal,mymax
 
 !! DUMMIES
-  integer :: restrictms=0
-  integer :: dfrestrictflag=0
-  integer :: allspinproject=1
+  integer :: restrictms=0,  dfrestrictflag=0, allspinproject=1
 
   NAMELIST/parinp/  noftflag, biodim,biotol, rdenflag,cdenflag, notiming, littlesteps, &
        expotol, eground,  ceground, maxexpodim, numloadfrozen, numholecombo, numholes, excitations, &
@@ -555,7 +553,20 @@ subroutine getparams()
 
   if (needpulse.ne.0) then
      call getpulse(0)
+     if (dipolesumend.le.0d0) then
+        do ipulse=1,numpulses
+           if (pulsetype(ipulse).eq.1) then
+              mymax=omega(ipulse)*3d0
+           else
+              mymax=omega2(ipulse)*3d0
+           endif
+           if (dipolesumend.lt.mymax) then
+              dipolesumend=mymax
+           endif
+        enddo
+     endif
   endif
+
   do i=1,nargs
      buffer=nullbuff
      myiostat=0

@@ -19,20 +19,20 @@ module actionlistmod
        "Plot density   ", &      !! 10
        "Plot RNat      ", &      !! 11
        "Plot NProj     ", &      !! 12
-       "Dissoc.FLUX    ", &      !! 13
-       "Dissoc.Flux  FT", &      !! 14
-       "Ion.  Flux Save", &      !! 15
-       "Ion.  Flux  FT ", &      !! 16
-       "Proj Ion Flux  ", &      !! 17
+       "DissocFlux     ", &      !! 13
+       "DissocFlux FT  ", &      !! 14
+       "IonFlux Save   ", &      !! 15
+       "IonFlux FT     ", &      !! 16
+       "ProjIonFlux FT ", &      !! 17
        "Plot denproj   ", &      !! 18
        "Enforce natorb ", &      !! 19
-       "Final state ovl", &      !! 20
+       "Finalstate ovl ", &      !! 20
        "DipoleFT       ", &      !! 21
-       "Check D-F error", &      !! 22
+       "Check DF error ", &      !! 22
        "Wfn ovls       ", &      !! 23
        "KE projector   ", &      !! 24
        "psistats.dat   ", &      !! 25
-       "Matrix elements" /)      !! 26
+       "Matrixelements " /)      !! 26
 
 end module actionlistmod
 
@@ -204,9 +204,14 @@ subroutine write_actions()
 !  endif
 
   j=0
+
   do i=1,numactions
      if ((actions(i).eq.15).or.(actions(i).eq.16).or.(actions(i).eq.17)) then
-        j=1;        exit
+        j=1
+     endif
+     if (actions(i).eq.21) then
+        WRFL "For emission/absorption action 21:"
+        WRFL "   dipolesumstart/end ", dipolesumstart,dipolesumend
      endif
   enddo
   if (j==1) then
