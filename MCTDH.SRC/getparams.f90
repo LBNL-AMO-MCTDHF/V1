@@ -78,7 +78,15 @@ subroutine getparams()
        numfrozen, nucfluxopt, natplotbin, spfplotbin, denplotbin, denprojplotbin, &
        natprojplotbin, rnatplotbin, dendatfile, denrotfile, rdendatfile,   avectorexcitefrom, avectorexciteto,&
        numovlfiles, ovlavectorfiles, ovlspffiles, outovl,fluxmofile,fluxafile, spifile, astoptol,  &
-       zdftfile,zdipfile,ydftfile,ydipfile,xdftfile,xdipfile, ftwindowpower, ftdiff,  &
+       zdftfile,zdipfile,ydftfile,ydipfile,xdftfile,xdipfile, &
+       xydftfile, xydipfile, xzdftfile, xzdipfile, yxdftfile, yxdipfile, &
+       yzdftfile, yzdipfile, zxdftfile, zxdipfile, zydftfile, zydipfile, &   
+       xoworkfile,xtworkfile,xophotonfile, yoworkfile,ytworkfile,yophotonfile, &
+       zoworkfile,ztworkfile,zophotonfile, xyoworkfile,xytworkfile,xyophotonfile, &
+       xzoworkfile,xztworkfile,xzophotonfile, yxoworkfile,yxtworkfile,yxophotonfile, &
+       yzoworkfile,yztworkfile,yzophotonfile, zxoworkfile,zxtworkfile,zxophotonfile, &
+       zyoworkfile,zytworkfile,zyophotonfile, act21circ,& 
+       ftwindowpower, ftdiff,  &
        diptime, fluxafile2,fluxmofile2, minocc,maxocc, corrdatfile,corrftfile,numavectorfiles,projfluxfile, &
        expodim,timingdir, hanningflag, numspffiles, condamp,conway, &
        mrestrictmin,mrestrictmax,lntol,invtol,psistatsfile, psistatfreq, &

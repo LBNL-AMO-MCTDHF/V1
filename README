@@ -1,9 +1,11 @@
 
   ** LBNL-AMO-MCTDHF VERSION 1.27 **
 
-v1.27 work done by or on each pulse in Hartree output in columns 11 
-   and up in ZDipoleft.dat, etc., for action 21 emission/absorption.
-   Also output to screen.
+v1.27 work done by or on each pulse in Hartree output in various
+   files for action 21 emission/absorption.  Circular polarization
+   output added action 21 -- new &parinp namelist variable 
+   act21circ.eq.0 default -- set act21circ.ne.0 to enable circular 
+   polarization output
 
 v1.26 angular differential partial photoionization, action 17, with
    angularflag.ne.0

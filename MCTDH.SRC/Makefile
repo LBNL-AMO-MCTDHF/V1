@@ -116,7 +116,7 @@ proputils.o: $(DEPEND) proputils.F90
 pulse.o: $(DEPEND) pulse.F90  
 	$(F90) $(FFLAGS) $(MPIFLAG) -c pulse.F90 
 
-derivs.o: $(DEPEND) derivs.F90 proputils.o walkmult.o utils.o pulse.o
+derivs.o: $(DEPEND) derivs.F90 proputils.o walkmult.o utils.o pulse.o spin.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c derivs.F90 
 
 mean.o: $(DEPEND) mean.F90 MPI.o denmat.o

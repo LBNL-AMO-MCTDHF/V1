@@ -35,7 +35,7 @@ coretwoe.o: $(DEPEND)  HE_params.o heproject.o coretwoe.F90
 PSC-newest.o: $(DEPEND)  H2_params.o h2project.o PSC-newest.F90
 	$(F90) $(FFLAGS)  -c PSC-newest.F90
 
-lpm.o: $(DEPEND)  H2_params.o h2project.o lpm.F90
+lpm.o: $(DEPEND)  H2_params.o h2project.o PSC-newest.o lpm.F90
 	$(F90) $(FFLAGS)  -c lpm.F90
 
 

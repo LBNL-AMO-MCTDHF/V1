@@ -356,25 +356,46 @@ real*8 :: messaamount=1.d-4                      !!    how much
 !!EE
 !!{\large \quad INPUT / OUTPUT }
 !!BB
-character(len=200):: finalstatsfile="Dat/finalstats.dat"      !! output for relaxation calculation
-real*8 :: pulseft_estep=0.01d0                   !! energy step in hartree for Pulseft.Dat output files
-character (len=200) ::      avectoroutfile="Bin/avector.bin"  !! A-vector output file.        
-character (len=200) ::      spfoutfile="Bin/spfs.bin"         !! Spf output file.
-character(len=200):: psistatsfile="Dat/psistats.dat"          !! for action 25
-integer :: psistatfreq=1                                      !!  "
-character(len=200):: dendatfile="Dat/denmat.eigs.dat"         !! if notiming=0
-character(len=200):: denrotfile="Dat/denmat.rotate.dat"       !!  "
-character(len=200):: rdendatfile="Dat/rdenmat.eigs.dat"       !! deprecated
-character (len=200) :: ovlspffiles(50)="Bin/ovl.spfs.bin"     !! for actions 20 and 26 
-character (len=200) :: ovlavectorfiles(50)="Bin/ovl.avector.bin"!!      (see numovlfiles in ACTIONS)
-character(len=200):: outovl="Dat/Overlaps.dat"                !! for action 20
-character(len=200):: outmatel="Dat/Matel.dat"                 !! for action 20
-character(len=200):: zdipfile="Dat/ZDipoleexpect.Dat"         !! for action 21
-character(len=200):: zdftfile="Dat/ZDipoleft.Dat"             !!  "
-character(len=200):: ydipfile="Dat/YDipoleexpect.Dat"         !!  "
-character(len=200):: ydftfile="Dat/YDipoleft.Dat"             !!  "
-character(len=200):: xdipfile="Dat/XDipoleexpect.Dat"         !!  "
-character(len=200):: xdftfile="Dat/XDipoleft.Dat"             !!  "
+character(len=200):: finalstatsfile="Dat/finalstats.dat"         !! output for relaxation calculation
+real*8 :: pulseft_estep=0.01d0                                   !! step in hartree for Pulseft.Dat output files
+character (len=200) ::      avectoroutfile="Bin/avector.bin"     !! A-vector output file.        
+character (len=200) ::      spfoutfile="Bin/spfs.bin"            !! Spf output file.
+character(len=200):: psistatsfile="Dat/psistats.dat"             !! for action 25
+integer :: psistatfreq=1                                         !!  "
+character(len=200):: dendatfile="Dat/denmat.eigs.dat"            !! if notiming=0
+character(len=200):: denrotfile="Dat/denmat.rotate.dat"          !!  "
+character(len=200):: rdendatfile="Dat/rdenmat.eigs.dat"          !! deprecated
+character (len=200) :: ovlspffiles(50)="Bin/ovl.spfs.bin"        !! for actions 20 and 26 
+character (len=200) :: ovlavectorfiles(50)="Bin/ovl.avector.bin" !!      (see numovlfiles in ACTIONS)
+character(len=200):: outovl="Dat/Overlaps.dat"                   !! for action 20
+character(len=200):: outmatel="Dat/Matel.dat"                    !! for action 20
+integer :: act21circ=0                                           !! set nonzero to enable circular polarization 
+                                                                 !!     output for action 21
+character(len=200):: xdipfile="Dat/XDipoleexpect.Dat",&          !! for action 21 dipole moments D(t)
+ ydipfile="Dat/YDipoleexpect.Dat",zdipfile="Dat/ZDipoleexpect.Dat",&    !! "
+ xydipfile="Dat/XYDipoleexpect.Dat",xzdipfile="Dat/XZDipoleexpect.Dat",&!! "  circular polarization
+ yxdipfile="Dat/YXDipoleexpect.Dat",yzdipfile="Dat/YZDipoleexpect.Dat",&!! "   XY = X->Y, Y->(-X) ; etc.
+ zxdipfile="Dat/ZXDipoleexpect.Dat",zydipfile="Dat/ZYDipoleexpect.Dat"  !! "
+character(len=200):: xdftfile="Dat/XDipoleft.Dat",&              !! for action 21 dipole moments D(omega)
+ ydftfile="Dat/YDipoleft.Dat", zdftfile="Dat/ZDipoleft.Dat",&    !! and emission/absorption
+ xydftfile="Dat/XYDipoleft.Dat",xzdftfile="Dat/XZDipoleft.Dat",& !!  "  circ polarization
+ yxdftfile="Dat/YXDipoleft.Dat",yzdftfile="Dat/YZDipoleft.Dat",& !!  "
+ zxdftfile="Dat/ZXDipoleft.Dat",zydftfile="Dat/ZYDipoleft.Dat"   !!  "
+character(len=200):: xoworkfile="Dat/XOWork.Dat",&               !! for action 21 work per pulse integral domega
+ yoworkfile="Dat/YOWork.Dat",zoworkfile="Dat/ZOWork.Dat",&       !!  "
+ xyoworkfile="Dat/XYOWork.Dat",xzoworkfile="Dat/XZOWork.Dat",&   !!  "  circ polarization
+ yxoworkfile="Dat/YXOWork.Dat",yzoworkfile="Dat/YZOWork.Dat",&   !!  "
+ zxoworkfile="Dat/ZXOWork.Dat",zyoworkfile="Dat/ZYOWork.Dat"     !!  "
+character(len=200):: xtworkfile="Dat/XTWork.Dat",&               !! for action 21 work per pulse integral dt
+ ytworkfile="Dat/YTWork.Dat",ztworkfile="Dat/ZTWork.Dat",&       !!  "
+ xytworkfile="Dat/XYTWork.Dat",xztworkfile="Dat/XZTWork.Dat",&   !!  "  circ polarization
+ yxtworkfile="Dat/YXTWork.Dat",yztworkfile="Dat/YZTWork.Dat",&   !!  "
+ zxtworkfile="Dat/ZXTWork.Dat",zytworkfile="Dat/ZYTWork.Dat"     !!  
+character(len=200):: xophotonfile="Dat/XOPhoton.Dat",&                 !! for action 21 work per pulse integral domega
+ yophotonfile="Dat/YOPhoton.Dat",zophotonfile="Dat/ZOPhoton.Dat",&     !!  "
+ xyophotonfile="Dat/XYOPhoton.Dat",xzophotonfile="Dat/XZOPhoton.Dat",& !!  "  circ polarization
+ yxophotonfile="Dat/YXOPhoton.Dat",yzophotonfile="Dat/YZOPhoton.Dat",& !!  "
+ zxophotonfile="Dat/ZXOPhoton.Dat",zyophotonfile="Dat/ZYOPhoton.Dat"   !!  "
 character(len=200):: corrdatfile="Dat/Correlation.Dat"        !! for action 1
 character(len=200):: corrftfile="Dat/Corrft.Dat"              !!  "
 character(len=200):: fluxmofile="Flux/flux.mo.bin"            !! for actions 15,16,17,23

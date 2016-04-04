@@ -285,13 +285,17 @@ subroutine drivinginit(inenergies)
   use configmod
   implicit none
   DATAECS,intent(in) :: inenergies(mcscfnum)
+  DATATYPE :: myexpects(3)
   integer :: imc
 
   orbs_driving(:,:)=RESHAPE(yyy%cmfspfs(:,0),(/spfsize,nspf/))
 
   do imc=1,mcscfnum
      call dipolesub_one(www,bwwptr,yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),&
-          yyy%cmfspfs(:,0),sxx(imc),syy(imc),szz(imc))
+          yyy%cmfspfs(:,0),myexpects(:))
+     sxx(imc)=myexpects(1)
+     syy(imc)=myexpects(2)
+     szz(imc)=myexpects(3)
   enddo
 
   if (tot_adim.gt.0) then
