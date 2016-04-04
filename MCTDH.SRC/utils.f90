@@ -5,6 +5,77 @@
 
 #include "Definitions.INC"
 
+subroutine mydiff(size,in,out,docirc)
+  implicit none
+  integer, intent(in) :: size
+  logical, intent(in) :: docirc
+  complex*16, intent(in) :: in(size)
+  complex*16, intent(out) :: out(size)
+  integer :: i,jj
+
+  if (docirc) then
+!! guarantees F.T. at zero is zero, right?
+
+     do i=1,size
+        out(i)= &
+             1d0/280d0 * in(cindex(i-4)) &
+             - 4d0/105d0 * in(cindex(i-3)) &
+             + 1d0/5d0 * in(cindex(i-2)) &
+             - 4d0/5d0 * in(cindex(i-1)) &
+             + 4d0/5d0 * in(cindex(i+1)) &
+             - 1d0/5d0 * in(cindex(i+2)) &
+             + 4d0/105d0 * in(cindex(i+3)) &
+             - 1d0/280d0 * in(cindex(i+4))
+     enddo
+
+  else
+
+     out(:)=0d0
+     do i=2,size-1
+        jj=min(min(i-1,size-i),4)
+        select case(jj)
+        case(1)
+           out(i)= &
+                - 1d0/2d0 * in(i-1) &
+                + 1d0/2d0 * in(i+1)
+        case(2)
+           out(i)= &
+                1d0/12d0 * in(i-2) &
+                - 2d0/3d0 * in(i-1) &
+                + 2d0/3d0 * in(i+1) &
+                - 1d0/12d0 * in(i+2)
+        case(3)
+           out(i)= &
+                - 1d0/60d0 * in(i-3) &
+                + 3d0/20d0 * in(i-2) &
+                - 3d0/4d0 * in(i-1) &
+                + 3d0/4d0 * in(i+1) &
+                - 3d0/20d0 * in(i+2) &
+                + 1d0/60d0 * in(i+3)
+        case(4)
+           out(i)= &
+                1d0/280d0 * in(i-4) &
+                - 4d0/105d0 * in(i-3) &
+                + 1d0/5d0 * in(i-2) &
+                - 4d0/5d0 * in(i-1) &
+                + 4d0/5d0 * in(i+1) &
+                - 1d0/5d0 * in(i+2) &
+                + 4d0/105d0 * in(i+3) &
+                - 1d0/280d0 * in(i+4)
+        end select
+     end do
+
+  endif  !! docirc
+
+contains
+  function cindex(inindex)
+    integer :: cindex,inindex
+    cindex=mod(2*size+inindex-1,size)+1
+  end function cindex
+
+end subroutine mydiff
+
+
 subroutine zfftf_wrap_diff(size,inout,diffdflag)
   implicit none
   integer, intent(in) :: size,diffdflag
@@ -12,80 +83,26 @@ subroutine zfftf_wrap_diff(size,inout,diffdflag)
   complex*16,allocatable :: work(:)
   integer :: i
 
-
   if (diffdflag.eq.0) then
      call zfftf_wrap(size,inout)
   else
-
      allocate(work(size)); work=0
 
-#define DOCIRC
-#ifdef DOCIRC
 !! guarantees F.T. at zero is zero, right?
+#define DOCIRC .true.
 
-     do i=1,size
-        work(i)= &
-             1d0/280d0 * inout(cindex(i-4)) &
-             - 4d0/105d0 * inout(cindex(i-3)) &
-             + 1d0/5d0 * inout(cindex(i-2)) &
-             - 4d0/5d0 * inout(cindex(i-1)) &
-             + 4d0/5d0 * inout(cindex(i+1)) &
-             - 1d0/5d0 * inout(cindex(i+2)) &
-             + 4d0/105d0 * inout(cindex(i+3)) &
-             - 1d0/280d0 * inout(cindex(i+4))
-     enddo
+     call mydiff(size,inout,work,DOCIRC)
 
-#else
-
-     work(:)=0d0
-     do i=2,size-1
-        jj=min(min(i-1,size-i),4)
-        select case(jj)
-        case(1)
-           work(i)= &
-                - 1d0/2d0 * inout(i-1) &
-                + 1d0/2d0 * inout(i+1)
-        case(2)
-           work(i)= &
-                1d0/12d0 * inout(i-2) &
-                - 2d0/3d0 * inout(i-1) &
-                + 2d0/3d0 * inout(i+1) &
-                - 1d0/12d0 * inout(i+2)
-        case(3)
-           work(i)= &
-                - 1d0/60d0 * inout(i-3) &
-                + 3d0/20d0 * inout(i-2) &
-                - 3d0/4d0 * inout(i-1) &
-                + 3d0/4d0 * inout(i+1) &
-                - 3d0/20d0 * inout(i+2) &
-                + 1d0/60d0 * inout(i+3)
-        case(4)
-           work(i)= &
-                1d0/280d0 * inout(i-4) &
-                - 4d0/105d0 * inout(i-3) &
-                + 1d0/5d0 * inout(i-2) &
-                - 4d0/5d0 * inout(i-1) &
-                + 4d0/5d0 * inout(i+1) &
-                - 1d0/5d0 * inout(i+2) &
-                + 4d0/105d0 * inout(i+3) &
-                - 1d0/280d0 * inout(i+4)
-        end select
-     end do
-
-#endif
-     
      call zfftf_wrap(size,work)
 
      do i=1,size
-        inout(i)=work(i)*facfunct(i-1,size-1,diffdflag)
+        inout(i)=work(i)*facfunct(i-1,size-1,1)
      enddo
 
      deallocate(work)
-
   endif
 
 contains
-
   function facfunct(myindex,numdata,diffdflag)
     use fileptrmod
     implicit none
@@ -105,11 +122,6 @@ contains
     endif
     facfunct=ccsum
   end function facfunct
-
-  function cindex(inindex)
-    integer :: cindex,inindex
-    cindex=mod(2*size+inindex-1,size)+1
-  end function cindex
 
 end subroutine zfftf_wrap_diff
 

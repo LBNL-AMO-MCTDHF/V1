@@ -52,39 +52,48 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)
 
   DATATYPE :: indipolearray(0:numdata),pots(3)
   integer :: i, numdata, which,getlen,sflag,myiostat,ipulse
-  real*8 :: estep, thistime, myenergy,sum1,sum2,xsecunits, windowfunct, xsum, &
-       worksums(numpulses)
+  real*8 :: estep, thistime, myenergy,xsecunits, windowfunct, xsum, &
+       worksums(numpulses), worksum0(numpulses)
   character (len=7) :: number
   character :: outftname*(*), outename*(*)
-  complex*16,allocatable ::  fftrans(:),eft(:), all_eft(:,:)
+  complex*16,allocatable ::  fftrans(:),eft(:), all_eft(:,:),dipole_diff(:)
+  character (len=3) :: xlabel(3) = (/ " X ", " Y ", " Z " /)
 
-  allocate(fftrans(0:numdata), eft(0:numdata), all_eft(0:numdata,numpulses))
+  allocate(fftrans(0:numdata), eft(0:numdata), all_eft(0:numdata,numpulses),dipole_diff(0:numdata))
 
-  fftrans=0.d0; eft=0d0; all_eft=0d0
+  fftrans=0.d0; eft=0d0; all_eft=0d0; dipole_diff=0d0
 
 #ifdef REALGO
   OFLWR "Cant use dipolesub for real valued code."; CFLST
 #endif
 
   do i=0,numdata
-     fftrans(i) = (indipolearray(i)-indipolearray(0))  * windowfunct(i,numdata)
-
-!!$        call vectdpot(i*par_timestep*autosteps,0,pots,-1)   !! LENGTH GAUGE
-!!$        if (pulsewindowtoo == 0) then
-!!$           eft(i)=pots(which)
-!!$        else
-!!$           eft(i)=pots(which) * windowfunct(i,numdata)
-!!$        endif
-
+     fftrans(i) = (indipolearray(i)-indipolearray(0))
      do ipulse=1,numpulses
         call vectdpot0(i*par_timestep*autosteps,0,pots,-1,ipulse,ipulse) !! LENGTH
-        if (pulsewindowtoo == 0) then
-           all_eft(i,ipulse)=pots(which)
-        else
-           all_eft(i,ipulse)=pots(which) * windowfunct(i,numdata)
-        endif
+        all_eft(i,ipulse)=pots(which)
      enddo
   enddo
+
+  call mydiff(numdata+1,fftrans,dipole_diff,.false.)
+  dipole_diff(:)=dipole_diff(:) / par_timestep / autosteps
+
+  worksum0(:)=0
+  do i=0,numdata
+     worksum0(:)=worksum0(:) - real( dipole_diff(i) * all_eft(i,:) , 8) * & !! is real, ok
+          par_timestep * autosteps        !! dividing and multiplying for clarity not math
+  enddo
+
+  do i=0,numdata
+     fftrans(i) = fftrans(i) * windowfunct(i,numdata)
+  enddo
+
+  if (pulsewindowtoo.ne.0) then
+     do i=0,numdata
+        all_eft(i,:)=all_eft(i,:) * windowfunct(i,numdata)
+     enddo
+  endif
+
 
   eft=0
   do ipulse=1,numpulses
@@ -104,23 +113,15 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)
      close(171)
   endif
 
-  sum1=0d0
-  do i=0,numdata
-     sum1=sum1+abs(fftrans(i))**2
-  enddo
-
   call zfftf_wrap_diff(numdata+1,fftrans(0:),ftdiff)
   call zfftf_wrap(numdata+1,eft(0:))
   do ipulse=1,numpulses
      call zfftf_wrap(numdata+1,all_eft(0:,ipulse))
   enddo
 
-  sum2=0d0
-  do i=0,numdata
-     sum2=sum2+abs(fftrans(i))**2
-  enddo
-
-  OFLWR "FFT : NORM BEFORE, AFTER ", sum1,sum2/(numdata+1); CFL
+  fftrans(:)=fftrans(:)     * par_timestep * autosteps
+  eft(:)=eft(:)             * par_timestep * autosteps
+  all_eft(:,:)=all_eft(:,:) * par_timestep * autosteps
 
   Estep=2*pi/par_timestep/autosteps/(numdata+1)
 
@@ -129,31 +130,33 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)
   if (myrank.eq.1) then
      open(171,file=outftname,status="unknown",iostat=myiostat)
      call checkiostat(myiostat,"opening "//outftname)
-     write(171,*,iostat=myiostat) &
+     write(171,'(A120)',iostat=myiostat) &
           "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 
      call checkiostat(myiostat,"writing "//outftname)
-     write(171,*) "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
-     write(171,*) "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
-     write(171,*) "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (CUMULATIVE EXCITATION PROBABILITY FOR SUM RULE) IN COLUMN 10"
-     write(171,*) "## WORK DONE BY EACH PULSE (INTEGRATED) IN COLUMNS 11...."
+     write(171,'(A120)') "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
+     write(171,'(A120)') "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
+     write(171,'(A120)') "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (FOR SUM RULE) IN COLUMN 10"
+     write(171,'(A120)') "## WORK DONE BY EACH PULSE (INTEGRATED) IN COLUMNS 11...."
      write(171,*)
 
      xsum=0d0
      worksums(:)=0d0
+!! naah     exsums(:)=0d0
 
      do i=0,numdata
         myenergy=i*Estep
 
-!! sums to N for N electrons
+!! xsum sums to N for N electrons
         if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
            xsum=xsum + Estep * imag(fftrans(i)*conjg(eft(i))) / abs(eft(i)**2) * myenergy * 2 / PI
-           worksums(:)=worksums(:) + Estep * imag(fftrans(i)*conjg(all_eft(i,:))) * 2 * myenergy
+!! naah           exsums(:)  =  exsums(:) + Estep * imag(fftrans(i)*conjg(all_eft(i,:))) / PI
+           worksums(:)=worksums(:) + Estep * imag(fftrans(i)*conjg(all_eft(i,:))) / PI * myenergy
         endif
 
 !! LENGTH GAUGE (electric field) WAS FT'ed , OK with usual formula multiply by wfi
 !! UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7
 !! QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE
-!! INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (CUMULATIVE EXCITATION PROBABILITY FOR SUM RULE) IN COLUMN 10
+!! INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (FOR SUM RULE) IN COLUMN 10
 !! WORK DONE BY EACH PULSE (INTEGRATED) IN COLUMNS 11....
 
         xsecunits = 5.291772108d0**2 * 4d0 * PI / 1.37036d2 * myenergy
@@ -168,22 +171,25 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)
      close(171)
 
 
-!! TOTAL EXCITATION PROBABILITY AND AND WORK DONE BY EACH PULSE
+!! TOTAL EXCITATION PROBABILITY (NUMBER OF ELECTRONS)
+!!  AND AND WORK DONE BY EACH PULSE
 
-     OFL; write(mpifileptr,'(A30,400F10.5)') "EXCITATION PROBABILITY", xsum
-     write(mpifileptr,'(A30,400F10.5)') "WORK EACH PULSE", worksums(:); CFL
+     OFL;write(mpifileptr,'(A27,A3,400F15.10)') "     EACH PULSE WORK", xlabel(which), worksum0(:); CFL
+     OFL;write(mpifileptr,'(A27,A3,400F15.10)') "     WORK EACH PULSE", xlabel(which), worksums(:); CFL
+
+!! naah     write(mpifileptr,'(A27,A3,400F15.10)')     "ELECTRONS EACH PULSE", xlabel(which), exsums(:); CFL
 
      if (sflag.ne.0) then
         write(number,'(I7)') 1000000+floor(thistime)
         open(171,file=outftname(1:getlen(outftname)-1)//number(2:7),status="unknown",iostat=myiostat)
         call checkiostat(myiostat,"opening "//outftname)
-        write(171,*,iostat=myiostat) &
+        write(171,'(A120)',iostat=myiostat) &
              "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 
         call checkiostat(myiostat,"writing "//outftname)
-        write(171,*) "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
-        write(171,*) "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
-        write(171,*) "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (CUMULATIVE EXCITATION PROBABILITY FOR SUM RULE) IN COLUMN 10"
-        write(171,*) "## WORK DONE BY EACH PULSE (INTEGRATED) IN COLUMNS 11...."
+        write(171,'(A120)') "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
+        write(171,'(A120)') "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
+        write(171,'(A120)') "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (FOR SUM RULE) IN COLUMN 10"
+        write(171,'(A120)') "## WORK DONE BY EACH PULSE (INTEGRATED) IN COLUMNS 11...."
         write(171,*)
 
         xsum=0d0
@@ -192,10 +198,10 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)
         do i=0,numdata
            myenergy=i*Estep
 
-!! sums to 1 for 1 electron
+!! xsum sums to N for N electrons
            if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
               xsum=xsum + Estep * imag(fftrans(i)*conjg(eft(i))) / abs(eft(i)**2) * myenergy * 2 / PI
-              worksums(:)=worksums(:) + Estep * imag(fftrans(i)*conjg(all_eft(i,:))) * 2 * myenergy
+              worksums(:)=worksums(:) + Estep * imag(fftrans(i)*conjg(all_eft(i,:))) / PI * myenergy
            endif
 
            xsecunits = 5.291772108d0**2 * 4d0 * PI / 1.37036d2 * myenergy
@@ -211,7 +217,7 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)
      endif
   endif
 
-  deallocate(fftrans,eft,all_eft)
+  deallocate(fftrans,eft,all_eft,dipole_diff)
 
 end subroutine dipolecall
 
