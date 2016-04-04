@@ -53,7 +53,7 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)
   DATATYPE :: indipolearray(0:numdata),pots(3)
   integer :: i, numdata, which,getlen,sflag,myiostat,ipulse
   real*8 :: estep, thistime, myenergy,xsecunits, windowfunct, xsum, &
-       worksums(numpulses), worksum0(numpulses)
+       worksums(numpulses), worksum0(numpulses),exsums(numpulses)
   character (len=7) :: number
   character :: outftname*(*), outename*(*)
   complex*16,allocatable ::  fftrans(:),eft(:), all_eft(:,:),dipole_diff(:)
@@ -141,7 +141,7 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)
 
      xsum=0d0
      worksums(:)=0d0
-!! naah     exsums(:)=0d0
+     exsums(:)=0d0
 
      do i=0,numdata
         myenergy=i*Estep
@@ -149,7 +149,7 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)
 !! xsum sums to N for N electrons
         if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
            xsum=xsum + Estep * imag(fftrans(i)*conjg(eft(i))) / abs(eft(i)**2) * myenergy * 2 / PI
-!! naah           exsums(:)  =  exsums(:) + Estep * imag(fftrans(i)*conjg(all_eft(i,:))) / PI
+           exsums(:)  =  exsums(:) + Estep * imag(fftrans(i)*conjg(all_eft(i,:))) / PI
            worksums(:)=worksums(:) + Estep * imag(fftrans(i)*conjg(all_eft(i,:))) / PI * myenergy
         endif
 
@@ -171,13 +171,12 @@ subroutine dipolecall(numdata, indipolearray,outename,outftname,which ,sflag)
      close(171)
 
 
-!! TOTAL EXCITATION PROBABILITY (NUMBER OF ELECTRONS)
-!!  AND AND WORK DONE BY EACH PULSE
+!!  NUMBER OF PHOTONS ABSORBED AND AND WORK DONE BY EACH PULSE
+!!  worksum0 the time integral converges right after pulse is finished... others take longer
 
      OFL;write(mpifileptr,'(A27,A3,400F15.10)') "     EACH PULSE WORK", xlabel(which), worksum0(:); CFL
      OFL;write(mpifileptr,'(A27,A3,400F15.10)') "     WORK EACH PULSE", xlabel(which), worksums(:); CFL
-
-!! naah     write(mpifileptr,'(A27,A3,400F15.10)')     "ELECTRONS EACH PULSE", xlabel(which), exsums(:); CFL
+     OFL;write(mpifileptr,'(A27,A3,400F15.10)') "  PHOTONS EACH PULSE", xlabel(which), exsums(:); CFL
 
      if (sflag.ne.0) then
         write(number,'(I7)') 1000000+floor(thistime)
