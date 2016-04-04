@@ -260,25 +260,30 @@ contains
        select case(which)
        case(1,2,3)
           all_eft(i,:)=pots(which,:)
-          fftrans(i) = (indipolearrays(i,which)-indipolearrays(0,which))
+          fftrans(i) = indipolearrays(i,which)-indipolearrays(0,which)
+
+!! will want to account for propagation direction in circ polarization results
+!! as-is (v1.27), work done in circ polarization is double-counted
+!! e.g. linear z polarization counted 1/2 in xz,yz,zx,zy each
+
        case(4)
-          all_eft(i,:)=pots(1,:) + (0d0,1d0) * pots(2,:)
-          fftrans(i) = (indipolearrays(i,1)-indipolearrays(0,1)) + (0d0,1d0)*(indipolearrays(i,2)-indipolearrays(0,2))
+          all_eft(i,:)=( pots(1,:) + (0d0,1d0) * pots(2,:) ) /sqrt(2d0)
+          fftrans(i) = ( (indipolearrays(i,1)-indipolearrays(0,1)) + (0d0,1d0)*(indipolearrays(i,2)-indipolearrays(0,2)) )/sqrt(2d0)
        case(5)
-          all_eft(i,:)=pots(1,:) + (0d0,1d0) * pots(3,:)
-          fftrans(i) = (indipolearrays(i,1)-indipolearrays(0,1)) + (0d0,1d0)*(indipolearrays(i,3)-indipolearrays(0,3))
+          all_eft(i,:)=( pots(1,:) + (0d0,1d0) * pots(3,:) )/sqrt(2d0)
+          fftrans(i) = ( (indipolearrays(i,1)-indipolearrays(0,1)) + (0d0,1d0)*(indipolearrays(i,3)-indipolearrays(0,3)) )/sqrt(2d0)
        case(6)
-          all_eft(i,:)=pots(2,:) + (0d0,1d0) * pots(1,:)
-          fftrans(i) = (indipolearrays(i,2)-indipolearrays(0,2)) + (0d0,1d0)*(indipolearrays(i,1)-indipolearrays(0,1))
+          all_eft(i,:)=( pots(2,:) + (0d0,1d0) * pots(1,:) )/sqrt(2d0)
+          fftrans(i) = ( (indipolearrays(i,2)-indipolearrays(0,2)) + (0d0,1d0)*(indipolearrays(i,1)-indipolearrays(0,1)) )/sqrt(2d0)
        case(7)
-          all_eft(i,:)=pots(2,:) + (0d0,1d0) * pots(3,:)
-          fftrans(i) = (indipolearrays(i,2)-indipolearrays(0,2)) + (0d0,1d0)*(indipolearrays(i,3)-indipolearrays(0,3))
+          all_eft(i,:)=( pots(2,:) + (0d0,1d0) * pots(3,:) )/sqrt(2d0)
+          fftrans(i) = ( (indipolearrays(i,2)-indipolearrays(0,2)) + (0d0,1d0)*(indipolearrays(i,3)-indipolearrays(0,3)) )/sqrt(2d0)
        case(8)
-          all_eft(i,:)=pots(3,:) + (0d0,1d0) * pots(1,:)
-          fftrans(i) = (indipolearrays(i,3)-indipolearrays(0,3)) + (0d0,1d0)*(indipolearrays(i,1)-indipolearrays(0,1))
+          all_eft(i,:)=( pots(3,:) + (0d0,1d0) * pots(1,:) )/sqrt(2d0)
+          fftrans(i) = ( (indipolearrays(i,3)-indipolearrays(0,3)) + (0d0,1d0)*(indipolearrays(i,1)-indipolearrays(0,1)) )/sqrt(2d0)
        case(9)
-          all_eft(i,:)=pots(3,:) + (0d0,1d0) * pots(2,:)
-          fftrans(i) = (indipolearrays(i,3)-indipolearrays(0,3)) + (0d0,1d0)*(indipolearrays(i,2)-indipolearrays(0,2))
+          all_eft(i,:)=( pots(3,:) + (0d0,1d0) * pots(2,:) )/sqrt(2d0)
+          fftrans(i) = ( (indipolearrays(i,3)-indipolearrays(0,3)) + (0d0,1d0)*(indipolearrays(i,2)-indipolearrays(0,2)) )/sqrt(2d0)
        case default
           OFLWR "ACK WHICH DIPOLECALL", which; CFLST
        end select
@@ -349,9 +354,11 @@ contains
     Estep=2*pi/par_timestep/autosteps/(numdata+1)
 
     xsums(0)= 0d0
-    exsums(0,:) = Estep * imag(fftrans(0)*conjg(all_eft(0,:))) / PI
+    exsums(0,:)=0d0
     worksums(0,:) = 0d0
-
+    if (dipolesumstart.le.0d0) then
+       exsums(0,:) = Estep * imag(fftrans(0)*conjg(all_eft(0,:))) / PI
+    endif
     do i=1,numdata
        myenergy=i*Estep
 
@@ -409,14 +416,20 @@ contains
        open(171,file=outoworkname,status="unknown",iostat=myiostat)
        call checkiostat(myiostat,"opening "//outoworkname)
        do i=0,numdata
-          write(171,'(A25,F10.5,400F15.10)') " WORK EACH PULSE E= ", i*Estep, totworksums(i),worksums(i,:)
+          myenergy=i*Estep
+          if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
+             write(171,'(A25,F10.5,400F15.10)') " WORK EACH PULSE E= ", myenergy, totworksums(i),worksums(i,:)
+          endif
        enddo
        close(171)
 
        open(171,file=outophotonname,status="unknown",iostat=myiostat)
        call checkiostat(myiostat,"opening "//outophotonname)
        do i=0,numdata
-          write(171,'(A25,F10.5,400F15.10)') "PHOTONS EACH PULSE E= ", i*Estep, totexsums(i),exsums(i,:)
+          myenergy=i*Estep
+          if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
+             write(171,'(A25,F10.5,400F15.10)') "PHOTONS EACH PULSE E= ", myenergy, totexsums(i),exsums(i,:)
+          endif
        enddo
        close(171)
 
