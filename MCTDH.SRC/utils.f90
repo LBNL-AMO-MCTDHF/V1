@@ -5,6 +5,45 @@
 
 #include "Definitions.INC"
 
+
+
+!! Windowfunct for actions 1 16 17 21.
+
+function windowfunct(i,numdata)
+  use parameters
+  implicit none
+  real*8 :: windowfunct
+  integer,intent(in) :: i,numdata
+
+  if (i.lt.0.or.i.gt.numdata) then
+     OFLWR "ERROR, windowfunct ",i,numdata; CFLST
+  endif
+
+  if (fttriwindow.ne.0) then
+
+     windowfunct = ( real(numdata-i,8) / real(numdata,8) )**ftwindowpower
+
+  else
+
+     if (ftwindowlength.ge.0) then
+        if (numdata-i.lt.ftwindowlength) then
+           windowfunct = cos( pi/2d0 * (i-(numdata-ftwindowlength)) &
+                / real(ftwindowlength,8) )**ftwindowpower
+        else
+           windowfunct=1d0
+        endif
+     else
+        if (ftwindowpower.eq.0) then
+           windowfunct = ( 1 - sin( pi/2d0 * i / real(numdata,8) ) )
+        else
+           windowfunct = cos( pi/2d0 * i / real(numdata,8) )**ftwindowpower
+        endif
+     endif
+  endif
+
+end function windowfunct
+
+
 subroutine mydiff(size,in,out,docirc)
   implicit none
   integer, intent(in) :: size
