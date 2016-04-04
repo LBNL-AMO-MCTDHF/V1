@@ -139,12 +139,12 @@ subroutine dipolesub()
                 2,sflag)
            call dipolecall(calledflag, dipoleexpects(:,:,1),   zdipfile(1:getlen(zdipfile)),&
                 zdftfile(1:getlen(zdftfile)),            zoworkfile(1:getlen(zoworkfile)),&
-                ztworkfile(1:getlen(ytworkfile)),    zophotonfile(1:getlen(zophotonfile)),&
+                ztworkfile(1:getlen(ztworkfile)),    zophotonfile(1:getlen(zophotonfile)),&
                 3,sflag)
            if (act21circ.ne.0) then
               call dipolecall(calledflag, dipoleexpects(:,:,1),  xydipfile(1:getlen(xydipfile)),&
                    xydftfile(1:getlen(xydftfile)),          xyoworkfile(1:getlen(xyoworkfile)),&
-                   xytworkfile(1:getlen(xtworkfile)),   xyophotonfile(1:getlen(xyophotonfile)),&
+                   xytworkfile(1:getlen(xytworkfile)),   xyophotonfile(1:getlen(xyophotonfile)),&
                    4,sflag)
               call dipolecall(calledflag, dipoleexpects(:,:,1),  xzdipfile(1:getlen(xzdipfile)),&
                    xzdftfile(1:getlen(xzdftfile)),          xzoworkfile(1:getlen(xzoworkfile)),&
