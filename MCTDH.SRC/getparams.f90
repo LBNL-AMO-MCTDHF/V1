@@ -2,18 +2,6 @@
 !!! MAIN SUBROUTINE FOR READING NAMELIST INPUT AND COMMAND LINE OPTIONS
   
 #include "Definitions.INC"
-  
-function getlen(buffer)
-  implicit none
-  character buffer*(*)
-  integer :: j, getlen, mylen
-  mylen=LEN(buffer)
-  j=1
-  do while ((j.lt.mylen).and..not.(buffer(j:j) .eq. " "))
-     j=j+1
-  enddo
-  getlen=j
-end function getlen
  
 
 subroutine getinpfile()

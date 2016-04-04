@@ -179,6 +179,22 @@ subroutine checkiostat(iniostat,intext)
   endif
 end subroutine checkiostat
 
+
+!! getlen is kloodgey, reports length+1 of string, could fix this throughout code
+
+function getlen(buffer)
+  implicit none
+  character buffer*(*)
+  integer :: j, getlen, mylen
+  mylen=LEN(buffer)
+  j=1
+  do while ((j.le.mylen).and..not.(buffer(j:j) .eq. " "))
+     j=j+1
+  enddo
+  getlen=j
+end function getlen
+
+
 function getlen2(buffer)
   implicit none
   character buffer*(*)
@@ -190,7 +206,6 @@ function getlen2(buffer)
   enddo
   getlen2=j-1
 end function getlen2
-
 
 
 function floatfac(in)
