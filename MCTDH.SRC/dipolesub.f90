@@ -6,16 +6,23 @@
 
 module dipolemod
   implicit none
-  DATATYPE, allocatable :: xdipoleexpect(:),ydipoleexpect(:),zdipoleexpect(:),dipolenormsq(:)
+  DATATYPE, allocatable :: xdipoleexpect(:,:),ydipoleexpect(:,:),zdipoleexpect(:,:),dipolenormsq(:)
   integer :: calledflag=0,xcalledflag=0
 end module dipolemod
 
 subroutine dipolesub_initial()
   use dipolemod
   use parameters
+  use pulse_parameters !! conjgpropflag
   implicit none
-  allocate(xdipoleexpect(0:autosize), ydipoleexpect(0:autosize), zdipoleexpect(0:autosize),&
-       dipolenormsq(0:autosize))
+
+  if (conjgpropflag.eq.0) then
+     allocate(xdipoleexpect(0:autosize,1), ydipoleexpect(0:autosize,1), zdipoleexpect(0:autosize,1))
+  else
+     allocate(xdipoleexpect(0:autosize,4), ydipoleexpect(0:autosize,4), zdipoleexpect(0:autosize,4))
+  endif
+  allocate(dipolenormsq(0:autosize))
+
 end subroutine
 
 
@@ -30,14 +37,17 @@ subroutine dipolesub()
   DATATYPE :: xx(mcscfnum),yy(mcscfnum),zz(mcscfnum),dd(mcscfnum),&
        axx(mcscfnum),ayy(mcscfnum),azz(mcscfnum),sxx(mcscfnum),syy(mcscfnum),&
        szz(mcscfnum),drivingoverlap(mcscfnum)
-  integer :: imc,sflag
+  integer :: imc,sflag,getlen,ii
   integer, save :: lastouttime=0
   real*8 :: thistime
+  character(len=2) :: textlabel(4) = (/ "BA", "AB", "AA", "AB" /)
+
   xx=0;yy=0;zz=0;axx=0;ayy=0;azz=0;sxx=0;syy=0;szz=0;dd=0;drivingoverlap=0
 
   if (mod(xcalledflag,autosteps).eq.0) then
 
      if (conjgpropflag.ne.0) then
+
         if (mcscfnum.ne.2) then
            OFLWR "Whoot? conjgpropflag mcscfnum",mcscfnum; CFLST
         endif
@@ -51,10 +61,17 @@ subroutine dipolesub()
         if (par_consplit.ne.0) then
            call mympireduceone(dipolenormsq(calledflag))
         endif
-        call dipolesub_one(www,bwwptr,yyy%cmfavec(:,2,0),yyy%cmfavec(:,1,0), yyy%cmfspfs(:,0),&
-             xdipoleexpect(calledflag),ydipoleexpect(calledflag),zdipoleexpect(calledflag))
 
-     else
+        call dipolesub_one(www,bwwptr,yyy%cmfavec(:,2,0),yyy%cmfavec(:,1,0), yyy%cmfspfs(:,0),&
+             xdipoleexpect(calledflag,1),ydipoleexpect(calledflag,1),zdipoleexpect(calledflag,1))
+        call dipolesub_one(www,bwwptr,yyy%cmfavec(:,1,0),yyy%cmfavec(:,2,0), yyy%cmfspfs(:,0),&
+             xdipoleexpect(calledflag,2),ydipoleexpect(calledflag,2),zdipoleexpect(calledflag,2))
+        call dipolesub_one(www,bwwptr,yyy%cmfavec(:,1,0),yyy%cmfavec(:,1,0), yyy%cmfspfs(:,0),&
+             xdipoleexpect(calledflag,3),ydipoleexpect(calledflag,3),zdipoleexpect(calledflag,3))
+        call dipolesub_one(www,bwwptr,yyy%cmfavec(:,2,0),yyy%cmfavec(:,2,0), yyy%cmfspfs(:,0),&
+             xdipoleexpect(calledflag,4),ydipoleexpect(calledflag,4),zdipoleexpect(calledflag,4))
+
+     else  !! conjgpropflag complex Domcke
 
         do imc=1,mcscfnum
            dd(imc)=0
@@ -83,9 +100,9 @@ subroutine dipolesub()
                 CONJUGATE(drivingoverlap(:))
         endif
 
-        xdipoleexpect(calledflag)=0d0
-        ydipoleexpect(calledflag)=0d0
-        zdipoleexpect(calledflag)=0d0
+        xdipoleexpect(calledflag,1)=0d0
+        ydipoleexpect(calledflag,1)=0d0
+        zdipoleexpect(calledflag,1)=0d0
         dipolenormsq(calledflag)=0d0
 
         do imc=1,mcscfnum
@@ -96,13 +113,13 @@ subroutine dipolesub()
 !! 1-2016 v1.17 should not be necessary with realflag in mult_zdipole(in,out,realflag) etc.
  
 #ifndef CNORMFLAG
-           xdipoleexpect(calledflag) = xdipoleexpect(calledflag) + real(xx(imc),8) / mcscfnum
-           ydipoleexpect(calledflag) = ydipoleexpect(calledflag) + real(yy(imc),8) / mcscfnum
-           zdipoleexpect(calledflag) = zdipoleexpect(calledflag) + real(zz(imc),8) / mcscfnum
+           xdipoleexpect(calledflag,1) = xdipoleexpect(calledflag,1) + real(xx(imc),8) / mcscfnum
+           ydipoleexpect(calledflag,1) = ydipoleexpect(calledflag,1) + real(yy(imc),8) / mcscfnum
+           zdipoleexpect(calledflag,1) = zdipoleexpect(calledflag,1) + real(zz(imc),8) / mcscfnum
 #else
-           xdipoleexpect(calledflag) = xdipoleexpect(calledflag) + xx(imc) / mcscfnum
-           ydipoleexpect(calledflag) = ydipoleexpect(calledflag) + yy(imc) / mcscfnum
-           zdipoleexpect(calledflag) = zdipoleexpect(calledflag) + zz(imc) / mcscfnum
+           xdipoleexpect(calledflag,1) = xdipoleexpect(calledflag,1) + xx(imc) / mcscfnum
+           ydipoleexpect(calledflag,1) = ydipoleexpect(calledflag,1) + yy(imc) / mcscfnum
+           zdipoleexpect(calledflag,1) = zdipoleexpect(calledflag,1) + zz(imc) / mcscfnum
 #endif
 
         enddo
@@ -118,9 +135,23 @@ subroutine dipolesub()
            sflag=1
         endif
 
-        call dipolecall(calledflag, xdipoleexpect(0:),xdipfile,xdftfile,1,sflag)
-        call dipolecall(calledflag, ydipoleexpect(0:),ydipfile,ydftfile,2,sflag)
-        call dipolecall(calledflag, zdipoleexpect(0:),zdipfile,zdftfile,3,sflag)
+        if (conjgpropflag.eq.0) then
+           call dipolecall(calledflag, xdipoleexpect(0:,1),xdipfile(1:getlen(xdipfile)-1),&
+                xdftfile(1:getlen(xdftfile)-1),1,sflag)
+           call dipolecall(calledflag, ydipoleexpect(0:,1),ydipfile(1:getlen(ydipfile)-1),&
+                ydftfile(1:getlen(ydftfile)-1),2,sflag)
+           call dipolecall(calledflag, zdipoleexpect(0:,1),zdipfile(1:getlen(zdipfile)-1),&
+                zdftfile(1:getlen(zdftfile)-1),3,sflag)
+        else
+           do ii=1,4
+              call dipolecall(calledflag, xdipoleexpect(0:,ii),xdipfile(1:getlen(xdipfile)-1)//textlabel(ii),&
+                   xdftfile(1:getlen(xdftfile)-1)//textlabel(ii),1,sflag)
+              call dipolecall(calledflag, ydipoleexpect(0:,ii),ydipfile(1:getlen(ydipfile)-1)//textlabel(ii),&
+                   ydftfile(1:getlen(ydftfile)-1)//textlabel(ii),2,sflag)
+              call dipolecall(calledflag, zdipoleexpect(0:,ii),zdipfile(1:getlen(zdipfile)-1)//textlabel(ii),&
+                   zdftfile(1:getlen(zdftfile)-1)//textlabel(ii),3,sflag)
+           enddo
+        endif
 
      endif
 
