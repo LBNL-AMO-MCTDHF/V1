@@ -44,7 +44,7 @@ function windowfunct(i,numdata)
 end function windowfunct
 
 
-subroutine mydiff(size,in,out,docirc)
+subroutine complexdiff(size,in,out,docirc)
   implicit none
   integer, intent(in) :: size
   logical, intent(in) :: docirc
@@ -112,7 +112,7 @@ contains
     cindex=mod(2*size+inindex-1,size)+1
   end function cindex
 
-end subroutine mydiff
+end subroutine complexdiff
 
 
 subroutine zfftf_wrap_diff(size,inout,diffdflag)
@@ -130,7 +130,7 @@ subroutine zfftf_wrap_diff(size,inout,diffdflag)
 !! guarantees F.T. at zero is zero, right?
 #define DOCIRC .true.
 
-     call mydiff(size,inout,work,DOCIRC)
+     call complexdiff(size,inout,work,DOCIRC)
 
      call zfftf_wrap(size,work)
 

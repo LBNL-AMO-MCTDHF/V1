@@ -198,7 +198,7 @@ subroutine read_orb(inspf,imvalue, iprop, iwhich)
   integer :: readprop,  returnval, ixi, ieta, inspf, imvalue, flag, xflag, irecord, first,  iprop, &
        getlen, iwhich, ispf, iii, itable
   integer, parameter :: ifilenums(4)=(/  natorbfile, spfplotfile, denfile, denprojfile /)
-  character (len=200) :: ifilenames(4)
+  character (len=SLN) :: ifilenames(4)
   character (len=8), parameter :: ignufile(4)=(/ "Natplot_", "Spfplot_", "Denplot_", "Denproj_" /)
   character (len=10) :: povdirs(4) = (/ "Natorb    ", "Spfs      ", "Density   ", "Denproj   " /)
   character(len=10) :: mypovdir
@@ -493,7 +493,7 @@ subroutine read_Rorb(inspf, iprop,iwhich)
   character(len=20) :: epsfilename
   character(len=100) :: filex="                                                                                                    "
   character (len=headersize) :: header
-  character (len=200) :: ifilenames(2)
+  character (len=SLN) :: ifilenames(2)
   integer, parameter :: ifilenums(2) = (/ rnatorbfile, natprojfile /)
   character (len=9), parameter :: ignufile(2)=(/ "RNatplot_", "Projplot_" /)
   DATATYPE :: inrdenvect(numr)  

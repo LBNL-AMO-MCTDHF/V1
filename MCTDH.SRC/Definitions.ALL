@@ -1,4 +1,7 @@
 
+#define MXF 5
+#define SLN 200
+
 !!YYSNIPYY
 !!
 !! SET THREE FLAGS, REALGO, CNORMFLAG, ECSFLAG.

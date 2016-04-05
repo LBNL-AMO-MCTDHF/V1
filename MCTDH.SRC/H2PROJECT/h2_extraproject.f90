@@ -14,8 +14,8 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,&
   integer,intent(out) :: spfdims(3),spfdimtype(3), reducedpotsize, outnumr, nonuc_checkflag
   real*8,intent(out) :: nucrepulsion
   integer :: nargs, getlen, len, myiostat, i
-  character (len=200) :: buffer
-  character (len=200) :: nullbuff="                                                                                "
+  character (len=SLN) :: buffer
+  character (len=SLN) :: nullbuff
 #ifdef PGFFLAG
   integer ::    myiargc
 #endif
@@ -25,6 +25,10 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,&
        relementsize ,  rstart ,xielementsizes, xiecstheta, bornopflag, capflag, capstrength, cappower, &
        numhatoms, hlocs,hlocrealflag,hlocreal,mbig,lbig,nuccharge1,nuccharge2, &
        num_skip_orbs, orb_skip_mvalue, orb_skip,twoeattractflag,debugflag,ivoflag,loadedocc
+
+  do i=1,SLN
+     nullbuff(i:i)=" "
+  enddo
 
 #ifdef PGFFLAG
   nargs=myiargc()

@@ -19,8 +19,8 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   integer,intent(out) :: spfdims(3),spfdimtype(3),nonuc_checkflag,reducedpotsize, outnumr
   real*8,intent(out) :: outnucrepulsion
   integer :: nargs, i,len,getlen,myiostat
-  character (len=200) :: buffer
-  character (len=200) :: nullbuff="                                                                                "
+  character (len=SLN) :: buffer
+  character (len=SLN) :: nullbuff
   NAMELIST /sinc1dparinp/        numpoints,spacing,twostrength,nuccharges,orblanthresh, &
        numcenters,centershift,orblanorder,nonucrepflag,debugflag, &
        orbparflag,num_skip_orbs,orb_skip,orblancheckmod,zke_paropt,&
@@ -36,6 +36,10 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
 #else
   nargs=iargc()
 #endif
+
+  do i=1,SLN
+     nullbuff(i:i)=" "
+  enddo
 
 !!! MPI INIT
 

@@ -350,7 +350,7 @@ subroutine mpistart()
 #ifdef PGFFLAG
   integer :: myiargc
 #endif
-  character (len=200) :: buffer
+  character (len=SLN) :: buffer
 #ifdef PGFFLAG
   nargs=myiargc()
 #else

@@ -13,7 +13,7 @@ subroutine getinpfile()
 #ifdef PGFFLAG
   integer :: myiargc
 #endif
-  character (len=200) :: buffer
+  character (len=SLN) :: buffer
 
 #ifdef PGFFLAG
   nargs=myiargc()
@@ -44,7 +44,7 @@ subroutine getparams()
 #ifdef PGFFLAG
   integer :: myiargc
 #endif
-  character (len=200) :: buffer
+  character (len=SLN) :: buffer
   integer :: shelltop(100)=-1            !! greater than zero: not full CI.  Number of orbitals in core shell.  Must be even.
   integer :: avectorhole(1000)=-1001
   integer :: avectorexcitefrom(1000)=-1001
@@ -78,15 +78,13 @@ subroutine getparams()
        numfrozen, nucfluxopt, natplotbin, spfplotbin, denplotbin, denprojplotbin, &
        natprojplotbin, rnatplotbin, dendatfile, denrotfile, rdendatfile,   avectorexcitefrom, avectorexciteto,&
        numovlfiles, ovlavectorfiles, ovlspffiles, outovl,fluxmofile,fluxafile, spifile, astoptol,  &
-       zdftfile,zdipfile,ydftfile,ydipfile,xdftfile,xdipfile, &
-       xydftfile, xydipfile, xzdftfile, xzdipfile, yxdftfile, yxdipfile, &
-       yzdftfile, yzdipfile, zxdftfile, zxdipfile, zydftfile, zydipfile, &   
-       xoworkfile,xtworkfile,xophotonfile, yoworkfile,ytworkfile,yophotonfile, &
-       zoworkfile,ztworkfile,zophotonfile, xyoworkfile,xytworkfile,xyophotonfile, &
-       xzoworkfile,xztworkfile,xzophotonfile, yxoworkfile,yxtworkfile,yxophotonfile, &
-       yzoworkfile,yztworkfile,yzophotonfile, zxoworkfile,zxtworkfile,zxophotonfile, &
-       zyoworkfile,zytworkfile,zyophotonfile, act21circ,& 
-       ftwindowpower, ftdiff,  &
+       xdipfile,ydipfile,zdipfile,   xtworkfile,ytworkfile,ztworkfile,  xytworkfile,yztworkfile,zxtworkfile,&
+       xdftfile,ydftfile,zdftfile,   xydftfile,xzdftfile,yxdftfile,yzdftfile,zxdftfile,zydftfile, &
+       xoworkfile,yoworkfile,zoworkfile,&
+       xyoworkfile,xzoworkfile,yxoworkfile,yzoworkfile,zxoworkfile,zyoworkfile,&
+       xophotonfile, yophotonfile,zophotonfile,&
+       xyophotonfile,xzophotonfile,yxophotonfile,yzophotonfile,zxophotonfile, zyophotonfile,&
+       act21circ,       ftwindowpower, ftdiff,  &
        diptime, fluxafile2,fluxmofile2, minocc,maxocc, corrdatfile,corrftfile,numavectorfiles,projfluxfile, &
        expodim,timingdir, hanningflag, numspffiles, condamp,conway, &
        mrestrictmin,mrestrictmax,lntol,invtol,psistatsfile, psistatfreq, &
@@ -688,7 +686,7 @@ subroutine getparams()
 #endif
 
   if (numavectorfiles.gt.MXF.or.numspffiles.gt.MXF) then
-     OFLWR "PROGRAMMER REDIM littleparmod",numavectorfiles,numspffiles,MXF; CFLST
+     OFLWR "PROGRAMMER REDIM M X F",numavectorfiles,numspffiles,MXF; CFLST
   endif
 
   if (conjgpropflag.ne.0.and.mcscfnum.ne.2) then

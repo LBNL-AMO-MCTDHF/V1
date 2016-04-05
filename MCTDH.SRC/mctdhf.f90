@@ -212,6 +212,9 @@ program mctdhf
 
   spfsloaded=0
   pi=4.d0*atan(1.d0)
+  do i=1,SLN
+     nullbuff(i:i)=" "
+  enddo
 
   if (myrank.eq.1) then
      call system("date")

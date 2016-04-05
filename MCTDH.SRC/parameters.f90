@@ -10,10 +10,6 @@ integer :: mpifileptr
 integer,parameter :: nullfileptr=798  !! MUST MATCH COOLEYTUKEY_SHARED.F90
 end module
 
-module littleparmod
-integer, parameter :: MXF=5
-end module littleparmod
-
 module r_parameters
 integer :: numr
 real*8 :: nucrepulsion
@@ -213,7 +209,7 @@ integer :: notiming=2            !!NoTiming=0,1,2!! 0=write all 1=write some 2= 
                                  !!  Timing=2,1,0!!     controls writing of all timing and some info files
 integer :: timingout=499         !!              !! various routines output to file (timing info) every this 
                                  !!              !!   # of calls
-character(len=200):: timingdir="timing"                       !!
+character(len=SLN):: timingdir="timing"                       !!
 end module timing_parameters
 !!EE
 !!{\large \quad Biorthogonalization }
@@ -236,7 +232,7 @@ module denreg_parameters
 real*8 :: denreg=1d-10           !! Denreg=      !! density matrix regularization parameter.
 end module denreg_parameters
 module parameters
-  use littleparmod;  use fileptrmod;  use r_parameters; use sparse_parameters; use tol_parameters
+  use fileptrmod;  use r_parameters; use sparse_parameters; use tol_parameters
   use ham_parameters;  use basis_parameters;  use timing_parameters; use spfsize_parameters;
   use df_parameters; use dotmod;    use constant_parameters
   implicit none
@@ -251,7 +247,7 @@ integer :: save_every=0                          !! if nonzero saves wave functi
 integer :: walkwriteflag=0                       !! Turning OFF writing of walks by default
 integer :: spf_flag=1            !!              !! IF ZERO, FREEZE SPFS. (for debugging, or TDCI)
 integer :: avector_flag=1        !!              !! IF ZERO, FREEZE AVECTOR. (for debugging)
-character (len=200) :: &         !!              !! MAY BE SET BY COMMAND LINE OPTION ONLY: not namelist
+character (len=SLN) :: &         !!              !! MAY BE SET BY COMMAND LINE OPTION ONLY: not namelist
   inpfile="Input.Inp        "    !! Inp=filename !!  input.  (=name of input file where namelist input is)
 !!EE
 !!{\large \quad PROPAGATION/RELAXATION}
@@ -329,9 +325,9 @@ integer :: spf_gridshift(3,100)=0                !! sinc dvr only, shift orbital
 integer :: numspffiles=1         !!              !! for multiple-molecule (e.g. chemistry) calcs, load many
 integer :: numskiporbs=0         !!              !! Reading orbs on file(s), skips members of combined set.
 integer :: orbskip(1000)=0       !!              !! Which to skip
-character (len=200) :: &         !! A=file       !! A-vector binary file to read.  Can have different configs
+character (len=SLN) :: &         !! A=file       !! A-vector binary file to read.  Can have different configs
      avectorfile(MXF)="Bin/avector.bin"          !!   but should have same number of electrons.   
-character (len=200) :: &         !! Spf=file     !! Spf file to read.  Can have fewer m vals, smaller radial 
+character (len=SLN) :: &         !! Spf=file     !! Spf file to read.  Can have fewer m vals, smaller radial 
      spffile(MXF)="Bin/spfs.bin"                 !!   grid, or fewer than nspf total orbitals. 
 integer :: avecloadskip(100)=0
 integer :: numholes=0                            !! Load a-vector with this many more electrons and annihilate
@@ -356,66 +352,63 @@ real*8 :: messaamount=1.d-4                      !!    how much
 !!EE
 !!{\large \quad INPUT / OUTPUT }
 !!BB
-character(len=200):: finalstatsfile="Dat/finalstats.dat"         !! output for relaxation calculation
+character(len=SLN):: finalstatsfile="Dat/finalstats.dat"         !! output for relaxation calculation
 real*8 :: pulseft_estep=0.01d0                                   !! step in hartree for Pulseft.Dat output files
-character (len=200) ::      avectoroutfile="Bin/avector.bin"     !! A-vector output file.        
-character (len=200) ::      spfoutfile="Bin/spfs.bin"            !! Spf output file.
-character(len=200):: psistatsfile="Dat/psistats.dat"             !! for action 25
+character (len=SLN) ::      avectoroutfile="Bin/avector.bin"     !! A-vector output file.        
+character (len=SLN) ::      spfoutfile="Bin/spfs.bin"            !! Spf output file.
+character(len=SLN):: psistatsfile="Dat/psistats.dat"             !! for action 25
 integer :: psistatfreq=1                                         !!  "
-character(len=200):: dendatfile="Dat/denmat.eigs.dat"            !! if notiming=0
-character(len=200):: denrotfile="Dat/denmat.rotate.dat"          !!  "
-character(len=200):: rdendatfile="Dat/rdenmat.eigs.dat"          !! deprecated
-character (len=200) :: ovlspffiles(50)="Bin/ovl.spfs.bin"        !! for actions 20 and 26 
-character (len=200) :: ovlavectorfiles(50)="Bin/ovl.avector.bin" !!      (see numovlfiles in ACTIONS)
-character(len=200):: outovl="Dat/Overlaps.dat"                   !! for action 20
-character(len=200):: outmatel="Dat/Matel.dat"                    !! for action 20
+character(len=SLN):: dendatfile="Dat/denmat.eigs.dat"            !! if notiming=0
+character(len=SLN):: denrotfile="Dat/denmat.rotate.dat"          !!  "
+character(len=SLN):: rdendatfile="Dat/rdenmat.eigs.dat"          !! deprecated
+character (len=SLN) :: ovlspffiles(50)="Bin/ovl.spfs.bin"        !! for actions 20 and 26 
+character (len=SLN) :: ovlavectorfiles(50)="Bin/ovl.avector.bin" !!      (see numovlfiles in ACTIONS)
+character(len=SLN):: outovl="Dat/Overlaps.dat"                   !! for action 20
+character(len=SLN):: outmatel="Dat/Matel.dat"                    !! for action 20
 integer :: act21circ=0                                           !! set nonzero to enable circular polarization 
                                                                  !!     output for action 21
-character(len=200):: xdipfile="Dat/XDipoleexpect.Dat",&          !! for action 21 dipole moments D(t)
- ydipfile="Dat/YDipoleexpect.Dat",zdipfile="Dat/ZDipoleexpect.Dat",&    !! "
- xydipfile="Dat/XYDipoleexpect.Dat",xzdipfile="Dat/XZDipoleexpect.Dat",&!! "  circular polarization
- yxdipfile="Dat/YXDipoleexpect.Dat",yzdipfile="Dat/YZDipoleexpect.Dat",&!! "   XY = X->Y, Y->(-X) ; etc.
- zxdipfile="Dat/ZXDipoleexpect.Dat",zydipfile="Dat/ZYDipoleexpect.Dat"  !! "
-character(len=200):: xdftfile="Dat/XDipoleft.Dat",&              !! for action 21 dipole moments D(omega)
+character(len=SLN):: xdipfile="Dat/XDipoleexpect.Dat",&          !! for action 21 dipole moments D(t)
+ ydipfile="Dat/YDipoleexpect.Dat",&
+ zdipfile="Dat/ZDipoleexpect.Dat"                 
+character(len=SLN):: xtworkfile="Dat/XTWork.Dat",&               !! for action 21 work per pulse integral dt
+ ytworkfile="Dat/YTWork.Dat",ztworkfile="Dat/ZTWork.Dat",&       !!  "
+ xytworkfile="Dat/XYTWork.Dat",yztworkfile="Dat/YZTWork.Dat",&   !!  "  circ polarization: three torque components
+ zxtworkfile="Dat/ZXTWork.Dat"                                   !!  "  XY, YZ, ZX.
+character(len=SLN):: xdftfile="Dat/XDipoleft.Dat",&              !! for action 21 dipole moments D(omega)
  ydftfile="Dat/YDipoleft.Dat", zdftfile="Dat/ZDipoleft.Dat",&    !! and emission/absorption
- xydftfile="Dat/XYDipoleft.Dat",xzdftfile="Dat/XZDipoleft.Dat",& !!  "  circ polarization
- yxdftfile="Dat/YXDipoleft.Dat",yzdftfile="Dat/YZDipoleft.Dat",& !!  "
- zxdftfile="Dat/ZXDipoleft.Dat",zydftfile="Dat/ZYDipoleft.Dat"   !!  "
-character(len=200):: xoworkfile="Dat/XOWork.Dat",&               !! for action 21 work per pulse integral domega
+ xydftfile="Dat/XYDipoleft.Dat",xzdftfile="Dat/XZDipoleft.Dat",& !!  "  circ polarization: six components
+ yxdftfile="Dat/YXDipoleft.Dat",yzdftfile="Dat/YZDipoleft.Dat",& !!  "  XY, XZ, YX, YZ, ZX, ZY
+ zxdftfile="Dat/ZXDipoleft.Dat",zydftfile="Dat/ZYDipoleft.Dat"   !!  "  e.g. XY: X->Y, Y->(-X)
+character(len=SLN):: xoworkfile="Dat/XOWork.Dat",&               !! for action 21 work per pulse integral domega
  yoworkfile="Dat/YOWork.Dat",zoworkfile="Dat/ZOWork.Dat",&       !!  "
- xyoworkfile="Dat/XYOWork.Dat",xzoworkfile="Dat/XZOWork.Dat",&   !!  "  circ polarization
+ xyoworkfile="Dat/XYOWork.Dat",xzoworkfile="Dat/XZOWork.Dat",&   !!  "  circ polarization, six components
  yxoworkfile="Dat/YXOWork.Dat",yzoworkfile="Dat/YZOWork.Dat",&   !!  "
  zxoworkfile="Dat/ZXOWork.Dat",zyoworkfile="Dat/ZYOWork.Dat"     !!  "
-character(len=200):: xtworkfile="Dat/XTWork.Dat",&               !! for action 21 work per pulse integral dt
- ytworkfile="Dat/YTWork.Dat",ztworkfile="Dat/ZTWork.Dat",&       !!  "
- xytworkfile="Dat/XYTWork.Dat",xztworkfile="Dat/XZTWork.Dat",&   !!  "  circ polarization
- yxtworkfile="Dat/YXTWork.Dat",yztworkfile="Dat/YZTWork.Dat",&   !!  "
- zxtworkfile="Dat/ZXTWork.Dat",zytworkfile="Dat/ZYTWork.Dat"     !!  
-character(len=200):: xophotonfile="Dat/XOPhoton.Dat",&                 !! for action 21 work per pulse integral domega
+character(len=SLN):: xophotonfile="Dat/XOPhoton.Dat",&                 !! for action 21 work per pulse integral domega
  yophotonfile="Dat/YOPhoton.Dat",zophotonfile="Dat/ZOPhoton.Dat",&     !!  "
- xyophotonfile="Dat/XYOPhoton.Dat",xzophotonfile="Dat/XZOPhoton.Dat",& !!  "  circ polarization
+ xyophotonfile="Dat/XYOPhoton.Dat",xzophotonfile="Dat/XZOPhoton.Dat",& !!  "  circ polarization, six components
  yxophotonfile="Dat/YXOPhoton.Dat",yzophotonfile="Dat/YZOPhoton.Dat",& !!  "
  zxophotonfile="Dat/ZXOPhoton.Dat",zyophotonfile="Dat/ZYOPhoton.Dat"   !!  "
-character(len=200):: corrdatfile="Dat/Correlation.Dat"        !! for action 1
-character(len=200):: corrftfile="Dat/Corrft.Dat"              !!  "
-character(len=200):: fluxmofile="Flux/flux.mo.bin"            !! for actions 15,16,17,23
-character(len=200):: fluxafile="Flux/flux.avec.bin"           !!  "
-character(len=200):: spifile="Dat/xsec.spi.dat"               !! for action 16 (cross section)
-character(len=200):: gtaufile="Dat/gtau.dat"                  !!  " (total flux(t) without e_ke resolution)
-character(len=200):: projspifile="Dat/xsec.proj.spi"          !! for action 17 (partial cross section)
-character(len=200):: projgtaufile="Dat/gtau.dat"              !!  " (projected flux(t))
-character(len=200):: projfluxfile="Flux/proj.flux.wfn.bin"    !!  "
-character (len=200):: catspffiles(50)="Bin/cation.spfs.bin"       !!  " (see numcatfiles in ACTIONS)
-character (len=200):: catavectorfiles(50)="Bin/cation.avector.bin"!!  "
-character(len=200):: angprojspifile="Dat/xsec.angproj.spi"    !!  " if angularflag.ne.0 calculate partial ionization, wrt angle
-character(len=200):: fluxafile2="Flux/flux.avec.bin"          !! for action 23
-character(len=200):: fluxmofile2="Flux/flux.mo.bin"           !!  "
-character(len=200):: natplotbin="Bin/Natlorb.bin"             !! for actions 2,8
-character(len=200):: spfplotbin="Bin/Spfplot.bin"             !! for actions 3,9
-character(len=200):: denplotbin="Bin/Density.bin"             !! for actions 4,10
-character(len=200):: rnatplotbin="Bin/RNatorb.bin"            !! for actions 5,11
-character(len=200):: denprojplotbin="Bin/Denproj.bin"         !! for actions 6,12
-character(len=200):: natprojplotbin="Bin/Natproj.bin"         !!  "
+character(len=SLN):: corrdatfile="Dat/Correlation.Dat"        !! for action 1
+character(len=SLN):: corrftfile="Dat/Corrft.Dat"              !!  "
+character(len=SLN):: fluxmofile="Flux/flux.mo.bin"            !! for actions 15,16,17,23
+character(len=SLN):: fluxafile="Flux/flux.avec.bin"           !!  "
+character(len=SLN):: spifile="Dat/xsec.spi.dat"               !! for action 16 (cross section)
+character(len=SLN):: gtaufile="Dat/gtau.dat"                  !!  " (total flux(t) without e_ke resolution)
+character(len=SLN):: projspifile="Dat/xsec.proj.spi"          !! for action 17 (partial cross section)
+character(len=SLN):: projgtaufile="Dat/gtau.dat"              !!  " (projected flux(t))
+character(len=SLN):: projfluxfile="Flux/proj.flux.wfn.bin"    !!  "
+character (len=SLN):: catspffiles(50)="Bin/cation.spfs.bin"       !!  " (see numcatfiles in ACTIONS)
+character (len=SLN):: catavectorfiles(50)="Bin/cation.avector.bin"!!  "
+character(len=SLN):: angprojspifile="Dat/xsec.angproj.spi"    !!  " if angularflag.ne.0 calculate partial ionization, wrt angle
+character(len=SLN):: fluxafile2="Flux/flux.avec.bin"          !! for action 23
+character(len=SLN):: fluxmofile2="Flux/flux.mo.bin"           !!  "
+character(len=SLN):: natplotbin="Bin/Natlorb.bin"             !! for actions 2,8
+character(len=SLN):: spfplotbin="Bin/Spfplot.bin"             !! for actions 3,9
+character(len=SLN):: denplotbin="Bin/Density.bin"             !! for actions 4,10
+character(len=SLN):: rnatplotbin="Bin/RNatorb.bin"            !! for actions 5,11
+character(len=SLN):: denprojplotbin="Bin/Denproj.bin"         !! for actions 6,12
+character(len=SLN):: natprojplotbin="Bin/Natproj.bin"         !!  "
 !!EE 
 !!{\large \quad ACTIONS} \verb# may also be specified by Act=X where X is an integer on the command line #
 !!BB
@@ -561,7 +554,7 @@ real*8 :: myrelerr=1.d-10        !!              !! absolute error set to norm*m
 !! number of MCSCF files
 integer :: numfluxfiles=1
 integer :: numfluxcurves(20)
-!character (len=200) :: fluxfilenames(20)
+!character (len=SLN) :: fluxfilenames(20)
 !!integer :: whichsideproj=0       !! 0 if want to project on N-1 e- state, 1 if on N e- state
 
 integer :: drivingmethod=0   !! 0 = V(t)  1 = H(t)-E
@@ -603,7 +596,8 @@ integer, parameter :: natprojfile=488
 
 integer :: skipflag=0
 
-character (len=200) :: nullbuff="                                                                                                                                                                                                        ";;;;;;
+character (len=SLN) :: nullbuff
+
 end module parameters
 
 
@@ -644,8 +638,8 @@ module mpimod
 #endif
   integer :: MPI_GROUP_WORLD
   integer :: nprocs=1, myrank
-  character(len=200), parameter :: mpioutfilebase="MPIOUTS/MPI.Out."
-  character(len=200) :: mpioutfile
+  character(len=SLN), parameter :: mpioutfilebase="MPIOUTS/MPI.Out."
+  character(len=SLN) :: mpioutfile
   integer, parameter :: mpioutfilelen=16
   integer :: stdoutflag=0
   integer :: mpitime=0

@@ -38,6 +38,8 @@ subroutine dipolesub()
   DATATYPE :: myexpects(3), mcexpects(3,mcscfnum), dd(mcscfnum),&
        axx(mcscfnum),ayy(mcscfnum),azz(mcscfnum),sxx(mcscfnum),syy(mcscfnum),&
        szz(mcscfnum),drivingoverlap(mcscfnum)
+  character(len=SLN) :: dipfiles(3), tworkfiles(3), angworkfiles(3), ftfiles(9), &
+       oworkfiles(9), ophotonfiles(9)
   integer :: imc,sflag,getlen,ii
   integer, save :: lastouttime=0
   real*8 :: thistime
@@ -62,6 +64,8 @@ subroutine dipolesub()
         if (par_consplit.ne.0) then
            call mympireduceone(dipolenormsq(calledflag))
         endif
+
+        OFLWR "   complex Domcke - off diagonal norm-squared ", dipolenormsq(calledflag)
 
         call dipolesub_one(www,bwwptr,yyy%cmfavec(:,2,0),yyy%cmfavec(:,1,0), yyy%cmfspfs(:,0), myexpects(:))
         dipoleexpects(calledflag,:,1)=myexpects(:)
@@ -94,9 +98,9 @@ subroutine dipolesub()
            mcexpects(2,:)=mcexpects(2,:)+ayy(:)+CONJUGATE(ayy(:))+syy*drivingproportion**2
            mcexpects(3,:)=mcexpects(3,:)+azz(:)+CONJUGATE(azz(:))+szz*drivingproportion**2
 
-           call getdrivingoverlap(drivingoverlap,mcscfnum)   !! for time slot zero
-           dd(:)=dd(:)+drivingproportion**2 + drivingoverlap(:) + &
-                CONJUGATE(drivingoverlap(:))
+!! for time slot zero
+           call getdrivingoverlap(drivingoverlap,mcscfnum)
+           dd(:)=dd(:)+drivingproportion**2 + drivingoverlap(:) + CONJUGATE(drivingoverlap(:))
         endif
 
         dipoleexpects(calledflag,:,1)=0d0
@@ -121,6 +125,8 @@ subroutine dipolesub()
 
      if (mod(calledflag,dipmodtime).eq.0.and.calledflag.gt.0) then
 
+        OFLWR "Go emission/absorption action 21... "; CFL
+
         thistime=calledflag*par_timestep*autosteps
         sflag=0
         if (floor(thistime/diptime).gt.lastouttime) then
@@ -128,343 +134,430 @@ subroutine dipolesub()
            sflag=1
         endif
 
+!!$  subroutine dipolecall(numdata, indipolearrays, outenames, outtworknames, outangworknames, &
+!!$       outftnames, outoworknames, outophotonnames, sflag)
+
         if (conjgpropflag.eq.0) then
-           call dipolecall(calledflag, dipoleexpects(:,:,1),   xdipfile(1:getlen(xdipfile)),&
-                xdftfile(1:getlen(xdftfile)),            xoworkfile(1:getlen(xoworkfile)),&
-                xtworkfile(1:getlen(xtworkfile)),    xophotonfile(1:getlen(xophotonfile)),&
-                1,sflag)
-           call dipolecall(calledflag, dipoleexpects(:,:,1),   ydipfile(1:getlen(ydipfile)),&
-                ydftfile(1:getlen(ydftfile)),            yoworkfile(1:getlen(yoworkfile)),&
-                ytworkfile(1:getlen(ytworkfile)),    yophotonfile(1:getlen(yophotonfile)),&
-                2,sflag)
-           call dipolecall(calledflag, dipoleexpects(:,:,1),   zdipfile(1:getlen(zdipfile)),&
-                zdftfile(1:getlen(zdftfile)),            zoworkfile(1:getlen(zoworkfile)),&
-                ztworkfile(1:getlen(ztworkfile)),    zophotonfile(1:getlen(zophotonfile)),&
-                3,sflag)
-           if (act21circ.ne.0) then
-              call dipolecall(calledflag, dipoleexpects(:,:,1),  xydipfile(1:getlen(xydipfile)),&
-                   xydftfile(1:getlen(xydftfile)),          xyoworkfile(1:getlen(xyoworkfile)),&
-                   xytworkfile(1:getlen(xytworkfile)),   xyophotonfile(1:getlen(xyophotonfile)),&
-                   4,sflag)
-              call dipolecall(calledflag, dipoleexpects(:,:,1),  xzdipfile(1:getlen(xzdipfile)),&
-                   xzdftfile(1:getlen(xzdftfile)),          xzoworkfile(1:getlen(xzoworkfile)),&
-                   xztworkfile(1:getlen(xztworkfile)),   xzophotonfile(1:getlen(xzophotonfile)),&
-                   5,sflag)
-              call dipolecall(calledflag, dipoleexpects(:,:,1),  yxdipfile(1:getlen(yxdipfile)),&
-                   yxdftfile(1:getlen(yxdftfile)),          yxoworkfile(1:getlen(yxoworkfile)),&
-                   yxtworkfile(1:getlen(yxtworkfile)),   yxophotonfile(1:getlen(yxophotonfile)),&
-                   6,sflag)
-              call dipolecall(calledflag, dipoleexpects(:,:,1),  yzdipfile(1:getlen(yzdipfile)),&
-                   yzdftfile(1:getlen(yzdftfile)),          yzoworkfile(1:getlen(yzoworkfile)),&
-                   yztworkfile(1:getlen(yztworkfile)),   yzophotonfile(1:getlen(yzophotonfile)),&
-                   7,sflag)
-              call dipolecall(calledflag, dipoleexpects(:,:,1),  zxdipfile(1:getlen(zxdipfile)),&
-                   zxdftfile(1:getlen(zxdftfile)),          zxoworkfile(1:getlen(zxoworkfile)),&
-                   zxtworkfile(1:getlen(zxtworkfile)),   zxophotonfile(1:getlen(zxophotonfile)),&
-                   8,sflag)
-              call dipolecall(calledflag, dipoleexpects(:,:,1),  zydipfile(1:getlen(zydipfile)),&
-                   zydftfile(1:getlen(zydftfile)),          zyoworkfile(1:getlen(zyoworkfile)),&
-                   zytworkfile(1:getlen(zytworkfile)),   zyophotonfile(1:getlen(zyophotonfile)),&
-                   9,sflag)
-           endif
-        else
+           dipfiles(:) = (/ xdipfile, ydipfile, zdipfile /)
+           tworkfiles(:) = (/ xtworkfile, ytworkfile, ztworkfile /)
+           angworkfiles(:) = (/ yztworkfile, zxtworkfile, xytworkfile /)
+           ftfiles(:) = (/ xdftfile, ydftfile, zdftfile, &
+                xydftfile, xzdftfile, yxdftfile, yzdftfile, zxdftfile, zydftfile /)
+           oworkfiles(:) = (/ xoworkfile, yoworkfile, zoworkfile, &
+                xyoworkfile, xzoworkfile, yxoworkfile, yzoworkfile, zxoworkfile, zyoworkfile /)
+           ophotonfiles(:) = (/ xophotonfile, yophotonfile, zophotonfile, &
+                xyophotonfile, xzophotonfile, yxophotonfile, yzophotonfile, zxophotonfile, zyophotonfile /)
+
+           call dipolecall(calledflag, dipoleexpects(:,:,1), &
+                dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag)
+
+        else   !! conjgpropflag complex Domcke:
            do ii=1,4
-              call dipolecall(calledflag, dipoleexpects(:,:,ii),      xdipfile(1:getlen(xdipfile))//tl(ii),&
-                   xdftfile(1:getlen(xdftfile))//tl(ii),         xoworkfile(1:getlen(xoworkfile))//tl(ii),&
-                   xtworkfile(1:getlen(xtworkfile))//tl(ii),   xophotonfile(1:getlen(xophotonfile))//tl(ii),&
-                   1,sflag)
-              call dipolecall(calledflag, dipoleexpects(:,:,ii),      ydipfile(1:getlen(ydipfile))//tl(ii),&
-                   ydftfile(1:getlen(ydftfile))//tl(ii),         yoworkfile(1:getlen(yoworkfile))//tl(ii),&
-                   ytworkfile(1:getlen(ytworkfile))//tl(ii),   yophotonfile(1:getlen(yophotonfile))//tl(ii),&
-                   2,sflag)
-              call dipolecall(calledflag, dipoleexpects(:,:,ii),     zdipfile(1:getlen(zdipfile))//tl(ii),&
-                   zdftfile(1:getlen(zdftfile))//tl(ii),        zoworkfile(1:getlen(zoworkfile))//tl(ii),&
-                   ztworkfile(1:getlen(ztworkfile))//tl(ii),  zophotonfile(1:getlen(zophotonfile))//tl(ii),&
-                   3,sflag)
-              if (act21circ.ne.0) then
-                 call dipolecall(calledflag, dipoleexpects(:,:,ii),      xydipfile(1:getlen(xydipfile))//tl(ii),&
-                      xydftfile(1:getlen(xydftfile))//tl(ii),       xyoworkfile(1:getlen(xyoworkfile))//tl(ii),&
-                      xytworkfile(1:getlen(xytworkfile))//tl(ii),  xyophotonfile(1:getlen(xyophotonfile))//tl(ii),&
-                      4,sflag)
-                 call dipolecall(calledflag, dipoleexpects(:,:,ii),      xzdipfile(1:getlen(xzdipfile))//tl(ii),&
-                      xzdftfile(1:getlen(xzdftfile))//tl(ii),       xzoworkfile(1:getlen(xzoworkfile))//tl(ii),&
-                      xztworkfile(1:getlen(xztworkfile))//tl(ii),  xzophotonfile(1:getlen(xzophotonfile))//tl(ii),&
-                      5,sflag)
-                 call dipolecall(calledflag, dipoleexpects(:,:,ii),      yxdipfile(1:getlen(yxdipfile))//tl(ii),&
-                      yxdftfile(1:getlen(yxdftfile))//tl(ii),       yxoworkfile(1:getlen(yxoworkfile))//tl(ii),&
-                      yxtworkfile(1:getlen(yxtworkfile))//tl(ii),  yxophotonfile(1:getlen(yxophotonfile))//tl(ii),&
-                      6,sflag)
-                 call dipolecall(calledflag, dipoleexpects(:,:,ii),      yzdipfile(1:getlen(yzdipfile))//tl(ii),&
-                      yzdftfile(1:getlen(yzdftfile))//tl(ii),       yzoworkfile(1:getlen(yzoworkfile))//tl(ii),&
-                      yztworkfile(1:getlen(yztworkfile))//tl(ii),  yzophotonfile(1:getlen(yzophotonfile))//tl(ii),&
-                      7,sflag)
-                 call dipolecall(calledflag, dipoleexpects(:,:,ii),      zxdipfile(1:getlen(zxdipfile))//tl(ii),&
-                      zxdftfile(1:getlen(zxdftfile))//tl(ii),       zxoworkfile(1:getlen(zxoworkfile))//tl(ii),&
-                      zxtworkfile(1:getlen(zxtworkfile))//tl(ii),  zxophotonfile(1:getlen(zxophotonfile))//tl(ii),&
-                      8,sflag)
-                 call dipolecall(calledflag, dipoleexpects(:,:,ii),      zydipfile(1:getlen(zydipfile))//tl(ii),&
-                      zydftfile(1:getlen(zydftfile))//tl(ii),       zyoworkfile(1:getlen(zyoworkfile))//tl(ii),&
-                      zytworkfile(1:getlen(zytworkfile))//tl(ii),  zyophotonfile(1:getlen(zyophotonfile))//tl(ii),&
-                      9,sflag)
-              endif
+
+              dipfiles(:) = (/ &
+                   xdipfile(1:getlen(xdipfile))//tl(ii),&
+                   ydipfile(1:getlen(ydipfile))//tl(ii),&
+                   zdipfile(1:getlen(zdipfile))//tl(ii) /)
+              tworkfiles(:) = (/ &
+                   xtworkfile(1:getlen(xtworkfile))//tl(ii),&
+                   ytworkfile(1:getlen(ytworkfile))//tl(ii),&
+                   ztworkfile(1:getlen(ztworkfile))//tl(ii) /)
+              angworkfiles(:) = (/ &
+                   yztworkfile(1:getlen(yztworkfile))//tl(ii),&
+                   zxtworkfile(1:getlen(zxtworkfile))//tl(ii),&
+                   xytworkfile(1:getlen(xytworkfile))//tl(ii) /)
+              ftfiles(:) = (/ &
+                   xdftfile(1:getlen(xdftfile))//tl(ii),&
+                   ydftfile(1:getlen(xdftfile))//tl(ii),&
+                   zdftfile(1:getlen(xdftfile))//tl(ii),&
+                   xydftfile(1:getlen(xydftfile))//tl(ii),&
+                   xzdftfile(1:getlen(xzdftfile))//tl(ii),&
+                   yxdftfile(1:getlen(yxdftfile))//tl(ii),&
+                   yzdftfile(1:getlen(yzdftfile))//tl(ii),&
+                   zxdftfile(1:getlen(zxdftfile))//tl(ii),&
+                   zydftfile(1:getlen(zydftfile))//tl(ii) /)
+              oworkfiles(:) = (/ &
+                   xoworkfile(1:getlen(xoworkfile))//tl(ii),&
+                   yoworkfile(1:getlen(yoworkfile))//tl(ii),&
+                   zoworkfile(1:getlen(zoworkfile))//tl(ii),&
+                   xyoworkfile(1:getlen(xyoworkfile))//tl(ii),&
+                   xzoworkfile(1:getlen(xzoworkfile))//tl(ii),&
+                   yxoworkfile(1:getlen(yxoworkfile))//tl(ii),&
+                   yzoworkfile(1:getlen(yzoworkfile))//tl(ii),&
+                   zxoworkfile(1:getlen(zxoworkfile))//tl(ii),&
+                   zyoworkfile(1:getlen(zyoworkfile))//tl(ii) /)
+              ophotonfiles(:) = (/ &
+                   xophotonfile(1:getlen(xophotonfile))//tl(ii),&
+                   yophotonfile(1:getlen(yophotonfile))//tl(ii),&
+                   zophotonfile(1:getlen(zophotonfile))//tl(ii),&
+                   xyophotonfile(1:getlen(xyophotonfile))//tl(ii),&
+                   xzophotonfile(1:getlen(xzophotonfile))//tl(ii),&
+                   yxophotonfile(1:getlen(yxophotonfile))//tl(ii),&
+                   yzophotonfile(1:getlen(yzophotonfile))//tl(ii),&
+                   zxophotonfile(1:getlen(zxophotonfile))//tl(ii),&
+                   zyophotonfile(1:getlen(zyophotonfile))//tl(ii) /)
+
+              call dipolecall(calledflag, dipoleexpects(:,:,ii), &
+                   dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag)
+
            enddo
         endif    !! conjgpropflag
+
+        OFLWR "     ..done emission/absorption"; CFL
+
      endif       !! calledflag (dipmodtime)
 
-     if (conjgpropflag.ne.0) then
-        OFLWR "   complex Domcke - off diagonal norm-squared ", dipolenormsq(calledflag)
-     endif
-
      calledflag=calledflag+1
-
   endif
   xcalledflag=xcalledflag+1
 
 contains
 
 !! actually have numdata+1 data points in indipolearray
-!! which=1,2,3  =  x,y,z   4,5,6,7,8,9 = x+iy, etc. see dipolesub
 
-  subroutine dipolecall(numdata, indipolearrays, outename, outftname, outoworkname, &
-       outtworkname, outophotonname, which, sflag)
+  subroutine dipolecall(numdata, indipolearrays, outenames, outtworknames, outangworknames, &
+       outftnames, outoworknames, outophotonnames, sflag)
     use mpimod
     use pulsesubmod
     implicit none
-    integer,intent(in) :: numdata, which, sflag
+    integer,intent(in) :: numdata, sflag
     DATATYPE,intent(in) :: indipolearrays(0:autosize,3)
-    character,intent(in) :: outftname*(*), outename*(*), outoworkname*(*), outtworkname*(*),&
-         outophotonname*(*)
-    complex*16,allocatable ::  fftrans(:),eft(:), all_eft(:,:),dipole_diff(:)
+    character(len=SLN),intent(in) :: outenames(3), outtworknames(3), outangworknames(3), &
+         outftnames(9), outoworknames(9), outophotonnames(9)
+    complex*16,allocatable :: fftrans(:,:),eft(:,:),each_eft(:,:,:),dipole_diff(:,:),dipolearrays(:,:),&
+         efield(:,:), each_efield(:,:,:)
+    real*8, allocatable :: worksums(:,:,:), worksum0(:,:,:), exsums(:,:,:), totworksums(:,:),&
+         totworksum0(:,:), totexsums(:,:), xsums(:,:), each_efield_ang(:,:,:), &
+         dipole_ang(:,:), moment(:), angworksum0(:,:,:), totangworksum0(:,:)
     DATATYPE :: pots(3,numpulses)
     real*8 :: estep, thistime, myenergy,xsecunits, windowfunct
-    real*8, allocatable :: worksums(:,:), worksum0(:,:), exsums(:,:), totworksums(:),&
-         totworksum0(:), totexsums(:), xsums(:)
+    integer :: i,getlen,myiostat,ipulse,numft
     character (len=7) :: number
-    integer :: i,getlen,myiostat,ipulse
 
 #ifdef REALGO
     OFLWR "Cant use dipolesub for real valued code."; CFLST
 #endif
 
     pots=0
-    allocate(fftrans(0:numdata), eft(0:numdata), all_eft(0:numdata,numpulses),dipole_diff(0:numdata))
-    fftrans=0.d0; eft=0d0; all_eft=0d0; dipole_diff=0d0
-    allocate(worksums(0:numdata,numpulses), worksum0(0:numdata,numpulses),exsums(0:numdata,numpulses),&
-         totworksums(0:numdata), totworksum0(0:numdata),totexsums(0:numdata), xsums(0:numdata))
-    worksums=0; worksum0=0; exsums=0; totworksums=0; totworksum0=0; totexsums=0; xsums=0
+
+    allocate(dipolearrays(0:numdata,3), efield(0:numdata,3), each_efield(0:numdata,3,numpulses))
+    dipolearrays=0; efield=0; each_efield=0
 
     do i=0,numdata
        do ipulse=1,numpulses
           call vectdpot0(i*par_timestep*autosteps,0,pots(:,ipulse),-1,ipulse,ipulse) !! LENGTH
        enddo
-       select case(which)
-       case(1,2,3)
-          all_eft(i,:)=pots(which,:)
-          fftrans(i) = indipolearrays(i,which)-indipolearrays(0,which)
-
-!! will want to account for propagation direction in circ polarization results
-!! as-is (v1.27), work done in circ polarization is double-counted
-!! e.g. linear z polarization counted 1/2 in xz,yz,zx,zy each
-
-       case(4)
-          all_eft(i,:)=( pots(1,:) + (0d0,1d0) * pots(2,:) ) /sqrt(2d0)
-          fftrans(i) = ( (indipolearrays(i,1)-indipolearrays(0,1)) + (0d0,1d0)*(indipolearrays(i,2)-indipolearrays(0,2)) )/sqrt(2d0)
-       case(5)
-          all_eft(i,:)=( pots(1,:) + (0d0,1d0) * pots(3,:) )/sqrt(2d0)
-          fftrans(i) = ( (indipolearrays(i,1)-indipolearrays(0,1)) + (0d0,1d0)*(indipolearrays(i,3)-indipolearrays(0,3)) )/sqrt(2d0)
-       case(6)
-          all_eft(i,:)=( pots(2,:) + (0d0,1d0) * pots(1,:) )/sqrt(2d0)
-          fftrans(i) = ( (indipolearrays(i,2)-indipolearrays(0,2)) + (0d0,1d0)*(indipolearrays(i,1)-indipolearrays(0,1)) )/sqrt(2d0)
-       case(7)
-          all_eft(i,:)=( pots(2,:) + (0d0,1d0) * pots(3,:) )/sqrt(2d0)
-          fftrans(i) = ( (indipolearrays(i,2)-indipolearrays(0,2)) + (0d0,1d0)*(indipolearrays(i,3)-indipolearrays(0,3)) )/sqrt(2d0)
-       case(8)
-          all_eft(i,:)=( pots(3,:) + (0d0,1d0) * pots(1,:) )/sqrt(2d0)
-          fftrans(i) = ( (indipolearrays(i,3)-indipolearrays(0,3)) + (0d0,1d0)*(indipolearrays(i,1)-indipolearrays(0,1)) )/sqrt(2d0)
-       case(9)
-          all_eft(i,:)=( pots(3,:) + (0d0,1d0) * pots(2,:) )/sqrt(2d0)
-          fftrans(i) = ( (indipolearrays(i,3)-indipolearrays(0,3)) + (0d0,1d0)*(indipolearrays(i,2)-indipolearrays(0,2)) )/sqrt(2d0)
-       case default
-          OFLWR "ACK WHICH DIPOLECALL", which; CFLST
-       end select
+       each_efield(i,:,:)=pots(:,:)
     enddo
 
-    call mydiff(numdata+1,fftrans(0:),dipole_diff(0:),.false.)
-    dipole_diff(:)=dipole_diff(:) / par_timestep / autosteps
-
-!! dividing and multiplying for clarity not math
-!! numbers are real-valued which=1,2,3 x,y,z
-!! otherwise with which = 4 through 9 take real part with conjugate like below
-
-    worksum0(0,:) = (-1) * real( dipole_diff(0) * conjg(all_eft(0,:)) , 8) * par_timestep * autosteps
-    do i=1,numdata
-       worksum0(i,:)=worksum0(i-1,:) - real( dipole_diff(i) * conjg(all_eft(i,:)) , 8) * par_timestep * autosteps
+    efield=0
+    do ipulse=1,numpulses
+       efield(:,:)=efield(:,:)+each_efield(:,:,ipulse)
     enddo
-    totworksum0=0d0
-    do i=1,numpulses
-       totworksum0(:)=totworksum0(:)+worksum0(:,i)
+    do i=0,numdata
+       dipolearrays(i,:)=indipolearrays(i,:)-indipolearrays(0,:)
     enddo
+
+    if (myrank.eq.1) then
+       do ii=1,3
+          open(171,file=outenames(ii),status="unknown",iostat=myiostat)
+          call checkiostat(myiostat,"opening "//outenames(ii))
+          write(171,*,iostat=myiostat) "#   ", numdata
+          call checkiostat(myiostat,"writing "//outenames(ii))
+          do i=0,numdata
+             write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  i*par_timestep*autosteps, &
+                  dipolearrays(i,ii),efield(i,ii),each_efield(i,ii,:)
+          enddo
+          call checkiostat(myiostat,"writing "//outenames(ii))
+          close(171)
+       enddo
+    endif
+    call mpibarrier()
+
+#ifndef CNORMFLAG
+    if (conjgpropflag.eq.0) then    !! work done by pulse integral dt only for non-complex-Domcke
+
+       allocate(dipole_diff(0:numdata,3), worksum0(0:numdata,3,numpulses), totworksum0(0:numdata,3))
+       dipole_diff=0d0;    worksum0=0;   totworksum0=0;  
+
+       do i=1,3
+          call complexdiff(numdata+1,dipolearrays(:,i),dipole_diff(:,i),.false.)
+       enddo
+       dipole_diff(:,:)= dipole_diff(:,:) / par_timestep / autosteps
+
+       do ipulse=1,numpulses
+          worksum0(0,:,ipulse) = (-1) * real( dipole_diff(0,:) * conjg(each_efield(0,:,ipulse)) , 8) * par_timestep * autosteps
+          do i=1,numdata
+             worksum0(i,:,ipulse)=worksum0(i-1,:,ipulse) - real( dipole_diff(i,:) * conjg(each_efield(i,:,ipulse)) , 8) * par_timestep * autosteps
+          enddo
+       enddo
+       totworksum0(:,:)=0d0
+       do ipulse=1,numpulses
+          totworksum0(:,:)=totworksum0(:,:)+worksum0(:,:,ipulse)
+       enddo
+
+       if (myrank.eq.1) then
+          do ii=1,3
+             open(171,file=outtworknames(ii),status="unknown",iostat=myiostat)
+             call checkiostat(myiostat,"opening "//outtworknames(ii))
+             do i=0,numdata
+                write(171,'(A25,F10.5,400F15.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
+                     totworksum0(i,ii),worksum0(i,ii,:)
+             enddo
+             close(171)
+          enddo
+       endif
+       call mpibarrier()
+       deallocate(worksum0,totworksum0)
+
+       if (act21circ.ne.0) then
+          allocate(angworksum0(0:numdata,3,numpulses), totangworksum0(0:numdata,3), dipole_ang(0:numdata,3), &
+               each_efield_ang(0:numdata,3,numpulses), moment(0:numdata))
+          angworksum0=0;  totangworksum0=0; dipole_ang=0;   each_efield_ang=0;    moment=0
+
+!! not worrying about complex values
+
+          dipole_ang(:,1) = real(dipolearrays(:,2) * dipole_diff(:,3) - dipolearrays(:,3) * dipole_diff(:,2),8)
+          dipole_ang(:,2) = real(dipolearrays(:,3) * dipole_diff(:,1) - dipolearrays(:,1) * dipole_diff(:,3),8)
+          dipole_ang(:,3) = real(dipolearrays(:,1) * dipole_diff(:,2) - dipolearrays(:,2) * dipole_diff(:,1),8)
+
+          moment(:) = real(dipolearrays(:,1))**2 + real(dipolearrays(:,2))**2 + real(dipolearrays(:,3))**2
+
+          do i=1,numpulses
+             each_efield_ang(:,1,i) = real(dipolearrays(:,2) * each_efield(:,3,i) - dipolearrays(:,3) * each_efield(:,2,i),8)
+             each_efield_ang(:,2,i) = real(dipolearrays(:,3) * each_efield(:,1,i) - dipolearrays(:,1) * each_efield(:,3,i),8)
+             each_efield_ang(:,3,i) = real(dipolearrays(:,1) * each_efield(:,2,i) - dipolearrays(:,2) * each_efield(:,1,i),8)
+          enddo
+
+          angworksum0=0
+          do ipulse=1,numpulses
+
+!! real-valued variables all
+             if (moment(0).ne.0) then
+                angworksum0(0,:,ipulse) = (-1) * dipole_ang(0,:) * each_efield_ang(0,:,ipulse) / moment(0) * par_timestep * autosteps
+             endif
+             do i=1,numdata
+                if (moment(i).ne.0) then
+                   angworksum0(i,:,ipulse) = angworksum0(i-1,:,ipulse) - dipole_ang(i,:) * each_efield_ang(i,:,ipulse) / moment(i) &
+                        * par_timestep * autosteps
+                else
+                   angworksum0(i,:,ipulse) = angworksum0(i-1,:,ipulse)
+                endif
+             enddo
+          enddo
+          totangworksum0(:,:)=0d0
+          do ipulse=1,numpulses
+             totangworksum0(:,:)=totangworksum0(:,:)+angworksum0(:,:,ipulse)
+          enddo
+
+          if (myrank.eq.1) then
+             do ii=1,3
+                open(171,file=outangworknames(ii),status="unknown",iostat=myiostat)
+                call checkiostat(myiostat,"opening "//outangworknames(ii))
+                do i=0,numdata
+
+!! not worrying about complex values
+
+                   write(171,'(A25,F10.5,400F15.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
+                        totangworksum0(i,ii),angworksum0(i,ii,:)
+
+                enddo
+                close(171)
+             enddo
+          endif
+          call mpibarrier()
+          deallocate(angworksum0,totangworksum0,dipole_ang, each_efield_ang,moment)
+       endif
+       deallocate(dipole_diff)
+    endif
+#endif
+
+    if (act21circ.ne.0) then
+       numft=9
+    else
+       numft=3
+    endif
+
+    allocate(fftrans(0:numdata,numft), eft(0:numdata,numft), each_eft(0:numdata,numft,numpulses))
+    fftrans=0; eft=0; each_eft=0
+
+    fftrans(:,1:3)=dipolearrays(:,:)
+    eft(:,1:3)=efield(:,:) 
+    each_eft(:,1:3,:)=each_efield(:,:,:)
+
+    deallocate(efield,each_efield,dipolearrays)
 
     do i=0,numdata
-       fftrans(i) = fftrans(i) * windowfunct(i,numdata)
+       fftrans(i,1:3) = fftrans(i,1:3) * windowfunct(i,numdata)
     enddo
 
     if (pulsewindowtoo.ne.0) then
        do i=0,numdata
-          all_eft(i,:)=all_eft(i,:) * windowfunct(i,numdata)
+          each_eft(i,1:3,:)=each_eft(i,1:3,:) * windowfunct(i,numdata)
+          eft(i,1:3)=eft(i,1:3) * windowfunct(i,numdata)
        enddo
     endif
 
-    eft=0
-    do ipulse=1,numpulses
-       eft(:)=eft(:)+all_eft(:,ipulse)
+    do ii=1,3
+       call zfftf_wrap_diff(numdata+1,fftrans(:,ii),ftdiff)
+       call zfftf_wrap(numdata+1,eft(:,ii))
+       do ipulse=1,numpulses
+          call zfftf_wrap(numdata+1,each_eft(:,ii,ipulse))
+       enddo
     enddo
 
-    if (myrank.eq.1) then
-       open(171,file=outename,status="unknown",iostat=myiostat)
-       call checkiostat(myiostat,"opening "//outename)
-       write(171,*,iostat=myiostat) "#   ", numdata
-       call checkiostat(myiostat,"writing "//outename)
-       do i=0,numdata
-          write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  i*par_timestep*autosteps, &
-               fftrans(i),eft(i),all_eft(i,:)
-       enddo
-       call checkiostat(myiostat,"writing "//outename)
-       close(171)
+    fftrans(:,1:3)=fftrans(:,1:3)     * par_timestep * autosteps
+    eft(:,1:3)=eft(:,1:3)             * par_timestep * autosteps
+    each_eft(:,1:3,:)=each_eft(:,1:3,:) * par_timestep * autosteps
 
-       open(171,file=outtworkname,status="unknown",iostat=myiostat)
-       call checkiostat(myiostat,"opening "//outtworkname)
-       do i=0,numdata
-          write(171,'(A25,F10.5,400F15.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
-               totworksum0(i),worksum0(i,:)
-       enddo
-       close(171)
+    if (act21circ.ne.0) then
+!! XY, XZ, YX, YZ, ZX, ZY
+
+       fftrans(:,4) = ( fftrans(:,1) + (0d0,1d0) * fftrans(:,2) )/sqrt(2d0)
+       fftrans(:,5) = ( fftrans(:,1) + (0d0,1d0) * fftrans(:,3) )/sqrt(2d0)
+       fftrans(:,6) = ( fftrans(:,2) + (0d0,1d0) * fftrans(:,1) )/sqrt(2d0)
+       fftrans(:,7) = ( fftrans(:,2) + (0d0,1d0) * fftrans(:,3) )/sqrt(2d0)
+       fftrans(:,8) = ( fftrans(:,3) + (0d0,1d0) * fftrans(:,1) )/sqrt(2d0)
+       fftrans(:,9) = ( fftrans(:,3) + (0d0,1d0) * fftrans(:,2) )/sqrt(2d0)
+
+       eft(:,4) = ( eft(:,1) + (0d0,1d0) * eft(:,2) )/sqrt(2d0)
+       eft(:,5) = ( eft(:,1) + (0d0,1d0) * eft(:,3) )/sqrt(2d0)
+       eft(:,6) = ( eft(:,2) + (0d0,1d0) * eft(:,1) )/sqrt(2d0)
+       eft(:,7) = ( eft(:,2) + (0d0,1d0) * eft(:,3) )/sqrt(2d0)
+       eft(:,8) = ( eft(:,3) + (0d0,1d0) * eft(:,1) )/sqrt(2d0)
+       eft(:,9) = ( eft(:,3) + (0d0,1d0) * eft(:,2) )/sqrt(2d0)
+
+       each_eft(:,4,:) = ( each_eft(:,1,:) + (0d0,1d0) * each_eft(:,2,:) )/sqrt(2d0)
+       each_eft(:,5,:) = ( each_eft(:,1,:) + (0d0,1d0) * each_eft(:,3,:) )/sqrt(2d0)
+       each_eft(:,6,:) = ( each_eft(:,2,:) + (0d0,1d0) * each_eft(:,1,:) )/sqrt(2d0)
+       each_eft(:,7,:) = ( each_eft(:,2,:) + (0d0,1d0) * each_eft(:,3,:) )/sqrt(2d0)
+       each_eft(:,8,:) = ( each_eft(:,3,:) + (0d0,1d0) * each_eft(:,1,:) )/sqrt(2d0)
+       each_eft(:,9,:) = ( each_eft(:,3,:) + (0d0,1d0) * each_eft(:,2,:) )/sqrt(2d0)
+
     endif
-
-    call zfftf_wrap_diff(numdata+1,fftrans(0:),ftdiff)
-    call zfftf_wrap(numdata+1,eft(0:))
-    do ipulse=1,numpulses
-       call zfftf_wrap(numdata+1,all_eft(0:,ipulse))
-    enddo
-
-    fftrans(:)=fftrans(:)     * par_timestep * autosteps
-    eft(:)=eft(:)             * par_timestep * autosteps
-    all_eft(:,:)=all_eft(:,:) * par_timestep * autosteps
 
     Estep=2*pi/par_timestep/autosteps/(numdata+1)
 
-    xsums(0)= 0d0
-    exsums(0,:)=0d0
-    worksums(0,:) = 0d0
+    allocate(worksums(0:numdata,numft,numpulses),exsums(0:numdata,numft,numpulses),&
+         totworksums(0:numdata,numft), totexsums(0:numdata,numft), xsums(0:numdata,numft))
+    worksums=0; exsums=0; totworksums=0; totexsums=0; xsums=0
+
     if (dipolesumstart.le.0d0) then
-       exsums(0,:) = Estep * imag(fftrans(0)*conjg(all_eft(0,:))) / PI
+       do ipulse=1,numpulses
+          exsums(0,:,ipulse) = Estep * imag(fftrans(0,:)*conjg(each_eft(0,:,ipulse))) / PI
+       enddo
     endif
     do i=1,numdata
        myenergy=i*Estep
 
 !! xsum sums to N for N electrons
        if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
-          xsums(i)=xsums(i-1) + Estep * imag(fftrans(i)*conjg(eft(i))) / abs(eft(i)**2) * myenergy * 2 / PI
-          exsums(i,:)  =  exsums(i-1,:) + Estep * imag(fftrans(i)*conjg(all_eft(i,:))) / PI
-          worksums(i,:)=worksums(i-1,:) + Estep * imag(fftrans(i)*conjg(all_eft(i,:))) / PI * myenergy
+          xsums(i,:)=xsums(i-1,:) + Estep * imag(fftrans(i,:)*conjg(eft(i,:))) / abs(eft(i,:)**2) * myenergy * 2 / PI
+          do ipulse=1,numpulses
+             exsums(i,:,ipulse)  =  exsums(i-1,:,ipulse) + Estep * imag(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI
+             worksums(i,:,ipulse)=worksums(i-1,:,ipulse) + Estep * imag(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI * myenergy
+          enddo
        else
-          xsums(i)=xsums(i-1)
-          exsums(i,:)  =  exsums(i-1,:)
-          worksums(i,:)=worksums(i-1,:)
+          xsums(i,:)=xsums(i-1,:)
+          exsums(i,:,:)  =  exsums(i-1,:,:)
+          worksums(i,:,:)=worksums(i-1,:,:)
        endif
     enddo
     totexsums=0
     totworksums=0
-    do i=1,numpulses
-       totexsums(:)=totexsums(:)+exsums(:,i)
-       totworksums(:)=totworksums(:)+worksums(:,i)
+    do ipulse=1,numpulses
+       totexsums(:,:)=totexsums(:,:)+exsums(:,:,ipulse)
+       totworksums(:,:)=totworksums(:,:)+worksums(:,:,ipulse)
     enddo
 
     if (myrank.eq.1) then
-       open(171,file=outftname,status="unknown",iostat=myiostat)
-       call checkiostat(myiostat,"opening "//outftname)
-       write(171,'(A120)',iostat=myiostat) &
-            "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 
-       call checkiostat(myiostat,"writing "//outftname)
-       write(171,'(A120)') "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
-       write(171,'(A120)') "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
-       write(171,'(A120)') "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (FOR SUM RULE) IN COLUMN 10"
-       write(171,*)
+       do ii=1,numft
+          open(171,file=outftnames(ii),status="unknown",iostat=myiostat)
+          call checkiostat(myiostat,"opening "//outftnames(ii))
+          write(171,'(A120)',iostat=myiostat) &
+               "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 
+          call checkiostat(myiostat,"writing "//outftnames(ii))
+          write(171,'(A120)') "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
+          write(171,'(A120)') "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
+          write(171,'(A120)') "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (FOR SUM RULE) IN COLUMN 10"
+          write(171,*)
        
-       do i=0,numdata
-          myenergy=i*Estep
+          do i=0,numdata
+             myenergy=i*Estep
 
 !! LENGTH GAUGE (electric field) WAS FT'ed , OK with usual formula multiply by wfi
 !! UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7
 !! QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE
 !! INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (FOR SUM RULE) IN COLUMN 10
 
-          xsecunits = 5.291772108d0**2 * 4d0 * PI / 1.37036d2 * myenergy
-
-!! NOW FACTOR (2 omega) IN COLUMNS 6,7   v1.16 12-2015
-
-          write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
-               fftrans(i), eft(i), fftrans(i)*conjg(eft(i)) * 2 * myenergy, &
-               fftrans(i)*conjg(eft(i)) / abs(eft(i)**2) * xsecunits, xsums(i)
-       enddo
-       call checkiostat(myiostat,"writing "//outftname)
-       close(171)
-
-!!  NUMBER OF PHOTONS ABSORBED AND AND WORK DONE BY EACH PULSE
-!!  worksum0 the time integral converges right after pulse is finished... others take longer
-
-       open(171,file=outoworkname,status="unknown",iostat=myiostat)
-       call checkiostat(myiostat,"opening "//outoworkname)
-       do i=0,numdata
-          myenergy=i*Estep
-          if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
-             write(171,'(A25,F10.5,400F15.10)') " WORK EACH PULSE E= ", myenergy, totworksums(i),worksums(i,:)
-          endif
-       enddo
-       close(171)
-
-       open(171,file=outophotonname,status="unknown",iostat=myiostat)
-       call checkiostat(myiostat,"opening "//outophotonname)
-       do i=0,numdata
-          myenergy=i*Estep
-          if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
-             write(171,'(A25,F10.5,400F15.10)') "PHOTONS EACH PULSE E= ", myenergy, totexsums(i),exsums(i,:)
-          endif
-       enddo
-       close(171)
-
-       if (sflag.ne.0) then
-
-          thistime=numdata*par_timestep*autosteps
-          write(number,'(I7)') 1000000+floor(thistime)
-          open(171,file=outftname(1:getlen(outftname))//number(2:7),status="unknown",iostat=myiostat)
-          call checkiostat(myiostat,"opening "//outftname)
-          write(171,'(A120)',iostat=myiostat) &
-               "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 
-          call checkiostat(myiostat,"writing "//outftname)
-          write(171,'(A120)') "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
-          write(171,'(A120)') "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
-          write(171,'(A120)') "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (FOR SUM RULE) IN COLUMN 10"
-          write(171,*)
-
-          do i=0,numdata
-             myenergy=i*Estep
-
              xsecunits = 5.291772108d0**2 * 4d0 * PI / 1.37036d2 * myenergy
 
 !! NOW FACTOR (2 omega) IN COLUMNS 6,7   v1.16 12-2015
 
              write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
-                  fftrans(i), eft(i), fftrans(i)*conjg(eft(i)) * 2 * myenergy, &
-                  fftrans(i)*conjg(eft(i)) / abs(eft(i)**2) * xsecunits, xsums(i)
+                  fftrans(i,ii), eft(i,ii), fftrans(i,ii)*conjg(eft(i,ii)) * 2 * myenergy, &
+                  fftrans(i,ii)*conjg(eft(i,ii)) / abs(eft(i,ii)**2) * xsecunits, xsums(i,ii)
           enddo
-          call checkiostat(myiostat,"writing "//outftname)
+          call checkiostat(myiostat,"writing "//outftnames(ii))
           close(171)
-       endif
-    endif
 
-    deallocate(fftrans,eft,all_eft,dipole_diff,worksums,worksum0,exsums,totworksums,&
-         totworksum0,totexsums,xsums)
+!!  NUMBER OF PHOTONS ABSORBED AND AND WORK DONE BY EACH PULSE
+!!  worksum0 the time integral converges right after pulse is finished... others take longer
+
+          open(171,file=outoworknames(ii),status="unknown",iostat=myiostat)
+          call checkiostat(myiostat,"opening "//outoworknames(ii))
+          do i=0,numdata
+             myenergy=i*Estep
+             if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
+                write(171,'(A25,F10.5,400F15.10)') " WORK EACH PULSE E= ", myenergy, totworksums(i,ii),worksums(i,ii,:)
+             endif
+          enddo
+          close(171)
+
+          open(171,file=outophotonnames(ii),status="unknown",iostat=myiostat)
+          call checkiostat(myiostat,"opening "//outophotonnames(ii))
+          do i=0,numdata
+             myenergy=i*Estep
+             if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
+                write(171,'(A25,F10.5,400F15.10)') "PHOTONS EACH PULSE E= ", myenergy, totexsums(i,ii),exsums(i,ii,:)
+             endif
+          enddo
+          close(171)
+
+          if (sflag.ne.0) then
+
+             thistime=numdata*par_timestep*autosteps
+             write(number,'(I7)') 1000000+floor(thistime)
+             open(171,file=outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7),status="unknown",iostat=myiostat)
+             call checkiostat(myiostat,"opening "//outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7))
+             write(171,'(A120)',iostat=myiostat) &
+                  "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 
+             call checkiostat(myiostat,"writing "//outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7))
+             write(171,'(A120)') "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
+             write(171,'(A120)') "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
+             write(171,'(A120)') "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (FOR SUM RULE) IN COLUMN 10"
+             write(171,*)
+
+             do i=0,numdata
+                myenergy=i*Estep
+
+                xsecunits = 5.291772108d0**2 * 4d0 * PI / 1.37036d2 * myenergy
+
+!! NOW FACTOR (2 omega) IN COLUMNS 6,7   v1.16 12-2015
+
+                write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
+                     fftrans(i,ii), eft(i,ii), fftrans(i,ii)*conjg(eft(i,ii)) * 2 * myenergy, &
+                     fftrans(i,ii)*conjg(eft(i,ii)) / abs(eft(i,ii)**2) * xsecunits, xsums(i,ii)
+             enddo
+             call checkiostat(myiostat,"writing "//outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7))
+             close(171)
+          endif
+       enddo    !! do ii=1,numft
+    endif  !! myrank
+    call mpibarrier()
+
+    deallocate(fftrans,eft,each_eft)
+    deallocate(worksums,exsums,totworksums,totexsums,xsums)
 
   end subroutine dipolecall
 

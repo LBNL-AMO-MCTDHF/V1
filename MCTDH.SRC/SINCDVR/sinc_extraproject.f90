@@ -20,8 +20,8 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   integer :: nargs, idim ,i,j,len,getlen,iproc,k,ierr,ii,myiostat
   integer :: toepflag  !! toepflag deprecated; dummy
   real*8 :: rsq(griddim)
-  character (len=200) :: buffer
-  character (len=200) :: nullbuff="                                                                                "
+  character (len=SLN) :: buffer
+  character (len=SLN) :: nullbuff
   integer, allocatable :: proclist(:,:,:),newproclist(:,:,:)
   NAMELIST /sincparinp/        numpoints,spacing,griddim,notwoflag,nuccharges,orblanthresh, &
        numcenters,centershift,orblanorder,nonucrepflag,debugflag, &
@@ -39,6 +39,10 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
 #else
   nargs=iargc()
 #endif
+
+  do i=1,SLN
+     nullbuff(i:i)=" "
+  enddo
 
 !!! MPI INIT
 
