@@ -73,11 +73,10 @@ contains
        stop
     endif
 
-    outspfs(:,:)=0.d0
-
     call system_clock(itime)
 
-    mydot(:,:)=0d0; derdot(:,:)=0d0
+    mydot(:,:)=0d0; derdot(:,:)=0d0; prodot(:,:)=0d0
+    outspfs(:,:)=0.d0
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
@@ -124,8 +123,6 @@ contains
 !        prodot is     (pro/proder,pro/proder)
 
 ! need all nspf^2 even if parorbsplit.eq.1
-
-       prodot(:,:)=0d0
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j,csum)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
@@ -218,7 +215,7 @@ contains
        return
     endif
 
-    mydot0(:,:)=0d0; derdot0(:,:)=0d0
+    mydot0(:,:)=0d0; derdot0(:,:)=0d0; mydot(:,:)=0d0; derdot(:,:)=0d0; conmat(:,:)=0
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
@@ -305,6 +302,7 @@ contains
     endif
 
 !! with timefac
+    conmat=0d0
     call getconmat(thistime,ireduced,conmat)
 
     call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,inspfs,&
@@ -338,7 +336,7 @@ contains
        return
     endif
 
-    mydot(:,:)=0d0
+    mydot(:,:)=0d0;  conmat(:,:)=0d0;  mymat(:,:)=0d0
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
@@ -442,6 +440,8 @@ contains
 
 !! with timefac
     midtime=(time1+time2)/2d0
+
+    conmat=0d0
     call getconmat(midtime,0,conmat)
 
     conmat(:,:)=conmat(:,:) * (time2-time1)
@@ -514,6 +514,10 @@ contains
        stop
     endif
 
+    workmult=0; spfinvr=0; spfinvrsq=0; spfproderiv=0
+    outspfs(:,:)=0d0
+
+
 !! sum over fast index reduced matrices, because doing spfinvrsq= reducedinvrsq * inspfs 
 !! BUT 1) store in transposed order and 2) have to reverse the call in BLAS
 
@@ -529,8 +533,6 @@ contains
             nspf, DATAZERO, spfproderiv(:,lowspf:highspf), spfsize)
     endif
   
-    outspfs(:,:)=0.d0
-
     call mult_ke(spfinvrsq(:,lowspf:highspf),outspfs(:,lowspf:highspf),&
          numspf,timingdir,notiming)
 
@@ -659,7 +661,7 @@ contains
 
     numcalledhere=numcalledhere+1
 
-    spfmult(:,:)=0.d0
+    spfmult=0; workmult=0; spfinvr=0; spfr=0; spfinvrsq=0; spfproderiv=0
 
 !! sum over fast index reduced matrices, because doing spfinvrsq= reducedinvrsq * inspfs 
 !!   BUT 1) store in transposed order and 2) have to reverse the call in BLAS
@@ -922,9 +924,12 @@ contains
 
     numcalledhere=numcalledhere+1
 
+    xspfsp(:)=0d0
     if (tot_adim.gt.0) then
        xavec(:,:)=RESHAPE(in_xpsi(1:tot_adim*mcscfnum),(/tot_adim,mcscfnum/))
        yyy%cmfavec(:,:,0)=xavec(:,:)
+       avector=0
+       xavecp(:,:)=0d0
     endif
 
     spfstart=tot_adim*mcscfnum+1;     spfend=tot_adim*mcscfnum+totspfdim
@@ -933,11 +938,6 @@ contains
     yyy%cmfspfs(:,0)=xspfs(:)
 
     call get_stuff0(thistime,times)
-
-    xspfsp(:)=0d0
-    if (tot_adim.gt.0) then
-       xavecp(:,:)=0d0
-    endif
 
 !! ireduced should be zero right   07-2015
 
@@ -1056,7 +1056,6 @@ contains
     if (numspf.gt.0) then
 
        allocate(tempspfs(spfsize,lowspf:highspf+1), workspfs(spfsize,lowspf:highspf+1))
-
        spfsout(:,:)=0d0; tempspfs(:,:)=0d0; workspfs(:,:)=0d0
 
        do jjj=0,itop

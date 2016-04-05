@@ -274,6 +274,9 @@ contains
     DATATYPE,intent(in) :: com_inspfs(spfsmallsize,nspf)
     DATATYPE,intent(out) :: com_outspfs(spfsmallsize,nspf)
     DATATYPE ::  inspfs(spfsize,nspf), outspfs(spfsize,nspf)  !! AUTOMATIC
+
+    inspfs=0; outspfs=0
+
     call spfs_expand(com_inspfs,inspfs)
     call jacoperate0(1,1,inspfs,outspfs)
     call spfs_compact(outspfs,com_outspfs)
@@ -300,7 +303,6 @@ contains
     DATATYPE,intent(in) ::  inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
     DATATYPE,intent(out) :: outspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
     DATATYPE :: workspfs(spfsize,nspf)   !! AUTOMATIC
-
     integer :: lowspf,highspf,itime,jtime,atime,btime
 
     if (parorbsplit.ne.1) then
@@ -349,7 +351,9 @@ contains
     DATATYPE,intent(out) :: com_outspfs(spfsmallsize,firstmpiorb:firstmpiorb+orbsperproc-1)
     DATATYPE ::  inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1),  &
          outspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)  !! AUTOMATIC
+
     inspfs=0; outspfs=0
+
     call spfs_expand_local(com_inspfs,inspfs)
     call parjacoperate0(1,1,inspfs,outspfs)
     call spfs_compact_local(outspfs,com_outspfs)
@@ -486,7 +490,6 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
   allocate(aspfs(spfsize,maxnorbs), proppspfs(spfsize,maxnorbs),&
        outspfs(spfsize,maxnorbs),tempspfs(spfsize,maxnorbs),&
        inspfs(spfsize,maxnorbs))
-
   aspfs=0; proppspfs=0; outspfs=0; tempspfs=0; inspfs=0
 
   inspfs(:,1:nspf)=in_inspfs(:,:)
@@ -497,7 +500,6 @@ subroutine expoprop(time1,time2,in_inspfs, numiters)
   else
      allocate(com_aspfs(1,maxnorbs), com_proppspfs(1,maxnorbs), com_outspfs(1,maxnorbs))
   endif
-
   com_aspfs=0; com_proppspfs=0; com_outspfs=0
 
   tdiff=(time2-time1)
