@@ -10,6 +10,7 @@ module dipolemod
   integer :: calledflag=0,xcalledflag=0
 end module dipolemod
 
+
 subroutine dipolesub_initial()
   use dipolemod
   use parameters
@@ -24,6 +25,204 @@ subroutine dipolesub_initial()
   allocate(dipolenormsq(0:autosize))
 
 end subroutine
+
+
+subroutine dipolesub_final()
+  use dipolemod
+  implicit none
+  deallocate( dipoleexpects, dipolenormsq)
+
+end subroutine dipolesub_final
+
+
+subroutine checkorbsetrange(checknspf,flag)
+  use parameters
+  implicit none
+  integer,intent(in) :: checknspf
+  integer,intent(out) :: flag
+  flag=0
+  if (nspf.ne.checknspf) then
+     flag=1
+  endif
+end subroutine checkorbsetrange
+
+
+module dipbiomod
+  use biorthotypemod
+  implicit none
+  type(biorthotype),target :: dipbiovar
+end module dipbiomod
+
+
+subroutine dipolesub_one(www,bioww,in_abra,&    !! ok unused bioww
+     in_aket,inspfs,dipole_expects)
+  use r_parameters
+  use spfsize_parameters
+  use walkmod
+  use fileptrmod
+  use dotmod
+  use dipbiomod
+  use biorthomod
+  use arbitrarymultmod
+  use orbgathersubmod
+  use mpisubmod
+  implicit none
+  type(walktype),intent(in) :: www,bioww
+  DATATYPE, intent(in) :: inspfs(  spfsize, www%nspf ), &
+       in_abra(numr,www%firstconfig:www%lastconfig),&
+       in_aket(numr,www%firstconfig:www%lastconfig)
+  DATATYPE,intent(out) :: dipole_expects(3)
+  DATATYPE,allocatable :: tempvector(:,:),tempspfs(:,:),abra(:,:),workspfs(:,:),&
+       aket(:,:)
+  DATATYPE :: nullcomplex(1),dipoles(3), dipolemat(www%nspf,www%nspf),csum
+  DATAECS :: rvector(numr)
+!!$  DATATYPE :: norm   !! datatype in case abra.ne.aket
+  integer :: i,lowspf,highspf,numspf
+#ifdef CNORMFLAG
+  DATATYPE,target :: smo(www%nspf,www%nspf)
+#endif
+
+  lowspf=1; highspf=www%nspf
+  if (parorbsplit.eq.1) then
+     call checkorbsetrange(www%nspf,i)
+     if (i.ne.0) then
+        OFLWR "error exit, can't do dipolesub parorbsplit.eq.1 with",www%nspf,"orbitals"; CFLST
+     endif
+     call getOrbSetRange(lowspf,highspf)
+  endif
+  numspf=highspf-lowspf+1
+ 
+  allocate(tempvector(numr,www%firstconfig:www%lastconfig+1), tempspfs(spfsize,lowspf:highspf+1),&
+       abra(numr,www%firstconfig:www%lastconfig+1),workspfs(spfsize,www%nspf),&
+       aket(numr,www%firstconfig:www%lastconfig+1))
+
+  tempvector=0; tempspfs=0; workspfs=0; abra=0; aket=0
+
+  if (www%lastconfig.ge.www%firstconfig) then
+     abra(:,www%firstconfig:www%lastconfig)=in_abra(:,:)
+     aket(:,www%firstconfig:www%lastconfig)=in_aket(:,:)
+  endif
+
+#ifndef CNORMFLAG
+  workspfs(:,:)=inspfs(:,:)
+#else
+  call bioset(dipbiovar,smo,numr,bioww)
+  dipbiovar%hermonly=.true.
+  call biortho(inspfs,inspfs,workspfs,abra,dipbiovar)
+  dipbiovar%hermonly=.false.
+#endif
+
+
+!!$  csum=dot(abra,aket,www%totadim)
+!!$  if (www%parconsplit.ne.0) then
+!!$     call mympireduceone(csum)
+!!$  endif
+!!$  norm=sqrt(csum)
+
+!! independent of R for now.  multiply by R for prolate  (R set to 1 for atom)
+  call nucdipvalue(nullcomplex,dipoles)
+
+  do i=1,numr
+     tempvector(i,:)=aket(i,:)*bondpoints(i)
+  enddo
+  csum=0d0
+  if (www%totadim.gt.0) then
+     csum=hermdot(abra,tempvector,www%totadim)
+  endif
+  if (www%parconsplit.ne.0) then
+     call mympireduceone(csum)
+  endif
+  dipoles(:)=dipoles(:)*csum
+
+!! Z DIPOLE
+
+  dipolemat(:,:)=0d0
+  if (numspf.gt.0) then
+     call mult_zdipole(numspf,inspfs(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
+     call MYGEMM('C','N',www%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
+          tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), www%nspf)
+  endif
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(dipolemat,www%nspf)
+  endif
+  if (parorbsplit.eq.3) then
+     call mympireduce(dipolemat(:,:),www%nspf**2)
+  endif
+
+  rvector(:)=bondpoints(:)
+  call arbitraryconfig_mult_singles(www,dipolemat,rvector,aket,tempvector,numr)
+  dipole_expects(3)=0d0
+  if (www%totadim.gt.0) then
+     dipole_expects(3)=hermdot(abra,tempvector,www%totadim)
+  endif
+  if (www%parconsplit.ne.0) then
+     call mympireduceone(dipole_expects(3))
+  endif
+  dipole_expects(3)=dipole_expects(3) + dipoles(3)
+
+!! Y DIPOLE
+
+  dipolemat(:,:)=0d0
+  if (numspf.gt.0) then
+     call mult_ydipole(numspf,inspfs(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
+
+     call MYGEMM('C','N',www%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
+          tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), www%nspf)
+  endif
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(dipolemat,www%nspf)
+  endif
+  if (parorbsplit.eq.3) then
+     call mympireduce(dipolemat(:,:),www%nspf**2)
+  endif
+
+  rvector(:)=bondpoints(:)
+  call arbitraryconfig_mult_singles(www,dipolemat,rvector,aket,tempvector,numr)
+  dipole_expects(2)=0d0
+  if (www%totadim.gt.0) then
+     dipole_expects(2)=hermdot(abra,tempvector,www%totadim)
+  endif
+  if (www%parconsplit.ne.0) then
+     call mympireduceone(dipole_expects(2))
+  endif
+  dipole_expects(2)=dipole_expects(2) + dipoles(2)
+
+!! X DIPOLE
+
+  dipolemat(:,:)=0d0
+  if (numspf.gt.0) then
+     call mult_xdipole(numspf,inspfs(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
+
+     call MYGEMM('C','N',www%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
+          tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), www%nspf)
+  endif
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(dipolemat,www%nspf)
+  endif
+  if (parorbsplit.eq.3) then
+     call mympireduce(dipolemat(:,:),www%nspf**2)
+  endif
+
+  rvector(:)=bondpoints(:)
+  call arbitraryconfig_mult_singles(www,dipolemat,rvector,aket,tempvector,numr)
+  dipole_expects(1)=0d0
+  if (www%totadim.gt.0) then
+     dipole_expects(1)=hermdot(abra,tempvector,www%totadim)
+  endif
+  if (www%parconsplit.ne.0) then
+     call mympireduceone(dipole_expects(1))
+  endif
+  dipole_expects(1)=dipole_expects(1) + dipoles(1)
+
+  deallocate(tempvector,tempspfs,abra,aket,workspfs)
+
+!!$#ifdef CNORMFLAG
+!!$  dipole_expects(1)=dipole_expects(1)*abs(norm)/norm
+!!$  dipole_expects(2)=dipole_expects(2)*abs(norm)/norm
+!!$  dipole_expects(3)=dipole_expects(3)*abs(norm)/norm
+!!$#endif
+
+end subroutine dipolesub_one
 
 
 subroutine dipolesub()
@@ -224,11 +423,15 @@ contains
     DATATYPE,intent(in) :: indipolearrays(0:autosize,3)
     character(len=SLN),intent(in) :: outenames(3), outtworknames(3), outangworknames(3), &
          outftnames(9), outoworknames(9), outophotonnames(9)
-    complex*16,allocatable :: fftrans(:,:),eft(:,:),each_eft(:,:,:),dipole_diff(:,:),dipolearrays(:,:),&
+    complex*16,allocatable :: fftrans(:,:),eft(:,:),each_eft(:,:,:),dipolearrays(:,:),&
          efield(:,:), each_efield(:,:,:)
-    real*8, allocatable :: worksums(:,:,:), worksum0(:,:,:), exsums(:,:,:), totworksums(:,:),&
-         totworksum0(:,:), totexsums(:,:), xsums(:,:), each_efield_ang(:,:,:), &
+    real*8, allocatable :: worksums(:,:,:), exsums(:,:,:), totworksums(:,:),&
+         totexsums(:,:), xsums(:,:)
+#ifndef CNORMFLAG
+    complex*16,allocatable :: dipole_diff(:,:)
+    real*8, allocatable :: worksum0(:,:,:), totworksum0(:,:), each_efield_ang(:,:,:), &
          dipole_ang(:,:), moment(:), angworksum0(:,:,:), totangworksum0(:,:)
+#endif
     DATATYPE :: pots(3,numpulses)
     real*8 :: estep, thistime, myenergy,xsecunits, windowfunct
     integer :: i,getlen,myiostat,ipulse,numft
@@ -562,203 +765,4 @@ contains
   end subroutine dipolecall
 
 end subroutine dipolesub
-
-
-subroutine checkorbsetrange(checknspf,flag)
-  use parameters
-  implicit none
-  integer,intent(in) :: checknspf
-  integer,intent(out) :: flag
-  flag=0
-  if (nspf.ne.checknspf) then
-     flag=1
-  endif
-end subroutine checkorbsetrange
-
-
-module dipbiomod
-  use biorthotypemod
-  implicit none
-  type(biorthotype),target :: dipbiovar
-end module dipbiomod
-
-
-subroutine dipolesub_one(www,bioww,in_abra,&    !! ok unused bioww
-     in_aket,inspfs,dipole_expects)
-  use r_parameters
-  use spfsize_parameters
-  use walkmod
-  use fileptrmod
-  use dotmod
-  use dipbiomod
-  use biorthomod
-  use arbitrarymultmod
-  use orbgathersubmod
-  use mpisubmod
-  implicit none
-  type(walktype),intent(in) :: www,bioww
-  DATATYPE, intent(in) :: inspfs(  spfsize, www%nspf ), &
-       in_abra(numr,www%firstconfig:www%lastconfig),&
-       in_aket(numr,www%firstconfig:www%lastconfig)
-  DATATYPE,intent(out) :: dipole_expects(3)
-  DATATYPE,allocatable :: tempvector(:,:),tempspfs(:,:),abra(:,:),workspfs(:,:),&
-       aket(:,:)
-  DATATYPE :: nullcomplex(1),dipoles(3), dipolemat(www%nspf,www%nspf),csum
-  DATAECS :: rvector(numr)
-!!$  DATATYPE :: norm   !! datatype in case abra.ne.aket
-  integer :: i,lowspf,highspf,numspf
-#ifdef CNORMFLAG
-  DATATYPE,target :: smo(www%nspf,www%nspf)
-#endif
-
-  lowspf=1; highspf=www%nspf
-  if (parorbsplit.eq.1) then
-     call checkorbsetrange(www%nspf,i)
-     if (i.ne.0) then
-        OFLWR "error exit, can't do dipolesub parorbsplit.eq.1 with",www%nspf,"orbitals"; CFLST
-     endif
-     call getOrbSetRange(lowspf,highspf)
-  endif
-  numspf=highspf-lowspf+1
- 
-  allocate(tempvector(numr,www%firstconfig:www%lastconfig+1), tempspfs(spfsize,lowspf:highspf+1),&
-       abra(numr,www%firstconfig:www%lastconfig+1),workspfs(spfsize,www%nspf),&
-       aket(numr,www%firstconfig:www%lastconfig+1))
-
-  tempvector=0; tempspfs=0; workspfs=0; abra=0; aket=0
-
-  if (www%lastconfig.ge.www%firstconfig) then
-     abra(:,www%firstconfig:www%lastconfig)=in_abra(:,:)
-     aket(:,www%firstconfig:www%lastconfig)=in_aket(:,:)
-  endif
-
-#ifndef CNORMFLAG
-  workspfs(:,:)=inspfs(:,:)
-#else
-  call bioset(dipbiovar,smo,numr,bioww)
-  dipbiovar%hermonly=.true.
-  call biortho(inspfs,inspfs,workspfs,abra,dipbiovar)
-  dipbiovar%hermonly=.false.
-#endif
-
-
-!!$  csum=dot(abra,aket,www%totadim)
-!!$  if (www%parconsplit.ne.0) then
-!!$     call mympireduceone(csum)
-!!$  endif
-!!$  norm=sqrt(csum)
-
-!! independent of R for now.  multiply by R for prolate  (R set to 1 for atom)
-  call nucdipvalue(nullcomplex,dipoles)
-
-  do i=1,numr
-     tempvector(i,:)=aket(i,:)*bondpoints(i)
-  enddo
-  csum=0d0
-  if (www%totadim.gt.0) then
-     csum=hermdot(abra,tempvector,www%totadim)
-  endif
-  if (www%parconsplit.ne.0) then
-     call mympireduceone(csum)
-  endif
-  dipoles(:)=dipoles(:)*csum
-
-!! Z DIPOLE
-
-  dipolemat(:,:)=0d0
-  if (numspf.gt.0) then
-     call mult_zdipole(numspf,inspfs(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
-     call MYGEMM('C','N',www%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
-          tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), www%nspf)
-  endif
-  if (parorbsplit.eq.1) then
-     call mpiorbgather(dipolemat,www%nspf)
-  endif
-  if (parorbsplit.eq.3) then
-     call mympireduce(dipolemat(:,:),www%nspf**2)
-  endif
-
-  rvector(:)=bondpoints(:)
-  call arbitraryconfig_mult_singles(www,dipolemat,rvector,aket,tempvector,numr)
-  dipole_expects(3)=0d0
-  if (www%totadim.gt.0) then
-     dipole_expects(3)=hermdot(abra,tempvector,www%totadim)
-  endif
-  if (www%parconsplit.ne.0) then
-     call mympireduceone(dipole_expects(3))
-  endif
-  dipole_expects(3)=dipole_expects(3) + dipoles(3)
-
-!! Y DIPOLE
-
-  dipolemat(:,:)=0d0
-  if (numspf.gt.0) then
-     call mult_ydipole(numspf,inspfs(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
-
-     call MYGEMM('C','N',www%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
-          tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), www%nspf)
-  endif
-  if (parorbsplit.eq.1) then
-     call mpiorbgather(dipolemat,www%nspf)
-  endif
-  if (parorbsplit.eq.3) then
-     call mympireduce(dipolemat(:,:),www%nspf**2)
-  endif
-
-  rvector(:)=bondpoints(:)
-  call arbitraryconfig_mult_singles(www,dipolemat,rvector,aket,tempvector,numr)
-  dipole_expects(2)=0d0
-  if (www%totadim.gt.0) then
-     dipole_expects(2)=hermdot(abra,tempvector,www%totadim)
-  endif
-  if (www%parconsplit.ne.0) then
-     call mympireduceone(dipole_expects(2))
-  endif
-  dipole_expects(2)=dipole_expects(2) + dipoles(2)
-
-!! X DIPOLE
-
-  dipolemat(:,:)=0d0
-  if (numspf.gt.0) then
-     call mult_xdipole(numspf,inspfs(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
-
-     call MYGEMM('C','N',www%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
-          tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), www%nspf)
-  endif
-  if (parorbsplit.eq.1) then
-     call mpiorbgather(dipolemat,www%nspf)
-  endif
-  if (parorbsplit.eq.3) then
-     call mympireduce(dipolemat(:,:),www%nspf**2)
-  endif
-
-  rvector(:)=bondpoints(:)
-  call arbitraryconfig_mult_singles(www,dipolemat,rvector,aket,tempvector,numr)
-  dipole_expects(1)=0d0
-  if (www%totadim.gt.0) then
-     dipole_expects(1)=hermdot(abra,tempvector,www%totadim)
-  endif
-  if (www%parconsplit.ne.0) then
-     call mympireduceone(dipole_expects(1))
-  endif
-  dipole_expects(1)=dipole_expects(1) + dipoles(1)
-
-  deallocate(tempvector,tempspfs,abra,aket,workspfs)
-
-!!$#ifdef CNORMFLAG
-!!$  dipole_expects(1)=dipole_expects(1)*abs(norm)/norm
-!!$  dipole_expects(2)=dipole_expects(2)*abs(norm)/norm
-!!$  dipole_expects(3)=dipole_expects(3)*abs(norm)/norm
-!!$#endif
-
-end subroutine dipolesub_one
-
-
-subroutine dipolesub_final()
-  use dipolemod
-  implicit none
-  deallocate( dipoleexpects, dipolenormsq)
-
-end subroutine dipolesub_final
-
 
