@@ -1053,10 +1053,12 @@ contains
     endif
     numspf=highspf-lowspf+1
 
+    spfsout(:,:)=0d0; 
+
     if (numspf.gt.0) then
 
        allocate(tempspfs(spfsize,lowspf:highspf+1), workspfs(spfsize,lowspf:highspf+1))
-       spfsout(:,:)=0d0; tempspfs(:,:)=0d0; workspfs(:,:)=0d0
+       tempspfs(:,:)=0d0; workspfs(:,:)=0d0
 
        do jjj=0,itop
           call actreduced00(lowspf,highspf,dentimeflag,thistime,spfsin,spfsin,&

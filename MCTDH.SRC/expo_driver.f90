@@ -56,8 +56,6 @@ contains
     DATATYPE :: bigwork(spfsize,nspf),   workspfs(spfsize,lowspf:highspf),& 
          tempspfs(spfsize,lowspf:highspf)       !! AUTOMATIC
 
-    bigwork=0; workspfs=0; tempspfs=0
-
     numcalledhere=numcalledhere+1
 
     if (highspf.lt.lowspf) then
@@ -66,6 +64,8 @@ contains
        call waitawhile()
        stop
     endif
+
+    bigwork=0; workspfs=0; tempspfs=0
 
     numspf=highspf-lowspf+1
 
