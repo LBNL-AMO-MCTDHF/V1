@@ -427,11 +427,9 @@ contains
          efield(:,:), each_efield(:,:,:)
     real*8, allocatable :: worksums(:,:,:), exsums(:,:,:), totworksums(:,:),&
          totexsums(:,:), xsums(:,:)
-#ifndef CNORMFLAG
     complex*16,allocatable :: dipole_diff(:,:)
     real*8, allocatable :: worksum0(:,:,:), totworksum0(:,:), each_efield_ang(:,:,:), &
          dipole_ang(:,:), moment(:), angworksum0(:,:,:), totangworksum0(:,:)
-#endif
     DATATYPE :: pots(3,numpulses)
     real*8 :: estep, thistime, myenergy,xsecunits, windowfunct
     integer :: i,getlen,myiostat,ipulse,numft
@@ -477,7 +475,6 @@ contains
     endif
     call mpibarrier()
 
-#ifndef CNORMFLAG
     if (conjgpropflag.eq.0) then    !! work done by pulse integral dt only for non-complex-Domcke
 
        allocate(dipole_diff(0:numdata,3), worksum0(0:numdata,3,numpulses), totworksum0(0:numdata,3))
@@ -573,7 +570,6 @@ contains
        endif
        deallocate(dipole_diff)
     endif
-#endif
 
     if (act21circ.ne.0) then
        numft=9
