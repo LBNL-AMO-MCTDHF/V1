@@ -471,6 +471,9 @@ subroutine cmf_prop_wfn(tin, tout)
            call end_stuff()
         endif
 
+     case default
+        OFLWR "prop_method not allowed: ", prop_method; CFLST
+
      end select   !! prop_method
 
   endif  !!improvedrelax
