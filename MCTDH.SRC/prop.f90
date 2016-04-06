@@ -297,6 +297,7 @@ subroutine cmf_prop_wfn(tin, tout)
   if (improvedrelaxflag.gt.0) then
 
      call system_clock(itime)
+
      if (spf_flag.ne.0) then
         if (improvedquadflag.gt.1.and.tin.ge.quadstarttime) then
            call quadspfs(yyy%cmfspfs(:,0), qq)
@@ -306,22 +307,21 @@ subroutine cmf_prop_wfn(tin, tout)
            call propspfs(yyy%cmfspfs(:,1), yyy%cmfspfs(:,0), time1,time2,0,qq)
            numiters=numiters+qq
         endif
-     endif
-     call system_clock(jtime);     times(4)=times(4)+jtime-itime;     itime=jtime
-
+        call system_clock(jtime);     times(4)=times(4)+jtime-itime;     itime=jtime
 !! prevent drift
-     if (parorbsplit.ne.3) then
-        call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
+        if (parorbsplit.ne.3) then
+           call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
+        endif
+        call system_clock(jtime);     times(9)=times(9)+jtime-itime;   itime=jtime
      endif
-     call system_clock(jtime);     times(9)=times(9)+jtime-itime;     itime=jtime
 
      if (improvednatflag.ne.0) then
         call replace_withnat(printflag)
+        call system_clock(jtime);     times(7)=times(7)+jtime-itime;   itime=jtime
      endif
-     call system_clock(jtime);     times(7)=times(7)+jtime-itime;     itime=jtime
 
      call all_matel()
-     call system_clock(jtime);     times(1)=times(1)+jtime-itime;    itime=jtime
+     call system_clock(jtime);     times(1)=times(1)+jtime-itime;   itime=jtime
 
      if (avector_flag.ne.0) then
         if ((improvedquadflag.eq.1.or.improvedquadflag.eq.3).and.tin.ge.aquadstarttime) then
@@ -331,14 +331,13 @@ subroutine cmf_prop_wfn(tin, tout)
            call myconfigeig(yyy%cptr(0),yyy%cmfavec(:,:,0),&
                 myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
         endif
-     endif
-     call system_clock(jtime);     times(5)=times(5)+jtime-itime;    itime=jtime
-
+        call system_clock(jtime);     times(5)=times(5)+jtime-itime;    itime=jtime
 !! prevent drift
-     if (par_consplit.eq.0) then
-        call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
+        if (par_consplit.eq.0) then
+           call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
+        endif
+        call system_clock(jtime);     times(9)=times(9)+jtime-itime;    itime=jtime
      endif
-     call system_clock(jtime);     times(9)=times(9)+jtime-itime;     itime=jtime
 
      call get_allden()
      call system_clock(jtime);        times(2)=times(2)+jtime-itime;     itime=jtime
@@ -351,8 +350,8 @@ subroutine cmf_prop_wfn(tin, tout)
      
      if (constraintflag.ne.0) then    !! probably need denmat right
         call get_constraint(tout);      
+        call system_clock(jtime);        times(7)=times(7)+jtime-itime
      endif
-     call system_clock(jtime);        times(7)=times(7)+jtime-itime;    itime=jtime
 
   else  !! IMPROVEDRELAX
 
@@ -362,9 +361,10 @@ subroutine cmf_prop_wfn(tin, tout)
 
      linearflag=0
 
+     call system_clock(itime)
+
      if (prepropflag.ne.0) then
         if (constraintflag.ne.0) then
-           call system_clock(itime)
            time1=tin;        time2=tout
            call conpropspfs(yyy%cmfspfs(:,1),yyy%cmfspfs(:,0), time1,time2)
            call system_clock(jtime);     times(4)=times(4)+jtime-itime;   itime=jtime
@@ -374,11 +374,10 @@ subroutine cmf_prop_wfn(tin, tout)
               call system_clock(jtime);     times(9)=times(9)+jtime-itime;   itime=jtime
            endif
            call all_matel()
-           call system_clock(jtime);  times(1)=times(1)+jtime-itime
+           call system_clock(jtime);  times(1)=times(1)+jtime-itime;   itime=jtime
         endif
 
         if(avector_flag.ne.0) then
-           call system_clock(itime)
            do imc=1,mcscfnum
               call cmf_prop_avector(yyy%cmfavec(:,imc,1),  &
                    yyy%cmfavec(:,imc,0), linearflag,tin,tout,imc,qq)
@@ -391,63 +390,88 @@ subroutine cmf_prop_wfn(tin, tout)
               call system_clock(jtime);     times(9)=times(9)+jtime-itime;   itime=jtime
            endif
            call get_allden()
-           call system_clock(jtime);  times(2)=times(2)+jtime-itime
+           call system_clock(jtime);  times(2)=times(2)+jtime-itime;   itime=jtime
         endif
 
-
-        if (constraintflag.ne.0) then
-           call get_constraint(tout)
-        endif
-        call system_clock(jtime); times(7)=times(7)+jtime-itime;     itime=jtime
-
-        if (drivingflag.ne.0) then
-           call drivingtrans(tout)
-        endif
-        call system_clock(jtime); times(8)=times(8)+jtime-itime;     itime=jtime
-
-        call get_reducedpot()
-        if (numfrozen.gt.0) then
-           call get_frexchange()
-        endif
-        call system_clock(jtime);     times(3)=times(3)+jtime-itime
+        call end_stuff()
 
         linearflag=1
 
      endif  !! prepropflag
 
-     do ii=0,1
-        if (spf_flag.ne.0) then
+     select case(prop_method)
+
+!! propagate independently for predictor step then same for corrector, DEFAULT
+     case(0)
+        do ii=0,1
+           call propspfs_and_stuff()
+           call cmf_prop_avector_and_stuff()
+           call get_stuff0(tout,times)
+           linearflag=1
+        enddo
+
+!! four or three-step propagations
+!!
+!!     1  2  3  4      = prop_method  
+!!  S  x        x
+!!  A  x  x  x  x
+!!  S  x  x  x  x
+!!  A  x  x  x
+!!  S     x
+!!  
+     case(1,2,3,4)
+
+        if (prop_method.eq.1.or.prop_method.eq.4) then
+           call propspfs_and_stuff()
+
            call system_clock(itime)
-           time1=tin;        time2=tout
-           call propspfs(yyy%cmfspfs(:,1),yyy%cmfspfs(:,0), time1,time2,linearflag,qq)
-           numiters=numiters+qq
-           call system_clock(jtime);     times(4)=times(4)+jtime-itime;   itime=jtime
-!! prevent drift
-           if (parorbsplit.ne.3) then
-              call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
-              call system_clock(jtime);     times(9)=times(9)+jtime-itime
+           call all_matel()
+           call system_clock(jtime);  times(1)=times(1)+jtime-itime
+
+           if (constraintflag.eq.0) then
+              linearflag=1
            endif
         endif
 
-        if(avector_flag.ne.0) then
-           call system_clock(itime)
-           do imc=1,mcscfnum
-              call cmf_prop_avector(yyy%cmfavec(:,imc,1),  &
-                   yyy%cmfavec(:,imc,0), linearflag,tin,tout,imc,qq)
-              numaiters=numaiters+qq
-           enddo
-           call system_clock(jtime);     times(5)=times(5)+jtime-itime;  itime=jtime
-!! prevent drift
-           if (par_consplit.eq.0) then
-              call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
-              call system_clock(jtime);     times(9)=times(9)+jtime-itime
-           endif
-        endif
-     
-        call get_stuff0(tout,times)
+        call cmf_prop_avector_and_stuff()
+
+        call system_clock(itime)
+        call get_allden()
+        call system_clock(jtime);  times(2)=times(2)+jtime-itime
+
+        call end_stuff()
 
         linearflag=1
-     enddo
+
+        call propspfs_and_stuff()
+
+        call system_clock(itime)
+        call all_matel()
+        call system_clock(jtime);  times(1)=times(1)+jtime-itime
+
+        if (prop_method.eq.1.or.prop_method.eq.2.or.prop_method.eq.3) then
+
+           call cmf_prop_avector_and_stuff()
+
+           call system_clock(itime)
+           call get_allden()
+           call system_clock(jtime);  times(2)=times(2)+jtime-itime
+
+        endif
+
+        call end_stuff()
+
+        if (prop_method.eq.2) then
+           call propspfs_and_stuff()
+
+           call system_clock(itime)
+           call all_matel()
+           call system_clock(jtime);  times(1)=times(1)+jtime-itime
+
+           call end_stuff()
+        endif
+
+     end select   !! prop_method
 
   endif  !!improvedrelax
 
@@ -490,6 +514,63 @@ subroutine cmf_prop_wfn(tin, tout)
         call checkiostat(myiostat," writing cmf_prop_time.dat")
         close(853)
   endif
+
+contains
+  subroutine propspfs_and_stuff()
+    implicit none
+    if (spf_flag.ne.0) then
+       call system_clock(itime)
+       time1=tin;        time2=tout
+       call propspfs(yyy%cmfspfs(:,1),yyy%cmfspfs(:,0), time1,time2,linearflag,qq)
+       numiters=numiters+qq
+       call system_clock(jtime);     times(4)=times(4)+jtime-itime;   itime=jtime
+!! prevent drift
+       if (parorbsplit.ne.3) then
+          call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
+          call system_clock(jtime);     times(9)=times(9)+jtime-itime
+       endif
+    endif
+  end subroutine propspfs_and_stuff
+
+  subroutine cmf_prop_avector_and_stuff()
+    implicit none
+    if(avector_flag.ne.0) then
+       call system_clock(itime)
+       do imc=1,mcscfnum
+          call cmf_prop_avector(yyy%cmfavec(:,imc,1),  &
+               yyy%cmfavec(:,imc,0), linearflag,tin,tout,imc,qq)
+          numaiters=numaiters+qq
+       enddo
+       call system_clock(jtime);     times(5)=times(5)+jtime-itime;  itime=jtime
+!! prevent drift
+       if (par_consplit.eq.0) then
+          call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
+          call system_clock(jtime);     times(9)=times(9)+jtime-itime
+       endif
+    endif
+  end subroutine cmf_prop_avector_and_stuff
+
+  subroutine end_stuff()
+    implicit none
+    if (constraintflag.ne.0) then
+       call system_clock(itime)
+       call get_constraint(tout)
+       call system_clock(jtime); times(7)=times(7)+jtime-itime
+    endif
+
+    if (drivingflag.ne.0) then
+       call system_clock(itime)
+       call drivingtrans(tout)
+       call system_clock(jtime); times(8)=times(8)+jtime-itime
+    endif
+
+    call system_clock(itime)
+    call get_reducedpot()
+    if (numfrozen.gt.0) then
+       call get_frexchange()
+    endif
+    call system_clock(jtime);     times(3)=times(3)+jtime-itime
+  end subroutine end_stuff
 
 end subroutine cmf_prop_wfn
 

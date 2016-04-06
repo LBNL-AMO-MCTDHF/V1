@@ -253,7 +253,6 @@ character (len=SLN) :: &         !!              !! MAY BE SET BY COMMAND LINE O
 !!{\large \quad PROPAGATION/RELAXATION}
 !!BB
 real*8 :: par_timestep=0.1d0     !! Step=        !! MEAN FIELD TIMESTEP
-integer :: prepropflag=0         !!              !! Option for three-step propagation for strong fields or constraint
 integer :: improvedrelaxflag=0   !! Relax        !! For improved versus regular relaxtion.   
 integer :: threshflag=0          !!              !! Set to 1 for regular relaxation
 real*8 :: expotol=1d-8           !!              !! Orbital krylov convergence parameter
@@ -270,6 +269,8 @@ integer :: maxaorder=100         !!              !! max lanczos order for sparse
 !!EE
 !!{\large \quad PROPAGATION}
 !!BB
+integer :: prop_method=0         !!              !! Predictor/corrector algorithm 0,1,2,3,4 also prepropflag
+integer :: prepropflag=0         !!              !! Option for pre-propagation step for strong fields or constraint
 integer :: littlesteps=1         !!              !! Sub intervals of mean field time step for avector prop
 real*8 :: finaltime=4d4          !! T=           !! length of prop.  Overridden for pulse and relax.  
 !!EE
