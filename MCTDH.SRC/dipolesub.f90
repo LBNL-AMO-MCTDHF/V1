@@ -231,7 +231,7 @@ subroutine dipolesub()
   use configmod
   use xxxmod
   use mpisubmod
-  use pulse_parameters !! conjgpropflag, numpulses in dipolecall
+  use pulse_parameters !! conjgpropflag
   implicit none
 
   DATATYPE :: myexpects(3), mcexpects(3,mcscfnum), dd(mcscfnum),&
@@ -347,8 +347,13 @@ subroutine dipolesub()
            ophotonfiles(:) = (/ xophotonfile, yophotonfile, zophotonfile, &
                 xyophotonfile, xzophotonfile, yxophotonfile, yzophotonfile, zxophotonfile, zyophotonfile /)
 
-           call dipolecall(calledflag, dipoleexpects(:,:,1), &
-                dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag)
+           if (reference_pulses.eq.0) then
+              call dipolecall(calledflag, dipoleexpects(:,:,1), &
+                   dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 0, numpulses)
+           else
+              call dipolecall(calledflag, dipoleexpects(:,:,1), &
+                   dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 1, reference_pulses)
+           endif
 
         else   !! conjgpropflag complex Domcke:
            do ii=1,4
@@ -396,9 +401,13 @@ subroutine dipolesub()
                    zxophotonfile(1:getlen(zxophotonfile))//tl(ii),&
                    zyophotonfile(1:getlen(zyophotonfile))//tl(ii) /)
 
-              call dipolecall(calledflag, dipoleexpects(:,:,ii), &
-                   dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag)
-
+              if (reference_pulses.eq.0) then
+                 call dipolecall(calledflag, dipoleexpects(:,:,ii), &
+                      dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 0, numpulses)
+              else
+                 call dipolecall(calledflag, dipoleexpects(:,:,ii), &
+                      dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 1, reference_pulses)
+              endif
            enddo
         endif    !! conjgpropflag
 
@@ -415,11 +424,11 @@ contains
 !! actually have numdata+1 data points in indipolearray
 
   subroutine dipolecall(numdata, indipolearrays, outenames, outtworknames, outangworknames, &
-       outftnames, outoworknames, outophotonnames, sflag)
+       outftnames, outoworknames, outophotonnames, sflag, referencepulses, npulses)
     use mpimod
     use pulsesubmod
     implicit none
-    integer,intent(in) :: numdata, sflag
+    integer,intent(in) :: numdata, sflag, referencepulses, npulses
     DATATYPE,intent(in) :: indipolearrays(0:autosize,3)
     character(len=SLN),intent(in) :: outenames(3), outtworknames(3), outangworknames(3), &
          outftnames(9), outoworknames(9), outophotonnames(9)
@@ -430,7 +439,7 @@ contains
     complex*16,allocatable :: dipole_diff(:,:)
     real*8, allocatable :: worksum0(:,:,:), totworksum0(:,:), each_efield_ang(:,:,:), &
          dipole_ang(:,:), moment(:), angworksum0(:,:,:), totangworksum0(:,:)
-    DATATYPE :: pots(3,numpulses)
+    DATATYPE :: pots(3,npulses)
     real*8 :: estep, thistime, myenergy,xsecunits, windowfunct
     integer :: i,getlen,myiostat,ipulse,numft
     character (len=7) :: number
@@ -441,18 +450,26 @@ contains
 
     pots=0
 
-    allocate(dipolearrays(0:numdata,3), efield(0:numdata,3), each_efield(0:numdata,3,numpulses))
+    allocate(dipolearrays(0:numdata,3), efield(0:numdata,3), each_efield(0:numdata,3,npulses))
     dipolearrays=0; efield=0; each_efield=0
 
+!! LENGTH GAUGE electric field vectdpot0
+
     do i=0,numdata
-       do ipulse=1,numpulses
-          call vectdpot0(i*par_timestep*autosteps,0,pots(:,ipulse),-1,ipulse,ipulse) !! LENGTH
-       enddo
+       if (referencepulses.eq.0) then
+          do ipulse=1,npulses
+             call vectdpot0(i*par_timestep*autosteps,0,pots(:,ipulse),-1,ipulse,ipulse)
+          enddo
+       else
+          do ipulse=1,npulses
+             call vectdpot0(i*par_timestep*autosteps,0,pots(:,ipulse),-1,ipulse+numpulses,ipulse+numpulses)
+          enddo
+       endif
        each_efield(i,:,:)=pots(:,:)
     enddo
 
     efield=0
-    do ipulse=1,numpulses
+    do ipulse=1,npulses
        efield(:,:)=efield(:,:)+each_efield(:,:,ipulse)
     enddo
     do i=0,numdata
@@ -477,7 +494,7 @@ contains
 
     if (conjgpropflag.eq.0) then    !! work done by pulse integral dt only for non-complex-Domcke
 
-       allocate(dipole_diff(0:numdata,3), worksum0(0:numdata,3,numpulses), totworksum0(0:numdata,3))
+       allocate(dipole_diff(0:numdata,3), worksum0(0:numdata,3,npulses), totworksum0(0:numdata,3))
        dipole_diff=0d0;    worksum0=0;   totworksum0=0;  
 
        do i=1,3
@@ -485,14 +502,14 @@ contains
        enddo
        dipole_diff(:,:)= dipole_diff(:,:) / par_timestep / autosteps
 
-       do ipulse=1,numpulses
+       do ipulse=1,npulses
           worksum0(0,:,ipulse) = (-1) * real( dipole_diff(0,:) * conjg(each_efield(0,:,ipulse)) , 8) * par_timestep * autosteps
           do i=1,numdata
              worksum0(i,:,ipulse)=worksum0(i-1,:,ipulse) - real( dipole_diff(i,:) * conjg(each_efield(i,:,ipulse)) , 8) * par_timestep * autosteps
           enddo
        enddo
        totworksum0(:,:)=0d0
-       do ipulse=1,numpulses
+       do ipulse=1,npulses
           totworksum0(:,:)=totworksum0(:,:)+worksum0(:,:,ipulse)
        enddo
 
@@ -511,8 +528,8 @@ contains
        deallocate(worksum0,totworksum0)
 
        if (act21circ.ne.0) then
-          allocate(angworksum0(0:numdata,3,numpulses), totangworksum0(0:numdata,3), dipole_ang(0:numdata,3), &
-               each_efield_ang(0:numdata,3,numpulses), moment(0:numdata))
+          allocate(angworksum0(0:numdata,3,npulses), totangworksum0(0:numdata,3), dipole_ang(0:numdata,3), &
+               each_efield_ang(0:numdata,3,npulses), moment(0:numdata))
           angworksum0=0;  totangworksum0=0; dipole_ang=0;   each_efield_ang=0;    moment=0
 
 !! not worrying about complex values
@@ -523,14 +540,14 @@ contains
 
           moment(:) = real(dipolearrays(:,1))**2 + real(dipolearrays(:,2))**2 + real(dipolearrays(:,3))**2
 
-          do i=1,numpulses
+          do i=1,npulses
              each_efield_ang(:,1,i) = real(dipolearrays(:,2) * each_efield(:,3,i) - dipolearrays(:,3) * each_efield(:,2,i),8)
              each_efield_ang(:,2,i) = real(dipolearrays(:,3) * each_efield(:,1,i) - dipolearrays(:,1) * each_efield(:,3,i),8)
              each_efield_ang(:,3,i) = real(dipolearrays(:,1) * each_efield(:,2,i) - dipolearrays(:,2) * each_efield(:,1,i),8)
           enddo
 
           angworksum0=0
-          do ipulse=1,numpulses
+          do ipulse=1,npulses
 
 !! real-valued variables all
              if (moment(0).ne.0) then
@@ -546,7 +563,7 @@ contains
              enddo
           enddo
           totangworksum0(:,:)=0d0
-          do ipulse=1,numpulses
+          do ipulse=1,npulses
              totangworksum0(:,:)=totangworksum0(:,:)+angworksum0(:,:,ipulse)
           enddo
 
@@ -577,7 +594,7 @@ contains
        numft=3
     endif
 
-    allocate(fftrans(0:numdata,numft), eft(0:numdata,numft), each_eft(0:numdata,numft,numpulses))
+    allocate(fftrans(0:numdata,numft), eft(0:numdata,numft), each_eft(0:numdata,numft,npulses))
     fftrans=0; eft=0; each_eft=0
 
     fftrans(:,1:3)=dipolearrays(:,:)
@@ -600,7 +617,7 @@ contains
     do ii=1,3
        call zfftf_wrap_diff(numdata+1,fftrans(:,ii),ftdiff)
        call zfftf_wrap(numdata+1,eft(:,ii))
-       do ipulse=1,numpulses
+       do ipulse=1,npulses
           call zfftf_wrap(numdata+1,each_eft(:,ii,ipulse))
        enddo
     enddo
@@ -637,12 +654,12 @@ contains
 
     Estep=2*pi/par_timestep/autosteps/(numdata+1)
 
-    allocate(worksums(0:numdata,numft,numpulses),exsums(0:numdata,numft,numpulses),&
+    allocate(worksums(0:numdata,numft,npulses),exsums(0:numdata,numft,npulses),&
          totworksums(0:numdata,numft), totexsums(0:numdata,numft), xsums(0:numdata,numft))
     worksums=0; exsums=0; totworksums=0; totexsums=0; xsums=0
 
     if (dipolesumstart.le.0d0) then
-       do ipulse=1,numpulses
+       do ipulse=1,npulses
           exsums(0,:,ipulse) = Estep * imag(fftrans(0,:)*conjg(each_eft(0,:,ipulse))) / PI
        enddo
     endif
@@ -652,7 +669,7 @@ contains
 !! xsum sums to N for N electrons
        if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
           xsums(i,:)=xsums(i-1,:) + Estep * imag(fftrans(i,:)*conjg(eft(i,:))) / abs(eft(i,:)**2) * myenergy * 2 / PI
-          do ipulse=1,numpulses
+          do ipulse=1,npulses
              exsums(i,:,ipulse)  =  exsums(i-1,:,ipulse) + Estep * imag(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI
              worksums(i,:,ipulse)=worksums(i-1,:,ipulse) + Estep * imag(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI * myenergy
           enddo
@@ -664,7 +681,7 @@ contains
     enddo
     totexsums=0
     totworksums=0
-    do ipulse=1,numpulses
+    do ipulse=1,npulses
        totexsums(:,:)=totexsums(:,:)+exsums(:,:,ipulse)
        totworksums(:,:)=totworksums(:,:)+worksums(:,:,ipulse)
     enddo

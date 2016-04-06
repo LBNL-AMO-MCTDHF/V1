@@ -368,6 +368,7 @@ character(len=SLN):: outovl="Dat/Overlaps.dat"                   !! for action 2
 character(len=SLN):: outmatel="Dat/Matel.dat"                    !! for action 20
 integer :: act21circ=0                                           !! set nonzero to enable circular polarization 
                                                                  !!     output for action 21
+integer :: reference_pulses=0                                    !! for complex Domcke action 21
 character(len=SLN):: xdipfile="Dat/XDipoleexpect.Dat",&          !! for action 21 dipole moments D(t)
  ydipfile="Dat/YDipoleexpect.Dat",&
  zdipfile="Dat/ZDipoleexpect.Dat"                 
