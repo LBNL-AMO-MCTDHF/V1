@@ -1,6 +1,12 @@
 
   ** LBNL-AMO-MCTDHF VERSION 1.27 **
 
+v1.27 best attempt dissociative excitation actions 16,17 with
+   nucfluxopt.eq.2 -- replaces old (version 0) actions 13,14
+
+v1.27 predictor/corrector algorithm modified; results will be different,
+   depending on stepsize par_timestep
+
 v1.27 work done by or on each pulse in Hartree output in various
    files for action 21 emission/absorption.  Circular polarization
    output added action 21 -- new &parinp namelist variable 

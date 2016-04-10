@@ -99,7 +99,7 @@ subroutine getparams()
        pulsewindowtoo,conjgpropflag,dipolesumstart,dipolesumend,outmatel,numcatfiles,&
        catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
        shuffle_dfwalktype,maxdgdim, messavec, messaamount,holeflag, angularflag, angprojspifile,&
-       prepropflag, prop_method, reference_pulses
+       prepropflag, step_flag, postpropflag, reference_pulses
 
 
   OFL
@@ -200,6 +200,11 @@ subroutine getparams()
      if (buffer(1:5) .eq. 'Holes') then
         holeflag=1
         write(mpifileptr, *) "indexing holes not electrons by command line option"
+     endif
+
+     if (buffer(1:8) .eq. 'NucFlux=') then
+        read(buffer(9:len),*,iostat=myiostat) nucfluxopt
+        write(mpifileptr, *) "nucfluxopt set to ", nucfluxopt, " by command line option."
      endif
 
      if (buffer(1:9) .eq. 'NoTiming=') then
@@ -798,9 +803,10 @@ subroutine getparams()
   write(mpifileptr, *) "***********************    Parameters: propagation    ***********************   "
   write(mpifileptr, *)
   write(mpifileptr,*)  " PAR_TIMESTEP IS ", par_timestep, " LITTLESTEPS IS ", littlesteps
-  write(mpifileptr,*)   "  prepropflag is ", prepropflag
-
+  write(mpifileptr,*)  "  prepropflag is ", prepropflag, " postpropflag is ", postpropflag
+  write(mpifileptr,*)  "  step_flag is ", step_flag
   write(mpifileptr,*)
+
   if (messflag.ne.0) then
      write(mpifileptr,*) "MESSFLAG is on -- messing with spfs.  Messamount=", messamount; write(mpifileptr,*)
   endif

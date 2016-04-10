@@ -308,11 +308,10 @@ program mctdhf
   WRFL "************************************"
   WRFL; CFL
 
-  if (df_restrictflag.ne.0.or.(spfrestrictflag.eq.1.and.mrestrictflag.eq.0)) then
-     use_biowalktype=.true.
-  else
-     use_biowalktype=.false.
-  endif
+!! always use biortho (single walks only) (bwwptr not necessary)
+  
+  use_biowalktype=.true.
+
   if (df_restrictflag.eq.0.or.sparsedfflag.eq.0) then
      use_dfwalktype=.false.
   else

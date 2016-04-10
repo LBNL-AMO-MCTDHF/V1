@@ -74,10 +74,13 @@ subroutine projeflux_singlewalks()
     if(maxpwalk1.lt.numpwalk1(iconfig)) maxpwalk1=numpwalk1(iconfig)
   enddo
   OFLWR "Max # single walks from cation state on this processor is ",maxpwalk1;CFL
+  call mpibarrier()
 
   allocate(pphase1(maxpwalk1,tnumconfig),pwalk1(maxpwalk1,tnumconfig),&
        pspf1(2,maxpwalk1,tnumconfig))
-  pwalk1=0;  pspf1=0;  pphase1=0
+  if (maxpwalk1.gt.0) then
+     pwalk1=0;  pspf1=0;  pphase1=0
+  endif
 
   do iconfig=1,tnumconfig
      iwalk=0
@@ -126,6 +129,7 @@ subroutine projeflux_singlewalks()
      endif
   enddo
   
+  call mpibarrier()
   OFLWR "DONE getting proj single walks"; CFL
 
 end subroutine projeflux_singlewalks
@@ -212,9 +216,9 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   integer :: i,k,tlen,istate,curtime,tau,ir ,imc,ioffset, NUMANGLES, NUMERAD, il
   integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,&
        bratop,getlen,myiostat
-  real*8 :: doubleclebschsq,aa,bb,cc,MemTot,MemVal,wfi,cgfac,estep,myfac,windowfunct
+  real*8 :: doubleclebschsq,aa,bb,cc,MemTot,MemVal,wfi,cgfac,estep,myfac,windowfunct,MemNum
   DATATYPE, allocatable :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:),gtau_ad(:,:,:,:),&
-       read_bramo(:,:,:,:), read_ketmo(:,:,:,:), deweighted_bramo(:,:,:), ketmo_ad(:,:,:,:,:)
+       read_bramo(:,:,:), read_ketmo(:,:,:), deweighted_bramo(:,:,:), ketmo_ad(:,:,:,:,:)
   complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:),ftgtau_ad(:,:),total_ad(:,:)
   real*8, allocatable :: pulseftsq(:)
   DATATYPE :: pots1(3), csum
@@ -286,9 +290,22 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 #else
   MemVal = 6.25d4
 #endif
+
+!! rank 1 now only holds one entire orbital vector for parorbsplit.eq.3.
+!! read_bramo and read_ketmo not dimensioned with BatchSize any more.
+!! MemNum based on size of arrays bramo and ketmo instead.
+
+!!$  if (parorbsplit.eq.3) then
+!!$     MemNum=4*spfsize*numr*nprocs    !! 4 for bra and ket and both spun orbitals
+!!$  else
+
+  MemNum=4*spfsize*numr
+
+!!$  endif
+
   call openfile()
   write(mpifileptr,'(A30,F9.3,A3)') " Guess at necessary memory is ",&
-       2d0*real((nt+1)*2*spfsize*numr,8)/MemVal," MB"
+       (nt+1)*MemNum/MemVal," MB"
   if(mem.eq.0) then
      write(mpifileptr,*) "g(tau) will be computed with all of psi in core"
      BatchSize=nt+1
@@ -297,8 +314,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
      write(mpifileptr,*) "g(tau) will be computed with all psi being read in batches"
      write(mpifileptr,'(A33,F9.3,A3)') " Desired amount of memory to use ",MemTot," MB"
      
-!! for each time pair we need both spun orbitals in each r
-     BatchSize=floor(MemTot * MemVal / (2d0*real(2*spfsize*numr,8))) 
+     BatchSize=floor(MemTot * MemVal / MemNum) 
      if(BatchSize.lt.1) then
         write(mpifileptr,*) "Tiny amount of memory or huge wavefunction, Batchsize is 1" 
         BatchSize=1
@@ -337,14 +353,14 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
-        allocate(read_ketmo(spfsize*nprocs,numr,2,BatchSize),&
-             read_bramo(spfsize*nprocs,numr,2,BatchSize))
+        allocate(read_ketmo(spfsize*nprocs,numr,2),&
+             read_bramo(spfsize*nprocs,numr,2))
      else
-        allocate(read_ketmo(spfsize,numr,2,BatchSize),&
-             read_bramo(spfsize,numr,2,BatchSize))
+        allocate(read_ketmo(spfsize,numr,2),&
+             read_bramo(spfsize,numr,2))
      endif
   else
-     allocate(read_ketmo(1,numr,2,batchsize),read_bramo(1,numr,2,batchsize))
+     allocate(read_ketmo(1,numr,2),read_bramo(1,numr,2))
   endif
   read_ketmo=0; read_bramo=0
 
@@ -352,7 +368,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   ketreadsize=0;  brareadsize=0
 
   if (myrank.eq.1) then
-     inquire (iolength=tlen) read_ketmo(:,1,:,1)
+     inquire (iolength=tlen) read_ketmo(:,1,:)
   endif
   call mympiibcastone(tlen,1)
 
@@ -394,31 +410,30 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            ketreadsize=min(BatchSize,nt+1-(ketbat-1)*BatchSize)
      
 !! read the orbital |\psi(t)>
-           if(myrank.eq.1) then
-              do i=1,ketreadsize !! loop over times in this batch
+
+           do i=1,ketreadsize !! loop over times in this batch
+              if(myrank.eq.1) then
                  do ir=1,numr !! loop over all the r's for this time           
 
   ioffset=(istate-1)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + ((ketbat-1)*BatchSize+i-1)*numr + ir
 
-                    read(1003,rec=ioffset,iostat=myiostat) read_ketmo(:,ir,:,i)
+                    read(1003,rec=ioffset,iostat=myiostat) read_ketmo(:,ir,:)
                     call checkiostat(myiostat,"reading ketmo")
                  enddo
-              enddo
-           endif
-           if (parorbsplit.ne.3) then
-              if (myrank.eq.1) then
-                 ketmo(:,:,:,1:ketreadsize)=read_ketmo(:,:,:,1:ketreadsize)
               endif
-              call mympibcast(ketmo(:,:,:,1:ketreadsize),1,spfsize*numr*2*ketreadsize)
-           else
-              do i=1,ketreadsize
+              if (parorbsplit.ne.3) then
+                 if (myrank.eq.1) then
+                    ketmo(:,:,:,i)=read_ketmo(:,:,:)
+                 endif
+                 call mympibcast(ketmo(:,:,:,i),1,spfsize*numr*2)
+              else
                  do k=1,2
                     do ir=1,numr
-                       call splitscatterv(read_ketmo(:,ir,k,i),ketmo(:,ir,k,i))
+                       call splitscatterv(read_ketmo(:,ir,k),ketmo(:,ir,k,i))
                     enddo
                  enddo
-              enddo
-           endif
+              endif
+           enddo       !! do i=1,ketreadsize
 
            if (fluxoptype.eq.0) then
               OFLWR "PROGRAM ME FLUXOPTYPE 0 PROJEFLUX"; CFLST
@@ -446,32 +461,29 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            do brabat=1,ketbat
               OFLWR "Reading bra batch ", brabat, " of ", ketbat," for state ",istate; CFL
               brareadsize=min(BatchSize,nt+1-(brabat-1)*BatchSize)
-              if(myrank.eq.1) then
-                 do i=1,brareadsize
+              do i=1,brareadsize
+                 if(myrank.eq.1) then
                     do ir=1,numr 
 
    ioffset = (istate-1)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + ((brabat-1)*BatchSize+i-1)*numr + ir
 
-                       read(1003,rec=ioffset,iostat=myiostat) read_bramo(:,ir,:,i)
+                       read(1003,rec=ioffset,iostat=myiostat) read_bramo(:,ir,:)
                        call checkiostat(myiostat,"reading bramo")
                     enddo
-                 enddo
-              endif
-
-              if (parorbsplit.ne.3) then
-                 if (myrank.eq.1) then
-                    bramo(:,:,:,1:brareadsize)=read_bramo(:,:,:,1:brareadsize)
                  endif
-                 call mympibcast(bramo(:,:,:,1:brareadsize),1,spfsize*numr*2*brareadsize)
-              else
-                 do i=1,brareadsize
+                 if (parorbsplit.ne.3) then
+                    if (myrank.eq.1) then
+                       bramo(:,:,:,i)=read_bramo(:,:,:)
+                    endif
+                    call mympibcast(bramo(:,:,:,i),1,spfsize*numr*2)
+                 else
                     do k=1,2
                        do ir=1,numr
-                          call splitscatterv(read_bramo(:,ir,k,i),bramo(:,ir,k,i))
+                          call splitscatterv(read_bramo(:,ir,k),bramo(:,ir,k,i))
                        enddo
                     enddo
-                 enddo
-              endif
+                 endif
+              enddo     !! do i=1,brareadsize
 
 !! loop over the specific ket indices & over all previous 
 !! times & evaluate the actual g(tau) expression           
@@ -549,7 +561,9 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            OFLWR "DEEG CURTIME NT ERR", curtime, nt; CFLST
         endif
 
-        close(1003)
+        if (myrank.eq.1) then
+           close(1003)
+        endif
 
      enddo
   enddo
@@ -560,7 +574,6 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
         call mympireduce(gtau_ad(:,:,:,:), (NUMANGLES)*(nt+1)*nstate*mcscfnum)
      endif
   endif
-
 
   OFLWR "Taking the fourier transform of g(tau) to get cross section at T= ",curtime*dt; CFL
 
@@ -814,17 +827,23 @@ contains
     use opmod
     implicit none
     DATATYPE,intent(inout) :: inspfs(spfsize,numr)
-    DATATYPE :: workspfs(spfsize,numr), outspfs(spfsize,numr)  !! AUTOMATIC
+    DATATYPE :: workspfs(spfsize,numr), outspfs(spfsize,numr),&  !! AUTOMATIC
+         mymat(numr,numr)
     integer :: r
 
-    workspfs=0; outspfs=0
+    workspfs=0; outspfs=0; mymat=0
 
     if (nucfluxopt.ne.2) then
 
+!! terms from antihermitian part of B-O hamiltonian and hermitian part of Y operator
+!! which are nonzero in the external region for electrons and so characterize the
+!! electronic flux
+
+!! terms from antihermitian of B-O hamiltonian 
+
        call mult_imke(numr,inspfs(:,:),workspfs(:,:))
        do r=1,numr
-!! bugfix 01-2016 wasn't squared
-          outspfs(:,r) = outspfs(:,r) + workspfs(:,r) / bondpoints(r)**2
+          outspfs(:,r) = outspfs(:,r) + workspfs(:,r) * real(1d0 / bondpoints(r)**2,8)
        enddo
     
        if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
@@ -833,17 +852,59 @@ contains
           call mult_imhalfniumpot(numr,inspfs(:,:),workspfs(:,:))
        endif
        do r=1,numr
-          outspfs(:,r) = outspfs(:,r) + workspfs(:,r) / bondpoints(r)
+          outspfs(:,r) = outspfs(:,r) + workspfs(:,r) * real(1d0 / bondpoints(r),8)
        enddo
-    endif
+
+       if (nonuc_checkflag.eq.0) then
+
+!! hermitian part of antisymmetric operator is imaginary valued
+          call op_imyderiv(numr,inspfs,workspfs)
+
+!! antihermitian part of antisymmetric operator is real valued
+          mymat(:,:)=real(proderivmod(:,:),8)
+
+!! transpose verified 2nd argument 'N' not 'T' (with 'T' results are way off)
+          call MYGEMM('N','N',spfsize,numr,numr,DATAONE,workspfs,spfsize,mymat,numr,&
+               DATAONE,outspfs,spfsize)
+
+       endif  !! nonuc_checkflag
+
+    endif   !! nucfluxopt.ne.2
 
     if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
-       call op_imyderiv(numr,inspfs,workspfs)
-       call MYGEMM('N','T',numr,spfsize,numr,DATAONE,proderivmod,numr,workspfs,spfsize,&
-            DATAONE,outspfs,numr)
 
-       call MYGEMM('N','T',numr,spfsize,numr,DATAONE,rkemod,numr,inspfs,spfsize,&
-            DATAONE,outspfs,numr)
+!! terms from imaginary part of inverse bond length, hermitian part of Y operator, and
+!! antihermitian part of nuclear ke second derivative operator, all of which are 
+!! nonzero only in external region for nuclei and so characterize the nuclear flux
+
+       call mult_reke(numr,inspfs(:,:),workspfs(:,:))
+       do r=1,numr
+          outspfs(:,r) = outspfs(:,r) + workspfs(:,r) * imag((0d0,0d0)+ 1d0 / bondpoints(r)**2)
+       enddo
+    
+       if(FluxOpType.eq.0.or.FluxOpType.eq.2) then
+          call mult_repot(numr,inspfs(:,:),workspfs(:,:))
+       else if(FluxOpType.eq.1) then
+          call mult_rehalfniumpot(numr,inspfs(:,:),workspfs(:,:))
+       endif
+       do r=1,numr
+          outspfs(:,r) = outspfs(:,r) + workspfs(:,r) * imag((0d0,0d0)+ 1d0 / bondpoints(r))
+       enddo
+
+!! real part of antisymmetric operator is antihermitian
+       call op_reyderiv(numr,inspfs,workspfs)
+
+!! imag part is hermitian
+       mymat(:,:)=imag(proderivmod(:,:)+(0d0,0d0))
+
+!! transpose verified 2nd argument 'N' not 'T' (with 'T' results are way off)
+       call MYGEMM('N','N',spfsize,numr,numr,DATAONE,workspfs,spfsize,mymat,numr,&
+            DATAONE,outspfs,spfsize)
+
+       mymat(:,:)=imag(rkemod(:,:)+(0d0,0d0))
+       call MYGEMM('N','N',spfsize,numr,numr,DATAONE,inspfs,spfsize,mymat,numr,&
+            DATAONE,outspfs,spfsize)
+
     endif
 
 !! scale correctly
@@ -1021,6 +1082,8 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
 !! allocate all necessary extra memory and io params to do this looping business
 
+  OFLWR "Allocating arrays for projected flux"; CFL
+
   allocate(mobio(spfsize,nspf,numr),abio(first_config:last_config,mcscfnum,numr),&
        mymo(spfsize,nspf),  myavec(numr,first_config:last_config,mcscfnum))
   mobio=0; mymo=0
@@ -1038,6 +1101,9 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
      allocate(readmo(1,nspf),readavec(1,numr,mcscfnum))
   endif
   readmo=0; readavec=0
+
+  call mpibarrier()
+  OFLWR "    ...allocated arrays for projected flux.  go time loop."; CFL
 
   if (myrank.eq.1) then
      inquire (iolength=i) readmo
@@ -1161,10 +1227,11 @@ end subroutine projeflux_single0
 
 subroutine projeflux_single(mem)
   use parameters    !! fluxinterval, par_timestep, etc.
+  use mpimod   !! myrank
   use projefluxmod
   implicit none
   integer,intent(in) :: mem
-  integer :: nt,nstate,eachstate,ifile
+  integer :: nt,nstate,eachstate,ifile,myiostat
   real*8 :: dt
 
   OFLWR ;  WRFL   "   *** DOING PROJECTED FLUX. ***    ";  WRFL; CFL
@@ -1179,10 +1246,22 @@ subroutine projeflux_single(mem)
      nstate=nstate+eachstate
   enddo
 
-!! do the double time integral
-    call projeflux_double_time_int(mem,nstate,nt,dt)
+  call mpibarrier()
+  OFLWR "Go double time integral";CFL
 
-  OFLWR "Cross Section acquired, cleaning and closing";CFLST
+!! do the double time integral
+  call projeflux_double_time_int(mem,nstate,nt,dt)
+
+  call mpibarrier()
+  OFLWR "Cross Section acquired, cleaning and closing";CFL
+
+  if (myrank.eq.1) then
+     open(1003,file=projfluxfile,status="unknown",iostat=myiostat)
+     write(1003,*) "Projfluxfile deleted"
+     close(1003)
+  endif
+  call mpibarrier()
+  call mpistop()
 
 end subroutine projeflux_single
 

@@ -369,6 +369,8 @@ contains
 
        call system_clock(itime)
 
+!! PRE-PROP
+
        if (prepropflag.ne.0) then
           if (constraintflag.ne.0) then
              time1=tin;        time2=tout
@@ -384,17 +386,9 @@ contains
           endif
 
           if(avector_flag.ne.0) then
-             do imc=1,mcscfnum
-                call cmf_prop_avector(yyy%cmfavec(:,imc,1),  &
-                     yyy%cmfavec(:,imc,0), linearflag,tin,tout,imc,qq)
-                numaiters=numaiters+qq
-             enddo
-             call system_clock(jtime);     times(5)=times(5)+jtime-itime;  itime=jtime
-!! prevent drift
-             if (par_consplit.eq.0) then
-                call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
-                call system_clock(jtime);     times(9)=times(9)+jtime-itime;   itime=jtime
-             endif
+             call cmf_prop_avector_and_stuff()
+
+             call system_clock(itime)
              call get_allden()
              call system_clock(jtime);  times(2)=times(2)+jtime-itime;   itime=jtime
           endif
@@ -405,39 +399,34 @@ contains
 
        endif  !! prepropflag
 
-       select case(prop_method)
+!! MAIN STEPS
 
-!! propagate independently for predictor step then same for corrector, DEFAULT
-       case(0)
-          do ii=0,1
-             call propspfs_and_stuff()
-             call cmf_prop_avector_and_stuff()
-             call get_stuff0(tout,times)
-             linearflag=1
-          enddo
+       if (step_flag.lt.0) then
+          OFLWR "what? step_flag", step_flag; CFLST
+       endif
 
-!! four or three-step propagations
-!!
-!!     1  2  3  4      = prop_method  
-!!  S  x        x
-!!  A  x  x  x  x
-!!  S  x  x  x  x
-!!  A  x  x  x
-!!  S     x
-!!  
-       case(1,2,3,4)
+       do ii=1,step_flag
+          call propspfs_and_stuff()
+          call cmf_prop_avector_and_stuff()
+          call get_stuff0(tout,times)
+          linearflag=1
+       enddo
 
-          if (prop_method.eq.1.or.prop_method.eq.4) then
-             call propspfs_and_stuff()
+!! POST-PROP
 
-             call system_clock(itime)
-             call all_matel()
-             call system_clock(jtime);  times(1)=times(1)+jtime-itime
+       if (postpropflag.eq.1.and.spf_flag.ne.0) then
 
-             if (constraintflag.eq.0) then
-                linearflag=1
-             endif
-          endif
+          call propspfs_and_stuff()
+
+          call system_clock(itime)
+          call all_matel()
+          call system_clock(jtime);  times(1)=times(1)+jtime-itime
+
+          call end_stuff()
+
+       endif
+
+       if (postpropflag.eq.2.and.avector_flag.ne.0) then
 
           call cmf_prop_avector_and_stuff()
 
@@ -447,40 +436,7 @@ contains
 
           call end_stuff()
 
-          linearflag=1
-
-          call propspfs_and_stuff()
-
-          call system_clock(itime)
-          call all_matel()
-          call system_clock(jtime);  times(1)=times(1)+jtime-itime
-
-          if (prop_method.eq.1.or.prop_method.eq.2.or.prop_method.eq.3) then
-
-             call cmf_prop_avector_and_stuff()
-
-             call system_clock(itime)
-             call get_allden()
-             call system_clock(jtime);  times(2)=times(2)+jtime-itime
-
-          endif
-
-          call end_stuff()
-
-          if (prop_method.eq.2) then
-             call propspfs_and_stuff()
-
-             call system_clock(itime)
-             call all_matel()
-             call system_clock(jtime);  times(1)=times(1)+jtime-itime
-
-             call end_stuff()
-          endif
-
-       case default
-          OFLWR "prop_method not allowed: ", prop_method; CFLST
-
-       end select   !! prop_method
+       endif  !! postpropflag
 
     endif  !!improvedrelax
 

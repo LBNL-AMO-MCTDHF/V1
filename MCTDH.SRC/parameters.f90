@@ -269,8 +269,9 @@ integer :: maxaorder=100         !!              !! max lanczos order for sparse
 !!EE
 !!{\large \quad PROPAGATION}
 !!BB
-integer :: prop_method=0         !!              !! Predictor/corrector algorithm 0,1,2,3,4 also prepropflag
-integer :: prepropflag=0         !!              !! Option for pre-propagation step for strong fields or constraint
+integer :: step_flag=2           !!              !! Main propagation steps, CMF or LMF depending on pre/propflag
+integer :: prepropflag=1         !!              !! Option for pre-propagation step
+integer :: postpropflag=2        !!              !! Option for LMF post-propagation 1=orbitals 2=A-vector
 integer :: littlesteps=1         !!              !! Sub intervals of mean field time step for avector prop
 real*8 :: finaltime=4d4          !! T=           !! length of prop.  Overridden for pulse and relax.  
 !!EE
@@ -386,7 +387,7 @@ character(len=SLN):: xoworkfile="Dat/XOWork.Dat",&               !! for action 2
  xyoworkfile="Dat/XYOWork.Dat",xzoworkfile="Dat/XZOWork.Dat",&   !!  "  circ polarization, six components
  yxoworkfile="Dat/YXOWork.Dat",yzoworkfile="Dat/YZOWork.Dat",&   !!  "
  zxoworkfile="Dat/ZXOWork.Dat",zyoworkfile="Dat/ZYOWork.Dat"     !!  "
-character(len=SLN):: xophotonfile="Dat/XOPhoton.Dat",&                 !! for action 21 work per pulse integral domega
+character(len=SLN):: xophotonfile="Dat/XOPhoton.Dat",&           !! for action 21 work per pulse integral domega
  yophotonfile="Dat/YOPhoton.Dat",zophotonfile="Dat/ZOPhoton.Dat",&     !!  "
  xyophotonfile="Dat/XYOPhoton.Dat",xzophotonfile="Dat/XZOPhoton.Dat",& !!  "  circ polarization, six components
  yxophotonfile="Dat/YXOPhoton.Dat",yzophotonfile="Dat/YZOPhoton.Dat",& !!  "
@@ -402,7 +403,7 @@ character(len=SLN):: projgtaufile="Dat/gtau.dat"              !!  " (projected f
 character(len=SLN):: projfluxfile="Flux/proj.flux.wfn.bin"    !!  "
 character (len=SLN):: catspffiles(50)="Bin/cation.spfs.bin"       !!  " (see numcatfiles in ACTIONS)
 character (len=SLN):: catavectorfiles(50)="Bin/cation.avector.bin"!!  "
-character(len=SLN):: angprojspifile="Dat/xsec.angproj.spi"    !!  " if angularflag.ne.0 calculate partial ionization, wrt angle
+character(len=SLN):: angprojspifile="Dat/xsec.angproj.spi"    !!  " if angularflag.ne.0, output file
 character(len=SLN):: fluxafile2="Flux/flux.avec.bin"          !! for action 23
 character(len=SLN):: fluxmofile2="Flux/flux.mo.bin"           !!  "
 character(len=SLN):: natplotbin="Bin/Natlorb.bin"             !! for actions 2,8
@@ -484,7 +485,7 @@ real*8 :: dipolesumstart=0d0,&   !! range for integration of oscillator strength
 integer :: computeFlux=500, &    ! 0=All in memory other: MBs to allocate
      FluxInterval=50,&           !! Multiple of par_timestep at which to save flux
      FluxSkipMult=1              !! Read every this number of time points.  Step=FluxInterval*FluxSkipMult
-integer :: nucfluxopt=1          !! Include imaginary part of hamiltonian from nuc ke 2=only that part
+integer :: nucfluxopt=1          !! NucFlux=     !! Include imag part of hamiltonian from nuc ke 2=only that
 integer :: FluxOpType=1          !! 0=Full ham 1=halfnium 
 integer :: numcatfiles=1         !! see catspffiles and catavectorfiles in INPUT/OUTPUT for action 17
 integer :: angularflag=0         !! for action 17 calculate fully differential partial ionization, angular

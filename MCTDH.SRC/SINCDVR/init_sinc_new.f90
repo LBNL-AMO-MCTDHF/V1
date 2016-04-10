@@ -384,13 +384,13 @@ end subroutine init_spfs
 
 
 subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
-     bondpoints,bondweights,elecweights,elecradii,notused )
+     bondpoints,bondweights,elecweights,elecradii,numelec )
   use myparams
   use pmpimod
   use pfileptrmod
   use myprojectmod
   implicit none
-  integer, intent(in) :: skipflag,notused
+  integer, intent(in) :: skipflag,numelec
   integer,intent(inout) :: spfsloaded
   DATATYPE,intent(inout) :: inspfs(totpoints, numspf)
   DATATYPE,intent(out) :: pot(totpoints),proderivmod(numr,numr),rkemod(numr,numr),&
@@ -539,7 +539,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         endif
      enddo
      temppot(:)= min(maxcap,max(mincap,temppot(:)))
-     halfniumpot(:)=pot(:)/sumcharge + (0d0,-1d0) * temppot(:)
+     halfniumpot(:)=pot(:)*(sumcharge-numelec+1)/sumcharge + (0d0,-1d0) * temppot(:)
      pot(:)=pot(:) + (0d0,-1d0) * temppot(:)
   else
 #endif

@@ -246,17 +246,18 @@ contains
 !! other   = only KE
 
     type(walktype),target :: www,bioww
+    type(walktype),pointer :: myww
     integer,intent(in) :: alg
     integer :: curtime,oldtime,k,nt,i,molength,alength,  BatchSize,NBat,brabat,brareadsize, &
-         bratime,ketbat,ketreadsize,kettime,bratop, atime,btime,itime,jtime,times(1:7)=0, &
+         bratime,ketbat,ketreadsize,kettime,bratop,itime,jtime,times(1:20)=0, &
          imc, tau, ispf, myiostat
-    real*8 :: MemTot,MemVal,dt, myfac,wfi,estep,windowfunct
+    real*8 :: MemTot,MemVal,dt, myfac,wfi,estep,windowfunct,MemNum
     complex*16, allocatable :: FTgtau(:,:), pulseft(:,:)
     real*8, allocatable :: pulseftsq(:)
     DATATYPE :: fluxevalval(mcscfnum), pots1(3)=0d0  !!$, pots2(3)=0d0
     DATATYPE, allocatable :: gtau(:,:), mobio(:,:),abio(:,:,:)
     DATATYPE, allocatable, target :: bramo(:,:,:),braavec(:,:,:,:), ketmo(:,:,:),ketavec(:,:,:,:)
-    DATATYPE,allocatable :: read_bramo(:,:,:),read_braavec(:,:,:,:),read_ketmo(:,:,:),read_ketavec(:,:,:,:)
+    DATATYPE,allocatable :: read_bramo(:,:),read_braavec(:,:,:,:),read_ketmo(:,:),read_ketavec(:,:,:,:)
     DATATYPE, pointer :: moket(:,:),mobra(:,:),aket(:,:,:)
     DATATYPE, allocatable :: imke(:,:),impe(:,:),imV2(:,:,:,:), imyderiv(:,:)
     DATATYPE, allocatable :: imkeop(:,:),impeop(:,:),  imyop(:,:)
@@ -277,19 +278,28 @@ contains
 
     dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
 
+    if (FluxOpType.eq.0) then    !! exact expression with two-electron
+       myww=>www
+    else
+       myww=>bioww
+    endif
+
+    call mpibarrier()
+    OFLWR "Initial allocation electronflux"; CFL
+    
     allocate(gtau(0:nt,mcscfnum))
     gtau(:,:)=0d0
 
     allocate(imke(nspf,nspf),impe(nspf,nspf),imV2(nspf,nspf,nspf,nspf),imyderiv(nspf,nspf),&
          reke(nspf,nspf),repe(nspf,nspf),reV2(nspf,nspf,nspf,nspf),reyderiv(nspf,nspf),&
          rekeop(spfsize,nspf),repeop(spfsize,nspf),reyop(spfsize,nspf),&
-       mobio(spfsize,nspf),abio(numr,www%firstconfig:www%lastconfig,mcscfnum), &
-       imkeop(spfsize,nspf),impeop(spfsize,nspf),imyop(spfsize,nspf))
+         mobio(spfsize,nspf),abio(numr,myww%firstconfig:myww%lastconfig,mcscfnum), &
+         imkeop(spfsize,nspf),impeop(spfsize,nspf),imyop(spfsize,nspf))
 
     imke=0; impe=0; imV2=0; imyderiv=0; imkeop=0; impeop=0; imyop=0;
     reke=0; repe=0; reV2=0; reyderiv=0; rekeop=0; repeop=0; reyop=0
     mobio=0;
-    if (www%lastconfig.ge.www%firstconfig) then
+    if (myww%lastconfig.ge.myww%firstconfig) then
        abio=0
     endif
 
@@ -301,9 +311,33 @@ contains
 #else
     MemVal = 6.25d4
 #endif
+
+!! memory based on rank 1 which right now stores the entire a-vector, which is wasteful.
+!! Unsatisfactory: need better MPI I/O.
+!! For orbitals, read_bramo and read_ketmo are not dimensioned with BatchSize any more 
+!! --> MemNum based on numconfig (whole vector) and spfsize (per processor, bramo and ketmo)
+
+!! factors of 2 for bra and ket
+
+    MemNum=0d0
+
+!!$    if (parorbsplit.eq.3) then
+!!$       MemNum = MemNum + spfsize*nspf*nprocs*2
+!!$    else
+
+    MemNum = MemNum + spfsize*nspf*2
+
+!!$    endif
+
+    if (par_consplit.ne.0) then
+       MemNum = MemNum + myww%numconfig*numr*mcscfnum*2
+    else
+       MemNum = MemNum + myww%maxconfigsperproc*numr*mcscfnum*2
+    endif
+
     call openfile()
     write(mpifileptr,'(A30,F9.3,A3)') " Guess at necessary memory is ",&
-         2d0*real((nt+1)*(www%localnconfig*numr*mcscfnum+spfsize*nspf),8)/MemVal," MB"
+         (nt+1)*MemNum/MemVal," MB"
     if(alg.eq.0) then
        write(mpifileptr,*) "g(tau) will be computed with all of psi in core"
        BatchSize=nt+1
@@ -311,7 +345,7 @@ contains
        MemTot=real(alg,8)    
        write(mpifileptr,*) "g(tau) will be computed with all psi being read in batches"
        write(mpifileptr,'(A33,F9.3,A3)') " Desired amount of memory to use ",MemTot," MB"
-       BatchSize=floor(MemTot * MemVal / (2d0*real(www%localnconfig*numr*mcscfnum+spfsize*nspf,8)))
+       BatchSize=floor(MemTot * MemVal / MemNum)
        if(BatchSize.lt.1) then
           write(mpifileptr,*) "Tiny amount of memory or huge wavefunction, Batchsize is 1" 
           BatchSize=1
@@ -324,26 +358,29 @@ contains
     endif
     call closefile()
 
-    allocate(ketmo(spfsize,nspf,BatchSize),ketavec(numr,www%firstconfig:www%lastconfig,mcscfnum,BatchSize),&
-         bramo(spfsize,nspf,BatchSize),braavec(numr,www%firstconfig:www%lastconfig,mcscfnum,BatchSize))
+    call mpibarrier()
+    OFLWR "Allocating psi arrays for electronflux"; CFL
+
+    allocate(ketmo(spfsize,nspf,BatchSize),ketavec(numr,myww%firstconfig:myww%lastconfig,mcscfnum,BatchSize),&
+         bramo(spfsize,nspf,BatchSize),braavec(numr,myww%firstconfig:myww%lastconfig,mcscfnum,BatchSize))
     ketmo=0; bramo=0
-    if (www%lastconfig.ge.www%firstconfig) then
+    if (myww%lastconfig.ge.myww%firstconfig) then
        ketavec=0; braavec=0
     endif
     if (myrank.eq.1) then
        if (parorbsplit.eq.3) then
-          allocate(read_bramo(spfsize*nprocs,nspf,BatchSize),read_ketmo(spfsize*nprocs,nspf,BatchSize))
+          allocate(read_bramo(spfsize*nprocs,nspf),read_ketmo(spfsize*nprocs,nspf))
        else
-          allocate(read_bramo(spfsize,nspf,BatchSize),read_ketmo(spfsize,nspf,BatchSize))
+          allocate(read_bramo(spfsize,nspf),read_ketmo(spfsize,nspf))
        endif
     else
-       allocate(read_bramo(1,nspf,BatchSize),read_ketmo(1,nspf,BatchSize))
+       allocate(read_bramo(1,nspf),read_ketmo(1,nspf))
     endif
     read_bramo=0; read_ketmo=0
 
     if (myrank.eq.1) then
-       allocate(read_braavec(numr,www%numconfig,mcscfnum,BatchSize),&
-            read_ketavec(numr,www%numconfig,mcscfnum,BatchSize))
+       allocate(read_braavec(numr,myww%numconfig,mcscfnum,BatchSize),&
+            read_ketavec(numr,myww%numconfig,mcscfnum,BatchSize))
     else
        allocate(read_braavec(1,1,mcscfnum,BatchSize),read_ketavec(1,1,mcscfnum,BatchSize))
     endif
@@ -353,7 +390,8 @@ contains
     ketreadsize=0;  brareadsize=0
 
     if (myrank.eq.1) then
-       inquire (iolength=molength) read_ketmo(:,:,1);  inquire (iolength=alength) read_ketavec(:,:,:,1)
+       inquire (iolength=molength) read_ketmo(:,:)
+       inquire (iolength=alength) read_ketavec(:,:,:,1)
     endif
     call mympiibcastone(molength,1); call mympiibcastone(alength,1)
 
@@ -372,46 +410,53 @@ contains
 
 !! begin the ket batch read loop
     do ketbat=1,NBat
-       call system_clock(atime)
+       call system_clock(itime)
        OFLWR "Reading ket batch ", ketbat, " of ", NBat; CFL
        ketreadsize=min(BatchSize,nt+1-(ketbat-1)*BatchSize)
+
+!! ORBITALS
        if(myrank.eq.1) then
           open(1001,file=fluxmofile,status="old",form="unformatted",&
                access="direct",recl=molength,iostat=myiostat)
           call checkiostat(myiostat,"opening "//fluxmofile)
+       endif
+       do i=1,ketreadsize
+          if(myrank.eq.1) then
+             k=FluxSkipMult*((ketbat-1)*BatchSize+i-1)+1
+             read(1001,rec=k,iostat=myiostat) read_ketmo(:,:) 
+             call checkiostat(myiostat,"reading "//fluxmofile)
+          endif
+          if (parorbsplit.ne.3) then
+             if (myrank.eq.1) then
+                ketmo(:,:,i)=read_ketmo(:,:)
+             endif
+             call mympibcast(ketmo(:,:,i),1,totspfdim)
+          else
+             do ispf=1,nspf
+                call splitscatterv(read_ketmo(:,ispf),ketmo(:,ispf,i))
+             enddo
+          endif
+       enddo       !! do i=1,ketreadsize
+       if (myrank.eq.1) then
+          close(1001)
+       endif
+!! A-VECTOR
+       if(myrank.eq.1) then
           open(1002,file=fluxafile,status="old",form="unformatted",&
                access="direct",recl=alength,iostat=myiostat)
           call checkiostat(myiostat,"opening "//fluxafile)
           do i=1,ketreadsize
              k=FluxSkipMult*((ketbat-1)*BatchSize+i-1)+1
-             read(1001,rec=k,iostat=myiostat) read_ketmo(:,:,i) 
-          enddo
-          call checkiostat(myiostat,"reading "//fluxmofile)
-          do i=1,ketreadsize
-             k=FluxSkipMult*((ketbat-1)*BatchSize+i-1)+1
              read(1002,rec=k,iostat=myiostat) read_ketavec(:,:,:,i) 
           enddo
           call checkiostat(myiostat,"reading "//fluxafile)
-          close(1001);      close(1002)
-       endif
-
-       if (parorbsplit.ne.3) then
-          if (myrank.eq.1) then
-             ketmo(:,:,1:ketreadsize)=read_ketmo(:,:,1:ketreadsize)
-          endif
-          call mympibcast(ketmo(:,:,:),1,totspfdim*ketreadsize)
-       else
-          do i=1,ketreadsize
-             do ispf=1,nspf
-                call splitscatterv(read_ketmo(:,ispf,i),ketmo(:,ispf,i))
-             enddo
-          enddo
+          close(1002)
        endif
        if (par_consplit.eq.0) then
           if (myrank.eq.1) then
              ketavec(:,:,:,1:ketreadsize)=read_ketavec(:,:,:,1:ketreadsize)
           endif
-          call mympibcast(ketavec(:,:,:,1:ketreadsize),1,numr*www%numconfig*mcscfnum*ketreadsize)
+          call mympibcast(ketavec(:,:,:,1:ketreadsize),1,numr*myww%numconfig*mcscfnum*ketreadsize)
        else
           do i=1,ketreadsize
              do imc=1,mcscfnum
@@ -426,13 +471,14 @@ contains
           enddo
        endif
 
-       call system_clock(btime)
-       times(1)=times(1)+btime-atime;    times(2)=times(2)+btime-atime
-     
+       call system_clock(jtime)
+       times(1)=times(1)+jtime-itime
+ 
 !! begin the bra batch read loop
        do brabat=1,ketbat
-          call system_clock(atime)
+          call system_clock(itime)
           OFLWR "Reading bra batch ", brabat, " of ", ketbat; CFL
+
           brareadsize=min(BatchSize,nt+1-(brabat-1)*BatchSize)
           if(brabat.eq.ketbat) then
              bramo=ketmo;        
@@ -440,44 +486,53 @@ contains
                 braavec=ketavec
              endif
           else 
+!! ORBITALS
              if(myrank.eq.1) then
                 open(1001,file=fluxmofile,status="old",form="unformatted",&
                      access="direct",recl=molength,iostat=myiostat)
                 call checkiostat(myiostat,"opening "//fluxmofile)
+             endif
+             do i=1,brareadsize
+                if(myrank.eq.1) then
+                   k=FluxSkipMult*((brabat-1)*BatchSize+i-1)+1
+                   read(1001,rec=k,iostat=myiostat) read_bramo(:,:)
+                   call checkiostat(myiostat,"reading "//fluxmofile)
+                endif
+                if (parorbsplit.ne.3) then
+                   if (myrank.eq.1) then
+                      bramo(:,:,i)=read_bramo(:,:)
+                   endif
+                   call mympibcast(bramo(:,:,i),1,totspfdim)
+                else
+                   do ispf=1,nspf
+                      call splitscatterv(read_bramo(:,ispf),bramo(:,ispf,i))
+                   enddo
+                endif
+             enddo               !! do i=1,brareadsize
+             if (myrank.eq.1) then
+                close(1001)
+             endif
+!! A-VECTOR
+             if(myrank.eq.1) then
                 open(1002,file=fluxafile,status="old",form="unformatted",&
                      access="direct",recl=alength,iostat=myiostat)
                 call checkiostat(myiostat,"opening "//fluxafile)
                 do i=1,brareadsize
                    k=FluxSkipMult*((brabat-1)*BatchSize+i-1)+1
-                   read(1001,rec=k,iostat=myiostat) read_bramo(:,:,i)
-                enddo
-                call checkiostat(myiostat,"reading "//fluxmofile)
-                do i=1,brareadsize
-                   k=FluxSkipMult*((brabat-1)*BatchSize+i-1)+1
                    read(1002,rec=k,iostat=myiostat) read_braavec(:,:,:,i) 
                 enddo
                 call checkiostat(myiostat,"reading "//fluxafile)
-                close(1001);          close(1002)
+                close(1002)
              endif
 
-             if (parorbsplit.ne.3) then
-                if (myrank.eq.1) then
-                   bramo(:,:,1:brareadsize)=read_bramo(:,:,1:brareadsize)
-                endif
-                call mympibcast(bramo(:,:,:),1,totspfdim*brareadsize)
-             else
-                do i=1,brareadsize
-                   do ispf=1,nspf
-                      call splitscatterv(read_bramo(:,ispf,i),bramo(:,ispf,i))
-                   enddo
-                enddo
-             endif
+
+
              if (par_consplit.eq.0) then
                 if (myrank.eq.1) then
                    braavec(:,:,:,1:brareadsize)=read_braavec(:,:,:,1:brareadsize)
                 endif
                 call mympibcast(braavec(:,:,:,1:brareadsize),1,&
-                     numr*www%numconfig*mcscfnum*brareadsize)
+                     numr*myww%numconfig*mcscfnum*brareadsize)
              else
                 do i=1,brareadsize
                    do imc=1,mcscfnum
@@ -492,24 +547,28 @@ contains
                 enddo
              endif
           endif
-
-          call system_clock(btime)
-          times(1)=times(1)+btime-atime;      times(2)=times(2)+btime-atime
+          call system_clock(jtime)
+          times(1)=times(1)+jtime-itime
         
 !! loop over all time for the ket of the flux integral
           do kettime=1,ketreadsize
 
 !! get the one-e half transformed matrix elements for this ket time
-             call system_clock(atime)
+             call system_clock(itime)
              curtime=(ketbat-1)*BatchSize+kettime-1 
              moket=>ketmo(:,:,kettime);        aket=>ketavec(:,:,:,kettime)
 
-             call flux_op_onee(moket,imkeop,impeop,1)
-             if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
-                call flux_op_onee(moket,rekeop,repeop,2)
+             imkeop=0; impeop=0;  imyop=0
+             if (nucfluxopt.ne.2) then
+                call flux_op_onee(moket,imkeop,impeop,1)
+                if (nonuc_checkflag.eq.0) then
+                   call flux_op_nuc(moket,imyop,1)
+                endif
              endif
+
+             rekeop=0; repeop=0;
              if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
-                call flux_op_nuc(moket,imyop,1)
+                call flux_op_onee(moket,rekeop,repeop,2)
                 call flux_op_nuc(moket,reyop,2)
              endif
 
@@ -519,7 +578,7 @@ contains
              else
                 bratop=kettime
              endif
-             call system_clock(btime);        times(4)=times(4)+btime-atime
+             call system_clock(jtime);        times(2)=times(2)+jtime-itime
            
 !! loop over all previous time for the bra of the flux integral
              do bratime=1,bratop
@@ -552,48 +611,65 @@ contains
                 endif
                 fluxgtaubiovar%hermonly=.false.   !! in case fluxgtaubiovar is reused
 
-                call system_clock(jtime);          times(3)=times(3)+jtime-itime
+                call system_clock(jtime);          times(3)=times(3)+jtime-itime;  itime=jtime
 
 !! complete the one-e potential and kinetic energy matrix elements           
-!! DO BLAS !!
 
-                do i=1,nspf
-                   do k=1,nspf
-                      imke(k,i) = hermdot(mobio(:,k),imkeop(:,i),spfsize)
-                      impe(k,i) = hermdot(mobio(:,k),impeop(:,i),spfsize)
-                      if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
-                         reke(k,i) = hermdot(mobio(:,k),rekeop(:,i),spfsize)
-                         repe(k,i) = hermdot(mobio(:,k),repeop(:,i),spfsize)
-                         imyderiv(k,i) = hermdot(mobio(:,k),imyop(:,i),spfsize)
-                         reyderiv(k,i) = hermdot(mobio(:,k),reyop(:,i),spfsize)
-                      endif
-                   enddo
-                enddo
+                imke=0;  impe=0;  imyderiv=0;  imke=0;  imke=0; 
+
+                if (nucfluxopt.ne.2) then
+                   call MYGEMM('C','N',nspf,nspf,spfsize,DATAONE,mobio,&
+                        spfsize,imkeop,spfsize,DATAZERO,imke,nspf)
+                   call MYGEMM('C','N',nspf,nspf,spfsize,DATAONE,mobio,&
+                        spfsize,impeop,spfsize,DATAZERO,impe,nspf)
+                   if (nonuc_checkflag.eq.0) then
+                      call MYGEMM('C','N',nspf,nspf,spfsize,DATAONE,mobio,&
+                           spfsize,imyop,spfsize,DATAZERO,imyderiv,nspf)
+                   endif
+                endif
+
+                reke=0; repe=0; reyderiv=0
+
+                if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
+                   call MYGEMM('C','N',nspf,nspf,spfsize,DATAONE,mobio,&
+                        spfsize,rekeop,spfsize,DATAZERO,reke,nspf)
+                   call MYGEMM('C','N',nspf,nspf,spfsize,DATAONE,mobio,&
+                        spfsize,repeop,spfsize,DATAZERO,repe,nspf)
+                   call MYGEMM('C','N',nspf,nspf,spfsize,DATAONE,mobio,&
+                        spfsize,reyop,spfsize,DATAZERO,reyderiv,nspf)
+                endif
+
+                call system_clock(jtime);          times(4)=times(4)+jtime-itime;  itime=jtime
 
                 if (parorbsplit.eq.3) then
-                   call mympireduce(imke,nspf**2)
-                   call mympireduce(impe,nspf**2)
+                   if (nucfluxopt.ne.2) then
+                      call mympireduce(imke,nspf**2)
+                      call mympireduce(impe,nspf**2)
+                      if (nonuc_checkflag.eq.0) then
+                         call mympireduce(imyderiv,nspf**2)
+                      endif
+                   endif
                    if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
                       call mympireduce(reke,nspf**2)
                       call mympireduce(repe,nspf**2)
-                      call mympireduce(imyderiv,nspf**2)
                       call mympireduce(reyderiv,nspf**2)
                    endif
                 endif
 
-                call system_clock(itime);          times(4)=times(4)+itime-jtime
+                call system_clock(jtime);          times(5)=times(5)+jtime-itime;  itime=jtime
 
 !! get the two-e contribution for exact formula (fluxoptype=0)
 
                 imV2=0d0; reV2=0
                 if(FluxOpType.eq.0) then
-                   call flux_op_twoe(mobio,moket,imV2,1)
+                   if (nucfluxopt.ne.2) then
+                      call flux_op_twoe(mobio,moket,imV2,1)
+                   endif
                    if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
                       call flux_op_twoe(mobio,moket,reV2,2)
                    endif
                 endif
-                call system_clock(jtime)
-                times(5)=times(5)+jtime-itime
+                call system_clock(jtime);         times(6)=times(6)+jtime-itime;  itime=jtime
 
 !! evaluate the actual g(tau) expression
 
@@ -612,34 +688,36 @@ contains
                 gtau(tau,:) = gtau(tau,:) + fluxevalval(:)
 
                 nullify(mobra)
-                call system_clock(itime);          times(6)=times(6)+itime-jtime
+
+                call system_clock(jtime);          times(7)=times(7)+jtime-itime
 
              enddo !! end loop over specific bras
 
              nullify(moket,aket)
-             call system_clock(jtime);        times(6)=times(6)+jtime-itime
 
 !! only do this after we are sure we've gone through every bra
              if (brabat.eq.ketbat) then
                 if (myrank.eq.1) then
+                   call system_clock(itime)
                    open(454, file="Dat/KVLsum.dat", status="old", &
                         position="append",iostat=myiostat)
                    call checkiostat(myiostat,"opening kvlsum file")
                    write(454,'(I5,100F18.12)',iostat=myiostat) curtime, curtime*dt, gtau(0,:);    
                    call checkiostat(myiostat,"writing kvlsum file")
                    close(454)
+                   call system_clock(jtime);        times(8)=times(8)+jtime-itime
                 endif
+
              endif
 
           enddo !! do kettime
 
           if (brabat.eq.ketbat) then
              if (notiming.ne.2) then
-                OFL
                 write(mpifileptr,'(A28,F10.4)') " Timing statistics as of T= ",real(curtime,8)*dt
-                write(mpifileptr,'(100A10)') "Times: ", "All", "Read",&
-                     "Biorth", "One-e", "Two-e", "Fluxeval", "FT gtau"
-                write(mpifileptr,'(A10,100I10)') " ", times(1:7)/100; CFL
+                write(mpifileptr,'(100A10)') "Times: ", "Read", "One-e", "Biorth", &
+                     "Matel", "moreMPI", "Two-e", "eval", "write"
+                write(mpifileptr,'(A10,100I10)') " ", times(1:8)/1000; CFL
              endif
           endif
        enddo !! do brabat
@@ -651,6 +729,7 @@ contains
 
 !! create the xsec as it should be now
 
+    call mpibarrier()
     OFLWR " Taking the FT of g(tau) to get xsection at T= ",curtime*dt; CFL
 
     allocate(ftgtau(-curtime:curtime,mcscfnum), pulseft(-curtime:curtime,3), &
@@ -739,7 +818,7 @@ contains
 
     call mpibarrier()
     OFLWR "  finished electronflux, stopping."; CFL
-    call mpibarrier()
+    call waitawhile()
     call mpistop()
 
     deallocate(ftgtau,pulseft,pulseftsq)
@@ -811,13 +890,6 @@ contains
             endif
          end select
 
-! no, later
-! scale correctly and clear memory
-!         if(flag.ne.0) then
-!            peop(:,lowspf:highspf)=peop(:,lowspf:highspf)*(-2d0)
-!            keop(:,lowspf:highspf)=keop(:,lowspf:highspf)*(-2d0)
-!         endif
-
       endif
 
       if (parorbsplit.eq.1) then
@@ -866,12 +938,6 @@ contains
             OFLWR "NNOT supported!"; CFLST
             call op_yderiv(numspf,inspfs(:,lowspf:highspf),yop(:,lowspf:highspf))
          end select
-
-! no, later
-! scale correctly and clear memory
-!         if(flag.ne.0) then
-!            yop(:,lowspf:highspf)=yop(:,lowspf:highspf)*(-2d0)
-!         endif
 
       endif
 
@@ -933,49 +999,58 @@ contains
       type(SPARSEPTR) :: sparse_ptr
       integer :: ispf,jspf
 
-!! imaginary part of electronic operators, real part of nuclear operators
-
-      call configptralloc(matrix_ptr,www)
+      call configptralloc(matrix_ptr,myww)
       matrix_ptr%kefac = 0d0
       matrix_ptr%constfac = 0d0
 
+      if (sparseopt.ne.0) then
+         call sparseptralloc(sparse_ptr,myww)
+      endif
+
       allocate(multket(numr,first_config:last_config), ketwork(numr,first_config:last_config),&
            conjgket(numr,first_config:last_config))
-
-      matrix_ptr%xpotmatel(:,:) = impe(:,:)
-      matrix_ptr%xopmatel(:,:)  = imke(:,:)
-      matrix_ptr%xymatel(:,:)   = imyderiv(:,:)
-      matrix_ptr%xtwoematel(:,:,:,:) = imV2(:,:,:,:)
-
-      if (sparseopt.ne.0) then
-         call sparseptralloc(sparse_ptr,www)
-         call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0)
+      if (last_config.ge.first_config) then
+         multket=0; ketwork=0; conjgket=0
       endif
 
-      call sparseconfigmult(www,aket,ketwork,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0,0d0,-1)
-
-      matrix_ptr%xpotmatel(:,:)      = ALLCON(matrix_ptr%xpotmatel(:,:))
-      matrix_ptr%xopmatel(:,:)       = ALLCON(matrix_ptr%xopmatel(:,:))
-      matrix_ptr%xymatel(:,:)        = ALLCON(matrix_ptr%xymatel(:,:))
-      matrix_ptr%xtwoematel(:,:,:,:) = ALLCON(matrix_ptr%xtwoematel(:,:,:,:))
-
-      if (sparseopt.ne.0) then
-         call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0)
-      endif
-
-      if (tot_adim.gt.0) then
-         conjgket(:,:) = ALLCON(aket(:,:))
-      endif
-      call sparseconfigmult(www,conjgket,multket,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0,0d0,-1)
-      if (tot_adim.gt.0) then
-         multket(:,:)=ALLCON(multket(:,:))
-      endif
-   
       outsum=0d0
 
-      if (tot_adim.gt.0.and.nucfluxopt.ne.2) then
-         ketwork(:,:)=(ketwork(:,:)+multket(:,:)) / (-1d0)    !! (-2)xREAL PART OF SPARSECONFIGMULT
-         outsum = hermdot(abra,ketwork,tot_adim)
+!! imaginary part of electronic matrix elements with real part coefficients in r
+
+      if (nucfluxopt.ne.2) then
+         matrix_ptr%xpotmatel(:,:) = impe(:,:)
+         matrix_ptr%xopmatel(:,:)  = imke(:,:)
+         matrix_ptr%xymatel(:,:)   = imyderiv(:,:)
+         matrix_ptr%xtwoematel(:,:,:,:) = imV2(:,:,:,:)
+
+         if (sparseopt.ne.0) then
+            call assemble_sparsemats(myww,matrix_ptr,sparse_ptr,1,0,0,0)
+         endif
+
+         call sparseconfigmult(myww,aket,ketwork,matrix_ptr,sparse_ptr,1,0,0,0,0d0,-1)
+
+         matrix_ptr%xpotmatel(:,:)      = ALLCON(matrix_ptr%xpotmatel(:,:))
+         matrix_ptr%xopmatel(:,:)       = ALLCON(matrix_ptr%xopmatel(:,:))
+         matrix_ptr%xymatel(:,:)        = ALLCON(matrix_ptr%xymatel(:,:))
+         matrix_ptr%xtwoematel(:,:,:,:) = ALLCON(matrix_ptr%xtwoematel(:,:,:,:))
+
+         if (sparseopt.ne.0) then
+            call assemble_sparsemats(myww,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0)
+         endif
+
+         if (tot_adim.gt.0) then
+            conjgket(:,:) = ALLCON(aket(:,:))
+         endif
+         call sparseconfigmult(myww,conjgket,multket,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0,0d0,-1)
+         if (tot_adim.gt.0) then
+            multket(:,:)=ALLCON(multket(:,:))
+         endif
+   
+         if (tot_adim.gt.0.and.nucfluxopt.ne.2) then
+            ketwork(:,:)=(ketwork(:,:)+multket(:,:)) / (-1d0)    !! -2x imag part overall
+            outsum = outsum + hermdot(abra,ketwork,tot_adim)
+         endif
+
       endif
 
       if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
@@ -990,9 +1065,9 @@ contains
          matrix_ptr%xtwoematel(:,:,:,:) = reV2(:,:,:,:)
 
          if (sparseopt.ne.0) then
-            call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0)
+            call assemble_sparsemats(myww,matrix_ptr,sparse_ptr,1,1,0,0)
          endif
-         call sparseconfigmult(www,aket,ketwork,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0,0d0,-1)
+         call sparseconfigmult(myww,aket,ketwork,matrix_ptr,sparse_ptr,1,1,0,0,0d0,-1)
 
          matrix_ptr%xpotmatel(:,:)      = ALLCON(matrix_ptr%xpotmatel(:,:))
          matrix_ptr%xopmatel(:,:)       = ALLCON(matrix_ptr%xopmatel(:,:))
@@ -1000,19 +1075,19 @@ contains
          matrix_ptr%xtwoematel(:,:,:,:) = ALLCON(matrix_ptr%xtwoematel(:,:,:,:))
 
          if (sparseopt.ne.0) then
-            call assemble_sparsemats(www,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0)
+            call assemble_sparsemats(myww,matrix_ptr,sparse_ptr,1,1,0,0)
          endif
 
          if (tot_adim.gt.0) then
             conjgket(:,:) = ALLCON(aket(:,:))
          endif
-         call sparseconfigmult(www,conjgket,multket,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0,0d0,-1)
+         call sparseconfigmult(myww,conjgket,multket,matrix_ptr,sparse_ptr,1,1,0,0,0d0,-1)
          if (tot_adim.gt.0) then
             multket(:,:)=ALLCON(multket(:,:))
          endif
 
          if (tot_adim.gt.0) then
-            ketwork(:,:)=(ketwork(:,:)-multket(:,:)) / (0d0,-1d0)   !! (-2)xIMAG PART OF SPARSECONFIGMULT
+            ketwork(:,:)=(ketwork(:,:)-multket(:,:)) / (0d0,-1d0)   !! -2x imag part overall
             outsum = outsum + hermdot(abra,ketwork,tot_adim)
          endif
 

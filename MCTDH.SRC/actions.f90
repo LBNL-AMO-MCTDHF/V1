@@ -173,7 +173,7 @@ subroutine write_actions()
   use parameters
   use actionlistmod
   implicit none
-  integer :: i,j
+  integer :: i,j,k
 
   do i=1,numactions
      if ((actions(i).gt.26).or.(actions(i).lt.1)) then
@@ -204,10 +204,13 @@ subroutine write_actions()
 !  endif
 
   j=0
-
+  k=0
   do i=1,numactions
      if ((actions(i).eq.15).or.(actions(i).eq.16).or.(actions(i).eq.17)) then
         j=1
+     endif
+     if ((actions(i).eq.16).or.(actions(i).eq.17)) then
+        k=1
      endif
      if (actions(i).eq.21) then
         WRFL "For emission/absorption action 21:"
@@ -217,6 +220,12 @@ subroutine write_actions()
   if (j==1) then
      write(mpifileptr,*) "FOR IONIZATION FLUX:"
      write(mpifileptr,*) "   Flux Interval ",FluxInterval,FluxInterval*par_timestep
+     if (k==1) then
+        write(mpifileptr,*) "   Fluxskipmult  ",FluxSkipMult
+        if (nonuc_checkflag.eq.0) then
+           write(mpifileptr,*) "   nucfluxopt  ", nucfluxopt
+        endif
+     endif
   endif
 
   call closefile()
