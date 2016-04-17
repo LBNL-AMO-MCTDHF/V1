@@ -518,7 +518,7 @@ contains
              open(171,file=outtworknames(ii),status="unknown",iostat=myiostat)
              call checkiostat(myiostat,"opening "//outtworknames(ii))
              do i=0,numdata
-                write(171,'(A25,F10.5,400F15.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
+                write(171,'(A25,F10.5,400F20.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
                      totworksum0(i,ii),worksum0(i,ii,:)
              enddo
              close(171)
@@ -575,7 +575,7 @@ contains
 
 !! not worrying about complex values
 
-                   write(171,'(A25,F10.5,400F15.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
+                   write(171,'(A25,F10.5,400F20.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
                         totangworksum0(i,ii),angworksum0(i,ii,:)
 
                 enddo
@@ -725,7 +725,7 @@ contains
           do i=0,numdata
              myenergy=i*Estep
              if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
-                write(171,'(A25,F10.5,400F15.10)') " WORK EACH PULSE E= ", myenergy, totworksums(i,ii),worksums(i,ii,:)
+                write(171,'(A25,F10.5,400F20.10)') " WORK EACH PULSE E= ", myenergy, totworksums(i,ii),worksums(i,ii,:)
              endif
           enddo
           close(171)
@@ -735,7 +735,7 @@ contains
           do i=0,numdata
              myenergy=i*Estep
              if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
-                write(171,'(A25,F10.5,400F15.10)') "PHOTONS EACH PULSE E= ", myenergy, totexsums(i,ii),exsums(i,ii,:)
+                write(171,'(A25,F10.5,400F20.10)') "PHOTONS EACH PULSE E= ", myenergy, totexsums(i,ii),exsums(i,ii,:)
              endif
           enddo
           close(171)
