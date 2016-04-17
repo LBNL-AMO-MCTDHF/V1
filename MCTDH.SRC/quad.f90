@@ -269,13 +269,12 @@ subroutine quadspfs(inspfs,jjcalls)
   implicit none
   DATATYPE,intent(inout) :: inspfs(spfsize,nspf)
   integer,intent(out) :: jjcalls
-  integer :: ierr,minerr,maxnorbs,lastmpiorb,flag,ii
+  integer :: ierr,minerr,maxnorbs,lastmpiorb
   real*8 :: orthogerror,indev,dev,mynorm,tempquadtol
   DATATYPE, allocatable ::  invector(:,:), errvec(:,:), solution(:,:), &
        com_errvec(:,:), com_solution(:,:), workvec(:,:)
 
   lastmpiorb=firstmpiorb+orbsperproc-1
-  flag=1
 
   if (parorbsplit.eq.1) then
 !! TEMP? was     maxnorbs=nzprocsperset*orbsperproc
@@ -368,45 +367,43 @@ subroutine quadspfs(inspfs,jjcalls)
         tempquadtol=sqrt(tempquadtol)
         OFLWR "  *** Error in dgsolve, trying with lower tolerance",ierr,minerr
         WRFL  "  *** tolerance now", tempquadtol; CFL
-     endif
-  end do
+     else
 
-  mynorm=abs(hermdot(solution,solution,totspfdim))
-  if (parorbsplit.eq.3) then
-     call mympirealreduceone(mynorm)
-  endif
-  mynorm=sqrt(mynorm)
+        mynorm=abs(hermdot(solution,solution,totspfdim))
+        if (parorbsplit.eq.3) then
+           call mympirealreduceone(mynorm)
+        endif
+        mynorm=sqrt(mynorm)
   
-  if (mynorm.gt.maxquadnorm*nspf) then
-     solution=solution*maxquadnorm*nspf/mynorm
-  endif
+        if (mynorm.gt.maxquadnorm*nspf) then
+           solution=solution*maxquadnorm*nspf/mynorm
+        endif
 
-  do ii=0,4
+        workvec=invector+solution
 
-     workvec=invector+(0.5)**ii*solution
+        call spf_orthogit(workvec,orthogerror)
 
-     call spf_orthogit(workvec,orthogerror)
+        call spf_linear_derivs0(0,0,0d0,workvec,errvec,1,1)
 
-     call spf_linear_derivs0(0,0,0d0,workvec,errvec,1,1)
+        call apply_spf_constraints(errvec)
 
-     call apply_spf_constraints(errvec)
-
-     dev=abs(hermdot(errvec,errvec,totspfdim))
-     if (parorbsplit.eq.3) then
-        call mympirealreduceone(dev)
-     endif
-     dev=sqrt(dev)
+        dev=abs(hermdot(errvec,errvec,totspfdim))
+        if (parorbsplit.eq.3) then
+           call mympirealreduceone(dev)
+        endif
+        dev=sqrt(dev)
   
-     OFLWR "   Quad orbitals: Deviation is now ", dev; CFL
-     if (dev.le.indev) then
-        inspfs(:,:) = workvec(:,1:nspf)
-        flag=0
-        exit
+        OFLWR "   Quad orbitals: Deviation is now ", dev; CFL
+        if (dev.le.indev) then
+           inspfs(:,:) = workvec(:,1:nspf)
+        else
+           tempquadtol=sqrt(tempquadtol)
+           OFLWR "        ... rejecting step, trying with lower tolerance"
+           WRFL  "  *** tolerance now", tempquadtol; CFL
+           ierr=1
+        endif
      endif
-  enddo
-  if (flag.eq.1) then
-     OFLWR "        ... rejecting step."; CFL
-  endif
+  enddo  !! do while ierr.ne.0.or.minerr.ne.0
 
   deallocate( invector,errvec,solution,workvec)
 
