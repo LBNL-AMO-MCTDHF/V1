@@ -163,7 +163,7 @@ end module basis_parameters
 !!BB
 module lanparameters
 integer :: lanprintflag=0
-integer :: lanczosorder=200      !!              !!   lanczos order used in A-vector eigen.
+integer :: lanczosorder=300      !!              !! lanczos order used in A-vector eigen routine.
 integer :: lancheckstep=20       !!              !! lanczos eigen routine checks for convergence every this # steps
 real*8 :: lanthresh=1.d-9        !!              !! convergence criterion.
 end module lanparameters
