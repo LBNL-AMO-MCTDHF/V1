@@ -270,9 +270,9 @@ subroutine quadspfs(inspfs,jjcalls)
   DATATYPE,intent(inout) :: inspfs(spfsize,nspf)
   integer,intent(out) :: jjcalls
   integer :: ierr,minerr,maxnorbs,lastmpiorb,flag,ii
-  real*8 :: orthogerror,indev,dev,mynorm
-  DATATYPE, allocatable ::  vector(:,:), vector2(:,:), vector3(:,:), &
-       com_vector2(:,:), com_vector3(:,:), vector4(:,:)
+  real*8 :: orthogerror,indev,dev,mynorm,tempquadtol
+  DATATYPE, allocatable ::  invector(:,:), errvec(:,:), solution(:,:), &
+       com_errvec(:,:), com_solution(:,:), workvec(:,:)
 
   lastmpiorb=firstmpiorb+orbsperproc-1
   flag=1
@@ -284,9 +284,9 @@ subroutine quadspfs(inspfs,jjcalls)
      maxnorbs=nspf
   endif
 
-  allocate( vector(spfsize,maxnorbs), vector2(spfsize,maxnorbs), &
-       vector3(spfsize,maxnorbs), vector4(spfsize,maxnorbs) )
-  vector=0; vector2=0; vector3=0; vector4=0
+  allocate( invector(spfsize,maxnorbs), errvec(spfsize,maxnorbs), &
+       solution(spfsize,maxnorbs), workvec(spfsize,maxnorbs) )
+  invector=0; errvec=0; solution=0; workvec=0
 
   if (jacsymflag.ne.1.and.jacprojorth.eq.0) then
      OFLWR "setting jacsymflag=1 for orbital quad"; CFL
@@ -295,17 +295,17 @@ subroutine quadspfs(inspfs,jjcalls)
 
   effective_cmf_linearflag=0
 
-  vector(:,1:nspf)=inspfs(:,:)
+  invector(:,1:nspf)=inspfs(:,:)
 
-  call spf_orthogit(vector,orthogerror)
+  call spf_orthogit(invector,orthogerror)
 
-  call quadinit(vector,0d0)
+  call quadinit(invector,0d0)
 
-  call spf_linear_derivs0(0,0,0d0,vector,vector2,1,1)
+  call spf_linear_derivs0(0,0,0d0,invector,errvec,1,1)
 
-  call apply_spf_constraints(vector2)
+  call apply_spf_constraints(errvec)
 
-  indev=abs(hermdot(vector2,vector2,totspfdim))
+  indev=abs(hermdot(errvec,errvec,totspfdim))
   if (parorbsplit.eq.3) then
      call mympirealreduceone(indev)
   endif
@@ -313,94 +313,102 @@ subroutine quadspfs(inspfs,jjcalls)
   
   OFLWR "   Quad orbitals: Deviation is     ", indev; CFL
 
-  vector3=vector   !! guess
+  ierr=1; minerr=1
+  tempquadtol=quadtol
 
-  ierr=0
-  if (orbcompact.ne.0) then
-     allocate( com_vector2(spfsmallsize,maxnorbs), com_vector3(spfsmallsize,maxnorbs) )
-     com_vector2=0; com_vector3=0
-     call spfs_compact(vector2,com_vector2)
-     call spfs_compact(vector3,com_vector3)
-     if (parorbsplit.eq.3) then
-        call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
-             quadtol,spfsmallsize*nspf,min(maxdgdim,spfsmallsize*nspf*nprocs),1,ierr)
-     elseif (parorbsplit.eq.1) then
-        if (firstmpiorb.le.nspf) then
-           call dgsolve00( com_vector2(:,firstmpiorb:lastmpiorb), &
-                com_vector3(:,firstmpiorb:lastmpiorb), jjcalls, parquadopcompact,&
-                0,dummysub,quadtol,spfsmallsize*orbsperproc,&
-                min(maxdgdim,spfsmallsize*nspf),1,ierr,NZ_COMM_ORB(myorbset))
-        endif
-        call mpiorbgather(com_vector3,spfsmallsize)
-     else
-        call dgsolve0( com_vector2, com_vector3, jjcalls, quadopcompact,0,dummysub, &
-             quadtol,spfsmallsize*nspf,min(maxdgdim,spfsmallsize*nspf),0,ierr)
-     endif
-     call spfs_expand(com_vector3,vector3)
-     deallocate(com_vector2,com_vector3)
-  else
-     if (parorbsplit.eq.3) then
-        call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
-             quadtol,spfsize*nspf,min(maxdgdim,spfsize*nspf*nprocs),1,ierr)
-     elseif (parorbsplit.eq.1) then
-        if (firstmpiorb.le.nspf) then
-           call dgsolve00( vector2(:,firstmpiorb:lastmpiorb), &
-                vector3(:,firstmpiorb:lastmpiorb), jjcalls, parquadoperate,0,dummysub, &
-                quadtol,spfsize*orbsperproc,min(maxdgdim,spfsize*nspf),1,ierr,&
-                NZ_COMM_ORB(myorbset))
-        endif
-        call mpiorbgather(vector3,spfsize)
-     else
-        call dgsolve0( vector2, vector3, jjcalls, quadoperate,0,dummysub, &
-             quadtol,spfsize*nspf,min(maxdgdim,spfsize*nspf),0,ierr)
-     endif
-  endif
-  minerr=ierr
-  call mympiimax(ierr)
-  call mympiimin(minerr)
-  if (ierr.ne.0.or.minerr.ne.0) then
-     OFLWR "         *** Error in dgsolve, not changing orbitals",ierr,minerr; CFL
-  else
+  do while (ierr.ne.0.or.minerr.ne.0)
 
-     mynorm=abs(hermdot(vector3,vector3,totspfdim))
-     if (parorbsplit.eq.3) then
-        call mympirealreduceone(mynorm)
-     endif
-     mynorm=sqrt(mynorm)
-  
-     if (mynorm.gt.maxquadnorm*nspf) then
-        vector3=vector3*maxquadnorm*nspf/mynorm
-     endif
+     ierr=0; minerr=0
 
-     do ii=0,4
+     solution=invector   !! guess
 
-        vector4=vector+(0.5)**ii*vector3
-
-        call spf_orthogit(vector4,orthogerror)
-
-        call spf_linear_derivs0(0,0,0d0,vector4,vector2,1,1)
-
-        call apply_spf_constraints(vector2)
-
-        dev=abs(hermdot(vector2,vector2,totspfdim))
+     if (orbcompact.ne.0) then
+        allocate( com_errvec(spfsmallsize,maxnorbs), com_solution(spfsmallsize,maxnorbs) )
+        com_errvec=0; com_solution=0
+        call spfs_compact(errvec,com_errvec)
+        call spfs_compact(solution,com_solution)
         if (parorbsplit.eq.3) then
-           call mympirealreduceone(dev)
+           call dgsolve0( com_errvec, com_solution, jjcalls, quadopcompact,0,dummysub, &
+                tempquadtol,spfsmallsize*nspf,min(maxdgdim,spfsmallsize*nspf*nprocs),1,ierr)
+        elseif (parorbsplit.eq.1) then
+           if (firstmpiorb.le.nspf) then
+              call dgsolve00( com_errvec(:,firstmpiorb:lastmpiorb), &
+                   com_solution(:,firstmpiorb:lastmpiorb), jjcalls, parquadopcompact,&
+                   0,dummysub,tempquadtol,spfsmallsize*orbsperproc,&
+                   min(maxdgdim,spfsmallsize*nspf),1,ierr,NZ_COMM_ORB(myorbset))
+           endif
+           call mpiorbgather(com_solution,spfsmallsize)
+        else
+           call dgsolve0( com_errvec, com_solution, jjcalls, quadopcompact,0,dummysub, &
+                tempquadtol,spfsmallsize*nspf,min(maxdgdim,spfsmallsize*nspf),0,ierr)
         endif
-        dev=sqrt(dev)
-  
-        OFLWR "   Quad orbitals: Deviation is now ", dev; CFL
-        if (dev.le.indev) then
-           inspfs(:,:) = vector4(:,1:nspf)
-           flag=0
-           exit
+        call spfs_expand(com_solution,solution)
+        deallocate(com_errvec,com_solution)
+     else
+        if (parorbsplit.eq.3) then
+           call dgsolve0( errvec, solution, jjcalls, quadoperate,0,dummysub, &
+                tempquadtol,spfsize*nspf,min(maxdgdim,spfsize*nspf*nprocs),1,ierr)
+        elseif (parorbsplit.eq.1) then
+           if (firstmpiorb.le.nspf) then
+              call dgsolve00( errvec(:,firstmpiorb:lastmpiorb), &
+                   solution(:,firstmpiorb:lastmpiorb), jjcalls, parquadoperate,0,dummysub, &
+                   tempquadtol,spfsize*orbsperproc,min(maxdgdim,spfsize*nspf),1,ierr,&
+                   NZ_COMM_ORB(myorbset))
+           endif
+           call mpiorbgather(solution,spfsize)
+        else
+           call dgsolve0( errvec, solution, jjcalls, quadoperate,0,dummysub, &
+                tempquadtol,spfsize*nspf,min(maxdgdim,spfsize*nspf),0,ierr)
         endif
-     enddo
-     if (flag.eq.1) then
-        OFLWR "        ... rejecting step."; CFL
      endif
+     minerr=ierr
+     call mympiimax(ierr)
+     call mympiimin(minerr)
+     if (ierr.ne.0.or.minerr.ne.0) then
+        tempquadtol=sqrt(tempquadtol)
+        OFLWR "  *** Error in dgsolve, trying with lower tolerance",ierr,minerr
+        WRFL  "  *** tolerance now", tempquadtol; CFL
+     endif
+  end do
+
+  mynorm=abs(hermdot(solution,solution,totspfdim))
+  if (parorbsplit.eq.3) then
+     call mympirealreduceone(mynorm)
+  endif
+  mynorm=sqrt(mynorm)
+  
+  if (mynorm.gt.maxquadnorm*nspf) then
+     solution=solution*maxquadnorm*nspf/mynorm
   endif
 
-  deallocate( vector,vector2,vector3,vector4)
+  do ii=0,4
+
+     workvec=invector+(0.5)**ii*solution
+
+     call spf_orthogit(workvec,orthogerror)
+
+     call spf_linear_derivs0(0,0,0d0,workvec,errvec,1,1)
+
+     call apply_spf_constraints(errvec)
+
+     dev=abs(hermdot(errvec,errvec,totspfdim))
+     if (parorbsplit.eq.3) then
+        call mympirealreduceone(dev)
+     endif
+     dev=sqrt(dev)
+  
+     OFLWR "   Quad orbitals: Deviation is now ", dev; CFL
+     if (dev.le.indev) then
+        inspfs(:,:) = workvec(:,1:nspf)
+        flag=0
+        exit
+     endif
+  enddo
+  if (flag.eq.1) then
+     OFLWR "        ... rejecting step."; CFL
+  endif
+
+  deallocate( invector,errvec,solution,workvec)
 
 contains
   subroutine dummysub()
