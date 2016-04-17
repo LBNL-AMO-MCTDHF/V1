@@ -61,15 +61,24 @@ subroutine myconfigeig(cptr,thisconfigvects,thisconfigvals,order,printflag, &
         tempconfigvects(:,:)=0d0
      endif
      if (guessflag.ne.0) then
-        allocate(realconfigvect(www%numconfig));    realconfigvect=0
-        do i=1,numshift
-           call RANDOM_NUMBER(realconfigvect(:))
-           if (www%totadim.gt.0) then
-              tempconfigvects(:,i)=realconfigvect(www%firstconfig*numr:www%lastconfig*numr)
-           endif
-        enddo
-        deallocate(realconfigvect)
+!! never mind consistency regardless of number of processors.  could scatter anyway.  
+!!        allocate(realconfigvect(www%numconfig*numr));    realconfigvect=0
+!!        do i=1,numshift
+!!           call RANDOM_NUMBER(realconfigvect(:))
+!!           if (www%totadim.gt.0) then
+!!              tempconfigvects(:,i)=realconfigvect((www%firstconfig-1)*numr+1:www%lastconfig*numr)
+!!           endif
+!!        enddo
+
         if (www%totadim.gt.0) then
+           if (numshift.gt.0) then
+              allocate(realconfigvect(www%totadim*numr))
+              do i=1,numshift
+                 call RANDOM_NUMBER(realconfigvect(:))
+                 tempconfigvects(:,i)=realconfigvect(:)
+              enddo
+              deallocate(realconfigvect)
+           endif
            tempconfigvects(:,numshift+1:order+numshift)=thisconfigvects(:,1:order)
         endif
      endif
