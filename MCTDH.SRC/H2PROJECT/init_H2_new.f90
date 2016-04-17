@@ -19,12 +19,12 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
        bondpoints(numr),bondweights(numr), halfniumpot(numerad,lbig+1, -mbig:mbig),&
        pot(numerad,lbig+1, -mbig:mbig), &
        elecweights(numerad,lbig+1, -mbig:mbig,3), elecradii(numerad,lbig+1, -mbig:mbig)
-  integer :: i,ii,j,    taken(200)=0, flag, jj, jflag, xiug, iug, ugvalue(200,0:30), &
-       getsmallugvalue
+  integer :: i,ii,imvalue,j, taken(200)=0, flag, jj, jflag, xiug, iug, ugvalue(200,0:30), &
+       getsmallugvalue, istart
   DATAECS :: thisrvalue  
   character (len=2) :: th(4)
   DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:)
-  DATATYPE,allocatable  ::  mydensity(:,:),ivopot(:,:)
+  DATATYPE,allocatable  ::  mydensity(:,:),ivopot(:,:),ivoproj(:,:,:,:)
 
   th=(/ "st", "nd", "rd", "th" /)
 
@@ -85,17 +85,17 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   allocate(bigham(numerad, lbig+1, numerad, lbig+1),bigvects(numerad,lbig+1, edim,0:mbig), bigvals(edim))
   bigham=0; bigvals=0
 
-  do ii=0,mbig
+  do imvalue=0,mbig
      jflag=0
      do jj=1,numspf
-        if (abs(spfmvals(jj)).eq.ii) then
+        if (abs(spfmvals(jj)).eq.imvalue) then
            jflag=1
         endif
      enddo
 
 !!$  if ((skipflag.eq.0).and.(spfsloaded.lt.numspf).and.(jflag==1)) then
      if ((spfsloaded.lt.numspf).and.(jflag==1)) then
-        bigham=proham(:,:,:,:,ii+1)/thisrvalue**2
+        bigham=proham(:,:,:,:,imvalue+1)/thisrvalue**2
         do i=1,lbig+1
            do j=1,numerad
               bigham(j,i,j,i) = bigham(j,i,j,i) + propot(j,i) / thisrvalue
@@ -111,30 +111,47 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         enddo
 
         if (ivoflag.ne.0) then
+           OFLWR "getting IVO pot.  occupations are "
+           WRFL loadedocc(1:spfsloaded); CFL
            allocate(mydensity(numerad,lbig+1),ivopot(numerad,lbig+1))
-           mydensity(:,:)=0d0; ivopot(:,:)=0d0
-           do i=1,spfsloaded
+           mydensity(:,:)=0d0; ivopot(:,:)=0d0;
+           do ii=1,spfsloaded
               do j=-mbig,mbig
-                 mydensity(:,:)=mydensity(:,:)+inspfs(:,:,j,i)*CONJUGATE(inspfs(:,:,j,i))*loadedocc(i)
+                 mydensity(:,:)=mydensity(:,:)+inspfs(:,:,j,ii)*CONJUGATE(inspfs(:,:,j,ii))*loadedocc(ii)
               enddo
            enddo
            call op_tinv(0,0,1,mydensity,ivopot)
+           allocate(ivoproj(numerad,lbig+1,numerad,lbig+1))
+           ivoproj(:,:,:,:)=0d0           
            do i=1,lbig+1
               do j=1,numerad
                  bigham(j,i,j,i) = bigham(j,i,j,i) + ivopot(j,i) / thisrvalue  !! ok conversion
+                 ivoproj(j,i,j,i) = ivoproj(j,i,j,i) + 1d0
+                 do ii=1,spfsloaded
+                    ivoproj(:,:,j,i) = ivoproj(:,:,j,i) - &
+                         inspfs(:,:,imvalue,ii)*CONJUGATE(inspfs(j,i,imvalue,ii))
+                 enddo
               enddo
            enddo
-           deallocate(mydensity,ivopot)
-        endif
-        
 
-        OFLWR "Calculating orbitals.  Electronic dim, mval  ",edim, numerad,lbig+1, ii; CFL
-        call ECSEIG(bigham,edim,edim,bigvects(:,:,:,ii),bigvals)
+!! DO BLAS with temporary arrays and WATCH DATA TYPES !!
+
+           bigham(:,:,:,:) = RESHAPE(MATMUL(MATMUL(&
+                RESHAPE(ivoproj(:,:,:,:),(/edim,edim/)),&
+                RESHAPE(bigham(:,:,:,:),(/edim,edim/))),&
+                RESHAPE(ivoproj(:,:,:,:),(/edim,edim/))),&
+                (/numerad,lbig+1,numerad,lbig+1/))
+
+           deallocate(mydensity,ivopot,ivoproj)
+        endif
+
+        OFLWR "Calculating orbitals.  Electronic dim, mval  ",edim, numerad,lbig+1, imvalue; CFL
+        call ECSEIG(bigham,edim,edim,bigvects(:,:,:,imvalue),bigvals)
 
         !! fix phase, mostly for messflag to debug
         do j=1,min(edim,numspf)
-           if (real(bigvects(1,1,j,ii)).lt.0.d0) then
-              bigvects(:,:,j,ii)=(-1)*bigvects(:,:,j,ii)
+           if (real(bigvects(1,1,j,imvalue)).lt.0.d0) then
+              bigvects(:,:,j,imvalue)=(-1)*bigvects(:,:,j,imvalue)
            endif
         enddo
 
@@ -148,9 +165,9 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      endif
   enddo
 
-  do ii=-mbig,mbig
-     pot(:,:,ii)= propot(:,:)
-     halfniumpot(:,:,ii)= halfpot(:,:) * (nuccharge1+nuccharge2-numelec+1)
+  do imvalue=-mbig,mbig
+     pot(:,:,imvalue)= propot(:,:)
+     halfniumpot(:,:,imvalue)= halfpot(:,:) * (nuccharge1+nuccharge2-numelec+1)
   enddo
 
   if (numhatoms.gt.0) then
@@ -163,16 +180,16 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   call openfile()
   if (spfsloaded.lt.numspf) then
-     do ii=0,mbig
+     do imvalue=0,mbig
 !! get ug value
         do j=1,min(4*numspf,edim)
-           ugvalue(j,ii)=getsmallugvalue((bigvects(:,:,j,abs(ii))),ii)
+           ugvalue(j,imvalue)=getsmallugvalue((bigvects(:,:,j,abs(imvalue))),imvalue)
         enddo
      enddo
-     do ii=-mbig,mbig
+     do imvalue=-mbig,mbig
         taken(:)=0
         do i=1,num_skip_orbs
-           if (orb_skip_mvalue(i).eq.ii) then
+           if (orb_skip_mvalue(i).eq.imvalue) then
               taken(orb_skip(i))=1
            endif
         enddo
@@ -181,8 +198,13 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 !!              want to do -1,1,0 so
            iug=floor(0.5d0*xiug-1.5d0*xiug**2+1 + 1.d-9)
            j=0
-           do i=1,numspf
-              if ((spfmvals(i)==ii).and.(spfugvals(i).eq.iug)) then           !! going through orbitals i with specified mvalue and ugvalue
+           if (ivoflag.eq.0) then
+              istart=1
+           else
+              istart=spfsloaded+1
+           endif
+           do i=istart,numspf
+              if ((spfmvals(i)==imvalue).and.(spfugvals(i).eq.iug)) then           !! going through orbitals i with specified mvalue and ugvalue
                  flag=0
                  do while (flag==0)                                          !! move to next vector, haven't found a bigvect of proper ugvalue yet
                     flag=0
@@ -193,26 +215,26 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
                        endif
                     enddo
                     flag=0
-                    if ((iug.eq.0).or.(iug.eq.ugvalue(j,abs(ii)))) then                 !! this one will do
+                    if ((iug.eq.0).or.(iug.eq.ugvalue(j,abs(imvalue)))) then                 !! this one will do
                        flag=1
                     endif
                  enddo
                  if (i.le.spfsloaded) then
-                    write(mpifileptr, *) "WON'T assign spf ", i, " to ", j, th(min(j,4)), " eigval of m=",ii, " because it is already loaded "
+                    write(mpifileptr, *) "WON'T assign spf ", i, " to ", j, th(min(j,4)), " eigval of m=",imvalue, " because it is already loaded "
                  else
                     taken(j)=1
                     if (iug.eq.0) then
-                       write(mpifileptr, *) "Assigning spf ", i, " to ", j, th(min(j,4)), " eigval of m=",ii, " ; ugvalue not fixed, is ", ugvalue(j,abs(ii))
+                       write(mpifileptr, *) "Assigning spf ", i, " to ", j, th(min(j,4)), " eigval of m=",imvalue, " ; ugvalue not fixed, is ", ugvalue(j,abs(imvalue))
                     else
-                       write(mpifileptr, *) "Assigning spf ", i, " to ", j, th(min(j,4)), " eigval of m=",ii, " ; has specified ugvalue= ", spfugvals(i)
+                       write(mpifileptr, *) "Assigning spf ", i, " to ", j, th(min(j,4)), " eigval of m=",imvalue, " ; has specified ugvalue= ", spfugvals(i)
                     endif
                     inspfs(:,:,:,i)=0d0
-                    inspfs(:,:,ii,i) = bigvects(:,:,j,abs(ii))
+                    inspfs(:,:,imvalue,i) = bigvects(:,:,j,abs(imvalue))
                  endif
               endif !! spfmval
            enddo !! nspf
         enddo !! iug
-     enddo !! ii
+     enddo !! imvalue
   else
      write(mpifileptr,*) "Found all spfs I need on file."
   endif  !! spfsloaded

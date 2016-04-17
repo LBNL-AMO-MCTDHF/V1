@@ -20,8 +20,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
        elecweights(numerad,lbig+1, -mbig:mbig,3),elecradii(numerad,lbig+1, -mbig:mbig)
   character (len=2) :: th(4)
   DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:)
-  DATATYPE,allocatable :: mydensity(:,:), ivopot(:,:)
-  integer ::  i,ii,k,j,   taken(200)=0, flag,xiug, iug, ugvalue(200,0:10), getsmallugvalue
+  DATATYPE,allocatable :: mydensity(:,:), ivopot(:,:), ivoproj(:,:,:,:)
+  integer ::  i,ii,imvalue,k,j,   taken(200)=0, flag,xiug, iug, ugvalue(200,0:10), getsmallugvalue, istart
 
   halfniumpot=0d0
   do i=1,numspf
@@ -114,7 +114,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   enddo
 
 
-  do ii=0,mbig
+  do imvalue=0,mbig
 
 !! jacobideriv is matrix elements of ( (1-q^2) ddq - q) Where q=cos theta.
 
@@ -125,20 +125,20 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      do j=1,lbig+1
         do i=1,numerad
            do k=max(1,i-bandwidth),min(numerad,i+bandwidth)
-              sparseddz_xi_banded(k-i+bandwidth+1,i,j,ii+1) = &
-                   (-1) * glfirstdertot(k+1,i+1,mod(ii,2)) * jacobipoints(j)  * (-1)
+              sparseddz_xi_banded(k-i+bandwidth+1,i,j,imvalue+1) = &
+                   (-1) * glfirstdertot(k+1,i+1,mod(imvalue,2)) * jacobipoints(j)  * (-1)
 
-              sparseddrho_xi_banded(k-i+bandwidth+1,i,j,ii+1) = glrhoderivs(k+1,i+1 ) &
+              sparseddrho_xi_banded(k-i+bandwidth+1,i,j,imvalue+1) = glrhoderivs(k+1,i+1 ) &
                    * sqrt(1-jacobipoints(j)**2) /glpoints(k+1)    !!TWOFIX  /2d0
 
            enddo
            do k=1,lbig+1
-              sparseddz_eta(k,j,i,ii+1) = (-1) * 1.d0/glpoints(i+1) * jacobideriv(k,j,ii)  * (-1)
-              sparseddrho_eta(k,j,i,ii+1) =  (-1)* 1.d0/glpoints(i+1) &
+              sparseddz_eta(k,j,i,imvalue+1) = (-1) * 1.d0/glpoints(i+1) * jacobideriv(k,j,imvalue)  * (-1)
+              sparseddrho_eta(k,j,i,imvalue+1) =  (-1)* 1.d0/glpoints(i+1) &
                    * jacobirhoderiv(k,j) / sqrt(1-jacobipoints(k)**2)     !!TWOFIX  /2d0
            enddo
-           sparseddz_diag(i,j,ii+1) = 0d0
-           sparseddrho_diag(i,j,ii+1) = 0d0
+           sparseddz_diag(i,j,imvalue+1) = 0d0
+           sparseddrho_diag(i,j,imvalue+1) = 0d0
         enddo
      enddo
   enddo
@@ -148,7 +148,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      enddo
   enddo
 
-  do ii=0,mbig
+  do imvalue=0,mbig
 
 !!$!! 062111 added this logic here for atom too
 !!$     if ((skipflag.eq.0).and.(spfsloaded.lt.numspf)) then
@@ -157,7 +157,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
         bigham=0.d0
         do i=1,hegridpoints-2
-           bigham(i,:,i,:) = jacobike(:,:,abs(ii)) / glpoints(i+1)**2
+           bigham(i,:,i,:) = jacobike(:,:,abs(imvalue)) / glpoints(i+1)**2
         enddo
 
 
@@ -171,10 +171,10 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 !!   with temp_glflag option still available
 !NOT!  doesn't work with sparseops setup
 
-!if (mod(ii,2).eq.0.or.temp_glflag.ne.0) then
+!if (mod(imvalue,2).eq.0.or.temp_glflag.ne.0) then
 !     do i=1,hegridpoints-2
 !        do j=1,hegridpoints-2
-!           bigham(i,:,j,:)=bigham(i,:,j,:) + jacobike(:,:,abs(ii)) * &
+!           bigham(i,:,j,:)=bigham(i,:,j,:) + jacobike(:,:,abs(imvalue)) * &
 !                glfirstdertot(1,i+1,0) *  glfirstdertot(1,j+1,0)    
 !        enddo
 !     enddo
@@ -182,7 +182,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
         do i=1,lbig+1
            bigham(:,i,:,i) = bigham(:,i,:,i) + &
-                (-0.5d0)*glke(2:hegridpoints-1, 2:hegridpoints-1,mod(ii,2))
+                (-0.5d0)*glke(2:hegridpoints-1, 2:hegridpoints-1,mod(imvalue,2))
         enddo
         do k=1,lbig+1
            do i=1,hegridpoints-2
@@ -198,6 +198,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         enddo
 
         if (ivoflag.ne.0) then
+           OFLWR "getting IVO pot.  occupations are "
+           WRFL loadedocc(1:spfsloaded); CFL
            allocate(mydensity(numerad,lbig+1),ivopot(numerad,lbig+1))
            mydensity(:,:)=0d0; ivopot(:,:)=0d0
            do i=1,spfsloaded
@@ -207,16 +209,32 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
               enddo
            enddo
            call op_tinv(0,0,1,mydensity,ivopot)
+           allocate(ivoproj(numerad,lbig+1,numerad,lbig+1))
+           ivoproj(:,:,:,:)=0d0           
            do i=1,lbig+1
               do j=1,numerad
                  bigham(j,i,j,i) = bigham(j,i,j,i) + ivopot(j,i)  !! ok conversion
+                 ivoproj(j,i,j,i) = ivoproj(j,i,j,i) + 1d0
+                 do ii=1,spfsloaded
+                    ivoproj(:,:,j,i) = ivoproj(:,:,j,i) - &
+                         inspfs(:,:,imvalue,ii)*CONJUGATE(inspfs(j,i,imvalue,ii))
+                 enddo
               enddo
            enddo
-           deallocate(mydensity,ivopot)
+
+!! DO BLAS with temporary arrays and WATCH DATA TYPES !!
+
+           bigham(:,:,:,:) = RESHAPE(MATMUL(MATMUL(&
+                RESHAPE(ivoproj(:,:,:,:),(/edim,edim/)),&
+                RESHAPE(bigham(:,:,:,:),(/edim,edim/))),&
+                RESHAPE(ivoproj(:,:,:,:),(/edim,edim/))),&
+                (/numerad,lbig+1,numerad,lbig+1/))
+
+           deallocate(mydensity,ivopot,ivoproj)
         endif
 
-        OFLWR "Get spfs.  Electronic dim, mval  ",edim, numerad,lbig+1, ii;CFL
-        call ECSEIG(bigham,edim,edim,bigvects(:,:,:,ii),bigvals)
+        OFLWR "Calculating orbitals.  Electronic dim, mval  ",edim, numerad,lbig+1, imvalue;CFL
+        call ECSEIG(bigham,edim,edim,bigvects(:,:,:,imvalue),bigvals)
 
         OFL;        write(mpifileptr,'(A12,100F18.12)') "  Eigvals:"
 #ifdef ECSFLAG
@@ -230,14 +248,14 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
      bigham=0.d0
      do i=1,hegridpoints-2
-        bigham(i,:,i,:) = jacobike(:,:,abs(ii)) / glpoints(i+1)**2
+        bigham(i,:,i,:) = jacobike(:,:,abs(imvalue)) / glpoints(i+1)**2
      enddo
 
 
-!if (mod(ii,2).eq.0.or.temp_glflag.ne.0) then
+!if (mod(imvalue,2).eq.0.or.temp_glflag.ne.0) then
 !     do i=1,hegridpoints-2
 !        do j=1,hegridpoints-2
-!           bigham(i,:,j,:)=bigham(i,:,j,:) + jacobike(:,:,abs(ii)) * &
+!           bigham(i,:,j,:)=bigham(i,:,j,:) + jacobike(:,:,abs(imvalue)) * &
 !                glfirstdertot(1,i+1,0) *  glfirstdertot(1,j+1,0)    
 !        enddo
 !     enddo
@@ -246,17 +264,17 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
      do i=1,lbig+1
         bigham(:,i,:,i) = bigham(:,i,:,i) + &
-             (-0.5d0)*glke(2:hegridpoints-1, 2:hegridpoints-1,mod(ii,2))
+             (-0.5d0)*glke(2:hegridpoints-1, 2:hegridpoints-1,mod(imvalue,2))
      enddo
      do j=1,lbig+1
         do i=1,numerad
            do k=max(1,i-bandwidth),min(numerad,i+bandwidth)
-              sparseops_xi_banded(k-i+bandwidth+1,i,j,ii+1) = bigham(k,j,i,j)
+              sparseops_xi_banded(k-i+bandwidth+1,i,j,imvalue+1) = bigham(k,j,i,j)
            enddo
            do k=1,lbig+1
-              sparseops_eta(k,j,i,ii+1) = bigham(i,k,i,j)
+              sparseops_eta(k,j,i,imvalue+1) = bigham(i,k,i,j)
            enddo
-           sparseops_diag(i,j,ii+1) = bigham(i,j,i,j)
+           sparseops_diag(i,j,imvalue+1) = bigham(i,j,i,j)
         enddo
      enddo
   enddo
@@ -273,28 +291,33 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   call openfile()
   if (spfsloaded.lt.numspf) then
-     do ii=0,mbig
+     do imvalue=0,mbig
         !! get ug value
         do j=1,min(4*numspf,edim)
-           ugvalue(j,ii)=getsmallugvalue((bigvects(:,:,j,abs(ii))),ii)
+           ugvalue(j,imvalue)=getsmallugvalue((bigvects(:,:,j,abs(imvalue))),imvalue)
         enddo
-        !           print *, "ugvalues m= ", ii," : ", ugvalue(1:numspf,ii)
+        !           print *, "ugvalues m= ", imvalue," : ", ugvalue(1:numspf,imvalue)
      enddo
      
-     do ii=-mbig,mbig
+     do imvalue=-mbig,mbig
         taken(:)=0
         do i=1,num_skip_orbs
-           if (orb_skip_mvalue(i).eq.ii) then
+           if (orb_skip_mvalue(i).eq.imvalue) then
               taken(orb_skip(i))=1
            endif
         enddo
         do xiug=-1,1    !  iug=-1,0,1:   u, unspecified, or g sym...  now need taken array
-           !!              want to do -1,1,0 so
+!!              want to do -1,1,0 so
            iug=floor(0.5d0*xiug-1.5d0*xiug**2+1 + 1.d-9)
            j=0
-           do i=1,numspf
+           if (ivoflag.eq.0) then
+              istart=1
+           else
+              istart=spfsloaded+1
+           endif
+           do i=istart,numspf
 !! going through orbitals i with specified mvalue and ugvalue
-              if ((spfmvals(i)==ii).and.(spfugvals(i).eq.iug)) then           
+              if ((spfmvals(i)==imvalue).and.(spfugvals(i).eq.iug)) then           
                  
                  flag=0
 !! move to next vector, haven't found a bigvect of proper ugvalue yet
@@ -308,30 +331,30 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
                        endif
                     enddo
                     flag=0
-                    if ((iug.eq.0).or.(iug.eq.ugvalue(j,abs(ii)))) then                 
+                    if ((iug.eq.0).or.(iug.eq.ugvalue(j,abs(imvalue)))) then                 
 !! this one will do
                        flag=1
                     endif
                  enddo
                  if (i.le.spfsloaded) then
                     write(mpifileptr, *) "WON'T assign spf ", i, " to ", j, th(min(j,4)), &
-                         " eigval of m=",ii, " because it is already loaded "
+                         " eigval of m=",imvalue, " because it is already loaded "
                  else
                     taken(j)=1
                     if (iug.eq.0) then
                        write(mpifileptr, *) "Assigning spf ", i, " to ", j, th(min(j,4)), &
-                            " eigval of m=",ii, " ; ugvalue not fixed, is ", ugvalue(j,abs(ii))
+                            " eigval of m=",imvalue, " ; ugvalue not fixed, is ", ugvalue(j,abs(imvalue))
                     else
                        write(mpifileptr, *) "Assigning spf ", i, " to ", j, th(min(j,4)), &
-                            " eigval of m=",ii, " ; has specified ugvalue= ", spfugvals(i)
+                            " eigval of m=",imvalue, " ; has specified ugvalue= ", spfugvals(i)
                     endif
                     inspfs(:,:,:,i)=0d0
-                    inspfs(:,:,ii,i) = bigvects(:,:,j,abs(ii))
+                    inspfs(:,:,imvalue,i) = bigvects(:,:,j,abs(imvalue))
                  endif
               endif !! spfmval
            enddo !! nspf
         enddo !! iug
-     enddo !! ii=-mbig,mbig
+     enddo !! imvalue=-mbig,mbig
   else
      write(mpifileptr,*) "Found all spfs I need on file."
   endif  !! spfsloaded
