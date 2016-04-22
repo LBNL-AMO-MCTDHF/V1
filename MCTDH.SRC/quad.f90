@@ -231,9 +231,6 @@ contains
     DATATYPE ::  inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1),  &
          outspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)  !! AUTOMATIC
     inspfs=0; outspfs=0
-    if (jacprojorth.ne.0) then   
-       OFLWR "not supported parallel mode quadoperate jacprojorth"; CFLST
-    endif
     call spfs_expand_local(com_inspfs,inspfs)
     call parjacoperate0(0,0,inspfs,outspfs)
     call spfs_compact_local(outspfs,com_outspfs)
@@ -247,9 +244,6 @@ contains
     integer :: notusedint
     DATATYPE,intent(in) :: inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
     DATATYPE,intent(out) :: outspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
-    if (jacprojorth.ne.0) then   
-       OFLWR "not supported parallel mode quadoperate jacprojorth"; CFLST
-    endif
     call parjacoperate0(0,0,inspfs,outspfs)
   end subroutine parquadoperate
 
