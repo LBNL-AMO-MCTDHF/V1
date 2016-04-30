@@ -205,7 +205,7 @@ program mctdhf
   use savenormmod
   implicit none
 
-  integer :: i,spfsloaded,totread,ifile,readnum
+  integer :: i,spfsloaded,totread,ifile,readnum,qq
   DATAECS, allocatable ::  tempvals(:)
   DATATYPE, allocatable :: bigavector(:,:,:), bigspfs(:,:),hugeavector(:,:),nullvector(:,:,:)
   logical :: logcheckpar,use_biowalktype
@@ -650,11 +650,18 @@ program mctdhf
 !! since biorthogonalization is imperfect with restricted configuration spaces
 !!  and subject to tolerance criteria in any case, go ahead and rediagonalize
 
+!! this is problematic however for restricted config spaces especiall with 
+!! improvedrelaxflag>1 because states change.  So do quad if called for.  v1.28
+
            if (tot_adim.gt.0) then
               bigavector(:,:,:)=RESHAPE(yyy%cmfavec(:,:,0),(/numr,local_nconfig,mcscfnum/))
            endif
-           call myconfigeig(yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
-                1,0d0,max(0,abs(improvedrelaxflag)-1))
+           if ((improvedquadflag.eq.1.or.improvedquadflag.eq.3).and.0d0.ge.aquadstarttime) then
+              call quadavector(bigavector,qq)
+           else
+              call myconfigeig(yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
+                   1,0d0,max(0,abs(improvedrelaxflag)-1))
+           endif
         endif
         deallocate(tempvals)
      endif  
