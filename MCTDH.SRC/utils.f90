@@ -762,16 +762,16 @@ end module expsubmod
 module matsubmod
 contains
 
-subroutine biorthogmat(A,N)
-  implicit none
-  integer,intent(in) :: N
-  DATATYPE,intent(inout) :: A(N,N)
-#ifdef CNORMFLAG
-  call symorthogmat(A,N,2)
-#else
-  call symorthogmat(A,N,2)
-#endif
-end subroutine biorthogmat
+!!$subroutine biorthogmat(A,N)
+!!$  implicit none
+!!$  integer,intent(in) :: N
+!!$  DATATYPE,intent(inout) :: A(N,N)
+!!$#ifdef CNORMFLAG
+!!$  call symorthogmat(A,N,2)
+!!$#else
+!!$  call symorthogmat(A,N,2)
+!!$#endif
+!!$end subroutine biorthogmat
 
 
 subroutine orthogmat(A,N)
@@ -786,6 +786,8 @@ subroutine orthogmat(A,N)
 end subroutine orthogmat
 
 
+!! A must be hermitian (positive definite too right?) !!
+
 subroutine symorthogmat(A,N,flag)  
   implicit none
   integer,intent(in) :: N,flag
@@ -794,10 +796,18 @@ subroutine symorthogmat(A,N,flag)
   DATATYPE, allocatable :: U(:,:),VT(:,:),work(:),zwork(:),Asave(:,:)
   integer :: lwork,i,j,k
 
-  if ((flag.ne.1).and.(flag.ne.2)) then
+  if ((flag.ne.1)) then   !!  flag 2 not used. not sure about it.
+     !!                        and.(flag.ne.2)) then
      print *, "bad flag",flag
      stop
   endif
+
+#ifdef CNORMFLAG
+  if (flag/=2) then
+     print *, "FAIL."; stop
+  endif
+#endif
+
   if (flag.ne.2) then !! for sqrt, using eigen; must be herm.
      do i=1,N;  do j=1,i
         if (abs((CONJUGATE(A(i,j)))-A(j,i)).gt.1.d-7) then
@@ -813,13 +823,9 @@ subroutine symorthogmat(A,N,flag)
 #ifdef REALGO 
   call dgesvd('A','A',N,N,A,N,SV,U,N,VT,N,work,lwork,i)
 #else
-#ifdef CNORMFLAG
-  if (flag/=2) then
-     print *, "FAIL."; stop
-  endif
-#endif
   call zgesvd('A','A',N,N,A,N,SV,U,N,VT,N,zwork,lwork,work,i)
 #endif
+
   if (i.ne.0) then
      print *, "ERR herm SVD",i,N
      do k=1,N
@@ -928,7 +934,7 @@ subroutine allpurposemat(A,N,flag)
 
 end subroutine allpurposemat
 
-end module
+end module matsubmod
 
 
 ! enter as l1 l2 m1 m2 l3    TIMES TWO!!   INTEGER ARGUMENTS FOR HALF SPIN

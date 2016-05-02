@@ -1,5 +1,9 @@
 
-  ** LBNL-AMO-MCTDHF VERSION 1.27 **
+  ** LBNL-AMO-MCTDHF VERSION 1.28 **
+
+v1.28 generalized fock eigenfunctions for orbital resolution for restricted
+   configuration spaces for excited states for overlaps (action 20) with
+   improvedfockflag.ne.0
 
 v1.27 best attempt dissociative excitation actions 16,17 with
    nucfluxopt.eq.2 -- replaces old (version 0) actions 13,14

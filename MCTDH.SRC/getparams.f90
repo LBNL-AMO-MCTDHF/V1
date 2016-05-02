@@ -99,7 +99,7 @@ subroutine getparams()
        pulsewindowtoo,conjgpropflag,dipolesumstart,dipolesumend,outmatel,numcatfiles,&
        catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
        shuffle_dfwalktype,maxdgdim, messavec, messaamount,holeflag, angularflag, angprojspifile,&
-       prepropflag, step_flag, postpropflag, reference_pulses
+       prepropflag, step_flag, postpropflag, reference_pulses, improvedfockflag, fockreg
 
 
   OFL
@@ -135,9 +135,10 @@ subroutine getparams()
 
 !! input-dependent defaults
 
-     if (constraintflag.ne.0) then
-        prepropflag=1
-     endif
+!!$ prepropflag.eq.1 default
+!!$     if (constraintflag.ne.0) then
+!!$        prepropflag=1
+!!$     endif
 
      if (improvedrelaxflag.ne.0) then
         maxexpodim=max(300,maxexpodim)
@@ -156,13 +157,16 @@ subroutine getparams()
         spin_restrictval=abs(restrictms)
      endif
 
-     if (improvedrelaxflag.ne.0) then    !! not good.  reprogram this whole thing later.  Defaults here should
-        denreg=1.d-9                     !!   go after a first parinp AND command line argument parse; then repeat
-     endif
+!!$ denreg now 1d-10 default...
+!!$     if (improvedrelaxflag.ne.0) then    !! not good.  reprogram this whole thing later.  Defaults here should
+!!$        denreg=1.d-9                     !!   go after a first parinp AND command line argument parse; then repeat
+!!$     endif
+
      if (improvedrelaxflag.ne.0) then
         aorder=max(300,aorder)
         maxaorder=max(aorder,maxaorder)
      endif
+
      if (spfrestrictflag.eq.0) then
         orbcompact=0
      endif
@@ -407,6 +411,11 @@ subroutine getparams()
      OFLWR "Constraintflag not supported: ", constraintflag;     CFLST
   endif
   
+  if (improvedrelaxflag.eq.0) then
+     improvednatflag=0
+     improvedfockflag=0
+  endif
+
   if (improvedrelaxflag.ne.0.and.constraintflag.eq.1) then
      OFLWR "FOR DEN CONSTRAINT, USE IMPROVEDNATFLAG FOR RELAX, NO CONSTRAINTFLAG."; CFLST
   endif

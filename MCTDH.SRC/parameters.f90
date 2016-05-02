@@ -178,6 +178,7 @@ integer :: nzflag=1                              !! use only processors with non
 logical :: shuffle_dfwalktype=.true.             !! redistribute restricted configs evenly over processors
 integer :: sparseprime=1                         !! For reordering config list (experimental)
 logical :: use_dfwalktype=.false.                !! internal, IGNORE me
+logical :: use_fockmatrix=.false.                !! internal, IGNORE me
 end module sparse_parameters
 !!EE
 !!{\large \quad Orbital parallelization}
@@ -218,7 +219,7 @@ module bio_parameters
 integer ::      maxbiodim=100, & !! Max krylov dim for biorthogonalization
      biodim=10                   !! Starting krylov dim for biorthogonalization
 real*8 ::     biotol=1.d-6       !! Expokit tolerance parameter for biorthogonalization
-integer :: logbranch=1           !! branch of logarithm 3 options 0,1,2
+integer :: logbranch=1           !! branch of logarithm 4 options 0,1,2,3
 integer :: auto_biortho=1        !! internal, IGNORE me
 end module bio_parameters
 !!EE
@@ -279,11 +280,13 @@ real*8 :: finaltime=4d4          !! T=           !! length of prop.  Overridden 
 !!BB
 integer :: aorder=30             !!              !! Starting lanczos order for sparse a-vector expokit prop
 !!EE
-!!{\large \quad RELAXATION}
+!!{\large \quad RELAXATION - if improvedrelaxflag.ne.0}
 !!BB
-integer :: improvednatflag=0     !!              !! If improved relax, replace with natorbs every iteration
-real*8 :: stopthresh=1d-5        !!              !! Spf error tolerance for relaxation convergence (PRIMARY)
-real*8 :: astoptol=1d-7                          !! Avector error tolerance for relax  (BACKUP - WAS STOPTHRESH)
+integer :: improvednatflag=0     !!              !! Replace with natorbs every iteration
+integer :: improvedfockflag=0    !!              !! Replace with generalized fock eigenfuncts each iteration
+real*8 :: fockreg=1d-8           !!              !!
+real*8 :: stopthresh=1d-5        !!              !! Spf error tolerance for relaxation convergence
+real*8 :: astoptol=1d-7                          !! Avector error tolerance for relax
 real*8 :: timestepfac=1d0                        !! accelerate relax. multiply par_timestep by this each time
 real*8 :: max_timestep=1d10                      !!    maximum time step (limit on exponential growth)
 integer :: improvedquadflag=0    !!              !! Use newton iteration not diagonalization for improvedrelax.

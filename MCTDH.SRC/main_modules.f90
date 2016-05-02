@@ -87,6 +87,9 @@ module xmod
           cmfavec(:,:,:),&
           denvects(:,:) 
      DATATYPE, allocatable :: frozenexchinvr(:,:,:)
+
+     DATATYPE, allocatable :: fockmatrix(:,:,:)
+
   end type xarr
 
 end module xmod
@@ -354,6 +357,17 @@ module configmod
   type(walktype),pointer:: dwwptr
   type(walktype),target :: dfww
   type(walktype),target :: fdww
+  type(walktype),target :: catww
+!! cation arrays dimensioned nspf,www%botdfconfig:www%topdfconfig.  
+!! If value is (-1) then
+!! there is no cation hop... (this should not happen given if df_restrictflag
+!! is greater than zero given logic max(df_restrictflag-1,0) in mctdhf.f90...)
+!! else value is cation configuration index
+  integer :: numcathops = -1
+  integer, allocatable :: cathopfrom(:), cathopto(:)
+!! catphase(nspf,idfconfig)=0 no walk else +/-1
+  integer,allocatable :: catphase(:)
+  integer,allocatable :: catspf(:)
 end module configmod
 
 
@@ -940,6 +954,11 @@ subroutine xalloc()
      yyy%frozenexchinvr=0
   endif
 
+  if (use_fockmatrix) then
+     allocate(yyy%fockmatrix(nspf,nspf,0:numreduced))
+     yyy%fockmatrix=0
+  endif
+
   if (drivingflag.ne.0) then
      allocate(yyy%drivingavectorsxx(numr,first_config:last_config,mcscfnum,0:numreduced), &
           yyy%drivingorbsxx(spfsize,nspf,0:numreduced),&
@@ -1000,6 +1019,10 @@ subroutine xdealloc()
 
   if (numfrozen.gt.0) then
      deallocate(yyy%frozenexchinvr)
+  endif
+
+  if (use_fockmatrix) then
+     deallocate(yyy%fockmatrix)
   endif
 
 end subroutine xdealloc

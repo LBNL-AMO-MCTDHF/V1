@@ -20,7 +20,7 @@ include DGMRES/Dgmfiles.Inc
 
 bessrcso = bessel/d1mach.o bessel/d9lgmc.o bessel/dasyjy.o bessel/dbesj.o bessel/dcsevl.o bessel/dgamlm.o bessel/dgamln.o bessel/dgamma.o bessel/djairy.o bessel/dlngam.o bessel/fdump.o bessel/i1mach.o bessel/initds.o bessel/j4save.o bessel/xercnt.o bessel/xerhlt.o bessel/xermsg.o bessel/xerprn.o bessel/xersve.o bessel/xgetua.o bessel/drc3jj.o
 
-SRCS= parameters.o  gaussq.o  eigen.o jacobi.o  spin.o rkf45.o   spfs.o  main_modules.o spinwalks.o ovlsub.o autocall.o utils.o odex.o   getparams.o MPI.o   actions.o   readactions.o povactions.o saveactions.o natprojaction.o orbvectoractions.o   expokit.o  expo_driver.o quad.o dipolesub.o  proputils.o pulse.o autosub.o  derivs.o prop.o matel.o  projeflux.o loadstuff.o configload.o blocklanczos.o psistats.o second_derivs.o keprojector.o opfunctions.o electronflux.o walks.o walkmult.o  newconfig.o configstuff.o biortho.o    dfconstrain.o denmat.o mean.o driving.o $(ARGO) 
+SRCS= parameters.o  gaussq.o  eigen.o jacobi.o  spin.o rkf45.o   spfs.o  main_modules.o spinwalks.o ovlsub.o autocall.o utils.o odex.o   getparams.o MPI.o   actions.o   readactions.o povactions.o saveactions.o natprojaction.o orbvectoractions.o   expokit.o  expo_driver.o quad.o dipolesub.o  proputils.o pulse.o autosub.o  derivs.o prop.o matel.o  projeflux.o loadstuff.o configload.o blocklanczos.o psistats.o second_derivs.o keprojector.o opfunctions.o electronflux.o walks.o walkmult.o  newconfig.o configstuff.o biortho.o    dfconstrain.o denmat.o mean.o driving.o fock.o $(ARGO) 
 
 DEPEND= Definitions.INC Definitions.ALL Makefile.header Makefile MPI.o main_modules.o parameters.o
 
@@ -107,7 +107,7 @@ orbvectoractions.o: $(DEPEND) orbvectoractions.F90
 povactions.o: $(DEPEND) povactions.F90 
 	$(F90) $(FFLAGS) $(MPIFLAG) $(MATHEMAT) $(POVRAY) $(NOCFLAG) -c povactions.F90 
 
-prop.o: $(DEPEND) prop.F90 derivs.o proputils.o walkmult.o spin.o pulse.o
+prop.o: $(DEPEND) prop.F90 derivs.o walkmult.o spin.o pulse.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c prop.F90 
 
 proputils.o: $(DEPEND) proputils.F90
@@ -131,8 +131,11 @@ spin.o: $(DEPEND)  spin.F90 newconfig.o
 spfs.o: $(DEPEND) spfs.F90 utils.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c spfs.F90
 
-denmat.o: $(DEPEND) denmat.F90 biortho.o autosub.o utils.o
+denmat.o: $(DEPEND) denmat.F90 biortho.o utils.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c denmat.F90
+
+fock.o: $(DEPEND) fock.F90 biortho.o walkmult.o matel.o utils.o newconfig.o
+	$(F90) $(FFLAGS) $(MPIFLAG) -c fock.F90
 
 driving.o: $(DEPEND) driving.F90 biortho.o walkmult.o denmat.o proputils.o matel.o pulse.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c driving.F90

@@ -144,6 +144,9 @@ subroutine get_stuff0(thistime,times)
   endif
   call system_clock(jtime); times(8)=times(8)+jtime-itime;     itime=jtime
 
+  if (use_fockmatrix) then
+     call get_fockmatrix()
+  endif
   call get_reducedpot()
   if (numfrozen.gt.0) then
      call get_frexchange()

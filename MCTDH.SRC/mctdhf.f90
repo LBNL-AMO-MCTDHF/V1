@@ -236,7 +236,7 @@ program mctdhf
   write(mpifileptr, *) "   AMO Theory Group, Lawrence Berkeley Laboratory"
   write(mpifileptr, *) "     D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, "
   write(mpifileptr, *) "     B Abeln, X Li . . ."
-  write(mpifileptr, *) "                             VERSION 1.27 "
+  write(mpifileptr, *) "                             VERSION 1.28 "
   write(mpifileptr, *) "       Copyright 2016 the regents of the University of California"
   write(mpifileptr, *)
 #ifdef REALGO
@@ -317,7 +317,13 @@ program mctdhf
   else
      use_dfwalktype=.true.
   endif
-  
+
+  if (improvedfockflag.ne.0) then
+     use_fockmatrix=.true.
+  else
+     use_fockmatrix=.false.
+  endif
+
   www%parconsplit=par_consplit
 
   www%numelec=numelec
@@ -333,7 +339,7 @@ program mctdhf
 
   www%dfrestrictflag=df_restrictflag
   www%dflevel=0
-  www%dfwalklevel=www%dfrestrictflag
+  www%dfwalklevel=df_restrictflag
   www%singlewalkflag=1
   www%doublewalkflag=1
 
@@ -349,13 +355,58 @@ program mctdhf
 
   call walks_and_basis(www)
 
+  if (use_fockmatrix) then
+
+     OFLWR
+     WRFL "************************************"
+     WRFL "**         CATION WALKS           **"
+     WRFL "************************************"
+     WRFL; CFL
+
+     catww%parconsplit=par_consplit
+
+     catww%numelec=numelec-1
+     catww%holeflag=holeflag
+     if (catww%holeflag.eq.0) then
+        catww%numpart=numpart-1
+        catww%num2part=num2part-2
+     else
+        catww%numpart=numpart+1
+        catww%num2part=num2part+2
+     endif
+     catww%nspf=nspf
+
+     catww%allspinproject=all_spinproject
+!! going up in spin.  arbitrary choice for restrict_ms.ne.0.  
+!! could average with another walktype variable for restrict_ms.ne.0
+     if (restrict_ms.ge.0) then
+        catww%restrictms=restrict_ms+1
+     else
+        catww%restrictms=restrict_ms-1
+     endif
+     catww%sss%spinrestrictval=spin_restrictval+1
+
+     catww%dfrestrictflag=max(df_restrictflag-1,0)
+     catww%dflevel=max(df_restrictflag-1,0)
+     catww%dfwalklevel=max(df_restrictflag-1,0)
+     catww%singlewalkflag=1
+     catww%doublewalkflag=1
+
+     call fast_newconfiglist(catww,.true.)
+
+     call walks_and_basis(catww)
+
+     call getcathops()
+
+  endif
+
 !! WALKTYPE VARIABLE BIOWW FOR BIORTHO
 
   if (use_biowalktype) then
 
      OFLWR
      WRFL "************************************"
-     WRFL "** done main walks. BIORTHO WALKS **"
+     WRFL "**        BIORTHO WALKS           **"
      WRFL "************************************"
      WRFL; CFL
 
@@ -639,12 +690,20 @@ program mctdhf
         call myconfigeig(yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
              min(totread,1),0d0,max(0,abs(improvedrelaxflag)-1))
 
-        if (improvednatflag.ne.0) then
-           if (tot_adim.gt.0) then
-              yyy%cmfavec(:,:,0) = RESHAPE(bigavector(:,:,:),(/tot_adim,mcscfnum/))
+        if (tot_adim.gt.0) then
+           yyy%cmfavec(:,:,0) = RESHAPE(bigavector(:,:,:),(/tot_adim,mcscfnum/))
+        endif
+
+        call get_allden()
+        if (use_fockmatrix) then
+           call get_fockmatrix()
+        endif
+        if (improvednatflag.ne.0.or.improvedfockflag.ne.0) then
+           if (improvednatflag.ne.0) then
+              call replace_withnat(1)
+           else
+              call replace_withfock(1)
            endif
-           call get_allden()
-           call replace_withnat(1)
            call all_matel()
 
 !! since biorthogonalization is imperfect with restricted configuration spaces
@@ -820,6 +879,4 @@ subroutine getclasses()
 !  enddo
 
 end subroutine getclasses
-
-
 

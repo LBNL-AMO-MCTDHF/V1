@@ -272,6 +272,10 @@ contains
        yyy%frozenexchinvr(:,:,1) = yyy%frozenexchinvr(:,:,0)
     endif
 
+    if (use_fockmatrix) then
+       yyy%fockmatrix(:,:,1) = yyy%fockmatrix(:,:,0)
+    endif
+
     call assign_cptr(yyy%cptr(1),yyy%cptr(0),DATAONE)
 
     if (sparseopt.ne.0) then
@@ -321,8 +325,12 @@ contains
           call system_clock(jtime);     times(9)=times(9)+jtime-itime;   itime=jtime
        endif
 
-       if (improvednatflag.ne.0) then
-          call replace_withnat(printflag)
+       if (improvednatflag.ne.0.or.improvedfockflag.ne.0) then
+          if (improvednatflag.ne.0) then
+             call replace_withnat(printflag)
+          else
+             call replace_withfock(1)    !! using previous fock matrix I guess?
+          endif
           call system_clock(jtime);     times(7)=times(7)+jtime-itime;   itime=jtime
        endif
 
@@ -347,7 +355,10 @@ contains
 
        call get_allden()
        call system_clock(jtime);        times(2)=times(2)+jtime-itime;     itime=jtime
-     
+
+       if (use_fockmatrix) then
+          call get_fockmatrix()
+       endif     
        call get_reducedpot()
        if (numfrozen.gt.0) then
           call get_frexchange()
@@ -530,6 +541,9 @@ contains
       endif
 
       call system_clock(itime)
+      if (use_fockmatrix) then
+         call get_fockmatrix()
+      endif
       call get_reducedpot()
       if (numfrozen.gt.0) then
          call get_frexchange()
