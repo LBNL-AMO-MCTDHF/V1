@@ -208,7 +208,7 @@ program mctdhf
   integer :: i,spfsloaded,totread,ifile,readnum,qq
   DATAECS, allocatable ::  tempvals(:)
   DATATYPE, allocatable :: bigavector(:,:,:), bigspfs(:,:),hugeavector(:,:),nullvector(:,:,:)
-  logical :: logcheckpar,use_biowalktype
+  logical :: logcheckpar
 
   spfsloaded=0
   pi=4.d0*atan(1.d0)
@@ -308,10 +308,6 @@ program mctdhf
   WRFL "************************************"
   WRFL; CFL
 
-!! always use biortho (single walks only) (bwwptr not necessary)
-  
-  use_biowalktype=.true.
-
   if (df_restrictflag.eq.0.or.sparsedfflag.eq.0) then
      use_dfwalktype=.false.
   else
@@ -343,7 +339,7 @@ program mctdhf
   www%singlewalkflag=1
   www%doublewalkflag=1
 
-  call fast_newconfiglist(www,.true.)
+  call fast_newconfiglist(www,.true.,.true.)
 
   num_config=www%numconfig
   allocate(configs_perproc(nprocs))
@@ -392,7 +388,7 @@ program mctdhf
      catww%singlewalkflag=1
      catww%doublewalkflag=1
 
-     call fast_newconfiglist(catww,.true.)
+     call fast_newconfiglist(catww,.false.,.false.)
 
      call walks_and_basis(catww)
 
@@ -402,7 +398,7 @@ program mctdhf
 
 !! WALKTYPE VARIABLE BIOWW FOR BIORTHO
 
-  if (use_biowalktype) then
+!! always use biortho (single walks only) (bwwptr removed)
 
      OFLWR
      WRFL "************************************"
@@ -429,13 +425,13 @@ program mctdhf
      bioww%singlewalkflag=1
      bioww%doublewalkflag=0
 
-     call fast_newconfiglist(bioww,.false.)
+     call fast_newconfiglist(bioww,.false.,.true.)
 
      call walks_and_basis(bioww)
 
 !!! END SET BIOWW !!
 
-  endif
+!!$  endif
 
   if (use_dfwalktype) then
 
@@ -497,7 +493,7 @@ program mctdhf
         fdww%singlewalkflag=1
         fdww%doublewalkflag=1
 
-        call fast_newconfiglist(fdww,.true.)
+        call fast_newconfiglist(fdww,.true.,.true.)
 
         call walks_and_basis(fdww)
 
@@ -521,11 +517,11 @@ program mctdhf
 
   call xalloc() !!   INITIALIZE XXX/YYY VECTORS!  
 
-  if (use_biowalktype) then
-     bwwptr => bioww
-  else
-     bwwptr => www
-  endif
+!!$  if (use_biowalktype) then
+!!$     bwwptr => bioww
+!!$  else
+!!$     bwwptr => www
+!!$  endif
 
   if (.not.use_dfwalktype) then
      dwwptr => www
@@ -803,24 +799,24 @@ contains
     implicit none
     type(walktype),intent(inout) :: wwin
 
-     call walkalloc(wwin)
-     call walks(wwin)
-     call hops(wwin)
-     call set_matsize(wwin)
-     call init_dfcon(wwin)
+    call walkalloc(wwin)
+    call walks(wwin)
+    call hops(wwin)
+    call set_matsize(wwin)
+    call init_dfcon(wwin)
 
 !!!! NO LONGER NEED THESE
-     OFLWR "Deallocating walks arrays."; CFL
-     deallocate(wwin%singlewalk, wwin%doublewalk)
+    OFLWR "Deallocating walks arrays."; CFL
+    deallocate(wwin%singlewalk, wwin%doublewalk)
 
-     call spinwalkinit(wwin)
-     call spinwalks(wwin)
-     call spinsets_first(wwin)
-     call configspin_matel(wwin)
-     call configspinset_projector(wwin)
-     call spinwalkinternal_dealloc()
-     call basis_set(wwin,nzflag)
-   end subroutine walks_and_basis
+    call spinwalkinit(wwin)
+    call spinwalks(wwin)
+    call spinsets_first(wwin)
+    call configspin_matel(wwin)
+    call configspinset_projector(wwin)
+    call spinwalkinternal_dealloc()
+    call basis_set(wwin,nzflag)
+  end subroutine walks_and_basis
 
 end program mctdhf
 

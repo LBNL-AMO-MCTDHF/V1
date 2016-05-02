@@ -137,7 +137,7 @@ denmat.o: $(DEPEND) denmat.F90 biortho.o utils.o
 fock.o: $(DEPEND) fock.F90 biortho.o walkmult.o matel.o utils.o newconfig.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c fock.F90
 
-driving.o: $(DEPEND) driving.F90 biortho.o walkmult.o denmat.o proputils.o matel.o pulse.o
+driving.o: $(DEPEND) driving.F90 biortho.o walkmult.o denmat.o proputils.o matel.o pulse.o dipolesub.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c driving.F90
 
 newconfig.o: $(DEPEND) newconfig.F90

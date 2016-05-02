@@ -88,7 +88,7 @@ subroutine drivingtrans(thistime)
              * exp(timefac*drivingenergies(imc)*thistime)
      endif
 
-     call bioset(drivingbiovar,smo,numr,bwwptr)
+     call bioset(drivingbiovar,smo,numr,bioww)
      call biortho(orbs_driving(:,:),currentorbs(:,:),&
           tempdrivingorbs(:,:),tempdrivingavector(:,:,imc),drivingbiovar)
 
@@ -283,6 +283,7 @@ subroutine drivinginit(inenergies)
   use xxxmod
   use opmod
   use configmod
+  use dipsubonemod
   implicit none
   DATAECS,intent(in) :: inenergies(mcscfnum)
   DATATYPE :: myexpects(3)
@@ -291,7 +292,7 @@ subroutine drivinginit(inenergies)
   orbs_driving(:,:)=RESHAPE(yyy%cmfspfs(:,0),(/spfsize,nspf/))
 
   do imc=1,mcscfnum
-     call dipolesub_one(www,bwwptr,yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),&
+     call dipolesub_one(www,bioww,yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),&
           yyy%cmfspfs(:,0),myexpects(:))
      sxx(imc)=myexpects(1)
      syy(imc)=myexpects(2)

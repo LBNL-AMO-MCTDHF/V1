@@ -1160,7 +1160,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 !!$             abio(:,:,ir)=myavec(ir,:,:)
 !!$          enddo
 !!$          do ir=1,numr
-!!$             call bioset(projbiovar,smo,1,bwwptr); 
+!!$             call bioset(projbiovar,smo,1,bioww); 
 !!$             call biortho(mymo,tmo(:,:),mobio(:,:,ir),abio(:,1,ir),projbiovar)
 !!$             do imc=2,mcscfnum
 !!$                call biotransform(mymo,tmo(:,:),abio(:,imc,ir),projbiovar)
@@ -1170,7 +1170,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
 !! this should do the same and it looks like it does
      
-     call bioset(projbiovar,smo,numr,bwwptr)
+     call bioset(projbiovar,smo,numr,bioww)
 
      if (tot_adim.gt.0) then
         call biortho(mymo,tmo(:,:),mobio(:,:,1),myavec(:,:,1),projbiovar)

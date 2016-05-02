@@ -188,11 +188,11 @@ subroutine getoverlaps(forceflag)
      do imc=1,mcscfnum
         do i=1,numovl
            if (tot_adim.gt.0) then
-              call autocorrelate_one(www,bwwptr,yyy%cmfavec(:,imc,0),&
+              call autocorrelate_one(www,bioww,yyy%cmfavec(:,imc,0),&
                    yyy%cmfspfs(:,0),orig_spfs(:,:,i), &
                    orig_avectors(:,i), overlaps(i,xcalledflag,imc),numr,ovlbiovar(i,imc))
            else
-              call autocorrelate_one(www,bwwptr,nullvector1(:),&
+              call autocorrelate_one(www,bioww,nullvector1(:),&
                    yyy%cmfspfs(:,0),orig_spfs(:,:,i), &
                    nullvector2(:), overlaps(i,xcalledflag,imc),numr,ovlbiovar(i,imc))
            endif
@@ -236,10 +236,10 @@ subroutine mcscf_matel()
   do j=1,numovl
      do i=1,numovl
         if (tot_adim.gt.0) then
-           call autocorrelate_one(www,bwwptr, orig_avectors(:,i), orig_spfs(:,:,i), &
+           call autocorrelate_one(www,bioww, orig_avectors(:,i), orig_spfs(:,:,i), &
                 orig_spfs(:,:,j), orig_avectors(:,j), myovl(i,j), numr, mcbiovar(i,j))
         else
-           call autocorrelate_one(www,bwwptr, nullvector1(:), orig_spfs(:,:,i), &
+           call autocorrelate_one(www,bioww, nullvector1(:), orig_spfs(:,:,i), &
                 orig_spfs(:,:,j), nullvector2(:), myovl(i,j), numr, mcbiovar(i,j))
         endif
      enddo
@@ -401,10 +401,10 @@ subroutine wfnovl()
         endif
         
         if (tot_adim.gt.0) then
-           call autocorrelate_one(www,bwwptr,braavec(:,imc),bramo,ketmo,&
+           call autocorrelate_one(www,bioww,braavec(:,imc),bramo,ketmo,&
                 ketavec(:,imc),myovl(imc),numr,wfnbiovar(imc))
         else
-           call autocorrelate_one(www,bwwptr,nullvector1(:),bramo,ketmo,&
+           call autocorrelate_one(www,bioww,nullvector1(:),bramo,ketmo,&
                 nullvector2(:),myovl(imc),numr,wfnbiovar(imc))
         endif
 

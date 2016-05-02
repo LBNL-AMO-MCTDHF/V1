@@ -91,7 +91,7 @@ subroutine replace_withnat(printflag)
   use natrepbiomod
   use biorthomod
   use parameters
-  use configmod    !! bwwptr
+  use configmod    !! bioww
   use xxxmod
   implicit none
 
@@ -123,7 +123,7 @@ subroutine replace_withnat(printflag)
      WRFL; CFL
   endif
 
-  call bioset(natrepbiovar,smo,numr,bwwptr)
+  call bioset(natrepbiovar,smo,numr,bioww)
 
   do imc=1,mcscfnum
 

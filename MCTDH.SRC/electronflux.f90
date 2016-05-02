@@ -227,7 +227,7 @@ end subroutine mult_rehalfniumpot
 module fluxgtau0mod
 contains
 
-  subroutine fluxgtau0(alg,www,bioww)
+  subroutine fluxgtau0(alg,wwin,bbin)
 !! actually compute the flux in a post processing kind of manner
 !! input :
 !! alg - determines how the memory management algorithm for loading up previous wavefunctions
@@ -245,7 +245,7 @@ contains
 !! 2       = use full one-e potential, no two-e 
 !! other   = only KE
 
-    type(walktype),target :: www,bioww
+    type(walktype),target,intent(in) :: wwin,bbin
     type(walktype),pointer :: myww
     integer,intent(in) :: alg
     integer :: curtime,oldtime,k,nt,i,molength,alength,  BatchSize,NBat,brabat,brareadsize, &
@@ -279,9 +279,9 @@ contains
     dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
 
     if (FluxOpType.eq.0) then    !! exact expression with two-electron
-       myww=>www
+       myww=>wwin
     else
-       myww=>bioww
+       myww=>bbin
     endif
 
     call mpibarrier()
@@ -591,7 +591,7 @@ contains
                 if (tot_adim.gt.0) then
                    abio(:,:,:)=braavec(:,:,:,bratime)
                 endif
-                call bioset(fluxgtaubiovar,smo,numr,bioww)
+                call bioset(fluxgtaubiovar,smo,numr,bbin)
 #ifdef CNORMFLAG
                 fluxgtaubiovar%hermonly=.true.
 #endif
@@ -1118,7 +1118,7 @@ subroutine fluxgtau(alg)
   implicit none
   integer,intent(in) :: alg
 
-  call fluxgtau0(alg,www,bwwptr)
+  call fluxgtau0(alg,www,bioww)
 
 end subroutine fluxgtau
 

@@ -88,7 +88,7 @@ module xmod
           denvects(:,:) 
      DATATYPE, allocatable :: frozenexchinvr(:,:,:)
 
-     DATATYPE, allocatable :: fockmatrix(:,:,:)
+     DATATYPE, allocatable :: fockmatrix(:,:,:), fockden(:,:,:)
 
   end type xarr
 
@@ -247,6 +247,9 @@ module walkmod
 
   type walktype
 
+     integer :: m_restrictflag=0, m_restrictval=0, m_restrictmin=-99999, m_restrictmax=99999,&
+          ug_restrictflag=0, ug_restrictval=0
+
      integer :: holeflag=0   !! index holes not electrons
 
      integer :: dflevel=0, dfwalklevel=0, dfrestrictflag=0
@@ -352,7 +355,7 @@ module configmod
   use walkmod
   implicit none
   type(walktype),target :: www
-  type(walktype),pointer:: bwwptr
+!!$  type(walktype),pointer:: bwwptr
   type(walktype),target :: bioww
   type(walktype),pointer:: dwwptr
   type(walktype),target :: dfww
@@ -955,8 +958,8 @@ subroutine xalloc()
   endif
 
   if (use_fockmatrix) then
-     allocate(yyy%fockmatrix(nspf,nspf,0:numreduced))
-     yyy%fockmatrix=0
+     allocate(yyy%fockmatrix(nspf,nspf,0:numreduced),yyy%fockden(nspf,nspf,0:numreduced))
+     yyy%fockmatrix=0; yyy%fockden=0
   endif
 
   if (drivingflag.ne.0) then
@@ -1022,7 +1025,7 @@ subroutine xdealloc()
   endif
 
   if (use_fockmatrix) then
-     deallocate(yyy%fockmatrix)
+     deallocate(yyy%fockmatrix,yyy%fockden)
   endif
 
 end subroutine xdealloc

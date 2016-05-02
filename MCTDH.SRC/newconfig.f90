@@ -179,17 +179,17 @@ function allowedconfig0(www,thisconfig,in_df)
      endif
   end if
   if (spfrestrictflag==1) then
-     if (mrestrictflag==1.or.mrestrictmin.gt.-99999.or.mrestrictmax.lt.99999) then    ! by m
+     if (www%m_restrictflag==1.or.www%m_restrictmin.gt.-99999.or.www%m_restrictmax.lt.99999) then
         isum=getmval(www,thisconfig)
-        if ((mrestrictflag==1.and.isum /= mrestrictval).or.isum.lt.mrestrictmin.or.isum.gt.mrestrictmax) then
+        if ((www%m_restrictflag==1.and.isum /= www%m_restrictval).or.&
+             isum.lt.www%m_restrictmin.or.isum.gt.www%m_restrictmax) then
            allowedconfig0=.false.;        return
         endif
      endif
   end if
-  
-  if ((spfugrestrict==1).and.(ugrestrictflag==1)) then    ! by m
+  if ((spfugrestrict==1).and.(www%ug_restrictflag==1)) then
      isum=getugval(www,thisconfig)
-     if (isum /= ugrestrictval) then
+     if (isum /= www%ug_restrictval) then
         allowedconfig0=.false.
         return
      endif
@@ -328,7 +328,7 @@ end function getugval
 !! GETS CONFIGURATION LIST (SLATER DETERMINANTS NOT SPIN EIGFUNCTS)
 !!  AT BEGINNING. 
 
-subroutine fast_newconfiglist(www,domflags)
+subroutine fast_newconfiglist(www,domflags,dorestrictflags)
   use output_parameters
   use fileptrmod
   use basis_parameters
@@ -339,7 +339,7 @@ subroutine fast_newconfiglist(www,domflags)
   use mpisubmod
   implicit none
   type(walktype) :: www
-  logical,intent(in) :: domflags
+  logical,intent(in) :: domflags,dorestrictflags
   logical :: alreadycounted
   integer, parameter :: max_numpart=80
   integer, pointer :: &
@@ -371,6 +371,15 @@ subroutine fast_newconfiglist(www,domflags)
 
   if (www%numpart.gt.max_numpart) then
      OFLWR "Resize get_newconfiglist"; CFLST
+  endif
+
+  if (dorestrictflags) then
+     www%m_restrictflag=mrestrictflag
+     www%m_restrictval=mrestrictval
+     www%m_restrictmin=mrestrictmin
+     www%m_restrictmax=mrestrictmax
+     www%ug_restrictflag=ugrestrictflag
+     www%ug_restrictval=ugrestrictval
   endif
 
 !!$ orderflag 0 hardwire
@@ -1081,6 +1090,13 @@ subroutine set_newconfiglist(wwin,wwout,domflags)
   logical,intent(in) :: domflags
   type(walktype),intent(inout) :: wwout
   integer :: iconfig,jconfig
+
+  wwout%m_restrictflag=wwin%m_restrictflag
+  wwout%m_restrictval=wwin%m_restrictval
+  wwout%m_restrictmin=wwin%m_restrictmin
+  wwout%m_restrictmax=wwin%m_restrictmax
+  wwout%ug_restrictflag=wwin%ug_restrictflag
+  wwout%ug_restrictval=wwin%ug_restrictval
 
   wwout%dflevel=wwin%dfrestrictflag
 

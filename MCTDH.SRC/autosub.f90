@@ -37,7 +37,7 @@ end subroutine
 module autocorrelate_one_mod
 contains
 
-  subroutine autocorrelate_one(www,bioww,avector,inspfs,orig_spf,orig_avector,outoverlap,innr,autobiovar)
+  subroutine autocorrelate_one(wwin,bbin,avector,inspfs,orig_spf,orig_avector,outoverlap,innr,autobiovar)
     use fileptrmod
     use spfsize_parameters
     use bio_parameters
@@ -47,16 +47,17 @@ contains
     use biorthotypemod
     implicit none
     type(biorthotype),target,intent(inout) :: autobiovar
-    type(walktype),intent(in) :: www,bioww
+    type(walktype),intent(in) :: wwin
+    type(walktype),target,intent(in) :: bbin
     DATATYPE, allocatable :: mobio(:,:),abio(:,:)
-    DATATYPE,intent(in) :: inspfs(  spfsize, www%nspf ), orig_spf(  spfsize, www%nspf ), &
-         orig_avector(innr,www%firstconfig:www%lastconfig), &
-         avector(innr,www%firstconfig:www%lastconfig)
+    DATATYPE,intent(in) :: inspfs(  spfsize, wwin%nspf ), orig_spf(  spfsize, wwin%nspf ), &
+         orig_avector(innr,wwin%firstconfig:wwin%lastconfig), &
+         avector(innr,wwin%firstconfig:wwin%lastconfig)
     DATATYPE,intent(out) :: outoverlap
-    DATATYPE,target :: smo(www%nspf,www%nspf)
+    DATATYPE,target :: smo(wwin%nspf,wwin%nspf)
     integer :: innr
 
-    allocate(mobio(spfsize,www%nspf),abio(innr,www%firstconfig:www%lastconfig))
+    allocate(mobio(spfsize,wwin%nspf),abio(innr,wwin%firstconfig:wwin%lastconfig))
 
     if(auto_biortho.eq.0) then
 
@@ -70,18 +71,18 @@ contains
 
     else
 
-       if (www%lastconfig.ge.www%firstconfig) then
+       if (wwin%lastconfig.ge.wwin%firstconfig) then
           abio(:,:)=orig_avector(:,:)
        endif
 
-       call bioset(autobiovar,smo,innr,bioww)
+       call bioset(autobiovar,smo,innr,bbin)
        call biortho(orig_spf,inspfs,mobio,abio,autobiovar)
 
        outoverlap=0d0
-       if (www%localnconfig.gt.0) then
-          outoverlap=dot(avector,abio,www%localnconfig*innr)
+       if (wwin%localnconfig.gt.0) then
+          outoverlap=dot(avector,abio,wwin%localnconfig*innr)
        endif
-       if (www%parconsplit.ne.0) then
+       if (wwin%parconsplit.ne.0) then
           call mympireduceone(outoverlap)
        endif
     endif
@@ -114,7 +115,7 @@ subroutine autocorrelate()
 
   if (mod(xcalledflag,autosteps).eq.0) then
      do imc=1,mcscfnum
-        call autocorrelate_one(www,bwwptr,yyy%cmfavec(:,imc,0),yyy%cmfspfs(:,0),&
+        call autocorrelate_one(www,bioww,yyy%cmfavec(:,imc,0),yyy%cmfspfs(:,0),&
              orig_spfs(:,:), orig_avectors(:,:,imc), overlaps(calledflag,imc),numr,autobiovar)
      enddo
 
