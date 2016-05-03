@@ -218,7 +218,7 @@ end module timing_parameters
 module bio_parameters
 integer ::      maxbiodim=100, & !! Max krylov dim for biorthogonalization
      biodim=10                   !! Starting krylov dim for biorthogonalization
-real*8 ::     biotol=1.d-8       !! Expokit tolerance parameter for biorthogonalization
+real*8 ::     biotol=1.d-7       !! Expokit tolerance parameter for biorthogonalization
 integer :: logbranch=1           !! branch of logarithm 4 options 0,1,2,3
 integer :: auto_biortho=1        !! internal, IGNORE me
 end module bio_parameters
@@ -227,7 +227,7 @@ end module bio_parameters
 !!BB
 module tol_parameters
 real*8 :: lntol=1d-4             !! Regularization of natural logarithm
-real*8 :: invtol=1d-16           !! Regularization of inverses especially for spectral expansions
+real*8 :: invtol=1d-8            !! Regularization of inverses especially for spectral expansions
 end module tol_parameters
 module denreg_parameters
 real*8 :: denreg=1d-10           !! Denreg=      !! density matrix regularization parameter.
