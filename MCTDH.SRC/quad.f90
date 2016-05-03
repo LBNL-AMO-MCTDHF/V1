@@ -530,7 +530,7 @@ subroutine sparsequadavector(inavector,jjcalls0)
   DATATYPE, intent(inout) ::  inavector(numr,www%firstconfig:www%lastconfig)
   integer,intent(out) :: jjcalls0
   integer :: jjcalls, ss, maxdim, mysize,flag,ierr,minerr
-  real*8 ::  dev,  thisaerror
+  real*8 ::  dev,  thisaerror, nowaerror
   DATATYPE :: csum 
   DATATYPE, allocatable ::  vector(:,:), vector2(:,:), vector3(:,:), &
        smallvectorspin(:,:),smallvectorspin2(:,:),shufflevector(:,:),&
@@ -580,7 +580,11 @@ subroutine sparsequadavector(inavector,jjcalls0)
      dev=sqrt(dev)
 
 !! 12-2015 sqrt
-     thisaerror=min(0.1d0,sqrt(aerror/min(dev,1d0)))
+!!     thisaerror=min(0.1d0,sqrt(aerror/min(dev,1d0)))
+!! v1.28
+!!     thisaerror=min(0.316d0,sqrt(aerror/min(dev,1d0)))
+
+     thisaerror=min(0.316d0,sqrt(sqrt(aerror/min(dev,1d0))))
 
      OFL;write(mpifileptr,'(A20,E12.5,A6,2E12.5,A7,100F14.7)') &
           "   SPARSEQUAD: DEV", dev, " TOL ",aerror,thisaerror,"ENERGY",quadexpect; CFL
@@ -636,36 +640,48 @@ subroutine sparsequadavector(inavector,jjcalls0)
         allocate(shufflevector(numr,1),shufflevector2(numr,1))
      endif
 
-     ierr=0
-     if (nzflag.eq.0.or.dwwptr%nzrank.gt.0) then
-        if (use_dfwalktype.and.shuffle_dfwalktype) then
-           call dgsolve00( shufflevector, shufflevector2, jjcalls, paraamult,&
-             quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1,ierr,dwwptr%NZ_COMM)
-        else
-           call dgsolve00( smallvectorspin, smallvectorspin2, jjcalls, paraamult,&
-             quadprecon,parquadpreconsub, thisaerror,mysize,maxdim,1,ierr,dwwptr%NZ_COMM)
-        endif
-     else
-        smallvectorspin2=0
-        if (use_dfwalktype.and.shuffle_dfwalktype) then
-           shufflevector2=0
-        endif
-     endif
-     call mpibarrier()
+     nowaerror=thisaerror
 
-     minerr=ierr
-     call mympiimax(ierr)
-     call mympiimin(minerr)
-     if (ierr.ne.0.or.minerr.ne.0) then
-        OFLWR "          Error in dgsolve, not changing a-vector",ierr,minerr; CFL
-        if (www%lastconfig.ge.www%firstconfig) then
-           inavector(:,:) = vector(:,www%firstconfig:www%lastconfig)
+     ierr=1; minerr=1
+
+     do while (ierr.ne.0.or.minerr.ne.0)
+        ierr=0; minerr=0
+
+        if (nzflag.eq.0.or.dwwptr%nzrank.gt.0) then
+           if (use_dfwalktype.and.shuffle_dfwalktype) then
+              call dgsolve00( shufflevector, shufflevector2, jjcalls, paraamult,&
+                   quadprecon,parquadpreconsub, nowaerror,mysize,maxdim,1,ierr,dwwptr%NZ_COMM)
+           else
+              call dgsolve00( smallvectorspin, smallvectorspin2, jjcalls, paraamult,&
+                   quadprecon,parquadpreconsub, nowaerror,mysize,maxdim,1,ierr,dwwptr%NZ_COMM)
+           endif
+        else
+           smallvectorspin2=0
+           if (use_dfwalktype.and.shuffle_dfwalktype) then
+              shufflevector2=0
+           endif
         endif
-        deallocate(smallvectorspin,smallvectorspin2)
-        deallocate(vector, vector2, vector3)
-        deallocate(shufflevector,shufflevector2)
-        return
-     endif
+        call mpibarrier()
+
+        minerr=ierr
+        call mympiimax(ierr)
+        call mympiimin(minerr)
+        if (ierr.ne.0.or.minerr.ne.0) then
+           nowaerror=sqrt(nowaerror)
+           OFLWR " ->Error in dgsolve, lowering tolerance",nowaerror; CFL
+        endif
+
+!           OFLWR "          Error in dgsolve, not changing a-vector",ierr,minerr; CFL
+!           if (www%lastconfig.ge.www%firstconfig) then
+!              inavector(:,:) = vector(:,www%firstconfig:www%lastconfig)
+!           endif
+!           deallocate(smallvectorspin,smallvectorspin2)
+!           deallocate(vector, vector2, vector3)
+!           deallocate(shufflevector,shufflevector2)
+!           return
+!        endif
+
+     enddo  !! do while ierr 
 
      if (use_dfwalktype.and.shuffle_dfwalktype) then
         call basis_shuffle(numr,dwwptr,shufflevector2,www,smallvectorspin2)
