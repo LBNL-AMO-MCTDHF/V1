@@ -99,8 +99,7 @@ subroutine getparams()
        pulsewindowtoo,conjgpropflag,dipolesumstart,dipolesumend,outmatel,numcatfiles,&
        catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
        shuffle_dfwalktype,maxdgdim, messavec, messaamount,holeflag, angularflag, angprojspifile,&
-       prepropflag, step_flag, postpropflag, reference_pulses, improvedfockflag, fockreg
-
+       prepropflag, step_flag, postpropflag, reference_pulses, scalarflag
 
   OFL
   write(mpifileptr, *)
@@ -413,7 +412,6 @@ subroutine getparams()
   
   if (improvedrelaxflag.eq.0) then
      improvednatflag=0
-     improvedfockflag=0
   endif
 
   if (improvedrelaxflag.ne.0.and.constraintflag.eq.1) then

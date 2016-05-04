@@ -274,7 +274,6 @@ contains
 
     if (use_fockmatrix) then
        yyy%fockmatrix(:,:,1) = yyy%fockmatrix(:,:,0)
-       yyy%fockden(:,:,1) = yyy%fockden(:,:,0)
     endif
 
     call assign_cptr(yyy%cptr(1),yyy%cptr(0),DATAONE)
@@ -326,15 +325,8 @@ contains
           call system_clock(jtime);     times(9)=times(9)+jtime-itime;   itime=jtime
        endif
 
-       if (improvednatflag.ne.0.or.improvedfockflag.ne.0) then
-          if (improvednatflag.ne.0) then
-             call replace_withnat(printflag)
-          else
-             call all_matel()
-             call system_clock(jtime);     times(1)=times(1)+jtime-itime;   itime=jtime
-             call get_fockmatrix()
-             call replace_withfock(printflag) 
-          endif
+       if (improvednatflag.ne.0) then
+          call replace_withnat(printflag)
           call system_clock(jtime);     times(7)=times(7)+jtime-itime;   itime=jtime
        endif
 

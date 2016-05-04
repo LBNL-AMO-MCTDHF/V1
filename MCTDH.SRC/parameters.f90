@@ -259,6 +259,7 @@ integer :: threshflag=0          !!              !! Set to 1 for regular relaxat
 real*8 :: expotol=1d-8           !!              !! Orbital krylov convergence parameter
 integer :: expodim=10            !!              !! Starting krylov dimension for expokit orbital propagation
 integer :: maxexpodim=100        !!              !! Maximum krylov dimension for expokit orbital propagation
+integer :: scalarflag=0          !!              !! Flag for inclusion of scalar terms in reduced hamiltonian
 real*8  :: expostepfac=1.2d0     !!              !! Miscellaneous algorithm parameter
 !!EE
 !!\textbf{\qquad SPARSE - if sparseconfigflag .ne. 0}
@@ -283,8 +284,6 @@ integer :: aorder=30             !!              !! Starting lanczos order for s
 !!{\large \quad RELAXATION - if improvedrelaxflag.ne.0}
 !!BB
 integer :: improvednatflag=0     !!              !! Replace with natorbs every iteration
-integer :: improvedfockflag=0    !!              !! Replace with generalized fock eigenfuncts each iteration
-real*8 :: fockreg=0.5d0          !!              !!    for improvedfockflag
 real*8 :: stopthresh=1d-5        !!              !! Spf error tolerance for relaxation convergence
 real*8 :: astoptol=1d-7                          !! Avector error tolerance for relax
 real*8 :: timestepfac=1d0                        !! accelerate relax. multiply par_timestep by this each time

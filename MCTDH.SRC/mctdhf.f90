@@ -314,7 +314,7 @@ program mctdhf
      use_dfwalktype=.true.
   endif
 
-  if (improvedfockflag.ne.0) then
+  if (scalarflag.ne.0) then
      use_fockmatrix=.true.
   else
      use_fockmatrix=.false.
@@ -694,14 +694,10 @@ program mctdhf
         if (use_fockmatrix) then
            call get_fockmatrix()
         endif
-        if (improvednatflag.ne.0.or.improvedfockflag.ne.0) then
-           if (improvednatflag.ne.0) then
-              call replace_withnat(1)
-           else
-              call replace_withfock(1)
-           endif
+        if (improvednatflag.ne.0) then
+           call replace_withnat(1)
            call all_matel()
-
+        
 !! since biorthogonalization is imperfect with restricted configuration spaces
 !!  and subject to tolerance criteria in any case, go ahead and rediagonalize
 

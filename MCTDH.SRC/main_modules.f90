@@ -88,7 +88,7 @@ module xmod
           denvects(:,:) 
      DATATYPE, allocatable :: frozenexchinvr(:,:,:)
 
-     DATATYPE, allocatable :: fockmatrix(:,:,:), fockden(:,:,:)
+     DATATYPE, allocatable :: fockmatrix(:,:,:)
 
   end type xarr
 
@@ -958,8 +958,8 @@ subroutine xalloc()
   endif
 
   if (use_fockmatrix) then
-     allocate(yyy%fockmatrix(nspf,nspf,0:numreduced),yyy%fockden(nspf,nspf,0:numreduced))
-     yyy%fockmatrix=0; yyy%fockden=0
+     allocate(yyy%fockmatrix(nspf,nspf,0:numreduced))
+     yyy%fockmatrix=0
   endif
 
   if (drivingflag.ne.0) then
@@ -1025,7 +1025,7 @@ subroutine xdealloc()
   endif
 
   if (use_fockmatrix) then
-     deallocate(yyy%fockmatrix,yyy%fockden)
+     deallocate(yyy%fockmatrix)
   endif
 
 end subroutine xdealloc
