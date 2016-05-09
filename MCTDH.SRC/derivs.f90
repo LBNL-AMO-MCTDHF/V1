@@ -639,7 +639,7 @@ contains
     real*8, intent(in) :: thistime
     DATATYPE, intent(in) :: inspfs(spfsize, nspf), projspfs(spfsize,nspf)
     DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
-    integer :: itime, jtime, getlen,numspf,myiostat
+    integer :: itime, jtime, getlen,numspf,myiostat,ispf,jspf
     DATATYPE :: myxtdpot=0,  myytdpot=0, myztdpot=0, pots(3)=0d0
     DATATYPE :: spfmult(spfsize,nspf),workmult(spfsize,lowspf:highspf), &  !! AUTOMATIC
          spfinvr( spfsize,lowspf:highspf), spfr( spfsize,lowspf:highspf ),  &
@@ -752,6 +752,17 @@ contains
          yyy%reducedpot(:,:,lowspf:highspf,ireduced))
     spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
     call system_clock(jtime);  times(6)=times(6)+jtime-itime;  
+
+    if (scalarflag.ne.0) then
+       if (.not.use_fockmatrix) then
+          OFLWR "programmer error use_fockmatrix"; CFLST
+       endif
+       do jspf=lowspf,highspf
+          do ispf=1,nspf
+             spfmult(:,jspf)=spfmult(:,jspf) + yyy%fockmatrix(jspf,ispf,ireduced) * inspfs(:,ispf)
+          enddo
+       enddo
+    endif
 
 !!    OFLWR "CHECKMULT3  ",spfmult(1,1); CFL
 
