@@ -364,7 +364,7 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
              sqdot(j)/normsq(j))
      enddo
      if (printflag.ne.0) then
-        OFL; write(mpifileptr,'(A10,100E8.1)') " FIRST ERRORS ", error(1:numout); CFL
+        OFL; write(mpifileptr,'(A10,1000E8.1)') " FIRST ERRORS ", error(1:numout); CFL
      endif
 
      stopsum=0d0
@@ -593,7 +593,7 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
 
               enddo
               if (printflag.ne.0) then
-                 OFL; write(mpifileptr,'(A10,100E9.2)') " ERRORS ", error(1:numout); CFL
+                 OFL; write(mpifileptr,'(A10,1000E9.2)') " ERRORS ", error(1:numout); CFL
               endif
               stopsum=0d0
               do nn=1,numout
