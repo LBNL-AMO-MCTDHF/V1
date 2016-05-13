@@ -254,11 +254,11 @@ contains
     real*8 :: MemTot,MemVal,dt, myfac,wfi,estep,windowfunct,MemNum
     complex*16, allocatable :: FTgtau(:,:), pulseft(:,:)
     real*8, allocatable :: pulseftsq(:)
-    DATATYPE :: fluxevalval(mcscfnum), pots1(3)=0d0  !!$, pots2(3)=0d0
+    DATATYPE :: fluxevalval(mcscfnum), ftgtausum(mcscfnum), gtausum(mcscfnum), &
+         gtaunow(mcscfnum), pots1(3)=0d0  !!$, pots2(3)=0d0
     DATATYPE, allocatable :: gtau(:,:), mobio(:,:),abio(:,:,:)
     DATATYPE, allocatable, target :: bramo(:,:,:),braavec(:,:,:,:), ketmo(:,:,:),ketavec(:,:,:,:)
     DATATYPE,allocatable :: read_bramo(:,:),read_braavec(:,:,:,:),read_ketmo(:,:),read_ketavec(:,:,:,:)
-    DATATYPE, pointer :: moket(:,:),mobra(:,:),aket(:,:,:)
     DATATYPE, allocatable :: imke(:,:),impe(:,:),imV2(:,:,:,:), imyderiv(:,:)
     DATATYPE, allocatable :: imkeop(:,:),impeop(:,:),  imyop(:,:)
     DATATYPE, allocatable :: reke(:,:),repe(:,:),reV2(:,:,:,:), reyderiv(:,:)
@@ -401,12 +401,15 @@ contains
     call closefile()
 
     if (myrank.eq.1) then
-       open(454, file="Dat/KVLsum.dat", status="unknown",iostat=myiostat)
-       call checkiostat(myiostat,"opening kvlsum file")
-       write(454,*,iostat=myiostat) "#KVL flux sum: itime, time, flux sum"
-       call checkiostat(myiostat,"writing kvl sum file")
-       write(454,*);  close(454)
+       open(454, file=fluxtsumfile, status="unknown",iostat=myiostat)
+       call checkiostat(myiostat,"opening fluxtsumfile")
+       write(454,*,iostat=myiostat) "#KVL flux sum: time, flux integral, flux"
+       call checkiostat(myiostat,"writing fluxtsumfile")
+       write(454,*)
+       close(454)
     endif
+
+    gtausum(:)=0d0; gtaunow(:)=0d0
 
 !! begin the ket batch read loop
     do ketbat=1,NBat
@@ -473,7 +476,7 @@ contains
 
        call system_clock(jtime)
        times(1)=times(1)+jtime-itime
- 
+
 !! begin the bra batch read loop
        do brabat=1,ketbat
           call system_clock(itime)
@@ -525,8 +528,6 @@ contains
                 close(1002)
              endif
 
-
-
              if (par_consplit.eq.0) then
                 if (myrank.eq.1) then
                    braavec(:,:,:,1:brareadsize)=read_braavec(:,:,:,1:brareadsize)
@@ -546,7 +547,7 @@ contains
                    enddo
                 enddo
              endif
-          endif
+          endif  !! if brabat.eq.ketbat
           call system_clock(jtime)
           times(1)=times(1)+jtime-itime
         
@@ -556,25 +557,26 @@ contains
 !! get the one-e half transformed matrix elements for this ket time
              call system_clock(itime)
              curtime=(ketbat-1)*BatchSize+kettime-1 
-             moket=>ketmo(:,:,kettime);        aket=>ketavec(:,:,:,kettime)
 
              imkeop=0; impeop=0;  imyop=0
              if (nucfluxopt.ne.2) then
-                call flux_op_onee(moket,imkeop,impeop,1)
+                call flux_op_onee(ketmo(:,:,kettime),imkeop,impeop,1)
                 if (nonuc_checkflag.eq.0) then
-                   call flux_op_nuc(moket,imyop,1)
+                   call flux_op_nuc(ketmo(:,:,kettime),imyop,1)
                 endif
              endif
 
              rekeop=0; repeop=0;
              if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
-                call flux_op_onee(moket,rekeop,repeop,2)
-                call flux_op_nuc(moket,reyop,2)
+                call flux_op_onee(ketmo(:,:,kettime),rekeop,repeop,2)
+                call flux_op_nuc(ketmo(:,:,kettime),reyop,2)
              endif
 
 !! determine bounds of loop over bras and setup doing in parallel with mpi!
              if(brabat.lt.ketbat) then
                 bratop=brareadsize
+             else if (brabat.gt.ketbat) then
+                OFLWR "WHATBAT?",brabat,ketbat; CFLST
              else
                 bratop=kettime
              endif
@@ -587,7 +589,6 @@ contains
               
 !! biortho this pair of times!        
                 call system_clock(itime)
-                mobra=>bramo(:,:,bratime)
                 if (tot_adim.gt.0) then
                    abio(:,:,:)=braavec(:,:,:,bratime)
                 endif
@@ -596,17 +597,17 @@ contains
                 fluxgtaubiovar%hermonly=.true.
 #endif
                 if (tot_adim.gt.0) then
-                   call biortho(mobra,moket,mobio,abio(:,:,1),fluxgtaubiovar)
+                   call biortho(bramo(:,:,bratime),ketmo(:,:,kettime),mobio,abio(:,:,1),fluxgtaubiovar)
                    do imc=2,mcscfnum
-                      call biotransform(mobra,moket,abio(:,:,imc),fluxgtaubiovar)
+                      call biotransform(bramo(:,:,bratime),ketmo(:,:,kettime),abio(:,:,imc),fluxgtaubiovar)
                    enddo
 #ifdef CNORMFLAG
                    abio(:,:,:)=conjg(abio(:,:,:))
 #endif
                 else
-                   call biortho(mobra,moket,mobio,nullvector(:),fluxgtaubiovar)
+                   call biortho(bramo(:,:,bratime),ketmo(:,:,kettime),mobio,nullvector(:),fluxgtaubiovar)
                    do imc=2,mcscfnum
-                      call biotransform(mobra,moket,nullvector(:),fluxgtaubiovar)
+                      call biotransform(bramo(:,:,bratime),ketmo(:,:,kettime),nullvector(:),fluxgtaubiovar)
                    enddo
                 endif
                 fluxgtaubiovar%hermonly=.false.   !! in case fluxgtaubiovar is reused
@@ -663,10 +664,10 @@ contains
                 imV2=0d0; reV2=0
                 if(FluxOpType.eq.0) then
                    if (nucfluxopt.ne.2) then
-                      call flux_op_twoe(mobio,moket,imV2,1)
+                      call flux_op_twoe(mobio,ketmo(:,:,kettime),imV2,1)
                    endif
                    if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
-                      call flux_op_twoe(mobio,moket,reV2,2)
+                      call flux_op_twoe(mobio,ketmo(:,:,kettime),reV2,2)
                    endif
                 endif
                 call system_clock(jtime);         times(6)=times(6)+jtime-itime;  itime=jtime
@@ -675,7 +676,7 @@ contains
 
                 do imc=1,mcscfnum
                    if (tot_adim.gt.0) then
-                      fluxevalval(imc) = fluxeval(abio(:,:,imc),aket(:,:,imc),&
+                      fluxevalval(imc) = fluxeval(abio(:,:,imc),ketavec(:,:,imc,kettime),&
                            imke,impe,imV2,imyderiv,reke,repe,reV2,reyderiv,myww)
                    else
                       fluxevalval(imc) = fluxeval(nullvector(:),nullvector(:),&
@@ -687,34 +688,40 @@ contains
                 tau=curtime-oldtime; 
                 gtau(tau,:) = gtau(tau,:) + fluxevalval(:)
 
-                nullify(mobra)
-
                 call system_clock(jtime);          times(7)=times(7)+jtime-itime
 
-             enddo !! end loop over specific bras
+                if (tau.eq.0) then
 
-             nullify(moket,aket)
+!! BRABAT = KETBAT : diagonal part, integral dt
 
-!! only do this after we are sure we've gone through every bra
-             if (brabat.eq.ketbat) then
-                if (myrank.eq.1) then
+!! nevermind KVLsum.dat and gtau.dat
+!! now integrals dt and domega with fluxtsumfile in namelist &parinp
+!! and additional column in spifile
+
                    call system_clock(itime)
-                   open(454, file="Dat/KVLsum.dat", status="old", &
-                        position="append",iostat=myiostat)
-                   call checkiostat(myiostat,"opening kvlsum file")
-                   write(454,'(I5,100F18.12)',iostat=myiostat) curtime, curtime*dt, gtau(0,:);    
-                   call checkiostat(myiostat,"writing kvlsum file")
-                   close(454)
-                   call system_clock(jtime);        times(8)=times(8)+jtime-itime
+                   gtaunow(:)=fluxevalval(:)
+                   gtausum(:) = gtausum(:) + gtaunow(:) * dt / 2d0   !! 2 looks correct
+
+                   if (myrank.eq.1) then
+                      call system_clock(itime)
+                      open(454, file=fluxtsumfile, status="old",  position="append",iostat=myiostat)
+                      call checkiostat(myiostat,"opening fluxtsumfile")
+                      write(454,'(F18.12, T22, 400E20.8)',iostat=myiostat) curtime*dt, &
+                           gtausum(:), gtaunow(:)
+                      call checkiostat(myiostat,"writing fluxtsumfile")
+                      call system_clock(jtime);        times(8)=times(8)+jtime-itime
+                      close(454)
+                   endif
+
                 endif
 
-             endif
+             enddo !! do bratime
 
           enddo !! do kettime
 
           if (brabat.eq.ketbat) then
              if (notiming.ne.2) then
-                write(mpifileptr,'(A28,F10.4)') " Timing statistics as of T= ",real(curtime,8)*dt
+                write(mpifileptr,'(A28,F10.4)') " Timing statistics as of T= ",curtime*dt
                 write(mpifileptr,'(100A10)') "Times: ", "Read", "One-e", "Biorth", &
                      "Matel", "moreMPI", "Two-e", "eval", "write"
                 write(mpifileptr,'(A10,100I10)') " ", times(1:8)/1000; CFL
@@ -739,9 +746,9 @@ contains
     do i=0,curtime
 
        ftgtau(i,:) = ALLCON(gtau(i,:))   * windowfunct(i,curtime) * &
-            exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
+            exp((0.d0,-1.d0)*ALLCON(ceground)*dt*i)
 
-       call vectdpot(i*par_timestep*fluxinterval*fluxskipmult,0,pots1,-1)   !! LENGTH GAUGE.
+       call vectdpot(i*dt,0,pots1,-1)   !! LENGTH GAUGE.
        if (pulsewindowtoo == 0) then
           pulseft(i,:)=pots1(:)
        else
@@ -752,19 +759,6 @@ contains
     do i=1,curtime
        ftgtau(-i,:) = ALLCON(ftgtau(i,:))
     enddo
-  
-    if (myrank.eq.1) then
-       open(171,file=gtaufile,status="unknown",iostat=myiostat)
-       call checkiostat(myiostat,"opening gtaufile")
-       write(171,*,iostat=myiostat) "#   ", curtime
-       call checkiostat(myiostat,"writing gtaufile")
-       do i=0,curtime
-          write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  &
-               i*par_timestep*FluxInterval*FluxSkipMult, ftgtau(i,:)
-       enddo
-       call checkiostat(myiostat,"writing gtaufile")
-       close(171)
-    endif
 
     OFLWR "   ....Go ft...."; CFL
     do imc=1,mcscfnum
@@ -776,8 +770,8 @@ contains
     enddo
     OFLWR "   ....Done with ft...."; CFL
 
-    ftgtau(:,:)=ftgtau(:,:)*par_timestep*FluxInterval*FluxSkipMult
-    pulseft(:,:)=pulseft(:,:)*par_timestep*FluxInterval*FluxSkipMult
+    ftgtau(:,:)=ftgtau(:,:)*dt
+    pulseft(:,:)=pulseft(:,:)*dt
 
     do i=-curtime,curtime
        ftgtau(i,:)=ftgtau(i,:)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))
@@ -786,19 +780,27 @@ contains
 
     pulseftsq(:) = abs(pulseft(:,1)**2) + abs(pulseft(:,2)**2) + abs(pulseft(:,3)**2)
 
-    estep=2*pi/par_timestep/fluxinterval/fluxskipmult/(2*curtime+1)
+    estep=2*pi/dt/(2*curtime+1)
 
-    if(myrank.eq.1) then
+    if (myrank.eq.1) then
        open(1004,file=spifile,status="replace",action="readwrite",&
             position="rewind",iostat=myiostat)
        call checkiostat(myiostat,"opening "//spifile)
        write(1004,*,iostat=myiostat)
        call checkiostat(myiostat,"writing "//spifile)
-       write(1004,*) "# six columns."
-       write(1004,*) "# Omega (column 1); |pulse ft|^2 (2); cross section (Mb) (3); flux (column 5)"
+       write(1004,*) "# eight columns."
+
+!! nevermind KVLsum.dat and gtau.dat
+!! now integrals dt and domega with fluxtsumfile in namelist &parinp
+!! and additional column in spifile
+
+       write(1004,*) "# Omega (column 1); |pulse ft|^2 (2); cross section (Mb) (3); flux (5); flux integral domega (7)"
        write(1004,*)
+       ftgtausum(:)=0d0
        do i=-curtime,curtime
           wfi=(i+curtime)*Estep
+
+          ftgtausum(:)=ftgtausum(:)+ftgtau(i,:) * estep / PI / 4d0   !! 4 looks correct
 
 !! LENGTH GAUGE WAS FT'ed multiply by wfi dont divide
 !! NEVERMIND FACTOR OF 1/3
@@ -809,7 +811,7 @@ contains
           myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
 
           write(1004,'(F8.4,100E18.6)',iostat=myiostat) wfi, pulseftsq(i), &
-               FTgtau(i,:)/pulseftsq(i) * myfac, ftgtau(i,:)
+               FTgtau(i,:)/pulseftsq(i) * myfac, ftgtau(i,:), ftgtausum(:)
        enddo
        call checkiostat(myiostat,"writing "//spifile)
        close(1004)
@@ -948,7 +950,7 @@ contains
   end subroutine flux_op_nuc
 
 
-  subroutine flux_op_twoe(mobra,moket,V2,flag)
+  subroutine flux_op_twoe(mobra,moket,V2,flag) !! ok unused flux_op_twoe, unfinished
     use parameters
     use orbgathersubmod
     use mpisubmod

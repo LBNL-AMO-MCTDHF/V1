@@ -7,7 +7,7 @@
 
 module projefluxmod !! needed for cation walks and bi-orthonormalization
   implicit none
-  integer :: targetms, targetrestrictflag, targetspinproject, tnumconfig,targetspinval,cgflag=0
+  integer :: targetms, targetrestrictflag, targetspinproject, tnumconfig,targetspinval
   integer, allocatable :: tconfiglist(:,:),pphase1(:,:) ,pspf1(:,:,:) ,numpwalk1(:) ,pwalk1(:,:)
   integer :: maxpwalk1 
 end module projefluxmod
@@ -136,7 +136,7 @@ end subroutine projeflux_singlewalks
 
 
 !! construct the one electron functions
-subroutine projeflux_doproj(cata,neuta,mo,offset)
+subroutine projeflux_doproj(cata,neuta,mo,offset,cgfac)
   use parameters     !! nspf, projfluxfile etc.
   use projefluxmod
   use mpimod
@@ -145,6 +145,7 @@ subroutine projeflux_doproj(cata,neuta,mo,offset)
   integer,intent(in) :: offset 
   DATATYPE,intent(in) :: cata(tnumconfig),&
        neuta(first_config:last_config),mo(spfsize,nspf)
+  real*8, intent(in) :: cgfac
   DATATYPE :: projwfn(spfsize,2),  projcoefs(nspf,2)
   integer :: jconfig,iwalk,iconfig,ispf,ispin,iphase,mylength,myiostat
   DATATYPE,allocatable:: bigprojwfn(:,:)
@@ -167,7 +168,7 @@ subroutine projeflux_doproj(cata,neuta,mo,offset)
   projwfn(:,:)=0d0
   do ispin=1,2
      do ispf=1,nspf
-        projwfn(:,ispin) = projwfn(:,ispin) + mo(:,ispf) * projcoefs(ispf,ispin)
+        projwfn(:,ispin) = projwfn(:,ispin) + mo(:,ispf) * projcoefs(ispf,ispin) * cgfac
      enddo
   enddo
 
@@ -204,82 +205,31 @@ end subroutine projeflux_doproj
 
 !! do the double time integral piece    08-2015 now looping over istate and imc here
 
-subroutine projeflux_double_time_int(mem,nstate,nt,dt)
+subroutine projeflux_double_time_int(mem,nstate,nt)
   use parameters    !! par_timestep and others
-  use projefluxmod  !! targetms, ..
   use mpimod
   use mpisubmod
   use pulsesubmod
   implicit none
   integer,intent(in) :: mem,nstate,nt
-  real*8,intent(in) :: dt
   integer :: i,k,tlen,istate,curtime,tau,ir ,imc,ioffset, NUMANGLES, NUMERAD, il
   integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,&
        bratop,getlen,myiostat
-  real*8 :: doubleclebschsq,aa,bb,cc,MemTot,MemVal,wfi,cgfac,estep,myfac,windowfunct,MemNum
-  DATATYPE, allocatable :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:),gtau_ad(:,:,:,:),&
-       read_bramo(:,:,:), read_ketmo(:,:,:), deweighted_bramo(:,:,:), ketmo_ad(:,:,:,:,:)
+  real*8 :: MemTot,MemVal,wfi,estep,myfac,windowfunct,MemNum,dt
+  DATATYPE, allocatable :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:),gtau_ad(:,:,:,:),ketop(:,:,:,:),&
+       read_bramo(:,:,:), read_ketmo(:,:,:), deweighted_bramo(:,:,:), ketmo_ad(:,:,:,:,:),&
+       ketop_ad(:,:,:,:,:), gtaunow(:,:,:), gtaunow_ad(:,:,:,:), gtausum(:,:,:), gtausum_ad(:,:,:,:)
   complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:),ftgtau_ad(:,:),total_ad(:,:)
   real*8, allocatable :: pulseftsq(:)
-  DATATYPE :: pots1(3), csum
+  DATATYPE :: pots1(3), ftgtausum
   character (len=4) :: xstate0,xmc0
   character (len=3) :: xstate1,xmc1
+
+  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep
 
   if (ceground.eq.(0d0,0d0)) then
      OFLWR "Eground is ZERO.  Are you sure?  If want zero just make it small."
      WRFL  "  Otherwise need eground: initial state energy."; CFLST
-  endif
-
-!!!!  100912 NEED CG COEFFICIENT RATIO 
-              
-!! programmed this with restrict_ms, targetms.  
-!! Do have option to change spinrestrictval; should use this.
-!!
-!!    have high spin cation and high spin neutral.
-!!
-!!    | s s  >  =  sum_m_s'  < s s   | s' s' m_s'  >  | s' m_s' >  x  | 1 +/-1/2 >
-!!
-!!     neutral                                          cation       outgoing electron
-!!     m_s = s
-!!
-!!    only have |s' s' > m_s'=s'  cation not |s' s'-1> m_s'=s'-1
-!!
-!!   
-!!    if restrict_ms > targetms  then we couple high spin to high spin to get high spin, one CG coef = 1.
-!!    
-!!        otherwise we couple high spin target down to high spin neutral:
-!!
-!!         projection is spin down  x high spin target   e.g.   < s' s' |  s s  1/2 -1/2 > = A
-!!         also have < s' s' | s s-1 1/2 1/2 > = B
-!!  
-!!         so mult cross section by ( A^2 + B^2 / A^2 )
-!!    
-!!   BUT if restrictflag is off, can't do this.  Must realize that you are only projecting one 
-!!     component of C.G. sum.  that would be a problem.  But if you were to calculate say the 
-!!     3 lowest states for a triplet, you'd get all components.
-!!     otherwise cross section is meaningless.
-!! all arguments are x 2, integers for half spin.
-
-!!$                 if (restrict_ms.lt.targetms.and.restrictflag.eq.1) then
-!!$  !! what we're calculating  targetms-restrict_ms=+/-1
-!!$                    aa= doubleclebschsq(targetms,1,targetms,restrict_ms-targetms,restrict_ms) 
-!!$  !! only one could be nonzero obviously
-!!$                   bb= doubleclebschsq(targetms,1,targetms-2,restrict_ms-targetms+2,restrict_ms)  
-!!$                    cc= doubleclebschsq(targetms,1,targetms+2,restrict_ms-targetms-2,restrict_ms)      
-!!$                    cgfac = (aa+bb+cc)/aa
-!!$                 else
-!!$                    cgfac=1
-!!$                 endif
-
-  if (cgflag.eq.0) then
-     cgfac=1
-  else
-!! what we're calculating  targetms-restrict_ms=+/-1
-     aa= doubleclebschsq(targetspinval,1,targetms,restrict_ms-targetms,spin_restrictval)
-!! only one could be nonzero obviously
-     bb= doubleclebschsq(targetspinval,1,targetms-2,restrict_ms-targetms+2,spin_restrictval)
-     cc= doubleclebschsq(targetspinval,1,targetms+2,restrict_ms-targetms-2,spin_restrictval)      
-     cgfac = (aa+bb+cc)/aa
   endif
 
 !! determine if we should do batching or not
@@ -327,9 +277,9 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   endif
   call closefile()
 
-  allocate(gtau(0:nt,nstate,mcscfnum),ketmo(spfsize,numr,2,BatchSize),&
-       bramo(spfsize,numr,2,BatchSize))
-  gtau=0; ketmo=0; bramo=0
+  allocate(gtau(0:nt,nstate,mcscfnum),ketmo(spfsize,numr,2,BatchSize),ketop(spfsize,numr,2,BatchSize),&
+       bramo(spfsize,numr,2,BatchSize),gtaunow(0:nt,nstate,mcscfnum),gtausum(0:nt,nstate,mcscfnum))
+  gtau=0; ketmo=0; ketop=0; bramo=0; gtaunow=0; gtausum=0d0
 
   NUMANGLES=0; NUMERAD=0
 
@@ -343,13 +293,16 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
      NUMERAD=spfdims(1)
 
      allocate(gtau_ad(0:nt,nstate,mcscfnum,NUMANGLES),deweighted_bramo(spfsize,numr,2),&
-          ketmo_ad(spfsize,numr,2,batchsize,NUMANGLES))
+          ketmo_ad(spfsize,numr,2,batchsize,NUMANGLES), ketop_ad(spfsize,numr,2,batchsize,NUMANGLES),&
+          gtaunow_ad(0:nt,nstate,mcscfnum,NUMANGLES),gtausum_ad(0:nt,nstate,mcscfnum,NUMANGLES))
   else
-     allocate(gtau_ad(0:0,1,1,NUMANGLES),deweighted_bramo(1,1,2),&
-          ketmo_ad(1,1,2,1,NUMANGLES))
+     allocate(gtau_ad(0:0,1,1,1),deweighted_bramo(1,1,2),&
+          ketmo_ad(1,1,2,1,1), ketop_ad(1,1,2,1,1),&
+          gtaunow_ad(0:0,1,1,1),gtausum_ad(0:0,1,1,1))
   endif
 
-  gtau_ad=0;   deweighted_bramo=0;  ketmo_ad=0
+
+  gtau_ad=0;   deweighted_bramo=0;  ketmo_ad=0; ketop_ad=0; gtaunow_ad=0; gtausum_ad=0
 
   if (myrank.eq.1) then
      if (parorbsplit.eq.3) then
@@ -385,18 +338,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
         OFLWR "Computing the CrossSection for state ",istate,"wfn",imc; CFL
 
-!! set up the sum of gtau(0) for debugging monitoring purposes
-
-        write(xstate0,'(I4)') istate+1000;  write(xmc0,'(I4)') imc+1000
-        xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
-
         if (myrank.eq.1) then
-           open(454,file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat",&
-                status="unknown",iostat=myiostat)
-           call checkiostat(myiostat,"opening proj kvlsumfile")
-           write(454,*,iostat=myiostat) "#KVL flux sum: itime, time, flux sum"
-           call checkiostat(myiostat,"writing proj kvlsumfile ")
-           write(454,*); close(454)
            open(1003,file=projfluxfile,status="unknown",form="unformatted",&
                 access="direct",recl=tlen,iostat=myiostat)
            call checkiostat(myiostat,"opening "//projfluxfile)
@@ -439,24 +381,36 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
               OFLWR "PROGRAM ME FLUXOPTYPE 0 PROJEFLUX"; CFLST
            endif
 
+           do i=1,ketreadsize
+              do k=1,2 !! loop over the spins...
+                 call projeflux_op_onee(ketmo(:,:,k,i), ketop(:,:,k,i))
+              enddo
+!! for integral dt
+              curtime=(ketbat-1)*BatchSize+i-1
+              gtaunow(curtime,istate,imc) = hermdot(ketmo(:,:,:,i),ketop(:,:,:,i),2*spfsize*numr)
+           enddo
+           if (parorbsplit.eq.3) then
+              call mympireduce(gtaunow(:,istate,imc),ketreadsize)
+           endif
+
            if (angularflag.ne.0) then
               do il=1,NUMANGLES
                  ketmo_ad(:,:,:,1:ketreadsize,il) = ketmo(:,:,:,1:ketreadsize)
                  call only_one_angle(2*numr*ketreadsize,il,ketmo_ad(:,:,:,:,il))
                  do i=1,ketreadsize
                     do k=1,2 !! loop over the spins...
-                       call projeflux_op_onee(ketmo_ad(:,:,k,i,il))
+                       call projeflux_op_onee(ketmo_ad(:,:,k,i,il), ketop_ad(:,:,k,i,il))
                     enddo
+!! for integral dt
+                    curtime=(ketbat-1)*BatchSize+i-1
+                    gtaunow_ad(curtime,istate,imc,il) = hermdot(ketmo_ad(:,:,:,i,il),ketop_ad(:,:,:,i,il),2*spfsize*numr)
                  enddo
+                 if (parorbsplit.eq.3) then
+                    call mympireduce(gtaunow_ad(:,istate,imc,il),ketreadsize)
+                 endif
               enddo
            endif
 
-!! change it to \hat{F}|\psi(t)>, the onee part
-           do i=1,ketreadsize
-              do k=1,2 !! loop over the spins...
-                 call projeflux_op_onee(ketmo(:,:,k,i))
-              enddo
-           enddo
 !! begin the bra batch read loop
            do brabat=1,ketbat
               OFLWR "Reading bra batch ", brabat, " of ", ketbat," for state ",istate; CFL
@@ -500,14 +454,14 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
                  do bratime=1,bratop
                     tau=curtime-((brabat-1)*BatchSize+bratime-1)
                     gtau(tau,istate,imc) = gtau(tau,istate,imc) + &
-                         hermdot(bramo(:,:,:,bratime),ketmo(:,:,:,kettime),2*spfsize*numr) * dt
+                         hermdot(bramo(:,:,:,bratime),ketop(:,:,:,kettime),2*spfsize*numr) * dt
 
 !!      allocated   bramo(spfsize,numr,2,BatchSize)
 
                     if (angularflag.ne.0) then
 
 !!$                       gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + &
-!!$                            myhermdots(bramo(:,:,:,bratime),ketmo(:,:,:,kettime),2*spfsize*numr) * dt
+!!$                            myhermdots(bramo(:,:,:,bratime),ketop(:,:,:,kettime),2*spfsize*numr) * dt
 
                        do k=1,2
                           do ir=1,numr
@@ -520,38 +474,22 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
                           enddo
                        enddo
 !!$                       gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + &
-!!$                            myhermdots(deweighted_bramo(:,:,:),ketmo(:,:,:,kettime),2*spfsize*numr) * dt
+!!$                            myhermdots(deweighted_bramo(:,:,:),ketop(:,:,:,kettime),2*spfsize*numr) * dt
 
 !! better way, with symmetric flux operator.  total still equals integrated differential.
 !! results (at threshold where there is oscillation and usually some negative values) actually 
 !! look worse for H2 with this symmetrized operator, below, instead of what's above
 
                        gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + 0.5d0 * &
-                            myhermdots(deweighted_bramo(:,:,:),ketmo(:,:,:,kettime),2*spfsize*numr) * dt
+                            myhermdots(deweighted_bramo(:,:,:),ketop(:,:,:,kettime),2*spfsize*numr) * dt
 
                        do il=1,NUMANGLES
                           gtau_ad(tau,istate,imc,il) = gtau_ad(tau,istate,imc,il) + 0.5d0 * &
-                               hermdot(deweighted_bramo(:,:,:),ketmo_ad(:,:,:,kettime,il),2*spfsize*numr) * dt
+                               hermdot(deweighted_bramo(:,:,:),ketop_ad(:,:,:,kettime,il),2*spfsize*numr) * dt
                        enddo
 
                     endif
                  enddo
-
-!! only do this after we are sure we've gone through every bra
-                 if(brabat.eq.ketbat) then
-                    csum=gtau(0,istate,imc)
-                    if (parorbsplit.eq.3) then
-                       call mympireduceone(csum)
-                    endif
-                    if (myrank.eq.1) then
-  open(454, file="Dat/KVLsum."//xstate1//"_"//xmc1//".dat", &
-       status="old", position="append",iostat=myiostat)
-  call checkiostat(myiostat,"opening proj kvlsumfile")
-  write(454,'(I5,100F18.12)',iostat=myiostat) curtime, curtime*dt, csum
-  call checkiostat(myiostat,"writing proj kvlsumfile")
-  close(454)
-                    endif
-                 endif
 
               enddo !! do kettime
            enddo   !! do brabat
@@ -575,6 +513,66 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
      endif
   endif
 
+!! INTEGRAL DT
+
+  gtausum(:,:,:)=0d0;  gtausum_ad(:,:,:,:)=0d0
+
+  gtausum(0,:,:)=gtaunow(0,:,:)
+  do i=1,nt
+     gtausum(i,:,:)=gtausum(i-1,:,:) + gtaunow(i,:,:) * dt / 4d0   !! 4 looks correct
+  enddo
+  if (angularflag.ne.0) then
+     gtausum_ad(0,:,:,:)=gtaunow_ad(0,:,:,:)
+     do i=1,nt
+        gtausum_ad(i,:,:,:)=gtausum_ad(i-1,:,:,:) + gtaunow_ad(i,:,:,:) * dt
+     enddo
+  endif
+
+  if(myrank.eq.1) then
+
+!! nevermind KVLsum.dat and gtau.dat
+!! now integrals dt and domega with projfluxtsumfile, angprojfluxtsumfile in namelist &parinp
+!! and additional column in projspifile
+
+!! integral dt:
+
+     do imc=1,mcscfnum
+        do istate=1,nstate
+           write(xstate0,'(I4)') istate+1000;  write(xmc0,'(I4)') imc+1000
+           xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
+
+           open(171,file=projfluxtsumfile(1:getlen(projfluxtsumfile))//"_"//xstate1//"_"//xmc1//".dat", &
+                status="unknown",iostat=myiostat)
+           call checkiostat(myiostat,"opening projfluxtsumfile")
+           write(171,*,iostat=myiostat) "#   ", curtime
+           call checkiostat(myiostat,"writing projfluxtsumfile")
+           do i=0,curtime
+              write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat) &
+                   i*dt,  gtausum(i,istate,imc), gtaunow(i,istate,imc)
+           enddo
+           call checkiostat(myiostat,"writing projfluxtsumfile")
+           close(171)
+
+           if (angularflag.ne.0) then
+              open(171,file=angprojfluxtsumfile(1:getlen(angprojfluxtsumfile))//"_"//xstate1//"_"//xmc1//".dat", &
+                   status="unknown",iostat=myiostat)
+              call checkiostat(myiostat,"opening angprojfluxtsumfile")
+              write(171,*,iostat=myiostat) "#   ", curtime
+              call checkiostat(myiostat,"writing angprojfluxtsumfile")
+              do i=0,curtime
+                 write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat) &
+                      i*dt,  gtausum_ad(i,istate,imc,:), gtaunow_ad(i,istate,imc,:)
+              enddo
+              call checkiostat(myiostat,"writing angprojfluxtsumfile")
+              close(171)
+           endif
+
+        enddo !! istate
+     enddo    !! imc
+  endif       !! myrank
+
+  call mpibarrier()
+
   OFLWR "Taking the fourier transform of g(tau) to get cross section at T= ",curtime*dt; CFL
 
   allocate(ftgtau(-curtime:curtime), pulseft(-curtime:curtime,3),&
@@ -589,20 +587,19 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
   ftgtau_ad=0; total_ad=0
 
   do i=0,curtime
-     call vectdpot(i*par_timestep*fluxinterval*fluxskipmult,0,pots1,-1)  !! LENGTH GAUGE
+     call vectdpot(i*dt,0,pots1,-1)  !! LENGTH GAUGE
      if (pulsewindowtoo == 0) then
-     pulseft(i,:)=pots1(:)
+        pulseft(i,:)=pots1(:)
      else
-     pulseft(i,:)=pots1(:) * windowfunct(i,curtime)
+        pulseft(i,:)=pots1(:) * windowfunct(i,curtime)
      endif
-
   enddo
   
   do i=1,3
      call zfftf_wrap(2*curtime+1,pulseft(-curtime:curtime,i))
   enddo
 
-  pulseft(:,:)=pulseft(:,:)*par_timestep*FluxInterval*FluxSkipMult
+  pulseft(:,:)=pulseft(:,:)*dt
 
   do i=-curtime,curtime
      pulseft(i,:)=pulseft(i,:)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))
@@ -610,7 +607,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
   pulseftsq(:) = abs(pulseft(:,1)**2) + abs(pulseft(:,2)**2) + abs(pulseft(:,3)**2)
 
-  estep=2*pi/par_timestep/fluxinterval/fluxskipmult/(2*curtime+1)
+  estep=2*pi/dt/(2*curtime+1)
   
   do imc=1,mcscfnum
 
@@ -623,7 +620,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
         do i=0,curtime
            ftgtau(i) = ALLCON(gtau(i,istate,imc))   * windowfunct(i,curtime) * &
-                exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
+                exp((0.d0,-1.d0)*ALLCON(ceground)*dt*i)
         enddo
         do i=1,curtime
            ftgtau(-i) = ALLCON(ftgtau(i))
@@ -632,7 +629,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
         if (angularflag.ne.0) then
            do i=0,curtime
               ftgtau_ad(i,:) = ALLCON(gtau_ad(i,istate,imc,:))   * windowfunct(i,curtime) * &
-                   exp((0.d0,-1.d0)*ALLCON(ceground)*par_timestep*FluxInterval*FluxSkipMult*i)
+                   exp((0.d0,-1.d0)*ALLCON(ceground)*dt*i)
            enddo
            do i=1,curtime
               ftgtau_ad(-i,:) = ALLCON(ftgtau_ad(i,:))
@@ -641,25 +638,12 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
         write(xstate0,'(I4)') istate+1000;  write(xmc0,'(I4)') imc+1000
         xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
-        
-        if (myrank.eq.1) then
-           open(171,file=projgtaufile(1:getlen(projgtaufile))//xstate1//"_"//xmc1//".dat", &
-                status="unknown",iostat=myiostat)
-           call checkiostat(myiostat,"opening proj gtau file")
-           write(171,*,iostat=myiostat) "#   ", curtime
-           call checkiostat(myiostat,"writing proj gtau file")
-           do i=0,curtime
-              write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat) &
-                   i*par_timestep*FluxInterval*FluxSkipMult, &
-                   pulseft(i,:), gtau(i,istate,imc), ftgtau(i)
-           enddo
-           call checkiostat(myiostat,"writing proj gtau file")
-           close(171)
-        endif
+
+!! no more gtaufile
 
         call zfftf_wrap_diff(2*curtime+1,ftgtau(-curtime:curtime),ftdiff)
         
-        ftgtau(:)=ftgtau(:)*par_timestep*FluxInterval*FluxSkipMult
+        ftgtau(:)=ftgtau(:)*dt
 
         do i=-curtime,curtime
            ftgtau(i)=ftgtau(i)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))
@@ -672,7 +656,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
               call zfftf_wrap_diff(2*curtime+1,ftgtau_ad(-curtime:curtime,il),ftdiff)
            enddo
 
-           ftgtau_ad(:,:)=ftgtau_ad(:,:)*par_timestep*FluxInterval*FluxSkipMult
+           ftgtau_ad(:,:)=ftgtau_ad(:,:)*dt
 
            do i=-curtime,curtime
               ftgtau_ad(i,:)=ftgtau_ad(i,:)*exp((0.d0,1.d0)*(curtime+i)*curtime*2*pi/real(2*curtime+1))
@@ -690,8 +674,17 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            call checkiostat(myiostat,"writing proj spi file")
            write(1004,*) "# Omega; pulse ft; proj flux t= ",finaltime
 
+!! nevermind KVLsum.dat and gtau.dat
+!! now integrals dt and domega with projfluxtsumfile, angprojfluxtsumfile in namelist &parinp
+!! and additional column in projspifile
+
+!! integral domega in ftgtausum
+
+           ftgtausum=0d0
            do i=-curtime,curtime
               wfi=(i+curtime)*estep
+
+              ftgtausum=ftgtausum + ftgtau(i) * estep / PI / 8d0   !! 8 looks correct
 
 !! LENGTH GAUGE WAS FT'ed multiply by wfi don't divide
 !! NEVERMIND FACTOR OF 1/3
@@ -702,7 +695,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
               myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi 
 
               write(1004,'(F18.12, T22, 400E20.8)',iostat=myiostat)  wfi,  &
-                   pulseftsq(i), ftgtau(i)/pulseftsq(i) * cgfac * myfac, ftgtau(i)
+                   pulseftsq(i), ftgtau(i)/pulseftsq(i) * myfac, ftgtau(i), ftgtausum
 
            enddo
            call checkiostat(myiostat,"writing proj spi file")
@@ -721,7 +714,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
                  do il=1,NUMANGLES
                     write(1004,'(F18.12, I5, 1400E20.8)',iostat=myiostat)  wfi, il, &
-                         pulseftsq(i), ftgtau_ad(i,il)/pulseftsq(i) * cgfac * myfac, ftgtau_ad(i,il)
+                         pulseftsq(i), ftgtau_ad(i,il)/pulseftsq(i) * myfac, ftgtau_ad(i,il)
                  enddo
                  write(1004,*)
               enddo
@@ -742,7 +735,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
            wfi=(i+curtime)*estep
            myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
            write(1004,'(F18.12, T22, 400E20.8)',iostat=myiostat)  wfi,  pulseftsq(i), &
-                total(i)/pulseftsq(i) * cgfac * myfac, total(i)
+                total(i)/pulseftsq(i) * myfac, total(i)
         enddo
         call checkiostat(myiostat,"writing total proj spi file")
         close(1004)
@@ -760,7 +753,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
               do il=1,NUMANGLES
                  write(1004,'(F18.12, I5, 400E20.8)',iostat=myiostat)  wfi, il, pulseftsq(i), &
-                      total_ad(i,il)/pulseftsq(i) * cgfac * myfac, total_ad(i,il)
+                      total_ad(i,il)/pulseftsq(i) * myfac, total_ad(i,il)
               enddo
               write(1004,*)
            enddo
@@ -774,8 +767,8 @@ subroutine projeflux_double_time_int(mem,nstate,nt,dt)
 
   deallocate(ftgtau,pulseft,pulseftsq,total)
   deallocate(read_bramo,read_ketmo)
-  deallocate(gtau,ketmo,bramo)
-  deallocate(gtau_ad,ftgtau_ad,total_ad,deweighted_bramo,ketmo_ad)
+  deallocate(gtau,ketmo,bramo,ketop,gtaunow,gtausum)
+  deallocate(gtau_ad,ftgtau_ad,total_ad,deweighted_bramo,ketmo_ad,ketop_ad,gtaunow_ad,gtausum_ad)
 
 contains
 
@@ -821,14 +814,14 @@ contains
 !! get the contraction of the flux operator (iH-H^\dag) with our current set of orbitals 
 !! F*inspfs=outspfs
 
-  subroutine projeflux_op_onee(inspfs)
+  subroutine projeflux_op_onee(inspfs,outspfs)
     use r_parameters
     use spfsize_parameters
     use opmod
     implicit none
-    DATATYPE,intent(inout) :: inspfs(spfsize,numr)
-    DATATYPE :: workspfs(spfsize,numr), outspfs(spfsize,numr),&  !! AUTOMATIC
-         mymat(numr,numr)
+    DATATYPE,intent(in) :: inspfs(spfsize,numr)
+    DATATYPE,intent(out) :: outspfs(spfsize,numr)
+    DATATYPE :: workspfs(spfsize,numr), mymat(numr,numr)    !! AUTOMATIC
     integer :: r
 
     workspfs=0; outspfs=0; mymat=0
@@ -908,7 +901,7 @@ contains
     endif
 
 !! scale correctly
-    inspfs(:,:)=outspfs(:,:)*(-2d0)
+    outspfs(:,:)=outspfs(:,:)*(-2d0)
 
   end subroutine projeflux_op_onee
 
@@ -936,8 +929,9 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 !! necessary working variables
   integer,intent(in) :: nt,alreadystate,ifile
   integer,intent(out) :: nstate
-  integer :: tau, i,ir,tnum2part,tnspf,tnumr,istate,ierr
-  integer :: spfcomplex, acomplex, tdims(3),imc,ioffset,myiostat
+  integer :: tau, i,ir,tnum2part,tnspf,tnumr,istate,ierr, cgflag, &
+       spfcomplex, acomplex, tdims(3),imc,ioffset,myiostat
+  real*8 :: cgfac,doubleclebschsq,aa,bb,cc
   DATATYPE, allocatable :: &
        tmo(:,:),tavec(:,:,:),tmotemp(:,:),readta(:,:,:),&
        mobio(:,:,:),abio(:,:,:),mymo(:,:),myavec(:,:,:), &
@@ -1016,6 +1010,59 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
            endif
         endif
      endif
+  endif
+
+
+!!!!  100912 NEED CG COEFFICIENT RATIO 
+              
+!! programmed this with restrict_ms, targetms.  
+!! Do have option to change spinrestrictval; should use this.
+!!
+!!    have high spin cation and high spin neutral.
+!!
+!!    | s s  >  =  sum_m_s'  < s s   | s' s' m_s'  >  | s' m_s' >  x  | 1 +/-1/2 >
+!!
+!!     neutral                                          cation       outgoing electron
+!!     m_s = s
+!!
+!!    only have |s' s' > m_s'=s'  cation not |s' s'-1> m_s'=s'-1
+!!
+!!   
+!!    if restrict_ms > targetms  then we couple high spin to high spin to get high spin, one CG coef = 1.
+!!    
+!!        otherwise we couple high spin target down to high spin neutral:
+!!
+!!         projection is spin down  x high spin target   e.g.   < s' s' |  s s  1/2 -1/2 > = A
+!!         also have < s' s' | s s-1 1/2 1/2 > = B
+!!  
+!!         so mult cross section by ( A^2 + B^2 / A^2 )
+!!    
+!!   BUT if restrictflag is off, can't do this.  Must realize that you are only projecting one 
+!!     component of C.G. sum.  that would be a problem.  But if you were to calculate say the 
+!!     3 lowest states for a triplet, you'd get all components.
+!!     otherwise cross section is meaningless.
+!! all arguments are x 2, integers for half spin.
+
+!!$                 if (restrict_ms.lt.targetms.and.restrictflag.eq.1) then
+!!$  !! what we're calculating  targetms-restrict_ms=+/-1
+!!$                    aa= doubleclebschsq(targetms,1,targetms,restrict_ms-targetms,restrict_ms) 
+!!$  !! only one could be nonzero obviously
+!!$                   bb= doubleclebschsq(targetms,1,targetms-2,restrict_ms-targetms+2,restrict_ms)  
+!!$                    cc= doubleclebschsq(targetms,1,targetms+2,restrict_ms-targetms-2,restrict_ms)      
+!!$                    cgfac = (aa+bb+cc)/aa
+!!$                 else
+!!$                    cgfac=1
+!!$                 endif
+
+  if (cgflag.eq.0) then
+     cgfac=1
+  else
+!! what we're calculating  targetms-restrict_ms=+/-1
+     aa= doubleclebschsq(targetspinval,1,targetms,restrict_ms-targetms,spin_restrictval)
+!! only one could be nonzero obviously
+     bb= doubleclebschsq(targetspinval,1,targetms-2,restrict_ms-targetms+2,spin_restrictval)
+     cc= doubleclebschsq(targetspinval,1,targetms+2,restrict_ms-targetms-2,spin_restrictval)      
+     cgfac = (aa+bb+cc)/aa
   endif
 
   allocate(tmo(spfsize,nspf),tavec(tnumconfig,nstate,numr),&
@@ -1195,9 +1242,9 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
    ioffset=(istate-1+alreadystate)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + tau*numr + ir
 
               if (tot_adim.gt.0) then
-                 call projeflux_doproj(tavec(:,istate,ir),abio(:,imc,ir),mobio(:,:,ir),ioffset)
+                 call projeflux_doproj(tavec(:,istate,ir),abio(:,imc,ir),mobio(:,:,ir),ioffset,cgfac)
               else
-                 call projeflux_doproj(tavec(:,istate,ir),nullvector(:),mobio(:,:,ir),ioffset)
+                 call projeflux_doproj(tavec(:,istate,ir),nullvector(:),mobio(:,:,ir),ioffset,cgfac)
               endif
            enddo
         enddo
@@ -1226,17 +1273,14 @@ end subroutine projeflux_single0
 
 
 subroutine projeflux_single(mem)
-  use parameters    !! fluxinterval, par_timestep, etc.
+  use parameters    !! numcatfiles, fluxinterval, par_timestep, etc.
   use mpimod   !! myrank
-  use projefluxmod
   implicit none
   integer,intent(in) :: mem
   integer :: nt,nstate,eachstate,ifile,myiostat
-  real*8 :: dt
 
   OFLWR ;  WRFL   "   *** DOING PROJECTED FLUX. ***    ";  WRFL; CFL
 
-  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep;  
   nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
 
   nstate=0
@@ -1250,7 +1294,7 @@ subroutine projeflux_single(mem)
   OFLWR "Go double time integral";CFL
 
 !! do the double time integral
-  call projeflux_double_time_int(mem,nstate,nt,dt)
+  call projeflux_double_time_int(mem,nstate,nt)
 
   call mpibarrier()
   OFLWR "Cross Section acquired, cleaning and closing";CFL

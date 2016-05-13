@@ -399,13 +399,14 @@ character(len=SLN):: corrftfile="Dat/Corrft.Dat"              !!  "
 character(len=SLN):: fluxmofile="Flux/flux.mo.bin"            !! for actions 15,16,17,23
 character(len=SLN):: fluxafile="Flux/flux.avec.bin"           !!  "
 character(len=SLN):: spifile="Dat/xsec.spi.dat"               !! for action 16 (cross section)
-character(len=SLN):: gtaufile="Dat/gtau.dat"                  !!  " (total flux(t) without e_ke resolution)
+character(len=SLN):: fluxtsumfile="Dat/fluxtsum.dat"          !!  " total flux integral dt
 character(len=SLN):: projspifile="Dat/xsec.proj.spi"          !! for action 17 (partial cross section)
-character(len=SLN):: projgtaufile="Dat/gtau.dat"              !!  " (projected flux(t))
-character(len=SLN):: projfluxfile="Flux/proj.flux.wfn.bin"    !!  "
-character (len=SLN):: catspffiles(50)="Bin/cation.spfs.bin"       !!  " (see numcatfiles in ACTIONS)
+character(len=SLN):: projfluxtsumfile="Dat/projfluxtsum"      !!  " total projected flux integral dt
+character(len=SLN):: projfluxfile="Flux/proj.flux.wfn.bin"    !!  " main output action 17
+character (len=SLN):: catspffiles(50)="Bin/cation.spfs.bin"   !!  " (see numcatfiles in ACTIONS)
 character (len=SLN):: catavectorfiles(50)="Bin/cation.avector.bin"!!  "
 character(len=SLN):: angprojspifile="Dat/xsec.angproj.spi"    !!  " if angularflag.ne.0, output file
+character(len=SLN):: angprojfluxtsumfile="Dat/angprojfluxtsum"!!  " and angular integral dt
 character(len=SLN):: fluxafile2="Flux/flux.avec.bin"          !! for action 23
 character(len=SLN):: fluxmofile2="Flux/flux.mo.bin"           !!  "
 character(len=SLN):: natplotbin="Bin/Natlorb.bin"             !! for actions 2,8
