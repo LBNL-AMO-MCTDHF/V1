@@ -522,7 +522,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt)
 
   gtausum(0,:,:)=gtaunow(0,:,:)
   do i=1,nt
-     gtausum(i,:,:)=gtausum(i-1,:,:) + gtaunow(i,:,:) * dt / 4d0   !! 4 looks correct
+     gtausum(i,:,:)=gtausum(i-1,:,:) + gtaunow(i,:,:) * dt / 2d0   !! 2 looks correct
   enddo
   if (angularflag.ne.0) then
      gtausum_ad(0,:,:,:)=gtaunow_ad(0,:,:,:)
@@ -687,7 +687,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt)
            do i=-curtime,curtime
               wfi=(i+curtime)*estep
 
-              ftgtausum=ftgtausum + ftgtau(i) * estep / PI / 8d0   !! 8 looks correct
+              ftgtausum=ftgtausum + ftgtau(i) * estep / PI / 4d0   !! 4 looks correct
 
 !! LENGTH GAUGE WAS FT'ed multiply by wfi don't divide
 !! NEVERMIND FACTOR OF 1/3
