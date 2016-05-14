@@ -1245,9 +1245,9 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
    ioffset=(istate-1+alreadystate)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + tau*numr + ir
 
               if (tot_adim.gt.0) then
-                 call projeflux_doproj(tavec(:,istate,ir),abio(:,imc,ir),mobio(:,:,ir),ioffset,cgfac)
+                 call projeflux_doproj(tavec(:,istate,ir),abio(:,imc,ir),mobio(:,:,ir),ioffset,cgfac*catfacs(ifile))
               else
-                 call projeflux_doproj(tavec(:,istate,ir),nullvector(:),mobio(:,:,ir),ioffset,cgfac)
+                 call projeflux_doproj(tavec(:,istate,ir),nullvector(:),mobio(:,:,ir),ioffset,cgfac*catfacs(ifile))
               endif
            enddo
         enddo

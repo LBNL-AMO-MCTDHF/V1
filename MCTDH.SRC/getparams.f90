@@ -99,7 +99,8 @@ subroutine getparams()
        pulsewindowtoo,conjgpropflag,dipolesumstart,dipolesumend,outmatel,numcatfiles,&
        catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
        shuffle_dfwalktype,maxdgdim, messavec, messaamount,holeflag, angularflag, angprojspifile,&
-       prepropflag, step_flag, postpropflag, reference_pulses, scalarflag, angprojfluxtsumfile
+       prepropflag, step_flag, postpropflag, reference_pulses, scalarflag, angprojfluxtsumfile, &
+       catfacs
 
   OFL
   write(mpifileptr, *)

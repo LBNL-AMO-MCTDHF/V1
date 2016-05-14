@@ -491,6 +491,7 @@ integer :: computeFlux=500, &    ! 0=All in memory other: MBs to allocate
 integer :: nucfluxopt=1          !! NucFlux=     !! Include imag part of hamiltonian from nuc ke 2=only that
 integer :: FluxOpType=1          !! 0=Full ham 1=halfnium 
 integer :: numcatfiles=1         !! see catspffiles and catavectorfiles in INPUT/OUTPUT for action 17
+real*8 :: catfacs(50)=1d0       !! weighting of partial cross sections for proj.xsec.spi_all_001.dat, etc.
 integer :: angularflag=0         !! for action 17 calculate fully differential partial ionization, angular
                                  !!   output in angprojspifile (atom/diatom only)
 !!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input) 
