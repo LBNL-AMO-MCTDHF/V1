@@ -168,7 +168,10 @@ subroutine projeflux_doproj(cata,neuta,mo,offset,cgfac)
   projwfn(:,:)=0d0
   do ispin=1,2
      do ispf=1,nspf
-        projwfn(:,ispin) = projwfn(:,ispin) + mo(:,ispf) * projcoefs(ispf,ispin) * cgfac
+
+!! sqrt(cgfac) to recover cgfac with bra and ket factor.  cgfac positive
+
+        projwfn(:,ispin) = projwfn(:,ispin) + mo(:,ispf) * projcoefs(ispf,ispin) * sqrt(cgfac)
      enddo
   enddo
 
