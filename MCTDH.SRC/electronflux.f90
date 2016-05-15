@@ -234,7 +234,7 @@ end module fluxduringmod
 module fluxgtau0mod
 contains
 
-  subroutine fluxgtau_during(wwin,bbin,ketmo,ketavec,dt)
+  subroutine fluxgtau_during0(wwin,bbin,ketmo,ketavec,dt)
     use fluxgtaubiomod
     use biorthomod
     use parameters
@@ -400,7 +400,7 @@ contains
     deallocate(imke,impe,imV2,imyderiv,imkeop,impeop,imyop)
     deallocate(reke,repe,reV2,reyderiv,rekeop,repeop,reyop)
 
-  end subroutine fluxgtau_during
+  end subroutine fluxgtau_during0
 
 
   subroutine fluxgtau0(alg,wwin,bbin)
@@ -1288,8 +1288,8 @@ end module fluxgtau0mod
 
 
 subroutine fluxgtau(alg)
-  use fluxgtau0mod
   use configmod
+  use fluxgtau0mod
   implicit none
   integer,intent(in) :: alg
 
@@ -1298,3 +1298,13 @@ subroutine fluxgtau(alg)
 end subroutine fluxgtau
 
 
+subroutine fluxgtau_during(ketmo,ketavec,dt)
+  use parameters !! mcscfnum
+  use configmod
+  use fluxgtau0mod
+  implicit none
+  real*8,intent(in) :: dt
+  DATATYPE,intent(in) :: ketavec(tot_adim,mcscfnum),    ketmo(spfsize,nspf)
+  call fluxgtau_during0(www,bioww,ketmo,ketavec,dt)
+end subroutine fluxgtau_during
+    
