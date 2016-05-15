@@ -6,10 +6,15 @@
 #include "Definitions.INC"
 
 module projefluxmod !! needed for cation walks and bi-orthonormalization
-  implicit none
-  integer :: targetms, targetrestrictflag, targetspinproject, tnumconfig,targetspinval
+!  implicit none
+!  type PPTYPE
+  integer :: tnumconfig
   integer, allocatable :: tconfiglist(:,:),pphase1(:,:) ,pspf1(:,:,:) ,numpwalk1(:) ,pwalk1(:,:)
   integer :: maxpwalk1 
+!  end type PPTYPE
+!  type(PPYPE),allocatable :: ppp(:)    !! numcatfiles
+  integer :: nstate
+  integer, allocatable :: eachstate(:) !! numcatfiles
 end module projefluxmod
 
 
@@ -223,8 +228,9 @@ subroutine projeflux_double_time_int(mem,nstate,nt)
        read_bramo(:,:,:), read_ketmo(:,:,:), deweighted_bramo(:,:,:), ketmo_ad(:,:,:,:,:),&
        ketop_ad(:,:,:,:,:), gtaunow(:,:,:), gtaunow_ad(:,:,:,:), gtausum(:,:,:), gtausum_ad(:,:,:,:)
   complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:),ftgtau_ad(:,:),total_ad(:,:)
+  complex*16 :: ftgtausum
   real*8, allocatable :: pulseftsq(:)
-  DATATYPE :: pots1(3), ftgtausum
+  DATATYPE :: pots1(3)
   character (len=4) :: xstate0,xmc0
   character (len=3) :: xstate1,xmc1
 
@@ -920,7 +926,7 @@ module projbiomod
   type(biorthotype),target :: projbiovar
 end module projbiomod
 
-subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
+subroutine projeflux_single0(ifile,nt,alreadystate,outnumstate)
   use parameters    !! catavectorfiles and others
   use projbiomod
   use biorthomod
@@ -931,9 +937,10 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   implicit none
 !! necessary working variables
   integer,intent(in) :: nt,alreadystate,ifile
-  integer,intent(out) :: nstate
+  integer,intent(out) :: outnumstate
   integer :: tau, i,ir,tnum2part,tnspf,tnumr,istate,ierr, cgflag, &
-       spfcomplex, acomplex, tdims(3),imc,ioffset,myiostat
+       spfcomplex, acomplex, tdims(3),imc,ioffset,myiostat, &
+       targetms, targetrestrictflag, targetspinproject, targetspinval
   real*8 :: cgfac,doubleclebschsq,aa,bb,cc
   DATATYPE, allocatable :: &
        tmo(:,:),tavec(:,:,:),tmotemp(:,:),readta(:,:,:),&
@@ -952,10 +959,10 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
      call checkiostat(myiostat,"opening "//catspffiles(ifile))
      open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
      call checkiostat(myiostat,"opening "//catavectorfiles(ifile))
-     call avector_header_read(910,nstate,tnum2part,tnumr,tnumconfig,targetrestrictflag,targetms,&
+     call avector_header_read(910,outnumstate,tnum2part,tnumr,tnumconfig,targetrestrictflag,targetms,&
           targetspinproject,targetspinval,acomplex,ierr)
   endif
-  call mympiibcastone(nstate,1); call mympiibcastone(tnum2part,1); 
+  call mympiibcastone(outnumstate,1); call mympiibcastone(tnum2part,1); 
   call mympiibcastone(tnumr,1); call mympiibcastone(tnumconfig,1); 
   call mympiibcastone(targetrestrictflag,1);  call mympiibcastone(targetms,1);  
   call mympiibcastone(targetspinproject,1);  call mympiibcastone(targetspinval,1); 
@@ -1068,26 +1075,26 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
      cgfac = (aa+bb+cc)/aa
   endif
 
-  allocate(tmo(spfsize,nspf),tavec(tnumconfig,nstate,numr),&
-       tmotemp(spfsize,nspf+numfrozen),readta(tnumr,tnumconfig,nstate))
+  allocate(tmo(spfsize,nspf),tavec(tnumconfig,outnumstate,numr),&
+       tmotemp(spfsize,nspf+numfrozen),readta(tnumr,tnumconfig,outnumstate))
   tmo=0d0;  tavec=0d0; tmotemp=0d0; readta=0d0
 
-  OFLWR "Reading", nstate," Born-Oppenheimer states."; CFL
+  OFLWR "Reading", outnumstate," Born-Oppenheimer states."; CFL
 
   if (myrank.eq.1) then
-     call simple_load_avectors(910,acomplex,readta(:,:,:),tnum2part,tnumr,tnumconfig,nstate)
+     call simple_load_avectors(910,acomplex,readta(:,:,:),tnum2part,tnumr,tnumconfig,outnumstate)
      do ir=1,min(tnumr,numr)
         tavec(:,:,ir)=readta(ir,:,:)
      enddo
      do ir=min(tnumr,numr)+1,numr
-        call staticvector(tavec(:,:,ir),tnumconfig*nstate)
+        call staticvector(tavec(:,:,ir),tnumconfig*outnumstate)
      enddo
      do ir=1,numr
 
 !! projecting on normalized electronic wfn at each R
 !! we go to war with the army we've got
 
-        do istate=1,nstate
+        do istate=1,outnumstate
            tavec(:,istate,ir)=tavec(:,istate,ir)/&
                 sqrt(dot(tavec(:,istate,ir),tavec(:,istate,ir),tnumconfig)) !! no * bondweights(ir)
         enddo
@@ -1099,7 +1106,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
      call spf_read0(-42,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,&
           tmotemp(:,:),(/0,0,0/))
   endif
-  call mympibcast(tavec(:,:,:),1,tnumconfig*nstate*numr)
+  call mympibcast(tavec(:,:,:),1,tnumconfig*outnumstate*numr)
 
   tmo(:,1:tnspf-numfrozen) = tmotemp(:,numfrozen+1:tnspf)
   tnspf=tnspf-numfrozen
@@ -1119,7 +1126,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
   if (myrank.eq.1) then
      open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
      call checkiostat(myiostat,"opening "//catavectorfiles(ifile))
-     call avector_header_read_simple(910,nstate,tnum2part,tnumr,tnumconfig,acomplex)
+     call avector_header_read_simple(910,outnumstate,tnum2part,tnumr,tnumconfig,acomplex)
      call get_avectorfile_configlist(910,acomplex,tconfiglist,tnum2part,tnumr,tnumconfig)
      close(910)
   endif
@@ -1240,7 +1247,7 @@ subroutine projeflux_single0(ifile,nt,alreadystate,nstate)
 
      do ir=1,numr
         do imc=1,mcscfnum
-           do istate=1,nstate
+           do istate=1,outnumstate
 
    ioffset=(istate-1+alreadystate)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + tau*numr + ir
 
@@ -1277,20 +1284,23 @@ end subroutine projeflux_single0
 
 subroutine projeflux_single(mem)
   use parameters    !! numcatfiles, fluxinterval, par_timestep, etc.
+  use projefluxmod  !! nstate, eachstate
   use mpimod   !! myrank
   implicit none
   integer,intent(in) :: mem
-  integer :: nt,nstate,eachstate,ifile,myiostat
+  integer :: nt,ifile,myiostat
 
   OFLWR ;  WRFL   "   *** DOING PROJECTED FLUX. ***    ";  WRFL; CFL
 
   nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
 
   nstate=0
+  allocate(eachstate(numcatfiles))
+  eachstate=0
 
   do ifile=1,numcatfiles
-     call projeflux_single0(ifile,nt,nstate,eachstate)
-     nstate=nstate+eachstate
+     call projeflux_single0(ifile,nt,nstate,eachstate(ifile))
+     nstate=nstate+eachstate(ifile)
   enddo
 
   call mpibarrier()

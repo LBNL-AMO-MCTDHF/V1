@@ -92,13 +92,6 @@ subroutine fluxwrite(curtime,in_xmo,in_xa)
 end subroutine fluxwrite
 
 
-module fluxgtaubiomod
-  use biorthotypemod
-  implicit none
-  type(biorthotype),target :: fluxgtaubiovar
-end module fluxgtaubiomod
-
-
 subroutine mult_reke(howmany,in,out)
   use parameters
   implicit none
@@ -224,8 +217,191 @@ subroutine mult_rehalfniumpot(howmany,in, out)
 end subroutine mult_rehalfniumpot
 
 
+module fluxgtaubiomod
+  use biorthotypemod
+  implicit none
+  type(biorthotype),target :: fluxgtaubiovar
+end module fluxgtaubiomod
+
+
+module fluxduringmod
+  implicit none
+  integer :: allocated=0, curtime=0
+  DATATYPE,allocatable :: gtausum(:)
+end module fluxduringmod
+
+
 module fluxgtau0mod
 contains
+
+  subroutine fluxgtau_during(wwin,bbin,ketmo,ketavec,dt)
+    use fluxgtaubiomod
+    use biorthomod
+    use parameters
+    use walkmod
+    use mpimod
+    use mpisubmod
+    use pulsesubmod
+    use fluxduringmod
+    implicit none
+!! FluxOpType:
+!! 0       = use one-e potential and two-e contribution routines  (exact treatment)
+!! 1       = replace one-e potential + two-e potential with halfnium one-e potential  (recommended)
+!! 2       = use full one-e potential, no two-e 
+!! other   = only KE
+
+    type(walktype),target,intent(in) :: wwin,bbin
+    type(walktype),pointer :: myww
+    real*8,intent(in) :: dt
+    DATATYPE,intent(in) :: ketavec(numr,wwin%firstconfig:wwin%lastconfig,mcscfnum), &
+         ketmo(spfsize,nspf)
+    integer :: imc, myiostat
+    DATATYPE :: gtaunow(mcscfnum)
+    DATATYPE, allocatable :: imke(:,:),impe(:,:),imV2(:,:,:,:), imyderiv(:,:),&
+         imkeop(:,:),impeop(:,:),  imyop(:,:), reke(:,:),repe(:,:),reV2(:,:,:,:), reyderiv(:,:),&
+         rekeop(:,:),repeop(:,:),  reyop(:,:)
+    DATATYPE :: nullvector(numr)
+
+    if (ceground.eq.(0d0,0d0)) then
+       OFLWR "Eground is ZERO.  Are you sure?  If want zero just make it small. \n     Otherwise need eground: initial state energy."; CFLST
+    endif
+
+    nullvector(:)=0
+
+!! initial setup
+
+    if (FluxOpType.eq.0) then    !! exact expression with two-electron
+       myww=>wwin
+    else
+       myww=>bbin
+    endif
+
+    allocate(imke(nspf,nspf),impe(nspf,nspf),imV2(nspf,nspf,nspf,nspf),imyderiv(nspf,nspf),&
+         reke(nspf,nspf),repe(nspf,nspf),reV2(nspf,nspf,nspf,nspf),reyderiv(nspf,nspf),&
+         rekeop(spfsize,nspf),repeop(spfsize,nspf),reyop(spfsize,nspf),&
+         imkeop(spfsize,nspf),impeop(spfsize,nspf),imyop(spfsize,nspf))
+
+    imke=0; impe=0; imV2=0; imyderiv=0; imkeop=0; impeop=0; imyop=0;
+    reke=0; repe=0; reV2=0; reyderiv=0; rekeop=0; repeop=0; reyop=0
+
+    if (allocated.eq.0) then
+       allocated=1
+       allocate(gtausum(mcscfnum))
+       gtausum=0d0
+       if (myrank.eq.1) then
+          open(454, file=fluxtsumfile, status="unknown",iostat=myiostat)
+          call checkiostat(myiostat,"opening fluxtsumfile")
+          write(454,*,iostat=myiostat) "#KVL flux sum: time, flux integral, flux"
+          call checkiostat(myiostat,"writing fluxtsumfile")
+          write(454,*)
+          close(454)
+       endif
+    else
+       curtime=curtime+1
+    endif
+
+    gtaunow(:)=0d0
+
+!! get the one-e matrix elements for this ket time
+
+
+    imkeop=0; impeop=0;  imyop=0
+    if (nucfluxopt.ne.2) then
+       call flux_op_onee(ketmo,imkeop,impeop,1)
+       if (nonuc_checkflag.eq.0) then
+          call flux_op_nuc(ketmo,imyop,1)
+       endif
+    endif
+
+    rekeop=0; repeop=0;
+    if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
+       call flux_op_onee(ketmo,rekeop,repeop,2)
+       call flux_op_nuc(ketmo,reyop,2)
+    endif
+
+!! complete the one-e potential and kinetic energy matrix elements           
+
+    imke=0;  impe=0;  imyderiv=0;  imke=0;  imke=0; 
+
+    if (nucfluxopt.ne.2) then
+       call MYGEMM('C','N',nspf,nspf,spfsize,DATAONE,ketmo,&
+            spfsize,imkeop,spfsize,DATAZERO,imke,nspf)
+       call MYGEMM('C','N',nspf,nspf,spfsize,DATAONE,ketmo,&
+            spfsize,impeop,spfsize,DATAZERO,impe,nspf)
+       if (nonuc_checkflag.eq.0) then
+          call MYGEMM('C','N',nspf,nspf,spfsize,DATAONE,ketmo,&
+               spfsize,imyop,spfsize,DATAZERO,imyderiv,nspf)
+       endif
+    endif
+
+    reke=0; repe=0; reyderiv=0
+
+    if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
+       call MYGEMM('C','N',nspf,nspf,spfsize,DATAONE,ketmo,&
+            spfsize,rekeop,spfsize,DATAZERO,reke,nspf)
+       call MYGEMM('C','N',nspf,nspf,spfsize,DATAONE,ketmo,&
+            spfsize,repeop,spfsize,DATAZERO,repe,nspf)
+       call MYGEMM('C','N',nspf,nspf,spfsize,DATAONE,ketmo,&
+            spfsize,reyop,spfsize,DATAZERO,reyderiv,nspf)
+    endif
+
+    if (parorbsplit.eq.3) then
+       if (nucfluxopt.ne.2) then
+          call mympireduce(imke,nspf**2)
+          call mympireduce(impe,nspf**2)
+          if (nonuc_checkflag.eq.0) then
+             call mympireduce(imyderiv,nspf**2)
+          endif
+       endif
+       if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
+          call mympireduce(reke,nspf**2)
+          call mympireduce(repe,nspf**2)
+          call mympireduce(reyderiv,nspf**2)
+       endif
+    endif
+
+!! get the two-e contribution for exact formula (fluxoptype=0)
+
+    imV2=0d0; reV2=0
+    if(FluxOpType.eq.0) then
+       if (nucfluxopt.ne.2) then
+          call flux_op_twoe(ketmo,ketmo,imV2,1)
+       endif
+       if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0)then
+          call flux_op_twoe(ketmo,ketmo,reV2,2)
+       endif
+    endif
+
+!! evaluate the actual g(tau) expression
+
+    do imc=1,mcscfnum
+       if (tot_adim.gt.0) then
+          gtaunow(imc) = fluxeval(ketavec(:,:,imc),ketavec(:,:,imc),&
+               imke,impe,imV2,imyderiv,reke,repe,reV2,reyderiv,myww)
+       else
+          gtaunow(imc) = fluxeval(nullvector(:),nullvector(:),&
+               imke,impe,imV2,imyderiv,reke,repe,reV2,reyderiv,myww)
+       endif
+    enddo
+
+    gtausum(:) = gtausum(:) + gtaunow(:) * dt / 2d0   !! 2 looks correct
+
+    if (myrank.eq.1) then
+       open(454, file=fluxtsumfile, status="old",  position="append",iostat=myiostat)
+       call checkiostat(myiostat,"opening fluxtsumfile")
+       write(454,'(F18.12, T22, 400E20.8)',iostat=myiostat) curtime*dt, &
+            gtausum(:), gtaunow(:)
+       call checkiostat(myiostat,"writing fluxtsumfile")
+       close(454)
+    endif
+
+    call mpibarrier()
+
+    deallocate(imke,impe,imV2,imyderiv,imkeop,impeop,imyop)
+    deallocate(reke,repe,reV2,reyderiv,rekeop,repeop,reyop)
+
+  end subroutine fluxgtau_during
+
 
   subroutine fluxgtau0(alg,wwin,bbin)
 !! actually compute the flux in a post processing kind of manner
@@ -255,16 +431,13 @@ contains
     complex*16, allocatable :: FTgtau(:,:), pulseft(:,:)
     real*8, allocatable :: pulseftsq(:)
     DATATYPE :: fluxevalval(mcscfnum), ftgtausum(mcscfnum), gtausum(mcscfnum), &
-         gtaunow(mcscfnum), pots1(3)=0d0  !!$, pots2(3)=0d0
-    DATATYPE, allocatable :: gtau(:,:), mobio(:,:),abio(:,:,:)
-    DATATYPE, allocatable, target :: bramo(:,:,:),braavec(:,:,:,:), ketmo(:,:,:),ketavec(:,:,:,:)
-    DATATYPE,allocatable :: read_bramo(:,:),read_braavec(:,:,:,:),read_ketmo(:,:),read_ketavec(:,:,:,:)
-    DATATYPE, allocatable :: imke(:,:),impe(:,:),imV2(:,:,:,:), imyderiv(:,:)
-    DATATYPE, allocatable :: imkeop(:,:),impeop(:,:),  imyop(:,:)
-    DATATYPE, allocatable :: reke(:,:),repe(:,:),reV2(:,:,:,:), reyderiv(:,:)
-    DATATYPE, allocatable :: rekeop(:,:),repeop(:,:),  reyop(:,:)
+         gtaunow(mcscfnum), pots1(3)=0d0, nullvector(numr)
+    DATATYPE, allocatable :: bramo(:,:,:),braavec(:,:,:,:), ketmo(:,:,:),ketavec(:,:,:,:),&
+         gtau(:,:), mobio(:,:),abio(:,:,:), &
+         read_bramo(:,:),read_braavec(:,:,:,:),read_ketmo(:,:),read_ketavec(:,:,:,:),&
+         imke(:,:),impe(:,:),imV2(:,:,:,:), imyderiv(:,:), imkeop(:,:),impeop(:,:),  imyop(:,:),&
+         reke(:,:),repe(:,:),reV2(:,:,:,:), reyderiv(:,:), rekeop(:,:),repeop(:,:),  reyop(:,:)
     DATATYPE,target :: smo(nspf,nspf)
-    DATATYPE :: nullvector(numr)
 
     if (ceground.eq.(0d0,0d0)) then
        OFLWR "Eground is ZERO.  Are you sure?  If want zero just make it small. \n     Otherwise need eground: initial state energy."; CFLST
@@ -571,6 +744,7 @@ contains
                 call flux_op_onee(ketmo(:,:,kettime),rekeop,repeop,2)
                 call flux_op_nuc(ketmo(:,:,kettime),reyop,2)
              endif
+             call system_clock(jtime);        times(2)=times(2)+jtime-itime
 
 !! determine bounds of loop over bras and setup doing in parallel with mpi!
              if(brabat.lt.ketbat) then
@@ -580,7 +754,6 @@ contains
              else
                 bratop=kettime
              endif
-             call system_clock(jtime);        times(2)=times(2)+jtime-itime
            
 !! loop over all previous time for the bra of the flux integral
              do bratime=1,bratop
