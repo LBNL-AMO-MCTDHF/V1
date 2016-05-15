@@ -15,8 +15,10 @@ module projefluxmod !! needed for cation walks and bi-orthonormalization
      integer, allocatable :: tconfiglist(:,:),pphase1(:,:) ,pspf1(:,:,:) ,numpwalk1(:) ,pwalk1(:,:)
      DATATYPE, allocatable :: tmo(:,:),tavec(:,:,:)
   end type PPTYPE
+  integer :: catloaded=0
   type(PPTYPE),allocatable :: ppp(:)
-  integer :: nstate
+  integer :: nstate=0
+  integer, allocatable :: alreadystate(:)
 end module projefluxmod
 
 
@@ -37,7 +39,8 @@ subroutine projeflux_singlewalks(ifile)
 !! get the number of single walks from the target N-1 e- state to our regular N e- state
   OFLWR "Getting cation single walks"; CFL
 
-  allocate(ppp(ifile)%numpwalk1(ppp(ifile)%tnumconfig));    ppp(ifile)%numpwalk1(:)=0
+  allocate(ppp(ifile)%numpwalk1(ppp(ifile)%tnumconfig))
+  ppp(ifile)%numpwalk1(:)=0
 
   do iconfig=1,ppp(ifile)%tnumconfig
      iwalk=0
@@ -84,7 +87,8 @@ subroutine projeflux_singlewalks(ifile)
   OFLWR "Max # single walks from cation state on this processor is ",ppp(ifile)%maxpwalk1;CFL
   call mpibarrier()
 
-  allocate(ppp(ifile)%pphase1(ppp(ifile)%maxpwalk1,ppp(ifile)%tnumconfig),ppp(ifile)%pwalk1(ppp(ifile)%maxpwalk1,ppp(ifile)%tnumconfig),&
+  allocate(ppp(ifile)%pphase1(ppp(ifile)%maxpwalk1,ppp(ifile)%tnumconfig),&
+       ppp(ifile)%pwalk1(ppp(ifile)%maxpwalk1,ppp(ifile)%tnumconfig),&
        ppp(ifile)%pspf1(2,ppp(ifile)%maxpwalk1,ppp(ifile)%tnumconfig))
   if (ppp(ifile)%maxpwalk1.gt.0) then
      ppp(ifile)%pwalk1=0;  ppp(ifile)%pspf1=0;  ppp(ifile)%pphase1=0
@@ -212,22 +216,25 @@ subroutine projeflux_doproj(ifile,cata,neuta,mo,offset,infac)
 
   deallocate(bigprojwfn)
 
+  call mpibarrier()
+
 end subroutine projeflux_doproj
 
 
 !! do the double time integral piece    08-2015 now looping over istate and imc here
 
-subroutine projeflux_double_time_int(mem,nstate,nt)
+subroutine projeflux_double_time_int(mem,totstate,nt,dt)
   use parameters    !! par_timestep and others
   use mpimod
   use mpisubmod
   use pulsesubmod
   implicit none
-  integer,intent(in) :: mem,nstate,nt
+  integer,intent(in) :: mem,totstate,nt
+  real*8, intent(in) :: dt
   integer :: i,k,tlen,istate,curtime,tau,ir ,imc,ioffset, NUMANGLES, NUMERAD, il
   integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,&
        bratop,getlen,myiostat
-  real*8 :: MemTot,MemVal,wfi,estep,myfac,windowfunct,MemNum,dt
+  real*8 :: MemTot,MemVal,wfi,estep,myfac,windowfunct,MemNum
   DATATYPE, allocatable :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:),gtau_ad(:,:,:,:),ketop(:,:,:,:),&
        read_bramo(:,:,:), read_ketmo(:,:,:), deweighted_bramo(:,:,:), ketmo_ad(:,:,:,:,:),&
        ketop_ad(:,:,:,:,:), gtaunow(:,:,:), gtaunow_ad(:,:,:,:), gtausum(:,:,:), gtausum_ad(:,:,:,:)
@@ -237,8 +244,6 @@ subroutine projeflux_double_time_int(mem,nstate,nt)
   DATATYPE :: pots1(3)
   character (len=4) :: xstate0,xmc0
   character (len=3) :: xstate1,xmc1
-
-  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep
 
   if (ceground.eq.(0d0,0d0)) then
      OFLWR "Eground is ZERO.  Are you sure?  If want zero just make it small."
@@ -290,8 +295,8 @@ subroutine projeflux_double_time_int(mem,nstate,nt)
   endif
   call closefile()
 
-  allocate(gtau(0:nt,nstate,mcscfnum),ketmo(spfsize,numr,2,BatchSize),ketop(spfsize,numr,2,BatchSize),&
-       bramo(spfsize,numr,2,BatchSize),gtaunow(0:nt,nstate,mcscfnum),gtausum(0:nt,nstate,mcscfnum))
+  allocate(gtau(0:nt,totstate,mcscfnum),ketmo(spfsize,numr,2,BatchSize),ketop(spfsize,numr,2,BatchSize),&
+       bramo(spfsize,numr,2,BatchSize),gtaunow(0:nt,totstate,mcscfnum),gtausum(0:nt,totstate,mcscfnum))
   gtau=0; ketmo=0; ketop=0; bramo=0; gtaunow=0; gtausum=0d0
 
   NUMANGLES=0; NUMERAD=0
@@ -305,15 +310,14 @@ subroutine projeflux_double_time_int(mem,nstate,nt)
      NUMANGLES=spfdims(2)
      NUMERAD=spfdims(1)
 
-     allocate(gtau_ad(0:nt,nstate,mcscfnum,NUMANGLES),deweighted_bramo(spfsize,numr,2),&
+     allocate(gtau_ad(0:nt,totstate,mcscfnum,NUMANGLES),deweighted_bramo(spfsize,numr,2),&
           ketmo_ad(spfsize,numr,2,batchsize,NUMANGLES), ketop_ad(spfsize,numr,2,batchsize,NUMANGLES),&
-          gtaunow_ad(0:nt,nstate,mcscfnum,NUMANGLES),gtausum_ad(0:nt,nstate,mcscfnum,NUMANGLES))
+          gtaunow_ad(0:nt,totstate,mcscfnum,NUMANGLES),gtausum_ad(0:nt,totstate,mcscfnum,NUMANGLES))
   else
      allocate(gtau_ad(0:0,1,1,1),deweighted_bramo(1,1,2),&
           ketmo_ad(1,1,2,1,1), ketop_ad(1,1,2,1,1),&
           gtaunow_ad(0:0,1,1,1),gtausum_ad(0:0,1,1,1))
   endif
-
 
   gtau_ad=0;   deweighted_bramo=0;  ketmo_ad=0; ketop_ad=0; gtaunow_ad=0; gtausum_ad=0
 
@@ -347,7 +351,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt)
 
   do imc=1,mcscfnum
 
-     do istate=1,nstate
+     do istate=1,totstate
 
         OFLWR "Computing the CrossSection for state ",istate,"wfn",imc; CFL
 
@@ -520,9 +524,9 @@ subroutine projeflux_double_time_int(mem,nstate,nt)
   enddo
 
   if (parorbsplit.eq.3) then
-     call mympireduce(gtau(:,:,:), (nt+1)*nstate*mcscfnum)
+     call mympireduce(gtau(:,:,:), (nt+1)*totstate*mcscfnum)
      if (angularflag.ne.0) then
-        call mympireduce(gtau_ad(:,:,:,:), (NUMANGLES)*(nt+1)*nstate*mcscfnum)
+        call mympireduce(gtau_ad(:,:,:,:), (NUMANGLES)*(nt+1)*totstate*mcscfnum)
      endif
   endif
 
@@ -541,7 +545,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt)
      enddo
   endif
 
-  if(myrank.eq.1) then
+  if (myrank.eq.1) then
 
 !! nevermind KVLsum.dat and gtau.dat
 !! now integrals dt and domega with projfluxtsumfile, angprojfluxtsumfile in namelist &parinp
@@ -550,7 +554,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt)
 !! integral dt:
 
      do imc=1,mcscfnum
-        do istate=1,nstate
+        do istate=1,totstate
            write(xstate0,'(I4)') istate+1000;  write(xmc0,'(I4)') imc+1000
            xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
 
@@ -627,7 +631,7 @@ subroutine projeflux_double_time_int(mem,nstate,nt)
      total(:)=0d0
      total_ad(:,:)=0d0
 
-     do istate=1,nstate
+     do istate=1,totstate
 
         ftgtau(:)=0d0;
 
@@ -776,6 +780,8 @@ subroutine projeflux_double_time_int(mem,nstate,nt)
 
      endif
 
+     call mpibarrier()
+
   enddo  !! do imc
 
   deallocate(ftgtau,pulseft,pulseftsq,total)
@@ -918,10 +924,7 @@ contains
 
   end subroutine projeflux_op_onee
 
-    
 end subroutine projeflux_double_time_int
-
-
 
 
 module projbiomod
@@ -930,7 +933,8 @@ module projbiomod
   type(biorthotype),target :: projbiovar
 end module projbiomod
 
-subroutine projeflux_single0(ifile,nt,alreadystate,outnumstate)
+
+subroutine projeflux_catload0(ifile,outnumstate)
   use parameters    !! catavectorfiles and others
   use projbiomod
   use biorthomod
@@ -940,20 +944,13 @@ subroutine projeflux_single0(ifile,nt,alreadystate,outnumstate)
   use mpisubmod
   implicit none
 !! necessary working variables
-  integer,intent(in) :: nt,alreadystate,ifile
+  integer,intent(in) :: ifile
   integer,intent(out) :: outnumstate
-  integer :: tau, i,ir,tnum2part,tnspf,tnumr,istate,ierr, cgflag, &
-       spfcomplex, acomplex, tdims(3),imc,ioffset,myiostat, &
+  integer :: i,ir,tnum2part,tnspf,tnumr,istate,ierr, cgflag, &
+       spfcomplex, acomplex, tdims(3), myiostat, &
        targetms, targetrestrictflag, targetspinproject, targetspinval
   real*8 :: cgfac,doubleclebschsq,aa,bb,cc
-  DATATYPE, allocatable :: tmotemp(:,:),readta(:,:,:),&
-       mobio(:,:,:),abio(:,:,:),mymo(:,:),myavec(:,:,:), &
-       readmo(:,:),readavec(:,:,:)
-  DATATYPE :: nullvector(numr)
-!! mcscf specific read variables
-  DATATYPE,target :: smo(nspf,nspf)
-
-  nullvector(:)=0
+  DATATYPE, allocatable :: tmotemp(:,:),readta(:,:,:)
 
 !! read in the data from mcscf for our target cation state
 
@@ -962,10 +959,10 @@ subroutine projeflux_single0(ifile,nt,alreadystate,outnumstate)
      call checkiostat(myiostat,"opening "//catspffiles(ifile))
      open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
      call checkiostat(myiostat,"opening "//catavectorfiles(ifile))
-     call avector_header_read(910,outnumstate,tnum2part,tnumr,ppp(ifile)%tnumconfig,targetrestrictflag,targetms,&
+     call avector_header_read(910,ppp(ifile)%eachstate,tnum2part,tnumr,ppp(ifile)%tnumconfig,targetrestrictflag,targetms,&
           targetspinproject,targetspinval,acomplex,ierr)
   endif
-  call mympiibcastone(outnumstate,1); call mympiibcastone(tnum2part,1); 
+  call mympiibcastone(ppp(ifile)%eachstate,1); call mympiibcastone(tnum2part,1); 
   call mympiibcastone(tnumr,1); call mympiibcastone(ppp(ifile)%tnumconfig,1); 
   call mympiibcastone(targetrestrictflag,1);  call mympiibcastone(targetms,1);  
   call mympiibcastone(targetspinproject,1);  call mympiibcastone(targetspinval,1); 
@@ -1080,40 +1077,41 @@ subroutine projeflux_single0(ifile,nt,alreadystate,outnumstate)
 
   ppp(ifile)%catfactor = cgfac * catfacs(ifile)
 
-  allocate(ppp(ifile)%tmo(spfsize,nspf),ppp(ifile)%tavec(ppp(ifile)%tnumconfig,outnumstate,numr))
+  allocate(ppp(ifile)%tmo(spfsize,nspf),ppp(ifile)%tavec(ppp(ifile)%tnumconfig,ppp(ifile)%eachstate,numr))
   ppp(ifile)%tmo=0d0;  ppp(ifile)%tavec=0d0; 
 
-  allocate(tmotemp(spfsize,nspf+numfrozen),readta(tnumr,ppp(ifile)%tnumconfig,outnumstate))
+  allocate(tmotemp(spfsize,nspf+numfrozen),readta(tnumr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate))
   tmotemp=0d0; readta=0d0
 
-  OFLWR "Reading", outnumstate," Born-Oppenheimer states."; CFL
+  OFLWR "Reading", ppp(ifile)%eachstate," Born-Oppenheimer states."; CFL
 
   if (myrank.eq.1) then
-     call simple_load_avectors(910,acomplex,readta(:,:,:),tnum2part,tnumr,ppp(ifile)%tnumconfig,outnumstate)
+     call simple_load_avectors(910,acomplex,readta(:,:,:),tnum2part,tnumr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate)
      do ir=1,min(tnumr,numr)
         ppp(ifile)%tavec(:,:,ir)=readta(ir,:,:)
      enddo
      do ir=min(tnumr,numr)+1,numr
-        call staticvector(ppp(ifile)%tavec(:,:,ir),ppp(ifile)%tnumconfig*outnumstate)
+        call staticvector(ppp(ifile)%tavec(:,:,ir),ppp(ifile)%tnumconfig*ppp(ifile)%eachstate)
      enddo
      do ir=1,numr
 
 !! projecting on normalized electronic wfn at each R
 !! we go to war with the army we've got
 
-        do istate=1,outnumstate
+        do istate=1,ppp(ifile)%eachstate
            ppp(ifile)%tavec(:,istate,ir)=ppp(ifile)%tavec(:,istate,ir)/&
                 sqrt(dot(ppp(ifile)%tavec(:,istate,ir),ppp(ifile)%tavec(:,istate,ir),ppp(ifile)%tnumconfig)) !! no * bondweights(ir)
         enddo
      enddo
      call spf_read0(909,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,&
           tmotemp(:,:),(/0,0,0/))
-     close(909);  close(910)
+     close(909)
+     close(910)
   else
      call spf_read0(-42,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,&
           tmotemp(:,:),(/0,0,0/))
   endif
-  call mympibcast(ppp(ifile)%tavec(:,:,:),1,ppp(ifile)%tnumconfig*outnumstate*numr)
+  call mympibcast(ppp(ifile)%tavec(:,:,:),1,ppp(ifile)%tnumconfig*ppp(ifile)%eachstate*numr)
 
   ppp(ifile)%tmo(:,1:tnspf-numfrozen) = tmotemp(:,numfrozen+1:tnspf)
   tnspf=tnspf-numfrozen
@@ -1128,12 +1126,13 @@ subroutine projeflux_single0(ifile,nt,alreadystate,outnumstate)
      endif
   enddo
 
-  allocate(ppp(ifile)%tconfiglist(tnum2part,ppp(ifile)%tnumconfig));    ppp(ifile)%tconfiglist=0
+  allocate(ppp(ifile)%tconfiglist(tnum2part,ppp(ifile)%tnumconfig))
+  ppp(ifile)%tconfiglist=0
 
   if (myrank.eq.1) then
      open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
      call checkiostat(myiostat,"opening "//catavectorfiles(ifile))
-     call avector_header_read_simple(910,outnumstate,tnum2part,tnumr,ppp(ifile)%tnumconfig,acomplex)
+     call avector_header_read_simple(910,ppp(ifile)%eachstate,tnum2part,tnumr,ppp(ifile)%tnumconfig,acomplex)
      call get_avectorfile_configlist(910,acomplex,ppp(ifile)%tconfiglist,tnum2part,tnumr,ppp(ifile)%tnumconfig)
      close(910)
   endif
@@ -1143,6 +1142,36 @@ subroutine projeflux_single0(ifile,nt,alreadystate,outnumstate)
 !! do the walks from the target state into our final state
 
   call projeflux_singlewalks(ifile)
+
+  deallocate(tmotemp,readta)
+
+  outnumstate=ppp(ifile)%eachstate
+
+  call mpibarrier()
+
+end subroutine projeflux_catload0
+
+
+
+subroutine projeflux_project(nt)
+  use parameters    !! catavectorfiles and others
+  use projbiomod
+  use biorthomod
+  use configmod
+  use projefluxmod
+  use mpimod
+  use mpisubmod
+  implicit none
+!! necessary working variables
+  integer,intent(in) :: nt
+  DATATYPE, allocatable ::  mobio(:,:,:),abio(:,:,:),mymo(:,:),myavec(:,:,:), &
+       readmo(:,:),readavec(:,:,:)
+  DATATYPE :: nullvector(numr)
+!! mcscf specific read variables
+  DATATYPE,target :: smo(nspf,nspf)
+  integer :: tau, i,ir, istate,ifile,  imc,ioffset,myiostat
+
+  nullvector(:)=0
 
 !! allocate all necessary extra memory and io params to do this looping business
 
@@ -1166,8 +1195,12 @@ subroutine projeflux_single0(ifile,nt,alreadystate,outnumstate)
   endif
   readmo=0; readavec=0
 
+!! IFILE LOOP
+
+  do ifile=1,numcatfiles
+
   call mpibarrier()
-  OFLWR "    ...allocated arrays for projected flux.  go time loop."; CFL
+  OFLWR "    ...go time loop", ifile; CFL
 
   if (myrank.eq.1) then
      inquire (iolength=i) readmo
@@ -1218,7 +1251,6 @@ subroutine projeflux_single0(ifile,nt,alreadystate,outnumstate)
 
 !! do biortho and construct the single particle function
 
-
 !!$       if (1==0) then
 !!$          do ir=1,numr
 !!$             abio(:,:,ir)=myavec(ir,:,:)
@@ -1254,9 +1286,9 @@ subroutine projeflux_single0(ifile,nt,alreadystate,outnumstate)
 
      do ir=1,numr
         do imc=1,mcscfnum
-           do istate=1,outnumstate
+           do istate=1,ppp(ifile)%eachstate
 
-   ioffset=(istate-1+alreadystate)*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + tau*numr + ir
+   ioffset=(istate-1+alreadystate(ifile))*mcscfnum*(nt+1)*numr + (imc-1)*(nt+1)*numr + tau*numr + ir
 
               if (tot_adim.gt.0) then
                  call projeflux_doproj(ifile,ppp(ifile)%tavec(:,istate,ir),abio(:,imc,ir),mobio(:,:,ir),ioffset,ppp(ifile)%catfactor)
@@ -1275,20 +1307,73 @@ subroutine projeflux_single0(ifile,nt,alreadystate,outnumstate)
 !          "Fluxeval", "FT g!tau"
 !      write(mpifileptr,'(A10,100I10)') " ", times(1:8)/100
 !    endif
-  enddo
+
+  enddo   !! DO TAU=0,NT
+
+  enddo  !! DO IFILE
 
 !! clean up
-  close(1001);  close(1002)
+  if (myrank.eq.1) then
+     close(1001);  close(1002)
+  endif
+  call mpibarrier()
   deallocate(readmo,readavec)
   deallocate(mobio,abio,mymo,myavec)
-  deallocate(tmotemp,readta)
 
-  deallocate(ppp(ifile)%tavec,ppp(ifile)%tmo)
-  deallocate(ppp(ifile)%tconfiglist,ppp(ifile)%numpwalk1,ppp(ifile)%pwalk1,ppp(ifile)%pspf1,ppp(ifile)%pphase1)
+end subroutine projeflux_project
 
 
-end subroutine projeflux_single0
+subroutine projeflux_catdealloc()
+  use parameters !! numcatfiles
+  use projefluxmod
+  implicit none
+  integer :: ifile
+  do ifile=1,numcatfiles
+     deallocate(ppp(ifile)%tavec,ppp(ifile)%tmo)
+     deallocate(ppp(ifile)%tconfiglist,ppp(ifile)%numpwalk1,ppp(ifile)%pwalk1,ppp(ifile)%pspf1,ppp(ifile)%pphase1)
+     ppp(ifile)%tnumconfig=0
+     ppp(ifile)%maxpwalk1=0 
+     ppp(ifile)%eachstate=0
+     ppp(ifile)%catfactor=0d0
+  enddo
+  catloaded=0
+end subroutine projeflux_catdealloc
 
+
+!! (not called)
+subroutine projeflux_statedealloc()
+  use projefluxmod
+  nstate=0
+  deallocate(alreadystate,ppp)
+end subroutine projeflux_statedealloc
+
+
+subroutine projeflux_load()
+  use parameters    !! numcatfiles
+  use projefluxmod
+  implicit none
+  integer :: ifile,eachstate
+
+  if (catloaded.ne.0) then
+     OFLWR "error, cations loaded",catloaded; CFLST
+  endif
+  catloaded=1
+
+  if (nstate.ne.0) then
+     OFLWR "error, cation wave functions already loaded? ", nstate; CFLST
+  endif
+
+  allocate(ppp(numcatfiles), alreadystate(numcatfiles))
+  alreadystate=0
+
+  nstate=0
+  do ifile=1,numcatfiles
+     alreadystate(ifile)=nstate
+     call projeflux_catload0(ifile,eachstate)
+     nstate=nstate+eachstate
+  enddo
+
+end subroutine projeflux_load
 
 
 subroutine projeflux_single(mem)
@@ -1297,28 +1382,30 @@ subroutine projeflux_single(mem)
   use mpimod   !! myrank
   implicit none
   integer,intent(in) :: mem
-  integer :: nt,ifile,myiostat
+  integer :: nt,myiostat
+  real*8 :: dt
 
   OFLWR ;  WRFL   "   *** DOING PROJECTED FLUX. ***    ";  WRFL; CFL
 
+  call projeflux_load()
+
   nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
+  call projeflux_project(nt)
 
-  nstate=0
-  allocate(ppp(numcatfiles))
+  call projeflux_catdealloc()
 
-  do ifile=1,numcatfiles
-     call projeflux_single0(ifile,nt,nstate,ppp(ifile)%eachstate)
-     nstate=nstate+ppp(ifile)%eachstate
-  enddo
+  OFLWR "Go double time integral"; CFL
 
-  call mpibarrier()
-  OFLWR "Go double time integral";CFL
+  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep
 
 !! do the double time integral
-  call projeflux_double_time_int(mem,nstate,nt)
+  call projeflux_double_time_int(mem,nstate,nt,dt)
 
   call mpibarrier()
   OFLWR "Cross Section acquired, cleaning and closing";CFL
+
+!! not necessary
+  call projeflux_statedealloc()
 
   if (myrank.eq.1) then
      open(1003,file=projfluxfile,status="unknown",iostat=myiostat)
