@@ -399,14 +399,14 @@ character(len=SLN):: corrftfile="Dat/Corrft.Dat"              !!  "
 character(len=SLN):: fluxmofile="Flux/flux.mo.bin"            !! for actions 15,16,17,23
 character(len=SLN):: fluxafile="Flux/flux.avec.bin"           !!  "
 character(len=SLN):: spifile="Dat/xsec.spi.dat"               !! for action 16 (cross section)
-character(len=SLN):: fluxtsumfile="Dat/fluxtsum.dat"          !!  " total flux integral dt
+character(len=SLN):: fluxtsumfile="Dat/fluxtsum.dat"          !!  " total flux integral dt action 28 too
 character(len=SLN):: projspifile="Dat/xsec.proj.spi"          !! for action 17 (partial cross section)
-character(len=SLN):: projfluxtsumfile="Dat/projfluxtsum"      !!  " total projected flux integral dt
+character(len=SLN):: projfluxtsumfile="Dat/projfluxtsum"      !!  " total projected flux integral dt action 28 too
 character(len=SLN):: projfluxfile="Flux/proj.flux.wfn.bin"    !!  " main output action 17
 character (len=SLN):: catspffiles(50)="Bin/cation.spfs.bin"   !!  " (see numcatfiles in ACTIONS)
 character (len=SLN):: catavectorfiles(50)="Bin/cation.avector.bin"!!  "
 character(len=SLN):: angprojspifile="Dat/xsec.angproj.spi"    !!  " if angularflag.ne.0, output file
-character(len=SLN):: angprojfluxtsumfile="Dat/angprojfluxtsum"!!  " and angular integral dt
+character(len=SLN):: angprojfluxtsumfile="Dat/angprojfluxtsum"!!  " and angular integral dt action 28 too
 character(len=SLN):: fluxafile2="Flux/flux.avec.bin"          !! for action 23
 character(len=SLN):: fluxmofile2="Flux/flux.mo.bin"           !!  "
 character(len=SLN):: natplotbin="Bin/Natlorb.bin"             !! for actions 2,8
@@ -448,6 +448,8 @@ integer :: actions(100)=0        !!              !! ACTIONS
 !!   Act=24   keprojector
 !!   Act=25   make psistats.dat
 !!   Act=26   mcscf_matel with supplied eigenfunctions 
+!!   Act=27   like action 16 total photoionization during calculation just integral dt
+!!   Act=28   like action 17 partial photoionization during calculation just integral dt
 !!EE
 !!{\large \quad ACTION VARIABLES (also see filenames in INPUT/OUTPUT above)}
 !!BB

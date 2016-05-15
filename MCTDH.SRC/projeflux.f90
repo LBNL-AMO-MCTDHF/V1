@@ -891,8 +891,6 @@ contains
 
 !! allocate all necessary extra memory and io params to do this looping business
 
-    OFLWR "Allocating arrays for projected flux"; CFL
-
     allocate(mobio(spfsize,nspf,numr),abio(first_config:last_config,mcscfnum,numr),&
          myavec(numr,first_config:last_config,mcscfnum))
     mobio=0
@@ -1578,9 +1576,14 @@ subroutine projeflux_during(inspfs,inavectors,dt)
   DATATYPE,intent(in) :: inspfs(spfsize,nspf), inavectors(tot_adim,mcscfnum)
   DATATYPE,allocatable :: gtaunow(:,:), projwfn(:,:,:,:,:), gtaunow_ad(:,:,:), &
        ketmo(:,:), ketop(:,:)
-  integer :: ifile, k, imc, istate, il
+  integer :: ifile, k, imc, istate, il, myiostat, getlen
+  character (len=4) :: xstate0,xmc0
+  character (len=3) :: xstate1,xmc1
 
   if (allocated.eq.0) then
+
+     call projeflux_load()
+
      curtime=0
      allocated=1
      allocate(gtausum(nstate,mcscfnum))
@@ -1589,7 +1592,31 @@ subroutine projeflux_during(inspfs,inavectors,dt)
         allocate(gtausum_ad(nstate,mcscfnum,NUMANGLES))
         gtausum_ad=0
      endif
-     call projeflux_load()
+
+     if (myrank.eq.1) then
+        do imc=1,mcscfnum
+           do istate=1,nstate
+              write(xstate0,'(I4)') istate+1000;  write(xmc0,'(I4)') imc+1000
+              xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
+
+              open(171,file=projfluxtsumfile(1:getlen(projfluxtsumfile))//"_"//xstate1//"_"//xmc1//".dat", &
+                   status="unknown",iostat=myiostat)
+              call checkiostat(myiostat,"opening projfluxtsumfile")
+              write(171,*,iostat=myiostat) "#   ", curtime
+              call checkiostat(myiostat,"writing projfluxtsumfile")
+              close(171)
+
+              if (angularflag.ne.0) then
+                 open(171,file=angprojfluxtsumfile(1:getlen(angprojfluxtsumfile))//"_"//xstate1//"_"//xmc1//".dat", &
+                      status="unknown",iostat=myiostat)
+                 call checkiostat(myiostat,"opening angprojfluxtsumfile")
+                 write(171,*,iostat=myiostat) "#   ", curtime
+                 call checkiostat(myiostat,"writing angprojfluxtsumfile")
+                 close(171)
+              endif
+           enddo
+        enddo
+     endif
   else
      curtime=curtime+1
   endif
@@ -1608,9 +1635,6 @@ subroutine projeflux_during(inspfs,inavectors,dt)
   do ifile=1,numcatfiles
      allocate(projwfn(spfsize,2,numr,ppp(ifile)%eachstate,mcscfnum))
      call projeflux_projectone(ifile,inspfs,inavectors,projwfn)
-
-     OFLWR "DO SOMETHING"; CFLST
-
 
      if (fluxoptype.eq.0) then
         OFLWR "PROGRAM ME FLUXOPTYPE 0 PROJEFLUX"; CFLST
@@ -1658,7 +1682,40 @@ subroutine projeflux_during(inspfs,inavectors,dt)
      endif
   endif
 
+  gtausum(:,:)=gtausum(:,:) + gtaunow(:,:) * dt / 2d0   !! 2 looks correct
 
+  if (angularflag.ne.0) then
+     gtausum_ad(:,:,:)=gtausum_ad(:,:,:) + gtaunow_ad(:,:,:) * dt / 2d0   !! 2 looks correct
+  endif
+
+  if (myrank.eq.1) then
+     do imc=1,mcscfnum
+        do istate=1,nstate
+           write(xstate0,'(I4)') istate+1000;  write(xmc0,'(I4)') imc+1000
+           xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
+
+           open(171,file=projfluxtsumfile(1:getlen(projfluxtsumfile))//"_"//xstate1//"_"//xmc1//".dat", &
+                status="old",position="append",iostat=myiostat)
+           call checkiostat(myiostat,"opening projfluxtsumfile")
+           write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat) &
+                curtime*dt,  gtausum(istate,imc), gtaunow(istate,imc)
+           call checkiostat(myiostat,"writing projfluxtsumfile")
+           close(171)
+
+           if (angularflag.ne.0) then
+              open(171,file=angprojfluxtsumfile(1:getlen(angprojfluxtsumfile))//"_"//xstate1//"_"//xmc1//".dat", &
+                   status="old",position="append",iostat=myiostat)
+              call checkiostat(myiostat,"opening projfluxtsumfile")           
+              write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat) &
+                   curtime*dt,  gtausum_ad(istate,imc,:), gtaunow_ad(istate,imc,:)
+              call checkiostat(myiostat,"writing angprojfluxtsumfile")
+              close(171)
+           endif
+        enddo
+     enddo
+  endif
+
+  call mpibarrier()
 
 !QQQ actions_final?  call projeflux_catdealloc()
 !QQQ                 call projeflux_statedealloc()

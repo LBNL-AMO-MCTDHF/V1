@@ -5,7 +5,7 @@
 
 module actionlistmod
   
-  character (len=15) :: action_list(26) = (/ &
+  character (len=15) :: action_list(28) = (/ &
        "Autocorr       ", &      !! 1
        "Save nat       ", &      !! 2
        "Save spf       ", &      !! 3
@@ -32,7 +32,9 @@ module actionlistmod
        "Wfn ovls       ", &      !! 23
        "KE projector   ", &      !! 24
        "psistats.dat   ", &      !! 25
-       "Matrixelements " /)      !! 26
+       "Matrixelements ", &      !! 26
+       "IonFlux during ", &      !! 27
+       "ProjIon during " /)      !! 28
 
 end module actionlistmod
 
@@ -45,7 +47,7 @@ subroutine actionsub(thistime)
   use actionlistmod
   implicit none
   
-  integer :: i, calledhere=0, atime, btime, times(26)=0,getlen,myiostat
+  integer :: i, calledhere=0, atime, btime, times(28)=0,getlen,myiostat
   real*8 :: thistime
   CNORMTYPE :: error
 
@@ -143,8 +145,15 @@ subroutine actionsub(thistime)
            call psistats(thistime)
            call system_clock(btime);        times(25)=times(25)+btime-atime
         endif
+     case (27)    !! total ionization during calculation
+        if (mod(calledhere-1,FluxInterval*FluxSkipMult).eq.0) then
+           call fluxgtau_during(yyy%cmfspfs(:,0),yyy%cmfavec(:,:,0),par_timestep*FluxInterval*FluxSkipMult)
+        endif
+     case (28)
+        if (mod(calledhere-1,FluxInterval*FluxSkipMult).eq.0) then
+           call projeflux_during(yyy%cmfspfs(:,0),yyy%cmfavec(:,:,0),par_timestep*FluxInterval*FluxSkipMult)
+        endif
      end select
-
   enddo
 
   if ((myrank.eq.1).and.(notiming.eq.0)) then
@@ -176,7 +185,7 @@ subroutine write_actions()
   integer :: i,j,k
 
   do i=1,numactions
-     if ((actions(i).gt.26).or.(actions(i).lt.1)) then
+     if ((actions(i).gt.28).or.(actions(i).lt.1)) then
         OFLWR "ACTION NOT SUPPORTED!!!! ", actions(i); CFLST
      endif
   enddo
@@ -376,6 +385,8 @@ subroutine actions_initial()
      case(26)
         call ovl_initial()
         call mcscf_matel()
+     case (27)
+     case (28)
      case default
         OFLWR "Action not supported: ", actions(i); CFLST
      end select
