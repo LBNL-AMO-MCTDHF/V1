@@ -1304,7 +1304,7 @@ subroutine fluxgtau_during(ketmo,ketavec,dt)
   use fluxgtau0mod
   implicit none
   real*8,intent(in) :: dt
-  DATATYPE,intent(in) :: ketavec(tot_adim,mcscfnum),    ketmo(spfsize,nspf)
+  DATATYPE,intent(in) :: ketavec(tot_adim,mcscfnum), ketmo(spfsize,nspf)
   call fluxgtau_during0(www,bioww,ketmo,ketavec,dt)
 end subroutine fluxgtau_during
     
