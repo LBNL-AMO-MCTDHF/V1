@@ -379,8 +379,8 @@ subroutine dipolesub()
                    xytworkfile(1:getlen(xytworkfile))//tl(ii) /)
               ftfiles(:) = (/ &
                    xdftfile(1:getlen(xdftfile))//tl(ii),&
-                   ydftfile(1:getlen(xdftfile))//tl(ii),&
-                   zdftfile(1:getlen(xdftfile))//tl(ii),&
+                   ydftfile(1:getlen(ydftfile))//tl(ii),&
+                   zdftfile(1:getlen(zdftfile))//tl(ii),&
                    xydftfile(1:getlen(xydftfile))//tl(ii),&
                    xzdftfile(1:getlen(xzdftfile))//tl(ii),&
                    yxdftfile(1:getlen(yxdftfile))//tl(ii),&
@@ -503,15 +503,15 @@ contains
        enddo
        if (sflag.ne.0) then
           do ii=1,3
-             open(171,file=outenames(ii)//number(2:7),status="unknown",iostat=myiostat)
-             call checkiostat(myiostat,"opening "//outenames(ii)//number(2:7))
+             open(171,file=outenames(ii)(1:getlen(outenames(ii)))//number(2:7),status="unknown",iostat=myiostat)
+             call checkiostat(myiostat,"opening "//outenames(ii)(1:getlen(outenames(ii)))//number(2:7))
              write(171,*,iostat=myiostat) "#   ", numdata
-             call checkiostat(myiostat,"writing "//outenames(ii)//number(2:7))
+             call checkiostat(myiostat,"writing "//outenames(ii)(1:getlen(outenames(ii)))//number(2:7))
              do i=0,numdata
                 write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  i*par_timestep*autosteps, &
                      dipolearrays(i,ii),efield(i,ii),each_efield(i,ii,:)
              enddo
-             call checkiostat(myiostat,"writing "//outenames(ii)//number(2:7))
+             call checkiostat(myiostat,"writing "//outenames(ii)(1:getlen(outenames(ii)))//number(2:7))
              close(171)
           enddo
        endif
@@ -552,8 +552,8 @@ contains
 
           if (sflag.ne.0) then
              do ii=1,3
-                open(171,file=outtworknames(ii)//number(2:7),status="unknown",iostat=myiostat)
-                call checkiostat(myiostat,"opening "//outtworknames(ii)//number(2:7))
+                open(171,file=outtworknames(ii)(1:getlen(outtworknames(ii)))//number(2:7),status="unknown",iostat=myiostat)
+                call checkiostat(myiostat,"opening "//outtworknames(ii)(1:getlen(outtworknames(ii)))//number(2:7))
                 do i=0,numdata
                    write(171,'(A25,F10.5,400F20.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
                         totworksum0(i,ii),worksum0(i,ii,:)
@@ -622,8 +622,8 @@ contains
 
              if (sflag.ne.0) then
                 do ii=1,3
-                   open(171,file=outangworknames(ii)//number(2:7),status="unknown",iostat=myiostat)
-                   call checkiostat(myiostat,"opening "//outangworknames(ii)//number(2:7))
+                   open(171,file=outangworknames(ii)(1:getlen(outangworknames(ii)))//number(2:7),status="unknown",iostat=myiostat)
+                   call checkiostat(myiostat,"opening "//outangworknames(ii)(1:getlen(outangworknames(ii)))//number(2:7))
                    do i=0,numdata
 
 !! not worrying about complex values
@@ -796,8 +796,8 @@ contains
 
           if (sflag.ne.0) then
 
-             open(171,file=outoworknames(ii)//number(2:7),status="unknown",iostat=myiostat)
-             call checkiostat(myiostat,"opening "//outoworknames(ii)//number(2:7))
+             open(171,file=outoworknames(ii)(1:getlen(outoworknames(ii)))//number(2:7),status="unknown",iostat=myiostat)
+             call checkiostat(myiostat,"opening "//outoworknames(ii)(1:getlen(outoworknames(ii)))//number(2:7))
              do i=0,numdata
                 myenergy=i*Estep
                 if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
@@ -806,8 +806,8 @@ contains
              enddo
              close(171)
 
-             open(171,file=outophotonnames(ii)//number(2:7),status="unknown",iostat=myiostat)
-             call checkiostat(myiostat,"opening "//outophotonnames(ii)//number(2:7))
+             open(171,file=outophotonnames(ii)(1:getlen(outophotonnames(ii)))//number(2:7),status="unknown",iostat=myiostat)
+             call checkiostat(myiostat,"opening "//outophotonnames(ii)(1:getlen(outophotonnames(ii)))//number(2:7))
              do i=0,numdata
                 myenergy=i*Estep
                 if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
