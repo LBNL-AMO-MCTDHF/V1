@@ -460,6 +460,11 @@ contains
     allocate(dipolearrays(0:numdata,3), efield(0:numdata,3), each_efield(0:numdata,3,npulses))
     dipolearrays=0; efield=0; each_efield=0
 
+    if (sflag.ne.0) then
+       thistime=numdata*par_timestep*autosteps
+       write(number,'(I7)') 1000000+floor(thistime)
+    endif
+
 !! LENGTH GAUGE electric field vectdpot0
 
     do i=0,numdata
@@ -496,6 +501,20 @@ contains
           call checkiostat(myiostat,"writing "//outenames(ii))
           close(171)
        enddo
+       if (sflag.ne.0) then
+          do ii=1,3
+             open(171,file=outenames(ii)//number(2:7),status="unknown",iostat=myiostat)
+             call checkiostat(myiostat,"opening "//outenames(ii)//number(2:7))
+             write(171,*,iostat=myiostat) "#   ", numdata
+             call checkiostat(myiostat,"writing "//outenames(ii)//number(2:7))
+             do i=0,numdata
+                write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  i*par_timestep*autosteps, &
+                     dipolearrays(i,ii),efield(i,ii),each_efield(i,ii,:)
+             enddo
+             call checkiostat(myiostat,"writing "//outenames(ii)//number(2:7))
+             close(171)
+          enddo
+       endif
     endif
     call mpibarrier()
 
@@ -530,6 +549,18 @@ contains
              enddo
              close(171)
           enddo
+
+          if (sflag.ne.0) then
+             do ii=1,3
+                open(171,file=outtworknames(ii)//number(2:7),status="unknown",iostat=myiostat)
+                call checkiostat(myiostat,"opening "//outtworknames(ii)//number(2:7))
+                do i=0,numdata
+                   write(171,'(A25,F10.5,400F20.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
+                        totworksum0(i,ii),worksum0(i,ii,:)
+                enddo
+                close(171)
+             enddo
+          endif
        endif
        call mpibarrier()
        deallocate(worksum0,totworksum0)
@@ -588,6 +619,22 @@ contains
                 enddo
                 close(171)
              enddo
+
+             if (sflag.ne.0) then
+                do ii=1,3
+                   open(171,file=outangworknames(ii)//number(2:7),status="unknown",iostat=myiostat)
+                   call checkiostat(myiostat,"opening "//outangworknames(ii)//number(2:7))
+                   do i=0,numdata
+
+!! not worrying about complex values
+
+                      write(171,'(A25,F10.5,400F20.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
+                           totangworksum0(i,ii),angworksum0(i,ii,:)
+
+                   enddo
+                   close(171)
+                enddo
+             endif
           endif
           call mpibarrier()
           deallocate(angworksum0,totangworksum0,dipole_ang, each_efield_ang,moment)
@@ -749,8 +796,26 @@ contains
 
           if (sflag.ne.0) then
 
-             thistime=numdata*par_timestep*autosteps
-             write(number,'(I7)') 1000000+floor(thistime)
+             open(171,file=outoworknames(ii)//number(2:7),status="unknown",iostat=myiostat)
+             call checkiostat(myiostat,"opening "//outoworknames(ii)//number(2:7))
+             do i=0,numdata
+                myenergy=i*Estep
+                if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
+                   write(171,'(A25,F10.5,400F20.10)') " WORK EACH PULSE E= ", myenergy, totworksums(i,ii),worksums(i,ii,:)
+                endif
+             enddo
+             close(171)
+
+             open(171,file=outophotonnames(ii)//number(2:7),status="unknown",iostat=myiostat)
+             call checkiostat(myiostat,"opening "//outophotonnames(ii)//number(2:7))
+             do i=0,numdata
+                myenergy=i*Estep
+                if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
+                   write(171,'(A25,F10.5,400F20.10)') "PHOTONS EACH PULSE E= ", myenergy, totexsums(i,ii),exsums(i,ii,:)
+                endif
+             enddo
+             close(171)
+
              open(171,file=outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7),status="unknown",iostat=myiostat)
              call checkiostat(myiostat,"opening "//outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7))
              write(171,'(A120)',iostat=myiostat) &
