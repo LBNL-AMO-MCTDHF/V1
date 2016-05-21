@@ -99,7 +99,7 @@ subroutine getparams()
        pulsewindowtoo,conjgpropflag,dipolesumstart,dipolesumend,outmatel,numcatfiles,&
        catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
        shuffle_dfwalktype,maxdgdim, messavec, messaamount,holeflag, angularflag, angprojspifile,&
-       prepropflag, step_flag, postpropflag, reference_pulses, scalarflag, angprojfluxtsumfile, &
+       prepropflag, step_flag, postpropflag, scalarflag, angprojfluxtsumfile, &
        catfacs
 
   OFL
@@ -940,7 +940,7 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
   use pulsesubmod
   implicit none
   NAMELIST /pulse/ omega,pulsestart,pulsestrength, velflag, omega2,phaseshift,intensity,pulsetype, &
-       pulsetheta,pulsephi, longstep, numpulses, minpulsetime, maxpulsetime, chirp, ramp
+       pulsetheta,pulsephi, longstep, numpulses, reference_pulses, minpulsetime, maxpulsetime, chirp, ramp
   real*8 ::  time,   lastfinish, fac, pulse_end, estep
   DATATYPE :: pots1(3),pots2(3),pots3(3), pots4(3), pots5(3), csumx,csumy,csumz
   integer :: i, myiostat, ipulse,no_error_exit_flag
