@@ -63,7 +63,7 @@ end module dotmod
 !!YYSNIPYY
 !!BB
 !! *********************************************************************************************************** !!
-!!   Parameters for MCTDHF calculation; parinp NAMELIST input from Input.Inp (default)
+!!   Input variables for MCTDHF: can be specified in namelist &parinp or namelist &pulse in input file.
 !! *********************************************************************************************************** !!
 !!
 !! Type, variable, default value !! Command-line !! Description 
@@ -74,7 +74,7 @@ end module dotmod
 module ham_parameters
 integer :: nonuc_checkflag=1     !!              !! Turn off deriv operators in nuclear dofs.
 integer :: tdflag=0              !! Pulse        !! Use pulse?
-integer :: velflag=0             !!              !!  Length (V(t)) or velocity (A(t))      
+integer :: velflag=0             !!              !!  Length (V(t)) or velocity (A(t))NAMELIST PULSE
 !!  Constraintflag=1: Density matrix constraint: assume nothing, keep constant off block diag
 !!  2: Dirac-Frenkel (McLachlan/Lagrangian) variational principle.
 integer :: constraintflag=0      !! Constraint=  !! As described below (see CONSTRAINT)
@@ -93,8 +93,10 @@ end module ham_parameters
 !!EE
 !!{\large \quad PULSE.  (If tdflag=1) }
 !!BB
-module pulse_parameters
-integer :: numpulses=1
+module pulse_parameters           !!      NAMELIST PULSE except for conjgpropflag
+integer :: numpulses=1            !!  number of pulses, enter pulsetype, omega, etc. for each
+integer :: reference_pulses=0     !!  for domcke method action 21. Enter numpulses+reference_pulses pulses, then the
+                                  !!    output (eg absorption) is calc'd with e-field for pulses numpules+1 and up
 integer ::  pulsetype(100)=1      !!              !!  Pulsetype=1:  A(t) = pulsestrength * sin(w t)^2,
 real*8  :: omega(100)=1.d0        !!              !!  2:  A(t) = strength * sin(w t)^2 
 real*8 :: omega2(100)=1.d0        !!              !!             * sin(w2 t + phaseshift),
@@ -371,7 +373,6 @@ character(len=SLN):: outovl="Dat/Overlaps.dat"                   !! for action 2
 character(len=SLN):: outmatel="Dat/Matel.dat"                    !! for action 20
 integer :: act21circ=0                                           !! set nonzero to enable circular polarization 
                                                                  !!     output for action 21
-integer :: reference_pulses=0                                    !! for complex Domcke action 21
 character(len=SLN):: xdipfile="Dat/XDipoleexpect.Dat",&          !! for action 21 dipole moments D(t)
  ydipfile="Dat/YDipoleexpect.Dat",&
  zdipfile="Dat/ZDipoleexpect.Dat"                 
