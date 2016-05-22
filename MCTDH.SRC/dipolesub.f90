@@ -326,97 +326,112 @@ contains
     endif
     call mpibarrier()
 
-    if (conjgpropflag.eq.0) then    !! work done by pulse integral dt only for non-complex-Domcke
+!! work done by pulse integral dt. . . taking real part if complex domcke.
 
-       allocate(dipole_diff(0:numdata,3), worksum0(0:numdata,3,npulses), totworksum0(0:numdata,3))
-       dipole_diff=0d0;    worksum0=0;   totworksum0=0;  
+    allocate(dipole_diff(0:numdata,3), worksum0(0:numdata,3,npulses), totworksum0(0:numdata,3))
+    dipole_diff=0d0;    worksum0=0;   totworksum0=0;  
 
-       do i=1,3
-          call complexdiff(numdata+1,dipolearrays(:,i),dipole_diff(:,i),.false.)
+    do i=1,3
+       call complexdiff(numdata+1,dipolearrays(:,i),dipole_diff(:,i),.false.)
+    enddo
+    dipole_diff(:,:)= dipole_diff(:,:) / par_timestep / autosteps
+
+    do ipulse=1,npulses
+       worksum0(0,:,ipulse) = (-1) * real( dipole_diff(0,:) * conjg(each_efield(0,:,ipulse)) , 8) * par_timestep * autosteps
+       do i=1,numdata
+          worksum0(i,:,ipulse)=worksum0(i-1,:,ipulse) - real( dipole_diff(i,:) * conjg(each_efield(i,:,ipulse)) , 8) * par_timestep * autosteps
        enddo
-       dipole_diff(:,:)= dipole_diff(:,:) / par_timestep / autosteps
+    enddo
+    totworksum0(:,:)=0d0
+    do ipulse=1,npulses
+       totworksum0(:,:)=totworksum0(:,:)+worksum0(:,:,ipulse)
+    enddo
 
-       do ipulse=1,npulses
-          worksum0(0,:,ipulse) = (-1) * real( dipole_diff(0,:) * conjg(each_efield(0,:,ipulse)) , 8) * par_timestep * autosteps
-          do i=1,numdata
-             worksum0(i,:,ipulse)=worksum0(i-1,:,ipulse) - real( dipole_diff(i,:) * conjg(each_efield(i,:,ipulse)) , 8) * par_timestep * autosteps
+    if (myrank.eq.1) then
+       do ii=1,3
+          open(171,file=outtworknames(ii),status="unknown",iostat=myiostat)
+          call checkiostat(myiostat,"opening "//outtworknames(ii))
+          do i=0,numdata
+             write(171,'(A25,F10.5,400F20.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
+                  totworksum0(i,ii),worksum0(i,ii,:)
           enddo
-       enddo
-       totworksum0(:,:)=0d0
-       do ipulse=1,npulses
-          totworksum0(:,:)=totworksum0(:,:)+worksum0(:,:,ipulse)
+          close(171)
        enddo
 
-       if (myrank.eq.1) then
+       if (sflag.ne.0) then
           do ii=1,3
-             open(171,file=outtworknames(ii),status="unknown",iostat=myiostat)
-             call checkiostat(myiostat,"opening "//outtworknames(ii))
+             open(171,file=outtworknames(ii)(1:getlen(outtworknames(ii)))//number(2:7),status="unknown",iostat=myiostat)
+             call checkiostat(myiostat,"opening "//outtworknames(ii)(1:getlen(outtworknames(ii)))//number(2:7))
              do i=0,numdata
                 write(171,'(A25,F10.5,400F20.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
                      totworksum0(i,ii),worksum0(i,ii,:)
              enddo
              close(171)
           enddo
-
-          if (sflag.ne.0) then
-             do ii=1,3
-                open(171,file=outtworknames(ii)(1:getlen(outtworknames(ii)))//number(2:7),status="unknown",iostat=myiostat)
-                call checkiostat(myiostat,"opening "//outtworknames(ii)(1:getlen(outtworknames(ii)))//number(2:7))
-                do i=0,numdata
-                   write(171,'(A25,F10.5,400F20.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
-                        totworksum0(i,ii),worksum0(i,ii,:)
-                enddo
-                close(171)
-             enddo
-          endif
        endif
-       call mpibarrier()
-       deallocate(worksum0,totworksum0)
+    endif
+    call mpibarrier()
+    deallocate(worksum0,totworksum0)
 
-       if (act21circ.ne.0) then
-          allocate(angworksum0(0:numdata,3,npulses), totangworksum0(0:numdata,3), dipole_ang(0:numdata,3), &
-               each_efield_ang(0:numdata,3,npulses), moment(0:numdata))
-          angworksum0=0;  totangworksum0=0; dipole_ang=0;   each_efield_ang=0;    moment=0
+    if (act21circ.ne.0) then
+       allocate(angworksum0(0:numdata,3,npulses), totangworksum0(0:numdata,3), dipole_ang(0:numdata,3), &
+            each_efield_ang(0:numdata,3,npulses), moment(0:numdata))
+       angworksum0=0;  totangworksum0=0; dipole_ang=0;   each_efield_ang=0;    moment=0
 
 !! not worrying about complex values
 
-          dipole_ang(:,1) = real(dipolearrays(:,2) * dipole_diff(:,3) - dipolearrays(:,3) * dipole_diff(:,2),8)
-          dipole_ang(:,2) = real(dipolearrays(:,3) * dipole_diff(:,1) - dipolearrays(:,1) * dipole_diff(:,3),8)
-          dipole_ang(:,3) = real(dipolearrays(:,1) * dipole_diff(:,2) - dipolearrays(:,2) * dipole_diff(:,1),8)
+       dipole_ang(:,1) = real(dipolearrays(:,2) * dipole_diff(:,3) - dipolearrays(:,3) * dipole_diff(:,2),8)
+       dipole_ang(:,2) = real(dipolearrays(:,3) * dipole_diff(:,1) - dipolearrays(:,1) * dipole_diff(:,3),8)
+       dipole_ang(:,3) = real(dipolearrays(:,1) * dipole_diff(:,2) - dipolearrays(:,2) * dipole_diff(:,1),8)
 
-          moment(:) = real(dipolearrays(:,1))**2 + real(dipolearrays(:,2))**2 + real(dipolearrays(:,3))**2
+       moment(:) = real(dipolearrays(:,1))**2 + real(dipolearrays(:,2))**2 + real(dipolearrays(:,3))**2
 
-          do i=1,npulses
-             each_efield_ang(:,1,i) = real(dipolearrays(:,2) * each_efield(:,3,i) - dipolearrays(:,3) * each_efield(:,2,i),8)
-             each_efield_ang(:,2,i) = real(dipolearrays(:,3) * each_efield(:,1,i) - dipolearrays(:,1) * each_efield(:,3,i),8)
-             each_efield_ang(:,3,i) = real(dipolearrays(:,1) * each_efield(:,2,i) - dipolearrays(:,2) * each_efield(:,1,i),8)
-          enddo
+       do i=1,npulses
+          each_efield_ang(:,1,i) = real(dipolearrays(:,2) * each_efield(:,3,i) - dipolearrays(:,3) * each_efield(:,2,i),8)
+          each_efield_ang(:,2,i) = real(dipolearrays(:,3) * each_efield(:,1,i) - dipolearrays(:,1) * each_efield(:,3,i),8)
+          each_efield_ang(:,3,i) = real(dipolearrays(:,1) * each_efield(:,2,i) - dipolearrays(:,2) * each_efield(:,1,i),8)
+       enddo
 
-          angworksum0=0
-          do ipulse=1,npulses
+       angworksum0=0
+       do ipulse=1,npulses
 
 !! real-valued variables all
-             if (moment(0).ne.0) then
-                angworksum0(0,:,ipulse) = (-1) * dipole_ang(0,:) * each_efield_ang(0,:,ipulse) / moment(0) * par_timestep * autosteps
+          if (moment(0).ne.0) then
+             angworksum0(0,:,ipulse) = (-1) * dipole_ang(0,:) * each_efield_ang(0,:,ipulse) / moment(0) * par_timestep * autosteps
+          endif
+          do i=1,numdata
+             if (moment(i).ne.0) then
+                angworksum0(i,:,ipulse) = angworksum0(i-1,:,ipulse) - dipole_ang(i,:) * each_efield_ang(i,:,ipulse) / moment(i) &
+                     * par_timestep * autosteps
+             else
+                angworksum0(i,:,ipulse) = angworksum0(i-1,:,ipulse)
              endif
-             do i=1,numdata
-                if (moment(i).ne.0) then
-                   angworksum0(i,:,ipulse) = angworksum0(i-1,:,ipulse) - dipole_ang(i,:) * each_efield_ang(i,:,ipulse) / moment(i) &
-                        * par_timestep * autosteps
-                else
-                   angworksum0(i,:,ipulse) = angworksum0(i-1,:,ipulse)
-                endif
-             enddo
           enddo
-          totangworksum0(:,:)=0d0
-          do ipulse=1,npulses
-             totangworksum0(:,:)=totangworksum0(:,:)+angworksum0(:,:,ipulse)
+       enddo
+       totangworksum0(:,:)=0d0
+       do ipulse=1,npulses
+          totangworksum0(:,:)=totangworksum0(:,:)+angworksum0(:,:,ipulse)
+       enddo
+
+       if (myrank.eq.1) then
+          do ii=1,3
+             open(171,file=outangworknames(ii),status="unknown",iostat=myiostat)
+             call checkiostat(myiostat,"opening "//outangworknames(ii))
+             do i=0,numdata
+
+!! not worrying about complex values
+
+                write(171,'(A25,F10.5,400F20.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
+                     totangworksum0(i,ii),angworksum0(i,ii,:)
+
+             enddo
+             close(171)
           enddo
 
-          if (myrank.eq.1) then
+          if (sflag.ne.0) then
              do ii=1,3
-                open(171,file=outangworknames(ii),status="unknown",iostat=myiostat)
-                call checkiostat(myiostat,"opening "//outangworknames(ii))
+                open(171,file=outangworknames(ii)(1:getlen(outangworknames(ii)))//number(2:7),status="unknown",iostat=myiostat)
+                call checkiostat(myiostat,"opening "//outangworknames(ii)(1:getlen(outangworknames(ii)))//number(2:7))
                 do i=0,numdata
 
 !! not worrying about complex values
@@ -427,28 +442,12 @@ contains
                 enddo
                 close(171)
              enddo
-
-             if (sflag.ne.0) then
-                do ii=1,3
-                   open(171,file=outangworknames(ii)(1:getlen(outangworknames(ii)))//number(2:7),status="unknown",iostat=myiostat)
-                   call checkiostat(myiostat,"opening "//outangworknames(ii)(1:getlen(outangworknames(ii)))//number(2:7))
-                   do i=0,numdata
-
-!! not worrying about complex values
-
-                      write(171,'(A25,F10.5,400F20.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
-                           totangworksum0(i,ii),angworksum0(i,ii,:)
-
-                   enddo
-                   close(171)
-                enddo
-             endif
           endif
-          call mpibarrier()
-          deallocate(angworksum0,totangworksum0,dipole_ang, each_efield_ang,moment)
        endif
-       deallocate(dipole_diff)
+       call mpibarrier()
+       deallocate(angworksum0,totangworksum0,dipole_ang, each_efield_ang,moment)
     endif
+    deallocate(dipole_diff)
 
     if (act21circ.ne.0) then
        numft=9
