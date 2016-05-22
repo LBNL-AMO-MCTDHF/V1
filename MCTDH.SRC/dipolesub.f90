@@ -364,7 +364,6 @@ subroutine dipolesub()
 
         else   !! conjgpropflag complex Domcke:
            do ii=1,4
-
               dipfiles(:) = (/ &
                    xdipfile(1:getlen(xdipfile))//tl(ii),&
                    ydipfile(1:getlen(ydipfile))//tl(ii),&
@@ -415,7 +414,8 @@ subroutine dipolesub()
                  call dipolecall(calledflag, dipoleexpects(:,:,ii), &
                       dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 1, reference_pulses)
               endif
-           enddo
+
+           enddo !! do ii=1,4
         endif    !! conjgpropflag
 
         OFLWR "     ..done emission/absorption"; CFL
@@ -432,6 +432,8 @@ contains
 
   subroutine dipolecall(numdata, indipolearrays, outenames, outtworknames, outangworknames, &
        outftnames, outoworknames, outophotonnames, sflag, referencepulses, npulses)
+    use parameters
+    use pulse_parameters
     use mpimod
     use pulsesubmod
     implicit none
@@ -448,13 +450,13 @@ contains
          dipole_ang(:,:), moment(:), angworksum0(:,:,:), totangworksum0(:,:)
     DATATYPE :: pots(3,npulses)
     real*8 :: estep, thistime, myenergy,xsecunits, windowfunct
-    integer :: i,getlen,myiostat,ipulse,numft
+    integer :: i,getlen,myiostat,ipulse,numft,ii
     character (len=7) :: number
 
 #ifdef REALGO
     OFLWR "Cant use dipolesub for real valued code."; CFLST
 #endif
-
+    
     pots=0
 
     allocate(dipolearrays(0:numdata,3), efield(0:numdata,3), each_efield(0:numdata,3,npulses))
