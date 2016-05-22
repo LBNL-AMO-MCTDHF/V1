@@ -249,7 +249,7 @@ subroutine dipolesub()
   integer :: imc,sflag,getlen,ii
   integer, save :: lastouttime=0
   real*8 :: thistime
-  character(len=2) :: tl(4) = (/ "BA", "AB", "AA", "AB" /)
+  character(len=2) :: tl(4) = (/ "BA", "AB", "AA", "BB" /)
 
   myexpects=0;mcexpects=0;axx=0;ayy=0;azz=0;sxx=0;syy=0;szz=0;dd=0;drivingoverlap=0
 
