@@ -231,201 +231,7 @@ end subroutine dipolesub_one
 end module dipsubonemod
 
 
-subroutine dipolesub()
-  use dipolemod
-  use dipsubonemod
-  use parameters
-  use configmod
-  use xxxmod
-  use mpisubmod
-  use pulse_parameters !! conjgpropflag
-  implicit none
-
-  DATATYPE :: myexpects(3), mcexpects(3,mcscfnum), dd(mcscfnum),&
-       axx(mcscfnum),ayy(mcscfnum),azz(mcscfnum),sxx(mcscfnum),syy(mcscfnum),&
-       szz(mcscfnum),drivingoverlap(mcscfnum)
-  character(len=SLN) :: dipfiles(3), tworkfiles(3), angworkfiles(3), ftfiles(9), &
-       oworkfiles(9), ophotonfiles(9)
-  integer :: imc,sflag,getlen,ii
-  integer, save :: lastouttime=0
-  real*8 :: thistime
-  character(len=2) :: tl(4) = (/ "BA", "AB", "AA", "BB" /)
-
-  myexpects=0;mcexpects=0;axx=0;ayy=0;azz=0;sxx=0;syy=0;szz=0;dd=0;drivingoverlap=0
-
-  if (mod(xcalledflag,autosteps).eq.0) then
-
-     if (conjgpropflag.ne.0) then
-
-        if (mcscfnum.ne.2) then
-           OFLWR "Whoot? conjgpropflag mcscfnum",mcscfnum; CFLST
-        endif
-        if (drivingflag.ne.0) then
-           OFLWR "Driving not supported for conjprop yet"; CFLST
-        endif
-        dipolenormsq(calledflag)=0
-        if (tot_adim.gt.0) then
-           dipolenormsq(calledflag) = hermdot(yyy%cmfavec(:,2,0),yyy%cmfavec(:,1,0),tot_adim)
-        endif
-        if (par_consplit.ne.0) then
-           call mympireduceone(dipolenormsq(calledflag))
-        endif
-
-        OFLWR "   complex Domcke - off diagonal norm-squared ", dipolenormsq(calledflag)
-
-        call dipolesub_one(www,bioww,yyy%cmfavec(:,2,0),yyy%cmfavec(:,1,0), yyy%cmfspfs(:,0), myexpects(:))
-        dipoleexpects(calledflag,:,1)=myexpects(:)
-        call dipolesub_one(www,bioww,yyy%cmfavec(:,1,0),yyy%cmfavec(:,2,0), yyy%cmfspfs(:,0), myexpects(:))
-        dipoleexpects(calledflag,:,2)=myexpects(:)
-        call dipolesub_one(www,bioww,yyy%cmfavec(:,1,0),yyy%cmfavec(:,1,0), yyy%cmfspfs(:,0), myexpects(:))
-        dipoleexpects(calledflag,:,3)=myexpects(:)
-        call dipolesub_one(www,bioww,yyy%cmfavec(:,2,0),yyy%cmfavec(:,2,0), yyy%cmfspfs(:,0), myexpects(:))
-        dipoleexpects(calledflag,:,4)=myexpects(:)
-
-     else  !! conjgpropflag complex Domcke
-
-        do imc=1,mcscfnum
-           dd(imc)=0
-           if (tot_adim.gt.0) then
-              dd(imc) = hermdot(yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),tot_adim)
-           endif
-           if (par_consplit.ne.0) then
-              call mympireduceone(dd(imc))
-           endif
-           call dipolesub_one(www,bioww,yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),yyy%cmfspfs(:,0),mcexpects(:,imc))
-        enddo
-
-        if (drivingflag.ne.0) then
-#ifdef CNORMFLAG
-           OFLWR "Error, driving with dipole not supported c-norm"; CFLST
-#endif
-           call dipolesub_driving(axx,ayy,azz,sxx,syy,szz,mcscfnum)
-           mcexpects(1,:)=mcexpects(1,:)+axx(:)+CONJUGATE(axx(:))+sxx*drivingproportion**2
-           mcexpects(2,:)=mcexpects(2,:)+ayy(:)+CONJUGATE(ayy(:))+syy*drivingproportion**2
-           mcexpects(3,:)=mcexpects(3,:)+azz(:)+CONJUGATE(azz(:))+szz*drivingproportion**2
-
-!! for time slot zero
-           call getdrivingoverlap(drivingoverlap,mcscfnum)
-           dd(:)=dd(:)+drivingproportion**2 + drivingoverlap(:) + CONJUGATE(drivingoverlap(:))
-        endif
-
-        dipoleexpects(calledflag,:,1)=0d0
-        dipolenormsq(calledflag)=0d0
-
-        do imc=1,mcscfnum
-
-           dipolenormsq(calledflag) = dipolenormsq(calledflag) + dd(imc)
-
-!! 101414 REAL-VALUED FOR HERM.
-!! 1-2016 v1.17 should not be necessary with realflag in mult_zdipole(in,out,realflag) etc.
- 
-#ifndef CNORMFLAG
-           dipoleexpects(calledflag,:,1) = dipoleexpects(calledflag,:,1) + real(mcexpects(:,imc),8) / mcscfnum
-#else
-           dipoleexpects(calledflag,:,1) = dipoleexpects(calledflag,:,1) + mcexpects(:,imc) / mcscfnum
-#endif
-
-        enddo
-
-     endif  !! conjgpropflag complex Domcke
-
-     if (mod(calledflag,dipmodtime).eq.0.and.calledflag.gt.0) then
-
-        OFLWR "Go emission/absorption action 21... "; CFL
-
-        thistime=calledflag*par_timestep*autosteps
-        sflag=0
-        if (floor(thistime/diptime).gt.lastouttime) then
-           lastouttime=floor(thistime/diptime)
-           sflag=1
-        endif
-
-!!$  subroutine dipolecall(numdata, indipolearrays, outenames, outtworknames, outangworknames, &
-!!$       outftnames, outoworknames, outophotonnames, sflag)
-
-        if (conjgpropflag.eq.0) then
-           dipfiles(:) = (/ xdipfile, ydipfile, zdipfile /)
-           tworkfiles(:) = (/ xtworkfile, ytworkfile, ztworkfile /)
-           angworkfiles(:) = (/ yztworkfile, zxtworkfile, xytworkfile /)
-           ftfiles(:) = (/ xdftfile, ydftfile, zdftfile, &
-                xydftfile, xzdftfile, yxdftfile, yzdftfile, zxdftfile, zydftfile /)
-           oworkfiles(:) = (/ xoworkfile, yoworkfile, zoworkfile, &
-                xyoworkfile, xzoworkfile, yxoworkfile, yzoworkfile, zxoworkfile, zyoworkfile /)
-           ophotonfiles(:) = (/ xophotonfile, yophotonfile, zophotonfile, &
-                xyophotonfile, xzophotonfile, yxophotonfile, yzophotonfile, zxophotonfile, zyophotonfile /)
-
-           if (reference_pulses.eq.0) then
-              call dipolecall(calledflag, dipoleexpects(:,:,1), &
-                   dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 0, numpulses)
-           else
-              call dipolecall(calledflag, dipoleexpects(:,:,1), &
-                   dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 1, reference_pulses)
-           endif
-
-        else   !! conjgpropflag complex Domcke:
-           do ii=1,4
-              dipfiles(:) = (/ &
-                   xdipfile(1:getlen(xdipfile))//tl(ii),&
-                   ydipfile(1:getlen(ydipfile))//tl(ii),&
-                   zdipfile(1:getlen(zdipfile))//tl(ii) /)
-              tworkfiles(:) = (/ &
-                   xtworkfile(1:getlen(xtworkfile))//tl(ii),&
-                   ytworkfile(1:getlen(ytworkfile))//tl(ii),&
-                   ztworkfile(1:getlen(ztworkfile))//tl(ii) /)
-              angworkfiles(:) = (/ &
-                   yztworkfile(1:getlen(yztworkfile))//tl(ii),&
-                   zxtworkfile(1:getlen(zxtworkfile))//tl(ii),&
-                   xytworkfile(1:getlen(xytworkfile))//tl(ii) /)
-              ftfiles(:) = (/ &
-                   xdftfile(1:getlen(xdftfile))//tl(ii),&
-                   ydftfile(1:getlen(ydftfile))//tl(ii),&
-                   zdftfile(1:getlen(zdftfile))//tl(ii),&
-                   xydftfile(1:getlen(xydftfile))//tl(ii),&
-                   xzdftfile(1:getlen(xzdftfile))//tl(ii),&
-                   yxdftfile(1:getlen(yxdftfile))//tl(ii),&
-                   yzdftfile(1:getlen(yzdftfile))//tl(ii),&
-                   zxdftfile(1:getlen(zxdftfile))//tl(ii),&
-                   zydftfile(1:getlen(zydftfile))//tl(ii) /)
-              oworkfiles(:) = (/ &
-                   xoworkfile(1:getlen(xoworkfile))//tl(ii),&
-                   yoworkfile(1:getlen(yoworkfile))//tl(ii),&
-                   zoworkfile(1:getlen(zoworkfile))//tl(ii),&
-                   xyoworkfile(1:getlen(xyoworkfile))//tl(ii),&
-                   xzoworkfile(1:getlen(xzoworkfile))//tl(ii),&
-                   yxoworkfile(1:getlen(yxoworkfile))//tl(ii),&
-                   yzoworkfile(1:getlen(yzoworkfile))//tl(ii),&
-                   zxoworkfile(1:getlen(zxoworkfile))//tl(ii),&
-                   zyoworkfile(1:getlen(zyoworkfile))//tl(ii) /)
-              ophotonfiles(:) = (/ &
-                   xophotonfile(1:getlen(xophotonfile))//tl(ii),&
-                   yophotonfile(1:getlen(yophotonfile))//tl(ii),&
-                   zophotonfile(1:getlen(zophotonfile))//tl(ii),&
-                   xyophotonfile(1:getlen(xyophotonfile))//tl(ii),&
-                   xzophotonfile(1:getlen(xzophotonfile))//tl(ii),&
-                   yxophotonfile(1:getlen(yxophotonfile))//tl(ii),&
-                   yzophotonfile(1:getlen(yzophotonfile))//tl(ii),&
-                   zxophotonfile(1:getlen(zxophotonfile))//tl(ii),&
-                   zyophotonfile(1:getlen(zyophotonfile))//tl(ii) /)
-
-              if (reference_pulses.eq.0) then
-                 call dipolecall(calledflag, dipoleexpects(:,:,ii), &
-                      dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 0, numpulses)
-              else
-                 call dipolecall(calledflag, dipoleexpects(:,:,ii), &
-                      dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 1, reference_pulses)
-              endif
-
-           enddo !! do ii=1,4
-        endif    !! conjgpropflag
-
-        OFLWR "     ..done emission/absorption"; CFL
-
-     endif       !! calledflag (dipmodtime)
-
-     calledflag=calledflag+1
-  endif
-  xcalledflag=xcalledflag+1
-
+module dipcallsubmod
 contains
 
 !! actually have numdata+1 data points in indipolearray
@@ -851,5 +657,205 @@ contains
 
   end subroutine dipolecall
 
+end module dipcallsubmod
+
+
+subroutine dipolesub()
+  use dipolemod
+  use dipsubonemod
+  use dipcallsubmod
+  use parameters
+  use configmod
+  use xxxmod
+  use mpisubmod
+  use pulse_parameters !! conjgpropflag
+  implicit none
+
+  DATATYPE :: myexpects(3), mcexpects(3,mcscfnum), dd(mcscfnum),&
+       axx(mcscfnum),ayy(mcscfnum),azz(mcscfnum),sxx(mcscfnum),syy(mcscfnum),&
+       szz(mcscfnum),drivingoverlap(mcscfnum)
+  character(len=SLN) :: dipfiles(3), tworkfiles(3), angworkfiles(3), ftfiles(9), &
+       oworkfiles(9), ophotonfiles(9)
+  integer :: imc,sflag,getlen,ii
+  integer, save :: lastouttime=0
+  real*8 :: thistime
+  character(len=2) :: tl(4) = (/ "BA", "AB", "AA", "BB" /)
+
+  myexpects=0;mcexpects=0;axx=0;ayy=0;azz=0;sxx=0;syy=0;szz=0;dd=0;drivingoverlap=0
+
+  if (mod(xcalledflag,autosteps).eq.0) then
+
+     if (conjgpropflag.ne.0) then
+
+        if (mcscfnum.ne.2) then
+           OFLWR "Whoot? conjgpropflag mcscfnum",mcscfnum; CFLST
+        endif
+        if (drivingflag.ne.0) then
+           OFLWR "Driving not supported for conjprop yet"; CFLST
+        endif
+        dipolenormsq(calledflag)=0
+        if (tot_adim.gt.0) then
+           dipolenormsq(calledflag) = hermdot(yyy%cmfavec(:,2,0),yyy%cmfavec(:,1,0),tot_adim)
+        endif
+        if (par_consplit.ne.0) then
+           call mympireduceone(dipolenormsq(calledflag))
+        endif
+
+        OFLWR "   complex Domcke - off diagonal norm-squared ", dipolenormsq(calledflag)
+
+        call dipolesub_one(www,bioww,yyy%cmfavec(:,2,0),yyy%cmfavec(:,1,0), yyy%cmfspfs(:,0), myexpects(:))
+        dipoleexpects(calledflag,:,1)=myexpects(:)
+        call dipolesub_one(www,bioww,yyy%cmfavec(:,1,0),yyy%cmfavec(:,2,0), yyy%cmfspfs(:,0), myexpects(:))
+        dipoleexpects(calledflag,:,2)=myexpects(:)
+        call dipolesub_one(www,bioww,yyy%cmfavec(:,1,0),yyy%cmfavec(:,1,0), yyy%cmfspfs(:,0), myexpects(:))
+        dipoleexpects(calledflag,:,3)=myexpects(:)
+        call dipolesub_one(www,bioww,yyy%cmfavec(:,2,0),yyy%cmfavec(:,2,0), yyy%cmfspfs(:,0), myexpects(:))
+        dipoleexpects(calledflag,:,4)=myexpects(:)
+
+     else  !! conjgpropflag complex Domcke
+
+        do imc=1,mcscfnum
+           dd(imc)=0
+           if (tot_adim.gt.0) then
+              dd(imc) = hermdot(yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),tot_adim)
+           endif
+           if (par_consplit.ne.0) then
+              call mympireduceone(dd(imc))
+           endif
+           call dipolesub_one(www,bioww,yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),yyy%cmfspfs(:,0),mcexpects(:,imc))
+        enddo
+
+        if (drivingflag.ne.0) then
+#ifdef CNORMFLAG
+           OFLWR "Error, driving with dipole not supported c-norm"; CFLST
+#endif
+           call dipolesub_driving(axx,ayy,azz,sxx,syy,szz,mcscfnum)
+           mcexpects(1,:)=mcexpects(1,:)+axx(:)+CONJUGATE(axx(:))+sxx*drivingproportion**2
+           mcexpects(2,:)=mcexpects(2,:)+ayy(:)+CONJUGATE(ayy(:))+syy*drivingproportion**2
+           mcexpects(3,:)=mcexpects(3,:)+azz(:)+CONJUGATE(azz(:))+szz*drivingproportion**2
+
+!! for time slot zero
+           call getdrivingoverlap(drivingoverlap,mcscfnum)
+           dd(:)=dd(:)+drivingproportion**2 + drivingoverlap(:) + CONJUGATE(drivingoverlap(:))
+        endif
+
+        dipoleexpects(calledflag,:,1)=0d0
+        dipolenormsq(calledflag)=0d0
+
+        do imc=1,mcscfnum
+
+           dipolenormsq(calledflag) = dipolenormsq(calledflag) + dd(imc)
+
+!! 101414 REAL-VALUED FOR HERM.
+!! 1-2016 v1.17 should not be necessary with realflag in mult_zdipole(in,out,realflag) etc.
+ 
+#ifndef CNORMFLAG
+           dipoleexpects(calledflag,:,1) = dipoleexpects(calledflag,:,1) + real(mcexpects(:,imc),8) / mcscfnum
+#else
+           dipoleexpects(calledflag,:,1) = dipoleexpects(calledflag,:,1) + mcexpects(:,imc) / mcscfnum
+#endif
+
+        enddo
+
+     endif  !! conjgpropflag complex Domcke
+
+     if (mod(calledflag,dipmodtime).eq.0.and.calledflag.gt.0) then
+
+        OFLWR "Go emission/absorption action 21... "; CFL
+
+        thistime=calledflag*par_timestep*autosteps
+        sflag=0
+        if (floor(thistime/diptime).gt.lastouttime) then
+           lastouttime=floor(thistime/diptime)
+           sflag=1
+        endif
+
+!!$  subroutine dipolecall(numdata, indipolearrays, outenames, outtworknames, outangworknames, &
+!!$       outftnames, outoworknames, outophotonnames, sflag)
+
+        if (conjgpropflag.eq.0) then
+           dipfiles(:) = (/ xdipfile, ydipfile, zdipfile /)
+           tworkfiles(:) = (/ xtworkfile, ytworkfile, ztworkfile /)
+           angworkfiles(:) = (/ yztworkfile, zxtworkfile, xytworkfile /)
+           ftfiles(:) = (/ xdftfile, ydftfile, zdftfile, &
+                xydftfile, xzdftfile, yxdftfile, yzdftfile, zxdftfile, zydftfile /)
+           oworkfiles(:) = (/ xoworkfile, yoworkfile, zoworkfile, &
+                xyoworkfile, xzoworkfile, yxoworkfile, yzoworkfile, zxoworkfile, zyoworkfile /)
+           ophotonfiles(:) = (/ xophotonfile, yophotonfile, zophotonfile, &
+                xyophotonfile, xzophotonfile, yxophotonfile, yzophotonfile, zxophotonfile, zyophotonfile /)
+
+           if (reference_pulses.eq.0) then
+              call dipolecall(calledflag, dipoleexpects(:,:,1), &
+                   dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 0, numpulses)
+           else
+              call dipolecall(calledflag, dipoleexpects(:,:,1), &
+                   dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 1, reference_pulses)
+           endif
+
+        else   !! conjgpropflag complex Domcke:
+           do ii=1,4
+              dipfiles(:) = (/ &
+                   xdipfile(1:getlen(xdipfile))//tl(ii),&
+                   ydipfile(1:getlen(ydipfile))//tl(ii),&
+                   zdipfile(1:getlen(zdipfile))//tl(ii) /)
+              tworkfiles(:) = (/ &
+                   xtworkfile(1:getlen(xtworkfile))//tl(ii),&
+                   ytworkfile(1:getlen(ytworkfile))//tl(ii),&
+                   ztworkfile(1:getlen(ztworkfile))//tl(ii) /)
+              angworkfiles(:) = (/ &
+                   yztworkfile(1:getlen(yztworkfile))//tl(ii),&
+                   zxtworkfile(1:getlen(zxtworkfile))//tl(ii),&
+                   xytworkfile(1:getlen(xytworkfile))//tl(ii) /)
+              ftfiles(:) = (/ &
+                   xdftfile(1:getlen(xdftfile))//tl(ii),&
+                   ydftfile(1:getlen(ydftfile))//tl(ii),&
+                   zdftfile(1:getlen(zdftfile))//tl(ii),&
+                   xydftfile(1:getlen(xydftfile))//tl(ii),&
+                   xzdftfile(1:getlen(xzdftfile))//tl(ii),&
+                   yxdftfile(1:getlen(yxdftfile))//tl(ii),&
+                   yzdftfile(1:getlen(yzdftfile))//tl(ii),&
+                   zxdftfile(1:getlen(zxdftfile))//tl(ii),&
+                   zydftfile(1:getlen(zydftfile))//tl(ii) /)
+              oworkfiles(:) = (/ &
+                   xoworkfile(1:getlen(xoworkfile))//tl(ii),&
+                   yoworkfile(1:getlen(yoworkfile))//tl(ii),&
+                   zoworkfile(1:getlen(zoworkfile))//tl(ii),&
+                   xyoworkfile(1:getlen(xyoworkfile))//tl(ii),&
+                   xzoworkfile(1:getlen(xzoworkfile))//tl(ii),&
+                   yxoworkfile(1:getlen(yxoworkfile))//tl(ii),&
+                   yzoworkfile(1:getlen(yzoworkfile))//tl(ii),&
+                   zxoworkfile(1:getlen(zxoworkfile))//tl(ii),&
+                   zyoworkfile(1:getlen(zyoworkfile))//tl(ii) /)
+              ophotonfiles(:) = (/ &
+                   xophotonfile(1:getlen(xophotonfile))//tl(ii),&
+                   yophotonfile(1:getlen(yophotonfile))//tl(ii),&
+                   zophotonfile(1:getlen(zophotonfile))//tl(ii),&
+                   xyophotonfile(1:getlen(xyophotonfile))//tl(ii),&
+                   xzophotonfile(1:getlen(xzophotonfile))//tl(ii),&
+                   yxophotonfile(1:getlen(yxophotonfile))//tl(ii),&
+                   yzophotonfile(1:getlen(yzophotonfile))//tl(ii),&
+                   zxophotonfile(1:getlen(zxophotonfile))//tl(ii),&
+                   zyophotonfile(1:getlen(zyophotonfile))//tl(ii) /)
+
+              if (reference_pulses.eq.0) then
+                 call dipolecall(calledflag, dipoleexpects(:,:,ii), &
+                      dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 0, numpulses)
+              else
+                 call dipolecall(calledflag, dipoleexpects(:,:,ii), &
+                      dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 1, reference_pulses)
+              endif
+
+           enddo !! do ii=1,4
+        endif    !! conjgpropflag
+
+        OFLWR "     ..done emission/absorption"; CFL
+
+     endif       !! calledflag (dipmodtime)
+
+     calledflag=calledflag+1
+  endif
+  xcalledflag=xcalledflag+1
+
 end subroutine dipolesub
+
 
