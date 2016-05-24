@@ -248,12 +248,14 @@ contains
     character(len=SLN),intent(in) :: outenames(3), outtworknames(3), outangworknames(3), &
          outftnames(9), outoworknames(9), outophotonnames(9)
     complex*16,allocatable :: fftrans(:,:),eft(:,:),each_eft(:,:,:),dipolearrays(:,:),&
-         efield(:,:), each_efield(:,:,:)
+         dipole_diff(:,:)
+!! real valued variables -- field (taken real always); 
+!!        integrals domega and circ polarization output left real valued
     real*8, allocatable :: worksums(:,:,:), exsums(:,:,:), totworksums(:,:),&
-         totexsums(:,:), xsums(:,:)
-    complex*16,allocatable :: dipole_diff(:,:)
-    real*8, allocatable :: worksum0(:,:,:), totworksum0(:,:), each_efield_ang(:,:,:), &
-         dipole_ang(:,:), moment(:), angworksum0(:,:,:), totangworksum0(:,:)
+         totexsums(:,:), xsums(:,:), each_efield_ang(:,:,:), moment(:), dipole_ang(:,:), &
+         angworksum0(:,:,:), totangworksum0(:,:),  efield(:,:), each_efield(:,:,:)
+!! making integrals dt for work x y z complex valued for complex domcke wave mixing
+    complex*16, allocatable :: worksum0(:,:,:), totworksum0(:,:)
     DATATYPE :: pots(3,npulses)
     real*8 :: estep, thistime, myenergy,xsecunits, windowfunct
     integer :: i,getlen,myiostat,ipulse,numft,ii
@@ -285,7 +287,7 @@ contains
              call vectdpot0(i*par_timestep*autosteps,0,pots(:,ipulse),-1,ipulse+numpulses,ipulse+numpulses)
           enddo
        endif
-       each_efield(i,:,:)=pots(:,:)
+       each_efield(i,:,:)=real(pots(:,:),8)  !! is real valued (imc = -1 above)
     enddo
 
     efield=0
@@ -326,7 +328,7 @@ contains
     endif
     call mpibarrier()
 
-!! work done by pulse integral dt. . . taking real part if complex domcke.
+!! work done by pulse integral dt
 
     allocate(dipole_diff(0:numdata,3), worksum0(0:numdata,3,npulses), totworksum0(0:numdata,3))
     dipole_diff=0d0;    worksum0=0;   totworksum0=0;  
@@ -337,9 +339,9 @@ contains
     dipole_diff(:,:)= dipole_diff(:,:) / par_timestep / autosteps
 
     do ipulse=1,npulses
-       worksum0(0,:,ipulse) = (-1) * real( dipole_diff(0,:) * conjg(each_efield(0,:,ipulse)) , 8) * par_timestep * autosteps
+       worksum0(0,:,ipulse) = (-1) * dipole_diff(0,:) * each_efield(0,:,ipulse) * par_timestep * autosteps
        do i=1,numdata
-          worksum0(i,:,ipulse)=worksum0(i-1,:,ipulse) - real( dipole_diff(i,:) * conjg(each_efield(i,:,ipulse)) , 8) * par_timestep * autosteps
+          worksum0(i,:,ipulse)=worksum0(i-1,:,ipulse) - dipole_diff(i,:) * each_efield(i,:,ipulse) * par_timestep * autosteps
        enddo
     enddo
     totworksum0(:,:)=0d0
