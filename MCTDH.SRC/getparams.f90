@@ -66,7 +66,7 @@ subroutine getparams()
        mrestrictflag, mrestrictval, autotimestep, &
        nosparseforce,  allspinproject,  numfluxfiles,  verletnum, &
        constraintflag, dfrestrictflag, improvedrelaxflag, mcscfnum,  improvednatflag, avectorfile, spffile, &
-       quadprecon,  improvedquadflag, quadtol,  &
+       quadprecon,  improvedquadflag, quadtol, improvedfockflag, &
        plotxyrange,plotrange,plotskip,pm3d, plotterm, plotmodulus,plotpause, numfluxcurves,  & 
        plotres, nspf ,  spfrestrictflag,  spfmvals, spfugvals, spfugrestrict, ugrestrictflag, ugrestrictval, &
        restrictflag,  restrictms,   loadspfflag,  loadavectorflag,  avectorhole, &
@@ -413,6 +413,7 @@ subroutine getparams()
   
   if (improvedrelaxflag.eq.0) then
      improvednatflag=0
+     improvedfockflag=0
   endif
 
   if (improvedrelaxflag.ne.0.and.constraintflag.eq.1) then
@@ -785,8 +786,10 @@ subroutine getparams()
      endif
      if (improvednatflag.ne.0) then
         write(mpifileptr,*) "Improvednatflag is ON."
+     elseif (improvedfockflag.ne.0) then
+        write(mpifileptr,*) "Improvedfockflag is ON."
      else
-        write(mpifileptr,*) "Improvednatflag is OFF."
+        write(mpifileptr,*) "Improvednatflag and improvedfockflag are OFF."
      endif
      write(mpifileptr, *) 
      if (improvedquadflag.eq.1.or.improvedquadflag.eq.3) then

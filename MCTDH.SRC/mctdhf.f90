@@ -236,7 +236,7 @@ program mctdhf
   write(mpifileptr, *) "   AMO Theory Group, Lawrence Berkeley Laboratory"
   write(mpifileptr, *) "     D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, "
   write(mpifileptr, *) "     B Abeln, X Li . . ."
-  write(mpifileptr, *) "                             VERSION 1.29 "
+  write(mpifileptr, *) "                             VERSION 1.30 "
   write(mpifileptr, *) "       Copyright 2016 the regents of the University of California"
   write(mpifileptr, *)
 #ifdef REALGO
@@ -288,7 +288,7 @@ program mctdhf
   endif
 
   if (spfsmallsize.gt.spfsize) then
-     OFLWR "WTF."; CFLST
+     OFLWR "smallsize messup.",spfsmallsize,spfsize; CFLST
   endif
 
   call getclasses()
@@ -314,7 +314,7 @@ program mctdhf
      use_dfwalktype=.true.
   endif
 
-  if (scalarflag.ne.0) then
+  if (scalarflag.ne.0.or.improvedfockflag.ne.0) then
      use_fockmatrix=.true.
   else
      use_fockmatrix=.false.
@@ -694,8 +694,12 @@ program mctdhf
         if (use_fockmatrix) then
            call get_fockmatrix()
         endif
-        if (improvednatflag.ne.0) then
-           call replace_withnat(1)
+        if (improvednatflag.ne.0.or.improvedfockflag.ne.0) then
+           if (improvednatflag.ne.0) then
+              call replace_withnat(1)
+           elseif (improvedfockflag.ne.0) then
+              call replace_withfock(1)
+           endif
            call all_matel()
         
 !! since biorthogonalization is imperfect with restricted configuration spaces

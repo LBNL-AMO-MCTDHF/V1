@@ -112,7 +112,7 @@ subroutine replace_withnat(printflag)
 
   call spf_orthogit(outspfs, errorval)
   if (errorval.gt.1d-7) then
-     OFLWR "WTF!  ERROR IN REPLACENAT ", errorval; CFLST
+     OFLWR "ERROR IN REPLACENAT ", errorval; CFLST
   endif
 
   if (printflag==1) then

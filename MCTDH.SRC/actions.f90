@@ -373,7 +373,7 @@ subroutine actions_initial()
         call dipolesub_initial()
      case (22)    
         if (df_restrictflag.eq.0) then
-           OFLWR "Um, you are doing action 22 without dfrestrictflag...wtf..."; CFLST
+           OFLWR "Um, you are doing action 22 without dfrestrictflag..."; CFLST
         endif
         if (df_restrictflag.lt.2) then
            OFLWR "WARNING, usually need dfrestrictflag=2 or greater for action 22...."; CFL

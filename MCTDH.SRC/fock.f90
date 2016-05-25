@@ -222,103 +222,103 @@ subroutine get_fockmatrix()
 end subroutine get_fockmatrix
 
 
-!!$  
-!!$  module fockrepbiomod
-!!$    use biorthotypemod
-!!$    implicit none
-!!$    type(biorthotype),target :: fockrepbiovar
-!!$  end module
-!!$  
-!!$  subroutine replace_withfock(printflag)
-!!$    use parameters
-!!$    use class_parameters
-!!$    use configmod
-!!$    use biorthomod
-!!$    use fockrepbiomod
-!!$    use xxxmod
-!!$    use matsubmod
-!!$    implicit none
-!!$    integer,intent(in) :: printflag
-!!$    DATATYPE,allocatable :: fockeigvects(:,:), fockop(:,:), myfock(:,:),&
-!!$         fockvects(:,:), outspfs(:,:)
-!!$    CNORMTYPE,allocatable :: fockeigvals(:),fockvals(:)
-!!$    DATATYPE,target :: smo(nspf,nspf)    !! AUTOMATIC
-!!$    real*8 :: errorval
-!!$    integer :: iclass, ispf,jspf, imc
-!!$  
-!!$    if (.not.use_fockmatrix) then
-!!$       OFLWR "What? use fockmatrix replace_withfock"; CFLST
-!!$    endif
-!!$  
-!!$    smo=0d0;  
-!!$  
-!!$    allocate(fockvals(nspf),fockvects(nspf,nspf))
-!!$    fockvals=0; fockvects=0
-!!$  
-!!$    do iclass=1,numclasses
-!!$  
-!!$       allocate(fockeigvals(nperclass(iclass)), fockeigvects(nperclass(iclass),nperclass(iclass)), &
-!!$            fockop(nperclass(iclass),nperclass(iclass)),myfock(nperclass(iclass),nperclass(iclass)))
-!!$  
-!!$       fockeigvals=0; fockeigvects=0; fockop=0; myfock=0
-!!$  
-!!$       do jspf=1,nperclass(iclass)
-!!$          do ispf=1,nperclass(iclass)
-!!$             myfock(ispf,jspf)=yyy%fockmatrix(classorb(ispf,iclass),classorb(jspf,iclass),0)
-!!$          enddo
-!!$       enddo
-!!$  
-!!$  !! TAKE HERMITIAN PART IF HERM NORM (does nothing if c-norm, CONJUGATE is nothing)
-!!$  
-!!$       fockop(:,:) = 0.5d0 * ( myfock(:,:) + TRANSPOSE(CONJUGATE(myfock(:,:))) )
-!!$  
-!!$  ! FOR HERMITIAN if HERM NORM
-!!$       call EIGEN(fockop,nperclass(iclass),nperclass(iclass),fockeigvects,fockeigvals)
-!!$  
-!!$       do ispf=1,nperclass(iclass)
-!!$          fockvals(classorb(ispf,iclass))=fockeigvals(ispf)
-!!$          do jspf=1,nperclass(iclass)
-!!$             fockvects(classorb(ispf,iclass),classorb(jspf,iclass)) = fockeigvects(ispf,jspf)
-!!$          enddo
-!!$       enddo
-!!$  
-!!$       deallocate(fockeigvals, fockeigvects, fockop,myfock)
-!!$  
-!!$    enddo  !! do iclass
-!!$  
-!!$  
-!!$    allocate(outspfs(spfsize,nspf))
-!!$    outspfs=0d0
-!!$  
-!!$    do jspf=1,nspf  ! which natorb
-!!$       do ispf=1,nspf  ! which original
-!!$          outspfs(:,jspf)=outspfs(:,jspf)+ &
-!!$               yyy%cmfspfs((ispf-1)*spfsize+1:ispf*spfsize,0)*fockvects(ispf,jspf)
-!!$       enddo
-!!$    enddo
-!!$  
-!!$    call spf_orthogit(outspfs, errorval)
-!!$    if (errorval.gt.1d-7) then
-!!$       OFLWR "WTF!  ERROR IN REPLACE_WITHFOCK ", errorval; CFLST
-!!$    endif
-!!$  
-!!$    if (printflag==1) then
-!!$       OFLWR "REPLACING SPFS - GENERALIZED FOCK EIGS"
-!!$       do ispf=1,nspf
-!!$          write(mpifileptr,'(2E25.10)') fockvals(ispf)
-!!$       enddo
-!!$       WRFL; CFL
-!!$    endif
-!!$  
-!!$    call bioset(fockrepbiovar,smo,numr,bioww)
-!!$  
-!!$    do imc=1,mcscfnum
-!!$       call biotransform(yyy%cmfspfs(:,0),outspfs, yyy%cmfavec(:,imc,0),fockrepbiovar)
-!!$    enddo
-!!$  
-!!$    yyy%cmfspfs(:,0)=RESHAPE(outspfs,(/totspfdim/))
-!!$  
-!!$    deallocate(outspfs, fockvals,fockvects)
-!!$  
-!!$  end subroutine replace_withfock
-!!$  
+
+module fockrepbiomod
+  use biorthotypemod
+  implicit none
+  type(biorthotype),target :: fockrepbiovar
+end module
+
+subroutine replace_withfock(printflag)
+  use parameters
+  use class_parameters
+  use configmod
+  use biorthomod
+  use fockrepbiomod
+  use xxxmod
+  use matsubmod
+  implicit none
+  integer,intent(in) :: printflag
+  DATATYPE,allocatable :: fockeigvects(:,:), fockop(:,:), myfock(:,:),&
+       fockvects(:,:), outspfs(:,:)
+  CNORMTYPE,allocatable :: fockeigvals(:),fockvals(:)
+  DATATYPE,target :: smo(nspf,nspf)    !! AUTOMATIC
+  real*8 :: errorval
+  integer :: iclass, ispf,jspf, imc
+
+  if (.not.use_fockmatrix) then
+     OFLWR "What? use fockmatrix replace_withfock"; CFLST
+  endif
+
+  smo=0d0;  
+
+  allocate(fockvals(nspf),fockvects(nspf,nspf))
+  fockvals=0; fockvects=0
+
+  do iclass=1,numclasses
+
+     allocate(fockeigvals(nperclass(iclass)), fockeigvects(nperclass(iclass),nperclass(iclass)), &
+          fockop(nperclass(iclass),nperclass(iclass)),myfock(nperclass(iclass),nperclass(iclass)))
+
+     fockeigvals=0; fockeigvects=0; fockop=0; myfock=0
+
+     do jspf=1,nperclass(iclass)
+        do ispf=1,nperclass(iclass)
+           myfock(ispf,jspf)=yyy%fockmatrix(classorb(ispf,iclass),classorb(jspf,iclass),0)
+        enddo
+     enddo
+
+!! TAKE HERMITIAN PART IF HERM NORM (does nothing if c-norm, CONJUGATE is nothing)
+
+     fockop(:,:) = 0.5d0 * ( myfock(:,:) + TRANSPOSE(CONJUGATE(myfock(:,:))) )
+
+! FOR HERMITIAN if HERM NORM
+     call EIGEN(fockop,nperclass(iclass),nperclass(iclass),fockeigvects,fockeigvals)
+
+     do ispf=1,nperclass(iclass)
+        fockvals(classorb(ispf,iclass))=fockeigvals(ispf)
+        do jspf=1,nperclass(iclass)
+           fockvects(classorb(ispf,iclass),classorb(jspf,iclass)) = fockeigvects(ispf,jspf)
+        enddo
+     enddo
+
+     deallocate(fockeigvals, fockeigvects, fockop,myfock)
+
+  enddo  !! do iclass
+
+
+  allocate(outspfs(spfsize,nspf))
+  outspfs=0d0
+
+  do jspf=1,nspf  ! which natorb
+     do ispf=1,nspf  ! which original
+        outspfs(:,jspf)=outspfs(:,jspf)+ &
+             yyy%cmfspfs((ispf-1)*spfsize+1:ispf*spfsize,0)*fockvects(ispf,jspf)
+     enddo
+  enddo
+
+  call spf_orthogit(outspfs, errorval)
+  if (errorval.gt.1d-7) then
+     OFLWR "ERROR IN REPLACE_WITHFOCK ", errorval; CFLST
+  endif
+
+  if (printflag==1) then
+     OFLWR "REPLACING SPFS - GENERALIZED FOCK EIGS"
+     do ispf=1,nspf
+        write(mpifileptr,'(2E25.10)') fockvals(ispf)
+     enddo
+     WRFL; CFL
+  endif
+
+  call bioset(fockrepbiovar,smo,numr,bioww)
+
+  do imc=1,mcscfnum
+     call biotransform(yyy%cmfspfs(:,0),outspfs, yyy%cmfavec(:,imc,0),fockrepbiovar)
+  enddo
+
+  yyy%cmfspfs(:,0)=RESHAPE(outspfs,(/totspfdim/))
+
+  deallocate(outspfs, fockvals,fockvects)
+
+end subroutine replace_withfock
+

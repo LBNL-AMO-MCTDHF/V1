@@ -1,5 +1,5 @@
 
-  ** LBNL-AMO-MCTDHF VERSION 1.29 **
+  ** LBNL-AMO-MCTDHF VERSION 1.30 **
 
 v1.28 photoionization during calculation using actions 27 and 28
    like actions 16 and 17.  Integrals dt only, no energy resolution

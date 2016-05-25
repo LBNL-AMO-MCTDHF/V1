@@ -899,7 +899,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
               flag=0
               select case (iwhich)
               case (1)
-                 ind=lind(ispf,jspf) ; flag=1  !!unfuck this
+                 ind=lind(ispf,jspf) ; flag=1  !!problem?
               case (2)
                  if (shells(ispf).ne.shells(jspf)) then
 !! FIRSTWAY

@@ -327,8 +327,10 @@ contains
 
        if (improvednatflag.ne.0) then
           call replace_withnat(printflag)
-          call system_clock(jtime);     times(7)=times(7)+jtime-itime;   itime=jtime
+       elseif (improvedfockflag.ne.0) then
+          call replace_withfock(printflag)
        endif
+       call system_clock(jtime);     times(7)=times(7)+jtime-itime;   itime=jtime
 
        call all_matel()
        call system_clock(jtime);     times(1)=times(1)+jtime-itime;   itime=jtime

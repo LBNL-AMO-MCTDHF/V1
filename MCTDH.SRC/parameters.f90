@@ -286,6 +286,7 @@ integer :: aorder=30             !!              !! Starting lanczos order for s
 !!{\large \quad RELAXATION - if improvedrelaxflag.ne.0}
 !!BB
 integer :: improvednatflag=0     !!              !! Replace with natorbs every iteration
+integer :: improvedfockflag=0    !!              !! Alternatively, replace with generalized fock eigfuncts
 real*8 :: stopthresh=1d-5        !!              !! Spf error tolerance for relaxation convergence
 real*8 :: astoptol=1d-7                          !! Avector error tolerance for relax
 real*8 :: timestepfac=1d0                        !! accelerate relax. multiply par_timestep by this each time

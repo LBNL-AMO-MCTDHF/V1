@@ -967,7 +967,7 @@ endif
      endif
   enddo
   if (ii.ne.www%numconfig) then
-     OFLWR "WTF EERRROROR", ii, www%numconfig; CFLST
+     OFLWR "EERRROROR", ii, www%numconfig; CFLST
   endif
   do i=1,nprocs
      if (www%configsperproc(i).lt.0) then
