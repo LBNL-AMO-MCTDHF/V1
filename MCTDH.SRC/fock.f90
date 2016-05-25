@@ -270,13 +270,13 @@ subroutine replace_withfock(printflag)
 
 !! TAKE HERMITIAN PART IF HERM NORM (does nothing if c-norm, CONJUGATE is nothing)
 
-     fockop(:,:) = 0.5d0 * ( myfock(:,:) + TRANSPOSE(CONJUGATE(myfock(:,:))) )
+     fockop(:,:) = (-0.5d0) * ( myfock(:,:) + TRANSPOSE(CONJUGATE(myfock(:,:))) )
 
 ! FOR HERMITIAN if HERM NORM
      call EIGEN(fockop,nperclass(iclass),nperclass(iclass),fockeigvects,fockeigvals)
 
      do ispf=1,nperclass(iclass)
-        fockvals(classorb(ispf,iclass))=fockeigvals(ispf)
+        fockvals(classorb(ispf,iclass))=fockeigvals(ispf) * (-1)
         do jspf=1,nperclass(iclass)
            fockvects(classorb(ispf,iclass),classorb(jspf,iclass)) = fockeigvects(ispf,jspf)
         enddo
