@@ -262,10 +262,6 @@ contains
          rekeop(:,:),repeop(:,:),  reyop(:,:)
     DATATYPE :: nullvector(numr)
 
-    if (ceground.eq.(0d0,0d0)) then
-       OFLWR "Eground is ZERO.  Are you sure?  If want zero just make it small. \n     Otherwise need eground: initial state energy."; CFLST
-    endif
-
     nullvector(:)=0
 
 !! initial setup
