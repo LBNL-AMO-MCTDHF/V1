@@ -13,7 +13,6 @@ module actionlistmod
        "Save RNat      ", &      !! 5
        "Save NProj     ", &      !! 6
        "LanCurves      ", &      !! 7
-
        "Plot natorb    ", &      !! 8
        "Plot spf       ", &      !! 9
        "Plot density   ", &      !! 10
@@ -36,7 +35,94 @@ module actionlistmod
        "IonFlux during ", &      !! 27
        "ProjIon during " /)      !! 28
 
+!! 0 = propagation action 1 = analysis action 2 = deprecated action
+  integer :: action_type(28) = (/ &
+       0,&  !!       "Autocorr       ", &      !! 1
+       0,&  !!       "Save nat       ", &      !! 2
+       0,&  !!       "Save spf       ", &      !! 3
+       0,&  !!       "Save den       ", &      !! 4
+       0,&  !!       "Save RNat      ", &      !! 5
+       0,&  !!       "Save NProj     ", &      !! 6
+       0,&  !!       "LanCurves      ", &      !! 7
+       1,&  !!       "Plot natorb    ", &      !! 8
+       1,&  !!       "Plot spf       ", &      !! 9
+       1,&  !!       "Plot density   ", &      !! 10
+       2,&  !!       "Plot RNat      ", &      !! 11
+       2,&  !!       "Plot NProj     ", &      !! 12
+       2,&  !!       "DissocFlux     ", &      !! 13
+       2,&  !!       "DissocFlux FT  ", &      !! 14
+       0,&  !!       "IonFlux Save   ", &      !! 15
+       1,&  !!       "IonFlux FT     ", &      !! 16
+       1,&  !!       "ProjIonFlux FT ", &      !! 17
+       1,&  !!       "Plot denproj   ", &      !! 18
+       0,&  !!       "Enforce natorb ", &      !! 19
+       0,&  !!       "Finalstate ovl ", &      !! 20
+       0,&  !!       "DipoleFT       ", &      !! 21
+       0,&  !!       "Check DF error ", &      !! 22
+       0,&  !!       "Wfn ovls       ", &      !! 23
+       0,&  !!       "KE projector   ", &      !! 24
+       0,&  !!       "psistats.dat   ", &      !! 25
+       1,&  !!       "Matrixelements ", &      !! 26
+       0,&  !!       "IonFlux during ", &      !! 27
+       0 /) !!       "ProjIon during " /)      !! 28
+
 end module actionlistmod
+
+
+subroutine get_skipflag_from_actions(outskip)
+  use parameters
+  use actionlistmod
+  implicit none
+  integer, intent(out) :: outskip
+  integer :: i,j
+
+  outskip=0
+  j=0
+  do while (j.lt.numactions)
+     j=j+1
+
+     if (action_type(actions(j)).lt.0.or.action_type(actions(j)).gt.2) then
+        OFLWR "programmer error action_type ",actions(j),action_type(actions(j)); CFLST
+     endif
+
+     if (action_type(actions(j)).eq.2) then   !! analysis routine
+        OFLWR "Error, action ", actions(j), action_list(actions(j))," is deprecated"; CFLST
+     endif
+        
+     if (action_type(actions(j)).eq.1) then   !! analysis routine
+
+!! only one analysis routine
+        actions(1)=actions(j)
+        numactions=1
+        outskip=1
+     endif
+
+! never mind skipflag=2
+
+!     if (((actions(j).gt.7).and.(actions(j).lt.13)).or.(actions(j).eq.14).or.(actions(j).eq.18)) then
+!        outskip=2
+!     endif
+!     if ((actions(j).eq.16).or.(actions(j).eq.17).or.(actions(j).eq.23).or.(actions(j).eq.26)) then
+!        outskip=1
+!     endif
+
+  enddo
+
+  !! make sure no duplicates
+  i=0
+  do while (i.lt.numactions)
+     i=i+1;     j=i
+     do while ( j.lt. numactions)
+        j=j+1
+        if (actions(i)==actions(j)) then
+           actions(j:numactions-1)=actions(j+1:numactions);           numactions=numactions-1
+           j=j-1
+        endif
+     enddo
+  enddo
+
+end subroutine get_skipflag_from_actions
+
 
 
 subroutine actionsub(thistime)

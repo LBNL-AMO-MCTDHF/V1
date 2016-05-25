@@ -487,62 +487,7 @@ subroutine getparams()
      endif
   enddo
 
-!! 092010 PUT ACTIONS HERE...
-
-  skipflag=0
-  do j=1,numactions
-     if (((actions(j).gt.7).and.(actions(j).lt.13)).or.(actions(j).eq.14).or.(actions(j).eq.18)) then
-        skipflag=2
-     endif
-     if ((actions(j).eq.16).or.(actions(j).eq.17).or.(actions(j).eq.23).or.(actions(j).eq.26)) then
-        skipflag=1
-     endif
-  enddo
-
-  !! turn off all other actions if computing KVL flux
-  i=0;  j=0
-
-  do while (i.lt.numactions)
-     i=i+1
-     if (actions(i).eq.16) then
-        j=j+1;        actions(j)=16
-     endif
-     if (actions(i).eq.17) then
-        j=j+1;        actions(j)=17
-     endif
-     if (actions(i).eq.23) then
-        j=j+1;        actions(j)=23
-     endif
-     if(j.ne.0) numactions=j
-  enddo
-
-  !! turn off writing routines if we are analyzing
-
-  if (skipflag.ne.0) then
-     i=0
-     do while (i.lt.numactions)
-        i=i+1
-        if (((actions(i).lt.8).and.(actions(i).ge.1)).or.(actions(i).eq.13).or.(actions(i).eq.15)) then
-           actions(i:numactions-1)=actions(i+1:numactions)
-           numactions=numactions-1
-           i=i-1
-        endif
-     enddo
-  endif
-
-  !! make sure no duplicates
-  i=0
-  do while (i.lt.numactions)
-     i=i+1;     j=i
-     do while ( j.lt. numactions)
-        j=j+1
-        if (actions(i)==actions(j)) then
-           actions(j:numactions-1)=actions(j+1:numactions);           numactions=numactions-1
-           j=j-1
-        endif
-     enddo
-  enddo
-
+  call get_skipflag_from_actions(skipflag)
 
   needpulse=0
   if (tdflag.ne.0) then
