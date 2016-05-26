@@ -5,35 +5,35 @@
 
 module actionlistmod
   
-  character (len=15) :: action_list(28) = (/ &
-       "Autocorr       ", &      !! 1
-       "Save nat       ", &      !! 2
-       "Save spf       ", &      !! 3
-       "Save den       ", &      !! 4
-       "Save RNat      ", &      !! 5
-       "Save NProj     ", &      !! 6
-       "LanCurves      ", &      !! 7
-       "Plot natorb    ", &      !! 8
-       "Plot spf       ", &      !! 9
-       "Plot density   ", &      !! 10
-       "Plot RNat      ", &      !! 11
-       "Plot NProj     ", &      !! 12
-       "DissocFlux     ", &      !! 13
-       "DissocFlux FT  ", &      !! 14
-       "IonFlux Save   ", &      !! 15
-       "IonFlux FT     ", &      !! 16
-       "ProjIonFlux FT ", &      !! 17
-       "Plot denproj   ", &      !! 18
-       "Enforce natorb ", &      !! 19
-       "Finalstate ovl ", &      !! 20
-       "DipoleFT       ", &      !! 21
-       "Check DF error ", &      !! 22
-       "Wfn ovls       ", &      !! 23
-       "KE projector   ", &      !! 24
-       "psistats.dat   ", &      !! 25
-       "Matrixelements ", &      !! 26
-       "IonFlux during ", &      !! 27
-       "ProjIon during " /)      !! 28
+  character (len=18) :: action_list(28) = (/ &
+       "Autocorr          ", &      !! 1
+       "Save nat          ", &      !! 2
+       "Save spf          ", &      !! 3
+       "Save den          ", &      !! 4
+       "Save RNat         ", &      !! 5
+       "Save NProj        ", &      !! 6
+       "LanCurves         ", &      !! 7
+       "Plot natorb       ", &      !! 8
+       "Plot spf          ", &      !! 9
+       "Plot density      ", &      !! 10
+       "Plot RNat         ", &      !! 11
+       "Plot NProj        ", &      !! 12
+       "DissocFlux        ", &      !! 13
+       "DissocFlux FT     ", &      !! 14
+       "IonFlux Save      ", &      !! 15
+       "IonFlux FT        ", &      !! 16
+       "ProjIonFlux FT    ", &      !! 17
+       "Plot denproj      ", &      !! 18
+       "Enforce natorb    ", &      !! 19
+       "Overlaps          ", &      !! 20
+       "DipoleFT          ", &      !! 21
+       "Check DF error    ", &      !! 22
+       "Analyze overlaps  ", &      !! 23
+       "KE projector      ", &      !! 24
+       "psistats.dat      ", &      !! 25
+       "Matrixelements    ", &      !! 26
+       "IonFlux during    ", &      !! 27
+       "ProjIon during    " /)      !! 28
 
 !! 0 = propagation action 1 = analysis action 2 = deprecated action
   integer :: action_type(28) = (/ &
@@ -56,10 +56,10 @@ module actionlistmod
        1,&  !!       "ProjIonFlux FT ", &      !! 17
        1,&  !!       "Plot denproj   ", &      !! 18
        0,&  !!       "Enforce natorb ", &      !! 19
-       0,&  !!       "Finalstate ovl ", &      !! 20
+       0,&  !!       "Overlaps       ", &      !! 20
        0,&  !!       "DipoleFT       ", &      !! 21
        0,&  !!       "Check DF error ", &      !! 22
-       0,&  !!       "Wfn ovls       ", &      !! 23
+       1,&  !!       "Analyze overlap", &      !! 23
        0,&  !!       "KE projector   ", &      !! 24
        0,&  !!       "psistats.dat   ", &      !! 25
        1,&  !!       "Matrixelements ", &      !! 26
@@ -247,7 +247,7 @@ subroutine actionsub(thistime)
         open(4132,file=timingdir(1:getlen(timingdir))//"/Actions.time.dat",&
              status="unknown",iostat=myiostat)
         call checkiostat(myiostat,"opening actions timing file")
-        write(4132,'(500A15)',iostat=myiostat) (action_list(actions(i)),i=1,numactions)
+        write(4132,'(500A18)',iostat=myiostat) (action_list(actions(i)),i=1,numactions)
         call checkiostat(myiostat,"writing actions timing file")
         close(4132)
      endif
