@@ -960,7 +960,8 @@ contains
     real*8 :: MemTot,MemVal,wfi,estep,myfac,windowfunct,MemNum
     DATATYPE, allocatable :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:),gtau_ad(:,:,:,:),ketop(:,:,:,:),&
          read_bramo(:,:,:), read_ketmo(:,:,:), deweighted_bramo(:,:,:), ketmo_ad(:,:,:,:,:),&
-         ketop_ad(:,:,:,:,:), gtaunow(:,:,:), gtaunow_ad(:,:,:,:), gtausum(:,:,:), gtausum_ad(:,:,:,:)
+         ketop_ad(:,:,:,:,:), gtaunow(:,:,:), gtaunow_ad(:,:,:,:), gtausum(:,:,:), gtausum_ad(:,:,:,:),&
+         tot_gtausum(:,:), tot_gtausum_ad(:,:,:)
     complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:),ftgtau_ad(:,:),total_ad(:,:)
     complex*16 :: ftgtausum
     real*8, allocatable :: pulseftsq(:)
@@ -1019,20 +1020,24 @@ contains
     call closefile()
 
     allocate(gtau(0:nt,totstate,mcscfnum),ketmo(spfsize,numr,2,BatchSize),ketop(spfsize,numr,2,BatchSize),&
-         bramo(spfsize,numr,2,BatchSize),gtaunow(0:nt,totstate,mcscfnum),gtausum(0:nt,totstate,mcscfnum))
-    gtau=0; ketmo=0; ketop=0; bramo=0; gtaunow=0; gtausum=0d0
+         bramo(spfsize,numr,2,BatchSize),gtaunow(0:nt,totstate,mcscfnum),gtausum(0:nt,totstate,mcscfnum),&
+         tot_gtausum(0:nt,mcscfnum))
+    gtau=0; ketmo=0; ketop=0; bramo=0; gtaunow=0; gtausum=0d0; tot_gtausum=0d0
 
     if (angularflag.ne.0) then
        allocate(gtau_ad(0:nt,totstate,mcscfnum,NUMANGLES),deweighted_bramo(spfsize,numr,2),&
             ketmo_ad(spfsize,numr,2,batchsize,NUMANGLES), ketop_ad(spfsize,numr,2,batchsize,NUMANGLES),&
-            gtaunow_ad(0:nt,totstate,mcscfnum,NUMANGLES),gtausum_ad(0:nt,totstate,mcscfnum,NUMANGLES))
+            gtaunow_ad(0:nt,totstate,mcscfnum,NUMANGLES),gtausum_ad(0:nt,totstate,mcscfnum,NUMANGLES),&
+            tot_gtausum_ad(0:nt,mcscfnum,NUMANGLES))
     else
        allocate(gtau_ad(0:0,1,1,1),deweighted_bramo(1,1,2),&
             ketmo_ad(1,1,2,1,1), ketop_ad(1,1,2,1,1),&
-            gtaunow_ad(0:0,1,1,1),gtausum_ad(0:0,1,1,1))
+            gtaunow_ad(0:0,1,1,1),gtausum_ad(0:0,1,1,1),&
+            tot_gtausum_ad(0:0,1,1))
     endif
 
-    gtau_ad=0;   deweighted_bramo=0;  ketmo_ad=0; ketop_ad=0; gtaunow_ad=0; gtausum_ad=0
+    gtau_ad=0;   deweighted_bramo=0;  ketmo_ad=0; ketop_ad=0; gtaunow_ad=0; gtausum_ad=0; 
+    tot_gtausum_ad=0
 
     if (myrank.eq.1) then
        if (parorbsplit.eq.3) then
@@ -1246,15 +1251,23 @@ contains
 !! INTEGRAL DT
 
     gtausum(:,:,:)=0d0;  gtausum_ad(:,:,:,:)=0d0
-
     gtausum(0,:,:)=gtaunow(0,:,:)
     do i=1,nt
        gtausum(i,:,:)=gtausum(i-1,:,:) + gtaunow(i,:,:) * dt / 2d0   !! 2 looks correct
     enddo
+    tot_gtausum=0d0
+    do istate=1,totstate
+       tot_gtausum(:,:)=tot_gtausum(:,:) + gtausum(:,istate,:)
+    enddo
+
     if (angularflag.ne.0) then
        gtausum_ad(0,:,:,:)=gtaunow_ad(0,:,:,:)
        do i=1,nt
           gtausum_ad(i,:,:,:)=gtausum_ad(i-1,:,:,:) + gtaunow_ad(i,:,:,:) * dt
+       enddo
+       tot_gtausum_ad=0d0
+       do istate=1,totstate
+          tot_gtausum_ad(:,:,:)=tot_gtausum_ad(:,:,:) + gtausum_ad(:,istate,:,:)
        enddo
     endif
 
@@ -1267,9 +1280,36 @@ contains
 !! integral dt:
 
        do imc=1,mcscfnum
+          write(xmc0,'(I4)') imc+1000;   xmc1=xmc0(2:4)
+
+          open(171,file=projfluxtsumfile(1:getlen(projfluxtsumfile))//"_all_"//xmc1//".dat", &
+               status="unknown",iostat=myiostat)
+          call checkiostat(myiostat,"opening projfluxtsumfile tot")
+          write(171,*,iostat=myiostat) "#   ", curtime
+          call checkiostat(myiostat,"writing projfluxtsumfile tot")
+          do i=0,curtime
+             write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat) &
+                  i*dt,  tot_gtausum(i,imc)
+          enddo
+          call checkiostat(myiostat,"writing projfluxtsumfile tot")
+          close(171)
+
+          if (angularflag.ne.0) then
+             open(171,file=angprojfluxtsumfile(1:getlen(angprojfluxtsumfile))//"_all_"//xmc1//".dat", &
+                  status="unknown",iostat=myiostat)
+             call checkiostat(myiostat,"opening angprojfluxtsumfile tot")
+             write(171,*,iostat=myiostat) "#   ", curtime
+             call checkiostat(myiostat,"writing angprojfluxtsumfile tot")
+             do i=0,curtime
+                write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat) &
+                     i*dt,  tot_gtausum_ad(i,imc,:)
+             enddo
+             call checkiostat(myiostat,"writing angprojfluxtsumfile tot")
+             close(171)
+          endif
+
           do istate=1,totstate
-             write(xstate0,'(I4)') istate+1000;  write(xmc0,'(I4)') imc+1000
-             xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
+             write(xstate0,'(I4)') istate+1000;        xstate1=xstate0(2:4)
 
              open(171,file=projfluxtsumfile(1:getlen(projfluxtsumfile))//"_"//xstate1//"_"//xmc1//".dat", &
                   status="unknown",iostat=myiostat)
@@ -1341,10 +1381,14 @@ contains
   
     do imc=1,mcscfnum
 
+       write(xmc0,'(I4)') imc+1000;   xmc1=xmc0(2:4)
+
        total(:)=0d0
        total_ad(:,:)=0d0
 
        do istate=1,totstate
+
+          write(xstate0,'(I4)') istate+1000;    xstate1=xstate0(2:4)
 
           ftgtau(:)=0d0;
 
@@ -1365,9 +1409,6 @@ contains
                 ftgtau_ad(-i,:) = ALLCON(ftgtau_ad(i,:))
              enddo
           endif
-
-          write(xstate0,'(I4)') istate+1000;  write(xmc0,'(I4)') imc+1000
-          xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
 
 !! no more gtaufile
 
@@ -1498,8 +1539,9 @@ contains
 
     deallocate(ftgtau,pulseft,pulseftsq,total)
     deallocate(read_bramo,read_ketmo)
-    deallocate(gtau,ketmo,bramo,ketop,gtaunow,gtausum)
-    deallocate(gtau_ad,ftgtau_ad,total_ad,deweighted_bramo,ketmo_ad,ketop_ad,gtaunow_ad,gtausum_ad)
+    deallocate(gtau,ketmo,bramo,ketop,gtaunow,gtausum,tot_gtausum)
+    deallocate(gtau_ad,ftgtau_ad,total_ad,deweighted_bramo,ketmo_ad,ketop_ad,gtaunow_ad,gtausum_ad,&
+         tot_gtausum_ad)
 
   end subroutine projeflux_double_time_int
 
@@ -1575,7 +1617,7 @@ subroutine projeflux_during(inspfs,inavectors,dt)
   real*8,intent(in) :: dt
   DATATYPE,intent(in) :: inspfs(spfsize,nspf), inavectors(tot_adim,mcscfnum)
   DATATYPE,allocatable :: gtaunow(:,:), projwfn(:,:,:,:,:), gtaunow_ad(:,:,:), &
-       ketmo(:,:), ketop(:,:)
+       ketmo(:,:), ketop(:,:),tot_gtausum(:), tot_gtausum_ad(:,:)
   integer :: ifile, k, imc, istate, il, myiostat, getlen
   character (len=4) :: xstate0,xmc0
   character (len=3) :: xstate1,xmc1
@@ -1595,9 +1637,26 @@ subroutine projeflux_during(inspfs,inavectors,dt)
 
      if (myrank.eq.1) then
         do imc=1,mcscfnum
+           write(xmc0,'(I4)') imc+1000;    xmc1=xmc0(2:4)
+
+           open(171,file=projfluxtsumfile(1:getlen(projfluxtsumfile))//"_all_"//xmc1//".dat", &
+                status="unknown",iostat=myiostat)
+           call checkiostat(myiostat,"opening projfluxtsumfile tot")
+           write(171,*,iostat=myiostat) "#   ", curtime
+           call checkiostat(myiostat,"writing projfluxtsumfile tot")
+           close(171)
+
+           if (angularflag.ne.0) then
+              open(171,file=angprojfluxtsumfile(1:getlen(angprojfluxtsumfile))//"_all_"//xmc1//".dat", &
+                   status="unknown",iostat=myiostat)
+              call checkiostat(myiostat,"opening angprojfluxtsumfile tot")
+              write(171,*,iostat=myiostat) "#   ", curtime
+              call checkiostat(myiostat,"writing angprojfluxtsumfile tot")
+              close(171)
+           endif
+
            do istate=1,nstate
-              write(xstate0,'(I4)') istate+1000;  write(xmc0,'(I4)') imc+1000
-              xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
+              write(xstate0,'(I4)') istate+1000;    xstate1=xstate0(2:4)
 
               open(171,file=projfluxtsumfile(1:getlen(projfluxtsumfile))//"_"//xstate1//"_"//xmc1//".dat", &
                    status="unknown",iostat=myiostat)
@@ -1621,14 +1680,14 @@ subroutine projeflux_during(inspfs,inavectors,dt)
      curtime=curtime+1
   endif
 
-  allocate(gtaunow(nstate,mcscfnum))
-  gtaunow=0
+  allocate(gtaunow(nstate,mcscfnum),tot_gtausum(mcscfnum))
+  gtaunow=0; tot_gtausum=0
   if (angularflag.ne.0) then
-     allocate(gtaunow_ad(nstate,mcscfnum,NUMANGLES))
+     allocate(gtaunow_ad(nstate,mcscfnum,NUMANGLES),tot_gtausum_ad(mcscfnum,NUMANGLES))
   else
-     allocate(gtaunow_ad(1,1,1))
+     allocate(gtaunow_ad(1,1,1),tot_gtausum_ad(1,1))
   endif
-  gtaunow_ad=0
+  gtaunow_ad=0; tot_gtausum_ad=0
 
   allocate(ketmo(spfsize,numr),ketop(spfsize,numr))
 
@@ -1683,16 +1742,43 @@ subroutine projeflux_during(inspfs,inavectors,dt)
   endif
 
   gtausum(:,:)=gtausum(:,:) + gtaunow(:,:) * dt / 2d0   !! 2 looks correct
+  tot_gtausum=0d0
+  do istate=1,nstate
+     tot_gtausum(:)=tot_gtausum(:)+gtausum(istate,:)
+  enddo
 
   if (angularflag.ne.0) then
      gtausum_ad(:,:,:)=gtausum_ad(:,:,:) + gtaunow_ad(:,:,:) * dt / 2d0   !! 2 looks correct
+     tot_gtausum_ad=0d0
+     do istate=1,nstate
+        tot_gtausum_ad(:,:)=tot_gtausum_ad(:,:)+gtausum_ad(istate,:,:)
+     enddo
   endif
 
   if (myrank.eq.1) then
      do imc=1,mcscfnum
+        write(xmc0,'(I4)') imc+1000;   xmc1=xmc0(2:4)
+
+        open(171,file=projfluxtsumfile(1:getlen(projfluxtsumfile))//"_all_"//xmc1//".dat", &
+             status="old",position="append",iostat=myiostat)
+        call checkiostat(myiostat,"opening projfluxtsumfile tot")
+        write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat) &
+             curtime*dt,  tot_gtausum(imc)
+        call checkiostat(myiostat,"writing projfluxtsumfile tot")
+        close(171)
+
+        if (angularflag.ne.0) then
+           open(171,file=angprojfluxtsumfile(1:getlen(angprojfluxtsumfile))//"_all_"//xmc1//".dat", &
+                status="old",position="append",iostat=myiostat)
+           call checkiostat(myiostat,"opening projfluxtsumfile tot")           
+           write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat) &
+                curtime*dt,  tot_gtausum_ad(imc,:)
+           call checkiostat(myiostat,"writing angprojfluxtsumfile tot")
+           close(171)
+        endif
+
         do istate=1,nstate
-           write(xstate0,'(I4)') istate+1000;  write(xmc0,'(I4)') imc+1000
-           xstate1=xstate0(2:4);  xmc1=xmc0(2:4)
+           write(xstate0,'(I4)') istate+1000;      xstate1=xstate0(2:4)
 
            open(171,file=projfluxtsumfile(1:getlen(projfluxtsumfile))//"_"//xstate1//"_"//xmc1//".dat", &
                 status="old",position="append",iostat=myiostat)
@@ -1720,7 +1806,7 @@ subroutine projeflux_during(inspfs,inavectors,dt)
 !QQQ actions_final?  call projeflux_catdealloc()
 !QQQ                 call projeflux_statedealloc()
 
-  deallocate(gtaunow,gtaunow_ad,ketmo,ketop)
+  deallocate(gtaunow,gtaunow_ad,ketmo,ketop,tot_gtausum,tot_gtausum_ad)
   
 end subroutine projeflux_during
 
