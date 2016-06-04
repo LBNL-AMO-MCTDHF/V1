@@ -42,9 +42,9 @@ subroutine myconfigeig(cptr,thisconfigvects,thisconfigvals,order,printflag, &
 !!$  DATATYPE :: lastval,dot,csum
   integer :: i
 
-  if (order+numshift.gt.www%numconfig*numr) then
+  if (order+numshift.gt.www%numdfbasis*numr) then
      OFLWR "Error, want ",order," plus ",numshift,&
-          " vectors but totadim= ",www%numconfig*numr;CFLST
+          " vectors but total dimension= ",www%numdfbasis*numr;CFLST
   endif
   if (numshift.lt.0) then
      OFLWR "GG ERROR.", numshift,guessflag; CFLST
