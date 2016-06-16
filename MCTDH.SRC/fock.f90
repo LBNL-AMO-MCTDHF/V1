@@ -100,7 +100,7 @@ subroutine getcathops()
 end subroutine getcathops
 
 
-subroutine get_fockmatrix0(fockmatrix,avectors,cptr)
+subroutine get_fockmatrix0(fockmatrix,avectors,cptr,sptr)
   use parameters
   use aarrmod
   use configmod
@@ -113,9 +113,11 @@ subroutine get_fockmatrix0(fockmatrix,avectors,cptr)
   DATATYPE,intent(out) :: fockmatrix(www%nspf,www%nspf)
   DATATYPE,intent(in) :: avectors(numr,www%firstconfig:www%lastconfig,mcscfnum)
   Type(CONFIGPTR),intent(in) :: cptr
+  Type(SPARSEPTR),intent(in) :: sptr
   Type(SPARSEPTR) :: catsptr
-  DATATYPE,allocatable :: catvects(:,:,:), hugeavector(:,:), catmult(:,:),bigcatvector(:,:)
+  DATATYPE,allocatable :: catvects(:,:,:), hugeavector(:,:), catmult(:,:),neutmult(:,:),bigcatvector(:,:)
   DATATYPE :: tempfockmatrix(www%nspf),nullvector1(numr),nullvector2(numr)          !! AUTOMATIC
+  DATATYPE :: neutenergy
   integer :: imc, ispf, jspf, ihop
 
 !! this isn't the best, lots of zeroes.  should switch the way it's done.
@@ -132,9 +134,13 @@ subroutine get_fockmatrix0(fockmatrix,avectors,cptr)
      catvects=0
   endif
   allocate(bigcatvector(numr,catww%firstconfig:catww%lastconfig),&
-       catmult(numr,catww%firstconfig:catww%lastconfig))
+       catmult(numr,catww%firstconfig:catww%lastconfig),&
+       neutmult(numr,www%firstconfig:www%lastconfig))
   if (catww%totadim.gt.0) then
      bigcatvector=0; catmult=0
+  endif
+  if (www%totadim.gt.0) then
+     neutmult=0
   endif
 
   allocate(hugeavector(numr,www%numconfig))
@@ -145,6 +151,21 @@ subroutine get_fockmatrix0(fockmatrix,avectors,cptr)
   endif
 
   do imc=1,mcscfnum
+
+     if (www%totadim.gt.0) then
+        call sparseconfigmult(www,avectors(:,:,imc),neutmult,cptr,sptr,&
+             1,1,0,0,0d0,-1)
+     else
+        call sparseconfigmult(www,nullvector1,nullvector2,cptr,sptr,&
+             1,1,0,0,0d0,-1)
+     endif
+     neutenergy=0d0
+     if (www%totadim.gt.0) then
+        neutenergy = dot(avectors(:,:,imc),neutmult(:,:),www%totadim)
+     endif
+     if (www%parconsplit.ne.0) then
+        call mympireduceone(neutenergy)
+     endif
 
      hugeavector=0d0
 
@@ -187,10 +208,12 @@ subroutine get_fockmatrix0(fockmatrix,avectors,cptr)
 
         if (catww%topconfig.ge.catww%botconfig) then
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ispf,jspf)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(jspf)
 !$OMP DO SCHEDULE(DYNAMIC)
            do jspf=1,www%nspf
               tempfockmatrix(jspf) = &
+                   dot(catvects(:,:,jspf),catvects(:,:,ispf),&
+                   numr*(catww%topconfig-catww%botconfig+1)) * neutenergy - &
                    dot(catvects(:,:,jspf),catmult(:,catww%botconfig:catww%topconfig),&
                    numr*(catww%topconfig-catww%botconfig+1))
            enddo
@@ -205,12 +228,17 @@ subroutine get_fockmatrix0(fockmatrix,avectors,cptr)
 
   end do  !! imc
 
-  deallocate(catvects,hugeavector,bigcatvector,catmult)
+  deallocate(catvects,hugeavector,bigcatvector,catmult,neutmult)
   if (sparseopt.ne.0) then
      call sparseptrdealloc(catsptr)
   endif
 
   call mympireduce(fockmatrix,www%nspf**2)
+
+  fockmatrix(:,:)=fockmatrix(:,:)/mcscfnum
+
+!! TRANSPOSE !!
+  fockmatrix(:,:)=TRANSPOSE(fockmatrix(:,:))
 
 end subroutine get_fockmatrix0
 
@@ -218,7 +246,7 @@ end subroutine get_fockmatrix0
 subroutine get_fockmatrix()
   use xxxmod
   implicit none
-  call get_fockmatrix0(yyy%fockmatrix(:,:,0),yyy%cmfavec(:,:,0),yyy%cptr(0))
+  call get_fockmatrix0(yyy%fockmatrix(:,:,0),yyy%cmfavec(:,:,0),yyy%cptr(0),yyysptr(0))
 end subroutine get_fockmatrix
 
 
