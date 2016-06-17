@@ -65,6 +65,11 @@ contains
        stop
     endif
 
+!!$ 06-16 something is wonky with jacsymflag.. debugging frozenspfs
+    if (jacsymflag.ne.0) then
+       OFLWR "something is wonky, set jacsymflag.eq.0"; CFLST
+    endif
+
     bigwork=0; workspfs=0; tempspfs=0
 
     numspf=highspf-lowspf+1
@@ -170,8 +175,8 @@ contains
                   yyy%invdenmat(:,lowspf:highspf,ii), nspf, DATAZERO, &
                   tempspfs(:,lowspf:highspf), spfsize)
           else
-             tempspfs(:,lowspf:highspf)=(-1) * &
-                  yyy%frozenexchinvr(:,lowspf:highspf,ii)*facs(ii) !! factor (-1)
+             tempspfs(:,lowspf:highspf)= & !! no more factor (-1) * &
+                  yyy%frozenexchinvr(:,lowspf:highspf,ii)*facs(ii)
           endif
           call system_clock(jtime); times(6)=times(6)+jtime-itime;
 

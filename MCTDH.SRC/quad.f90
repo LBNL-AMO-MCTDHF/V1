@@ -281,10 +281,12 @@ subroutine quadspfs(inspfs,jjcalls)
        solution(spfsize,maxnorbs), workvec(spfsize,maxnorbs) )
   invector=0; errvec=0; solution=0; workvec=0
 
-  if (jacsymflag.ne.1.and.jacprojorth.eq.0) then
-     OFLWR "setting jacsymflag=1 for orbital quad"; CFL
-     jacsymflag=1
-  endif
+!!$ 06-16 something is wonky with jacsymflag.. debugging frozenspfs
+!!$
+!!$  if (jacsymflag.ne.1.and.jacprojorth.eq.0) then
+!!$     OFLWR "setting jacsymflag=1 for orbital quad"; CFL
+!!$     jacsymflag=1
+!!$  endif
 
   effective_cmf_linearflag=0
 
@@ -373,7 +375,9 @@ subroutine quadspfs(inspfs,jjcalls)
            solution=solution*maxquadnorm*nspf/mynorm
         endif
 
-        workvec=invector+solution
+!! WAS with factors -1        workvec=invector+solution
+
+        workvec=invector-solution
 
         call spf_orthogit(workvec,orthogerror)
 

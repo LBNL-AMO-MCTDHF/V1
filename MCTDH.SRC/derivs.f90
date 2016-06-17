@@ -786,8 +786,9 @@ contains
        spfmult(:,lowspf:highspf)=workmult(:,lowspf:highspf)
 
        call system_clock(jtime);  times(7)=times(7)+jtime-itime
-    else
-       spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) * (-1)
+!! no more factor -1
+!!    else
+!!       spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) * (-1)
     endif
 
 !!    OFLWR "CHECKMULT4  ",spfmult(1,1); CFL
@@ -1101,8 +1102,8 @@ contains
                      yyy%invdenmat(:,lowspf:highspf,jjj), nspf, DATAZERO, &
                      tempspfs(:,lowspf:highspf), spfsize)
              else
-                tempspfs(:,lowspf:highspf)=(-1)* &
-                     yyy%frozenexchinvr(:,lowspf:highspf,jjj)*facs(jjj) !! factor (-1)
+                tempspfs(:,lowspf:highspf)= &   !! no more factor -1
+                     yyy%frozenexchinvr(:,lowspf:highspf,jjj)*facs(jjj)
              endif
           enddo
           call system_clock(jtime);    times(7)=times(7)+jtime-itime;     itime=jtime
