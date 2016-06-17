@@ -665,6 +665,7 @@ contains
 
 !! sum over fast index reduced matrices, because doing spfinvrsq= reducedinvrsq * inspfs 
 !!   BUT 1) store in transposed order and 2) have to reverse the call in BLAS
+
     call system_clock(itime)
     if (numr.eq.1) then
        call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
@@ -723,6 +724,13 @@ contains
 !! DIRECT ONLY in linear operator actreduced.  Exchange treated like driving term.
        call op_frozenreduced(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
        spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
+
+!!$ exact exchange (too slow), use frozenexchinvr instead
+!!$
+!!$       call op_frozen_exchange(lowspf,highspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
+!!$       spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
+!!$
+
     endif
     call system_clock(jtime);     times(3)=times(3)+jtime-itime;      itime=jtime
 
@@ -1098,6 +1106,7 @@ contains
              endif
           enddo
           call system_clock(jtime);    times(7)=times(7)+jtime-itime;     itime=jtime
+
           if (projflag.ne.0) then
              call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),&
                   workspfs(:,lowspf:highspf),spfsin)

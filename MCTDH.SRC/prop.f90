@@ -768,6 +768,7 @@ subroutine prop_loop( starttime)
   use savenormmod
   use mpisubmod
   use prop_loop_sub_mod
+  use orbdermod
   implicit none
   integer ::  jj,flag,  iii, itime, jtime, times(20)=0, qq,imc,getlen,myiostat
   DATAECS :: thisenergy(mcscfnum), lastenergy(mcscfnum) ,thisenergyavg,&
@@ -1006,7 +1007,11 @@ subroutine prop_loop( starttime)
 
      if (threshflag.eq.1) then
 
-        call actreduced0(1,0d0,yyy%cmfspfs(:,0),yyy%cmfspfs(:,0),outspfs,0,1,1)
+!! 06-16 why change to actreduced
+!! not spf_linear_derivs?  need exchange
+!!        call actreduced0(1,0d0,yyy%cmfspfs(:,0),yyy%cmfspfs(:,0),outspfs,0,1,1)
+
+        call spf_linear_derivs0(0,1,0d0,yyy%cmfspfs(:,0),outspfs,1,1)
 
         call apply_spf_constraints(outspfs)
 

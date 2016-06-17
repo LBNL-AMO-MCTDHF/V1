@@ -261,18 +261,20 @@ subroutine get_frexchange()
      endif
      numspf=highspf-lowspf+1
      frozenexchange(:,:)=0
+
+     if (numspf.gt.0) then
+        call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE, yyy%cmfspfs(:,0), &
+             spfsize,yyy%reducedinvr(:,lowspf:highspf,0),nspf, DATAZERO, &
+             frozenexchange(:,lowspf:highspf),spfsize)
+     endif
+!     if (parorbsplit.eq.1) then
+!        call mpiorbgather(frozenexchange(:,:),spfsize)
+!     endif
+
      if (numspf.gt.0) then
         call op_frozen_exchange(lowspf,highspf,&
-             yyy%cmfspfs((lowspf-1)*spfsize+1:highspf*spfsize,0),&
-             frozenexchange(:,lowspf:highspf))
-     endif
-     if (parorbsplit.eq.1) then
-        call mpiorbgather(frozenexchange(:,:),spfsize)
-     endif
-     if (numspf.gt.0) then
-        call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE, frozenexchange(:,:),&
-             spfsize,yyy%reducedinvr(:,lowspf:highspf,0),nspf, DATAZERO, &
-             yyy%frozenexchinvr(:,lowspf:highspf,0),spfsize)
+             frozenexchange(:,lowspf:highspf),&
+             yyy%frozenexchinvr(:,lowspf:highspf,0))
      endif
      if (parorbsplit.eq.1) then
         call mpiorbgather(yyy%frozenexchinvr(:,:,0),spfsize)

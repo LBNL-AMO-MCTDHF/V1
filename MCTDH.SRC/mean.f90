@@ -8,7 +8,12 @@
 
 subroutine get_allden()
   implicit none
-  call get_reducedham();  call getdenmatx();
+
+!!  call get_reducedham();  call getdenmatx();
+
+  call getdenmatx();
+  call get_reducedham();  
+
 end subroutine get_allden
 
 
@@ -20,16 +25,26 @@ subroutine get_reducedham()
   integer :: itime,jtime,times(100)
 
   call system_clock(itime)
-  call get_tworeducedx(www,yyy%reducedpottally,yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
+  call get_tworeducedx(www,yyy%reducedpottally(:,:,:,:,0),&
+       yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
   call system_clock(jtime);  times(4)=times(4)+jtime-itime
 
   call system_clock(itime)
-  call get_reducedproderiv(www,yyy%reducedproderiv,yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
+  call get_reducedproderiv(www,yyy%reducedproderiv(:,:,0),&
+       yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
   call system_clock(jtime);  times(6)=times(6)+jtime-itime
 
   call system_clock(itime)
-  call get_reducedr(www,yyy%reducedinvr,yyy%reducedinvrsq,yyy%reducedr,&
-       yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
+
+  if (numr.eq.1) then
+     yyy%reducedinvr(:,:,0) = yyy%denmat(:,:,0) / bondpoints(1)
+     yyy%reducedinvrsq(:,:,0) = yyy%denmat(:,:,0) / bondpoints(1)**2
+     yyy%reducedr(:,:,0) = yyy%denmat(:,:,0) * bondpoints(1)
+  else
+     call get_reducedr(www,yyy%reducedinvr,yyy%reducedinvrsq,yyy%reducedr,&
+          yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
+  endif
+
   call system_clock(itime);  times(7)=times(7)+itime-jtime
 
 end subroutine get_reducedham
@@ -439,11 +454,11 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
   DATATYPE :: myinvr(www%nspf,www%nspf),myr(www%nspf,www%nspf),  myinvrsq(www%nspf,www%nspf),&
        csumr,csuminvr,csuminvrsq
 
-  reducedinvr(:,:)=0.d0;  reducedr(:,:)=0.d0;  reducedinvrsq(:,:)=0.d0
-
   if (numr.eq.1) then
-     return
+     OFLWR "programmer fail, don't call get_reducedr if numr.eq.1"; CFLST
   endif
+
+  reducedinvr(:,:)=0.d0;  reducedr(:,:)=0.d0;  reducedinvrsq(:,:)=0.d0
 
 !! DO SUMMA (parconsplit.ne.0 and sparsesummaflag.eq.2, "circ")
 

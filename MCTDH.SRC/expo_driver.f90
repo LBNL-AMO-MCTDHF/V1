@@ -159,7 +159,6 @@ contains
           call system_clock(jtime); times(5)=times(5)+jtime-itime;
        endif
 
-
        if (numfrozen.gt.0) then
           call system_clock(itime)
 !! EXCHANGE
@@ -178,8 +177,11 @@ contains
 
           call derproject00(lowspf,highspf,tempspfs,workspfs,jacvect,inspfs)
 
-          outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) + &
-               tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
+!!BUGFIX           outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) + &
+!! 06-16              tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
+
+          outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) &
+               - workspfs(:,lowspf:highspf)
        endif
 
 !! DRIVING (PSI-PRIME)
