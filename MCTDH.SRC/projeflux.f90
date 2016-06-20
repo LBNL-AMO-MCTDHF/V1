@@ -1150,11 +1150,11 @@ contains
            gtaudiag_ad(curtime,istate,imc,il) = hermdot(ketmo_ad(:,:,:,i,il),ketop_ad(:,:,:,i,il),2*spfsize*numr)
 
            if (curtime.eq.0) then
-              gtausave_ad(istate,imc,:) = gtaudiag_ad(curtime,istate,imc,:)
+              gtausave_ad(istate,imc,il) = gtaudiag_ad(curtime,istate,imc,il)
            endif
 
            if (flux_subtract.ne.0) then
-              gtaudiag_ad(curtime,istate,imc,:) = gtaudiag_ad(curtime,istate,imc,:) - gtausave_ad(istate,imc,:)
+              gtaudiag_ad(curtime,istate,imc,il) = gtaudiag_ad(curtime,istate,imc,il) - gtausave_ad(istate,imc,il)
            endif
 
         enddo
