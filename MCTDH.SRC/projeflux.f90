@@ -1126,6 +1126,15 @@ contains
 !! for integral dt
                 curtime=(ketbat-1)*BatchSize+i-1
                 gtaudiag(curtime,istate,imc) = hermdot(ketmo(:,:,:,i),ketop(:,:,:,i),2*spfsize*numr)
+
+                if (curtime.eq.0) then
+                   gtausave(istate,imc) = gtaudiag(curtime,istate,imc)
+                endif
+
+                if (flux_subtract.ne.0) then
+                   gtaudiag(curtime,istate,imc) = gtaudiag(curtime,istate,imc) - gtausave(istate,imc)
+                endif
+
              enddo
 
   if (angularflag.ne.0) then
@@ -1139,6 +1148,15 @@ contains
 !! for integral dt
            curtime=(ketbat-1)*BatchSize+i-1
            gtaudiag_ad(curtime,istate,imc,il) = hermdot(ketmo_ad(:,:,:,i,il),ketop_ad(:,:,:,i,il),2*spfsize*numr)
+
+           if (curtime.eq.0) then
+              gtausave_ad(istate,imc,:) = gtaudiag_ad(curtime,istate,imc,:)
+           endif
+
+           if (flux_subtract.ne.0) then
+              gtaudiag_ad(curtime,istate,imc,:) = gtaudiag_ad(curtime,istate,imc,:) - gtausave_ad(istate,imc,:)
+           endif
+
         enddo
      enddo
   endif  !! angularflag
@@ -1189,10 +1207,6 @@ contains
 
                       gtaunow(istate,imc) = hermdot(bramo(:,:,:,bratime),ketop(:,:,:,kettime),2*spfsize*numr)
 
-                      if (curtime.eq.0.and.oldtime.eq.0) then
-                         gtausave(istate,imc) = gtaunow(istate,imc)
-                      endif
-
                       if (flux_subtract.ne.0) then
                          gtaunow(istate,imc) = gtaunow(istate,imc) - gtausave(istate,imc)
                       endif
@@ -1223,10 +1237,6 @@ contains
          gtaunow_ad(istate,imc,il) = gtaunow_ad(istate,imc,il) + 0.5d0 * &
               hermdot(deweighted_bramo(:,:,:),ketop_ad(:,:,:,kettime,il),2*spfsize*numr)
       enddo
-
-      if (curtime.eq.0.and.oldtime.eq.0) then
-         gtausave_ad(istate,imc,:) = gtaunow_ad(istate,imc,:)
-      endif
 
       if (flux_subtract.ne.0) then
          gtaunow_ad(istate,imc,:) = gtaunow_ad(istate,imc,:) - gtausave_ad(istate,imc,:)
