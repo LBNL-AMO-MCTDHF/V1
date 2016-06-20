@@ -82,7 +82,7 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
 
   call actreduced00(lowspf,highspf,1,thistime, derspfs0, nullspfs, workoutspfs0, 0, 0,1) 
 
-  if (effective_cmf_linearflag.eq.0) then
+  if (effective_cmf_linearflag.ne.0) then
 
      call actreduced00(lowspf,highspf,1,thistime, derspfs0, nullspfs, workoutspfs2, 1, 0,1)
      workoutspfs0 = (1-gridtime)*workoutspfs2 + gridtime*workoutspfs0
@@ -98,7 +98,7 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
 
 !! first term.
 
-  if (effective_cmf_linearflag.eq.0.and.numspf.gt.0) then
+  if (effective_cmf_linearflag.ne.0.and.numspf.gt.0) then
      workspfs0 = (1-gridtime)*workspfs2 + gridtime*workspfs0
   endif
 
