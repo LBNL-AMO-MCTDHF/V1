@@ -1203,25 +1203,8 @@ contains
 
 
 !!!!   constant term - imaginary part of frozen, nuclear repulsion, energyshift  !!!!
-
-    matrix_ptr%kefac = 0d0
-    matrix_ptr%constfac = 1d0
-
-    call sparseconfigmult(myww,aket,ketwork,matrix_ptr,sparse_ptr,0,0,0,0,0d0,-1)
-
-    if (tot_adim.gt.0) then
-       conjgket(:,:) = ALLCON(aket(:,:))
-    endif
-    call sparseconfigmult(myww,conjgket,multket,matrix_ptr,sparse_ptr,0,0,0,0,0d0,-1)
-    if (tot_adim.gt.0) then
-       multket(:,:)=ALLCON(multket(:,:))
-    endif
-
-    if (tot_adim.gt.0) then
-       ketwork(:,:)=(ketwork(:,:)-multket(:,:)) / (0d0,-1d0)   !! -2x imag part overall
-       outsum = outsum + hermdot(abra,ketwork,tot_adim)
-    endif
-
+!!!!        is NOT included since it does not define asymptotic region           !!!!
+!!!!        constfac always set 0                                                !!!!
 
 !!!!   imaginary part of electronic matrix elements with real part coefficients in r   !!!!
 
