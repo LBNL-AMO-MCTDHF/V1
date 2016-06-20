@@ -963,7 +963,8 @@ contains
          ketop_ad(:,:,:,:,:), gtaudiag(:,:,:), gtaudiag_ad(:,:,:,:), gtausum(:,:,:), gtausum_ad(:,:,:,:),&
          tot_gtausum(:,:), tot_gtausum_ad(:,:,:), gtaunow(:,:), gtaunow_ad(:,:,:), gtausave(:,:), &
          gtausave_ad(:,:,:)
-    complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:),ftgtau_ad(:,:),total_ad(:,:)
+    complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:),ftgtau_ad(:,:),total_ad(:,:),&
+         ftgtausum_ad(:)
     complex*16 :: ftgtausum
     real*8, allocatable :: pulseftsq(:)
     DATATYPE :: pots1(3)
@@ -1362,11 +1363,12 @@ contains
     ftgtau(:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0; total(:)=0
 
     if (angularflag.ne.0) then
-       allocate(ftgtau_ad(-curtime:curtime,NUMANGLES), total_ad(-curtime:curtime,NUMANGLES))
+       allocate(ftgtau_ad(-curtime:curtime,NUMANGLES), total_ad(-curtime:curtime,NUMANGLES),&
+            ftgtausum_ad(NUMANGLES))
     else
-       allocate(ftgtau_ad(0:0,NUMANGLES), total_ad(0:0,NUMANGLES))
+       allocate(ftgtau_ad(0:0,1), total_ad(0:0,1), ftgtausum_ad(1))
     endif
-    ftgtau_ad=0; total_ad=0
+    ftgtau_ad=0; total_ad=0; ftgtausum_ad=0
 
     do i=0,curtime
        call vectdpot(i*dt,0,pots1,-1)  !! LENGTH GAUGE
@@ -1491,13 +1493,19 @@ contains
                 write(1004,*,iostat=myiostat)
                 call checkiostat(myiostat,"writing angproj spi file")
                 write(1004,*) "# Omega; pulse ft; differential proj flux t= ",finaltime
+
+                ftgtausum_ad(:)=0d0
                 do i=-curtime,curtime
                    wfi=(i+curtime)*estep
+
+                   ftgtausum_ad(:)=ftgtausum_ad(:) + ftgtau_ad(i,:) * estep / PI / 4d0   !! 4 looks correct
+
                    myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi 
 
                    do il=1,NUMANGLES
                       write(1004,'(F18.12, I5, 1400E20.8)',iostat=myiostat)  wfi, il, &
-                           pulseftsq(i), ftgtau_ad(i,il)/pulseftsq(i) * myfac, ftgtau_ad(i,il)
+                           pulseftsq(i), ftgtau_ad(i,il)/pulseftsq(i) * myfac, ftgtau_ad(i,il),&
+                           ftgtausum_ad(il)
                    enddo
                    write(1004,*)
                 enddo
@@ -1514,11 +1522,16 @@ contains
           write(1004,*,iostat=myiostat)
           call checkiostat(myiostat,"writing total proj spi file")
           write(1004,*) "# Omega; pulse ft; proj flux t= ",finaltime
+
+          ftgtausum=0d0
           do i=-curtime,curtime
              wfi=(i+curtime)*estep
+
+             ftgtausum=ftgtausum + total(i) * estep / PI / 4d0   !! 4 looks correct
+
              myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
              write(1004,'(F18.12, T22, 400E20.8)',iostat=myiostat)  wfi,  pulseftsq(i), &
-                  total(i)/pulseftsq(i) * myfac, total(i)
+                  total(i)/pulseftsq(i) * myfac, total(i), ftgtausum
           enddo
           call checkiostat(myiostat,"writing total proj spi file")
           close(1004)
@@ -1530,13 +1543,18 @@ contains
              write(1004,*,iostat=myiostat)
              call checkiostat(myiostat,"writing total ang proj spi file")
              write(1004,*) "# Omega; pulse ft; differential proj flux t= ",finaltime
+
+             ftgtausum_ad(:)=0d0
              do i=-curtime,curtime
                 wfi=(i+curtime)*estep
+
+                ftgtausum_ad(:)=ftgtausum_ad(:) + total_ad(i,:) * estep / PI / 4d0   !! 4 looks correct
+
                 myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
 
                 do il=1,NUMANGLES
                    write(1004,'(F18.12, I5, 400E20.8)',iostat=myiostat)  wfi, il, pulseftsq(i), &
-                        total_ad(i,il)/pulseftsq(i) * myfac, total_ad(i,il)
+                        total_ad(i,il)/pulseftsq(i) * myfac, total_ad(i,il), ftgtausum_ad(il)
                 enddo
                 write(1004,*)
              enddo
@@ -1549,11 +1567,16 @@ contains
 
     enddo  !! do imc
 
-    deallocate(ftgtau,pulseft,pulseftsq,total)
-    deallocate(read_bramo,read_ketmo)
-    deallocate(gtau,ketmo,bramo,ketop,gtaudiag,gtausum,tot_gtausum,gtaunow,gtausave)
-    deallocate(gtau_ad,ftgtau_ad,total_ad,deweighted_bramo,ketmo_ad,ketop_ad,gtaudiag_ad,gtausum_ad,&
-         tot_gtausum_ad,gtaunow_ad,gtausave_ad)
+    deallocate(gtau, ketmo, ketop,&
+         bramo, gtaudiag, gtausum,&
+         tot_gtausum, gtaunow, gtausave)
+    deallocate(gtau_ad, deweighted_bramo,&
+         ketmo_ad, ketop_ad,&
+         gtaudiag_ad, gtausum_ad,&
+         tot_gtausum_ad, gtaunow_ad, gtausave_ad)
+    deallocate(read_ketmo, read_bramo)
+    deallocate(ftgtau, pulseft, pulseftsq, total)
+    deallocate(ftgtau_ad, total_ad, ftgtausum_ad)
 
   end subroutine projeflux_double_time_int
 
