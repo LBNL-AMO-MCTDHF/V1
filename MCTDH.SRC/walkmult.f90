@@ -606,18 +606,29 @@ contains
     endif
   
     mynumr=topr-botr+1
+
+!! 06-16 this constfac term moved outside boflag
+
+    if (myrank.ge.firstproc.and.myrank.le.lastproc) then
+       do ir=botr,topr
+          outvector(ir,:)=outvector(ir,:) + invector(ir,www%botconfig:www%topconfig) * ( &
+               energyshift + (nucrepulsion+frozenpotdiag)/bondpoints(ir) + &
+               frozenkediag/bondpoints(ir)**2 ) * matrix_ptr%constfac
+       enddo
+    endif
   
     if (boflag==1) then
      
 !! easy nuclear repulsion, hardwired like this for now
 
-       if (myrank.ge.firstproc.and.myrank.le.lastproc) then
-          do ir=botr,topr
-             outvector(ir,:)=outvector(ir,:) + invector(ir,www%botconfig:www%topconfig) * ( &
-                  energyshift + (nucrepulsion+frozenpotdiag)/bondpoints(ir) + &
-                  frozenkediag/bondpoints(ir)**2 ) * matrix_ptr%constfac
-          enddo
-       endif
+!! 06-16
+!       if (myrank.ge.firstproc.and.myrank.le.lastproc) then
+!          do ir=botr,topr
+!             outvector(ir,:)=outvector(ir,:) + invector(ir,www%botconfig:www%topconfig) * ( &
+!                  energyshift + (nucrepulsion+frozenpotdiag)/bondpoints(ir) + &
+!                  frozenkediag/bondpoints(ir)**2 ) * matrix_ptr%constfac
+!          enddo
+!       endif
 
        rvector(:)=1/bondpoints(botr:topr)
        call arbitraryconfig_mult_doubles_byproc(firstproc,lastproc,www,matrix_ptr%xtwoematel(:,:,:,:),&
@@ -782,15 +793,26 @@ contains
 
     mynumr=topr-botr+1
 
+!! 06-16 this constfac term moved outside boflag
+
+    if (myrank.ge.firstproc.and.myrank.le.lastproc) then
+       do ir=botr,topr
+          outvector(ir,:)=outvector(ir,:) + invector(ir,www%botconfig:www%topconfig) * ( &
+               energyshift + (nucrepulsion+frozenpotdiag)/bondpoints(ir) + &
+               frozenkediag/bondpoints(ir)**2 ) * sparse_ptr%constfac
+       enddo
+    endif
+
     if (boflag==1) then
 
-       if (myrank.ge.firstproc.and.myrank.le.lastproc) then
-          do ir=botr,topr
-             outvector(ir,:)=outvector(ir,:) + invector(ir,www%botconfig:www%topconfig) * ( &
-                  energyshift + (nucrepulsion+frozenpotdiag)/bondpoints(ir) + &
-                  frozenkediag/bondpoints(ir)**2 ) * sparse_ptr%constfac
-          enddo
-       endif
+!! 06-16
+!       if (myrank.ge.firstproc.and.myrank.le.lastproc) then
+!          do ir=botr,topr
+!             outvector(ir,:)=outvector(ir,:) + invector(ir,www%botconfig:www%topconfig) * ( &
+!                  energyshift + (nucrepulsion+frozenpotdiag)/bondpoints(ir) + &
+!                  frozenkediag/bondpoints(ir)**2 ) * sparse_ptr%constfac
+!          enddo
+!       endif
 
        rvector(:)=1/bondpoints(botr:topr)
        call arbitrary_sparsemult_doubles_byproc(firstproc,lastproc,www,sparse_ptr%xpotsparsemattr,&

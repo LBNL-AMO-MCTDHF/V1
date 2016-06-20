@@ -467,7 +467,7 @@ complex*16 :: ceground=(0.d0,0d0)!!              !! input as complex-valued inst
 real*8 :: autotimestep=1.d0      !! ACTIONS 1 and 21 (autocorrelation and emission/absorption):
                                  !!   time step for fourier transform
 !!EE
-!!{\large \quad AUTOCORRELATION, PHOTOIONIZATION and EMISSION/ABSORPTION (actions 1,16,17,21)}
+!!{\large \quad FTs for AUTOCORRELATION, PHOTOIONIZATION and EMISSION/ABSORPTION (actions 1,16,17,21)}
 !!BB
 integer :: ftwindowlength=-99 !! FOR ACTIONS 1,16,17,21 options for damping function of time to be transformed
                               !!    if .ge.0, only damp at end (high frequency cutoff): last ftwindowlength 
@@ -487,17 +487,18 @@ real*8 :: dipolesumstart=0d0,&   !! range for integration of oscillator strength
      dipolesumend=0d0            !!    energy atomic units (Hartree) start and end, dipolesumend default set
                                  !!    based on &pulse namelist input (depending on omegas)
 !!EE
-!!{\large \quad PHOTOIONIZATION (actions 15,16,17)}
+!!{\large \quad PHOTOIONIZATION (actions 15,16,17,27,28)}
 !!BB
 integer :: computeFlux=500, &    ! 0=All in memory other: MBs to allocate
      FluxInterval=50,&           !! Multiple of par_timestep at which to save flux
-     FluxSkipMult=1              !! Read every this number of time points.  Step=FluxInterval*FluxSkipMult
+     FluxSkipMult=1,&            !! Read every this number of time points.  Step=FluxInterval*FluxSkipMult
+     flux_subtract=1             !! subtract flux for decaying initial state 0=don't 1,2=do, 2 ways for ft
 integer :: nucfluxopt=1          !! NucFlux=     !! Include imag part of hamiltonian from nuc ke 2=only that
 integer :: FluxOpType=1          !! 0=Full ham 1=halfnium 
-integer :: numcatfiles=1         !! see catspffiles and catavectorfiles in INPUT/OUTPUT for action 17
+integer :: numcatfiles=1         !! see catspffiles and catavectorfiles in INPUT/OUTPUT for action 17,28
 real*8 :: catfacs(50)=1d0       !! weighting of partial cross sections for proj.xsec.spi_all_001.dat, etc.
-integer :: angularflag=0         !! for action 17 calculate fully differential partial ionization, angular
-                                 !!   output in angprojspifile (atom/diatom only)
+integer :: angularflag=0         !! for action 17,28 calculate fully differential partial ionization,
+                                 !!   angular output in angprojspifile (atom/diatom only)
 !!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input) 
 !!$ real*8 :: fluxtimestep=0.1d0
 !!EE

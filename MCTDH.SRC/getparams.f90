@@ -100,7 +100,7 @@ subroutine getparams()
        catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
        shuffle_dfwalktype,maxdgdim, messavec, messaamount,holeflag, angularflag, angprojspifile,&
        prepropflag, step_flag, postpropflag, scalarflag, angprojfluxtsumfile, &
-       catfacs
+       catfacs, flux_subtract
 
   OFL
   write(mpifileptr, *)

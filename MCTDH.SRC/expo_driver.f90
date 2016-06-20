@@ -66,9 +66,10 @@ contains
     endif
 
 !!$ 06-16 something is wonky with jacsymflag.. debugging frozenspfs
-    if (jacsymflag.ne.0) then
-       OFLWR "something is wonky, set jacsymflag.eq.0"; CFLST
-    endif
+!!$ still allowing it though
+!!$    if (jacsymflag.ne.0) then
+!!$       OFLWR "something is wonky, set jacsymflag.eq.0"; CFLST
+!!$    endif
 
     bigwork=0; workspfs=0; tempspfs=0
 

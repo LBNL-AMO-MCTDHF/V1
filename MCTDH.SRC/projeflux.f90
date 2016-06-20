@@ -956,12 +956,13 @@ contains
     real*8, intent(in) :: dt
     integer :: i,k,tlen,istate,curtime,tau,ir ,imc,ioffset, il
     integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,&
-         bratop,getlen,myiostat
+         bratop,getlen,myiostat,oldtime
     real*8 :: MemTot,MemVal,wfi,estep,myfac,windowfunct,MemNum
     DATATYPE, allocatable :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:),gtau_ad(:,:,:,:),ketop(:,:,:,:),&
          read_bramo(:,:,:), read_ketmo(:,:,:), deweighted_bramo(:,:,:), ketmo_ad(:,:,:,:,:),&
-         ketop_ad(:,:,:,:,:), gtaunow(:,:,:), gtaunow_ad(:,:,:,:), gtausum(:,:,:), gtausum_ad(:,:,:,:),&
-         tot_gtausum(:,:), tot_gtausum_ad(:,:,:)
+         ketop_ad(:,:,:,:,:), gtaudiag(:,:,:), gtaudiag_ad(:,:,:,:), gtausum(:,:,:), gtausum_ad(:,:,:,:),&
+         tot_gtausum(:,:), tot_gtausum_ad(:,:,:), gtaunow(:,:), gtaunow_ad(:,:,:), gtausave(:,:), &
+         gtausave_ad(:,:,:)
     complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:),ftgtau_ad(:,:),total_ad(:,:)
     complex*16 :: ftgtausum
     real*8, allocatable :: pulseftsq(:)
@@ -1020,24 +1021,25 @@ contains
     call closefile()
 
     allocate(gtau(0:nt,totstate,mcscfnum),ketmo(spfsize,numr,2,BatchSize),ketop(spfsize,numr,2,BatchSize),&
-         bramo(spfsize,numr,2,BatchSize),gtaunow(0:nt,totstate,mcscfnum),gtausum(0:nt,totstate,mcscfnum),&
-         tot_gtausum(0:nt,mcscfnum))
-    gtau=0; ketmo=0; ketop=0; bramo=0; gtaunow=0; gtausum=0d0; tot_gtausum=0d0
+         bramo(spfsize,numr,2,BatchSize),gtaudiag(0:nt,totstate,mcscfnum),gtausum(0:nt,totstate,mcscfnum),&
+         tot_gtausum(0:nt,mcscfnum),gtaunow(totstate,mcscfnum),gtausave(totstate,mcscfnum))
+    gtau=0; ketmo=0; ketop=0; bramo=0; gtaudiag=0; gtausum=0; tot_gtausum=0; gtaunow=0; gtausave=0
 
     if (angularflag.ne.0) then
        allocate(gtau_ad(0:nt,totstate,mcscfnum,NUMANGLES),deweighted_bramo(spfsize,numr,2),&
             ketmo_ad(spfsize,numr,2,batchsize,NUMANGLES), ketop_ad(spfsize,numr,2,batchsize,NUMANGLES),&
-            gtaunow_ad(0:nt,totstate,mcscfnum,NUMANGLES),gtausum_ad(0:nt,totstate,mcscfnum,NUMANGLES),&
-            tot_gtausum_ad(0:nt,mcscfnum,NUMANGLES))
+            gtaudiag_ad(0:nt,totstate,mcscfnum,NUMANGLES),gtausum_ad(0:nt,totstate,mcscfnum,NUMANGLES),&
+            tot_gtausum_ad(0:nt,mcscfnum,NUMANGLES), gtaunow_ad(totstate,mcscfnum,NUMANGLES), &
+            gtausave_ad(totstate,mcscfnum,NUMANGLES))
     else
        allocate(gtau_ad(0:0,1,1,1),deweighted_bramo(1,1,2),&
             ketmo_ad(1,1,2,1,1), ketop_ad(1,1,2,1,1),&
-            gtaunow_ad(0:0,1,1,1),gtausum_ad(0:0,1,1,1),&
-            tot_gtausum_ad(0:0,1,1))
+            gtaudiag_ad(0:0,1,1,1),gtausum_ad(0:0,1,1,1),&
+            tot_gtausum_ad(0:0,1,1),gtaunow_ad(1,1,1),gtausave_ad(1,1,1))
     endif
 
-    gtau_ad=0;   deweighted_bramo=0;  ketmo_ad=0; ketop_ad=0; gtaunow_ad=0; gtausum_ad=0; 
-    tot_gtausum_ad=0
+    gtau_ad=0;   deweighted_bramo=0;  ketmo_ad=0; ketop_ad=0; gtaudiag_ad=0; gtausum_ad=0; 
+    tot_gtausum_ad=0; gtaunow_ad=0d0; gtausave_ad=0d0
 
     if (myrank.eq.1) then
        if (parorbsplit.eq.3) then
@@ -1122,11 +1124,8 @@ contains
                 enddo
 !! for integral dt
                 curtime=(ketbat-1)*BatchSize+i-1
-                gtaunow(curtime,istate,imc) = hermdot(ketmo(:,:,:,i),ketop(:,:,:,i),2*spfsize*numr)
+                gtaudiag(curtime,istate,imc) = hermdot(ketmo(:,:,:,i),ketop(:,:,:,i),2*spfsize*numr)
              enddo
-             if (parorbsplit.eq.3) then
-                call mympireduce(gtaunow(:,istate,imc),ketreadsize)
-             endif
 
   if (angularflag.ne.0) then
      do il=1,NUMANGLES
@@ -1138,11 +1137,8 @@ contains
            enddo
 !! for integral dt
            curtime=(ketbat-1)*BatchSize+i-1
-           gtaunow_ad(curtime,istate,imc,il) = hermdot(ketmo_ad(:,:,:,i,il),ketop_ad(:,:,:,i,il),2*spfsize*numr)
+           gtaudiag_ad(curtime,istate,imc,il) = hermdot(ketmo_ad(:,:,:,i,il),ketop_ad(:,:,:,i,il),2*spfsize*numr)
         enddo
-        if (parorbsplit.eq.3) then
-           call mympireduce(gtaunow_ad(:,istate,imc,il),ketreadsize)
-        endif
      enddo
   endif  !! angularflag
 
@@ -1187,16 +1183,22 @@ contains
                       bratop=kettime
                    endif
                    do bratime=1,bratop
-                      tau=curtime-((brabat-1)*BatchSize+bratime-1)
-                      gtau(tau,istate,imc) = gtau(tau,istate,imc) + &
-                           hermdot(bramo(:,:,:,bratime),ketop(:,:,:,kettime),2*spfsize*numr) * dt
+                      oldtime=((brabat-1)*BatchSize+bratime-1)
+                      tau=curtime-oldtime
 
-!!      allocated   bramo(spfsize,numr,2,BatchSize)
+                      gtaunow(istate,imc) = hermdot(bramo(:,:,:,bratime),ketop(:,:,:,kettime),2*spfsize*numr)
+
+                      if (curtime.eq.0.and.oldtime.eq.0) then
+                         gtausave(istate,imc) = gtaunow(istate,imc)
+                      endif
+
+                      if (flux_subtract.ne.0) then
+                         gtaunow(istate,imc) = gtaunow(istate,imc) - gtausave(istate,imc)
+                      endif
+
+                      gtau(tau,istate,imc) = gtau(tau,istate,imc) + gtaunow(istate,imc) * dt
 
    if (angularflag.ne.0) then
-
-!!$                       gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + &
-!!$                            myhermdots(bramo(:,:,:,bratime),ketop(:,:,:,kettime),2*spfsize*numr) * dt
 
       do k=1,2
          do ir=1,numr
@@ -1208,20 +1210,28 @@ contains
                  RESHAPE(elecweights(:,:,:,2),(/spfsize/)) / 2 / pi
          enddo
       enddo
-!!$                       gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + &
-!!$                            myhermdots(deweighted_bramo(:,:,:),ketop(:,:,:,kettime),2*spfsize*numr) * dt
 
-!! better way, with symmetric flux operator.  total still equals integrated differential.
+!! symmetric flux operator.  total still equals integrated differential.
 !! results (at threshold where there is oscillation and usually some negative values) actually 
 !! look worse for H2 with this symmetrized operator, below, instead of what's above
 
-      gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + 0.5d0 * &
-           myhermdots(deweighted_bramo(:,:,:),ketop(:,:,:,kettime),2*spfsize*numr,NUMERAD,NUMANGLES) * dt
+      gtaunow_ad(istate,imc,:) = 0.5d0 * &
+           myhermdots(deweighted_bramo(:,:,:),ketop(:,:,:,kettime),2*spfsize*numr,NUMERAD,NUMANGLES)
 
       do il=1,NUMANGLES
-         gtau_ad(tau,istate,imc,il) = gtau_ad(tau,istate,imc,il) + 0.5d0 * &
-              hermdot(deweighted_bramo(:,:,:),ketop_ad(:,:,:,kettime,il),2*spfsize*numr) * dt
+         gtaunow_ad(istate,imc,il) = gtaunow_ad(istate,imc,il) + 0.5d0 * &
+              hermdot(deweighted_bramo(:,:,:),ketop_ad(:,:,:,kettime,il),2*spfsize*numr)
       enddo
+
+      if (curtime.eq.0.and.oldtime.eq.0) then
+         gtausave_ad(istate,imc,:) = gtaunow_ad(istate,imc,:)
+      endif
+
+      if (flux_subtract.ne.0) then
+         gtaunow_ad(istate,imc,:) = gtaunow_ad(istate,imc,:) - gtausave_ad(istate,imc,:)
+      endif
+
+      gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + gtaunow_ad(istate,imc,:) * dt
 
    endif  !! angularflag
 
@@ -1243,17 +1253,19 @@ contains
 
     if (parorbsplit.eq.3) then
        call mympireduce(gtau(:,:,:), (nt+1)*totstate*mcscfnum)
+       call mympireduce(gtaudiag(:,:,:), (nt+1)*totstate*mcscfnum) 
        if (angularflag.ne.0) then
           call mympireduce(gtau_ad(:,:,:,:), (NUMANGLES)*(nt+1)*totstate*mcscfnum)
+          call mympireduce(gtaudiag_ad(:,:,:,:), (NUMANGLES)*(nt+1)*totstate*mcscfnum)
        endif
     endif
 
 !! INTEGRAL DT
 
     gtausum(:,:,:)=0d0;  gtausum_ad(:,:,:,:)=0d0
-    gtausum(0,:,:)=gtaunow(0,:,:)
+    gtausum(0,:,:)=gtaudiag(0,:,:)
     do i=1,nt
-       gtausum(i,:,:)=gtausum(i-1,:,:) + gtaunow(i,:,:) * dt / 2d0   !! 2 looks correct
+       gtausum(i,:,:)=gtausum(i-1,:,:) + gtaudiag(i,:,:) * dt / 2d0   !! 2 looks correct
     enddo
     tot_gtausum=0d0
     do istate=1,totstate
@@ -1261,9 +1273,9 @@ contains
     enddo
 
     if (angularflag.ne.0) then
-       gtausum_ad(0,:,:,:)=gtaunow_ad(0,:,:,:)
+       gtausum_ad(0,:,:,:)=gtaudiag_ad(0,:,:,:)
        do i=1,nt
-          gtausum_ad(i,:,:,:)=gtausum_ad(i-1,:,:,:) + gtaunow_ad(i,:,:,:) * dt
+          gtausum_ad(i,:,:,:)=gtausum_ad(i-1,:,:,:) + gtaudiag_ad(i,:,:,:) * dt
        enddo
        tot_gtausum_ad=0d0
        do istate=1,totstate
@@ -1318,7 +1330,7 @@ contains
              call checkiostat(myiostat,"writing projfluxtsumfile")
              do i=0,curtime
                 write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat) &
-                     i*dt,  gtausum(i,istate,imc), gtaunow(i,istate,imc)
+                     i*dt,  gtausum(i,istate,imc), gtaudiag(i,istate,imc)
              enddo
              call checkiostat(myiostat,"writing projfluxtsumfile")
              close(171)
@@ -1331,7 +1343,7 @@ contains
                 call checkiostat(myiostat,"writing angprojfluxtsumfile")
                 do i=0,curtime
                    write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat) &
-                        i*dt,  gtausum_ad(i,istate,imc,:), gtaunow_ad(i,istate,imc,:)
+                        i*dt,  gtausum_ad(i,istate,imc,:), gtaudiag_ad(i,istate,imc,:)
                 enddo
                 call checkiostat(myiostat,"writing angprojfluxtsumfile")
                 close(171)
@@ -1539,9 +1551,9 @@ contains
 
     deallocate(ftgtau,pulseft,pulseftsq,total)
     deallocate(read_bramo,read_ketmo)
-    deallocate(gtau,ketmo,bramo,ketop,gtaunow,gtausum,tot_gtausum)
-    deallocate(gtau_ad,ftgtau_ad,total_ad,deweighted_bramo,ketmo_ad,ketop_ad,gtaunow_ad,gtausum_ad,&
-         tot_gtausum_ad)
+    deallocate(gtau,ketmo,bramo,ketop,gtaudiag,gtausum,tot_gtausum,gtaunow,gtausave)
+    deallocate(gtau_ad,ftgtau_ad,total_ad,deweighted_bramo,ketmo_ad,ketop_ad,gtaudiag_ad,gtausum_ad,&
+         tot_gtausum_ad,gtaunow_ad,gtausave_ad)
 
   end subroutine projeflux_double_time_int
 
@@ -1600,8 +1612,7 @@ end subroutine projeflux_single
 module projfluxduringmod
   implicit none
   integer :: allocated=0, curtime=0
-  DATATYPE,allocatable :: gtausum(:,:)
-  DATATYPE,allocatable :: gtausum_ad(:,:,:)
+  DATATYPE,allocatable :: gtausum(:,:), gtausum_ad(:,:,:), gtausave(:,:), gtausave_ad(:,:,:)
 end module projfluxduringmod
 
 
@@ -1628,11 +1639,11 @@ subroutine projeflux_during(inspfs,inavectors,dt)
 
      curtime=0
      allocated=1
-     allocate(gtausum(nstate,mcscfnum))
-     gtausum=0
+     allocate(gtausum(nstate,mcscfnum),gtausave(nstate,mcscfnum))
+     gtausum=0; gtausave=0
      if (angularflag.ne.0) then
-        allocate(gtausum_ad(nstate,mcscfnum,NUMANGLES))
-        gtausum_ad=0
+        allocate(gtausum_ad(nstate,mcscfnum,NUMANGLES),gtausave_ad(nstate,mcscfnum,NUMANGLES))
+        gtausum_ad=0; gtausave_ad=0
      endif
 
      if (myrank.eq.1) then
@@ -1738,6 +1749,23 @@ subroutine projeflux_during(inspfs,inavectors,dt)
      call mympireduce(gtaunow(:,:),nstate*mcscfnum)
      if (angularflag.ne.0) then
         call mympireduce(gtaunow_ad(:,:,:),nstate*mcscfnum*NUMANGLES)
+     endif
+  endif
+
+!! 06-16 subtract matrix element at t=0 (nonzero if there is leakage of
+!!  eigenfunction onto ecs grid, eigenvalue with imaginary part)
+
+  if (curtime.eq.0) then
+     gtausave(:,:) = gtaunow(:,:)
+     if (angularflag.ne.0) then
+        gtausave_ad(:,:,:) = gtaunow_ad(:,:,:)
+     endif
+  endif
+
+  if (flux_subtract.ne.0) then
+     gtaunow(:,:)=gtaunow(:,:)-gtausave(:,:)
+     if (angularflag.ne.0) then
+        gtaunow_ad(:,:,:)=gtaunow_ad(:,:,:)-gtausave_ad(:,:,:)
      endif
   endif
 

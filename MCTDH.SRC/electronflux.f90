@@ -227,7 +227,7 @@ end module fluxgtaubiomod
 module fluxduringmod
   implicit none
   integer :: allocated=0, curtime=0
-  DATATYPE,allocatable :: gtausum(:)
+  DATATYPE,allocatable :: gtausum(:), gtausave(:)
 end module fluxduringmod
 
 
@@ -256,13 +256,12 @@ contains
     DATATYPE,intent(in) :: ketavec(numr,wwin%firstconfig:wwin%lastconfig,mcscfnum), &
          ketmo(spfsize,nspf)
     integer :: imc, myiostat
-    DATATYPE :: gtaunow(mcscfnum)
+    DATATYPE :: gtaunow(mcscfnum), nullvector(numr)
     DATATYPE, allocatable :: imke(:,:),impe(:,:),imV2(:,:,:,:), imyderiv(:,:),&
          imkeop(:,:),impeop(:,:),  imyop(:,:), reke(:,:),repe(:,:),reV2(:,:,:,:), reyderiv(:,:),&
          rekeop(:,:),repeop(:,:),  reyop(:,:)
-    DATATYPE :: nullvector(numr)
 
-    nullvector(:)=0
+    gtaunow=0; nullvector=0
 
 !! initial setup
 
@@ -282,8 +281,8 @@ contains
 
     if (allocated.eq.0) then
        allocated=1
-       allocate(gtausum(mcscfnum))
-       gtausum=0d0
+       allocate(gtausum(mcscfnum),gtausave(mcscfnum))
+       gtausum=0d0; gtausave=0
        if (myrank.eq.1) then
           open(454, file=fluxtsumfile, status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening fluxtsumfile")
@@ -296,10 +295,7 @@ contains
        curtime=curtime+1
     endif
 
-    gtaunow(:)=0d0
-
 !! get the one-e matrix elements for this ket time
-
 
     imkeop=0; impeop=0;  imyop=0
     if (nucfluxopt.ne.2) then
@@ -380,6 +376,14 @@ contains
        endif
     enddo
 
+    if (curtime.eq.0) then
+       gtausave(:)=gtaunow(:)
+    endif
+
+    if (flux_subtract.ne.0) then
+       gtaunow(:) = gtaunow(:) - gtausave(:)
+    endif
+
     gtausum(:) = gtausum(:) + gtaunow(:) * dt / 2d0   !! 2 looks correct
 
     if (myrank.eq.1) then
@@ -426,8 +430,8 @@ contains
     real*8 :: MemTot,MemVal,dt, myfac,wfi,estep,windowfunct,MemNum
     complex*16, allocatable :: FTgtau(:,:), pulseft(:,:)
     real*8, allocatable :: pulseftsq(:)
-    DATATYPE :: fluxevalval(mcscfnum), ftgtausum(mcscfnum), gtausum(mcscfnum), &
-         gtaunow(mcscfnum), pots1(3)=0d0, nullvector(numr)
+    DATATYPE :: gtaunow(mcscfnum), ftgtausum(mcscfnum), gtausum(mcscfnum), &
+         pots1(3)=0d0, nullvector(numr), gtausave(mcscfnum)
     DATATYPE, allocatable :: bramo(:,:,:),braavec(:,:,:,:), ketmo(:,:,:),ketavec(:,:,:,:),&
          gtau(:,:), mobio(:,:),abio(:,:,:), &
          read_bramo(:,:),read_braavec(:,:,:,:),read_ketmo(:,:),read_ketavec(:,:,:,:),&
@@ -436,10 +440,11 @@ contains
     DATATYPE,target :: smo(nspf,nspf)
 
     if (ceground.eq.(0d0,0d0)) then
-       OFLWR "Eground is ZERO.  Are you sure?  If want zero just make it small. \n     Otherwise need eground: initial state energy."; CFLST
+       OFLWR "Eground is ZERO.  Are you sure?  If want zero just make it small."
+       WRFL  "   Otherwise need eground: initial state energy."; CFLST
     endif
 
-    nullvector(:)=0
+    gtaunow=0; ftgtausum=0; gtausum=0; gtaunow=0; nullvector=0; gtausave=0
 
 !! initial setup
 
@@ -578,7 +583,7 @@ contains
        close(454)
     endif
 
-    gtausum(:)=0d0; gtaunow(:)=0d0
+    gtausum(:)=0d0
 
 !! begin the ket batch read loop
     do ketbat=1,NBat
@@ -845,17 +850,25 @@ contains
 
                 do imc=1,mcscfnum
                    if (tot_adim.gt.0) then
-                      fluxevalval(imc) = fluxeval(abio(:,:,imc),ketavec(:,:,imc,kettime),&
+                      gtaunow(imc) = fluxeval(abio(:,:,imc),ketavec(:,:,imc,kettime),&
                            imke,impe,imV2,imyderiv,reke,repe,reV2,reyderiv,myww)
                    else
-                      fluxevalval(imc) = fluxeval(nullvector(:),nullvector(:),&
+                      gtaunow(imc) = fluxeval(nullvector(:),nullvector(:),&
                            imke,impe,imV2,imyderiv,reke,repe,reV2,reyderiv,myww)
                    endif
                 enddo
 
                 oldtime=(brabat-1)*BatchSize+bratime-1
                 tau=curtime-oldtime; 
-                gtau(tau,:) = gtau(tau,:) + fluxevalval(:)
+
+                if (curtime.eq.0.and.oldtime.eq.0) then
+                   gtausave(:) = gtaunow(:)
+                endif
+                if (flux_subtract.ne.0) then
+                   gtaunow(:)=gtaunow(:)-gtausave(:)
+                endif
+
+                gtau(tau,:) = gtau(tau,:) + gtaunow(:)
 
                 call system_clock(jtime);          times(7)=times(7)+jtime-itime
 
@@ -868,7 +881,7 @@ contains
 !! and additional column in spifile
 
                    call system_clock(itime)
-                   gtaunow(:)=fluxevalval(:)
+
                    gtausum(:) = gtausum(:) + gtaunow(:) * dt / 2d0   !! 2 looks correct
 
                    if (myrank.eq.1) then
@@ -1188,19 +1201,52 @@ contains
 
     outsum=0d0
 
-!! imaginary part of electronic matrix elements with real part coefficients in r
+
+!!!!   constant term - imaginary part of frozen, nuclear repulsion, energyshift  !!!!
+
+    matrix_ptr%kefac = 0d0
+    matrix_ptr%constfac = 1d0
+
+    call sparseconfigmult(myww,aket,ketwork,matrix_ptr,sparse_ptr,0,0,0,0,0d0,-1)
+
+    if (tot_adim.gt.0) then
+       conjgket(:,:) = ALLCON(aket(:,:))
+    endif
+    call sparseconfigmult(myww,conjgket,multket,matrix_ptr,sparse_ptr,0,0,0,0,0d0,-1)
+    if (tot_adim.gt.0) then
+       multket(:,:)=ALLCON(multket(:,:))
+    endif
+
+    if (tot_adim.gt.0) then
+       ketwork(:,:)=(ketwork(:,:)-multket(:,:)) / (0d0,-1d0)   !! -2x imag part overall
+       outsum = outsum + hermdot(abra,ketwork,tot_adim)
+    endif
+
+
+!!!!   imaginary part of electronic matrix elements with real part coefficients in r   !!!!
 
     if (nucfluxopt.ne.2) then
+
+       matrix_ptr%kefac = 0d0
+       matrix_ptr%constfac = 0d0
+
        matrix_ptr%xpotmatel(:,:) = impe(:,:)
        matrix_ptr%xopmatel(:,:)  = imke(:,:)
        matrix_ptr%xymatel(:,:)   = imyderiv(:,:)
        matrix_ptr%xtwoematel(:,:,:,:) = imV2(:,:,:,:)
 
+! 06-16 umm shouldn't same logic be here as below?  nucfluxopt
+!       if (sparseopt.ne.0) then
+!          call assemble_sparsemats(myww,matrix_ptr,sparse_ptr,1,0,0,0)
+!       endif
+!
+!       call sparseconfigmult(myww,aket,ketwork,matrix_ptr,sparse_ptr,1,0,0,0,0d0,-1)
+
        if (sparseopt.ne.0) then
-          call assemble_sparsemats(myww,matrix_ptr,sparse_ptr,1,0,0,0)
+          call assemble_sparsemats(myww,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0)
        endif
 
-       call sparseconfigmult(myww,aket,ketwork,matrix_ptr,sparse_ptr,1,0,0,0,0d0,-1)
+       call sparseconfigmult(myww,aket,ketwork,matrix_ptr,sparse_ptr,1,min(nucfluxopt,1),0,0,0d0,-1)
 
        matrix_ptr%xpotmatel(:,:)      = ALLCON(matrix_ptr%xpotmatel(:,:))
        matrix_ptr%xopmatel(:,:)       = ALLCON(matrix_ptr%xopmatel(:,:))
@@ -1226,11 +1272,12 @@ contains
 
     endif
 
+!!!!   real part of electronic operators, imaginary part of nuclear operators   !!!!
+
     if (nonuc_checkflag.eq.0.and.nucfluxopt.ne.0) then
 
-!! real part of electronic operators, imaginary part of nuclear operators
-
        matrix_ptr%kefac = 1d0
+       matrix_ptr%constfac = 0d0
 
        matrix_ptr%xpotmatel(:,:) = repe(:,:)
        matrix_ptr%xopmatel(:,:)  = reke(:,:)
