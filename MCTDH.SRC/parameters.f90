@@ -492,7 +492,7 @@ real*8 :: dipolesumstart=0d0,&   !! range for integration of oscillator strength
 integer :: computeFlux=500, &    ! 0=All in memory other: MBs to allocate
      FluxInterval=50,&           !! Multiple of par_timestep at which to save flux
      FluxSkipMult=1,&            !! Read every this number of time points.  Step=FluxInterval*FluxSkipMult
-     flux_subtract=1             !! subtract flux for decaying initial state 0=don't 1,2=do, 2 ways for ft
+     flux_subtract=1             !! if nonzero subtract t=0 flux matrix element for decaying initial state
 integer :: nucfluxopt=1          !! NucFlux=     !! Include imag part of hamiltonian from nuc ke 2=only that
 integer :: FluxOpType=1          !! 0=Full ham 1=halfnium 
 integer :: numcatfiles=1         !! see catspffiles and catavectorfiles in INPUT/OUTPUT for action 17,28
