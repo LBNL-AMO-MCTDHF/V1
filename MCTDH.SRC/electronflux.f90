@@ -993,7 +993,7 @@ contains
           myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
 
           write(1004,'(F8.4,100E18.6)',iostat=myiostat) wfi, pulseftsq(i), &
-               FTgtau(i,:)/pulseftsq(i) * myfac, ftgtau(i,:), ftgtausum(:)
+               FTgtau(i,:)/pulseftsq(i) * myfac, ftgtau(i,:) / 4 / PI, ftgtausum(:)
        enddo
        call checkiostat(myiostat,"writing "//spifile)
        close(1004)

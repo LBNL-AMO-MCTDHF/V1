@@ -1490,7 +1490,7 @@ contains
                 myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi 
 
                 write(1004,'(F18.12, T22, 400E20.8)',iostat=myiostat)  wfi,  &
-                     pulseftsq(i), ftgtau(i)/pulseftsq(i) * myfac, ftgtau(i), ftgtausum
+                     pulseftsq(i), ftgtau(i)/pulseftsq(i) * myfac, ftgtau(i) / 4 / PI, ftgtausum
 
              enddo
              call checkiostat(myiostat,"writing proj spi file")
@@ -1514,8 +1514,8 @@ contains
 
                    do il=1,NUMANGLES
                       write(1004,'(F18.12, I5, 1400E20.8)',iostat=myiostat)  wfi, il, &
-                           pulseftsq(i), ftgtau_ad(i,il)/pulseftsq(i) * myfac, ftgtau_ad(i,il),&
-                           ftgtausum_ad(il)
+                           pulseftsq(i), ftgtau_ad(i,il)/pulseftsq(i) * myfac, &
+                           ftgtau_ad(i,il) / 4 / PI, ftgtausum_ad(il)
                    enddo
                    write(1004,*)
                 enddo
@@ -1541,7 +1541,7 @@ contains
 
              myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
              write(1004,'(F18.12, T22, 400E20.8)',iostat=myiostat)  wfi,  pulseftsq(i), &
-                  total(i)/pulseftsq(i) * myfac, total(i), ftgtausum
+                  total(i)/pulseftsq(i) * myfac, total(i) / 4 / PI, ftgtausum
           enddo
           call checkiostat(myiostat,"writing total proj spi file")
           close(1004)
@@ -1564,7 +1564,8 @@ contains
 
                 do il=1,NUMANGLES
                    write(1004,'(F18.12, I5, 400E20.8)',iostat=myiostat)  wfi, il, pulseftsq(i), &
-                        total_ad(i,il)/pulseftsq(i) * myfac, total_ad(i,il), ftgtausum_ad(il)
+                        total_ad(i,il)/pulseftsq(i) * myfac, &
+                        total_ad(i,il) / 4 / PI, ftgtausum_ad(il)
                 enddo
                 write(1004,*)
              enddo
