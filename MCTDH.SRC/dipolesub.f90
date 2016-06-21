@@ -251,8 +251,10 @@ contains
          dipole_diff(:,:)
 !! real valued variables -- field (taken real always); 
 !!        integrals domega and circ polarization output left real valued
-    real*8, allocatable :: worksums(:,:,:), exsums(:,:,:), totworksums(:,:),&
-         totexsums(:,:), xsums(:,:), each_efield_ang(:,:,:), moment(:), dipole_ang(:,:), &
+    real*8, allocatable :: &
+         worksums(:,:,:), photsums(:,:,:), totworksums(:,:), totphotsums(:,:), &
+         workpers(:,:,:), photpers(:,:,:), totworkpers(:,:), totphotpers(:,:), &
+         sumrule(:,:), each_efield_ang(:,:,:), moment(:), dipole_ang(:,:), &
          angworksum0(:,:,:), totangworksum0(:,:),  efield(:,:), each_efield(:,:,:)
 !! making integrals dt for work x y z complex valued for complex domcke wave mixing
     complex*16, allocatable :: worksum0(:,:,:), totworksum0(:,:)
@@ -517,36 +519,49 @@ contains
 
     Estep=2*pi/par_timestep/autosteps/(numdata+1)
 
-    allocate(worksums(0:numdata,numft,npulses),exsums(0:numdata,numft,npulses),&
-         totworksums(0:numdata,numft), totexsums(0:numdata,numft), xsums(0:numdata,numft))
-    worksums=0; exsums=0; totworksums=0; totexsums=0; xsums=0
+    allocate(&
+         worksums(0:numdata,numft,npulses),photsums(0:numdata,numft,npulses),&
+         totworksums(0:numdata,numft), totphotsums(0:numdata,numft), &
+         workpers(0:numdata,numft,npulses),photpers(0:numdata,numft,npulses),&
+         totworkpers(0:numdata,numft), totphotpers(0:numdata,numft), &
+         sumrule(0:numdata,numft))
+    worksums=0; photsums=0; totworksums=0; totphotsums=0; 
+    workpers=0; photpers=0; totworkpers=0; totphotpers=0; 
+    sumrule=0
 
     if (dipolesumstart.le.0d0) then
        do ipulse=1,npulses
-          exsums(0,:,ipulse) = Estep * imag(fftrans(0,:)*conjg(each_eft(0,:,ipulse))) / PI
+          photpers(0,:,ipulse) = imag(fftrans(0,:)*conjg(each_eft(0,:,ipulse))) / PI / 2   !! /2 6/16
+          photsums(0,:,ipulse) = Estep * photpers(0,:,ipulse)
        enddo
     endif
     do i=1,numdata
        myenergy=i*Estep
 
-!! xsum sums to N for N electrons
+!! sumrule sums to N for N electrons
        if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
-          xsums(i,:)=xsums(i-1,:) + Estep * imag(fftrans(i,:)*conjg(eft(i,:))) / abs(eft(i,:)**2) * myenergy * 2 / PI
+          sumrule(i,:)=sumrule(i-1,:) + Estep * imag(fftrans(i,:)*conjg(eft(i,:))) / abs(eft(i,:)**2) * myenergy * 2 / PI
           do ipulse=1,npulses
-             exsums(i,:,ipulse)  =  exsums(i-1,:,ipulse) + Estep * imag(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI
-             worksums(i,:,ipulse)=worksums(i-1,:,ipulse) + Estep * imag(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI * myenergy
+             photpers(i,:,ipulse) = imag(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI / 2  !! /2 6/16
+             workpers(i,:,ipulse) = imag(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI * myenergy
+             photsums(i,:,ipulse) = photsums(i-1,:,ipulse) + Estep * photpers(i,:,ipulse)
+             worksums(i,:,ipulse) = worksums(i-1,:,ipulse) + Estep * workpers(i,:,ipulse)
           enddo
        else
-          xsums(i,:)=xsums(i-1,:)
-          exsums(i,:,:)  =  exsums(i-1,:,:)
+          sumrule(i,:)=sumrule(i-1,:)
+          photsums(i,:,:)  =  photsums(i-1,:,:)
           worksums(i,:,:)=worksums(i-1,:,:)
        endif
     enddo
-    totexsums=0
+    totphotsums=0
     totworksums=0
+    totphotpers=0
+    totworkpers=0
     do ipulse=1,npulses
-       totexsums(:,:)=totexsums(:,:)+exsums(:,:,ipulse)
+       totphotsums(:,:)=totphotsums(:,:)+photsums(:,:,ipulse)
        totworksums(:,:)=totworksums(:,:)+worksums(:,:,ipulse)
+       totphotpers(:,:)=totphotpers(:,:)+photpers(:,:,ipulse)
+       totworkpers(:,:)=totworkpers(:,:)+workpers(:,:,ipulse)
     enddo
 
     if (myrank.eq.1) then
@@ -575,7 +590,7 @@ contains
 
              write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
                   fftrans(i,ii), eft(i,ii), fftrans(i,ii)*conjg(eft(i,ii)) * 2 * myenergy, &
-                  fftrans(i,ii)*conjg(eft(i,ii)) / abs(eft(i,ii)**2) * xsecunits, xsums(i,ii)
+                  fftrans(i,ii)*conjg(eft(i,ii)) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
           enddo
           call checkiostat(myiostat,"writing "//outftnames(ii))
           close(171)
@@ -588,7 +603,8 @@ contains
           do i=0,numdata
              myenergy=i*Estep
              if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
-                write(171,'(A25,F10.5,400F20.10)') " WORK EACH PULSE E= ", myenergy, totworksums(i,ii),worksums(i,ii,:)
+                write(171,'(A25,F10.5,400F20.10)') " WORK EACH PULSE E= ", myenergy, &
+                     totworksums(i,ii), totworkpers(i,ii), worksums(i,ii,:), workpers(i,ii,:)
              endif
           enddo
           close(171)
@@ -598,7 +614,8 @@ contains
           do i=0,numdata
              myenergy=i*Estep
              if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
-                write(171,'(A25,F10.5,400F20.10)') "PHOTONS EACH PULSE E= ", myenergy, totexsums(i,ii),exsums(i,ii,:)
+                write(171,'(A25,F10.5,400F20.10)') "PHOTONS EACH PULSE E= ", myenergy, &
+                     totphotsums(i,ii), totphotpers(i,ii), photsums(i,ii,:), photpers(i,ii,:)
              endif
           enddo
           close(171)
@@ -610,7 +627,8 @@ contains
              do i=0,numdata
                 myenergy=i*Estep
                 if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
-                   write(171,'(A25,F10.5,400F20.10)') " WORK EACH PULSE E= ", myenergy, totworksums(i,ii),worksums(i,ii,:)
+                   write(171,'(A25,F10.5,400F20.10)') " WORK EACH PULSE E= ", myenergy, &
+                        totworksums(i,ii), totworkpers(i,ii), worksums(i,ii,:), workpers(i,ii,:)
                 endif
              enddo
              close(171)
@@ -620,7 +638,8 @@ contains
              do i=0,numdata
                 myenergy=i*Estep
                 if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
-                   write(171,'(A25,F10.5,400F20.10)') "PHOTONS EACH PULSE E= ", myenergy, totexsums(i,ii),exsums(i,ii,:)
+                   write(171,'(A25,F10.5,400F20.10)') "PHOTONS EACH PULSE E= ", myenergy, &
+                        totphotsums(i,ii), totphotpers(i,ii), photsums(i,ii,:), photpers(i,ii,:)
                 endif
              enddo
              close(171)
@@ -644,7 +663,7 @@ contains
 
                 write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
                      fftrans(i,ii), eft(i,ii), fftrans(i,ii)*conjg(eft(i,ii)) * 2 * myenergy, &
-                     fftrans(i,ii)*conjg(eft(i,ii)) / abs(eft(i,ii)**2) * xsecunits, xsums(i,ii)
+                     fftrans(i,ii)*conjg(eft(i,ii)) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
              enddo
              call checkiostat(myiostat,"writing "//outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7))
              close(171)
@@ -654,7 +673,8 @@ contains
     call mpibarrier()
 
     deallocate(fftrans,eft,each_eft)
-    deallocate(worksums,exsums,totworksums,totexsums,xsums)
+    deallocate(worksums,photsums,totworksums,totphotsums,  workpers,photpers,totworkpers,totphotpers,&
+         sumrule)
 
   end subroutine dipolecall
 
