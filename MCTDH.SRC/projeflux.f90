@@ -1208,7 +1208,7 @@ contains
                       gtaunow(istate,imc) = hermdot(bramo(:,:,:,bratime),ketop(:,:,:,kettime),2*spfsize*numr)
 
                       if (flux_subtract.ne.0) then
-                         gtaunow(istate,imc) = gtaunow(istate,imc) - gtausave(istate,imc)
+                         gtaunow(istate,imc) = gtaunow(istate,imc) - gtausave(istate,imc) * exp((0d0,-1d0)*ceground*dt*tau)
                       endif
 
                       gtau(tau,istate,imc) = gtau(tau,istate,imc) + gtaunow(istate,imc) * dt
@@ -1239,7 +1239,7 @@ contains
       enddo
 
       if (flux_subtract.ne.0) then
-         gtaunow_ad(istate,imc,:) = gtaunow_ad(istate,imc,:) - gtausave_ad(istate,imc,:)
+         gtaunow_ad(istate,imc,:) = gtaunow_ad(istate,imc,:) - gtausave_ad(istate,imc,:) * exp((0d0,-1d0)*ceground*dt*tau)
       endif
 
       gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + gtaunow_ad(istate,imc,:) * dt

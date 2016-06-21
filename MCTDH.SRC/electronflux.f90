@@ -865,7 +865,7 @@ contains
                    gtausave(:) = gtaunow(:)
                 endif
                 if (flux_subtract.ne.0) then
-                   gtaunow(:)=gtaunow(:)-gtausave(:)
+                   gtaunow(:)=gtaunow(:)-gtausave(:) * exp((0d0,-1d0)*ceground*dt*tau)
                 endif
 
                 gtau(tau,:) = gtau(tau,:) + gtaunow(:)
