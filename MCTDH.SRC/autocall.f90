@@ -42,7 +42,7 @@ subroutine autocall(numdata, forwardovl, sflag)
      do i=0,numdata
         fftrans0(i,:) = forwardovl(i,:)  * exp((0.d0,-1.d0)*ceground*par_timestep*autosteps*i)
 
-        fftrans(i,:) = fftrans0(i,:) * windowfunct(i,numdata)
+        fftrans(i,:) = fftrans0(i,:) * windowfunct(i,numdata,1)  !! action 1
 
      enddo
      do i=1,numdata

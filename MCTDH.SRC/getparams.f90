@@ -39,6 +39,7 @@ subroutine getparams()
   use mpimod
   use orblabelmod
   use pulse_parameters   !! conjgpropflag
+  use actionlistmod      !! ftwindowpower,fttriwindow
   implicit none
   integer :: nargs, getlen, i, len,  ishell, ispf,j, myiostat, iiflag,needpulse,ipulse
 #ifdef PGFFLAG
@@ -95,7 +96,7 @@ subroutine getparams()
        walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac, maxquadnorm,quadstarttime,&
        reinterp_orbflag,spf_gridshift,load_avector_product,projspifile,readfullvector,walksinturn,&
        turnbatchsize,energyshift, pulseft_estep, finalstatsfile, fluxtsumfile, projfluxtsumfile,&
-       sparsedfflag,sparseprime,sparsesummaflag, par_consplit, ftwindowlength, fttriwindow,&
+       sparsedfflag,sparseprime,sparsesummaflag, par_consplit, fttriwindow,&
        pulsewindowtoo,conjgpropflag,dipolesumstart,dipolesumend,outmatel,numcatfiles,&
        catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
        shuffle_dfwalktype,maxdgdim, messavec, messaamount,holeflag, angularflag, angprojspifile,&
@@ -113,6 +114,8 @@ subroutine getparams()
   nargs=iargc()
 #endif
 
+!! Defaults not set in declarations
+
   numfluxcurves=0;  numfluxcurves(1)=1
 
 #ifdef REALGO
@@ -121,6 +124,18 @@ subroutine getparams()
   conway=3
 #endif
 
+!! F.T. windowing function, defaults for each action
+!! use linear on [0:t], cosine-squared on [-t:t]
+
+  fttriwindow(:)=1
+  ftwindowpower(:)=1
+
+  fttriwindow(1)=0
+  ftwindowpower(1)=2
+  fttriwindow(16)=0
+  ftwindowpower(16)=2
+  fttriwindow(17)=0
+  ftwindowpower(17)=2
 
   open(971,file=inpfile, status="old", iostat=myiostat)
   if (myiostat/=0) then

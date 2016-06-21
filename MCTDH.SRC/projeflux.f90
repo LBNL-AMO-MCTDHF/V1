@@ -1385,7 +1385,7 @@ contains
        if (pulsewindowtoo == 0) then
           pulseft(i,:)=pots1(:)
        else
-          pulseft(i,:)=pots1(:) * windowfunct(i,curtime)
+          pulseft(i,:)=pots1(:) * windowfunct(i,curtime,17)  !! action 17
        endif
     enddo
 
@@ -1417,7 +1417,7 @@ contains
           ftgtau(:)=0d0;
 
           do i=0,curtime
-             ftgtau(i) = ALLCON(gtau(i,istate,imc))   * windowfunct(i,curtime) * &
+             ftgtau(i) = ALLCON(gtau(i,istate,imc))   * windowfunct(i,curtime,17) * &
                   exp((0.d0,-1.d0)*ALLCON(ceground)*dt*i)
           enddo
           do i=1,curtime
@@ -1426,7 +1426,7 @@ contains
 
           if (angularflag.ne.0) then
              do i=0,curtime
-                ftgtau_ad(i,:) = ALLCON(gtau_ad(i,istate,imc,:))   * windowfunct(i,curtime) * &
+                ftgtau_ad(i,:) = ALLCON(gtau_ad(i,istate,imc,:))   * windowfunct(i,curtime,17) * &
                      exp((0.d0,-1.d0)*ALLCON(ceground)*dt*i)
              enddo
              do i=1,curtime

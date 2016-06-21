@@ -927,14 +927,14 @@ contains
 
     do i=0,curtime
 
-       ftgtau(i,:) = ALLCON(gtau(i,:))   * windowfunct(i,curtime) * &
+       ftgtau(i,:) = ALLCON(gtau(i,:))   * windowfunct(i,curtime,16) * &  !! action 16
             exp((0.d0,-1.d0)*ALLCON(ceground)*dt*i)
 
        call vectdpot(i*dt,0,pots1,-1)   !! LENGTH GAUGE.
        if (pulsewindowtoo == 0) then
           pulseft(i,:)=pots1(:)
        else
-          pulseft(i,:)=pots1(:) * windowfunct(i,curtime)
+          pulseft(i,:)=pots1(:) * windowfunct(i,curtime,16)
        endif
     enddo
 

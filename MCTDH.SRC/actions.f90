@@ -5,7 +5,9 @@
 
 module actionlistmod
   
-  character (len=18) :: action_list(28) = (/ &
+  integer, parameter :: MAXACTION=28
+
+  character (len=18) :: action_list(MAXACTION) = (/ &
        "Autocorr          ", &      !! 1
        "Save nat          ", &      !! 2
        "Save spf          ", &      !! 3
@@ -36,7 +38,7 @@ module actionlistmod
        "ProjIon during    " /)      !! 28
 
 !! 0 = propagation action 1 = analysis action 2 = deprecated action
-  integer :: action_type(28) = (/ &
+  integer :: action_type(MAXACTION) = (/ &
        0,&  !!       "Autocorr       ", &      !! 1
        0,&  !!       "Save nat       ", &      !! 2
        0,&  !!       "Save spf       ", &      !! 3
@@ -65,6 +67,14 @@ module actionlistmod
        1,&  !!       "Matrixelements ", &      !! 26
        0,&  !!       "IonFlux during ", &      !! 27
        0 /) !!       "ProjIon during " /)      !! 28
+
+!! for windowing function.  &parinp namelist input.  Defaults in getparams.f90.
+
+!! If nonzero, window function is ((tmax-t)/tmax)**ftwindowpower
+ integer :: fttriwindow(MAXACTION)=1
+
+!! If fttriwindow=0, window function is cos(pi t / 2 / tmax)**ftwindowpower 
+ integer :: ftwindowpower(MAXACTION)=1
 
 end module actionlistmod
 
@@ -124,6 +134,38 @@ subroutine get_skipflag_from_actions(outskip)
 end subroutine get_skipflag_from_actions
 
 
+!! Windowfunct for actions 1 16 17 21.
+!! now different windows for different actions 6-16 v1.31
+
+function windowfunct(i,numdata,iaction)
+  use parameters
+  use actionlistmod
+  implicit none
+  real*8 :: windowfunct
+  integer,intent(in) :: i,numdata,iaction
+
+  if (iaction.gt.MAXACTION.or.iaction.lt.1) then
+     OFLWR "windowfunct action error", iaction, MAXACTION; CFLST
+  endif
+
+  if (i.lt.0.or.i.gt.numdata) then
+     OFLWR "ERROR, windowfunct ",i,numdata; CFLST
+  endif
+
+  if (fttriwindow(iaction).ne.0) then
+
+     windowfunct = ( real(numdata-i,8) / real(numdata,8) )**ftwindowpower(iaction)
+
+  else
+     if (ftwindowpower(iaction).eq.0) then
+        windowfunct = ( 1 - sin( pi/2d0 * i / real(numdata,8) ) )
+     else
+        windowfunct = cos( pi/2d0 * i / real(numdata,8) )**ftwindowpower(iaction)
+     endif
+  endif
+
+end function windowfunct
+
 
 subroutine actionsub(thistime)
   use parameters
@@ -133,7 +175,7 @@ subroutine actionsub(thistime)
   use actionlistmod
   implicit none
   
-  integer :: i, calledhere=0, atime, btime, times(28)=0,getlen,myiostat
+  integer :: i, calledhere=0, atime, btime, times(MAXACTION)=0,getlen,myiostat
   real*8 :: thistime
   CNORMTYPE :: error
 
@@ -271,7 +313,7 @@ subroutine write_actions()
   integer :: i,j,k
 
   do i=1,numactions
-     if ((actions(i).gt.28).or.(actions(i).lt.1)) then
+     if ((actions(i).gt.MAXACTION).or.(actions(i).lt.1)) then
         OFLWR "ACTION NOT SUPPORTED!!!! ", actions(i); CFLST
      endif
   enddo

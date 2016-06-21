@@ -469,14 +469,12 @@ real*8 :: autotimestep=1.d0      !! ACTIONS 1 and 21 (autocorrelation and emissi
 !!EE
 !!{\large \quad FTs for AUTOCORRELATION, PHOTOIONIZATION and EMISSION/ABSORPTION (actions 1,16,17,21)}
 !!BB
-integer :: ftwindowlength=-99 !! FOR ACTIONS 1,16,17,21 options for damping function of time to be transformed
-                              !!    if .ge.0, only damp at end (high frequency cutoff): last ftwindowlength 
-                              !!    points in fourier transform are damped by cosine function
-integer :: ftwindowpower=1    !! if ftwindowlength not set, use previous (v1.16) windowing function: multiply
-                              !!    all points by cos(pi t / 2 / tmax)**ftwindowpower 
-integer :: fttriwindow=1      !! If nonzero override other two options, do straight linear damping function
-                              !!    NOW DEFAULT linear damping looks best v1.16
-integer :: ftdiff=0           !! fourier transform derivative of dipole moment not dipole moment
+!! now defined for each action.  Variables in actions.f90.  Defaults in getparams.f90.
+!!
+!! int fttriwindow(MAXACTIONS)=1    !! If nonzero, window function is ((tmax-t)/tmax)**ftwindowpower
+!! int ftwindowpower(MAXACTIONS)=1  !! If fttriwindow=0, 
+!!                                  !!    window function is cos(pi t / 2 / tmax)**ftwindowpower 
+integer :: ftdiff=0                 !! fourier transform derivative of dipole moment not dipole moment
 !!EE
 !!{\large \quad EMISSION/ABSORPTION (action 21)}
 !!BB

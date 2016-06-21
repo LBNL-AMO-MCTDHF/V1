@@ -176,7 +176,7 @@ eigen.o: eigen.F90  Definitions.ALL
 utils.o: $(DEPEND) utils.F90
 	$(F90) $(FFLAGS) $(MPIFLAG) -c utils.F90 
 
-getparams.o: Definitions.ALL Definitions.INC parameters.o main_modules.o getparams.F90 pulse.o
+getparams.o: Definitions.ALL Definitions.INC parameters.o main_modules.o getparams.F90 pulse.o actions.o
 	$(F90) $(FFLAGS) $(MPIFLAG) $(SAFEFLAG) $(PGFFLAG) -c getparams.F90 
 
 electronflux.o: $(DEPEND) electronflux.F90 biortho.o walkmult.o proputils.o matel.o pulse.o

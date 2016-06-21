@@ -467,13 +467,13 @@ contains
     deallocate(efield,each_efield,dipolearrays)
 
     do i=0,numdata
-       fftrans(i,1:3) = fftrans(i,1:3) * windowfunct(i,numdata)
+       fftrans(i,1:3) = fftrans(i,1:3) * windowfunct(i,numdata,21)  !! action 21
     enddo
 
     if (pulsewindowtoo.ne.0) then
        do i=0,numdata
-          each_eft(i,1:3,:)=each_eft(i,1:3,:) * windowfunct(i,numdata)
-          eft(i,1:3)=eft(i,1:3) * windowfunct(i,numdata)
+          each_eft(i,1:3,:)=each_eft(i,1:3,:) * windowfunct(i,numdata,21)
+          eft(i,1:3)=eft(i,1:3) * windowfunct(i,numdata,21)
        enddo
     endif
 
