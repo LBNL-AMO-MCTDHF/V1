@@ -1235,7 +1235,8 @@ contains
               hermdot(deweighted_bramo(:,:,:),ketop_ad(:,:,:,kettime,il),2*spfsize*numr)
       enddo
 
-      gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + gtaunow_ad(istate,imc,:) * dt
+!! no dt factor here, should be here, where is it
+      gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + gtaunow_ad(istate,imc,:)
 
    endif  !! angularflag
 
@@ -1429,7 +1430,6 @@ contains
              csum=SUM(ftgtau(-curtime:curtime))
              ftgtau(-curtime:curtime) = ftgtau(-curtime:curtime) - &
                   csum/tentsum * tentfunction(-curtime:curtime)
-             OFLWR "TEMPCHECK TENT", istate, csum, SUM(ftgtau(-curtime:curtime)); CFL
           endif
 
           if (angularflag.ne.0) then

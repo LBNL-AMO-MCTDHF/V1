@@ -948,7 +948,6 @@ contains
           csum=SUM(ftgtau(-curtime:curtime,imc))
           ftgtau(-curtime:curtime,imc) = ftgtau(-curtime:curtime,imc) - &
                csum/tentsum * tentfunction(-curtime:curtime)
-          OFLWR "tempcheck TENT", imc, csum, SUM(ftgtau(-curtime:curtime,imc)); CFL
        enddo
     endif
 
