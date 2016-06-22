@@ -152,13 +152,11 @@ function windowfunct(i,numdata,iaction)
      OFLWR "ERROR, windowfunct ",i,numdata; CFLST
   endif
 
-  if (fttriwindow(iaction).ne.0) then
-
-     windowfunct = ( real(numdata-i,8) / real(numdata,8) )**ftwindowpower(iaction)
-
+  if (ftwindowpower(iaction).eq.0) then
+     windowfunct = 1d0
   else
-     if (ftwindowpower(iaction).eq.0) then
-        windowfunct = ( 1 - sin( pi/2d0 * i / real(numdata,8) ) )
+     if (fttriwindow(iaction).ne.0) then
+        windowfunct = ( real(numdata-i,8) / real(numdata,8) )**ftwindowpower(iaction)
      else
         windowfunct = cos( pi/2d0 * i / real(numdata,8) )**ftwindowpower(iaction)
      endif
