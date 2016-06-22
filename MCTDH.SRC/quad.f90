@@ -285,7 +285,7 @@ subroutine quadspfs(inspfs,jjcalls)
 !!$ 06-16 
 !!$   Don't understand jacsymflag!  See    workvec=invector+solution    below
 !!$
-  if (jacsymflag.eq.0) then
+  if (jacsymflag.eq.0.and.jacsymquad.ne.0) then
      OFLWR "setting jacsymflag=1 for orbital quad"; CFL
      jacsymflag=1
   endif
@@ -377,8 +377,10 @@ subroutine quadspfs(inspfs,jjcalls)
            solution=solution*maxquadnorm*nspf/mynorm
         endif
 
-        if (jacsymflag.eq.0.or.numfrozen.gt.0) then   !! HOW IT SHOULD BE
+        if (jacsymflag.eq.0) then        !! HOW IT SHOULD BE
+
            workvec=invector-solution
+
         else
 !!
 !! WHAT?  WHY?  This is what I've been doing, with jacsymflag.  It works,

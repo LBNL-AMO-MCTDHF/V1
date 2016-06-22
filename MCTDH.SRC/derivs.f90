@@ -726,10 +726,11 @@ contains
        spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
 
 !!$ exact exchange (too slow), use frozenexchinvr instead
-!!$
-!!$       call op_frozen_exchange(lowspf,highspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
-!!$       spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
-!!$
+
+       if (exact_exchange.ne.0) then
+          call op_frozen_exchange(lowspf,highspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
+          spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
+       endif
 
     endif
     call system_clock(jtime);     times(3)=times(3)+jtime-itime;      itime=jtime
@@ -1091,7 +1092,7 @@ contains
 !!  (it is prohibitive to call op_frozen_exchange repeatedly)
 !! EXCHANGE AND DRIVING CONTRIBUTE TO JACOBIAN (jacoperate) via projector.
 
-       if (numfrozen.gt.0) then
+       if (numfrozen.gt.0.and.exact_exchange.eq.0) then
           call system_clock(itime)
           do jjj=0,itop
              if (dentimeflag.ne.0) then

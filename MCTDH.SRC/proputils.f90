@@ -254,6 +254,12 @@ subroutine get_frexchange()
 
   if (numfrozen.gt.0) then
 
+     yyy%frozenexchinvr(:,:,0)=0
+
+     if (exact_exchange.ne.0) then
+        return
+     endif
+
      allocate(frozenexchange(spfsize,nspf));     frozenexchange=0
      lowspf=1; highspf=nspf
      if (parorbsplit.eq.1) then

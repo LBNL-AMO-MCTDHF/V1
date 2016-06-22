@@ -165,7 +165,9 @@ contains
           call system_clock(jtime); times(5)=times(5)+jtime-itime;
        endif
 
-       if (numfrozen.gt.0) then
+
+       if (numfrozen.gt.0.and.exact_exchange.eq.0) then
+
           call system_clock(itime)
 !! EXCHANGE
           if (dentimeflag.ne.0) then

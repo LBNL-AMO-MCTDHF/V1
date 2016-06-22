@@ -101,7 +101,7 @@ subroutine getparams()
        catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
        shuffle_dfwalktype,maxdgdim, messavec, messaamount,holeflag, angularflag, angprojspifile,&
        prepropflag, step_flag, postpropflag, scalarflag, angprojfluxtsumfile, &
-       catfacs, flux_subtract
+       catfacs, flux_subtract, jacsymquad, exact_exchange
 
   OFL
   write(mpifileptr, *)
@@ -154,6 +154,10 @@ subroutine getparams()
 !!$     if (constraintflag.ne.0) then
 !!$        prepropflag=1
 !!$     endif
+
+     if (numfrozen.gt.0) then 
+        jacsymquad=0
+     endif
 
      if (improvedrelaxflag.ne.0) then
         maxexpodim=max(300,maxexpodim)
@@ -591,14 +595,6 @@ subroutine getparams()
   if (ceground.eq.(0d0,0d0)) then
      ceground=eground
   endif
-
-
-!!$ no, turning this on in quadspfs (quadstarttime)
-!!$  if (improvedquadflag.gt.1.and.jacsymflag.eq.0) then
-!!$     jacsymflag=1
-!!$     OFLWR "enforcing jacsymflag=1 for improved quad orbitals"; CFL
-!!$  endif
-
 
 !! 121912
 !! if numholes or numexcite is not set, define from avectorhole etc. input for backwards compatibility

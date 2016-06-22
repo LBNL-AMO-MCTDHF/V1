@@ -263,6 +263,7 @@ integer :: expodim=10            !!              !! Starting krylov dimension fo
 integer :: maxexpodim=100        !!              !! Maximum krylov dimension for expokit orbital propagation
 integer :: scalarflag=0          !!              !! Flag for inclusion of scalar terms in reduced hamiltonian
 real*8  :: expostepfac=1.2d0     !!              !! Miscellaneous algorithm parameter
+integer :: exact_exchange=0
 !!EE
 !!\textbf{\qquad SPARSE - if sparseconfigflag .ne. 0}
 !!BB
@@ -293,6 +294,7 @@ real*8 :: timestepfac=1d0                        !! accelerate relax. multiply p
 real*8 :: max_timestep=1d10                      !!    maximum time step (limit on exponential growth)
 integer :: improvedquadflag=0    !!              !! Use newton iteration not diagonalization for improvedrelax.
                                                  !!     (1 = A-vector, 2 = orbitals, 3 = both)
+integer :: jacsymquad=1                          !! Turn on jacsymflag for orbital quad 2,3
 real*8 :: quadstarttime=-1d0                     !! Waits to turn on orbital quad (2 or 3) until this time
 real*8 :: aquadstarttime=-1d0                    !! Waits to turn on avector quad (1 or 3) until this time
 real*8 :: maxquadnorm=1d10                       !! brakes to use if improvedquadflag=2 or 3 is diverging
