@@ -957,7 +957,7 @@ contains
     integer :: i,k,tlen,istate,curtime,tau,ir ,imc,ioffset, il
     integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,&
          bratop,getlen,myiostat,oldtime
-    real*8 :: MemTot,MemVal,wfi,estep,myfac,windowfunct,MemNum
+    real*8 :: MemTot,MemVal,wfi,estep,myfac,windowfunct,MemNum, tentsum
     DATATYPE, allocatable :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:),gtau_ad(:,:,:,:),ketop(:,:,:,:),&
          read_bramo(:,:,:), read_ketmo(:,:,:), deweighted_bramo(:,:,:), ketmo_ad(:,:,:,:,:),&
          ketop_ad(:,:,:,:,:), gtaudiag(:,:,:), gtaudiag_ad(:,:,:,:), gtausum(:,:,:), gtausum_ad(:,:,:,:),&
@@ -965,8 +965,8 @@ contains
          gtausave_ad(:,:,:)
     complex*16, allocatable :: ftgtau(:),pulseft(:,:), total(:),ftgtau_ad(:,:),total_ad(:,:),&
          ftgtausum_ad(:)
-    complex*16 :: ftgtausum
-    real*8, allocatable :: pulseftsq(:)
+    complex*16 :: ftgtausum, csum
+    real*8, allocatable :: pulseftsq(:), tentfunction(:)
     DATATYPE :: pots1(3)
     character (len=4) :: xstate0,xmc0
     character (len=3) :: xstate1,xmc1
@@ -1207,11 +1207,8 @@ contains
 
                       gtaunow(istate,imc) = hermdot(bramo(:,:,:,bratime),ketop(:,:,:,kettime),2*spfsize*numr)
 
-                      if (flux_subtract.ne.0) then
-                         gtaunow(istate,imc) = gtaunow(istate,imc) - gtausave(istate,imc) * exp((0d0,-1d0)*ceground*dt*tau)
-                      endif
-
-                      gtau(tau,istate,imc) = gtau(tau,istate,imc) + gtaunow(istate,imc) * dt
+!! no dt factor here, should be here, where is it
+                      gtau(tau,istate,imc) = gtau(tau,istate,imc) + gtaunow(istate,imc)
 
    if (angularflag.ne.0) then
 
@@ -1237,10 +1234,6 @@ contains
          gtaunow_ad(istate,imc,il) = gtaunow_ad(istate,imc,il) + 0.5d0 * &
               hermdot(deweighted_bramo(:,:,:),ketop_ad(:,:,:,kettime,il),2*spfsize*numr)
       enddo
-
-      if (flux_subtract.ne.0) then
-         gtaunow_ad(istate,imc,:) = gtaunow_ad(istate,imc,:) - gtausave_ad(istate,imc,:) * exp((0d0,-1d0)*ceground*dt*tau)
-      endif
 
       gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + gtaunow_ad(istate,imc,:) * dt
 
@@ -1286,7 +1279,7 @@ contains
     if (angularflag.ne.0) then
        gtausum_ad(0,:,:,:)=gtaudiag_ad(0,:,:,:)
        do i=1,nt
-          gtausum_ad(i,:,:,:)=gtausum_ad(i-1,:,:,:) + gtaudiag_ad(i,:,:,:) * dt
+          gtausum_ad(i,:,:,:)=gtausum_ad(i-1,:,:,:) + gtaudiag_ad(i,:,:,:) * dt / 2d0
        enddo
        tot_gtausum_ad=0d0
        do istate=1,totstate
@@ -1369,8 +1362,13 @@ contains
     OFLWR "Taking the fourier transform of g(tau) to get cross section at T= ",curtime*dt; CFL
 
     allocate(ftgtau(-curtime:curtime), pulseft(-curtime:curtime,3),&
-         pulseftsq(-curtime:curtime),total(-curtime:curtime))
-    ftgtau(:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0; total(:)=0
+         pulseftsq(-curtime:curtime),total(-curtime:curtime),tentfunction(-curtime:curtime))
+    ftgtau(:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0; total(:)=0; tentfunction(:)=0
+
+    do i=-curtime,curtime
+       tentfunction(i) = (1+curtime-abs(i)) * windowfunct(abs(i),curtime,17)
+    enddo
+    tentsum=SUM(tentfunction(-curtime:curtime))
 
     if (angularflag.ne.0) then
        allocate(ftgtau_ad(-curtime:curtime,NUMANGLES), total_ad(-curtime:curtime,NUMANGLES),&
@@ -1417,24 +1415,57 @@ contains
           ftgtau(:)=0d0;
 
           do i=0,curtime
-             ftgtau(i) = ALLCON(gtau(i,istate,imc))   * windowfunct(i,curtime,17) * &
-                  exp((0.d0,-1.d0)*ALLCON(ceground)*dt*i)
+             ftgtau(i) = ALLCON(gtau(i,istate,imc)) * windowfunct(i,curtime,17) &
+                  * exp((0d0,-1d0)*ALLCON(ceground)*dt*i)
           enddo
+
           do i=1,curtime
              ftgtau(-i) = ALLCON(ftgtau(i))
           enddo
 
+!! subtract tent function   (1+curtime-abs(i))/(curtime+1)^2   for better performance
+
+          if (flux_subtract.ne.0) then
+             csum=SUM(ftgtau(-curtime:curtime))
+             ftgtau(-curtime:curtime) = ftgtau(-curtime:curtime) - &
+                  csum/tentsum * tentfunction(-curtime:curtime)
+             OFLWR "TEMPCHECK TENT", istate, csum, SUM(ftgtau(-curtime:curtime)); CFL
+          endif
+
           if (angularflag.ne.0) then
              do i=0,curtime
                 ftgtau_ad(i,:) = ALLCON(gtau_ad(i,istate,imc,:))   * windowfunct(i,curtime,17) * &
-                     exp((0.d0,-1.d0)*ALLCON(ceground)*dt*i)
+                     exp((0d0,-1d0)*ALLCON(ceground)*dt*i)
              enddo
              do i=1,curtime
                 ftgtau_ad(-i,:) = ALLCON(ftgtau_ad(i,:))
              enddo
+             if (flux_subtract.ne.0) then
+                do il=1,NUMANGLES
+                   csum=SUM(ftgtau_ad(-curtime:curtime,il))
+                   ftgtau_ad(-curtime:curtime,il) = ftgtau_ad(-curtime:curtime,il) - &
+                        csum/tentsum * tentfunction(-curtime:curtime)
+                enddo
+             endif
           endif
 
-!! no more gtaufile
+!! gtaufile
+
+          if(myrank.eq.1) then
+
+             open(777,file="Dat/gtau_"//xstate1//"_"//xmc1//".dat",&
+                  status="replace",action="readwrite",position="rewind",iostat=myiostat)
+             call checkiostat(myiostat,"opening gtau file")
+             write(777,*,iostat=myiostat)
+             call checkiostat(myiostat,"writing gtau file")
+             do i=0,curtime
+                write(777,'(F18.12, T22, 400E20.8)',iostat=myiostat)  i*dt, ftgtau(i), &
+                     ALLCON(gtau(i,istate,imc)) * exp((0d0,-1d0)*ALLCON(ceground)*dt*i)
+             enddo
+             call checkiostat(myiostat,"writing gtau file")
+             close(777)
+
+          endif
 
           call zfftf_wrap_diff(2*curtime+1,ftgtau(-curtime:curtime),ftdiff)
         
@@ -1586,7 +1617,7 @@ contains
          gtaudiag_ad, gtausum_ad,&
          tot_gtausum_ad, gtaunow_ad, gtausave_ad)
     deallocate(read_ketmo, read_bramo)
-    deallocate(ftgtau, pulseft, pulseftsq, total)
+    deallocate(ftgtau, pulseft, pulseftsq, total, tentfunction)
     deallocate(ftgtau_ad, total_ad, ftgtausum_ad)
 
   end subroutine projeflux_double_time_int

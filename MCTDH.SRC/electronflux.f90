@@ -427,11 +427,11 @@ contains
     integer :: curtime,oldtime,k,nt,i,molength,alength,  BatchSize,NBat,brabat,brareadsize, &
          bratime,ketbat,ketreadsize,kettime,bratop,itime,jtime,times(1:20)=0, &
          imc, tau, ispf, myiostat
-    real*8 :: MemTot,MemVal,dt, myfac,wfi,estep,windowfunct,MemNum
+    real*8 :: MemTot,MemVal,dt, myfac,wfi,estep,windowfunct,MemNum,tentsum
     complex*16, allocatable :: FTgtau(:,:), pulseft(:,:)
-    real*8, allocatable :: pulseftsq(:)
+    real*8, allocatable :: pulseftsq(:), tentfunction(:)
     DATATYPE :: gtaunow(mcscfnum), ftgtausum(mcscfnum), gtausum(mcscfnum), &
-         pots1(3)=0d0, nullvector(numr), gtausave(mcscfnum)
+         pots1(3)=0d0, nullvector(numr), gtausave(mcscfnum), csum
     DATATYPE, allocatable :: bramo(:,:,:),braavec(:,:,:,:), ketmo(:,:,:),ketavec(:,:,:,:),&
          gtau(:,:), mobio(:,:),abio(:,:,:), &
          read_bramo(:,:),read_braavec(:,:,:,:),read_ketmo(:,:),read_ketavec(:,:,:,:),&
@@ -864,10 +864,8 @@ contains
                 if (curtime.eq.0.and.oldtime.eq.0) then
                    gtausave(:) = gtaunow(:)
                 endif
-                if (flux_subtract.ne.0) then
-                   gtaunow(:)=gtaunow(:)-gtausave(:) * exp((0d0,-1d0)*ceground*dt*tau)
-                endif
 
+!! no dt factor here, should be here, where is it
                 gtau(tau,:) = gtau(tau,:) + gtaunow(:)
 
                 call system_clock(jtime);          times(7)=times(7)+jtime-itime
@@ -881,6 +879,10 @@ contains
 !! and additional column in spifile
 
                    call system_clock(itime)
+
+                   if (flux_subtract.ne.0) then
+                      gtaunow(:) = gtaunow(:) - gtausave(:)
+                   endif
 
                    gtausum(:) = gtausum(:) + gtaunow(:) * dt / 2d0   !! 2 looks correct
 
@@ -922,24 +924,41 @@ contains
     OFLWR " Taking the FT of g(tau) to get xsection at T= ",curtime*dt; CFL
 
     allocate(ftgtau(-curtime:curtime,mcscfnum), pulseft(-curtime:curtime,3), &
-         pulseftsq(-curtime:curtime))
-    ftgtau(:,:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0
+         pulseftsq(-curtime:curtime), tentfunction(-curtime:curtime))
+    ftgtau(:,:)=0d0; pulseft(:,:)=0d0; pulseftsq(:)=0d0; tentfunction(:)=0d0
+
+    do i=-curtime,curtime
+       tentfunction(i) = (1+curtime-abs(i)) * windowfunct(abs(i),curtime,16)
+    enddo
+    tentsum=SUM(tentfunction(-curtime:curtime))
 
     do i=0,curtime
-
        ftgtau(i,:) = ALLCON(gtau(i,:))   * windowfunct(i,curtime,16) * &  !! action 16
-            exp((0.d0,-1.d0)*ALLCON(ceground)*dt*i)
+            exp((0d0,-1d0)*ALLCON(ceground)*dt*i)
+    enddo
 
+    do i=1,curtime
+       ftgtau(-i,:) = ALLCON(ftgtau(i,:))
+    enddo
+
+!! subtract tent function   (1+curtime-abs(i))/(curtime+1)^2   for better performance
+
+    if (flux_subtract.ne.0) then
+       do imc=1,mcscfnum
+          csum=SUM(ftgtau(-curtime:curtime,imc))
+          ftgtau(-curtime:curtime,imc) = ftgtau(-curtime:curtime,imc) - &
+               csum/tentsum * tentfunction(-curtime:curtime)
+          OFLWR "tempcheck TENT", imc, csum, SUM(ftgtau(-curtime:curtime,imc)); CFL
+       enddo
+    endif
+
+    do i=1,curtime
        call vectdpot(i*dt,0,pots1,-1)   !! LENGTH GAUGE.
        if (pulsewindowtoo == 0) then
           pulseft(i,:)=pots1(:)
        else
           pulseft(i,:)=pots1(:) * windowfunct(i,curtime,16)
        endif
-    enddo
-
-    do i=1,curtime
-       ftgtau(-i,:) = ALLCON(ftgtau(i,:))
     enddo
 
     OFLWR "   ....Go ft...."; CFL
@@ -1005,7 +1024,7 @@ contains
     call waitawhile()
     call mpistop()
 
-    deallocate(ftgtau,pulseft,pulseftsq)
+    deallocate(ftgtau,pulseft,pulseftsq,tentfunction)
     deallocate(bramo,ketmo,braavec,ketavec)
     deallocate(read_bramo,read_ketmo,read_braavec,read_ketavec)
     deallocate(gtau)
