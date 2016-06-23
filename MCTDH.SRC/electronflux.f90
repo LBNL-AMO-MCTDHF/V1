@@ -865,8 +865,8 @@ contains
                    gtausave(:) = gtaunow(:)
                 endif
 
-!! no dt factor here, should be here, where is it
-                gtau(tau,:) = gtau(tau,:) + gtaunow(:)
+!! dt factor here
+                gtau(tau,:) = gtau(tau,:) + gtaunow(:) * dt
 
                 call system_clock(jtime);          times(7)=times(7)+jtime-itime
 

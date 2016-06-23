@@ -1207,8 +1207,8 @@ contains
 
                       gtaunow(istate,imc) = hermdot(bramo(:,:,:,bratime),ketop(:,:,:,kettime),2*spfsize*numr)
 
-!! no dt factor here, should be here, where is it
-                      gtau(tau,istate,imc) = gtau(tau,istate,imc) + gtaunow(istate,imc)
+!! dt factor here
+                      gtau(tau,istate,imc) = gtau(tau,istate,imc) + gtaunow(istate,imc) * dt
 
    if (angularflag.ne.0) then
 
@@ -1235,8 +1235,8 @@ contains
               hermdot(deweighted_bramo(:,:,:),ketop_ad(:,:,:,kettime,il),2*spfsize*numr)
       enddo
 
-!! no dt factor here, should be here, where is it
-      gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + gtaunow_ad(istate,imc,:)
+!! dt factor here
+      gtau_ad(tau,istate,imc,:) = gtau_ad(tau,istate,imc,:) + gtaunow_ad(istate,imc,:) * dt
 
    endif  !! angularflag
 
