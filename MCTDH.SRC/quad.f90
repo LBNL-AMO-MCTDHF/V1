@@ -376,12 +376,15 @@ subroutine quadspfs(inspfs,jjcalls)
         if (mynorm.gt.maxquadnorm*nspf) then
            solution=solution*maxquadnorm*nspf/mynorm
         endif
+!! HOW IT SHOULD BE
+!! logic now in getparams        if (jacsymflag.eq.0.or.(numfrozen.gt.0.and.exact_exchange.eq.0)) then
 
-        if (jacsymflag.eq.0) then        !! HOW IT SHOULD BE
+        select case(jacquaddir)
+        case(1)
 
-           workvec=invector-solution
+           workvec=invector-solution  !! * 0.5   !! TEMP 0.5 ?  Works better
 
-        else
+        case(-1)
 !!
 !! WHAT?  WHY?  This is what I've been doing, with jacsymflag.  It works,
 !!              with plus not minus.  Where is the sign error?  Or something?
@@ -389,7 +392,9 @@ subroutine quadspfs(inspfs,jjcalls)
 !!
            workvec=invector+solution
 
-        endif
+        case default
+           OFLWR "programmer fail jacquaddir=",jacquaddir; CFLST
+        end select
 
         call spf_orthogit(workvec,orthogerror)
 

@@ -101,7 +101,7 @@ subroutine getparams()
        catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
        shuffle_dfwalktype,maxdgdim, messavec, messaamount,holeflag, angularflag, angprojspifile,&
        prepropflag, step_flag, postpropflag, scalarflag, angprojfluxtsumfile, &
-       catfacs, flux_subtract, jacsymquad, exact_exchange
+       catfacs, flux_subtract, jacsymquad, exact_exchange, jacquaddir, tentmode
 
   OFL
   write(mpifileptr, *)
@@ -157,6 +157,11 @@ subroutine getparams()
 
      if (numfrozen.gt.0) then 
         jacsymquad=0
+     endif
+
+     jacquaddir = -1
+     if ((jacsymflag.eq.0.and.jacsymquad.eq.0).or.(numfrozen.gt.0.and.exact_exchange.eq.0)) then
+        jacquaddir = 1
      endif
 
      if (improvedrelaxflag.ne.0) then
@@ -558,7 +563,11 @@ subroutine getparams()
 
   numpropsteps=floor((finaltime+0.0000000001d0)/par_timestep)
 
-  autosteps=floor(max(1.d0,autotimestep/par_timestep));  autosize=numpropsteps/autosteps+1
+  autosteps=floor(max(1.d0,autotimestep/par_timestep)); 
+
+  autotimestep = autosteps * par_timestep   !! OOPS forgot 6-16
+
+  autosize=numpropsteps/autosteps+1
 
 !!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input)   
 !!$ fluxsteps=floor(max(1.d0,fluxtimestep/par_timestep));  fluxtimestep=par_timestep*fluxsteps
@@ -873,7 +882,8 @@ subroutine getparams()
   write(mpifileptr, *)
   write(mpifileptr, *) "****************************************************************************"
   write(mpifileptr, *)
-  write(mpifileptr,*) "Autosteps is ", autosteps," Autosize is ", autosize, " Numpropsteps is ", numpropsteps
+  write(mpifileptr,*) " Autotimestep= ", autotimestep, " Autosteps= ", autosteps," Autosize= ", autosize
+  write(mpifileptr,*) " Numpropsteps= ", numpropsteps
 
 !!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input)  
 !!$ write(mpifileptr,*) "Fluxsteps is ", fluxsteps," Fluxtimestep is ", fluxtimestep

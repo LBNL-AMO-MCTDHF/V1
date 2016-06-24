@@ -930,7 +930,8 @@ contains
     do i=-curtime,curtime
        tentfunction(i) = (1+curtime-abs(i)) * windowfunct(abs(i),curtime,16)
     enddo
-    tentsum=SUM(tentfunction(-curtime:curtime))
+
+    tentsum = get_rtentsum(curtime,tentfunction(-curtime:curtime))
 
     do i=0,curtime
        ftgtau(i,:) = ALLCON(gtau(i,:))   * windowfunct(i,curtime,16) * &  !! action 16
@@ -945,7 +946,7 @@ contains
 
     if (flux_subtract.ne.0) then
        do imc=1,mcscfnum
-          csum=SUM(ftgtau(-curtime:curtime,imc))
+          csum = get_ctentsum(curtime,ftgtau(-curtime:curtime,imc))
           ftgtau(-curtime:curtime,imc) = ftgtau(-curtime:curtime,imc) - &
                csum/tentsum * tentfunction(-curtime:curtime)
        enddo

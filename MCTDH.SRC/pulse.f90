@@ -366,4 +366,60 @@ function longpulsevel(myintime, ipulse)
   
 end function longpulsevel
 
+
+function get_rtentsum(num,vec)
+  use parameters   !! tentmode
+  implicit none
+  real*8 :: get_rtentsum
+  integer,intent(in) :: num
+  real*8, intent(in) :: vec(-num:num)
+  integer :: itent,jtent
+
+  if (num.lt.0) then
+     OFLWR "rtentsumerror", num; CFLST
+  elseif (num.eq.0) then
+     get_rtentsum=vec(0)
+     return
+  endif
+
+  if (tentmode.eq.0) then
+     itent=0
+     jtent=1
+  else
+     itent=(num+1)/2 * (-1)
+     jtent=(num+1)/2
+  endif
+
+  get_rtentsum = SUM(vec(-num:itent)) + SUM(vec(jtent:num))
+
+end function get_rtentsum
+
+function get_ctentsum(num,vec)
+  use parameters   !! tentmode
+  implicit none
+  complex*16 :: get_ctentsum
+  integer,intent(in) :: num
+  complex*16, intent(in) :: vec(-num:num)
+  integer :: itent,jtent
+
+  if (num.lt.0) then
+     OFLWR "ctentsumerror", num; CFLST
+  elseif (num.eq.0) then
+     get_ctentsum=vec(0)
+     return
+  endif
+
+  if (tentmode.eq.0) then
+     itent=0
+     jtent=1
+  else
+     itent=(num+1)/2 * (-1)
+     jtent=(num+1)/2
+  endif
+
+  get_ctentsum = SUM(vec(-num:itent)) + SUM(vec(jtent:num))
+
+end function get_ctentsum
+  
+
 end module pulsesubmod

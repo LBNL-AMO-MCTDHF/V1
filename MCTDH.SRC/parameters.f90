@@ -454,6 +454,7 @@ integer :: actions(100)=0        !!              !! ACTIONS
 !!   Act=26   mcscf_matel with supplied eigenfunctions 
 !!   Act=27   like action 16 total photoionization during calculation just integral dt
 !!   Act=28   like action 17 partial photoionization during calculation just integral dt
+!!   Act=29   redo action 21 with file saved from flux.bin files from Act=15
 !!EE
 !!{\large \quad ACTION VARIABLES (also see filenames in INPUT/OUTPUT above)}
 !!BB
@@ -493,6 +494,7 @@ integer :: computeFlux=500, &    ! 0=All in memory other: MBs to allocate
      FluxInterval=50,&           !! Multiple of par_timestep at which to save flux
      FluxSkipMult=1,&            !! Read every this number of time points.  Step=FluxInterval*FluxSkipMult
      flux_subtract=1             !! if nonzero subtract t=0 flux matrix element for decaying initial state
+integer :: tentmode=0
 integer :: nucfluxopt=1          !! NucFlux=     !! Include imag part of hamiltonian from nuc ke 2=only that
 integer :: FluxOpType=1          !! 0=Full ham 1=halfnium 
 integer :: numcatfiles=1         !! see catspffiles and catavectorfiles in INPUT/OUTPUT for action 17,28
@@ -548,6 +550,9 @@ integer :: debugflag=0
 real*8 :: debugfac=1d0
 !!EE
 !! XXSNIPXX
+
+
+integer :: jacquaddir=0
 
 integer, parameter :: nodgexpthirdflag=1  !! =1 HARDWIRE 10-2015 not sure about dgexpthird
 

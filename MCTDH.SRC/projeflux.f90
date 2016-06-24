@@ -1369,7 +1369,8 @@ contains
     do i=-curtime,curtime
        tentfunction(i) = (1+curtime-abs(i)) * windowfunct(abs(i),curtime,17)
     enddo
-    tentsum=SUM(tentfunction(-curtime:curtime))
+
+    tentsum = get_rtentsum(curtime,tentfunction(-curtime:curtime))
 
     if (angularflag.ne.0) then
        allocate(ftgtau_ad(-curtime:curtime,NUMANGLES), total_ad(-curtime:curtime,NUMANGLES),&
@@ -1427,7 +1428,7 @@ contains
 !! subtract tent function   (1+curtime-abs(i))/(curtime+1)^2   for better performance
 
           if (flux_subtract.ne.0) then
-             csum=SUM(ftgtau(-curtime:curtime))
+             csum = get_ctentsum(curtime, ftgtau(-curtime:curtime))
              ftgtau(-curtime:curtime) = ftgtau(-curtime:curtime) - &
                   csum/tentsum * tentfunction(-curtime:curtime)
           endif
@@ -1442,7 +1443,7 @@ contains
              enddo
              if (flux_subtract.ne.0) then
                 do il=1,NUMANGLES
-                   csum=SUM(ftgtau_ad(-curtime:curtime,il))
+                   csum = get_ctentsum(curtime, ftgtau_ad(-curtime:curtime,il))
                    ftgtau_ad(-curtime:curtime,il) = ftgtau_ad(-curtime:curtime,il) - &
                         csum/tentsum * tentfunction(-curtime:curtime)
                 enddo
