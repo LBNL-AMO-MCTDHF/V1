@@ -7,7 +7,6 @@
 module dipolemod
   implicit none
   DATATYPE, allocatable :: dipoleexpects(:,:,:),    dipolenormsq(:)
-  integer :: calledflag=0,xcalledflag=0
 end module dipolemod
 
 
@@ -681,30 +680,27 @@ contains
 end module dipcallsubmod
 
 
-subroutine dipolesub()
-  use dipolemod
-  use dipsubonemod
-  use dipcallsubmod
-  use parameters
-  use configmod
-  use xxxmod
-  use mpisubmod
-  use pulse_parameters !! conjgpropflag
-  implicit none
+   subroutine dipolesub0(inspfs,inavector)
+     use dipolemod
+     use dipsubonemod
+     use dipcallsubmod
+     use parameters
+     use configmod
+     use mpisubmod
+     use pulse_parameters !! conjgpropflag
+     implicit none
+     DATATYPE,intent(in) :: inspfs(totspfdim), inavector(tot_adim,mcscfnum)
+     DATATYPE :: myexpects(3), mcexpects(3,mcscfnum), dd(mcscfnum),&
+          axx(mcscfnum),ayy(mcscfnum),azz(mcscfnum),sxx(mcscfnum),syy(mcscfnum),&
+          szz(mcscfnum),drivingoverlap(mcscfnum)
+     character(len=SLN) :: dipfiles(3), tworkfiles(3), angworkfiles(3), ftfiles(9), &
+          oworkfiles(9), ophotonfiles(9)
+     integer :: imc,sflag,getlen,ii
+     integer, save :: lastouttime=0, calledflag=0
+     real*8 :: thistime
+     character(len=2) :: tl(4) = (/ "BA", "AB", "AA", "BB" /)
 
-  DATATYPE :: myexpects(3), mcexpects(3,mcscfnum), dd(mcscfnum),&
-       axx(mcscfnum),ayy(mcscfnum),azz(mcscfnum),sxx(mcscfnum),syy(mcscfnum),&
-       szz(mcscfnum),drivingoverlap(mcscfnum)
-  character(len=SLN) :: dipfiles(3), tworkfiles(3), angworkfiles(3), ftfiles(9), &
-       oworkfiles(9), ophotonfiles(9)
-  integer :: imc,sflag,getlen,ii
-  integer, save :: lastouttime=0
-  real*8 :: thistime
-  character(len=2) :: tl(4) = (/ "BA", "AB", "AA", "BB" /)
-
-  myexpects=0;mcexpects=0;axx=0;ayy=0;azz=0;sxx=0;syy=0;szz=0;dd=0;drivingoverlap=0
-
-  if (mod(xcalledflag,autosteps).eq.0) then
+     myexpects=0;mcexpects=0;axx=0;ayy=0;azz=0;sxx=0;syy=0;szz=0;dd=0;drivingoverlap=0
 
      if (conjgpropflag.ne.0) then
 
@@ -716,7 +712,7 @@ subroutine dipolesub()
         endif
         dipolenormsq(calledflag)=0
         if (tot_adim.gt.0) then
-           dipolenormsq(calledflag) = hermdot(yyy%cmfavec(:,2,0),yyy%cmfavec(:,1,0),tot_adim)
+           dipolenormsq(calledflag) = hermdot(inavector(:,2),inavector(:,1),tot_adim)
         endif
         if (par_consplit.ne.0) then
            call mympireduceone(dipolenormsq(calledflag))
@@ -724,13 +720,13 @@ subroutine dipolesub()
 
         OFLWR "   complex Domcke - off diagonal norm-squared ", dipolenormsq(calledflag)
 
-        call dipolesub_one(www,bioww,yyy%cmfavec(:,2,0),yyy%cmfavec(:,1,0), yyy%cmfspfs(:,0), myexpects(:))
+        call dipolesub_one(www,bioww,inavector(:,2),inavector(:,1), inspfs(:), myexpects(:))
         dipoleexpects(calledflag,:,1)=myexpects(:)
-        call dipolesub_one(www,bioww,yyy%cmfavec(:,1,0),yyy%cmfavec(:,2,0), yyy%cmfspfs(:,0), myexpects(:))
+        call dipolesub_one(www,bioww,inavector(:,1),inavector(:,2), inspfs(:), myexpects(:))
         dipoleexpects(calledflag,:,2)=myexpects(:)
-        call dipolesub_one(www,bioww,yyy%cmfavec(:,1,0),yyy%cmfavec(:,1,0), yyy%cmfspfs(:,0), myexpects(:))
+        call dipolesub_one(www,bioww,inavector(:,1),inavector(:,1), inspfs(:), myexpects(:))
         dipoleexpects(calledflag,:,3)=myexpects(:)
-        call dipolesub_one(www,bioww,yyy%cmfavec(:,2,0),yyy%cmfavec(:,2,0), yyy%cmfspfs(:,0), myexpects(:))
+        call dipolesub_one(www,bioww,inavector(:,2),inavector(:,2), inspfs(:), myexpects(:))
         dipoleexpects(calledflag,:,4)=myexpects(:)
 
      else  !! conjgpropflag complex Domcke
@@ -738,12 +734,12 @@ subroutine dipolesub()
         do imc=1,mcscfnum
            dd(imc)=0
            if (tot_adim.gt.0) then
-              dd(imc) = hermdot(yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),tot_adim)
+              dd(imc) = hermdot(inavector(:,imc),inavector(:,imc),tot_adim)
            endif
            if (par_consplit.ne.0) then
               call mympireduceone(dd(imc))
            endif
-           call dipolesub_one(www,bioww,yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),yyy%cmfspfs(:,0),mcexpects(:,imc))
+           call dipolesub_one(www,bioww,inavector(:,imc),inavector(:,imc),inspfs(:),mcexpects(:,imc))
         enddo
 
         if (drivingflag.ne.0) then
@@ -874,9 +870,222 @@ subroutine dipolesub()
      endif       !! calledflag (dipmodtime)
 
      calledflag=calledflag+1
+
+   end subroutine dipolesub0
+
+
+subroutine dipolesub()   !! action 21
+  use parameters
+  use xxxmod
+  implicit none
+  integer,save :: xcalledflag=0
+
+  if (mod(xcalledflag,autosteps).eq.0) then
+     call dipolesub0(yyy%cmfspfs(:,0),yyy%cmfavec(:,:,0))
   endif
   xcalledflag=xcalledflag+1
 
 end subroutine dipolesub
 
 
+subroutine redo_dipolesub(alg)
+  use dipolemod
+  use dipsubonemod
+  use dipcallsubmod
+  use parameters
+  use configmod
+  use xxxmod
+  use mpisubmod
+  use pulse_parameters !! conjgpropflag
+  use mpimod
+  implicit none
+  integer, intent(in) :: alg
+  integer :: k,nt,i,molength,alength,  BatchSize,NBat,ketbat,ketreadsize, &
+       kettime,imc, ispf, myiostat
+  real*8 :: MemTot,MemVal, dt, MemNum
+  DATATYPE :: nullvector(numr)
+  DATATYPE, allocatable :: ketmo(:,:,:),ketavec(:,:,:,:),&
+       read_ketmo(:,:),read_ketavec(:,:,:,:)
+
+  nullvector=0
+
+  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep; 
+  nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
+
+  if (abs(dt - par_timestep*autosteps)/dt .gt. 1d-3) then
+     OFLWR "error, need fluxskipmult*fluxinterval*par_timestep.eq.autotimestep for action 29"
+     WRFL "   fluxskipmult, fluxinterval, par_timestep, autosteps, autotimestep "
+     WRFL fluxskipmult, fluxinterval, par_timestep, autosteps, autotimestep; CFLST
+  endif
+
+  call mpibarrier()
+  OFLWR "Go recompute dipolemoment"; CFL
+
+!! determine if we should do batching or not
+!! 250,000 words/MB, real*8 2words/#, complex*16 4words/#
+
+#ifdef REALGO
+  MemVal = 1.25d5
+#else
+  MemVal = 6.25d4
+#endif
+
+!! memory based on rank 1 which right now stores the entire orbital vector, which is wasteful.
+!! Unsatisfactory: need better MPI I/O.
+
+  MemNum=0d0
+
+!!$    if (parorbsplit.eq.3) then
+!!$       MemNum = MemNum + spfsize*nspf*nprocs
+!!$    else
+
+  MemNum = MemNum + spfsize*nspf
+
+!!$    endif
+
+  if (par_consplit.ne.0) then
+     MemNum = MemNum + www%numconfig*numr*mcscfnum
+  else
+     MemNum = MemNum + www%maxconfigsperproc*numr*mcscfnum
+  endif
+
+  call openfile()
+  write(mpifileptr,'(A30,F9.3,A3)') " Guess at necessary memory is ",&
+       (nt+1)*MemNum/MemVal," MB"
+  if(alg.eq.0) then
+     write(mpifileptr,*) "   ...will be computed with all of psi in core"
+     BatchSize=nt+1
+  else
+     MemTot=real(alg,8)    
+     write(mpifileptr,*) "    ... computed with all psi being read in batches"
+     write(mpifileptr,'(A33,F9.3,A3)') "        Desired amount of memory ",MemTot," MB"
+     BatchSize=floor(MemTot * MemVal / MemNum)
+     if(BatchSize.lt.1) then
+        write(mpifileptr,*) "Tiny amount of memory or huge wavefunction, Batchsize is 1" 
+        BatchSize=1
+     else if(BatchSize.ge.nt+1) then
+        write(mpifileptr,*) "Good, there is enough memory for only one batch."
+        BatchSize=nt+1
+     else
+        write(mpifileptr,*) "Batchsize is ",BatchSize,"/",(nt+1)
+     endif
+  endif
+  call closefile()
+
+  call mpibarrier()
+  OFLWR "Allocating psi arrays for recomputing dipolemoment"; CFL
+
+  allocate(ketmo(spfsize,nspf,BatchSize), &
+       ketavec(numr,www%firstconfig:www%lastconfig,mcscfnum,BatchSize))
+  ketmo=0
+  if (www%lastconfig.ge.www%firstconfig) then
+     ketavec=0
+  endif
+  if (myrank.eq.1) then
+     if (parorbsplit.eq.3) then
+        allocate(read_ketmo(spfsize*nprocs,nspf))
+     else
+        allocate(read_ketmo(spfsize,nspf))
+     endif
+  else
+     allocate(read_ketmo(1,nspf))
+  endif
+  read_ketmo=0
+
+  if (myrank.eq.1) then
+     allocate(read_ketavec(numr,www%numconfig,mcscfnum,BatchSize))
+  else
+     allocate(read_ketavec(1,1,mcscfnum,BatchSize))
+  endif
+  read_ketavec=0
+
+  NBat=ceiling(real(nt+1)/real(BatchSize))
+  ketreadsize=0
+
+  if (myrank.eq.1) then
+     inquire (iolength=molength) read_ketmo(:,:)
+     inquire (iolength=alength) read_ketavec(:,:,:,1)
+  endif
+  call mympiibcastone(molength,1); call mympiibcastone(alength,1)
+
+  call openfile()
+  write(mpifileptr,*) "MO record length is ",molength
+  write(mpifileptr,*) "AVEC record length is ",alength
+  call closefile()
+
+!! begin the ket batch read loop
+  do ketbat=1,NBat
+
+     OFLWR "Reading batch ", ketbat, " of ", NBat; CFL
+     ketreadsize=min(BatchSize,nt+1-(ketbat-1)*BatchSize)
+
+!! ORBITALS
+     if(myrank.eq.1) then
+        open(1001,file=fluxmofile,status="old",form="unformatted",&
+             access="direct",recl=molength,iostat=myiostat)
+        call checkiostat(myiostat,"opening "//fluxmofile)
+     endif
+     do i=1,ketreadsize
+        if(myrank.eq.1) then
+           k=FluxSkipMult*((ketbat-1)*BatchSize+i-1)+1
+           read(1001,rec=k,iostat=myiostat) read_ketmo(:,:) 
+           call checkiostat(myiostat,"reading "//fluxmofile)
+        endif
+        if (parorbsplit.ne.3) then
+           if (myrank.eq.1) then
+              ketmo(:,:,i)=read_ketmo(:,:)
+           endif
+           call mympibcast(ketmo(:,:,i),1,totspfdim)
+        else
+           do ispf=1,nspf
+              call splitscatterv(read_ketmo(:,ispf),ketmo(:,ispf,i))
+           enddo
+        endif
+     enddo       !! do i=1,ketreadsize
+     if (myrank.eq.1) then
+        close(1001)
+     endif
+!! A-VECTOR
+     if(myrank.eq.1) then
+        open(1002,file=fluxafile,status="old",form="unformatted",&
+             access="direct",recl=alength,iostat=myiostat)
+        call checkiostat(myiostat,"opening "//fluxafile)
+        do i=1,ketreadsize
+           k=FluxSkipMult*((ketbat-1)*BatchSize+i-1)+1
+           read(1002,rec=k,iostat=myiostat) read_ketavec(:,:,:,i) 
+        enddo
+        call checkiostat(myiostat,"reading "//fluxafile)
+        close(1002)
+     endif
+     if (par_consplit.eq.0) then
+        if (myrank.eq.1) then
+           ketavec(:,:,:,1:ketreadsize)=read_ketavec(:,:,:,1:ketreadsize)
+        endif
+        call mympibcast(ketavec(:,:,:,1:ketreadsize),1,numr*www%numconfig*mcscfnum*ketreadsize)
+     else
+        do i=1,ketreadsize
+           do imc=1,mcscfnum
+              if (tot_adim.gt.0) then
+                 call myscatterv(read_ketavec(:,:,imc,i),&
+                      ketavec(:,:,imc,i),configs_perproc(:)*numr)
+              else
+                 call myscatterv(read_ketavec(:,:,imc,i),&
+                      nullvector(:),configs_perproc(:)*numr)
+              endif
+           enddo
+        enddo
+     endif
+
+!! loop over all time for the ket of the dipole integral
+     do kettime=1,ketreadsize
+
+        call dipolesub0(ketmo(:,:,kettime),ketavec(:,:,:,kettime))
+
+     enddo
+
+  enddo  !! ketbat
+
+  deallocate(ketmo, ketavec, read_ketmo, read_ketavec)
+  OFLWR "Done recomputing dipole, stopping"; CFLST
+
+end subroutine redo_dipolesub

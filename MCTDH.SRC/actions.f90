@@ -5,7 +5,7 @@
 
 module actionlistmod
   
-  integer, parameter :: MAXACTION=28
+  integer, parameter :: MAXACTION=29
 
   character (len=18) :: action_list(MAXACTION) = (/ &
        "Autocorr          ", &      !! 1
@@ -35,7 +35,8 @@ module actionlistmod
        "psistats.dat      ", &      !! 25
        "Matrixelements    ", &      !! 26
        "IonFlux during    ", &      !! 27
-       "ProjIon during    " /)      !! 28
+       "ProjIon during    ", &      !! 28
+       "Redo DipoleFT     " /)      !! 29
 
 !! 0 = propagation action 1 = analysis action 2 = deprecated action
   integer :: action_type(MAXACTION) = (/ &
@@ -66,7 +67,8 @@ module actionlistmod
        0,&  !!       "psistats.dat   ", &      !! 25
        1,&  !!       "Matrixelements ", &      !! 26
        0,&  !!       "IonFlux during ", &      !! 27
-       0 /) !!       "ProjIon during " /)      !! 28
+       0,&  !!       "ProjIon during " /)      !! 28
+       1 /) !!    "Redo DipoleFT     " /)      !! 29
 
 !! for windowing function.  &parinp namelist input.  Defaults in getparams.f90.
 
@@ -513,6 +515,9 @@ subroutine actions_initial()
         call mcscf_matel()
      case (27)
      case (28)
+     case (29)
+        call dipolesub_initial()
+        call redo_dipolesub(computeFlux)
      case default
         OFLWR "Action not supported: ", actions(i); CFLST
      end select
