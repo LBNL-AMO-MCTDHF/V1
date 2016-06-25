@@ -538,7 +538,7 @@ contains
        myenergy=i*Estep
 
 !! sumrule sums to N for N electrons
-       if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
+       if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend.and.i.le.(numdata/2)) then
           sumrule(i,:)=sumrule(i-1,:) + Estep * imag(fftrans(i,:)*conjg(eft(i,:))) / abs(eft(i,:)**2) * myenergy * 2 / PI
           do ipulse=1,npulses
              photpers(i,:,ipulse) = imag(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI / 2  !! /2 6/16
