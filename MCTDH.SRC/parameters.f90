@@ -477,7 +477,7 @@ real*8 :: autotimestep=1.d0      !! ACTIONS 1 and 21 (autocorrelation and emissi
 !! int fttriwindow(MAXACTIONS)=1    !! If nonzero, window function is ((tmax-t)/tmax)**ftwindowpower
 !! int ftwindowpower(MAXACTIONS)=1  !! If fttriwindow=0, 
 !!                                  !!    window function is cos(pi t / 2 / tmax)**ftwindowpower 
-integer :: ftdiff=0                 !! fourier transform derivative of dipole moment not dipole moment
+integer :: ftdiff=1                 !! fourier transform derivative of dipole moment not dipole moment
 !!EE
 !!{\large \quad EMISSION/ABSORPTION (action 21)}
 !!BB
@@ -494,7 +494,6 @@ integer :: computeFlux=500, &    ! 0=All in memory other: MBs to allocate
      FluxInterval=50,&           !! Multiple of par_timestep at which to save flux
      FluxSkipMult=1,&            !! Read every this number of time points.  Step=FluxInterval*FluxSkipMult
      flux_subtract=1             !! if nonzero subtract t=0 flux matrix element for decaying initial state
-integer :: tentmode=0
 integer :: nucfluxopt=1          !! NucFlux=     !! Include imag part of hamiltonian from nuc ke 2=only that
 integer :: FluxOpType=1          !! 0=Full ham 1=halfnium 
 integer :: numcatfiles=1         !! see catspffiles and catavectorfiles in INPUT/OUTPUT for action 17,28
@@ -551,6 +550,7 @@ real*8 :: debugfac=1d0
 !!EE
 !! XXSNIPXX
 
+integer :: tentmode=0            !! tentmode=1 attempt not good
 
 integer :: jacquaddir=0
 

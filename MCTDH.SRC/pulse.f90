@@ -367,6 +367,9 @@ function longpulsevel(myintime, ipulse)
 end function longpulsevel
 
 
+!! not useful because tentmode=1 isn't better than tentmode=0; tentmode=0 default;
+!! keeping these subroutines anyway
+
 function get_rtentsum(num,vec)
   use parameters   !! tentmode
   implicit none
