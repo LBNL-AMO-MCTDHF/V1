@@ -340,8 +340,13 @@ contains
              call quadavector(yyy%cmfavec(:,:,0),qq)
              numaiters=numaiters+qq
           else
-             call myconfigeig(yyy%cptr(0),yyy%cmfavec(:,:,0),&
-                  myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
+             if (followflag.ne.0) then
+                call myconfigeig(yyy%cptr(0),yyy%cmfavec(:,:,0),&
+                     myvalues,mcscfnum,eigprintflag,2,0d0,max(0,improvedrelaxflag-1))
+             else
+                call myconfigeig(yyy%cptr(0),yyy%cmfavec(:,:,0),&
+                     myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
+             endif
           endif
           call system_clock(jtime);     times(5)=times(5)+jtime-itime;    itime=jtime
 !! prevent drift

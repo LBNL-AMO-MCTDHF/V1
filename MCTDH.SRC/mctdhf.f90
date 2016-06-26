@@ -683,9 +683,16 @@ program mctdhf
         endif
 
         allocate(tempvals(mcscfnum)); tempvals=0
-        call myconfigeig(yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
-             min(totread,1),0d0,max(0,abs(improvedrelaxflag)-1))
-
+        if (totread.lt.1) then
+           call myconfigeig(yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
+                0,0d0,max(0,abs(improvedrelaxflag)-1))
+        else if (followflag.ne.0) then
+           call myconfigeig(yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
+                2,0d0,max(0,abs(improvedrelaxflag)-1))
+        else
+           call myconfigeig(yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
+                1,0d0,max(0,abs(improvedrelaxflag)-1))
+        endif
         if (tot_adim.gt.0) then
            yyy%cmfavec(:,:,0) = RESHAPE(bigavector(:,:,:),(/tot_adim,mcscfnum/))
         endif
@@ -714,8 +721,13 @@ program mctdhf
            if ((improvedquadflag.eq.1.or.improvedquadflag.eq.3).and.0d0.ge.aquadstarttime) then
               call quadavector(bigavector,qq)
            else
-              call myconfigeig(yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
-                   1,0d0,max(0,abs(improvedrelaxflag)-1))
+              if (followflag.ne.0) then
+                 call myconfigeig(yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
+                      2,0d0,max(0,abs(improvedrelaxflag)-1))
+              else
+                 call myconfigeig(yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
+                      1,0d0,max(0,abs(improvedrelaxflag)-1))
+              endif
            endif
         endif
         deallocate(tempvals)

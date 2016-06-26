@@ -288,12 +288,13 @@ integer :: aorder=30             !!              !! Starting lanczos order for s
 !!BB
 integer :: improvednatflag=0     !!              !! Replace with natorbs every iteration
 integer :: improvedfockflag=0    !!              !! Alternatively, replace with generalized fock eigfuncts
+integer :: improvedquadflag=0    !!              !! Use newton iteration not diagonalization for improvedrelax.
+                                                 !!     (1 = A-vector, 2 = orbitals, 3 = both)
+integer :: followflag=0                          !! use overlaps to follow vectors
 real*8 :: stopthresh=1d-5        !!              !! Spf error tolerance for relaxation convergence
 real*8 :: astoptol=1d-7                          !! Avector error tolerance for relax
 real*8 :: timestepfac=1d0                        !! accelerate relax. multiply par_timestep by this each time
 real*8 :: max_timestep=1d10                      !!    maximum time step (limit on exponential growth)
-integer :: improvedquadflag=0    !!              !! Use newton iteration not diagonalization for improvedrelax.
-                                                 !!     (1 = A-vector, 2 = orbitals, 3 = both)
 integer :: jacsymquad=1                          !! Turn on jacsymflag for orbital quad 2,3
 real*8 :: quadstarttime=-1d0                     !! Waits to turn on orbital quad (2 or 3) until this time
 real*8 :: aquadstarttime=-1d0                    !! Waits to turn on avector quad (1 or 3) until this time

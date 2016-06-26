@@ -17,6 +17,9 @@ subroutine printconfig(thisconfig,www)
 end subroutine printconfig
 
 
+!! guessflag=1  use thisconfigsvects for initial krylov vectors
+!!          =2  do that and also follow, return eigvects with max overlap
+
 subroutine myconfigeig(cptr,thisconfigvects,thisconfigvals,order,printflag, &
      guessflag,time,numshift)
   use fileptrmod
