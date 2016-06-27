@@ -41,9 +41,11 @@ subroutine myconfigeig(cptr,thisconfigvects,thisconfigvals,order,printflag, &
   DATATYPE, allocatable :: fullconfigmatel(:,:), fullconfigvects(:,:), &
        tempconfigvects(:,:)
   DATAECS, allocatable :: fullconfigvals(:)
-  DATAECS ::  tempconfigvals(order+numshift)
+  DATATYPE, allocatable :: followdots(:,:), tempeigvect(:)
+  DATAECS ::  tempconfigvals(order+numshift), tempeigval
 !!$  DATATYPE :: lastval,dot,csum
-  integer :: i
+  real*8 :: rmaxdot
+  integer :: i,j,ifollow
 
   if (order+numshift.gt.www%numdfbasis*numr) then
      OFLWR "Error, want ",order," plus ",numshift,&
@@ -57,6 +59,10 @@ subroutine myconfigeig(cptr,thisconfigvects,thisconfigvals,order,printflag, &
      OFLWR "ERROR DF SETS MYCONFIGEIG",www%numdfbasis,dwwptr%numdfbasis; CFLST
   endif
 
+  if (numshift.gt.0.and.guessflag.eq.2) then
+     OFLWR "Programmer fail, numshift.gt.0 not available with followflag",numshift,guessflag; CFLST
+  endif
+  
   if (sparseconfigflag/=0) then
      
      allocate(tempconfigvects(www%totadim,order+numshift))
@@ -87,8 +93,6 @@ subroutine myconfigeig(cptr,thisconfigvects,thisconfigvals,order,printflag, &
      endif
      call blocklanczos(order+numshift,tempconfigvects,tempconfigvals,printflag,guessflag)
      
-        !! so if guessflag=1, numshift is 0.
-
      thisconfigvals(1:order)=tempconfigvals(numshift+1:numshift+order)
      if (www%totadim.gt.0) then
         thisconfigvects(:,1:order)=tempconfigvects(:,numshift+1:numshift+order)
@@ -131,6 +135,42 @@ subroutine myconfigeig(cptr,thisconfigvects,thisconfigvals,order,printflag, &
      enddo
 
      call mpibarrier()
+
+     if (guessflag.eq.2) then !! followflag
+
+        allocate(followdots(order,www%numdfbasis*numr), tempeigvect(www%numconfig*numr))
+
+        followdots=0; tempeigvect=0
+
+        call MYGEMM(CNORMCHAR,'N',order,www%numdfbasis*numr,www%numconfig*numr, DATAONE, &
+             thisconfigvects(:,:), www%numconfig*numr, fullconfigvects(:,:), www%numconfig*numr, &
+             DATAZERO, followdots(:,:), order)
+
+
+        do i=1,order
+           ifollow=(-1)
+           rmaxdot=0d0
+           do j=i,www%numdfbasis*numr                   !! do j=i, followtaken not needed
+              if (abs(followdots(i,j)).gt.rmaxdot) then !! .and.followtaken(j).eq.0) then
+                 rmaxdot=abs(followdots(i,j))
+                 ifollow=j
+              endif
+           enddo
+
+           if (ifollow.ne.i) then
+              tempeigvect(:) = fullconfigvects(:,i)
+              fullconfigvects(:,i) = fullconfigvects(:,ifollow)
+              fullconfigvects(:,ifollow) = tempeigvect(:)
+
+              tempeigval = fullconfigvals(i)
+              fullconfigvals(i) = fullconfigvals(ifollow)
+              fullconfigvals(ifollow) = tempeigval
+           endif
+        enddo
+
+        deallocate(followdots, tempeigvect)
+
+     endif
 
      if (printflag.ne.0) then
         OFLWR "  -- Nonsparse eigenvals --"

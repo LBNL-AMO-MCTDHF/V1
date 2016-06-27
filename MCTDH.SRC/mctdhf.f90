@@ -686,6 +686,10 @@ program mctdhf
         if (totread.lt.1) then
            call myconfigeig(yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
                 0,0d0,max(0,abs(improvedrelaxflag)-1))
+           if (followflag.ne.0.and.improvedrelaxflag.gt.1) then
+              OFLWR "With followflag now setting improvedrelaxflag=1"; CFL
+              improvedrelaxflag=1
+           endif
         else if (followflag.ne.0) then
            call myconfigeig(yyy%cptr(0),bigavector,tempvals,mcscfnum,1,&
                 2,0d0,max(0,abs(improvedrelaxflag)-1))

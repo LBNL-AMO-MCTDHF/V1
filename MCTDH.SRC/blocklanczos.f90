@@ -284,7 +284,7 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
   real*8, intent(in) :: lanthresh
   external :: multsub
   integer :: printflag, iorder,k,flag,j,id,nn,i,thislanblocknum, thisdim,thisout
-  real*8 :: error(numout), stopsum,rsum,nextran, rmaxdot
+  real*8 :: error(numout), stopsum,rsum,nextran
   DATATYPE :: alpha(lanblocknum,lanblocknum),beta(lanblocknum,lanblocknum), &
        nullvector1(100)=0, nullvector2(100)=0, lastvalue(numout), thisvalue(numout), &
        valdot(numout),normsq(numout),sqdot(numout)
@@ -292,9 +292,8 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
   DATATYPE, allocatable :: lanham(:,:,:,:), laneigvects(:,:,:), templanham(:,:),&
        betas(:,:,:),betastr(:,:,:),       invector(:), multvectors(:,:), &
        lanvects(:,:,:), tempvectors(:,:),  lanmultvects(:,:,:), tempvectors2(:,:), &
-       followvects(:,:), followdots(:,:)
-  DATAECS, allocatable :: values(:)
-  integer,allocatable :: followtaken(:), ifollow(:)
+       followvects(:,:), followlandots(:,:,:)
+  DATAECS, allocatable :: laneigvals(:)
   
   if (numout.lt.lanblocknum) then
      OFLWR "numout >= lanblocknum please",numout,lanblocknum; CFLST
@@ -306,18 +305,24 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
   allocate(&
        invector(maxlansize), multvectors(maxlansize,lanblocknum), &
        lanvects(maxlansize,lanblocknum,order), tempvectors(maxlansize,numout), &
-       lanmultvects(maxlansize,lanblocknum,order), tempvectors2(maxlansize,numout), &
-       followvects(maxlansize,numout))
-  allocate(followdots(numout,order*lanblocknum), followtaken(order*lanblocknum), ifollow(numout))
+       lanmultvects(maxlansize,lanblocknum,order), tempvectors2(maxlansize,numout))
+
   invector=0d0; multvectors=0d0; lanvects=0d0; tempvectors=0d0; 
-  lanmultvects=0d0; tempvectors2=0d0; followvects=0; 
-  followdots=0; followtaken=0; ifollow=0
+  lanmultvects=0d0; tempvectors2=0d0
+
+  if (guessflag.eq.2) then
+     allocate(followvects(maxlansize,numout),followlandots(numout,lanblocknum,order))
+  else
+     allocate(followvects(1,numout),followlandots(1,1,order))
+  endif
+  followvects=0; followlandots=0;
+
   allocate( &
        lanham(lanblocknum,order,lanblocknum,order),&
        laneigvects(lanblocknum,order,order*lanblocknum), &
-       values(order*lanblocknum), &
+       laneigvals(order*lanblocknum), &
        templanham(lanblocknum*order,lanblocknum*order))
-  lanham=0d0; laneigvects=0d0; values=0d0; templanham=0d0
+  lanham=0d0; laneigvects=0d0; laneigvals=0d0; templanham=0d0
 
   printflag=inprintflag
 
@@ -338,7 +343,6 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
   if (guessflag.eq.2) then
      followvects(1:lansize,:) = outvectors(1:lansize,:)
   endif
-
 
   outvectors(lansize+1:,:)=0d0  ! why not
 
@@ -372,8 +376,6 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
      endif
 
      do j=1,numout
-        values(j)=valdot(j)/normsq(j)  !! ok conversion
-        
         error(j)=abs(&
              valdot(j)**2 / normsq(j)**2 - &
              sqdot(j)/normsq(j))
@@ -399,6 +401,15 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
 
      if (lansize.gt.0) then
         lanvects(1:lansize,:,1)=outvectors(1:lansize,1:lanblocknum)
+     endif
+
+     if (guessflag.eq.2) then
+        if (lansize.eq.0) then
+           call allnulldots(lanblocknum,lanblocknum,followlandots(:,:,1),logpar)
+        else
+           call allhdots(followvects(:,:),lanvects(:,:,1),lansize,&
+                maxlansize,numout,lanblocknum,followlandots(:,:,1),logpar)
+        endif
      endif
 
      lanham(:,:,:,:)=0.0d0
@@ -463,6 +474,15 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
            endif
         enddo
 
+        if (guessflag.eq.2) then
+           if (lansize.eq.0) then
+              call allnulldots(lanblocknum,lanblocknum,followlandots(:,:,iorder),logpar)
+           else
+              call allhdots(followvects(:,:),lanvects(:,:,iorder),lansize,&
+                   maxlansize,numout,lanblocknum,followlandots(:,:,iorder),logpar)
+           endif
+        endif
+
         multvectors(:,:)=0d0
         if (lansize.eq.0) then
            do j=1,thislanblocknum
@@ -516,84 +536,18 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
                 RESHAPE(lanham(:,1:iorder,:,1:iorder),&
                 (/lanblocknum*iorder,lanblocknum*iorder/))
            thisdim=min(maxiter,iorder*lanblocknum)
-           call CONFIGEIG(templanham,thisdim,order*lanblocknum,laneigvects,values)
+           call CONFIGEIG(templanham,thisdim,order*lanblocknum,laneigvects,laneigvals)
            if (targetflag.ne.0) then
-              call mysort2(laneigvects,values,thisdim,order*lanblocknum)
+              call mysort2(laneigvects,laneigvals,thisdim,order*lanblocknum)
+           endif
+
+           if (guessflag.eq.2) then
+              call followsort(thisdim,followlandots)
            endif
 
            thisout=min(numout,thisdim)
 
-           if (guessflag.ne.2) then
-
-              outvalues(1:thisout)=values(1:thisout)
-
-           else  !! guessflag=2, following vectors:
-
-              if (thisout.lt.numout) then
-                 OFLWR "bOOGAERROR xyxyx09"; CFLST
-              endif
-
-              followdots(:,:) = 0d0
-              do  j=1, thisdim
-                 tempvectors(:,1) = 0d0
-                 if (lansize.gt.0) then
-                    do k=1, iorder
-                       do id=1,lanblocknum
-                          if ((k-1)*lanblocknum+id.le.maxiter) then
-                             tempvectors(1:lansize,1) = tempvectors(1:lansize,1) + &
-                                  laneigvects(id,k,j) * lanvects(1:lansize,id,k)
-                          endif
-                       enddo
-                    enddo
-                 endif
-                 if (lansize.eq.0) then
-                    call allnulldots(numout,1,followdots(:,j),logpar)
-                 else
-                    call allhdots(followvects(:,:),tempvectors(:,1),lansize,&
-                         maxlansize,numout,1,followdots(:,j),logpar)
-                 endif
-              enddo
-              
-              followtaken(:)=0;   ifollow(:)=0
-              do i=1,numout
-                 k=(-1)
-                 rmaxdot=0d0
-                 do j=1,thisdim
-                    if (abs(followdots(i,j)).gt.rmaxdot.and.followtaken(j).eq.0) then
-                       rmaxdot=abs(followdots(i,j))
-                       k=j
-                    endif
-                 enddo
-                 followtaken(k)=1
-                 ifollow(i)=k
-              enddo
-
-              outvectors = 0.0d0
-              do  j=1, numout
-                 outvalues(j)=values(ifollow(j))
-                 if (lansize.gt.0) then
-                    do k=1, iorder
-                       do id=1,lanblocknum
-                          if ((k-1)*lanblocknum+id.le.maxiter) then
-                             outvectors(1:lansize,j) = outvectors(1:lansize,j) + &
-                                  laneigvects(id,k,ifollow(j)) * lanvects(1:lansize,id,k)
-                          endif
-                       enddo
-                    enddo
-                 endif
-              enddo
-
-              if (lansize.eq.0) then
-                 call vecnulldots(numout,normsq,logpar)
-              else
-                 call vecthisdots(outvectors(:,:),outvectors(:,:),lansize,&
-                      outvectorlda,outvectorlda,numout,normsq,logpar)
-              endif
-              do  j=1, numout
-                 outvectors(:,j)=outvectors(:,j)/sqrt(normsq(j))
-              enddo
-
-           endif
+           outvalues(1:thisout)=laneigvals(1:thisout)
 
            if (printflag.ne.0) then
               OFL; write(mpifileptr,'(A10,1000F19.12)') " ENERGIES ", outvalues(1:thisout); CFL
@@ -620,35 +574,31 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
                       stopsum,lanthresh/10,thisdim; CFL
               endif
 
-              if (guessflag.ne.2) then
+              outvectors = 0.0d0
+              if (lansize.gt.0) then
 
-                 if (lansize.gt.0) then
-
-                    outvectors = 0.0d0
-                    do  j=1, numout
-                       do k=1, iorder
-                          do id=1,lanblocknum
-                             if ((k-1)*lanblocknum+id.le.maxiter) then
-                                outvectors(1:lansize,j) = outvectors(1:lansize,j) + &
-                                     laneigvects(id,k,j) * lanvects(1:lansize,id,k)
-                             endif
-                          enddo
+                 do  j=1, numout
+                    do k=1, iorder
+                       do id=1,lanblocknum
+                          if ((k-1)*lanblocknum+id.le.maxiter) then
+                             outvectors(1:lansize,j) = outvectors(1:lansize,j) + &
+                                  laneigvects(id,k,j) * lanvects(1:lansize,id,k)
+                          endif
                        enddo
                     enddo
-
-                 endif  !! lansize 
-
-                 if (lansize.eq.0) then
-                    call vecnulldots(numout,normsq,logpar)
-                 else
-                    call vecthisdots(outvectors(:,:),outvectors(:,:),lansize,&
-                         outvectorlda,outvectorlda,numout,normsq,logpar)
-                 endif
-                 do  j=1, numout
-                    outvectors(:,j)=outvectors(:,j)/sqrt(normsq(j))
                  enddo
 
-              endif  !! guessflag.eq.2 for following
+              endif  !! lansize 
+
+              if (lansize.eq.0) then
+                 call vecnulldots(numout,normsq,logpar)
+              else
+                 call vecthisdots(outvectors(:,:),outvectors(:,:),lansize,&
+                      outvectorlda,outvectorlda,numout,normsq,logpar)
+              endif
+              do  j=1, numout
+                 outvectors(:,j)=outvectors(:,j)/sqrt(normsq(j))
+              enddo
 
               tempvectors=0d0
               do j=1,numout
@@ -718,9 +668,9 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
      endif
   enddo
 
-  deallocate(  invector,multvectors, lanvects, tempvectors, lanmultvects,tempvectors2, &
-       followvects, followdots, followtaken, ifollow)
-  deallocate( lanham,       laneigvects,       values,       templanham)
+  deallocate(  invector,multvectors, lanvects, tempvectors, lanmultvects,tempvectors2)
+  deallocate(followvects, followlandots )
+  deallocate( lanham,       laneigvects,       laneigvals,       templanham)
 
 contains
 
@@ -988,6 +938,54 @@ contains
     deallocate(out, newvals, taken, order)
 
   end subroutine mysort2
+
+  subroutine followsort(indim,inlandots)
+    implicit none
+    integer,intent(in) :: indim
+    DATATYPE,intent(in) :: inlandots(numout,indim)
+    DATATYPE,allocatable :: followdots(:,:), tempeigvect(:,:)
+    DATAECS :: tempeigval
+    real*8 :: rmaxdot
+    integer :: i,j,ifollow
+
+!!    OFLWR "Blocklan ifollow "; CFL
+
+    allocate(followdots(numout,indim), tempeigvect(lanblocknum,order))
+
+    followdots=0; tempeigvect=0; 
+
+    call MYGEMM('N','N',numout,indim,indim,DATAONE,inlandots(:,:),numout, &
+         laneigvects(:,:,:),order*lanblocknum,DATAZERO,followdots(:,:),numout)
+
+    do i=1,numout
+       ifollow=(-1)
+       rmaxdot=0d0
+       do j=i,indim
+          if (abs(followdots(i,j)).gt.rmaxdot) &
+!!            do j=i, resorting, not needed:      .and.followtaken(j).eq.0) then
+               then
+             rmaxdot=abs(followdots(i,j))
+             ifollow=j
+          endif
+       enddo
+
+       if (ifollow.ne.i) then
+          tempeigvect(:,:) = laneigvects(:,:,i)
+          laneigvects(:,:,i) = laneigvects(:,:,ifollow)
+          laneigvects(:,:,ifollow) = tempeigvect(:,:)
+          
+          tempeigval = laneigvals(i)
+          laneigvals(i) = laneigvals(ifollow)
+          laneigvals(ifollow) = tempeigval
+       endif
+
+!!       OFLWR "FF ",i,ifollow; CFL
+
+    enddo
+
+    deallocate(followdots, tempeigvect)
+
+  end subroutine followsort
 
 end subroutine blocklanczos0_local
 
