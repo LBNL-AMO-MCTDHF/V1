@@ -86,7 +86,7 @@ module xmod
           cmfspfs(:,:), &
           cmfavec(:,:,:),&
           denvects(:,:) 
-     DATATYPE, allocatable :: frozenexchinvr(:,:,:)
+     DATATYPE, allocatable :: frozenexchinvr(:,:,:), frozenexchmat(:,:,:)
 
      DATATYPE, allocatable :: fockmatrix(:,:,:)
 
@@ -173,8 +173,10 @@ use configptrmod
 
   DATATYPE, allocatable :: orbs_driving(:,:),  avector_driving(:,:,:)
 
-  DATATYPE, allocatable ::   twoereduced(:,:,:)        !! numerad,lbig+1,-2*mbig:2*mbig,nspf,nspf 
-                                                       !! that's reducedpotsize,nspf,nspf
+  DATATYPE, allocatable ::   twoereduced(:,:,:),&        !! numerad,lbig+1,-2*mbig:2*mbig,nspf,nspf 
+                                                         !! that's reducedpotsize,nspf,nspf
+       hatomreduced(:), frozenreduced(:)
+
 end module opmod
 
 
@@ -833,6 +835,8 @@ subroutine opalloc()
 
   allocate(frozenspfs(spfsize,max(1,numfrozen)))
   frozenspfs(:,:)=0
+  allocate(hatomreduced(reducedpotsize),frozenreduced(reducedpotsize))
+  hatomreduced=0; frozenreduced=0
 
 end subroutine opalloc
 
@@ -844,6 +848,8 @@ subroutine opdealloc()
      deallocate(orbs_driving,avector_driving)
   endif
   deallocate(rkemod,proderivmod,   pot, halfniumpot)
+  deallocate(frozenspfs,hatomreduced,frozenreduced)
+
 end subroutine opdealloc
 
 subroutine natprojalloc
@@ -953,8 +959,8 @@ subroutine xalloc()
      yyy%cmfavec=0
   endif
   if (numfrozen.gt.0) then
-     allocate(yyy%frozenexchinvr(spfsize,nspf,0:numreduced))
-     yyy%frozenexchinvr=0
+     allocate(yyy%frozenexchinvr(spfsize,nspf,0:numreduced),yyy%frozenexchmat(nspf,nspf,0:numreduced))
+     yyy%frozenexchinvr=0; yyy%frozenexchmat=0
   endif
 
   if (use_fockmatrix) then
@@ -1021,7 +1027,7 @@ subroutine xdealloc()
        yyy%cmfspfs,yyy%cmfavec)
 
   if (numfrozen.gt.0) then
-     deallocate(yyy%frozenexchinvr)
+     deallocate(yyy%frozenexchinvr, yyy%frozenexchmat)
   endif
 
   if (use_fockmatrix) then

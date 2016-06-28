@@ -4,13 +4,12 @@
 
 
 module orbprojectmod
-  use mpisubmod
-
 contains
 
   subroutine project00(lowspf,highspf,inspfs, outspfs, prospfs)
     use parameters
     use opmod !! frozenspfs
+    use mpisubmod
     implicit none
     integer,intent(in) :: lowspf,highspf
     DATATYPE,intent(in) :: inspfs(spfsize,lowspf:highspf),  prospfs(spfsize,nspf)
@@ -248,46 +247,59 @@ subroutine get_frexchange()
   use xxxmod !! frozenexchinvr
   use orbgathersubmod
   use orbmultsubmod
+  use mpisubmod
   implicit none
-  integer :: lowspf,highspf,numspf
+  integer :: lowspf,highspf,numspf,ispf,jspf
   DATATYPE,allocatable :: frozenexchange(:,:)
 
-  if (numfrozen.gt.0) then
+  if (numfrozen.eq.0) then
+     return
+  endif
 
-     yyy%frozenexchinvr(:,:,0)=0
+  yyy%frozenexchinvr(:,:,0)=0
 
-     if (exact_exchange.ne.0) then
-        return
-     endif
+  if (exact_exchange.ne.0) then
+     return
+  endif
 
-     allocate(frozenexchange(spfsize,nspf));     frozenexchange=0
-     lowspf=1; highspf=nspf
-     if (parorbsplit.eq.1) then
-        call getorbsetrange(lowspf,highspf)
-     endif
-     numspf=highspf-lowspf+1
-     frozenexchange(:,:)=0
+  allocate(frozenexchange(spfsize,nspf));     frozenexchange=0
+  lowspf=1; highspf=nspf
+  if (parorbsplit.eq.1) then
+     call getorbsetrange(lowspf,highspf)
+  endif
+  numspf=highspf-lowspf+1
+  frozenexchange(:,:)=0
 
-     if (numspf.gt.0) then
-        call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE, yyy%cmfspfs(:,0), &
-             spfsize,yyy%reducedinvr(:,lowspf:highspf,0),nspf, DATAZERO, &
-             frozenexchange(:,lowspf:highspf),spfsize)
-     endif
+  if (numspf.gt.0) then
+     call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE, yyy%cmfspfs(:,0), &
+          spfsize,yyy%reducedinvr(:,lowspf:highspf,0),nspf, DATAZERO, &
+          frozenexchange(:,lowspf:highspf),spfsize)
+  endif
 !     if (parorbsplit.eq.1) then
 !        call mpiorbgather(frozenexchange(:,:),spfsize)
 !     endif
 
-     if (numspf.gt.0) then
-        call op_frozen_exchange(lowspf,highspf,&
-             frozenexchange(:,lowspf:highspf),&
-             yyy%frozenexchinvr(:,lowspf:highspf,0))
-     endif
-     if (parorbsplit.eq.1) then
-        call mpiorbgather(yyy%frozenexchinvr(:,:,0),spfsize)
-     endif
+  if (numspf.gt.0) then
+     call op_frozen_exchange(lowspf,highspf,&
+          frozenexchange(:,lowspf:highspf),&
+          yyy%frozenexchinvr(:,lowspf:highspf,0))
+  endif
 
-     deallocate(frozenexchange)
+  deallocate(frozenexchange)
 
+  do jspf=1,nspf
+     do ispf=lowspf,highspf
+        yyy%frozenexchmat(jspf,ispf,0) = &
+             dot(yyy%cmfspfs((jspf-1)*spfsize+1:jspf*spfsize,0), yyy%frozenexchinvr(:,ispf,0), spfsize)
+     enddo
+  enddo
+  if (parorbsplit.eq.3) then
+     call mympireduce(yyy%frozenexchmat(:,:,0),nspf**2)
+  endif
+
+  if (parorbsplit.eq.1) then
+     call mpiorbgather(yyy%frozenexchinvr(:,:,0),spfsize)
+     call mpiorbgather(yyy%frozenexchmat(:,:,0),nspf)
   endif
 
 end subroutine get_frexchange

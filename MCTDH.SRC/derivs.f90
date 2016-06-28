@@ -634,6 +634,7 @@ contains
     use orbgathersubmod
     use orbmultsubmod
     use pulsesubmod
+    use opmod   !! frozenreduced, hatomreduced
     implicit none
     integer, intent(in) :: lowspf,highspf,dentimeflag,ireduced,projflag,conflag
     real*8, intent(in) :: thistime
@@ -715,14 +716,14 @@ contains
 
     call mult_pot(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
     spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
-    call hatom_op(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
+    call hatom_op(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf),hatomreduced(:))
     spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
 
 !!    OFLWR "CHECKMULT2  ",spfmult(1,1); CFL
 
     if (numfrozen.gt.0) then
 !! DIRECT ONLY in linear operator actreduced.  Exchange treated like driving term.
-       call op_frozenreduced(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf))
+       call op_frozenreduced(numspf,spfinvr(:,lowspf:highspf),workmult(:,lowspf:highspf),frozenreduced(:))
        spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
 
 !!$ exact exchange (too slow), use frozenexchinvr instead

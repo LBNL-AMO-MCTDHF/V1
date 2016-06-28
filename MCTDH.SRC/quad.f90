@@ -382,7 +382,7 @@ subroutine quadspfs(inspfs,jjcalls)
         select case(jacquaddir)
         case(1)
 
-           workvec=invector-solution  !! * 0.5   !! TEMP 0.5 ?  Works better
+           workvec=invector-solution * 0.5d0   !! TEMP 0.5 ?  Works better
 
         case(-1)
 !!
@@ -390,7 +390,7 @@ subroutine quadspfs(inspfs,jjcalls)
 !!              with plus not minus.  Where is the sign error?  Or something?
 !!              What is going on with jacsymflag.ne.0 and numfrozen.eq.0 ?????
 !!
-           workvec=invector+solution
+           workvec=invector+solution * 0.5d0   !! TEMP 0.5 ?
 
         case default
            OFLWR "programmer fail jacquaddir=",jacquaddir; CFLST

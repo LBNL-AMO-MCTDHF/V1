@@ -263,7 +263,8 @@ integer :: expodim=10            !!              !! Starting krylov dimension fo
 integer :: maxexpodim=100        !!              !! Maximum krylov dimension for expokit orbital propagation
 integer :: scalarflag=0          !!              !! Flag for inclusion of scalar terms in reduced hamiltonian
 real*8  :: expostepfac=1.2d0     !!              !! Miscellaneous algorithm parameter
-integer :: exact_exchange=0
+integer :: exact_exchange=0      !!              !! Exact exchange available for debug
+integer :: exchange_mode=0       !!              !! For default inexact: 0= previous 1,2=new
 !!EE
 !!\textbf{\qquad SPARSE - if sparseconfigflag .ne. 0}
 !!BB

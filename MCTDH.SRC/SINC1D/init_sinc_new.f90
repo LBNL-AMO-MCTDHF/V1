@@ -198,17 +198,17 @@ contains
 end subroutine ivo_project
 
 
-subroutine init_spfs(inspfs,numloaded)
+subroutine init_spfs(inspfs,numloaded,numfrozen,frozenreduced)
   use myparams
   use pmpimod
   use pfileptrmod
   use ivopotmod
-  use twoemod
   implicit none
-  DATATYPE :: inspfs(totpoints,numspf)
+  DATATYPE,intent(inout) :: inspfs(totpoints,numspf)
+  integer, intent(in) :: numloaded,numfrozen
+  DATATYPE,intent(in) :: frozenreduced(totpoints)
   DATATYPE,allocatable :: lanspfs(:,:),density(:)
   DATAECS,allocatable :: energies(:)
-  integer, intent(in) :: numloaded
   integer :: ibig,iorder,ispf,ppfac,ii,jj,kk,olist(numspf),flag
   integer :: null1,null2,null3,null4,null10(10),numcompute
 
@@ -281,8 +281,9 @@ subroutine init_spfs(inspfs,numloaded)
      call op_tinv(density,ivopot,1,1,null1,null2,null3,null4,null10)
      deallocate(density)
 
-     ivopot(:)=ivopot(:)+frozenreduced(:)
-
+     if (numfrozen.gt.0) then
+        ivopot(:)=ivopot(:)+frozenreduced(:)
+     endif
   endif
 
   allocate(lanspfs(totpoints,numcompute),energies(numcompute))
@@ -386,7 +387,8 @@ end subroutine init_spfs
 
 
 subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
-     bondpoints,bondweights,elecweights,elecradii,notused )
+     bondpoints,bondweights,elecweights,elecradii,notused,& 
+     numfrozen, infrozens, frozenkediag, frozenpotdiag, frozenreduced, notusedreduced)
   use myparams
   use pmpimod
   use pfileptrmod
@@ -398,6 +400,12 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   DATATYPE,intent(out) :: pot(totpoints),proderivmod(numr,numr),rkemod(numr,numr),&
        bondpoints(numr),bondweights(numr), elecweights(totpoints,3),elecradii(totpoints),&
        halfniumpot(totpoints)
+  integer,intent(in) :: numfrozen
+  DATATYPE,intent(in) :: infrozens(totpoints,numfrozen)
+  DATATYPE,intent(out) :: frozenkediag, frozenpotdiag, &
+       frozenreduced(totpoints)
+  DATATYPE :: notusedreduced(totpoints)
+
 #ifndef REALGO
   real*8,allocatable :: temppot(:)
 #endif
@@ -506,6 +514,10 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
    
   call get_twoe_new(pot)
 
+  if (numfrozen.gt.0) then
+     call call_frozen_matels_core(infrozens,numfrozen,frozenkediag,frozenpotdiag,frozenreduced)
+  endif
+
 #ifndef REALGO
 
   if (capflag.gt.0) then
@@ -528,8 +540,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 #endif
 
   if (spfsloaded.lt.numspf) then
-     call frozen_matels()
-     call init_spfs(inspfs(:,:),spfsloaded)
+     call init_spfs(inspfs(:,:),spfsloaded,numfrozen,frozenreduced)
   endif
 
 !! now add in harmonic

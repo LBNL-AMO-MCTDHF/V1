@@ -113,12 +113,6 @@ subroutine myprojectalloc()
 end subroutine myprojectalloc
 
 
-module twoemod
-  implicit none
-  DATATYPE, allocatable :: frozenreduced(:)
-end module twoemod
-
-
 subroutine get_twoe_new(pot)
   use myparams
   use pfileptrmod

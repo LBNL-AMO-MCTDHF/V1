@@ -270,6 +270,7 @@ contains
 
     if (numfrozen.ne.0) then
        yyy%frozenexchinvr(:,:,1) = yyy%frozenexchinvr(:,:,0)
+       yyy%frozenexchmat(:,:,1) = yyy%frozenexchmat(:,:,0)
     endif
 
     if (use_fockmatrix) then

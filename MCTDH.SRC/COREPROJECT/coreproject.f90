@@ -9,15 +9,7 @@ function qbox(notusedint)
 end function qbox
 
 
-module twoemod
-  implicit none
-
-  DATATYPE, allocatable :: frozenreduced(:,:,:), hatomreduced(:,:,:)
-
-end module twoemod
-
 subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,inspfugvals,outspfsmallsize,logorbpar)
-  use twoemod
   use myparams
   implicit none
   integer,intent(in) :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,inspfugvals(innumspf)
@@ -50,24 +42,8 @@ subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,
 
   allocate(spfmvals(numspf));  spfmvals(:)=inspfmvals(:)
   allocate(spfugvals(numspf));  spfugvals(:)=inspfugvals(:)
-  allocate(frozenreduced(numerad,lbig+1,-2*mbig:2*mbig))
-  frozenreduced(:,:,:)=0d0
-  if (numhatoms.gt.0) then
-     allocate(hatomreduced(numerad,lbig+1,-2*mbig:2*mbig))
-     hatomreduced(:,:,:)=0d0
-  endif
 
 end subroutine transferparams
-
-
-subroutine twoedealloc
-  use twoemod
-  use myparams
-  implicit none
-  if (numhatoms.gt.0) then
-     deallocate(hatomreduced)
-  endif
-end subroutine twoedealloc
 
 
 
@@ -104,7 +80,6 @@ end module
 
 subroutine op_tinv(mlow,mhigh,howmany,indensity,outpotential)
   use myparams
-  use twoemod
   use myprojectmod
   implicit none
   integer, intent(in) :: mlow,mhigh,howmany
@@ -157,7 +132,6 @@ end subroutine op_tinv
 
 subroutine call_twoe_matel00(lowspf,highspf,inspfs1,inspfs2,twoematel,twoereduced,xtimingdir,xnotiming) !! ok unused
   use myparams
-  use twoemod
   use myprojectmod
   use mycdotmod
   implicit none
@@ -287,14 +261,14 @@ end subroutine call_twoe_matel00
 
 
 
-subroutine hatom_op(howmany,inspfs, outspfs)
+subroutine hatom_op(howmany,inspfs, outspfs, hatomreduced)
   use myparams
-  use twoemod
   use myprojectmod
   implicit none
   integer,intent(in) :: howmany
   DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(in) :: hatomreduced(numerad,lbig+1,-2*mbig:2*mbig)
   integer ::  mvalue1b, mvalue1a,deltam,ivect
 
   outspfs(:,:,:,:)=0d0
@@ -323,16 +297,17 @@ subroutine hatom_op(howmany,inspfs, outspfs)
 end subroutine hatom_op
 
 
-subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  !! returns last two.  a little cloogey
+subroutine call_frozen_matels_core(infrozens,numfrozen,frozenkediag,frozenpotdiag,frozenreduced,hatomreduced)
   use myparams
-  use twoemod
   use myprojectmod
   use mycdotmod
   use orbmultsubmod   !! IN PARENT DIRECTORY
   implicit none
   integer,intent(in) :: numfrozen
+  DATATYPE,intent(in) :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen),&
+       hatomreduced(numerad,lbig+1,-2*mbig:2*mbig)
   DATATYPE,intent(out) :: frozenkediag,frozenpotdiag
-  DATATYPE,intent(in) :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen)
+  DATATYPE,intent(out) :: frozenreduced(numerad,lbig+1,-2*mbig:2*mbig)
   DATATYPE :: direct(numfrozen,numfrozen), exch(numfrozen,numfrozen)
   integer :: mvalue2a, mvalue2b,  spf2a,spf2b, deltam,i,  iispf,ispf, sizespf, bigsize
   DATATYPE, allocatable :: frodensity(:,:,:,:), tempreduced(:,:,:,:), cfrodensity(:,:,:,:), &
@@ -367,6 +342,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
      frodensity(:,:,:,1)=frodensity(:,:,:,1)+myden(:,:,:) * 2
   enddo  !! spf2a
 
+  frozenreduced=0
   call op_tinv(-2*mbig,2*mbig,1,frodensity(:,:,:,1),frozenreduced(:,:,:))
 
   exch(:,:)=0d0
@@ -436,7 +412,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
 
   call mult_pot(numfrozen,infrozens(:,:,:,:),tempmult(:,:))
   if (numhatoms.gt.0) then
-     call hatom_op(numfrozen,infrozens(:,:,:,:),tempmult2(:,:))
+     call hatom_op(numfrozen,infrozens(:,:,:,:),tempmult2(:,:),hatomreduced)
      tempmult(:,:)=tempmult(:,:)+tempmult2(:,:)
   endif
 
@@ -473,7 +449,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)  
 
   deallocate(frodensity,cfrodensity,tempreduced,tempmult,tempmult2)
 
-end subroutine call_frozen_matels0
+end subroutine call_frozen_matels_core
 
 
 !! EXCHANGE (direct is op_frozenreduced)
@@ -775,7 +751,6 @@ end subroutine mult_ydipole
 
 subroutine mult_reducedpot(firstspf,lastspf,inspfs,outspfs,reducedpot)
   use myparams
-  use twoemod
   implicit none
   integer,intent(in) :: firstspf,lastspf
   DATATYPE,intent(out) :: outspfs(numerad,lbig+1, -mbig:mbig,firstspf:lastspf)
@@ -817,12 +792,12 @@ end subroutine mult_reducedpot
 
 !! FOR EXPERIMENTAL ADDITION OF ADDITIONAL HYDROGEN ATOMS VIA POISSON SOLVE
 
-subroutine hatomcalc()
+subroutine hatomcalc(hatomreduced)
   use myparams
   use myprojectmod
-  use twoemod
   implicit none
   DATATYPE :: interpolate
+  DATATYPE,intent(out) :: hatomreduced(numerad,lbig+1,-2*mbig:2*mbig)
   DATATYPE ::  hatomden(numerad,lbig+1,-2*mbig:2*mbig)   !! AUTOMATIC
   integer :: mvalue2a, mvalue2b, iatom, deltam, ixi,ieta
 
@@ -843,11 +818,7 @@ subroutine hatomcalc()
    !!print *, "HATOM AT ", radialpoints(hlocs(1,iatom)), thetapoints(hlocs(2,iatom))
      endif
   enddo
-  if (numhatoms.eq.0) then
-     return
-  endif
 
-  hatomreduced=0.d0
   hatomden(:,:,:)=0d0
 
   do mvalue2a=-mbig,mbig
@@ -871,6 +842,7 @@ subroutine hatomcalc()
      enddo
   enddo
 
+  hatomreduced=0.d0
   call op_tinv(-2*mbig,2*mbig,1,hatomden,hatomreduced)
 
 end subroutine hatomcalc
@@ -878,11 +850,11 @@ end subroutine hatomcalc
 
 !! DIRECT ONLY
 
-subroutine op_frozenreduced(howmany,inspfs,outspfs)
+subroutine op_frozenreduced(howmany,inspfs,outspfs,frozenreduced)
   use myparams
-  use twoemod
   integer,intent(in) :: howmany
-  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(in) :: inspfs(numerad,lbig+1,-mbig:mbig,howmany), &
+       frozenreduced(numerad,lbig+1,-2*mbig:2*mbig)
   DATATYPE,intent(out) :: outspfs(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE :: mine(numerad,lbig+1)
   integer :: kmval,imval,ii
@@ -1609,7 +1581,6 @@ end subroutine splitgatherv_real
 !!$  !! output : 
 !!$  !! V2 - the 2-electron matrix elements corresponding with potential energy (contract with 1/R) 
 !!$    use myparams
-!!$    use twoemod
 !!$    use myprojectmod   !! rmatrix,ylmvals
 !!$    implicit none
 !!$    integer,intent(in) :: flag,lowspf,highspf

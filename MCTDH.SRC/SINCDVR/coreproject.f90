@@ -197,7 +197,6 @@
 subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,&
      inspfugvals,outspfsmallsize,outorbparflag)
   use myparams
-  use twoemod
   implicit none
   integer :: innumspf,inspfrestrictflag,inspfmvals(innumspf), inspfugrestrict,&
        inspfugvals(innumspf), outspfsmallsize,ii
@@ -208,9 +207,6 @@ subroutine transferparams(innumspf,inspfrestrictflag,inspfmvals,inspfugrestrict,
   outorbparflag=orbparflag
 
   ii=inspfrestrictflag; ii=inspfmvals(1); ii=inspfugvals(1); ii=inspfugrestrict;
-
-  allocate(frozenreduced(totpoints))
-  frozenreduced(:)=0d0
 
 end subroutine transferparams
 
@@ -248,9 +244,7 @@ contains
 end module
 
 
-!! returns last two.  a little cloogey
-subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)
-  use twoemod
+subroutine call_frozen_matels_core(infrozens,numfrozen,frozenkediag,frozenpotdiag,frozenreduced)
   use myparams
   use pmpimod
   use pfileptrmod
@@ -260,7 +254,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)
   implicit none
   integer, intent(in) :: numfrozen
   DATATYPE, intent(in) :: infrozens(totpoints,numfrozen)
-  DATATYPE, intent(out) :: frozenkediag, frozenpotdiag
+  DATATYPE, intent(out) :: frozenkediag, frozenpotdiag,frozenreduced(totpoints)
   DATATYPE,allocatable :: frodensity(:,:), tempreduced(:,:), cfrodensity(:,:), &
        tempmult(:,:)
   DATATYPE :: direct(numfrozen,numfrozen),exch(numfrozen,numfrozen),temppotmatel(numfrozen)
@@ -279,6 +273,7 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)
      frodensity(:,1)=frodensity(:,1) + infrozens(:,ii)*CONJUGATE(infrozens(:,ii)) * 2
   enddo
 
+  frozenreduced=0
   call op_tinv(frodensity(:,1),frozenreduced(:),1,1,&
        times1,times3,times4,times5,fttimes)
 
@@ -361,14 +356,13 @@ subroutine call_frozen_matels0(infrozens,numfrozen,frozenkediag,frozenpotdiag)
 
   deallocate(frodensity, tempreduced, cfrodensity, tempmult)
 
-end subroutine call_frozen_matels0
+end subroutine call_frozen_matels_core
 
 
 
 !! EXCHANGE (direct is op_frozenreduced)
 
 subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen,notusedarr)
-  use twoemod
   use myparams
   use pmpimod
   use pfileptrmod
@@ -592,20 +586,16 @@ subroutine mult_xdipole(howmany,in,out,realflag)
 end subroutine mult_xdipole
 
 
-subroutine hatomcalc()
-end subroutine hatomcalc
-
 
 !! DIRECT (exchange is op_frozen_exchange)
 
-subroutine op_frozenreduced(howmany,inspfs,outspfs)
-  use twoemod
+subroutine op_frozenreduced(howmany,inspfs,outspfs,frozenreduced)
   use myparams
   use pmpimod
   use pfileptrmod
   implicit none
   integer,intent(in) :: howmany
-  DATATYPE,intent(in) :: inspfs(totpoints,howmany)
+  DATATYPE,intent(in) :: inspfs(totpoints,howmany),frozenreduced(totpoints)
   DATATYPE,intent(out) :: outspfs(totpoints,howmany)
   integer :: ii
 
@@ -2131,15 +2121,16 @@ subroutine velmultiply(howmany,spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
 end subroutine velmultiply
 
 
-subroutine hatom_op(howmany,inspfs, outspfs)
+subroutine hatom_op(howmany,inspfs, outspfs,hatomreduced)
   use myparams
   implicit none
   integer,intent(in) :: howmany
   DATATYPE,intent(out) :: outspfs(totpoints,howmany)
-  DATATYPE,intent(in) :: inspfs(totpoints,howmany)
+  DATATYPE,intent(in) :: inspfs(totpoints,howmany),hatomreduced(1)
   DATATYPE :: qq
   outspfs(:,:)=0d0
-  qq=inspfs(1,1)
+  return
+  qq=inspfs(1,1);  qq=hatomreduced(1)
 end subroutine hatom_op
 
 

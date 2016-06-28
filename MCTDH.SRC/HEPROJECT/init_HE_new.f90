@@ -4,13 +4,12 @@
 
 #include "Definitions.INC"
 
-!! This is dumb; use reshape
 
 subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
-     bondpoints,bondweights,elecweights,elecradii,numelec )
+     bondpoints,bondweights,elecweights,elecradii,numelec,&
+     numfrozen, infrozens, frozenkediag, frozenpotdiag, frozenreduced, hatomreduced)
   use myparams
   use myprojectmod
-  use twoemod      !! frozenreduced
   implicit none
   integer, intent(in) ::  skipflag, numelec
   integer,intent(inout) :: spfsloaded
@@ -18,6 +17,11 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   DATATYPE,intent(out) :: proderivmod(numr,numr),rkemod(numr,numr),bondpoints(numr),&
        bondweights(numr),  halfniumpot(numerad,lbig+1, -mbig:mbig),pot(numerad,lbig+1, -mbig:mbig), &
        elecweights(numerad,lbig+1, -mbig:mbig,3),elecradii(numerad,lbig+1, -mbig:mbig)
+  integer,intent(in) :: numfrozen
+  DATATYPE,intent(in) :: infrozens(numerad,lbig+1, -mbig:mbig,numfrozen)
+  DATATYPE,intent(out) :: frozenkediag, frozenpotdiag, &
+       frozenreduced(numerad,lbig+1, -2*mbig:2*mbig),&
+       hatomreduced(numerad,lbig+1, -2*mbig:2*mbig)
   character (len=2) :: th(4)
   DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:)
   DATATYPE,allocatable :: mydensity(:,:), ivopot(:,:), ivoproj(:,:,:,:)
@@ -98,9 +102,19 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   call get_twoe_new()
   OFLWR "   ... called get_twoe_new"; CFL
 
+  if (numhatoms.gt.0) then
+     call hatomcalc(hatomreduced)
+  endif
+  if (numfrozen.gt.0) then
+     call call_frozen_matels_core(infrozens,numfrozen,frozenkediag,frozenpotdiag,&
+          frozenreduced,hatomreduced)
+  endif
+
+
 !!$  if (skipflag.gt.1) then
 !!$     return
 !!$  endif
+
 
   allocate(bigham(numerad, lbig+1, numerad, lbig+1), bigvects(numerad,lbig+1, edim,0:mbig), &
        bigvals(edim))
@@ -189,13 +203,21 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
               bigham(i,k,i,k) = bigham(i,k,i,k) - nuccharge1 /glpoints(i+1)
            enddo
         enddo
-        
-        call frozen_matels()
-        do k=1,lbig+1
-           do i=1,hegridpoints-2
-              bigham(i,k,i,k) = bigham(i,k,i,k) + frozenreduced(i,k,0)  !! ok conversion
+
+        if (numfrozen.gt.0) then
+           do k=1,lbig+1
+              do i=1,hegridpoints-2
+                 bigham(i,k,i,k) = bigham(i,k,i,k) + frozenreduced(i,k,0)  !! ok conversion
+              enddo
            enddo
-        enddo
+        endif
+        if (numhatoms.gt.0) then
+           do k=1,lbig+1
+              do i=1,hegridpoints-2
+                 bigham(i,k,i,k) = bigham(i,k,i,k) + hatomreduced(i,k,0)  !! ok conversion
+              enddo
+           enddo
+        endif
 
         if (ivoflag.ne.0) then
            OFLWR "getting IVO pot.  occupations are "

@@ -6,12 +6,11 @@
 
 
 subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
-     bondpoints,bondweights,elecweights,elecradii,numelec)
+     bondpoints,bondweights,elecweights,elecradii,numelec,&
+     numfrozen, infrozens, frozenkediag, frozenpotdiag, frozenreduced, hatomreduced)
   use myparams
   use myprojectmod
-  use twoemod      !! frozenreduced
   implicit none
-
   integer,intent(in) :: skipflag, numelec
   integer,intent(inout) :: spfsloaded
   DATATYPE,intent(inout) :: inspfs(numerad,lbig+1, -mbig:mbig, numspf)
@@ -19,6 +18,12 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
        bondpoints(numr),bondweights(numr), halfniumpot(numerad,lbig+1, -mbig:mbig),&
        pot(numerad,lbig+1, -mbig:mbig), &
        elecweights(numerad,lbig+1, -mbig:mbig,3), elecradii(numerad,lbig+1, -mbig:mbig)
+  integer,intent(in) :: numfrozen
+  DATATYPE,intent(in) :: infrozens(numerad,lbig+1, -mbig:mbig,numfrozen)
+  DATATYPE,intent(out) :: frozenkediag, frozenpotdiag, &
+       frozenreduced(numerad,lbig+1, -2*mbig:2*mbig),&
+       hatomreduced(numerad,lbig+1, -2*mbig:2*mbig)
+
   integer :: i,ii,imvalue,j, taken(200)=0, flag, jj, jflag, xiug, iug, ugvalue(200,0:30), &
        getsmallugvalue, istart
   DATAECS :: thisrvalue  
@@ -74,9 +79,19 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   call get_twoe_new()
   OFLWR "   ... ok called get twoe_new"; CFL
 
+  if (numhatoms.gt.0) then
+     call hatomcalc(hatomreduced)
+  endif
+  if (numfrozen.gt.0) then
+     call call_frozen_matels_core(infrozens,numfrozen,frozenkediag,frozenpotdiag,&
+          frozenreduced,hatomreduced)
+  endif
+
+
 !!$  if (skipflag.gt.1) then
 !!$     return
 !!$  endif
+
 
 !!MAY2014  thisrvalue=rpoints(2) 
   
@@ -102,13 +117,23 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
            enddo
         enddo
 
-        call frozen_matels()
-        do i=1,lbig+1
-           do j=1,numerad
-              bigham(j,i,j,i) = bigham(j,i,j,i) + &   !! ok conversion
-                   frozenreduced(j,i,0) / thisrvalue  !! ok conversion
+        if (numfrozen.gt.0) then
+           do i=1,lbig+1
+              do j=1,numerad
+                 bigham(j,i,j,i) = bigham(j,i,j,i) + &   !! ok conversion
+                      frozenreduced(j,i,0) / thisrvalue  !! ok conversion
+              enddo
            enddo
-        enddo
+        endif
+
+        if (numhatoms.gt.0) then
+           do i=1,lbig+1
+              do j=1,numerad
+                 bigham(j,i,j,i) = bigham(j,i,j,i) + &   !! ok conversion
+                      hatomreduced(j,i,0) / thisrvalue  !! ok conversion
+              enddo
+           enddo
+        endif
 
         if (ivoflag.ne.0) then
            OFLWR "getting IVO pot.  occupations are "
@@ -169,10 +194,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      pot(:,:,imvalue)= propot(:,:)
      halfniumpot(:,:,imvalue)= halfpot(:,:) * (nuccharge1+nuccharge2-numelec+1)
   enddo
-
-  if (numhatoms.gt.0) then
-     call hatomcalc()
-  endif
 
 !!$  if (skipflag.ne.0) then
 !!$     return

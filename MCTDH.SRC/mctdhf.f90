@@ -570,7 +570,9 @@ program mctdhf
 
   OFLWR "Calling init_project",sizeof(pot); CFL
   call init_project(bigspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
-       bondpoints,bondweights,elecweights,elecradii,numelec)
+       bondpoints,bondweights,elecweights,elecradii,numelec,&
+       numfrozen,frozenspfs,frozenkediag,frozenpotdiag,frozenreduced,hatomreduced)
+  call mpibarrier()
   OFLWR "   ....Called init_project."; CFL
 
   if (skipflag.lt.2) then
@@ -585,10 +587,6 @@ program mctdhf
      
      call apply_spf_constraints(yyy%cmfspfs(:,0))
      call spf_orthogit_gs(yyy%cmfspfs(:,0))
-
-     if (numfrozen.ne.0) then
-        call frozen_matels()
-     endif
 
   endif  !! skipflag.lt.2
 

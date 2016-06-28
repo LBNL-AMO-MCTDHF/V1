@@ -114,6 +114,7 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
   use orbgathersubmod
   use mpisubmod
   use orbmultsubmod
+  use opmod   !! frozenreduced, hatomreduced
   implicit none
   DATATYPE,intent(in) :: inspfs1(spfsize,nspf), inspfs2(spfsize,nspf)
   Type(CONFIGPTR),intent(inout) :: matrix_ptr
@@ -136,7 +137,7 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
      call mult_pot(numspf,inspfs2(:,lowspf:highspf),workspfs(:,lowspf:highspf))
 
 !! usually just adding zeroes here
-     call hatom_op(numspf,inspfs2(:,lowspf:highspf),ttempspfs(:,lowspf:highspf))
+     call hatom_op(numspf,inspfs2(:,lowspf:highspf),ttempspfs(:,lowspf:highspf),hatomreduced(:))
      workspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)+ttempspfs(:,lowspf:highspf)
 
 !! potmatel is proper ordering.  fast index is conjg.
@@ -145,7 +146,7 @@ subroutine pot_matel(matrix_ptr,inspfs1,inspfs2)
         call op_frozen_exchange(lowspf,highspf,inspfs2(:,lowspf:highspf),ttempspfs(:,lowspf:highspf))
         workspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)+ttempspfs(:,lowspf:highspf)
 
-        call op_frozenreduced(numspf,inspfs2(:,lowspf:highspf),ttempspfs(:,lowspf:highspf))
+        call op_frozenreduced(numspf,inspfs2(:,lowspf:highspf),ttempspfs(:,lowspf:highspf),frozenreduced(:))
         workspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)+ttempspfs(:,lowspf:highspf)
      endif
 
@@ -292,12 +293,12 @@ end subroutine sparseops_matel
 end module allmat0mod
 
 
-subroutine frozen_matels()
-  use opmod
-  use parameters
-  implicit none
-  call call_frozen_matels0(frozenspfs(:,:),numfrozen,frozenkediag,frozenpotdiag)  !! returns diags; has matels in twoemod
-end subroutine frozen_matels
+!subroutine frozen_matels()
+!  use opmod
+!  use parameters
+!  implicit none
+!  call call_frozen_matels0(frozenspfs(:,:),numfrozen,frozenkediag,frozenpotdiag,frozenreduced)
+!end subroutine frozen_matels
 
 
 module cfgsubmod
