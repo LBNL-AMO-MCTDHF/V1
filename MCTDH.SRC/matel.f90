@@ -293,13 +293,6 @@ end subroutine sparseops_matel
 end module allmat0mod
 
 
-!subroutine frozen_matels()
-!  use opmod
-!  use parameters
-!  implicit none
-!  call call_frozen_matels0(frozenspfs(:,:),numfrozen,frozenkediag,frozenpotdiag,frozenreduced)
-!end subroutine frozen_matels
-
 
 module cfgsubmod
 contains

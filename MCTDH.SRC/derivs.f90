@@ -1079,12 +1079,12 @@ contains
 
     if (numspf.gt.0) then
 
-       allocate(tempspfs(spfsize,lowspf:highspf+1), workspfs(spfsize,lowspf:highspf+1))
+       allocate(tempspfs(spfsize,nspf), workspfs(spfsize,nspf))
        tempspfs(:,:)=0d0; workspfs(:,:)=0d0
 
        do jjj=0,itop
           call actreduced00(lowspf,highspf,dentimeflag,thistime,spfsin,spfsin,&
-               workspfs,jjj, projflag,conflag)
+               workspfs(:,lowspf:highspf),jjj, projflag,conflag)
           spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf) + &
                workspfs(:,lowspf:highspf)*facs(jjj)
        enddo
@@ -1094,32 +1094,46 @@ contains
 !! EXCHANGE AND DRIVING CONTRIBUTE TO JACOBIAN (jacoperate) via projector.
 
        if (numfrozen.gt.0.and.exact_exchange.eq.0) then
-          call system_clock(itime)
+
           do jjj=0,itop
+
+             call system_clock(itime)
+
+             if (projflag.ne.0) then
+                select case (exchange_mode)
+                case(0)
+                   call project00(1,nspf,yyy%frozenexchinvr(:,1:nspf,jjj),&
+                        workspfs(:,1:nspf),spfsin)
+                case(1)
+                   call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,&
+                        spfsin(:,:), spfsize, yyy%frozenexchmat(:,1:nspf,jjj), nspf,&
+                        DATAZERO, workspfs(:,1:nspf),spfsize)
+                case default
+                   OFLWR "error exchange_mode derivs"; CFLST
+                end select
+                tempspfs(:,1:nspf) = yyy%frozenexchinvr(:,1:nspf,jjj) - &
+                     workspfs(:,1:nspf)
+             else
+                tempspfs(:,1:nspf) = yyy%frozenexchinvr(:,1:nspf,jjj)
+             endif
+             call system_clock(jtime);        times(8)=times(8)+jtime-itime
+
              if (dentimeflag.ne.0) then
 !! TIMEFAC and facs HERE
                 csum=timefac*facs(jjj)
                 call MYGEMM('N','N', spfsize,numspf,nspf,csum, &
-                     yyy%frozenexchinvr(:,:,jjj),spfsize, &
+                     tempspfs(:,1:nspf),spfsize, &
                      yyy%invdenmat(:,lowspf:highspf,jjj), nspf, DATAZERO, &
-                     tempspfs(:,lowspf:highspf), spfsize)
+                     workspfs(:,lowspf:highspf), spfsize)
              else
-                tempspfs(:,lowspf:highspf)= &   !! no more factor -1
-                     yyy%frozenexchinvr(:,lowspf:highspf,jjj)*facs(jjj)
+                workspfs(:,lowspf:highspf)= &   !! no more factor -1
+                     tempspfs(:,lowspf:highspf)*facs(jjj)
              endif
-          enddo
-          call system_clock(jtime);    times(7)=times(7)+jtime-itime;     itime=jtime
 
-          if (projflag.ne.0) then
-             call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),&
-                  workspfs(:,lowspf:highspf),spfsin)
-             spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf) + &
-                  tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
-          else
-             spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf) + &
-                  tempspfs(:,lowspf:highspf)
-          endif
-          call system_clock(jtime);        times(8)=times(8)+jtime-itime
+             spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf) + workspfs(:,lowspf:highspf)
+
+             call system_clock(jtime);    times(7)=times(7)+jtime-itime;
+          enddo
        endif
 
 !! DRIVING (PSI-PRIME)

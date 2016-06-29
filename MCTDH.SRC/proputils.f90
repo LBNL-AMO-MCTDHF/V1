@@ -61,7 +61,6 @@ contains
 
   subroutine project(inspfs, outspfs, prospfs)
     use parameters
-    use opmod !! frozenspfs
     use orbgathersubmod
     implicit none
     DATATYPE,intent(in) :: inspfs(spfsize,nspf),  prospfs(spfsize,nspf)
@@ -95,7 +94,7 @@ contains
 
     outspf(:)=0;   mydot(:)=0
 
-    if (numfrozen.gt.1) then
+    if (numfrozen.gt.0) then
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j)
 !$OMP DO SCHEDULE(STATIC)
        do j=1,numfrozen
@@ -248,9 +247,11 @@ subroutine get_frexchange()
   use orbgathersubmod
   use orbmultsubmod
   use mpisubmod
+  use opmod
   implicit none
   integer :: lowspf,highspf,numspf,ispf,jspf
   DATATYPE,allocatable :: frozenexchange(:,:)
+  DATATYPE :: frodot
 
   if (numfrozen.eq.0) then
      return
@@ -286,6 +287,18 @@ subroutine get_frexchange()
   endif
 
   deallocate(frozenexchange)
+
+! orthog to frozen !
+  do ispf=lowspf,highspf
+     do jspf=1,numfrozen
+        frodot = dot(frozenspfs(:,jspf), yyy%frozenexchinvr(:,ispf,0), spfsize)
+        if (parorbsplit.eq.3) then
+           call mympireduceone(frodot)
+        endif
+        yyy%frozenexchinvr(:,ispf,0) = yyy%frozenexchinvr(:,ispf,0) - &
+             frodot * frozenspfs(:,jspf) 
+     enddo
+  enddo
 
   do jspf=1,nspf
      do ispf=lowspf,highspf

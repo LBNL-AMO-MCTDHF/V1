@@ -54,7 +54,7 @@ contains
     DATATYPE :: csum, nulldouble(2),pots(3)
     real*8 :: facs(0:1),rsum
     DATATYPE :: bigwork(spfsize,nspf),   workspfs(spfsize,lowspf:highspf),& 
-         tempspfs(spfsize,lowspf:highspf)       !! AUTOMATIC
+         tempspfs(spfsize,lowspf:highspf), tempmat(nspf,lowspf:highspf)       !! AUTOMATIC
 
     numcalledhere=numcalledhere+1
 
@@ -71,7 +71,7 @@ contains
 !!$       OFLWR "something is wonky, set jacsymflag.eq.0"; CFLST
 !!$    endif
 
-    bigwork=0; workspfs=0; tempspfs=0
+    bigwork=0; workspfs=0; tempspfs=0; tempmat=0
 
     numspf=highspf-lowspf+1
 
@@ -168,28 +168,40 @@ contains
 
        if (numfrozen.gt.0.and.exact_exchange.eq.0) then
 
-          call system_clock(itime)
 !! EXCHANGE
+          select case(exchange_mode)
+          case(0)   !! original (1-P(phi)) frozenexchinvr
+
+             call derproject00(1,nspf,yyy%frozenexchinvr(:,:,ii),bigwork,jacvect,inspfs)
+
+          case(1)   !! with frozenexchmat
+
+             call system_clock(itime)
+             call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,&
+                  inspfs,spfsize,  yyy%frozenexchmat(:,:,ii),nspf,&
+                  DATAZERO, bigwork(:,:), spfsize)
+             call system_clock(jtime); times(6)=times(6)+jtime-itime;
+
+          case default
+             OFLWR "exchange_mode not supported",exchange_mode; CFLST
+          end select
+
+          call system_clock(itime)
           if (dentimeflag.ne.0) then
 !! TIMEFAC and facs HERE
              csum=timefac*facs(ii)
              call MYGEMM('N','N', spfsize,numspf,nspf,csum, &
-                  yyy%frozenexchinvr(:,:,ii),spfsize, &
+                  bigwork(:,:),spfsize, &
                   yyy%invdenmat(:,lowspf:highspf,ii), nspf, DATAZERO, &
                   tempspfs(:,lowspf:highspf), spfsize)
           else
              tempspfs(:,lowspf:highspf)= & !! no more factor (-1) * &
-                  yyy%frozenexchinvr(:,lowspf:highspf,ii)*facs(ii)
+                  bigwork(:,lowspf:highspf)*facs(ii)
           endif
           call system_clock(jtime); times(6)=times(6)+jtime-itime;
 
-          call derproject00(lowspf,highspf,tempspfs,workspfs,jacvect,inspfs)
-
-!!BUGFIX           outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) + &
-!! 06-16              tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
-
           outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) &
-               - workspfs(:,lowspf:highspf)
+               - tempspfs(:,lowspf:highspf)
        endif
 
 !! DRIVING (PSI-PRIME)
