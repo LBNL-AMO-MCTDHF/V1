@@ -196,7 +196,7 @@ subroutine read_orb(inspf,imvalue, iprop, iwhich)
   implicit none
 
   integer :: readprop,  returnval, ixi, ieta, inspf, imvalue, flag, xflag, irecord, first,  iprop, &
-       getlen, iwhich, ispf, iii, itable
+       getlen, iwhich, ispf, itable
   integer, parameter :: ifilenums(4)=(/  natorbfile, spfplotfile, denfile, denprojfile /)
   character (len=SLN) :: ifilenames(4)
   character (len=8), parameter :: ignufile(4)=(/ "Natplot_", "Spfplot_", "Denplot_", "Denproj_" /)
@@ -458,12 +458,7 @@ endif
            write(871,*) "pause ", plotpause
         endif  !! povplotflag
      endif !! flag==1 or 2
-     open(222,file="stop",status="old", iostat=iii)
-     if (iii==0) then
-        close(222)
-        print *, "Stopping due to stopfile!"
-        stop
-     endif
+     call checkstopfile()
   enddo
 
   call close_orbvector(ifilenums(iwhich))

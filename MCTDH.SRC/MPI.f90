@@ -1747,5 +1747,19 @@ end subroutine mympialltoall_local
 end module mpisubmod
 
 
+subroutine checkstopfile()
+  use mpisubmod
+  use fileptrmod
+  implicit none
+  integer :: iii
+  open(222,file="stop",status="old", iostat=iii)
+  if (iii==0) then
+     close(222)
+  endif
+  call mympiimax(iii)
+  if (iii==0) then
+     OFLWR "Stopping due to stopfile!"; CFLST
+  endif
+end subroutine checkstopfile
 
 

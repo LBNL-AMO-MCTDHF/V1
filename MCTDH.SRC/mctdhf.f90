@@ -219,12 +219,15 @@ program mctdhf
   if (myrank.eq.1) then
      call system("date")
   endif
+
   call system("mkdir -p Dat"); call system("mkdir -p Bin"); call system("mkdir -p Flux")
   call system("mkdir -p WALKS");  
 
   open(nullfileptr,file="/dev/null",status="unknown")
 
   call MPIstart()
+
+  call checkstopfile()
 
   call openfile()
   write(mpifileptr, *) " ****************************************************************************"     

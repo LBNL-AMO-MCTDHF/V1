@@ -776,7 +776,7 @@ subroutine prop_loop( starttime)
   use prop_loop_sub_mod
   use orbdermod
   implicit none
-  integer ::  jj,flag,  iii, itime, jtime, times(20)=0, qq,imc,getlen,myiostat
+  integer ::  jj,flag, itime, jtime, times(20)=0, qq,imc,getlen,myiostat
   DATAECS :: thisenergy(mcscfnum), lastenergy(mcscfnum) ,thisenergyavg,&
        lastenergyavg,startenergy(mcscfnum)
   CNORMTYPE :: norms(mcscfnum)
@@ -874,14 +874,8 @@ subroutine prop_loop( starttime)
      if ((jj==numpropsteps) .and. (threshflag/=1)) then
         flag=1
      endif
-     open(222,file="stop",status="old", iostat=iii)
-     if (iii==0) then
-        close(222)
-     endif
-     if (iii==0) then
-        flag=1
-        OFLWR "Stopping due to stopfile!"; CFLST
-     endif
+
+     call checkstopfile()
 
      thattime=thistime+par_timestep
 
