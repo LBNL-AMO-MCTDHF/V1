@@ -234,7 +234,7 @@ end module fluxduringmod
 module fluxgtau0mod
 contains
 
-  subroutine fluxgtau_during0(wwin,bbin,ketmo,ketavec,dt)
+  subroutine fluxgtau_during0(wwin,bbin,in_ketmo,ketavec,dt)
     use fluxgtaubiomod
     use biorthomod
     use parameters
@@ -243,6 +243,7 @@ contains
     use mpisubmod
     use pulsesubmod
     use fluxduringmod
+    use orbmultsubmod   !! gauge_transform
     implicit none
 !! FluxOpType:
 !! 0       = use one-e potential and two-e contribution routines  (exact treatment)
@@ -254,12 +255,12 @@ contains
     type(walktype),pointer :: myww
     real*8,intent(in) :: dt
     DATATYPE,intent(in) :: ketavec(numr,wwin%firstconfig:wwin%lastconfig,mcscfnum), &
-         ketmo(spfsize,nspf)
+         in_ketmo(spfsize,nspf)
     integer :: imc, myiostat
     DATATYPE :: gtaunow(mcscfnum), nullvector(numr)
     DATATYPE, allocatable :: imke(:,:),impe(:,:),imV2(:,:,:,:), imyderiv(:,:),&
          imkeop(:,:),impeop(:,:),  imyop(:,:), reke(:,:),repe(:,:),reV2(:,:,:,:), reyderiv(:,:),&
-         rekeop(:,:),repeop(:,:),  reyop(:,:)
+         rekeop(:,:),repeop(:,:),  reyop(:,:), ketmo(:,:)
 
     gtaunow=0; nullvector=0
 
@@ -274,10 +275,11 @@ contains
     allocate(imke(nspf,nspf),impe(nspf,nspf),imV2(nspf,nspf,nspf,nspf),imyderiv(nspf,nspf),&
          reke(nspf,nspf),repe(nspf,nspf),reV2(nspf,nspf,nspf,nspf),reyderiv(nspf,nspf),&
          rekeop(spfsize,nspf),repeop(spfsize,nspf),reyop(spfsize,nspf),&
-         imkeop(spfsize,nspf),impeop(spfsize,nspf),imyop(spfsize,nspf))
+         imkeop(spfsize,nspf),impeop(spfsize,nspf),imyop(spfsize,nspf), ketmo(spfsize,nspf))
 
     imke=0; impe=0; imV2=0; imyderiv=0; imkeop=0; impeop=0; imyop=0;
-    reke=0; repe=0; reV2=0; reyderiv=0; rekeop=0; repeop=0; reyop=0
+    reke=0; repe=0; reV2=0; reyderiv=0; rekeop=0; repeop=0; reyop=0;
+    ketmo=0
 
     if (allocated.eq.0) then
        allocated=1
@@ -293,6 +295,16 @@ contains
        endif
     else
        curtime=curtime+1
+    endif
+
+!! gaugefluxflag available to attempt gauge-invariant calculation with strong IR fields
+!! transform to the gauge in which the flux operator is time-independent?  Or what?
+
+!! gaugefluxflag=1, transform velocity to length; gaugefluxflag=1, transform length to velocity
+    if ((gaugefluxflag.eq.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
+       call gauge_transform(curtime*dt,nspf,in_ketmo(:,:),ketmo(:,:))
+    else
+       ketmo(:,:)=in_ketmo(:,:)
     endif
 
 !! get the one-e matrix elements for this ket time
@@ -399,6 +411,7 @@ contains
 
     deallocate(imke,impe,imV2,imyderiv,imkeop,impeop,imyop)
     deallocate(reke,repe,reV2,reyderiv,rekeop,repeop,reyop)
+    deallocate(ketmo)
 
   end subroutine fluxgtau_during0
 
@@ -414,6 +427,7 @@ contains
     use mpimod
     use mpisubmod
     use pulsesubmod
+    use orbmultsubmod   !! gauge_transform
     implicit none
 !! FluxOpType:
 !! 0       = use one-e potential and two-e contribution routines  (exact treatment)
@@ -436,7 +450,8 @@ contains
          gtau(:,:), mobio(:,:),abio(:,:,:), &
          read_bramo(:,:),read_braavec(:,:,:,:),read_ketmo(:,:),read_ketavec(:,:,:,:),&
          imke(:,:),impe(:,:),imV2(:,:,:,:), imyderiv(:,:), imkeop(:,:),impeop(:,:),  imyop(:,:),&
-         reke(:,:),repe(:,:),reV2(:,:,:,:), reyderiv(:,:), rekeop(:,:),repeop(:,:),  reyop(:,:)
+         reke(:,:),repe(:,:),reV2(:,:,:,:), reyderiv(:,:), rekeop(:,:),repeop(:,:),  reyop(:,:),&
+         transxmo(:,:)
     DATATYPE,target :: smo(nspf,nspf)
 
     if (ceground.eq.(0d0,0d0)) then
@@ -617,6 +632,22 @@ contains
        if (myrank.eq.1) then
           close(1001)
        endif
+
+!! gaugefluxflag available to attempt gauge-invariant calculation with strong IR fields
+!! transform to the gauge in which the flux operator is time-independent?  Or what?
+
+!! gaugefluxflag=1, transform velocity to length; gaugefluxflag=1, transform length to velocity
+       if ((gaugefluxflag.eq.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
+          allocate(transxmo(spfsize,nspf))
+          transxmo=0d0
+          do i=1,ketreadsize
+             curtime=(ketbat-1)*BatchSize+i-1 
+             call gauge_transform(curtime*dt,nspf,ketmo(:,:,i),transxmo(:,:))
+             ketmo(:,:,i) = transxmo(:,:)
+          enddo
+          deallocate(transxmo)
+       endif
+
 !! A-VECTOR
        if(myrank.eq.1) then
           open(1002,file=fluxafile,status="old",form="unformatted",&
@@ -689,6 +720,22 @@ contains
              if (myrank.eq.1) then
                 close(1001)
              endif
+
+!! gaugefluxflag available to attempt gauge-invariant calculation with strong IR fields
+!! transform to the gauge in which the flux operator is time-independent?  Or what?
+
+!! gaugefluxflag=1, transform velocity to length; gaugefluxflag=1, transform length to velocity
+             if ((gaugefluxflag.eq.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
+                allocate(transxmo(spfsize,nspf))
+                transxmo=0d0
+                do i=1,brareadsize
+                   oldtime=(brabat-1)*BatchSize+i-1
+                   call gauge_transform(oldtime*dt,nspf,bramo(:,:,i),transxmo(:,:))
+                   bramo(:,:,i) = transxmo(:,:)
+                enddo
+                deallocate(transxmo)
+             endif
+
 !! A-VECTOR
              if(myrank.eq.1) then
                 open(1002,file=fluxafile,status="old",form="unformatted",&

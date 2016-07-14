@@ -110,7 +110,7 @@ povactions.o: $(DEPEND) povactions.F90
 prop.o: $(DEPEND) prop.F90 derivs.o walkmult.o spin.o pulse.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c prop.F90 
 
-proputils.o: $(DEPEND) proputils.F90
+proputils.o: $(DEPEND) proputils.F90 pulse.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c proputils.F90 
 
 pulse.o: $(DEPEND) pulse.F90  

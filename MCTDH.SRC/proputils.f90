@@ -238,6 +238,62 @@ contains
     endif
   end subroutine op_frozen_exchange
 
+!! transform to the other gauge
+
+  subroutine gauge_transform(intime,numspf,inspfs,outspfs)
+    use spfsize_parameters
+    use pulsesubmod
+    use ham_parameters !! velflag
+    implicit none
+    real*8,intent(in) :: intime
+    integer,intent(in) :: numspf
+    DATATYPE,intent(in) :: inspfs(spfsize,numspf)
+    DATATYPE,intent(out) :: outspfs(spfsize,numspf)
+    DATATYPE :: tempspf(spfsize),tempspf2(spfsize) !! AUTOMATIC
+    DATATYPE :: pots(3)
+    complex*16 :: phase
+    integer :: ispf
+
+    tempspf=0; tempspf2=0
+    outspfs(:,:)=inspfs(:,:)
+
+    call vectdpot(intime,1,pots,-1)  !! A-vector velocity gauge, real part for unitary
+
+    if (velflag.ne.0) then
+       phase=(0d0,-1d0)    !! velocity
+    else
+       phase=(0d0, 1d0)    !! length
+    endif
+
+    if (abs(pots(1)).gt.0d0) then
+       tempspf=1d0
+       call mult_xdipole(1,tempspf(:),tempspf2(:),1)
+       tempspf(:)=exp(phase*pots(1)*tempspf2(:))
+       do ispf=1,numspf
+          outspfs(:,ispf)=outspfs(:,ispf) * tempspf(:)
+       enddo
+    endif
+
+    if (abs(pots(2)).gt.0d0) then
+       tempspf=1d0
+       call mult_ydipole(1,tempspf(:),tempspf2(:),1)
+       tempspf(:)=exp(phase*pots(2)*tempspf2(:))
+       do ispf=1,numspf
+          outspfs(:,ispf)=outspfs(:,ispf) * tempspf(:)
+       enddo
+    endif
+
+    if (abs(pots(3)).gt.0d0) then
+       tempspf=1d0
+       call mult_zdipole(1,tempspf(:),tempspf2(:),1)
+       tempspf(:)=exp(phase*pots(3)*tempspf2(:))
+       do ispf=1,numspf
+          outspfs(:,ispf)=outspfs(:,ispf) * tempspf(:)
+       enddo
+    endif
+
+  end subroutine gauge_transform
+
 end module orbmultsubmod
 
 

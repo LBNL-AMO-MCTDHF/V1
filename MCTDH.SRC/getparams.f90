@@ -102,7 +102,7 @@ subroutine getparams()
        shuffle_dfwalktype,maxdgdim, messavec, messaamount,holeflag, angularflag, angprojspifile,&
        prepropflag, step_flag, postpropflag, scalarflag, angprojfluxtsumfile, &
        catfacs, flux_subtract, jacsymquad, exact_exchange, jacquaddir, tentmode, followflag, &
-       exchange_mode
+       exchange_mode, gaugefluxflag
 
   OFL
   write(mpifileptr, *)

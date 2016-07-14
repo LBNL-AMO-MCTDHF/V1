@@ -496,6 +496,7 @@ integer :: computeFlux=500, &    ! 0=All in memory other: MBs to allocate
      FluxInterval=50,&           !! Multiple of par_timestep at which to save flux
      FluxSkipMult=1,&            !! Read every this number of time points.  Step=FluxInterval*FluxSkipMult
      flux_subtract=1             !! if nonzero subtract t=0 flux matrix element for decaying initial state
+integer :: gaugefluxflag=0       !! Transform length to velocity (1) or vice versa (2) for 16,17,27,28
 integer :: nucfluxopt=1          !! NucFlux=     !! Include imag part of hamiltonian from nuc ke 2=only that
 integer :: FluxOpType=1          !! 0=Full ham 1=halfnium 
 integer :: numcatfiles=1         !! see catspffiles and catavectorfiles in INPUT/OUTPUT for action 17,28

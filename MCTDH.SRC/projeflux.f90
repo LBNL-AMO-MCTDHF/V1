@@ -5,6 +5,7 @@
 
 #include "Definitions.INC"
 
+
 module projefluxmod !! needed for cation walks and bi-orthonormalization
   implicit none
   type PPTYPE
@@ -23,13 +24,6 @@ module projefluxmod !! needed for cation walks and bi-orthonormalization
   integer ::     NUMANGLES=0, NUMERAD=0
 
 end module projefluxmod
-
-
-module projbiomod
-  use biorthotypemod
-  implicit none
-  type(biorthotype),target :: projbiovar
-end module projbiomod
 
 
 module projloadsubmod
@@ -161,10 +155,9 @@ contains
 
   end subroutine projeflux_singlewalks
 
+
   subroutine projeflux_catload0(ifile,outnumstate)
     use parameters    !! catavectorfiles and others
-    use projbiomod
-    use biorthomod
     use configmod
     use projefluxmod
     use mpimod
@@ -177,7 +170,7 @@ contains
          spfcomplex, acomplex, tdims(3), myiostat, &
          targetms, targetrestrictflag, targetspinproject, targetspinval
     real*8 :: cgfac,doubleclebschsq,aa,bb,cc
-    DATATYPE, allocatable :: tmotemp(:,:),readta(:,:,:)
+    DATATYPE, allocatable :: tmotemp(:,:),readta(:,:,:),tempta(:,:)
 
 !! read in the data from mcscf for our target cation state
 
@@ -249,7 +242,6 @@ contains
        endif
     endif
 
-
 !!!!  100912 NEED CG COEFFICIENT RATIO 
               
 !! programmed this with restrict_ms, targetms.  
@@ -304,31 +296,41 @@ contains
 
     ppp(ifile)%catfactor = cgfac * catfacs(ifile)
 
-    allocate(ppp(ifile)%tmo(spfsize,nspf),ppp(ifile)%tavec(ppp(ifile)%tnumconfig,ppp(ifile)%eachstate,numr))
+    allocate(ppp(ifile)%tmo(spfsize,nspf),ppp(ifile)%tavec(numr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate))
     ppp(ifile)%tmo=0d0;  ppp(ifile)%tavec=0d0; 
 
-    allocate(tmotemp(spfsize,nspf+numfrozen),readta(tnumr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate))
-    tmotemp=0d0; readta=0d0
+    allocate(tmotemp(spfsize,nspf+numfrozen),readta(tnumr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate), &
+         tempta(ppp(ifile)%tnumconfig,ppp(ifile)%eachstate))
+    tmotemp=0d0; readta=0d0; tempta=0d0
 
     OFLWR "Reading", ppp(ifile)%eachstate," Born-Oppenheimer states."; CFL
 
     if (myrank.eq.1) then
        call simple_load_avectors(910,acomplex,readta(:,:,:),tnum2part,tnumr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate)
        do ir=1,min(tnumr,numr)
-          ppp(ifile)%tavec(:,:,ir)=readta(ir,:,:)
+          ppp(ifile)%tavec(ir,:,:)=readta(ir,:,:)
        enddo
-       do ir=min(tnumr,numr)+1,numr
-          call staticvector(ppp(ifile)%tavec(:,:,ir),ppp(ifile)%tnumconfig*ppp(ifile)%eachstate)
-       enddo
-       do ir=1,numr
+!!$
+!!$ 07-2016 commenting this out and just normalizing upt to tnumr... might want to redo this if it fails
+!!$
+!!$       do ir=min(tnumr,numr)+1,numr
+!!$          call staticvector(tempta(:,:),ppp(ifile)%tnumconfig*ppp(ifile)%eachstate)
+!!$          ppp(ifile)%tavec(ir,:,:)=tempta(:,:)
+!!$       enddo
+!!$
+!!$       do ir=1,numr
+
+       do ir=1,min(tnumr,numr)
 
 !! projecting on normalized electronic wfn at each R
 !! we go to war with the army we've got
 
+          tempta(:,:)=ppp(ifile)%tavec(ir,:,:)
           do istate=1,ppp(ifile)%eachstate
-             ppp(ifile)%tavec(:,istate,ir)=ppp(ifile)%tavec(:,istate,ir)/&
-                  sqrt(dot(ppp(ifile)%tavec(:,istate,ir),ppp(ifile)%tavec(:,istate,ir),ppp(ifile)%tnumconfig)) !! no * bondweights(ir)
+             tempta(:,istate)=tempta(:,istate)/&
+                  sqrt(dot(tempta(:,istate),tempta(:,istate),ppp(ifile)%tnumconfig)) !! no * bondweights(ir)
           enddo
+          ppp(ifile)%tavec(ir,:,:)=tempta(:,:)
        enddo
        call spf_read0(909,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,&
             tmotemp(:,:),(/0,0,0/))
@@ -370,7 +372,7 @@ contains
 
     call projeflux_singlewalks(ifile)
 
-    deallocate(tmotemp,readta)
+    deallocate(tmotemp,readta,tempta)
 
     outnumstate=ppp(ifile)%eachstate
 
@@ -569,8 +571,6 @@ contains
   end subroutine projeflux_load
 
 
-
-
 !! construct the one electron functions
   subroutine projeflux_doproj(ifile,cata,neuta,mo,infac,projwfn)
     use parameters     !! nspf, projfluxfile etc.
@@ -579,66 +579,65 @@ contains
     use mpisubmod
     implicit none
     integer,intent(in) :: ifile
-    DATATYPE,intent(in) :: cata(ppp(ifile)%tnumconfig),&
-         neuta(first_config:last_config),mo(spfsize,nspf)
+    DATATYPE,intent(in) :: cata(numr,ppp(ifile)%tnumconfig),&
+         neuta(numr,first_config:last_config),mo(spfsize,nspf)
     real*8, intent(in) :: infac
-    DATATYPE,intent(out) :: projwfn(spfsize,2)
-    DATATYPE :: projcoefs(nspf,2)
-    integer :: jconfig,iwalk,iconfig,ispf,ispin,iphase
+    DATATYPE,intent(out) :: projwfn(spfsize,2,numr)
+    DATATYPE :: projcoefs(numr,nspf,2)             !! AUTOMATIC
+    integer :: jconfig,iwalk,iconfig,ispf,ispin,iphase,ir
 
 !! make the single electron wfn
 
-    projcoefs(:,:)=0d0
+    projcoefs(:,:,:)=0d0
     do jconfig=1,ppp(ifile)%tnumconfig
        do iwalk=1,ppp(ifile)%numpwalk1(jconfig)
           iconfig=ppp(ifile)%pwalk1(iwalk,jconfig);      ispf=ppp(ifile)%pspf1(1,iwalk,jconfig)
           ispin=ppp(ifile)%pspf1(2,iwalk,jconfig);      iphase=ppp(ifile)%pphase1(iwalk,jconfig)
 
-          projcoefs(ispf,ispin)=projcoefs(ispf,ispin) + &
-               CONJUGATE(cata(jconfig)) * neuta(iconfig) * iphase
+          projcoefs(:,ispf,ispin)=projcoefs(:,ispf,ispin) + &
+               CONJUGATE(cata(:,jconfig)) * neuta(:,iconfig) * iphase
        enddo
     enddo
 
-    call mympireduce(projcoefs,nspf*2)
+    call mympireduce(projcoefs,numr*nspf*2)
 
-    projwfn(:,:)=0d0
-    do ispin=1,2
-       do ispf=1,nspf
+    projwfn(:,:,:)=0d0
+    do ir=1,numr
+       do ispin=1,2
+          do ispf=1,nspf
 
 !! sqrt(infac) to recover infac with bra and ket factor.  infac positive
 
-          projwfn(:,ispin) = projwfn(:,ispin) + mo(:,ispf) * projcoefs(ispf,ispin) * sqrt(infac)
+             projwfn(:,ispin,ir) = projwfn(:,ispin,ir) + mo(:,ispf) * projcoefs(ir,ispf,ispin) * sqrt(infac)
+          enddo
        enddo
     enddo
 
-
-    call mpibarrier()
-
   end subroutine projeflux_doproj
 
-  subroutine projeflux_allproj(ifile,abio,mobio,projwfn)
+
+  subroutine projeflux_allproj(ifile,catavec,neutavec,neutmo,projwfn)
     use parameters !! mcscfnum
     use projefluxmod
     implicit none
     integer,intent(in) :: ifile
-    DATATYPE, intent(in) :: mobio(spfsize,nspf,numr),abio(first_config:last_config,mcscfnum,numr)
+    DATATYPE, intent(in) :: catavec(numr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate),&
+         neutmo(spfsize,nspf),neutavec(numr,first_config:last_config,mcscfnum)
     DATATYPE,intent(out) :: projwfn(spfsize,2,numr,ppp(ifile)%eachstate,mcscfnum)
-    integer :: ir,imc,istate
+    integer :: imc,istate
     DATATYPE :: nullvector(numr)
 
     nullvector=0
 
-    do ir=1,numr
-       do imc=1,mcscfnum
-          do istate=1,ppp(ifile)%eachstate
+    do imc=1,mcscfnum
+       do istate=1,ppp(ifile)%eachstate
 
    if (tot_adim.gt.0) then
-      call projeflux_doproj(ifile,ppp(ifile)%tavec(:,istate,ir),abio(:,imc,ir),mobio(:,:,ir),ppp(ifile)%catfactor,projwfn(:,:,ir,istate,imc))
+      call projeflux_doproj(ifile,catavec(:,:,istate),neutavec(:,:,imc),neutmo(:,:),ppp(ifile)%catfactor,projwfn(:,:,:,istate,imc))
    else
-      call projeflux_doproj(ifile,ppp(ifile)%tavec(:,istate,ir),nullvector(:),mobio(:,:,ir),ppp(ifile)%catfactor,projwfn(:,:,ir,istate,imc))
+      call projeflux_doproj(ifile,catavec(:,:,istate),nullvector(:),neutmo(:,:),ppp(ifile)%catfactor,projwfn(:,:,:,istate,imc))
    endif
 
-         enddo
       enddo
    enddo
 
@@ -705,23 +704,22 @@ contains
 
 
 
-  subroutine projeflux_projectdisk(nt)
+  subroutine projeflux_projectdisk(nt,dt)
     use parameters    !! catavectorfiles and others
-    use projbiomod
-    use biorthomod
     use configmod
-    use projefluxmod
+    use projefluxmod   !! ppp(ifile)%eachstate
     use mpimod
     use mpisubmod
     implicit none
 !! necessary working variables
     integer,intent(in) :: nt
-    DATATYPE, allocatable ::  mobio(:,:,:),abio(:,:,:),mymo(:,:),myavec(:,:,:), &
+    real*8,intent(in) :: dt
+    DATATYPE, allocatable ::  mobio(:,:),abio(:,:,:),mymo(:,:),myavec(:,:,:), &
          readmo(:,:),readavec(:,:,:)
     DATATYPE :: nullvector(numr)
 !! mcscf specific read variables
-    DATATYPE,target :: smo(nspf,nspf)
-    integer :: tau, i,ir, ifile,  imc, myiostat
+!    DATATYPE,target :: smo(nspf,nspf)
+    integer :: tau, i, ifile,  myiostat
     DATATYPE,allocatable :: projwfn(:,:,:,:,:)
 
     nullvector(:)=0
@@ -730,7 +728,7 @@ contains
 
     OFLWR "Allocating arrays for projected flux"; CFL
 
-    allocate(mobio(spfsize,nspf,numr),abio(first_config:last_config,mcscfnum,numr),&
+    allocate(mobio(spfsize,nspf),abio(numr,first_config:last_config,mcscfnum),&
          mymo(spfsize,nspf),  myavec(numr,first_config:last_config,mcscfnum))
     mobio=0; mymo=0
     if (tot_adim.gt.0) then
@@ -805,44 +803,10 @@ contains
              enddo
           endif
 
-!! do biortho and construct the single particle function
-
-!!$       if (1==0) then
-!!$          do ir=1,numr
-!!$             abio(:,:,ir)=myavec(ir,:,:)
-!!$          enddo
-!!$          do ir=1,numr
-!!$             call bioset(projbiovar,smo,1,bioww); 
-!!$             call biortho(mymo,ppp(ifile)%tmo(:,:),mobio(:,:,ir),abio(:,1,ir),projbiovar)
-!!$             do imc=2,mcscfnum
-!!$                call biotransform(mymo,ppp(ifile)%tmo(:,:),abio(:,imc,ir),projbiovar)
-!!$             enddo
-!!$          enddo
-!!$       else
-
-!! this should do the same and it looks like it does
-     
-          call bioset(projbiovar,smo,numr,bioww)
-
-          if (tot_adim.gt.0) then
-             call biortho(mymo,ppp(ifile)%tmo(:,:),mobio(:,:,1),myavec(:,:,1),projbiovar)
-             do imc=2,mcscfnum
-                call biotransform(mymo,ppp(ifile)%tmo(:,:),myavec(:,:,imc),projbiovar)
-             enddo
-             do ir=1,numr
-                mobio(:,:,ir)=mobio(:,:,1)
-                abio(:,:,ir)=myavec(ir,:,:)
-             enddo
-          else
-             call biortho(mymo,ppp(ifile)%tmo(:,:),mobio(:,:,1),nullvector(:),projbiovar)
-             do imc=2,mcscfnum
-                call biotransform(mymo,ppp(ifile)%tmo(:,:),nullvector(:),projbiovar)
-             enddo
-          endif
-
-          call projeflux_allproj(ifile,abio,mobio,projwfn)
+          call projeflux_projectone(ifile, mymo, tau*dt, myavec, projwfn)
 
           call projeflux_saveproj(ifile,nt,tau,projwfn)
+
 
 !! write out times cause we're bored
 !    if(mod(tau,100).eq.0.or.tau.eq.nt) then
@@ -870,59 +834,89 @@ contains
   end subroutine projeflux_projectdisk
 
 
-  subroutine projeflux_projectone(ifile,inspfs,inavectors,projwfn)
+  subroutine projeflux_projectone(ifile,inspfs,spftime,inavectors,projwfn)
     use parameters    !! catavectorfiles and others
-    use projbiomod
     use biorthomod
+    use biorthotypemod
     use configmod
     use projefluxmod
     use mpimod
     use mpisubmod
+    use orbmultsubmod   !! gauge_transform
     implicit none
     integer,intent(in) :: ifile
+    real*8,intent(in) :: spftime
     DATATYPE,intent(in) :: inspfs(spfsize,nspf), inavectors(numr,first_config:last_config,mcscfnum)
     DATATYPE, intent(out) :: projwfn(spfsize,2,numr,ppp(ifile)%eachstate,mcscfnum)
-    DATATYPE, allocatable ::  mobio(:,:,:),abio(:,:,:),myavec(:,:,:)
-    DATATYPE :: nullvector(numr)
+    DATATYPE, allocatable ::  mobio(:,:),myavec(:,:,:), catspfs(:,:), neutspfs(:,:)
+    type(biorthotype),target :: projbiovar(numcatfiles)
     DATATYPE,target :: smo(nspf,nspf)
-    integer :: ir, imc
+    DATATYPE :: nullvector(numr)
+    integer :: imc
 
-    nullvector(:)=0
+    nullvector(:)=0; smo=0d0
 
-!! allocate all necessary extra memory and io params to do this looping business
+    allocate(mobio(spfsize,nspf),catspfs(spfsize,nspf),neutspfs(spfsize,nspf))
+    mobio=0; catspfs=0; neutspfs=0
 
-    allocate(mobio(spfsize,nspf,numr),abio(first_config:last_config,mcscfnum,numr),&
-         myavec(numr,first_config:last_config,mcscfnum))
-    mobio=0
+
+!! gaugefluxflag available to attempt gauge-invariant calculation with strong IR fields
+!! transform to the gauge in which the flux operator is time-independent?  or what?
+
+!! gaugefluxflag=1, transform velocity to length; gaugefluxflag=1, transform length to velocity
+    if ((gaugefluxflag.eq.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
+       call gauge_transform(spftime,nspf,ppp(ifile)%tmo(:,:),catspfs(:,:))
+       call gauge_transform(spftime,nspf,inspfs(:,:), neutspfs(:,:))
+    else
+       catspfs(:,:)=ppp(ifile)%tmo(:,:)
+       neutspfs(:,:)=inspfs(:,:)
+    endif
+
+
+!!$    REINSTATE VARIABLE WHICHSIDEPROJ (from version 0) HERE 
+!!$
+!!$  want to transform cation orbitals and a-vectors not neutral orbitals and
+!!$  a-vectors so that cation orbitals and neutral orbitals are biorthogonal.
+!!$  
+!!$  Whichsideproj=0 (default) transform neutral   
+!!$  Whichsideproj=1 (reinstating) transform cation
+!!$
+!!$  It is better to transform cation (whichsideproj=1) because then cation orbitals can
+!!$  obey whatever orthogonality condition.  Whichsideproj=1 allows cation eigenfunctions
+!!$  to be calculated with c-norm (e.g. cmctdhf_atom) for calculating photoionization 
+!!$  using usual herm-norm propagation calculation (chmctdhf_atom).
+
+!!$  Do extra cation walks?  Probably not best to use catww, mvalues etc might not line up.
+!!$  Save for later.
+
+!!$    if (whichsideproj.eq.0) then     !! WHICHSIDEPROJ.EQ.0 : transform neutral
+
+    allocate(myavec(numr,first_config:last_config,mcscfnum))
     if (tot_adim.gt.0) then
-       abio=0
        myavec(:,:,:)=inavectors(:,:,:)
     endif
 
-!! IFILE LOOP
-
-    call bioset(projbiovar,smo,numr,bioww)
+    call bioset(projbiovar(ifile),smo,numr,bioww)
 
     if (tot_adim.gt.0) then
-       call biortho(inspfs,ppp(ifile)%tmo(:,:),mobio(:,:,1),myavec(:,:,1),projbiovar)
+       call biortho(neutspfs(:,:),catspfs(:,:),mobio(:,:),myavec(:,:,1),projbiovar(ifile))
        do imc=2,mcscfnum
-          call biotransform(inspfs,ppp(ifile)%tmo(:,:),myavec(:,:,imc),projbiovar)
-       enddo
-       do ir=1,numr
-          mobio(:,:,ir)=mobio(:,:,1)
-          abio(:,:,ir)=myavec(ir,:,:)
+          call biotransform(neutspfs(:,:),catspfs(:,:),myavec(:,:,imc),projbiovar(ifile))
        enddo
     else
-       call biortho(inspfs,ppp(ifile)%tmo(:,:),mobio(:,:,1),nullvector(:),projbiovar)
+       call biortho(neutspfs(:,:),catspfs(:,:),mobio(:,:),nullvector(:),projbiovar(ifile))
        do imc=2,mcscfnum
-          call biotransform(inspfs,ppp(ifile)%tmo(:,:),nullvector(:),projbiovar)
+          call biotransform(neutspfs(:,:),catspfs(:,:),nullvector(:),projbiovar(ifile))
        enddo
     endif
 
-    call projeflux_allproj(ifile,abio,mobio,projwfn)
+    call projeflux_allproj(ifile,ppp(ifile)%tavec(:,:,:),myavec,mobio,projwfn)
 
-    call mpibarrier()
-    deallocate(mobio,abio,myavec)
+!!$    else    !! WHICHSIDEPROJ.NE.0: transform cation
+
+!!$    endif  !! WHICHSIDEPROJ
+
+    deallocate(mobio,catspfs,neutspfs,myavec)
 
   end subroutine projeflux_projectone
 
@@ -1647,13 +1641,14 @@ subroutine projeflux_single(mem)
   call projeflux_load()
 
   nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
-  call projeflux_projectdisk(nt)
+  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep
+
+  call projeflux_projectdisk(nt, dt)
 
   call projeflux_catdealloc()
 
   OFLWR "Go double time integral"; CFL
 
-  dt=real(FluxInterval*FluxSkipMult,8)*par_timestep
 
 !! do the double time integral
   call projeflux_double_time_int(mem,nstate,nt,dt,NUMANGLES,NUMERAD)
@@ -1770,7 +1765,7 @@ subroutine projeflux_during(inspfs,inavectors,dt)
 
   do ifile=1,numcatfiles
      allocate(projwfn(spfsize,2,numr,ppp(ifile)%eachstate,mcscfnum))
-     call projeflux_projectone(ifile,inspfs,inavectors,projwfn)
+     call projeflux_projectone(ifile, inspfs, curtime*dt, inavectors, projwfn)
 
      if (fluxoptype.eq.0) then
         OFLWR "PROGRAM ME FLUXOPTYPE 0 PROJEFLUX"; CFLST
