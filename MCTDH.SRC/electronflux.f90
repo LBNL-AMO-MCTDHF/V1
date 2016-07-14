@@ -300,7 +300,7 @@ contains
 !! gaugefluxflag available to attempt gauge-invariant calculation with strong IR fields
 !! transform to the gauge in which the flux operator is time-independent?  Or what?
 
-!! gaugefluxflag=1, transform velocity to length; gaugefluxflag=1, transform length to velocity
+!! gaugefluxflag=1, transform velocity to length; gaugefluxflag=2, transform length to velocity
     if ((gaugefluxflag.eq.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
        call gauge_transform(curtime*dt,nspf,in_ketmo(:,:),ketmo(:,:))
     else
@@ -636,7 +636,7 @@ contains
 !! gaugefluxflag available to attempt gauge-invariant calculation with strong IR fields
 !! transform to the gauge in which the flux operator is time-independent?  Or what?
 
-!! gaugefluxflag=1, transform velocity to length; gaugefluxflag=1, transform length to velocity
+!! gaugefluxflag=1, transform velocity to length; gaugefluxflag=2, transform length to velocity
        if ((gaugefluxflag.eq.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
           allocate(transxmo(spfsize,nspf))
           transxmo=0d0
@@ -724,7 +724,7 @@ contains
 !! gaugefluxflag available to attempt gauge-invariant calculation with strong IR fields
 !! transform to the gauge in which the flux operator is time-independent?  Or what?
 
-!! gaugefluxflag=1, transform velocity to length; gaugefluxflag=1, transform length to velocity
+!! gaugefluxflag=1, transform velocity to length; gaugefluxflag=2, transform length to velocity
              if ((gaugefluxflag.eq.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
                 allocate(transxmo(spfsize,nspf))
                 transxmo=0d0
