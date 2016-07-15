@@ -249,11 +249,12 @@ contains
     integer,intent(in) :: numspf
     DATATYPE,intent(in) :: inspfs(spfsize,numspf)
     DATATYPE,intent(out) :: outspfs(spfsize,numspf)
-    DATATYPE :: tempspf(spfsize),tempspf2(spfsize) !! AUTOMATIC
+    DATATYPE,allocatable :: tempspf(:),tempspf2(:)
     DATATYPE :: pots(3)
     complex*16 :: phase
     integer :: ispf
 
+    allocate(tempspf(spfsize),tempspf2(spfsize))
     tempspf=0; tempspf2=0
     outspfs(:,:)=inspfs(:,:)
 
@@ -291,6 +292,8 @@ contains
           outspfs(:,ispf)=outspfs(:,ispf) * tempspf(:)
        enddo
     endif
+
+    deallocate(tempspf,tempspf2)
 
   end subroutine gauge_transform
 

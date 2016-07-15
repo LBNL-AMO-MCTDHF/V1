@@ -865,8 +865,19 @@ contains
 
 !! gaugefluxflag=1, transform velocity to length; gaugefluxflag=2, transform length to velocity
     if ((gaugefluxflag.eq.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
-       call gauge_transform(spftime,nspf,ppp(ifile)%tmo(:,:),catspfs(:,:))
+
        call gauge_transform(spftime,nspf,inspfs(:,:), neutspfs(:,:))
+
+!! this doesn't make sense, mistake:
+!!    call gauge_transform(spftime,nspf,ppp(ifile)%tmo(:,:),catspfs(:,:))
+!!
+!! The best treatment would explicitly couple cation states when the 
+!!   field is on.  Lacking that, we should add a phase correction,
+!!   corresponding to the phase accumulated by the cation state during
+!!   the pulse.
+!! just keep unchanged for now:
+
+       catspfs(:,:)=ppp(ifile)%tmo(:,:)
     else
        catspfs(:,:)=ppp(ifile)%tmo(:,:)
        neutspfs(:,:)=inspfs(:,:)
