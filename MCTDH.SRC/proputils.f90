@@ -238,15 +238,15 @@ contains
     endif
   end subroutine op_frozen_exchange
 
-!! transform to the other gauge
+!! transform to the other gauge (not exactly, taking real part of
+!! dipole operator so that transformation is unitary)
 
-  subroutine gauge_transform(intime,numspf,inspfs,outspfs)
+  subroutine gauge_transform(invelflag,intime,numspf,inspfs,outspfs)
     use spfsize_parameters
     use pulsesubmod
-    use ham_parameters !! velflag
     implicit none
     real*8,intent(in) :: intime
-    integer,intent(in) :: numspf
+    integer,intent(in) :: numspf,invelflag
     DATATYPE,intent(in) :: inspfs(spfsize,numspf)
     DATATYPE,intent(out) :: outspfs(spfsize,numspf)
     DATATYPE,allocatable :: tempspf(:),tempspf2(:)
@@ -260,7 +260,7 @@ contains
 
     call vectdpot(intime,1,pots,-1)  !! A-vector velocity gauge, real part for unitary
 
-    if (velflag.ne.0) then
+    if (invelflag.ne.0) then
        phase=(0d0,-1d0)    !! velocity
     else
        phase=(0d0, 1d0)    !! length

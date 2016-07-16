@@ -859,30 +859,36 @@ contains
     allocate(mobio(spfsize,nspf),catspfs(spfsize,nspf),neutspfs(spfsize,nspf))
     mobio=0; catspfs=0; neutspfs=0
 
-
-!! gaugefluxflag available to attempt gauge-invariant calculation with strong IR fields
-!! transform to the gauge in which the flux operator is time-independent?  or what?
+!! gaugefluxflag available to attempt gauge-invariant calculation with photoionization
+!! during the pulse.  Best performance seems to be calculate wfn in length gauge, transform
+!! to velocity gauge for flux: velflag=0, gaugefluxflag=2 (Volkov phase is only a function of 
+!! time in the velocity gauge, no preferred origin in the velocity gauge)
 
 !! gaugefluxflag=1, transform velocity to length; gaugefluxflag=2, transform length to velocity
     if ((gaugefluxflag.eq.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
-
-       call gauge_transform(spftime,nspf,inspfs(:,:), neutspfs(:,:))
-
-!! this doesn't make sense, mistake:
-!!    call gauge_transform(spftime,nspf,ppp(ifile)%tmo(:,:),catspfs(:,:))
-!!
-!! The best treatment would explicitly couple cation states when the 
-!!   field is on.  Lacking that, we should add a phase correction,
-!!   corresponding to the phase accumulated by the cation state during
-!!   the pulse.
-!! just keep unchanged for now:
-
-       catspfs(:,:)=ppp(ifile)%tmo(:,:)
+       call gauge_transform(velflag,spftime,nspf,inspfs(:,:), neutspfs(:,:))
     else
-       catspfs(:,:)=ppp(ifile)%tmo(:,:)
        neutspfs(:,:)=inspfs(:,:)
     endif
 
+!! transform cation to velocity gauge if flux is calculated in velocity gauge.
+!! notice gaugefluxflag.ne.1 below not gaugefluxflag.eq.1 as above
+
+!! The best treatment would explicitly couple cation states when the 
+!!   field is on, propagating backwards from the end of the pulse.
+!!   Lacking that, we should add a phase correction, corresponding to 
+!!   the phase accumulated by the cation state during the pulse.
+!! At present (v1.31) no such coupling or phase correction -- corrections to the
+!!   vector of configuration coefficients -- are performed.
+!! The cation states are bound states and so are located at small radius.
+!!   Assume length gauge cation states are unperturbed.  So transform cation states
+!!   to velocity gauge if flux is calculated in velocity gauge.
+
+    if ((gaugefluxflag.ne.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
+       call gauge_transform(0,spftime,nspf,ppp(ifile)%tmo(:,:),catspfs(:,:))
+    else
+       catspfs(:,:)=ppp(ifile)%tmo(:,:)
+    endif
 
 !!$    REINSTATE VARIABLE WHICHSIDEPROJ (from version 0) HERE 
 !!$

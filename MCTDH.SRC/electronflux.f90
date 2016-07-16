@@ -297,12 +297,14 @@ contains
        curtime=curtime+1
     endif
 
-!! gaugefluxflag available to attempt gauge-invariant calculation with strong IR fields
-!! transform to the gauge in which the flux operator is time-independent?  Or what?
+!! gaugefluxflag available to attempt gauge-invariant calculation with photoionization
+!! during the pulse.  Best performance seems to be calculate wfn in length gauge, transform
+!! to velocity gauge for flux: velflag=0, gaugefluxflag=2 (Volkov phase is only a function of 
+!! time in the velocity gauge, no preferred origin in the velocity gauge)
 
 !! gaugefluxflag=1, transform velocity to length; gaugefluxflag=2, transform length to velocity
     if ((gaugefluxflag.eq.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
-       call gauge_transform(curtime*dt,nspf,in_ketmo(:,:),ketmo(:,:))
+       call gauge_transform(velflag,curtime*dt,nspf,in_ketmo(:,:),ketmo(:,:))
     else
        ketmo(:,:)=in_ketmo(:,:)
     endif
@@ -633,8 +635,10 @@ contains
           close(1001)
        endif
 
-!! gaugefluxflag available to attempt gauge-invariant calculation with strong IR fields
-!! transform to the gauge in which the flux operator is time-independent?  Or what?
+!! gaugefluxflag available to attempt gauge-invariant calculation with photoionization
+!! during the pulse.  Best performance seems to be calculate wfn in length gauge, transform
+!! to velocity gauge for flux: velflag=0, gaugefluxflag=2 (Volkov phase is only a function of 
+!! time in the velocity gauge, no preferred origin in the velocity gauge)
 
 !! gaugefluxflag=1, transform velocity to length; gaugefluxflag=2, transform length to velocity
        if ((gaugefluxflag.eq.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
@@ -642,7 +646,7 @@ contains
           transxmo=0d0
           do i=1,ketreadsize
              curtime=(ketbat-1)*BatchSize+i-1 
-             call gauge_transform(curtime*dt,nspf,ketmo(:,:,i),transxmo(:,:))
+             call gauge_transform(velflag,curtime*dt,nspf,ketmo(:,:,i),transxmo(:,:))
              ketmo(:,:,i) = transxmo(:,:)
           enddo
           deallocate(transxmo)
@@ -721,8 +725,10 @@ contains
                 close(1001)
              endif
 
-!! gaugefluxflag available to attempt gauge-invariant calculation with strong IR fields
-!! transform to the gauge in which the flux operator is time-independent?  Or what?
+!! gaugefluxflag available to attempt gauge-invariant calculation with photoionization
+!! during the pulse.  Best performance seems to be calculate wfn in length gauge, transform
+!! to velocity gauge for flux: velflag=0, gaugefluxflag=2 (Volkov phase is only a function of 
+!! time in the velocity gauge, no preferred origin in the velocity gauge)
 
 !! gaugefluxflag=1, transform velocity to length; gaugefluxflag=2, transform length to velocity
              if ((gaugefluxflag.eq.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
@@ -730,7 +736,7 @@ contains
                 transxmo=0d0
                 do i=1,brareadsize
                    oldtime=(brabat-1)*BatchSize+i-1
-                   call gauge_transform(oldtime*dt,nspf,bramo(:,:,i),transxmo(:,:))
+                   call gauge_transform(velflag,oldtime*dt,nspf,bramo(:,:,i),transxmo(:,:))
                    bramo(:,:,i) = transxmo(:,:)
                 enddo
                 deallocate(transxmo)
