@@ -1,13 +1,14 @@
 
   ** LBNL-AMO-MCTDHF VERSION 1.31 **
 
-v1.31 gaugefluxflag=1,2 available for photoionization actions 16 17 27
-   and 28.  For calculations with ionization during the pulse, recommend
-   (a) velocity gauge calculation or (b) length gauge calculation with
-   gaugefluxflag.eq.2.  Either way, photoionization is calculated in 
-   velocity gauge.  In the future, we should implement Volkov phase for
-   what should be formally exact electron kinetic energy resolution 
-   (though not angular distribution) for action 17 for cases (a) and (b).
+v1.31 gaugefluxflag and strongcatflag available for photoionization
+   actions 16 17 27 28.  With strong fields, recommend explicit 
+   back-propagation of cation states with strongcatflag.  With ionization 
+   during the pulse, recommend (a) velocity gauge calculation or (b) 
+   length gauge calculation with gaugefluxflag.eq.2.  Either way, 
+   photoionization is calculated in velocity gauge, and what remains is 
+   only the time-dependent Volkov phase for exact electron KE distribution 
+   with action 17 (to-do)
 
 v1.31 windowing functions for fourier transform set for each action
    separately, namelist &parinp variables fttriwindow(iaction) and 

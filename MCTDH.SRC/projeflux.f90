@@ -9,7 +9,7 @@
 module projefluxmod !! needed for cation walks and bi-orthonormalization
   implicit none
   type PPTYPE
-     integer :: tnumconfig=0
+     integer :: tnumconfig=0, tnumr=0, tnspf=0
      integer :: maxpwalk1=0 
      integer :: eachstate=0
      real*8 :: catfactor=0d0
@@ -156,17 +156,16 @@ contains
   end subroutine projeflux_singlewalks
 
 
-  subroutine projeflux_catload0(ifile,outnumstate)
+  subroutine projeflux_catload(ifile,outnumstate)
     use parameters    !! catavectorfiles and others
     use configmod
     use projefluxmod
     use mpimod
     use mpisubmod
     implicit none
-!! necessary working variables
     integer,intent(in) :: ifile
     integer,intent(out) :: outnumstate
-    integer :: i,ir,tnum2part,tnspf,tnumr,istate,ierr, cgflag, &
+    integer :: i,ir,tnum2part,istate,ierr, cgflag, &
          spfcomplex, acomplex, tdims(3), myiostat, &
          targetms, targetrestrictflag, targetspinproject, targetspinval
     real*8 :: cgfac,doubleclebschsq,aa,bb,cc
@@ -179,11 +178,11 @@ contains
        call checkiostat(myiostat,"opening "//catspffiles(ifile))
        open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
        call checkiostat(myiostat,"opening "//catavectorfiles(ifile))
-       call avector_header_read(910,ppp(ifile)%eachstate,tnum2part,tnumr,ppp(ifile)%tnumconfig,targetrestrictflag,targetms,&
+       call avector_header_read(910,ppp(ifile)%eachstate,tnum2part,ppp(ifile)%tnumr,ppp(ifile)%tnumconfig,targetrestrictflag,targetms,&
             targetspinproject,targetspinval,acomplex,ierr)
     endif
     call mympiibcastone(ppp(ifile)%eachstate,1); call mympiibcastone(tnum2part,1); 
-    call mympiibcastone(tnumr,1); call mympiibcastone(ppp(ifile)%tnumconfig,1); 
+    call mympiibcastone(ppp(ifile)%tnumr,1); call mympiibcastone(ppp(ifile)%tnumconfig,1); 
     call mympiibcastone(targetrestrictflag,1);  call mympiibcastone(targetms,1);  
     call mympiibcastone(targetspinproject,1);  call mympiibcastone(targetspinval,1); 
     call mympiibcastone(acomplex,1);  call mympiibcastone(ierr,1)
@@ -193,18 +192,18 @@ contains
     endif
 
     if (myrank.eq.1) then
-       call spf_header_read(909,tdims,tnspf,spfcomplex)
+       call spf_header_read(909,tdims,ppp(ifile)%tnspf,spfcomplex)
     endif
     call mympiibcast(tdims,1,3);
-    call mympiibcastone(tnspf,1);
+    call mympiibcastone(ppp(ifile)%tnspf,1);
     call mympiibcastone(spfcomplex,1)
 
 !! have to project on BO wfns.  Otherwise doesn't make sense in prolate.  
 !! Not supported anymore, will support
 !!   again, mcscf mode w/many r's on file
 
-    if (tnspf.gt.nspf+numfrozen) then
-       OFLWR "ERROR, for now can't do more orbs in projection than in calculation",tnspf,nspf+numfrozen; CFLST
+    if (ppp(ifile)%tnspf.gt.nspf+numfrozen) then
+       OFLWR "ERROR, for now can't do more orbs in projection than in calculation",ppp(ifile)%tnspf,nspf+numfrozen; CFLST
     endif
     if ( (holeflag.eq.0.and.tnum2part.ne.num2part-2) .or. (holeflag.ne.0.and.tnum2part.ne.num2part+2) ) then
        OFLWR "Vectors read are not n-1 electron functions"; CFLST
@@ -299,28 +298,28 @@ contains
     allocate(ppp(ifile)%tmo(spfsize,nspf),ppp(ifile)%tavec(numr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate))
     ppp(ifile)%tmo=0d0;  ppp(ifile)%tavec=0d0; 
 
-    allocate(tmotemp(spfsize,nspf+numfrozen),readta(tnumr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate), &
+    allocate(tmotemp(spfsize,nspf+numfrozen),readta(ppp(ifile)%tnumr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate), &
          tempta(ppp(ifile)%tnumconfig,ppp(ifile)%eachstate))
     tmotemp=0d0; readta=0d0; tempta=0d0
 
     OFLWR "Reading", ppp(ifile)%eachstate," Born-Oppenheimer states."; CFL
 
     if (myrank.eq.1) then
-       call simple_load_avectors(910,acomplex,readta(:,:,:),tnum2part,tnumr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate)
-       do ir=1,min(tnumr,numr)
+       call simple_load_avectors(910,acomplex,readta(:,:,:),tnum2part,ppp(ifile)%tnumr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate)
+       do ir=1,min(ppp(ifile)%tnumr,numr)
           ppp(ifile)%tavec(ir,:,:)=readta(ir,:,:)
        enddo
 !!$
-!!$ 07-2016 commenting this out and just normalizing upt to tnumr... might want to redo this if it fails
+!!$ 07-2016 commenting this out and just normalizing up to tnumr... might want to redo this if it fails
 !!$
-!!$       do ir=min(tnumr,numr)+1,numr
+!!$       do ir=min(ppp(ifile)%tnumr,numr)+1,numr
 !!$          call staticvector(tempta(:,:),ppp(ifile)%tnumconfig*ppp(ifile)%eachstate)
 !!$          ppp(ifile)%tavec(ir,:,:)=tempta(:,:)
 !!$       enddo
 !!$
 !!$       do ir=1,numr
 
-       do ir=1,min(tnumr,numr)
+       do ir=1,min(ppp(ifile)%tnumr,numr)
 
 !! projecting on normalized electronic wfn at each R
 !! we go to war with the army we've got
@@ -332,20 +331,20 @@ contains
           enddo
           ppp(ifile)%tavec(ir,:,:)=tempta(:,:)
        enddo
-       call spf_read0(909,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,&
+       call spf_read0(909,nspf+numfrozen,spfdims,ppp(ifile)%tnspf,tdims,spfcomplex,spfdimtype,&
             tmotemp(:,:),(/0,0,0/))
        close(909)
        close(910)
     else
-       call spf_read0(-42,nspf+numfrozen,spfdims,tnspf,tdims,spfcomplex,spfdimtype,&
+       call spf_read0(-42,nspf+numfrozen,spfdims,ppp(ifile)%tnspf,tdims,spfcomplex,spfdimtype,&
             tmotemp(:,:),(/0,0,0/))
     endif
     call mympibcast(ppp(ifile)%tavec(:,:,:),1,ppp(ifile)%tnumconfig*ppp(ifile)%eachstate*numr)
 
-    ppp(ifile)%tmo(:,1:tnspf-numfrozen) = tmotemp(:,numfrozen+1:tnspf)
-    tnspf=tnspf-numfrozen
+    ppp(ifile)%tmo(:,1:ppp(ifile)%tnspf-numfrozen) = tmotemp(:,numfrozen+1:ppp(ifile)%tnspf)
+    ppp(ifile)%tnspf=ppp(ifile)%tnspf-numfrozen
 
-    do i=tnspf+1,nspf
+    do i=ppp(ifile)%tnspf+1,nspf
        ppp(ifile)%tmo(:,i)=0d0
        call staticvector(ppp(ifile)%tmo(:,i),spfsize)
        if (parorbsplit.eq.3) then
@@ -361,8 +360,8 @@ contains
     if (myrank.eq.1) then
        open(910,file=catavectorfiles(ifile),status="unknown",form="unformatted",iostat=myiostat)
        call checkiostat(myiostat,"opening "//catavectorfiles(ifile))
-       call avector_header_read_simple(910,ppp(ifile)%eachstate,tnum2part,tnumr,ppp(ifile)%tnumconfig,acomplex)
-       call get_avectorfile_configlist(910,acomplex,ppp(ifile)%tconfiglist,tnum2part,tnumr,ppp(ifile)%tnumconfig)
+       call avector_header_read_simple(910,ppp(ifile)%eachstate,tnum2part,ppp(ifile)%tnumr,ppp(ifile)%tnumconfig,acomplex)
+       call get_avectorfile_configlist(910,acomplex,ppp(ifile)%tconfiglist,tnum2part,ppp(ifile)%tnumr,ppp(ifile)%tnumconfig)
        close(910)
     endif
 
@@ -378,7 +377,151 @@ contains
 
     call mpibarrier()
 
-  end subroutine projeflux_catload0
+  end subroutine projeflux_catload
+
+!! load propagated cation states for strong field ionization if strongcatflag.ne.0
+
+  subroutine projeflux_strongcatload(ifile,curtime)
+    use parameters    !! catavectorfiles and others
+    use configmod
+    use projefluxmod
+    use mpimod
+    use mpisubmod
+    use orbmultsubmod   !! gauge_transform
+    implicit none
+    integer,intent(in) :: ifile, curtime
+    real*8 :: dt
+    integer :: istate,myiostat,catmolength, catalength, readtime, ispf, ir
+    DATATYPE, allocatable :: tmotemp(:,:),readta(:,:,:),tempta(:,:), transxmo(:,:)
+
+    if (strongcatflag.eq.0) then
+       OFLWR "programmer fail strongcatflag.eq.0"; CFLST
+    endif
+
+    dt=real(FluxInterval*FluxSkipMult,8)*par_timestep
+
+    readtime = floor(real(numpropsteps,8)/fluxinterval) - curtime*fluxskipmult
+
+    if (readtime.lt.0) then
+       OFLWR "programmer fail readtime",readtime,curtime, fluxskipmult; CFLST
+    endif
+
+
+!!    allocate(ppp(ifile)%tmo(spfsize,nspf),ppp(ifile)%tavec(numr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate))
+
+    ppp(ifile)%tmo=0d0
+
+    allocate(readta(ppp(ifile)%tnumr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate), &
+         tempta(ppp(ifile)%tnumconfig,ppp(ifile)%eachstate))
+
+    if (myrank.eq.1) then
+       if (parorbsplit.eq.3) then
+          allocate(tmotemp(spfsize*nprocs,ppp(ifile)%tnspf))
+       else
+          allocate(tmotemp(spfsize,ppp(ifile)%tnspf))
+       endif
+    else
+       allocate(tmotemp(1,ppp(ifile)%tnspf))
+    endif
+
+    tmotemp=0d0; readta=0d0; tempta=0d0
+
+!!    OFLWR "Reading", ppp(ifile)%eachstate," Born-Oppenheimer states."; CFL
+
+    if (myrank.eq.1) then
+       inquire (iolength=catmolength) tmotemp(:,:)
+       inquire (iolength=catalength) readta(:,:,:)
+    endif
+    call mympiibcastone(catmolength,1); call mympiibcastone(catalength,1)
+
+!! ORBITALS
+
+    if(myrank.eq.1) then
+       open(10011,file=strongcatspffiles(ifile),status="old",form="unformatted",&
+            access="direct",recl=catmolength,iostat=myiostat)
+       call checkiostat(myiostat,"opening "//strongcatspffiles(ifile))
+       read(10011,rec=readtime+1,iostat=myiostat) tmotemp(:,:) 
+       call checkiostat(myiostat,"reading "//strongcatspffiles(ifile))
+       close(10011)
+    endif
+    if (parorbsplit.ne.3) then
+       if (myrank.eq.1) then
+          ppp(ifile)%tmo(:,1:ppp(ifile)%tnspf)=tmotemp(:,:)
+       endif
+       call mympibcast(ppp(ifile)%tmo(:,:),1,spfsize*ppp(ifile)%tnspf)
+    else
+       do ispf=1,ppp(ifile)%tnspf
+          call splitscatterv(tmotemp(:,ispf),ppp(ifile)%tmo(:,ispf))
+       enddo
+    endif
+
+    do ispf=ppp(ifile)%tnspf+1,nspf
+       ppp(ifile)%tmo(:,ispf)=0d0
+       call staticvector(ppp(ifile)%tmo(:,ispf),spfsize)
+       if (parorbsplit.eq.3) then
+          call gramschmidt(spfsize,ispf-1,spfsize,ppp(ifile)%tmo(:,:),ppp(ifile)%tmo(:,ispf),.true.)
+       else
+          call gramschmidt(spfsize,ispf-1,spfsize,ppp(ifile)%tmo(:,:),ppp(ifile)%tmo(:,ispf),.false.)
+       endif
+    enddo
+
+!! gaugefluxflag available to attempt gauge-invariant calculation with photoionization
+!! during the pulse.  Best performance seems to be calculate wfn in length gauge, transform
+!! to velocity gauge for flux: velflag=0, gaugefluxflag=2 (Volkov phase is only a function of 
+!! time in the velocity gauge, no preferred origin in the velocity gauge)
+
+!! gaugefluxflag=1, transform velocity to length; gaugefluxflag=2, transform length to velocity
+    if ((gaugefluxflag.eq.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
+       allocate(transxmo(spfsize,nspf))
+       transxmo=0d0
+       call gauge_transform(velflag,curtime*dt,nspf,ppp(ifile)%tmo(:,:),transxmo(:,:))
+       ppp(ifile)%tmo(:,:) = transxmo(:,:)
+       deallocate(transxmo)
+    endif
+
+!! A-VECTOR
+    if(myrank.eq.1) then
+       open(10022,file=strongcatavectorfiles(ifile),status="old",form="unformatted",&
+            access="direct",recl=catalength,iostat=myiostat)
+       call checkiostat(myiostat,"opening "//strongcatavectorfiles(ifile))
+       read(10022,rec=readtime+1,iostat=myiostat) readta(:,:,:)
+       call checkiostat(myiostat,"reading "//strongcatavectorfiles(ifile))
+       close(10022)
+
+       ppp(ifile)%tavec=0d0 
+       do ir=1,min(ppp(ifile)%tnumr,numr)
+          ppp(ifile)%tavec(ir,:,:)=readta(ir,:,:)
+       enddo
+
+!!$
+!!$ 07-2016 commenting this out and just normalizing up to tnumr... might want to redo this if it fails
+!!$
+!!$       do ir=min(ppp(ifile)%tnumr,numr)+1,numr
+!!$          call staticvector(tempta(:,:),ppp(ifile)%tnumconfig*ppp(ifile)%eachstate)
+!!$          ppp(ifile)%tavec(ir,:,:)=tempta(:,:)
+!!$       enddo
+!!$
+!!$       do ir=1,numr
+
+       do ir=1,min(ppp(ifile)%tnumr,numr)
+
+!! projecting on normalized electronic wfn at each R
+!! we go to war with the army we've got
+
+          tempta(:,:)=ppp(ifile)%tavec(ir,:,:)
+          do istate=1,ppp(ifile)%eachstate
+             tempta(:,istate)=tempta(:,istate)/&
+                  sqrt(dot(tempta(:,istate),tempta(:,istate),ppp(ifile)%tnumconfig)) !! no * bondweights(ir)
+          enddo
+          ppp(ifile)%tavec(ir,:,:)=tempta(:,:)
+       enddo
+    endif
+
+    deallocate(tmotemp,readta,tempta)
+
+    call mympibcast(ppp(ifile)%tavec(:,:,:),1,ppp(ifile)%tnumconfig*ppp(ifile)%eachstate*numr)
+
+  end subroutine projeflux_strongcatload
 
 end module projloadsubmod
 
@@ -564,7 +707,7 @@ contains
     nstate=0
     do ifile=1,numcatfiles
        alreadystate(ifile)=nstate
-       call projeflux_catload0(ifile,eachstate)
+       call projeflux_catload(ifile,eachstate)
        nstate=nstate+eachstate
     enddo
 
@@ -774,9 +917,9 @@ contains
 
           if (myrank.eq.1) then
              read(1001,rec=FluxSkipMult*tau+1,iostat=myiostat) readmo(:,:)
-             call checkiostat(myiostat,"reading fluxmofile")
+             call checkiostat(myiostat,"reading "//fluxmofile)
              read(1002,rec=FluxSkipMult*tau+1,iostat=myiostat) readavec(:,:,:)
-             call checkiostat(myiostat,"reading fluxafile")
+             call checkiostat(myiostat,"reading "//fluxafile)
           endif
           if (parorbsplit.ne.3) then
              if (myrank.eq.1) then
@@ -803,7 +946,7 @@ contains
              enddo
           endif
 
-          call projeflux_projectone(ifile, mymo, tau*dt, myavec, projwfn)
+          call projeflux_projectone(ifile, mymo, tau, dt, myavec, projwfn)
 
           call projeflux_saveproj(ifile,nt,tau,projwfn)
 
@@ -834,7 +977,7 @@ contains
   end subroutine projeflux_projectdisk
 
 
-  subroutine projeflux_projectone(ifile,inspfs,spftime,inavectors,projwfn)
+  subroutine projeflux_projectone(ifile,inspfs,spftime,dt,inavectors,projwfn)
     use parameters    !! catavectorfiles and others
     use biorthomod
     use biorthotypemod
@@ -843,9 +986,10 @@ contains
     use mpimod
     use mpisubmod
     use orbmultsubmod   !! gauge_transform
+    use projloadsubmod
     implicit none
-    integer,intent(in) :: ifile
-    real*8,intent(in) :: spftime
+    integer,intent(in) :: ifile, spftime
+    real*8,intent(in) :: dt
     DATATYPE,intent(in) :: inspfs(spfsize,nspf), inavectors(numr,first_config:last_config,mcscfnum)
     DATATYPE, intent(out) :: projwfn(spfsize,2,numr,ppp(ifile)%eachstate,mcscfnum)
     DATATYPE, allocatable ::  mobio(:,:),myavec(:,:,:), catspfs(:,:), neutspfs(:,:)
@@ -866,28 +1010,37 @@ contains
 
 !! gaugefluxflag=1, transform velocity to length; gaugefluxflag=2, transform length to velocity
     if ((gaugefluxflag.eq.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
-       call gauge_transform(velflag,spftime,nspf,inspfs(:,:), neutspfs(:,:))
+       call gauge_transform(velflag,spftime*dt,nspf,inspfs(:,:), neutspfs(:,:))
     else
        neutspfs(:,:)=inspfs(:,:)
     endif
 
-!! transform cation to velocity gauge if flux is calculated in velocity gauge.
-!! notice gaugefluxflag.ne.1 below not gaugefluxflag.eq.1 as above
+    if (strongcatflag.ne.0) then
 
-!! The best treatment would explicitly couple cation states when the 
-!!   field is on, propagating backwards from the end of the pulse.
-!!   Lacking that, we should add a phase correction, corresponding to 
-!!   the phase accumulated by the cation state during the pulse.
-!! At present (v1.31) no such coupling or phase correction -- corrections to the
-!!   vector of configuration coefficients -- are performed.
+!! The best treatment with strongcatflag explicitly couples cation 
+!!   states when the field is on, propagating backwards from the end 
+!!   of the pulse.
+
+!! do cation backwards, timefac=(0d0,1d0), pulse must be exactly flipped
+
+       call projeflux_strongcatload(ifile,spftime)
+       catspfs(:,:)=ppp(ifile)%tmo(:,:)
+
+    else
+
+!! without strongcatflag...
+!!   transform cation to velocity gauge if flux is calculated in velocity gauge.
+!!   notice gaugefluxflag.ne.1 below
 !! The cation states are bound states and so are located at small radius.
 !!   Assume length gauge cation states are unperturbed.  So transform cation states
 !!   to velocity gauge if flux is calculated in velocity gauge.
 
-    if ((gaugefluxflag.ne.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
-       call gauge_transform(0,spftime,nspf,ppp(ifile)%tmo(:,:),catspfs(:,:))
-    else
-       catspfs(:,:)=ppp(ifile)%tmo(:,:)
+       if ((gaugefluxflag.ne.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
+          call gauge_transform(0,spftime*dt,nspf,ppp(ifile)%tmo(:,:),catspfs(:,:))
+       else
+          catspfs(:,:)=ppp(ifile)%tmo(:,:)
+       endif
+
     endif
 
 !!$    REINSTATE VARIABLE WHICHSIDEPROJ (from version 0) HERE 
@@ -985,6 +1138,14 @@ contains
     if (ceground.eq.(0d0,0d0)) then
        OFLWR "Eground is ZERO.  Are you sure?  If want zero just make it small."
        WRFL  "  Otherwise need eground: initial state energy."; CFLST
+    endif
+
+    if (strongcatflag.eq.0) then
+       catenergies(:)=0d0
+    else
+       if (catenergies(totstate).eq.(0d0,0d0)) then
+          OFLWR "For strongcatflag, need catenergies for ",totstate," states"; CFLST
+       endif
     endif
 
 !! determine if we should do batching or not
@@ -1426,12 +1587,11 @@ contains
           write(xstate0,'(I4)') istate+1000;    xstate1=xstate0(2:4)
 
           ftgtau(:)=0d0;
-
           do i=0,curtime
              ftgtau(i) = ALLCON(gtau(i,istate,imc)) * windowfunct(i,curtime,17) &
-                  * exp((0d0,-1d0)*ALLCON(ceground)*dt*i)
+                  * exp((0d0,-1d0)*ALLCON(ceground)*dt*i) &
+                  * exp((0d0, 1d0)*catenergies(istate)*dt*i)
           enddo
-
           do i=1,curtime
              ftgtau(-i) = ALLCON(ftgtau(i))
           enddo
@@ -1447,7 +1607,8 @@ contains
           if (angularflag.ne.0) then
              do i=0,curtime
                 ftgtau_ad(i,:) = ALLCON(gtau_ad(i,istate,imc,:))   * windowfunct(i,curtime,17) * &
-                     exp((0d0,-1d0)*ALLCON(ceground)*dt*i)
+                     exp((0d0,-1d0)*ALLCON(ceground)*dt*i) &
+                     * exp((0d0, 1d0)*catenergies(istate)*dt*i)
              enddo
              do i=1,curtime
                 ftgtau_ad(-i,:) = ALLCON(ftgtau_ad(i,:))
@@ -1472,7 +1633,8 @@ contains
              call checkiostat(myiostat,"writing gtau file")
              do i=0,curtime
                 write(777,'(F18.12, T22, 400E20.8)',iostat=myiostat)  i*dt, ftgtau(i), &
-                     ALLCON(gtau(i,istate,imc)) * exp((0d0,-1d0)*ALLCON(ceground)*dt*i)
+                     ALLCON(gtau(i,istate,imc)) * exp((0d0,-1d0)*ALLCON(ceground)*dt*i) &
+                     * exp((0d0, 1d0)*catenergies(istate)*dt*i)
              enddo
              call checkiostat(myiostat,"writing gtau file")
              close(777)
@@ -1782,7 +1944,7 @@ subroutine projeflux_during(inspfs,inavectors,dt)
 
   do ifile=1,numcatfiles
      allocate(projwfn(spfsize,2,numr,ppp(ifile)%eachstate,mcscfnum))
-     call projeflux_projectone(ifile, inspfs, curtime*dt, inavectors, projwfn)
+     call projeflux_projectone(ifile, inspfs, curtime, dt, inavectors, projwfn)
 
      if (fluxoptype.eq.0) then
         OFLWR "PROGRAM ME FLUXOPTYPE 0 PROJEFLUX"; CFLST

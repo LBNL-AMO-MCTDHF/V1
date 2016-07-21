@@ -411,6 +411,10 @@ character(len=SLN):: projfluxtsumfile="Dat/projfluxtsum"      !!  " total projec
 character(len=SLN):: projfluxfile="Flux/proj.flux.wfn.bin"    !!  " main output action 17
 character (len=SLN):: catspffiles(50)="Bin/cation.spfs.bin"   !!  " (see numcatfiles in ACTIONS)
 character (len=SLN):: catavectorfiles(50)="Bin/cation.avector.bin"!!  "
+character (len=SLN):: strongcatspffiles(50)=&                 !! for action 17 if strongcatflag.ne.0, use back-
+     "Flux/cation.mo.bin"                                     !!  propagated cation states stored with action 15
+character (len=SLN):: strongcatavectorfiles(50)=&             !!  "
+     "Flux/cation.avec.bin"                                   !!  "
 character(len=SLN):: angprojspifile="Dat/xsec.angproj.spi"    !!  " if angularflag.ne.0, output file
 character(len=SLN):: angprojfluxtsumfile="Dat/angprojfluxtsum"!!  " and angular integral dt action 28 too
 character(len=SLN):: fluxafile2="Flux/flux.avec.bin"          !! for action 23
@@ -500,6 +504,8 @@ integer :: gaugefluxflag=0       !! Transform length to velocity (1) or vice ver
 integer :: nucfluxopt=1          !! NucFlux=     !! Include imag part of hamiltonian from nuc ke 2=only that
 integer :: FluxOpType=1          !! 0=Full ham 1=halfnium 
 integer :: numcatfiles=1         !! see catspffiles and catavectorfiles in INPUT/OUTPUT for action 17,28
+integer :: strongcatflag=0       !! for strong field ionization during the pulse, use back-propagated cation
+DATATYPE :: catenergies(50)=0d0  !! need to input cation energies for strongcatflag
 real*8 :: catfacs(50)=1d0       !! weighting of partial cross sections for proj.xsec.spi_all_001.dat, etc.
 integer :: angularflag=0         !! for action 17,28 calculate fully differential partial ionization,
                                  !!   angular output in angprojspifile (atom/diatom only)
