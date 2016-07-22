@@ -1,6 +1,6 @@
 
 
-!! PROJECTED FLUX (partial photoionization ACTION 17)
+!! PROJECTED FLUX (partial photoionization ACTIONS 17 and 28)
 
 
 #include "Definitions.INC"
@@ -390,26 +390,26 @@ contains
     use orbmultsubmod   !! gauge_transform
     implicit none
     integer,intent(in) :: ifile, curtime
-    real*8 :: dt
-    integer :: istate,myiostat,catmolength, catalength, readtime, ispf, ir
+    real*8 :: cattime
+    integer :: istate,myiostat,catmolength, catalength, readtime, ispf, ir,&
+         prevstate, jfile
     DATATYPE, allocatable :: tmotemp(:,:),readta(:,:,:),tempta(:,:), transxmo(:,:)
+    DATATYPE :: csum
+    integer, save :: numcatsavesteps(100) = -1
 
     if (strongcatflag.eq.0) then
        OFLWR "programmer fail strongcatflag.eq.0"; CFLST
     endif
 
-    dt=real(FluxInterval*FluxSkipMult,8)*par_timestep
+    prevstate=0
+    do jfile=1,ifile-1
+       prevstate=prevstate+ppp(jfile)%eachstate
+    enddo
 
-    readtime = floor(real(numpropsteps,8)/fluxinterval) - curtime*fluxskipmult
-
-    if (readtime.lt.0) then
-       OFLWR "programmer fail readtime",readtime,curtime, fluxskipmult; CFLST
+    if (catenergies(prevstate+ppp(ifile)%eachstate).eq.(0d0,0d0)) then
+       OFLWR "For strongcatflag, need catenergies for at least ",&
+            prevstate+ppp(ifile)%eachstate," states"; CFLST
     endif
-
-
-!!    allocate(ppp(ifile)%tmo(spfsize,nspf),ppp(ifile)%tavec(numr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate))
-
-    ppp(ifile)%tmo=0d0
 
     allocate(readta(ppp(ifile)%tnumr,ppp(ifile)%tnumconfig,ppp(ifile)%eachstate), &
          tempta(ppp(ifile)%tnumconfig,ppp(ifile)%eachstate))
@@ -434,7 +434,40 @@ contains
     endif
     call mympiibcastone(catmolength,1); call mympiibcastone(catalength,1)
 
+!!    readtime = floor(real(numpropsteps,8)/fluxinterval) - curtime*fluxskipmult
+!!    if (readtime.lt.0) then
+!!       OFLWR "programmer fail readtime",readtime,curtime, fluxskipmult; CFLST
+!!    endif
+
+    if (numcatsavesteps(ifile).eq.(-1)) then
+       if (myrank.eq.1) then
+          open(10011,file=strongcatspffiles(ifile),status="old",form="unformatted",&
+               access="direct",recl=catmolength,iostat=myiostat)
+          call checkiostat(myiostat,"opening "//strongcatspffiles(ifile))
+          numcatsavesteps(ifile) = -1
+          myiostat=0
+          do while (myiostat.eq.0)
+             numcatsavesteps(ifile)=numcatsavesteps(ifile)+1
+             read(10011,rec=numcatsavesteps(ifile)+1,iostat=myiostat) csum
+          enddo
+          close(10011)
+          numcatsavesteps(ifile)=numcatsavesteps(ifile)-1
+       endif
+       call mympiibcastone(numcatsavesteps(ifile),1)
+       OFLWR "     ...numcatsavesteps = ",numcatsavesteps(ifile), ifile; CFL
+!!       OFLWR "     ... whereas numpropsteps = ",numpropsteps; CFL
+    endif
+
+    readtime = numcatsavesteps(ifile) - curtime*fluxskipmult
+    if (readtime.lt.0) then
+       readtime=0
+    endif
+
+    cattime = (numcatsavesteps(ifile) - readtime) * fluxinterval * par_timestep
+
 !! ORBITALS
+
+    ppp(ifile)%tmo=0d0
 
     if(myrank.eq.1) then
        open(10011,file=strongcatspffiles(ifile),status="old",form="unformatted",&
@@ -474,7 +507,8 @@ contains
     if ((gaugefluxflag.eq.1.and.velflag.ne.0).or.(gaugefluxflag.eq.2.and.velflag.eq.0)) then
        allocate(transxmo(spfsize,nspf))
        transxmo=0d0
-       call gauge_transform(velflag,curtime*dt,nspf,ppp(ifile)%tmo(:,:),transxmo(:,:))
+       call gauge_transform(velflag,curtime*FluxInterval*FluxSkipMult*par_timestep,&
+            nspf,ppp(ifile)%tmo(:,:),transxmo(:,:))
        ppp(ifile)%tmo(:,:) = transxmo(:,:)
        deallocate(transxmo)
     endif
@@ -491,6 +525,13 @@ contains
        ppp(ifile)%tavec=0d0 
        do ir=1,min(ppp(ifile)%tnumr,numr)
           ppp(ifile)%tavec(ir,:,:)=readta(ir,:,:)
+       enddo
+
+!! catenergies here
+
+       do istate=1,ppp(ifile)%eachstate
+          ppp(ifile)%tavec(:,:,istate) = ppp(ifile)%tavec(:,:,istate) &
+               * exp((0d0, 1d0)*catenergies(prevstate+istate)*cattime)
        enddo
 
 !!$
@@ -1140,14 +1181,6 @@ contains
        WRFL  "  Otherwise need eground: initial state energy."; CFLST
     endif
 
-    if (strongcatflag.eq.0) then
-       catenergies(:)=0d0
-    else
-       if (catenergies(totstate).eq.(0d0,0d0)) then
-          OFLWR "For strongcatflag, need catenergies for ",totstate," states"; CFLST
-       endif
-    endif
-
 !! determine if we should do batching or not
 !! 250,000 words/MB, real*8 2words/#, complex*16 4words/#
 
@@ -1589,8 +1622,7 @@ contains
           ftgtau(:)=0d0;
           do i=0,curtime
              ftgtau(i) = ALLCON(gtau(i,istate,imc)) * windowfunct(i,curtime,17) &
-                  * exp((0d0,-1d0)*ALLCON(ceground)*dt*i) &
-                  * exp((0d0, 1d0)*catenergies(istate)*dt*i)
+                  * exp((0d0,-1d0)*ALLCON(ceground)*dt*i)
           enddo
           do i=1,curtime
              ftgtau(-i) = ALLCON(ftgtau(i))
@@ -1607,8 +1639,7 @@ contains
           if (angularflag.ne.0) then
              do i=0,curtime
                 ftgtau_ad(i,:) = ALLCON(gtau_ad(i,istate,imc,:))   * windowfunct(i,curtime,17) * &
-                     exp((0d0,-1d0)*ALLCON(ceground)*dt*i) &
-                     * exp((0d0, 1d0)*catenergies(istate)*dt*i)
+                     exp((0d0,-1d0)*ALLCON(ceground)*dt*i)
              enddo
              do i=1,curtime
                 ftgtau_ad(-i,:) = ALLCON(ftgtau_ad(i,:))
@@ -1633,8 +1664,7 @@ contains
              call checkiostat(myiostat,"writing gtau file")
              do i=0,curtime
                 write(777,'(F18.12, T22, 400E20.8)',iostat=myiostat)  i*dt, ftgtau(i), &
-                     ALLCON(gtau(i,istate,imc)) * exp((0d0,-1d0)*ALLCON(ceground)*dt*i) &
-                     * exp((0d0, 1d0)*catenergies(istate)*dt*i)
+                     ALLCON(gtau(i,istate,imc)) * exp((0d0,-1d0)*ALLCON(ceground)*dt*i)
              enddo
              call checkiostat(myiostat,"writing gtau file")
              close(777)
