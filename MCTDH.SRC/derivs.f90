@@ -544,7 +544,7 @@ contains
        outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) + workmult(:,lowspf:highspf)
     endif
 
-    call mult_reducedpot(lowspf,highspf,inspfs(:,lowspf:highspf),&
+    call mult_reducedpot(lowspf,highspf,inspfs,&
          workmult(:,lowspf:highspf),yyy%reducedpot(:,:,lowspf:highspf,ireduced))
     outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf)+workmult(:,lowspf:highspf)
     
