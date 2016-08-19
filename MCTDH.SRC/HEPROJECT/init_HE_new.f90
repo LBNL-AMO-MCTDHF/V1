@@ -97,20 +97,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   rkemod(:,:)=0d0
   proderivmod(:,:)=0d0
 
-!!
-  OFLWR "   ... call get_twoe_new"; CFL
-  call get_twoe_new()
-  OFLWR "   ... called get_twoe_new"; CFL
-
-  if (numhatoms.gt.0) then
-     call hatomcalc(hatomreduced)
-  endif
-  if (numfrozen.gt.0) then
-     call call_frozen_matels_core(infrozens,numfrozen,frozenkediag,frozenpotdiag,&
-          frozenreduced,hatomreduced)
-  endif
-
-
 !!$  if (skipflag.gt.1) then
 !!$     return
 !!$  endif
@@ -126,7 +112,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         xydipole(i,j) = glpoints(i+1) * sqrt(1.0d0-jacobipoints(j)**2)   !!TWOFIX / 2d0
      enddo
   enddo
-
 
   do imvalue=0,mbig
 
@@ -155,19 +140,72 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
            sparseddrho_diag(i,j,imvalue+1) = 0d0
         enddo
      enddo
-  enddo
+
+     bigham=0.d0
+     do i=1,hegridpoints-2
+        bigham(i,:,i,:) = jacobike(:,:,abs(imvalue)) / glpoints(i+1)**2
+     enddo
+
+!if (mod(imvalue,2).eq.0.or.temp_glflag.ne.0) then
+!     do i=1,hegridpoints-2
+!        do j=1,hegridpoints-2
+!           bigham(i,:,j,:)=bigham(i,:,j,:) + jacobike(:,:,abs(imvalue)) * &
+!                glfirstdertot(1,i+1,0) *  glfirstdertot(1,j+1,0)    
+!        enddo
+!     enddo
+!endif
+
+     do i=1,lbig+1
+        bigham(:,i,:,i) = bigham(:,i,:,i) + &
+             (-0.5d0)*glke(2:hegridpoints-1, 2:hegridpoints-1,mod(imvalue,2))
+     enddo
+     do j=1,lbig+1
+        do i=1,numerad
+           do k=max(1,i-bandwidth),min(numerad,i+bandwidth)
+              sparseops_xi_banded(k-i+bandwidth+1,i,j,imvalue+1) = bigham(k,j,i,j)
+           enddo
+           do k=1,lbig+1
+              sparseops_eta(k,j,i,imvalue+1) = bigham(i,k,i,j)
+           enddo
+           sparseops_diag(i,j,imvalue+1) = bigham(i,j,i,j)
+        enddo
+     enddo
+
+  enddo  !! do imvalue
+
   do j=1,lbig+1
      do i=1,numerad
        ddrhopot(i,j)=1d0 /sqrt(1d0-jacobipoints(j)**2)  /glpoints(i+1)      !!TWOFIX  /2d0
      enddo
   enddo
 
-  do imvalue=0,mbig
+  do i=1,hegridpoints-2
+     pot(i,:,:) = (-1.0d0) * nuccharge1 /glpoints(i+1)
+     halfniumpot(i,:,:) = (-1d0) /glpoints(i+1) * (nuccharge1 - numelec + 1)
+  enddo
+
+
+!!
+  OFLWR "   ... call get_twoe_new"; CFL
+  call get_twoe_new()
+  OFLWR "   ... called get_twoe_new"; CFL
+
+
+  if (numhatoms.gt.0) then
+     call hatomcalc(hatomreduced)
+  endif
+  if (numfrozen.gt.0) then
+     call call_frozen_matels_core(infrozens,numfrozen,frozenkediag,frozenpotdiag,&
+          frozenreduced,hatomreduced)
+  endif
+
 
 !!$!! 062111 added this logic here for atom too
 !!$     if ((skipflag.eq.0).and.(spfsloaded.lt.numspf)) then
 
-     if (spfsloaded.lt.numspf) then
+  if (spfsloaded.lt.numspf) then
+
+     do imvalue=0,mbig
 
         bigham=0.d0
         do i=1,hegridpoints-2
@@ -265,54 +303,11 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         write(mpifileptr,'(1F18.12)') bigvals(1:10)
 #endif
         call closefile()
-     endif
 
+     enddo   !! do imvalue
 
-     bigham=0.d0
-     do i=1,hegridpoints-2
-        bigham(i,:,i,:) = jacobike(:,:,abs(imvalue)) / glpoints(i+1)**2
-     enddo
+     call openfile()
 
-
-!if (mod(imvalue,2).eq.0.or.temp_glflag.ne.0) then
-!     do i=1,hegridpoints-2
-!        do j=1,hegridpoints-2
-!           bigham(i,:,j,:)=bigham(i,:,j,:) + jacobike(:,:,abs(imvalue)) * &
-!                glfirstdertot(1,i+1,0) *  glfirstdertot(1,j+1,0)    
-!        enddo
-!     enddo
-!endif
-
-
-     do i=1,lbig+1
-        bigham(:,i,:,i) = bigham(:,i,:,i) + &
-             (-0.5d0)*glke(2:hegridpoints-1, 2:hegridpoints-1,mod(imvalue,2))
-     enddo
-     do j=1,lbig+1
-        do i=1,numerad
-           do k=max(1,i-bandwidth),min(numerad,i+bandwidth)
-              sparseops_xi_banded(k-i+bandwidth+1,i,j,imvalue+1) = bigham(k,j,i,j)
-           enddo
-           do k=1,lbig+1
-              sparseops_eta(k,j,i,imvalue+1) = bigham(i,k,i,j)
-           enddo
-           sparseops_diag(i,j,imvalue+1) = bigham(i,j,i,j)
-        enddo
-     enddo
-  enddo
-
-
-  do i=1,hegridpoints-2
-     pot(i,:,:) = (-1.0d0) * nuccharge1 /glpoints(i+1)
-     halfniumpot(i,:,:) = (-1d0) /glpoints(i+1) * (nuccharge1 - numelec + 1)
-  enddo
-!!$  if (skipflag.ne.0) then
-!!$     return
-!!$  endif
-
-
-  call openfile()
-  if (spfsloaded.lt.numspf) then
      do imvalue=0,mbig
         !! get ug value
         do j=1,min(4*numspf,edim)
@@ -377,13 +372,13 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
            enddo !! nspf
         enddo !! iug
      enddo !! imvalue=-mbig,mbig
+     WRFL; CFL
   else
      write(mpifileptr,*) "Found all spfs I need on file."
   endif  !! spfsloaded
 
-
   spfsloaded=numspf   !! for mcscf... really just for BO curve to skip eigen
-  WRFL; CFL
+
   deallocate(bigham, bigvects,  bigvals)   !! twoe
 
   OFLWR "Done init project."; WRFL; CFL
