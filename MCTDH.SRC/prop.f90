@@ -887,13 +887,14 @@ subroutine prop_loop( starttime)
 
      call system_clock(jtime)  ;     times(2)=times(2)+jtime-itime;     itime=jtime
 
-!!! (Not used for exponential propagation default - abserr thus myrelerr not used then)
-
-     rsum=0d0
-     do imc=1,mcscfnum
-        rsum=rsum+norms(imc)**2
-     enddo
-     rsum=sqrt(rsum);     abserr=sqrt(rsum)*myrelerr
+!! norms not gotten yet, tempfix 08-2016 for odex
+!     rsum=0d0
+!     do imc=1,mcscfnum
+!        rsum=rsum+norms(imc)**2
+!     enddo
+!     rsum=sqrt(rsum);     abserr=sqrt(rsum)*myrelerr
+!! tempfix:
+     abserr=myrelerr
 
      if ((cmf_flag==1)) then
         call cmf_prop_wfn(thistime, thattime)
