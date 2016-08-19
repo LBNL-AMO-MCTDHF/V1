@@ -239,7 +239,7 @@ program mctdhf
   write(mpifileptr, *) "   AMO Theory Group, Lawrence Berkeley Laboratory"
   write(mpifileptr, *) "     D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, "
   write(mpifileptr, *) "     B Abeln, X Li . . ."
-  write(mpifileptr, *) "                             VERSION 1.31 "
+  write(mpifileptr, *) "                             VERSION 1.32 "
   write(mpifileptr, *) "       Copyright 2016 the regents of the University of California"
   write(mpifileptr, *)
 #ifdef REALGO
@@ -624,10 +624,10 @@ program mctdhf
               OFLWR "Reading avector..." ; CFL
               if (tot_adim.gt.0) then
                  call load_avectors(avectorfile(ifile),bigavector(:,:,totread+1),&
-                      mcscfnum-totread,readnum,avecloadskip(ifile))
+                      mcscfnum-totread,readnum,avecloadskip(ifile),totread)
               else
                  call load_avectors(avectorfile(ifile),nullvector(:,:,totread+1),&
-                      mcscfnum-totread,readnum,avecloadskip(ifile))
+                      mcscfnum-totread,readnum,avecloadskip(ifile),totread)
               endif
            endif
            totread=totread+readnum

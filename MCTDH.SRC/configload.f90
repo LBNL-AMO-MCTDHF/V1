@@ -605,16 +605,18 @@ end module readavectormod
 
 
 
-subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
+subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip,alreadyloaded)
   use parameters
   use mpimod    !! myrank
   use readavectormod
   use mpisubmod
   implicit none
-  character :: filename*(*)
-  integer :: readnumvects,readnum2part,readnumr,readnumconfig,readcomplex,&
-       mynumvects,numskip,ii,myiostat
+  character,intent(in) :: filename*(*)
+  integer,intent(in) :: mynumvects,alreadyloaded
+  integer,intent(out) :: readnumvects
   DATATYPE,intent(out) :: myavectors(numr,first_config:last_config,mynumvects)
+  integer :: readnum2part,readnumr,readnumconfig,readcomplex,&
+       numskip,ii,myiostat
   DATATYPE :: nullvector(numr)
   DATATYPE, allocatable :: readavectors(:,:,:)
 
@@ -672,7 +674,8 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip)
 
      else
         call load_avectors0(999,readcomplex,readavectors(:,:,:),numr,num_config,&
-             num2part+2*numholes,readnumr,readnumconfig, readavectorsubroutine,readnumvects)
+             num2part+2*numholes,readnumr,readnumconfig, readavectorsubroutine,readnumvects,&
+             alreadyloaded)
      endif
 
      close(999)
@@ -706,11 +709,12 @@ contains
 !!     used in load_avectors (main load routine) and ovlsub.
 
   subroutine load_avectors0(iunit, qq, myavectors, mynumr, mynumconfig, readnum2part, &
-       readnumr, readnumconfig, mysubroutine, mynumvects )
+       readnumr, readnumconfig, mysubroutine, mynumvects, alreadyloaded)
     use fileptrmod
     use mpimod   !! myrank
     implicit none
     external :: mysubroutine
+    integer,intent(in) :: alreadyloaded
     integer :: mynumconfig, mynumr, mynumvects,iunit,i,  readnum2part, readnumr, readnumconfig
     integer :: qq, config1,  thatconfig(readnum2part),  myiostat, ivect
     DATATYPE,intent(out) :: myavectors(mynumr,mynumconfig,mynumvects)
@@ -746,7 +750,7 @@ contains
 !!  and checks validity and does its action and returns configuration index 
 !!    for myavectors (with possible +/- phase)
 
-          call mysubroutine(thatconfig,mytempavector(:),ivect)
+          call mysubroutine(thatconfig,mytempavector(:),ivect+alreadyloaded)
           do i=1,min(mynumr,readnumr)
              myavectors(i,:,ivect)= myavectors(i,:,ivect) +  readvect(i) * mytempavector(:)
           enddo

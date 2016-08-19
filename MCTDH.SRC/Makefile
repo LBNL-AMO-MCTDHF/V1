@@ -86,7 +86,7 @@ quad.o: $(DEPEND) quad.F90 blocklanczos.o expo_driver.o derivs.o walkmult.o spin
 BCG_driver.o: $(DEPEND) implicit.o BCG_driver.F90
 	$(F90) $(FFLAGS) $(MPIFLAG) -c BCG_driver.F90 
 
-mctdhf.o: $(DEPEND) mctdhf.F90 newconfig.o
+mctdhf.o: $(DEPEND) mctdhf.F90 newconfig.o configload.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c mctdhf.F90 
 
 actions.o: $(DEPEND) actions.F90 
