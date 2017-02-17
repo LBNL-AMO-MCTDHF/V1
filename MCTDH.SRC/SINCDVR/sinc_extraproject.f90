@@ -31,7 +31,8 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        scalingflag,scalingdistance,smoothness,scalingtheta,scalingstretch,tinv_tol,&
        orbparlevel, ivoflag, loadedocc, orbtargetflag,orbtarget,&
        toepflag,&  !! toepflag deprecated
-       transmultflag
+       transmultflag, use_contactop, contact_scoef, contact_pcoef, &
+       contact_ecoef, contact_tcoef, contact_0coef, auto_contactop
 
 #ifdef PGFFLAG
   integer :: myiargc

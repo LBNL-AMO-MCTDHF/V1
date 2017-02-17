@@ -176,7 +176,7 @@
 !!$
 !!$   END OF TERMS AND CONDITIONS
 !!$
-!!$   Copyright 2016 the regents of the University of California
+!!$   Copyright 2017 the regents of the University of California
 !!$
 !!$   Licensed under the Apache License, Version 2.0 (the "License");
 !!$   you may not use this file except in compliance with the License.
@@ -407,11 +407,10 @@ subroutine op_conjg(in,out)
   use myparams
   use pmpimod
   implicit none
-  DATATYPE,intent(in) :: in(numpoints(1),numpoints(2),numpoints(3))
-  DATATYPE,intent(out) :: out(numpoints(1),numpoints(2),numpoints(3))
-  out(:,:,:)=ALLCON(in(:,:,:))
+  DATATYPE,intent(in) :: in(totpoints)
+  DATATYPE,intent(out) :: out(totpoints)
+  out(:)=ALLCON(in(:))
 end subroutine op_conjg
-
 
 subroutine op_reflectz(in,out)
   use myparams
@@ -687,7 +686,7 @@ contains
     integer ::  spf1a, spf1b, spf2a, spf2b, itime,jtime,getlen,&
          spf2low,spf2high,index2b,index2low,index2high, firsttime,lasttime,nnnspf,qq,myiostat
     integer, save :: xcount=0, times(10)=0,fttimes(10)=0,qqcount=0
-    DATATYPE, allocatable :: twoeden03(:,:,:,:) 
+    DATATYPE, allocatable :: twoeden03(:,:) 
     DATATYPE :: twoemattemp(numspf,numspf),  myden(totpoints)
 
     nnnspf=highspf-lowspf+1
@@ -724,8 +723,8 @@ contains
 
 !!$  allocate(twoeden03(numpoints(1),numpoints(2),numpoints(3),numspf**fft_batchdim))
 
-    allocate(twoeden03(numpoints(1),numpoints(2),numpoints(3),batchindex(1,lowspf):batchindex(numspf,highspf)))
-    twoeden03(:,:,:,:)=0
+    allocate(twoeden03(totpoints,batchindex(1,lowspf):batchindex(numspf,highspf)))
+    twoeden03(:,:)=0
 
     call myclock(jtime); times(1)=times(1)+jtime-itime;  
   
@@ -757,11 +756,10 @@ contains
        do spf2b=spf2low,spf2high
           do spf2a=1,numspf
 
-             twoeden03(:,:,:,batchindex(spf2a,spf2b))=&
+             twoeden03(:,batchindex(spf2a,spf2b))=&
 
-!! switching 2-2016     RESHAPE(CONJUGATE(inspfs10(:,spf2a)) * inspfs20(:,spf2b),&
-                  RESHAPE(inspfs10(:,spf2a) * CONJUGATE(inspfs20(:,spf2b)),&
-                  (/numpoints(1),numpoints(2),numpoints(3)/))
+!! switching 2-2016     CONJUGATE(inspfs10(:,spf2a)) * inspfs20(:,spf2b)
+                  inspfs10(:,spf2a) * CONJUGATE(inspfs20(:,spf2b))
           enddo
        enddo
        call myclock(jtime); times(2)=times(2)+jtime-itime;
@@ -776,7 +774,7 @@ contains
        case default
           OFLWR "AUUGUGUGH circbatchdim not allowed",fft_circbatchdim; CFLST
        end select
-       call op_tinv(twoeden03(:,:,:,batchindex(1,spf2low)), twoereduced(:,1,spf2low),&
+       call op_tinv(twoeden03(:,batchindex(1,spf2low)), twoereduced(:,1,spf2low),&
             nnnspf**(fft_batchdim-1)*numspf, qq, times(1),times(3),times(4),times(5),fttimes)
 
     enddo  !! DO INDEX2B
@@ -2134,6 +2132,253 @@ subroutine hatom_op(howmany,inspfs, outspfs,hatomreduced)
 end subroutine hatom_op
 
 
+subroutine op_contact(howmany,spfin,spfout)
+  use myparams
+  use pfileptrmod
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: spfin(numpoints(1),numpoints(2),numpoints(3),howmany)
+  DATATYPE,intent(out) :: spfout(numpoints(1),numpoints(2),numpoints(3),howmany)
+  DATATYPE, allocatable ::  spfderivs(:,:,:,:,:), spftemp(:,:,:,:), &
+       threespfs(:,:,:,:,:), spftemp2(:,:,:,:)
+  DATATYPE :: cx,cy,cz
+  integer :: icenter,jj,qq(3)
+  real*8 :: scoef, zcoef, pcoef
+  spfout(:,:,:,:) = 0d0
+
+  if (.not.use_contactop) then
+     return
+  endif
+
+  allocate(       spfderivs(numpoints(1),numpoints(2),numpoints(3),howmany,3), &
+       spftemp(numpoints(1),numpoints(2),numpoints(3),howmany), &
+       spftemp2(numpoints(1),numpoints(2),numpoints(3),howmany), &
+       threespfs(numpoints(1),numpoints(2),numpoints(3),howmany,3))
+  spfderivs(:,:,:,:,:) = 0d0
+  spftemp(:,:,:,:) = 0d0
+  spftemp2(:,:,:,:) = 0d0
+  threespfs(:,:,:,:,:) = 0d0
+
+
+!!!    0-WAVE    !!!
+
+  if  (contact_0coef.ne.0d0.or.auto_contactop.gt.0) then
+
+     do icenter = 1,numcenters
+
+        qq(:) = ( gridpoints(1:3)+centershift(:,icenter)+1 ) / 2
+
+        if (auto_contactop.gt.0) then
+           zcoef = zcoef_fun(nuccharges(icenter),spacing)
+        else
+           zcoef = contact_0coef
+        endif
+
+        do jj=1,3
+           if (qq(jj).lt.1.or.qq(jj).gt.gridpoints(jj)) then
+              OFLWR "error, can't use op_contact if nuclei are off grid",&
+                   qq(1:3),gridpoints(1:3); CFLST
+           endif
+        enddo
+        
+        qq(1:3) = qq(1:3) - numpoints(1:3)*(qbox(1:3)-1)
+     
+        if (qq(1).ge.1.and.qq(1).le.numpoints(1) .and. &
+             qq(2).ge.1.and.qq(2).le.numpoints(2) .and. &
+             qq(3).ge.1.and.qq(3).le.numpoints(3) ) then
+           spfout(qq(1),qq(2),qq(3),:) = spfout(qq(1),qq(2),qq(3),:) + zcoef * nuccharges(icenter) * &
+                spfin(qq(1),qq(2),qq(3),:)
+        endif
+
+     enddo
+
+  endif
+
+!!!    P-WAVE    !!!
+
+  if  (contact_pcoef.ne.0d0.or.auto_contactop.gt.1) then
+
+     cx=1d0;  cy=0d0;  cz=0d0
+     call mult_general(2,cx,cy,cz,spfin,spfderivs(:,:,:,:,1),howmany,"booga",2)
+     cx=0d0;  cy=1d0;  cz=0d0
+     call mult_general(2,cx,cy,cz,spfin,spfderivs(:,:,:,:,2),howmany,"booga",2)
+     cx=0d0;  cy=0d0;  cz=1d0
+     call mult_general(2,cx,cy,cz,spfin,spfderivs(:,:,:,:,3),howmany,"booga",2)
+     
+     threespfs(:,:,:,:,:) = 0d0
+
+     do icenter = 1,numcenters
+
+        qq(:) = ( gridpoints(1:3)+centershift(:,icenter)+1 ) / 2
+
+        if (auto_contactop.gt.1) then
+           pcoef = pcoef_fun(nuccharges(icenter),spacing)
+        else
+           pcoef = contact_pcoef
+        endif
+
+        do jj=1,3
+           if (qq(jj).lt.1.or.qq(jj).gt.gridpoints(jj)) then
+              OFLWR "error, can't use op_contact if nuclei are off grid",&
+                   qq(1:3),gridpoints(1:3); CFLST
+           endif
+        enddo
+        
+        qq(1:3) = qq(1:3) - numpoints(1:3)*(qbox(1:3)-1)
+     
+        if (qq(1).ge.1.and.qq(1).le.numpoints(1) .and. &
+             qq(2).ge.1.and.qq(2).le.numpoints(2) .and. &
+             qq(3).ge.1.and.qq(3).le.numpoints(3) ) then
+           threespfs(qq(1),qq(2),qq(3),:,1:3) = threespfs(qq(1),qq(2),qq(3),:,1:3) + nuccharges(icenter) * &
+                spfderivs(qq(1),qq(2),qq(3),:,1:3)
+        endif
+
+     enddo
+
+     cx=1d0;  cy=0d0;  cz=0d0
+     call mult_general(2,cx,cy,cz,threespfs(:,:,:,:,1),spfderivs(:,:,:,:,1),howmany,"booga",2)
+     cx=0d0;  cy=1d0;  cz=0d0
+     call mult_general(2,cx,cy,cz,threespfs(:,:,:,:,2),spfderivs(:,:,:,:,2),howmany,"booga",2)
+     cx=0d0;  cy=0d0;  cz=1d0
+     call mult_general(2,cx,cy,cz,threespfs(:,:,:,:,3),spfderivs(:,:,:,:,3),howmany,"booga",2)
+
+     spfout(:,:,:,:) = spfout(:,:,:,:) + pcoef * ( &
+          spfderivs(:,:,:,:,1) + spfderivs(:,:,:,:,2) + spfderivs(:,:,:,:,3) )
+
+  endif   !! contact_pcoef
+
+
+!!!    S-WAVE    !!!!
+
+  if  (contact_scoef.ne.0d0.or.auto_contactop.gt.0) then
+
+     call mult_ke(spfin,spftemp(:,:,:,:),howmany,"booga",2)
+
+     spftemp2(:,:,:,:) = 0d0
+
+     do icenter = 1,numcenters
+        
+        qq(:) = ( gridpoints(1:3)+centershift(:,icenter)+1 ) / 2
+
+        if (auto_contactop.gt.0) then
+           scoef = scoef_fun(nuccharges(icenter),spacing)
+        else
+           scoef = contact_scoef
+        endif
+
+        do jj=1,3
+           if (qq(jj).lt.1.or.qq(jj).gt.gridpoints(jj)) then
+              OFLWR "error, can't use op_contact if nuclei are off grid",&
+                   qq(1:3),gridpoints(1:3); CFLST
+           endif
+        enddo
+
+        qq(1:3) = qq(1:3) - numpoints(1:3)*(qbox(1:3)-1)
+     
+        if (qq(1).ge.1.and.qq(1).le.numpoints(1) .and. &
+             qq(2).ge.1.and.qq(2).le.numpoints(2) .and. &
+             qq(3).ge.1.and.qq(3).le.numpoints(3) ) then
+           spftemp2(qq(1),qq(2),qq(3),:) = spftemp2(qq(1),qq(2),qq(3),:) + nuccharges(icenter) * &
+                spftemp(qq(1),qq(2),qq(3),:)
+        endif
+
+     enddo
+
+     call mult_ke(spftemp2(:,:,:,:),spftemp(:,:,:,:),howmany,"booga",2)
+
+     spfout(:,:,:,:) = spfout(:,:,:,:) + 4 * scoef * spftemp(:,:,:,:)
+
+  endif  !! contact_scoef
+
+!!!!
+
+  deallocate(spfderivs,spftemp,spftemp2,threespfs)
+
+contains
+
+!   logistic(x) = (exp(x)-1)/(1+exp(x))
+!   
+!   f(x) = A*logistic(B*x**C)*x**D
+!   
+!  A,B,C,D   S COEF:
+!  0.0435795761875385 0.166927732759779 3.1844419300686 0
+!  A,B,C,D   Z COEF:
+!  1.01091424559655 -0.227418357545392 1.75339729714461 -1.43058810066227
+!  A,B,C,D   P COEF:
+!  0.0388098059697418 1.06996811469877 0.881358576929761 1.74664787460762
+!  VALUES AT 2, S Z and P:
+!  0.0279063040714153 -0.137122647628767 0.0983859017085669
+
+  function logistic(x)
+    implicit none
+    real*8, intent(in) :: x
+    real*8 :: logistic
+    logistic = (exp(x)-1)/(1+exp(x))
+  end function logistic
+
+  function scoef_fun(charge,space)
+    implicit none
+    real*8, intent(in) :: charge, space
+    real*8 :: product, scoef_fun
+
+    product = charge * space
+
+    scoef_fun = (1d0/charge)**3 * 0.0435795761875385d0 * logistic( 0.166927732759779d0 * product**3.1844419300686d0)
+
+  end function scoef_fun
+
+  function zcoef_fun(charge,space)
+    implicit none
+    real*8, intent(in) :: charge, space
+    real*8 :: product, zcoef_fun
+
+    product = charge * space
+
+    zcoef_fun = charge * 1.01091424559655d0 * logistic( -0.227418357545392d0 * product**1.75339729714461d0)*product**(-1.43058810066227d0)
+
+  end function zcoef_fun
+
+  function pcoef_fun(charge,space)
+    implicit none
+    real*8, intent(in) :: charge, space
+    real*8 :: product, pcoef_fun
+
+    product = charge * space
+
+    pcoef_fun = (1d0/charge) * 0.0388098059697418d0 * logistic( 1.06996811469877d0 * product**0.881358576929761d0 )*product**1.74664787460762d0
+
+  end function pcoef_fun
+
+  subroutine transform_cart_to_d(iwhich,inspfs,outspfs,howmany)
+    implicit none
+    integer,intent(in) :: iwhich,howmany
+    DATATYPE, intent(in) :: inspfs(totpoints,howmany,6)  !! xx,xy,xz,yy,yz,zz
+    DATATYPE, intent(out) :: outspfs(totpoints,howmany) !! xy, xz, yz, x^2-y^2, 1/sqrt(6)*(2z^2-x^2-y^2)  (3T, 2E)
+    real*8 :: transmat(5,6)
+    integer :: jj
+
+    transmat = RESHAPE( (/ &
+         0d0,    0d0,   0d0,   1/sqrt(2d0),   1/sqrt(6d0),  &
+         1d0,    0d0,   0d0,           0d0,           0d0,  &
+         0d0,    1d0,   0d0,           0d0,           0d0,  &
+         0d0,    0d0,   0d0,  -1/sqrt(2d0),   1/sqrt(6d0),  &
+         0d0,    0d0,   1d0,           0d0,           0d0,  &
+         0d0,    0d0,   0d0,           0d0,   2/sqrt(6d0) /), (/5,6/) )
+
+    do jj=1,5
+       print *, transmat(jj,:)
+    enddo
+    OFLWR "tEMPSTPOO"; CFLST
+         
+    outspfs(:,:) = 0d0
+    do jj=1,6
+       outspfs(:,:) = outspfs(:,:) + transmat(iwhich,jj) * inspfs(:,:,jj)
+    enddo
+  end subroutine transform_cart_to_d
+
+end subroutine op_contact
+
+
 function mysinc(input)
   implicit none
   real*8,intent(in) :: input
@@ -2413,5 +2658,3 @@ subroutine splitscatterv_complex(inbig,outlocal)
   deallocate(inscatter)
 
 end subroutine splitscatterv_complex
-
-

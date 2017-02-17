@@ -176,7 +176,7 @@
 !!$
 !!$   END OF TERMS AND CONDITIONS
 !!$
-!!$   Copyright 2016 the regents of the University of California
+!!$   Copyright 2017 the regents of the University of California
 !!$
 !!$   Licensed under the Apache License, Version 2.0 (the "License");
 !!$   you may not use this file except in compliance with the License.
@@ -239,8 +239,8 @@ program mctdhf
   write(mpifileptr, *) "   AMO Theory Group, Lawrence Berkeley Laboratory"
   write(mpifileptr, *) "     D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, "
   write(mpifileptr, *) "     B Abeln, X Li . . ."
-  write(mpifileptr, *) "                             VERSION 1.33 "
-  write(mpifileptr, *) "       Copyright 2016 the regents of the University of California"
+  write(mpifileptr, *) "                             VERSION 1.34 "
+  write(mpifileptr, *) "       Copyright 2017 the regents of the University of California"
   write(mpifileptr, *)
 #ifdef REALGO
   write(mpifileptr, *) "               This is MCTDH: Real-valued version."

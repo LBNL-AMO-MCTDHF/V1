@@ -176,9 +176,12 @@ contains
     DATATYPE,intent(in) :: in(spfsize,howmany)
     DATATYPE,intent(out) :: out(spfsize,howmany)
     integer :: ii
+
+    call op_contact(howmany,in,out)
     do ii=1,howmany
-       out(:,ii)=in(:,ii)*pot(:)   !! NO INTERNUCLEAR REPULSION !!
+       out(:,ii)=out(:,ii)+in(:,ii)*pot(:)   !! NO INTERNUCLEAR REPULSION !!
     enddo
+
   end subroutine mult_pot
 
 !! needs factor of 1/r  for hamiltonian

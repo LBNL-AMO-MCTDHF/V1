@@ -176,7 +176,9 @@ subroutine get_3dpoisson_scaledoption(cpot)
 
      qq(1:3) = qq(1:3) - numpoints(1:3)*(qbox(1:3)-1)
      
-     if (qq(1).ge.1.and.qq(1).le.numpoints(1) .and. qq(2).ge.1.and.qq(2).le.numpoints(2) .and. qq(3).ge.1.and.qq(3).le.numpoints(3) ) then
+     if (qq(1).ge.1.and.qq(1).le.numpoints(1) .and. &
+          qq(2).ge.1.and.qq(2).le.numpoints(2) .and. &
+          qq(3).ge.1.and.qq(3).le.numpoints(3) ) then
         sourceterm(qq(1),qq(2),qq(3)) = sourceterm(qq(1),qq(2),qq(3)) + nuccharges(i) * (-1)
      endif
   enddo

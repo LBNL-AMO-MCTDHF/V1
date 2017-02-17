@@ -59,6 +59,14 @@ real*8 :: scalingstretch=1d0       !! stretching factor
 
 integer :: ivoflag=0               !! construct virtual orbitals using density based on 
 real*8 :: loadedocc(200)=2d0       !!    loaded orbitals
+
+logical :: use_contactop=.false.   !! contact operator.  Coefficients:
+real*8 :: contact_scoef=0d0, &     !!   s-wave
+     contact_0coef=0d0, &          !!   illegal bare delta
+     contact_pcoef=0d0, &          !!   p-wave
+     contact_ecoef=0d0,&           !!   d-wave doubly degenerate
+     contact_tcoef=0d0             !!   d-wave triply degenerate
+integer :: auto_contactop=2        !! use fit contact operator functions 1=s 2=s and p
 !! XXSNIPXX 
 !! INTERNAL
 

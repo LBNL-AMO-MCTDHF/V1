@@ -1620,6 +1620,16 @@ subroutine hatom_op(howmany,inspfs, outspfs,hatomreduced)
 end subroutine hatom_op
 
 
+subroutine op_contact(howmany,spfin,spfout)
+  use myparams
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: spfin(totpoints,howmany)
+  DATATYPE,intent(out) :: spfout(totpoints,howmany)
+  spfout(:,:) = 0d0
+end subroutine op_contact
+
+
 function mysinc(input)
   implicit none
   real*8,intent(in) :: input

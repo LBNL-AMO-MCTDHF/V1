@@ -297,6 +297,16 @@ subroutine hatom_op(howmany,inspfs, outspfs, hatomreduced)
 end subroutine hatom_op
 
 
+subroutine op_contact(howmany,notusedin,spfout)
+  use myparams
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: notusedin(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: spfout(numerad,lbig+1,-mbig:mbig,howmany)
+  spfout(:,:,:,:) = 0d0
+end subroutine op_contact
+
+
 subroutine call_frozen_matels_core(infrozens,numfrozen,frozenkediag,frozenpotdiag,frozenreduced,hatomreduced)
   use myparams
   use myprojectmod
