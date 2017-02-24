@@ -808,13 +808,23 @@ subroutine getparams()
   endif
   if (sparseconfigflag==1) then
      write(mpifileptr, *)  "    Will use sparse configuration routines."
-     write(mpifileptr,*)   "          Lanczosorder is ", lanczosorder
-     write(mpifileptr,*)   "          Lanthresh is    ", lanthresh
-     write(mpifileptr,*)   "          Aorder is       ", aorder
-     write(mpifileptr,*)   "          Maxaorder is    ", maxaorder
-     write(mpifileptr,*)   "          Aerror is       ", aerror
+     if (sparseopt.eq.0) then
+        write(mpifileptr,*) "   Direct CI, sparseopt=0"
+     else
+        write(mpifileptr,*) "   Explicit sparse matrix, sparseopt=1"
+     endif
+     if (par_consplit.ne.0) then
+        write(mpifileptr,*) "   Vectors are distributed, par_consplit.ne.0" 
+     else
+        write(mpifileptr,*) "   Vectors are not distributed, par_consplit=0" 
+     endif
+     write(mpifileptr,*)    "          Lanczosorder is ", lanczosorder
+     write(mpifileptr,*)    "          Lanthresh is    ", lanthresh
+     write(mpifileptr,*)    "          Aorder is       ", aorder
+     write(mpifileptr,*)    "          Maxaorder is    ", maxaorder
+     write(mpifileptr,*)    "          Aerror is       ", aerror
   else
-     write(mpifileptr,*)   "    Using nonsparse configuration routines."
+     write(mpifileptr,*)    "    Using nonsparse configuration routines."
   endif
   iiflag=0
 
