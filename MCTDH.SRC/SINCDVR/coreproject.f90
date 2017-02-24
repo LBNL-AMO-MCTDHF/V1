@@ -1425,7 +1425,10 @@ contains
     DATATYPE, intent(out) :: out(totpoints,howmany)
     DATATYPE :: temp(totpoints,howmany),temp2(totpoints,howmany),inwork(totpoints,howmany)   !!AUTOMATIC
     DATATYPE :: mycoefs(3)
-    integer :: ii,jj,temptimes(3)=0
+    integer :: ii,jj,atime,btime,myiostat,getlen
+    integer, save :: xcount=0, times(0:10)=0
+
+    call myclock(atime)
 
     out(:,:)=0d0; temp=0; temp2=0;
     inwork(:,:)=in(:,:)
@@ -1481,21 +1484,25 @@ contains
 
        endif
 
+       call myclock(btime); times(0)=times(0)+btime-atime; atime=btime
+
 !! TRANSPOSE
        select case(orbparlevel)
        case(3)
-          call mytranspose(out,temp,numpoints(3),howmany,temptimes,nprocs,nprocs)
+          call mytranspose(out,temp,numpoints(3),howmany,times(1:),nprocs,nprocs)
           out(:,:)=temp(:,:)
-          call mytranspose(inwork,temp,numpoints(3),howmany,temptimes,nprocs,nprocs)
+          call mytranspose(inwork,temp,numpoints(3),howmany,times(1:),nprocs,nprocs)
           inwork(:,:)=temp(:,:)
        case(2)
-          call mytranspose(out,temp,numpoints(3),howmany,temptimes,sqnprocs,1)
+          call mytranspose(out,temp,numpoints(3),howmany,times(1:),sqnprocs,1)
           out(:,:)=temp(:,:)
-          call mytranspose(inwork,temp,numpoints(3),howmany,temptimes,sqnprocs,1)
+          call mytranspose(inwork,temp,numpoints(3),howmany,times(1:),sqnprocs,1)
           inwork(:,:)=temp(:,:)
        case default
           OFLWR "NOT SUPPP WITH THRANSPOSE ORBPARLEVEL=",orbparlevel; CFLST
        end select
+
+       call myclock(atime)
 
     enddo
 
@@ -1506,6 +1513,28 @@ contains
           enddo
        endif
     endif
+
+    if (myrank.eq.1.and.notiming.lt.2) then
+       xcount=xcount+1
+       if (xcount==1) then
+          open(2853, file=timingdir(1:getlen(timingdir))//"/zke.time.dat", &
+               status="unknown",iostat=myiostat)
+          call checkiostat(myiostat,"opening kemult timing sincdvr")
+          write(2853,'(100A11)',iostat=myiostat)   "mult", "before","mpi", "after"
+          call checkiostat(myiostat,"writing kemult timing sincdvr")
+          close(2853) 
+       endif
+       if (mod(xcount,100).eq.0) then
+          open(2853, file=timingdir(1:getlen(timingdir))//"/zke.time.dat", &
+               status="unknown", position="append",iostat=myiostat)
+          call checkiostat(myiostat,"opening kemult timing sincdvr")
+          write(2853,'(100I11)',iostat=myiostat)  times(0:3)
+          call checkiostat(myiostat,"writing kemult timing sincdvr")
+          close(2853)
+       endif
+    endif
+
+
   end subroutine mult_general_withtranspose
 
   subroutine mytranspose(in,out,blocksize,howmany,times,nprocs1,nprocs2)
