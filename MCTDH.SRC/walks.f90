@@ -699,7 +699,7 @@ subroutine getnumwalks(www)
   www%maxsinglewalks=1;  www%maxdoublewalks=1      !! ensure always allocate
   maxwalks=1
 
-  totwalks=0d0
+  totwalks=0
   do config1=www%configstart,www%configend
 
      if (www%maxsinglewalks.lt.www%numsinglewalks(config1)) then
@@ -870,8 +870,8 @@ subroutine hops(www)
 !!$        www%maxnumdoublehops=0
         www%maxnumsinglehops=1   !always allocate
         www%maxnumdoublehops=1
-        totsinglehops=0d0; totsinglewalks=0d0
-        totdoublehops=0d0; totdoublewalks=0d0
+        totsinglehops=0; totsinglewalks=0
+        totdoublehops=0; totdoublewalks=0
         do iconfig=www%configstart,www%configend
            totsinglehops=totsinglehops+www%numsinglehops(iconfig)
            totsinglewalks=totsinglewalks+www%numsinglewalks(iconfig)
