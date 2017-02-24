@@ -507,7 +507,8 @@ subroutine getnumwalks(www)
   type(walktype) :: www
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, iispf,  config1,  &
        dirphase, flag, idof, iidof, jdof,iwalk ,config2
-  integer :: thisconfig(www%num2part), thatconfig(www%num2part), temporb(2), temporb2(2),totwalks
+  integer :: thisconfig(www%num2part), thatconfig(www%num2part), temporb(2), temporb2(2), maxwalks
+  integer*8 :: totwalks
   character(len=3) :: iilab
   character(len=4) :: iilab0
 
@@ -696,8 +697,9 @@ subroutine getnumwalks(www)
 
 !!$  www%maxsinglewalks=0;  www%maxdoublewalks=0
   www%maxsinglewalks=1;  www%maxdoublewalks=1      !! ensure always allocate
+  maxwalks=1
 
-  totwalks=0
+  totwalks=0d0
   do config1=www%configstart,www%configend
 
      if (www%maxsinglewalks.lt.www%numsinglewalks(config1)) then
@@ -706,20 +708,25 @@ subroutine getnumwalks(www)
      if (www%maxdoublewalks.lt.www%numdoublewalks(config1)) then
         www%maxdoublewalks=www%numdoublewalks(config1)
      endif
+     if (maxwalks.lt.www%numdoublewalks(config1)+www%numsinglewalks(config1)) then
+        maxwalks = www%numdoublewalks(config1)+www%numsinglewalks(config1)
+     endif
 
      totwalks=totwalks+www%numsinglewalks(config1)+www%numdoublewalks(config1)
 
   enddo
 
   if (www%sparseconfigflag.ne.0) then
-     call mympiireduceone(totwalks)
-     call mympiimax(www%maxsinglewalks);  call mympiimax(www%maxdoublewalks)
+     call mympii8reduceone(totwalks)
+     call mympiimax(www%maxsinglewalks);  call mympiimax(www%maxdoublewalks);
+     call mympiimax(maxwalks)
   endif
 
   OFLWR;  write(mpifileptr, *) "Maximum number of"
   write(mpifileptr, *) "           single walks= ",  www%maxsinglewalks
   write(mpifileptr, *) "           double walks= ",  www%maxdoublewalks;  
-  WRFL "  TOTAL walks:", totwalks,"maxdoublewalks*numconfig",www%maxdoublewalks*www%numconfig
+  write(mpifileptr, *) "            total walks= ",  maxwalks;  
+  WRFL "  TOTAL walks:", totwalks,"maxwalks*numconfig",int(maxwalks,8)*www%numconfig
   WRFL; CFL
 
 end subroutine getnumwalks
@@ -734,8 +741,8 @@ subroutine hops(www)
   use mpisubmod
   implicit none
   type(walktype) :: www
-  integer :: ii,iwalk,iconfig,totsinglehops,totdoublehops,&
-       totsinglewalks,totdoublewalks,ihop,flag,iproc,isize
+  integer :: ii,iwalk,iconfig,ihop,flag,iproc,isize
+  integer*8 :: totsinglehops,totdoublehops, totsinglewalks,totdoublewalks
 !!$  integer :: numsinglehopsbyproc(nprocs), numdoublehopsbyproc(nprocs)
 
   allocate(www%numsinglehops(www%configstart:www%configend+1),&
@@ -863,8 +870,8 @@ subroutine hops(www)
 !!$        www%maxnumdoublehops=0
         www%maxnumsinglehops=1   !always allocate
         www%maxnumdoublehops=1
-        totsinglehops=0; totsinglewalks=0
-        totdoublehops=0; totdoublewalks=0
+        totsinglehops=0d0; totsinglewalks=0d0
+        totdoublehops=0d0; totdoublewalks=0d0
         do iconfig=www%configstart,www%configend
            totsinglehops=totsinglehops+www%numsinglehops(iconfig)
            totsinglewalks=totsinglewalks+www%numsinglewalks(iconfig)
@@ -1038,8 +1045,8 @@ subroutine hops(www)
 
 #ifdef MPIFLAG
   if (www%sparseconfigflag.ne.0) then
-     call mympiireduceone(totsinglehops);  call mympiireduceone(totdoublehops)
-     call mympiireduceone(totsinglewalks);  call mympiireduceone(totdoublewalks)
+     call mympii8reduceone(totsinglehops);  call mympii8reduceone(totdoublehops)
+     call mympii8reduceone(totsinglewalks);  call mympii8reduceone(totdoublewalks)
      call mympiimax(www%maxnumsinglehops);  call mympiimax(www%maxnumdoublehops)
   endif
 #endif

@@ -594,6 +594,28 @@ subroutine mympiireduceone_local(input,IN_COMM)
 end subroutine mympiireduceone_local
 
 
+subroutine mympii8reduceone_local(input,IN_COMM)
+  use mpimod
+  use fileptrmod
+  implicit none
+  integer,intent(in) :: IN_COMM
+  integer*8,intent(inout) :: input
+  integer*8 :: output
+  integer :: ierr
+  if (nprocs.eq.1) then
+     return
+  endif
+  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  ierr=0
+  call MPI_allreduce(input,output,1,MPI_INTEGER8,MPI_SUM,IN_COMM,ierr)
+  input=output
+  if (ierr/=0) then
+     OFLWR "ERR mympii8reduce!"; CFLST
+  endif
+  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+end subroutine mympii8reduceone_local
+
+
 subroutine mympirealreduceone(input)
   use mpimod
   implicit none
@@ -608,6 +630,14 @@ subroutine mympiireduceone(input)
   integer,intent(inout) :: input
   call mympiireduceone_local(input,MPI_COMM_WORLD)
 end subroutine mympiireduceone
+
+
+subroutine mympii8reduceone(input)
+  use mpimod
+  implicit none
+  integer*8,intent(inout) :: input
+  call mympii8reduceone_local(input,MPI_COMM_WORLD)
+end subroutine mympii8reduceone
 
 
 subroutine mympiireduce(input, isize)
@@ -1540,6 +1570,24 @@ subroutine mympiireduceone_local(input,incomm)
   return
   input=input; incomm=incomm
 end subroutine mympiireduceone_local
+
+
+subroutine mympii8reduceone(input)
+  implicit none
+  integer*8 :: input
+  return
+  input=input
+end subroutine mympii8reduceone
+
+
+subroutine mympii8reduceone_local(input,incomm)
+  implicit none
+  integer*8 :: input
+  integer :: incomm
+  return
+  input=input; incomm=incomm
+end subroutine mympii8reduceone_local
+
 
 subroutine mympisendrecv(sendbuf, recvbuf, dest, source, tag, isize)
   use mpimod
