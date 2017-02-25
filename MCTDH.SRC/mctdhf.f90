@@ -234,11 +234,11 @@ program mctdhf
   write(mpifileptr, *) " **********************  BEGIN LBNL-AMO-MCTDHF ******************************"
   write(mpifileptr, *) " ****************************************************************************"     
   write(mpifileptr, *) 
-  write(mpifileptr, *) "   Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code"
-  write(mpifileptr, *) "     for ultrafast electronic and nuclear dynamics in intense laser fields"
-  write(mpifileptr, *) "   AMO Theory Group, Lawrence Berkeley Laboratory"
-  write(mpifileptr, *) "     D J Haxton, C W McCurdy, T N Rescigno, K V Lawler, J Jones, "
-  write(mpifileptr, *) "     B Abeln, X Li . . ."
+  write(mpifileptr, *) "      Atomic/Diatomic/Cartesian Polyatomic nonadiabatic MCTDHF code"
+  write(mpifileptr, *) "  for ultrafast electronic and nuclear dynamics in intense laser fields"
+  write(mpifileptr, *) "             AMO Theory Group, Lawrence Berkeley Laboratory"
+  write(mpifileptr, *) "         D J Haxton,   K V Lawler,   J Jones,   B Abeln,   X Li"
+  write(mpifileptr, *) 
   write(mpifileptr, *) "                             VERSION 1.34 "
   write(mpifileptr, *) "       Copyright 2017 the regents of the University of California"
   write(mpifileptr, *)

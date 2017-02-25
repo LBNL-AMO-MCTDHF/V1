@@ -1683,7 +1683,7 @@ subroutine mpiallgather_i(inout,totsize,blocksizes,notusedint)
   call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call getgatherv_stuff(blocksizes,icount,blockstart,nprocs)
   if (icount.ne.totsize) then
-     OFLWR "ALLgather ERR count", icount,totsize; 
+     OFLWR "ALLgather_i ERR count", icount,totsize; 
      WRFL blocksizes;
      CFLST
   endif

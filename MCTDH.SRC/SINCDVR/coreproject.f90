@@ -2259,7 +2259,7 @@ subroutine op_contact(howmany,spfin,spfout)
              qq(2).ge.1.and.qq(2).le.numpoints(2) .and. &
              qq(3).ge.1.and.qq(3).le.numpoints(3) ) then
            threespfs(qq(1),qq(2),qq(3),:,1:3) = threespfs(qq(1),qq(2),qq(3),:,1:3) + nuccharges(icenter) * &
-                spfderivs(qq(1),qq(2),qq(3),:,1:3)
+                spfderivs(qq(1),qq(2),qq(3),:,1:3) * pcoef
         endif
 
      enddo
@@ -2271,7 +2271,7 @@ subroutine op_contact(howmany,spfin,spfout)
      cx=0d0;  cy=0d0;  cz=1d0
      call mult_general(2,cx,cy,cz,threespfs(:,:,:,:,3),spfderivs(:,:,:,:,3),howmany,"booga",2)
 
-     spfout(:,:,:,:) = spfout(:,:,:,:) + pcoef * ( &
+     spfout(:,:,:,:) = spfout(:,:,:,:) + ( &
           spfderivs(:,:,:,:,1) + spfderivs(:,:,:,:,2) + spfderivs(:,:,:,:,3) )
 
   endif   !! contact_pcoef
@@ -2308,14 +2308,16 @@ subroutine op_contact(howmany,spfin,spfout)
              qq(2).ge.1.and.qq(2).le.numpoints(2) .and. &
              qq(3).ge.1.and.qq(3).le.numpoints(3) ) then
            spftemp2(qq(1),qq(2),qq(3),:) = spftemp2(qq(1),qq(2),qq(3),:) + nuccharges(icenter) * &
-                spftemp(qq(1),qq(2),qq(3),:)
+                spftemp(qq(1),qq(2),qq(3),:) * scoef
         endif
 
      enddo
 
      call mult_ke(spftemp2(:,:,:,:),spftemp(:,:,:,:),howmany,"booga",2)
 
-     spfout(:,:,:,:) = spfout(:,:,:,:) + 4 * scoef * spftemp(:,:,:,:)
+!! factor 4 due to (-0.5)^2 in ke
+
+     spfout(:,:,:,:) = spfout(:,:,:,:) + 4 * spftemp(:,:,:,:)
 
   endif  !! contact_scoef
 
