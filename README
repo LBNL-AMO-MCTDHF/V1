@@ -1,6 +1,10 @@
 
   ** LBNL-AMO-MCTDHF VERSION 1.34 **
 
+v1.34 less memory waste for restricted configuration spaces, and complex
+   Domcke wave mixing method redone, with redobra instead of conjgpropflag,
+   using action 29 and mcscfnum=1
+
 v1.31 gaugefluxflag and strongcatflag available for photoionization
    actions 16 17 27 28.  With strong fields, recommend explicit 
    back-propagation of cation states with strongcatflag.  With ionization 
