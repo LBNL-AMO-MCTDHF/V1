@@ -355,9 +355,9 @@ subroutine arbitraryconfig_matel_singles00transpose_hhh(www,in_onebodymat, small
         csum=0d0
         do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
            csum=csum+&
-                onebodymat(www%singlewalkopspf(1,iwalk,config1), &
-                www%singlewalkopspf(2,iwalk,config1)) *  &
-                www%singlewalkdirphase(iwalk,config1)
+                onebodymat(www%singlewalkopspf(1,iwalk+www%scol(config1)), &
+                www%singlewalkopspf(2,iwalk+www%scol(config1))) *  &
+                www%singlewalkdirphase(iwalk+www%scol(config1))
         enddo
         myvec(myind)=myvec(myind)+csum
      enddo
@@ -452,11 +452,11 @@ subroutine arbitraryconfig_matel_doubles00transpose(www,in_twobodymat, smallmatr
         csum=0d0
         do iwalk=www%doublehopwalkstart(ihop,config1),www%doublehopwalkend(ihop,config1)
            csum=csum+&
-                twobodymat(www%doublewalkdirspf(1,iwalk,config1), &
-                www%doublewalkdirspf(2,iwalk,config1),   &
-                www%doublewalkdirspf(3,iwalk,config1),   &
-                www%doublewalkdirspf(4,iwalk,config1))* &
-                www%doublewalkdirphase(iwalk,config1) 
+                twobodymat(www%doublewalkdirspf(1,iwalk+www%dcol(config1)), &
+                www%doublewalkdirspf(2,iwalk+www%dcol(config1)),   &
+                www%doublewalkdirspf(3,iwalk+www%dcol(config1)),   &
+                www%doublewalkdirspf(4,iwalk+www%dcol(config1)))* &
+                www%doublewalkdirphase(iwalk+www%dcol(config1))
         enddo
         myvec(myind)=myvec(myind)+csum
      enddo

@@ -225,13 +225,13 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
 
         do iwalk=www%doublehopwalkstart(ihop,config1),www%doublehopwalkend(ihop,config1)
            
-           dirphase=www%doublewalkdirphase(iwalk,config1)
+           dirphase=www%doublewalkdirphase(iwalk+www%dcol(config1))
 
 !! switched 2-2016, keep this logic the same
-           ispf=www%doublewalkdirspf(1,iwalk,config1)   !KET2 
-           jspf=www%doublewalkdirspf(2,iwalk,config1)   !BRA2 (walk)
-           iispf=www%doublewalkdirspf(3,iwalk,config1)  !KET1
-           jjspf=www%doublewalkdirspf(4,iwalk,config1)  !BRA1 (walk)
+           ispf=www%doublewalkdirspf(1,iwalk+www%dcol(config1))   !KET2 
+           jspf=www%doublewalkdirspf(2,iwalk+www%dcol(config1))   !BRA2 (walk)
+           iispf=www%doublewalkdirspf(3,iwalk+www%dcol(config1))  !KET1
+           jjspf=www%doublewalkdirspf(4,iwalk+www%dcol(config1))  !BRA1 (walk)
 
            mytally(ispf,jspf,iispf,jjspf) =  &    
                 mytally(ispf,jspf,iispf,jjspf) +  &
@@ -364,9 +364,9 @@ subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects
 
         do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
 
-           dirphase=www%singlewalkdirphase(iwalk,config1)
-           ispf=www%singlewalkopspf(1,iwalk,config1)
-           jspf=www%singlewalkopspf(2,iwalk,config1)
+           dirphase=www%singlewalkdirphase(iwalk+www%scol(config1))
+           ispf=www%singlewalkopspf(1,iwalk+www%scol(config1))
+           jspf=www%singlewalkopspf(2,iwalk+www%scol(config1))
 
            myredpro(jspf,ispf)=myredpro(jspf,ispf)+ &
                 dirphase*csum
@@ -505,9 +505,9 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
 
         do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
 
-           dirphase=www%singlewalkdirphase(iwalk,config1)
-           ispf=www%singlewalkopspf(1,iwalk,config1)
-           jspf=www%singlewalkopspf(2,iwalk,config1)
+           dirphase=www%singlewalkdirphase(iwalk+www%scol(config1))
+           ispf=www%singlewalkopspf(1,iwalk+www%scol(config1))
+           jspf=www%singlewalkopspf(2,iwalk+www%scol(config1))
 
            myinvr(jspf,ispf)=myinvr(jspf,ispf)+         dirphase*invdot
            myr(jspf,ispf)=myr(jspf,ispf)+         dirphase*rdot

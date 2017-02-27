@@ -247,9 +247,9 @@ subroutine getdenmat00(inholeflag,wwin,avector1,in_avector2,rvector, denmat, num
 
         do iwalk=wwin%singlehopwalkstart(ihop,config1),wwin%singlehopwalkend(ihop,config1)
 
-           dirphase=wwin%singlewalkdirphase(iwalk,config1)
-           ispf=wwin%singlewalkopspf(1,iwalk,config1)  !! goes with config1
-           jspf=wwin%singlewalkopspf(2,iwalk,config1)  !! goes with config2
+           dirphase=wwin%singlewalkdirphase(iwalk+wwin%scol(config1))
+           ispf=wwin%singlewalkopspf(1,iwalk+wwin%scol(config1))  !! goes with config1
+           jspf=wwin%singlewalkopspf(2,iwalk+wwin%scol(config1))  !! goes with config2
 
            mydenmat(ispf,jspf)=mydenmat(ispf,jspf)+ &
                 csum*dirphase
@@ -383,8 +383,8 @@ subroutine getoccupations(wwin,in_avector, numpoints, occupations)
      do idiag=1,wwin%numsinglediagwalks(config1)
         iwalk=wwin%singlediag(idiag,config1)
 
-        ispf=wwin%singlewalkopspf(1,iwalk,config1)  !! goes with config1
-        jspf=wwin%singlewalkopspf(2,iwalk,config1)  !! goes with config2
+        ispf=wwin%singlewalkopspf(1,iwalk+wwin%scol(config1))  !! goes with config1
+        jspf=wwin%singlewalkopspf(2,iwalk+wwin%scol(config1))  !! goes with config2
 
         occupations(ispf)=occupations(ispf) + &  !! ok conversion
              dot(avector(:,config1),avector(:,config1),numpoints)

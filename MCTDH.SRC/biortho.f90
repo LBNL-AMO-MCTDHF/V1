@@ -296,9 +296,9 @@ contains
           do j=biopointer%wwbio%singlehopwalkstart(ihop,i), &
                biopointer%wwbio%singlehopwalkend(ihop,i)
              csum=csum + &
-                  biopointer%smo(biopointer%wwbio%singlewalkopspf(1,j,i),&
-                  biopointer%wwbio%singlewalkopspf(2,j,i)) &
-                  * biopointer%wwbio%singlewalkdirphase(j,i)
+                  biopointer%smo(biopointer%wwbio%singlewalkopspf(1,j+biopointer%wwbio%scol(i)),&
+                  biopointer%wwbio%singlewalkopspf(2,j+biopointer%wwbio%scol(i))) &
+                  * biopointer%wwbio%singlewalkdirphase(j+biopointer%wwbio%scol(i))
           enddo
           myout(:) = myout(:) + csum * x(:,biopointer%wwbio%singlehop(ihop,i)) * phase
        enddo

@@ -195,7 +195,7 @@ subroutine init_dfcon(www)
         iconfig=dfNOTconfigs(i)
         if (iconfig.ge.www%configstart.and.iconfig.le.www%configend) then
            do j=1,www%numsinglewalks(iconfig)
-              if (allowedconfig0(www,www%configlist(:,www%singlewalk(j,iconfig)),www%dfrestrictflag)) then
+              if (allowedconfig0(www,www%configlist(:,www%singlewalk(j+www%scol(iconfig))),www%dfrestrictflag)) then
                  www%ddd%numdfwalks=www%ddd%numdfwalks+1
               endif
            enddo
@@ -224,15 +224,15 @@ subroutine init_dfcon(www)
         iconfig=dfNOTconfigs(i)
         if (iconfig.ge.www%configstart.and.iconfig.le.www%configend) then
            do j=1,www%numsinglewalks(iconfig)
-              if (allowedconfig0(www,www%configlist(:,www%singlewalk(j,iconfig)),www%dfrestrictflag)) then
+              if (allowedconfig0(www,www%configlist(:,www%singlewalk(j+www%scol(iconfig))),www%dfrestrictflag)) then
                  www%ddd%numdfwalks=www%ddd%numdfwalks+1
               
                  www%ddd%dfwalkTO(www%ddd%numdfwalks)=iconfig
-                 www%ddd%dfwalkFROM(www%ddd%numdfwalks)=www%singlewalk(j,iconfig)
-                 www%ddd%EXcludedorb(www%ddd%numdfwalks)=www%singlewalkopspf(1,j,iconfig)
-                 www%ddd%INcludedorb(www%ddd%numdfwalks)=www%singlewalkopspf(2,j,iconfig)
+                 www%ddd%dfwalkFROM(www%ddd%numdfwalks)=www%singlewalk(j+www%scol(iconfig))
+                 www%ddd%EXcludedorb(www%ddd%numdfwalks)=www%singlewalkopspf(1,j+www%scol(iconfig))
+                 www%ddd%INcludedorb(www%ddd%numdfwalks)=www%singlewalkopspf(2,j+www%scol(iconfig))
               
-                 www%ddd%dfwalkphase(www%ddd%numdfwalks)=www%singlewalkdirphase(j,iconfig)
+                 www%ddd%dfwalkphase(www%ddd%numdfwalks)=www%singlewalkdirphase(j+www%scol(iconfig))
               endif
            enddo
         endif

@@ -122,20 +122,20 @@ subroutine walkalloc(www)
 
   call getnumwalks(www)
   OFLWR "Allocating singlewalks"; CFL
-  allocate( www%singlewalk(www%maxsinglewalks,www%configstart:www%configend+1))
+  allocate( www%singlewalk(www%maxtotsinglewalks+1) )
   www%singlewalk=-1
   allocate(www%singlediag(www%numpart,www%configstart:www%configend+1) )
   www%singlediag=-1
-  allocate( www%singlewalkdirphase(www%maxsinglewalks,www%configstart:www%configend+1) )
+  allocate( www%singlewalkdirphase(www%maxtotsinglewalks+1) )
   www%singlewalkdirphase=0
-  allocate( www%singlewalkopspf(1:2,www%maxsinglewalks,www%configstart:www%configend+1) )
+  allocate( www%singlewalkopspf(1:2,www%maxtotsinglewalks+1) )
   www%singlewalkopspf=-1
   OFLWR "Allocating doublewalks"; CFL
-  allocate( www%doublewalkdirspf(1:4,www%maxdoublewalks,www%configstart:www%configend+1 ) )
+  allocate( www%doublewalkdirspf(1:4,www%maxtotdoublewalks+1) )
   www%doublewalkdirspf=-1
-  allocate( www%doublewalkdirphase(www%maxdoublewalks,www%configstart:www%configend+1) )
+  allocate( www%doublewalkdirphase(www%maxtotdoublewalks+1) )
   www%doublewalkdirphase=0
-  allocate( www%doublewalk(www%maxdoublewalks,www%configstart:www%configend+1))
+  allocate( www%doublewalk(www%maxtotdoublewalks+1) )
   www%doublewalk=-1
   allocate(www%doublediag(www%numpart*(www%numpart-1),www%configstart:www%configend+1))
   www%doublediag=-1
@@ -155,8 +155,11 @@ subroutine walks(www)
   type(walktype) :: www
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, jspf, &
        iispf, jjspf, config2, config1, dirphase, flag, idof, iidof, jdof, iwalk, idiag
-  integer :: thisconfig(www%num2part), thatconfig(www%num2part), temporb(2), temporb2(2), isize
+  integer :: thisconfig(www%num2part), thatconfig(www%num2part), temporb(2), temporb2(2),&
+       qsize(nprocs)  !! AUTOMATIC
   integer, allocatable :: listorder(:)
+
+  qsize=0
 
   !!  ***********   SINGLES  **********
 
@@ -223,14 +226,14 @@ subroutine walks(www)
 
 !! ket, bra   bra is walk
 if (www%holeflag.eq.0) then
-              www%singlewalkopspf(1:2,iwalk,config1)=[ ispf,jspf ] 
+              www%singlewalkopspf(1:2,iwalk+www%scol(config1))=[ ispf,jspf ] 
 else
-              www%singlewalkopspf(1:2,iwalk,config1)=[ jspf,ispf ] 
+              www%singlewalkopspf(1:2,iwalk+www%scol(config1))=[ jspf,ispf ] 
 endif
 
-              www%singlewalkdirphase(iwalk,config1)=dirphase
+              www%singlewalkdirphase(iwalk+www%scol(config1))=dirphase
            
-              www%singlewalk(iwalk,config1)=config2
+              www%singlewalk(iwalk+www%scol(config1))=config2
 
            enddo   ! the walk
         enddo  ! position we're walking
@@ -337,14 +340,14 @@ endif
 
 if (www%holeflag.eq.0) then
 !! now                                                         bra2   ket2   bra1   ket1
-                    www%doublewalkdirspf(1:4,iwalk,config1)=[ jjspf, iispf, jspf, ispf ]
+                    www%doublewalkdirspf(1:4,iwalk+www%dcol(config1))=[ jjspf, iispf, jspf, ispf ]
 else
-                    www%doublewalkdirspf(1:4,iwalk,config1)=[ iispf, jjspf, ispf, jspf ]
+                    www%doublewalkdirspf(1:4,iwalk+www%dcol(config1))=[ iispf, jjspf, ispf, jspf ]
 endif
 
-                    www%doublewalkdirphase(iwalk,config1)=dirphase
+                    www%doublewalkdirphase(iwalk+www%dcol(config1))=dirphase
                  
-                    www%doublewalk(iwalk,config1)=config2
+                    www%doublewalk(iwalk+www%dcol(config1))=config2
 
                  enddo   ! the walk
               enddo
@@ -362,24 +365,28 @@ endif
 
   OFLWR "Sorting walks..."; CFL
 
-!$OMP PARALLEL DEFAULT(PRIVATE) SHARED(www)
-  allocate(listorder(www%maxdoublewalks+www%maxsinglewalks))
+!$OMP PARALLEL DEFAULT(PRIVATE) SHARED(www,nprocs)
+
+  allocate(listorder(www%singlemaxwalks+www%doublemaxwalks+1))
+
   listorder=0
 !$OMP DO SCHEDULE(DYNAMIC)
   do config1=www%botconfig,www%topconfig
 
      if (www%numsinglewalks(config1).gt.1) then
-        call getlistorder(www%singlewalk(:,config1),listorder(:),www%numsinglewalks(config1))
-        call listreorder(www%singlewalkdirphase(:,config1),listorder(:),www%numsinglewalks(config1),1)
-        call listreorder(www%singlewalkopspf(:,:,config1),listorder(:),www%numsinglewalks(config1),2)
-        call listreorder(www%singlewalk(:,config1),listorder(:),www%numsinglewalks(config1),1)
+        call getlistorder(www%singlewalk(www%scol(config1)+1:),listorder(:),www%numsinglewalks(config1))
+        call listreorder(www%singlewalkdirphase(www%scol(config1)+1:),listorder(:),www%numsinglewalks(config1),1)
+        call listreorder(www%singlewalkopspf(:,www%scol(config1)+1:),listorder(:),www%numsinglewalks(config1),2)
+        call listreorder(www%singlewalk(www%scol(config1)+1:),listorder(:),www%numsinglewalks(config1),1)
      endif
+
      if (www%numdoublewalks(config1).gt.1) then
-        call getlistorder(www%doublewalk(:,config1),listorder(:),www%numdoublewalks(config1))
-        call listreorder(www%doublewalkdirphase(:,config1),listorder(:),www%numdoublewalks(config1),1)
-        call listreorder(www%doublewalkdirspf(:,:,config1),listorder(:),www%numdoublewalks(config1),4)
-        call listreorder(www%doublewalk(:,config1),listorder(:),www%numdoublewalks(config1),1)
+        call getlistorder(www%doublewalk(www%dcol(config1)+1:),listorder(:),www%numdoublewalks(config1))
+        call listreorder(www%doublewalkdirphase(www%dcol(config1)+1:),listorder(:),www%numdoublewalks(config1),1)
+        call listreorder(www%doublewalkdirspf(:,www%dcol(config1)+1:),listorder(:),www%numdoublewalks(config1),4)
+        call listreorder(www%doublewalk(www%dcol(config1)+1:),listorder(:),www%numdoublewalks(config1),1)
      endif
+
   enddo
 !$OMP END DO
   deallocate(listorder)
@@ -391,27 +398,29 @@ endif
 #ifdef MPIFLAG
 
   call mpibarrier()
-  
-  if (www%sparseconfigflag.eq.0.and.www%maxsinglewalks.ne.0) then
-     isize=2*www%maxsinglewalks
-     call mpiallgather_i(www%singlewalkopspf,   www%numconfig*isize,&
-          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
-     isize=www%maxsinglewalks
-     call mpiallgather_i(www%singlewalkdirphase,www%numconfig*isize,&
-          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
-     call mpiallgather_i(www%singlewalk,        www%numconfig*isize,&
-          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
+
+  if (www%sparseconfigflag.eq.0.and.www%maxtotsinglewalks.ne.0) then
+
+     qsize(:) = www%scol(www%alltopconfigs(:)+1) - www%scol(www%allbotconfigs(:))
+     
+     call mpiallgather_i(www%singlewalkopspf,   2*www%maxtotsinglewalks,&
+          2*qsize(:),-00420042)
+     call mpiallgather_i(www%singlewalkdirphase,www%maxtotsinglewalks,&
+          qsize(:),-79800798)
+     call mpiallgather_i(www%singlewalk,        www%maxtotsinglewalks,&
+          qsize(:),-798042)
   endif
 
-  if (www%sparseconfigflag.eq.0.and.www%maxdoublewalks.ne.0) then
-     isize=4*www%maxdoublewalks
-     call mpiallgather_i(www%doublewalkdirspf,  www%numconfig*isize,&
-          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
-     isize=www%maxdoublewalks
-     call mpiallgather_i(www%doublewalkdirphase,www%numconfig*isize,&
-          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
-     call mpiallgather_i(www%doublewalk,        www%numconfig*isize,&
-          www%configsperproc(:)*isize,www%maxconfigsperproc*isize)
+  if (www%sparseconfigflag.eq.0.and.www%maxtotdoublewalks.ne.0) then
+
+     qsize(:) = www%dcol(www%alltopconfigs(:)+1) - www%dcol(www%allbotconfigs(:))
+
+     call mpiallgather_i(www%doublewalkdirspf,  4*www%maxtotdoublewalks,&
+          4*qsize(:),-9994291)
+     call mpiallgather_i(www%doublewalkdirphase,www%maxtotdoublewalks,&
+          qsize(:),-9994291)
+     call mpiallgather_i(www%doublewalk,        www%maxtotdoublewalks,&
+          qsize(:),001234)
   endif
 
   call mpibarrier()
@@ -421,7 +430,7 @@ endif
   do config1=www%configstart,www%configend
      idiag=0
      do iwalk=1,www%numsinglewalks(config1)
-        if (www%singlewalk(iwalk,config1).eq.config1) then
+        if (www%singlewalk(iwalk+www%scol(config1)).eq.config1) then
            idiag=idiag+1
            www%singlediag(idiag,config1)=iwalk
         endif
@@ -429,7 +438,7 @@ endif
      www%numsinglediagwalks(config1)=idiag
      idiag=0
      do iwalk=1,www%numdoublewalks(config1)
-        if (www%doublewalk(iwalk,config1).eq.config1) then
+        if (www%doublewalk(iwalk+www%dcol(config1)).eq.config1) then
            idiag=idiag+1
            www%doublediag(idiag,config1)=iwalk
         endif
@@ -506,9 +515,10 @@ subroutine getnumwalks(www)
   implicit none
   type(walktype) :: www
   integer :: iindex, iiindex, jindex, jjindex,  ispin, jspin, iispin, jjspin, ispf, iispf,  config1,  &
-       dirphase, flag, idof, iidof, jdof,iwalk ,config2
-  integer :: thisconfig(www%num2part), thatconfig(www%num2part), temporb(2), temporb2(2), maxwalks
-  integer*8 :: totwalks
+       dirphase, flag, idof, iidof, jdof,iwalk ,config2, maxwalks
+  integer :: thisconfig(www%num2part), thatconfig(www%num2part), temporb(2), temporb2(2)
+  integer :: totwalks, totdoublewalks, totsinglewalks
+  integer*8 :: allwalks
   character(len=3) :: iilab
   character(len=4) :: iilab0
 
@@ -695,38 +705,52 @@ subroutine getnumwalks(www)
      endif
 #endif
 
-!!$  www%maxsinglewalks=0;  www%maxdoublewalks=0
-  www%maxsinglewalks=1;  www%maxdoublewalks=1      !! ensure always allocate
-  maxwalks=1
+  totwalks=0;  totsinglewalks=0;  totdoublewalks=0
+  www%singlemaxwalks=0; www%doublemaxwalks=0
 
-  totwalks=0
+  allocate(www%scol(www%configstart:www%configend+1), www%dcol(www%configstart:www%configend+1))
+
   do config1=www%configstart,www%configend
 
-     if (www%maxsinglewalks.lt.www%numsinglewalks(config1)) then
-        www%maxsinglewalks=www%numsinglewalks(config1)
-     endif
-     if (www%maxdoublewalks.lt.www%numdoublewalks(config1)) then
-        www%maxdoublewalks=www%numdoublewalks(config1)
-     endif
-     if (maxwalks.lt.www%numdoublewalks(config1)+www%numsinglewalks(config1)) then
-        maxwalks = www%numdoublewalks(config1)+www%numsinglewalks(config1)
-     endif
+     www%scol(config1) = totsinglewalks
+     www%dcol(config1) = totdoublewalks
 
      totwalks=totwalks+www%numsinglewalks(config1)+www%numdoublewalks(config1)
+     totsinglewalks=totsinglewalks + www%numsinglewalks(config1)
+     totdoublewalks=totdoublewalks + www%numdoublewalks(config1)
+
+     if (www%singlemaxwalks.lt.www%numsinglewalks(config1)) then
+        www%singlemaxwalks=www%numsinglewalks(config1)
+     endif
+     if (www%doublemaxwalks.lt.www%numdoublewalks(config1)) then
+        www%doublemaxwalks=www%numdoublewalks(config1)
+     endif
 
   enddo
 
+  www%scol(www%configend+1) = totsinglewalks
+  www%dcol(www%configend+1) = totdoublewalks
+
+  www%maxtotsinglewalks = totsinglewalks
+  www%maxtotdoublewalks = totdoublewalks
+  maxwalks = totwalks
+
+  allwalks=totwalks
   if (www%sparseconfigflag.ne.0) then
-     call mympii8reduceone(totwalks)
-     call mympiimax(www%maxsinglewalks);  call mympiimax(www%maxdoublewalks);
+     call mympii8reduceone(allwalks)
+     call mympiimax(www%maxtotsinglewalks);  call mympiimax(www%maxtotdoublewalks);
      call mympiimax(maxwalks)
   endif
 
-  OFLWR;  write(mpifileptr, *) "Maximum number of"
-  write(mpifileptr, *) "           single walks= ",  www%maxsinglewalks
-  write(mpifileptr, *) "           double walks= ",  www%maxdoublewalks;  
-  write(mpifileptr, *) "            total walks= ",  maxwalks;  
-  WRFL "  TOTAL walks:", totwalks,"maxwalks*numconfig",int(maxwalks,8)*www%numconfig
+  OFLWR;  
+  WRFL    "Maximum number of"
+  WRFL    "           single walks=  ",  www%maxtotsinglewalks
+  WRFL    "           double walks=  ",  www%maxtotdoublewalks;  
+  WRFL    "            total walks=  ",  maxwalks;  
+  WRFL    "TOTAL walks:    ", allwalks
+  if (www%sparseconfigflag.ne.0) then
+     WRFL "maxwalks*nprocs:",int(maxwalks,8)*nprocs
+  endif
   WRFL; CFL
 
 end subroutine getnumwalks
@@ -741,8 +765,10 @@ subroutine hops(www)
   use mpisubmod
   implicit none
   type(walktype) :: www
-  integer :: ii,iwalk,iconfig,ihop,flag,iproc,isize
-  integer*8 :: totsinglehops,totdoublehops, totsinglewalks,totdoublewalks
+  integer :: ii,iwalk,iconfig,ihop,flag,iproc,isize, &
+       totsinglehops,totdoublehops, totsinglewalks,totdoublewalks
+  integer*8 :: allsinglehops,alldoublehops, allsinglewalks,alldoublewalks
+
 !!$  integer :: numsinglehopsbyproc(nprocs), numdoublehopsbyproc(nprocs)
 
   allocate(www%numsinglehops(www%configstart:www%configend+1),&
@@ -798,17 +824,17 @@ subroutine hops(www)
         if (www%numsinglewalks(iconfig).gt.0) then
            ihop=1
            if (ii.eq.1) then
-              www%singlehop(1,iconfig)=www%singlewalk(1,iconfig)
+              www%singlehop(1,iconfig)=www%singlewalk(1+www%scol(iconfig))
               www%singlehopwalkstart(1,iconfig)=1
            endif
            do iwalk=2,www%numsinglewalks(iconfig)
-              if (www%singlewalk(iwalk,iconfig).ne.www%singlewalk(iwalk-1,iconfig)) then
+              if (www%singlewalk(iwalk+www%scol(iconfig)).ne.www%singlewalk(iwalk-1+www%scol(iconfig))) then
                  if (ii.eq.1) then
                     www%singlehopwalkend(ihop,iconfig)=iwalk-1
                  endif
                  ihop=ihop+1
                  if (ii.eq.1) then
-                    www%singlehop(ihop,iconfig)=www%singlewalk(iwalk,iconfig)
+                    www%singlehop(ihop,iconfig)=www%singlewalk(iwalk+www%scol(iconfig))
                     www%singlehopwalkstart(ihop,iconfig)=iwalk
                  endif
               endif
@@ -837,17 +863,17 @@ subroutine hops(www)
         if (www%numdoublewalks(iconfig).gt.0) then
            ihop=1
            if (ii.eq.1) then
-              www%doublehop(1,iconfig)=www%doublewalk(1,iconfig)
+              www%doublehop(1,iconfig)=www%doublewalk(1+www%dcol(iconfig))
               www%doublehopwalkstart(1,iconfig)=1
            endif
            do iwalk=2,www%numdoublewalks(iconfig)
-              if (www%doublewalk(iwalk,iconfig).ne.www%doublewalk(iwalk-1,iconfig)) then
+              if (www%doublewalk(iwalk+www%dcol(iconfig)).ne.www%doublewalk(iwalk-1+www%dcol(iconfig))) then
                  if (ii.eq.1) then
                     www%doublehopwalkend(ihop,iconfig)=iwalk-1
                  endif
                  ihop=ihop+1
                  if (ii.eq.1) then
-                    www%doublehop(ihop,iconfig)=www%doublewalk(iwalk,iconfig)
+                    www%doublehop(ihop,iconfig)=www%doublewalk(iwalk+www%dcol(iconfig))
                     www%doublehopwalkstart(ihop,iconfig)=iwalk
                  endif
               endif
@@ -1043,16 +1069,21 @@ subroutine hops(www)
   WRFL " Single hops this processor ",totsinglehops, " of ", totsinglewalks
   WRFL " Double hops this processor ",totdoublehops, " of ", totdoublewalks; CFL
 
+  allsinglehops=totsinglehops
+  allsinglewalks=totsinglewalks
+  alldoublehops=totdoublehops
+  alldoublewalks=totdoublewalks
+
 #ifdef MPIFLAG
   if (www%sparseconfigflag.ne.0) then
-     call mympii8reduceone(totsinglehops);  call mympii8reduceone(totdoublehops)
-     call mympii8reduceone(totsinglewalks);  call mympii8reduceone(totdoublewalks)
+     call mympii8reduceone(allsinglehops);  call mympii8reduceone(alldoublehops)
+     call mympii8reduceone(allsinglewalks);  call mympii8reduceone(alldoublewalks)
      call mympiimax(www%maxnumsinglehops);  call mympiimax(www%maxnumdoublehops)
   endif
 #endif
 
-  OFLWR " Single hops total ",totsinglehops, " of ", totsinglewalks
-  WRFL " Double hops total ",totdoublehops, " of ", totdoublewalks
+  OFLWR " Single hops total ",allsinglehops, " of ", allsinglewalks
+  WRFL " Double hops total ",alldoublehops, " of ", alldoublewalks
   WRFL "    Max single hops ", www%maxnumsinglehops
   WRFL "    Max double hops ", www%maxnumdoublehops
   WRFL; CFL

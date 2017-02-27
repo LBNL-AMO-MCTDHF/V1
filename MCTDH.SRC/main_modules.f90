@@ -301,29 +301,30 @@ module walkmod
 !!       WALKS         !!
 !!       WALKS         !!
 
-     integer :: maxsinglewalks=0,maxdoublewalks=0
-
-     ! gives config2 for (iwalk,config1)
-     integer, allocatable :: singlewalk(:,:)  
+     integer :: maxtotsinglewalks=0,maxtotdoublewalks=0 !! total for all configs on each proc
+     integer :: singlemaxwalks=0, doublemaxwalks=0      !! old maxsinglewalks and maxdoublewalks
+                                                        !! only used for listorder
+     ! gives config2 for (iwalk,config1)       for sparse indexing
+     integer, allocatable :: singlewalk(:),  scol(:)  
      ! gives walk number for (1:numsinglediagwalks,config1), max numsinglediagwalks=numelec
      integer, allocatable :: singlediag(:,:)  
      
      ! numconfig, numconfig - (iwalk, config1) - 
-     integer, allocatable :: singlewalkdirphase(:,:)
+     integer, allocatable :: singlewalkdirphase(:)
      
      ! indices on matrix element - 1:2, numconfig,numconfig
-     integer, allocatable :: singlewalkopspf(:,:,:)
+     integer, allocatable :: singlewalkopspf(:,:)
 
      integer, allocatable :: numsinglewalks(:) ! numconfig
      integer, allocatable :: numsinglediagwalks(:) ! numconfig
 
      ! 1:4, numconfig, numconfig - (1:4, iwalk, config1)
-     integer, allocatable :: doublewalkdirspf(:,:,:)
+     integer, allocatable :: doublewalkdirspf(:,:)
 
      ! iwalk, config1
-     integer, allocatable :: doublewalkdirphase(:,:)
+     integer, allocatable :: doublewalkdirphase(:)
 
-     integer, allocatable :: doublewalk(:,:)
+     integer, allocatable :: doublewalk(:),   dcol(:)
      ! gives walk number for (1:numdoublediagwalks,config1), max numdoublediagwalks=numelec*(numelec-1)
      integer, allocatable :: doublediag(:,:)
      integer, allocatable :: numdoublewalks(:)

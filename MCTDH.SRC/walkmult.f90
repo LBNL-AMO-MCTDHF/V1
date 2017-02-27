@@ -206,9 +206,9 @@ contains
              config2=www%singlehop(ihop,config1)
              csum=0d0
              do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
-                csum=csum +  onebodymat(www%singlewalkopspf(1,iwalk,config1), &
-                     www%singlewalkopspf(2,iwalk,config1)) *  &
-                     www%singlewalkdirphase(iwalk,config1)
+                csum=csum +  onebodymat(www%singlewalkopspf(1,iwalk+www%scol(config1)), &
+                     www%singlewalkopspf(2,iwalk+www%scol(config1))) *  &
+                     www%singlewalkdirphase(iwalk+www%scol(config1))
              enddo
              outsum(:)=outsum(:)+avectorin(:,config2) * csum * myrvector(:)
           enddo
@@ -229,9 +229,9 @@ contains
           do idiag=1,www%numsinglediagwalks(config1)
              iwalk=www%singlediag(idiag,config1)
              csum=csum+&
-                  onebodymat(www%singlewalkopspf(1,iwalk,config1), &
-                  www%singlewalkopspf(2,iwalk,config1)) *  &
-                  www%singlewalkdirphase(iwalk,config1)
+                  onebodymat(www%singlewalkopspf(1,iwalk+www%scol(config1)), &
+                  www%singlewalkopspf(2,iwalk+www%scol(config1))) *  &
+                  www%singlewalkdirphase(iwalk+www%scol(config1))
           enddo
           avectorout(:,config1)=avectorout(:,config1) + &
                avectorin(:,config1) * csum * myrvector(:)
@@ -324,11 +324,11 @@ contains
              csum=0d0
              do iwalk=www%doublehopwalkstart(ihop,config1),www%doublehopwalkend(ihop,config1)
                 csum=csum+&
-                     twobodymat(www%doublewalkdirspf(1,iwalk,config1), &
-                     www%doublewalkdirspf(2,iwalk,config1),   &
-                     www%doublewalkdirspf(3,iwalk,config1),   &
-                     www%doublewalkdirspf(4,iwalk,config1))* &
-                     www%doublewalkdirphase(iwalk,config1)
+                     twobodymat(www%doublewalkdirspf(1,iwalk+www%dcol(config1)), &
+                     www%doublewalkdirspf(2,iwalk+www%dcol(config1)),   &
+                     www%doublewalkdirspf(3,iwalk+www%dcol(config1)),   &
+                     www%doublewalkdirspf(4,iwalk+www%dcol(config1)))* &
+                     www%doublewalkdirphase(iwalk+www%dcol(config1))
              enddo
              outsum(:)=outsum(:)+avectorin(:,config2) *  csum * myrvector(:)
           enddo
@@ -347,11 +347,11 @@ contains
           do idiag=1,www%numdoublediagwalks(config1)
              iwalk=www%doublediag(idiag,config1)
              csum=csum+&
-                  twobodymat(www%doublewalkdirspf(1,iwalk,config1), &
-                  www%doublewalkdirspf(2,iwalk,config1),   &
-                  www%doublewalkdirspf(3,iwalk,config1),   &
-                  www%doublewalkdirspf(4,iwalk,config1))* &
-                  www%doublewalkdirphase(iwalk,config1)
+                  twobodymat(www%doublewalkdirspf(1,iwalk+www%dcol(config1)), &
+                  www%doublewalkdirspf(2,iwalk+www%dcol(config1)),   &
+                  www%doublewalkdirspf(3,iwalk+www%dcol(config1)),   &
+                  www%doublewalkdirspf(4,iwalk+www%dcol(config1)))* &
+                  www%doublewalkdirphase(iwalk+www%dcol(config1))
           enddo
           avectorout(:,config1)=avectorout(:,config1) + &
                avectorin(:,config1) * csum * myrvector(:)

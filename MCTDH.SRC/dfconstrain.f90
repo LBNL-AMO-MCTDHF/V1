@@ -891,10 +891,10 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
 
            do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
 
-              dirphase=www%singlewalkdirphase(iwalk,config1)
+              dirphase=www%singlewalkdirphase(iwalk+www%scol(config1))
 
-              ispf=www%singlewalkopspf(1,iwalk,config1)
-              jspf=www%singlewalkopspf(2,iwalk,config1)
+              ispf=www%singlewalkopspf(1,iwalk+www%scol(config1))
+              jspf=www%singlewalkopspf(2,iwalk+www%scol(config1))
               
               flag=0
               select case (iwhich)
@@ -1276,9 +1276,9 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
 
            do iwalk=www%singlehopwalkstart(ihop,config1),www%singlehopwalkend(ihop,config1)
               
-              dirphase=www%singlewalkdirphase(iwalk,config1)
-              ispf=www%singlewalkopspf(1,iwalk,config1)
-              jspf=www%singlewalkopspf(2,iwalk,config1)
+              dirphase=www%singlewalkdirphase(iwalk+www%scol(config1))
+              ispf=www%singlewalkopspf(1,iwalk+www%scol(config1))
+              jspf=www%singlewalkopspf(2,iwalk+www%scol(config1))
 
               flag=0
               if (shells(ispf).ne.shells(jspf)) then
