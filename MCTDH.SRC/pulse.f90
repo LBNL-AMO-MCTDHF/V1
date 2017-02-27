@@ -35,17 +35,17 @@ subroutine vectdpot0(myintime,invelflag,tdpotsout,imc,ilow,ihigh)
      tdpotsout(3)=tdpotvel0(myintime,3,ilow,ihigh)
   endif
 
-  if (conjgpropflag.ne.0) then
-     select case (imc)
-     case(-1)
-        tdpotsout(:)=real(tdpotsout(:),8)
-     case(1)
-     case(2)
-        tdpotsout(:)=ALLCON(tdpotsout(:))
-     case default
-        OFLWR "WHOOPS?? conjgprop",imc; CFLST
-     end select
-  endif
+!  if (conjgpropflag.ne.0) then
+!     select case (imc)
+!     case(-1)
+!        tdpotsout(:)=real(tdpotsout(:),8)
+!     case(1)
+!     case(2)
+!        tdpotsout(:)=ALLCON(tdpotsout(:))
+!     case default
+!        OFLWR "WHOOPS?? conjgprop",imc; CFLST
+!     end select
+!  endif
 
 end subroutine vectdpot0
 

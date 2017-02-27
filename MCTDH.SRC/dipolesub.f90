@@ -6,22 +6,16 @@
 
 module dipolemod
   implicit none
-  DATATYPE, allocatable :: dipoleexpects(:,:,:),    dipolenormsq(:)
+  DATATYPE, allocatable :: dipoleexpects(:,:,:)
 end module dipolemod
 
 
 subroutine dipolesub_initial()
   use dipolemod
   use parameters
-  use pulse_parameters !! conjgpropflag
   implicit none
 
-  if (conjgpropflag.eq.0) then
-     allocate(dipoleexpects(0:autosize,3,1))   !! x,y,z
-  else
-     allocate(dipoleexpects(0:autosize,3,4))
-  endif
-  allocate(dipolenormsq(0:autosize))
+  allocate(dipoleexpects(0:autosize,3,1))   !! x,y,z
 
 end subroutine
 
@@ -29,7 +23,7 @@ end subroutine
 subroutine dipolesub_final()
   use dipolemod
   implicit none
-  deallocate( dipoleexpects, dipolenormsq)
+  deallocate( dipoleexpects )
 
 end subroutine dipolesub_final
 
@@ -57,7 +51,7 @@ module dipsubonemod
 contains
 
 subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
-     in_aket,inspfs,dipole_expects)
+     in_aket,in_spfbra,in_spfket,diff_flag,dipole_expects)
   use r_parameters
   use spfsize_parameters
   use walkmod
@@ -71,7 +65,9 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   implicit none
   type(walktype),intent(in) :: wwin
   type(walktype),target,intent(in) :: bbin
-  DATATYPE, intent(in) :: inspfs(  spfsize, wwin%nspf ), &
+  logical,intent(in) :: diff_flag   !! are in_spfbra, in_spfket different?
+  DATATYPE, intent(in) :: in_spfbra(  spfsize, wwin%nspf ), &
+       in_spfket(  spfsize, wwin%nspf ), &
        in_abra(numr,wwin%firstconfig:wwin%lastconfig),&
        in_aket(numr,wwin%firstconfig:wwin%lastconfig)
   DATATYPE,intent(out) :: dipole_expects(3)
@@ -81,9 +77,7 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   DATAECS :: rvector(numr)
 !!$  DATATYPE :: norm   !! datatype in case abra.ne.aket
   integer :: i,lowspf,highspf,numspf
-#ifdef CNORMFLAG
   DATATYPE,target :: smo(wwin%nspf,wwin%nspf)
-#endif
 
   lowspf=1; highspf=wwin%nspf
   if (parorbsplit.eq.1) then
@@ -107,12 +101,16 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   endif
 
 #ifndef CNORMFLAG
-  workspfs(:,:)=inspfs(:,:)
-#else
+  if (.not.diff_flag) then
+     workspfs(:,:)=in_spfbra(:,:)
+  else
+#endif
   call bioset(dipbiovar,smo,numr,bbin)
   dipbiovar%hermonly=.true.
-  call biortho(inspfs,inspfs,workspfs,abra,dipbiovar)
+  call biortho(in_spfbra,in_spfket,workspfs,abra,dipbiovar)
   dipbiovar%hermonly=.false.
+#ifndef CNORMFLAG
+  endif
 #endif
 
 
@@ -141,7 +139,7 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
 
   dipolemat(:,:)=0d0
   if (numspf.gt.0) then
-     call mult_zdipole(numspf,inspfs(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
+     call mult_zdipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
   endif
@@ -167,7 +165,7 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
 
   dipolemat(:,:)=0d0
   if (numspf.gt.0) then
-     call mult_ydipole(numspf,inspfs(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
+     call mult_ydipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
 
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
@@ -194,7 +192,7 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
 
   dipolemat(:,:)=0d0
   if (numspf.gt.0) then
-     call mult_xdipole(numspf,inspfs(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
+     call mult_xdipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
 
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
@@ -677,104 +675,52 @@ contains
 
   end subroutine dipolecall
 
-end module dipcallsubmod
 
-
-   subroutine dipolesub0(inspfs,inavector)
+   subroutine dipolesub0(in_spfbra,in_spfket,in_abra,in_aket,diff_flag)
      use dipolemod
      use dipsubonemod
-     use dipcallsubmod
      use parameters
      use configmod
      use mpisubmod
-     use pulse_parameters !! conjgpropflag
+     use pulse_parameters !! reference_pulses
      implicit none
-     DATATYPE,intent(in) :: inspfs(totspfdim), inavector(tot_adim,mcscfnum)
-     DATATYPE :: myexpects(3), mcexpects(3,mcscfnum), dd(mcscfnum),&
+     logical,intent(in) :: diff_flag  !! are bra & ket different?
+     DATATYPE,intent(in) :: in_spfbra(totspfdim), in_abra(tot_adim,mcscfnum), &
+          in_spfket(totspfdim), in_aket(tot_adim,mcscfnum)
+     DATATYPE :: myexpects(3), mcexpects(3,mcscfnum), &
           axx(mcscfnum),ayy(mcscfnum),azz(mcscfnum),sxx(mcscfnum),syy(mcscfnum),&
           szz(mcscfnum),drivingoverlap(mcscfnum)
      character(len=SLN) :: dipfiles(3), tworkfiles(3), angworkfiles(3), ftfiles(9), &
           oworkfiles(9), ophotonfiles(9)
-     integer :: imc,sflag,getlen,ii
+     integer :: imc,sflag
      integer, save :: lastouttime=0, calledflag=0
      real*8 :: thistime
-     character(len=2) :: tl(4) = (/ "BA", "AB", "AA", "BB" /)
 
-     myexpects=0;mcexpects=0;axx=0;ayy=0;azz=0;sxx=0;syy=0;szz=0;dd=0;drivingoverlap=0
+     myexpects=0;mcexpects=0;axx=0;ayy=0;azz=0;sxx=0;syy=0;szz=0;drivingoverlap=0
 
-     if (conjgpropflag.ne.0) then
+     do imc=1,mcscfnum
+        call dipolesub_one(www,bioww,in_abra(:,imc),in_aket(:,imc),in_spfbra(:),in_spfket(:),&
+             diff_flag,mcexpects(:,imc))
+     enddo
 
-        if (mcscfnum.ne.2) then
-           OFLWR "Whoot? conjgpropflag mcscfnum",mcscfnum; CFLST
-        endif
-        if (drivingflag.ne.0) then
-           OFLWR "Driving not supported for conjprop yet"; CFLST
-        endif
-        dipolenormsq(calledflag)=0
-        if (tot_adim.gt.0) then
-           dipolenormsq(calledflag) = hermdot(inavector(:,2),inavector(:,1),tot_adim)
-        endif
-        if (par_consplit.ne.0) then
-           call mympireduceone(dipolenormsq(calledflag))
-        endif
-
-        OFLWR "   complex Domcke - off diagonal norm-squared ", dipolenormsq(calledflag)
-
-        call dipolesub_one(www,bioww,inavector(:,2),inavector(:,1), inspfs(:), myexpects(:))
-        dipoleexpects(calledflag,:,1)=myexpects(:)
-        call dipolesub_one(www,bioww,inavector(:,1),inavector(:,2), inspfs(:), myexpects(:))
-        dipoleexpects(calledflag,:,2)=myexpects(:)
-        call dipolesub_one(www,bioww,inavector(:,1),inavector(:,1), inspfs(:), myexpects(:))
-        dipoleexpects(calledflag,:,3)=myexpects(:)
-        call dipolesub_one(www,bioww,inavector(:,2),inavector(:,2), inspfs(:), myexpects(:))
-        dipoleexpects(calledflag,:,4)=myexpects(:)
-
-     else  !! conjgpropflag complex Domcke
-
-        do imc=1,mcscfnum
-           dd(imc)=0
-           if (tot_adim.gt.0) then
-              dd(imc) = hermdot(inavector(:,imc),inavector(:,imc),tot_adim)
-           endif
-           if (par_consplit.ne.0) then
-              call mympireduceone(dd(imc))
-           endif
-           call dipolesub_one(www,bioww,inavector(:,imc),inavector(:,imc),inspfs(:),mcexpects(:,imc))
-        enddo
-
-        if (drivingflag.ne.0) then
+     if (drivingflag.ne.0) then
 #ifdef CNORMFLAG
-           OFLWR "Error, driving with dipole not supported c-norm"; CFLST
+        OFLWR "Error, driving with dipole not supported c-norm"; CFLST
 #endif
-           call dipolesub_driving(axx,ayy,azz,sxx,syy,szz,mcscfnum)
-           mcexpects(1,:)=mcexpects(1,:)+axx(:)+CONJUGATE(axx(:))+sxx*drivingproportion**2
-           mcexpects(2,:)=mcexpects(2,:)+ayy(:)+CONJUGATE(ayy(:))+syy*drivingproportion**2
-           mcexpects(3,:)=mcexpects(3,:)+azz(:)+CONJUGATE(azz(:))+szz*drivingproportion**2
+        call dipolesub_driving(axx,ayy,azz,sxx,syy,szz,mcscfnum)
+        mcexpects(1,:)=mcexpects(1,:)+axx(:)+CONJUGATE(axx(:))+sxx*drivingproportion**2
+        mcexpects(2,:)=mcexpects(2,:)+ayy(:)+CONJUGATE(ayy(:))+syy*drivingproportion**2
+        mcexpects(3,:)=mcexpects(3,:)+azz(:)+CONJUGATE(azz(:))+szz*drivingproportion**2
 
 !! for time slot zero
-           call getdrivingoverlap(drivingoverlap,mcscfnum)
-           dd(:)=dd(:)+drivingproportion**2 + drivingoverlap(:) + CONJUGATE(drivingoverlap(:))
-        endif
+        call getdrivingoverlap(drivingoverlap,mcscfnum)
+     endif
 
-        dipoleexpects(calledflag,:,1)=0d0
-        dipolenormsq(calledflag)=0d0
+     dipoleexpects(calledflag,:,1)=0d0
 
-        do imc=1,mcscfnum
-
-           dipolenormsq(calledflag) = dipolenormsq(calledflag) + dd(imc)
-
-!! 101414 REAL-VALUED FOR HERM.
-!! 1-2016 v1.17 should not be necessary with realflag in mult_zdipole(in,out,realflag) etc.
- 
-#ifndef CNORMFLAG
-           dipoleexpects(calledflag,:,1) = dipoleexpects(calledflag,:,1) + real(mcexpects(:,imc),8) / mcscfnum
-#else
-           dipoleexpects(calledflag,:,1) = dipoleexpects(calledflag,:,1) + mcexpects(:,imc) / mcscfnum
-#endif
-
-        enddo
-
-     endif  !! conjgpropflag complex Domcke
+     do imc=1,mcscfnum
+        dipoleexpects(calledflag,:,1) = dipoleexpects(calledflag,:,1) + mcexpects(:,imc) / mcscfnum
+     enddo
 
      if (mod(calledflag,dipmodtime).eq.0.and.calledflag.gt.0) then
 
@@ -790,80 +736,23 @@ end module dipcallsubmod
 !!$  subroutine dipolecall(numdata, indipolearrays, outenames, outtworknames, outangworknames, &
 !!$       outftnames, outoworknames, outophotonnames, sflag)
 
-        if (conjgpropflag.eq.0) then
-           dipfiles(:) = (/ xdipfile, ydipfile, zdipfile /)
-           tworkfiles(:) = (/ xtworkfile, ytworkfile, ztworkfile /)
-           angworkfiles(:) = (/ yztworkfile, zxtworkfile, xytworkfile /)
-           ftfiles(:) = (/ xdftfile, ydftfile, zdftfile, &
-                xydftfile, xzdftfile, yxdftfile, yzdftfile, zxdftfile, zydftfile /)
-           oworkfiles(:) = (/ xoworkfile, yoworkfile, zoworkfile, &
-                xyoworkfile, xzoworkfile, yxoworkfile, yzoworkfile, zxoworkfile, zyoworkfile /)
-           ophotonfiles(:) = (/ xophotonfile, yophotonfile, zophotonfile, &
-                xyophotonfile, xzophotonfile, yxophotonfile, yzophotonfile, zxophotonfile, zyophotonfile /)
+        dipfiles(:) = (/ xdipfile, ydipfile, zdipfile /)
+        tworkfiles(:) = (/ xtworkfile, ytworkfile, ztworkfile /)
+        angworkfiles(:) = (/ yztworkfile, zxtworkfile, xytworkfile /)
+        ftfiles(:) = (/ xdftfile, ydftfile, zdftfile, &
+             xydftfile, xzdftfile, yxdftfile, yzdftfile, zxdftfile, zydftfile /)
+        oworkfiles(:) = (/ xoworkfile, yoworkfile, zoworkfile, &
+             xyoworkfile, xzoworkfile, yxoworkfile, yzoworkfile, zxoworkfile, zyoworkfile /)
+        ophotonfiles(:) = (/ xophotonfile, yophotonfile, zophotonfile, &
+             xyophotonfile, xzophotonfile, yxophotonfile, yzophotonfile, zxophotonfile, zyophotonfile /)
 
-           if (reference_pulses.eq.0) then
-              call dipolecall(calledflag, dipoleexpects(:,:,1), &
-                   dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 0, numpulses)
-           else
-              call dipolecall(calledflag, dipoleexpects(:,:,1), &
-                   dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 1, reference_pulses)
-           endif
-
-        else   !! conjgpropflag complex Domcke:
-           do ii=1,4
-              dipfiles(:) = (/ &
-                   xdipfile(1:getlen(xdipfile))//tl(ii),&
-                   ydipfile(1:getlen(ydipfile))//tl(ii),&
-                   zdipfile(1:getlen(zdipfile))//tl(ii) /)
-              tworkfiles(:) = (/ &
-                   xtworkfile(1:getlen(xtworkfile))//tl(ii),&
-                   ytworkfile(1:getlen(ytworkfile))//tl(ii),&
-                   ztworkfile(1:getlen(ztworkfile))//tl(ii) /)
-              angworkfiles(:) = (/ &
-                   yztworkfile(1:getlen(yztworkfile))//tl(ii),&
-                   zxtworkfile(1:getlen(zxtworkfile))//tl(ii),&
-                   xytworkfile(1:getlen(xytworkfile))//tl(ii) /)
-              ftfiles(:) = (/ &
-                   xdftfile(1:getlen(xdftfile))//tl(ii),&
-                   ydftfile(1:getlen(ydftfile))//tl(ii),&
-                   zdftfile(1:getlen(zdftfile))//tl(ii),&
-                   xydftfile(1:getlen(xydftfile))//tl(ii),&
-                   xzdftfile(1:getlen(xzdftfile))//tl(ii),&
-                   yxdftfile(1:getlen(yxdftfile))//tl(ii),&
-                   yzdftfile(1:getlen(yzdftfile))//tl(ii),&
-                   zxdftfile(1:getlen(zxdftfile))//tl(ii),&
-                   zydftfile(1:getlen(zydftfile))//tl(ii) /)
-              oworkfiles(:) = (/ &
-                   xoworkfile(1:getlen(xoworkfile))//tl(ii),&
-                   yoworkfile(1:getlen(yoworkfile))//tl(ii),&
-                   zoworkfile(1:getlen(zoworkfile))//tl(ii),&
-                   xyoworkfile(1:getlen(xyoworkfile))//tl(ii),&
-                   xzoworkfile(1:getlen(xzoworkfile))//tl(ii),&
-                   yxoworkfile(1:getlen(yxoworkfile))//tl(ii),&
-                   yzoworkfile(1:getlen(yzoworkfile))//tl(ii),&
-                   zxoworkfile(1:getlen(zxoworkfile))//tl(ii),&
-                   zyoworkfile(1:getlen(zyoworkfile))//tl(ii) /)
-              ophotonfiles(:) = (/ &
-                   xophotonfile(1:getlen(xophotonfile))//tl(ii),&
-                   yophotonfile(1:getlen(yophotonfile))//tl(ii),&
-                   zophotonfile(1:getlen(zophotonfile))//tl(ii),&
-                   xyophotonfile(1:getlen(xyophotonfile))//tl(ii),&
-                   xzophotonfile(1:getlen(xzophotonfile))//tl(ii),&
-                   yxophotonfile(1:getlen(yxophotonfile))//tl(ii),&
-                   yzophotonfile(1:getlen(yzophotonfile))//tl(ii),&
-                   zxophotonfile(1:getlen(zxophotonfile))//tl(ii),&
-                   zyophotonfile(1:getlen(zyophotonfile))//tl(ii) /)
-
-              if (reference_pulses.eq.0) then
-                 call dipolecall(calledflag, dipoleexpects(:,:,ii), &
-                      dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 0, numpulses)
-              else
-                 call dipolecall(calledflag, dipoleexpects(:,:,ii), &
-                      dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 1, reference_pulses)
-              endif
-
-           enddo !! do ii=1,4
-        endif    !! conjgpropflag
+        if (reference_pulses.eq.0) then
+           call dipolecall(calledflag, dipoleexpects(:,:,1), &
+                dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 0, numpulses)
+        else
+           call dipolecall(calledflag, dipoleexpects(:,:,1), &
+                dipfiles, tworkfiles, angworkfiles, ftfiles, oworkfiles, ophotonfiles, sflag, 1, reference_pulses)
+        endif
 
         OFLWR "     ..done emission/absorption"; CFL
 
@@ -873,39 +762,41 @@ end module dipcallsubmod
 
    end subroutine dipolesub0
 
+end module dipcallsubmod
+
 
 subroutine dipolesub()   !! action 21
   use parameters
+  use dipcallsubmod
   use xxxmod
   implicit none
   integer,save :: xcalledflag=0
 
   if (mod(xcalledflag,autosteps).eq.0) then
-     call dipolesub0(yyy%cmfspfs(:,0),yyy%cmfavec(:,:,0))
+     call dipolesub0(yyy%cmfspfs(:,0),yyy%cmfspfs(:,0),yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),.false.)
   endif
   xcalledflag=xcalledflag+1
 
 end subroutine dipolesub
 
 
-subroutine redo_dipolesub(alg)
-  use dipolemod
-  use dipsubonemod
-  use dipcallsubmod
+subroutine redo_dipolesub(alg,diff_flag)  !! action 29
   use parameters
+  use dipcallsubmod
   use configmod
   use xxxmod
   use mpisubmod
-  use pulse_parameters !! conjgpropflag
   use mpimod
   implicit none
   integer, intent(in) :: alg
+  logical,intent(in) :: diff_flag   !! read two different files using fluxmofile2 etc.?
   integer :: k,nt,i,molength,alength,  BatchSize,NBat,ketbat,ketreadsize, &
        kettime,imc, ispf, myiostat
   real*8 :: MemTot,MemVal, dt, MemNum
   DATATYPE :: nullvector(numr)
   DATATYPE, allocatable :: ketmo(:,:,:),ketavec(:,:,:,:),&
-       read_ketmo(:,:),read_ketavec(:,:,:,:)
+       read_ketmo(:,:),read_ketavec(:,:,:,:),bramo(:,:,:),braavec(:,:,:,:),&
+       read_bramo(:,:),read_braavec(:,:,:,:)
 
   nullvector=0
 
@@ -999,6 +890,39 @@ subroutine redo_dipolesub(alg)
   endif
   read_ketavec=0
 
+  if (.not.diff_flag) then  !! avoid warn ubound
+     allocate(bramo(1,1,1),  braavec(1,1,1,1), read_bramo(1,1), read_braavec(1,1,1,1))
+     bramo=0; braavec=0; read_bramo=0; read_braavec=0
+  else
+
+     allocate(bramo(spfsize,nspf,BatchSize), &
+          braavec(numr,www%firstconfig:www%lastconfig,mcscfnum,BatchSize))
+     bramo=0
+     if (www%lastconfig.ge.www%firstconfig) then
+        braavec=0
+     endif
+     if (myrank.eq.1) then
+        if (parorbsplit.eq.3) then
+           allocate(read_bramo(spfsize*nprocs,nspf))
+        else
+           allocate(read_bramo(spfsize,nspf))
+        endif
+     else
+        allocate(read_bramo(1,nspf))
+     endif
+     read_bramo=0
+
+     if (myrank.eq.1) then
+        allocate(read_braavec(numr,www%numconfig,mcscfnum,BatchSize))
+     else
+        allocate(read_braavec(1,1,mcscfnum,BatchSize))
+     endif
+     read_braavec=0
+
+  endif
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
   NBat=ceiling(real(nt+1)/real(BatchSize))
   ketreadsize=0
 
@@ -1013,13 +937,15 @@ subroutine redo_dipolesub(alg)
   write(mpifileptr,*) "AVEC record length is ",alength
   call closefile()
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 !! begin the ket batch read loop
   do ketbat=1,NBat
 
      OFLWR "Reading batch ", ketbat, " of ", NBat; CFL
      ketreadsize=min(BatchSize,nt+1-(ketbat-1)*BatchSize)
 
-!! ORBITALS
+!! KET ORBITALS
      if(myrank.eq.1) then
         open(1001,file=fluxmofile,status="old",form="unformatted",&
              access="direct",recl=molength,iostat=myiostat)
@@ -1045,7 +971,7 @@ subroutine redo_dipolesub(alg)
      if (myrank.eq.1) then
         close(1001)
      endif
-!! A-VECTOR
+!! KET A-VECTOR
      if(myrank.eq.1) then
         open(1002,file=fluxafile,status="old",form="unformatted",&
              access="direct",recl=alength,iostat=myiostat)
@@ -1076,16 +1002,84 @@ subroutine redo_dipolesub(alg)
         enddo
      endif
 
+     if (diff_flag) then
+
+!! BRA ORBITALS
+        if(myrank.eq.1) then
+           open(2001,file=fluxmofile2,status="old",form="unformatted",&
+                access="direct",recl=molength,iostat=myiostat)
+           call checkiostat(myiostat,"opening "//fluxmofile2)
+        endif
+        do i=1,ketreadsize
+           if(myrank.eq.1) then
+              k=FluxSkipMult*((ketbat-1)*BatchSize+i-1)+1
+              read(2001,rec=k,iostat=myiostat) read_bramo(:,:) 
+              call checkiostat(myiostat,"reading "//fluxmofile)
+           endif
+           if (parorbsplit.ne.3) then
+              if (myrank.eq.1) then
+                 bramo(:,:,i)=read_bramo(:,:)
+              endif
+              call mympibcast(bramo(:,:,i),1,totspfdim)
+           else
+              do ispf=1,nspf
+                 call splitscatterv(read_bramo(:,ispf),bramo(:,ispf,i))
+              enddo
+           endif
+        enddo       !! do i=1,ketreadsize
+        if (myrank.eq.1) then
+           close(2001)
+        endif
+!! BRA A-VECTOR
+        if(myrank.eq.1) then
+           open(2002,file=fluxafile2,status="old",form="unformatted",&
+                access="direct",recl=alength,iostat=myiostat)
+           call checkiostat(myiostat,"opening "//fluxafile2)
+           do i=1,ketreadsize
+              k=FluxSkipMult*((ketbat-1)*BatchSize+i-1)+1
+              read(2002,rec=k,iostat=myiostat) read_braavec(:,:,:,i) 
+           enddo
+           call checkiostat(myiostat,"reading "//fluxafile2)
+           close(2002)
+        endif
+        if (par_consplit.eq.0) then
+           if (myrank.eq.1) then
+              braavec(:,:,:,1:ketreadsize)=read_braavec(:,:,:,1:ketreadsize)
+           endif
+           call mympibcast(braavec(:,:,:,1:ketreadsize),1,numr*www%numconfig*mcscfnum*ketreadsize)
+        else
+           do i=1,ketreadsize
+              do imc=1,mcscfnum
+                 if (tot_adim.gt.0) then
+                    call myscatterv(read_braavec(:,:,imc,i),&
+                         braavec(:,:,imc,i),configs_perproc(:)*numr)
+                 else
+                    call myscatterv(read_braavec(:,:,imc,i),&
+                         nullvector(:),configs_perproc(:)*numr)
+                 endif
+              enddo
+           enddo
+        endif
+
+     endif  ! diff_flag
+
+
 !! loop over all time for the ket of the dipole integral
      do kettime=1,ketreadsize
-
-        call dipolesub0(ketmo(:,:,kettime),ketavec(:,:,:,kettime))
-
+        if (diff_flag) then
+           call dipolesub0(bramo(:,:,kettime),ketmo(:,:,kettime),&
+                braavec(:,:,:,kettime),ketavec(:,:,:,kettime),.true.)
+        else
+           call dipolesub0(ketmo(:,:,kettime),ketmo(:,:,kettime),&
+                ketavec(:,:,:,kettime),ketavec(:,:,:,kettime),.false.)
+        endif
      enddo
 
   enddo  !! ketbat
 
   deallocate(ketmo, ketavec, read_ketmo, read_ketavec)
+  deallocate(bramo, braavec, read_bramo, read_braavec)
+
   OFLWR "Done recomputing dipole, stopping"; CFLST
 
 end subroutine redo_dipolesub

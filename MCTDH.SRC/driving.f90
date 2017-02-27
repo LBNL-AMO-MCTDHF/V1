@@ -293,7 +293,7 @@ subroutine drivinginit(inenergies)
 
   do imc=1,mcscfnum
      call dipolesub_one(www,bioww,yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),&
-          yyy%cmfspfs(:,0),myexpects(:))
+          yyy%cmfspfs(:,0),yyy%cmfspfs(:,0),.false.,myexpects(:))
      sxx(imc)=myexpects(1)
      syy(imc)=myexpects(2)
      szz(imc)=myexpects(3)

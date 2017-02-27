@@ -93,9 +93,9 @@ end module ham_parameters
 !!EE
 !!{\large \quad PULSE.  (If tdflag=1) }
 !!BB
-module pulse_parameters           !!      NAMELIST PULSE except for conjgpropflag
+module pulse_parameters           !!      NAMELIST PULSE
 integer :: numpulses=1            !!  number of pulses, enter pulsetype, omega, etc. for each
-integer :: reference_pulses=0     !!  for domcke method action 21. Enter numpulses+reference_pulses pulses, then the
+integer :: reference_pulses=0     !!  for domcke method action 21,29. Enter numpulses+reference_pulses pulses, then
                                   !!    output (eg absorption) is calc'd with e-field for pulses numpules+1 and up
 integer ::  pulsetype(100)=1      !!              !!  Pulsetype=1:  A(t) = pulsestrength * sin(w t)^2,
 real*8  :: omega(100)=1.d0        !!              !!  2:  A(t) = strength * sin(w t)^2 
@@ -113,7 +113,6 @@ real*8 :: pulsephi(100)=0.d0      !!              !!  polarization in xy plane
 real*8 :: maxpulsetime=1.d20     !!              !!  
 real*8 :: minpulsetime=0.d0      !!              !!  By default calc stops after pulse (overrides finaltime,
                                                  !!   numpropsteps); this will enforce minimum duration
-integer :: conjgpropflag=0       !! for complex Domcke
 end module pulse_parameters
 !!EE
 !!{\large \quad CONFIGURATIONS / SLATER DETERMINANTS}
@@ -377,25 +376,25 @@ character (len=SLN) :: ovlavectorfiles(50)="Bin/ovl.avector.bin" !!      (see nu
 character(len=SLN):: outovl="Dat/Overlaps.dat"                   !! for action 20
 character(len=SLN):: outmatel="Dat/Matel.dat"                    !! for action 20
 integer :: act21circ=0                                           !! set nonzero to enable circular polarization 
-                                                                 !!     output for action 21
-character(len=SLN):: xdipfile="Dat/XDipoleexpect.Dat",&          !! for action 21 dipole moments D(t)
+                                                                 !!     output for action 21,29
+character(len=SLN):: xdipfile="Dat/XDipoleexpect.Dat",&          !! for action 21,29 dipole moments D(t)
  ydipfile="Dat/YDipoleexpect.Dat",&
  zdipfile="Dat/ZDipoleexpect.Dat"                 
-character(len=SLN):: xtworkfile="Dat/XTWork.Dat",&               !! for action 21 work per pulse integral dt
+character(len=SLN):: xtworkfile="Dat/XTWork.Dat",&               !! for action 21,29 work per pulse integral dt
  ytworkfile="Dat/YTWork.Dat",ztworkfile="Dat/ZTWork.Dat",&       !!  "
  xytworkfile="Dat/XYTWork.Dat",yztworkfile="Dat/YZTWork.Dat",&   !!  "  circ polarization: three torque components
  zxtworkfile="Dat/ZXTWork.Dat"                                   !!  "  XY, YZ, ZX.
-character(len=SLN):: xdftfile="Dat/XDipoleft.Dat",&              !! for action 21 dipole moments D(omega)
+character(len=SLN):: xdftfile="Dat/XDipoleft.Dat",&              !! for action 21,29 dipole moments D(omega)
  ydftfile="Dat/YDipoleft.Dat", zdftfile="Dat/ZDipoleft.Dat",&    !! and emission/absorption
  xydftfile="Dat/XYDipoleft.Dat",xzdftfile="Dat/XZDipoleft.Dat",& !!  "  circ polarization: six components
  yxdftfile="Dat/YXDipoleft.Dat",yzdftfile="Dat/YZDipoleft.Dat",& !!  "  XY, XZ, YX, YZ, ZX, ZY
  zxdftfile="Dat/ZXDipoleft.Dat",zydftfile="Dat/ZYDipoleft.Dat"   !!  "  e.g. XY: X->Y, Y->(-X)
-character(len=SLN):: xoworkfile="Dat/XOWork.Dat",&               !! for action 21 work per pulse integral domega
+character(len=SLN):: xoworkfile="Dat/XOWork.Dat",&               !! for action 21,29 work per pulse integral domega
  yoworkfile="Dat/YOWork.Dat",zoworkfile="Dat/ZOWork.Dat",&       !!  "
  xyoworkfile="Dat/XYOWork.Dat",xzoworkfile="Dat/XZOWork.Dat",&   !!  "  circ polarization, six components
  yxoworkfile="Dat/YXOWork.Dat",yzoworkfile="Dat/YZOWork.Dat",&   !!  "
  zxoworkfile="Dat/ZXOWork.Dat",zyoworkfile="Dat/ZYOWork.Dat"     !!  "
-character(len=SLN):: xophotonfile="Dat/XOPhoton.Dat",&           !! for action 21 work per pulse integral domega
+character(len=SLN):: xophotonfile="Dat/XOPhoton.Dat",&           !! for action 21,29 work per pulse integral domega
  yophotonfile="Dat/YOPhoton.Dat",zophotonfile="Dat/ZOPhoton.Dat",&     !!  "
  xyophotonfile="Dat/XYOPhoton.Dat",xzophotonfile="Dat/XZOPhoton.Dat",& !!  "  circ polarization, six components
  yxophotonfile="Dat/YXOPhoton.Dat",yzophotonfile="Dat/YZOPhoton.Dat",& !!  "
@@ -473,10 +472,10 @@ real*8 :: keprojmaxrad=40        !!   "
 real*8 :: eground=0.d0           !! Eground=     !! energy to shift fourier transform for ACTIONS 1 16 17
                                                  !!   (AUTOCORRELATION AND PHOTOIONIZATION)
 complex*16 :: ceground=(0.d0,0d0)!!              !! input as complex-valued instead if you like
-real*8 :: autotimestep=1.d0      !! ACTIONS 1 and 21 (autocorrelation and emission/absorption):
+real*8 :: autotimestep=1.d0      !! ACTIONS 1,21,29 (autocorrelation and emission/absorption):
                                  !!   time step for fourier transform
 !!EE
-!!{\large \quad FTs for AUTOCORRELATION, PHOTOIONIZATION and EMISSION/ABSORPTION (actions 1,16,17,21)}
+!!{\large \quad FTs for AUTOCORRELATION, PHOTOIONIZATION and EMISSION/ABSORPTION (actions 1,16,17,21,29)}
 !!BB
 !! now defined for each action.  Variables in actions.f90.  Defaults in getparams.f90.
 !!
@@ -485,7 +484,7 @@ real*8 :: autotimestep=1.d0      !! ACTIONS 1 and 21 (autocorrelation and emissi
 !!                                  !!    window function is cos(pi t / 2 / tmax)**ftwindowpower 
 integer :: ftdiff=1                 !! fourier transform derivative of dipole moment not dipole moment
 !!EE
-!!{\large \quad EMISSION/ABSORPTION (action 21)}
+!!{\large \quad EMISSION/ABSORPTION (action 21,29)}
 !!BB
 integer :: hanningflag=0         !! for hanning window set nonzero action 1 autocorr
 integer :: diptime=100           !! For act=20, outputs copies every diptime atomic units
@@ -493,6 +492,7 @@ integer :: dipmodtime=100        !! do ft every autotimestep*dipmodtime
 real*8 :: dipolesumstart=0d0,&   !! range for integration of oscillator strength (e.g. for sum rule), photon
      dipolesumend=0d0            !!    energy atomic units (Hartree) start and end, dipolesumend default set
                                  !!    based on &pulse namelist input (depending on omegas)
+logical :: redobra=.false.       !! for complex Domcke action 29
 !!EE
 !!{\large \quad PHOTOIONIZATION (actions 15,16,17,27,28)}
 !!BB

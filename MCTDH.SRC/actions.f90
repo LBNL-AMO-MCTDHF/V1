@@ -517,7 +517,7 @@ subroutine actions_initial()
      case (28)
      case (29)
         call dipolesub_initial()
-        call redo_dipolesub(computeFlux)
+        call redo_dipolesub(computeFlux,redobra)
      case default
         OFLWR "Action not supported: ", actions(i); CFLST
      end select

@@ -38,7 +38,7 @@ subroutine getparams()
   use output_parameters
   use mpimod
   use orblabelmod
-  use pulse_parameters   !! conjgpropflag
+  use pulse_parameters   !! numpulses
   use actionlistmod      !! ftwindowpower,fttriwindow
   implicit none
   integer :: nargs, getlen, i, len,  ishell, ispf,j, myiostat, iiflag,needpulse,ipulse
@@ -97,7 +97,7 @@ subroutine getparams()
        reinterp_orbflag,spf_gridshift,load_avector_product,projspifile,readfullvector,walksinturn,&
        turnbatchsize,energyshift, pulseft_estep, finalstatsfile, fluxtsumfile, projfluxtsumfile,&
        sparsedfflag,sparseprime,sparsesummaflag, par_consplit, fttriwindow,&
-       pulsewindowtoo,conjgpropflag,dipolesumstart,dipolesumend,outmatel,numcatfiles,&
+       pulsewindowtoo,redobra,dipolesumstart,dipolesumend,outmatel,numcatfiles,&
        catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
        shuffle_dfwalktype,maxdgdim, messavec, messaamount,holeflag, angularflag, angprojspifile,&
        prepropflag, step_flag, postpropflag, scalarflag, angprojfluxtsumfile, &
@@ -668,10 +668,6 @@ subroutine getparams()
 
   if (numavectorfiles.gt.MXF.or.numspffiles.gt.MXF) then
      OFLWR "PROGRAMMER REDIM M X F",numavectorfiles,numspffiles,MXF; CFLST
-  endif
-
-  if (conjgpropflag.ne.0.and.mcscfnum.ne.2) then
-     OFLWR "For conjgpropflag, please set mcscfnum=2"; CFLST
   endif
 
   call openfile()
