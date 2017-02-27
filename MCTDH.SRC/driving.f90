@@ -286,14 +286,14 @@ subroutine drivinginit(inenergies)
   use dipsubonemod
   implicit none
   DATAECS,intent(in) :: inenergies(mcscfnum)
-  DATATYPE :: myexpects(3)
+  DATATYPE :: myexpects(3), blah
   integer :: imc
 
   orbs_driving(:,:)=RESHAPE(yyy%cmfspfs(:,0),(/spfsize,nspf/))
 
   do imc=1,mcscfnum
      call dipolesub_one(www,bioww,yyy%cmfavec(:,imc,0),yyy%cmfavec(:,imc,0),&
-          yyy%cmfspfs(:,0),yyy%cmfspfs(:,0),.false.,myexpects(:))
+          yyy%cmfspfs(:,0),yyy%cmfspfs(:,0),.false.,myexpects(:),blah)
      sxx(imc)=myexpects(1)
      syy(imc)=myexpects(2)
      szz(imc)=myexpects(3)

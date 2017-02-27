@@ -51,7 +51,7 @@ module dipsubonemod
 contains
 
 subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
-     in_aket,in_spfbra,in_spfket,diff_flag,dipole_expects)
+     in_aket,in_spfbra,in_spfket,diff_flag,dipole_expects,normsq)
   use r_parameters
   use spfsize_parameters
   use walkmod
@@ -70,12 +70,11 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
        in_spfket(  spfsize, wwin%nspf ), &
        in_abra(numr,wwin%firstconfig:wwin%lastconfig),&
        in_aket(numr,wwin%firstconfig:wwin%lastconfig)
-  DATATYPE,intent(out) :: dipole_expects(3)
+  DATATYPE,intent(out) :: dipole_expects(3),normsq
   DATATYPE,allocatable :: tempvector(:,:),tempspfs(:,:),abra(:,:),workspfs(:,:),&
        aket(:,:)
   DATATYPE :: nullcomplex(1),dipoles(3), dipolemat(wwin%nspf,wwin%nspf),csum
   DATAECS :: rvector(numr)
-!!$  DATATYPE :: norm   !! datatype in case abra.ne.aket
   integer :: i,lowspf,highspf,numspf
   DATATYPE,target :: smo(wwin%nspf,wwin%nspf)
 
@@ -113,12 +112,11 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   endif
 #endif
 
-
-!!$  csum=dot(abra,aket,wwin%totadim)
-!!$  if (wwin%parconsplit.ne.0) then
-!!$     call mympireduceone(csum)
-!!$  endif
-!!$  norm=sqrt(csum)
+  normsq=dot(abra,aket,wwin%totadim)
+  if (wwin%parconsplit.ne.0) then
+     call mympireduceone(normsq)
+  endif
+!!$  OFLWR "Norm-squared for dipole: ",normsq
 
 !! independent of R for now.  multiply by R for prolate  (R set to 1 for atom)
   call nucdipvalue(nullcomplex,dipoles)
@@ -676,7 +674,7 @@ contains
   end subroutine dipolecall
 
 
-   subroutine dipolesub0(in_spfbra,in_spfket,in_abra,in_aket,diff_flag)
+   subroutine dipolesub0(in_spfbra,in_spfket,in_abra,in_aket,diff_flag,normsq)
      use dipolemod
      use dipsubonemod
      use parameters
@@ -690,17 +688,18 @@ contains
      DATATYPE :: myexpects(3), mcexpects(3,mcscfnum), &
           axx(mcscfnum),ayy(mcscfnum),azz(mcscfnum),sxx(mcscfnum),syy(mcscfnum),&
           szz(mcscfnum),drivingoverlap(mcscfnum)
+     DATATYPE,intent(out) :: normsq(mcscfnum)
      character(len=SLN) :: dipfiles(3), tworkfiles(3), angworkfiles(3), ftfiles(9), &
           oworkfiles(9), ophotonfiles(9)
      integer :: imc,sflag
      integer, save :: lastouttime=0, calledflag=0
      real*8 :: thistime
 
-     myexpects=0;mcexpects=0;axx=0;ayy=0;azz=0;sxx=0;syy=0;szz=0;drivingoverlap=0
+     myexpects=0;mcexpects=0;axx=0;ayy=0;azz=0;sxx=0;syy=0;szz=0;normsq=0;drivingoverlap=0
 
      do imc=1,mcscfnum
         call dipolesub_one(www,bioww,in_abra(:,imc),in_aket(:,imc),in_spfbra(:),in_spfket(:),&
-             diff_flag,mcexpects(:,imc))
+             diff_flag,mcexpects(:,imc),normsq(imc))
      enddo
 
      if (drivingflag.ne.0) then
@@ -714,6 +713,7 @@ contains
 
 !! for time slot zero
         call getdrivingoverlap(drivingoverlap,mcscfnum)
+        normsq(:)=normsq(:)+drivingproportion**2 + drivingoverlap(:) + CONJUGATE(drivingoverlap(:))
      endif
 
      dipoleexpects(calledflag,:,1)=0d0
@@ -771,9 +771,11 @@ subroutine dipolesub()   !! action 21
   use xxxmod
   implicit none
   integer,save :: xcalledflag=0
+  DATATYPE :: normsq(mcscfnum)
 
+  normsq=0
   if (mod(xcalledflag,autosteps).eq.0) then
-     call dipolesub0(yyy%cmfspfs(:,0),yyy%cmfspfs(:,0),yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),.false.)
+     call dipolesub0(yyy%cmfspfs(:,0),yyy%cmfspfs(:,0),yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),.false.,normsq)
   endif
   xcalledflag=xcalledflag+1
 
@@ -793,12 +795,12 @@ subroutine redo_dipolesub(alg,diff_flag)  !! action 29
   integer :: k,nt,i,molength,alength,  BatchSize,NBat,ketbat,ketreadsize, &
        kettime,imc, ispf, myiostat
   real*8 :: MemTot,MemVal, dt, MemNum
-  DATATYPE :: nullvector(numr)
+  DATATYPE :: nullvector(numr), normsq(mcscfnum)
   DATATYPE, allocatable :: ketmo(:,:,:),ketavec(:,:,:,:),&
        read_ketmo(:,:),read_ketavec(:,:,:,:),bramo(:,:,:),braavec(:,:,:,:),&
        read_bramo(:,:),read_braavec(:,:,:,:)
 
-  nullvector=0
+  nullvector=0; normsq=0
 
   dt=real(FluxInterval*FluxSkipMult,8)*par_timestep; 
   nt=floor(real(numpropsteps,8)/fluxinterval/fluxskipmult)
@@ -1068,12 +1070,14 @@ subroutine redo_dipolesub(alg,diff_flag)  !! action 29
      do kettime=1,ketreadsize
         if (diff_flag) then
            call dipolesub0(bramo(:,:,kettime),ketmo(:,:,kettime),&
-                braavec(:,:,:,kettime),ketavec(:,:,:,kettime),.true.)
+                braavec(:,:,:,kettime),ketavec(:,:,:,kettime),.true.,normsq(:))
         else
            call dipolesub0(ketmo(:,:,kettime),ketmo(:,:,kettime),&
-                ketavec(:,:,:,kettime),ketavec(:,:,:,kettime),.false.)
+                ketavec(:,:,:,kettime),ketavec(:,:,:,kettime),.false.,normsq(:))
         endif
      enddo
+
+     OFLWR "Dipole norm-squared: ", normsq(:)
 
   enddo  !! ketbat
 
