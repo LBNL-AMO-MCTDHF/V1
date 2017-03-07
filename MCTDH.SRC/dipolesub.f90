@@ -351,7 +351,7 @@ contains
           open(171,file=outtworknames(ii),status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening "//outtworknames(ii))
           do i=0,numdata
-             write(171,'(A25,F10.5,400F20.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
+             write(171,'(A25,F10.5,400E20.8)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
                   totworksum0(i,ii),worksum0(i,ii,:)
           enddo
           close(171)
@@ -362,7 +362,7 @@ contains
              open(171,file=outtworknames(ii)(1:getlen(outtworknames(ii)))//number(2:7),status="unknown",iostat=myiostat)
              call checkiostat(myiostat,"opening "//outtworknames(ii)(1:getlen(outtworknames(ii)))//number(2:7))
              do i=0,numdata
-                write(171,'(A25,F10.5,400F20.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
+                write(171,'(A25,F10.5,400E20.8)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
                      totworksum0(i,ii),worksum0(i,ii,:)
              enddo
              close(171)
@@ -420,7 +420,7 @@ contains
 
 !! not worrying about complex values
 
-                write(171,'(A25,F10.5,400F20.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
+                write(171,'(A25,F10.5,400E20.8)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
                      totangworksum0(i,ii),angworksum0(i,ii,:)
 
              enddo
@@ -435,7 +435,7 @@ contains
 
 !! not worrying about complex values
 
-                   write(171,'(A25,F10.5,400F20.10)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
+                   write(171,'(A25,F10.5,400E20.8)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
                         totangworksum0(i,ii),angworksum0(i,ii,:)
 
                 enddo
@@ -598,7 +598,7 @@ contains
           do i=0,numdata
              myenergy=i*Estep
              if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
-                write(171,'(A25,F10.5,400F20.10)') " WORK EACH PULSE E= ", myenergy, &
+                write(171,'(A25,F10.5,400E20.8)') " WORK EACH PULSE E= ", myenergy, &
                      totworksums(i,ii), totworkpers(i,ii), worksums(i,ii,:), workpers(i,ii,:)
              endif
           enddo
@@ -609,7 +609,7 @@ contains
           do i=0,numdata
              myenergy=i*Estep
              if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
-                write(171,'(A25,F10.5,400F20.10)') "PHOTONS EACH PULSE E= ", myenergy, &
+                write(171,'(A25,F10.5,400E20.8)') "PHOTONS EACH PULSE E= ", myenergy, &
                      totphotsums(i,ii), totphotpers(i,ii), photsums(i,ii,:), photpers(i,ii,:)
              endif
           enddo
@@ -622,7 +622,7 @@ contains
              do i=0,numdata
                 myenergy=i*Estep
                 if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
-                   write(171,'(A25,F10.5,400F20.10)') " WORK EACH PULSE E= ", myenergy, &
+                   write(171,'(A25,F10.5,400E20.8)') " WORK EACH PULSE E= ", myenergy, &
                         totworksums(i,ii), totworkpers(i,ii), worksums(i,ii,:), workpers(i,ii,:)
                 endif
              enddo
@@ -633,7 +633,7 @@ contains
              do i=0,numdata
                 myenergy=i*Estep
                 if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
-                   write(171,'(A25,F10.5,400F20.10)') "PHOTONS EACH PULSE E= ", myenergy, &
+                   write(171,'(A25,F10.5,400E20.8)') "PHOTONS EACH PULSE E= ", myenergy, &
                         totphotsums(i,ii), totphotpers(i,ii), photsums(i,ii,:), photpers(i,ii,:)
                 endif
              enddo
