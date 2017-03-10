@@ -7,8 +7,8 @@ ARGO=arg.o
 
 AR=xiar
 CC = cc
-FC = ftn -openmp
-F90 = ftn -openmp
+FC = ftn
+F90 = ftn
 
 LAPACK =   -mkl
 	
@@ -18,5 +18,5 @@ MYINCLUDE=
 MYINCLUDE=/global/homes/d/djhaxton/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT/MCTDH.SRC/FFTW-INCLUDE
 MYINCLUDE=/project/projectdirs/mp74/git/V1.0BETA.030315.INTELFFT.git/MCTDH.SRC/FFTW-INCLUDE
 
-FFLAGS =
-F77FLAGS =
+FFLAGS =  -qopenmp
+F77FLAGS =  -qopenmp
