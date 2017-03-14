@@ -276,7 +276,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
 #endif
 
-  call system_clock(itime)
+  call myclock(itime)
 
   if (www%dfrestrictflag.le.www%dflevel) then
      OFLWR "WTF DFRESTRICT IS  ", www%dfrestrictflag,www%dflevel; CFLST
@@ -368,7 +368,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
   rrcond=lioreg
 
-  call system_clock(jtime);   times(1)=times(1)+jtime-itime
+  call myclock(jtime);   times(1)=times(1)+jtime-itime
 
   lowspf=1; highspf=www%nspf
   if (parorbsplit.eq.1.and.sparseconfigflag.eq.0) then
@@ -388,18 +388,18 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
   do iiyy=1,maxii
 
-     call system_clock(itime)
+     call myclock(itime)
 
      rhomatpairscopy(:,:,:,:)=0d0
      rhspairstemp(:,:)=0d0
      rhomatpairsbigcopy(:,:,:,:)=0d0
      rhspairsbigtemp(:,:)=0d0
 
-     call system_clock(jtime);     times(1)=times(1)+jtime-itime
+     call myclock(jtime);     times(1)=times(1)+jtime-itime
 
      do imc=1,numvects
         
-        call system_clock(itime)
+        call myclock(itime)
         
         avector(:,:)=inavectors(:,:,imc)
 
@@ -407,7 +407,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
         call get_smallwalkvects(www,avector,smallwalkvects,numr,1)
         
-        call system_clock(jtime);        times(3)=times(3)+jtime-itime;     itime=jtime
+        call myclock(jtime);        times(3)=times(3)+jtime-itime;     itime=jtime
 
 !! THIS TAKES A LONG TIME.
 !! should only need to do off diagonal blocks but doing all to check
@@ -421,7 +421,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
         else if (numspf.gt.0) then
            rhomat(:,:,:,lowspf:highspf)=0d0
         endif
-        call system_clock(jtime);    times(4)=times(4)+jtime-itime;     itime=jtime
+        call myclock(jtime);    times(4)=times(4)+jtime-itime;     itime=jtime
         if (parorbsplit.eq.1.and.sparseconfigflag.eq.0) then
            call mpiorbgather(rhomat,www%nspf**3)
         endif
@@ -429,16 +429,16 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
         if (sparseconfigflag.ne.0) then
            call mympireduce(rhomat,www%nspf**4)  
         endif
-        call system_clock(jtime);     times(5)=times(5)+jtime-itime;     itime=jtime
+        call myclock(jtime);     times(5)=times(5)+jtime-itime;     itime=jtime
         
         if (conway.eq.2.or.conway.eq.3) then
            rhomat(:,:,:,:)=rhomat(:,:,:,:)/timefac
         endif
-        call system_clock(jtime);     times(6)=times(6)+jtime-itime;     itime=jtime
+        call myclock(jtime);     times(6)=times(6)+jtime-itime;     itime=jtime
         
         call assigncomplexmat(realrhomat,rhomat, www%nspf**2,www%nspf**2)
      
-        call system_clock(jtime);     times(7)=times(7)+jtime-itime;     itime=jtime
+        call myclock(jtime);     times(7)=times(7)+jtime-itime;     itime=jtime
 
         call DGEMM('N','N',zzz*isize,zzz*www%nspf**2,zzz*www%nspf**2,1d0,projector,&
              zzz*isize,realrhomat,zzz*www%nspf**2,0d0,temppairs,zzz*isize)
@@ -450,7 +450,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
         call DGEMM('N','T',2*zzz*isize,zzz*isize,zzz*www%nspf**2,1d0,temppairsbig,&
              2*zzz*isize,projector,zzz*isize,0d0,rhomatpairsbig,2*zzz*isize)
 
-        call system_clock(jtime);     times(8)=times(8)+jtime-itime;     itime=jtime
+        call myclock(jtime);     times(8)=times(8)+jtime-itime;     itime=jtime
 
         if (iiyy.eq.1) then
            call sparseconfigmult(www,avector,avectorp,cptr,sptr,1,1,0,0,time,imc)
@@ -458,7 +458,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
            call sparseconfigpulsemult(www,avector,avectorp,cptr,sptr,iiyy-1,imc)
         endif
 
-        call system_clock(jtime);    times(9)=times(9)+jtime-itime;     itime=jtime
+        call myclock(jtime);    times(9)=times(9)+jtime-itime;     itime=jtime
         
         if (conway.ne.2.and.conway.ne.3) then
            avectorp(:,:)=avectorp(:,:)*timefac   
@@ -474,7 +474,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
               enddo
            enddo
         endif
-        call system_clock(jtime);    times(10)=times(10)+jtime-itime;   itime=jtime
+        call myclock(jtime);    times(10)=times(10)+jtime-itime;   itime=jtime
         if (parorbsplit.eq.1.and.sparseconfigflag.eq.0) then
            call mpiorbgather(rhs,www%nspf)
         endif
@@ -486,7 +486,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
            rhs(:,:) = (-1) * rhs(:,:)
         endif
 
-        call system_clock(jtime);    times(11)=times(11)+jtime-itime;   itime=jtime
+        call myclock(jtime);    times(11)=times(11)+jtime-itime;   itime=jtime
 
         call assigncomplexvec(realrhs(:,:,:),rhs(:,:), www%nspf**2)
         
@@ -505,11 +505,11 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
            rhspairsbigtemp(:,:)=rhspairsbigtemp(:,:)+rhspairsbig(:,:)
         endif
 
-        call system_clock(jtime);        times(12)=times(12)+jtime-itime;     
+        call myclock(jtime);        times(12)=times(12)+jtime-itime;     
         
      enddo    !!! IMC
 
-     call system_clock(itime)
+     call myclock(itime)
 
      if (conway.ne.1.and.conway.ne.3) then
 
@@ -550,7 +550,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 
      endif
 
-     call system_clock(jtime);   times(13)=times(13)+jtime-itime;    itime=jtime
+     call myclock(jtime);   times(13)=times(13)+jtime-itime;    itime=jtime
 
      tempmatel(:,:)=0d0
 
@@ -577,7 +577,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
         cptr%xconmatelzz(:,:)=  tempmatel(:,:)
      end select
 
-     call system_clock(jtime);        times(14)=times(14)+jtime-itime;  
+     call myclock(jtime);        times(14)=times(14)+jtime-itime;  
 
   enddo
 

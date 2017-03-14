@@ -24,17 +24,17 @@ subroutine get_reducedham()
   implicit none
   integer :: itime,jtime,times(100)
 
-  call system_clock(itime)
+  call myclock(itime)
   call get_tworeducedx(www,yyy%reducedpottally(:,:,:,:,0),&
        yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
-  call system_clock(jtime);  times(4)=times(4)+jtime-itime
+  call myclock(jtime);  times(4)=times(4)+jtime-itime
 
-  call system_clock(itime)
+  call myclock(itime)
   call get_reducedproderiv(www,yyy%reducedproderiv(:,:,0),&
        yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
-  call system_clock(jtime);  times(6)=times(6)+jtime-itime
+  call myclock(jtime);  times(6)=times(6)+jtime-itime
 
-  call system_clock(itime)
+  call myclock(itime)
 
   if (numr.eq.1) then
      yyy%reducedinvr(:,:,0) = yyy%denmat(:,:,0) / bondpoints(1)
@@ -45,7 +45,7 @@ subroutine get_reducedham()
           yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
   endif
 
-  call system_clock(itime);  times(7)=times(7)+itime-jtime
+  call myclock(itime);  times(7)=times(7)+itime-jtime
 
 end subroutine get_reducedham
 

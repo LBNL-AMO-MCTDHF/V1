@@ -124,23 +124,23 @@ subroutine get_stuff0(thistime,times)
   integer,intent(inout) :: times(20)
   integer :: itime,jtime
 
-  call system_clock(itime)
+  call myclock(itime)
 
   call get_allden()
-  call system_clock(jtime);  times(2)=times(2)+jtime-itime;    itime=jtime
+  call myclock(jtime);  times(2)=times(2)+jtime-itime;    itime=jtime
 
   call all_matel()
-  call system_clock(jtime);  times(1)=times(1)+jtime-itime;    itime=jtime
+  call myclock(jtime);  times(1)=times(1)+jtime-itime;    itime=jtime
 
   if (constraintflag.ne.0) then
      call get_constraint(thistime)
   endif
-  call system_clock(jtime); times(7)=times(7)+jtime-itime;     itime=jtime
+  call myclock(jtime); times(7)=times(7)+jtime-itime;     itime=jtime
 
   if (drivingflag.ne.0) then
      call drivingtrans(thistime)
   endif
-  call system_clock(jtime); times(8)=times(8)+jtime-itime;     itime=jtime
+  call myclock(jtime); times(8)=times(8)+jtime-itime;     itime=jtime
 
   if (use_fockmatrix) then
      call get_fockmatrix()
@@ -149,7 +149,7 @@ subroutine get_stuff0(thistime,times)
   if (numfrozen.gt.0) then
      call get_frexchange()
   endif
-  call system_clock(jtime);     times(3)=times(3)+jtime-itime
+  call myclock(jtime);     times(3)=times(3)+jtime-itime
 
 
 end subroutine get_stuff0

@@ -184,50 +184,50 @@ subroutine actionsub(thistime)
   do i=1,numactions
      select case (actions(i))
      case (1)    !! auto-correlation
-        call system_clock(atime)
+        call myclock(atime)
         call autocorrelate()
-        call system_clock(btime);        times(1)=times(1)+btime-atime
+        call myclock(btime);        times(1)=times(1)+btime-atime
      case(2)
-        call system_clock(atime)
+        call myclock(atime)
         if (myrank.eq.1) then
            if (mod(calledhere-1,plotmodulus).eq.0) then
                  call save_natorb( thistime, yyy%cmfspfs(:,0), yyy%denvects, yyy%denvals , 1)
            endif
         endif
-        call system_clock(btime);        times(2)=times(2)+btime-atime
+        call myclock(btime);        times(2)=times(2)+btime-atime
      case(3)
-        call system_clock(atime)
+        call myclock(atime)
         if (myrank.eq.1) then
            if (mod(calledhere-1,plotmodulus).eq.0) then
                  call save_spf( thistime, yyy%cmfspfs(:,0), 1)
            endif
         endif
-        call system_clock(btime);        times(3)=times(3)+btime-atime
+        call myclock(btime);        times(3)=times(3)+btime-atime
      case(4)
-        call system_clock(atime)
+        call myclock(atime)
         if (myrank.eq.1) then
            if (mod(calledhere-1,plotmodulus).eq.0) then
                  call save_density( thistime, yyy%cmfspfs(:,0),  yyy%denmat(:,:,0), 1, denplotbin)
            endif
         endif
-        call system_clock(btime);        times(4)=times(4)+btime-atime
+        call myclock(btime);        times(4)=times(4)+btime-atime
      case(5)
         OFLWR "redo save rnatorb - need to calc"; CFLST
-!        call system_clock(atime)
+!        call myclock(atime)
 !        if (myrank.eq.1) then
 !           if (mod(calledhere-1,plotmodulus).eq.0) then
 !                 call save_rnatorb(thistime, yyy%rdenvects(:,:), yyy%rdenvals(:), 1)
 !           endif
 !        endif
-!        call system_clock(btime);        times(5)=times(5)+btime-atime
+!        call myclock(btime);        times(5)=times(5)+btime-atime
      case(6)
-        call system_clock(atime)
+        call myclock(atime)
         if (myrank.eq.1) then
            if (mod(calledhere-1,plotmodulus).eq.0) then
               call save_natproj( thistime )
            endif
         endif
-        call system_clock(btime);        times(6)=times(6)+btime-atime
+        call myclock(btime);        times(6)=times(6)+btime-atime
      case(7)
 
         OFLWR "lancurves deprecated"; CFLST
@@ -237,41 +237,41 @@ subroutine actionsub(thistime)
 
      case(15)
 
-        call system_clock(atime)
+        call myclock(atime)
         if(mod(calledhere-1,FluxInterval).eq.0) then  !! writes all mcscfnum
            call fluxwrite((calledhere-1)/FluxInterval,yyy%cmfspfs(:,0), yyy%cmfavec(:,:,0))
        endif
-        call system_clock(btime);        times(15)=times(15)+btime-atime
+        call myclock(btime);        times(15)=times(15)+btime-atime
 
      case(19)
-        call system_clock(atime)
+        call myclock(atime)
         call action_replacenat()
-        call system_clock(btime);        times(19)=times(19)+btime-atime
+        call myclock(btime);        times(19)=times(19)+btime-atime
      case (20)    
-        call system_clock(atime)
+        call myclock(atime)
         call getoverlaps(0)
-        call system_clock(btime);        times(20)=times(20)+btime-atime
+        call myclock(btime);        times(20)=times(20)+btime-atime
      case (21)    
-        call system_clock(atime)
+        call myclock(atime)
         call dipolesub()
-        call system_clock(btime);        times(21)=times(21)+btime-atime
+        call myclock(btime);        times(21)=times(21)+btime-atime
      case (22)    
-        call system_clock(atime)
+        call myclock(atime)
         call dferror(www,yyy%cptr(0),yyysptr(0),yyy%cmfavec(:,:,0),&
              mcscfnum,error,thistime)  !! does all mcscfnum
         OFL; write(mpifileptr,'(A15,2F25.10)') " DF error is ", error; CFL
-        call system_clock(btime);        times(22)=times(22)+btime-atime
+        call myclock(btime);        times(22)=times(22)+btime-atime
      case (24)    
         if(mod(calledhere-1,FluxInterval).eq.0) then 
-           call system_clock(atime)
+           call myclock(atime)
            call keprojector(yyy%cmfavec(:,:,0),yyy%cmfspfs(:,0),par_timestep*FluxInterval,www)
-           call system_clock(btime);        times(24)=times(24)+btime-atime
+           call myclock(btime);        times(24)=times(24)+btime-atime
         endif
      case (25)
         if (mod(calledhere,psistatfreq).eq.0) then
-           call system_clock(atime)
+           call myclock(atime)
            call psistats(thistime)
-           call system_clock(btime);        times(25)=times(25)+btime-atime
+           call myclock(btime);        times(25)=times(25)+btime-atime
         endif
      case (27)    !! total ionization during calculation
         if (mod(calledhere-1,FluxInterval*FluxSkipMult).eq.0) then

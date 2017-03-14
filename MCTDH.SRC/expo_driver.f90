@@ -90,14 +90,14 @@ contains
      
        if (jacsymflag.ne.0) then
 
-          call system_clock(itime)
+          call myclock(itime)
           call project00(lowspf,highspf,inspfs(:,lowspf:highspf),&
                bigwork(:,lowspf:highspf),jacvect) 
-          call system_clock(jtime); times(2)=times(2)+jtime-itime;   itime=jtime
+          call myclock(jtime); times(2)=times(2)+jtime-itime;   itime=jtime
           if (parorbsplit.eq.1) then
              call mpiorbgather_nz(bigwork,spfsize)
           endif
-          call system_clock(jtime); times(4)=times(4)+jtime-itime;   itime=jtime
+          call myclock(jtime); times(4)=times(4)+jtime-itime;   itime=jtime
 
           call actreduced00(lowspf,highspf,dentimeflag,jactime,bigwork,nulldouble,&
                workspfs,ii,0,0)
@@ -106,26 +106,26 @@ contains
 
           call actreduced00(lowspf,highspf,dentimeflag,jactime,inspfs,&
                nulldouble,tempspfs,ii,0,0)
-          call system_clock(jtime); times(1)=times(1)+jtime-itime; 
+          call myclock(jtime); times(1)=times(1)+jtime-itime; 
 
        else
            
-          call system_clock(itime)
+          call myclock(itime)
           call actreduced00(lowspf,highspf,dentimeflag,jactime, inspfs,&
                nulldouble, workspfs,ii,0,0)
 !!tempspfs used later
           tempspfs(:,lowspf:highspf)=workspfs(:,lowspf:highspf)
           outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
 
-          call system_clock(jtime); times(1)=times(1)+jtime-itime;      
+          call myclock(jtime); times(1)=times(1)+jtime-itime;      
        endif
 
-       call system_clock(itime)
+       call myclock(itime)
        call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),&
             workspfs(:,lowspf:highspf),jacvect)
        outspfs(:,:)=outspfs(:,:)-workspfs(:,lowspf:highspf)*facs(ii)
 
-       call system_clock(jtime); times(2)=times(2)+jtime-itime;
+       call myclock(jtime); times(2)=times(2)+jtime-itime;
 
 !! terms from projector
 !! timing in derproject
@@ -137,23 +137,23 @@ contains
           call derproject00(lowspf,highspf,jacvect(:,lowspf:highspf),&
                bigwork(:,min(lowspf,nspf):highspf),jacvect,inspfs)
 
-          call system_clock(itime)
+          call myclock(itime)
           if (parorbsplit.eq.1) then
              call mpiorbgather_nz(bigwork,spfsize)
           endif
-          call system_clock(jtime); times(4)=times(4)+jtime-itime;   itime=jtime
+          call myclock(jtime); times(4)=times(4)+jtime-itime;   itime=jtime
 
           call actreduced00(lowspf,highspf,dentimeflag,jactime,bigwork,nulldouble,&
                workspfs,ii,0,0)
           outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
 
-          call system_clock(jtime); times(1)=times(1)+jtime-itime;  
+          call myclock(jtime); times(1)=times(1)+jtime-itime;  
        endif
         
 !!  CONSTRAINT!!  FORGOTTEN I GUESS !! APR 2014
 
        if (constraintflag.ne.0.and.conflag.ne.0) then
-          call system_clock(itime)
+          call myclock(itime)
           call op_gmat00(lowspf,highspf,inspfs,&
                workspfs(:,lowspf:highspf),ii,jactime,jacvect)
           outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
@@ -162,7 +162,7 @@ contains
                   workspfs(:,lowspf:highspf),ii,jactime,jacvect,inspfs)
              outspfs(:,:)=outspfs(:,:)+workspfs(:,lowspf:highspf)*facs(ii)
           endif
-          call system_clock(jtime); times(5)=times(5)+jtime-itime;
+          call myclock(jtime); times(5)=times(5)+jtime-itime;
        endif
 
 
@@ -176,17 +176,17 @@ contains
 
           case(1)   !! with frozenexchmat
 
-             call system_clock(itime)
+             call myclock(itime)
              call MYGEMM('N','N',spfsize,nspf,nspf,DATAONE,&
                   inspfs,spfsize,  yyy%frozenexchmat(:,:,ii),nspf,&
                   DATAZERO, bigwork(:,:), spfsize)
-             call system_clock(jtime); times(6)=times(6)+jtime-itime;
+             call myclock(jtime); times(6)=times(6)+jtime-itime;
 
           case default
              OFLWR "exchange_mode not supported",exchange_mode; CFLST
           end select
 
-          call system_clock(itime)
+          call myclock(itime)
           if (dentimeflag.ne.0) then
 !! TIMEFAC and facs HERE
              csum=timefac*facs(ii)
@@ -198,7 +198,7 @@ contains
              tempspfs(:,lowspf:highspf)= & !! no more factor (-1) * &
                   bigwork(:,lowspf:highspf)*facs(ii)
           endif
-          call system_clock(jtime); times(6)=times(6)+jtime-itime;
+          call myclock(jtime); times(6)=times(6)+jtime-itime;
 
           outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) &
                - tempspfs(:,lowspf:highspf)
@@ -266,7 +266,7 @@ contains
     DATATYPE,intent(out) :: outspfs(spfsize,nspf)
     integer :: lowspf,highspf,itime,jtime,atime,btime
 
-    call system_clock(atime)
+    call myclock(atime)
 
     lowspf=1; highspf=nspf
     if (parorbsplit.eq.1) then
@@ -278,12 +278,12 @@ contains
             outspfs(:,lowspf:highspf))
     endif
     if (parorbsplit.eq.1) then
-       call system_clock(itime)
+       call myclock(itime)
        call mpiorbgather(outspfs,spfsize)
-       call system_clock(jtime);      times(4)=times(4)+jtime-itime
+       call myclock(jtime);      times(4)=times(4)+jtime-itime
     endif
 
-    call system_clock(btime); times(7)=times(7)+btime-atime;
+    call myclock(btime); times(7)=times(7)+btime-atime;
   
   end subroutine jacoperate0
 
@@ -332,7 +332,7 @@ contains
        CFLST
     endif
 
-    call system_clock(atime)
+    call myclock(atime)
 
     lowspf=1; highspf=nspf
     if (parorbsplit.eq.1) then
@@ -349,16 +349,16 @@ contains
     workspfs=0
     workspfs(:,lowspf:highspf)=inspfs(:,lowspf:highspf)
 
-    call system_clock(itime)
+    call myclock(itime)
     call mpiorbgather_nz(workspfs,spfsize)
-    call system_clock(jtime);      times(4)=times(4)+jtime-itime
+    call myclock(jtime);      times(4)=times(4)+jtime-itime
 
     outspfs=0d0    !! padded
 
     call jacoperate00(lowspf,highspf,dentimeflag,conflag,&
          workspfs(:,:),outspfs(:,lowspf:highspf))
 
-    call system_clock(btime); times(7)=times(7)+btime-atime;
+    call myclock(btime); times(7)=times(7)+btime-atime;
   
   end subroutine parjacoperate0
 
@@ -814,7 +814,7 @@ end module avectortimemod
 subroutine avectortimeset()
   use avectortimemod
   implicit none
-  call system_clock(iitime)
+  call myclock(iitime)
 end subroutine
 
 subroutine avectortimewrite(fileptr)
@@ -836,7 +836,7 @@ subroutine avectortime(which)
 !! times(2) = parconfigexpomult
 !! times(3) = in-between (expokit)
 
-   call system_clock(jjtime); times(which)=times(which)+jjtime-iitime; iitime=jjtime
+   call myclock(jjtime); times(which)=times(which)+jjtime-iitime; iitime=jjtime
 
 end subroutine
 

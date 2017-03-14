@@ -32,7 +32,7 @@ contains
     integer, allocatable :: rkiwork(:)
     DATATYPE,allocatable :: psivec(:)
 
-    call system_clock(itime)
+    call myclock(itime)
 
     if (numfrozen.gt.0) then
        print *, "program frozen in all_derivs for VMF.";     stop
@@ -91,7 +91,7 @@ contains
     endif
     deallocate(psivec)
 
-    call system_clock(jtime);  time=time+jtime-itime;  call system_clock(itime)
+    call myclock(jtime);  time=time+jtime-itime;  itime=jtime
 
     call basis_project(www,numr,yyy%cmfavec(:,:,0))
 
@@ -109,7 +109,7 @@ contains
 
     call get_stuff(tout) 
 
-    call system_clock(jtime);  time2=time2+jtime-itime
+    call myclock(jtime);  time2=time2+jtime-itime
 
 ! rkiwork!
 !  if ((myrank.eq.1).and.(notiming.eq.0)) then
@@ -243,7 +243,7 @@ contains
 
     xxcount=xxcount+1
 
-    call system_clock(itime)
+    call myclock(itime)
 
 !!     MOVE SAVED DATA (MEAN FIELDS ETC.) ONE TIME SLOT BACK. 
 
@@ -296,7 +296,7 @@ contains
        yyy%cmfavec(:,:,1)= yyy%cmfavec(:,:,0)
     endif
 
-    call system_clock(jtime);  times(6)=times(6)+jtime-itime
+    call myclock(jtime);  times(6)=times(6)+jtime-itime
 
     if ( (threshflag.ne.0.and.improvedrelaxflag.le.0).and.&
          ( ( (improvedquadflag.eq.1.or.improvedquadflag.eq.3).and.tin.ge.aquadstarttime ).or.&
@@ -307,7 +307,7 @@ contains
 
     if (improvedrelaxflag.gt.0) then
 
-       call system_clock(itime)
+       call myclock(itime)
 
        if (spf_flag.ne.0) then
           if (improvedquadflag.gt.1.and.tin.ge.quadstarttime) then
@@ -318,12 +318,12 @@ contains
              call propspfs(yyy%cmfspfs(:,1), yyy%cmfspfs(:,0), time1,time2,0,qq)
              numiters=numiters+qq
           endif
-          call system_clock(jtime);     times(4)=times(4)+jtime-itime;     itime=jtime
+          call myclock(jtime);     times(4)=times(4)+jtime-itime;     itime=jtime
 !! prevent drift
           if (parorbsplit.ne.3) then
              call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
           endif
-          call system_clock(jtime);     times(9)=times(9)+jtime-itime;   itime=jtime
+          call myclock(jtime);     times(9)=times(9)+jtime-itime;   itime=jtime
        endif
 
        if (improvednatflag.ne.0) then
@@ -331,10 +331,10 @@ contains
        elseif (improvedfockflag.ne.0) then
           call replace_withfock(printflag)
        endif
-       call system_clock(jtime);     times(7)=times(7)+jtime-itime;   itime=jtime
+       call myclock(jtime);     times(7)=times(7)+jtime-itime;   itime=jtime
 
        call all_matel()
-       call system_clock(jtime);     times(1)=times(1)+jtime-itime;   itime=jtime
+       call myclock(jtime);     times(1)=times(1)+jtime-itime;   itime=jtime
 
        if (avector_flag.ne.0) then
           if ((improvedquadflag.eq.1.or.improvedquadflag.eq.3).and.tin.ge.aquadstarttime) then
@@ -349,16 +349,16 @@ contains
                      myvalues,mcscfnum,eigprintflag,1,0d0,max(0,improvedrelaxflag-1))
              endif
           endif
-          call system_clock(jtime);     times(5)=times(5)+jtime-itime;    itime=jtime
+          call myclock(jtime);     times(5)=times(5)+jtime-itime;    itime=jtime
 !! prevent drift
           if (par_consplit.eq.0) then
              call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
           endif
-          call system_clock(jtime);     times(9)=times(9)+jtime-itime;    itime=jtime
+          call myclock(jtime);     times(9)=times(9)+jtime-itime;    itime=jtime
        endif
 
        call get_allden()
-       call system_clock(jtime);        times(2)=times(2)+jtime-itime;     itime=jtime
+       call myclock(jtime);        times(2)=times(2)+jtime-itime;     itime=jtime
 
        if (use_fockmatrix) then
           call get_fockmatrix()
@@ -367,11 +367,11 @@ contains
        if (numfrozen.gt.0) then
           call get_frexchange()
        endif
-       call system_clock(jtime);        times(3)=times(3)+jtime-itime;       itime=jtime
+       call myclock(jtime);        times(3)=times(3)+jtime-itime;       itime=jtime
      
        if (constraintflag.ne.0) then    !! probably need denmat right
           call get_constraint(tout);      
-          call system_clock(jtime);        times(7)=times(7)+jtime-itime
+          call myclock(jtime);        times(7)=times(7)+jtime-itime
        endif
 
     else  !! IMPROVEDRELAX
@@ -382,7 +382,7 @@ contains
 
        linearflag=0
 
-       call system_clock(itime)
+       call myclock(itime)
 
 !! PRE-PROP
 
@@ -390,22 +390,22 @@ contains
           if (constraintflag.ne.0) then
              time1=tin;        time2=tout
              call conpropspfs(yyy%cmfspfs(:,1),yyy%cmfspfs(:,0), time1,time2)
-             call system_clock(jtime);     times(4)=times(4)+jtime-itime;   itime=jtime
+             call myclock(jtime);     times(4)=times(4)+jtime-itime;   itime=jtime
 !! prevent drift
              if (parorbsplit.ne.3) then
                 call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
-                call system_clock(jtime);     times(9)=times(9)+jtime-itime;   itime=jtime
+                call myclock(jtime);     times(9)=times(9)+jtime-itime;   itime=jtime
              endif
              call all_matel()
-             call system_clock(jtime);  times(1)=times(1)+jtime-itime;   itime=jtime
+             call myclock(jtime);  times(1)=times(1)+jtime-itime;   itime=jtime
           endif
 
           if(avector_flag.ne.0) then
              call cmf_prop_avector_and_stuff()
 
-             call system_clock(itime)
+             call myclock(itime)
              call get_allden()
-             call system_clock(jtime);  times(2)=times(2)+jtime-itime;   itime=jtime
+             call myclock(jtime);  times(2)=times(2)+jtime-itime;   itime=jtime
           endif
 
           call end_stuff()
@@ -433,9 +433,9 @@ contains
 
           call propspfs_and_stuff()
 
-          call system_clock(itime)
+          call myclock(itime)
           call all_matel()
-          call system_clock(jtime);  times(1)=times(1)+jtime-itime
+          call myclock(jtime);  times(1)=times(1)+jtime-itime
 
           call end_stuff()
 
@@ -445,9 +445,9 @@ contains
 
           call cmf_prop_avector_and_stuff()
 
-          call system_clock(itime)
+          call myclock(itime)
           call get_allden()
-          call system_clock(jtime);  times(2)=times(2)+jtime-itime
+          call myclock(jtime);  times(2)=times(2)+jtime-itime
 
           call end_stuff()
 
@@ -499,15 +499,15 @@ contains
     subroutine propspfs_and_stuff()
       implicit none
       if (spf_flag.ne.0) then
-         call system_clock(itime)
+         call myclock(itime)
          time1=tin;        time2=tout
          call propspfs(yyy%cmfspfs(:,1),yyy%cmfspfs(:,0), time1,time2,linearflag,qq)
          numiters=numiters+qq
-         call system_clock(jtime);     times(4)=times(4)+jtime-itime;   itime=jtime
+         call myclock(jtime);     times(4)=times(4)+jtime-itime;   itime=jtime
 !! prevent drift
          if (parorbsplit.ne.3) then
             call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
-            call system_clock(jtime);     times(9)=times(9)+jtime-itime
+            call myclock(jtime);     times(9)=times(9)+jtime-itime
          endif
       endif
     end subroutine propspfs_and_stuff
@@ -515,17 +515,17 @@ contains
     subroutine cmf_prop_avector_and_stuff()
       implicit none
       if(avector_flag.ne.0) then
-         call system_clock(itime)
+         call myclock(itime)
          do imc=1,mcscfnum
             call cmf_prop_avector(yyy%cmfavec(:,imc,1),  &
                  yyy%cmfavec(:,imc,0), linearflag,tin,tout,imc,qq)
             numaiters=numaiters+qq
          enddo
-         call system_clock(jtime);     times(5)=times(5)+jtime-itime;  itime=jtime
+         call myclock(jtime);     times(5)=times(5)+jtime-itime;  itime=jtime
 !! prevent drift
          if (par_consplit.eq.0) then
             call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
-            call system_clock(jtime);     times(9)=times(9)+jtime-itime
+            call myclock(jtime);     times(9)=times(9)+jtime-itime
          endif
       endif
     end subroutine cmf_prop_avector_and_stuff
@@ -533,18 +533,18 @@ contains
     subroutine end_stuff()
       implicit none
       if (constraintflag.ne.0) then
-         call system_clock(itime)
+         call myclock(itime)
          call get_constraint(tout)
-         call system_clock(jtime); times(7)=times(7)+jtime-itime
+         call myclock(jtime); times(7)=times(7)+jtime-itime
       endif
 
       if (drivingflag.ne.0) then
-         call system_clock(itime)
+         call myclock(itime)
          call drivingtrans(tout)
-         call system_clock(jtime); times(8)=times(8)+jtime-itime
+         call myclock(jtime); times(8)=times(8)+jtime-itime
       endif
 
-      call system_clock(itime)
+      call myclock(itime)
       if (use_fockmatrix) then
          call get_fockmatrix()
       endif
@@ -552,7 +552,7 @@ contains
       if (numfrozen.gt.0) then
          call get_frexchange()
       endif
-      call system_clock(jtime);     times(3)=times(3)+jtime-itime
+      call myclock(jtime);     times(3)=times(3)+jtime-itime
     end subroutine end_stuff
 
   end subroutine cmf_prop_wfn
@@ -637,7 +637,7 @@ contains
 
       nullvector1(:)=0;nullvector2(:)=0
 
-      call system_clock(itime)
+      call myclock(itime)
 
       if (sparseopt.eq.0) then
          call zero_cptr(workconfigpointer)
@@ -727,14 +727,14 @@ contains
             endif
          endif
       endif
-      call system_clock(jtime); times(1)=times(1)+jtime-itime; itime=jtime
+      call myclock(jtime); times(1)=times(1)+jtime-itime; itime=jtime
 
       if (tot_adim.gt.0) then
          call myconfigprop(avectorin(:),avectorout(:),midtime,imc,numiters)
       else
          call myconfigprop(nullvector1(:),nullvector2(:),midtime,imc,numiters)
       endif
-      call system_clock(jtime); times(2)=times(2)+jtime-itime;
+      call myclock(jtime); times(2)=times(2)+jtime-itime;
 
       if (notiming.eq.0.and.myrank.eq.1) then
 
@@ -794,7 +794,7 @@ subroutine prop_loop( starttime)
 
   lastenergy(:)=1.d+3;  lastenergyavg=1.d+3
 
-  call system_clock(itime)
+  call myclock(itime)
 
   do imc=1,mcscfnum
      call basis_project(www,numr,yyy%cmfavec(:,imc,0))
@@ -859,13 +859,13 @@ subroutine prop_loop( starttime)
      close(853)
   endif
 
-  call system_clock(jtime)  ;  times(4)=times(4)+jtime-itime
+  call myclock(jtime)  ;  times(4)=times(4)+jtime-itime
 
   jj=0
   do while (flag==0)      !! BEGIN MAIN LOOP
      jj=jj+1
 
-     call system_clock(itime)
+     call myclock(itime)
 
      if (save_every.ne.0.and.mod(jj,save_every).eq.0) then
         call save_vector(yyy%cmfavec(:,:,0),yyy%cmfspfs(:,0),avectoroutfile,spfoutfile)  
@@ -879,13 +879,13 @@ subroutine prop_loop( starttime)
 
      thattime=thistime+par_timestep
 
-     call system_clock(jtime)  ;  times(5)=times(5)+jtime-itime;    itime=jtime
+     call myclock(jtime)  ;  times(5)=times(5)+jtime-itime;    itime=jtime
 
                                  !! ************************************************************* !!
      call actionsub( thistime)   !! ACTIONS.  IF ACTION CHANGES PSI THEN CALL GET_STUFF AFTER ACTION.
                                  !! ************************************************************* !!
 
-     call system_clock(jtime)  ;     times(2)=times(2)+jtime-itime;     itime=jtime
+     call myclock(jtime)  ;     times(2)=times(2)+jtime-itime;     itime=jtime
 
 !! norms not gotten yet, tempfix 08-2016 for odex
 !     rsum=0d0
@@ -911,7 +911,7 @@ subroutine prop_loop( starttime)
         call enforce_bonorms(mcscfnum,  yyy%cmfavec(:,:,0),savenorms(:,:))
      endif
 
-     call system_clock(jtime)  ;  times(1)=times(1)+jtime-itime;    itime=jtime
+     call myclock(jtime)  ;  times(1)=times(1)+jtime-itime;    itime=jtime
 
      do imc=1,mcscfnum
 
@@ -1057,7 +1057,7 @@ subroutine prop_loop( starttime)
 
      endif
 
-     call system_clock(jtime)  ;        times(3)=times(3)+jtime-itime
+     call myclock(jtime)  ;        times(3)=times(3)+jtime-itime
 
   enddo    !! END MAIN LOOP
 

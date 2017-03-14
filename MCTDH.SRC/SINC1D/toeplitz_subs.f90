@@ -191,14 +191,6 @@
 !!$   limitations under the License.
 
 
-subroutine myclock(mytime)
-  integer :: values(10),mytime
-  integer, parameter :: fac(5:8)=(/60*60*1000,60*1000,1000,1/)  !! hour,minute,second,millisecond
-  call date_and_time(values=values)
-  mytime=values(8)+values(7)*fac(7)+values(6)*fac(6)+values(5)*fac(5)
-end subroutine myclock
-
-
 module circ1dsubmod
 contains
 

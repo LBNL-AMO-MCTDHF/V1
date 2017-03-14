@@ -147,7 +147,7 @@ subroutine call_twoe_matel00(lowspf,highspf,inspfs1,inspfs2,twoematel,twoereduce
 
   nnnspf=highspf-lowspf+1
 
-  call system_clock(itime)
+  call myclock(itime)
 
   if (highspf.gt.numspf.or.lowspf.lt.1) then
      print *, "programmer fail xxx",lowspf,highspf,numspf; stop
@@ -191,7 +191,7 @@ subroutine call_twoe_matel00(lowspf,highspf,inspfs1,inspfs2,twoematel,twoereduce
 
   enddo
 
-  call system_clock(jtime);           times(1)=times(1)+jtime-itime;    itime=jtime
+  call myclock(jtime);           times(1)=times(1)+jtime-itime;    itime=jtime
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(spf1a,spf1b,spf2a,spf2b,qq,qq2,rr,rr2,myden,myred,mvalue1a,mvalue1b,deltam)
 !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC)
@@ -232,7 +232,7 @@ subroutine call_twoe_matel00(lowspf,highspf,inspfs1,inspfs2,twoematel,twoereduce
 !$OMP END DO
 !$OMP END PARALLEL
 
-  call system_clock(itime);   times(2)=times(2)+itime-jtime
+  call myclock(itime);   times(2)=times(2)+itime-jtime
 
   deallocate(twoeden)
 

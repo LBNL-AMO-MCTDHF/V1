@@ -21,24 +21,24 @@ subroutine all_matel0(inholeflag,matrix_ptr,inspfs1,inspfs2,twoereduced,times,fi
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     ...sparseops_matel"; CFL; call mpibarrier()
   endif
-  call system_clock(i)
+  call myclock(i)
   call sparseops_matel(matrix_ptr,inspfs1,inspfs2)
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     ...pot_matel"; CFL; call mpibarrier()
   endif
-  call system_clock(j);  times(1)=times(1)+j-i; i=j
+  call myclock(j);  times(1)=times(1)+j-i; i=j
   call pot_matel(matrix_ptr,inspfs1,inspfs2)
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     ...pulse_matel"; CFL; call mpibarrier()
   endif
-  call system_clock(j);  times(2)=times(2)+j-i; i=j
+  call myclock(j);  times(2)=times(2)+j-i; i=j
   call pulse_matel(matrix_ptr,inspfs1,inspfs2)
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     ...twoe_matel"; CFL; call mpibarrier()
   endif
-  call system_clock(j);  times(3)=times(3)+j-i; i=j
+  call myclock(j);  times(3)=times(3)+j-i; i=j
   call twoe_matel(matrix_ptr,inspfs1,inspfs2,twoereduced,firstspf,lastspf)
-  call system_clock(j);  times(4)=times(4)+j-i
+  call myclock(j);  times(4)=times(4)+j-i
   if (debugflag.eq.42) then
      call mpibarrier();     OFLWR "     ...done all_matel0"; CFL; call mpibarrier()
   endif
@@ -759,7 +759,7 @@ subroutine all_matel()
      call mpibarrier();     OFLWR "     ...called all_matel0 in all_matel"; CFL; call mpibarrier()
   endif
 
-  call system_clock(itime)
+  call myclock(itime)
   if (sparseopt.ne.0) then
      call assemble_sparsemats(www,yyy%cptr(0),yyysptr(0),1,1,1,1)
      if (use_dfwalktype) then
@@ -770,7 +770,7 @@ subroutine all_matel()
         endif
      endif
   endif
-  call system_clock(jtime); times(5)=times(5)+jtime-itime
+  call myclock(jtime); times(5)=times(5)+jtime-itime
 
   if ((myrank.eq.1).and.(notiming.eq.0)) then
      if (xcalled==1) then

@@ -73,7 +73,7 @@ contains
        stop
     endif
 
-    call system_clock(itime)
+    call myclock(itime)
 
     mydot(:,:)=0d0; derdot(:,:)=0d0; prodot(:,:)=0d0
     outspfs(:,:)=0.d0
@@ -89,25 +89,25 @@ contains
 !$OMP END DO
 !$OMP END PARALLEL
 
-    call system_clock(jtime); times(3)=times(3)+jtime-itime;     itime=jtime
+    call myclock(jtime); times(3)=times(3)+jtime-itime;     itime=jtime
 
     if (parorbsplit.eq.3) then
        call mympireduce(mydot,nspf**2)
        call mympireduce(derdot,nspf**2)
     endif
 
-    call system_clock(jtime); times(4)=times(4)+jtime-itime;     itime=jtime
+    call myclock(jtime); times(4)=times(4)+jtime-itime;     itime=jtime
 
     call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfs,spfsize,&
          derdot(:,lowspf:highspf),nspf,DATAONE,outspfs,spfsize)
     call MYGEMM('N','N',spfsize,numspf,nspf,DATAONE,prospfderivs,spfsize,&
          mydot(:,lowspf:highspf), nspf,DATAONE,outspfs,spfsize)
 
-    call system_clock(jtime); times(3)=times(3)+jtime-itime;
+    call myclock(jtime); times(3)=times(3)+jtime-itime;
 
     if (jacprojorth.ne.0) then
 
-       call system_clock(itime)
+       call myclock(itime)
 
 !! Proj in always-orthogonal-derivative form,
 !!
@@ -136,7 +136,7 @@ contains
 !$OMP END DO
 !$OMP END PARALLEL
 
-       call system_clock(jtime); times(3)=times(3)+jtime-itime;     itime=jtime
+       call myclock(jtime); times(3)=times(3)+jtime-itime;     itime=jtime
 
        if (parorbsplit.eq.1) then
           call mpiorbgather_nz(prodot,nspf)
@@ -145,7 +145,7 @@ contains
           call mympireduce(prodot,nspf**2)
        endif
 
-       call system_clock(jtime); times(4)=times(4)+jtime-itime;     itime=jtime
+       call myclock(jtime); times(4)=times(4)+jtime-itime;     itime=jtime
 
        call MYGEMM('N', 'N', nspf, numspf, nspf, DATAONE, prodot, nspf, &
             mydot(:,lowspf:highspf), nspf, DATAZERO, derdot(:,lowspf:highspf), nspf)
@@ -153,7 +153,7 @@ contains
        call MYGEMM('N', 'N', spfsize, numspf, nspf, DATANEGONE, prospfs, spfsize, &
             derdot(:,lowspf:highspf), nspf, DATAONE, outspfs, spfsize)
 
-       call system_clock(jtime); times(3)=times(3)+jtime-itime
+       call myclock(jtime); times(3)=times(3)+jtime-itime
 
     endif
 
@@ -667,7 +667,7 @@ contains
 !! sum over fast index reduced matrices, because doing spfinvrsq= reducedinvrsq * inspfs 
 !!   BUT 1) store in transposed order and 2) have to reverse the call in BLAS
 
-    call system_clock(itime)
+    call myclock(itime)
     if (numr.eq.1) then
        call MYGEMM('N', 'N', spfsize,numspf,nspf,DATAONE, inspfs, spfsize, &
             yyy%denmat(:,lowspf:highspf,ireduced),nspf, DATAZERO, &
@@ -705,12 +705,12 @@ contains
                spfproderiv(:,lowspf:highspf), spfsize)
        endif
     endif
-    call system_clock(jtime);  times(1)=times(1)+jtime-itime; itime=jtime
+    call myclock(jtime);  times(1)=times(1)+jtime-itime; itime=jtime
 
     call mult_ke(spfinvrsq(:,lowspf:highspf),workmult(:,lowspf:highspf),&
          numspf,timingdir,notiming)
     spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
-    call system_clock(jtime);  times(2)=times(2)+jtime-itime;      itime=jtime
+    call myclock(jtime);  times(2)=times(2)+jtime-itime;      itime=jtime
 
 !!    OFLWR "CHECKMULT1  ",spfmult(1,1); CFL
 
@@ -734,7 +734,7 @@ contains
        endif
 
     endif
-    call system_clock(jtime);     times(3)=times(3)+jtime-itime;      itime=jtime
+    call myclock(jtime);     times(3)=times(3)+jtime-itime;      itime=jtime
 
     if (tdflag.ne.0) then
        select case (velflag)
@@ -748,20 +748,20 @@ contains
           spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
        end select
     endif  !! tdpot
-    call system_clock(jtime);        times(4)=times(4)+jtime-itime;        itime=jtime
+    call myclock(jtime);        times(4)=times(4)+jtime-itime;        itime=jtime
   
     if (nonuc_checkflag.eq.0) then
        call op_yderiv(numspf,spfproderiv(:,lowspf:highspf),workmult(:,lowspf:highspf))
        spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf)+workmult(:,lowspf:highspf)
     endif
-    call system_clock(jtime);     times(5)=times(5)+jtime-itime;         itime=jtime
+    call myclock(jtime);     times(5)=times(5)+jtime-itime;         itime=jtime
 
 !!    OFLWR "CHECKMULT2BBB  ",spfmult(1,1); CFL
 
     call mult_reducedpot(lowspf,highspf,inspfs,workmult(:,lowspf:highspf),&
          yyy%reducedpot(:,:,lowspf:highspf,ireduced))
     spfmult(:,lowspf:highspf)=spfmult(:,lowspf:highspf) + workmult(:,lowspf:highspf)
-    call system_clock(jtime);  times(6)=times(6)+jtime-itime;  
+    call myclock(jtime);  times(6)=times(6)+jtime-itime;  
 
     if (scalarflag.ne.0) then
        if (.not.use_fockmatrix) then
@@ -778,16 +778,16 @@ contains
 
 !! WITH TIMEFAC
     if (dentimeflag.ne.0) then
-       call system_clock(itime)
+       call myclock(itime)
        if (parorbsplit.eq.1) then
           call mpiorbgather_nz(spfmult,spfsize)
        endif
-       call system_clock(jtime);        times(10)=times(10)+jtime-itime;      itime=jtime
+       call myclock(jtime);        times(10)=times(10)+jtime-itime;      itime=jtime
        call MYGEMM('N','N', spfsize,numspf,nspf,timefac, spfmult,spfsize, &
             yyy%invdenmat(:,lowspf:highspf,ireduced), nspf, DATAZERO, workmult, spfsize)
        spfmult(:,lowspf:highspf)=workmult(:,lowspf:highspf)
 
-       call system_clock(jtime);  times(7)=times(7)+jtime-itime
+       call myclock(jtime);  times(7)=times(7)+jtime-itime
 !! no more factor -1
 !!    else
 !!       spfmult(:,lowspf:highspf) = spfmult(:,lowspf:highspf) * (-1)
@@ -796,14 +796,14 @@ contains
 !!    OFLWR "CHECKMULT4  ",spfmult(1,1); CFL
 
     if (projflag==1) then
-       call system_clock(itime)
+       call myclock(itime)
        if (parorbsplit.eq.1) then
           call mpiorbgather_nz(spfmult,spfsize)
        endif
-       call system_clock(jtime);  times(10)=times(10)+jtime-itime;    itime=jtime
+       call myclock(jtime);  times(10)=times(10)+jtime-itime;    itime=jtime
        call project00(lowspf,highspf,spfmult(:,lowspf:highspf), workmult, projspfs)
        outspfs(:,:) = spfmult(:,lowspf:highspf) - workmult(:,lowspf:highspf)
-       call system_clock(jtime);     times(8)=times(8)+jtime-itime;      
+       call myclock(jtime);     times(8)=times(8)+jtime-itime;      
     else
        outspfs(:,:)=spfmult(:,lowspf:highspf)
     endif
@@ -811,10 +811,10 @@ contains
 !!    OFLWR "CHECKMULT5  ",spfmult(1,1); CFLST
      
     if (constraintflag/=0.and.conflag.ne.0) then
-       call system_clock(itime)
+       call myclock(itime)
        call op_gmat00(lowspf,highspf,inspfs,workmult,ireduced,thistime,projspfs)
        outspfs(:,:)=outspfs(:,:)+workmult(:,lowspf:highspf)
-       call system_clock(jtime);        times(9)=times(9)+jtime-itime
+       call myclock(jtime);        times(9)=times(9)+jtime-itime
     endif
 
     if ((myrank.eq.1).and.(notiming.eq.0)) then
@@ -876,9 +876,9 @@ contains
             outspfs(:,lowspf:highspf), ireduced, projflag,conflag)
     endif
     if (parorbsplit.eq.1) then
-       call system_clock(itime)
+       call myclock(itime)
        call mpiorbgather(outspfs,spfsize)
-       call system_clock(jtime);        times(10)=times(10)+jtime-itime
+       call myclock(jtime);        times(10)=times(10)+jtime-itime
     endif
 
   end subroutine actreduced0
@@ -964,15 +964,15 @@ contains
 !! ireduced should be zero right   07-2015
 
     if (spf_flag.ne.0) then
-       call system_clock(itime)
+       call myclock(itime)
        call actreduced0(1,thistime,xspfs,xspfs,xspfsp,0,1,1)
-       call system_clock(jtime);     times(5)=times(5)+jtime-itime
+       call myclock(jtime);     times(5)=times(5)+jtime-itime
     endif
 
   !! AVECTOR PART.
 
     if (avector_flag.ne.0) then
-       call system_clock(itime)
+       call myclock(itime)
        do imc=1,mcscfnum
           if (tot_adim.gt.0) then
              avector(:)=xavec(:,imc)
@@ -988,7 +988,7 @@ contains
        xavecp(:,:)=xavecp(:,:)*timefac
     endif
 
-    call system_clock(jtime);  times(6)=times(6)+jtime-itime
+    call myclock(jtime);  times(6)=times(6)+jtime-itime
   
     if ((myrank.eq.1).and.(notiming.eq.0)) then
        if (numcalledhere==1) then
@@ -1097,7 +1097,7 @@ contains
 
           do jjj=0,itop
 
-             call system_clock(itime)
+             call myclock(itime)
 
              if (projflag.ne.0) then
                 select case (exchange_mode)
@@ -1116,7 +1116,7 @@ contains
              else
                 tempspfs(:,1:nspf) = yyy%frozenexchinvr(:,1:nspf,jjj)
              endif
-             call system_clock(jtime);        times(8)=times(8)+jtime-itime
+             call myclock(jtime);        times(8)=times(8)+jtime-itime
 
              if (dentimeflag.ne.0) then
 !! TIMEFAC and facs HERE
@@ -1132,7 +1132,7 @@ contains
 
              spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf) + workspfs(:,lowspf:highspf)
 
-             call system_clock(jtime);    times(7)=times(7)+jtime-itime;
+             call myclock(jtime);    times(7)=times(7)+jtime-itime;
           enddo
        endif
 
@@ -1156,7 +1156,7 @@ contains
                      yyy%drivingorbszz(:,lowspf:highspf,jjj) * pots(3) ) &
                      *facs(jjj) * timefac                             !! WITH TIMEFAC
              enddo
-             call system_clock(itime)
+             call myclock(itime)
              if (projflag.ne.0) then
                 call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),&
                      workspfs(:,lowspf:highspf),spfsin)
@@ -1166,7 +1166,7 @@ contains
                 spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf) + &
                      tempspfs(:,lowspf:highspf)
              endif
-             call system_clock(jtime);        times(8)=times(8)+jtime-itime
+             call myclock(jtime);        times(8)=times(8)+jtime-itime
           endif
        endif
 
@@ -1175,9 +1175,9 @@ contains
     endif
 
     if (parorbsplit.eq.1) then
-       call system_clock(itime)
+       call myclock(itime)
        call mpiorbgather(spfsout,spfsize)
-       call system_clock(jtime);        times(10)=times(10)+jtime-itime
+       call myclock(jtime);        times(10)=times(10)+jtime-itime
     endif
 
   end subroutine spf_linear_derivs0

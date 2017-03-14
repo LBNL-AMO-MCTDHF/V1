@@ -7,6 +7,7 @@ subroutine zero_mpi_times()
   use mpimod
   implicit none
   mpitime=0; nonmpitime=0
+  call myclock(mpibtime);  mpiatime=mpibtime
 end subroutine zero_mpi_times
 
 
@@ -261,7 +262,7 @@ subroutine mpiorbgather0(inoutvector,insize,onlynz)
      OFLWR "YYY ERROR",firstmpiorb,orbsperproc; CFLST
   endif
 
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 
   orbvector(:,:)=0d0;  workvector(:,:)=0d0
 
@@ -285,7 +286,7 @@ subroutine mpiorbgather0(inoutvector,insize,onlynz)
 
   inoutvector(:,:)=orbvector(:,1:nspf)
 
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mpiorbgather0
 
 
@@ -323,7 +324,7 @@ subroutine mpiorbreduce(input, isize)
   DATATYPE,allocatable :: output(:)
   integer :: ierr
 
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   allocate(output(isize))
   output=0;  ierr=0
   call MPI_allreduce( input, output, isize, MPIDATATYPE, MPI_SUM, &
@@ -333,7 +334,7 @@ subroutine mpiorbreduce(input, isize)
      OFLWR "ERR mympireduce!";   CFLST
   endif
   deallocate(output)
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 
 end subroutine mpiorbreduce
 
@@ -404,7 +405,7 @@ subroutine mpistart()
      endif
   endif
   OFLWR; CFL
-  call system_clock(mpibtime);  call system_clock(mpiatime)
+  call myclock(mpibtime);  mpiatime=mpibtime
 
 end subroutine mpistart
 
@@ -414,13 +415,13 @@ subroutine mpibarrier()
   use fileptrmod
   implicit none
   integer :: ierr
-  call system_clock(mpiatime)
+  call myclock(mpiatime)
   nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_barrier(MPI_COMM_WORLD,ierr)
   if (ierr/=0) then
      OFLWR "MPI ERR 3"; CFLST
   endif
-  call system_clock(mpibtime)
+  call myclock(mpibtime)
   mpitime=mpitime+mpibtime-mpiatime
 end subroutine mpibarrier
 
@@ -467,7 +468,7 @@ subroutine mympireduce_local(input, isize, IN_COMM)
   if (nprocs.eq.1) then
      return
   endif
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   allocate(output(isize))
   output=0; ierr=0
   call MPI_allreduce(input,output,isize,MPIDATATYPE,MPI_SUM,IN_COMM,ierr)
@@ -476,7 +477,7 @@ subroutine mympireduce_local(input, isize, IN_COMM)
      OFLWR "ERR mympireduce!";   CFLST
   endif
   deallocate(output)
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 
 end subroutine mympireduce_local
 
@@ -501,7 +502,7 @@ subroutine mympirealreduce(input, isize)
   if (nprocs.eq.1) then
      return
   endif
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   allocate(output(isize))
   ierr=0; output=0
   call MPI_allreduce( input, output, isize, MPI_DOUBLE_PRECISION, MPI_SUM, &
@@ -511,7 +512,7 @@ subroutine mympirealreduce(input, isize)
      OFLWR "ERR mympireduce!";   CFLST
   endif
   deallocate(output)
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympirealreduce
 
 
@@ -524,7 +525,7 @@ subroutine mympireduceto_local(input, output, isize, dest, IN_COMM)
   DATATYPE,intent(out) :: output(isize) 
   integer :: ierr, idest
 
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   if (dest.lt.1.or.dest.gt.nprocs) then
      OFLWR "ERR DEST REDUCETO",dest,nprocs; CFLST
   endif
@@ -535,7 +536,7 @@ subroutine mympireduceto_local(input, output, isize, dest, IN_COMM)
   if (ierr/=0) then
      OFLWR "ERR mpi_reduce!";   CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympireduceto_local
 
 
@@ -562,14 +563,14 @@ subroutine mympirealreduceone_local(input,IN_COMM)
   if (nprocs.eq.1) then
      return
   endif
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   ierr=0
   call MPI_allreduce(input,output,1,MPI_DOUBLE_PRECISION,MPI_SUM,IN_COMM,ierr)
   input=output
   if (ierr/=0) then
      OFLWR "ERR mympirealreduce!"; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympirealreduceone_local
 
 
@@ -583,14 +584,14 @@ subroutine mympiireduceone_local(input,IN_COMM)
   if (nprocs.eq.1) then
      return
   endif
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   ierr=0
   call MPI_allreduce(input,output,1,MPI_INTEGER,MPI_SUM,IN_COMM,ierr)
   input=output
   if (ierr/=0) then
      OFLWR "ERR mympiireduce!"; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympiireduceone_local
 
 
@@ -605,14 +606,14 @@ subroutine mympii8reduceone_local(input,IN_COMM)
   if (nprocs.eq.1) then
      return
   endif
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   ierr=0
   call MPI_allreduce(input,output,1,MPI_INTEGER8,MPI_SUM,IN_COMM,ierr)
   input=output
   if (ierr/=0) then
      OFLWR "ERR mympii8reduce!"; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympii8reduceone_local
 
 
@@ -651,7 +652,7 @@ subroutine mympiireduce(input, isize)
      return
   endif
   output=0
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   ierr=0
   call MPI_allreduce( input, output, isize, MPI_INTEGER, MPI_SUM, &
        MPI_COMM_WORLD , ierr)
@@ -659,7 +660,7 @@ subroutine mympiireduce(input, isize)
      OFLWR "ERR mympiireduce!";   CFLST
   endif
   input=output
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympiireduce
 
 
@@ -674,14 +675,14 @@ subroutine mympireduceone_local(input,IN_COMM)
   if (nprocs.eq.1) then
      return
   endif
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   ierr=0
   call MPI_allreduce( input, output, 1, MPIDATATYPE, MPI_SUM,IN_COMM, ierr)
   if (ierr/=0) then
      OFLWR "ERR mympireduce!"; CFLST
   endif
   input=output
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympireduceone_local
 
 
@@ -703,13 +704,13 @@ subroutine mympisendrecv_complex_local(sendbuf, recvbuf, dest, source, tag, isiz
   complex*16, intent(out) :: recvbuf(isize)
   idest=dest-1
   isource=source-1
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_sendrecv(sendbuf,isize,MPI_DOUBLE_COMPLEX,idest,tag,&
        recvbuf,isize, MPI_DOUBLE_COMPLEX,isource,tag,MPI_COMM_LOCAL,MPI_STATUS_IGNORE,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympisendrecv",ierr; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympisendrecv_complex_local
 
 
@@ -723,13 +724,13 @@ subroutine mympisendrecv_real_local(sendbuf, recvbuf, dest, source, tag, isize,M
   real*8, intent(out) :: recvbuf(isize)
   idest=dest-1
   isource=source-1
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_sendrecv(sendbuf,isize,MPI_DOUBLE_PRECISION,idest,tag,&
        recvbuf,isize, MPI_DOUBLE_PRECISION,isource,tag,MPI_COMM_LOCAL,MPI_STATUS_IGNORE,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympisendrecv_real_local",ierr; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympisendrecv_real_local
 
 
@@ -774,12 +775,12 @@ subroutine mympisend(input, dest, tag, isize)
   DATATYPE,intent(in) :: input(isize)
   integer :: ierr, idest
   idest=dest-1
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_send(input,isize,MPIDATATYPE,idest,tag,MPI_COMM_WORLD,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympisend"; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympisend
 
 
@@ -791,12 +792,12 @@ subroutine mympirecv(output, source, tag, isize)
   integer :: ierr,isource
   DATATYPE,intent(out) :: output(isize)
   isource=source-1
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_recv(output,isize,MPIDATATYPE,isource,tag,MPI_COMM_WORLD,MPI_STATUS_IGNORE,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympirecv"; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympirecv
 
 
@@ -809,12 +810,12 @@ subroutine mympirealbcast_local(input, source, isize,MPI_COMM_LOCAL)
   integer :: ierr, isource
 
   isource=source-1
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_bcast(input,isize,MPI_DOUBLE_PRECISION,isource,MPI_COMM_LOCAL,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympirealbcast"; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympirealbcast_local
 
 
@@ -827,12 +828,12 @@ subroutine mympicomplexbcast_local(input, source, isize, MPI_COMM_LOCAL)
   integer :: ierr, isource
 
   isource=source-1
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_bcast(input,isize,MPI_DOUBLE_COMPLEX,isource,MPI_COMM_LOCAL,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympicomplexbcast"; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympicomplexbcast_local
 
 
@@ -890,12 +891,12 @@ subroutine mympiibcast(input, source, isize)
   integer,intent(inout) :: input(isize) 
   integer :: ierr, isource
   isource=source-1
-  call system_clock(mpiatime); nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime); nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_bcast(input,isize,MPI_INTEGER,isource,MPI_COMM_WORLD,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympibcast"; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympiibcast
 
 
@@ -907,12 +908,12 @@ subroutine mympirealbcastone(input, source)
   real*8,intent(inout) :: input
   integer :: ierr,isource
   isource=source-1
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_bcast(input,1,MPI_DOUBLE_PRECISION,isource,MPI_COMM_WORLD,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympibcast"; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympirealbcastone
 
 
@@ -924,12 +925,12 @@ subroutine mympiibcastone(input, source)
   integer,intent(inout) :: input
   integer :: ierr, isource
   isource=source-1
-  call system_clock(mpiatime); nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime); nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_bcast(input,1,MPI_INTEGER,isource,MPI_COMM_WORLD,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympibcast"; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympiibcastone
 
 
@@ -941,12 +942,12 @@ subroutine mympilogbcast(input, source, isize)
   logical,intent(inout) :: input(isize)
   integer :: ierr, isource
   isource=source-1
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_bcast(input,isize,MPI_LOGICAL,isource,MPI_COMM_WORLD,ierr)
   if (ierr/=0) then
      OFLWR "ERR mympibcast"; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympilogbcast
 
 
@@ -956,7 +957,7 @@ subroutine mympiimax(input)
   implicit none
   integer,intent(inout) :: input
   integer :: ierr,output
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call MPI_reduce( input, output, 1, MPI_INTEGER, MPI_MAX,0, MPI_COMM_WORLD , ierr)
   if (ierr/=0) then
      OFLWR "ERR MPIMAX!"; CFLST
@@ -966,7 +967,7 @@ subroutine mympiimax(input)
   if (ierr/=0) then
      OFLWR "ERR MPIIMAX!"; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympiimax
 
 
@@ -976,7 +977,7 @@ subroutine mympiimin(input)
   implicit none
   integer,intent(inout) :: input
   integer :: ierr, output
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call MPI_reduce( input, output, 1, MPI_INTEGER, MPI_MIN,0, MPI_COMM_WORLD , ierr)
   if (ierr/=0) then
      OFLWR "ERR MPIImin!"; CFLST
@@ -986,7 +987,7 @@ subroutine mympiimin(input)
   if (ierr/=0) then
      OFLWR "ERR MPIImin!"; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympiimin
 
 
@@ -998,7 +999,7 @@ subroutine mympimax_local(input,IN_COMM)
   real*8,intent(inout) :: input
   integer :: ierr
   real*8 :: output
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call MPI_reduce(input,output,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,IN_COMM,ierr)
   if (ierr/=0) then
      OFLWR "ERR MPIMAX!"; CFLST
@@ -1008,7 +1009,7 @@ subroutine mympimax_local(input,IN_COMM)
   if (ierr/=0) then
      OFLWR "ERR MPIMAX!"; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympimax_local
 
 
@@ -1027,7 +1028,7 @@ subroutine mympimin(input)
   real*8,intent(inout) :: input
   integer :: ierr
   real*8 :: output
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call MPI_reduce( input, output, 1, MPI_DOUBLE_PRECISION, MPI_MIN,0, &
        MPI_COMM_WORLD , ierr)
   if (ierr/=0) then
@@ -1038,7 +1039,7 @@ subroutine mympimin(input)
   if (ierr/=0) then
      OFLWR "ERR MPIImin!"; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine mympimin
 
 
@@ -1066,13 +1067,13 @@ subroutine simpleallgather_complex(vectorin,vectorsout,insize)
   complex*16,intent(in) :: vectorin(insize)
   complex*16,intent(out) :: vectorsout(insize,nprocs)
   integer :: ierr
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_allgather(vectorin(:),insize,MPI_DOUBLE_COMPLEX,vectorsout(:,:),&
        insize, MPI_DOUBLE_COMPLEX,MPI_COMM_WORLD,ierr)
   if (ierr.ne.0) then
      write(mpifileptr,*) "gather complex ERR ", ierr; call mpistop()
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine simpleallgather_complex
 
 
@@ -1085,13 +1086,13 @@ subroutine simpleallgather_real(vectorin,vectorsout,insize)
   real*8,intent(in) :: vectorin(insize)
   real*8,intent(out) :: vectorsout(insize,nprocs)
   integer :: ierr
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_allgather(vectorin(:),insize,MPI_DOUBLE_PRECISION,vectorsout(:,:),&
        insize,MPI_DOUBLE_PRECISION,MPI_COMM_WORLD,ierr)
   if (ierr.ne.0) then
      write(mpifileptr,*) "gather real ERR ", ierr; call mpistop()
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 end subroutine simpleallgather_real
 
 
@@ -1135,7 +1136,7 @@ SUBROUTINE MYGATHERV_complex(V1,X1,BLOCKS,bcastflag)
   complex*16, INTENT(OUT) :: X1(*)
   INTEGER ::MPIERR=0, BLOCKSTART(nprocs),parsize
 
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 
   call getgatherv_stuff(blocks,parsize,blockstart,nprocs)
 
@@ -1151,7 +1152,7 @@ SUBROUTINE MYGATHERV_complex(V1,X1,BLOCKS,bcastflag)
         print *, "bcast err",mpierr,myrank;          stop
      endif
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 
 END SUBROUTINE MYGATHERV_complex
 
@@ -1165,7 +1166,7 @@ SUBROUTINE MYGATHERV_real(V1,X1,BLOCKS,bcastflag)
   real*8, INTENT(OUT) :: X1(*)
   INTEGER ::MPIERR=0, parsize, BLOCKSTART(nprocs)
 
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 
   call getgatherv_stuff(blocks,parsize,blockstart,nprocs)
 
@@ -1180,7 +1181,7 @@ SUBROUTINE MYGATHERV_real(V1,X1,BLOCKS,bcastflag)
         print *, "bcast err",mpierr,myrank;          stop
      endif
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 
 END SUBROUTINE MYGATHERV_real
 
@@ -1208,7 +1209,7 @@ SUBROUTINE MYSCATTERV_complex(X1,V1,BLOCKS)
   complex*16, INTENT(IN) :: X1(*)
   INTEGER ::MPIERR=0, parsize, BLOCKSTART(nprocs)
 
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 
   call getgatherv_stuff(blocks,parsize,blockstart,nprocs)
 
@@ -1217,7 +1218,7 @@ SUBROUTINE MYSCATTERV_complex(X1,V1,BLOCKS)
   if (mpierr.ne.0) then
      print *, "Scatterv err",mpierr,myrank;          stop
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 
 END SUBROUTINE MYSCATTERV_complex
 
@@ -1230,7 +1231,7 @@ SUBROUTINE MYSCATTERV_real(X1,V1,BLOCKS)
   real*8, INTENT(IN) :: X1(*)
   INTEGER ::MPIERR=0, parsize, BLOCKSTART(nprocs)
 
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 
   call getgatherv_stuff(blocks,parsize,blockstart,nprocs)
 
@@ -1239,7 +1240,7 @@ SUBROUTINE MYSCATTERV_real(X1,V1,BLOCKS)
   if (mpierr.ne.0) then
      print *, "Scatterv err",mpierr,myrank;          stop
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 
 END SUBROUTINE MYSCATTERV_real
 
@@ -1637,7 +1638,7 @@ subroutine mpiallgather_local(inout,totsize,blocksizes,notusedint,&
      return
   endif
   work=0; blockstart=0
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call getgatherv_stuff(blocksizes,icount,blockstart,numprocs)
   if (icount.ne.totsize) then
      OFLWR "ALLgather ERR count", icount,totsize; 
@@ -1650,7 +1651,7 @@ subroutine mpiallgather_local(inout,totsize,blocksizes,notusedint,&
   if (ierr.ne.0) then
      OFLWR "ALLGATHERv ERR ", ierr; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 #endif
 end subroutine mpiallgather_local
 
@@ -1680,7 +1681,7 @@ subroutine mpiallgather_i(inout,totsize,blocksizes,notusedint)
      return
   endif
   work=0; blockstart=0
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call getgatherv_stuff(blocksizes,icount,blockstart,nprocs)
   if (icount.ne.totsize) then
      OFLWR "ALLgather_i ERR count", icount,totsize; 
@@ -1693,7 +1694,7 @@ subroutine mpiallgather_i(inout,totsize,blocksizes,notusedint)
   if (ierr.ne.0) then
      OFLWR "ALLGATHERv ERR ", ierr; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 #endif
 end subroutine mpiallgather_i
 
@@ -1709,7 +1710,7 @@ subroutine mympialltoall(input, output, count)
   output(:,:)=input(:,:)
 #else
   integer :: ierr
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 
   call mpi_alltoall(input(:,:),count,MPIDATATYPE,output(:,:),count,&
        MPIDATATYPE,MPI_COMM_WORLD,ierr)
@@ -1717,7 +1718,7 @@ subroutine mympialltoall(input, output, count)
   if (ierr.ne.0) then
      OFLWR "ERROR ALLTOALL ", ierr; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 #endif
 end subroutine mympialltoall
 
@@ -1734,13 +1735,13 @@ subroutine mympialltoall_complex(input, output, count)
   output(:,:)=input(:,:)
 #else
   integer :: ierr
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_alltoall(input(:,:),count,MPI_DOUBLE_COMPLEX,output(:,:),count,&
        MPI_DOUBLE_COMPLEX,MPI_COMM_WORLD,ierr)
   if (ierr.ne.0) then
      OFLWR "ERROR ALLTOALL ", ierr; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 #endif
 end subroutine mympialltoall_complex
 
@@ -1757,13 +1758,13 @@ subroutine mympialltoall_complex_local(input, output, count,INCOMM)
   output(:,:)=input(:,:)
 #else
   integer :: ierr
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
   call mpi_alltoall(input(:,:),count,MPI_DOUBLE_COMPLEX,output(:,:),count,&
        MPI_DOUBLE_COMPLEX,INCOMM,ierr)
   if (ierr.ne.0) then
      OFLWR "ERROR ALLTOALLlocal ", ierr; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 #endif
 end subroutine mympialltoall_complex_local
 
@@ -1780,7 +1781,7 @@ subroutine mympialltoall_local(input, output, count,INCOMM)
   output(:,:)=input(:,:)
 #else
   integer :: ierr
-  call system_clock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
+  call myclock(mpiatime);  nonmpitime=nonmpitime+mpiatime-mpibtime
 
   call mpi_alltoall(input(:,:),count,MPIDATATYPE,output(:,:),count,&
        MPIDATATYPE,INCOMM,ierr)
@@ -1788,7 +1789,7 @@ subroutine mympialltoall_local(input, output, count,INCOMM)
   if (ierr.ne.0) then
      OFLWR "ERROR ALLTOALL   local ", ierr; CFLST
   endif
-  call system_clock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
+  call myclock(mpibtime);  mpitime=mpitime+mpibtime-mpiatime
 #endif
 end subroutine mympialltoall_local
 

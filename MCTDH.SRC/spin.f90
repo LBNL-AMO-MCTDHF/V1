@@ -830,7 +830,7 @@ subroutine basis_shuffle(howmany,wwin,avectorin,wwout,avectorout)
   endif
 
   if (icalled.eq.0) then
-     call system_clock(btime); atime=btime
+     call myclock(btime); atime=btime
      if (myrank.eq.1.and.notiming.le.1) then
         open(1777, file=timingdir(1:getlen(timingdir))//"/shuffletime.dat", &
              status="unknown",iostat=myiostat)
@@ -845,7 +845,7 @@ subroutine basis_shuffle(howmany,wwin,avectorin,wwout,avectorout)
         close(1777)
      endif
   else
-     call system_clock(btime); times(6)=times(6)+btime-atime; atime=btime
+     call myclock(btime); times(6)=times(6)+btime-atime; atime=btime
   endif
   icalled=1; numcalled=numcalled+1
 
@@ -865,13 +865,13 @@ subroutine basis_shuffle(howmany,wwin,avectorin,wwout,avectorout)
      enddo
   enddo
 
-  call system_clock(btime); times(1)=times(1)+ btime-atime; atime=btime
+  call myclock(btime); times(1)=times(1)+ btime-atime; atime=btime
 
   allocate(pairs(2,numpairs),pairlow(numpairs),pairhigh(numpairs),&
        pairsize(numpairs),pairtag(numpairs))
   pairs=(-1); pairlow=(-1); pairhigh=(-1); pairsize=(-1); pairtag=(-1)
 
-  call system_clock(btime); times(2)=times(2)+ btime-atime; atime=btime
+  call myclock(btime); times(2)=times(2)+ btime-atime; atime=btime
 
   numpairs=0
   do iin=1,nprocs
@@ -907,7 +907,7 @@ subroutine basis_shuffle(howmany,wwin,avectorin,wwout,avectorout)
   if (numpairs.lt.max(wwin%nzprocs,wwout%nzprocs)) then
      OFLWR "What? too few pairs",numpairs,wwin%nzprocs,wwout%nzprocs; CFLST
   endif
-  call system_clock(btime); times(3)=times(3)+ btime-atime; atime=btime
+  call myclock(btime); times(3)=times(3)+ btime-atime; atime=btime
 
   do ipair=1,numpairs
      if (pairs(1,ipair).eq.myrank.and.pairs(2,ipair).eq.myrank) then
@@ -922,7 +922,7 @@ subroutine basis_shuffle(howmany,wwin,avectorin,wwout,avectorout)
      endif
   enddo
 
-  call system_clock(btime); times(4)=times(4)+ btime-atime; atime=btime
+  call myclock(btime); times(4)=times(4)+ btime-atime; atime=btime
 
   deallocate(pairs,pairlow,pairhigh,pairsize,pairtag)
 
@@ -935,7 +935,7 @@ subroutine basis_shuffle(howmany,wwin,avectorin,wwout,avectorout)
      close(1777)
   endif
 
-  call system_clock(btime); times(5)=times(5)+ btime-atime; atime=btime
+  call myclock(btime); times(5)=times(5)+ btime-atime; atime=btime
 
 #endif
 

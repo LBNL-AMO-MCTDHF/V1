@@ -605,7 +605,7 @@ contains
 
 !! begin the ket batch read loop
     do ketbat=1,NBat
-       call system_clock(itime)
+       call myclock(itime)
        OFLWR "Reading ket batch ", ketbat, " of ", NBat; CFL
        ketreadsize=min(BatchSize,nt+1-(ketbat-1)*BatchSize)
 
@@ -684,12 +684,12 @@ contains
           enddo
        endif
 
-       call system_clock(jtime)
+       call myclock(jtime)
        times(1)=times(1)+jtime-itime
 
 !! begin the bra batch read loop
        do brabat=1,ketbat
-          call system_clock(itime)
+          call myclock(itime)
           OFLWR "Reading bra batch ", brabat, " of ", ketbat; CFL
 
           brareadsize=min(BatchSize,nt+1-(brabat-1)*BatchSize)
@@ -776,14 +776,14 @@ contains
                 enddo
              endif
           endif  !! if brabat.eq.ketbat
-          call system_clock(jtime)
+          call myclock(jtime)
           times(1)=times(1)+jtime-itime
         
 !! loop over all time for the ket of the flux integral
           do kettime=1,ketreadsize
 
 !! get the one-e half transformed matrix elements for this ket time
-             call system_clock(itime)
+             call myclock(itime)
              curtime=(ketbat-1)*BatchSize+kettime-1 
 
              imkeop=0; impeop=0;  imyop=0
@@ -799,7 +799,7 @@ contains
                 call flux_op_onee(ketmo(:,:,kettime),rekeop,repeop,2)
                 call flux_op_nuc(ketmo(:,:,kettime),reyop,2)
              endif
-             call system_clock(jtime);        times(2)=times(2)+jtime-itime
+             call myclock(jtime);        times(2)=times(2)+jtime-itime
 
 !! determine bounds of loop over bras and setup doing in parallel with mpi!
              if(brabat.lt.ketbat) then
@@ -816,7 +816,7 @@ contains
                 oldtime=(brabat-1)*BatchSize+bratime-1
               
 !! biortho this pair of times!        
-                call system_clock(itime)
+                call myclock(itime)
                 if (tot_adim.gt.0) then
                    abio(:,:,:)=braavec(:,:,:,bratime)
                 endif
@@ -840,7 +840,7 @@ contains
                 endif
                 fluxgtaubiovar%hermonly=.false.   !! in case fluxgtaubiovar is reused
 
-                call system_clock(jtime);          times(3)=times(3)+jtime-itime;  itime=jtime
+                call myclock(jtime);          times(3)=times(3)+jtime-itime;  itime=jtime
 
 !! complete the one-e potential and kinetic energy matrix elements           
 
@@ -868,7 +868,7 @@ contains
                         spfsize,reyop,spfsize,DATAZERO,reyderiv,nspf)
                 endif
 
-                call system_clock(jtime);          times(4)=times(4)+jtime-itime;  itime=jtime
+                call myclock(jtime);          times(4)=times(4)+jtime-itime;  itime=jtime
 
                 if (parorbsplit.eq.3) then
                    if (nucfluxopt.ne.2) then
@@ -885,7 +885,7 @@ contains
                    endif
                 endif
 
-                call system_clock(jtime);          times(5)=times(5)+jtime-itime;  itime=jtime
+                call myclock(jtime);          times(5)=times(5)+jtime-itime;  itime=jtime
 
 !! get the two-e contribution for exact formula (fluxoptype=0)
 
@@ -898,7 +898,7 @@ contains
                       call flux_op_twoe(mobio,ketmo(:,:,kettime),reV2,2)
                    endif
                 endif
-                call system_clock(jtime);         times(6)=times(6)+jtime-itime;  itime=jtime
+                call myclock(jtime);         times(6)=times(6)+jtime-itime;  itime=jtime
 
 !! evaluate the actual g(tau) expression
 
@@ -922,7 +922,7 @@ contains
 !! dt factor here
                 gtau(tau,:) = gtau(tau,:) + gtaunow(:) * dt
 
-                call system_clock(jtime);          times(7)=times(7)+jtime-itime
+                call myclock(jtime);          times(7)=times(7)+jtime-itime
 
                 if (tau.eq.0) then
 
@@ -932,7 +932,7 @@ contains
 !! now integrals dt and domega with fluxtsumfile in namelist &parinp
 !! and additional column in spifile
 
-                   call system_clock(itime)
+                   call myclock(itime)
 
                    if (flux_subtract.ne.0) then
                       gtaunow(:) = gtaunow(:) - gtausave(:)
@@ -941,13 +941,13 @@ contains
                    gtausum(:) = gtausum(:) + gtaunow(:) * dt / 2d0   !! 2 looks correct
 
                    if (myrank.eq.1) then
-                      call system_clock(itime)
+                      call myclock(itime)
                       open(454, file=fluxtsumfile, status="old",  position="append",iostat=myiostat)
                       call checkiostat(myiostat,"opening fluxtsumfile")
                       write(454,'(F18.12, T22, 400E20.8)',iostat=myiostat) curtime*dt, &
                            gtausum(:), gtaunow(:)
                       call checkiostat(myiostat,"writing fluxtsumfile")
-                      call system_clock(jtime);        times(8)=times(8)+jtime-itime
+                      call myclock(jtime);        times(8)=times(8)+jtime-itime
                       close(454)
                    endif
 
