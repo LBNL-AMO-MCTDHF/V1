@@ -103,7 +103,7 @@ subroutine getparams()
        prepropflag, step_flag, postpropflag, scalarflag, angprojfluxtsumfile, &
        catfacs, flux_subtract, jacsymquad, exact_exchange, jacquaddir, tentmode, followflag, &
        exchange_mode, gaugefluxflag, strongcatflag, strongcatspffiles, strongcatavectorfiles, &
-       catenergies
+       catenergies, nonuc_checkflag
 
   OFL
   write(mpifileptr, *)
@@ -207,8 +207,7 @@ subroutine getparams()
   
   !!   ************************************************************************************************************************
   !!
-  !!    Coord-Dependent Namelist Input and Command Line Options are SUBSERVIENT to MCTDHF Options  (but bo_checkflag=1 
-  !!        sets nonuc_checkflag=1)
+  !!    Coord-Dependent Namelist Input and Command Line Options are SUBSERVIENT to MCTDHF Options
   !!
   !!   ************************************************************************************************************************
 
