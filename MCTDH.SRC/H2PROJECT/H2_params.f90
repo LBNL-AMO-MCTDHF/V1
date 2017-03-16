@@ -90,5 +90,13 @@ real*8 :: mass_asym
 integer :: rgridpoints
 integer :: numeta
 
+integer :: numelec 
+
+!! numelec is used to define a reduced mass for the electron for the 
+!! approximation in which mass polarization (differences between center of 
+!! mass of nuclei + n-1 electrons and center of mass of the nuclei) is 
+!! neglected.
+
+
 end module myparams
 

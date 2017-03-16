@@ -78,6 +78,13 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,&
 
   Rmass = pro_Hmass*pro_Dmass/(pro_Hmass+pro_Dmass)
   totalmass=pro_Hmass+pro_Dmass
+
+!! nuccharge1 goes with pro_Hmass, nuccharge2 with pro_Dmass.
+!! nucleus 1 (H) is on top (positive z).
+!! if nucleus 1 (H) is heavier, mass_asym is negative; if it is
+!! heavier, it is closer to the origin.  The result
+!! is that z is evaluated to be near zero when xi=1,eta=1.
+
   mass_asym = (pro_Dmass - pro_Hmass) / (pro_Dmass+pro_Hmass)
 
   xigridpoints = xinumelements*xinumpoints-xinumelements+1   

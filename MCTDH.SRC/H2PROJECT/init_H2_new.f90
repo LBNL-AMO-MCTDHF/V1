@@ -6,12 +6,12 @@
 
 
 subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
-     bondpoints,bondweights,elecweights,elecradii,numelec,&
+     bondpoints,bondweights,elecweights,elecradii,in_numelec,&
      numfrozen, infrozens, frozenkediag, frozenpotdiag, frozenreduced, hatomreduced)
   use myparams
   use myprojectmod
   implicit none
-  integer,intent(in) :: skipflag, numelec
+  integer,intent(in) :: skipflag, in_numelec
   integer,intent(inout) :: spfsloaded
   DATATYPE,intent(inout) :: inspfs(numerad,lbig+1, -mbig:mbig, numspf)
   DATATYPE,intent(out) :: proderivmod(numr,numr),rkemod(numr,numr), &
@@ -30,6 +30,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   character (len=2) :: th(4)
   DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:)
   DATATYPE,allocatable  ::  mydensity(:,:),ivopot(:,:),ivoproj(:,:,:,:)
+
+  numelec=in_numelec
 
   th=(/ "st", "nd", "rd", "th" /)
 

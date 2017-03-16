@@ -127,19 +127,6 @@ subroutine PSC()
 
   etake=etake*(-0.5d0);  xike=xike*(-0.5d0)
 
-! now factor is multiplied later, no longer in xike and etake.  remember two electron!
-!
-!  if (reducedflag.eq.1) then
-!     if (onee_checkflag.eq.1) then
-!        xike(:,:,:)=xike(:,:,:) * ( totalmass + 1 ) / totalmass
-!        etake(:,:,:)=etake(:,:,:) * ( totalmass + 1 ) / totalmass
-!     else
-!        xike(:,:,:)=xike(:,:,:) * ( totalmass + 2 ) / ( totalmass + 1 )
-!        etake(:,:,:)=etake(:,:,:) * ( totalmass + 2 ) / ( totalmass + 1 )
-!     endif
-!  endif
-
-
   call pro_ham()
 
   if (bornopflag.ne.1) then
@@ -277,13 +264,15 @@ subroutine pro_ham()
 
 !!!    1/R^2 terms. 
 
+!! for multiple electrons, we do not include mass polarization nor coriolis terms nor 
+!! orbit-orbit two-electron interactions (l^+_1 l^-_2).
+!! Hamiltonian is exact for one-electron diatomic molecules except for coriolis 
+!! coupling (lambda doubling, coupling between electronic m-values due to nuclear KE) 
+!! terms. Exact nonrelativistic one-electron diatomic hamiltonian for J=0 only.
+
   fac=1d0
   if (reducedflag.eq.1) then
-!     if (onee_checkflag.eq.1) then
-!        fac = ( totalmass + 1 ) / totalmass
-!     else
-        fac = ( totalmass + 2 ) / ( totalmass + 1 )
-!     endif
+     fac = ( totalmass + numelec ) / ( totalmass + numelec - 1 )
   endif
 
   do mvalue=0,mbig
@@ -302,18 +291,18 @@ subroutine pro_ham()
         enddo
      enddo
 
-!! no! is multielectron operator.  Mvalue should be mval.
+! coriolis couplings between m-values not included, only this diagonal part
 
-!     if (bornopflag /= 1) then
-!        do j=1,numerad
-!           do k=1,numeta
-!              proham(j,k,j,k,mvalue+1) =  proham(j,k,j,k,mvalue+1) &
-!                   + Mvalue**2 * ( xipoints(j)**2 - etapoints(k)**2) *  (-2.d0) *  0.5d0/Rmass
-!              proham(j,k,j,k,mvalue+1) =  proham(j,k,j,k,mvalue+1) &
-!                   + Jvalue*(Jvalue+1.d0) * ( xipoints(j)**2 - etapoints(k)**2) *  0.5d0/Rmass
-!           enddo
-!        enddo
-!     endif
+     if (bornopflag /= 1) then
+        do j=1,numerad
+           do k=1,numeta
+              proham(j,k,j,k,mvalue+1) =  proham(j,k,j,k,mvalue+1) &
+                   + mvalue**2 * ( xipoints(j)**2 - etapoints(k)**2) *  (-2.d0) *  0.5d0/Rmass
+              proham(j,k,j,k,mvalue+1) =  proham(j,k,j,k,mvalue+1) &
+                   + Jvalue*(Jvalue+1.d0) * ( xipoints(j)**2 - etapoints(k)**2) *  0.5d0/Rmass
+           enddo
+        enddo
+     endif
   enddo
 
      proddz(:,:,:,:,:) = 0.d0;      proddrho(:,:,:,:,:) = 0.d0
@@ -377,17 +366,12 @@ subroutine pro_ham()
   do j=1,numeta
      do i=1,numerad
 
- !! so if particle 1 (Hmass) is much heavier, this is zero at xi=1, eta=1
+!! so if particle 1 (Hmass) is much heavier, this is zero at xi=1, eta=1
         zdipole(i,j) =             0.5d0 * (etapoints(j) * xipoints(i) + mass_asym)  
         xydipole(i,j) =             0.5d0 * sqrt( (1.d0-etapoints(j)**2) * (xipoints(i)**2 - 1.d0))
      enddo
   enddo
   
-!!$  nucfac=( (1.d0-mass_asym)*NucCharge2 - (1.d0+mass_asym)*NucCharge1 )/2.d0
-!!$ OFLWR "WARNING: FOR CALCULATION WITH NUCLEAR MOTION, NEED EXTRA TERM IN PROZDIPOLE !! REMOVED FOR EXPEDIENCY"; CFL
-!!$!!  zdipole=zdipole+nucfac/numelec
-!!$ now - see below  
-
 end subroutine pro_ham
 
 
@@ -400,6 +384,15 @@ subroutine nucdipvalue(rvaluenotused,dipoles)
 
   DATATYPE,intent(in) :: rvaluenotused(1)
   DATATYPE,intent(out) :: dipoles(3)
+
+!! nuccharge1 goes with pro_Hmass, nuccharge2 with pro_Dmass.
+!! nucleus 1 (H) is on top (positive z).
+!! if nucleus1 (H) is heavier, mass_asym is negative; if it is
+!! heavier, it is closer to the origin.  (1+mass_asym) multiplies
+!! nuccharge1.
+!! This reports (-1) times the dipole because that is how the 
+!! rest of the program is done (the program is correct for antimatter,
+!! the dipole operator is programmed as +z)
 
   nucfac=( (1.d0-mass_asym)*NucCharge2 - (1.d0+mass_asym)*NucCharge1 )/2.d0
   dipoles(:)=0d0
