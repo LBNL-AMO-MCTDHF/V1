@@ -16,6 +16,7 @@ subroutine autocall(numdata, forwardovl, sflag)
   real*8 ::   estep, thistime, myenergy, windowfunct
   character (len=7) :: number
   DATATYPE, allocatable :: fftrans(:,:),fftrans0(:,:)
+  DATATYPE :: csums(mcscfnum), csums2(mcscfnum)   !! AUTOMATIC
 
 #ifdef REALGO
   OFLWR "Error, autocall not supported for real-valued"; CFLST
@@ -102,12 +103,17 @@ subroutine autocall(numdata, forwardovl, sflag)
         write(number,'(I7)') 1000000+floor(thistime)
         open(1711,file=corrftfile(1:getlen(corrftfile))//number(2:7),&
              status="unknown",iostat=myiostat)
-     call checkiostat(myiostat,"opening corrftfile")
+        call checkiostat(myiostat,"opening corrftfile")
         write(1711,*,iostat=myiostat) "#   ", totdim
-     call checkiostat(myiostat,"opening corrftfile")
+        call checkiostat(myiostat,"opening corrftfile")
+        csums(:)=0d0; csums2(:)=0d0
         do i=ibot,numdata
            myenergy=(i-ibot)*Estep
-           write(1711,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i,:)
+           if (myenergy.gt.dipolesumstart) then !! dipolesumstart only, not sumend
+              csums(:)=csums(:) + fftrans(i,:) * Estep
+              csums2(:)=csums2(:) + fftrans(i,:) * Estep * myenergy
+           endif
+           write(1711,'(F18.12, T22, 5000E20.8)')  myenergy, fftrans(i,:), csums, csums2
         enddo
         close(1711)
      endif
@@ -116,9 +122,14 @@ subroutine autocall(numdata, forwardovl, sflag)
      call checkiostat(myiostat,"opening corrftfile")
      write(171,*,iostat=myiostat) "#   ", totdim
      call checkiostat(myiostat,"opening corrftfile")
+     csums(:)=0d0; csums2=0d0
      do i=ibot,numdata
         myenergy=(i-ibot)*Estep
-        write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i,:)
+        if (myenergy.gt.dipolesumstart) then !! dipolesumstart only, not sumend
+           csums(:)=csums(:) + fftrans(i,:) * Estep
+           csums2(:)=csums2(:) + fftrans(i,:) * Estep * myenergy
+        endif
+        write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i,:), csums(:), csums2(:)
      enddo
      close(171)
 
