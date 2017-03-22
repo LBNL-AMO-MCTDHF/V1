@@ -129,7 +129,7 @@ subroutine autocall(numdata, forwardovl, sflag)
            csums(:)=csums(:) + fftrans(i,:) * Estep
            csums2(:)=csums2(:) + fftrans(i,:) * Estep * myenergy
         endif
-        write(171,'(F18.12, T22, 400E20.8)')  myenergy, fftrans(i,:), csums(:), csums2(:)
+        write(171,'(F18.12, T22, 5000E20.8)')  myenergy, fftrans(i,:), csums(:), csums2(:)
      enddo
      close(171)
 

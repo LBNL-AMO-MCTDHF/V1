@@ -751,7 +751,7 @@ contains
          aouttr(:,:), work(:)
     real*8,allocatable :: sing(:),rwork(:)
 
-    lwork=20*inbiovar%wwbio%numconfig
+    lwork=10 * ( inbiovar%wwbio%numconfig + inbiovar%bionr )
 
     allocate( bioconfiglist(inbiovar%wwbio%numpart+1,inbiovar%wwbio%numconfig), &  !! PADDED
          bioeleclist(inbiovar%wwbio%numelec+1,inbiovar%wwbio%numconfig), &          !! PADDED
@@ -759,7 +759,7 @@ contains
          Stmpbig(inbiovar%wwbio%numelec,inbiovar%wwbio%numelec), &
          Sconfig(inbiovar%wwbio%numconfig,inbiovar%wwbio%numconfig), &
          aouttr(inbiovar%wwbio%numconfig,inbiovar%bionr),&
-         work(20*inbiovar%wwbio%numconfig),&
+         work(lwork), &
          sing(inbiovar%wwbio%numconfig),rwork(5*inbiovar%wwbio%numconfig) )
     bioconfiglist=0; bioeleclist=0; smobig=0d0; stmpbig=0; sconfig=0; aouttr=0;  
     sing=0; rwork=0; work=0
