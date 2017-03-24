@@ -17,7 +17,8 @@ subroutine autocorrelate_initial()
   use xxxmod
   implicit none
   integer :: imc
-  
+
+  OFLWR "Initializing autocorrelation"; CFL
   allocate(overlaps(0:autosize,mcscfnum),  orig_spfs(  spfsize, nspf ),&
        orig_avectors(numr,first_config:last_config,mcscfnum))
   overlaps(:,:)=0d0;  orig_spfs=0; calledflag=0;  xcalledflag=0
@@ -110,10 +111,14 @@ subroutine autocorrelate()
   use autocorrelate_one_mod
   implicit none
   integer ::  i,imc,sflag,myiostat
-  integer, save :: lastouttime=0
+  integer, save :: lastouttime=0, iinit=0
   real*8 :: thistime
 
   if (mod(xcalledflag,autosteps).eq.0) then
+     if (iinit.eq.0) then
+        call autocorrelate_initial()
+        iinit=1
+     endif
      do imc=1,mcscfnum
         call autocorrelate_one(www,bioww,yyy%cmfavec(:,imc,0),yyy%cmfspfs(:,0),&
              orig_spfs(:,:), orig_avectors(:,:,imc), overlaps(calledflag,imc),numr,autobiovar)
@@ -121,7 +126,7 @@ subroutine autocorrelate()
 
      if (mod(calledflag,dipmodtime).eq.0.and.calledflag.gt.0) then
 
-        thistime=calledflag*par_timestep*autosteps
+        thistime=calledflag*par_timestep*autosteps + autostart
         sflag=0
         if (floor(thistime/diptime).gt.lastouttime) then
            lastouttime=floor(thistime/diptime)

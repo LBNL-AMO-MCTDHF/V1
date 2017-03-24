@@ -472,6 +472,7 @@ real*8 :: keprojmaxrad=40        !!   "
 real*8 :: eground=0.d0           !! Eground=     !! energy to shift fourier transform for ACTIONS 1 16 17
                                                  !!   (AUTOCORRELATION AND PHOTOIONIZATION)
 complex*16 :: ceground=(0.d0,0d0)!!              !! input as complex-valued instead if you like
+real*8 :: autostart=0d0          !! time zero for action 1. negative setting -> end of pulse.
 real*8 :: autotimestep=1.d0      !! ACTIONS 1,21,29 (autocorrelation and emission/absorption):
                                  !!   time step for fourier transform
 !!EE
@@ -595,6 +596,8 @@ integer :: nonatrotate=0
 
 !!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input)   
 !!$ integer :: fluxsteps=1
+
+real*8 :: lastfinish=0d0  !! final time of pulse
 
 integer :: eachloaded(MXF)=(-99)
 

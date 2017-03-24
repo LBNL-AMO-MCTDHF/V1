@@ -176,7 +176,7 @@ subroutine actionsub(thistime)
   implicit none
   
   integer :: i, calledhere=0, atime, btime, times(MAXACTION)=0,getlen,myiostat
-  real*8 :: thistime
+  real*8,intent(in) :: thistime
   CNORMTYPE :: error
 
   calledhere=calledhere+1
@@ -184,9 +184,11 @@ subroutine actionsub(thistime)
   do i=1,numactions
      select case (actions(i))
      case (1)    !! auto-correlation
-        call myclock(atime)
-        call autocorrelate()
-        call myclock(btime);        times(1)=times(1)+btime-atime
+        if (thistime.gt.autostart-1d-8) then
+           call myclock(atime)
+           call autocorrelate()
+           call myclock(btime);        times(1)=times(1)+btime-atime
+        endif
      case(2)
         call myclock(atime)
         if (myrank.eq.1) then
@@ -343,6 +345,9 @@ subroutine write_actions()
   j=0
   k=0
   do i=1,numactions
+     if (actions(i).eq.1) then
+        WRFL "For action 1 autostart= ",autostart," autotimestep= ",autotimestep
+     endif
      if ((actions(i).eq.15).or.(actions(i).eq.16).or.(actions(i).eq.17)) then
         j=1
      endif
@@ -442,7 +447,7 @@ subroutine actions_initial()
   do i=1,numactions
      select case (actions(i))
      case (1)    !! auto-correlation
-        call autocorrelate_initial()
+!!        call autocorrelate_initial() no, now in autocorrelate with autostart
      case (2)    
         if (myrank.eq.1) then
            call save_natorb_initial()

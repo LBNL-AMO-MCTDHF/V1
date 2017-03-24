@@ -72,8 +72,8 @@ subroutine autocall(numdata, forwardovl, sflag)
      call checkiostat(myiostat,"opening corrdatfile")
      write(171,*,iostat=myiostat) "#   ", totdim
      call checkiostat(myiostat,"writing corrdatfile")
-     do i=ibot,numdata
-        write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*autosteps, &
+     do i=0,numdata
+        write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*autosteps + autostart, &
              (fftrans0(i,imc),fftrans(i,imc),imc=1,mcscfnum)
      enddo
      close(171)
@@ -105,7 +105,7 @@ subroutine autocall(numdata, forwardovl, sflag)
   if (myrank.eq.1) then
 
      if (sflag.ne.0) then
-        thistime=numdata*par_timestep*autosteps
+        thistime=numdata*par_timestep*autosteps + autostart
         write(number,'(I7)') 1000000+floor(thistime)
         open(1711,file=corrftfile(1:getlen(corrftfile))//number(2:7),&
              status="unknown",iostat=myiostat)

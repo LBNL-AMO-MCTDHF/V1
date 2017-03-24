@@ -83,7 +83,7 @@ contains
     else
        OFLWR "INTOPT NOT REC", intopt; CFLST
     endif
-    OFLWR "       Number of evaluations: ", numiters;  CFL
+!!    OFLWR "       Number of evaluations: ", numiters;  CFL
 
     yyy%cmfspfs(:,0)=psivec(tot_adim*mcscfnum+1:tot_adim*mcscfnum+totspfdim)
     if (tot_adim.gt.0) then

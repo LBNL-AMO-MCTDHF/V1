@@ -103,7 +103,7 @@ subroutine getparams()
        prepropflag, step_flag, postpropflag, scalarflag, angprojfluxtsumfile, &
        catfacs, flux_subtract, jacsymquad, exact_exchange, jacquaddir, tentmode, followflag, &
        exchange_mode, gaugefluxflag, strongcatflag, strongcatspffiles, strongcatavectorfiles, &
-       catenergies, nonuc_checkflag
+       catenergies, nonuc_checkflag, autostart
 
   OFL
   write(mpifileptr, *)
@@ -174,6 +174,10 @@ subroutine getparams()
      if (intopt.eq.4) then
         expotol=min(1d-9,expotol)
      endif
+     if (intopt.eq.1) then
+        relerr=1d-8
+        myrelerr=1d-8
+     endif
 
      if (improvedrelaxflag.ne.0) then
         expotol=min(expotol,1d-9)
@@ -205,11 +209,12 @@ subroutine getparams()
   close(971)
 
   
-  !!   ************************************************************************************************************************
+  !!   ************************************************************************************
   !!
-  !!    Coord-Dependent Namelist Input and Command Line Options are SUBSERVIENT to MCTDHF Options
+  !!    Coord-dependent namelist input and command line options may be overridden by
+  !!    options of the main program
   !!
-  !!   ************************************************************************************************************************
+  !!   ************************************************************************************
 
 
   !!   NOW TAKE MCTDHF NAMELIST AND COMMAND LINE INPUT
@@ -570,6 +575,11 @@ subroutine getparams()
 
   autosize=numpropsteps/autosteps+1
 
+  if (autostart.lt.0d0) then
+     autostart = (ceiling(lastfinish/par_timestep/autosteps))*par_timestep*autosteps
+     OFLWR "   autostart set to ",autostart
+  endif
+
 !!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input)   
 !!$ fluxsteps=floor(max(1.d0,fluxtimestep/par_timestep));  fluxtimestep=par_timestep*fluxsteps
 
@@ -889,7 +899,7 @@ subroutine getparams()
   write(mpifileptr, *)
   write(mpifileptr, *) "****************************************************************************"
   write(mpifileptr, *)
-  write(mpifileptr,*) " Autotimestep= ", autotimestep, " Autosteps= ", autosteps," Autosize= ", autosize
+  write(mpifileptr,*) " Autotimestep= ", autotimestep
   write(mpifileptr,*) " Numpropsteps= ", numpropsteps
 
 !!$ IMPLEMENT ME (DEPRECATE fluxinterval as namelist input)  
@@ -917,7 +927,7 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
   implicit none
   NAMELIST /pulse/ omega,pulsestart,pulsestrength, velflag, omega2,phaseshift,intensity,pulsetype, &
        pulsetheta,pulsephi, longstep, numpulses, reference_pulses, minpulsetime, maxpulsetime, chirp, ramp
-  real*8 ::  time,   lastfinish, fac, pulse_end, estep
+  real*8 ::  time, fac, pulse_end, estep
   DATATYPE :: pots1(3),pots2(3),pots3(3), pots4(3), pots5(3), csumx,csumy,csumz
   integer :: i, myiostat, ipulse,no_error_exit_flag
   character (len=12) :: line
