@@ -311,7 +311,7 @@ subroutine getdenmatstuff(wwin,avector, denmat, invdenmat, denvals, &
        invdenmat(wwin%nspf,wwin%nspf),denvects(wwin%nspf,wwin%nspf)
   CNORMTYPE :: tempdenvals(wwin%nspf,numclasses)
   DATATYPE :: tempinvden(wwin%nspf,wwin%nspf,numclasses),&
-       tempdenvects(wwin%nspf,wwin%nspf,numclasses)
+       tempdenvects(wwin%nspf,wwin%nspf,numclasses), csum
   integer :: ispf,jspf,iclass
   DATAECS :: rvector(numpoints)
 
@@ -347,6 +347,18 @@ subroutine getdenmatstuff(wwin,avector, denmat, invdenmat, denvals, &
      enddo
   enddo
 
+  do ispf=1,wwin%nspf
+     csum=denvects(ispf,ispf)
+#ifdef CNORMFLAG
+     if (real(csum,8).lt.0d0) then
+        denvects(:,ispf) = denvects(:,ispf) * (-1)
+     endif
+#else
+     if (csum.ne.0d0) then
+        denvects(:,ispf) = denvects(:,ispf) * abs(csum) / csum
+     endif
+#endif
+  enddo
 
 end subroutine getdenmatstuff
 

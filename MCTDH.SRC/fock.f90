@@ -271,6 +271,7 @@ subroutine replace_withfock(printflag)
        fockvects(:,:), outspfs(:,:)
   CNORMTYPE,allocatable :: fockeigvals(:),fockvals(:)
   DATATYPE,target :: smo(nspf,nspf)    !! AUTOMATIC
+  DATATYPE :: csum
   real*8 :: errorval
   integer :: iclass, ispf,jspf, imc
 
@@ -314,6 +315,18 @@ subroutine replace_withfock(printflag)
 
   enddo  !! do iclass
 
+  do ispf=1,nspf
+     csum=fockvects(ispf,ispf)
+#ifdef CNORMFLAG
+     if (real(csum,8).lt.0d0) then
+        fockvects(:,ispf) = fockvects(:,ispf) * (-1)
+     endif
+#else
+     if (csum.ne.0d0) then
+        fockvects(:,ispf) = fockvects(:,ispf) * abs(csum) / csum
+     endif
+#endif
+  enddo
 
   allocate(outspfs(spfsize,nspf))
   outspfs=0d0
