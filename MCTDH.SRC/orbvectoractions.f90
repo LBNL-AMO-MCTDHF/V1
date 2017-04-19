@@ -93,7 +93,7 @@ subroutine save_orbvector(outvec, isize, ifile, filename, header)
      write(ifile) header
      write(ifile) outvec
   endif
-  call mpibarrier()
+!! BUGFIX 041817  call mpibarrier()
 
 end subroutine save_orbvector
 
