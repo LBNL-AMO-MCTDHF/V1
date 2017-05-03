@@ -979,9 +979,9 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         fac=omega2(ipulse)
      endif
      if (intensity(ipulse).ne.-1.d0) then !! overrides pulsestrength
-        pulsestrength(ipulse) = sqrt(intensity(ipulse)/3.51)/fac
+        pulsestrength(ipulse) = sqrt(intensity(ipulse)/3.5094478d0)/fac
      else
-        intensity(ipulse) = (fac*pulsestrength(ipulse))**2 * 3.51  !! just output
+        intensity(ipulse) = (fac*pulsestrength(ipulse))**2 * 3.5094478d0  !! just output
      endif
      select case (pulsetype(ipulse))
      case (1)
