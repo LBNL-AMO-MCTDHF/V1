@@ -87,6 +87,8 @@ function tdpotlen0(myintime, which,ilow,ihigh)
            tdpotlen0=tdpotlen0+longpulselen(myintime,ipulse) * fac
         case (4)
            tdpotlen0=tdpotlen0+cwpulselen(myintime,ipulse) * fac
+        case (5)
+           tdpotlen0=tdpotlen0+monopulselen(myintime,ipulse) * fac
         case default
            OFLWR "Pulse type not supported: ", pulsetype(ipulse); CFLST
         end select
@@ -133,6 +135,8 @@ function tdpotvel0(myintime,which,ilow,ihigh)
            tdpotvel0=tdpotvel0+longpulsevel(myintime, ipulse) * fac
         case (4)
            tdpotvel0=tdpotvel0+cwpulsevel(myintime, ipulse) * fac
+        case (5)
+           tdpotvel0=tdpotvel0+monopulsevel(myintime, ipulse) * fac
         case default
            OFLWR "Pulse type not supported: ", pulsetype(ipulse); CFLST
         end select
@@ -221,6 +225,48 @@ function cwpulsevel(myintime, ipulse)
   endif
 
 end function cwpulsevel
+
+
+function monopulselen(myintime, ipulse)
+  use pulse_parameters
+  use constant_parameters
+  implicit none
+  integer,intent(in) :: ipulse
+  real*8,intent(in) :: myintime
+  real*8 :: pptime
+  DATATYPE :: monopulselen
+
+  pptime=myintime*omega(ipulse) - pi/2
+
+  if (pptime.lt.pi/2) then
+     monopulselen = pulsestrength(ipulse) * (0.75d0*cos(pptime) + cos(3*pptime)/4d0)
+  else
+     monopulselen = 0
+  end if
+
+end function monopulselen
+
+
+function monopulsevel(myintime, ipulse)
+  use pulse_parameters
+  use constant_parameters
+  implicit none
+  integer,intent(in) :: ipulse
+  real*8,intent(in) :: myintime
+  real*8 :: pptime
+  DATATYPE :: monopulsevel
+
+  pptime=myintime*omega(ipulse) - pi/2
+
+  if (pptime.lt.pi/2) then
+     monopulsevel = pulsestrength(ipulse) * (0.75d0*sin(pptime) + sin(3*pptime)/12d0 + 2d0/3d0)
+  else
+     monopulsevel = pulsestrength(ipulse) * (4d0/3d0)
+  endif
+
+end function monopulsevel
+
+
 
 
 function pulselen(myintime, ipulse)

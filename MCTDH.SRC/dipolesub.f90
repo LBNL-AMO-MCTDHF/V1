@@ -331,7 +331,7 @@ contains
     dipole_diff=0d0;    worksum0=0;   totworksum0=0;  
 
     do i=1,3
-       call complexdiff(numdata+1,dipolearrays(:,i),dipole_diff(:,i),.false.)
+       call complexdiff(numdata+1,dipolearrays(:,i),dipole_diff(:,i),2)
     enddo
     dipole_diff(:,:)= dipole_diff(:,:) / par_timestep / autosteps
 

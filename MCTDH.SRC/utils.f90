@@ -6,15 +6,21 @@
 #include "Definitions.INC"
 
 
-subroutine complexdiff(size,in,out,docirc)
+!! difflevel:
+!! 0=circular boundary conditions  1=interval bc  2=interval bc, subtract average after
+
+subroutine complexdiff(size,in,out,difflevel)
+  use fileptrmod
   implicit none
-  integer, intent(in) :: size
-  logical, intent(in) :: docirc
+  integer, intent(in) :: size,difflevel
   complex*16, intent(in) :: in(size)
   complex*16, intent(out) :: out(size)
   integer :: i,jj
 
-  if (docirc) then
+  if (difflevel==0) then
+     OFLWR "error complexdifflevel=0"; CFLST
+  elseif (difflevel==1) then
+
 !! guarantees F.T. at zero is zero, right?
 
      do i=1,size
@@ -66,6 +72,10 @@ subroutine complexdiff(size,in,out,docirc)
         end select
      end do
 
+     if (difflevel.eq.2) then
+        out(:) = out(:) - sum(out(:))/size
+     endif
+
   endif  !! docirc
 
 contains
@@ -89,10 +99,7 @@ subroutine zfftf_wrap_diff(size,inout,diffdflag)
   else
      allocate(work(size)); work=0
 
-!! guarantees F.T. at zero is zero, right?
-#define DOCIRC .true.
-
-     call complexdiff(size,inout,work,DOCIRC)
+     call complexdiff(size,inout,work,diffdflag)
 
      call zfftf_wrap(size,work)
 

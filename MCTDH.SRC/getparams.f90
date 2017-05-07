@@ -103,7 +103,7 @@ subroutine getparams()
        prepropflag, step_flag, postpropflag, scalarflag, angprojfluxtsumfile, &
        catfacs, flux_subtract, jacsymquad, exact_exchange, jacquaddir, tentmode, followflag, &
        exchange_mode, gaugefluxflag, strongcatflag, strongcatspffiles, strongcatavectorfiles, &
-       catenergies, nonuc_checkflag, autostart
+       catenergies, nonuc_checkflag, autostart, auto_subtract
 
   OFL
   write(mpifileptr, *)

@@ -7,16 +7,19 @@
 !! actually have numdata+1 data points in forwardovl
 
 subroutine autocall(numdata, forwardovl, sflag)
+  use pulsesubmod
   use parameters
   use mpimod
   implicit none
   integer, intent(in) :: numdata,sflag
   DATATYPE,intent(in) :: forwardovl(0:autosize,mcscfnum)
-  integer :: i, totdim, imc,getlen,ibot,myiostat
-  real*8 ::   estep, thistime, myenergy, windowfunct
-  character (len=7) :: number
   DATATYPE, allocatable :: fftrans(:,:),fftrans0(:,:)
   DATATYPE :: csums(mcscfnum), csums2(mcscfnum)   !! AUTOMATIC
+  DATATYPE :: csum
+  real*8, allocatable :: tentfunction(:)
+  integer :: i, totdim, imc,getlen,ibot,myiostat
+  real*8 ::   estep, thistime, myenergy, windowfunct, tentsum
+  character (len=7) :: number
 
 #ifdef REALGO
   OFLWR "Error, autocall not supported for real-valued"; CFLST
@@ -40,6 +43,17 @@ subroutine autocall(numdata, forwardovl, sflag)
 
 
   IF(hanningflag .NE. 4) THEN
+
+     allocate(tentfunction(-numdata:numdata))
+     tentfunction(:)=0
+
+     do i=-numdata,numdata
+!!        tentfunction(i) = (1+numdata-abs(i)) * windowfunct(abs(i),numdata,1)
+        tentfunction(i) = windowfunct(abs(i),numdata,1)
+     enddo
+
+     tentsum = get_rtentsum(numdata,tentfunction(-numdata:numdata))
+
      do i=0,numdata
         fftrans0(i,:) = forwardovl(i,:)  * exp((0.d0,-1.d0)*ceground*par_timestep*autosteps*i)
 
@@ -47,9 +61,18 @@ subroutine autocall(numdata, forwardovl, sflag)
 
      enddo
      do i=1,numdata
-        fftrans(-i,:) = conjg(fftrans(i,:))
-        fftrans0(-i,:) = conjg(fftrans0(i,:))
+        fftrans(-i,:) = ALLCON(fftrans(i,:))
+        fftrans0(-i,:) = ALLCON(fftrans0(i,:))
      enddo
+     
+     if (auto_subtract.ne.0) then
+        do imc=1,mcscfnum
+           csum = get_ctentsum(numdata,fftrans(-numdata:numdata,imc))
+           fftrans(-numdata:numdata,imc) = fftrans(-numdata:numdata,imc) - &
+                csum/tentsum * tentfunction(-numdata:numdata)
+        enddo
+     endif
+     deallocate(tentfunction)
 
   else
   
@@ -58,7 +81,7 @@ subroutine autocall(numdata, forwardovl, sflag)
 ! This is fixed.
 
      do i=0,numdata
-        fftrans0(i,:) = conjg(forwardovl(i,:)) * &
+        fftrans0(i,:) = ALLCON(forwardovl(i,:)) * &
              exp((0.d0,-1.d0)*ceground*par_timestep*autosteps*i)
         fftrans(i,:) = fftrans0(i,:) * (1-cos(pi*2*real(i,8)/real(numdata,8)))
      enddo

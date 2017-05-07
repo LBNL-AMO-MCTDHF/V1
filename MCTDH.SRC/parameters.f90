@@ -475,6 +475,7 @@ complex*16 :: ceground=(0.d0,0d0)!!              !! input as complex-valued inst
 real*8 :: autostart=0d0          !! time zero for action 1. negative setting -> end of pulse.
 real*8 :: autotimestep=1.d0      !! ACTIONS 1,21,29 (autocorrelation and emission/absorption):
                                  !!   time step for fourier transform
+integer :: auto_subtract=0       !! if nonzero subtract tent function for autocorrelation (action 1)
 !!EE
 !!{\large \quad FTs for AUTOCORRELATION, PHOTOIONIZATION and EMISSION/ABSORPTION (actions 1,16,17,21,29)}
 !!BB
