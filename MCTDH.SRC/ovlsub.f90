@@ -1,37 +1,32 @@
 
+!! ALL ONE MODULE
 
 !! ACTIONS 20 and 26 - overlaps 
 !! (with time-dependent wfn, action 20, and between eigenfunctions, MCSCF-matel action 26)
 
-
 #include "Definitions.INC"
 
-module ovlmod
+module ovlsubmod
+  use biorthotypemod
   implicit none
-  DATATYPE, allocatable :: orig_spfs(:,:,:), orig_avectors(:,:), overlaps(:,:,:)
-  integer :: numovl, calledflag=0 ,  xcalledflag=0 
-end module ovlmod
+  DATATYPE, allocatable, private :: orig_spfs(:,:,:), orig_avectors(:,:), overlaps(:,:,:)
+  integer, private :: numovl, calledflag=0 ,  xcalledflag=0 
+  integer,private :: ovlbioalloc=0
+  type(biorthotype),target,allocatable,private :: ovlbiovar(:,:)
 
-subroutine staticvector(vector,size)
-  implicit none
-  integer :: i,size
-  DATATYPE :: vector(size)
-  real*8 :: nextran
-!! don't init... keep as is
-  do i=1,size
-     vector(i)=nextran() + (0d0,1d0) * nextran()
-  enddo
-end subroutine staticvector
+contains
 
 !! first draft; reads only one r point.   I.E. vib ovls not implemented.
 !! numprop=1 only implemented
 
 subroutine ovl_initial()
-  use ovlmod
   use parameters
   use mpimod
   use readavectormod
   use mpisubmod
+  use utilmod
+  use configloadmod
+  use loadstuffmod
   implicit none
   integer :: jnumovl, ifile,acomplex,spfcomplex,nstate,i,kk,tdims(3),&
        tnum2part,tnumconfig,tnumr,tnspf,myiostat
@@ -156,20 +151,13 @@ subroutine ovl_initial()
 
 end subroutine ovl_initial
 
-module ovlbiomod
-  use biorthotypemod
-  implicit none
-  integer :: ovlbioalloc=0
-  type(biorthotype),target,allocatable :: ovlbiovar(:,:)
-end module
+
 
 subroutine getoverlaps(forceflag)
-  use ovlmod
   use parameters
   use configmod
   use xxxmod
   use mpimod   !! myrank
-  use ovlbiomod
   use autocorrelate_one_mod
   implicit none
   integer ::  i,imc,forceflag,myiostat
@@ -215,7 +203,6 @@ end subroutine getoverlaps
 
 
 subroutine mcscf_matel()
-  use ovlmod
   use parameters
   use configmod
   use xxxmod
@@ -423,4 +410,7 @@ subroutine wfnovl()
   OFLWR "OK done wfnovl, stopping"; CFLST
 
 end subroutine wfnovl
+
+end module ovlsubmod
+
 

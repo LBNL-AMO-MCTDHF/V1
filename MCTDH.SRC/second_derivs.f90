@@ -1,4 +1,6 @@
 
+!! ALL MODULES
+
 !! FOR VERLET AND IMPLICIT PROPAGATION (EXPERIMENTAL)
 
 #include "Definitions.INC"
@@ -6,6 +8,9 @@
 !! derspfs0 is the first derivative; sdspfs is second derivative.
 
 !! jacunitflag, jacsymflag not implementd
+
+module secondsubmod
+contains
 
 subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
   use parameters
@@ -134,19 +139,23 @@ subroutine second_derivs(thistime,inspfs,sdspfs)
 
 end subroutine second_derivs
 
+end module
+
 
 module verletmod
   implicit none
   integer :: jstep=0
   DATATYPE, allocatable :: prevspfs(:,:)
-end module verletmod
   
+contains
   
 subroutine verlet(inspfs0, time1,time2,outiter)
   use parameters
-  use verletmod
   use orbgathersubmod
   use mpi_orbsetmod
+  use expospfpropmod
+  use secondsubmod
+  use spfsubmod
   implicit none
   real*8,intent(in) :: time1,time2
   integer,intent(out) :: outiter
@@ -184,7 +193,7 @@ subroutine verlet(inspfs0, time1,time2,outiter)
 
      if (istep.eq.1) then
         tempspfs(:,:)=inspfs0(:,:)
-        call expoprop(time1,time2,tempspfs,outiter)
+        call expospfprop(time1,time2,tempspfs,outiter)
      else
         if (numspf.gt.0) then
            tempspfs(:,lowspf:highspf) = 2*inspfs(:,lowspf:highspf) - prevspfs(:,lowspf:highspf) &
@@ -213,4 +222,4 @@ subroutine verlet(inspfs0, time1,time2,outiter)
 
 end subroutine verlet
 
-
+end module verletmod

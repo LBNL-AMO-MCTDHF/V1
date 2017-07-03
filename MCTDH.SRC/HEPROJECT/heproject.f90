@@ -79,6 +79,9 @@ subroutine myprojectdealloc()
   implicit none
 end subroutine myprojectdealloc
 
+module gettwoemod
+contains
+
 subroutine get_twoe_new()
   use myparams
   use myprojectmod  
@@ -142,6 +145,7 @@ subroutine get_twoe_new()
 
 end subroutine get_twoe_new
 
+end module
 
 
 subroutine op_yderiv(howmanynotused,notusedin,notusedout)

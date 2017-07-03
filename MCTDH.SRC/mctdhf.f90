@@ -203,6 +203,21 @@ program mctdhf
   use configpropmod
   use configsubmod
   use savenormmod
+  use quadavecmod
+  use configstuffmod
+  use utilmod
+  use repnatmod
+  use getstuffmod
+  use proploopmod
+  use configloadmod
+  use focksubmod
+  use fockrepsubmod
+  use cathopsubmod
+  use loadstuffmod
+  use meansubmod
+  use finalstatsubmod
+  use spfsubmod
+  use getparammod
   implicit none
 
   integer :: i,spfsloaded,totread,ifile,readnum,qq
@@ -239,7 +254,7 @@ program mctdhf
   write(mpifileptr, *) "             AMO Theory Group, Lawrence Berkeley Laboratory"
   write(mpifileptr, *) "         D J Haxton,   K V Lawler,   J Jones,   B Abeln,   X Li"
   write(mpifileptr, *) 
-  write(mpifileptr, *) "                             VERSION 1.34 "
+  write(mpifileptr, *) "                             VERSION 1.35 "
   write(mpifileptr, *) "       Copyright 2017 the regents of the University of California"
   write(mpifileptr, *)
 #ifdef REALGO
@@ -813,6 +828,9 @@ program mctdhf
 
 contains
   subroutine walks_and_basis(wwin)
+    use walksubmod
+    use spininitmod
+    use spinwalkinternal
     implicit none
     type(walktype),intent(inout) :: wwin
 
@@ -834,15 +852,6 @@ contains
     call spinwalkinternal_dealloc()
     call basis_set(wwin,nzflag)
   end subroutine walks_and_basis
-
-end program mctdhf
-
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
 
 subroutine getclasses()
   use parameters
@@ -893,13 +902,9 @@ subroutine getclasses()
 
 end subroutine getclasses
 
+end program mctdhf
 
-
-subroutine myclock(mytime)
-  integer :: values(10),mytime
-  integer, parameter :: fac(5:8)=(/60*60*1000,60*1000,1000,1/)  !! hour,minute,second,millisecond
-  call date_and_time(values=values)
-  mytime=values(8)+values(7)*fac(7)+values(6)*fac(6)+values(5)*fac(5)
-end subroutine myclock
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 

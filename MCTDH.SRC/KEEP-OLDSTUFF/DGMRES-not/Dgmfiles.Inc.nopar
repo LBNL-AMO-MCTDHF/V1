@@ -1,0 +1,9 @@
+
+
+dgmfiles=DGMRES/dorth.o  \
+         DGMRES/dgmres.o \
+         DGMRES/isdgmr.o  \
+         DGMRES/dxlcal.o  \
+         DGMRES/drlcal.o  \
+         DGMRES/dpigmr.o  
+

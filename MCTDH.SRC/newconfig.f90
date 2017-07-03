@@ -1,4 +1,6 @@
 
+!! ALL MODULES
+
 !! CONFIGURATION SUBROUTINES.  SLATER DETERMINANTS NOT SPIN EIGFUNCTS.
 !!  SEE WALKS.F90 FOR MORE; SPIN.F90 FOR SPIN PROJECTION.
 
@@ -7,6 +9,22 @@
 
 module configsubmod
 contains
+
+subroutine printconfig(thisconfig,www)
+  use walkmod
+  use fileptrmod
+  implicit none
+
+  type(walktype),intent(in) :: www
+  integer,intent(in) :: thisconfig(www%num2part)
+  character (len=4) :: mslabels(2) =["a ","b "]
+  integer :: i
+
+  write(mpifileptr,'(100(I3,A2))') (thisconfig((i-1)*2+1), &
+       mslabels(thisconfig(i*2)), i=1,www%numpart)
+
+end subroutine printconfig
+
 
 !! ORBITAL ORDERING:  RETURNS SPINORBITAL INDEX GIVEN ORBITAL INDEX AND SPIN
 !! (SPIN IS 1 (ALPHA) OR 2 (BETA))

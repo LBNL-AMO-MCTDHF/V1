@@ -1,37 +1,11 @@
 
-!! FOR AUTOCORRELATION.
+!! ALL MODULES
+
+!! FOR AUTOCORRELATION.  
 
 #include "Definitions.INC"
 
 !! SAVE INITIAL WAVE FUNCTION
-
-module automod
-  implicit none
-  DATATYPE, allocatable :: overlaps(:,:), orig_spfs(:,:), orig_avectors(:,:,:)
-  integer :: xcalledflag=0,  calledflag=0
-end module automod
-
-subroutine autocorrelate_initial()
-  use automod
-  use parameters
-  use xxxmod
-  implicit none
-  integer :: imc
-
-  OFLWR "Initializing autocorrelation"; CFL
-  allocate(overlaps(0:autosize,mcscfnum),  orig_spfs(  spfsize, nspf ),&
-       orig_avectors(numr,first_config:last_config,mcscfnum))
-  overlaps(:,:)=0d0;  orig_spfs=0; calledflag=0;  xcalledflag=0
-  orig_spfs(:,:)=RESHAPE(yyy%cmfspfs(:,0),(/spfsize,nspf/))
-  if (tot_adim.gt.0) then
-     orig_avectors=0
-     do imc=1,mcscfnum
-        orig_avectors(:,:,imc)=RESHAPE(yyy%cmfavec(:,imc,0),(/numr,local_nconfig/))
-     enddo
-  endif
-
-end subroutine
-
 
 !! CALCULATE THE AUTOCORRELATION FUNCTION.
 
@@ -95,19 +69,210 @@ contains
 end module autocorrelate_one_mod
 
 
-module autobiomod
+module autosubmod
   use biorthotypemod
   implicit none
-  type(biorthotype),target :: autobiovar
-end module
+  DATATYPE, allocatable,private :: overlaps(:,:), orig_spfs(:,:), orig_avectors(:,:,:)
+  integer,private :: xcalledflag=0,  calledflag=0
+  type(biorthotype),target,private :: autobiovar
+
+contains
+
+!! actually have numdata+1 data points in forwardovl
+
+subroutine autocall(numdata, forwardovl, sflag)
+  use parameters
+  use mpimod
+  use utilmod
+  use pulsesubmod !! bad place for tentsums
+  implicit none
+  integer, intent(in) :: numdata,sflag
+  DATATYPE,intent(in) :: forwardovl(0:autosize,mcscfnum)
+  DATATYPE, allocatable :: fftrans(:,:),fftrans0(:,:)
+  DATATYPE :: csums(mcscfnum), csums2(mcscfnum)   !! AUTOMATIC
+  DATATYPE :: csum
+  real*8, allocatable :: tentfunction(:)
+  integer :: i, totdim, imc,getlen,ibot,myiostat
+  real*8 ::   estep, thistime, myenergy, windowfunct, tentsum
+  character (len=7) :: number
+
+#ifdef REALGO
+  OFLWR "Error, autocall not supported for real-valued"; CFLST
+#else
+
+  if (numdata.gt.autosize+1) then
+     OFLWR "Err numdata, autosize!  ", numdata, autosize; CFLST
+  endif
+
+  if (hanningflag.eq.4) then
+     ibot=0
+     totdim=numdata+1
+  else
+     ibot=(-numdata)
+     totdim=2*numdata+1
+  endif
+
+  allocate( fftrans(ibot:numdata,mcscfnum),fftrans0(ibot:numdata,mcscfnum))
+
+  fftrans=0.d0;  fftrans0=0.d0
+
+
+  IF(hanningflag .NE. 4) THEN
+
+     allocate(tentfunction(-numdata:numdata))
+     tentfunction(:)=0
+     do i=-numdata,numdata
+!!        tentfunction(i) = (1+numdata-abs(i)) * windowfunct(abs(i),numdata,1)
+        tentfunction(i) = windowfunct(abs(i),numdata,1)
+     enddo
+     
+     tentsum = get_rtentsum(numdata,tentfunction(-numdata:numdata))
+
+     do i=0,numdata
+        fftrans0(i,:) = forwardovl(i,:)  * exp((0.d0,-1.d0)*ceground*par_timestep*autosteps*i)
+
+        fftrans(i,:) = fftrans0(i,:) * windowfunct(i,numdata,1)  !! action 1
+
+     enddo
+     do i=1,numdata
+        fftrans(-i,:) = ALLCON(fftrans(i,:))
+        fftrans0(-i,:) = ALLCON(fftrans0(i,:))
+     enddo
+
+!! subtract tent function   (1+numdata-abs(i))/(numdata+1)^2   for better performance
+
+    if (auto_subtract.ne.0) then
+       do imc=1,mcscfnum
+          csum = get_ctentsum(numdata,fftrans(-numdata:numdata,imc))
+          fftrans(-numdata:numdata,imc) = fftrans(-numdata:numdata,imc) - &
+               csum/tentsum * tentfunction(-numdata:numdata)
+       enddo
+    endif
+    deallocate(tentfunction)
+
+  else
+  
+! Multiply the Hanning Window and the autocorrelation function
+! Note the autocorrelation function is given as the complex conjugate of the literature definition.
+! This is fixed.
+
+     do i=0,numdata
+        fftrans0(i,:) = ALLCON(forwardovl(i,:)) * &
+             exp((0.d0,-1.d0)*ceground*par_timestep*autosteps*i)
+        fftrans(i,:) = fftrans0(i,:) * (1-cos(pi*2*real(i,8)/real(numdata,8)))
+     enddo
+
+  ENDIF
+
+!Specify the dimension of the transform
+
+  if (myrank.eq.1) then
+     open(171,file=corrdatfile,status="unknown",iostat=myiostat)
+     call checkiostat(myiostat,"opening corrdatfile")
+     write(171,*,iostat=myiostat) "#   ", totdim
+     call checkiostat(myiostat,"writing corrdatfile")
+     do i=0,numdata
+        write(171,'(F18.12, T22, 400E20.8)')  i*par_timestep*autosteps + autostart, &
+             (fftrans0(i,imc),fftrans(i,imc),imc=1,mcscfnum)
+     enddo
+     close(171)
+  ENDIF
+
+  do imc=1,mcscfnum
+
+     if (hanningflag.ne.4) then
+        call zfftf_wrap_diff(totdim,fftrans(:,imc),ftdiff)
+        fftrans(:,imc)=fftrans(:,imc)*autosteps*par_timestep  /  2 / pi
+        do i=-numdata,numdata
+           fftrans(i,imc)=fftrans(i,imc) * &
+                exp((0.d0,1.d0)*(numdata+i)*numdata*2*pi/real(2*numdata+1))
+        enddo
+!! for default ftwindowpower=2 for action 1
+        if (ftdiff.eq.1) then
+           fftrans(-numdata+1,:) = fftrans(-numdata+1,:) * 4d0
+        elseif (ftdiff.eq.0) then
+           fftrans(-numdata,:) = fftrans(-numdata,:) * sqrt(2d0)
+        endif
+     else
+        CALL ZFFTB_wrap(totdim,fftrans(:,imc))
+     endif
+
+  enddo   !! IMC
+
+  Estep=2*pi/par_timestep/autosteps/totdim
+
+  if (myrank.eq.1) then
+
+     if (sflag.ne.0) then
+        thistime=numdata*par_timestep*autosteps + autostart
+        write(number,'(I7)') 1000000+floor(thistime)
+        open(1711,file=corrftfile(1:getlen(corrftfile))//number(2:7),&
+             status="unknown",iostat=myiostat)
+        call checkiostat(myiostat,"opening corrftfile")
+        write(1711,*,iostat=myiostat) "#   ", totdim
+        call checkiostat(myiostat,"opening corrftfile")
+        csums(:)=0d0; csums2(:)=0d0
+        do i=ibot,numdata
+           myenergy=(i-ibot)*Estep
+           if (myenergy.ge.dipolesumstart) then !! dipolesumstart only, not sumend
+              csums(:)=csums(:) + fftrans(i,:) * Estep
+              csums2(:)=csums2(:) + fftrans(i,:) * Estep * myenergy
+           endif
+           write(1711,'(F18.12, T22, 5000E20.8)')  myenergy, fftrans(i,:), csums, csums2
+        enddo
+        close(1711)
+     endif
+
+     open(171,file=corrftfile,status="unknown",iostat=myiostat)
+     call checkiostat(myiostat,"opening corrftfile")
+     write(171,*,iostat=myiostat) "#   ", totdim
+     call checkiostat(myiostat,"opening corrftfile")
+     csums(:)=0d0; csums2=0d0
+     do i=ibot,numdata
+        myenergy=(i-ibot)*Estep
+        if (myenergy.ge.dipolesumstart) then !! dipolesumstart only, not sumend
+           csums(:)=csums(:) + fftrans(i,:) * Estep
+           csums2(:)=csums2(:) + fftrans(i,:) * Estep * myenergy
+        endif
+        write(171,'(F18.12, T22, 5000E20.8)')  myenergy, fftrans(i,:), csums(:), csums2(:)
+     enddo
+     close(171)
+
+  endif
+
+  deallocate( fftrans, fftrans0)
+
+#endif
+
+end subroutine autocall
+
+
+subroutine autocorrelate_initial()
+  use parameters
+  use xxxmod
+  implicit none
+  integer :: imc
+
+  OFLWR "Initializing autocorrelation"; CFL
+  allocate(overlaps(0:autosize,mcscfnum),  orig_spfs(  spfsize, nspf ),&
+       orig_avectors(numr,first_config:last_config,mcscfnum))
+  overlaps(:,:)=0d0;  orig_spfs=0; calledflag=0;  xcalledflag=0
+  orig_spfs(:,:)=RESHAPE(yyy%cmfspfs(:,0),(/spfsize,nspf/))
+  if (tot_adim.gt.0) then
+     orig_avectors=0
+     do imc=1,mcscfnum
+        orig_avectors(:,:,imc)=RESHAPE(yyy%cmfavec(:,imc,0),(/numr,local_nconfig/))
+     enddo
+  endif
+
+end subroutine autocorrelate_initial
+
 
 subroutine autocorrelate()
-  use automod
   use parameters
   use mpimod
   use xxxmod
   use configmod
-  use autobiomod
   use autocorrelate_one_mod
   implicit none
   integer ::  i,imc,sflag,myiostat
@@ -154,11 +319,12 @@ end subroutine autocorrelate
 
 
 subroutine autocorrelate_final()
-  use automod
   implicit none
   deallocate(orig_spfs,   orig_avectors,  overlaps)
 end subroutine autocorrelate_final
 
+
+end module autosubmod
 
 
 !!$function getval(jjj,which)

@@ -1,13 +1,15 @@
 
 #include "Definitions.INC"
 
+module jfunctmod
+contains
 
 function ffunct(xval)
   use myparams
   implicit none
   real*8, intent(in) :: xval
   DATATYPE :: ffunct, fac
-  real*8 :: fscaled, xx
+  real*8 :: xx
 
   fac=exp((0d0,1d0)*scalingtheta)*scalingstretch
 
@@ -34,7 +36,7 @@ function jfunct(xval)
   implicit none
   real*8, intent(in) :: xval
   DATATYPE :: jfunct, fac
-  real*8 :: jscaled, xx
+  real*8 :: xx
 
   fac=exp((0d0,1d0)*scalingtheta)*scalingstretch
 
@@ -61,7 +63,7 @@ function djfunct(xval)
   implicit none
   real*8, intent(in) :: xval
   DATATYPE :: djfunct, fac
-  real*8 :: djscaled, xx
+  real*8 :: xx
 
   fac=exp((0d0,1d0)*scalingtheta)*scalingstretch
 
@@ -88,7 +90,7 @@ function ddjfunct(xval)
   implicit none
   real*8, intent(in) :: xval
   DATATYPE :: ddjfunct, fac
-  real*8 :: ddjscaled, xx
+  real*8 :: xx
 
   fac=exp((0d0,1d0)*scalingtheta)*scalingstretch
 
@@ -160,6 +162,8 @@ function ddjscaled(xval)
   ddjscaled = 9d0/4d0*pi**2 * sin(pixval)**2 * cos(pixval)
 end function ddjscaled
 
+end module jfunctmod
+
 
 module ivopotmod
   implicit none
@@ -168,41 +172,17 @@ module ivopotmod
 end module ivopotmod
 
 
-subroutine ivo_project(inbigspf,outbigspf)
-  use myparams
-  use ivopotmod
-  implicit none
-  DATATYPE,intent(in) :: inbigspf(totpoints)
-  DATATYPE, intent(out) :: outbigspf(totpoints)
-  integer :: ii
-  outbigspf(:)=0d0
-  do ii=1,numocc
-     outbigspf(:)=outbigspf(:) + ivo_occupied(:,ii) * ivodot(ivo_occupied(:,ii),inbigspf(:),totpoints)
-  enddo
-
+module initspfsmod
 contains
-  function ivodot(inbra,inket,size)
-    use myparams
-    use mpisubmod    !! IN PARENT DIRECTORY
-    implicit none
-    integer,intent(in) :: size 
-    DATATYPE,intent(in) :: inbra(size),inket(size)
-    DATATYPE :: ivodot,csum
-    csum=DOT_PRODUCT(inbra,inket)
-    if (orbparflag) then
-       call mympireduceone(csum)
-    endif
-    ivodot=csum
-  end function ivodot
-
-end subroutine ivo_project
-
 
 subroutine init_spfs(inspfs,numloaded,numfrozen,frozenreduced)
   use myparams
   use pmpimod
   use pfileptrmod
   use ivopotmod
+  use tinvsubmod
+  use lanblockmod   !! IN PARENT DIRECTORY
+  use utilmod !! IN PARENT DIRECTORY
   implicit none
   DATATYPE,intent(inout) :: inspfs(totpoints,numspf)
   integer, intent(in) :: numloaded,numfrozen
@@ -319,9 +299,35 @@ subroutine init_spfs(inspfs,numloaded,numfrozen,frozenreduced)
 
 contains
 
+  subroutine ivo_project(inbigspf,outbigspf)
+    use myparams
+    implicit none
+    DATATYPE,intent(in) :: inbigspf(totpoints)
+    DATATYPE, intent(out) :: outbigspf(totpoints)
+    integer :: ii
+    outbigspf(:)=0d0
+    do ii=1,numocc
+       outbigspf(:)=outbigspf(:) + ivo_occupied(:,ii) * ivodot(ivo_occupied(:,ii),inbigspf(:),totpoints)
+    enddo
+
+  end subroutine ivo_project
+
+  function ivodot(inbra,inket,size)
+    use myparams
+    use mpisubmod    !! IN PARENT DIRECTORY
+    implicit none
+    integer,intent(in) :: size 
+    DATATYPE,intent(in) :: inbra(size),inket(size)
+    DATATYPE :: ivodot,csum
+    csum=DOT_PRODUCT(inbra,inket)
+    if (orbparflag) then
+       call mympireduceone(csum)
+    endif
+    ivodot=csum
+  end function ivodot
+
   subroutine mult_bigspf_ivo(inbigspf,outbigspf)
     use myparams
-    use ivopotmod
     use orbmultsubmod   !! IN PARENT DIRECTORY
     use orbprojectmod
     implicit none
@@ -385,6 +391,8 @@ contains
 
 end subroutine init_spfs
 
+end module initspfsmod
+
 
 subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,skipflag,&
      bondpoints,bondweights,elecweights,elecradii,notused,& 
@@ -393,6 +401,9 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   use pmpimod
   use pfileptrmod
   use myprojectmod
+  use jfunctmod
+  use initspfsmod
+  use gettwoemod
   implicit none
   integer, intent(in) :: skipflag,notused
   integer,intent(inout) :: spfsloaded
@@ -415,7 +426,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
 !! smooth exterior scaling
   DATATYPE,allocatable :: scalefunction(:), djacobian(:), ddjacobian(:)
-  DATATYPE :: ffunct, djfunct, ddjfunct, jfunct
 
   pi=4d0*atan(1d0)
 
@@ -561,6 +571,29 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   deallocate(temppot)
 #endif
   deallocate(scalefunction, djacobian, ddjacobian)
+
+contains
+
+  subroutine get_dipoles()
+    use myparams
+    use myprojectmod  
+    implicit none
+    call get_one_dipole(dipoles(:),qbox,1,1)
+  end subroutine get_dipoles
+
+  subroutine get_one_dipole(out,whichbox,nnn,mmm)
+    use myparams
+    use myprojectmod
+    implicit none
+    integer,intent(in) :: mmm,nnn,whichbox
+    DATATYPE,intent(out) :: out(nnn,numpoints,mmm)
+    integer :: jj,ii
+    do jj=1,mmm
+       do ii=1,numpoints
+          out(:,ii,jj)=sinepoints%mat(ii,whichbox)
+       enddo
+    enddo
+  end subroutine get_one_dipole
 
 end subroutine init_project
 

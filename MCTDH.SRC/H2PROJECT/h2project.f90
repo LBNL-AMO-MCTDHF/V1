@@ -1,9 +1,19 @@
 
 #include "Definitions.INC"
 
-!! these are meant to be #included not compiled directly!  need definitions header.  
-!! don't include definitions here.  
-!! uses only DATAECS, MYGETRF, MYGETRI, possibly ECSFLAG.
+
+module myprojecttempmod
+  implicit none
+
+  real*8, allocatable :: eta_derivs(:,:,:), eta_rhoderivs(:,:)
+  DATAECS, allocatable ::  Ytemp2(:,:,:,:), Yderivs(:,:,:,:,:), Ydiag(:,:,:,:,:), xi_derivs(:,:,:), &
+       xi_elderivs(:,:), Yallderivs(:,:,:,:,:),xi_rhoderivs(:,:)
+  DATAECS, allocatable :: xi_fourth(:,:,:), xi_third(:,:,:), xi_second(:,:,:), xideg1(:,:,:), xideg2(:,:,:)
+  real*8, allocatable :: etadeg1(:,:,:), etadeg2(:,:,:), eta_second(:,:,:), eta_third(:,:,:), eta_fourth(:,:,:)
+  DATAECS, allocatable  :: pro_lop(:,:,:,:,  :), pro_both(:,:,:,:,  :)  !! last index 0:1 even or odd
+  DATAECS, allocatable  :: pro_ldiag(:,:)
+
+end module myprojecttempmod
 
 
 module myprojectmod
@@ -135,9 +145,13 @@ implicit none
 end subroutine myprojectdealloc
 
 
+module gettwoemod
+contains
+
 subroutine get_twoe_new()
   use myparams
   use myprojectmod  
+  use utilmod   !! IN PARENT DIRECTORY
   implicit none
 
   DATAECS, allocatable :: work(:),kearray(:,:,:,:), invkearray(:,:,:,:)
@@ -145,7 +159,7 @@ subroutine get_twoe_new()
   integer ::  j1a,lsum,deltam,  i,k,ii,m,j, lwork, info
   complex*16,allocatable :: pval(:,:,:), qval(:,:,:), pder(:,:),qder(:,:)
   DATAECS :: surface, wronsk
-  real*8 :: dgamma, floatfac, rsum
+  real*8 :: dgamma, rsum
 
   OFLWR "   Calc two electron.";CFL
 
@@ -271,6 +285,8 @@ subroutine get_twoe_new()
   deallocate(pval,qval,pder,qder)
 
 end subroutine get_twoe_new
+
+end module gettwoemod
 
 
 subroutine op_lsquaredone(in,out,m2val)   !! right now used just to check operators.

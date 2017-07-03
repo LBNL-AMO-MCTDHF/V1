@@ -1,9 +1,9 @@
-  
+
+!! ALL MODULES  
 
 !! SUBROUTINES FOR WAVE FUNCTION PROPAGATION including core prop_loop subroutine
 !! prop_loop calls cmf_prop_wfn which calls cmf_prop_avector and propspfs
 !! for regular forward time propagation (improvedrelaxflag=0)
-
 
 #include "Definitions.INC"
 
@@ -23,6 +23,9 @@ contains
     use configmod
     use basissubmod
     use mpisubmod
+    use odexmod
+    use getstuffmod
+    use spfsubmod
     implicit none
     real*8,intent(in) :: tout, tin
     real*8 :: mytime,nullreal, nulldouble,gbsstepsize
@@ -73,8 +76,8 @@ contains
        rkworkdim=20*psilength*zzz; rkiworkdim=20*psilength*zzz
        allocate(rkwork(rkworkdim),rkiwork(rkiworkdim))
        rkwork=0; rkiwork=0
-       call odex(psilength*zzz,gbs_derivs,mytime,psivec(:),tout,gbsstepsize,relerr,abserr,&
-            0,dummysub,0,rkwork,rkworkdim,rkiwork,rkiworkdim,nullreal,nullint,idid)
+       call odexq(psilength*zzz,gbs_derivs,mytime,psivec(:),tout,gbsstepsize,relerr,abserr,&
+            0,dummysub,0,rkwork,rkworkdim,rkiwork,rkiworkdim,idid)
        if (.not.(idid.eq.1)) then
           OFLWR; WRFL "ERR ODEX", idid; CFLST
        endif
@@ -156,6 +159,10 @@ contains
     use parameters
     use linearmod
     use orbdermod
+    use odexmod
+    use expospfpropmod
+    use verletmod
+    use spfsubmod
     implicit none
     DATATYPE,intent(in) :: inspfs(spfsize,nspf)
     DATATYPE,intent(out) :: outspfs(spfsize,nspf)
@@ -191,15 +198,15 @@ contains
        rkworkdim=20*totspfdim*zzz; rkiworkdim=20*totspfdim*zzz
        allocate(rkwork(rkworkdim),rkiwork(rkiworkdim))
        rkwork=0; rkiwork=0
-       call odex(totspfdim*zzz,gbs_linear_derivs,time1,outspfs,time2,gbsstepsize,relerr,abserr,&
-            0,dummysub,0,rkwork,rkworkdim,rkiwork,rkiworkdim,nullreal,nullint,idid)
+       call odexq(totspfdim*zzz,gbs_linear_derivs,time1,outspfs,time2,gbsstepsize,relerr,abserr,&
+            0,dummysub,0,rkwork,rkworkdim,rkiwork,rkiworkdim,idid)
        numiters=rkiwork(17)
        if (.not.(idid.eq.1)) then
           OFLWR "ERR ODEX", idid; CFLST
        endif
        deallocate(rkwork,rkiwork)
     else if (intopt.eq.3) then
-       call expoprop(time1,time2,outspfs,numiters)
+       call expospfprop(time1,time2,outspfs,numiters)
     else if (intopt.eq.4) then
        call verlet(outspfs,time1,time2,numiters)
     else
@@ -228,6 +235,15 @@ contains
     use mpimod
     use mpisubmod
     use derivativemod !! conpropspfs
+    use quadavecmod
+    use quadspfsmod
+    use configstuffmod
+    use repnatmod
+    use denutilmod
+    use getstuffmod
+    use dfconsubmod
+    use fockrepsubmod
+    use meansubmod
     implicit none
     real*8,intent(in) :: tout, tin
     integer,save :: times(0:20)=0
@@ -623,6 +639,7 @@ contains
       use configmod
       use configpropmod
       use pulsesubmod
+      use configstuffmod
       implicit none
       DATATYPE,intent(in) :: avectorin(tot_adim)
       DATATYPE,intent(out) :: avectorout(tot_adim)
@@ -762,6 +779,8 @@ contains
 
 end module prop_loop_sub_mod
 
+module proploopmod
+contains
 
 subroutine prop_loop( starttime)
   use parameters
@@ -775,12 +794,15 @@ subroutine prop_loop( starttime)
   use mpisubmod
   use prop_loop_sub_mod
   use orbdermod
+  use getstuffmod
+  use loadstuffmod
+  use spfsubmod
   implicit none
   integer ::  jj,flag, itime, jtime, times(20)=0, qq,imc,getlen,myiostat
   DATAECS :: thisenergy(mcscfnum), lastenergy(mcscfnum) ,thisenergyavg,&
        lastenergyavg,startenergy(mcscfnum)
   CNORMTYPE :: norms(mcscfnum)
-  real*8 :: thistime, starttime, thattime,error=1d10,rsum,avecerror=1d10
+  real*8 :: thistime, starttime, thattime,error=1d10,avecerror=1d10
   DATATYPE :: sum2,sum,drivingoverlap(mcscfnum)
   DATATYPE, allocatable :: avectorp(:),outspfs(:)
 
@@ -1106,4 +1128,6 @@ subroutine prop_loop( starttime)
   deallocate(avectorp,outspfs)
 
 end subroutine prop_loop
+
+end module proploopmod
 

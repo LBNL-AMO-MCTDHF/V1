@@ -1,8 +1,12 @@
 
+!! ALL ONE MODULE
+
 !!! MAIN SUBROUTINE FOR READING NAMELIST INPUT AND COMMAND LINE OPTIONS
   
 #include "Definitions.INC"
- 
+
+module getparammod
+contains 
 
 subroutine getinpfile()
   use parameters
@@ -924,6 +928,7 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
   use pulse_parameters
   use mpimod
   use pulsesubmod
+  use utilmod
   implicit none
   NAMELIST /pulse/ omega,pulsestart,pulsestrength, velflag, omega2,phaseshift,intensity,pulsetype, &
        pulsetheta,pulsephi, longstep, numpulses, reference_pulses, minpulsetime, maxpulsetime, chirp, ramp
@@ -973,7 +978,7 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
 
      write(mpifileptr, *) "    -----> Pulse ", ipulse," : "
 
-     if (pulsetype(ipulse).eq.1) then
+     if (pulsetype(ipulse).eq.1.or.pulsetype(ipulse).eq.5) then
         fac=omega(ipulse)
      else
         fac=omega2(ipulse)
@@ -1121,5 +1126,6 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
 
   endif
 
-
 end subroutine getpulse
+
+end module getparammod

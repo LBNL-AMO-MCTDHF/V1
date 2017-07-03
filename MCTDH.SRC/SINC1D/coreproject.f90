@@ -253,6 +253,189 @@ contains
 end module mycdotmod
 
 
+module tinvsubmod
+  use clockmod  !! IN PARENT DIRECTORY
+contains
+
+subroutine  op_tinv(twoeden03,twoereduced,allsize,circsize,&
+     times1,times3,times4,times5,fttimes)
+  use myparams
+  use myprojectmod
+  use pfileptrmod
+  use mpisubmod    !! IN PARENT DIRECTORY
+  implicit none
+  integer, intent(in) :: allsize,circsize
+  integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
+  DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
+  DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
+
+  if (debugflag.eq.4040.or.debugflag.eq.4242.or.debugflag.eq.4343) then
+     twoereduced=0d0
+     return
+  endif
+
+!!$  if (scalingflag.ne.0) then
+!!$     OFLWR "DO ME SCALED TINV!"; CFLST
+!!$  endif
+
+  call op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
+       times1,times3,times4,times5,fttimes)
+
+contains
+
+  subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
+       times1,times3,times4,times5,fttimes)
+    use myparams
+    use pmpimod
+    use pfileptrmod
+    use myprojectmod
+    use circ1dsubmod
+    use clockmod
+    implicit none
+    integer, intent(in) :: allsize,circsize
+    integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
+    DATATYPE,intent(in) :: twoeden03(numpoints,allsize)
+    DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
+    integer ::  itime,jtime
+#ifdef MPIFLAG
+    integer ::  ibox1,jbox1,jproc,iproc
+    DATATYPE,allocatable :: tempden03(:,:)
+#endif
+    integer :: circhigh,circbot,circtop,icirc
+    DATATYPE,allocatable :: twoeden03huge(:,:,:), reducedhuge(:,:,:),&
+         reducedwork1d(:,:)
+
+    if (mod(allsize,circsize).ne.0) then
+       OFLWR "SIZE ERROR OP_TINV",allsize,circsize; CFLST
+    endif
+
+    circhigh=allsize/circsize
+
+#ifdef MPIFLAG
+    allocate(tempden03(numpoints,allsize))
+    tempden03(:,:)=0d0
+#endif
+    allocate(twoeden03huge(numpoints,2,allsize),&
+         reducedhuge(numpoints,2,allsize),&
+         reducedwork1d(numpoints,allsize))
+
+    twoeden03huge(:,:,:)=0d0;  reducedhuge(:,:,:)=0; reducedwork1d(:,:)=0d0;
+    twoereduced(:,:)=0d0;  
+
+#ifdef MPIFLAG
+  
+    if (orbparflag) then
+
+       call myclock(itime)
+       twoeden03huge(:,:,:)=0d0; 
+
+       do ibox1=1,nbox  !! processor sending
+
+          iproc=ibox1
+
+          jbox1=(ibox1+1)/2
+
+          jproc=jbox1
+
+          if (iproc.eq.myrank.and.jproc.eq.myrank) then
+             twoeden03huge(:,mod(ibox1-1,2)+1,:)=twoeden03(:,:)
+          else if (iproc.eq.myrank) then
+             call mympisend(twoeden03,jproc,999,totpoints*allsize)
+          else if (jproc.eq.myrank) then
+             call mympirecv(tempden03,iproc,999,totpoints*allsize)
+             twoeden03huge(:,mod(ibox1-1,2)+1,:)=tempden03(:,:)
+          endif
+
+       enddo
+       call myclock(jtime); times3=times3+jtime-itime;
+    else
+#endif
+       call myclock(itime)
+       twoeden03huge(:,:,:)=0d0; 
+       twoeden03huge(:,1,:)=twoeden03(:,:)
+       call myclock(jtime); times1=times1+jtime-itime;
+     
+#ifdef MPIFLAG
+    endif  !! orbparflag
+#endif
+  
+#ifdef MPIFLAG
+    if (orbparflag) then
+       call myclock(itime); 
+
+       do icirc=1,circhigh
+          circbot=(icirc-1)*circsize+1
+          circtop=icirc*circsize
+#ifdef REALGO
+          call circ1d_sub_real_mpi(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
+               reducedhuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
+#else
+          call circ1d_sub_mpi(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
+               reducedhuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
+#endif
+       enddo
+
+       call myclock(jtime); times4=times4+jtime-itime; itime=jtime
+
+       do ibox1=1,nbox  !! processor receiving
+
+          iproc=ibox1
+
+          jbox1=(ibox1+nbox+1)/2   !! processor sending
+
+          jproc=jbox1
+
+          if (iproc.eq.myrank.and.jproc.eq.myrank) then
+             reducedwork1d(:,:)=reducedhuge(:,mod(ibox1+nbox-1,2)+1,:)
+          else if (iproc.eq.myrank) then
+             call mympirecv(reducedwork1d(:,:),jproc,999,totpoints*allsize)
+          else if (jproc.eq.myrank) then
+             tempden03(:,:)=reducedhuge(:,mod(ibox1+nbox-1,2)+1,:)
+             call mympisend(tempden03(:,:),iproc,999,totpoints*allsize)
+          endif
+
+       enddo
+     
+       call myclock(jtime); times5=times5+jtime-itime
+    else
+#endif
+       call myclock(itime)
+     
+       do icirc=1,circhigh
+          circbot=(icirc-1)*circsize+1
+          circtop=icirc*circsize
+#ifdef REALGO
+          call circ1d_sub_real(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
+               reducedhuge(:,:,circbot:circtop),gridpoints,circsize)
+#else
+          call circ1d_sub(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
+               reducedhuge(:,:,circbot:circtop),gridpoints,circsize)
+#endif
+       enddo
+     
+       reducedwork1d(:,:)=reducedhuge(:,2,:)
+     
+       call myclock(jtime); times4=times4+jtime-itime
+#ifdef MPIFLAG
+    endif
+#endif
+
+    twoereduced(:,:) =RESHAPE(reducedwork1d(:,:),(/totpoints,allsize/))
+
+#ifdef MPIFLAG
+    deallocate(tempden03)
+#endif
+    deallocate(twoeden03huge,       reducedhuge,       reducedwork1d)
+
+    call myclock(jtime); times1=times1+jtime-itime; itime=jtime
+  
+  end subroutine op_tinv_notscaled
+
+end subroutine op_tinv
+
+end module tinvsubmod
+
+
 subroutine call_frozen_matels_core(infrozens,numfrozen,frozenkediag,frozenpotdiag,frozenreduced)
   use myparams
   use pmpimod
@@ -260,6 +443,7 @@ subroutine call_frozen_matels_core(infrozens,numfrozen,frozenkediag,frozenpotdia
   use mycdotmod
   use mpisubmod       !! IN PARENT DIRECTORY
   use orbmultsubmod   !! IN PARENT DIRECTORY
+  use tinvsubmod
   implicit none
   integer, intent(in) :: numfrozen
   DATATYPE, intent(in) :: infrozens(totpoints,numfrozen)
@@ -375,6 +559,7 @@ subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen,notuse
   use myparams
   use pmpimod
   use pfileptrmod
+  use tinvsubmod
   implicit none
   integer, intent(in) :: numfrozen,howmany,notusedarr(howmany)
   DATATYPE, intent(in) :: infrozens(totpoints,numfrozen), inspfs(totpoints,howmany)
@@ -606,6 +791,7 @@ contains
     use pmpimod
     use pfileptrmod
     use myprojectmod
+    use tinvsubmod
     implicit none
     integer, intent(in) :: lowspf,highspf,notiming
     DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
@@ -800,182 +986,6 @@ contains
 end subroutine call_twoe_matel00
 
 
-subroutine  op_tinv(twoeden03,twoereduced,allsize,circsize,&
-     times1,times3,times4,times5,fttimes)
-  use myparams
-  use myprojectmod
-  use pfileptrmod
-  use mpisubmod    !! IN PARENT DIRECTORY
-  implicit none
-  integer, intent(in) :: allsize,circsize
-  integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
-  DATATYPE,intent(in) :: twoeden03(totpoints,allsize)
-  DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
-
-  if (debugflag.eq.4040.or.debugflag.eq.4242.or.debugflag.eq.4343) then
-     twoereduced=0d0
-     return
-  endif
-
-!!$  if (scalingflag.ne.0) then
-!!$     OFLWR "DO ME SCALED TINV!"; CFLST
-!!$  endif
-
-  call op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
-       times1,times3,times4,times5,fttimes)
-
-contains
-
-  subroutine  op_tinv_notscaled(twoeden03,twoereduced,allsize,circsize,&
-       times1,times3,times4,times5,fttimes)
-    use myparams
-    use pmpimod
-    use pfileptrmod
-    use myprojectmod
-    use circ1dsubmod
-    implicit none
-    integer, intent(in) :: allsize,circsize
-    integer, intent(inout) :: times1,times3,times4,times5,fttimes(10)
-    DATATYPE,intent(in) :: twoeden03(numpoints,allsize)
-    DATATYPE,intent(out) :: twoereduced(totpoints,allsize)
-    integer ::  itime,jtime
-#ifdef MPIFLAG
-    integer ::  ibox1,jbox1,jproc,iproc
-    DATATYPE,allocatable :: tempden03(:,:)
-#endif
-    integer :: circhigh,circbot,circtop,icirc
-    DATATYPE,allocatable :: twoeden03huge(:,:,:), reducedhuge(:,:,:),&
-         reducedwork1d(:,:)
-
-    if (mod(allsize,circsize).ne.0) then
-       OFLWR "SIZE ERROR OP_TINV",allsize,circsize; CFLST
-    endif
-
-    circhigh=allsize/circsize
-
-#ifdef MPIFLAG
-    allocate(tempden03(numpoints,allsize))
-    tempden03(:,:)=0d0
-#endif
-    allocate(twoeden03huge(numpoints,2,allsize),&
-         reducedhuge(numpoints,2,allsize),&
-         reducedwork1d(numpoints,allsize))
-
-    twoeden03huge(:,:,:)=0d0;  reducedhuge(:,:,:)=0; reducedwork1d(:,:)=0d0;
-    twoereduced(:,:)=0d0;  
-
-#ifdef MPIFLAG
-  
-    if (orbparflag) then
-
-       call myclock(itime)
-       twoeden03huge(:,:,:)=0d0; 
-
-       do ibox1=1,nbox  !! processor sending
-
-          iproc=ibox1
-
-          jbox1=(ibox1+1)/2
-
-          jproc=jbox1
-
-          if (iproc.eq.myrank.and.jproc.eq.myrank) then
-             twoeden03huge(:,mod(ibox1-1,2)+1,:)=twoeden03(:,:)
-          else if (iproc.eq.myrank) then
-             call mympisend(twoeden03,jproc,999,totpoints*allsize)
-          else if (jproc.eq.myrank) then
-             call mympirecv(tempden03,iproc,999,totpoints*allsize)
-             twoeden03huge(:,mod(ibox1-1,2)+1,:)=tempden03(:,:)
-          endif
-
-       enddo
-       call myclock(jtime); times3=times3+jtime-itime;
-    else
-#endif
-       call myclock(itime)
-       twoeden03huge(:,:,:)=0d0; 
-       twoeden03huge(:,1,:)=twoeden03(:,:)
-       call myclock(jtime); times1=times1+jtime-itime;
-     
-#ifdef MPIFLAG
-    endif  !! orbparflag
-#endif
-  
-#ifdef MPIFLAG
-    if (orbparflag) then
-       call myclock(itime); 
-
-       do icirc=1,circhigh
-          circbot=(icirc-1)*circsize+1
-          circtop=icirc*circsize
-#ifdef REALGO
-          call circ1d_sub_real_mpi(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
-               reducedhuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
-#else
-          call circ1d_sub_mpi(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
-               reducedhuge(:,:,circbot:circtop),numpoints,fttimes,circsize)
-#endif
-       enddo
-
-       call myclock(jtime); times4=times4+jtime-itime; itime=jtime
-
-       do ibox1=1,nbox  !! processor receiving
-
-          iproc=ibox1
-
-          jbox1=(ibox1+nbox+1)/2   !! processor sending
-
-          jproc=jbox1
-
-          if (iproc.eq.myrank.and.jproc.eq.myrank) then
-             reducedwork1d(:,:)=reducedhuge(:,mod(ibox1+nbox-1,2)+1,:)
-          else if (iproc.eq.myrank) then
-             call mympirecv(reducedwork1d(:,:),jproc,999,totpoints*allsize)
-          else if (jproc.eq.myrank) then
-             tempden03(:,:)=reducedhuge(:,mod(ibox1+nbox-1,2)+1,:)
-             call mympisend(tempden03(:,:),iproc,999,totpoints*allsize)
-          endif
-
-       enddo
-     
-       call myclock(jtime); times5=times5+jtime-itime
-    else
-#endif
-       call myclock(itime)
-     
-       do icirc=1,circhigh
-          circbot=(icirc-1)*circsize+1
-          circtop=icirc*circsize
-#ifdef REALGO
-          call circ1d_sub_real(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
-               reducedhuge(:,:,circbot:circtop),gridpoints,circsize)
-#else
-          call circ1d_sub(threed_two(:),twoeden03huge(:,:,circbot:circtop),&
-               reducedhuge(:,:,circbot:circtop),gridpoints,circsize)
-#endif
-       enddo
-     
-       reducedwork1d(:,:)=reducedhuge(:,2,:)
-     
-       call myclock(jtime); times4=times4+jtime-itime
-#ifdef MPIFLAG
-    endif
-#endif
-
-    twoereduced(:,:) =RESHAPE(reducedwork1d(:,:),(/totpoints,allsize/))
-
-#ifdef MPIFLAG
-    deallocate(tempden03)
-#endif
-    deallocate(twoeden03huge,       reducedhuge,       reducedwork1d)
-
-    call myclock(jtime); times1=times1+jtime-itime; itime=jtime
-  
-  end subroutine op_tinv_notscaled
-
-end subroutine op_tinv
-
-
 
 !! OUTPUTS orbitals from firstspf to lastspf (out of numspf)
 
@@ -1017,29 +1027,8 @@ subroutine mult_reducedpot(firstspf,lastspf,inspfs,outspfs,reducedpot)
 end subroutine mult_reducedpot
 
 
-subroutine get_dipoles()
-  use myparams
-  use myprojectmod  
-  implicit none
-  call get_one_dipole(dipoles(:),qbox,1,1)
-
+module multgenmod
 contains
-
-  subroutine get_one_dipole(out,whichbox,nnn,mmm)
-    use myparams
-    use myprojectmod
-    implicit none
-    integer,intent(in) :: mmm,nnn,whichbox
-    DATATYPE,intent(out) :: out(nnn,numpoints,mmm)
-    integer :: jj,ii
-    do jj=1,mmm
-       do ii=1,numpoints
-          out(:,ii,jj)=sinepoints%mat(ii,whichbox)
-       enddo
-    enddo
-  end subroutine get_one_dipole
-
-end subroutine get_dipoles
 
 !! option=1 ke   option=2 first deriv
 
@@ -1364,6 +1353,7 @@ contains
     use pmpimod
     use pfileptrmod
     use myprojectmod  
+    use clockmod
     implicit none
     integer,intent(in) :: nnn,option,howmany,notiming
     DATATYPE,intent(in) :: in(nnn*numpoints,howmany)
@@ -1460,6 +1450,7 @@ contains
     use pmpimod
     use pfileptrmod
     use myprojectmod  
+    use clockmod
     implicit none
     integer,intent(in) :: nnn,option,howmany
     DATATYPE,intent(in) :: in(nnn*numpoints,howmany)
@@ -1577,10 +1568,13 @@ contains
 
 end subroutine mult_general
 
+end module multgenmod
+
 
 subroutine mult_ke(in,out,howmany,timingdir,notiming)
   use myparams
   use myprojectmod
+  use multgenmod
   implicit none
   integer,intent(in) :: howmany,notiming
   character,intent(in) :: timingdir*(*)
@@ -1594,6 +1588,7 @@ end subroutine mult_ke
 
 subroutine velmultiply(howmany,spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   use myparams
+  use multgenmod
   implicit none
   integer,intent(in) :: howmany
   DATATYPE,intent(in) :: spfin(totpoints,howmany),myxtdpot0,myytdpot0,myztdpot
@@ -1630,18 +1625,18 @@ subroutine op_contact(howmany,spfin,spfout)
 end subroutine op_contact
 
 
-function mysinc(input)
-  implicit none
-  real*8,intent(in) :: input
-  real*8 :: mysinc
-  real*8,parameter :: pi=3.141592653589793d0
-  if (abs(input).lt.1d-6) then
-     mysinc=1d0
-  else
-     mysinc=((0d0,-1d0)*exp((0d0,1d0)*pi*input)+&  !! ok conversion
-          (0d0,1d0)*exp((0d0,-1d0)*pi*input))/pi/input/2
-  endif
-end function mysinc
+!function mysinc(input)
+!  implicit none
+!  real*8,intent(in) :: input
+!  real*8 :: mysinc
+!  real*8,parameter :: pi=3.141592653589793d0
+!  if (abs(input).lt.1d-6) then
+!     mysinc=1d0
+!  else
+!     mysinc=((0d0,-1d0)*exp((0d0,1d0)*pi*input)+&  !! ok conversion
+!          (0d0,1d0)*exp((0d0,-1d0)*pi*input))/pi/input/2
+!  endif
+!end function mysinc
 
 
 subroutine reinterpolate_orbs_real(rspfs,dims,num)

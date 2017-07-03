@@ -1,8 +1,13 @@
 
+!! ALL ONE MODULE
+
 !! ROUTINES RELATED TO ORBITALS
 
 #include "Definitions.INC"
 
+
+module spfsubmod
+contains
 
 subroutine apply_spf_constraints(outspfs)
   use parameters
@@ -118,6 +123,7 @@ subroutine spf_orthogit(inspfs,error)
   use matsubmod
   use orbgathersubmod
   use mpisubmod
+  use utilmod
   implicit none
   real*8,intent(out) :: error
   DATATYPE,intent(inout) :: inspfs(spfsize,nspf)
@@ -193,6 +199,7 @@ end subroutine spf_orthogit
 subroutine spf_orthogit_gs(inspfs)
   use parameters
   use opmod !! frozenspfs
+  use utilmod
   implicit none
   DATATYPE,intent(inout) :: inspfs(  spfsize, nspf   )
   integer :: i 
@@ -249,4 +256,7 @@ subroutine mess_with_spfs(inspfs)
   OFLWR "mess: orthog2 ",nulldouble; CFL
 
 end subroutine mess_with_spfs
+
+end module spfsubmod
+
 

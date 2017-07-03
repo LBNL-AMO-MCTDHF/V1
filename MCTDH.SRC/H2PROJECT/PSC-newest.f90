@@ -1,66 +1,14 @@
 
 #include "Definitions.INC"
 
-module myprojecttempmod
-  implicit none
-
-  real*8, allocatable :: eta_derivs(:,:,:), eta_rhoderivs(:,:)
-  DATAECS, allocatable ::  Ytemp2(:,:,:,:), Yderivs(:,:,:,:,:), Ydiag(:,:,:,:,:), xi_derivs(:,:,:), &
-       xi_elderivs(:,:), Yallderivs(:,:,:,:,:),xi_rhoderivs(:,:)
-  DATAECS, allocatable :: xi_fourth(:,:,:), xi_third(:,:,:), xi_second(:,:,:), xideg1(:,:,:), xideg2(:,:,:)
-  real*8, allocatable :: etadeg1(:,:,:), etadeg2(:,:,:), eta_second(:,:,:), eta_third(:,:,:), eta_fourth(:,:,:)
-  DATAECS, allocatable  :: pro_lop(:,:,:,:,  :), pro_both(:,:,:,:,  :)  !! last index 0:1 even or odd
-  DATAECS, allocatable  :: pro_ldiag(:,:)
-
-end module myprojecttempmod
-
-
-subroutine PSCtempalloc()
-  use myparams
-  use myprojecttempmod  
-  implicit none
-
-  allocate( xi_derivs(xigridpoints,xigridpoints,0:1), xi_rhoderivs(xigridpoints,xigridpoints), &
-       xi_elderivs(xinumpoints*xinumelements,xigridpoints),       eta_derivs(numeta,numeta,0:1), &
-       eta_rhoderivs(numeta,numeta))
-  xi_derivs=0; xi_rhoderivs=0; xi_elderivs=0; eta_derivs=0; eta_rhoderivs=0
-
-  if (bornopflag.eq.0) then
-     allocate( &
-       Yderivs(xigridpoints,numeta,xigridpoints,numeta,0:1) , &
-       Ydiag(xigridpoints,numeta,xigridpoints,numeta,0:1), &
-       Ytemp2(numeta,xigridpoints,numeta,xigridpoints),&
-       pro_lop(xigridpoints,numeta,xigridpoints,numeta,0:1),&
-       pro_ldiag(xigridpoints,numeta),pro_both(numerad,numeta,numerad,numeta,0:1))
-     yderivs=0; ydiag=0; ytemp2=0; pro_lop=0; pro_ldiag=0
-  endif
-  allocate( etadeg1(numeta,numeta, 0:1),  etadeg2(numeta,numeta, 0:1), eta_second(numeta,numeta, 0:1), &
-       eta_third(numeta,numeta, 0:1),  eta_fourth(numeta,numeta, 0:1),&
-       xideg1(xigridpoints, xigridpoints,0:1),  xideg2(xigridpoints, xigridpoints,0:1),&
-       xi_fourth(xigridpoints, xigridpoints,0:1),  xi_third(xigridpoints, xigridpoints,0:1),  &
-       xi_second(xigridpoints, xigridpoints,0:1))
-  etadeg1=0; etadeg2=0; eta_second=0; eta_third=0; eta_fourth=0; 
-  xideg1=0; xideg2=0; xi_fourth=0; xi_third=0; xi_second=0
-
-end subroutine PSCtempalloc
-
-
-subroutine PSCtempdealloc()
-  use myprojecttempmod  
-  use myparams
-  implicit none
-  if (bornopflag.eq.0) then
-     deallocate(Yderivs, Ydiag, ytemp2,pro_lop, pro_ldiag, pro_both)
-  endif
-  deallocate(  xi_derivs, eta_derivs,eta_rhoderivs,xi_rhoderivs, xi_elderivs, xi_fourth, xi_third, xi_second, &
-       etadeg1, etadeg2, eta_fourth, eta_third, eta_second, xideg1, xideg2)
-end subroutine PSCtempdealloc
-
+module pscmod
+contains
 
 subroutine PSC()
   use myparams
   use myprojectmod  
   use myprojecttempmod  
+  use lpmsubmod
   implicit none
   integer :: i,k,m,iii,  j, thismval
   real*8 :: eta1,eta2,xi1,xi2, dummypoints(rgridpoints), dummyweights(rgridpoints) 
@@ -228,17 +176,49 @@ subroutine PSC()
 
   call psctempdealloc()
 
-end subroutine PSC
+contains
 
+subroutine PSCtempalloc()
+  implicit none
+
+  allocate( xi_derivs(xigridpoints,xigridpoints,0:1), xi_rhoderivs(xigridpoints,xigridpoints), &
+       xi_elderivs(xinumpoints*xinumelements,xigridpoints),       eta_derivs(numeta,numeta,0:1), &
+       eta_rhoderivs(numeta,numeta))
+  xi_derivs=0; xi_rhoderivs=0; xi_elderivs=0; eta_derivs=0; eta_rhoderivs=0
+
+  if (bornopflag.eq.0) then
+     allocate( &
+       Yderivs(xigridpoints,numeta,xigridpoints,numeta,0:1) , &
+       Ydiag(xigridpoints,numeta,xigridpoints,numeta,0:1), &
+       Ytemp2(numeta,xigridpoints,numeta,xigridpoints),&
+       pro_lop(xigridpoints,numeta,xigridpoints,numeta,0:1),&
+       pro_ldiag(xigridpoints,numeta),pro_both(numerad,numeta,numerad,numeta,0:1))
+     yderivs=0; ydiag=0; ytemp2=0; pro_lop=0; pro_ldiag=0
+  endif
+  allocate( etadeg1(numeta,numeta, 0:1),  etadeg2(numeta,numeta, 0:1), eta_second(numeta,numeta, 0:1), &
+       eta_third(numeta,numeta, 0:1),  eta_fourth(numeta,numeta, 0:1),&
+       xideg1(xigridpoints, xigridpoints,0:1),  xideg2(xigridpoints, xigridpoints,0:1),&
+       xi_fourth(xigridpoints, xigridpoints,0:1),  xi_third(xigridpoints, xigridpoints,0:1),  &
+       xi_second(xigridpoints, xigridpoints,0:1))
+  etadeg1=0; etadeg2=0; eta_second=0; eta_third=0; eta_fourth=0; 
+  xideg1=0; xideg2=0; xi_fourth=0; xi_third=0; xi_second=0
+
+end subroutine PSCtempalloc
+
+subroutine PSCtempdealloc()
+  implicit none
+  if (bornopflag.eq.0) then
+     deallocate(Yderivs, Ydiag, ytemp2,pro_lop, pro_ldiag, pro_both)
+  endif
+  deallocate(  xi_derivs, eta_derivs,eta_rhoderivs,xi_rhoderivs, xi_elderivs, xi_fourth, xi_third, xi_second, &
+       etadeg1, etadeg2, eta_fourth, eta_third, eta_second, xideg1, xideg2)
+end subroutine PSCtempdealloc
 
 ! returns matrices which should be added
 !
 !   1/R * propot  +  1/R^2  * proham
 
 subroutine pro_ham()
-  use myparams
-  use myprojectmod  
-  use myprojecttempmod
   implicit none
   DATAECS :: csum, csum2
   integer :: i,j,k,m,n, mvalue
@@ -373,33 +353,6 @@ subroutine pro_ham()
   enddo
   
 end subroutine pro_ham
-
-
-!! NOT A FUNCTION OF rvalue YET - still using easy prolate coords only - need to work on it
-
-subroutine nucdipvalue(rvaluenotused,dipoles)
-  use myparams
-  implicit none
-  real*8 :: nucfac
-
-  DATATYPE,intent(in) :: rvaluenotused(1)
-  DATATYPE,intent(out) :: dipoles(3)
-
-!! nuccharge1 goes with pro_Hmass, nuccharge2 with pro_Dmass.
-!! nucleus 1 (H) is on top (positive z).
-!! if nucleus1 (H) is heavier, mass_asym is negative; if it is
-!! heavier, it is closer to the origin.  (1+mass_asym) multiplies
-!! nuccharge1.
-!! This reports (-1) times the dipole because that is how the 
-!! rest of the program is done (the program is correct for antimatter,
-!! the dipole operator is programmed as +z)
-
-  nucfac=( (1.d0-mass_asym)*NucCharge2 - (1.d0+mass_asym)*NucCharge1 )/2.d0
-  dipoles(:)=0d0
-!!  dipoles(3)=nucfac*rvalue(1)
-  dipoles(3)=nucfac              !! will be multiplied by rvalue (length gauge only)
-
-end subroutine nucdipvalue
 
 
 subroutine eta_init(points,weights,ketot, numpoints, etadeg1, etadeg2, eta_derivs, &
@@ -600,7 +553,6 @@ endif
    enddo
 
 end subroutine eta_init
-
 
 
 subroutine xi_init(points,weights,points2d,ketot, numpoints,numelements,elementsizes, gridpoints, celement,&
@@ -899,6 +851,7 @@ subroutine xi_init(points,weights,points2d,ketot, numpoints,numelements,elements
 
 end subroutine xi_init
 
+
 subroutine prolate_init(points,weights, numpoints,numelements,elementsize,gridpoints,start, &
      prolate_derivs, ketot, celement, ecstheta)
   implicit none
@@ -1116,6 +1069,7 @@ subroutine prolate_init_new(points,weights, numpoints,numelements,elementsize,gr
 
 end subroutine prolate_init_new
 
+
 subroutine r_init(points,weights,ketot,  numpoints,numelements,elementsize,gridpoints,start)
   implicit none
   integer,intent(in) :: numpoints,numelements, gridpoints
@@ -1212,4 +1166,35 @@ subroutine r_init(points,weights,ketot,  numpoints,numelements,elementsize,gridp
   ketot = ketot * 2.0/elementsize
 
 end subroutine r_init
+
+end subroutine PSC
+
+end module
+
+
+!! NOT A FUNCTION OF rvalue YET - still using easy prolate coords only - need to work on it
+
+subroutine nucdipvalue(rvaluenotused,dipoles)
+  use myparams
+  implicit none
+  real*8 :: nucfac
+
+  DATATYPE,intent(in) :: rvaluenotused(1)
+  DATATYPE,intent(out) :: dipoles(3)
+
+!! nuccharge1 goes with pro_Hmass, nuccharge2 with pro_Dmass.
+!! nucleus 1 (H) is on top (positive z).
+!! if nucleus1 (H) is heavier, mass_asym is negative; if it is
+!! heavier, it is closer to the origin.  (1+mass_asym) multiplies
+!! nuccharge1.
+!! This reports (-1) times the dipole because that is how the 
+!! rest of the program is done (the program is correct for antimatter,
+!! the dipole operator is programmed as +z)
+
+  nucfac=( (1.d0-mass_asym)*NucCharge2 - (1.d0+mass_asym)*NucCharge1 )/2.d0
+  dipoles(:)=0d0
+!!  dipoles(3)=nucfac*rvalue(1)
+  dipoles(3)=nucfac              !! will be multiplied by rvalue (length gauge only)
+
+end subroutine nucdipvalue
 

@@ -1,4 +1,5 @@
 
+!! ALL MODULES
 
 !! ELECTRON FLUX ROUTINES - ACTION 16 analysis total photoionization, 
 !! ACTION 28 photoionization flux during calculation, ACTION 15 
@@ -7,91 +8,8 @@
 
 #include "Definitions.INC"
 
-subroutine fluxwrite(curtime,in_xmo,in_xa)
-!! Write out the wavefunction for the flux calculation
-!! input :
-!! curtime - the current time
-!! xmo - this time's current orbitals
-!! xa - this time's current A vector
-  use parameters
-  use mpimod
-  use mpisubmod
-  implicit none
-  integer,intent(in) :: curtime
-  DATATYPE,intent(in) :: in_xmo(spfsize,nspf),in_xa(numr,first_config:last_config,mcscfnum)
-  DATATYPE,allocatable :: xmo(:,:), xa(:,:,:)
-  DATATYPE :: nullvector(numr)
-  integer :: molength,alength,ispf,ii,myiostat
-
-  nullvector(:)=0
-
-  if (myrank.eq.1) then
-     if (parorbsplit.eq.3) then
-        allocate(xmo(spfsize*nprocs,nspf))
-     else
-        allocate(xmo(spfsize,nspf))
-     endif
-  else
-     allocate(xmo(1,nspf))
-  endif
-  xmo(:,:)=0d0
-
-  if (parorbsplit.eq.3) then
-     do ispf=1,nspf
-        call splitgatherv(in_xmo(:,ispf),xmo(:,ispf),.false.)
-     enddo
-  elseif (myrank.eq.1) then
-     xmo(:,:)=in_xmo(:,:)
-  endif
-
-  if (myrank.eq.1) then
-     allocate(xa(numr,num_config,mcscfnum))
-  else
-     allocate(xa(1,1,mcscfnum))
-  endif
-  xa(:,:,:)=0d0
-
-  if (par_consplit.ne.0) then
-     do ii=1,mcscfnum
-        if (tot_adim.gt.0) then
-           call mygatherv(in_xa(:,:,ii),xa(:,:,ii), configs_perproc(:)*numr,.false.)
-        else
-           call mygatherv(nullvector(:),xa(:,:,ii), configs_perproc(:)*numr,.false.)
-        endif
-     enddo
-  elseif(myrank.eq.1) then
-     xa(:,:,:)=in_xa(:,:,:)
-  endif
-
-  if (myrank.eq.1) then
-     inquire (iolength=molength) xmo
-     inquire (iolength=alength) xa
-     call openfile
-     write(mpifileptr,'(A27,F11.4)') " Saving wavefunction at T= ",&
-          curtime*FluxInterval*par_timestep
-     call closefile
-
-
-     open(1001,file=fluxmofile,status="unknown",form="unformatted",&
-          access="direct",recl=molength,iostat=myiostat)
-     call checkiostat(myiostat,"opening "//fluxmofile)
-     write(1001,rec=curtime+1,iostat=myiostat) xmo
-     call checkiostat(myiostat,"writing "//fluxmofile)
-     close(1001)
-     open(1002,file=fluxafile,status="unknown",form="unformatted",&
-          access="direct",recl=alength,iostat=myiostat)
-     call checkiostat(myiostat,"opening "//fluxafile)
-     write(1002,rec=curtime+1,iostat=myiostat) xa
-     call checkiostat(myiostat,"writing "//fluxafile)
-     close(1002)
-  endif
-
-  deallocate(xmo,xa)
-  
-  call mpibarrier()
-
-end subroutine fluxwrite
-
+module fluxutilmod
+contains
 
 subroutine mult_reke(howmany,in,out)
   use parameters
@@ -216,6 +134,8 @@ subroutine mult_rehalfniumpot(howmany,in, out)
      out(:,ii)=in(:,ii)*real(halfniumpot(:),8)
   enddo
 end subroutine mult_rehalfniumpot
+
+end module fluxutilmod
 
 
 module fluxgtaubiomod
@@ -431,6 +351,7 @@ contains
     use mpisubmod
     use pulsesubmod
     use orbmultsubmod   !! gauge_transform
+    use utilmod
     implicit none
 !! FluxOpType:
 !! 0       = use one-e potential and two-e contribution routines  (exact treatment)
@@ -806,6 +727,7 @@ contains
                 bratop=brareadsize
              else if (brabat.gt.ketbat) then
                 OFLWR "WHATBAT?",brabat,ketbat; CFLST
+                bratop=-99
              else
                 bratop=kettime
              endif
@@ -1095,6 +1017,7 @@ contains
     use parameters
     use orbgathersubmod
     use orbmultsubmod
+    use fluxutilmod
     implicit none
     integer,intent(in) :: flag
     DATATYPE, intent(in) :: inspfs(spfsize,nspf)
@@ -1171,6 +1094,7 @@ contains
   subroutine flux_op_nuc(inspfs,yop,flag)
     use parameters
     use orbgathersubmod
+    use fluxutilmod
     implicit none
     DATATYPE, intent(in) :: inspfs(spfsize,nspf)
     DATATYPE,intent(out) ::  yop(spfsize,nspf)
@@ -1385,6 +1309,8 @@ contains
 end module fluxgtau0mod
 
 
+module fluxgtaumod
+contains
 
 subroutine fluxgtau(alg)
   use configmod
@@ -1407,3 +1333,90 @@ subroutine fluxgtau_during(ketmo,ketavec,dt)
   call fluxgtau_during0(www,bioww,ketmo,ketavec,dt)
 end subroutine fluxgtau_during
     
+
+subroutine fluxwrite(curtime,in_xmo,in_xa)
+!! Write out the wavefunction for the flux calculation
+!! input :
+!! curtime - the current time
+!! xmo - this time's current orbitals
+!! xa - this time's current A vector
+  use parameters
+  use mpimod
+  use mpisubmod
+  implicit none
+  integer,intent(in) :: curtime
+  DATATYPE,intent(in) :: in_xmo(spfsize,nspf),in_xa(numr,first_config:last_config,mcscfnum)
+  DATATYPE,allocatable :: xmo(:,:), xa(:,:,:)
+  DATATYPE :: nullvector(numr)
+  integer :: molength,alength,ispf,ii,myiostat
+
+  nullvector(:)=0
+
+  if (myrank.eq.1) then
+     if (parorbsplit.eq.3) then
+        allocate(xmo(spfsize*nprocs,nspf))
+     else
+        allocate(xmo(spfsize,nspf))
+     endif
+  else
+     allocate(xmo(1,nspf))
+  endif
+  xmo(:,:)=0d0
+
+  if (parorbsplit.eq.3) then
+     do ispf=1,nspf
+        call splitgatherv(in_xmo(:,ispf),xmo(:,ispf),.false.)
+     enddo
+  elseif (myrank.eq.1) then
+     xmo(:,:)=in_xmo(:,:)
+  endif
+
+  if (myrank.eq.1) then
+     allocate(xa(numr,num_config,mcscfnum))
+  else
+     allocate(xa(1,1,mcscfnum))
+  endif
+  xa(:,:,:)=0d0
+
+  if (par_consplit.ne.0) then
+     do ii=1,mcscfnum
+        if (tot_adim.gt.0) then
+           call mygatherv(in_xa(:,:,ii),xa(:,:,ii), configs_perproc(:)*numr,.false.)
+        else
+           call mygatherv(nullvector(:),xa(:,:,ii), configs_perproc(:)*numr,.false.)
+        endif
+     enddo
+  elseif(myrank.eq.1) then
+     xa(:,:,:)=in_xa(:,:,:)
+  endif
+
+  if (myrank.eq.1) then
+     inquire (iolength=molength) xmo
+     inquire (iolength=alength) xa
+     call openfile
+     write(mpifileptr,'(A27,F11.4)') " Saving wavefunction at T= ",&
+          curtime*FluxInterval*par_timestep
+     call closefile
+
+
+     open(1001,file=fluxmofile,status="unknown",form="unformatted",&
+          access="direct",recl=molength,iostat=myiostat)
+     call checkiostat(myiostat,"opening "//fluxmofile)
+     write(1001,rec=curtime+1,iostat=myiostat) xmo
+     call checkiostat(myiostat,"writing "//fluxmofile)
+     close(1001)
+     open(1002,file=fluxafile,status="unknown",form="unformatted",&
+          access="direct",recl=alength,iostat=myiostat)
+     call checkiostat(myiostat,"opening "//fluxafile)
+     write(1002,rec=curtime+1,iostat=myiostat) xa
+     call checkiostat(myiostat,"writing "//fluxafile)
+     close(1002)
+  endif
+
+  deallocate(xmo,xa)
+  
+  call mpibarrier()
+
+end subroutine fluxwrite
+
+end module

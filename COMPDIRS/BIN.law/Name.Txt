@@ -1,4 +1,4 @@
 NAME=mctdhf
 
-MYDEFAULT=$(NAME)_sinc $(NAME)_atom $(NAME)_diatom 
+MYDEFAULT=$(NAME)_sinc $(NAME)_atom $(NAME)_diatom $(NAME)_sinc1d 
 

@@ -3,6 +3,10 @@
   
 #include "Definitions.INC"
   
+!! ALL MODULES
+
+module denutilmod
+contains
 
 !! ASSUMES denmat,denvects is ready. 
 
@@ -81,11 +85,17 @@ subroutine denprint(iprop)
 
 end subroutine denprint
 
+end module denutilmod
+
+
 module natrepbiomod
   use biorthotypemod
   implicit none
   type(biorthotype),target :: natrepbiovar
 end module
+
+module repnatmod
+contains
 
 subroutine replace_withnat(printflag)
   use natrepbiomod
@@ -93,6 +103,7 @@ subroutine replace_withnat(printflag)
   use parameters
   use configmod    !! bioww
   use xxxmod
+  use spfsubmod
   implicit none
 
   DATATYPE,allocatable :: outspfs(:,:)
@@ -155,38 +166,8 @@ subroutine replace_withnat(printflag)
 
 end subroutine replace_withnat
 
+end module
 
-
-subroutine getdenmatx()
-  use parameters
-  use configmod
-  use xxxmod
-  implicit none
-
-  call getdenmatstuff(www,yyy%cmfavec(:,:,0), yyy%denmat(:,:,0) , &
-       yyy%invdenmat(:,:,0) , yyy%denvals(:) , yyy%denvects(:,:), numr, mcscfnum)
-
-!!  OFLWR "DENCHECK"
-!!#ifdef REALGO
-!!  write(mpifileptr,'(F20.10)') yyy%denmat(:,1,0)
-!!#else
-!!  write(mpifileptr,'(2F20.10)') yyy%denmat(:,1,0)
-!!#endif
-!!  WRFL "DENSTOP!"; CFLST
-
-
-
-!!$  if (rdenflag==1) then
-!!$     call getrdenmat()
-!!$  endif
-!!$  if (cdenflag==1) then
-!!$     call getnatconfig()
-!!$  endif
-!!$  if (cdenflag==1.and.rdenflag==1) then
-!!$     call schmidtcheck(0)
-!!$  endif
-
-end subroutine getdenmatx
 
 !! denmat is the true denmat, not transposed.
 
@@ -295,6 +276,39 @@ end subroutine getdenmat00
 end module densubmod
 
 
+module denmatxmod
+contains
+
+subroutine getdenmatx()
+  use parameters
+  use configmod
+  use xxxmod
+  implicit none
+
+  call getdenmatstuff(www,yyy%cmfavec(:,:,0), yyy%denmat(:,:,0) , &
+       yyy%invdenmat(:,:,0) , yyy%denvals(:) , yyy%denvects(:,:), numr, mcscfnum)
+
+!!  OFLWR "DENCHECK"
+!!#ifdef REALGO
+!!  write(mpifileptr,'(F20.10)') yyy%denmat(:,1,0)
+!!#else
+!!  write(mpifileptr,'(2F20.10)') yyy%denmat(:,1,0)
+!!#endif
+!!  WRFL "DENSTOP!"; CFLST
+
+
+
+!!$  if (rdenflag==1) then
+!!$     call getrdenmat()
+!!$  endif
+!!$  if (cdenflag==1) then
+!!$     call getnatconfig()
+!!$  endif
+!!$  if (cdenflag==1.and.rdenflag==1) then
+!!$     call schmidtcheck(0)
+!!$  endif
+
+contains
 subroutine getdenmatstuff(wwin,avector, denmat, invdenmat, denvals, &
      denvects, numpoints,howmany)
   use class_parameters
@@ -302,6 +316,7 @@ subroutine getdenmatstuff(wwin,avector, denmat, invdenmat, denvals, &
   use walkmod
   use invsubmod
   use densubmod
+  use eigenmod
   implicit none
   type(walktype),intent(in) :: wwin
   integer,intent(in) ::  numpoints,howmany
@@ -362,6 +377,14 @@ subroutine getdenmatstuff(wwin,avector, denmat, invdenmat, denvals, &
 
 end subroutine getdenmatstuff
 
+end subroutine getdenmatx
+
+end module denmatxmod
+
+
+
+module getoccmod
+contains
 
 subroutine getoccupations(wwin,in_avector, numpoints, occupations)
   use walkmod
@@ -422,6 +445,7 @@ subroutine getoccupations(wwin,in_avector, numpoints, occupations)
 
 end subroutine getoccupations
 
+end module getoccmod
 
 !!$subroutine getrdenmat()
 !!$  use parameters

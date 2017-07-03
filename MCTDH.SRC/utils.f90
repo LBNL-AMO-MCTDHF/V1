@@ -5,20 +5,106 @@
 
 #include "Definitions.INC"
 
+subroutine waitawhile()
+  implicit none
+  integer :: i,j
+  character (len=10) :: mytext
+  j=1
+  do i=1,10000000
+     j=mod(j*i,1777)
+  enddo
+  write(mytext,'(I10)') j
+  call system("echo "//mytext//" >> /dev/null")
+end subroutine waitawhile
+
+
+subroutine checkiostat(iniostat,intext)
+  use fileptrmod
+  implicit none
+  integer,intent(in) :: iniostat
+  character*(*),intent(in) :: intext
+  if (iniostat /=0 ) then
+     print *, "MCTDHF ABORT: I/O error ", iniostat,intext
+     OFLWR "MCTDHF ABORT: I/O error ", iniostat,intext; CFL
+     call waitawhile()
+     stop
+     stop   !!   STOP.   !!
+     stop
+  endif
+end subroutine checkiostat
+
+!! v1.27 getlen now reports length of string not length of string plus one
+
+function getlen(buffer)
+  implicit none
+  character buffer*(*)
+  integer :: j, getlen, mylen
+  mylen=LEN(buffer)
+  j=1
+  do while (j.le.mylen)
+     if (buffer(j:j) .eq. " ") then
+        getlen=j-1
+        return
+     else
+        j=j+1
+     endif
+  enddo
+  getlen=mylen
+end function getlen
+
+function getlen2(buffer)
+  implicit none
+  character buffer*(*)
+  integer :: j, getlen2, nn
+  nn=LEN(buffer)-4
+  j=1
+  do while ((j.lt.nn).and..not.(buffer(j:j+3) .eq. "    "))
+     j=j+1
+  enddo
+  getlen2=j-1
+end function getlen2
+
+
+module utilmod
+implicit none
+contains
+
+subroutine staticvector(vector,size)
+  implicit none
+  integer :: i,size
+  DATATYPE :: vector(size)
+  real*8 :: nextran
+!! don't init... keep as is
+  do i=1,size
+     vector(i)=nextran() + (0d0,1d0) * nextran()
+  enddo
+end subroutine staticvector
+
+subroutine checkorbsetrange(checknspf,flag)
+  use parameters
+  implicit none
+  integer,intent(in) :: checknspf
+  integer,intent(out) :: flag
+  flag=0
+  if (nspf.ne.checknspf) then
+     flag=1
+  endif
+end subroutine checkorbsetrange
+
 
 !! difflevel:
 !! 0=circular boundary conditions  1=interval bc  2=interval bc, subtract average after
 
-subroutine complexdiff(size,in,out,difflevel)
+subroutine complexdiff(size,in,out,difflevel)  
   use fileptrmod
   implicit none
-  integer, intent(in) :: size,difflevel
+  integer, intent(in) :: size, difflevel
   complex*16, intent(in) :: in(size)
   complex*16, intent(out) :: out(size)
   integer :: i,jj
 
   if (difflevel==0) then
-     OFLWR "error complexdifflevel=0"; CFLST
+     OFLWR "error complexdiff level=0"; CFLST
   elseif (difflevel==1) then
 
 !! guarantees F.T. at zero is zero, right?
@@ -159,66 +245,6 @@ subroutine zfftb_wrap(size,inout)
   deallocate(wsave)
 end subroutine zfftb_wrap
 
-subroutine waitawhile()
-  implicit none
-  integer :: i,j
-  character (len=10) :: mytext
-  j=1
-  do i=1,10000000
-     j=mod(j*i,1777)
-  enddo
-  write(mytext,'(I10)') j
-  call system("echo "//mytext//" >> /dev/null")
-end subroutine waitawhile
-
-
-subroutine checkiostat(iniostat,intext)
-  use fileptrmod
-  implicit none
-  integer,intent(in) :: iniostat
-  character*(*),intent(in) :: intext
-  if (iniostat /=0 ) then
-     print *, "MCTDHF ABORT: I/O error ", iniostat,intext
-     OFLWR "MCTDHF ABORT: I/O error ", iniostat,intext; CFL
-     call waitawhile()
-     stop
-     stop   !!   STOP.   !!
-     stop
-  endif
-end subroutine checkiostat
-
-!! v1.27 getlen now reports length of string not length of string plus one
-
-function getlen(buffer)
-  implicit none
-  character buffer*(*)
-  integer :: j, getlen, mylen
-  mylen=LEN(buffer)
-  j=1
-  do while (j.le.mylen)
-     if (buffer(j:j) .eq. " ") then
-        getlen=j-1
-        return
-     else
-        j=j+1
-     endif
-  enddo
-  getlen=mylen
-end function getlen
-
-
-function getlen2(buffer)
-  implicit none
-  character buffer*(*)
-  integer :: j, getlen2, nn
-  nn=LEN(buffer)-4
-  j=1
-  do while ((j.lt.nn).and..not.(buffer(j:j+3) .eq. "    "))
-     j=j+1
-  enddo
-  getlen2=j-1
-end function getlen2
-
 
 function floatfac(in)
   implicit none
@@ -328,6 +354,169 @@ contains
   end function mynulldot
 
 end subroutine nullgramschmidt
+
+! enter as l1 l2 m1 m2 l3    TIMES TWO!!   INTEGER ARGUMENTS FOR HALF SPIN
+
+function doubleclebschsq (l2,l1,m2,m1,l3)
+  implicit none
+  integer,intent(in) :: l1,l2,m1,m2,l3
+  integer :: ierr,l3min,l3max
+  real*8 :: dl1, dl2, dm1,dm2, dl3min, dl3max,dl3,dm3
+  real*8 ::  doubleclebschsq, thrcof(100), sum
+  integer, save :: ndim=100
+
+!! real valued variables are m_s, not 2x m_s as in the arguments to this subroutine
+
+  dl1=l1/2.d0
+  dl2=l2/2.d0
+  dm1=m1/2.d0
+  dm2=m2/2.d0
+
+  dm3=dm1+dm2
+
+  call DRC3JJ(dl1,dl2,dm1,dm2,dl3min, dl3max, thrcof, ndim, ierr)
+
+  l3min = int(2*dl3min + 0.0000001d0)
+  l3max = int(2*dl3max + 0.0000001d0)
+
+!! l3 and l3min are x 2    
+
+  if (.not.(ierr .eq. 0)) then
+     sum=0.0d0
+  elseif ( (l3-l3min) < 0 ) then
+     sum = 0.0d0
+  elseif ( (l3-l3max) > 0 ) then
+     sum = 0.0d0
+  else
+     !! cg coef squared.  avoids sqrt(-1) what do you do in this sitch  
+     !!    is sqrt branch related the condon shortley phase convention
+
+!!     sum = (-1)**(l1+l2+l3) * thrcof(l3-l3min+1)   myclebsch l's not doubled
+
+!XXXXXARGH modulus function stupidly defined    if (mod(l3-l3min,2).eq.1) then
+
+     if (mod(l3+l3min,2).eq.1) then
+        print *, "L3ERROR",l3,l3min; stop
+     endif
+
+!! we are doing  clebsch^h.c.  clebsch  real valued (we are doing dot product squared in projeflux)
+
+     sum = thrcof((l3-l3min)/2+1)**2
+
+  endif
+
+     dl3 = l3
+
+!! again hermitian squared
+!!  sum = sum * (-1)**(l1+l2-m3)
+!!  myclebsch = sqrt(2*dl3+1) * sum
+
+  doubleclebschsq = (2*dl3+1) * sum
+
+end function doubleclebschsq
+
+  
+
+#ifdef REALGO
+
+subroutine assigncomplex(realmat,complexf)
+  implicit none
+  real*8,intent(out) :: realmat
+  real*8,intent(in) :: complexf
+  realmat=complexf
+end subroutine assigncomplex
+
+subroutine assigncomplexmat(realmat,complexf,m,n)
+  implicit none
+  integer,intent(in) :: n,m
+  real*8,intent(out) :: realmat(m,n)
+  real*8,intent(in) :: complexf(m,n)
+  realmat(:,:)=complexf(:,:)
+end subroutine assigncomplexmat
+
+subroutine assigncomplexvec(realmat,complexf,m)
+  implicit none
+  integer,intent(in) :: m
+  real*8,intent(out) :: realmat(m)
+  real*8,intent(in) :: complexf(m)
+  realmat(:)=complexf(:)
+end subroutine assigncomplexvec
+
+subroutine assignrealvec(complexf,realmat,m)
+  implicit none
+  integer,intent(in) :: m
+  real*8,intent(in) :: realmat(m)
+  real*8,intent(out) :: complexf(m)
+  complexf(:)=realmat(:)
+end subroutine assignrealvec
+
+#else
+
+subroutine assigncomplex(realmat,complexf)
+  implicit none
+  complex*16,intent(in) :: complexf
+  real*8,intent(out) :: realmat(2,2)
+  realmat(1,1)=real(complexf,8);  realmat(2,2)=real(complexf,8)
+  realmat(2,1)=imag(complexf);  realmat(1,2)=(-1)*imag(complexf)
+end subroutine assigncomplex
+
+subroutine assigncomplexmat(realmat,complexf,m,n)
+  implicit none
+  integer,intent(in) :: n,m
+  complex*16,intent(in) :: complexf(m,n)
+  real*8,intent(out) :: realmat(2,m,2,n)
+  realmat(1,:,1,:)=real(complexf(:,:),8);  realmat(2,:,2,:)=real(complexf(:,:),8)
+  realmat(2,:,1,:)=imag(complexf(:,:));  realmat(1,:,2,:)=(-1)*imag(complexf(:,:))
+end subroutine assigncomplexmat
+
+subroutine assigncomplexvec(realmat,complexf,m)
+  implicit none
+  integer,intent(in) :: m
+  complex*16,intent(in) :: complexf(m)
+  real*8,intent(out) :: realmat(2,m)
+  realmat(1,:)=real(complexf(:),8);  realmat(2,:)=imag(complexf(:))
+end subroutine assigncomplexvec
+
+subroutine assignrealvec(complexf,realmat,m)
+  implicit none
+  integer,intent(in) :: m
+  complex*16,intent(out) :: complexf(m)
+  real*8,intent(in) :: realmat(2,m)
+  complexf(:)=realmat(1,:)+realmat(2,:)*(0d0,1d0)
+end subroutine assignrealvec
+
+#endif
+
+
+
+subroutine checksym(mat,dim)
+  use fileptrmod
+  implicit none
+  integer,intent(in) :: dim
+  real*8,intent(in) :: mat(dim,dim)
+  integer :: i,j
+  real*8 :: sym,asym,tot
+  integer, save :: icalled=0
+
+  sym=0; asym=0;tot=0
+
+  do i=1,dim
+     do j=1,dim
+        tot=tot+ (2*mat(i,j))**2
+        sym=sym+ (mat(i,j)+mat(j,i))**2
+        asym=asym+ (mat(i,j)-mat(j,i))**2
+     enddo
+  enddo
+  if (tot.gt.1d-10) then
+     if (asym.gt.sym*1d-10) then
+        icalled=icalled+1
+        OFLWR "SYM,ASYM,MAG ", sym/tot,asym/tot,tot; CFLST
+     endif
+  endif
+
+end subroutine checksym
+
+end module utilmod
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!      MODULE INVSUBMOD    !!!
@@ -906,163 +1095,3 @@ end subroutine allpurposemat
 end module matsubmod
 
 
-! enter as l1 l2 m1 m2 l3    TIMES TWO!!   INTEGER ARGUMENTS FOR HALF SPIN
-
-function doubleclebschsq (l2,l1,m2,m1,l3)
-  implicit none
-  integer,intent(in) :: l1,l2,m1,m2,l3
-  integer :: ierr,l3min,l3max
-  real*8 :: dl1, dl2, dm1,dm2, dl3min, dl3max,dl3,dm3
-  real*8 ::  doubleclebschsq, thrcof(100), sum
-  integer, save :: ndim=100
-
-!! real valued variables are m_s, not 2x m_s as in the arguments to this subroutine
-
-  dl1=l1/2.d0
-  dl2=l2/2.d0
-  dm1=m1/2.d0
-  dm2=m2/2.d0
-
-  dm3=dm1+dm2
-
-  call DRC3JJ(dl1,dl2,dm1,dm2,dl3min, dl3max, thrcof, ndim, ierr)
-
-  l3min = int(2*dl3min + 0.0000001d0)
-  l3max = int(2*dl3max + 0.0000001d0)
-
-!! l3 and l3min are x 2    
-
-  if (.not.(ierr .eq. 0)) then
-     sum=0.0d0
-  elseif ( (l3-l3min) < 0 ) then
-     sum = 0.0d0
-  elseif ( (l3-l3max) > 0 ) then
-     sum = 0.0d0
-  else
-     !! cg coef squared.  avoids sqrt(-1) what do you do in this sitch  
-     !!    is sqrt branch related the condon shortley phase convention
-
-!!     sum = (-1)**(l1+l2+l3) * thrcof(l3-l3min+1)   myclebsch l's not doubled
-
-!XXXXXARGH modulus function stupidly defined    if (mod(l3-l3min,2).eq.1) then
-
-     if (mod(l3+l3min,2).eq.1) then
-        print *, "L3ERROR",l3,l3min; stop
-     endif
-
-!! we are doing  clebsch^h.c.  clebsch  real valued (we are doing dot product squared in projeflux)
-
-     sum = thrcof((l3-l3min)/2+1)**2
-
-  endif
-
-     dl3 = l3
-
-!! again hermitian squared
-!!  sum = sum * (-1)**(l1+l2-m3)
-!!  myclebsch = sqrt(2*dl3+1) * sum
-
-  doubleclebschsq = (2*dl3+1) * sum
-
-end function doubleclebschsq
-
-  
-
-#ifdef REALGO
-
-subroutine assigncomplex(realmat,complexf)
-  implicit none
-  real*8,intent(out) :: realmat
-  real*8,intent(in) :: complexf
-  realmat=complexf
-end subroutine assigncomplex
-
-subroutine assigncomplexmat(realmat,complexf,m,n)
-  implicit none
-  integer,intent(in) :: n,m
-  real*8,intent(out) :: realmat(m,n)
-  real*8,intent(in) :: complexf(m,n)
-  realmat(:,:)=complexf(:,:)
-end subroutine assigncomplexmat
-
-subroutine assigncomplexvec(realmat,complexf,m)
-  implicit none
-  integer,intent(in) :: m
-  real*8,intent(out) :: realmat(m)
-  real*8,intent(in) :: complexf(m)
-  realmat(:)=complexf(:)
-end subroutine assigncomplexvec
-
-subroutine assignrealvec(complexf,realmat,m)
-  implicit none
-  integer,intent(in) :: m
-  real*8,intent(in) :: realmat(m)
-  real*8,intent(out) :: complexf(m)
-  complexf(:)=realmat(:)
-end subroutine assignrealvec
-
-#else
-
-subroutine assigncomplex(realmat,complexf)
-  implicit none
-  complex*16,intent(in) :: complexf
-  real*8,intent(out) :: realmat(2,2)
-  realmat(1,1)=real(complexf,8);  realmat(2,2)=real(complexf,8)
-  realmat(2,1)=imag(complexf);  realmat(1,2)=(-1)*imag(complexf)
-end subroutine assigncomplex
-
-subroutine assigncomplexmat(realmat,complexf,m,n)
-  implicit none
-  integer,intent(in) :: n,m
-  complex*16,intent(in) :: complexf(m,n)
-  real*8,intent(out) :: realmat(2,m,2,n)
-  realmat(1,:,1,:)=real(complexf(:,:),8);  realmat(2,:,2,:)=real(complexf(:,:),8)
-  realmat(2,:,1,:)=imag(complexf(:,:));  realmat(1,:,2,:)=(-1)*imag(complexf(:,:))
-end subroutine assigncomplexmat
-
-subroutine assigncomplexvec(realmat,complexf,m)
-  implicit none
-  integer,intent(in) :: m
-  complex*16,intent(in) :: complexf(m)
-  real*8,intent(out) :: realmat(2,m)
-  realmat(1,:)=real(complexf(:),8);  realmat(2,:)=imag(complexf(:))
-end subroutine assigncomplexvec
-
-subroutine assignrealvec(complexf,realmat,m)
-  implicit none
-  integer,intent(in) :: m
-  complex*16,intent(out) :: complexf(m)
-  real*8,intent(in) :: realmat(2,m)
-  complexf(:)=realmat(1,:)+realmat(2,:)*(0d0,1d0)
-end subroutine assignrealvec
-
-#endif
-
-
-
-subroutine checksym(mat,dim)
-  use fileptrmod
-  implicit none
-  integer,intent(in) :: dim
-  real*8,intent(in) :: mat(dim,dim)
-  integer :: i,j
-  real*8 :: sym,asym,tot
-  integer, save :: icalled=0
-
-  sym=0; asym=0;tot=0
-
-  do i=1,dim
-     do j=1,dim
-        tot=tot+ (2*mat(i,j))**2
-        sym=sym+ (mat(i,j)+mat(j,i))**2
-        asym=asym+ (mat(i,j)-mat(j,i))**2
-     enddo
-  enddo
-  if (tot.gt.1d-10) then
-     if (asym.gt.sym*1d-10) then
-        icalled=icalled+1
-        OFLWR "SYM,ASYM,MAG ", sym/tot,asym/tot,tot; CFLST
-     endif
-  endif
-
-end subroutine checksym

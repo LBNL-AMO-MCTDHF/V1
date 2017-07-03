@@ -107,15 +107,19 @@ subroutine checkmyopts()
 end subroutine checkmyopts
 
 
+module dvrvalmod
+contains
+
 !!  PASS ARGUMENTS AS REAL (e.g. for xi) !!
 
 function  radiallobatto(n,x, mvalue)
   use myparams
   use myprojectmod
+  use lobstuffmod
   implicit none
   integer,intent(in) :: mvalue,   n
   real*8,intent(in) :: x
-  DATAECS :: xilobatto, radiallobatto
+  DATAECS :: radiallobatto
   radiallobatto=xilobatto(n,x,mvalue,henumpoints,glpoints2d(:,1),glpoints2d(:,2),&
        glpoints,glweights,heelementsizes,henumelements,0)
 end function radiallobatto
@@ -123,23 +127,51 @@ end function radiallobatto
 function  angularlobatto(n,x, mvalue)
   use myparams
   use myprojectmod
+  use lobstuffmod
   implicit none
   integer,intent(in) :: mvalue,   n
   real*8,intent(in) :: x
-  real*8 :: angularlobatto, etalobatto
+  real*8 :: angularlobatto
      angularlobatto=etalobatto(n,x,mvalue,jacobipoints,jacobiweights)
 end function angularlobatto
+
+!!  PASS ARGUMENTS AS REAL (e.g. for xi) !!
+
+function  radiallobattoint(n,x, mvalue)
+  use myparams
+  use myprojectmod
+  use lobstuffmod
+  implicit none
+  integer,intent(in) :: mvalue, n
+  real*8,intent(in) :: x
+  DATAECS :: radiallobattoint
+  radiallobattoint=xilobattoint(n,x,mvalue,henumpoints,glpoints2d(:,1),glpoints2d(:,2),&
+       glpoints,glweights,heelementsizes,henumelements,0)
+end function radiallobattoint
+
+function  angularlobattoint(n,x, mvalue)
+  use myparams
+  use myprojectmod
+  use lobstuffmod
+  implicit none
+  integer,intent(in) :: mvalue,   n
+  real*8,intent(in) :: x
+  real*8 :: angularlobattoint
+     angularlobattoint=etalobattoint(n,x,mvalue,jacobipoints,jacobiweights)
+end function angularlobattoint
+
+end module dvrvalmod
+
 
 function cylindricalvalue(radpoint, thetapoint,nullrvalue,mvalue, invector)
   use myparams
   use myprojectmod
+  use dvrvalmod
   implicit none
   integer,intent(in) :: mvalue
   DATATYPE,intent(in) :: invector(numerad,lbig+1)
   real*8,intent(in) :: radpoint, thetapoint, nullrvalue
   DATATYPE ::  cylindricalvalue, sum
-  real*8 ::  angularlobatto
-  DATAECS :: radiallobatto
   integer :: ixi,lvalue
 
   sum=0.d0*nullrvalue !! avoid warn unused
@@ -154,16 +186,17 @@ function cylindricalvalue(radpoint, thetapoint,nullrvalue,mvalue, invector)
   cylindricalvalue=sum
 end function cylindricalvalue
 
+
 subroutine get_maxsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,povsparse)
    use myparams
    use myprojectmod
+   use dvrvalmod
    implicit none
    integer,intent(in) :: nx,ny,nz
    integer,intent(out) :: maxsparse
    real*8, intent(in) :: xvals(nx),yvals(ny),zvals(nz), povsparse
    integer :: mvalue, ixi,lvalue, ix,iy,iz, iii, jjj
-   real*8 :: xval,yval,zval, angularlobatto, costhetaval,phival, rhoval
-   DATAECS :: radiallobatto
+   real*8 :: xval,yval,zval, costhetaval,phival, rhoval
    complex*16 :: csum
 
    maxsparse=0;   jjj=0
@@ -211,19 +244,18 @@ subroutine get_maxsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,povsparse)
 end subroutine get_maxsparse
 
 
-
 subroutine get_sphericalsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,sparsetransmat,&
      sparsestart,sparseend,sparsexyz,povsparse)
    use myparams
    use myprojectmod
+   use dvrvalmod
    implicit none
    integer,intent(in) :: nx,ny,nz,maxsparse
    real*8,intent(in) :: xvals(nx),yvals(ny),zvals(nz),povsparse
    complex*16,intent(out) :: sparsetransmat(maxsparse)
    integer,intent(out) :: sparsexyz(maxsparse,3),  sparsestart(numerad,lbig+1,-mbig:mbig), &
         sparseend(numerad,lbig+1,-mbig:mbig)
-   real*8 :: xval,yval,zval, angularlobatto, costhetaval,phival, rhoval
-   DATAECS :: radiallobatto
+   real*8 :: xval,yval,zval, costhetaval,phival, rhoval
    complex*16 :: csum
    integer :: mvalue, ixi,lvalue, ix,iy,iz, iii, iflag
 
@@ -282,40 +314,17 @@ end subroutine get_sphericalsparse
 function interpolate(radpoint, thetapoint,nullrvalue,mvalue, ixi,lvalue)
   use myparams
   use myprojectmod
+  use dvrvalmod
   implicit none
   integer,intent(in) :: mvalue, ixi,lvalue
   real*8,intent(in) :: radpoint,thetapoint
   DATATYPE ::  interpolate, sum
-  real*8 :: angularlobattoint,nullrvalue
-  DATAECS :: radiallobattoint
+  real*8 :: nullrvalue
 
   sum=0.d0* nullrvalue !! avoid warn unused
   sum=sum +    radiallobattoint(ixi,radpoint, mvalue) * angularlobattoint(lvalue,thetapoint, mvalue)
   interpolate=sum
 end function interpolate
-
-!!  PASS ARGUMENTS AS REAL (e.g. for xi) !!
-
-function  radiallobattoint(n,x, mvalue)
-  use myparams
-  use myprojectmod
-  implicit none
-  integer,intent(in) :: mvalue, n
-  real*8,intent(in) :: x
-  DATAECS :: xilobattoint, radiallobattoint
-  radiallobattoint=xilobattoint(n,x,mvalue,henumpoints,glpoints2d(:,1),glpoints2d(:,2),&
-       glpoints,glweights,heelementsizes,henumelements,0)
-end function radiallobattoint
-
-function  angularlobattoint(n,x, mvalue)
-  use myparams
-  use myprojectmod
-  implicit none
-  integer,intent(in) :: mvalue,   n
-  real*8,intent(in) :: x
-  real*8 :: angularlobattoint, etalobattoint
-     angularlobattoint=etalobattoint(n,x,mvalue,jacobipoints,jacobiweights)
-end function angularlobattoint
 
 
 

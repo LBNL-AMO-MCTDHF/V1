@@ -6,6 +6,8 @@
 !! IF YOU WANT TO OPERATE WITH REDUCED HAMILTONIAN YOURSELF,
 !!  USE ACTREDUCED.
 
+!! ALL MODULES
+
 #include "Definitions.INC"
 
 module derivtimingmod
@@ -13,6 +15,9 @@ module derivtimingmod
   integer :: times(20)=0,numcalledhere=0
 end module derivtimingmod
 
+
+module derivativemod
+contains
 
 !! WITH TIMEFAC
 
@@ -41,10 +46,6 @@ subroutine getconmat(thistime,ireduced,conmat)
   endif
 
 end subroutine getconmat
-
-
-module derivativemod
-contains
 
 !! for derivative of PROJECTOR using derivative of spfs.     
 !!      on call inspfs is for example jacvectout
@@ -457,6 +458,7 @@ contains
   subroutine conpropspfs(inspfs, outspfs, time1,time2)
     use parameters
     use orbgathersubmod
+    use spfsubmod
     implicit none
     real*8, intent(in) ::  time1,time2
     DATATYPE, intent(in) :: inspfs(spfsize,nspf)
@@ -934,6 +936,7 @@ contains
     use xxxmod
     use sparsemultmod
     use basissubmod
+    use getstuffmod
     implicit none
     DATATYPE,intent(in) :: in_xpsi(tot_adim*mcscfnum+totspfdim)
     DATATYPE,intent(out) :: out_xpsip(tot_adim*mcscfnum+totspfdim)

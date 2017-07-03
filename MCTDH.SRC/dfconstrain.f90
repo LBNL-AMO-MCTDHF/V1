@@ -1,6 +1,8 @@
 
 #include "Definitions.INC"
 
+!! ALL MODULES
+
 !! SUBROUTINES FOR RESTRICTED CONFIG LIST (dfrestrictflag>0)
 !! and constraint (constraintflag>0, for proper propagation according to variational
 !! principle when using restricted configuration spaces
@@ -14,6 +16,8 @@
 !! hermitian g matrix can then be immediattely gotten by fiat
 !!
 
+module dfconsubmod
+contains
 
 subroutine get_constraint(time)
   use fileptrmod
@@ -33,8 +37,6 @@ subroutine get_constraint(time)
   endif
 
 end subroutine get_constraint
-
-
 
 
 subroutine dferror(www,cptr,sptr,avector,numvects,outerror,time)
@@ -97,7 +99,6 @@ subroutine dferror(www,cptr,sptr,avector,numvects,outerror,time)
 end subroutine dferror
 
 
-
 subroutine get_smallwalkvects(www,avector, smallwalkvects,nblock,howmany)
   use fileptrmod
   use walkmod
@@ -153,6 +154,7 @@ subroutine get_rhomat(www,avector, rhomat,nblock,howmany)
   use orbgathersubmod
   use walkmod
   use mpisubmod
+  use utilmod
   implicit none
   type(walktype),intent(in) :: www
   integer,intent(in) :: nblock,howmany
@@ -233,6 +235,8 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
   use invsubmod
   use orbgathersubmod
   use mpisubmod
+  use utilmod
+  use clockmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -695,6 +699,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
   use invsubmod
   use orbgathersubmod
   use mpisubmod
+  use utilmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -710,7 +715,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
   DATATYPE,allocatable :: bigavector(:,:,:),bigavectorp(:,:,:), avectorp(:,:,:)
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,   &
        iwalk, info, kspf, lspf, ind, jind,  lowspf,highspf, &
-       lind, llind, flag, isize, iwhich,  iiyy,maxii,imc,ihop, liosize
+       flag, isize, iwhich,  iiyy,maxii,imc,ihop, liosize
   integer :: ipiv(www%nspf*(www%nspf-1))
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
   DATATYPE :: liosolve(www%nspf*(www%nspf-1)),lioden(www%nspf*(www%nspf-1), www%nspf*(www%nspf-1)),&
@@ -1065,6 +1070,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   use invsubmod
   use orbgathersubmod
   use mpisubmod
+  use utilmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -1081,7 +1087,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   DATATYPE,allocatable :: bigavector(:,:,:), bigavectorp(:,:,:),avectorp(:,:,:),&
        rhomat(:,:,:,:),tempconmatels(:,:) 
   integer ::  config1,config2,   ispf,jspf,  dirphase,  i,  iwalk,  info, kspf, &
-       lspf, ind, jind, llind, flag, isize,   &
+       lspf, ind, jind, flag, isize,   &
        iiyy,maxii,imc,j,ihop,lowspf,highspf,lowsize,highsize
   integer,allocatable :: ipiv(:)
   real*8 :: denom,time,rsum,rsum2,maxval,maxanti
@@ -1399,3 +1405,5 @@ subroutine new_get_denconstraint1(time)
   endif
 
 end subroutine new_get_denconstraint1
+
+end module dfconsubmod

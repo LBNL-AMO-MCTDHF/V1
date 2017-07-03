@@ -1,7 +1,7 @@
 
+!! ALL MODULES
 
 !! PROJECTED FLUX (partial photoionization ACTIONS 17 and 28)
-
 
 #include "Definitions.INC"
 
@@ -162,13 +162,16 @@ contains
     use projefluxmod
     use mpimod
     use mpisubmod
+    use utilmod
+    use configloadmod
+    use loadstuffmod
     implicit none
     integer,intent(in) :: ifile
     integer,intent(out) :: outnumstate
     integer :: i,ir,tnum2part,istate,ierr, cgflag, &
          spfcomplex, acomplex, tdims(3), myiostat, &
          targetms, targetrestrictflag, targetspinproject, targetspinval
-    real*8 :: cgfac,doubleclebschsq,aa,bb,cc
+    real*8 :: cgfac,aa,bb,cc
     DATATYPE, allocatable :: tmotemp(:,:),readta(:,:,:),tempta(:,:)
 
 !! read in the data from mcscf for our target cation state
@@ -388,6 +391,7 @@ contains
     use mpimod
     use mpisubmod
     use orbmultsubmod   !! gauge_transform
+    use utilmod
     implicit none
     integer,intent(in) :: ifile, curtime
     real*8 :: cattime
@@ -619,6 +623,7 @@ contains
   subroutine projeflux_op_onee(inspfs,outspfs)
     use parameters   !! nucfluxopt
     use opmod
+    use fluxutilmod
     implicit none
     DATATYPE,intent(in) :: inspfs(spfsize,numr)
     DATATYPE,intent(out) :: outspfs(spfsize,numr)
@@ -1156,6 +1161,7 @@ contains
     use mpisubmod
     use pulsesubmod
     use projutilsubmod
+    use utilmod
     implicit none
     integer,intent(in) :: mem,totstate,nt,NUMANGLES,NUMERAD
     real*8, intent(in) :: dt
@@ -1835,6 +1841,17 @@ contains
 end module projcoresubmod
 
 
+
+module projfluxduringmod
+  implicit none
+  integer :: allocated=0, curtime=0
+  DATATYPE,allocatable :: gtausum(:,:), gtausum_ad(:,:,:), gtausave(:,:), gtausave_ad(:,:,:)
+end module projfluxduringmod
+
+
+module projactionmod
+contains
+
 subroutine projeflux_single(mem)
   use parameters    !! fluxinterval, par_timestep, etc.
   use projefluxmod
@@ -1877,13 +1894,6 @@ subroutine projeflux_single(mem)
   call mpistop()
 
 end subroutine projeflux_single
-
-
-module projfluxduringmod
-  implicit none
-  integer :: allocated=0, curtime=0
-  DATATYPE,allocatable :: gtausum(:,:), gtausum_ad(:,:,:), gtausave(:,:), gtausave_ad(:,:,:)
-end module projfluxduringmod
 
 
 subroutine projeflux_during(inspfs,inavectors,dt)
@@ -2108,7 +2118,7 @@ subroutine projeflux_during(inspfs,inavectors,dt)
   
 end subroutine projeflux_during
 
-
+end module projactionmod
 
 
 

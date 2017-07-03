@@ -173,6 +173,14 @@ subroutine actionsub(thistime)
   use xxxmod
   use configmod
   use actionlistmod
+  use autosubmod
+  use dfconsubmod
+  use dipsubmod
+  use fluxgtaumod
+  use keprojsubmod
+  use ovlsubmod
+  use projactionmod
+  use psistatsubmod
   implicit none
   
   integer :: i, calledhere=0, atime, btime, times(MAXACTION)=0,getlen,myiostat
@@ -379,6 +387,10 @@ subroutine actions_final()
   use parameters
   use mpimod
   use xxxmod
+  use autosubmod
+  use dipsubmod
+  use fluxgtaumod
+  use ovlsubmod
   implicit none
   integer :: i
 
@@ -439,6 +451,11 @@ subroutine actions_initial()
   use parameters
   use mpimod
   use xxxmod
+  use autosubmod
+  use dipsubmod
+  use fluxgtaumod
+  use ovlsubmod
+  use projactionmod
   implicit none
   integer :: i, dflag
 
@@ -531,11 +548,11 @@ end subroutine actions_initial
 
 
 subroutine action_replacenat()
-implicit none
-
+  use repnatmod
+  use getstuffmod
+  implicit none
   call replace_withnat(1)
   call get_stuff(0d0)
-
 end subroutine action_replacenat
 
 

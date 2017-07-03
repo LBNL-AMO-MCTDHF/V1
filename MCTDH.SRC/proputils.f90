@@ -1,4 +1,5 @@
 
+!! ALL MODULES
 
 #include "Definitions.INC"
 
@@ -115,52 +116,6 @@ contains
   end subroutine project_onfrozen
 
 end module orbprojectmod
-
-
-subroutine get_stuff0(thistime,times)
-  use parameters
-  implicit none
-  real*8,intent(in) :: thistime
-  integer,intent(inout) :: times(20)
-  integer :: itime,jtime
-
-  call myclock(itime)
-
-  call get_allden()
-  call myclock(jtime);  times(2)=times(2)+jtime-itime;    itime=jtime
-
-  call all_matel()
-  call myclock(jtime);  times(1)=times(1)+jtime-itime;    itime=jtime
-
-  if (constraintflag.ne.0) then
-     call get_constraint(thistime)
-  endif
-  call myclock(jtime); times(7)=times(7)+jtime-itime;     itime=jtime
-
-  if (drivingflag.ne.0) then
-     call drivingtrans(thistime)
-  endif
-  call myclock(jtime); times(8)=times(8)+jtime-itime;     itime=jtime
-
-  if (use_fockmatrix) then
-     call get_fockmatrix()
-  endif
-  call get_reducedpot()
-  if (numfrozen.gt.0) then
-     call get_frexchange()
-  endif
-  call myclock(jtime);     times(3)=times(3)+jtime-itime
-
-
-end subroutine get_stuff0
-
-
-subroutine get_stuff(thistime)
-  implicit none
-  real*8,intent(in) :: thistime
-  integer :: times(20)=0
-  call get_stuff0(thistime,times)
-end subroutine get_stuff
 
 
 module orbmultsubmod
@@ -303,6 +258,55 @@ contains
 end module orbmultsubmod
 
 
+module getstuffmod
+contains
+
+subroutine get_stuff0(thistime,times)
+  use parameters
+  use dfconsubmod
+  use meansubmod
+  implicit none
+  real*8,intent(in) :: thistime
+  integer,intent(inout) :: times(20)
+  integer :: itime,jtime
+
+  call myclock(itime)
+
+  call get_allden()
+  call myclock(jtime);  times(2)=times(2)+jtime-itime;    itime=jtime
+
+  call all_matel()
+  call myclock(jtime);  times(1)=times(1)+jtime-itime;    itime=jtime
+
+  if (constraintflag.ne.0) then
+     call get_constraint(thistime)
+  endif
+  call myclock(jtime); times(7)=times(7)+jtime-itime;     itime=jtime
+
+  if (drivingflag.ne.0) then
+     call drivingtrans(thistime)
+  endif
+  call myclock(jtime); times(8)=times(8)+jtime-itime;     itime=jtime
+
+  if (use_fockmatrix) then
+     call get_fockmatrix()
+  endif
+  call get_reducedpot()
+  if (numfrozen.gt.0) then
+     call get_frexchange()
+  endif
+  call myclock(jtime);     times(3)=times(3)+jtime-itime
+
+end subroutine get_stuff0
+
+
+subroutine get_stuff(thistime)
+  implicit none
+  real*8,intent(in) :: thistime
+  integer :: times(20)=0
+  call get_stuff0(thistime,times)
+end subroutine get_stuff
+
 subroutine get_frexchange()
   use parameters
   use xxxmod !! frozenexchinvr
@@ -378,5 +382,9 @@ subroutine get_frexchange()
   endif
 
 end subroutine get_frexchange
+
+end module getstuffmod
+
+
 
 

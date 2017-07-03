@@ -1,6 +1,130 @@
 
 #include "Definitions.INC"
 
+!! ALL MODULES
+
+module readavectormod
+  use mpisubmod
+contains
+
+!! does conversion for initial a-vector read (excitations and holes).  
+!!   N electron wfn output.
+
+  subroutine readavectorsubroutine(readconfig, outavector,ivect)
+    use parameters
+    use configmod
+    use aarrmod
+    use configsubmod
+    implicit none
+    integer :: i,iihole,iloop,jloop,ivect
+    DATATYPE,intent(out) :: outavector(num_config)
+    integer ::  readconfig(num2part+2*numholes),xflag,iexcite,config2
+    integer :: thisconfig(num2part+400)
+    integer :: jj,phase
+    real*8 :: qfac,xphase
+
+!!!!!!!!!!!!!!   HOLES   !!!!!!!!!!!!!!
+
+    outavector(:)=0d0;  qfac=sqrt(1d0/numholecombo/excitecombos)
+
+    do iloop=1,numholecombo   !! default numholecombo=1  with -1 entry for no avectorhole.
+       thisconfig(1:num2part+2*numholes)=readconfig(1:num2part+2*numholes)
+       xphase=1;     xflag=0
+
+       do iihole=1,numholes
+          xflag=1
+          do jj=1,numpart+numholes-iihole+1
+             if (iind(thisconfig(2*jj-1:2*jj)).eq.abs(myavectorhole(iihole,iloop,ivect))) then
+                xflag=0
+                xphase=xphase*myavectorhole(iihole,iloop,ivect) / &
+                     abs(myavectorhole(iihole,iloop,ivect))
+                thisconfig(2*jj-1:num2part+298)=thisconfig(2*jj+1:num2part+300)
+                exit
+             endif
+          enddo
+          if (xflag==1) then
+             exit
+          endif
+       enddo
+       if (xflag==1) then
+          cycle                   !! cycle iloop
+       endif
+       do i=1,numpart+numholes
+          thisconfig(i*2-1)   = thisconfig(i*2-1)-numloadfrozen   
+       enddo
+
+!!!!!!!!!!!!!!!!!!!      EXCITATIONS   !!!!!!!!!!!!!!!!!!!!!
+
+       do jloop=1,excitecombos   
+          xflag=0
+          do iexcite=1,excitations  
+             xflag=1
+             do jj=1,numpart
+                if (iind(thisconfig(2*jj-1:2*jj)).eq.&
+                     abs(myavectorexcitefrom(iexcite,jloop,ivect))) then
+                   xflag=0  
+                   thisconfig(2*jj-1:2*jj)=aarr(abs(myavectorexciteto(iexcite,jloop,ivect)))
+                   xphase=xphase*myavectorexciteto(iexcite,jloop,ivect) * &
+                        myavectorexcitefrom(iexcite,jloop,ivect) / &
+                        abs(myavectorexciteto(iexcite,jloop,ivect) * &
+                        myavectorexcitefrom(iexcite,jloop,ivect))
+                   exit
+                endif
+             enddo
+             if (xflag.eq.1) then
+                exit
+             endif
+          enddo
+          if (xflag.eq.1) then
+             cycle                     !! cycle jloop
+          endif
+          phase=reorder(thisconfig,numpart)
+          if (allowedconfig0(www,thisconfig,www%dflevel)) then
+             config2=getconfiguration(thisconfig,www)
+             if (config2.eq.-1) then
+                write(mpifileptr,*) 
+                OFLWR "Hmm, looks like avector on file is ordered differently?"; CFLST
+             endif
+             outavector(config2) = outavector(config2) + phase * qfac * xphase
+          endif
+       enddo ! jloop (excitecombos)
+    enddo ! iloop
+
+  end subroutine readavectorsubroutine
+
+!! N electron wfn, no conversion
+
+  subroutine readavectorsubsimple(readconfig, outavector,notusedint)
+    use parameters
+    use configmod
+    use aarrmod
+    use configsubmod
+    implicit none
+    integer :: i,notusedint,phase,readconfig(num2part),config2,&
+         thisconfig(num2part)
+    DATATYPE,intent(out) :: outavector(num_config)
+
+    outavector(:)=0d0;  thisconfig(:)=readconfig(:)
+    do i=1,numpart
+       thisconfig(i*2-1)   = thisconfig(i*2-1)-numloadfrozen   
+    enddo
+    phase=reorder(thisconfig,numpart)
+  
+    if (allowedconfig0(www,thisconfig,www%dflevel)) then
+       config2=getconfiguration(thisconfig,www)
+       if (config2.eq.-1) then
+          write(mpifileptr,*) 
+          OFLWR "Hmm, looks like avector on file is ordered differently?"; CFLST
+       endif
+       outavector(config2) = outavector(config2) + phase 
+    endif
+  end subroutine readavectorsubsimple
+
+end module readavectormod
+
+
+module configloadmod
+contains
 
 subroutine print_excitations()
   use parameters
@@ -479,132 +603,6 @@ subroutine get_avectorfile_configlist(iunit, qq, myconfiglist, mynum2part, mynum
 end subroutine get_avectorfile_configlist
 
 
-!!                                !!
-!!      MODULE READAVECTORMOD     !!
-!!                                !!
-
-
-module readavectormod
-  use mpisubmod
-contains
-
-!! does conversion for initial a-vector read (excitations and holes).  
-!!   N electron wfn output.
-
-  subroutine readavectorsubroutine(readconfig, outavector,ivect)
-    use parameters
-    use configmod
-    use aarrmod
-    use configsubmod
-    implicit none
-    integer :: i,iihole,iloop,jloop,ivect
-    DATATYPE,intent(out) :: outavector(num_config)
-    integer ::  readconfig(num2part+2*numholes),xflag,iexcite,config2
-    integer :: thisconfig(num2part+400)
-    integer :: jj,phase
-    real*8 :: qfac,xphase
-
-!!!!!!!!!!!!!!   HOLES   !!!!!!!!!!!!!!
-
-    outavector(:)=0d0;  qfac=sqrt(1d0/numholecombo/excitecombos)
-
-    do iloop=1,numholecombo   !! default numholecombo=1  with -1 entry for no avectorhole.
-       thisconfig(1:num2part+2*numholes)=readconfig(1:num2part+2*numholes)
-       xphase=1;     xflag=0
-
-       do iihole=1,numholes
-          xflag=1
-          do jj=1,numpart+numholes-iihole+1
-             if (iind(thisconfig(2*jj-1:2*jj)).eq.abs(myavectorhole(iihole,iloop,ivect))) then
-                xflag=0
-                xphase=xphase*myavectorhole(iihole,iloop,ivect) / &
-                     abs(myavectorhole(iihole,iloop,ivect))
-                thisconfig(2*jj-1:num2part+298)=thisconfig(2*jj+1:num2part+300)
-                exit
-             endif
-          enddo
-          if (xflag==1) then
-             exit
-          endif
-       enddo
-       if (xflag==1) then
-          cycle                   !! cycle iloop
-       endif
-       do i=1,numpart+numholes
-          thisconfig(i*2-1)   = thisconfig(i*2-1)-numloadfrozen   
-       enddo
-
-!!!!!!!!!!!!!!!!!!!      EXCITATIONS   !!!!!!!!!!!!!!!!!!!!!
-
-       do jloop=1,excitecombos   
-          xflag=0
-          do iexcite=1,excitations  
-             xflag=1
-             do jj=1,numpart
-                if (iind(thisconfig(2*jj-1:2*jj)).eq.&
-                     abs(myavectorexcitefrom(iexcite,jloop,ivect))) then
-                   xflag=0  
-                   thisconfig(2*jj-1:2*jj)=aarr(abs(myavectorexciteto(iexcite,jloop,ivect)))
-                   xphase=xphase*myavectorexciteto(iexcite,jloop,ivect) * &
-                        myavectorexcitefrom(iexcite,jloop,ivect) / &
-                        abs(myavectorexciteto(iexcite,jloop,ivect) * &
-                        myavectorexcitefrom(iexcite,jloop,ivect))
-                   exit
-                endif
-             enddo
-             if (xflag.eq.1) then
-                exit
-             endif
-          enddo
-          if (xflag.eq.1) then
-             cycle                     !! cycle jloop
-          endif
-          phase=reorder(thisconfig,numpart)
-          if (allowedconfig0(www,thisconfig,www%dflevel)) then
-             config2=getconfiguration(thisconfig,www)
-             if (config2.eq.-1) then
-                write(mpifileptr,*) 
-                OFLWR "Hmm, looks like avector on file is ordered differently?"; CFLST
-             endif
-             outavector(config2) = outavector(config2) + phase * qfac * xphase
-          endif
-       enddo ! jloop (excitecombos)
-    enddo ! iloop
-
-  end subroutine readavectorsubroutine
-
-!! N electron wfn, no conversion
-
-  subroutine readavectorsubsimple(readconfig, outavector,notusedint)
-    use parameters
-    use configmod
-    use aarrmod
-    use configsubmod
-    implicit none
-    integer :: i,notusedint,phase,readconfig(num2part),config2,&
-         thisconfig(num2part)
-    DATATYPE,intent(out) :: outavector(num_config)
-
-    outavector(:)=0d0;  thisconfig(:)=readconfig(:)
-    do i=1,numpart
-       thisconfig(i*2-1)   = thisconfig(i*2-1)-numloadfrozen   
-    enddo
-    phase=reorder(thisconfig,numpart)
-  
-    if (allowedconfig0(www,thisconfig,www%dflevel)) then
-       config2=getconfiguration(thisconfig,www)
-       if (config2.eq.-1) then
-          write(mpifileptr,*) 
-          OFLWR "Hmm, looks like avector on file is ordered differently?"; CFLST
-       endif
-       outavector(config2) = outavector(config2) + phase 
-    endif
-  end subroutine readavectorsubsimple
-
-end module readavectormod
-
-
-
 subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip,alreadyloaded)
   use parameters
   use mpimod    !! myrank
@@ -849,7 +847,6 @@ subroutine easy_load_avectors(iunit, qq, outavectors, mynumr, mynumconfig, mynum
 end subroutine easy_load_avectors
   
 
-
 subroutine write_avector(unit,avector)
   use configmod
   use parameters
@@ -864,4 +861,6 @@ subroutine write_avector(unit,avector)
      write (unit) www%configlist(:,config1), avector(:,config1)
   enddo
 end subroutine write_avector
+
+end module
 

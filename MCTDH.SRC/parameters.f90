@@ -25,6 +25,16 @@ module output_parameters
 integer :: iprintconfiglist=0
 end module output_parameters
 
+module clockmod
+contains
+  subroutine myclock(mytime)
+    integer :: values(10),mytime
+    integer, parameter :: fac(5:8)=(/60*60*1000,60*1000,1000,1/)  !! hour,minute,second,millisecond
+    call date_and_time(values=values)
+    mytime=values(8)+values(7)*fac(7)+values(6)*fac(6)+values(5)*fac(5)
+  end subroutine myclock
+end module clockmod
+
 module dotmod
 contains
 
@@ -236,7 +246,7 @@ end module denreg_parameters
 module parameters
   use fileptrmod;  use r_parameters; use sparse_parameters; use tol_parameters
   use ham_parameters;  use basis_parameters;  use timing_parameters; use spfsize_parameters;
-  use df_parameters; use dotmod;    use constant_parameters
+  use df_parameters; use dotmod;    use constant_parameters; use clockmod
   implicit none
 !!EE
 !!{\large \quad MAIN PARAMETERS }

@@ -5,6 +5,7 @@
 
 subroutine zero_mpi_times()
   use mpimod
+  use clockmod
   implicit none
   mpitime=0; nonmpitime=0
   call myclock(mpibtime);  mpiatime=mpibtime
@@ -236,6 +237,7 @@ end subroutine afterbarrier
 
 
 module orbgathersubmod
+use clockmod
 contains
 
 subroutine mpiorbgather0(inoutvector,insize,onlynz)
@@ -344,6 +346,7 @@ end module orbgathersubmod
 subroutine mpistart()
   use mpimod
   use fileptrmod
+  use clockmod
   implicit none
   integer :: ierr,  iilen !!,provided,required
   character(len=40) :: format
@@ -410,9 +413,11 @@ subroutine mpistart()
 end subroutine mpistart
 
 
+
 subroutine mpibarrier()
   use mpimod
   use fileptrmod
+  use clockmod
   implicit none
   integer :: ierr
   call myclock(mpiatime)
@@ -454,6 +459,8 @@ end subroutine mpiabort
 
 
 module mpisubmod
+  use clockmod
+
 contains
 
 subroutine mympireduce_local(input, isize, IN_COMM)
@@ -1278,7 +1285,6 @@ subroutine mpiorbreduce(orbvector,insize)
 end subroutine mpiorbreduce
 
 end module orbgathersubmod
-
 
 
 subroutine mpistart

@@ -1,4 +1,5 @@
 
+!! ALL MODULES
 
 !! SUBROUTINES FOR IMPROVEDQUADFLAG, AVECTOR AND ORBITAL.  CALLS DGMRES ROUTINE.
 
@@ -10,35 +11,6 @@
 
 !! ON INPUT SOLUTION IS GUESS.
 
-module dgm_comm_mod
-  implicit none
-  integer :: dgmcomm=(-798)
-end module dgm_comm_mod
-
-subroutine mympirealreduceone_local_dgmres(sum)
-  use dgm_comm_mod
-  use mpisubmod
-  implicit none
-  real*8,intent(inout) :: sum
-  call mympirealreduceone_local(sum,dgmcomm)
-end subroutine mympirealreduceone_local_dgmres
-
-subroutine mympiireduceone_local_dgmres(isum)
-  use dgm_comm_mod
-  use mpisubmod
-  implicit none
-  integer,intent(inout) :: isum
-  call mympiireduceone_local(isum,dgmcomm)
-end subroutine mympiireduceone_local_dgmres
-
-subroutine mympimax_local_dgmres(rsum)
-  use dgm_comm_mod
-  use mpisubmod
-  implicit none
-  real*8,intent(inout) :: rsum
-  call mympimax_local(rsum,dgmcomm)
-end subroutine mympimax_local_dgmres
-
 
 module dgsolvemod
 contains
@@ -47,6 +19,7 @@ contains
        intolerance, indimension, inkrydim,parflag,ierr,incomm)
     use fileptrmod
     use dgm_comm_mod
+    use dgmresmod
     implicit none
     integer,intent(in) :: indimension,inkrydim,parflag,preconflag,incomm
     integer,intent(out) :: ierr
@@ -55,7 +28,7 @@ contains
     integer,intent(out) :: numiter
     DATATYPE,intent(out) :: solution(indimension)
     external inmult, inprecon
-    integer :: igwk(20), ligwk=20, nullint1,nullint2,nullint3,nullint4, nullint5,&
+    integer :: igwk(20), ligwk=20, nullint1,nullint2,nullint3,nullint4, nullint5, nullint6,&
          itol, iunit, jjxx, rgwkdim
     real*8 :: nulldouble1, errest, nulldouble2, nulldouble3, nulldouble4, tol
     real*8, allocatable :: rgwk(:)
@@ -107,13 +80,13 @@ contains
     tol=intolerance
 
     if (parflag.eq.0) then
-       call dgmres(jjxx, rhs, solution, nullint1, nullint2, nullint3, nulldouble1, nullint3, inmult, &
-            inprecon,itol , tol, nullint4, numiter, errest, ierr, iunit, nulldouble2, nulldouble3, rgwk, &
-            rgwkdim, igwk, ligwk, nulldouble4, nullint5)
+       call dgmres(jjxx, rhs, solution, inmult, &
+            inprecon,itol , tol, numiter, errest, ierr, iunit, rgwk, &
+            rgwkdim, igwk, ligwk)
     else
-       call dgmrespar(jjxx, rhs, solution, nullint1, nullint2, nullint3, nulldouble1, nullint3, inmult, &
-            inprecon,itol , tol, nullint4, numiter, errest, ierr, iunit, nulldouble2, nulldouble3, rgwk, &
-            rgwkdim, igwk, ligwk, nulldouble4, nullint5)
+       call dgmrespar(jjxx, rhs, solution, inmult, &
+            inprecon,itol , tol, numiter, errest, ierr, iunit, rgwk, &
+            rgwkdim, igwk, ligwk)
     endif
 
 !!$  if (debugflag.ne.0) then
@@ -168,98 +141,20 @@ end module dgsolvemod
 !!! NEWTON SOLVE (IMPROVEDQUADFLAG=1,2) FOR ORBITALS
 !!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine quadinit(inspfs, thistime)
-  use parameters
-  implicit none
-  DATATYPE,intent(in) :: inspfs(spfsize,nspf) 
-  real*8,intent(in) :: thistime
-  call jacinit0(0,inspfs,thistime)
-end subroutine quadinit
-
-
-module quadopmod
+module quadspfsmod
 contains
-
-!! SUBROUTINES PASSED TO DGSOLVE FOR ORBITAL NEWTON SOLVE IMPROVEDQUADFLAG 2 and 3
-
-  subroutine quadoperate(notusedint,inspfs,outspfs)
-    use parameters
-    use jacopmod
-    implicit none
-    integer :: notusedint
-    DATATYPE,intent(in) ::  inspfs(totspfdim)
-    DATATYPE,intent(out) :: outspfs(totspfdim)
-    DATATYPE :: workspfs(totspfdim)              !! AUTOMATIC
-    workspfs=0
-    if (jacprojorth.ne.0) then   
-       call jacorth(inspfs,outspfs)
-       call jacoperate0(0,0,outspfs,workspfs)
-       call jacorth(workspfs,outspfs)
-    else
-       call jacoperate0(0,0,inspfs,outspfs)
-    endif
-  end subroutine quadoperate
-
-  subroutine quadopcompact(notusedint,com_inspfs,com_outspfs)
-    use parameters
-    use jacopmod
-    implicit none
-    integer :: notusedint
-    DATATYPE,intent(in) ::  com_inspfs(spfsmallsize*nspf)
-    DATATYPE,intent(out) :: com_outspfs(spfsmallsize*nspf)
-    DATATYPE :: inspfs(spfsize*nspf),outspfs(spfsize*nspf)  !! AUTOMATIC
-    inspfs=0; outspfs=0
-    call spfs_expand(com_inspfs,inspfs)
-    if (jacprojorth.ne.0) then   
-       call jacorth(inspfs,outspfs)
-       call jacoperate0(0,0,outspfs,inspfs)
-       call jacorth(inspfs,outspfs)
-    else
-       call jacoperate0(0,0,inspfs,outspfs)
-    endif
-    call spfs_compact(outspfs,com_outspfs)
-  end subroutine quadopcompact
-
-  subroutine parquadopcompact(notusedint,com_inspfs,com_outspfs)
-    use parameters
-    use jacopmod
-    use mpi_orbsetmod
-    implicit none
-    integer :: notusedint
-    DATATYPE,intent(in) :: com_inspfs(spfsmallsize,firstmpiorb:firstmpiorb+orbsperproc-1)
-    DATATYPE,intent(out) :: com_outspfs(spfsmallsize,firstmpiorb:firstmpiorb+orbsperproc-1)
-    DATATYPE ::  inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1),  &
-         outspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)  !! AUTOMATIC
-    inspfs=0; outspfs=0
-    call spfs_expand_local(com_inspfs,inspfs)
-    call parjacoperate0(0,0,inspfs,outspfs)
-    call spfs_compact_local(outspfs,com_outspfs)
-  end subroutine parquadopcompact
-
-  subroutine parquadoperate(notusedint,inspfs,outspfs)
-    use parameters
-    use jacopmod
-    use mpi_orbsetmod
-    implicit none
-    integer :: notusedint
-    DATATYPE,intent(in) :: inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
-    DATATYPE,intent(out) :: outspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
-    call parjacoperate0(0,0,inspfs,outspfs)
-  end subroutine parquadoperate
-
-end module quadopmod
-
 
 subroutine quadspfs(inspfs,jjcalls)
   use parameters
   use mpimod
   use linearmod
   use dgsolvemod
-  use quadopmod
   use orbdermod
   use mpi_orbsetmod
   use orbgathersubmod
   use mpisubmod
+  use jacinitmod
+  use spfsubmod
   implicit none
   DATATYPE,intent(inout) :: inspfs(spfsize,nspf)
   integer,intent(out) :: jjcalls
@@ -296,7 +191,7 @@ subroutine quadspfs(inspfs,jjcalls)
 
   call spf_orthogit(invector,orthogerror)
 
-  call quadinit(invector,0d0)
+  call jacinit0(0,invector,0d0)
 
   call spf_linear_derivs0(0,0,0d0,invector,errvec,1,1)
 
@@ -426,7 +321,76 @@ contains
   subroutine dummysub()
   end subroutine dummysub
 
+!! SUBROUTINES PASSED TO DGSOLVE FOR ORBITAL NEWTON SOLVE IMPROVEDQUADFLAG 2 and 3
+
+  subroutine quadoperate(notusedint,inspfs,outspfs)
+    use parameters
+    use jacopmod
+    implicit none
+    integer :: notusedint
+    DATATYPE,intent(in) ::  inspfs(totspfdim)
+    DATATYPE,intent(out) :: outspfs(totspfdim)
+    DATATYPE :: workspfs(totspfdim)              !! AUTOMATIC
+    workspfs=0
+    if (jacprojorth.ne.0) then   
+       call jacorth(inspfs,outspfs)
+       call jacoperate0(0,0,outspfs,workspfs)
+       call jacorth(workspfs,outspfs)
+    else
+       call jacoperate0(0,0,inspfs,outspfs)
+    endif
+  end subroutine quadoperate
+
+  subroutine quadopcompact(notusedint,com_inspfs,com_outspfs)
+    use parameters
+    use jacopmod
+    implicit none
+    integer :: notusedint
+    DATATYPE,intent(in) ::  com_inspfs(spfsmallsize*nspf)
+    DATATYPE,intent(out) :: com_outspfs(spfsmallsize*nspf)
+    DATATYPE :: inspfs(spfsize*nspf),outspfs(spfsize*nspf)  !! AUTOMATIC
+    inspfs=0; outspfs=0
+    call spfs_expand(com_inspfs,inspfs)
+    if (jacprojorth.ne.0) then   
+       call jacorth(inspfs,outspfs)
+       call jacoperate0(0,0,outspfs,inspfs)
+       call jacorth(inspfs,outspfs)
+    else
+       call jacoperate0(0,0,inspfs,outspfs)
+    endif
+    call spfs_compact(outspfs,com_outspfs)
+  end subroutine quadopcompact
+
+  subroutine parquadopcompact(notusedint,com_inspfs,com_outspfs)
+    use parameters
+    use jacopmod
+    use mpi_orbsetmod
+    implicit none
+    integer :: notusedint
+    DATATYPE,intent(in) :: com_inspfs(spfsmallsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+    DATATYPE,intent(out) :: com_outspfs(spfsmallsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+    DATATYPE ::  inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1),  &
+         outspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)  !! AUTOMATIC
+    inspfs=0; outspfs=0
+    call spfs_expand_local(com_inspfs,inspfs)
+    call parjacoperate0(0,0,inspfs,outspfs)
+    call spfs_compact_local(outspfs,com_outspfs)
+  end subroutine parquadopcompact
+
+  subroutine parquadoperate(notusedint,inspfs,outspfs)
+    use parameters
+    use jacopmod
+    use mpi_orbsetmod
+    implicit none
+    integer :: notusedint
+    DATATYPE,intent(in) :: inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+    DATATYPE,intent(out) :: outspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
+    call parjacoperate0(0,0,inspfs,outspfs)
+  end subroutine parquadoperate
+
 end subroutine quadspfs
+
+end module quadspfsmod
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -434,15 +398,12 @@ end subroutine quadspfs
 !!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-module aaonedmod
+module quadavecmod
   implicit none
   DATATYPE :: quadexpect=0d0
-end module
-
-
+  contains
 
 subroutine aaonedinit(www,inavector) 
-  use aaonedmod
   use xxxmod
   use r_parameters
   use walkmod
@@ -497,6 +458,7 @@ end subroutine aaonedinit
 subroutine quadavector(inavector,jjcalls)
   use parameters
   use configmod
+  use utilmod
   implicit none
   DATATYPE,intent(inout) :: inavector(www%totadim,mcscfnum)
   DATATYPE :: nullvector(numr)
@@ -540,7 +502,6 @@ end subroutine quadavector
 subroutine sparsequadavector(inavector,jjcalls0)
   use parameters
   use mpimod
-  use aaonedmod
   use xxxmod
   use configmod
   use dgsolvemod
@@ -744,7 +705,6 @@ contains
 
   subroutine paraamult(notusedint,inavectorspin,outavectorspin)
     use r_parameters
-    use aaonedmod
     use configmod
     use parblocklanmod
     implicit none
@@ -761,7 +721,6 @@ contains
     use fileptrmod
     use r_parameters
     use sparse_parameters
-    use aaonedmod
     use xxxmod
     use configmod
     implicit none
@@ -778,7 +737,6 @@ contains
     use fileptrmod
     use r_parameters
     use sparse_parameters
-    use aaonedmod
     use walkmod
     use configptrmod
     use sparseptrmod
@@ -810,7 +768,6 @@ contains
 !!$
 !!$subroutine parhrmult(lanblocknum,inavectorspin,outavectorspin)
 !!$  use parameters
-!!$  use aaonedmod
 !!$  implicit none
 !!$  integer,intent(in) :: lanblocknum
 !!$  DATATYPE,intent(in) :: inavectorspin(numr,botbasis:topbasis)
@@ -843,7 +800,6 @@ end subroutine sparsequadavector
 
 subroutine nonsparsequadavector(www,avectorout)
   use mpimod
-  use aaonedmod
   use parameters
   use xxxmod
   use walkmod
@@ -953,6 +909,5 @@ subroutine nonsparsequadavector(www,avectorout)
 
 end subroutine nonsparsequadavector
 
-
-
+end module quadavecmod
 

@@ -78,6 +78,9 @@ end module
 !  DATAECS :: rmatrix(numerad,numerad,mseriesmax+1,lseriesmax+1)
 !  real*8 :: ylmvals(0:2*mbig, 1:lbig+1, lseriesmax+1)
 
+module tinvsubmod
+contains
+
 subroutine op_tinv(mlow,mhigh,howmany,indensity,outpotential)
   use myparams
   use myprojectmod
@@ -125,7 +128,7 @@ subroutine op_tinv(mlow,mhigh,howmany,indensity,outpotential)
 
 end subroutine op_tinv
 
-
+end module tinvsubmod
 
 !  DATAECS :: rmatrix(numerad,numerad,mseriesmax+1,lseriesmax+1)
 !  real*8 :: ylmvals(0:2*mbig, 1:lbig+1, lseriesmax+1)
@@ -134,6 +137,8 @@ subroutine call_twoe_matel00(lowspf,highspf,inspfs1,inspfs2,twoematel,twoereduce
   use myparams
   use myprojectmod
   use mycdotmod
+  use clockmod   !! IN PARENT DIRECTORY
+  use tinvsubmod
   implicit none
   integer, intent(in) :: xnotiming,lowspf,highspf
   DATATYPE,intent(out) :: twoereduced(numerad,lbig+1,-2*mbig:2*mbig, numspf,lowspf:highspf),&
@@ -312,6 +317,7 @@ subroutine call_frozen_matels_core(infrozens,numfrozen,frozenkediag,frozenpotdia
   use myprojectmod
   use mycdotmod
   use orbmultsubmod   !! IN PARENT DIRECTORY
+  use tinvsubmod
   implicit none
   integer,intent(in) :: numfrozen
   DATATYPE,intent(in) :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen),&
@@ -466,6 +472,7 @@ end subroutine call_frozen_matels_core
 
 subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen,inspfmvals)
   use myparams
+  use tinvsubmod
   implicit none
   integer,intent(in) :: numfrozen,howmany,inspfmvals(howmany)
   DATATYPE,intent(in) :: infrozens(numerad,lbig+1,-mbig:mbig,numfrozen), &
@@ -805,6 +812,7 @@ end subroutine mult_reducedpot
 subroutine hatomcalc(hatomreduced)
   use myparams
   use myprojectmod
+  use tinvsubmod
   implicit none
   DATATYPE :: interpolate
   DATATYPE,intent(out) :: hatomreduced(numerad,lbig+1,-2*mbig:2*mbig)
@@ -887,18 +895,6 @@ subroutine op_frozenreduced(howmany,inspfs,outspfs,frozenreduced)
 !$OMP END PARALLEL
 
 end subroutine op_frozenreduced
-
-
-function lobatto(numpoints,points2d,n,x)
-  implicit none
-  integer :: n,i,numpoints
-  real*8 :: points2d(numpoints), x,product,lobatto
-  product = 1.0d0
-  do i=1,numpoints
-     if (i/=n) product = product*(x-points2d(i))/(points2d(n)-points2d(i))
-  enddo
-  lobatto=product
-end function lobatto
 
 
 subroutine restrict_spfs(inspfs,howmany,in_spfmvals)
@@ -1143,14 +1139,25 @@ subroutine ugexpand_spfs(inspfs,outspfs,howmany,in_spfmvals,in_spfugvals)
 end subroutine ugexpand_spfs
 
 
+module lobstuffmod
+contains
 
-
+function lobatto(numpoints,points2d,n,x)
+  implicit none
+  integer :: n,i,numpoints
+  real*8 :: points2d(numpoints), x,product,lobatto
+  product = 1.0d0
+  do i=1,numpoints
+     if (i/=n) product = product*(x-points2d(i))/(points2d(n)-points2d(i))
+  enddo
+  lobatto=product
+end function lobatto
 
 function  etalobatto(n,x, mvalue, etapoints, etaweights) !! ok unused
   use myparams
   implicit none
   integer :: mvalue,   n
-  real*8 :: x,lobatto,etalobatto, etapoints(lbig+1), etaweights(lbig+1)
+  real*8 :: x,etalobatto, etapoints(lbig+1), etaweights(lbig+1)
 
   if (x .lt. -1.d0 .or. x .gt. 1.d0) then
      etalobatto=0.0d0;     return
@@ -1168,7 +1175,7 @@ function  etalobattoint(n,x, mvalue, etapoints, etaweights)  !! ok unused
   use myparams
   implicit none
   integer :: mvalue,   n
-  real*8 :: x,lobatto,etalobattoint, etapoints(lbig+1), etaweights(lbig+1)
+  real*8 :: x,etalobattoint, etapoints(lbig+1), etaweights(lbig+1)
   if (x .lt. -1.d0 .or. x .gt. 1.d0) then
      etalobattoint=0.0d0;     return
   endif
@@ -1181,7 +1188,7 @@ function  xilobatto(n,x, mvalue, xinumpoints, firstelpts, secondelpts, &   !! ok
      xipoints, xiweights, xielementsizes,xinumelements,xiflag)
   implicit none
   integer :: mvalue, l,el2d, n,num,whichelement,point2d,  xinumpoints, xiflag,xinumelements
-  real*8 :: x,lobatto,x2d,lastboundary,xielementsizes(*), firstelpts(*), secondelpts(*)
+  real*8 :: x,x2d,lastboundary,xielementsizes(*), firstelpts(*), secondelpts(*)
   DATAECS :: xilobatto, xiweights(*), xipoints(*)
 
   xilobatto=0.0d0 
@@ -1243,7 +1250,7 @@ function  xilobattoint(n,x, mvalue, xinumpoints, firstelpts, secondelpts, xipoin
   implicit none
 
   integer :: mvalue, l,el2d, n,num,whichelement,point2d,  xinumpoints, xiflag,xinumelements
-  real*8 :: xielementsizes(*), firstelpts(*), secondelpts(*),x,lobatto,x2d,lastboundary
+  real*8 :: xielementsizes(*), firstelpts(*), secondelpts(*),x,x2d,lastboundary
   DATAECS :: xilobattoint, xiweights(*), xipoints(*)
 
   xilobattoint=0.0d0 
@@ -1298,6 +1305,7 @@ function  xilobattoint(n,x, mvalue, xinumpoints, firstelpts, secondelpts, xipoin
 
 end function xilobattoint
 
+end module lobstuffmod
 
 
 !! all proddrhos are the same. (and asymmetric individually)

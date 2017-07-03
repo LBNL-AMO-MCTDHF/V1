@@ -1,11 +1,17 @@
 
+!! ALL MODULES
+
 #include "Definitions.INC"
+
+module loadstuffmod
+contains
 
 subroutine save_vector(avectors,spfs,afile,sfile)
   use parameters
   use opmod !! frozenspfs
   use mpimod
   use mpisubmod
+  use configloadmod
   implicit none
   DATATYPE,intent(in) :: spfs(spfsize,nspf),avectors(numr,first_config:last_config,mcscfnum)
   character,intent(in) :: afile*(*), sfile*(*)
@@ -492,5 +498,6 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
 
 end subroutine spf_read0
 
+end module loadstuffmod
 
 

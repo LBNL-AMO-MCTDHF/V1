@@ -14,32 +14,41 @@ clean:
 ../proputils.o: ../proputils.F90
 	cd ..; make proputils.o
 
+../utils.o: ../utils.F90
+	cd ..; make utils.o
+
+../eigen.o: ../eigen.F90
+	cd ..; make eigen.o
+
+../parameters.o: ../parameters.F90
+	cd ..; make parameters.o
+
 h2projectar.a:  $(HTWO) 
 	$(AR) -r h2projectar.a    $(HTWO) 
 
 H2_params.o: $(DEPEND) H2_params.F90
 	$(F90) $(FFLAGS)  -c H2_params.F90
 
-h2project.o: $(DEPEND) h2project.F90 H2_params.o
-	$(F90) $(FFLAGS)  -c h2project.F90
+h2project.o: $(DEPEND) h2project.F90 H2_params.o ../utils.o
+	$(F90) $(FFLAGS)  -I.. -c h2project.F90
 
-init_H2_new.o: $(DEPEND)  H2_params.o h2project.o coreproject.o init_H2_new.F90
-	$(F90) $(FFLAGS)  -c init_H2_new.F90
+init_H2_new.o: $(DEPEND)  H2_params.o h2project.o coreproject.o PSC-newest.o ../eigen.o init_H2_new.F90
+	$(F90) $(FFLAGS) -I.. -c init_H2_new.F90
 
-coreproject.o: $(DEPEND)  H2_params.o h2project.o coreproject.F90 ../proputils.o
+coreproject.o: $(DEPEND)  H2_params.o h2project.o coreproject.F90 ../proputils.o ../parameters.o
 	$(F90) $(FFLAGS) -I.. -c coreproject.F90
 
 coretwoe.o: $(DEPEND)  HE_params.o heproject.o coretwoe.F90
 	$(F90) $(FFLAGS)  -c coretwoe.F90
 
-PSC-newest.o: $(DEPEND)  H2_params.o h2project.o PSC-newest.F90
+PSC-newest.o: $(DEPEND)  H2_params.o h2project.o PSC-newest.F90 lpm.o
 	$(F90) $(FFLAGS)  -c PSC-newest.F90
 
-lpm.o: $(DEPEND)  H2_params.o h2project.o PSC-newest.o lpm.F90
+lpm.o: $(DEPEND)  H2_params.o h2project.o lpm.F90
 	$(F90) $(FFLAGS)  -c lpm.F90
 
 
-h2_extraproject.o: $(DEPEND) H2_params.o h2project.o h2_extraproject.F90
+h2_extraproject.o: $(DEPEND) H2_params.o h2project.o coreproject.o h2_extraproject.F90
 	$(F90) $(FFLAGS) $(PGFFLAG) -c h2_extraproject.F90 -o h2_extraproject.o
 
 

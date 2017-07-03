@@ -10,6 +10,10 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      numfrozen, infrozens, frozenkediag, frozenpotdiag, frozenreduced, hatomreduced)
   use myparams
   use myprojectmod
+  use eigenmod    !! IN PARENT DIRECTORY
+  use pscmod
+  use tinvsubmod
+  use gettwoemod
   implicit none
   integer,intent(in) :: skipflag, in_numelec
   integer,intent(inout) :: spfsloaded

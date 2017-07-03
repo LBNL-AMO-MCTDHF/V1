@@ -1,21 +1,10 @@
 
 #include "Definitions.INC"
 
-subroutine printconfig(thisconfig,www)
-  use walkmod
-  use fileptrmod
-  implicit none
+!! ALL MODULES
 
-  type(walktype),intent(in) :: www
-  integer,intent(in) :: thisconfig(www%num2part)
-  character (len=4) :: mslabels(2) =["a ","b "]
-  integer :: i
-
-  write(mpifileptr,'(100(I3,A2))') (thisconfig((i-1)*2+1), &
-       mslabels(thisconfig(i*2)), i=1,www%numpart)
-
-end subroutine printconfig
-
+module configstuffmod
+contains
 
 !! guessflag=1  use thisconfigsvects for initial krylov vectors
 !!          =2  do that and also follow, return eigvects with max overlap
@@ -31,6 +20,8 @@ subroutine myconfigeig(cptr,thisconfigvects,thisconfigvals,order,printflag, &
   use basissubmod
   use mpisubmod
   use asssubmod
+  use lanblockmod
+  use eigenmod
   implicit none
   type(CONFIGPTR),intent(in) :: cptr
   integer,intent(in) :: order,printflag,guessflag,numshift
@@ -250,6 +241,7 @@ subroutine myconfigprop(avectorin,avectorout,time,imc,numiters)
   use sparse_parameters
   use configmod
   use basissubmod
+  use expoavecpropmod
   implicit none
   integer,intent(in) :: imc
   integer,intent(out) :: numiters
@@ -261,9 +253,9 @@ subroutine myconfigprop(avectorin,avectorout,time,imc,numiters)
   numiters=0
   if (sparseconfigflag/=0) then
      if (www%totadim.gt.0) then
-        call exposparseprop(avectorin,avectorout,time,imc,numiters)
+        call expoavecprop(avectorin,avectorout,time,imc,numiters)
      else
-        call exposparseprop(nullvector1,nullvector2,time,imc,numiters)
+        call expoavecprop(nullvector1,nullvector2,time,imc,numiters)
      endif
   else
      call nonsparseprop(www,dwwptr,avectorin,avectorout,time,imc)
@@ -286,6 +278,8 @@ subroutine nonsparseprop(wwin,dwin,avectorin,avectorout,time,imc)
   use expsubmod
   use mpisubmod
   use asssubmod
+  use expokitmod, only: EXPFULL, DGCHBVQ
+  use utilmod
   implicit none
   type(walktype),intent(in) :: wwin,dwin
   integer, intent(in) :: imc
@@ -293,11 +287,10 @@ subroutine nonsparseprop(wwin,dwin,avectorin,avectorout,time,imc)
   DATATYPE,intent(out) :: avectorout(wwin%totadim)
   DATATYPE :: avectortemp(wwin%numdfbasis*numr), &
        avectortemp2(wwin%numdfbasis*numr) !! AUTOMATIC
-  DATATYPE, allocatable :: bigconfigmatel(:,:), bigconfigvects(:,:)
+  DATATYPE, allocatable :: bigconfigmatel(:,:)
 #ifndef REALGO
   real*8, allocatable :: realbigconfigmatel(:,:,:,:)
 #endif
-  integer, allocatable :: iiwork(:)
   integer :: iflag
   real*8 :: time
 
@@ -312,11 +305,8 @@ subroutine nonsparseprop(wwin,dwin,avectorin,avectorout,time,imc)
      OFLWR "ERROR DF SETS NONSPARSEOPROP",wwin%numdfbasis,dwin%numdfbasis; CFLST
   endif
 
-  allocate(iiwork(wwin%numdfbasis*numr*2));     iiwork=0
-
-  allocate(bigconfigmatel(wwin%numdfbasis*numr,wwin%numdfbasis*numr), &
-       bigconfigvects(wwin%numdfbasis*numr,2*(wwin%numdfbasis*numr+2)))
-  bigconfigmatel=0; bigconfigvects=0
+  allocate(bigconfigmatel(wwin%numdfbasis*numr,wwin%numdfbasis*numr))
+  bigconfigmatel=0
 
   call assemble_dfbasismat(dwin,bigconfigmatel, workconfigpointer,1,1,1,1, time,imc)
 
@@ -336,13 +326,13 @@ subroutine nonsparseprop(wwin,dwin,avectorin,avectorout,time,imc)
         realbigconfigmatel=0
         call assigncomplexmat(realbigconfigmatel,bigconfigmatel,&
              wwin%numdfbasis*numr,wwin%numdfbasis*numr)
-        call DGCHBV(wwin%numdfbasis*numr*2, 1.d0, realbigconfigmatel, &
-             wwin%numdfbasis*numr*2, avectortemp, bigconfigvects, iiwork, iflag)           
+        call DGCHBVQ(wwin%numdfbasis*numr*2, 1.d0, realbigconfigmatel, &
+             wwin%numdfbasis*numr*2, avectortemp, iflag)           
         deallocate(realbigconfigmatel)
 #endif
      else
-        call EXPFULL(wwin%numdfbasis*numr, DATAONE, bigconfigmatel, &
-             wwin%numdfbasis*numr, avectortemp, bigconfigvects, iiwork, iflag)
+        call EXPFULL(wwin%numdfbasis*numr, 1d0, bigconfigmatel, &
+             wwin%numdfbasis*numr, avectortemp, iflag)
         
         if (iflag.ne.0) then
            OFLWR "Expo error A ", iflag; CFLST
@@ -354,8 +344,8 @@ subroutine nonsparseprop(wwin,dwin,avectorin,avectorout,time,imc)
 
   call basis_transformfrom_all(wwin,numr,avectortemp,avectorout)
 
-  deallocate(iiwork,bigconfigmatel,bigconfigvects)
+  deallocate(bigconfigmatel)
 
 end subroutine nonsparseprop
 
-
+end module configstuffmod

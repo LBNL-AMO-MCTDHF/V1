@@ -1,50 +1,15 @@
 
+!! ALL MODULES
 
 !! ACTION 21 (emission/absorption) subroutine
 
 #include "Definitions.INC"
 
+
 module dipolemod
   implicit none
   DATATYPE, allocatable :: dipoleexpects(:,:,:)
 end module dipolemod
-
-
-subroutine dipolesub_initial()
-  use dipolemod
-  use parameters
-  implicit none
-
-  allocate(dipoleexpects(0:autosize,3,1))   !! x,y,z
-
-end subroutine
-
-
-subroutine dipolesub_final()
-  use dipolemod
-  implicit none
-  deallocate( dipoleexpects )
-
-end subroutine dipolesub_final
-
-
-subroutine checkorbsetrange(checknspf,flag)
-  use parameters
-  implicit none
-  integer,intent(in) :: checknspf
-  integer,intent(out) :: flag
-  flag=0
-  if (nspf.ne.checknspf) then
-     flag=1
-  endif
-end subroutine checkorbsetrange
-
-
-module dipbiomod
-  use biorthotypemod
-  implicit none
-  type(biorthotype),target :: dipbiovar
-end module dipbiomod
 
 
 module dipsubonemod
@@ -57,12 +22,14 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   use walkmod
   use fileptrmod
   use dotmod
-  use dipbiomod
+  use biorthotypemod
   use biorthomod
   use arbitrarymultmod
   use orbgathersubmod
   use mpisubmod
+  use utilmod
   implicit none
+  type(biorthotype),target :: dipbiovar
   type(walktype),intent(in) :: wwin
   type(walktype),target,intent(in) :: bbin
   logical,intent(in) :: diff_flag   !! are in_spfbra, in_spfket different?
@@ -237,6 +204,7 @@ contains
     use pulse_parameters
     use mpimod
     use pulsesubmod
+    use utilmod
     implicit none
     integer,intent(in) :: numdata, sflag, referencepulses, npulses
     DATATYPE,intent(in) :: indipolearrays(0:autosize,3)
@@ -331,7 +299,7 @@ contains
     dipole_diff=0d0;    worksum0=0;   totworksum0=0;  
 
     do i=1,3
-       call complexdiff(numdata+1,dipolearrays(:,i),dipole_diff(:,i),2)
+       call complexdiff(numdata+1,dipolearrays(:,i),dipole_diff(:,i),3)
     enddo
     dipole_diff(:,:)= dipole_diff(:,:) / par_timestep / autosteps
 
@@ -765,6 +733,26 @@ contains
 end module dipcallsubmod
 
 
+module dipsubmod
+contains
+
+subroutine dipolesub_initial()
+  use dipolemod
+  use parameters
+  implicit none
+
+  allocate(dipoleexpects(0:autosize,3,1))   !! x,y,z
+
+end subroutine
+
+subroutine dipolesub_final()
+  use dipolemod
+  implicit none
+  deallocate( dipoleexpects )
+
+end subroutine dipolesub_final
+
+
 subroutine dipolesub()   !! action 21
   use parameters
   use dipcallsubmod
@@ -1087,3 +1075,7 @@ subroutine redo_dipolesub(alg,diff_flag)  !! action 29
   OFLWR "Done recomputing dipole, stopping"; CFLST
 
 end subroutine redo_dipolesub
+
+end module dipsubmod
+
+

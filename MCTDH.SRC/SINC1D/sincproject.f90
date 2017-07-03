@@ -104,6 +104,8 @@ subroutine myprojectalloc()
 
 end subroutine myprojectalloc
 
+module gettwoemod
+contains
 
 subroutine get_twoe_new(pot)
   use myparams
@@ -171,6 +173,7 @@ contains
     
 end subroutine get_twoe_new
 
+end module gettwoemod
 
 
 subroutine op_yderiv(notint,notused1,notused2)

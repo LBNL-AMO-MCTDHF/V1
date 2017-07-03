@@ -1,4 +1,5 @@
 
+!! ALL ONE MODULE
 
 !! SUBROUTINE FOR "WALKS" (WHICH CONFIGURATIONS CONNECT TO WHICH) FOR SPARSE SPIN PROJECTOR.
 
@@ -6,15 +7,14 @@
 
 module spinwalkinternal
   implicit none
-  integer, allocatable :: numspinwalks(:),spinwalkdirphase(:,:),spinwalk(:,:),&
+  integer, allocatable,private :: numspinwalks(:),spinwalkdirphase(:,:),spinwalk(:,:),&
        unpaired(:,:),msvalue(:),numunpaired(:)
-  real*8, allocatable :: configspinmatel(:,:)
-  integer ::   maxspinwalks=0
-end module
+  real*8, allocatable,private :: configspinmatel(:,:)
+  integer,private ::   maxspinwalks=0
 
+contains
 
 subroutine spinwalkinternal_dealloc()
-  use spinwalkinternal
   implicit none
   deallocate(unpaired,numunpaired,msvalue,numspinwalks,spinwalk, spinwalkdirphase, configspinmatel)
 end subroutine spinwalkinternal_dealloc
@@ -23,7 +23,6 @@ end subroutine spinwalkinternal_dealloc
 
 subroutine spinwalkinit(www)
   use fileptrmod
-  use spinwalkinternal
   use walkmod
   implicit none
   type(walktype),intent(inout) :: www
@@ -86,7 +85,6 @@ end subroutine spinwalkinit
 
 subroutine spinwalks(www)
   use fileptrmod
-  use spinwalkinternal
   use walkmod
   use aarrmod
   use configsubmod
@@ -157,7 +155,6 @@ end subroutine spinwalks
 
 subroutine spinsets_first(www)
   use fileptrmod
-  use spinwalkinternal
   use walkmod
   use aarrmod
   use mpimod
@@ -305,7 +302,6 @@ end subroutine spinsets_first
 subroutine getnumspinwalks(www)
   use fileptrmod
   use walkmod
-  use spinwalkinternal
   use configsubmod
   use mpisubmod
   implicit none
@@ -393,7 +389,6 @@ end subroutine getnumspinwalks
 
 subroutine configspin_matel(www)   
   use walkmod
-  use spinwalkinternal
   implicit none
   type(walktype),intent(in) :: www
   integer ::     config2, config1,   iwalk, myind
@@ -437,7 +432,6 @@ end function
 subroutine configspinset_projector(www)   
   use fileptrmod
   use walkmod
-  use spinwalkinternal
   use mpimod
   use configsubmod
   use mpisubmod
@@ -446,7 +440,6 @@ subroutine configspinset_projector(www)
   integer :: info, lwork,j,i,ii,iset,jj, elim, elimsets, flag, iwalk,&
        iproc
   real*8, allocatable :: spinvects(:,:), spinvals(:), work(:), realprojector(:,:)
-  logical :: spinallowed
 !  DATATYPE :: doublevects(maxspinsetsize**2)
 !  real*8 :: doublevals(maxspinsetsize)
 
@@ -647,4 +640,5 @@ subroutine configspinset_projector(www)
   
 end subroutine configspinset_projector
 
+end module spinwalkinternal
 

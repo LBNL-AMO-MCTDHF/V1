@@ -1,6 +1,10 @@
 
 #include "Definitions.INC"
 
+!! ALL MODULES except for get_fockmatrix
+
+module cathopsubmod
+contains
 
 !! here we are doing walks from our BO target state to our wavefunction \Psi(t)
 subroutine getcathops()
@@ -99,6 +103,11 @@ subroutine getcathops()
 
 end subroutine getcathops
 
+end module cathopsubmod
+
+
+module focksubmod
+contains
 
 subroutine get_fockmatrix0(fockmatrix,avectors,cptr,sptr)
   use parameters
@@ -242,29 +251,34 @@ subroutine get_fockmatrix0(fockmatrix,avectors,cptr,sptr)
 
 end subroutine get_fockmatrix0
 
+end module focksubmod
+
 
 subroutine get_fockmatrix()
   use xxxmod
+  use focksubmod
   implicit none
   call get_fockmatrix0(yyy%fockmatrix(:,:,0),yyy%cmfavec(:,:,0),yyy%cptr(0),yyysptr(0))
 end subroutine get_fockmatrix
 
 
 
-module fockrepbiomod
+module fockrepsubmod
   use biorthotypemod
   implicit none
-  type(biorthotype),target :: fockrepbiovar
-end module
+  type(biorthotype),target, private :: fockrepbiovar
+
+contains
 
 subroutine replace_withfock(printflag)
   use parameters
   use class_parameters
   use configmod
   use biorthomod
-  use fockrepbiomod
   use xxxmod
   use matsubmod
+  use eigenmod
+  use spfsubmod
   implicit none
   integer,intent(in) :: printflag
   DATATYPE,allocatable :: fockeigvects(:,:), fockop(:,:), myfock(:,:),&
@@ -362,4 +376,7 @@ subroutine replace_withfock(printflag)
   deallocate(outspfs, fockvals,fockvects)
 
 end subroutine replace_withfock
+
+end module fockrepsubmod
+
 

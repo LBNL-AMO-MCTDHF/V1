@@ -1,4 +1,5 @@
 
+!! ALL ONE MODULE
 
 !!   Initialization subroutines for walks and hops which refer to the indexing of nonzero matrix 
 !!   elements between pairs of configurations (matrix elements in the Hamiltonian matrix for the 
@@ -7,94 +8,16 @@
 
 #include "Definitions.INC"
 
-function highspinorder(thisconfig,numpart)
-  implicit none
-  integer,intent(in) :: numpart,thisconfig(2*numpart)
-  logical :: highspinorder
-  integer :: ii,unpaired(numpart),flag,jj
-
-  highspinorder=.true.
-
-  unpaired(1:numpart)=1
-
-  do ii=1,numpart
-     do jj=1,numpart   !! WORKS
-        if (jj.ne.ii) then   !!WORKS
-! -xAVX error on lawrencium!  doesnt work this way.  compiler/instruction set bug.
-!     do jj=ii+1,numpart   !!FAILS
-           if (thisconfig(jj*2-1).eq.thisconfig(ii*2-1)) then
-              unpaired(ii)=0
-              unpaired(jj)=0
-           endif
-        endif     !!WORKS
-     enddo
-  enddo
-  
-  flag=0
-  do ii=1,numpart
-     if (unpaired(ii).eq.1) then
-        if (thisconfig(ii*2).eq.1) then
-           flag=1
-        else
-           if (flag==1) then
-              highspinorder=.false.
-              return
-           endif
-        endif
-     endif
-  enddo
-
-
-end function highspinorder
-   
-
-
-function lowspinorder(thisconfig,numpart)
-  implicit none
-  integer,intent(in) :: numpart,thisconfig(2*numpart)
-  logical :: lowspinorder
-  integer :: ii,unpaired(numpart),flag,jj
-
-  lowspinorder=.true.
-
-  unpaired(:)=1
-
-  do ii=1,numpart
-!     do jj=ii+1,numpart    !!FAILS
-     do jj=1,numpart        !!WORKS
-        if (jj.ne.ii) then  !!WORKS
-        if (thisconfig(jj*2-1).eq.thisconfig(ii*2-1)) then
-           unpaired(ii)=0
-           unpaired(jj)=0
-        endif
-        endif               !!WORKS
-     enddo
-  enddo
-
-  flag=0
-  do ii=1,numpart
-     if (unpaired(ii).eq.1) then
-        if (thisconfig(ii*2).eq.2) then
-           flag=1
-        else
-           if (flag==1) then
-              lowspinorder=.false.
-           endif
-        endif
-     endif
-  enddo
-
-
-end function lowspinorder
-        
+module walksubmod
+contains        
 
 subroutine walkalloc(www)
   use fileptrmod
   use mpimod
   use walkmod
+  use configsubmod 
   implicit none
   type(walktype) :: www
-  logical :: highspinorder,lowspinorder
 
 !! training wheels
 
@@ -140,6 +63,85 @@ subroutine walkalloc(www)
   allocate(www%doublediag(www%numpart*(www%numpart-1),www%configstart:www%configend+1))
   www%doublediag=-1
   OFLWR "     ..done walkalloc."; CFL
+
+contains
+
+  function highspinorder(thisconfig,numpart)
+    implicit none
+    integer,intent(in) :: numpart,thisconfig(2*numpart)
+    logical :: highspinorder
+    integer :: ii,unpaired(numpart),flag,jj
+
+    highspinorder=.true.
+
+    unpaired(1:numpart)=1
+
+    do ii=1,numpart
+       do jj=1,numpart   !! WORKS
+          if (jj.ne.ii) then   !!WORKS
+! -xAVX error on lawrencium!  doesnt work this way.  compiler/instruction set bug.
+!     do jj=ii+1,numpart   !!FAILS
+             if (thisconfig(jj*2-1).eq.thisconfig(ii*2-1)) then
+                unpaired(ii)=0
+                unpaired(jj)=0
+             endif
+          endif     !!WORKS
+       enddo
+    enddo
+  
+    flag=0
+    do ii=1,numpart
+       if (unpaired(ii).eq.1) then
+          if (thisconfig(ii*2).eq.1) then
+             flag=1
+          else
+             if (flag==1) then
+                highspinorder=.false.
+                return
+             endif
+          endif
+       endif
+    enddo
+    
+  end function highspinorder
+
+  function lowspinorder(thisconfig,numpart)
+    implicit none
+    integer,intent(in) :: numpart,thisconfig(2*numpart)
+    logical :: lowspinorder
+    integer :: ii,unpaired(numpart),flag,jj
+    
+    lowspinorder=.true.
+
+    unpaired(:)=1
+
+    do ii=1,numpart
+!     do jj=ii+1,numpart    !!FAILS
+       do jj=1,numpart        !!WORKS
+          if (jj.ne.ii) then  !!WORKS
+             if (thisconfig(jj*2-1).eq.thisconfig(ii*2-1)) then
+                unpaired(ii)=0
+                unpaired(jj)=0
+             endif
+          endif               !!WORKS
+       enddo
+    enddo
+
+    flag=0
+    do ii=1,numpart
+       if (unpaired(ii).eq.1) then
+          if (thisconfig(ii*2).eq.2) then
+             flag=1
+          else
+             if (flag==1) then
+                lowspinorder=.false.
+             endif
+          endif
+       endif
+    enddo
+
+  end function lowspinorder
+
 end subroutine walkalloc
 
 
@@ -1119,3 +1121,8 @@ end subroutine set_matsize
 !  deallocate( www%doublewalkdirphase )
 !  deallocate( www%doublewalk)
 !end subroutine walkdealloc
+
+
+end module walksubmod
+
+

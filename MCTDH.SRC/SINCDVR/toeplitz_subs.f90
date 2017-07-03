@@ -1,3 +1,4 @@
+!! ALL MODULES
 !!$
 !!$Apache License
 !!$                           Version 2.0, January 2004
@@ -300,6 +301,7 @@ end module fft3dsubmod
 
 module fftparsubmod
   use mpisubmod   !! IN PARENT DIRECTORY
+  use clockmod      !! IN PARENT DIRECTORY
 
 contains
 
@@ -534,6 +536,8 @@ end module fftparsubmod
 
 
 module circ3dsubmod
+  use clockmod
+
 contains
 
 subroutine circ3d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany)

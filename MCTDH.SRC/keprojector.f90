@@ -1,8 +1,12 @@
 
+!! ALL ONE MODULE
+
 !! ACTION 24
 
 #include "Definitions.INC"
 
+module keprojsubmod
+contains
 
 subroutine keprojector(inavector,inspfs,infac,www)
   use mpimod
@@ -129,3 +133,6 @@ subroutine keprojector(inavector,inspfs,infac,www)
 
 end subroutine keprojector
   
+end module keprojsubmod
+
+

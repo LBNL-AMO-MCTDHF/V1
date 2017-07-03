@@ -1,8 +1,13 @@
 
+!! ALL MODULES
+
 !! SUBROUTINES FOR BASIS SET TRANSFORMATIONS AND PROJECTIONS (spin and restricted configuration space)
 
 #include "Definitions.INC"
 
+
+module spininitmod
+contains
 
 subroutine basis_set(www,innzflag)
   use r_parameters
@@ -256,6 +261,8 @@ subroutine dfcondealloc(www)
        www%ddd%excludedorb,www%ddd%dfwalkphase)
   www%ddd%numdfwalks=-1;  www%numdfconfigs=-1
 end subroutine dfcondealloc
+
+end module spininitmod
 
 
 module basissubmod
@@ -805,6 +812,7 @@ subroutine basis_shuffle(howmany,wwin,avectorin,wwout,avectorout)
   use walkmod
   use mpimod     !! nprocs
   use mpisubmod
+  use clockmod
   implicit none
   type(walktype),intent(in) :: wwin,wwout
   integer,intent(in) :: howmany

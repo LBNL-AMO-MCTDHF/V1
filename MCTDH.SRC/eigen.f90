@@ -1,9 +1,14 @@
 
+!! ALL ONE MODULE
+
 !! LAPACK WRAPPERS
 
 !! REMOVED ALL LEFT RIGHT EIGENVECTOR ROUTINES, NOT NEEDED, AND USE POOR SPECTRAL EXPANSION
 
 #include "Definitions.INC"
+
+module eigenmod
+contains
 
 subroutine mysort(in, values,n,lda,out)
   implicit none
@@ -277,6 +282,8 @@ subroutine get_eigen_gen(inmat, ovlmat, n, lda, outvects, outvals)
   deallocate(work,tempovl, alpha, beta, tempvects,rwork)
 
 end subroutine 
+
+end module
 
 
 

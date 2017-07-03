@@ -1,4 +1,6 @@
 
+!! ALL MODULES
+
 !! SUBROUTINES FOR COMPUTING MEAN FIELD !!
 
 !! REDUCEDPOT is usual notation bra, ket   other reduced mats opposite notation for ease of actreducedconjg
@@ -6,162 +8,8 @@
 #include "Definitions.INC"
 
 
-subroutine get_allden()
-  implicit none
-
-!!  call get_reducedham();  call getdenmatx();
-
-  call getdenmatx();
-  call get_reducedham();  
-
-end subroutine get_allden
-
-
-subroutine get_reducedham()
-  use parameters
-  use configmod
-  use xxxmod
-  implicit none
-  integer :: itime,jtime,times(100)
-
-  call myclock(itime)
-  call get_tworeducedx(www,yyy%reducedpottally(:,:,:,:,0),&
-       yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
-  call myclock(jtime);  times(4)=times(4)+jtime-itime
-
-  call myclock(itime)
-  call get_reducedproderiv(www,yyy%reducedproderiv(:,:,0),&
-       yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
-  call myclock(jtime);  times(6)=times(6)+jtime-itime
-
-  call myclock(itime)
-
-  if (numr.eq.1) then
-     yyy%reducedinvr(:,:,0) = yyy%denmat(:,:,0) / bondpoints(1)
-     yyy%reducedinvrsq(:,:,0) = yyy%denmat(:,:,0) / bondpoints(1)**2
-     yyy%reducedr(:,:,0) = yyy%denmat(:,:,0) * bondpoints(1)
-  else
-     call get_reducedr(www,yyy%reducedinvr,yyy%reducedinvrsq,yyy%reducedr,&
-          yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
-  endif
-
-  call myclock(itime);  times(7)=times(7)+itime-jtime
-
-end subroutine get_reducedham
-
-
-!! IN THE END reducedpottally is bra2,ket2,bra1,ket1 ; 
-!! I sum it up by conjugating ket2 bra2 ket1 bra1.  Notice a1 is conjg not a2.
-!! reducedpottally is the TWO ELECTRON REDUCED DENSITY MATRIX.
-
-subroutine get_reducedpot()
-  use xxxmod
-  use configmod
-  use opmod
-  use parameters
-  use mpi_orbsetmod
-  implicit none
-
-  if (parorbsplit.eq.1) then
-     call get_reducedpot0(www,yyy%reducedpottally(:,:,:,:,0), yyy%reducedpot(:,:,:,0),&
-          twoereduced(:,:,:),firstmpiorb,firstmpiorb+orbsperproc-1)
-  else
-     call get_reducedpot0(www,yyy%reducedpottally(:,:,:,:,0), yyy%reducedpot(:,:,:,0),&
-          twoereduced(:,:,:),1,nspf)
-  endif
-  call mpibarrier()
-
-end subroutine get_reducedpot
-
-
-subroutine get_reducedpot0(www,intwoden,outpot,twoereduced,firstorb,lastorb)
-  use walkmod
-  use spfsize_parameters
-  use mpi_orbsetmod
-  use mpisubmod
-  implicit none
-  integer,intent(in) :: firstorb,lastorb
-  type(walktype),intent(in) :: www
-  DATATYPE,intent(in) :: twoereduced(reducedpotsize, www%nspf,firstorb:lastorb),&
-       intwoden(www%nspf,www%nspf,www%nspf,www%nspf)
-  DATATYPE,intent(out) :: outpot(reducedpotsize,www%nspf,firstorb:lastorb)
-  integer :: lowspf,highspf
-#ifdef MPIFLAG
-  DATATYPE,allocatable :: workpot(:,:,:),workpot2(:,:,:),temptwoden(:,:,:,:)
-  integer :: numspf,norbs,iproc,ispf,jspf
-#endif
-
-  lowspf=1; highspf=www%nspf
-
-#ifdef MPIFLAG
-  if (parorbsplit.eq.1) then
-     call getorbsetrange(lowspf,highspf)
-  endif
-  numspf=highspf-lowspf+1
-  norbs=lastorb-firstorb+1
-  if (numspf.le.0) then
-     return
-  endif
-#endif
-
-! I have bra2,ket2,bra1,ket1. (chemists' notation for contraction)
-
-! e.g. M= -2, -1, 2, 1 all different classes. 
-!   no zeroed entries even if constraining, in general, I believe.
-
-!  if(deb ugflag.ne.0) then
-!     temptwoden(:,:,:,:)=intwoden(:,:,:,:)
-!     do ispf=1,www%nspf
-!        do jspf=1,www%nspf
-!           if (orbclass(ispf).ne.orbclass(jspf)) then
-!              temptwoden(:,ispf,:,jspf)=0d0
-!              temptwoden(ispf,:,jspf,:)=0d0
-!           endif
-!        enddo
-!     enddo
-!     call MYGEMM('N','N', reducedpotsize,www%nspf**2,www%nspf**2,(1.0d0,0.d0), &
-!         twoereduced,reducedpotsize,temptwoden,www%nspf**2, (0.d0,0.d0),outpot,&
-!         reducedpotsize)
-!  else
-
-#ifdef MPIFLAG
-  if (parorbsplit.ne.1) then
-#endif
-     call MYGEMM('N','N', reducedpotsize,www%nspf**2,www%nspf**2,DATAONE, &
-          twoereduced,reducedpotsize,intwoden,www%nspf**2, DATAZERO,&
-          outpot,reducedpotsize)
-#ifdef MPIFLAG
-  else
-     allocate(temptwoden(www%nspf,firstorb:lastorb,www%nspf,norbs),&
-          workpot(reducedpotsize,www%nspf,norbs),workpot2(reducedpotsize,www%nspf,norbs))
-     outpot=0
-     ispf=0
-     do iproc=1,nzprocsperset
-        jspf=min(ispf+orbsperproc,www%nspf)
-        if (jspf.ge.ispf+1) then
-
-           temptwoden=0d0;  workpot=0
-           temptwoden(:,lowspf:highspf,:,1:jspf-ispf)=intwoden(:,lowspf:highspf,:,ispf+1:jspf)
-
-           call MYGEMM('N','N', reducedpotsize,www%nspf*(jspf-ispf),www%nspf*numspf,DATAONE,&
-                twoereduced,reducedpotsize,temptwoden,&
-                www%nspf*norbs, DATAZERO,workpot,reducedpotsize)
-           call mympireduceto_local(workpot,workpot2,reducedpotsize*www%nspf*(jspf-ispf),iproc,&
-                NZ_COMM_ORB(myorbset))
-
-           if (orbrank.eq.iproc) then
-              outpot(:,:,:)=outpot(:,:,:)+workpot2(:,:,1:numspf)
-           endif
-        endif
-        ispf=ispf+orbsperproc
-     enddo
-     deallocate(workpot,temptwoden,workpot2)
-  endif
-#endif
-
-end subroutine get_reducedpot0
-
-
+module tworeducedxmod
+contains
 
 subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
   use r_parameters
@@ -303,8 +151,44 @@ subroutine get_tworeducedx(www,reducedpottally,avector1,in_avector2,numvects)
 
 end subroutine get_tworeducedx
 
+end module tworeducedxmod
 
 
+module reducedhamsubmod
+contains
+
+subroutine get_reducedham()
+  use parameters
+  use configmod
+  use tworeducedxmod
+  use xxxmod
+  implicit none
+  integer :: itime,jtime,times(100)
+
+  call myclock(itime)
+  call get_tworeducedx(www,yyy%reducedpottally(:,:,:,:,0),&
+       yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
+  call myclock(jtime);  times(4)=times(4)+jtime-itime
+
+  call myclock(itime)
+  call get_reducedproderiv(www,yyy%reducedproderiv(:,:,0),&
+       yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
+  call myclock(jtime);  times(6)=times(6)+jtime-itime
+
+  call myclock(itime)
+
+  if (numr.eq.1) then
+     yyy%reducedinvr(:,:,0) = yyy%denmat(:,:,0) / bondpoints(1)
+     yyy%reducedinvrsq(:,:,0) = yyy%denmat(:,:,0) / bondpoints(1)**2
+     yyy%reducedr(:,:,0) = yyy%denmat(:,:,0) * bondpoints(1)
+  else
+     call get_reducedr(www,yyy%reducedinvr,yyy%reducedinvrsq,yyy%reducedr,&
+          yyy%cmfavec(:,:,0),yyy%cmfavec(:,:,0),mcscfnum)
+  endif
+
+  call myclock(itime);  times(7)=times(7)+itime-jtime
+
+contains
 
 subroutine get_reducedproderiv(www,reducedproderiv,avector1,in_avector2,numvects)
   use fileptrmod
@@ -571,4 +455,139 @@ subroutine get_reducedr(www,reducedinvr,reducedinvrsq,reducedr,avector1,in_avect
   endif
 
 end subroutine get_reducedr
+
+end subroutine get_reducedham
+
+end module reducedhamsubmod
+
+
+module meansubmod
+contains
+
+subroutine get_allden()
+  use denmatxmod
+  use reducedhamsubmod
+  implicit none
+
+!!  call get_reducedham();  call getdenmatx();
+
+  call getdenmatx();
+  call get_reducedham();  
+
+end subroutine get_allden
+
+
+!! IN THE END reducedpottally is bra2,ket2,bra1,ket1 ; 
+!! I sum it up by conjugating ket2 bra2 ket1 bra1.  Notice a1 is conjg not a2.
+!! reducedpottally is the TWO ELECTRON REDUCED DENSITY MATRIX.
+
+subroutine get_reducedpot()
+  use xxxmod
+  use configmod
+  use opmod
+  use parameters
+  use mpi_orbsetmod
+  implicit none
+
+  if (parorbsplit.eq.1) then
+     call get_reducedpot0(www,yyy%reducedpottally(:,:,:,:,0), yyy%reducedpot(:,:,:,0),&
+          twoereduced(:,:,:),firstmpiorb,firstmpiorb+orbsperproc-1)
+  else
+     call get_reducedpot0(www,yyy%reducedpottally(:,:,:,:,0), yyy%reducedpot(:,:,:,0),&
+          twoereduced(:,:,:),1,nspf)
+  endif
+  call mpibarrier()
+
+contains
+
+subroutine get_reducedpot0(www,intwoden,outpot,twoereduced,firstorb,lastorb)
+  use walkmod
+  use spfsize_parameters
+  use mpi_orbsetmod
+  use mpisubmod
+  implicit none
+  integer,intent(in) :: firstorb,lastorb
+  type(walktype),intent(in) :: www
+  DATATYPE,intent(in) :: twoereduced(reducedpotsize, www%nspf,firstorb:lastorb),&
+       intwoden(www%nspf,www%nspf,www%nspf,www%nspf)
+  DATATYPE,intent(out) :: outpot(reducedpotsize,www%nspf,firstorb:lastorb)
+  integer :: lowspf,highspf
+#ifdef MPIFLAG
+  DATATYPE,allocatable :: workpot(:,:,:),workpot2(:,:,:),temptwoden(:,:,:,:)
+  integer :: numspf,norbs,iproc,ispf,jspf
+#endif
+
+  lowspf=1; highspf=www%nspf
+
+#ifdef MPIFLAG
+  if (parorbsplit.eq.1) then
+     call getorbsetrange(lowspf,highspf)
+  endif
+  numspf=highspf-lowspf+1
+  norbs=lastorb-firstorb+1
+  if (numspf.le.0) then
+     return
+  endif
+#endif
+
+! I have bra2,ket2,bra1,ket1. (chemists' notation for contraction)
+
+! e.g. M= -2, -1, 2, 1 all different classes. 
+!   no zeroed entries even if constraining, in general, I believe.
+
+!  if(deb ugflag.ne.0) then
+!     temptwoden(:,:,:,:)=intwoden(:,:,:,:)
+!     do ispf=1,www%nspf
+!        do jspf=1,www%nspf
+!           if (orbclass(ispf).ne.orbclass(jspf)) then
+!              temptwoden(:,ispf,:,jspf)=0d0
+!              temptwoden(ispf,:,jspf,:)=0d0
+!           endif
+!        enddo
+!     enddo
+!     call MYGEMM('N','N', reducedpotsize,www%nspf**2,www%nspf**2,(1.0d0,0.d0), &
+!         twoereduced,reducedpotsize,temptwoden,www%nspf**2, (0.d0,0.d0),outpot,&
+!         reducedpotsize)
+!  else
+
+#ifdef MPIFLAG
+  if (parorbsplit.ne.1) then
+#endif
+     call MYGEMM('N','N', reducedpotsize,www%nspf**2,www%nspf**2,DATAONE, &
+          twoereduced,reducedpotsize,intwoden,www%nspf**2, DATAZERO,&
+          outpot,reducedpotsize)
+#ifdef MPIFLAG
+  else
+     allocate(temptwoden(www%nspf,firstorb:lastorb,www%nspf,norbs),&
+          workpot(reducedpotsize,www%nspf,norbs),workpot2(reducedpotsize,www%nspf,norbs))
+     outpot=0
+     ispf=0
+     do iproc=1,nzprocsperset
+        jspf=min(ispf+orbsperproc,www%nspf)
+        if (jspf.ge.ispf+1) then
+
+           temptwoden=0d0;  workpot=0
+           temptwoden(:,lowspf:highspf,:,1:jspf-ispf)=intwoden(:,lowspf:highspf,:,ispf+1:jspf)
+
+           call MYGEMM('N','N', reducedpotsize,www%nspf*(jspf-ispf),www%nspf*numspf,DATAONE,&
+                twoereduced,reducedpotsize,temptwoden,&
+                www%nspf*norbs, DATAZERO,workpot,reducedpotsize)
+           call mympireduceto_local(workpot,workpot2,reducedpotsize*www%nspf*(jspf-ispf),iproc,&
+                NZ_COMM_ORB(myorbset))
+
+           if (orbrank.eq.iproc) then
+              outpot(:,:,:)=outpot(:,:,:)+workpot2(:,:,1:numspf)
+           endif
+        endif
+        ispf=ispf+orbsperproc
+     enddo
+     deallocate(workpot,temptwoden,workpot2)
+  endif
+#endif
+
+end subroutine get_reducedpot0
+
+end subroutine get_reducedpot
+
+end module meansubmod
 

@@ -204,17 +204,102 @@ subroutine printmyopts()
 
 end subroutine printmyopts
 
+module dvrvalmod
+contains
+
+function  radiallobatto(n,x, mvalue)
+  use myprojectmod
+  use myparams
+  use lobstuffmod
+  integer,intent(in) :: mvalue,   n
+  real*8,intent(in) :: x
+  DATAECS :: radiallobatto
+  radiallobatto=xilobatto(n,x,mvalue,xinumpoints,xipoints2d(:,1), xipoints2d(:,2), xipoints,&
+       xiweights,xielementsizes,xinumelements,1)
+end function radiallobatto
+
+function  angularlobatto(n,x, mvalue)
+  use myparams
+  use myprojectmod
+  use lobstuffmod
+  implicit none
+  integer,intent(in) :: mvalue,   n
+  real*8,intent(in) :: x
+  real*8 :: angularlobatto
+  angularlobatto=etalobatto(n,x,mvalue,etapoints,etaweights)
+end function angularlobatto
+
+!!  PASS ARGUMENTS AS REAL (e.g. for xi) !!
+
+function  radiallobattoint(n,x, mvalue)
+  use myprojectmod
+  use myparams
+  use lobstuffmod
+  implicit none
+  integer,intent(in) :: mvalue,   n
+  real*8,intent(in) :: x
+  DATAECS :: radiallobattoint
+     radiallobattoint=xilobattoint(n,x,mvalue,xinumpoints,xipoints2d(:,1), &
+          xipoints2d(:,2), xipoints,xiweights,xielementsizes,xinumelements,1)
+end function radiallobattoint
+
+function  angularlobattoint(n,x, mvalue)
+  use myparams
+  use myprojectmod
+  use lobstuffmod
+  implicit none
+  integer,intent(in) :: mvalue,   n
+  real*8,intent(in) :: x
+  real*8 :: angularlobattoint
+  angularlobattoint=etalobattoint(n,x,mvalue,etapoints,etaweights)
+end function angularlobattoint
+
+function xifunct(radpoint,thetapoint,rvalue)
+  use myparams
+  use lobstuffmod
+  implicit none
+  real*8,intent(in) :: radpoint,thetapoint,rvalue
+  real*8 ::  sum1, sum2,xifunct
+
+  sum1 = 0.25d0 + ( radpoint / rvalue )**2
+  sum2 = radpoint / rvalue * thetapoint     !! thetapoint is costheta
+  xifunct=sqrt(sum1+sum2) + sqrt(sum1-sum2) + 0.0000000001d0
+  if (xifunct .le. 1.d0) then
+     call openfile();     write(mpifileptr,*) "Xifunct err!"
+     write(mpifileptr,*)  "    ", radpoint,thetapoint, rvalue
+     call closefile();     call mpistop()
+  endif
+end function xifunct
+
+!! returns eta/xi as function of spherical coords
+
+function etafunct(radpoint,thetapoint,rvalue)
+  use myparams
+  use lobstuffmod
+  implicit none
+  real*8,intent(in) :: radpoint,thetapoint,rvalue
+  real*8 :: sum1, sum2, etafunct
+
+  sum1 = 0.25d0 + ( radpoint / rvalue )**2
+  sum2 = radpoint / rvalue * thetapoint     !! thetapoint is costheta
+  etafunct=sqrt(sum1+sum2) - sqrt(sum1-sum2) 
+  if (abs(etafunct) .gt. 1.d0) then
+     OFLWR "Etafunct err!", etafunct, sum1, sum2, radpoint, thetapoint, rvalue;CFLST
+  endif
+end function etafunct
+
+end module dvrvalmod
+
 
 function cylindricalvalue(radpoint, thetapoint,rvalue,mvalue, invector)
   use myparams
   use myprojectmod
+  use dvrvalmod
   implicit none
   integer,intent(in) :: mvalue
   DATATYPE,intent(in) :: invector(numerad,lbig+1)
   real*8,intent(in) :: radpoint,thetapoint,rvalue
-  real*8 :: angularlobatto, xifunct, etafunct
   DATATYPE ::  cylindricalvalue, sum
-  DATAECS :: radiallobatto
   integer :: ixi,lvalue
   sum=0.d0
 
@@ -234,12 +319,12 @@ end function cylindricalvalue
 function sphericalvalue(xval,yval,zval,  inspf)
    use myprojectmod
    use myparams
+   use dvrvalmod
    implicit none
    real*8,intent(in) :: xval,yval,zval
    DATATYPE,intent(in) ::  inspf(numerad,lbig+1,-mbig:mbig)
    complex*16 :: sphericalvalue, csum,csum2
-   real*8 :: angularlobatto, xival, etaval,phival, rhoval
-   DATAECS :: radiallobatto
+   real*8 :: xival, etaval,phival, rhoval
    integer :: mvalue, ixi,lvalue
 
    phival=atan2(xval,yval);   rhoval=sqrt(xval**2+yval**2)
@@ -256,7 +341,7 @@ function sphericalvalue(xval,yval,zval,  inspf)
       xival=1.0000001d0
    endif
    csum=0.d0
-   do mvalue=-mbig,mbig
+  do mvalue=-mbig,mbig
    do ixi=1,numerad
    do lvalue=1,lbig+1
          csum2= &
@@ -276,13 +361,13 @@ end function sphericalvalue
 subroutine get_maxsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,povsparse)
    use myprojectmod
    use myparams
+   use dvrvalmod
    implicit none
    integer,intent(in) :: nx,ny,nz
    integer,intent(out) :: maxsparse
    real*8,intent(in) :: xvals(nx),yvals(ny),zvals(nz),povsparse
    integer :: ixi,lvalue, ix,iy,iz, iii, jjj, mvalue
-   real*8 :: xval,yval,zval, angularlobatto, xival, etaval,phival, rhoval
-   DATAECS :: radiallobatto
+   real*8 :: xval,yval,zval, xival, etaval,phival, rhoval
    complex*16 :: csum
 
    maxsparse=0;   jjj=0
@@ -335,14 +420,14 @@ subroutine get_sphericalsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,sparsetrans
      sparsestart,sparseend,sparsexyz,povsparse)
    use myprojectmod
    use myparams
+   use dvrvalmod
    implicit none
    integer,intent(in) :: nx,ny,nz, maxsparse
    integer,intent(out) :: sparsexyz(maxsparse,3),  sparsestart(numerad,lbig+1,-mbig:mbig), &
         sparseend(numerad,lbig+1,-mbig:mbig)
    real*8,intent(in) :: xvals(nx),yvals(ny),zvals(nz), povsparse
    complex*16,intent(out) :: sparsetransmat(maxsparse)
-   real*8 :: xval,yval,zval, angularlobatto, xival, etaval,phival, rhoval
-   DATAECS :: radiallobatto
+   real*8 :: xval,yval,zval, xival, etaval,phival, rhoval
    integer :: mvalue, ixi,lvalue, ix,iy,iz, iii, iflag
    complex*16 :: csum
 
@@ -406,12 +491,11 @@ end subroutine get_sphericalsparse
 function interpolate(radpoint, thetapoint,rvalue,mvalue,ixi,lvalue)
   use myprojectmod
   use myparams
+  use dvrvalmod
   implicit none
   integer,intent(in) :: mvalue, ixi,lvalue
   real*8,intent(in) :: radpoint,thetapoint,rvalue
   DATATYPE ::  interpolate, sum
-  real*8 :: angularlobattoint, xifunct, etafunct
-  DATAECS :: radiallobattoint
 
   sum=0.d0
   sum=sum + &
@@ -420,82 +504,6 @@ function interpolate(radpoint, thetapoint,rvalue,mvalue,ixi,lvalue)
   interpolate=sum
 end function interpolate
 
-
-function  radiallobatto(n,x, mvalue)
-  use myprojectmod
-  use myparams
-  integer,intent(in) :: mvalue,   n
-  real*8,intent(in) :: x
-  DATAECS :: xilobatto, radiallobatto
-  radiallobatto=xilobatto(n,x,mvalue,xinumpoints,xipoints2d(:,1), xipoints2d(:,2), xipoints,&
-       xiweights,xielementsizes,xinumelements,1)
-end function radiallobatto
-
-function  angularlobatto(n,x, mvalue)
-  use myparams
-  use myprojectmod
-  implicit none
-  integer,intent(in) :: mvalue,   n
-  real*8,intent(in) :: x
-  real*8 :: angularlobatto, etalobatto
-  angularlobatto=etalobatto(n,x,mvalue,etapoints,etaweights)
-end function angularlobatto
-
-!!  PASS ARGUMENTS AS REAL (e.g. for xi) !!
-
-function  radiallobattoint(n,x, mvalue)
-  use myprojectmod
-  use myparams
-  implicit none
-  integer,intent(in) :: mvalue,   n
-  real*8,intent(in) :: x
-  DATAECS :: xilobattoint, radiallobattoint
-     radiallobattoint=xilobattoint(n,x,mvalue,xinumpoints,xipoints2d(:,1), &
-          xipoints2d(:,2), xipoints,xiweights,xielementsizes,xinumelements,1)
-end function radiallobattoint
-
-function  angularlobattoint(n,x, mvalue)
-  use myparams
-  use myprojectmod
-  implicit none
-  integer,intent(in) :: mvalue,   n
-  real*8,intent(in) :: x
-  real*8 :: angularlobattoint, etalobattoint
-  angularlobattoint=etalobattoint(n,x,mvalue,etapoints,etaweights)
-end function angularlobattoint
-
-
-function xifunct(radpoint,thetapoint,rvalue)
-  use myparams
-  implicit none
-  real*8,intent(in) :: radpoint,thetapoint,rvalue
-  real*8 ::  sum1, sum2,xifunct
-
-  sum1 = 0.25d0 + ( radpoint / rvalue )**2
-  sum2 = radpoint / rvalue * thetapoint     !! thetapoint is costheta
-  xifunct=sqrt(sum1+sum2) + sqrt(sum1-sum2) + 0.0000000001d0
-  if (xifunct .le. 1.d0) then
-     call openfile();     write(mpifileptr,*) "Xifunct err!"
-     write(mpifileptr,*)  "    ", radpoint,thetapoint, rvalue
-     call closefile();     call mpistop()
-  endif
-end function xifunct
-
-!! returns eta/xi as function of spherical coords
-
-function etafunct(radpoint,thetapoint,rvalue)
-  use myparams
-  implicit none
-  real*8,intent(in) :: radpoint,thetapoint,rvalue
-  real*8 :: sum1, sum2, etafunct
-
-  sum1 = 0.25d0 + ( radpoint / rvalue )**2
-  sum2 = radpoint / rvalue * thetapoint     !! thetapoint is costheta
-  etafunct=sqrt(sum1+sum2) - sqrt(sum1-sum2) 
-  if (abs(etafunct) .gt. 1.d0) then
-     OFLWR "Etafunct err!", etafunct, sum1, sum2, radpoint, thetapoint, rvalue;CFLST
-  endif
-end function etafunct
 
 
 !!$  function radiusvalue(spfindex,rvalue)

@@ -1,3 +1,4 @@
+!! ALL MODULES
 !!$
 !!$Apache License
 !!$                           Version 2.0, January 2004
@@ -522,6 +523,7 @@ contains
     use biorthotypemod
     use basissubmod
     use mpisubmod
+    use expokitmod, only: dgexpvxxx2
     implicit none
     type(biorthotype),target,intent(inout) :: inbiovar
     DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
@@ -952,6 +954,7 @@ contains
     use invsubmod
     use lnsubmod
     use orbgathersubmod
+    use utilmod
     implicit none
     type(biorthotype),target,intent(inout) :: inbiovar
     DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)
@@ -1053,6 +1056,7 @@ contains
     use invsubmod
     use lnsubmod
     use orbgathersubmod
+    use utilmod
     implicit none
     type(biorthotype),target,intent(inout) :: inbiovar
     DATATYPE,intent(in) :: origmo(spfsize,inbiovar%wwbio%nspf),oppmo(spfsize,inbiovar%wwbio%nspf)

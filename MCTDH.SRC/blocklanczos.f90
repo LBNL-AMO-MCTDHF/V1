@@ -1,7 +1,7 @@
 
 #include "Definitions.INC"
 
-
+!! ALL MODULES
 
 module parblocklanmod
 contains
@@ -241,6 +241,9 @@ contains
 end module parblocklanmod
 
 
+module lanblockmod
+contains
+
 subroutine blocklanczos0( lanblocknum, numout, lansize,maxlansize,order,maxiter, &
      outvectors,outvectorlda, outvalues,inprintflag,guessflag,lancheckmod,lanthresh,&
      multsub,logpar,targetflag,etarget)
@@ -274,6 +277,7 @@ subroutine blocklanczos0_local( lanblocknum, numout, lansize,maxlansize,order,ma
      multsub,logpar,targetflag,etarget,IN_COMM)
   use fileptrmod
   use mpisubmod
+  use eigenmod
   implicit none 
   logical,intent(in) :: logpar
   integer,intent(in) :: lansize,maxlansize,maxiter,lanblocknum,inprintflag,order,&
@@ -1095,5 +1099,5 @@ subroutine blocklanczos(order,outvectors, outvalues,inprintflag,guessflag)
 
 end subroutine blocklanczos
 
-
+end module lanblockmod
 

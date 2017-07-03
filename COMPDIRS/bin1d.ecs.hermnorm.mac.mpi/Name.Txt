@@ -1,3 +1,0 @@
-NAME=chmctdhf
-
-MYDEFAULT=$(NAME)_sinc1d

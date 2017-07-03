@@ -192,6 +192,8 @@
 
 
 module circ1dsubmod
+  use clockmod !! IN PARENT DIRECTORY
+
 contains
 
 subroutine circ1d_sub_real(rbigcirc,rmultvector,rffback,totdim,howmany)
@@ -246,6 +248,7 @@ end subroutine circ1d_sub
 #ifdef MPIFLAG
 
 subroutine circ1d_sub_real_mpi(rbigcirc,rmultvector,rffback,dim1,times,howmany)
+  use clockmod
   implicit none
   integer,intent(in) :: dim1,howmany
   integer,intent(inout) :: times(*)

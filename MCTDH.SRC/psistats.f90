@@ -1,10 +1,12 @@
 
+!! ALL MODULES
 
 !! FOR finalstats.dat (after relaxation) or psistats.dat (action 25 for time-dependent calculation)
 
-
 #include "Definitions.INC"
 
+module orbmatsubmod
+contains
 
 subroutine get_orbmats( myspfs,  howmany,  ugmat,   &
      xdipmat,ydipmat,zdipmat,   xrefmat,yrefmat,zrefmat,conjgmat)
@@ -161,24 +163,81 @@ subroutine get_orbmats( myspfs,  howmany,  ugmat,   &
 
 end subroutine get_orbmats
 
+end module orbmatsubmod
 
-module psibiomod
+
+module psistatsubmod
   use biorthotypemod
   implicit none
-  integer :: psibioalloc=0, psibionumvec=(-1)
-  type(biorthotype),target,allocatable :: ugbiovar(:),&
+  integer,private :: psibioalloc=0, psibionumvec=(-1)
+  type(biorthotype),target,allocatable,private :: ugbiovar(:),&
        xrefbiovar(:),yrefbiovar(:),zrefbiovar(:),conjgbiovar(:)
-end module
 
+contains
+
+subroutine psistats( thistime )
+  use parameters
+  use mpimod
+  use configmod
+  use xxxmod
+  implicit none
+
+  real*8,intent(in) :: thistime
+  integer, save :: calledflag=0
+  integer :: i,myiostat
+  DATATYPE :: mexpect(mcscfnum),ugexpect(mcscfnum),m2expect(mcscfnum),&
+       xreflect(mcscfnum),yreflect(mcscfnum),zreflect(mcscfnum),xdipole(mcscfnum),&
+       ydipole(mcscfnum),zdipole(mcscfnum),conjugation(mcscfnum)
+
+  if (calledflag==0) then
+     if (myrank.eq.1) then
+        open(662, file=psistatsfile, status="unknown",iostat=myiostat)
+        call checkiostat(myiostat,"opening "//psistatsfile)
+#ifdef REALGO        
+        write(662,'(A16,200A14)',iostat=myiostat) &
+             " Time        ", " M           ", " M2          ", " UG          ", &
+             " XDipole     ", " YDipole     ", " ZDipole     ", " XReflect    ", &
+             " YReflect    ", " ZReflect    ", " Conjugation ", " Abs(conjg)  "
+#else
+        write(662,'(A16,A14,200A28)',iostat=myiostat) &
+             " Time        ", " M           ", " M2          ", " UG          ", &
+             " XDipole     ", " YDipole     ", " ZDipole     ", " XReflect    ", &
+             " YReflect    ", " ZReflect    ", " Conjugation ", " Abs(conjg)  "
+#endif
+        call checkiostat(myiostat,"writing "//psistatsfile)
+        close(662)
+     endif
+  endif
+
+  calledflag=1
+
+
+  call get_psistats(www,bioww,yyy%cmfspfs(:,0),mcscfnum,yyy%cmfavec(:,:,0),&
+       mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   &
+       xreflect,yreflect,zreflect,conjugation)
+
+  if (myrank.eq.1) then
+     open(662, file=psistatsfile, status="old", position="append",iostat=myiostat)
+     call checkiostat(myiostat,"opening "//psistatsfile)
+     do i=1,mcscfnum
+        write(662,'(F13.5,I3,2000F14.8)',iostat=myiostat) thistime, i, &
+             mexpect(i),m2expect(i),ugexpect(i),  xdipole(i),ydipole(i),zdipole(i),  &
+             xreflect(i),yreflect(i),zreflect(i), conjugation(i), abs(conjugation(i))+DATAZERO
+     enddo
+     call checkiostat(myiostat,"writing "//psistatsfile)
+     close(662)
+  endif
+
+contains
 
 subroutine get_psistats( wwin, bbin, myspfs, numvec, in_inavectors, mexpect,m2expect,ugexpect,&
      xdipole,ydipole,zdipole,   xreflect,yreflect,zreflect,conjgexpect)
   use parameters
   use walkmod
   use arbitrarymultmod
-  use psibiomod
   use autocorrelate_one_mod
   use mpisubmod
+  use orbmatsubmod
   implicit none
   type(walktype),intent(in) :: wwin, bbin
   integer, intent(in) :: numvec
@@ -393,62 +452,13 @@ subroutine get_psistats( wwin, bbin, myspfs, numvec, in_inavectors, mexpect,m2ex
   
 end subroutine get_psistats
 
-
-subroutine psistats( thistime )
-  use parameters
-  use mpimod
-  use configmod
-  use xxxmod
-  implicit none
-
-  real*8,intent(in) :: thistime
-  integer, save :: calledflag=0
-  integer :: i,myiostat
-  DATATYPE :: mexpect(mcscfnum),ugexpect(mcscfnum),m2expect(mcscfnum),&
-       xreflect(mcscfnum),yreflect(mcscfnum),zreflect(mcscfnum),xdipole(mcscfnum),&
-       ydipole(mcscfnum),zdipole(mcscfnum),conjugation(mcscfnum)
-
-  if (calledflag==0) then
-     if (myrank.eq.1) then
-        open(662, file=psistatsfile, status="unknown",iostat=myiostat)
-        call checkiostat(myiostat,"opening "//psistatsfile)
-#ifdef REALGO        
-        write(662,'(A16,200A14)',iostat=myiostat) &
-             " Time        ", " M           ", " M2          ", " UG          ", &
-             " XDipole     ", " YDipole     ", " ZDipole     ", " XReflect    ", &
-             " YReflect    ", " ZReflect    ", " Conjugation ", " Abs(conjg)  "
-#else
-        write(662,'(A16,A14,200A28)',iostat=myiostat) &
-             " Time        ", " M           ", " M2          ", " UG          ", &
-             " XDipole     ", " YDipole     ", " ZDipole     ", " XReflect    ", &
-             " YReflect    ", " ZReflect    ", " Conjugation ", " Abs(conjg)  "
-#endif
-        call checkiostat(myiostat,"writing "//psistatsfile)
-        close(662)
-     endif
-  endif
-
-  calledflag=1
-
-
-  call get_psistats(www,bioww,yyy%cmfspfs(:,0),mcscfnum,yyy%cmfavec(:,:,0),&
-       mexpect,m2expect,ugexpect,   xdipole,ydipole,zdipole,   &
-       xreflect,yreflect,zreflect,conjugation)
-
-  if (myrank.eq.1) then
-     open(662, file=psistatsfile, status="old", position="append",iostat=myiostat)
-     call checkiostat(myiostat,"opening "//psistatsfile)
-     do i=1,mcscfnum
-        write(662,'(F13.5,I3,2000F14.8)',iostat=myiostat) thistime, i, &
-             mexpect(i),m2expect(i),ugexpect(i),  xdipole(i),ydipole(i),zdipole(i),  &
-             xreflect(i),yreflect(i),zreflect(i), conjugation(i), abs(conjugation(i))+DATAZERO
-     enddo
-     call checkiostat(myiostat,"writing "//psistatsfile)
-     close(662)
-  endif
-
 end subroutine psistats
 
+end module psistatsubmod
+
+
+module finalstatsubmod
+contains
 
 subroutine finalstats0(myspfs,in_inavectors,wwin,bbin )
   use parameters
@@ -458,6 +468,8 @@ subroutine finalstats0(myspfs,in_inavectors,wwin,bbin )
   use biorthotypemod
   use autocorrelate_one_mod
   use mpisubmod
+  use getoccmod
+  use orbmatsubmod
   implicit none
   type(walktype),intent(in) :: wwin,bbin
   DATATYPE,intent(in) :: myspfs(spfsize,wwin%nspf), &
@@ -940,6 +952,7 @@ subroutine finalstats( )
 end subroutine finalstats
 
 
+end module
 
 
 

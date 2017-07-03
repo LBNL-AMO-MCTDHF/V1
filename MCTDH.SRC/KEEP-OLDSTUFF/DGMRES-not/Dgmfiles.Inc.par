@@ -1,0 +1,13 @@
+
+dgmfiles=DGMRES/dnrm2-parallel.o \
+         DGMRES/dorth-parallel.o  \
+         DGMRES/dgmres-parallel.o \
+         DGMRES/isdgmr-parallel.o  \
+         DGMRES/dxlcal.o  \
+         DGMRES/drlcal.o  \
+         DGMRES/dpigmr-parallel.o 
+
+dgmfiles=DGMRES/all-dgmres.o
+
+
+

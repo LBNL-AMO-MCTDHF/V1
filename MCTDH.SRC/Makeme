@@ -5,7 +5,7 @@ then
 
 make clean
 
-for dir in DFFTPACK DGMRES bessel H2PROJECT HEPROJECT SINCDVR SINC1D
+for dir in DFFTPACK bessel H2PROJECT HEPROJECT SINCDVR SINC1D
 do
 	if [[ -e $dir ]]
 	then
@@ -26,9 +26,9 @@ else
 ## depend explicitly.  These dependencies are also in the project
 ## makefiles.
 
-make MPI.o proputils.o
+make parameters.o MPI.o proputils.o utils.o blocklanczos.o eigen.o
 
-for dir in DFFTPACK DGMRES bessel H2PROJECT HEPROJECT SINCDVR SINC1D
+for dir in DFFTPACK bessel H2PROJECT HEPROJECT SINCDVR SINC1D
 do
 	if [[ -e $dir ]]
 	then

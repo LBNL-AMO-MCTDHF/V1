@@ -1,6 +1,9 @@
 
 #include "Definitions.INC"
 
+module lpmsubmod
+contains
+
 subroutine pro_lpm()
   use myparams
   use myprojectmod
@@ -314,3 +317,7 @@ subroutine get_both()
 #endif
 
 end subroutine get_both
+
+end module lpmsubmod
+
+
