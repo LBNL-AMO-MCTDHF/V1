@@ -104,6 +104,131 @@ subroutine myprojectalloc()
 
 end subroutine myprojectalloc
 
+
+module onedfunmod
+contains
+  
+  function onedfun(inarray,num,incharge1,incharge2)
+    use myparams
+    implicit none
+    integer,intent(in) :: num
+    DATATYPE,intent(in) :: inarray(num)
+    real*8, intent(in) :: incharge1, incharge2    
+    DATATYPE :: onedfun(num)
+
+    if (twomode==0) then
+       onedfun = sechsq(inarray,num,incharge1,incharge2)
+    else
+       onedfun = softcoul(inarray,num,incharge1,incharge2)
+    endif
+    
+  contains  
+    function sechsq(inarray,num,incharge1,incharge2)
+      use myparams
+      use pfileptrmod
+      implicit none
+      integer,intent(in) :: num
+      DATATYPE,intent(in) :: inarray(num)
+      real*8, intent(in) :: incharge1, incharge2
+      DATATYPE :: sechsq(num)
+      real*8 :: xchargeprod     , esoft 
+      
+      xchargeprod = incharge1*incharge2
+
+      esoft = softness;
+      
+      !      if (nucflag==0) then
+      
+      sechsq(:) = ( 2d0/(exp(inarray(:)/esoft) + exp((-1)*inarray(:)/esoft)) )**2 * &
+           0.5d0 * xchargeprod*(xchargeprod+1d0/esoft)
+      
+      !      else
+      !         !!
+      !         !! this gets it to zero.  correction term such that united-atom limit is correct
+      !         !!
+      !         sechsq(:) = ( 2d0/(exp(inarray(:)/esoft) + exp((-1)*inarray(:)/esoft)) )**2 * &
+      !              ( xchargeprod - (incharge1+incharge2)/esoft/2d0 - 0.25d0/esoft**2 &
+      !              + 0.5/esoft * &
+      !              sqrt(0.25/esoft**2 + incharge1**2 + incharge2**2 + (incharge1+incharge2)/esoft) )
+      !      end if
+    end function sechsq
+    
+    function softcoul(inarray,num,incharge1,incharge2)
+      use myparams
+      use pfileptrmod
+      implicit none
+      integer,intent(in) :: num
+      DATATYPE,intent(in) :: inarray(num)
+      real*8, intent(in) :: incharge1, incharge2
+      real*8 :: xp
+      DATATYPE :: softcoul(num)
+      
+      xp = incharge1*incharge2;
+
+      softcoul(:) = xp / sqrt( inarray(:)**2 + softness**2 )
+
+    end function softcoul
+
+  end function onedfun
+
+  function getscalefac(icenter)
+    use myparams
+    implicit none
+    integer,intent(in) :: icenter
+    integer :: jcenter
+    real*8 :: getscalefac, fac, z1, z2, eee, esoft, ns(1)
+    real*8, parameter :: myone(1)=0
+    
+    esoft = softness;
+       
+    z1=nuccharges(icenter)
+    fac = 1d0
+    do jcenter=1,numcenters
+       if (jcenter.ne.icenter) then
+          !
+          ns(:) = real(onedfun(DATAONE*(centershift(icenter:icenter)-centershift(jcenter:jcenter))/2,1,1d0,1d0) / &
+               onedfun(DATAZERO*myone,1,1d0,1d0),8)
+
+          z2=nuccharges(jcenter)
+          eee = ( -(z1+z2)/esoft    +   sqrt((z1+z2)**2/esoft**2 + &
+               4*(z1**2+z2**2)*(z1**2 + z2**2 + 2*z1*z2 + (z1+z2)/esoft)) ) / 2 / (z1**2 + z2**2)
+          
+          fac = fac + eee*ns(1) + (1-ns(1)) - 1d0
+       endif
+    enddo
+    getscalefac = fac
+    
+  end function getscalefac
+
+  function getscalefac0(icenter)
+    use myparams
+    implicit none
+    integer,intent(in) :: icenter
+    integer :: jcenter
+    real*8 :: getscalefac0, fac, z1, z2, eee, esoft
+    real*8, parameter :: myone(1)=0
+    
+    esoft = softness;
+       
+    z1=nuccharges(icenter)
+    fac = 1d0
+    do jcenter=1,numcenters
+       if (jcenter.ne.icenter) then
+          !
+          z2=nuccharges(jcenter)
+          eee = ( -(z1+z2)/esoft    +   sqrt((z1+z2)**2/esoft**2 + &
+               4*(z1**2+z2**2)*(z1**2 + z2**2 + 2*z1*z2 + (z1+z2)/esoft)) ) / 2 / (z1**2 + z2**2)
+          
+          fac = fac + eee - 1d0
+       endif
+    enddo
+    getscalefac0 = fac
+    
+  end function getscalefac0
+
+end module onedfunmod
+
+
 module gettwoemod
 contains
 
@@ -112,11 +237,13 @@ subroutine get_twoe_new(pot)
   use pfileptrmod
   use myprojectmod  
   use pmpimod
+  use onedfunmod
   implicit none
   DATATYPE,intent(out) :: pot(totpoints)
   DATATYPE,allocatable :: myarray(:)
   integer :: ii,jj,pp,gridoffset,istart,icenter
-
+  real*8 :: fac
+  
   istart=1
   if (orbparflag.and.myrank.ne.1) then
      istart=0
@@ -140,7 +267,8 @@ subroutine get_twoe_new(pot)
   if (twotype.eq.0) then
      threed_two(istart-numpoints:numpoints-1) = twostrength
   else
-     threed_two(istart-numpoints:numpoints-1) = 0.5d0 * sech(myarray(:),2*numpoints-istart)**2 * twostrength
+     threed_two(istart-numpoints:numpoints-1) = twostrength * &
+          onedfun(myarray(:),2*numpoints-istart, 1d0, 1d0)
   endif
 
   deallocate(myarray); allocate(myarray(numpoints))
@@ -153,24 +281,16 @@ subroutine get_twoe_new(pot)
   endif
 
   do icenter=1,numcenters
-     myarray(:)=( dipoles(:) - centershift(icenter)*spacing/2d0 )/softness(icenter)
+     myarray(:)=( dipoles(:) - centershift(icenter)*spacing/2d0 )
 
+     fac = getscalefac(icenter)
 
-     pot(:)=pot(:) - 0.5d0 * nuccharges(icenter)*(nuccharges(icenter)+1) / softness(icenter)**2 * &
-          sech(myarray(:), numpoints)**2
+     pot(:)=pot(:) -  onedfun(myarray(:), numpoints, nuccharges(icenter)*fac, 1d0)
+
   enddo
 
   deallocate(myarray)
 
-contains
-  function sech(inarray,num)
-    implicit none
-    integer,intent(in) :: num
-    DATATYPE,intent(in) :: inarray(num)
-    DATATYPE :: sech(num)
-    sech(:) = 2d0/(exp(inarray(:)) + exp((-1)*inarray(:)))
-  end function sech
-    
 end subroutine get_twoe_new
 
 end module gettwoemod

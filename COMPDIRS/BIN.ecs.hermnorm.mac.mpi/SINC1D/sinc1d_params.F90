@@ -1,0 +1,1 @@
+../../MCTDH.SRC/SINC1D/sinc1d_params.f90

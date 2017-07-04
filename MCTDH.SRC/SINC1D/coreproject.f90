@@ -686,7 +686,7 @@ subroutine mult_ydipole(howmany,in,out,realflag)
   integer,intent(in) :: realflag,howmany
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE,intent(out) :: out(totpoints,howmany)
-  out(:,:)=0d0
+  out(:,:)=0d0 * in;
 end subroutine mult_ydipole
 
 
@@ -696,7 +696,7 @@ subroutine mult_xdipole(howmany,in,out,realflag)
   integer,intent(in) :: realflag,howmany
   DATATYPE,intent(in) :: in(totpoints,howmany)
   DATATYPE,intent(out) :: out(totpoints,howmany)
-  out(:,:)=0d0
+  out(:,:)=0d0 * in;
 end subroutine mult_xdipole
 
 
@@ -1621,22 +1621,8 @@ subroutine op_contact(howmany,spfin,spfout)
   integer,intent(in) :: howmany
   DATATYPE,intent(in) :: spfin(totpoints,howmany)
   DATATYPE,intent(out) :: spfout(totpoints,howmany)
-  spfout(:,:) = 0d0
+  spfout(:,:) = 0d0 * spfin
 end subroutine op_contact
-
-
-!function mysinc(input)
-!  implicit none
-!  real*8,intent(in) :: input
-!  real*8 :: mysinc
-!  real*8,parameter :: pi=3.141592653589793d0
-!  if (abs(input).lt.1d-6) then
-!     mysinc=1d0
-!  else
-!     mysinc=((0d0,-1d0)*exp((0d0,1d0)*pi*input)+&  !! ok conversion
-!          (0d0,1d0)*exp((0d0,-1d0)*pi*input))/pi/input/2
-!  endif
-!end function mysinc
 
 
 subroutine reinterpolate_orbs_real(rspfs,dims,num)

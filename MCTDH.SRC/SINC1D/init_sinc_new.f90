@@ -181,6 +181,7 @@ subroutine init_spfs(inspfs,numloaded,numfrozen,frozenreduced)
   use pfileptrmod
   use ivopotmod
   use tinvsubmod
+  use eigenmod      !! IN PARENT DIRECTORY
   use lanblockmod   !! IN PARENT DIRECTORY
   use utilmod !! IN PARENT DIRECTORY
   implicit none
@@ -188,7 +189,7 @@ subroutine init_spfs(inspfs,numloaded,numfrozen,frozenreduced)
   integer, intent(in) :: numloaded,numfrozen
   DATATYPE,intent(in) :: frozenreduced(totpoints)
   DATATYPE,allocatable :: lanspfs(:,:),density(:)
-  DATAECS,allocatable :: energies(:)
+  DATAECS,allocatable :: energies(:), mybigspfham(:,:), bigvects(:,:), bigenergies(:)
   integer :: ibig,iorder,ispf,ppfac,ii,jj,kk,olist(numspf),flag
   integer :: null1,null2,null3,null4,null10(10),numcompute
 
@@ -276,11 +277,22 @@ subroutine init_spfs(inspfs,numloaded,numfrozen,frozenreduced)
   endif
   iorder=min(ibig*ppfac,orblanorder)
 
-  OFLWR "CALL BLOCK LAN FOR ORBS, ",numcompute," VECTORS",orbparflag; CFL
 
-  call blocklanczos0(1,numcompute,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,&
-       energies,1,0,orblancheckmod,orblanthresh,mult_bigspf,orbparflag,orbtargetflag,orbtarget)
-
+  if (eigmode.ne.0) then
+     OFLWR "CALL BLOCK LAN FOR ORBS, ",numcompute," VECTORS",orbparflag; CFL
+     call blocklanczos0(1,numcompute,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,&
+          energies,1,0,orblancheckmod,orblanthresh,mult_bigspf,orbparflag,orbtargetflag,orbtarget)
+  else
+     OFLWR "Exact Diagonalization with vector size ",totpoints; CFL
+     allocate(mybigspfham(totpoints,totpoints),bigvects(totpoints,totpoints), &
+          bigenergies(totpoints))
+     mybigspfham(:,:) = bigspfham()
+     bigvects=0
+     call ECSEIG(mybigspfham,ibig,ibig,bigvects,bigenergies)
+     lanspfs(:,:) = bigvects(:,1:numcompute)
+     energies(:) = bigenergies(1:numcompute)
+     deallocate(mybigspfham,bigvects,bigenergies)
+  endif
   if (ivoflag.ne.0) then
      deallocate(ivopot,ivo_occupied)
   endif
@@ -389,6 +401,29 @@ contains
     endif
   end subroutine mult_bigspf
 
+  function bigspfham()
+    use myparams
+    use myprojectmod
+    use orbmultsubmod   !! IN PARENT DIRECTORY
+    implicit none
+    DATAECS :: bigspfham(totpoints,totpoints)
+    DATAECS :: tempbigham(totpoints,totpoints) !! AUTOMATIC
+    DATATYPE :: temppot(totpoints) , pot(totpoints)
+    integer :: ii
+    
+    tempbigham = 0; temppot=0; pot=0
+
+    temppot = 1;
+    call mult_pot(1,temppot(:),pot(:))
+    
+    tempbigham(:,:) = RESHAPE(ketot%mat(:,:,:,:),(/totpoints,totpoints/));
+    do ii=1,totpoints
+       tempbigham(ii,ii) = tempbigham(ii,ii) + pot(ii)
+    enddo
+    bigspfham(:,:) = tempbigham(:,:)
+    
+  end function bigspfham
+
 end subroutine init_spfs
 
 end module initspfsmod
@@ -469,6 +504,17 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
            enddo
         enddo
      enddo
+     if (1==0.and.twomode.ne.0) then  !! soft coulomb fix
+        if (numpoints.ne.totpoints.or.mod(numpoints,2).ne.0) then
+           OFLWR "Error, bad points"; CFLST
+        endif
+        if (toepflag.ne.0) then
+           OFLWR "ERROR, toep not supported with twmode.ne.0 (softcoul)"; CFLST
+        endif
+        OFLWR "FLIPPIN IT"; CFL
+        call flipit(ketot%mat)
+        call flipit(ketot%tam)
+     endif
   endif
 
   th=(/ "st", "nd", "rd", "th" /)
@@ -574,6 +620,20 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
 contains
 
+  subroutine flipit(inoutmat)
+    use myparams
+    use pfileptrmod
+    implicit none
+    DATATYPE,intent(inout) :: inoutmat(totpoints,totpoints)
+    if (mod(totpoints,2).ne.0) then
+       OFLWR "error, bad points", totpoints; CFLST
+    endif
+    inoutmat(1:totpoints/2,totpoints/2+1:totpoints) = &
+         inoutmat(1:totpoints/2,totpoints/2+1:totpoints) * (-1)
+    inoutmat(totpoints/2+1:totpoints,1:totpoints/2) = &
+         inoutmat(totpoints/2+1:totpoints,1:totpoints/2) * (-1)
+  end subroutine flipit
+  
   subroutine get_dipoles()
     use myparams
     use myprojectmod  

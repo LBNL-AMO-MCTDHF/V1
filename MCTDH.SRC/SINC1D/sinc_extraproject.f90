@@ -12,15 +12,19 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   use myparams
   use pfileptrmod
   use pmpimod
+  use onedfunmod
   implicit none
 
   integer,intent(in) :: inmpifileptr
   character,intent(in) :: inpfile*(*)
   integer,intent(out) :: spfdims(3),spfdimtype(3),nonuc_checkflag,reducedpotsize, outnumr
   real*8,intent(out) :: outnucrepulsion
-  integer :: nargs, i,len,getlen,myiostat
+  integer :: nargs, i,j, len,getlen,myiostat
   character (len=SLN) :: buffer
   character (len=SLN) :: nullbuff
+!  real*8 :: fac1,fac2
+  real*8, parameter :: pi = 3.14159265358979323844d0
+  DATATYPE :: csums(1)
   NAMELIST /sinc1dparinp/        numpoints,spacing,twostrength,nuccharges,orblanthresh, &
        numcenters,centershift,orblanorder,nonucrepflag,debugflag, &
        orbparflag,num_skip_orbs,orb_skip,orblancheckmod,zke_paropt,&
@@ -28,7 +32,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        fft_circbatchdim,maxcap,mincap,capmode, &
        scalingflag,scalingdistance,smoothness,scalingtheta,scalingstretch,&
        ivoflag, loadedocc, orbtargetflag,orbtarget,&
-       toepflag,softness,twotype,harmstrength
+       toepflag,softness,twotype,harmstrength, twomode, nucstrength, eigmode
 
 #ifdef PGFFLAG
   integer :: myiargc
@@ -133,16 +137,27 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   reducedpotsize=numpoints
 
   sumcharge=0d0
+  nucrepulsion=0
   do i=1,numcenters
      sumcharge=sumcharge+nuccharges(i)
+!     fac1=getscalefac0(i)
+     do j=i+1,numcenters
+!        fac2=getscalefac0(j)        
+        !! if twotype=0, then constant two-electron and zero internuclear interaction
+        if (twotype.ne.0)  then
+           csums(:) = &
+                onedfun(DATAONE*(centershift(i:i)-centershift(j:j))/2,1,1d0,1d0) / &
+                onedfun(DATAZERO*(centershift(i:i)-centershift(j:j))/2,1,1d0,1d0) * &
+                (2*(nuccharges(i)+nuccharges(j))**2-nuccharges(i)**2-nuccharges(j)**2)/2d0
+           nucrepulsion = nucrepulsion + csums(1) * nucstrength ;
+        endif
+     end do
   enddo
 
-  nucrepulsion=0d0
-
-!  print *, "NUCREPULSION", nucrepulsion; stop
-
-  outnucrepulsion=nucrepulsion
-
+  outnucrepulsion = nucrepulsion
+  
+  return
+  
 end subroutine getmyparams
 
 
@@ -156,11 +171,26 @@ subroutine printmyopts()
   WRFL "********  SINC DVR PARAMS ******** " 
   WRFL "spacing",spacing
   WRFL "numpoints",numpoints
+  WRFL "********  HAMILTONIAN PARAMS ******** "
   WRFL "numcenters",numcenters
   do ii=1,numcenters
-     WRFL "nuccharge",nuccharges(ii)
-     WRFL "centershift",centershift(ii)*0.5d0
+     WRFL "  nuccharge",nuccharges(ii)
+     WRFL "  radius   ",centershift(ii)*0.5d0
   enddo
+  WRFL "twostrength", twostrength
+  WRFL "nucstrength", nucstrength
+  if (twotype.eq.0) then
+     WRFL "constant two-body interaction, twotype==0"
+  else
+     WRFL "potential two-body interaction, twotype.ne.0"
+     WRFL "  softness", softness
+  endif
+  if (twomode.eq.0) then
+     WRFL "sech^2 potential, twomode==0"
+  else
+     WRFL "soft coulomb potential, twomode.ne.0"
+  endif
+  WRFL "********  OTHER PARAMS ********** "
   WRFL "orblanorder,orblanthresh",orblanorder,orblanthresh
   WRFL "nonucrepflag",nonucrepflag
   WRFL "orbparflag",orbparflag
