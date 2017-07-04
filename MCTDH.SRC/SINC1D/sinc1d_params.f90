@@ -1,4 +1,5 @@
-!! PARAMETERS FILE FOR SINC DVR POLYATOMIC BASIS AND HAMILTONIAN:
+
+!! PARAMETERS FILE FOR 1-D SINC DVR BASIS AND HAMILTONIAN:
 !!            sinc1dparinp namelist input.
 
 #include "Definitions.INC"

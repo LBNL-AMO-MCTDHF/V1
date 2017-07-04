@@ -1,6 +1,8 @@
 
   ** LBNL-AMO-MCTDHF VERSION 1.35 **
 
+v1.35 sech^2 potential ironed out 1d version
+
 v1.34 contact operator available polyatomic version.  Set 
    use_contactop=.true. in namelist &sincparinp.  Hydrogenic eigenvalues
    1s, 2s, 2p should closely match actual values nuccharge^2/2 and 
