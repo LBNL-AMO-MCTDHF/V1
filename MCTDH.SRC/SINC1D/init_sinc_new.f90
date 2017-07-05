@@ -504,16 +504,16 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
            enddo
         enddo
      enddo
-     if (1==0.and.twomode.ne.0) then  !! soft coulomb fix
-        if (numpoints.ne.totpoints.or.mod(numpoints,2).ne.0) then
-           OFLWR "Error, bad points"; CFLST
+     if (twomode.ne.0) then  !! soft coulomb fix
+        if (numpoints.ne.totpoints) then
+           OFLWR "Error, bad points",numpoints,totpoints; CFLST
         endif
         if (toepflag.ne.0) then
            OFLWR "ERROR, toep not supported with twmode.ne.0 (softcoul)"; CFLST
         endif
         OFLWR "FLIPPIN IT"; CFL
-        call flipit(ketot%mat)
-        call flipit(ketot%tam)
+        call flipit(ketot%mat)    !!! not ketot%tam, can't use ketot%tam
+        ketot%tam = 0
      endif
   endif
 
@@ -620,19 +620,78 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
 contains
 
+  !!
+  !! for soft coulomb to reproduce p-wave eigvals need to fix up even parity.
+  !!    add P 1/x^2 P  where P projects onto even.. l(l+1)/2 = 1 for p-wave centrifugal potential
+  !! even 1d functions = p wave   odd 1d functions = s wave
+  !!
   subroutine flipit(inoutmat)
     use myparams
     use pfileptrmod
+    use myprojectmod
+    use eigenmod       !! IN PARENT DIRECTORY
+    use onedfunmod
     implicit none
     DATATYPE,intent(inout) :: inoutmat(totpoints,totpoints)
-    if (mod(totpoints,2).ne.0) then
-       OFLWR "error, bad points", totpoints; CFLST
-    endif
-    inoutmat(1:totpoints/2,totpoints/2+1:totpoints) = &
-         inoutmat(1:totpoints/2,totpoints/2+1:totpoints) * (-1)
-    inoutmat(totpoints/2+1:totpoints,1:totpoints/2) = &
-         inoutmat(totpoints/2+1:totpoints,1:totpoints/2) * (-1)
+    real*8, allocatable :: pproj(:,:), pproj2(:,:), myarray(:)
+    DATATYPE, allocatable :: allarray(:)
+    integer :: ii, ihalf, ibot, itop, icenter
+    real*8 :: dcenter
+    
+    allocate(pproj(totpoints,totpoints), pproj2(totpoints,totpoints), &
+         myarray(totpoints), allarray(totpoints))
+    pproj=0; pproj2=0; myarray=0; allarray=0;
+    
+    myarray(:) = 0d0
+    dcenter = (1+totpoints)/2d0
+    do ii=1,totpoints
+       myarray(ii) = (ii-dcenter)*spacing
+    enddo
+
+    do icenter=1,numcenters
+       allarray(:)= 1d0 / ( softness**2 + ( myarray(:) - centershift(icenter)*spacing/2d0 )**2 )
+       
+       ihalf = floor((totpoints + 1 +1d-8 + centershift(icenter))/2d0)
+
+       itop = min(totpoints,totpoints+centershift(icenter))
+       ibot = max(1,centershift(icenter))
+
+       pproj = 0
+       do ii=ibot,ihalf
+          pproj(          ii,           ii) =  1d0
+          pproj(itop+ibot-ii,           ii) =  1d0
+          pproj(          ii, itop+ibot-ii) =  1d0
+          pproj(itop+ibot-ii, itop+ibot-ii) =  1d0
+       enddo
+       pproj = pproj/2d0
+
+       ii = ( totpoints + 1 + centershift(icenter) )
+       if (mod(ii,2)==0) then
+          pproj(ii/2,ii/2) = 1d0
+       endif
+
+       do ii=1,totpoints
+          pproj2(ii,:) = pproj(ii,:) * allarray
+       enddo
+       inoutmat = inoutmat + MATMUL( pproj2, pproj )
+       
+    enddo
+    
+    deallocate(myarray,pproj,pproj2,allarray)
+    
   end subroutine flipit
+
+  !$$    allocate(temparray(totpoints))
+!$$    do icenter=1,numcenters
+!$$       if (mod(centershift(icenter)+totpoints,2)==0) then
+!$$         OFLWR "error, centershift, totpoints need to be odd even or even odd for softcoul"; CFLST
+!$$      endif
+!$$      temparray(:) = myarray(:) - centershift(icenter)*spacing/2d0
+!$$      call getsoftcoul(temparray)
+!$$      allarray(:) = allarray(:) + temparray(:)
+!$$   enddo
+!$$   deallocate(temparray)
+
   
   subroutine get_dipoles()
     use myparams

@@ -1362,7 +1362,11 @@ contains
     DATATYPE ::     work(nnn*numpoints,howmany),       work2(nnn*numpoints,howmany) !! AUTOMATIC
     integer :: atime,btime,getlen,ibox,jbox,deltabox,ii,totsize,myiostat
     integer, save :: xcount=0, times(10)=0
-  
+
+    if (twomode.ne.0) then   !! coulomb, can't use this
+       OFLWR "NO TWOMODE MULT CIRC"; CFLST
+    endif
+    
     totsize=nnn*numpoints*howmany
 
     out(:,:)=0; work=0; work2=0
@@ -1460,6 +1464,10 @@ contains
     integer :: atime,btime,notiming,getlen,ibox,ii,totsize,myiostat
     integer, save :: xcount=0, times(10)=0
 
+    if (twomode.ne.0) then   !! coulomb, can't use this
+       OFLWR "NO TWOMODE MULT SUMMA"; CFLST
+    endif
+    
     totsize=numpoints*nnn*howmany
 
     call myclock(atime)

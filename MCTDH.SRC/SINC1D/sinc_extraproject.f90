@@ -22,9 +22,10 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   integer :: nargs, i,j, len,getlen,myiostat
   character (len=SLN) :: buffer
   character (len=SLN) :: nullbuff
-!  real*8 :: fac1,fac2
+  real*8 :: ns(1)
+!  real*8 :: fac1,fac2, z1x, z2x
   real*8, parameter :: pi = 3.14159265358979323844d0
-  DATATYPE :: csums(1)
+  DATATYPE :: myzero(1)
   NAMELIST /sinc1dparinp/        numpoints,spacing,twostrength,nuccharges,orblanthresh, &
        numcenters,centershift,orblanorder,nonucrepflag,debugflag, &
        orbparflag,num_skip_orbs,orb_skip,orblancheckmod,zke_paropt,&
@@ -126,7 +127,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   endif
 
   totpoints=numpoints
-
+ 
   gridpoints=nbox*numpoints
 
   spfdims(:)=1
@@ -140,21 +141,27 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   nucrepulsion=0
   do i=1,numcenters
      sumcharge=sumcharge+nuccharges(i)
-!     fac1=getscalefac0(i)
-     do j=i+1,numcenters
-!        fac2=getscalefac0(j)        
-        !! if twotype=0, then constant two-electron and zero internuclear interaction
-        if (twotype.ne.0)  then
-           csums(:) = &
-                onedfun(DATAONE*(centershift(i:i)-centershift(j:j))/2,1,1d0,1d0) / &
-                onedfun(DATAZERO*(centershift(i:i)-centershift(j:j))/2,1,1d0,1d0) * &
-                (2*(nuccharges(i)+nuccharges(j))**2-nuccharges(i)**2-nuccharges(j)**2)/2d0
-           nucrepulsion = nucrepulsion + csums(1) * nucstrength ;
-        endif
-     end do
+
+     if (twomode.eq.0)  then   !! sech
+        !! nuclear repulsion defined to cancel interaction, make curve flat with twoestrength=0
+
+        do j=i+1,numcenters        
+           ns(:) = real(onedfun(spacing*DATAONE*(centershift(i:i)-centershift(j:j))/2,1,1d0,1d0) / &
+                onedfun(myzero,1,1d0,1d0),8)
+           
+           nucrepulsion = nucrepulsion + 0.5d0 * &
+                ns(1)*( (nuccharges(i)+nuccharges(j))**3 - nuccharges(i)**3 - nuccharges(j)**3 )
+        enddo
+
+     else
+        do j=i+1,numcenters
+           nucrepulsion = nucrepulsion + nuccharges(i)*nuccharges(j) / &
+                sqrt(softness**2 + (spacing*(centershift(i)-centershift(j))/2d0)**2)
+        end do
+     endif
   enddo
 
-  outnucrepulsion = nucrepulsion
+  outnucrepulsion = nucrepulsion * nucstrength
   
   return
   

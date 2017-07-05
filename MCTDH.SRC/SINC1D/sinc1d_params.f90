@@ -18,7 +18,7 @@ integer :: twomode = 0       !!  If potential: 0 = sech^2 potential  1 = soft co
 integer :: numcenters=1
 integer :: centershift(100)=0       !! grid point index for each center
 real*8 :: nuccharges(100)=2d0       !! nuclear charges
-real*8 :: softness=4.5d0            !! scale parameter for sech and softening param for coulomb
+real*8 :: softness=0.5d0            !! scale parameter for sech and softening param for coulomb
                                     !!  softcoul = 1/sqrt(x^2+softness^2)
 
 !! BASIS PARAMS

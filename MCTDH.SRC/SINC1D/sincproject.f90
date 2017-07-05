@@ -165,19 +165,89 @@ contains
       
       xp = incharge1*incharge2;
 
-      softcoul(:) = xp / sqrt( inarray(:)**2 + softness**2 )
-
+      softcoul(:) = xp / sqrt(softness**2 + inarray**2)
+      
+!$$      softcoul(:) = inarray(:)
+!$$      call getsoftcoul(softcoul)
+!$$      softcoul(:) = xp * softcoul(:)
+      
     end function softcoul
 
   end function onedfun
 
+!$$  subroutine getsoftcoul(inoutarray)
+!$$    use myparams
+!$$    use myprojectmod
+!$$    implicit none
+!$$    DATATYPE, intent(out) :: inoutarray(totpoints)
+!$$    DATATYPE, allocatable :: hmat(:,:), hvects(:,:)
+!$$    integer :: minindex, ii !! hack
+!$$    real*8 :: minval
+!$$      
+!$$    allocate(hmat(totpoints,totpoints),hvects(totpoints,totpoints))
+!$$      
+!$$    inoutarray(:) = softness**2 +inoutarray(:)**2
+!$$         
+!$$    hmat = RESHAPE(ketot%mat,(/totpoints,totpoints/))
+!$$    minval = 10**10
+!$$    minindex = -8      
+!$$    do ii=1,totpoints
+!$$       if (abs(inoutarray(ii)) < minval) then
+!$$          minindex = ii
+!$$          minval = abs(inoutarray(ii))
+!$$       end if
+!$$       hmat(ii,:) = hmat(ii,:) * inoutarray(:)
+!$$       hmat(:,ii) = hmat(:,ii) * inoutarray(:)
+!$$    enddo
+!$$      
+!$$    inoutarray=0
+!$$    inoutarray( minval ) = 1d0;
+!$$    call hermsolve(totpoints,hmat,inoutarray)
+!$$    print *, inoutarray
+!$$    print *, "tempstop getsoftcoul"
+!$$    stop
+!$$    
+!$$  contains
+!$$    subroutine hermsolve(npts, inmat, inoutvect)
+!$$      use pfileptrmod
+!$$      implicit none
+!$$      integer,intent(in) :: npts
+!$$      DATATYPE, intent(in) :: inmat(npts,npts)
+!$$      DATATYPE, intent(inout) :: inoutvect(npts)
+!$$      DATATYPE, allocatable :: work(:)
+!$$      integer,allocatable :: ipiv(:)
+!$$      integer :: lwork, info
+!$$      
+!$$      lwork = 10*totpoints
+!$$      allocate(ipiv(totpoints),work(lwork))
+!$$      
+!$$      !      
+!$$      !      call ZHESV('U',totpoints,1,inmat,totpoints,ipiv,inoutvect,totpoints,work,lwork,info)
+!$$      !
+!$$      
+!$$      call MYGESV(totpoints,1,inmat,totpoints,ipiv,inoutvect,totpoints,info)
+!$$      if (info.ne.0) then
+!$$         OFLWR "error zhesv hermsolve ", info; CFLST
+!$$      endif
+!$$      deallocate(ipiv,work)
+!$$    end subroutine hermsolve
+!$$    
+!$$  end subroutine getsoftcoul
+  
+
+  
   function getscalefac(icenter)
     use myparams
+    use pfileptrmod
     implicit none
     integer,intent(in) :: icenter
     integer :: jcenter
     real*8 :: getscalefac, fac, z1, z2, eee, esoft, ns(1)
-    real*8, parameter :: myone(1)=0
+    DATATYPE, parameter :: myzero(1)=0
+
+    if (twomode.ne.0) then  !! can't use this with coulomb
+       OFLWR "oops twomode getscalefac"; CFLST
+    endif
     
     esoft = softness;
        
@@ -186,8 +256,8 @@ contains
     do jcenter=1,numcenters
        if (jcenter.ne.icenter) then
           !
-          ns(:) = real(onedfun(DATAONE*(centershift(icenter:icenter)-centershift(jcenter:jcenter))/2,1,1d0,1d0) / &
-               onedfun(DATAZERO*myone,1,1d0,1d0),8)
+          ns(:) = real(onedfun(spacing*DATAONE*(centershift(icenter:icenter)-centershift(jcenter:jcenter))/2,1,1d0,1d0) / &
+               onedfun(myzero,1,1d0,1d0),8)
 
           z2=nuccharges(jcenter)
           eee = ( -(z1+z2)/esoft    +   sqrt((z1+z2)**2/esoft**2 + &
@@ -283,8 +353,11 @@ subroutine get_twoe_new(pot)
   do icenter=1,numcenters
      myarray(:)=( dipoles(:) - centershift(icenter)*spacing/2d0 )
 
-     fac = getscalefac(icenter)
-
+     fac = 1d0
+     if (twomode.eq.0) then    !! sechsq
+        fac = getscalefac(icenter)
+     endif
+     
      pot(:)=pot(:) -  onedfun(myarray(:), numpoints, nuccharges(icenter)*fac, 1d0)
 
   enddo
