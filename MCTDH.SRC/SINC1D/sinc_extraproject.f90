@@ -22,8 +22,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   integer :: nargs, i,j, len,getlen,myiostat
   character (len=SLN) :: buffer
   character (len=SLN) :: nullbuff
-  real*8 :: ns(1)
-!  real*8 :: fac1,fac2, z1x, z2x
+  real*8 :: ns(1), zz, ss
   real*8, parameter :: pi = 3.14159265358979323844d0
   DATATYPE :: myzero(1)
   NAMELIST /sinc1dparinp/        numpoints,spacing,twostrength,nuccharges,orblanthresh, &
@@ -33,7 +32,8 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        fft_circbatchdim,maxcap,mincap,capmode, &
        scalingflag,scalingdistance,smoothness,scalingtheta,scalingstretch,&
        ivoflag, loadedocc, orbtargetflag,orbtarget,&
-       toepflag,softness,twotype,harmstrength, twomode, nucstrength, eigmode
+       toepflag,softness,twotype,harmstrength, twomode, nucstrength, &
+       eigmode, coulmode, sechmode
 
 #ifdef PGFFLAG
   integer :: myiargc
@@ -146,11 +146,25 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
         !! nuclear repulsion defined to cancel interaction, make curve flat with twoestrength=0
 
         do j=i+1,numcenters        
-           ns(:) = real(onedfun(spacing*DATAONE*(centershift(i:i)-centershift(j:j))/2,1,1d0,1d0) / &
+           ns(:) = real( &
+                onedfun(spacing*DATAONE*(centershift(i:i)-centershift(j:j))/2,1,1d0,1d0) / &
                 onedfun(myzero,1,1d0,1d0),8)
            
-           nucrepulsion = nucrepulsion + 0.5d0 * &
-                ns(1)*( (nuccharges(i)+nuccharges(j))**3 - nuccharges(i)**3 - nuccharges(j)**3 )
+           !! nuclear repulsion designed to make asymptote equal to R=0 with twostrength=0
+           if (sechmode.eq.0) then
+              !! one-elec potentials have been scaled to make united atom limit correct
+              nucrepulsion = nucrepulsion + 0.5d0 * &
+                   ns(1)*( (nuccharges(i)+nuccharges(j))**3 - nuccharges(i)**3 - nuccharges(j)**3 )
+           else
+              !! no scaling has been done
+              ss = 1d0/softness
+              zz = nuccharges(i)*(nuccharges(i)+ss) + nuccharges(j)*(nuccharges(j)+ss)
+              zz = 0.25d0 * ( 2*ss**2 + 4*zz - 2*ss*sqrt(ss**2+4*zz) )
+              print * ,"EFF NUC CHARGE",sqrt(zz)
+              nucrepulsion = nucrepulsion + 0.5d0 * &
+                   ns(1)*( (nuccharges(i)+nuccharges(j)) * zz &
+                   - nuccharges(i)**3 - nuccharges(j)**3 )
+           endif
         enddo
 
      else

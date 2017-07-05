@@ -511,8 +511,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         if (toepflag.ne.0) then
            OFLWR "ERROR, toep not supported with twmode.ne.0 (softcoul)"; CFLST
         endif
-        OFLWR "FLIPPIN IT"; CFL
-        call flipit(ketot%mat)    !!! not ketot%tam, can't use ketot%tam
+        OFLWR "ADDING CENTRIFUGAL"; CFL
+        call addit(ketot%mat)    !!! not ketot%tam, can't use ketot%tam
         ketot%tam = 0
      endif
   endif
@@ -605,8 +605,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      pot(:) = pot(:) + 0.5d0 * harmstrength * dipoles(:)**2
   endif
 
-
-
   spfsloaded=numspf   !! for mcscf... really just for BO curve to skip eigen
 
   if (debugflag.eq.90210) then
@@ -618,6 +616,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 #endif
   deallocate(scalefunction, djacobian, ddjacobian)
 
+  !! END INIT_PROJECT !!
+  
 contains
 
   !!
@@ -625,16 +625,13 @@ contains
   !!    add P 1/x^2 P  where P projects onto even.. l(l+1)/2 = 1 for p-wave centrifugal potential
   !! even 1d functions = p wave   odd 1d functions = s wave
   !!
-  subroutine flipit(inoutmat)
+  subroutine addit(inoutmat)
     use myparams
     use pfileptrmod
-    use myprojectmod
-    use eigenmod       !! IN PARENT DIRECTORY
     use onedfunmod
     implicit none
     DATATYPE,intent(inout) :: inoutmat(totpoints,totpoints)
-    real*8, allocatable :: pproj(:,:), pproj2(:,:), myarray(:)
-    DATATYPE, allocatable :: allarray(:)
+    real*8, allocatable :: pproj(:,:), pproj2(:,:), myarray(:), allarray(:)
     integer :: ii, ihalf, ibot, itop, icenter
     real*8 :: dcenter
     
@@ -649,7 +646,12 @@ contains
     enddo
 
     do icenter=1,numcenters
-       allarray(:)= 1d0 / ( softness**2 + ( myarray(:) - centershift(icenter)*spacing/2d0 )**2 )
+       
+       if (coulmode==0) then  !! integer quantum numbers even functions
+          allarray(:)= 1d0 / ( softness**2 + ( myarray(:) - centershift(icenter)*spacing/2d0 )**2 )
+       else                   !! half-integer quantum numbers even functions
+          allarray(:)= 0.375d0 / ( softness**2 + ( myarray(:) - centershift(icenter)*spacing/2d0 )**2 )
+       endif
        
        ihalf = floor((totpoints + 1 +1d-8 + centershift(icenter))/2d0)
 
@@ -657,18 +659,15 @@ contains
        ibot = max(1,centershift(icenter))
 
        pproj = 0
-       do ii=ibot,ihalf
-          pproj(          ii,           ii) =  1d0
-          pproj(itop+ibot-ii,           ii) =  1d0
-          pproj(          ii, itop+ibot-ii) =  1d0
-          pproj(itop+ibot-ii, itop+ibot-ii) =  1d0
+       do ii=1,totpoints
+          pproj(ii,ii) = 1d0
        enddo
-       pproj = pproj/2d0
-
-       ii = ( totpoints + 1 + centershift(icenter) )
-       if (mod(ii,2)==0) then
-          pproj(ii/2,ii/2) = 1d0
-       endif
+       do ii=ibot,ihalf
+          pproj(          ii,           ii) =  0.5d0
+          pproj(itop+ibot-ii,           ii) =  0.5d0
+          pproj(          ii, itop+ibot-ii) =  0.5d0
+          pproj(itop+ibot-ii, itop+ibot-ii) =  0.5d0
+       enddo
 
        do ii=1,totpoints
           pproj2(ii,:) = pproj(ii,:) * allarray
@@ -679,19 +678,7 @@ contains
     
     deallocate(myarray,pproj,pproj2,allarray)
     
-  end subroutine flipit
-
-  !$$    allocate(temparray(totpoints))
-!$$    do icenter=1,numcenters
-!$$       if (mod(centershift(icenter)+totpoints,2)==0) then
-!$$         OFLWR "error, centershift, totpoints need to be odd even or even odd for softcoul"; CFLST
-!$$      endif
-!$$      temparray(:) = myarray(:) - centershift(icenter)*spacing/2d0
-!$$      call getsoftcoul(temparray)
-!$$      allarray(:) = allarray(:) + temparray(:)
-!$$   enddo
-!$$   deallocate(temparray)
-
+  end subroutine addit
   
   subroutine get_dipoles()
     use myparams

@@ -14,11 +14,15 @@ real*8  :: nucstrength=1d0   !!  2-nuclei interaction coef.
                              !!  Two-particle interaction:
 integer :: twotype = 1       !!  1 = potential interaction  0 = constant interaction
 integer :: twomode = 0       !!  If potential: 0 = sech^2 potential  1 = soft coulomb
-
+integer :: coulmode = 0      !!  For soft coulomb: option for treatment of even parity
+!                            !!  0: integer quantum numbers 1: half-integer
+integer :: sechmode = 1      !!  For sechsq: 0: correct hydrogenic united atom limit
+!                            !!  (charges are scaled on approach) 1: simple mode,
+!                            !!  sechsq potentials are not scaled, simply sum
 integer :: numcenters=1
 integer :: centershift(100)=0       !! grid point index for each center
 real*8 :: nuccharges(100)=2d0       !! nuclear charges
-real*8 :: softness=0.5d0            !! scale parameter for sech and softening param for coulomb
+real*8 :: softness=1d0              !! scale parameter for sech and softening param for coulomb
                                     !!  softcoul = 1/sqrt(x^2+softness^2)
 
 !! BASIS PARAMS

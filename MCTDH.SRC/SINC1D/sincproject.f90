@@ -354,7 +354,7 @@ subroutine get_twoe_new(pot)
      myarray(:)=( dipoles(:) - centershift(icenter)*spacing/2d0 )
 
      fac = 1d0
-     if (twomode.eq.0) then    !! sechsq
+     if (twomode.eq.0.and.sechmode.eq.0) then    !! sechsq
         fac = getscalefac(icenter)
      endif
      
