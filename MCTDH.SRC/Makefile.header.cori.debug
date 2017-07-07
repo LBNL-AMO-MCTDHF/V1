@@ -14,9 +14,9 @@ LAPACK =   -mkl
 	
 LOADFLAGS = -qopenmp -axMIC-AVX512,AVX
 
-MYINCLUDE=
 MYINCLUDE=/global/homes/d/djhaxton/LBNL-AMO-MCTDHF/V1.0BETA.030315.INTELFFT/MCTDH.SRC/FFTW-INCLUDE
 MYINCLUDE=/project/projectdirs/mp74/git/V1.0BETA.030315.INTELFFT.git/MCTDH.SRC/FFTW-INCLUDE
 
-FFLAGS =  -qopenmp -axMIC-AVX512,AVX
-F77FLAGS =  -qopenmp -axMIC-AVX512,AVX
+FFLAGS =  -qopenmp -axMIC-AVX512,AVX -C -check all,noarg_temp_created -warn all -gen_interfaces -traceback -static
+F77FLAGS =  -qopenmp -axMIC-AVX512,AVX -C -check all,noarg_temp_created -traceback -warn error,alignments,ignore_loc,general,usage,nodec -static
+
