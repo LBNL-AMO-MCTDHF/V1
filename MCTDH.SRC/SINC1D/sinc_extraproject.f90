@@ -22,9 +22,10 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   integer :: nargs, i,j, len,getlen,myiostat
   character (len=SLN) :: buffer
   character (len=SLN) :: nullbuff
-  real*8 :: ns(1), zz, ss
   real*8, parameter :: pi = 3.14159265358979323844d0
-  DATATYPE :: myzero(1)
+  real*8 :: zz, ss 
+  DATATYPE ::  ns(1)
+  DATATYPE, parameter :: czero(1)=0
   NAMELIST /sinc1dparinp/        numpoints,spacing,twostrength,nuccharges,orblanthresh, &
        numcenters,centershift,orblanorder,nonucrepflag,debugflag, &
        orbparflag,num_skip_orbs,orb_skip,orblancheckmod,zke_paropt,&
@@ -33,7 +34,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        scalingflag,scalingdistance,smoothness,scalingtheta,scalingstretch,&
        ivoflag, loadedocc, orbtargetflag,orbtarget,&
        toepflag,softness,twotype,harmstrength, twomode, nucstrength, &
-       eigmode, coulmode, sechmode
+       eigmode, coulmode, sechmode, nucmode, combinesech, nucrangefac
 
 #ifdef PGFFLAG
   integer :: myiargc
@@ -141,39 +142,116 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   nucrepulsion=0
   do i=1,numcenters
      sumcharge=sumcharge+nuccharges(i)
+     if (nucmode.eq.0.or.twomode.ne.0) then  !! physically motivated internuclear repulsion
+        !!                                   !! always for coulomb, nucmode sets choice for sech
 
-     if (twomode.eq.0)  then   !! sech
-        !! nuclear repulsion defined to cancel interaction, make curve flat with twoestrength=0
+        if (twomode.ne.0.or.combinesech.eq.0) then  !! coulomb or old version sech
+        
+           !! straight sum of two-particle interactions just like electrons
+           
+           do j=i+1,numcenters        
+              ns(:) =  nuccharges(i) * &
+                   onedfun(spacing*DATAONE*(centershift(i:i)-centershift(j:j))/2,1,1d0,nuccharges(j))
+              nucrepulsion = nucrepulsion + ns(1)
+           enddo
+        
+        else   !! combinesech.ne.0 ::
 
+           !! not sure what I am doing here, in defining the internuclear potential.
+           !! electron-electron is pairwise.  electron-nuclear has enhancement when nuclei approach.
+           !! adding pairwise nuclear-nuclear results in overly attractive and deep BO PES.
+           !! so add nuclear potential that is like electron-nuclear potential.
+           !! must cancel self-interation to maintain asymptotes.
+           
+           !! should multiply the interaction by the nuclear charge, not include it in charge product
+           !! in sechsq.
+           
+           !! Nuclear potential is (-1) x electronic potential minus self-interaction
+           !!   same as sum of 2-particle interactions for coulomb
+           
+           !! no
+           !!   -2.25000 h2  or -4.46 heh  or -1 he2           united no two elec
+           !        ns(:) = 0.5d0 * (elecpot(spacing*DATAONE*centershift(i:i)/2, 1, nuccharges(i), 0) &
+           !             - onedfun(czero, 1, nuccharges(i), nuccharges(i)))
+           
+           !  -3.25000.. h2 united atom ground state without two-electron
+           !        ns(:) = 0.5d0 * nuccharges(i) * elecpot( spacing*DATAONE*centershift(i:i)/2, 1, 1d0, i )
+
+           ! -2.5 h2 -6.71 HeH -13 He2 without two-electron, not repulsive enough even with 2-e
+           ! ns(:) = nuccharges(i) * elecpot( spacing*DATAONE*centershift(i:i)/2, 1, 1d0, i )
+
+           ! try it again after changing skipcenter thing
+           ! -1.5 h2  -5.0 he2    without     -0.905 h2  -1.19 he2     with two-e
+           !  again strong binding potential for e.g. He2 away from R=0
+           !  ns(:) = nuccharges(i) * elecpot( spacing*DATAONE*centershift(i:i)/2, 1, 1d0, i )
+           
+           !! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !!
+
+           ! -2.25 h2     -11 He2    without         -1.655 h2  -7.19 He2 with two-e
+           ! strong binding potential for all species away from R=0    ..bad       
+           !           ns(:) = 0.5d0 * nuccharges(i) * ( elecpot(spacing*DATAONE*centershift(i:i)/2, 1, 1d0, 0 ) &
+           !                - onedfun(czero, 1, 1d0, nuccharges(i)) )
+
+           !! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !!
+
+           !! -0.5000.. h2   or -0.71  heh or +3 he2   united atom without two electron
+           !!                          for he2, orbitals are -8, -5.5, -2, -0.5, hmm  
+           !!                          for he2, would be E=-2 without orbital promotion
+           !!                          that's the same as the energy of one helium
+           !!                          likewise for h2, -0.5, that's the energy of one hydrogen
+           !!                          I like it.. but does not bind anything
+           
+           ns(:) = nuccharges(i) * ( elecpot(spacing*DATAONE*centershift(i:i)/2, 1, 1d0, 0 ) &
+                - onedfun(czero, 1, 1d0, nuccharges(i)) )
+           
+           if (real(nucstrength*ns(1)) < -1d-12) then
+              OFLWR "EEEEROROROROR ", ns(1); CFLST
+           endif
+        
+           nucrepulsion = nucrepulsion + ns(1)
+        
+        endif  !! version of physical potential combinesech
+
+     else  !! nucmode.eq.0.or.twomode.ne.0
+        
+        !! here, nucmode.ne.0 :: ad hoc internuclear repulsion 
+        !! nuclear repulsion designed to make asymptote equal to R=0 with twostrength=0
+        !! (for bosons, hypothetically)
+        
         do j=i+1,numcenters        
            ns(:) = real( &
-                onedfun(spacing*DATAONE*(centershift(i:i)-centershift(j:j))/2,1,1d0,1d0) / &
-                onedfun(myzero,1,1d0,1d0),8)
+                onedfun(spacing*DATAONE*(centershift(i:i)-centershift(j:j))/2/nucrangefac,1,1d0,1d0) / &
+                onedfun(czero,1,1d0,1d0),8)
            
-           !! nuclear repulsion designed to make asymptote equal to R=0 with twostrength=0
-           if (sechmode.eq.0) then
+           if (combinesech.ne.0) then !! new version sech-squared, sum then square sech
+              
               !! one-elec potentials have been scaled to make united atom limit correct
               nucrepulsion = nucrepulsion + 0.5d0 * &
                    ns(1)*( (nuccharges(i)+nuccharges(j))**3 - nuccharges(i)**3 - nuccharges(j)**3 )
-           else
-              !! no scaling has been done
+              
+           else  !! old version sech-squared, sum of pair potentials
+
+              if (sechmode.ne.0) then  !! sechmode 0 required here
+                 OFLWR "Error, combinesech.eq.0.and.sechmode.ne.0.and.nucmode.ne.0 not allowed"
+                 WRFL  "   can't sum pairwise potentials with different length scales and"
+                 WRFL  "   perform ad hoc correction to get R=0 asymptote."; CFLST
+              endif
+              
               ss = 1d0/softness
               zz = nuccharges(i)*(nuccharges(i)+ss) + nuccharges(j)*(nuccharges(j)+ss)
               zz = 0.25d0 * ( 2*ss**2 + 4*zz - 2*ss*sqrt(ss**2+4*zz) )
-              print * ,"EFF NUC CHARGE",sqrt(zz)
+              !              print * ,"EFF NUC CHARGE",sqrt(zz)
               nucrepulsion = nucrepulsion + 0.5d0 * &
                    ns(1)*( (nuccharges(i)+nuccharges(j)) * zz &
                    - nuccharges(i)**3 - nuccharges(j)**3 )
+              
            endif
-        enddo
 
-     else
-        do j=i+1,numcenters
-           nucrepulsion = nucrepulsion + nuccharges(i)*nuccharges(j) / &
-                sqrt(softness**2 + (spacing*(centershift(i)-centershift(j))/2d0)**2)
-        end do
-     endif
-  enddo
+        enddo   !! j=1,numcenters
+
+     endif   !! physically motivated internuclear repulsion or not, nucmode
+
+  enddo  !! i=1,numcenters
 
   outnucrepulsion = nucrepulsion * nucstrength
   

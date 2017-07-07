@@ -122,180 +122,119 @@ contains
        onedfun = softcoul(inarray,num,incharge1,incharge2)
     endif
     
-  contains  
-    function sechsq(inarray,num,incharge1,incharge2)
-      use myparams
-      use pfileptrmod
-      implicit none
-      integer,intent(in) :: num
-      DATATYPE,intent(in) :: inarray(num)
-      real*8, intent(in) :: incharge1, incharge2
-      DATATYPE :: sechsq(num)
-      real*8 :: xchargeprod     , esoft 
-      
-      xchargeprod = incharge1*incharge2
-
-      esoft = softness;
-      
-      !      if (nucflag==0) then
-      
-      sechsq(:) = ( 2d0/(exp(inarray(:)/esoft) + exp((-1)*inarray(:)/esoft)) )**2 * &
-           0.5d0 * xchargeprod*(xchargeprod+1d0/esoft)
-      
-      !      else
-      !         !!
-      !         !! this gets it to zero.  correction term such that united-atom limit is correct
-      !         !!
-      !         sechsq(:) = ( 2d0/(exp(inarray(:)/esoft) + exp((-1)*inarray(:)/esoft)) )**2 * &
-      !              ( xchargeprod - (incharge1+incharge2)/esoft/2d0 - 0.25d0/esoft**2 &
-      !              + 0.5/esoft * &
-      !              sqrt(0.25/esoft**2 + incharge1**2 + incharge2**2 + (incharge1+incharge2)/esoft) )
-      !      end if
-    end function sechsq
-    
-    function softcoul(inarray,num,incharge1,incharge2)
-      use myparams
-      use pfileptrmod
-      implicit none
-      integer,intent(in) :: num
-      DATATYPE,intent(in) :: inarray(num)
-      real*8, intent(in) :: incharge1, incharge2
-      real*8 :: xp
-      DATATYPE :: softcoul(num)
-      
-      xp = incharge1*incharge2;
-
-      softcoul(:) = xp / sqrt(softness**2 + inarray**2)
-      
-!$$      softcoul(:) = inarray(:)
-!$$      call getsoftcoul(softcoul)
-!$$      softcoul(:) = xp * softcoul(:)
-      
-    end function softcoul
-
   end function onedfun
 
-!$$  subroutine getsoftcoul(inoutarray)
-!$$    use myparams
-!$$    use myprojectmod
-!$$    implicit none
-!$$    DATATYPE, intent(out) :: inoutarray(totpoints)
-!$$    DATATYPE, allocatable :: hmat(:,:), hvects(:,:)
-!$$    integer :: minindex, ii !! hack
-!$$    real*8 :: minval
-!$$      
-!$$    allocate(hmat(totpoints,totpoints),hvects(totpoints,totpoints))
-!$$      
-!$$    inoutarray(:) = softness**2 +inoutarray(:)**2
-!$$         
-!$$    hmat = RESHAPE(ketot%mat,(/totpoints,totpoints/))
-!$$    minval = 10**10
-!$$    minindex = -8      
-!$$    do ii=1,totpoints
-!$$       if (abs(inoutarray(ii)) < minval) then
-!$$          minindex = ii
-!$$          minval = abs(inoutarray(ii))
-!$$       end if
-!$$       hmat(ii,:) = hmat(ii,:) * inoutarray(:)
-!$$       hmat(:,ii) = hmat(:,ii) * inoutarray(:)
-!$$    enddo
-!$$      
-!$$    inoutarray=0
-!$$    inoutarray( minval ) = 1d0;
-!$$    call hermsolve(totpoints,hmat,inoutarray)
-!$$    print *, inoutarray
-!$$    print *, "tempstop getsoftcoul"
-!$$    stop
-!$$    
-!$$  contains
-!$$    subroutine hermsolve(npts, inmat, inoutvect)
-!$$      use pfileptrmod
-!$$      implicit none
-!$$      integer,intent(in) :: npts
-!$$      DATATYPE, intent(in) :: inmat(npts,npts)
-!$$      DATATYPE, intent(inout) :: inoutvect(npts)
-!$$      DATATYPE, allocatable :: work(:)
-!$$      integer,allocatable :: ipiv(:)
-!$$      integer :: lwork, info
-!$$      
-!$$      lwork = 10*totpoints
-!$$      allocate(ipiv(totpoints),work(lwork))
-!$$      
-!$$      !      
-!$$      !      call ZHESV('U',totpoints,1,inmat,totpoints,ipiv,inoutvect,totpoints,work,lwork,info)
-!$$      !
-!$$      
-!$$      call MYGESV(totpoints,1,inmat,totpoints,ipiv,inoutvect,totpoints,info)
-!$$      if (info.ne.0) then
-!$$         OFLWR "error zhesv hermsolve ", info; CFLST
-!$$      endif
-!$$      deallocate(ipiv,work)
-!$$    end subroutine hermsolve
-!$$    
-!$$  end subroutine getsoftcoul
-  
-
-  
-  function getscalefac(icenter)
+  function sechsq(inarray,num,incharge1,incharge2)
     use myparams
     use pfileptrmod
     implicit none
-    integer,intent(in) :: icenter
-    integer :: jcenter
-    real*8 :: getscalefac, fac, z1, z2, eee, esoft, ns(1)
-    DATATYPE, parameter :: myzero(1)=0
+    integer,intent(in) :: num
+    DATATYPE,intent(in) :: inarray(num)
+    real*8, intent(in) :: incharge1, incharge2
+    DATATYPE :: sechsq(num)
+    real*8 :: xchargeprod, esoft
+      
+    xchargeprod = incharge1*incharge2
 
-    if (twomode.ne.0) then  !! can't use this with coulomb
-       OFLWR "oops twomode getscalefac"; CFLST
+    if (sechmode.eq.0) then    !! all sech potentials have same range.
+       esoft = softness
+    else                       !! sech potentials are summed then squared to get united atom limit
+       esoft = 2d0/xchargeprod
     endif
-    
-    esoft = softness;
-       
-    z1=nuccharges(icenter)
-    fac = 1d0
-    do jcenter=1,numcenters
-       if (jcenter.ne.icenter) then
-          !
-          ns(:) = real(onedfun(spacing*DATAONE*(centershift(icenter:icenter)-centershift(jcenter:jcenter))/2,1,1d0,1d0) / &
-               onedfun(myzero,1,1d0,1d0),8)
 
-          z2=nuccharges(jcenter)
-          eee = ( -(z1+z2)/esoft    +   sqrt((z1+z2)**2/esoft**2 + &
-               4*(z1**2+z2**2)*(z1**2 + z2**2 + 2*z1*z2 + (z1+z2)/esoft)) ) / 2 / (z1**2 + z2**2)
-          
-          fac = fac + eee*ns(1) + (1-ns(1)) - 1d0
-       endif
-    enddo
-    getscalefac = fac
+    !! with secmode.ne.0, potential is 3/4 Z^2 sech^2(x)
     
-  end function getscalefac
+    sechsq(:) = ( 2d0/(exp(inarray(:)/esoft) + exp((-1)*inarray(:)/esoft)) )**2 * &
+         0.5d0 * xchargeprod*(xchargeprod+1d0/esoft)
 
-  function getscalefac0(icenter)
+  end function sechsq
+
+
+  function onlysech(inarray,num,icenter)
     use myparams
+    use pfileptrmod
     implicit none
-    integer,intent(in) :: icenter
-    integer :: jcenter
-    real*8 :: getscalefac0, fac, z1, z2, eee, esoft
-    real*8, parameter :: myone(1)=0
+    integer,intent(in) :: num,icenter
+    DATATYPE,intent(in) :: inarray(num)
+    DATATYPE :: onlysech(num)
+    real*8 :: esoft
     
-    esoft = softness;
-       
-    z1=nuccharges(icenter)
-    fac = 1d0
-    do jcenter=1,numcenters
-       if (jcenter.ne.icenter) then
-          !
-          z2=nuccharges(jcenter)
-          eee = ( -(z1+z2)/esoft    +   sqrt((z1+z2)**2/esoft**2 + &
-               4*(z1**2+z2**2)*(z1**2 + z2**2 + 2*z1*z2 + (z1+z2)/esoft)) ) / 2 / (z1**2 + z2**2)
-          
-          fac = fac + eee - 1d0
-       endif
-    enddo
-    getscalefac0 = fac
-    
-  end function getscalefac0
+    if (sechmode.eq.0) then
+       esoft = softness
+    else
+       esoft = 2d0/nuccharges(icenter)
+    endif
 
+    onlysech(:) = &
+         ( 2d0/(exp(inarray(:)/esoft) + exp((-1)*inarray(:)/esoft)) )
+      
+  end function onlysech
+
+  function softcoul(inarray,num,incharge1,incharge2)
+    use myparams
+    use pfileptrmod
+    implicit none
+    integer,intent(in) :: num
+    DATATYPE,intent(in) :: inarray(num)
+    real*8, intent(in) :: incharge1, incharge2
+    real*8 :: xp
+    DATATYPE :: softcoul(num)
+      
+    xp = incharge1*incharge2;
+
+    softcoul(:) = xp / sqrt(softness**2 + inarray**2)
+      
+  end function softcoul
+  
+  !! returns positive number
+  function elecpot(inarray, insize, incharge, iskipcenter)
+    use myparams
+    use pfileptrmod
+    implicit none
+    integer,intent(in) :: insize, iskipcenter
+    real*8, intent(in) :: incharge
+    DATATYPE, intent(in) :: inarray(insize)
+    DATATYPE :: elecpot(insize), pot(insize), myarray(insize), pot2(insize), potA(insize)
+    real*8 :: esoft
+    integer :: icenter
+    
+    pot(:)=0;    pot2(:)=0;   potA(:)=0
+    
+    if (twomode.ne.0.or.combinesech.eq.0) then    !! coulomb, twomode.ne.0 or sechmode.eq.0, old version
+
+       do icenter=1,numcenters
+          if (icenter.ne.iskipcenter) then
+             myarray(:)=( inarray(:) - centershift(icenter)*spacing/2d0 )
+             pot(:)=pot(:) +  onedfun(myarray(:), insize, nuccharges(icenter), incharge)
+          endif
+       enddo
+
+    else  !! combinesech.ne.0 ::
+
+       do icenter=1,numcenters
+          esoft = 2d0/nuccharges(icenter)
+          myarray(:)=( inarray(:) - centershift(icenter)*spacing/2d0 )
+          potA(:)=potA(:) +  onlysech(myarray(:), insize, icenter) * nuccharges(icenter)
+          if (icenter.ne.iskipcenter) then
+             pot(:)=pot(:) +  onlysech(myarray(:), insize, icenter) * nuccharges(icenter)
+             pot2(:)=pot2(:) +  onlysech(myarray(:), insize, icenter)**2 * nuccharges(icenter)**2
+          endif
+       enddo
+          
+       !! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       !! THIS PRESCRIPTION GETS THE UNITED ATOM LIMIT CORRECT AS BEST POSSIBLE
+       !! (analogous to Coulomb; charges add) WITHOUT ANY OTHER AD HOC CHOICE
+       
+       pot = incharge * 0.25 * ( 2*pot(:)*potA(:) + pot2(:) )
+
+       !! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    endif
+       
+    elecpot(:) = pot(:)
+
+  end function elecpot
+  
 end module onedfunmod
 
 
@@ -311,8 +250,7 @@ subroutine get_twoe_new(pot)
   implicit none
   DATATYPE,intent(out) :: pot(totpoints)
   DATATYPE,allocatable :: myarray(:)
-  integer :: ii,jj,pp,gridoffset,istart,icenter
-  real*8 :: fac
+  integer :: ii,jj,pp,gridoffset,istart
   
   istart=1
   if (orbparflag.and.myrank.ne.1) then
@@ -335,7 +273,10 @@ subroutine get_twoe_new(pot)
   threed_two(:)=0d0
 
   if (twotype.eq.0) then
-     threed_two(istart-numpoints:numpoints-1) = twostrength
+     !$$ infinite range     threed_two(istart-numpoints:numpoints-1) = twostrength
+     if (istart-numpoints<0 .and. numpoints-1>0) then
+        threed_two(0) = twostrength/spacing
+     endif
   else
      threed_two(istart-numpoints:numpoints-1) = twostrength * &
           onedfun(myarray(:),2*numpoints-istart, 1d0, 1d0)
@@ -350,18 +291,8 @@ subroutine get_twoe_new(pot)
      pot(:)=0d0
   endif
 
-  do icenter=1,numcenters
-     myarray(:)=( dipoles(:) - centershift(icenter)*spacing/2d0 )
-
-     fac = 1d0
-     if (twomode.eq.0.and.sechmode.eq.0) then    !! sechsq
-        fac = getscalefac(icenter)
-     endif
-     
-     pot(:)=pot(:) -  onedfun(myarray(:), numpoints, nuccharges(icenter)*fac, 1d0)
-
-  enddo
-
+  pot(:)=pot(:) - elecpot(dipoles(:), numpoints, 1d0, 0)
+  
   deallocate(myarray)
 
 end subroutine get_twoe_new

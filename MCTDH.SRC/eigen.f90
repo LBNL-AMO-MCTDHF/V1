@@ -21,7 +21,8 @@ subroutine mysort(in, values,n,lda,out)
   complex*16,allocatable :: newvals(:)
 
   allocate(taken(lda), order(lda),newvals(lda))
-
+  taken=0; order=0; newvals=0
+  
   taken=0;  order=-1
   do j=1,n
      whichlowest=-1; flag=0;     lowval=1.d+30  !! is not used (see flag)
@@ -136,10 +137,12 @@ subroutine get_eigen_c0(inmat, n, lda, outmat,values)
   integer :: info, lwork
   character*1 :: jobvl="V", jobvr="V"
 
-  allocate(vr(lda,n),vl(lda,n),tempmat(lda,n),work(5*lda),rwork(5*lda))
+  lwork=10*lda;
+  allocate(vr(lda,n),vl(lda,n),tempmat(lda,n),work(lwork),rwork(2*lda))
   vr=0; vl=0; tempmat=0; work=0; rwork=0
 
-  lwork=5*lda;  tempmat(1:n,1:n)=inmat(1:n,1:n)
+  
+  tempmat(1:n,1:n)=inmat(1:n,1:n)
 
   call zgeev( jobvl, jobvr, n, tempmat, lda, values, vl,lda,vr,lda,&
        work, lwork, rwork, info)

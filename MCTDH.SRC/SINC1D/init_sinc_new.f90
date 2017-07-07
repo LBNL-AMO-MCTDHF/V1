@@ -189,7 +189,10 @@ subroutine init_spfs(inspfs,numloaded,numfrozen,frozenreduced)
   integer, intent(in) :: numloaded,numfrozen
   DATATYPE,intent(in) :: frozenreduced(totpoints)
   DATATYPE,allocatable :: lanspfs(:,:),density(:)
-  DATAECS,allocatable :: energies(:), mybigspfham(:,:), bigvects(:,:), bigenergies(:)
+  DATAECS,allocatable :: energies(:)
+  !$$
+  DATAECS,allocatable :: mybigspfham(:,:), bigvects(:,:), bigenergies(:)
+  !! AUTOMATIC ::  DATAECS :: mybigspfham(totpoints,totpoints), bigvects(totpoints,totpoints), bigenergies(totpoints)
   integer :: ibig,iorder,ispf,ppfac,ii,jj,kk,olist(numspf),flag
   integer :: null1,null2,null3,null4,null10(10),numcompute
 
@@ -282,22 +285,25 @@ subroutine init_spfs(inspfs,numloaded,numfrozen,frozenreduced)
      OFLWR "CALL BLOCK LAN FOR ORBS, ",numcompute," VECTORS",orbparflag; CFL
      call blocklanczos0(1,numcompute,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,&
           energies,1,0,orblancheckmod,orblanthresh,mult_bigspf,orbparflag,orbtargetflag,orbtarget)
+     OFLWR "BLOCKLAN CALLED. ENERGIES: ";CFL
   else
      OFLWR "Exact Diagonalization with vector size ",totpoints; CFL
+     !$$
      allocate(mybigspfham(totpoints,totpoints),bigvects(totpoints,totpoints), &
           bigenergies(totpoints))
-     mybigspfham(:,:) = bigspfham()
-     bigvects=0
+     call getbigspfham(mybigspfham(:,:))
+     bigvects=0; bigenergies=0
      call ECSEIG(mybigspfham,ibig,ibig,bigvects,bigenergies)
      lanspfs(:,:) = bigvects(:,1:numcompute)
      energies(:) = bigenergies(1:numcompute)
+     !$$
      deallocate(mybigspfham,bigvects,bigenergies)
+     OFLWR "DIRECT DIAG CALLED. ENERGIES: ";CFL
   endif
   if (ivoflag.ne.0) then
      deallocate(ivopot,ivo_occupied)
   endif
   
-  OFLWR "BL CALLED. ENERGIES: ";CFL
   do ispf=1,numcompute
      OFLWR ispf,energies(ispf); CFL
   enddo
@@ -401,28 +407,26 @@ contains
     endif
   end subroutine mult_bigspf
 
-  function bigspfham()
+  subroutine getbigspfham(bigspfham)
     use myparams
     use myprojectmod
     use orbmultsubmod   !! IN PARENT DIRECTORY
     implicit none
-    DATAECS :: bigspfham(totpoints,totpoints)
-    DATAECS :: tempbigham(totpoints,totpoints) !! AUTOMATIC
-    DATATYPE :: temppot(totpoints) , pot(totpoints)
+    DATAECS,intent(out) :: bigspfham(totpoints,totpoints)
+    DATATYPE :: temppot(totpoints) , pot(totpoints)  !! AUTOMATIC
     integer :: ii
     
-    tempbigham = 0; temppot=0; pot=0
+    bigspfham = 0; temppot=0; pot=0
 
     temppot = 1;
     call mult_pot(1,temppot(:),pot(:))
     
-    tempbigham(:,:) = RESHAPE(ketot%mat(:,:,:,:),(/totpoints,totpoints/));
+    bigspfham(:,:) = RESHAPE(ketot%mat(:,:,:,:),(/totpoints,totpoints/));
     do ii=1,totpoints
-       tempbigham(ii,ii) = tempbigham(ii,ii) + pot(ii)
+       bigspfham(ii,ii) = bigspfham(ii,ii) + pot(ii)
     enddo
-    bigspfham(:,:) = tempbigham(:,:)
     
-  end function bigspfham
+  end subroutine getbigspfham
 
 end subroutine init_spfs
 
@@ -628,7 +632,6 @@ contains
   subroutine addit(inoutmat)
     use myparams
     use pfileptrmod
-    use onedfunmod
     implicit none
     DATATYPE,intent(inout) :: inoutmat(totpoints,totpoints)
     real*8, allocatable :: pproj(:,:), pproj2(:,:), myarray(:), allarray(:)

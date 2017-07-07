@@ -11,19 +11,30 @@ implicit none
 
 real*8  :: twostrength=1d0   !!  2-electron interaction coef.
 real*8  :: nucstrength=1d0   !!  2-nuclei interaction coef.
-                             !!  Two-particle interaction:
-integer :: twotype = 1       !!  1 = potential interaction  0 = constant interaction
-integer :: twomode = 0       !!  If potential: 0 = sech^2 potential  1 = soft coulomb
+integer :: twotype = 1       !!  Two-particle interaction:
+                             !!    1 = potential interaction  0 = constant interaction
+integer :: twomode = 0       !!  One and (if twotype=1) two particle interaction:
+!                            !!    0 = sech^2 potential  1 = soft coulomb
 integer :: coulmode = 0      !!  For soft coulomb: option for treatment of even parity
-!                            !!  0: integer quantum numbers 1: half-integer
-integer :: sechmode = 1      !!  For sechsq: 0: correct hydrogenic united atom limit
-!                            !!  (charges are scaled on approach) 1: simple mode,
-!                            !!  sechsq potentials are not scaled, simply sum
+!                            !!    0: integer quantum numbers 1: half-integer
+real*8 :: softness=1d0       !!  scale parameter for sech and softening param for coulomb
+                             !!    softcoul = 1/sqrt(x^2+softness^2)
+! For twomode = 0 : sech-squared 1d model for atoms
+integer :: sechmode = 1      !!  0:  n=0 "s" energy is correct
+!                            !!      softness determines range of potential.
+!                            !!      electron-nucleus potentials simply add
+!                            !!  1:  orbital energies n = 0 and 1 ("s" and "p") are
+!                            !!      correct; softness variable not used
+integer :: combinesech = 1   !!  Add potentials to get united atom limit correct
+integer :: nucmode = 0       !!  For sech-squared: 0=physically motivated repulsion
+!                            !!  1=ad hoc repulsion to set R=0 energy for hypothetical
+!                            !!      noninteracting boson problem, all electrons in
+!                            !!      lowest orbital equal to asymptote energy
+integer :: nucrangefac = 1d0 !! For nucmode=1, ad hoc, 
+! Nuclei
 integer :: numcenters=1
 integer :: centershift(100)=0       !! grid point index for each center
 real*8 :: nuccharges(100)=2d0       !! nuclear charges
-real*8 :: softness=1d0              !! scale parameter for sech and softening param for coulomb
-                                    !!  softcoul = 1/sqrt(x^2+softness^2)
 
 !! BASIS PARAMS
 
