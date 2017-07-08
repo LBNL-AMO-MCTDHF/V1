@@ -1,3 +1,7 @@
+
+#include "Definitions.INC"
+
+
 MODULE TOOTH
 IMPLICIT NONE
 
@@ -5,8 +9,9 @@ CONTAINS
 
 !--------------------------------------------------------------------------------------
 
-SUBROUTINE GETINVERSE(TINVOUT,N,NBIG,NSMALL,DELTA)
-
+RECURSIVE SUBROUTINE GETINVERSE(TINVOUT,N,NBIG,NSMALL,DELTA)
+  USE pfileptrmod
+  IMPLICIT NONE
 ! COMPUTES TINV, THE INVERSE OF T, ON THE BIG GRID
 ! EACH DIMENSION OF TINV IS INDEXED FROM -NBIG TO NBIG
 ! LIKEWISE FOR THE SMALL GRID
@@ -14,36 +19,37 @@ SUBROUTINE GETINVERSE(TINVOUT,N,NBIG,NSMALL,DELTA)
 INTEGER, INTENT(IN) :: N, NBIG, NSMALL
 REAL *8, INTENT(IN) :: DELTA
 REAL *8, INTENT(OUT) :: TINVOUT(-N:N,-N:N,-N:N)
-REAL *8 :: PI
+REAL *8 :: PI, MYCON
 REAL *8, ALLOCATABLE :: WORK(:), W(:,:), WT(:,:), E(:), EIGS(:,:,:), QQ(:,:,:),&
      TINV(:,:,:),TR(:,:,:),Q(:,:,:),T(:,:)
 INTEGER :: I, J, K, INFO, LWORK, NS
+
+OFLWR "        ..allocating for getinverse"; CFL
 
 allocate(TINV(-NBIG:NBIG,-NBIG:NBIG,-NBIG:NBIG), TR(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL),&
      Q(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL), T(-NSMALL:NSMALL,-NSMALL:NSMALL))
 TINV=0; TR=0; Q=0; T=0
 
-! COMPUTE RHS = 2*PI - T*R
-! STORE R IN TINV
+OFLWR "      ..ok allocated"; CFL
+
+! COMPUTE RHS = 2*PI - T*R;    STORE R IN TINV
 
 PI = 4D0*ATAN(1D0)
+MYCON = (PI/DELTA)**2/6D0
 
+OFLWR "        ..calling rvector"; CFL
 CALL RVECTOR(TINV,TR,NBIG,NSMALL,DELTA)
+OFLWR "        ..called rvector"; CFL
 
 TR(0,0,0) = TR(0,0,0) + 2*PI
 
 ! FILL IN ENTRIES OF T_SMALL
 
 DO J = -NSMALL,NSMALL
-DO I = -NSMALL,NSMALL
-
-   IF(I == J) THEN
-   T(I,J) = (PI/DELTA)**2/6D0
-   ELSE
-   T(I,J) = (-1D0)**(I-J)/(DELTA**2*(I-J)**2)
-   END IF
-
-END DO
+   DO I = -NSMALL,NSMALL
+      T(I,J) = (-1D0)**(I-J)/(DELTA**2*(I-J)**2)
+   END DO
+   T(J,J) = MYCON
 END DO
 
 ! SOLVE T*Q = 2*PI - T*R FOR Q
@@ -52,24 +58,27 @@ NS = 2*NSMALL+1
 LWORK = 6*NS
 ALLOCATE(WORK(LWORK),W(NS,NS),WT(NS,NS),E(NS))
 ALLOCATE(EIGS(NS,NS,NS),QQ(NS,NS,NS))
+WORK=0; W=0; WT=0; E=0; EIGS=0; QQ=0
 
 W = T
 CALL DSYEV('V','U',NS,W,NS,E,WORK,LWORK,INFO)
-WT = TRANSPOSE(W)
+IF (INFO.NE.0) THEN
+   OFLWR "ERROR DSYEV GETINVERSE"; CFLST
+ENDIF
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(J,K)
-!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
 DO K = 1,NS
 DO J = 1,NS
    EIGS(:,J,K) = E(:) + E(J) + E(K)
 END DO
 END DO
-!$OMP END DO
-!$OMP END PARALLEL
 
+OFLWR "        ..calling eigmult"; CFL
+WT = TRANSPOSE(W)
 CALL TOOTHEIGMULT(TR,QQ,WT,NS)
 QQ = QQ/EIGS
 CALL TOOTHEIGMULT(QQ,Q,W,NS)
+
+OFLWR "        ..called eigmult"; CFL
 
 TINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL) = &
      TINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL) + &
@@ -81,14 +90,15 @@ TINVOUT(:,:,:)=TINV(-N:N,-N:N,-N:N)
 
 deallocate(TINV,TR,Q,T)
 
-END SUBROUTINE GETINVERSE
+OFLWR "        ..done getinverse"; CFL
+
+RETURN
 
 !--------------------------------------------------------------------------------------
 
-!--------------------------------------------------------------------------------------
-
-SUBROUTINE RVECTOR(R,TR,NBIG,NSMALL,DELTA)
-
+CONTAINS
+RECURSIVE SUBROUTINE RVECTOR(R,TR,NBIG,NSMALL,DELTA)
+  IMPLICIT NONE
 ! COMPUTES THE VECTORS R(I,J,K) = 1/|R_{IJK}|
 ! AND TR = -T_{BIG}*R
 
@@ -96,259 +106,137 @@ SUBROUTINE RVECTOR(R,TR,NBIG,NSMALL,DELTA)
   REAL *8, INTENT(IN) :: DELTA
   REAL *8, INTENT(OUT) :: R(-NBIG:NBIG,-NBIG:NBIG,-NBIG:NBIG), &
        TR(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL)
-  INTEGER :: I,J,K,P
-  REAL *8 :: T1,T2,T3,RAD,DELTACUBED,AMOUNT,DELTASQUAREDINV
-  REAL *8 :: PI,X,Y,Z
-  
+  INTEGER :: I,J,K
+  REAL *8 :: PI,T1,T2,T3,DELTACUBED,DELTASQUAREDINV
+  REAL *8, ALLOCATABLE :: PPOS(:),       ALLTT(:), MYR(:,:,:)
+  INTEGER, ALLOCATABLE :: IPOS(:)
+
   if (NBIG.LE.NSMALL) THEN
      print *, "NBIG is less than nsmall.  error", nbig,nsmall
      call mpistop()
   endif
+
+  R=0; TR=0
   
   PI = 4D0*ATAN(1D0)
 
 ! COMPUTE R VECTOR
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(I,J,K,X,Y,Z,RAD,DELTACUBED)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(I,J,K,PPOS,IPOS,ALLTT,DELTACUBED,DELTASQUAREDINV,MYR)
+
+  ALLOCATE( PPOS(-NSMALL-NBIG:NSMALL+NBIG), ALLTT(-NSMALL-NBIG:NSMALL+NBIG), &
+       IPOS(-NSMALL-NBIG:NSMALL+NBIG), MYR(-NBIG:NBIG,-NBIG:NBIG,-NBIG:NBIG) )
+
+  PPOS=0; ALLTT=0; IPOS=0 
 
   DELTACUBED=DELTA**3
+  DO I = -NSMALL-NBIG,NSMALL+NBIG
+     IPOS(I) = I
+     PPOS(I) = I*DELTA
+  ENDDO
 
-!$OMP DO SCHEDULE(STATIC) COLLAPSE(3)
+!$OMP DO SCHEDULE(STATIC)
   DO K = -NBIG,NBIG
   DO J = -NBIG,NBIG
-  DO I = -NBIG,NBIG
-
-     X = I*DELTA; Y = J*DELTA; Z = K*DELTA 
-     RAD = SQRT(X**2 + Y**2 + Z**2)
-     IF(RAD == 0) THEN
-        R(I,J,K) = 0
-     ELSE
-        R(I,J,K) = DELTACUBED/RAD
-     END IF
-  END DO
+     R(:,J,K) = DELTACUBED/SQRT(PPOS(-NBIG:NBIG)**2 + PPOS(J)**2 + PPOS(K)**2)
   END DO
   END DO
 !$OMP END DO
-!$OMP END PARALLEL
+
+  R(0,0,0) = 0d0
+
+  MYR(:,:,:) = R(:,:,:);    !! LOCAL COPY...HMM
 
 ! COMPUTE TR VECTOR
 
-  TR(:,:,:) = 0
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(I,J,K,P,T1,T2,T3,AMOUNT,DELTASQUAREDINV) 
-  
-  AMOUNT=PI**2/(6D0*DELTA**2)
   DELTASQUAREDINV=1d0/DELTA**2
-  
-  DO P = -NBIG,NBIG
 
-!$OMP DO SCHEDULE(STATIC) COLLAPSE(3)
-     DO K = -NSMALL,NSMALL
-     DO J = -NSMALL,NSMALL
-     DO I = -NSMALL,NSMALL
+  ALLTT(:) = (-1)**(IPOS(:)) * DELTASQUAREDINV/(IPOS(:))**2
 
-        T1 = AMOUNT
-        T2 = T1
-        T3 = T1
-        
-        IF(I /= P) T1 = (-1D0)**(I-P)*DELTASQUAREDINV/(I-P)**2
-        IF(J /= P) T2 = (-1D0)**(J-P)*DELTASQUAREDINV/(J-P)**2
-        IF(K /= P) T3 = (-1D0)**(K-P)*DELTASQUAREDINV/(K-P)**2
-        
-        TR(I,J,K) = TR(I,J,K) - (T1*R(P,J,K) + T2*R(I,P,K)+ T3*R(I,J,P))
-        
-     END DO
-     END DO
-     END DO
-!$OMP END DO
+  ALLTT(0) = PI**2/(6D0*DELTA**2)
+
+!$OMP DO SCHEDULE(STATIC)
+  DO K = -NSMALL,NSMALL
+  DO J = -NSMALL,NSMALL
+  DO I = -NSMALL,NSMALL
+
+     TR(I,J,K) = (-1) * SUM( &
+          ALLTT(-NBIG-I:NBIG-I)*MYR(:,J,K) + &
+          ALLTT(-NBIG-J:NBIG-K)*MYR(I,:,K) + &
+          ALLTT(-NBIG-K:NBIG-K)*MYR(I,J,:))
+
+!     DO P = -NBIG,NBIG
+!        T1 = AMOUNT
+!        T2 = AMOUNT
+!        T3 = AMOUNT
+!        IF(I /= P) T1 = (-1D0)**(I-P)*DELTASQUAREDINV/(I-P)**2
+!        IF(J /= P) T2 = (-1D0)**(J-P)*DELTASQUAREDINV/(J-P)**2
+!        IF(K /= P) T3 = (-1D0)**(K-P)*DELTASQUAREDINV/(K-P)**2
+!        TR(I,J,K) = TR(I,J,K) - (T1*R(P,J,K) + T2*R(I,P,K)+ T3*R(I,J,P))
+!     END DO
+
   END DO
+  END DO
+  END DO
+!$OMP END DO
 
-!$OMP BARRIER
+  DEALLOCATE(ALLTT,PPOS,IPOS,MYR)
+
 !$OMP END PARALLEL
 
 END SUBROUTINE RVECTOR
 
-
-!!$ This never made sense
-!!$SUBROUTINE FVECTOR(TINV,FINV,NBIG,NSMALL,DELTA)
-!!$
-!!$  INTEGER, INTENT(IN) :: NBIG, NSMALL
-!!$  REAL *8, INTENT(IN) :: DELTA
-!!$  REAL *8, INTENT(IN) :: TINV(-NBIG:NBIG,-NBIG:NBIG,-NBIG:NBIG)
-!!$  REAL *8, INTENT(OUT) :: FINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL,3)
-!!$  INTEGER :: I,J,K,P
-!!$  REAL *8 :: T1,T2,T3,DELTAINV
-!!$
-!!$  if (NBIG.LE.NSMALL) THEN
-!!$     print *, "NBIG is less than nsmall.  error", nbig,nsmall
-!!$     call mpistop()
-!!$  endif
-!!$  
-!!$  FINV(:,:,:,:) = 0
-!!$
-!!$!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(I,J,K,P,T1,T2,T3,DELTAINV)
-!!$  
-!!$ 
-!!$  DELTAINV=1d0/DELTA
-!!$  
-!!$  DO P = -NBIG,NBIG
-!!$
-!!$!$OMP DO SCHEDULE(STATIC) COLLAPSE(3)
-!!$     DO K = -NSMALL,NSMALL
-!!$     DO J = -NSMALL,NSMALL
-!!$     DO I = -NSMALL,NSMALL
-!!$
-!!$        T1 = 0d0
-!!$        T2 = 0d0
-!!$        T3 = 0d0
-!!$        
-!!$        IF(I /= P) T1 = (-1D0)**(I-P)*DELTAINV/(I-P)
-!!$        IF(J /= P) T2 = (-1D0)**(J-P)*DELTAINV/(J-P)
-!!$        IF(K /= P) T3 = (-1D0)**(K-P)*DELTAINV/(K-P)
-!!$        
-!!$        FINV(I,J,K,1) = FINV(I,J,K,1) + T1*TINV(P,J,K)
-!!$        FINV(I,J,K,2) = FINV(I,J,K,2) + T2*TINV(I,P,K)
-!!$        FINV(I,J,K,3) = FINV(I,J,K,3) + T3*TINV(I,J,P)
-!!$        
-!!$     END DO
-!!$     END DO
-!!$     END DO
-!!$!$OMP END DO
-!!$  END DO
-!!$
-!!$!$OMP BARRIER
-!!$!$OMP END PARALLEL
-!!$
-!!$
-!!$END SUBROUTINE FVECTOR
-!!$
-!!$
-!!$
-!!$!--------------------------------------------------------------------------------------
-!!$
-!!$SUBROUTINE FVECTOR2(TINV,FINVOUT,FINVSQOUT,NBIG,NSMALL,DELTA)
-!!$
-!!$  INTEGER, INTENT(IN) :: NBIG, NSMALL
-!!$  REAL *8, INTENT(IN) :: DELTA
-!!$  REAL *8, INTENT(IN) :: TINV(-NBIG:NBIG,-NBIG:NBIG,-NBIG:NBIG)
-!!$  REAL *8, INTENT(OUT) :: FINVOUT(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL,3)
-!!$  REAL *8, INTENT(OUT) :: FINVSQOUT(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL,3)
-!!$  REAL *8 :: WORK(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL)
-!!$  REAL *8 :: FINV(-NBIG:NBIG,-NBIG:NBIG,-NBIG:NBIG,3)  !! AUTOMATIC
-!!$  INTEGER :: I,J,K,P,myrank,nprocs
-!!$  REAL *8 :: T1,T2,T3,DELTAINV
-!!$  REAL*8 :: aaa,bbb,ccc
-!!$
-!!$  if (NBIG.LE.NSMALL) THEN
-!!$     print *, "NBIG is less than nsmall.  error", nbig,nsmall
-!!$     call mpistop()
-!!$  endif
-!!$  
-!!$  FINV(:,:,:,:) = 0
-!!$
-!!$!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(I,J,K,P,T1,T2,T3,DELTAINV)
-!!$  
-!!$  DELTAINV=1d0/DELTA
-!!$  
-!!$  DO P = -NBIG,NBIG
-!!$
-!!$!$OMP DO SCHEDULE(STATIC) COLLAPSE(3)
-!!$     DO K = -NBIG,NBIG
-!!$     DO J = -NBIG,NBIG
-!!$     DO I = -NBIG,NBIG
-!!$
-!!$        T1 = 0d0
-!!$        T2 = 0d0
-!!$        T3 = 0d0
-!!$        
-!!$        IF(I /= P) T1 = (-1D0)**(I-P)*DELTAINV/(I-P)
-!!$        IF(J /= P) T2 = (-1D0)**(J-P)*DELTAINV/(J-P)
-!!$        IF(K /= P) T3 = (-1D0)**(K-P)*DELTAINV/(K-P)
-!!$        
-!!$        FINV(I,J,K,1) = FINV(I,J,K,1) + T1*TINV(P,J,K)
-!!$        FINV(I,J,K,2) = FINV(I,J,K,2) + T2*TINV(I,P,K)
-!!$        FINV(I,J,K,3) = FINV(I,J,K,3) + T3*TINV(I,J,P)
-!!$        
-!!$     END DO
-!!$     END DO
-!!$     END DO
-!!$!$OMP END DO
-!!$  END DO
-!!$
-!!$!$OMP BARRIER
-!!$!$OMP END PARALLEL
-!!$
-!!$  CALL CONVOLVE_3D(FINV,FINV,FINVSQOUT,NBIG,NSMALL,3)
-!!$
-!!$  FINVOUT(:,:,:,:)=FINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL,:)
-!!$
-!!$  call getmyranknprocs(myrank,nprocs)
-!!$  if (myrank.eq.1) then
-!!$     print *, "CHECKING FVECTOR2."
-!!$     WORK(:,:,:) = FINVSQOUT(:,:,:,1)+FINVSQOUT(:,:,:,1)+FINVSQOUT(:,:,:,3)
-!!$
-!!$     aaa= DOT_PRODUCT(RESHAPE(WORK(:,:,:),(/(2*nsmall+1)**3/)),&
-!!$          RESHAPE(WORK(:,:,:),(/(2*nsmall+1)**3/)))
-!!$     bbb= DOT_PRODUCT(RESHAPE(TINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL),(/(2*nsmall+1)**3/)),&
-!!$          RESHAPE(TINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL),(/(2*nsmall+1)**3/)))
-!!$     ccc= DOT_PRODUCT(RESHAPE(TINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL),(/(2*nsmall+1)**3/)),&
-!!$          RESHAPE(WORK(:,:,:),(/(2*nsmall+1)**3/)))
-!!$     print *, aaa,bbb,ccc,aaa*bbb/ccc/ccc
-!!$     print *, "TEMPSTOP."
-!!$  endif
-!!$  call mpibarrier(); call mpistop()
-!!$
-!!$END SUBROUTINE FVECTOR2
-!!$
-
-
 !--------------------------------------------------------------------------------------
 
-SUBROUTINE TOOTHEIGMULT(X,Y,W,NN)
-
+RECURSIVE SUBROUTINE TOOTHEIGMULT(X,Y,W,NN)
+IMPLICIT NONE
 INTEGER, INTENT(IN) :: NN
 REAL *8, INTENT(IN) :: X(1:NN,1:NN,1:NN), W(1:NN,1:NN)
 REAL *8, INTENT(OUT) :: Y(1:NN,1:NN,1:NN)
 REAL *8,allocatable :: X1(:,:,:), X2(:,:,:)
+REAL *8 :: MYW(1:NN,1:NN)                   !! AUTOMATIC
 INTEGER :: I,J,K
 
 allocate(X1(1:NN,1:NN,1:NN), X2(1:NN,1:NN,1:NN))
 X1=0; X2=0
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(I,J,K)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(I,J,K,MYW)
 
-!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
+MYW(:,:) = W(:,:)
+
 DO J = 1,NN
 DO I = 1,NN
-X1(I,J,:) = MATMUL(W,X(I,J,:))
+X1(I,J,:) = MATMUL(MYW,X(I,J,:))
 END DO
 END DO
-!$OMP END DO
-!$OMP BARRIER
-!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
+!$OMP DO SCHEDULE(STATIC)
 DO K = 1,NN
 DO I = 1,NN
-X2(I,:,K) = MATMUL(W,X1(I,:,K))
+X2(I,:,K) = MATMUL(MYW,X1(I,:,K))
 END DO
 END DO
 !$OMP END DO
-!$OMP BARRIER
-!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
+!$OMP DO SCHEDULE(STATIC)
 DO K = 1,NN
 DO J = 1,NN
-Y(:,J,K) = MATMUL(W,X2(:,J,K))
+Y(:,J,K) = MATMUL(MYW,X2(:,J,K))
 END DO
 END DO
 !$OMP END DO
+
 !$OMP END PARALLEL
 
 deallocate(X1,X2)
 
 END SUBROUTINE TOOTHEIGMULT
 
+END SUBROUTINE GETINVERSE
+
 !--------------------------------------------------------------------------------------
 
-SUBROUTINE FOURIER_INVERSE(TINV,NB)
+!--------------------------------------------------------------------------------------
+
+SUBROUTINE xFOURIER_INVERSE(TINV,NB)
 
 INTEGER, INTENT(IN) :: NB
 REAL *8, INTENT(OUT) :: TINV(-NB:NB,-NB:NB,-NB:NB)
@@ -387,7 +275,7 @@ TINV = 2D0*PI*DREAL(X)
 
 deallocate( X,Y,T )
 
-END SUBROUTINE FOURIER_INVERSE
+CONTAINS
 
 ! ---------------------------------------------------------------
 
@@ -497,7 +385,10 @@ END DO
 
 END SUBROUTINE IDFT3
 
+END SUBROUTINE xFOURIER_INVERSE
+
 ! ---------------------------------------------------------------
+
 END MODULE TOOTH
 
 
@@ -725,4 +616,137 @@ END MODULE TOOTH
 !!$END SUBROUTINE KETOOTHCLUSTER
 
 
+
+
+!!$ This never made sense
+!!$SUBROUTINE FVECTOR(TINV,FINV,NBIG,NSMALL,DELTA)
+!!$
+!!$  INTEGER, INTENT(IN) :: NBIG, NSMALL
+!!$  REAL *8, INTENT(IN) :: DELTA
+!!$  REAL *8, INTENT(IN) :: TINV(-NBIG:NBIG,-NBIG:NBIG,-NBIG:NBIG)
+!!$  REAL *8, INTENT(OUT) :: FINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL,3)
+!!$  INTEGER :: I,J,K,P
+!!$  REAL *8 :: T1,T2,T3,DELTAINV
+!!$
+!!$  if (NBIG.LE.NSMALL) THEN
+!!$     print *, "NBIG is less than nsmall.  error", nbig,nsmall
+!!$     call mpistop()
+!!$  endif
+!!$  
+!!$  FINV(:,:,:,:) = 0
+!!$
+!!$!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(I,J,K,P,T1,T2,T3,DELTAINV)
+!!$  
+!!$ 
+!!$  DELTAINV=1d0/DELTA
+!!$  
+!!$  DO P = -NBIG,NBIG
+!!$
+!!$!$OMP DO SCHEDULE(STATIC) COLLAPSE(3)
+!!$     DO K = -NSMALL,NSMALL
+!!$     DO J = -NSMALL,NSMALL
+!!$     DO I = -NSMALL,NSMALL
+!!$
+!!$        T1 = 0d0
+!!$        T2 = 0d0
+!!$        T3 = 0d0
+!!$        
+!!$        IF(I /= P) T1 = (-1D0)**(I-P)*DELTAINV/(I-P)
+!!$        IF(J /= P) T2 = (-1D0)**(J-P)*DELTAINV/(J-P)
+!!$        IF(K /= P) T3 = (-1D0)**(K-P)*DELTAINV/(K-P)
+!!$        
+!!$        FINV(I,J,K,1) = FINV(I,J,K,1) + T1*TINV(P,J,K)
+!!$        FINV(I,J,K,2) = FINV(I,J,K,2) + T2*TINV(I,P,K)
+!!$        FINV(I,J,K,3) = FINV(I,J,K,3) + T3*TINV(I,J,P)
+!!$        
+!!$     END DO
+!!$     END DO
+!!$     END DO
+!!$!$OMP END DO
+!!$  END DO
+!!$
+!!$!$OMP BARRIER
+!!$!$OMP END PARALLEL
+!!$
+!!$
+!!$END SUBROUTINE FVECTOR
+!!$
+!!$
+!!$
+!!$!--------------------------------------------------------------------------------------
+!!$
+!!$SUBROUTINE FVECTOR2(TINV,FINVOUT,FINVSQOUT,NBIG,NSMALL,DELTA)
+!!$
+!!$  INTEGER, INTENT(IN) :: NBIG, NSMALL
+!!$  REAL *8, INTENT(IN) :: DELTA
+!!$  REAL *8, INTENT(IN) :: TINV(-NBIG:NBIG,-NBIG:NBIG,-NBIG:NBIG)
+!!$  REAL *8, INTENT(OUT) :: FINVOUT(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL,3)
+!!$  REAL *8, INTENT(OUT) :: FINVSQOUT(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL,3)
+!!$  REAL *8 :: WORK(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL)
+!!$  REAL *8 :: FINV(-NBIG:NBIG,-NBIG:NBIG,-NBIG:NBIG,3)  !! AUTOMATIC
+!!$  INTEGER :: I,J,K,P,myrank,nprocs
+!!$  REAL *8 :: T1,T2,T3,DELTAINV
+!!$  REAL*8 :: aaa,bbb,ccc
+!!$
+!!$  if (NBIG.LE.NSMALL) THEN
+!!$     print *, "NBIG is less than nsmall.  error", nbig,nsmall
+!!$     call mpistop()
+!!$  endif
+!!$  
+!!$  FINV(:,:,:,:) = 0
+!!$
+!!$!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(I,J,K,P,T1,T2,T3,DELTAINV)
+!!$  
+!!$  DELTAINV=1d0/DELTA
+!!$  
+!!$  DO P = -NBIG,NBIG
+!!$
+!!$!$OMP DO SCHEDULE(STATIC) COLLAPSE(3)
+!!$     DO K = -NBIG,NBIG
+!!$     DO J = -NBIG,NBIG
+!!$     DO I = -NBIG,NBIG
+!!$
+!!$        T1 = 0d0
+!!$        T2 = 0d0
+!!$        T3 = 0d0
+!!$        
+!!$        IF(I /= P) T1 = (-1D0)**(I-P)*DELTAINV/(I-P)
+!!$        IF(J /= P) T2 = (-1D0)**(J-P)*DELTAINV/(J-P)
+!!$        IF(K /= P) T3 = (-1D0)**(K-P)*DELTAINV/(K-P)
+!!$        
+!!$        FINV(I,J,K,1) = FINV(I,J,K,1) + T1*TINV(P,J,K)
+!!$        FINV(I,J,K,2) = FINV(I,J,K,2) + T2*TINV(I,P,K)
+!!$        FINV(I,J,K,3) = FINV(I,J,K,3) + T3*TINV(I,J,P)
+!!$        
+!!$     END DO
+!!$     END DO
+!!$     END DO
+!!$!$OMP END DO
+!!$  END DO
+!!$
+!!$!$OMP BARRIER
+!!$!$OMP END PARALLEL
+!!$
+!!$  CALL CONVOLVE_3D(FINV,FINV,FINVSQOUT,NBIG,NSMALL,3)
+!!$
+!!$  FINVOUT(:,:,:,:)=FINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL,:)
+!!$
+!!$  call getmyranknprocs(myrank,nprocs)
+!!$  if (myrank.eq.1) then
+!!$     print *, "CHECKING FVECTOR2."
+!!$     WORK(:,:,:) = FINVSQOUT(:,:,:,1)+FINVSQOUT(:,:,:,1)+FINVSQOUT(:,:,:,3)
+!!$
+!!$     aaa= DOT_PRODUCT(RESHAPE(WORK(:,:,:),(/(2*nsmall+1)**3/)),&
+!!$          RESHAPE(WORK(:,:,:),(/(2*nsmall+1)**3/)))
+!!$     bbb= DOT_PRODUCT(RESHAPE(TINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL),(/(2*nsmall+1)**3/)),&
+!!$          RESHAPE(TINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL),(/(2*nsmall+1)**3/)))
+!!$     ccc= DOT_PRODUCT(RESHAPE(TINV(-NSMALL:NSMALL,-NSMALL:NSMALL,-NSMALL:NSMALL),(/(2*nsmall+1)**3/)),&
+!!$          RESHAPE(WORK(:,:,:),(/(2*nsmall+1)**3/)))
+!!$     print *, aaa,bbb,ccc,aaa*bbb/ccc/ccc
+!!$     print *, "TEMPSTOP."
+!!$  endif
+!!$  call mpibarrier(); call mpistop()
+!!$
+!!$END SUBROUTINE FVECTOR2
+!!$
 

@@ -249,6 +249,10 @@ subroutine getparams()
         read(buffer(10:len),*,iostat=myiostat) notiming
         write(mpifileptr, *) "notiming variable set to ",notiming," by command line input."
      endif
+     if (buffer(1:10) .eq. 'TimingDir=') then
+        read(buffer(11:len),*,iostat=myiostat) timingdir
+        write(mpifileptr, *) "timing directory set to ",timingdir," by command line input."
+     endif
      if (buffer(1:7) .eq. 'Timing=') then
         read(buffer(8:len),*,iostat=myiostat) j
         notiming=2-j

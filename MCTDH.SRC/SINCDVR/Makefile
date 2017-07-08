@@ -48,8 +48,8 @@ cooleytukey_mpi.o: $(DEPEND) cooleytukey_mpi.F90 ftcore.o ../MPI.o
 #runtooth.o: $(DEPEND) sinc_params.o sincproject.o tooth.o runtooth.F90
 #	$(F90) $(FFLAGS)  -c runtooth.F90 
 
-tooth.o: $(DEPEND) tooth.f90
-	$(F90) $(FFLAGS) $(MPIFLAG) -c tooth.f90 
+tooth.o: $(DEPEND) tooth.F90
+	$(F90) $(FFLAGS) $(MPIFLAG) -c tooth.F90 
 
 sincproject.o: $(DEPEND) sincproject.F90 sinc_params.o tooth.o ../MPI.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -I.. -c sincproject.F90
