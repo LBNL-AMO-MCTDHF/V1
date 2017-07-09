@@ -1,0 +1,25 @@
+  
+MPIFLAG = 
+FFTFLAG =
+PGFFLAG = 
+
+ARGO=arg.o
+
+AR=ar
+CC = icc
+FC = ifort
+F90 = ifort
+
+LAPACK = -lblas -llapack  
+
+LOADFLAGS = 
+
+MYINCLUDE=.
+	
+#FFLAGS = -O2  -I${MKLROOT}/include/intel64/lp64 -I${MKLROOT}/include
+#F77FLAGS = -O2 -I${MKLROOT}/include/intel64/lp64 -I${MKLROOT}/include
+#-opt-matmul
+FFLAGS = -O3 -mkl -r8 -std03 -xHost  
+##F77FLAGS = -O3 -xHost 
+
+
