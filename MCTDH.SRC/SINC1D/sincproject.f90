@@ -118,8 +118,10 @@ contains
 
     if (twomode==0) then
        onedfun = sechsq(inarray,num,incharge1,incharge2)
-    else
+    elseif (twomode==1) then
        onedfun = softcoul(inarray,num,incharge1,incharge2)
+    else
+       onedfun = linearfun(inarray,num,incharge1,incharge2)
     endif
     
   end function onedfun
@@ -185,7 +187,23 @@ contains
     softcoul(:) = xp / sqrt(softness**2 + inarray**2)
       
   end function softcoul
-  
+
+    function linearfun(inarray,num,incharge1,incharge2)
+    use myparams
+    use pfileptrmod
+    implicit none
+    integer,intent(in) :: num
+    DATATYPE,intent(in) :: inarray(num)
+    real*8, intent(in) :: incharge1, incharge2
+    real*8 :: xp
+    DATATYPE :: linearfun(num)
+      
+    xp = incharge1*incharge2;
+
+    linearfun(:) = (-0.5) * xp * (sqrt(inarray(:)**2 + softness**2) - softness)
+      
+  end function linearfun
+
   !! returns positive number
   function elecpot(inarray, insize, incharge, iskipcenter)
     use myparams
@@ -200,7 +218,8 @@ contains
     
     pot(:)=0;    pot2(:)=0;   potA(:)=0
     
-    if (twomode.ne.0.or.combinesech.eq.0) then    !! coulomb, twomode.ne.0 or sechmode.eq.0, old version
+    if (twomode.ne.0.or.combinesech.eq.0) then
+       !! coulomb or linear, twomode.ne.0 or sechmode.eq.0, old version
 
        do icenter=1,numcenters
           if (icenter.ne.iskipcenter) then

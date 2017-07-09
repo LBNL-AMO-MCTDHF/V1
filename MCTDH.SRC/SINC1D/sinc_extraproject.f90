@@ -143,7 +143,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   do i=1,numcenters
      sumcharge=sumcharge+nuccharges(i)
      if (nucmode.eq.0.or.twomode.ne.0) then  !! physically motivated internuclear repulsion
-        !!                                   !! always for coulomb, nucmode sets choice for sech
+        !!                                   !! always for coulomb or linear, nucmode sets choice for sech
 
         if (twomode.ne.0.or.combinesech.eq.0) then  !! coulomb or old version sech
         
@@ -286,8 +286,10 @@ subroutine printmyopts()
   endif
   if (twomode.eq.0) then
      WRFL "sech^2 potential, twomode==0"
+  elseif (twomode.eq.1) then
+     WRFL "soft coulomb potential, twomode==1"
   else
-     WRFL "soft coulomb potential, twomode.ne.0"
+     WRFL "linear potential"
   endif
   WRFL "********  OTHER PARAMS ********** "
   WRFL "orblanorder,orblanthresh",orblanorder,orblanthresh

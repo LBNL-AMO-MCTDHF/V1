@@ -14,7 +14,7 @@ real*8  :: nucstrength=1d0   !!  2-nuclei interaction coef.
 integer :: twotype = 1       !!  Two-particle interaction:
                              !!    1 = potential interaction  0 = constant interaction
 integer :: twomode = 0       !!  One and (if twotype=1) two particle interaction:
-!                            !!    0 = sech^2 potential  1 = soft coulomb
+!                            !!    0 = sech^2 potential  1 = soft coulomb  2 = linear
 integer :: coulmode = 0      !!  For soft coulomb: option for treatment of even parity
 !                            !!    0: integer quantum numbers 1: half-integer
 real*8 :: softness=1d0       !!  scale parameter for sech and softening param for coulomb

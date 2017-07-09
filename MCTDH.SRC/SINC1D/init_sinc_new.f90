@@ -508,7 +508,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
            enddo
         enddo
      enddo
-     if (twomode.ne.0) then  !! soft coulomb fix
+     if (twomode.eq.1) then  !! soft coulomb fix
         if (numpoints.ne.totpoints) then
            OFLWR "Error, bad points",numpoints,totpoints; CFLST
         endif
@@ -637,6 +637,10 @@ contains
     real*8, allocatable :: pproj(:,:), pproj2(:,:), myarray(:), allarray(:)
     integer :: ii, ihalf, ibot, itop, icenter
     real*8 :: dcenter
+
+    if (twomode.ne.1) then
+       OFLWR "error, addit called when twomode.ne.1: ", twomode; CFLST
+    endif
     
     allocate(pproj(totpoints,totpoints), pproj2(totpoints,totpoints), &
          myarray(totpoints), allarray(totpoints))
