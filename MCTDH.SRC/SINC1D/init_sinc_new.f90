@@ -508,7 +508,10 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
            enddo
         enddo
      enddo
-     if (twomode.eq.1) then  !! soft coulomb fix
+
+     !! (e.g. coulmode = -1 disables centrifugal)
+     !!
+     if (twomode .eq. 1 .and. coulmode > -1) then  !! soft coulomb fix
         if (numpoints.ne.totpoints) then
            OFLWR "Error, bad points",numpoints,totpoints; CFLST
         endif
@@ -518,7 +521,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         OFLWR "ADDING CENTRIFUGAL"; CFL
         call addit(ketot%mat)    !!! not ketot%tam, can't use ketot%tam
         ketot%tam = 0
-     endif
+     endif  !! two coulmode >=0  
   endif
 
   th=(/ "st", "nd", "rd", "th" /)
@@ -638,6 +641,10 @@ contains
     integer :: ii, ihalf, ibot, itop, icenter
     real*8 :: dcenter
 
+    if (coulmode<0) then
+       OFLWR "error, addit called when coulmode<0, programmer fail"; CFLST
+    endif
+    
     if (twomode.ne.1) then
        OFLWR "error, addit called when twomode.ne.1: ", twomode; CFLST
     endif
@@ -682,7 +689,7 @@ contains
        inoutmat = inoutmat + MATMUL( pproj2, pproj )
        
     enddo
-    
+
     deallocate(myarray,pproj,pproj2,allarray)
     
   end subroutine addit

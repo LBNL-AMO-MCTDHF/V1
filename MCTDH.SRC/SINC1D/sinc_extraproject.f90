@@ -280,14 +280,25 @@ subroutine printmyopts()
   WRFL "nucstrength", nucstrength
   if (twotype.eq.0) then
      WRFL "constant two-body interaction, twotype==0"
+     WRFL "  SOFTNESS for one-body interactions", softness
   else
      WRFL "potential two-body interaction, twotype.ne.0"
-     WRFL "  softness", softness
+     WRFL "  SOFTNESS ", softness
   endif
   if (twomode.eq.0) then
      WRFL "sech^2 potential, twomode==0"
+     if(sechmode.eq.0) then
+        WRFL "   3d hydrogenic eigvals"
+     else
+        WRFL "   half-integer even parity"
+     endif
   elseif (twomode.eq.1) then
      WRFL "soft coulomb potential, twomode==1"
+     if (coulmode.eq.0) then
+        WRFL "   coulmode == 0 : centrifugal with hydrogenic eigvals"
+     elseif (coulmode.eq.1) then
+        WRFL "   coulmode == 1 : centrifugal with half integer even parity"
+     endif
   else
      WRFL "linear potential"
   endif

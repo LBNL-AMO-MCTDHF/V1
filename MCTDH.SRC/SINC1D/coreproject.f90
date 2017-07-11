@@ -1363,7 +1363,7 @@ contains
     integer :: atime,btime,getlen,ibox,jbox,deltabox,ii,totsize,myiostat
     integer, save :: xcount=0, times(10)=0
 
-    if (twomode.eq.1) then   !! coulomb, can't use this
+    if (twomode.eq.1 .and. coulmode > -1) then   !! coulomb with centrifugal, can't use this
        OFLWR "NO TWOMODE MULT CIRC"; CFLST
     endif
     
@@ -1464,7 +1464,7 @@ contains
     integer :: atime,btime,notiming,getlen,ibox,ii,totsize,myiostat
     integer, save :: xcount=0, times(10)=0
 
-    if (twomode.eq.1) then   !! coulomb, can't use this
+    if (twomode.eq.1 .and. coulmode > -1) then   !! coulomb with centrifugal, can't use this
        OFLWR "NO TWOMODE MULT SUMMA"; CFLST
     endif
     

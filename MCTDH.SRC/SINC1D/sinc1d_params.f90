@@ -15,8 +15,12 @@ integer :: twotype = 1       !!  Two-particle interaction:
                              !!    1 = potential interaction  0 = constant interaction
 integer :: twomode = 0       !!  One and (if twotype=1) two particle interaction:
 !                            !!    0 = sech^2 potential  1 = soft coulomb  2 = linear
-integer :: coulmode = 0      !!  For soft coulomb: option for treatment of even parity
-!                            !!    0: integer quantum numbers 1: half-integer
+integer :: coulmode = -1     !!  For soft coulomb: -1: plain ad-hoc softened coulomb with 
+!                            !!    unphysical even parity, softness determines groundstate
+!                            !!    0,1: 1d 3d atomic analog with nonlocal centrifugal
+!                            !!    potential even parity but molecular not figured out
+!                            !!    0: integer quantum numbers even parity (3d analog)
+!                            !!    1: half-integer
 real*8 :: softness=1d0       !!  scale parameter for sech and softening param for coulomb
                              !!    softcoul = 1/sqrt(x^2+softness^2)
 ! For twomode = 0 : sech-squared 1d model for atoms
