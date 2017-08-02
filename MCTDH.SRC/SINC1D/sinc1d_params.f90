@@ -23,6 +23,8 @@ integer :: coulmode = -1     !!  For soft coulomb: -1: plain ad-hoc softened cou
 !                            !!    1: half-integer
 real*8 :: softness=1d0       !!  scale parameter for sech and softening param for coulomb
                              !!    softcoul = 1/sqrt(x^2+softness^2)
+real*8 :: softnesstwoe=1d0,& !!  for coulmode = (-1), additional parameters for ee and nn
+     softnessnuc=1d0         !!
 ! For twomode = 0 : sech-squared 1d model for atoms
 integer :: sechmode = 1      !!  0:  n=0 "s" energy is correct
 !                            !!      softness determines range of potential.

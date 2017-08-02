@@ -23,7 +23,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   character (len=SLN) :: buffer
   character (len=SLN) :: nullbuff
   real*8, parameter :: pi = 3.14159265358979323844d0
-  real*8 :: zz, ss 
+  real*8 :: zz, ss , xfac
   DATATYPE ::  ns(1)
   DATATYPE, parameter :: czero(1)=0
   NAMELIST /sinc1dparinp/        numpoints,spacing,twostrength,nuccharges,orblanthresh, &
@@ -34,7 +34,8 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        scalingflag,scalingdistance,smoothness,scalingtheta,scalingstretch,&
        ivoflag, loadedocc, orbtargetflag,orbtarget,&
        toepflag,softness,twotype,harmstrength, twomode, nucstrength, &
-       eigmode, coulmode, sechmode, nucmode, combinesech, nucrangefac
+       eigmode, coulmode, sechmode, nucmode, combinesech, nucrangefac, &
+       softnesstwoe, softnessnuc
 
 #ifdef PGFFLAG
   integer :: myiargc
@@ -65,6 +66,8 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
      close(971)
 
 !! enforce defaults that depend on other variables
+     softnessnuc=softness
+     softnesstwoe=softness
 
      open(971,file=inpfile, status="old", iostat=myiostat)
      read(971,nml=sinc1dparinp)
@@ -149,9 +152,14 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
         
            !! straight sum of two-particle interactions just like electrons
            
+           xfac=1
+           if (twomode.eq.(-1)) then
+              xfac = softness/softnessnuc
+           endif
+
            do j=i+1,numcenters        
               ns(:) =  nuccharges(i) * &
-                   onedfun(spacing*DATAONE*(centershift(i:i)-centershift(j:j))/2,1,1d0,nuccharges(j))
+                   xfac*onedfun(xfac*spacing*DATAONE*(centershift(i:i)-centershift(j:j))/2,1,1d0,nuccharges(j))
               nucrepulsion = nucrepulsion + ns(1)
            enddo
         
@@ -284,6 +292,10 @@ subroutine printmyopts()
   else
      WRFL "potential two-body interaction, twotype.ne.0"
      WRFL "  SOFTNESS ", softness
+     if (twomode.eq.(-1)) then
+        WRFL "  for coulomb, internuclear softness ", softnessnuc
+        WRFL "  for coulomb, interelectronic softness ", softnesstwoe
+     endif
   endif
   if (twomode.eq.0) then
      WRFL "sech^2 potential, twomode==0"

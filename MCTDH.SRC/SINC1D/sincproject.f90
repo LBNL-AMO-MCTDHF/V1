@@ -270,6 +270,7 @@ subroutine get_twoe_new(pot)
   DATATYPE,intent(out) :: pot(totpoints)
   DATATYPE,allocatable :: myarray(:)
   integer :: ii,jj,pp,gridoffset,istart
+  real*8 :: xfac
   
   istart=1
   if (orbparflag.and.myrank.ne.1) then
@@ -297,8 +298,12 @@ subroutine get_twoe_new(pot)
         threed_two(0) = twostrength/spacing
      endif
   else
+     xfac=1;
+     if (twomode.eq.(-1)) then
+       xfac = softness/softnesstwoe
+     endif
      threed_two(istart-numpoints:numpoints-1) = twostrength * &
-          onedfun(myarray(:),2*numpoints-istart, 1d0, 1d0)
+          onedfun(xfac*myarray(:),2*numpoints-istart, 1d0, 1d0) * xfac
   endif
 
   deallocate(myarray); allocate(myarray(numpoints))
