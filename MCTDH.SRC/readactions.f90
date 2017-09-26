@@ -61,18 +61,20 @@ subroutine read_orb_initial(iwhich)
         call whatsub(jflag)
      enddo
      if (iwhich.ne.3) then
-        print *, "Enter ", labels(iwhich), " number.  Zero to change options.  Negative to stop."
+        print *, "Enter ", labels(iwhich), " number.  Zero to change options.  Negative number to stop."
         read(*,*) ispf
      else
-        print *, "Enter positive number to continue to plot.  Zero to change options.  Negative to stop."
-        read(*,*) jspf
+        print *, "Enter positive number to continue to plot.  Zero to change options.  Negative number to stop."
+        read(*,*) ispf
         ispf=1
      endif
+
 !     iprop=1
 !     if (numprop.gt.2) then
 !        print *, "Which calculation?  There are ", numprop," concurrent."
 !        read(*,*) iprop
 !     endif
+
      if (ispf<0) then
         print *, "OK! Done."
         iflag=0
@@ -80,19 +82,23 @@ subroutine read_orb_initial(iwhich)
         iallflag=0
         if (povplotflag/=1) then
            if (iwhich.ne.3) then
-              imvalue=spfmvals(ispf);              print *, "this one is ", imvalue
-              print *, "Enter m projection";              read(*,*) imvalue
+              if (spfrestrictflag.ne.0) then
+                 imvalue=spfmvals(ispf);              
+                 print *, "m-value of this orbital is ", imvalue
+              else
+                 print *, "Enter m projection of orbital to plot"
+                 read(*,*) imvalue
+              endif
            else
-              print *, "Enter m projection";              read(*,*) imvalue
+              print *, "Enter m projection of density to plot"
+              read(*,*) imvalue
            endif
         endif
+
         if (ispf>nspf) then
            print *, "Will do all!";           iallflag=1
-        else
-           if (ispf>nspf) then
-              print *, "Will do all!";              iallflag=1
-           endif
         endif
+
         if (iallflag==1) then
            do jspf=1,nspf
               if (spfrestrictflag==1) then
@@ -100,6 +106,7 @@ subroutine read_orb_initial(iwhich)
               endif
               print *, "imvalue is ", imvalue
               call read_orb(jspf,imvalue, 1, iwhich)
+
 !! somewhat kloogey... here hardwired for m-value third index
 !!              call read_orb(jspf,imvalue+(spfdims(3)+1)/2, 1, iwhich)
            enddo
@@ -227,6 +234,7 @@ subroutine read_orb(inspf,imvalue, iprop, iwhich)
      flag=0
      do while ( flag.eq.0 )
         call read_orbvector(returnval,ttempspf(:,:,:),spfsize,ifilenums(iwhich),ifilenames(iwhich),header)
+
         select case (iwhich)
         case (1)
            call read_nat_header(header,thistime,readprop,ispf,mydenval)
@@ -469,7 +477,13 @@ endif
         print *, "Plotted to file.  CAlling GNU!!!"
      endif
      sysline(1:100)=filex
-     write(sysline,'(A18,A20,A1)') "gnuplot -persist ",filename,"&";     call system(sysline)
+
+     !!     write(sysline,'(A18,A20,A1)') "gnuplot -persist ",filename,"&"
+     !!     call system(sysline)
+
+     write(sysline,'(A18,A20)') "gnuplot -persist ",filename
+     call system(sysline)
+
   endif
 
 end subroutine read_orb
@@ -714,6 +728,7 @@ subroutine whatsub(flag)
   character (len=2) :: inchar
 
   print *, "What should I do?"
+  print *, "         q = quit"
   print *, "         s = change plotskip (now ",plotskip,")"
   print *, "         n = change plotnum (now ",plotnum,")"
      
@@ -732,6 +747,8 @@ subroutine whatsub(flag)
   inchar="  ";  read(*,*) inchar
   if (povplotflag == 1) then
      select case (inchar(1:1))
+     case('q')
+        return
      case ('s')
         print *, "   enter plotskip ( now ", plotskip, " ) "
         read(*,*) plotskip
@@ -743,6 +760,8 @@ subroutine whatsub(flag)
      end select
   else
      select case (inchar(1:1))
+     case('q')
+        return
      case ('s')
         print *, "   enter plotskip ( now ", plotskip, " ) "
         read(*,*) plotskip

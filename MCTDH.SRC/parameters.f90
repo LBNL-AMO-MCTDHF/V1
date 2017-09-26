@@ -528,14 +528,14 @@ integer :: angularflag=0         !! for action 17,28 calculate fully differentia
 !!BB
 integer :: plotmodulus=10        !! PlotModulus= !! For saving nat/spf (Act=2, 6), par_timestep interval
 real*8 :: plotpause=0.25d0       !! PlotPause=   !!    for saving natorbs.  plotskip is for stepping over
-real*8 :: plotrange=0.2d0        !! PlotZ=       !!    the saved natorbs on read.  others are dimensions
+real*8 :: plotrange=0.4d0        !! PlotZ=       !!    the saved natorbs on read.  others are dimensions
 real*8 :: plotcbrange=0.001d0    !!              !!    
-real*8 :: plotxyrange=2.d0       !! PlotXY=      !!    
+real*8 :: plotxyrange=4.d0       !! PlotXY=      !!    
 real*8 :: plotview1=70.d0        !!              !! viewing angle, degrees
 real*8 :: plotview2=70.d0        !!              !! viewing angle, degrees
 integer :: plotnum=10            !! PlotNum=     !! Max number of plots
 integer :: plotterm=0            !!              !! 0=x11, 1=aqua
-integer :: pm3d=1                !! PM3D         !! Turn pm3d on when plotting
+integer :: pm3d=0                !! PM3D         !! Turn pm3d on when plotting
 integer :: plotres=50            !!              !! Resolution of plot
 integer :: plotskip=1            !! PlotSkip=    !! For plotting (Act=3,5,7), number to skip over
 real*8 :: povmult=1d0            !!  Mult df3 data by factor.  For small part of orbs.

@@ -62,20 +62,33 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   do i=1,lbig+1
      elecradii(:,i,:)=etapoints(i)**2
   enddo
-  do i=2,xigridpoints-1
-     elecradii(i-1,:,:)=elecradii(i-1,:,:) + xipoints(i)**2
+
+! BUGFIX 092517
+!  do i=2,xigridpoints-1
+!     elecradii(i-1,:,:)=elecradii(i-1,:,:) + xipoints(i)**2
+!  enddo
+
+  do i=1,xigridpoints-1
+     elecradii(i,:,:)=elecradii(i,:,:) + xipoints(i)**2
   enddo
 
+! BUGFIX 092517   (elecradii only used for keprojector, not used currently)
+!                 (this is a unitless radius, in units of bond distance.. checkme)
+  elecradii(:,:,:) = sqrt(elecradii(:,:,:) - 1d0);
 
   elecweights(:,:,:,3)=1d0
   do i=1,lbig+1
      elecweights(:,i,:,2)=etaweights(i)
   enddo
-  do i=2,xigridpoints-1
-     elecweights(i-1,:,:,1)=xiweights(i)
-  enddo
 
-!!$      elecweights(i-1,:,:)=elecweights(i-1,:,:)*xiweights(i)
+! BUGFIX 092517  ! ! ! ! ! 
+!  do i=2,xigridpoints-1
+!     elecweights(i-1,:,:,1)=xiweights(i)
+!  enddo
+
+  do i=1,xigridpoints-1
+     elecweights(i,:,:,1)=xiweights(i)
+  enddo
 
   rkemod=rketot(2:numr+1,2:numr+1)
   proderivmod(:,:) = prolate_derivs(2:numr+1,2:numr+1)
