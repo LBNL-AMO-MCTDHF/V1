@@ -3,6 +3,8 @@
 
 !! ACTION 21 (emission/absorption) subroutine
 
+!! FACTOR OF 2 ERROR 6/16 partially corrected 9/17 integral photsums is now off by a factor of 1/2
+
 #include "Definitions.INC"
 
 
@@ -494,7 +496,7 @@ contains
 
     if (dipolesumstart.le.0d0) then
        do ipulse=1,npulses
-          photpers(0,:,ipulse) = imag(fftrans(0,:)*conjg(each_eft(0,:,ipulse))) / PI / 2   !! /2 6/16
+          photpers(0,:,ipulse) = imag(fftrans(0,:)*conjg(each_eft(0,:,ipulse))) / PI !! NO 9/17 / 2   !! /2 6/16
           photsums(0,:,ipulse) = Estep * photpers(0,:,ipulse)
        enddo
     endif
@@ -505,7 +507,7 @@ contains
        if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend.and.i.le.(numdata/2)) then
           sumrule(i,:)=sumrule(i-1,:) + Estep * imag(fftrans(i,:)*conjg(eft(i,:))) / abs(eft(i,:)**2) * myenergy * 2 / PI
           do ipulse=1,npulses
-             photpers(i,:,ipulse) = imag(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI / 2  !! /2 6/16
+             photpers(i,:,ipulse) = imag(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI  !! NO 9/17  / 2  !! /2 6/16
              workpers(i,:,ipulse) = imag(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI * myenergy
              photsums(i,:,ipulse) = photsums(i-1,:,ipulse) + Estep * photpers(i,:,ipulse)
              worksums(i,:,ipulse) = worksums(i-1,:,ipulse) + Estep * workpers(i,:,ipulse)

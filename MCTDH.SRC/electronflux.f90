@@ -319,7 +319,7 @@ contains
        gtaunow(:) = gtaunow(:) - gtausave(:)
     endif
 
-    gtausum(:) = gtausum(:) + gtaunow(:) * dt / 2d0   !! 2 looks correct
+    gtausum(:) = gtausum(:) + gtaunow(:) * dt  !!! NOT / 2d0   !! 2 looks correct
 
     if (myrank.eq.1) then
        open(454, file=fluxtsumfile, status="old",  position="append",iostat=myiostat)
@@ -860,7 +860,7 @@ contains
                       gtaunow(:) = gtaunow(:) - gtausave(:)
                    endif
 
-                   gtausum(:) = gtausum(:) + gtaunow(:) * dt / 2d0   !! 2 looks correct
+                   gtausum(:) = gtausum(:) + gtaunow(:) * dt  !!! NOT / 2d0   !! 2 looks correct
 
                    if (myrank.eq.1) then
                       call myclock(itime)
@@ -977,7 +977,7 @@ contains
        do i=-curtime,curtime
           wfi=(i+curtime)*Estep
 
-          ftgtausum(:)=ftgtausum(:)+ftgtau(i,:) * estep / PI / 4d0   !! 4 looks correct
+          ftgtausum(:)=ftgtausum(:)+ftgtau(i,:) * estep / PI / 2d0  !! NO,2!  / 4d0   !! 4 looks correct
 
 !! LENGTH GAUGE WAS FT'ed multiply by wfi dont divide
 !! NEVERMIND FACTOR OF 1/3

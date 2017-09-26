@@ -1481,7 +1481,7 @@ contains
     gtausum(:,:,:)=0d0;  gtausum_ad(:,:,:,:)=0d0
     gtausum(0,:,:)=gtaudiag(0,:,:)
     do i=1,nt
-       gtausum(i,:,:)=gtausum(i-1,:,:) + gtaudiag(i,:,:) * dt / 2d0   !! 2 looks correct
+       gtausum(i,:,:)=gtausum(i-1,:,:) + gtaudiag(i,:,:) * dt !!! NOT / 2d0   !! 2 looks correct
     enddo
     tot_gtausum=0d0
     do istate=1,totstate
@@ -1491,7 +1491,7 @@ contains
     if (angularflag.ne.0) then
        gtausum_ad(0,:,:,:)=gtaudiag_ad(0,:,:,:)
        do i=1,nt
-          gtausum_ad(i,:,:,:)=gtausum_ad(i-1,:,:,:) + gtaudiag_ad(i,:,:,:) * dt / 2d0
+          gtausum_ad(i,:,:,:)=gtausum_ad(i-1,:,:,:) + gtaudiag_ad(i,:,:,:) * dt  !!! NOT / 2d0  2 looks correct
        enddo
        tot_gtausum_ad=0d0
        do istate=1,totstate
@@ -1720,7 +1720,7 @@ contains
              do i=-curtime,curtime
                 wfi=(i+curtime)*estep
 
-                ftgtausum=ftgtausum + ftgtau(i) * estep / PI / 4d0   !! 4 looks correct
+                ftgtausum=ftgtausum + ftgtau(i) * estep / PI / 2d0  !! NO,2!  / 4d0   !! 4 looks correct
 
 !! LENGTH GAUGE WAS FT'ed multiply by wfi don't divide
 !! NEVERMIND FACTOR OF 1/3
@@ -1749,7 +1749,7 @@ contains
                 do i=-curtime,curtime
                    wfi=(i+curtime)*estep
 
-                   ftgtausum_ad(:)=ftgtausum_ad(:) + ftgtau_ad(i,:) * estep / PI / 4d0   !! 4 looks correct
+                   ftgtausum_ad(:)=ftgtausum_ad(:) + ftgtau_ad(i,:) * estep / PI / 2d0  !! NO,2!  / 4d0   !! 4 looks correct
 
                    myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi 
 
@@ -1778,7 +1778,7 @@ contains
           do i=-curtime,curtime
              wfi=(i+curtime)*estep
 
-             ftgtausum=ftgtausum + total(i) * estep / PI / 4d0   !! 4 looks correct
+             ftgtausum=ftgtausum + total(i) * estep / PI / 2d0  !! NO,2!  / 4d0   !! 4 looks correct
 
              myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
              write(1004,'(F18.12, T22, 400E20.8)',iostat=myiostat)  wfi,  pulseftsq(i), &
@@ -1799,7 +1799,7 @@ contains
              do i=-curtime,curtime
                 wfi=(i+curtime)*estep
 
-                ftgtausum_ad(:)=ftgtausum_ad(:) + total_ad(i,:) * estep / PI / 4d0   !! 4 looks correct
+                ftgtausum_ad(:)=ftgtausum_ad(:) + total_ad(i,:) * estep / PI / 2d0  !! NO,2!  / 4d0   !! 4 looks correct
 
                 myfac = 5.291772108d0**2 * 2d0 * PI / 1.37036d2 * wfi
 
@@ -2049,14 +2049,14 @@ subroutine projeflux_during(inspfs,inavectors,dt)
      endif
   endif
 
-  gtausum(:,:)=gtausum(:,:) + gtaunow(:,:) * dt / 2d0   !! 2 looks correct
+  gtausum(:,:)=gtausum(:,:) + gtaunow(:,:) * dt  !!! NOT / 2d0   !! 2 looks correct
   tot_gtausum=0d0
   do istate=1,nstate
      tot_gtausum(:)=tot_gtausum(:)+gtausum(istate,:)
   enddo
 
   if (angularflag.ne.0) then
-     gtausum_ad(:,:,:)=gtausum_ad(:,:,:) + gtaunow_ad(:,:,:) * dt / 2d0   !! 2 looks correct
+     gtausum_ad(:,:,:)=gtausum_ad(:,:,:) + gtaunow_ad(:,:,:) * dt  !!! NOT / 2d0   !! 2 looks correct
      tot_gtausum_ad=0d0
      do istate=1,nstate
         tot_gtausum_ad(:,:)=tot_gtausum_ad(:,:)+gtausum_ad(istate,:,:)
