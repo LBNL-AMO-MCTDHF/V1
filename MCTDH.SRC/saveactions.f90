@@ -18,28 +18,37 @@ subroutine save_density( thistime, inspfs, indenmat, iprop, denfilename)
   DATATYPE :: mdensity(spfdims(1),spfdims(2),spfdims(3))                       
   complex*16 :: density(spfdims(1),spfdims(2),spfdims(3))                         !! AUTOMATIC
 
-  if (spfdimtype(3).eq.1) then  !! assume fourier basis (-mbig:mbig)
-     if (mod(spfdims(3),2).ne.1) then
-        OFLWR "FOURRR ERROR"; CFLST
-     endif
-     do i=1,spfdims(3)
-        do j=1,spfdims(3)
-           jj=j-(spfdims(3)+1)/2
-           mtrans(i,j) = exp((0.d0,1.d0)*jj*2*pi*i/real(spfdims(3)))
-        enddo
-     enddo
-  else
+!!$  This was for transforming to phi values from m.
+!!$    But menu asks for m-projection.  Perhaps later, re-implement this
+!!$
+!!$  if (spfdimtype(3).eq.1) then  !! assume fourier basis (-mbig:mbig)
+!!$     if (mod(spfdims(3),2).ne.1) then
+!!$        OFLWR "FOURRR ERROR"; CFLST
+!!$     endif
+!!$     do i=1,spfdims(3)
+!!$        do j=1,spfdims(3)
+!!$           jj=j-(spfdims(3)+1)/2
+!!$           mtrans(i,j) = exp((0.d0,1.d0)*jj*2*pi*i/real(spfdims(3)))
+!!$        enddo
+!!$     enddo
+!!$  else
+
      mtrans(:,:)=0d0
      do i=1,spfdims(3)
         mtrans(i,i)=1d0
      enddo
-  endif
+
+!!$  endif
+
   call getdensity(density, indenmat, inspfs,nspf)
   call zgemm('N', 'N', spfdims(1)*spfdims(2),spfdims(3),spfdims(3), (1.d0,0.d0), &
        density, spfdims(1)*spfdims(2), mtrans,spfdims(3), (0.d0,0.d0),&
        cmdensity, spfdims(1)*spfdims(2))
 
 !! why square root?  is this a mistake?
+!! no not a mistake; storing DVR coefficients of density
+!! another sqrt(weights) is divided in cylindricalvalue.
+
   do imval=1,spfdims(3)
      mdensity(:,:,imval)=  cmdensity(:,:,imval) / &          !! ok conversion
           sqrt(elecweights(:,:,imval,1)* &                   !! ok conversion

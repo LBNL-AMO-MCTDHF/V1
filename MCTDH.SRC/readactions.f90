@@ -63,17 +63,21 @@ subroutine read_orb_initial(iwhich)
      if (iwhich.ne.3) then
         print *, "Enter ", labels(iwhich), " number.  Zero to change options.  Negative number to stop."
         read(*,*) ispf
+        
      else
-        print *, "Enter positive number to continue to plot.  Zero to change options.  Negative number to stop."
-        read(*,*) ispf
-        ispf=1
+
+        !!        print *, "Enter positive number to continue to plot.  Zero to change options.  Negative number to stop."
+        !!        read(*,*) ispf
+        !!        ispf=min(1,ispf)
+
+        ispf = 1
      endif
 
-!     iprop=1
-!     if (numprop.gt.2) then
-!        print *, "Which calculation?  There are ", numprop," concurrent."
-!        read(*,*) iprop
-!     endif
+!$$     iprop=1
+!$$     if (numprop.gt.2) then
+!$$        print *, "Which calculation?  There are ", numprop," concurrent."
+!$$        read(*,*) iprop
+!$$     endif
 
      if (ispf<0) then
         print *, "OK! Done."
@@ -151,18 +155,20 @@ subroutine read_Rorb_initial(iwhich)
      enddo
      print *, "Enter ", labels(iwhich)," number.  Zero to change options.  Negative to stop."
      read(*,*) ispf
-!     iprop=1
-!     if (numprop.gt.2) then
-!        print *, "Which calculation?  There are ", numprop," concurrent."
-!        read(*,*) iprop
-!     endif
+
+!$$     iprop=1
+!$$     if (numprop.gt.2) then
+!$$        print *, "Which calculation?  There are ", numprop," concurrent."
+!$$        read(*,*) iprop
+!$$     endif
+
      if (ispf.gt.numr) then
         print *, "Um, that is greater than numr. goodbye.";        stop
      endif
      if (ispf<0) then
         print *, "OK! Done.";        iflag=0
      else if (ispf>0) then
-!!        call read_Rorb(ispf, iprop,iwhich)
+!$$        call read_Rorb(ispf, iprop,iwhich)
         call read_Rorb(ispf, 1,iwhich)
      endif
   enddo
@@ -613,8 +619,11 @@ subroutine writegnuoptions(myunit, giffilename)
   if (plotterm.ne.3) then
      write(myunit,*) " set label 'Real' at screen 0.2,0.8"
      write(myunit,*) " set label 'Imag' at screen 0.6,0.8"
-     write(myunit,'(A14,F10.5,A1,F10.5,A1)') &
-          " set zrange [",-plotrange,":",plotrange,"]"
+     if (plotrange < 0) then
+        write(myunit,*) " set zrange [*:*]"
+     else
+        write(myunit,'(A14,F10.5,A1,F10.5,A1)') " set zrange [",-plotrange,":",plotrange,"]"
+     endif
   endif
   if (pm3d.ne.0) then
      if (plotterm.eq.3) then
@@ -627,7 +636,9 @@ subroutine writegnuoptions(myunit, giffilename)
   endif
   write(myunit,*) " set ticslevel 0"
   write(myunit,*) " unset clabel "
-  write(myunit,'(A30,F17.10,A2,F17.10,A2,F17.10)') " set cntrparam levels incremental",-plotrange,",",plotrange/60,",",plotrange
+  if (plotrange > 0) then
+     write(myunit,'(A30,F17.10,A2,F17.10,A2,F17.10)') " set cntrparam levels incremental",-plotrange,",",plotrange/60,",",plotrange
+  endif
   if (plotterm.ne.3) then
      write(myunit,*) " set xrange [",-plotxyrange,":",plotxyrange,"]"
      write(myunit,*) " set yrange [",-plotxyrange,":",3*plotxyrange,"]"
@@ -733,7 +744,11 @@ subroutine whatsub(flag)
   print *, "         n = change plotnum (now ",plotnum,")"
      
   if (povplotflag /= 1) then
-     print *, "         z = change zrange (now ",plotrange,")"
+     if (plotrange<0) then
+        print *, "         z = change zrange (now auto)"
+     else
+        print *, "         z = change zrange (now ",plotrange,")"
+     endif
      print *, "         c = change cbrange (now ",plotcbrange,")"
      print *, "         x = change xyrange (now ",plotxyrange,")"
      print *, "         t = change terminal (now ",termlabels(plotterm),")"
@@ -741,14 +756,15 @@ subroutine whatsub(flag)
      print *, "         v1= change view rotation 1 (now ",plotview1,") degrees"
      print *, "         v2= change view rotation 2 (now ",plotview2,") degrees"
   endif
-  print *, "   default = continue (plot with these options)"
+  print *,    "         e = continue (plot with these options)"
   print *
 
   inchar="  ";  read(*,*) inchar
   if (povplotflag == 1) then
      select case (inchar(1:1))
      case('q')
-        return
+        print *, "Ok, quitting"
+        call mpistop()
      case ('s')
         print *, "   enter plotskip ( now ", plotskip, " ) "
         read(*,*) plotskip
@@ -761,7 +777,8 @@ subroutine whatsub(flag)
   else
      select case (inchar(1:1))
      case('q')
-        return
+        print *, "Ok, quitting"
+        call mpistop()
      case ('s')
         print *, "   enter plotskip ( now ", plotskip, " ) "
         read(*,*) plotskip
@@ -769,7 +786,11 @@ subroutine whatsub(flag)
         print *, "   enter plotnum ( now ", plotnum, " ) "
         read(*,*) plotnum
      case ('z')
-        print *, "   enter zrange ( now ", plotrange, " ) "
+        if (plotrange<0) then
+           print *, "   enter zrange, negative for auto ( now auto ) "
+        else
+           print *, "   enter zrange, negative for auto ( now ", plotrange, " ) "
+        endif
         read(*,*) plotrange
      case ('c')
         print *, "   enter cbrange ( now ", plotcbrange, " ) "

@@ -575,38 +575,51 @@ subroutine getdensity(density, indenmat, inspfs,howmany)
   implicit none
   integer,intent(in) :: howmany
   DATATYPE,intent(in) :: indenmat(howmany,howmany), inspfs(numerad,lbig+1,-mbig:mbig,howmany)
-  complex*16,intent(out) :: density(numerad,lbig+1,2*mbig+1)
+  complex*16,intent(out) :: density(numerad,lbig+1,2*mbig+1)   !! truncating this; actually have 4*mbig+1
   integer :: i,j,ii,jj,kk, mm,nn
   real*8 :: phi,pi
 
   pi=4d0*atan(1d0)
   density=0.d0
 
+!$$    do mm=-mbig,mbig
+!$$    do nn=-mbig,mbig
+!$$       do i=1,howmany
+!$$          do j=1,howmany
+!$$             
+!$$             do kk =  1,2*mbig+1
+!$$                phi = 2*pi*kk/real(2*mbig+1,8)
+!$$                do jj=1,lbig+1
+!$$                   do ii=1,numerad
+!$$  
+!$$  !!  integral sum_ij  | phi_j(x) > rho_ji < phi_i (x) |                    
+!$$  
+!$$  !! 111510 was with transpose denmat                   density(ii,jj,kk) = density(ii,jj,kk) + indenmat(i,j) * inspfs(ii,jj,mm,i)*CONJUGATE(inspfs(ii,jj,nn,j)) * exp((0.d0,1.d0)*(nn-mm)*phi)
+!$$  
+!$$  !! NOW 111510
+!$$                      density(ii,jj,kk) = density(ii,jj,kk) + indenmat(j,i) * inspfs(ii,jj,mm,i)*CONJUGATE(inspfs(ii,jj,nn,j)) * exp((0.d0,1.d0)*(nn-mm)*phi)
+!$$  
+!$$                   enddo
+!$$                enddo
+!$$             enddo
+!$$          enddo
+!$$       enddo
+!$$    enddo
+!$$    enddo
+
   do mm=-mbig,mbig
-  do nn=-mbig,mbig
-     do i=1,howmany
-        do j=1,howmany
-           
-           do kk =  1,2*mbig+1
-              phi = 2*pi*kk/real(2*mbig+1,8)
-              do jj=1,lbig+1
-                 do ii=1,numerad
-
-!!  integral sum_ij  | phi_j(x) > rho_ji < phi_i (x) |                    
-
-!! 111510 was with transpose denmat                   density(ii,jj,kk) = density(ii,jj,kk) + indenmat(i,j) * inspfs(ii,jj,mm,i)*CONJUGATE(inspfs(ii,jj,nn,j)) * exp((0.d0,1.d0)*(nn-mm)*phi)
-
-!! NOW 111510
-                    density(ii,jj,kk) = density(ii,jj,kk) + indenmat(j,i) * inspfs(ii,jj,mm,i)*CONJUGATE(inspfs(ii,jj,nn,j)) * exp((0.d0,1.d0)*(nn-mm)*phi)
-
-                 enddo
-              enddo
+     do nn=-mbig,mbig
+        do i=1,howmany
+           do j=1,howmany
+              kk=mm-nn
+              if (abs(kk).le.mbig) then
+                 density(:,:,kk+mbig+1) = density(:,:,kk+mbig+1) + indenmat(j,i) * inspfs(:,:,mm,i) * CONJUGATE(inspfs(:,:,nn,j))
+              endif
            enddo
         enddo
      enddo
   enddo
-  enddo
-
+  
 end subroutine getdensity
 
 
