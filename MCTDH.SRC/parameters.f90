@@ -526,6 +526,7 @@ integer :: angularflag=0         !! for action 17,28 calculate fully differentia
 !!EE
 !!{\large \quad PLOTTING OPTIONS }
 !!BB
+integer :: plotsubtract=0        !!              !! Show the change (in density, natorb, spf, etc.)
 integer :: plotmodulus=10        !! PlotModulus= !! For saving nat/spf (Act=2, 6), par_timestep interval
 real*8 :: plotpause=0.25d0       !! PlotPause=   !!    for saving natorbs.  plotskip is for stepping over
 real*8 :: plotrange=0.4d0        !! PlotZ=       !!    the saved natorbs on read.  others are dimensions

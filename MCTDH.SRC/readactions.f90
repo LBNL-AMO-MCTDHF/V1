@@ -110,13 +110,9 @@ subroutine read_orb_initial(iwhich)
               endif
               print *, "imvalue is ", imvalue
               call read_orb(jspf,imvalue, 1, iwhich)
-
-!! somewhat kloogey... here hardwired for m-value third index
-!!              call read_orb(jspf,imvalue+(spfdims(3)+1)/2, 1, iwhich)
            enddo
         else
            call read_orb(ispf,imvalue, 1, iwhich)           
-!!           call read_orb(ispf,imvalue+(spfdims(3)+1)/2, 1, iwhich)           
         endif
      endif
   enddo
@@ -202,14 +198,15 @@ end module zerorecmod
 
 !! iwhich: 1=spf 2=natorb 3=density  4=denproj   denproj not debugged
 
-subroutine read_orb(inspf,imvalue, iprop, iwhich)   
+subroutine read_orb(whichspf,imvalue, iprop, iwhich)   
   use parameters
   use mpimod
   use zerorecmod
   implicit none
 
-  integer :: readprop,  returnval, ixi, ieta, inspf, imvalue, flag, xflag, irecord, first,  iprop, &
-       getlen, iwhich, ispf, itable
+  integer, intent(in) :: iwhich,imvalue,iprop,whichspf
+  integer :: readprop,  returnval, ixi, ieta, flag, xflag, irecord, first, &
+       getlen, ispf, itable
   integer, parameter :: ifilenums(4)=(/  natorbfile, spfplotfile, denfile, denprojfile /)
   character (len=SLN) :: ifilenames(4)
   character (len=8), parameter :: ignufile(4)=(/ "Natplot_", "Spfplot_", "Denplot_", "Denproj_" /)
@@ -217,13 +214,16 @@ subroutine read_orb(inspf,imvalue, iprop, iwhich)
   character(len=10) :: mypovdir
   real*8 :: thistime, zval, xval,  costheta, rho
   DATATYPE :: sum, cylindricalvalue, mydenval
-  DATATYPE :: ttempspf(spfdims(1),spfdims(2),spfdims(3))
+  DATATYPE :: ttempspf(spfdims(1),spfdims(2),spfdims(3))      !! AUTOMATIC
+  DATATYPE :: savespf(spfdims(1),spfdims(2),spfdims(3))       !! AUTOMATIC
   character (len=8) :: tableexts(4)=(/'.table0"','.table1"','.table2"','.table3"' /)
   character (len=100) :: filename,sysline, titleline
   character(len=20) :: giffilename
   character(len=40) :: epsfilename,epstable(4)
   character(len=100) :: filex="                                                                                                    "
   character (len=headersize) :: header
+
+  ttempspf=0; savespf=0;
 
   ifilenames(1)= natplotbin;  ifilenames(2)=  spfplotbin 
   ifilenames(3)= denplotbin;  ifilenames(4)= denprojplotbin 
@@ -240,7 +240,14 @@ subroutine read_orb(inspf,imvalue, iprop, iwhich)
      flag=0
      do while ( flag.eq.0 )
         call read_orbvector(returnval,ttempspf(:,:,:),spfsize,ifilenums(iwhich),ifilenames(iwhich),header)
-
+        if (plotsubtract.ne.0) then
+           if (first==1) then
+              savespf(:,:,:) = ttempspf(:,:,:)
+              ttempspf=0
+           else
+              ttempspf(:,:,:) = ttempspf(:,:,:) - savespf(:,:,:)
+           endif
+        endif
         select case (iwhich)
         case (1)
            call read_nat_header(header,thistime,readprop,ispf,mydenval)
@@ -265,7 +272,7 @@ subroutine read_orb(inspf,imvalue, iprop, iwhich)
            xflag=0
            select case (iwhich)
            case (1,2,4)
-              if ((inspf==ispf).and.(readprop.eq.iprop)) then
+              if ((whichspf==ispf).and.(readprop.eq.iprop)) then
                  xflag=1
               endif
            case (3)
@@ -299,16 +306,16 @@ subroutine read_orb(inspf,imvalue, iprop, iwhich)
                  write(filename,'(A8,I1,A4)') ignufile(iwhich),readprop,".gnu"
                  write(giffilename,'(A1,A8,I1,A5)') '"',ignufile(iwhich),readprop,'.gif"'
               else
-                 if (inspf.lt.10) then
-                    write(filename,'(A8,I1,A1,I1,A4)') ignufile(iwhich),readprop,"_",inspf,".gnu"
+                 if (whichspf.lt.10) then
+                    write(filename,'(A8,I1,A1,I1,A4)') ignufile(iwhich),readprop,"_",whichspf,".gnu"
 if (plotterm.eq.3) then
-                    write(giffilename,'(A1,A8,I1,A1,I1,A5)') '"',ignufile(iwhich),readprop,"_",inspf,'.eps"'
+                    write(giffilename,'(A1,A8,I1,A1,I1,A5)') '"',ignufile(iwhich),readprop,"_",whichspf,'.eps"'
 else
-                    write(giffilename,'(A1,A8,I1,A1,I1,A5)') '"',ignufile(iwhich),readprop,"_",inspf,'.gif"'
+                    write(giffilename,'(A1,A8,I1,A1,I1,A5)') '"',ignufile(iwhich),readprop,"_",whichspf,'.gif"'
 endif
                  else
-                    write(filename,'(A8,I1,A1,I2,A4)') ignufile(iwhich),readprop,"_",inspf,".gnu"
-                    write(giffilename,'(A1,A8,I1,A1,I2,A5)') '"',ignufile(iwhich),readprop,"_",inspf,'.gif"'
+                    write(filename,'(A8,I1,A1,I2,A4)') ignufile(iwhich),readprop,"_",whichspf,".gnu"
+                    write(giffilename,'(A1,A8,I1,A1,I2,A5)') '"',ignufile(iwhich),readprop,"_",whichspf,'.gif"'
                  endif
               endif
               open(871,file=filename(1:getlen(filename)),status="unknown")
@@ -325,10 +332,10 @@ endif
                  if (iwhich.eq.3) then
                     write(epstable(itable),'(A1,A8,I1,A8)') '"',ignufile(iwhich),readprop,tableexts(itable)
                  else
-                    if (inspf.lt.10) then
-                       write(epstable(itable),'(A1,A8,I1,A1,I1,A1,A4,A8)') '"',ignufile(iwhich),readprop,"_",inspf,'_', zerorecord(irecord),tableexts(itable)
+                    if (whichspf.lt.10) then
+                       write(epstable(itable),'(A1,A8,I1,A1,I1,A1,A4,A8)') '"',ignufile(iwhich),readprop,"_",whichspf,'_', zerorecord(irecord),tableexts(itable)
                     else
-                       write(epstable(itable),'(A1,A8,I1,A1,I2,A1,A4,A8)') '"',ignufile(iwhich),readprop,"_",inspf,'_', zerorecord(irecord),tableexts(itable)
+                       write(epstable(itable),'(A1,A8,I1,A1,I2,A1,A4,A8)') '"',ignufile(iwhich),readprop,"_",whichspf,'_', zerorecord(irecord),tableexts(itable)
                     endif
                  endif
                  write(871,*) "unset surf"
@@ -374,13 +381,13 @@ endif
 
            select case(iwhich)
            case (1)
-              call get_natorb_title(titleline, inspf, imvalue, thistime, mydenval)
+              call get_natorb_title(titleline, whichspf, imvalue, thistime, mydenval)
            case (2)
-              call get_spf_title(titleline, inspf, imvalue, thistime)
+              call get_spf_title(titleline, whichspf, imvalue, thistime)
            case (3)
               call get_density_title(titleline, thistime)
            case (4)
-              call get_natorb_title(titleline, inspf, imvalue, thistime, mydenval)
+              call get_natorb_title(titleline, whichspf, imvalue, thistime, mydenval)
            end select
 
            write(871,*) titleline
@@ -390,10 +397,10 @@ endif
               if (iwhich.eq.3) then
                  write(epsfilename,'(A1,A8,I1,A5)') '"',ignufile(iwhich),readprop,'.eps"'
               else
-                 if (inspf.lt.10) then
-                    write(epsfilename,'(A1,A8,I1,A1,I1,A1,A4,A5)') '"',ignufile(iwhich),readprop,"_",inspf,'_', zerorecord(irecord),'.eps"'
+                 if (whichspf.lt.10) then
+                    write(epsfilename,'(A1,A8,I1,A1,I1,A1,A4,A5)') '"',ignufile(iwhich),readprop,"_",whichspf,'_', zerorecord(irecord),'.eps"'
                  else
-                    write(epsfilename,'(A1,A8,I1,A1,I2,A1,A4,A5)') '"',ignufile(iwhich),readprop,"_",inspf,'_', zerorecord(irecord),'.eps"'
+                    write(epsfilename,'(A1,A8,I1,A1,I2,A1,A4,A5)') '"',ignufile(iwhich),readprop,"_",whichspf,'_', zerorecord(irecord),'.eps"'
                  endif
               endif
               
@@ -495,12 +502,12 @@ endif
 end subroutine read_orb
 
 
-subroutine read_Rorb(inspf, iprop,iwhich)
+subroutine read_Rorb(whichspf, iprop,iwhich)
   use parameters
   use mpimod
   implicit none
 
-  integer :: readprop,   returnval, ir, inspf, flag, irecord, first, iprop, getlen, iwhich, ispf
+  integer :: readprop,   returnval, ir, whichspf, flag, irecord, first, iprop, getlen, iwhich, ispf
   real*8 :: thistime
   DATATYPE :: mydenval
   character (len=100) :: filename,sysline , titleline
@@ -526,10 +533,10 @@ subroutine read_Rorb(inspf, iprop,iwhich)
            call fixphase0(inrdenvect,numr)
         endif
         if (returnval/=0) then
-           print *,  "Done with vectors on file for rden= ", inspf
+           print *,  "Done with vectors on file for rden= ", whichspf
            close(871);           flag=3
         else
-           if ((inspf==ispf).and.(readprop.eq.iprop)) then
+           if ((whichspf==ispf).and.(readprop.eq.iprop)) then
               if (mod(irecord-1,plotskip).eq.0) then;                 flag=1
                  print *, "Good read at record ",irecord
               endif
@@ -545,26 +552,26 @@ subroutine read_Rorb(inspf, iprop,iwhich)
         if (first==1) then
            first=0;           filename=filex
            giffilename="                    "
-           if (inspf.lt.10) then
-              write(filename,'(A9,I1,A1,I1,A4)') ignufile(iwhich),readprop,"_",inspf,".gnu"
-              write(giffilename,'(A1,A9,I1,A1,I1,A5)') '"', ignufile(iwhich),readprop,"_",inspf,'.gif"'
+           if (whichspf.lt.10) then
+              write(filename,'(A9,I1,A1,I1,A4)') ignufile(iwhich),readprop,"_",whichspf,".gnu"
+              write(giffilename,'(A1,A9,I1,A1,I1,A5)') '"', ignufile(iwhich),readprop,"_",whichspf,'.gif"'
            else
-              write(filename,'(A9,I1,A1,I2,A4)') ignufile(iwhich),readprop,"_",inspf,".gnu"
-              write(giffilename,'(A1,A9,I1,A1,I2,A5)') '"', ignufile(iwhich),readprop,"_",inspf,'.gif"'
+              write(filename,'(A9,I1,A1,I2,A4)') ignufile(iwhich),readprop,"_",whichspf,".gnu"
+              write(giffilename,'(A1,A9,I1,A1,I2,A5)') '"', ignufile(iwhich),readprop,"_",whichspf,'.gif"'
            endif
            open(871,file=filename(1:getlen(filename)),status="unknown")
            call writergnuoptions(871, giffilename)
         endif
         if (plotterm.eq.3) then
            epsfilename="                    "
-           if (inspf.lt.10) then
-              write(epsfilename,'(A1,A9,I1,A1,I1,A5)') '"', ignufile(iwhich),readprop,"_",inspf,'.gif"'
+           if (whichspf.lt.10) then
+              write(epsfilename,'(A1,A9,I1,A1,I1,A5)') '"', ignufile(iwhich),readprop,"_",whichspf,'.gif"'
            else
-              write(epsfilename,'(A1,A9,I1,A1,I2,A5)') '"', ignufile(iwhich),readprop,"_",inspf,'.gif"'
+              write(epsfilename,'(A1,A9,I1,A1,I2,A5)') '"', ignufile(iwhich),readprop,"_",whichspf,'.gif"'
            endif
            write(871,'(A11,A20)') " set out  ", epsfilename(1:getlen(epsfilename))
         endif
-        call get_rnat_title(titleline, inspf, thistime, mydenval,iwhich)
+        call get_rnat_title(titleline, whichspf, thistime, mydenval,iwhich)
         write(871,*) titleline
         write(871,*) " plot '-' using 1:2, '-' using 1:2"
         write(871,*)
@@ -741,6 +748,7 @@ subroutine whatsub(flag)
   print *, "What should I do?"
   print *, "         q = quit"
   print *, "         s = change plotskip (now ",plotskip,")"
+  print *, "         b = toggle plotsubtract (now ",plotsubtract,")"
   print *, "         n = change plotnum (now ",plotnum,")"
      
   if (povplotflag /= 1) then
@@ -768,6 +776,12 @@ subroutine whatsub(flag)
      case ('s')
         print *, "   enter plotskip ( now ", plotskip, " ) "
         read(*,*) plotskip
+     case ('b')
+        if (plotsubtract.eq.0) then
+           plotsubtract=1
+        else
+           plotsubtract=0
+        endif
      case ('n')
         print *, "   enter plotnum ( now ", plotnum, " ) "
         read(*,*) plotnum
@@ -782,6 +796,12 @@ subroutine whatsub(flag)
      case ('s')
         print *, "   enter plotskip ( now ", plotskip, " ) "
         read(*,*) plotskip
+     case ('b')
+        if (plotsubtract.eq.0) then
+           plotsubtract=1
+        else
+           plotsubtract=0
+        endif
      case ('n')
         print *, "   enter plotnum ( now ", plotnum, " ) "
         read(*,*) plotnum
