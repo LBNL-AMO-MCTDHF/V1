@@ -183,8 +183,9 @@ subroutine actionsub(thistime)
   use psistatsubmod
   implicit none
   
-  integer :: i, calledhere=0, atime, btime, times(MAXACTION)=0,getlen,myiostat
+  integer :: i, atime, btime, times(MAXACTION)=0, getlen, myiostat
   real*8,intent(in) :: thistime
+  integer, save :: calledhere=0
   CNORMTYPE :: error
 
   calledhere=calledhere+1
