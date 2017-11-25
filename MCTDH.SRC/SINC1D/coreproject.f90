@@ -592,8 +592,22 @@ subroutine op_frozen_exchange0(howmany,inspfs,outspfs,infrozens,numfrozen,notuse
 end subroutine op_frozen_exchange0
 
 
-subroutine getdensity() !density, indenmat, inspfs,howmany)
-print *, "DOME GETDENSITY"; stop
+subroutine getdensity(density, indenmat, inspfs,howmany)
+  use myparams
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: indenmat(howmany,howmany), inspfs(totpoints,howmany)
+  complex*16,intent(out) :: density(totpoints)
+  integer :: i,j
+
+  density=0.d0
+
+  do i=1,howmany
+     do j=1,howmany
+        density(:) = density(:) + indenmat(j,i) * inspfs(:,i) * CONJUGATE(inspfs(:,j))
+     enddo
+  enddo
+
 end subroutine getdensity
 
 
