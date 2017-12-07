@@ -254,7 +254,7 @@ program mctdhf
   write(mpifileptr, *) "             AMO Theory Group, Lawrence Berkeley Laboratory"
   write(mpifileptr, *) "         D J Haxton,   K V Lawler,   J Jones,   B Abeln,   X Li"
   write(mpifileptr, *) 
-  write(mpifileptr, *) "                             VERSION 1.35 "
+  write(mpifileptr, *) "                             VERSION 1.36 "
   write(mpifileptr, *) "       Copyright 2017 the regents of the University of California"
   write(mpifileptr, *)
 #ifdef REALGO

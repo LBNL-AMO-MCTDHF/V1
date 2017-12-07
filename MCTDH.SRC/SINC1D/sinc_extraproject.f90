@@ -1,6 +1,6 @@
 
 
-!!!  EXTRA COORINATE SPECIFIC ROUTINES INCLUDING DIATOMSTATS FOR EXPECTATION VALUES (DiatomStats.Dat)
+!!!  EXTRA COORINATE SPECIFIC ROUTINES
 
 
 #include "Definitions.INC"
@@ -35,7 +35,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        ivoflag, loadedocc, orbtargetflag,orbtarget,&
        toepflag,softness,twotype,harmstrength, twomode, nucstrength, &
        eigmode, coulmode, sechmode, nucmode, combinesech, nucrangefac, &
-       softnesstwoe, softnessnuc
+       softnesstwoe, softnessnuc, elecstrength
 
 #ifdef PGFFLAG
   integer :: myiargc
@@ -68,6 +68,8 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
 !! enforce defaults that depend on other variables
      softnessnuc=softness
      softnesstwoe=softness
+     twostrength=elecstrength
+     nucstrength=elecstrength
 
      open(971,file=inpfile, status="old", iostat=myiostat)
      read(971,nml=sinc1dparinp)
@@ -148,12 +150,12 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
      if (nucmode.eq.0.or.twomode.ne.0) then  !! physically motivated internuclear repulsion
         !!                                   !! always for coulomb or linear, nucmode sets choice for sech
 
-        if (twomode.ne.0.or.combinesech.eq.0) then  !! coulomb or old version sech
+        if (twomode.ne.0.or.combinesech.eq.0) then  !! coulomb, linear, or old version sech
         
            !! straight sum of two-particle interactions just like electrons
            
            xfac=1
-           if (twomode.eq.(-1)) then
+           if (twomode.eq.1.and.coulmode.eq.(-1)) then   !! bugfix 120617 was twomode=-1
               xfac = softness/softnessnuc
            endif
 
@@ -279,11 +281,13 @@ subroutine printmyopts()
   WRFL "spacing",spacing
   WRFL "numpoints",numpoints
   WRFL "********  HAMILTONIAN PARAMS ******** "
+  WRFL "For KE: toepflag=", toepflag
   WRFL "numcenters",numcenters
   do ii=1,numcenters
      WRFL "  nuccharge",nuccharges(ii)
      WRFL "  radius   ",centershift(ii)*0.5d0
   enddo
+  WRFL "elecstrength", elecstrength
   WRFL "twostrength", twostrength
   WRFL "nucstrength", nucstrength
   if (twotype.eq.0) then
@@ -292,7 +296,7 @@ subroutine printmyopts()
   else
      WRFL "potential two-body interaction, twotype.ne.0"
      WRFL "  SOFTNESS ", softness
-     if (twomode.eq.(-1)) then
+     if (twomode.eq.1.and.coulmode.eq.(-1)) then  !! bugfix 120617 was twomode=-1
         WRFL "  for coulomb, internuclear softness ", softnessnuc
         WRFL "  for coulomb, interelectronic softness ", softnesstwoe
      endif

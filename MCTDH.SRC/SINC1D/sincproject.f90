@@ -299,7 +299,7 @@ subroutine get_twoe_new(pot)
      endif
   else
      xfac=1;
-     if (twomode.eq.(-1)) then
+     if (twomode.eq.1.and.coulmode.eq.(-1)) then   !! bugfix 120617 was twomode=-1
        xfac = softness/softnesstwoe
      endif
      threed_two(istart-numpoints:numpoints-1) = twostrength * &
@@ -315,7 +315,7 @@ subroutine get_twoe_new(pot)
      pot(:)=0d0
   endif
 
-  pot(:)=pot(:) - elecpot(dipoles(:), numpoints, 1d0, 0)
+  pot(:)=pot(:) - elecpot(dipoles(:), numpoints, 1d0, 0) * elecstrength;
   
   deallocate(myarray)
 

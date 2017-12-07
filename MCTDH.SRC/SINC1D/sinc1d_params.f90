@@ -9,8 +9,10 @@ implicit none
 
 !! HAMILTONIAN PARAMS
 
-real*8  :: twostrength=1d0   !!  2-electron interaction coef.
-real*8  :: nucstrength=1d0   !!  2-nuclei interaction coef.
+real*8  :: elecstrength=1d0  !!  elec interaction coef B, default for two & nucstrength
+real*8  :: twostrength=1d0   !!  2-electron interaction coef. B
+real*8  :: nucstrength=1d0   !!  2-nuclei interaction coef. B
+
 integer :: twotype = 1       !!  Two-particle interaction:
                              !!    1 = potential interaction  0 = constant interaction
 integer :: twomode = 0       !!  One and (if twotype=1) two particle interaction:
@@ -22,9 +24,9 @@ integer :: coulmode = -1     !!  For soft coulomb: -1: plain ad-hoc softened cou
 !                            !!    0: integer quantum numbers even parity (3d analog)
 !                            !!    1: half-integer
 real*8 :: softness=1d0       !!  scale parameter for sech and softening param for coulomb
-                             !!    softcoul = 1/sqrt(x^2+softness^2)
-real*8 :: softnesstwoe=1d0,& !!  for coulmode = (-1), additional parameters for ee and nn
-     softnessnuc=1d0         !!
+                             !!    V = B / sqrt(x^2+softness^2) for ee, default for en nn
+real*8 :: softnesstwoe=1d0   !!  for coulmode = (-1), additional parameters for ee
+real*8 :: softnessnuc=1d0    !!    and nn
 ! For twomode = 0 : sech-squared 1d model for atoms
 integer :: sechmode = 1      !!  0:  n=0 "s" energy is correct
 !                            !!      softness determines range of potential.
