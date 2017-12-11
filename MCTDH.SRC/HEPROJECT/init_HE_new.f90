@@ -87,12 +87,21 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   bondpoints(:)=1d0
   bondweights(:)=1d0
 
+ !! CAREFUL.  121017
+ !! elecweights are used to convert from basis set to real space representation
+ !! for atoms we represent r times the wave function (or r times the density, etc.)
+ !! with dvr.    otherwise (diatom, sinc3d, sinc1d) we represent the wave function.
+ !! the product i=1..3 of elecweights(:,:,:,i) is NOT the DVR weights, for atom.  
+ !! it is the DVR weights times r.  Otherwise, not atom, it is indeed the DVR weights.
+ !! elecweights used to compute density (natprojaction and saveactions), for keproj,
+ !! and elecweights(:,:,:,2) (angular) is used for projkeflux. 
+
   elecweights(:,:,:,3)=1d0
   do i=1,lbig+1
      elecweights(:,i,:,2)=jacobiweights(i)
   enddo
   do i=2,hegridpoints-1
-     elecweights(i-1,:,:,1)=glweights(i)
+     elecweights(i-1,:,:,1)=glweights(i)*glpoints(i)**2  !! 121017 now *glpoints**2
   enddo
 
 !!$     elecweights(i-1,:,:)=elecweights(i-1,:,:)*glweights(i)

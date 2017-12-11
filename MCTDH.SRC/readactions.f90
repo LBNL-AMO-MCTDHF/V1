@@ -9,7 +9,7 @@ subroutine read_orb_initial(iwhich)
   use parameters
   use mpimod
   implicit none
-  integer ::  ispf,imvalue=0, iflag, jflag, iwhich, xxflag=0, jspf, iallflag
+  integer ::  ispf,imvalue, iflag, jflag, iwhich, xxflag=0, jspf, iallflag
   character (len=10) :: labels(4) = (/ "Natorb    ", "Spfs      ", "Density   ", "Denproj   " /)
   character (len=10) :: inchar
 
@@ -42,14 +42,15 @@ subroutine read_orb_initial(iwhich)
 
   xxflag=xxflag+1
   if (xxflag==1) then
-     print *, "USE POVRAY? y for yes."
-     read(*,*) inchar
-     if (inchar(1:1).eq.'y') then
-        povplotflag=1
-        print *, "OK, using povray."
+     print *, "PLOTTING MODE:  Enter 0 for 2D plot, -1 for 1D plot, 1 for povray"
+     read(*,*) plotmodeflag
+     if (plotmodeflag==0) then
+        print *, "OK, just using gnuplot, 2D"
+     elseif (plotmodeflag==-1) then
+        print *, "OK, just using gnuplot, 1D"
      else
-        povplotflag=0
-        print *, "OK, just using gnuplot."
+        print *, "OK, using povray."
+        plotmodeflag=1
      endif
   endif
   print *
@@ -79,12 +80,13 @@ subroutine read_orb_initial(iwhich)
 !$$        read(*,*) iprop
 !$$     endif
 
+     imvalue=0
      if (ispf<0) then
         print *, "OK! Done."
         iflag=0
      else if (ispf>0) then
         iallflag=0
-        if (povplotflag/=1) then
+        if (plotmodeflag==0) then
            if (iwhich.ne.3) then
               if (spfrestrictflag.ne.0) then
                  imvalue=spfmvals(ispf);              
@@ -206,7 +208,7 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
 
   integer, intent(in) :: iwhich,imvalue,iprop,whichspf
   integer :: readprop,  returnval, ixi, ieta, flag, xflag, irecord, first, &
-       getlen, ispf, itable
+       getlen, ispf, itable, tabmax, iz
   integer, parameter :: ifilenums(4)=(/  natorbfile, spfplotfile, denfile, denprojfile /)
   character (len=SLN) :: ifilenames(4)
   character (len=8), parameter :: ignufile(4)=(/ "Natplot_", "Spfplot_", "Denplot_", "Denproj_" /)
@@ -240,6 +242,9 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
      flag=0
      do while ( flag.eq.0 )
         call read_orbvector(returnval,ttempspf(:,:,:),spfsize,ifilenums(iwhich),ifilenames(iwhich),header)
+        if (iwhich.eq.1) then  !! natorb
+           call fixphase0(ttempspf(:,:,:),spfsize)
+        endif
         if (plotsubtract.ne.0) then
            if (first==1) then
               savespf(:,:,:) = ttempspf(:,:,:)
@@ -259,12 +264,9 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
         case (4)
            call read_nat_header(header,thistime,readprop,ispf,mydenval)
         end select
-        if (iwhich.eq.1) then  !! natorb
-           call fixphase0(ttempspf(:,:,:),spfsize)
-        endif
         if (returnval/=0) then
            call openfile();   write(mpifileptr,*) "Done with vectors on file.";  call closefile()
-           if (povplotflag.eq.0) then
+           if (plotmodeflag.eq.0) then
               close(871)   
            endif
            flag=3
@@ -294,8 +296,9 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
            endif
         endif
      enddo
+
      if ((flag==1).or.(flag==2)) then
-        if (povplotflag==1) then
+        if (plotmodeflag==1) then
            mypovdir=povdirs(iwhich)
            call read_povother( thistime, ttempspf(:,:,:), iprop, mypovdir(1:getlen(mypovdir)), iwhich, ispf, irecord-1)
         else
@@ -308,26 +311,38 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
               else
                  if (whichspf.lt.10) then
                     write(filename,'(A8,I1,A1,I1,A4)') ignufile(iwhich),readprop,"_",whichspf,".gnu"
-if (plotterm.eq.3) then
-                    write(giffilename,'(A1,A8,I1,A1,I1,A5)') '"',ignufile(iwhich),readprop,"_",whichspf,'.eps"'
-else
-                    write(giffilename,'(A1,A8,I1,A1,I1,A5)') '"',ignufile(iwhich),readprop,"_",whichspf,'.gif"'
-endif
+                    if (plotterm.eq.3) then
+                       write(giffilename,'(A1,A8,I1,A1,I1,A5)') '"',ignufile(iwhich),readprop,"_",whichspf,'.eps"'
+                    else
+                       write(giffilename,'(A1,A8,I1,A1,I1,A5)') '"',ignufile(iwhich),readprop,"_",whichspf,'.gif"'
+                    endif
                  else
                     write(filename,'(A8,I1,A1,I2,A4)') ignufile(iwhich),readprop,"_",whichspf,".gnu"
                     write(giffilename,'(A1,A8,I1,A1,I2,A5)') '"',ignufile(iwhich),readprop,"_",whichspf,'.gif"'
                  endif
               endif
               open(871,file=filename(1:getlen(filename)),status="unknown")
-              call writegnuoptions(871, giffilename)
-           endif
+              if (plotmodeflag==0) then
+                 call writegnuoptions3d(871, giffilename)
+              elseif (plotmodeflag==-1) then
+                 call writegnuoptions1d(871, giffilename)
+              else
+                 OFLWR "OOPS error programmer fail gnuoptions"; CFLST
+              endif
 
-           if (plotterm.eq.3.and.pm3d.eq.0) then
+           endif  !! ifirst
+
+           if (plotterm.eq.3.and.pm3d.eq.0.and.plotmodeflag.ne.-1) then
+
+              if (plotmodeflag.ne.0) then
+                 OFLWR "PROGRAMMER FAAAAIL"; CFLST
+              endif
 #ifdef REALGO
-              do itable=1,2
+              tabmax = 2
 #else
-              do itable=1,4
-#endif
+              tabmax = 4
+#endif              
+              do itable=1,tabmax
                  epstable(itable)="                                        "
                  if (iwhich.eq.3) then
                     write(epstable(itable),'(A1,A8,I1,A8)') '"',ignufile(iwhich),readprop,tableexts(itable)
@@ -338,6 +353,7 @@ endif
                        write(epstable(itable),'(A1,A8,I1,A1,I2,A1,A4,A8)') '"',ignufile(iwhich),readprop,"_",whichspf,'_', zerorecord(irecord),tableexts(itable)
                     endif
                  endif
+                 
                  write(871,*) "unset surf"
                  write(871,*) "set out"
                  write(871,'(A11,A40)') " set table  ", epstable(itable)(1:getlen(epstable(itable)))
@@ -358,7 +374,8 @@ endif
                        rho=sqrt(xval**2+zval**2)
                        costheta=cos(atan2(zval,xval))
                        
-                       sum=cylindricalvalue(rho,costheta,1.d0,imvalue, ttempspf(:,:,imvalue+(spfdims(3)+1)/2))
+                       !!                       sum=cylindricalvalue(rho,costheta,1.d0,imvalue, ttempspf(:,:,imvalue+(spfdims(3)+1)/2))
+                       sum=cylindricalvalue(rho,costheta,1.d0,imvalue, ttempspf)
                        if (zval.lt.0.d0) then
                           sum=sum*(-1)**abs(imvalue)
                        endif
@@ -373,11 +390,13 @@ endif
 #endif                       
                     enddo
                     write(871,*)
-                 enddo
-                 write(871,*) "e";                 write(871,*) ;                 write(871,*) "unset table"
-                 write(871,*) 
+                 enddo  !! ixi
+                 write(871,*) "e"
+                 write(871,*)
+                 write(871,*) "unset table"
+                 write(871,*)
               enddo !! itable
-           endif
+           endif  !! ( plotterm.eq.3 .and. pm3d.eq.0 .and. plotmodeflag.ne.-1 )
 
            select case(iwhich)
            case (1)
@@ -392,7 +411,10 @@ endif
 
            write(871,*) titleline
 
-           if (plotterm.eq.3) then
+           if (plotterm.eq.3.and.plotmodeflag.ne.-1) then
+              if (plotmodeflag.ne.0) then
+                 OFLWR "Rogrammer fail"; CFLST
+              endif
               epsfilename="                                        "
               if (iwhich.eq.3) then
                  write(epsfilename,'(A1,A8,I1,A5)') '"',ignufile(iwhich),readprop,'.eps"'
@@ -414,7 +436,7 @@ endif
                  write(871,*) " set zrange [*:*]"
                  write(871,*) " set style line 1 lt -1 lw 3"
                  write(871,*) " set term post color enhanced solid  24 eps"
-
+                    
 #ifdef REALGO
                  write(871,*) " plot ", epstable(1)(1:getlen(epstable(1)))," lw 4, \\"
                  write(871,*)  epstable(2)(1:getlen(epstable(2))), " lw 4 , 'points.dat' with points pt 7 ps 2 lt -1"
@@ -424,66 +446,101 @@ endif
                       " using ($1+2*",plotxyrange,"):2 lw 4 , 'points.dat' with points pt 7 ps 2 lt -1, 'points.dat' using ($1+2*",plotxyrange,"):2 with points pt 7 ps 2 lt -1"
 #endif
               endif  !! pm3d
-           else !! plotterm eq 3
-              if (pm3d==1) then
-                 write(871,*) " splot '-' using 1:($2+2*",plotxyrange,"):3:3,'-' using 1:2:3:3"
-              else
-                 write(871,*) " splot '-' using 1:($2+2*",plotxyrange,"):3,'-' using 1:2:3"
+           else !! plotterm.eq.3 .and. plotmodeflag.ne.-1
+              if (plotmodeflag.eq.0) then
+                 if (pm3d==1) then
+                    write(871,*) " splot '-' using 1:($2+2*",plotxyrange,"):3:3,'-' using 1:2:3:3"
+                 else
+                    write(871,*) " splot '-' using 1:($2+2*",plotxyrange,"):3,'-' using 1:2:3"
+                 endif
+              elseif (plotmodeflag.eq.-1) then
+                 write(871,*) " plot '-' using 1:2 title 'real','-' using 1:2 title 'imag'"
               endif
-           endif
+           endif !! plotterm eq 3 and plotmodeflag ne -1
            write(871,*)
            
-           if (plotterm.ne.3.or.pm3d.ne.0) then  !! we want to plot out some data otherwise term 3, 3d 0 and we have tables and we are done
-              do ixi=(-1)*plotres,plotres-1
-                 do ieta=(-1)*plotres,plotres-1
-                    xval=(ixi+0.5d0)*plotxyrange/plotres
-                    zval=(ieta+0.5d0)*plotxyrange/plotres
-                    rho=sqrt(xval**2+zval**2)
-                    costheta=cos(atan2(zval,xval))
-                    
-                    sum=cylindricalvalue(rho,costheta,1.d0,imvalue, ttempspf(:,:,imvalue+(spfdims(3)+1)/2))
-                    
-                    if (zval.lt.0.d0) then
-                       sum=sum*(-1)**abs(imvalue)
-                    endif
-                    if (plotterm.ne.3) then
-                       write(871,'(2F8.3, F14.8)') zval,xval,imag(sum+(0.d0,0.d0))
-                    else
-                       write(871,'(2F8.3, 2F14.8)') zval,xval,sum
-                    endif
-                 enddo
-                 write(871,*)
-              enddo
-              write(871,*) "e"
-           
-              if ((plotterm.ne.3)) then  ! plot out the imaginary set as well unless term 3
-                 
+           if (plotmodeflag.eq.0) then
+              if (plotterm.ne.3.or.pm3d.ne.0) then  !! we want to plot out some data otherwise term 3, 3d 0 and we have tables and we are done
                  do ixi=(-1)*plotres,plotres-1
                     do ieta=(-1)*plotres,plotres-1
                        xval=(ixi+0.5d0)*plotxyrange/plotres
                        zval=(ieta+0.5d0)*plotxyrange/plotres
                        rho=sqrt(xval**2+zval**2)
                        costheta=cos(atan2(zval,xval))
+                      
+                       !!                       sum=cylindricalvalue(rho,costheta,1.d0,imvalue, ttempspf(:,:,imvalue+(spfdims(3)+1)/2))
+                       sum=cylindricalvalue(rho,costheta,1.d0,imvalue, ttempspf)
                        
-                       sum=cylindricalvalue(rho,costheta,1.d0,imvalue, ttempspf(:,:,imvalue+(spfdims(3)+1)/2))
                        if (zval.lt.0.d0) then
                           sum=sum*(-1)**abs(imvalue)
                        endif
-                       write(871,'(2F8.3, F18.12)') zval,xval,real(sum+(0.d0,0.d0))
+                       if (plotterm.ne.3) then
+                          write(871,'(2F8.3, F14.8)') zval,xval,imag(sum+(0.d0,0.d0))
+                       else
+                          write(871,'(2F8.3, 2F14.8)') zval,xval,sum
+                       endif
                     enddo
                     write(871,*)
                  enddo
                  write(871,*) "e"
-              endif  !! plot out second set
-           endif  !! plotting out the data
-           write(871,*) "pause ", plotpause
-        endif  !! povplotflag
+           
+                 if ((plotterm.ne.3)) then  ! plot out the imaginary set as well unless term 3
+                 
+                    do ixi=(-1)*plotres,plotres-1
+                       do ieta=(-1)*plotres,plotres-1
+                          xval=(ixi+0.5d0)*plotxyrange/plotres
+                          zval=(ieta+0.5d0)*plotxyrange/plotres
+                          rho=sqrt(xval**2+zval**2)
+                          costheta=cos(atan2(zval,xval))
+                          
+                          !!                          sum=cylindricalvalue(rho,costheta,1.d0,imvalue, ttempspf(:,:,imvalue+(spfdims(3)+1)/2))
+                          sum=cylindricalvalue(rho,costheta,1.d0,imvalue, ttempspf)
+                          if (zval.lt.0.d0) then
+                             sum=sum*(-1)**abs(imvalue)
+                          endif
+                          write(871,'(2F8.3, F18.12)') zval,xval,real(sum+(0.d0,0.d0))
+                       enddo
+                       write(871,*)
+                    enddo
+                    write(871,*) "e"
+                 endif  !! plot out second set
+              endif  !! plotting out the data
+              write(871,*) "pause ", plotpause
+           elseif (plotmodeflag.eq.-1) then
+
+              do iz = (-1)*plotres,plotres-1
+                 zval=(iz+0.5d0)*plotxyrange/plotres
+                 rho=abs(zval)
+                 costheta = sign(1d0,zval)
+                       
+                 !!                 sum=cylindricalvalue(rho,costheta,1.d0,0, ttempspf(:,:,0+(spfdims(3)+1)/2))
+                 sum=cylindricalvalue(rho,costheta,1.d0,0, ttempspf)
+                       
+                 write(871,'(2F8.3, 2F14.8)') zval,real(sum,8)
+              enddo
+              write(871,*) "e"
+              do iz = (-1)*plotres,plotres-1
+                 zval=(iz+0.5d0)*plotxyrange/plotres
+                 rho=abs(zval)
+                 costheta = sign(1d0,zval)
+                       
+                 !!                 sum=cylindricalvalue(rho,costheta,1.d0,0, ttempspf(:,:,0+(spfdims(3)+1)/2))
+                 sum=cylindricalvalue(rho,costheta,1.d0,0, ttempspf)
+                       
+                 write(871,'(2F8.3, 2F14.8)') zval,imag(sum)
+              enddo
+              write(871,*) "e"
+              write(871,*) "pause ", plotpause
+           else
+              OFLWR "PROGFAIL"; CFLST
+           endif  !! plotmodeflag.eq.0 or -1
+        endif  !! plotmodeflag.eq.1
      endif !! flag==1 or 2
      call checkstopfile()
   enddo
 
   call close_orbvector(ifilenums(iwhich))
-  if (povplotflag.eq.0) then
+  if (plotmodeflag.ne.1) then
      close(871)
 
      if (myrank.eq.1) then
@@ -599,7 +656,7 @@ subroutine read_Rorb(whichspf, iprop,iwhich)
 end subroutine read_Rorb
 
 
-subroutine writegnuoptions(myunit, giffilename)
+subroutine writegnuoptions3d(myunit, giffilename)
   use parameters
   implicit none
   integer :: myunit, getlen
@@ -707,7 +764,37 @@ endif
   write(myunit,*) 
   write(myunit,*) 
 
-end subroutine writegnuoptions
+end subroutine writegnuoptions3d
+
+
+subroutine writegnuoptions1d(myunit, giffilename)
+  use parameters
+  implicit none
+  integer :: myunit, getlen
+  character (len=20) :: giffilename
+
+  write(myunit,*) 
+  write(myunit,*) " set style data lines           "
+  write(myunit,*) "     set border 31 lw 2"
+
+  write(myunit,*) " set xrange [",-plotxyrange,":",plotxyrange,"]"
+
+  select case (plotterm)
+  case (1)
+     write(myunit,*) " set term aqua                   "
+     write(myunit,*) " set out                        "
+  case (2)
+     write(myunit,*) " set term gif animate delay 10      "
+     write(myunit,'(A11,A20)') " set out  ", giffilename(1:getlen(giffilename))
+  case (3)
+  case default
+     write(myunit,*) " set term x11                   "
+     write(myunit,*) " set out                        "
+  end select
+  write(myunit,*) 
+  write(myunit,*) 
+
+end subroutine writegnuoptions1d
 
 
 subroutine writergnuoptions(myunit, giffilename)
@@ -751,7 +838,7 @@ subroutine whatsub(flag)
   print *, "         b = toggle plotsubtract (now ",plotsubtract,")"
   print *, "         n = change plotnum (now ",plotnum,")"
      
-  if (povplotflag /= 1) then
+  if (plotmodeflag /= 1) then
      if (plotrange<0) then
         print *, "         z = change zrange (now auto)"
      else
@@ -768,7 +855,7 @@ subroutine whatsub(flag)
   print *
 
   inchar="  ";  read(*,*) inchar
-  if (povplotflag == 1) then
+  if (plotmodeflag == 1) then    !! povray
      select case (inchar(1:1))
      case('q')
         print *, "Ok, quitting"

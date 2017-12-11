@@ -576,7 +576,7 @@ subroutine getdensity(density, indenmat, inspfs,howmany)
   integer,intent(in) :: howmany
   DATATYPE,intent(in) :: indenmat(howmany,howmany), inspfs(numerad,lbig+1,-mbig:mbig,howmany)
   complex*16,intent(out) :: density(numerad,lbig+1,2*mbig+1)   !! truncating this; actually have 4*mbig+1
-  integer :: i,j,ii,jj,kk, mm,nn
+  integer :: i,j,kk, mm,nn
   real*8 :: phi,pi
 
   pi=4d0*atan(1d0)
@@ -607,6 +607,7 @@ subroutine getdensity(density, indenmat, inspfs,howmany)
 !$$    enddo
 !$$    enddo
 
+  !! this is not terribly satisfactory; divide by elecweights in main program, should be here.
   do mm=-mbig,mbig
      do nn=-mbig,mbig
         do i=1,howmany

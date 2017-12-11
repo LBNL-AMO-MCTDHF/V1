@@ -86,8 +86,12 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 !     elecweights(i-1,:,:,1)=xiweights(i)
 !  enddo
 
+! 121017 for prolate we calculate the wave function (times powers of R)
+! putting the weight from the volume element here, in the 1st radial index
   do i=1,xigridpoints-1
-     elecweights(i,:,:,1)=xiweights(i)
+     do imvalue=-mbig,mbig
+        elecweights(i,:,imvalue,1)=xiweights(i) * (xipoints(i)**2-etapoints(:)**2)
+     enddo
   enddo
 
   rkemod=rketot(2:numr+1,2:numr+1)

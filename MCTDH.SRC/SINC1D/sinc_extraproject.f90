@@ -339,11 +339,39 @@ end subroutine checkmyopts
 
 
 
-function cylindricalvalue() !radpoint, thetapoint,nullrvalue,mvalue, invector)
+function cylindricalvalue(radpoint, costheta, rvaluenotused, mvaluenotused, invector)
+  use myparams
+  use myprojectmod
+  implicit none
+  integer,intent(in) :: mvaluenotused
+  DATATYPE,intent(in) :: invector(totpoints)
+  real*8,intent(in) :: radpoint,costheta,rvaluenotused
   DATATYPE :: cylindricalvalue
-  cylindricalvalue=0d0
-print *, "DOME CYLINDRICAL VALUE SINC (what?)"; stop
+  integer :: ii
+
+  cylindricalvalue=0;
+  do ii=1,totpoints
+     !! temporary, take real part, not valid outside scaling radius
+     cylindricalvalue=cylindricalvalue + invector(ii) * mysinc(real((dipoles(ii)-radpoint*costheta)/spacing,8)) / sqrt(spacing);
+  enddo
+
+contains
+  function mysinc(input)
+    implicit none
+    real*8,intent(in) :: input
+    real*8 :: mysinc
+    real*8,parameter :: pi=3.141592653589793d0
+    if (abs(input).lt.1d-6) then
+       mysinc=1d0
+    else
+       mysinc=((0d0,-1d0)*exp((0d0,1d0)*pi*input)+&  !! ok conversion
+            (0d0,1d0)*exp((0d0,-1d0)*pi*input))/pi/input/2
+    endif
+  end function mysinc
 end function cylindricalvalue
+
+
+
 
 subroutine get_maxsparse() !nx,ny,nz,xvals,yvals,zvals, maxsparse,povsparse)
   print *, "DOME get_maxsparse SINC"; STOP

@@ -283,33 +283,44 @@ function etafunct(radpoint,thetapoint,rvalue)
   sum1 = 0.25d0 + ( radpoint / rvalue )**2
   sum2 = radpoint / rvalue * thetapoint     !! thetapoint is costheta
   etafunct=sqrt(sum1+sum2) - sqrt(sum1-sum2) 
-  if (abs(etafunct) .gt. 1.d0) then
+  if (abs(etafunct) .gt. 1.d0+1d-15) then
      OFLWR "Etafunct err!", etafunct, sum1, sum2, radpoint, thetapoint, rvalue;CFLST
   endif
+  etafunct=max(min(etafunct,1d0),-1d0)
 end function etafunct
 
 end module dvrvalmod
 
 
-function cylindricalvalue(radpoint, thetapoint,rvalue,mvalue, invector)
+function cylindricalvalue(radpoint, thetapoint, rvalue, mvalue, ininvector)
   use myparams
   use myprojectmod
   use dvrvalmod
   implicit none
   integer,intent(in) :: mvalue
-  DATATYPE,intent(in) :: invector(numerad,lbig+1)
+  DATATYPE,intent(in) :: ininvector(numerad,lbig+1,-mbig:mbig)
+  DATATYPE :: invector(numerad,lbig+1)   !! AUTOMATIC
   real*8,intent(in) :: radpoint,thetapoint,rvalue
   DATATYPE ::  cylindricalvalue, sum
+  real*8 :: thiseta, thisxi
   integer :: ixi,lvalue
-  sum=0.d0
 
+  if (abs(mvalue)<mbig) then
+     OFLWR "Error m-fail"; CFLST
+  endif
+  invector =ininvector(:,:,mvalue);
+
+  thisxi  = xifunct(radpoint,thetapoint,rvalue)
+  thiseta = etafunct(radpoint,thetapoint,rvalue)
+
+  sum=0.d0
   do ixi=1,numerad
      do lvalue=1,lbig+1
         sum=sum + &
-             radiallobatto(ixi,xifunct(radpoint,thetapoint,rvalue), mvalue) * &
-             angularlobatto(lvalue,etafunct(radpoint,thetapoint,rvalue), mvalue) * 1.d0 / &
-             sqrt(xipoints(ixi)**2 - etapoints(lvalue)**2) * invector(ixi,lvalue) * &
-             1.d0/sqrt(2.d0*3.14159265d0)
+             radiallobatto(ixi,thisxi, mvalue) * &
+             angularlobatto(lvalue,thiseta, mvalue) &
+             / sqrt(xipoints(ixi)**2 - etapoints(lvalue)**2) & 
+             * invector(ixi,lvalue) * 1.d0/sqrt(2.d0*3.14159265d0)
      enddo
   enddo
   cylindricalvalue=sum

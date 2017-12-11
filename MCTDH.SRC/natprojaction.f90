@@ -375,22 +375,24 @@ subroutine save_denproj( nproj, thistime, inspfs, indenmats, denfilename)
   complex*16 ::     cmdensity(spfdims(1),spfdims(2),spfdims(3)), &
        density(spfdims(1),spfdims(2),spfdims(3))
 
-  if (spfdimtype(3).eq.1) then  !! assume fourier basis (-mbig:mbig)
-     if (mod(spfdims(3),2).ne.1) then
-        OFLWR "FOURRR ERROR"; CFLST
-     endif
-     do i=1,spfdims(3)
-        do j=1,spfdims(3)
-           jj=j-(spfdims(3)+1)/2;
-           mtrans(i,j) = exp((0.d0,1.d0)*jj*2*pi*i/real(spfdims(3)))
-        enddo
-     enddo
-  else
-     mtrans(:,:)=0d0
-     do i=1,spfdims(3)
-        mtrans(i,i)=1d0
-     enddo
-  endif
+  !!$  if (spfdimtype(3).eq.1) then  !! assume fourier basis (-mbig:mbig)
+  !!$     if (mod(spfdims(3),2).ne.1) then
+  !!$        OFLWR "FOURRR ERROR"; CFLST
+  !!$     endif
+  !!$     do i=1,spfdims(3)
+  !!$        do j=1,spfdims(3)
+  !!$           jj=j-(spfdims(3)+1)/2;
+  !!$           mtrans(i,j) = exp((0.d0,1.d0)*jj*2*pi*i/real(spfdims(3)))
+  !!$        enddo
+  !!$     enddo
+  !!$  else
+
+  mtrans(:,:)=0d0
+  do i=1,spfdims(3)
+     mtrans(i,i)=1d0
+  enddo
+
+  !!$  endif
 
   do iproj=1,nproj
      call getdensity(density, indenmats(:,:,iproj), inspfs,nspf)

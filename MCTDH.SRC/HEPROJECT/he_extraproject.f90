@@ -163,24 +163,33 @@ end function angularlobattoint
 end module dvrvalmod
 
 
-function cylindricalvalue(radpoint, thetapoint,nullrvalue,mvalue, invector)
+function cylindricalvalue(radpoint, thetapoint, rvaluenotused, mvalue, ininvector)
   use myparams
   use myprojectmod
   use dvrvalmod
   implicit none
   integer,intent(in) :: mvalue
-  DATATYPE,intent(in) :: invector(numerad,lbig+1)
-  real*8,intent(in) :: radpoint, thetapoint, nullrvalue
+  DATATYPE,intent(in) :: ininvector(numerad,lbig+1,-mbig:mbig)
+  DATATYPE :: invector(numerad,lbig+1)   !!AUTOMATIC
+  real*8,intent(in) :: radpoint, thetapoint, rvaluenotused
   DATATYPE ::  cylindricalvalue, sum
   integer :: ixi,lvalue
 
-  sum=0.d0*nullrvalue !! avoid warn unused
+  if (abs(mvalue)<mbig) then
+     OFLWR "Error m-fail"; CFLST
+  endif
+  invector =ininvector(:,:,mvalue);
+
+  sum=0.d0
   do ixi=1,numerad
      do lvalue=1,lbig+1
         sum=sum + &
              radiallobatto(ixi,radpoint, mvalue) * &
              angularlobatto(lvalue,thetapoint, mvalue) * invector(ixi,lvalue) * &
-             1.d0/sqrt(2.d0*3.14159265d0)
+             !! bugfix 121017 missing / radpoint.  
+             !! for atom we calculate r times functions; 
+             !! otherwise we calculate the functions (like wave functions)
+             1.d0/sqrt(2.d0*3.14159265d0) / radpoint  
      enddo
   enddo
   cylindricalvalue=sum
