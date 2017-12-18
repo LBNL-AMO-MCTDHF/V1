@@ -11,6 +11,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   use myparams
   use myprojectmod
   use eigenmod    !! IN PARENT DIRECTORY
+  use constant_parameters !! IN PARENT DIRECTORY
   use pscmod
   use tinvsubmod
   use gettwoemod
@@ -63,11 +64,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      elecradii(:,i,:)=etapoints(i)**2
   enddo
 
-! BUGFIX 092517
-!  do i=2,xigridpoints-1
-!     elecradii(i-1,:,:)=elecradii(i-1,:,:) + xipoints(i)**2
-!  enddo
-
   do i=1,xigridpoints-1
      elecradii(i,:,:)=elecradii(i,:,:) + xipoints(i)**2
   enddo
@@ -76,21 +72,17 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 !                 (this is a unitless radius, in units of bond distance.. checkme)
   elecradii(:,:,:) = sqrt(elecradii(:,:,:) - 1d0);
 
-  elecweights(:,:,:,3)=1d0
+  elecweights(:,:,:,3) = 2*pi
   do i=1,lbig+1
      elecweights(:,i,:,2)=etaweights(i)
   enddo
 
-! BUGFIX 092517  ! ! ! ! ! 
-!  do i=2,xigridpoints-1
-!     elecweights(i-1,:,:,1)=xiweights(i)
-!  enddo
-
-! 121017 for prolate we calculate the wave function (times powers of R)
+! 121017 for prolate we calculate the wave function 
+! (times R^(3N/2) for the electronic part, also factor of R for nuc motion)
 ! putting the weight from the volume element here, in the 1st radial index
   do i=1,xigridpoints-1
      do imvalue=-mbig,mbig
-        elecweights(i,:,imvalue,1)=xiweights(i) * (xipoints(i)**2-etapoints(:)**2)
+        elecweights(i,:,imvalue,1)=xiweights(i) * (xipoints(i)**2-etapoints(:)**2) / 8d0
      enddo
   enddo
 

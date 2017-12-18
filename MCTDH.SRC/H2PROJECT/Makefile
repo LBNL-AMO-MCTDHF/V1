@@ -47,9 +47,8 @@ PSC-newest.o: $(DEPEND)  H2_params.o h2project.o PSC-newest.F90 lpm.o
 lpm.o: $(DEPEND)  H2_params.o h2project.o lpm.F90
 	$(F90) $(FFLAGS)  -c lpm.F90
 
-
-h2_extraproject.o: $(DEPEND) H2_params.o h2project.o coreproject.o h2_extraproject.F90
-	$(F90) $(FFLAGS) $(PGFFLAG) -c h2_extraproject.F90 -o h2_extraproject.o
+h2_extraproject.o: $(DEPEND) H2_params.o h2project.o coreproject.o h2_extraproject.F90 ../parameters.o
+	$(F90) $(FFLAGS) $(PGFFLAG) -I.. -c h2_extraproject.F90 -o h2_extraproject.o
 
 
 GetJacobiKE.o: GetJacobiKE.F90 

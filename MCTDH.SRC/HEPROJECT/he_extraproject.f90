@@ -167,6 +167,7 @@ function cylindricalvalue(radpoint, thetapoint, rvaluenotused, mvalue, ininvecto
   use myparams
   use myprojectmod
   use dvrvalmod
+  use constant_parameters !! IN PARENT DIRECTORY
   implicit none
   integer,intent(in) :: mvalue
   DATATYPE,intent(in) :: ininvector(numerad,lbig+1,-mbig:mbig)
@@ -189,7 +190,7 @@ function cylindricalvalue(radpoint, thetapoint, rvaluenotused, mvalue, ininvecto
              !! bugfix 121017 missing / radpoint.  
              !! for atom we calculate r times functions; 
              !! otherwise we calculate the functions (like wave functions)
-             1.d0/sqrt(2.d0*3.14159265d0) / radpoint  
+             1.d0/sqrt(2.d0*pi) / radpoint  
      enddo
   enddo
   cylindricalvalue=sum
@@ -200,6 +201,7 @@ subroutine get_maxsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,povsparse)
    use myparams
    use myprojectmod
    use dvrvalmod
+   use constant_parameters !! IN PARENT DIRECTORY
    implicit none
    integer,intent(in) :: nx,ny,nz
    integer,intent(out) :: maxsparse
@@ -234,7 +236,7 @@ subroutine get_maxsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,povsparse)
       csum=          radiallobatto(ixi,rhoval, mvalue) * &
            angularlobatto(lvalue,costhetaval, mvalue) * 1.d0 / &
            sqrt(glpoints(ixi)**2 - jacobipoints(lvalue)**2) * &
-           1.d0/sqrt(2.d0*3.14159265d0) * exp((0.d0,1.d0)*mvalue*phival) 
+           1.d0/sqrt(2.d0*pi) * exp((0.d0,1.d0)*mvalue*phival) 
       if (abs(csum).gt.povsparse) then
          iii=iii+1
       endif
@@ -258,6 +260,7 @@ subroutine get_sphericalsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,sparsetrans
    use myparams
    use myprojectmod
    use dvrvalmod
+   use constant_parameters !! IN PARENT DIRECTORY
    implicit none
    integer,intent(in) :: nx,ny,nz,maxsparse
    real*8,intent(in) :: xvals(nx),yvals(ny),zvals(nz),povsparse
@@ -294,7 +297,7 @@ OFLWR "CHECK RADIALLOBATTO"; CFLST
       csum=         radiallobatto(ixi,rhoval, mvalue) * &
            angularlobatto(lvalue,costhetaval, mvalue) * 1.d0 / &
            sqrt(glpoints(ixi)**2 - jacobipoints(lvalue)**2) * &
-           1.d0/sqrt(2.d0*3.14159265d0) * exp((0.d0,1.d0)*mvalue*phival) 
+           1.d0/sqrt(2.d0*pi) * exp((0.d0,1.d0)*mvalue*phival) 
    
       if (abs(csum).gt.povsparse) then
          iii=iii+1

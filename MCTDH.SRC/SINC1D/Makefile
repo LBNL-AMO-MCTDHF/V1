@@ -54,8 +54,8 @@ init_sinc_new.o: $(DEPEND) sinc1d_params.o sincproject.o coreproject.o init_sinc
 coreproject.o: $(DEPEND)  sinc1d_params.o sincproject.o coreproject.F90 toeplitz_subs.o ../MPI.o ../proputils.o ../parameters.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -I.. -c coreproject.F90
 
-sinc_extraproject.o: $(DEPEND) sinc1d_params.o sincproject.o sinc_extraproject.F90
-	$(F90) $(FFLAGS) $(MPIFLAG) $(PGFFLAG) -c sinc_extraproject.F90 -o sinc_extraproject.o
+sinc_extraproject.o: $(DEPEND) sinc1d_params.o sincproject.o sinc_extraproject.F90 ../parameters.o
+	$(F90) $(FFLAGS) $(MPIFLAG) $(PGFFLAG) -I.. -c sinc_extraproject.F90 -o sinc_extraproject.o
 
 SineDVR.o: $(DEPEND) SineDVR.F90 
 	$(F90) $(FFLAGS) $(MPIFLAG) -c SineDVR.F90 

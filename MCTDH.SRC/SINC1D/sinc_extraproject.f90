@@ -13,6 +13,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   use pfileptrmod
   use pmpimod
   use onedfunmod
+  use constant_parameters  !! IN PARENT DIRECTORY
   implicit none
 
   integer,intent(in) :: inmpifileptr
@@ -22,7 +23,6 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   integer :: nargs, i,j, len,getlen,myiostat
   character (len=SLN) :: buffer
   character (len=SLN) :: nullbuff
-  real*8, parameter :: pi = 3.14159265358979323844d0
   real*8 :: zz, ss , xfac
   DATATYPE ::  ns(1)
   DATATYPE, parameter :: czero(1)=0
@@ -155,7 +155,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
            !! straight sum of two-particle interactions just like electrons
            
            xfac=1
-           if (twomode.eq.1.and.coulmode.eq.(-1)) then   !! bugfix 120617 was twomode=-1
+           if (twomode.eq.1.and.coulmode.lt.0) then   !! bugfix 120617 was twomode=-1
               xfac = softness/softnessnuc
            endif
 
@@ -224,7 +224,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
 
      else  !! nucmode.eq.0.or.twomode.ne.0
         
-        !! here, nucmode.ne.0 :: ad hoc internuclear repulsion 
+        !! here, nucmode.ne.0, twomode.eq.0 (sech):: ad hoc internuclear repulsion 
         !! nuclear repulsion designed to make asymptote equal to R=0 with twostrength=0
         !! (for bosons, hypothetically)
         
@@ -296,7 +296,7 @@ subroutine printmyopts()
   else
      WRFL "potential two-body interaction, twotype.ne.0"
      WRFL "  SOFTNESS ", softness
-     if (twomode.eq.1.and.coulmode.eq.(-1)) then  !! bugfix 120617 was twomode=-1
+     if (twomode.eq.1.and.coulmode.lt.0) then  !! bugfix 120617 was twomode=-1
         WRFL "  for coulomb, internuclear softness ", softnessnuc
         WRFL "  for coulomb, interelectronic softness ", softnesstwoe
      endif
@@ -314,6 +314,14 @@ subroutine printmyopts()
         WRFL "   coulmode == 0 : centrifugal with hydrogenic eigvals"
      elseif (coulmode.eq.1) then
         WRFL "   coulmode == 1 : centrifugal with half integer even parity"
+     elseif (coulmode.eq.-1) then
+        WRFL "   coulmode ==-1 : softened coulomb 1/sqrt(x^2+softness^2)"
+     elseif (coulmode.eq.-2) then
+        WRFL "   coulmode ==-2 : softened coulomb A/log(sech(x/A))"
+     else
+        WRFL "   coulmode ==",coulmode," : softened coulomb 1/(abs(x)+A), etc."
+        !     else
+        !        WRFL "coulmode ", coulmode," not supported"; CFLST
      endif
   else
      WRFL "linear potential"
@@ -357,10 +365,10 @@ function cylindricalvalue(radpoint, costheta, rvaluenotused, mvaluenotused, inve
 
 contains
   function mysinc(input)
+    use constant_parameters  !! IN PARENT DIRECTORY
     implicit none
     real*8,intent(in) :: input
     real*8 :: mysinc
-    real*8,parameter :: pi=3.141592653589793d0
     if (abs(input).lt.1d-6) then
        mysinc=1d0
     else

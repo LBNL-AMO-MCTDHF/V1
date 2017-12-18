@@ -11,6 +11,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   use myparams
   use myprojectmod
   use eigenmod !! IN PARENT DIRECTORY
+  use constant_parameters !! IN PARENT DIRECTORY
   use tinvsubmod
   use gettwoemod
   implicit none
@@ -90,13 +91,15 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
  !! CAREFUL.  121017
  !! elecweights are used to convert from basis set to real space representation
  !! for atoms we represent r times the wave function (or r times the density, etc.)
- !! with dvr.    otherwise (diatom, sinc3d, sinc1d) we represent the wave function.
+ !! with dvr.    for sinc3d, sinc1d we represent the wave function.  For
+ !! diatoms we represent R^(3N/2) times the electronic wave function (no factors of
+ !! electron coordinates)
  !! the product i=1..3 of elecweights(:,:,:,i) is NOT the DVR weights, for atom.  
  !! it is the DVR weights times r.  Otherwise, not atom, it is indeed the DVR weights.
  !! elecweights used to compute density (natprojaction and saveactions), for keproj,
  !! and elecweights(:,:,:,2) (angular) is used for projkeflux. 
 
-  elecweights(:,:,:,3)=1d0
+  elecweights(:,:,:,3) = 2d0*pi
   do i=1,lbig+1
      elecweights(:,i,:,2)=jacobiweights(i)
   enddo

@@ -42,12 +42,15 @@ subroutine read_orb_initial(iwhich)
 
   xxflag=xxflag+1
   if (xxflag==1) then
-     print *, "PLOTTING MODE:  Enter 0 for 2D plot, -1 for 1D plot, 1 for povray"
+     print *, "                    PLOTTING MODE:"
+     print *, "Enter -2 for 1D reduced; -1 for 1D slice; 0 for 2D slice; 1 for povray"
      read(*,*) plotmodeflag
      if (plotmodeflag==0) then
-        print *, "OK, just using gnuplot, 2D"
+        print *, "OK, gnuplot, 2D slice"
      elseif (plotmodeflag==-1) then
-        print *, "OK, just using gnuplot, 1D"
+        print *, "OK, gnuplot, 1D slice"
+     elseif (plotmodeflag==-2) then
+        print *, "Ok, gnuplot, 1D reduced"
      else
         print *, "OK, using povray."
         plotmodeflag=1
@@ -214,7 +217,7 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
   character (len=8), parameter :: ignufile(4)=(/ "Natplot_", "Spfplot_", "Denplot_", "Denproj_" /)
   character (len=10) :: povdirs(4) = (/ "Natorb    ", "Spfs      ", "Density   ", "Denproj   " /)
   character(len=10) :: mypovdir
-  real*8 :: thistime, zval, xval,  costheta, rho
+  real*8 :: thistime, zval, xval,  costheta, rho, rsum
   DATATYPE :: sum, cylindricalvalue, mydenval
   DATATYPE :: ttempspf(spfdims(1),spfdims(2),spfdims(3))      !! AUTOMATIC
   DATATYPE :: savespf(spfdims(1),spfdims(2),spfdims(3))       !! AUTOMATIC
@@ -266,7 +269,7 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
         end select
         if (returnval/=0) then
            call openfile();   write(mpifileptr,*) "Done with vectors on file.";  call closefile()
-           if (plotmodeflag.eq.0) then
+           if (plotmodeflag.ne.1) then   !! if not povray
               close(871)   
            endif
            flag=3
@@ -324,7 +327,7 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
               open(871,file=filename(1:getlen(filename)),status="unknown")
               if (plotmodeflag==0) then
                  call writegnuoptions3d(871, giffilename)
-              elseif (plotmodeflag==-1) then
+              elseif (plotmodeflag==-1 .or. plotmodeflag==-2) then
                  call writegnuoptions1d(871, giffilename)
               else
                  OFLWR "OOPS error programmer fail gnuoptions"; CFLST
@@ -332,7 +335,7 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
 
            endif  !! ifirst
 
-           if (plotterm.eq.3.and.pm3d.eq.0.and.plotmodeflag.ne.-1) then
+           if (plotterm.eq.3.and.pm3d.eq.0.and.plotmodeflag.ge.0) then
 
               if (plotmodeflag.ne.0) then
                  OFLWR "PROGRAMMER FAAAAIL"; CFLST
@@ -396,7 +399,7 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
                  write(871,*) "unset table"
                  write(871,*)
               enddo !! itable
-           endif  !! ( plotterm.eq.3 .and. pm3d.eq.0 .and. plotmodeflag.ne.-1 )
+           endif  !! ( plotterm.eq.3 .and. pm3d.eq.0 .and. plotmodeflag.ge.0 )
 
            select case(iwhich)
            case (1)
@@ -411,7 +414,7 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
 
            write(871,*) titleline
 
-           if (plotterm.eq.3.and.plotmodeflag.ne.-1) then
+           if (plotterm.eq.3.and.plotmodeflag.ge.0) then
               if (plotmodeflag.ne.0) then
                  OFLWR "Rogrammer fail"; CFLST
               endif
@@ -446,15 +449,17 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
                       " using ($1+2*",plotxyrange,"):2 lw 4 , 'points.dat' with points pt 7 ps 2 lt -1, 'points.dat' using ($1+2*",plotxyrange,"):2 with points pt 7 ps 2 lt -1"
 #endif
               endif  !! pm3d
-           else !! plotterm.eq.3 .and. plotmodeflag.ne.-1
+           else !! plotterm.eq.3 .and. plotmodeflag.ge.0
               if (plotmodeflag.eq.0) then
                  if (pm3d==1) then
                     write(871,*) " splot '-' using 1:($2+2*",plotxyrange,"):3:3,'-' using 1:2:3:3"
                  else
                     write(871,*) " splot '-' using 1:($2+2*",plotxyrange,"):3,'-' using 1:2:3"
                  endif
-              elseif (plotmodeflag.eq.-1) then
+              elseif (plotmodeflag.eq.-1 .or. plotmodeflag.eq.-2) then
                  write(871,*) " plot '-' using 1:2 title 'real','-' using 1:2 title 'imag'"
+              else
+                 OFLWR "programmaerrrr fail"; CFLST
               endif
            endif !! plotterm eq 3 and plotmodeflag ne -1
            write(871,*)
@@ -467,8 +472,7 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
                        zval=(ieta+0.5d0)*plotxyrange/plotres
                        rho=sqrt(xval**2+zval**2)
                        costheta=cos(atan2(zval,xval))
-                      
-                       !!                       sum=cylindricalvalue(rho,costheta,1.d0,imvalue, ttempspf(:,:,imvalue+(spfdims(3)+1)/2))
+
                        sum=cylindricalvalue(rho,costheta,1.d0,imvalue, ttempspf)
                        
                        if (zval.lt.0.d0) then
@@ -492,8 +496,7 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
                           zval=(ieta+0.5d0)*plotxyrange/plotres
                           rho=sqrt(xval**2+zval**2)
                           costheta=cos(atan2(zval,xval))
-                          
-                          !!                          sum=cylindricalvalue(rho,costheta,1.d0,imvalue, ttempspf(:,:,imvalue+(spfdims(3)+1)/2))
+
                           sum=cylindricalvalue(rho,costheta,1.d0,imvalue, ttempspf)
                           if (zval.lt.0.d0) then
                              sum=sum*(-1)**abs(imvalue)
@@ -506,28 +509,68 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
                  endif  !! plot out second set
               endif  !! plotting out the data
               write(871,*) "pause ", plotpause
-           elseif (plotmodeflag.eq.-1) then
 
+           elseif (plotmodeflag.eq.-2) then
+              rsum=0
               do iz = (-1)*plotres,plotres-1
                  zval=(iz+0.5d0)*plotxyrange/plotres
-                 rho=abs(zval)
-                 costheta = sign(1d0,zval)
-                       
-                 !!                 sum=cylindricalvalue(rho,costheta,1.d0,0, ttempspf(:,:,0+(spfdims(3)+1)/2))
-                 sum=cylindricalvalue(rho,costheta,1.d0,0, ttempspf)
-                       
-                 write(871,'(2F8.3, 2F14.8)') zval,real(sum,8)
+                 sum=0d0
+                 do ixi = 1,500             !! HARDWIRE 500 points for now
+                    xval = (ixi-0.5)/10;    !! HARDWIRE 1/10 step for now
+
+                    rho=sqrt(xval**2+zval**2)
+                    costheta=zval / rho;  !!  cos(atan2(zval,xval))
+
+                    sum = sum + 2 * pi * xval / 10 * cylindricalvalue(rho,costheta,1.d0,0, ttempspf)
+                 enddo
+                 rsum = rsum + plotxyrange/plotres * real(sum,8)
+                 write(871,'(F8.3, 2F14.8)') zval,real(sum,8), rsum
               enddo
               write(871,*) "e"
+              rsum=0
               do iz = (-1)*plotres,plotres-1
                  zval=(iz+0.5d0)*plotxyrange/plotres
                  rho=abs(zval)
                  costheta = sign(1d0,zval)
-                       
-                 !!                 sum=cylindricalvalue(rho,costheta,1.d0,0, ttempspf(:,:,0+(spfdims(3)+1)/2))
+
+                 sum=0d0
+                 do ixi = 1,500             !! HARDWIRE 500 points for now
+                    xval = (ixi-0.5)/10;    !! HARDWIRE 1/10 step for now
+
+                    rho=sqrt(xval**2+zval**2)
+                    costheta=zval / rho;  !!  cos(atan2(zval,xval))
+
+                    sum = sum + 2 * pi * xval / 10 * cylindricalvalue(rho,costheta,1.d0,0, ttempspf)
+                 enddo
+                 rsum = rsum + plotxyrange/plotres * imag(sum)
+                 write(871,'(F8.3, 2F14.8)') zval,imag(sum),rsum
+              enddo
+              write(871,*) "e"
+              write(871,*) "pause ", plotpause
+
+
+           elseif (plotmodeflag.eq.-1) then
+              rsum=0d0
+              do iz = (-1)*plotres,plotres-1
+                 zval=(iz+0.5d0)*plotxyrange/plotres
+                 rho=abs(zval)
+                 costheta = sign(1d0,zval)
+
                  sum=cylindricalvalue(rho,costheta,1.d0,0, ttempspf)
-                       
-                 write(871,'(2F8.3, 2F14.8)') zval,imag(sum)
+
+                 rsum = rsum + plotxyrange/plotres * real(sum,8)
+                 write(871,'(F8.3, 2F14.8)') zval,real(sum,8),rsum
+              enddo
+              write(871,*) "e"
+              rsum=0d0
+              do iz = (-1)*plotres,plotres-1
+                 zval=(iz+0.5d0)*plotxyrange/plotres
+                 rho=abs(zval)
+                 costheta = sign(1d0,zval)
+
+                 sum=cylindricalvalue(rho,costheta,1.d0,0, ttempspf)
+                 rsum = rsum + plotxyrange/plotres * imag(sum)
+                 write(871,'(F8.3, 2F14.8)') zval,imag(sum),rsum
               enddo
               write(871,*) "e"
               write(871,*) "pause ", plotpause
@@ -591,7 +634,8 @@ subroutine read_Rorb(whichspf, iprop,iwhich)
         endif
         if (returnval/=0) then
            print *,  "Done with vectors on file for rden= ", whichspf
-           close(871);           flag=3
+           close(871)
+           flag=3
         else
            if ((whichspf==ispf).and.(readprop.eq.iprop)) then
               if (mod(irecord-1,plotskip).eq.0) then;                 flag=1
@@ -639,7 +683,8 @@ subroutine read_Rorb(whichspf, iprop,iwhich)
         do ir=1,numr
            write(871,'(F8.3, F14.8)') real(bondpoints(ir),8),real(inrdenvect(ir)/sqrt(bondweights(ir)),8)
         enddo
-        write(871,*) "e";        write(871,*) "pause ", plotpause
+        write(871,*) "e"
+        write(871,*) "pause ", plotpause
      endif
   enddo
   close(871)
@@ -838,16 +883,21 @@ subroutine whatsub(flag)
   print *, "         b = toggle plotsubtract (now ",plotsubtract,")"
   print *, "         n = change plotnum (now ",plotnum,")"
      
-  if (plotmodeflag /= 1) then
+  if (plotmodeflag /= 1) then  !! not povray
+     print *, "         r = change plotres (now ",plotres,")"
+     print *, "         x = change xy (abscissa) range (now ",plotxyrange,")"
      if (plotrange<0) then
         print *, "         z = change zrange (now auto)"
      else
         print *, "         z = change zrange (now ",plotrange,")"
      endif
-     print *, "         c = change cbrange (now ",plotcbrange,")"
-     print *, "         x = change xyrange (now ",plotxyrange,")"
      print *, "         t = change terminal (now ",termlabels(plotterm),")"
+  endif
+  if (plotmodeflag == 0) then  !! 2D plot
      print *, "         d = change pm3d (now ",pm3d,")"
+     if (pm3d.ne.0) then
+        print *, "         c = change cbrange (now ",plotcbrange,")"
+     endif
      print *, "         v1= change view rotation 1 (now ",plotview1,") degrees"
      print *, "         v2= change view rotation 2 (now ",plotview2,") degrees"
   endif
@@ -892,6 +942,9 @@ subroutine whatsub(flag)
      case ('n')
         print *, "   enter plotnum ( now ", plotnum, " ) "
         read(*,*) plotnum
+     case ('r')
+        print *, "   enter plotres ( now ", plotres, " ) "
+        read(*,*) plotres
      case ('z')
         if (plotrange<0) then
            print *, "   enter zrange, negative for auto ( now auto ) "

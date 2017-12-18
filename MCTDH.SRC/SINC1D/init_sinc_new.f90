@@ -114,9 +114,9 @@ end function ddjfunct
 !! f happens to go from 0 to 1/2 on (0,1)
 
 function fscaled(xval)
+  use constant_parameters !! IN PARENT DIRECTORY
   implicit none
   real*8 :: fscaled,xval,pixval
-  real*8, parameter :: pi = 3.14159265358979323844d0 !!TEMP
 
   if (xval.lt.0d0.or.xval.gt.1d0) then
      print *, "SCALEDERR F",xval; stop
@@ -126,9 +126,9 @@ function fscaled(xval)
 end function fscaled
 
 function jscaled(xval)
+  use constant_parameters !! IN PARENT DIRECTORY
   implicit none
   real*8 :: jscaled,xval,pixval
-  real*8, parameter :: pi = 3.14159265358979323844d0 !!TEMP
 
   if (xval.lt.0d0.or.xval.gt.1d0) then
      print *, "SCALEDERR F",xval; stop
@@ -138,9 +138,9 @@ function jscaled(xval)
 end function jscaled
 
 function djscaled(xval)
+  use constant_parameters !! IN PARENT DIRECTORY
   implicit none
   real*8 :: djscaled,xval,pixval
-  real*8, parameter :: pi = 3.14159265358979323844d0 !!TEMP
 
   if (xval.lt.0d0.or.xval.gt.1d0) then
      print *, "SCALEDERR F",xval; stop
@@ -151,9 +151,9 @@ function djscaled(xval)
 end function djscaled
 
 function ddjscaled(xval)
+  use constant_parameters !! IN PARENT DIRECTORY
   implicit none
   real*8 :: ddjscaled,xval,pixval
-  real*8, parameter :: pi = 3.14159265358979323844d0 !!TEMP
 
   if (xval.lt.0d0.or.xval.gt.1d0) then
      print *, "SCALEDERR F",xval; stop
@@ -283,7 +283,7 @@ subroutine init_spfs(inspfs,numloaded,numfrozen,frozenreduced)
 
   if (eigmode.ne.0) then
      OFLWR "CALL BLOCK LAN FOR ORBS, ",numcompute," VECTORS",orbparflag; CFL
-     call blocklanczos0(1,numcompute,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,&
+     call blocklanczos0(numcompute,numcompute,ibig,ibig,iorder,ibig*ppfac,lanspfs,ibig,&
           energies,1,0,orblancheckmod,orblanthresh,mult_bigspf,orbparflag,orbtargetflag,orbtarget)
      OFLWR "BLOCKLAN CALLED. ENERGIES: ";CFL
   else
@@ -477,7 +477,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   rkemod(:,:)=0d0; proderivmod(:,:)=0d0; bondpoints(:)=1d0; bondweights(:)=1d0
 
-  elecweights(:,3)=(1d0/spacing)
+  elecweights(:,3)=spacing   !! bugfix 011817 was 1/spacing oops
   elecweights(:,1:2)=1d0
 
   call sineDVR(kevect%rmat(1-gridpoints:gridpoints-1),&
@@ -509,9 +509,9 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         enddo
      enddo
 
-     !! (e.g. coulmode = -1 disables centrifugal)
+     !! (e.g. coulmode < 0 disables centrifugal)
      !!
-     if (twomode .eq. 1 .and. coulmode > -1) then  !! soft coulomb fix
+     if (twomode .eq. 1 .and. coulmode .ge. 0) then  !! soft coulomb fix
         if (numpoints.ne.totpoints) then
            OFLWR "Error, bad points",numpoints,totpoints; CFLST
         endif

@@ -296,6 +296,7 @@ function cylindricalvalue(radpoint, thetapoint, rvalue, mvalue, ininvector)
   use myparams
   use myprojectmod
   use dvrvalmod
+  use constant_parameters  !! IN PARENT DIRECTORY
   implicit none
   integer,intent(in) :: mvalue
   DATATYPE,intent(in) :: ininvector(numerad,lbig+1,-mbig:mbig)
@@ -319,8 +320,8 @@ function cylindricalvalue(radpoint, thetapoint, rvalue, mvalue, ininvector)
         sum=sum + &
              radiallobatto(ixi,thisxi, mvalue) * &
              angularlobatto(lvalue,thiseta, mvalue) &
-             / sqrt(xipoints(ixi)**2 - etapoints(lvalue)**2) & 
-             * invector(ixi,lvalue) * 1.d0/sqrt(2.d0*3.14159265d0)
+             / sqrt(xipoints(ixi)**2 - etapoints(lvalue)**2) * sqrt(8d0) & 
+             * invector(ixi,lvalue) * 1.d0/sqrt(2.d0*pi)
      enddo
   enddo
   cylindricalvalue=sum
@@ -331,6 +332,7 @@ function sphericalvalue(xval,yval,zval,  inspf)
    use myprojectmod
    use myparams
    use dvrvalmod
+   use constant_parameters  !! IN PARENT DIRECTORY
    implicit none
    real*8,intent(in) :: xval,yval,zval
    DATATYPE,intent(in) ::  inspf(numerad,lbig+1,-mbig:mbig)
@@ -359,7 +361,7 @@ function sphericalvalue(xval,yval,zval,  inspf)
               radiallobatto(ixi,xival, mvalue) * &
               angularlobatto(lvalue,etaval, mvalue) * 1.d0 / &
               sqrt(xipoints(ixi)**2 - etapoints(lvalue)**2) * inspf(ixi,lvalue,mvalue) * &
-              1.d0/sqrt(2.d0*3.14159265d0) * exp((0.d0,1.d0)*mvalue*phival)
+              1.d0/sqrt(2.d0*pi) * exp((0.d0,1.d0)*mvalue*phival)
          csum=csum+csum2
   enddo
   enddo
@@ -373,6 +375,7 @@ subroutine get_maxsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,povsparse)
    use myprojectmod
    use myparams
    use dvrvalmod
+   use constant_parameters  !! IN PARENT DIRECTORY
    implicit none
    integer,intent(in) :: nx,ny,nz
    integer,intent(out) :: maxsparse
@@ -410,7 +413,7 @@ subroutine get_maxsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,povsparse)
       csum=          radiallobatto(ixi,xival, mvalue) * &
            angularlobatto(lvalue,etaval, mvalue) * 1.d0 / &
            sqrt(xipoints(ixi)**2 - etapoints(lvalue)**2) * &
-           1.d0/sqrt(2.d0*3.14159265d0) * exp((0.d0,1.d0)*mvalue*phival) 
+           1.d0/sqrt(2.d0*pi) * exp((0.d0,1.d0)*mvalue*phival) 
       if (abs(csum).gt.povsparse) then
          iii=iii+1
       endif
@@ -432,6 +435,7 @@ subroutine get_sphericalsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,sparsetrans
    use myprojectmod
    use myparams
    use dvrvalmod
+   use constant_parameters  !! IN PARENT DIRECTORY
    implicit none
    integer,intent(in) :: nx,ny,nz, maxsparse
    integer,intent(out) :: sparsexyz(maxsparse,3),  sparsestart(numerad,lbig+1,-mbig:mbig), &
@@ -472,7 +476,7 @@ subroutine get_sphericalsparse(nx,ny,nz,xvals,yvals,zvals, maxsparse,sparsetrans
       csum=         radiallobatto(ixi,xival, mvalue) * &
            angularlobatto(lvalue,etaval, mvalue) * 1.d0 / &
            sqrt(xipoints(ixi)**2 - etapoints(lvalue)**2) * &
-           1.d0/sqrt(2.d0*3.14159265d0) * exp((0.d0,1.d0)*mvalue*phival) 
+           1.d0/sqrt(2.d0*pi) * exp((0.d0,1.d0)*mvalue*phival) 
    
       if (abs(csum).gt.povsparse) then
          iii=iii+1

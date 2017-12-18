@@ -180,12 +180,24 @@ contains
     DATATYPE,intent(in) :: inarray(num)
     real*8, intent(in) :: incharge1, incharge2
     real*8 :: xp
-    DATATYPE :: softcoul(num)
-      
+    DATATYPE :: softcoul(num), csums(num)
+    integer :: ii
+
     xp = incharge1*incharge2;
 
-    softcoul(:) = xp / sqrt(softness**2 + inarray**2)
-      
+    if (coulmode.ge.-1) then
+       softcoul(:) = xp / sqrt(softness**2 + inarray**2)
+    elseif (coulmode.eq.-2) then
+       softcoul(:) = xp * log(2d0) / softness / log(exp(log(2d0)*inarray/softness) + exp(-log(2d0)*inarray/softness))
+    else
+       softcoul(:) = xp / (abs(inarray)+softness)
+       csums = 0;
+       do ii=-3,coulmode,-1
+          csums = csums + (softness / (abs(inarray)+softness))**(ii-coulmode)
+       enddo
+       softcoul(:) = softcoul(:) * csums(:)
+    end if
+
   end function softcoul
 
     function linearfun(inarray,num,incharge1,incharge2)
@@ -299,7 +311,7 @@ subroutine get_twoe_new(pot)
      endif
   else
      xfac=1;
-     if (twomode.eq.1.and.coulmode.eq.(-1)) then   !! bugfix 120617 was twomode=-1
+     if (twomode.eq.1.and.coulmode.lt.0) then   !! bugfix 120617 was twomode=-1
        xfac = softness/softnesstwoe
      endif
      threed_two(istart-numpoints:numpoints-1) = twostrength * &

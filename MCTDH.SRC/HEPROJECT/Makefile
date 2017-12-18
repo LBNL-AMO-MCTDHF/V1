@@ -37,8 +37,8 @@ init_HE_new.o: $(DEPEND)  He_params.o heproject.o coreproject.o ../eigen.o init_
 coreproject.o: $(DEPEND)  He_params.o heproject.o coreproject.F90 ../proputils.o ../parameters.o
 	$(F90) $(FFLAGS) -I.. -c coreproject.F90
 
-he_extraproject.o: $(DEPEND) He_params.o heproject.o coreproject.o he_extraproject.F90
-	$(F90) $(FFLAGS) $(PGFFLAG) -c he_extraproject.F90 -o he_extraproject.o
+he_extraproject.o: $(DEPEND) He_params.o heproject.o coreproject.o he_extraproject.F90 ../parameters.o
+	$(F90) $(FFLAGS) $(PGFFLAG) -I.. -c he_extraproject.F90 -o he_extraproject.o
 
 
 GetJacobiKE.o: GetJacobiKE.F90 

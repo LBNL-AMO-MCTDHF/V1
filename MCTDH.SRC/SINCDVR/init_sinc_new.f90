@@ -115,9 +115,9 @@ end function ddjfunct
 !! f happens to go from 0 to 1/2 on (0,1)
 
 function fscaled(xval)
+  use constant_parameters !! IN PARENT DIRECTORY
   implicit none
   real*8 :: fscaled,xval,pixval
-  real*8, parameter :: pi = 3.14159265358979323844d0 !!TEMP
 
   if (xval.lt.0d0.or.xval.gt.1d0) then
      print *, "SCALEDERR F",xval; stop
@@ -127,9 +127,9 @@ function fscaled(xval)
 end function fscaled
 
 function jscaled(xval)
+  use constant_parameters !! IN PARENT DIRECTORY
   implicit none
   real*8 :: jscaled,xval,pixval
-  real*8, parameter :: pi = 3.14159265358979323844d0 !!TEMP
 
   if (xval.lt.0d0.or.xval.gt.1d0) then
      print *, "SCALEDERR F",xval; stop
@@ -139,9 +139,9 @@ function jscaled(xval)
 end function jscaled
 
 function djscaled(xval)
+  use constant_parameters !! IN PARENT DIRECTORY
   implicit none
   real*8 :: djscaled,xval,pixval
-  real*8, parameter :: pi = 3.14159265358979323844d0 !!TEMP
 
   if (xval.lt.0d0.or.xval.gt.1d0) then
      print *, "SCALEDERR F",xval; stop
@@ -152,9 +152,9 @@ function djscaled(xval)
 end function djscaled
 
 function ddjscaled(xval)
+  use constant_parameters !! IN PARENT DIRECTORY
   implicit none
   real*8 :: ddjscaled,xval,pixval
-  real*8, parameter :: pi = 3.14159265358979323844d0 !!TEMP
 
   if (xval.lt.0d0.or.xval.gt.1d0) then
      print *, "SCALEDERR F",xval; stop

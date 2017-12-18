@@ -339,13 +339,13 @@ contains
 !!$TINV  subroutine scaled_operate_sub(notusedint,in,out)
 !!$TINV    use myparams
 !!$TINV    use myprojectmod
+!!$TINV    use constant_parameters !! IN PARENT DIRECTORY
 !!$TINV    implicit none
 !!$TINV    integer :: notusedint
 !!$TINV    DATATYPE, intent(in) :: in(totpoints)
 !!$TINV    DATATYPE, intent(out) :: out(totpoints)
 !!$TINV    DATATYPE :: work(totpoints),temp(totpoints),temp2(totpoints)
 !!$TINV    integer :: times1,times3,times4,times5,fttimes(10)
-!!$TINV    real*8 :: pi=3.141592653589793d0
 !!$TINV  
 !!$TINV    call op_tinv_notscaled(in(:),temp(:),1,1,&
 !!$TINV         times1,times3,times4,times5,fttimes)
@@ -2450,10 +2450,10 @@ subroutine reinterpolate_orbs_complex(cspfs,indims,outcspfs,outdims,num)
 contains
 
   function mysinc(input)
+    use constant_parameters !! IN PARENT DIRECTORY
     implicit none
     real*8,intent(in) :: input
     real*8 :: mysinc
-    real*8,parameter :: pi=3.141592653589793d0
     if (abs(input).lt.1d-6) then
        mysinc=1d0
     else
