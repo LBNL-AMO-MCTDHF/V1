@@ -42,7 +42,7 @@ subroutine read_orb_initial(iwhich)
   xxflag=xxflag+1
   if (xxflag==1) then
      print *, "                    PLOTTING MODE:"
-     print *, "Enter -2 for 1D reduced; -1 for 1D slice; 0 for 2D reduced; 1 for 3D povray"
+     print *, "Enter -2 for 1D reduced; -1 for 1D slice; 0 for 2D m-projection; 1 for 3D povray"
      read(*,*) plotmodeflag
      if (plotmodeflag==0) then
         print *, "OK, gnuplot, 2D slice"
