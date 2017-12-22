@@ -12,7 +12,7 @@ subroutine save_density( thistime, inspfs, indenmat, iprop, denfilename)
   real*8,intent(in) :: thistime
   character,intent(in) :: denfilename*(*)
   integer,intent(in) :: iprop
-  integer :: i,j, imval
+  integer :: i, imval
   character (len=headersize) :: header
   complex*16 :: cmdensity(spfdims(1),spfdims(2),spfdims(3)),mtrans(spfdims(3),spfdims(3)) 
   DATATYPE :: mdensity(spfdims(1),spfdims(2),spfdims(3))                       
