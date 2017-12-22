@@ -11,7 +11,6 @@ subroutine read_orb_initial(iwhich)
   implicit none
   integer ::  ispf,imvalue, iflag, jflag, iwhich, xxflag=0, jspf, iallflag
   character (len=10) :: labels(4) = (/ "Natorb    ", "Spfs      ", "Density   ", "Denproj   " /)
-  character (len=10) :: inchar
 
   if (stdoutflag/=1) then
      OFLWR "Need to run the program with standard output to see ", labels(iwhich),"."; CFLST
