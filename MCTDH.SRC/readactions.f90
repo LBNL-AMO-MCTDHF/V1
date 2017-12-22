@@ -43,7 +43,7 @@ subroutine read_orb_initial(iwhich)
   xxflag=xxflag+1
   if (xxflag==1) then
      print *, "                    PLOTTING MODE:"
-     print *, "Enter -2 for 1D reduced; -1 for 1D slice; 0 for 2D slice; 1 for povray"
+     print *, "Enter -2 for 1D reduced; -1 for 1D slice; 0 for 2D reduced; 1 for 3D povray"
      read(*,*) plotmodeflag
      if (plotmodeflag==0) then
         print *, "OK, gnuplot, 2D slice"
@@ -388,7 +388,7 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
                           write(871,'(2F8.3, F14.8)') zval,xval,real(sum)
 #ifndef REALGO
                        else
-                          write(871,'(2F8.3, F14.8)') zval,xval,imag(sum)
+                          write(871,'(2F8.3, F14.8)') zval,xval,imag(sum+(0d0,0d0))
                        endif
 #endif                       
                     enddo
@@ -542,8 +542,8 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
 
                     sum = sum + 2 * pi * xval / 10 * cylindricalvalue(rho,costheta,1.d0,0, ttempspf)
                  enddo
-                 rsum = rsum + plotxyrange/plotres * imag(sum)
-                 write(871,'(F8.3, 2F14.8)') zval,imag(sum),rsum
+                 rsum = rsum + plotxyrange/plotres * imag(sum+(0d0,0d0))
+                 write(871,'(F8.3, 2F14.8)') zval,imag(sum+(0d0,0d0)),rsum
               enddo
               write(871,*) "e"
               write(871,*) "pause ", plotpause
@@ -569,8 +569,8 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
                  costheta = sign(1d0,zval)
 
                  sum=cylindricalvalue(rho,costheta,1.d0,0, ttempspf)
-                 rsum = rsum + plotxyrange/plotres * imag(sum)
-                 write(871,'(F8.3, 2F14.8)') zval,imag(sum),rsum
+                 rsum = rsum + plotxyrange/plotres * imag(sum+(0d0,0d0))
+                 write(871,'(F8.3, 2F14.8)') zval,imag(sum+(0d0,0d0)),rsum
               enddo
               write(871,*) "e"
               write(871,*) "pause ", plotpause
