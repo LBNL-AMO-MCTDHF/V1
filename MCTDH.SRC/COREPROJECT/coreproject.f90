@@ -577,7 +577,7 @@ subroutine getdensity(density, indenmat, inspfs,howmany)
   DATATYPE,intent(in) :: indenmat(howmany,howmany), inspfs(numerad,lbig+1,-mbig:mbig,howmany)
   complex*16,intent(out) :: density(numerad,lbig+1,2*mbig+1)   !! truncating this; actually have 4*mbig+1
   integer :: i,j,kk, mm,nn
-  real*8 :: phi,pi
+  real*8 :: pi   !!phi
 
   pi=4d0*atan(1d0)
   density=0.d0

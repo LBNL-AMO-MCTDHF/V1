@@ -366,7 +366,7 @@ subroutine save_denproj( nproj, thistime, inspfs, indenmats, denfilename)
   DATATYPE :: inspfs(spfdims(1),spfdims(2),spfdims(3),nspf), &
        indenmats(nspf,nspf,nproj), csum
   character :: denfilename*(*)
-  integer :: i,j, imval, iproj, nproj,jj
+  integer :: i, imval, iproj, nproj
   real*8 :: thistime
   character (len=headersize) :: header
 
