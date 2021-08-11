@@ -126,13 +126,28 @@ contains
        env     = env0**N;
        denv    = N * env0**(N-1) * denv0;
        ddenv   = N * (N-1) * env0**(N-2) * denv0**2 + N * env0**(N-1) * ddenv0;
-       d3env   = N * (N-1) * (N-2) * env0**(N-3) * denv0**3 &
-            + 2 * N * (N-1) * env0**(N-2) * denv0 * ddenv0 &
-            + N * env0**(N-1) * d3env0;
+       
+       !d3env   = N * (N-1) * (N-2) * env0**(N-3) * denv0**3 &
+       !     + 2 * N * (N-1) * env0**(N-2) * denv0 * ddenv0 &
+       !     +     N * (N-1) * env0**(N-2) * denv0 * ddenv0 &
+       !     + N * env0**(N-1) * d3env0;
 
        d3env   = N * (N-1) * (N-2) * env0**(N-3) * denv0**3 &
-            + 2 * N * (N-1) * env0**(N-2) * denv0 * ddenv0 &
+            + 3 * N * (N-1) * env0**(N-2) * denv0 * ddenv0 &
             + N * env0**(N-1) * d3env0;
+
+       !d4env   = N * (N-1) * (N-2) * (N-3) * env0**(N-4) * denv0**4 &
+       !     + 3 * N * (N-1) * (N-2) * env0**(N-3) * ddenv0 * denv0**2 &
+       !     + 3 * N * (N-1) * (N-2) * env0**(N-3) * denv0**2 * ddenv0 &
+       !     + 3 * N * (N-1) * env0**(N-2) * ddenv0**2 &
+       !     + 3 * N * (N-1) * env0**(N-2) * denv0 * d3env0 &
+       !     + N * (N-1) * env0**(N-2) * denv0 * d3env0 &
+       !     + N * env0**(N-1) * d4env0;
+
+       d4env   = N * (N-1) * (N-2) * (N-3) * env0**(N-4) * denv0**4 &
+            + 6 * N * (N-1) * (N-2) * env0**(N-3) * denv0**2 * ddenv0 &
+            + N * (N-1) * env0**(N-2) * ( 3 * ddenv0**2 + 3 * denv0 * d3env0  + denv0 * d3env0 ) &
+            + N * env0**(N-1) * d4env0;
 
     end if
 
