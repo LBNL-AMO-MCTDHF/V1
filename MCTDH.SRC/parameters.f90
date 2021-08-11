@@ -124,6 +124,9 @@ real*8 :: maxpulsetime=1.d20     !!              !!
 real*8 :: minpulsetime=0.d0      !!              !!  By default calc stops after pulse (overrides finaltime,
                                                  !!   numpropsteps); this will enforce minimum duration
 end module pulse_parameters
+module dip_parameters
+  integer :: veldipflag=0        !! temp hack, velocity expectation value, no A(t) in velocity gauge
+end module dip_parameters
 !!EE
 !!{\large \quad CONFIGURATIONS / SLATER DETERMINANTS}
 !!BB
@@ -247,6 +250,7 @@ module parameters
   use fileptrmod;  use r_parameters; use sparse_parameters; use tol_parameters
   use ham_parameters;  use basis_parameters;  use timing_parameters; use spfsize_parameters;
   use df_parameters; use dotmod;    use constant_parameters; use clockmod
+  use dip_parameters
   implicit none
 !!EE
 !!{\large \quad MAIN PARAMETERS }

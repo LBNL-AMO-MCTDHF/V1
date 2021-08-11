@@ -30,6 +30,7 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   use orbgathersubmod
   use mpisubmod
   use utilmod
+  use dip_parameters  ! temp hack for velocity output
   implicit none
   type(biorthotype),target :: dipbiovar
   type(walktype),intent(in) :: wwin
@@ -106,7 +107,11 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
 
   dipolemat(:,:)=0d0
   if (numspf.gt.0) then
-     call mult_zdipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
+     if (veldipflag==0) then
+       call mult_zdipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
+     else
+       call velmultiply(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAZERO,DATAONE)
+     endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
   endif
@@ -132,8 +137,11 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
 
   dipolemat(:,:)=0d0
   if (numspf.gt.0) then
-     call mult_ydipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
-
+     if (veldipflag==0) then
+        call mult_ydipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
+     else
+        call velmultiply(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAONE,DATAZERO)
+     endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
   endif
@@ -159,8 +167,11 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
 
   dipolemat(:,:)=0d0
   if (numspf.gt.0) then
-     call mult_xdipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
-
+     if (veldipflag==0) then
+        call mult_xdipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
+     else
+        call velmultiply(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAONE,DATAZERO,DATAZERO)
+     endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
   endif
