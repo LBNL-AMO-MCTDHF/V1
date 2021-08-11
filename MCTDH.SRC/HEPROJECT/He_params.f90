@@ -24,6 +24,8 @@ integer :: num_skip_orbs=0                       !! For skipping core orbitals f
 integer :: orb_skip_mvalue(100)= 99              !! Input how many you want to skip, their index (orb_skip)
 integer :: orb_skip(20)= -1                      !!   (order in energy, each m value) and m-value
 
+integer :: realdipflag = 0                       !! make dipole hermitian despite any ecs
+
 !! XXSNIPXX
 !! MISC AND INTERNAL
 
