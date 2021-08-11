@@ -2,6 +2,170 @@
 #include "Definitions.INC"
 
 
+module newpulsesubmod
+contains
+
+  ! function [aField,eField,dField] = GetField(calcTimes,fieldStrength,omega,duration,phaseShift,doplot,ENV_PWR)
+
+  subroutine NewField(aField,eField,calcTime,omega,duration,phaseShift,envDerNum,envPwr)
+    use fileptrmod
+    implicit none
+    real*8, intent(in) :: calcTime, omega, duration, phaseShift
+    integer, intent(in) :: envDerNum, envPwr
+    real*8, intent(out) :: aField,eField
+    real*8 :: nothing1, nothing2, nothing3
+
+    if (envDerNum == 0) then
+       call FieldFunction(calcTime,omega,duration,phaseShift,envPwr,nothing1,aField,eField,nothing2,nothing3)
+    elseif (envDerNum == 1) then
+       call FieldFunction(calcTime,omega,duration,phaseShift,envPwr,nothing1,nothing2,aField,eField,nothing3)
+       aField = aField / omega 
+       eField = eField / omega 
+    elseif (envDerNum == 2) then
+       call FieldFunction(calcTime,omega,duration,phaseShift,envPwr,nothing1,nothing2,nothing3,aField,eField)
+       aField = aField / omega**2 
+       eField = eField / omega**2
+    else
+       OFLWR "envDerNum Not supported ", envDerNum; CFLST
+    endif
+
+    ! fac = sqrt(2*pi*fieldStrength) / omega / sqrt(duration);
+
+    ! aField = aField * fac ;
+    ! eField = eField * fac ;
+
+  end subroutine NewField
+
+
+  subroutine FieldFunction(intime,omega,duration,phaseShift,N,y,yp,ypp,yp3,yp4)
+    use constant_parameters
+    implicit none
+    real*8, intent(in) :: intime,omega,duration,phaseShift
+    integer, intent(in) :: N
+    real*8, intent(out) :: y,yp,ypp,yp3,yp4
+    real*8 :: O, funt, dfunt, ddfunt, d3funt, d4funt, env, denv, ddenv, d3env, d4env
+    real*8 :: env0, denv0, ddenv0, d3env0, d4env0
+    real*8 :: t
+
+    t = intime;
+
+    O = pi/duration;
+
+    y = 0;
+    yp = 0;
+    ypp = 0;
+    yp3 = 0;
+    yp4 = 0;
+
+    if (t<=0 .or. t>=duration) then
+       return;
+    endif
+
+    ! NOW CENTERED
+    t = t - duration / 2;
+
+    !    fun   = @sin;
+    !    dfun  = @(x) cos(x);
+    !    ddfun = @(x) -sin(x);
+    !    d3fun = @(x) -cos(x);
+    !    d4fun = @(x) sin(x);
+    !
+    !    funt = fun(omega*t+phaseShift);
+    !    dfunt = omega * dfun(omega*t+phaseShift);
+    !    ddfunt = omega**2 * ddfun(omega*t+phaseShift);
+    !    d3funt = omega**3 * d3fun(omega*t+phaseShift);
+    !    d4funt = omega**4 * d4fun(omega*t+phaseShift);
+    
+    funt = sin(omega*t+phaseShift);
+    dfunt = omega * cos(omega*t+phaseShift);
+    ddfunt = -omega**2 * sin(omega*t+phaseShift);
+    d3funt = -omega**3 * cos(omega*t+phaseShift);
+    d4funt = omega**4 * sin(omega*t+phaseShift);
+
+    if (1 == 1) then
+
+       ! %$$ N = 3;   % N=3 is minimal value ensuring E is zero at t=0.
+       ! %$$          % with N=3, d/dt E is not zero at t=0.
+
+       ! N = 5;
+
+       env = cos(O*t)**N;
+       denv = -O * N * cos(O*t)**(N-1) * sin(O*t);
+       ddenv =   &
+            O**2 * N * (N-1) * cos(O*t)**(N-2) * sin(O*t)**2 &
+            - O**2 * N * cos(O*t)**N ;
+
+       ! - O**2 * N * cos(O*t)**(N-1) * cos(O*t) ;
+
+       d3env =   &
+            - O**3 * N * (N-1) * (N-2) * cos(O*t)**(N-3) * sin(O*t)**3 &
+            + O**3 * N * (3*N-2)       * cos(O*t)**(N-1) * sin(O*t) ;
+
+       ! + O**3 * N * (N-1) * 2     * cos(O*t)**(N-1) * sin(O*t) &
+       ! + O**3 * N**2               * cos(O*t)**(N-1) * sin(O*t) ;
+
+       d4env =   &
+            + O**4 * N * (N-1) * (N-2) * (N-3) * cos(O*t)**(N-4) * sin(O*t)**4 &
+            - O**4 * N * (N-1) * (6*N-8)   * cos(O*t)**(N-2) * sin(O*t)**2 & 
+            + O**4 * N * (3*N-2)           * cos(O*t)**N  ;
+
+       ! - O**4 * N * (N-1) * (N-2) * 3 * cos(O*t)**(N-2) * sin(O*t)**2 &
+       ! - O**4 * N * (N-1) * (3*N-2)   * cos(O*t)**(N-2) * sin(O*t)**2 ;
+
+    else
+
+       ! N = 3;
+
+       env0     = 1-(O*2/pi)**2*t**2;
+       denv0    = -2*(O*2/pi)**2*t;
+       ddenv0   = -2*(O*2/pi)**2*(t*0+1);
+       d3env0   = t*0;
+       d4env0   = t*0;
+
+
+       env     = env0**N;
+       denv    = N * env0**(N-1) * denv0;
+       ddenv   = N * (N-1) * env0**(N-2) * denv0**2 + N * env0**(N-1) * ddenv0;
+       d3env   = N * (N-1) * (N-2) * env0**(N-3) * denv0**3 &
+            + 2 * N * (N-1) * env0**(N-2) * denv0 * ddenv0 &
+            + N * env0**(N-1) * d3env0;
+
+       d3env   = N * (N-1) * (N-2) * env0**(N-3) * denv0**3 &
+            + 2 * N * (N-1) * env0**(N-2) * denv0 * ddenv0 &
+            + N * env0**(N-1) * d3env0;
+
+    end if
+
+    y = &
+         env * funt ;
+
+    yp = &
+         denv * funt + &
+         env * dfunt ;
+
+    ypp = &
+         ddenv    * funt + &
+         2 * denv * dfunt + &
+         env      * ddfunt ;
+
+    yp3 = &
+         d3env     * funt + &
+         3 * ddenv * dfunt + &
+         3 * denv  * ddfunt + &
+         env       * d3funt ;
+
+    yp4 = &
+         d4env     * funt + &
+         4 * d3env * dfunt + &
+         6 * ddenv * ddfunt + &
+         4 * denv  * d3funt + &
+         env       * d4funt ;
+
+  end subroutine FieldFunction
+
+end module newpulsesubmod
+
+
 module pulsesubmod
 contains
 
