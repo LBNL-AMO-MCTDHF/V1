@@ -893,7 +893,7 @@ subroutine prop_loop( starttime)
         call save_vector(yyy%cmfavec(:,:,0),yyy%cmfspfs(:,0),avectoroutfile,spfoutfile)  
      endif
 
-     if ((jj==numpropsteps) .and. (threshflag/=1)) then
+     if ((jj>=numpropsteps) .and. (threshflag/=1)) then
         flag=1
      endif
 
