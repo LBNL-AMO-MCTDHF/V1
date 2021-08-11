@@ -935,7 +935,8 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
   use utilmod
   implicit none
   NAMELIST /pulse/ omega,pulsestart,pulsestrength, velflag, omega2,phaseshift,intensity,pulsetype, &
-       pulsetheta,pulsephi, longstep, numpulses, reference_pulses, minpulsetime, maxpulsetime, chirp, ramp
+       pulsetheta,pulsephi, longstep, numpulses, reference_pulses, minpulsetime, maxpulsetime, chirp, ramp, &
+       envDerNum, envPwr
   real*8 ::  time, fac, pulse_end, estep
   DATATYPE :: pots1(3),pots2(3),pots3(3), pots4(3), pots5(3), csumx,csumy,csumz
   integer :: i, myiostat, ipulse,no_error_exit_flag

@@ -268,6 +268,8 @@ function tdpotlen0(myintime, which,ilow,ihigh)
            tdpotlen0=tdpotlen0+cwpulselen(myintime,ipulse) * fac
         case (5)
            tdpotlen0=tdpotlen0+monopulselen(myintime,ipulse) * fac
+        case (6)
+           tdpotlen0=tdpotlen0+newpulselen(myintime,ipulse) * fac
         case default
            OFLWR "Pulse type not supported: ", pulsetype(ipulse); CFLST
         end select
@@ -316,6 +318,8 @@ function tdpotvel0(myintime,which,ilow,ihigh)
            tdpotvel0=tdpotvel0+cwpulsevel(myintime, ipulse) * fac
         case (5)
            tdpotvel0=tdpotvel0+monopulsevel(myintime, ipulse) * fac
+        case (6)
+           tdpotvel0=tdpotvel0+newpulsevel(myintime, ipulse) * fac
         case default
            OFLWR "Pulse type not supported: ", pulsetype(ipulse); CFLST
         end select
@@ -323,6 +327,60 @@ function tdpotvel0(myintime,which,ilow,ihigh)
   enddo
 
 end function tdpotvel0
+
+
+
+
+
+function newpulselen(myintime, ipulse)
+  use pulse_parameters
+  use constant_parameters
+  use newpulsesubmod
+  implicit none
+  integer,intent(in) :: ipulse
+  real*8,intent(in) :: myintime
+  real*8 :: time, duration, aField, eField
+  DATATYPE :: newpulselen
+
+  newpulselen=0.d0
+
+  if (myintime.ge.pulsestart(ipulse)) then
+     time=myintime-pulsestart(ipulse)
+     duration = pi/omega(ipulse)
+     if (time.le.duration) then
+        call NewField(aField,eField,time,omega2(ipulse),duration,phaseshift(ipulse),envDerNum,envPwr)
+        newpulselen = eField;
+     endif
+  endif
+  
+end function newpulselen
+
+
+
+function newpulsevel(myintime, ipulse)
+  use pulse_parameters
+  use constant_parameters
+  use newpulsesubmod
+  implicit none
+  integer,intent(in) :: ipulse
+  real*8,intent(in) :: myintime
+  real*8 :: time, duration, aField, eField
+  DATATYPE :: newpulsevel
+
+  newpulsevel=0.d0
+
+  if (myintime.ge.pulsestart(ipulse)) then
+     time=myintime-pulsestart(ipulse)
+     duration = pi/omega(ipulse)
+     if (time.le.duration) then
+        call NewField(aField,eField,time,omega2(ipulse),duration,phaseshift(ipulse),envDerNum,envPwr)
+        newpulsevel = aField;
+     endif
+  endif
+  
+end function newpulsevel
+
+
 
 
 function simplepulselen(myintime, ipulse)
