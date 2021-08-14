@@ -109,18 +109,36 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   endif
   dipoles(:)=dipoles(:)*csum
 
-  if (veldipflag.ne.0 .and. velflag.ne.0) then
-     if (veldipflag.eq.1) then
-        call vectdpot(intime,1,pots,-1)  !! A-vector velocity gauge
-     else
-        call gauge_transform(1,intime,numspf,spfket(:,lowspf:highspf),spfket(:,lowspf:highspf))
-        call gauge_transform(1,intime,numspf,workspfs(:,lowspf:highspf),workspfs(:,lowspf:highspf))
-        if (parorbsplit.eq.1) then
-           call mpiorbgather(workspfs,spfsize)
-        endif
-     endif
+  ! if (veldipflag.ne.0 .and. velflag.ne.0) then  ! velocity gauge operator, velocity gauge calculation
+  !    if (veldipflag.eq.1) then                  ! velocity operator in velocity gauge
+  !       call vectdpot(intime,1,pots,-1)         ! A-vector velocity gauge
+  !    else                                       ! velocity operator in length gauge
+  !       call gauge_transform(1,intime,numspf,spfket(:,lowspf:highspf),spfket(:,lowspf:highspf))
+  !       call gauge_transform(1,intime,numspf,workspfs(:,lowspf:highspf),workspfs(:,lowspf:highspf))
+  !       if (parorbsplit.eq.1) then
+  !          call mpiorbgather(workspfs,spfsize)
+  !       endif
+  !    endif
+  ! endif
+
+  if (veldipflag.ne.0.and.veldipflag.ne.1.and.veldipflag.ne.2) then
+     OFLWR "Error, veldipflag must be 0 1 or 2"; CFLST
+  endif
+  if (velflag.ne.0.and.velflag.ne.1) then
+     OFLWR "Error, velflag must be 0 or 1; what is the other case? ... programmer checkme"; CFLST
   endif
 
+  if (veldipflag.eq.1) then
+     call vectdpot(intime,1,pots,-1)         ! A-vector velocity gauge
+  endif  
+  if ( (veldipflag.eq.1.and.velflag.eq.0) .or. (veldipflag.eq.2.and.velflag.eq.1) ) then
+     call gauge_transform(velflag,intime,numspf,spfket(:,lowspf:highspf),spfket(:,lowspf:highspf))
+     call gauge_transform(velflag,intime,numspf,workspfs(:,lowspf:highspf),workspfs(:,lowspf:highspf))
+     if (parorbsplit.eq.1) then
+        call mpiorbgather(workspfs,spfsize)
+     endif
+  endif
+  
 !! Z DIPOLE
 
   dipolemat(:,:)=0d0
@@ -129,7 +147,7 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
         call mult_zdipole(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
      else
         call velmultiply(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAZERO,DATAONE)
-        if (velflag.ne.0 .and. veldipflag==1) then
+        if (veldipflag==1) then
            tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(3)
         endif
      endif
@@ -162,7 +180,7 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
         call mult_ydipole(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
      else
         call velmultiply(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAONE,DATAZERO)
-        if (velflag.ne.0 .and. veldipflag==1) then
+        if (veldipflag==1) then
            tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(2)
         endif
      endif
@@ -195,7 +213,7 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
         call mult_xdipole(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
      else
         call velmultiply(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAONE,DATAZERO,DATAZERO)
-        if (velflag.ne.0 .and. veldipflag==1) then
+        if (veldipflag==1) then
            tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(1)
         endif
      endif
