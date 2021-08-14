@@ -31,8 +31,9 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   use mpisubmod
   use utilmod
   use dip_parameters  ! temp hack (?) for velocity operator output veldipflag
-  use ham_parameters  !   "   correct velocity operator output with velocity gauge velflag=1
-  use pulsesubmod     !   "   requires value of A(t)
+  use ham_parameters  !   "  correct velocity operator output with velocity gauge velflag=1
+  use pulsesubmod     !        "   requires value of A(t)
+  use orbmultsubmod   !        "   option to gauge-transform then use length gauge with veldipflag > 1
   implicit none
   type(biorthotype),target :: dipbiovar
   type(walktype),intent(in) :: wwin
@@ -45,7 +46,7 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
        in_aket(numr,wwin%firstconfig:wwin%lastconfig)
   DATATYPE,intent(out) :: dipole_expects(3),normsq
   DATATYPE,allocatable :: tempvector(:,:),tempspfs(:,:),abra(:,:),workspfs(:,:),&
-       aket(:,:)
+       aket(:,:), spfket(:,:)
   DATATYPE :: nullcomplex(1),dipoles(3), dipolemat(wwin%nspf,wwin%nspf),csum
   DATAECS :: rvector(numr)
   integer :: i,lowspf,highspf,numspf
@@ -64,8 +65,9 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
  
   allocate(tempvector(numr,wwin%firstconfig:wwin%lastconfig+1), tempspfs(spfsize,lowspf:highspf+1),&
        abra(numr,wwin%firstconfig:wwin%lastconfig+1),workspfs(spfsize,wwin%nspf),&
-       aket(numr,wwin%firstconfig:wwin%lastconfig+1))
+       aket(numr,wwin%firstconfig:wwin%lastconfig+1),spfket(spfsize,wwin%nspf))
 
+  spfket(:,:) = in_spfket(:,:)
   tempvector=0; tempspfs=0; workspfs=0; abra=0; aket=0
 
   if (wwin%lastconfig.ge.wwin%firstconfig) then
@@ -80,7 +82,7 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
 #endif
   call bioset(dipbiovar,smo,numr,bbin)
   dipbiovar%hermonly=.true.
-  call biortho(in_spfbra,in_spfket,workspfs,abra,dipbiovar)
+  call biortho(in_spfbra,spfket,workspfs,abra,dipbiovar)
   dipbiovar%hermonly=.false.
 #ifndef CNORMFLAG
   endif
@@ -108,19 +110,28 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   dipoles(:)=dipoles(:)*csum
 
   if (veldipflag.ne.0 .and. velflag.ne.0) then
-     call vectdpot(intime,1,pots,-1)  !! A-vector velocity gauge, real part for unitary
+     if (veldipflag.eq.1) then
+        call vectdpot(intime,1,pots,-1)  !! A-vector velocity gauge, real part for unitary
+     endif
+     if (veldipflag.gt.1) then
+        call gauge_transform(1,intime,numspf,spfket(:,lowspf:highspf),spfket(:,lowspf:highspf))
+        call gauge_transform(1,intime,numspf,workspfs(:,lowspf:highspf),workspfs(:,lowspf:highspf))
+        if (parorbsplit.eq.1) then
+           call mpiorbgather(workspfs,spfsize)
+        endif
+     endif
   endif
-  
+
 !! Z DIPOLE
 
   dipolemat(:,:)=0d0
   if (numspf.gt.0) then
      if (veldipflag==0) then
-        call mult_zdipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
+        call mult_zdipole(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
      else
-        call velmultiply(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAZERO,DATAONE)
-        if (velflag.ne.0) then
-           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + in_spfket(:,lowspf:highspf) * pots(3)
+        call velmultiply(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAZERO,DATAONE)
+        if (velflag.ne.0 .and. veldipflag==1) then
+           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(3)
         endif
      endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
@@ -149,11 +160,11 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   dipolemat(:,:)=0d0
   if (numspf.gt.0) then
      if (veldipflag==0) then
-        call mult_ydipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
+        call mult_ydipole(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
      else
-        call velmultiply(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAONE,DATAZERO)
-        if (velflag.ne.0) then
-           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + in_spfket(:,lowspf:highspf) * pots(2)
+        call velmultiply(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAONE,DATAZERO)
+        if (velflag.ne.0 .and. veldipflag==1) then
+           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(2)
         endif
      endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
@@ -182,11 +193,11 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   dipolemat(:,:)=0d0
   if (numspf.gt.0) then
      if (veldipflag==0) then
-        call mult_xdipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
+        call mult_xdipole(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
      else
-        call velmultiply(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAONE,DATAZERO,DATAZERO)
-        if (velflag.ne.0) then
-           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + in_spfket(:,lowspf:highspf) * pots(1)
+        call velmultiply(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAONE,DATAZERO,DATAZERO)
+        if (velflag.ne.0 .and. veldipflag==1) then
+           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(1)
         endif
      endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
