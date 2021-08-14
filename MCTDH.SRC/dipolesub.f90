@@ -18,7 +18,7 @@ module dipsubonemod
 contains
 
 subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
-     in_aket,in_spfbra,in_spfket,diff_flag,dipole_expects,normsq)
+     in_aket,in_spfbra,in_spfket,diff_flag,dipole_expects,normsq, intime)
   use r_parameters
   use spfsize_parameters
   use walkmod
@@ -30,12 +30,15 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   use orbgathersubmod
   use mpisubmod
   use utilmod
-  use dip_parameters  ! temp hack for velocity output
+  use dip_parameters  ! temp hack (?) for velocity operator output veldipflag
+  use ham_parameters  !   "   correct velocity operator output with velocity gauge velflag=1
+  use pulsesubmod     !   "   requires value of A(t)
   implicit none
   type(biorthotype),target :: dipbiovar
   type(walktype),intent(in) :: wwin
   type(walktype),target,intent(in) :: bbin
   logical,intent(in) :: diff_flag   !! are in_spfbra, in_spfket different?
+  real*8, intent(in) :: intime  !! for veldipflag=1, velflag=1 velocity operator velocity gauge
   DATATYPE, intent(in) :: in_spfbra(  spfsize, wwin%nspf ), &
        in_spfket(  spfsize, wwin%nspf ), &
        in_abra(numr,wwin%firstconfig:wwin%lastconfig),&
@@ -47,7 +50,8 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   DATAECS :: rvector(numr)
   integer :: i,lowspf,highspf,numspf
   DATATYPE,target :: smo(wwin%nspf,wwin%nspf)
-
+  DATATYPE :: pots(3) = -999e8
+  
   lowspf=1; highspf=wwin%nspf
   if (parorbsplit.eq.1) then
      call checkorbsetrange(wwin%nspf,i)
@@ -103,14 +107,21 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   endif
   dipoles(:)=dipoles(:)*csum
 
+  if (veldipflag.ne.0 .and. velflag.ne.0) then
+     call vectdpot(intime,1,pots,-1)  !! A-vector velocity gauge, real part for unitary
+  endif
+  
 !! Z DIPOLE
 
   dipolemat(:,:)=0d0
   if (numspf.gt.0) then
      if (veldipflag==0) then
-       call mult_zdipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
+        call mult_zdipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
      else
-       call velmultiply(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAZERO,DATAONE)
+        call velmultiply(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAZERO,DATAONE)
+        if (velflag.ne.0) then
+           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + in_spfket(:,lowspf:highspf) * pots(3)
+        endif
      endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
@@ -141,6 +152,9 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
         call mult_ydipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
      else
         call velmultiply(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAONE,DATAZERO)
+        if (velflag.ne.0) then
+           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + in_spfket(:,lowspf:highspf) * pots(2)
+        endif
      endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
@@ -171,6 +185,9 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
         call mult_xdipole(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
      else
         call velmultiply(numspf,in_spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAONE,DATAZERO,DATAZERO)
+        if (velflag.ne.0) then
+           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + in_spfket(:,lowspf:highspf) * pots(1)
+        endif
      endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
@@ -676,11 +693,13 @@ contains
      integer, save :: lastouttime=0, calledflag=0
      real*8 :: thistime
 
+     thistime=calledflag*par_timestep*autosteps
+
      myexpects=0;mcexpects=0;axx=0;ayy=0;azz=0;sxx=0;syy=0;szz=0;normsq=0;drivingoverlap=0
 
      do imc=1,mcscfnum
         call dipolesub_one(www,bioww,in_abra(:,imc),in_aket(:,imc),in_spfbra(:),in_spfket(:),&
-             diff_flag,mcexpects(:,imc),normsq(imc))
+             diff_flag,mcexpects(:,imc),normsq(imc),thistime)
      enddo
 
      if (drivingflag.ne.0) then
@@ -707,7 +726,8 @@ contains
 
         OFLWR "Go emission/absorption action 21... "; CFL
 
-        thistime=calledflag*par_timestep*autosteps
+        ! thistime=calledflag*par_timestep*autosteps
+        
         sflag=0
         if (floor(thistime/diptime).gt.lastouttime) then
            lastouttime=floor(thistime/diptime)
