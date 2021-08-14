@@ -7,26 +7,26 @@ contains
 
   ! function [aField,eField,dField] = GetField(calcTimes,fieldStrength,omega,duration,phaseShift,doplot,ENV_PWR)
 
-  subroutine NewField(aField,eField,calcTime,omega,duration,phaseShift,envDerNum,envPwr)
+  subroutine NewField(aField,eField,calcTime,omega,duration,phaseShift,envdernum,envpwr)
     use fileptrmod
     implicit none
     real*8, intent(in) :: calcTime, omega, duration, phaseShift
-    integer, intent(in) :: envDerNum, envPwr
+    integer, intent(in) :: envdernum, envpwr
     real*8, intent(out) :: aField,eField
     real*8 :: nothing1, nothing2, nothing3
 
-    if (envDerNum == 0) then
-       call FieldFunction(calcTime,omega,duration,phaseShift,envPwr,nothing1,aField,eField,nothing2,nothing3)
-    elseif (envDerNum == 1) then
-       call FieldFunction(calcTime,omega,duration,phaseShift,envPwr,nothing1,nothing2,aField,eField,nothing3)
+    if (envdernum == 0) then
+       call FieldFunction(calcTime,omega,duration,phaseShift,envpwr,nothing1,aField,eField,nothing2,nothing3)
+    elseif (envdernum == 1) then
+       call FieldFunction(calcTime,omega,duration,phaseShift,envpwr,nothing1,nothing2,aField,eField,nothing3)
        aField = aField / omega 
        eField = eField / omega 
-    elseif (envDerNum == 2) then
-       call FieldFunction(calcTime,omega,duration,phaseShift,envPwr,nothing1,nothing2,nothing3,aField,eField)
+    elseif (envdernum == 2) then
+       call FieldFunction(calcTime,omega,duration,phaseShift,envpwr,nothing1,nothing2,nothing3,aField,eField)
        aField = aField / omega**2 
        eField = eField / omega**2
     else
-       OFLWR "envDerNum Not supported ", envDerNum; CFLST
+       OFLWR "envdernum Not supported ", envdernum; CFLST
     endif
 
     ! fac = sqrt(2*pi*fieldStrength) / omega / sqrt(duration);
@@ -348,7 +348,7 @@ function newpulselen(myintime, ipulse)
      time=myintime-pulsestart(ipulse)
      duration = pi/omega(ipulse)
      if (time.le.duration) then
-        call NewField(aField,eField,time,omega2(ipulse),duration,phaseshift(ipulse),envDerNum,envPwr)
+        call NewField(aField,eField,time,omega2(ipulse),duration,phaseshift(ipulse),envdernum,envpwr)
         newpulselen = eField;
      endif
   endif
@@ -373,7 +373,7 @@ function newpulsevel(myintime, ipulse)
      time=myintime-pulsestart(ipulse)
      duration = pi/omega(ipulse)
      if (time.le.duration) then
-        call NewField(aField,eField,time,omega2(ipulse),duration,phaseshift(ipulse),envDerNum,envPwr)
+        call NewField(aField,eField,time,omega2(ipulse),duration,phaseshift(ipulse),envdernum,envpwr)
         newpulsevel = aField;
      endif
   endif
