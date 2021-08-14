@@ -111,9 +111,8 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
 
   if (veldipflag.ne.0 .and. velflag.ne.0) then
      if (veldipflag.eq.1) then
-        call vectdpot(intime,1,pots,-1)  !! A-vector velocity gauge, real part for unitary
-     endif
-     if (veldipflag.gt.1) then
+        call vectdpot(intime,1,pots,-1)  !! A-vector velocity gauge
+     else
         call gauge_transform(1,intime,numspf,spfket(:,lowspf:highspf),spfket(:,lowspf:highspf))
         call gauge_transform(1,intime,numspf,workspfs(:,lowspf:highspf),workspfs(:,lowspf:highspf))
         if (parorbsplit.eq.1) then

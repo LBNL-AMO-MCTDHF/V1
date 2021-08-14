@@ -216,7 +216,9 @@ contains
     tempspf=0; tempspf2=0
     outspfs(:,:)=inspfs(:,:)
 
-    call vectdpot(intime,1,pots,-1)  !! A-vector velocity gauge, real part for unitary
+    call vectdpot(intime,1,pots,-1)  !! A-vector velocity gauge
+    !! real part of dipole operator taken below, last arg mult_xdipole(..,1)
+    !! if pots is real then this transformation is unitary
 
     if (invelflag.ne.0) then
        phase=(0d0,-1d0)    !! velocity
