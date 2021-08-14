@@ -219,6 +219,8 @@ contains
     call vectdpot(intime,1,pots,-1)  !! A-vector velocity gauge
     !! real part of dipole operator taken below, last arg mult_xdipole(..,1)
     !! if pots is real then this transformation is unitary
+    !! otherwise assume complex domcke (bra field is conjugate to ket field)
+    !! and take real part?
 
     if (invelflag.ne.0) then
        phase=(0d0,-1d0)    !! velocity
