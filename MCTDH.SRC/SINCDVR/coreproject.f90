@@ -885,6 +885,37 @@ end subroutine mult_xdipole
 
 
 
+subroutine mult_xaccel(howmany,in,out,realflag)
+  use myparams
+  use myprojectmod
+  implicit none
+  integer,intent(in) :: realflag,howmany
+  DATATYPE,intent(in) :: in(totpoints,howmany)
+  DATATYPE,intent(out) :: out(totpoints,howmany)
+  out(:,:) = 0
+end subroutine mult_xaccel
+
+subroutine mult_yaccel(howmany,in,out,realflag)
+  use myparams
+  use myprojectmod
+  implicit none
+  integer,intent(in) :: realflag,howmany
+  DATATYPE,intent(in) :: in(totpoints,howmany)
+  DATATYPE,intent(out) :: out(totpoints,howmany)
+  out(:,:) = 0
+end subroutine mult_yaccel
+
+subroutine mult_zaccel(howmany,in,out,realflag)
+  use myparams
+  use myprojectmod
+  implicit none
+  integer,intent(in) :: realflag,howmany
+  DATATYPE,intent(in) :: in(totpoints,howmany)
+  DATATYPE,intent(out) :: out(totpoints,howmany)
+  out(:,:) = 0
+end subroutine mult_zaccel
+
+
 !! DIRECT (exchange is op_frozen_exchange)
 
 subroutine op_frozenreduced(howmany,inspfs,outspfs,frozenreduced)

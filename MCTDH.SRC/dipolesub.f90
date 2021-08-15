@@ -49,7 +49,7 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
        aket(:,:), spfket(:,:)
   DATATYPE :: nullcomplex(1),dipoles(3), dipolemat(wwin%nspf,wwin%nspf),csum
   DATAECS :: rvector(numr)
-  integer :: i,lowspf,highspf,numspf
+  integer :: i,lowspf,highspf,numspf,gtr
   DATATYPE,target :: smo(wwin%nspf,wwin%nspf)
   DATATYPE :: pots(3) = -999e8
   
@@ -121,8 +121,17 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   !    endif
   ! endif
 
-  if (veldipflag.ne.0.and.veldipflag.ne.1.and.veldipflag.ne.2) then
-     OFLWR "Error, veldipflag must be 0 1 or 2"; CFLST
+  !  veldipflag
+  !  0:  compute dipole expectation value without changing gauge
+  !  1:  compute velocity expectation value in velocity gauge
+  !  2:  compute velocity expectation value in length gauge
+  !  3:  compute acceleration expectation value in velocity gauge
+  !  4:  compute acceleration expectation value in length gauge
+  !  current DVR ehrenfest expression for acceleration is independent of gauge transformation
+  !    so 3 & 4 should give the same answer
+  
+  if (veldipflag.lt.0.or.veldipflag.gt.4) then
+     OFLWR "Error, veldipflag must be 0 1 2 3 4"; CFLST
   endif
   if (velflag.ne.0.and.velflag.ne.1) then
      OFLWR "Error, velflag must be 0 or 1; what is the other case? ... programmer checkme"; CFLST
@@ -130,8 +139,23 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
 
   if (veldipflag.eq.1) then
      call vectdpot(intime,1,pots,-1)         ! A-vector velocity gauge
-  endif  
-  if ( (veldipflag.eq.1.and.velflag.eq.0) .or. (veldipflag.eq.2.and.velflag.eq.1) ) then
+  elseif (veldipflag.eq.3.or.veldipflag.eq.4) then
+     call vectdpot(intime,0,pots,-1)         ! E-field 
+  endif
+  
+  gtr = 0
+  if (veldipflag.ne.0) then
+     if (velflag.eq.0) then
+        if (veldipflag.eq.1.or.veldipflag.eq.3) then
+           gtr = 1
+        endif
+     else
+        if (veldipflag.eq.2.or.veldipflag.eq.4) then
+           gtr = 1
+        endif
+     endif
+  endif
+  if (gtr.ne.0) then
      call gauge_transform(velflag,intime,numspf,spfket(:,lowspf:highspf),spfket(:,lowspf:highspf))
      call gauge_transform(velflag,intime,numspf,workspfs(:,lowspf:highspf),workspfs(:,lowspf:highspf))
      if (parorbsplit.eq.1) then
@@ -145,11 +169,14 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   if (numspf.gt.0) then
      if (veldipflag==0) then
         call mult_zdipole(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
-     else
+     elseif (veldipflag==1 .or. veldipflag==2) then
         call velmultiply(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAZERO,DATAONE)
         if (veldipflag==1) then
            tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(3)
         endif
+     elseif (veldipflag==3 .or. veldipflag==4) then
+        call mult_zaccel(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)        
+        tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(3)
      endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
@@ -178,11 +205,14 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   if (numspf.gt.0) then
      if (veldipflag==0) then
         call mult_ydipole(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
-     else
+     elseif (veldipflag==1 .or. veldipflag==2) then
         call velmultiply(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAONE,DATAZERO)
         if (veldipflag==1) then
            tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(2)
         endif
+     elseif (veldipflag==3 .or. veldipflag==4) then
+        call mult_yaccel(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)        
+        tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(2)
      endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
@@ -211,11 +241,14 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   if (numspf.gt.0) then
      if (veldipflag==0) then
         call mult_xdipole(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
-     else
+     elseif (veldipflag==1 .or. veldipflag==2) then
         call velmultiply(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAONE,DATAZERO,DATAZERO)
         if (veldipflag==1) then
            tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(1)
         endif
+     elseif (veldipflag==3 .or. veldipflag==4) then
+        call mult_xaccel(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)        
+        tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(1)
      endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
