@@ -777,6 +777,116 @@ subroutine mult_ydipole(howmany,in, out, realflag)
 end subroutine mult_ydipole
 
 
+  !! VERY ROUGH GO AT ACCELERATION... DVR APPROX TO 1/R^2, BAD..
+
+
+subroutine mult_zaccel(howmany,in, out, realflag)
+  use myparams
+  use myprojectmod
+  implicit none
+  integer,intent(in) :: realflag,howmany
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
+  integer :: i,ii
+
+#ifndef CNORMFLAG
+  if (realflag.ne.0) then
+     do ii=1,howmany
+        do i=-mbig,mbig
+           out(:,:,i,ii)=in(:,:,i,ii)*real(zaccel(:,:),8)
+        enddo
+     enddo
+  else
+#endif
+     do ii=1,howmany     
+        do i=-mbig,mbig
+           out(:,:,i,ii)=in(:,:,i,ii)*zaccel(:,:)
+        enddo
+     enddo
+#ifndef CNORMFLAG
+  endif
+#endif
+
+end subroutine mult_zaccel
+
+
+subroutine mult_xaccel(howmany,in, out,realflag)
+  use myparams
+  use myprojectmod
+  implicit none
+  integer,intent(in) :: realflag,howmany
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
+  integer :: i,ii
+
+  out(:,:,:,:)=0d0
+
+#ifndef CNORMFLAG
+  if (realflag.ne.0) then
+     do ii=1,howmany
+        do i=-mbig+1,mbig
+           out(:,:,i,ii)=in(:,:,i-1,ii)*real(xyaccel(:,:),8) /2 !!TWOFIX
+        enddo
+        do i=-mbig,mbig-1
+           out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*real(xyaccel(:,:),8) /2  !!TWOFIX
+        enddo
+     enddo
+  else
+#endif
+     do ii=1,howmany
+        do i=-mbig+1,mbig
+           out(:,:,i,ii)=in(:,:,i-1,ii)*xyaccel(:,:) /2 !!TWOFIX
+        enddo
+        do i=-mbig,mbig-1
+           out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*xyaccel(:,:) /2  !!TWOFIX
+        enddo
+     enddo
+#ifndef CNORMFLAG
+  endif
+#endif
+
+end subroutine mult_xaccel
+
+
+subroutine mult_yaccel(howmany,in, out, realflag)
+  use myparams
+  use myprojectmod
+  implicit none
+  integer,intent(in) :: realflag,howmany
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
+  integer :: i,ii
+
+  out(:,:,:,:)=0d0
+
+#ifndef CNORMFLAG
+  if (realflag.ne.0) then
+     do ii=1,howmany
+        do i=-mbig+1,mbig
+           out(:,:,i,ii)=in(:,:,i-1,ii)*real(xyaccel(:,:),8)*(0d0,1d0)  /2 !!TWOFIX
+        enddo
+        do i=-mbig,mbig-1
+           out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*real(xyaccel(:,:),8)*(0d0,-1d0)  /2 !!TWOFIX
+        enddo
+     enddo
+  else
+#endif
+     do ii=1,howmany
+        do i=-mbig+1,mbig
+           out(:,:,i,ii)=in(:,:,i-1,ii)*xyaccel(:,:)*(0d0,1d0)  /2 !!TWOFIX
+        enddo
+        do i=-mbig,mbig-1
+           out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*xyaccel(:,:)*(0d0,-1d0)  /2 !!TWOFIX
+        enddo
+     enddo
+#ifndef CNORMFLAG
+  endif
+#endif
+
+end subroutine mult_yaccel
+
+
+
 
 !! OUTPUTS orbitals from firstspf to lastspf (out of numspf)
 

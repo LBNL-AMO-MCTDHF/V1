@@ -121,20 +121,33 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
        bigvals(edim))
   bigham=0; bigvects=0; bigvals=0
 
+  do j=1,lbig+1
+     do i=1,hegridpoints-2
+        zdipole(i,j) = glpoints(i+1) * jacobipoints(j)
+        xydipole(i,j) = glpoints(i+1) * sqrt(1.0d0-jacobipoints(j)**2)
+     enddo
+  enddo
+
   if (realdipflag.ne.0) then
-     do j=1,lbig+1
-        do i=1,hegridpoints-2
-           zdipole(i,j) = real(glpoints(i+1),8) * jacobipoints(j)
-           xydipole(i,j) = real(glpoints(i+1),8) * sqrt(1.0d0-jacobipoints(j)**2)   !!TWOFIX / 2d0
-        enddo
+     zdipole(:,:)  = real(zdipole(:,:),8)
+     xydipole(:,:) = real(xydipole(:,:),8)
+  endif
+
+  !! VERY ROUGH GO AT ACCELERATION... DVR APPROX TO 1/R^2, BAD..
+  !!   but gee I am using same for jacobike
+  !! this is a very basic treatment for atoms.
+  !!   it needs to be improved
+  
+  do j=1,lbig+1
+     do i=1,hegridpoints-2
+        zaccel(i,j)  = -nuccharge1/glpoints(i+1)**2 * jacobipoints(j)
+        xyaccel(i,j) = -nuccharge1/glpoints(i+1)**2 * sqrt(1.0d0-jacobipoints(j)**2)  
      enddo
-  else
-     do j=1,lbig+1
-        do i=1,hegridpoints-2
-           zdipole(i,j) = glpoints(i+1) * jacobipoints(j)
-           xydipole(i,j) = glpoints(i+1) * sqrt(1.0d0-jacobipoints(j)**2)   !!TWOFIX / 2d0
-        enddo
-     enddo
+  enddo
+
+  if (realdipflag.ne.0) then
+     zaccel(:,:)  = real(zaccel(:,:),8)
+     xyaccel(:,:) = real(xyaccel(:,:),8)
   endif
   
   do imvalue=0,mbig
@@ -145,48 +158,34 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
 !! such that ( (1-q^2) ddq - q) is antihermitian.
 
+     do j=1,lbig+1
+        do i=1,numerad
+           do k=max(1,i-bandwidth),min(numerad,i+bandwidth)
+              sparseddz_xi_banded(k-i+bandwidth+1,i,j,imvalue+1) = &
+                   (-1) * glfirstdertot(k+1,i+1,mod(imvalue,2)) * jacobipoints(j)  * (-1)
+              
+              sparseddrho_xi_banded(k-i+bandwidth+1,i,j,imvalue+1) = glrhoderivs(k+1,i+1 ) &
+                   * sqrt(1-jacobipoints(j)**2) /glpoints(k+1)
+              
+           enddo
+           do k=1,lbig+1
+              sparseddz_eta(k,j,i,imvalue+1) = (-1) * 1.d0/glpoints(i+1) * jacobideriv(k,j,imvalue)  * (-1)
+              sparseddrho_eta(k,j,i,imvalue+1) =  (-1)* 1.d0/glpoints(i+1) &
+                   * jacobirhoderiv(k,j) / sqrt(1-jacobipoints(k)**2)
+           enddo
+           sparseddz_diag(i,j,imvalue+1) = 0d0
+           sparseddrho_diag(i,j,imvalue+1) = 0d0
+        enddo
+     enddo
+
      if (realdipflag.ne.0) then
-        do j=1,lbig+1
-           do i=1,numerad
-              do k=max(1,i-bandwidth),min(numerad,i+bandwidth)
-                 sparseddz_xi_banded(k-i+bandwidth+1,i,j,imvalue+1) = &
-                      (-1) * real(glfirstdertot(k+1,i+1,mod(imvalue,2)),8) * jacobipoints(j)  * (-1)
-
-                 sparseddrho_xi_banded(k-i+bandwidth+1,i,j,imvalue+1) = real(glrhoderivs(k+1,i+1),8) &
-                      * sqrt(1-jacobipoints(j)**2) * real(1d0 / glpoints(k+1), 8)    !!TWOFIX  /2d0
-
-              enddo
-              do k=1,lbig+1
-                 sparseddz_eta(k,j,i,imvalue+1) = (-1) * real(1.d0/glpoints(i+1),8) * jacobideriv(k,j,imvalue)  * (-1)
-                 sparseddrho_eta(k,j,i,imvalue+1) =  (-1)* real(1.d0/glpoints(i+1),8) &
-                      * jacobirhoderiv(k,j) / sqrt(1-jacobipoints(k)**2)     !!TWOFIX  /2d0
-              enddo
-              sparseddz_diag(i,j,imvalue+1) = 0d0
-              sparseddrho_diag(i,j,imvalue+1) = 0d0
-           enddo
-        enddo
-     else
-        do j=1,lbig+1
-           do i=1,numerad
-              do k=max(1,i-bandwidth),min(numerad,i+bandwidth)
-                 sparseddz_xi_banded(k-i+bandwidth+1,i,j,imvalue+1) = &
-                      (-1) * glfirstdertot(k+1,i+1,mod(imvalue,2)) * jacobipoints(j)  * (-1)
-
-                 sparseddrho_xi_banded(k-i+bandwidth+1,i,j,imvalue+1) = glrhoderivs(k+1,i+1 ) &
-                      * sqrt(1-jacobipoints(j)**2) /glpoints(k+1)    !!TWOFIX  /2d0
-
-              enddo
-              do k=1,lbig+1
-                 sparseddz_eta(k,j,i,imvalue+1) = (-1) * 1.d0/glpoints(i+1) * jacobideriv(k,j,imvalue)  * (-1)
-                 sparseddrho_eta(k,j,i,imvalue+1) =  (-1)* 1.d0/glpoints(i+1) &
-                      * jacobirhoderiv(k,j) / sqrt(1-jacobipoints(k)**2)     !!TWOFIX  /2d0
-              enddo
-              sparseddz_diag(i,j,imvalue+1) = 0d0
-              sparseddrho_diag(i,j,imvalue+1) = 0d0
-           enddo
-        enddo
+        sparseddz_xi_banded(:,:,:,:)   = real(sparseddz_xi_banded(:,:,:,:), 8);
+        sparseddrho_xi_banded(:,:,:,:) = real(sparseddrho_xi_banded(:,:,:,:), 8);
+        sparseddz_eta(:,:,:,:)         = real(sparseddz_eta(:,:,:,:), 8);
+        sparseddrho_eta(:,:,:,:)       = real(sparseddrho_eta(:,:,:,:), 8);
+        sparseddz_diag(:,:,:)          = real(sparseddz_diag(:,:,:), 8);
+        sparseddrho_diag(:,:,:)        = real(sparseddrho_diag(:,:,:), 8);
      endif
-  
 
      bigham=0.d0
      do i=1,hegridpoints-2
@@ -224,13 +223,13 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   if (realdipflag.ne.0) then
      do j=1,lbig+1
         do i=1,numerad
-           ddrhopot(i,j)=1d0 /sqrt(1d0-jacobipoints(j)**2) *real(1d0 /glpoints(i+1),8)      !!TWOFIX  /2d0
+           ddrhopot(i,j)=1d0 /sqrt(1d0-jacobipoints(j)**2) *real(1d0 /glpoints(i+1),8)
         enddo
      enddo
   else
      do j=1,lbig+1
         do i=1,numerad
-           ddrhopot(i,j)=1d0 /sqrt(1d0-jacobipoints(j)**2)  /glpoints(i+1)      !!TWOFIX  /2d0
+           ddrhopot(i,j)=1d0 /sqrt(1d0-jacobipoints(j)**2)  /glpoints(i+1)
         enddo
      enddo
   endif

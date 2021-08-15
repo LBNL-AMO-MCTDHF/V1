@@ -21,6 +21,7 @@ module myprojectmod
 
   DATAECS, allocatable :: glke(:,:,:), glfirstdertot(:,:,:),glrhoderivs(:,:)
   DATAECS, allocatable :: glpoints(:), glweights(:),zdipole(:,:), xydipole(:,:)
+  DATAECS, allocatable :: zaccel(:,:), xyaccel(:,:)
   DATATYPE, allocatable, target :: &
        sparseops_xi_banded(  :,   :,    :,   :), &
        sparseops_eta(  :,   :, :,   :),       sparseops_diag(   :,  :,  : )
@@ -55,6 +56,9 @@ subroutine myprojectalloc()
   jacobike=0; jacobideriv=0; jacobirhoderiv=0; jacobiweights=0; jacobipoints=0; glke=0; glfirstdertot=0; 
   glrhoderivs=0; glpoints=0; glweights=0; glpoints2d=0; glweights2d=0; xydipole=0; zdipole=0; ddrhopot=0
 
+  allocate(xyaccel(numerad,lbig+1),zaccel(numerad,lbig+1));
+  xyaccel=0; zaccel=0;
+  
   allocate(sparseddz_xi_banded(2*bandwidth+1,numerad,lbig+1,mbig+1), &
        sparseddz_eta(  lbig+1,lbig+1,numerad,mbig+1 ) ,  &
        sparseddz_diag(  numerad,lbig+1,mbig+1 )  , &
