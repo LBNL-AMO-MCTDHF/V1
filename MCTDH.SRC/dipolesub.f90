@@ -53,8 +53,6 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   DATATYPE,target :: smo(wwin%nspf,wwin%nspf)
   DATATYPE :: pots(3) = -999e8
 
-  integer, parameter :: xxflag = 1  ! temp.. fix acceleration formula veldipflag 3 and 4
-  
   lowspf=1; highspf=wwin%nspf
   if (parorbsplit.eq.1) then
      call checkorbsetrange(wwin%nspf,i)
@@ -174,10 +172,6 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
         endif
      elseif (veldipflag==3 .or. veldipflag==4) then
         call mult_zaccel(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)        
-        if (xxflag==0) then
-           ! this is stupid, and the sign was wrong
-           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(3)
-        endif
      endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
@@ -214,10 +208,6 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
         endif
      elseif (veldipflag==3 .or. veldipflag==4) then
         call mult_yaccel(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)        
-        if (xxflag==0) then
-           ! this is stupid, and the sign was wrong
-           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(2)
-        endif
      endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
@@ -254,10 +244,6 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
         endif
      elseif (veldipflag==3 .or. veldipflag==4) then
         call mult_xaccel(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)        
-        if (xxflag==0) then
-           ! this is stupid, and the sign was wrong
-           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(1)
-        endif
      endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
@@ -283,8 +269,7 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
   !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
   
-  ! this is not stupid
-  if ( xxflag.ne.0 .and. (veldipflag==3 .or. veldipflag==4) ) then
+  if (veldipflag==3 .or. veldipflag==4) then
      dipole_expects(:)=dipole_expects(:) + pots(:) * (-1) * numelec
   endif
 
