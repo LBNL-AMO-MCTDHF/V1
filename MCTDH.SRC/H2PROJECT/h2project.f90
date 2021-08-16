@@ -41,7 +41,7 @@ module myprojectmod
   DATAECS, allocatable :: proddrho(:,:,:,:,:) ! for velocity.  Mult by 2/R
   DATAECS, allocatable,target :: ddrhopot(:,:) ! for velocity.  Mult by 2/R
   DATAECS, allocatable :: xydipole(:,:),zdipole(:,:)
-  DATAECS, allocatable :: xyaccel(:,:),zaccel(:,:)
+  DATAECS, allocatable :: xycent(:,:),zcent(:,:),xycentmat_banded(:,:,:),zcentmat_banded(:,:,:)
   real*8, allocatable ::  etapoints(:),  etake(:,:,:)
   real*8, allocatable :: etaweights(:)
 
@@ -116,8 +116,10 @@ subroutine myprojectalloc()
   sparseddrho_eta=0; sparseddrho_diag=0; sparseops_xi_banded=0; 
   sparseops_eta=0; sparseops_diag=0
 
-  allocate(xyaccel(numerad,numeta),zaccel(numerad,numeta))
-  xyaccel=0; zaccel=0;
+  allocate(xycent(numerad,numeta),zcent(numerad,numeta))
+  allocate(xycentmat_banded(2*bandwidth+1,numerad,numeta),&
+       zcentmat_banded(2*bandwidth+1,numerad,numeta))
+  xycent=0; zcent=0; xycentmat_banded=0; zcentmat_banded=0
   
   if (bornopflag==0) then
      allocate(&   

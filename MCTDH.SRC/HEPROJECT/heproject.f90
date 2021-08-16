@@ -19,9 +19,11 @@ module myprojectmod
 
   DATAECS, allocatable, target :: ddrhopot(:,:)
 
-  DATAECS, allocatable :: glke(:,:,:), glfirstdertot(:,:,:),glrhoderivs(:,:)
+  DATAECS, allocatable :: glke(:,:,:), glfirstdertot(:,:,:),glrhoderivs(:,:), glcent(:,:,:)
   DATAECS, allocatable :: glpoints(:), glweights(:),zdipole(:,:), xydipole(:,:)
-  DATAECS, allocatable :: zaccel(:,:), xyaccel(:,:)
+  DATAECS, allocatable :: zcent(:,:), xycent(:,:)
+  DATAECS, allocatable :: zcentmat_banded(:,:,:), xycentmat_banded(:,:,:)
+  
   DATATYPE, allocatable, target :: &
        sparseops_xi_banded(  :,   :,    :,   :), &
        sparseops_eta(  :,   :, :,   :),       sparseops_diag(   :,  :,  : )
@@ -49,15 +51,18 @@ subroutine myprojectalloc()
   implicit none
   
   allocate( jacobiKE(lbig+1, lbig+1, 0:mbig) , jacobideriv(lbig+1, lbig+1, 0:mbig) ,jacobirhoderiv(lbig+1,lbig+1), &
-       jacobiweights(lbig+1), jacobipoints(lbig+1) ,glke(hegridpoints,hegridpoints,0:1) , &
+       jacobiweights(lbig+1), jacobipoints(lbig+1) , &
+       glke(hegridpoints,hegridpoints,0:1) , glcent(hegridpoints,hegridpoints,0:1) , &
        glfirstdertot(hegridpoints,hegridpoints,0:1), glrhoderivs(hegridpoints,hegridpoints), &
        glpoints(hegridpoints), glweights(hegridpoints), glpoints2d(henumpoints,2), glweights2d(henumpoints,2) , &
        xydipole(numerad,lbig+1),zdipole(numerad,lbig+1), ddrhopot(numerad,lbig+1));
-  jacobike=0; jacobideriv=0; jacobirhoderiv=0; jacobiweights=0; jacobipoints=0; glke=0; glfirstdertot=0; 
+  jacobike=0; jacobideriv=0; jacobirhoderiv=0; jacobiweights=0; jacobipoints=0;
+  glke=0; glcent=0; glfirstdertot=0; 
   glrhoderivs=0; glpoints=0; glweights=0; glpoints2d=0; glweights2d=0; xydipole=0; zdipole=0; ddrhopot=0
 
-  allocate(xyaccel(numerad,lbig+1),zaccel(numerad,lbig+1));
-  xyaccel=0; zaccel=0;
+  allocate(xycent(numerad,lbig+1),zcent(numerad,lbig+1))
+  allocate(xycentmat_banded(2*bandwidth+1,numerad,lbig+1), zcentmat_banded(2*bandwidth+1,numerad,lbig+1))
+  xycent=0; zcent=0; xycentmat_banded=0; zcentmat_banded=0
   
   allocate(sparseddz_xi_banded(2*bandwidth+1,numerad,lbig+1,mbig+1), &
        sparseddz_eta(  lbig+1,lbig+1,numerad,mbig+1 ) ,  &

@@ -4,6 +4,8 @@
 module myparams
 implicit none
 
+integer :: do_accel_mat = 0
+
 integer :: debugflag=0
 
 !! HAMILTONIAN

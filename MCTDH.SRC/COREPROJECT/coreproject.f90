@@ -671,16 +671,22 @@ subroutine op_reflectx(in, out)
 end subroutine op_reflectx
 
 
-subroutine mult_zdipole(howmany,in, out, realflag)
+subroutine mult_zdipole(howmany,in, out, inrealflag)
   use myparams
   use myprojectmod
   implicit none
-  integer,intent(in) :: realflag,howmany
+  integer,intent(in) :: inrealflag,howmany
   DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
-  integer :: i,ii
+  integer :: i,ii,realflag
 
-#ifndef CNORMFLAG
+  realflag=0
+#ifndef CNORMFLAG  
+  realflag=inrealflag
+#endif
+
+  out(:,:,:,:)=0d0
+
   if (realflag.ne.0) then
      do ii=1,howmany
         do i=-mbig,mbig
@@ -688,31 +694,32 @@ subroutine mult_zdipole(howmany,in, out, realflag)
         enddo
      enddo
   else
-#endif
      do ii=1,howmany     
         do i=-mbig,mbig
            out(:,:,i,ii)=in(:,:,i,ii)*zdipole(:,:)
         enddo
      enddo
-#ifndef CNORMFLAG
   endif
-#endif
 
 end subroutine mult_zdipole
 
 
-subroutine mult_xdipole(howmany,in, out,realflag)
+subroutine mult_xdipole(howmany,in, out,inrealflag)
   use myparams
   use myprojectmod
   implicit none
-  integer,intent(in) :: realflag,howmany
+  integer,intent(in) :: inrealflag,howmany
   DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
-  integer :: i,ii
+  integer :: i,ii,realflag
+
+  realflag=0
+#ifndef CNORMFLAG  
+  realflag=inrealflag
+#endif
 
   out(:,:,:,:)=0d0
 
-#ifndef CNORMFLAG
   if (realflag.ne.0) then
      do ii=1,howmany
         do i=-mbig+1,mbig
@@ -723,7 +730,6 @@ subroutine mult_xdipole(howmany,in, out,realflag)
         enddo
      enddo
   else
-#endif
      do ii=1,howmany
         do i=-mbig+1,mbig
            out(:,:,i,ii)=in(:,:,i-1,ii)*xydipole(:,:) /2 !!TWOFIX
@@ -732,25 +738,27 @@ subroutine mult_xdipole(howmany,in, out,realflag)
            out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*xydipole(:,:) /2  !!TWOFIX
         enddo
      enddo
-#ifndef CNORMFLAG
   endif
-#endif
 
 end subroutine mult_xdipole
 
 
-subroutine mult_ydipole(howmany,in, out, realflag)
+subroutine mult_ydipole(howmany,in, out, inrealflag)
   use myparams
   use myprojectmod
   implicit none
-  integer,intent(in) :: realflag,howmany
+  integer,intent(in) :: inrealflag,howmany
   DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
-  integer :: i,ii
+  integer :: i,ii,realflag
+
+  realflag=0
+#ifndef CNORMFLAG  
+  realflag=inrealflag
+#endif
 
   out(:,:,:,:)=0d0
 
-#ifndef CNORMFLAG
   if (realflag.ne.0) then
      do ii=1,howmany
         do i=-mbig+1,mbig
@@ -761,7 +769,6 @@ subroutine mult_ydipole(howmany,in, out, realflag)
         enddo
      enddo
   else
-#endif
      do ii=1,howmany
         do i=-mbig+1,mbig
            out(:,:,i,ii)=in(:,:,i-1,ii)*xydipole(:,:)*(0d0,1d0)  /2 !!TWOFIX
@@ -770,9 +777,7 @@ subroutine mult_ydipole(howmany,in, out, realflag)
            out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*xydipole(:,:)*(0d0,-1d0)  /2 !!TWOFIX
         enddo
      enddo
-#ifndef CNORMFLAG
   endif
-#endif
 
 end subroutine mult_ydipole
 
@@ -780,108 +785,128 @@ end subroutine mult_ydipole
   !! VERY ROUGH GO AT ACCELERATION... DVR APPROX TO 1/R^2, BAD..
 
 
-subroutine mult_zaccel(howmany,in, out, realflag)
+subroutine mult_zaccel(howmany,in, out, inrealflag)  ! realflag not used
   use myparams
   use myprojectmod
   implicit none
-  integer,intent(in) :: realflag,howmany
+  integer,intent(in) :: inrealflag,howmany
   DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
-  integer :: i,ii
+  integer :: i,ii,realflag,ieta
 
-#ifndef CNORMFLAG
-  if (realflag.ne.0) then
-     do ii=1,howmany
-        do i=-mbig,mbig
-           out(:,:,i,ii)=in(:,:,i,ii)*real(zaccel(:,:),8)
-        enddo
-     enddo
-  else
-#endif
-     do ii=1,howmany     
-        do i=-mbig,mbig
-           out(:,:,i,ii)=in(:,:,i,ii)*zaccel(:,:)
-        enddo
-     enddo
-#ifndef CNORMFLAG
-  endif
+  realflag=0
+#ifndef CNORMFLAG  
+  realflag=inrealflag
 #endif
 
+  out(:,:,:,:)=0d0
+
+  do ii=1,howmany
+     do i=-mbig,mbig
+        if (do_accel_mat.eq.0) then
+           out(:,:,i,ii)=in(:,:,i,ii)*zcent(:,:)
+        else
+           do ieta = 1, lbig+1
+              call MYGBMV('N', numerad, numerad, bandwidth, bandwidth, DATAONE, &
+                   zcentmat_banded(:,:,ieta), 2*bandwidth+1, &
+                   in(:,ieta,i,ii), 1, DATAZERO, out(:,ieta,i,ii), 1)
+              
+           enddo
+        endif
+     enddo
+  enddo
+  
 end subroutine mult_zaccel
 
 
-subroutine mult_xaccel(howmany,in, out,realflag)
+subroutine mult_xaccel(howmany,in, out, inrealflag)  ! realflag not used
   use myparams
   use myprojectmod
   implicit none
-  integer,intent(in) :: realflag,howmany
+  integer,intent(in) :: inrealflag,howmany
   DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
-  integer :: i,ii
+  integer :: i,ii,realflag,ieta
 
+  realflag=0
+#ifndef CNORMFLAG  
+  realflag=inrealflag
+#endif
+  
   out(:,:,:,:)=0d0
 
-#ifndef CNORMFLAG
-  if (realflag.ne.0) then
-     do ii=1,howmany
-        do i=-mbig+1,mbig
-           out(:,:,i,ii)=in(:,:,i-1,ii)*real(xyaccel(:,:),8) /2 !!TWOFIX
-        enddo
-        do i=-mbig,mbig-1
-           out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*real(xyaccel(:,:),8) /2  !!TWOFIX
-        enddo
+  do ii=1,howmany
+     do i=-mbig+1,mbig
+        if (do_accel_mat.eq.0) then
+           out(:,:,i,ii)=in(:,:,i-1,ii)*xycent(:,:) /2
+        else
+           do ieta = 1, lbig+1
+              call MYGBMV('N', numerad, numerad, bandwidth, bandwidth, DATAONE/2, &
+                   xycentmat_banded(:,:,ieta), 2*bandwidth+1, &
+                   in(:,ieta,i-1,ii), 1, DATAONE, out(:,ieta,i,ii), 1)
+              
+           enddo
+        endif
      enddo
-  else
-#endif
-     do ii=1,howmany
-        do i=-mbig+1,mbig
-           out(:,:,i,ii)=in(:,:,i-1,ii)*xyaccel(:,:) /2 !!TWOFIX
-        enddo
-        do i=-mbig,mbig-1
-           out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*xyaccel(:,:) /2  !!TWOFIX
-        enddo
+     do i=-mbig,mbig-1
+        if (do_accel_mat.eq.0) then
+           out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*xycent(:,:) /2
+        else
+           do ieta = 1, lbig+1
+              call MYGBMV('N', numerad, numerad, bandwidth, bandwidth, DATAONE/2, &
+                   xycentmat_banded(:,:,ieta), 2*bandwidth+1, &
+                   in(:,ieta,i+1,ii), 1, DATAONE, out(:,ieta,i,ii), 1)
+              
+           enddo
+        endif
      enddo
-#ifndef CNORMFLAG
-  endif
-#endif
-
+  enddo
+  
 end subroutine mult_xaccel
 
 
-subroutine mult_yaccel(howmany,in, out, realflag)
+subroutine mult_yaccel(howmany,in, out, inrealflag)  ! realflag not used
   use myparams
   use myprojectmod
   implicit none
-  integer,intent(in) :: realflag,howmany
+  integer,intent(in) :: inrealflag,howmany
   DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
-  integer :: i,ii
+  integer :: i,ii,realflag,ieta
+
+  realflag=0
+#ifndef CNORMFLAG  
+  realflag=inrealflag
+#endif
 
   out(:,:,:,:)=0d0
 
-#ifndef CNORMFLAG
-  if (realflag.ne.0) then
-     do ii=1,howmany
-        do i=-mbig+1,mbig
-           out(:,:,i,ii)=in(:,:,i-1,ii)*real(xyaccel(:,:),8)*(0d0,1d0)  /2 !!TWOFIX
-        enddo
-        do i=-mbig,mbig-1
-           out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*real(xyaccel(:,:),8)*(0d0,-1d0)  /2 !!TWOFIX
-        enddo
+  do ii=1,howmany
+     do i=-mbig+1,mbig
+        if (do_accel_mat.eq.0) then
+           out(:,:,i,ii)=in(:,:,i-1,ii)*xycent(:,:)*(0d0,1d0)  /2
+        else
+           do ieta = 1, lbig+1
+              call MYGBMV('N', numerad, numerad, bandwidth, bandwidth, DATAONE*(0d0,1d0)/2, &
+                   xycentmat_banded(:,:,ieta), 2*bandwidth+1, &
+                   in(:,ieta,i-1,ii), 1, DATAONE, out(:,ieta,i,ii), 1)
+              
+           enddo
+        endif
      enddo
-  else
-#endif
-     do ii=1,howmany
-        do i=-mbig+1,mbig
-           out(:,:,i,ii)=in(:,:,i-1,ii)*xyaccel(:,:)*(0d0,1d0)  /2 !!TWOFIX
-        enddo
-        do i=-mbig,mbig-1
-           out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*xyaccel(:,:)*(0d0,-1d0)  /2 !!TWOFIX
-        enddo
+     do i=-mbig,mbig-1
+        if (do_accel_mat.eq.0) then
+           out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*xycent(:,:)*(0d0,-1d0)  /2
+        else
+           do ieta = 1, lbig+1
+              call MYGBMV('N', numerad, numerad, bandwidth, bandwidth, DATAONE*(0d0,-1d0)/2, &
+                   xycentmat_banded(:,:,ieta), 2*bandwidth+1, &
+                   in(:,ieta,i-1,ii), 1, DATAONE, out(:,ieta,i,ii), 1)
+              
+           enddo
+        endif
      enddo
-#ifndef CNORMFLAG
-  endif
-#endif
+  enddo
 
 end subroutine mult_yaccel
 

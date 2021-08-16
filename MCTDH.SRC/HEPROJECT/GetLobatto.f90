@@ -5,12 +5,12 @@
 
 
 subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,&
-     numelements,elementsizes, gridpoints, celement, ecstheta,  xi_derivs, xi_rhoderivs, evenodd)
+     numelements,elementsizes, gridpoints, celement, ecstheta,  xi_derivs, xi_rhoderivs, xi_cent, evenodd)
   implicit none
   integer,intent(in) :: numelements,gridpoints,celement, numpoints, evenodd
   real*8, intent(in) :: elementsizes(numelements), ecstheta
   DATAECS,intent(out) :: points(gridpoints),  weights(gridpoints),  xi_derivs(gridpoints,gridpoints), &
-       xi_rhoderivs(gridpoints,gridpoints), ketot(gridpoints,gridpoints)
+       xi_rhoderivs(gridpoints,gridpoints), ketot(gridpoints,gridpoints), xi_cent(gridpoints,gridpoints)
   integer ::  one=1, izero=0, two=2, i,j,k,l,jj, qq, extraorder
   real*8 :: endpoints(2), zero = 0.0,rsum
   integer, parameter :: numextra=11
@@ -19,8 +19,9 @@ subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,&
        scratch(2*numpoints+numextra), xivals0(numpoints+numextra,numpoints)
   DATAECS :: extrapoints(numpoints+numextra,numelements), extraweights(numextra+numpoints,numelements), &
        firstdertot(numpoints+numextra,numelements,gridpoints), &
-       xivals(numpoints+numextra,numelements,gridpoints),  cweight, sum
-
+       xivals(numpoints+numextra,numelements,gridpoints),  cweight, sum, sum1, sum2
+  DATAECS :: xi_ovl(gridpoints,gridpoints), xi_coul(gridpoints,gridpoints), ppoints(gridpoints)   ! temp debug? AUTOMATIC
+  
   extrapoints0=0; extraweights0=0; firstder=0; points2d=0; weights2d=0;
   scratch=0; xivals0=0; extrapoints=0; extraweights=0; firstdertot=0; xivals=0
 
@@ -163,6 +164,57 @@ subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,&
      enddo
   enddo
 
+  !! matrix elements for centrifugal operator...
+  !! attempt to improve acceleration, maybe hamiltonian too
+  !! prior attempt with temp_glflag (first derivative term addition to 1/r^2)
+  !!   was not successful for hamiltonian
+  !! current dvr expression for 1/r^2 works well for hamiltonian
+
+  do i=1,gridpoints
+     do j=1,gridpoints
+        sum=0.d0
+        sum1=0.d0
+        sum2=0.d0
+
+        do l=1,numelements
+           do k=1,extraorder
+              sum2=sum2 + extraweights(k,l) * xivals(k,l,i) * xivals(k,l,j) / (extrapoints(k,l))**2 
+              sum1=sum1 + extraweights(k,l) * xivals(k,l,i) * xivals(k,l,j) / (extrapoints(k,l))
+              sum=sum + extraweights(k,l) * xivals(k,l,i) * xivals(k,l,j)
+           enddo
+        enddo
+        
+        xi_cent(i,j)=sum2 
+        xi_coul(i,j)=sum1 
+        xi_ovl(i,j)=sum
+     enddo
+
+     ! print '(13F10.3)',  real(xi_cent(i,1:13) * points(i) * points(1:13),8)
+     ! print '(1F11.5)',  real( xi_cent(i,i) * points(i)**2, 8)
+     ! print '(1F11.5)',  real( xi_cent(i,i) * points(i), 8)
+     
+  enddo
+
+  if (1==0) then
+     ! temp output for debug
+     ppoints(:) = points(:)
+     ppoints(1) = 1;  
+     print *, ' '
+     print *, ' ovl '
+     do i=1,13
+        print '(13F10.3)',  real(xi_ovl(i,1:13),8)
+     enddo
+     print *, ' coul '
+     do i=1,13
+        print '(13F10.3)',  real(xi_coul(i,1:13)*sqrt(ppoints(i)*ppoints(1:13)),8)
+     enddo
+     print *, ' cent '
+     do i=1,13
+        print '(13F10.3)',  real(xi_cent(i,1:13)*ppoints(i)*ppoints(1:13),8)
+     enddo
+     print *, ' '
+  endif
+  
 end subroutine getlobatto
 
 

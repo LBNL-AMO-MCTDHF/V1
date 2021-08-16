@@ -31,6 +31,14 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   DATATYPE,allocatable :: mydensity(:,:), ivopot(:,:), ivoproj(:,:,:,:)
   integer ::  i,ii,imvalue,k,j,   taken(200)=0, flag,xiug, iug, ugvalue(200,0:10), getsmallugvalue, istart
 
+  ! do_cent_acc, do_cent_ham
+  ! use 1/r^2 operator  0 = no 1 = integrals 2 = derivative
+  !    in acceleration operator or hamilonian
+  !    2 was prior temp_glflag
+  !
+  integer :: do_cent_acc, do_cent_ham  
+  integer :: temp_glflag = 1
+  
   halfniumpot=0d0
   do i=1,numspf
      if (abs(spfmvals(i)).gt.mbig) then
@@ -66,15 +74,15 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   call getLobatto(glpoints,glweights,glpoints2d,glweights2d,glke(:,:,0), henumpoints,&
        henumelements, heelementsizes, hegridpoints, hecelement, heecstheta, &
-       glfirstdertot(:,:,0),glrhoderivs(:,:),0)
+       glfirstdertot(:,:,0),glrhoderivs(:,:),glcent(:,:,0),0)
 
   call getLobatto(glpoints,glweights,glpoints2d,glweights2d,glke(:,:,1), henumpoints, &
        henumelements, heelementsizes, hegridpoints, hecelement, heecstheta, &
-       glfirstdertot(:,:,1),glrhoderivs(:,:),1)
-
+       glfirstdertot(:,:,1),glrhoderivs(:,:),glcent(:,:,1),1)
 
   if (temp_glflag.ne.0) then
      glke(:,:,1)=glke(:,:,0)
+     glcent(:,:,1)=glcent(:,:,0)
   endif
 
   do i=1,hegridpoints-2
@@ -116,7 +124,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 !!$     return
 !!$  endif
 
-
   allocate(bigham(numerad, lbig+1, numerad, lbig+1), bigvects(numerad,lbig+1, edim,0:mbig), &
        bigvals(edim))
   bigham=0; bigvects=0; bigvals=0
@@ -133,22 +140,32 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      xydipole(:,:) = real(xydipole(:,:),8)
   endif
 
+  !! zcent, xycent:
   !! VERY ROUGH GO AT ACCELERATION... DVR APPROX TO 1/R^2, BAD..
   !!   but gee I am using same for jacobike
-  !! this is a very basic treatment for atoms.
-  !!   it needs to be improved
-  
+  !! centmats_banded:  1/r^2 quadratured
+
   do j=1,lbig+1
      do i=1,hegridpoints-2
-        zaccel(i,j)  = -nuccharge1/glpoints(i+1)**2 * jacobipoints(j)
-        xyaccel(i,j) = -nuccharge1/glpoints(i+1)**2 * sqrt(1.0d0-jacobipoints(j)**2)  
+        do k=max(1,i-bandwidth),min(hegridpoints-2,i+bandwidth)
+           zcentmat_banded(k-i+bandwidth+1,i,j)  = -nuccharge1 * glcent(k+1,i+1,0) * jacobipoints(j)
+           xycentmat_banded(k-i+bandwidth+1,i,j)  = -nuccharge1 * glcent(k+1,i+1,0) * sqrt(1.0d0-jacobipoints(j)**2)
+        enddo
      enddo
   enddo
-
+  do j=1,lbig+1
+     do i=1,hegridpoints-2
+        zcent(i,j)  = -nuccharge1/glpoints(i+1)**2 * jacobipoints(j)
+        xycent(i,j) = -nuccharge1/glpoints(i+1)**2 * sqrt(1.0d0-jacobipoints(j)**2)  
+     enddo
+  enddo
   if (realdipflag.ne.0) then
-     zaccel(:,:)  = real(zaccel(:,:),8)
-     xyaccel(:,:) = real(xyaccel(:,:),8)
+     zcent(:,:)  = real(zcent(:,:),8)
+     xycent(:,:) = real(xycent(:,:),8)
+     zcentmat_banded(:,:,:)  = real(zcentmat_banded(:,:,:),8)
+     xycentmat_banded(:,:,:) = real(xycentmat_banded(:,:,:),8)
   endif
+
   
   do imvalue=0,mbig
 
@@ -187,7 +204,9 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         sparseddrho_diag(:,:,:)        = real(sparseddrho_diag(:,:,:), 8);
      endif
 
-     bigham=0.d0
+     ! L^2/r^2 in hamiltonian approx formula..  see old attempts to improve, temp_glflag below
+     ! ALSO BELOW (THIS CODE APPEARS TWICE)     
+
      do i=1,hegridpoints-2
         bigham(i,:,i,:) = jacobike(:,:,abs(imvalue)) / glpoints(i+1)**2
      enddo

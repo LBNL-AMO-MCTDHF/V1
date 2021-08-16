@@ -4,6 +4,8 @@
 module myparams
 implicit none
 
+integer :: do_accel_mat = 1;
+
 integer :: debugflag=0
 
 !! HAMILTONIAN AND BASIS
@@ -32,10 +34,6 @@ integer :: realdipflag = 0                       !! make dipole hermitian despit
  !! dummy of main program variable
   integer, allocatable :: spfmvals(:),spfugvals(:)
   integer :: numspf=-1, spfrestrictflag=0,spfugrestrict=0             
-
-
-integer :: temp_glflag=1
-
 
 integer :: numhatoms=0        !!  number of h atoms (only for prolate) ( variables not used here )
                              !!! old way: hlocs puts hatoms on gridpoints
