@@ -99,6 +99,7 @@ real*8 :: mshift=0d0                             !! shift configurations based o
                                                  !!  degeneracy for state averaged sym restricted
                                                  !!  (mrestrictmin, mrestrictmax) mcscf; good idea.
 integer :: offaxispulseflag=0                    !! internal (not namelist), IGNORE me
+integer :: numelec=2             !!              !! NUMBER OF ELECTRONS   variable now here for dipolesub
 end module ham_parameters
 !!EE
 !!{\large \quad PULSE.  (If tdflag=1) }
@@ -258,7 +259,7 @@ module parameters
 !!{\large \quad MAIN PARAMETERS }
 !!BB
 integer :: mcscfnum=1            !! MCSCF=       !! Number of A-vectors (state avgd mcscf or prop)
-integer :: numelec=2             !!              !! NUMBER OF ELECTRONS
+!integer :: numelec=2             !!              !! NUMBER OF ELECTRONS
 integer :: orbcompact=1          !!              !! Compact orbitals for expo prop with spfrestrictflag?  Probably ok.
 integer :: saveflag=1                            !! if zero does not save wave function at the end
 integer :: save_every=0                          !! if nonzero saves wave function every save_every mean field steps

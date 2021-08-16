@@ -52,6 +52,8 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   integer :: i,lowspf,highspf,numspf,gtr
   DATATYPE,target :: smo(wwin%nspf,wwin%nspf)
   DATATYPE :: pots(3) = -999e8
+
+  integer, parameter :: xxflag = 1  ! temp.. fix acceleration formula veldipflag 3 and 4
   
   lowspf=1; highspf=wwin%nspf
   if (parorbsplit.eq.1) then
@@ -92,35 +94,27 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   if (wwin%parconsplit.ne.0) then
      call mympireduceone(normsq)
   endif
-!!$  OFLWR "Norm-squared for dipole: ",normsq
+  !! $  OFLWR "Norm-squared for dipole: ",normsq
 
-!! independent of R for now.  multiply by R for prolate  (R set to 1 for atom)
-  call nucdipvalue(nullcomplex,dipoles)
 
-  do i=1,numr
-     tempvector(i,:)=aket(i,:)*bondpoints(i)
-  enddo
-  csum=0d0
-  if (wwin%totadim.gt.0) then
-     csum=hermdot(abra,tempvector,wwin%totadim)
+  dipoles(:) = 0
+  if (veldipflag==0) then
+     !! independent of R for now.  multiply by R for prolate  (R set to 1 for atom)
+     call nucdipvalue(nullcomplex,dipoles)
+
+     do i=1,numr
+        tempvector(i,:)=aket(i,:)*bondpoints(i)
+     enddo
+     csum=0d0
+     if (wwin%totadim.gt.0) then
+        csum=hermdot(abra,tempvector,wwin%totadim)
+     endif
+     if (wwin%parconsplit.ne.0) then
+        call mympireduceone(csum)
+     endif
+     dipoles(:)=dipoles(:)*csum
   endif
-  if (wwin%parconsplit.ne.0) then
-     call mympireduceone(csum)
-  endif
-  dipoles(:)=dipoles(:)*csum
-
-  ! if (veldipflag.ne.0 .and. velflag.ne.0) then  ! velocity gauge operator, velocity gauge calculation
-  !    if (veldipflag.eq.1) then                  ! velocity operator in velocity gauge
-  !       call vectdpot(intime,1,pots,-1)         ! A-vector velocity gauge
-  !    else                                       ! velocity operator in length gauge
-  !       call gauge_transform(1,intime,numspf,spfket(:,lowspf:highspf),spfket(:,lowspf:highspf))
-  !       call gauge_transform(1,intime,numspf,workspfs(:,lowspf:highspf),workspfs(:,lowspf:highspf))
-  !       if (parorbsplit.eq.1) then
-  !          call mpiorbgather(workspfs,spfsize)
-  !       endif
-  !    endif
-  ! endif
-
+  
   !  veldipflag
   !  0:  compute dipole expectation value without changing gauge
   !  1:  compute velocity expectation value in velocity gauge
@@ -142,6 +136,9 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   elseif (veldipflag.eq.3.or.veldipflag.eq.4) then
      call vectdpot(intime,0,pots,-1)         ! E-field 
   endif
+
+  !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
+  !!  GAUGE TRANSFORM?
   
   gtr = 0
   if (veldipflag.ne.0) then
@@ -162,8 +159,9 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
         call mpiorbgather(workspfs,spfsize)
      endif
   endif
-  
-!! Z DIPOLE
+
+  !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
+  !! Z DIPOLE !!!!!!!!!!!!!!!!!!!!!!!!!
 
   dipolemat(:,:)=0d0
   if (numspf.gt.0) then
@@ -176,7 +174,10 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
         endif
      elseif (veldipflag==3 .or. veldipflag==4) then
         call mult_zaccel(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)        
-        tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(3)
+        if (xxflag==0) then
+           ! this is stupid, and the sign was wrong
+           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(3)
+        endif
      endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
@@ -199,7 +200,8 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   endif
   dipole_expects(3)=dipole_expects(3) + dipoles(3)
 
-!! Y DIPOLE
+  !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
+  !! Y DIPOLE !!!!!!!!!!!!!!!!!!!!!!!!!
 
   dipolemat(:,:)=0d0
   if (numspf.gt.0) then
@@ -212,7 +214,10 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
         endif
      elseif (veldipflag==3 .or. veldipflag==4) then
         call mult_yaccel(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)        
-        tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(2)
+        if (xxflag==0) then
+           ! this is stupid, and the sign was wrong
+           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(2)
+        endif
      endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
@@ -223,7 +228,7 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   if (parorbsplit.eq.3) then
      call mympireduce(dipolemat(:,:),wwin%nspf**2)
   endif
-
+  
   rvector(:)=bondpoints(:)
   call arbitraryconfig_mult_singles(wwin,dipolemat,rvector,aket,tempvector,numr)
   dipole_expects(2)=0d0
@@ -235,7 +240,8 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   endif
   dipole_expects(2)=dipole_expects(2) + dipoles(2)
 
-!! X DIPOLE
+  !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
+  !! X DIPOLE !!!!!!!!!!!!!!!!!!!!!!!!!
 
   dipolemat(:,:)=0d0
   if (numspf.gt.0) then
@@ -248,7 +254,10 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
         endif
      elseif (veldipflag==3 .or. veldipflag==4) then
         call mult_xaccel(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)        
-        tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(1)
+        if (xxflag==0) then
+           ! this is stupid, and the sign was wrong
+           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(1)
+        endif
      endif
      call MYGEMM('C','N',wwin%nspf,numspf,spfsize,DATAONE, workspfs, spfsize, &
           tempspfs(:,lowspf:highspf), spfsize, DATAZERO, dipolemat(:,lowspf:highspf), wwin%nspf)
@@ -271,13 +280,15 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   endif
   dipole_expects(1)=dipole_expects(1) + dipoles(1)
 
-  deallocate(tempvector,tempspfs,abra,aket,workspfs)
+  !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
+  !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
+  
+  ! this is not stupid
+  if ( xxflag.ne.0 .and. (veldipflag==3 .or. veldipflag==4) ) then
+     dipole_expects(:)=dipole_expects(:) + pots(:) * (-1) * numelec
+  endif
 
-!!$#ifdef CNORMFLAG
-!!$  dipole_expects(1)=dipole_expects(1)*abs(norm)/norm
-!!$  dipole_expects(2)=dipole_expects(2)*abs(norm)/norm
-!!$  dipole_expects(3)=dipole_expects(3)*abs(norm)/norm
-!!$#endif
+  deallocate(tempvector,tempspfs,abra,aket,workspfs)
 
 end subroutine dipolesub_one
 
