@@ -4,7 +4,8 @@
 module myparams
 implicit none
 
-integer :: do_accel_mat = 1;
+integer :: do_accel_mat = 0;    ! use matrix elements not DVR approx for 1/r^2
+!                               !   in acceleration operator
 
 integer :: debugflag=0
 

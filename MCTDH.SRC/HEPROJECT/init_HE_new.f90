@@ -31,12 +31,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   DATATYPE,allocatable :: mydensity(:,:), ivopot(:,:), ivoproj(:,:,:,:)
   integer ::  i,ii,imvalue,k,j,   taken(200)=0, flag,xiug, iug, ugvalue(200,0:10), getsmallugvalue, istart
 
-  ! do_cent_acc, do_cent_ham
-  ! use 1/r^2 operator  0 = no 1 = integrals 2 = derivative
-  !    in acceleration operator or hamilonian
-  !    2 was prior temp_glflag
-  !
-  integer :: do_cent_acc, do_cent_ham  
   integer :: temp_glflag = 1
   
   halfniumpot=0d0
@@ -166,7 +160,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      xycentmat_banded(:,:,:) = real(xycentmat_banded(:,:,:),8)
   endif
 
-  
   do imvalue=0,mbig
 
 !! jacobideriv is matrix elements of ( (1-q^2) ddq - q) Where q=cos theta.
@@ -258,12 +251,11 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      halfniumpot(i,:,:) = (-1d0) /glpoints(i+1) * (nuccharge1 - numelec + 1)
   enddo
 
-
-!!
+  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   OFLWR "   ... call get_twoe_new"; CFL
   call get_twoe_new()
   OFLWR "   ... called get_twoe_new"; CFL
-
+  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   if (numhatoms.gt.0) then
      call hatomcalc(hatomreduced)
@@ -272,7 +264,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      call call_frozen_matels_core(infrozens,numfrozen,frozenkediag,frozenpotdiag,&
           frozenreduced,hatomreduced)
   endif
-
 
 !!$!! 062111 added this logic here for atom too
 !!$     if ((skipflag.eq.0).and.(spfsloaded.lt.numspf)) then
@@ -285,7 +276,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         do i=1,hegridpoints-2
            bigham(i,:,i,:) = jacobike(:,:,abs(imvalue)) / glpoints(i+1)**2
         enddo
-
 
 !! for centrifugal term add value of derivative of bra and ket at zero multiplied together
 
