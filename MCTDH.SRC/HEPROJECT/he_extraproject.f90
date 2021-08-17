@@ -23,7 +23,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
        henumpoints,  henumelements,  hecelement,  heecstheta,   heelementsizes, numhatoms, hlocs,hlocrealflag,&
        hlocreal,lbig,nuccharge1,mbig, num_skip_orbs, orb_skip_mvalue, orb_skip,debugflag,&
        loadedocc,ivoflag, realdipflag, &
-       do_accel_mat, do_cent_mat
+       do_accel_mat, do_cent_mat, centmode
 
 #ifdef PGFFLAG
   integer :: myiargc

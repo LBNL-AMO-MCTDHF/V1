@@ -12,6 +12,7 @@ integer :: do_accel_mat = 0,&    !! use matrix elements not DVR approx for 1/r^2
      do_cent_mat = 0             !!   in acceleration op & ham centrif potential
 !                                !! do_cent_mat=1 with one finite element:
 !                                !!   variational hydrogenic hamiltonian
+integer :: centmode = 0          !! for above options integral (0) or dvr (1) 
 integer :: hecelement=100,&      !! Celement=    !! Frist element that is scaled
      henumelements=2,&           !! Numel=       !! Number of elements in r
      henumpoints=14              !! Numpts=      !! Number of points per elements 

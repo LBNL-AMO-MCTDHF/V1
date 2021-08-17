@@ -31,7 +31,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   DATATYPE,allocatable :: mydensity(:,:), ivopot(:,:), ivoproj(:,:,:,:)
   DATATYPE,allocatable :: onemat(:,:,:,:)
   integer ::  i,ii,imvalue,k,j,   taken(200)=0, flag,xiug, iug, ugvalue(200,0:10), &
-       getsmallugvalue, istart, centmode
+       getsmallugvalue, istart
 
   integer,parameter :: glflag = 1
   
@@ -70,10 +70,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   ! glflag is set:  just use the even results
   ! flag evenodd (last argument to getLobatto) only affects ke and first deriv
 
-  centmode = 0
-  if (do_cent_mat .gt. 1) then
-     centmode = 1
-  endif
   ! call getLobatto(glpoints,glweights,glpoints2d,glweights2d,glke(:,:,1), henumpoints, &
   !      henumelements, heelementsizes, hegridpoints, hecelement, heecstheta, &
   !      glfirstdertot(:,:,1),glrhoderivs(:,:),centmode,glcent(:,:),1)
