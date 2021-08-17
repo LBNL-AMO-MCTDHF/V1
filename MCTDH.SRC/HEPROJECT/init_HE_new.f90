@@ -78,6 +78,9 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
        henumelements, heelementsizes, hegridpoints, hecelement, heecstheta, &
        glfirstdertot(:,:,0),glrhoderivs(:,:),glcent(:,:),0)
 
+  ! note: in previous commit glfirstdertot was added below.
+  !  RESULTS USING DERIVATIVE OPERATOR (velocity gauge and velocity matrix element)
+  !  WILL BE SLIGHTLY DIFFERENT 
   if (glflag.ne.0) then
      glke(:,:,1)=glke(:,:,0)
      glfirstdertot(:,:,1)=glfirstdertot(:,:,0)
