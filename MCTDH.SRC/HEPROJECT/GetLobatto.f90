@@ -191,6 +191,9 @@ subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,&
   !
   ! these two expressions (regardless of centmode) ARE THE SAME for one element
   !   centmode does not matter for one element
+  !   xi_cent is different depending on centmode for more than one element,
+  !      but the results are very close, much much closer to each other than
+  !      to dvr approx diagonal 1/r^2
   !
   if (centmode.ne.0) then     
      ! as previously programmed,
