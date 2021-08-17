@@ -183,24 +183,29 @@ subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,&
   ! matrix elements for centrifugal operator 1/r^2, for acceleration operator
   !    (dipole acceleration) and centrifugal potential in hamiltonian
   !
-  ! current dvr expression for 1/r^2 works well for hamiltonian,
-  !    very accurate but not variational (is like collocation)
-  
+  ! current simple dvr expression for 1/r^2 works well for hamiltonian,
+  !    very accurate but not variational (is like collocation in the r coordinate,
+  !    variational in angular coordinates)
+  !
+  ! otherwise use xi_cent for almost-variational result.
+  !
+  ! these two expressions (regardless of centmode) ARE THE SAME for one element
+  !   centmode does not matter for one element
+  !
   if (centmode.ne.0) then     
-     ! prior attempt, first derivative term addition to 1/r^2 according to DVR principles)
-     !    was not successful for hamiltonian
-     !
+     ! as previously programmed,
+     !   first derivative term addition to 1/r^2 according to DVR principles
+     !   this agrees with the integral so the DVR principle evaluation must be exact
+     !   that is reasonable because the first derivative matrix xi_derivs is correctly
+     !   quadratured by the DVR grid (extrapoints is not necessary, though used here)
      do i=2,gridpoints
         xi_cent(i,i) = 1/points(i)**2
      enddo
      do j=2,gridpoints
         do i=2,gridpoints
-           xi_cent(i,j) = xi_cent(i,j) + xi_derivs(i,1) * xi_derivs(j,1) ! / weights(1)**4
+           xi_cent(i,j) = xi_cent(i,j) + xi_derivs(i,1) * xi_derivs(j,1)
         enddo
      enddo
-     ! print *, weights(1)
-     ! print *,"noog"
-     ! print *, real(xi_derivs(:,1),8)
   else
      ! integral:
      ! using this xi_cent as representation of 1/r^2 in hamiltonian leads to variational
@@ -235,7 +240,7 @@ subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,&
         print '(13F10.3)',  real(xi_coul(i,1:13)*sqrt(ppoints(i)*ppoints(1:13)),8)
      enddo
   endif
-  if (1==1) then
+  if (1==0) then
      print *, ' cent '
      do i=2,13
         print '(12F10.3)',  real(xi_cent(i,2:13)*ppoints(i)*ppoints(2:13),8)
