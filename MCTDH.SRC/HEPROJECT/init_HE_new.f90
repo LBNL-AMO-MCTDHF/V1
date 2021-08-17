@@ -274,25 +274,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
         bigham=0.d0
 
-!! for centrifugal term add value of derivative of bra and ket at zero multiplied together
-
-!! with setup analogous to prolate I don't get degeneracies even/odd m for sparse radial grid.
-!!   seeing if this (accurate 1/r^2 integration for even m) will fix.
-!!   did okay but not exact.
-!!   could just replace gkle(:,:,1) with glke(:,:,0).
-!! whatever.  will leave this as improved for usual (temp_glflag=0) 
-!!   with temp_glflag option still available
-!NOT!  doesn't work with sparseops setup
-
-!if (mod(imvalue,2).eq.0.or.temp_glflag.ne.0) then
-!     do i=1,hegridpoints-2
-!        do j=1,hegridpoints-2
-!           bigham(i,:,j,:)=bigham(i,:,j,:) + jacobike(:,:,abs(imvalue)) * &
-!                glfirstdertot(1,i+1,0) *  glfirstdertot(1,j+1,0)    
-!        enddo
-!     enddo
-!endif
-
         call mult_ke0(onemat,bigham,imvalue,imvalue,numerad*(lbig+1))
         
         do k=1,lbig+1

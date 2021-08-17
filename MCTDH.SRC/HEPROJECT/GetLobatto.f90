@@ -164,6 +164,17 @@ subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,&
      enddo
   enddo
 
+  ! DVR expression for centrifugal potential saved here from init_HE_new.f90
+  !
+  !if (mod(imvalue,2).eq.0.or.temp_glflag.ne.0) then
+  !     do i=1,hegridpoints-2
+  !        do j=1,hegridpoints-2
+  !           bigham(i,:,j,:)=bigham(i,:,j,:) + jacobike(:,:,abs(imvalue)) * &
+  !                glfirstdertot(1,i+1,0) *  glfirstdertot(1,j+1,0)    
+  !        enddo
+  !     enddo
+  !endif
+
   !! matrix elements for centrifugal operator...
   !! attempt to improve acceleration, maybe hamiltonian too
   !! prior attempt with temp_glflag (first derivative term addition to 1/r^2)
