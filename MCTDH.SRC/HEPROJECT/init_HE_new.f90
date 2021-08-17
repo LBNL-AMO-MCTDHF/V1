@@ -32,7 +32,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   DATATYPE,allocatable :: onemat(:,:,:,:)
   integer ::  i,ii,imvalue,k,j,   taken(200)=0, flag,xiug, iug, ugvalue(200,0:10), getsmallugvalue, istart
 
-  integer :: temp_glflag = 1
+  integer,parameter :: glflag = 1
   
   halfniumpot=0d0
   do i=1,numspf
@@ -66,18 +66,21 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   jacobike(:,:,:)=jacobike(:,:,:)*(-0.5d0)
 
+  ! it does not make sense to base the parity upon the m-value
+  !   so just use the even results (glflag is set)
+  ! flag evenodd (last argument to getLobatto) only affects ke and first deriv
+  
+  call getLobatto(glpoints,glweights,glpoints2d,glweights2d,glke(:,:,1), henumpoints, &
+       henumelements, heelementsizes, hegridpoints, hecelement, heecstheta, &
+       glfirstdertot(:,:,1),glrhoderivs(:,:),glcent(:,:),1)
 
   call getLobatto(glpoints,glweights,glpoints2d,glweights2d,glke(:,:,0), henumpoints,&
        henumelements, heelementsizes, hegridpoints, hecelement, heecstheta, &
-       glfirstdertot(:,:,0),glrhoderivs(:,:),glcent(:,:,0),0)
+       glfirstdertot(:,:,0),glrhoderivs(:,:),glcent(:,:),0)
 
-  call getLobatto(glpoints,glweights,glpoints2d,glweights2d,glke(:,:,1), henumpoints, &
-       henumelements, heelementsizes, hegridpoints, hecelement, heecstheta, &
-       glfirstdertot(:,:,1),glrhoderivs(:,:),glcent(:,:,1),1)
-
-  if (temp_glflag.ne.0) then
+  if (glflag.ne.0) then
      glke(:,:,1)=glke(:,:,0)
-     glcent(:,:,1)=glcent(:,:,0)
+     glfirstdertot(:,:,1)=glfirstdertot(:,:,0)
   endif
 
   do i=1,hegridpoints-2
@@ -140,8 +143,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
      do j=1,lbig+1
         do i=1,hegridpoints-2
            do k=max(1,i-bandwidth),min(hegridpoints-2,i+bandwidth)
-              zcentmat_banded(k-i+bandwidth+1,i,j)  = -nuccharge1 * glcent(k+1,i+1,0) * jacobipoints(j)
-              xycentmat_banded(k-i+bandwidth+1,i,j)  = -nuccharge1 * glcent(k+1,i+1,0) * sqrt(1.0d0-jacobipoints(j)**2)
+              zcentmat_banded(k-i+bandwidth+1,i,j)  = -nuccharge1 * glcent(k+1,i+1) * jacobipoints(j)
+              xycentmat_banded(k-i+bandwidth+1,i,j)  = -nuccharge1 * glcent(k+1,i+1) * sqrt(1.0d0-jacobipoints(j)**2)
            enddo
         enddo
      enddo
@@ -161,7 +164,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   if ( do_cent_mat.ne.0 ) then   ! cbandwidth = bandwidth
      do i=1,hegridpoints-2
         do k=max(1,i-bandwidth),min(hegridpoints-2,i+bandwidth)
-           centmat_banded(k-i+bandwidth+1,i)  = glcent(k+1,i+1,0)
+           centmat_banded(k-i+bandwidth+1,i)  = glcent(k+1,i+1)
         enddo
      enddo
   else

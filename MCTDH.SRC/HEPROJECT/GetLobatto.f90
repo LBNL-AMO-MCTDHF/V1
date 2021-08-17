@@ -145,7 +145,6 @@ subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,&
            sum=0.0d0
            do l=1,numelements
               do k=1,extraorder
-
                  sum  = sum  - firstdertot(k,l,j) * firstdertot(k,l,i) * extraweights(k,l) 
               enddo
            enddo
@@ -166,20 +165,23 @@ subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,&
 
   ! DVR expression for centrifugal potential saved here from init_HE_new.f90
   !
-  !if (mod(imvalue,2).eq.0.or.temp_glflag.ne.0) then
   !     do i=1,hegridpoints-2
   !        do j=1,hegridpoints-2
   !           bigham(i,:,j,:)=bigham(i,:,j,:) + jacobike(:,:,abs(imvalue)) * &
   !                glfirstdertot(1,i+1,0) *  glfirstdertot(1,j+1,0)    
   !        enddo
   !     enddo
-  !endif
-
+  !
   !! matrix elements for centrifugal operator...
-  !! attempt to improve acceleration, maybe hamiltonian too
-  !! prior attempt with temp_glflag (first derivative term addition to 1/r^2)
-  !!   was not successful for hamiltonian
-  !! current dvr expression for 1/r^2 works well for hamiltonian
+  !! for acceleration operator (dipole acceleration) and centrifugal potential in hamiltonian
+  !! prior attempt above (first derivative term addition to 1/r^2 according to DVR principles)
+  !!    was not successful for hamiltonian
+  !! current dvr expression for 1/r^2 works well for hamiltonian,
+  !!    very accurate but not variational (is like collocation)
+  !! using xi_cent as representation of 1/r^2 in hamiltonian leads to more variational
+  !!    hydrogenic eigenvalues (upper bounds) 
+  !!    it is not exactly variational because overlap matrix is approximated
+  !!    but keep in mind, with one finite element the DVR approx to coulomb operator 1/r is exact
 
   do i=1,gridpoints
      do j=1,gridpoints

@@ -19,7 +19,7 @@ module myprojectmod
 
   DATAECS, allocatable, target :: ddrhopot(:,:)
 
-  DATAECS, allocatable :: glke(:,:,:), glfirstdertot(:,:,:),glrhoderivs(:,:), glcent(:,:,:)
+  DATAECS, allocatable :: glke(:,:,:), glfirstdertot(:,:,:),glrhoderivs(:,:), glcent(:,:)
   DATAECS, allocatable :: glpoints(:), glweights(:),zdipole(:,:), xydipole(:,:)
   DATAECS, allocatable :: zcentmat_banded(:,:,:), xycentmat_banded(:,:,:), centmat_banded(:,:)
   
@@ -51,7 +51,7 @@ subroutine myprojectalloc()
   
   allocate( jacobiKE(lbig+1, lbig+1, 0:mbig) , jacobideriv(lbig+1, lbig+1, 0:mbig) ,jacobirhoderiv(lbig+1,lbig+1), &
        jacobiweights(lbig+1), jacobipoints(lbig+1) , &
-       glke(hegridpoints,hegridpoints,0:1) , glcent(hegridpoints,hegridpoints,0:1) , &
+       glke(hegridpoints,hegridpoints,0:1) , glcent(hegridpoints,hegridpoints) , &
        glfirstdertot(hegridpoints,hegridpoints,0:1), glrhoderivs(hegridpoints,hegridpoints), &
        glpoints(hegridpoints), glweights(hegridpoints), glpoints2d(henumpoints,2), glweights2d(henumpoints,2) , &
        xydipole(numerad,lbig+1),zdipole(numerad,lbig+1), ddrhopot(numerad,lbig+1));
