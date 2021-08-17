@@ -22,7 +22,8 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   NAMELIST /heparinp/  &
        henumpoints,  henumelements,  hecelement,  heecstheta,   heelementsizes, numhatoms, hlocs,hlocrealflag,&
        hlocreal,lbig,nuccharge1,mbig, num_skip_orbs, orb_skip_mvalue, orb_skip,debugflag,&
-       loadedocc,ivoflag, realdipflag
+       loadedocc,ivoflag, realdipflag, &
+       do_accel_mat, do_cent_mat
 
 #ifdef PGFFLAG
   integer :: myiargc
@@ -68,6 +69,17 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
 
   hegridpoints = henumelements*henumpoints-henumelements+1   
   bandwidth=2*henumpoints
+
+  if (do_accel_mat.ne.0) then
+     abandwdth = bandwidth
+  else
+     abandwdth = 0;
+  endif  
+  if (do_cent_mat.ne.0) then
+     cbandwdth = bandwidth
+  else
+     cbandwdth = 0;
+  endif
 
   jacobisummax=lbig
   lseriesmax=jacobisummax  

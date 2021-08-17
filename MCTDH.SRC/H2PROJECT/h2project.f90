@@ -41,7 +41,7 @@ module myprojectmod
   DATAECS, allocatable :: proddrho(:,:,:,:,:) ! for velocity.  Mult by 2/R
   DATAECS, allocatable,target :: ddrhopot(:,:) ! for velocity.  Mult by 2/R
   DATAECS, allocatable :: xydipole(:,:),zdipole(:,:)
-  DATAECS, allocatable :: xycent(:,:),zcent(:,:),xycentmat_banded(:,:,:),zcentmat_banded(:,:,:)
+  DATAECS, allocatable :: xycentmat_banded(:,:,:),zcentmat_banded(:,:,:),centmat_banded(:,:)
   real*8, allocatable ::  etapoints(:),  etake(:,:,:)
   real*8, allocatable :: etaweights(:)
 
@@ -116,10 +116,16 @@ subroutine myprojectalloc()
   sparseddrho_eta=0; sparseddrho_diag=0; sparseops_xi_banded=0; 
   sparseops_eta=0; sparseops_diag=0
 
-  allocate(xycent(numerad,numeta),zcent(numerad,numeta))
-  allocate(xycentmat_banded(2*bandwidth+1,numerad,numeta),&
-       zcentmat_banded(2*bandwidth+1,numerad,numeta))
-  xycent=0; zcent=0; xycentmat_banded=0; zcentmat_banded=0
+  allocate(xycentmat_banded(2*abandwdth+1,numerad,numeta),&
+       zcentmat_banded(2*abandwdth+1,numerad,numeta), &
+       centmat_banded(2*cbandwdth+1,numerad))
+  xycentmat_banded=0; zcentmat_banded=0;  centmat_banded=0
+  
+  ! GOES IN KE.  THIS IS FOR ATOMS.  cbandwdth is hardwired to 0
+  if (cbandwdth.ne.0) then
+     OFLWR "Error, programmer failure"; CFLST
+  endif
+  centmat_banded(:,:)=1  ! set to 1; it multiplies.
   
   if (bornopflag==0) then
      allocate(&   
@@ -334,7 +340,7 @@ subroutine op_lplusminus_one(in,out,inkind,m2val)
   DATATYPE,intent(in) :: in(numerad,lbig+1)
   DATATYPE,intent(out) :: out(numerad,lbig+1)
   DATATYPE :: work(lbig+1) 
-  integer :: ieta,i,ixi
+  integer :: ieta,ixi
 
   out=0.d0; work=0
 
@@ -357,15 +363,14 @@ subroutine op_lplusminus_one(in,out,inkind,m2val)
      out(ixi,:)= out(ixi,:) + work(1:lbig+1) 
   enddo
 
-  i=2*bandwidth+1
   do ieta=1,lbig+1
      select case(inkind)
      case (1)           
         call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),&
-             sparselplus_xi_banded(:,:,ieta,m2val),i, in(:,ieta),1,(1.d0,0.d0), out(:,ieta), 1)
+             sparselplus_xi_banded(:,:,ieta,m2val),2*bandwidth+1, in(:,ieta),1,(1.d0,0.d0), out(:,ieta), 1)
      case (2)
         call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),&
-             sparselminus_xi_banded(:,:,ieta,m2val),i, in(:,ieta),1,(1.d0,0.d0), out(:,ieta), 1)
+             sparselminus_xi_banded(:,:,ieta,m2val),2*bandwidth+1, in(:,ieta),1,(1.d0,0.d0), out(:,ieta), 1)
      case default
         print *, "AAUGH!!!";        call mpistop()
      end select
@@ -391,7 +396,7 @@ subroutine op_yderiv(howmany,in,out)
   DATATYPE, intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE, intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE :: work(lbig+1),work2(lbig+1)  !!AUTOMATIC
-  integer ::  ixi, ieta, i,m2val,ii
+  integer ::  ixi, ieta, m2val,ii
 
   out=0.d0;
 
@@ -410,10 +415,9 @@ subroutine op_yderiv(howmany,in,out)
         out(ixi,:,m2val,ii)= out(ixi,:,m2val,ii) + work(1:lbig+1)  
      enddo
 
-     i=2*bandwidth+1
      do ieta=1,lbig+1
         call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,(1.d0,0.d0),&
-             sparseyops_xi_banded(:,:,ieta,abs(m2val)+1),i, &
+             sparseyops_xi_banded(:,:,ieta,abs(m2val)+1),2*bandwidth+1, &
              in(:,ieta,m2val,ii),1,(1.d0,0.d0), out(:,ieta,m2val,ii), 1)
      enddo
      out(:,:,m2val,ii) = out(:,:,m2val,ii) - &

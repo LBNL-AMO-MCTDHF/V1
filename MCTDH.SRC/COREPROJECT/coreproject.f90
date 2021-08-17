@@ -803,16 +803,12 @@ subroutine mult_zaccel(howmany,in, out, inrealflag)  ! realflag not used
 
   do ii=1,howmany
      do i=-mbig,mbig
-        if (do_accel_mat.eq.0) then
-           out(:,:,i,ii)=in(:,:,i,ii)*zcent(:,:)
-        else
-           do ieta = 1, lbig+1
-              call MYGBMV('N', numerad, numerad, bandwidth, bandwidth, DATAONE, &
-                   zcentmat_banded(:,:,ieta), 2*bandwidth+1, &
-                   in(:,ieta,i,ii), 1, DATAZERO, out(:,ieta,i,ii), 1)
-              
-           enddo
-        endif
+        do ieta = 1, lbig+1
+           call MYGBMV('N', numerad, numerad, abandwdth, abandwdth, DATAONE, &
+                zcentmat_banded(:,:,ieta), 2*abandwdth+1, &
+                in(:,ieta,i,ii), 1, DATAZERO, out(:,ieta,i,ii), 1)
+           
+        enddo
      enddo
   enddo
   
@@ -837,28 +833,20 @@ subroutine mult_xaccel(howmany,in, out, inrealflag)  ! realflag not used
 
   do ii=1,howmany
      do i=-mbig+1,mbig
-        if (do_accel_mat.eq.0) then
-           out(:,:,i,ii)=in(:,:,i-1,ii)*xycent(:,:) /2
-        else
-           do ieta = 1, lbig+1
-              call MYGBMV('N', numerad, numerad, bandwidth, bandwidth, DATAONE/2, &
-                   xycentmat_banded(:,:,ieta), 2*bandwidth+1, &
-                   in(:,ieta,i-1,ii), 1, DATAONE, out(:,ieta,i,ii), 1)
-              
-           enddo
-        endif
+        do ieta = 1, lbig+1
+           call MYGBMV('N', numerad, numerad, abandwdth, abandwdth, DATAONE/2, &
+                xycentmat_banded(:,:,ieta), 2*abandwdth+1, &
+                in(:,ieta,i-1,ii), 1, DATAONE, out(:,ieta,i,ii), 1)
+           
+        enddo
      enddo
      do i=-mbig,mbig-1
-        if (do_accel_mat.eq.0) then
-           out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*xycent(:,:) /2
-        else
-           do ieta = 1, lbig+1
-              call MYGBMV('N', numerad, numerad, bandwidth, bandwidth, DATAONE/2, &
-                   xycentmat_banded(:,:,ieta), 2*bandwidth+1, &
-                   in(:,ieta,i+1,ii), 1, DATAONE, out(:,ieta,i,ii), 1)
-              
-           enddo
-        endif
+        do ieta = 1, lbig+1
+           call MYGBMV('N', numerad, numerad, abandwdth, abandwdth, DATAONE/2, &
+                xycentmat_banded(:,:,ieta), 2*abandwdth+1, &
+                in(:,ieta,i+1,ii), 1, DATAONE, out(:,ieta,i,ii), 1)
+           
+        enddo
      enddo
   enddo
   
@@ -883,28 +871,19 @@ subroutine mult_yaccel(howmany,in, out, inrealflag)  ! realflag not used
 
   do ii=1,howmany
      do i=-mbig+1,mbig
-        if (do_accel_mat.eq.0) then
-           out(:,:,i,ii)=in(:,:,i-1,ii)*xycent(:,:)*(0d0,1d0)  /2
-        else
-           do ieta = 1, lbig+1
-              call MYGBMV('N', numerad, numerad, bandwidth, bandwidth, DATAONE*(0d0,1d0)/2, &
-                   xycentmat_banded(:,:,ieta), 2*bandwidth+1, &
-                   in(:,ieta,i-1,ii), 1, DATAONE, out(:,ieta,i,ii), 1)
-              
-           enddo
-        endif
+        do ieta = 1, lbig+1
+           call MYGBMV('N', numerad, numerad, abandwdth, abandwdth, DATAONE*(0d0,1d0)/2, &
+                xycentmat_banded(:,:,ieta), 2*abandwdth+1, &
+                in(:,ieta,i-1,ii), 1, DATAONE, out(:,ieta,i,ii), 1)
+           
+        enddo
      enddo
      do i=-mbig,mbig-1
-        if (do_accel_mat.eq.0) then
-           out(:,:,i,ii)=out(:,:,i,ii)+in(:,:,i+1,ii)*xycent(:,:)*(0d0,-1d0)  /2
-        else
-           do ieta = 1, lbig+1
-              call MYGBMV('N', numerad, numerad, bandwidth, bandwidth, DATAONE*(0d0,-1d0)/2, &
-                   xycentmat_banded(:,:,ieta), 2*bandwidth+1, &
-                   in(:,ieta,i-1,ii), 1, DATAONE, out(:,ieta,i,ii), 1)
-              
-           enddo
-        endif
+        do ieta = 1, lbig+1
+           call MYGBMV('N', numerad, numerad, abandwdth, abandwdth, DATAONE*(0d0,-1d0)/2, &
+                xycentmat_banded(:,:,ieta), 2*abandwdth+1, &
+                in(:,ieta,i-1,ii), 1, DATAONE, out(:,ieta,i,ii), 1)
+        enddo
      enddo
   enddo
 
@@ -1467,7 +1446,7 @@ subroutine velmultiply(howmany,spfin,spfout, myxtdpot0,myytdpot0,myztdpot)
   DATATYPE,intent(in) :: spfin(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE,intent(out) :: spfout(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE,intent(in) :: myxtdpot0,myztdpot,myytdpot0
-  integer :: imval, qq, ieta , ixi, i ,ivect
+  integer :: imval, qq, ieta , ixi, ivect
   complex*16 :: csum1,csum2,cfacreal,cfacimag
   real*8 :: myrhotdpotreal,myrhotdpotimag
   DATATYPE :: work(lbig+1),work2(lbig+1)
@@ -1488,10 +1467,9 @@ OFLWR "Velocity gauge not available for real time propagation"; CFLST
               spfout(ixi,:,imval,ivect)= spfout(ixi,:,imval,ivect) + work(1:lbig+1) * myztdpot * (0.d0,1.d0)  
            enddo
 
-           i=2*bandwidth+1
            csum1=myztdpot * (0.d0,1.d0) 
            do ieta=1,lbig+1
-              call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum1,sparseddz_xi_banded(:,:,ieta,abs(imval)+1),i,&
+              call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum1,sparseddz_xi_banded(:,:,ieta,abs(imval)+1),2*bandwidth+1,&
                    spfin(:,ieta,imval,ivect),1,DATAONE, spfout(:,ieta,imval,ivect), 1)
            enddo
            spfout(:,:,imval,ivect) = spfout(:,:,imval,ivect) - &
@@ -1528,15 +1506,13 @@ OFLWR "Velocity gauge not available for real time propagation"; CFLST
                     spfout(ixi,:,imval+1,ivect)= spfout(ixi,:,imval+1,ivect) + work(1:lbig+1) * csum2
                  endif
               enddo
-              i=2*bandwidth+1
               do ieta=1,lbig+1
                  if (imval.gt.-mbig) then
-                    call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum1,sparseddrho_xi_banded(:,:,ieta,1),i,&
+                    call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum1,sparseddrho_xi_banded(:,:,ieta,1),2*bandwidth+1,&
                          spfin(:,ieta,imval,ivect),1,DATAONE, spfout(:,ieta,imval-1,ivect), 1)
                  endif
-
                  if (imval.lt.mbig) then
-                    call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum2,sparseddrho_xi_banded(:,:,ieta,1),i,&
+                    call MYGBMV('N',numerad,numerad,bandwidth,bandwidth,csum2,sparseddrho_xi_banded(:,:,ieta,1),2*bandwidth+1,&
                          spfin(:,ieta,imval,ivect),1,DATAONE, spfout(:,ieta,imval+1,ivect), 1)
                  endif
               enddo
@@ -1570,16 +1546,14 @@ OFLWR "Velocity gauge not available for real time propagation"; CFLST
                     spfout(ixi,:,imval+1,ivect)= spfout(ixi,:,imval+1,ivect) + work(1:lbig+1) * csum2
                  endif
               enddo
-
-              i=2*bandwidth+1
               do ieta=1,lbig+1
                  if (imval.gt.-mbig) then
-                    call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum1*(-1),sparseddrho_xi_banded(:,:,ieta,1),i,&
+                    call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum1*(-1),sparseddrho_xi_banded(:,:,ieta,1),2*bandwidth+1,&
                          spfin(:,ieta,imval,ivect),1,DATAONE, spfout(:,ieta,imval-1,ivect), 1)
                  endif
 
                  if (imval.lt.mbig) then
-                    call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum2*(-1),sparseddrho_xi_banded(:,:,ieta,1),i,&
+                    call MYGBMV('T',numerad,numerad,bandwidth,bandwidth,csum2*(-1),sparseddrho_xi_banded(:,:,ieta,1),2*bandwidth+1,&
                          spfin(:,ieta,imval,ivect),1,DATAONE, spfout(:,ieta,imval+1,ivect), 1)
                  endif
               enddo
@@ -1617,16 +1591,17 @@ end subroutine velmultiply
 #endif
 
 
-!! needs factor of 1/r^2 for ham
+!! needs factor of 1/r^2 for ham    what? old comment does not seem correct
 
-subroutine mult_ke(in, out,howmany)
+
+subroutine mult_ke_prev(in, out,howmany)
   use myparams
   use myprojectmod  
   implicit none
   integer,intent(in) :: howmany
   DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
   DATATYPE,intent(out) :: out(numerad,lbig+1,-mbig:mbig,howmany)
-  integer :: m2val, ixi,ieta, i,jj
+  integer :: m2val, ixi,ieta, jj
   DATATYPE :: work(lbig+1), work2(lbig+1),myin(numerad,lbig+1),myout(numerad,lbig+1)
 
   out=0.d0
@@ -1640,15 +1615,65 @@ subroutine mult_ke(in, out,howmany)
            call XXMVXX('N',lbig+1,lbig+1,DATAONE,sparseops_eta(:,:,ixi,abs(m2val)+1),lbig+1,work2,1,DATAZERO, work, 1)
            myout(ixi,:)=work(1:lbig+1)
         enddo
-        i=2*bandwidth+1
         do ieta=1,lbig+1
-           call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,DATAONE,sparseops_xi_banded(:,:,ieta,abs(m2val)+1),i,myin(:,ieta),1,DATAONE, myout(:,ieta), 1)
+           call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,DATAONE, &
+                sparseops_xi_banded(:,:,ieta,abs(m2val)+1),2*bandwidth+1,myin(:,ieta),1,DATAONE, myout(:,ieta), 1)
         enddo
         out(:,:,m2val,jj) = myout(:,:) - sparseops_diag(:,:,abs(m2val)+1) * myin(:,:)
      enddo
   enddo
 
+end subroutine mult_ke_prev
+
+
+subroutine mult_ke(in, out,howmany)
+  use myparams
+  implicit none
+  integer,intent(in) :: howmany
+  DATATYPE,intent(in) :: in(numerad,lbig+1,-mbig:mbig,howmany)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,mbig:mbig,howmany)
+  call mult_ke0(in,out,-mbig,mbig,howmany)
 end subroutine mult_ke
+
+
+subroutine mult_ke0(in, out, mlow, mhigh, howmany)
+  use myparams
+  use myprojectmod  
+  implicit none
+  integer,intent(in) :: howmany, mlow, mhigh
+  DATATYPE,intent(in) :: in(numerad,lbig+1,mlow:mhigh,howmany)
+  DATATYPE,intent(out) :: out(numerad,lbig+1,mlow:mhigh,howmany)
+  integer :: m2val, ixi,ieta, jj
+  DATATYPE :: work(lbig+1), work2(lbig+1),myin(numerad,lbig+1),myout(numerad,lbig+1)
+  DATATYPE :: mytemp(numerad,lbig+1)
+
+  work=0; work2=0; myin=0; myout=0; mytemp=0
+  out=0
+
+  do jj=1,howmany
+     do m2val=mlow,mhigh
+        myin(:,:)=in(:,:,m2val,jj)
+        !
+        ! angle operator
+        do ixi=1,numerad
+           work2=myin(ixi,:)
+           call XXMVXX('N',lbig+1,lbig+1,DATAONE,sparseops_eta(:,:,ixi,abs(m2val)+1),lbig+1,work2,1,DATAZERO, work, 1)
+           mytemp(ixi,:)=work(:)
+        enddo
+        do ieta=1,lbig+1
+           call XXBBXX('N',numerad,numerad,cbandwdth,cbandwdth,DATAONE, &
+                centmat_banded(:,:),2*cbandwdth+1,mytemp(:,ieta),1,DATAZERO, myout(:,ieta), 1)
+        enddo
+        ! xi operator
+        do ieta=1,lbig+1
+           call XXBBXX('N',numerad,numerad,bandwidth,bandwidth,DATAONE, &
+                sparseops_xi_banded(:,:,ieta,abs(m2val)+1),2*bandwidth+1,myin(:,ieta),1,DATAONE, myout(:,ieta), 1)
+        enddo
+        out(:,:,m2val,jj) = myout(:,:) - sparseops_diag(:,:,abs(m2val)+1) * myin(:,:)
+     enddo
+  enddo
+  
+end subroutine mult_ke0
 
 
 

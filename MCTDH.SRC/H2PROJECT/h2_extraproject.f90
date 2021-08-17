@@ -89,6 +89,9 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,&
 
   xigridpoints = xinumelements*xinumpoints-xinumelements+1   
   bandwidth=2*xinumpoints
+  cbandwdth = 0;   ! hardwired for now.. this is for atoms
+  abandwdth = 0;   ! hardwired for now.. this is for atoms
+
   rgridpoints = (rnumpoints-1)*rnumelements+1
   numr=rgridpoints-2
 

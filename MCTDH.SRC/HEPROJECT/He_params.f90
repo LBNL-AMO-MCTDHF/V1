@@ -4,9 +4,9 @@
 module myparams
 implicit none
 
-integer :: do_accel_mat = 0;    ! use matrix elements not DVR approx for 1/r^2
-!                               !   in acceleration operator
-
+integer :: do_accel_mat = 0,&  !! use matrix elements not DVR approx for 1/r^2
+     do_cent_mat = 0           !!   in acceleration op & ham centrif potential
+!                              !! do_cent_mat=1: variational hydrogenic hamiltonian
 integer :: debugflag=0
 
 !! HAMILTONIAN AND BASIS
@@ -46,6 +46,7 @@ integer :: hlocrealflag=0
 real*8 :: hlocreal(2,100)=0d0
 
 integer :: bandwidth = -1,numerad = -1, edim, mpifileptr = -1, mseriesmax = -1,hegridpoints
+integer :: cbandwdth = -1, abandwdth
 integer :: lseriesmax = -1,jacobisummax = -1
 integer, parameter :: atomflag=1,numr=1, bornopflag=1
 

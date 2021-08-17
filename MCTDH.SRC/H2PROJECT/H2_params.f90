@@ -4,8 +4,6 @@
 module myparams
 implicit none
 
-integer :: do_accel_mat = 0
-
 integer :: debugflag=0
 
 !! HAMILTONIAN
@@ -73,7 +71,7 @@ integer :: orb_skip(20)= -1                      !!   (order in energy, each m v
 integer :: edim, numerad =  -1,    numr= -1
 
 integer, parameter :: atomflag=0
-integer :: bandwidth = -1
+integer :: bandwidth = -1, cbandwdth = -1, abandwdth = -1
 integer :: mpifileptr = -1
 integer :: mseriesmax = -1
 integer :: lseriesmax = -1

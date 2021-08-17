@@ -29,6 +29,7 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   character (len=2) :: th(4)
   DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:)
   DATATYPE,allocatable :: mydensity(:,:), ivopot(:,:), ivoproj(:,:,:,:)
+  DATATYPE,allocatable :: onemat(:,:,:,:)
   integer ::  i,ii,imvalue,k,j,   taken(200)=0, flag,xiug, iug, ugvalue(200,0:10), getsmallugvalue, istart
 
   integer :: temp_glflag = 1
@@ -118,10 +119,6 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 !!$     return
 !!$  endif
 
-  allocate(bigham(numerad, lbig+1, numerad, lbig+1), bigvects(numerad,lbig+1, edim,0:mbig), &
-       bigvals(edim))
-  bigham=0; bigvects=0; bigvals=0
-
   do j=1,lbig+1
      do i=1,hegridpoints-2
         zdipole(i,j) = glpoints(i+1) * jacobipoints(j)
@@ -139,25 +136,38 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   !!   but gee I am using same for jacobike
   !! centmats_banded:  1/r^2 quadratured
 
-  do j=1,lbig+1
-     do i=1,hegridpoints-2
-        do k=max(1,i-bandwidth),min(hegridpoints-2,i+bandwidth)
-           zcentmat_banded(k-i+bandwidth+1,i,j)  = -nuccharge1 * glcent(k+1,i+1,0) * jacobipoints(j)
-           xycentmat_banded(k-i+bandwidth+1,i,j)  = -nuccharge1 * glcent(k+1,i+1,0) * sqrt(1.0d0-jacobipoints(j)**2)
+  if ( do_accel_mat.ne.0 ) then   ! abandwidth = bandwidth
+     do j=1,lbig+1
+        do i=1,hegridpoints-2
+           do k=max(1,i-bandwidth),min(hegridpoints-2,i+bandwidth)
+              zcentmat_banded(k-i+bandwidth+1,i,j)  = -nuccharge1 * glcent(k+1,i+1,0) * jacobipoints(j)
+              xycentmat_banded(k-i+bandwidth+1,i,j)  = -nuccharge1 * glcent(k+1,i+1,0) * sqrt(1.0d0-jacobipoints(j)**2)
+           enddo
         enddo
      enddo
-  enddo
-  do j=1,lbig+1
-     do i=1,hegridpoints-2
-        zcent(i,j)  = -nuccharge1/glpoints(i+1)**2 * jacobipoints(j)
-        xycent(i,j) = -nuccharge1/glpoints(i+1)**2 * sqrt(1.0d0-jacobipoints(j)**2)  
+  else
+     do j=1,lbig+1
+        do i=1,hegridpoints-2
+           zcentmat_banded(1,i,j)  = -nuccharge1/glpoints(i+1)**2 * jacobipoints(j)
+           xycentmat_banded(1,i,j) = -nuccharge1/glpoints(i+1)**2 * sqrt(1.0d0-jacobipoints(j)**2)  
+        enddo
      enddo
-  enddo
+  endif
   if (realdipflag.ne.0) then
-     zcent(:,:)  = real(zcent(:,:),8)
-     xycent(:,:) = real(xycent(:,:),8)
      zcentmat_banded(:,:,:)  = real(zcentmat_banded(:,:,:),8)
      xycentmat_banded(:,:,:) = real(xycentmat_banded(:,:,:),8)
+  endif
+
+  if ( do_cent_mat.ne.0 ) then   ! cbandwidth = bandwidth
+     do i=1,hegridpoints-2
+        do k=max(1,i-bandwidth),min(hegridpoints-2,i+bandwidth)
+           centmat_banded(k-i+bandwidth+1,i)  = glcent(k+1,i+1,0)
+        enddo
+     enddo
+  else
+     do i=1,hegridpoints-2
+        centmat_banded(1,i)  = 1/glpoints(i+1)**2
+     enddo
   endif
 
   do imvalue=0,mbig
@@ -197,35 +207,15 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         sparseddrho_diag(:,:,:)        = real(sparseddrho_diag(:,:,:), 8);
      endif
 
-     ! L^2/r^2 in hamiltonian approx formula..  see old attempts to improve, temp_glflag below
-     ! ALSO BELOW (THIS CODE APPEARS TWICE)     
-
-     do i=1,hegridpoints-2
-        bigham(i,:,i,:) = jacobike(:,:,abs(imvalue)) / glpoints(i+1)**2
-     enddo
-
-!if (mod(imvalue,2).eq.0.or.temp_glflag.ne.0) then
-!     do i=1,hegridpoints-2
-!        do j=1,hegridpoints-2
-!           bigham(i,:,j,:)=bigham(i,:,j,:) + jacobike(:,:,abs(imvalue)) * &
-!                glfirstdertot(1,i+1,0) *  glfirstdertot(1,j+1,0)    
-!        enddo
-!     enddo
-!endif
-
-     do i=1,lbig+1
-        bigham(:,i,:,i) = bigham(:,i,:,i) + &
-             (-0.5d0)*glke(2:hegridpoints-1, 2:hegridpoints-1,mod(imvalue,2))
-     enddo
      do j=1,lbig+1
         do i=1,numerad
            do k=max(1,i-bandwidth),min(numerad,i+bandwidth)
-              sparseops_xi_banded(k-i+bandwidth+1,i,j,imvalue+1) = bigham(k,j,i,j)
+              sparseops_xi_banded(k-i+bandwidth+1,i,j,imvalue+1) = (-0.5d0)*glke(k+1,i+1,mod(imvalue,2))
            enddo
            do k=1,lbig+1
-              sparseops_eta(k,j,i,imvalue+1) = bigham(i,k,i,j)
+              sparseops_eta(k,j,i,imvalue+1) = jacobike(k,j,abs(imvalue))
            enddo
-           sparseops_diag(i,j,imvalue+1) = bigham(i,j,i,j)
+           sparseops_diag(i,j,imvalue+1) = 0d0
         enddo
      enddo
 
@@ -269,13 +259,20 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 !!$     if ((skipflag.eq.0).and.(spfsloaded.lt.numspf)) then
 
   if (spfsloaded.lt.numspf) then
-
+     
+     allocate(bigham(numerad, lbig+1, numerad, lbig+1), &
+          onemat(numerad,lbig+1,numerad,lbig+1), &
+          bigvects(numerad,lbig+1, edim,0:mbig), bigvals(edim))
+     bigham=0; onemat=0; bigvects=0; bigvals=0
+     do k=1,lbig+1
+        do i=1,hegridpoints-2
+           onemat(i,k,i,k)=1
+        enddo
+     enddo
+     
      do imvalue=0,mbig
 
         bigham=0.d0
-        do i=1,hegridpoints-2
-           bigham(i,:,i,:) = jacobike(:,:,abs(imvalue)) / glpoints(i+1)**2
-        enddo
 
 !! for centrifugal term add value of derivative of bra and ket at zero multiplied together
 
@@ -296,16 +293,14 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 !     enddo
 !endif
 
-        do i=1,lbig+1
-           bigham(:,i,:,i) = bigham(:,i,:,i) + &
-                (-0.5d0)*glke(2:hegridpoints-1, 2:hegridpoints-1,mod(imvalue,2))
-        enddo
+        call mult_ke0(onemat,bigham,imvalue,imvalue,numerad*(lbig+1))
+        
         do k=1,lbig+1
            do i=1,hegridpoints-2
-              bigham(i,k,i,k) = bigham(i,k,i,k) - nuccharge1 /glpoints(i+1)
+              bigham(i,k,i,k) = bigham(i,k,i,k) + pot(i,k,imvalue)
            enddo
         enddo
-
+        
         if (numfrozen.gt.0) then
            do k=1,lbig+1
               do i=1,hegridpoints-2
@@ -437,16 +432,21 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
         enddo !! iug
      enddo !! imvalue=-mbig,mbig
      WRFL; CFL
+
+     deallocate(bigham, onemat, bigvects,  bigvals)   !! twoe
+
   else
      write(mpifileptr,*) "Found all spfs I need on file."
   endif  !! spfsloaded
 
   spfsloaded=numspf   !! for mcscf... really just for BO curve to skip eigen
 
-  deallocate(bigham, bigvects,  bigvals)   !! twoe
-
   OFLWR "Done init project."; WRFL; CFL
 
+  if (debugflag.eq.4747) then
+     OFLWR "stopping due to debugflag 4747"; CFLST
+  endif
+  
 end subroutine init_project
 
 subroutine nucdipvalue(nullrvalue,dipoles)

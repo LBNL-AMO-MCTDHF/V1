@@ -21,8 +21,7 @@ module myprojectmod
 
   DATAECS, allocatable :: glke(:,:,:), glfirstdertot(:,:,:),glrhoderivs(:,:), glcent(:,:,:)
   DATAECS, allocatable :: glpoints(:), glweights(:),zdipole(:,:), xydipole(:,:)
-  DATAECS, allocatable :: zcent(:,:), xycent(:,:)
-  DATAECS, allocatable :: zcentmat_banded(:,:,:), xycentmat_banded(:,:,:)
+  DATAECS, allocatable :: zcentmat_banded(:,:,:), xycentmat_banded(:,:,:), centmat_banded(:,:)
   
   DATATYPE, allocatable, target :: &
        sparseops_xi_banded(  :,   :,    :,   :), &
@@ -60,9 +59,10 @@ subroutine myprojectalloc()
   glke=0; glcent=0; glfirstdertot=0; 
   glrhoderivs=0; glpoints=0; glweights=0; glpoints2d=0; glweights2d=0; xydipole=0; zdipole=0; ddrhopot=0
 
-  allocate(xycent(numerad,lbig+1),zcent(numerad,lbig+1))
-  allocate(xycentmat_banded(2*bandwidth+1,numerad,lbig+1), zcentmat_banded(2*bandwidth+1,numerad,lbig+1))
-  xycent=0; zcent=0; xycentmat_banded=0; zcentmat_banded=0
+  allocate(xycentmat_banded(2*abandwdth+1,numerad,lbig+1), &
+       zcentmat_banded(2*abandwdth+1,numerad,lbig+1), &
+       centmat_banded(2*cbandwdth+1,numerad))
+  xycentmat_banded=0; zcentmat_banded=0; centmat_banded=0
   
   allocate(sparseddz_xi_banded(2*bandwidth+1,numerad,lbig+1,mbig+1), &
        sparseddz_eta(  lbig+1,lbig+1,numerad,mbig+1 ) ,  &
