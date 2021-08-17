@@ -30,7 +30,8 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
   DATAECS, allocatable :: bigham(:,:,:,:), bigvects(:,:,:,:), bigvals(:)
   DATATYPE,allocatable :: mydensity(:,:), ivopot(:,:), ivoproj(:,:,:,:)
   DATATYPE,allocatable :: onemat(:,:,:,:)
-  integer ::  i,ii,imvalue,k,j,   taken(200)=0, flag,xiug, iug, ugvalue(200,0:10), getsmallugvalue, istart
+  integer ::  i,ii,imvalue,k,j,   taken(200)=0, flag,xiug, iug, ugvalue(200,0:10), &
+       getsmallugvalue, istart, centmode
 
   integer,parameter :: glflag = 1
   
@@ -66,24 +67,24 @@ subroutine init_project(inspfs,spfsloaded,pot,halfniumpot,rkemod,proderivmod,ski
 
   jacobike(:,:,:)=jacobike(:,:,:)*(-0.5d0)
 
-  ! it does not make sense to base the parity upon the m-value
-  !   so just use the even results (glflag is set)
+  ! glflag is set:  just use the even results
   ! flag evenodd (last argument to getLobatto) only affects ke and first deriv
-  
-  call getLobatto(glpoints,glweights,glpoints2d,glweights2d,glke(:,:,1), henumpoints, &
-       henumelements, heelementsizes, hegridpoints, hecelement, heecstheta, &
-       glfirstdertot(:,:,1),glrhoderivs(:,:),glcent(:,:),1)
+
+  centmode = 0
+  if (do_cent_mat .gt. 1) then
+     centmode = 1
+  endif
+  ! call getLobatto(glpoints,glweights,glpoints2d,glweights2d,glke(:,:,1), henumpoints, &
+  !      henumelements, heelementsizes, hegridpoints, hecelement, heecstheta, &
+  !      glfirstdertot(:,:,1),glrhoderivs(:,:),centmode,glcent(:,:),1)
 
   call getLobatto(glpoints,glweights,glpoints2d,glweights2d,glke(:,:,0), henumpoints,&
        henumelements, heelementsizes, hegridpoints, hecelement, heecstheta, &
-       glfirstdertot(:,:,0),glrhoderivs(:,:),glcent(:,:),0)
+       glfirstdertot(:,:,0),glrhoderivs(:,:),centmode,glcent(:,:),0)
 
-  ! note: in previous commit glfirstdertot was added below.
-  !  RESULTS USING DERIVATIVE OPERATOR (velocity gauge and velocity matrix element)
-  !  WILL BE SLIGHTLY DIFFERENT 
   if (glflag.ne.0) then
      glke(:,:,1)=glke(:,:,0)
-     glfirstdertot(:,:,1)=glfirstdertot(:,:,0)
+     glfirstdertot(:,:,1)=glfirstdertot(:,:,0)     ! added 08/2021
   endif
 
   do i=1,hegridpoints-2

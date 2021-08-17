@@ -5,9 +5,10 @@
 
 
 subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,&
-     numelements,elementsizes, gridpoints, celement, ecstheta,  xi_derivs, xi_rhoderivs, xi_cent, evenodd)
+     numelements,elementsizes, gridpoints, celement, ecstheta,  xi_derivs, &
+     xi_rhoderivs, centmode, xi_cent, evenodd)
   implicit none
-  integer,intent(in) :: numelements,gridpoints,celement, numpoints, evenodd
+  integer,intent(in) :: numelements,gridpoints,celement, numpoints, centmode, evenodd
   real*8, intent(in) :: elementsizes(numelements), ecstheta
   DATAECS,intent(out) :: points(gridpoints),  weights(gridpoints),  xi_derivs(gridpoints,gridpoints), &
        xi_rhoderivs(gridpoints,gridpoints), ketot(gridpoints,gridpoints), xi_cent(gridpoints,gridpoints)
@@ -19,7 +20,7 @@ subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,&
        scratch(2*numpoints+numextra), xivals0(numpoints+numextra,numpoints)
   DATAECS :: extrapoints(numpoints+numextra,numelements), extraweights(numextra+numpoints,numelements), &
        firstdertot(numpoints+numextra,numelements,gridpoints), &
-       xivals(numpoints+numextra,numelements,gridpoints),  cweight, sum, sum1, sum2
+       xivals(numpoints+numextra,numelements,gridpoints),  cweight, sum, sum1
   DATAECS :: xi_ovl(gridpoints,gridpoints), xi_coul(gridpoints,gridpoints), ppoints(gridpoints)   ! temp debug? AUTOMATIC
   
   extrapoints0=0; extraweights0=0; firstder=0; points2d=0; weights2d=0;
@@ -163,55 +164,67 @@ subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,&
      enddo
   enddo
 
-  ! DVR expression for centrifugal potential saved here from init_HE_new.f90
-  !
-  !     do i=1,hegridpoints-2
-  !        do j=1,hegridpoints-2
-  !           bigham(i,:,j,:)=bigham(i,:,j,:) + jacobike(:,:,abs(imvalue)) * &
-  !                glfirstdertot(1,i+1,0) *  glfirstdertot(1,j+1,0)    
-  !        enddo
-  !     enddo
-  !
-  !! matrix elements for centrifugal operator...
-  !! for acceleration operator (dipole acceleration) and centrifugal potential in hamiltonian
-  !! prior attempt above (first derivative term addition to 1/r^2 according to DVR principles)
-  !!    was not successful for hamiltonian
-  !! current dvr expression for 1/r^2 works well for hamiltonian,
-  !!    very accurate but not variational (is like collocation)
-  !! using xi_cent as representation of 1/r^2 in hamiltonian leads to more variational
-  !!    hydrogenic eigenvalues (upper bounds) 
-  !!    it is not exactly variational because overlap matrix is approximated
-  !!    but keep in mind, with one finite element the DVR approx to coulomb operator 1/r is exact
-
+  ! not used, just checking
   do i=1,gridpoints
      do j=1,gridpoints
         sum=0.d0
         sum1=0.d0
-        sum2=0.d0
-
         do l=1,numelements
            do k=1,extraorder
-              sum2=sum2 + extraweights(k,l) * xivals(k,l,i) * xivals(k,l,j) / (extrapoints(k,l))**2 
               sum1=sum1 + extraweights(k,l) * xivals(k,l,i) * xivals(k,l,j) / (extrapoints(k,l))
               sum=sum + extraweights(k,l) * xivals(k,l,i) * xivals(k,l,j)
            enddo
         enddo
-        
-        xi_cent(i,j)=sum2 
         xi_coul(i,j)=sum1 
         xi_ovl(i,j)=sum
      enddo
-
-     ! print '(13F10.3)',  real(xi_cent(i,1:13) * points(i) * points(1:13),8)
-     ! print '(1F11.5)',  real( xi_cent(i,i) * points(i)**2, 8)
-     ! print '(1F11.5)',  real( xi_cent(i,i) * points(i), 8)
-     
   enddo
 
+  ! matrix elements for centrifugal operator 1/r^2, for acceleration operator
+  !    (dipole acceleration) and centrifugal potential in hamiltonian
+  !
+  ! current dvr expression for 1/r^2 works well for hamiltonian,
+  !    very accurate but not variational (is like collocation)
+  
+  if (centmode.ne.0) then     
+     ! prior attempt, first derivative term addition to 1/r^2 according to DVR principles)
+     !    was not successful for hamiltonian
+     !
+     do i=2,gridpoints
+        xi_cent(i,i) = 1/points(i)**2
+     enddo
+     do j=2,gridpoints
+        do i=2,gridpoints
+           xi_cent(i,j) = xi_cent(i,j) + xi_derivs(i,1) * xi_derivs(j,1) ! / weights(1)**4
+        enddo
+     enddo
+     ! print *, weights(1)
+     ! print *,"noog"
+     ! print *, real(xi_derivs(:,1),8)
+  else
+     ! integral:
+     ! using this xi_cent as representation of 1/r^2 in hamiltonian leads to variational
+     !    hydrogenic eigenvalues (upper bounds) 
+     ! it is not exactly variational because overlap matrix is approximated
+     !    but with one finite element the DVR approx to coulomb operator 1/r is exact
+     !    
+     do i=1,gridpoints
+        do j=1,gridpoints
+           sum=0.d0
+           do l=1,numelements
+              do k=1,extraorder
+                 sum=sum + extraweights(k,l) * xivals(k,l,i) * xivals(k,l,j) / (extrapoints(k,l))**2 
+              enddo
+           enddo
+           xi_cent(i,j)=sum
+        enddo
+     enddo
+  endif
+  
+  ppoints(:) = points(:)
+  ppoints(1) = 1;  
   if (1==0) then
      ! temp output for debug
-     ppoints(:) = points(:)
-     ppoints(1) = 1;  
      print *, ' '
      print *, ' ovl '
      do i=1,13
@@ -221,9 +234,11 @@ subroutine getlobatto(points,weights,points2d,weights2d, ketot, numpoints,&
      do i=1,13
         print '(13F10.3)',  real(xi_coul(i,1:13)*sqrt(ppoints(i)*ppoints(1:13)),8)
      enddo
+  endif
+  if (1==1) then
      print *, ' cent '
-     do i=1,13
-        print '(13F10.3)',  real(xi_cent(i,1:13)*ppoints(i)*ppoints(1:13),8)
+     do i=2,13
+        print '(12F10.3)',  real(xi_cent(i,2:13)*ppoints(i)*ppoints(2:13),8)
      enddo
      print *, ' '
   endif
