@@ -145,6 +145,7 @@ function windowfunct(i,numdata,iaction)
   implicit none
   real*8 :: windowfunct
   integer,intent(in) :: i,numdata,iaction
+  integer :: wpr
 
   if (iaction.gt.MAXACTION.or.iaction.lt.1) then
      OFLWR "windowfunct action error", iaction, MAXACTION; CFLST
@@ -154,13 +155,20 @@ function windowfunct(i,numdata,iaction)
      OFLWR "ERROR, windowfunct ",i,numdata; CFLST
   endif
 
-  if (ftwindowpower(iaction).eq.0) then
+  wpr = ftwindowpower(iaction)
+  
+  if (wpr.eq.0) then
      windowfunct = 1d0
   else
      if (fttriwindow(iaction).ne.0) then
-        windowfunct = ( real(numdata-i,8) / real(numdata,8) )**ftwindowpower(iaction)
+        windowfunct = ( real(numdata-i,8) / real(numdata,8) )
      else
-        windowfunct = cos( pi/2d0 * i / real(numdata,8) )**ftwindowpower(iaction)
+        windowfunct = cos( pi/2d0 * i / real(numdata,8) )
+     endif
+     if (wpr.lt.0) then
+        windowfunct = windowfunct**(-1d0/wpr)
+     else
+        windowfunct = windowfunct**wpr
      endif
   endif
 

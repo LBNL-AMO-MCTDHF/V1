@@ -49,7 +49,7 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
        aket(:,:), spfket(:,:)
   DATATYPE :: nullcomplex(1),dipoles(3), dipolemat(wwin%nspf,wwin%nspf),csum
   DATAECS :: rvector(numr)
-  integer :: i,lowspf,highspf,numspf,gtr
+  integer :: i,lowspf,highspf,numspf,gtr,strongVelFlag
   DATATYPE,target :: smo(wwin%nspf,wwin%nspf)
   DATATYPE :: pots(3) = -999e8
 
@@ -94,7 +94,6 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   endif
   !! $  OFLWR "Norm-squared for dipole: ",normsq
 
-
   dipoles(:) = 0
   if (veldipflag==0) then
      !! independent of R for now.  multiply by R for prolate  (R set to 1 for atom)
@@ -129,7 +128,28 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
      OFLWR "Error, velflag must be 0 or 1; what is the other case? ... programmer checkme"; CFLST
   endif
 
-  if (veldipflag.eq.1) then
+  ! WITH ECS: can add arbitrary constant to one-electron operator in matrix element, then add back in later
+  !     
+  !     < Psi(t) | Operator(t) | Psi(t) >  ->  < Psi(t) | Operator(t) - C(t) | Psi(t) > - Nelectrons C(t)
+  !
+  !   This is obviously appropriate for acceleration operator (take the constant acceleration due to the
+  !     field outside the expectation value) but also good for velocity operator (subtract the acceleration
+  !     expected for a free particle from the operator.. it is uniform throughout space)
+  !
+  !   But for dipole (length) operator, subtracting the position expected for a free particle seems incorrect
+  !     because ECS is defined in position space..  the multipole expansion is relative to origin
+  !  
+  ! So for velocity operator:
+  !    Pz =  i d/dz           length
+  !    Pz =  i d/dz + Az(t)    velocity
+  !
+  !    Vz =  Pz.  But take matrix element of Vz - Az(t) because this will be zero for free electron
+  !
+  !    Doing that with "strongVelFlag"
+
+  strongVelFlag = 1 ;      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  
+  if (veldipflag.eq.1.or.veldipflag.eq.2) then
      call vectdpot(intime,1,pots,-1)         ! A-vector velocity gauge
   elseif (veldipflag.eq.3.or.veldipflag.eq.4) then
      call vectdpot(intime,0,pots,-1)         ! E-field 
@@ -167,8 +187,11 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
         call mult_zdipole(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
      elseif (veldipflag==1 .or. veldipflag==2) then
         call velmultiply(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAZERO,DATAONE)
-        if (veldipflag==1) then
+        if (veldipflag==1 .and. strongVelFlag==0) then
+           !! hold it, isn't this also dumb?  should take constant operator outside of the expectation value
            tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(3)
+        elseif (veldipflag==2 .and. strongVelFlag.ne.0) then    ! length gauge matrix element Vz - Az
+           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) - spfket(:,lowspf:highspf) * pots(3)
         endif
      elseif (veldipflag==3 .or. veldipflag==4) then
         call mult_zaccel(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)        
@@ -203,8 +226,11 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
         call mult_ydipole(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
      elseif (veldipflag==1 .or. veldipflag==2) then
         call velmultiply(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAONE,DATAZERO)
-        if (veldipflag==1) then
+        if (veldipflag==1 .and. strongVelFlag==0) then
+           !! hold it, isn't this also dumb?  should take constant operator outside of the expectation value
            tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(2)
+        elseif (veldipflag==2 .and. strongVelFlag.ne.0) then    ! length gauge matrix element Vz - Az
+           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) - spfket(:,lowspf:highspf) * pots(2)
         endif
      elseif (veldipflag==3 .or. veldipflag==4) then
         call mult_yaccel(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)        
@@ -239,8 +265,11 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
         call mult_xdipole(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)
      elseif (veldipflag==1 .or. veldipflag==2) then
         call velmultiply(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAONE,DATAZERO,DATAZERO)
-        if (veldipflag==1) then
+        if (veldipflag==1 .and. strongVelFlag==0) then
+           !! hold it, isn't this also dumb?  should take constant operator outside of the expectation value
            tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(1)
+        elseif (veldipflag==2 .and. strongVelFlag.ne.0) then    ! length gauge matrix element Vz - Az
+           tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) - spfket(:,lowspf:highspf) * pots(1)
         endif
      elseif (veldipflag==3 .or. veldipflag==4) then
         call mult_xaccel(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),1)        
@@ -271,6 +300,8 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   
   if (veldipflag==3 .or. veldipflag==4) then
      dipole_expects(:)=dipole_expects(:) + pots(:) * (-1) * numelec
+  elseif (strongVelFlag.ne.0 .and. (veldipflag==1 .or. veldipflag==2)) then
+     dipole_expects(:)=dipole_expects(:) + pots(:) * numelec
   endif
 
   deallocate(tempvector,tempspfs,abra,aket,workspfs)
@@ -305,10 +336,11 @@ contains
          worksums(:,:,:), photsums(:,:,:), totworksums(:,:), totphotsums(:,:), &
          workpers(:,:,:), photpers(:,:,:), totworkpers(:,:), totphotpers(:,:), &
          sumrule(:,:), each_efield_ang(:,:,:), moment(:), dipole_ang(:,:), &
-         angworksum0(:,:,:), totangworksum0(:,:),  efield(:,:), each_efield(:,:,:)
+         angworksum0(:,:,:), totangworksum0(:,:),  efield(:,:), each_efield(:,:,:), &
+         afield(:,:), each_afield(:,:,:)
 !! making integrals dt for work x y z complex valued for complex domcke wave mixing
     complex*16, allocatable :: worksum0(:,:,:), totworksum0(:,:)
-    DATATYPE :: pots(3,npulses)
+    DATATYPE :: pots(3,npulses),pots2(3,numpulses)
     real*8 :: estep, thistime, myenergy,xsecunits, windowfunct
     integer :: i,getlen,myiostat,ipulse,numft,ii
     character (len=7) :: number
@@ -317,34 +349,40 @@ contains
     OFLWR "Cant use dipolesub for real valued code."; CFLST
 #endif
     
-    pots=0
+    pots=0; pots2=0
 
-    allocate(dipolearrays(0:numdata,3), efield(0:numdata,3), each_efield(0:numdata,3,npulses))
-    dipolearrays=0; efield=0; each_efield=0
+    allocate(dipolearrays(0:numdata,3), efield(0:numdata,3), each_efield(0:numdata,3,npulses), &
+         afield(0:numdata,3), each_afield(0:numdata,3,npulses))
+    dipolearrays=0; efield=0; each_efield=0; afield=0; each_afield=0
 
     if (sflag.ne.0) then
        thistime=numdata*par_timestep*autosteps
        write(number,'(I7)') 1000000+floor(thistime)
     endif
 
-!! LENGTH GAUGE electric field vectdpot0
+    ! get efield and afield
 
     do i=0,numdata
        if (referencepulses.eq.0) then
           do ipulse=1,npulses
              call vectdpot0(i*par_timestep*autosteps,0,pots(:,ipulse),-1,ipulse,ipulse)
+             call vectdpot0(i*par_timestep*autosteps,1,pots2(:,ipulse),-1,ipulse,ipulse)
           enddo
        else
           do ipulse=1,npulses
              call vectdpot0(i*par_timestep*autosteps,0,pots(:,ipulse),-1,ipulse+numpulses,ipulse+numpulses)
+             call vectdpot0(i*par_timestep*autosteps,1,pots2(:,ipulse),-1,ipulse+numpulses,ipulse+numpulses)
           enddo
        endif
-       each_efield(i,:,:)=real(pots(:,:),8)  !! is real valued (imc = -1 above)
+       each_efield(i,:,:)=real(pots(:,:),8)  !! are real valued (imc = -1 above)
+       each_afield(i,:,:)=real(pots2(:,:),8) 
     enddo
 
     efield=0
+    afield=0
     do ipulse=1,npulses
        efield(:,:)=efield(:,:)+each_efield(:,:,ipulse)
+       afield(:,:)=afield(:,:)+each_afield(:,:,ipulse)
     enddo
     do i=0,numdata
        dipolearrays(i,:)=indipolearrays(i,:)-indipolearrays(0,:)
@@ -358,7 +396,8 @@ contains
           call checkiostat(myiostat,"writing "//outenames(ii))
           do i=0,numdata
              write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  i*par_timestep*autosteps, &
-                  dipolearrays(i,ii),efield(i,ii),each_efield(i,ii,:)
+                  dipolearrays(i,ii), efield(i,ii)*numelec, afield(i,ii)*numelec
+                  ! dipolearrays(i,ii),efield(i,ii),each_efield(i,ii,:)
           enddo
           call checkiostat(myiostat,"writing "//outenames(ii))
           close(171)
@@ -371,7 +410,8 @@ contains
              call checkiostat(myiostat,"writing "//outenames(ii)(1:getlen(outenames(ii)))//number(2:7))
              do i=0,numdata
                 write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  i*par_timestep*autosteps, &
-                     dipolearrays(i,ii),efield(i,ii),each_efield(i,ii,:)
+                     dipolearrays(i,ii), efield(i,ii)*numelec, afield(i,ii)*numelec
+                     ! dipolearrays(i,ii),efield(i,ii),each_efield(i,ii,:)
              enddo
              call checkiostat(myiostat,"writing "//outenames(ii)(1:getlen(outenames(ii)))//number(2:7))
              close(171)

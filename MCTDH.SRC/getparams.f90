@@ -938,11 +938,12 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
        pulsetheta,pulsephi, longstep, numpulses, reference_pulses, minpulsetime, maxpulsetime, chirp, ramp, &
        envdernum, envpwr
   real*8 ::  time, fac, pulse_end, estep
-  DATATYPE :: pots1(3),pots2(3),pots3(3), pots4(3), pots5(3), csumx,csumy,csumz
+  DATATYPE :: pots1(3),pots2(3)
+  !$$ DATATYPE :: pots3(3), pots4(3), pots5(3), csumx,csumy,csumz
   integer :: i, myiostat, ipulse,no_error_exit_flag
   character (len=12) :: line
   real*8, parameter :: epsilon=1d-4
-  integer, parameter :: neflux=10000
+  integer, parameter :: neflux=9999   !10000
   complex*16 :: lenpot(0:neflux,3),velpot(0:neflux,3)
   real*8 :: pulseftsq(0:neflux), vpulseftsq(0:neflux)
 
@@ -1068,30 +1069,35 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         open(887, file="Dat/Pulse.Daty", status="unknown")
         open(888, file="Dat/Pulse.Datz", status="unknown")
 
-        csumx=0; csumy=0; csumz=0
+        !$$ csumx=0; csumy=0; csumz=0
         do i=0,neflux
            time=i*pulse_end/neflux
 
-!! checking that E(t) = d/dt A(t)   and  A(t) = integral E(t)
+           !$$  checking that E(t) = d/dt A(t)   and  A(t) = integral E(t)
 
            call vectdpot(time,                  0,pots1,1)
            call vectdpot(time,                  1,pots2,1)
-           call vectdpot(time-epsilon,          1,pots3,1)
-           call vectdpot(time+epsilon,          1,pots4,1)
-           call vectdpot(time+pulse_end/neflux ,0,pots5,1)
+           !$$ 
+           !$$ call vectdpot(time-epsilon,          1,pots3,1)
+           !$$ call vectdpot(time+epsilon,          1,pots4,1)
+           !$$ call vectdpot(time+pulse_end/neflux ,0,pots5,1)
+           !$$ csumx=csumx+ pulse_end/neflux * pots5(1)
+           !$$ csumy=csumy+ pulse_end/neflux * pots5(2)
+           !$$ csumz=csumz+ pulse_end/neflux * pots5(3)
+           !$$ write(886,'(100F15.10)') time, pots1(1), pots2(1), (pots4(1)-pots3(1))/2/epsilon, csumx
+           !$$ write(887,'(100F15.10)') time, pots1(2), pots2(2), (pots4(2)-pots3(2))/2/epsilon, csumy
+           !$$ write(888,'(100F15.10)') time, pots1(3), pots2(3), (pots4(3)-pots3(3))/2/epsilon, csumz
+
+           write(886,'(100F15.10)') time, pots1(1), pots2(1)
+           write(887,'(100F15.10)') time, pots1(2), pots2(2)
+           write(888,'(100F15.10)') time, pots1(3), pots2(3)
 
            lenpot(i,:)=pots1(:)
            velpot(i,:)=pots2(:)
-
-           write(886,'(100F15.10)') time, pots1(1), pots2(1), (pots4(1)-pots3(1))/2/epsilon, csumx
-           write(887,'(100F15.10)') time, pots1(2), pots2(2), (pots4(2)-pots3(2))/2/epsilon, csumy
-           write(888,'(100F15.10)') time, pots1(3), pots2(3), (pots4(3)-pots3(3))/2/epsilon, csumz
-
-           csumx=csumx+ pulse_end/neflux * pots5(1)
-           csumy=csumy+ pulse_end/neflux * pots5(2)
-           csumz=csumz+ pulse_end/neflux * pots5(3)
         enddo
-        close(886);    close(887); close(888)
+        close(886);
+        close(887);
+        close(888)
 
         do i=1,3
            call zfftf_wrap(neflux+1,lenpot(:,i))

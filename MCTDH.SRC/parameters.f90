@@ -506,7 +506,7 @@ integer :: ftdiff=1                 !! fourier transform derivative of dipole mo
 !!{\large \quad EMISSION/ABSORPTION (action 21,29)}
 !!BB
 integer :: hanningflag=0         !! for hanning window set nonzero action 1 autocorr
-integer :: diptime=100           !! For act=20, outputs copies every diptime atomic units
+real*8 :: diptime=100           !! For act=20, outputs copies every diptime atomic units
 integer :: dipmodtime=100        !! do ft every autotimestep*dipmodtime
 real*8 :: dipolesumstart=0d0,&   !! range for integration of oscillator strength (e.g. for sum rule), photon
      dipolesumend=0d0            !!    energy atomic units (Hartree) start and end, dipolesumend default set
