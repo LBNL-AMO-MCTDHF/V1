@@ -70,14 +70,6 @@ module actionlistmod
        0,&  !!       "ProjIon during " /)      !! 28
        1 /) !!    "Redo DipoleFT     " /)      !! 29
 
-!! for windowing function.  &parinp namelist input.  Defaults in getparams.f90.
-
-!! If nonzero, window function is ((tmax-t)/tmax)**ftwindowpower
- integer :: fttriwindow(MAXACTION)=1
-
-!! If fttriwindow=0, window function is cos(pi t / 2 / tmax)**ftwindowpower 
- integer :: ftwindowpower(MAXACTION)=1
-
 end module actionlistmod
 
 

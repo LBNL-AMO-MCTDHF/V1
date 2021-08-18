@@ -426,7 +426,7 @@ contains
     dipole_diff=0d0;    worksum0=0;   totworksum0=0;  
 
     do i=1,3
-       call complexdiff(numdata+1,dipolearrays(:,i),dipole_diff(:,i),3)
+       call complexdiff(numdata+1,dipolearrays(:,i),dipole_diff(:,i),1,1,ftderord)
     enddo
     dipole_diff(:,:)= dipole_diff(:,:) / par_timestep / autosteps
 
@@ -570,7 +570,7 @@ contains
     endif
 
     do ii=1,3
-       call zfftf_wrap_diff(numdata+1,fftrans(:,ii),ftdiff)
+       call zfftf_wrap_diff(numdata+1,fftrans(:,ii),ftderpwr(21),ftderord)
        call zfftf_wrap(numdata+1,eft(:,ii))
        do ipulse=1,npulses
           call zfftf_wrap(numdata+1,each_eft(:,ii,ipulse))
@@ -581,6 +581,11 @@ contains
     eft(:,1:3)=eft(:,1:3)             * par_timestep * autosteps
     each_eft(:,1:3,:)=each_eft(:,1:3,:) * par_timestep * autosteps
 
+    Estep=2*pi/par_timestep/autosteps/(numdata+1)
+
+
+    
+    
     if (act21circ.ne.0) then
 !! XY, XZ, YX, YZ, ZX, ZY
 
@@ -607,7 +612,6 @@ contains
 
     endif
 
-    Estep=2*pi/par_timestep/autosteps/(numdata+1)
 
     allocate(&
          worksums(0:numdata,numft,npulses),photsums(0:numdata,numft,npulses),&

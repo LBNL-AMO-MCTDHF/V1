@@ -43,7 +43,6 @@ subroutine getparams()
   use mpimod
   use orblabelmod
   use pulse_parameters   !! numpulses
-  use actionlistmod      !! ftwindowpower,fttriwindow
   implicit none
   integer :: nargs, getlen, i, len,  ishell, ispf,j, myiostat, iiflag,needpulse,ipulse
 #ifdef PGFFLAG
@@ -85,11 +84,11 @@ subroutine getparams()
        numovlfiles, ovlavectorfiles, ovlspffiles, outovl,fluxmofile,fluxafile, spifile, astoptol,  &
        xdipfile,ydipfile,zdipfile,   xtworkfile,ytworkfile,ztworkfile,  xytworkfile,yztworkfile,zxtworkfile,&
        xdftfile,ydftfile,zdftfile,   xydftfile,xzdftfile,yxdftfile,yzdftfile,zxdftfile,zydftfile, &
-       xoworkfile,yoworkfile,zoworkfile,&
+       xoworkfile,yoworkfile,zoworkfile,        act21circ,  &
        xyoworkfile,xzoworkfile,yxoworkfile,yzoworkfile,zxoworkfile,zyoworkfile,&
        xophotonfile, yophotonfile,zophotonfile,&
        xyophotonfile,xzophotonfile,yxophotonfile,yzophotonfile,zxophotonfile, zyophotonfile,&
-       act21circ,       ftwindowpower, ftdiff,  &
+       fttriwindow,  ftwindowpower, ftderord,  ftderpwr, &  !ftdiff,  &
        diptime, fluxafile2,fluxmofile2, minocc,maxocc, corrdatfile,corrftfile,numavectorfiles,projfluxfile, &
        expodim,timingdir, hanningflag, numspffiles, condamp,conway, &
        mrestrictmin,mrestrictmax,lntol,invtol,psistatsfile, psistatfreq, &
@@ -100,7 +99,7 @@ subroutine getparams()
        walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac, maxquadnorm,quadstarttime,&
        reinterp_orbflag,spf_gridshift,load_avector_product,projspifile,readfullvector,walksinturn,&
        turnbatchsize,energyshift, pulseft_estep, finalstatsfile, fluxtsumfile, projfluxtsumfile,&
-       sparsedfflag,sparseprime,sparsesummaflag, par_consplit, fttriwindow,&
+       sparsedfflag,sparseprime,sparsesummaflag, par_consplit, & 
        pulsewindowtoo,redobra,dipolesumstart,dipolesumend,outmatel,numcatfiles,&
        catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
        shuffle_dfwalktype,maxdgdim, messavec, messaamount,holeflag, angularflag, angprojspifile,&

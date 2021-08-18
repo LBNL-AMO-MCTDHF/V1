@@ -1677,7 +1677,7 @@ contains
 
           endif
 
-          call zfftf_wrap_diff(2*curtime+1,ftgtau(-curtime:curtime),ftdiff)
+          call zfftf_wrap_diff(2*curtime+1,ftgtau(-curtime:curtime),ftderpwr(17),ftderord)
         
           ftgtau(:)=ftgtau(:)*dt
 
@@ -1689,7 +1689,7 @@ contains
 
           if (angularflag.ne.0) then
              do il=1,NUMANGLES
-                call zfftf_wrap_diff(2*curtime+1,ftgtau_ad(-curtime:curtime,il),ftdiff)
+                call zfftf_wrap_diff(2*curtime+1,ftgtau_ad(-curtime:curtime,il),ftderpwr(17),ftderord)
              enddo
 
              ftgtau_ad(:,:)=ftgtau_ad(:,:)*dt

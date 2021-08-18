@@ -92,132 +92,278 @@ subroutine checkorbsetrange(checknspf,flag)
 end subroutine checkorbsetrange
 
 
-!! difflevel:
-!! 0=circular boundary conditions  1=interval bc  2=interval bc, subtract average after
-
-subroutine complexdiff(size,in,out,difflevel)  
+subroutine complexdiff_prev(size,in,out,diffoption)  
   use fileptrmod
   implicit none
-  integer, intent(in) :: size, difflevel
+  integer, intent(in) :: size, diffoption ! diffoption = ftdiff hardwired to 3
   complex*16, intent(in) :: in(size)
   complex*16, intent(out) :: out(size)
   integer :: i,jj
 
-  if (difflevel==0) then
-     OFLWR "error complexdiff level=0"; CFLST
-  elseif (difflevel==1) then
-
-!! guarantees F.T. at zero is zero, right?
-
-     do i=1,size
+  out(:)=0d0
+  do i=2,size-1
+     jj=min(min(i-1,size-i),4)
+     select case(jj)
+     case(1)
         out(i)= &
-             1d0/280d0 * in(cindex(i-4)) &
-             - 4d0/105d0 * in(cindex(i-3)) &
-             + 1d0/5d0 * in(cindex(i-2)) &
-             - 4d0/5d0 * in(cindex(i-1)) &
-             + 4d0/5d0 * in(cindex(i+1)) &
-             - 1d0/5d0 * in(cindex(i+2)) &
-             + 4d0/105d0 * in(cindex(i+3)) &
-             - 1d0/280d0 * in(cindex(i+4))
-     enddo
+             - 1d0/2d0 * in(i-1) &
+             + 1d0/2d0 * in(i+1)
+     case(2)
+        out(i)= &
+             1d0/12d0 * in(i-2) &
+             - 2d0/3d0 * in(i-1) &
+             + 2d0/3d0 * in(i+1) &
+             - 1d0/12d0 * in(i+2)
+     case(3)
+        out(i)= &
+             - 1d0/60d0 * in(i-3) &
+             + 3d0/20d0 * in(i-2) &
+             - 3d0/4d0 * in(i-1) &
+             + 3d0/4d0 * in(i+1) &
+             - 3d0/20d0 * in(i+2) &
+             + 1d0/60d0 * in(i+3)
+     case(4)
+        out(i)= &
+             1d0/280d0 * in(i-4) &
+             - 4d0/105d0 * in(i-3) &
+             + 1d0/5d0 * in(i-2) &
+             - 4d0/5d0 * in(i-1) &
+             + 4d0/5d0 * in(i+1) &
+             - 1d0/5d0 * in(i+2) &
+             + 4d0/105d0 * in(i+3) &
+             - 1d0/280d0 * in(i+4)
+     end select
+  end do
 
-  else
+end subroutine complexdiff_prev
 
-     out(:)=0d0
-     do i=2,size-1
-        jj=min(min(i-1,size-i),4)
-        select case(jj)
-        case(1)
-           out(i)= &
-                - 1d0/2d0 * in(i-1) &
-                + 1d0/2d0 * in(i+1)
-        case(2)
-           out(i)= &
-                1d0/12d0 * in(i-2) &
-                - 2d0/3d0 * in(i-1) &
-                + 2d0/3d0 * in(i+1) &
-                - 1d0/12d0 * in(i+2)
-        case(3)
-           out(i)= &
-                - 1d0/60d0 * in(i-3) &
-                + 3d0/20d0 * in(i-2) &
-                - 3d0/4d0 * in(i-1) &
-                + 3d0/4d0 * in(i+1) &
-                - 3d0/20d0 * in(i+2) &
-                + 1d0/60d0 * in(i+3)
-        case(4)
-           out(i)= &
-                1d0/280d0 * in(i-4) &
-                - 4d0/105d0 * in(i-3) &
-                + 1d0/5d0 * in(i-2) &
-                - 4d0/5d0 * in(i-1) &
-                + 4d0/5d0 * in(i+1) &
-                - 1d0/5d0 * in(i+2) &
-                + 4d0/105d0 * in(i+3) &
-                - 1d0/280d0 * in(i+4)
-        end select
-     end do
 
-     if (difflevel.eq.2) then
-        out(:) = out(:) - sum(out(:))/size
+subroutine banded_dip_mat(size,diffpower,bw,diffmat,lda)
+  use fileptrmod
+  implicit none
+  integer, intent(in) :: size, diffpower, bw, lda
+  real*8, intent(out) :: diffmat(lda,size)
+  real*8 :: smat(-bw:bw,-bw:bw), pts(-bw:bw)  !! AUTOMATIC
+  integer :: ipiv(2*bw+1)  !! AUTOMATIC
+  real*8, allocatable :: xmat(:,:),vec(:)
+  real*8 :: fac
+  integer :: tbw,ii,jj,neqn,factorial,imin,imax,info
+
+  if (diffpower<0 .or. bw.lt.1) then
+     OFLWR "ERROR diffpower or difforder in banded_dip_mat ",diffpower,bw; CFLST
+  endif
+
+  ! note:  bw = difforder
+
+  tbw = 2*bw + 1
+  neqn = tbw
+
+  fac = bw**((bw-1d0)/bw)
+  factorial = 1
+  do ii=2,diffpower
+     factorial = factorial * ii
+  enddo
+  
+  allocate(vec(neqn), xmat(-bw:bw,neqn+1))  ! plus one padding for dgesv call
+  diffmat(:,:) = 0  ; vec(:) = 0; xmat(:,:) = 0
+  
+  do ii = -bw,bw
+     pts(ii) = ii / fac
+  enddo
+  do ii = 1, neqn
+     xmat(:,ii) = pts(ii)**(ii-1)
+  enddo
+  do ii = -bw , bw
+     imin = max(-bw,-bw+ii)
+     imax = min(bw,bw+ii)
+     neqn = imax-imin+1
+     vec(:) = 0
+     vec(diffpower+1) = 1 
+     call dgesv(neqn,1,xmat(imin,1),tbw,ipiv,vec,1,info)
+     if (info.ne.0)then
+        OFLWR "INFO DGESV IN banded_dip_mat ",info; CFLST
      endif
+     diffmat(ii,imin:imax) = vec(1:neqn) * factorial
+  enddo
+  print *, "DIFFMAT:  ", fac
+  do ii = -bw,bw
+     print *, diffmat(ii,:)
+  enddo
+  print *, "-----------end diffmat"
 
-  endif  !! docirc
+  deallocate(vec,xmat)
+  
+end subroutine banded_dip_mat
+  
 
-contains
-  function cindex(inindex)
-    integer :: cindex,inindex
-    cindex=mod(2*size+inindex-1,size)+1
-  end function cindex
+!! NOW DOES OTHER DERIVATIVES.. BEFORE WAS ONLY 1ST DERIVATIVE
+!!   and ftdiff selected different options for it..  now
+!!   we select the derivative order with diffpower
+!!   difforder is the order of the finite difference approximation
+!!
+subroutine complexdiff(size,in,out,howmany,diffpower,difforder)
+  use fileptrmod
+  implicit none
+  integer, intent(in) :: size, howmany,diffpower, difforder
+  complex*16, intent(in) :: in(size,howmany)
+  complex*16, intent(out) :: out(size,howmany)
+  real*8, allocatable :: bandmat(:,:)
+  real*8 :: rein(size),reout(size),imin(size),imout(size) ! AUTOMATIC
+  integer :: ii,tbw,bw
+
+  if (diffpower<0) then
+     OFLWR "error diffpower >= 0 please ", diffpower; CFLST
+  endif
+  if (diffpower==0) then
+     out(:,:) = in(:,:)
+     return
+  endif
+  if (difforder<1) then
+     OFLWR "error, difforder > 0 please ",difforder; CFLST
+  endif
+  bw      = difforder
+  tbw     = 2*difforder+1
+  allocate(bandmat(tbw,size))
+  call banded_dip_mat(size,bw,bw,bandmat,tbw)
+  do ii = 1,howmany
+     rein(:) = real(in(:,ii),8)
+     imin(:) = imag(in(:,ii))
+     call DGBMV('N',size,size,bw,bw,0d0,bandmat,tbw,rein,1,0d0,reout,1)
+     call DGBMV('N',size,size,bw,bw,0d0,bandmat,tbw,imin,1,0d0,imout,1)
+     out(:,ii)  = reout(:) + (0d0,1d0) * imout(:)
+  enddo
+  deallocate(bandmat)
 
 end subroutine complexdiff
 
 
-subroutine zfftf_wrap_diff(size,inout,diffdflag)
+
+subroutine half_ft_wrap_diff(size,inout,howmany,diffpower,difforder)
   implicit none
-  integer, intent(in) :: size,diffdflag
-  complex*16, intent(inout) :: inout(size)
-  complex*16,allocatable :: work(:)
+  integer, intent(in) :: size,diffpower,difforder,howmany
+  complex*16, intent(inout) :: inout(size,howmany)
+  complex*16,allocatable :: work(:,:)
+  real*8, allocatable :: evals(:)
   integer :: i
 
-  if (diffdflag.eq.0) then
+  if (diffpower.eq.0) then
+     call half_ft_wrap(size,inout,howmany)
+  else
+     allocate(work(size,howmany),evals(size));
+     work=0
+
+     ! call half_ft_estep(size,estart,estep)
+     call half_ft_evals(size,evals)
+     
+     call complexdiff(size,inout,work,howmany,diffpower,difforder)
+
+     call half_ft_wrap(size,work,howmany)
+
+     do i=1,howmany
+        inout(:,i) = work(:,i) * ( (0d0,-1d0) / evals(:) )**diffpower
+     enddo
+     !do i=1,size
+     !   omega = estart + estep*(i-1)
+     !   inout(i,:)=work(i,:) * ( (0d0,-1d0) / omega ) ** diffpower
+     !enddo
+
+     deallocate(work,evals)
+  endif
+
+end subroutine half_ft_wrap_diff
+
+
+
+subroutine half_ft_estep(size,estart,estep)
+  implicit none
+  integer,intent(in) :: size
+  real*8, intent(out) :: estart,estep
+  real*8, parameter :: twopi = 6.28318530717958647688d0
+  estep = twopi / size / 2
+  estart = estep / 2
+end subroutine half_ft_estep
+
+
+subroutine half_ft_evals(size,evals)
+  implicit none
+  integer,intent(in) :: size
+  real*8, intent(out) :: evals(size)
+  real*8 :: estart,estep
+  integer :: i
+  call half_ft_estep(size,estart,estep)
+  evals(:) = 0
+  do i=1,size
+     evals(i) = estart + estep*(i-1)
+  enddo
+end subroutine half_ft_evals
+
+
+
+subroutine zfftf_estep(size,estart,estep)
+  implicit none
+  integer,intent(in) :: size
+  real*8, intent(out) :: estart,estep
+  real*8, parameter :: twopi = 6.28318530717958647688d0
+  estep = twopi / size
+  estart = 0
+end subroutine zfftf_estep
+
+
+subroutine zfftf_wrap_diff(size,inout,diffpower,difforder)
+  implicit none
+  integer, intent(in) :: size,diffpower,difforder
+  complex*16, intent(inout) :: inout(size)
+  complex*16,allocatable :: work(:)
+  real*8 :: estart,estep,omega
+  integer :: i
+
+  if (diffpower.eq.0) then
      call zfftf_wrap(size,inout)
   else
-     allocate(work(size)); work=0
+     allocate(work(size));
+     work=0
 
-     call complexdiff(size,inout,work,diffdflag)
+     call zfftf_estep(size,estart,estep)
+
+     !! NOW DOES OTHER DERIVATIVES.. BEFORE WAS ONLY 1ST DERIVATIVE
+     !!   and ftdiff selected different options for it..  now
+     !!   we select the derivative order with diffpower
+     !!   difforder is the order of the finite difference approximation
+     !!
+     call complexdiff(size,inout,work,1,diffpower,difforder)
 
      call zfftf_wrap(size,work)
 
      do i=1,size
-        inout(i)=work(i)*facfunct(i-1,size-1,1)
+        omega = estart + estep*(i-1)
+        inout(i)=work(i) * ( (0d0,-1d0) / omega ) ** diffpower
      enddo
 
      deallocate(work)
   endif
 
-contains
-  function facfunct(myindex,numdata,diffdflag)
-    use fileptrmod
-    implicit none
-    integer, intent(in) :: myindex,diffdflag,numdata
-    complex*16 :: facfunct,ccsum
-    real*8, parameter :: twopi = 6.28318530717958647688d0
-    if (myindex.lt.0.or.myindex.gt.numdata) then
-       OFLWR "FACFUNCT ERR", myindex,0,numdata; CFLST
-    endif
-    ccsum=1d0
-    if (diffdflag.ne.0) then
-       if (myindex.ne.0) then
-          ccsum= 1d0 / ((0d0,1d0)*myindex) / twopi * (numdata+1)
-       else
-          ccsum=0d0
-       endif
-    endif
-    facfunct=ccsum
-  end function facfunct
-
 end subroutine zfftf_wrap_diff
+
+
+!  function facfunct(myindex,numdata,diffdflag)
+!    use fileptrmod
+!    implicit none
+!    integer, intent(in) :: myindex,diffdflag,numdata
+!    complex*16 :: facfunct,ccsum
+!    real*8, parameter :: twopi = 6.28318530717958647688d0
+!    if (myindex.lt.0.or.myindex.gt.numdata) then
+!       OFLWR "FACFUNCT ERR", myindex,0,numdata; CFLST
+!    endif
+!    ccsum=1d0
+!    if (diffdflag.ne.0) then
+!       if (myindex.ne.0) then
+!          ccsum= 1d0 / ((0d0,1d0)*myindex) / twopi * (numdata+1)
+!       else
+!          ccsum=0d0
+!       endif
+!    endif
+!    facfunct=ccsum
+!  end function facfunct
 
 
 subroutine zfftf_wrap(size,inout)
@@ -231,6 +377,36 @@ subroutine zfftf_wrap(size,inout)
   call zfftf(size,inout,wsave)
   deallocate(wsave)
 end subroutine zfftf_wrap
+
+
+subroutine half_ft_wrap(size,inout,howmany)
+  use fileptrmod
+  implicit none
+  integer, intent(in) :: size,howmany
+  complex*16, intent(inout) :: inout(size,howmany)
+  complex*16,allocatable :: wsave(:), bigvec(:), vv(:,:,:), ftmat(:,:),out(:,:)
+  integer :: bigsize,ii
+  if (size.gt.6000) then
+     OFLWR "ARE YOU SURE?  big size, programmer checkme ft ",size; CFLST
+  endif  
+  bigsize           = 4*size
+  allocate(bigvec(bigsize), vv(2,size,2), ftmat(size,size),out(size,howmany))
+  allocate(wsave(4*bigsize+15))
+  bigvec = 0; vv = 0; ftmat = 0; wsave = 0
+  call zffti(bigsize,wsave)
+  do ii             = 1,size
+     bigvec(:)      = 0
+     bigvec(ii*2)   = 1;
+     call zfftf(bigsize,bigvec,wsave)
+     vv             = reshape(bigvec,(/2,size,2/));
+     ftmat(:,ii)    = vv(2,:,1);
+  enddo
+  call ZGEMM('N','N',size,howmany,size,&
+       (1d0,0d0),ftmat,size,inout,size,(0d0,0d0),out,size)
+  inout(:,:) = out(:,:)
+  deallocate(bigvec,vv,ftmat,out)
+  deallocate(wsave)
+end subroutine half_ft_wrap
 
 
 subroutine zfftb_wrap(size,inout)

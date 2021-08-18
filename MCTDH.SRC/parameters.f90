@@ -249,11 +249,23 @@ end module tol_parameters
 module denreg_parameters
 real*8 :: denreg=1d-10           !! Denreg=      !! density matrix regularization parameter.
 end module denreg_parameters
+!!EE
+!!{\large \quad Fourier Transform Options }
+!!BB
+module ft_parameters
+  !! FT is used in the actions. set these separately according to action number
+  integer :: fttriwindow(256)=1  ! use triangle window or cosine
+  !! Triangle :       ((tmax-t)/tmax)**ftwindowpower
+  !! Cosine   :  cos(pi t / 2 / tmax)**ftwindowpower 
+  integer :: ftwindowpower(256)=1
+  integer :: ftderpwr(256)=1  ! which derivative to FT
+  integer :: ftderord=1       ! bandwidth of finite difference derivative operators
+end module ft_parameters
 module parameters
   use fileptrmod;  use r_parameters; use sparse_parameters; use tol_parameters
   use ham_parameters;  use basis_parameters;  use timing_parameters; use spfsize_parameters;
   use df_parameters; use dotmod;    use constant_parameters; use clockmod
-  use dip_parameters
+  use dip_parameters; use ft_parameters
   implicit none
 !!EE
 !!{\large \quad MAIN PARAMETERS }
@@ -493,15 +505,6 @@ real*8 :: autostart=0d0          !! time zero for action 1. negative setting -> 
 real*8 :: autotimestep=1.d0      !! ACTIONS 1,21,29 (autocorrelation and emission/absorption):
                                  !!   time step for fourier transform
 integer :: auto_subtract=0       !! if nonzero subtract tent function for autocorrelation (action 1)
-!!EE
-!!{\large \quad FTs for AUTOCORRELATION, PHOTOIONIZATION and EMISSION/ABSORPTION (actions 1,16,17,21,29)}
-!!BB
-!! now defined for each action.  Variables in actions.f90.  Defaults in getparams.f90.
-!!
-!! int fttriwindow(MAXACTIONS)=1    !! If nonzero, window function is ((tmax-t)/tmax)**ftwindowpower
-!! int ftwindowpower(MAXACTIONS)=1  !! If fttriwindow=0, 
-!!                                  !!    window function is cos(pi t / 2 / tmax)**ftwindowpower 
-integer :: ftdiff=1                 !! fourier transform derivative of dipole moment not dipole moment
 !!EE
 !!{\large \quad EMISSION/ABSORPTION (action 21,29)}
 !!BB

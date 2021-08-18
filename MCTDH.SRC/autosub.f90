@@ -181,18 +181,20 @@ subroutine autocall(numdata, forwardovl, sflag)
   do imc=1,mcscfnum
 
      if (hanningflag.ne.4) then
-        call zfftf_wrap_diff(totdim,fftrans(:,imc),ftdiff)
+        call zfftf_wrap_diff(totdim,fftrans(:,imc),ftderpwr(1),ftderord)
         fftrans(:,imc)=fftrans(:,imc)*autosteps*par_timestep  /  2 / pi
         do i=-numdata,numdata
            fftrans(i,imc)=fftrans(i,imc) * &
                 exp((0.d0,1.d0)*(numdata+i)*numdata*2*pi/real(2*numdata+1))
         enddo
-!! for default ftwindowpower=2 for action 1
-        if (ftdiff.eq.1) then
-           fftrans(-numdata+1,:) = fftrans(-numdata+1,:) * 4d0
-        elseif (ftdiff.eq.0) then
-           fftrans(-numdata,:) = fftrans(-numdata,:) * sqrt(2d0)
-        endif
+        OFLWR "CHECKME HANNING FLAG"; CFLST
+        !$$ programmer check this logic:
+        !$$ ! for default ftwindowpower=2 for action 1
+        !$$ if (ftdiff.eq.1) then
+        !$$    fftrans(-numdata+1,:) = fftrans(-numdata+1,:) * 4d0
+        !$$ elseif (ftdiff.eq.0) then
+        !$$    fftrans(-numdata,:) = fftrans(-numdata,:) * sqrt(2d0)
+        !$$ endif
      else
         CALL ZFFTB_wrap(totdim,fftrans(:,imc))
      endif

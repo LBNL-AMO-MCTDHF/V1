@@ -939,7 +939,7 @@ contains
 
     OFLWR "   ....Go ft...."; CFL
     do imc=1,mcscfnum
-       call zfftf_wrap_diff(2*curtime+1,ftgtau(-curtime:curtime,imc),ftdiff)
+       call zfftf_wrap_diff(2*curtime+1,ftgtau(-curtime:curtime,imc),ftderpwr(16),ftderord)
     enddo
     OFLWR "   ....Go ft pulse...."; CFL
     do i=1,3
@@ -975,7 +975,7 @@ contains
        write(1004,*)
        ftgtausum(:)=0d0
        do i=-curtime,curtime
-          wfi=(i+curtime)*Estep
+          wfi=(i+curtime)*estep
 
           ftgtausum(:)=ftgtausum(:)+ftgtau(i,:) * estep / PI / 2d0  !! NO,2!  / 4d0   !! 4 looks correct
 
