@@ -287,11 +287,6 @@ subroutine get_stuff0(thistime,times)
   endif
   call myclock(jtime); times(7)=times(7)+jtime-itime;     itime=jtime
 
-  if (drivingflag.ne.0) then
-     call drivingtrans(thistime)
-  endif
-  call myclock(jtime); times(8)=times(8)+jtime-itime;     itime=jtime
-
   if (use_fockmatrix) then
      call get_fockmatrix()
   endif

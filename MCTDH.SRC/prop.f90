@@ -331,7 +331,7 @@ contains
           if (parorbsplit.ne.3) then
              call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
           endif
-          call myclock(jtime);     times(9)=times(9)+jtime-itime;   itime=jtime
+          call myclock(jtime);     times(8)=times(8)+jtime-itime;   itime=jtime
        endif
 
        if (improvednatflag.ne.0) then
@@ -362,7 +362,7 @@ contains
           if (par_consplit.eq.0) then
              call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
           endif
-          call myclock(jtime);     times(9)=times(9)+jtime-itime;    itime=jtime
+          call myclock(jtime);     times(8)=times(8)+jtime-itime;    itime=jtime
        endif
 
        call get_allden()
@@ -402,7 +402,7 @@ contains
 !! prevent drift
              if (parorbsplit.ne.3) then
                 call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
-                call myclock(jtime);     times(9)=times(9)+jtime-itime;   itime=jtime
+                call myclock(jtime);     times(8)=times(8)+jtime-itime;   itime=jtime
              endif
              call all_matel()
              call myclock(jtime);  times(1)=times(1)+jtime-itime;   itime=jtime
@@ -487,8 +487,7 @@ contains
                "aprop", &     !! (5)
                "advance", &   !! (6)
                "constrain", & !! (7)
-               "driving",&    !! (8)
-               "MPI",&        !! (9)
+               "MPI",&        !! (8)
                "#SDERIVS",&   !!
                "#ADERIVS"     !!
           call checkiostat(myiostat," writing cmf_prop_time.dat")
@@ -498,7 +497,7 @@ contains
             status="unknown", position="append",iostat=myiostat)
        call checkiostat(myiostat," opening cmf_prop_time.dat")
        write(853,'(A3,F12.3,T16, 100I11)',iostat=myiostat)  "T=", tout, &
-            times(1:9)/1000, numiters,numaiters
+            times(1:8)/1000, numiters,numaiters
        call checkiostat(myiostat," writing cmf_prop_time.dat")
        close(853)
     endif
@@ -515,7 +514,7 @@ contains
 !! prevent drift
          if (parorbsplit.ne.3) then
             call mympibcast(yyy%cmfspfs(:,0),1,totspfdim)
-            call myclock(jtime);     times(9)=times(9)+jtime-itime
+            call myclock(jtime);     times(8)=times(8)+jtime-itime
          endif
       endif
     end subroutine propspfs_and_stuff
@@ -533,7 +532,7 @@ contains
 !! prevent drift
          if (par_consplit.eq.0) then
             call mympibcast(yyy%cmfavec(:,:,0),1,tot_adim*mcscfnum)
-            call myclock(jtime);     times(9)=times(9)+jtime-itime
+            call myclock(jtime);     times(8)=times(8)+jtime-itime
          endif
       endif
     end subroutine cmf_prop_avector_and_stuff
@@ -757,7 +756,7 @@ subroutine prop_loop( starttime)
        lastenergyavg,startenergy(mcscfnum)
   CNORMTYPE :: norms(mcscfnum)
   real*8 :: thistime, starttime, thattime,error=1d10,avecerror=1d10
-  DATATYPE :: sum2,sum,drivingoverlap(mcscfnum)
+  DATATYPE :: sum2,sum
   DATATYPE, allocatable :: avectorp(:),outspfs(:)
 
   thistime=starttime;  flag=0;    call zero_mpi_times()

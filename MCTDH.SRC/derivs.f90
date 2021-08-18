@@ -1050,7 +1050,7 @@ contains
     use derivtimingmod
     use parameters
     use linearmod    !! firsttime,lasttime
-    use xxxmod  !! frozenexchange and driving orbs
+    use xxxmod  !! frozenexchange
     use orbprojectmod
     use orbgathersubmod
     use pulsesubmod
