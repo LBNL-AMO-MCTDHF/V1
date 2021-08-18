@@ -275,14 +275,6 @@ contains
     endif
     yyy%reducedpot(:,:,:,1) = yyy%reducedpot(:,:,:,0)
     yyy%reducedpottally(:,:,:,:,1) = yyy%reducedpottally(:,:,:,:,0)
-    if (drivingflag.ne.0.and.tot_adim.gt.0) then
-       yyy%drivingavectorsxx(:,:,:,1)=yyy%drivingavectorsxx(:,:,:,0)
-       yyy%drivingavectorsyy(:,:,:,1)=yyy%drivingavectorsyy(:,:,:,0)
-       yyy%drivingavectorszz(:,:,:,1)=yyy%drivingavectorszz(:,:,:,0)
-       yyy%drivingorbsxx(:,:,1)=yyy%drivingorbsxx(:,:,0)
-       yyy%drivingorbsyy(:,:,1)=yyy%drivingorbsyy(:,:,0)
-       yyy%drivingorbszz(:,:,1)=yyy%drivingorbszz(:,:,0)
-    endif
 
     if (numfrozen.ne.0) then
        yyy%frozenexchinvr(:,:,1) = yyy%frozenexchinvr(:,:,0)
@@ -554,12 +546,6 @@ contains
          call myclock(jtime); times(7)=times(7)+jtime-itime
       endif
 
-      if (drivingflag.ne.0) then
-         call myclock(itime)
-         call drivingtrans(tout)
-         call myclock(jtime); times(8)=times(8)+jtime-itime
-      endif
-
       call myclock(itime)
       if (use_fockmatrix) then
          call get_fockmatrix()
@@ -648,7 +634,7 @@ contains
       real*8, intent(in) :: time1,time2
       DATATYPE :: sum1,sum0,pots(3)=0d0
       DATATYPE :: nullvector1(numr),nullvector2(numr)
-      integer :: itime,jtime,getlen,ii,iflag,myiostat
+      integer :: itime,jtime,getlen,ii,myiostat
       real*8 :: thisstep,midtime,rsum
       integer, save :: times(2)=0, icalled=0
 
@@ -674,19 +660,6 @@ contains
 !! 062714
       midtime=(time2+time1)/2d0
 
-      iflag=0
-      if (drivingflag.ne.0) then
-         call vectdpot(midtime,velflag,pots,imc)
-         rsum=0d0
-         do ii=1,3
-            rsum=rsum+abs(pots(ii))**2
-         enddo
-         if (rsum.eq.0d0) then
-            iflag=0
-         else
-            iflag=1
-         endif
-      endif
 
       if (linearflag.eq.0) then
 
@@ -703,31 +676,12 @@ contains
             endif
          endif
 
-         if (drivingflag.ne.0.and.tot_adim.gt.0) then
-            workdrivingavec(:,:)=0d0
-
-            if (iflag.eq.1) then
-               workdrivingavec(:,:)=( yyy%drivingavectorsxx(:,:,imc,0)*pots(1) + &
-                    yyy%drivingavectorsyy(:,:,imc,0)*pots(2) + &
-                    yyy%drivingavectorszz(:,:,imc,0)*pots(3) )*thisstep
-            endif
-         endif
       else
 
 !! MAJOR BUG 062714     midtime=(time2+time1)/2d0
 
          sum0=(midtime-firsttime)/(lasttime-firsttime) 
          sum1=(lasttime-midtime)/(lasttime-firsttime) 
-
-         if (drivingflag.ne.0.and.tot_adim.gt.0) then
-            workdrivingavec(:,:)=0d0
-            if (iflag.eq.1) then
-               workdrivingavec(:,:) = thisstep*( &
-   (sum1*yyy%drivingavectorsxx(:,:,imc,1)+ sum0*yyy%drivingavectorsxx(:,:,imc,0))*pots(1) + &
-   (sum1*yyy%drivingavectorsyy(:,:,imc,1)+ sum0*yyy%drivingavectorsyy(:,:,imc,0))*pots(2) + &
-   (sum1*yyy%drivingavectorszz(:,:,imc,1)+ sum0*yyy%drivingavectorszz(:,:,imc,0))*pots(3) )
-            endif
-         endif
 
          if (sparseopt.eq.0) then
             call add_cptr(yyy%cptr(1),yyy%cptr(0),workconfigpointer,sum1*thisstep,sum0*thisstep)
@@ -854,13 +808,6 @@ subroutine prop_loop( starttime)
 
   enddo
 
-  if (drivingflag.ne.0) then
-     OFLWR "call drivinginit"; CFL
-     call drivinginit(startenergy)
-     call get_stuff(0.0d0)
-     OFLWR "called drivinginit"; CFL
-  endif
-
   if (debugflag.eq.956) then
      OFLWR "Stopping due to debugflag=956"; CFLST
   endif
@@ -969,40 +916,6 @@ subroutine prop_loop( starttime)
              "Energy: ", thisenergy(imc), "Norm: ", norms(imc)
 #endif     
         CFL
-
-        if (drivingflag.ne.0) then
-          call getdrivingoverlap(drivingoverlap,mcscfnum)
-
-          OFL
-#ifdef ECSFLAG     
-           write(mpifileptr,'(A3,F16.5, 2(A10, 2E18.10))') "t= ",thattime, "DEnergy ", &
-#else 
-           write(mpifileptr,'(A3,F16.5, 2(A10, E18.10))') "t= ", thattime, "DEnergy ", &
-#endif
-
-    (    (drivingenergies(imc)*drivingproportion**2 + CONJUGATE(drivingenergies(imc) * drivingoverlap(imc)) + &
-    drivingenergies(imc)*drivingoverlap(imc) + thisenergy(imc)*norms(imc)**2)     )/  &
-    (drivingproportion**2 + drivingoverlap(imc) + CONJUGATE(drivingoverlap(imc)) + norms(imc)**2), &
-    "DNorm ", (sqrt &
-    (drivingproportion**2 + drivingoverlap(imc) + CONJUGATE(drivingoverlap(imc)) + norms(imc)**2))
-
-           CFL
-
-!! ok so < Psi(t) | H | Psi(t) > =
-
-!!   < Psi_0 | H | Psi_0 > +          drivingenergy * drivingproportion**2
-!!   < Psi_0 | H | Psi' > +          = CONJUGATE(drivingenergy) * < Psi_0 | Psi' >  !! factor in psi0 in code * drivingproportion
-!!   < Psi' | H | Psi_0 > +          = drivingenergy * < Psi_0 | Psi' >  !! factor in psi0 in code * drivingproportion
-!!   < Psi' | H | Psi' >               in code
-
-!! ok so < Psi(t) | Psi(t) > =
-
-!!   < Psi_0 | Psi_0 > +          drivingproportion**2
-!!   < Psi_0 |  Psi' > +          = < Psi_0 | Psi' >    !! factor in psi_0 in code * drivingproportion
-!!   < Psi' | Psi_0 > +          = < Psi' | Psi_0 >     !!  ditto   * drivingproportion
-!!   < Psi' | Psi' >               in code
-
-        endif
 
      enddo  !! imc
 

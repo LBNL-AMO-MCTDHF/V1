@@ -782,7 +782,7 @@ contains
           in_spfket(totspfdim), in_aket(tot_adim,mcscfnum)
      DATATYPE :: myexpects(3), mcexpects(3,mcscfnum), &
           axx(mcscfnum),ayy(mcscfnum),azz(mcscfnum),sxx(mcscfnum),syy(mcscfnum),&
-          szz(mcscfnum),drivingoverlap(mcscfnum)
+          szz(mcscfnum)
      DATATYPE,intent(out) :: normsq(mcscfnum)
      character(len=SLN) :: dipfiles(3), tworkfiles(3), angworkfiles(3), ftfiles(9), &
           oworkfiles(9), ophotonfiles(9)
@@ -792,26 +792,12 @@ contains
 
      thistime=calledflag*par_timestep*autosteps
 
-     myexpects=0;mcexpects=0;axx=0;ayy=0;azz=0;sxx=0;syy=0;szz=0;normsq=0;drivingoverlap=0
+     myexpects=0;mcexpects=0;axx=0;ayy=0;azz=0;sxx=0;syy=0;szz=0;normsq=0
 
      do imc=1,mcscfnum
         call dipolesub_one(www,bioww,in_abra(:,imc),in_aket(:,imc),in_spfbra(:),in_spfket(:),&
              diff_flag,mcexpects(:,imc),normsq(imc),thistime)
      enddo
-
-     if (drivingflag.ne.0) then
-#ifdef CNORMFLAG
-        OFLWR "Error, driving with dipole not supported c-norm"; CFLST
-#endif
-        call dipolesub_driving(axx,ayy,azz,sxx,syy,szz,mcscfnum)
-        mcexpects(1,:)=mcexpects(1,:)+axx(:)+CONJUGATE(axx(:))+sxx*drivingproportion**2
-        mcexpects(2,:)=mcexpects(2,:)+ayy(:)+CONJUGATE(ayy(:))+syy*drivingproportion**2
-        mcexpects(3,:)=mcexpects(3,:)+azz(:)+CONJUGATE(azz(:))+szz*drivingproportion**2
-
-!! for time slot zero
-        call getdrivingoverlap(drivingoverlap,mcscfnum)
-        normsq(:)=normsq(:)+drivingproportion**2 + drivingoverlap(:) + CONJUGATE(drivingoverlap(:))
-     endif
 
      dipoleexpects(calledflag,:,1)=0d0
 

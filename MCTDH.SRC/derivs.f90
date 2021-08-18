@@ -1139,39 +1139,7 @@ contains
           enddo
        endif
 
-!! DRIVING (PSI-PRIME)
-
-       if (drivingflag.ne.0) then
-          if (dentimeflag.eq.0) then
-             OFLWR "Error, no drivingflag for quad"; CFLST !! invdenmat already in drivingorbs
-          endif
-          call vectdpot(thistime,velflag,pots,-1)
-          rsum=0
-          do jjj=1,3
-             rsum=rsum+abs(pots(jjj))**2
-          enddo
-          if (rsum.ne.0d0) then
-             tempspfs(:,:)=0d0
-             do jjj=0,itop
-                tempspfs(:,lowspf:highspf)=tempspfs(:,lowspf:highspf)+ ( &
-                     yyy%drivingorbsxx(:,lowspf:highspf,jjj) * pots(1) + &
-                     yyy%drivingorbsyy(:,lowspf:highspf,jjj) * pots(2) + &
-                     yyy%drivingorbszz(:,lowspf:highspf,jjj) * pots(3) ) &
-                     *facs(jjj) * timefac                             !! WITH TIMEFAC
-             enddo
-             call myclock(itime)
-             if (projflag.ne.0) then
-                call project00(lowspf,highspf,tempspfs(:,lowspf:highspf),&
-                     workspfs(:,lowspf:highspf),spfsin)
-                spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf)+&
-                     tempspfs(:,lowspf:highspf)-workspfs(:,lowspf:highspf)
-             else
-                spfsout(:,lowspf:highspf)=spfsout(:,lowspf:highspf) + &
-                     tempspfs(:,lowspf:highspf)
-             endif
-             call myclock(jtime);        times(8)=times(8)+jtime-itime
-          endif
-       endif
+!! DRIVING (PSI-PRIME) removed
 
        deallocate(tempspfs,workspfs)
 

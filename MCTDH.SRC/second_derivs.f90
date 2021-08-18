@@ -33,9 +33,6 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
   if (numfrozen.gt.0) then
      OFLWR "second_derivs not done for frozen orbitals",numfrozen; CFLST
   endif
-  if (drivingflag.ne.0) then
-     OFLWR "second_derivs not done for drivingflag"; CFLST
-  endif
 
   numspf=highspf-lowspf+1
   if (numspf.le.0) then

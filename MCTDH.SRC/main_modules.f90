@@ -69,13 +69,7 @@ module xmod
           reducedinvrsq(:,:,:), &
           reducedproderiv(:,:,:),  &
           reducedpot(:,:,:,:), &
-          reducedpottally(:,:,:,:,:), &
-          drivingavectorsxx(:,:,:,:), &
-          drivingorbsxx(:,:,:), &
-          drivingavectorsyy(:,:,:,:), &
-          drivingorbsyy(:,:,:), &
-          drivingavectorszz(:,:,:,:), &
-          drivingorbszz(:,:,:)
+          reducedpottally(:,:,:,:,:)
 
      Type(CONFIGPTR), allocatable :: cptr(:)
      Type(SPARSEPTR), pointer :: sptrptr(:)
@@ -170,8 +164,6 @@ use configptrmod
   DATATYPE, allocatable :: frozenspfs(:,:)
   DATATYPE :: frozenpotdiag=0d0  !! potential matrix element
   DATATYPE :: frozenkediag=0d0  !! ke matrix element
-
-  DATATYPE, allocatable :: orbs_driving(:,:),  avector_driving(:,:,:)
 
   DATATYPE, allocatable ::   twoereduced(:,:,:),&        !! numerad,lbig+1,-2*mbig:2*mbig,nspf,nspf 
                                                          !! that's reducedpotsize,nspf,nspf
@@ -384,7 +376,6 @@ module configpropmod
   Type(CONFIGPTR) :: workconfigpointer
   Type(SPARSEPTR),target :: worksparsepointer, workdfsparsepointer, workfdsparsepointer
   Type(SPARSEPTR),pointer :: worksparsepointerptr
-  DATATYPE, allocatable :: workdrivingavec(:,:)
 
 end module configpropmod
 
@@ -408,10 +399,6 @@ subroutine configpropalloc()
      endif
   endif
 
-  allocate(workdrivingavec(numr,first_config:last_config))
-  if (last_config.ge.first_config) then
-     workdrivingavec(:,:)=0d0
-  endif
 
 end subroutine configpropalloc
 
@@ -431,7 +418,7 @@ subroutine configpropdealloc()
         endif
      endif
   endif
-  deallocate(workdrivingavec)
+
 end subroutine configpropdealloc
 
 
@@ -815,15 +802,6 @@ subroutine opalloc()
   allocate(rkemod(numr,numr), proderivmod(numr,numr))   
   rkemod=0.d0; proderivmod=0.d0; 
 
-  if (drivingflag.ne.0) then
-     allocate(orbs_driving(spfsize,nspf), &
-          avector_driving(numr,first_config:last_config,mcscfnum))
-     orbs_driving=0d0
-     if (last_config.ge.first_config) then
-        avector_driving=0d0
-     endif
-  endif
-
   if (parorbsplit.eq.1) then
      allocate(twoereduced(reducedpotsize,nspf,firstmpiorb:firstmpiorb+orbsperproc-1))
   else
@@ -845,9 +823,6 @@ subroutine opdealloc()
   use opmod
   use parameters
   implicit none
-  if (drivingflag.ne.0) then
-     deallocate(orbs_driving,avector_driving)
-  endif
   deallocate(rkemod,proderivmod,   pot, halfniumpot)
   deallocate(frozenspfs,hatomreduced,frozenreduced)
 
@@ -969,26 +944,6 @@ subroutine xalloc()
      yyy%fockmatrix=0
   endif
 
-  if (drivingflag.ne.0) then
-     allocate(yyy%drivingavectorsxx(numr,first_config:last_config,mcscfnum,0:numreduced), &
-          yyy%drivingorbsxx(spfsize,nspf,0:numreduced),&
-          yyy%drivingavectorsyy(numr,first_config:last_config,mcscfnum,0:numreduced), &
-          yyy%drivingorbsyy(spfsize,nspf,0:numreduced),&
-          yyy%drivingavectorszz(numr,first_config:last_config,mcscfnum,0:numreduced), &
-          yyy%drivingorbszz(spfsize,nspf,0:numreduced))
-     if (last_config.ge.first_config) then
-        yyy%drivingavectorsxx(:,:,:,:)=0d0; yyy%drivingorbsxx(:,:,:)=0d0
-        yyy%drivingavectorsyy(:,:,:,:)=0d0; yyy%drivingorbsyy(:,:,:)=0d0
-        yyy%drivingavectorszz(:,:,:,:)=0d0; yyy%drivingorbszz(:,:,:)=0d0
-     endif
-  else
-     allocate(yyy%drivingavectorsxx(1,1,mcscfnum,0:numreduced), yyy%drivingorbsxx(1,1,0:numreduced))
-     allocate(yyy%drivingavectorsyy(1,1,mcscfnum,0:numreduced), yyy%drivingorbsyy(1,1,0:numreduced))
-     allocate(yyy%drivingavectorszz(1,1,mcscfnum,0:numreduced), yyy%drivingorbszz(1,1,0:numreduced))
-     yyy%drivingavectorsxx(:,:,:,:)=0d0; yyy%drivingorbsxx(:,:,:)=0d0
-     yyy%drivingavectorsyy(:,:,:,:)=0d0; yyy%drivingorbsyy(:,:,:)=0d0
-     yyy%drivingavectorszz(:,:,:,:)=0d0; yyy%drivingorbszz(:,:,:)=0d0
-  endif
 end subroutine xalloc
 
 
@@ -998,9 +953,6 @@ subroutine xdealloc()
   use xxxmod
   implicit none
   integer :: ii
-
-  deallocate(yyy%drivingavectorsxx,yyy%drivingorbsxx,yyy%drivingavectorsyy,&
-       yyy%drivingorbsyy,yyy%drivingavectorszz,yyy%drivingorbszz)
 
   deallocate(yyy%denvects,  yyy%denvals)
   do ii=0,numreduced

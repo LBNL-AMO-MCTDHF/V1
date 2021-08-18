@@ -91,8 +91,8 @@ integer :: constraintflag=0      !! Constraint=  !! As described below (see CONS
 integer :: denmatfciflag=0                       !! If .ne. 0 then does denmat constrant as programmed
                                                  !!  before Miyagi's help
 DATATYPE :: energyshift=0d0      !!              !! complex shift for making energy real for imperfect CAP/ECS
-integer :: drivingflag=0                         !!  Solve for the change in the wave function not wave function 
-real*8 :: drivingproportion=0.999999999999d0     !!   -- "psi-prime" treatment.
+integer,parameter :: drivingflag=0                         !!  Solve for the change in the wave function not wave function 
+real*8,parameter :: drivingproportion=0.999999999999d0     !!   -- "psi-prime" treatment.
 DATATYPE :: timefac=&            !! Prop/        !! d/dt psi = timefac * H * psi
         DATANEGONE               !!  Relax       !!
 real*8 :: mshift=0d0                             !! shift configurations based on m-value.. to break 

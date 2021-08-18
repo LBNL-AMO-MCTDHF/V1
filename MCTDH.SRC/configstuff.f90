@@ -297,9 +297,6 @@ subroutine nonsparseprop(wwin,dwin,avectorin,avectorout,time,imc)
   if (sparseconfigflag/=0) then
      OFLWR "Error, nonsparseprop called but sparseconfigflag= ", sparseconfigflag; CFLST
   endif
-  if (drivingflag.ne.0) then
-     OFLWR "Driving flag not implemented for nonsparse"; CFLST
-  endif
 
   if (wwin%numdfbasis.ne.dwin%numdfbasis) then
      OFLWR "ERROR DF SETS NONSPARSEOPROP",wwin%numdfbasis,dwin%numdfbasis; CFLST

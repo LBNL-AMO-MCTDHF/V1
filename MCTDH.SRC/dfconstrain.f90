@@ -28,9 +28,6 @@ subroutine get_constraint(time)
   if (constraintflag.eq.1) then
      call get_denconstraint(time)
   else if (constraintflag.eq.2) then
-  if (drivingflag.ne.0) then
-     OFLWR "Driving with dfconstraint not implemented yet"; CFLST
-  endif
      call get_dfconstraint(time)
   else 
      OFLWR "CONSTRAINTFLAG ERROR  ", constraintflag; CFLST
@@ -266,10 +263,6 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
 #endif
   real*8 :: time, myconjg(zzz,zzz), oneone(zzz,zzz), iimag(zzz,zzz), myperm(zzz,zzz)
   real*8 :: rrcond
-
-  if (drivingflag.ne.0) then
-     OFLWR "Driving with dfconstraint not implemented yet"; CFLST
-  endif
 
 #ifdef REALGO
   myconjg(:,:) = 1;  oneone(:,:) = 1;  iimag(:,:)=0; myperm(:,:)=1
@@ -683,8 +676,8 @@ end function llind
 
 
 
-subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx, &
-     drivingavectorsyy,drivingavectorszz,denmat,iwhich,time)
+subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,&
+     denmat,iwhich,time)
   use fileptrmod
   use r_parameters
   use basis_parameters
@@ -706,10 +699,7 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
   type(CONFIGPTR) :: cptr
   type(SPARSEPTR) :: sptr
   DATATYPE,intent(in) :: denmat(www%nspf,www%nspf),&
-       avector(numr,www%firstconfig:www%lastconfig,numvects),&
-       drivingavectorsxx(numr,www%firstconfig:www%lastconfig,numvects),&
-       drivingavectorsyy(numr,www%firstconfig:www%lastconfig,numvects),&
-       drivingavectorszz(numr,www%firstconfig:www%lastconfig,numvects)
+       avector(numr,www%firstconfig:www%lastconfig,numvects)
   DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a1p(numr,numvects), &
        a2p(numr,numvects), tempconmatels(www%nspf,www%nspf), csum
   DATATYPE,allocatable :: bigavector(:,:,:),bigavectorp(:,:,:), avectorp(:,:,:)
@@ -835,15 +825,6 @@ subroutine get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx
            case default
               call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,&
                    sptr,iiyy-1,imc)
-              if (drivingflag.ne.0) then
-                 if (iiyy.eq.2) then
-                    avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsxx(:,:,imc)
-                 else if (iiyy.eq.3) then
-                    avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsyy(:,:,imc)
-                 else if (iiyy.eq.4) then
-                    avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorszz(:,:,imc)
-                 endif
-              endif
            end select
         else
            select case(iiyy)
@@ -1037,14 +1018,10 @@ subroutine get_denconstraint1(iwhich,time)
 
   if (www%totadim.gt.0) then
      call get_denconstraint1_0(www,yyy%cptr(0),yyysptr(0),mcscfnum,&
-          yyy%cmfavec(:,:,0),yyy%drivingavectorsxx(:,:,:,0),&
-          yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
-          yyy%denmat(:,:,0),iwhich,time)
+          yyy%cmfavec(:,:,0),          yyy%denmat(:,:,0),iwhich,time)
   else
      call get_denconstraint1_0(www,yyy%cptr(0),yyysptr(0),mcscfnum,&
-          nullvectors(:,:),nullvectors(:,:),&
-          nullvectors(:,:),nullvectors(:,:),&
-          yyy%denmat(:,:,0),iwhich,time)
+          nullvectors(:,:),          yyy%denmat(:,:,0),iwhich,time)
   endif
 
 end subroutine get_denconstraint1
@@ -1052,8 +1029,8 @@ end subroutine get_denconstraint1
 
 
 
-subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavectorsxx, &
-     drivingavectorsyy,drivingavectorszz,denmat,time)
+subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,&
+     denmat,time)
   use fileptrmod
   use constraint_parameters
   use ham_parameters
@@ -1077,10 +1054,7 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
   type(CONFIGPTR) :: cptr
   type(SPARSEPTR) :: sptr
   DATATYPE,intent(in) :: denmat(www%nspf,www%nspf),&
-       avector(numr,www%firstconfig:www%lastconfig,numvects),&
-       drivingavectorsxx(numr,www%firstconfig:www%lastconfig,numvects),&
-       drivingavectorsyy(numr,www%firstconfig:www%lastconfig,numvects),&
-       drivingavectorszz(numr,www%firstconfig:www%lastconfig,numvects)
+       avector(numr,www%firstconfig:www%lastconfig,numvects)
   integer :: ipairs(2,www%nspf*(www%nspf-1))
   DATATYPE ::  a1(numr,numvects), a2(numr,numvects), a1p(numr,numvects), &
        a2p(numr,numvects), csum, nullvector1(numr),nullvector2(numr)
@@ -1211,15 +1185,6 @@ subroutine new_get_denconstraint1_0(www,cptr,sptr,numvects,avector,drivingavecto
            case default
               call sparseconfigpulsemult(www,avector(:,:,imc),avectorp(:,:,imc),cptr,&
                    sptr,iiyy-1,imc)
-              if (drivingflag.ne.0) then
-                 if (iiyy.eq.2) then
-                    avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsxx(:,:,imc)
-                 else if (iiyy.eq.3) then
-                    avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorsyy(:,:,imc)
-                 else if (iiyy.eq.4) then
-                    avectorp(:,:,imc)=avectorp(:,:,imc)+drivingavectorszz(:,:,imc)
-                 endif
-              endif
            end select
         else
            select case(iiyy)
@@ -1394,14 +1359,10 @@ subroutine new_get_denconstraint1(time)
 
   if (www%totadim.gt.0) then
   call new_get_denconstraint1_0(www,yyy%cptr(0),yyysptr(0),mcscfnum,&
-       yyy%cmfavec(:,:,0),yyy%drivingavectorsxx(:,:,:,0),&
-       yyy%drivingavectorsyy(:,:,:,0),yyy%drivingavectorszz(:,:,:,0),&
-       yyy%denmat(:,:,0),time)
+       yyy%cmfavec(:,:,0),       yyy%denmat(:,:,0),time)
   else
      call new_get_denconstraint1_0(www,yyy%cptr(0),yyysptr(0),mcscfnum,&
-          nullvectors(:,:),nullvectors(:,:),&
-          nullvectors(:,:),nullvectors(:,:),&
-          yyy%denmat(:,:,0),time)
+          nullvectors(:,:),          yyy%denmat(:,:,0),time)
   endif
 
 end subroutine new_get_denconstraint1

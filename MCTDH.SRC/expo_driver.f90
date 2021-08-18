@@ -41,7 +41,7 @@ contains
     use parameters
     use jacmod
     use mpimod
-    use xxxmod    !! drivingorbs.... hmmm could just make wrapper but whatever
+    use xxxmod  ! yyy
     use linearmod
     use jactimingmod
     use orbprojectmod
@@ -204,27 +204,6 @@ contains
 
           outspfs(:,lowspf:highspf)=outspfs(:,lowspf:highspf) &
                - tempspfs(:,lowspf:highspf)
-       endif
-
-!! DRIVING (PSI-PRIME)
-
-       if (drivingflag.ne.0) then
-          if (dentimeflag.eq.0) then
-             OFLWR "error, no driving for quad!!"; CFLST !! invdenmat already in drivingorbs
-          endif
-          rsum=0
-          call vectdpot(jactime,velflag,pots,-1)
-          do jjj=1,3
-             rsum=rsum+abs(pots(jjj))**2
-          enddo
-          if (rsum.ne.0d0) then
-             workspfs(:,lowspf:highspf)=&
-                  pots(1)*yyy%drivingorbsxx(:,lowspf:highspf,ii)+&
-                  pots(2)*yyy%drivingorbsyy(:,lowspf:highspf,ii)+&
-                  pots(3)*yyy%drivingorbszz(:,lowspf:highspf,ii)
-             call derproject00(lowspf,highspf,workspfs,tempspfs,jacvect,inspfs)
-             outspfs(:,:)=outspfs(:,:)-tempspfs(:,lowspf:highspf)*facs(ii)*timefac
-          endif
        endif
 
     enddo  !! do ii=0,itop
@@ -841,12 +820,10 @@ subroutine expoavecprop(inavector,outavector,time,imc,numiters)
   DATATYPE,intent(out) :: outavector(numr,www%firstconfig:www%lastconfig)
                                                                 !!  AUTOMATIC
   DATATYPE :: localvector(numr,www%maxdfbasisperproc),&         !!       DFWW
-       drivingavecdf(numr,www%botdfbasis:www%topdfbasis+1),&    !!       DFWW
        smallvector(numr,dwwptr%maxdfbasisperproc),&             !!       FDWW
        smallvectorout(numr,dwwptr%maxdfbasisperproc), &         !!       FDWW
        zerovector(numr,dwwptr%maxdfbasisperproc),&              !!       FDWW
-       smallvectortemp(numr,dwwptr%maxdfbasisperproc), &        !!       FDWW
-       workdrivingavecdf(numr,dwwptr%botdfbasis:dwwptr%topdfbasis+1) !!  FDWW
+       smallvectortemp(numr,dwwptr%maxdfbasisperproc)           !!       FDWW
 
   real*8 :: one,time
   real*8, save :: tempstepsize=-1d0
@@ -872,7 +849,7 @@ subroutine expoavecprop(inavector,outavector,time,imc,numiters)
   call avectortimeset()
 
   smallvector=0;   smallvectorout=0;   zerovector=0;  smallvectortemp=0
-  workdrivingavecdf=0; localvector=0; drivingavecdf=0;
+  localvector=0;
 
   icalled=icalled+1
 
@@ -944,50 +921,21 @@ subroutine expoavecprop(inavector,outavector,time,imc,numiters)
 
   call avectortime(1)
 
-  if (drivingflag.ne.0.and.www%topdfbasis.ge.www%botdfbasis) then
-     call basis_transformto_local(www,numr,&
-          workdrivingavec(:,www%botconfig:www%topconfig),&
-          drivingavecdf(:,www%botdfbasis:www%topdfbasis))
-  endif
-
   call mpibarrier()
   if (use_dfwalktype.and.shuffle_dfwalktype) then
      call basis_shuffle(numr,www,localvector,dwwptr,smallvector)
-     if (drivingflag.ne.0) then
-        call basis_shuffle(numr,www,drivingavecdf,dwwptr,workdrivingavecdf)
-     endif
   else
      smallvector(:,:)=localvector(:,:)
-     if (drivingflag.ne.0) then
-        workdrivingavecdf(:,:)=drivingavecdf(:,:)
-     endif
   endif
 
 !! par_timestep is a-norm estimate, ok, whatever
 
   iflag=0
   if (nzflag.eq.0.or.dwwptr%nzrank.gt.0) then
-     if (drivingflag.ne.0) then
-        smallvectortemp(:,:)=0d0
-        call parconfigexpomult_padded(smallvector,smallvectortemp)
-        if (dwwptr%topdfbasis.ge.dwwptr%botdfbasis) then
-           smallvectortemp(:,1:dwwptr%topdfbasis-dwwptr%botdfbasis+1)=  &
-                smallvectortemp(:,1:dwwptr%topdfbasis-dwwptr%botdfbasis+1) + &
-                workdrivingavecdf(:,dwwptr%botdfbasis:dwwptr%topdfbasis) * timefac 
-        endif
-        zerovector(:,:)=0d0
-        call DGPHIVxxx2( ixx, thisexpodim, one, smallvectortemp,&
-             zerovector, smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
-             iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,&
-             tempstepsize,realpardotsub,my_maxaorder+1)
-        
-        smallvectorout(:,:)=smallvectorout(:,:)+smallvector(:,:)
-     else
         call DGEXPVxxx2( ixx, thisexpodim, one, smallvector, &
              smallvectorout, aerror, par_timestep/littlesteps, wsp, lwsp, &
              iwsp, liwsp, parconfigexpomult_padded, itrace, iflag,expofileptr,&
              tempstepsize,realpardotsub,my_maxaorder+1)
-     endif
   else
      smallvectorout(:,:)=0d0 !! should be zero and stay zero but doing this anyway
   endif
