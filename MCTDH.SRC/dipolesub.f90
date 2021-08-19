@@ -30,7 +30,7 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   use orbgathersubmod
   use mpisubmod
   use utilmod
-  use dip_parameters  ! temp hack (?) for velocity operator output veldipflag
+  use dip_parameters  ! for velocity operator output veldipflag
   use ham_parameters  !   "  correct velocity operator output with velocity gauge velflag=1
   use pulsesubmod     !        "   requires value of A(t)
   use orbmultsubmod   !        "   option to gauge-transform then use length gauge with veldipflag > 1
@@ -188,7 +188,6 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
      elseif (veldipflag==1 .or. veldipflag==2) then
         call velmultiply(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAZERO,DATAONE)
         if (veldipflag==1 .and. strongVelFlag==0) then
-           !! hold it, isn't this also dumb?  should take constant operator outside of the expectation value
            tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(3)
         elseif (veldipflag==2 .and. strongVelFlag.ne.0) then    ! length gauge matrix element Vz - Az
            tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) - spfket(:,lowspf:highspf) * pots(3)
@@ -227,7 +226,6 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
      elseif (veldipflag==1 .or. veldipflag==2) then
         call velmultiply(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAZERO,DATAONE,DATAZERO)
         if (veldipflag==1 .and. strongVelFlag==0) then
-           !! hold it, isn't this also dumb?  should take constant operator outside of the expectation value
            tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(2)
         elseif (veldipflag==2 .and. strongVelFlag.ne.0) then    ! length gauge matrix element Vz - Az
            tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) - spfket(:,lowspf:highspf) * pots(2)
@@ -266,7 +264,6 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
      elseif (veldipflag==1 .or. veldipflag==2) then
         call velmultiply(numspf,spfket(:,lowspf:highspf),tempspfs(:,lowspf:highspf),DATAONE,DATAZERO,DATAZERO)
         if (veldipflag==1 .and. strongVelFlag==0) then
-           !! hold it, isn't this also dumb?  should take constant operator outside of the expectation value
            tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) + spfket(:,lowspf:highspf) * pots(1)
         elseif (veldipflag==2 .and. strongVelFlag.ne.0) then    ! length gauge matrix element Vz - Az
            tempspfs(:,lowspf:highspf) = tempspfs(:,lowspf:highspf) - spfket(:,lowspf:highspf) * pots(1)
@@ -337,12 +334,12 @@ contains
          workpers(:,:,:), photpers(:,:,:), totworkpers(:,:), totphotpers(:,:), &
          sumrule(:,:), each_efield_ang(:,:,:), moment(:), dipole_ang(:,:), &
          angworksum0(:,:,:), totangworksum0(:,:),  efield(:,:), each_efield(:,:,:), &
-         afield(:,:), each_afield(:,:,:), evals(:)
+         afield(:,:), each_afield(:,:,:), ft_evals(:)
 !! making integrals dt for work x y z complex valued for complex domcke wave mixing
     complex*16, allocatable :: worksum0(:,:,:), totworksum0(:,:)
     DATATYPE :: pots(3,npulses),pots2(3,numpulses)
-    real*8 :: estep, estart, thistime, myenergy,xsecunits, windowfunct
-    integer :: i,getlen,myiostat,ipulse,numft,ii
+    real*8 :: ft_estep, ft_estart, thistime, myenergy,xsecunits, windowfunct
+    integer :: i,getlen,myiostat,ipulse,numft,ii,opwr
     character (len=7) :: number
 
 #ifdef REALGO
@@ -398,7 +395,6 @@ contains
           do i=0,numdata
              write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  i*par_timestep*autosteps, &
                   dipolearrays(i,ii), efield(i,ii)*numelec, afield(i,ii)*numelec
-                  ! dipolearrays(i,ii),efield(i,ii),each_efield(i,ii,:)
           enddo
           call checkiostat(myiostat,"writing "//outenames(ii))
           close(171)
@@ -412,7 +408,6 @@ contains
              do i=0,numdata
                 write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  i*par_timestep*autosteps, &
                      dipolearrays(i,ii), efield(i,ii)*numelec, afield(i,ii)*numelec
-                     ! dipolearrays(i,ii),efield(i,ii),each_efield(i,ii,:)
              enddo
              call checkiostat(myiostat,"writing "//outenames(ii)(1:getlen(outenames(ii)))//number(2:7))
              close(171)
@@ -570,8 +565,8 @@ contains
        enddo
     endif
 
-    allocate(evals(0:numdata))
-    evals = 0
+    allocate(ft_evals(0:numdata))
+    ft_evals = 0
     
     if (1==1) then
 
@@ -583,19 +578,38 @@ contains
           enddo
        enddo
 
-       fftrans(:,1:3)=fftrans(:,1:3)     * par_timestep * autosteps
-       eft(:,1:3)=eft(:,1:3)             * par_timestep * autosteps
-       each_eft(:,1:3,:)=each_eft(:,1:3,:) * par_timestep * autosteps
-       
-       call zfftf_estep(numdata+1,estart,estep)
-       call zfftf_evals(numdata+1,evals)
-       
-       estep = estep / par_timestep / autosteps
-       
-       ! print *, "CHECK estep ", estep, 2*pi/par_timestep/autosteps/(numdata+1)
-       
+       call zfftf_estep(numdata+1,ft_estart,ft_estep)
+       call zfftf_evals(numdata+1,ft_evals)
+        
     endif
 
+    opwr = 0
+    if (veldipflag.eq.0) then                                 ! dipole expectation value
+    elseif (veldipflag.eq.1 .or. veldipflag.eq.2) then        ! velocity
+       opwr = 1
+    elseif (veldipflag.eq.3 .or. veldipflag.eq.4) then        ! acceleration
+       opwr = 2
+    else
+       OFLWR "what programmer failure"; CFLST
+    endif
+
+    !! KEEP FT OF VELOCITY regardless of veldipflag : (opwr-1)
+
+    do ii=1,3
+       fftrans(:,ii) = fftrans(:,ii) * ( (0d0,-1d0) / ft_evals(:) ) ** (opwr-1)
+    enddo
+    
+    !! now adjust to time step
+    
+    fftrans(:,1:3)=fftrans(:,1:3)     * par_timestep * autosteps
+    eft(:,1:3)=eft(:,1:3)             * par_timestep * autosteps
+    each_eft(:,1:3,:)=each_eft(:,1:3,:) * par_timestep * autosteps
+
+    ft_estart = ft_estart / par_timestep / autosteps
+    ft_estep  = ft_estep  / par_timestep / autosteps
+    ft_evals  = ft_evals  / par_timestep / autosteps
+    
+    ! print *, "CHECK estep ", estep, 2*pi/par_timestep/autosteps/(numdata+1)
     
     if (act21circ.ne.0) then
 !! XY, XZ, YX, YZ, ZX, ZY
@@ -636,21 +650,22 @@ contains
 
     if (dipolesumstart.le.0d0) then
        do ipulse=1,npulses
-          photpers(0,:,ipulse) = imag(fftrans(0,:)*conjg(each_eft(0,:,ipulse))) / PI !! NO 9/17 / 2   !! /2 6/16
-          photsums(0,:,ipulse) = Estep * photpers(0,:,ipulse)
+          photpers(0,:,ipulse) = real(fftrans(0,:)*conjg(each_eft(0,:,ipulse))) / PI / ft_evals(:)
+          photsums(0,:,ipulse) = ft_estep * photpers(0,:,ipulse)
        enddo
     endif
     do i=1,numdata
-       myenergy=i*Estep
-
+       myenergy = ft_evals(i)
+       print *, "atempcheck ",i*ft_estep,ft_evals(i)
+       
 !! sumrule sums to N for N electrons
        if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend.and.i.le.(numdata/2)) then
-          sumrule(i,:)=sumrule(i-1,:) + Estep * imag(fftrans(i,:)*conjg(eft(i,:))) / abs(eft(i,:)**2) * myenergy * 2 / PI
+          sumrule(i,:)=sumrule(i-1,:) + ft_estep * real(fftrans(i,:)*conjg(eft(i,:))) / abs(eft(i,:)**2) * 2 / PI
           do ipulse=1,npulses
-             photpers(i,:,ipulse) = imag(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI  !! NO 9/17  / 2  !! /2 6/16
-             workpers(i,:,ipulse) = imag(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI * myenergy
-             photsums(i,:,ipulse) = photsums(i-1,:,ipulse) + Estep * photpers(i,:,ipulse)
-             worksums(i,:,ipulse) = worksums(i-1,:,ipulse) + Estep * workpers(i,:,ipulse)
+             photpers(i,:,ipulse) = real(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI / myenergy
+             workpers(i,:,ipulse) = real(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI 
+             photsums(i,:,ipulse) = photsums(i-1,:,ipulse) + ft_estep * photpers(i,:,ipulse)
+             worksums(i,:,ipulse) = worksums(i-1,:,ipulse) + ft_estep * workpers(i,:,ipulse)
           enddo
        else
           sumrule(i,:)=sumrule(i-1,:)
@@ -669,44 +684,41 @@ contains
        totworkpers(:,:)=totworkpers(:,:)+workpers(:,:,ipulse)
     enddo
 
+    xsecunits = 5.291772108d0**2 * 4d0 * PI / 1.37036d2
+
     if (myrank.eq.1) then
        do ii=1,numft
           open(171,file=outftnames(ii),status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening "//outftnames(ii))
           write(171,'(A120)',iostat=myiostat) &
-               "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 
+               "## (1)Omega,functions of:   (2,3)V  (4,5)E  (6)|V|^2*w^2  (7)S=2Re(VE*)  (8)notUsed  (9)S/|E|^2,megaBarns  (10)sumRule"
           call checkiostat(myiostat,"writing "//outftnames(ii))
-          write(171,'(A120)') "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
-          write(171,'(A120)') "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
-          write(171,'(A120)') "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (FOR SUM RULE) IN COLUMN 10"
+          write(171,'(A120)') "## Column:1   2,3      4,5      6             7           8     9            10        "
+          write(171,'(A120)') "## Omega, w,  V(w),    E(w)     |V|^2*w^2     S=2Re(VE*)  0     S/|E|^2*fac  sumRule  "
+          write(171,'(A120)') "## Frequency  Velocity ElecFld  HHG/FID/Thom  Abs/Emit    zero  A/E Xsect             "
           write(171,*)
+
+          ! "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
+          ! "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
+          ! "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (FOR SUM RULE) IN COLUMN 10"
        
           do i=0,numdata
-             myenergy=i*Estep
-
-!! LENGTH GAUGE (electric field) WAS FT'ed , OK with usual formula multiply by wfi
-!! UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7
-!! QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE
-!! INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (FOR SUM RULE) IN COLUMN 10
-
-             xsecunits = 5.291772108d0**2 * 4d0 * PI / 1.37036d2 * myenergy
-
-!! NOW FACTOR (2 omega) IN COLUMNS 6,7   v1.16 12-2015
-
+             myenergy = ft_evals(i)
              write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
-                  fftrans(i,ii), eft(i,ii), fftrans(i,ii)*conjg(eft(i,ii)) * 2 * myenergy, &
-                  fftrans(i,ii)*conjg(eft(i,ii)) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
+                  fftrans(i,ii), eft(i,ii), abs(fftrans(i,ii))**2 * myenergy**2, &
+                  2 * real(fftrans(i,ii)*conjg(eft(i,ii)),8) , &
+                  real(fftrans(i,ii)*conjg(eft(i,ii)),8) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
           enddo
           call checkiostat(myiostat,"writing "//outftnames(ii))
           close(171)
 
-!!  NUMBER OF PHOTONS ABSORBED AND AND WORK DONE BY EACH PULSE
-!!  worksum0 the time integral converges right after pulse is finished... others take longer
+          !!  NUMBER OF PHOTONS ABSORBED AND AND WORK DONE BY EACH PULSE
+          !!  worksum0 the time integral converges right after pulse is finished... others take longer
 
           open(171,file=outoworknames(ii),status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening "//outoworknames(ii))
           do i=0,numdata
-             myenergy=i*Estep
+             myenergy = ft_evals(i)
              if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
                 write(171,'(A25,F10.5,400E20.8)') " WORK EACH PULSE E= ", myenergy, &
                      totworksums(i,ii), totworkpers(i,ii), worksums(i,ii,:), workpers(i,ii,:)
@@ -717,7 +729,7 @@ contains
           open(171,file=outophotonnames(ii),status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening "//outophotonnames(ii))
           do i=0,numdata
-             myenergy=i*Estep
+             myenergy = ft_evals(i)
              if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
                 write(171,'(A25,F10.5,400E20.8)') "PHOTONS EACH PULSE E= ", myenergy, &
                      totphotsums(i,ii), totphotpers(i,ii), photsums(i,ii,:), photpers(i,ii,:)
@@ -730,7 +742,7 @@ contains
              open(171,file=outoworknames(ii)(1:getlen(outoworknames(ii)))//number(2:7),status="unknown",iostat=myiostat)
              call checkiostat(myiostat,"opening "//outoworknames(ii)(1:getlen(outoworknames(ii)))//number(2:7))
              do i=0,numdata
-                myenergy=i*Estep
+                myenergy = ft_evals(i)
                 if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
                    write(171,'(A25,F10.5,400E20.8)') " WORK EACH PULSE E= ", myenergy, &
                         totworksums(i,ii), totworkpers(i,ii), worksums(i,ii,:), workpers(i,ii,:)
@@ -741,7 +753,7 @@ contains
              open(171,file=outophotonnames(ii)(1:getlen(outophotonnames(ii)))//number(2:7),status="unknown",iostat=myiostat)
              call checkiostat(myiostat,"opening "//outophotonnames(ii)(1:getlen(outophotonnames(ii)))//number(2:7))
              do i=0,numdata
-                myenergy=i*Estep
+                myenergy = ft_evals(i)
                 if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
                    write(171,'(A25,F10.5,400E20.8)') "PHOTONS EACH PULSE E= ", myenergy, &
                         totphotsums(i,ii), totphotpers(i,ii), photsums(i,ii,:), photpers(i,ii,:)
@@ -752,23 +764,23 @@ contains
              open(171,file=outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7),status="unknown",iostat=myiostat)
              call checkiostat(myiostat,"opening "//outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7))
              write(171,'(A120)',iostat=myiostat) &
-                  "## Photon energy (column 1); D(omega) (2,3); E(omega) (4,5); response (6,7); cross sect (9); integrated (10)" 
+                  "## (1)Omega,functions of:   (2,3)V  (4,5)E  (6)|V|^2*w^2  (7)S=2Re(VE*)  (8)notUsed  (9)S/|E|^2,megaBarns  (10)sumRule"
              call checkiostat(myiostat,"writing "//outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7))
-             write(171,'(A120)') "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
-             write(171,'(A120)') "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
-             write(171,'(A120)') "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (FOR SUM RULE) IN COLUMN 10"
+             write(171,'(A120)') "## Column:1   2,3      4,5      6             7           8     9            10        "
+             write(171,'(A120)') "## Omega, w,  V(w),    E(w)     |V|^2*w^2     S=2Re(VE*)  0     S/|E|^2*fac  sumRule  "
+             write(171,'(A120)') "## Frequency  Velocity ElecFld  HHG/FID/Thom  Abs/Emit    zero  A/E Xsect             "
              write(171,*)
 
              do i=0,numdata
-                myenergy=i*Estep
-
-                xsecunits = 5.291772108d0**2 * 4d0 * PI / 1.37036d2 * myenergy
-
-!! NOW FACTOR (2 omega) IN COLUMNS 6,7   v1.16 12-2015
-
+                myenergy = ft_evals(i)
                 write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
-                     fftrans(i,ii), eft(i,ii), fftrans(i,ii)*conjg(eft(i,ii)) * 2 * myenergy, &
-                     fftrans(i,ii)*conjg(eft(i,ii)) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
+                     fftrans(i,ii), eft(i,ii), abs(fftrans(i,ii))**2 * myenergy**2, &
+                     2 * real(fftrans(i,ii)*conjg(eft(i,ii)),8) , &
+                     real(fftrans(i,ii)*conjg(eft(i,ii)),8) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
+
+                !write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
+                !     fftrans(i,ii), eft(i,ii), fftrans(i,ii)*conjg(eft(i,ii)) * 2 * myenergy, &
+                !     fftrans(i,ii)*conjg(eft(i,ii)) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
              enddo
              call checkiostat(myiostat,"writing "//outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7))
              close(171)
@@ -777,7 +789,7 @@ contains
     endif  !! myrank
     call mpibarrier()
 
-    deallocate(evals)
+    deallocate(ft_evals)
     deallocate(fftrans,eft,each_eft)
     deallocate(worksums,photsums,totworksums,totphotsums,  workpers,photpers,totworkpers,totphotpers,&
          sumrule)
