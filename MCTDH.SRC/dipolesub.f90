@@ -339,7 +339,7 @@ contains
     complex*16, allocatable :: worksum0(:,:,:), totworksum0(:,:)
     DATATYPE :: pots(3,npulses),pots2(3,numpulses)
     real*8 :: ft_estep, ft_estart, thistime, myenergy,xsecunits, windowfunct
-    integer :: i,getlen,myiostat,ipulse,numft,ii,opwr
+    integer :: i,getlen,myiostat,ipulse,numft,ii,opwr,dowork
     character (len=7) :: number
 
 #ifdef REALGO
@@ -421,49 +421,68 @@ contains
     allocate(dipole_diff(0:numdata,3), worksum0(0:numdata,3,npulses), totworksum0(0:numdata,3))
     dipole_diff=0d0;    worksum0=0;   totworksum0=0;  
 
-    do i=1,3
-       call complexdiff(numdata+1,dipolearrays(:,i),dipole_diff(:,i),1,1,ftderord)
-    enddo
-    dipole_diff(:,:)= dipole_diff(:,:) / par_timestep / autosteps
-
-    do ipulse=1,npulses
-       worksum0(0,:,ipulse) = (-1) * dipole_diff(0,:) * each_efield(0,:,ipulse) * par_timestep * autosteps
-       do i=1,numdata
-          worksum0(i,:,ipulse)=worksum0(i-1,:,ipulse) - dipole_diff(i,:) * each_efield(i,:,ipulse) * par_timestep * autosteps
+    dowork = 1;
+    if (veldipflag==0) then
+       do i=1,3
+          call complexdiff(numdata+1,dipolearrays(:,i),dipole_diff(:,i),1,1,ftderord)
        enddo
-    enddo
-    totworksum0(:,:)=0d0
-    do ipulse=1,npulses
-       totworksum0(:,:)=totworksum0(:,:)+worksum0(:,:,ipulse)
-    enddo
+       dipole_diff(:,:)= dipole_diff(:,:) / par_timestep / autosteps
+    elseif (veldipflag==1 .or. veldipflag==2) then
+       dipole_diff(:,:) = dipolearrays(:,:)
+    elseif (veldipflag==3 .or. veldipflag==4) then
+       OFLWR "skipping work calculation, veldipflag=3,4"; CFL  ! don't have V(t).. could complexint()
+       dowork = 0;
+    else
+       OFLWR "Programmer checkme"; CFLST
+    endif
 
-    if (myrank.eq.1) then
-       do ii=1,3
-          open(171,file=outtworknames(ii),status="unknown",iostat=myiostat)
-          call checkiostat(myiostat,"opening "//outtworknames(ii))
-          do i=0,numdata
-             write(171,'(A25,F10.5,400E20.8)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
-                  totworksum0(i,ii),worksum0(i,ii,:)
+    if (dowork.ne.0) then
+       do ipulse=1,npulses
+          worksum0(0,:,ipulse) = (-1) * dipole_diff(0,:) * each_efield(0,:,ipulse) * par_timestep * autosteps
+          do i=1,numdata
+             worksum0(i,:,ipulse)=worksum0(i-1,:,ipulse) - dipole_diff(i,:) * each_efield(i,:,ipulse) * par_timestep * autosteps
           enddo
-          close(171)
+       enddo
+       totworksum0(:,:)=0d0
+       do ipulse=1,npulses
+          totworksum0(:,:)=totworksum0(:,:)+worksum0(:,:,ipulse)
        enddo
 
-       if (sflag.ne.0) then
+       if (myrank.eq.1) then
           do ii=1,3
-             open(171,file=outtworknames(ii)(1:getlen(outtworknames(ii)))//number(2:7),status="unknown",iostat=myiostat)
-             call checkiostat(myiostat,"opening "//outtworknames(ii)(1:getlen(outtworknames(ii)))//number(2:7))
+             open(171,file=outtworknames(ii),status="unknown",iostat=myiostat)
+             call checkiostat(myiostat,"opening "//outtworknames(ii))
              do i=0,numdata
                 write(171,'(A25,F10.5,400E20.8)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
                      totworksum0(i,ii),worksum0(i,ii,:)
              enddo
              close(171)
           enddo
+          
+          if (sflag.ne.0) then
+             do ii=1,3
+                open(171,file=outtworknames(ii)(1:getlen(outtworknames(ii)))//number(2:7),status="unknown",iostat=myiostat)
+                call checkiostat(myiostat,"opening "//outtworknames(ii)(1:getlen(outtworknames(ii)))//number(2:7))
+                do i=0,numdata
+                   write(171,'(A25,F10.5,400E20.8)') " EACH PULSE WORK T= ", i*par_timestep*autosteps,&
+                        totworksum0(i,ii),worksum0(i,ii,:)
+                enddo
+                close(171)
+             enddo
+          endif
        endif
-    endif
-    call mpibarrier()
+       call mpibarrier()
+
+    endif   ! dowork
+
     deallocate(worksum0,totworksum0)
 
     if (act21circ.ne.0) then
+       
+       if (veldipflag.ne.0) then                                     !  dipolearrays are not D(t) then
+          OFLWR "act21circ with veldipflag not supported: input error"; CFLST
+       endif
+          
        allocate(angworksum0(0:numdata,3,npulses), totangworksum0(0:numdata,3), dipole_ang(0:numdata,3), &
             each_efield_ang(0:numdata,3,npulses), moment(0:numdata))
        angworksum0=0;  totangworksum0=0; dipole_ang=0;   each_efield_ang=0;    moment=0
@@ -593,11 +612,6 @@ contains
        OFLWR "what programmer failure"; CFLST
     endif
 
-    !! KEEP FT OF VELOCITY regardless of veldipflag : (opwr-1)
-
-    do ii=1,3
-       fftrans(:,ii) = fftrans(:,ii) * ( (0d0,-1d0) / ft_evals(:) ) ** (opwr-1)
-    enddo
     
     !! now adjust to time step
     
@@ -610,7 +624,13 @@ contains
     ft_evals  = ft_evals  / par_timestep / autosteps
     
     ! print *, "CHECK estep ", estep, 2*pi/par_timestep/autosteps/(numdata+1)
-    
+
+    !! KEEP FT OF VELOCITY regardless of veldipflag : (opwr-1)
+
+    do ii=1,3
+       fftrans(:,ii) = fftrans(:,ii) * ( (0d0,-1d0) / ft_evals(:) ) ** (opwr-1)
+    enddo
+
     if (act21circ.ne.0) then
 !! XY, XZ, YX, YZ, ZX, ZY
 
@@ -637,7 +657,6 @@ contains
 
     endif
 
-
     allocate(&
          worksums(0:numdata,numft,npulses),photsums(0:numdata,numft,npulses),&
          totworksums(0:numdata,numft), totphotsums(0:numdata,numft), &
@@ -656,7 +675,6 @@ contains
     endif
     do i=1,numdata
        myenergy = ft_evals(i)
-       print *, "atempcheck ",i*ft_estep,ft_evals(i)
        
 !! sumrule sums to N for N electrons
        if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend.and.i.le.(numdata/2)) then
