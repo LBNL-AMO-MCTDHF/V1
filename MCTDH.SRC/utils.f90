@@ -138,62 +138,114 @@ subroutine complexdiff_prev(size,in,out,diffoption)
 end subroutine complexdiff_prev
 
 
-subroutine banded_dip_mat(size,diffpower,bw,diffmat,lda)
+subroutine banded_diff_mat(size,diffpower,bw,diffmat,lda)
   use fileptrmod
   implicit none
   integer, intent(in) :: size, diffpower, bw, lda
-  real*8, intent(out) :: diffmat(lda,size)
-  real*8 :: smat(-bw:bw,-bw:bw), pts(-bw:bw)  !! AUTOMATIC
+  real*8, intent(out) :: diffmat(-bw:bw,size)
   integer :: ipiv(2*bw+1)  !! AUTOMATIC
-  real*8, allocatable :: xmat(:,:),vec(:)
+  real*8, allocatable :: xmat(:,:),vec(:),ymat(:,:),xmat0(:,:),ymat2(:,:),&
+       smat(:,:), pts(:)
   real*8 :: fac
-  integer :: tbw,ii,jj,neqn,factorial,imin,imax,info
-
-  if (diffpower<0 .or. bw.lt.1) then
-     OFLWR "ERROR diffpower or difforder in banded_dip_mat ",diffpower,bw; CFLST
-  endif
+  integer :: tbw,ii,jj,neqn,factorial,imin,imax,info,nn
 
   ! note:  bw = difforder
+  if (diffpower==0) then
+     OFLWR "Programmer failure: diffpower=0 banded_diff_mat not necessary"; CFLST
+  endif
+  if (diffpower<0 .or. bw.lt.1) then
+     OFLWR "ERROR diffpower or difforder in banded_diff_mat ",diffpower,bw; CFLST
+  endif
 
   tbw = 2*bw + 1
   neqn = tbw
 
+  if (lda.ne.tbw) then
+     OFLWR "ERROR banded_diff_mat programmer failure",lda,tbw; CFLST
+  endif
+  
   fac = bw**((bw-1d0)/bw)
   factorial = 1
   do ii=2,diffpower
      factorial = factorial * ii
   enddo
+
+  fac = 1  ! TEMP
   
-  allocate(vec(neqn), xmat(-bw:bw,neqn+1))  ! plus one padding for dgesv call
-  diffmat(:,:) = 0  ; vec(:) = 0; xmat(:,:) = 0
+  allocate(vec(neqn), xmat(neqn,-bw:bw), ymat(-bw:bw,-bw:bw), &
+       xmat0(neqn,-bw:bw), ymat2(-bw:bw,-bw:bw), &
+       smat(-bw:bw,-bw:bw), pts(-bw:bw) )
+  
+  diffmat(:,:) = 0  ; vec(:) = 0;
+  xmat(:,:) = 0; ymat(:,:) = 0; xmat0(:,:) = 0
+  ymat2(:,:) = 0; smat(:,:) = 0; pts(:) = 0
   
   do ii = -bw,bw
      pts(ii) = ii / fac
   enddo
   do ii = 1, neqn
-     xmat(:,ii) = pts(ii)**(ii-1)
+     xmat0(ii,:) = pts(:)**(ii-1)
   enddo
   do ii = -bw , bw
+     xmat(:,:) = xmat0(:,:)
+     imin = max(-bw,-bw-ii)
+     imax = min(bw,bw-ii)
+     nn = imax-imin+1
+     vec(:) = 0
+     vec(diffpower+1) = 1
+     call dgesv(nn,1,xmat(1,imin),tbw,ipiv,vec,neqn,info)
+     if (info.ne.0)then
+        OFLWR "INFO DGESV IN banded_diff_mat ",info; CFLST
+     endif
+     vec = vec * factorial / fac**diffpower
+     ymat(ii,imin:imax) = vec(1:nn)
      imin = max(-bw,-bw+ii)
      imax = min(bw,bw+ii)
-     neqn = imax-imin+1
-     vec(:) = 0
-     vec(diffpower+1) = 1 
-     call dgesv(neqn,1,xmat(imin,1),tbw,ipiv,vec,1,info)
-     if (info.ne.0)then
-        OFLWR "INFO DGESV IN banded_dip_mat ",info; CFLST
-     endif
-     diffmat(ii,imin:imax) = vec(1:neqn) * factorial
+     ymat2(ii,imin:imax) = vec(1:nn)
   enddo
-  print *, "DIFFMAT:  ", fac
-  do ii = -bw,bw
-     print *, diffmat(ii,:)
-  enddo
-  print *, "-----------end diffmat"
 
-  deallocate(vec,xmat)
+  if (1==0) then
+     print *, "YMAT2:  ", fac, diffpower
+     do ii = -bw,bw
+        print '(100F10.5)', ymat2(ii,:)
+     enddo
+     print *, "-----------end diffmat"
+     print '(9F10.5)', matmul(ymat,transpose(xmat0))
+     !print *, "TEMPSTOP"
+     !CFLST
+  endif
+
+  do jj = -bw, -1
+     ii = jj + bw + 1
+     diffmat(-bw-jj:bw,ii) = ymat2(jj,-bw:bw+jj)
+  enddo
+  do ii=bw+1,size-bw
+     diffmat(:,ii) = ymat2(0,:)
+  enddo
+  do jj= 1,bw
+     ii = jj - bw + size
+     diffmat(-bw:bw-jj,ii) = ymat2(jj,-bw+jj:bw)
+  enddo
+
+  if (1==0) then
+     print *, "DMAT - T:  ", fac, diffpower
+     do ii = 1,size
+        print '(100F10.5)', diffmat(:,ii)
+     enddo
+     
+     !print *, "DMAT:  ", fac, diffpower
+     !do ii = -bw, bw
+     !   print '(100F10.5)', diffmat(ii,1:10)
+     !enddo
+     
+     print *, "-----------end diffmat"
+     !print *, "TEMPSTOP"
+     !CFLST
+  endif
   
-end subroutine banded_dip_mat
+  deallocate(vec,xmat,ymat,xmat0,ymat2,smat,pts)
+  
+end subroutine banded_diff_mat
   
 
 !! NOW DOES OTHER DERIVATIVES.. BEFORE WAS ONLY 1ST DERIVATIVE
@@ -210,6 +262,7 @@ subroutine complexdiff(size,in,out,howmany,diffpower,difforder)
   real*8, allocatable :: bandmat(:,:)
   real*8 :: rein(size),reout(size),imin(size),imout(size) ! AUTOMATIC
   integer :: ii,tbw,bw
+  integer :: jj ! temp
 
   if (diffpower<0) then
      OFLWR "error diffpower >= 0 please ", diffpower; CFLST
@@ -224,12 +277,32 @@ subroutine complexdiff(size,in,out,howmany,diffpower,difforder)
   bw      = difforder
   tbw     = 2*difforder+1
   allocate(bandmat(tbw,size))
-  call banded_dip_mat(size,bw,bw,bandmat,tbw)
+
+  call banded_diff_mat(size,diffpower,bw,bandmat,tbw)
+  ! call banded_diff_mat(size,2,bw,bandmat,tbw)
+
+  out(:,:) = 0d0
+  
   do ii = 1,howmany
      rein(:) = real(in(:,ii),8)
      imin(:) = imag(in(:,ii))
-     call DGBMV('N',size,size,bw,bw,0d0,bandmat,tbw,rein,1,0d0,reout,1)
-     call DGBMV('N',size,size,bw,bw,0d0,bandmat,tbw,imin,1,0d0,imout,1)
+
+     if (1==0) then
+        do jj=1,size
+           rein(jj) = (jj)**3
+        enddo
+     endif
+  
+     call DGBMV('T',size,size,bw,bw,1d0,bandmat,tbw,rein,1,0d0,reout,1)
+
+     if (1==0) then
+        print *, "DIFFVEC"
+        print '(3F14.0)', reout(:)
+        print *, "TEMPSTOP"
+        CFLST
+     endif
+
+     call DGBMV('T',size,size,bw,bw,0d0,bandmat,tbw,imin,1,0d0,imout,1)
      out(:,ii)  = reout(:) + (0d0,1d0) * imout(:)
   enddo
   deallocate(bandmat)
@@ -252,7 +325,6 @@ subroutine half_ft_wrap_diff(size,inout,howmany,diffpower,difforder)
      allocate(work(size,howmany),evals(size));
      work=0
 
-     ! call half_ft_estep(size,estart,estep)
      call half_ft_evals(size,evals)
      
      call complexdiff(size,inout,work,howmany,diffpower,difforder)
@@ -262,10 +334,6 @@ subroutine half_ft_wrap_diff(size,inout,howmany,diffpower,difforder)
      do i=1,howmany
         inout(:,i) = work(:,i) * ( (0d0,-1d0) / evals(:) )**diffpower
      enddo
-     !do i=1,size
-     !   omega = estart + estep*(i-1)
-     !   inout(i,:)=work(i,:) * ( (0d0,-1d0) / omega ) ** diffpower
-     !enddo
 
      deallocate(work,evals)
   endif
@@ -296,6 +364,20 @@ subroutine half_ft_evals(size,evals)
      evals(i) = estart + estep*(i-1)
   enddo
 end subroutine half_ft_evals
+
+
+subroutine zfftf_evals(size,evals)
+  implicit none
+  integer,intent(in) :: size
+  real*8, intent(out) :: evals(size)
+  real*8 :: estart,estep
+  integer :: i
+  call zfftf_estep(size,estart,estep)
+  evals(:) = 0
+  do i=1,size
+     evals(i) = estart + estep*(i-1)
+  enddo
+end subroutine zfftf_evals
 
 
 
@@ -404,8 +486,8 @@ subroutine half_ft_wrap(size,inout,howmany)
   call ZGEMM('N','N',size,howmany,size,&
        (1d0,0d0),ftmat,size,inout,size,(0d0,0d0),out,size)
   inout(:,:) = out(:,:)
-  deallocate(bigvec,vv,ftmat,out)
   deallocate(wsave)
+  deallocate(bigvec,vv,ftmat,out)
 end subroutine half_ft_wrap
 
 

@@ -490,7 +490,8 @@ integer :: actions(100)=0        !!              !! ACTIONS
 !!   Act=28   like action 17 partial photoionization during calculation just integral dt
 !!   Act=29   redo action 21 with file saved from flux.bin files from Act=15
 !!EE
-!!{\large \quad ACTION VARIABLES (also see filenames in INPUT/OUTPUT above)}
+!!{\large \quad              ACTION VARIABLES                                              }
+!! \quad \quad      (also see INPUT/OUTPUT filenames and Fourier Transform parameters above)
 !!BB
 integer :: numovlfiles=1         !!  see ovlspffiles and ovlavectorfiles in INPUT/OUTPUT
 integer :: nkeproj=200           !!  For keprojector ACTION 24

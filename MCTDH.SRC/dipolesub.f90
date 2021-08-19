@@ -337,11 +337,11 @@ contains
          workpers(:,:,:), photpers(:,:,:), totworkpers(:,:), totphotpers(:,:), &
          sumrule(:,:), each_efield_ang(:,:,:), moment(:), dipole_ang(:,:), &
          angworksum0(:,:,:), totangworksum0(:,:),  efield(:,:), each_efield(:,:,:), &
-         afield(:,:), each_afield(:,:,:)
+         afield(:,:), each_afield(:,:,:), evals(:)
 !! making integrals dt for work x y z complex valued for complex domcke wave mixing
     complex*16, allocatable :: worksum0(:,:,:), totworksum0(:,:)
     DATATYPE :: pots(3,npulses),pots2(3,numpulses)
-    real*8 :: estep, thistime, myenergy,xsecunits, windowfunct
+    real*8 :: estep, estart, thistime, myenergy,xsecunits, windowfunct
     integer :: i,getlen,myiostat,ipulse,numft,ii
     character (len=7) :: number
 
@@ -354,6 +354,7 @@ contains
     allocate(dipolearrays(0:numdata,3), efield(0:numdata,3), each_efield(0:numdata,3,npulses), &
          afield(0:numdata,3), each_afield(0:numdata,3,npulses))
     dipolearrays=0; efield=0; each_efield=0; afield=0; each_afield=0
+
 
     if (sflag.ne.0) then
        thistime=numdata*par_timestep*autosteps
@@ -556,7 +557,7 @@ contains
     eft(:,1:3)=efield(:,:) 
     each_eft(:,1:3,:)=each_efield(:,:,:)
 
-    deallocate(efield,each_efield,dipolearrays)
+    deallocate(efield,each_efield,dipolearrays,each_afield,afield)
 
     do i=0,numdata
        fftrans(i,1:3) = fftrans(i,1:3) * windowfunct(i,numdata,21)  !! action 21
@@ -569,22 +570,32 @@ contains
        enddo
     endif
 
-    do ii=1,3
-       call zfftf_wrap_diff(numdata+1,fftrans(:,ii),ftderpwr(21),ftderord)
-       call zfftf_wrap(numdata+1,eft(:,ii))
-       do ipulse=1,npulses
-          call zfftf_wrap(numdata+1,each_eft(:,ii,ipulse))
-       enddo
-    enddo
-
-    fftrans(:,1:3)=fftrans(:,1:3)     * par_timestep * autosteps
-    eft(:,1:3)=eft(:,1:3)             * par_timestep * autosteps
-    each_eft(:,1:3,:)=each_eft(:,1:3,:) * par_timestep * autosteps
-
-    Estep=2*pi/par_timestep/autosteps/(numdata+1)
-
-
+    allocate(evals(0:numdata))
+    evals = 0
     
+    if (1==1) then
+
+       do ii=1,3
+          call zfftf_wrap_diff(numdata+1,fftrans(:,ii),ftderpwr(21),ftderord)
+          call zfftf_wrap(numdata+1,eft(:,ii))
+          do ipulse=1,npulses
+             call zfftf_wrap(numdata+1,each_eft(:,ii,ipulse))
+          enddo
+       enddo
+
+       fftrans(:,1:3)=fftrans(:,1:3)     * par_timestep * autosteps
+       eft(:,1:3)=eft(:,1:3)             * par_timestep * autosteps
+       each_eft(:,1:3,:)=each_eft(:,1:3,:) * par_timestep * autosteps
+       
+       call zfftf_estep(numdata+1,estart,estep)
+       call zfftf_evals(numdata+1,evals)
+       
+       estep = estep / par_timestep / autosteps
+       
+       ! print *, "CHECK estep ", estep, 2*pi/par_timestep/autosteps/(numdata+1)
+       
+    endif
+
     
     if (act21circ.ne.0) then
 !! XY, XZ, YX, YZ, ZX, ZY
@@ -766,6 +777,7 @@ contains
     endif  !! myrank
     call mpibarrier()
 
+    deallocate(evals)
     deallocate(fftrans,eft,each_eft)
     deallocate(worksums,photsums,totworksums,totphotsums,  workpers,photpers,totworkpers,totphotpers,&
          sumrule)
