@@ -587,8 +587,20 @@ contains
     allocate(ft_evals(0:numdata))
     ft_evals = 0
     
-    if (1==1) then
+    if (1==0) then
 
+       do ii=1,3
+          call half_ft_wrap_diff(numdata+1,fftrans(:,ii),1,ftderpwr(21),ftderord)
+          call half_ft_wrap(numdata+1,eft(:,ii),1)
+          do ipulse=1,npulses
+             call half_ft_wrap(numdata+1,each_eft(:,ii,ipulse),1)
+          enddo
+       enddo
+
+       call half_ft_estep(numdata+1,ft_estart,ft_estep)
+       call half_ft_evals(numdata+1,ft_evals)
+        
+    else
        do ii=1,3
           call zfftf_wrap_diff(numdata+1,fftrans(:,ii),ftderpwr(21),ftderord)
           call zfftf_wrap(numdata+1,eft(:,ii))
@@ -669,7 +681,7 @@ contains
 
     if (dipolesumstart.le.0d0) then
        do ipulse=1,npulses
-          photpers(0,:,ipulse) = real(fftrans(0,:)*conjg(each_eft(0,:,ipulse))) / PI / ft_evals(:)
+          photpers(0,:,ipulse) = real(fftrans(0,:)*conjg(each_eft(0,:,ipulse))) / PI / ft_evals(0)
           photsums(0,:,ipulse) = ft_estep * photpers(0,:,ipulse)
        enddo
     endif
@@ -686,9 +698,9 @@ contains
              worksums(i,:,ipulse) = worksums(i-1,:,ipulse) + ft_estep * workpers(i,:,ipulse)
           enddo
        else
-          sumrule(i,:)=sumrule(i-1,:)
+          sumrule(i,:)     =   sumrule(i-1,:)
           photsums(i,:,:)  =  photsums(i-1,:,:)
-          worksums(i,:,:)=worksums(i-1,:,:)
+          worksums(i,:,:)  =  worksums(i-1,:,:)
        endif
     enddo
     totphotsums=0

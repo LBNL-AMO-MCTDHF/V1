@@ -262,7 +262,6 @@ subroutine complexdiff(size,in,out,howmany,diffpower,difforder)
   real*8, allocatable :: bandmat(:,:)
   real*8 :: rein(size),reout(size),imin(size),imout(size) ! AUTOMATIC
   integer :: ii,tbw,bw
-  integer :: jj ! temp
 
   if (diffpower<0) then
      OFLWR "error diffpower >= 0 please ", diffpower; CFLST
@@ -287,20 +286,16 @@ subroutine complexdiff(size,in,out,howmany,diffpower,difforder)
      rein(:) = real(in(:,ii),8)
      imin(:) = imag(in(:,ii))
 
-     if (1==0) then
-        do jj=1,size
-           rein(jj) = (jj)**3
-        enddo
-     endif
+     !   do jj=1,size
+     !      rein(jj) = (jj)**3
+     !   enddo
   
      call DGBMV('T',size,size,bw,bw,1d0,bandmat,tbw,rein,1,0d0,reout,1)
 
-     if (1==0) then
-        print *, "DIFFVEC"
-        print '(3F14.0)', reout(:)
-        print *, "TEMPSTOP"
-        CFLST
-     endif
+     !   print *, "DIFFVEC"
+     !   print '(3F14.0)', reout(:)
+     !   print *, "TEMPSTOP"
+     !   CFLST
 
      call DGBMV('T',size,size,bw,bw,0d0,bandmat,tbw,imin,1,0d0,imout,1)
      out(:,ii)  = reout(:) + (0d0,1d0) * imout(:)
@@ -323,7 +318,7 @@ subroutine half_ft_wrap_diff(size,inout,howmany,diffpower,difforder)
      call half_ft_wrap(size,inout,howmany)
   else
      allocate(work(size,howmany),evals(size));
-     work=0
+     work=0; evals=0
 
      call half_ft_evals(size,evals)
      
@@ -334,6 +329,10 @@ subroutine half_ft_wrap_diff(size,inout,howmany,diffpower,difforder)
      do i=1,howmany
         inout(:,i) = work(:,i) * ( (0d0,-1d0) / evals(:) )**diffpower
      enddo
+
+     !do i=1,size
+     !   inout(i,:)=work(i,:) * ( (0d0,-1d0) / evals(i) ) ** diffpower
+     !enddo
 
      deallocate(work,evals)
   endif
@@ -396,17 +395,15 @@ subroutine zfftf_wrap_diff(size,inout,diffpower,difforder)
   integer, intent(in) :: size,diffpower,difforder
   complex*16, intent(inout) :: inout(size)
   complex*16,allocatable :: work(:)
-  real*8 :: estart,estep,omega
-  integer :: i
+  real*8, allocatable :: evals(:)
 
   if (diffpower.eq.0) then
      call zfftf_wrap(size,inout)
   else
-     allocate(work(size));
-     work=0
-
-     call zfftf_estep(size,estart,estep)
-
+     allocate(work(size),evals(size));
+     work=0; evals=0
+     call zfftf_evals(size,evals)
+     
      !! NOW DOES OTHER DERIVATIVES.. BEFORE WAS ONLY 1ST DERIVATIVE
      !!   and ftdiff selected different options for it..  now
      !!   we select the derivative order with diffpower
@@ -416,12 +413,9 @@ subroutine zfftf_wrap_diff(size,inout,diffpower,difforder)
 
      call zfftf_wrap(size,work)
 
-     do i=1,size
-        omega = estart + estep*(i-1)
-        inout(i)=work(i) * ( (0d0,-1d0) / omega ) ** diffpower
-     enddo
-
-     deallocate(work)
+     inout(:) = work(:) * ( (0d0,-1d0) / evals(:) )**diffpower
+     
+     deallocate(work,evals)
   endif
 
 end subroutine zfftf_wrap_diff
@@ -466,28 +460,30 @@ subroutine half_ft_wrap(size,inout,howmany)
   implicit none
   integer, intent(in) :: size,howmany
   complex*16, intent(inout) :: inout(size,howmany)
-  complex*16,allocatable :: wsave(:), bigvec(:), vv(:,:,:), ftmat(:,:),out(:,:)
-  integer :: bigsize,ii
+  complex*16,allocatable :: wsave(:), bigvec(:), vv(:,:,:), out(:,:)
+  integer :: bigsize,ii,NN
+  
   if (size.gt.6000) then
      OFLWR "ARE YOU SURE?  big size, programmer checkme ft ",size; CFLST
   endif  
-  bigsize           = 4*size
-  allocate(bigvec(bigsize), vv(2,size,2), ftmat(size,size),out(size,howmany))
-  allocate(wsave(4*bigsize+15))
-  bigvec = 0; vv = 0; ftmat = 0; wsave = 0
+
+  NN                = 4
+  bigsize           = 2*NN*size
+
+  allocate(vv(2,size,NN), out(size,howmany),wsave(4*bigsize+15))  
+  vv = 0;  out = 0;  wsave = 0;
+
   call zffti(bigsize,wsave)
-  do ii             = 1,size
-     bigvec(:)      = 0
-     bigvec(ii*2)   = 1;
-     call zfftf(bigsize,bigvec,wsave)
-     vv             = reshape(bigvec,(/2,size,2/));
-     ftmat(:,ii)    = vv(2,:,1);
+
+  do ii             = 1,howmany
+     vv(:,:,:)      = 0;
+     vv(2,:,1)      = inout(:,ii);
+     call zfftf(bigsize,vv,wsave)
+     inout(:,ii)    = vv(2,:,1);
   enddo
-  call ZGEMM('N','N',size,howmany,size,&
-       (1d0,0d0),ftmat,size,inout,size,(0d0,0d0),out,size)
-  inout(:,:) = out(:,:)
-  deallocate(wsave)
-  deallocate(bigvec,vv,ftmat,out)
+
+  deallocate(vv,wsave,out)
+
 end subroutine half_ft_wrap
 
 
