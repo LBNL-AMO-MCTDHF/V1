@@ -339,7 +339,7 @@ contains
     complex*16, allocatable :: worksum0(:,:,:), totworksum0(:,:)
     DATATYPE :: pots(3,npulses),pots2(3,numpulses)
     real*8 :: ft_estep, ft_estart, thistime, myenergy,xsecunits, windowfunct
-    integer :: i,getlen,myiostat,ipulse,numft,ii,opwr,dowork
+    integer :: i,getlen,myiostat,ipulse,numft,ii,opwr,dowork,ft_numdata
     character (len=7) :: number
 
 #ifdef REALGO
@@ -348,10 +348,9 @@ contains
     
     pots=0; pots2=0
 
-    allocate(dipolearrays(0:numdata,3), efield(0:numdata,3), each_efield(0:numdata,3,npulses), &
-         afield(0:numdata,3), each_afield(0:numdata,3,npulses))
+    allocate(dipolearrays(0:numdata,3), efield(0:numdata,3), each_efield(0:numdata,3,npulses))
+    allocate(     afield(0:numdata,3), each_afield(0:numdata,3,npulses))
     dipolearrays=0; efield=0; each_efield=0; afield=0; each_afield=0
-
 
     if (sflag.ne.0) then
        thistime=numdata*par_timestep*autosteps
@@ -416,7 +415,9 @@ contains
     endif
     call mpibarrier()
 
-!! work done by pulse integral dt
+    deallocate(each_afield,afield)
+
+    !! work done by pulse integral dt
 
     allocate(dipole_diff(0:numdata,3), worksum0(0:numdata,3,npulses), totworksum0(0:numdata,3))
     dipole_diff=0d0;    worksum0=0;   totworksum0=0;  
@@ -558,49 +559,62 @@ contains
     endif
     deallocate(dipole_diff)
 
+    ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! !!!!!!!!!!!!     NOW   FOURIER   TRANSFORMS   !!!!!!!!!!!!
+    ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    
     if (act21circ.ne.0) then
        numft=9
     else
        numft=3
     endif
 
-    allocate(fftrans(0:numdata,numft), eft(0:numdata,numft), each_eft(0:numdata,numft,npulses))
-    fftrans=0; eft=0; each_eft=0
-
-    fftrans(:,1:3)=dipolearrays(:,:)
-    eft(:,1:3)=efield(:,:) 
-    each_eft(:,1:3,:)=each_efield(:,:,:)
-
-    deallocate(efield,each_efield,dipolearrays,each_afield,afield)
-
     do i=0,numdata
-       fftrans(i,1:3) = fftrans(i,1:3) * windowfunct(i,numdata,21)  !! action 21
+       dipolearrays(i,:) = dipolearrays(i,:) * windowfunct(i,numdata,21)  !! action 21
     enddo
-
     if (pulsewindowtoo.ne.0) then
        do i=0,numdata
-          each_eft(i,1:3,:)=each_eft(i,1:3,:) * windowfunct(i,numdata,21)
-          eft(i,1:3)=eft(i,1:3) * windowfunct(i,numdata,21)
+          each_efield(i,:,:)=each_efield(i,:,:) * windowfunct(i,numdata,21)
+          efield(i,:)=efield(i,:) * windowfunct(i,numdata,21)
        enddo
     endif
-
-    allocate(ft_evals(0:numdata))
-    ft_evals = 0
     
-    if (1==0) then
+    if (1==1) then
+
+       ft_numdata = half_ft_size(numdata+1) - 1 ;
+
+       allocate(ft_evals(0:ft_numdata))
+       ft_evals = 0
+       call half_ft_evals(numdata+1,ft_evals,ft_numdata+1)
+
+       call half_ft_estep(numdata+1,ft_estart,ft_estep)
+
+       allocate(fftrans(0:ft_numdata,numft), eft(0:ft_numdata,numft), each_eft(0:ft_numdata,numft,npulses))
+       fftrans=0; eft=0; each_eft=0
 
        do ii=1,3
-          call half_ft_wrap_diff(numdata+1,fftrans(:,ii),1,ftderpwr(21),ftderord)
-          call half_ft_wrap(numdata+1,eft(:,ii),1)
+          call half_ft_wrap_diff(numdata+1,dipolearrays(:,ii),fftrans(:,ii),ft_numdata+1,1,ftderpwr(21),ftderord)
+          call half_ft_wrap(numdata+1,(0d0,0d0)+efield(:,ii),eft(:,ii),ft_numdata+1,1)
           do ipulse=1,npulses
-             call half_ft_wrap(numdata+1,each_eft(:,ii,ipulse),1)
+             call half_ft_wrap(numdata+1,(0d0,0d0)+each_efield(:,ii,ipulse),each_eft(:,ii,ipulse),ft_numdata+1,1)
           enddo
        enddo
 
-       call half_ft_estep(numdata+1,ft_estart,ft_estep)
-       call half_ft_evals(numdata+1,ft_evals)
-        
     else
+
+       call zfftf_estep(numdata+1,ft_estart,ft_estep)
+       ft_numdata = numdata
+       allocate(ft_evals(0:ft_numdata))
+       ft_evals = 0
+       call zfftf_evals(numdata+1,ft_evals)
+
+       allocate(fftrans(0:ft_numdata,numft), eft(0:ft_numdata,numft), each_eft(0:ft_numdata,numft,npulses))
+       fftrans=0; eft=0; each_eft=0
+
+       fftrans(:,1:3)=dipolearrays(:,:)
+       eft(:,1:3)=efield(:,:) 
+       each_eft(:,1:3,:)=each_efield(:,:,:)
+       
        do ii=1,3
           call zfftf_wrap_diff(numdata+1,fftrans(:,ii),ftderpwr(21),ftderord)
           call zfftf_wrap(numdata+1,eft(:,ii))
@@ -608,11 +622,10 @@ contains
              call zfftf_wrap(numdata+1,each_eft(:,ii,ipulse))
           enddo
        enddo
-
-       call zfftf_estep(numdata+1,ft_estart,ft_estep)
-       call zfftf_evals(numdata+1,ft_evals)
         
     endif
+
+    deallocate(efield,each_efield,dipolearrays)
 
     opwr = 0
     if (veldipflag.eq.0) then                                 ! dipole expectation value
@@ -624,12 +637,11 @@ contains
        OFLWR "what programmer failure"; CFLST
     endif
 
-    
     !! now adjust to time step
     
-    fftrans(:,1:3)=fftrans(:,1:3)     * par_timestep * autosteps
-    eft(:,1:3)=eft(:,1:3)             * par_timestep * autosteps
-    each_eft(:,1:3,:)=each_eft(:,1:3,:) * par_timestep * autosteps
+    fftrans(:, 1:3)   = fftrans(:, 1:3)   * par_timestep * autosteps
+    eft(:,     1:3)   = eft(:,     1:3)   * par_timestep * autosteps
+    each_eft(:,1:3,:) = each_eft(:,1:3,:) * par_timestep * autosteps
 
     ft_estart = ft_estart / par_timestep / autosteps
     ft_estep  = ft_estep  / par_timestep / autosteps
@@ -677,11 +689,11 @@ contains
     endif
 
     allocate(&
-         worksums(0:numdata,numft,npulses),photsums(0:numdata,numft,npulses),&
-         totworksums(0:numdata,numft), totphotsums(0:numdata,numft), &
-         workpers(0:numdata,numft,npulses),photpers(0:numdata,numft,npulses),&
-         totworkpers(0:numdata,numft), totphotpers(0:numdata,numft), &
-         sumrule(0:numdata,numft))
+         worksums(   0:ft_numdata,numft,npulses),photsums(0:ft_numdata,numft,npulses),&
+         totworksums(0:ft_numdata,numft),     totphotsums(0:ft_numdata,numft), &
+         workpers(   0:ft_numdata,numft,npulses),photpers(0:ft_numdata,numft,npulses),&
+         totworkpers(0:ft_numdata,numft),     totphotpers(0:ft_numdata,numft), &
+         sumrule(    0:ft_numdata,numft))
     worksums=0; photsums=0; totworksums=0; totphotsums=0; 
     workpers=0; photpers=0; totworkpers=0; totphotpers=0; 
     sumrule=0
@@ -692,11 +704,12 @@ contains
           photsums(0,:,ipulse) = ft_estep * photpers(0,:,ipulse)
        enddo
     endif
-    do i=1,numdata
+    
+    do i=1,ft_numdata
        myenergy = ft_evals(i)
        
 !! sumrule sums to N for N electrons
-       if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend.and.i.le.(numdata/2)) then
+       if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend.and.i.le.(ft_numdata/2)) then
           sumrule(i,:)=sumrule(i-1,:) + ft_estep * real(fftrans(i,:)*conjg(eft(i,:))) / abs(eft(i,:)**2) * 2 / PI
           do ipulse=1,npulses
              photpers(i,:,ipulse) = real(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI / myenergy
@@ -746,7 +759,7 @@ contains
           ! "## QUANTUM MECHANICAL PHOTOABSORPTION/EMISSION CROSS SECTION IN MEGABARNS (no factor of 1/3) IN COLUMN NINE"
           ! "## INTEGRATED DIFFERENTIAL OSCILLATOR STRENGTH (FOR SUM RULE) IN COLUMN 10"
        
-          do i=0,numdata
+          do i=0,ft_numdata
              myenergy = ft_evals(i)
              write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
                   fftrans(i,ii), eft(i,ii), abs(fftrans(i,ii))**2 * myenergy**2, &
@@ -761,7 +774,7 @@ contains
 
           open(171,file=outoworknames(ii),status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening "//outoworknames(ii))
-          do i=0,numdata
+          do i=0,ft_numdata
              myenergy = ft_evals(i)
              if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
                 write(171,'(A25,F10.5,400E20.8)') " WORK EACH PULSE E= ", myenergy, &
@@ -772,7 +785,7 @@ contains
 
           open(171,file=outophotonnames(ii),status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening "//outophotonnames(ii))
-          do i=0,numdata
+          do i=0,ft_numdata
              myenergy = ft_evals(i)
              if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
                 write(171,'(A25,F10.5,400E20.8)') "PHOTONS EACH PULSE E= ", myenergy, &
@@ -785,7 +798,7 @@ contains
 
              open(171,file=outoworknames(ii)(1:getlen(outoworknames(ii)))//number(2:7),status="unknown",iostat=myiostat)
              call checkiostat(myiostat,"opening "//outoworknames(ii)(1:getlen(outoworknames(ii)))//number(2:7))
-             do i=0,numdata
+             do i=0,ft_numdata
                 myenergy = ft_evals(i)
                 if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
                    write(171,'(A25,F10.5,400E20.8)') " WORK EACH PULSE E= ", myenergy, &
@@ -796,7 +809,7 @@ contains
 
              open(171,file=outophotonnames(ii)(1:getlen(outophotonnames(ii)))//number(2:7),status="unknown",iostat=myiostat)
              call checkiostat(myiostat,"opening "//outophotonnames(ii)(1:getlen(outophotonnames(ii)))//number(2:7))
-             do i=0,numdata
+             do i=0,ft_numdata
                 myenergy = ft_evals(i)
                 if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then
                    write(171,'(A25,F10.5,400E20.8)') "PHOTONS EACH PULSE E= ", myenergy, &
@@ -822,7 +835,7 @@ contains
                   "## Frequency  Velocity ElecFld  HHG/FID/Thom  Abs/Emit    zero  A/E Xsect             "
              write(171,*)
 
-             do i=0,numdata
+             do i=0,ft_numdata
                 myenergy = ft_evals(i)
                 write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
                      fftrans(i,ii), eft(i,ii), abs(fftrans(i,ii))**2 * myenergy**2, &

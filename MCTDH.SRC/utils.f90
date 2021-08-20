@@ -65,6 +65,14 @@ function getlen2(buffer)
 end function getlen2
 
 
+module half_ft_mod
+  ! report halfft_fac times as many pos-frequency results as input data
+  integer, parameter :: halfft_fac   = 3
+  ! oversample by this factor
+  integer, parameter :: NN           = 7
+  ! halfft_fac should be less than NN/2
+end module half_ft_mod
+
 module utilmod
 implicit none
 contains
@@ -305,34 +313,77 @@ subroutine complexdiff(size,in,out,howmany,diffpower,difforder)
 end subroutine complexdiff
 
 
+!!!!!!!!!!  Half FT  !!!!!!!!!!!
 
-subroutine half_ft_wrap_diff(size,inout,howmany,diffpower,difforder)
+function half_ft_size(size)
+  use half_ft_mod
   implicit none
-  integer, intent(in) :: size,diffpower,difforder,howmany
-  complex*16, intent(inout) :: inout(size,howmany)
+  integer,intent(in) :: size
+  integer :: half_ft_size
+  half_ft_size = halfft_fac * size;
+end function half_ft_size
+
+
+subroutine half_ft_estep(size,estart,estep)
+  use half_ft_mod
+  implicit none
+  integer,intent(in) :: size
+  real*8, intent(out) :: estart,estep
+  real*8, parameter :: twopi = 6.28318530717958647688d0
+  estep = twopi / size / 2 / NN
+  estart = estep / 2
+end subroutine half_ft_estep
+
+
+subroutine half_ft_evals(size,evals,outsize)
+  use fileptrmod
+  use half_ft_mod
+  implicit none
+  integer,intent(in) :: size,outsize
+  real*8, intent(out) :: evals(outsize)
+  real*8 :: estart,estep
+  integer :: i
+  if (outsize.ne.half_ft_size(size)) then
+     OFLWR "ack half_ft_evals",outsize,half_ft_size(size); CFLST
+  endif
+  call half_ft_estep(size,estart,estep)
+  evals(:) = 0
+  do i=1,outsize
+     evals(i) = estart + estep*(i-1)
+  enddo
+end subroutine half_ft_evals
+
+
+subroutine half_ft_wrap_diff(size,in,out,outsize,howmany,diffpower,difforder)
+  use fileptrmod
+  use half_ft_mod
+  implicit none  
+  integer, intent(in) :: size,outsize,diffpower,difforder,howmany
+  complex*16, intent(in) :: in(size,howmany)
+  complex*16, intent(out) :: out(outsize,howmany)
   complex*16,allocatable :: work(:,:)
   real*8, allocatable :: evals(:)
   integer :: i
 
+  if (outsize.ne.half_ft_size(size)) then
+     OFLWR "progammer error 99801"; CFLST
+  endif
+
   if (diffpower.eq.0) then
-     call half_ft_wrap(size,inout,howmany)
+     call half_ft_wrap(size,in,out,outsize,howmany)
   else
-     allocate(work(size,howmany),evals(size));
+     allocate(work(size,howmany),evals(outsize));
      work=0; evals=0
 
-     call half_ft_evals(size,evals)
+     call half_ft_evals(size,evals,outsize)
      
-     call complexdiff(size,inout,work,howmany,diffpower,difforder)
+     call complexdiff(size,in,work,howmany,diffpower,difforder)
 
-     call half_ft_wrap(size,work,howmany)
+     call half_ft_wrap(size,work,out,outsize,howmany)
 
      do i=1,howmany
-        inout(:,i) = work(:,i) * ( (0d0,-1d0) / evals(:) )**diffpower
+        out(:,i) = out(:,i) * ( (0d0,-1d0) / evals(:) )**diffpower
      enddo
-
-     !do i=1,size
-     !   inout(i,:)=work(i,:) * ( (0d0,-1d0) / evals(i) ) ** diffpower
-     !enddo
 
      deallocate(work,evals)
   endif
@@ -341,28 +392,48 @@ end subroutine half_ft_wrap_diff
 
 
 
-subroutine half_ft_estep(size,estart,estep)
+subroutine half_ft_wrap(size,in,out,outsize,howmany)
+  use fileptrmod
+  use half_ft_mod
   implicit none
-  integer,intent(in) :: size
-  real*8, intent(out) :: estart,estep
-  real*8, parameter :: twopi = 6.28318530717958647688d0
-  estep = twopi / size / 2
-  estart = estep / 2
-end subroutine half_ft_estep
+  integer, intent(in) :: size,outsize,howmany
+  complex*16, intent(in) :: in(size,howmany)
+  complex*16, intent(out) :: out(outsize,howmany)
+  complex*16,allocatable :: wsave(:), vv(:,:)
+  integer :: bigsize,ii
+  
+  if (size.gt.6000) then
+     OFLWR "ARE YOU SURE?  big size, programmer checkme ft ",size; CFLST
+  endif  
 
+  bigsize           = 8*NN*size
 
-subroutine half_ft_evals(size,evals)
-  implicit none
-  integer,intent(in) :: size
-  real*8, intent(out) :: evals(size)
-  real*8 :: estart,estep
-  integer :: i
-  call half_ft_estep(size,estart,estep)
-  evals(:) = 0
-  do i=1,size
-     evals(i) = estart + estep*(i-1)
+  if (outsize > 2*NN*size) then
+     OFLWR "ack bad outsize,NN,size: ",outsize,NN,size; CFLST
+  endif
+  
+  if (half_ft_size(size) .ne. outsize) then
+     OFLWR "ack programmer failure 543"; CFLST
+  endif
+  
+  allocate(vv(2,4*NN*size), wsave(4*bigsize+15))  
+  vv = 0;  out = 0;  wsave = 0;
+
+  call zffti(bigsize,wsave)
+
+  do ii             = 1,howmany
+     vv(:,:)        = 0;
+     vv(2,1:size)   = in(:,ii);
+     call zfftf(bigsize,vv,wsave)
+     out(:,ii)    = vv(2,1:outsize);
   enddo
-end subroutine half_ft_evals
+
+  deallocate(vv,wsave)
+
+end subroutine half_ft_wrap
+
+
+!!!!!!!!!  ZFFT (DFFTPACK) FT subroutines   !!!!!!!!!!
 
 
 subroutine zfftf_evals(size,evals)
@@ -377,7 +448,6 @@ subroutine zfftf_evals(size,evals)
      evals(i) = estart + estep*(i-1)
   enddo
 end subroutine zfftf_evals
-
 
 
 subroutine zfftf_estep(size,estart,estep)
@@ -455,38 +525,6 @@ subroutine zfftf_wrap(size,inout)
 end subroutine zfftf_wrap
 
 
-subroutine half_ft_wrap(size,inout,howmany)
-  use fileptrmod
-  implicit none
-  integer, intent(in) :: size,howmany
-  complex*16, intent(inout) :: inout(size,howmany)
-  complex*16,allocatable :: wsave(:), bigvec(:), vv(:,:,:), out(:,:)
-  integer :: bigsize,ii,NN
-  
-  if (size.gt.6000) then
-     OFLWR "ARE YOU SURE?  big size, programmer checkme ft ",size; CFLST
-  endif  
-
-  NN                = 4
-  bigsize           = 2*NN*size
-
-  allocate(vv(2,size,NN), out(size,howmany),wsave(4*bigsize+15))  
-  vv = 0;  out = 0;  wsave = 0;
-
-  call zffti(bigsize,wsave)
-
-  do ii             = 1,howmany
-     vv(:,:,:)      = 0;
-     vv(2,:,1)      = inout(:,ii);
-     call zfftf(bigsize,vv,wsave)
-     inout(:,ii)    = vv(2,:,1);
-  enddo
-
-  deallocate(vv,wsave,out)
-
-end subroutine half_ft_wrap
-
-
 subroutine zfftb_wrap(size,inout)
   implicit none
   integer, intent(in) :: size
@@ -511,6 +549,9 @@ function floatfac(in)
   enddo
   floatfac=sum
 end function floatfac
+
+
+!!!!!!!!!!!!!  ETC
 
 
 function myisnan(input)
