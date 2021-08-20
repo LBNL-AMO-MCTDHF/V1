@@ -643,6 +643,13 @@ contains
        fftrans(:,ii) = fftrans(:,ii) * ( (0d0,-1d0) / ft_evals(:) ) ** (opwr-1)
     enddo
 
+    ! no   fftrans(:,:) = fftrans(:,:) * par_timestep * autosteps
+
+    !$$  08-2021  changed to keeping ft of velocity..
+    !$$     need factor of sqrt(1/2) here with autotimestep*par_timestep = 0.5
+
+    fftrans(:,:) = fftrans(:,:) * sqrt(par_timestep * autosteps)
+    
     if (act21circ.ne.0) then
 !! XY, XZ, YX, YZ, ZX, ZY
 
@@ -720,12 +727,19 @@ contains
        do ii=1,numft
           open(171,file=outftnames(ii),status="unknown",iostat=myiostat)
           call checkiostat(myiostat,"opening "//outftnames(ii))
-          write(171,'(A120)',iostat=myiostat) &
-               "## (1)Omega,functions of:   (2,3)V  (4,5)E  (6)|V|^2*w^2  (7)S=2Re(VE*)  (8)notUsed  (9)S/|E|^2,megaBarns  (10)sumRule"
+          !
+          ! write(171,'(A120)',iostat=myiostat) &
+          !     "## (1)Omega,functions of:   (2,3)V  (4,5)E  (6)|V|^2*w^2  (7)S=2Re(VE*)  (8)notUsed  (9)S/|E|^2,megaBarns  (10)sumRule"
+          ! call checkiostat(myiostat,"writing "//outftnames(ii))
+          ! write(171,'(A120)') "## Column:1   2,3      4,5      6             7           8     9            10        "
+          !
+          write(171,'(A100)',iostat=myiostat) &
+               "## Column:1   2,3      4,5      6             7           8     9            10        "
           call checkiostat(myiostat,"writing "//outftnames(ii))
-          write(171,'(A120)') "## Column:1   2,3      4,5      6             7           8     9            10        "
-          write(171,'(A120)') "## Omega, w,  V(w),    E(w)     |V|^2*w^2     S=2Re(VE*)  0     S/|E|^2*fac  sumRule  "
-          write(171,'(A120)') "## Frequency  Velocity ElecFld  HHG/FID/Thom  Abs/Emit    zero  A/E Xsect             "
+          write(171,'(A100)') &
+               "## Omega, w,  V(w),    E(w)     |V|^2*w^2     S=2Re(VE*)  0     S/|E|^2*fac  sumRule  "
+          write(171,'(A100)') &
+               "## Frequency  Velocity ElecFld  HHG/FID/Thom  Abs/Emit    zero  A/E Xsect             "
           write(171,*)
 
           ! "## UNITLESS RESPONSE FUNCTION FOR ABSORPTION/EMISSION 2 omega im(D(omega)E(omega)^*) IN COLUMN 7"
@@ -793,12 +807,19 @@ contains
 
              open(171,file=outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7),status="unknown",iostat=myiostat)
              call checkiostat(myiostat,"opening "//outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7))
-             write(171,'(A120)',iostat=myiostat) &
-                  "## (1)Omega,functions of:   (2,3)V  (4,5)E  (6)|V|^2*w^2  (7)S=2Re(VE*)  (8)notUsed  (9)S/|E|^2,megaBarns  (10)sumRule"
+             !
+             ! write(171,'(A120)',iostat=myiostat) &
+             !     "## (1)Omega,functions of:   (2,3)V  (4,5)E  (6)|V|^2*w^2  (7)S=2Re(VE*)  (8)notUsed  (9)S/|E|^2,megaBarns  (10)sumRule"
+             ! call checkiostat(myiostat,"writing "//outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7))
+             ! write(171,'(A120)') "## Column:1   2,3      4,5      6             7           8     9            10        "
+             !
+             write(171,'(A100)',iostat=myiostat) &
+                  "## Column:1   2,3      4,5      6             7           8     9            10        "
              call checkiostat(myiostat,"writing "//outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7))
-             write(171,'(A120)') "## Column:1   2,3      4,5      6             7           8     9            10        "
-             write(171,'(A120)') "## Omega, w,  V(w),    E(w)     |V|^2*w^2     S=2Re(VE*)  0     S/|E|^2*fac  sumRule  "
-             write(171,'(A120)') "## Frequency  Velocity ElecFld  HHG/FID/Thom  Abs/Emit    zero  A/E Xsect             "
+             write(171,'(A100)') &
+                  "## Omega, w,  V(w),    E(w)     |V|^2*w^2     S=2Re(VE*)  0     S/|E|^2*fac  sumRule  "
+             write(171,'(A100)') &
+                  "## Frequency  Velocity ElecFld  HHG/FID/Thom  Abs/Emit    zero  A/E Xsect             "
              write(171,*)
 
              do i=0,numdata
