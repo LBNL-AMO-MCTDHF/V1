@@ -436,6 +436,15 @@ end subroutine half_ft_wrap
 !!!!!!!!!  ZFFT (DFFTPACK) FT subroutines   !!!!!!!!!!
 
 
+
+function zfftf_size(size)
+  implicit none
+  integer,intent(in) :: size
+  integer :: zfftf_size
+  zfftf_size = size;
+end function zfftf_size
+
+
 subroutine zfftf_evals(size,evals)
   implicit none
   integer,intent(in) :: size

@@ -392,7 +392,7 @@ real*8 :: messaamount=1.d-4                      !!    how much
 !!{\large \quad INPUT / OUTPUT }
 !!BB
 character(len=SLN):: finalstatsfile="Dat/finalstats.dat"         !! output for relaxation calculation
-real*8 :: pulseft_estep=0.01d0                                   !! step in hartree for Pulseft.Dat output files
+! real*8 :: pulseft_estep=0.01d0                                   !! step in hartree for Pulseft.Dat output files
 character (len=SLN) ::      avectoroutfile="Bin/avector.bin"     !! A-vector output file.        
 character (len=SLN) ::      spfoutfile="Bin/spfs.bin"            !! Spf output file.
 character(len=SLN):: psistatsfile="Dat/psistats.dat"             !! for action 25
@@ -458,7 +458,7 @@ character(len=SLN):: natprojplotbin="Bin/Natproj.bin"         !!  "
 !!BB
 integer :: numactions=0          !! 
 integer :: actions(100)=0        !!              !! ACTIONS
-!!   Act=1    Autocorrelation; set corrflag=1 for fourier transform
+!!   Act=1    Autocorrelation
 !!   Act=2    Save natorbs
 !!   Act=3    Save spfs
 !!   Act=4    Save density
@@ -510,10 +510,10 @@ integer :: auto_subtract=0       !! if nonzero subtract tent function for autoco
 !!{\large \quad EMISSION/ABSORPTION (action 21,29)}
 !!BB
 integer :: hanningflag=0         !! for hanning window set nonzero action 1 autocorr
-real*8 :: diptime=100           !! For act=20, outputs copies every diptime atomic units
+real*8 :: diptime=100            !! For act=20, outputs copies every diptime atomic units
 integer :: dipmodtime=100        !! do ft every autotimestep*dipmodtime
-real*8 :: dipolesumstart=0d0,&   !! range for integration of oscillator strength (e.g. for sum rule), photon
-     dipolesumend=0d0            !!    energy atomic units (Hartree) start and end, dipolesumend default set
+real*8 :: dipolesumstart=-1d0,&  !! range for integration of oscillator strength (e.g. for sum rule), photon
+     dipolesumend=-1d0           !!    energy atomic units (Hartree) start and end, if < 0 default set
                                  !!    based on &pulse namelist input (depending on omegas)
 logical :: redobra=.false.       !! for complex Domcke action 29
 !!EE

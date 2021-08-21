@@ -53,7 +53,7 @@ subroutine getparams()
   integer :: avectorhole(1000)=-1001
   integer :: avectorexcitefrom(1000)=-1001
   integer :: avectorexciteto(1000)=-1001
-  real*8 :: tempreal,mymax
+  real*8 :: tempreal,mymax,mymin
 
 !! DUMMIES
   integer :: restrictms=0,  dfrestrictflag=0, allspinproject=1
@@ -98,7 +98,7 @@ subroutine getparams()
        orbcompact,spin_restrictval,mshift,numskiporbs,orbskip,debugfac,denmatfciflag,&
        walkwriteflag,iprintconfiglist,timestepfac,max_timestep,expostepfac, maxquadnorm,quadstarttime,&
        reinterp_orbflag,spf_gridshift,load_avector_product,projspifile,readfullvector,walksinturn,&
-       turnbatchsize,energyshift, pulseft_estep, finalstatsfile, fluxtsumfile, projfluxtsumfile,&
+       turnbatchsize,energyshift, finalstatsfile, fluxtsumfile, projfluxtsumfile,&
        sparsedfflag,sparseprime,sparsesummaflag, par_consplit, & 
        pulsewindowtoo,redobra,dipolesumstart,dipolesumend,outmatel,numcatfiles,&
        catspffiles,catavectorfiles,aquadstarttime,quadorthflag,normboflag,logbranch,nzflag,&
@@ -442,7 +442,10 @@ subroutine getparams()
      
   enddo
   write(mpifileptr, *) " ****************************************************************************"     
-  write(mpifileptr,*);  call closefile()
+  write(mpifileptr,*);
+
+
+  call closefile()        !!!!!!!    CLOSING MPIFILEPTR   !!!!!!
   
   if (constraintflag > 2) then
      OFLWR "Constraintflag not supported: ", constraintflag;     CFLST
@@ -460,7 +463,7 @@ subroutine getparams()
   if ((sparseconfigflag.ne.0).and.(stopthresh.lt.lanthresh).and.(improvedquadflag.eq.0.or.improvedquadflag.eq.2)) then
      OFLWR "Enforcing lanthresh.le.stopthresh"
      lanthresh=stopthresh
-     write(mpifileptr,*) "    --> lanthresh now  ", lanthresh; CFL
+     WRFL "    --> lanthresh now  ", lanthresh; CFL
   endif
   if (intopt.eq.4) then
      if ((constraintflag.ne.0)) then
@@ -529,32 +532,72 @@ subroutine getparams()
   needpulse=0
   if (tdflag.ne.0) then
      needpulse=1
-  else 
-     if (noftflag.eq.0) then
-        do j=1,numactions
-           if ( (actions(j).eq.14).or.&
-                (actions(j).eq.16).or.&
-                (actions(j).eq.17)) then
-              needpulse=1
-           endif
-        enddo
-     endif
+  else
+     ! 08-2021  before I did two steps for these flux actions
+     !          that is not really a good idea
+     !          disabling this logic
+     !
+     ! if (noftflag.eq.0) then
+     !    do j=1,numactions
+     !       if ( (actions(j).eq.14).or.&
+     !            (actions(j).eq.16).or.&
+     !            (actions(j).eq.17)) then
+     !          needpulse=1
+     !       endif
+     !    enddo
+     ! endif
+     !
+     do j=1,numactions
+        if ( (actions(j).eq.14).or.&
+             (actions(j).eq.16).or.&
+             (actions(j).eq.17)) then
+           OFLWR "Please do flux calc in 1 not 2 steps. Or programmer checkme.  789789"; CFLST
+        endif
+     enddo
   endif
 
   if (needpulse.ne.0) then
-     call getpulse(0)
-     if (dipolesumend.le.0d0) then
+     !
+     call getpulse(0)           !!  Read pulse namelist info from file
+     !
+     ! dipolesumstart, dipolesumend used for integration of work E(omega)* D'(omega)
+     !    so they just need to cover the pulse, not the response
+     !
+     ! also used for plotting pulse FT
+     !
+     if (dipolesumend.lt.0d0) then
+        mymax=0d0
         do ipulse=1,numpulses
-           if (pulsetype(ipulse).eq.1) then
-              mymax=omega(ipulse)*3d0
-           else
-              mymax=omega2(ipulse)*3d0
-           endif
-           if (dipolesumend.lt.mymax) then
-              dipolesumend=mymax
-           endif
+           select case (pulsetype(ipulse))
+           case(1)
+              mymax=max(mymax,omega(ipulse)*3d0)
+           case(2,6)
+              !$$ PREVIOUSLY  mymax=max(mymax,omega2(ipulse)*3d0)
+              !
+              mymax=max(mymax,omega2(ipulse) + omega(ipulse)*9d0)
+           case default
+              OFLWR "pulse type not supported - programmer check pulse.f90"; CFLST
+           end select
         enddo
+        dipolesumend=mymax
      endif
+     if (dipolesumstart.lt.0d0) then
+        mymin=1e16
+        do ipulse=1,numpulses
+           select case (pulsetype(ipulse))
+           case(1)
+              mymin=0d0
+           case(2,6)
+              mymin=min(mymin,omega2(ipulse) - omega(ipulse)*9d0)
+           case default
+              OFLWR "pulse type not supported - programmer check pulse.f90"; CFLST
+           end select
+        enddo
+        dipolesumstart=max(0d0,mymin)
+     endif
+  else
+     dipolesumend=0
+     dipolesumstart=0
   endif
 
   do i=1,nargs
@@ -569,7 +612,8 @@ subroutine getparams()
         numpropsteps=floor((finaltime+0.0000000001d0)/par_timestep) +1
         finaltime=numpropsteps*par_timestep
         write(mpifileptr, *) "     numpropsteps now   ", numpropsteps
-        write(mpifileptr, *) "     finaltime    now   ", finaltime;        call closefile()
+        write(mpifileptr, *) "     finaltime    now   ", finaltime;
+        CFL
      endif
      call checkiostat(myiostat,"Reading finaltime command line input "//buffer)
   enddo
@@ -686,7 +730,8 @@ subroutine getparams()
      OFLWR "PROGRAMMER REDIM M X F",numavectorfiles,numspffiles,MXF; CFLST
   endif
 
-  call openfile()
+  call openfile()        !! OPEN MPIFILEPTR !!
+  
   write(mpifileptr, *)
   write(mpifileptr, *) " ****************************************************************************"     
   write(mpifileptr, *) "*****************************************************************************"
@@ -780,11 +825,11 @@ subroutine getparams()
   if (loadavectorflag.eq.1) then
      write(mpifileptr, *) "Avector will be loaded from files.  Number of files= ",numavectorfiles
      if (numholes.gt.0) then
-        OFLWR; WRFL "We have holes:", numholes, " concurrent holes with ", numholecombo," wfns combined "; WRFL; CFL
+        WRFL "We have holes:", numholes, " concurrent holes with ", numholecombo," wfns combined "; WRFL;
         excitations=0
      endif
      if (excitations.gt.0) then
-        OFLWR; WRFL "We have exitations: ",excitations, " concurrent excitations with ", excitecombos," wfns combined "; WRFL; CFL
+        WRFL "We have exitations: ",excitations, " concurrent excitations with ", excitecombos," wfns combined "; WRFL
      endif
   else
      write(mpifileptr, *) "Avector will be obtained from diagonalization."
@@ -876,7 +921,7 @@ subroutine getparams()
      case(1)
         write(mpifileptr, *) "Using constraintflag=1, density matrices with full lioville solve (assume full, constant off-block diagonal)."
      case(2)
-        OFLWR "Using true Dirac-Frenkel equation for constraint."
+        WRFL "Using true Dirac-Frenkel equation for constraint."
         WRFL "     dfrestrictflag = ", df_restrictflag;      
         select case(conway)
         case(0)
@@ -920,7 +965,11 @@ subroutine getparams()
      write(mpifileptr,*) "     SKIPPING CALCULATION!  Doing analysis."
      write(mpifileptr,*) "   ****************************************"
   endif
-  write(mpifileptr,*) ;  call closefile()
+  
+  write(mpifileptr,*)
+
+  call closefile()
+
   call write_actions()
   
 end subroutine getparams
@@ -934,18 +983,18 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
   use utilmod
   implicit none
   NAMELIST /pulse/ omega,pulsestart,pulsestrength, velflag, omega2,phaseshift,intensity,pulsetype, &
-       pulsetheta,pulsephi, longstep, numpulses, reference_pulses, minpulsetime, maxpulsetime, chirp, ramp, &
-       envdernum, envpwr
-  real*8 ::  time, fac, pulse_end, estep
-  DATATYPE :: pots1(3),pots2(3)
-  !$$ DATATYPE :: pots3(3), pots4(3), pots5(3), csumx,csumy,csumz
-  integer :: i, myiostat, ipulse,no_error_exit_flag
-  character (len=12) :: line
-  real*8, parameter :: epsilon=1d-4
-  integer, parameter :: neflux=9999   !10000
-  complex*16 :: lenpot(0:neflux,3),velpot(0:neflux,3)
-  real*8 :: pulseftsq(0:neflux), vpulseftsq(0:neflux)
-
+       pulsetheta,pulsephi, longstep, numpulses, reference_pulses, minpulsetime, maxpulsetime, &
+       chirp, ramp, envdernum, envpwr
+  character (len=12)      :: line
+  integer                 :: i, myiostat, ipulse,no_error_exit_flag, neflux
+  !integer, parameter     :: neflux=9999   !10000
+  real*8, parameter       :: epsilon=1d-4
+  real*8                  :: time, fac, pulse_end, estep, estart, dt, emax, energy
+  real*8, allocatable     :: pulseftsq(:), vpulseftsq(:)
+  complex*16, allocatable :: lenpot(:,:),velpot(:,:)
+  DATATYPE                :: pots1(3),pots2(3)
+  !$$ DATATYPE            :: pots3(3), pots4(3), pots5(3), csumx,csumy,csumz
+  
   open(971,file=inpfile, status="old", iostat=myiostat)
   if (myiostat/=0) then
      OFLWR "No Input.Inp found, not reading pulse. iostat=",myiostat; CFL
@@ -956,7 +1005,9 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
      endif
   endif
   close(971)
-  call openfile()
+
+  call openfile()       !! OPEN MPIFILEPTR
+  
   if (tdflag.ne.0) then
      line="PULSE IS ON:"
   else
@@ -964,16 +1015,17 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
   endif
   select case (velflag)
   case (0)
-     write(mpifileptr, *) line,"   length."
+     WRFL  line,"   length."
   case(1)
-     write(mpifileptr, *) line,"   velocity, usual way."
-  case(2)
-     write(mpifileptr, *) line,"   velocity, DJH way."
+     WRFL  line,"   velocity, usual way."
+  case default
+     WRFL  line,"   ERROR velflag not supported: ",velflag; CFLST
   end select
   if (no_error_exit_flag.ne.0) then    !! mcscf.  just need velflag.
      return
   endif
-  write(mpifileptr, *) ;  write(mpifileptr, *) "NUMBER OF PULSES:  ", numpulses;  write(mpifileptr, *) 
+
+  WRFL; WRFL    "NUMBER OF PULSES:  ", numpulses;    WRFL
 
   lastfinish=0.d0
   do ipulse=1,numpulses
@@ -998,8 +1050,8 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         write(mpifileptr,*) "Pulse type is 1: single sine squared envelope"
         write(mpifileptr, *) "Omega, pulsestart, pulsefinish, pulsestrength:"
         write(mpifileptr, '(8F18.12)') omega(ipulse), pulsestart(ipulse), pulsestart(ipulse) + pi/omega(ipulse), pulsestrength(ipulse)
-     case (2,3)
-        write(mpifileptr,*) "Pulse type is 2 or 3: envelope with carrier"
+     case (2)  ! longpulse disabled 08-2021  (2,3)
+        write(mpifileptr,*) "Pulse type is 2: envelope with carrier"
         write(mpifileptr, *) "   chirp:           ", chirp(ipulse)
         write(mpifileptr, *) "   ramp:           ", ramp(ipulse), " Hartree"
         write(mpifileptr, *) "   Envelope omega:  ", omega(ipulse)
@@ -1010,20 +1062,34 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         write(mpifileptr, *) "   Pulsetheta:      ",pulsetheta(ipulse)
         write(mpifileptr, *) "   Pulsephi:      ",pulsephi(ipulse)
         write(mpifileptr, *) "   Pulsefinish:     ",pulsestart(ipulse) + pi/omega(ipulse)
-        if (pulsetype(ipulse).eq.3) then
-           write(mpifileptr,*) "---> Pulsetype 3; longstep = ", longstep(ipulse)
-        else if (pulsetype(ipulse).eq.2) then
-           write(mpifileptr,*) "---> Pulsetype 2."
-        endif
-     case (4)
-        WRFL "Pulse type is 4, cw"
-        write(mpifileptr, *) "   Duration omega:  ", omega(ipulse)
+        !$$  ! longpulse disabled 08-2021
+        !$$  if (pulsetype(ipulse).eq.3) then
+        !$$     write(mpifileptr,*) "---> Pulsetype 3; longstep = ", longstep(ipulse)
+        !$$  else if (pulsetype(ipulse).eq.2) then
+        !$$     write(mpifileptr,*) "---> Pulsetype 2."
+        !$$  endif
+        !$$  case (4)                        ! cwpulse disabled 08-2021
+        !$$     WRFL "Pulse type is 4, cw"
+        !$$     write(mpifileptr, *) "   Duration omega:  ", omega(ipulse)
+        !$$     write(mpifileptr, *) "   Pulse omega:     ", omega2(ipulse)
+        !$$     write(mpifileptr, *) "   Pulsestrength:   ",pulsestrength(ipulse)
+        !$$     write(mpifileptr, *) "   Intensity:       ",intensity(ipulse), " x 10^16 W cm^-2"
+        !$$     write(mpifileptr, *) "   Pulsetheta:      ",pulsetheta(ipulse)
+        !$$     write(mpifileptr, *) "   Pulsephi:      ",pulsephi(ipulse)
+     case (6)  ! better pulse, NewPulse.f90
+        write(mpifileptr,*) "Pulse type is 6: envelope with carrier"
+        write(mpifileptr, *) "   Envelope omega:  ", omega(ipulse)
         write(mpifileptr, *) "   Pulse omega:     ", omega2(ipulse)
+        write(mpifileptr, *) "   EnvDerNum:       ", envdernum
+        write(mpifileptr, *) "   EnvPwr:          ", envpwr
+        write(mpifileptr, *) "   Pulsestart:      ",pulsestart(ipulse)
         write(mpifileptr, *) "   Pulsestrength:   ",pulsestrength(ipulse)
         write(mpifileptr, *) "   Intensity:       ",intensity(ipulse), " x 10^16 W cm^-2"
         write(mpifileptr, *) "   Pulsetheta:      ",pulsetheta(ipulse)
         write(mpifileptr, *) "   Pulsephi:      ",pulsephi(ipulse)
-
+        write(mpifileptr, *) "   Pulsefinish:     ",pulsestart(ipulse) + pi/omega(ipulse)
+     case default
+        WRFL "Pulse type not supported or programmer failure ",pulsetype(ipulse); CFLST
      end select
      if (lastfinish.lt.pulsestart(ipulse)+pi/omega(ipulse)) then
         lastfinish=pulsestart(ipulse)+pi/omega(ipulse)
@@ -1031,21 +1097,11 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
   end do
   
 #ifdef REALGO
-  write(mpifileptr,*) "Pulse not available with real prop.";  call closefile();  call mpistop
+  WRFL "Pulse not available with real prop.";  CFLST
 #endif
 
   if (tdflag.ne.0) then
      finaltime=lastfinish+par_timestep*4
-
-!! I think this is right
-
-     pulse_end = 2*pi/(pulseft_estep*(neflux+1)/neflux)
-
-     if (pulse_end.lt.finaltime) then
-        pulse_end=finaltime
-     endif
-
-     estep = 2*pi/(pulse_end*(neflux+1)/neflux)
 
      if (finaltime.lt.minpulsetime) then
         write(mpifileptr,*) " Enforcing minpulsetime =        ", minpulsetime
@@ -1060,23 +1116,43 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
      write(mpifileptr, *) "    ---> Resetting finaltime to ", finaltime
      write(mpifileptr, *) "                numpropsteps to ", numpropsteps
      write(mpifileptr, *) "   ... Writing pulse to file"
-     CFL
+     
+     CFL         !!!!!!   CLOSING MPIFILEPTR   !!!!!!
+
+     ! ! NOW PLOT
+     
+     pulse_end = finaltime
+     estep     = 2*pi / finaltime
+     emax      = dipolesumend * 3d0
+     neflux    = floor(emax / estep)    !  also t=0 included, neflux+1 points
+     dt        = pulse_end/neflux       !  also t=0 included, neflux+1 points
+
+     if (neflux > 5000) then
+        WRFL "CHECKME neflux too large.. is dipolesumend or finaltime very large? ", neflux; CFLST
+     endif
+
+     call zfftf_estep(neflux+1,estart,estep)
+     estart = estart / dt
+     estep  = estep  / dt
 
      if (myrank.eq.1) then
+        allocate(lenpot(0:neflux,3),velpot(0:neflux,3),pulseftsq(0:neflux),vpulseftsq(0:neflux))
+        
         open(886, file="Dat/Pulse.Datx", status="unknown",iostat=myiostat)
         call checkiostat(myiostat," opening Dat/Pulse.Datx")
         open(887, file="Dat/Pulse.Daty", status="unknown")
         open(888, file="Dat/Pulse.Datz", status="unknown")
 
         !$$ csumx=0; csumy=0; csumz=0
+
         do i=0,neflux
-           time=i*pulse_end/neflux
+           time=i*dt
 
            !$$  checking that E(t) = d/dt A(t)   and  A(t) = integral E(t)
 
            call vectdpot(time,                  0,pots1,1)
            call vectdpot(time,                  1,pots2,1)
-           !$$ 
+
            !$$ call vectdpot(time-epsilon,          1,pots3,1)
            !$$ call vectdpot(time+epsilon,          1,pots4,1)
            !$$ call vectdpot(time+pulse_end/neflux ,0,pots5,1)
@@ -1098,14 +1174,16 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         close(887);
         close(888)
 
+        call zfftf_wrap(neflux+1,lenpot(:,i))
+        
         do i=1,3
            call zfftf_wrap(neflux+1,lenpot(:,i))
            call zfftf_wrap(neflux+1,velpot(:,i))
         enddo
 
-        lenpot(:,:)=lenpot(:,:)*pulse_end/neflux
+        lenpot(:,:)=lenpot(:,:)*dt
 
-        velpot(:,:)=velpot(:,:)*pulse_end/neflux
+        velpot(:,:)=velpot(:,:)*dt
 
         pulseftsq(:)=abs(lenpot(:,1)**2)+abs(lenpot(:,2)**2)+abs(lenpot(:,3)**2)
 
@@ -1116,16 +1194,18 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         open(887, file="Dat/Pulseft.Daty", status="unknown")
         open(888, file="Dat/Pulseft.Datz", status="unknown")
 
-!! PREVIOUS OUTPUT IN Pulseft.Dat was vpulseftsq / 4
-
         do i=0,neflux
-           write(885,'(100F30.12)',iostat=myiostat) i*estep, pulseftsq(i), vpulseftsq(i)
+           energy = estart + i * estep
+           !
+           write(885,'(100F30.12)',iostat=myiostat) energy, pulseftsq(i), vpulseftsq(i)
            call checkiostat(myiostat," wrting Dat/Pulse.Dat file")
-           write(886,'(100F30.12)') i*estep, lenpot(i,1),velpot(i,1)
-           write(887,'(100F30.12)') i*estep, lenpot(i,2),velpot(i,2)
-           write(888,'(100F30.12)') i*estep, lenpot(i,3),velpot(i,3)
+           write(886,'(100F30.12)') energy, lenpot(i,1),velpot(i,1)
+           write(887,'(100F30.12)') energy, lenpot(i,2),velpot(i,2)
+           write(888,'(100F30.12)') energy, lenpot(i,3),velpot(i,3)
         enddo
-
+        
+        deallocate(lenpot,velpot,pulseftsq,vpulseftsq)
+                
         close(885);   close(886);   close(887);   close(888)
 
      endif

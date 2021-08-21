@@ -262,12 +262,12 @@ function tdpotlen0(myintime, which,ilow,ihigh)
            tdpotlen0=tdpotlen0+simplepulselen(myintime,ipulse) * fac
         case (2)
            tdpotlen0=tdpotlen0+pulselen(myintime,ipulse) * fac
-        case (3)
-           tdpotlen0=tdpotlen0+longpulselen(myintime,ipulse) * fac
-        case (4)
-           tdpotlen0=tdpotlen0+cwpulselen(myintime,ipulse) * fac
-        case (5)
-           tdpotlen0=tdpotlen0+monopulselen(myintime,ipulse) * fac
+        !$$  case (3)
+        !$$     tdpotlen0=tdpotlen0+longpulselen(myintime,ipulse) * fac
+        !$$  case (4)
+        !$$     tdpotlen0=tdpotlen0+cwpulselen(myintime,ipulse) * fac
+        !$$  case (5)
+        !$$    tdpotlen0=tdpotlen0+monopulselen(myintime,ipulse) * fac
         case (6)
            tdpotlen0=tdpotlen0+newpulselen(myintime,ipulse) * fac
         case default
@@ -312,12 +312,12 @@ function tdpotvel0(myintime,which,ilow,ihigh)
            tdpotvel0=tdpotvel0+simplepulsevel(myintime, ipulse) * fac
         case (2)
            tdpotvel0=tdpotvel0+pulsevel(myintime, ipulse) * fac
-        case (3)
-           tdpotvel0=tdpotvel0+longpulsevel(myintime, ipulse) * fac
-        case (4)
-           tdpotvel0=tdpotvel0+cwpulsevel(myintime, ipulse) * fac
-        case (5)
-           tdpotvel0=tdpotvel0+monopulsevel(myintime, ipulse) * fac
+        !$$  case (3)
+        !$$     tdpotvel0=tdpotvel0+longpulsevel(myintime, ipulse) * fac
+        !$$  case (4)
+        !$$     tdpotvel0=tdpotvel0+cwpulsevel(myintime, ipulse) * fac
+        !$$  case (5)
+        !$$     tdpotvel0=tdpotvel0+monopulsevel(myintime, ipulse) * fac
         case (6)
            tdpotvel0=tdpotvel0+newpulsevel(myintime, ipulse) * fac
         case default
@@ -431,77 +431,77 @@ function simplepulsevel(myintime, ipulse)
 end function simplepulsevel
 
 
-function cwpulselen(myintime, ipulse)
-  use pulse_parameters
-  use constant_parameters
-  implicit none
-  integer,intent(in) :: ipulse
-  real*8,intent(in) :: myintime
-  DATATYPE :: cwpulselen
-
-  cwpulselen=0d0
-  if (myintime.lt.pi/omega(ipulse)) then
-     cwpulselen = pulsestrength(ipulse) * omega2(ipulse) * &
-          cos(myintime*omega2(ipulse)+phaseshift(ipulse))
-  endif
-
-end function cwpulselen
-
-
-function cwpulsevel(myintime, ipulse)
-  use pulse_parameters
-  use constant_parameters
-  implicit none
-  integer,intent(in) :: ipulse
-  real*8,intent(in) :: myintime
-  DATATYPE :: cwpulsevel
-
-  cwpulsevel=0.d0
-  if (myintime.lt.pi/omega(ipulse)) then
-     cwpulsevel = pulsestrength(ipulse) * sin(myintime*omega2(ipulse) + phaseshift(ipulse))
-  endif
-
-end function cwpulsevel
-
-
-function monopulselen(myintime, ipulse)
-  use pulse_parameters
-  use constant_parameters
-  implicit none
-  integer,intent(in) :: ipulse
-  real*8,intent(in) :: myintime
-  real*8 :: pptime
-  DATATYPE :: monopulselen
-
-  pptime=myintime*omega(ipulse) - pi/2
-
-  if (pptime.lt.pi/2) then
-     monopulselen = pulsestrength(ipulse) * (0.75d0*cos(pptime) + cos(3*pptime)/4d0)
-  else
-     monopulselen = 0
-  end if
-
-end function monopulselen
+!!$function cwpulselen(myintime, ipulse)
+!!$  use pulse_parameters
+!!$  use constant_parameters
+!!$  implicit none
+!!$  integer,intent(in) :: ipulse
+!!$  real*8,intent(in) :: myintime
+!!$  DATATYPE :: cwpulselen
+!!$
+!!$  cwpulselen=0d0
+!!$  if (myintime.lt.pi/omega(ipulse)) then
+!!$     cwpulselen = pulsestrength(ipulse) * omega2(ipulse) * &
+!!$          cos(myintime*omega2(ipulse)+phaseshift(ipulse))
+!!$  endif
+!!$
+!!$end function cwpulselen
+!!$
+!!$
+!!$function cwpulsevel(myintime, ipulse)
+!!$  use pulse_parameters
+!!$  use constant_parameters
+!!$  implicit none
+!!$  integer,intent(in) :: ipulse
+!!$  real*8,intent(in) :: myintime
+!!$  DATATYPE :: cwpulsevel
+!!$
+!!$  cwpulsevel=0.d0
+!!$  if (myintime.lt.pi/omega(ipulse)) then
+!!$     cwpulsevel = pulsestrength(ipulse) * sin(myintime*omega2(ipulse) + phaseshift(ipulse))
+!!$  endif
+!!$
+!!$end function cwpulsevel
 
 
-function monopulsevel(myintime, ipulse)
-  use pulse_parameters
-  use constant_parameters
-  implicit none
-  integer,intent(in) :: ipulse
-  real*8,intent(in) :: myintime
-  real*8 :: pptime
-  DATATYPE :: monopulsevel
-
-  pptime=myintime*omega(ipulse) - pi/2
-
-  if (pptime.lt.pi/2) then
-     monopulsevel = pulsestrength(ipulse) * (0.75d0*sin(pptime) + sin(3*pptime)/12d0 + 2d0/3d0)
-  else
-     monopulsevel = pulsestrength(ipulse) * (4d0/3d0)
-  endif
-
-end function monopulsevel
+!!$function monopulselen(myintime, ipulse)
+!!$  use pulse_parameters
+!!$  use constant_parameters
+!!$  implicit none
+!!$  integer,intent(in) :: ipulse
+!!$  real*8,intent(in) :: myintime
+!!$  real*8 :: pptime
+!!$  DATATYPE :: monopulselen
+!!$
+!!$  pptime=myintime*omega(ipulse) - pi/2
+!!$
+!!$  if (pptime.lt.pi/2) then
+!!$     monopulselen = pulsestrength(ipulse) * (0.75d0*cos(pptime) + cos(3*pptime)/4d0)
+!!$  else
+!!$     monopulselen = 0
+!!$  end if
+!!$
+!!$end function monopulselen
+!!$
+!!$
+!!$function monopulsevel(myintime, ipulse)
+!!$  use pulse_parameters
+!!$  use constant_parameters
+!!$  implicit none
+!!$  integer,intent(in) :: ipulse
+!!$  real*8,intent(in) :: myintime
+!!$  real*8 :: pptime
+!!$  DATATYPE :: monopulsevel
+!!$
+!!$  pptime=myintime*omega(ipulse) - pi/2
+!!$
+!!$  if (pptime.lt.pi/2) then
+!!$     monopulsevel = pulsestrength(ipulse) * (0.75d0*sin(pptime) + sin(3*pptime)/12d0 + 2d0/3d0)
+!!$  else
+!!$     monopulsevel = pulsestrength(ipulse) * (4d0/3d0)
+!!$  endif
+!!$
+!!$end function monopulsevel
 
 
 
@@ -568,86 +568,86 @@ function pulsevel(myintime, ipulse)
 end function pulsevel
 
 
-!! wtf with longstep...  why did I do it 2* longstep+1?  So for longstep 0, no constant part of
-!!  envelope; for longstep 1, constant part is middle 2/3 of pulse.
-
-function longpulselen(myintime, ipulse)
-  use pulse_parameters
-  use constant_parameters
-  use fileptrmod
-  implicit none
-  integer,intent(in) :: ipulse
-  real*8,intent(in) :: myintime
-  real*8 :: time, fac, fac2
-  DATATYPE :: longpulselen
-
-  longpulselen=0.d0
-
-  if (chirp(ipulse).ne.0d0.or.ramp(ipulse).ne.0d0) then
-     OFLWR "Chirp not supported for length", chirp(ipulse), ipulse; CFLST
-  endif
-  if (myintime.ge.pulsestart(ipulse)) then
-     time=myintime-pulsestart(ipulse)
-
-     if (time.le.pi/omega(ipulse)) then
-
-        if ( (time.le.pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) .or.&
-             (time.ge.pi/omega(ipulse) - pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) ) then
-           fac=2*omega(ipulse)*(2*longstep(ipulse)+1)*sin(time*omega(ipulse)*(2*longstep(ipulse)+1)) * &
-                cos(time*omega(ipulse)*(2*longstep(ipulse)+1))
-           fac2=sin(time*omega(ipulse)*(2*longstep(ipulse)+1))**2
-        else
-           fac=0.d0
-           fac2=1.d0
-        endif
-
-        longpulselen = pulsestrength(ipulse) * ( &
-             fac * sin(time*omega2(ipulse) + phaseshift(ipulse)) &
-          + fac2 * omega2(ipulse) * cos(time*omega2(ipulse) + phaseshift(ipulse)) )
-     endif
-  endif
-
-end function longpulselen
-
-
-function longpulsevel(myintime, ipulse)
-  use pulse_parameters
-  use constant_parameters
-  implicit none
-  integer,intent(in) :: ipulse
-  real*8,intent(in) :: myintime
-  real*8 :: time, thisomega2
-  DATATYPE :: longpulsevel,thisstrength
-
-  longpulsevel=0.d0
-
-  if (myintime.ge.pulsestart(ipulse)) then
-     time=myintime-pulsestart(ipulse)
-
-     if (time.le.pi/omega(ipulse)) then
-
-!! this is right I think  goes to chirp/2  when 2*logstep+1 / 4*longstep+2 -way before half time
-
-        thisomega2=omega2(ipulse)+chirp(ipulse)/2 *(time-pi/omega(ipulse)/2)/&
-             (pi/omega(ipulse)/2*(2*longstep(ipulse)+1)/(4*longstep(ipulse)+2))
-        thisstrength=pulsestrength(ipulse)*(1d0 +ramp(ipulse) * &
-             (time-pi/omega(ipulse)/2)/(pi/omega(ipulse)/2))
-
-!!(2*longstep(ipulse)+1)/(4*longstep(ipulse)+2)))
-
-        if ( (time.le.pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) .or. &
-             (time.ge.pi/omega(ipulse) - pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) ) then
-          longpulsevel = thisstrength  * &
-               sin((time-pi/omega(ipulse)/2)*thisomega2 + phaseshift(ipulse)) * &
-               sin(time*omega(ipulse)*(2*longstep(ipulse)+1))**2 
-        else
-           longpulsevel = thisstrength * &
-                sin((time-pi/omega(ipulse)/2)*thisomega2 + phaseshift(ipulse))
-        endif
-     endif
-  endif
-  
-end function longpulsevel
+!!$!! wtf with longstep...  why did I do it 2* longstep+1?  So for longstep 0, no constant part of
+!!$!!  envelope; for longstep 1, constant part is middle 2/3 of pulse.
+!!$
+!!$function longpulselen(myintime, ipulse)
+!!$  use pulse_parameters
+!!$  use constant_parameters
+!!$  use fileptrmod
+!!$  implicit none
+!!$  integer,intent(in) :: ipulse
+!!$  real*8,intent(in) :: myintime
+!!$  real*8 :: time, fac, fac2
+!!$  DATATYPE :: longpulselen
+!!$
+!!$  longpulselen=0.d0
+!!$
+!!$  if (chirp(ipulse).ne.0d0.or.ramp(ipulse).ne.0d0) then
+!!$     OFLWR "Chirp not supported for length", chirp(ipulse), ipulse; CFLST
+!!$  endif
+!!$  if (myintime.ge.pulsestart(ipulse)) then
+!!$     time=myintime-pulsestart(ipulse)
+!!$
+!!$     if (time.le.pi/omega(ipulse)) then
+!!$
+!!$        if ( (time.le.pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) .or.&
+!!$             (time.ge.pi/omega(ipulse) - pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) ) then
+!!$           fac=2*omega(ipulse)*(2*longstep(ipulse)+1)*sin(time*omega(ipulse)*(2*longstep(ipulse)+1)) * &
+!!$                cos(time*omega(ipulse)*(2*longstep(ipulse)+1))
+!!$           fac2=sin(time*omega(ipulse)*(2*longstep(ipulse)+1))**2
+!!$        else
+!!$           fac=0.d0
+!!$           fac2=1.d0
+!!$        endif
+!!$
+!!$        longpulselen = pulsestrength(ipulse) * ( &
+!!$             fac * sin(time*omega2(ipulse) + phaseshift(ipulse)) &
+!!$          + fac2 * omega2(ipulse) * cos(time*omega2(ipulse) + phaseshift(ipulse)) )
+!!$     endif
+!!$  endif
+!!$
+!!$end function longpulselen
+!!$
+!!$
+!!$function longpulsevel(myintime, ipulse)
+!!$  use pulse_parameters
+!!$  use constant_parameters
+!!$  implicit none
+!!$  integer,intent(in) :: ipulse
+!!$  real*8,intent(in) :: myintime
+!!$  real*8 :: time, thisomega2
+!!$  DATATYPE :: longpulsevel,thisstrength
+!!$
+!!$  longpulsevel=0.d0
+!!$
+!!$  if (myintime.ge.pulsestart(ipulse)) then
+!!$     time=myintime-pulsestart(ipulse)
+!!$
+!!$     if (time.le.pi/omega(ipulse)) then
+!!$
+!!$!! this is right I think  goes to chirp/2  when 2*logstep+1 / 4*longstep+2 -way before half time
+!!$
+!!$        thisomega2=omega2(ipulse)+chirp(ipulse)/2 *(time-pi/omega(ipulse)/2)/&
+!!$             (pi/omega(ipulse)/2*(2*longstep(ipulse)+1)/(4*longstep(ipulse)+2))
+!!$        thisstrength=pulsestrength(ipulse)*(1d0 +ramp(ipulse) * &
+!!$             (time-pi/omega(ipulse)/2)/(pi/omega(ipulse)/2))
+!!$
+!!$!!(2*longstep(ipulse)+1)/(4*longstep(ipulse)+2)))
+!!$
+!!$        if ( (time.le.pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) .or. &
+!!$             (time.ge.pi/omega(ipulse) - pi/2.d0/omega(ipulse)/(2*longstep(ipulse)+1)) ) then
+!!$          longpulsevel = thisstrength  * &
+!!$               sin((time-pi/omega(ipulse)/2)*thisomega2 + phaseshift(ipulse)) * &
+!!$               sin(time*omega(ipulse)*(2*longstep(ipulse)+1))**2 
+!!$        else
+!!$           longpulsevel = thisstrength * &
+!!$                sin((time-pi/omega(ipulse)/2)*thisomega2 + phaseshift(ipulse))
+!!$        endif
+!!$     endif
+!!$  endif
+!!$  
+!!$end function longpulsevel
 
 
 !! not useful because tentmode=1 isn't better than tentmode=0; tentmode=0 default;
