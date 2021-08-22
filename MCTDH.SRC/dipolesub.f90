@@ -326,7 +326,7 @@ contains
     character(len=SLN),intent(in) :: outenames(3), outtworknames(3), outangworknames(3), &
          outftnames(9), outoworknames(9), outophotonnames(9)
     complex*16,allocatable :: fftrans(:,:),eft(:,:),each_eft(:,:,:),dipolearrays(:,:),&
-         dipole_diff(:,:)
+         dipole_diff(:,:), cefield(:)
 !! real valued variables -- field (taken real always); 
 !!        integrals domega and circ polarization output left real valued
     real*8, allocatable :: &
@@ -335,12 +335,17 @@ contains
          sumrule(:,:), each_efield_ang(:,:,:), moment(:), dipole_ang(:,:), &
          angworksum0(:,:,:), totangworksum0(:,:),  efield(:,:), each_efield(:,:,:), &
          afield(:,:), each_afield(:,:,:), ft_evals(:)
-!! making integrals dt for work x y z complex valued for complex domcke wave mixing
+    ! making integrals dt for work x y z complex valued for complex domcke wave mixing
     complex*16, allocatable :: worksum0(:,:,:), totworksum0(:,:)
     DATATYPE :: pots(3,npulses),pots2(3,numpulses)
     real*8 :: ft_estep, ft_estart, thistime, myenergy,xsecunits, windowfunct
     integer :: i,getlen,myiostat,ipulse,numft,ii,opwr,dowork,ft_numdata
+    integer :: FT_OPT !! TEMP
     character (len=7) :: number
+    real*8 :: prevsum(3), prevphot(3,npulses),prevwork(3,npulses)  ! AUTOMATIC
+    !real*8 :: prevsum(3)
+    !real*8, allocatable :: prevphot(:,:),prevwork(:,:)
+    !allocate(prevphot(3,npulses)
 
 #ifdef REALGO
     OFLWR "Cant use dipolesub for real valued code."; CFLST
@@ -348,9 +353,9 @@ contains
     
     pots=0; pots2=0
 
-    allocate(dipolearrays(0:numdata,3), efield(0:numdata,3), each_efield(0:numdata,3,npulses))
+    allocate(dipolearrays(0:numdata,3), efield(0:numdata,3), each_efield(0:numdata,3,npulses), cefield(0:numdata))
     allocate(     afield(0:numdata,3), each_afield(0:numdata,3,npulses))
-    dipolearrays=0; efield=0; each_efield=0; afield=0; each_afield=0
+    dipolearrays=0; efield=0; each_efield=0; afield=0; each_afield=0; cefield=0
 
     if (sflag.ne.0) then
        thistime=numdata*par_timestep*autosteps
@@ -431,10 +436,10 @@ contains
     elseif (veldipflag==1 .or. veldipflag==2) then
        dipole_diff(:,:) = dipolearrays(:,:)
     elseif (veldipflag==3 .or. veldipflag==4) then
-       OFLWR "skipping work calculation, veldipflag=3,4"; CFL  ! don't have V(t).. could complexint()
+       OFLWR "     ...  skipping work calculation, veldipflag=3,4"; CFL  ! don't have V(t).. could complexint()
        dowork = 0;
     else
-       OFLWR "Programmer checkme"; CFLST
+       OFLWR "Input error; veldipflag not allowed: ", veldipflag ; CFLST
     endif
 
     if (dowork.ne.0) then
@@ -578,13 +583,15 @@ contains
           efield(i,:)=efield(i,:) * windowfunct(i,numdata,21)
        enddo
     endif
+
+    FT_OPT = 0
     
-    if (1==1) then
+    if (FT_OPT == 0) then
 
        ft_numdata = half_ft_size(numdata+1) - 1 ;
 
        allocate(ft_evals(0:ft_numdata))
-       ft_evals = 0
+       ft_evals(:) = 0
        call half_ft_evals(numdata+1,ft_evals,ft_numdata+1)
 
        call half_ft_estep(numdata+1,ft_estart,ft_estep)
@@ -594,9 +601,11 @@ contains
 
        do ii=1,3
           call half_ft_wrap_diff(numdata+1,dipolearrays(:,ii),fftrans(:,ii),ft_numdata+1,1,ftderpwr(21),ftderord)
-          call half_ft_wrap(numdata+1,(0d0,0d0)+efield(:,ii),eft(:,ii),ft_numdata+1,1)
+          cefield(:) = efield(:,ii)
+          call half_ft_wrap(numdata+1,cefield,eft(:,ii),ft_numdata+1,1)
           do ipulse=1,npulses
-             call half_ft_wrap(numdata+1,(0d0,0d0)+each_efield(:,ii,ipulse),each_eft(:,ii,ipulse),ft_numdata+1,1)
+             cefield(:) = each_efield(:,ii,ipulse)
+             call half_ft_wrap(numdata+1,cefield,each_eft(:,ii,ipulse),ft_numdata+1,1)
           enddo
        enddo
 
@@ -606,7 +615,7 @@ contains
        ft_numdata = numdata
        allocate(ft_evals(0:ft_numdata))
        ft_evals = 0
-       call zfftf_evals(numdata+1,ft_evals)
+       call zfftf_evals(numdata+1,ft_evals,ft_numdata+1)
 
        allocate(fftrans(0:ft_numdata,numft), eft(0:ft_numdata,numft), each_eft(0:ft_numdata,numft,npulses))
        fftrans=0; eft=0; each_eft=0
@@ -625,7 +634,21 @@ contains
         
     endif
 
-    deallocate(efield,each_efield,dipolearrays)
+    deallocate(efield,each_efield,dipolearrays,cefield)
+
+    !! now adjust to time step
+    
+    fftrans(:, 1:3)   = fftrans(:, 1:3)   * par_timestep * autosteps
+    eft(:,     1:3)   = eft(:,     1:3)   * par_timestep * autosteps
+    each_eft(:,1:3,:) = each_eft(:,1:3,:) * par_timestep * autosteps
+
+    ft_estart = ft_estart / par_timestep / autosteps  ! not used
+    ft_estep  = ft_estep  / par_timestep / autosteps
+    ft_evals  = ft_evals  / par_timestep / autosteps
+    
+    ! no   fftrans(:,:) = fftrans(:,:) * par_timestep * autosteps
+
+    !! KEEP FT OF VELOCITY regardless of veldipflag : (opwr-1)
 
     opwr = 0
     if (veldipflag.eq.0) then                                 ! dipole expectation value
@@ -637,30 +660,29 @@ contains
        OFLWR "what programmer failure"; CFLST
     endif
 
-    !! now adjust to time step
-    
-    fftrans(:, 1:3)   = fftrans(:, 1:3)   * par_timestep * autosteps
-    eft(:,     1:3)   = eft(:,     1:3)   * par_timestep * autosteps
-    each_eft(:,1:3,:) = each_eft(:,1:3,:) * par_timestep * autosteps
-
-    ft_estart = ft_estart / par_timestep / autosteps
-    ft_estep  = ft_estep  / par_timestep / autosteps
-    ft_evals  = ft_evals  / par_timestep / autosteps
-    
-    ! print *, "CHECK estep ", estep, 2*pi/par_timestep/autosteps/(numdata+1)
-
-    !! KEEP FT OF VELOCITY regardless of veldipflag : (opwr-1)
-
     do ii=1,3
        fftrans(:,ii) = fftrans(:,ii) * ( (0d0,-1d0) / ft_evals(:) ) ** (opwr-1)
     enddo
-
-    ! no   fftrans(:,:) = fftrans(:,:) * par_timestep * autosteps
 
     !$$  08-2021  changed to keeping ft of velocity..
     !$$     need factor of sqrt(1/2) here with autotimestep*par_timestep = 0.5
 
     fftrans(:,:) = fftrans(:,:) * sqrt(par_timestep * autosteps)
+
+    ! ADJUST PHASE TO CENTER OF PULSE
+
+    if (numpulses.eq.1) then
+       OFLWR "     ... adjusting phase for t= ",pulsemiddle(1); CFL
+       ! NOT Sure the phase is correct
+       do ii=1,3
+          fftrans(:, ii)   = fftrans(:, ii)   * exp((0d0,1d0) * ft_evals(:) * pulsemiddle(1))
+          eft(:,     ii)   = eft(:,     ii)   * exp((0d0,1d0) * ft_evals(:) * pulsemiddle(1)) 
+          do ipulse=1,npulses
+             each_eft(:,ii,ipulse) &
+                  =     each_eft(:,ii,ipulse) * exp((0d0,1d0) * ft_evals(:) * pulsemiddle(1))
+          enddo
+       enddo
+    endif
     
     if (act21circ.ne.0) then
 !! XY, XZ, YX, YZ, ZX, ZY
@@ -688,6 +710,8 @@ contains
 
     endif
 
+    ! !!!!!!!!      NOW DO INTEGRALS DOMEGA
+    
     allocate(&
          worksums(   0:ft_numdata,numft,npulses),photsums(0:ft_numdata,numft,npulses),&
          totworksums(0:ft_numdata,numft),     totphotsums(0:ft_numdata,numft), &
@@ -697,30 +721,36 @@ contains
     worksums=0; photsums=0; totworksums=0; totphotsums=0; 
     workpers=0; photpers=0; totworkpers=0; totphotpers=0; 
     sumrule=0
-
-    if (dipolesumstart.le.0d0) then
-       do ipulse=1,npulses
-          photpers(0,:,ipulse) = real(fftrans(0,:)*conjg(each_eft(0,:,ipulse))) / PI / ft_evals(0)
-          photsums(0,:,ipulse) = ft_estep * photpers(0,:,ipulse)
-       enddo
-    endif
     
-    do i=1,ft_numdata
+    prevsum(:) = 0
+    prevphot(:,:) = 0
+    prevwork(:,:) = 0
+    do i=0,ft_numdata
        myenergy = ft_evals(i)
-       
 !! sumrule sums to N for N electrons
-       if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend.and.i.le.(ft_numdata/2)) then
-          sumrule(i,:)=sumrule(i-1,:) + ft_estep * real(fftrans(i,:)*conjg(eft(i,:))) / abs(eft(i,:)**2) * 2 / PI
+       if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then      !  .and.i.le.(ft_numdata/2)) then
+          sumrule(i,:)=prevsum(:) + ft_estep * real(fftrans(i,:)*conjg(eft(i,:))) / abs(eft(i,:)**2) * 2 / PI
+          ! sumrule(i,:)=sumrule(i-1,:) + ft_estep * real(fftrans(i,:)*conjg(eft(i,:))) / abs(eft(i,:)**2) * 2 / PI
           do ipulse=1,npulses
+             ! argh now storing velocity in fftrans must divide by energy for photons,
+             !   which is bad at zero, but avoid zero with half_ft_wrap
              photpers(i,:,ipulse) = real(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI / myenergy
-             workpers(i,:,ipulse) = real(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI 
-             photsums(i,:,ipulse) = photsums(i-1,:,ipulse) + ft_estep * photpers(i,:,ipulse)
-             worksums(i,:,ipulse) = worksums(i-1,:,ipulse) + ft_estep * workpers(i,:,ipulse)
+             workpers(i,:,ipulse) = real(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI
+             photsums(i,:,ipulse) = prevphot(:,ipulse) + ft_estep * photpers(i,:,ipulse)
+             worksums(i,:,ipulse) = prevwork(:,ipulse) + ft_estep * workpers(i,:,ipulse)
+             ! photsums(i,:,ipulse) = photsums(i-1,:,ipulse) + ft_estep * photpers(i,:,ipulse)
+             ! worksums(i,:,ipulse) = worksums(i-1,:,ipulse) + ft_estep * workpers(i,:,ipulse)
           enddo
+          prevsum(:)  = sumrule(i,:)     
+          prevphot(:,:) = photsums(i,:,:)
+          prevwork(:,:) = worksums(i,:,:)
        else
-          sumrule(i,:)     =   sumrule(i-1,:)
-          photsums(i,:,:)  =  photsums(i-1,:,:)
-          worksums(i,:,:)  =  worksums(i-1,:,:)
+          sumrule(i,:)     =  prevsum(:)
+          photsums(i,:,:)  =  prevphot(:,:)
+          worksums(i,:,:)  =  prevwork(:,:)
+          ! sumrule(i,:)     =  sumrule(i-1,:)
+          ! photsums(i,:,:)  =  photsums(i-1,:,:)
+          ! worksums(i,:,:)  =  worksums(i-1,:,:)
        endif
     enddo
     totphotsums=0
@@ -761,10 +791,12 @@ contains
        
           do i=0,ft_numdata
              myenergy = ft_evals(i)
-             write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
-                  fftrans(i,ii), eft(i,ii), abs(fftrans(i,ii))**2 * myenergy**2, &
-                  2 * real(fftrans(i,ii)*conjg(eft(i,ii)),8) , &
-                  real(fftrans(i,ii)*conjg(eft(i,ii)),8) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
+             if (myenergy.le.hhgplotmax) then
+                write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
+                     fftrans(i,ii), eft(i,ii), abs(fftrans(i,ii))**2 * myenergy**2, &
+                     2 * real(fftrans(i,ii)*conjg(eft(i,ii)),8) , &
+                     real(fftrans(i,ii)*conjg(eft(i,ii)),8) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
+             endif
           enddo
           call checkiostat(myiostat,"writing "//outftnames(ii))
           close(171)
@@ -837,14 +869,16 @@ contains
 
              do i=0,ft_numdata
                 myenergy = ft_evals(i)
-                write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
-                     fftrans(i,ii), eft(i,ii), abs(fftrans(i,ii))**2 * myenergy**2, &
-                     2 * real(fftrans(i,ii)*conjg(eft(i,ii)),8) , &
-                     real(fftrans(i,ii)*conjg(eft(i,ii)),8) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
-
-                !write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
-                !     fftrans(i,ii), eft(i,ii), fftrans(i,ii)*conjg(eft(i,ii)) * 2 * myenergy, &
-                !     fftrans(i,ii)*conjg(eft(i,ii)) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
+                if (myenergy.le.hhgplotmax) then
+                   write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
+                        fftrans(i,ii), eft(i,ii), abs(fftrans(i,ii))**2 * myenergy**2, &
+                        2 * real(fftrans(i,ii)*conjg(eft(i,ii)),8) , &
+                        real(fftrans(i,ii)*conjg(eft(i,ii)),8) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
+                
+                   !write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
+                   !     fftrans(i,ii), eft(i,ii), fftrans(i,ii)*conjg(eft(i,ii)) * 2 * myenergy, &
+                   !     fftrans(i,ii)*conjg(eft(i,ii)) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
+                endif
              enddo
              call checkiostat(myiostat,"writing "//outftnames(ii)(1:getlen(outftnames(ii)))//number(2:7))
              close(171)

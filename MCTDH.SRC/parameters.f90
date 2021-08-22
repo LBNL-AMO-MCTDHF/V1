@@ -95,46 +95,46 @@ integer,parameter :: drivingflag=0                         !!  Solve for the cha
 real*8,parameter :: drivingproportion=0.999999999999d0     !!   -- "psi-prime" treatment.
 DATATYPE :: timefac=&            !! Prop/        !! d/dt psi = timefac * H * psi
         DATANEGONE               !!  Relax       !!
-real*8 :: mshift=0d0                             !! shift configurations based on m-value.. to break 
+real*8 :: mshift=0d0             !!              !! shift configurations based on m-value.. to break 
                                                  !!  degeneracy for state averaged sym restricted
                                                  !!  (mrestrictmin, mrestrictmax) mcscf; good idea.
-integer :: offaxispulseflag=0                    !! internal (not namelist), IGNORE me
+integer :: offaxispulseflag=0    !!              !! internal (not namelist), IGNORE me
 integer :: numelec=2             !!              !! NUMBER OF ELECTRONS   variable now here for dipolesub
 end module ham_parameters
 !!EE
 !!{\large \quad PULSE.  (If tdflag=1) }
 !!BB
-module pulse_parameters           !!      NAMELIST PULSE
-integer :: numpulses=1            !!  number of pulses, enter pulsetype, omega, etc. for each
-integer :: reference_pulses=0     !!  for domcke method action 21,29. Enter numpulses+reference_pulses pulses, then
-                                  !!    output (eg absorption) is calc'd with e-field for pulses numpules+1 and up
-integer ::  pulsetype(100)=1      !!              !!  Pulsetype=1:  A(t) = pulsestrength * sin(w t)^2,
-real*8  :: omega(100)=1.d0        !!              !!  2:  A(t) = strength * sin(w t)^2 
-real*8 :: omega2(100)=1.d0        !!              !!             * sin(w2 t + phaseshift),
-real*8 :: pulsestart(100)=0d0     !!              !!   
-real*8 :: phaseshift(100)=0d0     !!              !!    pulsestart < t < pulsestart + pi/w; 0 otherwise
-integer :: envdernum=3            !!              !!  Pulsetype 6
-integer :: envpwr=4               !!              !!  Pulsetype 6
-real*8 :: chirp(100)=0d0          !!              !!
-real*8 :: ramp(100)=0d0
-real*8 :: longstep(100)=1d0       !!              !!  Pulsetype 3 available: monochromatic, sinesq start+end
-!! NOW COMPLEX
-DATATYPE :: pulsestrength(100)=.5d0 !!            !!  A_0 = E_0/omega (strength of field)  
-real*8 :: intensity(100)= -1.d0   !!              !! overrides pulse strength.  Intensity, 10^16 W cm^-2 
-real*8 :: pulsetheta(100)=0.d0    !!              !!  angle between polarization and bond axis (radians)
-real*8 :: pulsephi(100)=0.d0      !!              !!  polarization in xy plane
+module pulse_parameters          !!      NAMELIST PULSE
+integer :: numpulses=1           !!  number of pulses, enter pulsetype, omega, etc. for each
+integer :: reference_pulses=0    !!  for domcke method action 21,29. Enter numpulses+reference_pulses pulses, then
+                                 !!    output (eg absorption) is calc'd with e-field for pulses numpules+1 and up
+integer ::  pulsetype(100)=1     !!              !!  1:  Impulse   2,6: with envelope   see pulse.f90
+real*8  :: omega(100)=1.d0       !!              !!  Pulsetype 1 parameter or pulsetype 2,6 evelope Dur=Pi/omega
+real*8 :: omega2(100)=1.d0       !!              !!  Pulsetype 2,5 "central" freqency
+real*8 :: pulsestart(100)=0d0    !!              !!  When the pulse starts
+real*8 :: phaseshift(100)=0d0    !!              !!  Phase shift
+integer :: envdernum=3           !!              !!  Pulsetype 6 only
+integer :: envpwr=4              !!              !!     "
+real*8 :: chirp(100)=0d0         !!              !!  Pulsetype 2 only
+real*8 :: ramp(100)=0d0          !!              !!     "
+!! real*8 :: longstep(100)=1d0   !!              !!  Pulsetype 3 deprecated
+DATATYPE :: pulsestrength(100)=& !! NOW COMPLEX
+     .5d0                        !!              !!  A_0 = E_0/omega (strength of field)  
+real*8 :: intensity(100)= -1.d0  !!              !! overrides pulse strength.  Intensity, 10^16 W cm^-2 
+real*8 :: pulsetheta(100)=0.d0   !!              !!  angle between polarization and bond axis (radians)
+real*8 :: pulsephi(100)=0.d0     !!              !!  polarization in xy plane
 real*8 :: maxpulsetime=1.d20     !!              !!  
 real*8 :: minpulsetime=0.d0      !!              !!  By default calc stops after pulse (overrides finaltime,
                                                  !!   numpropsteps); this will enforce minimum duration
 end module pulse_parameters
 module dip_parameters
-  integer :: veldipflag=0        !! temp hack, velocity expectation value, no A(t) in velocity gauge
+  integer :: veldipflag=0        !! actions 21,29 : velocity expectation value (1,2) or acceleration (3,4) 
 end module dip_parameters
 !!EE
 !!{\large \quad CONFIGURATIONS / SLATER DETERMINANTS}
 !!BB
 module df_parameters
-integer :: df_restrictflag=0      !!              !! apply constraint to configuration list?  Must use this
+integer :: df_restrictflag=0     !!              !! apply constraint to configuration list?  Must use this
                                                  !!  option if constraintflag /= 0.  1 is sufficient;
                                                  !!  dfrestrictflag=2 necessary for action 22. 
                                                  !!  SEE MANUAL FOR PROPER USE OF dfrestrictflag/shell options.
@@ -254,10 +254,12 @@ end module denreg_parameters
 !!BB
 module ft_parameters
   !! FT is used in the actions. set these separately according to action number
+  !!   see getparams.f90 for DEFAULTS.  defaults below are overridden
   integer :: fttriwindow(256)=1  ! use triangle window or cosine
-  !! Triangle :       ((tmax-t)/tmax)**ftwindowpower
+  !! Triangle : ((tmax^z-t^z)/tmax^z)**ftwindowpower  z = ftwindowpzero
   !! Cosine   :  cos(pi t / 2 / tmax)**ftwindowpower 
   integer :: ftwindowpower(256)=1
+  integer :: ftwindowpzero(256)=1
   integer :: ftderpwr(256)=1  ! which derivative to FT
   integer :: ftderord=1       ! bandwidth of finite difference derivative operators
 end module ft_parameters
@@ -507,14 +509,15 @@ real*8 :: autotimestep=1.d0      !! ACTIONS 1,21,29 (autocorrelation and emissio
                                  !!   time step for fourier transform
 integer :: auto_subtract=0       !! if nonzero subtract tent function for autocorrelation (action 1)
 !!EE
-!!{\large \quad EMISSION/ABSORPTION (action 21,29)}
+!!{\large \quad EMISSION/ABSORPTION and HHG (action 21,29)}
 !!BB
 integer :: hanningflag=0         !! for hanning window set nonzero action 1 autocorr
 real*8 :: diptime=100            !! For act=20, outputs copies every diptime atomic units
 integer :: dipmodtime=100        !! do ft every autotimestep*dipmodtime
 real*8 :: dipolesumstart=-1d0,&  !! range for integration of oscillator strength (e.g. for sum rule), photon
      dipolesumend=-1d0           !!    energy atomic units (Hartree) start and end, if < 0 default set
-                                 !!    based on &pulse namelist input (depending on omegas)
+integer :: hhgplotmax = 100      !! for plotting dipole response, harmonic number
+!                                !! effect of those parameters depends on &pulse namelist input (omegas)
 logical :: redobra=.false.       !! for complex Domcke action 29
 !!EE
 !!{\large \quad PHOTOIONIZATION (actions 15,16,17,27,28)}
@@ -583,6 +586,9 @@ real*8 :: debugfac=1d0
 !!EE
 !! XXSNIPXX
 
+real*8 :: pulsefinish(100) = -1d0
+real*8 :: pulsemiddle(100) = -1d0
+
 integer :: tentmode=0            !! tentmode=1 attempt not good
 
 integer :: jacquaddir=0
@@ -621,6 +627,7 @@ integer :: nonatrotate=0
 !!$ integer :: fluxsteps=1
 
 real*8 :: lastfinish=0d0  !! final time of pulse
+real*8 :: hhgplotend=0d0  !! plotting, frequency or photon energy
 
 integer :: eachloaded(MXF)=(-99)
 

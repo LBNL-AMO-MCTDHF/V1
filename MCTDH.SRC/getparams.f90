@@ -53,7 +53,7 @@ subroutine getparams()
   integer :: avectorhole(1000)=-1001
   integer :: avectorexcitefrom(1000)=-1001
   integer :: avectorexciteto(1000)=-1001
-  real*8 :: tempreal,mymax,mymin
+  real*8 :: tempreal
 
 !! DUMMIES
   integer :: restrictms=0,  dfrestrictflag=0, allspinproject=1
@@ -88,7 +88,7 @@ subroutine getparams()
        xyoworkfile,xzoworkfile,yxoworkfile,yzoworkfile,zxoworkfile,zyoworkfile,&
        xophotonfile, yophotonfile,zophotonfile,&
        xyophotonfile,xzophotonfile,yxophotonfile,yzophotonfile,zxophotonfile, zyophotonfile,&
-       fttriwindow,  ftwindowpower, ftderord,  ftderpwr, &  !ftdiff,  &
+       fttriwindow,  ftwindowpower, ftwindowpzero, ftderord,  ftderpwr, &  !ftdiff,  &
        diptime, fluxafile2,fluxmofile2, minocc,maxocc, corrdatfile,corrftfile,numavectorfiles,projfluxfile, &
        expodim,timingdir, hanningflag, numspffiles, condamp,conway, &
        mrestrictmin,mrestrictmax,lntol,invtol,psistatsfile, psistatfreq, &
@@ -106,7 +106,8 @@ subroutine getparams()
        prepropflag, step_flag, postpropflag, scalarflag, angprojfluxtsumfile, &
        catfacs, flux_subtract, jacsymquad, exact_exchange, jacquaddir, tentmode, followflag, &
        exchange_mode, gaugefluxflag, strongcatflag, strongcatspffiles, strongcatavectorfiles, &
-       catenergies, nonuc_checkflag, autostart, auto_subtract, plotsubtract, veldipflag
+       catenergies, nonuc_checkflag, autostart, auto_subtract, plotsubtract, veldipflag, &
+       hhgplotmax
 
   OFL
   write(mpifileptr, *)
@@ -134,6 +135,7 @@ subroutine getparams()
 
   fttriwindow(:)=1
   ftwindowpower(:)=1
+  ftwindowpzero(:)=1
 
   fttriwindow(1)=0
   ftwindowpower(1)=2
@@ -558,48 +560,13 @@ subroutine getparams()
 
   if (needpulse.ne.0) then
      !
-     call getpulse(0)           !!  Read pulse namelist info from file
-     !
-     ! dipolesumstart, dipolesumend used for integration of work E(omega)* D'(omega)
-     !    so they just need to cover the pulse, not the response
-     !
-     ! also used for plotting pulse FT
-     !
-     if (dipolesumend.lt.0d0) then
-        mymax=0d0
-        do ipulse=1,numpulses
-           select case (pulsetype(ipulse))
-           case(1)
-              mymax=max(mymax,omega(ipulse)*3d0)
-           case(2,6)
-              !$$ PREVIOUSLY  mymax=max(mymax,omega2(ipulse)*3d0)
-              !
-              mymax=max(mymax,omega2(ipulse) + omega(ipulse)*9d0)
-           case default
-              OFLWR "pulse type not supported - programmer check pulse.f90"; CFLST
-           end select
-        enddo
-        dipolesumend=mymax
-     endif
-     if (dipolesumstart.lt.0d0) then
-        mymin=1e16
-        do ipulse=1,numpulses
-           select case (pulsetype(ipulse))
-           case(1)
-              mymin=0d0
-           case(2,6)
-              mymin=min(mymin,omega2(ipulse) - omega(ipulse)*9d0)
-           case default
-              OFLWR "pulse type not supported - programmer check pulse.f90"; CFLST
-           end select
-        enddo
-        dipolesumstart=max(0d0,mymin)
-     endif
-  else
-     dipolesumend=0
-     dipolesumstart=0
+     call getpulse(0)            !  Read pulse namelist info from file
+     ! 
+     ! else
+     !    dipolesumend=0              ! shouldn't be used
+     !    dipolesumstart=0
   endif
-
+  
   do i=1,nargs
      buffer=nullbuff
      myiostat=0
@@ -983,15 +950,15 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
   use utilmod
   implicit none
   NAMELIST /pulse/ omega,pulsestart,pulsestrength, velflag, omega2,phaseshift,intensity,pulsetype, &
-       pulsetheta,pulsephi, longstep, numpulses, reference_pulses, minpulsetime, maxpulsetime, &
+       pulsetheta,pulsephi, numpulses, reference_pulses, minpulsetime, maxpulsetime, &
        chirp, ramp, envdernum, envpwr
   character (len=12)      :: line
-  integer                 :: i, myiostat, ipulse,no_error_exit_flag, neflux
-  !integer, parameter     :: neflux=9999   !10000
+  integer                 :: i, myiostat, ipulse,no_error_exit_flag, neflux, ntime
+  integer                 :: FT_OPT ! temp
   real*8, parameter       :: epsilon=1d-4
-  real*8                  :: time, fac, pulse_end, estep, estart, dt, emax, energy
-  real*8, allocatable     :: pulseftsq(:), vpulseftsq(:)
-  complex*16, allocatable :: lenpot(:,:),velpot(:,:)
+  real*8                  :: time, fac, pulse_end, dt, emax, energy, mymax, mymin, nyfac
+  real*8, allocatable     :: pulseftsq(:), vpulseftsq(:), evals(:)
+  complex*16, allocatable :: lenpot(:,:), velpot(:,:), lenft(:,:), velft(:,:)
   DATATYPE                :: pots1(3),pots2(3)
   !$$ DATATYPE            :: pots3(3), pots4(3), pots5(3), csumx,csumy,csumz
   
@@ -1033,6 +1000,12 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         offaxispulseflag=1
      endif
 
+     pulsefinish(ipulse) = pulsestart(ipulse) + pi/omega(ipulse);
+     pulsemiddle(ipulse) = pulsestart(ipulse) + pi/omega(ipulse)/2;
+     if (lastfinish.lt.pulsefinish(ipulse)) then
+        lastfinish=pulsefinish(ipulse)
+     endif
+
      write(mpifileptr, *) "    -----> Pulse ", ipulse," : "
 
      if (pulsetype(ipulse).eq.1.or.pulsetype(ipulse).eq.5) then
@@ -1061,7 +1034,7 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         write(mpifileptr, *) "   Intensity:       ",intensity(ipulse), " x 10^16 W cm^-2"
         write(mpifileptr, *) "   Pulsetheta:      ",pulsetheta(ipulse)
         write(mpifileptr, *) "   Pulsephi:      ",pulsephi(ipulse)
-        write(mpifileptr, *) "   Pulsefinish:     ",pulsestart(ipulse) + pi/omega(ipulse)
+        write(mpifileptr, *) "   Pulsefinish:     ",pulsefinish(ipulse)
         !$$  ! longpulse disabled 08-2021
         !$$  if (pulsetype(ipulse).eq.3) then
         !$$     write(mpifileptr,*) "---> Pulsetype 3; longstep = ", longstep(ipulse)
@@ -1091,9 +1064,6 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
      case default
         WRFL "Pulse type not supported or programmer failure ",pulsetype(ipulse); CFLST
      end select
-     if (lastfinish.lt.pulsestart(ipulse)+pi/omega(ipulse)) then
-        lastfinish=pulsestart(ipulse)+pi/omega(ipulse)
-     endif
   end do
   
 #ifdef REALGO
@@ -1119,25 +1089,79 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
      
      CFL         !!!!!!   CLOSING MPIFILEPTR   !!!!!!
 
+     ! dipolesumstart, dipolesumend used for integration of work E(omega)* D'(omega)
+     !    so they just need to cover the pulse, not the response
+     !
+     ! also used for plotting pulse FT
+     !
+     mymax=0d0
+     do ipulse=1,numpulses
+        select case (pulsetype(ipulse))
+        case(1)
+           mymax=max(mymax,omega(ipulse)*hhgplotmax)
+        case(2,6)
+           mymax=max(mymax,omega2(ipulse)*hhgplotmax)
+        case default
+           OFLWR "pulse type not supported - programmer check pulse.f90"; CFLST
+        end select
+     enddo
+     hhgplotend=mymax
+     if (dipolesumend.lt.0d0) then
+        mymax=0d0
+        do ipulse=1,numpulses
+           select case (pulsetype(ipulse))
+           case(1)
+              mymax=max(mymax,omega(ipulse) * 24d0)
+           case(2,6)
+              mymax=max(mymax,omega2(ipulse) + omega(ipulse) * 24d0)
+           case default
+              OFLWR "pulse type not supported - programmer check pulse.f90"; CFLST
+           end select
+        enddo
+        dipolesumend=mymax
+     endif
+     if (dipolesumstart.lt.0d0) then
+        mymin=1e16
+        do ipulse=1,numpulses
+           select case (pulsetype(ipulse))
+           case(1)
+              mymin=0d0
+           case(2,6)
+              mymin=min(mymin,omega2(ipulse) - omega(ipulse) * 24d0)
+           case default
+              OFLWR "pulse type not supported - programmer check pulse.f90"; CFLST
+           end select
+        enddo
+        dipolesumstart=max(0d0,mymin)
+     endif
+     
      ! ! NOW PLOT
      
      pulse_end = finaltime
-     estep     = 2*pi / finaltime
-     emax      = dipolesumend * 3d0
-     neflux    = floor(emax / estep)    !  also t=0 included, neflux+1 points
-     dt        = pulse_end/neflux       !  also t=0 included, neflux+1 points
 
-     if (neflux > 5000) then
-        WRFL "CHECKME neflux too large.. is dipolesumend or finaltime very large? ", neflux; CFLST
+     nyfac     = 3d0
+     emax      = dipolesumend * nyfac     ! extra factor of 3 for plotting, output to 1/3 nyquist
+     
+     ntime     = floor(emax * finaltime * 2d0 / pi)    !  also t=0 included, ntime+1 points
+     dt        = pulse_end/ntime                       !  also t=0 included, ntime+1 points
+
+     FT_OPT = 0
+     
+     if (FT_OPT == 0) then
+        neflux    = half_ft_size(ntime+1) - 1;
+     else
+        neflux    = zfftf_size(ntime+1) - 1;
+     endif
+     
+     print *, "NEFLUX:", ntime, neflux, dipolesumend, emax
+     
+     if (ntime > 5000 .or. neflux > 10000) then
+        OFLWR "CHECKME ntime,neflux too large.. is dipolesumend or finaltime very large? ", ntime, neflux; CFLST
      endif
 
-     call zfftf_estep(neflux+1,estart,estep)
-     estart = estart / dt
-     estep  = estep  / dt
-
      if (myrank.eq.1) then
-        allocate(lenpot(0:neflux,3),velpot(0:neflux,3),pulseftsq(0:neflux),vpulseftsq(0:neflux))
-        
+        allocate(lenpot(0:ntime,3),velpot(0:ntime,3))
+
         open(886, file="Dat/Pulse.Datx", status="unknown",iostat=myiostat)
         call checkiostat(myiostat," opening Dat/Pulse.Datx")
         open(887, file="Dat/Pulse.Daty", status="unknown")
@@ -1145,7 +1169,7 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
 
         !$$ csumx=0; csumy=0; csumz=0
 
-        do i=0,neflux
+        do i=0,ntime
            time=i*dt
 
            !$$  checking that E(t) = d/dt A(t)   and  A(t) = integral E(t)
@@ -1155,10 +1179,10 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
 
            !$$ call vectdpot(time-epsilon,          1,pots3,1)
            !$$ call vectdpot(time+epsilon,          1,pots4,1)
-           !$$ call vectdpot(time+pulse_end/neflux ,0,pots5,1)
-           !$$ csumx=csumx+ pulse_end/neflux * pots5(1)
-           !$$ csumy=csumy+ pulse_end/neflux * pots5(2)
-           !$$ csumz=csumz+ pulse_end/neflux * pots5(3)
+           !$$ call vectdpot(time+pulse_end/ntime ,0,pots5,1)
+           !$$ csumx=csumx + dt * pots5(1)
+           !$$ csumy=csumy + dt * pots5(2)
+           !$$ csumz=csumz + dt * pots5(3)
            !$$ write(886,'(100F15.10)') time, pots1(1), pots2(1), (pots4(1)-pots3(1))/2/epsilon, csumx
            !$$ write(887,'(100F15.10)') time, pots1(2), pots2(2), (pots4(2)-pots3(2))/2/epsilon, csumy
            !$$ write(888,'(100F15.10)') time, pots1(3), pots2(3), (pots4(3)-pots3(3))/2/epsilon, csumz
@@ -1174,20 +1198,34 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         close(887);
         close(888)
 
-        call zfftf_wrap(neflux+1,lenpot(:,i))
+        allocate(evals(0:neflux),lenft(0:neflux,3),velft(0:neflux,3),pulseftsq(0:neflux),vpulseftsq(0:neflux))
+        evals(:) = 0; lenft(:,:) = 0; velft(:,:) = 0; pulseftsq(:) = 0; vpulseftsq(:) = 0
         
-        do i=1,3
-           call zfftf_wrap(neflux+1,lenpot(:,i))
-           call zfftf_wrap(neflux+1,velpot(:,i))
-        enddo
+        if (FT_OPT==0) then
+           call half_ft_evals(ntime+1,evals,neflux+1)
+           evals(:) = evals(:) / dt
+           do i=1,3
+              call half_ft_wrap(ntime+1,lenpot(:,i),lenft(:,i),neflux+1,1)
+              call half_ft_wrap(ntime+1,velpot(:,i),velft(:,i),neflux+1,1)
+           enddo
+        else
+           call zfftf_evals(ntime+1,evals,neflux+1)
+           evals(:) = evals(:) / dt
+           do i=1,3
+              lenft(:,i) = lenpot(:,i)
+              velft(:,i) = velpot(:,i)
+              call zfftf_wrap(neflux+1,lenft(:,i))
+              call zfftf_wrap(neflux+1,velft(:,i))
+           enddo
+        endif
 
-        lenpot(:,:)=lenpot(:,:)*dt
+        lenft(:,:)=lenft(:,:)*dt
 
-        velpot(:,:)=velpot(:,:)*dt
+        velft(:,:)=velft(:,:)*dt
 
-        pulseftsq(:)=abs(lenpot(:,1)**2)+abs(lenpot(:,2)**2)+abs(lenpot(:,3)**2)
+        pulseftsq(:)=abs(lenft(:,1)**2)+abs(lenft(:,2)**2)+abs(lenft(:,3)**2)
 
-        vpulseftsq(:)=abs(velpot(:,1)**2)+abs(velpot(:,2)**2)+abs(velpot(:,3)**2)
+        vpulseftsq(:)=abs(velft(:,1)**2)+abs(velft(:,2)**2)+abs(velft(:,3)**2)
 
         open(885, file="Dat/Pulseftsq.Dat", status="unknown")
         open(886, file="Dat/Pulseft.Datx", status="unknown")
@@ -1195,18 +1233,21 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         open(888, file="Dat/Pulseft.Datz", status="unknown")
 
         do i=0,neflux
-           energy = estart + i * estep
-           !
-           write(885,'(100F30.12)',iostat=myiostat) energy, pulseftsq(i), vpulseftsq(i)
-           call checkiostat(myiostat," wrting Dat/Pulse.Dat file")
-           write(886,'(100F30.12)') energy, lenpot(i,1),velpot(i,1)
-           write(887,'(100F30.12)') energy, lenpot(i,2),velpot(i,2)
-           write(888,'(100F30.12)') energy, lenpot(i,3),velpot(i,3)
+           energy = evals(i)
+           if (energy.ge.dipolesumstart.and.energy.le.dipolesumend) then
+              !
+              write(885,'(100F30.12)',iostat=myiostat) energy, pulseftsq(i), vpulseftsq(i)
+              call checkiostat(myiostat," wrting Dat/Pulse.Dat file")
+              write(886,'(100F30.12)') energy, lenft(i,1),velft(i,1)
+              write(887,'(100F30.12)') energy, lenft(i,2),velft(i,2)
+              write(888,'(100F30.12)') energy, lenft(i,3),velft(i,3)
+           endif
         enddo
-        
-        deallocate(lenpot,velpot,pulseftsq,vpulseftsq)
-                
+
         close(885);   close(886);   close(887);   close(888)
+
+        deallocate(evals,lenft,velft,pulseftsq,vpulseftsq)
+        deallocate(lenpot,velpot)
 
      endif
 

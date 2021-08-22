@@ -135,9 +135,9 @@ function windowfunct(i,numdata,iaction)
   use parameters
   use actionlistmod
   implicit none
-  real*8 :: windowfunct
+  real*8 :: windowfunct, realval
   integer,intent(in) :: i,numdata,iaction
-  integer :: wpr
+  integer :: wpr, zpwr
 
   if (iaction.gt.MAXACTION.or.iaction.lt.1) then
      OFLWR "windowfunct action error", iaction, MAXACTION; CFLST
@@ -148,21 +148,26 @@ function windowfunct(i,numdata,iaction)
   endif
 
   wpr = ftwindowpower(iaction)
+  zpwr = ftwindowpzero(iaction)
+
+  if (zpwr.lt.1) then
+     OFLWR "error, ftwindowpzero = ",zpwr; CFLST
+  endif
   
   if (wpr.eq.0) then
      windowfunct = 1d0
-  else
-     if (fttriwindow(iaction).ne.0) then
-        windowfunct = ( real(numdata-i,8) / real(numdata,8) )
-     else
-        windowfunct = cos( pi/2d0 * i / real(numdata,8) )
-     endif
-     if (wpr.lt.0) then
-        windowfunct = windowfunct**(-1d0/wpr)
-     else
-        windowfunct = windowfunct**wpr
-     endif
+     return
   endif
+  realval = wpr;
+  if (wpr .lt. 0) then
+     realval = -1d0/wpr
+  endif
+  if (fttriwindow(iaction).ne.0) then
+     windowfunct = ( 1d0 -  ( real(i,8) / real(numdata,8) )**zpwr )**realval
+  else
+     windowfunct = cos( pi/2d0 * i / real(numdata,8) )**realval
+  endif
+
 
 end function windowfunct
 

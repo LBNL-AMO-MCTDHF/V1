@@ -286,7 +286,6 @@ subroutine complexdiff(size,in,out,howmany,diffpower,difforder)
   allocate(bandmat(tbw,size))
 
   call banded_diff_mat(size,diffpower,bw,bandmat,tbw)
-  ! call banded_diff_mat(size,2,bw,bandmat,tbw)
 
   out(:,:) = 0d0
   
@@ -399,37 +398,42 @@ subroutine half_ft_wrap(size,in,out,outsize,howmany)
   integer, intent(in) :: size,outsize,howmany
   complex*16, intent(in) :: in(size,howmany)
   complex*16, intent(out) :: out(outsize,howmany)
-  complex*16,allocatable :: wsave(:), vv(:,:)
+  complex*16,allocatable :: vv(:,:), csave(:)
+  real*8, allocatable :: rsave(:)
+  integer :: ifac(15)  !! AUTOMATIC
   integer :: bigsize,ii
   
   if (size.gt.6000) then
      OFLWR "ARE YOU SURE?  big size, programmer checkme ft ",size; CFLST
   endif  
-
-  bigsize           = 8*NN*size
-
   if (outsize > 2*NN*size) then
      OFLWR "ack bad outsize,NN,size: ",outsize,NN,size; CFLST
   endif
-  
   if (half_ft_size(size) .ne. outsize) then
      OFLWR "ack programmer failure 543"; CFLST
   endif
-  
-  allocate(vv(2,4*NN*size), wsave(4*bigsize+15))  
-  vv = 0;  out = 0;  wsave = 0;
 
-  call zffti(bigsize,wsave)
+  bigsize           = 8*NN*size
 
+  allocate(vv(2,bigsize/2))
+  vv(:,:) = 0; 
+  allocate(rsave(2*bigsize),csave(2*bigsize))
+  rsave(:) = 0; csave(:) = 0
+  ifac(:) = 0
+
+  call cffti1(bigsize,rsave,ifac)
+
+  out(:,:) = 0;
   do ii             = 1,howmany
      vv(:,:)        = 0;
      vv(2,1:size)   = in(:,ii);
-     call zfftf(bigsize,vv,wsave)
+     call cfftf1(bigsize,vv,csave,rsave,ifac)
      out(:,ii)    = vv(2,1:outsize);
   enddo
 
-  deallocate(vv,wsave)
-
+  deallocate(rsave,csave)
+  deallocate(vv)
+  
 end subroutine half_ft_wrap
 
 
@@ -445,12 +449,16 @@ function zfftf_size(size)
 end function zfftf_size
 
 
-subroutine zfftf_evals(size,evals)
+subroutine zfftf_evals(size,evals,outsize)
+  use fileptrmod
   implicit none
-  integer,intent(in) :: size
+  integer,intent(in) :: size,outsize
   real*8, intent(out) :: evals(size)
   real*8 :: estart,estep
   integer :: i
+  if (outsize.ne.zfftf_size(size)) then
+     OFLWR "ack half_ft_evals",outsize,half_ft_size(size); CFLST
+  endif
   call zfftf_estep(size,estart,estep)
   evals(:) = 0
   do i=1,size
@@ -481,7 +489,7 @@ subroutine zfftf_wrap_diff(size,inout,diffpower,difforder)
   else
      allocate(work(size),evals(size));
      work=0; evals=0
-     call zfftf_evals(size,evals)
+     call zfftf_evals(size,evals,size)
      
      !! NOW DOES OTHER DERIVATIVES.. BEFORE WAS ONLY 1ST DERIVATIVE
      !!   and ftdiff selected different options for it..  now
@@ -500,37 +508,23 @@ subroutine zfftf_wrap_diff(size,inout,diffpower,difforder)
 end subroutine zfftf_wrap_diff
 
 
-!  function facfunct(myindex,numdata,diffdflag)
-!    use fileptrmod
-!    implicit none
-!    integer, intent(in) :: myindex,diffdflag,numdata
-!    complex*16 :: facfunct,ccsum
-!    real*8, parameter :: twopi = 6.28318530717958647688d0
-!    if (myindex.lt.0.or.myindex.gt.numdata) then
-!       OFLWR "FACFUNCT ERR", myindex,0,numdata; CFLST
-!    endif
-!    ccsum=1d0
-!    if (diffdflag.ne.0) then
-!       if (myindex.ne.0) then
-!          ccsum= 1d0 / ((0d0,1d0)*myindex) / twopi * (numdata+1)
-!       else
-!          ccsum=0d0
-!       endif
-!    endif
-!    facfunct=ccsum
-!  end function facfunct
-
+!  *********       edits 08-2021                  *****
+!  zfft functions use bad casting of wsave
+!  they are just little wrappers for cfft1 functions
+!  *********   now using those instead 08-2021    *****
 
 subroutine zfftf_wrap(size,inout)
   implicit none
   integer, intent(in) :: size
   complex*16, intent(inout) :: inout(size)
-  complex*16,allocatable :: wsave(:)
-  allocate(wsave(4*size+15))
-  wsave(:)=0d0
-  call zffti(size,wsave)
-  call zfftf(size,inout,wsave)
-  deallocate(wsave)
+  complex*16,allocatable :: csave(:)
+  real*8, allocatable :: rsave(:)
+  integer :: ifac(15)  !! AUTOMATIC
+  allocate(rsave(2*size),csave(2*size))
+  rsave(:) = 0; csave(:) = 0; ifac(:) = 0
+  call cffti1(size,rsave,ifac)
+  call cfftf1(size,inout,csave,rsave,ifac)
+  deallocate(rsave,csave)
 end subroutine zfftf_wrap
 
 
@@ -538,13 +532,28 @@ subroutine zfftb_wrap(size,inout)
   implicit none
   integer, intent(in) :: size
   complex*16, intent(inout) :: inout(size)
-  complex*16,allocatable :: wsave(:)
-  allocate(wsave(4*size+15))
-  wsave(:)=0d0
-  call zffti(size,wsave)
-  call zfftb(size,inout,wsave)
-  deallocate(wsave)
+  complex*16,allocatable :: csave(:)
+  real*8, allocatable :: rsave(:)
+  integer :: ifac(15)  !! AUTOMATIC
+  allocate(rsave(2*size),csave(2*size))
+  rsave(:) = 0; csave(:) = 0; ifac(:) = 0
+  call cffti1(size,rsave,ifac)
+  call cfftb1(size,inout,csave,rsave,ifac)
+  deallocate(rsave,csave)
 end subroutine zfftb_wrap
+
+
+!subroutine zfftb_wrap(size,inout)
+!  implicit none
+!  integer, intent(in) :: size
+!  complex*16, intent(inout) :: inout(size)
+!  complex*16,allocatable :: wsave(:)
+!  allocate(wsave(4*size+15))
+!  wsave(:)=0d0
+!  call zffti(size,wsave)          ! no bad casting of wsave 08-2021
+!  call zfftb(size,inout,wsave)
+!  deallocate(wsave)
+!end subroutine zfftb_wrap
 
 
 function floatfac(in)

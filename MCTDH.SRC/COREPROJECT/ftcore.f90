@@ -143,14 +143,20 @@ contains
     integer :: k
     complex*16, intent(in) :: in(dim,howmany)
     complex*16, intent(out) :: out(dim,howmany)
-    complex*16 :: wsave(4*dim+15)    !! AUTOMATIC OpenMP
+    complex*16 :: csave(2*dim)    !! AUTOMATIC OpenMP
+    real*8     :: rsave(2*dim)    !! AUTOMATIC OpenMP
+    integer    :: ifac(15)        !! AUTOMATIC OpenMP
     out(:,:)=in(:,:)
 !$OMP PARALLEL DEFAULT(PRIVATE) SHARED(in,out,dim,howmany)
-    wsave(:)=0d0
-!$OMP DO SCHEDULE(STATIC)
+    csave(:)=0d0; rsave(:)=0d0; ifac(:)=0
+    call cffti1(dim,rsave,ifac)                    ! now here 08-2021
+    !$OMP DO SCHEDULE(STATIC)
     do k=1,howmany
-       call zffti(dim,wsave(:))
-       call zfftf(dim,out(:,k),wsave(:))
+       ! note that initializer is inside the loop run every time
+       !  there was a reason (probably a crash avoided).  08-2021 replacing
+       !  zfftf with cfftf1 which may fix the crash.  bringing it outside
+       call cffti1(dim,rsave,ifac)   ! 
+       call cfftf1(dim,out(:,k),csave,rsave,ifac)  ! there was a reason.
     enddo
 !$OMP END DO
 !$OMP END PARALLEL
