@@ -343,9 +343,6 @@ contains
     integer :: FT_OPT !! TEMP
     character (len=7) :: number
     real*8 :: prevsum(3), prevphot(3,npulses),prevwork(3,npulses)  ! AUTOMATIC
-    !real*8 :: prevsum(3)
-    !real*8, allocatable :: prevphot(:,:),prevwork(:,:)
-    !allocate(prevphot(3,npulses)
 
 #ifdef REALGO
     OFLWR "Cant use dipolesub for real valued code."; CFLST
@@ -730,7 +727,6 @@ contains
 !! sumrule sums to N for N electrons
        if (myenergy.ge.dipolesumstart.and.myenergy.le.dipolesumend) then      !  .and.i.le.(ft_numdata/2)) then
           sumrule(i,:)=prevsum(:) + ft_estep * real(fftrans(i,:)*conjg(eft(i,:))) / abs(eft(i,:)**2) * 2 / PI
-          ! sumrule(i,:)=sumrule(i-1,:) + ft_estep * real(fftrans(i,:)*conjg(eft(i,:))) / abs(eft(i,:)**2) * 2 / PI
           do ipulse=1,npulses
              ! argh now storing velocity in fftrans must divide by energy for photons,
              !   which is bad at zero, but avoid zero with half_ft_wrap
@@ -738,8 +734,6 @@ contains
              workpers(i,:,ipulse) = real(fftrans(i,:)*conjg(each_eft(i,:,ipulse))) / PI
              photsums(i,:,ipulse) = prevphot(:,ipulse) + ft_estep * photpers(i,:,ipulse)
              worksums(i,:,ipulse) = prevwork(:,ipulse) + ft_estep * workpers(i,:,ipulse)
-             ! photsums(i,:,ipulse) = photsums(i-1,:,ipulse) + ft_estep * photpers(i,:,ipulse)
-             ! worksums(i,:,ipulse) = worksums(i-1,:,ipulse) + ft_estep * workpers(i,:,ipulse)
           enddo
           prevsum(:)  = sumrule(i,:)     
           prevphot(:,:) = photsums(i,:,:)
@@ -748,9 +742,6 @@ contains
           sumrule(i,:)     =  prevsum(:)
           photsums(i,:,:)  =  prevphot(:,:)
           worksums(i,:,:)  =  prevwork(:,:)
-          ! sumrule(i,:)     =  sumrule(i-1,:)
-          ! photsums(i,:,:)  =  photsums(i-1,:,:)
-          ! worksums(i,:,:)  =  worksums(i-1,:,:)
        endif
     enddo
     totphotsums=0

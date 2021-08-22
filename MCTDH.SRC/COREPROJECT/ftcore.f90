@@ -154,8 +154,8 @@ contains
     do k=1,howmany
        ! note that initializer is inside the loop run every time
        !  there was a reason (probably a crash avoided).  08-2021 replacing
-       !  zfftf with cfftf1 which may fix the crash.  bringing it outside
-       call cffti1(dim,rsave,ifac)   ! 
+       !  zfftf with cfftf1 which may fix the crash.  bringing it out above
+       ! call cffti1(dim,rsave,ifac)   ! 
        call cfftf1(dim,out(:,k),csave,rsave,ifac)  ! there was a reason.
     enddo
 !$OMP END DO
