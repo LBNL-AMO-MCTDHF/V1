@@ -658,7 +658,7 @@ contains
     endif
 
     do ii=1,3
-       fftrans(:,ii) = fftrans(:,ii) * ( (0d0,-1d0) / ft_evals(:) ) ** (opwr-1)
+       fftrans(:,ii) = fftrans(:,ii) * ( (0d0,+1d0) / ft_evals(:) ) ** (opwr-1)
     enddo
 
     !$$  08-2021  changed to keeping ft of velocity..
@@ -786,7 +786,7 @@ contains
                 write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
                      fftrans(i,ii), eft(i,ii), abs(fftrans(i,ii))**2 * myenergy**2, &
                      2 * real(fftrans(i,ii)*conjg(eft(i,ii)),8) , &
-                     real(fftrans(i,ii)*conjg(eft(i,ii)),8) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
+                     0d0, real(fftrans(i,ii)*conjg(eft(i,ii)),8) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
              endif
           enddo
           call checkiostat(myiostat,"writing "//outftnames(ii))
@@ -864,7 +864,7 @@ contains
                    write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
                         fftrans(i,ii), eft(i,ii), abs(fftrans(i,ii))**2 * myenergy**2, &
                         2 * real(fftrans(i,ii)*conjg(eft(i,ii)),8) , &
-                        real(fftrans(i,ii)*conjg(eft(i,ii)),8) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
+                        0d0, real(fftrans(i,ii)*conjg(eft(i,ii)),8) / abs(eft(i,ii)**2) * xsecunits, sumrule(i,ii)
                 
                    !write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
                    !     fftrans(i,ii), eft(i,ii), fftrans(i,ii)*conjg(eft(i,ii)) * 2 * myenergy, &
