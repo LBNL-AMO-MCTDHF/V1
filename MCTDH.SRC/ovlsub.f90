@@ -27,6 +27,7 @@ subroutine ovl_initial()
   use utilmod
   use configloadmod
   use loadstuffmod
+  use miscmod
   implicit none
   integer :: jnumovl, ifile,acomplex,spfcomplex,nstate,i,kk,tdims(3),&
        tnum2part,tnumconfig,tnumr,tnspf,myiostat
@@ -159,6 +160,7 @@ subroutine getoverlaps(forceflag)
   use xxxmod
   use mpimod   !! myrank
   use autocorrelate_one_mod
+  use miscmod
   implicit none
   integer ::  i,imc,forceflag,myiostat
   DATATYPE :: nullvector1(numr),nullvector2(numr)
@@ -209,6 +211,7 @@ subroutine mcscf_matel()
   use mpimod   !! myrank
   use biorthotypemod
   use autocorrelate_one_mod
+  use miscmod
   implicit none
   integer ::  i,j,myiostat
   DATATYPE :: myovl(numovl,numovl),nullvector1(numr),nullvector2(numr)
@@ -254,6 +257,7 @@ subroutine wfnovl()
   use mpimod
   use biorthotypemod
   use autocorrelate_one_mod
+  use miscmod
   use mpisubmod
   implicit none
   type(biorthotype),target :: wfnbiovar(mcscfnum)  

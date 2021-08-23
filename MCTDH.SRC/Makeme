@@ -26,7 +26,7 @@ else
 ## depend explicitly.  These dependencies are also in the project
 ## makefiles.
 
-make parameters.o MPI.o proputils.o utils.o blocklanczos.o eigen.o
+make parameters.o MPI.o proputils.o utils.o misc.o blocklanczos.o eigen.o
 
 for dir in DFFTPACK bessel H2PROJECT HEPROJECT SINCDVR SINC1D
 do

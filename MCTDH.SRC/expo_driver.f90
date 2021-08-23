@@ -48,11 +48,12 @@ contains
     use derivativemod
     use orbgathersubmod
     use pulsesubmod
+    use miscmod
     implicit none
     integer,intent(in) :: lowspf,highspf,dentimeflag,conflag
     DATATYPE,intent(in) ::  inspfs(spfsize,nspf)
     DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
-    integer :: ii,itop,getlen,numspf,myiostat,itime,jtime,jjj
+    integer :: ii,itop,numspf,myiostat,itime,jtime,jjj
     DATATYPE :: csum, nulldouble(2),pots(3)
     real*8 :: facs(0:1),rsum
     DATATYPE :: bigwork(spfsize,nspf),   workspfs(spfsize,lowspf:highspf),& 
@@ -302,6 +303,7 @@ contains
     use jactimingmod
     use mpi_orbsetmod
     use orbgathersubmod
+    use miscmod
     implicit none
     integer,intent(in) :: dentimeflag,conflag
     DATATYPE,intent(in) ::  inspfs(spfsize,firstmpiorb:firstmpiorb+orbsperproc-1)
@@ -469,13 +471,14 @@ subroutine expospfprop(time1,time2,in_inspfs, numiters)
   use mpisubmod
   use expokitmod, only: dgexpthird, dgexpthirdxxx2, dgphiv, dgphivxxx2
   use spfsubmod
+  use miscmod
   implicit none
   real*8,intent(in) :: time1,time2
   DATATYPE,intent(inout) :: in_inspfs(spfsize,nspf)
   integer,intent(out) :: numiters
   real*8, save :: tempstepsize = -1d0
   real*8 :: midtime, tdiff, error, norm
-  integer :: itrace, iflag,getlen,minflag
+  integer :: itrace, iflag, minflag
   integer :: expofileptr=805
 
 !! lowers thisexpodim until number of internal expokit steps is 2 or less, 
@@ -812,6 +815,7 @@ subroutine expoavecprop(inavector,outavector,time,imc,numiters)
   use basissubmod
   use mpisubmod
   use expokitmod, only: dgexpvxxx2, dgphivxxx2
+  use miscmod
   implicit none
   integer :: times(100)=0, iitime= -1 , jjtime = -1
   integer,intent(in) :: imc
@@ -827,7 +831,7 @@ subroutine expoavecprop(inavector,outavector,time,imc,numiters)
 
   real*8 :: one,time
   real*8, save :: tempstepsize=-1d0
-  integer :: itrace, iflag, numsteps,expofileptr=61142, liwsp=0, lwsp=0,getlen,&
+  integer :: itrace, iflag, numsteps,expofileptr=61142, liwsp=0, lwsp=0,&
        myiostat,ixx,minflag
 #ifdef REALGO
   integer, parameter :: zzz=1

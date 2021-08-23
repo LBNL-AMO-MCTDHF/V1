@@ -12,6 +12,9 @@ default: sincprojectar.a
 clean:
 	rm *.o *.a *genmod* *.mod
 
+../misc.o: ../misc.F90
+	cd ..; make misc.o
+
 ../MPI.o: ../MPI.F90
 	cd ..; make MPI.o
 
@@ -33,8 +36,8 @@ sincprojectar.a:  $(HTWO)
 sinc1d_params.o: sinc1d_params.F90
 	$(F90) $(FFLAGS) $(MPIFLAG) -c sinc1d_params.F90
 
-mpimod.o: mpimod.f90 ../Definitions.INC  ../Definitions.ALL ../Makefile.header sinc1d_params.o Makefile
-	$(F90) $(FFLAGS) $(MPIFLAG) -c mpimod.f90
+mpimod.o: mpimod.f90 ../Definitions.INC  ../Definitions.ALL ../Makefile.header sinc1d_params.o Makefile ../misc.o
+	$(F90) $(FFLAGS) $(MPIFLAG) -I.. -c mpimod.f90
 
 toeplitz_subs.o: $(DEPEND) toeplitz_subs.F90 cooleytukey_mpi.o ftcore.o ../parameters.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -I.. -c toeplitz_subs.F90
@@ -51,10 +54,10 @@ sincproject.o: $(DEPEND) sincproject.F90 sinc1d_params.o
 init_sinc_new.o: $(DEPEND) sinc1d_params.o sincproject.o coreproject.o init_sinc_new.F90 ../MPI.o ../proputils.o ../parameters.o ../blocklanczos.o ../eigen.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -I.. -c init_sinc_new.F90
 
-coreproject.o: $(DEPEND)  sinc1d_params.o sincproject.o coreproject.F90 toeplitz_subs.o ../MPI.o ../proputils.o ../parameters.o
+coreproject.o: $(DEPEND)  sinc1d_params.o sincproject.o coreproject.F90 toeplitz_subs.o ../MPI.o ../proputils.o ../parameters.o ../misc.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -I.. -c coreproject.F90
 
-sinc_extraproject.o: $(DEPEND) sinc1d_params.o sincproject.o sinc_extraproject.F90 ../parameters.o
+sinc_extraproject.o: $(DEPEND) sinc1d_params.o sincproject.o sinc_extraproject.F90 ../parameters.o ../misc.o
 	$(F90) $(FFLAGS) $(MPIFLAG) $(PGFFLAG) -I.. -c sinc_extraproject.F90 -o sinc_extraproject.o
 
 SineDVR.o: $(DEPEND) SineDVR.F90 

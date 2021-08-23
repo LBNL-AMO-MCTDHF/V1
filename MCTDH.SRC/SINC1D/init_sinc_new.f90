@@ -347,7 +347,7 @@ contains
   subroutine mult_bigspf_ivo(inbigspf,outbigspf)
     use myparams
     use orbmultsubmod   !! IN PARENT DIRECTORY
-    use orbprojectmod
+    use orbprojectmod   !! IN PARENT DIRECTORY
     implicit none
     DATATYPE,intent(in) :: inbigspf(totpoints)
     DATATYPE, intent(out) :: outbigspf(totpoints)

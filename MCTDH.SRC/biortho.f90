@@ -524,6 +524,7 @@ contains
     use basissubmod
     use mpisubmod
     use expokitmod, only: dgexpvxxx2
+    use miscmod
     implicit none
     type(biorthotype),target,intent(inout) :: inbiovar
     DATATYPE,intent(in) :: abio(inbiovar%bionr,inbiovar%wwbio%firstconfig:inbiovar%wwbio%lastconfig)
@@ -532,7 +533,7 @@ contains
     integer*8, save :: icalledhere=0
     integer :: biofileptr=6719
     real*8 :: t,anorm, tol
-    integer :: liwsp,lwsp,itrace,iflag,ixx,getlen,myiostat,minflag
+    integer :: liwsp,lwsp,itrace,iflag,ixx,myiostat,minflag
     DATATYPE, allocatable :: smallvector(:,:), smallvectorout(:,:)
     real*8,allocatable :: wsp(:)
 

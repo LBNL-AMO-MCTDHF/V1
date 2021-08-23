@@ -14,13 +14,14 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   use pmpimod
   use onedfunmod
   use constant_parameters  !! IN PARENT DIRECTORY
+  use miscmod              !! IN PARENT DIRECTORY
   implicit none
 
   integer,intent(in) :: inmpifileptr
   character,intent(in) :: inpfile*(*)
   integer,intent(out) :: spfdims(3),spfdimtype(3),nonuc_checkflag,reducedpotsize, outnumr
   real*8,intent(out) :: outnucrepulsion
-  integer :: nargs, i,j, len,getlen,myiostat
+  integer :: nargs, i,j, len,myiostat
   character (len=SLN) :: buffer
   character (len=SLN) :: nullbuff
   real*8 :: zz, ss , xfac

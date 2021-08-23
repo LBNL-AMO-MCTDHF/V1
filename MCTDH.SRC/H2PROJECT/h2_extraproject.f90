@@ -8,12 +8,13 @@
 subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,&
      outnumr,nucrepulsion,nonuc_checkflag)   !! inpfile input, others output dummy variables
   use myparams
+  use miscmod      !! IN PARENT DIRECTORY
   implicit none
   integer,intent(in) :: inmpifileptr
   character,intent(in) :: inpfile*(*)
   integer,intent(out) :: spfdims(3),spfdimtype(3), reducedpotsize, outnumr, nonuc_checkflag
   real*8,intent(out) :: nucrepulsion
-  integer :: nargs, getlen, len, myiostat, i
+  integer :: nargs, len, myiostat, i
   character (len=SLN) :: buffer
   character (len=SLN) :: nullbuff
 #ifdef PGFFLAG

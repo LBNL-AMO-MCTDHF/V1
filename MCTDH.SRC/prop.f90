@@ -244,11 +244,12 @@ contains
     use dfconsubmod
     use fockrepsubmod
     use meansubmod
+    use miscmod
     implicit none
     real*8,intent(in) :: tout, tin
     integer,save :: times(0:20)=0
     integer, save :: xxcount=0 
-    integer :: numaiters,numiters,linearflag,imc,printflag=1,getlen,qq,&
+    integer :: numaiters,numiters,linearflag,imc,printflag=1,qq,&
          myiostat,ii,itime,jtime
     real*8 :: time1, time2
     DATAECS :: myvalues(mcscfnum)
@@ -625,6 +626,7 @@ contains
       use configpropmod
       use pulsesubmod
       use configstuffmod
+      use miscmod
       implicit none
       DATATYPE,intent(in) :: avectorin(tot_adim)
       DATATYPE,intent(out) :: avectorout(tot_adim)
@@ -633,7 +635,7 @@ contains
       real*8, intent(in) :: time1,time2
       DATATYPE :: sum1,sum0,pots(3)=0d0
       DATATYPE :: nullvector1(numr),nullvector2(numr)
-      integer :: itime,jtime,getlen,ii,myiostat
+      integer :: itime,jtime,ii,myiostat
       real*8 :: thisstep,midtime,rsum
       integer, save :: times(2)=0, icalled=0
 
@@ -750,8 +752,9 @@ subroutine prop_loop( starttime)
   use getstuffmod
   use loadstuffmod
   use spfsubmod
+  use miscmod
   implicit none
-  integer ::  jj,flag, itime, jtime, times(20)=0, qq,imc,getlen,myiostat
+  integer ::  jj,flag, itime, jtime, times(20)=0, qq, imc, myiostat
   DATAECS :: thisenergy(mcscfnum), lastenergy(mcscfnum) ,thisenergyavg,&
        lastenergyavg,startenergy(mcscfnum)
   CNORMTYPE :: norms(mcscfnum)

@@ -170,6 +170,7 @@ end subroutine avector_header_read_simple
 subroutine avector_header_read_old(iunit,numvects,outnum2part,outnumr,outnumconfig,&
      outspinrestrictval,icomplex)
   use mpimod   !! myrank
+  use miscmod
   implicit none
   integer,intent(in) :: iunit
   integer,intent(out) :: outnumr,outnumconfig,icomplex,numvects,outnum2part,outspinrestrictval
@@ -189,6 +190,7 @@ end subroutine
 subroutine avector_header_read(iunit,numvects,outnum2part,outnumr,outnumconfig, &
      outrestrictflag, outrestrictms, outallspinproject, outspinrestrictval, icomplex,ierr)
   use mpimod   !! myrank
+  use miscmod
   implicit none
   integer :: outnumr,outnumconfig,icomplex,iunit,numvects,outnum2part,outspinrestrictval,ierr, &
        array(100),myiostat, outrestrictflag, outrestrictms,outallspinproject
@@ -221,6 +223,7 @@ end subroutine
 subroutine avector_header_write(iunit,numvects)
   use parameters
   use mpimod  !! myrank
+  use miscmod
   implicit none
   integer,intent(in) :: iunit,numvects
   integer :: array(100)=0,myiostat
@@ -261,6 +264,7 @@ subroutine load_avector_productsub(myavector)
   use mpimod
   use configsubmod
   use mpisubmod
+  use miscmod
   implicit none
   DATATYPE,intent(out) :: myavector(numr,first_config:last_config,mcscfnum)
   integer :: readnumvects(numavectorfiles),readnum2part(numavectorfiles),readnumr(numavectorfiles),&
@@ -608,6 +612,7 @@ subroutine load_avectors(filename,myavectors,mynumvects,readnumvects,numskip,alr
   use mpimod    !! myrank
   use readavectormod
   use mpisubmod
+  use miscmod
   implicit none
   character,intent(in) :: filename*(*)
   integer,intent(in) :: mynumvects,alreadyloaded

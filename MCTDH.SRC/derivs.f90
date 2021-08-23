@@ -55,6 +55,7 @@ end subroutine getconmat
     use jactimingmod
     use orbgathersubmod
     use mpisubmod
+    use miscmod
     implicit none
     integer,intent(in) :: lowspf,highspf
     DATATYPE, intent(in) :: inspfs(spfsize, lowspf:highspf), &
@@ -189,6 +190,7 @@ end subroutine getconmat
        ireduced,thistime,prospfs, prospfderivs)
     use parameters
     use mpisubmod
+    use miscmod
     implicit none
     integer, intent(in) :: ireduced,lowspf,highspf
     real*8, intent(in) :: thistime
@@ -281,6 +283,7 @@ end subroutine getconmat
 
   subroutine op_gmat_firstorder00(lowspf,highspf,inspfs, outspfs, ireduced,thistime)
     use parameters
+    use miscmod
     implicit none
     integer,intent(in) :: lowspf,highspf,ireduced
     real*8, intent(in) ::  thistime 
@@ -316,6 +319,7 @@ end subroutine getconmat
        ireduced,thistime,projspfs)
     use parameters
     use mpisubmod
+    use miscmod
     implicit none
     integer,intent(in) :: lowspf,highspf,ireduced
     real*8, intent(in) ::  thistime 
@@ -416,6 +420,7 @@ end subroutine getconmat
   subroutine conpropspfs00(lowspf,highspf,inspfs, outspfs, time1,time2)
     use parameters
     use expsubmod
+    use miscmod
     implicit none
     integer,intent(in) :: lowspf,highspf
     real*8, intent(in) ::  time1,time2
@@ -497,6 +502,7 @@ end subroutine getconmat
     use parameters
     use xxxmod
     use orbmultsubmod
+    use miscmod
     implicit none
     integer,intent(in) :: lowspf,highspf,ireduced
     DATATYPE, intent(in) :: inspfs(spfsize,nspf)
@@ -579,6 +585,7 @@ end subroutine getconmat
   subroutine denmult00(lowspf,highspf,inspfs, outspfs, ireduced)
     use parameters
     use xxxmod
+    use miscmod
     implicit none
     integer,intent(in) :: lowspf,highspf,ireduced
     DATATYPE,intent(in) :: inspfs(spfsize,nspf)
@@ -636,13 +643,14 @@ end subroutine getconmat
     use orbgathersubmod
     use orbmultsubmod
     use pulsesubmod
+    use miscmod
     use opmod   !! frozenreduced, hatomreduced
     implicit none
     integer, intent(in) :: lowspf,highspf,dentimeflag,ireduced,projflag,conflag
     real*8, intent(in) :: thistime
     DATATYPE, intent(in) :: inspfs(spfsize, nspf), projspfs(spfsize,nspf)
     DATATYPE,intent(out) :: outspfs(spfsize,lowspf:highspf)
-    integer :: itime, jtime, getlen,numspf,myiostat,ispf,jspf
+    integer :: itime, jtime, numspf, myiostat, ispf, jspf
     DATATYPE :: myxtdpot=0,  myytdpot=0, myztdpot=0, pots(3)=0d0
     DATATYPE :: spfmult(spfsize,nspf),workmult(spfsize,lowspf:highspf), &  !! AUTOMATIC
          spfinvr( spfsize,lowspf:highspf), spfr( spfsize,lowspf:highspf ),  &
@@ -937,6 +945,7 @@ contains
     use sparsemultmod
     use basissubmod
     use getstuffmod
+    use miscmod
     implicit none
     DATATYPE,intent(in) :: in_xpsi(tot_adim*mcscfnum+totspfdim)
     DATATYPE,intent(out) :: out_xpsip(tot_adim*mcscfnum+totspfdim)
@@ -944,7 +953,7 @@ contains
          xspfsp(totspfdim),xavecp(tot_adim,mcscfnum)
     DATATYPE :: avector(tot_adim)   !! AUTOMATIC
     real*8 :: thistime
-    integer :: itime,jtime,getlen,myiostat,spfstart,spfend
+    integer :: itime,jtime,myiostat,spfstart,spfend
     integer, save :: times(20)=0, numcalledhere=0,imc
 
     numcalledhere=numcalledhere+1

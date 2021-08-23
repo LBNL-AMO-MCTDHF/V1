@@ -95,6 +95,7 @@ subroutine init_dfcon(www)
   use mpimod
   use configsubmod
   use mpisubmod
+  use miscmod
   implicit none
   type(walktype),intent(inout) :: www
   integer :: i,j,iconfig,nondfconfigs,dfrank,ii

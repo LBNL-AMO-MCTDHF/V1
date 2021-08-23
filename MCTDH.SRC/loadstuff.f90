@@ -12,6 +12,7 @@ subroutine save_vector(avectors,spfs,afile,sfile)
   use mpimod
   use mpisubmod
   use configloadmod
+  use miscmod
   implicit none
   DATATYPE,intent(in) :: spfs(spfsize,nspf),avectors(numr,first_config:last_config,mcscfnum)
   character,intent(in) :: afile*(*), sfile*(*)
@@ -132,6 +133,7 @@ end subroutine save_vector
 subroutine write_spf(unit,spfin,frozenin,inspfsize)
   use parameters
   use mpimod   !! myrank
+  use miscmod
   implicit none
   integer,intent(in) :: unit,inspfsize
   DATATYPE,intent(in) :: spfin(inspfsize, nspf   ),  frozenin(inspfsize, numfrozen)
@@ -155,6 +157,7 @@ end subroutine write_spf
 subroutine spf_header_write(iunit,num)
   use parameters
   use mpimod   !! myrank
+  use miscmod
   implicit none
   integer,intent(in) :: iunit,num
   integer ::  cflag,qqq(3),ppp(3),myiostat
@@ -177,6 +180,7 @@ end subroutine
 
 subroutine spf_header_read(iunit,outdims,outnspf,cflag)
   use mpimod   !! myrank
+  use miscmod
   implicit none
   integer,intent(in) :: iunit
   integer,intent(out) :: outdims(3),outnspf,cflag
@@ -285,6 +289,7 @@ subroutine spf_read0(iunit,outnspf,outdims,readnspf,bigreaddims,readcflag,dimtyp
   use mpimod
   use parameters
   use mpisubmod
+  use miscmod
   implicit none
   integer, intent(in) :: iunit, dimtypes(3),outdims(3),readnspf,outnspf,readcflag,&
        bigreaddims(3),in_gridshift(3)

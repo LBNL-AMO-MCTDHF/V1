@@ -11,9 +11,10 @@ contains
 subroutine getinpfile()
   use parameters
   use mpimod
+  use miscmod
   implicit none
 
-  integer :: nargs, getlen, i, len
+  integer :: nargs, i, len
 #ifdef PGFFLAG
   integer :: myiargc
 #endif
@@ -43,8 +44,9 @@ subroutine getparams()
   use mpimod
   use orblabelmod
   use pulse_parameters   !! numpulses
+  use miscmod
   implicit none
-  integer :: nargs, getlen, i, len,  ishell, ispf,j, myiostat, iiflag,needpulse,ipulse
+  integer :: nargs, i, len,  ishell, ispf,j, myiostat, iiflag,needpulse,ipulse
 #ifdef PGFFLAG
   integer :: myiargc
 #endif
@@ -947,7 +949,8 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
   use pulse_parameters
   use mpimod
   use pulsesubmod
-  use utilmod
+  use ftutilmod
+  use miscmod
   implicit none
   NAMELIST /pulse/ omega,pulsestart,pulsestrength, velflag, omega2,phaseshift,intensity,pulsetype, &
        pulsetheta,pulsephi, numpulses, reference_pulses, minpulsetime, maxpulsetime, &

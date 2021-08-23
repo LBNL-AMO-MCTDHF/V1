@@ -186,9 +186,10 @@ subroutine actionsub(thistime)
   use ovlsubmod
   use projactionmod
   use psistatsubmod
+  use miscmod
   implicit none
   
-  integer :: i, atime, btime, times(MAXACTION)=0, getlen, myiostat
+  integer :: i, atime, btime, times(MAXACTION)=0, myiostat
   real*8,intent(in) :: thistime
   integer, save :: calledhere=0
   CNORMTYPE :: error

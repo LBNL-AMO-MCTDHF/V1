@@ -978,6 +978,7 @@ subroutine call_twoe_matel00(lowspf,highspf,inspfs10,inspfs20,twoematel,twoeredu
   use pfileptrmod
   use myprojectmod
   use clockmod      !! IN PARENT DIRECTORY
+  use miscmod      !! IN PARENT DIRECTORY
   implicit none
   integer, intent(in) :: notiming,lowspf,highspf
   DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
@@ -1009,13 +1010,14 @@ contains
     use pfileptrmod
     use myprojectmod
     use tinvsubmod
+    use miscmod      !! IN PARENT DIRECTORY
     implicit none
     integer, intent(in) :: lowspf,highspf,notiming
     DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
     DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,lowspf:highspf),&
          twoereduced(totpoints,numspf,lowspf:highspf)
     character,intent(in) :: timingdir*(*)
-    integer ::  spf1a, spf1b, spf2a, spf2b, itime,jtime,getlen,&
+    integer ::  spf1a, spf1b, spf2a, spf2b, itime,jtime,&
          spf2low,spf2high,index2b,index2low,index2high, firsttime,lasttime,nnnspf,qq,myiostat
     integer, save :: xcount=0, times(10)=0,fttimes(10)=0,qqcount=0
     DATATYPE, allocatable :: twoeden03(:,:) 
@@ -1431,6 +1433,7 @@ contains
     use myprojectmod
     use pmpimod
     use pfileptrmod
+    use miscmod      !! IN PARENT DIRECTORY
     implicit none
     integer, intent(in) :: option,howmany,notiming
     character,intent(in) :: timingdir*(*)
@@ -1438,7 +1441,7 @@ contains
     DATATYPE, intent(out) :: out(totpoints,howmany)
     DATATYPE :: temp(totpoints,howmany),temp2(totpoints,howmany),inwork(totpoints,howmany)   !!AUTOMATIC
     DATATYPE :: mycoefs(3)
-    integer :: ii,jj,atime,btime,myiostat,getlen
+    integer :: ii,jj,atime,btime,myiostat
     integer, save :: xcount=0, times(0:10)=0
 
     call myclock(atime)
@@ -1666,6 +1669,7 @@ contains
     use myparams
     use pmpimod
     use pfileptrmod
+    use miscmod       !! IN PARENT DIRECTORY
     implicit none
     integer,intent(in) :: idim,option,howmany,notiming
     DATATYPE,intent(in) :: in(totpoints,howmany)
@@ -1730,14 +1734,15 @@ contains
     use myparams
     use pmpimod
     use pfileptrmod
-    use myprojectmod  
+    use myprojectmod
+    use miscmod      !! IN PARENT DIRECTORY
     implicit none
     integer,intent(in) :: nnn,option,howmany,indim,notiming
     DATATYPE,intent(in) :: in(nnn*numpoints(indim),howmany)
     DATATYPE,intent(out) :: out(nnn*numpoints(indim),howmany)
     character,intent(in) :: timingdir*(*)
     DATATYPE,allocatable ::  work(:,:,:),work2(:,:,:)
-    integer :: atime,btime,getlen,myiostat,batchsize,iproc,&
+    integer :: atime,btime,myiostat,batchsize,iproc,&
          ibatch,procs,numbatch,batchlow,batchhigh,rank,comm,totsize,&
          blocksizes(procsplit(indim)),thisbatchsize
     integer, save :: xcount=0, times(10)=0
@@ -1870,14 +1875,15 @@ contains
     use myparams
     use pmpimod
     use pfileptrmod
-    use myprojectmod  
+    use myprojectmod
+    use miscmod      !! IN PARENT DIRECTORY
     implicit none
     integer,intent(in) :: nnn,option,howmany,indim,notiming
     DATATYPE,intent(in) :: in(nnn*numpoints(indim),howmany)
     DATATYPE,intent(out) :: out(nnn*numpoints(indim),howmany)
     character,intent(in) :: timingdir*(*)
     DATATYPE ::     work(nnn*numpoints(indim),howmany),       work2(nnn*numpoints(indim),howmany) !! AUTOMATIC
-    integer :: atime,btime,getlen,ibox,jbox,deltabox,ii,totsize,myiostat
+    integer :: atime,btime,ibox,jbox,deltabox,ii,totsize,myiostat
     integer, save :: xcount=0, times(10)=0
     
     totsize=nnn*numpoints(indim)*howmany
@@ -1989,14 +1995,15 @@ contains
     use myparams
     use pmpimod
     use pfileptrmod
-    use myprojectmod  
+    use myprojectmod
+    use miscmod      !! IN PARENT DIRECTORY
     implicit none
     integer,intent(in) :: nnn,option,howmany,indim
     DATATYPE,intent(in) :: in(nnn*numpoints(indim),howmany)
     DATATYPE,intent(out) :: out(nnn*numpoints(indim),howmany)
     DATATYPE ::     work(nnn*numpoints(indim),howmany) !! AUTOMATIC
     character,intent(in) :: timingdir*(*)
-    integer :: atime,btime,notiming,getlen,ibox,ii,totsize,myiostat
+    integer :: atime,btime,notiming,ibox,ii,totsize,myiostat
     integer, save :: xcount=0, times(10)=0
     
     totsize=numpoints(indim)*nnn*howmany

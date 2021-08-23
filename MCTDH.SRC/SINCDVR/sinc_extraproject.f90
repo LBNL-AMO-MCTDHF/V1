@@ -11,13 +11,14 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   use myparams
   use pfileptrmod
   use pmpimod
+  use miscmod       !! IN PARENT DIRECTORY
   implicit none
 
   integer,intent(in) :: inmpifileptr
   character,intent(in) :: inpfile*(*)
   integer,intent(out) :: spfdims(3),spfdimtype(3),nonuc_checkflag,reducedpotsize, outnumr
   real*8,intent(out) :: outnucrepulsion
-  integer :: nargs, idim ,i,j,len,getlen,iproc,k,ierr,ii,myiostat
+  integer :: nargs, idim ,i,j,len,iproc,k,ierr,ii,myiostat
   integer :: toepflag  !! toepflag deprecated; dummy
   real*8 :: rsq(griddim)
   character (len=SLN) :: buffer

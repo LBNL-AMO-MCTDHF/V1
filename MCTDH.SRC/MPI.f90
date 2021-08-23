@@ -434,6 +434,7 @@ end subroutine mpibarrier
 subroutine mpistop()
   use mpimod
   use fileptrmod
+  use miscmod
   implicit none
   integer :: ierr
   call waitawhile()
@@ -1305,6 +1306,7 @@ end subroutine mpibarrier
 
 subroutine mpistop()
   use fileptrmod
+  use miscmod
   implicit none
   call waitawhile()
   OFLWR "MCTDHF STOP!";CFL

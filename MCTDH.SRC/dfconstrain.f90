@@ -232,8 +232,9 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
   use invsubmod
   use orbgathersubmod
   use mpisubmod
-  use utilmod
   use clockmod
+  use miscmod
+  use utilmod
   implicit none
   integer,intent(in) :: numvects
   type(walktype),intent(in) :: www
@@ -242,7 +243,7 @@ subroutine get_dfconstraint0(inavectors,numvects,cptr,sptr,www,time)
   type(SPARSEPTR),intent(in) :: sptr
   DATATYPE :: tempmatel(www%nspf,www%nspf)
   integer, save :: times(20)=0, icalled=0
-  integer ::    i,     j,  ii, lwork,isize,ishell,iiyy,maxii,imc,itime,jtime,getlen,&
+  integer ::    i,     j,  ii, lwork,isize,ishell,iiyy,maxii,imc,itime,jtime,&
        lowspf,highspf,numspf,flag,myiostat
   integer :: ipairs(2,www%nspf*(www%nspf-1))
   DATATYPE, allocatable :: avectorp(:,:), rhs(:,:), avector(:,:), rhomat(:,:,:,:), &

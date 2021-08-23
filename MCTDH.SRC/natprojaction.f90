@@ -16,10 +16,11 @@ subroutine save_natproj( thistime )
   use configmod
   use sparsemultmod
   use densubmod
+  use miscmod
   implicit none
   DATATYPE :: csum
   integer :: xcalledhere=0,  iflag, korder, pulseflag, isplit, i, &
-       imc, getlen2, ilen, iii, nn, getlen, iorb
+       imc, ilen, iii, nn, iorb
   real*8 :: thistime, rsum
   real*8, save :: mmax,mmin
   character (len=headersize) :: header

@@ -165,6 +165,7 @@ contains
     use utilmod
     use configloadmod
     use loadstuffmod
+    use miscmod
     implicit none
     integer,intent(in) :: ifile
     integer,intent(out) :: outnumstate
@@ -391,6 +392,7 @@ contains
     use mpimod
     use mpisubmod
     use orbmultsubmod   !! gauge_transform
+    use miscmod
     use utilmod
     implicit none
     integer,intent(in) :: ifile, curtime
@@ -837,6 +839,7 @@ contains
     use parameters !! mcscfnum
     use projefluxmod
     use mpimod
+    use miscmod
     implicit none
     integer,intent(in) :: ifile,nt,tau
     DATATYPE,intent(in) :: projwfn(spfsize,2,numr,ppp(ifile)%eachstate,mcscfnum)
@@ -899,6 +902,7 @@ contains
     use projefluxmod   !! ppp(ifile)%eachstate
     use mpimod
     use mpisubmod
+    use miscmod
     implicit none
 !! necessary working variables
     integer,intent(in) :: nt
@@ -1162,12 +1166,14 @@ contains
     use pulsesubmod
     use projutilsubmod
     use utilmod
+    use miscmod
+    use ftutilmod
     implicit none
     integer,intent(in) :: mem,totstate,nt,NUMANGLES,NUMERAD
     real*8, intent(in) :: dt
     integer :: i,k,tlen,istate,curtime,tau,ir ,imc,ioffset, il
     integer :: BatchSize,NBat,ketreadsize,brareadsize,ketbat,brabat,kettime,bratime,&
-         bratop,getlen,myiostat,oldtime
+         bratop,myiostat,oldtime
     real*8 :: MemTot,MemVal,wfi,estep,myfac,windowfunct,MemNum, tentsum
     DATATYPE, allocatable :: bramo(:,:,:,:),ketmo(:,:,:,:),gtau(:,:,:),gtau_ad(:,:,:,:),ketop(:,:,:,:),&
          read_bramo(:,:,:), read_ketmo(:,:,:), deweighted_bramo(:,:,:), ketmo_ad(:,:,:,:,:),&
@@ -1904,12 +1910,13 @@ subroutine projeflux_during(inspfs,inavectors,dt)
   use projutilsubmod
   use projcoresubmod
   use mpisubmod
+  use miscmod
   implicit none
   real*8,intent(in) :: dt
   DATATYPE,intent(in) :: inspfs(spfsize,nspf), inavectors(tot_adim,mcscfnum)
   DATATYPE,allocatable :: gtaunow(:,:), projwfn(:,:,:,:,:), gtaunow_ad(:,:,:), &
        ketmo(:,:), ketop(:,:),tot_gtausum(:), tot_gtausum_ad(:,:)
-  integer :: ifile, k, imc, istate, il, myiostat, getlen
+  integer :: ifile, k, imc, istate, il, myiostat
   character (len=4) :: xstate0,xmc0
   character (len=3) :: xstate1,xmc1
 

@@ -355,6 +355,7 @@ subroutine fast_newconfiglist(www,domflags,dorestrictflags)
   use mpimod
   use ham_parameters  !! tdflag and offaxispulseflag for configtypes
   use mpisubmod
+  use miscmod
   implicit none
   type(walktype) :: www
   logical,intent(in) :: domflags,dorestrictflags

@@ -18,6 +18,7 @@ subroutine second_derivs00(lowspf,highspf,thistime,inspfs,sdspfs)
   use derivativemod
   use orbprojectmod
   use orbgathersubmod
+  use miscmod
   implicit none
   integer,intent(in) :: lowspf,highspf
   real*8,intent(in) :: thistime

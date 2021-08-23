@@ -12,6 +12,9 @@ default: sincprojectar.a
 clean:
 	rm *.o *.a *genmod* *.mod
 
+../misc.o: ../misc.F90
+	cd ..; make misc.o
+
 ../MPI.o: ../MPI.F90
 	cd ..; make MPI.o
 
@@ -57,11 +60,11 @@ sincproject.o: $(DEPEND) sincproject.F90 sinc_params.o tooth.o ../MPI.o
 init_sinc_new.o: $(DEPEND) sinc_params.o sincproject.o init_sinc_new.F90 coreproject.o ../MPI.o ../proputils.o ../utils.o ../blocklanczos.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -I.. -c init_sinc_new.F90
 
-coreproject.o: $(DEPEND) sinc_params.o sincproject.o coreproject.F90 toeplitz_subs.o ../MPI.o ../proputils.o ../parameters.o
+coreproject.o: $(DEPEND) coreproject.F90 sinc_params.o sincproject.o toeplitz_subs.o ../MPI.o ../proputils.o ../parameters.o ../misc.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -I.. -c coreproject.F90
 
-sinc_extraproject.o: $(DEPEND) sinc_params.o sincproject.o sinc_extraproject.F90
-	$(F90) $(FFLAGS) $(MPIFLAG) $(PGFFLAG) -c sinc_extraproject.F90 -o sinc_extraproject.o
+sinc_extraproject.o: $(DEPEND) sinc_extraproject.F90 sinc_params.o sincproject.o ../misc.o
+	$(F90) $(FFLAGS) $(MPIFLAG) $(PGFFLAG) -I.. -c sinc_extraproject.F90 -o sinc_extraproject.o
 
 SineDVR.o: $(DEPEND) SineDVR.F90 
 	$(F90) $(FFLAGS) $(MPIFLAG) -c SineDVR.F90 

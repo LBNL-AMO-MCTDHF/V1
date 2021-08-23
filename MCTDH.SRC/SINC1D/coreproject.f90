@@ -837,13 +837,14 @@ contains
     use pfileptrmod
     use myprojectmod
     use tinvsubmod
+    use miscmod       !! IN PARENT DIRECTORY
     implicit none
     integer, intent(in) :: lowspf,highspf,notiming
     DATATYPE,intent(in) :: inspfs10(totpoints,numspf),inspfs20(totpoints,numspf)
     DATATYPE,intent(out) :: twoematel(numspf,numspf,numspf,lowspf:highspf),&
          twoereduced(totpoints,numspf,lowspf:highspf)
     character,intent(in) :: timingdir*(*)
-    integer ::  spf1a, spf1b, spf2a, spf2b, itime,jtime,getlen,&
+    integer ::  spf1a, spf1b, spf2a, spf2b, itime,jtime,&
          spf2low,spf2high,index2b,index2low,index2high, firsttime,lasttime,nnnspf,qq,myiostat
     integer, save :: xcount=0, times(10)=0,fttimes(10)=0,qqcount=0
     DATATYPE, allocatable :: twoeden03(:,:) 
@@ -1399,13 +1400,14 @@ contains
     use pfileptrmod
     use myprojectmod  
     use clockmod
+    use miscmod       !! IN PARENT DIRECTORY
     implicit none
     integer,intent(in) :: nnn,option,howmany,notiming
     DATATYPE,intent(in) :: in(nnn*numpoints,howmany)
     DATATYPE,intent(out) :: out(nnn*numpoints,howmany)
     character,intent(in) :: timingdir*(*)
     DATATYPE ::     work(nnn*numpoints,howmany),       work2(nnn*numpoints,howmany) !! AUTOMATIC
-    integer :: atime,btime,getlen,ibox,jbox,deltabox,ii,totsize,myiostat
+    integer :: atime,btime,ibox,jbox,deltabox,ii,totsize,myiostat
     integer, save :: xcount=0, times(10)=0
 
     if (twomode.eq.1 .and. coulmode > -1) then   !! coulomb with centrifugal, can't use this
@@ -1500,13 +1502,14 @@ contains
     use pfileptrmod
     use myprojectmod  
     use clockmod
+    use miscmod       !! IN PARENT DIRECTORY
     implicit none
     integer,intent(in) :: nnn,option,howmany
     DATATYPE,intent(in) :: in(nnn*numpoints,howmany)
     DATATYPE,intent(out) :: out(nnn*numpoints,howmany)
     DATATYPE ::     work(nnn*numpoints,howmany) !! AUTOMATIC
     character,intent(in) :: timingdir*(*)
-    integer :: atime,btime,notiming,getlen,ibox,ii,totsize,myiostat
+    integer :: atime,btime,notiming,ibox,ii,totsize,myiostat
     integer, save :: xcount=0, times(10)=0
 
     if (twomode.eq.1 .and. coulmode > -1) then   !! coulomb with centrifugal, can't use this

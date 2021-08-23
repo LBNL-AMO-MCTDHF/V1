@@ -741,9 +741,10 @@ subroutine all_matel()
   use asssubmod
   use cfgsubmod
   use allmat0mod
+  use miscmod
   implicit none
   integer,save :: times(10)=0,xcalled=0
-  integer :: itime,jtime,getlen,firstspf,lastspf
+  integer :: itime,jtime,firstspf,lastspf
   xcalled=xcalled+1
 
   firstspf=1;lastspf=nspf

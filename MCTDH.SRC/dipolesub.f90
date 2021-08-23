@@ -29,11 +29,12 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   use arbitrarymultmod
   use orbgathersubmod
   use mpisubmod
-  use utilmod
   use dip_parameters  ! for velocity operator output veldipflag
   use ham_parameters  !   "  correct velocity operator output with velocity gauge velflag=1
   use pulsesubmod     !        "   requires value of A(t)
   use orbmultsubmod   !        "   option to gauge-transform then use length gauge with veldipflag > 1
+  use miscmod
+  use utilmod
   implicit none
   type(biorthotype),target :: dipbiovar
   type(walktype),intent(in) :: wwin
@@ -319,7 +320,8 @@ contains
     use pulse_parameters
     use mpimod
     use pulsesubmod
-    use utilmod
+    use ftutilmod
+    use miscmod
     implicit none
     integer,intent(in) :: numdata, sflag, referencepulses, npulses
     DATATYPE,intent(in) :: indipolearrays(0:autosize,3)
@@ -339,7 +341,7 @@ contains
     complex*16, allocatable :: worksum0(:,:,:), totworksum0(:,:)
     DATATYPE :: pots(3,npulses),pots2(3,numpulses)
     real*8 :: ft_estep, ft_estart, thistime, myenergy,xsecunits, windowfunct
-    integer :: i,getlen,myiostat,ipulse,numft,ii,opwr,dowork,ft_numdata
+    integer :: i,myiostat,ipulse,numft,ii,opwr,dowork,ft_numdata
     integer :: FT_OPT !! TEMP
     character (len=7) :: number
     real*8 :: prevsum(3), prevphot(3,npulses),prevwork(3,npulses)  ! AUTOMATIC
@@ -1009,6 +1011,7 @@ subroutine redo_dipolesub(alg,diff_flag)  !! action 29
   use xxxmod
   use mpisubmod
   use mpimod
+  use miscmod
   implicit none
   integer, intent(in) :: alg
   logical,intent(in) :: diff_flag   !! read two different files using fluxmofile2 etc.?

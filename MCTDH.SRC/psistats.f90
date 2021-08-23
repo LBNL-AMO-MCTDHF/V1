@@ -180,6 +180,7 @@ subroutine psistats( thistime )
   use mpimod
   use configmod
   use xxxmod
+  use miscmod
   implicit none
 
   real*8,intent(in) :: thistime
@@ -470,6 +471,7 @@ subroutine finalstats0(myspfs,in_inavectors,wwin,bbin )
   use mpisubmod
   use getoccmod
   use orbmatsubmod
+  use miscmod
   implicit none
   type(walktype),intent(in) :: wwin,bbin
   DATATYPE,intent(in) :: myspfs(spfsize,wwin%nspf), &

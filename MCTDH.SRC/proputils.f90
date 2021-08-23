@@ -11,6 +11,7 @@ contains
     use parameters
     use opmod !! frozenspfs
     use mpisubmod
+    use miscmod
     implicit none
     integer,intent(in) :: lowspf,highspf
     DATATYPE,intent(in) :: inspfs(spfsize,lowspf:highspf),  prospfs(spfsize,nspf)

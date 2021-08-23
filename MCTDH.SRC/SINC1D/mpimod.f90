@@ -19,6 +19,7 @@ end module pmpimod
 subroutine bigdimsub(localdims,alldims)
   use myparams
   use pmpimod
+  use miscmod    !! IN PARENT DIRECTORY
   implicit none
   integer, intent(in) :: localdims(3)
   integer, intent(out) :: alldims(3)

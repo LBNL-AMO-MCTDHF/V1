@@ -10,6 +10,7 @@
 subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,outnumr,nucrepulsion,&
      nonuc_checkflag)
   use myparams
+  use miscmod      !! IN PARENT DIRECTORY
   implicit none
   integer,intent(in) :: inmpifileptr
   character,intent(in) :: inpfile*(*)
@@ -17,7 +18,7 @@ subroutine getmyparams(inmpifileptr,inpfile,spfdims,spfdimtype,reducedpotsize,ou
   real*8,intent(out) :: nucrepulsion
   character (len=SLN) :: buffer
   character (len=SLN) :: nullbuff
-  integer ::        nargs, getlen, i, len,myiostat
+  integer ::        nargs,  i, len,myiostat
 
   NAMELIST /heparinp/  &
        henumpoints,  henumelements,  hecelement,  heecstheta,   heelementsizes, numhatoms, hlocs,hlocrealflag,&

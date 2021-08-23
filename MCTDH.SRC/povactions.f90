@@ -62,11 +62,12 @@ end subroutine povinit
 subroutine read_povother( thistime, inspf, iprop, dirlabel, iwhich, ispf, irecord)
   use parameters
   use povmod
+  use miscmod
   implicit none
 
   DATATYPE :: inspf(spfdims(1),spfdims(2),-(spfdims(3)-1)/2:(spfdims(3)-1)/2)
   character :: dirlabel*(*)
-  integer ::  iprop, getlen2, iwhich, itotpov,   irange, irecord, imval, lvalue, ixi, kkk, ispf, yycall(4)=0, &
+  integer ::  iprop, iwhich, itotpov,   irange, irecord, imval, lvalue, ixi, kkk, ispf, yycall(4)=0, &
        ix,iy,iz, jjj,iii, iilen
   real*8 :: mmax(10),thistime
   integer, save :: maxflag(40,4,10)=0

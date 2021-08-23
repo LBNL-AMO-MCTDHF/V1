@@ -165,6 +165,7 @@ contains
     use pulsesubmod
     use fluxduringmod
     use orbmultsubmod   !! gauge_transform
+    use miscmod
     implicit none
 !! FluxOpType:
 !! 0       = use one-e potential and two-e contribution routines  (exact treatment)
@@ -351,7 +352,8 @@ contains
     use mpisubmod
     use pulsesubmod
     use orbmultsubmod   !! gauge_transform
-    use utilmod
+    use miscmod
+    use ftutilmod
     implicit none
 !! FluxOpType:
 !! 0       = use one-e potential and two-e contribution routines  (exact treatment)
@@ -1343,6 +1345,7 @@ subroutine fluxwrite(curtime,in_xmo,in_xa)
   use parameters
   use mpimod
   use mpisubmod
+  use miscmod
   implicit none
   integer,intent(in) :: curtime
   DATATYPE,intent(in) :: in_xmo(spfsize,nspf),in_xa(numr,first_config:last_config,mcscfnum)

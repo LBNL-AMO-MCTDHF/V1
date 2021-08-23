@@ -205,7 +205,6 @@ program mctdhf
   use savenormmod
   use quadavecmod
   use configstuffmod
-  use utilmod
   use repnatmod
   use getstuffmod
   use proploopmod
@@ -218,6 +217,8 @@ program mctdhf
   use finalstatsubmod
   use spfsubmod
   use getparammod
+  use utilmod
+  use miscmod
   implicit none
 
   integer :: i,spfsloaded,totread,ifile,readnum,qq

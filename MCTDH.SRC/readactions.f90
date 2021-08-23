@@ -206,11 +206,12 @@ subroutine read_orb(whichspf,imvalue, iprop, iwhich)
   use parameters
   use mpimod
   use zerorecmod
+  use miscmod
   implicit none
 
   integer, intent(in) :: iwhich,imvalue,iprop,whichspf
   integer :: readprop,  returnval, ixi, ieta, flag, xflag, irecord, first, &
-       getlen, ispf, itable, tabmax, iz
+       ispf, itable, tabmax, iz
   integer, parameter :: ifilenums(4)=(/  natorbfile, spfplotfile, denfile, denprojfile /)
   character (len=SLN) :: ifilenames(4)
   character (len=8), parameter :: ignufile(4)=(/ "Natplot_", "Spfplot_", "Denplot_", "Denproj_" /)
@@ -604,9 +605,10 @@ end subroutine read_orb
 subroutine read_Rorb(whichspf, iprop,iwhich)
   use parameters
   use mpimod
+  use miscmod
   implicit none
 
-  integer :: readprop,   returnval, ir, whichspf, flag, irecord, first, iprop, getlen, iwhich, ispf
+  integer :: readprop,   returnval, ir, whichspf, flag, irecord, first, iprop, iwhich, ispf
   real*8 :: thistime
   DATATYPE :: mydenval
   character (len=100) :: filename,sysline , titleline
@@ -702,8 +704,9 @@ end subroutine read_Rorb
 
 subroutine writegnuoptions3d(myunit, giffilename)
   use parameters
+  use miscmod
   implicit none
-  integer :: myunit, getlen
+  integer :: myunit
   character (len=20) :: giffilename
 
   write(myunit,*) 
@@ -813,8 +816,9 @@ end subroutine writegnuoptions3d
 
 subroutine writegnuoptions1d(myunit, giffilename)
   use parameters
+  use miscmod
   implicit none
-  integer :: myunit, getlen
+  integer :: myunit
   character (len=20) :: giffilename
 
   write(myunit,*) 
@@ -843,8 +847,9 @@ end subroutine writegnuoptions1d
 
 subroutine writergnuoptions(myunit, giffilename)
   use parameters
+  use miscmod
   implicit none
-  integer :: myunit, getlen
+  integer :: myunit
   character (len=20) :: giffilename
   write(myunit,*) 
   write(myunit,*) " set style data lines           "

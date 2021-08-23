@@ -83,8 +83,9 @@ contains
 subroutine autocall(numdata, forwardovl, sflag)
   use parameters
   use mpimod
-  use utilmod
   use pulsesubmod !! bad place for tentsums
+  use miscmod
+  use ftutilmod
   implicit none
   integer, intent(in) :: numdata,sflag
   DATATYPE,intent(in) :: forwardovl(0:autosize,mcscfnum)
@@ -92,7 +93,7 @@ subroutine autocall(numdata, forwardovl, sflag)
   DATATYPE :: csums(mcscfnum), csums2(mcscfnum)   !! AUTOMATIC
   DATATYPE :: csum
   real*8, allocatable :: tentfunction(:)
-  integer :: i, totdim, imc,getlen,ibot,myiostat
+  integer :: i, totdim, imc, ibot, myiostat
   real*8 ::   estep, thistime, myenergy, windowfunct, tentsum
   character (len=7) :: number
 
@@ -276,6 +277,7 @@ subroutine autocorrelate()
   use xxxmod
   use configmod
   use autocorrelate_one_mod
+  use miscmod
   implicit none
   integer ::  i,imc,sflag,myiostat
   integer, save :: lastouttime=0, iinit=0
