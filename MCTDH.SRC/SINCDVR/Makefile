@@ -21,6 +21,9 @@ clean:
 ../proputils.o: ../proputils.F90
 	cd ..; make proputils.o
 
+../utils.o: ../utils.F90
+	cd ..; make utils.o
+
 ../parameters.o: ../parameters.F90
 	cd ..; make parameters.o
 

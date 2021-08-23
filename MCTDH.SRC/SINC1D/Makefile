@@ -21,6 +21,9 @@ clean:
 ../proputils.o: ../proputils.F90
 	cd ..; make proputils.o
 
+../utils.o: ../utils.F90
+	cd ..; make utils.o
+
 ../parameters.o: ../parameters.F90
 	cd ..; make parameters.o
 
@@ -51,7 +54,7 @@ ftcore.o: $(DEPEND) ftcore.F90
 sincproject.o: $(DEPEND) sincproject.F90 sinc1d_params.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -c sincproject.F90
 
-init_sinc_new.o: $(DEPEND) sinc1d_params.o sincproject.o coreproject.o init_sinc_new.F90 ../MPI.o ../proputils.o ../parameters.o ../blocklanczos.o ../eigen.o
+init_sinc_new.o: $(DEPEND) sinc1d_params.o sincproject.o coreproject.o init_sinc_new.F90 ../MPI.o ../proputils.o ../utils.o ../parameters.o ../blocklanczos.o ../eigen.o
 	$(F90) $(FFLAGS) $(MPIFLAG) -I.. -c init_sinc_new.F90
 
 coreproject.o: $(DEPEND)  sinc1d_params.o sincproject.o coreproject.F90 toeplitz_subs.o ../MPI.o ../proputils.o ../parameters.o ../misc.o
