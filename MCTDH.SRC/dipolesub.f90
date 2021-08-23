@@ -670,7 +670,6 @@ contains
 
     if (numpulses.eq.1) then
        OFLWR "     ... adjusting phase for t= ",pulsemiddle(1); CFL
-       ! NOT Sure the phase is correct
        do ii=1,3
           fftrans(:, ii)   = fftrans(:, ii)   * exp((0d0,1d0) * ft_evals(:) * pulsemiddle(1))
           eft(:,     ii)   = eft(:,     ii)   * exp((0d0,1d0) * ft_evals(:) * pulsemiddle(1)) 

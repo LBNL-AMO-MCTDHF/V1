@@ -82,7 +82,7 @@ contains
     d3funt = -omega**3 * cos(omega*t+phaseShift);
     d4funt = omega**4 * sin(omega*t+phaseShift);
 
-    if (1 == 1) then
+    if (1 == 0) then
 
        ! %$$ N = 3;   % N=3 is minimal value ensuring E is zero at t=0.
        ! %$$          % with N=3, d/dt E is not zero at t=0.
