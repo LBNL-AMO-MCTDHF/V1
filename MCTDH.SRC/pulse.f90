@@ -17,14 +17,16 @@ contains
 
     if (envdernum == 0) then
        call FieldFunction(calcTime,omega,duration,phaseShift,envpwr,nothing1,aField,eField,nothing2,nothing3)
-    elseif (envdernum == 1) then
-       call FieldFunction(calcTime,omega,duration,phaseShift,envpwr,nothing1,nothing2,aField,eField,nothing3)
        aField = aField / omega 
        eField = eField / omega 
-    elseif (envdernum == 2) then
-       call FieldFunction(calcTime,omega,duration,phaseShift,envpwr,nothing1,nothing2,nothing3,aField,eField)
+    elseif (envdernum == 1) then
+       call FieldFunction(calcTime,omega,duration,phaseShift,envpwr,nothing1,nothing2,aField,eField,nothing3)
        aField = aField / omega**2 
        eField = eField / omega**2
+    elseif (envdernum == 2) then
+       call FieldFunction(calcTime,omega,duration,phaseShift,envpwr,nothing1,nothing2,nothing3,aField,eField)
+       aField = aField / omega**3 
+       eField = eField / omega**3
     else
        OFLWR "envdernum Not supported ", envdernum; CFLST
     endif
@@ -349,7 +351,7 @@ function newpulselen(myintime, ipulse)
      duration = pi/omega(ipulse)
      if (time.le.duration) then
         call NewField(aField,eField,time,omega2(ipulse),duration,phaseshift(ipulse),envdernum,envpwr)
-        newpulselen = eField;
+        newpulselen = pulsestrength(ipulse) * eField;
      endif
   endif
   
@@ -374,7 +376,7 @@ function newpulsevel(myintime, ipulse)
      duration = pi/omega(ipulse)
      if (time.le.duration) then
         call NewField(aField,eField,time,omega2(ipulse),duration,phaseshift(ipulse),envdernum,envpwr)
-        newpulsevel = aField;
+        newpulsevel = pulsestrength(ipulse) * aField;
      endif
   endif
   
