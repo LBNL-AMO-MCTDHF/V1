@@ -272,6 +272,8 @@ function tdpotlen0(myintime, which,ilow,ihigh)
         !$$    tdpotlen0=tdpotlen0+monopulselen(myintime,ipulse) * fac
         case (6)
            tdpotlen0=tdpotlen0+newpulselen(myintime,ipulse) * fac
+        case (7)
+           tdpotlen0=tdpotlen0+threepulselen(myintime,ipulse) * fac
         case default
            OFLWR "Pulse type not supported: ", pulsetype(ipulse); CFLST
         end select
@@ -322,6 +324,8 @@ function tdpotvel0(myintime,which,ilow,ihigh)
         !$$     tdpotvel0=tdpotvel0+monopulsevel(myintime, ipulse) * fac
         case (6)
            tdpotvel0=tdpotvel0+newpulsevel(myintime, ipulse) * fac
+        case (7)
+           tdpotvel0=tdpotvel0+threepulsevel(myintime, ipulse) * fac
         case default
            OFLWR "Pulse type not supported: ", pulsetype(ipulse); CFLST
         end select
@@ -431,6 +435,164 @@ function simplepulsevel(myintime, ipulse)
   endif
 
 end function simplepulsevel
+
+
+
+
+function threepulsevel(intime, ipulse)
+  use pulse_parameters
+  use constant_parameters
+  implicit none
+  integer,intent(in) :: ipulse
+  real*8,intent(in) :: intime
+  real*8 :: time,dur,pstart,f,df,ddf
+  DATATYPE :: pstren, threepulsevel
+  integer :: opt1, negflag
+  
+  opt1    = pulse7opt1(ipulse) ;
+  negflag = 0;
+  select case(opt1)
+  case(0,1)
+  case(2,3)
+     opt1 = opt1 - 2;
+     negflag = 1;
+  case default
+  end select
+  
+  threepulsevel       = 0.d0
+  dur                 = pulsedur(ipulse)
+  pstart              = pulsestart(ipulse)
+  pstren              = pulsestrength(ipulse)  
+  if (negflag .ne. 0) then
+     pstren           = pstren * (-1)  ! if flip time, mult deriv by (-1)
+     pstren           = pstren * (-1)  ! flipping sign both length and velocity
+  endif
+  if (intime.ge.pstart) then
+     time             = intime - pstart
+     if (time.le.dur) then
+        time          = time/dur
+        if (negflag .ne. 0) then
+           time = 1-time;
+        endif
+        call threepulsefunction(time,f,df,ddf,opt1)
+        threepulsevel = pstren * df ;
+     endif
+  endif
+end function threepulsevel
+
+
+
+
+function threepulselen(intime, ipulse)
+  use pulse_parameters
+  use constant_parameters
+  implicit none
+  integer,intent(in) :: ipulse
+  real*8,intent(in) :: intime
+  real*8 :: time,dur,pstart,f,df,ddf
+  DATATYPE :: pstren, threepulselen
+  integer :: opt1, negflag
+  
+  opt1    = pulse7opt1(ipulse) ;
+  negflag = 0;
+  select case(opt1)
+  case(0,1)
+  case(2,3)
+     opt1 = opt1 - 2;
+     negflag = 1;
+  case default
+  end select
+  
+  threepulselen       = 0.d0
+  dur                 = pulsedur(ipulse)
+  pstart              = pulsestart(ipulse)
+  pstren              = pulsestrength(ipulse)  
+  if (negflag .ne. 0) then
+     pstren           = pstren * (-1)  ! flipping sign both length and velocity
+  endif
+  if (intime.ge.pstart) then
+     time             = intime - pstart
+     if (time.le.dur) then
+        time          = time/dur
+        if (negflag .ne. 0) then
+           time = 1-time;
+        endif
+        call threepulsefunction(time,f,df,ddf,opt1)
+        threepulselen = pstren * ddf / dur;
+     endif
+  endif
+end function threepulselen
+
+
+subroutine threepulsefunction(time,f,df,ddf,OPT)
+  use fileptrmod
+  implicit none
+  integer,intent(in) :: OPT
+  real*8, intent(in) :: time
+  real*8, intent(out) :: f,df,ddf
+  real*8 :: aval=0, bval=0, nfac=0, &
+       fac1=0,   fac2=0,   faca=0,   facb=0,  &
+       dfac1=0,  dfac2=0,  dfaca=0,  dfacb=0,  &
+       ddfac1=0, ddfac2=0, ddfaca=0, ddfacb=0
+  
+  if (time<0 .or. time>1) then
+     OFLWR "TIME ERROR ", time; CFLST
+  endif
+
+  if (OPT == 0) then
+     aval = 1/220d0 * ( 85 - sqrt(185d0) )
+     bval = 1/115d0 * ( 45 + sqrt(185d0) )
+     fac1 = time**8;
+     dfac1 = 8*time**7;
+     ddfac1 = 56*time**6;
+     fac2 = (1-time)**13;
+     dfac2 = -13*(1-time)**12;
+     ddfac2 = 156*(1-time)**11;
+  elseif (OPT == 1) then
+     aval = 1/220d0 * ( 135 - sqrt(185d0) )
+     bval = 1/115d0 * ( 70 + sqrt(185d0) )
+     fac1 = time**13;
+     dfac1 = 13*time**12;
+     ddfac1 = 156*time**11;
+     fac2 = (1-time)**8;
+     dfac2 = -8*(1-time)**7;
+     ddfac2 = 56*(1-time)**6;
+  else
+     OFLWR "programmer error threepulsefunction"; CFLST
+  endif
+ 
+  faca = (time-aval)**2;
+  dfaca = 2*(time-aval);
+  ddfaca = 2;
+  facb = (time-bval);
+  dfacb = 1;
+  ddfacb = 0;
+
+  f =  fac1 * fac2 * faca * facb;
+  df = dfac1 * fac2 * faca * facb + &
+       fac1 * dfac2 * faca * facb + &
+       fac1 * fac2 * dfaca * facb + &
+       fac1 * fac2 * faca * dfacb ;
+  ddf= ddfac1 * fac2 * faca * facb + &
+       dfac1 * dfac2 * faca * facb * 2 + &
+       dfac1 * fac2 * dfaca * facb * 2 + &
+       dfac1 * fac2 * faca * dfacb * 2 + &
+       fac1 * ddfac2 * faca * facb + &
+       fac1 * dfac2 * dfaca * facb * 2 + &
+       fac1 * dfac2 * faca * dfacb * 2 + &
+       fac1 * fac2 * ddfaca * facb + &
+       fac1 * fac2 * dfaca * dfacb * 2 + &
+       fac1 * fac2 * faca * ddfacb ;
+
+  nfac = 3.069e-7;
+
+  f   = f / nfac;
+  df  = df / nfac;
+  ddf = ddf / nfac;
+  
+end subroutine threepulsefunction
+
+
 
 
 !!$function cwpulselen(myintime, ipulse)

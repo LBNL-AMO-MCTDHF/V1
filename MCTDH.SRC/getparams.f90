@@ -954,7 +954,7 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
   implicit none
   NAMELIST /pulse/ omega,pulsestart,pulsestrength, velflag, omega2,phaseshift,intensity,pulsetype, &
        pulsetheta,pulsephi, numpulses, reference_pulses, minpulsetime, maxpulsetime, &
-       chirp, ramp, envdernum, envpwr
+       chirp, ramp, envdernum, envpwr, pulse7opt1, pulse7opt2
   character (len=12)      :: line
   integer                 :: i, myiostat, ipulse,no_error_exit_flag, neflux, ntime
   integer                 :: FT_OPT ! temp
@@ -997,25 +997,50 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
 
   WRFL; WRFL    "NUMBER OF PULSES:  ", numpulses;    WRFL
 
+  do ipulse=1,numpulses
+     select case(pulsetype(ipulse))
+     case(1,2,6)
+        pulsedur(ipulse) = pi/omega(ipulse)
+     case(7)
+        pulsedur(ipulse) = 1/0.04816/omega(ipulse);
+     case default
+        OFLWR "pulse type not supported ", pulsetype(ipulse); CFLST
+     end select
+  enddo
+
+  
   lastfinish=0.d0
   do ipulse=1,numpulses
      if (pulsephi(ipulse).ne.0d0) then
         offaxispulseflag=1
      endif
 
-     pulsefinish(ipulse) = pulsestart(ipulse) + pi/omega(ipulse);
-     pulsemiddle(ipulse) = pulsestart(ipulse) + pi/omega(ipulse)/2;
+     pulsefinish(ipulse) = pulsestart(ipulse) + pulsedur(ipulse);
+     pulsemiddle(ipulse) = pulsestart(ipulse) + pulsedur(ipulse)/2;
      if (lastfinish.lt.pulsefinish(ipulse)) then
         lastfinish=pulsefinish(ipulse)
      endif
 
      write(mpifileptr, *) "    -----> Pulse ", ipulse," : "
 
-     if (pulsetype(ipulse).eq.1.or.pulsetype(ipulse).eq.5) then
+     ! if (pulsetype(ipulse).eq.1.or.pulsetype(ipulse).eq.5) then
+     !    fac=omega(ipulse)
+     ! else
+     !    fac=omega2(ipulse)
+     ! endif
+
+     fac = 0                        ! avoid warn unused
+     select case(pulsetype(ipulse))
+     case(1)
         fac=omega(ipulse)
-     else
+     case(2,6)
         fac=omega2(ipulse)
-     endif
+     case(7)
+        fac=1/pulsedur(ipulse)
+     case default
+        OFLWR "ack error programmer"; CFLST
+     end select
+     
      if (intensity(ipulse).ne.-1.d0) then !! overrides pulsestrength
         pulsestrength(ipulse) = sqrt(intensity(ipulse)/3.5094478d0)/fac
      else
@@ -1064,6 +1089,11 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         write(mpifileptr, *) "   Pulsetheta:      ",pulsetheta(ipulse)
         write(mpifileptr, *) "   Pulsephi:      ",pulsephi(ipulse)
         write(mpifileptr, *) "   Pulsefinish:     ",pulsestart(ipulse) + pi/omega(ipulse)
+     case (7)
+        WRFL  "Pulse type is 7 "
+        WRFL  "   Pulse omega       :  ",omega(ipulse)
+        WRFL  "   --> Pulse duration:  ",pulsedur(ipulse) 
+        WRFL  "   --> Pulse options:   ",pulse7opt1(ipulse),pulse7opt2(ipulse) 
      case default
         WRFL "Pulse type not supported or programmer failure ",pulsetype(ipulse); CFLST
      end select
@@ -1100,7 +1130,7 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
      mymax=0d0
      do ipulse=1,numpulses
         select case (pulsetype(ipulse))
-        case(1)
+        case(1,7)
            mymax=max(mymax,omega(ipulse)*hhgplotmax)
         case(2,6)
            mymax=max(mymax,omega2(ipulse)*hhgplotmax)
@@ -1113,7 +1143,7 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         mymax=0d0
         do ipulse=1,numpulses
            select case (pulsetype(ipulse))
-           case(1)
+           case(1,7)
               mymax=max(mymax,omega(ipulse) * 24d0)
            case(2,6)
               mymax=max(mymax,omega2(ipulse) + omega(ipulse) * 24d0)
@@ -1127,7 +1157,7 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         mymin=1e16
         do ipulse=1,numpulses
            select case (pulsetype(ipulse))
-           case(1)
+           case(1,7)
               mymin=0d0
            case(2,6)
               mymin=min(mymin,omega2(ipulse) - omega(ipulse) * 24d0)

@@ -91,8 +91,8 @@ integer :: constraintflag=0      !! Constraint=  !! As described below (see CONS
 integer :: denmatfciflag=0                       !! If .ne. 0 then does denmat constrant as programmed
                                                  !!  before Miyagi's help
 DATATYPE :: energyshift=0d0      !!              !! complex shift for making energy real for imperfect CAP/ECS
-integer,parameter :: drivingflag=0                         !!  Solve for the change in the wave function not wave function 
-real*8,parameter :: drivingproportion=0.999999999999d0     !!   -- "psi-prime" treatment.
+!! integer,parameter :: drivingflag=0                         !!  "psi-prime" treatment is deprecated
+!! real*8,parameter :: drivingproportion=0.999999999999d0     !!  
 DATATYPE :: timefac=&            !! Prop/        !! d/dt psi = timefac * H * psi
         DATANEGONE               !!  Relax       !!
 real*8 :: mshift=0d0             !!              !! shift configurations based on m-value.. to break 
@@ -111,8 +111,11 @@ integer :: reference_pulses=0    !!  for domcke method action 21,29. Enter numpu
 integer ::  pulsetype(100)=1     !!              !!  1:  Impulse   2,6: with envelope   see pulse.f90
 real*8  :: omega(100)=1.d0       !!              !!  Pulsetype 1 parameter or pulsetype 2,6 evelope Dur=Pi/omega
 real*8 :: omega2(100)=1.d0       !!              !!  Pulsetype 2,5 "central" freqency
+real*8 :: pulsedur(100)=-99d0    !! internal, not input.. corresponds with omega
 real*8 :: pulsestart(100)=0d0    !!              !!  When the pulse starts
 real*8 :: phaseshift(100)=0d0    !!              !!  Phase shift
+integer :: pulse7opt1(100)=0     !!              !!  Pulsetype 7 only 3-cycle asymmetric pulse7opt1=0,1,2,3
+integer :: pulse7opt2(100)=0     !!              !!  Pulsetype 7 only    
 integer :: envdernum=3           !!              !!  Pulsetype 6 only
 integer :: envpwr=4              !!              !!     "
 real*8 :: chirp(100)=0d0         !!              !!  Pulsetype 2 only
