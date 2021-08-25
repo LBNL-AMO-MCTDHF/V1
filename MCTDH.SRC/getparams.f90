@@ -962,8 +962,7 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
   real*8                  :: time, fac, pulse_end, dt, emax, energy, mymax, mymin, nyfac
   real*8, allocatable     :: pulseftsq(:), vpulseftsq(:), evals(:)
   complex*16, allocatable :: lenpot(:,:), velpot(:,:), lenft(:,:), velft(:,:)
-  DATATYPE                :: pots1(3),pots2(3)
-  !$$ DATATYPE            :: pots3(3), pots4(3), pots5(3), csumx,csumy,csumz
+  DATATYPE                :: pots1(3),pots2(3),pots3(3), pots4(3), pots5(3), pots6(3)
   
   open(971,file=inpfile, status="old", iostat=myiostat)
   if (myiostat/=0) then
@@ -1202,27 +1201,24 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
 
         !$$ csumx=0; csumy=0; csumz=0
 
+        pots5(:) = 0;
+        pots6(:) = 0;
         do i=0,ntime
            time=i*dt
 
-           !$$  checking that E(t) = d/dt A(t)   and  A(t) = integral E(t)
-
+           ! integrating E(t) to be sure it equals A(t)
+           ! integrating A(t) to get position P(t)
+           
            call vectdpot(time,                  0,pots1,1)
            call vectdpot(time,                  1,pots2,1)
+           call vectdpot(time-dt/2 ,            0,pots3,1)
+           call vectdpot(time-dt/2 ,            1,pots4,1)
+           pots5(:) = pots5(:) + pots3(:) * dt
+           pots6(:) = pots6(:) + pots4(:) * dt
 
-           !$$ call vectdpot(time-epsilon,          1,pots3,1)
-           !$$ call vectdpot(time+epsilon,          1,pots4,1)
-           !$$ call vectdpot(time+pulse_end/ntime ,0,pots5,1)
-           !$$ csumx=csumx + dt * pots5(1)
-           !$$ csumy=csumy + dt * pots5(2)
-           !$$ csumz=csumz + dt * pots5(3)
-           !$$ write(886,'(100F15.10)') time, pots1(1), pots2(1), (pots4(1)-pots3(1))/2/epsilon, csumx
-           !$$ write(887,'(100F15.10)') time, pots1(2), pots2(2), (pots4(2)-pots3(2))/2/epsilon, csumy
-           !$$ write(888,'(100F15.10)') time, pots1(3), pots2(3), (pots4(3)-pots3(3))/2/epsilon, csumz
-
-           write(886,'(100F15.10)') time, pots1(1), pots2(1)
-           write(887,'(100F15.10)') time, pots1(2), pots2(2)
-           write(888,'(100F15.10)') time, pots1(3), pots2(3)
+           write(886,'(100F15.10)') time, pots1(1), pots2(1), pots5(1), pots6(1)
+           write(887,'(100F15.10)') time, pots1(2), pots2(2), pots5(2), pots6(2)
+           write(888,'(100F15.10)') time, pots1(3), pots2(3), pots5(3), pots6(3)
 
            lenpot(i,:)=pots1(:)
            velpot(i,:)=pots2(:)
