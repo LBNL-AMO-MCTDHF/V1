@@ -4,10 +4,11 @@
 
 module half_ft_mod
   ! report halfft_fac times as many pos-frequency results as input data
-  integer, parameter :: halfft_fac   = 3
+  ! integer, parameter :: halfft_fac   = 3
+  integer, parameter :: halfft_fac   = 6
   ! oversample by this factor
   integer, parameter :: NN           = 7
-  ! halfft_fac should be less than NN/2
+  ! halfft_fac should be less than NN
 end module half_ft_mod
 
 
@@ -317,7 +318,7 @@ contains
     integer :: ifac(15)  !! AUTOMATIC
     integer :: bigsize,ii
 
-    if (size.gt.6000) then
+    if (size.gt.20000) then
        OFLWR "ARE YOU SURE?  big size, programmer checkme ft ",size; CFLST
     endif
     if (outsize > 2*NN*size) then

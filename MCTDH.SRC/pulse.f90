@@ -352,7 +352,7 @@ function newpulselen(myintime, ipulse)
 
   if (myintime.ge.pulsestart(ipulse)) then
      time=myintime-pulsestart(ipulse)
-     duration = pi/omega(ipulse)
+     duration = pulsedur(ipulse)
      if (time.le.duration) then
         call NewField(aField,eField,time,omega2(ipulse),duration,phaseshift(ipulse),envdernum,envpwr)
         newpulselen = pulsestrength(ipulse) * eField;
@@ -377,7 +377,7 @@ function newpulsevel(myintime, ipulse)
 
   if (myintime.ge.pulsestart(ipulse)) then
      time=myintime-pulsestart(ipulse)
-     duration = pi/omega(ipulse)
+     duration = pulsedur(ipulse)
      if (time.le.duration) then
         call NewField(aField,eField,time,omega2(ipulse),duration,phaseshift(ipulse),envdernum,envpwr)
         newpulsevel = pulsestrength(ipulse) * aField;
@@ -403,7 +403,6 @@ function simplepulselen(myintime, ipulse)
   if (myintime.ge.pulsestart(ipulse)) then
      time=myintime-pulsestart(ipulse)
      if (time.le.pi/omega(ipulse)) then
-
         simplepulselen = pulsestrength(ipulse) * omega(ipulse) * &
              ( sin(time*omega(ipulse))*cos(time*omega(ipulse) + phaseshift(ipulse)) &
              + sin(time*omega(ipulse) + phaseshift(ipulse))*cos(time*omega(ipulse)) )

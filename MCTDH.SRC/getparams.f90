@@ -1001,7 +1001,7 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
      case(1,2,6)
         pulsedur(ipulse) = pi/omega(ipulse)
      case(7)
-        pulsedur(ipulse) = 1/0.04816/omega(ipulse);
+        pulsedur(ipulse) = 25.0633d0/omega(ipulse);
      case default
         OFLWR "pulse type not supported ", pulsetype(ipulse); CFLST
      end select
@@ -1166,7 +1166,14 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         enddo
         dipolesumstart=max(0d0,mymin)
      endif
-     
+
+     OFL
+     WRFL "Dipolesumstart   :", dipolesumstart
+     WRFL "Dipolesumend     :", dipolesumend
+     WRFL "HHG Plot Max     :", hhgplotmax
+     WRFL "HHG Plot End     :", hhgplotend
+     CFL
+
      ! ! NOW PLOT
      
      pulse_end = finaltime
@@ -1185,9 +1192,9 @@ subroutine getpulse(no_error_exit_flag)   !! if flag is 0, will exit if &pulse i
         neflux    = zfftf_size(ntime+1) - 1;
      endif
      
-     print *, "NEFLUX:", ntime, neflux, dipolesumend, emax
+     ! print *, "NEFLUX:", ntime, neflux, dipolesumend, emax
      
-     if (ntime > 5000 .or. neflux > 10000) then
+     if (ntime > 20000 .or. neflux > 200000) then
         OFLWR "CHECKME ntime,neflux too large.. is dipolesumend or finaltime very large? ", ntime, neflux; CFLST
      endif
 

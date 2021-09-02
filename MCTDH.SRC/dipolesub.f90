@@ -139,16 +139,21 @@ subroutine dipolesub_one(wwin,bbin,in_abra,&    !! ok unused bbin
   !
   !   But for dipole (length) operator, subtracting the position expected for a free particle seems incorrect
   !     because ECS is defined in position space..  the multipole expansion is relative to origin
+  !
+  !   .. for velocity, strongVelFlag=1 subtracting the velocity expected for a free particle is only correct
+  !     in the high-frequency limit.  It fails completely for low-frequency; the velocity expected near the
+  !     origin at low frequency is not the velocity expected for a free electron; it is proportional to the change
+  !       in force, the jerk, instead...
   !  
   ! So for velocity operator:
-  !    Pz =  i d/dz           length
-  !    Pz =  i d/dz + Az(t)    velocity
+  !    Vz =  i d/dz           length
+  !    Vz =  i d/dz + Az(t)    velocity
   !
-  !    Vz =  Pz.  But take matrix element of Vz - Az(t) because this will be zero for free electron
+  !    Take matrix element of Vz - Az(t) because this will be zero for free electron
   !
-  !    Doing that with "strongVelFlag"
+  !    Doing that with strongVelFlag=1
 
-  strongVelFlag = 1 ;      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  strongVelFlag = 0 ;      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   
   if (veldipflag.eq.1.or.veldipflag.eq.2) then
      call vectdpot(intime,1,pots,-1)         ! A-vector velocity gauge
@@ -783,7 +788,7 @@ contains
        
           do i=0,ft_numdata
              myenergy = ft_evals(i)
-             if (myenergy.le.hhgplotmax) then
+             if (myenergy.le.hhgplotend) then
                 write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
                      fftrans(i,ii), eft(i,ii), abs(fftrans(i,ii))**2 * myenergy**2, &
                      2 * real(fftrans(i,ii)*conjg(eft(i,ii)),8) , &
@@ -861,7 +866,7 @@ contains
 
              do i=0,ft_numdata
                 myenergy = ft_evals(i)
-                if (myenergy.le.hhgplotmax) then
+                if (myenergy.le.hhgplotend) then
                    write(171,'(F18.12, T22, 400E20.8)',iostat=myiostat)  myenergy, &
                         fftrans(i,ii), eft(i,ii), abs(fftrans(i,ii))**2 * myenergy**2, &
                         2 * real(fftrans(i,ii)*conjg(eft(i,ii)),8) , &
