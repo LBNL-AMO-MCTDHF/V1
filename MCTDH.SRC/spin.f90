@@ -825,7 +825,7 @@ subroutine basis_shuffle(howmany,wwin,avectorin,wwout,avectorout)
 #else
   integer,allocatable :: pairs(:,:),pairlow(:),pairhigh(:),pairsize(:),&
        pairtag(:)
-  integer :: iin, iout, numpairs, ipair, getlen, myiostat
+  integer :: iin, iout, numpairs, ipair, myiostat
   integer,save :: times(20)=0, atime = -99, btime = -99, icalled=0, &
        numcalled=0
 
