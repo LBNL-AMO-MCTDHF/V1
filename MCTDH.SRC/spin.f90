@@ -814,6 +814,7 @@ subroutine basis_shuffle(howmany,wwin,avectorin,wwout,avectorout)
   use mpimod     !! nprocs
   use mpisubmod
   use clockmod
+  use miscmod
   implicit none
   type(walktype),intent(in) :: wwin,wwout
   integer,intent(in) :: howmany
